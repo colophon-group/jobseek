@@ -23,6 +23,11 @@ from src.shared.http_retry import PaginationFetchError, is_retryable_status
 
 log = structlog.get_logger()
 
+
+class ApiSnifferDomUnavailableError(RuntimeError):
+    """The page cannot safely run API-sniffer fallback interactions."""
+
+
 # ---------------------------------------------------------------------------
 # Transport abstraction
 # ---------------------------------------------------------------------------
@@ -38,8 +43,9 @@ def make_browser_fetcher(page) -> FetchJsonFn:
     """Create a FetchJsonFn that executes fetch() inside the browser context.
 
     TDM-Reservation respect (#2842, #2925). The response body is parsed
-    inside :func:`fetch_json` which now surfaces ``r.headers`` through
-    the page-evaluate bridge alongside the body text and invokes
+    inside :func:`fetch_json` which surfaces ``r.status`` and ``r.headers``
+    through the page-evaluate bridge alongside the body text, raises HTTP
+    failures for the shared retry classifier, and invokes
     :func:`check_browser_response` before returning. A
     :class:`TDMReservedError` propagates out (not retried) and is
     treated as a clean board skip by the wrapper in
@@ -110,7 +116,8 @@ JOB_KEYWORDS = re.compile(
 )
 
 TITLE_FIELDS = re.compile(
-    r"^(title|name|job_?title|position_?title|label|heading|role|job_?name)$",
+    r"^(title|name|job_?title|position_?title|label|heading|role|job_?name"
+    r"|job_?opening_?name)$",
     re.IGNORECASE,
 )
 
@@ -190,7 +197,8 @@ _SKIP_HEADERS = frozenset(
 
 FIELD_PATTERNS: dict[str, re.Pattern] = {
     "title": re.compile(
-        r"^(title|name|job_?title|position_?title|label|heading|role|job_?name)$",
+        r"^(title|name|job_?title|position_?title|label|heading|role|job_?name"
+        r"|job_?opening_?name)$",
         re.I,
     ),
     "description": re.compile(
@@ -200,7 +208,7 @@ FIELD_PATTERNS: dict[str, re.Pattern] = {
     ),
     "employment_type": re.compile(
         r"^(employment_?type|type|job_?type|work_?type|contract_?type"
-        r"|employmentType|workType)$",
+        r"|employmentType|workType|employment_?status_?label)$",
         re.I,
     ),
     "date_posted": re.compile(
@@ -217,7 +225,8 @@ FIELD_PATTERNS: dict[str, re.Pattern] = {
 
 # Location patterns — match both simple keys and array-of-object patterns
 _LOCATION_KEY_PATTERNS = re.compile(
-    r"^(location|locations|office|offices|city|cities|place|places)$",
+    r"^(location|locations|office|offices|city|cities|place|places"
+    r"|requisition_?locations|work_?locations)$",
     re.I,
 )
 _LOCATION_SUBFIELD_PATTERNS = re.compile(
@@ -229,7 +238,8 @@ _LOCATION_SUBFIELD_PATTERNS = re.compile(
 _METADATA_PATTERNS: dict[str, re.Pattern] = {
     "metadata.team": re.compile(
         r"^(team|department|group|division|org|organization|category"
-        r"|departmentName|teamName|team_?name|department_?name)$",
+        r"|departmentName|teamName|team_?name|department_?name"
+        r"|department_?label)$",
         re.I,
     ),
 }
@@ -872,6 +882,17 @@ def auto_map_fields(items: list[dict]) -> dict[str, str]:
                     mapping["locations"] = key
                     break
                 if first and isinstance(first[0], dict):
+                    # ADP MyJobs wraps the display label one level deeper:
+                    # requisitionLocations[].nameCode.{shortName,longName}.
+                    # Prefer the concise label when both variants exist.
+                    name_code = first[0].get("nameCode")
+                    if isinstance(name_code, dict):
+                        for subkey in ("shortName", "longName"):
+                            if isinstance(name_code.get(subkey), str):
+                                mapping["locations"] = f"{key}[].nameCode.{subkey}"
+                                break
+                        if "locations" in mapping:
+                            break
                     # Find the name subfield
                     for subkey in first[0]:
                         if _LOCATION_SUBFIELD_PATTERNS.match(subkey):
@@ -884,6 +905,20 @@ def auto_map_fields(items: list[dict]) -> dict[str, str]:
                                 mapping["locations"] = f"{key}[].{subkey}"
                                 break
                     break
+            if isinstance(first, dict):
+                # BambooHR and similar APIs return a single location object
+                # (for example ``{"city": "Sheffield", "state": "..."}``)
+                # instead of an array. Prefer a recognised display subfield.
+                for subkey in first:
+                    if _LOCATION_SUBFIELD_PATTERNS.match(subkey):
+                        mapping["locations"] = f"{key}.{subkey}"
+                        break
+                else:
+                    for subkey, subval in first.items():
+                        if isinstance(subval, str) and subval:
+                            mapping["locations"] = f"{key}.{subkey}"
+                            break
+                break
 
     # Metadata patterns (team/department)
     for field_name, pattern in _METADATA_PATTERNS.items():
@@ -960,6 +995,17 @@ async def capture_exchanges(page, page_host: str) -> list[Exchange]:
 
 async def trigger_interactions(page, exchanges: list[Exchange]) -> None:
     """Dismiss overlays and trigger pagination / load-more to capture more exchanges."""
+    try:
+        has_body = await page.evaluate("() => document.body !== null")
+    except Exception as exc:
+        raise ApiSnifferDomUnavailableError(
+            "API sniffer fallback interactions require a usable document body"
+        ) from exc
+    if not has_body:
+        raise ApiSnifferDomUnavailableError(
+            "API sniffer fallback interactions require a usable document body"
+        )
+
     before = len(exchanges)
 
     # Phase A: search button click for Taleo/Workday-style pages
@@ -1039,7 +1085,17 @@ async def trigger_interactions(page, exchanges: list[Exchange]) -> None:
 
     # Scroll to bottom for infinite-scroll triggers
     if len(exchanges) == before_pagination:
-        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        scrolled = await page.evaluate("""() => {
+            const root =
+                document.scrollingElement || document.documentElement || document.body;
+            if (!root) return false;
+            window.scrollTo(0, root.scrollHeight);
+            return true;
+        }""")
+        if not scrolled:
+            raise ApiSnifferDomUnavailableError(
+                "API sniffer fallback interactions require a usable document body"
+            )
         await asyncio.sleep(3)
 
     for ex in exchanges[before:]:
@@ -1058,7 +1114,7 @@ async def fetch_json(
     """Execute a fetch inside the browser context, return parsed JSON.
 
     TDM-Reservation respect (#2842, #2925). The page-evaluate bridge
-    surfaces ``r.headers`` (entries materialised into a plain object
+    surfaces ``r.status`` and ``r.headers`` (entries materialised into a plain object
     with lower-cased keys, since ``Headers`` itself isn't directly
     serialisable across the bridge) alongside the body text so
     :func:`check_browser_response` can run on the Playwright path —
@@ -1077,7 +1133,7 @@ async def fetch_json(
         for (const [k, v] of resp.headers.entries()) {
             respHeaders[k.toLowerCase()] = v;
         }
-        return { headers: respHeaders, text: await resp.text() };
+        return { status: resp.status, headers: respHeaders, text: await resp.text() };
     }""",
         [method, url, json.dumps(headers), body],
     )
@@ -1089,6 +1145,17 @@ async def fetch_json(
     # ``_fetch_page_with_retry``. No defensive shape-check needed.
     text = result["text"]
     resp_headers = result.get("headers") or {}
+    status = result.get("status", 200)
+    if not isinstance(status, int):
+        raise TypeError("browser fetch returned an invalid HTTP status")
+    if not 200 <= status < 300:
+        response = httpx.Response(
+            status,
+            headers=resp_headers,
+            text=text,
+            request=httpx.Request(method, url),
+        )
+        response.raise_for_status()
     check_browser_response(resp_headers, text, url=url)
     return json.loads(text)
 

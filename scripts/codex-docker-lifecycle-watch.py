@@ -11,10 +11,21 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 import time
 from collections import deque
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from jobseek_maintenance_provenance import (  # noqa: E402
+    container_generation,
+    validate_provenance_labels,
+)
 
 UTC = timezone.utc  # noqa: UP017 - the production host runs Python 3.10.
 
@@ -111,6 +122,9 @@ def _normalize_event(
     actor = event.get("Actor", {})
     if not isinstance(actor, dict):
         return None
+    container_id = str(actor.get("ID", ""))
+    if not container_id:
+        return None
     attributes = actor.get("Attributes", {})
     if not isinstance(attributes, dict):
         return None
@@ -125,20 +139,18 @@ def _normalize_event(
         time_nano = seconds * 1_000_000_000
 
     record: dict[str, object] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "source": "docker_event",
         "observed_at": _now_iso(),
         "event_at": _event_time_iso(time_nano),
         "time_nano": time_nano,
         "action": action,
-        "container_id": str(actor.get("ID", "")),
+        "container_generation": container_generation(container_id),
         "container_name": str(attributes.get("name", "")),
         "image": str(attributes.get("image", "")),
         "compose_project": COMPOSE_PROJECT,
         "compose_service": str(attributes.get("com.docker.compose.service", "")),
-        "compose_container_number": str(
-            attributes.get("com.docker.compose.container-number", "")
-        ),
+        "compose_container_number": str(attributes.get("com.docker.compose.container-number", "")),
         "compose_oneoff": str(attributes.get("com.docker.compose.oneoff", "")),
     }
     for source, target in (
@@ -149,6 +161,11 @@ def _normalize_event(
         value = attributes.get(source)
         if value not in (None, ""):
             record[target] = str(value)
+    provenance_status, provenance = validate_provenance_labels(attributes)
+    if provenance_status == "validated" and provenance is not None:
+        record["maintenance_provenance"] = provenance
+    elif provenance_status == "invalid":
+        record["maintenance_provenance_status"] = "invalid"
     if inspected_state:
         record["state"] = inspected_state
     return record

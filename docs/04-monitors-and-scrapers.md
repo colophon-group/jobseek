@@ -39,6 +39,21 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `almacareer` | Rich | skip | AlmaCareer / Capybara GraphQL boards |
 | `amazon` | Rich | skip | Amazon Jobs |
 | `ashby` | Rich | skip | Ashby ATS |
+| `avature` | URL-only | dom | Avature static listings and map data, with streamed pagination |
+| `bamboohr` | Rich | api_sniffer | BambooHR summaries plus detail API enrichment |
+| `beisen` | Rich/hybrid | skip or DOM enrichment | Beisen modern public API + legacy server-rendered listings |
+| `paycom` | Rich | paycom | Paycom public preview API plus detail API enrichment |
+| `jazzhr` | URL-only | jazzhr | JazzHR static listing with JSON-LD/DOM detail composition |
+| `jobvite` | URL-only | json-ld | Jobvite static listings, including branded career-site routes |
+| `pageup` | Rich + enrichment | dom | PageUp static listings with streamed total-checked pagination and DOM description enrichment |
+| `adp` | Rich + enrichment | adp | ADP Workforce Now public listing API + native detail/DOCX enrichment |
+| `icims` | URL-only | json-ld | iCIMS server-rendered listings with bounded pagination |
+| `gupy` | URL-only | json-ld | Gupy single-page NextData inventory |
+| `cornerstone` | Rich | skip | Cornerstone bootstrap + regional paginated search API |
+| `darwinbox` | Rich | skip | Darwinbox browser-session public jobs API |
+| `dayforce` | Rich | skip | Dayforce browser-context public search BFF |
+| `herp` | URL-only | json-ld | HERP Hire single static requisition listing |
+| `hrmos` | URL-only | json-ld | HRMOS static listings with bounded pagination |
 | `bite` | URL-only | bite | b-ite.com ATS |
 | `breezy` | URL-only | json-ld (+dom fallback) | Breezy HR |
 | `comeet` | Rich | skip | Comeet hosted data and Careers API |
@@ -46,20 +61,26 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `dvinci` | Rich | skip | d.vinci ATS |
 | `gem` | Rich | skip | Gem ATS |
 | `greenhouse` | Rich | skip | Greenhouse ATS |
+| `hibob` | Rich | skip | HiBob public career sites |
+| `hirehive` | Rich | skip | HireHive public Jobs API |
 | `hireology` | Rich | skip | Hireology ATS |
 | `jarvi` | Rich | skip | Jarvi public careers API embeds |
 | `jobylon` | Rich | skip | Jobylon iframe embeds |
+| `keka` | Rich | skip | Keka career-portal bootstrap and public rich-jobs API |
 | `lever` | Rich | skip | Lever ATS |
 | `mokahr` | Rich | skip | Mokahr ATS |
 | `paylocity` | Rich | paylocity | Paylocity embedded summaries plus detail enrichment |
 | `personio` | Conditional* | — | Personio XML feed; HTML fallback needs scraper |
 | `pinpoint` | Rich | skip | Pinpoint ATS |
 | `recruitee` | Rich | skip | Recruitee ATS |
+| `recruiterbox` | URL-only | json-ld | Recruiterbox / Trakstar Hire server-rendered listings |
+| `taleo` | URL-only | json-ld | Taleo Business Edition total/cursor static listings |
 | `rippling` | URL-only | rippling | Rippling ATS |
-| `rss` | Rich | skip | RSS 2.0 feeds (SuccessFactors, Teamtailor, etc.) |
+| `rss` | Rich/hybrid | skip or DOM enrichment | RSS feeds plus native legacy SuccessFactors DWR listings |
 | `smartrecruiters` | URL-only | smartrecruiters | SmartRecruiters ATS |
 | `softgarden` | URL-only | json-ld | Softgarden ATS |
 | `traffit` | Rich | skip | Traffit ATS |
+| `ukg` | Rich | embedded | UKG Pro public paginated search API plus embedded detail enrichment |
 | `workable` | URL-only | workable | Workable ATS |
 | `workday` | URL-only | workday | Workday ATS |
 | `ycombinator` | URL-only | json-ld | YC Jobs fallback pages |
@@ -71,10 +92,44 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `talentbrew` | URL-only | json-ld | TalentBrew / Radancy search pages |
 | `sitemap` | URL-only | — | Site has an XML sitemap with job URLs |
 | `inline` | Rich | skip | Single-page inline job listings |
+| `kipt` | Rich | skip | NSC KIPT active PDF vacancy bulletins |
 | `api_sniffer` | Conditional* | skip/— | XHR/fetch capture; rich when `fields` is configured |
 | `dom` | URL-only | — | Last resort — link extraction from page HTML |
 
 Rich monitors return complete job data in a single request — no scraper needed. URL-only monitors with auto-scrapers need no manual scraper selection; the scraper is configured automatically. Monitors marked "—" require manual scraper selection. Conditional monitors return rich data only under the condition named in the table; otherwise they need a scraper or runtime coverage check.
+
+### rss / SuccessFactors
+
+Modern SuccessFactors Career Site Builder boards keep the existing
+`{"preset":"successfactors","variant":"feed"}` path and stream the
+first-party `/googlefeed.xml` response. Legacy shared SAP boards use the same
+`rss` monitor with `variant: "legacy"`, a strict `host` + case-sensitive
+`company` identity, and native static DWR pagination. DWR response text is
+parsed as a restricted declaration/assignment graph and is never evaluated as
+JavaScript. Counts, page envelopes, IDs, detail hosts, and page overlap must
+all agree; malformed or partial responses fail the run.
+
+Legacy listing batches are marked hybrid and automatically enrich only the
+description through the static DOM scraper scoped to `.joqReqDescription`.
+This preserves already-scraped content on touched rows while keeping the
+hourly monitor free of N+1 detail requests. SAP legacy and modern shared hosts
+use normal ATS throttling and do not require the browser worker.
+
+### api_sniffer
+
+`api_sniffer` has two distinct transports. A config with `api_url` uses plain
+HTTP by default; set `browser: true` only when the request needs page cookies
+or browser execution. A config without `api_url` uses Playwright to discover
+XHR/fetch responses from the board page. The top-level endpoint key must be
+`api_url`: the legacy key `url` is ignored by runtime code and rejected by CSV
+validation. Set `proxy: true` when the direct API blocks Hetzner egress; the
+per-board HTTP client then uses the configured proxy provider without moving
+the monitor back to the browser queue.
+
+If browser auto-discovery times out and leaves no usable document body,
+fallback interactions fail the monitor cycle with a stable error. They do not
+turn the navigation failure into an authoritative empty result. An API
+response captured before the DOM became unavailable remains usable.
 
 ### greenhouse
 
@@ -204,6 +259,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 
 | Type | Fetch mode | How it works |
 |------|-----------|-------------|
+| `adp` | Static | Fetches ADP Workforce Now detail records and DOCX job-description attachments |
 | `api_sniffer` | Playwright | Captures XHR/fetch API responses on job detail pages |
 | `bite` | Static | Fetches BITE detail JSON |
 | `dom` | Static or Playwright | Step-based extraction engine |
@@ -214,6 +270,8 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `nextdata` | Static or Playwright | Extracts from Next.js `__NEXT_DATA__` props |
 | `notion` | Static | Loads Notion blocks through Notion's internal API |
 | `oracle_hcm` | Static | Fetches Oracle HCM detail REST responses |
+| `paycom` | Static | Bootstraps a Paycom portal and fetches its regional detail API |
+| `jazzhr` | Static | Parses JobPosting JSON-LD with a DOM fallback for older JazzHR themes |
 | `paylocity` | Static | Parses Paylocity server-rendered detail pages |
 | `pdf` | Static | Downloads PDFs and extracts text content |
 | `rippling` | Static | Fetches Rippling detail API records |
@@ -356,6 +414,7 @@ The action pipeline runs sequentially after page navigation, before content extr
 |--------|------|-------------|
 | `dismiss_overlays` | — | Remove common cookie/consent banners |
 | `click` | `selector` | Click the first element matching the CSS selector |
+| `wait_for` | `selector`, `state` (default `visible`) | Wait until the first matching element reaches a Playwright locator state |
 | `remove` | `selector` | Remove all elements matching the CSS selector from the DOM |
 | `wait` | `ms` (default 1000) | Wait for a fixed duration |
 | `evaluate` | `script` | Run arbitrary JavaScript on the page |
@@ -366,7 +425,7 @@ Example:
   "actions": [
     {"action": "dismiss_overlays"},
     {"action": "click", "selector": "button.load-more"},
-    {"action": "wait", "ms": 2000},
+    {"action": "wait_for", "selector": "article.job"},
     {"action": "remove", "selector": ".cookie-banner"}
   ]
 }

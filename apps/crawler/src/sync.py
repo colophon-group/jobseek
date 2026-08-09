@@ -1,13 +1,11 @@
-"""CSV -> DB sync script.
+"""CSV -> local crawler-state sync.
 
 Reads data/companies.csv and data/boards.csv, upserts rows into the database.
 The DB is derived state — CSVs are the source of truth.
 
-Writes to four targets:
-- Local Postgres: full board config (scheduling columns)
-- Supabase: minimal board reference (display/admin)
-- Redis: board config hashes + initial schedule
-- Typesense: taxonomy, company, and watchlist collections (fire-and-forget)
+Local Postgres is the only allocator and transactional authority. The normal
+CLI publishes Redis board queues and Typesense collections after commit. The
+legacy relational-mirror helpers remain library-only during rollback cleanup.
 
 Usage:
     uv run python -m src.sync              # sync both CSVs
@@ -18,12 +16,16 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import time
 from collections import defaultdict
+from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlparse
 
 import polars as pl
@@ -38,7 +40,7 @@ from src.config import settings
 from src.core.monitors import api_monitor_types, monitor_needs_browser
 from src.core.occupation_resolve import match_occupation, occupation_locale_columns
 from src.core.scrapers import scraper_needs_browser
-from src.db import close_all_pools, create_local_pool, create_pool
+from src.db import close_all_pools, create_local_pool, create_pool, create_web_pool
 from src.redis_queue import (
     MonitorSchedule,
     close_redis,
@@ -46,10 +48,14 @@ from src.redis_queue import (
     enqueue_monitors,
     remove_monitors,
 )
+from src.shared.avature import avature_request_host
 from src.shared.logging import setup_logging
+from src.shared.taleo import taleo_request_host
 from src.typesense_client import get_typesense_client
 
 _API_MONITOR_TYPES = api_monitor_types()
+_MONITOR_CONFIG_FINGERPRINT = "_monitor_config_fingerprint"
+_RECOVERY_SCHEDULE_STATUSES = frozenset({"quarantined", "gone_pending", "gone"})
 
 log = structlog.get_logger()
 
@@ -63,6 +69,40 @@ DATA_DIR = Path(__file__).parent.parent / "data"
 # the label promised (issue #3009 / #3238).
 _POSTING_BASE_FILTER = "is_active:true && has_content:!=false"
 _POSTING_FLOW_FILTER = "has_content:!=false"
+
+
+class CompanyTypesenseSyncError(RuntimeError):
+    """Fail-closed company index error that must abort crawler sync."""
+
+
+def _monitor_config_fingerprint(
+    board_url: str,
+    monitor_type: str,
+    metadata: Mapping[str, object],
+) -> str:
+    """Hash the CSV-owned monitor contract, excluding scrape-only settings."""
+
+    monitor_owned_config = {
+        key: value
+        for key, value in metadata.items()
+        if key
+        not in {
+            "scraper_type",
+            "scraper_config",
+            _MONITOR_CONFIG_FINGERPRINT,
+        }
+    }
+    payload = json.dumps(
+        {
+            "board_url": board_url,
+            "monitor_type": monitor_type,
+            "monitor_config": monitor_owned_config,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
 
 _UPSERT_OCCUPATION_DOMAINS = """
 INSERT INTO occupation_domain (slug)
@@ -86,6 +126,15 @@ _MIRROR_SENIORITY = """
 INSERT INTO seniority (id, slug)
 SELECT * FROM unnest($1::int[], $2::text[])
 ON CONFLICT (slug) DO UPDATE SET id = EXCLUDED.id
+"""
+
+_MIRROR_TECHNOLOGIES = """
+INSERT INTO technology (id, slug, name, category)
+SELECT * FROM unnest($1::int[], $2::text[], $3::text[], $4::text[])
+ON CONFLICT (slug) DO UPDATE SET
+  id = EXCLUDED.id,
+  name = COALESCE(EXCLUDED.name, technology.name),
+  category = COALESCE(EXCLUDED.category, technology.category)
 """
 
 _UPSERT_OCCUPATION_DOMAIN_NAMES = """
@@ -223,54 +272,52 @@ ON CONFLICT (company_id, locale) DO UPDATE SET
   description = EXCLUDED.description
 """
 
-# When ``board_url`` is renamed in CSV but the slug stays (e.g. changing
-# the Greenhouse token from ``abodo`` to ``apartmentiq`` while keeping
-# slug ``apartmentiq-greenhouse``), ``_UPSERT_BOARDS_SUPA`` below would
-# hit the ``board_slug`` unique constraint: the INSERT path fires for
-# the new URL, and the old-URL row still owns the slug. Run this first
-# to rewrite the URL on the existing row so the subsequent UPSERT can
-# take the ``ON CONFLICT (board_url)`` branch cleanly.
-_REALIGN_RENAMED_BOARD_URLS_SUPA = """
+# A slug-stable URL/company change is a replacement source. Realign the local
+# authority before its board_url UPSERT, preserve the row id, and clear runtime
+# state that belonged to the retired source (#5716).
+_REALIGN_RENAMED_BOARD_URLS_LOCAL = """
 UPDATE job_board jb
 SET board_url = b.board_url,
+    company_id = c.id,
+    metadata = '{}'::jsonb,
+    is_enabled = true,
+    board_status = 'active',
+    consecutive_failures = 0,
+    last_error = NULL,
+    last_checked_at = NULL,
+    last_success_at = NULL,
+    next_check_at = now(),
+    empty_check_count = 0,
+    last_non_empty_at = NULL,
+    gone_at = NULL,
     updated_at = now()
 FROM unnest($1::text[], $2::text[], $3::text[])
   AS b(company_slug, board_slug, board_url)
 JOIN company c ON c.slug = b.company_slug
-WHERE jb.company_id = c.id
-  AND jb.board_slug IS NOT NULL
+WHERE jb.board_slug IS NOT NULL
   AND jb.board_slug = b.board_slug
-  AND jb.board_url IS DISTINCT FROM b.board_url
-"""
-
-_UPSERT_BOARDS_SUPA = """
-INSERT INTO job_board (company_id, board_slug, board_url, crawler_type, metadata)
-SELECT c.id, b.board_slug, b.board_url, b.crawler_type, b.metadata::jsonb
-FROM unnest($1::text[], $2::text[], $3::text[], $4::text[], $5::text[])
-  AS b(company_slug, board_slug, board_url, crawler_type, metadata)
-JOIN company c ON c.slug = b.company_slug
-ON CONFLICT (board_url) DO UPDATE SET
-    company_id = EXCLUDED.company_id,
-    board_slug = COALESCE(EXCLUDED.board_slug, job_board.board_slug),
-    crawler_type = EXCLUDED.crawler_type,
-    metadata = EXCLUDED.metadata,
-    is_enabled = true,
-    updated_at = now()
+  AND (jb.board_url IS DISTINCT FROM b.board_url
+       OR jb.company_id IS DISTINCT FROM c.id)
 """
 
 _UPSERT_BOARD_LOCAL = """
-INSERT INTO job_board (id, company_id, board_slug, board_url,
+INSERT INTO job_board (company_id, board_slug, board_url,
                        crawler_type, metadata,
                        check_interval_minutes, scrape_interval_hours,
                        throttle_key, monitor_needs_browser, scraper_needs_browser,
                        is_enabled)
-SELECT *
+SELECT c.id, b.board_slug, b.board_url, b.crawler_type, b.metadata::jsonb,
+       b.check_interval_minutes, b.scrape_interval_hours, b.throttle_key,
+       b.monitor_needs_browser, b.scraper_needs_browser, b.is_enabled
 FROM unnest(
-    $1::uuid[], $2::uuid[], $3::text[], $4::text[],
-    $5::text[], $6::jsonb[], $7::int[], $8::int[],
-    $9::text[], $10::boolean[], $11::boolean[], $12::boolean[]
-)
-ON CONFLICT (id) DO UPDATE SET
+    $1::text[], $2::text[], $3::text[], $4::text[], $5::text[],
+    $6::int[], $7::int[], $8::text[], $9::boolean[], $10::boolean[],
+    $11::boolean[]
+) AS b(company_slug, board_slug, board_url, crawler_type, metadata,
+       check_interval_minutes, scrape_interval_hours, throttle_key,
+       monitor_needs_browser, scraper_needs_browser, is_enabled)
+JOIN company c ON c.slug = b.company_slug
+ON CONFLICT (board_url) DO UPDATE SET
     company_id = EXCLUDED.company_id,
     board_slug = COALESCE(EXCLUDED.board_slug, job_board.board_slug),
     board_url = EXCLUDED.board_url,
@@ -351,42 +398,48 @@ ON CONFLICT (id) DO UPDATE SET
     throttle_key = EXCLUDED.throttle_key,
     monitor_needs_browser = EXCLUDED.monitor_needs_browser,
     scraper_needs_browser = EXCLUDED.scraper_needs_browser,
-    -- Preserve runtime-driven disables when the source itself is unchanged.
-    -- A material source change is an operator repair and must clear state
-    -- inherited from the retired source; otherwise the new config is removed
-    -- from Redis immediately and can never prove itself healthy (#5716).
-    -- ``_RECORD_FAILURE`` and
-    -- ``_RECORD_BOARD_GONE`` set ``is_enabled = false`` plus a
-    -- ``board_status`` of ``'disabled'`` or ``'gone'`` when the
-    -- board has been failing or its upstream slug returned 404.
-    -- Without this CASE, every ``crawler sync`` resurrects
-    -- ``is_enabled = true`` and the (admittedly already-orthogonal-
-    -- to-the-Redis-claim-path) Postgres state diverges from
-    -- the runtime truth. To re-enable, an operator removes the
-    -- ``board_status`` row via SQL or via deleting+re-adding
-    -- the CSV entry. See issue #2215.
+    -- A URL/type/config change is a repair candidate. Keep it schedulable but
+    -- quarantined until a real monitor run proves the repair (#5716/#6157).
+    -- The fingerprint is added without resetting legacy rows on its first
+    -- sync; subsequent CSV-owned monitor changes become immediately eligible.
     is_enabled = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
         THEN true
-        WHEN job_board.board_status IN ('disabled', 'gone') THEN false
+        WHEN job_board.board_status = 'disabled' THEN false
         ELSE EXCLUDED.is_enabled
     END,
     board_status = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
-        THEN 'active'
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+        THEN 'quarantined'
         ELSE job_board.board_status
     END,
     consecutive_failures = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
         THEN 0
         ELSE job_board.consecutive_failures
     END,
     last_error = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
         THEN NULL
         ELSE job_board.last_error
     END,
@@ -405,12 +458,20 @@ ON CONFLICT (id) DO UPDATE SET
     next_check_at = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
         THEN now()
         ELSE job_board.next_check_at
     END,
     empty_check_count = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
         THEN 0
         ELSE job_board.empty_check_count
     END,
@@ -423,16 +484,100 @@ ON CONFLICT (id) DO UPDATE SET
     gone_at = CASE
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
         THEN NULL
         ELSE job_board.gone_at
     END,
+    gone_confirmation_count = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+        THEN 0
+        ELSE job_board.gone_confirmation_count
+    END,
+    quarantined_at = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+        THEN now()
+        ELSE job_board.quarantined_at
+    END,
+    last_quarantined_at = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+        THEN now()
+        ELSE job_board.last_quarantined_at
+    END,
+    last_quarantine_error = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+        THEN job_board.last_error
+        ELSE job_board.last_quarantine_error
+    END,
+    quarantine_probe_count = CASE
+        WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
+          OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
+          OR (job_board.metadata ? '_monitor_config_fingerprint' AND
+              job_board.metadata ->> '_monitor_config_fingerprint'
+              IS DISTINCT FROM
+              EXCLUDED.metadata ->> '_monitor_config_fingerprint')
+        THEN 0
+        ELSE job_board.quarantine_probe_count
+    END,
     updated_at = now()
-RETURNING id::text AS board_id, metadata
+RETURNING id::text AS board_id, company_id::text AS company_id, board_url,
+          metadata, next_check_at, board_status
+"""
+
+_MIRROR_BOARDS_SUPA = """
+INSERT INTO job_board (id, company_id, board_slug, board_url, crawler_type, metadata)
+SELECT * FROM unnest(
+    $1::uuid[], $2::uuid[], $3::text[], $4::text[], $5::text[], $6::jsonb[]
+)
+ON CONFLICT (id) DO UPDATE SET
+    company_id = EXCLUDED.company_id,
+    board_slug = COALESCE(EXCLUDED.board_slug, job_board.board_slug),
+    board_url = EXCLUDED.board_url,
+    crawler_type = EXCLUDED.crawler_type,
+    metadata = EXCLUDED.metadata,
+    is_enabled = true,
+    updated_at = now()
 """
 
 _DISABLE_REMOVED_BOARDS = """
 UPDATE job_board
-SET is_enabled = false, board_status = 'disabled', updated_at = now()
+SET is_enabled = false,
+    board_status = 'disabled',
+    updated_at = now()
+WHERE board_url NOT IN (SELECT unnest($1::text[]))
+  AND is_enabled = true
+"""
+
+_DISABLE_REMOVED_BOARDS_LOCAL = """
+UPDATE job_board
+SET is_enabled = false,
+    board_status = 'disabled',
+    quarantined_at = NULL,
+    lease_owner = NULL,
+    leased_until = NULL,
+    updated_at = now()
 WHERE board_url NOT IN (SELECT unnest($1::text[]))
   AND is_enabled = true
 """
@@ -463,12 +608,16 @@ WHERE jp.board_id = jb.id
 _FETCH_DISABLED_BOARDS_FOR_REDIS_CLEANUP = """
 SELECT id::text AS board_id, throttle_key
 FROM job_board
-WHERE is_enabled = false OR board_status IN ('disabled', 'gone')
+WHERE is_enabled = false OR board_status = 'disabled'
 """
 
-_FETCH_BOARD_IDS = """
-SELECT id, company_id, board_url FROM job_board WHERE board_url = ANY($1::text[])
-"""
+
+@dataclass(frozen=True)
+class BoardSyncEffects:
+    """External Redis work derived from one committed local board sync."""
+
+    schedules: tuple[MonitorSchedule, ...] = ()
+    orphan_monitors: tuple[tuple[str, str], ...] = ()
 
 
 def _load_companies() -> pl.DataFrame:
@@ -489,10 +638,32 @@ def _or_none(val: str | None) -> str | None:
     return val if val else None
 
 
-def _compute_throttle_key(monitor_type: str, board_url: str) -> str:
+def _compute_throttle_key(
+    monitor_type: str,
+    board_url: str,
+    metadata: Mapping[str, object] | None = None,
+) -> str:
     """Compute rate-limit grouping key from monitor type and board URL."""
+    if monitor_type == "darwinbox":
+        from src.shared.darwinbox import darwinbox_board_from_metadata, darwinbox_board_from_url
+
+        resolved = darwinbox_board_from_metadata(metadata or {}) or darwinbox_board_from_url(
+            board_url
+        )
+        if resolved is not None:
+            return resolved.host
+    if monitor_type == "avature":
+        resolved_host = avature_request_host(board_url, metadata or {})
+        if resolved_host:
+            return resolved_host
+    if monitor_type == "pageup":
+        return "careers.pageuppeople.com"
     if monitor_type in _API_MONITOR_TYPES:
         return monitor_type
+    if monitor_type == "taleo":
+        resolved_host = taleo_request_host(board_url, metadata or {})
+        if resolved_host:
+            return resolved_host
     return urlparse(board_url).hostname or board_url
 
 
@@ -950,69 +1121,14 @@ async def sync_company_descriptions(
     log.info("sync.company_descriptions.upserted", count=len(slugs))
 
 
-async def _mirror_companies_to_local(
-    supa_conn: asyncpg.Connection,
-    local_conn: asyncpg.Connection,
-) -> None:
-    """Copy companies from Supabase to local Postgres, preserving UUIDs.
-
-    job_posting.company_id references Supabase-generated UUIDs, so local
-    must have the same IDs for the exporter's company_info lookup to work.
-    """
-    rows = await supa_conn.fetch(
-        "SELECT id, slug, name, website, logo, icon, logo_type, "
-        "industry, employee_count_range, founded_year, extras "
-        "FROM company"
-    )
-    if not rows:
-        return
-
-    # Delete any local rows whose slug matches but UUID differs (stale from
-    # earlier sync that generated new UUIDs instead of preserving Supabase's).
-    await local_conn.execute(
-        "DELETE FROM company WHERE slug = ANY($1::text[]) AND id != ALL($2::uuid[])",
-        [r["slug"] for r in rows],
-        [r["id"] for r in rows],
-    )
-
-    await local_conn.execute(
-        "INSERT INTO company (id, slug, name, website, logo, icon, logo_type, "
-        "industry, employee_count_range, founded_year, extras) "
-        "SELECT * FROM unnest($1::uuid[], $2::text[], $3::text[], $4::text[], "
-        "$5::text[], $6::text[], $7::text[], $8::smallint[], $9::smallint[], "
-        "$10::smallint[], $11::jsonb[]) "
-        "ON CONFLICT (id) DO UPDATE SET "
-        "slug = EXCLUDED.slug, name = EXCLUDED.name, "
-        "website = EXCLUDED.website, logo = EXCLUDED.logo, "
-        "icon = EXCLUDED.icon, logo_type = EXCLUDED.logo_type, "
-        "industry = EXCLUDED.industry, "
-        "employee_count_range = EXCLUDED.employee_count_range, "
-        "founded_year = EXCLUDED.founded_year, "
-        "extras = EXCLUDED.extras, updated_at = now()",
-        [r["id"] for r in rows],
-        [r["slug"] for r in rows],
-        [r["name"] for r in rows],
-        [r.get("website") for r in rows],
-        [r.get("logo") for r in rows],
-        [r.get("icon") for r in rows],
-        [r.get("logo_type") for r in rows],
-        [r.get("industry") for r in rows],
-        [r.get("employee_count_range") for r in rows],
-        [r.get("founded_year") for r in rows],
-        [r.get("extras") for r in rows],
-    )
-    log.info("sync.companies.mirrored_to_local", count=len(rows))
-
-
 async def _mirror_companies_to_supabase(
     local_conn: asyncpg.Connection,
     supa_conn: asyncpg.Connection,
 ) -> None:
     """Push all companies from local Postgres to Supabase.
 
-    Local is the source of truth. Uses ON CONFLICT (slug) since Supabase
-    may have rows with different UUIDs from before the migration. Updates
-    the Supabase row's id to match local so all references are consistent.
+    Identity alignment is preflighted before this function. It never deletes
+    or renumbers a row: an unexpected conflict aborts the mirror transaction.
     """
     rows = await local_conn.fetch(
         "SELECT id, slug, name, website, logo, icon, logo_type, "
@@ -1021,13 +1137,6 @@ async def _mirror_companies_to_supabase(
     )
     if not rows:
         return
-
-    # Delete Supabase rows whose slug matches but UUID differs, then upsert
-    await supa_conn.execute(
-        "DELETE FROM company WHERE slug = ANY($1::text[]) AND id != ALL($2::uuid[])",
-        [r["slug"] for r in rows],
-        [r["id"] for r in rows],
-    )
 
     await supa_conn.execute(
         "INSERT INTO company (id, slug, name, website, logo, icon, logo_type, "
@@ -1115,35 +1224,32 @@ async def sync_companies(conn: asyncpg.Connection, companies: pl.DataFrame, dry_
 
 
 async def sync_boards(
-    conn: asyncpg.Connection,
+    local_conn: asyncpg.Connection,
     boards: pl.DataFrame,
     dry_run: bool,
-    *,
-    local_conn: asyncpg.Connection | None = None,
-) -> None:
-    """Batch upsert boards to Supabase + local Postgres + Redis.
+) -> BoardSyncEffects:
+    """Commit-ready local board writes and return deferred Redis effects.
 
-    Target 1 (Supabase): minimal board reference (display/admin only).
-    Target 2 (local Postgres): full board config with scheduling columns.
-    Target 3 (Redis): board config hashes + initial schedule.
-
-    ``local_conn`` is optional for backward compatibility (tests, dry-run).
+    The caller owns the local transaction. No Redis write occurs here, so a
+    rollback can never leave queues advertising board state that did not
+    commit. Existing board ids survive both ordinary updates and slug-stable
+    URL changes; only genuinely new boards use the local UUID default.
     """
     if len(boards) == 0:
-        return
+        return BoardSyncEffects()
 
     company_slugs: list[str] = []
     board_slugs: list[str | None] = []
     board_urls: list[str] = []
     crawler_types: list[str] = []
     metadatas: list[str | None] = []
-    metadata_objs: list[dict] = []
     throttle_keys: list[str] = []
     monitor_browser_flags: list[bool] = []
     scraper_browser_flags: list[bool] = []
     skipped = 0
 
     for row in boards.iter_rows(named=True):
+        mon_type = row["monitor_type"]
         monitor_config_str = row.get("monitor_config") or None
         scraper_type = _or_none(row.get("scraper_type"))
         scraper_config_str = row.get("scraper_config") or None
@@ -1198,10 +1304,13 @@ async def sync_boards(
                 skipped += 1
                 continue
 
+        metadata_obj[_MONITOR_CONFIG_FINGERPRINT] = _monitor_config_fingerprint(
+            row["board_url"], mon_type, metadata_obj
+        )
+
         metadata: str | None = json.dumps(metadata_obj) if metadata_obj else None
 
         # Compute browser-need flags from crawler_type + config
-        mon_type = row["monitor_type"]
         mon_browser = monitor_needs_browser(mon_type, metadata_obj)
         scr_type = metadata_obj.get("scraper_type")
         scr_cfg = metadata_obj.get("scraper_config")
@@ -1220,125 +1329,66 @@ async def sync_boards(
         board_urls.append(row["board_url"])
         crawler_types.append(mon_type)
         metadatas.append(metadata)
-        metadata_objs.append(metadata_obj)
-        throttle_keys.append(_compute_throttle_key(mon_type, row["board_url"]))
+        throttle_keys.append(_compute_throttle_key(mon_type, row["board_url"], metadata_obj))
         monitor_browser_flags.append(mon_browser)
         scraper_browser_flags.append(scr_browser)
 
     if dry_run:
         log.info("sync.boards.dry_run", count=len(board_urls), skipped=skipped)
-        return
+        return BoardSyncEffects()
 
     if not board_urls:
         log.info("sync.boards.all_skipped", skipped=skipped)
-        return
+        return BoardSyncEffects()
 
-    # --- Target 1: Supabase (minimal board reference) ---
-    # Realign any stale ``board_url`` before the UPSERT so that a
-    # slug-stable URL rename (see comment on the SQL constant) doesn't
-    # trip the ``board_slug`` unique constraint.
-    await conn.execute(
-        _REALIGN_RENAMED_BOARD_URLS_SUPA,
+    # Realign a slug-stable source change before the board_url UPSERT. This
+    # preserves the local id while explicitly resetting retired runtime state.
+    await local_conn.execute(
+        _REALIGN_RENAMED_BOARD_URLS_LOCAL,
         company_slugs,
         board_slugs,
         board_urls,
     )
-    await conn.execute(
-        _UPSERT_BOARDS_SUPA,
+    local_rows = await local_conn.fetch(
+        _UPSERT_BOARD_LOCAL,
         company_slugs,
         board_slugs,
         board_urls,
         crawler_types,
         metadatas,
+        [60 for _ in board_urls],
+        [24 for _ in board_urls],
+        throttle_keys,
+        monitor_browser_flags,
+        scraper_browser_flags,
+        [True for _ in board_urls],
     )
-    log.info("sync.boards.upserted_supa", count=len(board_urls), skipped=skipped)
+    rows_by_url = {row["board_url"]: row for row in local_rows}
+    missing_urls = [url for url in board_urls if url not in rows_by_url]
+    if missing_urls:
+        raise RuntimeError(
+            "local board sync could not resolve every CSV company; "
+            f"missing board URLs: {', '.join(missing_urls[:5])}"
+        )
 
-    await conn.execute(_REALIGN_BOARD_POSTING_COMPANIES_SUPA, board_urls)
-    await conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
-
-    # --- Targets 2 & 3: local Postgres + Redis ---
-    if local_conn is None:
-        return
-
-    # Fetch resolved board IDs + company IDs from Supabase
-    id_rows = await conn.fetch(_FETCH_BOARD_IDS, board_urls)
-    url_to_ids: dict[str, tuple] = {r["board_url"]: (r["id"], r["company_id"]) for r in id_rows}
-
-    # Defensively drop stale local rows whose ``board_slug`` matches one
-    # we're about to upsert but whose ``id`` is not the Supabase-assigned
-    # one. Without this, an earlier partial sync that inserted a
-    # locally-generated UUID into ``job_board`` (before the outer Supa
-    # transaction later rolled back) leaves an orphan row. The next sync
-    # then hits ``job_board_board_slug_key`` as a unique violation, which
-    # propagates out of ``async with supa_conn.transaction()`` and rolls
-    # the whole Supabase mirror back — a self-perpetuating chicken-and-
-    # egg that strands every new company in local-only state. Mirrors
-    # the slug/id defensive DELETE in ``_mirror_companies_to_local``.
-    # ``job_posting.board_id`` uses ``ON DELETE SET NULL`` so postings
-    # survive; they get re-linked by ``board_url`` when this sync
-    # re-inserts the row below.
-    if local_conn is not None:
-        stale_slugs: list[str] = []
-        stale_supa_ids: list[str] = []
-        for i, board_url in enumerate(board_urls):
-            slug = board_slugs[i]
-            ids = url_to_ids.get(board_url)
-            if slug is None or ids is None:
-                continue
-            stale_slugs.append(slug)
-            stale_supa_ids.append(str(ids[0]))
-        if stale_slugs:
-            await local_conn.execute(
-                "DELETE FROM job_board WHERE board_slug = ANY($1::text[]) "
-                "AND id != ALL($2::uuid[])",
-                stale_slugs,
-                stale_supa_ids,
-            )
-
-    resolved_indexes: list[int] = []
-    for i, board_url in enumerate(board_urls):
-        ids = url_to_ids.get(board_url)
-        if not ids:
-            log.warning("sync.board.missing_id", board_url=board_url)
-            continue
-        resolved_indexes.append(i)
-
-    # Target 2: local Postgres (full board config with scheduling). Keep the
-    # state-preserving ON CONFLICT rules above, but send every board in one
-    # array-based statement instead of paying one network round trip per row.
-    local_rows = await local_conn.fetch(
-        _UPSERT_BOARD_LOCAL,
-        [url_to_ids[board_urls[i]][0] for i in resolved_indexes],
-        [url_to_ids[board_urls[i]][1] for i in resolved_indexes],
-        [board_slugs[i] for i in resolved_indexes],
-        [board_urls[i] for i in resolved_indexes],
-        [crawler_types[i] for i in resolved_indexes],
-        [metadatas[i] for i in resolved_indexes],
-        [60 for _ in resolved_indexes],
-        [24 for _ in resolved_indexes],
-        [throttle_keys[i] for i in resolved_indexes],
-        [monitor_browser_flags[i] for i in resolved_indexes],
-        [scraper_browser_flags[i] for i in resolved_indexes],
-        [True for _ in resolved_indexes],
-    )
-    metadata_by_board_id = {str(row["board_id"]): row["metadata"] for row in local_rows}
-
-    # Target 3: Redis (board config hash + initial schedule). The Lua script
-    # still atomically maintains each board's queue/ready-set relationship;
-    # bounded pipelines remove the three network awaits per board.
+    # Derive Redis work from the rows actually returned by the local authority.
+    # The caller applies it only after this transaction commits.
     schedules: list[MonitorSchedule] = []
     schedule_time = time.time()
-    for i in resolved_indexes:
-        board_id, company_id = url_to_ids[board_urls[i]]
-        board_id_str = str(board_id)
-        if board_id_str not in metadata_by_board_id:
-            log.warning("sync.board.local_upsert_missing", board_url=board_urls[i])
-            continue
+    for i, board_url in enumerate(board_urls):
+        local_row = rows_by_url[board_url]
+        board_id_str = str(local_row["board_id"])
+        board_status = local_row.get("board_status", "active")
+        next_check_at = schedule_time
+        if board_status in _RECOVERY_SCHEDULE_STATUSES and "next_check_at" in local_row:
+            due = local_row["next_check_at"]
+            if isinstance(due, datetime):
+                next_check_at = max(schedule_time, due.timestamp())
         config = {
-            "board_url": board_urls[i],
+            "board_url": board_url,
             "crawler_type": crawler_types[i],
-            "company_id": str(company_id),
-            "metadata": encode_metadata_for_redis(metadata_by_board_id[board_id_str]),
+            "company_id": str(local_row["company_id"]),
+            "metadata": encode_metadata_for_redis(local_row["metadata"]),
             "check_interval_minutes": "60",
             "scrape_interval_hours": "24",
             "throttle_key": throttle_keys[i],
@@ -1349,21 +1399,20 @@ async def sync_boards(
             MonitorSchedule(
                 domain=throttle_keys[i],
                 board_id=board_id_str,
-                next_check_at=schedule_time,
+                next_check_at=next_check_at,
                 config=config,
                 browser=monitor_browser_flags[i],
-                first_time=True,
+                first_time=board_status not in _RECOVERY_SCHEDULE_STATUSES,
             )
         )
-    await enqueue_monitors(schedules)
 
     await local_conn.execute(_REALIGN_BOARD_POSTING_COMPANIES_LOCAL, board_urls)
 
     # Disable removed boards in local Postgres too
-    await local_conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
+    await local_conn.execute(_DISABLE_REMOVED_BOARDS_LOCAL, board_urls)
 
     # Purge Redis monitor queue for any board that's no longer eligible to run
-    # (just-disabled or previously disabled/gone). Without this, the per-domain
+    # (just-disabled or previously disabled). Without this, the per-domain
     # ``monitors_{wtype}:{domain}`` key retains the stale board_id and the
     # worker keeps claiming it every cycle, producing ``batch.monitor.error``
     # 404s that no CSV update can silence.
@@ -1374,181 +1423,49 @@ async def sync_boards(
         if not domain:
             continue
         orphan_monitors.append((domain, row["board_id"]))
-    if orphan_monitors:
-        await remove_monitors(orphan_monitors)
-
     log.info(
-        "sync.boards.local_redis",
+        "sync.boards.local_staged",
         local_upserted=len(local_rows),
-        redis_enqueued=len(schedules),
-        redis_orphans_removed=len(orphan_monitors),
+        redis_to_enqueue=len(schedules),
+        redis_orphans_to_remove=len(orphan_monitors),
+    )
+    return BoardSyncEffects(tuple(schedules), tuple(orphan_monitors))
+
+
+async def apply_board_redis_effects(effects: BoardSyncEffects) -> None:
+    """Publish board state derived from a successfully committed local sync."""
+    await enqueue_monitors(list(effects.schedules))
+    if effects.orphan_monitors:
+        await remove_monitors(list(effects.orphan_monitors))
+    log.info(
+        "sync.boards.redis_applied",
+        redis_enqueued=len(effects.schedules),
+        redis_orphans_removed=len(effects.orphan_monitors),
     )
 
 
 async def _mirror_table(
-    local_conn: asyncpg.Connection,
+    target_conn: asyncpg.Connection,
     table: str,
     mirror_sql: str,
     ids: list[int],
     slugs: list[str],
 ) -> None:
-    """Upsert rows into a local lookup table with Supabase-assigned IDs.
-
-    The normal path calls this only after verifying there is no local ID drift,
-    so existing rows either have the same ID or are missing. The repair path
-    deletes rows in FK-safe order before calling this. After insert, advances
-    the serial sequence past max(ids) to prevent future auto-increment
-    collisions.
-    """
-    await local_conn.execute(mirror_sql, ids, slugs)
-    max_id = max(ids)
-    await local_conn.execute(
-        "SELECT setval(pg_get_serial_sequence($1, 'id'), $2, true)",
-        table,
-        max_id,
+    """Copy authoritative IDs into a preflighted legacy mirror table."""
+    if table not in {"occupation_domain", "occupation", "seniority"}:
+        raise ValueError(f"unsupported legacy mirror table: {table}")
+    await target_conn.execute(mirror_sql, ids, slugs)
+    # Advance to the highest identity that actually exists in the mirror. A
+    # stale mirror-only row may legitimately be above every local id; setting
+    # the sequence to max(ids) would move it backwards and create a future
+    # primary-key collision.
+    await target_conn.execute(
+        f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), "
+        f"(SELECT MAX(id) FROM {table}), true)"
     )
-
-
-async def _populate_locations_if_empty(
-    supa_conn: asyncpg.Connection,
-    local_conn: asyncpg.Connection,
-) -> None:
-    """One-time population of GeoNames data from Supabase into local Postgres.
-
-    Local DB is the source of truth.  This only runs when the local tables
-    are empty (fresh deploy).  After that, GeoNames data lives in local
-    Postgres and is never overwritten from Supabase.
-
-    Also populates ``location_macro_member`` (macro region -> member country
-    mappings) idempotently. Prior to issue #2978 this table was never seeded
-    on the Hetzner local Postgres, so macros never got stamped onto postings
-    via ancestor expansion in the exporter. We seed it whenever it is empty
-    so a fresh deploy / restored DB still gets the EU/EMEA/DACH/... links.
-    """
-    local_count = await local_conn.fetchval("SELECT count(*) FROM location")
-    if local_count > 0:
-        log.info("sync.locations.already_populated", count=local_count)
-    else:
-        loc_rows = await supa_conn.fetch(
-            "SELECT id, parent_id, type, population, languages FROM location"
-        )
-        if not loc_rows:
-            log.warning("sync.locations.supabase_empty")
-            return
-
-        name_rows = await supa_conn.fetch(
-            "SELECT location_id, locale, name, is_display FROM location_name"
-        )
-
-        await local_conn.copy_records_to_table(
-            "location",
-            records=[
-                (r["id"], r["parent_id"], r["type"], r["population"], r["languages"])
-                for r in loc_rows
-            ],
-            columns=["id", "parent_id", "type", "population", "languages"],
-        )
-
-        if name_rows:
-            await local_conn.copy_records_to_table(
-                "location_name",
-                records=[
-                    (r["location_id"], r["locale"], r["name"], r["is_display"]) for r in name_rows
-                ],
-                columns=["location_id", "locale", "name", "is_display"],
-            )
-
-        log.info(
-            "sync.locations.populated_from_supabase",
-            locations=len(loc_rows),
-            names=len(name_rows),
-        )
-
-    # Macro-member seed (idempotent, runs every sync). Tracked separately
-    # from the location/location_name guard above because that guard
-    # short-circuits when the location table was already populated (which
-    # was the live state on Hetzner) — and the prior code missed seeding
-    # this table entirely. See issue #2978.
-    macro_count = await local_conn.fetchval("SELECT count(*) FROM location_macro_member")
-    macro_rows = await supa_conn.fetch("SELECT macro_id, country_id FROM location_macro_member")
-    if not macro_rows:
-        log.warning("sync.location_macro_member.supabase_empty")
-        return
-    if macro_count == len(macro_rows):
-        log.info("sync.location_macro_member.up_to_date", count=macro_count)
-        return
-    # Use INSERT ... ON CONFLICT DO NOTHING for idempotency. Falls back to
-    # row-by-row when the table has rows already (rare drift). The set is
-    # small (<1k rows), so this is cheap.
-    await local_conn.executemany(
-        "INSERT INTO location_macro_member (macro_id, country_id) "
-        "VALUES ($1, $2) "
-        "ON CONFLICT (macro_id, country_id) DO NOTHING",
-        [(r["macro_id"], r["country_id"]) for r in macro_rows],
-    )
-    new_count = await local_conn.fetchval("SELECT count(*) FROM location_macro_member")
-    log.info(
-        "sync.location_macro_member.populated_from_supabase",
-        before=macro_count,
-        after=new_count,
-        supabase=len(macro_rows),
-    )
-
-
-async def _populate_currency_rates_if_empty(
-    supa_conn: asyncpg.Connection,
-    local_conn: asyncpg.Connection,
-) -> None:
-    """One-time population of currency rates from Supabase into local Postgres.
-
-    Local DB is the source of truth.  After initial population, rates
-    should be refreshed by a local script (e.g. ECB daily feed).
-    """
-    local_count = await local_conn.fetchval("SELECT count(*) FROM currency_rate")
-    if local_count > 0:
-        log.info("sync.currency_rates.already_populated", count=local_count)
-        return
-
-    rows = await supa_conn.fetch("SELECT currency, to_eur, updated_at FROM currency_rate")
-    if not rows:
-        return
-
-    await local_conn.copy_records_to_table(
-        "currency_rate",
-        records=[(r["currency"], r["to_eur"], r["updated_at"]) for r in rows],
-        columns=["currency", "to_eur", "updated_at"],
-    )
-    log.info("sync.currency_rates.populated_from_supabase", count=len(rows))
-
-
-_LOOKUP_IDENTITY_TABLES = {
-    "occupation_domain": _MIRROR_OCCUPATION_DOMAINS,
-    "occupation": _MIRROR_OCCUPATIONS,
-    "seniority": _MIRROR_SENIORITY,
-}
-
-
-def _id_slug_identity(rows) -> set[tuple[int, str]]:
-    return {(int(row["id"]), str(row["slug"])) for row in rows}
-
-
-async def _lookup_identities_match(
-    local_conn: asyncpg.Connection,
-    expected_by_table: dict[str, list[asyncpg.Record]],
-) -> bool:
-    for table, expected_rows in expected_by_table.items():
-        if not expected_rows:
-            continue
-        if table not in _LOOKUP_IDENTITY_TABLES:
-            raise ValueError(f"unsupported lookup table: {table}")
-        local_rows = await local_conn.fetch(f"SELECT id, slug FROM {table}")
-        if _id_slug_identity(local_rows) != _id_slug_identity(expected_rows):
-            return False
-    return True
 
 
 async def sync_lookup_tables_local(
-    supa_conn: asyncpg.Connection,
     local_conn: asyncpg.Connection,
     occupation_domains: pl.DataFrame,
     occupations: pl.DataFrame,
@@ -1557,92 +1474,12 @@ async def sync_lookup_tables_local(
     industries: pl.DataFrame,
     dry_run: bool,
 ) -> None:
-    """Sync lookup tables to local Postgres using Supabase-assigned IDs.
+    """Upsert CSV lookups locally without replacing any existing identity.
 
-    For occupation_domain, occupation, and seniority the local DB must use
-    the exact same IDs as Supabase so that the exporter can copy FK references
-    (occupation_id, seniority_id on job_posting) without translation.
-
-    Strategy: delete all rows in FK-safe order (children before parents),
-    re-insert with Supabase IDs, then sync names/parents/domains.
+    Natural-key conflicts update content only. Existing integer ids remain
+    untouched; new ids come from local sequences. This is the core allocator
+    boundary for the Supabase-free sync path.
     """
-    # Fetch Supabase-assigned IDs for all three tables
-    domain_rows = (
-        await supa_conn.fetch("SELECT id, slug FROM occupation_domain")
-        if len(occupation_domains) > 0
-        else []
-    )
-    occ_rows = (
-        await supa_conn.fetch("SELECT id, slug FROM occupation") if len(occupations) > 0 else []
-    )
-    sen_rows = (
-        await supa_conn.fetch("SELECT id, slug FROM seniority") if len(seniority_df) > 0 else []
-    )
-
-    expected_identities = {
-        "occupation_domain": domain_rows,
-        "occupation": occ_rows,
-        "seniority": sen_rows,
-    }
-    identities_match = await _lookup_identities_match(local_conn, expected_identities)
-    if identities_match:
-        log.info(
-            "sync.lookup_tables_local.identity_up_to_date",
-            occupation_domains=len(domain_rows),
-            occupations=len(occ_rows),
-            seniority=len(sen_rows),
-        )
-    else:
-        # --- Drop FK constraints, delete, re-insert, re-add FKs ---
-        # job_posting references occupation(id) and seniority(id), so we must
-        # temporarily drop those constraints to replace the lookup rows.
-        await local_conn.execute(
-            "ALTER TABLE job_posting DROP CONSTRAINT IF EXISTS job_posting_occupation_id_fkey"
-        )
-        await local_conn.execute(
-            "ALTER TABLE job_posting DROP CONSTRAINT IF EXISTS job_posting_seniority_id_fkey"
-        )
-        if occ_rows:
-            await local_conn.execute("DELETE FROM occupation")
-        if domain_rows:
-            await local_conn.execute("DELETE FROM occupation_domain")
-        if sen_rows:
-            await local_conn.execute("DELETE FROM seniority")
-
-        # --- Re-insert with explicit Supabase IDs ---
-        if domain_rows:
-            await _mirror_table(
-                local_conn,
-                "occupation_domain",
-                _MIRROR_OCCUPATION_DOMAINS,
-                [r["id"] for r in domain_rows],
-                [r["slug"] for r in domain_rows],
-            )
-        if occ_rows:
-            await _mirror_table(
-                local_conn,
-                "occupation",
-                _MIRROR_OCCUPATIONS,
-                [r["id"] for r in occ_rows],
-                [r["slug"] for r in occ_rows],
-            )
-        if sen_rows:
-            await _mirror_table(
-                local_conn,
-                "seniority",
-                _MIRROR_SENIORITY,
-                [r["id"] for r in sen_rows],
-                [r["slug"] for r in sen_rows],
-            )
-
-        log.info(
-            "sync.lookup_tables_local.mirrored",
-            occupation_domains=len(domain_rows),
-            occupations=len(occ_rows),
-            seniority=len(sen_rows),
-        )
-
-    # --- Sync names, parents, domains (references the now-correct IDs) ---
     if len(occupation_domains) > 0:
         await sync_occupation_domains(local_conn, occupation_domains, dry_run)
     if len(occupations) > 0:
@@ -1650,29 +1487,186 @@ async def sync_lookup_tables_local(
     if len(seniority_df) > 0:
         await sync_seniority(local_conn, seniority_df, dry_run)
 
-    # Technologies and industries don't have the same problem:
-    # - technologies use slug as the natural key (not auto-increment FK)
-    # - industries have explicit IDs in the CSV
-    # Sync them normally.
     await sync_technologies(local_conn, technologies, dry_run)
     await sync_industries(local_conn, industries, dry_run)
-
-    # --- GeoNames + currency: one-time population from Supabase if empty ---
-    await _populate_locations_if_empty(supa_conn, local_conn)
-    await _populate_currency_rates_if_empty(supa_conn, local_conn)
-
-    if not identities_match:
-        # --- Re-add FK constraints (dropped above) ---
-        await local_conn.execute(
-            "ALTER TABLE job_posting ADD CONSTRAINT "
-            "job_posting_occupation_id_fkey FOREIGN KEY (occupation_id) REFERENCES occupation(id)"
-        )
-        await local_conn.execute(
-            "ALTER TABLE job_posting ADD CONSTRAINT "
-            "job_posting_seniority_id_fkey FOREIGN KEY (seniority_id) REFERENCES seniority(id)"
-        )
-
     log.info("sync.lookup_tables_local.complete")
+
+
+_LEGACY_SLUG_IDENTITY_TABLES = (
+    "company",
+    "occupation_domain",
+    "occupation",
+    "seniority",
+    "technology",
+)
+
+
+def _identity_conflicts(
+    local_rows,
+    mirror_rows,
+    key: str,
+    *,
+    check_id_key: bool = True,
+) -> list[str]:
+    """Return bounded natural-key/id conflicts without attempting repairs."""
+    local_by_key = {str(row[key]): str(row["id"]) for row in local_rows if row[key] is not None}
+    mirror_by_key = {str(row[key]): str(row["id"]) for row in mirror_rows if row[key] is not None}
+    local_by_id = {str(row["id"]): str(row[key]) for row in local_rows if row[key] is not None}
+    mirror_by_id = {str(row["id"]): str(row[key]) for row in mirror_rows if row[key] is not None}
+    conflicts = [
+        f"{key}={value}: local={local_by_key[value]} mirror={mirror_by_key[value]}"
+        for value in local_by_key.keys() & mirror_by_key.keys()
+        if local_by_key[value] != mirror_by_key[value]
+    ]
+    if check_id_key:
+        conflicts.extend(
+            f"id={row_id}: local-{key}={local_by_id[row_id]} mirror-{key}={mirror_by_id[row_id]}"
+            for row_id in local_by_id.keys() & mirror_by_id.keys()
+            if local_by_id[row_id] != mirror_by_id[row_id]
+        )
+    return conflicts[:5]
+
+
+async def _assert_legacy_identity_alignment(
+    local_conn: asyncpg.Connection,
+    mirror_conn: asyncpg.Connection,
+) -> None:
+    """Fail closed before any mirror write if existing identities diverge."""
+    conflicts: list[str] = []
+    for table in _LEGACY_SLUG_IDENTITY_TABLES:
+        local_rows = await local_conn.fetch(f"SELECT id, slug FROM {table}")
+        mirror_rows = await mirror_conn.fetch(f"SELECT id, slug FROM {table}")
+        conflicts.extend(
+            f"{table}: {item}" for item in _identity_conflicts(local_rows, mirror_rows, "slug")
+        )
+
+    local_boards = await local_conn.fetch("SELECT id, board_slug, board_url FROM job_board")
+    mirror_boards = await mirror_conn.fetch("SELECT id, board_slug, board_url FROM job_board")
+    conflicts.extend(
+        f"job_board: {item}"
+        for item in _identity_conflicts(local_boards, mirror_boards, "board_slug")
+    )
+    conflicts.extend(
+        f"job_board: {item}"
+        for item in _identity_conflicts(
+            local_boards,
+            mirror_boards,
+            "board_url",
+            check_id_key=False,
+        )
+    )
+    if conflicts:
+        raise RuntimeError(
+            "legacy mirror identity drift; refusing to renumber or delete rows: "
+            + "; ".join(conflicts[:5])
+        )
+
+
+async def _mirror_lookup_tables_to_supabase(
+    local_conn: asyncpg.Connection,
+    supa_conn: asyncpg.Connection,
+    occupation_domains: pl.DataFrame,
+    occupations: pl.DataFrame,
+    seniority_df: pl.DataFrame,
+    technologies: pl.DataFrame,
+    industries: pl.DataFrame,
+) -> None:
+    """Copy locally allocated lookup identities into the transitional mirror."""
+    for table, sql in (
+        ("occupation_domain", _MIRROR_OCCUPATION_DOMAINS),
+        ("occupation", _MIRROR_OCCUPATIONS),
+        ("seniority", _MIRROR_SENIORITY),
+    ):
+        rows = await local_conn.fetch(f"SELECT id, slug FROM {table}")
+        if rows:
+            await _mirror_table(
+                supa_conn,
+                table,
+                sql,
+                [row["id"] for row in rows],
+                [row["slug"] for row in rows],
+            )
+
+    tech_rows = await local_conn.fetch("SELECT id, slug, name, category FROM technology")
+    if tech_rows:
+        await supa_conn.execute(
+            _MIRROR_TECHNOLOGIES,
+            [row["id"] for row in tech_rows],
+            [row["slug"] for row in tech_rows],
+            [row["name"] for row in tech_rows],
+            [row["category"] for row in tech_rows],
+        )
+        await supa_conn.execute(
+            "SELECT setval(pg_get_serial_sequence('technology', 'id'), "
+            "(SELECT MAX(id) FROM technology), true)"
+        )
+
+    # Populate names and relationships only after every exact identity exists.
+    await sync_occupation_domains(supa_conn, occupation_domains, False)
+    await sync_occupations(supa_conn, occupations, False)
+    await sync_seniority(supa_conn, seniority_df, False)
+    await sync_industries(supa_conn, industries, False)
+
+
+async def _mirror_boards_to_supabase(
+    local_conn: asyncpg.Connection,
+    supa_conn: asyncpg.Connection,
+    board_urls: list[str],
+) -> None:
+    rows = await local_conn.fetch(
+        "SELECT id, company_id, board_slug, board_url, crawler_type, metadata "
+        "FROM job_board WHERE board_url = ANY($1::text[])",
+        board_urls,
+    )
+    if len(rows) != len(board_urls):
+        raise RuntimeError("legacy mirror could not load every committed local board")
+    await supa_conn.execute(
+        _MIRROR_BOARDS_SUPA,
+        [row["id"] for row in rows],
+        [row["company_id"] for row in rows],
+        [row["board_slug"] for row in rows],
+        [row["board_url"] for row in rows],
+        [row["crawler_type"] for row in rows],
+        [row["metadata"] for row in rows],
+    )
+    await supa_conn.execute(_REALIGN_BOARD_POSTING_COMPANIES_SUPA, board_urls)
+    await supa_conn.execute(_DISABLE_REMOVED_BOARDS, board_urls)
+
+
+async def sync_legacy_mirror(
+    local_conn: asyncpg.Connection,
+    supa_conn: asyncpg.Connection,
+    *,
+    occupation_domains: pl.DataFrame,
+    occupations: pl.DataFrame,
+    seniority_df: pl.DataFrame,
+    technologies: pl.DataFrame,
+    industries: pl.DataFrame,
+    company_descs: pl.DataFrame,
+    boards: pl.DataFrame,
+) -> None:
+    """Mirror a committed local snapshot, aborting atomically on any drift."""
+    async with supa_conn.transaction():
+        await supa_conn.execute("SET LOCAL lock_timeout = '30s'")
+        await _assert_legacy_identity_alignment(local_conn, supa_conn)
+        await _mirror_lookup_tables_to_supabase(
+            local_conn,
+            supa_conn,
+            occupation_domains,
+            occupations,
+            seniority_df,
+            technologies,
+            industries,
+        )
+        await _mirror_companies_to_supabase(local_conn, supa_conn)
+        await sync_company_descriptions(supa_conn, company_descs, False)
+        await _mirror_boards_to_supabase(
+            local_conn,
+            supa_conn,
+            boards["board_url"].to_list(),
+        )
+        await resolve_pending_misses(supa_conn)
+    log.info("sync.legacy_mirror.complete")
 
 
 # ---------------------------------------------------------------------------
@@ -1687,6 +1681,8 @@ def _ts_bulk_upsert(
     collection: str,
     docs: list[dict],
     action: str = "upsert",
+    *,
+    fail_on_error: bool = False,
 ) -> None:
     """Bulk write documents to a Typesense collection.
 
@@ -1695,14 +1691,44 @@ def _ts_bulk_upsert(
     - ``"update"``: partial merge into an existing doc; 404s if the doc doesn't exist
     - ``"emplace"``: partial merge if the doc exists, otherwise creates it
 
-    Splits into batches of ``_TYPESENSE_BATCH_SIZE``. Logs errors but does
-    not raise — Typesense writes are fire-and-forget.
+    Splits into batches of ``_TYPESENSE_BATCH_SIZE``. Existing callers keep
+    the historical best-effort behavior. Exact-sync callers can set
+    ``fail_on_error`` so a rejected import blocks any subsequent pruning.
     """
     if not docs:
         return
     for i in range(0, len(docs), _TYPESENSE_BATCH_SIZE):
         batch = docs[i : i + _TYPESENSE_BATCH_SIZE]
-        results = client.collections[collection].documents.import_(batch, {"action": action})
+        documents = cast(Any, client.collections[collection].documents)
+        results = documents.import_(batch, {"action": action})
+        if fail_on_error:
+            acknowledged_count = len(results) if isinstance(results, list) else 0
+            successful_count = (
+                sum(
+                    1
+                    for result in results
+                    if isinstance(result, dict) and result.get("success") is True
+                )
+                if isinstance(results, list)
+                else 0
+            )
+            if (
+                not isinstance(results, list)
+                or len(results) != len(batch)
+                or any(
+                    not isinstance(result, dict) or result.get("success") is not True
+                    for result in results
+                )
+            ):
+                log.error(
+                    "typesense.bulk_upsert.invalid_acknowledgement",
+                    collection=collection,
+                    action=action,
+                    expected_count=len(batch),
+                    acknowledged_count=acknowledged_count,
+                    successful_count=successful_count,
+                )
+                raise RuntimeError("Typesense bulk import acknowledgement was invalid") from None
         errors = [r for r in results if not r.get("success", True)]
         if errors:
             log.warning(
@@ -1815,18 +1841,16 @@ _LOCATION_MACRO_ALIASES: dict[str, list[str]] = {
 
 
 async def sync_locations_typesense(
-    supa_conn: asyncpg.Connection,
-    local_conn: asyncpg.Connection | None,
+    local_conn: asyncpg.Connection,
     client: typesense.Client,
 ) -> None:
     """Sync locations to the Typesense ``location`` collection.
 
-    Queries Supabase for location data (lat/lng/slug) and local Postgres
-    for active posting counts.
+    All crawler-owned location data comes from local Postgres.
     """
-    rows = await supa_conn.fetch(
+    rows = await local_conn.fetch(
         """
-        SELECT l.id, l.type, l.lat, l.lng, l.slug, l.population,
+        SELECT l.id, l.type, l.lat, l.lng, l.slug, l.population, l.parent_id,
                pn.name AS parent_name
         FROM location l
         LEFT JOIN location parent ON parent.id = l.parent_id
@@ -1841,14 +1865,49 @@ async def sync_locations_typesense(
     if not rows:
         log.info("typesense.locations.empty")
         return
+    missing_slug_ids = [r["id"] for r in rows if not (r["slug"] or "").strip()]
+    if missing_slug_ids:
+        raise RuntimeError(
+            "local location data is not cutover-ready: blank slug for "
+            f"{len(missing_slug_ids)} rows (sample ids: {missing_slug_ids[:5]})"
+        )
 
-    # Fetch locale names from Supabase
-    name_rows = await supa_conn.fetch(
-        "SELECT location_id, locale, name FROM location_name WHERE is_display"
+    name_rows = await local_conn.fetch(
+        "SELECT location_id, locale, name, is_display FROM location_name "
+        "WHERE locale IN ('en', 'de', 'fr', 'it')"
     )
     names_by_id: dict[int, dict[str, str]] = {}
+    aliases_by_id: dict[int, set[str]] = {}
     for nr in name_rows:
-        names_by_id.setdefault(nr["location_id"], {})[nr["locale"]] = nr["name"]
+        if nr["is_display"]:
+            names_by_id.setdefault(nr["location_id"], {})[nr["locale"]] = nr["name"]
+        else:
+            aliases_by_id.setdefault(nr["location_id"], set()).add(nr["name"])
+
+    # Publish the complete hierarchy contract with each location document so
+    # the web app can resolve parent paths, expand descendants and render macro
+    # membership without reading the crawler mirror. ``ancestor_ids`` contains
+    # self + geographic parents + every macro attached to the country in that
+    # path, matching exporter.py's job-posting expansion semantics.
+    macro_rows = await local_conn.fetch("SELECT macro_id, country_id FROM location_macro_member")
+    parent_by_id = {r["id"]: r["parent_id"] for r in rows}
+    type_by_id = {r["id"]: r["type"] for r in rows}
+    macros_by_country: dict[int, set[int]] = {}
+    members_by_macro: dict[int, set[int]] = {}
+    for mr in macro_rows:
+        macros_by_country.setdefault(mr["country_id"], set()).add(mr["macro_id"])
+        members_by_macro.setdefault(mr["macro_id"], set()).add(mr["country_id"])
+
+    ancestors_by_id: dict[int, list[int]] = {}
+    for location_id in parent_by_id:
+        ancestors: set[int] = set()
+        current: int | None = location_id
+        while current is not None and current not in ancestors:
+            ancestors.add(current)
+            if type_by_id.get(current) == "country":
+                ancestors.update(macros_by_country.get(current, set()))
+            current = parent_by_id.get(current)
+        ancestors_by_id[location_id] = [location_id, *sorted(ancestors - {location_id})]
 
     # Count active postings per location. We read the count from the
     # Typesense ``job_posting`` facet on ``location_ids`` (post ancestor
@@ -1867,16 +1926,15 @@ async def sync_locations_typesense(
         # exist yet. Fall back to leaf-only Postgres counts so locations
         # still get *some* count rather than zeros.
         log.warning("typesense.locations.facet_unavailable", error=str(exc))
-        if local_conn is not None:
-            count_rows = await local_conn.fetch(
-                """
-                SELECT unnest(location_ids) AS loc_id, COUNT(*) AS cnt
-                FROM job_posting
-                WHERE is_active
-                GROUP BY 1
-                """
-            )
-            counts = {r["loc_id"]: r["cnt"] for r in count_rows}
+        count_rows = await local_conn.fetch(
+            """
+            SELECT unnest(location_ids) AS loc_id, COUNT(*) AS cnt
+            FROM job_posting
+            WHERE is_active
+            GROUP BY 1
+            """
+        )
+        counts = {r["loc_id"]: r["cnt"] for r in count_rows}
 
     docs: list[dict] = []
     for r in rows:
@@ -1890,6 +1948,7 @@ async def sync_locations_typesense(
             "slug": r["slug"] or "",
             "name_en": loc_names.get("en", ""),
             "type": r["type"] or "city",
+            "ancestor_ids": ancestors_by_id[loc_id],
             "has_active_postings": count > 0,
             "active_posting_count": count,
         }
@@ -1904,15 +1963,21 @@ async def sync_locations_typesense(
             doc["coordinates"] = [float(r["lat"]), float(r["lng"])]
         if r["parent_name"]:
             doc["parent_name"] = r["parent_name"]
+        if r["parent_id"] is not None:
+            doc["parent_id"] = r["parent_id"]
+        member_country_ids = members_by_macro.get(loc_id)
+        if member_country_ids:
+            doc["member_country_ids"] = sorted(member_country_ids)
         if r["population"] is not None:
             doc["population"] = r["population"]
         # Macro-region aliases (#2939): natural-language synonyms so
         # "Europe" / "European Union" / "DACH" / "Asia Pacific" / etc.
         # match the macro row whose ``name_en`` is just the abbreviation.
+        aliases = set(aliases_by_id.get(loc_id, set()))
         if r["type"] == "macro" and r["slug"]:
-            aliases = _LOCATION_MACRO_ALIASES.get(r["slug"])
-            if aliases:
-                doc["aliases"] = aliases
+            aliases.update(_LOCATION_MACRO_ALIASES.get(r["slug"], []))
+        if aliases:
+            doc["aliases"] = sorted(aliases)
 
         docs.append(doc)
 
@@ -1921,17 +1986,16 @@ async def sync_locations_typesense(
 
 
 async def sync_occupations_typesense(
-    supa_conn: asyncpg.Connection,
-    local_conn: asyncpg.Connection | None,
+    local_conn: asyncpg.Connection,
     client: typesense.Client,
 ) -> None:
     """Sync occupations to the Typesense ``occupation`` collection.
 
     One document per (occupation, locale) pair.
     """
-    rows = await supa_conn.fetch(
+    rows = await local_conn.fetch(
         """
-        SELECT o.id, o.slug,
+        SELECT o.id, o.slug, o.parent_id, o.domain_id,
                on2.locale, on2.name, on2.is_display,
                d.slug AS domain_slug
         FROM occupation o
@@ -1945,16 +2009,12 @@ async def sync_occupations_typesense(
         return
 
     # Fetch domain display names
-    domain_name_rows = await supa_conn.fetch(
+    domain_name_rows = await local_conn.fetch(
         "SELECT domain_id, locale, name FROM occupation_domain_name WHERE is_display"
     )
     domain_names: dict[int, dict[str, str]] = {}
     for dr in domain_name_rows:
         domain_names.setdefault(dr["domain_id"], {})[dr["locale"]] = dr["name"]
-
-    # Domain slug -> id mapping
-    domain_rows = await supa_conn.fetch("SELECT id, slug FROM occupation_domain")
-    domain_slug_to_id = {r["slug"]: r["id"] for r in domain_rows}
 
     # Active posting counts from local Postgres
     # Counts come from the Typesense ``job_posting`` facet on
@@ -1972,16 +2032,15 @@ async def sync_occupations_typesense(
         counts = {int(k): v for k, v in facet_counts.items()}
     except Exception as exc:
         log.warning("typesense.occupations.facet_unavailable", error=str(exc))
-        if local_conn is not None:
-            count_rows = await local_conn.fetch(
-                """
-                SELECT occupation_id, COUNT(*) AS cnt
-                FROM job_posting
-                WHERE is_active AND occupation_id IS NOT NULL
-                GROUP BY 1
-                """
-            )
-            counts = {r["occupation_id"]: r["cnt"] for r in count_rows}
+        count_rows = await local_conn.fetch(
+            """
+            SELECT occupation_id, COUNT(*) AS cnt
+            FROM job_posting
+            WHERE is_active AND occupation_id IS NOT NULL
+            GROUP BY 1
+            """
+        )
+        counts = {r["occupation_id"]: r["cnt"] for r in count_rows}
 
     # Group by (occupation_id, locale)
     # display names vs aliases
@@ -1992,11 +2051,14 @@ async def sync_occupations_typesense(
         key = (occ_id, locale)
 
         if key not in occ_data:
-            domain_id = domain_slug_to_id.get(r["domain_slug"]) if r["domain_slug"] else None
+            domain_id = r["domain_id"]
             domain_name_map = domain_names.get(domain_id, {}) if domain_id else {}
             occ_data[key] = {
                 "occ_id": occ_id,
                 "slug": r["slug"],
+                "parent_id": r["parent_id"],
+                "domain_id": domain_id,
+                "domain_slug": r["domain_slug"],
                 "locale": locale,
                 "name": None,
                 "aliases": [],
@@ -2034,6 +2096,12 @@ async def sync_occupations_typesense(
             "has_active_postings": count > 0,
             "active_posting_count": count,
         }
+        if data["parent_id"] is not None:
+            doc["parent_id"] = data["parent_id"]
+        if data["domain_id"] is not None:
+            doc["domain_id"] = data["domain_id"]
+        if data["domain_slug"]:
+            doc["domain_slug"] = data["domain_slug"]
         if data["domain_name"]:
             doc["domain_name"] = data["domain_name"]
 
@@ -2044,15 +2112,14 @@ async def sync_occupations_typesense(
 
 
 async def sync_seniority_typesense(
-    supa_conn: asyncpg.Connection,
-    local_conn: asyncpg.Connection | None,
+    local_conn: asyncpg.Connection,
     client: typesense.Client,
 ) -> None:
     """Sync seniorities to the Typesense ``seniority`` collection.
 
     One document per (seniority, locale) pair.
     """
-    rows = await supa_conn.fetch(
+    rows = await local_conn.fetch(
         """
         SELECT s.id, s.slug,
                sn.locale, sn.name, sn.is_display
@@ -2068,16 +2135,15 @@ async def sync_seniority_typesense(
 
     # Active posting counts from local Postgres
     counts: dict[int, int] = {}
-    if local_conn is not None:
-        count_rows = await local_conn.fetch(
-            """
-            SELECT seniority_id, COUNT(*) AS cnt
-            FROM job_posting
-            WHERE is_active AND seniority_id IS NOT NULL
-            GROUP BY 1
-            """
-        )
-        counts = {r["seniority_id"]: r["cnt"] for r in count_rows}
+    count_rows = await local_conn.fetch(
+        """
+        SELECT seniority_id, COUNT(*) AS cnt
+        FROM job_posting
+        WHERE is_active AND seniority_id IS NOT NULL
+        GROUP BY 1
+        """
+    )
+    counts = {r["seniority_id"]: r["cnt"] for r in count_rows}
 
     # Group by (seniority_id, locale)
     sen_data: dict[tuple[int, str], dict] = {}
@@ -2188,8 +2254,99 @@ async def sync_technologies_typesense(
 # ---------------------------------------------------------------------------
 
 
+_TYPESENSE_COMPANY_ID_PAGE_SIZE = 250
+_TYPESENSE_COMPANY_PRUNE_MAX_DOCUMENTS = 50
+_TYPESENSE_COMPANY_PRUNE_MAX_BASIS_POINTS = 100  # 1% of the observed remote set.
+
+
+def _company_prune_within_safety_budget(*, remote_count: int, delete_count: int) -> bool:
+    """Bound exact-sync pruning against accidental authority collapse."""
+
+    if remote_count <= 0 or delete_count < 0:
+        return False
+    return (
+        delete_count <= _TYPESENSE_COMPANY_PRUNE_MAX_DOCUMENTS
+        and delete_count * 10_000 <= remote_count * _TYPESENSE_COMPANY_PRUNE_MAX_BASIS_POINTS
+    )
+
+
+def _fetch_typesense_company_ids(client: typesense.Client) -> set[str]:
+    """Read every company id while enforcing exact pagination invariants."""
+
+    collection = client.collections["company"]
+    metadata = collection.retrieve()
+    if not isinstance(metadata, dict):
+        raise RuntimeError("Typesense company collection returned invalid metadata")
+    metadata_count = metadata.get("num_documents")
+    if (
+        not isinstance(metadata_count, int)
+        or isinstance(metadata_count, bool)
+        or metadata_count < 0
+    ):
+        raise RuntimeError("Typesense company collection returned an invalid count")
+
+    found: int | None = None
+    returned_count = 0
+    seen_ids: set[str] = set()
+    page = 1
+    while True:
+        response = collection.documents.search(
+            {
+                "q": "*",
+                "query_by": "name",
+                "include_fields": "id",
+                "enable_overrides": False,
+                "page": page,
+                "per_page": _TYPESENSE_COMPANY_ID_PAGE_SIZE,
+            }
+        )
+        if not isinstance(response, dict):
+            raise RuntimeError("Typesense company search returned an invalid response")
+        response_found = response.get("found")
+        hits = response.get("hits")
+        if (
+            not isinstance(response_found, int)
+            or isinstance(response_found, bool)
+            or response_found < 0
+            or not isinstance(hits, list)
+        ):
+            raise RuntimeError("Typesense company search returned invalid pagination")
+        if found is None:
+            found = response_found
+        elif response_found != found:
+            raise RuntimeError("Typesense company count changed during pagination")
+        if response_found != metadata_count:
+            raise RuntimeError("Typesense company metadata and search counts differ")
+
+        remaining = response_found - returned_count
+        if remaining < 0:
+            raise RuntimeError("Typesense company pagination exceeded its count")
+        expected_hits = min(_TYPESENSE_COMPANY_ID_PAGE_SIZE, remaining)
+        if len(hits) != expected_hits:
+            raise RuntimeError("Typesense company pagination returned an invalid page size")
+
+        for hit in hits:
+            if not isinstance(hit, dict) or not isinstance(hit.get("document"), dict):
+                raise RuntimeError("Typesense company search returned an invalid hit")
+            document_id = hit["document"].get("id")
+            if not isinstance(document_id, str) or not document_id:
+                raise RuntimeError("Typesense company search returned an invalid id")
+            if document_id in seen_ids:
+                raise RuntimeError("Typesense company pagination returned a duplicate id")
+            seen_ids.add(document_id)
+
+        returned_count += len(hits)
+        if returned_count == response_found:
+            break
+        page += 1
+
+    if len(seen_ids) != metadata_count:
+        raise RuntimeError("Typesense company pagination count did not converge")
+    return seen_ids
+
+
 async def sync_companies_typesense(
-    supa_conn: asyncpg.Connection,
+    local_conn: asyncpg.Connection,
     client: typesense.Client,
 ) -> None:
     """Sync companies to the Typesense ``company`` collection.
@@ -2198,10 +2355,10 @@ async def sync_companies_typesense(
     company detail page reader (``getCompanyBySlug``) so that page can serve
     from Typesense without a Supabase round-trip.
     """
-    rows = await supa_conn.fetch(
+    rows = await local_conn.fetch(
         """
         SELECT c.id, c.name, c.slug, c.icon, c.logo, c.website,
-               c.description, c.industry,
+               c.industry,
                c.employee_count_range, c.founded_year,
                i.name AS industry_name
         FROM company c
@@ -2209,17 +2366,17 @@ async def sync_companies_typesense(
         """
     )
     if not rows:
-        log.info("typesense.companies.empty")
-        return
+        log.error("typesense.companies.empty_authority", expected_count=0)
+        raise RuntimeError("Local company authority is empty")
 
-    desc_rows = await supa_conn.fetch(
+    desc_rows = await local_conn.fetch(
         "SELECT company_id, locale, description FROM company_description"
     )
     descs_by_locale: dict[str, dict] = {}
     for r in desc_rows:
         descs_by_locale.setdefault(r["locale"], {})[r["company_id"]] = r["description"]
 
-    ind_name_rows = await supa_conn.fetch(
+    ind_name_rows = await local_conn.fetch(
         "SELECT industry_id, locale, name FROM industry_name WHERE is_display"
     )
     ind_names_by_locale: dict[str, dict] = {}
@@ -2255,9 +2412,7 @@ async def sync_companies_typesense(
         if r["founded_year"] is not None:
             doc["founded_year"] = r["founded_year"]
 
-        # description: per-locale company_description takes precedence over
-        # the canonical c.description (English) for matching locale.
-        en_desc = descs_by_locale.get("en", {}).get(r["id"]) or r["description"]
+        en_desc = descs_by_locale.get("en", {}).get(r["id"])
         if en_desc:
             doc["description"] = en_desc
         for loc in ("de", "fr", "it"):
@@ -2276,8 +2431,88 @@ async def sync_companies_typesense(
 
         docs.append(doc)
 
-    await loop.run_in_executor(None, _ts_bulk_upsert, client, "company", docs)
-    log.info("typesense.companies.synced", count=len(docs))
+    expected_ids = {str(doc["id"]) for doc in docs}
+    if len(expected_ids) != len(docs):
+        raise RuntimeError("Local company authority returned duplicate ids")
+
+    await loop.run_in_executor(
+        None,
+        partial(
+            _ts_bulk_upsert,
+            client,
+            "company",
+            docs,
+            fail_on_error=True,
+        ),
+    )
+
+    remote_ids = await loop.run_in_executor(None, _fetch_typesense_company_ids, client)
+    missing_count = len(expected_ids - remote_ids)
+    if missing_count:
+        log.error(
+            "typesense.companies.prune.blocked",
+            expected_count=len(expected_ids),
+            remote_count=len(remote_ids),
+            missing_count=missing_count,
+        )
+        raise RuntimeError("Typesense company index is missing expected documents")
+
+    stale_ids = remote_ids - expected_ids
+    if stale_ids and not _company_prune_within_safety_budget(
+        remote_count=len(remote_ids),
+        delete_count=len(stale_ids),
+    ):
+        log.error(
+            "typesense.companies.prune.budget_blocked",
+            expected_count=len(expected_ids),
+            remote_count=len(remote_ids),
+            delete_count=len(stale_ids),
+            max_delete_count=_TYPESENSE_COMPANY_PRUNE_MAX_DOCUMENTS,
+            max_delete_basis_points=_TYPESENSE_COMPANY_PRUNE_MAX_BASIS_POINTS,
+        )
+        raise RuntimeError("Typesense company prune exceeds the safety budget")
+    log.info(
+        "typesense.companies.prune.planned",
+        expected_count=len(expected_ids),
+        remote_count=len(remote_ids),
+        delete_count=len(stale_ids),
+    )
+    deleted_count = 0
+    for document_id in sorted(stale_ids):
+        try:
+            await loop.run_in_executor(
+                None,
+                client.collections["company"].documents[document_id].delete,
+            )
+        except Exception:
+            log.error(
+                "typesense.companies.prune.delete_failed",
+                expected_count=len(expected_ids),
+                remote_count=len(remote_ids),
+                planned_delete_count=len(stale_ids),
+                completed_delete_count=deleted_count,
+            )
+            raise RuntimeError("Typesense company prune deletion failed") from None
+        deleted_count += 1
+
+    converged_ids = await loop.run_in_executor(None, _fetch_typesense_company_ids, client)
+    if converged_ids != expected_ids:
+        log.error(
+            "typesense.companies.convergence_failed",
+            expected_count=len(expected_ids),
+            remote_count=len(converged_ids),
+            missing_count=len(expected_ids - converged_ids),
+            unexpected_count=len(converged_ids - expected_ids),
+            deleted_count=deleted_count,
+        )
+        raise RuntimeError("Typesense company index did not converge")
+
+    log.info(
+        "typesense.companies.synced",
+        expected_count=len(expected_ids),
+        remote_count=len(converged_ids),
+        deleted_count=deleted_count,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -2488,25 +2723,27 @@ async def _resolve_watchlist_filter_ids(
 
 
 async def sync_watchlists_typesense(
-    supa_conn: asyncpg.Connection,
+    web_conn: asyncpg.Connection,
     local_conn: asyncpg.Connection | None,
     client: typesense.Client,
 ) -> None:
     """Sync public watchlists to the Typesense ``watchlist`` collection.
 
-    Watchlists only exist in Supabase, so metadata and ``watchlist_company``
-    pairs come from there. The active-posting count per company is computed
+    Watchlists are web-owned, so metadata and ``watchlist_company`` pairs come
+    from ``web_conn``. The active-posting count per company is computed
     against local Postgres (the job_posting source of truth) and aggregated
-    per watchlist in Python; company UUIDs are identical across both DBs
-    (see ``_mirror_companies_*``) so the counts match. This avoids a
-    watchlist_company ⨝ job_posting WHERE is_active hash join on Supabase,
-    which dominated Supabase compute spend. Falls back to the Supabase JOIN
-    when ``local_conn`` is None (dry-run, local Postgres unreachable).
+    per watchlist in Python. Shared company UUIDs make the cross-database
+    aggregation exact. This avoids a costly web-database join against its
+    transitional posting mirror. A missing local connection fails closed so
+    no caller can silently restore that retired read path.
 
     Trivial watchlists (no companies, no meaningful filters) are deleted
     from Typesense rather than upserted.
     """
-    rows = await supa_conn.fetch(
+    if local_conn is None:
+        raise RuntimeError("watchlist sync requires a local Postgres connection")
+
+    rows = await web_conn.fetch(
         """
         SELECT w.id, w.slug, w.title, w.description,
                w.is_public, w.created_at, w.filters,
@@ -2524,15 +2761,15 @@ async def sync_watchlists_typesense(
     parsed_filters_by_id = {str(r["id"]): _parse_watchlist_filters(r["filters"]) for r in rows}
     try:
         resolved_filter_ids_by_id = await _resolve_watchlist_filter_ids(
-            local_conn or supa_conn,
+            local_conn,
             parsed_filters_by_id,
-            fallback_conn=supa_conn if local_conn is not None else None,
+            fallback_conn=web_conn,
         )
     except Exception:
         log.exception("typesense.watchlists.filter_ids_failed")
         resolved_filter_ids_by_id = {}
 
-    wc_pairs = await supa_conn.fetch(
+    wc_pairs = await web_conn.fetch(
         """
         SELECT watchlist_id, company_id
         FROM watchlist_company
@@ -2544,39 +2781,25 @@ async def sync_watchlists_typesense(
     for r in wc_pairs:
         company_counts[str(r["watchlist_id"])] += 1
 
-    job_counts: dict[str, int]
-    if local_conn is not None:
-        distinct_company_ids = list({r["company_id"] for r in wc_pairs})
-        per_company: dict = {}
-        if distinct_company_ids:
-            active_rows = await local_conn.fetch(
-                """
-                SELECT company_id, COUNT(*) AS cnt
-                FROM job_posting
-                WHERE is_active AND company_id = ANY($1::uuid[])
-                GROUP BY 1
-                """,
-                distinct_company_ids,
-            )
-            per_company = {r["company_id"]: r["cnt"] for r in active_rows}
-        job_counts = defaultdict(int)
-        for r in wc_pairs:
-            job_counts[str(r["watchlist_id"])] += per_company.get(r["company_id"], 0)
-    else:
-        job_count_rows = await supa_conn.fetch(
+    distinct_company_ids = list({r["company_id"] for r in wc_pairs})
+    per_company: dict = {}
+    if distinct_company_ids:
+        active_rows = await local_conn.fetch(
             """
-            SELECT wc.watchlist_id, COUNT(jp.id) AS cnt
-            FROM watchlist_company wc
-            JOIN job_posting jp ON jp.company_id = wc.company_id AND jp.is_active
-            WHERE wc.watchlist_id = ANY($1::uuid[])
+            SELECT company_id, COUNT(*) AS cnt
+            FROM job_posting
+            WHERE is_active AND company_id = ANY($1::uuid[])
             GROUP BY 1
             """,
-            watchlist_ids,
+            distinct_company_ids,
         )
-        job_counts = {str(r["watchlist_id"]): r["cnt"] for r in job_count_rows}
+        per_company = {r["company_id"]: r["cnt"] for r in active_rows}
+    job_counts: dict[str, int] = defaultdict(int)
+    for r in wc_pairs:
+        job_counts[str(r["watchlist_id"])] += per_company.get(r["company_id"], 0)
 
     # Mirror counts
-    mirror_count_rows = await supa_conn.fetch(
+    mirror_count_rows = await web_conn.fetch(
         """
         SELECT source_watchlist_id, COUNT(*) AS cnt
         FROM watchlist
@@ -2830,13 +3053,13 @@ async def refresh_typesense_counts(
 
 
 async def _snapshot_name_maps(
-    supa_conn: asyncpg.Connection,
+    local_conn: asyncpg.Connection,
 ) -> dict[str, dict[int, str]]:
     """Snapshot current display names for rename detection.
 
     Returns a dict keyed by taxonomy type with {id: display_name_en} maps.
     """
-    occ_rows = await supa_conn.fetch(
+    occ_rows = await local_conn.fetch(
         """
         SELECT o.id, on2.name
         FROM occupation o
@@ -2844,7 +3067,7 @@ async def _snapshot_name_maps(
         WHERE on2.is_display AND on2.locale = 'en'
         """
     )
-    sen_rows = await supa_conn.fetch(
+    sen_rows = await local_conn.fetch(
         """
         SELECT s.id, sn.name
         FROM seniority s
@@ -2852,7 +3075,7 @@ async def _snapshot_name_maps(
         WHERE sn.is_display AND sn.locale = 'en'
         """
     )
-    tech_rows = await supa_conn.fetch("SELECT id, name FROM technology")
+    tech_rows = await local_conn.fetch("SELECT id, name FROM technology")
 
     return {
         "occupation": {r["id"]: r["name"] for r in occ_rows},
@@ -2952,27 +3175,27 @@ async def _apply_taxonomy_renames(
 
 
 async def sync_typesense(
-    supa_conn: asyncpg.Connection,
-    local_conn: asyncpg.Connection | None,
+    local_conn: asyncpg.Connection,
+    web_conn: asyncpg.Connection,
     client: typesense.Client,
 ) -> None:
     """Sync all taxonomy, company, and watchlist data to Typesense.
 
-    Called outside the Supabase transaction. Failures are logged but do not
-    break the sync pipeline.
+    Called only after the local transaction commits. Crawler-owned collections
+    read local Postgres; only user-owned watchlists read ``web_conn``.
     """
     try:
-        await sync_locations_typesense(supa_conn, local_conn, client)
+        await sync_locations_typesense(local_conn, client)
     except Exception:
         log.exception("typesense.sync.locations.failed")
 
     try:
-        await sync_occupations_typesense(supa_conn, local_conn, client)
+        await sync_occupations_typesense(local_conn, client)
     except Exception:
         log.exception("typesense.sync.occupations.failed")
 
     try:
-        await sync_seniority_typesense(supa_conn, local_conn, client)
+        await sync_seniority_typesense(local_conn, client)
     except Exception:
         log.exception("typesense.sync.seniority.failed")
 
@@ -2982,21 +3205,23 @@ async def sync_typesense(
         log.exception("typesense.sync.technologies.failed")
 
     try:
-        await sync_companies_typesense(supa_conn, client)
+        await sync_companies_typesense(local_conn, client)
     except Exception:
-        log.exception("typesense.sync.companies.failed")
+        # Exact-sync stages emit count-only diagnostics before raising. Do not
+        # attach a client exception that may contain a document identifier.
+        log.error("typesense.sync.companies.failed")
+        raise CompanyTypesenseSyncError("Typesense company exact sync failed") from None
 
     try:
-        await sync_watchlists_typesense(supa_conn, local_conn, client)
+        await sync_watchlists_typesense(web_conn, local_conn, client)
     except Exception:
         log.exception("typesense.sync.watchlists.failed")
 
     # Refresh posting counts
-    if local_conn is not None:
-        try:
-            await refresh_typesense_counts(local_conn, client)
-        except Exception:
-            log.exception("typesense.sync.refresh_counts.failed")
+    try:
+        await refresh_typesense_counts(local_conn, client)
+    except Exception:
+        log.exception("typesense.sync.refresh_counts.failed")
 
     # Bust the web app's typeahead suggest caches so renamed / added /
     # removed taxonomy entries are reflected in autocomplete within
@@ -3014,8 +3239,19 @@ async def sync_typesense(
     log.info("typesense.sync.complete")
 
 
-async def run_sync(dry_run: bool = False) -> None:
+async def run_sync(dry_run: bool = False, *, legacy_mirror: bool = False) -> None:
+    """Sync CSV state with local Postgres as the transaction authority.
+
+    ``legacy_mirror`` is an explicit transition mode. It is never inferred
+    from the mere presence of ``DATABASE_URL`` and refuses to start when that
+    credential is absent.
+    """
     setup_logging(settings.log_level)
+
+    if legacy_mirror and not settings.database_url:
+        raise RuntimeError(
+            "--legacy-mirror requires DATABASE_URL; refusing a partial local-only sync"
+        )
 
     occupation_domains = _load_occupation_domains()
     occupations = _load_occupations()
@@ -3032,77 +3268,70 @@ async def run_sync(dry_run: bool = False) -> None:
 
     ts_client = get_typesense_client()
 
-    supa_pool = await create_pool()
-    local_pool = None
-    if not dry_run:
-        try:
-            local_pool = await create_local_pool()
-        except OSError:
-            log.warning("sync.local_pool_unavailable", msg="Cannot reach local Postgres, skipping")
+    local_pool = await create_local_pool()
+    board_effects = BoardSyncEffects()
+    name_maps_before: dict[str, dict[int, str]] | None = None
     try:
-        # Snapshot taxonomy names before sync for rename detection
-        name_maps_before: dict[str, dict[int, str]] | None = None
+        async with local_pool.acquire() as local_conn:
+            local_connection = cast("asyncpg.Connection", local_conn)
+            if ts_client and not dry_run:
+                name_maps_before = await _snapshot_name_maps(local_connection)
+
+            async with local_conn.transaction():
+                await local_conn.execute("SET LOCAL lock_timeout = '30s'")
+                await sync_lookup_tables_local(
+                    local_connection,
+                    occupation_domains,
+                    occupations,
+                    seniority_df,
+                    technologies,
+                    industries,
+                    dry_run,
+                )
+                await sync_companies(local_connection, companies, dry_run)
+                await sync_company_descriptions(local_connection, company_descs, dry_run)
+                board_effects = await sync_boards(local_connection, boards, dry_run)
+                if not dry_run:
+                    await resolve_pending_misses(local_connection)
+
+        # The local transaction is committed before every downstream write.
+        if legacy_mirror and not dry_run:
+            supa_pool = await create_pool()
+            async with local_pool.acquire() as local_conn, supa_pool.acquire() as supa_conn:
+                await sync_legacy_mirror(
+                    cast("asyncpg.Connection", local_conn),
+                    cast("asyncpg.Connection", supa_conn),
+                    occupation_domains=occupation_domains,
+                    occupations=occupations,
+                    seniority_df=seniority_df,
+                    technologies=technologies,
+                    industries=industries,
+                    company_descs=company_descs,
+                    boards=boards,
+                )
+
+        web_pool = None
         if ts_client and not dry_run:
-            try:
-                async with supa_pool.acquire() as snap_conn:
-                    name_maps_before = await _snapshot_name_maps(snap_conn)
-            except Exception:
-                log.exception("typesense.snapshot_before.failed")
+            # Establish the provider-neutral user-data boundary before Redis
+            # is changed; a missing WEB_DATABASE_URL therefore fails closed.
+            web_pool = await create_web_pool()
 
-        async with supa_pool.acquire() as supa_conn, supa_conn.transaction():
-            await supa_conn.execute("SET lock_timeout = '30s'")
+        if not dry_run:
+            await apply_board_redis_effects(board_effects)
 
-            # Lookup tables -> Supabase (web app queries these)
-            await sync_occupation_domains(supa_conn, occupation_domains, dry_run)
-            await sync_occupations(supa_conn, occupations, dry_run)
-            await sync_seniority(supa_conn, seniority_df, dry_run)
-            await sync_technologies(supa_conn, technologies, dry_run)
-            await sync_industries(supa_conn, industries, dry_run)
+        # Reconcile visibility after board hashes/schedules and retired-board
+        # cleanup are complete. This deliberately classifies and reports only:
+        # active poison descriptors remain parked until an explicit operator
+        # retry, and retired descriptors remain until an explicit prune.
+        if local_pool is not None and not dry_run:
+            from src.deadletters import classify_deadletters, lifecycle_counts
 
-            # Company data: local Postgres is source of truth.
-            # 1. Bootstrap: align existing Supabase UUIDs into local
-            #    (historical company_ids reference Supabase UUIDs)
-            # 2. Apply CSV updates to local (new companies get local UUIDs)
-            # 3. Mirror local -> Supabase (display layer)
-            if local_pool is not None and not dry_run:
-                async with local_pool.acquire() as lc:
-                    await _mirror_companies_to_local(supa_conn, lc)
-                    await sync_companies(lc, companies, dry_run)
-                    await _mirror_companies_to_supabase(lc, supa_conn)
-            else:
-                # No local pool (dry_run or unreachable) — write to Supabase directly
-                await sync_companies(supa_conn, companies, dry_run)
-            await sync_company_descriptions(supa_conn, company_descs, dry_run)
-
-            # Boards -> Supabase + local Postgres + Redis
-            local_conn = None
-            if local_pool is not None:
-                local_conn = await local_pool.acquire()
-            try:
-                await sync_boards(supa_conn, boards, dry_run, local_conn=local_conn)
-            finally:
-                if local_conn is not None:
-                    await local_pool.release(local_conn)
-
-            if not dry_run:
-                await resolve_pending_misses(supa_conn)
-
-            # Lookup tables -> local Postgres too (workers need them for CPU
-            # processing: location_resolve, technology_resolve, etc.)
-            # Must run inside the Supabase transaction so we can read back
-            # the IDs that Supabase assigned to occupation/seniority rows.
-            if local_pool is not None and not dry_run:
-                async with local_pool.acquire() as local_conn:
-                    await sync_lookup_tables_local(
-                        supa_conn,
-                        local_conn,
-                        occupation_domains,
-                        occupations,
-                        seniority_df,
-                        technologies,
-                        industries,
-                        dry_run,
-                    )
+            deadletters = await classify_deadletters(local_pool)
+            log.info(
+                "sync.deadletters.reconciled",
+                total=len(deadletters),
+                counts=lifecycle_counts(deadletters),
+            )
 
         log.info(
             "sync.complete",
@@ -3115,35 +3344,32 @@ async def run_sync(dry_run: bool = False) -> None:
             company_descriptions=len(company_descs),
             boards=len(boards),
             dry_run=dry_run,
+            legacy_mirror=legacy_mirror,
         )
 
-        # --- Typesense sync (OUTSIDE the Supabase transaction) ---
+        # Typesense is a post-commit derived target. Crawler-owned collections
+        # read local Postgres; watchlists use only the provider-neutral web DB.
         if ts_client and not dry_run:
+            assert web_pool is not None
             try:
-                async with supa_pool.acquire() as supa_conn:
-                    local_conn_for_ts = None
-                    if local_pool is not None:
-                        local_conn_for_ts = await local_pool.acquire()
-                    try:
-                        # Detect taxonomy renames
-                        if name_maps_before is not None:
-                            try:
-                                name_maps_after = await _snapshot_name_maps(supa_conn)
-                                if local_conn_for_ts is not None:
-                                    await _apply_taxonomy_renames(
-                                        name_maps_before,
-                                        name_maps_after,
-                                        local_conn_for_ts,
-                                        ts_client,
-                                    )
-                            except Exception:
-                                log.exception("typesense.rename_detection.failed")
-
-                        # Full taxonomy + company + watchlist sync
-                        await sync_typesense(supa_conn, local_conn_for_ts, ts_client)
-                    finally:
-                        if local_conn_for_ts is not None:
-                            await local_pool.release(local_conn_for_ts)
+                async with local_pool.acquire() as local_conn, web_pool.acquire() as web_conn:
+                    local_connection = cast("asyncpg.Connection", local_conn)
+                    web_connection = cast("asyncpg.Connection", web_conn)
+                    if name_maps_before is not None:
+                        try:
+                            name_maps_after = await _snapshot_name_maps(local_connection)
+                            await _apply_taxonomy_renames(
+                                name_maps_before,
+                                name_maps_after,
+                                local_connection,
+                                ts_client,
+                            )
+                        except Exception:
+                            log.exception("typesense.rename_detection.failed")
+                    await sync_typesense(local_connection, web_connection, ts_client)
+            except CompanyTypesenseSyncError:
+                log.exception("typesense.sync.failed")
+                raise
             except Exception:
                 log.exception("typesense.sync.failed")
 

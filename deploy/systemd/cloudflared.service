@@ -1,0 +1,35 @@
+[Unit]
+Description=Cloudflare Tunnel for Jobseek Typesense
+Documentation=https://developers.cloudflare.com/tunnel/advanced/run-parameters/#token-file
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=cloudflared
+Group=cloudflared
+LoadCredential=cloudflare-tunnel-token:/etc/jobseek-typesense/cloudflare-tunnel-token
+ExecStart=/usr/local/bin/cloudflared --no-autoupdate tunnel run --token-file %d/cloudflare-tunnel-token
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=0
+TimeoutStopSec=90s
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectClock=yes
+ProtectControlGroups=yes
+ProtectHome=yes
+ProtectHostname=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectSystem=strict
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+SystemCallArchitectures=native
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

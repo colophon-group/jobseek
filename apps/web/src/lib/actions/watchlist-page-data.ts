@@ -2,6 +2,7 @@
 
 import {
   getWatchlistByUserAndSlug,
+  getPublicWatchlistPostings,
   getWatchlistPostings,
   getWatchlistPostingYearCount,
 } from "@/lib/actions/watchlists";
@@ -16,8 +17,12 @@ import { resolveJobLanguages } from "@/lib/job-languages";
 import { convertToEur } from "@/lib/salary";
 import type { WatchlistPostingEntry } from "@/lib/actions/watchlists";
 
+type WatchlistDetail = NonNullable<
+  Awaited<ReturnType<typeof getWatchlistByUserAndSlug>>
+>;
+
 export interface WatchlistPageData {
-  detail: NonNullable<Awaited<ReturnType<typeof getWatchlistByUserAndSlug>>>;
+  detail: WatchlistDetail;
   isOwner: boolean;
   isPaidPlan: boolean;
   limitReached: boolean;
@@ -33,34 +38,25 @@ export interface WatchlistPageData {
   languages: string[];
 }
 
-export async function fetchWatchlistPageData(params: {
-  userSlug: string;
-  watchlistSlug: string;
+async function buildWatchlistPageData(params: {
+  detail: WatchlistDetail;
   locale: string;
-}): Promise<WatchlistPageData | null> {
-  const { userSlug, watchlistSlug, locale } = params;
-
-  const detail = await getWatchlistByUserAndSlug(userSlug, watchlistSlug);
-  if (!detail) return null;
-
-  const session = await getSession();
-  const isOwner = session?.user?.id === detail.owner.id;
-
-  // Auth users persist `jobLanguages` in `user_preferences`; anon
-  // users mirror it into a cookie (issue #2850 + `anon-preferences.ts`).
-  // Read whichever applies so the watchlist body filters consistently.
-  const [plan, limit, prefs, anonJobLangs] = await Promise.all([
-    session ? getUserPlan(session.user.id) : ("free" as const),
-    session ? canCreateWatchlist(session.user.id) : { allowed: false, current: 0, max: 0 },
-    session ? getPreferences() : Promise.resolve(null),
-    session ? Promise.resolve(null) : readAnonJobLanguagesCookie(),
-  ]);
-  const isPaidPlan = PLAN_LIMITS[plan].canReceiveAlerts;
-  const limitReached = !limit.allowed;
-
-  const jobLanguages = prefs?.jobLanguages ?? anonJobLangs ?? [];
+  isOwner: boolean;
+  isPaidPlan: boolean;
+  limitReached: boolean;
+  jobLanguages: string[];
+  publicSnapshot: boolean;
+}): Promise<WatchlistPageData> {
+  const {
+    detail,
+    locale,
+    isOwner,
+    isPaidPlan,
+    limitReached,
+    jobLanguages,
+    publicSnapshot,
+  } = params;
   const languages = resolveJobLanguages(jobLanguages, locale);
-
   const filters = detail.filters;
 
   const [locMap, occMap, senMap, techMap] = await Promise.all([
@@ -131,7 +127,11 @@ export async function fetchWatchlistPageData(params: {
     languages,
   };
   const [{ postings, total }, yearTotal] = await Promise.all([
-    getWatchlistPostings({ ...sharedCountsParams, offset: 0, limit: 20 }),
+    (publicSnapshot ? getPublicWatchlistPostings : getWatchlistPostings)({
+      ...sharedCountsParams,
+      offset: 0,
+      limit: 20,
+    }),
     getWatchlistPostingYearCount(sharedCountsParams),
   ]);
 
@@ -150,4 +150,57 @@ export async function fetchWatchlistPageData(params: {
     jobLanguages,
     languages,
   };
+}
+
+/** Anonymous, cache-safe initial data for a known public watchlist. */
+export async function fetchPublicWatchlistPageData(params: {
+  detail: WatchlistDetail;
+  locale: string;
+}): Promise<WatchlistPageData> {
+  return buildWatchlistPageData({
+    detail: params.detail,
+    locale: params.locale,
+    isOwner: false,
+    isPaidPlan: false,
+    limitReached: true,
+    jobLanguages: [],
+    publicSnapshot: true,
+  });
+}
+
+export async function fetchWatchlistPageData(params: {
+  userSlug: string;
+  watchlistSlug: string;
+  locale: string;
+}): Promise<WatchlistPageData | null> {
+  const { userSlug, watchlistSlug, locale } = params;
+
+  const detail = await getWatchlistByUserAndSlug(userSlug, watchlistSlug);
+  if (!detail) return null;
+
+  const session = await getSession();
+  const isOwner = session?.user?.id === detail.owner.id;
+
+  // Auth users persist `jobLanguages` in `user_preferences`; anon
+  // users mirror it into a cookie (issue #2850 + `anon-preferences.ts`).
+  // Read whichever applies so the watchlist body filters consistently.
+  const [plan, limit, prefs, anonJobLangs] = await Promise.all([
+    session ? getUserPlan(session.user.id) : ("free" as const),
+    session ? canCreateWatchlist(session.user.id) : { allowed: false, current: 0, max: 0 },
+    session ? getPreferences() : Promise.resolve(null),
+    session ? Promise.resolve(null) : readAnonJobLanguagesCookie(),
+  ]);
+  const isPaidPlan = PLAN_LIMITS[plan].canReceiveAlerts;
+  const limitReached = !limit.allowed;
+
+  const jobLanguages = prefs?.jobLanguages ?? anonJobLangs ?? [];
+  return buildWatchlistPageData({
+    detail,
+    isOwner,
+    isPaidPlan,
+    limitReached,
+    locale,
+    jobLanguages,
+    publicSnapshot: false,
+  });
 }

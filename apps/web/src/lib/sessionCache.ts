@@ -3,6 +3,7 @@ import { cache } from "react";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { kvDelete, kvGet, kvMget, kvScan, kvSet } from "@/lib/cache";
+import { logExternalError } from "@/lib/safe-external-error";
 
 const SESSION_TTL = 300; // 5 minutes
 
@@ -133,10 +134,7 @@ export async function invalidateAllUserSessionCacheEntries(
       }
     } while (String(cursor) !== "0");
   } catch (err) {
-    console.error(
-      "[invalidateAllUserSessionCacheEntries] redis scan failed",
-      err,
-    );
+    logExternalError("error", { service: "redis", operation: "scan_session_cache" }, err);
   }
   return deleted;
 }

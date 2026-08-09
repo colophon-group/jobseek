@@ -6,6 +6,7 @@ import { Loader2, X } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ScrollFade } from "@/components/ui/scroll-fade";
 import { getEmploymentTypeCounts } from "@/lib/actions/taxonomy";
+import { FacetCount } from "./facet-count";
 
 function useEmploymentTypes() {
   const { t } = useLingui();
@@ -108,9 +109,7 @@ export function EmploymentTypeModal({
                       }`}
                     >
                       <span>{opt.label}</span>
-                      <span className={`text-xs ${active ? "text-primary/70" : "text-muted"}`}>
-                        ({count})
-                      </span>
+                      <FacetCount count={count} className={`text-xs ${active ? "text-primary/70" : "text-muted"}`} />
                     </button>
                   );
                 })}

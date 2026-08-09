@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = i18n._({
     id: "indexing.meta.description",
     comment: "SEO description for the public Job Indexing methodology page.",
-    message: "How Job Seek discovers and indexes job postings: our sourcing approach, crawl frequency, rate limits, robots.txt and TDM-Reservation compliance, and how to opt out.",
+    message: "How Job Seek discovers and indexes job postings: sourcing, crawl frequency, rate limits, robots.txt discovery, TDM-Reservation handling, and how to opt out.",
   });
 
   return {
@@ -59,7 +59,7 @@ export default async function HowWeIndexPage({ params }: Props) {
         description: i18n._({
           id: "indexing.meta.description",
           comment: "JSON-LD page description for the public Job Indexing methodology page.",
-          message: "How Job Seek discovers and indexes job postings: our sourcing approach, crawl frequency, rate limits, robots.txt and TDM-Reservation compliance, and how to opt out.",
+          message: "How Job Seek discovers and indexes job postings: sourcing, crawl frequency, rate limits, robots.txt discovery, TDM-Reservation handling, and how to opt out.",
         }),
         url: `${siteConfig.url}/${locale}/how-we-index`,
         inLanguage: locale,

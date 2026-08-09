@@ -68,16 +68,83 @@ async def _fetch_html(
     http: httpx.AsyncClient,
     pw=None,
 ) -> str:
-    """Fetch page HTML, using Playwright when render is configured."""
+    """Fetch page HTML, using Playwright when render is configured.
+
+    ``fetch_urls`` lets a board keep its public URL as the canonical posting
+    source while trying equivalent, externally reachable representations in
+    order. This is useful for small evergreen boards whose public frontend is
+    blocked from the crawler network but is available through a read-only
+    rendering gateway. Synthetic job URLs must continue to use ``board_url``.
+    """
+    configured_urls = metadata.get("fetch_urls")
+    if configured_urls is None:
+        fetch_url = metadata.get("fetch_url") or board_url
+        if not isinstance(fetch_url, str):
+            raise ValueError("inline fetch_url must be a non-empty string")
+        fetch_candidates = [(fetch_url, None)]
+    else:
+        if not isinstance(configured_urls, list) or not configured_urls:
+            raise ValueError("inline fetch_urls must be a non-empty list")
+        fetch_candidates = []
+        for index, candidate in enumerate(configured_urls):
+            if isinstance(candidate, str):
+                fetch_url = candidate
+                fetch_headers = None
+            elif isinstance(candidate, dict):
+                fetch_url = candidate.get("url")
+                fetch_headers = candidate.get("headers")
+                if fetch_headers is not None and (
+                    not isinstance(fetch_headers, dict)
+                    or any(
+                        not isinstance(key, str) or not isinstance(value, str)
+                        for key, value in fetch_headers.items()
+                    )
+                ):
+                    raise ValueError(
+                        f"inline fetch_urls[{index}].headers must map strings to strings"
+                    )
+            else:
+                raise ValueError(f"inline fetch_urls[{index}] must be a URL string or object")
+            if not isinstance(fetch_url, str) or not fetch_url:
+                raise ValueError(f"inline fetch_urls[{index}].url must be a non-empty string")
+            fetch_candidates.append((fetch_url, fetch_headers))
+    required_text = metadata.get("fetch_contains")
+
+    def validate(html: str, fetch_url: str) -> str:
+        if required_text and required_text not in html:
+            raise ValueError(f"inline fetch from {fetch_url} omitted required text")
+        return html
+
+    last_error: Exception | None = None
     if metadata.get("render") and pw:
         browser_cfg = {k: v for k, v in metadata.items() if k in BROWSER_KEYS}
-        async with open_page(pw, browser_cfg, use_proxy=bool(metadata.get("proxy"))) as page:
-            await navigate(page, board_url, browser_cfg)
-            return await safe_content(page)
+        for fetch_url, _fetch_headers in fetch_candidates:
+            try:
+                async with open_page(
+                    pw, browser_cfg, use_proxy=bool(metadata.get("proxy"))
+                ) as page:
+                    await navigate(page, fetch_url, browser_cfg)
+                    return validate(await safe_content(page), fetch_url)
+            except Exception as exc:
+                last_error = exc
+                log.warning("inline.fetch_fallback", url=fetch_url, error=str(exc))
+    else:
+        for fetch_url, fetch_headers in fetch_candidates:
+            try:
+                resp = await http.get(
+                    fetch_url,
+                    follow_redirects=True,
+                    headers=fetch_headers,
+                )
+                resp.raise_for_status()
+                return validate(resp.text, fetch_url)
+            except Exception as exc:
+                last_error = exc
+                log.warning("inline.fetch_fallback", url=fetch_url, error=str(exc))
 
-    resp = await http.get(board_url, follow_redirects=True)
-    resp.raise_for_status()
-    return resp.text
+    if last_error is not None:
+        raise last_error
+    return ""
 
 
 async def discover(
@@ -90,7 +157,9 @@ async def discover(
     Config keys:
         steps      — extraction steps (same format as DOM scraper)
         render     — if true, use Playwright (default: false)
+        fetch_urls — ordered alternate read URLs; canonical URLs use board_url
         defaults   — default field values applied to all jobs
+        defaults_by_title — per-title defaults applied to missing fields
         + browser keys (wait, timeout, actions, etc.)
     """
     board_url = board["board_url"]
@@ -102,6 +171,7 @@ async def discover(
         return []
 
     defaults = metadata.get("defaults") or {}
+    defaults_by_title = metadata.get("defaults_by_title") or {}
 
     html = await _fetch_html(board_url, metadata, client, pw)
     elements = flatten(html)
@@ -127,6 +197,8 @@ async def discover(
 
         url = _generate_url(board_url, title, seen_jids)
 
+        job_defaults = {**defaults, **(defaults_by_title.get(title) or {})}
+
         # Build DiscoveredJob with extracted + default fields
         description = result.get("description")
         location = result.get("location")
@@ -140,11 +212,12 @@ async def discover(
         job = DiscoveredJob(
             url=url,
             title=title,
-            description=description,
-            locations=locations or (defaults.get("locations") if not locations else None),
-            employment_type=result.get("employment_type") or defaults.get("employment_type"),
-            job_location_type=result.get("job_location_type") or defaults.get("job_location_type"),
-            date_posted=result.get("date_posted") or defaults.get("date_posted"),
+            description=description or job_defaults.get("description"),
+            locations=locations or job_defaults.get("locations"),
+            employment_type=result.get("employment_type") or job_defaults.get("employment_type"),
+            job_location_type=result.get("job_location_type")
+            or job_defaults.get("job_location_type"),
+            date_posted=result.get("date_posted") or job_defaults.get("date_posted"),
         )
         jobs.append(job)
 

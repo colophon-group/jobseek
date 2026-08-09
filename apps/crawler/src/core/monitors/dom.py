@@ -23,7 +23,7 @@ import structlog
 
 from src.core.monitors import register
 from src.core.monitors.raw import save_text_response
-from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions
+from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
 
 if TYPE_CHECKING:
     import httpx
@@ -60,6 +60,40 @@ _BROWSER_FETCH_JS = (
 )
 
 _JOB_KEYWORDS = frozenset({"job", "career", "position", "posting", "opening", "role", "vacancy"})
+
+_SITEGROUND_CHALLENGE_PATHS = (
+    "/.well-known/captcha",
+    "/.well-known/sgcaptcha",
+)
+
+_CLOUDFLARE_CHALLENGE_PATH = "/cdn-cgi/challenge-platform/"
+_CLOUDFLARE_CHALLENGE_TEXTS = (
+    "enable javascript and cookies",
+    "sorry, you have been blocked",
+)
+
+
+class BotChallengeError(RuntimeError):
+    """The board returned an anti-bot challenge instead of job listings.
+
+    Returning an empty URL set for a challenge page records a healthy crawl
+    and can tombstone every previously known posting.  Raising keeps the
+    cycle on the normal failure/retry path until the configured proxy or
+    origin recovers.
+    """
+
+
+def _raise_if_bot_challenge(url: str, html: str) -> None:
+    haystack = f"{url}\n{html}".lower()
+    is_siteground = any(path in haystack for path in _SITEGROUND_CHALLENGE_PATHS)
+    is_cloudflare = "<title>just a moment" in haystack or (
+        _CLOUDFLARE_CHALLENGE_PATH in haystack
+        and any(text in haystack for text in _CLOUDFLARE_CHALLENGE_TEXTS)
+    )
+    if is_siteground or is_cloudflare:
+        raise BotChallengeError(
+            f"bot challenge detected for {url}; configure or verify proxy transport"
+        )
 
 
 def _build_url_matcher(url_filter) -> re.Pattern | None:
@@ -178,6 +212,13 @@ async def _extract_links_rendered(
     await navigate(page, board_url, browser_config)
     await run_actions(page, browser_config.get("actions", []))
 
+    # SiteGround returns HTTP 202 followed by a meta-refresh into
+    # ``/.well-known/captcha``.  The page contains no job links, so without
+    # this guard a WAF block is indistinguishable from a genuinely empty
+    # board and the monitor reports a successful empty cycle.
+    html = await safe_content(page)
+    _raise_if_bot_challenge(page.url, html)
+
     links = await page.evaluate("""
         () => Array.from(document.querySelectorAll('a[href]'))
             .map(a => a.href)
@@ -215,6 +256,8 @@ async def _fetch_via_page(
           httpx-side ``fetch_with_retry``).
 
     Raises:
+        :exc:`BotChallengeError` when the response body is a recognized
+        anti-bot interstitial, including non-retryable HTTP 403 pages.
         :exc:`PaginationFetchError` when *retries* attempts have all
         hit a retryable failure (5xx including Cloudflare 520-526/530,
         408, 425, 429, **200-with-empty-body**, or a Playwright
@@ -263,6 +306,8 @@ async def _fetch_via_page(
             text = result.get("text") or ""
             resp_headers = result.get("headers") or {}
             last_status = status
+            if text:
+                _raise_if_bot_challenge(url, text)
             if status == 200:
                 if text:
                     # TDM-Reservation respect (#2842). Symmetric with the
@@ -293,9 +338,10 @@ async def _fetch_via_page(
                     status=status,
                 )
                 return None
-        except TDMReservedError:
-            # Publisher policy declaration — never retry, propagate to
-            # the monitor wrapper for graceful skip handling (#2842).
+        except (BotChallengeError, TDMReservedError):
+            # Anti-bot interstitials and publisher policy declarations are
+            # deterministic responses, not transport glitches. Propagate
+            # them so the monitor run fails/skips instead of truncating.
             raise
         except Exception as exc:  # page.evaluate raised — timeout, navigation, page closed
             last_exc = exc
@@ -405,6 +451,7 @@ async def _paginate_urls(
             log.info("dom.pagination.end", page=page_num, url=page_url)
             break
 
+        _raise_if_bot_challenge(page_url, html)
         new_urls = _extract_links_static(html, page_url, url_matcher)
         added: set[str] = set()
         for url in sorted(new_urls):
@@ -521,10 +568,16 @@ async def dom_discover(
     else:
         from src.shared.http_retry import fetch_with_retry
 
-        html = await fetch_with_retry(client, board_url, transient_403=True)
+        html = await fetch_with_retry(
+            client,
+            board_url,
+            transient_403=True,
+            retryable_statuses={202},
+        )
         if not html:
             log.warning("dom.fetch_failed", board_url=board_url)
             return set()
+        _raise_if_bot_challenge(board_url, html)
         urls = _extract_links_static(html, board_url, url_matcher)
         if pagination:
             urls = await _paginate_urls(

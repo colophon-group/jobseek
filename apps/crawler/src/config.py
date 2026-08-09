@@ -7,7 +7,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    # Retained only for direct transitional library calls. Production crawler
+    # commands and generated runtime environments never select this boundary.
     database_url: str = ""
+    # Provider-neutral boundary for web-owned data (currently watchlists).
+    # This may point at Supabase Free without making it a crawler mirror.
+    web_database_url: str = ""
     local_database_url: str = "postgresql://crawler:crawler@postgres:5432/crawler"
 
     # Proxy provider — applies to hosts with ``"proxy": true`` in
@@ -141,13 +146,13 @@ class Settings(BaseSettings):
     export_batch_limit: int = 2000
     export_downstream_backoff_base_seconds: float = 5.0
     export_downstream_backoff_max_seconds: float = 300.0
-    reconciliation_interval: int = 86400
-
-    # Typesense (disabled when typesense_admin_key is empty)
+    # Typesense (disabled when typesense_operations_key is empty). This is a
+    # generated, revocable key scoped to collections/documents/aliases plus
+    # read-only server metrics. The bootstrap key stays on the Typesense host.
     typesense_host: str = ""
     typesense_port: int = 8108
     typesense_protocol: str = "http"
-    typesense_admin_key: str = ""
+    typesense_operations_key: str = ""
     typesense_health_interval_seconds: float = 30.0
 
     # Enrichment (disabled by default — empty provider means skip)

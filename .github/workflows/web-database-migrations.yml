@@ -1,0 +1,336 @@
+name: Web Database Migrations
+
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Verify drift or apply the reviewed migration from main"
+        required: true
+        default: verify
+        type: choice
+        options:
+          - verify
+          - apply
+      confirmation:
+        description: "For apply, enter DROP-ONLY-JOB-POSTING-0086"
+        required: false
+        type: string
+      backup_restore_run_id:
+        description: "Successful protected web PostgreSQL restore-drill run ID"
+        required: false
+        type: string
+      crawler_deploy_run_id:
+        description: "Successful crawler runtime/producer deployment run ID"
+        required: false
+        type: string
+      typesense_backfill_run_id:
+        description: "Successful post-deploy Typesense backfill run ID"
+        required: false
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+  deployments: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: web-database-migrations-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'apply'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: jobseek_retirement_fixture
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d jobseek_retirement_fixture"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    outputs:
+      readiness_digest: ${{ steps.release-evidence.outputs.readiness_digest }}
+      web_deploy_sha: ${{ steps.release-evidence.outputs.web_deploy_sha }}
+      crawler_sha: ${{ steps.release-evidence.outputs.crawler_sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate immutable release evidence before requesting approval
+        id: release-evidence
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          CURRENT_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          GIT_REF: ${{ github.ref }}
+          DISPATCH_ACTOR: ${{ github.actor }}
+          DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
+          BACKUP_RESTORE_RUN_ID: ${{ inputs.backup_restore_run_id }}
+          CRAWLER_DEPLOY_RUN_ID: ${{ inputs.crawler_deploy_run_id }}
+          TYPESENSE_BACKFILL_RUN_ID: ${{ inputs.typesense_backfill_run_id }}
+          EVIDENCE_PHASE: pre-approval
+        run: bash scripts/validate-supabase-retirement-evidence.sh
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate job-posting retirement migration
+        working-directory: apps/web
+        run: >-
+          pnpm exec vitest run
+          src/db/__tests__/saved-job-snapshot-expand-migration.test.ts
+          src/db/__tests__/saved-job-snapshot-contract-migration.test.ts
+          src/db/__tests__/job-posting-retirement-migration.test.ts
+          src/db/__tests__/active-job-company-index-migration.test.ts
+          src/db/__tests__/watchlist-privacy-interview-migration.test.ts
+          src/db/__tests__/timestamptz-coverage.test.ts
+
+      - name: Type-check migration tooling
+        working-directory: apps/web
+        run: pnpm exec tsc --noEmit
+
+      - name: Execute retirement against PostgreSQL 17 fixtures
+        working-directory: apps/web
+        env:
+          RETIREMENT_FIXTURE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/jobseek_retirement_fixture
+        run: >-
+          pnpm exec tsx scripts/test-job-posting-retirement-pg17.ts
+          --database-url "$RETIREMENT_FIXTURE_DATABASE_URL"
+
+  authorize:
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'apply'
+    runs-on: ubuntu-latest
+    environment: production-migrations
+    timeout-minutes: 5
+    steps:
+      - name: Record protected owner authorization
+        env:
+          AUTHORIZING_ACTOR: ${{ github.actor }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          set -euo pipefail
+          test "$AUTHORIZING_ACTOR" = viktor-shcherb
+          test "$CONFIRMATION" = DROP-ONLY-JOB-POSTING-0086
+          echo "Protected production-migrations approval recorded; live evidence will be revalidated before any write." >> "$GITHUB_STEP_SUMMARY"
+
+  apply:
+    needs: [validate, authorize]
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'apply'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    concurrency:
+      group: crawler-production-sync
+      cancel-in-progress: false
+    env:
+      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      MIGRATION_REQUIRE_UNPOOLED: "true"
+      DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
+      EVENT_NAME: ${{ github.event_name }}
+      GIT_REF: ${{ github.ref }}
+      RETIREMENT_ATTESTATION_MODE: production-drop
+      RETIREMENT_CONFIRMATION: ${{ inputs.confirmation }}
+      RETIREMENT_BACKUP_RESTORE_RUN_ID: ${{ inputs.backup_restore_run_id }}
+      RETIREMENT_CRAWLER_DEPLOY_RUN_ID: ${{ inputs.crawler_deploy_run_id }}
+      RETIREMENT_TYPESENSE_BACKFILL_RUN_ID: ${{ inputs.typesense_backfill_run_id }}
+      RETIREMENT_WEB_DEPLOY_SHA: ${{ needs.validate.outputs.web_deploy_sha }}
+      RETIREMENT_READINESS_DIGEST: ${{ needs.validate.outputs.readiness_digest }}
+      TYPESENSE_PROTOCOL: https
+      TYPESENSE_HOST: typesense.colophon-group.org
+      TYPESENSE_PORT: "443"
+      TYPESENSE_SEARCH_KEY: ${{ secrets.TYPESENSE_SEARCH_KEY }}
+    steps:
+      - name: Require main and explicit apply confirmation
+        run: |
+          set -euo pipefail
+          test "$EVENT_NAME" = "workflow_dispatch"
+          test "$GIT_REF" = "refs/heads/main"
+          test "$DISPATCH_CONFIRMATION" = "DROP-ONLY-JOB-POSTING-0086"
+          test -n "$DATABASE_URL_UNPOOLED"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify audited retirement preflight
+        run: >-
+          pnpm --filter @jobseek/web db:migrate:verify-retirement --
+          preflight "$RUNNER_TEMP/web-database-preflight.json"
+
+      - name: Verify live Typesense collection parity
+        working-directory: apps/web
+        run: >-
+          pnpm exec tsx scripts/verify-typesense-retirement-readiness.ts
+          "$RUNNER_TEMP/typesense-retirement-readiness.json"
+
+      - name: Verify every saved posting in Typesense
+        working-directory: apps/web
+        run: >-
+          pnpm exec tsx scripts/verify-saved-job-typesense-coverage.ts
+          > "$RUNNER_TEMP/typesense-saved-job-coverage.json"
+
+      - name: Revalidate immutable release evidence immediately before DDL
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          CURRENT_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          GIT_REF: ${{ github.ref }}
+          DISPATCH_ACTOR: ${{ github.actor }}
+          DISPATCH_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          DISPATCH_CONFIRMATION: ${{ inputs.confirmation }}
+          BACKUP_RESTORE_RUN_ID: ${{ inputs.backup_restore_run_id }}
+          CRAWLER_DEPLOY_RUN_ID: ${{ inputs.crawler_deploy_run_id }}
+          TYPESENSE_BACKFILL_RUN_ID: ${{ inputs.typesense_backfill_run_id }}
+          EVIDENCE_PHASE: post-approval-pre-DDL
+        run: bash scripts/validate-supabase-retirement-evidence.sh
+
+      - name: Revalidate the exact live crawler runtime immediately before DDL
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          envs: EXPECTED_CRAWLER_REVISION
+          script: |
+            set -euo pipefail
+            [[ "$EXPECTED_CRAWLER_REVISION" =~ ^[0-9a-f]{40}$ ]]
+            active_revision="$(grep -E '^JOBSEEK_DEPLOY_REVISION=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
+            tag="$(grep -E '^CRAWLER_IMAGE_TAG=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
+            owner="$(grep -E '^OWNER=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
+            [[ "$active_revision" == "$EXPECTED_CRAWLER_REVISION" ]]
+            [[ -n "$owner" && -n "$tag" && "$tag" != latest ]]
+            exporter_id="$(docker ps -q \
+              --filter label=com.docker.compose.project=deploy \
+              --filter label=com.docker.compose.service=exporter)"
+            [[ "$(wc -w <<<"$exporter_id")" -eq 1 ]]
+            [[ "$(docker inspect --format '{{.Config.Image}}' "$exporter_id")" == "ghcr.io/${owner}/jobseek-crawler:${tag}" ]]
+            if docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$exporter_id" \
+              | cut -d= -f1 \
+              | grep -Eq '^(DATABASE_URL|DATABASE_URL_UNPOOLED|WEB_DATABASE_URL)$'; then
+              echo "Live exporter still has a relational mirror credential" >&2
+              exit 1
+            fi
+        env:
+          EXPECTED_CRAWLER_REVISION: ${{ needs.validate.outputs.crawler_sha }}
+
+      - name: Apply reviewed migrations
+        working-directory: apps/web
+        run: timeout --signal=TERM --kill-after=15s 12m pnpm db:migrate
+
+      - name: Verify exact postflight
+        run: >-
+          pnpm --filter @jobseek/web db:migrate:verify-retirement --
+          postflight "$RUNNER_TEMP/web-database-postflight.json"
+
+      - name: Publish non-sensitive evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo "### Web database migration evidence"
+            for evidence in \
+              "$RUNNER_TEMP"/web-database-preflight.json \
+              "$RUNNER_TEMP"/typesense-retirement-readiness.json \
+              "$RUNNER_TEMP"/typesense-saved-job-coverage.json \
+              "$RUNNER_TEMP"/web-database-postflight.json; do
+              if [[ -f "$evidence" ]]; then
+                echo "#### $(basename "$evidence")"
+                echo '```json'
+                sed -n '1,320p' "$evidence"
+                echo '```'
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Preserve retirement evidence artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: supabase-job-posting-retirement-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/web-database-preflight.json
+            ${{ runner.temp }}/typesense-retirement-readiness.json
+            ${{ runner.temp }}/typesense-saved-job-coverage.json
+            ${{ runner.temp }}/web-database-postflight.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  drift:
+    if: github.event_name == 'schedule' || inputs.mode == 'verify'
+    runs-on: ubuntu-latest
+    environment: production-migration-drift
+    timeout-minutes: 15
+    env:
+      # This environment must expose a LOGIN role with CONNECT and SELECT only.
+      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_READONLY }}
+    steps:
+      - name: Require the read-only production connection
+        run: test -n "$DATABASE_URL_UNPOOLED"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check for production baseline drift
+        run: >-
+          pnpm --filter @jobseek/web db:migrate:verify-retirement --
+          drift "$RUNNER_TEMP/web-database-drift.json"
+
+      - name: Publish non-sensitive evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo "### Web database drift evidence"
+            if [[ -f "$RUNNER_TEMP/web-database-drift.json" ]]; then
+              echo '```json'
+              sed -n '1,240p' "$RUNNER_TEMP/web-database-drift.json"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

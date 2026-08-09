@@ -7,6 +7,7 @@ import subprocess
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from src.shared.browser import (
@@ -25,6 +26,7 @@ from src.shared.browser import (
     _resolve_placeholders,
     _x_server_alive,
     dismiss_overlays,
+    is_target_closed_error,
     navigate,
     open_page,
     render,
@@ -45,10 +47,11 @@ def _make_page() -> MagicMock:
     page.evaluate = AsyncMock()
     page.content = AsyncMock(return_value="<html></html>")
 
-    # locator().first  —  count() and click() are async
+    # locator().first  —  count(), click(), and wait_for() are async
     locator_first = MagicMock()
     locator_first.count = AsyncMock(return_value=1)
     locator_first.click = AsyncMock()
+    locator_first.wait_for = AsyncMock()
     locator = MagicMock()
     locator.first = locator_first
     page.locator = MagicMock(return_value=locator)
@@ -78,6 +81,13 @@ def _make_pw(page: MagicMock | None = None) -> MagicMock:
 
 
 class TestConstants:
+    def test_target_closed_error_classification_is_playwright_specific(self):
+        marker = "Page.goto: Target page, context or browser has been closed"
+
+        assert is_target_closed_error(PlaywrightError(marker)) is True
+        assert is_target_closed_error(RuntimeError(marker)) is False
+        assert is_target_closed_error(PlaywrightError("Browser launch failed")) is False
+
     def test_user_agent_contains_chrome(self):
         assert "Chrome/133" in DEFAULT_USER_AGENT
 
@@ -117,6 +127,7 @@ class TestConstants:
                 "viewport",
                 "locale",
                 "skip_ssl",
+                "proxy",
             }
         )
         assert expected == BROWSER_KEYS
@@ -315,6 +326,24 @@ class TestRunActions:
         # Should not raise
         await run_actions(page, [{"action": "click", "selector": ".gone"}])
         page.locator.return_value.first.click.assert_not_awaited()
+
+    async def test_wait_for_action(self):
+        page = _make_page()
+        await run_actions(page, [{"action": "wait_for", "selector": "h2"}])
+        page.locator.assert_called_once_with("h2")
+        page.locator.return_value.first.wait_for.assert_awaited_once_with(
+            state="visible", timeout=0
+        )
+
+    async def test_wait_for_action_custom_state(self):
+        page = _make_page()
+        await run_actions(
+            page,
+            [{"action": "wait_for", "selector": "a.job", "state": "attached"}],
+        )
+        page.locator.return_value.first.wait_for.assert_awaited_once_with(
+            state="attached", timeout=0
+        )
 
     async def test_wait_action(self):
         page = _make_page()
@@ -1090,6 +1119,70 @@ class TestRepeatAction:
                 page, [{"action": "repeat", "selector": "button.more", "wait_ms": 500}]
             )
             mock_sleep.assert_awaited_once_with(0.5)
+
+
+# ---------------------------------------------------------------------------
+# TestPaginateCollectAction
+# ---------------------------------------------------------------------------
+
+
+class TestPaginateCollectAction:
+    async def test_collects_across_full_document_navigation(self):
+        """Page replacement must not destroy the pagination controller."""
+
+        class FakeNext:
+            def __init__(self, page):
+                self.page = page
+                self.first = self
+
+            async def count(self):
+                return int(self.page.index < len(self.page.pages) - 1)
+
+            async def click(self):
+                # A real anchor replaces the document here. The Python-side
+                # controller must resume against the newly loaded page.
+                self.page.index += 1
+
+        class FakePage:
+            def __init__(self):
+                self.pages = [
+                    ["https://example.com/job/1"],
+                    ["https://example.com/job/2"],
+                    ["https://example.com/job/3"],
+                ]
+                self.index = 0
+                self.injected = None
+
+            def locator(self, selector):
+                assert selector == "[data-testid=next-page]"
+                return FakeNext(self)
+
+            async def evaluate(self, _script, arg=None):
+                if arg is not None:
+                    self.injected = arg
+                    return None
+                return self.pages[self.index]
+
+        page = FakePage()
+        with patch.object(asyncio, "sleep", new_callable=AsyncMock):
+            await run_actions(
+                page,
+                [
+                    {
+                        "action": "paginate_collect",
+                        "next_selector": "[data-testid=next-page]",
+                        "wait_ms": 0,
+                        "max_pages": 10,
+                    }
+                ],
+            )
+
+        assert page.index == 2
+        assert page.injected == [
+            "https://example.com/job/1",
+            "https://example.com/job/2",
+            "https://example.com/job/3",
+        ]
 
 
 # ---------------------------------------------------------------------------

@@ -27,7 +27,7 @@ const mocks = vi.hoisted(() => ({
   cacheLife: vi.fn(),
   cacheTag: vi.fn(),
   search: vi.fn(),
-  dbExecute: vi.fn(),
+  locationDocs: [] as Array<Record<string, unknown>>,
   cached: vi.fn((_key: string, fn: () => unknown) => fn()),
 }));
 
@@ -43,10 +43,14 @@ vi.mock("@/lib/search/typesense-client", () => ({
     collections: () => ({ documents: () => ({ search: mocks.search }) }),
   }),
 }));
-vi.mock("@/db", () => ({ db: { execute: mocks.dbExecute } }));
-vi.mock("drizzle-orm", () => ({
-  sql: (strings: TemplateStringsArray, ..._values: unknown[]) =>
-    strings.join("?"),
+vi.mock("@/lib/search/typesense-taxonomy", () => ({
+  fetchLocationMacroDocuments: () =>
+    mocks.locationDocs.filter((doc) => doc.type === "macro"),
+  fetchLocationDocumentsWithAncestors: () => mocks.locationDocs,
+  fetchLocationDocumentsByIds: (ids: number[]) =>
+    mocks.locationDocs.filter((doc) => ids.includes(doc.location_id as number)),
+  fetchLocationDocumentsBySlugs: () => [],
+  fetchLocationDescendants: () => [],
 }));
 vi.mock("@/lib/search/typesense-filters", () => ({
   buildFilterString: () => "",
@@ -60,6 +64,7 @@ import { getGlobalLocationsGrouped } from "../locations";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.locationDocs = [];
 });
 
 /**
@@ -70,23 +75,13 @@ beforeEach(() => {
  * no city.
  */
 function chileSetup() {
-  mocks.dbExecute
-    .mockResolvedValueOnce([
-      // Locations: country, region, two cities + a macro for completeness
-      { id: 100, slug: "americas", type: "macro", parent_id: null },
-      { id: 200, slug: "chile", type: "country", parent_id: null },
-      { id: 210, slug: "santiago-region", type: "region", parent_id: 200 },
-      { id: 220, slug: "santiago", type: "city", parent_id: 210 },
-      { id: 230, slug: "valparaiso", type: "city", parent_id: 200 },
-    ])
-    .mockResolvedValueOnce([
-      { location_id: 100, locale: "en", name: "Americas" },
-      { location_id: 200, locale: "en", name: "Chile" },
-      { location_id: 210, locale: "en", name: "Santiago Region" },
-      { location_id: 220, locale: "en", name: "Santiago" },
-      { location_id: 230, locale: "en", name: "Valparaíso" },
-    ])
-    .mockResolvedValueOnce([]); // empty macro members
+  mocks.locationDocs = [
+    { id: "100", location_id: 100, slug: "americas", type: "macro", name_en: "Americas" },
+    { id: "200", location_id: 200, slug: "chile", type: "country", name_en: "Chile" },
+    { id: "210", location_id: 210, slug: "santiago-region", type: "region", name_en: "Santiago Region", parent_id: 200 },
+    { id: "220", location_id: 220, slug: "santiago", type: "city", name_en: "Santiago", parent_id: 210 },
+    { id: "230", location_id: 230, slug: "valparaiso", type: "city", name_en: "Valparaíso", parent_id: 200 },
+  ];
 
   mocks.search.mockImplementation((args: { filter_by?: string }) => {
     const isMacroQuery = (args.filter_by ?? "").includes("location_ids:[");
@@ -159,14 +154,9 @@ describe("getGlobalLocationsGrouped — hierarchical counts (#3033)", () => {
    * `g.regions.some((r) => r.locations.length > 0)` dropped these.
    */
   it("keeps countries that have direct facet counts but no city facet entries", async () => {
-    mocks.dbExecute
-      .mockResolvedValueOnce([
-        { id: 300, slug: "lichtenstein", type: "country", parent_id: null },
-      ])
-      .mockResolvedValueOnce([
-        { location_id: 300, locale: "en", name: "Liechtenstein" },
-      ])
-      .mockResolvedValueOnce([]);
+    mocks.locationDocs = [
+      { id: "300", location_id: 300, slug: "lichtenstein", type: "country", name_en: "Liechtenstein" },
+    ];
 
     mocks.search.mockImplementation((args: { filter_by?: string }) => {
       const isMacroQuery = (args.filter_by ?? "").includes("location_ids:[");

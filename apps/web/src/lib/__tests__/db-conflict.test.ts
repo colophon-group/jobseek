@@ -40,6 +40,24 @@ describe("isUniqueViolation", () => {
     expect(isUniqueViolation(e, "idx_sj_user_posting")).toBe(false);
   });
 
+  it("matches the postgres error nested inside Drizzle's query-error cause", () => {
+    const cause = new Error(
+      'duplicate key value violates unique constraint "idx_sj_user_posting"',
+    ) as Error & { code: string; constraint_name: string };
+    cause.code = "23505";
+    cause.constraint_name = "idx_sj_user_posting";
+
+    const wrapper = new Error("Failed query", { cause });
+    expect(isUniqueViolation(wrapper, "idx_sj_user_posting")).toBe(true);
+    expect(isUniqueViolation(wrapper, "idx_fc_user_company")).toBe(false);
+  });
+
+  it("handles cyclic cause chains without looping", () => {
+    const wrapper = new Error("Failed query") as Error & { cause?: unknown };
+    wrapper.cause = wrapper;
+    expect(isUniqueViolation(wrapper, "idx_sj_user_posting")).toBe(false);
+  });
+
   it("rejects null / undefined / non-object errors", () => {
     expect(isUniqueViolation(null, "x")).toBe(false);
     expect(isUniqueViolation(undefined, "x")).toBe(false);

@@ -278,11 +278,12 @@ async def discover(
     response = await client.get(url, follow_redirects=True)
     if response.status_code == 404:
         # Recruitee 404s when the company subdomain (slug) has been
-        # removed. Surface as a "gone" signal for one-shot disable.
-        # See issue #2215.
+        # removed. Surface as a provider-gone confirmation signal.
+        # See issues #2215 and #6156.
         raise BoardGoneError(
             f"Recruitee API base {api_base!r} returned 404",
             url=str(response.url),
+            status_code=response.status_code,
         )
     response.raise_for_status()
 

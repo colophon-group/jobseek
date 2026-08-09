@@ -1,101 +1,53 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 import polars as pl
-from structlog.testing import capture_logs
 
 import src.sync as sync
-
-
-class FakeConn:
-    def __init__(self, fetch_results: dict[str, list[dict]]) -> None:
-        self.fetch_results = fetch_results
-        self.executed: list[str] = []
-
-    async def fetch(self, sql: str, *args) -> list[dict]:
-        del args
-        key = " ".join(sql.split())
-        if key not in self.fetch_results:
-            raise AssertionError(f"unexpected fetch: {key}")
-        return self.fetch_results[key]
-
-    async def execute(self, sql: str, *args) -> str:
-        del args
-        self.executed.append(" ".join(sql.split()))
-        return "OK"
 
 
 def _df() -> pl.DataFrame:
     return pl.DataFrame({"slug": ["one"]})
 
 
-async def _noop(*args, **kwargs) -> None:
-    del args, kwargs
+async def test_lookup_table_sync_uses_only_local_natural_key_upserts(monkeypatch):
+    local_conn = AsyncMock()
+    calls: list[tuple[str, object]] = []
 
+    async def record(label: str, conn, frame, dry_run: bool) -> None:
+        assert conn is local_conn
+        assert frame is not None
+        assert dry_run is False
+        calls.append((label, conn))
 
-def _patch_non_identity_sync(monkeypatch) -> None:
-    monkeypatch.setattr(sync, "sync_occupation_domains", _noop)
-    monkeypatch.setattr(sync, "sync_occupations", _noop)
-    monkeypatch.setattr(sync, "sync_seniority", _noop)
-    monkeypatch.setattr(sync, "sync_technologies", _noop)
-    monkeypatch.setattr(sync, "sync_industries", _noop)
-    monkeypatch.setattr(sync, "_populate_locations_if_empty", _noop)
-    monkeypatch.setattr(sync, "_populate_currency_rates_if_empty", _noop)
-
-
-async def test_lookup_table_sync_skips_exclusive_ddl_when_identities_match(monkeypatch):
-    _patch_non_identity_sync(monkeypatch)
-    rows_by_query = {
-        "SELECT id, slug FROM occupation_domain": [{"id": 1, "slug": "domain"}],
-        "SELECT id, slug FROM occupation": [{"id": 2, "slug": "occupation"}],
-        "SELECT id, slug FROM seniority": [{"id": 3, "slug": "seniority"}],
-    }
-    supa_conn = FakeConn(rows_by_query)
-    local_conn = FakeConn(rows_by_query)
-
-    with capture_logs() as logs:
-        await sync.sync_lookup_tables_local(
-            supa_conn,
-            local_conn,
-            occupation_domains=_df(),
-            occupations=_df(),
-            seniority_df=_df(),
-            technologies=_df(),
-            industries=_df(),
-            dry_run=False,
-        )
-
-    assert not any("ALTER TABLE job_posting" in sql for sql in local_conn.executed)
-    assert not any(sql.startswith("DELETE FROM") for sql in local_conn.executed)
-    assert any(log["event"] == "sync.lookup_tables_local.identity_up_to_date" for log in logs)
-    assert not any(log["event"] == "sync.lookup_tables_local.mirrored" for log in logs)
-
-
-async def test_lookup_table_sync_mirrors_when_identities_drift(monkeypatch):
-    _patch_non_identity_sync(monkeypatch)
-    mirrored: list[tuple[str, str, list[int], list[str]]] = []
-
-    async def fake_mirror_table(conn, table: str, sql: str, ids: list[int], slugs: list[str]):
-        del conn
-        mirrored.append((table, sql, ids, slugs))
-
-    monkeypatch.setattr(sync, "_mirror_table", fake_mirror_table)
-    supa_conn = FakeConn(
-        {
-            "SELECT id, slug FROM occupation_domain": [{"id": 1, "slug": "domain"}],
-            "SELECT id, slug FROM occupation": [{"id": 2, "slug": "occupation"}],
-            "SELECT id, slug FROM seniority": [{"id": 3, "slug": "seniority"}],
-        }
+    monkeypatch.setattr(
+        sync,
+        "sync_occupation_domains",
+        lambda conn, frame, dry_run: record("domains", conn, frame, dry_run),
     )
-    local_conn = FakeConn(
-        {
-            "SELECT id, slug FROM occupation_domain": [{"id": 10, "slug": "domain"}],
-            "SELECT id, slug FROM occupation": [{"id": 20, "slug": "occupation"}],
-            "SELECT id, slug FROM seniority": [{"id": 30, "slug": "seniority"}],
-        }
+    monkeypatch.setattr(
+        sync,
+        "sync_occupations",
+        lambda conn, frame, dry_run: record("occupations", conn, frame, dry_run),
+    )
+    monkeypatch.setattr(
+        sync,
+        "sync_seniority",
+        lambda conn, frame, dry_run: record("seniority", conn, frame, dry_run),
+    )
+    monkeypatch.setattr(
+        sync,
+        "sync_technologies",
+        lambda conn, frame, dry_run: record("technologies", conn, frame, dry_run),
+    )
+    monkeypatch.setattr(
+        sync,
+        "sync_industries",
+        lambda conn, frame, dry_run: record("industries", conn, frame, dry_run),
     )
 
     await sync.sync_lookup_tables_local(
-        supa_conn,
         local_conn,
         occupation_domains=_df(),
         occupations=_df(),
@@ -105,25 +57,101 @@ async def test_lookup_table_sync_mirrors_when_identities_drift(monkeypatch):
         dry_run=False,
     )
 
-    assert any(
-        "ALTER TABLE job_posting DROP CONSTRAINT IF EXISTS job_posting_occupation_id_fkey" in sql
-        for sql in local_conn.executed
-    )
-    assert any(
-        "ALTER TABLE job_posting DROP CONSTRAINT IF EXISTS job_posting_seniority_id_fkey" in sql
-        for sql in local_conn.executed
-    )
-    assert any(sql == "DELETE FROM occupation" for sql in local_conn.executed)
-    assert any(
-        "ALTER TABLE job_posting ADD CONSTRAINT job_posting_occupation_id_fkey" in sql
-        for sql in local_conn.executed
-    )
-    assert any(
-        "ALTER TABLE job_posting ADD CONSTRAINT job_posting_seniority_id_fkey" in sql
-        for sql in local_conn.executed
-    )
-    assert mirrored == [
-        ("occupation_domain", sync._MIRROR_OCCUPATION_DOMAINS, [1], ["domain"]),
-        ("occupation", sync._MIRROR_OCCUPATIONS, [2], ["occupation"]),
-        ("seniority", sync._MIRROR_SENIORITY, [3], ["seniority"]),
+    assert [label for label, _conn in calls] == [
+        "domains",
+        "occupations",
+        "seniority",
+        "technologies",
+        "industries",
     ]
+    local_conn.fetch.assert_not_awaited()
+    local_conn.execute.assert_not_awaited()
+
+
+def test_local_lookup_sql_never_updates_existing_ids() -> None:
+    for sql in (
+        sync._UPSERT_OCCUPATION_DOMAINS,
+        sync._UPSERT_OCCUPATIONS,
+        sync._UPSERT_SENIORITY,
+        sync._UPSERT_TECHNOLOGIES,
+    ):
+        normalized = " ".join(sql.split())
+        assert "SET id" not in normalized
+        assert "DELETE" not in normalized
+
+
+async def test_legacy_identity_drift_fails_without_writes() -> None:
+    local_conn = AsyncMock()
+    mirror_conn = AsyncMock()
+
+    async def local_fetch(sql: str):
+        if "FROM company" in sql:
+            return [{"id": "local-id", "slug": "acme"}]
+        return []
+
+    async def mirror_fetch(sql: str):
+        if "FROM company" in sql:
+            return [{"id": "mirror-id", "slug": "acme"}]
+        return []
+
+    local_conn.fetch = AsyncMock(side_effect=local_fetch)
+    mirror_conn.fetch = AsyncMock(side_effect=mirror_fetch)
+
+    try:
+        await sync._assert_legacy_identity_alignment(local_conn, mirror_conn)
+    except RuntimeError as exc:
+        assert "legacy mirror identity drift" in str(exc)
+        assert "company" in str(exc)
+    else:
+        raise AssertionError("identity drift must fail closed")
+
+    local_conn.execute.assert_not_awaited()
+    mirror_conn.execute.assert_not_awaited()
+
+
+async def test_legacy_preflight_allows_slug_stable_board_url_change() -> None:
+    local_conn = AsyncMock()
+    mirror_conn = AsyncMock()
+
+    async def local_fetch(sql: str):
+        if "FROM job_board" in sql:
+            return [
+                {
+                    "id": "stable-id",
+                    "board_slug": "acme-jobs",
+                    "board_url": "https://new.acme.test/jobs",
+                }
+            ]
+        return []
+
+    async def mirror_fetch(sql: str):
+        if "FROM job_board" in sql:
+            return [
+                {
+                    "id": "stable-id",
+                    "board_slug": "acme-jobs",
+                    "board_url": "https://old.acme.test/jobs",
+                }
+            ]
+        return []
+
+    local_conn.fetch = AsyncMock(side_effect=local_fetch)
+    mirror_conn.fetch = AsyncMock(side_effect=mirror_fetch)
+
+    await sync._assert_legacy_identity_alignment(local_conn, mirror_conn)
+
+
+async def test_legacy_sequence_alignment_uses_highest_mirror_identity() -> None:
+    mirror_conn = AsyncMock()
+
+    await sync._mirror_table(
+        mirror_conn,
+        "occupation",
+        sync._MIRROR_OCCUPATIONS,
+        [4, 7],
+        ["one", "two"],
+    )
+
+    sequence_sql = mirror_conn.execute.await_args_list[1].args[0]
+    assert "SELECT MAX(id) FROM occupation" in sequence_sql
+    assert mirror_conn.execute.await_args_list[1].args[1:] == ()
