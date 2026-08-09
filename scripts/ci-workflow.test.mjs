@@ -1175,6 +1175,10 @@ test("Typesense credentials are separated by consumer and host promotion is manu
     deployTypesenseHostWorkflow,
     /\.State\.Status[\s\S]*docker logs "\$container"[\s\S]*docker inspect "\$container"/,
   );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /cleanup\(\)[\s\S]*docker rm -f "\$container"[\s\S]*sudo rm -rf -- "\$root"/,
+  );
   assert.doesNotMatch(
     deployTypesenseHostWorkflow,
     /--api-key[= ]\$\{\{/,

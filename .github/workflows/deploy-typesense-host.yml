@@ -64,7 +64,8 @@ jobs:
           container=jobseek-typesense-config-smoke
           cleanup() {
             docker rm -f "$container" >/dev/null 2>&1 || true
-            rm -rf "$root"
+            # Typesense runs as root and leaves root-owned files in the bind mount.
+            sudo rm -rf -- "$root"
           }
           trap cleanup EXIT
           install -d -m 0700 "$root/data"
