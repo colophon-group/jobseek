@@ -115,6 +115,7 @@ _ATS_URL_RE = re.compile(
     r"|hrmos\.co/pages/[a-z0-9][a-z0-9_-]{0,62}/jobs"
     r"(?:/[A-Za-z0-9_-]{1,64})?/?(?=[#\"'<\s]|$)"
     r"|jobs\.lever\.co/[\w-]+"
+    r"|(?:www\.)?linkedin\.com/company/[\w-]+/jobs/?"
     r"|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.zhiye\.com"
     r"(?:/(?:Social|social|index|jobs|SocialList|CampusList|InternList))?/?"
     r"(?:\?[^\"'<\s]*)?(?=[#\"'<\s]|$)"
