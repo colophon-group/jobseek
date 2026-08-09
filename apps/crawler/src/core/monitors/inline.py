@@ -77,13 +77,37 @@ async def _fetch_html(
     rendering gateway. Synthetic job URLs must continue to use ``board_url``.
     """
     configured_urls = metadata.get("fetch_urls")
-    if isinstance(configured_urls, list) and configured_urls:
-        fetch_urls = [url for url in configured_urls if isinstance(url, str) and url]
-        if not fetch_urls:
-            fetch_urls = [board_url]
+    if configured_urls is None:
+        fetch_url = metadata.get("fetch_url") or board_url
+        if not isinstance(fetch_url, str):
+            raise ValueError("inline fetch_url must be a non-empty string")
+        fetch_candidates = [(fetch_url, None)]
     else:
-        fetch_urls = [metadata.get("fetch_url") or board_url]
-    fetch_headers = metadata.get("fetch_headers") or None
+        if not isinstance(configured_urls, list) or not configured_urls:
+            raise ValueError("inline fetch_urls must be a non-empty list")
+        fetch_candidates = []
+        for index, candidate in enumerate(configured_urls):
+            if isinstance(candidate, str):
+                fetch_url = candidate
+                fetch_headers = None
+            elif isinstance(candidate, dict):
+                fetch_url = candidate.get("url")
+                fetch_headers = candidate.get("headers")
+                if fetch_headers is not None and (
+                    not isinstance(fetch_headers, dict)
+                    or any(
+                        not isinstance(key, str) or not isinstance(value, str)
+                        for key, value in fetch_headers.items()
+                    )
+                ):
+                    raise ValueError(
+                        f"inline fetch_urls[{index}].headers must map strings to strings"
+                    )
+            else:
+                raise ValueError(f"inline fetch_urls[{index}] must be a URL string or object")
+            if not isinstance(fetch_url, str) or not fetch_url:
+                raise ValueError(f"inline fetch_urls[{index}].url must be a non-empty string")
+            fetch_candidates.append((fetch_url, fetch_headers))
     required_text = metadata.get("fetch_contains")
 
     def validate(html: str, fetch_url: str) -> str:
@@ -94,7 +118,7 @@ async def _fetch_html(
     last_error: Exception | None = None
     if metadata.get("render") and pw:
         browser_cfg = {k: v for k, v in metadata.items() if k in BROWSER_KEYS}
-        for fetch_url in fetch_urls:
+        for fetch_url, _fetch_headers in fetch_candidates:
             try:
                 async with open_page(
                     pw, browser_cfg, use_proxy=bool(metadata.get("proxy"))
@@ -105,7 +129,7 @@ async def _fetch_html(
                 last_error = exc
                 log.warning("inline.fetch_fallback", url=fetch_url, error=str(exc))
     else:
-        for fetch_url in fetch_urls:
+        for fetch_url, fetch_headers in fetch_candidates:
             try:
                 resp = await http.get(
                     fetch_url,

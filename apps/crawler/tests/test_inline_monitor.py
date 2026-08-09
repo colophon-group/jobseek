@@ -149,9 +149,11 @@ class _FakeClient:
         self._html = html
         self._responses = responses or {}
         self.requested_urls: list[str] = []
+        self.request_headers: list[dict | None] = []
 
     async def get(self, url, **kwargs):
         self.requested_urls.append(str(url))
+        self.request_headers.append(kwargs.get("headers"))
         return self._responses.get(str(url), _FakeResponse(self._html))
 
 
@@ -242,15 +244,17 @@ async def test_discover_fetch_urls_falls_back_and_validates_required_text():
         responses={
             blocked: _FakeResponse("Access denied", 403),
             incomplete: _FakeResponse("<html><head><title>Gateway error</title></head></html>"),
-            working: _FakeResponse(
-                "<html><head><title>Evergreen Driver</title></head></html>"
-            ),
+            working: _FakeResponse("<html><head><title>Evergreen Driver</title></head></html>"),
         },
     )
     board = {
         "board_url": blocked,
         "metadata": {
-            "fetch_urls": [blocked, incomplete, working],
+            "fetch_urls": [
+                blocked,
+                {"url": incomplete, "headers": {"X-No-Cache": "true"}},
+                working,
+            ],
             "fetch_contains": "Evergreen Driver",
             "steps": [{"tag": "title", "field": "title"}],
             "defaults": {
@@ -263,8 +267,28 @@ async def test_discover_fetch_urls_falls_back_and_validates_required_text():
     jobs = await discover(board, client)
 
     assert client.requested_urls == [blocked, incomplete, working]
+    assert client.request_headers == [None, {"X-No-Cache": "true"}, None]
     assert [job.title for job in jobs] == ["Evergreen Driver"]
     assert jobs[0].url.startswith(f"{blocked}?_jid=")
+
+
+@pytest.mark.asyncio
+async def test_discover_rejects_invalid_fetch_candidate_headers():
+    board = {
+        "board_url": "https://careers.example.com/driver",
+        "metadata": {
+            "fetch_urls": [
+                {
+                    "url": "https://render.example.net/driver",
+                    "headers": {"Authorization": 123},
+                }
+            ],
+            "steps": [{"tag": "title", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="headers must map strings to strings"):
+        await discover(board, _FakeClient(""))
 
 
 @pytest.mark.asyncio

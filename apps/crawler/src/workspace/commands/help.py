@@ -898,10 +898,13 @@ inline — Single-Page Extraction (rich)
     {
       "fetch_urls": [
         "https://company.example/jobs",
-        "https://render.example.com/company/jobs"
+        "https://render.example.com/company/jobs",
+        {
+          "url": "https://reader.example.com/company/jobs",
+          "headers": {"X-No-Cache": "true"}
+        }
       ],
       "fetch_contains": "Open positions",
-      "fetch_headers": {"X-No-Cache": "true"},
       "render": true,
       "steps": [
         {"tag": "h3", "field": "title"},
@@ -918,14 +921,14 @@ inline — Single-Page Extraction (rich)
     }
 
     render       true = Playwright, false = static HTTP (default: false)
-    fetch_urls   Optional ordered URLs used only to read the page. Failed URLs
-                 fall through to the next equivalent representation. Synthetic
-                 job URLs remain on board_url.
+    fetch_urls   Optional ordered URLs used only to read the page. Each entry is
+                 a URL string or {"url": ..., "headers": {...}} object. Headers
+                 are scoped to that exact candidate and are never forwarded to
+                 other hosts. Failed URLs fall through to the next equivalent
+                 representation. Synthetic job URLs remain on board_url.
     fetch_contains
                  Required text that every accepted representation must contain.
                  A response without it falls through to the next fetch URL.
-    fetch_headers
-                 Optional request headers applied to each static HTTP fetch.
     steps        Extraction steps run once per job (see: ws help steps).
                  The first step with a field (usually title) is the stop
                  condition — when it can't find a match, extraction ends.
