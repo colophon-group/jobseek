@@ -91,6 +91,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "recruiter_co_kr",
         "rss",
         "traffit",
+        "typify",
         "ukg",
     }
 )
@@ -102,7 +103,8 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 # Crawler types whose ``auto_scraper_type()`` resolves to ("skip", None) —
 # i.e. rich monitors with no enrichment. This is ``_RICH_MONITORS`` minus
 # ``oracle_hcm``, ``adp``, ``bamboohr``, ``beisen``, ``inploi``, ``linkedin``,
-# ``paycom``, ``pageup``, ``paylocity``, legacy ``rss`` and ``ukg``, which auto-resolve to
+# ``paycom``, ``pageup``, ``paylocity``, legacy ``rss``, ``typify`` and ``ukg``, which
+# auto-resolve to
 # enrichment scrapers (BambooHR uses a
 # generic API preset;
 # LinkedIn and Paycom use dedicated detail scrapers).
@@ -120,6 +122,7 @@ _AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {
     "paycom",
     "paylocity",
     "rss",
+    "typify",
     "ukg",
 }
 
@@ -446,6 +449,8 @@ def auto_scraper_type(
     if monitor_type == "oracle_hcm":
         return ("oracle_hcm", {"enrich": ["description"]})
     if monitor_type == "inploi":
+        return ("json-ld", {"enrich": ["description"]})
+    if monitor_type == "typify":
         return ("json-ld", {"enrich": ["description"]})
     if monitor_type == "bamboohr":
         return (
