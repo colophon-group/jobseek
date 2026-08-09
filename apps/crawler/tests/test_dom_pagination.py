@@ -58,11 +58,13 @@ class TestExtractLinksStatic:
             "https://example.com/jobs/123",
             "https://example.com/about",
             "https://example.com/career/456",
+            "https://example.com/stellenangebote/detail/789",
         )
         urls = _extract_links_static(html, "https://example.com")
         assert urls == {
             "https://example.com/jobs/123",
             "https://example.com/career/456",
+            "https://example.com/stellenangebote/detail/789",
         }
 
     def test_resolves_relative_urls(self):

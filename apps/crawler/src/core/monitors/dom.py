@@ -59,7 +59,9 @@ _BROWSER_FETCH_JS = (
     "}"
 )
 
-_JOB_KEYWORDS = frozenset({"job", "career", "position", "posting", "opening", "role", "vacancy"})
+_JOB_KEYWORDS = frozenset(
+    {"job", "career", "position", "posting", "opening", "role", "vacancy", "stellenangebot"}
+)
 
 _LINKEDIN_JOB_FILTER = r"linkedin\.com/jobs/view/"
 _LINKEDIN_JOB_TRANSFORM = {
