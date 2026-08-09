@@ -63,6 +63,7 @@ jobs:
         run: >
           node --test
           scripts/ci-workflow.test.mjs
+          scripts/dependabot-health.test.mjs
           scripts/crawler-version.test.mjs
           scripts/crawler-host-hygiene.test.mjs
           scripts/docs-index.test.mjs

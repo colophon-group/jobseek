@@ -13,7 +13,7 @@ dependencies = [
     "structlog>=24.4",
     "jmespath>=1.0",
     "playwright>=1.58.0",
-    "huggingface_hub>=1.24.0",
+    "huggingface_hub>=1.27.0",
     # `ws task` renders Jinja2 templates from steps/parallel/orchestrator.md.
     # Missing this dependency made `ws task --issue N` crash on every fresh
     # install with `ModuleNotFoundError: No module named 'jinja2'`.
@@ -29,9 +29,9 @@ dependencies = [
     # which src.processing.cpu imports at module load. polars is a heavy
     # dep but unavoidable for the slim wheel until those resolvers move
     # to lazy imports.
-    "polars>=1.38.1",
+    "polars>=1.43.2",
     # src.metrics imports from prometheus_client (used by src.processing.board).
-    "prometheus-client>=0.21",
+    "prometheus-client>=0.26.0",
 ]
 
 [project.scripts]
