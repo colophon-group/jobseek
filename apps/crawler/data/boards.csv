@@ -525,6 +525,7 @@ automattic-careers,automattic-careers-greenhouse,https://job-boards.greenhouse.i
 autopilot,autopilot-recruitee,https://autopilot.recruitee.com,recruitee,"{""token"": ""autopilot""}",skip,
 autoproff,autoproff-greenhouse,https://job-boards.greenhouse.io/autoproff,greenhouse,"{""token"": ""autoproff""}",skip,
 autoscout24,autoscout24-greenhouse,https://job-boards.greenhouse.io/autoscout24,greenhouse,"{""token"": ""autoscout24""}",skip,
+autozone,autozone-careers,https://egud.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 autura,autura-greenhouse,https://job-boards.greenhouse.io/autura,greenhouse,"{""token"": ""autura""}",skip,
 ava-labs,ava-labs-greenhouse,https://job-boards.greenhouse.io/avalabs,greenhouse,"{""token"": ""avalabs""}",skip,
 avala,avala-ashby,https://jobs.ashbyhq.com/avala,ashby,"{""token"": ""avala""}",skip,

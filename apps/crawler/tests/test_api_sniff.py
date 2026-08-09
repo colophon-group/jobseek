@@ -851,6 +851,49 @@ class TestPaginateAllWithFetchFn:
         assert len(items) >= 10  # At least page 1
 
     @pytest.mark.asyncio
+    async def test_paginate_with_compound_query_suffix(self):
+        """Oracle HCM requires offset inside its finder query value."""
+        page1_items = [{"title": f"Job {i}"} for i in range(1, 4)]
+        page2_items = [{"title": f"Job {i}"} for i in range(4, 7)]
+        fetched: list[tuple[str, str | None]] = []
+
+        async def mock_fetch(method, url, headers, body):
+            fetched.append((url, body))
+            assert url.endswith(",offset=3")
+            return {"items": [{"requisitionList": page2_items, "total": 6}]}
+
+        ex = _make_exchange(
+            url="https://example.com/jobs?finder=findReqs;siteNumber=CX_1,limit=2",
+            body={"items": [{"requisitionList": page1_items, "total": 6}]},
+        )
+        result = JobListResult(
+            candidate=ArrayCandidate(
+                exchange=ex,
+                json_path="items[0].requisitionList",
+                items=page1_items,
+            ),
+            url_field=None,
+            total_count=6,
+            pagination=PaginationInfo(
+                param_name="offset",
+                style="offset",
+                start_value=0,
+                increment=3,
+                location="suffix",
+            ),
+        )
+
+        items = await paginate_all(mock_fetch, result, max_pages=5)
+
+        assert items == page1_items + page2_items
+        assert fetched == [
+            (
+                "https://example.com/jobs?finder=findReqs;siteNumber=CX_1,limit=2,offset=3",
+                None,
+            )
+        ]
+
+    @pytest.mark.asyncio
     async def test_paginate_no_pagination(self):
         """paginate_all returns items as-is when no pagination info."""
         page1_items = [{"title": f"Job {i}"} for i in range(5)]
