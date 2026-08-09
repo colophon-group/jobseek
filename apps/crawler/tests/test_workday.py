@@ -8,6 +8,7 @@ import httpx
 import pytest
 
 from src.core.monitors.workday import (
+    _TRUNCATED_PATH,
     PAGE_SIZE,
     _api_base,
     _api_list_stream,
@@ -494,6 +495,83 @@ class TestInventoryCompleteness:
                         "co", "wd1", ["SiteA", "SiteB"], client
                     )
                 ]
+
+
+class TestDirectPaginationFallback:
+    async def test_paginates_past_cap_when_no_safe_facet_exists(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module, "_API_RESULT_CAP", 40)
+        offsets: list[int] = []
+
+        def handler(request):
+            payload = json.loads(request.read())
+            offset = payload["offset"]
+            offsets.append(offset)
+            paths = [f"/job/{i}" for i in range(offset, min(offset + PAGE_SIZE, 45))]
+            return httpx.Response(
+                200,
+                json={"total": 45, "jobPostings": [{"externalPath": p} for p in paths]},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            batches = [
+                batch
+                async for batch in _api_list_stream("co", "wd1", "Site", client)
+            ]
+
+        assert [path for batch in batches for path in batch] == [
+            f"/job/{i}" for i in range(45)
+        ]
+        assert [len(batch) for batch in batches] == [20, 20, 5]
+        assert offsets == [0, 0, 20, 40]
+
+    async def test_fails_when_direct_offsets_are_still_capped(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module, "_API_RESULT_CAP", 40)
+
+        def handler(request):
+            payload = json.loads(request.read())
+            offset = payload["offset"]
+            paths = [f"/job/{i}" for i in range(offset, min(offset + PAGE_SIZE, 40))]
+            return httpx.Response(
+                200,
+                json={"total": 45, "jobPostings": [{"externalPath": p} for p in paths]},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(
+                RuntimeError, match="returned 40 of 45 expected unique jobs"
+            ):
+                _ = [
+                    batch
+                    async for batch in _api_list_stream("co", "wd1", "Site", client)
+                ]
+
+    async def test_marks_direct_fallback_truncated_at_monitor_cap(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module, "_API_RESULT_CAP", 20)
+        monkeypatch.setattr(wd_module, "MAX_JOBS", 40)
+
+        def handler(request):
+            payload = json.loads(request.read())
+            offset = payload["offset"]
+            paths = [f"/job/{i}" for i in range(offset, min(offset + PAGE_SIZE, 45))]
+            return httpx.Response(
+                200,
+                json={"total": 45, "jobPostings": [{"externalPath": p} for p in paths]},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            batches = [
+                batch
+                async for batch in _api_list_stream("co", "wd1", "Site", client)
+            ]
+
+        assert sum(path != _TRUNCATED_PATH for batch in batches for path in batch) == 40
+        assert batches[-1] == [_TRUNCATED_PATH]
 
 
 class TestDiscover:
