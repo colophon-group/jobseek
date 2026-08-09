@@ -82,7 +82,8 @@ def _title_from_url(url: str, pattern: str | None = None) -> str | None:
     if pattern:
         captured = _extract_pattern(name, pattern)
         if captured:
-            return captured.replace("_", " ")
+            captured = captured.replace("_", " ").replace("-", " ")
+            return re.sub(r"\s+", " ", captured).strip() or None
     name = name.replace("_", " ").replace("-", " ")
     name = re.sub(r"\s+", " ", name).strip()
     return name if name else None
