@@ -19,12 +19,18 @@ from src.core.monitors.workday import (
     discover,
 )
 from src.core.scrapers.workday import (
+    WorkdayDetailPayloadError,
     _detail_url,
     _normalize_workday_location,
     _parse_detail,
     _parse_job_url,
     _parse_location_type,
     scrape,
+)
+from src.shared.http import (
+    WORKDAY_LIST_303_INCIDENT,
+    RequestHostTrackingTransport,
+    track_request_hosts,
 )
 from src.shared.http_retry import PaginationFetchError
 
@@ -549,6 +555,80 @@ class TestScrape:
             assert result.employment_type == "Full-time"
             assert result.job_location_type == "remote"
 
+    async def test_retries_invalid_success_payload_and_requests_json(self):
+        """A transient empty 200 must not fail thousands of detail scrapes at once."""
+        requests = []
+        responses = iter(
+            [
+                httpx.Response(200, content=b"", headers={"content-type": "text/html"}),
+                httpx.Response(
+                    200,
+                    json={"jobPostingInfo": {"title": "Recovered engineer"}},
+                ),
+            ]
+        )
+
+        def handler(request):
+            requests.append(request)
+            return next(responses)
+
+        sleep = AsyncMock()
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                result = await scrape(
+                    "https://co.wd1.myworkdayjobs.com/Site/job/X/JR001",
+                    {},
+                    client,
+                    sleep=sleep,
+                )
+
+        assert result.title == "Recovered engineer"
+        assert len(requests) == 2
+        assert all(request.headers["accept"] == "application/json" for request in requests)
+        assert all("content-type" not in request.headers for request in requests)
+        sleep.assert_awaited_once()
+        assert tracker.last_status_code == 200
+        assert tracker.last_application_error is None
+        assert tracker.transient_failure_host is None
+
+    async def test_invalid_success_payload_exhaustion_is_classified_and_redacted(self):
+        """Final errors carry safe diagnostics without logging response content."""
+        secret_body = b"<html>upstream challenge with sensitive request echo</html>"
+        transport = RequestHostTrackingTransport(
+            httpx.MockTransport(
+                lambda request: httpx.Response(
+                    200,
+                    content=secret_body,
+                    headers={"content-type": "text/html; charset=utf-8"},
+                )
+            )
+        )
+        sleep = AsyncMock()
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                with pytest.raises(WorkdayDetailPayloadError) as raised:
+                    await scrape(
+                        "https://co.wd1.myworkdayjobs.com/Site/job/X/JR001",
+                        {},
+                        client,
+                        sleep=sleep,
+                    )
+
+        error = raised.value
+        assert error.attempts == 3
+        assert error.reason == "json_decode"
+        assert error.content_type == "text/html; charset=utf-8"
+        assert error.body_length == len(secret_body)
+        assert "sensitive request echo" not in str(error)
+        assert len(error.body_sha256) == 16
+        assert sleep.await_count == 2
+        assert tracker.last_status_code == 200
+        assert tracker.last_application_error == "workday_invalid_detail_payload"
+        assert tracker.transient_failure_host == "co.wd1.myworkdayjobs.com"
+
     async def test_unparseable_url_returns_empty(self):
         transport = httpx.MockTransport(lambda r: httpx.Response(200))
         async with httpx.AsyncClient(transport=transport) as client:
@@ -713,6 +793,62 @@ class TestPostPageWithRetry:
             assert data["jobPostings"] == [{"externalPath": "/x"}]
             assert calls["n"] == 3
 
+    async def test_retries_transient_303_without_changing_post_to_get(self, monkeypatch):
+        """Reproduce #5715's Workday incident.
+
+        The provider returned 303 without a usable canonical redirect across
+        many tenants. Following it would change this list API's POST into GET;
+        retry the original request after backoff instead.
+        """
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module.asyncio, "sleep", AsyncMock())
+        methods: list[str] = []
+
+        def handler(request):
+            methods.append(request.method)
+            if len(methods) == 1:
+                return httpx.Response(303, headers={"Location": ""})
+            return httpx.Response(200, json={"total": 0, "jobPostings": [], "facets": []})
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                data = await _post_page_with_retry(
+                    client, _LIST_URL, {"limit": 20, "offset": 0}, base_delay=0.001
+                )
+
+        assert data == {"total": 0, "jobPostings": [], "facets": []}
+        assert methods == ["POST", "POST"]
+        assert tracker.last_provider_incident is None
+
+    async def test_marks_only_an_exhausted_303_provider_incident(self, monkeypatch):
+        """Three terminal POST 303s retain distinct-host circuit evidence."""
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module.asyncio, "sleep", AsyncMock())
+        methods: list[str] = []
+
+        def handler(request):
+            methods.append(request.method)
+            return httpx.Response(303, headers={"Location": ""})
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                with pytest.raises(PaginationFetchError) as exc_info:
+                    await _post_page_with_retry(
+                        client,
+                        _LIST_URL,
+                        {"limit": 20, "offset": 0},
+                        base_delay=0.001,
+                    )
+
+        assert exc_info.value.last_status == 303
+        assert methods == ["POST", "POST", "POST"]
+        assert tracker.last_provider_incident == WORKDAY_LIST_303_INCIDENT
+        assert tracker.last_provider_incident_host == "co.wd1.myworkdayjobs.com"
+
     async def test_retries_on_cloudflare_5xx(self, monkeypatch):
         """Cloudflare origin codes 520-526/530 are retried (parity with
         dom + accenture + PCSX). Pinned for one representative code; the
@@ -748,18 +884,21 @@ class TestPostPageWithRetry:
             calls["n"] += 1
             return httpx.Response(500, text="internal")
 
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            with pytest.raises(PaginationFetchError) as exc_info:
-                await _post_page_with_retry(
-                    client,
-                    _LIST_URL,
-                    {"limit": 20, "offset": 0},
-                    retries=3,
-                    base_delay=0.001,
-                )
-            assert exc_info.value.last_status == 500
-            assert exc_info.value.attempts == 3
-            assert calls["n"] == 3
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                with pytest.raises(PaginationFetchError) as exc_info:
+                    await _post_page_with_retry(
+                        client,
+                        _LIST_URL,
+                        {"limit": 20, "offset": 0},
+                        retries=3,
+                        base_delay=0.001,
+                    )
+        assert exc_info.value.last_status == 500
+        assert exc_info.value.attempts == 3
+        assert calls["n"] == 3
+        assert tracker.last_provider_incident is None
 
     async def test_raises_on_non_retryable_4xx_immediately(self, monkeypatch):
         """A 401 / 403 / 400 indicates a hard error — no point retrying.

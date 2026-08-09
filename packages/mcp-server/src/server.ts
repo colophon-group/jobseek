@@ -28,14 +28,6 @@ GHOST JOB DETECTION:
 - The result includes overallGhostRisk (0–100), per-job ghost scores, org-level signals, and hiring.cafe live engagement data.
 - A ghost risk > 70 or hiringCafeSignal.lowEngagement=true is a strong signal to warn the user.
 
-COMPANY DISCOVERY:
-- Use get_discovery_results to see which companies are actively hiring (refreshed every ~5 min from 39+ job boards including hiring.cafe, Wellfound/AngelList, Workday, SmartRecruiters, LinkedIn, Glassdoor, StepStone, Greenhouse, Lever, Ashby, Rippling, Fountain, Factorial, Kenjo, RemoteOK, WeWorkRemotely, Pinpoint, Comeet, SuccessFactors, Softgarden, JOIN, and more).
-- Use trigger_discovery_run to kick off a fresh scan (takes 15–30 min, then get_discovery_results will show updated data).
-- growingCompanies (positive hiring.cafe delta) = companies accelerating hiring — good signal for job seekers.
-- newHiringCompanies (first appearance ≥5 jobs) = companies that just started hiring heavily — potential new opportunities.
-- shrinkingCompanies (negative hiring.cafe delta) = possible layoffs or hiring freeze — warn before applying.
-- totalJobsTracked = total job slots across all discovered companies — useful for market-level analysis.
-
 Available locales: en (English), de (German), fr (French), it (Italian).
 Rate limit: 30 requests per minute.`,
     },

@@ -35,9 +35,24 @@ const translateDescriptor = vi.hoisted(() => (
       message?: string;
       values?: Record<string, unknown>;
     }) {
+      if (id === "myJobs.heatmap.label") {
+        return linguiState.locale === "de"
+          ? "Bewerbungsaktivität"
+          : "Application activity";
+      }
+      if (id === "myJobs.heatmap.emptySummary") {
+        return linguiState.locale === "de"
+          ? "Keine Bewerbungsaktivität im angezeigten Jahr."
+          : "No application activity in the displayed year.";
+      }
       if (id === "myJobs.heatmap.tooltip") {
         const count = Number(values.count ?? 0);
         const date = String(values.date ?? "");
+        if (linguiState.locale === "de") {
+          if (count === 0) return `Keine Bewerbungen am ${date}`;
+          if (count === 1) return `1 Bewerbung am ${date}`;
+          return `${count} Bewerbungen am ${date}`;
+        }
         if (count === 0) return `No applications on ${date}`;
         if (count === 1) return `1 application on ${date}`;
         return `${count} applications on ${date}`;
@@ -208,7 +223,24 @@ describe("ActivityHeatmap — locale labels and plural tooltip (#3150)", () => {
     expect(labels).toContain(new Intl.DateTimeFormat("de", { weekday: "short" }).format(new Date(2026, 0, 5)));
     expect(labels).toContain(new Intl.DateTimeFormat("de", { weekday: "short" }).format(new Date(2026, 0, 7)));
     expect(labels).toContain(new Intl.DateTimeFormat("de", { weekday: "short" }).format(new Date(2026, 0, 9)));
-    expect(labels).toContain(new Intl.DateTimeFormat("de", { month: "short" }).format(new Date(2026, 6, 1)));
+    expect(labels).toContain(new Intl.DateTimeFormat("de", { month: "short" }).format(new Date(2026, 7, 1)));
+  });
+
+  it("omits a partial first-month label when it would collide with the next month", () => {
+    vi.setSystemTime(new Date(2026, 6, 22, 12, 0, 0, 0));
+
+    const { container } = render(<ActivityHeatmap data={[]} />);
+    const monthLabels = Array.from(
+      container.querySelectorAll<SVGTextElement>("text[data-month-column]"),
+    );
+
+    expect(monthLabels[0]?.textContent).toBe(
+      new Intl.DateTimeFormat("en", { month: "short" }).format(new Date(2026, 7, 1)),
+    );
+    const columns = monthLabels.map((label) => Number(label.dataset.monthColumn));
+    for (let index = 1; index < columns.length; index++) {
+      expect(columns[index] - columns[index - 1]).toBeGreaterThanOrEqual(3);
+    }
   });
 
   const tooltipCases: Array<[number, string]> = [
@@ -231,6 +263,77 @@ describe("ActivityHeatmap — locale labels and plural tooltip (#3150)", () => {
     expect(todayCell).toBeDefined();
     fireEvent.mouseEnter(todayCell!);
 
-    expect(container.textContent).toContain(`${prefix} on ${todayKey}`);
+    const localizedDate = new Intl.DateTimeFormat("en", {
+      dateStyle: "long",
+    }).format(now);
+    expect(container.textContent).toContain(`${prefix} on ${localizedDate}`);
+  });
+});
+
+describe("ActivityHeatmap — accessible summary (#6024)", () => {
+  beforeEach(() => {
+    linguiState.locale = "en";
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("exposes every non-zero displayed day and hides decorative SVG cells", () => {
+    const now = new Date(2026, 6, 22, 12, 0, 0, 0);
+    vi.setSystemTime(now);
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    const { container, getByRole, getByTestId } = render(
+      <ActivityHeatmap
+        data={[
+          { date: formatLocal(yesterday), count: 2 },
+          { date: formatLocal(now), count: 1 },
+        ]}
+      />,
+    );
+
+    const region = getByRole("region", { name: "Application activity" });
+    const summary = getByTestId("heatmap-summary");
+    expect(region.contains(summary)).toBe(true);
+    expect(summary.textContent).toContain(
+      `2 applications on ${new Intl.DateTimeFormat("en", { dateStyle: "long" }).format(yesterday)}`,
+    );
+    expect(summary.textContent).toContain(
+      `1 application on ${new Intl.DateTimeFormat("en", { dateStyle: "long" }).format(now)}`,
+    );
+    expect(summary.querySelectorAll("li")).toHaveLength(2);
+    expect(container.querySelector("svg")?.closest('[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it("exposes a localized empty summary", () => {
+    linguiState.locale = "de";
+    vi.setSystemTime(new Date(2026, 6, 22, 12, 0, 0, 0));
+
+    const { getByRole, getByTestId } = render(<ActivityHeatmap data={[]} />);
+
+    expect(getByRole("region", { name: "Bewerbungsaktivität" })).toBeTruthy();
+    expect(getByTestId("heatmap-summary").textContent).toBe(
+      "Keine Bewerbungsaktivität im angezeigten Jahr.",
+    );
+  });
+
+  it("formats non-English activity dates with the active locale", () => {
+    linguiState.locale = "de";
+    const now = new Date(2026, 6, 22, 12, 0, 0, 0);
+    vi.setSystemTime(now);
+
+    const { getByTestId } = render(
+      <ActivityHeatmap data={[{ date: formatLocal(now), count: 1 }]} />,
+    );
+
+    const localizedDate = new Intl.DateTimeFormat("de", {
+      dateStyle: "long",
+    }).format(now);
+    expect(getByTestId("heatmap-summary").textContent).toContain(
+      `1 Bewerbung am ${localizedDate}`,
+    );
   });
 });

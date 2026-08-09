@@ -301,13 +301,14 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
             )
         except PaginationFetchError as exc:
             # First-page 404 is the "board removed" signal — re-raise as
-            # the canonical structural error so the board processor
-            # disables in one shot instead of accumulating five
-            # consecutive failures. See issue #2215.
+            # the canonical structural error so the board processor applies
+            # spaced confirmations instead of the generic failure ramp.
+            # See issues #2215 and #6156.
             if exc.last_status == 404 and skip == 0:
                 raise BoardGoneError(
                     f"Lever board token {token!r} returned 404",
                     url=url,
+                    status_code=404,
                 ) from exc
             raise
 

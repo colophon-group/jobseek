@@ -50,6 +50,12 @@ afterEach(() => {
 });
 
 describe("CompanyRequestPageForm", () => {
+  it("gives the free-form input a persistent, descriptive label", () => {
+    render(<CompanyRequestPageForm locale="en" />);
+
+    expect(screen.getByLabelText("Company name or careers-page URL")).toBeTruthy();
+  });
+
   it("renders the input with `defaultName` when no website is provided", () => {
     render(<CompanyRequestPageForm locale="en" defaultName="Anthropic" />);
 

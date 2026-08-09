@@ -4,9 +4,13 @@ import asyncio
 import dataclasses
 import uuid
 from collections import Counter
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import asyncpg
+import httpx
+import pytest
 import structlog
 
 from src.exporter import (
@@ -17,19 +21,21 @@ from src.exporter import (
     PostingSchema,
     TaxonomyMaps,
     _build_typesense_docs,
+    _DownstreamBackoff,
     _export_changed_boards,
     _export_changed_postings,
     _export_postings_dual,
+    _export_postings_typesense,
     _get_cursor,
-    _reconciliation_loop,
+    _is_downstream_unavailable,
     _save_cursor,
     _save_cursors_atomic,
     _update_metrics,
     _update_typesense_health,
     _upsert_to_supabase,
+    _upsert_typesense_backfill_batch,
+    backfill_typesense,
     run_exporter,
-    run_exporter_with_reconciliation,
-    run_reconciliation,
 )
 from src.metrics import export_errors_total
 
@@ -67,6 +73,15 @@ def _make_record(data: dict) -> MagicMock:
     rec.__getitem__ = lambda self, k: data[k]
     rec.__contains__ = lambda self, k: k in data
     return rec
+
+
+@asynccontextmanager
+async def _noop_cursor_fence(_pool):
+    yield
+
+
+async def _fixed_cdc_cutoff(_pool):
+    return datetime(9999, 12, 31, tzinfo=UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -324,6 +339,13 @@ class TestPostingSchema:
         for column in upsert_columns:
             assert column in PostingSchema.column_names()
 
+    def test_changed_row_query_has_a_strict_commit_safe_cutoff(self):
+        sql = PostingSchema.select_changed_sql("updated_at")
+
+        assert "(updated_at, id) > ($1, $2)" in sql
+        assert "updated_at < $4" in sql
+        assert "ORDER BY updated_at, id LIMIT $3" in sql
+
 
 class TestUpsertToSupabase:
     """Mirror TestExportChangedPostings against the dual-path upsert helper.
@@ -457,25 +479,76 @@ class TestExportPostingsDual:
         assert new_supa == (ts, pid)  # advanced
         assert new_ts == ts_cur  # stayed put — re-try next poll
 
-    async def test_supabase_failure_advances_supa_cursor_via_per_row_fallback(self):
-        """Per-row poison-pill fallback (#3180): the whole-batch INSERT
-        fails (e.g. one row tripped a constraint), the per-row fallback
-        runs, every row fails too in this synthetic test, but the cursor
-        STILL advances past the batch so CDC doesn't stall forever. The
-        dropped rows are logged + counted in ``export_errors_total``.
+    async def test_typesense_timeout_backs_off_without_blocking_supabase(self):
+        """One Typesense timeout opens the cross-tick circuit (#5105).
 
-        Pre-#3180 the cursor stayed put and the exporter looped on the
-        same poisoned batch every ``export_interval`` seconds.
+        The immediate next tick must export new rows to Supabase without a
+        second Typesense request or a replay from Typesense's pinned cursor.
+        """
+        ts1 = datetime(2026, 7, 10, 4, 6, 47, tzinfo=UTC)
+        ts2 = datetime(2026, 7, 10, 4, 6, 48, tzinfo=UTC)
+        cursor = (datetime(2026, 7, 10, 4, 6, 0, tzinfo=UTC), _ZERO_UUID)
+        pid1 = uuid.uuid4()
+        pid2 = uuid.uuid4()
+
+        local = _make_pool()
+        local.fetch = AsyncMock(
+            side_effect=[
+                [_posting_row(posting_id=pid1, ts=ts1)],
+                [_posting_row(posting_id=pid2, ts=ts2)],
+            ]
+        )
+        supa, _ = _supa_pool_with_capture()
+        backoff = _DownstreamBackoff("typesense-test", 5.0, 300.0)
+        upsert_ts = AsyncMock(side_effect=httpx.ReadTimeout("timed out"))
+
+        with patch("src.exporter._upsert_to_typesense", new=upsert_ts):
+            count, new_supa, new_ts = await _export_postings_dual(
+                local,
+                supa,
+                cursor,
+                cursor,
+                TaxonomyMaps(),
+                ts_backoff=backoff,
+            )
+            next_count, retry_supa, retry_ts = await _export_postings_dual(
+                local,
+                supa,
+                new_supa,
+                new_ts,
+                TaxonomyMaps(),
+                ts_backoff=backoff,
+            )
+
+        assert count == 1
+        assert new_supa == (ts1, pid1)
+        assert new_ts == cursor
+        assert backoff.consecutive_failures == 1
+
+        assert next_count == 1
+        assert retry_supa == (ts2, pid2)
+        assert retry_ts == cursor
+        assert upsert_ts.await_count == 1
+        # The blocked tick starts from Supabase's advanced cursor rather than
+        # replaying Typesense's pinned batch.
+        assert local.fetch.await_args_list[1].args[1:3] == (ts1, pid1)
+
+    async def test_supabase_timeout_keeps_cursor_pinned_for_replay(self):
+        """A downstream timeout is not evidence of a poison row (#5231).
+
+        The exception must escape the upsert task so the dual exporter keeps
+        the Supabase cursor pinned. Typesense remains independent and may
+        advance normally.
         """
         ts = datetime(2025, 6, 1, 12, 0, 0, tzinfo=UTC)
         supa_cur = (datetime(2025, 6, 1, 11, 0, 0, tzinfo=UTC), _ZERO_UUID)
         ts_cur = supa_cur
 
         local = _make_pool()
-        # Make every conn.execute() raise — covers both the batch INSERT
-        # and the per-row fallback INSERT.
+        # The batch attempt times out. It must not fan out into a per-row
+        # fallback that converts the same outage into a dropped row.
         supa, conn = _supa_pool_with_capture()
-        conn.execute = AsyncMock(side_effect=RuntimeError("supa down"))
+        conn.execute = AsyncMock(side_effect=TimeoutError("supa timed out"))
 
         pid = uuid.uuid4()
         local.fetch = AsyncMock(return_value=[_posting_row(posting_id=pid, ts=ts)])
@@ -486,10 +559,51 @@ class TestExportPostingsDual:
             )
 
         assert count == 1
-        # Cursor advances past the row even though it was dropped — the
-        # whole point of the fix.
-        assert new_supa == (ts, pid)
+        assert new_supa == supa_cur
         assert new_ts == (ts, pid)  # advanced
+        # Only the initial batch attempt ran; there was no destructive
+        # per-row fallback during a target-wide outage.
+        assert conn.execute.await_count == 1
+
+    async def test_supabase_outage_backs_off_without_blocking_typesense(self):
+        """A refused connection must not be retried on every one-second tick.
+
+        Supabase's cursor remains pinned for replay, while the next tick reads
+        from the advanced Typesense cursor instead of replaying the same local
+        batch. The independent Typesense leg therefore stays live without
+        amplifying the Supabase outage (#5712).
+        """
+        ts = datetime(2026, 7, 16, 8, 52, 33, tzinfo=UTC)
+        cursor = (datetime(2026, 7, 16, 8, 50, 0, tzinfo=UTC), _ZERO_UUID)
+        pid = uuid.uuid4()
+
+        local = _make_pool()
+        local.fetch = AsyncMock(side_effect=[[_posting_row(posting_id=pid, ts=ts)], []])
+        supa, conn = _supa_pool_with_capture()
+        conn.execute = AsyncMock(side_effect=asyncpg.ConnectionFailureError("connection refused"))
+        backoff = _DownstreamBackoff("supabase-test", 5.0, 300.0)
+
+        with patch("src.exporter._upsert_to_typesense", new=AsyncMock()) as upsert_ts:
+            count, new_supa, new_ts = await _export_postings_dual(
+                local, supa, cursor, cursor, TaxonomyMaps(), backoff
+            )
+            next_count, retry_supa, retry_ts = await _export_postings_dual(
+                local, supa, new_supa, new_ts, TaxonomyMaps(), backoff
+            )
+
+        assert count == 1
+        assert new_supa == cursor
+        assert new_ts == (ts, pid)
+        assert backoff.consecutive_failures == 1
+
+        assert next_count == 0
+        assert retry_supa == cursor
+        assert retry_ts == (ts, pid)
+        # Only the first tick touched Supabase. The blocked tick fetched from
+        # Typesense's cursor, not the pinned Supabase cursor.
+        assert conn.execute.await_count == 1
+        assert local.fetch.await_args_list[1].args[1:3] == (ts, pid)
+        assert upsert_ts.await_count == 1
 
     async def test_no_rows_returns_zero_and_unchanged_cursors(self):
         local = _make_pool()
@@ -504,6 +618,32 @@ class TestExportPostingsDual:
         assert count == 0
         assert new_supa == supa_cur
         assert new_ts == ts_cur
+
+
+class TestDownstreamBackoff:
+    def test_connection_failures_are_classified_but_row_errors_are_not(self):
+        assert _is_downstream_unavailable(asyncpg.ConnectionFailureError("connection refused"))
+        assert _is_downstream_unavailable(TimeoutError("pool acquisition timed out"))
+        assert not _is_downstream_unavailable(asyncpg.ForeignKeyViolationError("bad company_id"))
+        assert not _is_downstream_unavailable(RuntimeError("unknown exporter bug"))
+
+    def test_exponential_delay_is_bounded_and_recovery_resets_state(self):
+        backoff = _DownstreamBackoff("supabase-state-test", 5.0, 300.0)
+
+        assert backoff.record_failure(now=10.0) == 5.0
+        assert not backoff.ready(now=14.99)
+        assert backoff.ready(now=15.0)
+        assert backoff.record_failure(now=15.0) == 10.0
+
+        for failure_number in range(3, 2_000):
+            delay = backoff.record_failure(now=float(failure_number))
+        assert delay == 300.0
+
+        recovery = backoff.record_success(now=2_001.0)
+        assert recovery == (1_999, 1_991.0)
+        assert backoff.consecutive_failures == 0
+        assert backoff.retry_at == 0.0
+        assert backoff.outage_started_at is None
 
 
 # ---------------------------------------------------------------------------
@@ -545,10 +685,10 @@ def _make_supa_pool_batch_fails_per_row_passes(failing_row_id):
             # Batch INSERT — fail on the first attempt to trigger the
             # fallback path.
             batch_count += 1
-            raise RuntimeError("simulated batch FK violation")
+            raise asyncpg.ForeignKeyViolationError("simulated batch FK violation")
         # Per-row INSERT branch. The first positional arg is the row id.
         if args and str(args[0]) == failing_uuid_str:
-            raise RuntimeError("simulated per-row constraint violation")
+            raise asyncpg.ForeignKeyViolationError("simulated per-row constraint violation")
         return
 
     conn = AsyncMock()
@@ -623,7 +763,7 @@ class TestSupabasePerRowFallback:
         async def execute(sql, *args):
             if "CREATE TEMP TABLE" in sql:
                 return
-            raise RuntimeError("simulated NOT NULL violation")
+            raise asyncpg.NotNullViolationError("simulated NOT NULL violation")
 
         pool, conn = _supa_pool_with_capture()
         conn.execute = AsyncMock(side_effect=execute)
@@ -655,6 +795,65 @@ class TestSupabasePerRowFallback:
         # Only the batch path executed: CREATE TEMP + INSERT, no per-row
         # INSERT calls.
         assert conn.execute.await_count == 2
+
+    async def test_timeout_mid_fallback_replays_the_whole_batch(self):
+        """Committed prefix rows remain safe when a later row times out.
+
+        The row-local batch error legitimately enters fallback. Row one
+        commits, row two times out, and the timeout escapes. The caller keeps
+        its cursor pinned, so both rows are replayed idempotently next tick.
+        """
+        ts1 = datetime(2026, 7, 10, 16, 55, 0, tzinfo=UTC)
+        ts2 = datetime(2026, 7, 10, 16, 56, 0, tzinfo=UTC)
+        cursor = (datetime(2026, 7, 10, 16, 50, 0, tzinfo=UTC), _ZERO_UUID)
+        pid1 = uuid.uuid4()
+        pid2 = uuid.uuid4()
+        rows = [
+            _posting_row(posting_id=pid1, ts=ts1),
+            _posting_row(posting_id=pid2, ts=ts2),
+        ]
+
+        local = _make_pool()
+        local.fetch = AsyncMock(return_value=rows)
+        pool, conn = _supa_pool_with_capture()
+        per_row_attempt = 0
+
+        async def execute(sql, *args):
+            nonlocal per_row_attempt
+            if "CREATE TEMP TABLE" in sql:
+                return
+            if "FROM _export_postings" in sql:
+                raise asyncpg.ForeignKeyViolationError("batch poison")
+            per_row_attempt += 1
+            if per_row_attempt == 2:
+                raise TimeoutError("transient Supabase timeout")
+            return
+
+        conn.execute = AsyncMock(side_effect=execute)
+        before = _counter_total(export_errors_total, table="job_posting", phase="supabase")
+
+        with patch("src.exporter._upsert_to_typesense", new=AsyncMock()):
+            count, new_supa, new_ts = await _export_postings_dual(
+                local, pool, cursor, cursor, TaxonomyMaps()
+            )
+
+        after = _counter_total(export_errors_total, table="job_posting", phase="supabase")
+        assert count == 2
+        assert new_supa == cursor
+        assert new_ts == (ts2, pid2)
+        assert per_row_attempt == 2
+        assert after == before
+
+    async def test_unknown_failure_is_not_misclassified_as_row_poison(self):
+        """Fail closed when an exception has no PostgreSQL SQLSTATE."""
+        ts = datetime(2026, 7, 10, 16, 56, 0, tzinfo=UTC)
+        pool, conn = _supa_pool_with_capture()
+        conn.execute = AsyncMock(side_effect=RuntimeError("unexpected driver failure"))
+
+        with pytest.raises(RuntimeError, match="unexpected driver failure"):
+            await _upsert_to_supabase(pool, [_posting_row(posting_id=uuid.uuid4(), ts=ts)])
+
+        assert conn.execute.await_count == 1
 
     async def test_export_postings_dual_advances_cursor_past_dropped_row(self):
         """End-to-end: the dual-path caller advances the Supabase cursor
@@ -688,6 +887,174 @@ class TestSupabasePerRowFallback:
         # Cursor advances past the dropped row to the batch's last id.
         assert new_supa == (ts2, pid2)
         assert new_ts == (ts2, pid2)
+
+
+class TestTypesenseBackfillSafety:
+    async def test_query_receives_the_commit_safe_cutoff_as_its_fourth_argument(self):
+        posting_id = uuid.uuid4()
+        updated_at = datetime(2026, 5, 14, 12, 0, 0, tzinfo=UTC)
+        cutoff = datetime(2026, 5, 14, 12, 5, 0, tzinfo=UTC)
+        row = {"id": posting_id, "updated_at": updated_at}
+        local = _make_pool()
+        local.fetch = AsyncMock(side_effect=[[row], []])
+        maps = MagicMock(stale=False)
+        cutoff_factory = AsyncMock(return_value=cutoff)
+
+        with (
+            patch("src.exporter._get_taxonomy_maps", new=AsyncMock(return_value=maps)),
+            patch(
+                "src.exporter._build_typesense_docs",
+                return_value=[{"id": str(posting_id)}],
+            ),
+            patch(
+                "src.exporter._upsert_typesense_backfill_batch",
+                new_callable=AsyncMock,
+            ),
+        ):
+            await backfill_typesense(
+                local,
+                cursor_fence_factory=_noop_cursor_fence,
+                cutoff_factory=cutoff_factory,
+            )
+
+        cutoff_factory.assert_awaited_once_with(local)
+        assert local.fetch.await_count == 2
+        for fetch_call in local.fetch.await_args_list:
+            assert len(fetch_call.args) == 5
+            assert fetch_call.args[4] == cutoff
+
+    async def test_cursor_fence_wraps_full_scan_and_final_cursor_save(self):
+        posting_id = uuid.uuid4()
+        updated_at = datetime(2026, 5, 14, 12, 0, 0, tzinfo=UTC)
+        cutoff = datetime(2026, 5, 14, 12, 5, 0, tzinfo=UTC)
+        row = {"id": posting_id, "updated_at": updated_at}
+        local = _make_pool()
+        events: list[str] = []
+
+        @asynccontextmanager
+        async def tracking_fence(_pool):
+            events.append("fence-enter")
+            try:
+                yield
+            finally:
+                events.append("fence-exit")
+
+        async def tracking_cutoff(_pool):
+            events.append("cutoff")
+            return cutoff
+
+        async def tracking_fetch(*_args):
+            events.append("fetch")
+            if events.count("fetch") == 1:
+                return [row]
+            return []
+
+        async def tracking_upsert(*_args, **_kwargs):
+            events.append("upsert")
+
+        async def tracking_save(*_args, **_kwargs):
+            events.append("cursor-save")
+
+        local.fetch = AsyncMock(side_effect=tracking_fetch)
+        maps = MagicMock(stale=False)
+
+        with (
+            patch("src.exporter._get_taxonomy_maps", new=AsyncMock(return_value=maps)),
+            patch(
+                "src.exporter._build_typesense_docs",
+                return_value=[{"id": str(posting_id)}],
+            ),
+            patch(
+                "src.exporter._upsert_typesense_backfill_batch",
+                side_effect=tracking_upsert,
+            ),
+            patch("src.exporter._save_cursor", side_effect=tracking_save),
+        ):
+            await backfill_typesense(
+                local,
+                cursor_fence_factory=tracking_fence,
+                cutoff_factory=tracking_cutoff,
+            )
+
+        assert events == [
+            "fence-enter",
+            "cutoff",
+            "fetch",
+            "upsert",
+            "fetch",
+            "cursor-save",
+            "fence-exit",
+        ]
+
+    async def test_batch_retries_transport_failure_before_succeeding(self):
+        docs = [{"id": "posting-1"}]
+        upsert = AsyncMock(side_effect=[httpx.ReadTimeout("timed out"), set()])
+
+        with (
+            patch("src.exporter._upsert_to_typesense", new=upsert),
+            patch("src.exporter.asyncio.sleep", new_callable=AsyncMock) as sleep,
+        ):
+            await _upsert_typesense_backfill_batch(
+                docs,
+                max_attempts=3,
+                base_delay_s=0.5,
+            )
+
+        assert upsert.await_count == 2
+        sleep.assert_awaited_once_with(0.5)
+
+    async def test_batch_retries_per_document_import_failures(self):
+        docs = [{"id": "posting-1"}]
+        upsert = AsyncMock(side_effect=[{"posting-1"}, set()])
+
+        with (
+            patch("src.exporter._upsert_to_typesense", new=upsert),
+            patch("src.exporter.asyncio.sleep", new_callable=AsyncMock) as sleep,
+        ):
+            await _upsert_typesense_backfill_batch(
+                docs,
+                max_attempts=2,
+                base_delay_s=1.0,
+            )
+
+        assert upsert.await_count == 2
+        sleep.assert_awaited_once_with(1.0)
+
+    async def test_exhausted_batch_does_not_save_cursor(self):
+        posting_id = uuid.uuid4()
+        updated_at = datetime(2026, 5, 14, 12, 0, 0, tzinfo=UTC)
+        row = {"id": posting_id, "updated_at": updated_at}
+        local = _make_pool()
+        local.fetch = AsyncMock(return_value=[row])
+        maps = MagicMock(stale=False)
+        upsert = AsyncMock(side_effect=httpx.ReadTimeout("timed out"))
+        fence_events: list[str] = []
+
+        @asynccontextmanager
+        async def tracking_fence(_pool):
+            fence_events.append("enter")
+            try:
+                yield
+            finally:
+                fence_events.append("exit")
+
+        with (
+            patch("src.exporter._get_taxonomy_maps", new=AsyncMock(return_value=maps)),
+            patch("src.exporter._build_typesense_docs", return_value=[{"id": str(posting_id)}]),
+            patch("src.exporter._upsert_to_typesense", new=upsert),
+            patch("src.exporter.asyncio.sleep", new_callable=AsyncMock) as sleep,
+            pytest.raises(httpx.ReadTimeout, match="timed out"),
+        ):
+            await backfill_typesense(
+                local,
+                cursor_fence_factory=tracking_fence,
+                cutoff_factory=_fixed_cdc_cutoff,
+            )
+
+        assert upsert.await_count == 5
+        assert [call.args[0] for call in sleep.await_args_list] == [2.0, 4.0, 8.0, 16.0]
+        local.execute.assert_not_awaited()
+        assert fence_events == ["enter", "exit"]
 
 
 class TestTypesensePerDocFallback:
@@ -801,6 +1168,54 @@ class TestTypesensePerDocFallback:
             pytest.raises(RuntimeError, match="typesense down"),
         ):
             await _upsert_ts(docs)
+
+
+class TestExportPostingsTypesenseOnly:
+    async def test_advances_only_the_typesense_cursor(self):
+        cursor = (datetime(2026, 7, 1, 10, 0, tzinfo=UTC), _ZERO_UUID)
+        updated_at = datetime(2026, 7, 1, 10, 5, tzinfo=UTC)
+        cutoff = datetime(2026, 7, 1, 10, 10, tzinfo=UTC)
+        posting_id = uuid.uuid4()
+        local = _make_pool()
+        local.fetch = AsyncMock(return_value=[_posting_row(posting_id=posting_id, ts=updated_at)])
+
+        with patch(
+            "src.exporter._upsert_to_typesense",
+            new=AsyncMock(return_value=set()),
+        ) as upsert:
+            count, new_cursor = await _export_postings_typesense(
+                local,
+                cursor,
+                TaxonomyMaps(),
+                cutoff=cutoff,
+            )
+
+        assert count == 1
+        assert new_cursor == (updated_at, posting_id)
+        assert local.fetch.await_args.args[-1] == cutoff
+        upsert.assert_awaited_once()
+
+    async def test_transport_failure_keeps_the_typesense_cursor_pinned(self):
+        cursor = (datetime(2026, 7, 1, 10, 0, tzinfo=UTC), _ZERO_UUID)
+        updated_at = datetime(2026, 7, 1, 10, 5, tzinfo=UTC)
+        local = _make_pool()
+        local.fetch = AsyncMock(return_value=[_posting_row(posting_id=uuid.uuid4(), ts=updated_at)])
+        backoff = _DownstreamBackoff("typesense-only-test", 5.0, 300.0)
+
+        with patch(
+            "src.exporter._upsert_to_typesense",
+            new=AsyncMock(side_effect=httpx.ReadTimeout("timed out")),
+        ):
+            count, new_cursor = await _export_postings_typesense(
+                local,
+                cursor,
+                TaxonomyMaps(),
+                backoff,
+            )
+
+        assert count == 1
+        assert new_cursor == cursor
+        assert backoff.consecutive_failures == 1
 
 
 # ---------------------------------------------------------------------------
@@ -970,87 +1385,18 @@ class TestExportChangedBoards:
 
 
 # ---------------------------------------------------------------------------
-# run_reconciliation
-# ---------------------------------------------------------------------------
-
-
-class TestReconciliation:
-    async def test_empty_sample_returns_zero(self):
-        local = _make_pool()
-        supa = _make_pool()
-
-        local.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
-        supa.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
-        local.fetch = AsyncMock(return_value=[])  # empty sample
-
-        result = await run_reconciliation(local, supa)
-        assert result == 0
-
-    async def test_missing_remote_triggers_touch(self):
-        """A sampled posting missing from Supabase should be touched."""
-        local = _make_pool()
-        supa = _make_pool()
-
-        posting_id = uuid.uuid4()
-        sample = [_make_record({"id": posting_id, "is_active": True, "description_r2_hash": 111})]
-
-        local.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
-        supa.fetchrow = AsyncMock(return_value=_make_record({"cnt": 99}))
-        local.fetch = AsyncMock(return_value=sample)
-        supa.fetch = AsyncMock(return_value=[])  # not found in Supabase
-        local.execute = AsyncMock()
-
-        result = await run_reconciliation(local, supa)
-        assert result == 1
-        local.execute.assert_awaited_once()
-
-    async def test_state_mismatch_triggers_touch(self):
-        """Differing is_active triggers a touch."""
-        local = _make_pool()
-        supa = _make_pool()
-
-        posting_id = uuid.uuid4()
-        local_sample = [
-            _make_record({"id": posting_id, "is_active": True, "description_r2_hash": 111})
-        ]
-        supa_match = [
-            _make_record({"id": posting_id, "is_active": False, "description_r2_hash": 111})
-        ]
-
-        local.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
-        supa.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
-        local.fetch = AsyncMock(return_value=local_sample)
-        supa.fetch = AsyncMock(return_value=supa_match)
-        local.execute = AsyncMock()
-
-        result = await run_reconciliation(local, supa)
-        assert result == 1
-
-    async def test_matching_state_no_touch(self):
-        """When sampled rows match, no touch should happen."""
-        local = _make_pool()
-        supa = _make_pool()
-
-        posting_id = uuid.uuid4()
-        sample = [_make_record({"id": posting_id, "is_active": True, "description_r2_hash": 111})]
-
-        local.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
-        supa.fetchrow = AsyncMock(return_value=_make_record({"cnt": 100}))
-        local.fetch = AsyncMock(return_value=sample)
-        supa.fetch = AsyncMock(return_value=sample)
-        local.execute = AsyncMock()
-
-        result = await run_reconciliation(local, supa)
-        assert result == 0
-        local.execute.assert_not_awaited()
-
-
-# ---------------------------------------------------------------------------
 # run_exporter (single tick)
 # ---------------------------------------------------------------------------
 
 
 class TestRunExporter:
+    async def test_requires_at_least_one_downstream(self):
+        with (
+            patch("src.exporter._typesense_enabled", return_value=False),
+            pytest.raises(RuntimeError, match="requires Typesense or DATABASE_URL"),
+        ):
+            await run_exporter(_make_pool(), None, asyncio.Event())
+
     async def test_single_tick_then_shutdown(self):
         """Exporter should run one tick and then stop when shutdown is set."""
         local = _make_pool()
@@ -1063,6 +1409,10 @@ class TestRunExporter:
         local.fetch = AsyncMock(return_value=[])
         local.execute = AsyncMock()
         local.fetchval = AsyncMock(return_value=0)
+        local.get_size = MagicMock(return_value=1)
+        local.get_idle_size = MagicMock(return_value=1)
+        supa.get_size = MagicMock(return_value=1)
+        supa.get_idle_size = MagicMock(return_value=1)
 
         with patch(
             "src.exporter.get_queue_depths",
@@ -1075,9 +1425,167 @@ class TestRunExporter:
                 shutdown.set()
 
             await asyncio.gather(
-                run_exporter(local, supa, shutdown),
+                run_exporter(
+                    local,
+                    supa,
+                    shutdown,
+                    cursor_fence_factory=_noop_cursor_fence,
+                    cutoff_factory=_fixed_cdc_cutoff,
+                ),
                 set_shutdown(),
             )
+
+    async def test_typesense_only_does_not_load_or_save_the_mirror_cursor(self):
+        local = _make_pool()
+        shutdown = asyncio.Event()
+        cursor = (datetime(2026, 7, 10, 4, 0, tzinfo=UTC), _ZERO_UUID)
+        maps = TaxonomyMaps()
+        maps._last_refresh = 10**20
+
+        async def export_once(*_args, **_kwargs):
+            shutdown.set()
+            return 0, cursor
+
+        with (
+            patch("src.exporter.settings") as mock_settings,
+            patch("src.exporter._typesense_enabled", return_value=True),
+            patch("src.exporter._get_cursor", new=AsyncMock(return_value=cursor)) as get_cursor,
+            patch(
+                "src.exporter._get_taxonomy_maps",
+                new=AsyncMock(return_value=maps),
+            ) as get_maps,
+            patch("src.exporter._export_postings_typesense", side_effect=export_once) as export_ts,
+            patch(
+                "src.exporter._export_postings_dual",
+                new_callable=AsyncMock,
+            ) as export_dual,
+            patch(
+                "src.exporter._export_changed_postings",
+                new_callable=AsyncMock,
+            ) as export_mirror,
+            patch("src.exporter._save_cursor", new=AsyncMock()) as save_cursor,
+            patch("src.exporter._save_cursors_atomic", new=AsyncMock()) as save_atomic,
+            patch("src.exporter._update_metrics", new=AsyncMock()),
+        ):
+            mock_settings.export_interval = 0.001
+            mock_settings.export_downstream_backoff_base_seconds = 5.0
+            mock_settings.export_downstream_backoff_max_seconds = 300.0
+            mock_settings.typesense_health_interval_seconds = 30.0
+            await run_exporter(
+                local,
+                None,
+                shutdown,
+                cursor_fence_factory=_noop_cursor_fence,
+                cutoff_factory=_fixed_cdc_cutoff,
+            )
+
+        get_cursor.assert_awaited_once_with(local, "typesense:job_posting")
+        get_maps.assert_awaited_once_with(local)
+        export_ts.assert_awaited_once()
+        export_dual.assert_not_awaited()
+        export_mirror.assert_not_awaited()
+        save_cursor.assert_awaited_once_with(local, "typesense:job_posting", cursor)
+        save_atomic.assert_not_awaited()
+
+    async def test_typesense_health_probe_is_not_run_every_export_tick(self):
+        """The one-second export loop must not poll two observability endpoints
+        on every tick. A 30s cadence also prevents a health timeout from
+        immediately duplicating an import timeout chain (#5105).
+        """
+        local = _make_pool()
+        supa = _make_pool()
+        shutdown = asyncio.Event()
+        cursor = (datetime(2026, 7, 10, 4, 0, tzinfo=UTC), _ZERO_UUID)
+        maps = TaxonomyMaps()
+        maps._last_refresh = 10**20
+        probe_values: list[bool] = []
+
+        async def capture_metrics(*_args, **kwargs):
+            probe_values.append(kwargs["probe_typesense_health"])
+            if len(probe_values) == 2:
+                shutdown.set()
+
+        with (
+            patch("src.exporter.settings") as mock_settings,
+            patch("src.exporter._typesense_enabled", return_value=True),
+            patch("src.exporter._get_cursor", new=AsyncMock(return_value=cursor)),
+            patch(
+                "src.exporter._get_taxonomy_maps",
+                new=AsyncMock(return_value=maps),
+            ),
+            patch(
+                "src.exporter._export_postings_dual",
+                new=AsyncMock(return_value=(0, cursor, cursor)),
+            ),
+            patch("src.exporter._save_cursors_atomic", new=AsyncMock()),
+            patch("src.exporter._update_metrics", side_effect=capture_metrics),
+        ):
+            mock_settings.export_interval = 0.001
+            mock_settings.export_downstream_backoff_base_seconds = 5.0
+            mock_settings.export_downstream_backoff_max_seconds = 300.0
+            mock_settings.typesense_health_interval_seconds = 30.0
+            await run_exporter(
+                local,
+                supa,
+                shutdown,
+                cursor_fence_factory=_noop_cursor_fence,
+                cutoff_factory=_fixed_cdc_cutoff,
+            )
+
+        assert probe_values == [True, False]
+
+    async def test_cursor_fence_wraps_dual_export_and_cursor_save(self):
+        """A repair must not interleave between the row snapshot and cursor save."""
+        local = _make_pool()
+        supa = _make_pool()
+        shutdown = asyncio.Event()
+        cursor = (datetime(2026, 7, 23, 1, 0, tzinfo=UTC), _ZERO_UUID)
+        maps = TaxonomyMaps()
+        maps._last_refresh = 10**20
+        events: list[str] = []
+
+        @asynccontextmanager
+        async def tracking_fence(_pool):
+            events.append("fence-enter")
+            try:
+                yield
+            finally:
+                events.append("fence-exit")
+
+        async def fake_export(*_args, **_kwargs):
+            events.append("export")
+            return 0, cursor, cursor
+
+        async def tracking_cutoff(_pool):
+            events.append("cutoff")
+            return datetime(9999, 12, 31, tzinfo=UTC)
+
+        async def fake_save(*_args, **_kwargs):
+            events.append("cursor-save")
+            shutdown.set()
+
+        with (
+            patch("src.exporter.settings") as mock_settings,
+            patch("src.exporter._typesense_enabled", return_value=True),
+            patch("src.exporter._get_cursor", new=AsyncMock(return_value=cursor)),
+            patch("src.exporter._get_taxonomy_maps", new=AsyncMock(return_value=maps)),
+            patch("src.exporter._export_postings_dual", side_effect=fake_export),
+            patch("src.exporter._save_cursors_atomic", side_effect=fake_save),
+            patch("src.exporter._update_metrics", new=AsyncMock()),
+        ):
+            mock_settings.export_interval = 0.001
+            mock_settings.export_downstream_backoff_base_seconds = 5.0
+            mock_settings.export_downstream_backoff_max_seconds = 300.0
+            mock_settings.typesense_health_interval_seconds = 30.0
+            await run_exporter(
+                local,
+                supa,
+                shutdown,
+                cursor_fence_factory=tracking_fence,
+                cutoff_factory=tracking_cutoff,
+            )
+
+        assert events == ["fence-enter", "cutoff", "export", "cursor-save", "fence-exit"]
 
 
 # ---------------------------------------------------------------------------
@@ -1163,75 +1671,34 @@ class TestUpdateTypesenseHealth:
         with patch("src.typesense_client.get_typesense_client", return_value=None):
             await _update_typesense_health()  # should not raise
 
-    async def test_health_failure_does_not_block_metrics(self):
-        """An exception from is_healthy() must not prevent metrics.retrieve()
-        from running — we still want the memory gauge when health is down.
+    async def test_health_timeout_opens_backoff_and_skips_metrics_request(self):
+        """A timed-out health probe must not start a second timeout chain.
+
+        Before #5105, the same tick immediately called /metrics.json after
+        /health exhausted the Typesense client's internal retry chain.
         """
         client = MagicMock()
-        client.operations.is_healthy = MagicMock(side_effect=RuntimeError("down"))
+        client.operations.is_healthy = MagicMock(side_effect=httpx.ReadTimeout("timed out"))
         client.metrics.retrieve = MagicMock(return_value={"typesense_memory_active_bytes": 42})
+        backoff = _DownstreamBackoff("typesense-health-test", 5.0, 300.0)
 
         with patch("src.typesense_client.get_typesense_client", return_value=client):
-            await _update_typesense_health()
+            await _update_typesense_health(backoff)
 
-        client.metrics.retrieve.assert_called_once_with()
+        assert backoff.consecutive_failures == 1
+        client.metrics.retrieve.assert_not_called()
 
+    async def test_metrics_failure_does_not_open_export_circuit(self):
+        """The optional memory metric cannot disable the write path."""
+        client = MagicMock()
+        client.operations.is_healthy = MagicMock(return_value=True)
+        client.metrics.retrieve = MagicMock(side_effect=httpx.ReadTimeout("timed out"))
+        backoff = _DownstreamBackoff("typesense-metrics-test", 5.0, 300.0)
 
-# ---------------------------------------------------------------------------
-# _reconciliation_loop
-# ---------------------------------------------------------------------------
+        with patch("src.typesense_client.get_typesense_client", return_value=client):
+            await _update_typesense_health(backoff)
 
-
-class TestReconciliationLoop:
-    async def test_loop_runs_and_shuts_down(self):
-        local = _make_pool()
-        supa = _make_pool()
-        shutdown = asyncio.Event()
-
-        with (
-            patch("src.exporter.settings") as mock_settings,
-            patch(
-                "src.exporter.run_reconciliation",
-                new_callable=AsyncMock,
-                return_value=0,
-            ) as mock_recon,
-        ):
-            # Use a tiny interval so the test is fast
-            mock_settings.reconciliation_interval = 0.05
-
-            async def set_shutdown():
-                await asyncio.sleep(0.15)
-                shutdown.set()
-
-            await asyncio.gather(
-                _reconciliation_loop(local, supa, shutdown),
-                set_shutdown(),
-            )
-
-            # Should have run reconciliation at least once
-            assert mock_recon.await_count >= 1
-
-
-# ---------------------------------------------------------------------------
-# run_exporter_with_reconciliation
-# ---------------------------------------------------------------------------
-
-
-class TestCombinedRunner:
-    async def test_gathers_both_tasks(self):
-        """Combined runner should start both exporter and reconciliation."""
-        local = _make_pool()
-        supa = _make_pool()
-        shutdown = asyncio.Event()
-
-        with (
-            patch("src.exporter.run_exporter", new_callable=AsyncMock) as mock_exp,
-            patch("src.exporter._reconciliation_loop", new_callable=AsyncMock) as mock_recon,
-        ):
-            await run_exporter_with_reconciliation(local, supa, shutdown)
-
-            mock_exp.assert_awaited_once_with(local, supa, shutdown)
-            mock_recon.assert_awaited_once_with(local, supa, shutdown)
+        assert backoff.consecutive_failures == 0
 
 
 # ---------------------------------------------------------------------------
@@ -1279,6 +1746,10 @@ def _make_posting_record(
     description_r2_hash: int | None = 12345,
     experience_min: float | None = None,
     experience_max: float | None = None,
+    salary_min: int | None = None,
+    salary_max: int | None = None,
+    salary_currency: str | None = None,
+    salary_period: str | None = None,
 ) -> MagicMock:
     """Simulate an asyncpg.Record for a job_posting row."""
     company_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -1301,6 +1772,10 @@ def _make_posting_record(
         "first_seen_at": now,
         "last_seen_at": now,
         "salary_eur": None,
+        "salary_min": salary_min,
+        "salary_max": salary_max,
+        "salary_currency": salary_currency,
+        "salary_period": salary_period,
         "source_url": "https://example.com/job",
         "description_r2_hash": description_r2_hash,
     }
@@ -1321,7 +1796,9 @@ class TestBuildTypesenseDocsAncestors:
         row = _make_posting_record(location_ids=[10])
         docs = _build_typesense_docs([row], maps)
         assert len(docs) == 1
+        assert docs[0]["reconciliation_bucket"] == uuid.UUID(docs[0]["id"]).hex[:2]
         loc_ids = set(docs[0]["location_ids"])
+        assert docs[0]["location_direct_ids"] == [10]
         assert 10 in loc_ids  # leaf (city)
         assert 20 in loc_ids  # region ancestor
         assert 30 in loc_ids  # country ancestor
@@ -1385,6 +1862,37 @@ class TestBuildTypesenseDocsAncestors:
         # location_names and location_geo_types are only for the leaf
         assert len(docs[0]["location_names"]) == 1
         assert len(docs[0]["location_geo_types"]) == 1
+
+
+class TestBuildTypesenseDocsOriginalSalary:
+    """Posting detail keeps the source salary alongside normalized EUR facets."""
+
+    def test_original_salary_fields_are_indexed_when_present(self):
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(
+            salary_min=120_000,
+            salary_max=150_000,
+            salary_currency="USD",
+            salary_period="year",
+        )
+
+        [doc] = _build_typesense_docs([row], maps)
+
+        assert doc["salary_min"] == 120_000
+        assert doc["salary_max"] == 150_000
+        assert doc["salary_currency"] == "USD"
+        assert doc["salary_period"] == "year"
+
+    def test_null_original_salary_fields_are_omitted(self):
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record()
+
+        [doc] = _build_typesense_docs([row], maps)
+
+        assert "salary_min" not in doc
+        assert "salary_max" not in doc
+        assert "salary_currency" not in doc
+        assert "salary_period" not in doc
 
 
 class TestBuildTypesenseDocsHasContent:
@@ -1650,128 +2158,61 @@ class TestLoadLocationAncestors:
 
 
 class TestLoadOccupationAncestors:
-    """Tests for TaxonomyMaps._load_occupation_ancestors domain handling.
+    """Tests for collision-free occupation ancestor expansion (#3027)."""
 
-    Issue #2980: occupation ancestors used to walk only the ``parent_id``
-    chain, so a posting tagged with a specific occupation never carried
-    its ``domain_id`` (e.g. Software Engineering = 1) in the expanded
-    ``occupation_ids``. As a result, ``occupation_ids:=<domain_id>``
-    returned 0 — domain-as-single-filter could not work. The fix unions
-    the row's ``domain_id`` into the ancestor set, mirroring the location
-    macro expansion in ``_load_location_ancestors`` (#2977).
-    """
-
-    async def test_domain_id_is_unioned_into_ancestors(self):
-        """Each occupation's ancestor set must include its domain_id when
-        present, so ``occupation_ids:=<domain_id>`` matches every posting
-        in that domain.
-        """
+    async def test_domain_ids_are_not_unioned_into_occupation_ids(self):
+        """Independent domain IDs must never masquerade as occupations."""
         pool = _make_pool()
-        # Hierarchy:
-        #  - frontend-developer(2): parent=1 (software-engineer), domain=1 (SE)
-        #  - software-engineer(1):  parent=None,                 domain=1 (SE)
-        #  - solutions-architect(18): parent=None,               domain=3 (infra-security)
-        #  - data-engineer(7):       parent=None,                domain=2 (data-ai)
-        #  - orphan(99):             parent=None,                domain=None (no domain)
+        # Production assigns domain and occupation IDs from separate
+        # sequences. Healthcare domain 9 therefore collides with Data
+        # Analyst occupation 9. A Pharmacist posting (occupation 92,
+        # domain 9) must not carry 9 in its occupation_ids array.
         pool.fetch = AsyncMock(
             return_value=[
-                {"id": 1, "parent_id": None, "domain_id": 1},
-                {"id": 2, "parent_id": 1, "domain_id": 1},
-                {"id": 18, "parent_id": None, "domain_id": 3},
-                {"id": 7, "parent_id": None, "domain_id": 2},
-                {"id": 99, "parent_id": None, "domain_id": None},
+                {"id": 9, "parent_id": None},
+                {"id": 92, "parent_id": None},
+                {"id": 104, "parent_id": None},
             ]
         )
 
         maps = TaxonomyMaps()
         await maps._load_occupation_ancestors(pool)
 
-        # Sanity: query selected the new domain_id column.
         sql = pool.fetch.await_args.args[0]
-        assert "domain_id" in sql, f"query missing domain_id: {sql!r}"
+        assert "domain_id" not in sql
+        assert set(maps.occupation_ancestors[9]) == {9}
+        assert set(maps.occupation_ancestors[92]) == {92}
+        assert set(maps.occupation_ancestors[104]) == {104}
 
-        # Leaf occupation gets parent + domain.
-        assert set(maps.occupation_ancestors[2]) == {2, 1}, (
-            "frontend-developer(2): self + parent(1) — note domain(1) "
-            "happens to coincide with parent id, so set has 2 elems"
-        )
-        # Top-level occupation in SE: self only (domain==self id is
-        # skipped to avoid stamping the same id twice).
-        assert set(maps.occupation_ancestors[1]) == {1}, (
-            "software-engineer(1): domain_id(1) coincides with self id"
-        )
-        # Top-level occupation in a different domain: self + domain.
-        assert set(maps.occupation_ancestors[18]) == {18, 3}, (
-            "solutions-architect(18): self + domain(3) — domain ancestor "
-            "is the smoking-gun for the #2980 fix"
-        )
-        # Another domain stamping
-        assert set(maps.occupation_ancestors[7]) == {7, 2}, (
-            "data-engineer(7): self + domain(2 = data-ai)"
-        )
-        # Occupation with no domain is unchanged (parent chain only).
-        assert set(maps.occupation_ancestors[99]) == {99}
-
-    async def test_parent_chain_still_walked_when_domain_present(self):
-        """A multi-level parent chain plus a domain id should produce the
-        full ancestor set: self + every parent up the chain + domain id.
-        """
+    async def test_parent_chain_is_still_walked(self):
+        """Real occupation parents retain subtree-filter semantics."""
         pool = _make_pool()
-        # 3-level chain with shared domain id 5
         pool.fetch = AsyncMock(
             return_value=[
-                {"id": 1, "parent_id": None, "domain_id": 5},
-                {"id": 2, "parent_id": 1, "domain_id": 5},
-                {"id": 3, "parent_id": 2, "domain_id": 5},
+                {"id": 1, "parent_id": None},
+                {"id": 2, "parent_id": 1},
+                {"id": 3, "parent_id": 2},
             ]
         )
 
         maps = TaxonomyMaps()
         await maps._load_occupation_ancestors(pool)
 
-        # Leaf gets self, parent, grandparent, plus domain
-        assert set(maps.occupation_ancestors[3]) == {3, 2, 1, 5}
-        assert set(maps.occupation_ancestors[2]) == {2, 1, 5}
-        assert set(maps.occupation_ancestors[1]) == {1, 5}
-
-    async def test_null_domain_is_safe(self):
-        """Occupations without a domain (domain_id IS NULL) must not crash
-        and must not add a stray None or 0 to the ancestor set.
-        """
-        pool = _make_pool()
-        pool.fetch = AsyncMock(
-            return_value=[
-                {"id": 1, "parent_id": None, "domain_id": None},
-                {"id": 2, "parent_id": 1, "domain_id": None},
-            ]
-        )
-
-        maps = TaxonomyMaps()
-        await maps._load_occupation_ancestors(pool)
-
-        assert set(maps.occupation_ancestors[1]) == {1}
+        assert set(maps.occupation_ancestors[3]) == {3, 2, 1}
         assert set(maps.occupation_ancestors[2]) == {2, 1}
+        assert set(maps.occupation_ancestors[1]) == {1}
 
-    def test_build_typesense_docs_includes_domain_ancestor(self):
-        """End-to-end check: a posting tagged with a top-level occupation
-        in a non-coinciding domain must carry the domain id in its
-        expanded ``occupation_ids`` — the invariant the domain-as-single-
-        filter UX (#2980) relies on.
-        """
+    def test_build_typesense_docs_excludes_colliding_domain_id(self):
+        """A Pharmacist document cannot match the Data Analyst ID."""
         maps = _make_taxonomy_maps()
-        # Solutions Architect (id=18, no parent, domain=3 = infra-security)
-        maps.occupation_names[18] = "Solutions Architect"
-        maps.occupation_ancestors[18] = [18, 3]
-        # Domain 3 is not represented as an occupation row but must
-        # still appear in the posting's occupation_ids array.
+        maps.occupation_names[92] = "Pharmacist"
+        maps.occupation_ancestors[92] = [92]
 
-        row = _make_posting_record(occupation_id=18)
+        row = _make_posting_record(occupation_id=92)
         docs = _build_typesense_docs([row], maps)
-        assert 3 in docs[0]["occupation_ids"], (
-            "domain id missing from occupation_ids — domain filter would not match this posting"
-        )
-        # Leaf occupation_id (singular) is still the specific occupation.
-        assert docs[0]["occupation_id"] == 18
+        assert docs[0]["occupation_ids"] == [92]
+        assert 9 not in docs[0]["occupation_ids"]
+        assert docs[0]["occupation_id"] == 92
 
 
 # ---------------------------------------------------------------------------
@@ -2059,7 +2500,13 @@ class TestRunExporterAtomicCursorWiring:
                 shutdown.set()
 
             await asyncio.gather(
-                run_exporter(local, supa, shutdown),
+                run_exporter(
+                    local,
+                    supa,
+                    shutdown,
+                    cursor_fence_factory=_noop_cursor_fence,
+                    cutoff_factory=_fixed_cdc_cutoff,
+                ),
                 set_shutdown(),
             )
 

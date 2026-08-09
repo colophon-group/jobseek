@@ -22,6 +22,7 @@ from src.core.scrapers import (
     get_scraper,
     scraper_needs_browser,
 )
+from src.metrics import browser_target_closed_retries_total
 from src.processing.cpu import (
     BatchResult,
     _build_locales,
@@ -49,7 +50,9 @@ from src.queries.scrape import (
     _RECORD_SCRAPE_TRANSIENT,
     _UPDATE_ENRICH_CONTENT,
 )
+from src.shared.browser import is_target_closed_error
 from src.shared.html_normalize import normalize_description_html
+from src.shared.http import is_avature_job_detail_url
 from src.shared.langdetect import detect_all_languages, detect_language
 
 log = structlog.get_logger()
@@ -70,6 +73,14 @@ _UPSERT_DESCRIPTION = (
     "  WHEN descriptions.hash = $4 OR descriptions.hash = $5 "
     "  THEN descriptions.r2_uploaded "
     "  ELSE false END, "
+    "r2_upload_failures = CASE "
+    "  WHEN descriptions.hash = $4 OR descriptions.hash = $5 "
+    "  THEN descriptions.r2_upload_failures "
+    "  ELSE 0 END, "
+    "r2_next_attempt_at = CASE "
+    "  WHEN descriptions.hash = $4 OR descriptions.hash = $5 "
+    "  THEN descriptions.r2_next_attempt_at "
+    "  ELSE '-infinity'::timestamptz END, "
     "updated_at = CASE "
     "  WHEN descriptions.hash = $4 OR descriptions.hash = $5 "
     "  THEN descriptions.updated_at "
@@ -167,12 +178,14 @@ class _BoardScraperInfo:
 #   * ``permanent_gone`` (HTTP 404 / 410): RFC-defined "this resource is
 #     gone". Tombstone IMMEDIATELY, on the first failure, no budget
 #     consumed. Caller passes ``permanent_gone=True`` to the SQL.
-#   * ``budget_eligible`` (4xx other than 401, 403, 429): the upstream
+#   * ``budget_eligible`` (4xx other than 401, 403, 429 and provider-specific
+#     transient statuses): the upstream
 #     said "no" with a status that's typically meaningful — most
 #     archived-posting flows return one of these. Counts toward the
 #     3-failure tombstone budget. Caller passes ``permanent_gone=False``;
 #     the budget condition in the SQL fires after 3 such failures.
 #   * ``transient`` (5xx, timeouts, connect errors, 401/403/429,
+#     provider-specific overload responses such as Avature JobDetail 406,
 #     successful HTTP fetch with empty extraction): the upstream is
 #     either temporarily unhealthy or our extraction config is broken.
 #     Either way, tombstoning is wrong. Caller takes the
@@ -219,9 +232,10 @@ def _is_budget_eligible_failure(exc: BaseException) -> bool:
     """Return True for failures that should COUNT toward the 3-failure
     tombstone budget in ``_RECORD_SCRAPE_FAILURE``.
 
-    Eligible: HTTP 4xx other than 401 / 403 / 404 / 410 / 429.
+    Eligible: HTTP 4xx other than 401 / 403 / 404 / 410 / 429 and Avature
+    JobDetail 406 responses.
     Ineligible: everything else (5xx, network errors, 401 / 403 / 429,
-    non-HTTP exceptions, AND 404 / 410 — those go through the
+    Avature JobDetail 406, non-HTTP exceptions, AND 404 / 410 — those go through the
     immediate-tombstone short-circuit via ``_is_permanent_gone``, NOT
     the budget). 404 / 410 are excluded here so the two predicates
     stay disjoint at the call site: callers test ``permanent_gone``
@@ -232,6 +246,11 @@ def _is_budget_eligible_failure(exc: BaseException) -> bool:
     s = exc.response.status_code
     if s in (404, 410):
         # Disjoint from _is_permanent_gone. See docstring.
+        return False
+    if s == 406 and is_avature_job_detail_url(str(exc.request.url)):
+        # #5710: five Avature tenants emitted bursty 406s for live pages that
+        # later returned 200 unchanged. Counting these toward the three-strike
+        # tombstone budget can hide valid jobs during a provider throttle.
         return False
     return 400 <= s < 500 and s not in (401, 403, 429)
 
@@ -245,6 +264,29 @@ def _board_has_enrich(metadata: dict) -> list[str] | None:
     if isinstance(enrich, list) and enrich:
         return enrich
     return None
+
+
+def _effective_board_enrich(metadata: dict, crawler_type: str | None) -> list[str] | None:
+    """Return persisted enrichment or a monitor's complete auto-configured default.
+
+    Runtime scheduling must match scraper resolution even when a board arrived
+    through direct CSV/config ingress instead of ``ws select``. A caller-
+    supplied scraper config remains authoritative and is never merged with an
+    auto default; only a genuinely absent config can inherit auto enrichment.
+    """
+    configured = _board_has_enrich(metadata)
+    if configured is not None:
+        return configured
+    if metadata.get("scraper_type") or "scraper_config" in metadata:
+        return None
+    if not crawler_type:
+        return None
+
+    from src.workspace._compat import auto_scraper_type
+
+    auto = auto_scraper_type(crawler_type, metadata)
+    auto_config = auto[1] if auto is not None else None
+    return _board_has_enrich({"scraper_config": auto_config})
 
 
 def _is_skip_no_scrape(metadata: dict, crawler_type: str | None = None) -> bool:
@@ -283,6 +325,10 @@ def _is_skip_no_scrape(metadata: dict, crawler_type: str | None = None) -> bool:
         from src.workspace._compat import auto_skip_crawler_types
 
         if ct in auto_skip_crawler_types():
+            return True
+        # RSS is conditionally rich: ordinary feeds include descriptions,
+        # while legacy SuccessFactors DWR listings require DOM enrichment.
+        if ct == "rss" and metadata.get("variant") != "legacy":
             return True
         # api_sniffer / nextdata are conditionally rich: they auto-resolve to
         # ("skip", None) only when ``fields`` is set in their monitor
@@ -439,6 +485,53 @@ def _apply_defaults(content: JobContent, cfg: dict) -> JobContent:
     return content
 
 
+async def _scrape_with_browser_target_recovery(
+    url: str,
+    scraper_type: str,
+    scraper_config: dict | None,
+    http: httpx.AsyncClient,
+    *,
+    pw=None,
+) -> JobContent:
+    """Retry one lost Playwright target with a newly launched context.
+
+    Browser scrapers create and close their browser/context inside each
+    ``scrape_one`` call.  Re-dispatching once after ``TargetClosedError``
+    therefore recreates the failed resource without recycling the worker's
+    healthy long-lived Playwright driver.  Other Playwright and scraper
+    failures propagate unchanged, and a second target loss exhausts the
+    bounded retry so the normal transient queue backoff still applies.
+    """
+    try:
+        return await _batch.scrape_one(url, scraper_type, scraper_config, http, pw=pw)
+    except Exception as exc:
+        if not scraper_needs_browser(scraper_type, scraper_config) or not is_target_closed_error(
+            exc
+        ):
+            raise
+
+    log.warning(
+        "batch.scrape.browser_target_closed_retry",
+        url=url,
+        scraper_type=scraper_type,
+        attempt=1,
+    )
+    try:
+        content = await _batch.scrape_one(url, scraper_type, scraper_config, http, pw=pw)
+    except Exception:
+        browser_target_closed_retries_total.labels(outcome="failed").inc()
+        raise
+
+    browser_target_closed_retries_total.labels(outcome="recovered").inc()
+    log.info(
+        "batch.scrape.browser_target_closed_recovered",
+        url=url,
+        scraper_type=scraper_type,
+        attempts=2,
+    )
+    return content
+
+
 async def _process_one_enrich_scrape(
     item: ScrapeItem,
     pool: asyncpg.Pool,
@@ -466,7 +559,13 @@ async def _process_one_enrich_scrape(
     t0 = monotonic()
     try:
         cfg = scraper_config or {}
-        content = await _batch.scrape_one(item.url, scraper_type, scraper_config, http, pw=pw)
+        content = await _scrape_with_browser_target_recovery(
+            item.url,
+            scraper_type,
+            scraper_config,
+            http,
+            pw=pw,
+        )
         content = _apply_defaults(content, cfg)
 
         # Normalize before checking -- normalize can strip degenerate HTML to None
@@ -703,6 +802,7 @@ async def _process_one_scrape(
     from src.redis_queue import enqueue_scrape
 
     t0 = monotonic()
+    operation = "scrape_fetch"
     try:
         board_cfg = scraper_config or {}
 
@@ -717,7 +817,13 @@ async def _process_one_scrape(
         # Resolve which scraper to run at this step
         step_type, step_cfg = _get_scraper_at_step(scraper_type, scraper_config, scrape_step)
 
-        content = await _batch.scrape_one(item.url, step_type, step_cfg or None, http, pw=pw)
+        content = await _scrape_with_browser_target_recovery(
+            item.url,
+            step_type,
+            step_cfg or None,
+            http,
+            pw=pw,
+        )
         content = _apply_defaults(content, step_cfg)
 
         # For step 0, require a usable title; later steps use COALESCE
@@ -759,10 +865,12 @@ async def _process_one_scrape(
                 # workday) doesn't tombstone thousands of live postings
                 # — the monitor authority will delist real archives
                 # eventually.
+                operation = "record_empty_result"
                 async with pool.acquire() as conn:
                     await conn.execute(_RECORD_SCRAPE_TRANSIENT, item.job_posting_id)
             return False, monotonic() - t0
 
+        operation = "content_processing"
         content.description = normalize_description_html(content.description)
 
         # Detect language if not already set
@@ -779,6 +887,7 @@ async def _process_one_scrape(
         norm_emp_type = normalize_employment_type(raw_emp_type)
 
         # Resolve locations
+        operation = "location_lookup"
         loc_resolver = await _batch._get_location_resolver(pool)
         loc_ids, loc_types = await _batch._resolve_locations(
             loc_resolver,
@@ -788,6 +897,7 @@ async def _process_one_scrape(
         )
 
         # Resolve technologies from description
+        operation = "taxonomy_lookup"
         tech_id_map = await _batch._get_technology_ids(pool)
         tech_ids = _resolve_technology_ids(desc_text, tech_id_map)
 
@@ -835,6 +945,7 @@ async def _process_one_scrape(
             if (lang_text or detected_langs)
             else None
         )
+        operation = "database_save"
         async with pool.acquire() as conn:
             update_result = await conn.execute(
                 _UPDATE_ENRICH_CONTENT,
@@ -869,11 +980,13 @@ async def _process_one_scrape(
                 )
             await conn.execute(_RECORD_SCRAPE_SUCCESS, item.job_posting_id)
 
+        operation = "location_miss_flush"
         await _batch._flush_location_misses(loc_resolver, pool)
 
         # Enqueue next fallback step if one exists
         next_fb = _get_next_fallback(scraper_type, scraper_config, scrape_step)
         if next_fb:
+            operation = "fallback_enqueue"
             fb_type, fb_cfg, _fb_fields = next_fb
             needs_browser = scraper_needs_browser(fb_type, fb_cfg)
             domain = urlparse(item.url).hostname or ""
@@ -921,6 +1034,7 @@ async def _process_one_scrape(
                 "batch.scrape.gone",
                 url=item.url,
                 error=error_msg,
+                operation=operation,
                 step=scrape_step,
                 duration_s=round(elapsed, 2),
             )
@@ -929,6 +1043,7 @@ async def _process_one_scrape(
                 "batch.scrape.error",
                 url=item.url,
                 error=error_msg,
+                operation=operation,
                 step=scrape_step,
                 duration_s=round(elapsed, 2),
             )
@@ -966,7 +1081,12 @@ async def _do_one_enrich_scrape(
     enrich_fields = work.enrich_fields or []
     cfg = work.scraper_config or {}
 
-    content = await _batch.scrape_one(item.url, work.scraper_type, work.scraper_config, http)
+    content = await _scrape_with_browser_target_recovery(
+        item.url,
+        work.scraper_type,
+        work.scraper_config,
+        http,
+    )
     content = _apply_defaults(content, cfg)
 
     # Normalize before checking
@@ -1130,7 +1250,12 @@ async def _do_one_scrape(
             work, http, pool, loc_resolver, rates, tech_id_map, occ_ids, sen_ids
         )
 
-    content = await _batch.scrape_one(item.url, work.scraper_type, work.scraper_config, http)
+    content = await _scrape_with_browser_target_recovery(
+        item.url,
+        work.scraper_type,
+        work.scraper_config,
+        http,
+    )
     content = _apply_defaults(content, cfg)
 
     if not content.title or _is_garbage_title(content.title):

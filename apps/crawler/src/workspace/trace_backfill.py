@@ -17,7 +17,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from src.workspace.trace import detect_credentials
+from src.workspace.trace import detect_credentials, redact_credentials
 
 SCHEMA_VERSION = "jobseek-codex-training-bundle/v2"
 DEFAULT_HF_REPO = "viktoroo/jobseek-agent-traces"
@@ -460,6 +460,25 @@ def _write_jsonl(path: Path, values: Iterable[dict[str, Any]]) -> None:
             handle.write(json.dumps(value, sort_keys=True, ensure_ascii=False) + "\n")
 
 
+def _redact_projected_files(
+    output_dir: Path,
+    file_entries: list[dict[str, Any]],
+) -> list[dict[str, int | str]]:
+    """Redact projected files and refresh their manifest checksums."""
+    redactions: list[dict[str, int | str]] = []
+    for entry in file_entries:
+        relative_path = str(entry["path"])
+        path = output_dir / relative_path
+        original = path.read_text(errors="replace")
+        redacted, findings = redact_credentials(original)
+        if redacted != original:
+            path.write_text(redacted)
+        entry["sha256"] = _sha256(path)
+        entry["bytes"] = path.stat().st_size
+        redactions.extend({"path": relative_path, **finding} for finding in findings)
+    return redactions
+
+
 def _safe_filename_component(value: str, *, fallback: str) -> str:
     component = re.sub(r"[^a-zA-Z0-9_-]+", "-", value).strip("-")
     return component or fallback
@@ -694,6 +713,10 @@ def build_bundle(
             }
         )
 
+    credential_redactions = _redact_projected_files(output_dir, file_entries)
+    if stderr_summary is not None:
+        stderr_summary["bytes"] = (output_dir / "runner-stderr.log").stat().st_size
+
     root_id = root.thread_id
     structural_errors = _session_tree_errors(sessions, root_id)
     if run.get("state") not in _EXPORTABLE_STATES:
@@ -779,6 +802,7 @@ def build_bundle(
             "user_messages": user_messages,
             "root_user_messages": root_user_messages,
             "final_answers": final_answers,
+            "credential_redactions": credential_redactions,
         },
         "codex_exec": trace_summary,
         "runner_stderr": stderr_summary,
@@ -786,6 +810,14 @@ def build_bundle(
     }
 
     manifest_path = output_dir / "manifest.json"
+    manifest_text = json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
+    sanitized_manifest_text, manifest_redactions = redact_credentials(manifest_text)
+    if manifest_redactions:
+        manifest = json.loads(sanitized_manifest_text)
+        credential_redactions.extend(
+            {"path": "manifest.json", **finding} for finding in manifest_redactions
+        )
+        manifest["quality"]["credential_redactions"] = credential_redactions
     manifest_path.write_text(
         json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
     )
@@ -1500,6 +1532,7 @@ def backfill_all(
         "unavailable": len(candidates) - len(eligible),
         "failed": 0,
         "reclaimed_bytes": 0,
+        "credential_redactions": 0,
         "tiers": {"gold": 0, "silver": 0, "diagnostic": 0},
     }
     for run_id in candidates:
@@ -1530,6 +1563,9 @@ def backfill_all(
                         codex_home=codex_home,
                         output_dir=building,
                         sessions=session_index[run_id],
+                    )
+                    summary["credential_redactions"] += len(
+                        manifest["quality"].get("credential_redactions") or []
                     )
                     tier = str(manifest["quality"]["tier"])
                     if tier == "quarantined":

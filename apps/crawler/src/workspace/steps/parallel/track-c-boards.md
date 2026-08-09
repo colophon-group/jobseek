@@ -17,6 +17,25 @@ adding boards as you discover them rather than waiting to find all of them.
 > restrict to a single country or region. Never add query parameters like
 > `?location=switzerland` to board URLs — use the unfiltered base URL.
 
+{% if ats_inventory_seed %}
+## Existing inventory candidate
+
+The issue supplied this candidate (fast-path status:
+`{{ ats_inventory_seed.status }}`):
+
+- `{{ ats_inventory_seed.board_url }}`
+- proposed native monitor: `{{ ats_inventory_seed.monitor_type }}`
+- source: `{{ ats_inventory_seed.source_key }}`
+
+Independently verify that this tenant belongs to the target company and report
+any redirect, stale page, wrong-company identity, current-registry duplicate,
+or regional-only scope to the main agent. Check `ws status` before adding it so
+an already-registered URL is not duplicated; when status is `fallback`, treat
+it as untrusted evidence and use the normal board flow. Continue the full
+checklist below to find every additional official board; this candidate is not
+evidence that discovery is complete.
+{% endif %}
+
 ## How to add a board
 
 ```bash

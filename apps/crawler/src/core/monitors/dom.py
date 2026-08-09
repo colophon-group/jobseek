@@ -23,7 +23,7 @@ import structlog
 
 from src.core.monitors import register
 from src.core.monitors.raw import save_text_response
-from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions
+from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
 
 if TYPE_CHECKING:
     import httpx
@@ -61,6 +61,40 @@ _BROWSER_FETCH_JS = (
 
 _JOB_KEYWORDS = frozenset({"job", "career", "position", "posting", "opening", "role", "vacancy"})
 
+_SITEGROUND_CHALLENGE_PATHS = (
+    "/.well-known/captcha",
+    "/.well-known/sgcaptcha",
+)
+
+_CLOUDFLARE_CHALLENGE_PATH = "/cdn-cgi/challenge-platform/"
+_CLOUDFLARE_CHALLENGE_TEXTS = (
+    "enable javascript and cookies",
+    "sorry, you have been blocked",
+)
+
+
+class BotChallengeError(RuntimeError):
+    """The board returned an anti-bot challenge instead of job listings.
+
+    Returning an empty URL set for a challenge page records a healthy crawl
+    and can tombstone every previously known posting.  Raising keeps the
+    cycle on the normal failure/retry path until the configured proxy or
+    origin recovers.
+    """
+
+
+def _raise_if_bot_challenge(url: str, html: str) -> None:
+    haystack = f"{url}\n{html}".lower()
+    is_siteground = any(path in haystack for path in _SITEGROUND_CHALLENGE_PATHS)
+    is_cloudflare = "<title>just a moment" in haystack or (
+        _CLOUDFLARE_CHALLENGE_PATH in haystack
+        and any(text in haystack for text in _CLOUDFLARE_CHALLENGE_TEXTS)
+    )
+    if is_siteground or is_cloudflare:
+        raise BotChallengeError(
+            f"bot challenge detected for {url}; configure or verify proxy transport"
+        )
+
 
 def _build_url_matcher(url_filter) -> re.Pattern | None:
     """Compile *url_filter* config into a regex, or ``None`` to use keywords."""
@@ -70,6 +104,51 @@ def _build_url_matcher(url_filter) -> re.Pattern | None:
         return re.compile(url_filter)
     include = url_filter.get("include")
     return re.compile(include) if include else None
+
+
+def _build_url_identity_transform(url_transform) -> tuple[re.Pattern, str] | None:
+    """Compile a URL rewrite for transformation-aware pagination dedupe.
+
+    The dispatcher still performs the actual rewrite after discovery. During
+    pagination we only use the eventual URL as a stable identity so tracking
+    parameters cannot make one posting look new on every page.
+    """
+    if not isinstance(url_transform, dict):
+        return None
+    find = url_transform.get("find")
+    if not isinstance(find, str) or not find:
+        return None
+    replace = url_transform.get("replace", "")
+    if not isinstance(replace, str):
+        return None
+    try:
+        return re.compile(find), replace
+    except re.error as exc:
+        log.warning("monitor.url_transform_invalid", error=str(exc))
+        return None
+
+
+def _url_identity(url: str, transform: tuple[re.Pattern, str] | None) -> str:
+    if transform is None:
+        return url
+    pattern, replace = transform
+    return pattern.sub(replace, url)
+
+
+def _dedupe_by_identity(
+    urls: set[str],
+    transform: tuple[re.Pattern, str] | None,
+) -> tuple[set[str], set[str]]:
+    """Keep one raw representative for each eventual transformed URL."""
+    representatives: set[str] = set()
+    identities: set[str] = set()
+    for url in sorted(urls):
+        identity = _url_identity(url, transform)
+        if identity in identities:
+            continue
+        representatives.add(url)
+        identities.add(identity)
+    return representatives, identities
 
 
 # ---------------------------------------------------------------------------
@@ -133,6 +212,13 @@ async def _extract_links_rendered(
     await navigate(page, board_url, browser_config)
     await run_actions(page, browser_config.get("actions", []))
 
+    # SiteGround returns HTTP 202 followed by a meta-refresh into
+    # ``/.well-known/captcha``.  The page contains no job links, so without
+    # this guard a WAF block is indistinguishable from a genuinely empty
+    # board and the monitor reports a successful empty cycle.
+    html = await safe_content(page)
+    _raise_if_bot_challenge(page.url, html)
+
     links = await page.evaluate("""
         () => Array.from(document.querySelectorAll('a[href]'))
             .map(a => a.href)
@@ -170,6 +256,8 @@ async def _fetch_via_page(
           httpx-side ``fetch_with_retry``).
 
     Raises:
+        :exc:`BotChallengeError` when the response body is a recognized
+        anti-bot interstitial, including non-retryable HTTP 403 pages.
         :exc:`PaginationFetchError` when *retries* attempts have all
         hit a retryable failure (5xx including Cloudflare 520-526/530,
         408, 425, 429, **200-with-empty-body**, or a Playwright
@@ -218,6 +306,8 @@ async def _fetch_via_page(
             text = result.get("text") or ""
             resp_headers = result.get("headers") or {}
             last_status = status
+            if text:
+                _raise_if_bot_challenge(url, text)
             if status == 200:
                 if text:
                     # TDM-Reservation respect (#2842). Symmetric with the
@@ -248,9 +338,10 @@ async def _fetch_via_page(
                     status=status,
                 )
                 return None
-        except TDMReservedError:
-            # Publisher policy declaration — never retry, propagate to
-            # the monitor wrapper for graceful skip handling (#2842).
+        except (BotChallengeError, TDMReservedError):
+            # Anti-bot interstitials and publisher policy declarations are
+            # deterministic responses, not transport glitches. Propagate
+            # them so the monitor run fails/skips instead of truncating.
             raise
         except Exception as exc:  # page.evaluate raised — timeout, navigation, page closed
             last_exc = exc
@@ -283,6 +374,7 @@ async def _paginate_urls(
     client: httpx.AsyncClient,
     page=None,
     url_matcher: re.Pattern | None = None,
+    url_transform: dict | None = None,
 ) -> set[str]:
     """Fetch paginated pages and merge discovered links with *initial_urls*.
 
@@ -333,14 +425,18 @@ async def _paginate_urls(
     increment = pagination.get("increment", 1)
     max_pages = min(pagination.get("max_pages", _MAX_PAGINATION_PAGES), _MAX_PAGINATION_PAGES)
     use_browser = pagination.get("browser", False) and page is not None
+    if not url_template and not isinstance(param_name, str):
+        raise ValueError("DOM pagination requires param_name or url_template")
 
-    all_urls = set(initial_urls)
+    identity_transform = _build_url_identity_transform(url_transform)
+    all_urls, seen_identities = _dedupe_by_identity(initial_urls, identity_transform)
     value = start + increment
 
     for page_num in range(2, max_pages + 1):
         if url_template:
             page_url = url_template.format(page=value)
         else:
+            assert isinstance(param_name, str)
             page_url = set_url_param(board_url, param_name, value)
 
         if use_browser:
@@ -355,8 +451,15 @@ async def _paginate_urls(
             log.info("dom.pagination.end", page=page_num, url=page_url)
             break
 
+        _raise_if_bot_challenge(page_url, html)
         new_urls = _extract_links_static(html, page_url, url_matcher)
-        added = new_urls - all_urls
+        added: set[str] = set()
+        for url in sorted(new_urls):
+            identity = _url_identity(url, identity_transform)
+            if identity in seen_identities:
+                continue
+            added.add(url)
+            seen_identities.add(identity)
         if not added:
             log.info("dom.pagination.no_new_urls", page=page_num)
             break
@@ -395,8 +498,14 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
 # ---------------------------------------------------------------------------
 
 
-async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -> set[str]:
+async def dom_discover(
+    board: dict,
+    client: httpx.AsyncClient | None = None,
+    pw=None,
+) -> set[str]:
     """Discover job URLs from a career page."""
+    if client is None:
+        raise ValueError("DOM monitor requires an HTTP client")
     metadata = board.get("metadata") or {}
     board_url = board["board_url"]
 
@@ -404,6 +513,7 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
     actions = metadata.get("actions")
     pagination = metadata.get("pagination")
     url_matcher = _build_url_matcher(metadata.get("url_filter"))
+    url_transform = metadata.get("url_transform")
 
     if not render and actions:
         log.warning(
@@ -428,6 +538,7 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
                         client,
                         browser_page,
                         url_matcher,
+                        url_transform,
                     )
         else:
             try:
@@ -452,14 +563,21 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
                         client,
                         browser_page,
                         url_matcher,
+                        url_transform,
                     )
     else:
         from src.shared.http_retry import fetch_with_retry
 
-        html = await fetch_with_retry(client, board_url, transient_403=True)
+        html = await fetch_with_retry(
+            client,
+            board_url,
+            transient_403=True,
+            retryable_statuses={202},
+        )
         if not html:
             log.warning("dom.fetch_failed", board_url=board_url)
             return set()
+        _raise_if_bot_challenge(board_url, html)
         urls = _extract_links_static(html, board_url, url_matcher)
         if pagination:
             urls = await _paginate_urls(
@@ -468,6 +586,7 @@ async def dom_discover(board: dict, client: httpx.AsyncClient = None, pw=None) -
                 urls,
                 client,
                 url_matcher=url_matcher,
+                url_transform=url_transform,
             )
 
     # Exclude the board URL itself — it's the listing page, not a job

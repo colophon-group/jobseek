@@ -10,11 +10,110 @@ import pytest
 
 from src.core.monitors.api_sniffer import (
     ApiSnifferFallbackError,
+    _build_item_projector,
     _discover_live_url,
     _extract_rich,
     _extract_urls_from_template,
     discover,
 )
+
+
+class TestItemProjector:
+    def test_keeps_only_explicit_peoplestrong_fields(self):
+        projector = _build_item_projector(
+            {
+                "title": "jobTitle",
+                "locations": "locationHierarchy",
+                "date_posted": "jobPostedDate",
+            },
+            "jobDetailUrl",
+            None,
+            {},
+        )
+
+        assert projector is not None
+        item = {
+            "jobTitle": "Engineer",
+            "locationHierarchy": ["India", "Pune"],
+            "jobPostedDate": "2026-07-21",
+            "jobDetailUrl": "/job/123",
+            "description": "x" * 50_000,
+            "twenty_more_vendor_fields": {"large": "x" * 50_000},
+        }
+        assert projector(item) == {
+            "jobTitle": "Engineer",
+            "locationHierarchy": ["India", "Pune"],
+            "jobPostedDate": "2026-07-21",
+            "jobDetailUrl": "/job/123",
+        }
+
+    def test_keeps_nested_roots_lookup_keys_and_template_aliases(self):
+        projector = _build_item_projector(
+            {
+                "title": "details.title",
+                "locations": {"concat": ["office.city", "office.country"]},
+                "metadata.team": {
+                    "lookup_from": "lookups.departments",
+                    "key_from": "department_id",
+                },
+            },
+            None,
+            "https://example.com/jobs/{external_id}/{itemID}",
+            {"external_id": "custom.fields[0].value"},
+        )
+
+        assert projector is not None
+        projected = projector(
+            {
+                "details": {"title": "Engineer", "unused": "large"},
+                "office": {"city": "Paris", "country": "France"},
+                "department_id": 7,
+                "custom": {"fields": [{"value": "123"}]},
+                "itemID": "abc",
+                "unused": "large",
+            }
+        )
+        assert set(projected) == {
+            "details",
+            "office",
+            "department_id",
+            "custom",
+            "itemID",
+        }
+
+    def test_keeps_absolute_url_fallback(self):
+        projector = _build_item_projector(
+            {"title": "title"},
+            "configured_url",
+            None,
+            {},
+        )
+
+        assert projector is not None
+        assert projector(
+            {
+                "title": "Engineer",
+                "configured_url": None,
+                "canonical": "https://example.com/jobs/123",
+                "unused": "large",
+            }
+        ) == {
+            "title": "Engineer",
+            "configured_url": None,
+            "canonical": "https://example.com/jobs/123",
+        }
+
+    @pytest.mark.parametrize(
+        ("fields", "url_field"),
+        [
+            ({}, "url"),
+            ({"title": "jobs[?active].title"}, "url"),
+            ({"title": "@"}, "url"),
+            ({"title": "title"}, "url || canonical"),
+        ],
+    )
+    def test_unsafe_or_auto_detected_configs_disable_compaction(self, fields, url_field):
+        assert _build_item_projector(fields, url_field, None, {}) is None
 
 
 def _http_status_error_resp(status: int) -> MagicMock:
@@ -1953,3 +2052,70 @@ class TestDiscoverAutoTruncation:
         # Below-cap path returns the plain list (not a MonitorResult).
         assert isinstance(result, list)
         assert len(result) == 3
+
+    @pytest.mark.asyncio
+    async def test_auto_uses_captured_api_when_dom_interactions_are_unavailable(self, monkeypatch):
+        from src.core.monitors import api_sniffer as api_sniffer_module
+        from src.shared.api_sniff import ApiSnifferDomUnavailableError
+
+        items = [
+            {"title": "Dev", "url": "/jobs/1", "desc": "HTML1"},
+            {"title": "PM", "url": "/jobs/2", "desc": "HTML2"},
+            {"title": "QA", "url": "/jobs/3", "desc": "HTML3"},
+        ]
+        self._patch_auto_pipeline(monkeypatch, items)
+
+        async def _no_dom(_page, _exchanges):
+            raise ApiSnifferDomUnavailableError(
+                "API sniffer fallback interactions require a usable document body"
+            )
+
+        monkeypatch.setattr(api_sniffer_module, "trigger_interactions", _no_dom)
+
+        result = await discover(
+            {
+                "board_url": "https://example.com/careers",
+                "metadata": {
+                    "fields": {"title": "title", "description": "desc"},
+                    "settle": 0,
+                },
+            },
+            AsyncMock(),
+            pw=_make_mock_pw(AsyncMock()),
+        )
+
+        assert isinstance(result, list)
+        assert len(result) == 3
+
+    @pytest.mark.asyncio
+    async def test_auto_fails_when_navigation_leaves_no_dom_or_api(self, monkeypatch):
+        from src.core.monitors import api_sniffer as api_sniffer_module
+        from src.shared.api_sniff import ApiSnifferDomUnavailableError
+
+        items = [
+            {"title": "Dev", "url": "/jobs/1"},
+            {"title": "PM", "url": "/jobs/2"},
+            {"title": "QA", "url": "/jobs/3"},
+        ]
+        self._patch_auto_pipeline(monkeypatch, items)
+
+        async def _no_dom(_page, _exchanges):
+            raise ApiSnifferDomUnavailableError(
+                "API sniffer fallback interactions require a usable document body"
+            )
+
+        monkeypatch.setattr(api_sniffer_module, "trigger_interactions", _no_dom)
+        monkeypatch.setattr(api_sniffer_module, "detect_job_list", lambda *_args: None)
+
+        with pytest.raises(
+            ApiSnifferDomUnavailableError,
+            match="require a usable document body",
+        ):
+            await discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": {"settle": 0},
+                },
+                AsyncMock(),
+                pw=_make_mock_pw(AsyncMock()),
+            )

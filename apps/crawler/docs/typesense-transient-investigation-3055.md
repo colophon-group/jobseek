@@ -35,11 +35,14 @@ RETURNING id
 ```
 
 Callers (`apps/crawler/src/processing/board.py`):
-- Line 1191 — empty-check threshold reached (6 consecutive empty cycles → board flipped to `gone`).
+- Confirmed empty state — six consecutive successful empty cycles delist stale
+  postings, but the board remains enabled as `suspect` so future openings can
+  self-recover. Before #6016, this path incorrectly flipped the board to
+  `gone` and disabled it permanently.
 - Line 1313 — `BoardGoneError` (upstream 404 on a per-board API endpoint).
 - Line 510 — `_maybe_delist_after_disable` (5-strike auto-disable, gated by `_DELIST_AFTER_FAILURE_AGE = 24h` last-success).
 
-**Important: `_DELIST_BOARD_POSTINGS` is NOT behind the blast-radius / drop-threshold guards.** Those guards (`apps/crawler/src/processing/board.py:369-477`, `_mark_gone_with_guards`) only protect `_MARK_GONE_BY_TIMESTAMP`. The per-board delists above are "I know this entire board is gone, kill them all" — for a multi-company watchlist tracking one-board-per-company, this means the delist is unguarded per company.
+**Important: `_DELIST_BOARD_POSTINGS` is NOT behind the blast-radius / drop-threshold guards.** Those guards (`apps/crawler/src/processing/board.py:369-477`, `_mark_gone_with_guards`) only protect `_MARK_GONE_BY_TIMESTAMP`. The explicit upstream-gone and stale failure-budget paths are authoritative board retirement signals. The confirmed-empty path uses a six-successful-check window before delisting postings and deliberately keeps the board pollable.
 
 `_MARK_GONE_BY_TIMESTAMP` (`apps/crawler/src/queries/monitor.py:300-319`) bumps `missing_count` and only flips to inactive when `missing_count >= delist_threshold` — gradual, per-posting, AND guarded.
 
@@ -139,7 +142,10 @@ A second-order fix would be:
 3. **New issue: web-side defensive read for active-count = 0**. Possible designs:
    - "Active = 0, year-count > 0" emit a structured log + Prometheus counter so we can see how often this triggers. If rare, decorative copy ("Indexing in progress…") is enough. If frequent, real fallback is needed.
    - Or: cache `(active, year)` together with a longer TTL ONLY when they're consistent (year ≥ active). Reject the cache entry if the live read shows `(0, >N)` — that's a transient, don't poison the cache.
-4. **No crawler changes needed** for this issue. The blast-radius guards (#2724) already protect `_MARK_GONE_BY_TIMESTAMP` against accidental mass-tombstoning. The bulk-delist paths (`_DELIST_BOARD_POSTINGS`) are intentionally aggressive because they only fire on confirmed dead boards (6 empty checks, upstream 404, or 5-strike disable with 24h recency gate).
+4. **Crawler recovery correction (#6016):** six empty checks are sufficient to
+   delist stale postings, but are not evidence that a company will never hire
+   again. The board remains enabled as `suspect`; explicit upstream 404s and
+   stale failure-budget exhaustion remain the retirement authorities.
 
 ## Files cited
 

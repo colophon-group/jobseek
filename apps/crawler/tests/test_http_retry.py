@@ -16,9 +16,59 @@ from src.shared.http_retry import (
     END_OF_PAGINATION_STATUSES,
     PaginationFetchError,
     fetch_json_page_with_retry,
+    fetch_response_with_status_retries,
     fetch_text_page_with_retry,
     fetch_with_retry,
 )
+
+
+class TestFetchResponseWithStatusRetries:
+    async def test_retries_each_status_only_to_its_bound(self):
+        client = AsyncMock()
+        client.get = AsyncMock(side_effect=[_resp(403), _resp(406), _resp(406), _resp(200)])
+        sleep = AsyncMock()
+
+        response = await fetch_response_with_status_retries(
+            client,
+            "https://example.com/job",
+            retry_limits={403: 1, 406: 2},
+            base_delay=0.001,
+            sleep=sleep,
+        )
+
+        assert response.status_code == 200
+        assert client.get.await_count == 4
+        assert sleep.await_count == 3
+
+    async def test_returns_persistent_status_after_exact_retry_limit(self):
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(406))
+        sleep = AsyncMock()
+
+        response = await fetch_response_with_status_retries(
+            client,
+            "https://example.com/job",
+            retry_limits={406: 2},
+            base_delay=0.001,
+            sleep=sleep,
+        )
+
+        assert response.status_code == 406
+        assert client.get.await_count == 3
+        assert sleep.await_count == 2
+
+    async def test_unlisted_status_is_not_retried(self):
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(422))
+
+        response = await fetch_response_with_status_retries(
+            client,
+            "https://example.com/job",
+            retry_limits={406: 2},
+        )
+
+        assert response.status_code == 422
+        assert client.get.await_count == 1
 
 
 def _samples_for(metric_name: str) -> list[dict[str, Any]]:
@@ -97,6 +147,33 @@ class TestFetchWithRetry:
         client.get = AsyncMock(return_value=_resp(403))
 
         out = await fetch_with_retry(client, "https://example.com/forbidden")
+
+        assert out is None
+        assert client.get.await_count == 1
+
+    async def test_custom_retryable_status_recovers(self):
+        """Callers can opt a provider-specific status into bounded retries."""
+        client = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=[_resp(202, "challenge"), _resp(200, "<html>recovered</html>")]
+        )
+
+        out = await fetch_with_retry(
+            client,
+            "https://example.com/careers",
+            retryable_statuses={202},
+            base_delay=0.001,
+        )
+
+        assert out == "<html>recovered</html>"
+        assert client.get.await_count == 2
+
+    async def test_custom_retryable_status_is_opt_in(self):
+        """Adding custom statuses must not alter existing callers' contract."""
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(202, "accepted"))
+
+        out = await fetch_with_retry(client, "https://example.com/careers")
 
         assert out is None
         assert client.get.await_count == 1
@@ -460,6 +537,64 @@ class TestFetchTextPageWithRetry:
         assert exc_info.value.last_status == 401
         assert client.get.await_count == 1
         sleep.assert_not_awaited()
+
+    async def test_custom_transient_status_retries_then_recovers(self):
+        client = AsyncMock()
+        sleep = AsyncMock()
+        client.get = AsyncMock(
+            side_effect=[_resp(400, "temporary provider error"), _resp(200, "<rss/>")]
+        )
+
+        text = await fetch_text_page_with_retry(
+            client,
+            "https://example.com/feed",
+            retryable_statuses={400},
+            end_of_pagination_statuses=(),
+            retries=3,
+            base_delay=0.001,
+            sleep=sleep,
+        )
+
+        assert text == "<rss/>"
+        assert client.get.await_count == 2
+        sleep.assert_awaited_once()
+
+    async def test_end_status_can_be_strict_for_non_pagination_callers(self):
+        client = AsyncMock()
+        sleep = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(404, "retired"))
+
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await fetch_text_page_with_retry(
+                client,
+                "https://example.com/feed",
+                end_of_pagination_statuses=(),
+                retries=3,
+                sleep=sleep,
+            )
+
+        assert exc_info.value.last_status == 404
+        assert client.get.await_count == 1
+        sleep.assert_not_awaited()
+
+    async def test_required_nonempty_response_retries_and_honors_cap(self):
+        client = AsyncMock()
+        sleep = AsyncMock()
+        client.get = AsyncMock(side_effect=[_resp(200, ""), _resp(200, "<html>complete</html>")])
+
+        text = await fetch_text_page_with_retry(
+            client,
+            "https://example.com/board",
+            require_nonempty=True,
+            max_chars=6,
+            retries=3,
+            base_delay=0.001,
+            sleep=sleep,
+        )
+
+        assert text == "<html>"
+        assert client.get.await_count == 2
+        sleep.assert_awaited_once()
 
 
 # ─── Retry observability (#3210) ────────────────────────────────────────

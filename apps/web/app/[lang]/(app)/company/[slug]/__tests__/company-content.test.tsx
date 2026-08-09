@@ -244,7 +244,6 @@ describe("CompanyContent — server-render initial-data path (#3203)", () => {
       "sal",
       "salcur",
       "exp",
-      "show",
     ];
     for (const param of filterParams) {
       mockFetchCompanyPageData.mockClear();
@@ -260,6 +259,68 @@ describe("CompanyContent — server-render initial-data path (#3203)", () => {
       });
       unmount();
     }
+  });
+
+  it("does not refetch company results when only the selected posting changes", async () => {
+    setDocumentCookie("logged_in=1");
+    const initialData = makeInitialData({ activeCount: 5 });
+    const personalizedData = makeInitialData({ activeCount: 4 });
+    mockFetchCompanyPageData.mockResolvedValue(personalizedData);
+
+    const { queryByTestId, rerender } = render(
+      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
+    );
+
+    await waitFor(() => {
+      expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
+      expect(queryByTestId("company-page")?.getAttribute("data-active")).toBe(
+        "4",
+      );
+    });
+
+    currentSearchParams = new URLSearchParams("show=posting-1");
+    rerender(
+      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
+    );
+    currentSearchParams = new URLSearchParams("show=posting-2");
+    rerender(
+      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
+    expect(queryByTestId("company-skeleton")).toBeNull();
+    expect(queryByTestId("company-page")?.getAttribute("data-active")).toBe(
+      "4",
+    );
+  });
+
+  it("keeps `show` out of filtered fetches and does not refetch when it changes", async () => {
+    currentSearchParams = new URLSearchParams("q=python&show=posting-1");
+    const initialData = makeInitialData();
+    const { rerender } = render(
+      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
+    );
+
+    await waitFor(() => {
+      expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
+    });
+    expect(mockFetchCompanyPageData.mock.calls[0]?.[0]).toMatchObject({
+      searchParams: { q: "python" },
+    });
+    expect(
+      (mockFetchCompanyPageData.mock.calls[0]?.[0] as {
+        searchParams: Record<string, string | undefined>;
+      }).searchParams.show,
+    ).toBeUndefined();
+
+    currentSearchParams = new URLSearchParams("q=python&show=posting-2");
+    rerender(
+      <CompanyContent locale="en" slug="test-company" initialData={initialData} />,
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mockFetchCompanyPageData).toHaveBeenCalledTimes(1);
   });
 
   it("passes etype through when it triggers a personalized fetch", async () => {

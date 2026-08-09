@@ -29,10 +29,17 @@ import asyncio
 from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
+import pytest
+
 from src.workers.r2_drain import (
     _REAP_STALE_AFTER_SECONDS,
+    _consumer,
+    _failure_reason,
+    _producer,
     _reap_orphaned_claims,
     _reaper_loop,
+    _retry_delay_seconds,
     r2_drain_loop,
 )
 
@@ -288,8 +295,6 @@ class TestProducerClaimUpdatesTimestamp:
     in-flight rows from genuinely orphaned ones."""
 
     async def test_claim_query_sets_updated_at(self):
-        from src.workers.r2_drain import _producer
-
         pool = AsyncMock()
         conn = AsyncMock()
         captured: dict = {}
@@ -329,6 +334,147 @@ class TestProducerClaimUpdatesTimestamp:
             f"producer claim must stamp updated_at = now(); got: {claim_sql}"
         )
         assert "r2_uploaded = NULL" in claim_sql
+        assert "r2_next_attempt_at <= now()" in claim_sql
+        assert "ORDER BY r2_next_attempt_at, posting_id, locale" in claim_sql
+        assert "FOR UPDATE SKIP LOCKED" in claim_sql
+
+
+class TestDurableRetrySchedule:
+    async def test_failed_upload_is_delayed_and_version_conditional(self):
+        request = httpx.Request("PUT", "https://r2.test/key")
+        error = httpx.ReadError("reset", request=request)
+        pool = AsyncMock()
+        pool.fetchval = AsyncMock(return_value=True)
+        buffer: asyncio.Queue = asyncio.Queue(maxsize=1)
+        await buffer.put(
+            {
+                "posting_id": "11111111-2222-3333-4444-555555555555",
+                "locale": "en",
+                "html": "<p>desc</p>",
+                "hash": 123,
+                "r2_upload_failures": 2,
+            }
+        )
+        shutdown = asyncio.Event()
+        stats = {"uploaded": 0, "errors": 0, "total_time": 0.0}
+        log = MagicMock()
+
+        async def stop_after_failure():
+            await buffer.join()
+            shutdown.set()
+
+        with (
+            patch("src.workers.r2_drain.put_description", AsyncMock(side_effect=error)),
+            patch("src.workers.r2_drain._retry_delay_seconds", return_value=17.5),
+        ):
+            await asyncio.gather(
+                _consumer(0, pool, buffer, shutdown, log, stats),
+                stop_after_failure(),
+            )
+
+        query, posting_id, locale, failures, delay, content_hash = pool.fetchval.await_args.args
+        compact = " ".join(query.split())
+        assert "r2_uploaded = false" in compact
+        assert "r2_next_attempt_at = now() + $4::interval" in compact
+        assert "hash = $5" in compact
+        assert (posting_id, locale, failures, content_hash) == (
+            "11111111-2222-3333-4444-555555555555",
+            "en",
+            3,
+            123,
+        )
+        assert delay == timedelta(seconds=17.5)
+        assert stats["errors"] == 1
+
+    async def test_success_only_marks_claimed_content_version(self):
+        pool = AsyncMock()
+        pool.fetchval = AsyncMock(return_value=True)
+        buffer: asyncio.Queue = asyncio.Queue(maxsize=1)
+        await buffer.put(
+            {
+                "posting_id": "11111111-2222-3333-4444-555555555555",
+                "locale": "en",
+                "html": "<p>desc</p>",
+                "hash": 456,
+            }
+        )
+        shutdown = asyncio.Event()
+        stats = {"uploaded": 0, "errors": 0, "total_time": 0.0}
+        log = MagicMock()
+
+        async def stop_after_upload():
+            await buffer.join()
+            shutdown.set()
+
+        with patch("src.workers.r2_drain.put_description", new_callable=AsyncMock):
+            await asyncio.gather(
+                _consumer(0, pool, buffer, shutdown, log, stats),
+                stop_after_upload(),
+            )
+
+        query, _posting_id, _locale, content_hash = pool.fetchval.await_args.args
+        compact = " ".join(query.split())
+        assert "r2_upload_failures = 0" in compact
+        assert "hash = $3" in compact
+        assert content_hash == 456
+        assert stats["uploaded"] == 1
+
+    async def test_superseded_upload_does_not_mark_posting_current(self):
+        pool = AsyncMock()
+        pool.fetchval = AsyncMock(return_value=None)
+        buffer: asyncio.Queue = asyncio.Queue(maxsize=1)
+        await buffer.put(
+            {
+                "posting_id": "11111111-2222-3333-4444-555555555555",
+                "locale": "en",
+                "html": "<p>old</p>",
+                "hash": 789,
+            }
+        )
+        shutdown = asyncio.Event()
+        stats = {"uploaded": 0, "errors": 0, "total_time": 0.0}
+        log = MagicMock()
+
+        async def stop_after_upload():
+            await buffer.join()
+            shutdown.set()
+
+        with patch("src.workers.r2_drain.put_description", new_callable=AsyncMock):
+            await asyncio.gather(
+                _consumer(0, pool, buffer, shutdown, log, stats),
+                stop_after_upload(),
+            )
+
+        pool.execute.assert_not_awaited()
+        assert stats["uploaded"] == 0
+        log.info.assert_called_once_with(
+            "r2_drain.upload_superseded",
+            posting_id="11111111-2222-3333-4444-555555555555",
+            locale="en",
+            hash=789,
+        )
+
+    def test_equal_jitter_backoff_grows_and_caps(self):
+        with patch("src.workers.r2_drain.random.uniform", side_effect=lambda low, high: high):
+            assert _retry_delay_seconds(1) == 5
+            assert _retry_delay_seconds(2) == 10
+            assert _retry_delay_seconds(99) == 900
+
+    def test_failure_reason_distinguishes_transport_and_5xx(self):
+        request = httpx.Request("PUT", "https://r2.test/key")
+        assert _failure_reason(httpx.ReadError("reset", request=request)) == "transport"
+        response = httpx.Response(500, request=request)
+        with pytest.raises(httpx.HTTPStatusError) as raised:
+            response.raise_for_status()
+        assert _failure_reason(raised.value) == "http_5xx"
+
+
+def test_changed_description_resets_durable_retry_state():
+    from src.processing.scrape import _UPSERT_DESCRIPTION
+
+    compact = " ".join(_UPSERT_DESCRIPTION.split())
+    assert "THEN descriptions.r2_upload_failures ELSE 0 END" in compact
+    assert ("THEN descriptions.r2_next_attempt_at ELSE '-infinity'::timestamptz END") in compact
 
 
 class TestEndToEndOrphanRecovery:

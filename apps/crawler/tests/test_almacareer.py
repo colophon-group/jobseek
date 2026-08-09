@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -10,6 +11,7 @@ from src.core.monitors.almacareer import (
     GRAPHQL_URL,
     _detail_url,
     _extract_widget_config,
+    _fetch_widget_config,
     _flatten_groups,
     _host_from_board,
     _match_country,
@@ -141,6 +143,80 @@ class TestExtractWidgetConfig:
         assert cfg["id"] == "dcc74a07-bcb5-444e-a185-2bf060a49aab"
         assert cfg["apiKey"].startswith("6b57c70d41a5")
         assert cfg["detail_path"] == "detail-pozice"
+
+
+class TestFetchWidgetConfig:
+    _VALID_SCRIPT = (
+        '"widgets":{"main":{"id":"075c7246-bbd1-4670-a7b6-347e02e35dd2",'
+        '"apiKey":"a4c5b243a41cfda762c8068c73cdc89bf357f6284fc80f59c7bbbfaddb8cd18e",'
+        '"detailPath":"detail-pozicie"}'
+    )
+
+    async def test_parse_miss_refetches_and_recovers(self):
+        attempts = 0
+        sleep = AsyncMock()
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal attempts
+            attempts += 1
+            body = "incomplete deployment asset" if attempts == 1 else self._VALID_SCRIPT
+            return httpx.Response(200, text=body)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            config = await _fetch_widget_config(
+                "mcdonalds.topjobs.sk",
+                client,
+                base_delay=0.001,
+                sleep=sleep,
+            )
+
+        assert config is not None
+        assert config["id"] == "075c7246-bbd1-4670-a7b6-347e02e35dd2"
+        assert attempts == 2
+        sleep.assert_awaited_once()
+
+    async def test_persistent_parse_miss_exhausts_bounded_attempts(self):
+        attempts = 0
+        sleep = AsyncMock()
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal attempts
+            attempts += 1
+            return httpx.Response(200, text="bundle without widget configuration")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            config = await _fetch_widget_config(
+                "mcdonalds.topjobs.sk",
+                client,
+                retries=3,
+                base_delay=0.001,
+                sleep=sleep,
+            )
+
+        assert config is None
+        assert attempts == 3
+        assert sleep.await_count == 2
+
+    async def test_permanent_http_error_still_fails_fast(self):
+        attempts = 0
+        sleep = AsyncMock()
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal attempts
+            attempts += 1
+            return httpx.Response(401, text="unauthorized")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            config = await _fetch_widget_config(
+                "mcdonalds.topjobs.sk",
+                client,
+                retries=3,
+                sleep=sleep,
+            )
+
+        assert config is None
+        assert attempts == 1
+        sleep.assert_not_awaited()
 
 
 class TestFlattenGroups:

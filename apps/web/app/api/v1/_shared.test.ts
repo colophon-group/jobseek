@@ -11,8 +11,8 @@ import { NextRequest } from "next/server";
  *   1. When the limiter throws, the request still degrades open (the
  *      original behaviour — fail-closed would lock the public API down
  *      during a Redis incident).
- *   2. The catch handler emits a stable `[rate-limit] redis bypass`
- *      warning so a sustained bypass is queryable in Loki / Vercel logs.
+ *   2. The catch handler emits a stable structured warning so a sustained
+ *      bypass is queryable in Loki / Vercel logs without exposing Redis config.
  */
 
 vi.mock("server-only", () => ({}));
@@ -53,7 +53,9 @@ describe("checkRateLimit — Redis bypass observability (#3175)", () => {
   });
 
   it("logs a warn when the limiter throws (Redis outage) and still degrades open", async () => {
-    limiterCalls.apiLimit.mockRejectedValue(new Error("ECONNREFUSED"));
+    limiterCalls.apiLimit.mockRejectedValue(
+      Object.assign(new Error("SECRET_CANARY_PUBLIC_API"), { code: "ECONNREFUSED" }),
+    );
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const { checkRateLimit } = await import("./_shared");
@@ -61,12 +63,16 @@ describe("checkRateLimit — Redis bypass observability (#3175)", () => {
 
     // Bypass preserved: caller sees `null`, not a thrown error, not a 429.
     expect(result).toBeNull();
-    // Stable event prefix so Loki / Vercel queries can count bypasses.
+    // Stable event and operation so Loki / Vercel queries can count bypasses.
     expect(warnSpy).toHaveBeenCalledTimes(1);
-    const [message, errArg] = warnSpy.mock.calls[0];
-    expect(message).toBe("[rate-limit] redis bypass");
-    expect(errArg).toBeInstanceOf(Error);
-    expect((errArg as Error).message).toBe("ECONNREFUSED");
+    const [event, payload] = warnSpy.mock.calls[0];
+    expect(event).toBe("external_client_error");
+    expect(payload).toMatchObject({
+      service: "redis",
+      operation: "public_api_rate_limit",
+      code: "ECONNREFUSED",
+    });
+    expect(JSON.stringify(warnSpy.mock.calls)).not.toContain("SECRET_CANARY_PUBLIC_API");
   });
 
   it("does NOT log when the limiter succeeds (no false bypass signal)", async () => {

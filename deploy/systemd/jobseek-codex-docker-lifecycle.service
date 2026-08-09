@@ -1,0 +1,39 @@
+# Install as /etc/systemd/system/jobseek-codex-docker-lifecycle.service.
+[Unit]
+Description=Persist redacted Jobseek Docker lifecycle evidence
+Documentation=file:///srv/jobseek-codex/repo/docs/18-codex-automation-deployment.md
+Requires=docker.service
+After=docker.service
+StartLimitIntervalSec=120
+StartLimitBurst=10
+ConditionPathExists=/srv/jobseek-codex/repo/scripts/codex-docker-lifecycle-watch.py
+ConditionPathExists=/run/docker.sock
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/bin/python3 /srv/jobseek-codex/repo/scripts/codex-docker-lifecycle-watch.py
+Restart=always
+RestartSec=2
+TimeoutStopSec=15
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=jobseek-docker-lifecycle
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import random
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Collection, Mapping
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 import structlog
@@ -30,12 +30,77 @@ log = structlog.get_logger()
 __all__ = [
     "END_OF_PAGINATION_STATUSES",
     "PaginationFetchError",
+    "ResponseBodyTooLargeError",
     "_RETRYABLE_STATUSES",
     "fetch_json_page_with_retry",
+    "fetch_response_with_status_retries",
     "fetch_text_page_with_retry",
     "fetch_with_retry",
     "is_retryable_status",
 ]
+
+
+async def fetch_response_with_status_retries(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    retry_limits: Mapping[int, int],
+    base_delay: float = 0.5,
+    timeout: float | None = None,
+    headers: dict[str, str] | None = None,
+    follow_redirects: bool = True,
+    log_event: str = "http_retry.response_status_backoff",
+    sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
+) -> httpx.Response:
+    """GET *url* and retry only explicitly listed response statuses.
+
+    ``retry_limits`` maps a status to the number of retries after its first
+    response. Unlike the pagination helpers below, this returns the final
+    response so scraper callers retain normal ``raise_for_status`` and final
+    redirect handling. Transport errors and unlisted statuses still surface
+    immediately; the worker-level retry/circuit policy remains authoritative
+    for those classes.
+    """
+
+    from src.metrics import http_retry_attempts_total, http_retry_host
+
+    if any(limit < 0 for limit in retry_limits.values()):
+        raise ValueError("status retry limits must be non-negative")
+
+    host = http_retry_host(url)
+    used: dict[int, int] = {}
+    total_retries = 0
+
+    while True:
+        request_kwargs: dict[str, Any] = {"follow_redirects": follow_redirects}
+        if timeout is not None:
+            request_kwargs["timeout"] = timeout
+        if headers is not None:
+            request_kwargs["headers"] = headers
+        response = await client.get(url, **request_kwargs)
+        status = response.status_code
+        limit = retry_limits.get(status, 0)
+        status_retries = used.get(status, 0)
+        if status_retries >= limit:
+            if total_retries and 200 <= status < 400:
+                http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
+            elif limit and status_retries:
+                http_retry_attempts_total.labels(host=host, outcome="exhausted").inc()
+            return response
+
+        used[status] = status_retries + 1
+        total_retries += 1
+        http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+        delay = base_delay * (2 ** (total_retries - 1)) * (0.5 + random.random())
+        log.info(
+            log_event,
+            url=url,
+            status=status,
+            retry=used[status],
+            retry_limit=limit,
+            delay_s=round(delay, 2),
+        )
+        await sleep(delay)
 
 
 class PaginationFetchError(Exception):
@@ -56,13 +121,24 @@ class PaginationFetchError(Exception):
         *,
         last_status: int | None = None,
         last_error: str | None = None,
+        last_location: str | None = None,
     ) -> None:
         self.url = url
         self.attempts = attempts
         self.last_status = last_status
         self.last_error = last_error
+        self.last_location = last_location
         detail = f"status={last_status}" if last_status is not None else f"error={last_error}"
         super().__init__(f"pagination fetch failed for {url} after {attempts} attempts ({detail})")
+
+
+class ResponseBodyTooLargeError(Exception):
+    """A streamed response exceeded its caller-supplied decoded-byte cap."""
+
+    def __init__(self, url: str, max_bytes: int) -> None:
+        self.url = url
+        self.max_bytes = max_bytes
+        super().__init__(f"response body for {url} exceeded {max_bytes} bytes")
 
 
 # Explicitly-retryable non-5xx statuses. Anything in the 500–599 range is
@@ -130,6 +206,7 @@ async def fetch_json_page_with_retry(
     headers: dict[str, str] | None = None,
     timeout: float | None = None,
     follow_redirects: bool = False,
+    retryable_statuses: Collection[int] = (),
     retries: int = 3,
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
@@ -150,6 +227,7 @@ async def fetch_json_page_with_retry(
     headers: dict[str, str] | None = None,
     timeout: float | None = None,
     follow_redirects: bool = False,
+    retryable_statuses: Collection[int] = (),
     retries: int = 3,
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
@@ -169,6 +247,7 @@ async def fetch_json_page_with_retry(
     headers: dict[str, str] | None = None,
     timeout: float | None = None,
     follow_redirects: bool = False,
+    retryable_statuses: Collection[int] = (),
     retries: int = 3,
     base_delay: float = 0.5,
     log_event: str = "http_retry.json_page_backoff",
@@ -180,8 +259,9 @@ async def fetch_json_page_with_retry(
     previously copied locally. It differs from :func:`fetch_with_retry`
     in two load-bearing ways:
 
-    - non-retryable 4xx statuses fail fast with :class:`PaginationFetchError`
-      instead of returning ``None``;
+    - non-retryable statuses fail fast with :class:`PaginationFetchError`
+      instead of returning ``None``; callers may add provider-specific
+      transient statuses through ``retryable_statuses``;
     - successful JSON responses must decode to *expect_shape* or the page is
       treated as transient and retried before surfacing.
     """
@@ -228,7 +308,7 @@ async def fetch_json_page_with_retry(
                 if retried:
                     http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
                 return data
-            if is_retryable_status(resp.status_code):
+            if is_retryable_status(resp.status_code) or resp.status_code in retryable_statuses:
                 last_exc = None
                 http_retry_attempts_total.labels(host=host, outcome="retry").inc()
                 retried = True
@@ -237,6 +317,7 @@ async def fetch_json_page_with_retry(
                     url,
                     attempts=attempt + 1,
                     last_status=resp.status_code,
+                    last_location=resp.headers.get("location"),
                 )
         except (PaginationFetchError, TDMReservedError):
             raise
@@ -271,48 +352,135 @@ async def fetch_text_page_with_retry(
     client: httpx.AsyncClient,
     url: str,
     *,
+    method: _RequestMethod = "GET",
+    content: str | bytes | None = None,
     retries: int = 3,
     base_delay: float = 0.5,
     timeout: float | None = None,
     headers: dict[str, str] | None = None,
     follow_redirects: bool = True,
+    retryable_statuses: Collection[int] = (),
+    end_of_pagination_statuses: Collection[int] = END_OF_PAGINATION_STATUSES,
+    require_nonempty: bool = False,
+    max_chars: int | None = None,
+    max_bytes: int | None = None,
+    response_headers: dict[str, str] | None = None,
     log_event: str = "http_retry.text_page_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
 ) -> str | None:
-    """Fetch a text pagination page with strict non-retryable-4xx handling."""
+    """Fetch a text page with explicit retry and terminal-status semantics.
+
+    Pagination callers retain the default 404/410 end-of-pagination behavior.
+    Non-pagination callers can pass an empty ``end_of_pagination_statuses``
+    collection so retired endpoints fail explicitly instead of looking like a
+    successful empty page. Provider-specific transient statuses can be added
+    through ``retryable_statuses`` without weakening the global 4xx policy.
+    ``require_nonempty`` retries empty 200 responses instead of accepting a
+    likely CDN/WAF glitch. ``max_chars`` bounds the returned text after decode;
+    ``max_bytes`` switches to streamed reading and aborts before buffering more
+    than that many decoded response bytes. ``POST`` and the optional response-
+    header sink support form/text pagination protocols while keeping their
+    status, transport, empty-body, TDM, and backoff behavior identical to
+    ordinary GET pages.
+    """
+    from src.metrics import (
+        http_retry_attempts_total,
+        http_retry_empty_200_total,
+        http_retry_host,
+    )
     from src.shared.tdm import TDMReservedError
     from src.shared.tdm import check_response as _tdm_check
 
+    if method not in ("GET", "POST"):
+        raise ValueError(f"unsupported retry method: {method!r}")
+    if method == "GET" and content is not None:
+        raise ValueError("GET text-page requests cannot include content")
+    if max_bytes is not None and max_bytes < 1:
+        raise ValueError("max_bytes must be positive")
+
+    host = http_retry_host(url)
     last_exc: BaseException | None = None
     last_status: int | None = None
+    retried = False
 
     for attempt in range(retries):
         try:
-            resp = await client.get(
-                url,
-                follow_redirects=follow_redirects,
-                timeout=timeout,
-                headers=headers,
-            )
+            text: str | None = None
+            if max_bytes is not None:
+                request_kwargs: dict[str, Any] = {
+                    "follow_redirects": follow_redirects,
+                    "timeout": timeout,
+                    "headers": headers,
+                }
+                if method == "POST":
+                    request_kwargs["content"] = content
+                async with client.stream(method, url, **request_kwargs) as resp:
+                    last_status = resp.status_code
+                    if resp.status_code == 200:
+                        # Check the authoritative HTTP header before reading a
+                        # potentially large body, then inspect the bounded body
+                        # for the HTML meta-policy form after decode.
+                        _tdm_check(resp)
+                        body = bytearray()
+                        async for chunk in resp.aiter_bytes():
+                            remaining = (max_bytes + 1) - len(body)
+                            if remaining > 0:
+                                body.extend(chunk[:remaining])
+                            if len(body) > max_bytes:
+                                raise ResponseBodyTooLargeError(url, max_bytes)
+                        text = bytes(body).decode(resp.encoding or "utf-8", errors="replace")
+                        _tdm_check(resp, body_excerpt=text)
+            elif method == "GET":
+                resp = await client.get(
+                    url,
+                    follow_redirects=follow_redirects,
+                    timeout=timeout,
+                    headers=headers,
+                )
+            else:
+                resp = await client.post(
+                    url,
+                    follow_redirects=follow_redirects,
+                    timeout=timeout,
+                    headers=headers,
+                    content=content,
+                )
             last_status = resp.status_code
             if resp.status_code == 200:
-                _tdm_check(resp, body_excerpt=resp.text)
-                return resp.text
-            if resp.status_code in END_OF_PAGINATION_STATUSES:
-                return None
-            if is_retryable_status(resp.status_code):
+                if text is None:
+                    text = resp.text
+                    _tdm_check(resp, body_excerpt=text)
+                if not require_nonempty or text:
+                    if response_headers is not None:
+                        response_headers.clear()
+                        response_headers.update(resp.headers)
+                    if retried:
+                        http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
+                    return text[:max_chars] if max_chars is not None else text
                 last_exc = None
+                http_retry_empty_200_total.labels(host=host).inc()
+                http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+                retried = True
+            elif resp.status_code in end_of_pagination_statuses:
+                return None
+            elif is_retryable_status(resp.status_code) or resp.status_code in retryable_statuses:
+                last_exc = None
+                http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+                retried = True
             else:
                 raise PaginationFetchError(
                     url,
                     attempts=attempt + 1,
                     last_status=resp.status_code,
+                    last_location=resp.headers.get("location"),
                 )
-        except (PaginationFetchError, TDMReservedError):
+        except (PaginationFetchError, ResponseBodyTooLargeError, TDMReservedError):
             raise
         except Exception as exc:  # noqa: BLE001 - timeout, network, etc.
             last_exc = exc
             last_status = None
+            http_retry_attempts_total.labels(host=host, outcome="retry").inc()
+            retried = True
 
         if attempt < retries - 1:
             delay = base_delay * (2**attempt) * (0.5 + random.random())
@@ -326,6 +494,7 @@ async def fetch_text_page_with_retry(
             )
             await sleep(delay)
 
+    http_retry_attempts_total.labels(host=host, outcome="exhausted").inc()
     raise PaginationFetchError(
         url,
         attempts=retries,
@@ -344,6 +513,7 @@ async def fetch_with_retry(
     timeout: float | None = None,
     headers: dict | None = None,
     transient_403: bool = False,
+    retryable_statuses: Collection[int] = (),
 ) -> str | None:
     """Fetch ``url`` and return its text body.
 
@@ -385,6 +555,11 @@ async def fetch_with_retry(
     "this URL is permanently blocked, drop it" — silently turning that
     into a hard failure would 5-strike-disable boards on first
     encounter.
+
+    ``retryable_statuses`` lets a caller opt specific non-standard statuses
+    into the same retry-and-fail contract.  SiteGround, for example, serves
+    crawler-IP captcha shells as HTTP 202; a DOM monitor must not record that
+    response as a healthy empty board.
 
     Backoff: ``base_delay × 2^attempt × (0.5 + random())`` between
     retries — exponential with full jitter. Defaults to ~0.5–1s,
@@ -451,7 +626,7 @@ async def fetch_with_retry(
                 )
             elif resp.status_code in END_OF_PAGINATION_STATUSES:
                 return None
-            elif is_retryable_status(resp.status_code):
+            elif is_retryable_status(resp.status_code) or resp.status_code in retryable_statuses:
                 last_exc = None  # status-only, no exception
                 http_retry_attempts_total.labels(host=host, outcome="retry").inc()
                 retried = True

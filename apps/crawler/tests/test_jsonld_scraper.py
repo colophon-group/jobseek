@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import httpx
+import pytest
 
 from src.core.scrapers import JobContent
 from src.core.scrapers.jsonld import (
@@ -31,6 +32,14 @@ class TestJsonLdExtractor:
         extractor.feed(html)
         assert len(extractor.results) == 1
         assert extractor.results[0]["@type"] == "JobPosting"
+
+    def test_extracts_html_entity_encoded_block(self):
+        html = """<html><head><script type="application/ld+json">
+        {&quot;@type&quot;:&quot;JobPosting&quot;,&quot;title&quot;:&quot;R&amp;D Engineer&quot;}
+        </script></head></html>"""
+        extractor = _JsonLdExtractor()
+        extractor.feed(html)
+        assert extractor.results == [{"@type": "JobPosting", "title": "R&D Engineer"}]
 
     def test_extracts_multiple_blocks(self):
         html = """<html><head>
@@ -159,6 +168,15 @@ class TestExtractLocations:
         }
         result = _extract_locations(posting)
         assert result == ["San Francisco, CA, US"]
+
+    def test_with_string_address(self):
+        posting = {
+            "jobLocation": {
+                "@type": "Place",
+                "address": "東京都新宿区西新宿1-26-2\n新宿野村ビル48階",
+            }
+        }
+        assert _extract_locations(posting) == ["東京都新宿区西新宿1-26-2 新宿野村ビル48階"]
 
     def test_multiple_locations(self):
         posting = {
@@ -549,6 +567,31 @@ class TestScrape:
                 assert result.title == "Rendered"
                 mock_render.assert_called_once_with("https://example.com/job", {}, pw="fake_pw")
 
+    async def test_render_forwards_proxy_to_browser(self):
+        """A proxy-enabled browser scraper must not silently use direct egress."""
+        from unittest.mock import AsyncMock, patch
+
+        page_html = """<script type="application/ld+json">
+        {"@type": "JobPosting", "title": "Proxied"}
+        </script>"""
+
+        with patch("src.shared.browser.render", new_callable=AsyncMock) as mock_render:
+            mock_render.return_value = page_html
+            async with httpx.AsyncClient(transport=httpx.MockTransport(lambda r: None)) as client:
+                result = await scrape(
+                    "https://example.com/job",
+                    {"render": True, "proxy": True},
+                    client,
+                    pw="fake_pw",
+                )
+
+        assert result.title == "Proxied"
+        mock_render.assert_awaited_once_with(
+            "https://example.com/job",
+            {"proxy": True},
+            pw="fake_pw",
+        )
+
     async def test_render_false_uses_http(self):
         """When render is false/absent, scrape should use static HTTP."""
         page_html = """<html><head>
@@ -711,6 +754,37 @@ class TestFetchRetry403:
         assert calls[0] == ""
         assert "challenge=solved" in calls[1]
         assert result.title == "T"
+
+    async def test_avature_406_retries_and_recovers(self):
+        page_html = """<html><head>
+        <script type="application/ld+json">{"@type": "JobPosting", "title": "T"}</script>
+        </head></html>"""
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            status = 406 if calls["n"] == 1 else 200
+            return httpx.Response(status, text=page_html if status == 200 else "busy")
+
+        url = "https://jobs.ea.com/en_US/careers/JobDetail/Role/123"
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(url, {}, client)
+
+        assert calls["n"] == 2
+        assert result.title == "T"
+
+    async def test_generic_406_fails_without_retry(self):
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            return httpx.Response(406, text="not acceptable")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(httpx.HTTPStatusError):
+                await scrape("https://example.com/jobs/123", {}, client)
+
+        assert calls["n"] == 1
 
 
 class TestMetaCareersFixture:

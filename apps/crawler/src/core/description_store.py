@@ -10,8 +10,10 @@ Environment variables (shared with image_sync):
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import os
+import random
 import struct
 from urllib.parse import quote
 
@@ -33,6 +35,10 @@ _http_client: httpx.AsyncClient | None = None
 # stay lazy — otherwise just importing this module from the workspace CLI
 # install would crash even though the workspace never touches R2.
 _signer: object | None = None
+
+_PUT_MAX_ATTEMPTS = 2
+_PUT_RETRY_BASE_SECONDS = 0.5
+_RETRYABLE_PUT_STATUSES = frozenset({408, 425, 429, 500, 502, 503, 504})
 
 
 def _get_signer() -> object:
@@ -106,17 +112,39 @@ async def _get_object(key: str) -> str | None:
 async def _put_object(key: str, body: str, content_type: str = "text/html") -> None:
     url = _object_url(key)
     data = body.encode("utf-8")
-    headers = _sign(
-        "PUT",
-        url,
-        {
-            "Content-Type": content_type,
-            "Cache-Control": "public, max-age=86400",
-        },
-        data,
-    )
-    resp = await _get_http().put(url, headers=headers, content=data)
-    resp.raise_for_status()
+    for attempt in range(1, _PUT_MAX_ATTEMPTS + 1):
+        try:
+            # Re-sign every attempt so a delayed retry never reuses a stale
+            # SigV4 timestamp.
+            headers = _sign(
+                "PUT",
+                url,
+                {
+                    "Content-Type": content_type,
+                    "Cache-Control": "public, max-age=86400",
+                },
+                data,
+            )
+            resp = await _get_http().put(url, headers=headers, content=data)
+            resp.raise_for_status()
+            return
+        except Exception as exc:
+            status = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
+            retryable = isinstance(exc, httpx.TransportError) or (status in _RETRYABLE_PUT_STATUSES)
+            if not retryable or attempt >= _PUT_MAX_ATTEMPTS:
+                raise
+
+            ceiling = _PUT_RETRY_BASE_SECONDS * (2 ** (attempt - 1))
+            delay = random.uniform(ceiling / 2, ceiling)
+            log.warning(
+                "r2.put_retry",
+                attempt=attempt,
+                max_attempts=_PUT_MAX_ATTEMPTS,
+                retry_in_s=round(delay, 3),
+                error_type=type(exc).__name__,
+                http_status=status,
+            )
+            await asyncio.sleep(delay)
 
 
 async def put_description(posting_id: str, locale: str, html: str) -> None:

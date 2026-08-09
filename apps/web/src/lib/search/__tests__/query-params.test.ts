@@ -4,6 +4,9 @@ import {
   parseWorkModeParam,
   buildFilterQuery,
   buildFilteredPath,
+  hasSearchFilterParams,
+  searchFilterParamsToObject,
+  serializeSearchFilterParams,
 } from "../query-params";
 
 // =====================================================================
@@ -137,5 +140,38 @@ describe("buildFilteredPath — workMode", () => {
     expect(
       buildFilteredPath("/en/explore", [], [], undefined, undefined, undefined, undefined, []),
     ).toBe("/en/explore");
+  });
+});
+
+describe("result-bearing search params (#5766)", () => {
+  it("serializes filters in canonical order and drops UI/tracking state", () => {
+    const params = new URLSearchParams();
+    params.set("show", "posting-1");
+    params.set("utm_source", "newsletter");
+    params.set("loc", "berlin");
+    params.set("q", "python");
+
+    expect(serializeSearchFilterParams(params)).toBe(
+      "q=python&loc=berlin",
+    );
+  });
+
+  it("preserves repeated filter values for server-action inputs", () => {
+    const params = new URLSearchParams("loc=berlin&loc=paris&show=posting-1");
+
+    expect(searchFilterParamsToObject(params)).toEqual({
+      loc: ["berlin", "paris"],
+    });
+  });
+
+  it("does not classify selected-posting or tracking state as filters", () => {
+    expect(
+      hasSearchFilterParams(
+        new URLSearchParams("show=posting-1&utm_source=newsletter"),
+      ),
+    ).toBe(false);
+    expect(hasSearchFilterParams(new URLSearchParams("etype=internship"))).toBe(
+      true,
+    );
   });
 });

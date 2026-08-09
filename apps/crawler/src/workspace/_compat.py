@@ -11,28 +11,84 @@ with the actual registries.
 
 from __future__ import annotations
 
+import re
+from urllib.parse import parse_qsl
+
+from src.shared.adp import adp_board_from_url
+from src.shared.avature import is_avature_vendor_url
+from src.shared.beisen import beisen_board_from_url
+from src.shared.cornerstone import cornerstone_board_from_url
+from src.shared.darwinbox import darwinbox_board_from_url
+from src.shared.dayforce import dayforce_board_from_url
+from src.shared.gupy import gupy_tenant_from_url
+from src.shared.jobvite import jobvite_board_from_url
+from src.shared.keka import keka_board_from_url
+from src.shared.pageup import pageup_board_from_url
+from src.shared.recruiterbox import recruiterbox_board_from_url
+from src.shared.successfactors import (
+    is_successfactors_host,
+    successfactors_legacy_board_from_url,
+)
+from src.shared.taleo import taleo_board_from_url
+from src.shared.ukg import is_ukg_url
+
+_ICIMS_STATIC_QUERY_VALUES = {
+    "in_iframe": "1",
+    "o": "",
+    "schemaId": "",
+    "searchRelation": "keyword_all",
+    "ss": "1",
+}
+
+
+def _icims_query_is_unscoped(query: str) -> bool:
+    """Reject filters that would be lost by the host-wide native monitor."""
+    params = parse_qsl(query, keep_blank_values=True)
+    keys = [key for key, _value in params]
+    if len(keys) != len(set(keys)):
+        return False
+    return all(
+        (key == "pr" and value.isdigit()) or _ICIMS_STATIC_QUERY_VALUES.get(key) == value
+        for key, value in params
+    )
+
+
 _RICH_MONITORS: frozenset[str] = frozenset(
     {
         "accenture",
+        "adp",
         "almacareer",
         "amazon",
         "ashby",
+        "bamboohr",
+        "beisen",
         "comeet",
+        "cornerstone",
+        "darwinbox",
+        "dayforce",
         "deel",
         "dvinci",
         "gem",
         "greenhouse",
+        "hibob",
+        "hirehive",
         "hireology",
         "inline",
         "jobylon",
+        "keka",
+        "kipt",
         "lever",
         "mokahr",
         "oracle_hcm",
+        "pageup",
+        "paycom",
+        "paylocity",
         "pinpoint",
         "recruitee",
         "recruiter_co_kr",
         "rss",
         "traffit",
+        "ukg",
     }
 )
 
@@ -42,11 +98,25 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 
 # Crawler types whose ``auto_scraper_type()`` resolves to ("skip", None) —
 # i.e. rich monitors with no enrichment. This is ``_RICH_MONITORS`` minus
-# ``oracle_hcm``, which auto-resolves to an oracle_hcm scraper with enrich.
+# ``oracle_hcm``, ``adp``, ``bamboohr``, ``beisen``, ``paycom``, and
+# ``pageup``, ``paylocity``, legacy ``rss`` and ``ukg``, which auto-resolve to
+# enrichment scrapers (BambooHR uses a
+# generic API preset;
+# Paycom reuses its native bootstrap in a dedicated detail scraper).
 # Used by SQL filters and the ``_is_skip_no_scrape`` classifier so implicit
 # rich boards (``scraper_type`` unset in metadata) are treated the same as
 # explicit ``scraper_type = "skip"`` boards. See issue 01-rich-monitor-scheduling.
-_AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {"oracle_hcm"}
+_AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {
+    "adp",
+    "bamboohr",
+    "beisen",
+    "oracle_hcm",
+    "pageup",
+    "paycom",
+    "paylocity",
+    "rss",
+    "ukg",
+}
 
 
 def auto_skip_crawler_types() -> frozenset[str]:
@@ -55,11 +125,20 @@ def auto_skip_crawler_types() -> frozenset[str]:
 
 
 _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
+    "avature",
     "bite",
     "breezy",
     "eightfold",
+    "gupy",
+    "herp",
+    "hrmos",
+    "icims",
+    "jazzhr",
+    "jobvite",
     "join",
     "personio",
+    "recruiterbox",
+    "taleo",
     "rippling",
     "smartrecruiters",
     "softgarden",
@@ -89,16 +168,20 @@ def all_monitor_types() -> frozenset[str]:
 
 _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
     {
+        "adp",
         "api_sniffer",
         "bite",
         "dom",
         "eightfold",
         "embedded",
+        "jazzhr",
         "json-ld",
         "mokahr",
         "nextdata",
         "notion",
         "oracle_hcm",
+        "paycom",
+        "paylocity",
         "pdf",
         "rippling",
         "skip",
@@ -120,6 +203,10 @@ def detect_ats_from_url(url: str) -> str | None:
 
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower()
+    try:
+        _ = parsed.port
+    except ValueError:
+        return None
 
     # Exact host prefixes
     if host in ("boards.greenhouse.io", "job-boards.greenhouse.io") or (
@@ -132,16 +219,108 @@ def detect_ats_from_url(url: str) -> str | None:
         return "ashby"
     if host == "jobs.gem.com":
         return "gem"
+    if adp_board_from_url(url) is not None:
+        return "adp"
+    if is_avature_vendor_url(url):
+        return "avature"
+    if beisen_board_from_url(url) is not None:
+        return "beisen"
+    if gupy_tenant_from_url(url) is not None:
+        return "gupy"
+    if cornerstone_board_from_url(url) is not None:
+        return "cornerstone"
+    if darwinbox_board_from_url(url) is not None:
+        return "darwinbox"
+    if dayforce_board_from_url(url) is not None:
+        return "dayforce"
+    if recruiterbox_board_from_url(url) is not None:
+        return "recruiterbox"
+    if keka_board_from_url(url) is not None:
+        return "keka"
+    if taleo_board_from_url(url) is not None:
+        return "taleo"
+    if is_ukg_url(url):
+        return "ukg"
+    if jobvite_board_from_url(url) is not None:
+        return "jobvite"
+    if pageup_board_from_url(url) is not None:
+        return "pageup"
+    if (
+        host == "herp.careers"
+        and not parsed.query
+        and re.fullmatch(
+            r"/v1/[a-z0-9][a-z0-9_-]{0,62}(?:/[A-Za-z0-9_~-]{6,64})?/?",
+            parsed.path,
+            re.IGNORECASE,
+        )
+    ):
+        return "herp"
+    if (
+        host == "hrmos.co"
+        and not parsed.query
+        and re.fullmatch(
+            r"/pages/[a-z0-9][a-z0-9_-]{0,62}/jobs"
+            r"(?:/[A-Za-z0-9_-]{1,64})?/?",
+            parsed.path,
+            re.IGNORECASE,
+        )
+    ):
+        return "hrmos"
+    if host in ("comeet.com", "www.comeet.com", "comeet.co", "www.comeet.co"):
+        return "comeet"
     if host == "jobs.deel.com":
         return "deel"
-    if host in ("comeet.com", "www.comeet.com") and parsed.path.startswith("/jobs/"):
-        return "comeet"
     if host == "apply.workable.com":
         return "workable"
     if host == "careers.smartrecruiters.com":
         return "smartrecruiters"
     if host.endswith(".breezy.hr"):
         return "breezy"
+    if host.endswith(".bamboohr.com"):
+        tenant = host.split(".", 1)[0]
+        path = parsed.path.rstrip("/").lower()
+        if tenant not in {"api", "app", "help", "static", "www"} and path in {
+            "/careers",
+            "/jobs/embed2.php",
+        }:
+            return "bamboohr"
+    if host in {"paycomonline.net", "www.paycomonline.net"} and re.search(
+        r"^/v4/ats/web\.php/portal/[0-9a-f]{32}/(?:career-page|jobs(?:/|$))",
+        parsed.path,
+        re.IGNORECASE,
+    ):
+        return "paycom"
+    if (
+        host.endswith(".applytojob.com")
+        and host.count(".") == 2
+        and re.fullmatch(
+            r"(?:/apply(?:/jobs(?:/details/[A-Za-z0-9_-]+)?)?)?/?",
+            parsed.path,
+            re.IGNORECASE,
+        )
+    ):
+        return "jazzhr"
+    if (
+        host.endswith(".icims.com")
+        and host.count(".") == 2
+        and host
+        not in {
+            "api.icims.com",
+            "app.icims.com",
+            "help.icims.com",
+            "support.icims.com",
+            "www.icims.com",
+        }
+        and re.fullmatch(
+            r"(?:/jobs(?:/search|/\d+(?:/[^/?#]+)?/job)?)?/?",
+            parsed.path,
+            re.IGNORECASE,
+        )
+        and _icims_query_is_unscoped(parsed.query)
+    ):
+        return "icims"
+    if host.endswith(".careers.hibob.com"):
+        return "hibob"
     if host.endswith(".eightfold.ai"):
         return "eightfold"
 
@@ -160,12 +339,16 @@ def detect_ats_from_url(url: str) -> str | None:
         return "rippling"
     if host.endswith(".hireology.com"):
         return "hireology"
+    if host.endswith(".hirehive.com"):
+        return "hirehive"
     if host.endswith(".dvinci-hr.com"):
         return "dvinci"
     if host.endswith(".softgarden.io"):
         return "softgarden"
     if host.endswith(".traffit.com"):
         return "traffit"
+    if host.endswith("recruiting.paylocity.com") and "/recruiting/jobs/" in parsed.path.lower():
+        return "paylocity"
 
     # AlmaCareer (Capybara) — *.jobs.cz (CZ) and *.topjobs.sk (SK)
     if host.endswith(".jobs.cz") or host.endswith(".topjobs.sk"):
@@ -187,8 +370,8 @@ def detect_ats_from_url(url: str) -> str | None:
     if host.endswith(".teamtailor.com"):
         return "rss"
 
-    # SAP SuccessFactors — career{N}.successfactors.eu / .com
-    if ".successfactors." in host:
+    # SAP SuccessFactors — modern CSB hosts and strict legacy company URLs.
+    if successfactors_legacy_board_from_url(url) is not None or is_successfactors_host(host):
         return "rss"
 
     if (
@@ -247,10 +430,261 @@ def auto_scraper_type(
     # scraping entirely (is_rich_no_scrape = is_rich and not enrich_fields).
     if monitor_type == "oracle_hcm":
         return ("oracle_hcm", {"enrich": ["description"]})
+    if monitor_type == "bamboohr":
+        return (
+            "api_sniffer",
+            {
+                "api_url": "https://{tenant}.bamboohr.com/careers/{id}/detail",
+                "url_pattern": (
+                    r"^https://(?P<tenant>[a-z0-9-]+)\.bamboohr\.com/"
+                    r"careers/(?P<id>\d+)(?:/|$)"
+                ),
+                "json_path": "result.jobOpening",
+                "fields": {
+                    "title": "jobOpeningName",
+                    "description": "description",
+                    "locations": {
+                        "concat": [
+                            "not_null(location.city, atsLocation.city)",
+                            (
+                                "not_null(location.state, location.province, "
+                                "atsLocation.state, atsLocation.province)"
+                            ),
+                            (
+                                "not_null(location.addressCountry, location.country, "
+                                "atsLocation.country)"
+                            ),
+                        ],
+                        "separator": ", ",
+                    },
+                    "employment_type": "employmentStatusLabel",
+                    "job_location_type": {
+                        "path": "not_null(locationType, isRemote)",
+                        "map": {
+                            "0": "onsite",
+                            "1": "remote",
+                            "2": "hybrid",
+                            "True": "remote",
+                        },
+                    },
+                    "date_posted": "datePosted",
+                    "metadata.department": "departmentLabel",
+                    "metadata.department_id": "departmentId",
+                    "metadata.minimum_experience": "minimumExperience",
+                },
+                "enrich": [
+                    "description",
+                    "locations",
+                    "employment_type",
+                    "job_location_type",
+                    "date_posted",
+                ],
+            },
+        )
+    if monitor_type == "adp":
+        return (
+            "adp",
+            {
+                "enrich": [
+                    "title",
+                    "description",
+                    "locations",
+                    "employment_type",
+                    "date_posted",
+                    "base_salary",
+                ],
+            },
+        )
+    if monitor_type == "paycom":
+        return (
+            "paycom",
+            {
+                "enrich": [
+                    "title",
+                    "description",
+                    "locations",
+                    "employment_type",
+                    "job_location_type",
+                    "date_posted",
+                    "base_salary",
+                ],
+            },
+        )
+    if monitor_type == "paylocity":
+        return (
+            "paylocity",
+            {"enrich": ["description", "employment_type", "job_location_type"]},
+        )
+    if monitor_type == "pageup":
+        return (
+            "dom",
+            {
+                "gone_url_pattern": r"/listing/\?jobnotfound=true(?:&|$)",
+                "scope": "#job-content",
+                "steps": [
+                    {
+                        "tag": "h3",
+                        "offset": 1,
+                        "field": "description",
+                        "html": True,
+                        "stop": "Back to search results",
+                        "optional": True,
+                    },
+                    {
+                        "tag": "dt",
+                        "text": "Categories:",
+                        "offset": 2,
+                        "field": "description",
+                        "html": True,
+                        "stop": "Advertised:",
+                        "optional": True,
+                        "from": 0,
+                    },
+                    {
+                        "tag": "p",
+                        "text": "Categories:",
+                        "offset": 1,
+                        "field": "description",
+                        "html": True,
+                        "stop": "Advertised:",
+                        "optional": True,
+                        "from": 0,
+                    },
+                    {
+                        "tag": "p",
+                        "text": "Job no:",
+                        "offset": 1,
+                        "field": "description",
+                        "html": True,
+                        "stop": "Advertised:",
+                        "optional": True,
+                        "from": 0,
+                    },
+                ],
+                "enrich": ["description"],
+            },
+        )
+    if monitor_type == "rss" and (config or {}).get("variant") == "legacy":
+        return (
+            "dom",
+            {
+                "scope": ".joqReqDescription",
+                "steps": [
+                    {
+                        "field": "description",
+                        "html": True,
+                        "stop_count": 10_000,
+                    }
+                ],
+                "enrich": ["description"],
+            },
+        )
+    if monitor_type == "ukg":
+        return (
+            "embedded",
+            {
+                "pattern": r"new\s+US\.Opportunity\.CandidateOpportunityDetail\s*\(",
+                # Title is extracted for scraper observability and safe empty-field
+                # backfill; the enrichment allowlist still updates description only.
+                "fields": {"title": "Title", "description": "Description"},
+                "enrich": ["description"],
+            },
+        )
+    if monitor_type == "beisen":
+        variant = (config or {}).get("variant")
+        if variant == "modern":
+            return ("skip", None)
+        if variant == "legacy":
+            template = (config or {}).get("legacy_template")
+            if template == "standard":
+                return (
+                    "dom",
+                    {
+                        "steps": [
+                            {
+                                "text": "工作职责",
+                                "field": "description",
+                                "html": True,
+                                "stop": "现在申请",
+                            },
+                        ],
+                        "enrich": ["description"],
+                    },
+                )
+            if template == "inline":
+                return (
+                    "dom",
+                    {
+                        "steps": [
+                            {
+                                "text": "岗位职责",
+                                "field": "description",
+                                "html": True,
+                                "stop": "立即申请",
+                            },
+                        ],
+                        "enrich": ["description"],
+                    },
+                )
+        return None
     if monitor_type in _RICH_MONITORS:
         return ("skip", None)
     if monitor_type == "join":
         return ("nextdata", None)
+    if monitor_type == "jazzhr":
+        return ("jazzhr", None)
+    if monitor_type == "jobvite":
+        return ("json-ld", None)
+    if monitor_type == "icims":
+        return ("json-ld", None)
+    if monitor_type == "herp":
+        return ("json-ld", None)
+    if monitor_type == "gupy":
+        return ("json-ld", None)
+    if monitor_type == "hrmos":
+        return ("json-ld", None)
+    if monitor_type == "recruiterbox":
+        return ("json-ld", None)
+    if monitor_type == "taleo":
+        return ("json-ld", None)
+    if monitor_type == "avature":
+        return (
+            "dom",
+            {
+                "gone_url_pattern": r"/(?:Error|SearchJobs)(?:[/?#]|$)",
+                "retry_statuses": {"406": 2},
+                "steps": [
+                    {"tag": "h2", "field": "title"},
+                    {
+                        "field": "description",
+                        "html": True,
+                        "stop": "Apply",
+                        "optional": True,
+                    },
+                    {
+                        "text": "Location",
+                        "offset": 1,
+                        "field": "locations",
+                        "optional": True,
+                        "from": 0,
+                    },
+                    {
+                        "text": "Working time",
+                        "offset": 1,
+                        "field": "employment_type",
+                        "optional": True,
+                        "from": 0,
+                    },
+                    {
+                        "text": "Posted",
+                        "offset": 1,
+                        "field": "date_posted",
+                        "optional": True,
+                        "from": 0,
+                    },
+                ],
+            },
+        )
     if monitor_type == "breezy":
         return ("json-ld", _BREEZY_SCRAPER_CONFIG)
     if monitor_type == "bite":

@@ -17,6 +17,7 @@ import contextlib
 import json
 import time
 import uuid
+from urllib.parse import urlparse
 
 import asyncpg
 import httpx
@@ -24,10 +25,15 @@ import structlog
 
 from src.config import settings
 from src.metrics import (
+    browser_playwright_recycles_total,
+    host_circuit_opened_total,
+    host_circuit_skipped_total,
+    host_circuit_state,
     inflight_deadletter_depth,
     inflight_depth,
     inflight_heartbeat_total,
     inflight_reaped_total,
+    monitor_deadletter_lifecycle_depth,
     monitor_duration_seconds,
     monitor_failed_per_board_total,
     scrape_duration_seconds,
@@ -39,16 +45,34 @@ from src.metrics import (
 from src.redis_queue import (
     BoardWork,
     ScrapeWork,
+    acquire_host_circuit_probe,
+    acquire_provider_circuit_probe,
     claim_work,
     complete_task,
     enqueue_monitor,
     enqueue_scrape,
     get_deadletter_depth,
+    get_host_circuit_open_until,
     get_inflight_depth,
+    get_provider_circuit_open_until,
     heartbeat_task,
+    normalize_egress_host,
     reap_expired,
+    record_host_failure,
+    record_host_success,
+    record_provider_circuit_success,
+    record_provider_incident_failure,
+    release_provider_circuit_probe,
+    remember_board_egress_host,
+    remember_board_scrape_egress_host,
     reschedule_task,
     update_board_metadata_cache,
+)
+from src.shared.http import WORKDAY_LIST_303_INCIDENT, RequestHostTracker, track_request_hosts
+from src.workers.monitor_memory import (
+    cgroup_memory_bytes,
+    process_rss_bytes,
+    reclaim_process_memory,
 )
 
 log = structlog.get_logger()
@@ -59,12 +83,320 @@ _ERROR_BACKOFF_S = 300  # 5 minutes
 # Idle backoff when no work is available (seconds).
 _IDLE_BACKOFF_S = 2.0
 
+# Driver shutdown normally takes milliseconds. A broken Playwright transport
+# must not pin a discovery coroutine forever during scheduled recycling or
+# container shutdown.
+_PLAYWRIGHT_STOP_TIMEOUT_S = 15.0
+
 
 def _timestamp(value) -> float:
     """Return a Redis ZSET score for a DB timestamp-like value."""
     if hasattr(value, "timestamp"):
         return float(value.timestamp())
     return float(value)
+
+
+def _configured_egress_host(config: dict) -> str:
+    """Best available host before a board has made its first runtime request.
+
+    ``egress_host`` is learned from the transport after every run. For a new
+    board, prefer an explicit API endpoint in monitor_config and fall back to
+    the board URL. This keeps the preflight useful on the first incident
+    without maintaining a brittle crawler-type-to-host allowlist.
+    """
+
+    explicit = normalize_egress_host(str(config.get("egress_host") or ""))
+    if explicit:
+        return explicit
+
+    metadata_raw = config.get("metadata", "{}")
+    try:
+        metadata = (
+            json.loads(metadata_raw) if isinstance(metadata_raw, str) else (metadata_raw or {})
+        )
+    except (json.JSONDecodeError, TypeError):
+        metadata = {}
+
+    if config.get("crawler_type") == "avature" and isinstance(metadata, dict):
+        from src.shared.avature import avature_request_host
+
+        resolved_host = avature_request_host(str(config.get("board_url") or ""), metadata)
+        if resolved_host:
+            return normalize_egress_host(resolved_host)
+
+    if config.get("crawler_type") == "taleo" and isinstance(metadata, dict):
+        from src.shared.taleo import taleo_request_host
+
+        resolved_host = taleo_request_host(str(config.get("board_url") or ""), metadata)
+        if resolved_host:
+            return normalize_egress_host(resolved_host)
+
+    if config.get("crawler_type") == "pageup" and isinstance(metadata, dict):
+        from src.shared.pageup import pageup_board_from_metadata
+
+        resolved = pageup_board_from_metadata(metadata)
+        if resolved is not None:
+            return "careers.pageuppeople.com"
+
+    monitor_config = metadata.get("monitor_config", {}) if isinstance(metadata, dict) else {}
+    if isinstance(monitor_config, dict):
+        for key in ("api_url", "endpoint", "base_url", "url"):
+            value = monitor_config.get(key)
+            if isinstance(value, str):
+                host = urlparse(value).hostname
+                if host:
+                    return normalize_egress_host(host)
+
+    board_url = str(config.get("board_url") or "")
+    return normalize_egress_host(urlparse(board_url).hostname or "")
+
+
+async def _failure_next_due(
+    local_pool: asyncpg.Pool,
+    board_id: str,
+    worker_log: structlog.stdlib.BoundLogger,
+) -> float:
+    """Read the durable Postgres backoff written by _RECORD_FAILURE."""
+
+    try:
+        async with local_pool.acquire() as conn:
+            value = await conn.fetchval(
+                "SELECT next_check_at FROM job_board WHERE id = $1::uuid",
+                board_id,
+            )
+        return _timestamp(value)
+    except Exception:
+        worker_log.warning("pipeline.monitor.failure_schedule_read_failed", exc_info=True)
+        return time.time() + _ERROR_BACKOFF_S
+
+
+async def _record_monitor_host_outcome(
+    board_id: str,
+    fallback_host: str,
+    learned_host: str,
+    tracker: RequestHostTracker,
+    success: bool,
+    worker_log: structlog.stdlib.BoundLogger,
+) -> float | None:
+    """Update the shared circuit once for a completed monitor run.
+
+    HTTP helpers may retry or paginate many times. Accounting here avoids
+    mistaking those requests for independent failures: one board run advances
+    the host streak exactly once.
+    """
+
+    observed_host = normalize_egress_host(tracker.last_host or "")
+    egress_host = observed_host or fallback_host
+    if not egress_host:
+        return None
+
+    try:
+        if success:
+            # Browser monitors do their network I/O outside httpx, so their
+            # tracker can be empty. The configured origin is still sufficient
+            # to reset/close the circuit for that run.
+            success_hosts = tracker.hosts or ({fallback_host} if fallback_host else set())
+            for host in success_hosts:
+                still_open = await record_host_success(host)
+                # Avoid allocating a healthy-zero metric for every crawler
+                # origin. A learned host means this board previously failed
+                # and persisted its runtime egress; update that existing
+                # circuit series on the recovery probe.
+                if host == learned_host:
+                    host_circuit_state.labels(egress_host=host).set(
+                        1 if still_open is not None else 0
+                    )
+            return None
+
+        # Persist only failure-associated hosts. Healthy boards do not need an
+        # extra Redis field, while a failed board must use the real redirected
+        # origin for every later preflight/recovery attempt.
+        await remember_board_egress_host(board_id, egress_host)
+        state = await record_host_failure(egress_host)
+        host_circuit_state.labels(egress_host=egress_host).set(1 if state.is_open else 0)
+        if state.opened_now:
+            host_circuit_opened_total.labels(egress_host=egress_host).inc()
+            worker_log.warning(
+                "pipeline.monitor.host_circuit_opened",
+                egress_host=egress_host,
+                failures=state.failures,
+                open_until=state.open_until,
+            )
+        return state.open_until
+    except Exception:
+        # Circuit state is protective, not authoritative. Redis trouble must
+        # not hide the monitor result or strand its normal reschedule.
+        worker_log.warning(
+            "pipeline.monitor.host_circuit_update_failed",
+            egress_host=egress_host,
+            exc_info=True,
+        )
+        return None
+
+
+def _monitor_provider_incident(config: dict) -> str:
+    """Return the only provider-wide incident this monitor may contribute to."""
+
+    if config.get("crawler_type") == "workday":
+        return WORKDAY_LIST_303_INCIDENT
+    return ""
+
+
+def _provider_circuit_metric_label(incident: str) -> str:
+    """Keep provider series bounded within the existing circuit metrics."""
+
+    return f"provider:{incident}"
+
+
+async def _release_monitor_provider_probe(
+    incident: str,
+    worker_log: structlog.stdlib.BoundLogger,
+) -> None:
+    """Release a provider probe that could not produce an authoritative result."""
+
+    if not incident:
+        return
+    try:
+        await release_provider_circuit_probe(incident)
+    except Exception:
+        worker_log.warning(
+            "pipeline.monitor.provider_circuit_probe_release_failed",
+            provider_incident=incident,
+            exc_info=True,
+        )
+
+
+async def _defer_monitor_for_provider_circuit(
+    domain: str,
+    board_id: str,
+    incident: str,
+    *,
+    browser: bool,
+    worker_log: structlog.stdlib.BoundLogger,
+) -> tuple[bool, bool]:
+    """Defer Workday monitors during a confirmed cross-tenant incident.
+
+    Returns ``(deferred, probe_acquired)``. The provider gate runs before the
+    tenant-local host circuit so one provider probe can be released when that
+    tenant is independently blocked.
+    """
+
+    if not incident:
+        return False, False
+    metric_label = _provider_circuit_metric_label(incident)
+    try:
+        open_until = await get_provider_circuit_open_until(incident)
+    except Exception:
+        worker_log.warning(
+            "pipeline.monitor.provider_circuit_check_failed",
+            provider_incident=incident,
+            exc_info=True,
+        )
+        return False, False
+
+    if open_until is None:
+        return False, False
+
+    now = time.time()
+    if open_until > now:
+        await reschedule_task(domain, board_id, "monitor", open_until, browser=browser)
+        host_circuit_state.labels(egress_host=metric_label).set(1)
+        host_circuit_skipped_total.labels(egress_host=metric_label).inc()
+        tasks_total.labels(kind="monitor", status="provider_circuit_open").inc()
+        worker_log.warning(
+            "pipeline.monitor.provider_circuit_deferred",
+            provider_incident=incident,
+            open_until=open_until,
+        )
+        return True, False
+
+    try:
+        probe_acquired = await acquire_provider_circuit_probe(incident)
+    except Exception:
+        worker_log.warning(
+            "pipeline.monitor.provider_circuit_probe_failed",
+            provider_incident=incident,
+            exc_info=True,
+        )
+        return False, False
+
+    host_circuit_state.labels(egress_host=metric_label).set(0.5)
+    if probe_acquired:
+        worker_log.warning(
+            "pipeline.monitor.provider_circuit_probe_started",
+            provider_incident=incident,
+        )
+        return False, True
+
+    probe_due = now + settings.host_circuit_probe_seconds
+    await reschedule_task(domain, board_id, "monitor", probe_due, browser=browser)
+    host_circuit_skipped_total.labels(egress_host=metric_label).inc()
+    tasks_total.labels(kind="monitor", status="provider_circuit_half_open").inc()
+    worker_log.info(
+        "pipeline.monitor.provider_circuit_probe_deferred",
+        provider_incident=incident,
+        next_probe_at=probe_due,
+    )
+    return True, False
+
+
+async def _record_monitor_provider_outcome(
+    incident: str,
+    probe_acquired: bool,
+    tracker: RequestHostTracker,
+    success: bool,
+    worker_log: structlog.stdlib.BoundLogger,
+) -> float | None:
+    """Update the distinct-origin circuit from one completed monitor run."""
+
+    if not incident:
+        return None
+    metric_label = _provider_circuit_metric_label(incident)
+    incident_matches = tracker.last_provider_incident == incident
+    incident_host = normalize_egress_host(tracker.last_provider_incident_host or "")
+
+    try:
+        if incident_matches and incident_host:
+            state = await record_provider_incident_failure(incident, incident_host)
+            host_circuit_state.labels(egress_host=metric_label).set(1 if state.is_open else 0)
+            if state.opened_now:
+                host_circuit_opened_total.labels(egress_host=metric_label).inc()
+                worker_log.warning(
+                    "pipeline.monitor.provider_circuit_opened",
+                    provider_incident=incident,
+                    distinct_hosts=state.failures,
+                    open_until=state.open_until,
+                )
+            return state.open_until
+
+        if probe_acquired and success:
+            still_open = await record_provider_circuit_success(incident)
+            host_circuit_state.labels(egress_host=metric_label).set(
+                1 if still_open is not None else 0
+            )
+            worker_log.info(
+                "pipeline.monitor.provider_circuit_recovered",
+                provider_incident=incident,
+            )
+            return still_open
+
+        if probe_acquired:
+            # An unrelated parser/configuration failure says nothing about the
+            # 303 incident. Release the lease without reopening or clearing
+            # the distinct-host evidence so another tenant can probe.
+            await release_provider_circuit_probe(incident)
+            host_circuit_state.labels(egress_host=metric_label).set(0.5)
+        return None
+    except Exception:
+        worker_log.warning(
+            "pipeline.monitor.provider_circuit_update_failed",
+            provider_incident=incident,
+            incident_host=incident_host,
+            exc_info=True,
+        )
+        if probe_acquired:
+            await _release_monitor_provider_probe(incident, worker_log)
+        return None
 
 
 async def _fetch_scrape_schedule_state(
@@ -76,6 +408,114 @@ async def _fetch_scrape_schedule_state(
             "SELECT is_active, next_scrape_at FROM job_posting WHERE id = $1::uuid",
             posting_id,
         )
+
+
+async def _defer_scrape_for_host_circuit(
+    domain: str,
+    posting_id: str,
+    egress_host: str,
+    *,
+    browser: bool,
+    worker_log: structlog.stdlib.BoundLogger,
+) -> bool:
+    """Defer a scrape before network I/O when its shared host is unhealthy."""
+
+    if not egress_host:
+        return False
+    try:
+        open_until = await get_host_circuit_open_until(egress_host)
+    except Exception:
+        worker_log.warning(
+            "pipeline.scrape.host_circuit_check_failed",
+            egress_host=egress_host,
+            exc_info=True,
+        )
+        return False
+
+    if open_until is None:
+        return False
+
+    now = time.time()
+    if open_until > now:
+        next_due = open_until
+        status = "host_circuit_open"
+        event = "pipeline.scrape.host_circuit_deferred"
+    else:
+        try:
+            probe_acquired = await acquire_host_circuit_probe(egress_host)
+        except Exception:
+            worker_log.warning(
+                "pipeline.scrape.host_circuit_probe_failed",
+                egress_host=egress_host,
+                exc_info=True,
+            )
+            return False
+        host_circuit_state.labels(egress_host=egress_host).set(0.5)
+        if probe_acquired:
+            worker_log.warning(
+                "pipeline.scrape.host_circuit_probe_started",
+                egress_host=egress_host,
+            )
+            return False
+        next_due = now + settings.host_circuit_probe_seconds
+        status = "host_circuit_half_open"
+        event = "pipeline.scrape.host_circuit_probe_deferred"
+
+    await reschedule_task(domain, posting_id, "scrape", next_due, browser=browser)
+    host_circuit_state.labels(egress_host=egress_host).set(1 if open_until > now else 0.5)
+    host_circuit_skipped_total.labels(egress_host=egress_host).inc()
+    tasks_total.labels(kind="scrape", status=status).inc()
+    worker_log.warning(event, egress_host=egress_host, next_due=next_due)
+    return True
+
+
+async def _record_scrape_host_outcome(
+    board_id: str,
+    fallback_host: str,
+    learned_host: str,
+    tracker: RequestHostTracker,
+    success: bool,
+    worker_log: structlog.stdlib.BoundLogger,
+) -> float | None:
+    """Update the shared circuit once for a completed scrape run.
+
+    Only final transport failures, transient HTTP statuses, and explicitly
+    promoted provider incidents advance the failure streak. A generic
+    parser/config error following a reachable response is deliberately
+    excluded so one broken scraper cannot block a whole host.
+    """
+
+    failure_host = tracker.transient_failure_host if not success else None
+    try:
+        if failure_host:
+            await remember_board_scrape_egress_host(board_id, failure_host)
+            state = await record_host_failure(failure_host)
+            host_circuit_state.labels(egress_host=failure_host).set(1 if state.is_open else 0)
+            if state.opened_now:
+                host_circuit_opened_total.labels(egress_host=failure_host).inc()
+                worker_log.warning(
+                    "pipeline.scrape.host_circuit_opened",
+                    egress_host=failure_host,
+                    failures=state.failures,
+                    open_until=state.open_until,
+                )
+            return state.open_until
+
+        # A successful scrape proves reachability. A failed extraction after
+        # a non-transient response does too, and must reset an outage streak.
+        success_hosts = tracker.hosts or ({fallback_host} if success and fallback_host else set())
+        for host in success_hosts:
+            still_open = await record_host_success(host)
+            if host == learned_host:
+                host_circuit_state.labels(egress_host=host).set(1 if still_open is not None else 0)
+        return None
+    except Exception:
+        worker_log.warning(
+            "pipeline.scrape.host_circuit_update_failed",
+            egress_host=failure_host or tracker.last_host or fallback_host,
+            exc_info=True,
+        )
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -193,6 +633,7 @@ async def _reaper_loop(
     shutdown_event: asyncio.Event,
     *,
     browser: bool,
+    local_pool: asyncpg.Pool,
 ) -> None:
     """Periodically sweep expired inflight leases back to per-domain queues.
 
@@ -246,6 +687,29 @@ async def _reaper_loop(
                 except Exception:
                     # Gauge refresh is best-effort; the reaper must keep sweeping leases.
                     pass
+            # The raw ZCARD gauge above remains useful for queue accounting,
+            # while this local-Postgres join tells alerts whether a monitor is
+            # actionable or only historical residue from a retired route.
+            try:
+                from src.deadletters import (
+                    DEADLETTER_LIFECYCLES,
+                    DEADLETTER_WORKER_TYPES,
+                    classify_deadletters,
+                    lifecycle_counts,
+                )
+
+                deadletters = await classify_deadletters(local_pool)
+                counts = lifecycle_counts(deadletters)
+                for metric_wtype in DEADLETTER_WORKER_TYPES:
+                    for lifecycle in DEADLETTER_LIFECYCLES:
+                        monitor_deadletter_lifecycle_depth.labels(
+                            wtype=metric_wtype,
+                            lifecycle=lifecycle,
+                        ).set(counts[metric_wtype][lifecycle])
+            except Exception:
+                # Classification is best-effort observability and must never
+                # interfere with lease recovery.
+                reaper_log.warning("pipeline.deadletters.classification_failed", exc_info=True)
     finally:
         reaper_log.info("pipeline.reaper.stopped")
 
@@ -391,12 +855,86 @@ async def _ensure_playwright(worker_log):
     return pw, pw_ctx
 
 
-async def _stop_playwright(pw, worker_log):
-    """Stop a Playwright server process, suppressing errors."""
+async def _stop_playwright(pw, worker_log) -> bool:
+    """Stop a Playwright server process and report whether it succeeded."""
     try:
-        await pw.stop()
+        await asyncio.wait_for(pw.stop(), timeout=_PLAYWRIGHT_STOP_TIMEOUT_S)
+    except TimeoutError:
+        worker_log.warning(
+            "pipeline.worker.playwright_stop_timeout",
+            timeout_seconds=_PLAYWRIGHT_STOP_TIMEOUT_S,
+        )
+        return False
     except Exception:
         worker_log.warning("pipeline.worker.playwright_stop_error", exc_info=True)
+        return False
+    return True
+
+
+async def _recycle_playwright_if_due(
+    pw,
+    started_at: float | None,
+    worker_log,
+    *,
+    now: float | None = None,
+):
+    """Bound one browser worker's long-lived Playwright driver lifetime.
+
+    Recycling happens at the top of the worker loop, before a new claim, so an
+    in-flight browser is never interrupted. Closing the Playwright connection
+    also terminates any Chromium child that survived page-level cleanup. This
+    is the outer safety boundary for multi-day driver/renderer growth (#5488).
+    """
+    recycle_after = max(0.0, float(settings.browser_playwright_recycle_seconds))
+    checked_at = time.monotonic() if now is None else now
+
+    if pw is None:
+        try:
+            replacement, pw_ctx = await _ensure_playwright(worker_log)
+        except Exception:
+            browser_playwright_recycles_total.labels(outcome="recovery_error").inc()
+            worker_log.warning("pipeline.worker.playwright_recovery_error", exc_info=True)
+            return None, None, None
+        browser_playwright_recycles_total.labels(outcome="recovered").inc()
+        worker_log.info("pipeline.worker.playwright_recovered")
+        return replacement, pw_ctx, checked_at
+
+    if recycle_after <= 0 or started_at is None or checked_at - started_at < recycle_after:
+        return pw, None, started_at
+
+    age_seconds = round(checked_at - started_at, 1)
+    worker_log.info(
+        "pipeline.worker.playwright_recycle_started",
+        age_seconds=age_seconds,
+        limit_seconds=recycle_after,
+    )
+    stopped = await _stop_playwright(pw, worker_log)
+    if not stopped:
+        browser_playwright_recycles_total.labels(outcome="stop_error").inc()
+        # Starting a replacement while the old driver may still be alive
+        # would turn a cleanup fault into an unbounded process leak. Escaping
+        # the worker instead makes the pipeline stop and lets Docker replace
+        # the whole cgroup with a known-clean process tree.
+        raise RuntimeError("Playwright driver did not stop during scheduled recycle")
+
+    try:
+        replacement, pw_ctx = await _ensure_playwright(worker_log)
+    except Exception:
+        browser_playwright_recycles_total.labels(outcome="start_error").inc()
+        worker_log.warning(
+            "pipeline.worker.playwright_recycle_error",
+            age_seconds=age_seconds,
+            exc_info=True,
+        )
+        return None, None, None
+
+    browser_playwright_recycles_total.labels(outcome="success").inc()
+    worker_log.info(
+        "pipeline.worker.playwright_recycled",
+        age_seconds=age_seconds,
+        limit_seconds=recycle_after,
+    )
+    return replacement, pw_ctx, checked_at
 
 
 async def _discovery_worker(
@@ -413,9 +951,8 @@ async def _discovery_worker(
     Claims work from Redis, dispatches to the appropriate processing
     function, reschedules in Redis, and loops until shutdown.
 
-    ``monitor_semaphore`` caps concurrent monitor processing to bound
-    peak memory (monitors hold full board results in memory).  Scrapes
-    are lightweight and not limited.
+    ``monitor_semaphore`` caps concurrent monitor processing. Scrapes are
+    lightweight and not limited.
 
     Browser workers create a shared Playwright server process per worker
     to avoid spawning (and leaking) a new process on every task.
@@ -425,14 +962,25 @@ async def _discovery_worker(
 
     # Browser workers share one Playwright server per worker coroutine.
     pw = None
+    pw_ctx = None
+    pw_started_at = None
     if browser:
         try:
-            pw, _pw_ctx = await _ensure_playwright(worker_log)
+            pw, pw_ctx = await _ensure_playwright(worker_log)
+            pw_started_at = time.monotonic()
         except Exception:
             worker_log.warning("pipeline.worker.playwright_unavailable", exc_info=True)
 
     try:
         while not shutdown_event.is_set():
+            if browser:
+                pw, replacement_ctx, pw_started_at = await _recycle_playwright_if_due(
+                    pw,
+                    pw_started_at,
+                    worker_log,
+                )
+                if replacement_ctx is not None:
+                    pw_ctx = replacement_ctx
             worker_heartbeat_ts.labels(worker_id=str(worker_id)).set_to_current_time()
             try:
                 work = await claim_work(browser=browser)
@@ -516,6 +1064,11 @@ async def _discovery_worker(
     finally:
         if pw:
             await _stop_playwright(pw, worker_log)
+        # Keep the context-manager object alive for the same lifetime as the
+        # AsyncPlaywright instance. ``pw.stop()`` performs the actual close;
+        # the reference prevents accidental early collection and documents
+        # ownership of the paired object returned by ``async_playwright()``.
+        _ = pw_ctx
 
     worker_log.info("pipeline.worker.stopped")
 
@@ -540,19 +1093,19 @@ async def _process_monitor_work(
     domain = board_work.domain
 
     worker_log = worker_log.bind(board_id=board_id, crawler_type=config.get("crawler_type"))
+    provider_incident = _monitor_provider_incident(config)
+    half_open_provider_probe = False
 
     try:
-        # Self-heal: a board may have already been marked `disabled` /
-        # `gone` in Postgres but the Redis monitor task still exists
-        # (sync only purges between CSV pushes — can be days). Drop the
-        # task without rescheduling so the dead-board loop drains.
-        # See issue #2215.
+        # Self-heal stale Redis work for boards removed from configuration.
+        # Confirmed-gone configured boards intentionally remain schedulable at
+        # a daily recovery cadence (#6156), so only ``disabled`` is terminal.
         async with local_pool.acquire() as conn:
             board_status = await conn.fetchval(
                 "SELECT board_status FROM job_board WHERE id = $1::uuid",
                 board_id,
             )
-        if board_status in ("disabled", "gone"):
+        if board_status == "disabled":
             tasks_total.labels(kind="monitor", status="skipped_disabled").inc()
             worker_log.info(
                 "pipeline.monitor.skipped_disabled",
@@ -599,6 +1152,95 @@ async def _process_monitor_work(
                 except Exception:
                     worker_log.warning("pipeline.monitor.reroute_failed", exc_info=True)
 
+        provider_deferred, half_open_provider_probe = await _defer_monitor_for_provider_circuit(
+            domain,
+            board_id,
+            provider_incident,
+            browser=browser,
+            worker_log=worker_log,
+        )
+        if provider_deferred:
+            return
+
+        fallback_host = _configured_egress_host(config)
+        half_open_probe_host = ""
+        if fallback_host:
+            try:
+                open_until = await get_host_circuit_open_until(fallback_host)
+            except Exception:
+                # Fail open: an unavailable Redis circuit must not turn into
+                # a fleet-wide crawler outage.
+                worker_log.warning(
+                    "pipeline.monitor.host_circuit_check_failed",
+                    egress_host=fallback_host,
+                    exc_info=True,
+                )
+                open_until = None
+
+            now = time.time()
+            if open_until is not None and open_until > now:
+                if half_open_provider_probe:
+                    await _release_monitor_provider_probe(provider_incident, worker_log)
+                    half_open_provider_probe = False
+                await reschedule_task(
+                    domain,
+                    board_id,
+                    "monitor",
+                    open_until,
+                    browser=browser,
+                )
+                host_circuit_state.labels(egress_host=fallback_host).set(1)
+                host_circuit_skipped_total.labels(egress_host=fallback_host).inc()
+                tasks_total.labels(kind="monitor", status="host_circuit_open").inc()
+                worker_log.warning(
+                    "pipeline.monitor.host_circuit_deferred",
+                    egress_host=fallback_host,
+                    open_until=open_until,
+                )
+                return
+
+            if open_until is not None:
+                # The open interval elapsed, but releasing every deferred
+                # sibling at once would create a thundering herd. Exactly one
+                # board gets a bounded half-open probe lease; the rest wait.
+                try:
+                    probe_acquired = await acquire_host_circuit_probe(fallback_host)
+                except Exception:
+                    worker_log.warning(
+                        "pipeline.monitor.host_circuit_probe_failed",
+                        egress_host=fallback_host,
+                        exc_info=True,
+                    )
+                    probe_acquired = True  # fail open on Redis trouble
+
+                host_circuit_state.labels(egress_host=fallback_host).set(0.5)
+                if not probe_acquired:
+                    if half_open_provider_probe:
+                        await _release_monitor_provider_probe(provider_incident, worker_log)
+                        half_open_provider_probe = False
+                    probe_due = now + settings.host_circuit_probe_seconds
+                    await reschedule_task(
+                        domain,
+                        board_id,
+                        "monitor",
+                        probe_due,
+                        browser=browser,
+                    )
+                    host_circuit_skipped_total.labels(egress_host=fallback_host).inc()
+                    tasks_total.labels(kind="monitor", status="host_circuit_half_open").inc()
+                    worker_log.info(
+                        "pipeline.monitor.host_circuit_probe_deferred",
+                        egress_host=fallback_host,
+                        next_probe_at=probe_due,
+                    )
+                    return
+
+                worker_log.warning(
+                    "pipeline.monitor.host_circuit_probe_started",
+                    egress_host=fallback_host,
+                )
+                half_open_probe_host = fallback_host
+
         board_record = _BoardRecord(board_id, config)
 
         from src.processing.board import (
@@ -608,31 +1250,92 @@ async def _process_monitor_work(
         )
 
         extender = DeadlineExtender()
+        worker_log.info(
+            "pipeline.monitor.started",
+            process_rss_bytes=process_rss_bytes(),
+            cgroup_memory_bytes=cgroup_memory_bytes(),
+        )
         try:
-            success, duration = await _process_one_board_streaming(
-                board_record, local_pool, http, extender, pw=pw
-            )
+            try:
+                with track_request_hosts() as host_tracker:
+                    success, duration = await _process_one_board_streaming(
+                        board_record, local_pool, http, extender, pw=pw
+                    )
+            finally:
+                # Streaming bounds the live result set. Return allocator
+                # arenas after each board so a previous large response does
+                # not become the next monitor's baseline inside the cgroup.
+                reclaimed = reclaim_process_memory()
+                event = (
+                    worker_log.info
+                    if reclaimed.rss_reclaimed_bytes >= 16 * 1024 * 1024
+                    else worker_log.debug
+                )
+                event(
+                    "pipeline.monitor.memory_reclaimed",
+                    collected_objects=reclaimed.collected_objects,
+                    malloc_trimmed=reclaimed.malloc_trimmed,
+                    rss_before_bytes=reclaimed.rss_before_bytes,
+                    rss_after_bytes=reclaimed.rss_after_bytes,
+                    rss_reclaimed_bytes=reclaimed.rss_reclaimed_bytes,
+                    cgroup_before_bytes=reclaimed.cgroup_before_bytes,
+                    cgroup_after_bytes=reclaimed.cgroup_after_bytes,
+                )
         except BoardGoneError:
-            # board.py already recorded gone + delisted postings.
-            # Drop the Redis task instead of rescheduling — the board
-            # is now filtered by the self-heal check above so it
-            # won't return to the queue.
+            # board.py recorded the pending/terminal confirmation and its
+            # durable due time. Mirror that timestamp into Redis so spaced
+            # confirmations and daily recovery probes survive deploys.
             #
             # Explicit ``status="gone"`` (not silent / not ``failed``):
             # gone is an upstream signal, not a crawler defect, and
             # operators need a separate rollup so it doesn't dilute
             # the failure-rate alert (#3200).
             tasks_total.labels(kind="monitor", status="gone").inc()
+            if half_open_provider_probe:
+                await _release_monitor_provider_probe(provider_incident, worker_log)
+                half_open_provider_probe = False
+            next_check_at = max(
+                await _failure_next_due(local_pool, board_id, worker_log),
+                time.time() + 60,
+            )
+            await reschedule_task(domain, board_id, "monitor", next_check_at, browser=browser)
             return
 
+        circuit_open_until = await _record_monitor_host_outcome(
+            board_id,
+            fallback_host,
+            normalize_egress_host(str(config.get("egress_host") or "")) or half_open_probe_host,
+            host_tracker,
+            success,
+            worker_log,
+        )
+        provider_open_until = await _record_monitor_provider_outcome(
+            provider_incident,
+            half_open_provider_probe,
+            host_tracker,
+            success,
+            worker_log,
+        )
+        half_open_provider_probe = False
         await _refresh_board_metadata_cache(local_pool, board_id, worker_log)
 
         profile = "browser" if browser else "simple"
         monitor_duration_seconds.labels(profile=profile).observe(duration)
 
         # Reschedule in Redis with next check time
-        check_interval = int(config.get("check_interval_minutes", "60"))
-        next_check_at = time.time() + check_interval * 60
+        if success:
+            check_interval = int(config.get("check_interval_minutes", "60"))
+            next_check_at = time.time() + check_interval * 60
+        else:
+            # _RECORD_FAILURE owns the exponential board-level backoff. The
+            # Redis queue must mirror that timestamp instead of overwriting it
+            # with a fixed check interval. An open shared circuit is a stronger
+            # lower bound and defers all sibling boards to its probe time.
+            next_check_at = await _failure_next_due(local_pool, board_id, worker_log)
+            if circuit_open_until is not None:
+                next_check_at = max(next_check_at, circuit_open_until)
+            if provider_open_until is not None:
+                next_check_at = max(next_check_at, provider_open_until)
         await reschedule_task(domain, board_id, "monitor", next_check_at, browser=browser)
 
         # Emit the success/failure rollup for monitor tasks so Grafana
@@ -653,6 +1356,9 @@ async def _process_monitor_work(
         )
 
     except Exception:
+        if half_open_provider_probe:
+            await _release_monitor_provider_probe(provider_incident, worker_log)
+            half_open_provider_probe = False
         # Per-board failure attribution (#2704). Increment first so a
         # downstream Redis failure in the reschedule path doesn't hide
         # the original monitor failure from the metric.
@@ -727,13 +1433,11 @@ async def _process_scrape_work(
         # monitor's relisted path will re-enqueue when the URL is
         # next discovered.
         #
-        # Hash-delete is deliberately skipped on the tombstoned path:
-        # if the monitor relists this URL between our SELECT and a
-        # ``r.delete``, the relisted_scrapes enqueue would write a
-        # fresh ``scrape:<id>`` hash that we'd then wipe — silently
-        # losing the relist until the next monitor cycle. The hash
-        # leaks instead (one entry per tombstoned posting, ~100B
-        # each); steady-state cost is bounded.
+        # Config cleanup is delegated to ``complete_task.lua`` after this
+        # function returns. It removes the hash only when no scrape queue,
+        # lease, or deadletter references the posting. That atomic check
+        # preserves a concurrent relist/reroute while preventing terminal
+        # config hashes from accumulating forever.
         #
         # Recovery: when Postgres is reachable, the monitor's
         # ``relisted`` CTE re-enqueues to Redis via
@@ -812,12 +1516,6 @@ async def _process_scrape_work(
             _process_one_scrape,
         )
 
-        async def _delete_scrape_hash() -> None:
-            try:
-                await r.delete(f"scrape:{posting_id}")
-            except Exception:
-                worker_log.warning("pipeline.scrape.scrape_hash_delete_failed", exc_info=True)
-
         async def _reroute_to_browser(reason: str) -> None:
             """Self-heal: a slim worker claimed a task whose current scraper
             config requires a browser. Re-enqueue to the browser queue so a
@@ -863,7 +1561,6 @@ async def _process_scrape_work(
             """
             async with local_pool.acquire() as conn:
                 await conn.execute(_CLEAR_SCRAPE_FOR_RICH, [posting_id])
-            await _delete_scrape_hash()
             tasks_total.labels(kind="scrape", status="skipped_rich").inc()
             worker_log.info(
                 "pipeline.scrape.skipped_rich",
@@ -886,7 +1583,6 @@ async def _process_scrape_work(
 
             async with local_pool.acquire() as conn:
                 await conn.execute(_RECORD_SCRAPE_TRANSIENT, posting_id)
-            await _delete_scrape_hash()
             tasks_total.labels(kind="scrape", status="stale_config").inc()
             worker_log.warning(
                 "pipeline.scrape.stale_config",
@@ -925,15 +1621,37 @@ async def _process_scrape_work(
             )
             return
 
-        success, duration = await _process_one_scrape(
-            item,
-            local_pool,
-            http,
-            scraper_type,
-            scraper_config,
-            pw=pw,
-            scrape_step=scrape_step,
-            scrape_interval=scrape_work.scrape_interval_hours,
+        fallback_host = normalize_egress_host(urlparse(scrape_work.source_url).hostname or domain)
+        learned_host = normalize_egress_host(board_config.get("scrape_egress_host", ""))
+        circuit_host = learned_host or fallback_host
+        if await _defer_scrape_for_host_circuit(
+            domain,
+            posting_id,
+            circuit_host,
+            browser=browser,
+            worker_log=worker_log,
+        ):
+            return
+
+        with track_request_hosts() as host_tracker:
+            success, duration = await _process_one_scrape(
+                item,
+                local_pool,
+                http,
+                scraper_type,
+                scraper_config,
+                pw=pw,
+                scrape_step=scrape_step,
+                scrape_interval=scrape_work.scrape_interval_hours,
+            )
+
+        circuit_open_until = await _record_scrape_host_outcome(
+            scrape_work.board_id,
+            fallback_host,
+            learned_host,
+            host_tracker,
+            success,
+            worker_log,
         )
 
         profile = "browser" if browser else "simple"
@@ -951,6 +1669,8 @@ async def _process_scrape_work(
             fallback_due = time.time() + (
                 scrape_work.scrape_interval_hours * 3600 if success else _ERROR_BACKOFF_S
             )
+            if circuit_open_until is not None:
+                fallback_due = max(fallback_due, circuit_open_until)
             await reschedule_task(domain, posting_id, "scrape", fallback_due, browser=browser)
         else:
             if (
@@ -966,11 +1686,14 @@ async def _process_scrape_work(
                     ),
                 )
             else:
+                next_due = _timestamp(posting_state["next_scrape_at"])
+                if circuit_open_until is not None:
+                    next_due = max(next_due, circuit_open_until)
                 await reschedule_task(
                     domain,
                     posting_id,
                     "scrape",
-                    _timestamp(posting_state["next_scrape_at"]),
+                    next_due,
                     browser=browser,
                 )
 
@@ -1078,7 +1801,7 @@ async def run_pipeline(
     # tasks orphaned by worker SIGKILL / OOM / segfault back
     # onto the per-domain queue. See #3159 / #3173.
     reaper_task = asyncio.create_task(
-        _reaper_loop(shutdown_event, browser=browser),
+        _reaper_loop(shutdown_event, browser=browser, local_pool=local_pool),
         name="reaper",
     )
     tasks.append(reaper_task)

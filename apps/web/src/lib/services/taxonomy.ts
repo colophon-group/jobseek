@@ -1,21 +1,25 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
-import { db } from "@/db";
 import { cached } from "@/lib/cache";
 import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
-import { withDbRetry } from "@/lib/db-retry";
 import {
   typeaheadOccupationsCacheTag,
   typeaheadSenioritiesCacheTag,
   typeaheadTechnologiesCacheTag,
 } from "@/lib/cache-tags";
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
+import { isTypesenseUnavailableError } from "@/lib/search/typesense-retry";
+import {
+  fetchOccupationDocuments,
+  fetchSeniorityDocuments,
+  fetchTechnologyDocuments,
+} from "@/lib/search/typesense-taxonomy";
 import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
 import { canonicalizeFilters } from "@/lib/search/canonicalize-filters";
 import { canonicalStringCompare } from "@/lib/sort";
+import { logExternalError } from "@/lib/safe-external-error";
 
 export interface TaxonomySuggestion {
   id: number;
@@ -345,29 +349,16 @@ async function _resolveOccupationSlugsCached(
   cacheLife("days");
   cacheTag(typeaheadOccupationsCacheTag());
 
-  const pgArray = `{${sortedSlugs.join(",")}}`;
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: number;
-        slug: string;
-        name: string;
-      }>(sql`
-        SELECT o.id, o.slug, dn.name
-        FROM occupation o
-        JOIN LATERAL (
-          SELECT name FROM occupation_name
-          WHERE occupation_id = o.id AND locale IN (${locale}, 'en') AND is_display = true
-          ORDER BY (locale = ${locale})::int DESC LIMIT 1
-        ) dn ON true
-        WHERE o.slug = ANY(${pgArray}::text[])
-      `),
-    { label: "resolveOccupationSlugs" },
-  );
+  const rows = await fetchOccupationDocuments(locale);
+  const wanted = new Set(sortedSlugs);
   const result: Record<string, TaxonomySuggestion> = {};
-  for (const r of rows as unknown as { id: number; slug: string; name: string }[]) {
-    result[r.slug] = { id: r.id, slug: r.slug, name: r.name };
+  for (const row of rows) {
+    if (!wanted.has(row.slug)) continue;
+    result[row.slug] = {
+      id: row.occupation_id,
+      slug: row.slug,
+      name: row.name,
+    };
   }
   return result;
 }
@@ -391,29 +382,16 @@ async function _resolveSenioritySlugsCached(
   cacheLife("days");
   cacheTag(typeaheadSenioritiesCacheTag());
 
-  const pgArray = `{${sortedSlugs.join(",")}}`;
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: number;
-        slug: string;
-        name: string;
-      }>(sql`
-        SELECT s.id, s.slug, dn.name
-        FROM seniority s
-        JOIN LATERAL (
-          SELECT name FROM seniority_name
-          WHERE seniority_id = s.id AND locale IN (${locale}, 'en') AND is_display = true
-          ORDER BY (locale = ${locale})::int DESC LIMIT 1
-        ) dn ON true
-        WHERE s.slug = ANY(${pgArray}::text[])
-      `),
-    { label: "resolveSenioritySlugs" },
-  );
+  const rows = await fetchSeniorityDocuments(locale);
+  const wanted = new Set(sortedSlugs);
   const result: Record<string, TaxonomySuggestion> = {};
-  for (const r of rows as unknown as { id: number; slug: string; name: string }[]) {
-    result[r.slug] = { id: r.id, slug: r.slug, name: r.name };
+  for (const row of rows) {
+    if (!wanted.has(row.slug)) continue;
+    result[row.slug] = {
+      id: row.seniority_id,
+      slug: row.slug,
+      name: row.name,
+    };
   }
   return result;
 }
@@ -428,40 +406,16 @@ async function _resolveSenioritySlugsCached(
  * drops the slot when the occupation hierarchy changes.
  *
  * Prefer {@link expandOccupationIdsBatch} when callers have multiple seed
- * IDs — a single recursive CTE per batch beats L parallel CTEs. See
- * #3186.
+ * IDs so one cached taxonomy snapshot resolves the union.
  */
 export async function expandOccupationIds(occupationId: number): Promise<number[]> {
-  "use cache";
-  cacheLife("days");
-  cacheTag(typeaheadOccupationsCacheTag());
-
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{ [key: string]: unknown; id: number }>(sql`
-        WITH RECURSIVE descendants AS (
-          SELECT id FROM occupation WHERE id = ${occupationId}
-          UNION ALL
-          SELECT o.id FROM occupation o JOIN descendants d ON o.parent_id = d.id
-        )
-        SELECT id FROM descendants
-      `),
-    { label: `expandOccupationIds[${occupationId}]` },
-  );
-  return (rows as unknown as { id: number }[]).map((r) => r.id);
+  return expandOccupationIdsBatch([occupationId]);
 }
 
 /**
  * Batch variant of {@link expandOccupationIds} — takes an array of seed
- * occupation IDs and returns the deduplicated union of all descendant IDs
- * in a single recursive CTE round-trip (issue #3186).
- *
- * Postgres fallback paths in `_getWatchlistPostingsPostgres` and
- * `_searchCompaniesForWatchlistPostgres` previously dispatched one
- * `expandOccupationIds(id)` per seed via `Promise.all(...)`, which fires
- * L separate recursive CTE queries (and L Redis round-trips even on
- * warm cache). The batched query collapses that to one CTE regardless
- * of L.
+ * occupation IDs and walks the indexed `parent_id` metadata in memory to
+ * return the deduplicated descendant union (issue #3186).
  *
  * Cache-key shape under `'use cache'`: the wrapper sorts the ID array
  * so `[a,b]` and `[b,a]` hit the same slot. Empty input short-circuits
@@ -482,20 +436,24 @@ async function _expandOccupationIdsBatchCached(
   cacheLife("days");
   cacheTag(typeaheadOccupationsCacheTag());
 
-  const pgArray = `{${sortedIds.join(",")}}`;
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{ [key: string]: unknown; id: number }>(sql`
-        WITH RECURSIVE descendants AS (
-          SELECT id FROM occupation WHERE id = ANY(${pgArray}::integer[])
-          UNION
-          SELECT o.id FROM occupation o JOIN descendants d ON o.parent_id = d.id
-        )
-        SELECT DISTINCT id FROM descendants
-      `),
-    { label: "expandOccupationIdsBatch" },
-  );
-  return (rows as unknown as { id: number }[]).map((r) => r.id);
+  const documents = await fetchOccupationDocuments("en");
+  const descendants = new Set(sortedIds);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const document of documents) {
+      if (
+        document.parent_id != null &&
+        descendants.has(document.parent_id) &&
+        !descendants.has(document.occupation_id)
+      ) {
+        descendants.add(document.occupation_id);
+        changed = true;
+      }
+    }
+  }
+  const known = new Set(documents.map((document) => document.occupation_id));
+  return [...descendants].filter((id) => known.has(id)).sort((a, b) => a - b);
 }
 
 export async function resolveTechnologySlugs(
@@ -515,21 +473,16 @@ async function _resolveTechnologySlugsCached(
   cacheLife("days");
   cacheTag(typeaheadTechnologiesCacheTag());
 
-  const pgArray = `{${sortedSlugs.join(",")}}`;
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown; id: number; slug: string; name: string;
-      }>(sql`
-        SELECT t.id, t.slug, COALESCE(t.name, t.slug) AS name
-        FROM technology t
-        WHERE t.slug = ANY(${pgArray}::text[])
-      `),
-    { label: "resolveTechnologySlugs" },
-  );
+  const rows = await fetchTechnologyDocuments();
+  const wanted = new Set(sortedSlugs);
   const result: Record<string, TaxonomySuggestion> = {};
-  for (const r of rows as unknown as { id: number; slug: string; name: string }[]) {
-    result[r.slug] = { id: r.id, slug: r.slug, name: r.name };
+  for (const row of rows) {
+    if (!wanted.has(row.slug)) continue;
+    result[row.slug] = {
+      id: row.technology_id,
+      slug: row.slug,
+      name: row.name ?? row.slug,
+    };
   }
   return result;
 }
@@ -551,9 +504,9 @@ export interface OccupationItem {
   parentId: number | null;
   /**
    * Domain id this occupation belongs to. `null` for occupations with no
-   * domain (rare). Used by the modal to disable every descendant when a
-   * domain header is selected as a single filter (#2978 — domain headers
-   * are now ancestor filters, not "select all children" loops).
+   * domain (rare). Used to group occupation rows under the modal's domain
+   * headers; domain headers toggle their disjoint first-level occupations
+   * rather than entering the occupation-id filter namespace (#3027).
    */
   domainId: number | null;
 }
@@ -584,8 +537,20 @@ export async function getAllOccupationsGrouped(
   // counts directly; sub-group/domain totals dropped the
   // sum-children-and-add-parent hack). Old v1 entries cached the buggy
   // summed counts.
-  const key = `occ-all-grouped-v2:${locale}:${fKey}`;
-  return cached(key, () => _fetchAllOccupationsGrouped(locale, filters), { ttl: CACHE_TTL_LONG });
+  const key = `occ-all-grouped-v3:${locale}:${fKey}`;
+  try {
+    return await cached(key, () => _fetchAllOccupationsGrouped(locale, filters), {
+      ttl: CACHE_TTL_LONG,
+    });
+  } catch (err) {
+    if (!isTypesenseUnavailableError(err)) throw err;
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "all_occupations_grouped" },
+      err,
+    );
+    return [];
+  }
 }
 
 // ── Occupation hierarchy cache ───────────────────────────────────────
@@ -617,84 +582,26 @@ async function _fetchOccupationHierarchyData(): Promise<{
   "use cache";
   cacheLife("days");
 
-  // Fetch occupations
-  const occRows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: number;
-        slug: string;
-        parent_id: number | null;
-        domain_id: number | null;
-      }>(sql`SELECT id, slug, parent_id, domain_id FROM occupation`),
-    { label: "occupationHierarchy.occupations" },
-  );
-
-  const occNameRows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        occupation_id: number;
-        locale: string;
-        name: string;
-      }>(sql`SELECT occupation_id, locale, name FROM occupation_name WHERE is_display = true`),
-    { label: "occupationHierarchy.names" },
-  );
-
-  const occNameMap = new Map<number, Record<string, string>>();
-  for (const nr of occNameRows as unknown as { occupation_id: number; locale: string; name: string }[]) {
-    let names = occNameMap.get(nr.occupation_id);
-    if (!names) { names = {}; occNameMap.set(nr.occupation_id, names); }
-    names[nr.locale] = nr.name;
-  }
+  cacheTag(typeaheadOccupationsCacheTag());
+  const occRows = await fetchOccupationDocuments("en");
 
   const occupations: Record<string, OccupationMeta> = {};
-  for (const r of occRows as unknown as { id: number; slug: string; parent_id: number | null; domain_id: number | null }[]) {
-    occupations[String(r.id)] = {
-      id: r.id,
-      slug: r.slug,
-      parentId: r.parent_id,
-      domainId: r.domain_id,
-      names: occNameMap.get(r.id) ?? {},
-    };
-  }
-
-  // Fetch domains
-  const domainRows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: number;
-        slug: string;
-      }>(sql`SELECT id, slug FROM occupation_domain`),
-    { label: "occupationHierarchy.domains" },
-  );
-
-  const domainNameRows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        domain_id: number;
-        locale: string;
-        name: string;
-      }>(sql`SELECT domain_id, locale, name FROM occupation_domain_name WHERE is_display = true`),
-    { label: "occupationHierarchy.domainNames" },
-  );
-
-  const domainNameMap = new Map<number, Record<string, string>>();
-  for (const nr of domainNameRows as unknown as { domain_id: number; locale: string; name: string }[]) {
-    let names = domainNameMap.get(nr.domain_id);
-    if (!names) { names = {}; domainNameMap.set(nr.domain_id, names); }
-    names[nr.locale] = nr.name;
-  }
-
   const domains: Record<string, OccupationDomainMeta> = {};
-  for (const r of domainRows as unknown as { id: number; slug: string }[]) {
-    domains[String(r.id)] = {
-      id: r.id,
-      slug: r.slug,
-      names: domainNameMap.get(r.id) ?? {},
+  for (const row of occRows) {
+    occupations[String(row.occupation_id)] = {
+      id: row.occupation_id,
+      slug: row.slug,
+      parentId: row.parent_id ?? null,
+      domainId: row.domain_id ?? null,
+      names: { en: row.name },
     };
+    if (row.domain_id != null && row.domain_slug) {
+      domains[String(row.domain_id)] = {
+        id: row.domain_id,
+        slug: row.domain_slug,
+        names: { en: row.domain_name ?? row.domain_slug },
+      };
+    }
   }
 
   return { occupations, domains };
@@ -711,6 +618,33 @@ async function _getOccupationHierarchyCache(): Promise<{
   };
 }
 
+async function _getLocalizedOccupationHierarchyCache(locale: string): Promise<{
+  occupations: Map<number, OccupationMeta>;
+  domains: Map<number, OccupationDomainMeta>;
+}> {
+  if (locale === "en") return _getOccupationHierarchyCache();
+  const rows = await fetchOccupationDocuments(locale);
+  const occupations = new Map<number, OccupationMeta>();
+  const domains = new Map<number, OccupationDomainMeta>();
+  for (const row of rows) {
+    occupations.set(row.occupation_id, {
+      id: row.occupation_id,
+      slug: row.slug,
+      parentId: row.parent_id ?? null,
+      domainId: row.domain_id ?? null,
+      names: { [locale]: row.name },
+    });
+    if (row.domain_id != null && row.domain_slug) {
+      domains.set(row.domain_id, {
+        id: row.domain_id,
+        slug: row.domain_slug,
+        names: { [locale]: row.domain_name ?? row.domain_slug },
+      });
+    }
+  }
+  return { occupations, domains };
+}
+
 function _getLocaleName(names: Record<string, string>, locale: string, fallback: string): string {
   return names[locale] ?? names.en ?? fallback;
 }
@@ -719,18 +653,17 @@ async function _fetchAllOccupationsGrouped(
   locale: string,
   filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; languages?: string[] },
 ): Promise<OccupationGroup[]> {
-  try {
-    const client = getTypesenseClient();
+  const client = getTypesenseClient();
     const filterStr = buildFilterString(filters);
 
     const hasKeywords = filters?.keywords && filters.keywords.length > 0;
     const q = hasKeywords ? filters!.keywords!.join(" ") : "*";
 
     // Facet on the ancestor-expanded `occupation_ids` (not `occupation_id`)
-    // so parent / family-parent / domain IDs receive the true subtree count
-    // directly from the facet — the exporter stamps every posting with
-    // `[self, parent_chain, domain_id]`, so `occupation_ids` facet entries
-    // already encode "match anywhere under this node" semantics. See
+    // so parent / family-parent IDs receive the true subtree count directly
+    // from the facet — the exporter stamps every posting with
+    // `[self, parent_chain]`, so `occupation_ids` facet entries already
+    // encode "match anywhere under this occupation node" semantics. See
     // exporter.py `_load_occupation_ancestors`. Issue #3033 — the previous
     // `occupation_id` facet returned only direct counts, and the modal
     // summed parent + children to fake a subtree total, which under-counts
@@ -747,9 +680,8 @@ async function _fetchAllOccupationsGrouped(
     });
 
     // Extract facet counts: ancestor_id -> count (occupation_ids contains
-    // self + parent chain + domain id). For an occupation row, this is the
-    // true subtree count; for a domain row, this is the count of all
-    // postings under that domain.
+    // self + parent chain). For an occupation row, this is the true subtree
+    // count. Domain ids deliberately never enter this namespace (#3027).
     const facetCounts = new Map<number, number>();
     const occFacet = result.facet_counts?.find(
       (f) => (f as { field_name: string }).field_name === "occupation_ids",
@@ -763,14 +695,11 @@ async function _fetchAllOccupationsGrouped(
     if (facetCounts.size === 0) return [];
 
     // Load hierarchy metadata
-    const { occupations, domains } = await _getOccupationHierarchyCache();
+    const { occupations, domains } = await _getLocalizedOccupationHierarchyCache(locale);
 
-    // Build items with counts from facet data. The facet contains a mix of
-    // occupation IDs AND domain IDs (the exporter unions both into
-    // `occupation_ids` for parity with location macro membership). Domain
-    // IDs are filtered out here — only rows that match an occupation in
-    // the hierarchy survive. The facet entry for each domain is consulted
-    // separately further down when computing the domain header count.
+    // Build items with counts from facet data. Every facet value is an
+    // occupation id; occupation-domain ids remain a separate identifier
+    // namespace and must not be interpreted as occupation ids (#3027).
     type OccRow = { id: number; slug: string; name: string; cnt: number; parentId: number | null; domainId: number | null };
     const items: OccRow[] = [];
 
@@ -926,18 +855,14 @@ async function _fetchAllOccupationsGrouped(
       }
       standalone.sort((a, b) => b.count - a.count);
 
-      // Domain count: prefer the direct facet count for the domain id —
-      // exporter unions domain_id into `occupation_ids`, so its facet
-      // entry is the true subtree count for the whole domain. Fall back
-      // to the parent/standalone first-level sum when no facet entry
-      // exists (e.g. the domain has only zero-count occupations, which
-      // shouldn't be displayed anyway).
-      const domainFacetCount = facetCounts.get(meta.id);
+      // Domain headers are UI groups, not occupation filters. Sum the
+      // disjoint first-level occupation subtrees instead of looking up the
+      // domain's numeric id in the occupation facet: the two tables use
+      // independent sequences and their ids can collide (#3027).
       const firstLevelSum = subGroups.reduce((s, sg) => s + sg.parent.count, 0)
         + standalone.reduce((s, it) => s + it.count, 0);
-      const totalCount = domainFacetCount ?? firstLevelSum;
       groupedResult.push({
-        domain: { id: meta.id, slug: meta.slug, name: meta.name, count: totalCount },
+        domain: { id: meta.id, slug: meta.slug, name: meta.name, count: firstLevelSum },
         subGroups,
         standalone,
       });
@@ -945,9 +870,6 @@ async function _fetchAllOccupationsGrouped(
 
     groupedResult.sort((a, b) => b.domain.count - a.domain.count);
     return [...groupedResult, ...ungrouped];
-  } catch {
-    return [];
-  }
 }
 
 // ── All seniorities (Typesense facets) ──────────────────────────────
@@ -965,8 +887,16 @@ export async function getAllSeniorities(
 ): Promise<SeniorityOption[]> {
   // Stable cache key across array permutations — see #3187.
   const fKey = filters ? JSON.stringify(canonicalizeFilters(filters)) : "";
-  const key = `sen-all:${locale}:${fKey}`;
-  return cached(key, () => _fetchAllSeniorities(locale, filters), { ttl: CACHE_TTL_LONG });
+  const key = `sen-all-v2:${locale}:${fKey}`;
+  try {
+    return await cached(key, () => _fetchAllSeniorities(locale, filters), {
+      ttl: CACHE_TTL_LONG,
+    });
+  } catch (err) {
+    if (!isTypesenseUnavailableError(err)) throw err;
+    logExternalError("error", { service: "typesense", operation: "all_seniorities" }, err);
+    return [];
+  }
 }
 
 // ── Seniority metadata cache ─────────────────────────────────────────
@@ -980,51 +910,27 @@ interface SeniorityMeta {
 // Per-region in-memory `'use cache'` (cacheLife('days')). See note on
 // `_fetchOccupationHierarchyData` above. Migrated from Redis-backed
 // `cached()` in #2884 (hierarchy-cache slice).
-async function _fetchSeniorityHierarchyData(): Promise<Record<string, SeniorityMeta>> {
+async function _fetchSeniorityHierarchyData(
+  locale: string,
+): Promise<Record<string, SeniorityMeta>> {
   "use cache";
   cacheLife("days");
-
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: number;
-        slug: string;
-      }>(sql`SELECT id, slug FROM seniority`),
-    { label: "seniorityHierarchy.seniorities" },
-  );
-
-  const nameRows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        seniority_id: number;
-        locale: string;
-        name: string;
-      }>(sql`SELECT seniority_id, locale, name FROM seniority_name WHERE is_display = true`),
-    { label: "seniorityHierarchy.names" },
-  );
-
-  const nameMap = new Map<number, Record<string, string>>();
-  for (const nr of nameRows as unknown as { seniority_id: number; locale: string; name: string }[]) {
-    let names = nameMap.get(nr.seniority_id);
-    if (!names) { names = {}; nameMap.set(nr.seniority_id, names); }
-    names[nr.locale] = nr.name;
-  }
+  cacheTag(typeaheadSenioritiesCacheTag());
+  const rows = await fetchSeniorityDocuments(locale);
 
   const result: Record<string, SeniorityMeta> = {};
-  for (const r of rows as unknown as { id: number; slug: string }[]) {
-    result[String(r.id)] = {
-      id: r.id,
-      slug: r.slug,
-      names: nameMap.get(r.id) ?? {},
+  for (const row of rows) {
+    result[String(row.seniority_id)] = {
+      id: row.seniority_id,
+      slug: row.slug,
+      names: { [locale]: row.name },
     };
   }
   return result;
 }
 
-async function _getSeniorityCache(): Promise<Map<number, SeniorityMeta>> {
-  const record = await _fetchSeniorityHierarchyData();
+async function _getSeniorityCache(locale: string): Promise<Map<number, SeniorityMeta>> {
+  const record = await _fetchSeniorityHierarchyData(locale);
   return new Map(Object.entries(record).map(([k, v]) => [Number(k), v]));
 }
 
@@ -1032,8 +938,7 @@ async function _fetchAllSeniorities(
   locale: string,
   filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; occupationIds?: number[]; technologyIds?: number[]; languages?: string[] },
 ): Promise<SeniorityOption[]> {
-  try {
-    const client = getTypesenseClient();
+  const client = getTypesenseClient();
     const filterStr = buildFilterString(filters);
 
     const hasKeywords = filters?.keywords && filters.keywords.length > 0;
@@ -1054,7 +959,7 @@ async function _fetchAllSeniorities(
     );
     if (!senFacet) return [];
 
-    const senCache = await _getSeniorityCache();
+    const senCache = await _getSeniorityCache(locale);
 
     const options: SeniorityOption[] = [];
     for (const fc of (senFacet as { counts: Array<{ value: string; count: number }> }).counts) {
@@ -1072,9 +977,6 @@ async function _fetchAllSeniorities(
     // Sort by seniority id (preserve logical order)
     options.sort((a, b) => a.id - b.id);
     return options;
-  } catch {
-    return [];
-  }
 }
 
 // ── All technologies grouped by category (Typesense facets) ──────────
@@ -1096,8 +998,20 @@ export async function getAllTechnologiesGrouped(
 ): Promise<TechnologyGroup[]> {
   // Stable cache key across array permutations — see #3187.
   const fKey = filters ? JSON.stringify(canonicalizeFilters(filters)) : "";
-  const key = `tech-all-grouped:${fKey}`;
-  return cached(key, () => _fetchAllTechnologiesGrouped(filters), { ttl: CACHE_TTL_LONG });
+  const key = `tech-all-grouped-v2:${fKey}`;
+  try {
+    return await cached(key, () => _fetchAllTechnologiesGrouped(filters), {
+      ttl: CACHE_TTL_LONG,
+    });
+  } catch (err) {
+    if (!isTypesenseUnavailableError(err)) throw err;
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "all_technologies_grouped" },
+      err,
+    );
+    return [];
+  }
 }
 
 // ── Technology metadata cache ────────────────────────────────────────
@@ -1123,25 +1037,15 @@ async function _fetchTechnologyHierarchyData(): Promise<Record<string, Technolog
   // matching the typeahead slot's invalidation.
   cacheTag(typeaheadTechnologiesCacheTag());
 
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: number;
-        slug: string;
-        name: string | null;
-        category: string | null;
-      }>(sql`SELECT id, slug, name, category FROM technology`),
-    { label: "technologyHierarchy" },
-  );
+  const rows = await fetchTechnologyDocuments();
 
   const result: Record<string, TechnologyMeta> = {};
-  for (const r of rows as unknown as { id: number; slug: string; name: string | null; category: string | null }[]) {
-    result[String(r.id)] = {
-      id: r.id,
-      slug: r.slug,
-      name: r.name ?? r.slug,
-      category: r.category ?? "other",
+  for (const row of rows) {
+    result[String(row.technology_id)] = {
+      id: row.technology_id,
+      slug: row.slug,
+      name: row.name ?? row.slug,
+      category: row.category ?? "other",
     };
   }
   return result;
@@ -1155,8 +1059,7 @@ async function _getTechnologyCache(): Promise<Map<number, TechnologyMeta>> {
 async function _fetchAllTechnologiesGrouped(
   filters?: { companyId?: string; keywords?: string[]; locationIds?: number[]; occupationIds?: number[]; seniorityIds?: number[]; languages?: string[] },
 ): Promise<TechnologyGroup[]> {
-  try {
-    const client = getTypesenseClient();
+  const client = getTypesenseClient();
     const filterStr = buildFilterString(filters);
 
     const hasKeywords = filters?.keywords && filters.keywords.length > 0;
@@ -1206,9 +1109,6 @@ async function _fetchAllTechnologiesGrouped(
         const bTotal = b.technologies.reduce((s, t) => s + t.count, 0);
         return bTotal - aTotal;
       });
-  } catch {
-    return [];
-  }
 }
 
 // ── Facet-count helpers for fixed-option modals ──────────────────────

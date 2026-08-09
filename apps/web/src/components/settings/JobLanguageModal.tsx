@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, Search } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { allLanguages } from "@/lib/job-languages";
 import { CountryFlag } from "@/components/country-flag";
 import { ScrollFade } from "@/components/ui/scroll-fade";
+import { useSearchableDialogFocus } from "@/components/search/use-searchable-dialog-focus";
 
 interface JobLanguageModalProps {
   open: boolean;
@@ -26,6 +27,16 @@ export function JobLanguageModal({
 }: JobLanguageModalProps) {
   const { t } = useLingui();
   const [search, setSearch] = useState("");
+  const {
+    searchInputRef,
+    focusSearchInputOnOpen,
+    restoreTriggerFocusOnClose,
+  } = useSearchableDialogFocus();
+  const searchLabel = t({
+    id: "settings.jobLanguages.modal.searchPlaceholder",
+    comment: "Placeholder for search input in all-languages modal",
+    message: "Search languages...",
+  });
 
   const available = useMemo(
     () => allLanguages.filter((l) => availableCodes.has(l.code)),
@@ -42,6 +53,10 @@ export function JobLanguageModal({
     );
   }, [available, search]);
 
+  useEffect(() => {
+    if (!open) setSearch("");
+  }, [open]);
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -49,6 +64,8 @@ export function JobLanguageModal({
         <Dialog.Content
           className="fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-border-soft bg-surface shadow-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
           aria-describedby={undefined}
+          onOpenAutoFocus={focusSearchInputOnOpen}
+          onCloseAutoFocus={restoreTriggerFocusOnClose}
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-divider px-5 py-4">
@@ -75,14 +92,12 @@ export function JobLanguageModal({
             <div className="flex items-center gap-2 rounded-md border border-border-soft px-3 py-2">
               <Search size={14} className="shrink-0 text-muted" />
               <input
+                ref={searchInputRef}
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={t({
-                  id: "settings.jobLanguages.modal.searchPlaceholder",
-                  comment: "Placeholder for search input in all-languages modal",
-                  message: "Search languages...",
-                })}
+                aria-label={searchLabel}
+                placeholder={searchLabel}
                 className="w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted"
               />
             </div>
@@ -107,6 +122,7 @@ export function JobLanguageModal({
                     <button
                       key={lang.code}
                       onClick={() => onToggle(lang.code)}
+                      aria-pressed={active}
                       className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-sm transition-colors ${
                         active
                           ? "bg-primary/10 text-primary font-medium"

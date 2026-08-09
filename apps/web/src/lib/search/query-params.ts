@@ -7,6 +7,69 @@
 
 import { isEmploymentType, isWorkMode, type EmploymentType, type WorkMode } from "./types";
 
+/**
+ * Query parameters that change the search result set. UI-only state such as
+ * ``show`` and attribution parameters are intentionally not included.
+ */
+export const SEARCH_FILTER_PARAM_KEYS = [
+  "q",
+  "loc",
+  "occ",
+  "sen",
+  "tech",
+  "wm",
+  "etype",
+  "sal",
+  "salcur",
+  "exp",
+] as const;
+
+type SearchParamsReader = {
+  getAll(name: string): string[];
+};
+
+/** Select only result-bearing search parameters in a stable order. */
+export function selectSearchFilterParams(
+  searchParams: SearchParamsReader,
+): URLSearchParams {
+  const selected = new URLSearchParams();
+  for (const key of SEARCH_FILTER_PARAM_KEYS) {
+    for (const value of searchParams.getAll(key)) {
+      selected.append(key, value);
+    }
+  }
+  return selected;
+}
+
+/** Serialize only result-bearing search parameters, without a leading ``?``. */
+export function serializeSearchFilterParams(
+  searchParams: SearchParamsReader,
+): string {
+  return selectSearchFilterParams(searchParams).toString();
+}
+
+/** Whether the URL contains at least one result-bearing search parameter. */
+export function hasSearchFilterParams(
+  searchParams: SearchParamsReader,
+): boolean {
+  return SEARCH_FILTER_PARAM_KEYS.some(
+    (key) => searchParams.getAll(key).length > 0,
+  );
+}
+
+/** Convert result-bearing search parameters to the server-action input shape. */
+export function searchFilterParamsToObject(
+  searchParams: SearchParamsReader,
+): Record<string, string | string[]> {
+  const out: Record<string, string | string[]> = {};
+  for (const key of SEARCH_FILTER_PARAM_KEYS) {
+    const values = searchParams.getAll(key);
+    if (values.length === 0) continue;
+    out[key] = values.length > 1 ? values : values[0];
+  }
+  return out;
+}
+
 export interface SerializableLocation {
   id: number;
   slug: string;

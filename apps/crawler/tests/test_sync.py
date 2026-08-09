@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import uuid
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -9,21 +10,27 @@ import polars as pl
 import pytest
 
 from src.sync import (
+    _DISABLE_REMOVED_BOARDS_LOCAL,
     _LOCATION_MACRO_ALIASES,
     _REALIGN_BOARD_POSTING_COMPANIES_LOCAL,
-    _REALIGN_BOARD_POSTING_COMPANIES_SUPA,
-    _REALIGN_RENAMED_BOARD_URLS_SUPA,
-    _UPSERT_BOARDS_SUPA,
+    _REALIGN_RENAMED_BOARD_URLS_LOCAL,
+    _UPSERT_BOARD_LOCAL,
     _UPSERT_COMPANIES,
     _UPSERT_OCCUPATION_DOMAIN_NAMES,
     _UPSERT_OCCUPATION_DOMAINS,
     _UPSERT_OCCUPATION_NAMES,
     _UPSERT_OCCUPATIONS,
-    _fetch_active_facet_counts,
+    CompanyTypesenseSyncError,
+    _company_prune_within_safety_budget,
+    _fetch_company_posting_counts,
+    _fetch_facet_counts,
     _is_trivial_watchlist,
     _load_boards,
     _load_companies,
-    _populate_locations_if_empty,
+    _monitor_config_fingerprint,
+    _one_year_ago_epoch,
+    _ts_bulk_upsert,
+    apply_board_redis_effects,
     refresh_typesense_counts,
     run_sync,
     sync_boards,
@@ -33,6 +40,8 @@ from src.sync import (
     sync_lookup_tables_local,
     sync_occupation_domains,
     sync_occupations,
+    sync_occupations_typesense,
+    sync_typesense,
     sync_watchlists_typesense,
 )
 
@@ -49,6 +58,76 @@ _BOARD_COLS = [
     "scraper_config",
 ]
 _BOARD_SCHEMA = {c: pl.Utf8 for c in _BOARD_COLS}
+
+
+class TestBoardSourceChangeReset:
+    def test_monitor_fingerprint_tracks_discovery_config_only(self):
+        base = _monitor_config_fingerprint(
+            "https://example.test/jobs",
+            "dom",
+            {"selector": "a.job", "scraper_type": "dom"},
+        )
+
+        assert base != _monitor_config_fingerprint(
+            "https://example.test/jobs",
+            "dom",
+            {"selector": "li.job a", "scraper_type": "dom"},
+        )
+        assert base == _monitor_config_fingerprint(
+            "https://example.test/jobs",
+            "dom",
+            {
+                "selector": "a.job",
+                "scraper_type": "dom",
+                "scraper_config": {"enrich": ["description"]},
+            },
+        )
+
+    def test_local_upsert_batches_all_boards_in_one_statement(self):
+        sql = " ".join(_UPSERT_BOARD_LOCAL.split())
+
+        assert "FROM unnest(" in sql
+        assert "$1::text[]" in sql
+        assert "$5::text[]" in sql
+        assert "JOIN company c ON c.slug = b.company_slug" in sql
+        assert "RETURNING id::text AS board_id, company_id::text AS company_id" in sql
+        assert "VALUES ($1" not in sql
+
+    def test_slug_stable_realign_preserves_id_and_resets_runtime_state(self):
+        sql = " ".join(_REALIGN_RENAMED_BOARD_URLS_LOCAL.split())
+
+        assert "SET board_url = b.board_url, company_id = c.id" in sql
+        assert "metadata = '{}'::jsonb" in sql
+        assert "board_status = 'active'" in sql
+        assert "consecutive_failures = 0" in sql
+        assert "next_check_at = now()" in sql
+        assert "DELETE" not in sql
+
+    def test_material_source_change_resets_runtime_failure_state(self):
+        """A replacement source must not inherit a retired source's disable."""
+        sql = " ".join(_UPSERT_BOARD_LOCAL.split())
+        source_change = (
+            "job_board.board_url IS DISTINCT FROM EXCLUDED.board_url OR "
+            "job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type"
+        )
+
+        assert source_change in sql
+        assert "job_board.metadata ? '_monitor_config_fingerprint'" in sql
+        assert "IS DISTINCT FROM EXCLUDED.metadata ->> '_monitor_config_fingerprint'" in sql
+        assert "THEN true WHEN job_board.board_status = 'disabled'" in sql
+        assert "THEN 'quarantined' ELSE job_board.board_status" in sql
+        assert "THEN 0 ELSE job_board.consecutive_failures" in sql
+        assert "THEN 0 ELSE job_board.empty_check_count" in sql
+        assert "THEN NULL ELSE job_board.last_error" in sql
+        assert "THEN now() ELSE job_board.next_check_at" in sql
+        assert "THEN now() ELSE job_board.quarantined_at" in sql
+
+    def test_unchanged_disabled_source_stays_disabled(self):
+        sql = " ".join(_UPSERT_BOARD_LOCAL.split())
+
+        assert "WHEN job_board.board_status = 'disabled' THEN false" in sql
+        assert "ELSE job_board.consecutive_failures" in sql
+        assert "ELSE job_board.last_error" in sql
 
 
 class TestLoadCompanies:
@@ -118,6 +197,23 @@ class TestLoadBoards:
 def mock_conn():
     conn = AsyncMock()
     conn.execute = AsyncMock()
+
+    async def _fetch(sql, *args):
+        if sql == _UPSERT_BOARD_LOCAL:
+            company_slugs = args[0]
+            board_urls = args[2]
+            return [
+                {
+                    "board_id": str(uuid.uuid5(uuid.NAMESPACE_URL, board_url)),
+                    "company_id": str(uuid.uuid5(uuid.NAMESPACE_DNS, company_slug)),
+                    "board_url": board_url,
+                    "metadata": {},
+                }
+                for company_slug, board_url in zip(company_slugs, board_urls, strict=True)
+            ]
+        return []
+
+    conn.fetch = AsyncMock(side_effect=_fetch)
     conn.transaction.return_value.__aenter__ = AsyncMock()
     conn.transaction.return_value.__aexit__ = AsyncMock(return_value=False)
     return conn
@@ -301,11 +397,11 @@ class TestSyncCompanies:
 
 class TestSyncBoards:
     async def test_upserts_boards(self, mock_conn, sample_boards):
-        """Upserts boards to Supabase, no local writes without local_conn."""
+        """Upserts boards only to the local authority and stages Redis work."""
         await sync_boards(mock_conn, sample_boards, dry_run=False)
 
-        # Realign stale URLs + Supabase upsert + posting rehome + disable queries
-        assert mock_conn.execute.call_count == 4
+        assert mock_conn.fetch.await_args_list[0].args[0] == _UPSERT_BOARD_LOCAL
+        assert mock_conn.execute.call_count == 3
 
     async def test_invalid_json_skips_row(self, mock_conn):
         """monitor_config has invalid JSON -> row skipped, valid rows still collected."""
@@ -324,8 +420,7 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Valid row (globex) collected, so realign + upsert + rehome + disable called.
-        assert mock_conn.execute.call_count == 4
+        assert mock_conn.execute.call_count == 3
 
     async def test_all_invalid_json_skips_upsert(self, mock_conn):
         """All rows have invalid JSON -> no upsert, no disable."""
@@ -348,7 +443,7 @@ class TestSyncBoards:
         mock_conn.execute.assert_not_called()
 
     async def test_valid_json_parsed(self, mock_conn):
-        """monitor_config='{"key":"value"}' -> parsed and upserted to Supabase."""
+        """monitor_config='{"key":"value"}' -> parsed and upserted locally."""
         boards = pl.DataFrame(
             {
                 "company_slug": ["acme"],
@@ -364,11 +459,10 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Realign stale URLs + Supabase upsert + posting rehome + disable queries
-        assert mock_conn.execute.call_count == 4
+        assert mock_conn.execute.call_count == 3
 
     async def test_scraper_fields_embedded_in_metadata(self, mock_conn):
-        """scraper_type + scraper_config parsed and upserted to Supabase."""
+        """scraper_type + scraper_config are parsed into local metadata."""
         boards = pl.DataFrame(
             {
                 "company_slug": ["acme"],
@@ -384,8 +478,7 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Realign stale URLs + Supabase upsert + posting rehome + disable queries
-        assert mock_conn.execute.call_count == 4
+        assert mock_conn.execute.call_count == 3
 
     async def test_invalid_scraper_json_skips_row(self, mock_conn):
         boards = pl.DataFrame(
@@ -431,15 +524,14 @@ class TestSyncBoards:
         await sync_boards(mock_conn, boards, dry_run=False)
 
         calls = mock_conn.execute.call_args_list
-        # Realign is call #0, upsert call #1, posting rehome call #2,
-        # disable call #3.
-        assert calls[0].args[0] == _REALIGN_RENAMED_BOARD_URLS_SUPA
+        assert calls[0].args[0] == _REALIGN_RENAMED_BOARD_URLS_LOCAL
         assert calls[0].args[1] == ["apartmentiq"]
         assert calls[0].args[2] == ["apartmentiq-greenhouse"]
         assert calls[0].args[3] == ["https://job-boards.greenhouse.io/apartmentiq"]
         # No metadata/crawler_type passed to realign — just the 3-tuple.
         assert len(calls[0].args) == 4
-        assert calls[1].args[0] == _UPSERT_BOARDS_SUPA
+        assert mock_conn.fetch.await_args_list[0].args[0] == _UPSERT_BOARD_LOCAL
+        assert calls[-1].args[0] == _DISABLE_REMOVED_BOARDS_LOCAL
 
     async def test_rehomes_existing_postings_after_board_company_change(
         self,
@@ -452,11 +544,11 @@ class TestSyncBoards:
         await sync_boards(mock_conn, sample_boards, dry_run=False)
 
         calls = mock_conn.execute.call_args_list
-        assert calls[2].args[0] == _REALIGN_BOARD_POSTING_COMPANIES_SUPA
-        assert calls[2].args[1] == ["https://acme.com/careers"]
+        assert calls[1].args[0] == _REALIGN_BOARD_POSTING_COMPANIES_LOCAL
+        assert calls[1].args[1] == ["https://acme.com/careers"]
 
     async def test_disables_removed_boards(self, mock_conn):
-        """Boards upserted and removed boards disabled on Supabase."""
+        """Boards absent from CSV are disabled in local Postgres."""
         boards = pl.DataFrame(
             {
                 "company_slug": ["acme", "acme"],
@@ -472,20 +564,128 @@ class TestSyncBoards:
 
         await sync_boards(mock_conn, boards, dry_run=False)
 
-        # Realign stale URLs + Supabase upsert + posting rehome + disable queries
-        assert mock_conn.execute.call_count == 4
+        assert mock_conn.execute.call_count == 3
 
-    @patch("src.sync.remove_monitor", new_callable=AsyncMock)
-    @patch("src.sync.enqueue_monitor", new_callable=AsyncMock)
+    @patch("src.sync.remove_monitors", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitors", new_callable=AsyncMock)
+    async def test_local_path_batches_postgres_and_redis(
+        self,
+        mock_enqueue,
+        mock_remove,
+        mock_conn,
+    ):
+        import uuid
+
+        boards = pl.DataFrame(
+            {
+                "company_slug": ["acme", "globex"],
+                "board_slug": ["acme-careers", "globex-careers"],
+                "board_url": ["https://acme.test/jobs", "https://globex.test/jobs"],
+                "monitor_type": ["greenhouse", "dom"],
+                "monitor_config": ["{}", "{}"],
+                "scraper_type": ["", ""],
+                "scraper_config": ["", ""],
+            },
+            schema_overrides=_BOARD_SCHEMA,
+        )
+        board_ids = [uuid.uuid4(), uuid.uuid4()]
+        company_ids = [uuid.uuid4(), uuid.uuid4()]
+        mock_local_conn = MagicMock()
+        mock_local_conn.execute = AsyncMock()
+        mock_local_conn.fetch = AsyncMock(
+            side_effect=[
+                [
+                    {
+                        "board_id": str(board_ids[i]),
+                        "company_id": str(company_ids[i]),
+                        "board_url": boards["board_url"][i],
+                        "metadata": {},
+                    }
+                    for i in range(2)
+                ],
+                [],
+            ]
+        )
+
+        effects = await sync_boards(mock_local_conn, boards, dry_run=False)
+
+        assert mock_local_conn.fetch.await_count == 2
+        batch_call = mock_local_conn.fetch.await_args_list[0]
+        assert batch_call.args[0] == _UPSERT_BOARD_LOCAL
+        assert batch_call.args[1] == ["acme", "globex"]
+        assert batch_call.args[3] == ["https://acme.test/jobs", "https://globex.test/jobs"]
+        local_execute_calls = mock_local_conn.execute.await_args_list
+        assert local_execute_calls[-1].args[0] == _DISABLE_REMOVED_BOARDS_LOCAL
+        mock_enqueue.assert_not_awaited()
+        await apply_board_redis_effects(effects)
+        mock_enqueue.assert_awaited_once()
+        assert len(mock_enqueue.await_args.args[0]) == 2
+        mock_remove.assert_not_awaited()
+
+    @patch("src.sync.remove_monitors", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitors", new_callable=AsyncMock)
+    @patch("src.sync.time.time", return_value=1_000.0)
+    @pytest.mark.parametrize("recovery_status", ["quarantined", "gone_pending", "gone"])
+    async def test_recovery_states_use_recurring_tier_and_durable_due_time(
+        self,
+        _mock_time,
+        mock_enqueue,
+        mock_remove,
+        mock_conn,
+        recovery_status,
+    ):
+        import uuid
+
+        boards = pl.DataFrame(
+            {
+                "company_slug": ["acme"],
+                "board_slug": ["acme-careers"],
+                "board_url": ["https://acme.test/jobs"],
+                "monitor_type": ["ashby"],
+                "monitor_config": ["{}"],
+                "scraper_type": [""],
+                "scraper_config": [""],
+            },
+            schema_overrides=_BOARD_SCHEMA,
+        )
+        board_id = uuid.uuid4()
+        company_id = uuid.uuid4()
+        due = datetime.fromtimestamp(2_000, tz=UTC)
+        mock_conn.fetch = AsyncMock(
+            side_effect=[
+                [
+                    {
+                        "board_id": str(board_id),
+                        "company_id": str(company_id),
+                        "board_url": "https://acme.test/jobs",
+                        "metadata": {},
+                        "board_status": recovery_status,
+                        "next_check_at": due,
+                    }
+                ],
+                [],
+            ]
+        )
+
+        effects = await sync_boards(mock_conn, boards, dry_run=False)
+
+        mock_enqueue.assert_not_awaited()
+        await apply_board_redis_effects(effects)
+        schedule = mock_enqueue.await_args.args[0][0]
+        assert schedule.first_time is False
+        assert schedule.next_check_at == 2_000.0
+        mock_remove.assert_not_awaited()
+
+    @patch("src.sync.remove_monitors", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitors", new_callable=AsyncMock)
     async def test_local_path_purges_redis_for_disabled_boards(
         self,
         mock_enqueue,
         mock_remove,
         mock_conn,
     ):
-        """When local_conn is provided, sync fetches every disabled/gone board
-        and calls remove_monitor so the Redis queue doesn't keep probing dead
-        URLs after a CSV removal.
+        """When local_conn is provided, sync fetches every disabled board and
+        removes its schedule so Redis cannot probe URLs removed from CSV.
         """
         import uuid
 
@@ -502,23 +702,10 @@ class TestSyncBoards:
             schema_overrides=_BOARD_SCHEMA,
         )
 
-        # Supabase connection returns a resolved (board_id, company_id) for the
-        # upserted row so the local-DB branch executes.
         board_id = uuid.uuid4()
         company_id = uuid.uuid4()
-        mock_conn.fetch = AsyncMock(
-            return_value=[
-                {
-                    "id": board_id,
-                    "company_id": company_id,
-                    "board_url": "https://acme.com/careers",
-                }
-            ]
-        )
-
         mock_local_conn = MagicMock()
         mock_local_conn.execute = AsyncMock()
-        mock_local_conn.fetchval = AsyncMock(return_value={})
         # Two orphan rows: one from a just-disabled board, one that was already
         # disabled in a previous sync (covers the historical-orphan case).
         stale_rows = [
@@ -527,30 +714,40 @@ class TestSyncBoards:
             # Missing throttle_key must be skipped — no queue to remove from.
             {"board_id": "orphan-no-domain", "throttle_key": None},
         ]
-        mock_local_conn.fetch = AsyncMock(return_value=stale_rows)
+        mock_local_conn.fetch = AsyncMock(
+            side_effect=[
+                [
+                    {
+                        "board_id": str(board_id),
+                        "company_id": str(company_id),
+                        "board_url": "https://acme.com/careers",
+                        "metadata": {},
+                    }
+                ],
+                stale_rows,
+            ]
+        )
 
-        await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
+        effects = await sync_boards(mock_local_conn, boards, dry_run=False)
 
-        # Only the two orphans with a throttle_key should be purged from Redis.
-        assert mock_remove.await_count == 2
-        purged_args = {call.args for call in mock_remove.await_args_list}
-        assert ("lever", "orphan-lever") in purged_args
-        assert ("greenhouse", "orphan-greenhouse") in purged_args
+        mock_remove.assert_not_awaited()
+        await apply_board_redis_effects(effects)
+        mock_remove.assert_awaited_once_with(
+            [
+                ("lever", "orphan-lever"),
+                ("greenhouse", "orphan-greenhouse"),
+            ]
+        )
 
-    @patch("src.sync.remove_monitor", new_callable=AsyncMock)
-    @patch("src.sync.enqueue_monitor", new_callable=AsyncMock)
-    async def test_local_path_drops_stale_slug_rows_before_upsert(
+    @patch("src.sync.remove_monitors", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitors", new_callable=AsyncMock)
+    async def test_local_path_realigns_stable_slug_without_replacing_id(
         self,
         mock_enqueue,
         mock_remove,
         mock_conn,
     ):
-        """Before per-board upsert, purge local ``job_board`` rows whose
-        ``board_slug`` matches a row we're about to insert but whose ``id``
-        is not the Supabase-assigned one — otherwise the unique-slug
-        violation rolls back the whole outer Supabase transaction and
-        strands new companies in local-only state.
-        """
+        """A URL rename updates the existing local row; it never deletes it."""
         import uuid
 
         boards = pl.DataFrame(
@@ -566,37 +763,37 @@ class TestSyncBoards:
             schema_overrides=_BOARD_SCHEMA,
         )
 
-        supa_board_id = uuid.uuid4()
+        local_board_id = uuid.uuid4()
         company_id = uuid.uuid4()
-        mock_conn.fetch = AsyncMock(
-            return_value=[
-                {
-                    "id": supa_board_id,
-                    "company_id": company_id,
-                    "board_url": "https://acme.com/careers",
-                }
+        mock_local_conn = MagicMock()
+        mock_local_conn.execute = AsyncMock()
+        mock_local_conn.fetch = AsyncMock(
+            side_effect=[
+                [
+                    {
+                        "board_id": str(local_board_id),
+                        "company_id": str(company_id),
+                        "board_url": "https://acme.com/careers",
+                        "metadata": {},
+                    }
+                ],
+                [],
             ]
         )
 
-        mock_local_conn = MagicMock()
-        mock_local_conn.execute = AsyncMock()
-        mock_local_conn.fetchval = AsyncMock(return_value={})
-        mock_local_conn.fetch = AsyncMock(return_value=[])
+        await sync_boards(mock_local_conn, boards, dry_run=False)
 
-        await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
-
-        # First execute on local_conn should be the defensive DELETE.
         assert mock_local_conn.execute.await_count >= 1
         first_call = mock_local_conn.execute.await_args_list[0]
-        sql = first_call.args[0]
-        assert "DELETE FROM job_board" in sql
-        assert "board_slug = ANY" in sql
-        assert "id != ALL" in sql
-        assert first_call.args[1] == ["acme-careers"]
-        assert first_call.args[2] == [str(supa_board_id)]
+        assert first_call.args[0] == _REALIGN_RENAMED_BOARD_URLS_LOCAL
+        assert first_call.args[2] == ["acme-careers"]
+        assert all(
+            "DELETE FROM job_board" not in call.args[0]
+            for call in mock_local_conn.execute.await_args_list
+        )
 
-    @patch("src.sync.remove_monitor", new_callable=AsyncMock)
-    @patch("src.sync.enqueue_monitor", new_callable=AsyncMock)
+    @patch("src.sync.remove_monitors", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitors", new_callable=AsyncMock)
     async def test_local_path_rehomes_postings_and_touches_export_cursor(
         self,
         mock_enqueue,
@@ -623,22 +820,23 @@ class TestSyncBoards:
 
         board_id = uuid.uuid4()
         company_id = uuid.uuid4()
-        mock_conn.fetch = AsyncMock(
-            return_value=[
-                {
-                    "id": board_id,
-                    "company_id": company_id,
-                    "board_url": "https://acme.com/careers",
-                }
+        mock_local_conn = MagicMock()
+        mock_local_conn.execute = AsyncMock()
+        mock_local_conn.fetch = AsyncMock(
+            side_effect=[
+                [
+                    {
+                        "board_id": str(board_id),
+                        "company_id": str(company_id),
+                        "board_url": "https://acme.com/careers",
+                        "metadata": {},
+                    }
+                ],
+                [],
             ]
         )
 
-        mock_local_conn = MagicMock()
-        mock_local_conn.execute = AsyncMock()
-        mock_local_conn.fetchval = AsyncMock(return_value={})
-        mock_local_conn.fetch = AsyncMock(return_value=[])
-
-        await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
+        await sync_boards(mock_local_conn, boards, dry_run=False)
 
         rehome_calls = [
             call
@@ -649,8 +847,8 @@ class TestSyncBoards:
         assert rehome_calls[0].args[1] == ["https://acme.com/careers"]
         assert "updated_at = now()" in rehome_calls[0].args[0]
 
-    @patch("src.sync.remove_monitor", new_callable=AsyncMock)
-    @patch("src.sync.enqueue_monitor", new_callable=AsyncMock)
+    @patch("src.sync.remove_monitors", new_callable=AsyncMock)
+    @patch("src.sync.enqueue_monitors", new_callable=AsyncMock)
     async def test_local_path_enqueues_merged_metadata_to_redis(
         self,
         mock_enqueue,
@@ -675,16 +873,6 @@ class TestSyncBoards:
 
         board_id = uuid.uuid4()
         company_id = uuid.uuid4()
-        mock_conn.fetch = AsyncMock(
-            return_value=[
-                {
-                    "id": board_id,
-                    "company_id": company_id,
-                    "board_url": "https://mercadolibre.eightfold.ai/careers",
-                }
-            ]
-        )
-
         merged_metadata = {
             "url_filter": "/careers/job/",
             "scraper_type": "eightfold",
@@ -698,13 +886,28 @@ class TestSyncBoards:
         }
         mock_local_conn = MagicMock()
         mock_local_conn.execute = AsyncMock()
-        mock_local_conn.fetchval = AsyncMock(return_value=merged_metadata)
-        mock_local_conn.fetch = AsyncMock(return_value=[])
+        mock_local_conn.fetch = AsyncMock(
+            side_effect=[
+                [
+                    {
+                        "board_id": str(board_id),
+                        "company_id": str(company_id),
+                        "board_url": "https://mercadolibre.eightfold.ai/careers",
+                        "metadata": merged_metadata,
+                    }
+                ],
+                [],
+            ]
+        )
 
-        await sync_boards(mock_conn, boards, dry_run=False, local_conn=mock_local_conn)
+        effects = await sync_boards(mock_local_conn, boards, dry_run=False)
 
+        mock_enqueue.assert_not_awaited()
+        await apply_board_redis_effects(effects)
         mock_enqueue.assert_awaited_once()
-        config = mock_enqueue.await_args.args[3]
+        schedules = mock_enqueue.await_args.args[0]
+        assert len(schedules) == 1
+        config = schedules[0].config
         assert json.loads(config["metadata"]) == merged_metadata
         assert config["crawler_type"] == "eightfold"
         mock_remove.assert_not_awaited()
@@ -766,6 +969,7 @@ class TestRunSync:
 
         mock_create_pool.assert_not_called()
 
+    @patch("src.deadletters.classify_deadletters", new_callable=AsyncMock)
     @patch("src.sync.setup_logging")
     @patch("src.sync._load_boards")
     @patch("src.sync._load_company_descriptions")
@@ -778,32 +982,20 @@ class TestRunSync:
     @patch("src.sync.close_redis")
     @patch("src.sync.close_all_pools")
     @patch("src.sync.create_local_pool")
-    @patch("src.sync.create_pool")
+    @patch("src.sync.apply_board_redis_effects")
     @patch("src.sync.resolve_pending_misses")
     @patch("src.sync.sync_boards")
     @patch("src.sync.sync_company_descriptions")
     @patch("src.sync.sync_companies")
-    @patch("src.sync._mirror_companies_to_supabase", new_callable=AsyncMock)
-    @patch("src.sync._mirror_companies_to_local", new_callable=AsyncMock)
-    @patch("src.sync.sync_industries")
-    @patch("src.sync.sync_technologies")
-    @patch("src.sync.sync_seniority")
-    @patch("src.sync.sync_occupations")
-    @patch("src.sync.sync_occupation_domains")
+    @patch("src.sync.sync_lookup_tables_local")
     async def test_normal_flow(
         self,
-        mock_sync_occupation_domains,
-        mock_sync_occupations,
-        mock_sync_seniority,
-        mock_sync_technologies,
-        mock_sync_industries,
-        _mock_mirror_to_local,
-        _mock_mirror_to_supa,
+        mock_sync_lookup_tables_local,
         mock_sync_companies,
         mock_sync_company_descriptions,
         mock_sync_boards,
         mock_resolve_pending_misses,
-        mock_create_pool,
+        mock_apply_board_redis_effects,
         mock_create_local_pool,
         mock_close_all_pools,
         mock_close_redis,
@@ -816,6 +1008,7 @@ class TestRunSync:
         mock_load_company_descriptions,
         mock_load_boards,
         mock_setup_logging,
+        mock_classify_deadletters,
     ):
         """Calls all sync functions in order within a transaction."""
         occupation_domains_df = pl.DataFrame()
@@ -855,31 +1048,12 @@ class TestRunSync:
         mock_load_companies.return_value = companies_df
         mock_load_company_descriptions.return_value = company_descs_df
         mock_load_boards.return_value = boards_df
+        mock_classify_deadletters.return_value = []
 
-        # Set up Supabase pool + connection mock with proper async context managers
-        mock_conn = MagicMock()
-        mock_conn.execute = AsyncMock()
-        mock_conn.fetch = AsyncMock(return_value=[])
-        mock_txn_cm = AsyncMock()
-        mock_conn.transaction.return_value = mock_txn_cm
-
-        mock_acquire_cm = AsyncMock()
-        mock_acquire_cm.__aenter__ = AsyncMock(return_value=mock_conn)
-        mock_acquire_cm.__aexit__ = AsyncMock(return_value=False)
-
-        mock_pool = MagicMock()
-        mock_pool.acquire.return_value = mock_acquire_cm
-        mock_create_pool.return_value = mock_pool
-
-        # Set up local pool mock — acquire() is used in two modes:
-        #   1. conn = await pool.acquire()  (sync_boards path)
-        #   2. async with pool.acquire() as conn:  (lookup tables path)
-        # In asyncpg, pool.acquire() returns a PoolAcquireContext which
-        # supports both modes. We simulate this with a helper class.
         mock_local_conn = MagicMock()
         mock_local_conn.execute = AsyncMock()
-        mock_local_conn.copy_records_to_table = AsyncMock()
-        mock_local_conn.fetchval = AsyncMock(return_value=0)
+        mock_local_conn.transaction.return_value.__aenter__ = AsyncMock()
+        mock_local_conn.transaction.return_value.__aexit__ = AsyncMock(return_value=False)
 
         class _FakeAcquireCtx:
             """Simulates asyncpg PoolAcquireContext: awaitable + async CM."""
@@ -903,27 +1077,22 @@ class TestRunSync:
 
         await run_sync(dry_run=False)
 
-        # Supabase: lookup tables + company data
-        # occupation_domains/occupations/seniority: called once on Supabase;
-        # local sync skips them because DataFrames are empty.
-        assert mock_sync_occupation_domains.call_count == 1
-        assert mock_sync_occupations.call_count == 1
-        assert mock_sync_seniority.call_count == 1
-        # technologies/industries: called twice (supa + local) regardless
-        assert mock_sync_technologies.call_count == 2
-        assert mock_sync_industries.call_count == 2
-        # companies: called once on local (local-first flow)
-        assert mock_sync_companies.call_count == 1
-        mock_sync_company_descriptions.assert_called_once_with(mock_conn, company_descs_df, False)
-
-        # Boards: called with supa_conn + local_conn kwarg
-        mock_sync_boards.assert_called_once()
-        board_call_args = mock_sync_boards.call_args
-        assert board_call_args[0][0] == mock_conn  # supa_conn
-        assert board_call_args[0][1] is boards_df
-        assert board_call_args[0][2] is False  # dry_run
-
-        mock_resolve_pending_misses.assert_called_once_with(mock_conn)
+        mock_sync_lookup_tables_local.assert_called_once_with(
+            mock_local_conn,
+            occupation_domains_df,
+            occupations_df,
+            seniority_df,
+            technologies_df,
+            industries_df,
+            False,
+        )
+        mock_sync_companies.assert_called_once_with(mock_local_conn, companies_df, False)
+        mock_sync_company_descriptions.assert_called_once_with(
+            mock_local_conn, company_descs_df, False
+        )
+        mock_sync_boards.assert_called_once_with(mock_local_conn, boards_df, False)
+        mock_resolve_pending_misses.assert_called_once_with(mock_local_conn)
+        mock_apply_board_redis_effects.assert_awaited_once()
         mock_close_all_pools.assert_called_once()
         mock_close_redis.assert_called_once()
 
@@ -939,26 +1108,12 @@ class TestRunSync:
     @patch("src.sync.close_redis")
     @patch("src.sync.close_all_pools")
     @patch("src.sync.create_local_pool")
-    @patch("src.sync.create_pool")
-    @patch("src.sync.sync_occupation_domains")
-    @patch("src.sync.sync_occupations")
-    @patch("src.sync.sync_seniority")
-    @patch("src.sync.sync_technologies")
-    @patch("src.sync.sync_industries")
-    @patch("src.sync._mirror_companies_to_supabase", new_callable=AsyncMock)
-    @patch("src.sync._mirror_companies_to_local", new_callable=AsyncMock)
+    @patch("src.sync.sync_lookup_tables_local")
     @patch("src.sync.sync_companies")
     async def test_closes_pool_on_error(
         self,
         mock_sync_companies,
-        _mock_mirror_to_local,
-        _mock_mirror_to_supa,
-        mock_sync_industries,
-        mock_sync_technologies,
-        mock_sync_seniority,
-        mock_sync_occupations,
-        mock_sync_occupation_domains,
-        mock_create_pool,
+        _mock_sync_lookup_tables_local,
         mock_create_local_pool,
         mock_close_all_pools,
         mock_close_redis,
@@ -995,24 +1150,15 @@ class TestRunSync:
             schema_overrides=_BOARD_SCHEMA,
         )
 
-        # Set up Supabase pool + connection mock
-        mock_conn = MagicMock()
-        mock_conn.execute = AsyncMock()
-        mock_txn_cm = AsyncMock()
-        mock_conn.transaction.return_value = mock_txn_cm
-
+        mock_local_conn = MagicMock()
+        mock_local_conn.execute = AsyncMock()
+        mock_local_conn.transaction.return_value.__aenter__ = AsyncMock()
+        mock_local_conn.transaction.return_value.__aexit__ = AsyncMock(return_value=False)
         mock_acquire_cm = AsyncMock()
-        mock_acquire_cm.__aenter__ = AsyncMock(return_value=mock_conn)
+        mock_acquire_cm.__aenter__ = AsyncMock(return_value=mock_local_conn)
         mock_acquire_cm.__aexit__ = AsyncMock(return_value=False)
-
-        mock_pool = MagicMock()
-        mock_pool.acquire.return_value = mock_acquire_cm
-        mock_create_pool.return_value = mock_pool
-
-        # Set up local pool mock
         mock_local_pool = MagicMock()
-        mock_local_pool.acquire.return_value = AsyncMock()
-        mock_local_pool.release = AsyncMock()
+        mock_local_pool.acquire.return_value = mock_acquire_cm
         mock_create_local_pool.return_value = mock_local_pool
 
         mock_sync_companies.side_effect = RuntimeError("DB connection failed")
@@ -1022,6 +1168,83 @@ class TestRunSync:
 
         mock_close_all_pools.assert_called_once()
         mock_close_redis.assert_called_once()
+
+    async def test_company_typesense_failure_aborts_run_sync(self):
+        companies = pl.DataFrame(
+            {
+                "slug": ["acme"],
+                "name": ["Acme Corp"],
+                "website": ["https://acme.test"],
+                "logo_url": [""],
+                "icon_url": [""],
+                "logo_type": [""],
+            },
+            schema_overrides=_COMPANY_SCHEMA,
+        )
+        boards = pl.DataFrame(
+            {column: [] for column in _BOARD_COLS},
+            schema_overrides=_BOARD_SCHEMA,
+        )
+        local_conn = MagicMock()
+        local_conn.execute = AsyncMock()
+        local_conn.transaction.return_value.__aenter__ = AsyncMock()
+        local_conn.transaction.return_value.__aexit__ = AsyncMock(return_value=False)
+        web_conn = MagicMock()
+
+        class _Acquire:
+            def __init__(self, connection):
+                self.connection = connection
+
+            async def __aenter__(self):
+                return self.connection
+
+            async def __aexit__(self, *_args):
+                return None
+
+        local_pool = MagicMock()
+        local_pool.acquire.side_effect = lambda: _Acquire(local_conn)
+        web_pool = MagicMock()
+        web_pool.acquire.side_effect = lambda: _Acquire(web_conn)
+
+        empty = pl.DataFrame()
+        close_pools = AsyncMock()
+        close_redis = AsyncMock()
+        sync_patches = {
+            "setup_logging": MagicMock(),
+            "_load_occupation_domains": MagicMock(return_value=empty),
+            "_load_occupations": MagicMock(return_value=empty),
+            "_load_seniority": MagicMock(return_value=empty),
+            "_load_technologies": MagicMock(return_value=empty),
+            "_load_industries": MagicMock(return_value=empty),
+            "_load_companies": MagicMock(return_value=companies),
+            "_load_company_descriptions": MagicMock(return_value=empty),
+            "_load_boards": MagicMock(return_value=boards),
+            "get_typesense_client": MagicMock(return_value=MagicMock()),
+            "create_local_pool": AsyncMock(return_value=local_pool),
+            "create_web_pool": AsyncMock(return_value=web_pool),
+            "sync_lookup_tables_local": AsyncMock(),
+            "sync_companies": AsyncMock(),
+            "sync_company_descriptions": AsyncMock(),
+            "sync_boards": AsyncMock(),
+            "resolve_pending_misses": AsyncMock(),
+            "apply_board_redis_effects": AsyncMock(),
+            "_snapshot_name_maps": AsyncMock(return_value={}),
+            "_apply_taxonomy_renames": AsyncMock(),
+            "sync_typesense": AsyncMock(
+                side_effect=CompanyTypesenseSyncError("company exact sync failed")
+            ),
+            "close_all_pools": close_pools,
+            "close_redis": close_redis,
+        }
+        with (
+            patch.multiple("src.sync", **sync_patches),
+            patch("src.deadletters.classify_deadletters", new_callable=AsyncMock, return_value=[]),
+            pytest.raises(CompanyTypesenseSyncError, match="company exact sync failed"),
+        ):
+            await run_sync(dry_run=False)
+
+        close_pools.assert_awaited_once()
+        close_redis.assert_awaited_once()
 
 
 class TestIsTrivialWatchlist:
@@ -1080,32 +1303,7 @@ class TestSyncLookupTablesLocal:
         job_posting when local lookup IDs already match Supabase.
         """
 
-        domain_rows = [_StubRecord(id=7, slug="engineering")]
-        occupation_rows = [_StubRecord(id=36, slug="account-executive")]
-        seniority_rows = [_StubRecord(id=4, slug="senior")]
-
-        async def _supa_fetch(sql, *args):
-            if "FROM occupation_domain" in sql:
-                return domain_rows
-            if "FROM occupation" in sql:
-                return occupation_rows
-            if "FROM seniority" in sql:
-                return seniority_rows
-            raise AssertionError(f"unexpected Supabase query: {sql} {args}")
-
-        async def _local_fetch(sql, *args):
-            if "FROM occupation_domain" in sql:
-                return domain_rows
-            if "FROM occupation" in sql:
-                return occupation_rows
-            if "FROM seniority" in sql:
-                return seniority_rows
-            raise AssertionError(f"unexpected local query: {sql} {args}")
-
-        supa_conn = AsyncMock()
-        supa_conn.fetch = AsyncMock(side_effect=_supa_fetch)
         local_conn = AsyncMock()
-        local_conn.fetch = AsyncMock(side_effect=_local_fetch)
         local_conn.execute = AsyncMock()
 
         with (
@@ -1114,11 +1312,8 @@ class TestSyncLookupTablesLocal:
             patch("src.sync.sync_seniority", new_callable=AsyncMock),
             patch("src.sync.sync_technologies", new_callable=AsyncMock),
             patch("src.sync.sync_industries", new_callable=AsyncMock),
-            patch("src.sync._populate_locations_if_empty", new_callable=AsyncMock),
-            patch("src.sync._populate_currency_rates_if_empty", new_callable=AsyncMock),
         ):
             await sync_lookup_tables_local(
-                supa_conn,
                 local_conn,
                 pl.DataFrame({"slug": ["engineering"]}),
                 pl.DataFrame({"slug": ["account-executive"]}),
@@ -1133,37 +1328,9 @@ class TestSyncLookupTablesLocal:
         assert not any(sql.startswith("DELETE FROM ") for sql in executed_sql)
         assert not any("INSERT INTO occupation" in sql for sql in executed_sql)
 
-    async def test_id_drift_uses_constraint_rebuild_repair_path(self):
-        """If an existing local slug has the wrong ID, keep the repair path
-        that drops/re-adds FKs before replacing lookup rows.
-        """
-
-        domain_rows = [_StubRecord(id=7, slug="engineering")]
-        occupation_rows = [_StubRecord(id=36, slug="account-executive")]
-        seniority_rows = [_StubRecord(id=4, slug="senior")]
-
-        async def _supa_fetch(sql, *args):
-            if "FROM occupation_domain" in sql:
-                return domain_rows
-            if "FROM occupation" in sql:
-                return occupation_rows
-            if "FROM seniority" in sql:
-                return seniority_rows
-            raise AssertionError(f"unexpected Supabase query: {sql} {args}")
-
-        async def _local_fetch(sql, *args):
-            if "FROM occupation_domain" in sql:
-                return domain_rows
-            if "FROM occupation" in sql:
-                return [_StubRecord(id=999, slug="account-executive")]
-            if "FROM seniority" in sql:
-                return seniority_rows
-            raise AssertionError(f"unexpected local query: {sql} {args}")
-
-        supa_conn = AsyncMock()
-        supa_conn.fetch = AsyncMock(side_effect=_supa_fetch)
+    async def test_never_rebuilds_constraints_or_replaces_local_ids(self):
+        """Local-first sync only natural-key upserts and cannot renumber rows."""
         local_conn = AsyncMock()
-        local_conn.fetch = AsyncMock(side_effect=_local_fetch)
         local_conn.execute = AsyncMock()
 
         with (
@@ -1172,11 +1339,8 @@ class TestSyncLookupTablesLocal:
             patch("src.sync.sync_seniority", new_callable=AsyncMock),
             patch("src.sync.sync_technologies", new_callable=AsyncMock),
             patch("src.sync.sync_industries", new_callable=AsyncMock),
-            patch("src.sync._populate_locations_if_empty", new_callable=AsyncMock),
-            patch("src.sync._populate_currency_rates_if_empty", new_callable=AsyncMock),
         ):
             await sync_lookup_tables_local(
-                supa_conn,
                 local_conn,
                 pl.DataFrame({"slug": ["engineering"]}),
                 pl.DataFrame({"slug": ["account-executive"]}),
@@ -1187,16 +1351,8 @@ class TestSyncLookupTablesLocal:
             )
 
         executed_sql = [call.args[0] for call in local_conn.execute.await_args_list]
-        assert any(
-            "DROP CONSTRAINT IF EXISTS job_posting_occupation_id_fkey" in sql
-            for sql in executed_sql
-        )
-        assert any(
-            "DROP CONSTRAINT IF EXISTS job_posting_seniority_id_fkey" in sql for sql in executed_sql
-        )
-        assert "DELETE FROM occupation" in executed_sql
-        assert any("ADD CONSTRAINT job_posting_occupation_id_fkey" in sql for sql in executed_sql)
-        assert any("ADD CONSTRAINT job_posting_seniority_id_fkey" in sql for sql in executed_sql)
+        assert not any("ALTER TABLE job_posting" in sql for sql in executed_sql)
+        assert not any(sql.startswith("DELETE FROM ") for sql in executed_sql)
 
 
 class TestSyncWatchlistsTypesenseLocalTaxonomy:
@@ -1374,72 +1530,14 @@ class _StubRecord(dict):
 
 
 class TestSyncWatchlistsTypesense:
-    async def test_any_company_filters_json_is_self_contained_without_companies(self):
-        filters = {
-            "anyCompany": True,
-            "locationSlugs": ["switzerland"],
-            "occupationSlugs": ["account-executive", "sales-manager"],
-            "workMode": ["remote"],
-        }
-
-        async def _supa_fetch(sql, *args):
-            if "FROM watchlist w" in sql:
-                return [
-                    {
-                        "id": "4ce80d85-2631-47e9-922e-e345e5551afe",
-                        "slug": "enterprise-sales-in-switzerland",
-                        "title": "Enterprise Sales in Switzerland",
-                        "description": None,
-                        "is_public": True,
-                        "created_at": datetime(2026, 7, 6, tzinfo=UTC),
-                        "filters": filters,
-                        "owner_name": "Colophon Group",
-                        "owner_username": "colophongroup",
-                    }
-                ]
-            if "FROM location WHERE slug" in sql:
-                return [{"slug": "switzerland", "id": 30}]
-            if "FROM occupation WHERE slug" in sql:
-                return [
-                    {"slug": "account-executive", "id": 101},
-                    {"slug": "sales-manager", "id": 102},
-                ]
-            if "FROM watchlist_company" in sql:
-                # Regression fixture: anyCompany watchlists intentionally
-                # have no join rows, but still need a usable Discover count.
-                return []
-            if "source_watchlist_id" in sql:
-                return []
-            raise AssertionError(f"unexpected SQL: {sql}")
-
-        supa_conn = AsyncMock()
-        supa_conn.fetch = AsyncMock(side_effect=_supa_fetch)
+    async def test_watchlist_sync_without_local_connection_fails_closed(self):
+        web_conn = AsyncMock()
         client = MagicMock()
 
-        captured: list[tuple[str, list[dict]]] = []
+        with pytest.raises(RuntimeError, match="requires a local Postgres connection"):
+            await sync_watchlists_typesense(web_conn, None, client)
 
-        def _capture_upsert(_client, collection, docs, *_a, **_kw):
-            captured.append((collection, list(docs)))
-
-        with (
-            patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert),
-            patch("src.sync._ts_bulk_delete_ids"),
-        ):
-            await sync_watchlists_typesense(supa_conn, None, client)
-
-        docs = next((docs for collection, docs in captured if collection == "watchlist"), [])
-        assert len(docs) == 1
-        doc = docs[0]
-        assert doc["company_count"] == 0
-        assert doc["active_job_count"] == 0
-
-        payload = json.loads(doc["filters_json"])
-        assert payload["anyCompany"] is True
-        assert payload["locationSlugs"] == ["switzerland"]
-        assert payload["locationIds"] == [30]
-        assert payload["occupationSlugs"] == ["account-executive", "sales-manager"]
-        assert payload["occupationIds"] == [101, 102]
-        assert payload["workMode"] == ["remote"]
+        web_conn.fetch.assert_not_awaited()
 
 
 def _make_loc_row(
@@ -1450,6 +1548,7 @@ def _make_loc_row(
     lat: float | None = None,
     lng: float | None = None,
     population: int | None = None,
+    parent_id: int | None = None,
     parent_name: str | None = None,
 ) -> _StubRecord:
     return _StubRecord(
@@ -1459,12 +1558,20 @@ def _make_loc_row(
         lat=lat,
         lng=lng,
         population=population,
+        parent_id=parent_id,
         parent_name=parent_name,
     )
 
 
-def _make_name_row(*, location_id: int, locale: str, name: str) -> _StubRecord:
-    return _StubRecord(location_id=location_id, locale=locale, name=name)
+def _make_name_row(
+    *, location_id: int, locale: str, name: str, is_display: bool = True
+) -> _StubRecord:
+    return _StubRecord(
+        location_id=location_id,
+        locale=locale,
+        name=name,
+        is_display=is_display,
+    )
 
 
 class TestSyncLocationsTypesense:
@@ -1474,6 +1581,19 @@ class TestSyncLocationsTypesense:
     issue #2939: macro rows whose slug is in ``_LOCATION_MACRO_ALIASES``
     must carry the ``aliases`` array; non-macro rows must not.
     """
+
+    async def test_blank_local_slug_refuses_to_overwrite_typesense(self):
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(return_value=[_make_loc_row(id=100, slug="", type="city")])
+        client = MagicMock()
+
+        with (
+            patch("src.sync._ts_bulk_upsert") as upsert,
+            pytest.raises(RuntimeError, match="local location data is not cutover-ready"),
+        ):
+            await sync_locations_typesense(local_conn, client)
+
+        upsert.assert_not_called()
 
     async def test_macro_rows_get_aliases(self):
         loc_rows = [
@@ -1498,12 +1618,8 @@ class TestSyncLocationsTypesense:
             _make_name_row(location_id=100, locale="de", name="Berlin"),
         ]
 
-        supa_conn = AsyncMock()
-        # Two ``fetch`` calls in order: location rows, then name rows.
-        supa_conn.fetch = AsyncMock(side_effect=[loc_rows, name_rows])
-
         local_conn = AsyncMock()
-        local_conn.fetch = AsyncMock(return_value=[])
+        local_conn.fetch = AsyncMock(side_effect=[loc_rows, name_rows, []])
 
         captured_docs: list[dict] = []
 
@@ -1512,19 +1628,14 @@ class TestSyncLocationsTypesense:
 
         client = MagicMock()
         with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
-            await sync_locations_typesense(supa_conn, local_conn, client)
+            await sync_locations_typesense(local_conn, client)
 
         by_slug = {d["slug"]: d for d in captured_docs}
         # All four locations were indexed.
         assert set(by_slug) == {"eu", "emea", "dach", "berlin"}
 
         # The EU macro row carries the suggested aliases verbatim.
-        assert by_slug["eu"]["aliases"] == [
-            "European Union",
-            "Europe",
-            "EEA",
-            "Schengen",
-        ]
+        assert by_slug["eu"]["aliases"] == sorted(["European Union", "Europe", "EEA", "Schengen"])
         # EMEA + DACH carry their respective alias bundles.
         assert "Europe Middle East Africa" in by_slug["emea"]["aliases"]
         assert "Germany Austria Switzerland" in by_slug["dach"]["aliases"]
@@ -1567,8 +1678,8 @@ class TestSyncLocationsTypesense:
         name_rows = [
             _make_name_row(location_id=42, locale="en", name="Oceania"),
         ]
-        supa_conn = AsyncMock()
-        supa_conn.fetch = AsyncMock(side_effect=[loc_rows, name_rows])
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(side_effect=[loc_rows, name_rows, []])
 
         captured_docs: list[dict] = []
 
@@ -1577,14 +1688,87 @@ class TestSyncLocationsTypesense:
 
         client = MagicMock()
         with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
-            await sync_locations_typesense(supa_conn, None, client)
+            await sync_locations_typesense(local_conn, client)
 
         assert len(captured_docs) == 1
         assert captured_docs[0]["slug"] == "oceania"
         assert "aliases" not in captured_docs[0]
 
+    async def test_publishes_parent_ancestor_and_macro_membership_contract(self):
+        loc_rows = [
+            _make_loc_row(id=4, slug="eu", type="macro"),
+            _make_loc_row(id=30, slug="germany", type="country"),
+            _make_loc_row(id=20, slug="berlin-region", type="region", parent_id=30),
+            _make_loc_row(id=10, slug="berlin", type="city", parent_id=20),
+        ]
+        name_rows = [
+            _make_name_row(location_id=row["id"], locale="en", name=row["slug"]) for row in loc_rows
+        ]
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(
+            side_effect=[loc_rows, name_rows, [_StubRecord(macro_id=4, country_id=30)]]
+        )
+        captured_docs: list[dict] = []
 
-class TestFetchActiveFacetCounts:
+        def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
+            captured_docs.extend(docs)
+
+        with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
+            await sync_locations_typesense(local_conn, MagicMock())
+
+        by_id = {doc["location_id"]: doc for doc in captured_docs}
+        assert by_id[10]["parent_id"] == 20
+        assert set(by_id[10]["ancestor_ids"]) == {10, 20, 30, 4}
+        assert by_id[4]["member_country_ids"] == [30]
+
+
+class TestSyncOccupationsTypesense:
+    async def test_publishes_parent_and_domain_contract(self):
+        rows = [
+            _StubRecord(
+                id=10,
+                slug="backend-developer",
+                parent_id=5,
+                domain_id=2,
+                locale="en",
+                name="Backend developer",
+                is_display=True,
+                domain_slug="engineering",
+            )
+        ]
+        domain_names = [_StubRecord(domain_id=2, locale="en", name="Engineering")]
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(side_effect=[rows, domain_names])
+        captured_docs: list[dict] = []
+
+        def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
+            captured_docs.extend(docs)
+
+        with (
+            patch("src.sync._fetch_facet_counts", return_value={}),
+            patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert),
+        ):
+            await sync_occupations_typesense(local_conn, MagicMock())
+
+        assert captured_docs == [
+            {
+                "id": "10-en",
+                "occupation_id": 10,
+                "slug": "backend-developer",
+                "name": "Backend developer",
+                "aliases": [],
+                "locale": "en",
+                "has_active_postings": False,
+                "active_posting_count": 0,
+                "parent_id": 5,
+                "domain_id": 2,
+                "domain_slug": "engineering",
+                "domain_name": "Engineering",
+            }
+        ]
+
+
+class TestFetchFacetCounts:
     """Tests for the Typesense facet-count helper used by both
     ``sync_locations_typesense`` and ``refresh_typesense_counts`` to read
     post-ancestor-expansion counts (issue #2978).
@@ -1604,7 +1788,7 @@ class TestFetchActiveFacetCounts:
                 }
             ]
         }
-        out = _fetch_active_facet_counts(client, "location_ids")
+        out = _fetch_facet_counts(client, "location_ids")
         assert out == {"30": 2416, "10": 1086, "4": 14523}
         # Sanity-check the request shape — must include facet_by + a
         # large max_facet_values + the web's POSTING_BASE_FILTER
@@ -1619,12 +1803,42 @@ class TestFetchActiveFacetCounts:
     def test_empty_response_returns_empty_dict(self):
         client = MagicMock()
         client.collections["job_posting"].documents.search.return_value = {"facet_counts": []}
-        assert _fetch_active_facet_counts(client, "location_ids") == {}
+        assert _fetch_facet_counts(client, "location_ids") == {}
 
     def test_missing_facet_counts_returns_empty_dict(self):
         client = MagicMock()
         client.collections["job_posting"].documents.search.return_value = {}
-        assert _fetch_active_facet_counts(client, "location_ids") == {}
+        assert _fetch_facet_counts(client, "location_ids") == {}
+
+    def test_company_counts_use_active_and_flow_filters(self):
+        client = MagicMock()
+
+        def _search(params):
+            if params["filter_by"] == "is_active:true && has_content:!=false":
+                counts = [{"value": "co-active", "count": 12}]
+            else:
+                counts = [{"value": "co-year", "count": 34}]
+            return {"facet_counts": [{"field_name": "company_id", "counts": counts}]}
+
+        client.collections["job_posting"].documents.search.side_effect = _search
+        now = datetime(2024, 2, 29, 12, tzinfo=UTC)
+
+        active, year = _fetch_company_posting_counts(client, now)
+
+        assert active == {"co-active": 12}
+        assert year == {"co-year": 34}
+        params = [
+            call.args[0]
+            for call in client.collections["job_posting"].documents.search.call_args_list
+        ]
+        assert params[0]["facet_by"] == "company_id"
+        assert params[0]["filter_by"] == "is_active:true && has_content:!=false"
+        assert params[1]["facet_by"] == "company_id"
+        assert params[1]["filter_by"] == (
+            "has_content:!=false && first_seen_at:>"
+            f"{int(datetime(2023, 2, 28, 12, tzinfo=UTC).timestamp())}"
+        )
+        assert _one_year_ago_epoch(now) == int(datetime(2023, 2, 28, 12, tzinfo=UTC).timestamp())
 
 
 class TestRefreshTypesenseCounts:
@@ -1778,46 +1992,27 @@ class TestRefreshTypesenseCounts:
         assert tech_params["filter_by"] == "is_active:true && has_content:!=false"
 
     async def test_company_counts_apply_has_content_filter(self):
-        """Issue #3009: the precomputed `company.active_posting_count` /
-        `year_posting_count` numbers must use the same `has_content`
-        filter as the web's `POSTING_BASE_FILTER` so the unfiltered
-        `listTopCompanies` path can't structurally diverge from the
-        filtered facet path. Without `has_content`, McDonald's reads
-        55,591 from `company` collection vs ~44,161 from the live facet
-        (12k delta = postings whose exporter set `has_content=false`).
-
-        This test asserts:
-        1. Both company SQL queries (active + year) include the
-           has_content predicate equivalent to the exporter formula.
-        2. The resulting Typesense upsert docs propagate per-company
-           counts unchanged from whatever the SQL returns.
-        """
-        captured_sql: list[str] = []
-
-        async def _fetch(sql, *args, **kwargs):
-            captured_sql.append(sql)
-            # Dispatch by the column shape of the query so seniority/
-            # technology queries (also `WHERE is_active`) don't get
-            # confused with the company queries.
-            if "company_id::text" in sql and "first_seen_at" not in sql:
-                return [
-                    {"company_id": "co-mcdonalds", "cnt": 44161},
-                    {"company_id": "co-accenture", "cnt": 52273},
-                ]
-            if "company_id::text" in sql and "first_seen_at" in sql:
-                return [
-                    {"company_id": "co-mcdonalds", "cnt": 55026},
-                    {"company_id": "co-accenture", "cnt": 81971},
-                ]
-            # Seniority + technology queries also touch local_conn —
-            # return empty for them.
-            return []
-
+        """Issue #5752: scheduled company counts use indexed facets only."""
         local_conn = AsyncMock()
-        local_conn.fetch = AsyncMock(side_effect=_fetch)
 
         client = MagicMock()
-        client.collections["job_posting"].documents.search.return_value = {"facet_counts": []}
+
+        def _search(params):
+            if params.get("facet_by") != "company_id":
+                return {"facet_counts": []}
+            if params["filter_by"] == "is_active:true && has_content:!=false":
+                counts = [
+                    {"value": "co-mcdonalds", "count": 44161},
+                    {"value": "co-accenture", "count": 52273},
+                ]
+            else:
+                counts = [
+                    {"value": "co-mcdonalds", "count": 55026},
+                    {"value": "co-accenture", "count": 81971},
+                ]
+            return {"facet_counts": [{"field_name": "company_id", "counts": counts}]}
+
+        client.collections["job_posting"].documents.search.side_effect = _search
 
         captured_upserts: list[tuple[str, list[dict]]] = []
 
@@ -1827,33 +2022,17 @@ class TestRefreshTypesenseCounts:
         with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
             await refresh_typesense_counts(local_conn, client)
 
-        # 1. Both company SQL queries must include the has_content predicate.
-        company_sqls = [s for s in captured_sql if "company_id::text" in s]
-        assert len(company_sqls) == 2, (
-            f"expected active + year company queries, got {len(company_sqls)}"
-        )
-        for sql in company_sqls:
-            assert "description_r2_hash IS NOT NULL" in sql, (
-                f"missing description_r2_hash predicate in:\n{sql}"
-            )
-            assert "cardinality(titles) > 0" in sql, (
-                f"missing titles cardinality predicate in:\n{sql}"
-            )
-            assert "length(trim(titles[1])) > 0" in sql, (
-                f"missing titles non-blank predicate in:\n{sql}"
-            )
+        local_conn.fetch.assert_not_awaited()
+        company_params = [
+            call.args[0]
+            for call in client.collections["job_posting"].documents.search.call_args_list
+            if call.args[0].get("facet_by") == "company_id"
+        ]
+        assert len(company_params) == 2
+        assert company_params[0]["filter_by"] == "is_active:true && has_content:!=false"
+        assert company_params[1]["filter_by"].startswith("has_content:!=false && first_seen_at:>")
+        assert "is_active" not in company_params[1]["filter_by"]
 
-        # 2. The active query keeps `is_active`; the year query keeps
-        #    `first_seen_at` and drops `is_active` (flow filter parity
-        #    with `POSTING_FLOW_FILTER` on the web side, issue #2965).
-        active_sql = next(s for s in company_sqls if "is_active" in s and "first_seen_at" not in s)
-        year_sql = next(s for s in company_sqls if "first_seen_at" in s)
-        assert "is_active" in active_sql
-        assert "is_active" not in year_sql, (
-            "year_posting_count is a flow query — should not gate on is_active"
-        )
-
-        # 3. Resulting upsert docs reflect the SQL counts.
         company_docs = next((docs for c, docs in captured_upserts if c == "company"), [])
         by_id = {d["id"]: d for d in company_docs}
         assert by_id["co-mcdonalds"]["active_posting_count"] == 44161
@@ -1862,41 +2041,86 @@ class TestRefreshTypesenseCounts:
         assert by_id["co-accenture"]["year_posting_count"] == 81971
 
 
+def _company_row(company_id: str) -> _StubRecord:
+    return _StubRecord(
+        id=company_id,
+        name=f"Company {company_id}",
+        slug=company_id,
+        icon=None,
+        logo=None,
+        website=None,
+        industry=None,
+        employee_count_range=None,
+        founded_year=None,
+        industry_name=None,
+    )
+
+
+def _company_connection(company_ids: list[str]) -> AsyncMock:
+    connection = AsyncMock()
+
+    async def _fetch(sql: str, *_args, **_kwargs):
+        if "FROM company c" in sql:
+            return [_company_row(company_id) for company_id in company_ids]
+        if "FROM company_description" in sql or "FROM industry_name" in sql:
+            return []
+        raise AssertionError(f"unexpected company-sync query: {sql}")
+
+    connection.fetch = AsyncMock(side_effect=_fetch)
+    return connection
+
+
+def _company_typesense_client(
+    remote_ids: set[str],
+    *,
+    remove_on_delete: bool = True,
+    delete_error: Exception | None = None,
+) -> tuple[MagicMock, MagicMock, set[str], list[str]]:
+    client = MagicMock()
+    collection = client.collections["company"]
+    current_ids = set(remote_ids)
+    deleted_ids: list[str] = []
+
+    collection.retrieve.side_effect = lambda: {"num_documents": len(current_ids)}
+
+    def _search(params: dict) -> dict:
+        assert params["q"] == "*"
+        assert params["include_fields"] == "id"
+        assert "sort_by" not in params
+        assert params["enable_overrides"] is False
+        ordered = sorted(current_ids)
+        offset = (params["page"] - 1) * params["per_page"]
+        return {
+            "found": len(ordered),
+            "hits": [
+                {"document": {"id": document_id}}
+                for document_id in ordered[offset : offset + params["per_page"]]
+            ],
+        }
+
+    collection.documents.search.side_effect = _search
+
+    def _document(document_id: str) -> MagicMock:
+        document = MagicMock()
+
+        def _delete() -> None:
+            if delete_error is not None:
+                raise delete_error
+            deleted_ids.append(document_id)
+            if remove_on_delete:
+                current_ids.remove(document_id)
+
+        document.delete.side_effect = _delete
+        return document
+
+    collection.documents.__getitem__.side_effect = _document
+    return client, collection, current_ids, deleted_ids
+
+
 class TestSyncCompaniesTypesense:
-    """Issue #3238: ``sync_companies_typesense`` computes the initial
-    ``active_posting_count`` / ``year_posting_count`` on company docs.
-    Both queries must gate on the same ``has_content`` predicate as the
-    web's ``POSTING_BASE_FILTER`` so a company card's badge cannot
-    structurally exceed the filtered facet count the user sees on
-    `/explore?company=<slug>`.
-    """
+    """Company documents are sourced locally and synchronized exactly."""
 
     async def test_company_counts_apply_has_content_filter(self):
-        """Both the active-count and year-count SQL must include the
-        ``has_content`` predicate mirror of the exporter formula:
-        ``description_r2_hash IS NOT NULL AND cardinality(titles) > 0
-        AND length(trim(titles[1])) > 0``. The resulting company doc
-        propagates only the gated count.
-        """
-        captured_sql: list[str] = []
-
-        async def _local_fetch(sql, *args, **kwargs):
-            captured_sql.append(sql)
-            if "company_id::text" in sql and "first_seen_at" not in sql:
-                # is_active branch — only gated rows show up.
-                return [
-                    {"company_id": "co-microsoft", "cnt": 1428},
-                ]
-            if "company_id::text" in sql and "first_seen_at" in sql:
-                # year branch — same gating.
-                return [
-                    {"company_id": "co-microsoft", "cnt": 9000},
-                ]
-            return []
-
-        local_conn = AsyncMock()
-        local_conn.fetch = AsyncMock(side_effect=_local_fetch)
-
         supa_conn = AsyncMock()
 
         async def _supa_fetch(sql, *args, **kwargs):
@@ -1914,133 +2138,369 @@ class TestSyncCompaniesTypesense:
                         employee_count_range=None,
                         founded_year=None,
                         industry_name=None,
-                    )
+                    ),
+                    _StubRecord(
+                        id="co-empty",
+                        name="Empty Co",
+                        slug="empty-co",
+                        icon=None,
+                        logo=None,
+                        website=None,
+                        description=None,
+                        industry=None,
+                        employee_count_range=None,
+                        founded_year=None,
+                        industry_name=None,
+                    ),
                 ]
             return []
 
         supa_conn.fetch = AsyncMock(side_effect=_supa_fetch)
 
         client = MagicMock()
+
+        def _search(params):
+            if params.get("q") == "*" and "facet_by" not in params:
+                return {
+                    "found": 2,
+                    "hits": [
+                        {"document": {"id": "co-empty"}},
+                        {"document": {"id": "co-microsoft"}},
+                    ],
+                }
+            if params["filter_by"] == "is_active:true && has_content:!=false":
+                counts = [{"value": "co-microsoft", "count": 1428}]
+            else:
+                counts = [{"value": "co-microsoft", "count": 9000}]
+            return {"facet_counts": [{"field_name": "company_id", "counts": counts}]}
+
+        client.collections["job_posting"].documents.search.side_effect = _search
+        client.collections["company"].retrieve.return_value = {"num_documents": 2}
         captured_upserts: list[tuple[str, list[dict]]] = []
 
         def _capture_upsert(_client, collection, docs, *_a, **_kw):
             captured_upserts.append((collection, list(docs)))
 
         with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
-            await sync_companies_typesense(supa_conn, local_conn, client)
+            await sync_companies_typesense(supa_conn, client)
 
-        # 1. Both company count SQLs must include the has_content predicate.
-        company_count_sqls = [s for s in captured_sql if "company_id::text" in s]
-        assert len(company_count_sqls) == 2, (
-            f"expected active + year company queries, got {len(company_count_sqls)}"
-        )
-        for sql in company_count_sqls:
-            assert "description_r2_hash IS NOT NULL" in sql, (
-                f"missing description_r2_hash predicate in:\n{sql}"
-            )
-            assert "cardinality(titles) > 0" in sql, (
-                f"missing titles cardinality predicate in:\n{sql}"
-            )
-            assert "length(trim(titles[1])) > 0" in sql, (
-                f"missing titles non-blank predicate in:\n{sql}"
-            )
-
-        # 2. The active SQL keeps `is_active`; the year SQL keeps
-        #    `first_seen_at` (and intentionally drops `is_active` to
-        #    measure activity over time — parity with the web's
-        #    POSTING_FLOW_FILTER).
-        active_sql = next(s for s in company_count_sqls if "is_active" in s)
-        year_sql = next(s for s in company_count_sqls if "first_seen_at" in s)
-        assert "is_active" in active_sql
-        assert "first_seen_at" in year_sql
-
-        # 3. The doc propagates the gated counts unchanged.
         company_docs = next((docs for c, docs in captured_upserts if c == "company"), [])
         by_id = {d["id"]: d for d in company_docs}
         assert by_id["co-microsoft"]["active_posting_count"] == 1428
         assert by_id["co-microsoft"]["year_posting_count"] == 9000
+        assert by_id["co-empty"]["active_posting_count"] == 0
+        assert by_id["co-empty"]["year_posting_count"] == 0
 
-
-class TestPopulateLocationsIfEmpty:
-    """Issue #2978: ``location_macro_member`` was never seeded into the
-    Hetzner local Postgres because the original
-    ``_populate_locations_if_empty`` only handled ``location`` and
-    ``location_name``. We now seed ``location_macro_member`` from
-    Supabase too — idempotently, every sync — so a fresh deploy or
-    restored DB still gets the macro->country links.
-    """
-
-    async def test_seeds_macro_members_when_table_is_empty(self):
-        """Empty location_macro_member -> seed from Supabase even when
-        ``location`` is already populated (i.e. the production failure
-        mode on Hetzner).
-        """
-        supa_conn = AsyncMock()
-        local_conn = AsyncMock()
-
-        # Local already has locations (so the location/location_name
-        # branch short-circuits) but zero macro members.
-        local_count_returns = iter(
-            [
-                5000,  # SELECT count(*) FROM location -> already populated
-                0,  # SELECT count(*) FROM location_macro_member -> empty
-                573,  # SELECT count(*) FROM location_macro_member -> after insert
-            ]
-        )
-        local_conn.fetchval = AsyncMock(side_effect=lambda *_a, **_kw: next(local_count_returns))
-
-        # Supabase returns the canonical macro members
-        macro_rows = [
-            {"macro_id": 4, "country_id": 2782113},  # EU -> Austria
-            {"macro_id": 4, "country_id": 2921044},  # EU -> Germany
-            {"macro_id": 5, "country_id": 2921044},  # DACH -> Germany
+    async def test_exact_remote_ids_are_reverified_without_deletes(self):
+        local_ids = ["co-alpha", "co-beta"]
+        local_conn = _company_connection(local_ids)
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(set(local_ids))
+        collection.documents.import_.return_value = [
+            {"success": True},
+            {"success": True},
         ]
-        supa_conn.fetch = AsyncMock(return_value=macro_rows)
-        local_conn.executemany = AsyncMock()
 
-        await _populate_locations_if_empty(supa_conn, local_conn)
+        with patch("src.sync._fetch_company_posting_counts", return_value=({}, {})):
+            await sync_companies_typesense(local_conn, client)
 
-        # We executed the bulk INSERT exactly once with all 3 rows.
-        local_conn.executemany.assert_awaited_once()
-        sql, rows = local_conn.executemany.await_args[0]
-        assert "INSERT INTO location_macro_member" in sql
-        assert "ON CONFLICT (macro_id, country_id) DO NOTHING" in sql
-        assert rows == [(4, 2782113), (4, 2921044), (5, 2921044)]
+        assert remote_ids == set(local_ids)
+        assert deleted_ids == []
+        assert collection.documents.search.call_count == 2
+        collection.documents.__getitem__.assert_not_called()
+        imported_docs, import_options = collection.documents.import_.call_args.args
+        assert {doc["id"] for doc in imported_docs} == set(local_ids)
+        assert import_options == {"action": "upsert"}
 
-    async def test_skips_when_already_in_sync(self):
-        """Idempotency: if local already has every macro_member row,
-        skip the executemany call (cheap fast-path on every sync)."""
-        supa_conn = AsyncMock()
-        local_conn = AsyncMock()
-
-        local_count_returns = iter(
-            [
-                5000,  # location: populated
-                573,  # macro_members: same as supabase
-            ]
+    async def test_local_company_absent_from_csv_is_preserved_during_stale_delete(self):
+        # co-retained-local intentionally represents a row retained in local
+        # Postgres after it disappeared from companies.csv. Local Postgres,
+        # not the CSV frame, is the company index authority.
+        local_ids = ["co-alpha", "co-beta", "co-retained-local"] + [
+            f"co-authority-{index:03d}" for index in range(97)
+        ]
+        local_conn = _company_connection(local_ids)
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {*local_ids, "co-stale"}
         )
-        local_conn.fetchval = AsyncMock(side_effect=lambda *_a, **_kw: next(local_count_returns))
-        rows_573 = [{"macro_id": 1, "country_id": i} for i in range(573)]
-        supa_conn.fetch = AsyncMock(return_value=rows_573)
-        local_conn.executemany = AsyncMock()
 
-        await _populate_locations_if_empty(supa_conn, local_conn)
+        with (
+            patch("src.sync._load_companies") as csv_authority,
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            patch("src.sync._ts_bulk_upsert") as upsert,
+        ):
+            await sync_companies_typesense(local_conn, client)
 
-        # No insert needed — already in sync.
-        local_conn.executemany.assert_not_called()
+        assert remote_ids == set(local_ids)
+        assert deleted_ids == ["co-stale"]
+        assert collection.documents.search.call_count == 2
+        assert {doc["id"] for doc in upsert.call_args.args[2]} == set(local_ids)
+        csv_authority.assert_not_called()
 
-    async def test_warns_when_supabase_macro_table_empty(self):
-        """If Supabase has nothing to seed from, log a warning and
-        return without crashing — local stays empty and the exporter's
-        own loud warning will surface this on the next refresh."""
-        supa_conn = AsyncMock()
+    def test_prune_budget_accepts_observed_drift_and_blocks_collapse(self):
+        assert _company_prune_within_safety_budget(remote_count=5072, delete_count=11)
+        assert not _company_prune_within_safety_budget(remote_count=5072, delete_count=51)
+        assert not _company_prune_within_safety_budget(remote_count=1000, delete_count=11)
+
+    async def test_prune_budget_blocks_all_deletes(self):
+        local_ids = [f"co-authority-{index:03d}" for index in range(100)]
+        local_conn = _company_connection(local_ids)
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {*local_ids, "co-stale-one", "co-stale-two"}
+        )
+
+        with (
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            patch("src.sync._ts_bulk_upsert"),
+            pytest.raises(RuntimeError, match="safety budget"),
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        assert len(remote_ids) == 102
+        assert deleted_ids == []
+        collection.documents.__getitem__.assert_not_called()
+
+    async def test_missing_expected_id_blocks_every_delete(self):
+        local_ids = ["co-alpha", "co-beta"]
+        local_conn = _company_connection(local_ids)
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {"co-alpha", "co-stale"}
+        )
+
+        with (
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            patch("src.sync._ts_bulk_upsert"),
+            pytest.raises(RuntimeError, match="missing expected"),
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        assert remote_ids == {"co-alpha", "co-stale"}
+        assert deleted_ids == []
+        collection.documents.__getitem__.assert_not_called()
+
+    @pytest.mark.parametrize("failure", ["invalid", "changing", "duplicate", "short"])
+    async def test_invalid_or_changing_pagination_blocks_every_delete(self, failure: str):
+        local_ids = ["co-alpha", "co-beta"]
+        local_conn = _company_connection(local_ids)
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {"co-alpha", "co-beta", "co-stale"}
+        )
+        calls = 0
+
+        def _broken_search(_params: dict) -> dict:
+            nonlocal calls
+            calls += 1
+            if failure == "invalid":
+                return {"found": "3", "hits": []}
+            if failure == "duplicate":
+                return {
+                    "found": 3,
+                    "hits": [
+                        {"document": {"id": "co-alpha"}},
+                        {"document": {"id": "co-alpha"}},
+                    ],
+                }
+            if failure == "short":
+                return {"found": 3, "hits": [{"document": {"id": "co-alpha"}}]}
+            if calls == 1:
+                return {
+                    "found": 3,
+                    "hits": [
+                        {"document": {"id": "co-alpha"}},
+                        {"document": {"id": "co-beta"}},
+                    ],
+                }
+            return {"found": 4, "hits": [{"document": {"id": "co-stale"}}]}
+
+        collection.documents.search.side_effect = _broken_search
+        with (
+            patch("src.sync._TYPESENSE_COMPANY_ID_PAGE_SIZE", 2),
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            patch("src.sync._ts_bulk_upsert"),
+            pytest.raises(RuntimeError, match="Typesense company"),
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        assert remote_ids == {"co-alpha", "co-beta", "co-stale"}
+        assert deleted_ids == []
+        collection.documents.__getitem__.assert_not_called()
+
+    async def test_empty_local_authority_is_fatal_without_remote_reads_or_pruning(self):
+        local_conn = _company_connection([])
+        client, collection, remote_ids, deleted_ids = _company_typesense_client({"co-stale"})
+
+        with (
+            patch("src.sync._fetch_company_posting_counts") as counts,
+            patch("src.sync._ts_bulk_upsert") as upsert,
+            pytest.raises(RuntimeError, match="authority is empty"),
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        counts.assert_not_called()
+        upsert.assert_not_called()
+        collection.retrieve.assert_not_called()
+        collection.documents.search.assert_not_called()
+        collection.documents.__getitem__.assert_not_called()
+        assert remote_ids == {"co-stale"}
+        assert deleted_ids == []
+
+    async def test_rejected_import_blocks_remote_reads_and_pruning(self):
+        local_conn = _company_connection(["co-alpha"])
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {"co-alpha", "co-stale"}
+        )
+        collection.documents.import_.return_value = [
+            {"success": False, "error": "schema rejected document"}
+        ]
+
+        with (
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            pytest.raises(RuntimeError, match="bulk import"),
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        collection.retrieve.assert_not_called()
+        collection.documents.search.assert_not_called()
+        collection.documents.__getitem__.assert_not_called()
+        assert remote_ids == {"co-alpha", "co-stale"}
+        assert deleted_ids == []
+
+    @pytest.mark.parametrize(
+        "acknowledgement",
+        [
+            pytest.param([], id="empty-list"),
+            pytest.param([{}], id="missing-success"),
+            pytest.param(["malformed"], id="non-dict-item"),
+            pytest.param([{"success": 1}], id="non-boolean-success"),
+            pytest.param(
+                [{"success": True}, {"success": True}],
+                id="too-many-items",
+            ),
+            pytest.param({"success": True}, id="non-list-response"),
+        ],
+    )
+    async def test_invalid_import_acknowledgement_blocks_remote_reads_and_pruning(
+        self,
+        acknowledgement,
+    ):
+        local_conn = _company_connection(["co-alpha"])
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {"co-alpha", "co-stale"}
+        )
+        collection.documents.import_.return_value = acknowledgement
+
+        with (
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            pytest.raises(RuntimeError, match="acknowledgement was invalid"),
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        collection.retrieve.assert_not_called()
+        collection.documents.search.assert_not_called()
+        collection.documents.__getitem__.assert_not_called()
+        assert remote_ids == {"co-alpha", "co-stale"}
+        assert deleted_ids == []
+
+    async def test_short_import_acknowledgement_blocks_remote_reads_and_pruning(self):
+        local_conn = _company_connection(["co-alpha", "co-beta"])
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {"co-alpha", "co-beta", "co-stale"}
+        )
+        collection.documents.import_.return_value = [{"success": True}]
+
+        with (
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            pytest.raises(RuntimeError, match="acknowledgement was invalid"),
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        collection.retrieve.assert_not_called()
+        collection.documents.search.assert_not_called()
+        collection.documents.__getitem__.assert_not_called()
+        assert remote_ids == {"co-alpha", "co-beta", "co-stale"}
+        assert deleted_ids == []
+
+    @pytest.mark.parametrize("acknowledgement", [[], [{}]])
+    def test_legacy_bulk_upsert_acknowledgement_semantics_are_preserved(self, acknowledgement):
+        client = MagicMock()
+        documents = client.collections["company"].documents
+        documents.import_.return_value = acknowledgement
+
+        _ts_bulk_upsert(client, "company", [{"id": "co-alpha"}])
+
+        documents.import_.assert_called_once()
+
+    async def test_delete_failure_is_fatal_and_skips_convergence_read(self):
+        local_ids = [f"co-authority-{index:03d}" for index in range(100)]
+        local_conn = _company_connection(local_ids)
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {*local_ids, "co-stale"},
+            delete_error=RuntimeError("request included a private identifier"),
+        )
+
+        with (
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            patch("src.sync._ts_bulk_upsert"),
+            pytest.raises(RuntimeError, match="prune deletion failed") as exc_info,
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        assert "private identifier" not in str(exc_info.value)
+        assert collection.documents.search.call_count == 1
+        assert remote_ids == {*local_ids, "co-stale"}
+        assert deleted_ids == []
+
+    async def test_post_delete_non_convergence_is_fatal(self):
+        local_ids = [f"co-authority-{index:03d}" for index in range(100)]
+        local_conn = _company_connection(local_ids)
+        client, collection, remote_ids, deleted_ids = _company_typesense_client(
+            {*local_ids, "co-stale"},
+            remove_on_delete=False,
+        )
+
+        with (
+            patch("src.sync._fetch_company_posting_counts", return_value=({}, {})),
+            patch("src.sync._ts_bulk_upsert"),
+            pytest.raises(RuntimeError, match="did not converge"),
+        ):
+            await sync_companies_typesense(local_conn, client)
+
+        assert deleted_ids == ["co-stale"]
+        assert remote_ids == {*local_ids, "co-stale"}
+        assert collection.documents.search.call_count == 2
+
+    async def test_company_failure_propagates_from_typesense_orchestrator(self):
+        client = MagicMock()
         local_conn = AsyncMock()
+        web_conn = AsyncMock()
 
-        local_count_returns = iter([5000, 0])
-        local_conn.fetchval = AsyncMock(side_effect=lambda *_a, **_kw: next(local_count_returns))
-        supa_conn.fetch = AsyncMock(return_value=[])
-        local_conn.executemany = AsyncMock()
+        with (
+            patch("src.sync.sync_locations_typesense", new_callable=AsyncMock),
+            patch("src.sync.sync_occupations_typesense", new_callable=AsyncMock),
+            patch("src.sync.sync_seniority_typesense", new_callable=AsyncMock),
+            patch("src.sync.sync_technologies_typesense", new_callable=AsyncMock),
+            patch(
+                "src.sync.sync_companies_typesense",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("exact sync failed"),
+            ),
+            pytest.raises(CompanyTypesenseSyncError, match="company exact sync"),
+        ):
+            await sync_typesense(local_conn, web_conn, client)
 
-        await _populate_locations_if_empty(supa_conn, local_conn)
+    async def test_empty_authority_propagates_from_typesense_orchestrator(self):
+        client, collection, _remote_ids, _deleted_ids = _company_typesense_client({"co-stale"})
+        local_conn = _company_connection([])
+        web_conn = AsyncMock()
 
-        local_conn.executemany.assert_not_called()
+        with (
+            patch("src.sync.sync_locations_typesense", new_callable=AsyncMock),
+            patch("src.sync.sync_occupations_typesense", new_callable=AsyncMock),
+            patch("src.sync.sync_seniority_typesense", new_callable=AsyncMock),
+            patch("src.sync.sync_technologies_typesense", new_callable=AsyncMock),
+            pytest.raises(CompanyTypesenseSyncError, match="company exact sync"),
+        ):
+            await sync_typesense(local_conn, web_conn, client)
+
+        collection.retrieve.assert_not_called()
+        collection.documents.search.assert_not_called()
+        collection.documents.__getitem__.assert_not_called()

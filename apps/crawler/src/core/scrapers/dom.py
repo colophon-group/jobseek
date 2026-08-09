@@ -6,7 +6,8 @@ structured fields from the HTML.
 By default (``render: false``), fetches the page via static HTTP.  Set
 ``render: true`` to render with Playwright for JS-heavy sites.
 
-Config uses ``steps`` (same format as ``walk_steps``) plus optional browser
+Config uses ``steps`` (same format as ``walk_steps``), an optional ``scope``
+CSS selector that limits extraction to one content container, plus browser
 lifecycle keys (``wait``, ``timeout``, ``user_agent``, ``headless``, ``actions``)
 which are only used when rendering.
 
@@ -32,12 +33,38 @@ from urllib.parse import urlparse
 
 import httpx
 import structlog
+from selectolax.lexbor import LexborHTMLParser
 
 from src.core.scrapers import JobContent, register
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
 from src.shared.extract import flatten, walk_steps
+from src.shared.http import is_avature_job_detail_url
+from src.shared.http_retry import fetch_response_with_status_retries
 
 log = structlog.get_logger()
+
+
+def _scope_html(html: str, config: dict) -> str:
+    """Limit extraction to one configured container before flattening.
+
+    Branded career pages often wrap the ATS fragment in malformed or enormous
+    navigation markup. Scoping is generic DOM-scraper behavior: it makes
+    selectors deterministic and prevents surrounding site chrome from
+    shadowing job fields without introducing provider-specific parsing.
+    """
+
+    scope = config.get("scope")
+    if scope is None:
+        return html
+    if not isinstance(scope, str) or not scope.strip() or len(scope) > 256 or "\x00" in scope:
+        raise ValueError("DOM scraper scope must be a non-empty CSS selector up to 256 chars")
+    try:
+        node = LexborHTMLParser(html).css_first(scope)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"DOM scraper scope is not a valid CSS selector: {scope!r}") from exc
+    if node is None:
+        raise ValueError(f"DOM scraper scope did not match the page: {scope!r}")
+    return node.html
 
 
 def _check_gone_redirect(final_url: str, pattern: str | None, source_url: str) -> None:
@@ -82,6 +109,27 @@ def _check_gone_redirect(final_url: str, pattern: str | None, source_url: str) -
     )
 
 
+def _status_retry_limits(config: dict, url: str) -> dict[int, int]:
+    """Return validated static-fetch status retries from scraper config."""
+
+    limits = {406: 2} if is_avature_job_detail_url(url) else {}
+    configured = config.get("retry_statuses")
+    if configured is None:
+        return limits
+    if not isinstance(configured, dict):
+        raise ValueError("DOM scraper retry_statuses must be an object")
+    for raw_status, raw_limit in configured.items():
+        try:
+            status = int(raw_status)
+            limit = int(raw_limit)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("DOM scraper retry_statuses entries must be integers") from exc
+        if not 400 <= status <= 599 or not 0 <= limit <= 5:
+            raise ValueError("DOM scraper retry_statuses requires HTTP 400-599 and 0-5 retries")
+        limits[status] = max(limits.get(status, 0), limit)
+    return limits
+
+
 # ── Heuristic stop markers ────────────────────────────────────────────
 
 _STOP_MARKERS = [
@@ -113,10 +161,10 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
 
     steps: list[dict] = [{"tag": "h1", "field": "title"}]
 
-    # Description: content after h1, stop at known marker
+    # Description: continue from the cursor immediately after the title h1.
+    # Leaving the selector empty intentionally matches the current element;
+    # re-seeking the h1 would either miss it or escape a URL-fragment anchor.
     desc_step: dict = {
-        "tag": "h1",
-        "offset": 1,
         "field": "description",
         "html": True,
         "optional": True,
@@ -198,7 +246,7 @@ def parse_html(html: str, config: dict) -> JobContent:
     steps = config.get("steps")
     if not steps:
         return JobContent()
-    elements = flatten(html)
+    elements = flatten(_scope_html(html, config))
     raw, _ = walk_steps(elements, steps)
     return _map_to_job_content(raw)
 
@@ -313,7 +361,13 @@ async def scrape(
             async with async_playwright() as p:
                 html = await _render_page(p)
     else:
-        resp = await http.get(url, follow_redirects=True)
+        retry_limits = _status_retry_limits(config, url)
+        resp = await fetch_response_with_status_retries(
+            http,
+            url,
+            retry_limits=retry_limits,
+            log_event="dom.fetch.retry_status",
+        )
         # Detect redirect-to-gone BEFORE raise_for_status so the error page's
         # 200 doesn't shadow the actual archived signal. The redirect chain
         # may end on a 200 (rendered "this posting was removed" page), so
@@ -322,6 +376,7 @@ async def scrape(
         resp.raise_for_status()
         html = resp.text
 
+    html = _scope_html(html, config)
     elements = flatten(html)
 
     if artifact_dir is not None:

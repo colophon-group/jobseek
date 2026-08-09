@@ -9,13 +9,26 @@ writes files readable by the unprivileged ``codex-runner`` account.
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import os
 import re
 import shutil
 import subprocess
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from jobseek_maintenance_provenance import (  # noqa: E402
+    container_generation,
+    correlate_events,
+    parse_jsonl,
+    sanitize_lifecycle_events,
+)
 
 UTC = timezone.utc  # noqa: UP017 - systemd runs this script with Python 3.10.
 
@@ -35,17 +48,17 @@ MAX_FILE_BYTES = 25 * 1024 * 1024
 REDACTIONS: tuple[tuple[re.Pattern[str], str], ...] = (
     (
         re.compile(
-            r"(?i)\b(authorization|proxy-authorization)\s*[:=]\s*"
-            r"(bearer|basic)\s+[A-Za-z0-9._~+/\-]+=*"
+            r"""(?i)(\b(?:authorization|proxy-authorization)["']?\s*[:=]\s*"""
+            r"""["']?(?:bearer|basic)\s+)[A-Za-z0-9._~+/\-]+=*"""
         ),
-        r"\1: <redacted>",
+        r"\1<redacted>",
     ),
     (
         re.compile(
-            r"(?i)\b([A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API[_-]?KEY|PRIVATE[_-]?KEY)"
-            r"[A-Z0-9_]*)\s*[:=]\s*([^\s,;\"']+)"
+            r"""(?i)(\b[A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API[_-]?KEY|PRIVATE[_-]?KEY)"""
+            r"""[A-Z0-9_]*["']?\s*[:=]\s*["']?)(?!<redacted>)[^\s,;"']+"""
         ),
-        r"\1=<redacted>",
+        r"\1<redacted>",
     ),
     (
         re.compile(r"(?i)\b(bearer)\s+[A-Za-z0-9._~+/\-]+=*"),
@@ -63,11 +76,30 @@ REDACTIONS: tuple[tuple[re.Pattern[str], str], ...] = (
         "-----BEGIN PRIVATE KEY-----<redacted>-----END PRIVATE KEY-----",
     ),
 )
+IPV4_RE = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
+IPV6_CANDIDATE_RE = re.compile(
+    r"(?<![0-9A-Fa-f:])(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}"
+    r"(?![0-9A-Fa-f:])"
+)
+UUID_RE = re.compile(r"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")
+RAW_RESOURCE_ID_RE = re.compile(r"(?i)(?<![0-9a-f])[0-9a-f]{64}(?![0-9a-f])")
+
+
+def _redact_ipv6(match: re.Match[str]) -> str:
+    try:
+        address = ipaddress.ip_address(match.group(0))
+    except ValueError:
+        return match.group(0)
+    return "<redacted-host-address>" if address.version == 6 else match.group(0)
 
 
 def _redact(text: str) -> str:
     for pattern, replacement in REDACTIONS:
         text = pattern.sub(replacement, text)
+    text = IPV4_RE.sub("<redacted-host-address>", text)
+    text = IPV6_CANDIDATE_RE.sub(_redact_ipv6, text)
+    text = UUID_RE.sub("<redacted-resource-id>", text)
+    text = RAW_RESOURCE_ID_RE.sub("<redacted-resource-id>", text)
     return text
 
 
@@ -156,6 +188,60 @@ def _parse_docker_timestamp(value: str) -> datetime | None:
     return parsed.astimezone(UTC)
 
 
+def _parse_cgroup_scalar(value: str) -> int | str | None:
+    normalized = value.strip()
+    if not normalized:
+        return None
+    if normalized == "max":
+        return normalized
+    try:
+        return int(normalized)
+    except ValueError:
+        return normalized
+
+
+def _parse_cgroup_key_values(text: str) -> dict[str, int]:
+    """Parse a cgroup ``key value`` file, ignoring malformed rows."""
+    values: dict[str, int] = {}
+    for line in text.splitlines():
+        parts = line.split()
+        if len(parts) != 2:
+            continue
+        try:
+            values[parts[0]] = int(parts[1])
+        except ValueError:
+            continue
+    return values
+
+
+def _read_cgroup_memory_files(root: Path) -> dict[str, object]:
+    """Read cgroup-v2 memory evidence from a container's cgroup mount."""
+    result: dict[str, object] = {"version": 2}
+    scalar_files = {
+        "memory.current": "current_bytes",
+        "memory.peak": "peak_bytes",
+        "memory.max": "limit_bytes",
+        "memory.swap.current": "swap_current_bytes",
+    }
+    for filename, key in scalar_files.items():
+        try:
+            parsed = _parse_cgroup_scalar((root / filename).read_text(encoding="utf-8"))
+        except OSError:
+            continue
+        if parsed is not None:
+            result[key] = parsed
+
+    for filename, key in (
+        ("memory.events", "events"),
+        ("memory.events.local", "events_local"),
+    ):
+        try:
+            result[key] = _parse_cgroup_key_values((root / filename).read_text(encoding="utf-8"))
+        except OSError:
+            continue
+    return result
+
+
 def _collect_command(
     run_dir: Path,
     manifest: dict[str, object],
@@ -212,6 +298,72 @@ def _collect_container_logs(
         )
 
 
+def _collect_container_cgroup_memory(
+    run_dir: Path,
+    manifest: dict[str, object],
+) -> None:
+    """Capture generation-aware Docker and cgroup-v2 memory evidence."""
+    containers: list[dict[str, object]] = []
+    for container in LONG_RUNNING_CONTAINERS:
+        code, output = _run(["docker", "inspect", container], timeout=60)
+        if code != 0:
+            containers.append(
+                {
+                    "name": container,
+                    "inspect_returncode": code,
+                    "inspect_error": output[:500],
+                }
+            )
+            continue
+        try:
+            inspect_data = json.loads(output)[0]
+        except (IndexError, json.JSONDecodeError) as exc:
+            containers.append(
+                {
+                    "name": container,
+                    "inspect_returncode": code,
+                    "inspect_error": f"{type(exc).__name__}: {exc}",
+                }
+            )
+            continue
+
+        state = inspect_data.get("State", {})
+        try:
+            pid = int(state.get("Pid", 0))
+        except (TypeError, ValueError):
+            pid = 0
+        entry: dict[str, object] = {
+            "name": str(inspect_data.get("Name", "")).lstrip("/") or container,
+            "container_generation": container_generation(str(inspect_data.get("Id", ""))),
+            "image": str(inspect_data.get("Config", {}).get("Image", "")),
+            "created_at": str(inspect_data.get("Created", "")),
+            "started_at": str(state.get("StartedAt", "")),
+            "finished_at": str(state.get("FinishedAt", "")),
+            "status": str(state.get("Status", "")),
+            "exit_code": state.get("ExitCode"),
+            "state_error": str(state.get("Error", "")),
+            "restart_count": inspect_data.get("RestartCount", 0),
+            "oom_killed": bool(state.get("OOMKilled", False)),
+            "pid": pid,
+        }
+        if pid > 0:
+            cgroup_root = Path(f"/proc/{pid}/root/sys/fs/cgroup")
+            cgroup = _read_cgroup_memory_files(cgroup_root)
+            if len(cgroup) > 1:
+                entry["cgroup_memory"] = cgroup
+            else:
+                entry["cgroup_memory_error"] = (
+                    f"no readable cgroup-v2 memory files under {cgroup_root}"
+                )
+        containers.append(entry)
+
+    file_info = _write(
+        run_dir / "host" / "docker-cgroup-memory.json",
+        json.dumps(containers, indent=2, sort_keys=True),
+    )
+    manifest["container_cgroup_memory"] = file_info
+
+
 def _collect_exited_containers(
     run_dir: Path,
     manifest: dict[str, object],
@@ -238,7 +390,11 @@ def _collect_exited_containers(
             inspect_code, inspect_output = _run(["docker", "inspect", container_id], timeout=60)
             if inspect_code != 0:
                 inspect_errors.append(
-                    {"id": container_id, "returncode": inspect_code, "output": inspect_output[:500]}
+                    {
+                        "container_generation": container_generation(container_id),
+                        "returncode": inspect_code,
+                        "error": "docker inspect failed",
+                    }
                 )
                 continue
             try:
@@ -246,7 +402,7 @@ def _collect_exited_containers(
             except (IndexError, json.JSONDecodeError) as exc:
                 inspect_errors.append(
                     {
-                        "id": container_id,
+                        "container_generation": container_generation(container_id),
                         "returncode": inspect_code,
                         "output": f"{type(exc).__name__}: {exc}",
                     }
@@ -264,22 +420,31 @@ def _collect_exited_containers(
 
             candidates.append(
                 {
-                    "id": container_id,
-                    "name": str(inspect_data.get("Name", "")).lstrip("/") or container_id,
+                    "_container_id": container_id,
+                    "container_generation": container_generation(container_id),
+                    "name": str(inspect_data.get("Name", "")).lstrip("/") or "unnamed",
                     "image": image,
                     "finished_at": finished_at.isoformat(),
                     "status": str(state.get("Status", "")),
+                    "exit_code": str(state.get("ExitCode", "")),
+                    "state_error": str(state.get("Error", "")),
+                    "restart_count": str(inspect_data.get("RestartCount", 0)),
+                    "oom_killed": str(bool(state.get("OOMKilled", False))).lower(),
                 }
             )
 
     listing = "\n".join(
         "\t".join(
             (
-                candidate["id"],
                 candidate["name"],
                 candidate["image"],
+                candidate["container_generation"],
                 candidate["finished_at"],
                 candidate["status"],
+                candidate["exit_code"],
+                candidate["state_error"],
+                candidate["restart_count"],
+                candidate["oom_killed"],
             )
         )
         for candidate in candidates
@@ -288,7 +453,7 @@ def _collect_exited_containers(
         listing += "\n"
     list_info = _write(
         run_dir / "host" / "docker-exited-containers.txt",
-        output if code != 0 else listing,
+        "docker ps failed\n" if code != 0 else listing,
     )
     manifest.setdefault("commands", []).append(
         {
@@ -306,7 +471,7 @@ def _collect_exited_containers(
     since_iso = since.isoformat().replace("+00:00", "Z")
     until_iso = until.isoformat().replace("+00:00", "Z")
     for candidate in candidates[:30]:
-        container_id = candidate["id"]
+        container_id = candidate["_container_id"]
         name = candidate["name"]
         code, logs = _run(
             [
@@ -323,19 +488,60 @@ def _collect_exited_containers(
             timeout=180,
         )
         info = _write(
-            run_dir / "exited" / f"{_safe_name(name)}-{container_id}.log",
+            run_dir / "exited" / f"{_safe_name(name)}-{candidate['container_generation']}.log",
             logs,
         )
         manifest.setdefault("exited_container_logs", []).append(
             {
-                "id": container_id,
+                "container_generation": candidate["container_generation"],
                 "name": name,
                 "image": candidate["image"],
                 "finished_at": candidate["finished_at"],
+                "exit_code": candidate["exit_code"],
+                "state_error": candidate["state_error"],
+                "restart_count": candidate["restart_count"],
+                "oom_killed": candidate["oom_killed"],
                 "returncode": code,
                 **info,
             }
         )
+
+
+def _collect_docker_lifecycle_journal(
+    run_dir: Path,
+    manifest: dict[str, object],
+    *,
+    since: datetime,
+    until: datetime,
+) -> None:
+    """Collect the allowlisted event stream persisted by the root watcher."""
+    code, output = _run(
+        [
+            "journalctl",
+            "--unit",
+            "jobseek-codex-docker-lifecycle.service",
+            "--identifier",
+            "jobseek-docker-lifecycle",
+            "--since",
+            f"@{since.timestamp():.0f}",
+            "--until",
+            f"@{until.timestamp():.0f}",
+            "--output=cat",
+            "--quiet",
+            "--no-pager",
+        ],
+        timeout=180,
+    )
+    events = sanitize_lifecycle_events(parse_jsonl(output))
+    sanitized_output = "".join(f"{json.dumps(event, sort_keys=True)}\n" for event in events)
+    file_info = _write(run_dir / "host" / "docker-lifecycle.jsonl", sanitized_output)
+    manifest["docker_lifecycle"] = {"returncode": code, **file_info}
+    correlation = correlate_events(events)
+    correlation_info = _write(
+        run_dir / "host" / "maintenance-correlation.json",
+        json.dumps(correlation, indent=2, sort_keys=True),
+    )
+    manifest["maintenance_correlation"] = correlation_info
 
 
 def _chgrp_readable(path: Path, *, group: str) -> None:
@@ -393,9 +599,12 @@ def collect_bundle(out_root: Path, *, window_hours: int, group: str) -> Path:
         timeout=120,
     )
     inspect_state_command = (
-        "ids=$(docker ps -aq); test -z \"$ids\" || docker inspect --format "
-        "'{{.Name}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}} "
-        "RestartCount={{.RestartCount}} FinishedAt={{.State.FinishedAt}}' $ids"
+        'ids=$(docker ps -aq); test -z "$ids" || docker inspect --format '
+        "'{{.Name}} Image={{.Config.Image}} Created={{.Created}} "
+        "StartedAt={{.State.StartedAt}} OOMKilled={{.State.OOMKilled}} "
+        "Status={{.State.Status}} RestartCount={{.RestartCount}} "
+        "FinishedAt={{.State.FinishedAt}} ExitCode={{.State.ExitCode}} "
+        "Error={{json .State.Error}}' $ids"
     )
     _collect_shell(
         run_dir,
@@ -404,6 +613,8 @@ def collect_bundle(out_root: Path, *, window_hours: int, group: str) -> Path:
         inspect_state_command,
         timeout=180,
     )
+    _collect_container_cgroup_memory(run_dir, manifest)
+    _collect_docker_lifecycle_journal(run_dir, manifest, since=since, until=until)
     kernel_log_command = (
         f"journalctl -k --since '{since.isoformat()}' --until '{until.isoformat()}' "
         "--no-pager 2>/dev/null | tail -500"

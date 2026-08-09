@@ -63,6 +63,10 @@ Codex CLI, the Hetzner governor, or a future Codex scheduler.
 - Run Hetzner Codex routines under a dedicated local user with no sudo,
   no Docker group, no production crawler environment, and no read access to
   crawler `.env` files.
+- Keep raw Docker/container and cloud resource IDs out of runner-visible
+  bundles. Root collectors must allowlist lifecycle fields and replace legacy
+  identifiers with pseudonymous container generations before changing group
+  ownership to `codex-runner`.
 - Treat `~/.codex/auth.json`, GitHub auth, and HuggingFace auth as password
   material. Do not print, upload, commit, or include them in traces.
 - Keep Claude-compatible files only as migration fallbacks. When a fallback is
@@ -78,6 +82,11 @@ Codex CLI, the Hetzner governor, or a future Codex scheduler.
   duplicate HuggingFace rows, GitHub issues, GitHub PRs, or active `ws` claims.
 - Every run must report what it did, what it skipped, and what requires human
   escalation.
+- Daily annotation runs must end with the documented
+  `JOBSEEK_ROUTINE_RESULT=<json>` marker. The runner treats a reported
+  fail-closed phase/error as primary and a missing or invalid HuggingFace
+  partition as downstream verification evidence. The marker is advisory for
+  success: the independent remote row-count check remains authoritative.
 - Secrets and local paths are deployment configuration. Do not write secrets
   to the repo, reports, traces, GitHub comments, or PR bodies.
 - The unofficial ChatGPT usage endpoint probe is best-effort telemetry. The
@@ -221,6 +230,11 @@ Run the company resolver through `jobseek-codex-governor.service` and
 
 Committed deployment templates:
 
+- [`../deploy/systemd/jobseek-codex-docker-lifecycle.service`](../deploy/systemd/jobseek-codex-docker-lifecycle.service)
+  - runs a root, read-only Docker event watcher; only allowlisted lifecycle
+    fields plus validated maintenance provenance reach persistent journald,
+    and the Codex runner retains no Docker access. Container generations are
+    pseudonymous in the runner bundle.
 - [`../deploy/systemd/jobseek-codex-governor.service`](../deploy/systemd/jobseek-codex-governor.service)
   - `Type=oneshot`, low-priority CPU/IO scheduling, `CPUQuota=200%`,
   `MemoryHigh=3G`, `MemoryMax=4G`, `TasksMax=1024`, `ProtectSystem=strict`,
@@ -280,6 +294,8 @@ install -o root -g root -m 0644 deploy/systemd/jobseek-codex-daily-error-review.
   /etc/systemd/system/jobseek-codex-daily-error-review.service
 install -o root -g root -m 0644 deploy/systemd/jobseek-codex-daily-error-review.timer \
   /etc/systemd/system/jobseek-codex-daily-error-review.timer
+install -o root -g root -m 0644 deploy/systemd/jobseek-codex-docker-lifecycle.service \
+  /etc/systemd/system/jobseek-codex-docker-lifecycle.service
 install -o root -g codex-runner -m 0640 \
   deploy/systemd/jobseek-codex-governor.env.example \
   /etc/jobseek-codex/governor.env
@@ -290,7 +306,8 @@ systemd-analyze verify \
   /etc/systemd/system/jobseek-codex-daily-annotations.service \
   /etc/systemd/system/jobseek-codex-daily-annotations.timer \
   /etc/systemd/system/jobseek-codex-daily-error-review.service \
-  /etc/systemd/system/jobseek-codex-daily-error-review.timer
+  /etc/systemd/system/jobseek-codex-daily-error-review.timer \
+  /etc/systemd/system/jobseek-codex-docker-lifecycle.service
 ```
 
 Before enabling the timer, edit `/etc/jobseek-codex/governor.env` for the
@@ -316,6 +333,7 @@ After the dry-run and one manual live pass are clean, enable the timer:
 systemctl enable --now jobseek-codex-governor.timer
 systemctl enable --now jobseek-codex-daily-annotations.timer
 systemctl enable --now jobseek-codex-daily-error-review.timer
+systemctl enable --now jobseek-codex-docker-lifecycle.service
 ```
 
 After bootstrap, production updates are CI/CD-owned. Pushes to `main` that
@@ -330,15 +348,22 @@ timers for boot persistence. It intentionally sets
 `JOBSEEK_CODEX_START_TIMERS=0`, so it does not start a company resolver,
 annotation run, or error review from GitHub Actions.
 
-The deploy never interrupts a live Codex routine. It waits up to 15 minutes
-for the shared runner lock, and the SSH command has a 30-minute envelope so
-that a successful lock wait still leaves 15 minutes for checkout, runtime
-sync, verification, and the retention report. If the lock remains occupied
-for the full wait, the deploy fails before changing the checkout or units;
-the live routine continues normally, and the deployment can be retried with
-`workflow_dispatch` after the routine releases the lock. Workflow concurrency
-also uses `cancel-in-progress: false`, so queued deployments are not canceled
-by a newer push.
+The deploy never interrupts a live Codex routine. Before waiting for the shared
+runner lock, it records which Codex timers are active and stops those timer
+units only. A service that already holds the lock continues normally, while no
+new resolver or daily routine can jump ahead of the pending deploy. An exit
+trap restores the previously active timers on both success and failure; the
+workflow's `JOBSEEK_CODEX_START_TIMERS=0` therefore means "restore existing
+timer state", not "leave production paused".
+
+The lock wait is bounded at 15,000 seconds: the governor's four-hour service
+limit plus lock-release headroom. The SSH command has a five-hour envelope so
+that a full wait still leaves 50 minutes for checkout, runtime sync,
+verification, and reporting. A longer daily routine can still make the deploy
+fail before changing the checkout or units, but continuous resolver work can
+no longer starve it by reacquiring the lock between retries. Workflow
+concurrency also uses `cancel-in-progress: false`, so queued deployments are
+not canceled by a newer push.
 
 Initial service limits:
 
@@ -447,8 +472,10 @@ For each accepted issue:
    own this hook, so rejection and early-exit paths are included.
 9. Drop hidden reasoning/encrypted content and duplicated runtime context,
    reconstruct standard child task contracts from the plaintext `ws` renderer,
-   and run the credential detector over every projected file. A detected
-   credential shape fails closed and leaves all sources local for review.
+   and redact credential-shaped values from the projected training copy while
+   recording only pattern, file, and line metadata. Re-scan every finished
+   projected file; any residual credential finding fails closed and leaves all
+   sources local for review. Never modify or upload the original source.
 10. Store gold, silver (incomplete encrypted collaboration), and diagnostic
     (no assistant trajectory) bundles under separate HuggingFace prefixes. The
     v2 schema includes both per-thread JSONL and one chronological,
@@ -585,6 +612,12 @@ the directory and count toward the admission ceiling.
   targeted quality review.
 - Preserve remote HuggingFace history and README counts when uploading.
 - Verify `data/<YYYY-MM-DD>.jsonl` has exactly 10 rows after upload.
+- Preserve the first causal failure in the local run ledger. The final Codex
+  message must emit `JOBSEEK_ROUTINE_RESULT=<json>` with `status`, `phase`,
+  and a redacted `primary_error`; a missing date partition is appended only as
+  a downstream symptom. HuggingFace verification has its own bounded
+  120-second timeout and records only a concise error, never the embedded
+  verifier command.
 - Escalate labelling-quality issues that point to a prompt or model weakness;
   do not file routine data rejections as prompt/model issues by default.
 
@@ -594,6 +627,16 @@ the directory and count toward the admission ceiling.
 - Use the root-collected redacted evidence bundle under
   `/srv/jobseek-codex/inputs/error-review/latest`; the Codex process must not
   access Docker, `/home/deploy`, or production env files directly.
+- Read `host/docker-lifecycle.jsonl` with the generation-aware cgroup and
+  inspect files; it preserves allowlisted exit codes, signals, OOM events,
+  and replacement/restart timing across container recreation.
+- Read `host/maintenance-correlation.json` before classifying Docker service
+  exits. Only one validated operation/issue/revision/budget window may own a
+  pause; missing or conflicting provenance stays unknown.
+- Report authorized maintenance separately with its measured downtime and
+  restoration result. Forced termination, OOM/native exits, nonzero one-offs,
+  budget overruns, and failed restoration remain actionable maintenance
+  outcomes.
 - Collect host signals before log classification.
 - Classify errors as `known`, `novel`, `regression`, `spike`, or `incident`.
 - Partial evidence windows must be reported as gaps, but they do not

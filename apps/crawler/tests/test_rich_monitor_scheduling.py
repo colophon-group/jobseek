@@ -29,7 +29,7 @@ from src.processing.board import (
     _enqueue_scrapes_for_new,
     _enqueue_scrapes_for_relisted,
 )
-from src.processing.scrape import _is_skip_no_scrape
+from src.processing.scrape import _effective_board_enrich, _is_skip_no_scrape
 from src.queries.monitor import _INSERT_URL_ONLY_JOBS
 from src.queries.scrape import _CLEAR_SCRAPE_FOR_RICH, _RECORD_SCRAPE_TRANSIENT
 from src.redis_queue import ScrapeWork
@@ -92,6 +92,21 @@ class TestIsSkipNoScrape:
 
     def test_implicit_rss_is_skip(self):
         assert _is_skip_no_scrape({}, crawler_type="rss") is True
+
+    def test_legacy_successfactors_rss_requires_enrichment(self):
+        assert _is_skip_no_scrape({"variant": "legacy"}, crawler_type="rss") is False
+
+    def test_legacy_successfactors_inherits_auto_enrichment_at_runtime(self):
+        metadata = {"preset": "successfactors", "variant": "legacy"}
+        assert _effective_board_enrich(metadata, "rss") == ["description"]
+
+    def test_explicit_scraper_config_is_not_merged_with_auto_enrichment(self):
+        metadata = {
+            "preset": "successfactors",
+            "variant": "legacy",
+            "scraper_config": {"scope": "main"},
+        }
+        assert _effective_board_enrich(metadata, "rss") is None
 
     def test_implicit_amazon_is_skip(self):
         assert _is_skip_no_scrape({}, crawler_type="amazon") is True
@@ -319,8 +334,9 @@ class TestProcessScrapeWorkSkipGuard:
         assert len(clear_calls) == 1
         assert clear_calls[0].args[1] == ["11111111-1111-1111-1111-111111111111"]
 
-        # Redis scrape hash is also deleted (no orphan key left behind).
-        redis.delete.assert_awaited_once_with("scrape:11111111-1111-1111-1111-111111111111")
+        # Direct deletion would race a concurrent relist. The surrounding
+        # lease context delegates reachability-safe deletion to complete_task.lua.
+        redis.delete.assert_not_awaited()
 
         # No Redis reschedule — the task is dropped, draining the loop.
         mock_reschedule.assert_not_awaited()
@@ -332,22 +348,17 @@ class TestProcessScrapeWorkSkipGuard:
     @patch("src.workers.pipeline.reschedule_task", new_callable=AsyncMock)
     @patch("src.workers.pipeline.claim_work", new_callable=AsyncMock)
     @patch("src.redis_queue.get_redis")
-    async def test_drop_survives_redis_delete_failure(
+    async def test_drop_does_not_directly_delete_race_sensitive_scrape_hash(
         self, mock_get_redis, _mock_claim, mock_reschedule
     ):
-        """If ``r.delete`` raises (Redis blip), the drop must still succeed.
-
-        The ``try/except`` wrapping the delete exists so a transient Redis
-        error doesn't re-raise out of the worker and trigger the 5-min
-        error-backoff reschedule.
-        """
+        """Terminal cleanup belongs to the atomic lease completion script."""
         pool, conn = self._mock_pool()
         http = AsyncMock()
 
         redis = self._mock_redis(
             {"metadata": json.dumps({"scraper_type": "skip"}), "crawler_type": "greenhouse"}
         )
-        redis.delete = AsyncMock(side_effect=RuntimeError("redis is sad"))
+        redis.delete = AsyncMock(side_effect=AssertionError("direct delete is unsafe"))
         mock_get_redis.return_value = redis
 
         with patch(
@@ -365,6 +376,7 @@ class TestProcessScrapeWorkSkipGuard:
             if c.args and c.args[0] == _CLEAR_SCRAPE_FOR_RICH
         ]
         assert len(clear_calls) == 1
+        redis.delete.assert_not_awaited()
         mock_reschedule.assert_not_awaited()
 
     @patch("src.workers.pipeline.reschedule_task", new_callable=AsyncMock)
@@ -401,7 +413,7 @@ class TestProcessScrapeWorkSkipGuard:
             if c.args and c.args[0] == _CLEAR_SCRAPE_FOR_RICH
         ]
         assert len(clear_calls) == 1
-        redis.delete.assert_awaited_once_with("scrape:11111111-1111-1111-1111-111111111111")
+        redis.delete.assert_not_awaited()
         mock_reschedule.assert_not_awaited()
         assert _counter_value("scrape", "skipped_rich") == before + 1
 
@@ -455,7 +467,7 @@ class TestProcessScrapeWorkSkipGuard:
         assert len(fail_calls) == 1
         assert fail_calls[0].args[1] == "11111111-1111-1111-1111-111111111111"
 
-        redis.delete.assert_awaited_once_with("scrape:11111111-1111-1111-1111-111111111111")
+        redis.delete.assert_not_awaited()
         mock_reschedule.assert_not_awaited()
 
         # Metric increment: stale_config, not skipped_rich.
@@ -731,12 +743,12 @@ class TestBuildInfoMetric:
 
         This is the critical assertion: a regression where the labelling
         call is removed from ``start_metrics_server`` would silently drop
-        the Grafana deploy-verification signal. We patch ``start_http_server``
-        so the test doesn't actually bind a port.
+        the Grafana deploy-verification signal. We patch the listener helper so
+        the test doesn't actually bind a port.
         """
         from unittest.mock import patch
 
-        with patch("src.metrics.start_http_server") as mock_start:
+        with patch("src.metrics._start_metrics_http_server") as mock_start:
             start_metrics_server(0)
             mock_start.assert_called_once_with(0)
 

@@ -15,6 +15,7 @@ __all__ = [
     "_DROP_GUARD_MIN_HISTORY",
     "_DROP_GUARD_THRESHOLD_DEFAULT",
     "_EXTEND_BOARD_LEASE",
+    "_FETCH_BOARD_GONE_STATE",
     "_FETCH_DUE_BOARDS",
     "_INSERT_RICH_JOB",
     "_INSERT_RICH_JOB_ENRICH",
@@ -42,7 +43,7 @@ WITH ranked AS (
          next_check_at
   FROM job_board
   WHERE is_enabled = true
-    AND board_status IN ('active', 'suspect')
+    AND board_status IN ('active', 'suspect', 'quarantined', 'gone_pending', 'gone')
     AND next_check_at <= now()
     AND (leased_until IS NULL OR leased_until < now())
 ),
@@ -120,99 +121,220 @@ WHERE board_id = $1 AND is_active = true
 RETURNING id
 """
 
+_FETCH_BOARD_GONE_STATE = """
+SELECT board_status,
+       gone_confirmation_count,
+       gone_first_confirmed_at,
+       gone_last_confirmed_at,
+       last_success_at,
+       gone_at
+FROM job_board
+WHERE id = $1
+FOR UPDATE
+"""
+
 _RECORD_BOARD_GONE = """
 UPDATE job_board
-SET board_status = 'gone', gone_at = now(),
-    is_enabled = false,
-    lease_owner = NULL, leased_until = NULL,
+SET board_status = $2,
+    gone_confirmation_count = $3,
+    gone_first_confirmed_at = $4,
+    gone_last_confirmed_at = $5,
+    gone_at = $6,
+    next_check_at = $7,
+    last_error = $8,
+    last_gone_error = $8,
+    last_gone_endpoint = $9,
+    last_gone_status = $10,
+    gone_transition_count = gone_transition_count + CASE WHEN $11 THEN 1 ELSE 0 END,
+    consecutive_failures = 0,
+    is_enabled = true,
+    lease_owner = NULL,
+    leased_until = NULL,
     updated_at = now()
 WHERE id = $1
+RETURNING board_status, gone_confirmation_count, next_check_at
 """
 
 _RECORD_SUCCESS_NONEMPTY = """
-UPDATE job_board
-SET consecutive_failures = 0,
-    last_error = NULL,
-    last_success_at = now(),
-    next_check_at = now() + (check_interval_minutes || ' minutes')::interval,
-    empty_check_count = 0,
-    board_status = 'active',
-    last_non_empty_at = now(),
-    lease_owner = NULL,
-    leased_until = NULL,
-    updated_at = now()
-WHERE id = $1
+WITH previous AS MATERIALIZED (
+    SELECT id, board_status
+    FROM job_board
+    WHERE id = $1
+    FOR UPDATE
+), updated AS (
+    UPDATE job_board jb
+    SET consecutive_failures = 0,
+        last_error = NULL,
+        last_success_at = now(),
+        next_check_at = now() + (check_interval_minutes || ' minutes')::interval,
+        empty_check_count = 0,
+        board_status = 'active',
+        is_enabled = true,
+        last_non_empty_at = now(),
+        last_recovered_at = CASE
+            WHEN previous.board_status IN ('quarantined', 'gone_pending', 'gone') THEN now()
+            ELSE jb.last_recovered_at
+        END,
+        recovery_count = jb.recovery_count + CASE
+            WHEN previous.board_status IN ('quarantined', 'gone_pending', 'gone') THEN 1
+            ELSE 0
+        END,
+        gone_recovery_count = jb.gone_recovery_count + CASE
+            WHEN previous.board_status IN ('gone_pending', 'gone') THEN 1
+            ELSE 0
+        END,
+        gone_confirmation_count = 0,
+        gone_at = NULL,
+        quarantined_at = NULL,
+        quarantine_probe_count = 0,
+        lease_owner = NULL,
+        leased_until = NULL,
+        updated_at = now()
+    FROM previous
+    WHERE jb.id = previous.id
+    RETURNING CASE
+        WHEN previous.board_status IN ('gone_pending', 'gone') THEN 'provider_gone'
+        WHEN previous.board_status = 'quarantined' THEN 'quarantined'
+        ELSE NULL
+    END AS recovered_from
+)
+SELECT recovered_from FROM updated
 """
 
 _RECORD_EMPTY_CHECK = """
-UPDATE job_board
-SET consecutive_failures = 0,
-    last_error = NULL,
-    last_success_at = now(),
-    next_check_at = now() + (check_interval_minutes || ' minutes')::interval,
-    empty_check_count = empty_check_count + 1,
-    board_status = CASE
-        WHEN last_non_empty_at IS NOT NULL AND empty_check_count + 1 >= 6
-        THEN 'gone'
-        WHEN last_non_empty_at IS NOT NULL AND empty_check_count + 1 >= 3
-        THEN 'suspect'
-        ELSE board_status
-    END,
-    gone_at = CASE
-        WHEN last_non_empty_at IS NOT NULL AND empty_check_count + 1 >= 6
-        THEN now()
-        ELSE gone_at
-    END,
-    is_enabled = CASE
-        WHEN last_non_empty_at IS NOT NULL AND empty_check_count + 1 >= 6
-        THEN false
-        ELSE is_enabled
-    END,
-    lease_owner = NULL,
-    leased_until = NULL,
-    updated_at = now()
-WHERE id = $1
-RETURNING board_status
+WITH previous AS MATERIALIZED (
+    SELECT id, board_status
+    FROM job_board
+    WHERE id = $1
+    FOR UPDATE
+), updated AS (
+    UPDATE job_board jb
+    SET consecutive_failures = 0,
+        last_error = NULL,
+        last_success_at = now(),
+        next_check_at = now() + (check_interval_minutes || ' minutes')::interval,
+        empty_check_count = jb.empty_check_count + 1,
+        board_status = CASE
+            WHEN jb.last_non_empty_at IS NOT NULL AND jb.empty_check_count + 1 >= 3
+            THEN 'suspect'
+            WHEN previous.board_status IN ('quarantined', 'gone_pending', 'gone') THEN 'active'
+            ELSE jb.board_status
+        END,
+        is_enabled = true,
+        last_recovered_at = CASE
+            WHEN previous.board_status IN ('quarantined', 'gone_pending', 'gone') THEN now()
+            ELSE jb.last_recovered_at
+        END,
+        recovery_count = jb.recovery_count + CASE
+            WHEN previous.board_status IN ('quarantined', 'gone_pending', 'gone') THEN 1
+            ELSE 0
+        END,
+        gone_recovery_count = jb.gone_recovery_count + CASE
+            WHEN previous.board_status IN ('gone_pending', 'gone') THEN 1
+            ELSE 0
+        END,
+        gone_confirmation_count = 0,
+        gone_at = NULL,
+        quarantined_at = NULL,
+        quarantine_probe_count = 0,
+        lease_owner = NULL,
+        leased_until = NULL,
+        updated_at = now()
+    FROM previous
+    WHERE jb.id = previous.id
+    RETURNING
+        jb.board_status,
+        jb.empty_check_count >= 6 AS should_delist,
+        CASE
+            WHEN previous.board_status IN ('gone_pending', 'gone') THEN 'provider_gone'
+            WHEN previous.board_status = 'quarantined' THEN 'quarantined'
+            ELSE NULL
+        END AS recovered_from
+)
+SELECT board_status, should_delist, recovered_from FROM updated
 """
 
-# RETURNING ``last_success_at`` + the post-update ``is_enabled`` lets
-# the Python caller detect the single transition from enabled →
-# disabled and delist postings when the board is truly stale. A
-# recent-success board stays enabled as ``suspect`` after strike #5 so
-# the scheduler retries it after the backoff instead of freezing active
-# postings forever after a short provider outage.
+# Ordinary integration and upstream failures enter a recoverable quarantine
+# after strike five.  The board remains enabled and the same exponential
+# schedule reaches a daily ceiling, so a code/config/provider fix can recover
+# without SQL while Redis domain throttles continue to bound pressure.
 _RECORD_FAILURE = """
-UPDATE job_board
-SET consecutive_failures = consecutive_failures + 1,
-    last_error = $2,
-    next_check_at = now() + LEAST(
-        (5 * pow(2, consecutive_failures)) || ' minutes',
-        '1440 minutes'
-    )::interval,
-    is_enabled = CASE
-        WHEN consecutive_failures + 1 >= 5
-         AND (last_success_at IS NULL OR last_success_at < now() - interval '24 hours')
-        THEN false
-        ELSE is_enabled
-    END,
-    board_status = CASE
-        WHEN consecutive_failures + 1 >= 5
-         AND (last_success_at IS NULL OR last_success_at < now() - interval '24 hours')
-        THEN 'disabled'
-        WHEN consecutive_failures + 1 >= 5
-        THEN 'suspect'
-        ELSE board_status
-    END,
-    lease_owner = NULL,
-    leased_until = NULL,
-    updated_at = now()
-WHERE id = $1
-RETURNING is_enabled, last_success_at
+WITH previous AS MATERIALIZED (
+    SELECT id, board_status, consecutive_failures
+    FROM job_board
+    WHERE id = $1
+    FOR UPDATE
+), updated AS (
+    UPDATE job_board jb
+    SET consecutive_failures = jb.consecutive_failures + 1,
+        last_error = $2,
+        next_check_at = now() + LEAST(
+            (5 * pow(2, jb.consecutive_failures)) || ' minutes',
+            '1440 minutes'
+        )::interval,
+        is_enabled = true,
+        board_status = CASE
+            WHEN jb.consecutive_failures + 1 >= 5 THEN 'quarantined'
+            ELSE jb.board_status
+        END,
+        quarantined_at = CASE
+            WHEN jb.consecutive_failures + 1 >= 5
+            THEN COALESCE(jb.quarantined_at, now())
+            ELSE jb.quarantined_at
+        END,
+        last_quarantined_at = CASE
+            WHEN jb.consecutive_failures + 1 >= 5
+             AND previous.board_status IS DISTINCT FROM 'quarantined'
+            THEN now()
+            ELSE jb.last_quarantined_at
+        END,
+        last_quarantine_error = CASE
+            WHEN jb.consecutive_failures + 1 >= 5 THEN $2
+            ELSE jb.last_quarantine_error
+        END,
+        quarantine_probe_count = CASE
+            WHEN jb.consecutive_failures + 1 >= 5
+            THEN CASE
+                WHEN previous.board_status = 'quarantined' THEN jb.quarantine_probe_count + 1
+                ELSE 1
+            END
+            ELSE jb.quarantine_probe_count
+        END,
+        lease_owner = NULL,
+        leased_until = NULL,
+        updated_at = now()
+    FROM previous
+    WHERE jb.id = previous.id
+    RETURNING
+        jb.is_enabled,
+        jb.last_success_at,
+        jb.board_status,
+        jb.quarantined_at,
+        previous.board_status IS DISTINCT FROM 'quarantined'
+            AND jb.board_status = 'quarantined' AS entered_quarantine
+)
+SELECT * FROM updated
 """
 
 _DIFF_BATCH = """
 WITH discovered AS (
   SELECT unnest($1::text[]) AS url
+),
+-- A batch can contain both rows owned by this board and cross-board
+-- duplicates owned by another board.  The old data-modifying CTEs locked
+-- those groups independently (own rows in touched/relisted, foreign rows in
+-- foreign_touched).  Concurrent boards that discovered each other's URLs
+-- could therefore lock A -> B and B -> A and deadlock (#5103).
+--
+-- Lock every existing match exactly once, in a global order, before any CTE
+-- updates it.  MATERIALIZED is intentional: every write below depends on the
+-- completed lock set rather than letting the planner inline/reorder the scan.
+locked_existing AS MATERIALIZED (
+  SELECT jp.id, jp.source_url, jp.board_id, jp.is_active
+  FROM job_posting jp
+  JOIN discovered d ON d.url = jp.source_url
+  ORDER BY jp.id
+  FOR UPDATE OF jp
 ),
 -- Self-heal touched rows (#2996, #4952): when a previously-stuck
 -- rich-monitor posting (description_r2_hash IS NULL AND next_scrape_at
@@ -243,10 +365,10 @@ touched AS (
           THEN now()
           ELSE job_posting.next_scrape_at
       END
-  FROM discovered d
-  WHERE job_posting.board_id = $2
-    AND job_posting.is_active = true
-    AND job_posting.source_url = d.url
+  FROM locked_existing locked
+  WHERE job_posting.id = locked.id
+    AND locked.board_id = $2
+    AND locked.is_active = true
   RETURNING job_posting.id,
             job_posting.source_url,
             job_posting.description_r2_hash,
@@ -268,42 +390,65 @@ relisted AS (
       -- upstreams.
       scrape_failures = 0,
       last_seen_at = now(),
+      -- Relisting changes a user-visible CDC field.  The exporter reads by
+      -- (updated_at, id), so failing to advance updated_at leaves Supabase
+      -- and Typesense permanently behind once their cursors have passed the
+      -- posting's old timestamp.
+      updated_at = now(),
       next_scrape_at = CASE WHEN $3::boolean THEN NULL ELSE now() END
-  FROM discovered d
-  WHERE job_posting.board_id = $2
-    AND job_posting.is_active = false
-    AND job_posting.source_url = d.url
+  FROM locked_existing locked
+  WHERE job_posting.id = locked.id
+    AND locked.board_id = $2
+    AND locked.is_active = false
   RETURNING job_posting.id,
             job_posting.source_url,
             job_posting.description_r2_hash,
             false AS needs_scrape_enqueue
 ),
--- Cross-tenant URLs: the same source_url exists under another board
--- (e.g. ByteDance/TikTok share jobs.bytedance.com, Glencore reaches
--- GCAA's Workday tenant). Refresh the owning row's last_seen_at so
--- _MARK_GONE_BY_TIMESTAMP on the OWNING board doesn't tombstone jobs
--- that are still live via a secondary board. Excluded from new_urls
--- below so we don't chase an impossible INSERT every cycle.
---
--- We deliberately DO NOT gate this on is_active=true: refreshing
--- last_seen_at on an inactive foreign row is harmless (mark_gone only
--- operates on active rows) and prevents the URL from falling into an
--- invisible bucket where it appears in neither new_urls, touched,
--- relisted, nor foreign_touched.
+-- A foreign-board discovery is liveness evidence for the globally canonical
+-- posting. Preserve the first owner's company_id/board_id deterministically:
+-- a shared ATS URL is not enough evidence to transfer company attribution.
+-- But an inactive canonical row must be recoverable when a sibling or shared
+-- tenant still lists it (#6159). Reset the same state as the owning-board
+-- relisted path, advance the exported timestamp through the CDC trigger, and
+-- return the canonical id so the discovering board can refresh its content.
+foreign_relisted AS (
+  UPDATE job_posting
+  SET is_active = true,
+      missing_count = 0,
+      scrape_failures = 0,
+      last_seen_at = now(),
+      updated_at = now(),
+      next_scrape_at = CASE WHEN $3::boolean THEN NULL ELSE now() END
+  FROM locked_existing locked
+  WHERE job_posting.id = locked.id
+    AND locked.board_id != $2
+    AND locked.is_active = false
+  RETURNING job_posting.id,
+            job_posting.source_url,
+            job_posting.description_r2_hash,
+            false AS needs_scrape_enqueue
+),
+-- Active foreign matches remain owned by their canonical board. Refreshing
+-- last_seen_at prevents a concurrent owner cycle from treating the URL as
+-- unseen, while clearing missing_count requires a full new confirmation
+-- window before a later owner-only absence can tombstone it.
 foreign_touched AS (
   UPDATE job_posting
-  SET last_seen_at = now()
-  FROM discovered d
-  WHERE job_posting.source_url = d.url
-    AND job_posting.board_id != $2
+  SET last_seen_at = now(),
+      missing_count = 0
+  FROM locked_existing locked
+  WHERE job_posting.id = locked.id
+    AND locked.board_id != $2
+    AND locked.is_active = true
   RETURNING job_posting.source_url
 ),
 new_urls AS (
   SELECT d.url
   FROM discovered d
   WHERE NOT EXISTS (
-    SELECT 1 FROM job_posting jp
-    WHERE jp.source_url = d.url
+    SELECT 1 FROM locked_existing locked
+    WHERE locked.source_url = d.url
   )
 )
 SELECT 'touched' AS action,
@@ -320,8 +465,16 @@ SELECT 'relisted' AS action,
        needs_scrape_enqueue
 FROM relisted
 UNION ALL
--- id is NULL for foreign rows: the owning board's id has no meaning
--- for the calling board, and the Python layer only counts this action.
+SELECT 'foreign_relisted' AS action,
+       id::text,
+       source_url AS url,
+       description_r2_hash,
+       needs_scrape_enqueue
+FROM foreign_relisted
+UNION ALL
+-- Active foreign rows need no content refresh, so only their count is
+-- returned to the caller. Inactive foreign rows above return the canonical id
+-- because relisting does require the discovering board's refresh path.
 SELECT 'foreign' AS action,
        NULL::text,
        source_url AS url,

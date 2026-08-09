@@ -3,9 +3,9 @@
 Issue #2215: API monitors (greenhouse, lever, recruitee, ashby) were
 producing 404 errors for boards whose upstream slug had been removed,
 yet the boards kept being claimed from Redis cycle after cycle. The
-fix routes upstream 404s through ``BoardGoneError`` so the board is
-recorded as ``board_status='gone'`` in one shot rather than after
-five consecutive ``_RECORD_FAILURE`` increments.
+fix routes upstream 404s through ``BoardGoneError`` so the board enters a
+spaced, recoverable provider-gone confirmation policy rather than the generic
+``_RECORD_FAILURE`` ramp.
 
 These tests pin the contract: a 404 from each ATS monitor MUST raise
 ``BoardGoneError`` (and a 500 / network error MUST NOT), so a future
@@ -32,14 +32,16 @@ def _mock_transport(status: int, json_body: list | dict | None = None) -> httpx.
 
 
 class TestBoardGoneError:
-    def test_carries_url(self) -> None:
-        exc = BoardGoneError("dead board", url="https://example.com/x")
+    def test_carries_url_and_status(self) -> None:
+        exc = BoardGoneError("dead board", url="https://example.com/x", status_code=404)
         assert str(exc) == "dead board"
         assert exc.url == "https://example.com/x"
+        assert exc.status_code == 404
 
     def test_url_optional(self) -> None:
         exc = BoardGoneError("dead board")
         assert exc.url is None
+        assert exc.status_code is None
 
 
 class TestGreenhouse404:
@@ -55,6 +57,7 @@ class TestGreenhouse404:
                 )
         assert "dead-slug" in str(exc_info.value)
         assert exc_info.value.url and "dead-slug" in exc_info.value.url
+        assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
     async def test_500_does_not_raise_board_gone(self) -> None:

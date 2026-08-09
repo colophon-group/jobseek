@@ -6,11 +6,11 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { scrollToTopOnNav } from "@/lib/scroll-on-nav";
-import type { WatchlistSummary } from "@/lib/actions/watchlists";
+import type { UserWatchlistOverview } from "@/lib/actions/watchlists";
 import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
 import { tooltipWarningClass } from "@/components/ui/tooltip-styles";
 
-export function WatchlistCard({ watchlist, ownerUsername }: { watchlist: WatchlistSummary; ownerUsername: string | null }) {
+export function WatchlistCard({ watchlist, ownerUsername }: { watchlist: UserWatchlistOverview; ownerUsername: string | null }) {
   const { t } = useLingui();
   const lp = useLocalePath();
   const href = ownerUsername ? lp(`/${ownerUsername}/${watchlist.slug}`) : "#";
@@ -28,10 +28,20 @@ export function WatchlistCard({ watchlist, ownerUsername }: { watchlist: Watchli
       <span className="line-clamp-2 text-xs font-medium leading-tight">
         {watchlist.title}
       </span>
-      <span className="text-[10px] text-muted">
-        {watchlist.activeJobCount} {watchlist.activeJobCount === 1
-          ? t({ id: "watchlists.card.jobSingular", comment: "Singular job count on watchlist card", message: "job" })
-          : t({ id: "watchlists.card.jobPlural", comment: "Plural job count on watchlist card", message: "jobs" })}
+      <span className="text-[10px] text-muted" aria-live="polite">
+        {watchlist.activeJobCount == null ? (
+          <>
+            {watchlist.companyCount} {watchlist.companyCount === 1
+              ? t({ id: "watchlists.card.companySingular", comment: "Singular company count shown while a watchlist job count loads", message: "company" })
+              : t({ id: "watchlists.card.companyPlural", comment: "Plural company count shown while a watchlist job count loads", message: "companies" })}
+          </>
+        ) : (
+          <>
+            {watchlist.activeJobCount} {watchlist.activeJobCount === 1
+              ? t({ id: "watchlists.card.jobSingular", comment: "Singular job count on watchlist card", message: "job" })
+              : t({ id: "watchlists.card.jobPlural", comment: "Plural job count on watchlist card", message: "jobs" })}
+          </>
+        )}
       </span>
     </Link>
   );

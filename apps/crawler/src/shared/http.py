@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import contextvars
+import re
 import ssl
 import time
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator, Iterator
+from contextlib import asynccontextmanager, contextmanager
+from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
@@ -61,6 +65,43 @@ DEFAULT_USER_AGENT = (
 # per-request entry winning on conflict).
 DEFAULT_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 
+# Avature's branded tenants commonly use a ``<something>Careers/*Detail``
+# route even when the public hostname does not mention Avature. During the
+# incident in #5710 those routes returned short-lived 406 bursts across five
+# unrelated tenants, while the exact same URLs subsequently returned their
+# normal job pages. Keep this predicate URL-specific: a generic 406 can still
+# be a permanent content-negotiation/configuration error.
+_AVATURE_DETAIL_PATH_RE = re.compile(
+    r"/[^/]*careers[^/]*/(?:job|folder|pipeline)detail(?:/|$)",
+    re.IGNORECASE,
+)
+_AVATURE_UNIQUE_DETAIL_PATH_RE = re.compile(
+    r"/(?:folder|pipeline)detail(?:/|$)",
+    re.IGNORECASE,
+)
+
+# Stable incident identifier shared by Workday's list monitor and the worker
+# cohort circuit. Keep this provider/status-specific: ordinary Workday
+# failures must never be able to pause every tenant (#5715).
+WORKDAY_LIST_303_INCIDENT = "workday-list-303"
+
+
+def is_avature_job_detail_url(url: str) -> bool:
+    """Return whether *url* is a recognizable Avature detail page."""
+
+    parsed = urlparse(url)
+    path = parsed.path
+    host = (parsed.hostname or "").lower()
+    return bool(
+        _AVATURE_DETAIL_PATH_RE.search(path)
+        or _AVATURE_UNIQUE_DETAIL_PATH_RE.search(path)
+        or (
+            host.endswith(".avature.net")
+            and re.search(r"/(?:job|folder|pipeline)detail(?:/|$)", path, re.IGNORECASE)
+        )
+    )
+
+
 _CLIENT_DEFAULTS = {
     "timeout": httpx.Timeout(30.0),
     "follow_redirects": True,
@@ -68,6 +109,172 @@ _CLIENT_DEFAULTS = {
     "headers": {"User-Agent": DEFAULT_USER_AGENT, "Accept": DEFAULT_ACCEPT},
     "verify": _make_ssl_context(),
 }
+
+
+@dataclass
+class RequestHostTracker:
+    """Task-local record of the real hosts touched by one crawler run.
+
+    The object itself is mutable so child tasks created by a concurrent
+    monitor inherit and update the same tracker through ``contextvars``.
+    Keeping a set plus the latest host bounds memory even for monitors that
+    make thousands of paginated requests.
+    """
+
+    hosts: set[str] = field(default_factory=set)
+    last_host: str | None = None
+    last_url: str | None = None
+    last_status_code: int | None = None
+    last_transport_error: str | None = None
+    last_application_error: str | None = None
+    last_provider_incident: str | None = None
+    last_provider_incident_host: str | None = None
+
+    def note(self, host: str) -> None:
+        normalized = host.rstrip(".").lower()
+        if not normalized:
+            return
+        self.hosts.add(normalized)
+        self.last_host = normalized
+
+    def note_request(self, host: str, url: str | None = None) -> None:
+        """Start a new network outcome, superseding the previous request."""
+
+        self.note(host)
+        self.last_url = url
+        self.last_status_code = None
+        self.last_transport_error = None
+        self.last_application_error = None
+
+    def note_response(self, host: str, status_code: int) -> None:
+        self.note(host)
+        self.last_status_code = status_code
+        self.last_transport_error = None
+        self.last_application_error = None
+
+    def note_transport_error(self, host: str, exc: httpx.TransportError) -> None:
+        self.note(host)
+        self.last_status_code = None
+        self.last_transport_error = type(exc).__name__
+        self.last_application_error = None
+
+    def note_transient_response_failure(self, host: str, url: str, reason: str) -> None:
+        """Promote a provider-verified response failure to a transient outcome.
+
+        Some upstreams return a successful HTTP status with a temporary
+        non-API body during provider incidents. Callers must only use this
+        after exhausting their provider-specific validation and retries; a
+        generic parser failure must remain a reachable-host outcome.
+        """
+
+        self.note(host)
+        self.last_url = url
+        self.last_transport_error = None
+        self.last_application_error = reason
+
+    def note_provider_incident(self, host: str, url: str, incident: str) -> None:
+        """Record a provider-specific exhausted response on the final host.
+
+        The worker may use this marker for a distinct-origin cohort circuit.
+        It deliberately does not change the generic host classification: the
+        monitor path already accounts for every failed run once.
+        """
+
+        self.note(host)
+        self.last_url = url
+        self.last_transport_error = None
+        self.last_application_error = None
+        self.last_provider_incident = incident
+        self.last_provider_incident_host = self.last_host
+
+    @property
+    def transient_failure_host(self) -> str | None:
+        """Return the final host only for an upstream-transient outcome.
+
+        Parser/configuration failures after a successful response must not
+        open a host-wide circuit. Network transport errors, overload/
+        availability responses, and explicitly promoted provider incidents
+        are safe to coalesce across postings.
+        """
+
+        if self.last_application_error is not None:
+            return self.last_host
+        if self.last_transport_error is not None:
+            return self.last_host
+        status = self.last_status_code
+        if status in (408, 425, 429) or (status is not None and 500 <= status <= 599):
+            return self.last_host
+        # Avature uses 406 as a temporary overload/throttle response on live
+        # JobDetail pages (#5710). Restrict this to the provider route so a
+        # genuine generic content-negotiation failure cannot open a host-wide
+        # circuit.
+        if status == 406 and self.last_url and is_avature_job_detail_url(self.last_url):
+            return self.last_host
+        return None
+
+
+_request_host_tracker: contextvars.ContextVar[RequestHostTracker | None] = contextvars.ContextVar(
+    "request_host_tracker", default=None
+)
+
+
+def mark_transient_response_failure(url: str, *, reason: str) -> None:
+    """Mark the current task's final response as a transient provider incident.
+
+    This is a no-op outside :func:`track_request_hosts`, which keeps scrapers
+    usable in isolation. The URL should identify the final response origin.
+    """
+
+    tracker = _request_host_tracker.get()
+    host = urlparse(url).hostname
+    if tracker is not None and host:
+        tracker.note_transient_response_failure(host, url, reason)
+
+
+def mark_provider_incident(url: str, *, incident: str) -> None:
+    """Attach a verified provider incident to the current task outcome."""
+
+    tracker = _request_host_tracker.get()
+    host = urlparse(url).hostname
+    if tracker is not None and host:
+        tracker.note_provider_incident(host, url, incident)
+
+
+@contextmanager
+def track_request_hosts() -> Iterator[RequestHostTracker]:
+    """Track actual outbound hosts for the current monitor/scrape task."""
+
+    tracker = RequestHostTracker()
+    token = _request_host_tracker.set(tracker)
+    try:
+        yield tracker
+    finally:
+        _request_host_tracker.reset(token)
+
+
+class RequestHostTrackingTransport(httpx.AsyncBaseTransport):
+    """Record every post-SSRF-validation request host, including redirects."""
+
+    def __init__(self, inner: httpx.AsyncBaseTransport) -> None:
+        self._inner = inner
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        tracker = _request_host_tracker.get()
+        host = request.url.host or ""
+        if tracker is not None and host:
+            tracker.note_request(host, str(request.url))
+        try:
+            response = await self._inner.handle_async_request(request)
+        except httpx.TransportError as exc:
+            if tracker is not None and host:
+                tracker.note_transport_error(host, exc)
+            raise
+        if tracker is not None and host:
+            tracker.note_response(host, response.status_code)
+        return response
+
+    async def aclose(self) -> None:
+        await self._inner.aclose()
 
 
 def _client_kwargs(*, verify: bool, use_proxy: bool) -> dict[str, Any]:
@@ -120,7 +327,11 @@ def _build_async_client(kwargs: dict[str, Any], **extra: Any) -> httpx.AsyncClie
         # verify/proxy kwargs so AsyncClient doesn't complain about
         # them being ignored when a transport is provided.
         kw.pop("verify", None)
-    kw["transport"] = SSRFGuardedTransport(inner)
+    # The SSRF guard stays outermost so refused private hosts never enter
+    # failure accounting. The tracking layer sees each permitted redirect
+    # hop and records the actual egress host instead of guessing from a
+    # crawler type or board URL.
+    kw["transport"] = SSRFGuardedTransport(RequestHostTrackingTransport(inner))
     return httpx.AsyncClient(**kw)
 
 

@@ -18,6 +18,94 @@ def test_real_csvs_validate():
     assert errors == [], "\n".join(str(e) for e in errors)
 
 
+class TestNavigationTimeoutBoardMigrations:
+    """Boards from #5708 that serve complete HTML must stay off Playwright."""
+
+    def test_server_rendered_boards_use_static_http(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {row["board_slug"]: row for row in rows}
+        slugs = (
+            "airbus-careers-bank",
+            "china-railway-group-careers",
+            "coop-careers-transgourmet-fr",
+            "msf-careers-talentsoft-ch",
+        )
+
+        for slug in slugs:
+            row = by_slug[slug]
+            monitor_config = json.loads(row.get("monitor_config") or "{}")
+            scraper_config = json.loads(row.get("scraper_config") or "{}")
+            assert monitor_config.get("render") is not True
+            assert scraper_config.get("render") is not True
+
+        crec = by_slug["china-railway-group-careers"]
+        crec_monitor = json.loads(crec["monitor_config"])
+        assert crec_monitor["pagination"] == {
+            "url_template": ("https://www.crec.cn/web/rlzy65/rczp11/469ad9a7-{page}.html"),
+            "max_pages": 4,
+        }
+
+        transgourmet = by_slug["coop-careers-transgourmet-fr"]
+        assert "liste-toutes-offres.aspx" in transgourmet["board_url"]
+        transgourmet_monitor = json.loads(transgourmet["monitor_config"])
+        assert transgourmet_monitor["pagination"] == {
+            "param_name": "page",
+            "max_pages": 15,
+        }
+
+        msf = by_slug["msf-careers-talentsoft-ch"]
+        msf_scraper = json.loads(msf["scraper_config"])
+        assert [step.get("field") for step in msf_scraper["steps"]] == [
+            "title",
+            "description",
+            "responsibilities",
+            "qualifications",
+        ]
+
+
+class TestApiSnifferLegacyUrlMigrations:
+    """Direct API configs must not silently fall back to browser discovery."""
+
+    def test_unitree_uses_proxy_api_with_explicit_job_urls(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(row for row in rows if row["board_slug"] == "unitree-robotics-careers")
+        config = json.loads(row["monitor_config"])
+
+        assert config["api_url"] == "https://api.unitree.com/website/job/list?perPage=50"
+        assert config["json_path"] == "data.items"
+        assert config["total_path"] == "data.count"
+        assert config["url_template"] == "https://www.unitree.com/position/{id}"
+        assert config["proxy"] is True
+        assert row["scraper_type"] == "skip"
+        assert row["scraper_config"] == ""
+
+    def test_sullivan_cromwell_uses_direct_florecruit_api(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(
+            row for row in rows if row["board_slug"] == "sullivan-cromwell-careers-florecruit"
+        )
+        config = json.loads(row["monitor_config"])
+
+        assert config["api_url"].endswith("/public-jobs/sullcrom/career-page-jobs")
+        assert config["json_path"] == ""
+        assert config["url_field"] == "applyUrl"
+
+
 class TestValidationError:
     def test_str_with_row(self):
         err = ValidationError("file.csv", 5, "bad value")
@@ -297,6 +385,24 @@ class TestValidateCsvs:
         monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
         errors = validate_csvs()
         assert not any("scraper_type='skip' is invalid" in str(e) for e in errors)
+
+    def test_api_sniffer_rejects_ignored_legacy_url_key(self, tmp_path, monkeypatch):
+        cfg = '"{""url"": ""https://api.example.com/jobs"", ""fields"": {""title"": ""title""}}"'
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com,api_sniffer,{cfg},skip,\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+
+        errors = validate_csvs()
+
+        assert any(
+            "'url' in api_sniffer monitor_config is ignored; use 'api_url'" in str(error)
+            for error in errors
+        )
 
     @pytest.mark.parametrize(
         "monitor_type", ["greenhouse", "lever", "ashby", "recruitee", "personio"]
@@ -611,6 +717,88 @@ class TestMigratedBoardsHaveProxy:
             'and rely on the proxy layer to get data. Re-add "proxy": true to both '
             "monitor_config and scraper_config:\n  - " + "\n  - ".join(missing)
         )
+
+
+class TestSafranBoardConfig:
+    """Safran's global board and BambooHR subsidiary need pinned transports."""
+
+    def test_global_board_uses_proxy_pagination_and_extracts_details(self):
+        import json
+
+        from src.core.scrapers.dom import parse_html
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next((r for r in rows if r["board_slug"] == "safran-global"), None)
+        assert row is not None, "safran-global row missing from boards.csv"
+        assert row["monitor_type"] == "dom"
+        assert row["scraper_type"] == "dom"
+
+        monitor_config = json.loads(row["monitor_config"])
+        scraper_config = json.loads(row["scraper_config"])
+        for config in (monitor_config, scraper_config):
+            assert config["render"] is True
+            assert config["proxy"] is True
+            assert config["headless"] is False
+            assert config["persistent_context"] is True
+            assert config["channel"] == "chrome"
+            assert config["stealth"] is True
+        assert monitor_config["rescrape_policy"] == "never"
+        assert monitor_config["pagination"]["start"] == 0
+        assert monitor_config["pagination"]["max_pages"] >= 1000
+        assert monitor_config["pagination"]["browser"] is True
+
+        sample_html = """
+        <h1>Conformity Inspector</h1>
+        <div>Published 04.03.2026</div>
+        <div>
+          Company : Northwest Aerospace Technologies Job field : Quality
+          Location : Everett , Washington , United States
+          Contract type : Permanent Contract duration : Full-time
+          Required degree : Bachelor's Degree
+        </div>
+        <a>Apply</a>
+        <h2>Job Description</h2>
+        <p>Inspect aircraft interiors and verify conformity.</p>
+        <h2>Complementary Description</h2>
+        <p>Work with the quality and manufacturing teams.</p>
+        <a>Apply</a>
+        """
+        content = parse_html(sample_html, scraper_config)
+        assert content.title == "Conformity Inspector"
+        assert content.locations == ["Everett , Washington , United States"]
+        assert content.employment_type == "Full-time"
+        assert content.date_posted == "04.03.2026"
+        assert "Inspect aircraft interiors" in content.description
+        assert "Work with the quality" in content.description
+
+    def test_federal_systems_uses_public_bamboohr_detail_api(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(
+            (r for r in rows if r["board_slug"] == "safran-federal-systems"),
+            None,
+        )
+        assert row is not None, "safran-federal-systems row missing from boards.csv"
+        assert row["monitor_type"] == "api_sniffer"
+        assert row["scraper_type"] == "api_sniffer"
+
+        monitor_config = json.loads(row["monitor_config"])
+        scraper_config = json.loads(row["scraper_config"])
+        assert monitor_config["api_url"].endswith("/careers/list")
+        assert monitor_config["url_template"].endswith("/careers/{id}")
+        assert scraper_config["api_url"].endswith("/careers/{id}/detail")
+        assert scraper_config["json_path"] == "result.jobOpening"
+        assert set(scraper_config["enrich"]) == {
+            "description",
+            "locations",
+            "date_posted",
+        }
 
 
 class TestHasbroBoardConfig:
@@ -1141,6 +1329,172 @@ class TestCaterpillarRateLimitConfig:
         assert sc.get("render") is True
         assert sc.get("wait") == "load"
         assert scraper_needs_browser("json-ld", sc) is True
+
+
+class TestGrooveQuantumSiteGroundConfig:
+    """Groove Quantum must bypass SiteGround's crawler-IP challenge (#4224)."""
+
+    def test_monitor_and_scraper_use_proxy_backed_real_browser(self):
+        import json
+
+        from src.core.scrapers.dom import parse_html
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next((r for r in rows if r["board_slug"] == "groove-quantum-careers"), None)
+        assert row is not None, "groove-quantum-careers row missing from boards.csv"
+
+        assert row["monitor_type"] == "dom"
+        assert row["scraper_type"] == "dom"
+
+        monitor_config = json.loads(row["monitor_config"])
+        scraper_config = json.loads(row["scraper_config"])
+        for config in (monitor_config, scraper_config):
+            assert config["render"] is True
+            assert config["proxy"] is True
+            assert config["persistent_context"] is True
+            assert config["channel"] == "chrome"
+            assert config["headless"] is False
+
+        assert monitor_config["rescrape_policy"] == "never"
+        assert monitor_config["url_filter"] == "/job/"
+
+        sample_html = """
+        <h1>Quantum Measurement Engineer</h1>
+        <div>Location: Delft Type: Full-time Posted on: 14 Jan 2026</div>
+        <h4>Description</h4>
+        <p>Build and operate scalable quantum systems.</p>
+        <h4>Application procedure</h4>
+        """
+        content = parse_html(sample_html, scraper_config)
+        assert content.title == "Quantum Measurement Engineer"
+        assert content.locations == ["Delft"]
+        assert content.employment_type == "Full-time"
+        assert content.date_posted == "14 Jan 2026"
+        assert "Build and operate scalable quantum systems" in content.description
+
+
+class TestMetalysisSiteGroundConfig:
+    """Metalysis must bypass SiteGround's crawler-IP challenge (#4351)."""
+
+    def test_monitor_and_scraper_use_proxy_backed_real_browser(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next((r for r in rows if r["board_slug"] == "metalysis-careers"), None)
+        assert row is not None, "metalysis-careers row missing from boards.csv"
+
+        assert row["monitor_type"] == "dom"
+        assert row["scraper_type"] == "json-ld"
+
+        monitor_config = json.loads(row["monitor_config"])
+        scraper_config = json.loads(row["scraper_config"])
+        for config in (monitor_config, scraper_config):
+            assert config["render"] is True
+            assert config["proxy"] is True
+            assert config["persistent_context"] is True
+            assert config["channel"] == "chrome"
+            assert config["headless"] is False
+
+        assert monitor_config["rescrape_policy"] == "never"
+        assert monitor_config["url_filter"] == "/job/"
+
+
+class TestOrangeQuantumSystemsSiteGroundConfig:
+    """OrangeQS must bypass SiteGround and retain complete job content (#4444)."""
+
+    def test_proxy_backed_real_browser_and_dom_extraction(self):
+        import json
+
+        from src.core.scrapers.dom import parse_html
+        from src.processing.scrape import _apply_defaults
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(
+            (r for r in rows if r["board_slug"] == "orange-quantum-systems-careers"),
+            None,
+        )
+        assert row is not None, "orange-quantum-systems-careers row missing from boards.csv"
+
+        assert row["monitor_type"] == "dom"
+        assert row["scraper_type"] == "dom"
+
+        monitor_config = json.loads(row["monitor_config"])
+        scraper_config = json.loads(row["scraper_config"])
+        for config in (monitor_config, scraper_config):
+            assert config["render"] is True
+            assert config["proxy"] is True
+            assert config["persistent_context"] is True
+            assert config["channel"] == "chrome"
+            assert config["headless"] is False
+
+        assert monitor_config["rescrape_policy"] == "never"
+        assert monitor_config["url_filter"] == r"/career/[^/?#]+/?$"
+        assert monitor_config["wait"] == "commit"
+        assert monitor_config["timeout"] == 60000
+        assert monitor_config["actions"] == [
+            {
+                "action": "wait_for",
+                "selector": "a[href*='/career/']",
+                "state": "attached",
+                "timeout": 45,
+            }
+        ]
+        assert scraper_config["wait"] == "commit"
+        assert scraper_config["timeout"] == 60000
+        assert scraper_config["actions"] == [
+            {"action": "wait_for", "selector": "h2", "timeout": 45}
+        ]
+        assert scraper_config["defaults"]["locations"] == ["Delft, Netherlands"]
+
+        sample_html = """
+        <h1>Career</h1>
+        <h2>Quantum Project Manager (full-time)</h2>
+        <p>About OrangeQS: We develop quantum chip testing systems.</p>
+        <h3>Role</h3>
+        <p>Coordinate complex technical projects and cross-functional teams.</p>
+        <p>This post was published on: Jan 13, 2026</p>
+        <h3>Full-time positions</h3>
+        <p>Send open applications to recruitment@example.com.</p>
+        """
+        content = _apply_defaults(parse_html(sample_html, scraper_config), scraper_config)
+        assert content.title == "Quantum Project Manager (full-time)"
+        assert content.locations == ["Delft, Netherlands"]
+        assert content.employment_type == "full-time"
+        assert content.date_posted == "Jan 13, 2026"
+        assert "Coordinate complex technical projects" in content.description
+        assert "Send open applications" not in content.description
+
+
+class TestOverwolfComeetDescriptionCoverage:
+    """Overwolf must use Comeet's rich source directly (#5807).
+
+    The legacy api_sniffer row omitted ``details=true`` and then sent every
+    posting through a rendered detail scrape. The shared Comeet monitor
+    returns the first-party details payload in the listing cycle, so keeping
+    this configuration pinned prevents another 0%-description cohort.
+    """
+
+    def test_overwolf_uses_rich_comeet_monitor_without_detail_scraping(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next((r for r in rows if r["board_slug"] == "overwolf-careers"), None)
+        assert row is not None, "overwolf-careers row missing from boards.csv"
+
+        assert row["monitor_type"] == "comeet"
+        assert json.loads(row.get("monitor_config") or "{}") == {}
+        assert row["scraper_type"] == "skip"
+        assert json.loads(row.get("scraper_config") or "{}") == {}
 
 
 class TestZteMokahrHasMokahrScraperAndEnrich:

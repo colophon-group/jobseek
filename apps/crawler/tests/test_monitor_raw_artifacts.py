@@ -123,8 +123,11 @@ async def test_save_raw_logs_handler_failures(
         "api_sniffer",
         "ashby",
         "breezy",
+        "cornerstone",
+        "dayforce",
         "dom",
         "greenhouse",
+        "hirehive",
         "hireology",
         "lever",
         "nextdata",
@@ -134,6 +137,7 @@ async def test_save_raw_logs_handler_failures(
         "rss",
         "sitemap",
         "talentbrew",
+        "taleo",
     ],
 )
 def test_raw_artifact_savers_are_registered(monitor_type: str) -> None:

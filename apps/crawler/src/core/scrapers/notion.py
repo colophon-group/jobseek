@@ -17,6 +17,7 @@ Config (``scraper_config``):
 
 from __future__ import annotations
 
+import asyncio
 import re
 from html import escape
 from urllib.parse import urlparse
@@ -25,6 +26,7 @@ import httpx
 import structlog
 
 from src.core.scrapers import JobContent, register
+from src.shared.http_retry import fetch_json_page_with_retry
 
 log = structlog.get_logger()
 
@@ -62,25 +64,24 @@ async def _load_page_chunk(
     client: httpx.AsyncClient,
     subdomain: str,
     page_id: str,
-) -> dict | None:
+) -> dict:
     url = f"https://{subdomain}.notion.site/api/v3/loadPageChunk"
-    try:
-        resp = await client.post(
-            url,
-            json={
-                "page": {"id": page_id},
-                "limit": 200,
-                "cursor": {"stack": []},
-                "chunkNumber": 0,
-                "verticalColumns": False,
-            },
-            timeout=_API_TIMEOUT,
-        )
-        if resp.status_code != 200:
-            return None
-        return resp.json()
-    except Exception:
-        return None
+    return await fetch_json_page_with_retry(
+        client,
+        url,
+        expect_shape=dict,
+        method="POST",
+        json_body={
+            "page": {"id": page_id},
+            "limit": 200,
+            "cursor": {"stack": []},
+            "chunkNumber": 0,
+            "verticalColumns": False,
+        },
+        timeout=_API_TIMEOUT,
+        log_event="notion_scraper.api_backoff",
+        sleep=asyncio.sleep,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -318,9 +319,12 @@ async def scrape(
     property_map = config.get("property_map")
     props = _extract_collection_properties(data, page_id, property_map)
 
-    locations = props.get("locations") if isinstance(props.get("locations"), list) else None
-    employment_type = props.get("employment_type")
-    job_location_type = props.get("job_location_type")
+    raw_locations = props.get("locations")
+    locations = raw_locations if isinstance(raw_locations, list) else None
+    raw_employment_type = props.get("employment_type")
+    employment_type = raw_employment_type if isinstance(raw_employment_type, str) else None
+    raw_job_location_type = props.get("job_location_type")
+    job_location_type = raw_job_location_type if isinstance(raw_job_location_type, str) else None
     metadata = {}
     if props.get("metadata.team"):
         metadata["team"] = props["metadata.team"]

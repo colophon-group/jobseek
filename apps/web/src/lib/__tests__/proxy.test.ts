@@ -1,4 +1,13 @@
-import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  afterAll,
+} from "vitest";
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { NextRequest, NextResponse } from "next/server";
 import { proxy, config } from "../../../proxy";
 
@@ -8,6 +17,7 @@ function createRequest(
   pathname: string,
   acceptLanguage?: string,
   cookieLocale?: string,
+  loggedIn = false,
 ): NextRequest {
   const url = new URL(`http://localhost${pathname}`);
   const headers: Record<string, string> = {};
@@ -15,6 +25,7 @@ function createRequest(
 
   const request = new NextRequest(url, { headers });
   if (cookieLocale) request.cookies.set("NEXT_LOCALE", cookieLocale);
+  if (loggedIn) request.cookies.set("logged_in", "1");
   return request;
 }
 
@@ -27,6 +38,10 @@ function redirectedPathname(): string {
 describe("proxy", () => {
   beforeEach(() => {
     redirectSpy.mockClear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   afterAll(() => {
@@ -62,6 +77,22 @@ describe("proxy", () => {
   it("handles root path", () => {
     proxy(createRequest("/"));
     expect(redirectedPathname()).toBe("/en");
+  });
+
+  it("preserves an unknown dotted path when adding the locale", () => {
+    proxy(createRequest("/does-not-exist.png"));
+    expect(redirectedPathname()).toBe("/en/does-not-exist.png");
+  });
+
+  it("passes the configured IndexNow proof path through to its rewrite", () => {
+    vi.stubEnv("INDEXNOW_KEY", "indexnow-verification-token");
+
+    const response = proxy(
+      createRequest("/indexnow-verification-token.txt"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
   it("uses the cookie locale when present", () => {
@@ -104,9 +135,87 @@ describe("proxy caching", () => {
   });
 });
 
+describe("company request auth boundary", () => {
+  it("redirects anonymous visitors before the app shell and preserves prefills", () => {
+    const response = proxy(
+      createRequest(
+        "/de/companies/request?name=MissingCo&website=https%3A%2F%2Fexample.com%2Fcareers",
+      ),
+    );
+
+    expect(response.status).toBe(307);
+    const location = new URL(response.headers.get("location")!);
+    expect(location.pathname).toBe("/de/sign-in");
+    expect(location.searchParams.get("next")).toBe(
+      "/de/companies/request?name=MissingCo&website=https%3A%2F%2Fexample.com%2Fcareers",
+    );
+  });
+
+  it("lets hinted visitors reach the server-verified request page", () => {
+    const response = proxy(
+      createRequest("/en/companies/request?name=Acme", undefined, undefined, true),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+});
+
 describe("proxy config", () => {
   it("has a matcher pattern", () => {
     expect(config.matcher).toBeDefined();
     expect(config.matcher.length).toBeGreaterThan(0);
+  });
+
+  it("matches the localized company-request auth boundary only", () => {
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: "/en/companies/request?name=Acme",
+      }),
+    ).toBe(true);
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: "/en/explore",
+      }),
+    ).toBe(false);
+  });
+
+  it.each([
+    "/does-not-exist.png",
+    "/robots-nope.txt",
+    "/random.html",
+    "/favicon-missing.png",
+    "/apple-touch-icon-missing.jpg",
+    "/logo-missing.svg",
+    "/indexnow-verification-token.txt",
+  ])("matches unknown dotted root path %s", (url) => {
+    expect(
+      unstable_doesMiddlewareMatch({ config, nextConfig: {}, url }),
+    ).toBe(true);
+  });
+
+  it.each([
+    "/apple-touch-icon.png",
+    "/apple-touch-icon-120x120.png",
+    "/favicon-32x32.png",
+    "/android-chrome-192x192.png",
+    "/site.webmanifest",
+    "/BingSiteAuth.xml",
+    "/.well-known/ai-plugin.json",
+    "/openapi.json",
+    "/llms.txt",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/flags/ch.svg",
+    "/fonts/JetBrainsMono-Regular.woff2",
+    "/screenshots/en/feature1-dark.png",
+  ])("bypasses known static or discovery route %s", (url) => {
+    expect(
+      unstable_doesMiddlewareMatch({ config, nextConfig: {}, url }),
+    ).toBe(false);
   });
 });

@@ -4,6 +4,24 @@ import { createContext, useContext, useEffect, useState, useMemo, useCallback, t
 import { useLingui } from "@lingui/react/macro";
 import { getCurrencyRates, type CurrencyRate } from "@/lib/actions/search";
 import { formatSalary, type PeriodLabel, type SalaryPeriod } from "@/lib/salary";
+import { localPrefs } from "@/lib/preference-timestamps";
+
+const SALARY_PERIODS = new Set<SalaryPeriod>([
+  "yearly",
+  "monthly",
+  "daily",
+  "hourly",
+]);
+
+function validLocalCurrency(value: string | null): string | null {
+  return value && /^[A-Z]{3}$/.test(value) ? value : null;
+}
+
+function validLocalPeriod(value: string | null): SalaryPeriod | null {
+  return value && SALARY_PERIODS.has(value as SalaryPeriod)
+    ? (value as SalaryPeriod)
+    : null;
+}
 
 interface SalaryDisplayContextValue {
   displayCurrency: string | null;
@@ -25,10 +43,12 @@ const SalaryDisplayContext = createContext<SalaryDisplayContextValue>({
 export function SalaryDisplayProvider({
   displayCurrency: initialCurrency = null,
   salaryPeriod: initialPeriod = null,
+  persistLocally = true,
   children,
 }: {
   displayCurrency?: string | null;
   salaryPeriod?: string | null;
+  persistLocally?: boolean;
   children: ReactNode;
 }) {
   const { t } = useLingui();
@@ -40,12 +60,39 @@ export function SalaryDisplayProvider({
     getCurrencyRates().then(setRates);
   }, []);
 
+  useEffect(() => {
+    if (initialCurrency !== null) {
+      // Authenticated bootstrap preferences are authoritative. This effect
+      // also handles the async null -> DB-preference transition after mount.
+      setDisplayCurrency(initialCurrency);
+      setSalaryPeriod(initialPeriod);
+      return;
+    }
+
+    if (!persistLocally) {
+      setDisplayCurrency(null);
+      setSalaryPeriod(null);
+      return;
+    }
+
+    // Anonymous viewers have no bootstrap preference row. Rehydrate the
+    // client-owned values so formatting and Settings survive remounts/reloads.
+    setDisplayCurrency(validLocalCurrency(localPrefs.displayCurrency.get()));
+    setSalaryPeriod(validLocalPeriod(localPrefs.salaryPeriod.get()));
+  }, [initialCurrency, initialPeriod, persistLocally]);
+
   const displayPeriod = (salaryPeriod as SalaryPeriod | null) ?? null;
 
   const update = useCallback((opts: { displayCurrency?: string | null; salaryPeriod?: string | null }) => {
-    if (opts.displayCurrency !== undefined) setDisplayCurrency(opts.displayCurrency);
-    if (opts.salaryPeriod !== undefined) setSalaryPeriod(opts.salaryPeriod);
-  }, []);
+    if (opts.displayCurrency !== undefined) {
+      setDisplayCurrency(opts.displayCurrency);
+      if (persistLocally) localPrefs.displayCurrency.set(opts.displayCurrency);
+    }
+    if (opts.salaryPeriod !== undefined) {
+      setSalaryPeriod(opts.salaryPeriod);
+      if (persistLocally) localPrefs.salaryPeriod.set(opts.salaryPeriod);
+    }
+  }, [persistLocally]);
 
   // Locale-aware period suffix used when the salary is shown as
   // "<amount> <CCY> / <period>" on posting cards and detail pages.

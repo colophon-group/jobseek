@@ -19,6 +19,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import structlog
+from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 try:
@@ -62,7 +63,9 @@ DEFAULT_WAIT = "networkidle"
 # status quo, and sites that do settle under ``networkidle`` are untouched.
 DEFAULT_WAIT_FALLBACK = "domcontentloaded"
 DEFAULT_TIMEOUT = 30_000
+FALLBACK_WAIT_TIMEOUT = 5_000
 CONTEXT_TIMEOUT = 120_000  # hard cap: no single Playwright operation exceeds 2 minutes
+BROWSER_CLOSE_TIMEOUT_SECONDS = 15.0
 VALID_WAIT_STRATEGIES = frozenset({"load", "domcontentloaded", "networkidle", "commit"})
 OVERLAY_SELECTORS = (
     '[class*="cookie-banner"]',
@@ -94,6 +97,10 @@ BROWSER_KEYS = frozenset(
         "viewport",
         "locale",
         "skip_ssl",
+        # Scrapers project their config through BROWSER_KEYS before calling
+        # render(). Without this entry a board-level proxy opt-in is silently
+        # discarded and the browser launches from direct egress.
+        "proxy",
     }
 )
 
@@ -114,6 +121,44 @@ DEFAULT_LOCALE = "en-US"
 # without silently activating previously-dropped launch-time keys (``stealth``,
 # ``user_agent``, ``cookies``, etc.) on boards that set them.
 NAVIGATE_KEYS = frozenset({"wait", "wait_fallback", "timeout", "actions"})
+
+# Playwright raises ``TargetClosedError`` (a public ``Error`` subclass) when
+# Chromium loses the page, context, or browser while an operation is in
+# flight.  The concrete subclass is not exported from ``playwright.async_api``,
+# but the message is stable and intentionally identifies all three resources.
+# Keep the classification here so callers do not import Playwright's private
+# ``_impl`` package.
+_TARGET_CLOSED_MARKER = "Target page, context or browser has been closed"
+
+
+def is_target_closed_error(exc: BaseException) -> bool:
+    """Return whether *exc* is Playwright's lost-target failure class."""
+    return isinstance(exc, PlaywrightError) and _TARGET_CLOSED_MARKER in str(exc)
+
+
+async def _close_browser_resource(resource, resource_name: str) -> None:
+    """Close a Playwright resource without allowing teardown to hang forever."""
+    try:
+        await asyncio.wait_for(resource.close(), timeout=BROWSER_CLOSE_TIMEOUT_SECONDS)
+    except TimeoutError:
+        metrics.browser_cleanup_failures_total.labels(
+            resource=resource_name,
+            outcome="timeout",
+        ).inc()
+        log.warning(
+            "browser.cleanup.timeout",
+            resource=resource_name,
+            timeout_seconds=BROWSER_CLOSE_TIMEOUT_SECONDS,
+        )
+        raise
+    except Exception:
+        metrics.browser_cleanup_failures_total.labels(
+            resource=resource_name,
+            outcome="error",
+        ).inc()
+        log.warning("browser.cleanup.error", resource=resource_name, exc_info=True)
+        raise
+
 
 # ---------------------------------------------------------------------------
 # Config placeholders
@@ -365,9 +410,16 @@ async def open_page(
             await page.goto(warmup_url, wait_until="domcontentloaded", timeout=DEFAULT_TIMEOUT)
         yield page
     finally:
-        if context:
-            await context.close()
-        await browser.close()
+        # A context close can fail when Chromium was killed or its transport
+        # disappeared. The nested finally is deliberate: the old straight-line
+        # cleanup skipped browser.close() in exactly that case, leaving the
+        # outer Playwright driver to retain a surviving child until container
+        # restart (#5488).
+        try:
+            if context:
+                await _close_browser_resource(context, "context")
+        finally:
+            await _close_browser_resource(browser, "browser")
 
 
 @asynccontextmanager
@@ -428,7 +480,7 @@ async def _open_persistent_page(
         yield page
     finally:
         with contextlib.suppress(Exception):
-            await context.close()
+            await _close_browser_resource(context, "persistent_context")
         shutil.rmtree(user_data_dir, ignore_errors=True)
 
 
@@ -442,15 +494,16 @@ async def navigate(
     Config keys:
         ``wait``           Primary wait strategy (default ``"networkidle"``).
         ``timeout``        Navigation timeout in ms (default ``30000``).
-        ``wait_fallback``  Fallback wait strategy retried once when the primary
-                           ``page.goto`` raises Playwright's ``TimeoutError``
-                           (non-timeout errors propagate unchanged). Defaults
-                           to ``DEFAULT_WAIT_FALLBACK`` ("domcontentloaded")
-                           so SPA sites that never reach ``networkidle`` still
-                           produce usable HTML. Set to ``None`` in config to
-                           opt out; set to the same value as ``wait`` for an
-                           effective no-op. The fallback reuses the original
-                           timeout, so worst-case wall-clock is ``2 * timeout``.
+        ``wait_fallback``  Fallback load state checked on the current document
+                           when the primary ``page.goto`` raises Playwright's
+                           ``TimeoutError`` (non-timeout errors propagate
+                           unchanged). Defaults to ``DEFAULT_WAIT_FALLBACK``
+                           ("domcontentloaded") so SPA sites that never reach
+                           ``networkidle`` still produce usable HTML. Set to
+                           ``None`` in config to opt out; set to the same value
+                           as ``wait`` for an effective no-op. The fallback is
+                           capped at ``FALLBACK_WAIT_TIMEOUT`` and never starts
+                           a duplicate navigation.
     """
     config = config or {}
     wait_strategy = config.get("wait", DEFAULT_WAIT)
@@ -491,15 +544,21 @@ async def navigate(
             ).inc()
             raise
 
+    fallback_timeout = min(timeout, FALLBACK_WAIT_TIMEOUT)
     log.info(
-        "browser.navigate.fallback",
+        "browser.navigate.fallback_wait",
         url=url,
         primary=wait_strategy,
         fallback=fallback_strategy,
-        timeout_ms=timeout,
+        timeout_ms=fallback_timeout,
     )
     try:
-        await page.goto(url, wait_until=fallback_strategy, timeout=timeout)
+        # A wait-strategy timeout does not imply that navigation failed. In
+        # the common networkidle case the document is already committed and
+        # DOMContentLoaded has fired; reissuing goto discards that usable page,
+        # doubles origin traffic, and can turn a recoverable wait into another
+        # timeout. Check the current document's state instead (#5708).
+        await page.wait_for_load_state(fallback_strategy, timeout=fallback_timeout)
     except Exception:
         metrics.browser_navigate_fallback_total.labels(
             primary=wait_strategy, fallback=fallback_strategy, outcome="failed"
@@ -551,6 +610,13 @@ async def _execute_action(page, action: dict, kind: str | None) -> None:
             await loc.click()
         else:
             log.warning("browser.action.click_no_match", selector=selector)
+    elif kind == "wait_for":
+        selector = action["selector"]
+        state = action.get("state", "visible")
+        # The outer asyncio timeout is the action pipeline's single source of
+        # truth. Disable Playwright's independent 30-second default so a
+        # configured longer action is not cut short inside the locator call.
+        await page.locator(selector).first.wait_for(state=state, timeout=0)
     elif kind == "wait":
         ms = action.get("ms", 1000)
         await asyncio.sleep(ms / 1000)
@@ -675,53 +741,53 @@ async def _execute_paginate_collect(page, action: dict) -> None:
     wait_ms = action.get("wait_ms", 5000)
     max_pages = action.get("max_pages", 50)
 
-    total = await page.evaluate(
-        """async ([nextSel, psSel, pageSize, waitMs, maxPages]) => {
-            const delay = ms => new Promise(r => setTimeout(r, ms));
+    if ps_selector and page_size:
+        await page.evaluate(
+            """([selector, value]) => {
+                const sel = document.querySelector(selector);
+                if (!sel) return;
+                sel.value = value;
+                sel.dispatchEvent(new Event('change'));
+                // SuccessFactors uses the juic event bus.
+                if (typeof juic !== 'undefined' && sel.id)
+                    juic.fire(sel.id, '_onChange', new Event('change'));
+            }""",
+            [ps_selector, str(page_size)],
+        )
+        await asyncio.sleep(wait_ms / 1000)
 
-            const getAllLinks = () => Array.from(document.querySelectorAll('a[href]'))
-                .filter(a => a.href.startsWith('http'))
-                .map(a => a.href);
+    collect_js = """() => Array.from(document.querySelectorAll('a[href]'))
+        .map(a => a.href)
+        .filter(href => href.startsWith('http'))"""
+    all_links = set(await page.evaluate(collect_js))
 
-            // Optionally change items-per-page.
-            if (psSel && pageSize) {
-                const sel = document.querySelector(psSel);
-                if (sel) {
-                    sel.value = String(pageSize);
-                    sel.dispatchEvent(new Event('change'));
-                    // SuccessFactors uses juic event bus
-                    if (typeof juic !== 'undefined' && sel.id)
-                        juic.fire(sel.id, '_onChange', new Event('change'));
-                    await delay(waitMs);
-                }
-            }
+    # Keep the controller outside the document. A normal anchor click replaces
+    # the page's JavaScript execution context, so a loop inside one evaluate()
+    # call dies on the first navigation. Locator clicks return only after the
+    # initiated navigation settles, letting each iteration resume against the
+    # newly loaded document; SPA pagination continues to work the same way.
+    for _ in range(max_pages):
+        next_el = page.locator(next_sel).first
+        if await next_el.count() == 0:
+            break
+        await next_el.click()
+        await asyncio.sleep(wait_ms / 1000)
+        all_links.update(await page.evaluate(collect_js))
 
-            // Collect links from all pages.
-            const allLinks = new Set(getAllLinks());
-
-            for (let p = 0; p < maxPages; p++) {
-                const nextEl = document.querySelector(nextSel);
-                if (!nextEl) break;
-                nextEl.click();
-                await delay(waitMs);
-                getAllLinks().forEach(l => allLinks.add(l));
-            }
-
-            // Inject collected links as hidden <a> tags for the dom extractor.
+    await page.evaluate(
+        """urls => {
             const container = document.createElement('div');
             container.style.display = 'none';
-            allLinks.forEach(href => {
+            urls.forEach(href => {
                 const a = document.createElement('a');
                 a.href = href;
                 container.appendChild(a);
             });
             document.body.appendChild(container);
-
-            return allLinks.size;
         }""",
-        [next_sel, ps_selector, str(page_size), wait_ms, max_pages],
+        sorted(all_links),
     )
-    log.info("browser.paginate_collect.done", total=total)
+    log.info("browser.paginate_collect.done", total=len(all_links))
 
 
 async def dismiss_overlays(page) -> None:

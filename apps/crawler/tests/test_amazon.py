@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from src.core.monitors import BoardGoneError, DiscoveredJob, amazon
-from src.core.monitors.amazon import _parse_job, discover
+from src.core.monitors.amazon import _paginate_query_stream, _parse_job, discover, discover_stream
 
 
 def _raw_job(job_id: str, **overrides) -> dict:
@@ -182,3 +182,80 @@ class TestDiscover:
 
         assert seen_categories == [None, "software-development", "operations"]
         assert [job.url.rsplit("/", 2)[1] for job in jobs] == ["seed", "software", "operations"]
+
+
+class TestDiscoverStream:
+    async def test_yields_first_page_before_bounded_prefetch_window(self):
+        """Regression: never gather every decoded Amazon page in one result list."""
+
+        seen_offsets: list[int] = []
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            offset = int(request.url.params["offset"])
+            seen_offsets.append(offset)
+            return httpx.Response(
+                200,
+                json={"hits": 601, "jobs": [_raw_job(str(offset))]},
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            pages = _paginate_query_stream(client)
+
+            first_jobs, total = await anext(pages)
+            assert total == 601
+            assert len(first_jobs) == 1
+            assert seen_offsets == [0]
+
+            await anext(pages)
+            assert sorted(seen_offsets) == [0, 100, 200, 300, 400, 500]
+            assert 600 not in seen_offsets
+
+            # Consume the four already-prefetched pages. The next window is
+            # not requested until the bounded window has been yielded.
+            for _ in range(4):
+                await anext(pages)
+            assert 600 not in seen_offsets
+            await anext(pages)
+            assert 600 in seen_offsets
+
+    async def test_country_seed_scan_is_not_retained_as_output(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(amazon, "PAGE_SIZE", 2)
+        monkeypatch.setattr(amazon, "_API_RESULT_CAP", 4)
+        seen: list[tuple[str | None, int]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            country = request.url.params.get("country")
+            offset = int(request.url.params["offset"])
+            seen.append((country, offset))
+            if country is None:
+                jobs = (
+                    [
+                        _raw_job("seed-us", country_code="USA"),
+                        _raw_job("seed-ca", country_code="CAN"),
+                    ]
+                    if offset == 0
+                    else [_raw_job("seed-us-2", country_code="USA")]
+                )
+                payload = {"hits": 4, "jobs": jobs}
+            elif offset == 0:
+                payload = {
+                    "hits": 1,
+                    "jobs": [_raw_job(f"real-{country.lower()}", country_code=country)],
+                }
+            else:
+                payload = {"hits": 1, "jobs": []}
+            return httpx.Response(200, json=payload, request=request)
+
+        batches: list[list[DiscoveredJob]] = []
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            async for result in discover_stream(_board(), client):
+                assert isinstance(result, list)
+                batches.append(result)
+
+        jobs = [job for batch in batches for job in batch]
+        assert all(len(batch) <= 2 for batch in batches)
+        assert [job.url.rsplit("/", 2)[1] for job in jobs] == ["real-can", "real-usa"]
+        assert seen[:2] == [(None, 0), (None, 2)]

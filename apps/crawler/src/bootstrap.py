@@ -1,28 +1,15 @@
 """Bootstrap local Postgres from Supabase.
 
-One-time migration: copies all job_board and job_posting data from Supabase
-to the local Postgres on Hetzner. Does NOT touch Supabase data.
-
-Usage:
-    LOCAL_DATABASE_URL=$LOCAL_DATABASE_URL \
-    uv run python -m src.bootstrap
+Retained, non-executable rollback helpers copy job_board and job_posting data
+from Supabase to local Postgres without mutating Supabase.
 """
 
 from __future__ import annotations
 
-import asyncio
-import time
 from collections.abc import Sequence
 
 import asyncpg
-import dotenv
 import structlog
-
-dotenv.load_dotenv(".env.local")
-dotenv.load_dotenv(".env")
-
-from src.config import settings  # noqa: E402
-from src.shared.logging import setup_logging  # noqa: E402
 
 log = structlog.get_logger()
 
@@ -188,39 +175,6 @@ async def _copy_postings(supa: asyncpg.Pool, local: asyncpg.Pool) -> int:
     return copied
 
 
-async def main() -> None:
-    setup_logging()
-    log.info("bootstrap.start")
-    t0 = time.monotonic()
-
-    supa = await asyncpg.create_pool(
-        settings.database_url,
-        min_size=1,
-        max_size=3,
-        command_timeout=120,
-        statement_cache_size=0,
-    )
-    local = await asyncpg.create_pool(
-        settings.local_database_url,
-        min_size=1,
-        max_size=3,
-        command_timeout=120,
-        statement_cache_size=0,
-    )
-
-    try:
-        boards = await _copy_boards(supa, local)
-        log.info("bootstrap.boards_done", count=boards)
-
-        postings = await _copy_postings(supa, local)
-        log.info("bootstrap.postings_done", count=postings)
-
-        elapsed = round(time.monotonic() - t0, 1)
-        log.info("bootstrap.complete", boards=boards, postings=postings, elapsed_s=elapsed)
-    finally:
-        await supa.close()
-        await local.close()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+# The one-time Supabase bootstrap command was retired at the runtime cutover.
+# Copy helpers remain importable only for rollback archaeology until the later
+# mirror-code cleanup; this module intentionally has no executable entry point.

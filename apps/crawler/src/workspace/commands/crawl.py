@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 import math
 import random
@@ -20,6 +21,7 @@ from src.workspace.state import (
     resolve_slug,
     resolve_two_args,
     save_board,
+    update_workspace,
     workspace_exists,
 )
 
@@ -907,17 +909,37 @@ def probe_api(url: str, slug: str | None, board_alias: str | None):
 
 
 _MONITOR_CONFIG_HINTS = {
+    "adp": "Requires: cid, cc_id, locale (auto-filled from an ADP Workforce Now URL)",
+    "avature": "Requires: listing_url, portal_id (auto-filled from an Avature public portal)",
     "join": "Optional: slug (auto-derived from join.com URL), description_path(s)",
     "ashby": "Requires: token (auto-filled from probe)",
+    "bamboohr": "Requires: tenant (auto-filled from a BambooHR careers URL)",
+    "beisen": "Requires: tenant + portal variant (auto-filled from a *.zhiye.com URL)",
+    "paycom": "Requires: token (auto-filled from a Paycom public portal URL)",
+    "jazzhr": "Requires: tenant (auto-filled from an applytojob.com URL)",
+    "jobvite": "Requires: tenant + listing_url (auto-filled from a jobs.jobvite.com URL)",
+    "pageup": "Requires: instance, source_pointer, locale (auto-filled from a PageUp URL)",
+    "icims": "Requires: host (auto-filled from an icims.com URL)",
+    "gupy": "Requires: tenant (auto-filled from a *.gupy.io URL)",
+    "cornerstone": "Requires: tenant, site_id, corp (auto-filled from a *.csod.com URL)",
+    "darwinbox": "Requires: host, company_id (auto-filled from a Darwinbox public portal URL)",
+    "dayforce": "Requires: tenant, portal (auto-filled from a Dayforce public board URL)",
+    "herp": "Requires: slug (auto-filled from a herp.careers URL)",
+    "hrmos": "Requires: tenant (auto-filled from an hrmos.co URL)",
     "bite": "Requires: key (auto-filled from probe)",
     "breezy": "Optional: portal_url or slug (auto-filled from probe)",
     "comeet": "No config required (company and board ID are derived from the URL)",
     "dvinci": "Requires: slug (auto-filled from probe)",
     "greenhouse": "Requires: token (auto-filled from probe)",
+    "hirehive": "Requires: slug (auto-filled from probe)",
     "hireology": "Requires: slug (auto-filled from probe)",
     "lever": "Requires: token (auto-filled from probe)",
+    "paylocity": "No config required (uses embedded window.pageData)",
     "pinpoint": "Requires: slug (auto-filled from probe)",
     "recruitee": "Requires: slug or api_base (auto-filled from probe)",
+    "recruiterbox": "Requires: tenant (auto-filled from a Recruiterbox / Trakstar Hire URL)",
+    "taleo": "Requires: host, partition, org, cws (auto-filled from a Taleo TBE URL)",
+    "ukg": "Requires: host, tenant, board_id (auto-filled from a UKG Pro board URL)",
     "rippling": "Requires: slug (auto-filled from probe)",
     "smartrecruiters": "Requires: token (auto-filled from probe)",
     "softgarden": "Requires: slug. Optional: job_url_pattern",
@@ -925,7 +947,7 @@ _MONITOR_CONFIG_HINTS = {
     "workable": "Requires: token (auto-filled from probe)",
     "workday": "Requires: company, wd_instance, site (auto-filled from probe)",
     "personio": "Requires: slug. Optional: language, backfill_languages",
-    "rss": "Optional: preset, feed_url (auto-filled from probe)",
+    "rss": "Optional: preset/variant/feed_url; legacy SuccessFactors host/company auto-fill",
     "umantis": "Requires: customer_id. Optional: region, listing_path",
     "sitemap": "Optional: sitemap_url, url_filter (regex to include/exclude URLs)",
     "talentbrew": "Optional: max_pages. Uses search-results pagination.",
@@ -1080,7 +1102,24 @@ def select_monitor(
         "initial_load": round(init_load, 2),
     }
     if auto:
-        cfg_entry["scraper_type"] = auto[0]
+        scraper_type_was_empty = not cfg_entry.get("scraper_type")
+        if scraper_type_was_empty:
+            cfg_entry["scraper_type"] = auto[0]
+        if (
+            cfg_entry.get("scraper_type") == auto[0]
+            and (
+                "scraper_config" not in cfg_entry
+                # V1 migration writes null/empty scraper placeholders even
+                # when no scraper was selected. When the type was empty too,
+                # this is legacy absence rather than an explicit empty config.
+                or (scraper_type_was_empty and not cfg_entry.get("scraper_config"))
+            )
+            and auto[1]
+        ):
+            # ``auto_scraper_type`` owns reusable compatibility constants.
+            # Workspace state is mutable, so keep an independent copy rather
+            # than leaking later agent edits back into those shared defaults.
+            cfg_entry["scraper_config"] = copy.deepcopy(auto[1])
 
     action_log.append_to_list(
         board.log,
@@ -1177,6 +1216,16 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
     if not mon_type:
         out.die("No monitor selected. Run: ws select monitor <type>")
 
+    from src.workspace.ats_seed import inventory_seed_matches_run
+
+    inventory_seed_run = inventory_seed_matches_run(
+        ws,
+        board,
+        config_name,
+        mon_type,
+        mon_config or {},
+    )
+
     # Create artifact directory before the run so monitor_one can write raw data
     from src.workspace.artifacts import (
         capture_structlog,
@@ -1217,10 +1266,24 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
         elapsed = lib_result.elapsed_seconds
         http_log = lib_result.http_log
     except WsConfigMissing as exc:
+        if inventory_seed_run:
+            from src.workspace.ats_seed import set_inventory_seed_status
+
+            with update_workspace(slug) as current_ws:
+                set_inventory_seed_status(current_ws, "fallback", reason=str(exc))
         out.die(str(exc))
         return  # pragma: no cover
     except WsMonitorRunFailed as exc:
         detail = str(exc).strip() or exc.__class__.__name__
+        if inventory_seed_run:
+            from src.workspace.ats_seed import set_inventory_seed_status
+
+            with update_workspace(slug) as current_ws:
+                set_inventory_seed_status(current_ws, "fallback", reason=detail)
+            out.warn(
+                "inventory",
+                "Preconfigured monitor was not verified; use normal probe/discovery",
+            )
         out.error("monitor", f"Run failed: {detail}")
         out.plain("monitor", f"Monitor: {mon_type} | Board: {board.url}")
         out.plain("monitor", "Try:")
@@ -1273,8 +1336,11 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
         run_data["description_samples"] = desc_samples
     cfg["run"] = run_data
 
-    # Mark config as tested and record measured cost
-    cfg["status"] = "tested"
+    # A zero-result inventory seed is not a verified fast path.  Preserve its
+    # run evidence, but keep the config untested so normal workflow gates force
+    # probing/configuration rather than accepting a stale or wrong tenant.
+    inventory_seed_zero = inventory_seed_run and job_count == 0
+    cfg["status"] = "selected" if inventory_seed_zero else "tested"
     cost = cfg.get("cost") or {}
     cost["monitor_per_cycle"] = round(elapsed, 2)
     cfg["cost"] = cost
@@ -1307,6 +1373,20 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
 
     save_board(slug, board)
 
+    if inventory_seed_run:
+        from src.workspace.ats_seed import set_inventory_seed_status
+
+        with update_workspace(slug) as current_ws:
+            if inventory_seed_zero:
+                set_inventory_seed_status(
+                    current_ws,
+                    "fallback",
+                    jobs=0,
+                    reason="seeded native monitor returned zero jobs",
+                )
+            else:
+                set_inventory_seed_status(current_ws, "verified", jobs=job_count)
+
     # Print results
     if result.filtered_count:
         out.plain("monitor", f"URL filter: {result.filtered_count} URLs removed")
@@ -1328,6 +1408,11 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
             out.warn(
                 "monitor",
                 f"Regression: previous run found {prev_jobs} jobs, now 0 — board may have changed",
+            )
+        if inventory_seed_zero:
+            out.warn(
+                "inventory",
+                "Fast path rejected: run `ws probe monitor` and continue with normal discovery",
             )
     else:
         out.info("monitor", f"{job_count} jobs in {elapsed:.1f}s")
@@ -2036,6 +2121,14 @@ _IMPORTANT_FIELDS = ("locations", "employment_type", "job_location_type")
     help="Overall verdict",
 )
 @click.option("--verdict-notes", required=True, help="Brief comment on this config's outcome")
+@click.option(
+    "--verified-empty-board",
+    is_flag=True,
+    help=(
+        "Accept a tested 0-job config when the official board explicitly has no "
+        "openings and the configured ATS/feed was independently verified"
+    ),
+)
 def feedback_cmd(
     name: str | None,
     slug: str | None,
@@ -2056,6 +2149,7 @@ def feedback_cmd(
     vt_q: str | None,
     verdict: str,
     verdict_notes: str,
+    verified_empty_board: bool,
 ):
     """Record extraction quality feedback for a configuration."""
     slug = resolve_slug(slug)
@@ -2128,6 +2222,7 @@ def feedback_cmd(
                 verdict_notes=verdict_notes,
                 monitor_run=monitor_run,
                 scraper_run=scraper_run_data,
+                verified_empty_board=verified_empty_board,
             )
         )
     except WsFeedbackIncomplete:
@@ -2260,7 +2355,13 @@ def run_quality_gates(
         if cfg.get("status") != "tested":
             blockers.append(f"Board {b.alias}: config not tested")
         elif cfg.get("run", {}).get("jobs", 0) == 0:
-            blockers.append(f"Board {b.alias}: 0 jobs found")
+            feedback = cfg.get("feedback") or {}
+            if feedback.get("verified_empty_board") and feedback.get("verdict") == "acceptable":
+                warnings.append(
+                    f"Board {b.alias}: verified empty board; field quality is unvalidated"
+                )
+            else:
+                blockers.append(f"Board {b.alias}: 0 jobs found")
 
         fb = cfg.get("feedback")
         if not fb:

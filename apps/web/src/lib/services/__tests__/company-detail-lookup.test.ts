@@ -2,11 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import {
   canResolveCompanyBySlugFromEnv,
   isSafeCompanySlug,
-  mapPostgresCompanyRowToDetail,
   mapTypesenseCompanyHitToDetail,
   resolveCompanyBySlug,
   type CompanyDetail,
-  type PostgresCompanyRow,
 } from "../company-detail-lookup";
 
 const detail = (overrides: Partial<CompanyDetail> = {}): CompanyDetail => ({
@@ -43,21 +41,6 @@ const hit = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const pgRow = (overrides: Partial<PostgresCompanyRow> = {}): PostgresCompanyRow => ({
-  id: "co-1",
-  name: "Acme Corp",
-  slug: "acme",
-  icon: null,
-  logo: null,
-  website: null,
-  description: "From Postgres",
-  industry_id: 7,
-  industry_name: "Software",
-  employee_count_range: 3,
-  founded_year: 2015,
-  ...overrides,
-});
-
 const unavailable = (err: unknown): boolean =>
   err instanceof Error && err.message.includes("TYPESENSE_SEARCH_KEY");
 
@@ -88,17 +71,6 @@ describe("company detail mapping", () => {
     );
     expect(missing.description).toBeNull();
   });
-
-  it("maps a Postgres fallback row and leaves active count at zero", () => {
-    expect(mapPostgresCompanyRowToDetail(pgRow())).toEqual(
-      detail({
-        icon: null,
-        website: null,
-        description: "From Postgres",
-        activeJobCount: 0,
-      }),
-    );
-  });
 });
 
 describe("company slug lookup resolver", () => {
@@ -108,7 +80,7 @@ describe("company slug lookup resolver", () => {
     expect(isSafeCompanySlug("acme corp")).toBe(false);
     expect(isSafeCompanySlug("acme&&filter:=evil")).toBe(false);
     expect(isSafeCompanySlug("ACME")).toBe(false);
-    expect(canResolveCompanyBySlugFromEnv({ DATABASE_URL: "postgres://test" })).toBe(true);
+    expect(canResolveCompanyBySlugFromEnv({ DATABASE_URL: "postgres://test" })).toBe(false);
     expect(
       canResolveCompanyBySlugFromEnv({
         TYPESENSE_HOST: "localhost",
@@ -120,92 +92,74 @@ describe("company slug lookup resolver", () => {
     expect(canResolveCompanyBySlugFromEnv({ TYPESENSE_HOST: "localhost" })).toBe(false);
   });
 
-  it("returns the Typesense result without querying Postgres", async () => {
+  it("returns the Typesense result", async () => {
     const fetchFromTypesense = vi.fn().mockResolvedValue(detail());
-    const fetchFromPostgres = vi.fn().mockResolvedValue(detail({ description: "pg" }));
 
     const out = await resolveCompanyBySlug("acme", "en", {
       fetchFromTypesense,
-      fetchFromPostgres,
-      hasPostgresConfig: () => true,
       isTypesenseUnavailableError: unavailable,
     });
 
     expect(out).toEqual(detail());
     expect(fetchFromTypesense).toHaveBeenCalledWith("acme", "en");
-    expect(fetchFromPostgres).not.toHaveBeenCalled();
   });
 
-  it("does not send malformed slugs to Typesense and lets Postgres miss naturally", async () => {
+  it("does not send malformed slugs to Typesense", async () => {
     const fetchFromTypesense = vi.fn().mockRejectedValue(new Error("should not run"));
-    const fetchFromPostgres = vi.fn().mockResolvedValue(null);
 
     const out = await resolveCompanyBySlug("acme&&filter:=evil", "en", {
       fetchFromTypesense,
-      fetchFromPostgres,
-      hasPostgresConfig: () => true,
       isTypesenseUnavailableError: unavailable,
     });
 
     expect(out).toBeNull();
     expect(fetchFromTypesense).not.toHaveBeenCalled();
-    expect(fetchFromPostgres).toHaveBeenCalledWith("acme&&filter:=evil", "en");
   });
 
-  it("falls back to Postgres and logs when Typesense is unavailable", async () => {
+  it("degrades to not found and logs when Typesense is unavailable", async () => {
     const error = new Error("TYPESENSE_SEARCH_KEY is not set");
-    const logger = { error: vi.fn(), warn: vi.fn() };
+    const logger = { error: vi.fn() };
     const fetchFromTypesense = vi.fn().mockRejectedValue(error);
-    const fetchFromPostgres = vi.fn().mockResolvedValue(detail({ description: "pg" }));
 
     const out = await resolveCompanyBySlug("acme", "en", {
       fetchFromTypesense,
-      fetchFromPostgres,
-      hasPostgresConfig: () => true,
-      isTypesenseUnavailableError: unavailable,
-      logger,
-    });
-
-    expect(out?.description).toBe("pg");
-    expect(fetchFromPostgres).toHaveBeenCalledWith("acme", "en");
-    expect(logger.error).toHaveBeenCalledWith(
-      "[company] Typesense failed, falling back to Postgres",
-      error,
-    );
-    expect(logger.warn).not.toHaveBeenCalled();
-  });
-
-  it("rethrows non-unavailable Typesense errors without querying Postgres", async () => {
-    const rateLimitError = Object.assign(new Error("Request failed with HTTP code 429"), {
-      httpStatus: 429,
-    });
-    const fetchFromPostgres = vi.fn();
-
-    await expect(
-      resolveCompanyBySlug("acme", "en", {
-        fetchFromTypesense: vi.fn().mockRejectedValue(rateLimitError),
-        fetchFromPostgres,
-        hasPostgresConfig: () => true,
-        isTypesenseUnavailableError: unavailable,
-      }),
-    ).rejects.toBe(rateLimitError);
-    expect(fetchFromPostgres).not.toHaveBeenCalled();
-  });
-
-  it("returns null and warns when neither backend can return a company", async () => {
-    const logger = { error: vi.fn(), warn: vi.fn() };
-    const out = await resolveCompanyBySlug("ghost-slug", "en", {
-      fetchFromTypesense: vi.fn().mockResolvedValue(null),
-      fetchFromPostgres: vi.fn().mockResolvedValue(detail()),
-      hasPostgresConfig: () => false,
       isTypesenseUnavailableError: unavailable,
       logger,
     });
 
     expect(out).toBeNull();
-    expect(logger.warn).toHaveBeenCalledWith(
-      "[company] Postgres fallback skipped because DATABASE_URL is not configured",
+    expect(logger.error).toHaveBeenCalledWith(
+      "[company] Typesense unavailable; company detail degraded to not found",
+      expect.objectContaining({
+        event: "external_client_error",
+        service: "typesense",
+        operation: "company_detail_lookup",
+      }),
     );
+  });
+
+  it("rethrows non-unavailable Typesense errors", async () => {
+    const rateLimitError = Object.assign(new Error("Request failed with HTTP code 429"), {
+      httpStatus: 429,
+    });
+
+    await expect(
+      resolveCompanyBySlug("acme", "en", {
+        fetchFromTypesense: vi.fn().mockRejectedValue(rateLimitError),
+        isTypesenseUnavailableError: unavailable,
+      }),
+    ).rejects.toBe(rateLimitError);
+  });
+
+  it("returns null without logging for a normal Typesense miss", async () => {
+    const logger = { error: vi.fn() };
+    const out = await resolveCompanyBySlug("ghost-slug", "en", {
+      fetchFromTypesense: vi.fn().mockResolvedValue(null),
+      isTypesenseUnavailableError: unavailable,
+      logger,
+    });
+
+    expect(out).toBeNull();
     expect(logger.error).not.toHaveBeenCalled();
   });
 });

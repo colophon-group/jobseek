@@ -173,6 +173,7 @@ def task(ctx, issue: int | None, pick_next: bool):
         "website": ws.website or "",
         "company_name": ws.name or "",
         "prompts_dir": str(prompts_dir),
+        "ats_inventory_seed": ws.ats_inventory,
     }
 
     # Embed industry table in track-a
@@ -232,6 +233,12 @@ def _pre_verify(issue: int) -> None:
     title = data.get("title", "(no title)")
     body = data.get("body", "").strip() or "(no body)"
 
+    from src.workspace.ats_seed import issue_has_inventory_label, preverify_inventory_context
+
+    ats_inventory_context = (
+        preverify_inventory_context(body) if issue_has_inventory_label(data) else ""
+    )
+
     # Load and render the pre-verify template
     template_path = Path(__file__).parent.parent / "steps" / "00-pre-verify.md"
     template = template_path.read_text()
@@ -239,6 +246,7 @@ def _pre_verify(issue: int) -> None:
         issue=issue,
         issue_title=title,
         issue_body=body,
+        ats_inventory_context=ats_inventory_context,
     )
 
     out.plain("task", "Step 0/7: Pre-verify the request")

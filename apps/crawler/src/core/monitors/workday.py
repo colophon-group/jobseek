@@ -30,7 +30,8 @@ import httpx
 import structlog
 
 from src.core.monitors import fetch_page_text, register
-from src.shared.http_retry import fetch_json_page_with_retry
+from src.shared.http import WORKDAY_LIST_303_INCIDENT, mark_provider_incident
+from src.shared.http_retry import PaginationFetchError, fetch_json_page_with_retry
 from src.shared.truncation import truncated_url_result
 
 log = structlog.get_logger()
@@ -46,6 +47,11 @@ _API_RESULT_CAP = 2000  # Workday caps list results at 2000 per query
 # thundering herd of sub-second retries can entrench the rate limit.
 _RETRY_ATTEMPTS = 3
 _RETRY_BASE_DELAY = 1.0
+# Workday returned a provider-wide burst of 303 responses without a usable
+# canonical redirect across 21 boards (#5715). Following 303 would convert the
+# list endpoint's POST into GET. Retry the original POST instead, then let the
+# board backoff/shared host and provider circuits handle a sustained incident.
+_TRANSIENT_REDIRECT_STATUSES = frozenset({303})
 
 # In-stream sentinel used by ``_api_list_stream`` and ``_list_all_sites_stream``
 # to signal that the MAX_JOBS cap was hit (#3216). Distinct from any real
@@ -109,18 +115,27 @@ async def _post_page_with_retry(
     base_delay: float = _RETRY_BASE_DELAY,
 ) -> dict:
     """POST a Workday list-API page with bounded retries (#2748)."""
-    return await fetch_json_page_with_retry(
-        client,
-        list_url,
-        method="POST",
-        json_body=payload,
-        headers={"Content-Type": "application/json"},
-        expect_shape=dict,
-        retries=retries,
-        base_delay=base_delay,
-        log_event="workday.list_backoff",
-        sleep=asyncio.sleep,
-    )
+    try:
+        return await fetch_json_page_with_retry(
+            client,
+            list_url,
+            method="POST",
+            json_body=payload,
+            headers={"Content-Type": "application/json"},
+            expect_shape=dict,
+            retryable_statuses=_TRANSIENT_REDIRECT_STATUSES,
+            retries=retries,
+            base_delay=base_delay,
+            log_event="workday.list_backoff",
+            sleep=asyncio.sleep,
+        )
+    except PaginationFetchError as exc:
+        # Only an exhausted 303 retry budget is safe evidence of the
+        # provider-wide incident seen in #5715. A recovered 303, ordinary
+        # HTTP error, parser failure, or configuration failure cannot mark it.
+        if exc.last_status == 303:
+            mark_provider_incident(exc.url, incident=WORKDAY_LIST_303_INCIDENT)
+        raise
 
 
 async def _paginate_query(

@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 import httpx
 import pytest
 
+import src.core.monitors.rss as rss_monitor
 from src.core.monitors import DiscoveredJob
 from src.core.monitors.rss import (
     RssFeedNotXml,
@@ -20,7 +21,9 @@ from src.core.monitors.rss import (
     _tt_location_string,
     can_handle,
     discover,
+    discover_stream,
 )
+from src.shared.http_retry import PaginationFetchError
 
 _G_NS = "http://base.google.com/ns/1.0"
 _TT_NS = "https://teamtailor.com/locations"
@@ -425,6 +428,87 @@ class TestDiscover:
             jobs = await discover(board, client)
             assert len(jobs) == 1
 
+    async def test_teamtailor_transient_400_retries_same_page(self, monkeypatch):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Recovered job</title>
+                <link>https://example.com/jobs/1</link>
+            </item>
+        """)
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                return httpx.Response(400, text="temporary provider error")
+            return httpx.Response(200, text=feed_xml)
+
+        async def no_sleep(_delay):
+            return None
+
+        monkeypatch.setattr(rss_monitor, "_sleep", no_sleep)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://example.teamtailor.com/jobs",
+                "metadata": {"preset": "teamtailor"},
+            }
+            jobs = await discover(board, client)
+
+        assert [job.title for job in jobs] == ["Recovered job"]
+        assert attempts == 2
+
+    async def test_generic_transient_408_retries_same_feed(self, monkeypatch):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Recovered job</title>
+                <link>https://example.com/jobs/1</link>
+            </item>
+        """)
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                return httpx.Response(408, text="request timeout")
+            return httpx.Response(200, text=feed_xml)
+
+        async def no_sleep(_delay):
+            return None
+
+        monkeypatch.setattr(rss_monitor, "_sleep", no_sleep)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://example.com/careers",
+                "metadata": {"preset": "generic", "feed_url": "https://example.com/feed.xml"},
+            }
+            jobs = await discover(board, client)
+
+        assert [job.title for job in jobs] == ["Recovered job"]
+        assert attempts == 2
+
+    async def test_retired_feed_404_is_failure_not_empty_success(self):
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            return httpx.Response(404, text="retired")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://example.com/careers",
+                "metadata": {"preset": "generic", "feed_url": "https://example.com/feed.xml"},
+            }
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await discover(board, client)
+
+        assert exc_info.value.last_status == 404
+        assert attempts == 1
+
     async def test_generic_preset(self):
         feed_xml = _rss_xml("""
             <item>
@@ -485,6 +569,66 @@ class TestDiscover:
             }
             jobs = await discover(board, client)
             assert len(jobs) == 0
+
+    async def test_stream_yields_batch_before_response_finishes(self):
+        class TwoChunkStream(httpx.AsyncByteStream):
+            finished = False
+
+            async def __aiter__(self):
+                item = (
+                    "<item><title>Engineer</title>"
+                    "<link>https://example.com/jobs/{}</link>"
+                    f"<description>{'x' * 500}</description></item>"
+                )
+                yield (
+                    '<?xml version="1.0"?><rss><channel>'
+                    + "".join(item.format(i) for i in range(200))
+                    + f"<!--{'padding' * 10_000}-->"
+                ).encode()
+                yield (item.format(200) + "</channel></rss>").encode()
+                self.finished = True
+
+        source = TwoChunkStream()
+
+        def handler(request):
+            return httpx.Response(200, stream=source)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://example.com/careers",
+                "metadata": {
+                    "preset": "generic",
+                    "feed_url": "https://example.com/feed.xml",
+                },
+            }
+            batches = discover_stream(board, client)
+            first = await anext(batches)
+            assert len(first) == 200
+            assert source.finished is False
+            await batches.aclose()
+
+    async def test_stream_marks_max_jobs_as_truncated(self, monkeypatch):
+        feed_xml = _rss_xml(
+            "".join(f"<item><link>https://example.com/jobs/{i}</link></item>" for i in range(4))
+        )
+
+        def handler(request):
+            return httpx.Response(200, text=feed_xml)
+
+        monkeypatch.setattr(rss_monitor, "MAX_JOBS", 3)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://example.com/careers",
+                "metadata": {
+                    "preset": "generic",
+                    "feed_url": "https://example.com/feed.xml",
+                },
+            }
+            batches = [batch async for batch in discover_stream(board, client)]
+
+        assert len(batches) == 1
+        assert batches[0].truncated is True
+        assert len(batches[0].urls) == 3
 
 
 # ── can_handle ───────────────────────────────────────────────────────────

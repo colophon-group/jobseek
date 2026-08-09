@@ -1,5 +1,6 @@
 import { siteConfig } from "@/content/config";
 import { type Locale, locales } from "@/lib/i18n";
+import { logExternalError, safeExternalError } from "@/lib/safe-external-error";
 
 const INDEXNOW_ENDPOINT = "https://api.indexnow.org/indexnow";
 
@@ -102,7 +103,7 @@ export async function notifyIndexNow(
     }
     return { kind: "submitted", status: res.status, urlCount: unique.length };
   } catch (err) {
-    console.error("[indexnow] submission failed", err);
+    logExternalError("error", { service: "indexnow", operation: "submit_urls" }, err);
     return { kind: "errored", error: err, urlCount: unique.length };
   }
 }
@@ -200,7 +201,10 @@ export function logIndexNowResult(
       console.warn(INDEXNOW_LOG_EVENT, {
         label,
         kind: "errored",
-        error: result.error instanceof Error ? result.error.message : String(result.error),
+        error: safeExternalError(result.error, {
+          service: "indexnow",
+          operation: "submit_urls",
+        }),
         urlCount: result.urlCount,
       });
       return;

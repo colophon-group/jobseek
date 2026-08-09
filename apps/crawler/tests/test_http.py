@@ -3,16 +3,23 @@ from __future__ import annotations
 import ssl
 
 import httpx
+import pytest
 
 from src.shared.http import (
     DEFAULT_ACCEPT,
     DEFAULT_USER_AGENT,
+    WORKDAY_LIST_303_INCIDENT,
+    RequestHostTrackingTransport,
     _client_kwargs,
     _make_ssl_context,
     client_for,
     create_http_client,
     create_logging_http_client,
     create_nossl_http_client,
+    is_avature_job_detail_url,
+    mark_provider_incident,
+    mark_transient_response_failure,
+    track_request_hosts,
 )
 
 
@@ -80,6 +87,143 @@ class TestCreateHttpClient:
         await client.aclose()
 
         assert captured["accept"] == "application/json"
+
+
+class TestRequestHostTracking:
+    async def test_transport_records_actual_redirect_hosts_without_network(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.host == "8.8.8.8":
+                return httpx.Response(302, headers={"location": "http://1.1.1.1/final"})
+            return httpx.Response(200, text="ok")
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport, follow_redirects=True) as client:
+            with track_request_hosts() as tracker:
+                response = await client.get("http://8.8.8.8/start")
+
+        assert response.status_code == 200
+        assert tracker.hosts == {"8.8.8.8", "1.1.1.1"}
+        assert tracker.last_host == "1.1.1.1"
+
+    async def test_tracker_classifies_only_transient_upstream_statuses(self):
+        statuses = iter((503, 200))
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(next(statuses), request=request)
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                response = await client.get("https://outage.example/first")
+                assert response.status_code == 503
+                assert tracker.transient_failure_host == "outage.example"
+
+                response = await client.get("https://outage.example/recovered")
+                assert response.status_code == 200
+                assert tracker.transient_failure_host is None
+
+    async def test_tracker_classifies_transport_errors(self):
+        def timeout(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectTimeout("upstream timed out", request=request)
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(timeout))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                with pytest.raises(httpx.ConnectTimeout):
+                    await client.get("https://timeout.example/jobs")
+
+        assert tracker.transient_failure_host == "timeout.example"
+        assert tracker.last_transport_error == "ConnectTimeout"
+
+    async def test_tracker_classifies_avature_job_detail_406_as_transient(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(406, request=request)
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                await client.get("https://jobs.totalenergies.com/en_US/careers/JobDetail/Role/123")
+
+        assert tracker.transient_failure_host == "jobs.totalenergies.com"
+        assert tracker.last_url and "/JobDetail/" in tracker.last_url
+
+    async def test_tracker_keeps_generic_406_non_transient(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(406, request=request)
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                await client.get("https://api.example.com/v1/search")
+
+        assert tracker.transient_failure_host is None
+
+    async def test_new_response_clears_promoted_application_failure(self):
+        responses = iter((200, 200))
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(next(responses), request=request)
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                first = await client.get("https://degraded.example/detail")
+                mark_transient_response_failure(str(first.url), reason="provider_invalid_payload")
+                assert tracker.transient_failure_host == "degraded.example"
+
+                await client.get("https://degraded.example/recovered")
+
+        assert tracker.last_application_error is None
+        assert tracker.transient_failure_host is None
+
+    async def test_provider_incident_retains_its_origin_across_later_responses(self):
+        """Concurrent multi-site requests cannot overwrite terminal evidence."""
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, request=request)
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                await client.get("https://failed.wd1.example/jobs")
+                mark_provider_incident(
+                    "https://failed.wd1.example/jobs",
+                    incident=WORKDAY_LIST_303_INCIDENT,
+                )
+                await client.get("https://later.wd2.example/jobs")
+
+        assert tracker.last_provider_incident == WORKDAY_LIST_303_INCIDENT
+        assert tracker.last_provider_incident_host == "failed.wd1.example"
+        assert tracker.last_host == "later.wd2.example"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://jobs.totalenergies.com/en_US/careers/JobDetail/Role/123",
+        "https://apply.deloitte.co.uk/UKCareers/JobDetail/Role/123",
+        "https://careers.tesco.com/en_GB/careersmarketplace/JobDetail/Role/123",
+        "https://bloomberg.avature.net/jobs/JobDetail/Role/123",
+    ],
+)
+def test_recognizes_avature_job_detail_routes(url: str) -> None:
+    assert is_avature_job_detail_url(url) is True
+
+
+def test_does_not_treat_generic_job_detail_route_as_avature() -> None:
+    assert is_avature_job_detail_url("https://example.com/jobs/JobDetail/Role/123") is False
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://jobs.example.com/careers/JobDetail?jobId=123",
+        "https://jobs.example.com/jobs/FolderDetail/Role/123",
+        "https://jobs.example.com/jobs/PipelineDetail?pipelineId=123",
+    ],
+)
+def test_recognizes_branded_avature_detail_variants(url: str) -> None:
+    assert is_avature_job_detail_url(url) is True
 
 
 class TestProxyOptIn:

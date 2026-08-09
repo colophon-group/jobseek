@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { fetchExplorePageData, type ExploreData } from "@/lib/actions/explore-page-data";
 import { hasLoggedInHint, hasAnonJobLanguagesHint } from "@/lib/client-cookies";
+import { logExternalError } from "@/lib/safe-external-error";
+import { hasSearchFilterParams } from "@/lib/search/query-params";
 import { ExploreSkeleton } from "@/components/search/explore-skeleton";
 import { SearchPage } from "./search-page";
 
@@ -28,7 +30,11 @@ async function fetchExplorePageDataWithRetry(
   try {
     return await fetchExplorePageData(args);
   } catch (err) {
-    console.warn("[explore] fetchExplorePageData failed, retrying once", err);
+    logExternalError(
+      "warn",
+      { service: "typesense", operation: "fetch_explore_page_retry", retryCount: 1 },
+      err,
+    );
     await new Promise((resolve) => setTimeout(resolve, 250));
     return fetchExplorePageData(args);
   }
@@ -45,20 +51,6 @@ type ExploreContentProps = {
    */
   initialData?: ExploreData;
 };
-
-/**
- * URL searchParams that ``fetchExplorePageData`` consumes. If any of these
- * are present, the prerendered ``initialData`` doesn't reflect the
- * filters and we must re-fetch the personalized variant.
- */
-const FILTER_PARAMS = ["q", "loc", "occ", "sen", "tech", "wm", "etype", "sal", "salcur", "exp"];
-
-function hasAnyFilterParam(searchParams: URLSearchParams): boolean {
-  for (const key of FILTER_PARAMS) {
-    if (searchParams.has(key)) return true;
-  }
-  return false;
-}
 
 export function ExploreContent({ locale, initialData }: ExploreContentProps) {
   const searchParams = useSearchParams();
@@ -78,7 +70,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     const needsPersonalizedFetch =
       hasLoggedInHint() ||
       hasAnonJobLanguagesHint() ||
-      hasAnyFilterParam(searchParams) ||
+      hasSearchFilterParams(searchParams) ||
       initialData === undefined;
     if (!needsPersonalizedFetch) return;
 
@@ -110,7 +102,11 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
         // toolbar because the prerender doesn't carry them, but that
         // matches the pre-#2746 cold-error behaviour and beats a
         // permanent skeleton.
-        console.error("[explore] fetchExplorePageData failed twice", err);
+        logExternalError(
+          "error",
+          { service: "typesense", operation: "fetch_explore_page", retryCount: 2 },
+          err,
+        );
         if (initialData) setData(initialData);
       });
     // Empty deps: the conditional-fetch decision is made once on

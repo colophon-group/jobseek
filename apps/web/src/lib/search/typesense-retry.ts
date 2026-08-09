@@ -29,8 +29,10 @@
  *   - Non-retryable errors (4xx auth, 400 schema, syntax) propagate
  *     immediately so the upstream `try/catch` returns `emptyResponse()`
  *     without burning the budget
- *   - `console.warn` on every retry so observability picks it up
+ *   - Structured `external_client_error` warning on every retry
  */
+
+import { logExternalError } from "@/lib/safe-external-error";
 
 const RETRYABLE_NODE_CODES = new Set([
   "ECONNRESET",
@@ -204,15 +206,14 @@ export async function withTypesenseRetry<T>(
         baseDelays[attempt - 1] ?? baseDelays[baseDelays.length - 1] ?? 200;
       const jitter = Math.floor(Math.random() * (maxJitter + 1));
       const delay = baseDelay + jitter;
-      const code = (err as { code?: unknown }).code;
-      const httpStatus = (err as { httpStatus?: unknown }).httpStatus;
-      const message = (err as { message?: unknown }).message;
-      console.warn(
-        `[${label}] transient error on attempt ${attempt}/${attempts}, ` +
-          `retrying in ${delay}ms ` +
-          `(code=${typeof code === "string" ? code : "n/a"}, ` +
-          `httpStatus=${typeof httpStatus === "number" ? httpStatus : "n/a"}, ` +
-          `message=${typeof message === "string" ? message.slice(0, 200) : "n/a"})`,
+      logExternalError(
+        "warn",
+        {
+          service: "typesense",
+          operation: `${label}_retry`,
+          retryCount: attempt,
+        },
+        err,
       );
       await sleep(delay);
     }

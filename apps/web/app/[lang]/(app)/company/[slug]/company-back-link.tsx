@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { BackLink } from "@/components/BackLink";
 import type { Locale } from "@/lib/i18n";
+import { serializeSearchFilterParams } from "@/lib/search/query-params";
 
 type Props = {
   locale: Locale;
@@ -19,7 +20,7 @@ type Props = {
  */
 export function CompanyBackLink({ locale, label }: Props) {
   const sp = useSearchParams();
-  const qs = sp.toString();
+  const qs = serializeSearchFilterParams(sp);
   const href = `/${locale}/explore${qs ? `?${qs}` : ""}`;
   return <BackLink href={href}>{label}</BackLink>;
 }

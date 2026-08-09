@@ -283,6 +283,15 @@ def validate_csvs() -> list[ValidationError]:
             except json.JSONDecodeError:
                 errors.append(ValidationError("boards.csv", i, "Invalid monitor_config JSON"))
             else:
+                if monitor_type == "api_sniffer" and isinstance(mc_obj, dict) and "url" in mc_obj:
+                    errors.append(
+                        ValidationError(
+                            "boards.csv",
+                            i,
+                            ("'url' in api_sniffer monitor_config is ignored; use 'api_url'"),
+                        )
+                    )
+
                 # rescrape_policy controls whether workers re-scrape postings
                 # after a successful scrape (see _RECORD_SCRAPE_SUCCESS).
                 # Only "never" is supported today; absent means default cadence.

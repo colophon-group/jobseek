@@ -7,12 +7,20 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Any, cast
 
 import asyncpg
+import httpx
 import structlog
-from prometheus_client import Gauge
+from prometheus_client import Counter, Gauge
 
 from src.config import settings
+from src.export_cursor_fence import (
+    CursorFenceFactory,
+    CutoffFactory,
+    capture_cdc_snapshot_cutoff,
+    export_cursor_fence,
+)
 from src.metrics import (
     export_errors_total,
     exporter_export_lag,
@@ -30,11 +38,10 @@ from src.metrics import (
     typesense_export_duration_seconds,
     typesense_export_lag,
     typesense_memory_bytes,
-    typesense_reconciliation_discrepancies,
 )
 from src.redis_queue import get_queue_depths
 
-# These two gauges are only ever set by this module (the exporter), so we
+# These availability gauges are only ever set by this module (the exporter), so we
 # define them here instead of in metrics.py. Defining them at metrics.py's
 # module scope would have every crawler container that imports metrics
 # export a default-0 sample, which masquerades as "redis disconnected" or
@@ -48,6 +55,21 @@ typesense_healthy = Gauge(
     "crawler_typesense_healthy",
     "Typesense health status (1=healthy, 0=unhealthy)",
 )
+exporter_downstream_available = Gauge(
+    "crawler_exporter_downstream_available",
+    "Exporter downstream availability (1=available, 0=in backoff)",
+    ["target"],
+)
+exporter_downstream_backoff_seconds = Gauge(
+    "crawler_exporter_downstream_backoff_seconds",
+    "Seconds remaining before the exporter retries a downstream",
+    ["target"],
+)
+exporter_downstream_skipped_total = Counter(
+    "crawler_exporter_downstream_skipped_total",
+    "Exporter downstream attempts skipped by outage backoff",
+    ["target"],
+)
 
 log = structlog.get_logger()
 
@@ -56,6 +78,7 @@ log = structlog.get_logger()
 # ---------------------------------------------------------------------------
 
 _EPOCH = datetime.min.replace(tzinfo=UTC)
+_MAX_CDC_CUTOFF = datetime.max.replace(tzinfo=UTC)
 _ZERO_UUID = uuid.UUID(int=0)
 
 # Sentinel stamped on Typesense `experience_max` for rows the extractor
@@ -69,6 +92,75 @@ _EXPERIENCE_MAX_OPEN_ENDED = 99
 # Stored as "ts_iso|uuid" in exporter_state.
 Cursor = tuple[datetime, uuid.UUID]
 
+
+@dataclass(slots=True)
+class _DownstreamBackoff:
+    """Bound repeated exporter attempts during a downstream outage.
+
+    The exporter normally runs every second. Without state carried between
+    ticks, a refused connection turns one provider incident into a retry
+    storm. This circuit only opens for target-wide availability failures;
+    deterministic row errors retain their existing isolation path.
+    """
+
+    target: str
+    base_seconds: float
+    max_seconds: float
+    consecutive_failures: int = 0
+    retry_at: float = 0.0
+    outage_started_at: float | None = None
+
+    def __post_init__(self) -> None:
+        if self.base_seconds <= 0:
+            raise ValueError("base_seconds must be positive")
+        if self.max_seconds < self.base_seconds:
+            raise ValueError("max_seconds must be at least base_seconds")
+        exporter_downstream_available.labels(target=self.target).set(1)
+        exporter_downstream_backoff_seconds.labels(target=self.target).set(0)
+
+    def ready(self, now: float | None = None) -> bool:
+        current = time.monotonic() if now is None else now
+        remaining = max(0.0, self.retry_at - current)
+        exporter_downstream_backoff_seconds.labels(target=self.target).set(remaining)
+        return remaining == 0
+
+    def record_skip(self, now: float | None = None) -> None:
+        self.ready(now)
+        exporter_downstream_skipped_total.labels(target=self.target).inc()
+
+    def record_failure(self, now: float | None = None) -> float:
+        current = time.monotonic() if now is None else now
+        if self.outage_started_at is None:
+            self.outage_started_at = current
+        self.consecutive_failures += 1
+        # Once the cap is reached there is no reason to keep growing the
+        # exponent (and an extremely long outage must not overflow a float).
+        cap_exponent = math.ceil(math.log2(self.max_seconds / self.base_seconds))
+        exponent = min(self.consecutive_failures - 1, cap_exponent)
+        delay = min(self.max_seconds, self.base_seconds * (2**exponent))
+        self.retry_at = current + delay
+        exporter_downstream_available.labels(target=self.target).set(0)
+        exporter_downstream_backoff_seconds.labels(target=self.target).set(delay)
+        return delay
+
+    def record_success(self, now: float | None = None) -> tuple[int, float] | None:
+        if self.consecutive_failures == 0:
+            return None
+        current = time.monotonic() if now is None else now
+        failures = self.consecutive_failures
+        outage_started_at = self.outage_started_at
+        outage_seconds = max(
+            0.0,
+            current - (current if outage_started_at is None else outage_started_at),
+        )
+        self.consecutive_failures = 0
+        self.retry_at = 0.0
+        self.outage_started_at = None
+        exporter_downstream_available.labels(target=self.target).set(1)
+        exporter_downstream_backoff_seconds.labels(target=self.target).set(0)
+        return failures, outage_seconds
+
+
 __all__ = [
     "Cursor",
     "PostingSchema",
@@ -78,8 +170,6 @@ __all__ = [
     "backfill_typesense",
     "redis_connected",
     "run_exporter",
-    "run_exporter_with_reconciliation",
-    "run_reconciliation",
     "typesense_healthy",
 ]
 
@@ -98,12 +188,12 @@ def _encode_experience_for_typesense(
     if exp_min is None:
         return -1, -1, -1.0, -1.0
 
-    min_years = float(exp_min)
+    min_years = float(cast(Any, exp_min))
     if exp_max is None:
         max_years = float(_EXPERIENCE_MAX_OPEN_ENDED)
         legacy_max = _EXPERIENCE_MAX_OPEN_ENDED
     else:
-        max_years = float(exp_max)
+        max_years = float(cast(Any, exp_max))
         legacy_max = math.floor(max_years)
 
     legacy_min = math.ceil(min_years)
@@ -209,7 +299,6 @@ class TaxonomyMaps:
     async def refresh(
         self,
         local_pool: asyncpg.Pool,
-        supa_pool: asyncpg.Pool,
     ) -> None:
         await asyncio.gather(
             self._load_location_names(local_pool),
@@ -301,7 +390,7 @@ class TaxonomyMaps:
         # Empty / missing -> macros never get stamped onto postings, which
         # silently breaks the EU/EMEA/DACH macro filter (issue #2978). Be
         # loud when the table is empty or unreadable so the operator can
-        # re-seed from Supabase, instead of swallowing the failure.
+        # restore the local seed data instead of swallowing the failure.
         macro_members: dict[int, list[int]] = defaultdict(list)
         try:
             rows = await local_pool.fetch("SELECT country_id, macro_id FROM location_macro_member")
@@ -322,7 +411,7 @@ class TaxonomyMaps:
             # ancestors in their location_ids until this is fixed.
             log.warning(
                 "exporter.location_macro_member.empty",
-                hint="seed location_macro_member from Supabase to enable macro filters",
+                hint="restore local location_macro_member seed data to enable macro filters",
             )
 
         # Build ancestor map
@@ -341,20 +430,18 @@ class TaxonomyMaps:
     async def _load_occupation_ancestors(self, pool: asyncpg.Pool) -> None:
         """Build occupation_id -> [self + all ancestor IDs] map.
 
-        Walks the ``parent_id`` chain AND unions in ``domain_id`` so that
-        a posting tagged with a specific occupation carries the domain
-        root in its expanded ``occupation_ids``. Without this, filtering
-        by domain id (e.g. ``occupation_ids:=<software_engineering>``)
-        returns 0 because no posting has the domain id stamped (#2980).
-        Mirrors the location macro expansion in
-        ``_load_location_ancestors`` (#2977).
+        Only occupation IDs belong in ``occupation_ids``. Occupation domains
+        use an independent integer identity sequence, so unioning
+        ``occupation.domain_id`` into this array makes unrelated values
+        collide (for example, Healthcare domain 9 with Data Analyst
+        occupation 9). Domain headers are expanded to their first-level
+        occupations by the web UI and therefore do not need an index-level
+        synthetic ancestor (#3027).
         """
         occ_parents: dict[int, int | None] = {}
-        occ_domains: dict[int, int | None] = {}
-        rows = await pool.fetch("SELECT id, parent_id, domain_id FROM occupation")
+        rows = await pool.fetch("SELECT id, parent_id FROM occupation")
         for r in rows:
             occ_parents[r["id"]] = r["parent_id"]
-            occ_domains[r["id"]] = r["domain_id"]
 
         ancestors: dict[int, list[int]] = {}
         for oid in occ_parents:
@@ -363,11 +450,6 @@ class TaxonomyMaps:
             while current is not None:
                 anc.add(current)
                 current = occ_parents.get(current)
-            # Union in the domain id so domain-as-single-filter works
-            # (parity with location macro membership).
-            domain_id = occ_domains.get(oid)
-            if domain_id is not None and domain_id != oid:
-                anc.add(domain_id)
             ancestors[oid] = list(anc)
         self.occupation_ancestors = ancestors
 
@@ -377,15 +459,14 @@ _taxonomy_maps: TaxonomyMaps | None = None
 
 async def _get_taxonomy_maps(
     local_pool: asyncpg.Pool,
-    supa_pool: asyncpg.Pool,
 ) -> TaxonomyMaps:
     """Get or create taxonomy maps, refreshing if stale."""
     global _taxonomy_maps
     if _taxonomy_maps is None:
         _taxonomy_maps = TaxonomyMaps()
-        await _taxonomy_maps.refresh(local_pool, supa_pool)
+        await _taxonomy_maps.refresh(local_pool)
     elif _taxonomy_maps.stale:
-        await _taxonomy_maps.refresh(local_pool, supa_pool)
+        await _taxonomy_maps.refresh(local_pool)
     return _taxonomy_maps
 
 
@@ -476,6 +557,10 @@ def _build_typesense_docs(
 
         doc: dict = {
             "id": str(row["id"]),
+            # Stable UUID range bucket used by the deploy-independent
+            # reconciler. Keeping it in the document avoids whole-index loads
+            # and bounds normal scans to 1/256 of the collection.
+            "reconciliation_bucket": row["id"].hex[:2],
             "company_id": str(company_id),
             "company_name": company_name,
             "company_slug": company_slug,
@@ -483,6 +568,7 @@ def _build_typesense_docs(
             "is_active": row["is_active"],
             "has_content": has_content,
             "location_ids": expanded_location_ids,
+            "location_direct_ids": list(raw_location_ids),
             "location_names": location_names,
             "location_types": list(row["location_types"] or []),
             "location_geo_types": location_geo_types,
@@ -511,6 +597,14 @@ def _build_typesense_docs(
             doc["seniority_name"] = sen_name
         if row["salary_eur"] is not None:
             doc["salary_eur"] = row["salary_eur"]
+        if row["salary_min"] is not None:
+            doc["salary_min"] = row["salary_min"]
+        if row["salary_max"] is not None:
+            doc["salary_max"] = row["salary_max"]
+        if row["salary_currency"]:
+            doc["salary_currency"] = row["salary_currency"]
+        if row["salary_period"]:
+            doc["salary_period"] = row["salary_period"]
         if row["source_url"]:
             doc["source_url"] = row["source_url"]
         if last_seen_ts is not None:
@@ -550,16 +644,21 @@ async def _upsert_to_typesense(
     """
     from src.typesense_client import get_typesense_client
 
-    client = get_typesense_client()
+    # The exporter owns bounded retry timing across ticks. The Typesense
+    # client's default three retries are immediate, so leaving them enabled
+    # turns one 5s timeout into four back-to-back requests before our cursor
+    # safety/backoff code gets control (#5105).
+    client = get_typesense_client(num_retries=0)
     if client is None or not docs:
         return set()
 
     loop = asyncio.get_running_loop()
     t0 = time.monotonic()
     try:
+        documents = cast(Any, client.collections["job_posting"].documents)
         results = await loop.run_in_executor(
             None,
-            lambda: client.collections["job_posting"].documents.import_(docs, {"action": "upsert"}),
+            lambda: documents.import_(docs, {"action": "upsert"}),
         )
         duration = time.monotonic() - t0
         typesense_export_duration_seconds.observe(duration)
@@ -605,7 +704,9 @@ async def _upsert_to_typesense(
 # ---------------------------------------------------------------------------
 
 
-async def _update_typesense_health() -> None:
+async def _update_typesense_health(
+    backoff: _DownstreamBackoff | None = None,
+) -> None:
     """Probe Typesense /health and /metrics.json, update gauges.
 
     ``client.operations.perform(op)`` in the typesense-python client maps to
@@ -622,7 +723,7 @@ async def _update_typesense_health() -> None:
     """
     from src.typesense_client import get_typesense_client
 
-    client = get_typesense_client()
+    client = get_typesense_client(num_retries=0)
     if client is None:
         return
 
@@ -633,9 +734,30 @@ async def _update_typesense_health() -> None:
             client.operations.is_healthy,
         )
         typesense_healthy.set(1 if is_healthy else 0)
-    except Exception:
+        if not is_healthy:
+            if backoff is not None:
+                retry_in = backoff.record_failure()
+                log.warning(
+                    "exporter.typesense_unhealthy",
+                    retry_in_s=round(retry_in, 2),
+                    consecutive_failures=backoff.consecutive_failures,
+                )
+            return
+        if backoff is not None:
+            _record_downstream_recovery(backoff)
+    except Exception as exc:
         typesense_healthy.set(0)
-        log.warning("exporter.typesense_health_error", exc_info=True)
+        fields = _exc_fields(exc)
+        if backoff is not None and _is_downstream_unavailable(exc):
+            retry_in = backoff.record_failure()
+            fields.update(
+                retry_in_s=round(retry_in, 2),
+                consecutive_failures=backoff.consecutive_failures,
+            )
+        log.warning("exporter.typesense_health_error", exc_info=True, **fields)
+        # Do not immediately follow a timed-out /health request with another
+        # request to /metrics.json. That doubled the timeout chain in #5105.
+        return
 
     try:
         metrics = await loop.run_in_executor(
@@ -699,6 +821,68 @@ def _exc_fields(exc: BaseException) -> dict[str, object]:
     return fields
 
 
+_ROW_POISON_SQLSTATE_CLASSES = frozenset({"21", "22", "23"})
+_DOWNSTREAM_UNAVAILABLE_SQLSTATES = frozenset(
+    {
+        "53300",  # too_many_connections
+        "57P03",  # cannot_connect_now
+    }
+)
+
+
+def _is_supabase_row_poison(exc: BaseException) -> bool:
+    """Return whether *exc* is safe to isolate and skip as one bad row.
+
+    Only PostgreSQL cardinality, data, and integrity violations are known to
+    be caused by the row being written.  Timeouts, connection failures,
+    resource exhaustion, operator intervention, schema errors, and unknown
+    exceptions are target-wide failures: treating any of those as row poison
+    would advance the CDC cursor past data that Supabase never acknowledged
+    (#5231).
+
+    SQLSTATE class references:
+    - 21: cardinality violation (a batch may need per-row isolation)
+    - 22: data exception (invalid/out-of-range row value)
+    - 23: integrity constraint violation (FK/unique/NOT NULL, etc.)
+    """
+    sqlstate = getattr(exc, "sqlstate", None)
+    return (
+        isinstance(exc, asyncpg.PostgresError)
+        and isinstance(sqlstate, str)
+        and sqlstate[:2] in _ROW_POISON_SQLSTATE_CLASSES
+    )
+
+
+def _is_downstream_unavailable(exc: BaseException) -> bool:
+    """Return whether an error represents target-wide unavailability.
+
+    SQLSTATE class 08 covers connection exceptions such as the production
+    ``ConnectionFailureError`` (08006). Pool/network timeouts and socket
+    failures may arrive as built-in exceptions before asyncpg can attach a
+    SQLSTATE. Capacity and startup/shutdown rejections are also target-wide.
+    Row-local and unknown failures deliberately do not open the circuit.
+    """
+    sqlstate = getattr(exc, "sqlstate", None)
+    return (
+        (isinstance(sqlstate, str) and sqlstate.startswith("08"))
+        or sqlstate in _DOWNSTREAM_UNAVAILABLE_SQLSTATES
+        or isinstance(exc, (TimeoutError, ConnectionError, OSError, httpx.RequestError))
+    )
+
+
+def _record_downstream_recovery(backoff: _DownstreamBackoff) -> None:
+    recovery = backoff.record_success()
+    if recovery is None:
+        return
+    failed_attempts, outage_seconds = recovery
+    log.info(
+        "exporter.downstream_recovered",
+        target=backoff.target,
+        failed_attempts=failed_attempts,
+        outage_duration_s=round(outage_seconds, 2),
+    )
+
+
 async def _upsert_to_supabase(
     supa_pool: asyncpg.Pool,
     rows: list,
@@ -712,11 +896,16 @@ async def _upsert_to_supabase(
     transaction rolls back — this is the poison-pill failure mode that
     used to halt CDC forever (#3180).
 
-    Fallback: on batch failure, re-attempt each row in its own
-    transaction. Successful rows commit; failed rows are logged + counted
-    in ``export_errors_total{phase="supabase"}`` and returned in the
-    set of failed IDs so the caller advances the cursor past them (data
-    is dropped; quarantine table is a follow-up).
+    Fallback: when PostgreSQL identifies the batch failure as a row-local
+    cardinality, data, or integrity violation, re-attempt each row in its
+    own transaction. Successful rows commit; deterministic poison rows are
+    logged + counted in ``export_errors_total{phase="supabase"}`` and
+    returned in the set of failed IDs so the caller advances past them.
+
+    Target-wide and unknown failures escape instead. The caller then keeps
+    the cursor pinned and replays the batch on the next tick. This is safe
+    even if some fallback rows committed before a transient interruption,
+    because every write is an idempotent ``INSERT ... ON CONFLICT UPDATE``.
 
     The caller is expected to advance the cursor to the last row's
     ``(updated_at, id)`` regardless of which rows failed — the
@@ -742,9 +931,20 @@ async def _upsert_to_supabase(
             await conn.execute(PostingSchema.insert_from_temp_sql())
         return set()
     except Exception as batch_exc:
-        # Single bad row poisoned the whole transaction. Fall back to
-        # per-row upserts so the surviving N-1 rows still land in
-        # Supabase and the cursor can advance.
+        if not _is_supabase_row_poison(batch_exc):
+            # A timeout, broken connection, overloaded/shutting-down server,
+            # schema error, or unknown exception says nothing about the row.
+            # Propagate it so the caller retains the cursor (#5231).
+            log.warning(
+                "exporter.supabase_batch_retryable",
+                batch_size=len(rows),
+                **_exc_fields(batch_exc),
+            )
+            raise
+
+        # A deterministic row-local failure poisoned the whole transaction.
+        # Fall back to per-row upserts so the surviving N-1 rows still land
+        # in Supabase and the cursor can advance (#3180).
         log.warning(
             "exporter.supabase_batch_failed_falling_back",
             batch_size=len(rows),
@@ -760,9 +960,13 @@ async def _upsert_to_supabase_per_row(
 ) -> set[uuid.UUID]:
     """Per-row Supabase upsert fallback used after a batch failure (#3180).
 
-    Each row gets its own transaction. Successful rows commit; failed
-    rows are logged, counted in ``export_errors_total``, and returned
-    in the failed-ID set so the caller can advance the cursor past them.
+    Each row gets its own transaction. Successful rows commit; deterministic
+    row-local failures are logged, counted in ``export_errors_total``, and
+    returned in the failed-ID set so the caller can advance past them.
+
+    A target-wide or unknown failure interrupts the fallback and escapes.
+    The cursor remains pinned, and the next tick safely replays any earlier
+    rows that committed before the interruption.
 
     Extracted from ``_upsert_to_supabase`` so it can be unit-tested in
     isolation and so the fast-path COPY stays the steady-state hot path.
@@ -779,6 +983,13 @@ async def _upsert_to_supabase_per_row(
                 async with conn.transaction():
                     await conn.execute(insert_sql, *values)
             except Exception as exc:
+                if not _is_supabase_row_poison(exc):
+                    log.warning(
+                        "exporter.supabase_fallback_retryable",
+                        posting_id=str(row_id),
+                        **_exc_fields(exc),
+                    )
+                    raise
                 failed_ids.add(row_id)
                 export_errors_total.labels(table="job_posting", phase="supabase").inc()
                 # ``[exporter] row dropped`` is the grep anchor for the
@@ -798,13 +1009,35 @@ async def _export_postings_dual(
     supa_cursor: Cursor,
     ts_cursor: Cursor,
     maps: TaxonomyMaps,
+    supa_backoff: _DownstreamBackoff | None = None,
+    ts_backoff: _DownstreamBackoff | None = None,
+    *,
+    cutoff: datetime = _MAX_CDC_CUTOFF,
 ) -> tuple[int, Cursor, Cursor]:
     """Fetch changed postings and upsert to both Supabase and Typesense concurrently.
 
     Uses two-cursor design: SELECT from MIN(supa_cursor, ts_cursor), then
     post-filter rows for each target. Returns (total_fetched, new_supa_cursor, new_ts_cursor).
     """
-    fetch_cursor = _min_cursor(supa_cursor, ts_cursor)
+    supa_ready = supa_backoff is None or supa_backoff.ready()
+    ts_ready = ts_backoff is None or ts_backoff.ready()
+    if not supa_ready and supa_backoff is not None:
+        # Supabase's cursor remains pinned, but reading from it on every
+        # one-second tick would replay the same local batch throughout the
+        # outage. Read from Typesense's cursor until the retry deadline so
+        # that independent search indexing can continue without local churn.
+        supa_backoff.record_skip()
+    if not ts_ready and ts_backoff is not None:
+        ts_backoff.record_skip()
+
+    if not supa_ready and not ts_ready:
+        return 0, supa_cursor, ts_cursor
+    if supa_ready and ts_ready:
+        fetch_cursor = _min_cursor(supa_cursor, ts_cursor)
+    elif supa_ready:
+        fetch_cursor = supa_cursor
+    else:
+        fetch_cursor = ts_cursor
     fetch_ts, fetch_id = fetch_cursor
 
     rows = await local_pool.fetch(
@@ -812,12 +1045,17 @@ async def _export_postings_dual(
         fetch_ts,
         fetch_id,
         settings.export_batch_limit,
+        cutoff,
     )
     if not rows:
         return 0, supa_cursor, ts_cursor
 
-    supa_rows = [r for r in rows if _cursor_gt(r["updated_at"], r["id"], supa_cursor)]
-    ts_rows = [r for r in rows if _cursor_gt(r["updated_at"], r["id"], ts_cursor)]
+    supa_rows = (
+        [r for r in rows if _cursor_gt(r["updated_at"], r["id"], supa_cursor)] if supa_ready else []
+    )
+    ts_rows = (
+        [r for r in rows if _cursor_gt(r["updated_at"], r["id"], ts_cursor)] if ts_ready else []
+    )
 
     tasks = []
 
@@ -843,11 +1081,17 @@ async def _export_postings_dual(
             # so we retry next tick — same shape as the original
             # implementation. ``_upsert_to_supabase`` swallows per-row
             # poison-pills and returns them as a set instead.
-            log.error(
-                "exporter.supabase_upsert_error",
-                **_exc_fields(results[0]),
-            )
+            fields = _exc_fields(results[0])
+            if supa_backoff is not None and _is_downstream_unavailable(results[0]):
+                retry_in = supa_backoff.record_failure()
+                fields.update(
+                    retry_in_s=round(retry_in, 2),
+                    consecutive_failures=supa_backoff.consecutive_failures,
+                )
+            log.error("exporter.supabase_upsert_error", **fields)
         else:
+            if supa_backoff is not None:
+                _record_downstream_recovery(supa_backoff)
             failed_supa_ids: set[uuid.UUID] = results[0] or set()
             last = supa_rows[-1]
             # Advance the cursor past the whole batch even if some rows
@@ -876,11 +1120,17 @@ async def _export_postings_dual(
             # etc.) — cursor stays put so we retry next tick. Per-doc
             # failures are returned as a set, not raised, so this branch
             # is now strictly for downstream incidents.
-            log.error(
-                "exporter.typesense_upsert_error",
-                **_exc_fields(results[1]),
-            )
+            fields = _exc_fields(results[1])
+            if ts_backoff is not None and _is_downstream_unavailable(results[1]):
+                retry_in = ts_backoff.record_failure()
+                fields.update(
+                    retry_in_s=round(retry_in, 2),
+                    consecutive_failures=ts_backoff.consecutive_failures,
+                )
+            log.error("exporter.typesense_upsert_error", **fields)
         else:
+            if ts_backoff is not None:
+                _record_downstream_recovery(ts_backoff)
             failed_ts_ids: set[str] = results[1] or set()
             last = ts_rows[-1]
             # Advance past the whole batch even if some docs failed —
@@ -896,6 +1146,64 @@ async def _export_postings_dual(
             )
 
     return len(rows), new_supa_cursor, new_ts_cursor
+
+
+async def _export_postings_typesense(
+    local_pool: asyncpg.Pool,
+    ts_cursor: Cursor,
+    maps: TaxonomyMaps,
+    ts_backoff: _DownstreamBackoff | None = None,
+    *,
+    cutoff: datetime = _MAX_CDC_CUTOFF,
+) -> tuple[int, Cursor]:
+    """Export one CDC batch to Typesense without opening a mirror database.
+
+    This path deliberately owns only the ``typesense:job_posting`` cursor.
+    A transport failure leaves that cursor pinned; per-document failures use
+    the same logged drop semantics as the dual-target exporter.
+    """
+    if ts_backoff is not None and not ts_backoff.ready():
+        ts_backoff.record_skip()
+        return 0, ts_cursor
+
+    last_ts, last_id = ts_cursor
+    rows = await local_pool.fetch(
+        PostingSchema.select_changed_sql("last_seen_at", "updated_at"),
+        last_ts,
+        last_id,
+        settings.export_batch_limit,
+        cutoff,
+    )
+    if not rows:
+        return 0, ts_cursor
+
+    docs = _build_typesense_docs(rows, maps)
+    try:
+        failed_ids = await _upsert_to_typesense(docs)
+    except Exception as exc:
+        fields = _exc_fields(exc)
+        if ts_backoff is not None and _is_downstream_unavailable(exc):
+            retry_in = ts_backoff.record_failure()
+            fields.update(
+                retry_in_s=round(retry_in, 2),
+                consecutive_failures=ts_backoff.consecutive_failures,
+            )
+        log.error("exporter.typesense_upsert_error", **fields)
+        return len(rows), ts_cursor
+
+    if ts_backoff is not None:
+        _record_downstream_recovery(ts_backoff)
+    last = rows[-1]
+    new_cursor = (last["updated_at"], last["id"])
+    log.info(
+        "exporter.exported_postings",
+        target="typesense",
+        batch_size=len(rows),
+        succeeded=len(rows) - len(failed_ids),
+        failed=len(failed_ids),
+        sample_ids=[str(row["id"]) for row in rows[:5]],
+    )
+    return len(rows), new_cursor
 
 
 # ---------------------------------------------------------------------------
@@ -1025,7 +1333,8 @@ class PostingSchema:
             + cls.select_list(*extras)
             + " FROM "
             + cls.table
-            + " WHERE (updated_at, id) > ($1, $2) ORDER BY updated_at, id LIMIT $3"
+            + " WHERE (updated_at, id) > ($1, $2)"
+            + " AND updated_at < $4 ORDER BY updated_at, id LIMIT $3"
         )
 
 
@@ -1038,6 +1347,8 @@ async def _export_changed_postings(
     local_pool: asyncpg.Pool,
     supa_pool: asyncpg.Pool,
     cursor: Cursor,
+    *,
+    cutoff: datetime = _MAX_CDC_CUTOFF,
 ) -> tuple[int, Cursor]:
     """Export job_posting rows changed since cursor to Supabase.
 
@@ -1055,6 +1366,7 @@ async def _export_changed_postings(
         last_ts,
         last_id,
         settings.export_batch_limit,
+        cutoff,
     )
     if not rows:
         return 0, cursor
@@ -1131,9 +1443,12 @@ async def _export_changed_boards(
 
 async def _update_metrics(
     local_pool: asyncpg.Pool,
-    supa_pool: asyncpg.Pool,
-    posting_cursor: Cursor,
+    supa_pool: asyncpg.Pool | None,
+    posting_cursor: Cursor | None,
     ts_cursor: Cursor | None = None,
+    *,
+    probe_typesense_health: bool = True,
+    ts_backoff: _DownstreamBackoff | None = None,
 ) -> None:
     """Update Prometheus gauges with queue depths, export lag, and R2 pending."""
     try:
@@ -1145,16 +1460,17 @@ async def _update_metrics(
         redis_connected.set(0)
         log.warning("exporter.metrics_redis_error", exc_info=True)
 
-    try:
-        last_ts, last_id = posting_cursor
-        lag = await local_pool.fetchval(
-            "SELECT count(*) FROM job_posting WHERE (updated_at, id) > ($1, $2)",
-            last_ts,
-            last_id,
-        )
-        exporter_export_lag.labels(table="job_posting").set(lag or 0)
-    except Exception:
-        log.warning("exporter.metrics_lag_error", exc_info=True)
+    if posting_cursor is not None:
+        try:
+            last_ts, last_id = posting_cursor
+            lag = await local_pool.fetchval(
+                "SELECT count(*) FROM job_posting WHERE (updated_at, id) > ($1, $2)",
+                last_ts,
+                last_id,
+            )
+            exporter_export_lag.labels(table="job_posting").set(lag or 0)
+        except Exception:
+            log.warning("exporter.metrics_lag_error", exc_info=True)
 
     # Typesense export lag
     if ts_cursor is not None:
@@ -1178,17 +1494,19 @@ async def _update_metrics(
         log.warning("exporter.metrics_r2_pending_error", exc_info=True)
 
     # Typesense health check
-    if _typesense_enabled():
+    if _typesense_enabled() and probe_typesense_health:
         try:
-            await _update_typesense_health()
+            if ts_backoff is None or ts_backoff.ready():
+                await _update_typesense_health(ts_backoff)
         except Exception:
             log.warning("exporter.metrics_typesense_health_error", exc_info=True)
 
     # Pool stats
     local_db_pool_size.set(local_pool.get_size())
     local_db_pool_idle.set(local_pool.get_idle_size())
-    supa_db_pool_size.set(supa_pool.get_size())
-    supa_db_pool_idle.set(supa_pool.get_idle_size())
+    if supa_pool is not None:
+        supa_db_pool_size.set(supa_pool.get_size())
+        supa_db_pool_idle.set(supa_pool.get_idle_size())
 
 
 # ---------------------------------------------------------------------------
@@ -1198,67 +1516,154 @@ async def _update_metrics(
 
 def _typesense_enabled() -> bool:
     """Check if Typesense integration is enabled."""
-    return bool(settings.typesense_admin_key)
+    return bool(settings.typesense_operations_key)
 
 
 async def run_exporter(
     local_pool: asyncpg.Pool,
-    supa_pool: asyncpg.Pool,
+    supa_pool: asyncpg.Pool | None,
     shutdown_event: asyncio.Event,
+    *,
+    cursor_fence_factory: CursorFenceFactory = export_cursor_fence,
+    cutoff_factory: CutoffFactory = capture_cdc_snapshot_cutoff,
 ) -> None:
     """Main exporter loop.
 
-    Queries local Postgres for changed rows, COPYs to Supabase,
-    and upserts to Typesense when enabled.
+    Queries local Postgres for changed rows and writes each configured
+    downstream. When ``supa_pool`` is ``None``, the exporter owns only the
+    Typesense cursor and never opens or advances crawler-mirror state.
     Runs every ``settings.export_interval`` seconds until *shutdown_event*
     is set.
     """
     interval = settings.export_interval
-    posting_cursor = await _get_cursor(local_pool, "job_posting")
-
+    supa_enabled = supa_pool is not None
     ts_enabled = _typesense_enabled()
+    if not supa_enabled and not ts_enabled:
+        raise RuntimeError("crawler export requires Typesense or DATABASE_URL")
+
+    posting_cursor: Cursor | None = None
+    supa_backoff: _DownstreamBackoff | None = None
+    if supa_enabled:
+        posting_cursor = await _get_cursor(local_pool, "job_posting")
+        supa_backoff = _DownstreamBackoff(
+            target="supabase",
+            base_seconds=settings.export_downstream_backoff_base_seconds,
+            max_seconds=settings.export_downstream_backoff_max_seconds,
+        )
+
     ts_cursor: Cursor = (_EPOCH, _ZERO_UUID)
     maps: TaxonomyMaps | None = None
+    ts_backoff: _DownstreamBackoff | None = None
+    next_typesense_health_at = 0.0
 
     if ts_enabled:
+        ts_backoff = _DownstreamBackoff(
+            target="typesense",
+            base_seconds=settings.export_downstream_backoff_base_seconds,
+            max_seconds=settings.export_downstream_backoff_max_seconds,
+        )
         ts_cursor = await _get_cursor(local_pool, "typesense:job_posting")
-        maps = await _get_taxonomy_maps(local_pool, supa_pool)
+        maps = await _get_taxonomy_maps(local_pool)
         log.info("exporter.typesense_enabled")
+    if not supa_enabled:
+        log.info("exporter.relational_mirror_disabled")
 
     while not shutdown_event.is_set():
         t0 = time.monotonic()
         try:
-            if ts_enabled and maps is not None:
-                # Refresh taxonomy maps if stale
-                if maps.stale:
-                    await maps.refresh(local_pool, supa_pool)
+            # Serialize the mutable-row read and cursor save with operator
+            # repairs.  Without this fence, a bulk UPDATE can choose its
+            # timestamp before this statement snapshot, commit afterwards,
+            # and be skipped permanently when this tick advances the cursor.
+            async with cursor_fence_factory(local_pool):
+                if ts_enabled and maps is not None and supa_enabled:
+                    assert supa_pool is not None
+                    assert posting_cursor is not None
+                    assert supa_backoff is not None
+                    # Refresh taxonomy maps if stale
+                    if maps.stale:
+                        await maps.refresh(local_pool)
 
-                # Two-cursor dual export
-                exported, posting_cursor, ts_cursor = await _export_postings_dual(
-                    local_pool, supa_pool, posting_cursor, ts_cursor, maps
-                )
-                # Save both cursors in a single transaction so a crash
-                # between writes cannot leave one cursor advanced while
-                # the other is stale (issue #3171).
-                await _save_cursors_atomic(
-                    local_pool,
-                    [
-                        ("job_posting", posting_cursor),
-                        ("typesense:job_posting", ts_cursor),
-                    ],
-                )
-            else:
-                # Supabase-only export (original path)
-                exported, posting_cursor = await _export_changed_postings(
-                    local_pool, supa_pool, posting_cursor
-                )
-                await _save_cursor(local_pool, "job_posting", posting_cursor)
+                    # Capture a nonblocking clock cutoff no later than the
+                    # oldest current writer transaction. Rows stamped by that
+                    # writer or a later one stay above the strict upper bound.
+                    cutoff = await cutoff_factory(local_pool)
 
+                    # Two-cursor dual export
+                    exported, posting_cursor, ts_cursor = await _export_postings_dual(
+                        local_pool,
+                        supa_pool,
+                        posting_cursor,
+                        ts_cursor,
+                        maps,
+                        supa_backoff,
+                        ts_backoff,
+                        cutoff=cutoff,
+                    )
+                    # Save both cursors in a single transaction so a crash
+                    # between writes cannot leave one cursor advanced while
+                    # the other is stale (issue #3171).
+                    await _save_cursors_atomic(
+                        local_pool,
+                        [
+                            ("job_posting", posting_cursor),
+                            ("typesense:job_posting", ts_cursor),
+                        ],
+                    )
+                elif ts_enabled and maps is not None:
+                    if maps.stale:
+                        await maps.refresh(local_pool)
+                    cutoff = await cutoff_factory(local_pool)
+                    exported, ts_cursor = await _export_postings_typesense(
+                        local_pool,
+                        ts_cursor,
+                        maps,
+                        ts_backoff,
+                        cutoff=cutoff,
+                    )
+                    await _save_cursor(local_pool, "typesense:job_posting", ts_cursor)
+                else:
+                    # Supabase-only export (original path)
+                    assert supa_pool is not None
+                    assert posting_cursor is not None
+                    assert supa_backoff is not None
+                    if not supa_backoff.ready():
+                        supa_backoff.record_skip()
+                        exported = 0
+                    else:
+                        try:
+                            cutoff = await cutoff_factory(local_pool)
+                            exported, posting_cursor = await _export_changed_postings(
+                                local_pool,
+                                supa_pool,
+                                posting_cursor,
+                                cutoff=cutoff,
+                            )
+                        except Exception as exc:
+                            if not _is_downstream_unavailable(exc):
+                                raise
+                            retry_in = supa_backoff.record_failure()
+                            log.error(
+                                "exporter.supabase_upsert_error",
+                                retry_in_s=round(retry_in, 2),
+                                consecutive_failures=supa_backoff.consecutive_failures,
+                                **_exc_fields(exc),
+                            )
+                            exported = 0
+                        else:
+                            _record_downstream_recovery(supa_backoff)
+                    await _save_cursor(local_pool, "job_posting", posting_cursor)
+
+            probe_typesense_health = ts_enabled and t0 >= next_typesense_health_at
+            if probe_typesense_health:
+                next_typesense_health_at = t0 + settings.typesense_health_interval_seconds
             await _update_metrics(
                 local_pool,
                 supa_pool,
                 posting_cursor,
                 ts_cursor=ts_cursor if ts_enabled else None,
+                probe_typesense_health=probe_typesense_health,
+                ts_backoff=ts_backoff,
             )
 
             duration = time.monotonic() - t0
@@ -1285,232 +1690,108 @@ async def run_exporter(
 # ---------------------------------------------------------------------------
 
 
+async def _upsert_typesense_backfill_batch(
+    docs: list[dict],
+    *,
+    batch_start: str | None = None,
+    max_attempts: int = 5,
+    base_delay_s: float = 2.0,
+) -> None:
+    """Upsert one backfill batch without permitting silent gaps.
+
+    A transport timeout can happen after Typesense has accepted the request,
+    so retrying the idempotent upsert is safe.  Exhausted retries and
+    per-document import failures both abort the full backfill; its caller must
+    not advance or persist the scan cursor past documents that were not
+    confirmed written.
+    """
+    if max_attempts < 1:
+        raise ValueError("max_attempts must be at least 1")
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            failed_ids = await _upsert_to_typesense(docs)
+            if failed_ids:
+                raise RuntimeError(
+                    f"Typesense rejected {len(failed_ids)} documents in backfill batch"
+                )
+            return
+        except Exception as exc:
+            if attempt == max_attempts:
+                log.exception(
+                    "backfill.typesense_upsert_failed",
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    batch_size=len(docs),
+                    batch_start=batch_start,
+                )
+                raise
+
+            delay_s = base_delay_s * (2 ** (attempt - 1))
+            log.warning(
+                "backfill.typesense_upsert_retry",
+                attempt=attempt,
+                max_attempts=max_attempts,
+                retry_in_s=delay_s,
+                batch_size=len(docs),
+                batch_start=batch_start,
+                **_exc_fields(exc),
+            )
+            await asyncio.sleep(delay_s)
+
+
 async def backfill_typesense(
     local_pool: asyncpg.Pool,
-    supa_pool: asyncpg.Pool,
+    *,
+    cursor_fence_factory: CursorFenceFactory = export_cursor_fence,
+    cutoff_factory: CutoffFactory = capture_cdc_snapshot_cutoff,
 ) -> None:
     """Iterate ALL job_posting rows and upsert to Typesense.
 
     Used for initial population or full re-sync. Logs progress every 10K rows.
     """
-    maps = await _get_taxonomy_maps(local_pool, supa_pool)
+    maps = await _get_taxonomy_maps(local_pool)
 
-    cursor: Cursor = (_EPOCH, _ZERO_UUID)
-    total = 0
-    batch_size = settings.export_batch_limit
+    # The steady exporter and this full scan write the same Typesense documents
+    # and advance the same cursor. Hold their database-scoped fence from the
+    # first snapshot cutoff through the final cursor save so neither path can
+    # overwrite newer documents or strand a change behind an advanced cursor.
+    async with cursor_fence_factory(local_pool):
+        log.info("backfill.cursor_fence_acquired")
 
-    while True:
-        last_ts, last_id = cursor
-        rows = await local_pool.fetch(
-            PostingSchema.select_changed_sql("last_seen_at", "updated_at"),
-            last_ts,
-            last_id,
-            batch_size,
-        )
-        if not rows:
-            break
+        cursor: Cursor = (_EPOCH, _ZERO_UUID)
+        total = 0
+        batch_size = settings.export_batch_limit
+        cutoff = await cutoff_factory(local_pool)
 
-        # Refresh maps periodically during long backfills
-        if maps.stale:
-            await maps.refresh(local_pool, supa_pool)
+        while True:
+            last_ts, last_id = cursor
+            rows = await local_pool.fetch(
+                PostingSchema.select_changed_sql("last_seen_at", "updated_at"),
+                last_ts,
+                last_id,
+                batch_size,
+                cutoff,
+            )
+            if not rows:
+                break
 
-        docs = _build_typesense_docs(rows, maps)
-        try:
-            await _upsert_to_typesense(docs)
+            # Refresh maps periodically during long backfills
+            if maps.stale:
+                await maps.refresh(local_pool)
+
+            docs = _build_typesense_docs(rows, maps)
+            await _upsert_typesense_backfill_batch(docs, batch_start=str(cursor))
             typesense_backfill_docs_total.inc(len(docs))
-        except Exception:
-            log.exception("backfill.typesense_upsert_error", batch_start=str(cursor))
 
-        last_row = rows[-1]
-        cursor = (last_row["updated_at"], last_row["id"])
-        total += len(rows)
+            last_row = rows[-1]
+            cursor = (last_row["updated_at"], last_row["id"])
+            total += len(rows)
 
-        if total % 10_000 < batch_size:
-            log.info("backfill.progress", total=total)
+            if total % 10_000 < batch_size:
+                log.info("backfill.progress", total=total)
 
-    # Save the final cursor so the CDC exporter picks up from here
-    await _save_cursor(local_pool, "typesense:job_posting", cursor)
+        # Save the final cursor while the fence is still held so the steady
+        # exporter resumes from the exact completed snapshot boundary.
+        await _save_cursor(local_pool, "typesense:job_posting", cursor)
     log.info("backfill.completed", total=total)
-
-
-# ---------------------------------------------------------------------------
-# Reconciliation
-# ---------------------------------------------------------------------------
-
-
-async def run_reconciliation(
-    local_pool: asyncpg.Pool,
-    supa_pool: asyncpg.Pool,
-) -> int:
-    """Lightweight reconciliation: count comparison + random sample.
-
-    Instead of reading every row from Supabase (which was eating 40% of
-    Supabase compute), this does:
-    1. Compare total counts (local vs Supabase)
-    2. Sample 200 random local rows and check if they exist + match in Supabase
-    3. Touch discrepant rows so the CDC exporter picks them up
-
-    Returns the number of discrepancies found.
-    """
-    discrepancies = 0
-
-    # 1. Count comparison
-    local_count_row = await local_pool.fetchrow("SELECT count(*)::int AS cnt FROM job_posting")
-    supa_count_row = await supa_pool.fetchrow("SELECT count(*)::int AS cnt FROM job_posting")
-    local_count = local_count_row["cnt"] if local_count_row else 0
-    supa_count = supa_count_row["cnt"] if supa_count_row else 0
-
-    if local_count > 0 and abs(local_count - supa_count) / local_count > 0.05:
-        log.warning(
-            "reconciliation.count_drift",
-            local=local_count,
-            supabase=supa_count,
-            drift_pct=round(abs(local_count - supa_count) / local_count * 100, 1),
-        )
-
-    # 2. Random sample check (200 rows)
-    sample_rows = await local_pool.fetch(
-        "SELECT id, is_active, description_r2_hash FROM job_posting ORDER BY random() LIMIT 200"
-    )
-
-    if sample_rows:
-        sample_ids = [r["id"] for r in sample_rows]
-        supa_rows = await supa_pool.fetch(
-            "SELECT id, is_active, description_r2_hash FROM job_posting WHERE id = ANY($1::uuid[])",
-            sample_ids,
-        )
-        supa_map = {r["id"]: r for r in supa_rows}
-
-        for local in sample_rows:
-            remote = supa_map.get(local["id"])
-            if remote is None or (
-                remote["is_active"] != local["is_active"]
-                or remote["description_r2_hash"] != local["description_r2_hash"]
-            ):
-                await local_pool.execute(
-                    "UPDATE job_posting SET updated_at = now() WHERE id = $1",
-                    local["id"],
-                )
-                discrepancies += 1
-
-    # Typesense reconciliation (if enabled)
-    if _typesense_enabled():
-        ts_discrepancies = await _reconcile_typesense(local_pool)
-        discrepancies += ts_discrepancies
-
-    log.info("reconciliation.completed", discrepancies=discrepancies)
-    return discrepancies
-
-
-async def _reconcile_typesense(local_pool: asyncpg.Pool) -> int:
-    """Compare Postgres vs Typesense, touch discrepant rows.
-
-    1. Compare total doc counts
-    2. Sample 100 random IDs from Postgres, check in Typesense
-    Sets typesense_reconciliation_discrepancies gauge.
-    Returns number of discrepancies found.
-    """
-    from src.typesense_client import get_typesense_client
-
-    client = get_typesense_client()
-    if client is None:
-        return 0
-
-    discrepancies = 0
-    loop = asyncio.get_running_loop()
-
-    # 1. Compare document counts
-    try:
-        pg_count = await local_pool.fetchval("SELECT count(*) FROM job_posting")
-        collection_info = await loop.run_in_executor(
-            None,
-            lambda: client.collections["job_posting"].retrieve(),
-        )
-        ts_count = collection_info.get("num_documents", 0)
-
-        log.info(
-            "reconciliation.typesense.counts",
-            postgres=pg_count,
-            typesense=ts_count,
-        )
-    except Exception:
-        log.exception("reconciliation.typesense.count_error")
-        return 0
-
-    # 2. Sample 100 random IDs from Postgres, verify in Typesense
-    try:
-        sample_rows = await local_pool.fetch(
-            "SELECT id, is_active FROM job_posting ORDER BY random() LIMIT 100"
-        )
-
-        for row in sample_rows:
-            posting_id = str(row["id"])
-            try:
-                ts_doc = await loop.run_in_executor(
-                    None,
-                    lambda pid=posting_id: (
-                        client.collections["job_posting"].documents[pid].retrieve()
-                    ),
-                )
-                # Check is_active match
-                if ts_doc.get("is_active") != row["is_active"]:
-                    await local_pool.execute(
-                        "UPDATE job_posting SET updated_at = now() WHERE id = $1",
-                        row["id"],
-                    )
-                    discrepancies += 1
-            except Exception:
-                # Document not found in Typesense -- touch to trigger CDC
-                await local_pool.execute(
-                    "UPDATE job_posting SET updated_at = now() WHERE id = $1",
-                    row["id"],
-                )
-                discrepancies += 1
-    except Exception:
-        log.exception("reconciliation.typesense.sample_error")
-
-    typesense_reconciliation_discrepancies.set(discrepancies)
-    log.info("reconciliation.typesense.completed", discrepancies=discrepancies)
-    return discrepancies
-
-
-# ---------------------------------------------------------------------------
-# Reconciliation loop
-# ---------------------------------------------------------------------------
-
-
-async def _reconciliation_loop(
-    local_pool: asyncpg.Pool,
-    supa_pool: asyncpg.Pool,
-    shutdown_event: asyncio.Event,
-) -> None:
-    """Periodically run reconciliation in the background."""
-    interval = settings.reconciliation_interval
-    while not shutdown_event.is_set():
-        # Sleep first -- reconciliation is not urgent on startup.
-        with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(shutdown_event.wait(), timeout=interval)
-        if shutdown_event.is_set():
-            break
-        try:
-            discrepancies = await run_reconciliation(local_pool, supa_pool)
-            log.info("reconciliation.tick", discrepancies=discrepancies)
-        except Exception:
-            log.exception("reconciliation.error")
-
-
-# ---------------------------------------------------------------------------
-# Combined runner
-# ---------------------------------------------------------------------------
-
-
-async def run_exporter_with_reconciliation(
-    local_pool: asyncpg.Pool,
-    supa_pool: asyncpg.Pool,
-    shutdown_event: asyncio.Event,
-) -> None:
-    """Run the exporter and reconciliation loops concurrently."""
-    await asyncio.gather(
-        run_exporter(local_pool, supa_pool, shutdown_event),
-        _reconciliation_loop(local_pool, supa_pool, shutdown_event),
-    )

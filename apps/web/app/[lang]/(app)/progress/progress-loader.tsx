@@ -13,7 +13,7 @@ export function ProgressLoader({ locale, lang }: { locale: string; lang: string 
   const [stats, setStats] = useState<StatsData | null>(null);
 
   useEffect(() => {
-    getSiteStats().then(setStats);
+    getSiteStats().then(setStats).catch(() => setStats(null));
   }, []);
 
   return (

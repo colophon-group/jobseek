@@ -27,9 +27,9 @@ Current design of all major subsystems across the crawler and web apps.
 | Component        | Service                 | Notes                                      |
 |------------------|-------------------------|--------------------------------------------|
 | Web app          | Vercel (Next.js 15)     | Serverless, edge-compatible                |
-| Crawler workers  | Hetzner CPX31 (116.203.192.19) | 8 vCPU, 16GB RAM; 3 HTTP workers, 1 browser worker, exporter, drain, Redis, Alloy |
+| Crawler workers  | Hetzner CPX31 (116.203.192.19) | 8 vCPU, 16GB RAM; 3 HTTP workers, 1 browser worker, exporter, drain, Redis, Alloy; native ATS monitors run without upstream scraper dependencies |
 | Local Postgres   | Hetzner Dedicated (178.104.102.63) | Postgres 16, 20GB XFS volume; crawler source of truth |
-| Supabase         | Managed Postgres        | Frontend read DB, populated by exporter CDC |
+| Web-owned Postgres | Managed Postgres      | Retained user/auth/watchlist data only      |
 | Redis            | Local (Hetzner)         | Tiered ready queues, domain throttling, task config |
 | Object Storage   | Cloudflare R2           | Job description HTML storage               |
 | Observability    | Grafana Cloud           | Metrics (Prometheus) + logs (Loki) via Alloy |
@@ -39,11 +39,9 @@ Current design of all major subsystems across the crawler and web apps.
 ### Environment Variables
 
 ```
-# Shared
-DATABASE_URL                    # Supabase Postgres connection string
-
 # Crawler
 LOCAL_DATABASE_URL              # Local Postgres (crawler's authoritative DB)
+WEB_DATABASE_URL                # Optional web-owned watchlist boundary for explicit sync/refresh jobs
 REDIS_URL                       # Local Redis (redis://localhost:6379/0)
 R2_ENDPOINT_URL                 # S3-compatible endpoint
 R2_ACCESS_KEY_ID                # R2 API token key ID
@@ -170,28 +168,50 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 9    | `join`            | URL-only | nextdata    | JOIN (join.com) Next.js data            |
 | 9    | `phenom`          | URL-only | json-ld     | Phenom People sitemap-based discovery   |
 | 10   | `accenture`       | Rich     | skip        | Accenture career API                    |
+| 10   | `adp`             | Rich     | adp         | ADP Workforce Now listing API + detail enrichment |
 | 10   | `almacareer`      | Rich     | skip        | AlmaCareer / Capybara GraphQL API       |
 | 10   | `amazon`          | Rich     | skip        | Amazon Jobs                             |
 | 10   | `ashby`           | Rich     | skip        | Ashby Job Board API                     |
+| 10   | `avature`         | URL-only | dom         | Avature static listings + map data      |
+| 10   | `jobvite`         | URL-only | json-ld     | Jobvite static career-site listings     |
+| 10   | `pageup`          | Rich     | dom         | PageUp static listings + description enrichment |
+| 10   | `bamboohr`        | Rich     | api_sniffer | BambooHR public careers API + detail enrichment |
+| 10   | `beisen`          | Rich/hybrid | skip/dom | Beisen modern public API + legacy listings |
+| 10   | `paycom`          | Rich     | paycom      | Paycom bootstrap + preview API + detail enrichment |
+| 10   | `jazzhr`          | URL-only | jazzhr      | ApplyToJob static listing + JSON-LD/DOM detail parsing |
+| 10   | `icims`           | URL-only | json-ld     | iCIMS static listings + bounded pagination |
+| 10   | `gupy`            | URL-only | json-ld     | Gupy single-page NextData inventory |
+| 10   | `cornerstone`     | Rich     | skip        | Cornerstone bootstrap + regional paginated search API |
+| 10   | `darwinbox`       | Rich     | skip        | Darwinbox browser-session public jobs API |
+| 10   | `dayforce`        | Rich     | skip        | Dayforce browser-context public search BFF |
+| 10   | `herp`            | URL-only | json-ld     | HERP Hire single static requisition listing |
+| 10   | `hrmos`           | URL-only | json-ld     | HRMOS static listings with bounded pagination |
 | 10   | `bite`            | URL-only | bite        | b-ite.com ATS API                       |
 | 10   | `breezy`          | URL-only | json-ld     | Breezy HR listing endpoint              |
-| 10   | `comeet`          | Rich     | skip        | Comeet hosted board embedded data       |
+| 10   | `comeet`          | Rich     | skip        | Comeet hosted data and Careers API      |
 | 10   | `deel`            | Rich     | skip        | Deel ATS API                            |
 | 10   | `dvinci`          | Rich     | skip        | d.vinci ATS API                         |
 | 10   | `gem`             | Rich     | skip        | Gem ATS API                             |
 | 10   | `greenhouse`      | Rich     | skip        | Greenhouse JSON API                     |
+| 10   | `hibob`           | Rich     | skip        | HiBob public career-site API            |
+| 10   | `hirehive`        | Rich     | skip        | HireHive public Jobs API                |
 | 10   | `hireology`       | Rich     | skip        | Hireology Careers API                   |
 | 10   | `jobylon`         | Rich     | skip        | Jobylon iframe embed data               |
+| 10   | `keka`            | Rich     | skip        | Keka public career-portal jobs API      |
 | 10   | `lever`           | Rich     | skip        | Lever Postings API                      |
 | 10   | `mokahr`          | Rich     | skip        | Mokahr encrypted listing API            |
+| 10   | `paylocity`       | Rich     | paylocity   | Paylocity embedded summaries + detail enrich |
 | 10   | `personio`        | Conditional* | --     | Personio XML feed; HTML fallback needs scraper |
 | 10   | `pinpoint`        | Rich     | skip        | Pinpoint API                            |
 | 10   | `recruitee`       | Rich     | skip        | Recruitee Careers API                   |
+| 10   | `recruiterbox`    | URL-only | json-ld     | Recruiterbox / Trakstar Hire static listings |
+| 10   | `taleo`           | URL-only | json-ld     | Taleo Business Edition total/cursor listings |
 | 10   | `rippling`        | URL-only | rippling    | Rippling ATS API                        |
 | 10   | `rss`             | Rich     | skip        | RSS 2.0 feed (SuccessFactors, Teamtailor, generic) |
 | 10   | `smartrecruiters` | URL-only | smartrecruiters | SmartRecruiters API                 |
 | 10   | `softgarden`      | URL-only | json-ld     | Softgarden ATS                          |
 | 10   | `traffit`         | Rich     | skip        | Traffit ATS API                         |
+| 10   | `ukg`             | Rich     | embedded    | UKG Pro search API + detail enrichment  |
 | 10   | `workable`        | URL-only | workable    | Workable API                            |
 | 10   | `workday`         | URL-only | workday     | Workday Job Board API                   |
 | 10   | `ycombinator`     | URL-only | json-ld     | YCombinator Jobs fallback pages         |
@@ -203,7 +223,8 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 45   | `talentbrew`      | URL-only | json-ld     | TalentBrew/Radancy search results       |
 | 50   | `sitemap`         | URL-only | --          | XML sitemap parsing (auto-discovery)    |
 | 60   | `inline`          | Rich     | skip        | Inline single-page job extraction       |
-| 80   | `api_sniffer`     | Conditional* | skip/-- | Playwright XHR/fetch capture            |
+| 60   | `kipt`            | Rich     | skip        | Active KIPT PDF bulletin splitting      |
+| 80   | `api_sniffer`     | Conditional* | skip/-- | Direct API or Playwright XHR/fetch capture |
 | 100  | `dom`             | URL-only | --          | Static/Playwright DOM link extraction   |
 
 *Conditional monitors return rich data only when their runtime source/config
@@ -228,9 +249,10 @@ src/core/scrape.py               # scrape_one() dispatcher
 
 | Type           | Method                                             | Config Required        |
 |----------------|----------------------------------------------------|------------------------|
-| `api_sniffer`  | Capture XHR/fetch network requests on job pages    | `{api_url, fields, pagination}` |
+| `adp`          | Fetch ADP detail JSON and DOCX description attachments | None               |
+| `api_sniffer`  | Direct API replay or XHR/fetch capture on job pages | `{api_url, fields, pagination}` |
 | `bite`         | Fetch BITE detail JSON                             | None                   |
-| `dom`          | Step-based DOM extraction (static or Playwright)   | `{steps, render, ...}` |
+| `dom`          | Step-based DOM extraction (static or Playwright)   | `{steps, scope?, render, ...}` |
 | `eightfold`    | JSON-LD extraction with Eightfold position API fallback | None              |
 | `embedded`     | Parse embedded JSON/RSC data from page source      | `{pattern/script_id/source, path, fields}` |
 | `json-ld`      | Parse `<script type="application/ld+json">` (JobPosting schema) | None (auto)    |
@@ -238,6 +260,9 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `nextdata`     | Extract from `__NEXT_DATA__` JSON                  | `{path, fields}`       |
 | `notion`       | Convert Notion API blocks to structured content    | `property_map` optional |
 | `oracle_hcm`   | Fetch Oracle HCM detail REST responses             | `{host, site}`         |
+| `paycom`       | Bootstrap Paycom and fetch regional detail API      | None                   |
+| `jazzhr`       | Parse JSON-LD, then JazzHR DOM fallback in-memory    | None                   |
+| `paylocity`    | Parse Paylocity server-rendered detail pages       | None                   |
 | `pdf`          | Download PDF files and extract text content        | Title extraction optional |
 | `rippling`     | Fetch Rippling detail API records                  | None                   |
 | `skip`         | No-scrape marker for rich monitor output           | None                   |
@@ -261,14 +286,16 @@ Claims from `ready:simple:*` queues. Processes both monitors and scrapes. 3 repl
 
 ### Browser Worker (`crawler run-browser`)
 
-Claims from `ready:browser:*` queues. Same pipeline pattern but with Chromium available. 1 replica with 3 CPUs and 4GB memory.
+Claims from `ready:browser:*` queues. Same pipeline pattern but with Chromium available. 1 replica with 3 CPUs and 6GB memory. Each discovery coroutine reuses one Playwright driver between claims and recycles it after six hours to bound long-lived driver and renderer memory growth.
 
 ### Processing Flow
 
 All monitors use the streaming path (`_process_one_board_streaming` in `processing/board.py`):
 
 1. Monitor discovers jobs (yields batches for large datasets)
-2. Diff against local Postgres in a single SQL query (new/touched/relisted/gone)
+2. Diff against local Postgres in a single SQL query (new/touched/relisted,
+   including canonical recovery from foreign-board liveness evidence, then
+   gone)
 3. Rich data: insert full `job_posting` rows directly
 4. URL-only: insert URL stubs, enqueue scrapes to Redis
 5. Upload descriptions to `descriptions` table (R2 drain picks them up)
@@ -310,28 +337,37 @@ The `descriptions` table in local Postgres serves as the upload queue:
 ## Crawler: Exporter CDC
 
 ```
-src/exporter.py    # CDC: local Postgres -> Supabase
+src/exporter.py    # CDC: local Postgres -> Typesense
 ```
 
-The exporter is the only component that writes to Supabase. It queries local Postgres for rows with `updated_at > last_export_ts` and batch COPYs them to Supabase.
+The exporter queries local Postgres with a commit-safe `(updated_at, id)`
+cursor and publishes posting documents to Typesense. The production command
+never opens the former relational mirror. The separately scheduled reconciler
+performs bounded, fenced, Typesense-only repairs from a locked local snapshot.
 
 ### Export Loop
 
 - Polls every 1-2 seconds
 - Batch size: 2000 rows per tick
 - Throughput: ~2100 rows/sec sustained
-- Latency: ~1.5s average (change to visible on Supabase)
+- Latency: ~1.5s average (change to visible downstream)
 
 ### What Gets Exported
 
 - `job_posting`: all display columns (titles, locales, locations, employment type, salary, enrichment, etc.)
-- Board status is NOT exported (Supabase `job_board` is populated by `sync.py` only)
+- Board status is not exported; `job_board` registry rows come from `sync.py`.
 
 ### Reconciliation
 
-Daily reconciliation compares local Postgres against Supabase and re-exports any discrepancies by touching `updated_at` on local Postgres (picked up by CDC on next cycle).
+An hourly Hetzner systemd timer resumes deterministic 1/256 UUID partitions
+from durable local PostgreSQL state and repairs Typesense to the exact local
+document set. The cursor advances only after direct repair is verified. This
+survives exporter recreation and does not mutate local posting timestamps.
 
-CLI: `crawler reconcile [--full]`
+CLI: `crawler reconcile [--repair] [--full] [--max-partitions N] [--target typesense]`
+
+See [Cross-store reconciliation](03-crawler-architecture.md#cross-store-reconciliation)
+for locking, scheduling, alerting, and recovery contracts.
 
 ---
 
@@ -370,12 +406,11 @@ Quick summary:
 src/sync.py    # CSV -> DB upsert
 ```
 
-CSV files are the source of truth. `sync.py` writes to FOUR targets in one pass:
+CSV files are the source of truth. `sync.py` writes to three targets in one pass:
 
-1. **Local Postgres**: full board config (all columns); company + taxonomy mirror with shared UUIDs
-2. **Supabase**: company display data + minimal board reference (UUIDs match local)
-3. **Redis**: board config and initial schedule in ready queues
-4. **Typesense**: taxonomy collections, the `company` collection (incl. per-locale description and industry name variants used by the company detail page), and the `watchlist` collection. `crawler setup-typesense` runs on each deploy and patches the live schema in place before sync upserts populate new fields -- see [docs/11-typesense.md](./11-typesense.md#schema-definition)
+1. **Local Postgres**: full board config (all columns), companies, and taxonomies
+2. **Redis**: board config and initial schedule in ready queues
+3. **Typesense**: taxonomy collections, the `company` collection (incl. per-locale description and industry name variants used by the company detail page), and the `watchlist` collection. `crawler setup-typesense` runs on each deploy and patches the live schema in place before sync upserts populate new fields -- see [docs/11-typesense.md](./11-typesense.md#schema-definition)
 
 - **New rows**: Inserted with staggered `next_check_at` (random offset to prevent thundering herd)
 - **Existing rows**: Config updated, runtime fields preserved
@@ -386,7 +421,7 @@ CSV files are the source of truth. `sync.py` writes to FOUR targets in one pass:
 See [docs/11-typesense.md#read-paths-summary](./11-typesense.md#read-paths-summary) for the full breakdown. Short version:
 
 - **Job search, typeaheads, browse-all, watchlist search, company detail, similar-company strip** → Typesense
-- **Auth, watchlist mutations, posting detail, watchlist company-pair lookups, Postgres fallbacks** → Supabase Postgres
+- **Auth, watchlist mutations, and watchlist company-pair lookups** → web-owned Postgres
 - **All `job_posting` aggregations** (active counts per company, per taxonomy, per watchlist) → Local Postgres, then upserted into Typesense doc fields. Web pages never aggregate `job_posting` directly
 
 ---
@@ -460,7 +495,8 @@ Redis-backed cache-aside pattern replacing `unstable_cache`.
 ### Two Databases
 
 - **Local Postgres** (Hetzner): Full schema with all crawler columns. Managed by Alembic migrations.
-- **Supabase**: Display subset -- no scheduling, config, or lease columns. Managed by Drizzle ORM.
+- **Web-owned Postgres**: user/auth/watchlist data plus temporarily retained
+  rollback support tables. It is not a crawler posting mirror target.
 
 ### Key Tables
 
@@ -480,7 +516,9 @@ Managed by CSV sync. Source of truth: `data/companies.csv`.
 #### `job_board`
 Managed by CSV sync. Source of truth: `data/boards.csv`.
 
-Local Postgres has full schema (scheduling, config, state). Supabase has display subset only (id, company_id, board_slug, board_url, crawler_type, metadata, board_status, is_enabled).
+Local Postgres has the authoritative full schema (scheduling, config, state).
+The retained web-owned board subset is rollback support and is no longer
+updated by normal crawler sync.
 
 #### `job_posting`
 See [08 -- Job Data Fields](./08-job-data-fields.md) for field types and formats.
@@ -503,8 +541,7 @@ Local Postgres additionally has: `missing_count`, scrape scheduling columns, and
 
 ```
 data/companies.csv --+
-data/boards.csv    --+  sync.py  -->  Local Postgres + Supabase + Redis queues
-                     +----------+
+data/boards.csv    --+  sync.py  -->  Local Postgres transaction --> Redis + Typesense
 
 Workers claim from Redis tiered queues
   |
@@ -531,7 +568,7 @@ Workers claim from Redis tiered queues
   |
   +-- Exporter CDC:
         +-- SELECT WHERE updated_at > cursor
-        +-- Batch COPY to Supabase
+        +-- Batch upsert to Typesense
 ```
 
 ### Company Request

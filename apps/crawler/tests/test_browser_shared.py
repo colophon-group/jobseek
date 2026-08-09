@@ -7,6 +7,7 @@ import subprocess
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from src.shared.browser import (
@@ -17,6 +18,7 @@ from src.shared.browser import (
     DEFAULT_USER_AGENT,
     DEFAULT_WAIT,
     DEFAULT_WAIT_FALLBACK,
+    FALLBACK_WAIT_TIMEOUT,
     NAVIGATE_KEYS,
     OVERLAY_SELECTORS,
     VALID_WAIT_STRATEGIES,
@@ -24,6 +26,7 @@ from src.shared.browser import (
     _resolve_placeholders,
     _x_server_alive,
     dismiss_overlays,
+    is_target_closed_error,
     navigate,
     open_page,
     render,
@@ -40,13 +43,15 @@ def _make_page() -> MagicMock:
     """Return a mock Playwright Page with common methods stubbed."""
     page = MagicMock()
     page.goto = AsyncMock()
+    page.wait_for_load_state = AsyncMock()
     page.evaluate = AsyncMock()
     page.content = AsyncMock(return_value="<html></html>")
 
-    # locator().first  —  count() and click() are async
+    # locator().first  —  count(), click(), and wait_for() are async
     locator_first = MagicMock()
     locator_first.count = AsyncMock(return_value=1)
     locator_first.click = AsyncMock()
+    locator_first.wait_for = AsyncMock()
     locator = MagicMock()
     locator.first = locator_first
     page.locator = MagicMock(return_value=locator)
@@ -76,6 +81,13 @@ def _make_pw(page: MagicMock | None = None) -> MagicMock:
 
 
 class TestConstants:
+    def test_target_closed_error_classification_is_playwright_specific(self):
+        marker = "Page.goto: Target page, context or browser has been closed"
+
+        assert is_target_closed_error(PlaywrightError(marker)) is True
+        assert is_target_closed_error(RuntimeError(marker)) is False
+        assert is_target_closed_error(PlaywrightError("Browser launch failed")) is False
+
     def test_user_agent_contains_chrome(self):
         assert "Chrome/133" in DEFAULT_USER_AGENT
 
@@ -115,6 +127,7 @@ class TestConstants:
                 "viewport",
                 "locale",
                 "skip_ssl",
+                "proxy",
             }
         )
         assert expected == BROWSER_KEYS
@@ -160,41 +173,47 @@ class TestNavigate:
 
 
 class TestNavigateFallback:
-    """Tests for the wait_fallback retry behaviour added to navigate().
+    """Tests for the same-document wait_fallback behaviour in navigate().
 
     Background: SPA career sites with persistent analytics/telemetry chatter
     never reach ``networkidle``, so the 30s primary attempt times out. The
-    fallback retries once with ``domcontentloaded`` (default) and recovers.
+    fallback checks ``domcontentloaded`` (default) on the current document and
+    recovers without issuing a duplicate request.
     """
 
     async def test_fallback_triggers_on_timeout(self):
-        """Primary times out → fallback strategy is tried with same timeout."""
+        """Primary timeout checks the fallback state without another goto."""
         page = _make_page()
         page.goto = AsyncMock(
-            side_effect=[
-                PlaywrightTimeoutError("Page.goto: Timeout 30000ms exceeded."),
-                None,
-            ]
+            side_effect=PlaywrightTimeoutError("Page.goto: Timeout 30000ms exceeded.")
         )
         await navigate(
             page,
             "https://example.com",
             {"wait": "networkidle", "wait_fallback": "domcontentloaded", "timeout": 30000},
         )
-        assert page.goto.await_count == 2
-        first_call = page.goto.await_args_list[0]
-        second_call = page.goto.await_args_list[1]
-        assert first_call.kwargs["wait_until"] == "networkidle"
-        assert second_call.kwargs["wait_until"] == "domcontentloaded"
-        assert second_call.kwargs["timeout"] == 30000
+        page.goto.assert_awaited_once_with(
+            "https://example.com", wait_until="networkidle", timeout=30000
+        )
+        page.wait_for_load_state.assert_awaited_once_with(
+            "domcontentloaded", timeout=FALLBACK_WAIT_TIMEOUT
+        )
 
     async def test_default_fallback_applied_when_key_absent(self):
         """When wait_fallback is not set in config, DEFAULT_WAIT_FALLBACK is used."""
         page = _make_page()
-        page.goto = AsyncMock(side_effect=[PlaywrightTimeoutError("Timeout"), None])
+        page.goto = AsyncMock(side_effect=PlaywrightTimeoutError("Timeout"))
         await navigate(page, "https://example.com", {"wait": "networkidle"})
-        assert page.goto.await_count == 2
-        assert page.goto.await_args_list[1].kwargs["wait_until"] == DEFAULT_WAIT_FALLBACK
+        assert page.goto.await_count == 1
+        page.wait_for_load_state.assert_awaited_once_with(
+            DEFAULT_WAIT_FALLBACK, timeout=FALLBACK_WAIT_TIMEOUT
+        )
+
+    async def test_fallback_timeout_never_exceeds_board_timeout(self):
+        page = _make_page()
+        page.goto = AsyncMock(side_effect=PlaywrightTimeoutError("Timeout"))
+        await navigate(page, "https://example.com", {"timeout": 2500})
+        page.wait_for_load_state.assert_awaited_once_with(DEFAULT_WAIT_FALLBACK, timeout=2500)
 
     async def test_explicit_none_disables_fallback(self):
         """wait_fallback: None opts the board out of the default retry."""
@@ -207,6 +226,7 @@ class TestNavigateFallback:
                 {"wait": "networkidle", "wait_fallback": None},
             )
         assert page.goto.await_count == 1
+        page.wait_for_load_state.assert_not_awaited()
 
     async def test_fallback_no_op_when_primary_succeeds(self):
         """When primary succeeds, fallback is never attempted."""
@@ -222,16 +242,18 @@ class TestNavigateFallback:
         )
 
     async def test_fallback_both_fail_raises(self):
-        """When both primary and fallback time out, TimeoutError propagates."""
+        """When both primary and fallback waits time out, TimeoutError propagates."""
         page = _make_page()
         page.goto = AsyncMock(side_effect=PlaywrightTimeoutError("Timeout"))
+        page.wait_for_load_state = AsyncMock(side_effect=PlaywrightTimeoutError("Timeout"))
         with pytest.raises(PlaywrightTimeoutError):
             await navigate(
                 page,
                 "https://example.com",
                 {"wait": "networkidle", "wait_fallback": "domcontentloaded"},
             )
-        assert page.goto.await_count == 2
+        assert page.goto.await_count == 1
+        page.wait_for_load_state.assert_awaited_once()
 
     async def test_fallback_primary_domcontentloaded_no_retry(self):
         """Primary already equals DEFAULT_WAIT_FALLBACK — no pointless retry."""
@@ -241,6 +263,7 @@ class TestNavigateFallback:
             await navigate(page, "https://example.com", {"wait": "domcontentloaded"})
         # Default fallback is "domcontentloaded", same as primary → skip retry
         assert page.goto.await_count == 1
+        page.wait_for_load_state.assert_not_awaited()
 
     async def test_fallback_same_as_primary_does_not_retry(self):
         """An explicit fallback equal to the primary strategy is a no-op."""
@@ -253,6 +276,7 @@ class TestNavigateFallback:
                 {"wait": "networkidle", "wait_fallback": "networkidle"},
             )
         assert page.goto.await_count == 1
+        page.wait_for_load_state.assert_not_awaited()
 
     async def test_fallback_non_timeout_error_not_retried(self):
         """Non-timeout errors propagate without fallback retry."""
@@ -265,6 +289,7 @@ class TestNavigateFallback:
                 {"wait": "networkidle", "wait_fallback": "domcontentloaded"},
             )
         assert page.goto.await_count == 1
+        page.wait_for_load_state.assert_not_awaited()
 
     async def test_invalid_fallback_raises(self):
         page = _make_page()
@@ -301,6 +326,24 @@ class TestRunActions:
         # Should not raise
         await run_actions(page, [{"action": "click", "selector": ".gone"}])
         page.locator.return_value.first.click.assert_not_awaited()
+
+    async def test_wait_for_action(self):
+        page = _make_page()
+        await run_actions(page, [{"action": "wait_for", "selector": "h2"}])
+        page.locator.assert_called_once_with("h2")
+        page.locator.return_value.first.wait_for.assert_awaited_once_with(
+            state="visible", timeout=0
+        )
+
+    async def test_wait_for_action_custom_state(self):
+        page = _make_page()
+        await run_actions(
+            page,
+            [{"action": "wait_for", "selector": "a.job", "state": "attached"}],
+        )
+        page.locator.return_value.first.wait_for.assert_awaited_once_with(
+            state="attached", timeout=0
+        )
 
     async def test_wait_action(self):
         page = _make_page()
@@ -457,6 +500,37 @@ class TestOpenPage:
         async with open_page(pw):
             pass
         context.close.assert_awaited_once()
+        browser.close.assert_awaited_once()
+
+    async def test_closes_browser_even_when_context_close_fails(self):
+        """A killed Chromium transport must not skip the outer browser close."""
+        pw = _make_pw()
+        browser = pw.chromium.launch.return_value
+        context = browser.new_context.return_value
+        context.close.side_effect = RuntimeError("transport closed")
+
+        with pytest.raises(RuntimeError, match="transport closed"):
+            async with open_page(pw):
+                pass
+
+        context.close.assert_awaited_once()
+        browser.close.assert_awaited_once()
+
+    async def test_closes_browser_after_context_close_timeout(self, monkeypatch):
+        pw = _make_pw()
+        browser = pw.chromium.launch.return_value
+        context = browser.new_context.return_value
+
+        async def never_closes():
+            await asyncio.sleep(60)
+
+        context.close.side_effect = never_closes
+        monkeypatch.setattr("src.shared.browser.BROWSER_CLOSE_TIMEOUT_SECONDS", 0.01)
+
+        with pytest.raises(TimeoutError):
+            async with open_page(pw):
+                pass
+
         browser.close.assert_awaited_once()
 
     async def test_closes_context_on_exception(self):
@@ -1045,6 +1119,70 @@ class TestRepeatAction:
                 page, [{"action": "repeat", "selector": "button.more", "wait_ms": 500}]
             )
             mock_sleep.assert_awaited_once_with(0.5)
+
+
+# ---------------------------------------------------------------------------
+# TestPaginateCollectAction
+# ---------------------------------------------------------------------------
+
+
+class TestPaginateCollectAction:
+    async def test_collects_across_full_document_navigation(self):
+        """Page replacement must not destroy the pagination controller."""
+
+        class FakeNext:
+            def __init__(self, page):
+                self.page = page
+                self.first = self
+
+            async def count(self):
+                return int(self.page.index < len(self.page.pages) - 1)
+
+            async def click(self):
+                # A real anchor replaces the document here. The Python-side
+                # controller must resume against the newly loaded page.
+                self.page.index += 1
+
+        class FakePage:
+            def __init__(self):
+                self.pages = [
+                    ["https://example.com/job/1"],
+                    ["https://example.com/job/2"],
+                    ["https://example.com/job/3"],
+                ]
+                self.index = 0
+                self.injected = None
+
+            def locator(self, selector):
+                assert selector == "[data-testid=next-page]"
+                return FakeNext(self)
+
+            async def evaluate(self, _script, arg=None):
+                if arg is not None:
+                    self.injected = arg
+                    return None
+                return self.pages[self.index]
+
+        page = FakePage()
+        with patch.object(asyncio, "sleep", new_callable=AsyncMock):
+            await run_actions(
+                page,
+                [
+                    {
+                        "action": "paginate_collect",
+                        "next_selector": "[data-testid=next-page]",
+                        "wait_ms": 0,
+                        "max_pages": 10,
+                    }
+                ],
+            )
+
+        assert page.index == 2
+        assert page.injected == [
+            "https://example.com/job/1",
+            "https://example.com/job/2",
+            "https://example.com/job/3",
+        ]
 
 
 # ---------------------------------------------------------------------------

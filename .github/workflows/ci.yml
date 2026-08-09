@@ -32,35 +32,51 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
           fail-on-severity: moderate
           deny-licenses: AGPL-1.0, AGPL-3.0, GPL-2.0, GPL-3.0, LGPL-2.0, LGPL-2.1, LGPL-3.0
+          # sharp already distributes libvips through these platform packages.
+          # Keep the global LGPL deny-list and scope the established exception
+          # to the binaries required for the patched sharp release.
+          allow-dependencies-licenses: >-
+            pkg:npm/@img/sharp-libvips-darwin-arm64,
+            pkg:npm/@img/sharp-libvips-darwin-x64,
+            pkg:npm/@img/sharp-libvips-linux-arm,
+            pkg:npm/@img/sharp-libvips-linux-arm64,
+            pkg:npm/@img/sharp-libvips-linux-ppc64,
+            pkg:npm/@img/sharp-libvips-linux-riscv64,
+            pkg:npm/@img/sharp-libvips-linux-s390x,
+            pkg:npm/@img/sharp-libvips-linux-x64,
+            pkg:npm/@img/sharp-libvips-linuxmusl-arm64,
+            pkg:npm/@img/sharp-libvips-linuxmusl-x64
 
   workflow-security:
     name: Workflow Security
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Test repository scripts
         run: >
           node --test
           scripts/ci-workflow.test.mjs
+          scripts/crawler-version.test.mjs
           scripts/crawler-host-hygiene.test.mjs
           scripts/docs-index.test.mjs
           scripts/dealroom-company-requests.test.mjs
 
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "1.25"
           cache: false
 
-      - uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
+          prune-cache: true
           cache-dependency-glob: "apps/crawler/uv.lock"
 
       - name: actionlint
@@ -82,7 +98,7 @@ jobs:
       is_pr: ${{ steps.manual-default.outputs.is_pr || steps.manual-pr.outputs.is_pr || steps.pull-request.outputs.is_pr }}
       base_ref: ${{ steps.manual-default.outputs.base_ref || steps.manual-pr.outputs.base_ref || steps.pull-request.outputs.base_ref }}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -121,7 +137,7 @@ jobs:
       - name: Detect changed paths
         id: filter
         if: github.event_name != 'workflow_dispatch'
-        uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
         with:
           predicate-quantifier: every
           filters: |
@@ -145,17 +161,49 @@ jobs:
             boards_csv:
               - 'apps/crawler/data/boards.csv'
 
+  crawler-image:
+    name: Build Crawler Browser Image
+    needs: changes
+    if: needs.changes.outputs.is_pr == 'true' && needs.changes.outputs.crawler_code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Build full crawler image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: apps/crawler
+          target: full
+          platforms: linux/amd64
+          tags: jobseek-crawler-ci:pr
+          load: true
+          push: false
+          cache-from: type=gha,scope=crawler-browser
+          cache-to: type=gha,mode=max,scope=crawler-browser,ignore-error=true
+
+      - name: Smoke-test read-only crawler entry point
+        run: |
+          docker run --rm \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            --entrypoint /app/.venv/bin/crawler \
+            jobseek-crawler-ci:pr \
+            --help >/dev/null
+
   lint-web:
     name: Lint Web
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version: 22
           cache: pnpm
@@ -172,11 +220,11 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version: 22
           cache: pnpm
@@ -191,14 +239,15 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
+          prune-cache: true
           cache-dependency-glob: "apps/crawler/uv.lock"
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
 
@@ -217,14 +266,15 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
+          prune-cache: true
           cache-dependency-glob: "apps/crawler/uv.lock"
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
 
@@ -240,11 +290,11 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version: 22
           cache: pnpm
@@ -267,11 +317,11 @@ jobs:
     # `pnpm install --frozen-lockfile` below builds `dist/` automatically.
     # No explicit `pnpm --filter @jseek/mcp-server build` step is needed.
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version: 22
           cache: pnpm
@@ -299,7 +349,7 @@ jobs:
     env:
       REQUIRE_TYPESENSE_E2E: "true"
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Wait for Typesense
         run: |
@@ -313,7 +363,7 @@ jobs:
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version: 22
           cache: pnpm
@@ -335,54 +385,16 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    # `Production` environment exposes DATABASE_URL + TYPESENSE_* secrets for
-    # trusted same-repo runs. Fork PRs deliberately receive no secrets; blog
-    # `MdxMentions` company lookups must degrade to their missing-mention
-    # fallback instead of reaching Postgres when DATABASE_URL is absent.
-    environment: Production
-    # Job-level env: declared once, applied to every step in the job.
-    # Real secrets come from the `Production` environment above; the
-    # `ci-stub-*` literals are build-time-only placeholders that satisfy
-    # module-top-level env reads (e.g. better-auth's OAuth provider
-    # config) without authenticating to any real service — auth/SSO and
-    # search/write keys are only consumed at runtime by request handlers,
-    # which the build does not exercise.
-    env:
-      # Trusted runs use the real DSN so blog `<Mention>` MDX components can
-      # render company tooltips at build time. Fork runs leave this empty and
-      # exercise the secretless fallback path.
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
-      # This job classifies route cacheability. It must not depend on
-      # external Typesense availability or latency; trusted runs still have
-      # DATABASE_URL for blog company mentions, and fork/secretless runs
-      # exercise the missing-mention fallback path.
-      TYPESENSE_HOST: ""
-      TYPESENSE_PORT: ""
-      TYPESENSE_PROTOCOL: ""
-      # Build-time-only stubs (see job-level comment above).
-      BETTER_AUTH_SECRET: ci-stub-better-auth-secret-not-used-at-build-time
-      BETTER_AUTH_URL: http://localhost:3000
-      TYPESENSE_SEARCH_KEY: ci-stub-not-used-at-build-time
-      TYPESENSE_WRITE_KEY: ci-stub-not-used-at-build-time
-      GITHUB_CLIENT_ID: ci-stub
-      GITHUB_CLIENT_SECRET: ci-stub
-      GOOGLE_CLIENT_ID: ci-stub
-      GOOGLE_CLIENT_SECRET: ci-stub
-      LINKEDIN_CLIENT_ID: ci-stub
-      LINKEDIN_CLIENT_SECRET: ci-stub
-      RESEND_API_KEY: ci-stub
-      UPSTASH_REDIS_REST_URL: https://stub.invalid
-      UPSTASH_REDIS_REST_TOKEN: ci-stub
-      # It should also not spend build time rendering hundreds of company
-      # OG PNGs; unit tests cover the OG prebake query and renderer.
-      COMPANY_OG_PRERENDER_TOP_N: "0"
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-web-build-env
+        with:
+          app-url: http://localhost:3000
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version: 22
           cache: pnpm
@@ -401,11 +413,11 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version: 22
           cache: pnpm
@@ -425,22 +437,43 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
+          prune-cache: true
           cache-dependency-glob: "apps/crawler/uv.lock"
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
 
-      - run: uv sync --group dev
+      - run: uv sync --group dev --extra enrich
         working-directory: apps/crawler
 
       - run: uv run pytest tests/ -v --ignore=tests/e2e/test_typesense_indexing.py
         working-directory: apps/crawler
+
+      - name: Verify Redis noeviction write pressure
+        run: |
+          docker run --detach --name jobseek-redis-pressure \
+            --publish 127.0.0.1:6380:6379 \
+            redis:8-alpine \
+            redis-server --maxmemory 8mb --maxmemory-policy noeviction --save ""
+          for _ in {1..20}; do
+            if docker exec jobseek-redis-pressure redis-cli ping | grep -qx PONG; then
+              break
+            fi
+            sleep 1
+          done
+          uv run python ../../scripts/test-redis-noeviction-pressure.py \
+            --url redis://127.0.0.1:6380/15
+        working-directory: apps/crawler
+
+      - name: Stop Redis pressure fixture
+        if: always()
+        run: docker rm --force jobseek-redis-pressure || true
 
   test-crawler-typesense-e2e:
     name: Test Crawler Typesense E2E
@@ -460,10 +493,10 @@ jobs:
       TYPESENSE_HOST: localhost
       TYPESENSE_PORT: "8108"
       TYPESENSE_PROTOCOL: http
-      TYPESENSE_ADMIN_KEY: local_dev_typesense_key
+      TYPESENSE_OPERATIONS_KEY: local_dev_typesense_key
       REQUIRE_TYPESENSE_E2E: "true"
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Wait for Typesense
         run: |
@@ -475,12 +508,13 @@ jobs:
           done
           curl -fsS http://localhost:8108/health
 
-      - uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
+          prune-cache: true
           cache-dependency-glob: "apps/crawler/uv.lock"
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
 
@@ -493,20 +527,71 @@ jobs:
       - run: uv run pytest tests/e2e/test_typesense_indexing.py -v
         working-directory: apps/crawler
 
+  test-crawler-postgres-cdc-e2e:
+    name: Test Crawler PostgreSQL E2E
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: crawler
+          POSTGRES_PASSWORD: crawler
+          POSTGRES_DB: crawler
+        options: >-
+          --health-cmd "pg_isready -U crawler -d crawler"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      LOCAL_DATABASE_URL: postgresql://crawler:crawler@localhost:5432/crawler
+      REQUIRE_POSTGRES_E2E: "true"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: true
+          prune-cache: true
+          cache-dependency-glob: "apps/crawler/uv.lock"
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - run: uv sync --group dev
+        working-directory: apps/crawler
+
+      - run: uv run alembic -c src/migrations/alembic.ini upgrade head
+        working-directory: apps/crawler
+
+      - run: >-
+          uv run pytest
+          tests/e2e/test_postgres_cdc_commit_order.py
+          tests/e2e/test_foreign_relisting.py
+          tests/e2e/test_labeller_sampling_plan.py
+          tests/e2e/test_location_taxonomy_repair.py
+          -v
+        working-directory: apps/crawler
+
   coverage-crawler:
     name: Coverage Crawler
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
+          prune-cache: true
           cache-dependency-glob: "apps/crawler/uv.lock"
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
 
@@ -532,11 +617,11 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version: 22
           cache: pnpm
@@ -554,11 +639,11 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version: 22
           cache: pnpm
@@ -571,9 +656,9 @@ jobs:
     name: Data Validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
 
@@ -586,11 +671,11 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version: 22
           cache: pnpm
@@ -604,33 +689,16 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    environment: Production
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
-      TYPESENSE_HOST: ""
-      TYPESENSE_PORT: ""
-      TYPESENSE_PROTOCOL: ""
-      BETTER_AUTH_SECRET: ci-stub-better-auth-secret-not-used-at-build-time
-      BETTER_AUTH_URL: http://127.0.0.1:3100
-      TYPESENSE_SEARCH_KEY: ci-stub-not-used-at-build-time
-      TYPESENSE_WRITE_KEY: ci-stub-not-used-at-build-time
-      GITHUB_CLIENT_ID: ci-stub
-      GITHUB_CLIENT_SECRET: ci-stub
-      GOOGLE_CLIENT_ID: ci-stub
-      GOOGLE_CLIENT_SECRET: ci-stub
-      LINKEDIN_CLIENT_ID: ci-stub
-      LINKEDIN_CLIENT_SECRET: ci-stub
-      RESEND_API_KEY: ci-stub
-      UPSTASH_REDIS_REST_URL: https://stub.invalid
-      UPSTASH_REDIS_REST_TOKEN: ci-stub
-      COMPANY_OG_PRERENDER_TOP_N: "0"
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: ./.github/actions/setup-web-build-env
+        with:
+          app-url: http://127.0.0.1:3100
 
       - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
 
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
         with:
           node-version: 22
           cache: pnpm
@@ -651,9 +719,9 @@ jobs:
     if: needs.changes.outputs.crawler_code == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
 
@@ -682,28 +750,34 @@ jobs:
     needs: changes
     if: needs.changes.outputs.is_pr == 'true' && needs.changes.outputs.crawler_code == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      - name: Check VERSION increased
+      - name: Resolve trusted PR context
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr }}
         run: |
-          PR_VERSION=$(cat apps/crawler/VERSION | tr -d '[:space:]')
-          MAIN_VERSION=$(git show origin/main:apps/crawler/VERSION | tr -d '[:space:]')
+          set -euo pipefail
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")
+          {
+            echo "base_sha=$(jq -r '.base.sha' <<< "$pr")"
+            echo "head_sha=$(jq -r '.head.sha' <<< "$pr")"
+            echo "author=$(jq -r '.user.login' <<< "$pr")"
+          } >> "$GITHUB_OUTPUT"
 
-          IFS='.' read -r pr_major pr_minor pr_patch <<< "$PR_VERSION"
-          IFS='.' read -r main_major main_minor main_patch <<< "$MAIN_VERSION"
-
-          pr_num=$((pr_major * 1000000 + pr_minor * 1000 + pr_patch))
-          main_num=$((main_major * 1000000 + main_minor * 1000 + main_patch))
-
-          if [ "$pr_num" -gt "$main_num" ]; then
-            echo "VERSION bumped: ${MAIN_VERSION} → ${PR_VERSION}"
-          else
-            echo "::error::apps/crawler/VERSION must be bumped for crawler code changes (main: ${MAIN_VERSION}, PR: ${PR_VERSION})"
-            exit 1
-          fi
+      - name: Enforce crawler release policy
+        run: >-
+          node scripts/check-crawler-version.mjs
+          --base "${{ steps.pr.outputs.base_sha }}"
+          --head "${{ steps.pr.outputs.head_sha }}"
+          --author "${{ steps.pr.outputs.author }}"
 
   probe-new-boards:
     name: Probe new/changed boards
@@ -711,16 +785,17 @@ jobs:
     if: needs.changes.outputs.is_pr == 'true' && needs.changes.outputs.boards_csv == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      - uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           enable-cache: true
+          prune-cache: true
           cache-dependency-glob: "apps/crawler/uv.lock"
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
 
@@ -745,6 +820,7 @@ jobs:
       - dependency-review
       - workflow-security
       - changes
+      - crawler-image
       - lint-web
       - i18n-coverage
       - lint-crawler
@@ -756,6 +832,7 @@ jobs:
       - test-shim
       - test-crawler
       - test-crawler-typesense-e2e
+      - test-crawler-postgres-cdc-e2e
       - coverage-crawler
       - coverage-web
       - coverage-shim
@@ -802,6 +879,7 @@ jobs:
           requireSuccess("changes");
           requireSuccess("data-validation");
           requireSuccess("dependency-review", eventName === "pull_request" && code);
+          requireSuccess("crawler-image", isPr && crawlerCode);
 
           for (const job of [
             "lint-web",
@@ -815,6 +893,7 @@ jobs:
             "test-shim",
             "test-crawler",
             "test-crawler-typesense-e2e",
+            "test-crawler-postgres-cdc-e2e",
             "coverage-crawler",
             "coverage-web",
             "coverage-shim",
