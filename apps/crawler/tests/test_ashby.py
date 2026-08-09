@@ -3,7 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from src.core.monitors import DiscoveredJob
+from src.core.monitors import DiscoveredJob, slug_guess_mode
 from src.core.monitors.ashby import (
     _api_url,
     _parse_job,
@@ -342,7 +342,7 @@ class TestCanHandle:
             assert result is not None
             assert result.get("token") == "myco"
 
-    async def test_probe_fallback(self):
+    async def test_slug_probe_disabled_by_default(self):
         def handler(request):
             url = str(request.url)
             if "api.ashbyhq.com" in url:
@@ -351,6 +351,18 @@ class TestCanHandle:
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle("https://www.example.com/careers", client)
+            assert result is None
+
+    async def test_slug_guess_mode_enables_probe_fallback(self):
+        def handler(request):
+            url = str(request.url)
+            if "api.ashbyhq.com" in url:
+                return httpx.Response(200, json={"jobs": []})
+            return httpx.Response(200, text="<html>plain careers page</html>")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with slug_guess_mode(True):
+                result = await can_handle("https://www.example.com/careers", client)
             assert result is not None
             assert result.get("token") == "example"
 

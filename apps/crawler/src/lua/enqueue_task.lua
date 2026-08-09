@@ -8,6 +8,7 @@
 -- ARGV[5] = task_type ("monitor" or "scrape")
 -- ARGV[6] = first_time ("1" or "0")
 -- ARGV[7] = now (float timestamp)
+-- ARGV[8..] = optional scrape config field/value pairs
 --
 -- Returns: 1 if newly added, 0 if already existed
 
@@ -19,24 +20,58 @@ local task_type = ARGV[5]
 local first_time = ARGV[6] == "1"
 local now = tonumber(ARGV[7])
 
--- Build the per-domain queue key
-local prefix
-if first_time then
-    prefix = "ft_"
-else
-    prefix = ""
+-- Scrape queue membership and its config hash are one lifecycle record. Keep
+-- them in this script so an orphan-prune/completion script can never observe
+-- a newly queued posting without its new config (or vice versa). Monitor
+-- hashes remain deploy-owned and are intentionally written by sync in bulk.
+if task_type == "scrape" then
+    local config_args = {"domain", domain}
+    for index = 8, #ARGV, 2 do
+        if ARGV[index + 1] ~= nil then
+            table.insert(config_args, ARGV[index])
+            table.insert(config_args, ARGV[index + 1])
+        end
+    end
+    redis.call("HSET", "scrape:" .. task_id, unpack(config_args))
 end
+
+-- Build both lifecycle queue keys. A monitor is one logical schedule across
+-- its first-time, recurring, and inflight representations. Checking only the
+-- requested ZSET lets every deploy-time sync add an already-recurring board
+-- to ft_monitors as a duplicate (#6135).
+local task_prefix
 if task_type == "monitor" then
-    prefix = prefix .. "monitors_"
+    task_prefix = "monitors_"
 else
-    prefix = prefix .. "scrapes_"
+    task_prefix = "scrapes_"
 end
-local queue_key = prefix .. wtype .. ":" .. domain
+local first_time_key = "ft_" .. task_prefix .. wtype .. ":" .. domain
+local recurring_key = task_prefix .. wtype .. ":" .. domain
+local queue_key = first_time and first_time_key or recurring_key
+local inflight_member = task_type .. "|" .. domain .. "|" .. task_id
 
--- ZADD NX — only add if not already present
-local added = redis.call("ZADD", queue_key, "NX", score, task_id)
+local already_scheduled
+if task_type == "monitor" then
+    already_scheduled = (
+        redis.call("ZSCORE", first_time_key, task_id) ~= false or
+        redis.call("ZSCORE", recurring_key, task_id) ~= false or
+        redis.call("ZSCORE", "inflight:" .. wtype, inflight_member) ~= false
+    )
+else
+    -- Scrape fallbacks intentionally enqueue the same posting while the
+    -- previous step is inflight, and relisting can promote a recurring scrape
+    -- into the first-time tier. Keep their established per-ZSET NX semantics.
+    already_scheduled = redis.call("ZSCORE", queue_key, task_id) ~= false
+end
+local added = 0
+if not already_scheduled then
+    added = redis.call("ZADD", queue_key, "NX", score, task_id)
+end
 
-if added == 1 then
+-- Always recompute ready membership. Besides making a new schedule visible,
+-- this repairs a missing/stale ready-domain entry when sync only rewrites the
+-- board hash and the logical task already exists elsewhere.
+do
     -- Determine the correct ready queue tier and score.
     --
     -- First-time tasks always win (tier 0, ready_score=now to claim ASAP).

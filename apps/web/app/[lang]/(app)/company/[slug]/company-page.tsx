@@ -4,9 +4,8 @@ import { useState, useCallback, useTransition, useEffect, useMemo } from "react"
 import { Loader2 } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
-import { timeAgoShort } from "@/lib/time";
-import { SaveButton } from "@/components/search/save-button";
 import { SearchUnavailable } from "@/components/search/search-unavailable";
+import { getCompanyPostingListState } from "./company-posting-state";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { MobileJobDetailDialog } from "@/components/search/mobile-job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
@@ -16,8 +15,6 @@ import { useSession } from "@/components/providers/SessionProvider";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { InfiniteScrollSentinel } from "@/components/InfiniteScrollSentinel";
 import { TruncationPrompt } from "@/components/TruncationPrompt";
-import { TrackingDot } from "@/components/TrackingDot";
-import { PendingJobIcon } from "@/components/PendingJobWarning";
 import { useSalaryRates } from "@/components/providers/SalaryDisplayProvider";
 import type { CompanyDetail } from "@/lib/actions/company";
 import { buildFilteredPath } from "@/lib/search/query-params";
@@ -25,6 +22,8 @@ import { useLatest, useLatestState } from "@/lib/use-latest";
 import type { SearchResultPosting, HistogramFilters, WorkMode } from "@/lib/search";
 import type { SelectedLocation } from "@/lib/search/types";
 import { useSearchStateStore } from "@/components/providers/SearchStateProvider";
+import { ActivePostingCount, YearPostingCount } from "@/components/search/posting-count-labels";
+import { CompanyPostingRow } from "./company-posting-row";
 
 const PAGE_SIZE = 20;
 
@@ -128,11 +127,13 @@ export function CompanyPage({
 
   const hasMore = !exhausted && !isTruncated && postings.length < yearCount;
   const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || employmentTypes.length > 0 || workMode.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null;
-  const showUnavailable =
-    !isSearching &&
-    !hasFilters &&
-    postings.length === 0 &&
-    (isTruncated || activeCount > 0 || yearCount > 0);
+  const postingListState = getCompanyPostingListState({
+    isSearching,
+    hasFilters,
+    postingCount: postings.length,
+    isTruncated,
+    activeCount,
+  });
 
   /** Convert a salary amount from the user's display currency to EUR. */
   function toEur(amount: number | undefined): number | undefined {
@@ -262,12 +263,13 @@ export function CompanyPage({
         updateUrl();
         runSearch();
       },
-      submitSearch: (nextKeywords, nextLocations, nextOccupations, nextSeniorities, nextTechnologies) => {
+      submitSearch: (nextKeywords, nextLocations, nextOccupations, nextSeniorities, nextTechnologies, nextWorkMode) => {
         setKeywords(nextKeywords);
         setLocations(nextLocations);
         if (nextOccupations) { setOccupations(nextOccupations); }
         if (nextSeniorities) { setSeniorities(nextSeniorities); }
         if (nextTechnologies) { setTechnologies(nextTechnologies); }
+        if (nextWorkMode) { setWorkMode(nextWorkMode); }
         setShowPostingId(null);
         updateUrl();
         runSearch();
@@ -542,21 +544,19 @@ export function CompanyPage({
   // left/right.
   const statsSlot = (
     <p className="hidden whitespace-nowrap text-xs text-muted md:block">
-      {activeCount} <Trans id="company.page.active" comment="Active postings count on company page">active</Trans>
+      <ActivePostingCount count={activeCount} />
       {" · "}
-      {yearCount} <Trans id="company.page.yearCount" comment="Year postings count on company page">in the last year</Trans>
+      <YearPostingCount count={yearCount} />
     </p>
   );
   // Mobile: dedicated row. Active left, year right.
   const statsRowMobile = (
     <div className="flex items-center justify-between text-xs text-muted md:hidden">
       <span>
-        {activeCount}{" "}
-        <Trans id="company.page.active" comment="Active postings count on company page">active</Trans>
+        <ActivePostingCount count={activeCount} />
       </span>
       <span>
-        {yearCount}{" "}
-        <Trans id="company.page.yearCount" comment="Year postings count on company page">in the last year</Trans>
+        <YearPostingCount count={yearCount} />
       </span>
     </div>
   );
@@ -619,50 +619,34 @@ export function CompanyPage({
       {statsRowMobile}
 
       {/* Posting list */}
-      {isSearching ? (
+      {postingListState === "loading" ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 size={20} className="animate-spin text-muted" />
         </div>
-      ) : showUnavailable ? (
+      ) : postingListState === "unavailable" ? (
         <SearchUnavailable />
-      ) : postings.length === 0 && hasFilters ? (
+      ) : postingListState === "no-matches" ? (
         <p className="py-8 text-center text-sm text-muted">
           <Trans id="company.page.noResults" comment="No postings found message on company page">
             No matching postings found.
           </Trans>
         </p>
+      ) : postingListState === "no-active" ? (
+        <p className="py-8 text-center text-sm text-muted">
+          <Trans id="company.page.noActivePostings" comment="Empty-state message when a company has no active job postings">
+            No active postings right now.
+          </Trans>
+        </p>
       ) : (
         <div>
           {postings.map((posting) => (
-            <div
+            <CompanyPostingRow
               key={posting.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => handleOpenPosting(posting.id)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleOpenPosting(posting.id); }}
-              className={`flex cursor-pointer items-center gap-2 rounded px-1 py-1.5 transition-colors ${posting.id === showPostingId ? "bg-primary/10" : "hover:bg-border-soft"} ${posting.isActive === false ? "opacity-50" : ""}`}
-            >
-              <TrackingDot postingId={posting.id} />
-              <span className="min-w-0 flex-1 truncate text-sm">{posting.title ?? "—"}</span>
-              {posting.isActive === false && (
-                <span className="shrink-0 rounded bg-border-soft px-1 py-0.5 text-[10px] text-muted">
-                  <Trans id="company.page.closed" comment="Label for inactive/closed job postings on company page">
-                    Closed
-                  </Trans>
-                </span>
-              )}
-              {posting.locations.length > 0 && (
-                <span className={`shrink-0 text-xs text-muted ${posting.locations[0].geoType && posting.locations[0].geoType !== "city" ? "italic" : ""}`}>
-                  {posting.locations[0].name}
-                  {posting.locations.length > 1 && ` +${posting.locations.length - 1}`}
-                </span>
-              )}
-              {!posting.title && <PendingJobIcon />}
-              <SaveButton postingId={posting.id} />
-              <span suppressHydrationWarning className="w-8 shrink-0 text-left text-[10px] tabular-nums text-muted">
-                {timeAgoShort(posting.firstSeenAt)}
-              </span>
-            </div>
+              posting={posting}
+              selected={posting.id === showPostingId}
+              uiLocale={uiLocale}
+              onOpen={handleOpenPosting}
+            />
           ))}
           {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoadingMore} />}
           {!hasMore && isTruncated && <TruncationPrompt type="postings" />}

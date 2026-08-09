@@ -16,7 +16,7 @@
  * `idx_ai_saved_job_round`), but cold pool burns ~50–150 ms.
  *
  * Post-fix shape:
- *   1. Outer SELECT joins savedJob + jobPosting + company, projecting
+ *   1. Outer SELECT reads the savedJob-owned display snapshot, projecting
  *      everything EXCEPT interviewCount. Up to `limit` rows.
  *   2. Single `SELECT saved_job_id, count(*) … WHERE saved_job_id =
  *      ANY($1) GROUP BY saved_job_id` over the page's ids. Postgres
@@ -56,6 +56,7 @@ const mocks = vi.hoisted(() => {
   };
   return {
     getSessionUserId: vi.fn(),
+    fetchIndexedPostingStates: vi.fn(),
     // Queue of select-result rows in declaration order. Each entry is
     // one `db.select(...).from(...)…` chain. The chain captures which
     // table was hit and resolves with `rows`.
@@ -76,6 +77,10 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("@/lib/sessionCache", () => ({
   getSessionUserId: mocks.getSessionUserId,
+}));
+
+vi.mock("@/lib/search/typesense-posting-detail", () => ({
+  fetchIndexedPostingStates: mocks.fetchIndexedPostingStates,
 }));
 
 vi.mock("@/db/schema", () => ({
@@ -233,6 +238,7 @@ beforeEach(() => {
   mocks.selectQueue = [];
   mocks.selectCalls = [];
   mocks.getSessionUserId.mockResolvedValue(USER_ID);
+  mocks.fetchIndexedPostingStates.mockResolvedValue(new Map());
 });
 
 afterEach(() => {
@@ -321,6 +327,36 @@ describe("#3172 — getMyJobs batches interviewCount via GROUP BY", () => {
       { id: "sj-3", ic: 2 },
       { id: "sj-4", ic: 3 },
       { id: "sj-5", ic: 0 },
+    ]);
+  });
+
+  it("uses live indexed active state and snapshot fallback for a missing hit", async () => {
+    const pageRows = [
+      { ...fakeOuterRow({ id: "sj-1" }), postingIsActive: true },
+      { ...fakeOuterRow({ id: "sj-2" }), postingIsActive: false },
+      { ...fakeOuterRow({ id: "sj-3" }), postingIsActive: false },
+    ];
+    mocks.selectQueue.push({ rows: [{ count: 3 }] });
+    mocks.selectQueue.push({ rows: pageRows });
+    mocks.selectQueue.push({ rows: [] });
+    mocks.fetchIndexedPostingStates.mockResolvedValue(
+      new Map([
+        ["posting-sj-1", { isActive: false }],
+        ["posting-sj-2", { isActive: true }],
+      ]),
+    );
+
+    const { jobs } = await getMyJobs({ offset: 0, limit: 20 });
+
+    expect(jobs.map((job) => job.posting.isActive)).toEqual([
+      false,
+      true,
+      false,
+    ]);
+    expect(mocks.fetchIndexedPostingStates).toHaveBeenCalledWith([
+      "posting-sj-1",
+      "posting-sj-2",
+      "posting-sj-3",
     ]);
   });
 

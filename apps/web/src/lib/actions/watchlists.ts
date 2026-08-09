@@ -57,6 +57,12 @@ export async function getUserWatchlists(
   return service.getUserWatchlists(...args);
 }
 
+export async function getUserWatchlistCounts(
+  ...args: Parameters<typeof service.getUserWatchlistCounts>
+): ReturnType<typeof service.getUserWatchlistCounts> {
+  return service.getUserWatchlistCounts(...args);
+}
+
 export async function getWatchlistByUserAndSlug(
   ...args: Parameters<typeof service.getWatchlistByUserAndSlug>
 ): ReturnType<typeof service.getWatchlistByUserAndSlug> {
@@ -93,6 +99,12 @@ export async function getWatchlistPostings(
   return service.getWatchlistPostings(...args);
 }
 
+export async function getPublicWatchlistPostings(
+  ...args: Parameters<typeof service.getPublicWatchlistPostings>
+): ReturnType<typeof service.getPublicWatchlistPostings> {
+  return service.getPublicWatchlistPostings(...args);
+}
+
 export async function getWatchlistPostingYearCount(
   ...args: Parameters<typeof service.getWatchlistPostingYearCount>
 ): ReturnType<typeof service.getWatchlistPostingYearCount> {
@@ -126,6 +138,7 @@ export async function removeCompanyFromWatchlist(
 export type {
   WatchlistFilters,
   WatchlistSummary,
+  UserWatchlistOverview,
   WatchlistDetail,
   WatchlistPostingEntry,
   PublicWatchlistEntry,

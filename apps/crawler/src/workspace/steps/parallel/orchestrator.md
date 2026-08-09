@@ -35,6 +35,55 @@ as it's added.
 > `?location=switzerland` or `?country=us` to board URLs. Use the
 > unfiltered base URL so the crawler captures all listings.
 
+{% if ats_inventory_seed %}
+{% if ats_inventory_seed.status == "pending" %}
+## Validate the preconfigured inventory board first
+
+The issue supplied a content-validated inventory seed. It is evidence, not a
+replacement for research:
+
+- Source key: `{{ ats_inventory_seed.source_key }}`
+- Board: `{{ ats_inventory_seed.board_url }}`
+- Native monitor: `{{ ats_inventory_seed.monitor_type }}`
+- Config name: `{{ ats_inventory_seed.config_name }}`
+
+While Tracks A-C run, test this preconfigured board immediately:
+
+```bash
+ws run monitor {{ slug }} --board {{ ats_inventory_seed.board_alias }} --config {{ ats_inventory_seed.config_name }}
+```
+
+Only a successful run with one or more live jobs validates the fast path and
+allows you to skip `ws probe monitor` for this config. Confirm from the live
+site that the tenant belongs to this company and compare its count with the
+published inventory estimate{% if ats_inventory_seed.published_active_jobs is not none %}
+({{ ats_inventory_seed.published_active_jobs }} jobs at issue creation){% endif %}.
+
+If the run fails, returns zero jobs, belongs to another company, or the URL is
+stale, run the normal probe and configuration flow for this board. Do not keep
+the seed merely because it came from inventory.
+{% elif ats_inventory_seed.status == "verified" %}
+## Inventory board already verified
+
+The native `{{ ats_inventory_seed.monitor_type }}` seed for
+`{{ ats_inventory_seed.board_url }}` already completed successfully with
+{{ ats_inventory_seed.jobs }} live job(s). Do not rerun the seed merely because
+`ws task` was rendered again. Continue with live-site count/identity checks,
+feedback, scraper quality, and the remaining workflow.
+{% else %}
+## Inventory fast path disabled — use normal discovery
+
+The inventory candidate for `{{ ats_inventory_seed.board_url }}` was not
+accepted (`{{ ats_inventory_seed.reason | default("validation failed", true) }}`).
+Do not rerun `inventory-seed`. Probe and configure the board through the normal
+workflow if independent company/board research still supports it.
+{% endif %}
+
+Regardless of the seed status, Track C must discover all official global,
+regional, subsidiary, and additional ATS boards, and every normal metadata,
+logo, feedback, comparison, CSV-validation, and PR gate remains mandatory.
+{% endif %}
+
 ### Track A — Enrichment
 
 <track-a>
@@ -71,7 +120,9 @@ done
 For each new board:
 
 1. `ws await-board {{ slug }}` — blocks until a new board appears (auto-tracks seen boards)
-2. **Skip probing if ATS is already confirmed:** If a previous board from this
+2. **Skip probing if ATS is already confirmed:** A validated inventory seed
+   counts as confirmed only after its monitor run succeeds with one or more
+   live jobs. If a previous board from this
    company already identified a specific ATS (e.g., Greenhouse), and the new
    board URL is on the same ATS domain, skip probing — directly select the same
    monitor type with the board-specific token.
@@ -80,7 +131,7 @@ For each new board:
 
    **Fast path (single test, no subagents):** If the probe's top result is a
    **known stable ATS** — greenhouse, ashby, comeet, lever, gem, recruitee, personio,
-   workday, hireology, paylocity, pinpoint, dvinci, traffit, rss — AND it matched with
+   workday, adp, avature, bamboohr, beisen, paycom, jazzhr, jobvite, pageup, icims, gupy, cornerstone, darwinbox, dayforce, herp, hrmos, recruiterbox, keka, taleo, ukg, hirehive, hireology, paylocity, pinpoint, dvinci, traffit, rss — AND it matched with
    high confidence (detected via `can_handle`), test it directly yourself.
    No need to spawn subagents for an obvious choice. For companies with
    multiple boards on the same ATS, configure subsequent boards directly

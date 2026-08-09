@@ -33,6 +33,14 @@ class TestJsonLdExtractor:
         assert len(extractor.results) == 1
         assert extractor.results[0]["@type"] == "JobPosting"
 
+    def test_extracts_html_entity_encoded_block(self):
+        html = """<html><head><script type="application/ld+json">
+        {&quot;@type&quot;:&quot;JobPosting&quot;,&quot;title&quot;:&quot;R&amp;D Engineer&quot;}
+        </script></head></html>"""
+        extractor = _JsonLdExtractor()
+        extractor.feed(html)
+        assert extractor.results == [{"@type": "JobPosting", "title": "R&D Engineer"}]
+
     def test_extracts_multiple_blocks(self):
         html = """<html><head>
         <script type="application/ld+json">{"@type": "Organization"}</script>
@@ -160,6 +168,15 @@ class TestExtractLocations:
         }
         result = _extract_locations(posting)
         assert result == ["San Francisco, CA, US"]
+
+    def test_with_string_address(self):
+        posting = {
+            "jobLocation": {
+                "@type": "Place",
+                "address": "東京都新宿区西新宿1-26-2\n新宿野村ビル48階",
+            }
+        }
+        assert _extract_locations(posting) == ["東京都新宿区西新宿1-26-2 新宿野村ビル48階"]
 
     def test_multiple_locations(self):
         posting = {
@@ -549,6 +566,31 @@ class TestScrape:
                 )
                 assert result.title == "Rendered"
                 mock_render.assert_called_once_with("https://example.com/job", {}, pw="fake_pw")
+
+    async def test_render_forwards_proxy_to_browser(self):
+        """A proxy-enabled browser scraper must not silently use direct egress."""
+        from unittest.mock import AsyncMock, patch
+
+        page_html = """<script type="application/ld+json">
+        {"@type": "JobPosting", "title": "Proxied"}
+        </script>"""
+
+        with patch("src.shared.browser.render", new_callable=AsyncMock) as mock_render:
+            mock_render.return_value = page_html
+            async with httpx.AsyncClient(transport=httpx.MockTransport(lambda r: None)) as client:
+                result = await scrape(
+                    "https://example.com/job",
+                    {"render": True, "proxy": True},
+                    client,
+                    pw="fake_pw",
+                )
+
+        assert result.title == "Proxied"
+        mock_render.assert_awaited_once_with(
+            "https://example.com/job",
+            {"proxy": True},
+            pw="fake_pw",
+        )
 
     async def test_render_false_uses_http(self):
         """When render is false/absent, scrape should use static HTTP."""

@@ -82,7 +82,7 @@ vi.mock("@/lib/search/params", () => ({
   parseRangeParam: vi.fn(),
 }));
 
-import { searchCompaniesForWatchlist } from "../company";
+import { searchCompaniesForWatchlist, suggestCompanies } from "../company";
 
 const searchMock = mocks.search;
 const buildFilterStringMock = mocks.buildFilterString;
@@ -120,6 +120,48 @@ beforeEach(() => {
   searchMock.mockReset();
   buildFilterStringMock.mockReset();
   buildFilterStringMock.mockReturnValue("");
+});
+
+describe("suggestCompanies", () => {
+  it("reads active company suggestions from Typesense", async () => {
+    searchMock.mockResolvedValue({
+      hits: [{ document: companyHit() }],
+    });
+
+    await expect(suggestCompanies({ query: "  ACME  " })).resolves.toEqual([
+      {
+        id: "co-1",
+        name: "Acme Corp",
+        slug: "acme",
+        icon: "https://cdn.x/icon.png",
+      },
+    ]);
+    expect(searchMock).toHaveBeenCalledWith({
+      q: "acme",
+      query_by: "name",
+      filter_by: "active_posting_count:>0",
+      sort_by: "_text_match:desc,active_posting_count:desc",
+      per_page: 5,
+      prefix: true,
+      num_typos: 1,
+    });
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
+  it("degrades to no suggestions without querying Postgres", async () => {
+    searchMock.mockRejectedValue(Object.assign(new Error("reset"), { code: "ECONNRESET" }));
+
+    await expect(suggestCompanies({ query: "acme" })).resolves.toEqual([]);
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
+  it("does not hide non-availability Typesense errors", async () => {
+    const error = Object.assign(new Error("Bad Request"), { httpStatus: 400 });
+    searchMock.mockRejectedValue(error);
+
+    await expect(suggestCompanies({ query: "acme" })).rejects.toBe(error);
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
 });
 
 describe("searchCompaniesForWatchlist", () => {
@@ -247,5 +289,30 @@ describe("searchCompaniesForWatchlist", () => {
       total: 1,
       companies: [{ id: "co-1", activeMatches: 0 }],
     });
+  });
+
+  it("returns an explicit empty result when Typesense is unavailable", async () => {
+    const error = Object.assign(new Error("reset"), { code: "ECONNRESET" });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    searchMock.mockRejectedValue(error);
+
+    await expect(
+      searchCompaniesForWatchlist({
+        locale: "en",
+        offset: 0,
+        limit: 20,
+      }),
+    ).resolves.toEqual({ companies: [], total: 0 });
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(
+      "external_client_error",
+      expect.objectContaining({
+        event: "external_client_error",
+        service: "typesense",
+        operation: "search_companies_watchlist",
+        code: "ECONNRESET",
+      }),
+    );
+    errorSpy.mockRestore();
   });
 });

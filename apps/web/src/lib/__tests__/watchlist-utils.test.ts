@@ -1,6 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import {
   buildFilterCacheKey,
   isTrivialWatchlist,
@@ -39,11 +37,9 @@ describe("isTrivialWatchlist", () => {
     ).toBe(false);
   });
 
-  // Drift-guard: every meaningful key in WatchlistFilters must be
-  // checked by `isTrivialWatchlist` AND by the SQL predicate
-  // `nonTrivialWatchlistPredicate` in `src/lib/services/watchlists.ts`.
-  // If you add a new filter to WatchlistFilters, update both predicates
-  // or extend the IGNORED_KEYS allowlist with a justification comment.
+  // Drift-guard: every meaningful key in WatchlistFilters must be checked by
+  // `isTrivialWatchlist`. Public watchlist discovery is Typesense-only, so
+  // there is no longer a mirrored Postgres SQL predicate to keep in sync.
   describe("drift-guard vs WatchlistFilters keys", () => {
     // Keys that legitimately do NOT count as "meaningful" filters.
     // `anyCompany` is a UI toggle, `salaryCurrency` is a unit/pref that
@@ -81,27 +77,6 @@ describe("isTrivialWatchlist", () => {
     )("TS predicate flags only-%s as non-trivial", (key) => {
       const filters = { [key]: SAMPLE_VALUES[key] } as WatchlistFilters;
       expect(isTrivialWatchlist(filters, 0)).toBe(false);
-    });
-
-    it("SQL predicate mentions every non-ignored WatchlistFilters key", () => {
-      // Read the SQL fragment as source text so a future contributor
-      // adding a filter sees this test fail until they update the SQL.
-      const src = readFileSync(
-        join(__dirname, "..", "services", "watchlists.ts"),
-        "utf-8",
-      );
-      const sqlMatch = src.match(
-        /nonTrivialWatchlistPredicate\s*=\s*sql`([\s\S]*?)`/,
-      );
-      expect(sqlMatch, "nonTrivialWatchlistPredicate sql template literal not found").toBeTruthy();
-      const sqlBody = sqlMatch![1];
-      for (const key of ALL_KEYS) {
-        if (IGNORED_KEYS.has(key)) continue;
-        expect(
-          sqlBody,
-          `SQL predicate missing reference to filter key "${key}"`,
-        ).toMatch(new RegExp(`'${key}'`));
-      }
     });
   });
 });

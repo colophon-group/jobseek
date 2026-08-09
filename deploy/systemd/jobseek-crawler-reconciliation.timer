@@ -1,0 +1,12 @@
+[Unit]
+Description=Resume Jobseek cross-store reconciliation every hour
+
+[Timer]
+OnActiveSec=20m
+OnUnitInactiveSec=1h
+RandomizedDelaySec=10m
+AccuracySec=1m
+Unit=jobseek-crawler-reconciliation.service
+
+[Install]
+WantedBy=timers.target

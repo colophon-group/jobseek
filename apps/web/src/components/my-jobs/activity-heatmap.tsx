@@ -13,11 +13,17 @@ function formatLocal(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function parseLocalDate(date: string): Date {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 const WEEKS = 52;
 const DAYS = 7;
 const CELL = 10;
 const GAP = 2;
 const STEP = CELL + GAP;
+const MIN_MONTH_LABEL_COLUMNS = 3;
 
 const LEVELS = [
   "var(--color-border-soft, #e7e5e4)",
@@ -66,6 +72,10 @@ export function ActivityHeatmap({ data }: { data: ActivityDay[] }) {
   const { i18n } = useLingui();
   const DAY_LABELS = useDayLabels(i18n.locale);
   const MONTHS = useMonthLabels(i18n.locale);
+  const activityDateFormatter = useMemo(
+    () => new Intl.DateTimeFormat(i18n.locale, { dateStyle: "long" }),
+    [i18n.locale],
+  );
 
   const { grid, monthHeaders } = useMemo(() => {
     const map = new Map(data.map((d) => [d.date, d.count]));
@@ -100,7 +110,29 @@ export function ActivityHeatmap({ data }: { data: ActivityDay[] }) {
       columns.push(col);
     }
 
-    return { grid: columns, monthHeaders };
+    // A partial first month can occupy only one or two columns. Its label
+    // then collides with the next full month (for example Jul/Aug). Prefer
+    // the full month and keep every subsequent label at least three columns
+    // apart, which fits localized three-letter month abbreviations.
+    const visibleMonthHeaders: typeof monthHeaders = [];
+    for (let index = 0; index < monthHeaders.length; index++) {
+      const header = monthHeaders[index];
+      const next = monthHeaders[index + 1];
+      if (
+        index === 0
+        && next
+        && next.col - header.col < MIN_MONTH_LABEL_COLUMNS
+      ) {
+        continue;
+      }
+      const previous = visibleMonthHeaders.at(-1);
+      if (previous && header.col - previous.col < MIN_MONTH_LABEL_COLUMNS) {
+        continue;
+      }
+      visibleMonthHeaders.push(header);
+    }
+
+    return { grid: columns, monthHeaders: visibleMonthHeaders };
   }, [data, MONTHS]);
 
   const labelW = 26;
@@ -110,17 +142,38 @@ export function ActivityHeatmap({ data }: { data: ActivityDay[] }) {
   const svgW = labelW + gridW;
   const svgH = monthH + gridH;
 
+  const activityDays = useMemo(
+    () =>
+      grid.flatMap((column) =>
+        column.filter(
+          (cell): cell is { date: string; count: number } =>
+            cell !== null && cell.count > 0,
+        ),
+      ),
+    [grid],
+  );
+
+  function formatActivity(cell: { date: string; count: number }): string {
+    return i18n._({
+      id: "myJobs.heatmap.tooltip",
+      comment: "Heatmap tooltip and accessible summary for an application-activity day; {date} is a localized date and {count} is the number of applications that day.",
+      message: "{count, plural, =0 {No applications on {date}} one {# application on {date}} other {# applications on {date}}}",
+      values: {
+        count: cell.count,
+        date: activityDateFormatter.format(parseLocalDate(cell.date)),
+      },
+    });
+  }
+
   function handleMouseEnter(e: React.MouseEvent, cell: { date: string; count: number }) {
     const rect = (e.target as SVGElement).getBoundingClientRect();
     const container = containerRef.current?.getBoundingClientRect();
     if (!container) return;
-    const text = i18n._({
-      id: "myJobs.heatmap.tooltip",
-      comment: "Heatmap tooltip shown when hovering an application-activity day; {date} is a YYYY-MM-DD date and {count} is the number of applications that day.",
-      message: "{count, plural, =0 {No applications on {date}} one {# application on {date}} other {# applications on {date}}}",
-      values: { count: cell.count, date: cell.date },
+    setTooltip({
+      x: rect.left - container.left + CELL / 2,
+      y: rect.top - container.top - 4,
+      text: formatActivity(cell),
     });
-    setTooltip({ x: rect.left - container.left + CELL / 2, y: rect.top - container.top - 4, text });
   }
 
   function renderCells(levels: string[]) {
@@ -151,63 +204,96 @@ export function ActivityHeatmap({ data }: { data: ActivityDay[] }) {
   }
 
   return (
-    <div ref={containerRef} className="relative">
-      <div className="overflow-x-auto">
-      <svg
-        viewBox={`0 0 ${svgW} ${svgH}`}
-        width={svgW}
-        height={svgH}
-      >
-        {/* Month labels */}
-        {monthHeaders.map((m) => (
-          <text
-            key={`month-${m.col}`}
-            x={labelW + m.col * STEP}
-            y={11}
-            className="fill-muted"
-            style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
-          >
-            {m.label}
-          </text>
-        ))}
-
-        {/* Day labels */}
-        {DAY_LABELS.map((label, day) =>
-          label ? (
-            <text
-              key={`day-${day}`}
-              x={0}
-              y={monthH + day * STEP + CELL - 1}
-              className="fill-muted"
-              style={{ fontSize: 8, fontFamily: "'JetBrains Mono', monospace" }}
-            >
-              {label}
-            </text>
-          ) : null,
+    <section
+      aria-label={i18n._({
+        id: "myJobs.heatmap.label",
+        comment: "Accessible label for the application activity heatmap",
+        message: "Application activity",
+      })}
+    >
+      <ul data-testid="heatmap-summary" className="sr-only">
+        {activityDays.length > 0 ? (
+          activityDays.map((cell) => (
+            <li key={cell.date}>{formatActivity(cell)}</li>
+          ))
+        ) : (
+          <li>
+            {i18n._({
+              id: "myJobs.heatmap.emptySummary",
+              comment: "Accessible summary when the application activity heatmap has no non-zero days",
+              message: "No application activity in the displayed year.",
+            })}
+          </li>
         )}
+      </ul>
 
-        {/* Light mode cells */}
-        <g className="dark:hidden">{renderCells(LEVELS)}</g>
+      <div ref={containerRef} className="relative" aria-hidden="true">
+        <div className="overflow-x-auto">
+          <svg
+            viewBox={`0 0 ${svgW} ${svgH}`}
+            width={svgW}
+            height={svgH}
+          >
+            {/* Month labels */}
+            {monthHeaders.map((m) => (
+              <text
+                key={`month-${m.col}`}
+                data-month-column={m.col}
+                x={labelW + m.col * STEP}
+                y={11}
+                className="fill-muted"
+                style={{
+                  fontSize: 9,
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}
+              >
+                {m.label}
+              </text>
+            ))}
 
-        {/* Dark mode cells */}
-        <g className="hidden dark:block">{renderCells(LEVELS_DARK)}</g>
-      </svg>
-      </div>
+            {/* Day labels */}
+            {DAY_LABELS.map((label, day) =>
+              label ? (
+                <text
+                  key={`day-${day}`}
+                  x={0}
+                  y={monthH + day * STEP + CELL - 1}
+                  className="fill-muted"
+                  style={{
+                    fontSize: 8,
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
+                  {label}
+                </text>
+              ) : null,
+            )}
 
-      {/* Tooltip */}
-      {tooltip && (
-        <div
-          className="pointer-events-none absolute z-50 rounded-md border border-border-soft bg-surface px-2 py-1 text-[10px] shadow-md"
-          style={{
-            left: tooltip.x,
-            top: tooltip.y,
-            transform: "translate(-50%, -100%)",
-            fontFamily: "'JetBrains Mono', monospace",
-          }}
-        >
-          {tooltip.text}
+            {/* Light mode cells */}
+            <g className="dark:hidden">{renderCells(LEVELS)}</g>
+
+            {/* Dark mode cells */}
+            <g className="hidden dark:block">
+              {renderCells(LEVELS_DARK)}
+            </g>
+          </svg>
         </div>
-      )}
-    </div>
+
+        {/* Tooltip */}
+        {tooltip && (
+          <div
+            className="pointer-events-none absolute z-50 rounded-md border border-border-soft bg-surface px-2 py-1 text-[10px] shadow-md"
+            style={{
+              left: tooltip.x,
+              top: tooltip.y,
+              transform: "translate(-50%, -100%)",
+              fontFamily: "'JetBrains Mono', monospace",
+            }}
+          >
+            {tooltip.text}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

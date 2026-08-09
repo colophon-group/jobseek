@@ -38,8 +38,8 @@ describe("EmploymentTypeModal — per-option counts (#3032)", () => {
 
     await waitFor(() => expect(getEmploymentTypeCountsMock).toHaveBeenCalled());
     // After data resolves, each option button shows its count alongside the label.
-    await waitFor(() => screen.getByText("(1234)"));
-    expect(screen.getByText("(1234)")).toBeTruthy();
+    await waitFor(() => screen.getByText("(1,234)"));
+    expect(screen.getByText("(1,234)")).toBeTruthy();
     expect(screen.getByText("(56)")).toBeTruthy();
     expect(screen.getByText("(78)")).toBeTruthy();
     expect(screen.getByText("(9)")).toBeTruthy();

@@ -8,6 +8,8 @@ import { getAllTechnologiesGrouped } from "@/lib/actions/taxonomy";
 import type { TechnologyGroup } from "@/lib/actions/taxonomy";
 import { findBestGuess } from "./best-guess";
 import { ScrollFade } from "@/components/ui/scroll-fade";
+import { FacetCount } from "./facet-count";
+import { useSearchableDialogFocus } from "./use-searchable-dialog-focus";
 
 interface TechnologyModalProps {
   open: boolean;
@@ -30,6 +32,11 @@ export function TechnologyModal({
   const [search, setSearch] = useState("");
   const [warning, setWarning] = useState("");
   const warningTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const {
+    searchInputRef,
+    focusSearchInputOnOpen,
+    restoreTriggerFocusOnClose,
+  } = useSearchableDialogFocus();
 
   const selectedIds = useMemo(() => new Set(selected.map((s) => s.id)), [selected]);
 
@@ -102,6 +109,8 @@ export function TechnologyModal({
         <Dialog.Content
           className="fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-border-soft bg-surface shadow-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
           aria-describedby={undefined}
+          onOpenAutoFocus={focusSearchInputOnOpen}
+          onCloseAutoFocus={restoreTriggerFocusOnClose}
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-divider px-5 py-4">
@@ -126,6 +135,7 @@ export function TechnologyModal({
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
+                ref={searchInputRef}
                 type="text"
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setWarning(""); }}
@@ -176,9 +186,7 @@ export function TechnologyModal({
                             }`}
                           >
                             <span className="font-medium">{tech.name}</span>
-                            <span className={`text-xs ${active ? "text-primary/70" : "text-muted"}`}>
-                              ({tech.count})
-                            </span>
+                            <FacetCount count={tech.count} className={`text-xs ${active ? "text-primary/70" : "text-muted"}`} />
                           </button>
                         );
                       })}

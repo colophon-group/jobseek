@@ -24,7 +24,7 @@ Jobseek monitors company career pages for new job postings. Companies are config
 │           ├── queries/     # SQL queries for local Postgres
 │           ├── redis_queue.py # Lua-backed claim/enqueue/reschedule
 │           ├── lua/         # Redis Lua scripts
-│           ├── exporter.py  # CDC: local Postgres -> Supabase + Typesense
+│           ├── exporter.py  # CDC: local Postgres -> Typesense
 │           ├── typesense_client.py # Shared Typesense client (lazy, feature-flagged)
 │           ├── sync.py      # CSV -> DB + Redis + Typesense taxonomy sync
 │           ├── cli.py       # Entry point (crawler run/export/drain/sync/board/...)
@@ -64,9 +64,11 @@ uv sync                           # Install dependencies
 uv run pytest tests/              # Run tests
 uv run crawler run                # Run HTTP worker (claims from Redis simple queues)
 uv run crawler run-browser        # Run browser worker (claims from Redis browser queues)
-uv run crawler export             # Run CDC exporter (local Postgres -> Supabase + Typesense)
+uv run crawler export             # Run CDC exporter (local Postgres -> Typesense)
 uv run crawler drain              # Run R2 description uploader
-uv run crawler sync               # Sync CSVs to local Postgres + Supabase + Redis + Typesense taxonomies
+uv run crawler sync               # Sync CSVs to local/web Postgres + Redis + Typesense
+uv run crawler reconcile          # Read-only deterministic cross-store slice
+uv run crawler reconcile --repair --max-partitions 16  # Resume verified repairs
 uv run crawler board <slug>       # Process single board (debug)
 uv run crawler backfill-typesense # Full re-index of job_posting to Typesense
 uv run crawler refresh-typesense  # Refresh Typesense counts + reconcile watchlists
@@ -95,8 +97,9 @@ Deployment and maintenance rules live in
 
 - `.agents/skills/jobseek-error-review/SKILL.md` + `docs/14-error-review-routine.md` —
   Codex-first daily review of crawler errors on the Hetzner box. The routine
-  reads logs, dedupes known issues, collects evidence, and files or updates
-  GitHub issues only when the documented criteria are met.
+  reads logs, dedupes known issues, correlates only validated maintenance
+  provenance from the root-collected bundle, and files or updates GitHub
+  issues only when the documented criteria are met.
 - `.agents/skills/jobseek-label-daily/SKILL.md` + `docs/15-data-sampling-routine.md` —
   Codex-first daily gold-dataset routine. It samples diverse postings from the
   last 24h, labels via task-specific subagents with tasks rendered from Jinja
@@ -161,11 +164,15 @@ See [docs/11-typesense.md](docs/11-typesense.md) for full deployment details, in
 
 ### API Keys
 
-Four scoped keys (stored in `apps/crawler/.env.local`, GitHub secrets, and Vercel env vars):
+The bootstrap credential and five generated keys are separated by consumer
+(stored only in root-owned host files, protected GitHub secrets, ignored
+`apps/crawler/.env.local`, or Vercel env vars as appropriate):
 
 | Key | Scope | Used by |
 |-----|-------|---------|
-| `TYPESENSE_ADMIN_KEY` | Full access | Exporter, sync, backfill, setup scripts (crawler machine) |
+| `TYPESENSE_BOOTSTRAP_KEY` | Full server bootstrap | Root-owned Typesense host config only |
+| `TYPESENSE_OPERATIONS_KEY` | `collections:*`, `documents:*`, `aliases:*`, `metrics.json:list` | Exporter, sync, backfill, setup, reconciliation, health metrics |
+| `TYPESENSE_BACKUP_KEY` | Generated wildcard key (Typesense 27.1 snapshot limitation) | Root-owned backup service only |
 | `TYPESENSE_SEARCH_KEY` | `documents:search` + `documents:get` on all collections | Web app server-side search (via Cloudflare tunnel) |
 | `TYPESENSE_BROWSER_PARENT_KEY` | `documents:search` on all collections only | Web app `/api/typesense-key` route; mints scoped keys for direct browser -> Typesense calls |
 | `TYPESENSE_WRITE_KEY` | `documents:create/upsert/delete/update` on `watchlist` only | Web app watchlist mutations |
@@ -201,9 +208,9 @@ cd apps/crawler && uv run python ../../scripts/typesense-backfill-local.py [--li
 
 ### Indexing Pipeline
 
-- **Exporter** (CDC): two-cursor design — Supabase and Typesense cursors advance independently. Concurrent upserts via `asyncio.gather`
+- **Exporter** (CDC): database-triggered shared writer markers + a non-blocking oldest-writer transaction floor prevent commit-order skips without starving under continuous writes; the Typesense cursor advances independently of the local writer floor, with concurrent document upserts
 - **Sync**: taxonomy collections (location, occupation, seniority, technology) and the `company` collection populated after CSV sync. Company docs include extended fields (logo, website, employee_count_range, founded_year) and per-locale variants (`description_{de,fr,it}`, `industry_name_{de,fr,it}`) for the company detail page reader. Handles taxonomy rename detection
-- **Reconciliation**: daily count check + sample comparison
+- **Reconciliation**: deploy-independent Hetzner systemd timer; durable 256-partition Typesense comparison and fail-closed verified repair from local truth
 - **refresh-typesense**: periodic count refresh for taxonomy/company collections + watchlist reconciliation. Runs inline at every deploy/CSV sync (via `crawler sync`) and every 4h via `.github/workflows/crawler-scheduled-maintenance.yml` out-of-band
 
 ### Web App Integration

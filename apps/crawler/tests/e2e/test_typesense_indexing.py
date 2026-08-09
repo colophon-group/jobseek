@@ -20,6 +20,7 @@ import pytest
 import typesense
 from typesense.exceptions import ObjectNotFound
 
+from src.reconciliation import TypesenseReconciliationClient
 from src.typesense_schema import COLLECTIONS
 
 # ---------------------------------------------------------------------------
@@ -30,7 +31,7 @@ TYPESENSE_HOST = os.environ.get("TYPESENSE_HOST", "localhost")
 TYPESENSE_PORT = os.environ.get("TYPESENSE_PORT", "8108")
 TYPESENSE_PROTOCOL = os.environ.get("TYPESENSE_PROTOCOL", "http")
 TYPESENSE_API_KEY = os.environ.get(
-    "TYPESENSE_ADMIN_KEY",
+    "TYPESENSE_OPERATIONS_KEY",
     os.environ.get("TYPESENSE_API_KEY", "local_dev_typesense_key"),
 )
 
@@ -123,16 +124,69 @@ COMPANIES = [
         "id": f"{_PREFIX}_company_{i}",
         "name": name,
         "slug": slug,
+        "industry_id": industry_id,
+        "industry_name": industry_name,
+        "industry_name_de": industry_name_de,
+        "industry_name_fr": industry_name_fr,
+        "industry_name_it": industry_name_it,
         "active_posting_count": 0,  # will be updated after postings
         "year_posting_count": 0,
     }
-    for i, (name, slug) in enumerate(
+    for i, (
+        name,
+        slug,
+        industry_id,
+        industry_name,
+        industry_name_de,
+        industry_name_fr,
+        industry_name_it,
+    ) in enumerate(
         [
-            ("Acme Corp", "acme-corp"),
-            ("Globex Inc", "globex-inc"),
-            ("Initech", "initech"),
-            ("Umbrella Corp", "umbrella-corp"),
-            ("Stark Industries", "stark-industries"),
+            (
+                "Acme Corp",
+                "acme-corp",
+                9100,
+                "Software",
+                "Softwareentwicklung",
+                "Logiciels",
+                "Software",
+            ),
+            (
+                "Globex Inc",
+                "globex-inc",
+                9101,
+                "Financial Services",
+                "Finanzdienstleistungen",
+                "Services financiers",
+                "Servizi finanziari",
+            ),
+            (
+                "Initech",
+                "initech",
+                9100,
+                "Software",
+                "Softwareentwicklung",
+                "Logiciels",
+                "Software",
+            ),
+            (
+                "Umbrella Corp",
+                "umbrella-corp",
+                9102,
+                "Biotechnology",
+                "Biotechnologie",
+                "Biotechnologie",
+                "Biotecnologia",
+            ),
+            (
+                "Stark Industries",
+                "stark-industries",
+                9103,
+                "Industrial Engineering",
+                "Industrieingenieurwesen",
+                "Genie industriel",
+                "Ingegneria industriale",
+            ),
         ]
     )
 ]
@@ -366,7 +420,8 @@ def _make_postings() -> list[dict]:
         experience_min = -1 if i % 3 == 0 else (i + 1)
         experience_max = -1 if experience_min == -1 else 99
         posting: dict = {
-            "id": f"{_PREFIX}_posting_{i}",
+            "id": str(uuid.UUID(hex=f"{i % 2:02x}{i + 1:030x}")),
+            "reconciliation_bucket": f"{i % 2:02x}",
             "company_id": company["id"],
             "company_name": company["name"],
             "company_slug": company["slug"],
@@ -548,6 +603,9 @@ class TestSchemas:
         assert fields_by_name["experience_max_years"]["type"] == "float"
         assert fields_by_name["experience_min"]["type"] == "int32"
         assert fields_by_name["experience_max"]["type"] == "int32"
+        assert fields_by_name["reconciliation_bucket"]["type"] == "string"
+        assert fields_by_name["reconciliation_bucket"].get("facet") is True
+        assert fields_by_name["reconciliation_bucket"].get("optional") is True
         assert "coordinates" not in fields_by_name, (
             "coordinates should only be on location collection, not job_posting"
         )
@@ -569,6 +627,21 @@ class TestSchemas:
         info = _col(ts_client, alias_map, "technology").retrieve()
         assert set(info.get("token_separators", [])) == {"+", "#", "."}
         assert set(info.get("symbols_to_index", [])) == {"+", "#", "."}
+
+    def test_company_localized_industry_fields_are_searchable(
+        self, ts_client: typesense.Client, alias_map: dict
+    ):
+        info = _col(ts_client, alias_map, "company").retrieve()
+        fields_by_name = {field["name"]: field for field in info["fields"]}
+
+        for name in (
+            "industry_name",
+            "industry_name_de",
+            "industry_name_fr",
+            "industry_name_it",
+        ):
+            assert fields_by_name[name]["type"] == "string"
+            assert fields_by_name[name].get("index", True) is True
 
     def test_location_field_count(self, ts_client: typesense.Client, alias_map: dict):
         """location collection has the expected schema fields."""
@@ -616,6 +689,44 @@ class TestDataIntegrity:
             assert len(doc["location_names"]) == len(doc["location_ids"])
             assert len(doc["technology_names"]) == len(doc["technology_ids"])
             assert doc["first_seen_at"] > 0
+
+    def test_job_posting_reconciliation_bucket_is_exactly_filterable(
+        self,
+        ts_client: typesense.Client,
+        alias_map: dict,
+    ):
+        col = _col(ts_client, alias_map, "job_posting")
+        results = col.documents.search(
+            {
+                "q": "*",
+                "query_by": "title",
+                "filter_by": "reconciliation_bucket:=00",
+                "per_page": 250,
+            }
+        )
+        returned = {hit["document"]["id"] for hit in results["hits"]}
+        expected = {
+            posting["id"] for posting in POSTINGS if posting["reconciliation_bucket"] == "00"
+        }
+        assert returned == expected
+
+    async def test_async_reconciliation_export_streams_one_exact_bucket(
+        self,
+        ts_client: typesense.Client,
+    ):
+        assert ts_client.operations.is_healthy()
+        client = TypesenseReconciliationClient()
+        try:
+            snapshot = await client.partition_snapshot(0)
+        finally:
+            await client.aclose()
+
+        expected = {
+            uuid.UUID(posting["id"]): posting["is_active"]
+            for posting in POSTINGS
+            if posting["reconciliation_bucket"] == "00"
+        }
+        assert snapshot.states == expected
 
     def test_job_posting_timestamps_are_unix(self, ts_client: typesense.Client, alias_map: dict):
         """first_seen_at and last_seen_at are integers (unix timestamps),
@@ -950,6 +1061,47 @@ class TestSearch:
         )
         assert results["found"] >= 1
         assert any("Acme" in h["document"]["name"] for h in results["hits"])
+
+    def test_company_industry_empty_query_browse_uses_localized_query_fields(
+        self, ts_client: typesense.Client, alias_map: dict
+    ):
+        col = _col(ts_client, alias_map, "company")
+        company_ids = ",".join(f"`{company['id']}`" for company in COMPANIES)
+        results = col.documents.search(
+            {
+                "q": "*",
+                "query_by": ("industry_name,industry_name_de,industry_name_fr,industry_name_it"),
+                "filter_by": f"id:[{company_ids}] && industry_id:>=0",
+                "group_by": "industry_id",
+                "group_limit": 1,
+                "per_page": 100,
+            }
+        )
+
+        assert len(results["grouped_hits"]) == len(
+            {company["industry_id"] for company in COMPANIES}
+        )
+
+    def test_company_industry_search_matches_localized_name(
+        self, ts_client: typesense.Client, alias_map: dict
+    ):
+        col = _col(ts_client, alias_map, "company")
+        company_ids = ",".join(f"`{company['id']}`" for company in COMPANIES)
+        results = col.documents.search(
+            {
+                "q": "Softwareentwicklung",
+                "query_by": ("industry_name,industry_name_de,industry_name_fr,industry_name_it"),
+                "filter_by": f"id:[{company_ids}] && industry_id:>=0",
+                "group_by": "industry_id",
+                "group_limit": 1,
+                "per_page": 100,
+                "prefix": True,
+                "num_typos": 0,
+            }
+        )
+
+        assert results["found"] >= 1
+        assert results["grouped_hits"][0]["hits"][0]["document"]["industry_id"] == 9100
 
     def test_company_posting_counts(self, ts_client: typesense.Client, alias_map: dict):
         """Companies have active_posting_count reflecting seeded postings."""

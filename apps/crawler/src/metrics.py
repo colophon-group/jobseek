@@ -84,6 +84,12 @@ monitor_dedup_total = Counter(
     ["path"],
 )
 
+monitor_foreign_discovery_total = Counter(
+    "crawler_monitor_foreign_discovery_total",
+    "Cross-board discoveries by canonical posting recovery outcome",
+    ["outcome"],
+)
+
 monitor_db_transaction_retries_total = Counter(
     "crawler_monitor_db_transaction_retries_total",
     "Monitor database transactions retried after a transient PostgreSQL abort",
@@ -113,6 +119,25 @@ monitor_failed_per_board_total = Counter(
     "crawler_monitor_failed_per_board_total",
     "Monitor pipeline failures attributed to a specific board",
     ["board_id"],
+)
+
+# Configured boards that exhaust the normal retry ramp remain schedulable in a
+# low-frequency quarantine instead of being terminally disabled (#6157).
+# ``event`` is deliberately a three-value allowlist, so the metric remains
+# fleet-bounded while exposing entry, failed recovery probes, and recoveries.
+monitor_quarantine_events_total = Counter(
+    "crawler_monitor_quarantine_events_total",
+    "Monitor quarantine state-machine transitions and recovery probes",
+    ["event"],
+)
+
+# Provider-native 404/retirement signals use a bounded confirmation state
+# machine (#6156). The three events expose durable confirmations, terminal
+# transitions, and self-recoveries without adding a per-board label.
+monitor_gone_events_total = Counter(
+    "crawler_monitor_gone_events_total",
+    "Monitor provider-gone confirmations, terminal transitions, and recoveries",
+    ["event"],
 )
 
 # Redis-backed per-upstream-host circuit breaker (#3195). Only hosts that
@@ -174,7 +199,7 @@ exporter_flush_duration = Histogram(
 
 exporter_rows_exported = Counter(
     "crawler_exporter_rows_exported_total",
-    "Rows exported from local Postgres to Supabase",
+    "Rows exported from local Postgres to configured downstreams",
     ["table"],
 )
 
@@ -189,6 +214,26 @@ exporter_last_flush_ts = Gauge(
     "Unix timestamp of last successful exporter flush",
 )
 
+exporter_cdc_cutoff_delay = Gauge(
+    "crawler_exporter_cdc_cutoff_delay_seconds",
+    "Age of the commit-safe CDC cutoff behind the captured database clock",
+)
+
+exporter_cdc_active_writers = Gauge(
+    "crawler_exporter_cdc_active_writers",
+    "Transactions currently holding the shared posting CDC writer marker",
+)
+
+exporter_cdc_released_writer_races_total = Counter(
+    "crawler_exporter_cdc_released_writer_races_total",
+    "Initially observed CDC writer locks released before the activity recheck",
+)
+
+exporter_cdc_unknown_writers_total = Counter(
+    "crawler_exporter_cdc_unknown_writers_total",
+    "Still-held CDC writer locks without an attributable transaction start",
+)
+
 export_errors_total = Counter(
     "crawler_export_errors_total",
     # Bumped per row dropped by the per-row fallback path (#3180). The
@@ -199,19 +244,6 @@ export_errors_total = Counter(
     # is ``supabase`` or ``typesense``. Bounded cardinality (<10).
     "Rows dropped by the exporter's per-row fallback path",
     ["table", "phase"],
-)
-
-# ── Reconciliation metrics ──────────────────────────────────────────
-
-reconciliation_duration = Histogram(
-    "crawler_reconciliation_duration_seconds",
-    "Reconciliation cycle duration",
-    buckets=[1, 5, 10, 30, 60, 300],
-)
-
-reconciliation_discrepancies = Counter(
-    "crawler_reconciliation_discrepancies_total",
-    "Discrepancies found during reconciliation",
 )
 
 # ── Redis queue metrics ─────────────────────────────────────────────
@@ -328,11 +360,6 @@ typesense_backfill_docs_total = Counter(
     "Documents backfilled to Typesense",
 )
 
-typesense_reconciliation_discrepancies = Gauge(
-    "crawler_typesense_reconciliation_discrepancies",
-    "Discrepancies from last Typesense reconciliation run",
-)
-
 # ``crawler_typesense_healthy`` is defined in ``exporter.py`` — see comment
 # next to ``redis_connected`` above.
 
@@ -370,6 +397,12 @@ inflight_deadletter_depth = Gauge(
     "crawler_inflight_deadletter_depth",
     "Tasks parked in the dead-letter ZSET",
     ["wtype"],
+)
+
+monitor_deadletter_lifecycle_depth = Gauge(
+    "crawler_monitor_deadletter_lifecycle_depth",
+    "Monitor dead-letter tasks classified against local Postgres lifecycle state",
+    ["wtype", "lifecycle"],
 )
 
 # Heartbeats: tasks that called ``heartbeat_task`` and got 1 (extended)
@@ -419,7 +452,7 @@ browser_navigate_fallback_total = Counter(
 )
 
 # HTTP retry observability (#3210). The httpx retry path (and per-monitor
-# copies for workday / lever / hireology / smartrecruiters / accenture /
+# copies for workday / lever / hirehive / hireology / smartrecruiters / accenture /
 # PCSX / api_sniff) all retry transient failures and emit structured logs,
 # but had no counter — so operators could not query "what's the retry storm
 # rate?" or "is host X 429-throttling us today?" without grepping Loki.
@@ -494,6 +527,12 @@ browser_cleanup_failures_total = Counter(
     ["resource", "outcome"],
 )
 
+browser_target_closed_retries_total = Counter(
+    "crawler_browser_target_closed_retries_total",
+    "Fresh-context scrape retries after Playwright loses a page, context, or browser",
+    ["outcome"],
+)
+
 
 # Build info — emitted once at startup so Grafana can confirm which
 # ``apps/crawler/VERSION`` each container is running without SSH-ing in.
@@ -543,9 +582,9 @@ class _QuietThreadingWSGIServer(socketserver.ThreadingMixIn, WSGIServer):
 
 def _start_metrics_http_server(
     port: int,
-    addr: str = "0.0.0.0",
+    addr: str = "127.0.0.1",
 ) -> tuple[WSGIServer, threading.Thread]:
-    """Start the shared metrics listener and return it for lifecycle tests."""
+    """Start the loopback-only metrics listener and return it for lifecycle tests."""
     server = make_server(
         addr,
         port,

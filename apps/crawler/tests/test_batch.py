@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime, timedelta
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import asyncpg
 import pytest
+from playwright.async_api import Error as PlaywrightError
 
 from src.batch import (
     _BATCH_UPDATE_RICH_CONTENT,
@@ -12,9 +14,11 @@ from src.batch import (
     _CREATE_RICH_UPDATES_TEMP,
     _DELIST_BOARD_POSTINGS,
     _DIFF_BATCH,
+    _FETCH_BOARD_GONE_STATE,
     _INSERT_RICH_JOB,
     _INSERT_RICH_JOB_ENRICH,
     _INSERT_URL_ONLY_JOBS,
+    _RECORD_BOARD_GONE,
     _RECORD_EMPTY_CHECK,
     _RECORD_FAILURE,
     _RECORD_SCRAPE_SUCCESS,
@@ -143,8 +147,19 @@ class TestThrottleKey:
 
     def test_all_api_types(self):
         for api_type in api_monitor_types():
-            board = self._board(crawler_type=api_type)
-            assert _throttle_key(board) == api_type
+            if api_type == "darwinbox":
+                board = self._board(
+                    crawler_type=api_type,
+                    board_url="https://acme.darwinbox.in/ms/candidate/careers",
+                    metadata={"host": "acme.darwinbox.in", "company_id": "main"},
+                )
+                assert _throttle_key(board) == "acme.darwinbox.in"
+            elif api_type == "pageup":
+                board = self._board(crawler_type=api_type)
+                assert _throttle_key(board) == "careers.pageuppeople.com"
+            else:
+                board = self._board(crawler_type=api_type)
+                assert _throttle_key(board) == api_type
 
     def test_url_monitor_returns_hostname(self):
         board = self._board(crawler_type="sitemap", board_url="https://acme.com/jobs")
@@ -153,6 +168,24 @@ class TestThrottleKey:
     def test_dom_monitor_returns_hostname(self):
         board = self._board(crawler_type="dom", board_url="https://bigcorp.com/careers")
         assert _throttle_key(board) == "bigcorp.com"
+
+    def test_taleo_uses_resolved_metadata_host(self):
+        board = self._board(
+            crawler_type="taleo",
+            board_url=(
+                "https://phe.tbe.taleo.net/phe01/ats/careers/v2/searchResults?org=ACME&cws=1"
+            ),
+            metadata={"host": "phh.tbe.taleo.net", "partition": "phh01", "org": "ACME", "cws": 41},
+        )
+        assert _throttle_key(board) == "phh.tbe.taleo.net"
+
+    def test_avature_uses_configured_listing_host(self):
+        board = self._board(
+            crawler_type="avature",
+            board_url="https://www.acme.com/careers",
+            metadata={"listing_url": "https://acme.avature.net/careers/SearchJobs"},
+        )
+        assert _throttle_key(board) == "acme.avature.net"
 
     def test_no_hostname_fallback(self):
         board = self._board(crawler_type="sitemap", board_url="not-a-url")
@@ -327,8 +360,10 @@ class TestProcessOneBoard:
         """Monitor returns empty urls -> _RECORD_EMPTY_CHECK called, no transaction."""
         pool, conn = mock_pool
         mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
-        # _RECORD_EMPTY_CHECK now uses RETURNING, so conn.fetch returns rows
-        conn.fetch.return_value = [{"board_status": "active"}]
+        # _RECORD_EMPTY_CHECK uses RETURNING to communicate the delist gate.
+        conn.fetch.return_value = [
+            {"board_status": "active", "should_delist": False, "recovered_from": None}
+        ]
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
@@ -338,22 +373,79 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_empty_result_board_gone_delists_postings(
+    async def test_valid_empty_result_recovers_quarantined_board(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
-        """Board transitions to 'gone' after repeated empties -> delist all
-        postings AND emit the ``monitor_jobs_discovered{action="gone"}``
-        counter for each row, so the Grafana ``gone`` series doesn't stay
-        stuck at zero while thousands of rows flip to ``is_active=false``.
+        from src.processing.board import monitor_quarantine_events_total
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
+        conn.fetch.return_value = [
+            {
+                "board_status": "active",
+                "should_delist": False,
+                "recovered_from": "quarantined",
+            }
+        ]
+        before = _counter_value(monitor_quarantine_events_total, event="recovered")
+
+        await _process_one_board(_mock_board(), pool, mock_http)
+
+        assert _counter_value(monitor_quarantine_events_total, event="recovered") - before == 1
+        assert not any(c.args[0] == _DELIST_BOARD_POSTINGS for c in conn.fetch.await_args_list)
+        mock_get_redis.assert_not_called()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_valid_empty_result_recovers_confirmed_gone_board(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """A recreated provider token can self-recover even with zero jobs."""
+        from src.processing.board import monitor_gone_events_total
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
+        conn.fetch.return_value = [
+            {
+                "board_status": "active",
+                "should_delist": False,
+                "recovered_from": "provider_gone",
+            }
+        ]
+        before = _counter_value(monitor_gone_events_total, event="recovered")
+
+        await _process_one_board(_mock_board(), pool, mock_http)
+
+        assert _counter_value(monitor_gone_events_total, event="recovered") - before == 1
+        assert not any(c.args[0] == _DELIST_BOARD_POSTINGS for c in conn.fetch.await_args_list)
+        mock_get_redis.assert_not_called()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_confirmed_empty_delists_postings_but_keeps_board_pollable(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """Six confirmed empties delist stale postings without retiring the board.
+
+        The ``monitor_jobs_discovered{action="gone"}`` counter still tracks
+        every posting transition even though the healthy, empty board remains
+        enabled as ``suspect`` so future hiring self-recovers.
         """
         from src.processing.board import monitor_jobs_discovered
 
         pool, conn = mock_pool
         mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
-        # First fetch: _RECORD_EMPTY_CHECK -> board_status = 'gone'
+        # First fetch: _RECORD_EMPTY_CHECK -> delist gate reached while the
+        # board remains suspect/pollable.
         # Second fetch: _DELIST_BOARD_POSTINGS -> two rows flipped
         conn.fetch.side_effect = [
-            [{"board_status": "gone"}],
+            [
+                {
+                    "board_status": "suspect",
+                    "should_delist": True,
+                    "recovered_from": None,
+                }
+            ],
             [{"id": "jp-1"}, {"id": "jp-2"}],
         ]
         mock_redis = AsyncMock()
@@ -379,7 +471,9 @@ class TestProcessOneBoard:
 
         pool, conn = mock_pool
         mock_monitor.side_effect = _mock_stream(MonitorResult(urls=set()))
-        conn.fetch.return_value = [{"board_status": "suspect"}]
+        conn.fetch.return_value = [
+            {"board_status": "suspect", "should_delist": False, "recovered_from": None}
+        ]
         board = _mock_board()
         before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
 
@@ -835,7 +929,10 @@ class TestProcessOneBoard:
             [_diff_row("new", url=url)],
             RuntimeError("insert failed"),
         ]
-        conn.fetchrow.return_value = {"is_enabled": True, "last_success_at": None}
+        conn.fetchrow.return_value = {
+            "board_status": "active",
+            "entered_quarantine": False,
+        }
         enqueue_spy = _enqueue_scrapes_for_new
         enqueue_spy.reset_mock()
         board = _mock_board(crawler_type="dom")
@@ -1013,11 +1110,10 @@ class TestProcessOneBoard:
         pool, conn = mock_pool
         long_error = "x" * 1000
         mock_monitor.side_effect = RuntimeError(long_error)
-        # _RECORD_FAILURE returns (is_enabled, last_success_at). Early
-        # failures (consecutive_failures < 5) leave is_enabled=true, so
-        # the just_disabled check (``not is_enabled``) is False and no
-        # delist runs.
-        conn.fetchrow.return_value = {"is_enabled": True, "last_success_at": None}
+        conn.fetchrow.return_value = {
+            "board_status": "active",
+            "entered_quarantine": False,
+        }
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
@@ -1029,111 +1125,94 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_five_strike_disable_delists_postings_and_emits_gone(
+    async def test_five_strike_enters_quarantine_without_delisting(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
-        """5-strike disable AND ``last_success_at`` past the 24h
-        recency gate -> _DELIST_BOARD_POSTINGS runs AND the ``gone``
-        Prometheus counter is incremented by the number of rows
-        delisted.
-
-        Before the fix, 5-strike disables left postings stranded
-        (``is_active=true`` on a board the scheduler never polls again)
-        AND emitted no ``gone`` counter, so the Grafana panel showed
-        ``new >> gone`` even when the DB was balanced.
-        """
-        from datetime import UTC, datetime, timedelta
-
-        from src.processing.board import monitor_jobs_discovered
+        """Strike five enters a schedulable quarantine and preserves postings."""
+        from src.processing.board import (
+            monitor_jobs_discovered,
+            monitor_quarantine_events_total,
+        )
 
         pool, conn = mock_pool
         mock_monitor.side_effect = RuntimeError("boom")
-        # _RECORD_FAILURE returns: just disabled, last success 3 days ago.
         conn.fetchrow.return_value = {
-            "is_enabled": False,
-            "last_success_at": datetime.now(tz=UTC) - timedelta(days=3),
+            "board_status": "quarantined",
+            "entered_quarantine": True,
         }
-        # _DELIST_BOARD_POSTINGS now returns the set of rows flipped
-        conn.fetch.return_value = [{"id": f"jp-{i}"} for i in range(7)]
-        mock_redis = AsyncMock()
-        mock_get_redis.return_value = mock_redis
         board = _mock_board()
-        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        gone_before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        entered_before = _counter_value(monitor_quarantine_events_total, event="entered")
 
         await _process_one_board(board, pool, mock_http)
 
         failure_calls = [c for c in conn.fetchrow.await_args_list if c.args[0] == _RECORD_FAILURE]
         assert len(failure_calls) == 1
-        delist_calls = [
-            c for c in conn.fetch.await_args_list if c.args[0] == _DELIST_BOARD_POSTINGS
-        ]
-        assert len(delist_calls) == 1
-        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
-        assert after - before == 7
-        mock_redis.delete.assert_awaited_with("cache:platform-stats")
+        assert not any(c.args[0] == _DELIST_BOARD_POSTINGS for c in conn.fetch.await_args_list)
+        assert (
+            _counter_value(monitor_jobs_discovered, profile="simple", action="gone") == gone_before
+        )
+        assert (
+            _counter_value(monitor_quarantine_events_total, event="entered") - entered_before == 1
+        )
+        mock_get_redis.assert_not_called()
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_five_strike_failure_stays_retryable_if_recently_successful(
+    async def test_quarantine_probe_failure_stays_retryable(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
-        """Recency gate: a board that succeeded inside the 24h window
-        and burns through the 5-strike backoff remains retryable as
-        ``suspect``. Disabling it would freeze active postings on a
-        board the scheduler never polls again; delisting it would churn
-        search results and IndexNow during short provider outages.
-        """
-        from datetime import UTC, datetime, timedelta
-
-        from src.processing.board import monitor_jobs_discovered
+        """A failed recovery probe remains quarantined without delisting."""
+        from src.processing.board import (
+            monitor_jobs_discovered,
+            monitor_quarantine_events_total,
+        )
 
         pool, conn = mock_pool
         mock_monitor.side_effect = RuntimeError("transient outage")
-        # _RECORD_FAILURE kept the board enabled because last_success_at
-        # is inside the 24h freshness window.
         conn.fetchrow.return_value = {
-            "is_enabled": True,
-            "last_success_at": datetime.now(tz=UTC) - timedelta(hours=2),
+            "board_status": "quarantined",
+            "entered_quarantine": False,
+        }
+        board = _mock_board()
+        gone_before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        probe_before = _counter_value(monitor_quarantine_events_total, event="probe_failed")
+
+        await _process_one_board(board, pool, mock_http)
+
+        assert not any(c.args[0] == _DELIST_BOARD_POSTINGS for c in conn.fetch.await_args_list)
+        assert (
+            _counter_value(monitor_jobs_discovered, profile="simple", action="gone") == gone_before
+        )
+        assert (
+            _counter_value(monitor_quarantine_events_total, event="probe_failed") - probe_before
+            == 1
+        )
+        mock_get_redis.assert_not_called()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_never_successful_board_also_uses_quarantine(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """No success history is not proof of retirement or permission to delist."""
+        from src.processing.board import monitor_jobs_discovered
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = RuntimeError("never worked")
+        conn.fetchrow.return_value = {
+            "board_status": "quarantined",
+            "entered_quarantine": True,
         }
         board = _mock_board()
         before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
 
         await _process_one_board(board, pool, mock_http)
 
-        delist_calls = [
-            c for c in conn.fetch.await_args_list if c.args[0] == _DELIST_BOARD_POSTINGS
-        ]
-        assert delist_calls == []
+        assert not any(c.args[0] == _DELIST_BOARD_POSTINGS for c in conn.fetch.await_args_list)
         after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
         assert after == before
         mock_get_redis.assert_not_called()
-
-    @patch("src.batch.get_redis")
-    @patch("src.batch.monitor_one_stream")
-    async def test_five_strike_disable_delists_when_never_succeeded(
-        self, mock_monitor, mock_get_redis, mock_pool, mock_http
-    ):
-        """Boards that never had a successful run (NULL last_success_at)
-        bypass the recency gate — they are dead by definition."""
-        from src.processing.board import monitor_jobs_discovered
-
-        pool, conn = mock_pool
-        mock_monitor.side_effect = RuntimeError("never worked")
-        conn.fetchrow.return_value = {"is_enabled": False, "last_success_at": None}
-        conn.fetch.return_value = [{"id": "jp-1"}]
-        mock_redis = AsyncMock()
-        mock_get_redis.return_value = mock_redis
-        board = _mock_board()
-        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
-
-        await _process_one_board(board, pool, mock_http)
-
-        delist_calls = [
-            c for c in conn.fetch.await_args_list if c.args[0] == _DELIST_BOARD_POSTINGS
-        ]
-        assert len(delist_calls) == 1
-        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
-        assert after - before == 1
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -1145,8 +1224,10 @@ class TestProcessOneBoard:
 
         pool, conn = mock_pool
         mock_monitor.side_effect = RuntimeError("transient")
-        # is_enabled stays True -> not yet disabled -> no delist
-        conn.fetchrow.return_value = {"is_enabled": True, "last_success_at": None}
+        conn.fetchrow.return_value = {
+            "board_status": "active",
+            "entered_quarantine": False,
+        }
         board = _mock_board()
         before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
 
@@ -1162,53 +1243,71 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_delist_failure_does_not_inc_gone_counter(
+    async def test_record_failure_write_failure_does_not_emit_transition(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
-        """If the delist transaction rolls back (e.g. asyncpg disconnect
-        mid-write), the ``gone`` counter MUST NOT be incremented. The
-        helper splits read-and-emit so a rollback can't desync the
-        metric from the DB state.
-        """
+        """A rolled-back state write cannot produce a quarantine event."""
         import asyncpg
 
-        from src.processing.board import monitor_jobs_discovered
+        from src.processing.board import monitor_quarantine_events_total
 
         pool, conn = mock_pool
         mock_monitor.side_effect = RuntimeError("boom")
-        conn.fetchrow.return_value = {"is_enabled": False, "last_success_at": None}
-        conn.fetch.side_effect = asyncpg.PostgresError("simulated rollback")
+        conn.fetchrow.side_effect = asyncpg.PostgresError("simulated rollback")
         board = _mock_board()
-        before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        entered_before = _counter_value(monitor_quarantine_events_total, event="entered")
+        probe_before = _counter_value(monitor_quarantine_events_total, event="probe_failed")
 
         await _process_one_board(board, pool, mock_http)
 
-        after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
-        assert after == before
+        assert _counter_value(monitor_quarantine_events_total, event="entered") == entered_before
+        assert _counter_value(monitor_quarantine_events_total, event="probe_failed") == probe_before
         mock_get_redis.assert_not_called()
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
-    async def test_board_gone_error_delists_and_emits_gone(
+    async def test_spaced_board_gone_confirmation_delists_and_emits_gone(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
-        """BoardGoneError (upstream 404) -> _RECORD_BOARD_GONE +
-        _DELIST_BOARD_POSTINGS run, and the ``gone`` counter reflects
-        every row delisted. Exception is re-raised afterwards so the
-        Redis worker drops the task rather than rescheduling a dead
-        board every cycle.
+        """Only a terminal spaced confirmation delists the board postings.
+
+        This represents the third confirmation for a recently healthy source;
+        the exception is re-raised so the Redis worker mirrors the durable
+        daily recovery timestamp.
         """
         from src.core.monitors import BoardGoneError
-        from src.processing.board import monitor_jobs_discovered
+        from src.processing.board import monitor_gone_events_total, monitor_jobs_discovered
 
         pool, conn = mock_pool
-        mock_monitor.side_effect = BoardGoneError("dead upstream", url="https://example.com/dead")
+        mock_monitor.side_effect = BoardGoneError(
+            "dead upstream",
+            url="https://example.com/dead",
+            status_code=404,
+        )
+        now = datetime.now(UTC)
+
+        async def fetchrow(sql, *_args):
+            if sql == _FETCH_BOARD_GONE_STATE:
+                return {
+                    "board_status": "gone_pending",
+                    "gone_confirmation_count": 2,
+                    "gone_first_confirmed_at": now - timedelta(hours=12),
+                    "gone_last_confirmed_at": now - timedelta(hours=6, seconds=1),
+                    "last_success_at": now - timedelta(hours=13),
+                    "gone_at": None,
+                }
+            if sql == _RECORD_BOARD_GONE:
+                return {"board_status": "gone"}
+            return None
+
+        conn.fetchrow.side_effect = fetchrow
         # _DELIST_BOARD_POSTINGS returns three rows
         conn.fetch.return_value = [{"id": "jp-1"}, {"id": "jp-2"}, {"id": "jp-3"}]
         mock_redis = AsyncMock()
         mock_get_redis.return_value = mock_redis
         board = _mock_board()
         before = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
+        terminal_before = _counter_value(monitor_gone_events_total, event="terminal")
 
         with pytest.raises(BoardGoneError):
             await _process_one_board(board, pool, mock_http)
@@ -1219,7 +1318,52 @@ class TestProcessOneBoard:
         assert len(delist_calls) == 1
         after = _counter_value(monitor_jobs_discovered, profile="simple", action="gone")
         assert after - before == 3
+        assert _counter_value(monitor_gone_events_total, event="terminal") - terminal_before == 1
         mock_redis.delete.assert_awaited_with("cache:platform-stats")
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_first_board_gone_confirmation_preserves_active_postings(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """A single recent-success 404 records evidence without delisting."""
+        from src.core.monitors import BoardGoneError
+        from src.processing.board import monitor_gone_events_total
+
+        pool, conn = mock_pool
+        mock_monitor.side_effect = BoardGoneError(
+            "transient upstream 404",
+            url="https://example.com/dead",
+            status_code=404,
+        )
+        now = datetime.now(UTC)
+
+        async def fetchrow(sql, *_args):
+            if sql == _FETCH_BOARD_GONE_STATE:
+                return {
+                    "board_status": "active",
+                    "gone_confirmation_count": 0,
+                    "gone_first_confirmed_at": None,
+                    "gone_last_confirmed_at": None,
+                    "last_success_at": now - timedelta(hours=1),
+                    "gone_at": None,
+                }
+            if sql == _RECORD_BOARD_GONE:
+                return {"board_status": "gone_pending"}
+            return None
+
+        conn.fetchrow.side_effect = fetchrow
+        confirmation_before = _counter_value(monitor_gone_events_total, event="confirmation")
+
+        with pytest.raises(BoardGoneError):
+            await _process_one_board(_mock_board(), pool, mock_http)
+
+        assert not any(c.args[0] == _DELIST_BOARD_POSTINGS for c in conn.fetch.await_args_list)
+        assert (
+            _counter_value(monitor_gone_events_total, event="confirmation") - confirmation_before
+            == 1
+        )
+        mock_get_redis.assert_not_called()
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -1273,7 +1417,10 @@ class TestProcessOneBoard:
         """Exceptions with empty str() should still record useful error text."""
         pool, conn = mock_pool
         mock_monitor.side_effect = RuntimeError()
-        conn.fetchrow.return_value = {"is_enabled": True, "last_success_at": None}
+        conn.fetchrow.return_value = {
+            "board_status": "active",
+            "entered_quarantine": False,
+        }
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
@@ -1569,6 +1716,22 @@ class TestCanonicalizeUrl:
         raw = "https://evercore.tal.net/vx/lang-en-GB/some/xforce/path/opp/1/en"
         assert self.canon(raw) == raw
 
+    # ── Overwolf / Comeet active pages (issue #5807) ────────────────
+
+    def test_overwolf_tracking_variants_canonicalize_equal(self):
+        base = "https://careers.overwolf.com/career/BF.F52"
+        variants = (
+            base,
+            f"{base}?src=LinkedIn",
+            f"{base}?t=1784650000",
+            f"{base}?t=1784650000&src=LinkedIn",
+        )
+        assert {self.canon(url) for url in variants} == {base}
+
+    def test_overwolf_preserves_identity_query_params_and_non_timestamp_t(self):
+        raw = "https://careers.overwolf.com/career/BF.F52?locale=en&t=preview&src=LinkedIn"
+        assert self.canon(raw) == ("https://careers.overwolf.com/career/BF.F52?locale=en&t=preview")
+
 
 # ── TestInsertSqlContract ────────────────────────────────────────────
 
@@ -1597,6 +1760,34 @@ class TestInsertSqlContract:
         assert "board_id != $2" in _DIFF_BATCH
         # new_urls must check "any board", not "this board only".
         assert "NOT EXISTS" in _DIFF_BATCH
+
+    def test_diff_batch_foreign_relisting_preserves_canonical_owner(self):
+        sql_compact = " ".join(_DIFF_BATCH.split())
+        start = sql_compact.index("foreign_relisted AS (")
+        end = sql_compact.index("foreign_touched AS (", start)
+        foreign_relisted = sql_compact[start:end]
+
+        assert "locked.board_id != $2" in foreign_relisted
+        assert "locked.is_active = false" in foreign_relisted
+        assert "SET is_active = true" in foreign_relisted
+        assert "missing_count = 0" in foreign_relisted
+        assert "scrape_failures = 0" in foreign_relisted
+        assert "updated_at = now()" in foreign_relisted
+        assert "next_scrape_at = CASE WHEN $3::boolean THEN NULL ELSE now() END" in (
+            foreign_relisted
+        )
+        set_clause = foreign_relisted.split(" SET ", 1)[1].split(" FROM ", 1)[0]
+        assert "company_id" not in set_clause
+        assert "board_id" not in set_clause
+
+    def test_diff_batch_active_foreign_touch_resets_missing_confirmation(self):
+        sql_compact = " ".join(_DIFF_BATCH.split())
+        start = sql_compact.index("foreign_touched AS (")
+        end = sql_compact.index("new_urls AS (", start)
+        foreign_touched = sql_compact[start:end]
+
+        assert "locked.is_active = true" in foreign_touched
+        assert "SET last_seen_at = now(), missing_count = 0" in foreign_touched
 
     def test_diff_batch_locks_all_existing_matches_in_global_order(self):
         sql_compact = " ".join(_DIFF_BATCH.split())
@@ -1662,19 +1853,16 @@ class TestInsertSqlContract:
         relisted_block = sql_compact[relisted_start : relisted_start + 1500]
         assert "next_scrape_at = CASE WHEN $3::boolean THEN NULL ELSE now() END" in relisted_block
 
-    def test_record_failure_returns_disable_signal(self):
-        # The RETURNING clause is what lets the Python layer detect the
-        # enabled→disabled transition (post-update ``is_enabled=false``
-        # against a pre-fetch that was ``is_enabled=true``) and apply
-        # the recency gate before delisting. Dropping the RETURNING
-        # would silently re-introduce the phantom-active-jobs bug.
+    def test_record_failure_returns_quarantine_transition(self):
         assert "RETURNING" in _RECORD_FAILURE
-        assert "is_enabled" in _RECORD_FAILURE
-        assert "last_success_at" in _RECORD_FAILURE
+        assert "board_status" in _RECORD_FAILURE
+        assert "entered_quarantine" in _RECORD_FAILURE
 
-    def test_record_failure_keeps_recent_success_boards_retryable(self):
-        assert "last_success_at < now() - interval '24 hours'" in _RECORD_FAILURE
-        assert "THEN 'suspect'" in _RECORD_FAILURE
+    def test_record_failure_quarantine_is_retryable_and_bounded(self):
+        assert "is_enabled = true" in _RECORD_FAILURE
+        assert "THEN 'quarantined'" in _RECORD_FAILURE
+        assert "'1440 minutes'" in _RECORD_FAILURE
+        assert "quarantine_probe_count" in _RECORD_FAILURE
 
     def test_delist_board_postings_returns_ids(self):
         # RETURNING id is what lets _delist_and_count_gone size the
@@ -2120,7 +2308,7 @@ class TestDuplicateSourceUrl:
         The owning row's last_seen_at is refreshed inside _DIFF_BATCH
         itself, so nothing else is needed from the Python side.
         """
-        from src.metrics import monitor_dedup_total
+        from src.metrics import monitor_dedup_total, monitor_foreign_discovery_total
         from src.processing.board import _enqueue_scrapes_for_new
 
         pool, conn = mock_pool
@@ -2136,6 +2324,11 @@ class TestDuplicateSourceUrl:
         # Ensure label set is registered before reading.
         monitor_dedup_total.labels(path="cross_board")
         before = _counter_value(monitor_dedup_total, path="cross_board")
+        monitor_foreign_discovery_total.labels(outcome="active_touch")
+        before_active_touch = _counter_value(
+            monitor_foreign_discovery_total,
+            outcome="active_touch",
+        )
         board = _mock_board()
 
         await _process_one_board(board, pool, mock_http)
@@ -2154,6 +2347,67 @@ class TestDuplicateSourceUrl:
 
         # Metric contract: cross-board dedup counter bumped exactly once.
         assert _counter_value(monitor_dedup_total, path="cross_board") - before == 1
+        assert (
+            _counter_value(monitor_foreign_discovery_total, outcome="active_touch")
+            - before_active_touch
+            == 1
+        )
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_foreign_relisted_action_enqueues_canonical_posting_refresh(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """A live foreign discovery recovers and refreshes the canonical row."""
+        from src.metrics import monitor_dedup_total, monitor_foreign_discovery_total
+        from src.processing.board import _enqueue_scrapes_for_relisted
+
+        pool, conn = mock_pool
+        foreign = "https://jobs.example.com/foreign/recovered-role"
+        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={foreign}, jobs_by_url=None))
+        conn.fetch.side_effect = [
+            [
+                _diff_row(
+                    "foreign_relisted",
+                    row_id="canonical-posting-id",
+                    url=foreign,
+                    r2_hash=123,
+                )
+            ],
+            [],  # MARK_GONE
+        ]
+
+        enqueue_relisted = _enqueue_scrapes_for_relisted
+        enqueue_relisted.reset_mock()
+        monitor_dedup_total.labels(path="cross_board")
+        before_dedup = _counter_value(monitor_dedup_total, path="cross_board")
+        monitor_foreign_discovery_total.labels(outcome="inactive_relisted")
+        before_relisted = _counter_value(
+            monitor_foreign_discovery_total,
+            outcome="inactive_relisted",
+        )
+
+        await _process_one_board(_mock_board(), pool, mock_http)
+
+        enqueue_relisted.assert_awaited_once_with(
+            [
+                {
+                    "id": "canonical-posting-id",
+                    "url": foreign,
+                    "r2_hash": 123,
+                }
+            ],
+            "board-1",
+            {},
+            ANY,
+            crawler_type="greenhouse",
+        )
+        assert _counter_value(monitor_dedup_total, path="cross_board") - before_dedup == 1
+        assert (
+            _counter_value(monitor_foreign_discovery_total, outcome="inactive_relisted")
+            - before_relisted
+            == 1
+        )
 
 
 # ── TestMonitorPipeline ──────────────────────────────────────────────
@@ -2308,6 +2562,94 @@ class TestProcessMonitorBatch:
 
 
 class TestProcessOneScrape:
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_browser_target_closed_retries_with_fresh_context(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """A lost browser target gets one immediate fresh-context attempt."""
+        pool, conn = mock_pool
+        mock_scrape.side_effect = [
+            PlaywrightError("Page.goto: Target page, context or browser has been closed"),
+            _job_content(),
+        ]
+        item = ScrapeItem(
+            job_posting_id="jp-1",
+            url="https://example.com/job/1",
+            board_id="b-1",
+        )
+
+        ok, _duration = await _process_one_scrape(
+            item,
+            pool,
+            mock_http,
+            "dom",
+            {"render": True, "steps": [{"tag": "h1", "field": "title"}]},
+            pw=MagicMock(),
+        )
+
+        assert ok is True
+        assert mock_scrape.await_count == 2
+        assert not any(
+            call.args[0] == _RECORD_SCRAPE_TRANSIENT for call in conn.execute.await_args_list
+        )
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_browser_target_closed_retry_is_bounded(self, mock_scrape, mock_pool, mock_http):
+        """Two lost targets exhaust the one-retry budget and back off normally."""
+        pool, conn = mock_pool
+        mock_scrape.side_effect = PlaywrightError(
+            "Page.goto: Target page, context or browser has been closed"
+        )
+        item = ScrapeItem(
+            job_posting_id="jp-1",
+            url="https://example.com/job/1",
+            board_id="b-1",
+        )
+
+        ok, _duration = await _process_one_scrape(
+            item,
+            pool,
+            mock_http,
+            "dom",
+            {"render": True, "steps": [{"tag": "h1", "field": "title"}]},
+            pw=MagicMock(),
+        )
+
+        assert ok is False
+        assert mock_scrape.await_count == 2
+        transient_calls = [
+            call
+            for call in conn.execute.await_args_list
+            if call.args[0] == _RECORD_SCRAPE_TRANSIENT
+        ]
+        assert len(transient_calls) == 1
+
+    @patch("src.batch.scrape_one", new_callable=AsyncMock)
+    async def test_non_browser_target_closed_text_is_not_retried(
+        self, mock_scrape, mock_pool, mock_http
+    ):
+        """A matching Playwright error cannot add retries to an HTTP scraper."""
+        pool, _conn = mock_pool
+        mock_scrape.side_effect = PlaywrightError(
+            "Page.goto: Target page, context or browser has been closed"
+        )
+        item = ScrapeItem(
+            job_posting_id="jp-1",
+            url="https://example.com/job/1",
+            board_id="b-1",
+        )
+
+        ok, _duration = await _process_one_scrape(
+            item,
+            pool,
+            mock_http,
+            "json-ld",
+            None,
+        )
+
+        assert ok is False
+        assert mock_scrape.await_count == 1
+
     @patch("src.batch.scrape_one", new_callable=AsyncMock)
     async def test_success_updates_and_records(self, mock_scrape, mock_pool, mock_http):
         """scrape_one returns content -> UPDATE + _RECORD_SCRAPE_SUCCESS -> True."""

@@ -1,0 +1,12 @@
+[Unit]
+Description=Schedule Jobseek web PostgreSQL logical backups
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:30:00 UTC
+RandomizedDelaySec=10min
+AccuracySec=1min
+Persistent=true
+Unit=jobseek-web-postgresql-backup.service
+
+[Install]
+WantedBy=timers.target

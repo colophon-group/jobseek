@@ -9,7 +9,7 @@ import random
 import re
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from time import monotonic
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
@@ -25,8 +25,11 @@ from src.core.scrapers import scraper_needs_browser as _scraper_needs_browser
 from src.metrics import (
     monitor_db_transaction_retries_total,
     monitor_dedup_total,
+    monitor_foreign_discovery_total,
+    monitor_gone_events_total,
     monitor_gone_skipped_total,
     monitor_jobs_discovered,
+    monitor_quarantine_events_total,
     monitor_skipped_tdm_total,
     monitor_truncated_total,
     monitor_url_filtered_total,
@@ -47,11 +50,12 @@ from src.processing.cpu import (
     _resolve_occupation_seniority,
     _resolve_technology_ids,
 )
+from src.processing.gone_policy import evaluate_gone_confirmation
 from src.processing.scrape import (
     _UPSERT_DESCRIPTION,
     ScrapeItem,
     _apply_defaults,
-    _board_has_enrich,
+    _effective_board_enrich,
     _is_skip_no_scrape,
     _PipelineResult,
 )
@@ -68,6 +72,7 @@ from src.queries.monitor import (
     _DROP_GUARD_MIN_HISTORY,
     _DROP_GUARD_THRESHOLD_DEFAULT,
     _EXTEND_BOARD_LEASE,
+    _FETCH_BOARD_GONE_STATE,
     _FETCH_DUE_BOARDS,
     _INSERT_RICH_JOB,
     _INSERT_RICH_JOB_ENRICH,
@@ -206,12 +211,19 @@ _SUCCESSFACTORS_VOLATILE_PARAMS = frozenset(
 _TAL_NET_XF_SEGMENT = re.compile(r"/xf-[a-f0-9]+(?=/)")
 
 
+# Overwolf's Comeet ``url_active_page`` has used both a marketing-source
+# parameter and a numeric cache-busting timestamp for the same posting UID.
+# The values are not identity, but keeping them made ``source_url`` uniqueness
+# insert the same opportunity again on later monitor cycles (issue #5807).
+_OVERWOLF_VOLATILE_PARAMS = frozenset({"src"})
+
+
 def _canonicalize_url(url: str) -> str:
     """Strip session-scoped tokens from URLs on platforms where a
     ``<a href>`` embeds a per-render CSRF/session value that otherwise
     makes every monitor cycle rediscover the same posting as "new".
 
-    Currently handles two ATS platforms:
+    Currently handles three known URL shapes:
 
     - **SuccessFactors family** (``*.successfactors.*`` / ``*.sapsf.*``)
       — token is a *query param*; drop the ones listed in
@@ -221,6 +233,9 @@ def _canonicalize_url(url: str) -> str:
       segment matching :data:`_TAL_NET_XF_SEGMENT` (``/xf-<hex>/``);
       drop it. Everything else in the path (``/brand-N/``,
       ``/opp/<id>``, ``/en-GB``, …) carries identity and stays.
+    - **Overwolf's Comeet active pages** (``careers.overwolf.com``) —
+      drop the confirmed marketing ``src`` parameter and numeric ``t``
+      cache-buster while preserving every other query parameter.
     """
     if not url:
         return url
@@ -229,6 +244,17 @@ def _canonicalize_url(url: str) -> str:
     except ValueError:
         return url
     host = (p.netloc or "").lower()
+    if host == "careers.overwolf.com":
+        params = parse_qsl(p.query, keep_blank_values=True)
+        kept = [
+            (key, value)
+            for key, value in params
+            if key.casefold() not in _OVERWOLF_VOLATILE_PARAMS
+            and not (key.casefold() == "t" and value.isdecimal())
+        ]
+        if len(kept) == len(params):
+            return url
+        return urlunparse(p._replace(query=urlencode(kept)))
     if ".successfactors." in host or ".sapsf." in host:
         # keep_blank_values=True preserves stable no-value keys like
         # ``jobAlertController_jobAlertId=`` — filtering here would
@@ -287,9 +313,9 @@ class BoardError:
 async def _delist_board_postings(conn: asyncpg.Connection, board_id: str) -> int:
     """Run ``_DELIST_BOARD_POSTINGS`` and return the row count.
 
-    Used by the three silent-delist paths that bypass the normal
+    Used by the two silent-delist paths that bypass the normal
     ``_MARK_GONE_BY_TIMESTAMP`` flow: empty-check threshold reached,
-    BoardGoneError (upstream 404), and 5-strike failure auto-disable.
+    and BoardGoneError (upstream 404).
     Without these paths emitting the matching ``gone`` counter, the
     Grafana panel showed ``new >> gone`` even when the DB was balanced.
 
@@ -309,6 +335,22 @@ def _emit_gone_counter(gone_count: int) -> None:
     """
     if gone_count:
         monitor_jobs_discovered.labels(profile="simple", action="gone").inc(gone_count)
+
+
+def _emit_board_recovery(
+    recovered_from: str | None,
+    board_log: structlog.stdlib.BoundLogger,
+    *,
+    discovered: int,
+) -> None:
+    """Emit the bounded lifecycle metric only after recovery commits."""
+
+    if recovered_from == "quarantined":
+        monitor_quarantine_events_total.labels(event="recovered").inc()
+        board_log.info("batch.monitor.quarantine_recovered", discovered=discovered)
+    elif recovered_from == "provider_gone":
+        monitor_gone_events_total.labels(event="recovered").inc()
+        board_log.info("batch.monitor.gone_recovered", discovered=discovered)
 
 
 def _resolve_delist_threshold(metadata: dict | None, crawler_type: str) -> int:
@@ -481,39 +523,6 @@ async def _mark_gone_with_guards(
     return len(gone_rows), None
 
 
-# A 5-strike auto-disable doesn't necessarily mean the board is dead.
-# With exponential backoff (5 * 2^n minutes capped at 24h), strike #5
-# fires after ~155 minutes — well inside a single provider outage. If
-# we delisted on every disable, a 3-hour greenhouse blip would tombstone
-# tens of thousands of postings that would all flap back as ``relisted``
-# on recovery, churning search and IndexNow. Gate the delist on
-# ``last_success_at`` so transient outages back off without data loss;
-# only boards that have been failing past this window get delisted.
-_DELIST_AFTER_FAILURE_AGE = timedelta(hours=24)
-
-
-async def _maybe_delist_after_disable(
-    conn: asyncpg.Connection,
-    board_id: str,
-    last_success_at: datetime | None,
-    board_log: structlog.stdlib.BoundLogger,
-) -> int:
-    """Delist a 5-strike-disabled board's postings ONLY if the board
-    has been silent past ``_DELIST_AFTER_FAILURE_AGE``. Returns the
-    count of rows flipped (0 if the recency gate skipped the delist).
-    """
-    # asyncpg returns timezone-aware timestamps for TIMESTAMPTZ
-    now = datetime.now(tz=UTC)
-    if last_success_at is not None and now - last_success_at < _DELIST_AFTER_FAILURE_AGE:
-        board_log.warning(
-            "batch.monitor.five_strike_disable_kept_active",
-            last_success_age_s=int((now - last_success_at).total_seconds()),
-            reason="recent success — likely transient outage",
-        )
-        return 0
-    return await _delist_board_postings(conn, board_id)
-
-
 async def _enqueue_scrapes_for_new(
     posting_rows: list,
     board_id: str,
@@ -684,8 +693,49 @@ def _throttle_key(board: asyncpg.Record) -> str:
     URL-only monitors each hit their own company domain.
     """
     crawler_type = board["crawler_type"]
+    if crawler_type == "darwinbox":
+        from src.shared.darwinbox import darwinbox_board_from_metadata, darwinbox_board_from_url
+
+        metadata = board["metadata"] or {}
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except (json.JSONDecodeError, TypeError):
+                metadata = {}
+        configured = darwinbox_board_from_metadata(metadata) if isinstance(metadata, dict) else None
+        resolved = configured or darwinbox_board_from_url(board["board_url"])
+        if resolved is not None:
+            return resolved.host
+    if crawler_type == "avature":
+        from src.shared.avature import avature_request_host
+
+        metadata = board["metadata"] or {}
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except (json.JSONDecodeError, TypeError):
+                metadata = {}
+        if isinstance(metadata, dict):
+            resolved_host = avature_request_host(board["board_url"], metadata)
+            if resolved_host:
+                return resolved_host
+    if crawler_type == "pageup":
+        return "careers.pageuppeople.com"
     if crawler_type in _API_MONITOR_TYPES:
         return crawler_type
+    if crawler_type == "taleo":
+        from src.shared.taleo import taleo_request_host
+
+        metadata = board["metadata"] or {}
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except (json.JSONDecodeError, TypeError):
+                metadata = {}
+        if isinstance(metadata, dict):
+            resolved_host = taleo_request_host(board["board_url"], metadata)
+            if resolved_host:
+                return resolved_host
     return urlparse(board["board_url"]).hostname or board["board_url"]
 
 
@@ -767,7 +817,7 @@ async def _process_one_board_streaming(
         if isinstance(metadata, str):
             metadata = json.loads(metadata)
 
-        enrich_fields = _board_has_enrich(metadata)
+        enrich_fields = _effective_board_enrich(metadata, crawler_type)
 
         # Use a per-board http client when the monitor opts out of SSL
         # verification or into the proxy provider. We reuse the shared
@@ -922,12 +972,13 @@ async def _process_one_board_streaming(
                 relisted: list[dict] = []
                 touched: list[dict] = []
                 n_foreign = 0
+                n_foreign_relisted = 0
 
                 for row in rows:
                     action = row["action"]
                     if action == "new":
                         new_urls.append(row["url"])
-                    elif action == "relisted":
+                    elif action in {"relisted", "foreign_relisted"}:
                         r2h = row["description_r2_hash"]
                         relisted.append(
                             {
@@ -936,6 +987,8 @@ async def _process_one_board_streaming(
                                 "r2_hash": int(r2h) if r2h is not None else None,
                             }
                         )
+                        if action == "foreign_relisted":
+                            n_foreign_relisted += 1
                     elif action == "touched":
                         r2h = row["description_r2_hash"]
                         touched.append(
@@ -951,9 +1004,19 @@ async def _process_one_board_streaming(
 
                 if n_foreign:
                     monitor_dedup_total.labels(path="cross_board").inc(n_foreign)
+                    monitor_foreign_discovery_total.labels(outcome="active_touch").inc(n_foreign)
                     board_log.info(
                         "batch.monitor.cross_board_duplicate",
                         count=n_foreign,
+                    )
+                if n_foreign_relisted:
+                    monitor_dedup_total.labels(path="cross_board").inc(n_foreign_relisted)
+                    monitor_foreign_discovery_total.labels(outcome="inactive_relisted").inc(
+                        n_foreign_relisted
+                    )
+                    board_log.info(
+                        "batch.monitor.cross_board_relisted",
+                        count=n_foreign_relisted,
                     )
 
                 total_new += len(new_urls)
@@ -1287,25 +1350,35 @@ async def _process_one_board_streaming(
                 duration_s=round(elapsed, 2),
                 raw_discovered=total_discovered,
             )
-            # _RECORD_EMPTY_CHECK + delist must be atomic: if the
-            # record commits but the delist fails we'd be back to the
-            # exact phantom-active orphan state this PR fixes.
-            empty_gone_count = 0
+            # Empty is a valid successful state: a company can stop hiring
+            # and start again later.  Keep the board enabled and polling, but
+            # delist its stale postings after the existing six-check
+            # confirmation window.  The state update + delist stay atomic so
+            # a failed delist cannot leave the confirmation recorded without
+            # applying its posting-state consequence.
+            empty_delisted_count = 0
+            recovered_from: str | None = None
             try:
                 async with pool.acquire() as conn, conn.transaction():
                     rows = await conn.fetch(_RECORD_EMPTY_CHECK, board_id)
-                    if rows and rows[0]["board_status"] == "gone":
-                        empty_gone_count = await _delist_board_postings(conn, board_id)
+                    if rows:
+                        recovered_from = rows[0]["recovered_from"]
+                        if rows[0]["should_delist"]:
+                            empty_delisted_count = await _delist_board_postings(conn, board_id)
             except (asyncpg.PostgresError, ConnectionError):
                 board_log.exception("batch.monitor.empty_check_failed")
             else:
                 # Only emit the metric AFTER the transaction commits —
                 # see ``_delist_board_postings`` docstring.
-                if empty_gone_count:
-                    _emit_gone_counter(empty_gone_count)
-                    board_log.warning("batch.monitor.board_gone", gone=empty_gone_count)
+                if empty_delisted_count:
+                    _emit_gone_counter(empty_delisted_count)
+                    board_log.warning(
+                        "batch.monitor.empty_confirmed",
+                        delisted=empty_delisted_count,
+                    )
                     with contextlib.suppress(Exception):
                         await _batch.get_redis().delete("cache:platform-stats")
+                _emit_board_recovery(recovered_from, board_log, discovered=0)
             return True, elapsed
 
         # Mark as gone any active posting not seen during this monitor run.
@@ -1330,7 +1403,8 @@ async def _process_one_board_streaming(
         # cycle proceeds normally.
         if any_truncated:
             async with pool.acquire() as conn, conn.transaction():
-                await conn.execute(_RECORD_SUCCESS_NONEMPTY, board_id)
+                recovered_from = await conn.fetchval(_RECORD_SUCCESS_NONEMPTY, board_id)
+            _emit_board_recovery(recovered_from, board_log, discovered=total_discovered)
             board_log.warning(
                 "batch.monitor.truncated_partial",
                 discovered=total_discovered,
@@ -1348,7 +1422,9 @@ async def _process_one_board_streaming(
                     delist_threshold,
                     board_log,
                 )
-                await conn.execute(_RECORD_SUCCESS_NONEMPTY, board_id)
+                recovered_from = await conn.fetchval(_RECORD_SUCCESS_NONEMPTY, board_id)
+
+            _emit_board_recovery(recovered_from, board_log, discovered=total_discovered)
 
             # Emit the skip metric AFTER the transaction commits — same
             # pattern as ``_emit_gone_counter`` (a rollback would otherwise
@@ -1418,35 +1494,76 @@ async def _process_one_board_streaming(
         return True, elapsed
 
     except BoardGoneError as exc:
-        # Upstream confirmed the board no longer exists (404 from
-        # greenhouse/lever/recruitee/ashby per-board API). Skip the
-        # 5-strike `_RECORD_FAILURE` ramp and disable in one shot —
-        # otherwise the Redis monitor task keeps re-firing the dead
-        # endpoint every cycle until sync removes it (which only runs
-        # on CSV pushes). See issue #2215.
+        # A provider-native gone signal enters a recoverable confirmation
+        # window. Recent success raises the bar to three confirmations, every
+        # confirmation is spaced, and even terminal configured boards retain a
+        # daily recovery probe. See #6156 (revises the one-shot #2215 path).
         elapsed = monotonic() - t0
         board_log.warning(
             "batch.monitor.board_gone",
             error=str(exc),
             url=getattr(exc, "url", None),
+            status_code=getattr(exc, "status_code", None),
             duration_s=round(elapsed, 2),
         )
         tasks_total.labels(kind="monitor", status="board_gone").inc()
         loc_resolver.drain_location_misses()
         board_gone_count = 0
+        decision = None
         try:
             async with pool.acquire() as conn, conn.transaction():
-                await conn.execute(_RECORD_BOARD_GONE, board_id)
-                board_gone_count = await _delist_board_postings(conn, board_id)
+                state = await conn.fetchrow(_FETCH_BOARD_GONE_STATE, board_id)
+                if state is None:
+                    raise RuntimeError(f"board {board_id} disappeared before gone recording")
+                decision = evaluate_gone_confirmation(
+                    board_status=state["board_status"],
+                    confirmation_count=state["gone_confirmation_count"],
+                    first_confirmed_at=state["gone_first_confirmed_at"],
+                    last_confirmed_at=state["gone_last_confirmed_at"],
+                    last_success_at=state["last_success_at"],
+                    gone_at=state["gone_at"],
+                    now=datetime.now(UTC),
+                )
+                await conn.fetchrow(
+                    _RECORD_BOARD_GONE,
+                    board_id,
+                    decision.board_status,
+                    decision.confirmation_count,
+                    decision.first_confirmed_at,
+                    decision.last_confirmed_at,
+                    decision.gone_at,
+                    decision.next_check_at,
+                    _error_message(exc),
+                    getattr(exc, "url", None),
+                    getattr(exc, "status_code", None),
+                    decision.terminal_transition,
+                )
+                if decision.terminal_transition:
+                    board_gone_count = await _delist_board_postings(conn, board_id)
         except (asyncpg.PostgresError, ConnectionError):
             board_log.exception("batch.monitor.board_gone_record_failed")
         else:
+            if decision and decision.terminal_transition:
+                monitor_gone_events_total.labels(event="terminal").inc()
+                board_log.warning(
+                    "batch.monitor.gone_confirmed",
+                    confirmations=decision.confirmation_count,
+                    next_probe_at=decision.next_check_at.isoformat(),
+                )
+            elif decision and decision.confirmation_advanced:
+                monitor_gone_events_total.labels(event="confirmation").inc()
+                board_log.warning(
+                    "batch.monitor.gone_pending",
+                    confirmations=decision.confirmation_count,
+                    required_confirmations=decision.required_confirmations,
+                    next_confirmation_at=decision.next_check_at.isoformat(),
+                )
             if board_gone_count:
                 _emit_gone_counter(board_gone_count)
                 with contextlib.suppress(Exception):
                     await _batch.get_redis().delete("cache:platform-stats")
-        # Re-raise so the worker can drop the Redis task instead of
-        # rescheduling — otherwise the dead board keeps cycling.
+        # Re-raise so the Redis worker uses the durable confirmation/recovery
+        # timestamp written above rather than its ordinary success cadence.
         raise
 
     except Exception as exc:
@@ -1456,35 +1573,33 @@ async def _process_one_board_streaming(
         tasks_total.labels(kind="monitor", status="failed").inc()
         # Discard stale location misses from this failed board
         loc_resolver.drain_location_misses()
-        # A 5-strike failure flips ``is_enabled=false`` + ``board_status='disabled'``.
-        # _FETCH_DUE_BOARDS won't pick the board again, so active postings
-        # would otherwise sit orphaned (``is_active=true``, never to be
-        # refreshed or marked gone). Detect the transition (the pre-fetch
-        # row was ``is_enabled=true``, so any post-update ``false`` is a
-        # fresh disable) and gate the delist on ``last_success_at`` so a
-        # provider outage doesn't mass-tombstone postings that would all
-        # come back on recovery.
-        failure_gone_count = 0
+        # Five strikes enter a recoverable quarantine. The board stays enabled
+        # and Redis mirrors the durable daily-capped next_check_at, so an
+        # upstream, code, or config repair can prove itself without SQL.
+        entered_quarantine = False
+        quarantine_probe_failed = False
         try:
             async with pool.acquire() as conn, conn.transaction():
                 row = await conn.fetchrow(_RECORD_FAILURE, board_id, error_msg)
-                just_disabled = row is not None and not row["is_enabled"]
-                if just_disabled:
-                    failure_gone_count = await _maybe_delist_after_disable(
-                        conn, board_id, row["last_success_at"], board_log
-                    )
-                    if failure_gone_count:
-                        board_log.warning(
-                            "batch.monitor.five_strike_disable",
-                            gone=failure_gone_count,
-                        )
+                entered_quarantine = bool(row and row["entered_quarantine"])
+                quarantine_probe_failed = bool(
+                    row and row["board_status"] == "quarantined" and not entered_quarantine
+                )
         except (asyncpg.PostgresError, ConnectionError):
             board_log.exception("batch.monitor.record_failure_failed")
         else:
-            if failure_gone_count:
-                _emit_gone_counter(failure_gone_count)
-                with contextlib.suppress(Exception):
-                    await _batch.get_redis().delete("cache:platform-stats")
+            if entered_quarantine:
+                monitor_quarantine_events_total.labels(event="entered").inc()
+                board_log.warning(
+                    "batch.monitor.quarantined",
+                    retry="daily_capped_backoff",
+                )
+            elif quarantine_probe_failed:
+                monitor_quarantine_events_total.labels(event="probe_failed").inc()
+                board_log.warning(
+                    "batch.monitor.quarantine_probe_failed",
+                    retry="daily_capped_backoff",
+                )
         return False, elapsed
     finally:
         if pw and pw_owned:
@@ -1595,7 +1710,7 @@ async def dry_run_single_board(
     metadata = _parse_metadata(board["metadata"])
     if pcsx_force_full_crawl:
         metadata = {**metadata, "pcsx_force_full_crawl": True}
-    enrich_fields = _board_has_enrich(metadata)
+    enrich_fields = _effective_board_enrich(metadata, crawler_type)
 
     log.info(
         "dry_run.start",

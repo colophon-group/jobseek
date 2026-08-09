@@ -4,10 +4,22 @@
 # Called by CI with env vars set from GitHub secrets.
 set -euo pipefail
 
+# Serialize deploys with host-scheduled data maintenance. The database-level
+# reconciler lock prevents duplicate jobs, while this host lock also closes
+# the race where a new timer starts after deploy preflight but before the old
+# writer containers are quiesced.
+exec 9>/run/lock/jobseek-crawler-mutation.lock
+flock -w 7200 9 || {
+  echo "ERROR: timed out waiting for the crawler mutation lock" >&2
+  exit 1
+}
+
 # ── Validate required env vars ─────────────────────────────────────────
 required_vars=(
   OWNER
-  DATABASE_URL_UNPOOLED
+  JOBSEEK_DEPLOY_REVISION
+  JOBSEEK_RECONCILIATION_WRAPPER_SHA256
+  WEB_DATABASE_URL
   LOCAL_DATABASE_URL
   R2_ACCESS_KEY_ID
   R2_SECRET_ACCESS_KEY
@@ -23,7 +35,7 @@ required_vars=(
   TYPESENSE_HOST
   TYPESENSE_PORT
   TYPESENSE_PROTOCOL
-  TYPESENSE_ADMIN_KEY
+  TYPESENSE_OPERATIONS_KEY
   # Murmur shim secret. Without this, the shim's compose env
   # substitution `${MURMUR_TOKEN}` resolves to empty on a full-stack
   # redeploy and the shim accepts every request as anonymous. The
@@ -48,28 +60,259 @@ if [[ ${#missing[@]} -gt 0 ]]; then
 fi
 
 DEPLOY_DIR="/home/deploy"
+INCOMING_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$DEPLOY_DIR/.env"
 ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"
+ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"
+ACTIVE_COMPOSE_SNAPSHOT="$DEPLOY_DIR/.crawler-active-docker-compose.yml"
+ACTIVE_COMPOSE_SNAPSHOT_SHA256="$DEPLOY_DIR/.crawler-active-docker-compose.sha256"
+DEPLOY_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.env"
+ENV_FILE_WAS_PRESENT=0
+ROLLBACK_ARMED=0
+ROLLBACK_RUNNING=0
+DEPLOY_SPEC_FILES=(
+  deploy.sh
+  deploy_helpers.sh
+  docker-compose.yml
+  alloy.river
+  scripts/postgresql-operational-preflight.py
+)
+if [[ "$INCOMING_DIR" == "$DEPLOY_DIR" ]]; then
+  echo "ERROR: deploy artifacts must be staged outside the active deploy directory" >&2
+  exit 1
+fi
+for spec in "${DEPLOY_SPEC_FILES[@]}"; do
+  [[ -f "$INCOMING_DIR/$spec" ]] || {
+    echo "ERROR: staged deploy artifact is unavailable: ${spec}" >&2
+    exit 1
+  }
+done
+# Staged path is intentionally dynamic; the workflow verifies and supplies it.
+# shellcheck disable=SC1091
+source "$INCOMING_DIR/deploy_helpers.sh"
 IMAGE_TAG="${CRAWLER_IMAGE_TAG:-latest}"
 DEPLOY_MIN_FREE_KB="${DEPLOY_MIN_FREE_KB:-5242880}" # 5 GiB hard floor.
 DEPLOY_PRUNE_FREE_KB="${DEPLOY_PRUNE_FREE_KB:-10485760}" # Prune cache below 10 GiB.
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$DEPLOY_DIR")}"
 export COMPOSE_PROJECT_NAME
+MAINTENANCE_OPERATION=crawler-deploy
+MAINTENANCE_ISSUE=3409
+MAINTENANCE_BUDGET_SECONDS=1800
+MAINTENANCE_MARKER_NAME=""
+if [[ ! "$JOBSEEK_DEPLOY_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "ERROR: JOBSEEK_DEPLOY_REVISION must be a full lowercase Git commit SHA" >&2
+  exit 1
+fi
+if [[ ! "$JOBSEEK_RECONCILIATION_WRAPPER_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
+  echo "ERROR: JOBSEEK_RECONCILIATION_WRAPPER_SHA256 must be a lowercase SHA-256" >&2
+  exit 1
+fi
+MAINTENANCE_PROVENANCE_LABELS=(
+  --label "com.docker.compose.project=${COMPOSE_PROJECT_NAME}"
+  --label com.docker.compose.container-number=1
+  --label com.docker.compose.oneoff=True
+  --label "jobseek.maintenance.operation=${MAINTENANCE_OPERATION}"
+  --label "jobseek.maintenance.issue=${MAINTENANCE_ISSUE}"
+  --label "jobseek.maintenance.revision=${JOBSEEK_DEPLOY_REVISION}"
+  --label "jobseek.maintenance.budget-seconds=${MAINTENANCE_BUDGET_SECONDS}"
+)
+ALLOY_IMAGE="grafana/alloy:v1.18.0@sha256:491b0578c04983fd54fe99b587b6fab4404dc46d0dc16677bd6b00cc1140b308"
 ALLOY_STATE_ACTIVATION_REQUIRED=0
 
+stop_maintenance_window() {
+  if [[ -z "$MAINTENANCE_MARKER_NAME" ]]; then
+    return 0
+  fi
+  docker stop --time=1 "$MAINTENANCE_MARKER_NAME" >/dev/null 2>&1 || true
+  docker rm -f "$MAINTENANCE_MARKER_NAME" >/dev/null 2>&1 || true
+  MAINTENANCE_MARKER_NAME=""
+}
+
+start_maintenance_window() {
+  local marker_image
+
+  MAINTENANCE_MARKER_NAME="jobseek-maintenance-window-crawler-deploy-${JOBSEEK_DEPLOY_REVISION:0:12}"
+  marker_image="$(docker inspect --format '{{.Image}}' "${COMPOSE_PROJECT_NAME}-redis-1" 2>/dev/null || true)"
+  if [[ ! "$marker_image" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+    docker pull redis:8-alpine >/dev/null
+    marker_image="$(docker image inspect --format '{{.Id}}' redis:8-alpine)"
+  fi
+  [[ "$marker_image" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+    echo "ERROR: a local Redis image is required for the maintenance marker" >&2
+    return 1
+  }
+
+  docker run --detach --rm \
+    --name "$MAINTENANCE_MARKER_NAME" \
+    --network none \
+    --read-only \
+    --cap-drop ALL \
+    --security-opt no-new-privileges \
+    --memory 16m \
+    --cpus 0.05 \
+    --pids-limit 16 \
+    "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+    --label com.docker.compose.service=maintenance-window \
+    "$marker_image" \
+    /bin/sh -c \
+    "trap 'exit 0' TERM INT; sleep 28800" >/dev/null
+}
+
+verify_active_compose_snapshot() {
+  local actual expected
+
+  [[ -f "$ACTIVE_COMPOSE_SNAPSHOT" ]] || {
+    echo "ERROR: crawler-confirmed active Compose snapshot is unavailable" >&2
+    return 1
+  }
+  [[ -f "$ACTIVE_COMPOSE_SNAPSHOT_SHA256" ]] || {
+    echo "ERROR: crawler-confirmed active Compose digest is unavailable" >&2
+    return 1
+  }
+  expected="$(tr -d '[:space:]' <"$ACTIVE_COMPOSE_SNAPSHOT_SHA256")"
+  [[ "$expected" =~ ^[0-9a-f]{64}$ ]] || {
+    echo "ERROR: crawler-confirmed active Compose digest is invalid" >&2
+    return 1
+  }
+  actual="$(sha256sum "$ACTIVE_COMPOSE_SNAPSHOT" | awk '{print $1}')"
+  [[ "$actual" == "$expected" ]] || {
+    echo "ERROR: crawler-confirmed active Compose snapshot failed verification" >&2
+    return 1
+  }
+}
+
+snapshot_active_deploy_specs() {
+  local snapshot_dir spec temporary
+
+  for spec in "${DEPLOY_SPEC_FILES[@]}"; do
+    [[ -f "$DEPLOY_DIR/$spec" ]] || {
+      echo "ERROR: active deploy artifact is unavailable: ${spec}" >&2
+      return 1
+    }
+  done
+
+  snapshot_dir="$(mktemp -d "${DEPLOY_DIR}/.deploy-spec.snapshot.XXXXXX")"
+  for spec in "${DEPLOY_SPEC_FILES[@]}"; do
+    if ! install -D -p "$DEPLOY_DIR/$spec" "$snapshot_dir/$spec"; then
+      rm -rf "$snapshot_dir"
+      return 1
+    fi
+  done
+
+  # The independently scheduled shim rollout can already have replaced the
+  # live Compose file. Only the verified, crawler-confirmed snapshot is valid
+  # rollback evidence; the first rollout must pre-seed it explicitly.
+  if ! install -m 0644 "$ACTIVE_COMPOSE_SNAPSHOT" "$snapshot_dir/docker-compose.yml"; then
+    rm -rf "$snapshot_dir"
+    return 1
+  fi
+
+  temporary="$(mktemp "${DEPLOY_DIR}/.deploy-spec.rollback.XXXXXX.tar")"
+  if ! tar -C "$snapshot_dir" -cpf "$temporary" "${DEPLOY_SPEC_FILES[@]}"; then
+    rm -rf "$snapshot_dir"
+    rm -f "$temporary"
+    return 1
+  fi
+  rm -rf "$snapshot_dir"
+  chmod 600 "$temporary"
+  mv "$temporary" "$ROLLBACK_SPEC_ARCHIVE"
+}
+
+activate_staged_deploy_specs() {
+  local mode spec
+
+  for spec in "${DEPLOY_SPEC_FILES[@]}"; do
+    case "$spec" in
+      deploy.sh | deploy_helpers.sh | scripts/*.py) mode=0755 ;;
+      *) mode=0644 ;;
+    esac
+    install -D -m "$mode" "$INCOMING_DIR/$spec" "$DEPLOY_DIR/$spec"
+  done
+}
+
+restore_previous_deploy_specs() {
+  if [[ -f "$ROLLBACK_SPEC_ARCHIVE" ]]; then
+    tar -C "$DEPLOY_DIR" -xpf "$ROLLBACK_SPEC_ARCHIVE"
+  fi
+}
+
+reconciliation_wrapper_is_compatible() {
+  local actual_wrapper_sha256
+
+  [[ -x /usr/local/sbin/jobseek-reconciliation-state ]] || return 1
+  [[ -r /usr/local/sbin/jobseek-crawler-reconciliation ]] || return 1
+  actual_wrapper_sha256="$({
+    sha256sum /usr/local/sbin/jobseek-crawler-reconciliation
+  } | awk '{print $1}')"
+  [[ "$actual_wrapper_sha256" == "$JOBSEEK_RECONCILIATION_WRAPPER_SHA256" ]] || return 1
+  /usr/local/sbin/jobseek-reconciliation-state check \
+    --expected-wrapper-sha256 "$JOBSEEK_RECONCILIATION_WRAPPER_SHA256" \
+    >/dev/null 2>&1 || return 1
+  systemctl is-enabled --quiet jobseek-crawler-reconciliation.timer || return 1
+  systemctl is-active --quiet jobseek-crawler-reconciliation.timer || return 1
+}
+
+ensure_reconciliation_wrapper_compatible() {
+  local deadline=$((SECONDS + ${RECONCILIATION_COMPAT_WAIT_SECONDS:-1200}))
+
+  while (( SECONDS < deadline )); do
+    if reconciliation_wrapper_is_compatible; then
+      echo "Installed reconciliation wrapper matches the required contract" >&2
+      return 0
+    fi
+    echo "Waiting for the compatible reconciliation host wrapper" >&2
+    sleep 10
+  done
+
+  echo "ERROR: compatible reconciliation host wrapper was not installed before timeout" >&2
+  return 1
+}
+
 rollback_deploy() {
-  local exit_code=$?
-  trap - ERR
+  local exit_code="${1:-1}"
+
+  trap - ERR EXIT HUP INT TERM
+  if (( ! ROLLBACK_ARMED || ROLLBACK_RUNNING )); then
+    exit "$exit_code"
+  fi
+  ROLLBACK_RUNNING=1
   echo "Deploy failed — restoring crawler containers on previous image" >&2
 
   if [[ -f "$ROLLBACK_ENV_FILE" ]]; then
     mv "$ROLLBACK_ENV_FILE" "$ENV_FILE" || true
     chmod 600 "$ENV_FILE" || true
+  elif (( ! ENV_FILE_WAS_PRESENT )); then
+    rm -f "$ENV_FILE"
   fi
+  restore_previous_deploy_specs || true
 
   cd "$DEPLOY_DIR" || exit "$exit_code"
-  docker compose up -d --remove-orphans 2>/dev/null || true
+  # Compose gives process variables precedence over the restored env file.
+  # Start rollback in a clean environment so the failed release tag and every
+  # other current SSH input cannot override the previous deployment contract.
+  env -i \
+    "PATH=${PATH:-/usr/local/bin:/usr/bin:/bin}" \
+    "HOME=${HOME:-$DEPLOY_DIR}" \
+    "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" \
+    docker compose --env-file "$ENV_FILE" up -d --remove-orphans \
+    2>/dev/null || true
+  stop_maintenance_window
+  ROLLBACK_ARMED=0
   exit "$exit_code"
+}
+
+arm_deploy_rollback() {
+  ROLLBACK_ARMED=1
+  trap 'rollback_deploy $?' ERR
+  trap 'rollback_deploy $?' EXIT
+  trap 'rollback_deploy 129' HUP
+  trap 'rollback_deploy 130' INT
+  trap 'rollback_deploy 143' TERM
+}
+
+disarm_deploy_rollback() {
+  ROLLBACK_ARMED=0
+  trap - ERR EXIT HUP INT TERM
 }
 
 compose_service_ready() {
@@ -87,7 +330,11 @@ compose_service_ready() {
   fi
 
   health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id" 2>/dev/null || true)"
-  [[ "$health" == "none" || "$health" == "healthy" ]]
+  [[ "$health" == "none" || "$health" == "healthy" ]] || return 1
+  if [[ "$service" == "alloy" ]]; then
+    curl --fail --silent --show-error --max-time 2 \
+      http://127.0.0.1:12346/-/ready >/dev/null
+  fi
 }
 
 wait_for_core_services() {
@@ -116,10 +363,24 @@ wait_for_core_services() {
   return 1
 }
 
+normalize_alloy_state_volume() {
+  local volume_name="$1"
+
+  # The long-running collector is explicit root with every capability dropped.
+  # Make it the volume owner so it can write its WAL/cursors without relying on
+  # CAP_DAC_OVERRIDE. The helper is pinned, networkless, and exits immediately.
+  docker run --rm --network none --user 0:0 \
+    "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+    --label com.docker.compose.service=deploy-alloy-state \
+    -v "${volume_name}:/data-alloy" \
+    --entrypoint sh "$ALLOY_IMAGE" \
+    -c 'chown -R 0:0 /data-alloy && chmod 0700 /data-alloy'
+}
+
 prepare_alloy_state_volume() {
   local volume_name="${COMPOSE_PROJECT_NAME}_alloy-data"
   local marker="/data-alloy/.jobseek-persistent-state"
-  local alloy_container state state_volume staging
+  local alloy_container marker_status state state_volume staging
 
   docker volume create "$volume_name" >/dev/null
   alloy_container="$(docker compose ps -aq alloy 2>/dev/null || true)"
@@ -133,17 +394,25 @@ prepare_alloy_state_volume() {
   # Fast path for every deploy after the migration. The marker lives in the
   # named volume, so force-recreating Alloy below cannot erase it or the
   # Docker-source positions stored beside it.
-  if docker run --rm --network none \
+  marker_status="$(docker run --rm --network none --user 0:0 \
+    "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+    --label com.docker.compose.service=deploy-alloy-state \
     -v "${volume_name}:/data-alloy" \
-    --entrypoint sh grafana/alloy:latest \
-    -c "test -f '${marker}'"; then
+    --entrypoint sh "$ALLOY_IMAGE" \
+    -c "if test -f '${marker}'; then echo present; else echo missing; fi")"
+  if [[ "$marker_status" == "present" ]]; then
     echo "Alloy state volume already initialized: ${volume_name}" >&2
     if [[ "$state" != "running" || "$state_volume" != "$volume_name" ]]; then
       # A prior deploy may have prepared the volume and failed before the
       # changed service spec became active. Recreate immediately on retry.
       ALLOY_STATE_ACTIVATION_REQUIRED=1
     fi
+    normalize_alloy_state_volume "$volume_name"
     return 0
+  fi
+  if [[ "$marker_status" != "missing" ]]; then
+    echo "ERROR: unexpected Alloy state marker probe result" >&2
+    return 1
   fi
 
   if [[ -n "$alloy_container" ]]; then
@@ -161,10 +430,12 @@ prepare_alloy_state_volume() {
       echo "ERROR: failed to stage current Alloy state" >&2
       return 1
     fi
-    if ! docker run --rm --network none \
+    if ! docker run --rm --network none --user 0:0 \
+      "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+      --label com.docker.compose.service=deploy-alloy-state \
       -v "${staging}:/source:ro" \
       -v "${volume_name}:/data-alloy" \
-      --entrypoint sh grafana/alloy:latest \
+      --entrypoint sh "$ALLOY_IMAGE" \
       -c 'tar -C /source -cf - . | tar -C /data-alloy -xpf -'; then
       rm -rf "$staging"
       echo "ERROR: failed to seed persistent Alloy state" >&2
@@ -177,10 +448,13 @@ prepare_alloy_state_volume() {
     echo "No existing Alloy container; initializing an empty state volume" >&2
   fi
 
-  docker run --rm --network none \
+  docker run --rm --network none --user 0:0 \
+    "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+    --label com.docker.compose.service=deploy-alloy-state \
     -v "${volume_name}:/data-alloy" \
-    --entrypoint sh grafana/alloy:latest \
+    --entrypoint sh "$ALLOY_IMAGE" \
     -c "touch '${marker}'"
+  normalize_alloy_state_volume "$volume_name"
 }
 
 deploy_disk_free_kb() {
@@ -240,11 +514,56 @@ EOF
   return 1
 }
 
+running_typesense_maintenance_containers() {
+  docker ps \
+    --filter 'name=^/crawler-(backfill|refresh)-typesense-' \
+    --format '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Command}}'
+}
+
+ensure_no_running_typesense_maintenance() {
+  local rows
+
+  rows="$(running_typesense_maintenance_containers)"
+  if [[ -z "$rows" ]]; then
+    echo "No running Typesense maintenance containers detected" >&2
+    return 0
+  fi
+
+  cat >&2 <<EOF
+ERROR: running Typesense maintenance containers detected.
+Deploy is refusing to overlap a full backfill or count refresh because its
+inline crawler sync also refreshes Typesense and could publish partial counts.
+
+Container ID\tName\tImage\tStatus\tCommand
+${rows}
+
+Wait for the maintenance job to finish, then rerun the deploy.
+EOF
+  return 1
+}
+
 # Fail before touching services if an operator one-off is still running.
 # Example: `docker compose run --rm worker-1 uv run --no-sync crawler ...`
 # receives the Compose label `com.docker.compose.oneoff=True` and otherwise
 # survives the named-service stop/recreate sequence below.
 ensure_no_running_compose_oneoffs
+ensure_no_running_typesense_maintenance
+ensure_reconciliation_wrapper_compatible
+python3 "$INCOMING_DIR/scripts/postgresql-operational-preflight.py"
+verify_active_compose_snapshot
+
+# Snapshot the complete active deployment contract before replacing any file
+# or credential. Rollback restores the old Compose spec and old env together,
+# so an old image never starts with the new credential semantics.
+rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"
+snapshot_active_deploy_specs
+if [[ -f "$ENV_FILE" ]]; then
+  ENV_FILE_WAS_PRESENT=1
+  cp "$ENV_FILE" "$ROLLBACK_ENV_FILE"
+  chmod 600 "$ROLLBACK_ENV_FILE"
+fi
+arm_deploy_rollback
+activate_staged_deploy_specs
 
 # ── Stop any manually-started containers that conflict with compose ──
 # `indexnow` was retired in #2821 (companies left the index); the rm is
@@ -257,16 +576,12 @@ docker rm "${legacy_containers[@]}" 2>/dev/null || true
 # Proxy vars are expanded with ``:-`` defaults so missing provider
 # secrets don't break the deploy — PROXY_PROVIDER=none disables the
 # proxy layer even when the URL envs are empty.
-rm -f "$ROLLBACK_ENV_FILE"
-if [[ -f "$ENV_FILE" ]]; then
-  cp "$ENV_FILE" "$ROLLBACK_ENV_FILE"
-  chmod 600 "$ROLLBACK_ENV_FILE"
-fi
 
 cat > "$ENV_FILE" <<EOF
 OWNER=${OWNER}
 CRAWLER_IMAGE_TAG=${IMAGE_TAG}
-DATABASE_URL=${DATABASE_URL_UNPOOLED}
+JOBSEEK_DEPLOY_REVISION=${JOBSEEK_DEPLOY_REVISION}
+WEB_DATABASE_URL=${WEB_DATABASE_URL}
 LOCAL_DATABASE_URL=${LOCAL_DATABASE_URL}
 R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
 R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
@@ -282,7 +597,7 @@ GRAFANA_LOKI_PASSWORD=${GRAFANA_LOKI_PASSWORD}
 TYPESENSE_HOST=${TYPESENSE_HOST}
 TYPESENSE_PORT=${TYPESENSE_PORT}
 TYPESENSE_PROTOCOL=${TYPESENSE_PROTOCOL}
-TYPESENSE_ADMIN_KEY=${TYPESENSE_ADMIN_KEY}
+TYPESENSE_OPERATIONS_KEY=${TYPESENSE_OPERATIONS_KEY}
 PROXY_PROVIDER=${PROXY_PROVIDER:-none}
 WEBSHARE_PROXY_URL=${WEBSHARE_PROXY_URL:-}
 DECODO_PROXY_URL=${DECODO_PROXY_URL:-}
@@ -295,7 +610,7 @@ chmod 600 "$ENV_FILE"
 
 # ── Pull images and preflight while the old stack is still serving ────
 cd "$DEPLOY_DIR"
-trap rollback_deploy ERR
+start_maintenance_window
 
 # Activate persistent Alloy state before any later deploy step can fail and
 # run the rollback against the new Compose service spec. On the first rollout
@@ -308,35 +623,60 @@ fi
 
 ensure_deploy_disk_headroom
 
-docker compose pull
+pull_deploy_images
 
 docker compose up -d redis
 
+# ── Quiesce every local-Postgres writer before schema cutover ──────
+# Migrations may introduce a database/runtime protocol (for example the
+# shared-writer/oldest-writer-floor CDC boundary). Stop both sides before
+# Alembic so no old process can write or advance a cursor in the interval
+# between the schema change and the new containers starting. `--timeout 60`
+# matches the app's 30s bounded drain with headroom before Docker sends
+# SIGKILL. Redis and Alloy remain available throughout.
+docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain
+
 # ── Run Alembic migrations on local Postgres ─────────────────────────
-docker run --rm --env-file "$ENV_FILE" --network host \
+docker run --rm \
+  -e LOCAL_DATABASE_URL \
+  --network host \
+  "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+  --label com.docker.compose.service=deploy-migrate \
   "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
   uv run --no-sync alembic -c src/migrations/alembic.ini upgrade head
 
 # ── Patch Typesense schema (idempotent — adds new fields if missing) ─
 # Must run BEFORE `crawler sync`, otherwise the next sync would upsert
 # docs containing fields that the live schema doesn't know about.
-docker run --rm --env-file "$ENV_FILE" --network host \
+docker run --rm \
+  -e TYPESENSE_HOST \
+  -e TYPESENSE_PORT \
+  -e TYPESENSE_PROTOCOL \
+  -e TYPESENSE_OPERATIONS_KEY \
+  --network host \
+  "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+  --label com.docker.compose.service=deploy-setup-typesense \
   "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
   uv run --no-sync crawler setup-typesense
 
-# ── Quiesce processors before reseeding Redis-backed schedules ───────
-# Keep Redis and alloy up, but stop processors so deploy-time
-# `crawler sync` does not race with live workers claiming work while we
-# reseed board monitors. `--timeout 60` matches the app's 30s bounded
-# drain with headroom before Docker sends SIGKILL.
-docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain
-
 # ── Sync board config from CSV → local Postgres + Redis + Typesense ──
-docker run --rm --env-file "$ENV_FILE" --network host \
+docker run --rm \
+  -e LOCAL_DATABASE_URL \
+  -e WEB_DATABASE_URL \
+  -e TYPESENSE_HOST \
+  -e TYPESENSE_PORT \
+  -e TYPESENSE_PROTOCOL \
+  -e TYPESENSE_OPERATIONS_KEY \
+  --network host \
+  "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+  --label com.docker.compose.service=deploy-sync \
   "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
   uv run --no-sync crawler sync
 
 # ── Start the full stack on the freshly seeded Redis state ───────────
+# Coupled rollout marker (2026-08-04): this comment-only deploy contract
+# change intentionally triggers the same-revision Murmur workflow and keeps
+# the crawler workflow behind its Murmur safety wait for this one rollout.
 docker compose up -d --remove-orphans
 
 # Force-recreate alloy so it picks up any alloy.river bind-mount changes.
@@ -352,9 +692,26 @@ docker compose up -d --force-recreate alloy
 # murmur shim is intentionally excluded while Murmur remains
 # backburnered; a shim issue should not fail the crawler deploy.
 wait_for_core_services
+reconciliation_wrapper_is_compatible
+stop_maintenance_window
 
 # ── Cleanup ──────────────────────────────────────────────────────────
-trap - ERR
-rm -f "$ROLLBACK_ENV_FILE"
-docker image prune -f
+active_compose_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-compose.XXXXXX")"
+active_compose_digest_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-compose-digest.XXXXXX")"
+deploy_success_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-deploy-success.XXXXXX")"
+install -m 0644 "$DEPLOY_DIR/docker-compose.yml" "$active_compose_temporary"
+sha256sum "$active_compose_temporary" | awk '{print $1}' >"$active_compose_digest_temporary"
+chmod 0644 "$active_compose_digest_temporary"
+printf 'CRAWLER_IMAGE_TAG=%s\nJOBSEEK_DEPLOY_REVISION=%s\n' \
+  "$IMAGE_TAG" "$JOBSEEK_DEPLOY_REVISION" >"$deploy_success_temporary"
+chmod 0644 "$deploy_success_temporary"
+mv "$active_compose_temporary" "$ACTIVE_COMPOSE_SNAPSHOT"
+mv "$active_compose_digest_temporary" "$ACTIVE_COMPOSE_SNAPSHOT_SHA256"
+# Publish the exact committed release only after all health gates pass and the
+# rollback trap is disarmed. Consumers must use this atomic marker rather than
+# the earlier .env write, which is intentionally part of the rollback window.
+disarm_deploy_rollback
+mv "$deploy_success_temporary" "$DEPLOY_SUCCESS_FILE"
+rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE" || true
+docker image prune -f || true
 echo "Deploy complete: $(docker compose ps --format '{{.Name}}' | tr '\n' ' ')"

@@ -1,19 +1,26 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
-import { db } from "@/db";
 import { cached } from "@/lib/cache";
 import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
-import { withDbRetry } from "@/lib/db-retry";
 import { typeaheadLocationsCacheTag } from "@/lib/cache-tags";
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
+import { isTypesenseUnavailableError } from "@/lib/search/typesense-retry";
+import {
+  fetchLocationDescendants,
+  fetchLocationDocumentsByIds,
+  fetchLocationDocumentsBySlugs,
+  fetchLocationDocumentsWithAncestors,
+  fetchLocationMacroDocuments,
+  type TypesenseLocationDocument,
+} from "@/lib/search/typesense-taxonomy";
 import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { boostByFilterMatches, type TypeaheadBoostFilters } from "@/lib/search/typeahead-boost";
 import { canonicalizeFilters } from "@/lib/search/canonicalize-filters";
 import { canonicalStringCompare, makeDisplayStringCompare } from "@/lib/sort";
 import { LOCATION_PAGE_SIZE } from "@/lib/search/location-paging";
 import type { LocationType } from "@/lib/search/types";
+import { logExternalError } from "@/lib/safe-external-error";
 
 export interface LocationSuggestion {
   id: number;
@@ -160,49 +167,16 @@ function _mapLocationHit(hit: TypesenseHit, locale: string): LocationSuggestion 
  * hierarchy changes (macro region members in particular).
  *
  * Prefer {@link expandLocationIdsBatch} when callers have multiple seed
- * IDs — a single recursive CTE per batch beats L parallel CTEs. See
- * #3186.
+ * IDs so one taxonomy filter request can resolve the union.
  */
 export async function expandLocationIds(locationId: number): Promise<number[]> {
-  "use cache";
-  cacheLife("days");
-  cacheTag(typeaheadLocationsCacheTag());
-
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{ [key: string]: unknown; id: number }>(sql`
-        WITH RECURSIVE seeds AS (
-          -- The location itself
-          SELECT id FROM location WHERE id = ${locationId}
-          UNION
-          -- If it's a macro region, include its member countries
-          SELECT lm.country_id AS id
-          FROM location_macro_member lm
-          WHERE lm.macro_id = ${locationId}
-        ),
-        descendants AS (
-          SELECT id FROM seeds
-          UNION ALL
-          SELECT l.id FROM location l JOIN descendants d ON l.parent_id = d.id
-        )
-        SELECT id FROM descendants
-      `),
-    { label: `expandLocationIds[${locationId}]` },
-  );
-  return (rows as unknown as { id: number }[]).map((r) => r.id);
+  return expandLocationIdsBatch([locationId]);
 }
 
 /**
  * Batch variant of {@link expandLocationIds} — takes an array of seed
- * location IDs and returns the deduplicated union of all descendant IDs
- * in a single recursive CTE round-trip (issue #3186).
- *
- * Postgres fallback paths in `_getWatchlistPostingsPostgres` and
- * `_searchCompaniesForWatchlistPostgres` previously dispatched one
- * `expandLocationIds(id)` per seed via `Promise.all(...)`, which fires L
- * separate recursive CTE queries (and L Redis round-trips even on warm
- * cache) — a 10x amplifier on the exact path that runs when Typesense is
- * degraded. The batched query collapses that to one CTE regardless of L.
+ * location IDs and returns the deduplicated union of all matching documents
+ * whose indexed `ancestor_ids` contains any seed (issue #3186).
  *
  * Cache-key shape under `'use cache'`: the wrapper sorts the ID array so
  * `[a,b]` and `[b,a]` hit the same slot. Empty input short-circuits
@@ -224,29 +198,8 @@ async function _expandLocationIdsBatchCached(
   cacheLife("days");
   cacheTag(typeaheadLocationsCacheTag());
 
-  const pgArray = `{${sortedIds.join(",")}}`;
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{ [key: string]: unknown; id: number }>(sql`
-        WITH RECURSIVE seeds AS (
-          -- The seed locations themselves
-          SELECT id FROM location WHERE id = ANY(${pgArray}::integer[])
-          UNION
-          -- If any seed is a macro region, include its member countries
-          SELECT lm.country_id AS id
-          FROM location_macro_member lm
-          WHERE lm.macro_id = ANY(${pgArray}::integer[])
-        ),
-        descendants AS (
-          SELECT id FROM seeds
-          UNION
-          SELECT l.id FROM location l JOIN descendants d ON l.parent_id = d.id
-        )
-        SELECT DISTINCT id FROM descendants
-      `),
-    { label: "expandLocationIdsBatch" },
-  );
-  return (rows as unknown as { id: number }[]).map((r) => r.id);
+  const documents = await fetchLocationDescendants(sortedIds);
+  return documents.map((document) => document.location_id).sort((a, b) => a - b);
 }
 
 export interface ResolvedLocation {
@@ -289,43 +242,19 @@ async function _resolveLocationSlugsCached(
   cacheLife("days");
   cacheTag(typeaheadLocationsCacheTag());
 
-  const pgArray = `{${sortedSlugs.join(",")}}`;
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: number;
-        slug: string;
-        type: string;
-        name: string;
-        parent_name: string | null;
-      }>(sql`
-        SELECT l.id, l.slug, l.type::text AS type,
-          ln.name,
-          pln.name AS parent_name
-        FROM location l
-        JOIN LATERAL (
-          SELECT name FROM location_name
-          WHERE location_id = l.id AND locale IN (${locale}, 'en') AND is_display = true
-          ORDER BY (locale = ${locale})::int DESC LIMIT 1
-        ) ln ON true
-        LEFT JOIN LATERAL (
-          SELECT name FROM location_name
-          WHERE location_id = l.parent_id AND locale IN (${locale}, 'en') AND is_display = true
-          ORDER BY (locale = ${locale})::int DESC LIMIT 1
-        ) pln ON true
-        WHERE l.slug = ANY(${pgArray}::text[])
-      `),
-    { label: "resolveLocationSlugs" },
-  );
+  const rows = await fetchLocationDocumentsBySlugs(sortedSlugs);
+  const parentIds = rows.flatMap((row) => row.parent_id == null ? [] : [row.parent_id]);
+  const parents = await fetchLocationDocumentsByIds(parentIds);
+  const parentsById = new Map(parents.map((parent) => [parent.location_id, parent]));
   const result: Record<string, ResolvedLocation> = {};
-  for (const r of rows as unknown as { id: number; slug: string; type: LocationType; name: string; parent_name: string | null }[]) {
-    result[r.slug] = {
-      id: r.id,
-      slug: r.slug,
-      name: r.name,
-      type: r.type,
-      parentName: r.parent_name,
+  for (const row of rows) {
+    const parent = row.parent_id == null ? undefined : parentsById.get(row.parent_id);
+    result[row.slug] = {
+      id: row.location_id,
+      slug: row.slug,
+      name: _getTypesenseLocationName(row, locale),
+      type: row.type as LocationType,
+      parentName: parent ? _getTypesenseLocationName(parent, locale) : row.parent_name ?? null,
     };
   }
   return result;
@@ -369,7 +298,7 @@ export interface GlobalMacroRegion {
    */
   abbreviation: string;
   count: number;
-  /** Member country names (English) — for the chip's hover tooltip. */
+  /** Localized member country names — for the chip's hover tooltip. */
   memberCountryNames: string[];
   /**
    * Member country IDs — used by the hierarchical-disable hook so that
@@ -414,8 +343,20 @@ export async function getGlobalLocationsGrouped(
   // facet query). Old v1/v2 entries cached the array shape and would
   // otherwise be deserialized into the new wrapper object via the
   // run-time JSON path, then fail to render the macro tier.
-  const key = `global-locs-grouped-v4:${locale}:${fKey}`;
-  return cached(key, () => _fetchGlobalLocationsGrouped(locale, filters), { ttl: CACHE_TTL_LONG });
+  const key = `global-locs-grouped-v5:${locale}:${fKey}`;
+  try {
+    return await cached(key, () => _fetchGlobalLocationsGrouped(locale, filters), {
+      ttl: CACHE_TTL_LONG,
+    });
+  } catch (err) {
+    if (!isTypesenseUnavailableError(err)) throw err;
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "global_locations_grouped" },
+      err,
+    );
+    return { macros: [], countries: [] };
+  }
 }
 
 // ── Paged variant for fast modal TTFB (#2982) ─────────────────────────
@@ -456,12 +397,12 @@ export interface GlobalLocationsPage {
  * countries; subsequent pages are fetched on-scroll and append to the
  * rendered list.
  *
- * The underlying Typesense + DB fetch is still one round-trip (cached
- * via the shared {@link cached} slot for 3600s) — the perf win comes
+ * The underlying Typesense facet + taxonomy fetch is cached via the shared
+ * {@link cached} slot for 3600s. The perf win comes
  * from React mounting fewer DOM nodes on first paint, plus the
  * subsequent pages hitting the same cache slot without re-running the
  * Typesense facet. TTFB for cursor=0 equals the unpaged action's TTFB;
- * TTFB for cursor>0 is dominated by Redis round-trip + JSON parse
+ * TTFB for cursor>0 is dominated by the cache round-trip + JSON parse
  * (typically <30ms).
  *
  * `macros` are always returned on cursor=0 only — they're bounded
@@ -552,16 +493,22 @@ export async function searchGlobalLocations(
         count: (doc.active_posting_count as number) ?? 0,
       };
     });
-  } catch {
+  } catch (err) {
+    if (!isTypesenseUnavailableError(err)) throw err;
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "search_global_locations" },
+      err,
+    );
     return [];
   }
 }
 
 /**
- * Canonical display labels for macro regions. Stored DB names are short
+ * Canonical display labels for macro regions. Indexed taxonomy names are short
  * abbreviations ("EU", "DACH", "EMEA") which read as alphabet-soup in chip
  * UI; this map expands the most-common ones to their full names. The slug
- * is used as the lookup key — falls back to the localized DB name when the
+ * is used as the lookup key — falls back to the localized indexed name when the
  * slug isn't in the map (e.g. NULL slug or a future addition).
  *
  * In the en/de/fr/it fall-through case we still pass the abbreviation
@@ -581,14 +528,15 @@ const MACRO_DISPLAY_NAMES: Record<string, string> = {
   worldwide: "Worldwide",
 };
 
-// ── Location hierarchy cache (from Supabase Postgres, long TTL) ──────
+// ── Location hierarchy cache (from Typesense, long TTL) ─────────────
 
 interface LocationMeta {
   id: number;
   slug: string;
   type: LocationType;
   parentId: number | null;
-  names: Record<string, string>; // locale -> display name
+  names: Record<string, string>;
+  memberCountryIds: number[];
 }
 
 // Per-region in-memory `'use cache'` (cacheLife('days')). Build ID is
@@ -597,56 +545,57 @@ interface LocationMeta {
 // Returns a plain `Record` (serializable); the wrapper converts to `Map`
 // for O(1) lookup ergonomics. Migrated from Redis-backed `cached()` in
 // #2884 (hierarchy-cache slice). See `apps/web/docs/cache-components.md`.
-async function _fetchLocationHierarchyData(): Promise<Record<string, LocationMeta>> {
+async function _fetchLocationHierarchyData(
+  sortedIds: number[],
+): Promise<Record<string, LocationMeta>> {
   "use cache";
   cacheLife("days");
+  cacheTag(typeaheadLocationsCacheTag());
 
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: number;
-        slug: string;
-        type: string;
-        parent_id: number | null;
-      }>(sql`SELECT id, slug, type::text AS type, parent_id FROM location`),
-    { label: "locationHierarchy.locations" },
-  );
-
-  const nameRows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        location_id: number;
-        locale: string;
-        name: string;
-      }>(sql`SELECT location_id, locale, name FROM location_name WHERE is_display = true`),
-    { label: "locationHierarchy.names" },
-  );
-
-  const nameMap = new Map<number, Record<string, string>>();
-  for (const nr of nameRows as unknown as { location_id: number; locale: string; name: string }[]) {
-    let names = nameMap.get(nr.location_id);
-    if (!names) { names = {}; nameMap.set(nr.location_id, names); }
-    names[nr.locale] = nr.name;
-  }
+  const rows = await fetchLocationDocumentsWithAncestors(sortedIds);
 
   const result: Record<string, LocationMeta> = {};
-  for (const r of rows as unknown as { id: number; slug: string; type: LocationType; parent_id: number | null }[]) {
-    result[String(r.id)] = {
-      id: r.id,
-      slug: r.slug,
-      type: r.type,
-      parentId: r.parent_id,
-      names: nameMap.get(r.id) ?? {},
+  for (const row of rows) {
+    result[String(row.location_id)] = {
+      id: row.location_id,
+      slug: row.slug,
+      type: row.type as LocationType,
+      parentId: row.parent_id ?? null,
+      names: _locationNames(row),
+      memberCountryIds: row.member_country_ids ?? [],
     };
   }
   return result;
 }
 
-async function _getLocationHierarchyCache(): Promise<Map<number, LocationMeta>> {
-  const record = await _fetchLocationHierarchyData();
+async function _getLocationHierarchyCache(
+  ids: number[],
+): Promise<Map<number, LocationMeta>> {
+  const sorted = [...new Set(ids)].sort((a, b) => a - b);
+  const record = await _fetchLocationHierarchyData(sorted);
   return new Map(Object.entries(record).map(([k, v]) => [Number(k), v]));
+}
+
+async function _fetchMacroLocationData(): Promise<TypesenseLocationDocument[]> {
+  "use cache";
+  cacheLife("days");
+  cacheTag(typeaheadLocationsCacheTag());
+  return fetchLocationMacroDocuments();
+}
+
+function _locationNames(document: TypesenseLocationDocument): Record<string, string> {
+  const names: Record<string, string> = { en: document.name_en };
+  if (document.name_de) names.de = document.name_de;
+  if (document.name_fr) names.fr = document.name_fr;
+  if (document.name_it) names.it = document.name_it;
+  return names;
+}
+
+function _getTypesenseLocationName(
+  document: TypesenseLocationDocument,
+  locale: string,
+): string {
+  return _locationNames(document)[locale] ?? document.name_en ?? document.slug;
 }
 
 function _getLocaleName(meta: LocationMeta, locale: string): string {
@@ -657,8 +606,7 @@ async function _fetchGlobalLocationsGrouped(
   locale: string,
   filters?: { companyId?: string; keywords?: string[]; occupationIds?: number[]; seniorityIds?: number[]; technologyIds?: number[]; languages?: string[] },
 ): Promise<GlobalLocationsResponse> {
-  try {
-    const client = getTypesenseClient();
+  const client = getTypesenseClient();
 
     // Build filter string for the facet query (excludes location filter itself)
     const filterStr = buildFilterString(filters);
@@ -670,11 +618,8 @@ async function _fetchGlobalLocationsGrouped(
     // Load hierarchy metadata up-front so we know which IDs are macros
     // (used both for the dedicated macro facet query below AND for the
     // country-tier hierarchy walk further down).
-    const hierarchy = await _getLocationHierarchyCache();
-    const allMacroIds: number[] = [];
-    for (const meta of hierarchy.values()) {
-      if (meta.type === "macro") allMacroIds.push(meta.id);
-    }
+    const macroDocuments = await _fetchMacroLocationData();
+    const allMacroIds = macroDocuments.map((document) => document.location_id);
 
     // Run the country-tier facet query AND a dedicated macro-only facet
     // query in parallel. Reason for separating them: even with
@@ -707,15 +652,10 @@ async function _fetchGlobalLocationsGrouped(
       per_page: 0,
     };
 
-    // #3031: parallelize the macro-members DB lookup with the Typesense
-    // facet queries. Macro members depend only on the hierarchy (already
-    // cached), not on the Typesense result — we fetch members for *all*
-    // macros up-front and filter post-hoc by the macros that actually
-    // have a non-zero facet count. There are at most ~9 macros so the
-    // wasted work is negligible (most rows are kept anyway), and the
-    // saved sequential round-trip (~300 ms cold) shows up directly on
-    // the modal's first-paint TTFB.
-    const [result, macroResult, allMacroMembers] = await Promise.all([
+    // Run both facet requests together. Macro membership is already carried
+    // by the location documents loaded above, so this path has no crawler-
+    // mirror database round-trip.
+    const [result, macroResult] = await Promise.all([
       client.collections("job_posting").documents().search(baseSearchParams),
       macroFilterClause
         ? client.collections("job_posting").documents().search({
@@ -723,9 +663,6 @@ async function _fetchGlobalLocationsGrouped(
             filter_by: `${baseSearchParams.filter_by} && ${macroFilterClause}`,
           })
         : Promise.resolve(null),
-      allMacroIds.length > 0
-        ? _fetchGlobalMacroMembers(allMacroIds, locale)
-        : Promise.resolve(new Map<number, MacroMembers>()),
     ]);
 
     // Extract facet counts: location_id -> count
@@ -755,18 +692,20 @@ async function _fetchGlobalLocationsGrouped(
       return { macros: [], countries: [] };
     }
 
+    const hierarchy = await _getLocationHierarchyCache([
+      ...facetCounts.keys(),
+      ...allMacroIds,
+      ...macroDocuments.flatMap((document) => document.member_country_ids ?? []),
+    ]);
+
     // Build macro-region cluster from the dedicated macro-only facet
     // result (NOT the truncated top-500 country-tier facet). Ancestor
     // expansion in `exporter.py` already promotes macro IDs onto each
     // posting's `location_ids`, so the facet count for a macro reflects
     // every posting whose country (transitively) belongs to it. See
-    // `_fetchGlobalMacroMembers` for the per-macro member country names
-    // used as the chip's hover tooltip.
+    // The location document's `member_country_ids` supplies the per-macro
+    // country names used as the chip's hover tooltip.
     const macroIdsWithCounts = allMacroIds.filter((id) => (macroFacetCounts.get(id) ?? 0) > 0);
-    // Subset the pre-fetched macro members down to the macros with counts.
-    // Macros with zero matching postings won't render so we don't need
-    // their member lists past this point.
-    const macroMembers = allMacroMembers;
     const macros: GlobalMacroRegion[] = macroIdsWithCounts
       .map((id) => {
         const meta = hierarchy.get(id);
@@ -775,15 +714,19 @@ async function _fetchGlobalLocationsGrouped(
         const slugKey = (meta.slug ?? "").toLowerCase()
           || abbreviation.toLowerCase().replace(/\s+/g, "-");
         const canonical = MACRO_DISPLAY_NAMES[slugKey];
-        const members = macroMembers.get(id);
+        const members = meta.memberCountryIds
+          .map((countryId) => hierarchy.get(countryId))
+          .filter((country): country is LocationMeta => country != null)
+          .map((country) => ({ id: country.id, name: _getLocaleName(country, locale) }))
+          .sort((a, b) => makeDisplayStringCompare(locale)(a.name, b.name));
         return {
           id,
           slug: meta.slug ?? slugKey,
           name: canonical ?? abbreviation,
           abbreviation,
           count: macroFacetCounts.get(id) ?? 0,
-          memberCountryNames: members?.countryNames ?? [],
-          memberCountryIds: members?.countryIds ?? [],
+          memberCountryNames: members.map((member) => member.name),
+          memberCountryIds: members.map((member) => member.id),
         } satisfies GlobalMacroRegion;
       })
       .filter((m): m is GlobalMacroRegion => m !== null && m.count > 0)
@@ -797,6 +740,11 @@ async function _fetchGlobalLocationsGrouped(
     for (const [locationId, count] of facetCounts) {
       const loc = hierarchy.get(locationId);
       if (!loc) continue;
+
+      // Macro regions render in the dedicated Regions cluster above. They
+      // have no country parent, so letting them fall through the hierarchy
+      // builder also adds them to the synthetic "Other" country group.
+      if (loc.type === "macro") continue;
 
       // Find region and country for this location
       let regionId: number | null = null;
@@ -939,65 +887,6 @@ async function _fetchGlobalLocationsGrouped(
       });
 
     return { macros, countries: sortedCountries };
-  } catch {
-    // Typesense unavailable — return empty
-    return { macros: [], countries: [] };
-  }
-}
-
-/**
- * For each macro region, fetch the names of its member countries (in the
- * caller's locale, falling back to English). Used to populate the chip's
- * hover tooltip in {@link LocationSearchModal}.
- *
- * NOTE: in production today `location_macro_member` may be sparsely
- * populated — macros are still useful (ancestor expansion in
- * `exporter.py` promotes the macro ID onto each posting via the
- * `country_id -> [macro_ids]` map, even when that map is empty in the
- * particular DB snapshot we read from). When the table is empty we return
- * an empty member list and the modal renders the chip without a tooltip.
- */
-interface MacroMembers {
-  countryNames: string[];
-  countryIds: number[];
-}
-
-async function _fetchGlobalMacroMembers(
-  macroIds: number[],
-  locale: string,
-): Promise<Map<number, MacroMembers>> {
-  if (macroIds.length === 0) return new Map();
-  const pgArray = `{${macroIds.join(",")}}`;
-  // Project `country_id` alongside `country_name` so the hierarchical
-  // disable hook (#2978) can walk macro -> member-country links without
-  // a second round-trip. Names and IDs stay aligned because they share
-  // the same row order.
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    macro_id: number;
-    country_id: number;
-    country_name: string;
-  }>(sql`
-    SELECT lmm.macro_id, lmm.country_id, ln.name AS country_name
-    FROM location_macro_member lmm
-    JOIN LATERAL (
-      SELECT name FROM location_name
-      WHERE location_id = lmm.country_id
-        AND locale IN (${locale}, 'en')
-        AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) ln ON true
-    WHERE lmm.macro_id = ANY(${pgArray}::integer[])
-    ORDER BY lmm.macro_id, ln.name
-  `);
-  const map = new Map<number, MacroMembers>();
-  for (const r of rows as unknown as { macro_id: number; country_id: number; country_name: string }[]) {
-    let entry = map.get(r.macro_id);
-    if (!entry) { entry = { countryNames: [], countryIds: [] }; map.set(r.macro_id, entry); }
-    entry.countryNames.push(r.country_name);
-    entry.countryIds.push(r.country_id);
-  }
-  return map;
 }
 
 function _ensureCountryGroup(

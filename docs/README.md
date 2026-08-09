@@ -37,6 +37,9 @@ Status tags:
   shape, provider boundaries, and rollout constraints.
 - [10 - Parallel Agent Pipeline](10-parallel-agent-pipeline.md) `[historical]`
   - earlier multi-agent company onboarding design and backlog notes.
+- [21 - ATS Inventory Candidate Runner](21-ats-inventory-runner.md) `[reference]`
+  - data-only upstream boundary, compatibility coverage, validated cache, and
+  unsupported-family quarantine contract.
 
 ## Search, SEO, And Web Read Paths
 
@@ -71,6 +74,15 @@ Status tags:
   `[routine]` - gold-dataset sampling, labelling, validation, and upload.
 - [16 - Hetzner Maintenance](16-hetzner-maintenance.md) `[runbook]` -
   disk/headroom checks and Docker cleanup on Hetzner hosts.
+- [19 - Hetzner Data Backup and Recovery](19-data-backup-recovery.md)
+  `[runbook]` - encrypted PostgreSQL and Typesense backups, restore drills,
+  retention, scheduling, and replacement gates for legacy server backups.
+- [20 - Redis Capacity, Cleanup, and Recovery](20-redis-capacity.md)
+  `[runbook]` - key-family budgets, bounded orphan cleanup, noeviction pressure
+  behavior, and RDB scheduler rebuild procedures.
+- [20 - Supabase Free Downgrade](20-supabase-free-downgrade.md) `[runbook]` -
+  guarded migration repair, saved-job cutover order, and production evidence
+  gates for removing the crawler-owned mirror.
 - [Didi Reactivation Runbook](runbook-didi-reactivate-2026-05-10.md)
   `[runbook]` - historical Didi reactivation notes.
 

@@ -1,6 +1,8 @@
 # Data — CSV Config Files
 
-Source of truth for all tracked companies and their board configurations. The database is derived state, rebuilt from these files on each deploy via `uv run python -m src.sync`.
+Source of truth for all tracked companies and their board configurations. Local
+Postgres is derived from these files on each deploy via `uv run crawler sync`;
+Redis and Typesense are published only after the local transaction commits.
 
 ## Files
 
