@@ -10,9 +10,9 @@ import structlog
 
 from src.core.enum_normalize import normalize_job_location_type
 from src.core.monitors.paycom import (
-    _bootstrap,
-    _clean_string,
-    _token_from_url,
+    bootstrap_paycom,
+    clean_paycom_string,
+    paycom_token_from_url,
 )
 from src.core.salary_extract import parse_salary_text
 from src.core.scrapers import JobContent, register
@@ -37,13 +37,13 @@ def _job_id_from_url(url: str) -> str | None:
 
 def _locations(detail: dict) -> list[str] | None:
     values: list[str] = []
-    primary = _clean_string(detail.get("location"))
+    primary = clean_paycom_string(detail.get("location"))
     if primary:
         values.append(primary)
     secondary = detail.get("secondaryLocations")
     if isinstance(secondary, list):
         for raw in secondary:
-            value = _clean_string(raw)
+            value = clean_paycom_string(raw)
             if value and value.casefold() not in {item.casefold() for item in values}:
                 values.append(value)
     return values or None
@@ -67,9 +67,9 @@ def _parse_detail(payload: dict) -> JobContent:
         raise ValueError("Paycom detail response omitted jobPosting")
 
     google_job = _google_job(detail)
-    description = _clean_string(detail.get("description"))
-    qualifications = _clean_string(detail.get("qualifications"))
-    salary_text = _clean_string(detail.get("salaryRange"))
+    description = clean_paycom_string(detail.get("description"))
+    qualifications = clean_paycom_string(detail.get("qualifications"))
+    salary_text = clean_paycom_string(detail.get("salaryRange"))
     metadata = {
         key: value
         for key, value in {
@@ -84,13 +84,16 @@ def _parse_detail(payload: dict) -> JobContent:
         if value not in (None, "")
     }
     return JobContent(
-        title=_clean_string(detail.get("jobTitle")) or _clean_string(google_job.get("title")),
+        title=clean_paycom_string(detail.get("jobTitle"))
+        or clean_paycom_string(google_job.get("title")),
         description=description,
         locations=_locations(detail),
-        employment_type=_clean_string(detail.get("positionType"))
-        or _clean_string(google_job.get("employmentType")),
-        job_location_type=normalize_job_location_type(_clean_string(detail.get("remoteType"))),
-        date_posted=_clean_string(google_job.get("datePosted")),
+        employment_type=clean_paycom_string(detail.get("positionType"))
+        or clean_paycom_string(google_job.get("employmentType")),
+        job_location_type=normalize_job_location_type(
+            clean_paycom_string(detail.get("remoteType"))
+        ),
+        date_posted=clean_paycom_string(google_job.get("datePosted")),
         base_salary=parse_salary_text(salary_text) if salary_text else None,
         extras={"qualifications": qualifications} if qualifications else None,
         metadata=metadata or None,
@@ -99,7 +102,7 @@ def _parse_detail(payload: dict) -> JobContent:
 
 async def can_handle(url: str, client: httpx.AsyncClient | None = None) -> dict | None:
     _ = client
-    return {} if _token_from_url(url) and _job_id_from_url(url) else None
+    return {} if paycom_token_from_url(url) and _job_id_from_url(url) else None
 
 
 async def scrape(
@@ -110,13 +113,13 @@ async def scrape(
 ) -> JobContent:
     """Bootstrap the portal and fetch one authoritative job detail object."""
     _ = config, kwargs
-    token = _token_from_url(url)
+    token = paycom_token_from_url(url)
     job_id = _job_id_from_url(url)
     if token is None or job_id is None:
         log.error("paycom_scraper.invalid_job_url", url=url)
         return JobContent()
 
-    bootstrap = await _bootstrap(token, http)
+    bootstrap = await bootstrap_paycom(token, http)
     detail_url = f"{bootstrap.service_url}/api/ats/job-postings/{job_id}"
     try:
         payload = await fetch_json_page_with_retry(
