@@ -11,9 +11,9 @@ secrets into commands or documentation.
 |------|---------------|---------------|
 | Crawler | `CRAWLER_BROWSER_IPv4` | Workers, browser worker, exporter, drain, Redis, Alloy, murmur shim |
 | Postgres | `POSTGRESQL_LOCAL_IPv4` | Local crawler Postgres |
-| Typesense | `TYPESENSE_IPv4` | Typesense and `cloudflared` |
+| Typesense | `TYPESENSE_IPv4` | Typesense, `cloudflared`, and the encrypted web PostgreSQL logical backup job |
 
-PostgreSQL and Typesense data protection is documented separately in
+Crawler PostgreSQL, Typesense, and web PostgreSQL data protection is documented separately in
 [`19-data-backup-recovery.md`](19-data-backup-recovery.md). That runbook is
 the source of truth for backup scheduling, validation, restore drills, and
 the removal gate for legacy server backups.
@@ -102,6 +102,18 @@ bootstrap key before all generated consumer keys are independently working,
 because changing the server bootstrap invalidates the old bootstrap access
 immediately.
 
+For a backup-key rotation, update `TYPESENSE_BACKUP_KEY` first and deploy
+`.github/workflows/deploy-data-backups.yml`. The backup installer probes the
+candidate against `/stats.json` without changing the live environment. When
+the value changed, it quiesces the timer/service, runs a full backup smoke from
+a root-only candidate environment while retaining the host-wide deployment
+lock, reacquires the service-data lock, and only then atomically commits the
+candidate. Rollback stays armed until fresh status, timer health, and the
+deployment marker have committed. Any failure restores the prior value and
+leaves the timer disabled/inactive; treat a reported rollback failure as a hard
+backup outage. Delete the superseded generated key only after that backup and
+the isolated restore drill in `19-data-backup-recovery.md` both pass.
+
 Read-only, redacted verification:
 
 ```bash
@@ -117,6 +129,67 @@ Do not manually recreate Typesense with `--api-key`, put a token directly in
 `ExecStart`, or print either root-only credential file. Use a component
 dispatch for recovery; its transaction and conformance checks are the
 supported restart path.
+
+## Typesense Readiness and Raft Recovery
+
+Container uptime is not service readiness. `jobseek_typesense_healthy` is the
+authoritative local readiness signal; the public tunnel health is a separate
+check. The host sampler also exports:
+
+- `jobseek_typesense_open_file_descriptors` and the live soft/hard limits;
+- `jobseek_typesense_threads`;
+- the maximum thread-pool queue and slow-request duration seen in the last
+  five minutes; and
+- bounded five-minute event counts for descriptor exhaustion, leaderlessness,
+  snapshot failure, slow requests, and thread-pool exhaustion.
+
+The managed container requires a 65,536 soft/hard `nofile` limit and rotates
+Docker JSON logs at 50 MB with three files. Deployment conformance verifies
+both Docker metadata and the effective process limit. Allow up to 15 minutes
+for the current 2.5-million-document index to reload before declaring a cold
+start failed.
+
+When readiness fails but the container is running:
+
+1. Preserve `docker inspect`, `/proc/<pid>/limits`, filesystem/inode/memory
+   state, `/health`, `/debug`, and logs covering the first failure. Store them
+   in a root-only incident directory. Never print API keys or full slow-query
+   URLs.
+2. Check the causal signals in order: thread-pool queue, slow requests,
+   descriptor use/exhaustion, snapshot failure, then leaderlessness. Stopping
+   a downstream writer does not repair an already leaderless Raft node.
+3. Verify no Typesense backup is active. Before any peer reset or data-file
+   change, gracefully stop Typesense and make an exact offline copy of
+   `/mnt/typesense-data`; record byte and file counts. Preserve the old
+   container by renaming it rather than deleting it.
+4. Attempt a normal start of the same reviewed image/data first. A healthy
+   single node loads its snapshot, replays the remaining log, elects itself,
+   and reports Raft state `1`. HTTP 503 is expected while the in-memory index
+   reloads.
+5. Use Typesense's `--reset-peers-on-error` only if the fully loaded normal
+   start returns to persistent Raft `ERROR`, and only after the offline copy.
+   The [versioned Typesense documentation](https://typesense.org/docs/27.1/api/server-configuration.html#clustering)
+   warns that forced peer reset can cause intermittent data loss. Remove the
+   flag after the one recovery start.
+
+Recovery acceptance requires all of the following:
+
+```bash
+curl --fail --silent http://127.0.0.1:8108/health
+curl --fail --silent https://typesense.colophon-group.org/health
+docker inspect typesense --format \
+  'running={{.State.Running}} restarts={{.RestartCount}} ulimits={{json .HostConfig.Ulimits}}'
+pid="$(docker inspect typesense --format '{{.State.Pid}}')"
+grep '^Max open files' "/proc/$pid/limits"
+```
+
+From the crawler's protected operations environment, also require `/debug`
+state `1`, all seven aliases, representative posting/company/watchlist reads,
+an ephemeral create/write/read/delete probe, exporter progress, and a complete
+Typesense reconciliation cycle. Preserve the offline copy until the linked
+application-consistent backup and isolated restore have passed. The 2026-08-03
+drill and capacity analysis are in
+[`docs/audits/2026-08-03-typesense-raft-incident.md`](audits/2026-08-03-typesense-raft-incident.md).
 
 ## Ingress and SSH Baseline
 
@@ -272,9 +345,9 @@ docker stats --no-stream postgres
 Healthy state has `configured_bytes=1073741824`, a 1 GiB mounted capacity,
 no OOM flag, and adequate free capacity under normal parallel load. The host
 sampler publishes configured/capacity/used/available byte gauges. The
-`PostgreSQLSharedMemoryPressure` rule routes to the daily Codex error review
-if the configured contract regresses or available capacity remains below 15%
-for five minutes.
+`PostgreSQLSharedMemoryPressure` rule fires and routes to the daily Codex error
+review if the configured contract regresses or available capacity remains
+below 15% for three minutes.
 
 For an unsafe live contract, use the protected `action=apply` ingress workflow.
 It requires a fresh successful PostgreSQL backup, preserves the old container
@@ -295,13 +368,17 @@ evidence proves the normal reschedule path failed.
 ## PostgreSQL Capacity and Checkpoint Pressure
 
 The authoritative PostgreSQL database lives on the attached XFS data Volume,
-not on the server root disk. The Volume was expanded online from 20 to 40 GiB
-on 2026-07-22 after a transaction-consistent encrypted checkpoint passed. The
-provider action cannot be reversed in place. Current and future expansion must
-therefore preserve the same sequence: fresh backup and restore evidence,
-recorded pre-change capacity, provider resize, online `xfs_growfs`, PostgreSQL
-and archive verification, then recorded post-change capacity. Never use a
-server backup as a substitute; server images do not contain this Volume.
+not on the server root disk. It was expanded online from 20 to 40 GiB on
+2026-07-22 after a transaction-consistent encrypted checkpoint passed, then
+from 40 to 80 GiB during #6117 recovery on 2026-08-03 after the full backup
+repository had forced more than 21 GiB of unarchived WAL onto the data Volume.
+The second expansion restored crash-recovery workspace; bounded repository
+retention fixes the actual growth source. Provider expansion cannot be
+reversed in place. Current and future expansion must therefore preserve the
+same sequence: fresh backup and restore evidence, recorded pre-change
+capacity, provider resize, online `xfs_growfs`, PostgreSQL and archive
+verification, then recorded post-change capacity. Never use a server backup as
+a substitute; server images do not contain this Volume.
 
 The live PostgreSQL contract is deliberately consistent across
 `deploy/backups/postgresql/migrate-container.sh` and
@@ -311,6 +388,14 @@ The live PostgreSQL contract is deliberately consistent across
 PostgreSQL can retain close to the configured WAL ceiling and the ceiling is
 not a hard limit, so filesystem forecasts must leave room for WAL and archive
 failure as well as relation growth.
+
+The #6117 recovery baseline measured the durable database at 19.79 GB versus
+approximately 19.2 GB on 2026-07-22: less than 0.6 GB growth in twelve days,
+or about 1.5 GB over 30 days at the observed linear rate. After archive
+catch-up, the 80 GiB Volume therefore retains more than 50 GB for ordinary
+headroom after the 2 GiB reserve and the normal WAL ceiling. The 25% current
+headroom rule still leaves substantially more than the measured 30-day growth;
+do not count the emergency reserve as ordinary free space.
 
 The host sampler publishes:
 
@@ -387,6 +472,46 @@ checkpoint settings only through both repo-owned container creation paths,
 with a fresh backup and the guarded rollback workflow. Do not force a
 checkpoint or increase `max_wal_size` merely to make the alert disappear.
 
+## PostgreSQL Emergency Headroom
+
+The attached XFS data Volume contains a root-owned, fully allocated 2 GiB file
+named `.jobseek-postgresql-emergency-reserve`. It is not normal free capacity:
+it is a controlled last-resort reserve that lets crash recovery start and WAL
+archiving resume when ordinary filesystem space has been exhausted. The backup
+host installer creates and verifies it only when at least 8 GiB remains free
+after allocation. A sparse file, symlink, wrong-sized file, or wrong ownership
+does not satisfy the contract.
+
+Check it without changing capacity:
+
+```bash
+/usr/local/sbin/jobseek-postgresql-emergency-headroom status
+```
+
+Release it only after preserving incident evidence and proving that block
+exhaustion prevents PostgreSQL recovery:
+
+```bash
+/usr/local/sbin/jobseek-postgresql-emergency-headroom release
+```
+
+The release command validates the exact file before removing it. It never
+touches PostgreSQL data or WAL. Recreate the reserve before declaring recovery
+complete:
+
+```bash
+/usr/local/sbin/jobseek-postgresql-emergency-headroom reserve
+systemctl restart jobseek-postgresql-emergency-headroom.service
+```
+
+The host sampler publishes allocated and target bytes;
+`PostgreSQLEmergencyHeadroomMissing` fires within five minutes if the reserve
+is absent or under-allocated. Crawler deployment and scheduled maintenance run
+the Grafana-backed PostgreSQL operational preflight before stopping or
+replacing any workload. It requires fresh telemetry, database readiness, at
+least 15% XFS free, at least 20% backup-repository free, the full reserve, a
+fresh successful backup, and no archive failure in the latest hour.
+
 ## Fleet Observability
 
 All three hosts run the same repo-owned host telemetry surface:
@@ -410,6 +535,12 @@ All three hosts run the same repo-owned host telemetry surface:
   credentials, URL queries, addresses, UUIDs, and email addresses. Alloy reads
   only the allowlisted Jobseek backup/telemetry/Codex units and `cloudflared`;
   it never receives Docker-socket access.
+- The sampler also probes the native Alloy listener on all three hosts and the
+  crawler Compose Alloy listener. It republishes only a fixed set of readiness,
+  memory, queue, send-timestamp, rejection, failure, and dropped-entry values.
+  Full Alloy self-scrapes are deliberately prohibited because they previously
+  consumed roughly 1,565 active series per host and could disappear at exactly
+  the same time as the collector they were meant to monitor.
 
 The crawler Compose Alloy remains responsible for crawler application/Redis
 metrics and Docker logs. It is pinned to the same digest, has no privileged or
@@ -445,10 +576,12 @@ Deployment is owned by
 [`deploy-hetzner-observability.yml`](../.github/workflows/deploy-hetzner-observability.yml).
 It validates the Python, shell, Alloy, alert, and systemd contracts; deploys
 the crawler, PostgreSQL, and Typesense hosts sequentially; then polls Grafana
-until fresh sampler, probe, container, backup, PostgreSQL-readiness, and
-Typesense-readiness textfile series are present and healthy for every expected
-role. Only after that ingestion gate passes does it transactionally sync the
-three Mimir rule groups. This catches a healthy local sampler whose collector
+until fresh sampler, probe, container, backup, PostgreSQL-readiness,
+Typesense-readiness, and Codex daily-review status series are present and
+healthy for every expected role. Only after that ingestion gate passes does it
+remove the retired Jobseek notification routes, contact point, bridge,
+deadman, and synthetic test rule, followed by the six Mimir rule groups. This
+catches a healthy local sampler whose collector
 silently omits the textfile directory. Environment-scoped host variables are
 resolved inside runtime steps after the protected `production` environment is
 attached. The installer snapshots the prior binary, configuration, secret env,
@@ -471,10 +604,13 @@ listener cannot make a failed service appear healthy.
 Alert definitions in [`apps/crawler/alerts.yaml`](../apps/crawler/alerts.yaml)
 are transactionally written through the Mimir ruler API. Grafana Cloud limits
 this tenant to 20 rules per group, so the source separates fleet, PostgreSQL
-capacity, and crawler alerts into three logical groups at or below that limit.
+capacity, Typesense reliability, telemetry delivery, crawler reliability, and
+operator handoff alerts into six logical groups at or below that limit.
 The sync client first
 captures the complete owned namespace, requires every alert to have a
 repository runbook plus `owner=codex-error-review` and `route=codex-daily`,
+and additionally rejects any critical alert without `page=production` or with
+a pending duration over three minutes,
 verifies the exact active group/rule set, removes stale owned groups, and
 restores the whole prior namespace on failure. This corrects the exporter
 alert by selecting only `instance="exporter"` and adds explicit all-host,
@@ -482,8 +618,9 @@ disk/inode, sampler, backup, PostgreSQL, Typesense/tunnel, and reboot alerts.
 It also routes failed, stale, unresolved, and stuck cross-store reconciliation
 state from PostgreSQL-host metrics; reconciliation state does not depend on an
 ephemeral crawler process exposing Prometheus.
-The intended notification route is the daily Hetzner Codex error-review issue
-workflow; alert state is not routed to phone or email.
+Production email paging is disabled. The daily Hetzner Codex error-review
+issue workflow remains the deduplicated context route; its own failure and
+freshness are exported by the crawler-host sampler and remain visible in Mimir.
 
 Check one host without printing configuration or credentials:
 
@@ -499,8 +636,9 @@ journalctl -u jobseek-alloy.service -u jobseek-host-observability.service \
   --since '30 minutes ago' --no-pager
 ```
 
-Healthy production has one current `up{job="integrations/unix"}` and one
-current `up{job="jobseek-alloy"}` series for each stable instance, fresh
+Healthy production has one current `up{job="integrations/unix"}` series for
+each stable instance, four `jobseek_alloy_ready == 1` series (three native and
+one crawler Compose collector), fresh
 `jobseek_host_observability_last_collect_unixtime`, all required probes equal
 to one, current backup success timestamps on the two data hosts, PostgreSQL
 ready with no new archive failure, and Typesense plus `cloudflared` healthy.
@@ -511,6 +649,88 @@ backup, PostgreSQL archive/readiness failure, or Typesense/tunnel failure as an
 incident. Inspect evidence first; this telemetry path does not authorize an
 automatic workload restart.
 
+### Production paging is disabled
+
+Grafana Cloud Mimir continues to evaluate the repository-owned service rules,
+but Jobseek does not install an email contact, notification route, bridge,
+deadman, or synthetic paging test. The former scheduled/manual **Test
+Production Paging** workflow is removed and manually disabled in GitHub.
+
+[`scripts/sync-grafana-alertmanager.py`](../scripts/sync-grafana-alertmanager.py)
+is now a removal-only utility. It first strips only routes owned by the
+`jobseek-production-email` receiver while preserving unrelated policy, then
+deletes the Jobseek bridge, deadman, cancelled-test rule, and contact point.
+Every observability deployment runs it with `--disable` before syncing Mimir
+rules, so a stale production resource is removed rather than reactivated. The
+utility has no supported activation mode.
+
+Do not add a paging schedule, dispatch workflow, contact, route, or activation
+command without an explicit new operator decision. Continue using Grafana for
+rule state and the deduplicated daily GitHub error-review routine for delivery.
+
+The daily error-review service records an atomic status document before and
+after every attempt. The host sampler exports last attempt, last success,
+success state, and in-progress state without exposing result text. Failure,
+36-hour success staleness, and a run exceeding three hours are independent
+critical alerts. If these fire, inspect:
+
+```bash
+systemctl status jobseek-codex-daily-error-review.service --no-pager
+journalctl -u jobseek-codex-daily-error-review.service -n 160 --no-pager
+stat -c '%U:%G:%a %y' /srv/jobseek-codex/state/error-review-status.json
+jq '{last_attempt_unixtime,last_success_unixtime,last_attempt_success,run_in_progress}' \
+  /srv/jobseek-codex/state/error-review-status.json
+```
+
+After repairing the Codex routine, run the service once and require a fresh
+successful status so its Mimir alert state resolves normally.
+
+### Telemetry delivery budgets
+
+Grafana Cloud enforces 15,000 active series and 1,500 ingested samples per
+second for this tenant. Deployment stops before rule sync unless the total is
+at most 12,000 series, crawler application metrics are at most 2,000, Redis is
+at most 200, and Unix/textfile host metrics are at most 2,000. The 20% tenant
+headroom is an incident buffer, not capacity available to a new unbounded
+label. Before adding labels, query the proposed family by label count in
+Grafana and state its worst-case fleet cardinality in the change.
+
+Both native and Compose Alloy remote writes are fixed at one shard with a
+4,000-sample queue, 500 samples per send, five-second batch deadline, bounded
+backoff, and HTTP 429 retry. The crawler path drops
+`crawler_host_circuit_*` because `egress_host` grows with every career-site
+origin; the `crawler_tasks_total{status=~"host_circuit_.*"}` outcomes preserve
+alerting and structured Loki events preserve origin attribution. Redis keeps
+capacity, persistence, connection, error, traffic, CPU, and keyspace signals,
+but drops per-command histograms.
+
+Compose Alloy has a 512 MiB cgroup limit, a 256 MiB Go soft memory target, and
+0.5 CPU. Native Alloy has a 512 MiB systemd hard limit, 448 MiB high watermark,
+and 384 MiB Go soft target. The difference between the Go target and hard limit
+is required for remote-write WAL mappings, file-backed RSS, runtime overhead,
+and log tailing; `docker stats` subtracts inactive file pages and is not the
+acceptance measurement. Use the sampler's resident-memory series and the
+cgroup/systemd values together.
+
+Production acceptance requires all four collectors ready, their highest sent
+timestamp less than three minutes old, zero HTTP 429 responses in the rolling
+ten-minute window, no queue above 3,000, and no new failed/dropped samples,
+Loki drops, Compose restarts, or OOM flags. Check locally without exposing
+credentials:
+
+```bash
+curl --fail --silent http://127.0.0.1:12347/-/ready
+curl --fail --silent http://127.0.0.1:12347/metrics \
+  | grep -E 'alloy_resources_process_resident_memory_bytes|prometheus_remote_storage_(queue_highest_sent_timestamp_seconds|samples_pending|samples_(failed|dropped)_total)'
+systemctl show jobseek-alloy.service \
+  -p ActiveState -p NRestarts -p MemoryCurrent -p MemoryPeak -p MemoryMax
+```
+
+On the crawler, repeat the loopback probes on port `12346` and inspect
+`docker inspect deploy-alloy-1` for the 512 MiB limit, restart count, and sticky
+OOM flag. Any 429, series-budget breach, stale send timestamp, or new drop is a
+telemetry incident even when application services remain healthy.
+
 ## Cross-store Reconciliation Timer
 
 `jobseek-crawler-reconciliation.timer` is a Hetzner crawler-host systemd timer,
@@ -520,15 +740,16 @@ minutes after the timer is activated; it launches
 user. The wrapper resolves the immutable image tag already deployed in
 `/home/deploy/.env` and starts a read-only one-shot container with a 1 GiB
 memory limit, one CPU, a PID cap, and no persistent container filesystem. It
-processes at most 16 partitions per target and then exits. Lock acquisition
+explicitly targets Typesense, processes at most 16 partitions, and then exits. Lock acquisition
 may wait up to two hours for an authorized deploy/backfill; once acquired, the
 container has a separate 50-minute hard runtime cap. The next timer interval
 starts only after this service is inactive, preventing delayed work from
 causing an immediate second run. The wrapper filters the crawler environment
-into a mode-`0600` ephemeral file containing only the two database URLs and
-four Typesense settings; proxy, R2, Redis, Codex, Murmur, and other unrelated
-credentials never enter the one-shot container, and the file is removed on
-every exit path. It invokes the installed `/app/.venv/bin/crawler` entry point
+into a mode-`0600` ephemeral file containing only `LOCAL_DATABASE_URL` and four
+Typesense settings. Neither the retired crawler mirror credential nor
+`WEB_DATABASE_URL` enters the one-shot container; proxy, R2, Redis, Codex,
+Murmur, and other unrelated credentials are also excluded, and the file is
+removed on every exit path. It invokes the installed `/app/.venv/bin/crawler` entry point
 directly so the read-only root filesystem never depends on a runtime package
 manager cache.
 
@@ -551,10 +772,30 @@ no crawler, PostgreSQL, or Typesense service is restarted.
 Repository-owned deployment is
 [`deploy-crawler-reconciliation.yml`](../.github/workflows/deploy-crawler-reconciliation.yml).
 It validates and installs the wrapper plus service/timer transactionally as
-root, but never starts the reconciliation service directly. A failed install
-restores the previous files. The timer is enabled immediately and normally
-starts after the boot/cadence delay; the application deploy owns Alembic and
-the additive Typesense schema patch.
+root, then queues one immediate bounded reconciliation run. A failed install
+restores the previous files. The deployed commit is written atomically to
+`/var/lib/jobseek-reconciliation/deployed-sha`: the directory is
+`root:deploy 0750` and the file is `root:deploy 0640`, so the unprivileged
+service can read the revision without being able to replace it. The installer
+also atomically publishes the exact installed wrapper digest to the
+group-readable `wrapper-sha256` state file as its final compatibility marker.
+Reinstalling the host surface repairs missing or corrupt state and normalizes
+incorrect ownership. Before changing credentials, files, or services, the
+crawler deploy waits for the installed wrapper content and completed-install
+marker to match the digest from its own revision; a timeout fails closed. The
+reconciliation deploy, crawler deploy, and crawler-host observability deploy
+verify the installed state and active timer appropriate to their boundary
+before succeeding. The timer remains enabled for subsequent hourly slices;
+the application deploy owns Alembic and the additive Typesense schema patch.
+
+The 2026-07-23 outage was an ownership regression, not a cleanup operation.
+The revision preflight was added while the state directory was still created
+as `0700 root:root`. The root deployment check passed, but every service run as
+`deploy` failed before starting a container. Non-root inspection reported the
+protected file as unavailable, which looked like deletion. The first failure
+therefore coincided exactly with the revision preflight rollout. No crawler,
+observability, backup, ingress, or Docker lifecycle path removes this state
+directory.
 
 Read-only health and aggregate evidence:
 
@@ -569,10 +810,16 @@ docker ps --filter name=jobseek-cross-store-reconciliation --no-trunc
 
 Do not print `/home/deploy/.env`, database rows, or Typesense documents during
 triage. The PostgreSQL-host textfile exposes only aggregate
-`jobseek_cross_store_reconciliation_*` series. Healthy production has both
-targets completing a full verified cycle within 30 hours, zero unresolved
-drift, no run older than two hours still marked running, and Typesense
-bootstrap complete.
+`jobseek_cross_store_reconciliation_*` series. The PostgreSQL-host sampler
+filters the rollback-compatible state table to `target='typesense'`, so the
+obsolete Supabase state row cannot create stale production alerts. Healthy
+production has a full verified Typesense cycle within 30 hours, zero unresolved
+drift, no run older than two hours still marked running, and bootstrap
+complete. The crawler-host collector also publishes the current
+revision as `jobseek_cross_store_reconciliation_deployed_revision_info`, its
+file mtime, and a boolean availability series. A missing/inaccessible revision
+alerts after three minutes; no completed hourly slice within 2.5 hours alerts
+independently of the 30-hour full-cycle freshness budget.
 
 To retry the normal bounded repair after correcting a downstream outage:
 
@@ -593,18 +840,272 @@ resource limits, secret filter, and 50-minute cap:
 ```bash
 systemctl is-active jobseek-crawler-reconciliation.service || true
 sudo -u deploy /usr/local/sbin/jobseek-crawler-reconciliation \
-  --full-target supabase
-sudo -u deploy /usr/local/sbin/jobseek-crawler-reconciliation \
-  --full-target typesense
+  --full
 ```
 
-Run one target at a time and inspect its aggregate result before continuing.
+Inspect the Typesense aggregate result before continuing.
 If the cap is reached, the verified partition cursor remains resumable; rerun
 the same command rather than increasing limits during an incident. Confirm the
 interrupted run is recorded and that the next invocation resumes at the last
 verified cursor. Stopping or disabling the timer is a scheduling rollback
 only—the migration and optional Typesense bucket field are additive, and
 disabling the timer does not undo already verified downstream repairs.
+
+## ATS Inventory Candidate Timer
+
+`jobseek-ats-inventory.timer` runs the data-only company inventory and impact
+refresh daily on the crawler host, with persistent catch-up and a 45-minute
+random delay. It uses the immutable crawler image named by the atomic committed
+release marker (published after crawler health and rollback disarm) and never runs
+Codex or upstream scraper code. Three root-owned GitHub App credentials enter
+the service through systemd `LoadCredential`; only a short-lived installation
+token file is mounted into the read-only one-shot container. No GitHub token,
+private key, crawler environment file, database credential, or issue body is
+written to Docker metadata or the operator status.
+
+The first install is report-only and has an independent `writes-disabled`
+sentinel. The timer can remain active while writes are disabled: source/cache
+validation and queue reporting continue, while candidate/support issue POSTs
+cannot occur. Cache and ledger data under `/var/lib/jobseek-ats-inventory`
+survive disable, failed installs, and transactional host-surface rollback.
+Disabling also stops an active run after publishing the gate; the wrapper
+rechecks that gate immediately before its credentialed GitHub phase.
+
+Host-surface deployment verifies the committed crawler tag and full Git
+revision while holding `/run/lock/jobseek-crawler-mutation.lock`, then pins that
+exact release for a report-only acceptance run. The prior runner remains the
+rollback target until the fresh report succeeds and the timer is active. A stop
+timeout, failed report, stale status, or mismatched release fails the install and
+restores the prior units, credentials, and scheduling state. Acceptance uses a
+disposable cache; the independent operator write gate is never part of the
+rollback snapshot, so a concurrent emergency disable cannot be undone. Root
+creates a missing post-reboot mutation-lock inode through a deploy-user process
+as `deploy:deploy 0600` and opens it read-only, avoiding a root-owned creation
+window and preserving the shared cross-user lock contract. The runner container
+uses the dedicated IPv4-only `jobseek-ats-inventory-egress` bridge. Before every
+run, `jobseek-ats-inventory-network.service` rebuilds a fail-closed
+`DOCKER-USER` policy that rejects the host and private/reserved destinations,
+allows only public HTTPS/DNS, and disables inter-container communication. A
+credential-free container probe must reach GitHub and the inventory source while
+failing TCP connects to both the crawler host and the exact production
+PostgreSQL address. This closes both the loopback Redis and routed private-DB
+paths; a missing rule, stale network, DNS failure, or reachable blocked endpoint
+prevents the runner from starting.
+
+Read-only checks:
+
+```bash
+systemctl is-enabled jobseek-ats-inventory.timer
+systemctl is-active jobseek-ats-inventory.timer
+systemctl status jobseek-ats-inventory-network.service --no-pager
+systemctl list-timers --all jobseek-ats-inventory.timer --no-pager
+/usr/local/sbin/jobseek-ats-inventory-control status
+python3 -m json.tool /var/lib/jobseek-ats-inventory/status/current.json
+journalctl -u jobseek-ats-inventory.service --since '24 hours ago' --no-pager
+```
+
+The host sampler exports `jobseek_ats_inventory_*` aggregate series for
+freshness, success, coverage, queue health, imported issue lifecycle, pickup
+latency, creates, and rollout state. A missing status is explicitly exported
+as unavailable. The complete deployment, report/dry-run/refill controls,
+stage-1/5/25 evidence gates, and emergency disable procedure are documented in
+[`21-ats-inventory-runner.md`](21-ats-inventory-runner.md#hetzner-deployment-and-rollout).
+
+## Board Quarantine Recovery
+
+Ordinary monitor failures are recoverable. After five consecutive failures a
+configured board remains enabled with `board_status='quarantined'`; its
+`next_check_at` continues the exponential schedule capped at 24 hours. Redis
+puts those probes in the recurring tier, so provider/domain throttles bound
+pressure and a deploy cannot create a first-time retry storm.
+
+The PostgreSQL host sampler exports the durable cohort:
+
+- `jobseek_crawler_quarantined_boards`
+- `jobseek_crawler_quarantine_oldest_seconds`
+- `jobseek_crawler_quarantine_active_postings`
+- `jobseek_crawler_board_recoveries_total`
+
+Inspect the source of truth without changing it:
+
+```bash
+docker exec -i postgres psql -U crawler -d crawler -X -v ON_ERROR_STOP=1 -c "
+SELECT board_slug, crawler_type, consecutive_failures,
+       quarantine_probe_count, quarantined_at, next_check_at,
+       left(last_quarantine_error, 160) AS last_quarantine_error
+FROM job_board
+WHERE board_status = 'quarantined'
+ORDER BY next_check_at, board_slug;"
+```
+
+Recovery rules:
+
+1. Do not set a quarantined row to `active` manually and do not delist its
+   postings. A successful provider-native monitor run is the proof that moves
+   the row to `active`, records `last_recovered_at`, and increments
+   `recovery_count`.
+2. Fix monitor code or the CSV-owned monitor configuration normally. `crawler
+   sync` fingerprints the monitor contract; a real config change resets the
+   retry ramp, makes the probe due immediately, and keeps the row quarantined
+   until that probe succeeds.
+3. A failed recovery probe stays quarantined and receives another bounded
+   backoff. Ordinary 401/403/429/5xx, timeout, transport, and parser failures
+   never become terminal retirement evidence.
+4. Only an explicit operator retirement or the separately reviewed, spaced
+   provider-gone confirmation policy may stop scheduling a configured board.
+5. Run the phantom-posting sweep only after live boards recover and the
+   remaining sources have verified-dead evidence. This prevents stale active
+   rows from being tombstoned before their owner can publish a current diff.
+
+Migration 0015 prioritizes the deterministic Ashby recovery cohort
+immediately and spreads other legacy disabled boards across six hours. The
+deploy-time sync then re-disables historical rows absent from `boards.csv`, so
+only configured sources enter Redis.
+
+## Phantom Active Posting Sweep
+
+The fail-closed `sweep-phantoms` command repairs active postings only after
+their owning board has a terminal classification. It never touches
+`quarantined` or `gone_pending` boards. A `disabled` board is eligible only
+when its exact URL is absent from the deployed `boards.csv`; a configured
+disabled board with active postings aborts the entire mutation and must first
+recover through the provider-native monitor path. A configured `gone` board
+is eligible only after the spaced provider-gone policy has recorded its
+terminal timestamp and at least two confirmations.
+
+Start with the read-only classification from a deployed crawler container:
+
+```bash
+docker exec deploy-worker-1-1 uv run --no-sync crawler sweep-phantoms --dry-run
+```
+
+The live invocation holds a PostgreSQL session advisory lock, commits at most
+1,000 rows per transaction, and rechecks terminal board state inside every
+chunk. `FOR UPDATE SKIP LOCKED` lets live workers finish rows they already
+own. The default invocation is capped at 100 chunks; if `remaining_postings`
+is nonzero, rerun the same command rather than increasing limits during an
+incident:
+
+```bash
+docker exec deploy-worker-1-1 uv run --no-sync crawler sweep-phantoms
+```
+
+Every tombstone sets `updated_at=clock_timestamp()` so the ordered exporter
+publishes it through the normal local PostgreSQL-to-Typesense CDC path. The
+command also invalidates `cache:platform-stats` and recomputes Typesense
+company/taxonomy counts. A signal or failure rolls back only the current
+chunk; already committed chunks remain safe and the next invocation resumes
+from the remaining active rows.
+
+The PostgreSQL host sampler checks the invariant every minute:
+
+- `jobseek_crawler_phantom_active_boards`
+- `jobseek_crawler_phantom_active_postings`
+- `jobseek_crawler_phantom_active_oldest_seconds`
+
+`CrawlerPhantomActivePostings` fires after 15 minutes of nonzero drift. After
+a repair, require the local count to be zero, wait for the exporter cursor to
+pass the repair timestamps, and compare exact active posting IDs in local
+PostgreSQL and Typesense for every affected company. Do not clear the alert or
+edit exporter cursors manually.
+
+## Provider-Gone Confirmation and Recovery
+
+An explicit provider-native retirement signal such as a board API 404 is not
+terminal on its own. It moves the configured board to `gone_pending`, retains
+its active postings, and schedules the next confirmation six hours later.
+Boards successful during the preceding seven days need three spaced
+confirmations; older sources need two. Only the terminal transition delists
+the board's postings.
+
+Confirmed-gone configured boards remain enabled and receive a provider-native
+probe every 24 hours. A valid non-empty or empty response moves the row back to
+`active` (or the normal empty-board `suspect` state), increments the durable
+recovery counter, and lets the standard posting diff relist matching jobs.
+Removing the board from `boards.csv` remains the only configuration-owned
+terminal disable.
+
+The PostgreSQL host sampler exports:
+
+- `jobseek_crawler_gone_pending_boards`
+- `jobseek_crawler_gone_pending_confirmations`
+- `jobseek_crawler_gone_pending_oldest_seconds`
+- `jobseek_crawler_gone_terminal_boards`
+- `jobseek_crawler_board_gone_transitions_total`
+- `jobseek_crawler_board_gone_recoveries_total`
+
+Inspect without changing state:
+
+```bash
+docker exec -i postgres psql -U crawler -d crawler -X -v ON_ERROR_STOP=1 -c "
+SELECT board_slug, crawler_type, board_status, is_enabled,
+       gone_confirmation_count, gone_first_confirmed_at,
+       gone_last_confirmed_at, next_check_at, last_gone_status,
+       left(last_gone_endpoint, 160) AS last_gone_endpoint,
+       left(last_gone_error, 160) AS last_gone_error
+FROM job_board
+WHERE board_status IN ('gone_pending', 'gone')
+ORDER BY next_check_at, board_slug;"
+```
+
+Do not advance confirmation timestamps or set a row active manually. For a
+live source, run the supported `crawler board <board-slug>` path or wait for
+the durable Redis schedule; the successful provider response is the recovery
+proof. For a stale pending alert, compare `next_check_at` with the Redis task,
+check the stored endpoint/status, and inspect provider-wide failures before
+accepting a terminal transition. Migration 0016 treats every legacy one-shot
+`gone` row as one unconfirmed observation, schedules it within fifteen minutes,
+and lets the deploy-time CSV sync disable rows that are no longer configured.
+
+## Fail-Closed Stale-Board Retirement Report
+
+`retire-stale-boards` is a read-only evidence report. Database state selects
+the candidates, but does not authorize removal. The command loads the exact
+deployed `companies.csv` and `boards.csv`, probes supported provider-native
+listing endpoints with bounded concurrency, and separates the result into:
+
+- `verified_gone`: a current provider-gone result plus at least two durable
+  confirmations spaced by six hours;
+- `live_again`: a current valid response, including a valid board with zero
+  jobs; route these boards through the normal provider-native recovery run;
+- `probe_inconclusive`: unsupported probes, 429s, timeouts, transient 5xx
+  responses, redirects that need review, or a gone result still waiting for
+  durable confirmation;
+- `integration_broken`: registry/runtime drift, invalid configuration, or an
+  unexpected provider response contract;
+- `zero_board_registry_orphans`: company rows with no configured board rows.
+
+Run it from a deployed crawler container so the report uses the same registry
+and network path as production:
+
+```bash
+docker exec deploy-worker-1-1 uv run --no-sync crawler retire-stale-boards \
+  --days 14 --format md --probe-concurrency 5
+docker exec deploy-worker-1-1 uv run --no-sync crawler retire-stale-boards \
+  --days 14 --format json --probe-concurrency 5
+```
+
+Every evidence row includes a UTC probe timestamp, stable reason code,
+endpoint class and URL, HTTP status, redirect target, job count when the
+provider exposes a reliable total, and current company board context. The
+JSON form is the automation contract.
+
+The `shell` format is deliberately fail closed. It emits executable CSV
+removal commands only for `verified_gone` board candidates and companies for
+which every configured board independently passed the same current and
+durable confirmation gates. Live, rate-limited, transient, unsupported,
+unconfigured, and otherwise inconclusive candidates appear only as comments:
+
+```bash
+docker exec deploy-worker-1-1 uv run --no-sync crawler retire-stale-boards \
+  --days 14 --format shell --probe-concurrency 5
+```
+
+Do not convert a non-executable section into a manual removal command. Recover
+`live_again` boards with `crawler board <board-slug>` and let the normal success
+transition reset terminal state. Retry transient probes after backoff. Repair
+integration failures before repeating the report. Zero-board registry orphans
+require separate operator review; the report never assumes they are dead.
 
 ## Disk Triage
 

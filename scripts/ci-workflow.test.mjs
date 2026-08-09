@@ -637,19 +637,56 @@ test("scheduled maintenance one-offs carry exact validated provenance labels", (
     "jobseek.maintenance.operation=${TASK}",
     "jobseek.maintenance.issue=2630",
     "jobseek.maintenance.revision=${GITHUB_SHA}",
-    "jobseek.maintenance.budget-seconds=7200",
+    "jobseek.maintenance.budget-seconds=${operation_budget}",
   ]) {
     assert.ok(
       crawlerScheduledMaintenanceWorkflow.includes(label),
       `missing maintenance label ${label}`,
     );
   }
-  assert.match(crawlerScheduledMaintenanceWorkflow, /envs: GITHUB_SHA/);
   assert.match(
     crawlerScheduledMaintenanceWorkflow,
-    /timeout --foreground --signal=TERM --kill-after=90s 2h docker run --rm/,
+    /envs: GITHUB_SHA,EXPECTED_CRAWLER_REVISION/,
   );
-  assert.match(crawlerScheduledMaintenanceWorkflow, /command_timeout: 5h/);
+  assert.match(crawlerScheduledMaintenanceWorkflow, /operation_budget=7200/);
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /if \[\[ "\$TASK" == backfill-typesense \|\| "\$TASK" == verify-typesense-taxonomies \]\]; then[\s\S]*operation_budget=14400/,
+  );
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /timeout --foreground --signal=TERM --kill-after=90s "\$operation_budget" docker run --rm/,
+  );
+  assert.match(crawlerScheduledMaintenanceWorkflow, /command_timeout: 8h/);
+});
+
+test("taxonomy verification dispatch is exact-revision and verification-only", () => {
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /options:[\s\S]*- refresh-typesense[\s\S]*- backfill-typesense[\s\S]*- verify-typesense-taxonomies/,
+  );
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /if \[\[ "\$task" == backfill-typesense \|\| "\$task" == verify-typesense-taxonomies \]\]; then[\s\S]*\^\[0-9a-f\]\{40\}\$/,
+  );
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /if \[\[ "\$TASK" == backfill-typesense \|\| "\$TASK" == verify-typesense-taxonomies \]\]; then[\s\S]*Live crawler revision does not match the requested deployment[\s\S]*Expected exactly one live exporter container[\s\S]*Live exporter still has a relational mirror credential/,
+  );
+  const verificationBranch = crawlerScheduledMaintenanceWorkflow.match(
+    /elif \[\[ "\$TASK" == verify-typesense-taxonomies \]\]; then[\s\S]*?^              fi$/m,
+  );
+  assert.ok(verificationBranch);
+  assert.match(
+    verificationBranch[0],
+    /operation_command=\(uv run --no-sync crawler verify-typesense-taxonomies\)/,
+  );
+  assert.doesNotMatch(verificationBranch[0], /crawler backfill-typesense/);
+  assert.doesNotMatch(verificationBranch[0], /crawler reconcile/);
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /\^crawler-\(backfill-typesense\|refresh-typesense\|verify-typesense-taxonomies\)-/,
+  );
 });
 
 test("recurring crawler one-offs use the bounded maintenance wrapper", () => {
@@ -1191,4 +1228,18 @@ test("MCP publish workflow caches the pnpm store", () => {
   );
   assert.match(publishMcpServerWorkflow, /cache: pnpm/);
   assert.match(publishMcpServerWorkflow, /cache-dependency-path: pnpm-lock\.yaml/);
+});
+
+test("MCP publish workflow uses npm trusted publishing", () => {
+  assert.match(publishMcpServerWorkflow, /id-token: write/);
+  assert.match(
+    publishMcpServerWorkflow,
+    /npm install --global npm@11\.19\.0/,
+  );
+  assert.match(publishMcpServerWorkflow, /npm publish --access public/);
+  assert.doesNotMatch(publishMcpServerWorkflow, /NPM_TOKEN|NODE_AUTH_TOKEN/);
+  assert.doesNotMatch(
+    publishMcpServerWorkflow,
+    /npm view @jseek\/mcp-server version[^\n]*\|\|/,
+  );
 });

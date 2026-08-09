@@ -4,24 +4,15 @@ set -euo pipefail
 
 ENV_FILE=/home/deploy/.env
 LOCK_FILE=/run/lock/jobseek-crawler-mutation.lock
-DEPLOYED_SHA_FILE=/var/lib/jobseek-reconciliation/deployed-sha
 CONTAINER=jobseek-cross-store-reconciliation
-reconciliation_args=(--repair --max-partitions 16)
+reconciliation_args=(--repair --max-partitions 16 --target typesense)
 
 if (( $# )); then
-  if [[ $# -ne 2 || "$1" != "--full-target" ]]; then
-    echo "ERROR: usage: $0 [--full-target supabase|typesense]" >&2
+  if [[ $# -ne 1 || "$1" != "--full" ]]; then
+    echo "ERROR: usage: $0 [--full]" >&2
     exit 2
   fi
-  case "$2" in
-    supabase|typesense)
-      reconciliation_args=(--repair --full --target "$2")
-      ;;
-    *)
-      echo "ERROR: full target must be supabase or typesense" >&2
-      exit 2
-      ;;
-  esac
+  reconciliation_args=(--repair --full --target typesense)
 fi
 
 [[ -r "$ENV_FILE" ]] || {
@@ -40,13 +31,9 @@ command -v timeout >/dev/null || {
   echo "ERROR: timeout is unavailable" >&2
   exit 1
 }
-[[ -r "$DEPLOYED_SHA_FILE" ]] || {
-  echo "ERROR: reconciliation deployment revision is unavailable" >&2
-  exit 1
-}
-revision="$(<"$DEPLOYED_SHA_FILE")"
+revision="$(/usr/local/sbin/jobseek-reconciliation-state check | awk '{print $NF}')"
 [[ "$revision" =~ ^[0-9a-f]{40}$ ]] || {
-  echo "ERROR: reconciliation deployment revision is invalid" >&2
+  echo "ERROR: reconciliation state verifier returned an invalid revision" >&2
   exit 1
 }
 
@@ -80,7 +67,6 @@ trap cleanup EXIT HUP INT TERM
 RUNTIME_ENV="$(mktemp /run/lock/jobseek-reconciliation-env.XXXXXX)"
 chmod 0600 "$RUNTIME_ENV"
 required_env=(
-  DATABASE_URL
   LOCAL_DATABASE_URL
   TYPESENSE_HOST
   TYPESENSE_PORT

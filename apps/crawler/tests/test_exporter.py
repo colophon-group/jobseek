@@ -25,6 +25,7 @@ from src.exporter import (
     _export_changed_boards,
     _export_changed_postings,
     _export_postings_dual,
+    _export_postings_typesense,
     _get_cursor,
     _is_downstream_unavailable,
     _save_cursor,
@@ -889,6 +890,102 @@ class TestSupabasePerRowFallback:
 
 
 class TestTypesenseBackfillSafety:
+    async def test_query_receives_the_commit_safe_cutoff_as_its_fourth_argument(self):
+        posting_id = uuid.uuid4()
+        updated_at = datetime(2026, 5, 14, 12, 0, 0, tzinfo=UTC)
+        cutoff = datetime(2026, 5, 14, 12, 5, 0, tzinfo=UTC)
+        row = {"id": posting_id, "updated_at": updated_at}
+        local = _make_pool()
+        local.fetch = AsyncMock(side_effect=[[row], []])
+        maps = MagicMock(stale=False)
+        cutoff_factory = AsyncMock(return_value=cutoff)
+
+        with (
+            patch("src.exporter._get_taxonomy_maps", new=AsyncMock(return_value=maps)),
+            patch(
+                "src.exporter._build_typesense_docs",
+                return_value=[{"id": str(posting_id)}],
+            ),
+            patch(
+                "src.exporter._upsert_typesense_backfill_batch",
+                new_callable=AsyncMock,
+            ),
+        ):
+            await backfill_typesense(
+                local,
+                cursor_fence_factory=_noop_cursor_fence,
+                cutoff_factory=cutoff_factory,
+            )
+
+        cutoff_factory.assert_awaited_once_with(local)
+        assert local.fetch.await_count == 2
+        for fetch_call in local.fetch.await_args_list:
+            assert len(fetch_call.args) == 5
+            assert fetch_call.args[4] == cutoff
+
+    async def test_cursor_fence_wraps_full_scan_and_final_cursor_save(self):
+        posting_id = uuid.uuid4()
+        updated_at = datetime(2026, 5, 14, 12, 0, 0, tzinfo=UTC)
+        cutoff = datetime(2026, 5, 14, 12, 5, 0, tzinfo=UTC)
+        row = {"id": posting_id, "updated_at": updated_at}
+        local = _make_pool()
+        events: list[str] = []
+
+        @asynccontextmanager
+        async def tracking_fence(_pool):
+            events.append("fence-enter")
+            try:
+                yield
+            finally:
+                events.append("fence-exit")
+
+        async def tracking_cutoff(_pool):
+            events.append("cutoff")
+            return cutoff
+
+        async def tracking_fetch(*_args):
+            events.append("fetch")
+            if events.count("fetch") == 1:
+                return [row]
+            return []
+
+        async def tracking_upsert(*_args, **_kwargs):
+            events.append("upsert")
+
+        async def tracking_save(*_args, **_kwargs):
+            events.append("cursor-save")
+
+        local.fetch = AsyncMock(side_effect=tracking_fetch)
+        maps = MagicMock(stale=False)
+
+        with (
+            patch("src.exporter._get_taxonomy_maps", new=AsyncMock(return_value=maps)),
+            patch(
+                "src.exporter._build_typesense_docs",
+                return_value=[{"id": str(posting_id)}],
+            ),
+            patch(
+                "src.exporter._upsert_typesense_backfill_batch",
+                side_effect=tracking_upsert,
+            ),
+            patch("src.exporter._save_cursor", side_effect=tracking_save),
+        ):
+            await backfill_typesense(
+                local,
+                cursor_fence_factory=tracking_fence,
+                cutoff_factory=tracking_cutoff,
+            )
+
+        assert events == [
+            "fence-enter",
+            "cutoff",
+            "fetch",
+            "upsert",
+            "fetch",
+            "cursor-save",
+            "fence-exit",
+        ]
+
     async def test_batch_retries_transport_failure_before_succeeding(self):
         docs = [{"id": "posting-1"}]
         upsert = AsyncMock(side_effect=[httpx.ReadTimeout("timed out"), set()])
@@ -928,10 +1025,18 @@ class TestTypesenseBackfillSafety:
         updated_at = datetime(2026, 5, 14, 12, 0, 0, tzinfo=UTC)
         row = {"id": posting_id, "updated_at": updated_at}
         local = _make_pool()
-        supa = _make_pool()
         local.fetch = AsyncMock(return_value=[row])
         maps = MagicMock(stale=False)
         upsert = AsyncMock(side_effect=httpx.ReadTimeout("timed out"))
+        fence_events: list[str] = []
+
+        @asynccontextmanager
+        async def tracking_fence(_pool):
+            fence_events.append("enter")
+            try:
+                yield
+            finally:
+                fence_events.append("exit")
 
         with (
             patch("src.exporter._get_taxonomy_maps", new=AsyncMock(return_value=maps)),
@@ -940,11 +1045,16 @@ class TestTypesenseBackfillSafety:
             patch("src.exporter.asyncio.sleep", new_callable=AsyncMock) as sleep,
             pytest.raises(httpx.ReadTimeout, match="timed out"),
         ):
-            await backfill_typesense(local, supa)
+            await backfill_typesense(
+                local,
+                cursor_fence_factory=tracking_fence,
+                cutoff_factory=_fixed_cdc_cutoff,
+            )
 
         assert upsert.await_count == 5
         assert [call.args[0] for call in sleep.await_args_list] == [2.0, 4.0, 8.0, 16.0]
         local.execute.assert_not_awaited()
+        assert fence_events == ["enter", "exit"]
 
 
 class TestTypesensePerDocFallback:
@@ -1058,6 +1168,54 @@ class TestTypesensePerDocFallback:
             pytest.raises(RuntimeError, match="typesense down"),
         ):
             await _upsert_ts(docs)
+
+
+class TestExportPostingsTypesenseOnly:
+    async def test_advances_only_the_typesense_cursor(self):
+        cursor = (datetime(2026, 7, 1, 10, 0, tzinfo=UTC), _ZERO_UUID)
+        updated_at = datetime(2026, 7, 1, 10, 5, tzinfo=UTC)
+        cutoff = datetime(2026, 7, 1, 10, 10, tzinfo=UTC)
+        posting_id = uuid.uuid4()
+        local = _make_pool()
+        local.fetch = AsyncMock(return_value=[_posting_row(posting_id=posting_id, ts=updated_at)])
+
+        with patch(
+            "src.exporter._upsert_to_typesense",
+            new=AsyncMock(return_value=set()),
+        ) as upsert:
+            count, new_cursor = await _export_postings_typesense(
+                local,
+                cursor,
+                TaxonomyMaps(),
+                cutoff=cutoff,
+            )
+
+        assert count == 1
+        assert new_cursor == (updated_at, posting_id)
+        assert local.fetch.await_args.args[-1] == cutoff
+        upsert.assert_awaited_once()
+
+    async def test_transport_failure_keeps_the_typesense_cursor_pinned(self):
+        cursor = (datetime(2026, 7, 1, 10, 0, tzinfo=UTC), _ZERO_UUID)
+        updated_at = datetime(2026, 7, 1, 10, 5, tzinfo=UTC)
+        local = _make_pool()
+        local.fetch = AsyncMock(return_value=[_posting_row(posting_id=uuid.uuid4(), ts=updated_at)])
+        backoff = _DownstreamBackoff("typesense-only-test", 5.0, 300.0)
+
+        with patch(
+            "src.exporter._upsert_to_typesense",
+            new=AsyncMock(side_effect=httpx.ReadTimeout("timed out")),
+        ):
+            count, new_cursor = await _export_postings_typesense(
+                local,
+                cursor,
+                TaxonomyMaps(),
+                backoff,
+            )
+
+        assert count == 1
+        assert new_cursor == cursor
+        assert backoff.consecutive_failures == 1
 
 
 # ---------------------------------------------------------------------------
@@ -1232,6 +1390,13 @@ class TestExportChangedBoards:
 
 
 class TestRunExporter:
+    async def test_requires_at_least_one_downstream(self):
+        with (
+            patch("src.exporter._typesense_enabled", return_value=False),
+            pytest.raises(RuntimeError, match="requires Typesense or DATABASE_URL"),
+        ):
+            await run_exporter(_make_pool(), None, asyncio.Event())
+
     async def test_single_tick_then_shutdown(self):
         """Exporter should run one tick and then stop when shutdown is set."""
         local = _make_pool()
@@ -1269,6 +1434,58 @@ class TestRunExporter:
                 ),
                 set_shutdown(),
             )
+
+    async def test_typesense_only_does_not_load_or_save_the_mirror_cursor(self):
+        local = _make_pool()
+        shutdown = asyncio.Event()
+        cursor = (datetime(2026, 7, 10, 4, 0, tzinfo=UTC), _ZERO_UUID)
+        maps = TaxonomyMaps()
+        maps._last_refresh = 10**20
+
+        async def export_once(*_args, **_kwargs):
+            shutdown.set()
+            return 0, cursor
+
+        with (
+            patch("src.exporter.settings") as mock_settings,
+            patch("src.exporter._typesense_enabled", return_value=True),
+            patch("src.exporter._get_cursor", new=AsyncMock(return_value=cursor)) as get_cursor,
+            patch(
+                "src.exporter._get_taxonomy_maps",
+                new=AsyncMock(return_value=maps),
+            ) as get_maps,
+            patch("src.exporter._export_postings_typesense", side_effect=export_once) as export_ts,
+            patch(
+                "src.exporter._export_postings_dual",
+                new_callable=AsyncMock,
+            ) as export_dual,
+            patch(
+                "src.exporter._export_changed_postings",
+                new_callable=AsyncMock,
+            ) as export_mirror,
+            patch("src.exporter._save_cursor", new=AsyncMock()) as save_cursor,
+            patch("src.exporter._save_cursors_atomic", new=AsyncMock()) as save_atomic,
+            patch("src.exporter._update_metrics", new=AsyncMock()),
+        ):
+            mock_settings.export_interval = 0.001
+            mock_settings.export_downstream_backoff_base_seconds = 5.0
+            mock_settings.export_downstream_backoff_max_seconds = 300.0
+            mock_settings.typesense_health_interval_seconds = 30.0
+            await run_exporter(
+                local,
+                None,
+                shutdown,
+                cursor_fence_factory=_noop_cursor_fence,
+                cutoff_factory=_fixed_cdc_cutoff,
+            )
+
+        get_cursor.assert_awaited_once_with(local, "typesense:job_posting")
+        get_maps.assert_awaited_once_with(local)
+        export_ts.assert_awaited_once()
+        export_dual.assert_not_awaited()
+        export_mirror.assert_not_awaited()
+        save_cursor.assert_awaited_once_with(local, "typesense:job_posting", cursor)
+        save_atomic.assert_not_awaited()
 
     async def test_typesense_health_probe_is_not_run_every_export_tick(self):
         """The one-second export loop must not poll two observability endpoints
@@ -1529,6 +1746,10 @@ def _make_posting_record(
     description_r2_hash: int | None = 12345,
     experience_min: float | None = None,
     experience_max: float | None = None,
+    salary_min: int | None = None,
+    salary_max: int | None = None,
+    salary_currency: str | None = None,
+    salary_period: str | None = None,
 ) -> MagicMock:
     """Simulate an asyncpg.Record for a job_posting row."""
     company_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -1551,6 +1772,10 @@ def _make_posting_record(
         "first_seen_at": now,
         "last_seen_at": now,
         "salary_eur": None,
+        "salary_min": salary_min,
+        "salary_max": salary_max,
+        "salary_currency": salary_currency,
+        "salary_period": salary_period,
         "source_url": "https://example.com/job",
         "description_r2_hash": description_r2_hash,
     }
@@ -1573,6 +1798,7 @@ class TestBuildTypesenseDocsAncestors:
         assert len(docs) == 1
         assert docs[0]["reconciliation_bucket"] == uuid.UUID(docs[0]["id"]).hex[:2]
         loc_ids = set(docs[0]["location_ids"])
+        assert docs[0]["location_direct_ids"] == [10]
         assert 10 in loc_ids  # leaf (city)
         assert 20 in loc_ids  # region ancestor
         assert 30 in loc_ids  # country ancestor
@@ -1636,6 +1862,37 @@ class TestBuildTypesenseDocsAncestors:
         # location_names and location_geo_types are only for the leaf
         assert len(docs[0]["location_names"]) == 1
         assert len(docs[0]["location_geo_types"]) == 1
+
+
+class TestBuildTypesenseDocsOriginalSalary:
+    """Posting detail keeps the source salary alongside normalized EUR facets."""
+
+    def test_original_salary_fields_are_indexed_when_present(self):
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record(
+            salary_min=120_000,
+            salary_max=150_000,
+            salary_currency="USD",
+            salary_period="year",
+        )
+
+        [doc] = _build_typesense_docs([row], maps)
+
+        assert doc["salary_min"] == 120_000
+        assert doc["salary_max"] == 150_000
+        assert doc["salary_currency"] == "USD"
+        assert doc["salary_period"] == "year"
+
+    def test_null_original_salary_fields_are_omitted(self):
+        maps = _make_taxonomy_maps()
+        row = _make_posting_record()
+
+        [doc] = _build_typesense_docs([row], maps)
+
+        assert "salary_min" not in doc
+        assert "salary_max" not in doc
+        assert "salary_currency" not in doc
+        assert "salary_period" not in doc
 
 
 class TestBuildTypesenseDocsHasContent:

@@ -6,6 +6,7 @@ import {
   passwordResetLimiter,
 } from "@/lib/rate-limit";
 import { type NextRequest, NextResponse } from "next/server";
+import { logExternalError } from "@/lib/safe-external-error";
 
 const { GET: authGet, POST: authPost } = toNextJsHandler(auth);
 
@@ -67,9 +68,9 @@ async function applyAuthLimits(
     } catch (err) {
       // Redis unavailable — degrade open, mirroring authLimiter behaviour.
       // Log at warn so a Redis outage that disables the tight password-reset
-      // bucket (3/300s, the email-bombing vector) is queryable in Loki under
-      // `[auth-rate-limit] pw-reset redis bypass`. See #3175.
-      console.warn("[auth-rate-limit] pw-reset redis bypass", err);
+      // bucket (3/300s, the email-bombing vector) is queryable by the
+      // `password_reset_rate_limit` operation. See #3175.
+      logExternalError("warn", { service: "redis", operation: "password_reset_rate_limit" }, err);
     }
   }
 
@@ -79,8 +80,8 @@ async function applyAuthLimits(
   } catch (err) {
     // Redis unavailable — allow request through. Log at warn so a Redis
     // outage that silently disables the broader auth bucket (10/60s) is
-    // queryable in Loki under `[auth-rate-limit] redis bypass`. See #3175.
-    console.warn("[auth-rate-limit] redis bypass", err);
+    // queryable by the `auth_rate_limit` operation. See #3175.
+    logExternalError("warn", { service: "redis", operation: "auth_rate_limit" }, err);
   }
   return null;
 }

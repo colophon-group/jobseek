@@ -17,6 +17,12 @@ Prior exemplars (follow their shape): #2622, #2621, #2470, #2431.
   `/home/deploy`, or production env access. Deployment settings and
   maintenance checks live in
   [18-codex-automation-deployment.md](18-codex-automation-deployment.md).
+  Root-owned pre/post hooks also atomically record attempt, success, and
+  in-progress state under `/srv/jobseek-codex/state/`; the independent host
+  sampler publishes only numeric status fields. Mimir records failure,
+  36-hour staleness, or a run stuck over three hours. Production email paging
+  is disabled; see
+  [production paging is disabled](16-hetzner-maintenance.md#production-paging-is-disabled).
 - **Preferred manual route:** local Codex CLI from the repo root, asking it to
   use the `jobseek-error-review` skill.
 - **Manual traceable pilot:** run `codex exec --json` with the skill/runbook as

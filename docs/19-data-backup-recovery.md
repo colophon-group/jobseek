@@ -1,6 +1,7 @@
 # Hetzner Data Backup and Recovery
 
-This runbook covers the production PostgreSQL and Typesense data backups.
+This runbook covers the authoritative crawler PostgreSQL, Typesense, and the
+small provider-neutral web PostgreSQL data backups.
 It does not treat a Hetzner server backup as an application-data backup.
 PostgreSQL data lives on an attached Volume, which server backups exclude,
 and Typesense requires an application-consistent snapshot before archival.
@@ -13,8 +14,9 @@ configuration is under `/etc/jobseek-backup` on the relevant host.
 
 | Data | Consistent source artifact | Off-host repository | Schedule | Retention |
 |---|---|---|---|---|
-| PostgreSQL | pgBackRest physical backup plus continuous WAL archive | AES-encrypted pgBackRest repository on a private, encrypted SMB 3 Storage Box mount | daily at 01:00 UTC; weekly full, otherwise differential | four full backup chains |
+| PostgreSQL | pgBackRest physical backup plus continuous WAL archive | AES-encrypted pgBackRest repository on a private, encrypted SMB 3 Storage Box mount | daily at 01:00 UTC; weekly full, otherwise differential | four full backups, seven differential backups, and continuous WAL for the two latest differentials |
 | Typesense | Typesense Snapshot API output | encrypted Restic SFTP repository | daily at 02:00 UTC | 14 daily and 4 weekly snapshots |
+| Web PostgreSQL | PostgreSQL 17 custom-format logical dump of an explicit, FK-closed web/support table allowlist | encrypted Restic SFTP repository, isolated by `jobseek-web-postgresql` host/tag | every 6 hours at :30 UTC | 30 daily, 12 weekly, and 12 monthly snapshots |
 
 Recovery objectives:
 
@@ -22,6 +24,7 @@ Recovery objectives:
 |---|---|---|---|
 | PostgreSQL | 5 minutes, using the latest base backup and archived WAL | 4 hours | Jobseek production operations |
 | Typesense | 24 hours from backup; PostgreSQL remains the rebuild source of truth for newer crawler-owned state | 2 hours | Jobseek production operations |
+| Web PostgreSQL | 6 hours | 2 hours | Jobseek production operations |
 
 The daily Codex error review is the notification owner: it must open or update
 an actionable GitHub issue when a backup fails, becomes stale, or loses
@@ -42,6 +45,12 @@ Actions `production` environment as:
 - `HETZNER_POSTGRES_BACKUP_CIPHER_PASS`
 - `HETZNER_TYPESENSE_RESTIC_PASSWORD`
 
+The web logical backup reuses the encrypted Typesense Restic repository and
+its protected SFTP transport, but has a separate host/tag and retention set.
+The protected production `DATABASE_URL_UNPOOLED` secret is delivered during
+installation into a systemd credential file; it is never stored in this
+repository, printed, or placed on a command line.
+
 Do not print or pass either secret on a command line. The host copies are
 root-readable only.
 
@@ -50,12 +59,15 @@ root-readable only.
 Repository-owned files:
 
 - `scripts/jobseek-data-backup.py`
-- `deploy/backups/install-host.sh`
+- `deploy/backups/{deploy-remote,install-host-from-stdin,install-host}.sh`
 - `deploy/backups/postgresql/Dockerfile`
 - `deploy/backups/postgresql/{mount-repository,smoke-repository,restore-drill}.sh`
+- `deploy/backups/typesense/restore-drill.sh`
 - `deploy/systemd/jobseek-postgresql-backup-repository.service`
 - `deploy/systemd/jobseek-postgresql-backup.{service,timer}`
 - `deploy/systemd/jobseek-typesense-backup.{service,timer}`
+- `deploy/backups/web-postgresql/{operations.py,restore-drill.sh}`
+- `deploy/systemd/jobseek-web-postgresql-backup.{service,timer}`
 
 Host state:
 
@@ -63,8 +75,9 @@ Host state:
 |---|---|
 | PostgreSQL | `/etc/jobseek-backup/postgresql`, `/var/lib/jobseek-backup/postgresql`, `/mnt/jobseek-postgresql-backups`, and `jobseek-postgres:16-pgbackrest` |
 | Typesense | `/etc/jobseek-backup/typesense.env`, `/etc/jobseek-backup/typesense`, and `/var/lib/jobseek-backup/typesense` |
+| Web PostgreSQL (on the Typesense host) | `/etc/jobseek-backup/web-postgresql.env`, `/etc/jobseek-backup/web-postgresql.database-url`, root-only staging/drills under `/run/jobseek-backup/web-postgresql`, installed operation tooling under `/usr/local/sbin`, and aggregate/bound activation evidence under `/var/lib/jobseek-backup/status` |
 
-Both jobs atomically write a redacted JSON result and a Prometheus textfile
+All three jobs atomically write a redacted JSON result and a Prometheus textfile
 under `/var/lib/jobseek-backup/status`. A failed attempt preserves the time of
 the last successful backup so a failed and a stale backup remain distinct.
 The root-owned fleet sampler republishes only the numeric status fields as
@@ -116,6 +129,7 @@ install without starting a timer:
 cd /opt/jobseek-backup
 bash deploy/backups/install-host.sh postgresql
 bash deploy/backups/install-host.sh typesense
+bash deploy/backups/install-host.sh web-postgresql
 ```
 
 The installer preserves the timer's current state unless `--start-timer` or
@@ -127,20 +141,130 @@ backup and isolated restore have passed:
 ```bash
 bash deploy/backups/install-host.sh --start-timer postgresql
 bash deploy/backups/install-host.sh --start-timer typesense
+bash deploy/backups/install-host.sh --start-timer web-postgresql
 ```
 
 After merge, `.github/workflows/deploy-data-backups.yml` copies the reviewed
-main-branch artifacts to both hosts and runs the installer in preserve mode.
+main-branch artifacts to both hosts and runs the three installers serially in
+preserve mode. The web job shares the Typesense host only as an execution and
+encrypted-repository location; it does not read Typesense data or credentials.
 It records the deployed commit without starting, stopping, enabling, or
-disabling an existing timer. Deployment uses the same per-service lock as the
-backup job and fails safely instead of replacing code during an active
-backup. The production environment secrets
+disabling an existing timer. Deployment takes a host-wide deployment/identity
+lock before the per-service data lock, so it cannot replace the shared backup
+runtime during any protected operation or overlap an active backup for that
+service. The production environment secrets
 `HETZNER_POSTGRES_HOST` and `HETZNER_TYPESENSE_HOST` select the two hosts; the
-workflow reuses the existing Hetzner SSH deployment credential. Host addresses
-are secrets for log-redaction purposes even though they are not authentication
-material. These are environment-scoped secrets, so the workflow resolves them
-inside runtime steps after the protected `production` environment is attached;
-do not embed their values in `strategy.matrix`, which GitHub expands earlier.
+workflow reuses the existing Hetzner SSH deployment credential and validates
+both hosts against the pre-provisioned `HETZNER_BACKUP_KNOWN_HOSTS`. Artifacts
+travel over native strict OpenSSH, and database/Typesense credentials travel
+only as a root-only stdin payload to the reviewed host-side installer, never in
+the remote command line. `ssh-keyscan` and runtime-downloaded SSH clients are
+not used. Host addresses are secrets for log-redaction purposes even though
+they are not authentication material. These are environment-scoped secrets,
+so the workflow resolves them inside runtime steps after the main-only
+`production` environment is attached; do not embed their values in
+`strategy.matrix`, which GitHub expands earlier. The workflow has no manual
+dispatch surface; rerun the trusted latest `main` push run for a resync.
+
+For Typesense, the protected `TYPESENSE_BACKUP_KEY` is authorization-probed
+against authenticated `GET /stats.json` while the live host environment remains
+untouched. The installer stages a complete root-owned `0600` candidate beside
+the live file and compares exactly one `TYPESENSE_API_KEY` assignment. An
+unchanged key does not disturb the timer or run a deployment smoke. For a
+changed key, the installer records the exact timer state, proves the timer and
+service quiesced, and releases only the per-service data lock while retaining
+the host-wide deployment lock. It runs a fresh snapshot, encrypted Restic
+upload, retention prune, and repository check directly with the candidate
+environment, then reacquires the service lock before atomically committing the
+candidate and restoring the exact prior timer state. Rollback remains armed
+through status/timer gates and deployment-marker commit. Any failure restores
+the prior root-only environment atomically and leaves the timer disabled and
+inactive; a lock or credential rollback failure is itself the primary hard
+error and is never swallowed. A failed service, failed latest attempt, or stale
+last success is fatal; the deployed revision is recorded only after those
+checks pass.
+
+The web installer receives `DATABASE_URL_UNPOOLED` only after the protected
+production environment is attached. It atomically writes the URL to the
+root-only systemd credential and copies only the three Restic transport fields
+from the existing Typesense backup environment. The Typesense API key is not
+available to the web backup service. A changed database URL or Restic setting
+is transactional: the installer stages both root-only candidate files while
+leaving live files untouched. When the web timer is enabled or active, it first
+proves the timer disabled/inactive, releases only the service data lock, and
+runs a fresh backup/freshness check with the candidate credential directory
+and candidate Restic environment while retaining the host-wide deployment
+lock. It reacquires the service lock before atomically moving both candidates
+into place, then restores and verifies the exact prior timer state. A smoke or
+lock-reacquisition failure leaves both live files byte-identical. An incomplete
+two-file commit leaves the timer disabled fail-safe, and the next installer
+reconciles only exact root-owned candidate directories. An unchanged candidate
+does not run a deployment smoke, and an initially disabled staged timer remains
+disabled so the protected manual backup/restore sequence remains the first
+connection proof.
+
+### Protected web PostgreSQL activation
+
+When direct production SSH is unavailable, use
+`.github/workflows/operate-web-postgresql-backup.yml` from `main`. Its first
+job rejects the wrong original actor, rerun-triggering actor, ref, event, mode,
+or token before any environment approval is requested. The second job attaches
+the main-only `production-backup-operations` environment, requires owner
+review, revalidates the dispatch, and binds artifacts. Only after that job
+succeeds does a third job recheck both actors, attach the main-only `production`
+environment, and read `HETZNER_TYPESENSE_HOST`,
+`HETZNER_SSH_KEY`, and the pre-provisioned trusted host-key entries in
+`HETZNER_TYPESENSE_KNOWN_HOSTS`. The dispatcher uses native OpenSSH with
+strict host-key checking and never discovers trust with `ssh-keyscan`.
+
+The authorization job checks out the exact dispatch SHA with full history,
+derives the latest ancestor commit that touched the backup deployment
+workflow's exact trigger-path set, and hashes the backup script, installed
+operation helper, restore drill, service, and timer from the dispatch checkout.
+The host helper requires the web-installer-specific
+`/var/lib/jobseek-backup/web-postgresql-deployed-sha` marker to equal that latest
+relevant commit and every installed artifact to equal its reviewed hash. The
+service-specific marker is written only after the web matrix leg completes, so
+another service on the shared host cannot attest the web deployment. An
+unrelated later `main` commit therefore does not invalidate operations, while a
+relevant change whose deployment has not completed fails closed. Backup and
+restore evidence is persisted together in root-only
+`web-postgresql-activation.json`, bound to that revision and artifact map, and
+revalidated on every later dispatch.
+
+The workflow does not receive the web database URI or Restic credentials;
+those remain in root-only host files. It shares the backup deployment
+concurrency group, runs no command with shell tracing, and publishes only
+aggregate counts, sizes and timing. Repository and restore command output is
+captured without being relayed into GitHub logs.
+
+`backup`, `restore`, and `enable-timer` each rerun the same non-mutating host
+readiness gate used by `verify`; the documented sequence is not trusted as
+advisory state. Credential modes, exact Restic configuration, Docker, pinned
+image, units, repository access, deployed identity, and current timer state
+must still be valid at the point of every later operation.
+
+Every protected operation holds the host-wide deployment/identity lock across
+readiness, evidence validation, mutation, and its final identity check. Restore
+also holds the web service data lock. Both open lock descriptions are inherited
+and path-verified by the restore child, so a killed parent cannot release the
+artifact boundary while the child can still invoke the shared backup runtime.
+
+Each dispatch is main-only and requires the exact token for its selected mode:
+
+| Mode | Confirmation | Effect |
+|---|---|---|
+| `verify` | `VERIFY-WEB-POSTGRESQL` | Read-only validation of installed code, root-only credential/config modes, pinned restore image, encrypted repository reachability, deployed-revision marker, and current timer state |
+| `backup` | `RUN-WEB-POSTGRESQL-BACKUP` | Starts one systemd backup, requires fresh successful aggregate status, and proves the timer state did not change |
+| `restore` | `RUN-WEB-POSTGRESQL-RESTORE-DRILL` | Requires a bound successful backup from the last nine hours, runs the private-network-only self-cleaning restore drill, matches its archive/count evidence to that backup, proves exact container/network/decrypted-directory removal, and proves the timer state did not change |
+| `enable-timer` | `ENABLE-WEB-POSTGRESQL-TIMER` | Requires the timer to be disabled/inactive plus a fresh bound backup followed by a fresh successful restore of the same SHA-256-bound archive; starts the timer non-persistently, verifies active state, service health, a visible next run, and installed identity, then enables persistence as the final commit; handled failure rolls back to disabled |
+
+Run the modes in that order for first activation. `verify`, `backup`, and
+`restore` never enable or disable the timer. A failed or stale evidence file,
+a restore that predates the latest backup, mismatched archive/count evidence,
+the wrong confirmation, or a non-`main` dispatch fails closed. The direct host
+commands below remain the break-glass/operator equivalents, not a way to skip
+the activation gate.
 
 Confirm the effective schedule:
 
@@ -166,9 +290,31 @@ unused libssh2 transport. PostgreSQL must run with:
 wal_level=replica
 max_wal_senders=3
 archive_mode=on
-archive_command=test -f /var/spool/pgbackrest/archive-enabled && pgbackrest --stanza=jobseek archive-push %p
+archive_command=test -f /var/spool/pgbackrest/archive-enabled && flock -s /var/spool/pgbackrest/repository.lock pgbackrest --stanza=jobseek archive-push %p
 archive_timeout=60s
 ```
+
+Repository retention is deliberately split between backup sets and continuous
+WAL. `repo1-retention-full=4` preserves four weekly full recovery points,
+`repo1-retention-diff=7` preserves the latest week of daily differential
+points, and `repo1-retention-archive=2` with archive type `diff` preserves
+point-in-time recovery from the two latest differentials. Continuous WAL must
+not inherit the four-full-backup setting: this workload can generate more than
+100 GB of compressed WAL per day, so retaining four weeks can exhaust the 1 TB
+repository before the fourth full backup exists.
+
+`jobseek-data-backup postgresql` runs a networkless pgBackRest `expire` in a
+separate read-only container before it requires the live PostgreSQL container
+to be healthy. Archive-push holds a shared kernel lock and expiration holds the
+exclusive form, so a process or host crash releases serialization without
+stranding WAL archiving. The wrapper also uses the persistent archive sentinel
+as a fail-closed compatibility hold for a container that predates the lock
+contract. The repository mount alone is writable. This makes a full repository
+recoverable by the next scheduled attempt even when PostgreSQL is already
+down, and the same explicit retention options are passed to every backup so
+its automatic expiration cannot drift from the host configuration. The host
+installer atomically reconciles only the four retention keys and preserves the
+adjacent repository coordinate and encryption secret verbatim.
 
 During the initial cutover the sentinel is absent, so PostgreSQL retains WAL
 without racing `archive-push` against repository stanza creation. The
@@ -246,6 +392,34 @@ Treat a growing archive failure count, stale `last_archived_time`, or a
 growing spool as urgent. PostgreSQL preserves unarchived WAL, so an archive
 failure can consume the already constrained data Volume.
 
+Treat the repository itself as a bounded operational filesystem. Healthy
+steady state is at least 35% free; the critical control also forecasts its
+seven-day free-space trend. If retention is wrong or the repository is full:
+
+1. preserve `pgbackrest info --output=json`, filesystem, backup-status, WAL,
+   and container evidence;
+2. stop a futile PostgreSQL restart loop without deleting any database/WAL
+   file;
+3. run pgBackRest `expire --dry-run` with the reviewed archive-retention
+   options and verify that no backup set is selected;
+4. run the same expiration under `/run/jobseek-data-backup-postgresql.lock`;
+5. verify repository free space and `pgbackrest info` before restoring the
+   PostgreSQL restart policy; and
+6. require archive catch-up, a fresh backup, and an isolated restore drill.
+
+Never delete repository paths with `rm` or manually remove `pg_wal`. Only
+pgBackRest may expire repository objects, because its backup metadata defines
+the safe archive boundary.
+
+The Storage Box automatic snapshot plan retains two daily snapshots. Provider
+snapshots are a short secondary deletion guard, not additional pgBackRest
+recovery points, and they consume the same 1 TB quota. Do not increase that
+window without including high-churn archived WAL in the capacity forecast. If
+snapshots predate emergency pgBackRest expiration, every one of them can retain
+the obsolete blocks; inspect the exact provider snapshot set and repository
+statistics before deleting it, then re-enable the two-snapshot plan only after
+the repository and fresh backup are healthy.
+
 ## Typesense backup operation
 
 The job asks the live Typesense process to create a consistent snapshot under
@@ -264,6 +438,22 @@ That version-specific exception is constrained by root-only file/service
 access and remains independently revocable. Re-test and narrow the action
 scope at the next Typesense upgrade.
 
+Treat these as separate signals:
+
+1. **Process state:** Docker reports the container running with no OOM/restart.
+2. **API readiness:** unauthenticated `GET /health` returns `{"ok": true}`.
+3. **Backup authorization:** the installed backup key can authenticate
+   `GET /stats.json`; this does not by itself prove that a backup ran.
+4. **Backup execution:** the systemd attempt succeeds and the atomic status
+   reports a fresh successful snapshot, Restic upload/prune, and repository
+   check.
+5. **Restore validity:** the newest off-host artifact starts as an isolated
+   node and passes inventory, query, and disposable write/read/delete checks.
+
+A healthy API can coexist with an unauthorized or stale backup. Conversely,
+startup may temporarily return 503 while a valid restored snapshot reloads.
+Do not infer one signal from another.
+
 Run and verify a backup:
 
 ```bash
@@ -280,13 +470,81 @@ If upload or repository validation fails, the host staging copy is preserved
 for diagnosis. Snapshot directories older than 48 hours are removed before a
 later attempt. Never archive `/mnt/typesense-data` while Typesense is live.
 
+## Web PostgreSQL backup operation
+
+The web backup is a portability and Free-plan recovery artifact, not a second
+crawler mirror. A digest-pinned PostgreSQL 17 client creates a custom-format
+logical dump of this exact boundary:
+
+- Better Auth: `user`, `session`, `account`, `verification`;
+- user/product state: `user_preferences`, `saved_job`,
+  `application_interview`, `followed_company`, `company_request`,
+  `watchlist`, `watchlist_company`, `hiring_signal`, and `outreach_draft`;
+- small FK support: `industry`, `company`, and `job_board`; and
+- migration state: `drizzle.__drizzle_migrations`.
+
+`job_posting`, crawler taxonomies, `enrich_batch`, the unused Stripe
+`subscription` table, and all Murmur tables are excluded. Before dumping, the
+job queries PostgreSQL's FK catalog and refuses to run if any included table
+points to an excluded table. In particular, the first production run is gated
+on contract migration `0085_saved_job_snapshot_contract`. That migration runs
+only after the 0084 expand phase and snapshot-writing app release have been
+verified, then removes the remaining `saved_job -> job_posting` FK after
+catching up only absent required fields, asserting every required saved-posting
+snapshot, and installing the final NOT NULL/nonblank contract. The backup
+preflight requires the exact 0085 ledger hash and final saved-job catalog, not
+merely the absence of an external FK.
+
+The job fingerprints every allowlisted table as a row count plus a deterministic
+aggregate hash and records the Drizzle migration sequence state. It runs the
+dump from a serializable, deferrable snapshot, fingerprints again, and rejects
+a backup if the source changed during that small window. Because PostgreSQL
+table-filtered dumps do not include their containing schemas, the packet also
+contains a fixed `bootstrap.sql` for the non-public `drizzle` schema. The job
+validates the custom archive with `pg_restore --list`, records SHA-256 checksums
+and fingerprints in a root-only manifest, uploads the three-file packet through
+Restic, applies retention, and runs repository validation. Status and logs
+expose only aggregate counts, bytes, hashes, and timing—never row contents,
+credentials, addresses, or user identifiers.
+
+The plaintext dump exists only in the root-only systemd runtime directory
+under `/run`; it is deleted after a successful upload and disappears on reboot.
+A failed upload keeps the runtime packet for bounded diagnosis, and the next
+attempt removes runtime packets older than 48 hours. No plaintext web backup is
+persisted to the host filesystem outside that volatile staging window.
+The database URI is injected into the short-lived PostgreSQL 17 client
+container and expanded there through an explicit `--dbname` argument.
+`PGDATABASE` must not carry the URI: the client treats that environment value
+as a literal database name and otherwise falls back to its local Unix socket.
+
+Run the first backup manually while its timer is disabled:
+
+```bash
+systemctl start jobseek-web-postgresql-backup.service
+systemctl status jobseek-web-postgresql-backup.service --no-pager
+journalctl -u jobseek-web-postgresql-backup.service -n 100 --no-pager
+cat /var/lib/jobseek-backup/status/web-postgresql.json
+set -a; . /etc/jobseek-backup/web-postgresql.env; set +a
+restic -o "sftp.command=${RESTIC_SFTP_COMMAND}" snapshots \
+  --tag jobseek-web-postgresql --host jobseek-web-postgresql
+```
+
+Do not enable the timer until this backup and the clean restore below pass.
+`DataBackupStale` uses a nine-hour threshold for this six-hour schedule; the
+daily PostgreSQL and Typesense services keep their 36-hour threshold. The host
+sampler treats the web timer and its status as optional while the timer is
+disabled, then automatically makes both required as soon as the timer is
+enabled. This keeps the staged installation quiet without weakening the live
+failure/freshness gate.
+
 ## Isolated restore drills
 
-A successful upload is not restore evidence. Perform both drills after
+A successful upload is not restore evidence. Perform all relevant drills after
 initial deployment and after material backup-format, credential, storage, or
-major-version changes. Keep the restored services bound to loopback and use
-temporary credentials. Do not connect workers, exporters, the web app, or the
-Cloudflare tunnel to a restore drill.
+major-version changes. Keep restored services unexposed: bind to loopback only
+when a host port is required, and otherwise use an internal private network.
+Use temporary credentials. Do not connect workers, exporters, the web app, or
+the Cloudflare tunnel to a restore drill.
 
 ### PostgreSQL
 
@@ -307,18 +565,58 @@ Cloudflare tunnel to a restore drill.
 
 ### Typesense
 
-1. Restore the latest Restic snapshot into a new host directory; never write
-   to `/mnt/typesense-data`.
-2. Start `typesense/typesense:27.1` on a host other than the production
-   Typesense machine, bound only to `127.0.0.1:18108`, with a temporary API
-   key and the restored directory.
-3. Compare collection/alias inventory, document counts, and representative
-   document reads with production. Do not expose the drill through
-   Cloudflare.
-4. Record Restic snapshot ID/time, restored byte count, elapsed time, checks,
-   and result without recording document contents or secrets.
-5. Stop and remove the temporary container, restored data, and all temporary
-   credentials and repository access.
+1. Capture a redacted production inventory containing only all seven
+   alias-to-collection mappings and document counts.
+2. Copy `deploy/backups/typesense/restore-drill.sh` plus temporary root-only
+   Restic access to a recovery host that has Docker and at least 4 GiB free.
+   Use the same or a newer Restic version than the backup host; older clients
+   can reject the repository format. The helper refuses to run if a container
+   named `typesense` exists.
+3. Set `JOBSEEK_TYPESENSE_RESTORE_ENV` and
+   `JOBSEEK_TYPESENSE_EXPECTED_INVENTORY`, then run the helper with
+   `latest` or an exact snapshot ID. It restores only into its unique
+   temporary root and binds Typesense only to `127.0.0.1:18108`.
+4. The helper requires health and single-node leadership, exact aliases and
+   counts, a representative job-posting search, and a disposable collection
+   write/read/delete. It emits only snapshot metadata, byte/count totals,
+   duration, and named checks.
+5. Its exit trap force-removes the isolated container, restored data, and
+   generated API key on success, failure, or interruption. Remove the
+   temporary Restic files from the recovery host after copying the redacted
+   result to incident evidence. Never run the drill beside production, write
+   to `/mnt/typesense-data`, or expose it through Cloudflare.
+
+### Web PostgreSQL
+
+1. Run `/usr/local/sbin/jobseek-web-postgresql-restore-drill` on the Typesense
+   host. It holds the same lock as the backup and restores the latest encrypted
+   `jobseek-web-postgresql` snapshot into a unique root-only directory.
+2. The script starts clean digest-pinned PostgreSQL 17 with a temporary data
+   filesystem on a unique `--internal` Docker network and publishes no host
+   port. It generates an ephemeral random password in root-only files, uses
+   `POSTGRES_PASSWORD_FILE` plus a mounted `pgpass` file, and passes no live
+   database credential or password value through Docker metadata.
+3. The checksum-bound bootstrap creates only the `drizzle` schema, then
+   `pg_restore --exit-on-error` recreates the selected tables, data, indexes,
+   sequence, and constraints. Its short-lived verifier clients join only that
+   internal network and authenticate from the mounted `pgpass` file. The
+   verifier checks both SHA-256 checksums,
+   exact per-table row-count/hash parity, and migration-sequence parity against
+   the encrypted manifest.
+4. A rollback-only mutation smoke exercises Better Auth user/session/account
+   rows, preferences, saved jobs/interviews, followed companies, watchlists,
+   company requests, and hiring/outreach constraints.
+5. The script atomically records aggregate drill evidence in
+   `/var/lib/jobseek-backup/status/web-postgresql-restore.json`, then removes
+   the exact container, internal network, restored archive, credential files,
+   and temporary database on success, failure, or handled signal. The protected
+   parent passes its held service-data and deployment/identity lock descriptors
+   into the restore process,
+   terminates and reaps the exact process group on timeout, and will not accept
+   evidence until Docker and directory absence are proven. A later run cleans
+   only stale service-labeled restore resources under that same lock, covering
+   a prior parent or child `SIGKILL`. Attach the redacted evidence to #6169
+   before the mirror purge.
 
 ## Failure and removal gates
 
@@ -330,6 +628,13 @@ The normal replacement gate for any future legacy backup retirement is:
 - failure and freshness status is included in the daily Codex error-review
   evidence and can create or update an actionable GitHub issue;
 - recovery evidence and measured recovery time are recorded in the audit.
+
+For the Supabase Pro-to-Free downgrade, the web database gate additionally
+requires: contract migration `0085_saved_job_snapshot_contract` deployed with
+every existing saved row populated and the posting FK removed; one successful
+`web-postgresql` backup; one clean restore with exact fingerprints and mutation
+smoke; the six-hour timer enabled with a visible next run; and live
+failure/freshness telemetry. Only then may #6170 drop crawler-mirror data.
 
 Current state as of 2026-07-23: off-host backups, repository validation,
 isolated restores, measured recovery evidence, enabled schedules, visible next

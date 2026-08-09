@@ -26,6 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     permissions:
+      actions: read
       contents: read
       packages: write
 
@@ -40,6 +41,14 @@ jobs:
           node scripts/derive-crawler-build-version.mjs
           --write-version apps/crawler/VERSION
           --github-output "$GITHUB_OUTPUT"
+
+      - name: Derive reconciliation wrapper contract
+        id: reconciliation
+        run: |
+          set -euo pipefail
+          printf 'wrapper_sha256=%s\n' \
+            "$(sha256sum deploy/reconciliation/run.sh | awk '{print $1}')" \
+            >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
@@ -117,10 +126,52 @@ jobs:
               -e TYPESENSE_PORT=8108 \
               -e TYPESENSE_PROTOCOL=http \
               -e TYPESENSE_OPERATIONS_KEY=smoke \
-              -e DATABASE_URL=postgresql://stub:stub@localhost:5432/stub \
               "$IMAGE" \
               uv run --no-sync crawler setup-typesense
           done
+
+      - name: Wait for same-revision murmur-shim deployment
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet "$BEFORE_SHA" "$GITHUB_SHA" -- \
+            apps/crawler/deploy.sh \
+            apps/crawler/docker-compose.yml; then
+            echo "This revision does not trigger the murmur-shim host workflow" >&2
+            exit 0
+          fi
+          deadline=$((SECONDS + 2700))
+          murmur_ready=0
+          while (( SECONDS < deadline )); do
+            run="$({
+              gh api --method GET \
+                "repos/${GITHUB_REPOSITORY}/actions/workflows/deploy-murmur-shim.yml/runs" \
+                -f head_sha="$GITHUB_SHA" \
+                -f event=push \
+                -f per_page=10
+            } | jq -c '.workflow_runs | sort_by(.created_at) | last // empty')"
+            if [[ -z "$run" ]]; then
+              echo "Waiting for the same-revision murmur-shim workflow to appear" >&2
+            elif [[ "$(jq -r '.status' <<<"$run")" == "completed" ]]; then
+              conclusion="$(jq -r '.conclusion' <<<"$run")"
+              [[ "$conclusion" == "success" ]] || {
+                echo "ERROR: same-revision murmur-shim workflow concluded ${conclusion}" >&2
+                exit 1
+              }
+              echo "Same-revision murmur-shim deployment completed successfully" >&2
+              murmur_ready=1
+              break
+            else
+              echo "Waiting for the same-revision murmur-shim deployment to complete" >&2
+            fi
+            sleep 15
+          done
+          (( murmur_ready )) || {
+            echo "ERROR: timed out waiting for same-revision murmur-shim deployment" >&2
+            exit 1
+          }
 
       - name: Copy deploy files
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
@@ -128,8 +179,8 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: apps/crawler/deploy.sh,apps/crawler/deploy_helpers.sh,apps/crawler/docker-compose.yml,apps/crawler/alloy.river
-          target: /home/deploy/
+          source: apps/crawler/deploy.sh,apps/crawler/deploy_helpers.sh,apps/crawler/docker-compose.yml,apps/crawler/alloy.river,apps/crawler/scripts/postgresql-operational-preflight.py
+          target: /home/deploy/incoming/
           strip_components: 2
 
       - name: Deploy via SSH
@@ -138,13 +189,17 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: OWNER,CRAWLER_IMAGE_TAG,JOBSEEK_DEPLOY_REVISION,DATABASE_URL_UNPOOLED,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_OPERATIONS_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URL,DECODO_PROXY_URL,MURMUR_TOKEN
-          script: bash /home/deploy/deploy.sh
+          envs: OWNER,CRAWLER_IMAGE_TAG,JOBSEEK_DEPLOY_REVISION,JOBSEEK_RECONCILIATION_WRAPPER_SHA256,WEB_DATABASE_URL,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_OPERATIONS_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URL,DECODO_PROXY_URL,MURMUR_TOKEN
+          script: bash /home/deploy/incoming/deploy.sh
         env:
           OWNER: ${{ github.repository_owner }}
           CRAWLER_IMAGE_TAG: ${{ steps.version.outputs.image_tag }}
           JOBSEEK_DEPLOY_REVISION: ${{ github.sha }}
-          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}
+          JOBSEEK_RECONCILIATION_WRAPPER_SHA256: ${{ steps.reconciliation.outputs.wrapper_sha256 }}
+          # Keep the retained web-owned watchlist boundary separately named
+          # inside crawler operations. Reuse the existing provider-neutral
+          # protected DB secret without exposing it as crawler DATABASE_URL.
+          WEB_DATABASE_URL: ${{ secrets.DATABASE_URL_UNPOOLED }}
           LOCAL_DATABASE_URL: ${{ secrets.LOCAL_DATABASE_URL }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}

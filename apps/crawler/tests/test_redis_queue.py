@@ -74,6 +74,62 @@ async def test_enqueue_monitor_nx_prevents_duplicate():
     assert await rq.enqueue_monitor("lever", "board-dup", t - 100, config, browser=False) is False
 
 
+async def test_enqueue_monitor_deduplicates_across_lifecycle_queues():
+    """One task cannot exist in first-time, recurring, and inflight at once."""
+
+    r = rq.get_redis()
+    now = time.time() - 10
+
+    assert await rq.enqueue_monitor(
+        "lever", "board-recurring", now, {"monitor": "lever"}, first_time=False
+    )
+    assert not await rq.enqueue_monitor(
+        "lever", "board-recurring", now, {"monitor": "lever"}, first_time=True
+    )
+    assert await r.zcard("monitors_simple:lever") == 1
+    assert await r.zcard("ft_monitors_simple:lever") == 0
+
+    assert await rq.enqueue_monitor(
+        "ashby", "board-first", now, {"monitor": "ashby"}, first_time=True
+    )
+    assert not await rq.enqueue_monitor(
+        "ashby", "board-first", now, {"monitor": "ashby"}, first_time=False
+    )
+    assert await r.zcard("ft_monitors_simple:ashby") == 1
+    assert await r.zcard("monitors_simple:ashby") == 0
+
+    await r.zadd(
+        "inflight:simple",
+        {"monitor|greenhouse|board-inflight": time.time() + 60},
+    )
+    assert not await rq.enqueue_monitor(
+        "greenhouse", "board-inflight", now, {"monitor": "greenhouse"}, first_time=False
+    )
+    assert await r.zcard("ft_monitors_simple:greenhouse") == 0
+    assert await r.zcard("monitors_simple:greenhouse") == 0
+
+
+async def test_scrape_fallback_can_enqueue_while_previous_step_is_inflight():
+    """Monitor dedup must not suppress the scrape pipeline's next fallback."""
+
+    r = rq.get_redis()
+    posting_id = "posting-fallback"
+    domain = "jobs.example.com"
+    await r.zadd(
+        "inflight:simple",
+        {f"scrape|{domain}|{posting_id}": time.time() + 60},
+    )
+
+    assert await rq.enqueue_scrape(
+        domain,
+        posting_id,
+        time.time(),
+        {"source_url": "https://jobs.example.com/job/1", "scrape_step": "1"},
+        first_time=True,
+    )
+    assert await r.zcard(f"ft_scrapes_simple:{domain}") == 1
+
+
 async def test_enqueue_monitor_first_time_flag():
     config = {"monitor": "ashby"}
     await rq.enqueue_monitor(
@@ -115,6 +171,41 @@ async def test_enqueue_monitors_pipelines_mixed_worker_schedules():
     assert browser_config["domain"] == "example.com"
     assert await r.zcard("ft_monitors_simple:greenhouse") == 1
     assert await r.zcard("ft_monitors_browser:example.com") == 1
+
+
+async def test_resync_repairs_missing_config_without_duplicate_or_deadletter_loss():
+    """A normal sync repairs HSET state but preserves queue/dead-letter evidence."""
+
+    r = rq.get_redis()
+    board_id = "board-resync-repair"
+    domain = "jobs.example.com"
+    member = f"monitor|{domain}|{board_id}"
+    schedule = rq.MonitorSchedule(
+        domain=domain,
+        board_id=board_id,
+        next_check_at=time.time(),
+        config={"crawler_type": "dom", "board_url": "https://jobs.example.com"},
+        first_time=False,
+    )
+    assert await rq.enqueue_monitors([schedule]) == [True]
+    await r.zadd("deadletter:simple", {member: time.time()})
+    await r.delete(f"board:{board_id}")
+
+    # Active-board sync asks for first-time priority, but the logical task is
+    # already recurring. The hash is repaired without creating an ft copy.
+    resync_schedule = rq.MonitorSchedule(
+        domain=domain,
+        board_id=board_id,
+        next_check_at=time.time(),
+        config=schedule.config,
+        first_time=True,
+    )
+    assert await rq.enqueue_monitors([resync_schedule]) == [False]
+
+    assert await r.hget(f"board:{board_id}", "crawler_type") == "dom"
+    assert await r.zcard(f"monitors_simple:{domain}") == 1
+    assert await r.zcard(f"ft_monitors_simple:{domain}") == 0
+    assert await r.zcard("deadletter:simple") == 1
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +289,61 @@ async def test_expired_circuit_allows_one_probe_then_closes_or_reopens(mock_redi
     assert await rq.record_host_success("probe.example.com", now=1064) is None
     assert await rq.get_host_circuit_open_until("probe.example.com") is None
     assert await mock_redis.get("host_probe:probe.example.com") is None
+
+
+async def test_provider_circuit_requires_distinct_tenant_hosts(mock_redis, monkeypatch):
+    """One broken Workday tenant cannot satisfy the provider-wide quorum."""
+
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 1800)
+    incident = "workday-list-303"
+    now = time.time()
+
+    first = await rq.record_provider_incident_failure(incident, "one.wd1.example", now=now)
+    repeated = await rq.record_provider_incident_failure(incident, "ONE.wd1.example.", now=now + 1)
+    second = await rq.record_provider_incident_failure(incident, "two.wd2.example", now=now + 2)
+    third = await rq.record_provider_incident_failure(incident, "three.wd3.example", now=now + 3)
+
+    assert (first.failures, first.is_open) == (1, False)
+    assert (repeated.failures, repeated.is_open) == (1, False)
+    assert (second.failures, second.is_open) == (2, False)
+    assert third.failures == 3
+    assert third.opened_now is True
+    assert third.open_until == pytest.approx(now + 1803)
+    assert await rq.get_provider_circuit_open_until(incident) == third.open_until
+    assert await mock_redis.smembers(f"provider_fail_hosts:{incident}") == {
+        "one.wd1.example",
+        "two.wd2.example",
+        "three.wd3.example",
+    }
+
+
+async def test_provider_half_open_probe_reopens_or_recovers(mock_redis, monkeypatch):
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 30)
+    monkeypatch.setattr(settings, "host_circuit_probe_seconds", 60)
+    incident = "workday-list-303"
+
+    await rq.record_provider_incident_failure(incident, "one.example", now=1000)
+    await rq.record_provider_incident_failure(incident, "two.example", now=1001)
+    opened = await rq.record_provider_incident_failure(incident, "three.example", now=1002)
+    assert opened.open_until == 1032
+
+    assert await rq.acquire_provider_circuit_probe(incident) is True
+    assert await rq.acquire_provider_circuit_probe(incident) is False
+
+    reopened = await rq.record_provider_incident_failure(incident, "probe-failed.example", now=1033)
+    assert reopened.opened_now is True
+    assert reopened.open_until == 1063
+    assert await mock_redis.get(f"provider_probe:{incident}") is None
+
+    assert await rq.acquire_provider_circuit_probe(incident) is True
+    assert await rq.record_provider_circuit_success(incident, now=1064) is None
+    assert await rq.get_provider_circuit_open_until(incident) is None
+    assert await mock_redis.get(f"provider_probe:{incident}") is None
+    assert await mock_redis.get(f"provider_fail_hosts:{incident}") is None
 
 
 # ---------------------------------------------------------------------------
@@ -380,6 +526,33 @@ async def test_enqueue_scrape_browser():
 
     r = rq.get_redis()
     assert await r.zcard("ready:browser:0") >= 1
+
+
+async def test_bulk_enqueue_scrapes_writes_config_and_queue_atomically(mock_redis):
+    schedules = [
+        rq.ScrapeSchedule(
+            domain="jobs.example.com",
+            posting_id="bulk-1",
+            next_scrape_at=time.time(),
+            config={"source_url": "https://jobs.example.com/1", "board_id": "board-1"},
+            browser=False,
+            first_time=False,
+        ),
+        rq.ScrapeSchedule(
+            domain="browser.example.com",
+            posting_id="bulk-2",
+            next_scrape_at=0,
+            config={"source_url": "https://browser.example.com/2", "board_id": "board-2"},
+            browser=True,
+            first_time=True,
+        ),
+    ]
+
+    assert await rq.enqueue_scrapes(schedules) == [True, True]
+    assert await mock_redis.hget("scrape:bulk-1", "domain") == "jobs.example.com"
+    assert await mock_redis.zscore("scrapes_simple:jobs.example.com", "bulk-1") is not None
+    assert await mock_redis.hget("scrape:bulk-2", "source_url") == ("https://browser.example.com/2")
+    assert await mock_redis.zscore("ft_scrapes_browser:browser.example.com", "bulk-2") is not None
 
 
 async def test_claim_scrape_returns_none_on_empty():
@@ -901,6 +1074,67 @@ async def test_complete_task_clears_inflight_lease(mock_redis):
     # Second call is a no-op (idempotent).
     removed = await rq.complete_task(domain, "board-lease-3", "monitor", browser=False)
     assert removed == 0
+
+
+async def test_complete_scrape_removes_config_after_final_reference_drains(mock_redis):
+    domain = "jobs.example.com"
+    posting_id = "posting-terminal"
+    await rq.enqueue_scrape(
+        domain,
+        posting_id,
+        time.time() - 10,
+        {"source_url": f"https://{domain}/1", "board_id": "board-1"},
+        first_time=True,
+    )
+    await rq.claim_work(browser=False)
+
+    assert await mock_redis.exists(f"scrape:{posting_id}") == 1
+    assert await rq.complete_task(domain, posting_id, "scrape", browser=False) == 1
+    assert await mock_redis.exists(f"scrape:{posting_id}") == 0
+
+
+async def test_complete_scrape_preserves_config_for_concurrent_reroute(mock_redis):
+    domain = "jobs.example.com"
+    posting_id = "posting-rerouted"
+    await rq.enqueue_scrape(
+        domain,
+        posting_id,
+        time.time() - 10,
+        {"source_url": f"https://{domain}/old", "board_id": "board-1"},
+        first_time=True,
+    )
+    await rq.claim_work(browser=False)
+
+    await rq.enqueue_scrape(
+        domain,
+        posting_id,
+        time.time() + 60,
+        {"source_url": f"https://{domain}/fresh", "board_id": "board-1"},
+        browser=True,
+        first_time=False,
+    )
+    await rq.complete_task(domain, posting_id, "scrape", browser=False)
+
+    assert await mock_redis.zscore(f"scrapes_browser:{domain}", posting_id) is not None
+    assert await mock_redis.hget(f"scrape:{posting_id}", "source_url") == (
+        f"https://{domain}/fresh"
+    )
+
+
+async def test_complete_scrape_preserves_deadletter_config(mock_redis):
+    domain = "jobs.example.com"
+    posting_id = "posting-deadletter"
+    member = f"scrape|{domain}|{posting_id}"
+    await mock_redis.hset(
+        f"scrape:{posting_id}",
+        mapping={"domain": domain, "source_url": f"https://{domain}/1"},
+    )
+    await mock_redis.zadd("inflight:simple", {member: time.time() + 60})
+    await mock_redis.zadd("deadletter:simple", {member: time.time()})
+
+    await rq.complete_task(domain, posting_id, "scrape", browser=False)
+
+    assert await mock_redis.exists(f"scrape:{posting_id}") == 1
 
 
 async def test_heartbeat_extends_lease(mock_redis):

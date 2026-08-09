@@ -577,6 +577,25 @@ class TestFetchTextPageWithRetry:
         assert client.get.await_count == 1
         sleep.assert_not_awaited()
 
+    async def test_required_nonempty_response_retries_and_honors_cap(self):
+        client = AsyncMock()
+        sleep = AsyncMock()
+        client.get = AsyncMock(side_effect=[_resp(200, ""), _resp(200, "<html>complete</html>")])
+
+        text = await fetch_text_page_with_retry(
+            client,
+            "https://example.com/board",
+            require_nonempty=True,
+            max_chars=6,
+            retries=3,
+            base_delay=0.001,
+            sleep=sleep,
+        )
+
+        assert text == "<html>"
+        assert client.get.await_count == 2
+        sleep.assert_awaited_once()
+
 
 # ─── Retry observability (#3210) ────────────────────────────────────────
 

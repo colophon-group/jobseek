@@ -62,6 +62,7 @@ jobs:
           trap cleanup EXIT
           install -d -m 0700 "$root/data"
           {
+            echo '[server]'
             echo 'data-dir = /data'
             echo 'api-key = smoke-bootstrap-key'
             echo 'api-port = 8108'
@@ -71,6 +72,9 @@ jobs:
           docker run -d \
             --name "$container" \
             -p 127.0.0.1::8108 \
+            --ulimit nofile=65536:65536 \
+            --log-opt max-size=50m \
+            --log-opt max-file=3 \
             -v "$root/data:/data" \
             -v "$root/typesense-server.ini:/run/secrets/typesense-server.ini:ro" \
             typesense/typesense:27.1 \
@@ -89,6 +93,24 @@ jobs:
           fi
           test "$(docker inspect "$container" --format '{{json .Config.Cmd}}')" \
             = '["--config=/run/secrets/typesense-server.ini"]'
+          docker inspect "$container" |
+            python3 -c '
+          import json
+          import sys
+
+          container = json.load(sys.stdin)[0]
+          ulimits = container["HostConfig"].get("Ulimits") or []
+          log_config = container["HostConfig"].get("LogConfig") or {}
+          assert any(
+              limit.get("Name") == "nofile"
+              and int(limit.get("Soft") or 0) == 65536
+              and int(limit.get("Hard") or 0) == 65536
+              for limit in ulimits
+          )
+          assert log_config.get("Type") == "json-file"
+          assert (log_config.get("Config") or {}).get("max-size") == "50m"
+          assert (log_config.get("Config") or {}).get("max-file") == "3"
+          '
 
   deploy:
     if: github.event_name == 'workflow_dispatch'

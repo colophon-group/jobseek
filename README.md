@@ -1,6 +1,3 @@
-> [!NOTE]  
-> Something caused a spike in attention to this project on last Sunday. Thank you for all of the stars! Unfortunately, the timimg is not great as I have been in the mountains of Tian Shan and missed some infra related issues. Resolving them now, [jseek.co](https://jseek.co) should be back operational by the end of the day.
-
 <div align="center">
 
 # Job Seek
@@ -106,7 +103,7 @@ apps/crawler/          Python pipeline (asyncio, Playwright fallback)
   src/core/monitors/   Monitor types — Greenhouse, Lever, Workday, …
   src/core/scrapers/   Scrapers — JSON-LD, DOM, sitemap, vendor-specific
   src/redis_queue.py   Claim queue with atomic reservation, requeue, reschedule
-  src/exporter.py      CDC: Postgres → Supabase + Typesense
+  src/exporter.py      CDC: local Postgres → Typesense
   src/labeller/        Daily labelling pipeline (HuggingFace upload)
   src/workspace/       `ws` — agent orchestrator for company onboarding
   data/companies.csv   Source of truth — every tracked company is one row
@@ -114,7 +111,7 @@ apps/crawler/          Python pipeline (asyncio, Playwright fallback)
 
 apps/web/              Next.js 16 + Drizzle + Lingui + Better Auth
   app/[lang]/...       Path-prefix i18n (en / de / fr / it)
-  src/db/schema.ts     Drizzle schema — Postgres + Supabase mirror
+  src/db/schema.ts     Drizzle schema for the web-owned Postgres boundary
 
 docs/                  Architecture and operational routines
 scripts/               Typesense setup, backfill, IndexNow notifications

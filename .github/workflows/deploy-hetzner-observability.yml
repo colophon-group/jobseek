@@ -9,7 +9,10 @@ on:
       - 'deploy/systemd/jobseek-alloy.service'
       - 'deploy/systemd/jobseek-host-observability.*'
       - 'scripts/jobseek-host-observability.py'
+      - 'scripts/codex-routine-status.py'
+      - 'scripts/sync-grafana-alertmanager.py'
       - 'scripts/sync-grafana-rules.py'
+      - 'scripts/verify-grafana-host-metrics.py'
       - 'docs/14-error-review-routine.md'
       - 'docs/16-hetzner-maintenance.md'
       - 'docs/19-data-backup-recovery.md'
@@ -31,15 +34,37 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - name: Validate observability artifacts
         run: |
           set -euo pipefail
           bash -n deploy/observability/install-host.sh
-          python3 -m py_compile scripts/jobseek-host-observability.py scripts/sync-grafana-rules.py scripts/verify-grafana-host-metrics.py
+          python3 -m py_compile scripts/codex-routine-status.py scripts/jobseek-host-observability.py scripts/sync-grafana-alertmanager.py scripts/sync-grafana-rules.py scripts/verify-grafana-host-metrics.py
           cd apps/crawler
+          uv run --frozen python ../../scripts/sync-grafana-alertmanager.py \
+            --dry-run --url https://grafana.example.com --api-key test-only
           uv run --frozen python ../../scripts/sync-grafana-rules.py --dry-run
-          uv run --frozen pytest tests/test_host_observability.py tests/test_observability_config.py tests/test_alloy_config.py tests/test_grafana_host_metrics.py -q
+          uv run --frozen pytest tests/test_alertmanager_paging.py tests/test_codex_routine_status.py tests/test_host_observability.py tests/test_observability_config.py tests/test_alloy_config.py tests/test_grafana_host_metrics.py -q
+
+  disable-paging:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Ensure production paging remains disabled
+        working-directory: apps/crawler
+        env:
+          GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+          GRAFANA_API_KEY: ${{ secrets.GRAFANA_API_KEY }}
+        run: uv run --frozen python ../../scripts/sync-grafana-alertmanager.py --disable
 
   deploy-hosts:
     needs: validate
@@ -54,6 +79,8 @@ jobs:
         service: [crawler, postgresql, typesense]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Resolve configured production host
         env:
@@ -94,6 +121,12 @@ jobs:
             test "$(cat /var/lib/jobseek-observability/deployed-sha)" = "$JOBSEEK_OBSERVABILITY_DEPLOY_SHA"
             systemctl is-active --quiet jobseek-alloy.service
             systemctl is-active --quiet jobseek-host-observability.timer
+            if [[ "$JOBSEEK_HOST_ROLE" == crawler ]]; then
+              runuser -u deploy -- grep -Eq '^[0-9a-f]{40}$' \
+                /var/lib/jobseek-reconciliation/deployed-sha
+              systemctl is-enabled --quiet jobseek-crawler-reconciliation.timer
+              systemctl is-active --quiet jobseek-crawler-reconciliation.timer
+            fi
 
   verify-ingestion:
     needs: deploy-hosts
@@ -103,6 +136,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - name: Require fresh host textfile metrics in Grafana
         working-directory: apps/crawler
@@ -113,13 +148,15 @@ jobs:
         run: uv run --frozen python ../../scripts/verify-grafana-host-metrics.py
 
   sync-rules:
-    needs: verify-ingestion
+    needs: [disable-paging, verify-ingestion]
     runs-on: ubuntu-latest
     environment: production
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - name: Transactionally sync Mimir alert rules
         working-directory: apps/crawler

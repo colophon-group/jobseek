@@ -254,9 +254,9 @@ describe("withTypesenseRetry", () => {
 
     await withTypesenseRetry(fn, { sleep, label: "search" });
 
-    const warnArg = (console.warn as unknown as ReturnType<typeof vi.fn>).mock
-      .calls[0][0] as string;
-    expect(warnArg).toContain("search");
-    expect(warnArg).toContain("ECONNRESET");
+    const [event, payload] = (console.warn as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0] as [string, Record<string, unknown>];
+    expect(event).toBe("external_client_error");
+    expect(payload).toMatchObject({ operation: "search_retry", code: "ECONNRESET" });
   });
 });

@@ -51,26 +51,22 @@ prometheus.relabel "host" {
   }
 }
 
-// The host-local loopback listener is never exposed publicly. Shipping the
-// collector's own metrics makes scrape failures, queue growth, and remote
-// write retries distinguishable from application outages.
-prometheus.scrape "alloy" {
-  targets = [{
-    "__address__" = "127.0.0.1:12347",
-    "job"         = "jobseek-alloy",
-    "instance"    = sys.env("JOBSEEK_HOST_INSTANCE"),
-    "host_role"   = sys.env("JOBSEEK_HOST_ROLE"),
-  }]
-  scrape_interval = "15s"
-  forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
-}
-
 prometheus.remote_write "grafana_cloud" {
   endpoint {
     url = sys.env("PROM_URL")
     basic_auth {
       username = sys.env("PROM_USERNAME")
       password = sys.env("PROM_PASSWORD")
+    }
+    queue_config {
+      capacity             = 4000
+      min_shards           = 1
+      max_shards           = 1
+      max_samples_per_send = 500
+      batch_send_deadline  = "5s"
+      min_backoff          = "1s"
+      max_backoff          = "30s"
+      retry_on_http_429    = true
     }
   }
 }
@@ -94,7 +90,7 @@ loki.relabel "jobseek" {
 
   rule {
     source_labels = ["__journal__systemd_unit"]
-    regex         = "(jobseek-(host-observability|postgresql-backup|typesense-backup|crawler-reconciliation|codex-.*)\\.(service|timer)|cloudflared\\.service)"
+    regex         = "(jobseek-(host-observability|postgresql-backup|typesense-backup|crawler-reconciliation|ats-inventory(-network)?|codex-.*)\\.(service|timer)|cloudflared\\.service)"
     action        = "keep"
   }
 

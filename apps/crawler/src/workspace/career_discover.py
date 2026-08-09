@@ -6,6 +6,7 @@ import asyncio
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -90,14 +91,71 @@ _ATS_URL_RE = re.compile(
     r"boards\.greenhouse\.io/[\w-]+"
     r"|job-boards(?:\.[\w-]+)?\.greenhouse\.io/[\w-]+"
     r"|jobs\.ashbyhq\.com/[\w-]+"
+    r"|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.gupy\.io"
+    r"(?:/jobs/[1-9]\d{0,19})?/?"
+    r"(?:\?jobBoardSource=gupy_public_page)?(?=[#\"'<\s]|$)"
+    r"|workforcenow\.adp\.com/mascsr/default/mdf/recruitment/"
+    r"recruitment\.html\?[^\"'<\s]+"
+    r"|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.csod\.com/"
+    r"ux/ats/careersite/[1-9]\d{0,9}/home"
+    r"(?:/requisition/[1-9]\d{0,19})?"
+    r"\?c=[a-z0-9](?:[a-z0-9-]{0,126}[a-z0-9])?(?=[#\"'<\s]|$)"
+    r"|jobs\.dayforcehcm\.com/"
+    r"(?:[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})+/)?"
+    r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?/"
+    r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,126}[A-Za-z0-9])?"
+    r"(?:/jobs/[1-9]\d{0,18})?/?(?=[?#\"'<\s]|$)"
+    r"|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.darwinbox\.(?:in|com)/"
+    r"ms/candidate(?:v2)?/"
+    r"(?:[A-Za-z0-9][A-Za-z0-9_-]{0,63}/)?careers"
+    r"(?:/jobDetails/[A-Za-z0-9][A-Za-z0-9_-]{0,127})?/?"
+    r"(?=[?#\"'<\s]|$)"
+    r"|herp\.careers/v1/[a-z0-9][a-z0-9_-]{0,62}"
+    r"(?:/[A-Za-z0-9_~-]{6,64})?/?(?=[#\"'<\s]|$)"
+    r"|hrmos\.co/pages/[a-z0-9][a-z0-9_-]{0,62}/jobs"
+    r"(?:/[A-Za-z0-9_-]{1,64})?/?(?=[#\"'<\s]|$)"
     r"|jobs\.lever\.co/[\w-]+"
+    r"|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.zhiye\.com"
+    r"(?:/(?:Social|social|index|jobs|SocialList|CampusList|InternList))?/?"
+    r"(?:\?[^\"'<\s]*)?(?=[#\"'<\s]|$)"
     r"|[\w-]+\.recruitee\.com"
+    r"|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\."
+    r"(?:recruiterbox\.com|hire\.trakstar\.com)"
+    r"(?:/jobs(?:/[a-z0-9]{3,64})?)?/?(?=[?#\"'<\s]|$)"
+    r"|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.keka\.com/careers"
+    r"(?:/[a-z0-9](?:[a-z0-9-]{0,62})?)?"
+    r"(?:/jobdetails/[1-9]\d{0,18})?/?"
+    r"(?:\?source=[^#\"'<\s]+)?(?=[#\"'<\s]|$)"
+    r"|[a-z]{3}\.tbe\.taleo\.net/[a-z]{3}[0-9]{2}/ats/careers/v2/"
+    r"(?:searchResults|viewRequisition)\?[^#\"'<\s]+"
+    r"|recruiting(?:[2-9])?\.ultipro\.(?:com|ca)/"
+    r"[A-Za-z0-9]{3,64}/JobBoard/[0-9a-f-]{36}"
+    r"(?:/OpportunityDetail\?opportunityId=[0-9a-f-]{36})?"
+    r"(?=[#\"'<\s]|$)"
+    r"|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.avature\.net/"
+    r"(?:[^/?#\"'<\s]+/)*(?:SearchJobs(?:Maps)?|(?:Job|Folder|Pipeline)Detail)"
+    r"(?:[/?#][^\"'<\s]*)?(?=[\"'<\s]|$)"
     r"|[\w-]+\.jobs\.personio\.(?:de|com)"
     r"|[\w-]+\.pinpointhq\.com"
     r"|(?:jobs|careers)\.smartrecruiters\.com/[\w-]+"
     r"|[\w-]+\.mysmartrecruiters\.com"
     r"|apply\.workable\.com/[\w-]+"
     r"|[\w-]+\.breezy\.hr"
+    r"|[\w-]+\.bamboohr\.com/careers"
+    r"|(?:www\.)?paycomonline\.net/v4/ats/web\.php/portal/[0-9a-f]{32}/(?:career-page|jobs)"
+    r"|[a-z0-9][a-z0-9-]*\.applytojob\.com"
+    r"(?:/apply(?:/jobs(?:/details/[A-Za-z0-9_-]+)?)?)?/?(?=[?#\"'<\s]|$)"
+    r"|jobs\.jobvite\.com/(?:careers/)?[a-z0-9][a-z0-9-]*"
+    r"(?:/jobs(?:/positions)?|/job/[A-Za-z0-9_-]{6,64})?/?"
+    r"(?:\?[^#\"'<\s]*)?(?=[#\"'<\s]|$)"
+    r"|careers\.pageuppeople\.com/[1-9]\d{0,8}/"
+    r"[a-z][a-z0-9-]{0,15}/[a-z]{2,3}(?:-[a-z0-9]{2,8})*"
+    r"(?:/listing/?(?:\?[^#\"'<\s]*)?|/job/[1-9]\d{0,18}/"
+    r"[^/?#\"'<\s]{1,200})?/?(?=[#\"'<\s]|$)"
+    r"|[a-z0-9][a-z0-9-]*\.icims\.com"
+    r"(?:/jobs(?:/search|/\d+(?:/[^/?#]+)?/job)?)?/?"
+    r"(?:\?(?:in_iframe=1|ss=1(?:&(?:amp;)?in_iframe=1)?))?"
+    r"(?=[#\"'<\s]|$)"
     r"|(?:www\.)?comeet\.com/jobs/[\w-]+/[\w.]+"
     r"|ats(?:\.[\w]+)?\.rippling\.com/[\w-]+"
     r"|careers\.hireology\.com/[\w-]+"
@@ -114,8 +172,11 @@ _ATS_URL_RE = re.compile(
     r"|recruitingapp-\d+(?:\.\w+)?\.umantis\.com"
     # Teamtailor
     r"|(?:career|jobs?)\.[\w-]+\.teamtailor\.com"
-    # SAP SuccessFactors
-    r"|career\d*\.successfactors\.(?:eu|com)"
+    # SAP SuccessFactors (legacy shared hosts + modern SAP-hosted CSB)
+    r"|(?:career\d{0,3}|performancemanager\d{1,3})\."
+    r"(?:successfactors\.(?:eu|com)|sapsf\.(?:cn|eu|com))"
+    r"(?:/career\?[^#\"'<\s]{1,512})?"
+    r"|[a-z0-9][a-z0-9-]*\.jobs\.hr\.cloud\.sap"
     r")",
     re.IGNORECASE,
 )
@@ -433,7 +494,7 @@ def _scan_ats_urls_in_html(html: str) -> list[_ExtractedLink]:
     found: list[_ExtractedLink] = []
     seen: set[str] = set()
     for match in _ATS_URL_RE.finditer(html):
-        url = match.group(0)
+        url = unescape(match.group(0))
         if url not in seen:
             seen.add(url)
             found.append(
@@ -842,8 +903,30 @@ def _dedup_candidates(candidates: list[CareerPageCandidate]) -> list[CareerPageC
     """Deduplicate by (monitor_type, monitor_config key), keeping highest score."""
     by_key: dict[str, CareerPageCandidate] = {}
     for c in candidates:
-        # Use monitor_type + token/slug as dedup key
-        config_key = c.monitor_config.get("token") or c.monitor_config.get("slug") or c.url
+        # Use monitor_type + stable ATS identifier as the dedup key.
+        tenant = c.monitor_config.get("tenant")
+        site_id = c.monitor_config.get("site_id")
+        corp = c.monitor_config.get("corp")
+        portal = c.monitor_config.get("portal")
+        cid = c.monitor_config.get("cid")
+        cc_id = c.monitor_config.get("cc_id")
+        locale = c.monitor_config.get("locale")
+        tenant_parts = [tenant] if tenant else []
+        if tenant_parts and site_id is not None:
+            tenant_parts.append(site_id)
+        if tenant_parts and corp:
+            tenant_parts.append(corp)
+        if tenant_parts and portal:
+            tenant_parts.append(portal)
+        tenant_key = ":".join(str(part) for part in tenant_parts) or None
+        adp_key = f"{cid}:{cc_id}:{locale}" if cid and cc_id and locale else None
+        config_key = (
+            c.monitor_config.get("token")
+            or c.monitor_config.get("slug")
+            or tenant_key
+            or adp_key
+            or c.url
+        )
         key = f"{c.monitor_type}:{config_key}"
         if key in by_key:
             if c.score > by_key[key].score:

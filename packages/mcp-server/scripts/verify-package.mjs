@@ -44,6 +44,16 @@ assert(
   "server.json package version must match package.json version",
 );
 
+assert(
+  packageJson.repository?.url ===
+    "git+https://github.com/colophon-group/jobseek.git",
+  "package.json repository.url must identify the trusted-publisher repository",
+);
+assert(
+  packageJson.repository?.directory === "packages/mcp-server",
+  "package.json repository.directory must identify this workspace package",
+);
+
 // Exercise the published protocol boundary. This catches SDK/Zod integration
 // regressions that package metadata and TypeScript compilation cannot detect,
 // including schemas that the MCP SDK can register but cannot serialize.
@@ -65,7 +75,6 @@ const expectedToolSchemas = {
     ],
     required: ["title"],
   },
-  get_discovery_results: { properties: [], required: [] },
   get_ghost_analysis: {
     properties: ["position", "runId"],
     required: ["runId"],
@@ -92,10 +101,6 @@ const expectedToolSchemas = {
     properties: ["companies"],
     required: ["companies"],
   },
-  trigger_discovery_run: {
-    properties: ["enableAiDiscovery", "sources"],
-    required: [],
-  },
   trigger_ghost_analysis: {
     properties: ["companyName", "inventoryMode", "maxSnapshots", "portalUrl"],
     required: ["portalUrl"],
@@ -114,6 +119,11 @@ try {
   ]);
 
   const { tools } = await client.listTools();
+  const retiredTools = ["get_discovery_results", "trigger_discovery_run"];
+  assert(
+    retiredTools.every((name) => !tools.some((tool) => tool.name === name)),
+    "MCP tool registry must not restore the retired vendor-backed discovery tools",
+  );
   assert(
     JSON.stringify(tools.map(({ name }) => name).sort()) ===
       JSON.stringify(expectedTools),

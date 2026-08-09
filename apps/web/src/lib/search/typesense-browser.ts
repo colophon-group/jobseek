@@ -15,6 +15,7 @@ import type {
   ExperienceBucket,
 } from "./types";
 import { normalizePostingTitle } from "@/lib/posting-title";
+import { logExternalError } from "@/lib/safe-external-error";
 
 interface JobPostingDoc {
   id: string;
@@ -226,7 +227,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
 
       return { companies, totalCompanies };
     } catch (err) {
-      console.error("[typesense-browser] search error", err);
+      logExternalError("error", { service: "typesense", operation: "browser_search_jobs" }, err);
       return emptyResponse();
     }
   }
@@ -243,7 +244,11 @@ export class TypesenseBrowserProvider implements SearchProvider {
       }
       return await this.filtered(cfg, filterStr, offset, limit, locationIds);
     } catch (err) {
-      console.error("[typesense-browser] listTopCompanies error", err);
+      logExternalError(
+        "error",
+        { service: "typesense", operation: "browser_list_top_companies" },
+        err,
+      );
       return emptyResponse();
     }
   }
@@ -390,7 +395,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
       });
       return (r.hits ?? []).map((h) => mapHitToPosting(h, locationIds));
     } catch (err) {
-      console.error("[typesense-browser] loadPostings error", err);
+      logExternalError("error", { service: "typesense", operation: "browser_load_postings" }, err);
       return [];
     }
   }
@@ -475,7 +480,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
       buckets.sort((a, b) => a.min - b.min);
       return buckets;
     } catch (err) {
-      console.error("[typesense-browser] salary histogram error", err);
+      logExternalError("error", { service: "typesense", operation: "browser_salary_histogram" }, err);
       return [];
     }
   }
@@ -505,7 +510,11 @@ export class TypesenseBrowserProvider implements SearchProvider {
       buckets.sort((a, b) => a.years - b.years);
       return buckets;
     } catch (err) {
-      console.error("[typesense-browser] experience histogram error", err);
+      logExternalError(
+        "error",
+        { service: "typesense", operation: "browser_experience_histogram" },
+        err,
+      );
       return [];
     }
   }

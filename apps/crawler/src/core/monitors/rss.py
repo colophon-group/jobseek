@@ -1,11 +1,14 @@
 """Generic RSS 2.0 feed monitor with ATS presets.
 
-Supports multiple ATS platforms that expose job listings via RSS feeds:
+Supports multiple ATS platforms that expose job listings via RSS/XML-style transports:
 - **successfactors**: SAP SuccessFactors CSB ``/googlefeed.xml`` (Google Base namespace)
+  plus native static DWR pagination for legacy ``/career?company=...`` tenants
 - **teamtailor**: Teamtailor ``/jobs.rss`` (offset-paginated, ``tt:`` namespace)
 - **generic**: Standard RSS 2.0 (manual config, not auto-detected)
 
-Config: ``{"preset": "<name>", "feed_url": "..."}``
+Config: ``{"preset": "<name>", "feed_url": "..."}``. Legacy SuccessFactors
+uses ``{"preset": "successfactors", "variant": "legacy", "host": "...",
+"company": "..."}`` and still runs through this monitor type.
 """
 
 from __future__ import annotations
@@ -26,6 +29,7 @@ import structlog
 
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
 from src.core.monitors.raw import save_text_response
+from src.shared.successfactors import successfactors_legacy_board_from_url
 from src.shared.truncation import truncated_rich_result
 
 if TYPE_CHECKING:
@@ -82,6 +86,8 @@ _PRESETS: dict[str, _Preset] = {
         feed_paths=["/googlefeed.xml"],
         page_patterns=[
             re.compile(r"successfactors\.(?:eu|com)"),
+            re.compile(r"sapsf\.(?:cn|eu|com)"),
+            re.compile(r"jobs\.hr\.cloud\.sap"),
             re.compile(r"rmkcdn\.successfactors\.com"),
             re.compile(r"jobs2web\.com"),
         ],
@@ -470,7 +476,11 @@ async def _probe_feed(
         async for _item in _stream_feed_items(feed_url, preset, client):
             count += 1
         return True, count
-    except Exception:
+    except Exception as exc:
+        from src.shared.tdm import TDMReservedError
+
+        if isinstance(exc, TDMReservedError):
+            raise
         return False, None
 
 
@@ -506,6 +516,14 @@ async def discover_stream(
     board: dict, client: httpx.AsyncClient, pw=None
 ) -> AsyncIterator[list[DiscoveredJob] | MonitorResult]:
     """Yield bounded parsed-job batches across streamed RSS pages."""
+    metadata = board.get("metadata") or {}
+    if metadata.get("preset") == "successfactors" and metadata.get("variant") == "legacy":
+        from src.core.monitors._successfactors_legacy import discover_legacy_stream
+
+        async for batch in discover_legacy_stream(board, client):
+            yield batch
+        return
+
     config = _feed_config(board)
     if config is None:
         return
@@ -550,6 +568,12 @@ async def discover(
     """Fetch job listings while retaining the non-streaming public API."""
     from src.core.monitor import MonitorResult
 
+    metadata = board.get("metadata") or {}
+    if metadata.get("preset") == "successfactors" and metadata.get("variant") == "legacy":
+        from src.core.monitors._successfactors_legacy import discover_legacy
+
+        return await discover_legacy(board, client)
+
     jobs: list[DiscoveredJob] = []
     was_truncated = False
     async for batch in discover_stream(board, client, pw=pw):
@@ -572,6 +596,64 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     if client is None:
         return None
 
+    # Legacy SAP-hosted tenants use a case-sensitive company identity and a
+    # static DWR listing protocol. Probe this strict direct shape before the
+    # general HTML/feed path. Some of these URLs redirect to a migrated CSB
+    # site; in that case prefer the redirected origin's existing Google feed.
+    legacy_board = successfactors_legacy_board_from_url(url)
+    if legacy_board is not None:
+        from src.core.monitors._successfactors_legacy import (
+            SuccessFactorsLegacyRedirect,
+            probe_legacy,
+        )
+        from src.shared.tdm import TDMReservedError
+
+        probe_board = legacy_board
+        migrated_location: str | None = None
+        for _hop in range(3):
+            try:
+                return await probe_legacy(probe_board, client)
+            except SuccessFactorsLegacyRedirect as exc:
+                redirected_board = successfactors_legacy_board_from_url(exc.location)
+                if (
+                    redirected_board is not None
+                    and redirected_board.company == probe_board.company
+                    and redirected_board != probe_board
+                ):
+                    probe_board = redirected_board
+                    continue
+                migrated_location = exc.location
+                break
+            except TDMReservedError:
+                raise
+            except Exception:
+                log.debug("rss.successfactors_legacy_probe_failed", url=url, exc_info=True)
+                break
+
+        if migrated_location:
+            try:
+                redirected = urlparse(migrated_location)
+                if (
+                    redirected.scheme.casefold() == "https"
+                    and redirected.hostname
+                    and redirected.username is None
+                    and redirected.password is None
+                    and redirected.port in {None, 443}
+                ):
+                    feed = f"https://{redirected.hostname}/googlefeed.xml"
+                    found, count = await _probe_feed(feed, client, "successfactors")
+                    if found:
+                        migrated: dict = {
+                            "preset": "successfactors",
+                            "variant": "feed",
+                            "feed_url": feed,
+                        }
+                        if count is not None:
+                            migrated["jobs"] = count
+                        return migrated
+            except (TypeError, ValueError):
+                pass
+
     # 1. Fetch page HTML once for all preset pattern checks
     html_text = await fetch_page_text(url, client)
 
@@ -587,6 +669,8 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
                 found, count = await _probe_feed(feed, client, preset_name)
                 if found:
                     result: dict = {"preset": preset_name, "feed_url": feed}
+                    if preset_name == "successfactors":
+                        result["variant"] = "feed"
                     if count is not None:
                         result["jobs"] = count
                     log.info(
@@ -604,6 +688,8 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
             found, count = await _probe_feed(feed, client, preset_name)
             if found:
                 result = {"preset": preset_name, "feed_url": feed}
+                if preset_name == "successfactors":
+                    result["variant"] = "feed"
                 if count is not None:
                     result["jobs"] = count
                 log.info(
@@ -623,6 +709,21 @@ async def save_raw(
     metadata: dict,
     client: httpx.AsyncClient,
 ) -> None:
+    if metadata.get("preset") == "successfactors" and metadata.get("variant") == "legacy":
+        from src.shared.successfactors import successfactors_legacy_board_from_metadata
+
+        identity = successfactors_legacy_board_from_metadata(metadata)
+        if identity is None:
+            identity = successfactors_legacy_board_from_url(board_url)
+        if identity is not None:
+            await save_text_response(
+                artifact_dir,
+                client,
+                identity.listing_url,
+                filename="response.html",
+                follow_redirects=False,
+            )
+        return
     feed = metadata.get("feed_url")
     if not feed:
         preset = _PRESETS.get(metadata.get("preset", "generic"))

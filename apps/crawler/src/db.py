@@ -7,6 +7,7 @@ import asyncpg
 from src.config import settings
 
 _pool: asyncpg.Pool | None = None
+_web_pool: asyncpg.Pool | None = None
 _local_pool: asyncpg.Pool | None = None
 
 
@@ -37,8 +38,10 @@ async def _init_local_connection(conn: asyncpg.Connection) -> None:
 
 
 async def create_pool() -> asyncpg.Pool:
-    """Create the Supabase pool (remote, used by exporter + sync only)."""
+    """Create the optional crawler-mirror pool used by legacy sync/export paths."""
     global _pool
+    if not settings.database_url:
+        raise RuntimeError("DATABASE_URL is not configured for the crawler mirror")
     if _pool is None:
         max_size = settings.crawler_db_pool_max or (
             settings.crawler_max_concurrent + settings.crawler_max_browser
@@ -53,6 +56,24 @@ async def create_pool() -> asyncpg.Pool:
             init=_init_connection,
         )
     return _pool
+
+
+async def create_web_pool() -> asyncpg.Pool:
+    """Create the provider-neutral pool for web-owned records such as watchlists."""
+    global _web_pool
+    if not settings.web_database_url:
+        raise RuntimeError("WEB_DATABASE_URL is not configured for web-owned data")
+    if _web_pool is None:
+        _web_pool = await asyncpg.create_pool(
+            settings.web_database_url,
+            min_size=1,
+            max_size=settings.crawler_db_pool_max or 10,
+            command_timeout=60,
+            statement_cache_size=0,
+            max_inactive_connection_lifetime=300.0,
+            init=_init_connection,
+        )
+    return _web_pool
 
 
 async def create_local_pool() -> asyncpg.Pool:
@@ -81,6 +102,16 @@ async def close_pool() -> None:
         _pool = None
 
 
+async def close_web_pool() -> None:
+    global _web_pool
+    if _web_pool is not None:
+        try:
+            await asyncio.wait_for(_web_pool.close(), timeout=5.0)
+        except TimeoutError:
+            _web_pool.terminate()
+        _web_pool = None
+
+
 async def close_local_pool() -> None:
     global _local_pool
     if _local_pool is not None:
@@ -93,4 +124,5 @@ async def close_local_pool() -> None:
 
 async def close_all_pools() -> None:
     await close_pool()
+    await close_web_pool()
     await close_local_pool()

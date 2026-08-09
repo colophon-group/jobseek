@@ -84,6 +84,12 @@ monitor_dedup_total = Counter(
     ["path"],
 )
 
+monitor_foreign_discovery_total = Counter(
+    "crawler_monitor_foreign_discovery_total",
+    "Cross-board discoveries by canonical posting recovery outcome",
+    ["outcome"],
+)
+
 monitor_db_transaction_retries_total = Counter(
     "crawler_monitor_db_transaction_retries_total",
     "Monitor database transactions retried after a transient PostgreSQL abort",
@@ -113,6 +119,25 @@ monitor_failed_per_board_total = Counter(
     "crawler_monitor_failed_per_board_total",
     "Monitor pipeline failures attributed to a specific board",
     ["board_id"],
+)
+
+# Configured boards that exhaust the normal retry ramp remain schedulable in a
+# low-frequency quarantine instead of being terminally disabled (#6157).
+# ``event`` is deliberately a three-value allowlist, so the metric remains
+# fleet-bounded while exposing entry, failed recovery probes, and recoveries.
+monitor_quarantine_events_total = Counter(
+    "crawler_monitor_quarantine_events_total",
+    "Monitor quarantine state-machine transitions and recovery probes",
+    ["event"],
+)
+
+# Provider-native 404/retirement signals use a bounded confirmation state
+# machine (#6156). The three events expose durable confirmations, terminal
+# transitions, and self-recoveries without adding a per-board label.
+monitor_gone_events_total = Counter(
+    "crawler_monitor_gone_events_total",
+    "Monitor provider-gone confirmations, terminal transitions, and recoveries",
+    ["event"],
 )
 
 # Redis-backed per-upstream-host circuit breaker (#3195). Only hosts that
@@ -174,7 +199,7 @@ exporter_flush_duration = Histogram(
 
 exporter_rows_exported = Counter(
     "crawler_exporter_rows_exported_total",
-    "Rows exported from local Postgres to Supabase",
+    "Rows exported from local Postgres to configured downstreams",
     ["table"],
 )
 
@@ -372,6 +397,12 @@ inflight_deadletter_depth = Gauge(
     "crawler_inflight_deadletter_depth",
     "Tasks parked in the dead-letter ZSET",
     ["wtype"],
+)
+
+monitor_deadletter_lifecycle_depth = Gauge(
+    "crawler_monitor_deadletter_lifecycle_depth",
+    "Monitor dead-letter tasks classified against local Postgres lifecycle state",
+    ["wtype", "lifecycle"],
 )
 
 # Heartbeats: tasks that called ``heartbeat_task`` and got 1 (extended)
