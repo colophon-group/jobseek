@@ -75,9 +75,9 @@
   "devDependencies": {
     "@lingui/babel-plugin-lingui-macro": "^6",
     "@lingui/cli": "^6",
-    "@lingui/conf": "^6.5.0",
+    "@lingui/conf": "^6.6.0",
     "@lingui/format-po": "^6",
-    "@lingui/loader": "^6.5.0",
+    "@lingui/loader": "^6.6.0",
     "@next/bundle-analyzer": "^16.2.11",
     "@next/eslint-plugin-next": "^16.2.11",
     "@testing-library/jest-dom": "^6.9.1",
