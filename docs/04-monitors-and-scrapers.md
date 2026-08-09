@@ -60,6 +60,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `deel` | Rich | skip | Deel ATS |
 | `dvinci` | Rich | skip | d.vinci ATS |
 | `gem` | Rich | skip | Gem ATS |
+| `inploi` | Rich + enrichment | json-ld | Inploi public candidate-experience search API plus JSON-LD description enrichment |
 | `greenhouse` | Rich | skip | Greenhouse ATS |
 | `hibob` | Rich | skip | HiBob public career sites |
 | `hirehive` | Rich | skip | HireHive public Jobs API |

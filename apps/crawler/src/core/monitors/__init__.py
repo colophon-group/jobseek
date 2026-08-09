@@ -489,6 +489,11 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Gem API \u2014 slug: {token}, {jobs} jobs"
         return f"Gem API \u2014 slug: {token}"
+    if name == "inploi":
+        segment = metadata.get("segment_id", "?")
+        jobs = metadata.get("jobs")
+        label = f"Inploi API \u2014 segment: {segment}"
+        return f"{label}, {jobs} jobs" if jobs is not None else label
     if name == "greenhouse":
         token = metadata.get("token", "?")
         jobs = metadata.get("jobs")
@@ -807,6 +812,7 @@ from src.core.monitors import (  # noqa: E402
     hrmos,  # noqa: F401
     icims,  # noqa: F401
     inline,  # noqa: F401
+    inploi,  # noqa: F401
     jarvi,  # noqa: F401
     jazzhr,  # noqa: F401
     jobvite,  # noqa: F401

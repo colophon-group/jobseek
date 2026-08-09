@@ -192,6 +192,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `deel`            | Rich     | skip        | Deel ATS API                            |
 | 10   | `dvinci`          | Rich     | skip        | d.vinci ATS API                         |
 | 10   | `gem`             | Rich     | skip        | Gem ATS API                             |
+| 10   | `inploi`          | Rich     | json-ld     | Inploi public search API + description enrichment |
 | 10   | `greenhouse`      | Rich     | skip        | Greenhouse JSON API                     |
 | 10   | `hibob`           | Rich     | skip        | HiBob public career-site API            |
 | 10   | `hirehive`        | Rich     | skip        | HireHive public Jobs API                |

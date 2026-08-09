@@ -931,6 +931,7 @@ _MONITOR_CONFIG_HINTS = {
     "comeet": "No config required (company and board ID are derived from the URL)",
     "dvinci": "Requires: slug (auto-filled from probe)",
     "greenhouse": "Requires: token (auto-filled from probe)",
+    "inploi": "Requires: api_key, segment_id (auto-filled from an Inploi careers page)",
     "hirehive": "Requires: slug (auto-filled from probe)",
     "hireology": "Requires: slug (auto-filled from probe)",
     "jarvi": "Requires: public_api_key; optional currency (auto-filled from probe)",
