@@ -316,7 +316,7 @@ function durationSeconds(value) {
 test("CI change detection uses the pinned paths-filter action", () => {
   assert.match(
     workflow,
-    /uses: dorny\/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4\.0\.2/,
+    /uses: dorny\/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4\.0\.3/,
   );
   assert.match(workflow, /predicate-quantifier: every/);
   assert.match(workflow, /code:\n(?:              - .+\n)+/);
@@ -982,7 +982,7 @@ test("CodeQL skips full analysis for non-code pull requests", () => {
   assert.match(changesJob, /name: Detect CodeQL changes/);
   assert.match(changesJob, /id: manual-pr/);
   assert.match(changesJob, /\.github\/scripts\/classify-pr-paths\.sh/);
-  assert.match(changesJob, /uses: dorny\/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4\.0\.2/);
+  assert.match(changesJob, /uses: dorny\/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4\.0\.3/);
   assert.match(changesJob, /predicate-quantifier: every/);
   assert.match(changesJob, /codeql:\n(?:              - .+\n)+/);
 
@@ -1222,7 +1222,7 @@ test("setup-uv steps cache uv downloads by crawler lockfile", () => {
 test("MCP publish workflow caches the pnpm store", () => {
   assert.match(
     publishMcpServerWorkflow,
-    /pnpm\/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6\.0\.9[\s\S]*actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6/,
+    /pnpm\/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6\.0\.10[\s\S]*actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6/,
   );
   assert.match(publishMcpServerWorkflow, /cache: pnpm/);
   assert.match(publishMcpServerWorkflow, /cache-dependency-path: pnpm-lock\.yaml/);
