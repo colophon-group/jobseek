@@ -24,9 +24,6 @@ updates:
       time: "04:30"
       timezone: "Etc/UTC"
     open-pull-requests-limit: 10
-    exclude-paths:
-      - "apps/crawler/murmur/**"
-      - "apps/murmur-shim/**"
     ignore:
       # TypeScript 7 is blocked by typescript-eslint's stable peer range
       # (<6.1 as of 2026-07-22). Track the deliberate migration in #5866.
@@ -74,7 +71,9 @@ updates:
         applies-to: "version-updates"
         patterns:
           - "*"
-        group-by: "dependency-name"
+        # Keep the catch-all as one reviewable workspace update. Splitting this
+        # group back into one PR per dependency exhausted the 10-PR limit and
+        # prevented later security work from completing.
 
   - package-ecosystem: "uv"
     directory: "/apps/crawler"

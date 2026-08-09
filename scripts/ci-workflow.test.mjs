@@ -1018,10 +1018,7 @@ test("Dependabot updates and groups the pnpm workspace from its root", () => {
   assert.ok(npmConfig, "missing npm Dependabot configuration");
   assert.match(npmConfig, /^    directory: "\/"$/m);
   assert.doesNotMatch(npmConfig, /^    directories:/m);
-  assert.match(
-    npmConfig,
-    /exclude-paths:\n      - "apps\/crawler\/murmur\/\*\*"\n      - "apps\/murmur-shim\/\*\*"/,
-  );
+  assert.doesNotMatch(npmConfig, /exclude-paths:/);
   assert.match(
     npmConfig,
     /security-updates:\n        applies-to: "security-updates"\n        patterns:\n          - "\*"/,
@@ -1030,8 +1027,9 @@ test("Dependabot updates and groups the pnpm workspace from its root", () => {
   assert.match(npmConfig, /test-tooling:\n        applies-to: "version-updates"/);
   assert.match(
     npmConfig,
-    /workspace-dependencies:\n        applies-to: "version-updates"\n        patterns:\n          - "\*"\n        group-by: "dependency-name"/,
+    /workspace-dependencies:\n        applies-to: "version-updates"\n        patterns:\n          - "\*"\n        # Keep the catch-all as one reviewable workspace update\./,
   );
+  assert.doesNotMatch(npmConfig, /group-by: "dependency-name"/);
 });
 
 test("the pnpm workspace has one JavaScript lockfile authority", () => {

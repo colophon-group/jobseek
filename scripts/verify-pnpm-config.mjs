@@ -19,7 +19,7 @@ assert(
   "pnpm-workspace.yaml must define onlyBuiltDependencies",
 );
 assert(
-  workspaceYaml.includes("brace-expansion: 5.0.7"),
+  workspaceYaml.includes("brace-expansion: 5.0.9"),
   "pnpm-workspace.yaml must carry security override entries",
 );
 assert(

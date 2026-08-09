@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",
-    "next": "^16.2.6",
+    "next": "^16.2.11",
     "postgres": "^3.4.9",
     "react": "^19",
     "react-dom": "^19"
