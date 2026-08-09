@@ -25,6 +25,16 @@ updates:
       timezone: "Etc/UTC"
     open-pull-requests-limit: 10
     ignore:
+      # The application runtime carries patches/next@16.2.11.patch for the
+      # PPR resume fix documented in #5911. Dependabot cannot update a pnpm
+      # patched package and currently exits with an opaque `unknown_error`.
+      # Keep runtime upgrades manual until that patch can be retired; security
+      # alerts remain covered by the daily Dependabot health workflow.
+      - dependency-name: "next"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
       # TypeScript 7 is blocked by typescript-eslint's stable peer range
       # (<6.1 as of 2026-07-22). Track the deliberate migration in #5866.
       - dependency-name: "typescript"
