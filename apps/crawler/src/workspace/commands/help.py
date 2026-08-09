@@ -1105,8 +1105,10 @@ dom — Link Extraction (fallback)
 
   Detection:   ws probe checks static HTML for job links.
                If detected: shows "✓ N URLs". If not: shows "✗ Not detected".
+               LinkedIn job-detail links are automatically filtered and
+               rewritten for the dedicated linkedin scraper.
 
-  Pair with:   json-ld (try first) or dom scraper"""
+  Pair with:   json-ld (try first), linkedin, or dom scraper"""
 
 MONITOR_ASHBY = """\
 ashby — Ashby Job Board API

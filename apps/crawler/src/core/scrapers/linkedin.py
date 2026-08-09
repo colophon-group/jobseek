@@ -15,10 +15,14 @@ from src.shared.http_retry import fetch_text_page_with_retry
 log = structlog.get_logger()
 
 _JOB_ID_RE = re.compile(r"(?:-|/)(\d+)$")
+_GUEST_JOB_PATH_RE = re.compile(r"^/jobs-guest/jobs/api/jobPosting/(\d+)$")
 
 
 def _job_id_from_url(url: str) -> str | None:
     path = urlparse(url).path.rstrip("/")
+    guest_match = _GUEST_JOB_PATH_RE.fullmatch(path)
+    if guest_match:
+        return guest_match.group(1)
     if "/jobs/view/" not in path:
         return None
     match = _JOB_ID_RE.search(path)

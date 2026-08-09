@@ -180,6 +180,10 @@ class TestScraper:
             "4442073767"
         )
         assert _job_id_from_url("https://www.linkedin.com/jobs/view/4442073767") == "4442073767"
+        assert (
+            _job_id_from_url("https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/4442073767")
+            == "4442073767"
+        )
         assert _job_id_from_url("https://example.com/jobs/4442073767") is None
 
     async def test_fetches_guest_detail_endpoint(self):
