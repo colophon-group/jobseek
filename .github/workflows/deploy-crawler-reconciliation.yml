@@ -26,12 +26,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Validate reconciliation deployment artifacts
+        id: contract
         run: |
           set -euo pipefail
           bash -n deploy/reconciliation/run.sh
           bash -n deploy/reconciliation/install-host.sh
+          python3 -m py_compile deploy/reconciliation/state.py
           test -s deploy/systemd/jobseek-crawler-reconciliation.service
           test -s deploy/systemd/jobseek-crawler-reconciliation.timer
+          printf 'wrapper_sha256=%s\n' \
+            "$(sha256sum deploy/reconciliation/run.sh | awk '{print $1}')" \
+            >> "$GITHUB_OUTPUT"
 
       - name: Copy reconciliation deployment artifacts
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
@@ -47,15 +52,23 @@ jobs:
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         env:
           JOBSEEK_RECONCILIATION_DEPLOY_SHA: ${{ github.sha }}
+          JOBSEEK_RECONCILIATION_WRAPPER_SHA256: ${{ steps.contract.outputs.wrapper_sha256 }}
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: JOBSEEK_RECONCILIATION_DEPLOY_SHA
+          envs: JOBSEEK_RECONCILIATION_DEPLOY_SHA,JOBSEEK_RECONCILIATION_WRAPPER_SHA256
           command_timeout: 20m
           script: |
             set -euo pipefail
             cd /opt/jobseek-reconciliation
             bash deploy/reconciliation/install-host.sh
-            test "$(cat /var/lib/jobseek-reconciliation/deployed-sha)" = "$JOBSEEK_RECONCILIATION_DEPLOY_SHA"
+            runuser -u deploy -- /usr/local/sbin/jobseek-reconciliation-state \
+              check \
+              --expected-revision "$JOBSEEK_RECONCILIATION_DEPLOY_SHA" \
+              --expected-wrapper-sha256 "$JOBSEEK_RECONCILIATION_WRAPPER_SHA256"
             systemctl is-active --quiet jobseek-crawler-reconciliation.timer
+            systemctl reset-failed jobseek-crawler-reconciliation.service || true
+            systemctl start --no-block jobseek-crawler-reconciliation.service
+            sleep 5
+            ! systemctl is-failed --quiet jobseek-crawler-reconciliation.service

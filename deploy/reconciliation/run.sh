@@ -5,22 +5,14 @@ set -euo pipefail
 ENV_FILE=/home/deploy/.env
 LOCK_FILE=/run/lock/jobseek-crawler-mutation.lock
 CONTAINER=jobseek-cross-store-reconciliation
-reconciliation_args=(--repair --max-partitions 16)
+reconciliation_args=(--repair --max-partitions 16 --target typesense)
 
 if (( $# )); then
-  if [[ $# -ne 2 || "$1" != "--full-target" ]]; then
-    echo "ERROR: usage: $0 [--full-target supabase|typesense]" >&2
+  if [[ $# -ne 1 || "$1" != "--full" ]]; then
+    echo "ERROR: usage: $0 [--full]" >&2
     exit 2
   fi
-  case "$2" in
-    supabase|typesense)
-      reconciliation_args=(--repair --full --target "$2")
-      ;;
-    *)
-      echo "ERROR: full target must be supabase or typesense" >&2
-      exit 2
-      ;;
-  esac
+  reconciliation_args=(--repair --full --target typesense)
 fi
 
 [[ -r "$ENV_FILE" ]] || {
@@ -37,6 +29,11 @@ command -v flock >/dev/null || {
 }
 command -v timeout >/dev/null || {
   echo "ERROR: timeout is unavailable" >&2
+  exit 1
+}
+revision="$(/usr/local/sbin/jobseek-reconciliation-state check | awk '{print $NF}')"
+[[ "$revision" =~ ^[0-9a-f]{40}$ ]] || {
+  echo "ERROR: reconciliation state verifier returned an invalid revision" >&2
   exit 1
 }
 
@@ -70,7 +67,6 @@ trap cleanup EXIT HUP INT TERM
 RUNTIME_ENV="$(mktemp /run/lock/jobseek-reconciliation-env.XXXXXX)"
 chmod 0600 "$RUNTIME_ENV"
 required_env=(
-  DATABASE_URL
   LOCAL_DATABASE_URL
   TYPESENSE_HOST
   TYPESENSE_PORT
@@ -104,6 +100,13 @@ timeout --foreground --signal=TERM --kill-after=90s 50m docker run --rm \
   --read-only \
   --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
   -e PYTHONDONTWRITEBYTECODE=1 \
-  --label jobseek.maintenance=cross-store-reconciliation \
+  --label com.docker.compose.project=deploy \
+  --label com.docker.compose.service=cross-store-reconciliation \
+  --label com.docker.compose.container-number=1 \
+  --label com.docker.compose.oneoff=True \
+  --label jobseek.maintenance.operation=cross-store-reconciliation \
+  --label jobseek.maintenance.issue=5930 \
+  --label "jobseek.maintenance.revision=${revision}" \
+  --label jobseek.maintenance.budget-seconds=3000 \
   "$image" \
   /app/.venv/bin/crawler reconcile "${reconciliation_args[@]}"

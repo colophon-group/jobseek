@@ -7,6 +7,7 @@ import { withDbRetry } from "@/lib/db-retry";
 import { siteConfig } from "@/content/config";
 import { locales } from "@/lib/i18n";
 import { listBlogPosts, getBlogPostLocales, type BlogPostSummary } from "@/lib/blog";
+import { logExternalError } from "@/lib/safe-external-error";
 
 /**
  * Sitemap data + entry builders backing `app/sitemap.xml/route.ts`.
@@ -218,10 +219,7 @@ export async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     watchlists = await cachedSitemapWatchlists();
   } catch (err) {
-    console.error(
-      "[sitemap] watchlist fetch failed; serving static entries only",
-      err,
-    );
+    logExternalError("error", { service: "database", operation: "sitemap_watchlists" }, err);
   }
   let blogEntries: MetadataRoute.Sitemap = [];
   try {
@@ -232,7 +230,7 @@ export async function buildSitemap(): Promise<MetadataRoute.Sitemap> {
     // frontmatter or a future change to `getBlogPostLocales` could
     // surface here. Degrade to "no blog entries" rather than tearing
     // down the whole urlset (which was the second half of #2694).
-    console.error("[sitemap] blog entries failed; skipping", err);
+    logExternalError("error", { service: "external_http", operation: "sitemap_blog_entries" }, err);
   }
   return [
     ...staticAndExploreEntries(),

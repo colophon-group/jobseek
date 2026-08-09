@@ -25,7 +25,42 @@ UTC = timezone.utc  # noqa: UP017 - crawler host system Python is 3.10.
 DEFAULT_TEXTFILE = Path("/var/lib/jobseek-observability/textfile/jobseek-host.prom")
 DEFAULT_STATE_DIR = Path("/var/lib/jobseek-observability/state")
 DEFAULT_BACKUP_STATUS_DIR = Path("/var/lib/jobseek-backup/status")
+DEFAULT_RECONCILIATION_REVISION = Path("/var/lib/jobseek-reconciliation/deployed-sha")
+DEFAULT_ATS_INVENTORY_STATUS = Path("/var/lib/jobseek-ats-inventory/status/current.json")
+DEFAULT_CODEX_ERROR_REVIEW_STATUS = Path("/srv/jobseek-codex/state/error-review-status.json")
+REDIS_CAPACITY_CACHE_MAX_AGE_SECONDS = 6 * 60 * 60
+POSTGRES_EMERGENCY_RESERVE_NAME = ".jobseek-postgresql-emergency-reserve"
+POSTGRES_EMERGENCY_RESERVE_BYTES = 2_147_483_648
 MAX_LOG_LINES = 200
+ALLOY_METRICS = {
+    "alloy_resources_process_resident_memory_bytes": ("resident_memory_bytes", "max"),
+    "prometheus_remote_storage_queue_highest_sent_timestamp_seconds": (
+        "remote_write_highest_sent_timestamp_seconds",
+        "max",
+    ),
+    "prometheus_remote_storage_samples_pending": ("remote_write_samples_pending", "sum"),
+    "prometheus_remote_storage_samples_retried_total": (
+        "remote_write_samples_retried_total",
+        "sum",
+    ),
+    "prometheus_remote_storage_samples_failed_total": (
+        "remote_write_samples_failed_total",
+        "sum",
+    ),
+    "prometheus_remote_storage_samples_dropped_total": (
+        "remote_write_samples_dropped_total",
+        "sum",
+    ),
+    "prometheus_remote_storage_enqueue_retries_total": (
+        "remote_write_enqueue_retries_total",
+        "sum",
+    ),
+    "loki_write_dropped_entries_total": ("loki_dropped_entries_total", "sum"),
+}
+_PROMETHEUS_SAMPLE_RE = re.compile(
+    r"^(?P<name>[A-Za-z_:][A-Za-z0-9_:]*)(?:\{[^}]*\})?\s+(?P<value>\S+)"
+)
+_HTTP_429_RE = re.compile(r"(?i)(?:status|code|http(?: status)?)\D{0,8}429|429 too many")
 
 ROLE_CONTAINERS = {
     "crawler": (
@@ -36,6 +71,7 @@ ROLE_CONTAINERS = {
         "deploy-exporter-1",
         "deploy-drain-1",
         "deploy-redis-1",
+        "deploy-alloy-1",
     ),
     "postgresql": ("postgres",),
     "typesense": ("typesense",),
@@ -45,6 +81,7 @@ ROLE_UNITS = {
     "crawler": (
         "docker.service",
         "jobseek-crawler-reconciliation.timer",
+        "jobseek-ats-inventory.timer",
         "jobseek-codex-governor.timer",
         "jobseek-codex-daily-annotations.timer",
         "jobseek-codex-daily-error-review.timer",
@@ -53,6 +90,7 @@ ROLE_UNITS = {
         "docker.service",
         "jobseek-postgresql-backup-repository.service",
         "jobseek-postgresql-backup.timer",
+        "jobseek-postgresql-emergency-headroom.service",
     ),
     "typesense": (
         "docker.service",
@@ -67,6 +105,18 @@ ROLE_BACKUPS = {
     "typesense": ("typesense",),
 }
 
+OPTIONAL_ROLE_UNITS = {
+    "crawler": (),
+    "postgresql": (),
+    "typesense": ("jobseek-web-postgresql-backup.timer",),
+}
+
+OPTIONAL_ROLE_BACKUPS = {
+    "crawler": (),
+    "postgresql": (),
+    "typesense": (("web-postgresql", "jobseek-web-postgresql-backup.timer"),),
+}
+
 _CREDENTIAL_RE = re.compile(
     r"(?i)\b(authorization|token|secret|password|api[_-]?key)\b\s*[:=]\s*\S+"
 )
@@ -75,6 +125,19 @@ _IP_RE = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
 _UUID_RE = re.compile(r"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")
 _EMAIL_RE = re.compile(r"(?i)\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b")
 _ERROR_RE = re.compile(r"(?i)\b(error|fatal|panic|exception|oom|killed|failed)\b")
+_TYPESENSE_THREADPOOL_RE = re.compile(
+    r"Threadpool exhaustion detected, task_queue_len: (\d+), thread_pool_len: (\d+)"
+)
+_TYPESENSE_SLOW_REQUEST_RE = re.compile(r"event=slow_request, time=(\d+) ms")
+_TYPESENSE_LOG_EVENT_PATTERNS = {
+    "descriptor_exhaustion": re.compile(r"Too many open files", re.IGNORECASE),
+    "leaderless": re.compile(r"Node with no leader|state ERROR, can't reset_peer", re.IGNORECASE),
+    "snapshot_failure": re.compile(
+        r"Timed snapshot failed|SnapshotWriter|SnapshotError", re.IGNORECASE
+    ),
+    "slow_request": _TYPESENSE_SLOW_REQUEST_RE,
+    "threadpool_exhaustion": _TYPESENSE_THREADPOOL_RE,
+}
 
 
 class ProbeError(RuntimeError):
@@ -152,8 +215,81 @@ def _collect_container_metrics(role: str, lines: list[str]) -> None:
         lines.append(_metric("jobseek_container_restart_count", state["restart_count"], **labels))
 
 
+def _collect_redis_capacity_metrics(
+    lines: list[str],
+    state_dir: Path,
+    *,
+    now: float | None = None,
+) -> None:
+    """Refresh the expensive key-family SCAN at most once every six hours.
+
+    The crawler and host-observability deployments can finish in either order.
+    Missing CLI support therefore publishes ``available=0`` without failing the
+    whole host sampler; the stale-snapshot alert provides a bounded rollout
+    grace period. A prior valid snapshot remains published during refresh
+    failures so operators retain the last family attribution.
+    """
+    current = time.time() if now is None else now
+    cache = state_dir / "redis-capacity.prom"
+    cached = ""
+    cache_age = float("inf")
+    try:
+        cached = cache.read_text(encoding="utf-8")
+        cache_age = max(0.0, current - cache.stat().st_mtime)
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        print(f"jobseek_redis_capacity_cache_failed error={type(exc).__name__}")
+
+    available = False
+    if cached and cache_age <= REDIS_CAPACITY_CACHE_MAX_AGE_SECONDS:
+        available = True
+    else:
+        try:
+            result = _run(
+                [
+                    "docker",
+                    "exec",
+                    "deploy-worker-1-1",
+                    "/app/.venv/bin/crawler",
+                    "redis-capacity",
+                    "inspect",
+                    "--format",
+                    "prometheus",
+                ],
+                timeout=100,
+            )
+            rendered = "\n".join(
+                line
+                for line in result.stdout.splitlines()
+                if line.startswith("jobseek_redis_")
+            )
+            if "jobseek_redis_capacity_snapshot_unixtime " not in rendered:
+                raise ProbeError("Redis capacity output omitted its snapshot timestamp")
+            cached = rendered + "\n"
+            _atomic_write(cache, cached)
+            available = True
+        except Exception as exc:
+            print(f"jobseek_redis_capacity_refresh_failed error={_redact(str(exc))}")
+
+    if cached:
+        lines.extend(line for line in cached.splitlines() if line.startswith("jobseek_redis_"))
+    lines.append(_metric("jobseek_redis_capacity_snapshot_available", int(available)))
+
+
+def _unit_enabled(unit: str) -> bool:
+    result = subprocess.run(
+        ["systemctl", "is-enabled", "--quiet", unit],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return result.returncode == 0
+
+
 def _collect_unit_metrics(role: str, lines: list[str]) -> None:
-    for unit in ROLE_UNITS[role]:
+    units = (*ROLE_UNITS[role], *filter(_unit_enabled, OPTIONAL_ROLE_UNITS[role]))
+    for unit in units:
         result = subprocess.run(
             ["systemctl", "is-active", "--quiet", unit],
             check=False,
@@ -170,6 +306,220 @@ def _collect_unit_metrics(role: str, lines: list[str]) -> None:
         )
 
 
+def _collect_reconciliation_deployment_metrics(
+    lines: list[str], revision_path: Path = DEFAULT_RECONCILIATION_REVISION
+) -> None:
+    available = 0
+    modified = 0.0
+    try:
+        revision = revision_path.read_text(encoding="ascii").strip()
+        if not re.fullmatch(r"[0-9a-f]{40}", revision):
+            raise ValueError("invalid revision")
+        modified = revision_path.stat().st_mtime
+        available = 1
+        lines.append(
+            _metric(
+                "jobseek_cross_store_reconciliation_deployed_revision_info",
+                1,
+                revision=revision,
+            )
+        )
+    except (OSError, UnicodeError, ValueError):
+        pass
+    lines.extend(
+        (
+            _metric("jobseek_cross_store_reconciliation_deployed_revision_available", available),
+            _metric("jobseek_cross_store_reconciliation_deployed_revision_mtime_seconds", modified),
+        )
+    )
+
+
+def _collect_ats_inventory_metrics(
+    lines: list[str], status_path: Path = DEFAULT_ATS_INVENTORY_STATUS
+) -> None:
+    """Publish only bounded aggregate fields from the operator status report."""
+    try:
+        payload = json.loads(status_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        lines.append(_metric("jobseek_ats_inventory_status_available", 0))
+        return
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ProbeError("ATS inventory status is unreadable") from exc
+    if not isinstance(payload, dict):
+        raise ProbeError("ATS inventory status is not an object")
+
+    def integer(name: str, *, minimum: int = 0) -> int:
+        value = payload.get(name)
+        if not isinstance(value, int) or isinstance(value, bool) or value < minimum:
+            raise ProbeError(f"ATS inventory status has invalid {name}")
+        return value
+
+    requested_mode = payload.get("requested_mode")
+    effective_mode = payload.get("effective_mode")
+    if requested_mode not in {"report", "dry-run", "refill"} or effective_mode not in {
+        "report",
+        "dry-run",
+        "refill",
+    }:
+        raise ProbeError("ATS inventory status has invalid mode")
+    attempt_success = integer("last_attempt_success")
+    if attempt_success not in {0, 1}:
+        raise ProbeError("ATS inventory status has invalid last_attempt_success")
+    attempt_degraded = integer("last_attempt_degraded")
+    if attempt_degraded not in {0, 1}:
+        raise ProbeError("ATS inventory status has invalid last_attempt_degraded")
+    rollout_cap = integer("rollout_cap", minimum=1)
+    if rollout_cap not in {1, 5, 25}:
+        raise ProbeError("ATS inventory status has invalid rollout_cap")
+    lines.extend(
+        (
+            _metric("jobseek_ats_inventory_status_available", 1),
+            _metric("jobseek_ats_inventory_last_attempt_unixtime", integer("last_attempt_unixtime")),
+            _metric("jobseek_ats_inventory_last_success_unixtime", integer("last_success_unixtime")),
+            _metric("jobseek_ats_inventory_last_attempt_success", attempt_success),
+            _metric("jobseek_ats_inventory_last_attempt_degraded", attempt_degraded),
+            _metric(
+                "jobseek_ats_inventory_last_attempt_duration_seconds",
+                integer("last_attempt_duration_seconds"),
+            ),
+            _metric("jobseek_ats_inventory_rollout_cap", rollout_cap),
+            _metric(
+                "jobseek_ats_inventory_mode_info",
+                1,
+                effective_mode=effective_mode,
+                requested_mode=requested_mode,
+            ),
+        )
+    )
+    report = payload.get("report") or payload.get("last_success_report")
+    if not isinstance(report, dict):
+        return
+    coverage = report.get("coverage")
+    impact = report.get("impact")
+    candidate = report.get("candidate_issues")
+    if not all(isinstance(value, dict) for value in (coverage, impact, candidate)):
+        raise ProbeError("ATS inventory aggregate report is incomplete")
+
+    def report_number(mapping: dict[str, Any], name: str) -> int | float:
+        value = mapping.get(name)
+        if not isinstance(value, (int, float)) or isinstance(value, bool) or value < 0:
+            raise ProbeError(f"ATS inventory report has invalid {name}")
+        return value
+
+    def optional_report_number(mapping: dict[str, Any], name: str) -> int | float:
+        return 0 if mapping.get(name) is None else report_number(mapping, name)
+
+    queue_status = candidate.get("status")
+    if not isinstance(queue_status, str) or re.fullmatch(r"[a-z0-9_]{1,64}", queue_status) is None:
+        raise ProbeError("ATS inventory queue status is invalid")
+    unsupported_families = coverage.get("unsupported_families")
+    if not isinstance(unsupported_families, list) or not all(
+        isinstance(family, str) for family in unsupported_families
+    ):
+        raise ProbeError("ATS inventory unsupported families are invalid")
+    lines.extend(
+        (
+            _metric("jobseek_ats_inventory_rows", report_number(report, "rows")),
+            _metric(
+                "jobseek_ats_inventory_candidate_coverage_percent",
+                report_number(coverage, "candidate_coverage_pct"),
+            ),
+            _metric(
+                "jobseek_ats_inventory_unsupported_families",
+                len(unsupported_families),
+            ),
+            _metric(
+                "jobseek_ats_inventory_active_companies",
+                report_number(impact, "active_companies"),
+            ),
+            _metric(
+                "jobseek_ats_inventory_queue_status_info",
+                1,
+                status=queue_status,
+            ),
+        )
+    )
+    queue = candidate.get("queue_before")
+    if queue is None and queue_status == "rate_limited_preflight":
+        return
+    if not isinstance(queue, dict):
+        raise ProbeError("ATS inventory queue report is unavailable")
+    lines.extend(
+        (
+            _metric("jobseek_ats_inventory_queue_available", report_number(queue, "available")),
+            _metric("jobseek_ats_inventory_queue_total_open", report_number(queue, "total_open")),
+            _metric("jobseek_ats_inventory_import_open", report_number(queue, "import_open")),
+            _metric("jobseek_ats_inventory_import_closed", report_number(queue, "import_closed")),
+            _metric(
+                "jobseek_ats_inventory_import_fresh_claimed",
+                report_number(queue, "import_fresh_claimed"),
+            ),
+            _metric(
+                "jobseek_ats_inventory_import_active_linked_pr",
+                report_number(queue, "import_active_linked_pr"),
+            ),
+            _metric(
+                "jobseek_ats_inventory_pickup_latency_avg_seconds",
+                optional_report_number(queue, "import_pickup_latency_avg_seconds"),
+            ),
+            _metric("jobseek_ats_inventory_created_last_run", report_number(candidate, "created")),
+        )
+    )
+
+
+def _collect_codex_error_review_metrics(
+    lines: list[str], status_path: Path = DEFAULT_CODEX_ERROR_REVIEW_STATUS
+) -> None:
+    try:
+        record = json.loads(status_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        record = {}
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ProbeError("invalid Codex daily error-review status") from exc
+    if not isinstance(record, dict):
+        raise ProbeError("invalid Codex daily error-review status object")
+
+    values: dict[str, int] = {}
+    for key in (
+        "last_attempt_unixtime",
+        "last_success_unixtime",
+        "last_attempt_success",
+        "run_in_progress",
+    ):
+        raw = record.get(key, 0)
+        if isinstance(raw, bool):
+            raw = int(raw)
+        try:
+            value = int(raw)
+        except (TypeError, ValueError) as exc:
+            raise ProbeError(f"invalid Codex daily error-review {key}") from exc
+        is_boolean_metric = key in {"last_attempt_success", "run_in_progress"}
+        if value < 0 or (is_boolean_metric and value not in (0, 1)):
+            raise ProbeError(f"invalid Codex daily error-review {key}")
+        values[key] = value
+
+    lines.extend(
+        (
+            _metric(
+                "jobseek_codex_daily_error_review_last_attempt_unixtime",
+                values["last_attempt_unixtime"],
+            ),
+            _metric(
+                "jobseek_codex_daily_error_review_last_success_unixtime",
+                values["last_success_unixtime"],
+            ),
+            _metric(
+                "jobseek_codex_daily_error_review_last_attempt_success",
+                values["last_attempt_success"],
+            ),
+            _metric(
+                "jobseek_codex_daily_error_review_run_in_progress",
+                values["run_in_progress"],
+            ),
+        )
+    )
+
+
 def _backup_number(record: dict[str, Any], key: str) -> float:
     value = record.get(key, 0)
     if isinstance(value, bool):
@@ -181,7 +531,10 @@ def _backup_number(record: dict[str, Any], key: str) -> float:
 
 
 def _collect_backup_metrics(role: str, status_dir: Path, lines: list[str]) -> None:
-    for service in ROLE_BACKUPS[role]:
+    optional_services = (
+        service for service, timer in OPTIONAL_ROLE_BACKUPS[role] if _unit_enabled(timer)
+    )
+    for service in (*ROLE_BACKUPS[role], *optional_services):
         path = status_dir / f"{service}.json"
         try:
             record = json.loads(path.read_text(encoding="utf-8"))
@@ -224,6 +577,10 @@ SELECT
   (SELECT failed_count FROM pg_stat_archiver),
   (SELECT checkpoints_timed FROM pg_stat_bgwriter),
   (SELECT checkpoints_req FROM pg_stat_bgwriter),
+  (SELECT checkpoint_write_time FROM pg_stat_bgwriter),
+  (SELECT checkpoint_sync_time FROM pg_stat_bgwriter),
+  (SELECT buffers_checkpoint FROM pg_stat_bgwriter),
+  (SELECT COALESCE(extract(epoch FROM stats_reset), 0) FROM pg_stat_bgwriter),
   (SELECT COALESCE(sum(pg_database_size(datname)), 0) FROM pg_database WHERE datallowconn);
 """.strip()
 
@@ -245,7 +602,78 @@ SELECT
   partition_count,
   bootstrap_complete::int
 FROM cross_store_reconciliation_state
+WHERE target = 'typesense'
 ORDER BY target;
+""".strip()
+
+BOARD_QUARANTINE_SCHEMA_SQL = """
+SELECT count(*)
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'job_board'
+  AND column_name IN (
+    'quarantined_at',
+    'last_quarantined_at',
+    'last_quarantine_error',
+    'quarantine_probe_count',
+    'last_recovered_at',
+    'recovery_count'
+  );
+""".strip()
+
+BOARD_QUARANTINE_STATS_SQL = """
+SELECT
+  count(*) FILTER (WHERE jb.board_status = 'quarantined'),
+  COALESCE(max(extract(epoch FROM now() - jb.quarantined_at))
+    FILTER (WHERE jb.board_status = 'quarantined'), 0),
+  (SELECT count(*)
+   FROM job_posting jp
+   JOIN job_board owner ON owner.id = jp.board_id
+   WHERE jp.is_active = true
+     AND owner.board_status = 'quarantined'),
+  COALESCE(sum(jb.recovery_count), 0)
+FROM job_board jb;
+""".strip()
+
+BOARD_GONE_SCHEMA_SQL = """
+SELECT count(*)
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'job_board'
+  AND column_name IN (
+    'gone_confirmation_count',
+    'gone_first_confirmed_at',
+    'gone_last_confirmed_at',
+    'last_gone_error',
+    'last_gone_endpoint',
+    'last_gone_status',
+    'gone_transition_count',
+    'gone_recovery_count'
+  );
+""".strip()
+
+BOARD_GONE_STATS_SQL = """
+SELECT
+  count(*) FILTER (WHERE jb.is_enabled = true AND jb.board_status = 'gone_pending'),
+  COALESCE(sum(jb.gone_confirmation_count)
+    FILTER (WHERE jb.is_enabled = true AND jb.board_status = 'gone_pending'), 0),
+  COALESCE(max(extract(epoch FROM now() - jb.gone_first_confirmed_at))
+    FILTER (WHERE jb.is_enabled = true AND jb.board_status = 'gone_pending'), 0),
+  count(*) FILTER (WHERE jb.is_enabled = true AND jb.board_status = 'gone'),
+  COALESCE(sum(jb.gone_transition_count), 0),
+  COALESCE(sum(jb.gone_recovery_count), 0)
+FROM job_board jb;
+""".strip()
+
+PHANTOM_ACTIVE_STATS_SQL = """
+SELECT
+  count(DISTINCT jb.id),
+  count(jp.id),
+  COALESCE(max(extract(epoch FROM now() - jp.updated_at)), 0)
+FROM job_posting jp
+JOIN job_board jb ON jb.id = jp.board_id
+WHERE jp.is_active = true
+  AND jb.board_status IN ('disabled', 'gone');
 """.strip()
 
 
@@ -268,6 +696,83 @@ def _postgresql_query(container: str, sql: str, *, timeout: int = 60) -> str:
         timeout=timeout,
     )
     return result.stdout.strip()
+
+
+def _collect_board_quarantine_metrics(lines: list[str], container: str) -> None:
+    """Expose durable quarantine state from the source-of-truth database."""
+
+    schema_columns = _postgresql_query(container, BOARD_QUARANTINE_SCHEMA_SQL)
+    schema_ready = int(schema_columns == "6")
+    lines.append(_metric("jobseek_crawler_board_quarantine_schema_ready", schema_ready))
+    if not schema_ready:
+        return
+
+    fields = _postgresql_query(container, BOARD_QUARANTINE_STATS_SQL).split("\t")
+    if len(fields) != 4:
+        raise ProbeError("board quarantine statistics query returned an unexpected shape")
+    try:
+        quarantined, oldest_seconds, active_postings, recoveries = (
+            float(value) for value in fields
+        )
+    except ValueError as exc:
+        raise ProbeError("board quarantine statistics query returned a non-numeric value") from exc
+    lines.extend(
+        (
+            _metric("jobseek_crawler_quarantined_boards", quarantined),
+            _metric("jobseek_crawler_quarantine_oldest_seconds", oldest_seconds),
+            _metric("jobseek_crawler_quarantine_active_postings", active_postings),
+            _metric("jobseek_crawler_board_recoveries_total", recoveries),
+        )
+    )
+
+
+def _collect_board_gone_metrics(lines: list[str], container: str) -> None:
+    """Expose durable provider-gone confirmation and recovery state."""
+
+    schema_columns = _postgresql_query(container, BOARD_GONE_SCHEMA_SQL)
+    schema_ready = int(schema_columns == "8")
+    lines.append(_metric("jobseek_crawler_board_gone_schema_ready", schema_ready))
+    if not schema_ready:
+        return
+
+    fields = _postgresql_query(container, BOARD_GONE_STATS_SQL).split("\t")
+    if len(fields) != 6:
+        raise ProbeError("board gone statistics query returned an unexpected shape")
+    try:
+        pending, confirmations, oldest_seconds, terminal, transitions, recoveries = (
+            float(value) for value in fields
+        )
+    except ValueError as exc:
+        raise ProbeError("board gone statistics query returned a non-numeric value") from exc
+    lines.extend(
+        (
+            _metric("jobseek_crawler_gone_pending_boards", pending),
+            _metric("jobseek_crawler_gone_pending_confirmations", confirmations),
+            _metric("jobseek_crawler_gone_pending_oldest_seconds", oldest_seconds),
+            _metric("jobseek_crawler_gone_terminal_boards", terminal),
+            _metric("jobseek_crawler_board_gone_transitions_total", transitions),
+            _metric("jobseek_crawler_board_gone_recoveries_total", recoveries),
+        )
+    )
+
+
+def _collect_phantom_active_metrics(lines: list[str], container: str) -> None:
+    """Expose active postings that no terminal board can refresh."""
+
+    fields = _postgresql_query(container, PHANTOM_ACTIVE_STATS_SQL).split("\t")
+    if len(fields) != 3:
+        raise ProbeError("phantom-active statistics query returned an unexpected shape")
+    try:
+        boards, postings, oldest_seconds = (float(value) for value in fields)
+    except ValueError as exc:
+        raise ProbeError("phantom-active statistics query returned a non-numeric value") from exc
+    lines.extend(
+        (
+            _metric("jobseek_crawler_phantom_active_boards", boards),
+            _metric("jobseek_crawler_phantom_active_postings", postings),
+            _metric("jobseek_crawler_phantom_active_oldest_seconds", oldest_seconds),
+        )
+    )
 
 
 def _collect_postgresql_shared_memory_metrics(lines: list[str], container: str) -> None:
@@ -294,7 +799,43 @@ def _collect_postgresql_shared_memory_metrics(lines: list[str], container: str) 
     )
 
 
+def _collect_postgresql_emergency_reserve_metrics(lines: list[str], container: str) -> None:
+    source = _run(
+        [
+            "docker",
+            "inspect",
+            "--format",
+            '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}'
+            "{{.Source}}{{end}}{{end}}",
+            container,
+        ],
+        timeout=30,
+    ).stdout.strip()
+    if not source:
+        raise ProbeError("PostgreSQL data bind mount was not found")
+    mount = _run(["findmnt", "-n", "-o", "TARGET", "--target", source], timeout=30).stdout.strip()
+    if not mount.startswith("/mnt/"):
+        raise ProbeError("PostgreSQL data filesystem has an unexpected mountpoint")
+    reserve = Path(mount) / POSTGRES_EMERGENCY_RESERVE_NAME
+    lines.append(
+        _metric(
+            "jobseek_postgresql_emergency_reserve_target_bytes",
+            POSTGRES_EMERGENCY_RESERVE_BYTES,
+        )
+    )
+    try:
+        metadata = reserve.lstat()
+    except FileNotFoundError:
+        lines.append(_metric("jobseek_postgresql_emergency_reserve_bytes", 0))
+        return
+    if reserve.is_symlink() or not reserve.is_file():
+        raise ProbeError("PostgreSQL emergency reserve is not a regular file")
+    allocated = metadata.st_blocks * 512
+    lines.append(_metric("jobseek_postgresql_emergency_reserve_bytes", allocated))
+
+
 def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -> None:
+    _collect_postgresql_emergency_reserve_metrics(lines, container)
     _collect_postgresql_shared_memory_metrics(lines, container)
     ready = subprocess.run(
         [
@@ -316,22 +857,37 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
     lines.append(_metric("jobseek_postgresql_ready", int(ready.returncode == 0)))
     if ready.returncode:
         raise ProbeError("PostgreSQL readiness probe failed")
+    query_started = time.monotonic()
     fields = _postgresql_query(container, POSTGRES_STATS_SQL).split("\t")
-    if len(fields) != 7:
+    query_duration = time.monotonic() - query_started
+    lines.append(_metric("jobseek_postgresql_stats_query_duration_seconds", query_duration))
+    if len(fields) != 11:
         raise ProbeError("PostgreSQL statistics query returned an unexpected shape")
-    names = (
-        "jobseek_postgresql_connections",
-        "jobseek_postgresql_max_connections",
-        "jobseek_postgresql_archived_total",
-        "jobseek_postgresql_archive_failed_total",
-        "jobseek_postgresql_checkpoints_timed_total",
-        "jobseek_postgresql_checkpoints_requested_total",
-        "jobseek_postgresql_database_bytes",
+    metrics = (
+        ("jobseek_postgresql_connections", 1.0),
+        ("jobseek_postgresql_max_connections", 1.0),
+        ("jobseek_postgresql_archived_total", 1.0),
+        ("jobseek_postgresql_archive_failed_total", 1.0),
+        ("jobseek_postgresql_checkpoints_timed_total", 1.0),
+        ("jobseek_postgresql_checkpoints_requested_total", 1.0),
+        # PostgreSQL exposes the two checkpoint durations in milliseconds.
+        ("jobseek_postgresql_checkpoint_write_seconds_total", 0.001),
+        ("jobseek_postgresql_checkpoint_sync_seconds_total", 0.001),
+        ("jobseek_postgresql_checkpoint_buffers_total", 1.0),
+        ("jobseek_postgresql_stats_reset_unixtime", 1.0),
+        ("jobseek_postgresql_database_bytes", 1.0),
     )
     try:
-        lines.extend(_metric(name, float(value)) for name, value in zip(names, fields, strict=True))
+        lines.extend(
+            _metric(name, float(value) * scale)
+            for (name, scale), value in zip(metrics, fields, strict=True)
+        )
     except ValueError as exc:
         raise ProbeError("PostgreSQL statistics query returned a non-numeric value") from exc
+
+    _collect_board_quarantine_metrics(lines, container)
+    _collect_board_gone_metrics(lines, container)
+    _collect_phantom_active_metrics(lines, container)
 
     relation = _postgresql_query(
         container,
@@ -443,7 +999,86 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
         raise ProbeError("reconciliation run query returned a non-numeric value") from exc
 
 
-def _collect_typesense_metrics(lines: list[str]) -> None:
+def _parse_typesense_nofile_limits(raw: str) -> tuple[int, int]:
+    for line in raw.splitlines():
+        if line.startswith("Max open files"):
+            fields = line.split()
+            try:
+                return int(fields[3]), int(fields[4])
+            except (IndexError, ValueError) as exc:
+                raise ProbeError("Typesense nofile limits were not numeric") from exc
+    raise ProbeError("Typesense process limits omitted Max open files")
+
+
+def _parse_typesense_log_metrics(raw: str) -> dict[str, int]:
+    queue_depths = [int(match.group(1)) for match in _TYPESENSE_THREADPOOL_RE.finditer(raw)]
+    slow_requests = [int(match.group(1)) for match in _TYPESENSE_SLOW_REQUEST_RE.finditer(raw)]
+    metrics = {
+        "threadpool_queue_depth": max(queue_depths, default=0),
+        "slow_request_max_milliseconds": max(slow_requests, default=0),
+    }
+    metrics.update(
+        {
+            f"event_{event}": sum(1 for line in raw.splitlines() if pattern.search(line))
+            for event, pattern in _TYPESENSE_LOG_EVENT_PATTERNS.items()
+        }
+    )
+    return metrics
+
+
+def _collect_typesense_metrics(
+    lines: list[str],
+    container: str = "typesense",
+    proc_root: Path = Path("/proc"),
+) -> None:
+    try:
+        inspected = json.loads(_run(["docker", "inspect", container]).stdout)[0]
+        pid = int(inspected["State"]["Pid"])
+    except (IndexError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise ProbeError("Typesense container inspect returned an unexpected shape") from exc
+    process_root = proc_root / str(pid)
+    try:
+        nofile_soft, nofile_hard = _parse_typesense_nofile_limits(
+            (process_root / "limits").read_text(encoding="utf-8")
+        )
+        open_fds = sum(1 for _entry in (process_root / "fd").iterdir())
+        status = (process_root / "status").read_text(encoding="utf-8")
+        threads_match = re.search(r"^Threads:\s+(\d+)$", status, re.MULTILINE)
+        if threads_match is None:
+            raise ProbeError("Typesense process status omitted Threads")
+        threads = int(threads_match.group(1))
+    except OSError as exc:
+        raise ProbeError("Typesense process metrics were unreadable") from exc
+    log_result = _run(
+        ["docker", "logs", "--since", "5m", "--tail", "5000", container],
+        timeout=30,
+    )
+    recent_logs = "\n".join(part for part in (log_result.stdout, log_result.stderr) if part)
+    log_metrics = _parse_typesense_log_metrics(recent_logs)
+    lines.extend(
+        (
+            _metric("jobseek_typesense_open_file_descriptors", open_fds),
+            _metric("jobseek_typesense_nofile_soft_limit", nofile_soft),
+            _metric("jobseek_typesense_nofile_hard_limit", nofile_hard),
+            _metric("jobseek_typesense_threads", threads),
+            _metric(
+                "jobseek_typesense_threadpool_queue_depth",
+                log_metrics["threadpool_queue_depth"],
+            ),
+            _metric(
+                "jobseek_typesense_slow_request_max_milliseconds",
+                log_metrics["slow_request_max_milliseconds"],
+            ),
+        )
+    )
+    for event in sorted(_TYPESENSE_LOG_EVENT_PATTERNS):
+        lines.append(
+            _metric(
+                "jobseek_typesense_recent_log_events",
+                log_metrics[f"event_{event}"],
+                event=event,
+            )
+        )
     try:
         with urllib.request.urlopen("http://127.0.0.1:8108/health", timeout=10) as response:  # noqa: S310
             payload = json.loads(response.read().decode("utf-8"))
@@ -454,6 +1089,85 @@ def _collect_typesense_metrics(lines: list[str]) -> None:
     lines.append(_metric("jobseek_typesense_healthy", int(healthy)))
     if not healthy:
         raise ProbeError("Typesense health endpoint did not report ok")
+
+
+def _read_loopback(url: str, *, timeout: int = 10) -> str:
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as response:  # noqa: S310
+            if response.status != 200:
+                raise ProbeError(f"loopback probe returned HTTP {response.status}")
+            return response.read().decode("utf-8", errors="replace")
+    except (OSError, urllib.error.URLError) as exc:
+        raise ProbeError(f"loopback probe failed: {type(exc).__name__}") from exc
+
+
+def _parse_alloy_metrics(payload: str) -> dict[str, float]:
+    values: dict[str, list[float]] = {name: [] for name in ALLOY_METRICS}
+    for line in payload.splitlines():
+        match = _PROMETHEUS_SAMPLE_RE.match(line)
+        if match is None or match.group("name") not in values:
+            continue
+        try:
+            value = float(match.group("value"))
+        except ValueError:
+            continue
+        if value == value and value not in (float("inf"), float("-inf")):
+            values[match.group("name")].append(value)
+
+    aggregated: dict[str, float] = {}
+    for source, (target, operation) in ALLOY_METRICS.items():
+        samples = values[source]
+        aggregated[target] = max(samples) if samples and operation == "max" else sum(samples)
+    return aggregated
+
+
+def _recent_alloy_rejections(collector: str) -> int:
+    if collector == "compose":
+        result = _run(["docker", "logs", "--since", "10m", "deploy-alloy-1"], timeout=30)
+    else:
+        result = _run(
+            [
+                "journalctl",
+                "--unit",
+                "jobseek-alloy.service",
+                "--since",
+                "10 minutes ago",
+                "--no-pager",
+                "--output",
+                "cat",
+            ],
+            timeout=30,
+        )
+    output = "\n".join(part for part in (result.stdout, result.stderr) if part)
+    return sum(bool(_HTTP_429_RE.search(line)) for line in output.splitlines())
+
+
+def _collect_alloy_metrics(role: str, lines: list[str]) -> None:
+    collectors = [("host", 12347)]
+    if role == "crawler":
+        collectors.append(("compose", 12346))
+
+    for collector, port in collectors:
+        labels = {"collector": collector, "host_role": role}
+        try:
+            _read_loopback(f"http://127.0.0.1:{port}/-/ready")
+        except ProbeError:
+            lines.append(_metric("jobseek_alloy_ready", 0, **labels))
+            raise
+        lines.append(_metric("jobseek_alloy_ready", 1, **labels))
+        metrics = _parse_alloy_metrics(
+            _read_loopback(f"http://127.0.0.1:{port}/metrics", timeout=15)
+        )
+        lines.extend(
+            _metric(f"jobseek_alloy_{name}", value, **labels) for name, value in metrics.items()
+        )
+        lines.append(
+            _metric(
+                "jobseek_alloy_remote_write_rejections_recent",
+                _recent_alloy_rejections(collector),
+                **labels,
+            )
+        )
 
 
 def _load_cursor(path: Path, *, now: float) -> dict[str, float]:
@@ -525,11 +1239,33 @@ def collect(
         ("containers", lambda: _collect_container_metrics(role, lines)),
         ("systemd", lambda: _collect_unit_metrics(role, lines)),
         ("backup", lambda: _collect_backup_metrics(role, backup_status_dir, lines)),
+        ("alloy", lambda: _collect_alloy_metrics(role, lines)),
     ]
     if role == "postgresql":
         probes.append(("postgresql", lambda: _collect_postgresql_metrics(lines)))
     elif role == "typesense":
         probes.append(("typesense", lambda: _collect_typesense_metrics(lines)))
+    elif role == "crawler":
+        probes.extend(
+            (
+                (
+                    "reconciliation-deployment",
+                    lambda: _collect_reconciliation_deployment_metrics(lines),
+                ),
+                (
+                    "codex-error-review",
+                    lambda: _collect_codex_error_review_metrics(lines),
+                ),
+                (
+                    "redis-capacity",
+                    lambda: _collect_redis_capacity_metrics(lines, state_dir, now=now),
+                ),
+                (
+                    "ats-inventory",
+                    lambda: _collect_ats_inventory_metrics(lines),
+                ),
+            )
+        )
     probes.append(("container_logs", lambda: _collect_new_error_logs(role, state_dir, now=now)))
 
     success = True

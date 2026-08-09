@@ -367,11 +367,13 @@ from src.core.scrapers import (  # noqa: E402
     dom,  # noqa: F401
     eightfold,  # noqa: F401
     embedded,  # noqa: F401
+    jazzhr,  # noqa: F401
     jsonld,  # noqa: F401
     mokahr,  # noqa: F401
     nextdata,  # noqa: F401
     notion,  # noqa: F401
     oracle_hcm,  # noqa: F401
+    paycom,  # noqa: F401
     paylocity,  # noqa: F401
     pdf,  # noqa: F401
     rippling,  # noqa: F401

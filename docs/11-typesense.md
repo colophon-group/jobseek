@@ -101,14 +101,26 @@ for rotation and verification.
 
 - **Ancestor IDs**: Typesense `job_posting` documents store `location_ids` and `occupation_ids` as **ancestor-expanded arrays** (leaf ID + all parent/grandparent IDs + macro region IDs). This enables hierarchy-free filtering -- searching for "Germany" matches all cities in Germany without recursive joins.
 
-  **Design rule: Postgres stores leaf IDs only; the exporter expands to ancestors at indexing time.** Do NOT expand ancestors in the crawler processing pipeline (`_resolve_locations_sync`, `_resolve_locations`). Postgres `location_ids` and `location_types` must remain parallel arrays of the same length (Supabase enforces `chk_location_arrays_length`). Ancestor expansion adds extra IDs without matching type entries, breaking this constraint.
+  **Design rule: Postgres stores leaf IDs only; the exporter expands to ancestors at indexing time.** Do NOT expand ancestors in the crawler processing pipeline (`_resolve_locations_sync`, `_resolve_locations`). Postgres `location_ids` and `location_types` must remain parallel arrays of the same length. Ancestor expansion adds extra IDs without matching type entries, breaking this database invariant.
 
   **Where ancestor expansion happens (exporter only):**
   - `exporter.py` → `TaxonomyMaps.location_ancestors`: walks `location.parent_id` chain + `location_macro_member` (macro regions like EU, DACH). Populates `location_ids` on Typesense documents.
   - `exporter.py` → `TaxonomyMaps.occupation_ancestors`: walks `occupation.parent_id` chain. Populates `occupation_ids` on Typesense documents.
   - The backfill script (`typesense-backfill-local.py`) must use the same logic.
 
-  **Invariant**: `buildFilterString()` in the web app filters on `location_ids` and `occupation_ids` (plural array fields). If only leaf IDs reach Typesense, hierarchy filtering silently breaks (filtering by "Germany" won't match "Berlin"). If ancestors are written to Postgres instead, the `location_ids`/`location_types` length constraint breaks and the Supabase exporter stalls.
+  **Invariant**: `buildFilterString()` in the web app filters on `location_ids` and `occupation_ids` (plural array fields). If only leaf IDs reach Typesense, hierarchy filtering silently breaks (filtering by "Germany" won't match "Berlin"). If ancestors are written to Postgres instead, the `location_ids`/`location_types` length constraint breaks local writes.
+- **Direct location IDs**: `job_posting.location_direct_ids` preserves the
+  unexpanded source IDs alongside `location_ids`. Company location summaries
+  facet the direct field so a city is not counted again as its country or macro;
+  search filters continue to use the ancestor-expanded field.
+- **Taxonomy read contract**: taxonomy documents carry the identity and
+  hierarchy metadata required by web readers. Location documents include the
+  indexed `slug`, `parent_id`, `ancestor_ids` (self + geographic ancestors +
+  macros), localized display names/aliases, and `member_country_ids` on macro
+  rows. Occupation documents include indexed `slug`, `parent_id`, `domain_id`,
+  and `domain_slug`; seniority slugs are indexed. This metadata is a producer
+  contract, not an optional display optimization: the web app does not query
+  the Supabase crawler mirror to reconstruct it.
 - **Sentinel values**: `experience_min_years = -1` for NULL (and legacy `experience_min = -1` during the integer-field compatibility window). `locales = ["_none"]` for jobs with no detected language.
 - **Experience precision**: Postgres stores `experience_min` / `experience_max` as decimal years (`NUMERIC(3,1)`), so sub-year requirements such as "6 months" index as `0.5`. Typesense filters use `experience_min_years` / `experience_max_years` float fields, while legacy integer `experience_min` / `experience_max` fields remain for backfill compatibility.
 - **Denormalized names**: Taxonomy names (location, occupation, seniority, technology) are stored directly on each job posting document for search and faceting without joins.
@@ -157,27 +169,30 @@ The `company` collection doubles as the source for the company detail page (see 
 | `description` | string (en) | fallback when no per-locale variant |
 | `description_de`, `description_fr`, `description_it` | string | per-locale variants from `company_description`; reader falls back to `description` |
 | `industry_id`, `industry_name` | scalar | en industry name from `industry.name` |
-| `industry_name_de`, `industry_name_fr`, `industry_name_it` | string | per-locale display names from `industry_name`; same fallback rule |
+| `industry_name_de`, `industry_name_fr`, `industry_name_it` | indexed string | per-locale display names from `industry_name`; queried together with English by industry browse/search and therefore cannot be `index: false` |
 | `active_posting_count`, `year_posting_count` | int32 | counts (refreshed by `refresh-typesense`) |
 
 ## Indexing Pipeline
 
 ### Job Postings (CDC via exporter.py)
 
-The exporter uses a **two-cursor design**: Supabase and Typesense each have their own keyset cursor (`(updated_at, id)` tuple). On each tick:
+The production exporter is Typesense-only. `crawler export` opens no
+relational-mirror connection and owns only the `typesense:job_posting` keyset
+cursor, regardless of an ambient developer `DATABASE_URL`.
+
+On each tick:
 
 1. Capture the database clock and the oldest current posting-writer
    transaction start in one non-blocking query, using the earlier value as the
    commit-safe cutoff.
-2. SELECT changed postings after `MIN(supabase_cursor, typesense_cursor)` and
-   strictly before the cutoff.
-3. Concurrently (`asyncio.gather`):
-   - Upsert to Supabase, advance Supabase cursor on success
-   - Denormalize + expand ancestor IDs + upsert to Typesense, advance Typesense cursor on success
+2. SELECT changed postings strictly before the cutoff and after the Typesense
+   cursor.
+3. Denormalize + expand ancestor IDs, upsert to Typesense, and advance only the
+   Typesense cursor.
 
 The Typesense document builder (`_build_typesense_docs`) expands `location_ids` and `occupation_ids` with all ancestor IDs using pre-loaded hierarchy maps (`TaxonomyMaps.location_ancestors`, `occupation_ancestors`). This means even legacy Postgres rows with leaf-only IDs produce correct hierarchy-filterable Typesense documents.
 
-If one target fails, only its cursor stalls. The other continues unaffected.
+No Supabase cursor is loaded, written, or considered when selecting rows.
 The exporter/operator fence is held across the mutable-row read, downstream
 upserts, and cursor save so an operator repair cannot race past the cursor. See
 [`03-crawler-architecture.md`](03-crawler-architecture.md#commit-safe-posting-cdc)
@@ -185,17 +200,30 @@ for the trigger contract, writer-floor delay alert, and deployment ordering.
 
 **Feature flag**: Typesense writes only happen when
 `TYPESENSE_OPERATIONS_KEY` is set (non-empty). Environments without Typesense
-are unaffected. The env var must be passed to containers in
-`docker-compose.yml` (`x-common-env`).
+cannot run the production exporter. The env var must be passed to containers
+in `docker-compose.yml` (`x-common-env`).
 
-**Denormalization**: The exporter's `TaxonomyMaps` reads all lookup data from **local Postgres** (the source of truth). Company info, location names, occupation names, seniority names, and technology names are all loaded from local. A Supabase fallback exists for company_info only (for pre-migration compatibility). All ancestor chain computation (locations + macro regions, occupations) uses local Postgres data exclusively.
+**Denormalization**: The exporter's `TaxonomyMaps` reads all lookup data from
+**local Postgres** (the source of truth). Company info, location names,
+occupation names, seniority names, and technology names are all loaded from
+local; there is no Supabase fallback. All ancestor chain computation
+(locations + macro regions, occupations) uses local Postgres data exclusively.
 
 ### Taxonomy Collections (via sync.py)
 
-After CSV sync, `sync.py` populates taxonomy collections (location, occupation, seniority, technology, company) in Typesense. Includes:
+After the authoritative local Postgres transaction commits, `sync.py` reads
+local data to populate the location, occupation, seniority, technology, and
+company collections. It does not read the transitional Supabase mirror for
+these documents. Includes:
 
 - `active_posting_count` and `has_active_postings` for each taxonomy entry
+- localized taxonomy display names and aliases, stable slugs, parent/domain
+  hierarchy, and macro-region membership used by the web taxonomy provider
 - Taxonomy rename detection: if a name changes in CSV, affected job posting documents in Typesense are updated with the new denormalized name
+
+`crawler sync` does not open `DATABASE_URL`, and the production CLI no longer
+exposes a mirror selector. Watchlist reconciliation remains a separate
+web-owned read through `WEB_DATABASE_URL`.
 
 ### Count Refresh + Watchlist Reconciliation
 
@@ -204,7 +232,10 @@ uv run crawler refresh-typesense
 ```
 
 - Refreshes `active_posting_count` / `has_active_postings` on all taxonomy and company collections
-- Reconciles the `watchlist` collection against Supabase (upserts missing, deletes stale)
+- Reconciles the `watchlist` collection against the web-owned database selected
+  by `WEB_DATABASE_URL` (upserts missing, deletes stale). Only explicit
+  sync/count-refresh jobs receive this credential; long-running crawler
+  services receive no web-owned database URL.
 
 **When it runs in production** (two paths, both version-controlled):
 
@@ -214,7 +245,7 @@ uv run crawler refresh-typesense
 ### Full Re-index (Backfill)
 
 ```bash
-uv run crawler backfill-typesense    # Production: reads from local Postgres + Supabase
+uv run crawler backfill-typesense    # Production: reads from local Postgres only
 ```
 
 Production backfills are dispatched manually through
@@ -227,6 +258,36 @@ exponential backoff. If Typesense still rejects or times out a batch, the
 command fails without advancing the scan or CDC cursor past that batch;
 operators must fix the downstream failure and rerun the backfill before
 running `refresh-typesense`.
+
+The production dispatch requires the exact 40-character live crawler revision.
+Before mutation it verifies that `/home/deploy/.env` records that revision and
+an immutable image tag, that exactly one exporter uses the same image, and that
+the exporter has no relational-mirror credential. One fail-closed container
+then runs the following chain while the host mutation lock remains held:
+
+```bash
+uv run --no-sync crawler backfill-typesense && \
+uv run --no-sync crawler reconcile --repair --full --fresh-cycle --target typesense && \
+uv run --no-sync crawler verify-typesense-taxonomies
+```
+
+The fresh reconciliation restarts durable progress at bucket 0, repairs and
+verifies all 256 posting buckets, and rejects an incomplete summary. The final
+gate reads one repeatable-read local PostgreSQL snapshot and compares every
+document and every static consumer-facing field in `location`, `occupation`,
+`seniority`, `technology`, and company-industry data. It also validates the
+live schema, including location hierarchy fields and indexed localized
+industry names. Evidence contains exact counts and projection hashes plus a
+bounded, ID-hashed mismatch list; it never emits row values. Posting-derived
+taxonomy/company counts are excluded from this static gate and remain the
+responsibility of `refresh-typesense`.
+
+`location_direct_ids` is populated by the exporter for new changes, but adding
+the field does not rewrite older posting documents. Roll out this read contract
+in order: deploy/run `crawler setup-typesense`, run `crawler sync` to rewrite
+taxonomy documents, complete `crawler backfill-typesense`, and only then deploy
+the web reader. Verify the backfill before enabling the reader; there is no
+Supabase crawler-mirror fallback for missing contract fields.
 
 For local development/testing only:
 ```bash
@@ -256,10 +317,24 @@ downtime is required.
 
 - `TypesenseSearchProvider` implements the `SearchProvider` interface, replacing `PostgresSearchProvider` (one-shot cutover)
 - All search, typeahead, browse-all modals, and watchlist search go through Typesense
-- **Company detail page**: `getCompanyBySlug` reads the `company` collection by slug filter. Postgres is a fallback when Typesense errors or returns 0 hits (so brand-new companies whose Typesense upsert lagged still render)
-- **Graceful degradation**: all Typesense errors return empty results; Postgres fallback for watchlist write functions
+- **Posting detail**: `getPostingDetail` retrieves the posting plus company/location/seniority documents from Typesense and builds the R2 description URL. Original salary amount, currency, and period are denormalized onto the posting document for this reader.
+- **Saved jobs**: `saved_job` owns an immutable posting/company snapshot. The snapshot is populated from Typesense for new saves and backfilled by migration for existing saves, so application history survives later removal of the Supabase `job_posting` mirror. List/detail readers refresh current `is_active` in one bounded Typesense query and retain the snapshot value for missing hits or outages.
+- **Company- and watchlist-facing reads**: company autocomplete, watchlist company search, public watchlist discovery, watchlist posting lists/counts, the progress-page company/posting counters, and `getCompanyBySlug` read Typesense. They do not fall back to the Supabase crawler mirror. Authenticated watchlist metadata, company membership, and mutations remain in the web database
+- **Location/taxonomy reads**: filter-chip slug resolution, descendant
+  expansion, browse-all location/occupation/seniority/technology metadata,
+  industry suggestions, and company location summaries read the taxonomy,
+  company, and posting collections. They do not read the Supabase crawler
+  mirror.
+- **Graceful degradation**: optional company/location/taxonomy browse surfaces
+  return their empty shape only when Typesense is unavailable, and the catch is
+  outside the cache boundary so an outage-shaped empty is not stored. Exact
+  slug resolvers and unexpected errors (including rate limits and schema/query
+  errors) propagate. Company detail degrades to not found and logs an actual
+  outage. Public watchlist discovery and posting lists return empty results and
+  posting counts return zero during a confirmed Typesense outage. No live
+  fallback returns crawler data from Supabase.
 - **Caching**: no Redis cache on main search (Typesense is fast enough). Cached for unfiltered homepage (60s) and popular watchlists (120s). `getCompanyBySlug` is wrapped with a Redis cache (`ttl: 600`, key `company-slug:{slug}:{locale}`) that skips storing nulls so brand-new slugs aren't poisoned
-- **Server-side client**: `typesense-js` in the web app, connecting to `typesense.colophon-group.org` (Cloudflare tunnel) with the search-only key
+- **Server-side client**: `typesense-js` in the web app, connecting to `typesense.colophon-group.org` (Cloudflare tunnel) with the search/read key
 
 ### Direct browser → Typesense (feature-flagged)
 
@@ -276,12 +351,13 @@ The web app can bypass the Vercel server-action proxy and call Typesense directl
 
 **Out of scope for direct path:**
 
-- `getPostingDetail` (Postgres + R2 URL signing — needs server trust)
+- `getPostingDetail` (Typesense document reads + R2 URL construction — needs the server search/read key)
 - `getCurrencyRates` (DB read, not Typesense)
 - Salary/experience histograms (`getSalaryHistogram`/`getExperienceHistogram`, kept on server actions for the 3600 s cache)
-- `getCompanyBySlug` (server-rendered company page, has Postgres fallback for cold reads)
+- `getCompanyBySlug` (server-rendered and cached; unavailable Typesense degrades to not found)
 - `getSimilarCompanies` (filtered path requires Postgres slug→id resolution)
-- Browse-all modals (`getGlobalLocationsGrouped`, `getAllOccupationsGrouped`, etc. — need Postgres taxonomy hierarchy)
+- Browse-all modals (`getGlobalLocationsGrouped`, `getAllOccupationsGrouped`,
+  etc. -- server-side Typesense taxonomy snapshots and facets)
 - Watchlist postings for >100 companies (uses batched-merge logic that's only worth maintaining server-side)
 
 **Infrastructure:**
@@ -299,12 +375,17 @@ Three data tiers, three read paths:
 | Tier | Role | Reads |
 |------|------|-------|
 | Local Postgres (Hetzner) | Source of truth for `job_posting`, taxonomies, companies | Crawler workers, exporter, `refresh-typesense` count aggregations, watchlist active-posting counts (via crawler) |
-| Supabase Postgres | Mirror of `job_posting` + companies + taxonomies; **only home** for user-facing tables (`user`, `session`, `watchlist`, `watchlist_company`, ...) | Auth, watchlist mutations, watchlist company-pair lookups, posting detail (full description blob), Postgres fallbacks |
-| Typesense | In-memory search + denormalized read layer | Job search, all typeaheads, browse-all modals, watchlist search, company detail page, similar-company strip |
+| Web-owned Postgres | **Only home** for user-facing tables (`user`, `session`, `watchlist`, `watchlist_company`, `saved_job`, ...) | Auth, watchlist mutations, saved-job snapshots, and watchlist company-pair lookups |
+| Typesense | In-memory search + denormalized read layer | Job search and posting detail, all typeaheads and taxonomy resolvers, browse-all modals, watchlist search/discovery/posting lists/counts, company autocomplete/detail/location/industry reads, public site stats, similar-company strip |
 
 Aggregation queries against `job_posting` are deliberately kept on local Postgres, not Supabase, to keep Supabase compute reserved for user-facing CRUD. Notable examples:
 
-- **Watchlist active-posting counts** (`refresh-typesense`): pulls `(watchlist_id, company_id)` pairs from Supabase, runs `COUNT(*) WHERE is_active GROUP BY company_id` on local Postgres restricted to those companies, sums per watchlist in Python. Uses the partial index `idx_jp_company_active ON job_posting(company_id) WHERE is_active`.
+- **Watchlist active-posting counts** (`refresh-typesense`): pulls
+  `(watchlist_id, company_id)` pairs from the web-owned database configured by
+  `WEB_DATABASE_URL`, runs `COUNT(*) WHERE is_active GROUP BY company_id` on
+  local Postgres restricted to those companies, and sums per watchlist in
+  Python. Uses the partial index
+  `idx_jp_company_active ON job_posting(company_id) WHERE is_active`.
 - **Public Discover `anyCompany` counts**: the `watchlist` Typesense doc carries a sanitized `filters_json` payload with public filters plus resolved taxonomy IDs. Discover cards use that payload to run an exact live `job_posting` count for `anyCompany` watchlists without hydrating `watchlist.filters` from Postgres. Company-scoped public cards keep using the denormalized `active_job_count` field.
 - **Per-company taxonomy counts** (`refresh_typesense_counts`): aggregated against local Postgres directly, then upserted to the `company` / `location` / `occupation` / `seniority` / `technology` collections as `active_posting_count`.
 
@@ -321,6 +402,10 @@ Metrics exposed by the exporter and scraped by Alloy:
 | `typesense_export_duration_seconds` | Time per Typesense batch upsert |
 | `typesense_healthy` | 0 or 1, from `/health` endpoint |
 | `typesense_memory_bytes` | Typesense process memory from `/stats.json` |
+| `jobseek_typesense_open_file_descriptors` / `jobseek_typesense_nofile_{soft,hard}_limit` | Live descriptor use and managed process limits from the Typesense host |
+| `jobseek_typesense_threadpool_queue_depth` | Maximum queue depth reported during the bounded five-minute log window |
+| `jobseek_typesense_slow_request_max_milliseconds` | Slowest request reported during the bounded five-minute log window |
+| `jobseek_typesense_recent_log_events{event="..."}` | Five-minute counts for descriptor exhaustion, leaderlessness, snapshot failure, slow requests, and thread-pool exhaustion |
 | `jobseek_cross_store_reconciliation_last_unresolved{target="typesense"}` | Unresolved drift from the last target outcome, read from durable PostgreSQL state |
 | `jobseek_cross_store_reconciliation_last_success_unixtime{target="typesense"}` | Last complete verified Typesense cycle |
 | `jobseek_cross_store_reconciliation_progress_partition{target="typesense"}` | Durable next UUID partition |

@@ -82,6 +82,18 @@ def _load_groups(path: Path) -> list[dict[str, Any]]:
                     raise RuleSyncError(f"alert {name} must set owner=codex-error-review")
                 if labels.get("route") != "codex-daily":
                     raise RuleSyncError(f"alert {name} must set route=codex-daily")
+                if labels.get("severity") == "critical":
+                    if labels.get("page") != "production":
+                        raise RuleSyncError(f"critical alert {name} must set page=production")
+                    pending = _duration_signature(rule.get("for"))
+                    if not isinstance(pending, int):
+                        raise RuleSyncError(
+                            f"critical alert {name} must have a valid pending duration"
+                        )
+                    if pending > 3 * 60 * 1_000:
+                        raise RuleSyncError(
+                            f"critical alert {name} pending duration exceeds three minutes"
+                        )
                 runbook = (
                     str(annotations.get("runbook", "")) if isinstance(annotations, dict) else ""
                 )

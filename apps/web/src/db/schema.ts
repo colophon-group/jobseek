@@ -7,12 +7,13 @@ import {
   boolean,
   smallint,
   integer,
-  bigint,
   real,
   numeric,
   timestamp,
   index,
   uniqueIndex,
+  check,
+  foreignKey,
   primaryKey,
   jsonb,
   type AnyPgColumn,
@@ -467,105 +468,6 @@ export const jobBoard = pgTable(
   ],
 );
 
-export const jobPosting = pgTable(
-  "job_posting",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    companyId: uuid("company_id")
-      .notNull()
-      .references(() => company.id, { onDelete: "cascade" }),
-    boardId: uuid("board_id").references(() => jobBoard.id, {
-      onDelete: "set null",
-    }),
-
-    // ── Core fields ──
-    isActive: boolean("is_active").default(true).notNull(),
-    locales: text("locales").array().notNull().default([]),
-    titles: text("titles").array().notNull().default([]),
-    locationIds: integer("location_ids").array(),
-    locationTypes: text("location_types").array(),
-    descriptionR2Hash: bigint("description_r2_hash", { mode: "bigint" }),
-
-    employmentType: text("employment_type"),
-
-    // ── Identity & lifecycle ──
-    sourceUrl: text("source_url").unique().notNull(),
-    firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
-
-    // ── Scrape scheduler fields ──
-    nextScrapeAt: timestamp("next_scrape_at", { withTimezone: true }),
-    lastScrapedAt: timestamp("last_scraped_at", { withTimezone: true }),
-    leasedUntil: timestamp("leased_until", { withTimezone: true }),
-    scrapeFailures: integer("scrape_failures").default(0).notNull(),
-    missingCount: integer("missing_count").default(0).notNull(),
-
-    // ── Salary & experience ──
-    salaryMin: integer("salary_min"),
-    salaryMax: integer("salary_max"),
-    salaryCurrency: text("salary_currency"),
-    salaryPeriod: text("salary_period"),
-    salaryEur: integer("salary_eur"),
-    experienceMin: numeric("experience_min", { precision: 3, scale: 1, mode: "number" }),
-    experienceMax: numeric("experience_max", { precision: 3, scale: 1, mode: "number" }),
-
-    // ── Taxonomy FKs ──
-    occupationId: integer("occupation_id").references(() => occupation.id),
-    seniorityId: integer("seniority_id").references(() => seniority.id),
-    technologyIds: integer("technology_ids").array(),
-
-    // ── R2 upload pending ──
-    descriptionPending: text("description_pending"),
-    r2PendingMeta: jsonb("r2_pending_meta"),
-
-    // ── Enrichment fields ──
-    enrichment: jsonb("enrichment"),
-    toBeEnriched: boolean("to_be_enriched").default(true).notNull(),
-    enrichVersion: integer("enrich_version").default(0).notNull(),
-    lastEnrichedAt: timestamp("last_enriched_at", { withTimezone: true }),
-  },
-  (table) => [
-    index("idx_jp_company").on(table.companyId),
-    index("idx_jp_active_company")
-      .on(table.companyId)
-      .where(sql`is_active = true`),
-    index("idx_jp_board_url").on(table.boardId, table.sourceUrl),
-    index("idx_jp_active").on(table.isActive).where(sql`is_active = true`),
-    index("idx_jp_location_ids").using("gin", table.locationIds),
-    index("idx_jp_next_scrape").on(table.nextScrapeAt).where(
-      sql`is_active = true AND next_scrape_at IS NOT NULL`,
-    ),
-    index("idx_jp_lease").on(table.leasedUntil).where(
-      sql`leased_until IS NOT NULL`,
-    ),
-    index("idx_jp_occupation")
-      .on(table.occupationId)
-      .where(sql`occupation_id IS NOT NULL`),
-    index("idx_jp_seniority")
-      .on(table.seniorityId)
-      .where(sql`seniority_id IS NOT NULL`),
-    index("idx_jp_technology_ids")
-      .using("gin", table.technologyIds)
-      .where(sql`technology_ids IS NOT NULL`),
-    index("idx_jp_to_be_enriched").on(table.toBeEnriched).where(
-      sql`is_active = true AND to_be_enriched = true`,
-    ),
-    index("idx_jp_salary_eur")
-      .on(table.salaryEur)
-      .where(sql`salary_eur IS NOT NULL`),
-    index("idx_jp_experience_min")
-      .on(table.experienceMin)
-      .where(sql`experience_min IS NOT NULL`),
-    index("idx_jp_r2_pending")
-      .on(table.id)
-      .where(
-        sql`description_pending IS NOT NULL OR r2_pending_meta IS NOT NULL`,
-      ),
-  ],
-);
-
 export const savedJob = pgTable(
   "saved_job",
   {
@@ -573,10 +475,24 @@ export const savedJob = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    jobPostingId: uuid("job_posting_id")
-      .notNull()
-      .references(() => jobPosting.id, { onDelete: "cascade" }),
+    // Durable external posting identity. 0085 deliberately removes the FK to
+    // the crawler-owned job_posting mirror while preserving NOT NULL and the
+    // per-user unique index.
+    jobPostingId: uuid("job_posting_id").notNull(),
     savedAt: timestamp("saved_at", { withTimezone: true }).defaultNow().notNull(),
+    postingTitle: text("posting_title").notNull(),
+    postingSourceUrl: text("posting_source_url").notNull(),
+    postingFirstSeenAt: timestamp("posting_first_seen_at", { withTimezone: true })
+      .notNull(),
+    postingIsActive: boolean("posting_is_active").notNull(),
+    postingSalaryMin: integer("posting_salary_min"),
+    postingSalaryMax: integer("posting_salary_max"),
+    postingSalaryCurrency: text("posting_salary_currency"),
+    postingSalaryPeriod: text("posting_salary_period"),
+    companyId: uuid("company_id").notNull(),
+    companyName: text("company_name").notNull(),
+    companySlug: text("company_slug").notNull(),
+    companyIcon: text("company_icon"),
 
     // ── Application tracker fields ──
     status: text("status", {
@@ -596,6 +512,13 @@ export const savedJob = pgTable(
     salaryPeriodOverride: text("salary_period_override"),
   },
   (table) => [
+    check(
+      "saved_job_snapshot_text_nonblank_check",
+      sql`NULLIF(btrim(${table.postingTitle}), '') IS NOT NULL
+        AND NULLIF(btrim(${table.postingSourceUrl}), '') IS NOT NULL
+        AND NULLIF(btrim(${table.companyName}), '') IS NOT NULL
+        AND NULLIF(btrim(${table.companySlug}), '') IS NOT NULL`,
+    ),
     uniqueIndex("idx_sj_user_posting").on(table.userId, table.jobPostingId),
     index("idx_sj_user_saved_at").on(table.userId, table.savedAt),
     index("idx_sj_user_status").on(table.userId, table.status),
@@ -607,9 +530,7 @@ export const applicationInterview = pgTable(
   "application_interview",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    savedJobId: uuid("saved_job_id")
-      .notNull()
-      .references(() => savedJob.id, { onDelete: "cascade" }),
+    savedJobId: uuid("saved_job_id").notNull(),
     round: smallint("round").notNull(),
     type: text("type", {
       enum: [
@@ -636,6 +557,11 @@ export const applicationInterview = pgTable(
     // with ON CONFLICT DO NOTHING and a single-statement
     // INSERT … SELECT max(round)+1 …
     uniqueIndex("idx_ai_saved_job_round").on(table.savedJobId, table.round),
+    foreignKey({
+      columns: [table.savedJobId],
+      foreignColumns: [savedJob.id],
+      name: "application_interview_saved_job_id_fkey",
+    }).onDelete("cascade"),
   ],
 );
 

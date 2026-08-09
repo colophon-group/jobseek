@@ -1198,11 +1198,11 @@
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "max by (wtype) (crawler_inflight_deadletter_depth)",
-          "legendFormat": "{{wtype}}"
+          "expr": "max by (wtype, lifecycle) (crawler_monitor_deadletter_lifecycle_depth)",
+          "legendFormat": "{{wtype}} {{lifecycle}}"
         }
       ],
-      "description": "Tasks parked in Redis deadletter:<wtype> after the inflight reaper reaches max strikes. Nonzero for >1h fires DeadletterQueueNotEmpty. Inspect with ZRANGE deadletter:simple 0 -1 WITHSCORES or ZRANGE deadletter:browser 0 -1 WITHSCORES."
+      "description": "Monitor tasks parked in Redis deadletter:<wtype>, classified against local Postgres. Only actionable/unresolved entries alert; retired/superseded residue remains visible for explicit pruning. Use `crawler deadletters inspect` before retrying or pruning an exact selector."
     },
     {
       "id": 14,
@@ -1513,7 +1513,7 @@
     {
       "id": 20,
       "type": "timeseries",
-      "title": "Export Lag",
+      "title": "Typesense Export Lag",
       "datasource": {
         "type": "prometheus",
         "uid": "grafanacloud-prom"
@@ -1552,15 +1552,6 @@
       "targets": [
         {
           "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
-          "expr": "crawler_exporter_export_lag{instance=\"exporter\"}",
-          "legendFormat": "Export Lag"
-        },
-        {
-          "refId": "B",
           "datasource": {
             "type": "prometheus",
             "uid": "grafanacloud-prom"
@@ -1879,7 +1870,7 @@
     {
       "id": 26,
       "type": "timeseries",
-      "title": "Exporter Rows/sec",
+      "title": "Typesense Documents/sec",
       "datasource": {
         "type": "prometheus",
         "uid": "grafanacloud-prom"
@@ -1922,20 +1913,11 @@
             "type": "prometheus",
             "uid": "grafanacloud-prom"
           },
-          "expr": "sum by (table) (rate(crawler_exporter_rows_exported_total{instance=\"exporter\"}[$__rate_interval]))",
-          "legendFormat": "{{table}}"
-        },
-        {
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "grafanacloud-prom"
-          },
           "expr": "sum by (status) (rate(crawler_typesense_export_docs_total{instance=\"exporter\"}[$__rate_interval]))",
           "legendFormat": "Typesense {{status}}"
         }
       ],
-      "description": "Rows exported to Supabase per second. High during backlog, near 0 at steady state thanks to conditional updated_at."
+      "description": "Documents exported to Typesense per second, split by success and error status."
     },
     {
       "id": 32,
@@ -2224,7 +2206,7 @@
           "refId": "B"
         }
       ],
-      "description": "Machine network throughput. Receive=crawled pages from career sites. Transmit=R2 uploads + Supabase exports."
+      "description": "Machine network throughput. Receive=crawled pages from career sites. Transmit=R2 uploads + Typesense exports."
     }
   ]
 }

@@ -33,6 +33,14 @@ class TestJsonLdExtractor:
         assert len(extractor.results) == 1
         assert extractor.results[0]["@type"] == "JobPosting"
 
+    def test_extracts_html_entity_encoded_block(self):
+        html = """<html><head><script type="application/ld+json">
+        {&quot;@type&quot;:&quot;JobPosting&quot;,&quot;title&quot;:&quot;R&amp;D Engineer&quot;}
+        </script></head></html>"""
+        extractor = _JsonLdExtractor()
+        extractor.feed(html)
+        assert extractor.results == [{"@type": "JobPosting", "title": "R&D Engineer"}]
+
     def test_extracts_multiple_blocks(self):
         html = """<html><head>
         <script type="application/ld+json">{"@type": "Organization"}</script>
@@ -160,6 +168,15 @@ class TestExtractLocations:
         }
         result = _extract_locations(posting)
         assert result == ["San Francisco, CA, US"]
+
+    def test_with_string_address(self):
+        posting = {
+            "jobLocation": {
+                "@type": "Place",
+                "address": "東京都新宿区西新宿1-26-2\n新宿野村ビル48階",
+            }
+        }
+        assert _extract_locations(posting) == ["東京都新宿区西新宿1-26-2 新宿野村ビル48階"]
 
     def test_multiple_locations(self):
         posting = {

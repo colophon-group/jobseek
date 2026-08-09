@@ -108,6 +108,37 @@ class TestDomScraper:
             result = await scrape("https://example.com/job/1", config, httpx.AsyncClient())
         assert result.title == "Software Engineer"
 
+    def test_scope_limits_static_parser_to_matching_container(self):
+        from src.core.scrapers.dom import parse_html
+
+        html = """
+        <html><body><h2>Navigation title</h2>
+        <div id="job-content"><h2>Scoped role</h2><p>Scoped description.</p></div>
+        <h2>Footer title</h2></body></html>
+        """
+        result = parse_html(
+            html,
+            {
+                "scope": "#job-content",
+                "steps": [
+                    {"tag": "h2", "field": "title"},
+                    {"tag": "p", "field": "description", "html": True, "stop_count": 1},
+                ],
+            },
+        )
+        assert result.title == "Scoped role"
+        assert result.description == "<p>Scoped description.</p>"
+
+    @pytest.mark.parametrize("scope", ["", 123, "#missing"])
+    def test_invalid_or_missing_scope_fails_closed(self, scope):
+        from src.core.scrapers.dom import parse_html
+
+        with pytest.raises(ValueError, match="scope"):
+            parse_html(
+                '<div id="job-content"><h2>Role</h2></div>',
+                {"scope": scope, "steps": [{"tag": "h2", "field": "title"}]},
+            )
+
     async def test_title_extraction_from_semantic_header(self):
         """Animated headings nested in a page header remain extractable."""
         from src.core.scrapers.dom import scrape
@@ -279,6 +310,33 @@ class TestDomScraper:
             result = await scrape(
                 url,
                 {"render": False, "steps": [{"tag": "h1", "field": "title"}]},
+                client,
+            )
+
+        assert calls["n"] == 2
+        assert result.title == "Recovered"
+
+    async def test_static_configured_status_retry_covers_branded_avature_route(self):
+        """A monitor preset can retry Avature custom hosts without URL guessing."""
+        from src.core.scrapers.dom import scrape
+
+        calls = {"n": 0}
+
+        def handler(request):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return httpx.Response(406, text="temporarily unavailable")
+            return httpx.Response(200, text="<html><body><h2>Recovered</h2></body></html>")
+
+        url = "https://jobs.example.com/en_US/jobsGlobal/FolderDetail/Role/123"
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                url,
+                {
+                    "render": False,
+                    "retry_statuses": {"406": 2},
+                    "steps": [{"tag": "h2", "field": "title"}],
+                },
                 client,
             )
 

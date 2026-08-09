@@ -74,6 +74,14 @@ const crawlerScheduledMaintenanceWorkflow = readFileSync(
   ".github/workflows/crawler-scheduled-maintenance.yml",
   "utf8",
 );
+const syncDataWorkflow = readFileSync(
+  ".github/workflows/sync-data.yml",
+  "utf8",
+);
+const refreshCurrencyRatesWorkflow = readFileSync(
+  ".github/workflows/refresh-currency-rates.yml",
+  "utf8",
+);
 const crawlerHostHygieneScript = readFileSync(
   "scripts/crawler-host-hygiene.py",
   "utf8",
@@ -531,6 +539,43 @@ test("Codex deploy persists Docker lifecycle evidence before daily review", () =
   );
 });
 
+test("Codex deploy installs the maintenance contract without granting runner Docker access", () => {
+  assert.match(
+    deployCodexRunnerHostScript,
+    /install_maintenance_contract[\s\S]*jobseek_maintenance_provenance\.py[\s\S]*jobseek-maintenance\.py/,
+  );
+  assert.match(
+    deployCodexRunnerHostScript,
+    /python3 \/usr\/local\/sbin\/jobseek-maintenance --self-test/,
+  );
+  assert.match(
+    deployCodexRunnerWorkflow,
+    /test ! -w \/var\/run\/docker\.sock/,
+  );
+  assert.match(
+    deployCodexRunnerWorkflow,
+    /runuser -u codex-runner -- docker ps/,
+  );
+  assert.match(
+    deployCodexRunnerWorkflow,
+    /codex-runner unexpectedly has Docker access/,
+  );
+});
+
+test("maintenance wrapper self-test covers the cross-owner lock path", () => {
+  const result = spawnSync(
+    "python3",
+    ["scripts/jobseek-maintenance.py", "--self-test"],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /maintenance provenance self-test passed/);
+});
+
 test("Codex deploy restores prior timer state after failure", () => {
   const dir = mkdtempSync(join(tmpdir(), "codex-deploy-timers-"));
   const log = join(dir, "systemctl.log");
@@ -583,6 +628,82 @@ test("scheduled maintenance always reports host hygiene independently", () => {
     crawlerScheduledMaintenanceWorkflow,
     /maintenance_status != 0 \|\| hygiene_status != 0/,
   );
+});
+
+test("scheduled maintenance one-offs carry exact validated provenance labels", () => {
+  for (const label of [
+    "com.docker.compose.project=deploy",
+    "com.docker.compose.oneoff=True",
+    "jobseek.maintenance.operation=${TASK}",
+    "jobseek.maintenance.issue=2630",
+    "jobseek.maintenance.revision=${GITHUB_SHA}",
+    "jobseek.maintenance.budget-seconds=${operation_budget}",
+  ]) {
+    assert.ok(
+      crawlerScheduledMaintenanceWorkflow.includes(label),
+      `missing maintenance label ${label}`,
+    );
+  }
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /envs: GITHUB_SHA,EXPECTED_CRAWLER_REVISION/,
+  );
+  assert.match(crawlerScheduledMaintenanceWorkflow, /operation_budget=7200/);
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /if \[\[ "\$TASK" == backfill-typesense \|\| "\$TASK" == verify-typesense-taxonomies \]\]; then[\s\S]*operation_budget=14400/,
+  );
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /timeout --foreground --signal=TERM --kill-after=90s "\$operation_budget" docker run --rm/,
+  );
+  assert.match(crawlerScheduledMaintenanceWorkflow, /command_timeout: 8h/);
+});
+
+test("taxonomy verification dispatch is exact-revision and verification-only", () => {
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /options:[\s\S]*- refresh-typesense[\s\S]*- backfill-typesense[\s\S]*- verify-typesense-taxonomies/,
+  );
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /if \[\[ "\$task" == backfill-typesense \|\| "\$task" == verify-typesense-taxonomies \]\]; then[\s\S]*\^\[0-9a-f\]\{40\}\$/,
+  );
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /if \[\[ "\$TASK" == backfill-typesense \|\| "\$TASK" == verify-typesense-taxonomies \]\]; then[\s\S]*Live crawler revision does not match the requested deployment[\s\S]*Expected exactly one live exporter container[\s\S]*Live exporter still has a relational mirror credential/,
+  );
+  const verificationBranch = crawlerScheduledMaintenanceWorkflow.match(
+    /elif \[\[ "\$TASK" == verify-typesense-taxonomies \]\]; then[\s\S]*?^              fi$/m,
+  );
+  assert.ok(verificationBranch);
+  assert.match(
+    verificationBranch[0],
+    /operation_command=\(uv run --no-sync crawler verify-typesense-taxonomies\)/,
+  );
+  assert.doesNotMatch(verificationBranch[0], /crawler backfill-typesense/);
+  assert.doesNotMatch(verificationBranch[0], /crawler reconcile/);
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /\^crawler-\(backfill-typesense\|refresh-typesense\|verify-typesense-taxonomies\)-/,
+  );
+});
+
+test("recurring crawler one-offs use the bounded maintenance wrapper", () => {
+  for (const [source, operation, issue, budget] of [
+    [syncDataWorkflow, "csv-data-sync", "2623", "1800"],
+    [refreshCurrencyRatesWorkflow, "refresh-currency-rates", "3576", "600"],
+  ]) {
+    assert.match(source, /\/usr\/local\/sbin\/jobseek-maintenance oneoff/);
+    assert.ok(source.includes(`--operation ${operation}`));
+    assert.ok(source.includes(`--issue ${issue}`));
+    assert.ok(source.includes(`--budget-seconds ${budget}`));
+    assert.match(source, /--lock-timeout-seconds (900|600)/);
+    assert.ok(source.includes('--revision "$GITHUB_SHA"'));
+    assert.match(source, /envs: GITHUB_SHA/);
+    assert.match(source, /docker run --rm[\s\S]*--name "\$NAME"/);
+    assert.match(source, /command_timeout: (1h|30m)/);
+  }
 });
 
 test("maybe-auto-merge wakes without manual retries", () => {
@@ -1045,6 +1166,15 @@ test("Typesense credentials are separated by consumer and host promotion is manu
     deployTypesenseHostWorkflow,
     /-p 127\.0\.0\.1:18108:8108[\s\S]*http:\/\/127\.0\.0\.1:18108\/health/,
   );
+  assert.match(deployTypesenseHostWorkflow, /echo '\[server\]'/);
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /--ulimit nofile=65536:65536[\s\S]*--log-opt max-size=50m[\s\S]*--log-opt max-file=3/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /\.State\.Status[\s\S]*docker logs "\$container"[\s\S]*docker inspect "\$container"/,
+  );
   assert.doesNotMatch(
     deployTypesenseHostWorkflow,
     /--api-key[= ]\$\{\{/,
@@ -1075,12 +1205,18 @@ test("Required CI gates Typesense E2E jobs", () => {
   assert.match(workflow, /"test-crawler-typesense-e2e"/);
 });
 
-test("Required CI gates PostgreSQL reconciliation E2E", () => {
+test("Required CI gates PostgreSQL reconciliation and sampling E2E", () => {
+  const postgresJob = jobBlock("test-crawler-postgres-cdc-e2e");
+
   assert.match(workflow, /needs:[\s\S]*- test-crawler-postgres-cdc-e2e/);
   assert.match(workflow, /"test-crawler-postgres-cdc-e2e"/);
   assert.match(
-    workflow,
-    /uv run pytest tests\/e2e\/test_postgres_cdc_commit_order\.py -v/,
+    postgresJob,
+    /uv run pytest[\s\S]*tests\/e2e\/test_postgres_cdc_commit_order\.py/,
+  );
+  assert.match(
+    postgresJob,
+    /tests\/e2e\/test_labeller_sampling_plan\.py[\s\S]*-v/,
   );
 });
 
@@ -1109,4 +1245,18 @@ test("MCP publish workflow caches the pnpm store", () => {
   );
   assert.match(publishMcpServerWorkflow, /cache: pnpm/);
   assert.match(publishMcpServerWorkflow, /cache-dependency-path: pnpm-lock\.yaml/);
+});
+
+test("MCP publish workflow uses npm trusted publishing", () => {
+  assert.match(publishMcpServerWorkflow, /id-token: write/);
+  assert.match(
+    publishMcpServerWorkflow,
+    /npm install --global npm@11\.19\.0/,
+  );
+  assert.match(publishMcpServerWorkflow, /npm publish --access public/);
+  assert.doesNotMatch(publishMcpServerWorkflow, /NPM_TOKEN|NODE_AUTH_TOKEN/);
+  assert.doesNotMatch(
+    publishMcpServerWorkflow,
+    /npm view @jseek\/mcp-server version[^\n]*\|\|/,
+  );
 });

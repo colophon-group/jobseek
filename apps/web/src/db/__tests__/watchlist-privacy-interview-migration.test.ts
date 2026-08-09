@@ -12,11 +12,11 @@ const migrationPath = join(
   "..",
   "..",
   "drizzle",
-  "0081_private_watchlists_and_general_interviews.sql",
+  "0083_reconcile_supabase_baseline.sql",
 );
 const migrationSql = readFileSync(migrationPath, "utf8");
 
-describe("0081 private-watchlist and general-interview migration", () => {
+describe("0083 Supabase baseline reconciliation", () => {
   it("aligns the database interview CHECK with the general UI option", () => {
     expect(migrationSql).toMatch(
       /ADD CONSTRAINT application_interview_type_check[\s\S]*?'interview'/,
@@ -25,7 +25,7 @@ describe("0081 private-watchlist and general-interview migration", () => {
 
   it("makes private the database and Drizzle default", () => {
     expect(migrationSql).toMatch(
-      /ALTER TABLE watchlist ALTER COLUMN is_public SET DEFAULT false/,
+      /ALTER TABLE public\.watchlist\s+ALTER COLUMN is_public SET DEFAULT false/,
     );
     expect(getTableColumns(watchlist).isPublic.default).toBe(false);
   });
@@ -44,7 +44,10 @@ describe("0081 private-watchlist and general-interview migration", () => {
       entries: { tag: string }[];
     };
     expect(journal.entries.map((entry) => entry.tag)).toContain(
-      "0081_private_watchlists_and_general_interviews",
+      "0083_reconcile_supabase_baseline",
+    );
+    expect(journal.entries.map((entry) => entry.tag)).not.toContain(
+      "0080_experience_decimal_years",
     );
   });
 });

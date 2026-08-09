@@ -21,6 +21,7 @@ import { updateWatchlistField as tsUpdateWatchlistField } from "@/lib/search/typ
 import { isReservedUsername } from "@/lib/username";
 import { isTrivialWatchlist } from "@/lib/watchlist-utils";
 import { notifyIndexNow } from "@/lib/indexnow";
+import { logExternalError } from "@/lib/safe-external-error";
 import type { WatchlistFilters } from "@/lib/actions/watchlists";
 
 const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
@@ -84,7 +85,7 @@ function invalidateJobLanguageDependentPages(): void {
       // locale/parameter combination represented by each pattern.
       revalidatePath(path, "page");
     } catch (err) {
-      console.warn("[preferences] revalidatePath failed for", path, err);
+      logExternalError("warn", { service: "external_http", operation: "revalidate_preferences" }, err);
     }
   }
 }
@@ -296,7 +297,7 @@ export async function clearStoredUserImage(): Promise<void> {
       .set({ image: null, updatedAt: new Date() })
       .where(eq(user.id, userId));
   } catch (err) {
-    console.warn("[clearStoredUserImage] db write failed", err);
+    logExternalError("warn", { service: "database", operation: "clear_user_image" }, err);
     return;
   }
 
@@ -552,8 +553,9 @@ export async function renameUsername(
       try {
         await invalidateRedis(`public-watchlist:${oldSlug}:${wl.slug}`);
       } catch (err) {
-        console.error(
-          "[renameUsername] redis public-watchlist invalidate failed",
+        logExternalError(
+          "error",
+          { service: "redis", operation: "rename_user_watchlist_invalidate" },
           err,
         );
       }
@@ -583,7 +585,7 @@ export async function renameUsername(
   try {
     await invalidateRedis("sitemap:watchlists");
   } catch (err) {
-    console.error("[renameUsername] sitemap invalidate failed", err);
+    logExternalError("error", { service: "redis", operation: "rename_user_sitemap_invalidate" }, err);
   }
 
   // Bust the Redis-cached `getSession()` blob for every device the user
@@ -618,7 +620,7 @@ export async function renameUsername(
     try {
       await notifyIndexNow(urls);
     } catch (err) {
-      console.error("[renameUsername] indexnow failed", err);
+      logExternalError("error", { service: "indexnow", operation: "rename_user_urls" }, err);
     }
   });
 

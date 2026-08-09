@@ -87,6 +87,47 @@ pass.
   backup state must be checked directly during production maintenance and
   backup incident review.
 
+### 2026-07-23 — PostgreSQL capacity and checkpoint pressure stabilized
+
+- Hetzner action history independently confirms that the attached PostgreSQL
+  Volume was expanded from 20 to 40 GiB on 2026-07-22 and subsequently gained
+  delete protection. The live guest sees the full 40 GiB XFS filesystem.
+- A fresh read-only measurement found about 17.2 GiB available (43% free),
+  1% inode use, a 19.2 GB database, and a 16.5 GB `descriptions` relation. The
+  PostgreSQL container is the pgBackRest-capable image with a 4 GiB memory
+  limit and 1 GiB shared-memory mount; it has no restart count or OOM flag.
+  The native backup timer and repository mount are active, and the latest
+  differential backup succeeded with zero WAL archive failures. Five
+  executions of the sampler's exact bounded statistics query completed in
+  71–96 ms; the original audit did not retain an equivalent pre-change query
+  latency, so that unavailable history is not reconstructed.
+- The prior audit recorded 51,106 requested versus 6,330 timed checkpoints
+  under a 1 GiB WAL ceiling (89% requested). After the guarded backup
+  migration established a 4 GiB ceiling, 15-minute timeout, and 0.9 completion
+  target, the next 18.4 hours recorded 13 requested versus 64 timed
+  checkpoints (17% requested). Cumulative checkpoint writes were spread over
+  the configured interval; archive failures remained zero.
+- The most recent retained 24-hour database-size regression measured about
+  4.1 KB/s of physical database growth. If that rate persisted unchanged, 30
+  days would add about 10.7 GB against about 18.4 GB of current filesystem
+  availability, leaving more than 30 days to exhaustion. Short-window
+  filesystem regression was rejected for this decision because the newly
+  enlarged/recycled WAL set caused multi-GiB reversible swings.
+- The repo-owned sampler now exports checkpoint write/sync duration, buffers,
+  statistics-reset evidence, and the duration of its bounded PostgreSQL
+  statistics query. The source now has bounded fleet, PostgreSQL-capacity, and
+  crawler groups containing 19, 2, and 17 rules: one new rule holds a 25%
+  current-free threshold and a 30-day database-growth forecast for six hours;
+  another requires at least four requested checkpoints in six hours and
+  requested dominance for 30 minutes. The observability deploy gates on the
+  new checkpoint and query-latency metrics before transactionally promoting
+  the rules.
+- No description deletion, offload, `VACUUM FULL`, or further Volume expansion
+  was justified. Autovacuum is active on both dominant relations, the current
+  database-growth forecast has more than 30 days of headroom, and changing
+  retention semantics would introduce a larger data-integrity and recovery
+  risk than the measured state.
+
 ### 2026-07-22 — fleet observability staged
 
 - Merged and deployed the repo-owned host telemetry surface from `main` to the
@@ -351,7 +392,7 @@ pass.
 | Redis | `redis:8-alpine`; RDB persistence healthy; 674 MiB used of 1 GiB maxmemory; no evictions/rejections; no AOF; documented disposable/reseedable state | healthy; mutable image tag belongs in lifecycle hardening |
 | Alloy/Grafana | remote write and logs healthy; operational ports bind publicly; host exporter covers only crawler | functional but incomplete and unnecessarily exposed |
 | Codex governor | timer enabled and admitting checks; scheduler skips because every remaining company request already has an open draft PR | healthy; absence of new company runs is expected |
-| daily annotations | failed after two 30-second PostgreSQL statement timeouts; final HuggingFace 404 was downstream symptom | confirmed root cause: active 24-hour sample scans/sorts the active set because no `first_seen_at` index supports the query |
+| daily annotations | the 2026-07-22 run failed after two 30-second PostgreSQL statement timeouts; the next date completed, but that did not remove the unbounded access path | migration `0014` adds the concurrent partial `first_seen_at, id` index, the query has a deterministic tie-breaker, CI exercises the real PostgreSQL plan at fixture scale, and the runner preserves the first causal failure ahead of upload symptoms |
 | daily error review | Hetzner systemd timer/service completed; root preflight bundle and lifecycle journal present, but the bundle has no metric time series and the restricted runner has no supported Grafana query path | operational but incomplete; tracked by #5948 |
 | PostgreSQL | PostgreSQL 16.13; about 2.44M postings and 2.11M descriptions; descriptions relation about 14 GiB; 51,106 requested versus 6,330 timed checkpoints; `max_wal_size=1GB`; 2 GiB container limit; separate 20 GB Volume is 91% full and excluded from all seven Hetzner server backups | active capacity/performance and durability incident |
 | Typesense | 27.1; health OK; seven aliases point to seven versioned collections; total posting documents differ from local PostgreSQL by only about 10 at observation; mistaken OS backups exist but no supported snapshot/archive workflow was found | structurally healthy, but `is_active` field drift, unsafe secret delivery, and unproven data recovery remain |
@@ -376,8 +417,9 @@ Severity reflects impact if left unresolved; rank reflects the recommended execu
 | 5 | high | [#5925](https://github.com/colophon-group/jobseek/issues/5925) | long-lived Typesense and Cloudflare credentials are recoverable by unprivileged local users; deploy protected delivery, then rotate |
 | 6 | high | [#5926](https://github.com/colophon-group/jobseek/issues/5926) | monitoring missed the near-full database Volume and continuously false-fires exporter alerts; deploy full-fleet telemetry and ownership-correct alerts |
 | 7 | medium | [#5948](https://github.com/colophon-group/jobseek/issues/5948) | the Hetzner error-review service can reach point-in-time localhost endpoints but has no supported historical metrics evidence path; add least-privilege bounded queries without weakening runner isolation |
-| 8 | medium | [#5929](https://github.com/colophon-group/jobseek/issues/5929) | a missing production access-path index blocks daily annotation sampling but not the serving/crawling path; add the index/query guard and preserve the causal error |
-| 9 | medium | [#5924](https://github.com/colophon-group/jobseek/issues/5924) | overdue reboots, mutable images, missing resource labels, and ad hoc host lifecycle accumulate risk but are not the current data-loss/availability trigger |
+| 8 | medium | [#6067](https://github.com/colophon-group/jobseek/issues/6067) (resolved) | maintenance operations now carry validated issue/revision/budget provenance, and exact-overlap correlation plus redaction is production-verified |
+| 9 | medium | [#5929](https://github.com/colophon-group/jobseek/issues/5929) | migration `0014`, the production-plan guard, and structured first-failure reporting own the annotation sampling root cause; close after the migrated production plan and a full uploaded date are verified |
+| 10 | medium | [#5924](https://github.com/colophon-group/jobseek/issues/5924) | overdue reboots, mutable images, missing resource labels, and ad hoc host lifecycle accumulate risk but are not the current data-loss/availability trigger |
 
 ## Confirmed root-cause findings
 
@@ -435,6 +477,13 @@ The daily annotation run reached PostgreSQL but the 24-hour sample query timed o
 
 Root cause: the sampler query and production table growth were not paired with a supporting partial/composite index or a query-plan performance test.
 
+Remediation contract: migration `0014` creates
+`idx_jp_active_first_seen (first_seen_at DESC, id) WHERE is_active`
+concurrently; the sampler uses the same deterministic order; the dedicated
+PostgreSQL CI job runs an `EXPLAIN (ANALYZE, BUFFERS)` fixture-scale guard; and
+the daily runner consumes the orchestrator's structured outcome so the first
+causal failure remains ahead of downstream HuggingFace verification.
+
 ### 8. Fleet patch and image provenance are not controlled end to end
 
 All hosts require reboot. Pending package counts are 26/46/58, including security updates on crawler and Typesense. External services use mutable tags (`grafana/alloy:latest`, `redis:8-alpine`, `postgres:16-alpine`); Postgres and Typesense have no repo-owned host deployment/upgrade workflow.
@@ -442,6 +491,23 @@ All hosts require reboot. Pending package counts are 26/46/58, including securit
 Control-plane inventory also shows delete/rebuild protection disabled on all three servers, delete protection disabled on the database Volume and private network, no placement group, and no ownership labels on PostgreSQL or Typesense. The crawler is the only server with environment/project/role labels.
 
 Root cause: unattended upgrades, container pulls, reboot decisions, resource protection/labeling, and service version promotion are separate ad hoc mechanisms with no fleet-wide maintenance window or immutable manifest.
+
+### 9. Production maintenance provenance is implicit
+
+The durable Docker lifecycle evidence retained the July 23 writer stop,
+worker-2 signal-9 exit, three bounded relisted-CDC repair one-offs, verification
+one-off, and service restoration. It did not retain a validated operation,
+tracking issue, reviewed revision, or budget that the daily review could use
+for deterministic attribution. The resulting review reopened an instability
+incident even though #6016 documented the authorized stationary repair in the
+same window.
+
+Root cause: crawler deploys, scheduled jobs, and operator repairs used
+independent Docker commands and naming conventions rather than one
+repository-owned provenance and correlation contract. Temporal adjacency
+could suggest maintenance but could not prove authorization, distinguish
+overlapping work, or preserve fail-closed incident handling. This is tracked
+by [#6067](https://github.com/colophon-group/jobseek/issues/6067).
 
 ## Healthy controls worth preserving
 

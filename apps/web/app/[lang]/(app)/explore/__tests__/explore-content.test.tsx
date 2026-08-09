@@ -376,11 +376,16 @@ describe("ExploreContent — cold-start retry (#3008)", () => {
     await waitFor(() => {
       expect(console.error).toHaveBeenCalled();
     });
-    // The error log includes the marker so it can be filtered in
-    // observability.
-    const errorArg = (console.error as unknown as ReturnType<typeof vi.fn>).mock
-      .calls[0]?.[0] as string | undefined;
-    expect(errorArg).toMatch(/explore.*failed twice/i);
+    // The structured event and operation remain filterable without
+    // serializing the raw server-action error.
+    const [event, payload] = (console.error as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0] as [string, Record<string, unknown>];
+    expect(event).toBe("external_client_error");
+    expect(payload).toMatchObject({
+      service: "typesense",
+      operation: "fetch_explore_page",
+      retry_count: 2,
+    });
   });
 
   it("does NOT retry on the happy path (single resolved call)", async () => {

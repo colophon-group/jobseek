@@ -15,6 +15,8 @@ and `ws help` exclusively. All interaction with the system goes through `ws`.
 
 {issue_body}
 
+{ats_inventory_context}
+
 ---
 
 ## Step 1: Check if the company already exists
@@ -23,11 +25,23 @@ and `ws help` exclusively. All interaction with the system goes through `ws`.
 ws search "<company name>"
 ```
 
-If found, reject with `duplicate`:
+For an ordinary request, if found, reject with `duplicate`:
 
 ```bash
 ws reject --issue {issue} --reason duplicate --message "Already configured as <slug>"
 ```
+
+For a **validated inventory seed**, a matching company name is only advisory.
+Reject it only when the exact normalized board URL or exact ATS tenant is
+already configured. If the company exists but this is a new board/tenant, keep
+the existing company metadata and start a reconfiguration workspace:
+
+```bash
+ws new <existing-slug> --issue {issue} --reconfig
+```
+
+The reconfiguration path preserves all existing boards and adds the validated
+native seed as a separate board for live verification and overlap comparison.
 
 ## Step 2: Verify the company is real and has a careers page
 
@@ -56,7 +70,7 @@ ws reject --issue {issue} --reason <key> --message "..."
 
 ## Step 3: Create the workspace
 
-Choose a slug (lowercase, hyphens, e.g. `stripe`, `deep-judge`):
+For a new company, choose a slug (lowercase, hyphens, e.g. `stripe`, `deep-judge`):
 
 ```bash
 ws new <slug> --issue {issue}

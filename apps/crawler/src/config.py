@@ -7,7 +7,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    # Retained only for direct transitional library calls. Production crawler
+    # commands and generated runtime environments never select this boundary.
     database_url: str = ""
+    # Provider-neutral boundary for web-owned data (currently watchlists).
+    # This may point at Supabase Free without making it a crawler mirror.
+    web_database_url: str = ""
     local_database_url: str = "postgresql://crawler:crawler@postgres:5432/crawler"
 
     # Proxy provider — applies to hosts with ``"proxy": true`` in

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 
 from src.shared.api_sniff import (
@@ -419,6 +420,25 @@ class TestAutoMapFields:
         mapping = auto_map_fields(items)
         assert mapping.get("locations") == "offices[].name"
 
+    def test_adp_nested_requisition_locations(self):
+        items = [
+            {
+                "jobTitle": "Cloud Administrator",
+                "requisitionLocations": [
+                    {
+                        "nameCode": {
+                            "codeValue": "153",
+                            "longName": "Virginia - Fairfax",
+                        }
+                    }
+                ],
+            }
+        ]
+
+        mapping = auto_map_fields(items)
+
+        assert mapping["locations"] == "requisitionLocations[].nameCode.longName"
+
     def test_location_array_of_strings(self):
         items = [
             {"title": "Dev", "locations": ["NYC", "SF"]},
@@ -616,6 +636,24 @@ class TestFetchFactories:
 
         assert result == {"jobs": items}
         mock_page.evaluate.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_make_browser_fetcher_raises_http_status_error(self):
+        """The browser bridge preserves status for the shared retry classifier."""
+        mock_page = AsyncMock()
+        mock_page.evaluate = AsyncMock(
+            return_value={
+                "status": 429,
+                "headers": {"content-type": "application/json"},
+                "text": json.dumps({"error": "rate limited"}),
+            }
+        )
+
+        fetch_fn = make_browser_fetcher(mock_page)
+        with pytest.raises(httpx.HTTPStatusError) as exc_info:
+            await fetch_fn("POST", "https://example.com/api", {}, "{}")
+
+        assert exc_info.value.response.status_code == 429
 
     @pytest.mark.asyncio
     async def test_make_http_fetcher_delegates_to_client(self):

@@ -26,7 +26,8 @@ import structlog
 from defusedxml import ElementTree
 from defusedxml.common import DefusedXmlException
 
-from src.core.enum_normalize import normalize_employment_type, normalize_salary_unit
+from src.core.adp import normalize_adp_employment_type
+from src.core.enum_normalize import normalize_salary_unit
 from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
@@ -454,7 +455,7 @@ async def scrape(
         )
 
     work_level = detail.get("workLevelCode") or {}
-    employment_type = normalize_employment_type(
+    employment_type = normalize_adp_employment_type(
         work_level.get("shortName") if isinstance(work_level, dict) else None,
     )
 

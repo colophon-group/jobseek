@@ -43,8 +43,9 @@ def make_browser_fetcher(page) -> FetchJsonFn:
     """Create a FetchJsonFn that executes fetch() inside the browser context.
 
     TDM-Reservation respect (#2842, #2925). The response body is parsed
-    inside :func:`fetch_json` which now surfaces ``r.headers`` through
-    the page-evaluate bridge alongside the body text and invokes
+    inside :func:`fetch_json` which surfaces ``r.status`` and ``r.headers``
+    through the page-evaluate bridge alongside the body text, raises HTTP
+    failures for the shared retry classifier, and invokes
     :func:`check_browser_response` before returning. A
     :class:`TDMReservedError` propagates out (not retried) and is
     treated as a clean board skip by the wrapper in
@@ -224,7 +225,8 @@ FIELD_PATTERNS: dict[str, re.Pattern] = {
 
 # Location patterns — match both simple keys and array-of-object patterns
 _LOCATION_KEY_PATTERNS = re.compile(
-    r"^(location|locations|office|offices|city|cities|place|places)$",
+    r"^(location|locations|office|offices|city|cities|place|places"
+    r"|requisition_?locations|work_?locations)$",
     re.I,
 )
 _LOCATION_SUBFIELD_PATTERNS = re.compile(
@@ -880,6 +882,17 @@ def auto_map_fields(items: list[dict]) -> dict[str, str]:
                     mapping["locations"] = key
                     break
                 if first and isinstance(first[0], dict):
+                    # ADP MyJobs wraps the display label one level deeper:
+                    # requisitionLocations[].nameCode.{shortName,longName}.
+                    # Prefer the concise label when both variants exist.
+                    name_code = first[0].get("nameCode")
+                    if isinstance(name_code, dict):
+                        for subkey in ("shortName", "longName"):
+                            if isinstance(name_code.get(subkey), str):
+                                mapping["locations"] = f"{key}[].nameCode.{subkey}"
+                                break
+                        if "locations" in mapping:
+                            break
                     # Find the name subfield
                     for subkey in first[0]:
                         if _LOCATION_SUBFIELD_PATTERNS.match(subkey):
@@ -1101,7 +1114,7 @@ async def fetch_json(
     """Execute a fetch inside the browser context, return parsed JSON.
 
     TDM-Reservation respect (#2842, #2925). The page-evaluate bridge
-    surfaces ``r.headers`` (entries materialised into a plain object
+    surfaces ``r.status`` and ``r.headers`` (entries materialised into a plain object
     with lower-cased keys, since ``Headers`` itself isn't directly
     serialisable across the bridge) alongside the body text so
     :func:`check_browser_response` can run on the Playwright path —
@@ -1120,7 +1133,7 @@ async def fetch_json(
         for (const [k, v] of resp.headers.entries()) {
             respHeaders[k.toLowerCase()] = v;
         }
-        return { headers: respHeaders, text: await resp.text() };
+        return { status: resp.status, headers: respHeaders, text: await resp.text() };
     }""",
         [method, url, json.dumps(headers), body],
     )
@@ -1132,6 +1145,17 @@ async def fetch_json(
     # ``_fetch_page_with_retry``. No defensive shape-check needed.
     text = result["text"]
     resp_headers = result.get("headers") or {}
+    status = result.get("status", 200)
+    if not isinstance(status, int):
+        raise TypeError("browser fetch returned an invalid HTTP status")
+    if not 200 <= status < 300:
+        response = httpx.Response(
+            status,
+            headers=resp_headers,
+            text=text,
+            request=httpx.Request(method, url),
+        )
+        response.raise_for_status()
     check_browser_response(resp_headers, text, url=url)
     return json.loads(text)
 

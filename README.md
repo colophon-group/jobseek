@@ -103,7 +103,7 @@ apps/crawler/          Python pipeline (asyncio, Playwright fallback)
   src/core/monitors/   Monitor types — Greenhouse, Lever, Workday, …
   src/core/scrapers/   Scrapers — JSON-LD, DOM, sitemap, vendor-specific
   src/redis_queue.py   Claim queue with atomic reservation, requeue, reschedule
-  src/exporter.py      CDC: Postgres → Supabase + Typesense
+  src/exporter.py      CDC: local Postgres → Typesense
   src/labeller/        Daily labelling pipeline (HuggingFace upload)
   src/workspace/       `ws` — agent orchestrator for company onboarding
   data/companies.csv   Source of truth — every tracked company is one row
@@ -111,7 +111,7 @@ apps/crawler/          Python pipeline (asyncio, Playwright fallback)
 
 apps/web/              Next.js 16 + Drizzle + Lingui + Better Auth
   app/[lang]/...       Path-prefix i18n (en / de / fr / it)
-  src/db/schema.ts     Drizzle schema — Postgres + Supabase mirror
+  src/db/schema.ts     Drizzle schema for the web-owned Postgres boundary
 
 docs/                  Architecture and operational routines
 scripts/               Typesense setup, backfill, IndexNow notifications

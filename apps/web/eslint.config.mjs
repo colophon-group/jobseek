@@ -19,6 +19,95 @@ const appSourceIgnores = [
   "scripts/**",
 ];
 
+function memberName(node) {
+  if (!node || node.type !== "MemberExpression") return undefined;
+  if (!node.computed && node.property.type === "Identifier") return node.property.name;
+  if (node.computed && node.property.type === "Literal") return node.property.value;
+  return undefined;
+}
+
+const safeClientLoggingPlugin = {
+  rules: {
+    "no-raw-errors": {
+      meta: {
+        type: "problem",
+        docs: {
+          description: "Prevent SDK/client error objects from reaching application logs",
+        },
+        messages: {
+          rawError:
+            "Do not log raw errors or error-derived values. Use logExternalError() or safeExternalError().",
+        },
+        schema: [],
+      },
+      create(context) {
+        const sourceCode = context.sourceCode;
+        const caughtNames = new Map();
+
+        function addCaught(name) {
+          caughtNames.set(name, (caughtNames.get(name) ?? 0) + 1);
+        }
+
+        function removeCaught(name) {
+          const count = caughtNames.get(name) ?? 0;
+          if (count <= 1) caughtNames.delete(name);
+          else caughtNames.set(name, count - 1);
+        }
+
+        function isSafeSerializer(node) {
+          return (
+            node.type === "CallExpression" &&
+            node.callee.type === "Identifier" &&
+            (node.callee.name === "safeExternalError" || node.callee.name === "logExternalError")
+          );
+        }
+
+        function containsRawError(node) {
+          if (!node || typeof node !== "object" || isSafeSerializer(node)) return false;
+          if (node.type === "Identifier") {
+            return caughtNames.has(node.name) || /^(?:err|error|cause|lastErr|[A-Za-z]+Error)$/.test(node.name);
+          }
+          if (node.type === "MemberExpression" && memberName(node) === "error") return true;
+          if (node.type === "Property" && !node.computed) return containsRawError(node.value);
+
+          const keys = sourceCode.visitorKeys[node.type] ?? [];
+          return keys.some((key) => {
+            const child = node[key];
+            return Array.isArray(child)
+              ? child.some((entry) => containsRawError(entry))
+              : containsRawError(child);
+          });
+        }
+
+        function isApplicationLogger(node) {
+          if (node.type !== "MemberExpression") return false;
+          const method = memberName(node);
+          if (method !== "error" && method !== "warn") return false;
+          if (node.object.type === "Identifier") {
+            return ["console", "log", "logger"].includes(node.object.name);
+          }
+          return memberName(node.object) === "logger";
+        }
+
+        return {
+          CatchClause(node) {
+            if (node.param?.type === "Identifier") addCaught(node.param.name);
+          },
+          "CatchClause:exit"(node) {
+            if (node.param?.type === "Identifier") removeCaught(node.param.name);
+          },
+          CallExpression(node) {
+            if (!isApplicationLogger(node.callee)) return;
+            if (node.arguments.some((argument) => containsRawError(argument))) {
+              context.report({ node, messageId: "rawError" });
+            }
+          },
+        };
+      },
+    },
+  },
+};
+
 export default tseslint.config(
   {
     ignores: [".next/", "node_modules/", "src/locales/", "locales/", "next-env.d.ts"],
@@ -66,6 +155,24 @@ export default tseslint.config(
             "Pass an explicit locale for display sorting, or use deterministic < > comparison for canonical keys.",
         },
       ],
+    },
+  },
+  {
+    files: ["app/**/*.{ts,tsx}", "src/**/*.{ts,tsx}", "script/**/*.ts", "scripts/**/*.ts"],
+    ignores: [
+      "**/__tests__/**",
+      "**/*.test.{ts,tsx}",
+      "app/api/admin/murmur-demo/**",
+      "app/api/web/companies/request/**",
+      "app/api/stripe/**",
+      "src/lib/actions/request-company.ts",
+      "src/lib/stripe.ts",
+    ],
+    plugins: {
+      "safe-client-logging": safeClientLoggingPlugin,
+    },
+    rules: {
+      "safe-client-logging/no-raw-errors": "error",
     },
   },
   {

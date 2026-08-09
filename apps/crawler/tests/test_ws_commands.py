@@ -42,6 +42,27 @@ def _setup_csvs(tmp_path, companies="", boards=""):
     (tmp_path / "boards.csv").write_text(BOARDS_HEADER + boards)
 
 
+def _inventory_issue_body() -> str:
+    from src.ats_inventory.candidates import Candidate, CandidatePlan, render_candidate_issue
+    from src.ats_inventory.models import CompanyImpact
+
+    candidate = Candidate.from_impact(
+        CompanyImpact(
+            ats="greenhouse",
+            name="Acme",
+            slug="acme",
+            url="https://boards.greenhouse.io/acme",
+            impact_unknown=False,
+            active_jobs=12,
+            remote_jobs=2,
+            location_count=3,
+            country_codes=("US",),
+            latest_posted_at="2026-08-01T00:00:00Z",
+        )
+    )
+    return render_candidate_issue(CandidatePlan(candidate, (), ()))[1]
+
+
 def _patch_all(monkeypatch, tmp_path):
     """Patch path getters for testing."""
     ws_dir = tmp_path / ".ws"
@@ -916,6 +937,68 @@ class TestReject:
 
 
 class TestTaskIssueBinding:
+    def test_task_preverify_surfaces_validated_inventory_seed(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        with (
+            patch("src.workspace.git.check_gh_auth", return_value=True),
+            patch(
+                "src.workspace.git.fetch_issue",
+                return_value={
+                    "title": "Add company: Acme",
+                    "body": _inventory_issue_body(),
+                    "labels": [{"name": "source:ats-inventory"}],
+                },
+            ),
+        ):
+            result = CliRunner().invoke(ws, ["task", "--issue", "39"])
+
+        assert result.exit_code == 0, result.output
+        assert "Validated inventory seed" in result.output
+        assert "will preselect Jobseek's `greenhouse` monitor" in result.output
+        assert 'ws search "<company name>"' in result.output
+
+    def test_task_preverify_human_request_has_no_inventory_guidance(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        with (
+            patch("src.workspace.git.check_gh_auth", return_value=True),
+            patch(
+                "src.workspace.git.fetch_issue",
+                return_value={
+                    "title": "Please add Acme",
+                    "body": "Website: https://acme.example",
+                },
+            ),
+        ):
+            result = CliRunner().invoke(ws, ["task", "--issue", "39"])
+
+        assert result.exit_code == 0, result.output
+        assert "Website: https://acme.example" in result.output
+        assert "Validated inventory seed" not in result.output
+        assert "Inventory seed validation" not in result.output
+        assert 'ws search "<company name>"' in result.output
+
+    def test_task_preverify_ignores_spoofed_marker_without_inventory_label(
+        self, tmp_path, monkeypatch
+    ):
+        _patch_all(monkeypatch, tmp_path)
+        with (
+            patch("src.workspace.git.check_gh_auth", return_value=True),
+            patch(
+                "src.workspace.git.fetch_issue",
+                return_value={
+                    "title": "Add company: Acme",
+                    "body": _inventory_issue_body(),
+                    "labels": [{"name": "company-request"}],
+                },
+            ),
+        ):
+            result = CliRunner().invoke(ws, ["task", "--issue", "39"])
+
+        assert result.exit_code == 0, result.output
+        assert "Validated inventory seed" not in result.output
+        assert "will preselect" not in result.output
+        assert 'ws search "<company name>"' in result.output
+
     def test_task_issue_binds_to_matching_workspace(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         save_workspace(Workspace(slug="swissquote-bank", issue=38, branch="add-company/swissquote"))
@@ -1357,6 +1440,17 @@ class TestRunMonitorOutput:
         ws_obj.active_board = "careers"
         save_workspace(ws_obj)
 
+    def _setup_inventory_board(self, tmp_path, monkeypatch):
+        from src.workspace.ats_seed import apply_inventory_seed, parse_inventory_seed
+
+        _patch_all(monkeypatch, tmp_path)
+        workspace = Workspace(slug="acme", issue=1)
+        seed = parse_inventory_seed(_inventory_issue_body())
+        assert seed is not None
+        board = apply_inventory_seed(workspace, seed)
+        save_workspace(workspace)
+        save_board("acme", board)
+
     def test_zero_jobs_warning(self, tmp_path, monkeypatch):
         """0 jobs should produce a warning, not a regular info line."""
         self._setup_monitor_board(tmp_path, monkeypatch)
@@ -1401,6 +1495,102 @@ class TestRunMonitorOutput:
 
         assert "\u2713" in result.output  # Checkmark symbol
         assert "2 jobs" in result.output
+
+    def test_inventory_seed_success_is_verified(self, tmp_path, monkeypatch):
+        self._setup_inventory_board(tmp_path, monkeypatch)
+
+        @dataclass
+        class FakeResult:
+            urls: set[str]
+            jobs_by_url: dict | None
+            filtered_count: int = 0
+
+        fake_result = FakeResult(
+            urls={"https://boards.greenhouse.io/acme/jobs/1"},
+            jobs_by_url=None,
+        )
+        stack, mock_asyncio = _enter_monitor_patches(tmp_path)
+        with stack:
+            expected = _as_run_monitor_result(fake_result, 1.0, [])
+
+            def _succeed(coro):
+                from src.workspace.state import update_workspace
+
+                coro.close()
+                # Parallel enrichment can finish while the monitor is in
+                # flight; the seed-status write must not restore stale state.
+                with update_workspace("acme") as concurrent_workspace:
+                    concurrent_workspace.name = "Acme Concurrent"
+                return expected
+
+            mock_asyncio.run.side_effect = _succeed
+            result = CliRunner().invoke(
+                ws,
+                ["run", "monitor", "acme", "--board", "careers", "--config", "inventory-seed"],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert load_workspace("acme").ats_inventory["status"] == "verified"
+        assert load_workspace("acme").ats_inventory["jobs"] == 1
+        assert load_workspace("acme").name == "Acme Concurrent"
+        assert load_board("acme", "careers").configs["inventory-seed"]["status"] == "tested"
+
+    def test_inventory_seed_zero_jobs_forces_normal_fallback(self, tmp_path, monkeypatch):
+        self._setup_inventory_board(tmp_path, monkeypatch)
+
+        @dataclass
+        class FakeResult:
+            urls: set[str]
+            jobs_by_url: dict | None
+            filtered_count: int = 0
+
+        stack, mock_asyncio = _enter_monitor_patches(tmp_path)
+        with stack:
+            expected = _as_run_monitor_result(
+                FakeResult(urls=set(), jobs_by_url=None),
+                1.0,
+                [],
+            )
+
+            def _succeed(coro):
+                coro.close()
+                return expected
+
+            mock_asyncio.run.side_effect = _succeed
+            result = CliRunner().invoke(
+                ws,
+                ["run", "monitor", "acme", "--board", "careers", "--config", "inventory-seed"],
+            )
+
+        assert result.exit_code == 0, result.output
+        assert "Fast path rejected" in result.output
+        assert load_workspace("acme").ats_inventory["status"] == "fallback"
+        board = load_board("acme", "careers")
+        assert board.configs["inventory-seed"]["status"] == "selected"
+        assert board.ready is False
+
+    def test_inventory_seed_monitor_failure_records_fallback(self, tmp_path, monkeypatch):
+        self._setup_inventory_board(tmp_path, monkeypatch)
+        from src.workspace.lib import WsMonitorRunFailed
+
+        stack, mock_asyncio = _enter_monitor_patches(tmp_path)
+        with stack:
+
+            def _fail(coro):
+                coro.close()
+                raise WsMonitorRunFailed("seed endpoint is stale")
+
+            mock_asyncio.run.side_effect = _fail
+            result = CliRunner().invoke(
+                ws,
+                ["run", "monitor", "acme", "--board", "careers", "--config", "inventory-seed"],
+            )
+
+        assert result.exit_code != 0
+        assert "use normal probe/discovery" in result.output
+        state = load_workspace("acme").ats_inventory
+        assert state["status"] == "fallback"
+        assert state["reason"] == "seed endpoint is stale"
 
     def test_monitor_failure_shows_recovery_guidance(self, tmp_path, monkeypatch):
         self._setup_monitor_board(tmp_path, monkeypatch, monitor_type="greenhouse")
@@ -1966,6 +2156,256 @@ class TestSelectMonitorNaming:
         assert board.active_config == "greenhouse-2"
         assert "greenhouse" in board.configs
         assert "greenhouse-2" in board.configs
+
+    def test_auto_scraper_config_is_persisted(self, tmp_path, monkeypatch):
+        """Partial-rich monitors retain their required enrichment config."""
+        self._setup(tmp_path, monkeypatch)
+        runner = CliRunner()
+
+        result = runner.invoke(ws, ["select", "monitor", "test", "paylocity"])
+
+        assert result.exit_code == 0
+        board = load_board("test", "careers")
+        selected = board.configs[board.active_config]
+        assert selected["scraper_type"] == "paylocity"
+        assert selected["scraper_config"] == {
+            "enrich": ["description", "employment_type", "job_location_type"]
+        }
+
+        # Mutating workspace state must not mutate the reusable compatibility
+        # default returned for subsequent monitor selections.
+        selected["scraper_config"]["enrich"].append("title")
+        from src.workspace._compat import auto_scraper_type
+
+        assert auto_scraper_type("paylocity") == (
+            "paylocity",
+            {"enrich": ["description", "employment_type", "job_location_type"]},
+        )
+
+    def test_legacy_successfactors_static_enrichment_is_persisted(self, tmp_path, monkeypatch):
+        self._setup(tmp_path, monkeypatch)
+        config = json.dumps(
+            {
+                "preset": "successfactors",
+                "variant": "legacy",
+                "host": "career5.successfactors.eu",
+                "company": "Acme",
+            }
+        )
+
+        result = CliRunner().invoke(
+            ws,
+            ["select", "monitor", "test", "rss", "--config", config],
+        )
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["rss"]
+        assert selected["scraper_type"] == "dom"
+        assert selected["scraper_config"]["scope"] == ".joqReqDescription"
+        assert selected["scraper_config"]["enrich"] == ["description"]
+
+    def test_bamboohr_api_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """BambooHR selection carries its complete generic detail API preset."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "bamboohr"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["bamboohr"]
+        from src.workspace._compat import auto_scraper_type
+
+        expected = auto_scraper_type("bamboohr")
+        assert expected is not None
+        assert selected["scraper_type"] == expected[0] == "api_sniffer"
+        assert selected["scraper_config"] == expected[1]
+
+    def test_paycom_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """Paycom selection carries its native detail API preset."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "paycom"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["paycom"]
+        from src.workspace._compat import auto_scraper_type
+
+        expected = auto_scraper_type("paycom")
+        assert expected is not None
+        assert selected["scraper_type"] == expected[0] == "paycom"
+        assert selected["scraper_config"] == expected[1]
+
+    def test_adp_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """ADP selection carries its native detail enrichment preset."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "adp"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["adp"]
+        from src.workspace._compat import auto_scraper_type
+
+        expected = auto_scraper_type("adp")
+        assert expected is not None
+        assert selected["scraper_type"] == expected[0] == "adp"
+        assert selected["scraper_config"] == expected[1]
+
+    def test_avature_dom_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """Avature selection activates the shared DOM detail preset."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "avature"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["avature"]
+        from src.workspace._compat import auto_scraper_type
+
+        expected = auto_scraper_type("avature")
+        assert expected is not None
+        assert selected["scraper_type"] == expected[0] == "dom"
+        assert selected["scraper_config"] == expected[1]
+
+    def test_jazzhr_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """JazzHR selection carries its composed static detail scraper."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "jazzhr"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["jazzhr"]
+        assert selected["scraper_type"] == "jazzhr"
+        assert selected.get("scraper_config") is None
+
+    def test_recruiterbox_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """Recruiterbox selection activates the shared JSON-LD detail scraper."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "recruiterbox"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["recruiterbox"]
+        assert selected["scraper_type"] == "json-ld"
+        assert selected.get("scraper_config") is None
+
+    def test_icims_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """iCIMS selection carries the existing JSON-LD detail scraper."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "icims"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["icims"]
+        assert selected["scraper_type"] == "json-ld"
+        assert selected.get("scraper_config") is None
+
+    def test_herp_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """HERP selection carries the existing JSON-LD detail scraper."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "herp"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["herp"]
+        assert selected["scraper_type"] == "json-ld"
+        assert selected.get("scraper_config") is None
+
+    def test_gupy_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """Gupy selection carries the existing JSON-LD detail scraper."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "gupy"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["gupy"]
+        assert selected["scraper_type"] == "json-ld"
+        assert selected.get("scraper_config") is None
+
+    def test_cornerstone_rich_monitor_skip_is_persisted(self, tmp_path, monkeypatch):
+        """Cornerstone selection skips redundant per-job scraping."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "cornerstone"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["cornerstone"]
+        assert selected["scraper_type"] == "skip"
+        assert selected.get("scraper_config") is None
+
+    def test_dayforce_rich_monitor_skip_is_persisted(self, tmp_path, monkeypatch):
+        """Dayforce selection skips redundant per-job scraping."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "dayforce"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["dayforce"]
+        assert selected["scraper_type"] == "skip"
+        assert selected.get("scraper_config") is None
+
+    def test_darwinbox_rich_monitor_skip_is_persisted(self, tmp_path, monkeypatch):
+        """Darwinbox selection skips redundant per-job scraping."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "darwinbox"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["darwinbox"]
+        assert selected["scraper_type"] == "skip"
+        assert selected.get("scraper_config") is None
+
+    def test_hrmos_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
+        """HRMOS selection carries the existing JSON-LD detail scraper."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "hrmos"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["hrmos"]
+        assert selected["scraper_type"] == "json-ld"
+        assert selected.get("scraper_config") is None
+
+    def test_reselect_monitor_preserves_explicit_empty_scraper_config(self, tmp_path, monkeypatch):
+        self._setup(tmp_path, monkeypatch)
+        board = load_board("test", "careers")
+        board.configs["custom"] = {
+            "scraper_type": "paylocity",
+            "scraper_config": {},
+        }
+        save_board("test", board)
+
+        result = CliRunner().invoke(
+            ws,
+            ["select", "monitor", "test", "paylocity", "--as", "custom"],
+        )
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["custom"]
+        assert selected["scraper_type"] == "paylocity"
+        assert selected["scraper_config"] == {}
+
+    def test_reselect_monitor_repairs_v1_null_scraper_placeholders(self, tmp_path, monkeypatch):
+        self._setup(tmp_path, monkeypatch)
+        legacy = Board.from_dict(
+            {
+                "alias": "careers",
+                "slug": "test-careers",
+                "url": "https://test.com/jobs",
+                "monitor": {"type": "paylocity", "config": {}},
+                "scraper": {},
+            }
+        )
+        save_board("test", legacy)
+
+        result = CliRunner().invoke(
+            ws,
+            ["select", "monitor", "test", "paylocity", "--as", "paylocity"],
+        )
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["paylocity"]
+        assert selected["scraper_type"] == "paylocity"
+        assert selected["scraper_config"] == {
+            "enrich": ["description", "employment_type", "job_location_type"]
+        }
 
     def test_auto_fill_from_detections(self, tmp_path, monkeypatch):
         """Config auto-fills from board.detections when no --config given."""
@@ -2782,6 +3222,114 @@ class TestSubmitStepRegistry:
         non_critical_idx = [i for i, (_, _, c) in enumerate(SUBMIT_STEPS) if not c]
         assert max(critical_idx) < min(non_critical_idx)
 
+    def test_csv_fallback_writes_auto_scraper_config(self, tmp_path, monkeypatch):
+        """Submit fallback writes the full partial-rich auto configuration."""
+        ws_obj, board = _setup_submittable_workspace(tmp_path, monkeypatch)
+        board.configs["paylocity"] = {
+            "monitor_type": "paylocity",
+            "monitor_config": {},
+            # Reproduce workspace state written before auto scraper configs
+            # were persisted: type present, required config missing.
+            "scraper_type": "paylocity",
+            "status": "tested",
+            "run": {"jobs": 3},
+            "feedback": {"verdict": "good"},
+        }
+        board.active_config = "paylocity"
+        save_board("test", board)
+
+        from src.shared.csv_io import read_csv
+        from src.workspace.commands.lifecycle import _execute_submit_step
+
+        _execute_submit_step("csv_written", ws_obj, [board], None)
+
+        _, rows = read_csv(tmp_path / "boards.csv")
+        row = next(row for row in rows if row["board_slug"] == "test-careers")
+        assert row["scraper_type"] == "paylocity"
+        assert json.loads(row["scraper_config"]) == {
+            "enrich": ["description", "employment_type", "job_location_type"]
+        }
+
+    def test_csv_fallback_repairs_v1_null_scraper_placeholders(self, tmp_path, monkeypatch):
+        ws_obj, _ = _setup_submittable_workspace(tmp_path, monkeypatch)
+        board = Board.from_dict(
+            {
+                "alias": "careers",
+                "slug": "test-careers",
+                "url": "https://test.com/jobs",
+                "monitor": {"type": "paylocity", "config": {}},
+                "scraper": {},
+            }
+        )
+
+        from src.shared.csv_io import read_csv
+        from src.workspace.commands.lifecycle import _execute_submit_step
+
+        _execute_submit_step("csv_written", ws_obj, [board], None)
+
+        _, rows = read_csv(tmp_path / "boards.csv")
+        row = next(row for row in rows if row["board_slug"] == "test-careers")
+        assert row["scraper_type"] == "paylocity"
+        assert json.loads(row["scraper_config"]) == {
+            "enrich": ["description", "employment_type", "job_location_type"]
+        }
+
+    def test_csv_fallback_preserves_explicit_scraper_config(self, tmp_path, monkeypatch):
+        ws_obj, board = _setup_submittable_workspace(tmp_path, monkeypatch)
+        explicit = {"enrich": ["description"], "proxy": True}
+        board.configs["paylocity"] = {
+            "monitor_type": "paylocity",
+            "monitor_config": {},
+            "scraper_type": "paylocity",
+            "scraper_config": explicit,
+            "status": "tested",
+            "run": {"jobs": 3},
+            "feedback": {"verdict": "good"},
+        }
+        board.active_config = "paylocity"
+
+        from src.shared.csv_io import read_csv
+        from src.workspace.commands.lifecycle import _execute_submit_step
+
+        _execute_submit_step("csv_written", ws_obj, [board], None)
+
+        _, rows = read_csv(tmp_path / "boards.csv")
+        row = next(row for row in rows if row["board_slug"] == "test-careers")
+        assert json.loads(row["scraper_config"]) == explicit
+
+    def test_csv_fallback_preserves_explicit_empty_scraper_config(self, tmp_path, monkeypatch):
+        ws_obj, board = _setup_submittable_workspace(tmp_path, monkeypatch)
+        from src.csvtool import board_add
+
+        board_add(
+            "test",
+            board_slug="test-careers",
+            board_url="https://test.com/jobs",
+            monitor_type="paylocity",
+            scraper_type="paylocity",
+            scraper_config=json.dumps({"enrich": ["description"]}),
+        )
+        board.configs["paylocity"] = {
+            "monitor_type": "paylocity",
+            "monitor_config": {},
+            "scraper_type": "paylocity",
+            "scraper_config": {},
+            "status": "tested",
+            "run": {"jobs": 3},
+            "feedback": {"verdict": "good"},
+        }
+        board.active_config = "paylocity"
+
+        from src.shared.csv_io import read_csv
+        from src.workspace.commands.lifecycle import _execute_submit_step
+
+        _execute_submit_step("csv_written", ws_obj, [board], None)
+
+        _, rows = read_csv(tmp_path / "boards.csv")
+        row = next(row for row in rows if row["board_slug"] == "test-careers")
+        assert row["scraper_type"] == "paylocity"
+        assert row["scraper_config"] == ""
+
 
 class TestSubmitIdempotency:
     """Submit skips already-completed steps on rerun."""
@@ -3057,6 +3605,23 @@ class TestSubmitLastError:
 class TestBuildPrBody:
     """Test PR body generation."""
 
+    def test_inventory_source_marker_is_preserved_for_queue_reconciliation(self):
+        from src.ats_inventory.candidates import parse_candidate_markers
+        from src.workspace.ats_seed import apply_inventory_seed, parse_inventory_seed
+        from src.workspace.commands.lifecycle import _build_pr_body
+
+        workspace = Workspace(slug="acme", name="Acme", issue=1)
+        seed = parse_inventory_seed(_inventory_issue_body())
+        assert seed is not None
+        board = apply_inventory_seed(workspace, seed)
+        workspace.ats_inventory["status"] = "verified"
+
+        body = _build_pr_body(workspace, [board])
+
+        assert parse_candidate_markers(body) == ((seed.source_key, seed.board_sha256),)
+        assert f"Source key: `{seed.source_key}`" in body
+        assert "Seed verification: `verified`" in body
+
     def test_image_preview_uses_commit_sha_url(self, tmp_path, monkeypatch):
         from src.workspace.commands.lifecycle import _build_pr_body
 
@@ -3331,6 +3896,48 @@ class TestPreflight:
 
 class TestResume:
     """Test ws resume command."""
+
+    def test_resume_preserves_partial_rich_auto_scraper_config(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        ws_obj = Workspace(
+            slug="test",
+            name="Test Corp",
+            website="https://test.com",
+            active_board="careers",
+        )
+        save_workspace(ws_obj)
+        set_active_slug("test")
+        save_board(
+            "test",
+            Board(alias="careers", slug="test-careers", url="https://test.com/jobs"),
+        )
+
+        selected = CliRunner().invoke(ws, ["select", "monitor", "test", "paylocity"])
+        assert selected.exit_code == 0
+
+        ws_obj = load_workspace("test")
+        ws_obj.branch = "add-company/test"
+        save_workspace(ws_obj)
+
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch(
+                    "src.workspace.git._run",
+                    return_value=MagicMock(stdout="  add-company/test\n", returncode=0),
+                )
+            )
+            stack.enter_context(
+                patch("src.workspace.git.current_branch", return_value="add-company/test")
+            )
+            resumed = CliRunner().invoke(ws, ["resume", "test"])
+
+        assert resumed.exit_code == 0
+        board = load_board("test", "careers")
+        active = board.configs[board.active_config]
+        assert active["scraper_type"] == "paylocity"
+        assert active["scraper_config"] == {
+            "enrich": ["description", "employment_type", "job_location_type"]
+        }
 
     def test_resume_ready_workspace(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
@@ -4107,7 +4714,16 @@ class TestProbeAllBoards:
 class TestNewIdempotent:
     """ws new should not fail when slug already exists in CSV from a prior attempt."""
 
-    def _git_mocks(self, stack, tmp_path, *, pr_branch=None, existing_prs=None):
+    def _git_mocks(
+        self,
+        stack,
+        tmp_path,
+        *,
+        pr_branch=None,
+        existing_prs=None,
+        issue_body="",
+        issue_labels=(),
+    ):
         """Set up common git mocks for new() tests."""
         stack.enter_context(
             patch(
@@ -4116,6 +4732,16 @@ class TestNewIdempotent:
             )
         )
         stack.enter_context(patch("src.workspace.git.check_gh_auth", return_value=True))
+        stack.enter_context(
+            patch(
+                "src.workspace.git.fetch_issue",
+                return_value={
+                    "title": "Add company: Acme",
+                    "body": issue_body,
+                    "labels": [{"name": label} for label in issue_labels],
+                },
+            )
+        )
         stack.enter_context(patch("src.workspace.git.fetch"))
         stack.enter_context(
             patch("src.workspace.git.worktrees_dir", return_value=tmp_path / "worktrees")
@@ -4214,6 +4840,137 @@ class TestNewIdempotent:
         sync_branch.assert_not_called()
         assert "acme" in (tmp_path / "companies.csv").read_text()
         assert load_workspace("acme").pr is None
+        assert load_workspace("acme").ats_inventory == {}
+        assert list_boards("acme") == []
+
+    def test_new_seeds_valid_inventory_board_without_publishing(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path)
+
+        with ExitStack() as stack:
+            add_files, commit, push, create_pr, _, _, _ = self._git_mocks(
+                stack,
+                tmp_path,
+                issue_body=_inventory_issue_body(),
+                issue_labels=("source:ats-inventory",),
+            )
+            result = CliRunner().invoke(ws, ["new", "acme", "--issue", "1"])
+
+        assert result.exit_code == 0, result.output
+        assert "Seeded greenhouse monitor" in result.output
+        workspace = load_workspace("acme")
+        assert workspace.ats_inventory["source_key"].startswith("ats-scrapers:greenhouse:")
+        assert workspace.ats_inventory["status"] == "pending"
+        board = load_board("acme", "careers")
+        assert board.active_config == "inventory-seed"
+        assert board.configs["inventory-seed"]["status"] == "selected"
+        assert board.configs["inventory-seed"]["monitor_type"] == "greenhouse"
+        add_files.assert_not_called()
+        commit.assert_not_called()
+        push.assert_not_called()
+        create_pr.assert_not_called()
+
+    def test_reconfig_preserves_existing_board_and_adds_inventory_seed(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(
+            tmp_path,
+            companies="acme,Acme,https://acme.example,,,\n",
+            boards=("acme,acme-careers,https://acme.example/jobs,dom,{},dom,{}\n"),
+        )
+
+        with ExitStack() as stack:
+            self._git_mocks(
+                stack,
+                tmp_path,
+                issue_body=_inventory_issue_body(),
+                issue_labels=("source:ats-inventory",),
+            )
+            result = CliRunner().invoke(ws, ["new", "acme", "--issue", "1", "--reconfig"])
+
+        assert result.exit_code == 0, result.output
+        assert "Seeded greenhouse monitor" in result.output
+        assert {board.alias for board in list_boards("acme")} == {
+            "careers",
+            "inventory-careers",
+        }
+        assert load_board("acme", "careers").url == "https://acme.example/jobs"
+        seeded = load_board("acme", "inventory-careers")
+        assert seeded.url == "https://boards.greenhouse.io/acme"
+        assert seeded.active_config == "inventory-seed"
+        workspace = load_workspace("acme")
+        assert workspace.active_board == "inventory-careers"
+        assert workspace.ats_inventory["board_alias"] == "inventory-careers"
+        from src.workspace.workflow import _load_wf_from_disk
+
+        workflow = _load_wf_from_disk("acme")
+        assert workflow.current_step == "select_monitor"
+        assert workflow.current_board == "inventory-careers"
+
+    def test_reconfig_falls_back_when_inventory_seed_matches_existing_board(
+        self, tmp_path, monkeypatch
+    ):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(
+            tmp_path,
+            companies="acme,Acme,https://acme.example,,,\n",
+            boards=("acme,acme-careers,https://boards.greenhouse.io/acme,greenhouse,{},dom,{}\n"),
+        )
+
+        with ExitStack() as stack:
+            self._git_mocks(
+                stack,
+                tmp_path,
+                issue_body=_inventory_issue_body(),
+                issue_labels=("source:ats-inventory",),
+            )
+            result = CliRunner().invoke(ws, ["new", "acme", "--issue", "1", "--reconfig"])
+
+        assert result.exit_code == 0, result.output
+        assert "using normal discovery" in result.output
+        assert {board.alias for board in list_boards("acme")} == {"careers"}
+        workspace = load_workspace("acme")
+        assert workspace.active_board == "careers"
+        assert workspace.ats_inventory["status"] == "fallback"
+
+    def test_new_ignores_inventory_marker_without_protected_label(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path)
+
+        with ExitStack() as stack:
+            self._git_mocks(stack, tmp_path, issue_body=_inventory_issue_body())
+            result = CliRunner().invoke(ws, ["new", "acme", "--issue", "1"])
+
+        assert result.exit_code == 0, result.output
+        assert "Seeded greenhouse monitor" not in result.output
+        assert load_workspace("acme").ats_inventory == {}
+        assert list_boards("acme") == []
+
+    def test_new_quarantines_seed_that_now_matches_current_registry(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(
+            tmp_path,
+            companies="existing,Existing,https://existing.example,,,\n",
+            boards=(
+                "existing,existing-careers,https://boards.greenhouse.io/acme,"
+                "greenhouse,{},skip,{}\n"
+            ),
+        )
+
+        with ExitStack() as stack:
+            self._git_mocks(
+                stack,
+                tmp_path,
+                issue_body=_inventory_issue_body(),
+                issue_labels=("source:ats-inventory",),
+            )
+            result = CliRunner().invoke(ws, ["new", "acme", "--issue", "1"])
+
+        assert result.exit_code == 0, result.output
+        assert "matches the current registry" in result.output
+        workspace = load_workspace("acme")
+        assert workspace.ats_inventory["status"] == "fallback"
+        assert "existing_ats_tenant" in workspace.ats_inventory["reason"]
+        assert list_boards("acme") == []
 
     def test_new_reuses_pr_discovered_from_issue(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)

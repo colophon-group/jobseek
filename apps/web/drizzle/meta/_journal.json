@@ -502,22 +502,29 @@
     {
       "idx": 71,
       "version": "7",
-      "when": 1783335141000,
-      "tag": "0080_experience_decimal_years",
+      "when": 1785750000000,
+      "tag": "0083_reconcile_supabase_baseline",
       "breakpoints": true
     },
     {
       "idx": 72,
       "version": "7",
-      "when": 1784720400000,
-      "tag": "0081_private_watchlists_and_general_interviews",
+      "when": 1785753600000,
+      "tag": "0084_saved_job_snapshot_expand",
       "breakpoints": true
     },
     {
       "idx": 73,
       "version": "7",
-      "when": 1784727570000,
-      "tag": "0082_add_active_job_company_index",
+      "when": 1785757200000,
+      "tag": "0085_saved_job_snapshot_contract",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1785760800000,
+      "tag": "0086_drop_supabase_job_posting",
       "breakpoints": true
     }
   ]

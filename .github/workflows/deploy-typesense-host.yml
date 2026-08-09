@@ -69,6 +69,7 @@ jobs:
           trap cleanup EXIT
           install -d -m 0700 "$root/data"
           {
+            echo '[server]'
             echo 'data-dir = /data'
             echo 'api-key = smoke-bootstrap-key'
             echo 'api-port = 8108'
@@ -78,14 +79,34 @@ jobs:
           docker run -d \
             --name "$container" \
             -p 127.0.0.1:18108:8108 \
+            --ulimit nofile=65536:65536 \
+            --log-opt max-size=50m \
+            --log-opt max-file=3 \
             -v "$root/data:/data" \
             -v "$root/typesense-server.ini:/run/secrets/typesense-server.ini:ro" \
             typesense/typesense:27.1 \
             --config=/run/secrets/typesense-server.ini >/dev/null
+          healthy=0
           for _ in $(seq 1 60); do
-            curl -fsS "http://127.0.0.1:18108/health" >/dev/null && break
+            if curl -fsS "http://127.0.0.1:18108/health" >/dev/null; then
+              healthy=1
+              break
+            fi
+            state="$(docker inspect "$container" --format '{{.State.Status}}' 2>/dev/null || true)"
+            if [[ "$state" == exited || "$state" == dead ]]; then
+              echo "Typesense smoke container terminated before becoming healthy" >&2
+              docker logs "$container" >&2 || true
+              docker inspect "$container" >&2 || true
+              exit 1
+            fi
             sleep 1
           done
+          if [[ "$healthy" != 1 ]]; then
+            echo "Typesense smoke container did not become healthy" >&2
+            docker logs "$container" >&2 || true
+            docker inspect "$container" >&2 || true
+            exit 1
+          fi
           curl -fsS "http://127.0.0.1:18108/health" |
             python3 -c 'import json,sys; assert json.load(sys.stdin)["ok"] is True'
           docker inspect "$container" >"$root/inspect.json"
@@ -95,6 +116,24 @@ jobs:
           fi
           test "$(docker inspect "$container" --format '{{json .Config.Cmd}}')" \
             = '["--config=/run/secrets/typesense-server.ini"]'
+          docker inspect "$container" |
+            python3 -c '
+          import json
+          import sys
+
+          container = json.load(sys.stdin)[0]
+          ulimits = container["HostConfig"].get("Ulimits") or []
+          log_config = container["HostConfig"].get("LogConfig") or {}
+          assert any(
+              limit.get("Name") == "nofile"
+              and int(limit.get("Soft") or 0) == 65536
+              and int(limit.get("Hard") or 0) == 65536
+              for limit in ulimits
+          )
+          assert log_config.get("Type") == "json-file"
+          assert (log_config.get("Config") or {}).get("max-size") == "50m"
+          assert (log_config.get("Config") or {}).get("max-file") == "3"
+          '
 
   deploy:
     if: github.event_name == 'workflow_dispatch'

@@ -45,16 +45,36 @@ def test_crawler_alloy_is_pinned_and_no_longer_privileged():
     assert "no-new-privileges:true" in alloy_section
     assert "cap_drop:\n      - ALL" in alloy_section
     assert "--server.http.listen-addr=127.0.0.1:12346" in alloy_section
+    assert "GOMEMLIMIT: 256MiB" in alloy_section
+    assert "mem_limit: 512m" in alloy_section
+    assert "cpus: 0.5" in alloy_section
+
+
+def test_metrics_cardinality_and_remote_write_are_bounded():
+    assert 'regex         = "crawler_host_circuit_.*"' in CONFIG
+    assert 'prometheus.relabel "redis"' in CONFIG
+    assert 'action        = "keep"' in CONFIG
+    for config in (CONFIG, HOST_CONFIG):
+        assert "capacity             = 4000" in config
+        assert "min_shards           = 1" in config
+        assert "max_shards           = 1" in config
+        assert "max_samples_per_send = 500" in config
+        assert 'batch_send_deadline  = "5s"' in config
+        assert "retry_on_http_429    = true" in config
 
 
 def test_host_metrics_have_stable_roles_and_no_public_listener():
     assert 'replacement  = "integrations/unix"' in HOST_CONFIG
     assert 'replacement  = sys.env("JOBSEEK_HOST_INSTANCE")' in HOST_CONFIG
     assert 'replacement  = sys.env("JOBSEEK_HOST_ROLE")' in HOST_CONFIG
-    assert '"__address__" = "127.0.0.1:12347"' in HOST_CONFIG
+    assert 'prometheus.scrape "alloy"' not in HOST_CONFIG
+    assert 'job="jobseek-alloy"' not in HOST_CONFIG
     assert "--server.http.listen-addr=127.0.0.1:12347" in HOST_SERVICE
     assert "/var/run/docker.sock" not in HOST_CONFIG
     assert 'directory = "/var/lib/jobseek-observability/textfile"' in HOST_CONFIG
+    assert "Environment=GOMEMLIMIT=384MiB" in HOST_SERVICE
+    assert "MemoryHigh=448M" in HOST_SERVICE
+    assert "MemoryMax=512M" in HOST_SERVICE
     unix_exporter = HOST_CONFIG.split('prometheus.exporter.unix "host" {', 1)[1].split("\n}", 1)[0]
     assert '"textfile"' in unix_exporter
 

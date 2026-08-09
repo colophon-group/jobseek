@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 import { fetchCompanyPageData, type CompanyPageData } from "@/lib/actions/company-page-data";
 import { hasLoggedInHint, hasAnonJobLanguagesHint } from "@/lib/client-cookies";
+import { logExternalError } from "@/lib/safe-external-error";
 import { CompanySkeleton } from "@/components/search/company-skeleton";
 import {
   hasSearchFilterParams,
@@ -130,7 +131,7 @@ export function CompanyContent({ locale, slug, initialData }: CompanyContentProp
       setData(result ?? "not-found");
     }).catch((err) => {
       if (fetchIdRef.current !== fetchId) return;
-      console.error("[company] fetchCompanyPageData failed", err);
+      logExternalError("error", { service: "typesense", operation: "fetch_company_page" }, err);
       if (initialData) setData(initialData);
     });
   }, [dataParamsKey, initialData, locale, slug]);

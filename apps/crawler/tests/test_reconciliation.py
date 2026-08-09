@@ -24,7 +24,9 @@ from src.reconciliation import (
     StoreSnapshot,
     TypesenseReconciliationClient,
     _bootstrap_typesense_buckets,
+    _ensure_cycle,
     _start_run,
+    _targets,
     compare_snapshots,
     partition_bounds,
     reconcile_partition,
@@ -166,9 +168,10 @@ def test_reconciliation_cli_defaults_to_bounded_read_only(monkeypatch) -> None:
 
     assert args.repair is False
     assert args.full is False
+    assert args.fresh_cycle is False
     assert args.max_partitions == 16
     assert args.start_partition == 0
-    assert args.target == "all"
+    assert args.target == "typesense"
 
 
 def test_full_reconciliation_still_requires_explicit_repair(monkeypatch) -> None:
@@ -183,6 +186,259 @@ def test_full_reconciliation_still_requires_explicit_repair(monkeypatch) -> None
     assert args.full is True
     assert args.repair is False
     assert args.target == "typesense"
+
+
+def test_default_reconciliation_uses_typesense_when_mirror_is_absent() -> None:
+    assert _targets("all", relational_mirror_available=False) == ("typesense",)
+    with pytest.raises(ReconciliationError, match="requires DATABASE_URL"):
+        _targets("supabase", relational_mirror_available=False)
+
+
+def test_fresh_cycle_cli_requires_full_repair(monkeypatch) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["crawler", "reconcile", "--fresh-cycle", "--target", "typesense"],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args()
+
+    assert exc_info.value.code == 2
+
+
+def test_fresh_cycle_cli_is_explicit(monkeypatch) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "crawler",
+            "reconcile",
+            "--repair",
+            "--full",
+            "--fresh-cycle",
+            "--target",
+            "typesense",
+        ],
+    )
+
+    args = parse_args()
+
+    assert args.repair is True
+    assert args.full is True
+    assert args.fresh_cycle is True
+    assert args.target == "typesense"
+
+
+async def test_fresh_cycle_replaces_midcycle_cursor_at_partition_zero() -> None:
+    connection = MagicMock()
+    connection.transaction.return_value = _AsyncContext()
+    connection.fetchrow = AsyncMock(
+        return_value={
+            "next_partition": 173,
+            "cycle_id": uuid.uuid4(),
+        }
+    )
+    connection.execute = AsyncMock()
+    pool = MagicMock()
+    pool.acquire.return_value = _AsyncContext(connection)
+
+    partition = await _ensure_cycle(pool, "typesense", fresh=True)
+
+    assert partition == 0
+    update = connection.execute.await_args
+    assert "next_partition = 0" in update.args[0]
+    assert "cycle_runtime_seconds = 0" in update.args[0]
+    assert update.args[1] == "typesense"
+    assert isinstance(update.args[2], uuid.UUID)
+
+
+async def test_default_repair_cycle_still_resumes_midcycle_cursor() -> None:
+    connection = MagicMock()
+    connection.transaction.return_value = _AsyncContext()
+    connection.fetchrow = AsyncMock(
+        return_value={
+            "next_partition": 173,
+            "cycle_id": uuid.uuid4(),
+        }
+    )
+    connection.execute = AsyncMock()
+    pool = MagicMock()
+    pool.acquire.return_value = _AsyncContext(connection)
+
+    partition = await _ensure_cycle(pool, "typesense")
+
+    assert partition == 173
+    update = connection.execute.await_args.args[0]
+    assert "next_partition = 0" not in update
+    assert "last_attempt_at = clock_timestamp()" in update
+
+
+async def test_fresh_full_repair_audits_all_partitions_from_midcycle_state(
+    monkeypatch,
+) -> None:
+    durable_state = {"next_partition": 173}
+    lock_connection = MagicMock()
+    lock_connection.fetchval = AsyncMock(side_effect=[True, True])
+    lock_connection.transaction.return_value = _AsyncContext()
+    lock_connection.fetchrow = AsyncMock(
+        return_value={
+            "next_partition": durable_state["next_partition"],
+            "cycle_id": uuid.uuid4(),
+        }
+    )
+
+    async def reset_cycle(query: str, *_args: object) -> str:
+        assert "next_partition = 0" in query
+        durable_state["next_partition"] = 0
+        return "UPDATE 1"
+
+    lock_connection.execute = AsyncMock(side_effect=reset_cycle)
+    local_pool = MagicMock()
+    local_pool.acquire.return_value = _AsyncContext(lock_connection)
+    examined: list[int] = []
+
+    async def reconcile(
+        *_args: object,
+        target: str,
+        partition: int,
+        **_kwargs: object,
+    ) -> PartitionResult:
+        assert target == "typesense"
+        examined.append(partition)
+        return PartitionResult(
+            target="typesense",
+            partition=partition,
+            local_rows=0,
+            local_active=0,
+            remote_rows=0,
+            remote_active=0,
+            missing_remote=0,
+            state_mismatch=0,
+            remote_only_active=0,
+            remote_only_inactive=0,
+            detected=0,
+            repaired=0,
+            unresolved=0,
+            duration_seconds=0,
+        )
+
+    async def advance(
+        _pool: object,
+        result: PartitionResult,
+        **_kwargs: object,
+    ) -> bool:
+        assert result.partition == durable_state["next_partition"]
+        completed = result.partition == PARTITION_COUNT - 1
+        durable_state["next_partition"] = 0 if completed else result.partition + 1
+        return completed
+
+    class FakeTypesense:
+        async def aclose(self) -> None:
+            return None
+
+    monkeypatch.setattr("src.reconciliation.reconcile_partition", reconcile)
+    monkeypatch.setattr("src.reconciliation._advance_state", advance)
+    monkeypatch.setattr("src.reconciliation._start_run", AsyncMock())
+    monkeypatch.setattr("src.reconciliation._persist_run_progress", AsyncMock())
+    monkeypatch.setattr("src.reconciliation._finish_run", AsyncMock())
+    monkeypatch.setattr(
+        "src.reconciliation._state_bootstrap_complete",
+        AsyncMock(return_value=True),
+    )
+    monkeypatch.setattr(
+        "src.reconciliation._get_taxonomy_maps",
+        AsyncMock(return_value=TaxonomyMaps()),
+    )
+    monkeypatch.setattr("src.reconciliation.TypesenseReconciliationClient", FakeTypesense)
+
+    summary = await run_reconciliation(
+        local_pool,
+        MagicMock(),
+        repair=True,
+        full=True,
+        fresh_cycle=True,
+        target_scope="typesense",
+    )
+
+    assert examined == list(range(PARTITION_COUNT))
+    assert summary.partitions_completed == PARTITION_COUNT
+    assert durable_state["next_partition"] == 0
+
+
+async def test_fresh_cycle_lock_contention_fails_instead_of_false_success() -> None:
+    lock_connection = MagicMock()
+    lock_connection.fetchval = AsyncMock(return_value=False)
+    local_pool = MagicMock()
+    local_pool.acquire.return_value = _AsyncContext(lock_connection)
+
+    with pytest.raises(ReconciliationError, match="could not acquire the advisory lock"):
+        await run_reconciliation(
+            local_pool,
+            MagicMock(),
+            repair=True,
+            full=True,
+            fresh_cycle=True,
+            target_scope="typesense",
+        )
+
+    lock_connection.fetchval.assert_awaited_once()
+
+
+async def test_fresh_cycle_rejects_partial_partition_summary(monkeypatch) -> None:
+    lock_connection = MagicMock()
+    lock_connection.fetchval = AsyncMock(side_effect=[True, True])
+    local_pool = MagicMock()
+    local_pool.acquire.return_value = _AsyncContext(lock_connection)
+
+    monkeypatch.setattr("src.reconciliation._start_run", AsyncMock())
+    monkeypatch.setattr("src.reconciliation._finish_run", AsyncMock())
+    monkeypatch.setattr("src.reconciliation._ensure_cycle", AsyncMock(return_value=255))
+    monkeypatch.setattr(
+        "src.reconciliation.reconcile_partition",
+        AsyncMock(
+            return_value=PartitionResult(
+                target="typesense",
+                partition=255,
+                local_rows=0,
+                local_active=0,
+                remote_rows=0,
+                remote_active=0,
+                missing_remote=0,
+                state_mismatch=0,
+                remote_only_active=0,
+                remote_only_inactive=0,
+                detected=0,
+                repaired=0,
+                unresolved=0,
+                duration_seconds=0,
+            )
+        ),
+    )
+    monkeypatch.setattr("src.reconciliation._advance_state", AsyncMock(return_value=True))
+    monkeypatch.setattr("src.reconciliation._persist_run_progress", AsyncMock())
+    monkeypatch.setattr(
+        "src.reconciliation._state_bootstrap_complete",
+        AsyncMock(return_value=True),
+    )
+    monkeypatch.setattr(
+        "src.reconciliation.TypesenseReconciliationClient",
+        lambda: MagicMock(aclose=AsyncMock()),
+    )
+    monkeypatch.setattr(
+        "src.reconciliation._get_taxonomy_maps",
+        AsyncMock(return_value=TaxonomyMaps()),
+    )
+
+    with pytest.raises(ReconciliationError, match="did not inspect every partition"):
+        await run_reconciliation(
+            local_pool,
+            MagicMock(),
+            repair=True,
+            full=True,
+            fresh_cycle=True,
+            target_scope="typesense",
+        )
 
 
 async def test_new_lock_holder_marks_prior_running_ledgers_interrupted() -> None:
@@ -334,7 +590,6 @@ async def test_injected_typesense_drift_is_repaired_to_exact_set(monkeypatch) ->
     remote_active = _id(prefix, 4)
     remote_inactive = _id(prefix, 5)
     local = _MemoryPool({shared: True, mismatch: False, missing: True})
-    supabase = _MemoryPool({})
     remote = _MemoryTypesense(
         {
             shared: True,
@@ -365,7 +620,7 @@ async def test_injected_typesense_drift_is_repaired_to_exact_set(monkeypatch) ->
 
     result = await reconcile_partition(
         local,  # type: ignore[arg-type]
-        supabase,  # type: ignore[arg-type]
+        None,
         target="typesense",
         partition=prefix,
         repair=True,
