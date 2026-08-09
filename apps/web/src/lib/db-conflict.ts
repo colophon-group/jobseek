@@ -34,14 +34,39 @@ export function isUniqueViolation(
   err: unknown,
   constraintName: string,
 ): boolean {
-  if (!err || typeof err !== "object") return false;
-  const e = err as { code?: unknown; constraint_name?: unknown };
-  if (e.code !== "23505") return false;
-  if (typeof e.constraint_name === "string") {
-    return e.constraint_name === constraintName;
+  // Drizzle wraps postgres.js errors in a query error whose `cause`
+  // carries the SQLSTATE and constraint metadata. Production therefore
+  // sees `{ cause: { code: "23505", constraint_name: ... } }`, while the
+  // unit-test and direct-driver shapes expose those fields at the top
+  // level. Walk a short, cycle-safe cause chain so both shapes are
+  // recognized without treating unrelated nested errors as conflicts.
+  let current: unknown = err;
+  const seen = new Set<object>();
+
+  for (let depth = 0; depth < 5; depth++) {
+    if (!current || typeof current !== "object" || seen.has(current)) {
+      return false;
+    }
+    seen.add(current);
+
+    const e = current as {
+      code?: unknown;
+      constraint_name?: unknown;
+      message?: unknown;
+      cause?: unknown;
+    };
+
+    if (e.code === "23505") {
+      if (typeof e.constraint_name === "string") {
+        return e.constraint_name === constraintName;
+      }
+      if (typeof e.message === "string" && e.message.includes(constraintName)) {
+        return true;
+      }
+    }
+
+    current = e.cause;
   }
-  const message = (err as { message?: unknown }).message;
-  return (
-    typeof message === "string" && message.includes(constraintName)
-  );
+
+  return false;
 }

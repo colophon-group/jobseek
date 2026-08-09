@@ -97,22 +97,27 @@ _ALLOW_SLUG_GUESS = contextvars.ContextVar("allow_slug_guess", default=False)
 
 
 class BoardGoneError(Exception):
-    """The upstream ATS confirms the board no longer exists.
+    """The upstream ATS returned an explicit board-retirement signal.
 
     Raised by API monitors (greenhouse/lever/recruitee/ashby) when the
-    per-board API endpoint returns 404 — i.e. the board's slug/token
-    has been deleted at the source. Distinct from a generic
-    ``HTTPStatusError`` so the board processor can immediately mark
-    the board as ``board_status='gone'`` instead of accumulating five
-    consecutive ``_RECORD_FAILURE`` increments before disabling. See
-    issue #2215.
+    per-board API endpoint returns 404. Distinct from a generic
+    ``HTTPStatusError`` so the board processor can apply the spaced,
+    recoverable provider-gone confirmation policy. See issues #2215 and
+    #6156.
 
-    Carries the upstream URL that returned the 404 for log forensics.
+    Carries the upstream URL and HTTP status for durable forensics.
     """
 
-    def __init__(self, message: str, *, url: str | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        url: str | None = None,
+        status_code: int | None = None,
+    ) -> None:
         super().__init__(message)
         self.url = url
+        self.status_code = status_code
 
 
 _STREAM_BATCH = 200
@@ -217,12 +222,13 @@ def all_monitor_types() -> frozenset[str]:
 def monitor_needs_browser(name: str, config: dict | None = None) -> bool:
     """Return True if the monitor requires a Playwright browser.
 
-    accenture always needs a browser (cookie extraction via Playwright).
+    accenture, darwinbox, and dayforce always need a browser (public session
+    replay via Playwright).
     api_sniffer needs a browser when ``browser`` is set in config or when
     no ``api_url`` is configured (auto-discover mode).  dom always benefits
     from a browser but falls back to static HTML.
     """
-    if name == "accenture":
+    if name in {"accenture", "darwinbox", "dayforce"}:
         return True
     if name == "api_sniffer":
         cfg = config or {}
@@ -361,6 +367,98 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Breezy \u2014 {portal_url}, {jobs} jobs"
         return f"Breezy \u2014 {portal_url}"
+    if name == "bamboohr":
+        tenant = metadata.get("tenant", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"BambooHR API \u2014 tenant: {tenant}, {jobs} jobs"
+        return f"BambooHR API \u2014 tenant: {tenant}"
+    if name == "adp":
+        cid = metadata.get("cid", "?")
+        cc_id = metadata.get("cc_id", "?")
+        jobs = metadata.get("jobs")
+        label = f"cid: {cid}, career center: {cc_id}"
+        if jobs is not None:
+            return f"ADP Workforce Now API \u2014 {label}, {jobs} jobs"
+        return f"ADP Workforce Now API \u2014 {label}"
+    if name == "paycom":
+        token = metadata.get("token", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Paycom API \u2014 portal: {token}, {jobs} jobs"
+        return f"Paycom API \u2014 portal: {token}"
+    if name == "jazzhr":
+        tenant = metadata.get("tenant", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"JazzHR static listing \u2014 tenant: {tenant}, {jobs} jobs"
+        return f"JazzHR static listing \u2014 tenant: {tenant}"
+    if name == "jobvite":
+        tenant = metadata.get("tenant", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Jobvite static listing \u2014 tenant: {tenant}, {jobs} jobs"
+        return f"Jobvite static listing \u2014 tenant: {tenant}"
+    if name == "icims":
+        host = metadata.get("host", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"iCIMS static listing \u2014 host: {host}, {jobs} jobs"
+        return f"iCIMS static listing \u2014 host: {host}"
+    if name == "herp":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"HERP static listing \u2014 slug: {slug}, {jobs} jobs"
+        return f"HERP static listing \u2014 slug: {slug}"
+    if name == "hrmos":
+        tenant = metadata.get("tenant", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"HRMOS static listing \u2014 tenant: {tenant}, {jobs} jobs"
+        return f"HRMOS static listing \u2014 tenant: {tenant}"
+    if name == "gupy":
+        tenant = metadata.get("tenant", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Gupy NextData listing \u2014 tenant: {tenant}, {jobs} jobs"
+        return f"Gupy NextData listing \u2014 tenant: {tenant}"
+    if name == "cornerstone":
+        tenant = metadata.get("tenant", "?")
+        site_id = metadata.get("site_id", "?")
+        jobs = metadata.get("jobs")
+        label = f"tenant: {tenant}, site: {site_id}"
+        if jobs is not None:
+            return f"Cornerstone API \u2014 {label}, {jobs} jobs"
+        return f"Cornerstone API \u2014 {label}"
+    if name == "dayforce":
+        tenant = metadata.get("tenant", "?")
+        portal = metadata.get("portal", "?")
+        return f"Dayforce API \u2014 tenant: {tenant}, portal: {portal}"
+    if name == "darwinbox":
+        host = metadata.get("host", "?")
+        company_id = metadata.get("company_id", "main")
+        return f"Darwinbox API \u2014 host: {host}, company: {company_id}"
+    if name == "avature":
+        listing_url = metadata.get("listing_url", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Avature static listing \u2014 {jobs} jobs at {listing_url}"
+        return f"Avature static listing \u2014 {listing_url}"
+    if name == "pageup":
+        listing_url = metadata.get("listing_url", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"PageUp static listing \u2014 {jobs} jobs at {listing_url}"
+        return f"PageUp static listing \u2014 {listing_url}"
+    if name == "ukg":
+        tenant = metadata.get("tenant", "?")
+        board_id = metadata.get("board_id", "?")
+        jobs = metadata.get("jobs")
+        label = f"tenant: {tenant}, board: {board_id}"
+        if jobs is not None:
+            return f"UKG Pro API \u2014 {label}, {jobs} jobs"
+        return f"UKG Pro API \u2014 {label}"
     if name == "comeet":
         jobs = metadata.get("jobs")
         company_id = metadata.get("company_id")
@@ -492,12 +590,39 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Recruitee API \u2014 {label}, {jobs} jobs"
         return f"Recruitee API \u2014 {label}"
+    if name == "recruiterbox":
+        tenant = metadata.get("tenant", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Recruiterbox / Trakstar Hire \u2014 tenant: {tenant}, {jobs} jobs"
+        return f"Recruiterbox / Trakstar Hire \u2014 tenant: {tenant}"
+    if name == "keka":
+        tenant = metadata.get("tenant", "?")
+        portal = metadata.get("portal", "default")
+        jobs = metadata.get("jobs")
+        label = f"tenant: {tenant}, portal: {portal}"
+        if jobs is not None:
+            return f"Keka API \u2014 {label}, {jobs} jobs"
+        return f"Keka API \u2014 {label}"
+    if name == "taleo":
+        org = metadata.get("org", "?")
+        cws = metadata.get("cws", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Taleo Business Edition \u2014 {org}/cws-{cws}, {jobs} jobs"
+        return f"Taleo Business Edition \u2014 {org}/cws-{cws}"
     if name == "recruiter_co_kr":
         slug = metadata.get("slug", "?")
         jobs = metadata.get("jobs")
         if jobs is not None:
             return f"Recruiter.co.kr \u2014 slug: {slug}, {jobs} jobs"
         return f"Recruiter.co.kr \u2014 slug: {slug}"
+    if name == "hirehive":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"HireHive API \u2014 slug: {slug}, {jobs} jobs"
+        return f"HireHive API \u2014 slug: {slug}"
     if name == "hireology":
         slug = metadata.get("slug", "?")
         jobs = metadata.get("jobs")
@@ -556,6 +681,13 @@ def _build_comment(name: str, metadata: dict) -> str:
         return f"Jobylon embed \u2014 {label}"
     if name == "rss":
         preset = metadata.get("preset", "generic")
+        variant = metadata.get("variant")
+        if preset == "successfactors" and variant == "legacy":
+            company = metadata.get("company", "?")
+            host = metadata.get("host", "?")
+            jobs = metadata.get("jobs")
+            label = f"SuccessFactors legacy DWR \u2014 company: {company} @ {host}"
+            return f"{label}, {jobs} jobs" if jobs is not None else label
         feed_url = metadata.get("feed_url", "?")
         jobs = metadata.get("jobs")
         label = {
@@ -642,42 +774,64 @@ _PROBE_SKIP: frozenset[str] = frozenset({"amazon", "accenture"})
 # Import modules to trigger registration
 from src.core.monitors import (  # noqa: E402
     accenture,  # noqa: F401
+    adp,  # noqa: F401
     almacareer,  # noqa: F401
     amazon,  # noqa: F401
     api_sniffer,  # noqa: F401
     ashby,  # noqa: F401
+    avature,  # noqa: F401
+    bamboohr,  # noqa: F401
+    beisen,  # noqa: F401
     bite,  # noqa: F401
     breezy,  # noqa: F401
     comeet,  # noqa: F401
+    cornerstone,  # noqa: F401
+    darwinbox,  # noqa: F401
+    dayforce,  # noqa: F401
     deel,  # noqa: F401
     dom,  # noqa: F401
     dvinci,  # noqa: F401
     eightfold,  # noqa: F401
     gem,  # noqa: F401
     greenhouse,  # noqa: F401
+    gupy,  # noqa: F401
+    herp,  # noqa: F401
+    hibob,  # noqa: F401
+    hirehive,  # noqa: F401
     hireology,  # noqa: F401
+    hrmos,  # noqa: F401
+    icims,  # noqa: F401
     inline,  # noqa: F401
+    jazzhr,  # noqa: F401
+    jobvite,  # noqa: F401
     jobylon,  # noqa: F401
     join,  # noqa: F401
+    keka,  # noqa: F401
+    kipt,  # noqa: F401
     lever,  # noqa: F401
     linkedin,  # noqa: F401
     mokahr,  # noqa: F401
     nextdata,  # noqa: F401
     notion,  # noqa: F401
     oracle_hcm,  # noqa: F401
+    pageup,  # noqa: F401
+    paycom,  # noqa: F401
     paylocity,  # noqa: F401
     personio,  # noqa: F401
     phenom,  # noqa: F401
     pinpoint,  # noqa: F401
     recruitee,  # noqa: F401
     recruiter_co_kr,  # noqa: F401
+    recruiterbox,  # noqa: F401
     rippling,  # noqa: F401
     rss,  # noqa: F401
     sitemap,  # noqa: F401
     smartrecruiters,  # noqa: F401
     softgarden,  # noqa: F401
     talentbrew,  # noqa: F401
+    taleo,  # noqa: F401
     traffit,  # noqa: F401
+    ukg,  # noqa: F401
     umantis,  # noqa: F401
     workable,  # noqa: F401
     workday,  # noqa: F401

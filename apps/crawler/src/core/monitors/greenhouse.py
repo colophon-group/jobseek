@@ -205,12 +205,13 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     if response.status_code == 404:
         # Greenhouse returns 404 when the board token has been deleted
         # upstream — i.e. the company removed the board. Surface this
-        # as a structural "gone" signal so the board processor can
-        # disable in one shot instead of grinding through 5 retries.
-        # See issue #2215.
+        # as a structural "gone" signal so the board processor can apply
+        # spaced confirmations instead of the generic failure ramp.
+        # See issues #2215 and #6156.
         raise BoardGoneError(
             f"Greenhouse board token {token!r} returned 404",
             url=str(response.url),
+            status_code=response.status_code,
         )
     response.raise_for_status()
 

@@ -42,9 +42,10 @@ is novel, regressing, spiking, or an incident after dedupe.
 
 ## Target
 
-- SSH: `deploy@116.203.192.19`
-- Key: `~/.ssh/hetzner_deploy`
-- Compose file reference: `/home/deploy/docker-compose.yml`
+Use the root-collected runner bundle by default. A local manual fallback may
+resolve the production crawler host from approved operator configuration, but
+must not copy host addresses into reports, traces, prompts, or GitHub content.
+The Compose file reference is `/home/deploy/docker-compose.yml`.
 
 Long-running services. Collect logs with explicit `--since` and `--until`:
 
@@ -81,6 +82,9 @@ such as `tesla-debug`, `stupefied_hofstadter`, and `goofy_haibt`.
    `create/start/restart/die/oom/kill/stop/destroy` events. These files record
    container identity, exit code or signal, event time, restart count, and
    cgroup-v2 `memory.events` counters without exposing arbitrary Docker labels.
+   Read `host/maintenance-correlation.json` before classifying any synchronized
+   service stop. It contains deterministic, command-free correlation of
+   validated maintenance operation/issue/revision/budget labels.
 2. Read every `.md` report under
    `~/dev/claude/review-jobseek-errors/` before classifying. The directory
    name is legacy; keep using it for cross-run continuity unless a migration
@@ -109,7 +113,7 @@ df -h /var/lib/docker
 free -h
 uptime
 docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}'
-docker inspect --format '{{.Name}} ID={{.Id}} Image={{.Config.Image}} Created={{.Created}} StartedAt={{.State.StartedAt}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}} RestartCount={{.RestartCount}} FinishedAt={{.State.FinishedAt}} ExitCode={{.State.ExitCode}} Error={{json .State.Error}}' $(docker ps -aq)
+docker inspect --format '{{.Name}} Image={{.Config.Image}} Created={{.Created}} StartedAt={{.State.StartedAt}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}} RestartCount={{.RestartCount}} FinishedAt={{.State.FinishedAt}} ExitCode={{.State.ExitCode}} Error={{json .State.Error}}' $(docker ps -aq)
 dmesg -T 2>/dev/null | tail -n 500
 journalctl -k --since "24 hours ago" --no-pager 2>/dev/null | tail -500
 ```
@@ -120,12 +124,13 @@ that gap alone as an incident.
 
 Docker's `OOMKilled` state is historical and can remain true while a
 container keeps running. `RestartCount` is also scoped to one container
-object. Never subtract either value across different container IDs. Treat an
-OOM or restart as new inside the report window only when one of these proves
-it:
+object. Never subtract either value across different pseudonymous container
+generations. Treat an OOM or restart as new inside the report window only
+when one of these proves it:
 
-- The same `container_id` exists in both evidence snapshots and its cgroup-v2
-  `memory.events.oom_kill` or Docker `RestartCount` increased.
+- The same pseudonymous `container_generation` exists in both evidence
+  snapshots and its cgroup-v2 `memory.events.oom_kill` or Docker
+  `RestartCount` increased.
 - A container created inside the window already has a positive counter.
 - An exited container finished inside the window with `OOMKilled=true`, or
   kernel logs timestamp the OOM inside the window.
@@ -139,17 +144,34 @@ Use lifecycle sequences to classify the mechanism, not to guess a caller:
   unknown unless deployment or host evidence identifies it.
 - `die` without a preceding `kill`/`oom` is a native process exit; use its
   exit code and adjacent application logs.
-- `stop/die/destroy` followed by a new container ID's `create/start` is a
-  replacement or deployment, while `die/start` on the same ID with an
-  incremented restart count is an automatic restart.
+- `stop/die/destroy` followed by a new container generation's `create/start`
+  is a replacement or deployment, while `die/start` on the same generation
+  with an incremented restart count is an automatic restart.
+
+Before treating a Docker API stop or replacement as spontaneous instability,
+apply the maintenance correlation contract:
+
+- Attribute it only when `host/maintenance-correlation.json` contains exactly
+  one validated overlapping operation. Never infer authorization from names,
+  timestamps alone, or an unlabelled one-off.
+- Report an attributed window under `## Maintenance windows` with operation,
+  tracking issue, reviewed revision, duration, affected services, measured
+  downtime, one-off results, and restoration health.
+- Do not file/reopen a spontaneous-instability issue for a clean authorized
+  window. Forced termination, OOM/native exit, nonzero one-off, budget
+  overrun, and failed restoration remain actionable; update the maintenance
+  tracking issue or file a deduplicated maintenance-outcome issue.
+- Missing, partial, invalid, or conflicting provenance remains unknown.
+  OOM/native exits remain incidents regardless of any adjacent maintenance.
 
 If the lifecycle journal has `connect_error`/`stream_closed` records or does
 not cover the full window, report the evidence gap explicitly. Do not infer a
 clean window from a missing or unavailable journal.
 
-A changed container ID normally means a deployment or replacement, not a
-restart-count delta. A sticky `OOMKilled=true` without a same-generation
-counter delta is historical context, not a fresh daily incident.
+A changed pseudonymous container generation normally means a deployment or
+replacement, not a restart-count delta. A sticky `OOMKilled=true` without a
+same-generation counter delta is historical context, not a fresh daily
+incident.
 
 Flag an incident if any of these are true:
 
@@ -159,8 +181,9 @@ Flag an incident if any of these are true:
   the window.
 - A same-container `RestartCount` increment proves a restart inside the
   window.
-- A lifecycle `die`/`start` sequence proves a restart inside the window even
-  when yesterday's snapshot is unavailable.
+- An unattributed lifecycle `die`/`start` sequence proves a restart inside the
+  window even when yesterday's snapshot is unavailable. An attributed
+  sequence follows the maintenance-outcome rules above.
 - 15-minute load average is greater than CPU count x 2.
 - Swap usage is greater than 50% of swap total.
 - Kernel logs show `Out of memory: Killed process`, `I/O error`,
@@ -243,6 +266,10 @@ Window: YYYY-MM-DD HH:MM UTC -> YYYY-MM-DD HH:MM UTC
 | class | service | count | status |
 |---|---|---:|---|
 
+## Maintenance windows
+| operation / issue | revision | duration | affected services | outcome |
+|---|---|---:|---|---|
+
 ## Details
 
 ## Filed issues
@@ -257,6 +284,12 @@ Under `## Details`, include every novel, regression, spike, or incident class:
 - One redacted sample log line.
 - Brief root-cause hypothesis with 2 or 3 candidates. Use file paths only.
 - Recent PR cross-references when correlation is plausible.
+
+Under `## Maintenance windows`, include every deterministic correlation row,
+including clean authorized operations. Report forced termination, OOM/native
+exit, failed/nonzero one-offs, budget overruns, measured service downtime, and
+failed restoration explicitly. Use `none` when no maintenance window is
+present.
 
 Under `## Filed issues`, list issue URLs filed or updated in this run, or
 write `none`.
@@ -341,6 +374,8 @@ The repository is public. Redact before any GitHub write:
 - Full URLs with query strings: keep host and path shape only.
 - IPs, port numbers, and hostnames beyond `jseek.co` or public CDNs.
 - UUIDs, emails, user IDs, and company internal IDs.
+- Raw Docker/container IDs and cloud resource IDs. Use the bundle's
+  pseudonymous `container_generation` only in the private report when needed.
 - JWTs, cookies, API keys, and Authorization headers.
 - SQL literal values; keep statement skeleton only.
 - Request or response bodies beyond the exception message itself.

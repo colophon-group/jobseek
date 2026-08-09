@@ -6,6 +6,7 @@ import "@/test-utils/lingui-mock";
 
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
+  searchParams: new URLSearchParams(),
   signInEmail: vi.fn(),
   signInUsername: vi.fn(),
   signUpEmail: vi.fn(),
@@ -15,6 +16,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mocks.push }),
+  useSearchParams: () => mocks.searchParams,
 }));
 
 vi.mock("@/lib/useLocalePath", () => ({
@@ -51,6 +53,7 @@ import { AuthForm } from "../AuthForm";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.searchParams.delete("next");
 });
 
 describe("AuthForm accessibility", () => {
@@ -75,5 +78,25 @@ describe("AuthForm accessibility", () => {
     expect(password.getAttribute("aria-describedby")).toBeTruthy();
     expect(mocks.signInEmail).not.toHaveBeenCalled();
     expect(mocks.signInUsername).not.toHaveBeenCalled();
+  });
+
+  it("uses a safe next path for the auth callback and post-sign-in navigation", async () => {
+    const user = userEvent.setup();
+    mocks.searchParams.set("next", "/en/company/acme?q=safety&show=post-1");
+    mocks.signInEmail.mockResolvedValue({ error: null });
+    mocks.getPreferences.mockResolvedValue(null);
+
+    render(<AuthForm mode="sign-in" />);
+
+    await user.type(screen.getByLabelText("Email or username"), "person@example.com");
+    await user.type(screen.getByLabelText("Password", { selector: "input" }), "password");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => {
+      expect(mocks.signInEmail).toHaveBeenCalledWith(expect.objectContaining({
+        callbackURL: "/en/company/acme?q=safety&show=post-1",
+      }));
+      expect(mocks.push).toHaveBeenCalledWith("/en/company/acme?q=safety&show=post-1");
+    });
   });
 });

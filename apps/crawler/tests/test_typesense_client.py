@@ -16,7 +16,7 @@ def clear_clients():
 
 def test_clients_are_cached_per_retry_policy():
     with (
-        patch.object(typesense_client.settings, "typesense_admin_key", "test-key"),
+        patch.object(typesense_client.settings, "typesense_operations_key", "test-key"),
         patch.object(typesense_client.settings, "typesense_host", "127.0.0.1"),
         patch.object(
             typesense_client.typesense,
@@ -36,7 +36,7 @@ def test_clients_are_cached_per_retry_policy():
 
 def test_negative_retries_are_rejected():
     with (
-        patch.object(typesense_client.settings, "typesense_admin_key", "test-key"),
+        patch.object(typesense_client.settings, "typesense_operations_key", "test-key"),
         pytest.raises(ValueError, match="non-negative"),
     ):
         typesense_client.get_typesense_client(num_retries=-1)

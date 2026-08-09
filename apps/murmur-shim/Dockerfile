@@ -139,6 +139,11 @@ WORKDIR /app
 # (any package.json under apps/* or packages/*).
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 
+# pnpm-workspace.yaml declares patchedDependencies whose source files live
+# under the repository-root patches/ directory. They must be present before
+# the filtered frozen install applies the lockfile's Next.js patch.
+COPY patches/ ./patches/
+
 # Workspace member manifests required so `pnpm install` resolves the
 # graph. Missing any of these would make pnpm refuse to install (the
 # lockfile pins workspace-wide). The order tracks `pnpm-workspace.yaml`:

@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { apiLimiter, getClientIp } from "@/lib/rate-limit";
 import { CACHE_TTL_MEDIUM } from "@/lib/cache-ttl";
 import { siteConfig } from "@/content/config";
+import { logExternalError } from "@/lib/safe-external-error";
 
 /** Rate-limit result to thread through to apiResponse(). */
 export type RateLimitInfo = { limit: number; remaining: number; reset: number };
@@ -35,8 +36,9 @@ export async function checkRateLimit(
     // outage (which silently disables rate-limiting on every public
     // `/api/v1/*` request) is visible in Vercel/Loki rather than looking
     // like normal "no-rate-limit-headers" traffic. See #3175.
-    // Stable event prefix `[rate-limit] redis bypass` is queryable in Loki.
-    console.warn("[rate-limit] redis bypass", err);
+    // The stable `external_client_error` event and `public_api_rate_limit`
+    // operation are queryable in Loki.
+    logExternalError("warn", { service: "redis", operation: "public_api_rate_limit" }, err);
   }
   return null;
 }

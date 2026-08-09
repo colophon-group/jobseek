@@ -11,7 +11,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
   const lp = useLocalePath();
 
   return (
-    <div className="mx-auto w-fit min-w-[24rem] max-w-lg px-4">
+    <div className="mx-auto w-full max-w-lg px-4 sm:w-fit sm:min-w-[24rem]">
       <div className="flex min-h-screen flex-col items-center justify-center py-8">
         <Link href={lp("/explore")} prefetch={false} className="mb-6 block h-9 w-36">
           <ThemedImage
@@ -20,6 +20,8 @@ export function AuthShell({ children }: { children: ReactNode }) {
             alt="Job Seek"
             width={144}
             height={36}
+            loading="eager"
+            fetchPriority="high"
           />
         </Link>
         <div className="w-full rounded-lg border border-border-soft bg-surface p-6 sm:p-8">

@@ -279,7 +279,12 @@ class TestResolveScraper:
 @pytest.fixture
 def mock_redis(monkeypatch):
     """Replace get_redis with a fakeredis instance and reset script SHAs."""
-    fake = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    fake = fakeredis.aioredis.FakeRedis(
+        decode_responses=True,
+        protocol=2,
+        socket_timeout=None,
+        socket_connect_timeout=None,
+    )
     monkeypatch.setattr(rq, "get_redis", lambda: fake)
     monkeypatch.setattr(rq, "_CLAIM_SHA", None)
     monkeypatch.setattr(rq, "_ENQUEUE_SHA", None)
@@ -1091,6 +1096,80 @@ async def test_failed_sibling_boards_open_one_host_circuit_and_skip_fourth(mock_
 
 
 @pytest.mark.asyncio
+async def test_distinct_workday_303_hosts_open_provider_circuit_and_skip_next(
+    mock_redis, monkeypatch
+):
+    """A cross-tenant Workday event pauses later tenants before network I/O."""
+    from src.config import settings
+    from src.shared.http import WORKDAY_LIST_303_INCIDENT, mark_provider_incident
+
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 1800)
+
+    async def monitor(board, *_args, **_kwargs):
+        if board["id"] == "board-workday-healthy":
+            return True, 1.0
+        mark_provider_incident(
+            f"{board['board_url']}/wday/cxs/company/site/jobs",
+            incident=WORKDAY_LIST_303_INCIDENT,
+        )
+        return False, 30.0
+
+    monitor_mock = AsyncMock(side_effect=monitor)
+    reschedule = AsyncMock(return_value=None)
+    local_pool = _make_monitor_local_pool()
+    now = time.time()
+
+    def work(name: str) -> rq.BoardWork:
+        return rq.BoardWork(
+            board_id=f"board-workday-{name}",
+            domain="workday",
+            config={
+                "crawler_type": "workday",
+                "company_id": f"company-{name}",
+                "board_url": f"https://tenant-{name}.wd1.myworkdayjobs.com/Careers",
+                "check_interval_minutes": "60",
+                "metadata": "{}",
+            },
+        )
+
+    with (
+        patch("src.processing.board._process_one_board_streaming", new=monitor_mock),
+        patch("src.workers.pipeline.reschedule_task", new=reschedule),
+        patch(
+            "src.workers.pipeline._failure_next_due",
+            new=AsyncMock(return_value=now + 300),
+        ),
+        patch(
+            "src.workers.pipeline._refresh_board_metadata_cache",
+            new=AsyncMock(return_value=None),
+        ),
+    ):
+        # The healthy run proves ordinary successes cannot erase concurrent
+        # distinct-host evidence before the provider quorum is reached.
+        for name in ("1", "healthy", "2", "3", "4"):
+            await _process_monitor_work(
+                structlog.get_logger(),
+                work(name),
+                local_pool,
+                AsyncMock(),
+                browser=False,
+            )
+
+    assert monitor_mock.await_count == 4
+    open_until = await rq.get_provider_circuit_open_until(WORKDAY_LIST_303_INCIDENT)
+    assert open_until is not None
+    assert await mock_redis.scard(f"provider_fail_hosts:{WORKDAY_LIST_303_INCIDENT}") == 3
+    assert reschedule.await_args_list[-1].args[:3] == (
+        "workday",
+        "board-workday-4",
+        "monitor",
+    )
+    assert reschedule.await_args_list[-1].args[3] == pytest.approx(open_until)
+
+
+@pytest.mark.asyncio
 async def test_failed_sibling_scrapes_open_one_host_circuit_and_skip_fourth(
     mock_redis, monkeypatch
 ):
@@ -1240,6 +1319,43 @@ async def test_avature_406_scrape_failures_open_host_circuit(mock_redis, monkeyp
 
 
 @pytest.mark.asyncio
+async def test_workday_invalid_payload_failures_open_host_circuit(mock_redis, monkeypatch):
+    """Three exhausted invalid API responses defer the remaining tenant burst."""
+    from src.config import settings
+    from src.shared.http import RequestHostTracker
+    from src.workers.pipeline import _record_scrape_host_outcome
+
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 1800)
+
+    domain = "co.wd1.myworkdayjobs.com"
+    url = f"https://{domain}/wday/cxs/co/Site/job/X/JR001"
+    for attempt in range(3):
+        tracker = RequestHostTracker()
+        tracker.note_request(domain, url)
+        tracker.note_response(domain, 200)
+        tracker.note_transient_response_failure(
+            domain,
+            url,
+            "workday_invalid_detail_payload",
+        )
+        open_until = await _record_scrape_host_outcome(
+            "board-workday-invalid-payload",
+            domain,
+            "",
+            tracker,
+            False,
+            structlog.get_logger(),
+        )
+        if attempt < 2:
+            assert open_until is None
+
+    assert open_until is not None
+    assert await rq.get_host_circuit_open_until(domain) == pytest.approx(open_until)
+
+
+@pytest.mark.asyncio
 async def test_half_open_circuit_defers_siblings_while_single_probe_is_leased(
     mock_redis, monkeypatch
 ):
@@ -1347,6 +1463,7 @@ async def test_process_monitor_work_emits_tasks_total_gone_on_board_gone():
     gone_before = _tasks_total_value("monitor", "gone")
     failed_before = _tasks_total_value("monitor", "failed")
     succeeded_before = _tasks_total_value("monitor", "succeeded")
+    reschedule = AsyncMock(return_value=None)
 
     with (
         patch(
@@ -1355,7 +1472,7 @@ async def test_process_monitor_work_emits_tasks_total_gone_on_board_gone():
         ),
         patch(
             "src.workers.pipeline.reschedule_task",
-            new=AsyncMock(return_value=None),
+            new=reschedule,
         ),
     ):
         await _process_monitor_work(worker_log, work, local_pool, http, browser=False)
@@ -1364,6 +1481,12 @@ async def test_process_monitor_work_emits_tasks_total_gone_on_board_gone():
     # BoardGoneError must NOT be conflated with failed / succeeded.
     assert _tasks_total_value("monitor", "failed") == failed_before
     assert _tasks_total_value("monitor", "succeeded") == succeeded_before
+    reschedule.assert_awaited_once()
+    assert reschedule.await_args.args[:3] == (
+        work.domain,
+        work.board_id,
+        "monitor",
+    )
 
 
 # ---------------------------------------------------------------------------

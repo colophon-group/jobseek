@@ -1,0 +1,43 @@
+[Unit]
+Description=Jobseek Typesense encrypted data backup
+Documentation=file:///opt/jobseek-backup/docs/16-hetzner-maintenance.md
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+ConditionPathExists=/usr/local/sbin/jobseek-data-backup
+ConditionPathExists=/etc/jobseek-backup/typesense.env
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+EnvironmentFile=/etc/jobseek-backup/typesense.env
+Environment=BACKUP_STATUS_DIR=/var/lib/jobseek-backup/status
+Environment=TYPESENSE_CONTAINER=typesense
+Environment=TYPESENSE_URL=http://127.0.0.1:8108
+Environment=TYPESENSE_SNAPSHOT_CONTAINER_ROOT=/tmp/jobseek-typesense-snapshots
+Environment=TYPESENSE_SNAPSHOT_HOST_ROOT=/var/lib/jobseek-backup/typesense
+ExecStart=/usr/local/sbin/jobseek-data-backup typesense
+TimeoutStartSec=6h
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectClock=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ReadWritePaths=/var/lib/jobseek-backup /run
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

@@ -36,6 +36,7 @@ class TestWorkspace:
             name="Stripe",
             website="https://stripe.com",
             active_board="careers",
+            ats_inventory={"source_key": "ats-scrapers:greenhouse:greenhouse%3Astripe"},
         )
         d = ws.to_dict()
         ws2 = Workspace.from_dict(d)
@@ -45,6 +46,7 @@ class TestWorkspace:
         assert ws2.pr == 45
         assert ws2.name == "Stripe"
         assert ws2.active_board == "careers"
+        assert ws2.ats_inventory == {"source_key": "ats-scrapers:greenhouse:greenhouse%3Astripe"}
 
     def test_from_dict_defaults(self):
         ws = Workspace.from_dict({"slug": "test"})
@@ -52,6 +54,7 @@ class TestWorkspace:
         assert ws.branch == ""
         assert ws.issue is None
         assert ws.pr is None
+        assert ws.ats_inventory == {}
         assert ws.submitted is False
 
     def test_save_and_load(self, tmp_path, monkeypatch):
@@ -478,6 +481,71 @@ class TestUpdateWorkspace:
             _raise_inside_update()
         loaded = load_workspace("test")
         assert loaded.name == "Original"
+
+    def test_stale_save_cannot_revert_verified_inventory_seed(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+        save_workspace(
+            Workspace(slug="test", ats_inventory={"source_key": "seed", "status": "pending"})
+        )
+        stale = load_workspace("test")
+
+        with update_workspace("test") as current:
+            current.ats_inventory.update(status="verified", jobs=7)
+        stale.name = "Parallel metadata"
+        save_workspace(stale)
+
+        loaded = load_workspace("test")
+        assert loaded.name == "Parallel metadata"
+        assert loaded.ats_inventory == {
+            "source_key": "seed",
+            "status": "verified",
+            "jobs": 7,
+        }
+
+    def test_stale_save_cannot_revert_fallback_inventory_seed(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+        save_workspace(
+            Workspace(slug="test", ats_inventory={"source_key": "seed", "status": "pending"})
+        )
+        stale = load_workspace("test")
+
+        with update_workspace("test") as current:
+            current.ats_inventory.update(status="fallback", reason="zero jobs")
+        stale.industry = "Software"
+        save_workspace(stale)
+
+        loaded = load_workspace("test")
+        assert loaded.industry == "Software"
+        assert loaded.ats_inventory == {
+            "source_key": "seed",
+            "status": "fallback",
+            "reason": "zero jobs",
+        }
+
+    def test_atomic_terminal_update_wins_when_stale_save_finishes_first(
+        self, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+        save_workspace(
+            Workspace(slug="test", ats_inventory={"source_key": "seed", "status": "pending"})
+        )
+        stale = load_workspace("test")
+
+        stale.name = "Parallel metadata"
+        save_workspace(stale)
+        with update_workspace("test") as current:
+            current.ats_inventory.update(status="verified", jobs=3)
+
+        loaded = load_workspace("test")
+        assert loaded.name == "Parallel metadata"
+        assert loaded.ats_inventory == {
+            "source_key": "seed",
+            "status": "verified",
+            "jobs": 3,
+        }
 
 
 class TestFileLocking:

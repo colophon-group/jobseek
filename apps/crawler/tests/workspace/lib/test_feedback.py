@@ -146,6 +146,60 @@ async def test_feedback_requires_rating_when_field_has_coverage():
         )
 
 
+@pytest.mark.asyncio
+async def test_feedback_accepts_verified_empty_board_without_field_ratings():
+    kv = await _seed_active_config()
+    result = await feedback(
+        kv,
+        verdict="acceptable",
+        verdict_notes="Official board has no openings; valid ATS feed is empty",
+        monitor_run={"jobs": 0},
+        verified_empty_board=True,
+    )
+
+    assert result.verified_empty_board is True
+    assert result.fields == {}
+    assert result.required == {"coverage": "0/0", "quality": "unverified"}
+    slot = await kv.get("cfg-1")
+    assert slot["feedback"]["verified_empty_board"] is True
+
+
+@pytest.mark.asyncio
+async def test_feedback_rejects_verified_empty_board_without_evidence():
+    kv = await _seed_active_config()
+    with pytest.raises(WsConfigInvalid, match="require evidence"):
+        await feedback(
+            kv,
+            verdict="acceptable",
+            verdict_notes="   ",
+            monitor_run={"jobs": 0},
+            verified_empty_board=True,
+        )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("verdict", "monitor_run", "per_field"),
+    [
+        ("good", {"jobs": 0}, None),
+        ("acceptable", {}, None),
+        ("acceptable", {"jobs": 1}, None),
+        ("acceptable", {"jobs": 0}, _all_clean("title", "description")),
+    ],
+)
+async def test_feedback_rejects_invalid_verified_empty_board_use(verdict, monitor_run, per_field):
+    kv = await _seed_active_config()
+    with pytest.raises(WsConfigInvalid):
+        await feedback(
+            kv,
+            verdict=verdict,
+            per_field=per_field,
+            verdict_notes="Official board and configured feed were independently verified",
+            monitor_run=monitor_run,
+            verified_empty_board=True,
+        )
+
+
 # ── Verification: shape / coverage / tier summaries ──────────────────
 
 

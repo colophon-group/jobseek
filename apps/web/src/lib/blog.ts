@@ -73,14 +73,24 @@ export type BlogPost = BlogPostSummary & {
 
 const DEFAULT_AUTHOR = "Viktor Shcherbakov";
 
+function parseYamlFrontmatter(input: string): object {
+  if (!input.trim()) return {};
+
+  const parsed = loadYaml(input);
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new TypeError("[blog] YAML frontmatter must be a mapping");
+  }
+  return parsed;
+}
+
 function parseBlogMatter(raw: string) {
   return matter(raw, {
     engines: {
-      // gray-matter 4 still calls js-yaml's removed safeLoad/safeDump
-      // defaults. Provide the v4 API explicitly so the patched js-yaml
-      // override can stay in place.
+      // gray-matter 4 still defaults to js-yaml's removed safeLoad/safeDump
+      // names. Supply the current API explicitly, and preserve js-yaml 4's
+      // empty-input result now that js-yaml 5 throws for an empty document.
       yaml: {
-        parse: (input: string) => loadYaml(input) ?? {},
+        parse: parseYamlFrontmatter,
         stringify: (data: unknown) => dumpYaml(data),
       },
     },

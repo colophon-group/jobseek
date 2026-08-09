@@ -16,6 +16,7 @@ import { PendingJobIcon } from "@/components/PendingJobWarning";
 import { SaveButton } from "@/components/search/save-button";
 import { StarButton } from "@/components/search/star-button";
 import { ScrollFade } from "@/components/ui/scroll-fade";
+import { ActivePostingCount, YearPostingCount } from "@/components/search/posting-count-labels";
 import { buildFilteredPath } from "@/lib/search/query-params";
 import type { SerializableLocation, SerializableOccupation, SerializableSeniority, SerializableTechnology } from "@/lib/search/query-params";
 import type { SearchResultCompany, SearchResultPosting, WorkMode } from "@/lib/search";
@@ -140,9 +141,9 @@ function CompanyCardImpl({ result, keywords, locationIds, locations, occupations
 
       {/* Stats */}
       <p className="mt-2 text-xs text-muted">
-        {activeMatches} <Trans id="search.card.active" comment="Active matches label on company card">active</Trans>
+        <ActivePostingCount count={activeMatches} />
         {" · "}
-        {yearMatches} <Trans id="search.card.yearCount" comment="Yearly matches label on company card">in the last year</Trans>
+        <YearPostingCount count={yearMatches} />
       </p>
 
       {/* Divider */}
@@ -211,7 +212,7 @@ function CompanyCardImpl({ result, keywords, locationIds, locations, occupations
               <SaveButton postingId={posting.id} />
             </span>
             <span suppressHydrationWarning className="w-8 shrink-0 text-left text-[10px] tabular-nums text-muted">
-              {timeAgoShort(posting.firstSeenAt)}
+              {timeAgoShort(posting.firstSeenAt, locale)}
             </span>
           </div>
         ))}

@@ -124,9 +124,23 @@ After `ws run monitor`, check **both** the count and the content:
 
 ## If the probe returned 0 jobs
 
-The previous step confirmed listings exist, so 0 results means the probe couldn't
-detect them — not that they don't exist. Run `ws task troubleshoot 'zero jobs'` for
-the escalation path (deep probe, API discovery, dom fallback).
+If the official board currently shows listings, 0 results means the probe could not
+detect them. Run `ws task troubleshoot 'zero jobs'` for the escalation path (deep
+probe, API discovery, dom fallback).
+
+If the official board explicitly says there are no open positions, 0 can be correct.
+Use this exception only when a stable ATS/feed was positively identified and its
+source endpoint is valid (for example, valid empty RSS/XML or API data); an empty DOM
+page alone is not sufficient. After testing the selected config, record:
+
+```bash
+ws feedback --verified-empty-board --verdict acceptable \
+  --verdict-notes "Official board has no openings; verified <ATS/feed evidence>"
+```
+
+Do not rate fields that have no live samples. If a recent inactive posting is
+available, test it separately and put that evidence in the notes. If the source
+cannot be positively verified, do not use the exception.
 
 ## How to choose between options
 

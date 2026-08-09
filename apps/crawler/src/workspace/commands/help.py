@@ -75,25 +75,44 @@ Monitor Types (cheapest first):
   eightfold         8       Hybrid rich+URL   eightfold enrich (description only)
   join              9       Job URLs          Auto-configured
   almacareer        10      Full job data     No (skipped)
+  adp               10      Full/partial      Auto-enriched
   ashby             10      Full job data     No (skipped)
+  avature           10      Job URLs          Auto-configured DOM
+  bamboohr          10      Full/partial      Auto-enriched
+  beisen            10      Full/partial      Auto skip/DOM enrich
   bite              10      Job URLs          Auto-configured
   breezy            10      Job URLs          Auto-configured
   comeet            10      Full job data     No (skipped)
+  cornerstone       10      Full job data     No (skipped)
+  darwinbox         10      Full job data     No (skipped)
+  dayforce          10      Full job data     No (skipped)
   deel              10      Full job data     No (skipped)
   dvinci            10      Full job data     No (skipped)
   gem               10      Full job data     No (skipped)
   greenhouse        10      Full job data     No (skipped)
+  gupy              10      Job URLs          Auto-configured
+  hibob             10      Full job data     No (skipped)
+  hirehive          10      Full job data     No (skipped)
   hireology         10      Full job data     No (skipped)
+  herp              10      Job URLs          Auto-configured
+  hrmos             10      Job URLs          Auto-configured
+  icims             10      Job URLs          Auto-configured
+  jazzhr            10      Job URLs          Auto-configured
+  pageup            10      Full/partial      Auto-enriched DOM
+  keka              10      Full job data     No (skipped)
   lever             10      Full job data     No (skipped)
   linkedin          10      Full/partial      Auto-enriched
+  paycom            10      Full/partial      Auto-enriched
   paylocity         10      Full/partial      Auto-enriched
   pinpoint          10      Full job data     No (skipped)
   recruitee         10      Full job data     No (skipped)
+  recruiterbox      10      Job URLs          Auto-configured
   rippling          10      Job URLs          Auto-configured
   rss               10      Full job data     No (skipped)
   smartrecruiters   10      Job URLs          Auto-configured
   softgarden        10      Job URLs          Auto-configured
   traffit           10      Full job data     No (skipped)
+  ukg               10      Full/partial      Auto-enriched
   workable          10      Job URLs          Auto-configured
   workday           10      Job URLs          Auto-configured
   personio          10      Full/partial      If descriptions missing (fallback)
@@ -103,6 +122,7 @@ Monitor Types (cheapest first):
   nextdata          20      URLs or full      If URL-only
   talentbrew        45      URL set           Yes
   sitemap           50      URL set           Yes
+  kipt              60      Full job data     No (skipped)
   api_sniffer       80      URLs or full      If URL-only (no fields)
   dom               100     URL set           Yes
 
@@ -151,6 +171,7 @@ Scraper Types:
   pdf            Static      No               PDF job descriptions
   dom            Static/PW   Yes (steps)      Custom HTML structure
   api_sniffer    HTTP/PW     Optional (fields)  SPA/XHR or direct API
+  adp            API         No               ADP Workforce Now detail + DOCX attachments
   workable       API         No               Workable job pages (auto-configured)
   workday        API         No               Workday job pages (auto-configured)
 
@@ -353,6 +374,23 @@ comeet — Comeet hosted data and Careers API monitor
               or "Comeet — API company: X, N jobs"
   Zero jobs?  An empty embedded list or API array is a valid active board."""
 
+MONITOR_HIBOB = """\
+hibob — HiBob public career-site monitor
+
+  Source:   GET https://{tenant}.careers.hibob.com/api/job-ad
+  Returns:  Full job data (title, HTML description, locations, employment_type,
+            job_location_type, date_posted, salary, responsibilities,
+            qualifications, benefits, and department metadata)
+  Scraper:  Not needed (one request returns all complete job records)
+  Cap:      50,000 jobs
+
+  Config:   None required for https://{tenant}.careers.hibob.com boards.
+            Optional override: {"origin": "https://acme.careers.hibob.com"}
+
+  Detection:  ws probe verifies the public /api/job-ad payload and reports
+              its current job count.
+  Zero jobs?  A valid jobAdDetails: [] payload is an active empty board."""
+
 MONITOR_EIGHTFOLD = """\
 eightfold — Eightfold AI Careers Portal (hybrid sitemap + PCSX)
 
@@ -491,6 +529,28 @@ greenhouse — Greenhouse Public API
 
   Detection:  ws probe shows "Greenhouse API — token: X, N jobs"
   Zero jobs?  Verify token — try the API URL directly in a browser"""
+
+MONITOR_HIREHIVE = """\
+hirehive — HireHive Public Jobs API
+
+  API:      GET https://{slug}.hirehive.com/api/v2/jobs?page=1&page_size=100
+  Returns:  Full job data (title, HTML description, location, employment_type,
+            date_posted, language, base_salary)
+            metadata: id, category, experience
+  Scraper:  Not needed (API returns full data, scraper step is skipped)
+  Cap:      50,000 jobs
+  Note:     Uses the public tenant API instead of the Cloudflare-rate-limited
+            hosted careers HTML.
+
+  Config:
+    {"slug": "acme"}
+
+    slug     HireHive tenant. Auto-filled by ws probe from:
+             1. Direct URL ({slug}.hirehive.com)
+             2. Inline HTML scan for embedded HireHive links
+
+  Detection:  ws probe shows "HireHive API — slug: X, N jobs"
+  Zero jobs?  Verify slug — try /api/v2/jobs?page=1&page_size=1 directly"""
 
 MONITOR_HIREOLOGY = """\
 hireology — Hireology Careers API
@@ -819,13 +879,13 @@ notion — Notion Site Job Pages
 
   Detects public *.notion.site career pages and enumerates job listings
   via Notion's internal API (/api/v3). Supports two patterns:
-  - Sub-pages: direct child pages of a parent page
+  - Sub-pages: child pages, including pages inside layout/transclusion blocks
   - Databases: rows in embedded collection_view blocks (gallery, table, board)
 
   No config required — auto-resolves page structure from the board URL.
 
   Config:
-    include_nested    Include grandchild pages (default: false)
+    include_nested    Include pages nested inside job pages (default: false)
     collection_index  Zero-based index to select one database when page
                       has multiple (default: use all)
     title_exclude     Regex — exclude rows whose title matches.
@@ -858,22 +918,49 @@ inline — Single-Page Extraction (rich)
 
   Config:
     {
+      "fetch_urls": [
+        "https://company.example/jobs",
+        "https://render.example.com/company/jobs",
+        {
+          "url": "https://reader.example.com/company/jobs",
+          "headers": {"X-No-Cache": "true"}
+        }
+      ],
+      "fetch_contains": "Open positions",
       "render": true,
       "steps": [
         {"tag": "h3", "field": "title"},
         {"text": "Location", "offset": 1, "field": "location", "optional": true},
         {"tag": "p", "field": "description", "html": true, "stop_tag": "h3"}
       ],
-      "defaults": {"employment_type": "full_time"}
+      "defaults": {
+        "description": "<p>Evergreen role description.</p>",
+        "employment_type": "full_time"
+      },
+      "defaults_by_title": {
+        "Account Manager": {"locations": ["USA, Remote"]}
+      }
     }
 
     render       true = Playwright, false = static HTTP (default: false)
+    fetch_urls   Optional ordered URLs used only to read the page. Each entry is
+                 a URL string or {"url": ..., "headers": {...}} object. Headers
+                 are scoped to that exact candidate and are never forwarded to
+                 other hosts. Failed URLs fall through to the next equivalent
+                 representation. Synthetic job URLs remain on board_url.
+    fetch_contains
+                 Required text that every accepted representation must contain.
+                 A response without it falls through to the next fetch URL.
     steps        Extraction steps run once per job (see: ws help steps).
                  The first step with a field (usually title) is the stop
                  condition — when it can't find a match, extraction ends.
     defaults     Default field values applied when extracted value is absent.
-                 Supports: locations (list), employment_type, job_location_type,
-                 date_posted.
+                 Supports: description, locations (list), employment_type,
+                 job_location_type, date_posted.
+    defaults_by_title
+                 Exact extracted title -> defaults mapping for pages that omit
+                 per-role fields. Supports the same fields as defaults; title
+                 defaults override global defaults, but extracted values win.
     + browser keys (wait, wait_fallback, timeout, user_agent, etc. — see
       `ws help scraper dom` for the full list; wait_fallback defaults to
       "domcontentloaded" and retries once on Page.goto timeout, set to null
@@ -889,6 +976,27 @@ inline — Single-Page Extraction (rich)
 
   Detection:   Not auto-detected. Select manually after inspecting the page.
                Best for small boards (< 50 jobs) with consistent HTML structure."""
+
+MONITOR_KIPT = """\
+kipt — NSC KIPT PDF vacancy bulletins (rich)
+
+  Returns:  Full job data (one posting per position in active PDF bulletins)
+  Scraper:  Not needed (skipped)
+  Cost:     60
+
+  Dedicated monitor for the National Science Center Kharkiv Institute of
+  Physics and Technology. The official board archives dated PDF bulletins,
+  and each PDF may announce multiple positions. The monitor keeps only
+  unexpired bulletins, splits vacancy lines into stable synthetic job URLs,
+  and includes the common requirements and application instructions.
+
+  Config:
+    max_age_days       Bulletin lifetime (default: 30)
+    default_location   Location applied to published positions
+                       (default: "Kharkiv, Ukraine")
+
+  Detection:   Official kipt.kharkov.ua vacancy page with dated vacancy PDFs.
+  Fields:      title, description, locations, date_posted, language, metadata."""
 
 MONITOR_DOM = """\
 dom — Link Extraction (fallback)
@@ -911,6 +1019,16 @@ dom — Link Extraction (fallback)
     timeout        Navigation timeout in ms (default: 30000)
     user_agent     Custom User-Agent string
     headless       Run headless (default: true)
+    proxy          Route traffic through the configured proxy provider. Use for
+                   origins that block the crawler's datacenter IP.
+    retry_statuses Static HTTP status-to-retry-count map, for provider-specific
+                   transient responses only (HTTP 400-599, maximum 5 retries).
+    persistent_context
+                   Use a real browser profile shape for anti-bot challenges.
+                   Usually pair with channel: "chrome" and headless: false.
+    channel        Browser channel, typically "chrome" with persistent_context.
+    stealth        Use Chromium's less-detectable new headless mode.
+    warmup_url     Visit this URL in the same browser context before the board.
     actions        Browser action pipeline (see: ws help actions)
     url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
                    Keep patterns broad enough to include URL variants
@@ -1012,6 +1130,214 @@ recruitee — Recruitee Careers Site API
   Zero jobs?  Verify slug — try the API URL directly in a browser
   Custom domains:  Recruitee supports custom domains (e.g. karriere.herta.de).
                    The API is at https://{custom-domain}/api/offers."""
+
+MONITOR_RECRUITERBOX = """\
+recruiterbox — Recruiterbox / Trakstar Hire static listing monitor
+
+  Listing:  GET https://{tenant}.hire.trakstar.com/?limit=100&p={page}
+  Legacy:   https://{tenant}.recruiterbox.com redirects to Trakstar Hire
+  Returns:  Job URLs from server-rendered HTML
+  Scraper:  Auto-configured (json-ld) for title, description, location, and dates
+  Cost:     10 (HTTP only; no browser)
+  Cap:      50,000 jobs
+
+  Config:
+    {"tenant": "acme"}
+
+  Reuses the shared DOM link extractor, HTTP retry policy, and truncation guard.
+  The monitor reads the listing's authoritative total, requests 100 rows per
+  page, canonicalizes legacy URLs to hire.trakstar.com, and suppresses removals
+  if any page is missing, malformed, duplicated, or changes total mid-run.
+
+  Detection:  Direct Recruiterbox/Trakstar URLs or explicit links in career-page HTML.
+              Blind tenant guessing is disabled.
+  Zero jobs?  An active listing with authoritative total 0 is valid. Trakstar's
+              branded inactive-account page is treated as BoardGone.
+  Upstream:   ats-scrapers is inventory input only. Jobseek does not import,
+              execute, or depend on upstream scraper code."""
+
+MONITOR_KEKA = """\
+keka — Keka public career-portal API
+
+  Listing:  GET https://{tenant}.keka.com/careers[/{portal}]
+  Jobs:     GET /careers/api/embedjobs/{portal}/active/{identifier}
+  Returns:  Full job data (title, safe HTML description, locations,
+            employment type, posting date, salary, and metadata)
+  Scraper:  Not needed (public endpoint returns full data; skipped)
+  Cost:     10 (HTTP only; no browser)
+  Cap:      50,000 jobs and a 25 MB jobs payload
+
+  Config:
+    {"tenant":"acme","portal":"default",
+     "identifier":"11111111-1111-4111-8111-111111111111"}
+
+  The listing bootstrap supplies the stable organization identifier. Discovery
+  checks configured tenant/portal/identifier against the URL and live bootstrap,
+  then fetches the authoritative all-active-jobs array in one request. Any
+  malformed/duplicate record or cap breach fails the whole run, preventing
+  partial-result removals. Named portals such as /careers/amfm are supported.
+
+  Detection:  Direct or explicitly linked *.keka.com/careers URLs only; no
+              blind tenant guessing. An exact Keka forbidden-portal redirect
+              and authoritative listing 404/410 are treated as BoardGone.
+  Upstream:   ats-scrapers is inventory input only. Jobseek does not import,
+              execute, or depend on upstream scraper code."""
+
+MONITOR_AVATURE = """\
+avature — Avature public static listing monitor
+
+  Listing:  https://{host}/{optional-locale}/{portal}/SearchJobs
+  Map:      https://{host}/{optional-locale}/{portal}/SearchJobsMaps
+  Config:   {"listing_url":"https://acme.avature.net/careers/SearchJobs",
+             "portal_id":"4"}
+
+  Returns stable JobDetail, FolderDetail, or PipelineDetail URLs. The monitor
+  follows Avature's explicit static next link; it does not use the capped RSS
+  feed. Branded custom domains are accepted only after live avature.portal.*
+  metadata validation. Direct *.avature.net URLs and links found on the
+  company career page are auto-detected without tenant slug guessing.
+
+  Detail scraper: auto-configured shared DOM scraper. ws may refine its DOM
+  steps for localized or heavily customized portal templates after sampling.
+  A first-page 404/410 is definitive gone; 202/401/403/406 and transport
+  failures remain transient. Configure the normal proxy option for WAF-gated
+  portals.
+"""
+
+
+MONITOR_UKG = """\
+ukg — UKG Pro public recruiting API
+
+  Listing:  https://{host}/{tenant}/JobBoard/{board_id}
+  Search:   POST {listing}/JobBoardView/LoadSearchResults
+  Config:   {"host":"recruiting.ultipro.com","tenant":"ACM1000ACME",
+             "board_id":"11111111-1111-4111-8111-111111111111"}
+
+  Returns rich summaries from bounded, streamed API pages: title, locations,
+  employment and workplace type, posting date, brief description, and stable
+  OpportunityDetail URLs. The shared embedded scraper enriches only the full
+  Description field from UKG's CandidateOpportunityDetail JSON constructor.
+
+  Detection accepts direct or explicitly linked public UKG board URLs on
+  recruiting*.ultipro.com and recruiting.ultipro.ca. It never guesses tenant
+  or board UUIDs. First-page 404/410 is definitive gone; transient auth, rate
+  limit, transport, and server failures fail the run without removing jobs.
+  Pagination is capped at 50,000 opportunities.
+
+  Upstream ats-scrapers is inventory input only. Jobseek neither imports nor
+  executes upstream scraper code.
+"""
+
+
+MONITOR_JOBVITE = """\
+jobvite — Jobvite public static listing monitor
+
+  Listing:  https://jobs.jobvite.com/{tenant}
+  Branded:  /careers/{tenant}, /{tenant}/jobs/positions
+  Returns:  Canonical /{tenant}/job/{id} detail URLs
+  Scraper:  Auto-configured shared json-ld scraper
+  Cost:     10 (HTTP only; no browser)
+  Cap:      50,000 jobs and 5 MB listing HTML
+
+  Config:
+    {"tenant":"acme","listing_url":"https://jobs.jobvite.com/acme"}
+
+  The monitor reuses the shared DOM link extractor, HTTP retry policy, and
+  bot-challenge guard. It validates Jobvite's first-party careersiteName
+  marker before accepting empty results. Branded landing pages are resolved
+  only through explicit same-tenant Jobs links, never tenant guessing.
+
+  Detection: Direct Jobvite listing/detail URLs or explicit Jobvite links in
+             career-page HTML. Unknown-tenant redirects are BoardGone;
+             transient status, transport, empty-body, and malformed-page
+             failures do not remove jobs.
+  Upstream:  ats-scrapers is inventory input only. Jobseek does not import,
+             execute, or depend on upstream scraper code.
+"""
+
+
+MONITOR_PAGEUP = """\
+pageup — PageUp public static listing monitor
+
+  Listing:  https://careers.pageuppeople.com/{instance}/{source}/{locale}
+  Returns:  Rich title summaries plus stable /job/{id}/{slug} detail URLs
+  Scraper:  Auto-configured shared static DOM description enrichment
+  Cost:     10 (HTTP only; no browser)
+  Cap:      50,000 jobs, 500 jobs/page, 5 MB/page
+
+  Config:
+    {"instance":873,"source_pointer":"cw","locale":"en-us",
+     "listing_url":"https://careers.pageuppeople.com/873/cw/en-us"}
+
+  Each page is checked against PageUp's first-party PU.Jobs.source identity
+  when present, stable visible titles, exact page size, and explicit next-page
+  remaining count. Branded proxy templates that omit PU.Jobs.source are accepted
+  only with non-empty same-board job links; they can never assert an empty board.
+  Duplicate responsive-layout anchors are collapsed. Missing, overlapping,
+  conflicting, or changing pages fail the run instead of removing jobs. Pages
+  stream in bounded batches to keep worker heartbeats live.
+
+  The monitor never fetches per-job details. The shared DOM scraper enriches
+  only descriptions on its normal schedule and recognizes PageUp's explicit
+  jobnotfound redirect as a permanent gone signal.
+
+  Detection: Direct PageUp listing/detail URLs or explicit PageUp links in a
+             career page. Instance IDs are never guessed.
+  Zero jobs? A first-party listing with authoritative total 0 is valid.
+  Upstream:  ats-scrapers is inventory input only. Jobseek does not import,
+             execute, or depend on upstream scraper code.
+"""
+
+
+MONITOR_TALEO = """\
+taleo — Taleo Business Edition static listing monitor
+
+  Listing:  GET https://{host}/{partition}/ats/careers/v2/searchResults
+  Returns:  Canonical requisition URLs from server-rendered HTML
+  Scraper:  Auto-configured (json-ld) for full JobPosting details
+  Cost:     10 (HTTP only; no browser)
+  Cap:      50,000 jobs
+
+  Config:
+    {"host":"phe.tbe.taleo.net","partition":"phe01","org":"ACME","cws":1}
+
+  Reuses the shared DOM link extractor and HTTP retry policy. Each ten-row
+  page is checked against Taleo's authoritative total or exact next-row cursor;
+  missing, duplicated, redirected, or malformed child pages fail the run
+  instead of removing jobs. Both official TBE v2 listing themes are supported.
+  Initial discovery follows only validated same-organization migrations across
+  official Taleo clusters and records the resolved identity in ws.
+
+  Detection: Direct Taleo TBE URLs or explicit links in career-page HTML.
+             Blind organization guessing is disabled.
+  Zero jobs? An active listing with authoritative total 0 is valid.
+  Upstream:  ats-scrapers is inventory input only. Jobseek does not import,
+             execute, or depend on upstream scraper code."""
+
+MONITOR_BEISEN = """\
+beisen — Beisen modern API + legacy static listing monitor
+
+  Modern:  POST https://{tenant}.zhiye.com/api/Jobad/GetJobAdPageList
+  Legacy:  GET  https://{tenant}.zhiye.com/{Social|index}?PageIndex={page}
+  Returns:  Full job data for modern portals; partial rich data for legacy portals
+  Scraper:  Modern is skipped; legacy auto-reuses DOM description enrichment
+  Cost:     10 (HTTP only; no browser)
+  Cap:      50,000 jobs
+
+  Modern config:
+    {"tenant":"acme","variant":"modern","portal_id":"...","tenant_id":123}
+
+  Legacy config:
+    {"tenant":"acme","variant":"legacy","listing_path":"/Social",
+     "legacy_template":"standard"}
+
+  Detection verifies the public portal bootstrap and records its exact generation.
+  Modern discovery uses 1,000-row sequential API pages and needs no per-job fetch.
+  Legacy discovery validates every advertised HTML page, returns title/location/date,
+  and lets the existing DOM scraper enrich only descriptions on newly seen jobs.
+
+  Upstream: ats-scrapers is inventory input only. Jobseek does not import, execute,
+            or depend on upstream scraper code."""
 
 MONITOR_SMARTRECRUITERS = """\
 smartrecruiters — SmartRecruiters Posting API (URL-only)
@@ -1233,20 +1559,25 @@ personio — Personio XML Feed + HTML Fallback
   Zero jobs?  Verify slug — try the listing page in a browser"""
 
 MONITOR_RSS = """\
-rss — RSS 2.0 Feed Monitor (presets: successfactors, teamtailor, generic)
+rss — RSS 2.0 Feed Monitor + legacy SuccessFactors (presets: successfactors, teamtailor, generic)
 
   Feed:     GET {feed_url}
-  Returns:  Full job data (title, HTML description, locations, date_posted)
+  Returns:  Feeds: full job data. Legacy SuccessFactors: title, location,
+            posting date, and stable URL; static DOM enriches description.
             metadata: id and preset-specific fields
-  Scraper:  Not needed (feed returns full data, scraper step is skipped)
+  Scraper:  Feeds are skipped. Legacy SuccessFactors automatically uses the
+            static DOM scraper scoped to .joqReqDescription.
   Cap:      50,000 jobs
   Note:     One monitor type with multiple ATS presets:
             - successfactors: /googlefeed.xml (Google Base namespace)
+              or native static DWR pagination for /career?company=... boards
             - teamtailor: /jobs.rss (offset-paginated)
             - generic: standard RSS 2.0 (manual feed URL)
 
   Config:
     {"preset": "successfactors", "feed_url": "https://jobs.sap.com/googlefeed.xml"}
+    {"preset": "successfactors", "variant": "legacy",
+     "host": "career5.successfactors.eu", "company": "1657261P"}
     {"preset": "teamtailor", "feed_url": "https://company.teamtailor.com/jobs.rss"}
     {"preset": "generic", "feed_url": "https://example.com/jobs.rss"}
 
@@ -1254,9 +1585,12 @@ rss — RSS 2.0 Feed Monitor (presets: successfactors, teamtailor, generic)
                Defaults to "generic" when not set.
     feed_url   RSS URL. For known presets, ws probe can auto-fill this from
                the board URL; for generic feeds set it explicitly.
+    variant    SuccessFactors only: "feed" or "legacy". Legacy identity and
+               listing_url are auto-filled from strict SAP board URLs.
 
   Detection:  ws probe shows labels like:
               "SuccessFactors RSS — <feed_url>, N jobs"
+              "SuccessFactors legacy DWR — company: X @ host, N jobs"
               "Teamtailor RSS — <feed_url>, N jobs"
               "RSS (generic) — <feed_url>, N jobs"
   Zero jobs?  Verify feed_url directly in a browser and confirm it returns
@@ -1335,16 +1669,267 @@ paylocity — Paylocity embedded job data
   Zero jobs?  Confirm window.pageData.Jobs is empty; search-engine counts may
               lag after postings close."""
 
-MONITOR_API_SNIFFER = """\
-api_sniffer — XHR/Fetch API Capture (Playwright)
+MONITOR_ADP = """\
+adp — ADP Workforce Now public listing API
 
-  Captures JSON API responses during page load via Playwright.
-  Works for React SPAs, custom platforms, and any site that
-  loads job data via internal JSON APIs.
+  Listing:  GET https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?...
+  Search:   GET https://workforcenow.adp.com/mascsr/default/careercenter/public/events/staffing/v1/job-requisitions
+  Returns:  Rich listing data in complete 20-job pages
+  Scraper:  Auto-configured native ADP detail scraper, including DOCX attachments
+  Browser:  Not required. Both listing and detail APIs are public HTTP endpoints.
+  Note:     Reuses Jobseek's shared API HTTP transport, retry classifier, and
+            pagination engine. Count drift, invalid rows, duplicates, and the
+            50,000-job cap suppress tombstoning. No upstream scraper code or
+            runtime dependency is used.
+
+  Config:
+    {"cid": "00000000-0000-0000-0000-000000000000",
+     "cc_id": "19000101_000001", "locale": "en_US"}
+
+    cid      ADP client UUID.
+    cc_id    Career-center identifier.
+    locale   ADP underscore locale. All fields are auto-filled only from a
+             direct or explicitly linked Workforce Now board URL; no blind
+             company-name or slug guessing is performed.
+
+  Detection:  ws probe shows "ADP Workforce Now API — cid: X, career center: Y, N jobs"
+  Zero jobs?  A valid response reports totalNumber=0 and jobRequisitions=[]."""
+
+MONITOR_PAYCOM = """\
+paycom — Paycom public portal API
+
+  Bootstrap: GET https://www.paycomonline.net/v4/ats/web.php/portal/{token}/career-page
+  Listing:   POST the validated regional /api/ats/job-posting-previews/search endpoint
+  Returns:   Rich summaries (URL, title, description preview, location, work type)
+  Scraper:   Auto-configured Paycom API scraper — enriches authoritative details
+  Note:      The short-lived public session token and regional API origin are
+             read from each portal's server-rendered config. Both monitor and
+             scraper reuse the same validated bootstrap. The API origin is
+             restricted to HTTPS Paycom hosts. Listing pagination is bounded,
+             retried, count-checked, and does not hydrate details per job.
+
+  Config:
+    {"token": "0123456789abcdef0123456789abcdef"}
+
+    token   32-character portal ID. Auto-filled only from direct or explicitly
+            linked Paycom public portal URLs; no blind token guessing.
+
+  Detection:  ws probe shows "Paycom API — portal: TOKEN, N jobs"
+  Zero jobs?  Confirm the preview API reports count 0 after a valid bootstrap."""
+
+MONITOR_BAMBOOHR = """\
+bamboohr — BambooHR public careers API
+
+  Listing:  GET https://{tenant}.bamboohr.com/careers/list
+  Returns:  Rich summaries (URL, title, location, employment type, department)
+  Scraper:  Auto-configured API preset — enriches description, posting date,
+            and authoritative detail fields on the normal scrape schedule
+  Note:     The listing is one public JSON request per board. No browser,
+            tenant-specific field mapping, or upstream scraper dependency is
+            required. Empty boards remain detectable with a 0-job count.
+
+  Config:
+    {"tenant": "acme"}
+
+    tenant   BambooHR subdomain. Auto-filled from direct or explicitly linked
+             https://{tenant}.bamboohr.com/careers URLs. Jobseek does not make
+             blind tenant guesses.
+
+  Detection:  ws probe shows "BambooHR API — tenant: X, N jobs"
+  Zero jobs?  Confirm /careers/list returns an empty result array."""
+
+MONITOR_JAZZHR = """\
+jazzhr — JazzHR / ApplyToJob static listing
+
+  Listing:  GET https://{tenant}.applytojob.com/apply/jobs
+  Returns:  Canonical job detail URLs from one server-rendered HTML response
+  Scraper:  Auto-configured JazzHR scraper — existing JSON-LD parser first,
+            existing DOM parser fallback for older themes
+  Note:     No browser, pagination, or upstream scraper dependency is needed.
+            Shared retry handles empty responses, 202/403 WAF responses, 429,
+            and 5xx failures without turning them into successful empty cycles.
+
+  Config:
+    {"tenant": "acme"}
+
+    tenant   ApplyToJob subdomain. Auto-filled from direct or explicitly linked
+             JazzHR URLs; Jobseek does not make blind tenant guesses.
+    proxy    Optional. Enable only when live 403/WAF evidence requires it, and
+             mirror it into the scraper config for detail requests.
+
+  Detection:  ws probe shows "JazzHR static listing — tenant: X, N jobs"
+  Zero jobs?  A valid page still contains the job_listings_wrapper marker."""
+
+MONITOR_ICIMS = """\
+icims — iCIMS server-rendered listings
+
+  Listing:  GET https://{host}/jobs/search?ss=1&in_iframe=1
+  Returns:  Stable https://{host}/jobs/{id}/job?in_iframe=1 detail URLs
+  Scraper:  Auto-configured JSON-LD scraper
+  Note:     Pagination is read from the listing and fetched sequentially
+            because iCIMS page state is session-sensitive. Every advertised
+            page must succeed before discovery
+            is authoritative. Duplicate or capped pages suppress tombstoning.
+            JavaScript redirects to custom migrated sites fail detection rather
+            than being treated as an empty iCIMS board.
+
+  Config:
+    {"host": "careers-acme.icims.com"}
+
+    host    Exact single-label *.icims.com public portal host. Auto-filled from
+            direct or explicitly linked iCIMS URLs; no blind host guessing.
+            This is host-wide. Filtered regional listing URLs are rejected
+            rather than silently widened; use a scoped generic DOM board when
+            preserving listing filters is required.
+
+  Detection:  ws probe shows "iCIMS static listing — host: X, N jobs"
+  Zero jobs?  A valid empty page still contains the iCIMS_ListingsPage marker."""
+
+MONITOR_HERP = """\
+herp — HERP Hire server-rendered listing
+
+  Listing:  GET https://herp.careers/v1/{slug}
+  Returns:  Canonical https://herp.careers/v1/{slug}/{job_id} detail URLs
+  Scraper:  Auto-configured JSON-LD scraper
+  Note:     One static HTML response contains every open requisition. The
+            monitor reuses shared strict retry, DOM link extraction, challenge
+            detection, and truncation handling; no browser or upstream scraper
+            dependency is required.
+
+  Config:
+    {"slug": "acme"}
+
+    slug    HERP company slug. Auto-filled only from direct or explicitly
+            linked herp.careers/v1/{slug} URLs; no blind slug guessing.
+
+  Detection:  ws probe shows "HERP static listing — slug: X, N jobs"
+  Zero jobs?  A valid page still contains the requisition-list container."""
+
+MONITOR_GUPY = """\
+gupy — Gupy NextData listing
+
+  Listing:  GET https://{tenant}.gupy.io/
+  Returns:  Canonical https://{tenant}.gupy.io/jobs/{job_id} detail URLs
+  Scraper:  Auto-configured JSON-LD scraper
+  Note:     Reuses Jobseek's shared NextData parser and URL builder for the
+            complete server-embedded jobs array, plus shared strict retry,
+            challenge detection, and truncation handling. No browser or
+            upstream scraper dependency is required.
+
+  Config:
+    {"tenant": "acme"}
+
+    tenant  Gupy company subdomain. Auto-filled only from direct or
+            explicitly linked *.gupy.io URLs; no blind tenant guessing.
+
+  Detection:  ws probe shows "Gupy NextData listing — tenant: X, N jobs"
+  Zero jobs?  A valid page still contains matching NextData career metadata
+              and an empty jobs array."""
+
+MONITOR_CORNERSTONE = """\
+cornerstone — Cornerstone public career-site API
+
+  Listing:  GET  https://{tenant}.csod.com/ux/ats/careersite/{site_id}/home?c={corp}
+  Search:   POST https://{region}.api.csod.com/rec-job-search/external/jobs
+  Returns:  Full job data streamed in 100-job pages; no detail fan-out
+  Scraper:  None (rich monitor)
+  Note:     Validates the short-lived public bootstrap token and regional API
+            origin, refreshes once on authorization expiry, and uses shared
+            strict POST retry and truncation-safe streaming. No browser or
+            upstream scraper dependency is required.
+
+  Config:
+    {"tenant": "acme", "site_id": 1, "corp": "acme"}
+
+    tenant   Single-label *.csod.com tenant.
+    site_id  Positive career-site ID from the canonical URL.
+    corp     Corporation query value from ?c=. Auto-filled only from direct
+             or explicitly linked canonical Cornerstone URLs; no blind
+             tenant guessing.
+
+  Detection:  ws probe shows "Cornerstone API — tenant: X, site: N, M jobs"
+  Zero jobs?  A valid API response reports totalCount=0 and requisitions=[]."""
+
+MONITOR_DAYFORCE = """\
+dayforce — Dayforce public career-site API
+
+  Listing:  GET  https://jobs.dayforcehcm.com/{tenant}/{portal}
+  Search:   POST https://jobs.dayforcehcm.com/api/geo/{tenant}/jobposting/search
+  Returns:  Full job data streamed in 25-job pages; no detail fan-out
+  Scraper:  None (rich monitor)
+  Browser:  Required. Dayforce's public same-origin BFF rejects stateless HTTP
+            replay, so the monitor reuses Jobseek's browser fetch transport.
+  Note:     Validates server-rendered site identity over HTTP before browser
+            startup, preserves tenant+portal as the complete board identity,
+            and uses shared retry, TDM, and truncation handling. No upstream
+            scraper code or runtime dependency is used.
+
+  Config:
+    {"tenant": "acme", "portal": "CANDIDATEPORTAL"}
+
+    tenant  Dayforce client namespace.
+    portal  Case-preserving career-site code. Auto-filled only from direct or
+            explicitly linked jobs.dayforcehcm.com URLs; no blind guessing.
+
+  Detection:  ws probe shows "Dayforce API — tenant: X, portal: Y"
+  Zero jobs?  A valid search response reports maxCount=0 and jobPostings=[]."""
+
+MONITOR_DARWINBOX = """\
+darwinbox — Darwinbox public career-site API
+
+  Listing:  GET  https://{host}/ms/candidatev2/{company_id}/careers
+  Search:   POST https://{host}/ms/candidateapi/job/alljobs
+  Returns:  Full job data streamed in 100-job pages; no detail fan-out
+  Scraper:  None (rich monitor)
+  Browser:  Required. Cloudflare rejects stateless replay, so the monitor
+            reuses Jobseek's browser fetch transport after opening the public
+            same-origin career portal.
+  Note:     Validates strict Darwinbox host, portal, response, count, identity,
+            and pagination invariants. Incomplete or drifting runs are marked
+            truncated to prevent false delisting. The upstream ats-scrapers
+            project is inventory-only and is never imported or executed.
+
+  Config:
+    {"host": "acme.darwinbox.in", "company_id": "main"}
+
+    host        Full single-tenant *.darwinbox.in or *.darwinbox.com host.
+    company_id  Public portal route/API identity (normally "main").
+
+  Detection:  ws probe shows "Darwinbox API — host: X, company: Y"
+  Zero jobs?  A valid response reports job_counts=0 and data=[]."""
+
+MONITOR_HRMOS = """\
+hrmos — HRMOS server-rendered listings
+
+  Listing:  GET https://hrmos.co/pages/{tenant}/jobs?page={page}
+  Returns:  Canonical https://hrmos.co/pages/{tenant}/jobs/{job_id} detail URLs
+  Scraper:  Auto-configured JSON-LD scraper
+  Note:     Fetches every advertised page sequentially with shared strict
+            retry, DOM link extraction, challenge detection, count-drift
+            protection, and truncation-safe results. No browser or upstream
+            scraper dependency is required.
+
+  Config:
+    {"tenant": "acme"}
+
+    tenant  HRMOS company identifier. Auto-filled only from direct or
+            explicitly linked hrmos.co/pages/{tenant}/jobs URLs; no blind
+            tenant guessing.
+
+  Detection:  ws probe shows "HRMOS static listing — tenant: X, N jobs"
+  Zero jobs?  A valid page still contains the jsi-joblist container and count."""
+
+MONITOR_API_SNIFFER = """\
+api_sniffer — Direct API Replay or XHR/Fetch Capture
+
+  Replays a configured api_url over plain HTTP by default. Without api_url,
+  captures JSON API responses during page load via Playwright. Set
+  browser: true only when replay requires page cookies/browser execution.
+  Set proxy: true when the API blocks direct crawler egress.
 
   Returns:  Full job data (if fields auto-mapped) or URL set
   Cost:     80 — between sitemap (50) and dom (100)
-  Requires: Playwright
+  Requires: Playwright only for auto-discovery or browser: true replay
 
   Config (auto-filled from ws probe monitor):
     {
@@ -1370,7 +1955,9 @@ api_sniffer — XHR/Fetch API Capture (Playwright)
       }
     }
 
-    api_url          Captured API endpoint URL (auto-filled)
+    api_url          Captured API endpoint URL (auto-filled). This exact key
+                     selects direct HTTP replay; legacy "url" is ignored by
+                     runtime code and rejected by CSV validation.
     method           HTTP method: GET or POST (auto-filled)
     json_path        Dot-notation path to jobs array in response
     url_field        Field name containing job URL (if found)
@@ -1404,6 +1991,15 @@ api_sniffer — XHR/Fetch API Capture (Playwright)
     settle           Seconds to wait after navigation for late XHRs. Default: 3.
 
   Modes:
+    Direct HTTP (api_url present, browser absent/false):
+      Fetches the API without opening Playwright. proxy: true routes the
+      per-board client through the configured proxy provider.
+    Browser replay (api_url present, browser: true):
+      Opens the board page for cookies/auth, then replays the API in-browser.
+    Auto-discovery (api_url absent):
+      Opens Playwright and captures XHR/fetch responses during page load and
+      fallback interactions. A timed-out navigation with no usable document
+      fails the cycle rather than returning an authoritative empty result.
     Rich (fields present):  Returns list[DiscoveredJob], scraper skipped.
       Auto-mapped from API response during probe. Verify quality —
       auto-mapping may miss fields or map wrong keys.
@@ -1604,6 +2200,14 @@ dom — Step-based Extraction Engine
     timeout        Navigation timeout in ms (default: 30000)
     user_agent     Custom User-Agent
     headless       Run headless (default: true)
+    proxy          Route traffic through the configured proxy provider. Use for
+                   origins that block the crawler's datacenter IP.
+    persistent_context
+                   Use a real browser profile shape for anti-bot challenges.
+                   Usually pair with channel: "chrome" and headless: false.
+    channel        Browser channel, typically "chrome" with persistent_context.
+    stealth        Use Chromium's less-detectable new headless mode.
+    warmup_url     Visit this URL in the same browser context before the job.
     actions        Browser action pipeline (see: ws help actions)
 
   Target fields: title, description, locations, employment_type,
@@ -1808,6 +2412,12 @@ Browser Action Pipeline — pre-extraction actions for Playwright
     {"action": "click", "selector": "button.load-more"}
         Click first matching element (no-op if not found)
 
+    {"action": "wait_for", "selector": "article.job", "state": "visible"}
+        Wait for the first matching element to reach a Playwright locator
+        state. State defaults to "visible"; "attached", "hidden", and
+        "detached" are also supported. Prefer this over a fixed wait when
+        a rendered page exposes a stable readiness selector.
+
     {"action": "wait", "ms": 2000}
         Wait N milliseconds (default: 1000)
 
@@ -1848,7 +2458,7 @@ Browser Action Pipeline — pre-extraction actions for Playwright
     "actions": [
       {"action": "dismiss_overlays"},
       {"action": "click", "selector": "button[data-load-all]"},
-      {"action": "wait", "ms": 2000}
+      {"action": "wait_for", "selector": "article.job"}
     ]
 
     "actions": [
@@ -1982,6 +2592,10 @@ Troubleshooting:
     → Record what was tried and why it failed before changing type
 
   Monitor returns 0 jobs:
+    verified empty    If the official board explicitly says there are no openings
+                      and a stable ATS/feed returns a valid empty source, record
+                      `ws feedback --verified-empty-board --verdict acceptable`.
+                      Do not use this for an unexplained empty DOM page.
     greenhouse/lever  Verify token — open the API URL directly in browser
     sitemap           Sitemap may only have blog/page URLs, not jobs → try dom
     nextdata          Path may be wrong — check __NEXT_DATA__ in browser devtools
@@ -2063,12 +2677,21 @@ Feedback Command Reference:
     Field quality is auto-populated from ws run monitor / ws run scraper
     coverage data.  Pass explicit --<field> options only to override.
 
+  Verified empty boards:
+    --verified-empty-board accepts a tested 0-job config only when the
+    official board explicitly has no current openings and a stable ATS/feed
+    source was independently verified.  It requires verdict=acceptable and
+    forbids per-field ratings; put the evidence in --verdict-notes.
+
   Examples:
     ws feedback --verdict good --verdict-notes "All fields extracted cleanly"
     ws feedback my-cfg --verdict acceptable --verdict-notes "Locations noisy" \\
         --locations noisy --locations-notes "Missing city for some postings"
     ws feedback --verdict poor --verdict-notes "Description truncated" \\
-        --description unusable"""
+        --description unusable
+    ws feedback --verified-empty-board --verdict acceptable \\
+        --verdict-notes "Official board empty; valid Teamtailor RSS verified"
+"""
 
 # ── Lookup tables ────────────────────────────────────────────────────────
 
@@ -2108,13 +2731,34 @@ MONITOR_CARDS: dict[str, str] = {
     "eightfold": MONITOR_EIGHTFOLD,
     "gem": MONITOR_GEM,
     "greenhouse": MONITOR_GREENHOUSE,
+    "hibob": MONITOR_HIBOB,
+    "hirehive": MONITOR_HIREHIVE,
     "hireology": MONITOR_HIREOLOGY,
     "jobylon": MONITOR_JOBYLON,
     "join": MONITOR_JOIN,
     "lever": MONITOR_LEVER,
     "linkedin": MONITOR_LINKEDIN,
     "ashby": MONITOR_ASHBY,
+    "adp": MONITOR_ADP,
+    "avature": MONITOR_AVATURE,
+    "ukg": MONITOR_UKG,
+    "bamboohr": MONITOR_BAMBOOHR,
+    "beisen": MONITOR_BEISEN,
+    "paycom": MONITOR_PAYCOM,
+    "jazzhr": MONITOR_JAZZHR,
+    "jobvite": MONITOR_JOBVITE,
+    "pageup": MONITOR_PAGEUP,
+    "icims": MONITOR_ICIMS,
+    "gupy": MONITOR_GUPY,
+    "cornerstone": MONITOR_CORNERSTONE,
+    "darwinbox": MONITOR_DARWINBOX,
+    "dayforce": MONITOR_DAYFORCE,
+    "herp": MONITOR_HERP,
+    "hrmos": MONITOR_HRMOS,
     "recruitee": MONITOR_RECRUITEE,
+    "recruiterbox": MONITOR_RECRUITERBOX,
+    "keka": MONITOR_KEKA,
+    "taleo": MONITOR_TALEO,
     "rippling": MONITOR_RIPPLING,
     "smartrecruiters": MONITOR_SMARTRECRUITERS,
     "softgarden": MONITOR_SOFTGARDEN,
@@ -2146,6 +2790,7 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
   Handles pagination automatically via finder param offset suffix.""",
     "dom": MONITOR_DOM,
     "inline": MONITOR_INLINE,
+    "kipt": MONITOR_KIPT,
     "api_sniffer": MONITOR_API_SNIFFER,
     "mokahr": MONITOR_MOKAHR,
     "recruiter_co_kr": MONITOR_RECRUITER_CO_KR,
@@ -2196,6 +2841,32 @@ linkedin — LinkedIn public guest-job detail scraper
   Config:   None needed — derives the numeric ID from the public job URL
   Note:     Auto-configured when selecting the linkedin monitor. Runs on the
             daily scrape schedule rather than every monitor cycle.
+"""
+
+SCRAPER_PAYCOM = """\
+paycom — Paycom public detail API scraper
+
+  Bootstrap: GET the job's public Paycom portal for its short-lived session
+  API:       GET the validated regional /api/ats/job-postings/{id} endpoint
+  Returns:   title, HTML description and qualifications, locations,
+             employment/workplace type, date, salary, and job metadata
+  Config:    None needed — portal token and job ID come from the canonical URL
+  Note:      Auto-configured with the paycom monitor. It reuses the monitor's
+             bootstrap validation and shared HTTP retry path; no browser or
+             upstream scraper dependency is required.
+"""
+
+SCRAPER_JAZZHR = """\
+jazzhr — JazzHR JSON-LD with DOM fallback
+
+  Page:     GET https://{tenant}.applytojob.com/apply/jobs/details/{id}
+  Returns:  Standard JobPosting title, HTML description, locations,
+            employment/workplace type, date, salary, and structured extras
+  Config:   None needed. Optional proxy:true only for verified WAF tenants.
+  Note:     Fetches once, then reuses Jobseek's JSON-LD parser. Older themes
+            missing JobPosting schema fall back in-memory to the standard
+            JazzHR h1.job_title and div.job_description DOM structure.
+            No browser or upstream dependency is required.
 """
 
 SCRAPER_WORKDAY = """\
@@ -2262,8 +2933,10 @@ pdf — PDF document scraper
   Used for companies that host job descriptions as PDF files
   (e.g. on Webflow CDN) rather than HTML pages.
 
-  Returns:  title, HTML description
-  Config:   title_source ("url" or "text"), title_pattern (regex)
+  Returns:  title, HTML description, locations (when configured)
+  Config:   title_source ("url" or "text"), title_pattern (regex),
+            location_pattern (regex applied to PDF text),
+            repair_split_initial (opt-in repair for M\\nechanical-style artefacts)
   Note:     Typically paired with a dom monitor using url_filter to
             discover PDF links on the careers page.
 """
@@ -2312,6 +2985,21 @@ SCRAPER_CARDS: dict[str, str] = {
     "embedded": SCRAPER_EMBEDDED,
     "dom": SCRAPER_DOM,
     "api_sniffer": SCRAPER_API_SNIFFER,
+    "adp": """\
+adp — ADP Workforce Now Detail API scraper
+
+  Fetches a requisition from ADP's public career-center detail API. If the
+  requisition stores its job description in a DOCX attachment, the scraper
+  downloads the attachment and converts its paragraphs, headings, lists, and
+  tables to HTML. No browser needed.
+
+  Pair with an api_sniffer listing monitor whose job URL contains ccId, cid,
+  lang, and jobId query parameters.
+
+  Config: {"enrich": ["description"]}
+
+  Available fields: title, description, locations, employment_type,
+  date_posted, base_salary, requisition metadata.""",
     "pdf": SCRAPER_PDF,
     "notion": SCRAPER_NOTION,
     "oracle_hcm": """\
@@ -2330,6 +3018,8 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
   scraper fills in description from the detail API.""",
     "skip": SCRAPER_SKIP,
     "linkedin": SCRAPER_LINKEDIN,
+    "paycom": SCRAPER_PAYCOM,
+    "jazzhr": SCRAPER_JAZZHR,
     "paylocity": SCRAPER_PAYLOCITY,
     "bite": SCRAPER_BITE,
     "mokahr": SCRAPER_MOKAHR,

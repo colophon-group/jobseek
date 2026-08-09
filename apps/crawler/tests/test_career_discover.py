@@ -476,6 +476,28 @@ class TestRawAtsScanning:
         assert len(found) >= 1
         assert any("jobs.lever.co/company" in f.url for f in found)
 
+    def test_avature_listing_url_in_script(self):
+        html = """
+        <script>
+          window.jobs = "https://acme.avature.net/en_US/careers/SearchJobs";
+        </script>
+        """
+        found = _scan_ats_urls_in_html(html)
+        assert any(f.url == "https://acme.avature.net/en_US/careers/SearchJobs" for f in found)
+
+    def test_successfactors_legacy_scan_preserves_company_identity(self):
+        html = """
+        <script>
+          window.jobs = "https://career55.sapsf.eu/career?company=Midea&amp;career_ns=job_listing_summary&amp;navBarLevel=JOB_SEARCH";
+        </script>
+        """
+        found = _scan_ats_urls_in_html(html)
+        assert any(
+            f.url
+            == "https://career55.sapsf.eu/career?company=Midea&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH"
+            for f in found
+        )
+
     def test_deduplicates_same_url(self):
         html = """
         <html><head></head><body>
@@ -537,6 +559,31 @@ class TestDedup:
         ]
         result = _dedup_candidates(candidates)
         assert len(result) == 2
+
+    def test_same_gupy_tenant_dedupes_listing_and_detail_urls(self):
+        candidates = [
+            CareerPageCandidate(
+                url="https://afya.gupy.io/",
+                source="ats_embed",
+                monitor_type="gupy",
+                monitor_config={"tenant": "afya"},
+                score=0.95,
+                comment="Gupy listing",
+            ),
+            CareerPageCandidate(
+                url="https://afya.gupy.io/jobs/123",
+                source="ats_embed",
+                monitor_type="gupy",
+                monitor_config={"tenant": "afya"},
+                score=0.90,
+                comment="Gupy detail",
+            ),
+        ]
+
+        result = _dedup_candidates(candidates)
+
+        assert len(result) == 1
+        assert result[0].url == "https://afya.gupy.io/"
 
 
 # ── URL resolution ─────────────────────────────────────────────────

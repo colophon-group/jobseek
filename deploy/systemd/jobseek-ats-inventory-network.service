@@ -1,0 +1,31 @@
+[Unit]
+Description=Enforce and verify the Jobseek ATS inventory egress boundary
+Documentation=https://github.com/colophon-group/jobseek/blob/main/docs/21-ats-inventory-runner.md
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+ConditionPathExists=/usr/local/sbin/jobseek-ats-inventory-network
+ConditionPathExists=/usr/local/libexec/jobseek-ats-inventory-network-probe
+ConditionPathExists=/home/deploy/.env
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/local/sbin/jobseek-ats-inventory-network ensure
+TimeoutStartSec=8m
+UMask=0077
+
+PrivateTmp=true
+ProtectClock=true
+ProtectHome=read-only
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectSystem=strict
+ReadWritePaths=/run/lock
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native

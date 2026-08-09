@@ -140,6 +140,10 @@ export default async function LocaleLayout({ children, params }: Props) {
                   name: "Pro",
                   price: "10",
                   priceCurrency: "USD",
+                  // Pro is shown publicly as "Coming soon". OutOfStock is
+                  // Schema.org's explicit signal that an offer is not
+                  // currently available, while preserving the launch price.
+                  availability: "https://schema.org/OutOfStock",
                   billingPeriod: "P1M",
                   description: i18n._({
                     id: "app.schema.offer.pro",

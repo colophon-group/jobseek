@@ -44,19 +44,25 @@ _AUTO_SKIP_CRAWLER_TYPES: tuple[str, ...] = (
     "amazon",
     "ashby",
     "comeet",
+    "cornerstone",
+    "darwinbox",
+    "dayforce",
     "deel",
     "dvinci",
     "gem",
     "greenhouse",
+    "hibob",
+    "hirehive",
     "hireology",
     "inline",
     "jobylon",
+    "keka",
+    "kipt",
     "lever",
     "mokahr",
     "pinpoint",
     "recruitee",
     "recruiter_co_kr",
-    "rss",
     "traffit",
 )
 
@@ -68,8 +74,12 @@ def _skip_no_scrape_predicate(alias: str = "jb") -> str:
          OR (
              {alias}.metadata->>'scraper_type' IS NULL
              AND (
-                 {alias}.crawler_type IN ({literal})
-                 OR (
+                    {alias}.crawler_type IN ({literal})
+                    OR (
+                        {alias}.crawler_type = 'rss'
+                        AND COALESCE({alias}.metadata->>'variant', '') <> 'legacy'
+                    )
+                    OR (
                      {alias}.crawler_type IN ('api_sniffer', 'nextdata')
                      AND {alias}.metadata ? 'fields'
                  )
@@ -86,7 +96,7 @@ SELECT jb.crawler_type,
 FROM job_posting jp
 JOIN job_board jb ON jp.board_id = jb.id
 WHERE jp.next_scrape_at IS NOT NULL
-  AND {_skip_no_scrape_predicate('jb')}
+  AND {_skip_no_scrape_predicate("jb")}
 GROUP BY jb.crawler_type
 ORDER BY cnt DESC
 """
@@ -101,7 +111,7 @@ WITH candidates AS (
     FROM job_posting jp
     JOIN job_board jb ON jp.board_id = jb.id
     WHERE jp.next_scrape_at IS NOT NULL
-      AND {_skip_no_scrape_predicate('jb')}
+      AND {_skip_no_scrape_predicate("jb")}
     LIMIT $1
 )
 UPDATE job_posting

@@ -1,0 +1,21 @@
+[Unit]
+Description=Jobseek PostgreSQL encrypted backup repository mount
+Documentation=file:///opt/jobseek-backup/docs/19-data-backup-recovery.md
+Wants=network-online.target
+After=network-online.target
+Before=jobseek-postgresql-backup.service
+ConditionPathExists=/usr/local/sbin/jobseek-postgresql-mount-backup-repository
+ConditionPathExists=/etc/jobseek-backup/postgresql/repository.env
+ConditionPathExists=/etc/jobseek-backup/postgresql/storage-box.cifs
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/local/sbin/jobseek-postgresql-mount-backup-repository
+RemainAfterExit=true
+TimeoutStartSec=2m
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

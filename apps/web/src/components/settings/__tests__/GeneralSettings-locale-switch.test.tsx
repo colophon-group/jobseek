@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import "@/test-utils/lingui-mock";
@@ -53,14 +53,17 @@ vi.mock("@/lib/actions/preferences", () => ({
 // `server-only` is imported transitively via the preferences action.
 vi.mock("server-only", () => ({}));
 
-// SalaryDisplayProvider context — minimal stub so the component renders.
+// SalaryDisplayProvider context — mutable so salary hydration can be covered.
+let salaryDisplayCurrency: string | null = "EUR";
+let salaryDisplayPeriod: "yearly" | "monthly" | "daily" | "hourly" | null = null;
+const salaryDisplayUpdateMock = vi.fn();
 vi.mock("@/components/providers/SalaryDisplayProvider", () => ({
   useSalaryDisplay: () => ({
-    displayCurrency: "EUR",
-    displayPeriod: null,
+    displayCurrency: salaryDisplayCurrency,
+    displayPeriod: salaryDisplayPeriod,
     rates: [],
     format: () => "",
-    update: vi.fn(),
+    update: salaryDisplayUpdateMock,
   }),
 }));
 
@@ -73,6 +76,9 @@ beforeEach(() => {
   pushMock.mockReset();
   refreshMock.mockReset();
   updatePreferencesMock.mockReset().mockResolvedValue(null);
+  salaryDisplayCurrency = "EUR";
+  salaryDisplayPeriod = null;
+  salaryDisplayUpdateMock.mockReset();
   currentPathname = "/en/settings";
   cookieValue = "";
   cookieWrites = [];
@@ -117,6 +123,32 @@ afterEach(() => {
 import { GeneralSettings } from "../GeneralSettings";
 
 describe("GeneralSettings locale switch (#2988)", () => {
+  it("exposes selected theme, locale, and job-language states", () => {
+    act(() => {
+      render(
+        <GeneralSettings
+          savedJobLanguages={[]}
+          savedDisplayCurrency="EUR"
+          savedSalaryPeriod={null}
+          availableCurrencies={["EUR"]}
+          availableLanguages={[
+            { code: "en", count: 1000 },
+            { code: "de", count: 500 },
+          ]}
+          locale="en"
+        />,
+      );
+    });
+
+    expect(screen.getByRole("button", { name: "Dark" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Light" }).getAttribute("aria-pressed")).toBe("false");
+
+    const englishButtons = screen.getAllByRole("button", { name: /English/ });
+    expect(englishButtons[0]?.getAttribute("aria-pressed")).toBe("true");
+    expect(englishButtons[1]?.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "All languages" }).getAttribute("aria-pressed")).toBe("false");
+  });
+
   it("writes NEXT_LOCALE cookie and pushes new-locale URL on Deutsch click", async () => {
     const user = userEvent.setup();
     act(() => {
@@ -187,5 +219,93 @@ describe("GeneralSettings locale switch (#2988)", () => {
 
     expect(cookieWrites).toEqual([]);
     expect(pushMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("GeneralSettings overflow languages (#6027)", () => {
+  it("opens Find more from all-language mode and selects an overflow language directly", async () => {
+    const user = userEvent.setup();
+    act(() => {
+      render(
+        <GeneralSettings
+          savedJobLanguages={["*"]}
+          savedDisplayCurrency="EUR"
+          savedSalaryPeriod={null}
+          availableCurrencies={["EUR"]}
+          availableLanguages={[
+            { code: "en", count: 1000 },
+            { code: "de", count: 900 },
+            { code: "fr", count: 800 },
+            { code: "es", count: 700 },
+            { code: "pt", count: 600 },
+            { code: "ja", count: 500 },
+            { code: "it", count: 400 },
+            { code: "nl", count: 300 },
+            { code: "pl", count: 200 },
+            { code: "ko", count: 100 },
+            { code: "cs", count: 90 },
+            { code: "zh", count: 80 },
+            { code: "sv", count: 70 },
+          ]}
+          locale="en"
+        />,
+      );
+    });
+
+    const allLanguages = screen.getByRole("button", { name: "All languages" });
+    const findMore = screen.getByRole("button", { name: "Find more" });
+    expect(allLanguages.getAttribute("aria-pressed")).toBe("true");
+    expect((findMore as HTMLButtonElement).disabled).toBe(false);
+    updatePreferencesMock.mockClear();
+
+    await user.click(findMore);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "svenska" }));
+
+    expect(allLanguages.getAttribute("aria-pressed")).toBe("false");
+    await waitFor(() => {
+      expect(updatePreferencesMock).toHaveBeenCalledWith({
+        jobLanguages: ["sv"],
+      });
+    });
+    expect(
+      updatePreferencesMock.mock.calls.filter(
+        ([preferences]) =>
+          typeof preferences === "object" &&
+          preferences !== null &&
+          "jobLanguages" in preferences &&
+          Array.isArray(preferences.jobLanguages) &&
+          !preferences.jobLanguages.includes("*"),
+      ),
+    ).toEqual([[{ jobLanguages: ["sv"] }]]);
+  });
+});
+
+describe("GeneralSettings salary preference hydration (#6035)", () => {
+  it("reflects the provider's rehydrated anonymous salary preferences", async () => {
+    salaryDisplayCurrency = "USD";
+    salaryDisplayPeriod = "monthly";
+
+    render(
+      <GeneralSettings
+        savedJobLanguages={[]}
+        savedDisplayCurrency="EUR"
+        savedSalaryPeriod={null}
+        availableCurrencies={["EUR", "USD"]}
+        availableLanguages={[]}
+        locale="en"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        (screen.getByRole("combobox", { name: "Currency" }) as HTMLSelectElement)
+          .value,
+      ).toBe("USD");
+      expect(
+        (screen.getByRole("combobox", { name: "Pay period" }) as HTMLSelectElement)
+          .value,
+      ).toBe("monthly");
+    });
   });
 });

@@ -12,9 +12,10 @@ The deploy cannot be treated as a pure zero-downtime process because `sync`
 must reseed Redis-backed schedules while processors are not claiming work.
 
 `apps/crawler/deploy.sh` therefore pulls and preflights while the old stack is
-still serving, then quiesces processors, runs sync, starts the full stack, and
-gates readiness. Earlier deploy incidents showed that failures in the middle of
-this sequence can create a dark window if rollback and monitoring are weak.
+still serving, then quiesces every local-Postgres writer plus the exporter,
+runs migrations, patches Typesense, runs sync, starts the full stack, and gates
+readiness. Earlier deploy incidents showed that failures in the middle of this
+sequence can create a dark window if rollback and monitoring are weak.
 
 ## Decision
 
@@ -25,8 +26,9 @@ The deploy script must:
 
 - validate required environment before stopping processors;
 - preserve a rollback copy of the env file;
-- pull images and run schema preflights before quiescing processors;
-- stop workers, browser worker, exporter, and drain before `crawler sync`;
+- pull images and run non-mutating preflights before quiescing processors;
+- stop workers, browser worker, exporter, and drain before local Postgres
+  migrations, Typesense schema patching, or `crawler sync`;
 - start the full stack after sync;
 - wait for core services to be running or healthy;
 - restore the previous env and start compose services on failure.
@@ -34,6 +36,9 @@ The deploy script must:
 ## Consequences
 
 - Deploy changes need failure-path review as much as happy-path review.
+- Schema/runtime protocols can be cut over without old and new writers
+  overlapping. The tradeoff is a longer bounded crawler-processing pause;
+  Typesense stays available to web reads.
 - Monitoring should alert when crawler metrics disappear or exporter freshness
   stalls after a deploy.
 - Operators should assume a mid-deploy failure may require checking compose

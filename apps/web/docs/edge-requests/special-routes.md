@@ -6,13 +6,16 @@ These routes don't render visible pages but generate edge requests when accessed
 
 | Request | Type | Notes |
 |---------|------|-------|
-| `GET /sitemap.xml` | Serverless function | Dynamic — queries DB for companies with active postings + public watchlists |
+| `GET /sitemap.xml` | Serverless function | Dynamic — queries the web-owned DB tables for qualifying public watchlists |
 
 Generated on every request (no caching header set by Next.js sitemap convention). Includes:
 - Static pages (7) x 4 locales = 28 URLs
 - Explore page x 4 locales = 4 URLs
-- All active company pages x 4 locales = N URLs
-- Public watchlists x 4 locales = N URLs
+- Qualifying public watchlists x 4 locales = N URLs
+- Translated blog posts (only locales with content)
+
+Company pages are `noindex,follow` and are intentionally excluded. The sitemap
+does not read crawler-mirror company, posting, location, or taxonomy tables.
 
 Each URL includes `<lastmod>` in W3C Datetime format and `<xhtml:link>` hreflang alternates.
 
@@ -88,7 +91,6 @@ All API routes count as 1 edge request + 1 serverless function invocation per ca
 | `/api/v1/watchlists` | GET | External API consumers |
 | `/api/v1/watchlist/create` | GET | External API consumers |
 | `/api/stripe/webhook` | POST | Stripe (subscription events) |
-| `/api/admin/meta/apify-import` | POST | Admin only |
 
 ## Redirects
 
@@ -107,7 +109,7 @@ The 6 permanent redirects configured in `next.config.ts` each generate 1 edge re
 
 | Route | DB queries | CPU work | Est. duration |
 |-------|-----------|----------|---------------|
-| `sitemap.xml` | 2 (companies + watchlists) | URL generation + XML serialization | 30-120ms |
+| `sitemap.xml` | 1 (watchlists) | URL generation + XML serialization | 30-120ms |
 | `robots.txt` | 0 | Template string | <5ms |
 | OG images (root) | 0 | Font read + Satori render + sharp PNG encode | 60-140ms |
 | OG images (company) | 1 (company lookup) | Font read + Satori + sharp + logo embed | 80-180ms |
@@ -118,14 +120,12 @@ The 6 permanent redirects configured in `next.config.ts` each generate 1 edge re
 | `/api/v1/watchlists` | 2 + 2N | Rate limit (Redis) + per-watchlist count resolution | 40-200ms+ |
 | `/api/auth/*` | 1-5 | Session management, password hashing (bcrypt) | 20-150ms |
 | `/api/stripe/webhook` | 1-2 | Signature verification + DB update | 15-60ms |
-| `/api/admin/.../apify-import` | 100+ | External API fetch + batch DB inserts | 5-30s |
 | Redirects | 0 | None | 0ms (edge-level, no function) |
 | Well-known endpoints | 0 | None | 0ms (static CDN) |
 
-The admin import route is the only function that may run for seconds. All
-others complete under 500ms. Auth sign-in/sign-up includes bcrypt password
-hashing (~50-100ms CPU), making it the most CPU-intensive per-request auth
-operation.
+Auth sign-in/sign-up includes bcrypt password hashing (~50-100ms CPU), making
+it the most CPU-intensive per-request auth operation. Other listed functions
+typically complete under 500ms.
 
 API routes with `Cache-Control: s-maxage` headers (`/api/v1/search`, `/job`,
 `/companies`, `/taxonomies`) benefit from Vercel's edge cache — repeat
