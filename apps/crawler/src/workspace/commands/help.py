@@ -529,6 +529,24 @@ inploi — Inploi candidate-experience API
   Detection:  ws probe verifies the public key and segment against the API.
   Zero jobs?  Re-run the probe; the site may have changed its segment ID."""
 
+MONITOR_TYPIFY = """\
+typify — Typify partitioned vacancy API
+
+  API:      POST /api/vacancies on the career-site origin
+  Returns:  Job URLs, titles, and locations
+  Scraper:  Auto-configured JSON-LD enrichment for descriptions
+  Cap:      50,000 jobs
+
+  Config:   None required. The monitor re-reads the board page every cycle.
+
+  Typify's large unfiltered response is not stably ordered. This monitor
+  discovers every live job-function filter, fetches each complete partition,
+  and fails closed unless their unique union matches the API's advertised
+  total. New function filters are therefore picked up automatically.
+
+  Detection:  ws probe verifies the widget marker and same-origin public API.
+  Zero jobs?  Re-run the probe; the widget or API route may have changed."""
+
 MONITOR_JARVI = """\
 jarvi — Jarvi public careers API
 
@@ -2775,6 +2793,7 @@ MONITOR_CARDS: dict[str, str] = {
     "eightfold": MONITOR_EIGHTFOLD,
     "gem": MONITOR_GEM,
     "inploi": MONITOR_INPLOI,
+    "typify": MONITOR_TYPIFY,
     "greenhouse": MONITOR_GREENHOUSE,
     "hibob": MONITOR_HIBOB,
     "hirehive": MONITOR_HIREHIVE,

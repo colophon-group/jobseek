@@ -82,6 +82,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `smartrecruiters` | URL-only | smartrecruiters | SmartRecruiters ATS |
 | `softgarden` | URL-only | json-ld | Softgarden ATS |
 | `traffit` | Rich | skip | Traffit ATS |
+| `typify` | Rich + enrichment | json-ld | Typify function-partitioned vacancy API plus JSON-LD description enrichment |
 | `ukg` | Rich | embedded | UKG Pro public paginated search API plus embedded detail enrichment |
 | `workable` | URL-only | workable | Workable ATS |
 | `workday` | URL-only | workday | Workday ATS |

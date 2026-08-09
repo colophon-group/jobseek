@@ -494,6 +494,10 @@ def _build_comment(name: str, metadata: dict) -> str:
         jobs = metadata.get("jobs")
         label = f"Inploi API \u2014 segment: {segment}"
         return f"{label}, {jobs} jobs" if jobs is not None else label
+    if name == "typify":
+        jobs = metadata.get("jobs")
+        label = "Typify partitioned vacancy API"
+        return f"{label} \u2014 {jobs} jobs" if jobs is not None else label
     if name == "greenhouse":
         token = metadata.get("token", "?")
         jobs = metadata.get("jobs")
@@ -843,6 +847,7 @@ from src.core.monitors import (  # noqa: E402
     talentbrew,  # noqa: F401
     taleo,  # noqa: F401
     traffit,  # noqa: F401
+    typify,  # noqa: F401
     ukg,  # noqa: F401
     umantis,  # noqa: F401
     workable,  # noqa: F401
