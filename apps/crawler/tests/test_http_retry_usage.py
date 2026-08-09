@@ -10,6 +10,7 @@ MIGRATED_MONITORS = {
     "src/core/monitors/bamboohr.py": "fetch_json_page_with_retry",
     "src/core/monitors/jazzhr.py": "fetch_text_page_with_retry",
     "src/core/monitors/icims.py": "fetch_text_page_with_retry",
+    "src/core/monitors/inploi.py": "fetch_json_page_with_retry",
     "src/core/monitors/gupy.py": "fetch_text_page_with_retry",
     "src/core/monitors/cornerstone.py": "fetch_json_page_with_retry",
     "src/core/monitors/darwinbox.py": "_fetch_page_with_retry",

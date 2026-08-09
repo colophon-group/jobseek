@@ -511,6 +511,24 @@ gem — Gem ATS Job Board API
   Detection:  ws probe shows "Gem API — slug: {token}, N jobs"
   Zero jobs?  Verify slug — try the API URL directly in a browser"""
 
+MONITOR_INPLOI = """\
+inploi — Inploi candidate-experience API
+
+  API:      GET https://api.inploi.com/search/results
+  Returns:  Job URLs, titles, locations, employment/workplace types, dates,
+            and public salary data
+  Scraper:  Auto-configured JSON-LD enrichment for descriptions
+  Cap:      50,000 jobs
+
+  Config (auto-filled by probe):
+    {"api_key": "pk_...", "segment_id": "248"}
+
+  api_key     Public SDK publishable key embedded in the career page
+  segment_id  Default job-search segment embedded in the Inploi widget
+
+  Detection:  ws probe verifies the public key and segment against the API.
+  Zero jobs?  Re-run the probe; the site may have changed its segment ID."""
+
 MONITOR_JARVI = """\
 jarvi — Jarvi public careers API
 
@@ -2756,6 +2774,7 @@ MONITOR_CARDS: dict[str, str] = {
     "dvinci": MONITOR_DVINCI,
     "eightfold": MONITOR_EIGHTFOLD,
     "gem": MONITOR_GEM,
+    "inploi": MONITOR_INPLOI,
     "greenhouse": MONITOR_GREENHOUSE,
     "hibob": MONITOR_HIBOB,
     "hirehive": MONITOR_HIREHIVE,
