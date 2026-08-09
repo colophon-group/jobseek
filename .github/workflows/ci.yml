@@ -81,7 +81,8 @@ jobs:
           cache-dependency-glob: "apps/crawler/uv.lock"
 
       - name: actionlint
-        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -ignore 'SC(2002|2086|2129)'
+        # GitHub added vulnerability-alerts in 2026; actionlint support is pending upstream.
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -ignore 'SC(2002|2086|2129)|unknown permission scope "vulnerability-alerts"'
 
       - name: zizmor
         run: uvx --from zizmor==1.26.1 zizmor --persona regular --min-severity medium --min-confidence high .github/workflows
