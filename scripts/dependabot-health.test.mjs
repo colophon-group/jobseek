@@ -174,7 +174,8 @@ test("health workflow uses least-privilege read access plus issue reporting", ()
   assert.match(workflow, /actions: read/);
   assert.match(workflow, /contents: read/);
   assert.match(workflow, /pull-requests: read/);
-  assert.match(workflow, /security-events: read/);
+  assert.match(workflow, /vulnerability-alerts: read/);
+  assert.doesNotMatch(workflow, /security-events:/);
   assert.match(workflow, /issues: write/);
   assert.doesNotMatch(workflow, /contents: write/);
   assert.match(workflow, /cron: "15 8 \* \* \*"/);

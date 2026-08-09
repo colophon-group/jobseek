@@ -25,7 +25,7 @@ permissions:
   # Detect open and stale Dependabot pull requests.
   pull-requests: read
   # Read repository Dependabot alerts; the workflow never dismisses alerts.
-  security-events: read
+  vulnerability-alerts: read
 
 jobs:
   check:
