@@ -192,6 +192,8 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
 
     offset = 0
     total = None
+    seen_job_ids: set[str] = set()
+    partial = False
     while total is None or offset < total:
         page_url = f"{api_url},offset={offset}" if offset else api_url
         resp = await _get_with_retry(client, page_url, timeout=30)
@@ -199,12 +201,29 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
         data = resp.json()
 
         wrapper = (data.get("items") or [{}])[0]
+        page_total = wrapper.get("TotalJobsCount")
         if total is None:
-            total = wrapper.get("TotalJobsCount", 0)
+            total = page_total or 0
             if total == 0:
                 return
+        elif page_total is not None and page_total != total:
+            # Offset pagination is not snapshot-isolated. A changing total is
+            # enough to make the cycle unsafe for authoritative gone-detection,
+            # even if every individual response looks well formed.
+            partial = True
+            log.warning(
+                "oracle_hcm.total_changed",
+                host=host,
+                site=site,
+                initial_total=total,
+                page_total=page_total,
+                offset=offset,
+            )
 
         items = wrapper.get("requisitionList", [])
+        expected_page_size = min(200, max(total - offset, 0))
+        if len(items) != expected_page_size:
+            partial = True
         if not items:
             if total is not None and offset < total:
                 # Oracle HCM caps public search windows at 10,000 for large
@@ -218,14 +237,19 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
                     discovered=offset,
                     advertised_total=total,
                 )
-                yield truncated_rich_result([])
             break
 
         jobs: list[DiscoveredJob] = []
         for item in items:
             job_id = item.get("Id")
             if not job_id:
+                partial = True
                 continue
+            job_id = str(job_id)
+            if job_id in seen_job_ids:
+                partial = True
+                continue
+            seen_job_ids.add(job_id)
             url = url_template.format(Id=job_id)
             jobs.append(
                 DiscoveredJob(
@@ -244,6 +268,18 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
             log.debug("oracle_hcm.stream_batch", offset=offset, batch=len(jobs), total=total)
 
         offset += 200
+
+    if total is not None and len(seen_job_ids) != total:
+        partial = True
+    if partial:
+        log.warning(
+            "oracle_hcm.partial_cycle",
+            host=host,
+            site=site,
+            discovered=len(seen_job_ids),
+            advertised_total=total,
+        )
+        yield truncated_rich_result([])
 
     log.info("oracle_hcm.stream_done", host=host, site=site, total=total)
 

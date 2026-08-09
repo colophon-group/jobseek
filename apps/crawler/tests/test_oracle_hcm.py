@@ -123,16 +123,56 @@ async def test_discover_uses_native_finder_suffix_pagination():
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         jobs = await discover(board, client)
 
-    assert len(jobs) == 449
+    assert isinstance(jobs, MonitorResult)
+    assert jobs.truncated is True
+    assert len(jobs.urls) == 449
     assert requested_urls[0].endswith("limit=200,sortBy=POSTING_DATES_DESC")
     assert requested_urls[1].endswith("limit=200,sortBy=POSTING_DATES_DESC,offset=200")
     assert requested_urls[2].endswith("limit=200,sortBy=POSTING_DATES_DESC,offset=400")
-    assert [job.title for job in jobs[198:202]] == [
+    assert [
+        jobs.jobs_by_url[
+            f"https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001/job/{i}"
+        ].title
+        for i in range(198, 202)
+    ] == [
         "Job 198",
         "Job 199",
         "Job 200",
         "Job 201",
     ]
+
+
+@pytest.mark.asyncio
+async def test_discover_marks_cross_page_duplicate_as_truncated():
+    """Offset churn can repeat one ID while silently omitting another."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        start = 199 if ",offset=200" in str(request.url) else 0
+        rows = [
+            {
+                "Id": str(i),
+                "Title": f"Job {i}",
+                "PrimaryLocation": "Cincinnati, OH, United States",
+            }
+            for i in range(start, start + 200)
+        ]
+        return httpx.Response(
+            200,
+            json={"items": [{"TotalJobsCount": 400, "requisitionList": rows}]},
+        )
+
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001"
+        ),
+        "metadata": {"host": "example.fa.us2.oraclecloud.com", "site": "CX_2001"},
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await discover(board, client)
+
+    assert isinstance(result, MonitorResult)
+    assert result.truncated is True
+    assert len(result.urls) == 399
 
 
 @pytest.mark.asyncio
