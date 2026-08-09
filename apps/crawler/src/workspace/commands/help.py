@@ -97,10 +97,12 @@ Monitor Types (cheapest first):
   herp              10      Job URLs          Auto-configured
   hrmos             10      Job URLs          Auto-configured
   icims             10      Job URLs          Auto-configured
+  jarvi             10      Full job data     No (skipped)
   jazzhr            10      Job URLs          Auto-configured
   pageup            10      Full/partial      Auto-enriched DOM
   keka              10      Full job data     No (skipped)
   lever             10      Full job data     No (skipped)
+  linkedin          10      Full/partial      Auto-enriched
   paycom            10      Full/partial      Auto-enriched
   paylocity         10      Full/partial      Auto-enriched
   pinpoint          10      Full job data     No (skipped)
@@ -167,6 +169,7 @@ Scraper Types:
   json-ld        Static/PW   No (optional render)  Sites with schema.org/JobPosting
   nextdata       Static/PW   Yes (fields)     Next.js sites with __NEXT_DATA__
   embedded       Static/PW   Yes (fields)     JS-embedded JSON (script tags, variables)
+  onlyfy         Static      No               Onlyfy/Prescreen job pages
   pdf            Static      No               PDF job descriptions
   dom            Static/PW   Yes (steps)      Custom HTML structure
   api_sniffer    HTTP/PW     Optional (fields)  SPA/XHR or direct API
@@ -508,6 +511,22 @@ gem — Gem ATS Job Board API
   Detection:  ws probe shows "Gem API — slug: {token}, N jobs"
   Zero jobs?  Verify slug — try the API URL directly in a browser"""
 
+MONITOR_JARVI = """\
+jarvi — Jarvi public careers API
+
+  Detects the Jarvi SDK embedded on a company's careers page and reads its
+  public API key from the data-public-api-key attribute.
+
+  Rich monitor — returns title, description, location, employment type,
+  workplace type, publication date, public salary data, qualifications,
+  and responsibilities. No scraper is needed.
+
+  Config (auto-filled by probe):
+    {"public_api_key": "...", "currency": "EUR"}
+
+  The board URL remains the company's careers page. Job URLs use Jarvi's
+  stable ?q=<short-id>/<title-slug> deep-link format."""
+
 MONITOR_GREENHOUSE = """\
 greenhouse — Greenhouse Public API
 
@@ -595,6 +614,27 @@ lever — Lever Postings API
 
   Detection:  ws probe shows "Lever API — token: X, N jobs"
   Zero jobs?  Verify token — try the API URL directly in a browser"""
+
+MONITOR_LINKEDIN = """\
+linkedin — LinkedIn public guest-jobs endpoints
+
+  Listing:  GET https://www.linkedin.com/jobs-guest/jobs/api/
+            seeMoreJobPostings/search?f_C={company_id}&start=N
+  Returns:  Rich summaries (URL, title, location, date)
+  Scraper:  Auto-configured (linkedin) — enriches description and work types
+  Cap:      1,000 jobs
+  Note:     Intended for companies whose official careers link points only to
+            LinkedIn. Prefer a first-party ATS whenever one exists.
+
+  Config:
+    {"company_id": "109559449", "company_slug": "damora-therapeutics"}
+
+    company_id    Numeric LinkedIn company ID (the f_C search-filter value).
+                  Auto-resolved for active company jobs pages during probing.
+    company_slug  Optional exact company slug used to reject unrelated cards.
+
+  Detection:  ws probe shows "LinkedIn guest jobs — company: X, N jobs"
+  Zero jobs?  Verify the f_C value; an empty company board is valid."""
 
 MONITOR_JOBYLON = """\
 jobylon — Jobylon (Nordic ATS, inline-embed widget)
@@ -789,13 +829,19 @@ nextdata — Next.js __NEXT_DATA__ Discovery
     timeout        Navigation timeout in ms (Playwright only)
     url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
     url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
+    source         Embedded source: nextdata (default), reactrouter, rsc,
+                   or phenom_canvas
+    pagination     Page metadata mapping. Example:
+                   {"path":"jobsData.meta","page_count":"totalPages",
+                    "page_param":"page"}
 
   Detection:  ws probe shows "__NEXT_DATA__ — N items at <path>"
               If "(render)" shown, page needs Playwright to load data.
               Auto-searches common paths: props.pageProps.positions,
               props.pageProps.jobs, props.pageProps.openings,
               props.pageProps.allJobs, props.pageProps.data.positions,
-              props.pageProps.data.jobs. Needs >= 5 items (all dicts).
+              props.pageProps.data.jobs, and common RSC equivalents including
+              jobsData.data. Needs >= 5 items (all dicts).
 
   Pair with:  nextdata or json-ld scraper (if URL-only mode)
 
@@ -896,25 +942,45 @@ inline — Single-Page Extraction (rich)
 
   Config:
     {
+      "fetch_urls": [
+        "https://company.example/jobs",
+        "https://render.example.com/company/jobs",
+        {
+          "url": "https://reader.example.com/company/jobs",
+          "headers": {"X-No-Cache": "true"}
+        }
+      ],
+      "fetch_contains": "Open positions",
       "render": true,
       "steps": [
         {"tag": "h3", "field": "title"},
         {"text": "Location", "offset": 1, "field": "location", "optional": true},
         {"tag": "p", "field": "description", "html": true, "stop_tag": "h3"}
       ],
-      "defaults": {"employment_type": "full_time"},
+      "defaults": {
+        "description": "<p>Evergreen role description.</p>",
+        "employment_type": "full_time"
+      },
       "defaults_by_title": {
         "Account Manager": {"locations": ["USA, Remote"]}
       }
     }
 
     render       true = Playwright, false = static HTTP (default: false)
+    fetch_urls   Optional ordered URLs used only to read the page. Each entry is
+                 a URL string or {"url": ..., "headers": {...}} object. Headers
+                 are scoped to that exact candidate and are never forwarded to
+                 other hosts. Failed URLs fall through to the next equivalent
+                 representation. Synthetic job URLs remain on board_url.
+    fetch_contains
+                 Required text that every accepted representation must contain.
+                 A response without it falls through to the next fetch URL.
     steps        Extraction steps run once per job (see: ws help steps).
                  The first step with a field (usually title) is the stop
                  condition — when it can't find a match, extraction ends.
     defaults     Default field values applied when extracted value is absent.
-                 Supports: locations (list), employment_type, job_location_type,
-                 date_posted.
+                 Supports: description, locations (list), employment_type,
+                 job_location_type, date_posted.
     defaults_by_title
                  Exact extracted title -> defaults mapping for pages that omit
                  per-role fields. Supports the same fields as defaults; title
@@ -1039,8 +1105,10 @@ dom — Link Extraction (fallback)
 
   Detection:   ws probe checks static HTML for job links.
                If detected: shows "✓ N URLs". If not: shows "✗ Not detected".
+               LinkedIn job-detail links are automatically filtered and
+               rewritten for the dedicated linkedin scraper.
 
-  Pair with:   json-ld (try first) or dom scraper"""
+  Pair with:   json-ld (try first), linkedin, or dom scraper"""
 
 MONITOR_ASHBY = """\
 ashby — Ashby Job Board API
@@ -2692,9 +2760,11 @@ MONITOR_CARDS: dict[str, str] = {
     "hibob": MONITOR_HIBOB,
     "hirehive": MONITOR_HIREHIVE,
     "hireology": MONITOR_HIREOLOGY,
+    "jarvi": MONITOR_JARVI,
     "jobylon": MONITOR_JOBYLON,
     "join": MONITOR_JOIN,
     "lever": MONITOR_LEVER,
+    "linkedin": MONITOR_LINKEDIN,
     "ashby": MONITOR_ASHBY,
     "adp": MONITOR_ADP,
     "avature": MONITOR_AVATURE,
@@ -2789,6 +2859,29 @@ paylocity — Paylocity server-rendered detail scraper
             unsupported-browser warning, so Playwright is not required.
 """
 
+SCRAPER_LINKEDIN = """\
+linkedin — LinkedIn public guest-job detail scraper
+
+  API:      GET https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{id}
+  Returns:  title, HTML description, locations, employment_type,
+            job_location_type, metadata (seniority, function, industries)
+  Config:   None needed — derives the numeric ID from the public job URL
+  Note:     Auto-configured when selecting the linkedin monitor. Runs on the
+            daily scrape schedule rather than every monitor cycle.
+"""
+
+SCRAPER_ONLYFY = """\
+onlyfy — Onlyfy/Prescreen server-rendered detail scraper
+
+  Page:     Public https://{tenant}.onlyfy.jobs/{locale}/job/{handle} URL
+  Fetches:  /job/show/{handle}/full?lang={locale}&mode=candidate
+  Returns:  title, HTML description, locations
+  Config:   language (optional; otherwise derived from the public URL)
+  Note:     The public Next.js page is a client shell. This scraper uses the
+            stable server-rendered candidate endpoint directly, so Playwright
+            is not required.
+"""
+
 SCRAPER_PAYCOM = """\
 paycom — Paycom public detail API scraper
 
@@ -2879,8 +2972,10 @@ pdf — PDF document scraper
   Used for companies that host job descriptions as PDF files
   (e.g. on Webflow CDN) rather than HTML pages.
 
-  Returns:  title, HTML description
-  Config:   title_source ("url" or "text"), title_pattern (regex)
+  Returns:  title, HTML description, locations (when configured)
+  Config:   title_source ("url" or "text"), title_pattern (regex),
+            location_pattern (regex applied to PDF text),
+            repair_split_initial (opt-in repair for M\\nechanical-style artefacts)
   Note:     Typically paired with a dom monitor using url_filter to
             discover PDF links on the careers page.
 """
@@ -2927,6 +3022,7 @@ SCRAPER_CARDS: dict[str, str] = {
     "json-ld": SCRAPER_JSONLD,
     "nextdata": SCRAPER_NEXTDATA,
     "embedded": SCRAPER_EMBEDDED,
+    "onlyfy": SCRAPER_ONLYFY,
     "dom": SCRAPER_DOM,
     "api_sniffer": SCRAPER_API_SNIFFER,
     "adp": """\
@@ -2961,6 +3057,7 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
   Best used with enrich: ["description"] — monitor provides title/location/date,
   scraper fills in description from the detail API.""",
     "skip": SCRAPER_SKIP,
+    "linkedin": SCRAPER_LINKEDIN,
     "paycom": SCRAPER_PAYCOM,
     "jazzhr": SCRAPER_JAZZHR,
     "paylocity": SCRAPER_PAYLOCITY,

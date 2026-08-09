@@ -1,0 +1,43 @@
+name: Dependabot Health
+
+on:
+  schedule:
+    - cron: "15 8 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Report health without creating or updating an issue"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: dependabot-health
+  cancel-in-progress: true
+
+permissions:
+  # Read the dynamic Dependabot update runs used for per-directory freshness.
+  actions: read
+  # Checkout only; the health job never changes repository contents.
+  contents: read
+  # Create/update one owned incident and close it after recovery.
+  issues: write
+  # Detect open and stale Dependabot pull requests.
+  pull-requests: read
+  # Read repository Dependabot alerts; the workflow never dismisses alerts.
+  vulnerability-alerts: read
+
+jobs:
+  check:
+    name: Check update cycles and alerts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check Dependabot health
+        run: node .github/scripts/dependabot-health.mjs
+        env:
+          DEPENDABOT_HEALTH_ASSIGNEE: viktor-shcherb
+          DEPENDABOT_HEALTH_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+          GITHUB_TOKEN: ${{ github.token }}

@@ -316,7 +316,7 @@ function durationSeconds(value) {
 test("CI change detection uses the pinned paths-filter action", () => {
   assert.match(
     workflow,
-    /uses: dorny\/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4\.0\.2/,
+    /uses: dorny\/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4\.0\.3/,
   );
   assert.match(workflow, /predicate-quantifier: every/);
   assert.match(workflow, /code:\n(?:              - .+\n)+/);
@@ -982,7 +982,7 @@ test("CodeQL skips full analysis for non-code pull requests", () => {
   assert.match(changesJob, /name: Detect CodeQL changes/);
   assert.match(changesJob, /id: manual-pr/);
   assert.match(changesJob, /\.github\/scripts\/classify-pr-paths\.sh/);
-  assert.match(changesJob, /uses: dorny\/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4\.0\.2/);
+  assert.match(changesJob, /uses: dorny\/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4\.0\.3/);
   assert.match(changesJob, /predicate-quantifier: every/);
   assert.match(changesJob, /codeql:\n(?:              - .+\n)+/);
 
@@ -1018,10 +1018,7 @@ test("Dependabot updates and groups the pnpm workspace from its root", () => {
   assert.ok(npmConfig, "missing npm Dependabot configuration");
   assert.match(npmConfig, /^    directory: "\/"$/m);
   assert.doesNotMatch(npmConfig, /^    directories:/m);
-  assert.match(
-    npmConfig,
-    /exclude-paths:\n      - "apps\/crawler\/murmur\/\*\*"\n      - "apps\/murmur-shim\/\*\*"/,
-  );
+  assert.doesNotMatch(npmConfig, /exclude-paths:/);
   assert.match(
     npmConfig,
     /security-updates:\n        applies-to: "security-updates"\n        patterns:\n          - "\*"/,
@@ -1030,8 +1027,9 @@ test("Dependabot updates and groups the pnpm workspace from its root", () => {
   assert.match(npmConfig, /test-tooling:\n        applies-to: "version-updates"/);
   assert.match(
     npmConfig,
-    /workspace-dependencies:\n        applies-to: "version-updates"\n        patterns:\n          - "\*"\n        group-by: "dependency-name"/,
+    /workspace-dependencies:\n        applies-to: "version-updates"\n        patterns:\n          - "\*"\n        # Keep the catch-all as one reviewable workspace update\./,
   );
+  assert.doesNotMatch(npmConfig, /group-by: "dependency-name"/);
 });
 
 test("the pnpm workspace has one JavaScript lockfile authority", () => {
@@ -1130,6 +1128,10 @@ test("CI runs Typesense E2E suites against a service container", () => {
 
 test("Typesense credentials are separated by consumer and host promotion is manual", () => {
   assert.match(
+    deployTypesenseHostWorkflow,
+    /pull_request:\n    branches: \[main\]\n    paths:/,
+  );
+  assert.match(
     deployCrawlerWorkflow,
     /TYPESENSE_OPERATIONS_KEY: \$\{\{ secrets\.TYPESENSE_OPERATIONS_KEY \}\}/,
   );
@@ -1157,6 +1159,23 @@ test("Typesense credentials are separated by consumer and host promotion is manu
   assert.match(
     deployTypesenseHostWorkflow,
     /--config=\/run\/secrets\/typesense-server\.ini/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /-p 127\.0\.0\.1:18108:8108[\s\S]*http:\/\/127\.0\.0\.1:18108\/health/,
+  );
+  assert.match(deployTypesenseHostWorkflow, /echo '\[server\]'/);
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /--ulimit nofile=65536:65536[\s\S]*--log-opt max-size=50m[\s\S]*--log-opt max-file=3/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /\.State\.Status[\s\S]*docker logs "\$container"[\s\S]*docker inspect "\$container"/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /cleanup\(\)[\s\S]*docker rm -f "\$container"[\s\S]*sudo rm -rf -- "\$root"/,
   );
   assert.doesNotMatch(
     deployTypesenseHostWorkflow,
@@ -1224,7 +1243,7 @@ test("setup-uv steps cache uv downloads by crawler lockfile", () => {
 test("MCP publish workflow caches the pnpm store", () => {
   assert.match(
     publishMcpServerWorkflow,
-    /pnpm\/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6\.0\.9[\s\S]*actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6/,
+    /pnpm\/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6\.0\.10[\s\S]*actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6/,
   );
   assert.match(publishMcpServerWorkflow, /cache: pnpm/);
   assert.match(publishMcpServerWorkflow, /cache-dependency-path: pnpm-lock\.yaml/);

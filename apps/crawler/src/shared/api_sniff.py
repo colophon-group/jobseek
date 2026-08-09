@@ -225,7 +225,8 @@ FIELD_PATTERNS: dict[str, re.Pattern] = {
 
 # Location patterns — match both simple keys and array-of-object patterns
 _LOCATION_KEY_PATTERNS = re.compile(
-    r"^(location|locations|office|offices|city|cities|place|places)$",
+    r"^(location|locations|office|offices|city|cities|place|places"
+    r"|requisition_?locations|work_?locations)$",
     re.I,
 )
 _LOCATION_SUBFIELD_PATTERNS = re.compile(
@@ -881,6 +882,17 @@ def auto_map_fields(items: list[dict]) -> dict[str, str]:
                     mapping["locations"] = key
                     break
                 if first and isinstance(first[0], dict):
+                    # ADP MyJobs wraps the display label one level deeper:
+                    # requisitionLocations[].nameCode.{shortName,longName}.
+                    # Prefer the concise label when both variants exist.
+                    name_code = first[0].get("nameCode")
+                    if isinstance(name_code, dict):
+                        for subkey in ("shortName", "longName"):
+                            if isinstance(name_code.get(subkey), str):
+                                mapping["locations"] = f"{key}[].nameCode.{subkey}"
+                                break
+                        if "locations" in mapping:
+                            break
                     # Find the name subfield
                     for subkey in first[0]:
                         if _LOCATION_SUBFIELD_PATTERNS.match(subkey):

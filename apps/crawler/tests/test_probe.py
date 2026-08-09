@@ -268,6 +268,16 @@ _NEXTDATA_HTML_CONTENTS = """\
 "location":"Barcelona"}}}}
 </script></body></html>"""
 
+_NEXTDATA_HTML_NESTED_METADATA = """\
+<html><head></head><body>
+<script id="__NEXT_DATA__" type="application/json">
+{"props":{"pageProps":{"jobData":{"displayName":"Systems Engineer",
+"validFromDate":"2026-05-22",
+"jobDescription":{"websiteDescription":"<p>Build infrastructure.</p>"},
+"jobMetadata":{"workStatus":"Regular FT","jobLocations":[
+{"name":"Hyderabad"},{"name":"Bengaluru"}]}}}}}
+</script></body></html>"""
+
 _NEXTDATA_NO_JOB = """\
 <html><head></head><body>
 <script id="__NEXT_DATA__" type="application/json">
@@ -347,6 +357,20 @@ class TestScraperCanHandle:
             "locations": "location",
         }
 
+    def test_nextdata_detects_nested_job_metadata(self):
+        result = nextdata_can_handle([_NEXTDATA_HTML_NESTED_METADATA])
+
+        assert result == {
+            "path": "props.pageProps.jobData",
+            "fields": {
+                "title": "displayName",
+                "description": "jobDescription.websiteDescription",
+                "locations": "jobMetadata.jobLocations[].name",
+                "employment_type": "jobMetadata.workStatus",
+                "date_posted": "validFromDate",
+            },
+        }
+
     def test_nextdata_no_job(self):
         result = nextdata_can_handle([_NEXTDATA_NO_JOB])
         assert result is None
@@ -401,6 +425,27 @@ class TestNextdataAutoMap:
         obj = {"title": "Engineer", "description": "Hi", "datePosted": "2025-01-01"}
         fields = _auto_map_fields(obj)
         assert fields["date_posted"] == "datePosted"
+
+    def test_nested_description_and_job_metadata(self):
+        obj = {
+            "displayName": "Engineer",
+            "validFromDate": "2026-05-22",
+            "jobDescription": {"websiteDescription": "<p>Build systems</p>"},
+            "jobMetadata": {
+                "workStatus": "Regular FT",
+                "jobLocations": [{"name": "Hyderabad"}, {"name": "Bengaluru"}],
+            },
+        }
+
+        fields = _auto_map_fields(obj)
+
+        assert fields == {
+            "title": "displayName",
+            "description": "jobDescription.websiteDescription",
+            "locations": "jobMetadata.jobLocations[].name",
+            "employment_type": "jobMetadata.workStatus",
+            "date_posted": "validFromDate",
+        }
 
     def test_find_job_object_at_root(self):
         data = {"title": "Engineer", "description": "Hello"}
@@ -588,7 +633,7 @@ class TestProbeScrapers:
         assert spa_suspect is False
 
     async def test_probe_order(self):
-        """Results should be in display order: json-ld, nextdata, embedded, dom, api_sniffer."""
+        """Results should be in the configured display order."""
         http = _mock_http_client(
             {
                 "https://example.com/job/1": (200, _JSONLD_HTML),
@@ -601,7 +646,15 @@ class TestProbeScrapers:
         )
 
         names = [r[0] for r in results]
-        assert names == ["json-ld", "nextdata", "embedded", "pdf", "dom", "api_sniffer"]
+        assert names == [
+            "json-ld",
+            "nextdata",
+            "embedded",
+            "onlyfy",
+            "pdf",
+            "dom",
+            "api_sniffer",
+        ]
 
     async def test_spa_detection(self):
         """Pages with very little text content should set spa_suspect=True."""
@@ -723,4 +776,12 @@ class TestProbeScrapersPw:
         )
 
         names = [r[0] for r in results]
-        assert names == ["json-ld", "nextdata", "embedded", "pdf", "dom", "api_sniffer"]
+        assert names == [
+            "json-ld",
+            "nextdata",
+            "embedded",
+            "onlyfy",
+            "pdf",
+            "dom",
+            "api_sniffer",
+        ]
