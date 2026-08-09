@@ -45,7 +45,14 @@ log = structlog.get_logger()
 
 # ── Auto-detection helpers ────────────────────────────────────────────
 
-_TITLE_FIELD_CANDIDATES = ("title", "name", "jobTitle", "job_title", "position")
+_TITLE_FIELD_CANDIDATES = (
+    "title",
+    "name",
+    "jobTitle",
+    "job_title",
+    "position",
+    "displayName",
+)
 _DESCRIPTION_FIELD_CANDIDATES = (
     "description",
     "content",
@@ -62,8 +69,16 @@ _FIELD_PATTERNS: dict[str, list[str]] = {
     "locations": ["location", "locations", "office", "offices"],
     "employment_type": ["employmentType", "employment_type", "type", "jobType"],
     "job_location_type": ["locationType", "workplaceType", "remoteType"],
-    "date_posted": ["datePosted", "createdAt", "publishedAt", "postedDate"],
+    "date_posted": ["datePosted", "createdAt", "publishedAt", "postedDate", "validFromDate"],
 }
+
+_NESTED_DESCRIPTION_CANDIDATES = (
+    "websiteDescription",
+    "descriptionHtml",
+    "description",
+    "text",
+    "body",
+)
 
 # Object detection and field mapping must use the same aliases. Keeping these
 # sets derived from the ordered mapping candidates prevents a newly supported
@@ -117,6 +132,15 @@ def _auto_map_fields(job_obj: dict) -> dict[str, str]:
                 continue
             val = job_obj[cand]
 
+            if target == "description" and isinstance(val, dict):
+                for nested in _NESTED_DESCRIPTION_CANDIDATES:
+                    if isinstance(val.get(nested), str) and val[nested].strip():
+                        fields[target] = f"{cand}.{nested}"
+                        break
+                if target in fields:
+                    break
+                continue
+
             if isinstance(val, list) and val and isinstance(val[0], dict):
                 if "name" in val[0]:
                     fields[target] = f"{cand}[].name"
@@ -128,6 +152,24 @@ def _auto_map_fields(job_obj: dict) -> dict[str, str]:
             else:
                 fields[target] = cand
             break
+
+    # Some enterprise career sites group public job attributes under a
+    # ``jobMetadata`` object rather than exposing them beside the title and
+    # description.  Recognize the common named-location shape so automatic
+    # Next.js scraper detection does not discard otherwise structured data.
+    metadata = job_obj.get("jobMetadata")
+    if isinstance(metadata, dict):
+        if "locations" not in fields:
+            locations = metadata.get("jobLocations")
+            if (
+                isinstance(locations, list)
+                and locations
+                and isinstance(locations[0], dict)
+                and isinstance(locations[0].get("name"), str)
+            ):
+                fields["locations"] = "jobMetadata.jobLocations[].name"
+        if "employment_type" not in fields and isinstance(metadata.get("workStatus"), str):
+            fields["employment_type"] = "jobMetadata.workStatus"
 
     return fields
 
