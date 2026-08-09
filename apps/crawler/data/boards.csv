@@ -223,6 +223,7 @@ akkuro,akkuro-akkuro,https://akkuro.com/company/careers,dom,"{""render"": false,
 aktos,aktos-greenhouse,https://job-boards.greenhouse.io/applytoaktos,greenhouse,"{""token"": ""applytoaktos""}",skip,
 akuity,akuity-greenhouse,https://job-boards.greenhouse.io/akuity,greenhouse,"{""token"": ""akuity""}",skip,
 akuna-capital,akuna-capital-greenhouse,https://job-boards.greenhouse.io/akunacapital,greenhouse,"{""token"": ""akunacapital""}",skip,
+alacris,alacris-join,https://join.com/companies/alacris,join,"{""slug"": ""alacris""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""schemaDescription"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 alamar-biosciences,alamar-biosciences-greenhouse,https://job-boards.greenhouse.io/alamarbiosciences,greenhouse,"{""token"": ""alamarbiosciences""}",skip,
 alan,alan-ashby,https://jobs.ashbyhq.com/alan,ashby,"{""token"": ""alan""}",skip,
 alarm-com,alarm-com-greenhouse,https://job-boards.greenhouse.io/alarmcom,greenhouse,"{""token"": ""alarmcom""}",skip,
@@ -2090,6 +2091,7 @@ glydways,glydways-greenhouse,https://job-boards.greenhouse.io/glydways,greenhous
 goals,goals-teamtailor,https://tt.playgoals.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://tt.playgoals.com/jobs.rss""}",skip,
 goat-group,goat-group-greenhouse,https://job-boards.greenhouse.io/goatgroup,greenhouse,"{""token"": ""goatgroup""}",skip,
 gocardless,gocardless-greenhouse,https://job-boards.greenhouse.io/gocardless,greenhouse,"{""token"": ""gocardless""}",skip,
+godaddy,godaddy-careers,https://careers.godaddy/jobs/search,sitemap,"{""sitemap_url"": ""https://careers.godaddy/sitemap.xml"", ""url_filter"": ""/jobs/""}",json-ld,"{""render"": true}"
 gofundme,gofundme-greenhouse,https://job-boards.greenhouse.io/gofundme,greenhouse,"{""token"": ""gofundme""}",skip,
 goguardian,goguardian-greenhouse,https://job-boards.greenhouse.io/goguardian,greenhouse,"{""token"": ""goguardian""}",skip,
 golden-apple-foundation-careers,golden-apple-foundation-careers-greenhouse,https://job-boards.greenhouse.io/goldenapplefoundationcareers,greenhouse,"{""token"": ""goldenapplefoundationcareers""}",skip,
@@ -3526,6 +3528,8 @@ nova-founders-capital,nova-founders-capital-greenhouse,https://job-boards.greenh
 novartis,novartis-careers,https://novartis.wd3.myworkdayjobs.com/Novartis_Careers,workday,"{""company"": ""novartis"", ""wd_instance"": ""wd3"", ""site"": ""Novartis_Careers""}",workday,"{""proxy"": true}"
 novatron-fusion-group,novatron-fusion-group-careers,https://career.novatronfusion.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.novatronfusion.com/jobs.rss""}",skip,
 novel,novel-ashby,https://jobs.ashbyhq.com/novel,ashby,"{""token"": ""novel""}",skip,
+novogene,novogene-china-hq,https://novogene.zhiye.com/,beisen,"{""tenant"": ""novogene"", ""variant"": ""modern"", ""portal_id"": ""2fc0be1a-e252-4bc7-b22d-a22e9e1a9f98"", ""tenant_id"": 109745}",skip,
+novogene,novogene-japan-global,https://jp.novogene.com/about/careers/,inline,"{""render"": true, ""steps"": [{""tag"": ""h5"", ""field"": ""title""}, {""text"": ""Location:"", ""field"": ""location"", ""regex"": ""Location:\\s*(.+)"", ""optional"": true}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_tag"": ""h5""}]}",skip,
 novo,novo-ashby,https://jobs.ashbyhq.com/novo,ashby,"{""token"": ""novo""}",skip,
 novo-nordisk,novo-nordisk-careers,https://careers.novonordisk.com/search/?locale=en_GB,rss,"{""url"": ""https://careers.novonordisk.com/googlefeed.xml"", ""preset"": ""successfactors""}",skip,
 novu,novu-join,https://join.com/companies/novu,join,"{""slug"": ""novu""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
@@ -4774,6 +4778,7 @@ standardfleet,standardfleet-ashby,https://jobs.ashbyhq.com/standardfleet,ashby,"
 stanley-1913,stanley-1913-greenhouse,https://job-boards.greenhouse.io/stanley1913-us,greenhouse,"{""token"": ""stanley1913-us""}",skip,
 starbridge,starbridge-ashby,https://jobs.ashbyhq.com/starbridge,ashby,"{""token"": ""starbridge""}",skip,
 starbucks,starbucks-eightfold,https://starbucks.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""pcsx_watermark"": {""auto_full_crawl"": false}, ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
+starbucks-china,starbucks-china-careers,https://starbucks.zhiye.com/,beisen,"{""tenant"": ""starbucks"", ""variant"": ""modern"", ""portal_id"": ""447d00df-76b1-4da9-a0c5-287e2adb7b0c"", ""tenant_id"": 604302}",skip,
 starburst,starburst-greenhouse,https://job-boards.greenhouse.io/starburst,greenhouse,"{""token"": ""starburst""}",skip,
 starcloud,starcloud-greenhouse,https://job-boards.greenhouse.io/starcloud,greenhouse,"{""token"": ""starcloud""}",skip,
 stark,stark-careers,https://stark.jobs.personio.com/,personio,"{""slug"": ""stark"", ""language"": ""en""}",skip,
