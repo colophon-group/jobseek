@@ -76,31 +76,12 @@ RUN wget -q -O /usr/share/keyrings/google-chrome.asc \
 # signals pass through correctly. If Xvfb dies before becoming ready,
 # the entrypoint fails loudly rather than leaving DISPLAY=:99 pointing
 # at a dead server — otherwise Playwright would crash per-cycle with
-# the exact "XServer running" error #2431 was meant to prevent.
-RUN printf '%s\n' \
-    '#!/bin/sh' \
-    'set -e' \
-    'Xvfb :99 -screen 0 1440x900x24 -nolisten tcp &' \
-    'XVFB_PID=$!' \
-    'export DISPLAY=:99' \
-    'ready=0' \
-    'for i in $(seq 1 50); do' \
-    '    if xdpyinfo -display :99 >/dev/null 2>&1; then' \
-    '        ready=1; break' \
-    '    fi' \
-    '    if ! kill -0 "$XVFB_PID" 2>/dev/null; then' \
-    '        echo "with-xvfb: Xvfb :99 died before becoming ready" >&2' \
-    '        exit 1' \
-    '    fi' \
-    '    sleep 0.2' \
-    'done' \
-    'if [ "$ready" != 1 ]; then' \
-    '    echo "with-xvfb: X server :99 did not respond within 10s" >&2' \
-    '    exit 1' \
-    'fi' \
-    'exec "$@"' \
-    > /usr/local/bin/with-xvfb \
-    && chmod +x /usr/local/bin/with-xvfb
+# the exact "XServer running" error #2431 was meant to prevent. Docker
+# restarts retain /tmp in the container writable layer, so the entrypoint
+# also removes display-99 artifacts only after proving no live server owns
+# them (#6011).
+COPY scripts/with-xvfb.sh /usr/local/bin/with-xvfb
+RUN chmod 0755 /usr/local/bin/with-xvfb
 
 ENTRYPOINT ["/usr/local/bin/with-xvfb"]
 CMD ["uv", "run", "--no-sync", "crawler", "run-browser"]

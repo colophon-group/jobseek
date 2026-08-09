@@ -1,19 +1,37 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { cacheLife, cacheTag } from "next/cache";
 import { isLocale, defaultLocale, loadCatalog, initI18nForPage, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { companyCacheTag } from "@/lib/cache-tags";
 import { CACHE_TTL_DETAIL } from "@/lib/cache-ttl";
-import { getCompanyBySlug } from "@/lib/actions/company";
 import { fetchCompanyPageDefaults } from "@/lib/actions/company-page-data";
+import type { Locale } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
 import { CompanyHead } from "./company-head";
 import { CompanyContent } from "./company-content";
+import { CompanyNotFoundState } from "./company-not-found";
 import { SimilarSection } from "./similar-section";
+import { CompanySkeleton } from "@/components/search/company-skeleton";
 
 type Props = {
   params: Promise<{ lang: string; slug: string }>;
 };
+
+/**
+ * Keep the dynamic route's metadata and body on one cache-stable data
+ * snapshot. Next.js currently has a Cache Components/PPR resume defect when
+ * async metadata and the page body independently resolve the same dynamic
+ * route data: the prerendered metadata wrapper can disagree with the runtime
+ * metadata boundary and React falls back to a client render. See #5911 and
+ * vercel/next.js#93401.
+ */
+async function getCompanyRouteSnapshot(slug: string, locale: Locale) {
+  "use cache";
+  cacheLife({ revalidate: CACHE_TTL_DETAIL });
+  cacheTag(companyCacheTag(slug));
+  return fetchCompanyPageDefaults({ slug, locale });
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   "use cache";
@@ -21,15 +39,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, lang } = await params;
   cacheTag(companyCacheTag(slug));
   const locale = isLocale(lang) ? lang : defaultLocale;
-  const [company, { i18n }] = await Promise.all([
-    getCompanyBySlug(slug, locale),
+  const [snapshot, { i18n }] = await Promise.all([
+    getCompanyRouteSnapshot(slug, locale),
     loadCatalog(locale),
   ]);
   // No company = ghost slug (deleted, never existed, typo). Bare `{}`
   // would let `[lang]/layout.tsx`'s `metadata.title.default` ("Job
   // Seek") cascade and leave the URL indexable. Tag explicitly as
   // `noindex,follow` to mirror the watchlist null-detail handling.
-  if (!company) return { robots: { index: false, follow: true } };
+  if (!snapshot) return { robots: { index: false, follow: true } };
+  const { company } = snapshot;
 
   const title = i18n._({
     id: "company.meta.title",
@@ -92,8 +111,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-async function CompanyNotFound() {
-  const { i18n } = await loadCatalog(defaultLocale);
+async function CompanyNotFound({ locale, slug }: { locale: Locale; slug: string }) {
+  const { i18n } = await loadCatalog(locale);
   const title = i18n._({
     id: "company.notFound.title",
     comment: "Heading shown when a company page slug does not exist",
@@ -104,11 +123,25 @@ async function CompanyNotFound() {
     comment: "Body text shown when a company page slug does not exist",
     message: "The company you are looking for does not exist or has been removed.",
   });
+  const exploreLabel = i18n._({
+    id: "company.notFound.explore",
+    comment: "Primary recovery action on the company-not-found page",
+    message: "Explore companies",
+  });
+  const requestLabel = i18n._({
+    id: "company.notFound.request",
+    comment: "Secondary action on the company-not-found page to request that company",
+    message: "Request this company",
+  });
   return (
-    <div className="flex flex-col items-center justify-center py-24 text-center">
-      <h1 className="text-2xl font-bold">{title}</h1>
-      <p className="mt-2 text-muted">{message}</p>
-    </div>
+    <CompanyNotFoundState
+      locale={locale}
+      slug={slug}
+      title={title}
+      message={message}
+      exploreLabel={exploreLabel}
+      requestLabel={requestLabel}
+    />
   );
 }
 
@@ -127,8 +160,8 @@ export default async function CompanyPageRoute({ params }: Props) {
   // ISR-eligible — the client component re-fetches the personalised
   // variant via ``fetchCompanyPageData`` when filters or auth-related
   // hint cookies are present.
-  const initialData = await fetchCompanyPageDefaults({ slug, locale });
-  if (!initialData) return <CompanyNotFound />;
+  const initialData = await getCompanyRouteSnapshot(slug, locale);
+  if (!initialData) return <CompanyNotFound locale={locale} slug={slug} />;
   const { company } = initialData;
 
   // The page body is `'use cache'`-wrapped (10-minute revalidate) so the
@@ -142,12 +175,16 @@ export default async function CompanyPageRoute({ params }: Props) {
   return (
     <div className="space-y-4">
       <CompanyHead company={company} locale={locale} />
-      <SimilarSection
-        companyId={company.id}
-        industryId={company.industryId}
-        locale={locale}
-      />
-      <CompanyContent locale={locale} slug={slug} initialData={initialData} />
+      <Suspense fallback={null}>
+        <SimilarSection
+          companyId={company.id}
+          industryId={company.industryId}
+          locale={locale}
+        />
+      </Suspense>
+      <Suspense fallback={<CompanySkeleton />}>
+        <CompanyContent locale={locale} slug={slug} initialData={initialData} />
+      </Suspense>
     </div>
   );
 }

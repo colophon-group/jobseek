@@ -14,6 +14,8 @@ type ThemedImageProps = {
   className?: string;
   style?: CSSProperties;
   sizes?: string;
+  loading?: "eager" | "lazy";
+  fetchPriority?: "high" | "low" | "auto";
 };
 
 /**
@@ -41,6 +43,8 @@ export function ThemedImage({
   className,
   style,
   sizes,
+  loading,
+  fetchPriority,
 }: ThemedImageProps) {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -57,6 +61,8 @@ export function ThemedImage({
       className={className}
       style={style}
       sizes={sizes}
+      loading={loading}
+      fetchPriority={fetchPriority}
     />
   );
 }

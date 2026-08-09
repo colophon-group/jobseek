@@ -1,4 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@lingui/core/macro", () => ({
+  msg: (descriptor: unknown) => descriptor,
+}));
+
 import { translateActionError, type ActionErrorCode } from "@/lib/action-error-messages";
 
 const t = ((descriptor: { message?: string; id?: string }) =>

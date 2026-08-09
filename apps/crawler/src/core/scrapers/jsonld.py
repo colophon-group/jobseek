@@ -6,6 +6,7 @@ No configuration needed — handles all standard schema.org fields automatically
 
 from __future__ import annotations
 
+import html as html_module
 import json
 import re
 from html.parser import HTMLParser
@@ -86,19 +87,26 @@ class _JsonLdExtractor(HTMLParser):
             self._in_jsonld = False
             raw = "".join(self._data).strip()
             if raw:
-                try:
-                    parsed = json.loads(raw)
-                    self.results.append(parsed)
-                except json.JSONDecodeError:
-                    # Some sites emit literal control chars (newlines, tabs)
-                    # inside JSON string values — escape them and retry.
-                    cleaned = _escape_control_chars_in_strings(raw)
+                # Prefer the standards-compliant raw block. If that fails,
+                # support providers such as Gupy that HTML-entity-encode the
+                # entire JSON document inside the script element.
+                for candidate in (raw, html_module.unescape(raw)):
                     try:
-                        parsed = json.loads(cleaned)
+                        parsed = json.loads(candidate)
                         self.results.append(parsed)
+                        break
                     except json.JSONDecodeError:
-                        # Malformed JSON-LD blocks are optional metadata; skip this block.
-                        pass
+                        # Some sites emit literal control chars (newlines,
+                        # tabs) inside JSON strings. Escape them and retry.
+                        cleaned = _escape_control_chars_in_strings(candidate)
+                        try:
+                            parsed = json.loads(cleaned)
+                            self.results.append(parsed)
+                            break
+                        except json.JSONDecodeError:
+                            # Try the next representation or skip the
+                            # optional malformed block.
+                            continue
 
 
 def _normalize_keys(data):
@@ -164,6 +172,11 @@ def _extract_locations(posting: dict) -> list[str] | None:
             continue
         # Build from address
         address = loc.get("address")
+        if isinstance(address, str):
+            text = re.sub(r"\s+", " ", address).strip()
+            if text:
+                locations.append(text)
+            continue
         if isinstance(address, dict):
             parts = []
             for field in ("addressLocality", "addressRegion", "addressCountry"):

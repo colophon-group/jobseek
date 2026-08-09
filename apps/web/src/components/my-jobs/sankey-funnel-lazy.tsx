@@ -24,6 +24,7 @@ export const SankeyFunnel = dynamic<{ data: FunnelData }>(
     loading: () => (
       <div
         aria-hidden
+        data-testid="sankey-loading"
         className="h-[400px] animate-pulse rounded-md bg-muted/20"
       />
     ),

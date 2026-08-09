@@ -93,11 +93,23 @@ msgstr "{count, plural, one {azienda} other {aziende}}"
 msgid "watchlist.meta.tracking"
 msgstr "{count, plural, one {# azienda monitorata} other {# aziende monitorate}}. {description}"
 
-#. Heatmap tooltip shown when hovering an application-activity day; {date} is a YYYY-MM-DD date and {count} is the number of applications that day.
+#. Heatmap tooltip and accessible summary for an application-activity day; {date} is a localized date and {count} is the number of applications that day.
 #. js-lingui-explicit-id
-#: src/components/my-jobs/activity-heatmap.tsx:117
+#: src/components/my-jobs/activity-heatmap.tsx:158
 msgid "myJobs.heatmap.tooltip"
 msgstr "{count, plural, =0 {Nessuna candidatura il {date}} one {# candidatura il {date}} other {# candidature il {date}}}"
+
+#. Accessible label for the application activity heatmap
+#. js-lingui-explicit-id
+#: src/components/my-jobs/activity-heatmap.tsx:209
+msgid "myJobs.heatmap.label"
+msgstr "Attività di candidatura"
+
+#. Accessible summary when the application activity heatmap has no non-zero days
+#. js-lingui-explicit-id
+#: src/components/my-jobs/activity-heatmap.tsx:222
+msgid "myJobs.heatmap.emptySummary"
+msgstr "Nessuna attività di candidatura nell’anno visualizzato."
 
 #. SEO metadata suffix when a watchlist includes more companies than can be listed by name.
 #. js-lingui-explicit-id
@@ -223,27 +235,17 @@ msgstr "Account"
 msgid "app.header.avatar.label"
 msgstr "Menu account"
 
-#. Active postings count on company page
-#. Active postings count on company page
+#. Locale-formatted active posting count
 #. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:572
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:582
-msgid "company.page.active"
-msgstr "attivo"
+#: src/components/search/posting-count-labels.tsx
+msgid "common.stats.activeCount"
+msgstr "{count, plural, one {# offerta attiva} other {# offerte attive}}"
 
-#. Active postings count
-#. Active postings count
+#. Locale-formatted postings seen in the last year count
 #. js-lingui-explicit-id
-#: src/components/search/language-stats-row.tsx:36
-#: src/components/search/language-stats-row.tsx:47
-msgid "common.stats.active"
-msgstr "attivi"
-
-#. Active matches label on company card
-#. js-lingui-explicit-id
-#: src/components/search/company-card.tsx:122
-msgid "search.card.active"
-msgstr "attivo"
+#: src/components/search/posting-count-labels.tsx
+msgid "common.stats.yearCountWithValue"
+msgstr "{count, plural, one {# nell'ultimo anno} other {# nell'ultimo anno}}"
 
 #. Title for add companies modal
 #. js-lingui-explicit-id
@@ -943,6 +945,16 @@ msgstr "Azienda"
 msgid "company.notFound.title"
 msgstr "Azienda non trovata"
 
+#. Primary recovery action on the company-not-found page
+#. js-lingui-explicit-id
+msgid "company.notFound.explore"
+msgstr "Scopri le aziende"
+
+#. Secondary action on the company-not-found page to request that company
+#. js-lingui-explicit-id
+msgid "company.notFound.request"
+msgstr "Richiedi questa azienda"
+
 #. WebApplication JSON-LD description for Job Seek.
 #. js-lingui-explicit-id
 #: app/[lang]/layout.tsx:121
@@ -1389,7 +1401,7 @@ msgstr "Inserisci la tua nuova password qui sotto."
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:78
 msgid "indexing.assurances.i3.body"
-msgstr "Anche dopo la scoperta, recuperiamo le pagine di dettaglio degli annunci con un limite rigoroso di una richiesta per sito al minuto."
+msgstr "La coda distanzia le richieste allo stesso dominio di rate limit di 2 secondi per impostazione predefinita e di 0,5 secondi per le API ATS note. Il traffico reale è solitamente inferiore e i tentativi successivi usano il backoff esponenziale."
 
 #. Feature section 1 heading
 #. js-lingui-explicit-id
@@ -1501,12 +1513,6 @@ msgstr "Impossibile reimpostare la password. Il link potrebbe essere scaduto."
 #: src/components/settings/AccountSettings.tsx:164
 msgid "settings.account.password.error"
 msgstr "Impossibile inviare l'email di reimpostazione"
-
-#. Generic set password error
-#. js-lingui-explicit-id
-#: src/components/settings/AccountSettings.tsx:78
-msgid "settings.account.password.setError"
-msgstr "Impossibile impostare la password"
 
 #. Generic username update error
 #. js-lingui-explicit-id
@@ -1654,11 +1660,11 @@ msgstr "Gratis"
 msgid "settings.billing.plan.free"
 msgstr "Gratuito"
 
-#. FAQ answer summarizing Free and Pro plan differences.
+#. FAQ answer summarizing Free and the upcoming Pro plan.
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:70
 msgid "faq.a.freeVsPro"
-msgstr "La versione gratuita offre ricerca completa su tutte le aziende, una watchlist e il tracker delle candidature con registro dei colloqui. Pro aggiunge watchlist illimitate e avvisi email quando nuove offerte corrispondono ai tuoi criteri."
+msgstr "La versione gratuita offre ricerca completa su tutte le aziende, una watchlist e il tracker delle candidature con registro dei colloqui. Pro sarà disponibile a breve e aggiungerà watchlist illimitate e avvisi email quando nuove offerte corrisponderanno ai tuoi criteri."
 
 #. FAQ page heading
 #. js-lingui-explicit-id
@@ -1808,7 +1814,7 @@ msgstr "Come si comporta il crawler sul sito della mia azienda?"
 #: app/[lang]/(public)/how-we-index/page.tsx:22
 #: app/[lang]/(public)/how-we-index/page.tsx:59
 msgid "indexing.meta.description"
-msgstr "Come Job Seek scopre e indicizza le offerte di lavoro: il nostro approccio di sourcing, frequenza di crawl, limiti di frequenza, conformità a robots.txt e TDM-Reservation, e come disattivare."
+msgstr "Come Job Seek scopre e indicizza le offerte: fonti, frequenza di crawl, limiti di frequenza, rilevamento tramite robots.txt, gestione di TDM-Reservation e opt-out."
 
 #. FAQ question about job listing refresh cadence.
 #. js-lingui-explicit-id
@@ -1883,28 +1889,6 @@ msgstr "Se noti un comportamento anomalo del crawler, preferisci che non indiciz
 #: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:80
 msgid "watchlist.meta.inLocations"
 msgstr "a {locations}"
-
-#. Year postings count on company page
-#. Year postings count on company page
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:574
-#: app/[lang]/(app)/company/[slug]/company-page.tsx:586
-msgid "company.page.yearCount"
-msgstr "nell'ultimo anno"
-
-#. Postings seen in the last year count
-#. Postings seen in the last year count
-#. js-lingui-explicit-id
-#: src/components/search/language-stats-row.tsx:39
-#: src/components/search/language-stats-row.tsx:51
-msgid "common.stats.yearCount"
-msgstr "nell'ultimo anno"
-
-#. Yearly matches label on company card
-#. js-lingui-explicit-id
-#: src/components/search/company-card.tsx:124
-msgid "search.card.yearCount"
-msgstr "nell'ultimo anno"
 
 #. Stat label on a WatchlistCard mention card — 'in the past year' (year-to-date jobs counted by the watchlist filters)
 #. js-lingui-explicit-id
@@ -2037,6 +2021,18 @@ msgstr "Il crawler è open source?"
 #: app/[lang]/(public)/faq/page.tsx:77
 msgid "faq.q.trackerLimit"
 msgstr "C'è un limite al numero di offerte che posso tracciare?"
+
+#. Singular company count shown while a watchlist job count loads
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-card.tsx:36
+msgid "watchlists.card.companySingular"
+msgstr "azienda"
+
+#. Plural company count shown while a watchlist job count loads
+#. js-lingui-explicit-id
+#: src/components/watchlist/watchlist-card.tsx:37
+msgid "watchlists.card.companyPlural"
+msgstr "aziende"
 
 #. Singular job count on watchlist card
 #. js-lingui-explicit-id
@@ -2640,6 +2636,12 @@ msgstr "Nessun luogo corrisponde alla tua ricerca."
 msgid "company.page.noResults"
 msgstr "Nessun annuncio corrispondente trovato."
 
+#. Empty-state message when a company has no active job postings
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/company/[slug]/company-page.tsx:640
+msgid "company.page.noActivePostings"
+msgstr "Nessuna offerta attiva al momento."
+
 #. Empty-state message shown when no blog posts have been published yet
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/blog/page.tsx:89
@@ -2794,7 +2796,7 @@ msgstr "Una volta recuperato un singolo annuncio, memorizziamo solo i metadati s
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:77
 msgid "indexing.assurances.i3.title"
-msgstr "Una pagina al minuto."
+msgstr "Ritmo per dominio."
 
 #. Username invalid characters hint
 #. js-lingui-explicit-id
@@ -2896,7 +2898,7 @@ msgstr "Altro"
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:71
 msgid "indexing.assurances.i2.body"
-msgstr "Il nostro crawler legge il file <0>robots.txt</0>, rispetta le regole di disallow, si identifica tramite <1>User-Agent</1> e rispetta l'header W3C <2>TDM-Reservation</2> — se una pagina segnala una riserva, la saltiamo."
+msgstr "Il nostro crawler legge <0>robots.txt</0> per rilevare le sitemap; l'applicazione delle regole Disallow non è ancora attiva. Le richieste usano uno <1>User-Agent</1> stabile e compatibile con i browser, mentre alcuni percorsi specifici per una fonte usano uno UA Job Seek identificabile. Rispettiamo l'header W3C <2>TDM-Reservation</2> — se una pagina segnala una riserva, la saltiamo."
 
 #. TOC: Our stance on automation
 #. js-lingui-explicit-id
@@ -3163,12 +3165,6 @@ msgstr "Privacy su Job Seek"
 #: app/[lang]/(public)/privacy-policy/page.tsx:55
 msgid "privacy.meta.title"
 msgstr "Informativa sulla privacy"
-
-#. Reason shown in upgrade modal when trying to make watchlist private
-#. js-lingui-explicit-id
-#: src/components/watchlist/watchlist-action-bar.tsx:125
-msgid "upgrade.reason.makePrivate"
-msgstr "Le liste private sono una funzionalità a pagamento. Effettua l'upgrade per nascondere le tue liste agli altri."
 
 #. Pro tier name
 #. js-lingui-explicit-id
@@ -3536,7 +3532,7 @@ msgstr "Ritmo rispettoso."
 #. js-lingui-explicit-id
 #: src/components/HowWeIndexContent.tsx:69
 msgid "indexing.assurances.i2.title"
-msgstr "Robot, attribuzione e riserva TDM."
+msgstr "Rilevamento robots, identità delle richieste e riserva TDM."
 
 #. Label for role/occupation filter in advanced search
 #. js-lingui-explicit-id
@@ -4237,7 +4233,7 @@ msgstr "L'azienda che stai cercando non esiste o è stata rimossa."
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/about/about-content.tsx:54
 msgid "about.transparency.p1"
-msgstr "Il codice del crawler è open source, così chiunque può verificare come raccogliamo i dati. Rispettiamo robots.txt, onoriamo gli header TDM-Reservation e ci limitiamo a una richiesta per sito al minuto. Ogni link in uscita include utm_source=jobseek, così i datori di lavoro sanno da dove arriva il traffico."
+msgstr "Il codice del crawler è open source, così chiunque può verificare come raccogliamo i dati. Controlliamo robots.txt per rilevare le sitemap, rispettiamo gli header TDM-Reservation e distanziamo le richieste per dominio di rate limit. Ogni link in uscita include utm_source=jobseek, così i datori di lavoro sanno da dove arriva il traffico."
 
 #. FAQ answer explaining crawler discovery and refresh frequency.
 #. js-lingui-explicit-id
@@ -4559,6 +4555,11 @@ msgstr "Limite liste raggiunto"
 msgid "watchlist.notFound.title"
 msgstr "Watchlist non trovata"
 
+#. Recovery action on the watchlist-not-found page
+#. js-lingui-explicit-id
+msgid "watchlist.notFound.browse"
+msgstr "Esplora le watchlist"
+
 #. Title of the watchlists exploration page
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/watchlists/watchlists-page.tsx:127
@@ -4659,7 +4660,7 @@ msgstr "Ci opponiamo a delegare le decisioni di assunzione o di ricerca lavoro a
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:82
 msgid "faq.a.crawlingPolicy"
-msgstr "Rispettiamo robots.txt e gli header TDM-Reservation, limitiamo le richieste a una per sito al minuto e utilizziamo il backoff esponenziale. Tutte le richieste si identificano tramite User-Agent. Consulta la nostra pagina sull'indicizzazione per tutti i dettagli."
+msgstr "Controlliamo robots.txt per rilevare le sitemap; l'applicazione delle regole Disallow non è ancora attiva. Rispettiamo gli header TDM-Reservation, distanziamo le richieste per dominio di rate limit e usiamo il backoff esponenziale. La maggior parte delle richieste usa uno User-Agent stabile e compatibile con i browser; alcuni percorsi specifici per una fonte possono usare uno UA Job Seek identificabile. Consulta la nostra pagina sull'indicizzazione per tutti i dettagli."
 
 #. Description telling user a verification link was sent
 #. js-lingui-explicit-id
@@ -5014,3 +5015,111 @@ msgstr "Questa modifica dello stato non è consentita."
 #: src/lib/action-error-messages.ts
 msgid "actions.error.interviewRoundFailed"
 msgstr "Impossibile assegnare il colloquio."
+
+#. Accessible label for the mobile application funnel summary
+#. js-lingui-explicit-id
+#: src/components/my-jobs/sankey-funnel.tsx
+msgid "myJobs.funnel.mobileLabel"
+msgstr "Percorso di candidatura"
+
+#. Error shown when the watchlists overview cannot load after a retry
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-loader.tsx
+msgid "watchlists.load.error"
+msgstr "Impossibile caricare le tue liste di osservazione."
+
+#. Button to retry loading the watchlists overview
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/watchlists/watchlists-loader.tsx
+msgid "watchlists.load.retry"
+msgstr "Riprova"
+
+#. Label for the company name or careers-page URL request field
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/companies/request/company-request-page-form.tsx
+msgid "companies.request.inputLabel"
+msgstr "Nome dell’azienda o URL della pagina Lavora con noi"
+
+#. Label for the start date in the stats period filter
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx
+msgid "myJobs.stats.fromDate"
+msgstr "Dal"
+
+#. Label for the end date in the stats period filter
+#. js-lingui-explicit-id
+#: app/[lang]/(app)/my-jobs/stats/stats-page.tsx
+msgid "myJobs.stats.toDate"
+msgstr "Al"
+
+#. Button label while an interview round is being added
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
+msgid "myJobs.detail.addingInterview"
+msgstr "Aggiunta…"
+
+#. Screen-reader confirmation after adding an interview round
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
+msgid "myJobs.interview.added"
+msgstr "Colloquio aggiunto."
+
+#. Error shown when an interview round cannot be added
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
+msgid "myJobs.interview.addError"
+msgstr "Impossibile aggiungere il colloquio. Riprova."
+
+#. Screen-reader confirmation after updating an interview round
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
+msgid "myJobs.interview.updated"
+msgstr "Colloquio aggiornato."
+
+#. Error shown when an interview round cannot be updated
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
+msgid "myJobs.interview.updateError"
+msgstr "Impossibile aggiornare il colloquio. Riprova."
+
+#. Delete interview confirmation title
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
+msgid "myJobs.interview.deleteTitle"
+msgstr "Eliminare il colloquio?"
+
+#. Delete interview confirmation description
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
+msgid "myJobs.interview.deleteDescription"
+msgstr "Questo colloquio verrà eliminato definitivamente. Se è l’ultimo, la candidatura tornerà allo stato « Candidato »."
+
+#. Cancel deleting an interview round
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
+msgid "myJobs.interview.deleteCancel"
+msgstr "Annulla"
+
+#. Confirm deleting an interview round
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
+msgid "myJobs.interview.deleteConfirm"
+msgstr "Elimina"
+
+#. Delete interview button while deletion is pending
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
+msgid "myJobs.interview.deleting"
+msgstr "Eliminazione…"
+
+#. Screen-reader confirmation after deleting an interview round
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
+msgid "myJobs.interview.deleted"
+msgstr "Colloquio eliminato."
+
+#. Error shown when an interview round cannot be deleted
+#. js-lingui-explicit-id
+#: src/components/my-jobs/interview-list.tsx
+msgid "myJobs.interview.deleteError"
+msgstr "Impossibile eliminare il colloquio. Riprova."

@@ -38,6 +38,16 @@ COLLECTIONS: list[dict] = [
     {
         "name": "job_posting",
         "fields": [
+            # Stable UUID high-byte partition for bounded bidirectional
+            # reconciliation. Optional only for the in-place rollout; every
+            # new/upserted document carries it, and the first complete repair
+            # cycle removes legacy documents that still lack it.
+            {
+                "name": "reconciliation_bucket",
+                "type": "string",
+                "facet": True,
+                "optional": True,
+            },
             {"name": "company_id", "type": "string", "facet": True},
             {"name": "company_name", "type": "string", "facet": True},
             {"name": "company_slug", "type": "string", "index": False},
@@ -53,6 +63,15 @@ COLLECTIONS: list[dict] = [
             # the exporter has explicitly stamped as `false`.
             {"name": "has_content", "type": "bool", "facet": True, "optional": True},
             {"name": "location_ids", "type": "int32[]", "facet": True},
+            # Unexpanded source IDs as stored on the crawler row. Company
+            # location views need direct-tag counts, while ``location_ids``
+            # intentionally includes ancestors for search filtering.
+            {
+                "name": "location_direct_ids",
+                "type": "int32[]",
+                "facet": True,
+                "optional": True,
+            },
             {"name": "location_names", "type": "string[]", "facet": True},
             {"name": "location_types", "type": "string[]", "facet": True},
             {"name": "location_geo_types", "type": "string[]", "index": False},
@@ -65,6 +84,13 @@ COLLECTIONS: list[dict] = [
             {"name": "technology_names", "type": "string[]", "facet": True},
             {"name": "employment_type", "type": "string", "facet": True, "optional": True},
             {"name": "salary_eur", "type": "int32", "facet": True, "optional": True},
+            # Original salary fields are required by posting detail and saved-job
+            # snapshots. ``salary_eur`` remains the normalized search/facet value;
+            # these fields preserve the source currency and period for display.
+            {"name": "salary_min", "type": "int32", "index": False, "optional": True},
+            {"name": "salary_max", "type": "int32", "index": False, "optional": True},
+            {"name": "salary_currency", "type": "string", "index": False, "optional": True},
+            {"name": "salary_period", "type": "string", "index": False, "optional": True},
             # Precise decimal-year experience fields. Added alongside the
             # legacy integer fields below so production can add them in-place
             # without rebuilding the existing job_posting collection first.
@@ -96,7 +122,9 @@ COLLECTIONS: list[dict] = [
         "name": "location",
         "fields": [
             {"name": "location_id", "type": "int32"},
-            {"name": "slug", "type": "string", "index": False},
+            # Exact slug filters back the web filter-chip resolver. Unlike the
+            # old Postgres mirror lookup, this field must remain indexed.
+            {"name": "slug", "type": "string"},
             {"name": "name_en", "type": "string", "locale": "en"},
             {"name": "name_de", "type": "string", "locale": "de", "optional": True},
             {"name": "name_fr", "type": "string", "locale": "fr", "optional": True},
@@ -108,6 +136,23 @@ COLLECTIONS: list[dict] = [
             # countries fall through to ``name_*``. See #2939.
             {"name": "aliases", "type": "string[]", "optional": True},
             {"name": "parent_name", "type": "string", "optional": True},
+            {"name": "parent_id", "type": "int32", "optional": True},
+            # Self + geographic parents + macro regions. This supports the
+            # descendant expansion contract without a recursive SQL CTE.
+            {
+                "name": "ancestor_ids",
+                "type": "int32[]",
+                "facet": True,
+                "optional": True,
+            },
+            # Populated only on macro documents; used by the location modal's
+            # tooltip/disable semantics and the company multi-country gate.
+            {
+                "name": "member_country_ids",
+                "type": "int32[]",
+                "index": False,
+                "optional": True,
+            },
             {"name": "type", "type": "string", "facet": True},
             {"name": "coordinates", "type": "geopoint", "optional": True},
             {"name": "population", "type": "int32", "optional": True},
@@ -120,9 +165,12 @@ COLLECTIONS: list[dict] = [
         "name": "occupation",
         "fields": [
             {"name": "occupation_id", "type": "int32"},
-            {"name": "slug", "type": "string", "index": False},
+            {"name": "slug", "type": "string"},
             {"name": "name", "type": "string"},
             {"name": "aliases", "type": "string[]"},
+            {"name": "parent_id", "type": "int32", "optional": True},
+            {"name": "domain_id", "type": "int32", "optional": True},
+            {"name": "domain_slug", "type": "string", "index": False, "optional": True},
             {"name": "domain_name", "type": "string", "facet": True, "optional": True},
             {"name": "locale", "type": "string", "facet": True},
             {"name": "has_active_postings", "type": "bool", "facet": True},
@@ -134,7 +182,7 @@ COLLECTIONS: list[dict] = [
         "name": "seniority",
         "fields": [
             {"name": "seniority_id", "type": "int32"},
-            {"name": "slug", "type": "string", "index": False},
+            {"name": "slug", "type": "string"},
             {"name": "name", "type": "string"},
             {"name": "aliases", "type": "string[]"},
             {"name": "locale", "type": "string", "facet": True},
@@ -182,9 +230,13 @@ COLLECTIONS: list[dict] = [
             {"name": "description_it", "type": "string", "index": False, "optional": True},
             {"name": "industry_id", "type": "int32", "facet": True, "optional": True},
             {"name": "industry_name", "type": "string", "facet": True, "optional": True},
-            {"name": "industry_name_de", "type": "string", "index": False, "optional": True},
-            {"name": "industry_name_fr", "type": "string", "index": False, "optional": True},
-            {"name": "industry_name_it", "type": "string", "index": False, "optional": True},
+            # Industry suggestions query all localized names, not just the
+            # English display value. These fields must therefore stay indexed;
+            # ``index: false`` makes Typesense reject the entire ``query_by``
+            # list even for a wildcard browse request.
+            {"name": "industry_name_de", "type": "string", "optional": True},
+            {"name": "industry_name_fr", "type": "string", "optional": True},
+            {"name": "industry_name_it", "type": "string", "optional": True},
             {"name": "employee_count_range", "type": "int32", "optional": True},
             {"name": "founded_year", "type": "int32", "optional": True},
             {"name": "active_posting_count", "type": "int32"},
@@ -604,10 +656,10 @@ def run_setup(*, force: bool = False) -> None:
 
     from src.config import settings
 
-    if not settings.typesense_admin_key:
+    if not settings.typesense_operations_key:
         log.error(
-            "typesense.setup.missing_admin_key",
-            message="TYPESENSE_ADMIN_KEY not set. Cannot proceed.",
+            "typesense.setup.missing_operations_key",
+            message="TYPESENSE_OPERATIONS_KEY not set. Cannot proceed.",
         )
         sys.exit(1)
     if not settings.typesense_host:
@@ -626,7 +678,7 @@ def run_setup(*, force: bool = False) -> None:
                     "protocol": settings.typesense_protocol,
                 }
             ],
-            "api_key": settings.typesense_admin_key,
+            "api_key": settings.typesense_operations_key,
             "connection_timeout_seconds": _SETUP_CONNECTION_TIMEOUT_SECONDS,
         }
     )

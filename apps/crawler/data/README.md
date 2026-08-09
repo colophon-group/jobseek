@@ -1,6 +1,8 @@
 # Data — CSV Config Files
 
-Source of truth for all tracked companies and their board configurations. The database is derived state, rebuilt from these files on each deploy via `uv run python -m src.sync`.
+Source of truth for all tracked companies and their board configurations. Local
+Postgres is derived from these files on each deploy via `uv run crawler sync`;
+Redis and Typesense are published only after the local transaction commits.
 
 ## Files
 
@@ -34,7 +36,7 @@ Board configurations. One row per job board. A company can have multiple boards.
 | `board_url` | Yes | Career page URL (unique). |
 | `monitor_type` | Yes | How to discover listings. Use any registered monitor type from `ws help monitors` (for example `greenhouse`, `workday`, `dom`, `api_sniffer`, `sitemap`). |
 | `monitor_config` | No | JSON string with monitor-specific settings. |
-| `scraper_type` | No | How to extract details: `json-ld`, `dom`, `nextdata`, `embedded`, `api_sniffer`, or `skip`. Use `skip` only when the monitor returns full job data inline (rich monitors like `greenhouse`, `lever`, `ashby`, `recruitee`, `personio`, or `api_sniffer`/`nextdata` configured with a `fields` map). Pairing `skip` with a URL-only monitor (e.g. `dom`, `workday`, `sitemap`) leaves descriptions empty — `ws validate` rejects this. Leave empty when the monitor auto-resolves a scraper (see `ws help scrapers`). |
+| `scraper_type` | No | How to extract details: `json-ld`, `dom`, `nextdata`, `embedded`, `onlyfy`, `api_sniffer`, or `skip`. Use `skip` only when the monitor returns full job data inline (rich monitors like `greenhouse`, `lever`, `ashby`, `recruitee`, `personio`, or `api_sniffer`/`nextdata` configured with a `fields` map). Pairing `skip` with a URL-only monitor (e.g. `dom`, `workday`, `sitemap`) leaves descriptions empty — `ws validate` rejects this. Leave empty when the monitor auto-resolves a scraper (see `ws help scrapers`). |
 | `scraper_config` | No | JSON string with scraper-specific settings. |
 
 ## Adding a Company

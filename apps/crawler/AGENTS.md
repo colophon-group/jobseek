@@ -4,13 +4,16 @@ Crawler-specific instructions. See the root [AGENTS.md](../../AGENTS.md) for pro
 
 ## Architecture
 
-Redis-orchestrated workers writing to local Postgres, with CDC export to Supabase + Typesense:
+Redis-orchestrated workers writing to local Postgres, with CDC export to
+Typesense:
 
 1. **Single Job** (`src/core/`) — pure async functions, no DB awareness
 2. **Workers** (`src/workers/pipeline.py`) — claim from Redis tiered queues, process, write to local Postgres
-3. **Exporter** (`src/exporter.py`) — CDC: local Postgres -> Supabase batch COPY + Typesense upserts (two independent cursors, concurrent writes)
+3. **Exporter** (`src/exporter.py`) — CDC: local Postgres -> Typesense; the
+   production CLI advances only the `typesense:job_posting` cursor
 4. **R2 Drain** (`src/workers/r2_drain.py`) — poll descriptions table, PUT to R2
-5. **Typesense Sync** (`src/sync.py`) — taxonomy + company collections populated after CSV sync; rename detection updates denormalized names on postings
+5. **Registry Sync** (`src/sync.py`) — commits CSV state to authoritative local
+   Postgres first, then updates Redis and Typesense
 
 See [docs/03-crawler-architecture.md](../../docs/03-crawler-architecture.md) for full details.
 See [docs/11-typesense.md](../../docs/11-typesense.md) for Typesense deployment details.
@@ -27,6 +30,7 @@ src/
 │   │   ├── ashby.py       # Ashby Job Board API
 │   │   ├── gem.py         # Gem ATS Job Board API
 │   │   ├── greenhouse.py  # Greenhouse JSON API
+│   │   ├── hirehive.py    # HireHive public Jobs API
 │   │   ├── hireology.py   # Hireology Careers API
 │   │   ├── lever.py       # Lever Postings API
 │   │   ├── personio.py    # Personio Public XML Feed
@@ -65,13 +69,13 @@ src/
 │   └── lookups.py         # Cached lookup table loaders (locations, technologies, etc.)
 ├── redis_queue.py         # Lua-backed claim/enqueue/reschedule
 ├── lua/                   # claim_work.lua, enqueue_task.lua, reschedule_task.lua
-├── exporter.py            # CDC: local Postgres -> Supabase + Typesense (two-cursor)
+├── exporter.py            # Commit-safe Typesense CDC
 ├── typesense_client.py    # Shared Typesense client (lazy init, None when unconfigured)
-├── sync.py                # CSV -> local Postgres + Supabase + Redis + Typesense taxonomies
-├── bootstrap.py           # One-time: Supabase -> local Postgres copy
+├── sync.py                # CSV -> local Postgres, then Redis + Typesense
+├── bootstrap.py           # Non-executable rollback helpers for the retired mirror
 ├── cli.py                 # Entry point: crawler run/run-browser/export/drain/sync/board
 ├── config.py              # Settings (pydantic-settings)
-├── db.py                  # asyncpg pools (local Postgres + Supabase)
+├── db.py                  # asyncpg pools (local, optional mirror, web-owned data)
 ├── metrics.py             # Prometheus metrics
 ├── migrations/            # Alembic migrations for local Postgres
 ├── workspace/             # Workspace CLI (ws command)
@@ -160,15 +164,22 @@ ws reject --reason <key> --message "..."  # Uses active workspace's issue
 # Run crawler workers
 uv run crawler run                     # HTTP worker (claims from simple queues)
 uv run crawler run-browser             # Browser worker (claims from browser queues)
-uv run crawler export                  # CDC exporter loop (Supabase + Typesense)
+uv run crawler export                  # Typesense CDC
 uv run crawler drain                   # R2 description uploader
-uv run crawler sync                    # CSV -> local Postgres + Supabase + Redis + Typesense
-uv run crawler reconcile               # Compare local vs Supabase, fix discrepancies (also runs daily in-process inside the exporter container)
+uv run crawler sync                    # CSV -> local Postgres, then Redis + Typesense
+uv run crawler reconcile               # Read-only Typesense reconciliation slice
+uv run crawler reconcile --repair --max-partitions 16  # Resume verified repairs (host timer uses this)
+uv run crawler reconcile --repair --full --target typesense  # Operator full remaining target cycle
 uv run crawler backfill-typesense      # Full re-index of job_posting to Typesense (manual; workflow_dispatch in .github/workflows/crawler-scheduled-maintenance.yml)
-uv run crawler refresh-typesense       # Refresh Typesense counts + reconcile watchlists (every 4h via .github/workflows/crawler-scheduled-maintenance.yml, plus inline at every deploy/CSV sync)
+uv run crawler refresh-typesense       # Refresh counts + reconcile WEB_DATABASE_URL watchlists (every 4h and after sync)
 uv run crawler notify-indexnow         # Push changed company URLs to IndexNow (RETIRED in #2821 — kept for revival; no scheduler invokes it)
 uv run crawler retry-stalled-scrapes   # Reset next_scrape_at for transient-3-strike-stalled postings (#2738; see docs/03-crawler-architecture.md "Delisting model" section 5)
 uv run crawler retry-stalled-scrapes --dry-run  # Report the count without writing
+uv run crawler sweep-phantoms --dry-run  # Classify terminal-board active postings
+uv run crawler sweep-phantoms            # Bounded/resumable terminal-board delist
+uv run crawler retire-stale-boards --format md    # Current provider evidence report
+uv run crawler retire-stale-boards --format json  # Machine-readable reason codes
+uv run crawler retire-stale-boards --format shell # Commands only for fully verified gone rows
 uv run crawler reprocess-experience --dry-run   # Report active postings whose stored descriptions would update experience_min/max (#3289)
 uv run crawler reprocess-experience             # Apply the #3289 experience_min/max correction locally; exporter propagates changes
 uv run crawler reprocess-occupations --dry-run  # Report occupation_id changes after taxonomy splits (#3360)
@@ -468,7 +479,10 @@ When existing monitors/scrapers can't handle a site, agents may propose code cha
 
 ## Hetzner Operations
 
-All crawler services run on Hetzner. Machine IPs, credentials, and API keys are in `apps/crawler/.env.local` — never hardcode them.
+All crawler services run on Hetzner. Machine addresses, credentials, and API
+keys are supplied through protected deployment/host environments; ignored
+`apps/crawler/.env.local` files are for local operator access only. Never
+hardcode or commit them.
 
 See [docs/16-hetzner-maintenance.md](../../docs/16-hetzner-maintenance.md)
 for disk triage, Docker image garbage collection, Redis disk-full recovery,
@@ -492,7 +506,7 @@ All machines communicate via Hetzner private network (10.0.0.0/16). See `.env.lo
 |---------|------|
 | Crawler box | Workers, exporter, drain, Redis, Alloy |
 | Postgres box | Local Postgres (source of truth) |
-| Typesense box | Typesense 27.1, Cloudflare tunnel (`cloudflared`) |
+| Typesense box | Typesense 27.1, Cloudflare tunnel (`cloudflared`), encrypted web PostgreSQL logical backups |
 
 ### Container Management
 
@@ -506,11 +520,10 @@ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.CPUPerc}}\t{{.MemUsage}}"
 docker logs <name> 2>&1 | tail -20
 docker logs <name> 2>&1 | grep "error" | tail -10
 
-# Restart a service
-docker rm -f <name> && docker run -d --name <name> --restart unless-stopped \
-  --env-file /home/deploy/.env --network host --memory=1g --cpus=1.0 \
-  -e METRICS_PORT=<port> -e DISCOVERY_CONCURRENCY=30 -e MONITOR_CONCURRENCY=10 \
-  crawler-slim:latest uv run --no-sync crawler run
+# Restart a service through its credential-scoped Compose definition
+cd /home/deploy
+docker compose up -d --force-recreate <service>
+docker compose ps <service>
 
 # Build images after code changes
 rsync -az --delete --exclude='.venv' --exclude='__pycache__' --exclude='.env*' --exclude='*.pyc' \
@@ -553,7 +566,7 @@ docker exec deploy-redis-1 redis-cli SET disk_probe ok EX 60
 | browser-1 | crawler-full | 9098 | 3 | 6GB |
 | exporter | crawler-slim | 9093 | — | — |
 | drain | crawler-slim | 9094 | — | — |
-| alloy | grafana/alloy | 12346 | 0.25 | 256MB |
+| alloy | grafana/alloy | 12346 | 0.5 | 512MB (256MiB Go soft limit) |
 | redis | redis:7-alpine | — | — | 1.5GB (1GB maxmemory) |
 
 ### Querying Metrics
@@ -588,26 +601,31 @@ curl -s -X POST "https://colophongroup.grafana.net/api/dashboards/db" \
 ### Alert Rules
 
 Alert rules are managed as Prometheus YAML at `apps/crawler/alerts.yaml`
-and pushed to Grafana Cloud Mimir. The current set covers the failure
-modes from the 2026-04-25 dark-window incident (#2696):
-`NoMetricsFromCrawler`, `DiskNearFull`, `RedisMemoryPressure`,
-`ExporterStale`, `TaskFailureRateHigh`; plus the 2026-04-26 false-delisting
-incident (#2722–#2726): `DelistingRateSpike` (page; fleet gone-rate
->3× rolling 7d median) and `GoneDetectionGuardsFiring` (email; resilience
-guards #2723/#2724 actively suppressing mass delistings — investigate
-the underlying monitor truncation). Severity is encoded as a label
-(`severity=page` vs `severity=email`); routing is configured in Grafana
-Cloud Alerting separately.
+and transactionally synced to Grafana Cloud Mimir by
+`.github/workflows/deploy-hetzner-observability.yml` after all three host
+collectors pass deployment. The set covers crawler availability/queues/
+export/delisting plus all-host silence, disk/inodes, backup freshness,
+PostgreSQL readiness/archive/connections, Typesense/tunnel health, and pending
+reboots. Every alert must carry a repository runbook plus
+`owner=codex-error-review` and `route=codex-daily`. The daily Hetzner Codex
+review owns deduplicated GitHub issue delivery. Every critical alert must also
+carry `page=production` and a pending duration of at most three minutes.
+Production email paging is disabled: the observability deployment removes the
+Jobseek contact, notification routes, bridge/deadman rules, and synthetic test
+rule before syncing Mimir rules. The former scheduled paging workflow is not
+installed, and the paging utility has no activation CLI mode.
+`ExporterStale` must retain `instance="exporter"` because the shared metrics
+module exposes a default-zero gauge from other crawler endpoints.
 
 ```bash
-# Preferred: push via mimirtool
-mimirtool rules load apps/crawler/alerts.yaml \
-  --address="$MIMIR_URL" \
-  --id="$MIMIR_TENANT" \
-  --key="$MIMIR_KEY"
+# Validate source/ownership without a remote write
+cd apps/crawler
+uv run python ../../scripts/sync-grafana-rules.py --dry-run
+uv run python ../../scripts/sync-grafana-alertmanager.py \
+  --dry-run --url https://grafana.example.com --api-key test-only
 
-# Fallback: import via the Grafana Cloud Alerting UI's
-# "Import from Prometheus YAML" flow.
+# Production deploys run the paging utility only with --disable, then sync and
+# verify the Mimir rules. There is no supported paging activation command.
 ```
 
 The `RedisMemoryPressure` alert depends on the `redis_exporter` block
@@ -623,30 +641,35 @@ Typesense 27.1 runs as a Docker container on a dedicated Hetzner CX22 (4 GB RAM,
 # SSH to Typesense machine
 ssh -i ~/.ssh/hetzner_deploy root@<TYPESENSE_IP>
 
-# Check health
-curl -s http://localhost:8108/health -H "X-TYPESENSE-API-KEY: <ADMIN_KEY>"
-
-# View stats
-curl -s http://localhost:8108/stats.json -H "X-TYPESENSE-API-KEY: <ADMIN_KEY>"
+# Check unauthenticated health
+curl --fail --silent http://localhost:8108/health
 
 # View container
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.MemUsage}}"
 docker logs typesense 2>&1 | tail -20
 
-# Restart Typesense
-docker rm -f typesense && docker run -d --name typesense --restart unless-stopped \
-  --network host -v /mnt/typesense-data:/data \
-  typesense/typesense:27.1 --data-dir /data --api-key=<ADMIN_KEY>
+# Verify protected credential delivery without printing secrets
+/usr/local/sbin/jobseek-verify-typesense-host-credentials
 ```
 
-**Cloudflare tunnel**: `cloudflared` runs as a systemd service, routing `typesense.colophon-group.org` to `localhost:8108`. Auto-starts on reboot.
+Never recreate Typesense with an inline `--api-key`. The bootstrap key belongs
+only in the root-owned server config; crawler commands use the generated
+`TYPESENSE_OPERATIONS_KEY`, and backups use their separate generated key.
+Restart/reconcile the reviewed host surface through the manual
+`.github/workflows/deploy-typesense-host.yml` dispatch described in
+`docs/16-hetzner-maintenance.md#typesense-host-credentials`.
+
+**Cloudflare tunnel**: `cloudflared` runs as a dedicated unprivileged systemd
+service, routing `typesense.colophon-group.org` to `localhost:8108`. Its token
+is delivered from a root-only source through systemd `LoadCredential`; never
+place it directly in the unit or process arguments.
 
 ```bash
 # Check tunnel status
 systemctl status cloudflared
 
-# Restart tunnel
-systemctl restart cloudflared
+# Reconcile or rotate via the reviewed host workflow
+gh workflow run deploy-typesense-host.yml --ref main -f component=cloudflared
 ```
 
 **Collection management** (from `apps/crawler/` on any machine with connectivity):
@@ -662,13 +685,42 @@ uv run crawler backfill-typesense
 uv run crawler refresh-typesense
 ```
 
-**Grafana metrics**: `typesense_export_docs_total`, `typesense_export_lag`, `typesense_export_duration_seconds`, `typesense_healthy` (0/1), `typesense_memory_bytes`, `typesense_reconciliation_discrepancies`.
+**Grafana metrics**: `typesense_export_docs_total`, `typesense_export_lag`, `typesense_export_duration_seconds`, `typesense_healthy` (0/1), `typesense_memory_bytes`, and durable host metrics under `jobseek_cross_store_reconciliation_*`. Posting reconciliation runs from `jobseek-crawler-reconciliation.timer`, not from the exporter process or GitHub cron; see `docs/03-crawler-architecture.md#cross-store-reconciliation`.
 
 ### Alloy (Metrics + Logs Collector)
 
-Alloy scrapes Prometheus metrics from all containers and ships to Grafana Cloud. Config is written to `/tmp/alloy-full.river` on the worker machine. When adding/removing containers, update the static scrape targets and restart alloy.
+The crawler Compose Alloy scrapes crawler application and Redis metrics and
+tails crawler Docker logs. Its official 1.18.0 image is digest-pinned,
+read-only, capability-dropped, and no longer privileged or host-PID aware.
+Its remote-write queue uses one bounded shard, Redis metrics use an explicit
+operational allowlist, and per-origin circuit-breaker metrics are dropped in
+favor of bounded fleet task outcomes plus Loki attribution. These controls are
+part of the Grafana 15,000-active-series safety budget and must not be removed
+without measuring production cardinality first.
+When adding/removing crawler containers, update the static scrape targets in
+`apps/crawler/alloy.river`; crawler deployment recreates only this collector.
 
-Credentials for Grafana Cloud Prometheus and Loki are in `.env.local` (`GRAFANA_*` vars). Note: Prometheus and Loki have **different user IDs** (Prometheus = `GRAFANA_USER_ID`, Loki has its own instance ID).
+Host metrics and allowlisted journals are a separate fleet surface on the
+crawler, PostgreSQL, and Typesense machines. An unprivileged native
+`jobseek-alloy.service` listens only on loopback, while the root-owned
+`jobseek-host-observability.timer` performs bounded read-only Docker/database
+probes and writes an atomic textfile. Deploy and rollback behavior lives in
+`deploy/observability/` and `.github/workflows/deploy-hetzner-observability.yml`;
+operator checks are in `docs/16-hetzner-maintenance.md#fleet-observability`.
+Neither the native collector nor `codex-runner` receives Docker-socket access.
+
+Local operator credentials for Grafana Cloud Prometheus and Loki may be in the
+ignored `.env.local` (`GRAFANA_*` vars); production copies are protected
+deployment secrets. Prometheus and Loki have **different user IDs**
+(`GRAFANA_USER_ID` for Prometheus; Loki has its own instance ID).
+
+Production paging is disabled. The observability deployment removes the
+retired Jobseek notification routes, email contact, bridge/deadman rules, and
+synthetic test rule on every run. Do not add a paging schedule, contact,
+route, test, or activation command without an explicit new operator decision.
+Rule state remains visible in Grafana; the daily Codex error-review workflow
+owns deduplicated issue delivery. See
+`docs/16-hetzner-maintenance.md#production-paging-is-disabled`.
 
 ### Deploying Code Changes
 
@@ -680,8 +732,8 @@ rsync -az --delete --exclude='.venv' --exclude='__pycache__' --exclude='.env*' \
 # 2. Build image(s)
 ssh ... 'cd /home/deploy/crawler-src && docker build --target slim -t crawler-slim:latest .'
 
-# 3. Restart affected containers (worker, exporter, drain, etc.)
-ssh ... 'docker rm -f worker-1 && docker run -d --name worker-1 ...'
+# 3. Restart affected services through their credential-scoped Compose definitions
+ssh ... 'cd /home/deploy && docker compose up -d --force-recreate worker-1'
 
 # 4. Re-sync if CSV data changed
 ssh ... 'docker run --rm --env-file /home/deploy/.env --network host \

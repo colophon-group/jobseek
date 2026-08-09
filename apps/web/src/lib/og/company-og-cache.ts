@@ -5,6 +5,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { logExternalError } from "@/lib/safe-external-error";
 
 const CONTENT_TYPE = "image/png";
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
@@ -104,7 +105,7 @@ export async function readCompanyOgCache(key: string): Promise<Uint8Array | null
     return bodyToBytes(response.Body);
   } catch (error) {
     if (isMissingObjectError(error)) return null;
-    console.warn("[company-og-cache] read failed", error);
+    logExternalError("warn", { service: "r2", operation: "read_company_og" }, error);
     return null;
   }
 }
@@ -125,6 +126,6 @@ export async function writeCompanyOgCache(
       CacheControl: CACHE_CONTROL,
     }));
   } catch (error) {
-    console.warn("[company-og-cache] write failed", error);
+    logExternalError("warn", { service: "r2", operation: "write_company_og" }, error);
   }
 }

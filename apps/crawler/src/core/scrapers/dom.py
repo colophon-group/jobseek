@@ -6,7 +6,8 @@ structured fields from the HTML.
 By default (``render: false``), fetches the page via static HTTP.  Set
 ``render: true`` to render with Playwright for JS-heavy sites.
 
-Config uses ``steps`` (same format as ``walk_steps``) plus optional browser
+Config uses ``steps`` (same format as ``walk_steps``), an optional ``scope``
+CSS selector that limits extraction to one content container, plus browser
 lifecycle keys (``wait``, ``timeout``, ``user_agent``, ``headless``, ``actions``)
 which are only used when rendering.
 
@@ -41,6 +42,29 @@ from src.shared.http import is_avature_job_detail_url
 from src.shared.http_retry import fetch_response_with_status_retries
 
 log = structlog.get_logger()
+
+
+def _scope_html(html: str, config: dict) -> str:
+    """Limit extraction to one configured container before flattening.
+
+    Branded career pages often wrap the ATS fragment in malformed or enormous
+    navigation markup. Scoping is generic DOM-scraper behavior: it makes
+    selectors deterministic and prevents surrounding site chrome from
+    shadowing job fields without introducing provider-specific parsing.
+    """
+
+    scope = config.get("scope")
+    if scope is None:
+        return html
+    if not isinstance(scope, str) or not scope.strip() or len(scope) > 256 or "\x00" in scope:
+        raise ValueError("DOM scraper scope must be a non-empty CSS selector up to 256 chars")
+    try:
+        node = LexborHTMLParser(html).css_first(scope)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"DOM scraper scope is not a valid CSS selector: {scope!r}") from exc
+    if node is None:
+        raise ValueError(f"DOM scraper scope did not match the page: {scope!r}")
+    return node.html
 
 
 def _check_gone_redirect(final_url: str, pattern: str | None, source_url: str) -> None:
@@ -85,6 +109,27 @@ def _check_gone_redirect(final_url: str, pattern: str | None, source_url: str) -
     )
 
 
+def _status_retry_limits(config: dict, url: str) -> dict[int, int]:
+    """Return validated static-fetch status retries from scraper config."""
+
+    limits = {406: 2} if is_avature_job_detail_url(url) else {}
+    configured = config.get("retry_statuses")
+    if configured is None:
+        return limits
+    if not isinstance(configured, dict):
+        raise ValueError("DOM scraper retry_statuses must be an object")
+    for raw_status, raw_limit in configured.items():
+        try:
+            status = int(raw_status)
+            limit = int(raw_limit)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("DOM scraper retry_statuses entries must be integers") from exc
+        if not 400 <= status <= 599 or not 0 <= limit <= 5:
+            raise ValueError("DOM scraper retry_statuses requires HTTP 400-599 and 0-5 retries")
+        limits[status] = max(limits.get(status, 0), limit)
+    return limits
+
+
 # ── Heuristic stop markers ────────────────────────────────────────────
 
 _STOP_MARKERS = [
@@ -97,57 +142,6 @@ _STOP_MARKERS = [
     "Share",
     "Related",
 ]
-
-_LINKEDIN_GUEST_MARKERS = ("topcard__title", "show-more-less-html__markup")
-
-
-def _is_linkedin_guest_html(htmls: list[str]) -> bool:
-    """Return whether most pages use LinkedIn's public guest markup."""
-    if not htmls:
-        return False
-    matches = sum(all(marker in html for marker in _LINKEDIN_GUEST_MARKERS) for html in htmls)
-    return matches >= len(htmls) / 2
-
-
-def _parse_linkedin_guest_html(html: str) -> JobContent:
-    """Parse LinkedIn's stable unauthenticated guest job-detail fragment."""
-    tree = LexborHTMLParser(html)
-
-    title_node = tree.css_first(".topcard__title")
-    title = title_node.text(strip=True) if title_node is not None else None
-
-    location_node = tree.css_first(".topcard__flavor-row .topcard__flavor--bullet")
-    location = location_node.text(strip=True) if location_node is not None else None
-
-    description_node = tree.css_first(".show-more-less-html__markup")
-    description_html = description_node.inner_html if description_node is not None else None
-    description = description_html.strip() if description_html else None
-
-    criteria: dict[str, str] = {}
-    for item in tree.css(".description__job-criteria-item"):
-        header = item.css_first(".description__job-criteria-subheader")
-        value = item.css_first(".description__job-criteria-text")
-        if header is None or value is None:
-            continue
-        key = header.text(strip=True).casefold()
-        text = value.text(strip=True)
-        if key and text:
-            criteria[key] = text
-
-    employment_type = criteria.pop("employment type", None)
-    metadata = {
-        key.replace(" ", "_"): value
-        for key, value in criteria.items()
-        if key in {"seniority level", "job function", "industries"}
-    }
-
-    return JobContent(
-        title=title or None,
-        description=description,
-        locations=[location] if location else None,
-        employment_type=employment_type,
-        metadata=metadata or None,
-    )
 
 
 def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
@@ -167,10 +161,10 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
 
     steps: list[dict] = [{"tag": "h1", "field": "title"}]
 
-    # Description: content after h1, stop at known marker
+    # Description: continue from the cursor immediately after the title h1.
+    # Leaving the selector empty intentionally matches the current element;
+    # re-seeking the h1 would either miss it or escape a URL-fragment anchor.
     desc_step: dict = {
-        "tag": "h1",
-        "offset": 1,
         "field": "description",
         "html": True,
         "optional": True,
@@ -218,9 +212,6 @@ def can_handle(htmls: list[str]) -> dict | None:
     Uses the first page's structure to generate steps, then validates
     that the title step (h1) matches on other pages too.
     """
-    if _is_linkedin_guest_html(htmls):
-        return {"linkedin_guest": True}
-
     # Try each page until we get usable steps
     best_steps = None
 
@@ -252,12 +243,10 @@ def can_handle(htmls: list[str]) -> dict | None:
 
 def parse_html(html: str, config: dict) -> JobContent:
     """Extract job data from pre-fetched HTML using step-based extraction."""
-    if config.get("linkedin_guest"):
-        return _parse_linkedin_guest_html(html)
     steps = config.get("steps")
     if not steps:
         return JobContent()
-    elements = flatten(html)
+    elements = flatten(_scope_html(html, config))
     raw, _ = walk_steps(elements, steps)
     return _map_to_job_content(raw)
 
@@ -325,8 +314,7 @@ async def scrape(
     When ``render`` is true, renders the page with Playwright.
     """
     steps = config.get("steps")
-    linkedin_guest = bool(config.get("linkedin_guest"))
-    if not steps and not linkedin_guest:
+    if not steps:
         log.warning("dom.no_steps", url=url)
         return JobContent()
 
@@ -373,7 +361,7 @@ async def scrape(
             async with async_playwright() as p:
                 html = await _render_page(p)
     else:
-        retry_limits = {406: 2} if is_avature_job_detail_url(url) else {}
+        retry_limits = _status_retry_limits(config, url)
         resp = await fetch_response_with_status_retries(
             http,
             url,
@@ -388,17 +376,7 @@ async def scrape(
         resp.raise_for_status()
         html = resp.text
 
-    if linkedin_guest:
-        content = _parse_linkedin_guest_html(html)
-        log.debug(
-            "dom.linkedin_guest.extracted",
-            url=url,
-            title=bool(content.title),
-            description=bool(content.description),
-            locations=bool(content.locations),
-        )
-        return content
-
+    html = _scope_html(html, config)
     elements = flatten(html)
 
     if artifact_dir is not None:

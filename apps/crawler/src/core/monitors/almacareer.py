@@ -700,6 +700,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
             raise BoardGoneError(
                 f"AlmaCareer tenant {host!r} returned 404 on script.min.js",
                 url=f"https://{host}/",
+                status_code=404,
             ) from None
         if not config:
             raise ValueError(

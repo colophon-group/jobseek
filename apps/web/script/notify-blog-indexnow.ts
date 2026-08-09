@@ -25,6 +25,7 @@
  */
 
 import { notifyIndexNow } from "../src/lib/indexnow";
+import { logExternalError } from "../src/lib/safe-external-error";
 import { listBlogPosts, getBlogPostLocales } from "../src/lib/blog";
 
 async function main(): Promise<void> {
@@ -83,6 +84,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error("[notify-blog-indexnow] failed", err);
+  logExternalError("error", { service: "indexnow", operation: "notify_blog" }, err);
   process.exit(1);
 });

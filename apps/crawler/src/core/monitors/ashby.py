@@ -18,6 +18,7 @@ from src.core.monitors import (
     BoardGoneError,
     DiscoveredJob,
     register,
+    slug_guess_allowed,
 )
 from src.core.monitors._ats_template import ProbeCount, ProbeResult, ats_can_handle
 from src.core.monitors.raw import save_json_response
@@ -225,11 +226,12 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     response = await client.get(url, params=params)
     if response.status_code == 404:
         # Ashby returns 404 when the board token has been removed
-        # upstream. Surface as a "gone" signal for one-shot disable.
-        # See issue #2215.
+        # upstream. Surface as a provider-gone confirmation signal.
+        # See issues #2215 and #6156.
         raise BoardGoneError(
             f"Ashby board token {token!r} returned 404",
             url=str(response.url),
+            status_code=response.status_code,
         )
     response.raise_for_status()
 
@@ -266,6 +268,7 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
         fetch_job_count=_fetch_template_count,
         api_probe=_probe_template_token,
         initial_context=None,
+        allow_slug_guess=slug_guess_allowed(),
     )
 
 

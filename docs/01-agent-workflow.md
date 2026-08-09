@@ -4,9 +4,11 @@ How coding agents resolve company-request issues.
 
 ## Trigger
 
-1. A user submits a company name or URL through the web app
-2. The web app creates a GitHub issue with the `company-request` label
-3. The issue body contains the user's input (company name, URL, or both)
+1. A user submits a company name or URL through the web app, or the bounded ATS
+   inventory runner admits a high-impact candidate
+2. A GitHub issue is created with the `company-request` label
+3. Human issues contain the user's input. Inventory issues additionally carry
+   a content-addressed native-monitor seed; upstream code is never a dependency
 
 ## Agent Resolution
 
@@ -38,13 +40,17 @@ The agent runs `ws task --issue N` which guides it through the entire flow:
 1. **Pre-verify:** `ws search` to check duplicates, web research to confirm
    the company exists with a public careers page
 2. **Create workspace:** `ws new <slug> --issue N` creates the local
-   worktree/branch and staged stub, but does not push or open a PR
+   worktree/branch and staged stub, but does not push or open a PR. A validated
+   inventory issue also preselects its mapped native monitor; invalid or stale
+   evidence falls back to the normal path.
 3. **Parallel setup:** `ws task` renders the parallel orchestrator which tells
    the agent to spawn background subagents for enrichment, logos, and board
    discovery. `ws set --website` triggers background auto-discovery.
 4. **Progressive board processing:** `ws await-board` blocks until Track C
    adds a board, then the main agent probes and configures it immediately.
-   Config testing spawns parallel subagents per monitor+scraper combo.
+   Config testing spawns parallel subagents per monitor+scraper combo. A seeded
+   monitor may skip probing only after a successful non-empty run; all other
+   board research and quality gates remain unchanged.
 5. **Submit:** `ws submit` validates, commits, pushes, and creates the draft
    PR exactly once. `ws task complete` exports the trace and marks the PR
    ready.

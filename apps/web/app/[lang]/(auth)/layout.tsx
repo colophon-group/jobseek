@@ -10,17 +10,17 @@ type Props = {
   children: ReactNode;
 };
 
-// Under cacheComponents, the static AuthShell + form prerender.
-// `RedirectIfSignedIn` is the only dynamic piece — it streams a session
-// lookup and redirects if the visitor is already signed in. Returns null
-// otherwise, so there's no visual placeholder to flash.
+// Under cacheComponents, AuthShell prerenders while request-aware auth
+// subtrees stream. `RedirectIfSignedIn` reads the session; AuthForm reads a
+// validated `next` search param so save/sign-in flows can return to their
+// original context. Both need explicit, stable Suspense boundaries.
 export default function AuthLayout({ params, children }: Props) {
   return (
     <AuthShell>
       <Suspense fallback={null}>
         <RedirectIfSignedIn params={params} />
       </Suspense>
-      {children}
+      <Suspense fallback={null}>{children}</Suspense>
     </AuthShell>
   );
 }

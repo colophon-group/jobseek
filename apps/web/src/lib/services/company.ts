@@ -1,10 +1,7 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
-import { db } from "@/db";
 import { CACHE_TTL_MEDIUM, CACHE_TTL_LONG } from "@/lib/cache-ttl";
-import { withDbRetry } from "@/lib/db-retry";
 import { getSearchProvider } from "@/lib/search";
 import type { SearchResultPosting, WorkMode } from "@/lib/search";
 import {
@@ -13,18 +10,22 @@ import {
   typeaheadCompaniesCacheTag,
 } from "@/lib/cache-tags";
 import { getSessionUserId } from "@/lib/sessionCache";
-import { expandLocationIdsBatch } from "@/lib/services/locations";
-import { expandOccupationIdsBatch } from "@/lib/services/taxonomy";
 import { ANON_MAX_COMPANIES, ANON_MAX_POSTINGS } from "@/lib/search/constants";
 import { getSearchClient } from "@/lib/search/typesense-client";
 import { buildFilterString, POSTING_BASE_FILTER } from "@/lib/search/typesense-filters";
 import { isTypesenseUnavailableError } from "@/lib/search/typesense-retry";
-import { localesOrNoneClause } from "@/lib/search/pg-filters";
+import {
+  fetchLocationDocumentsByIds,
+  fetchLocationDocumentsWithAncestors,
+  fetchLocationMacroDocuments,
+  type TypesenseLocationDocument,
+} from "@/lib/search/typesense-taxonomy";
 import { parseSearchFilters } from "@/lib/services/search-input";
 import { getCurrencyRates } from "@/lib/services/search";
 import { firstOf, idsOrUndefined, parseRangeParam } from "@/lib/search/params";
 import { convertToEur } from "@/lib/salary";
-import { canonicalStringCompare } from "@/lib/sort";
+import { canonicalStringCompare, makeDisplayStringCompare } from "@/lib/sort";
+import { logExternalError } from "@/lib/safe-external-error";
 
 export { getCompanyBySlug } from "@/lib/services/company-detail";
 export type { CompanyDetail } from "@/lib/services/company-detail";
@@ -44,13 +45,15 @@ export async function suggestCompanies(params: {
   const q = params.query.trim().toLowerCase();
   if (q.length < 2) return [];
 
-  // Per-region in-memory `'use cache'` (revalidate 3600s). Migrated from
-  // Redis-backed `cached()` in #2884 (typeaheads slice). The previous TTL
-  // was 600s; bumped to 3600s to match the other 4 typeahead sites
-  // (issue prescription). The inner fetcher returns `CompanySuggestion[]`
-  // (plain serializable objects, never null), so no throw-and-catch
-  // wrapper is needed here.
-  return _queryCompanySuggestionsCached(q);
+  // Let Typesense failures escape the cache boundary so an outage-shaped
+  // empty list is not cached for an hour. The public surface degrades to no
+  // suggestions until the search service recovers.
+  try {
+    return await _queryCompanySuggestionsCached(q);
+  } catch (err) {
+    if (!isTypesenseUnavailableError(err)) throw err;
+    return [];
+  }
 }
 
 async function _queryCompanySuggestionsCached(
@@ -63,48 +66,25 @@ async function _queryCompanySuggestionsCached(
   // instead of waiting up to 3600s for the TTL. See #2907 follow-up.
   cacheTag(typeaheadCompaniesCacheTag());
 
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: string;
-        name: string;
-        slug: string;
-        icon: string | null;
-        match_rank: number;
-      }>(sql`
-        WITH prefix_matches AS (
-          SELECT c.id, c.name, c.slug, c.icon, 1 AS match_rank
-          FROM company c
-          WHERE lower(c.name) LIKE ${q + "%"}
-            AND EXISTS (SELECT 1 FROM job_posting jp WHERE jp.company_id = c.id AND jp.is_active = true)
-          LIMIT 5
-        ),
-        fuzzy_matches AS (
-          SELECT c.id, c.name, c.slug, c.icon, 2 AS match_rank
-          FROM company c
-          WHERE length(${q}) >= 3
-            AND similarity(lower(c.name), ${q}) > 0.3
-            AND c.id NOT IN (SELECT id FROM prefix_matches)
-            AND EXISTS (SELECT 1 FROM job_posting jp WHERE jp.company_id = c.id AND jp.is_active = true)
-          ORDER BY similarity(lower(c.name), ${q}) DESC
-          LIMIT 5
-        )
-        SELECT * FROM prefix_matches
-        UNION ALL
-        SELECT * FROM fuzzy_matches
-        LIMIT 5
-      `),
-    { label: "companySuggestions" },
-  );
+  const result = await getSearchClient().collections("company").documents().search({
+    q,
+    query_by: "name",
+    filter_by: "active_posting_count:>0",
+    sort_by: "_text_match:desc,active_posting_count:desc",
+    per_page: 5,
+    prefix: true,
+    num_typos: 1,
+  });
 
-  type Row = { id: string; name: string; slug: string; icon: string | null; match_rank: number };
-  return (rows as unknown as Row[]).map((r) => ({
-    id: r.id,
-    name: r.name,
-    slug: r.slug,
-    icon: r.icon,
-  }));
+  return (result.hits ?? []).map((hit) => {
+    const doc = hit.document as Record<string, unknown>;
+    return {
+      id: String(doc.id),
+      name: String(doc.name ?? ""),
+      slug: String(doc.slug ?? ""),
+      icon: typeof doc.icon === "string" ? doc.icon : null,
+    };
+  });
 }
 
 // ── Paginated company search with filter-aware match counts ─────────
@@ -142,8 +122,12 @@ export async function searchCompaniesForWatchlist(params: {
     return await _searchCompaniesForWatchlistTypesense(params);
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
-    console.error("[searchCompaniesForWatchlist] Typesense failed, falling back to Postgres", err);
-    return _searchCompaniesForWatchlistPostgres(params);
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "search_companies_watchlist" },
+      err,
+    );
+    return { companies: [], total: 0 };
   }
 }
 
@@ -411,166 +395,6 @@ async function _searchCompaniesForWatchlistTypesense(params: {
   };
 }
 
-/** Postgres fallback for searchCompaniesForWatchlist (graceful degradation). */
-async function _searchCompaniesForWatchlistPostgres(params: {
-  query?: string;
-  industryId?: number;
-  locale: string;
-  offset: number;
-  limit: number;
-  keywords?: string[];
-  locationIds?: number[];
-  occupationIds?: number[];
-  seniorityIds?: number[];
-  technologyIds?: number[];
-  salaryMin?: number;
-  salaryMax?: number;
-  experienceMin?: number;
-  experienceMax?: number;
-  languages?: string[];
-  starredCompanyIds?: string[];
-}): Promise<{ companies: CompanyListEntry[]; total: number }> {
-  const q = params.query?.trim().toLowerCase();
-  const hasQuery = q && q.length >= 2;
-
-  const companyClauses = [sql`true`];
-  if (hasQuery) {
-    companyClauses.push(
-      sql`(lower(c.name) LIKE ${q + "%"} OR (length(${q}) >= 3 AND similarity(lower(c.name), ${q}) > 0.3))`,
-    );
-  }
-  if (params.industryId != null) {
-    companyClauses.push(sql`c.industry = ${params.industryId}`);
-  }
-  const companyWhere = sql.join(companyClauses, sql` AND `);
-
-  // Batched ancestor/descendant expansion: one recursive CTE per taxonomy
-  // (not L per L seed IDs). The previous `Promise.all(ids.map(expand))`
-  // fired L parallel recursive CTEs against `location` / `occupation` —
-  // ~50–150ms of avoidable work and L extra Redis round-trips even on
-  // warm cache, on the exact Postgres fallback path that runs when
-  // Typesense is degraded. See #3186.
-  const [expandedLocIds, expandedOccIds] = await Promise.all([
-    params.locationIds?.length
-      ? expandLocationIdsBatch(params.locationIds)
-      : undefined,
-    params.occupationIds?.length
-      ? expandOccupationIdsBatch(params.occupationIds)
-      : undefined,
-  ]);
-
-  const jobClauses = [sql`jp.is_active = true`];
-  if (params.keywords && params.keywords.length > 0) {
-    const kwParts = params.keywords.map((k) => {
-      const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const s = /^\w/.test(k) ? "\\m" : "";
-      const e = /\w$/.test(k) ? "\\M" : "";
-      return sql`jp.titles[1] ~* ${s + escaped + e}`;
-    });
-    jobClauses.push(sql`(${sql.join(kwParts, sql` OR `)})`);
-  }
-  if (expandedLocIds?.length) {
-    const a = `{${expandedLocIds.join(",")}}`;
-    jobClauses.push(sql`jp.location_ids && ${a}::integer[]`);
-  }
-  if (expandedOccIds?.length) {
-    const a = `{${expandedOccIds.join(",")}}`;
-    jobClauses.push(sql`jp.occupation_id = ANY(${a}::integer[])`);
-  }
-  if (params.seniorityIds?.length) {
-    const a = `{${params.seniorityIds.join(",")}}`;
-    jobClauses.push(sql`jp.seniority_id = ANY(${a}::integer[])`);
-  }
-  if (params.technologyIds?.length) {
-    const a = `{${params.technologyIds.join(",")}}`;
-    jobClauses.push(sql`jp.technology_ids && ${a}::integer[]`);
-  }
-  if (params.salaryMin != null && params.salaryMax != null) {
-    jobClauses.push(sql`jp.salary_eur BETWEEN ${params.salaryMin} AND ${params.salaryMax}`);
-  } else if (params.salaryMin != null) {
-    jobClauses.push(sql`jp.salary_eur >= ${params.salaryMin}`);
-  } else if (params.salaryMax != null) {
-    jobClauses.push(sql`jp.salary_eur <= ${params.salaryMax}`);
-  }
-  if (params.experienceMin != null || params.experienceMax != null) {
-    if (params.experienceMin != null && params.experienceMax != null) {
-      jobClauses.push(sql`(jp.experience_min IS NULL OR (jp.experience_min >= ${params.experienceMin} AND jp.experience_min <= ${params.experienceMax}))`);
-    } else if (params.experienceMin != null) {
-      jobClauses.push(sql`(jp.experience_min IS NULL OR jp.experience_min >= ${params.experienceMin})`);
-    } else {
-      jobClauses.push(sql`(jp.experience_min IS NULL OR jp.experience_min <= ${params.experienceMax!})`);
-    }
-  }
-  const localesClause = localesOrNoneClause(params.languages);
-  if (localesClause) jobClauses.push(localesClause);
-  const jobWhere = sql.join(jobClauses, sql` AND `);
-
-  const [totalRow] = await withDbRetry(
-    () =>
-      db.execute<{ [key: string]: unknown; cnt: number }>(sql`
-        SELECT count(*)::int AS cnt FROM company c WHERE ${companyWhere}
-      `),
-    { label: "searchCompaniesForWatchlistPostgres.count" },
-  );
-  const total = (totalRow as unknown as { cnt: number })?.cnt ?? 0;
-  if (total === 0) return { companies: [], total: 0 };
-
-  const starredIds = params.starredCompanyIds;
-  const boostStarred = !hasQuery && starredIds && starredIds.length > 0;
-  const starredArray = boostStarred ? `{${starredIds.join(",")}}` : null;
-
-  const orderClause = boostStarred
-    ? sql`CASE WHEN c.id = ANY(${starredArray}::uuid[]) THEN 0 ELSE 1 END, active_matches DESC, c.name`
-    : sql`active_matches DESC, c.name`;
-
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: string;
-        name: string;
-        slug: string;
-        icon: string | null;
-        description: string | null;
-        active_matches: number;
-        year_matches: number;
-      }>(sql`
-        SELECT c.id, c.name, c.slug, c.icon,
-               COALESCE(cd.description, c.description) AS description,
-               (SELECT count(*)::int FROM job_posting jp
-                WHERE jp.company_id = c.id AND ${jobWhere}) AS active_matches,
-               (SELECT count(*)::int FROM job_posting jp
-                WHERE jp.company_id = c.id
-                  AND jp.first_seen_at >= now() - interval '1 year'
-                  AND ${jobWhere}) AS year_matches
-        FROM company c
-        LEFT JOIN company_description cd ON cd.company_id = c.id AND cd.locale = ${params.locale}
-        WHERE ${companyWhere}
-        ORDER BY ${orderClause}
-        OFFSET ${params.offset}
-        LIMIT ${params.limit}
-      `),
-    { label: "searchCompaniesForWatchlistPostgres.rows" },
-  );
-
-  type Row = {
-    id: string; name: string; slug: string; icon: string | null;
-    description: string | null; active_matches: number; year_matches: number;
-  };
-  return {
-    companies: (rows as unknown as Row[]).map((r) => ({
-      id: r.id,
-      name: r.name,
-      slug: r.slug,
-      icon: r.icon,
-      description: r.description,
-      activeMatches: r.active_matches,
-      yearMatches: r.year_matches,
-    })),
-    total,
-  };
-}
-
 // ── Industry suggestions ────────────────────────────────────────────
 
 export interface IndustrySuggestion {
@@ -582,35 +406,44 @@ export async function suggestIndustries(params: {
   query?: string;
   locale: string;
 }): Promise<IndustrySuggestion[]> {
+  try {
+    return await _suggestIndustries(params);
+  } catch (err) {
+    if (!isTypesenseUnavailableError(err)) throw err;
+    logExternalError("error", { service: "typesense", operation: "suggest_industries" }, err);
+    return [];
+  }
+}
+
+async function _suggestIndustries(params: {
+  query?: string;
+  locale: string;
+}): Promise<IndustrySuggestion[]> {
   const q = params.query?.trim().toLowerCase();
   const hasQuery = q && q.length >= 1;
+  const localeField = ["de", "fr", "it"].includes(params.locale)
+    ? `industry_name_${params.locale}`
+    : "industry_name";
+  const result = await getSearchClient().collections("company").documents().search({
+    q: hasQuery ? q : "*",
+    query_by: "industry_name,industry_name_de,industry_name_fr,industry_name_it",
+    filter_by: "industry_id:>=0",
+    group_by: "industry_id",
+    group_limit: 1,
+    per_page: 100,
+    prefix: true,
+    num_typos: 0,
+    include_fields: [...new Set(["industry_id", "industry_name", localeField])].join(","),
+  });
 
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        id: number;
-        name: string;
-      }>(sql`
-        SELECT i.id,
-               COALESCE(
-                 (SELECT idn.name FROM industry_name idn
-                  WHERE idn.industry_id = i.id AND idn.locale = ${params.locale} AND idn.is_display = true
-                  LIMIT 1),
-                 i.name
-               ) AS name
-        FROM industry i
-        ${hasQuery ? sql`WHERE lower(i.name) LIKE ${q + "%"} OR EXISTS (
-          SELECT 1 FROM industry_name idn
-          WHERE idn.industry_id = i.id AND lower(idn.name) LIKE ${q + "%"}
-        )` : sql``}
-        ORDER BY i.name
-      `),
-    { label: "suggestIndustries" },
-  );
-
-  type Row = { id: number; name: string };
-  return (rows as unknown as Row[]).map((r) => ({ id: r.id, name: r.name }));
+  const suggestions = (result.grouped_hits ?? []).flatMap((group) => {
+    const doc = group.hits[0]?.document as Record<string, unknown> | undefined;
+    if (!doc || typeof doc.industry_id !== "number") return [];
+    const name = String(doc[localeField] ?? doc.industry_name ?? "");
+    return name ? [{ id: doc.industry_id, name }] : [];
+  });
+  return suggestions
+    .sort((a, b) => canonicalStringCompare(a.name, b.name));
 }
 
 // ── Similar companies (same industry, active, excluding self) ───────
@@ -775,7 +608,7 @@ async function _fetchSimilarUnfiltered(
     const hasMore = offset + companies.length < found;
     return { companies, hasMore };
   } catch (err) {
-    console.error("[_fetchSimilarUnfiltered] Typesense failed, returning empty page", err);
+    logExternalError("error", { service: "typesense", operation: "similar_companies" }, err);
     return { companies: [], hasMore: false };
   }
 }
@@ -982,7 +815,7 @@ async function _fetchSimilarFiltered(
 
     return { companies, hasMore: false };
   } catch (err) {
-    console.error("[_fetchSimilarFiltered] Typesense failed, returning empty page", err);
+    logExternalError("error", { service: "typesense", operation: "similar_companies_filtered" }, err);
     return { companies: [], hasMore: false };
   }
 }
@@ -1198,6 +1031,23 @@ export async function getCompanyTopLocations(
   companyId: string,
   locale: string,
 ): Promise<{ locations: CompanyLocation[]; totalCount: number }> {
+  try {
+    return await _getCompanyTopLocationsCached(companyId, locale);
+  } catch (err) {
+    if (!isTypesenseUnavailableError(err)) throw err;
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "company_top_locations" },
+      err,
+    );
+    return { locations: [], totalCount: 0 };
+  }
+}
+
+async function _getCompanyTopLocationsCached(
+  companyId: string,
+  locale: string,
+): Promise<{ locations: CompanyLocation[]; totalCount: number }> {
   "use cache";
   cacheLife("hours");
   cacheTag(companyByIdCacheTag(companyId));
@@ -1208,59 +1058,22 @@ async function _fetchTopLocations(
   companyId: string,
   locale: string,
 ): Promise<{ locations: CompanyLocation[]; totalCount: number }> {
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        location_id: number;
-        loc_slug: string;
-        loc_type: string;
-        loc_name: string;
-        cnt: number;
-        total_locations: number;
-      }>(sql`
-        WITH active_locs AS (
-          SELECT unnest(jp.location_ids) AS location_id
-          FROM job_posting jp
-          WHERE jp.company_id = ${companyId}
-            AND jp.is_active = true
-            AND jp.location_ids IS NOT NULL
-        ),
-        grouped AS (
-          SELECT
-            al.location_id,
-            l.slug AS loc_slug,
-            l.type::text AS loc_type,
-            ln.name AS loc_name,
-            COUNT(*)::int AS cnt
-          FROM active_locs al
-          JOIN location l ON l.id = al.location_id
-          JOIN LATERAL (
-            SELECT name FROM location_name
-            WHERE location_id = al.location_id AND locale IN (${locale}, 'en') AND is_display = true
-            ORDER BY (locale = ${locale})::int DESC LIMIT 1
-          ) ln ON true
-          GROUP BY al.location_id, l.slug, l.type, ln.name
-        )
-        SELECT *, COUNT(*) OVER ()::int AS total_locations
-        FROM grouped
-        ORDER BY cnt DESC
-        LIMIT 15
-      `),
-    { label: `companyTopLocations[${companyId}]` },
-  );
-
-  type Row = { location_id: number; loc_slug: string; loc_type: string; loc_name: string; cnt: number; total_locations: number };
-  const all = rows as unknown as Row[];
+  const facet = await _fetchCompanyLocationFacet(companyId, "location_direct_ids", 15);
+  const documents = await fetchLocationDocumentsByIds(facet.counts.map((entry) => entry.id));
+  const byId = new Map(documents.map((document) => [document.location_id, document]));
   return {
-    locations: all.map((r) => ({
-      id: r.location_id,
-      slug: r.loc_slug,
-      name: r.loc_name,
-      type: r.loc_type,
-      count: r.cnt,
-    })),
-    totalCount: all[0]?.total_locations ?? 0,
+    locations: facet.counts.flatMap(({ id, count }) => {
+      const document = byId.get(id);
+      if (!document) return [];
+      return [{
+        id,
+        slug: document.slug,
+        name: _companyLocationName(document, locale),
+        type: document.type,
+        count,
+      }];
+    }),
+    totalCount: facet.totalValues,
   };
 }
 
@@ -1338,6 +1151,23 @@ export async function getCompanyLocationsGrouped(
   companyId: string,
   locale: string,
 ): Promise<GroupedCompanyLocations[]> {
+  try {
+    return await _getCompanyLocationsGroupedCached(companyId, locale);
+  } catch (err) {
+    if (!isTypesenseUnavailableError(err)) throw err;
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "company_locations_grouped" },
+      err,
+    );
+    return [];
+  }
+}
+
+async function _getCompanyLocationsGroupedCached(
+  companyId: string,
+  locale: string,
+): Promise<GroupedCompanyLocations[]> {
   "use cache";
   cacheLife("hours");
   cacheTag(companyByIdCacheTag(companyId));
@@ -1355,6 +1185,23 @@ export async function getCompanyLocationsGroupedWithMacros(
   companyId: string,
   locale: string,
 ): Promise<CompanyLocationsResponse> {
+  try {
+    return await _getCompanyLocationsGroupedWithMacrosCached(companyId, locale);
+  } catch (err) {
+    if (!isTypesenseUnavailableError(err)) throw err;
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "company_locations_grouped_with_macros" },
+      err,
+    );
+    return { countries: [], macros: [] };
+  }
+}
+
+async function _getCompanyLocationsGroupedWithMacrosCached(
+  companyId: string,
+  locale: string,
+): Promise<CompanyLocationsResponse> {
   "use cache";
   cacheLife("hours");
   cacheTag(companyByIdCacheTag(companyId));
@@ -1369,10 +1216,10 @@ export async function getCompanyLocationsGroupedWithMacros(
  * Fetch macro regions that have ≥2 member countries with postings for
  * `companyId`. Returns the macro `count` (total active postings whose
  * `location_ids` ancestor includes this macro) and the localized member
- * country names. The ≥2-member gate is enforced via `HAVING` on the
- * member-country count, not the posting count — a company with 50
- * postings in only Germany doesn't see DACH; a company with one posting
- * in Germany and one in Austria does.
+ * country names. The ≥2-member gate is evaluated from the macro document's
+ * member-country IDs and the company facet counts, not the posting count.
+ * A company with 50 postings in only Germany doesn't see DACH; a company
+ * with one posting in Germany and one in Austria does.
  */
 async function _fetchCompanyMacroCluster(
   companyId: string,
@@ -1394,232 +1241,51 @@ async function _fetchCompanyMacroCluster(
     worldwide: "Worldwide",
   };
 
-  const rows = await db.execute<{
-    [key: string]: unknown;
-    macro_id: number;
-    macro_slug: string | null;
-    macro_name: string;
-    posting_count: number;
-    member_country_count: number;
-  }>(sql`
-    WITH company_postings AS (
-      SELECT id, location_ids
-      FROM job_posting
-      WHERE company_id = ${companyId}
-        AND is_active = true
-        AND location_ids IS NOT NULL
-    ),
-    macro_postings AS (
-      -- Each macro that appears as an ancestor on any of this company's postings
-      SELECT m.id AS macro_id, m.slug AS macro_slug,
-             COUNT(DISTINCT cp.id)::int AS posting_count
-      FROM company_postings cp
-      JOIN location m ON m.id = ANY(cp.location_ids) AND m.type::text = 'macro'
-      GROUP BY m.id, m.slug
-    ),
-    macro_member_hits AS (
-      -- For each macro, count distinct member countries that have at least
-      -- one posting for this company. Joins via location_macro_member.
-      SELECT lmm.macro_id, COUNT(DISTINCT lmm.country_id)::int AS member_country_count
-      FROM location_macro_member lmm
-      JOIN company_postings cp ON lmm.country_id = ANY(cp.location_ids)
-      GROUP BY lmm.macro_id
-    )
-    SELECT mp.macro_id, mp.macro_slug,
-           ln.name AS macro_name,
-           mp.posting_count,
-           COALESCE(mmh.member_country_count, 0)::int AS member_country_count
-    FROM macro_postings mp
-    LEFT JOIN macro_member_hits mmh ON mmh.macro_id = mp.macro_id
-    JOIN LATERAL (
-      SELECT name FROM location_name
-      WHERE location_id = mp.macro_id
-        AND locale IN (${locale}, 'en')
-        AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) ln ON true
-    WHERE COALESCE(mmh.member_country_count, 0) >= 2
-    ORDER BY mp.posting_count DESC
-  `);
+  const [facet, macros] = await Promise.all([
+    _fetchCompanyLocationFacet(companyId, "location_ids", 5000),
+    fetchLocationMacroDocuments(),
+  ]);
+  const counts = new Map(facet.counts.map((entry) => [entry.id, entry.count]));
+  const eligible = macros.filter((macro) =>
+    (macro.member_country_ids ?? []).filter((id) => (counts.get(id) ?? 0) > 0).length >= 2,
+  );
+  const memberIds = eligible.flatMap((macro) => macro.member_country_ids ?? []);
+  const members = await fetchLocationDocumentsByIds(memberIds);
+  const membersById = new Map(members.map((member) => [member.location_id, member]));
+  const compareNames = makeDisplayStringCompare(locale);
 
-  type Row = {
-    macro_id: number;
-    macro_slug: string | null;
-    macro_name: string;
-    posting_count: number;
-    member_country_count: number;
-  };
-  const macroRows = rows as unknown as Row[];
-  if (macroRows.length === 0) return [];
-
-  // Fetch member country names + IDs for each macro. The IDs power the
-  // hierarchical-disable hook (#2978) and stay aligned with names because
-  // they share the same row order.
-  const macroIds = macroRows.map((r) => r.macro_id);
-  const pgArray = `{${macroIds.join(",")}}`;
-  const memberRows = await db.execute<{
-    [key: string]: unknown;
-    macro_id: number;
-    country_id: number;
-    country_name: string;
-  }>(sql`
-    SELECT lmm.macro_id, lmm.country_id, ln.name AS country_name
-    FROM location_macro_member lmm
-    JOIN LATERAL (
-      SELECT name FROM location_name
-      WHERE location_id = lmm.country_id
-        AND locale IN (${locale}, 'en')
-        AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) ln ON true
-    WHERE lmm.macro_id = ANY(${pgArray}::integer[])
-    ORDER BY lmm.macro_id, ln.name
-  `);
-  const memberMap = new Map<number, { countryNames: string[]; countryIds: number[] }>();
-  for (const r of memberRows as unknown as { macro_id: number; country_id: number; country_name: string }[]) {
-    let entry = memberMap.get(r.macro_id);
-    if (!entry) { entry = { countryNames: [], countryIds: [] }; memberMap.set(r.macro_id, entry); }
-    entry.countryNames.push(r.country_name);
-    entry.countryIds.push(r.country_id);
-  }
-
-  return macroRows.map((r) => {
-    const slugKey = (r.macro_slug ?? "").toLowerCase()
-      || r.macro_name.toLowerCase().replace(/\s+/g, "-");
+  return eligible.map((macro) => {
+    const abbreviation = _companyLocationName(macro, locale);
+    const slugKey = macro.slug.toLowerCase()
+      || abbreviation.toLowerCase().replace(/\s+/g, "-");
     const canonical = MACRO_DISPLAY_NAMES[slugKey];
-    const members = memberMap.get(r.macro_id);
+    const memberRows = (macro.member_country_ids ?? [])
+      .flatMap((id) => {
+        const member = membersById.get(id);
+        return member ? [{ id, name: _companyLocationName(member, locale) }] : [];
+      })
+      .sort((a, b) => compareNames(a.name, b.name));
     return {
-      id: r.macro_id,
-      slug: r.macro_slug ?? slugKey,
-      name: canonical ?? r.macro_name,
-      abbreviation: r.macro_name,
-      count: r.posting_count,
-      memberCountryNames: members?.countryNames ?? [],
-      memberCountryIds: members?.countryIds ?? [],
+      id: macro.location_id,
+      slug: macro.slug || slugKey,
+      name: canonical ?? abbreviation,
+      abbreviation,
+      count: counts.get(macro.location_id) ?? 0,
+      memberCountryNames: memberRows.map((member) => member.name),
+      memberCountryIds: memberRows.map((member) => member.id),
     };
-  });
+  }).sort((a, b) => b.count - a.count);
 }
 
 async function _fetchLocationsGrouped(
   companyId: string,
   locale: string,
 ): Promise<GroupedCompanyLocations[]> {
-  const rows = await withDbRetry(
-    () =>
-      db.execute<{
-        [key: string]: unknown;
-        location_id: number;
-        loc_slug: string;
-        loc_type: string;
-        loc_name: string;
-        cnt: number;
-        region_id: number | null;
-        region_slug: string | null;
-        region_name: string | null;
-        country_id: number | null;
-        country_slug: string | null;
-        country_name: string | null;
-      }>(sql`
-    WITH active_locs AS (
-      SELECT unnest(jp.location_ids) AS location_id
-      FROM job_posting jp
-      WHERE jp.company_id = ${companyId}
-        AND jp.is_active = true
-        AND jp.location_ids IS NOT NULL
-    ),
-    loc_counts AS (
-      SELECT al.location_id, COUNT(*)::int AS cnt
-      FROM active_locs al GROUP BY al.location_id
-    ),
-    hierarchy AS (
-      SELECT lc.location_id, lc.cnt,
-        l.type::text AS loc_type, l.slug AS loc_slug,
-        CASE
-          WHEN l.type = 'region' THEN l.id
-          WHEN l.type = 'city' AND p.type = 'region' THEN p.id
-          ELSE NULL
-        END AS region_id,
-        CASE
-          WHEN l.type = 'country' THEN l.id
-          WHEN p.type = 'country' THEN p.id
-          WHEN gp.type = 'country' THEN gp.id
-          ELSE NULL
-        END AS country_id
-      FROM loc_counts lc
-      JOIN location l ON l.id = lc.location_id
-      LEFT JOIN location p ON p.id = l.parent_id
-      LEFT JOIN location gp ON gp.id = p.parent_id
-    )
-    SELECT
-      h.location_id, h.loc_slug, h.loc_type, h.cnt,
-      ln.name AS loc_name,
-      h.region_id,
-      rl.slug AS region_slug,
-      rn.name AS region_name,
-      h.country_id,
-      cl.slug AS country_slug,
-      cn.name AS country_name
-    FROM hierarchy h
-    JOIN LATERAL (
-      SELECT name FROM location_name
-      WHERE location_id = h.location_id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) ln ON true
-    LEFT JOIN location rl ON rl.id = h.region_id
-    LEFT JOIN LATERAL (
-      SELECT name FROM location_name
-      WHERE location_id = h.region_id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) rn ON true
-    LEFT JOIN location cl ON cl.id = h.country_id
-    LEFT JOIN LATERAL (
-      SELECT name FROM location_name
-      WHERE location_id = h.country_id AND locale IN (${locale}, 'en') AND is_display = true
-      ORDER BY (locale = ${locale})::int DESC LIMIT 1
-    ) cn ON true
-    ORDER BY cn.name NULLS LAST, rn.name NULLS LAST, h.cnt DESC
-  `),
-    { label: `companyLocationsGrouped[${companyId}]` },
+  const facet = await _fetchCompanyLocationFacet(companyId, "location_direct_ids", 5000);
+  const documents = await fetchLocationDocumentsWithAncestors(
+    facet.counts.map((entry) => entry.id),
   );
-
-  type Row = {
-    location_id: number; loc_slug: string; loc_type: string; loc_name: string; cnt: number;
-    region_id: number | null; region_slug: string | null; region_name: string | null;
-    country_id: number | null; country_slug: string | null; country_name: string | null;
-  };
-
-  // Collect all location IDs for alias lookup
-  const allLocIds = new Set<number>();
-  for (const r of rows as unknown as Row[]) {
-    allLocIds.add(r.location_id);
-    if (r.region_id) allLocIds.add(r.region_id);
-    if (r.country_id) allLocIds.add(r.country_id);
-  }
-
-  // Fetch name aliases (user locale + en)
-  const aliasMap = new Map<number, string[]>();
-  if (allLocIds.size > 0) {
-    const pgArray = `{${[...allLocIds].join(",")}}`;
-    const aliasRows = await withDbRetry(
-      () =>
-        db.execute<{
-          [key: string]: unknown;
-          location_id: number;
-          name: string;
-        }>(sql`
-          SELECT location_id, lower(name) AS name
-          FROM location_name
-          WHERE location_id = ANY(${pgArray}::integer[])
-            AND locale IN (${locale}, 'en')
-        `),
-      { label: `companyLocationsGrouped.aliases[${companyId}]` },
-    );
-    for (const a of aliasRows as unknown as { location_id: number; name: string }[]) {
-      let arr = aliasMap.get(a.location_id);
-      if (!arr) { arr = []; aliasMap.set(a.location_id, arr); }
-      if (!arr.includes(a.name)) arr.push(a.name);
-    }
-  }
+  const byId = new Map(documents.map((document) => [document.location_id, document]));
 
   // Build country → region → city hierarchy
   const countries = new Map<number, GroupedCompanyLocations>();
@@ -1627,52 +1293,68 @@ async function _fetchLocationsGrouped(
   const directCountryCount = new Map<number, number>();
   const directRegionCount = new Map<number, number>();
 
-  for (const r of rows as unknown as Row[]) {
-    const cid = r.country_id ?? 0;
+  for (const { id, count } of facet.counts) {
+    const location = byId.get(id);
+    if (!location || location.type === "macro") continue;
+    const parent = location.parent_id == null ? undefined : byId.get(location.parent_id);
+    const grandparent = parent?.parent_id == null ? undefined : byId.get(parent.parent_id);
+    const region = location.type === "region"
+      ? location
+      : location.type === "city" && parent?.type === "region"
+        ? parent
+        : undefined;
+    const countryMeta = location.type === "country"
+      ? location
+      : parent?.type === "country"
+        ? parent
+        : grandparent?.type === "country"
+          ? grandparent
+          : undefined;
+    const cid = countryMeta?.location_id ?? 0;
     let country = countries.get(cid);
     if (!country) {
       country = {
         countryId: cid,
-        countrySlug: r.country_slug ?? "",
-        countryName: r.country_name ?? "Other",
+        countrySlug: countryMeta?.slug ?? "",
+        countryName: countryMeta ? _companyLocationName(countryMeta, locale) : "Other",
         countryCount: 0,
-        countryAliases: aliasMap.get(cid) ?? [],
+        countryAliases: countryMeta ? _companyLocationAliases(countryMeta, locale) : [],
         regions: [],
       };
       countries.set(cid, country);
     }
 
-    if (r.loc_type === "country") {
-      directCountryCount.set(cid, r.cnt);
+    if (location.type === "country") {
+      directCountryCount.set(cid, count);
       continue;
     }
-    if (r.loc_type === "region") {
-      directRegionCount.set(r.location_id, r.cnt);
+    if (location.type === "region") {
+      directRegionCount.set(location.location_id, count);
       continue;
     }
 
     // City: find or create region group
-    const rid = r.region_id ?? 0;
-    let region = country.regions.find((rg) => rg.regionId === rid);
-    if (!region) {
-      region = {
+    const rid = region?.location_id ?? 0;
+    let regionGroup = country.regions.find((candidate) => candidate.regionId === rid);
+    if (!regionGroup) {
+      regionGroup = {
         regionId: rid,
-        regionSlug: r.region_slug ?? "",
-        regionName: r.region_name ?? "",
+        regionSlug: region?.slug ?? "",
+        regionName: region ? _companyLocationName(region, locale) : "",
         regionCount: 0,
-        regionAliases: rid > 0 ? (aliasMap.get(rid) ?? []) : [],
+        regionAliases: region ? _companyLocationAliases(region, locale) : [],
         locations: [],
       };
-      country.regions.push(region);
+      country.regions.push(regionGroup);
     }
 
-    region.locations.push({
-      id: r.location_id,
-      slug: r.loc_slug,
-      name: r.loc_name,
-      type: r.loc_type,
-      count: r.cnt,
-      aliases: aliasMap.get(r.location_id) ?? [],
+    regionGroup.locations.push({
+      id: location.location_id,
+      slug: location.slug,
+      name: _companyLocationName(location, locale),
+      type: location.type,
+      count,
+      aliases: _companyLocationAliases(location, locale),
     });
   }
 
@@ -1683,13 +1365,63 @@ async function _fetchLocationsGrouped(
       const cityTotal = region.locations.reduce((sum, l) => sum + l.count, 0);
       region.regionCount = cityTotal + (directRegionCount.get(region.regionId) ?? 0);
       countryTotal += region.regionCount;
+      region.locations.sort((a, b) => b.count - a.count);
     }
     country.countryCount = countryTotal;
     // Sort regions by count desc
     country.regions.sort((a, b) => b.regionCount - a.regionCount);
   }
 
-  return [...countries.values()].filter((g) => g.regions.some((r) => r.locations.length > 0));
+  const compareNames = makeDisplayStringCompare(locale);
+  return [...countries.values()]
+    .filter((group) => group.regions.some((region) => region.locations.length > 0))
+    .sort((a, b) => compareNames(a.countryName, b.countryName));
+}
+
+async function _fetchCompanyLocationFacet(
+  companyId: string,
+  field: "location_ids" | "location_direct_ids",
+  maxFacetValues: number,
+): Promise<{
+  counts: Array<{ id: number; count: number }>;
+  totalValues: number;
+}> {
+  const result = await getSearchClient().collections("job_posting").documents().search({
+    q: "*",
+    query_by: "title",
+    filter_by: `${POSTING_BASE_FILTER} && company_id:=${companyId}`,
+    facet_by: field,
+    facet_strategy: "exhaustive",
+    max_facet_values: maxFacetValues,
+    per_page: 0,
+  });
+  const facet = result.facet_counts?.find((entry) => entry.field_name === field);
+  return {
+    counts: (facet?.counts ?? []).map((entry) => ({
+      id: Number(entry.value),
+      count: entry.count,
+    })),
+    totalValues: facet?.stats?.total_values ?? facet?.counts.length ?? 0,
+  };
+}
+
+function _companyLocationName(
+  document: TypesenseLocationDocument,
+  locale: string,
+): string {
+  const localized = document[`name_${locale}` as "name_de" | "name_fr" | "name_it"];
+  return localized ?? document.name_en ?? document.slug;
+}
+
+function _companyLocationAliases(
+  document: TypesenseLocationDocument,
+  locale: string,
+): string[] {
+  return [...new Set([
+    document.name_en,
+    _companyLocationName(document, locale),
+    ...(document.aliases ?? []),
+  ].filter(Boolean).map((name) => name.toLowerCase()))];
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────

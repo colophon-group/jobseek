@@ -22,6 +22,7 @@ from src.core.scrapers.nextdata import (
 from src.core.scrapers.nextdata import (
     can_handle as nextdata_can_handle,
 )
+from src.shared.extract import flatten, walk_steps
 
 
 @pytest.fixture()
@@ -267,6 +268,16 @@ _NEXTDATA_HTML_CONTENTS = """\
 "location":"Barcelona"}}}}
 </script></body></html>"""
 
+_NEXTDATA_HTML_NESTED_METADATA = """\
+<html><head></head><body>
+<script id="__NEXT_DATA__" type="application/json">
+{"props":{"pageProps":{"jobData":{"displayName":"Systems Engineer",
+"validFromDate":"2026-05-22",
+"jobDescription":{"websiteDescription":"<p>Build infrastructure.</p>"},
+"jobMetadata":{"workStatus":"Regular FT","jobLocations":[
+{"name":"Hyderabad"},{"name":"Bengaluru"}]}}}}}
+</script></body></html>"""
+
 _NEXTDATA_NO_JOB = """\
 <html><head></head><body>
 <script id="__NEXT_DATA__" type="application/json">
@@ -294,34 +305,6 @@ _DOM_HTML_2 = """\
 </body></html>"""
 
 _NO_H1_HTML = "<html><body><p>Just some text</p></body></html>"
-
-_LINKEDIN_GUEST_HTML = """\
-<html><body>
-<h2 class="top-card-layout__title topcard__title">Software Engineer - AI</h2>
-<div class="topcard__flavor-row">
-  <span class="topcard__flavor">Lightbringer</span>
-  <span class="topcard__flavor topcard__flavor--bullet">Malmo, Sweden</span>
-</div>
-<div class="show-more-less-html__markup"><p>Build AI patent workflows.</p></div>
-<ul class="description__job-criteria-list">
-  <li class="description__job-criteria-item">
-    <h3 class="description__job-criteria-subheader">Seniority level</h3>
-    <span class="description__job-criteria-text">Mid-Senior level</span>
-  </li>
-  <li class="description__job-criteria-item">
-    <h3 class="description__job-criteria-subheader">Employment type</h3>
-    <span class="description__job-criteria-text">Full-time</span>
-  </li>
-  <li class="description__job-criteria-item">
-    <h3 class="description__job-criteria-subheader">Job function</h3>
-    <span class="description__job-criteria-text">Engineering</span>
-  </li>
-  <li class="description__job-criteria-item">
-    <h3 class="description__job-criteria-subheader">Industries</h3>
-    <span class="description__job-criteria-text">Information Services</span>
-  </li>
-</ul>
-</body></html>"""
 
 
 class TestScraperCanHandle:
@@ -374,6 +357,20 @@ class TestScraperCanHandle:
             "locations": "location",
         }
 
+    def test_nextdata_detects_nested_job_metadata(self):
+        result = nextdata_can_handle([_NEXTDATA_HTML_NESTED_METADATA])
+
+        assert result == {
+            "path": "props.pageProps.jobData",
+            "fields": {
+                "title": "displayName",
+                "description": "jobDescription.websiteDescription",
+                "locations": "jobMetadata.jobLocations[].name",
+                "employment_type": "jobMetadata.workStatus",
+                "date_posted": "validFromDate",
+            },
+        }
+
     def test_nextdata_no_job(self):
         result = nextdata_can_handle([_NEXTDATA_NO_JOB])
         assert result is None
@@ -399,21 +396,6 @@ class TestScraperCanHandle:
     def test_dom_no_h1(self):
         result = dom_can_handle([_NO_H1_HTML])
         assert result is None
-
-    def test_dom_detects_linkedin_guest_markup(self):
-        result = dom_can_handle([_LINKEDIN_GUEST_HTML])
-
-        assert result == {"linkedin_guest": True}
-        content = dom_parse_html(_LINKEDIN_GUEST_HTML, result)
-        assert content.title == "Software Engineer - AI"
-        assert content.locations == ["Malmo, Sweden"]
-        assert content.description == "<p>Build AI patent workflows.</p>"
-        assert content.employment_type == "Full-time"
-        assert content.metadata == {
-            "seniority_level": "Mid-Senior level",
-            "job_function": "Engineering",
-            "industries": "Information Services",
-        }
 
 
 class TestNextdataAutoMap:
@@ -444,6 +426,27 @@ class TestNextdataAutoMap:
         fields = _auto_map_fields(obj)
         assert fields["date_posted"] == "datePosted"
 
+    def test_nested_description_and_job_metadata(self):
+        obj = {
+            "displayName": "Engineer",
+            "validFromDate": "2026-05-22",
+            "jobDescription": {"websiteDescription": "<p>Build systems</p>"},
+            "jobMetadata": {
+                "workStatus": "Regular FT",
+                "jobLocations": [{"name": "Hyderabad"}, {"name": "Bengaluru"}],
+            },
+        }
+
+        fields = _auto_map_fields(obj)
+
+        assert fields == {
+            "title": "displayName",
+            "description": "jobDescription.websiteDescription",
+            "locations": "jobMetadata.jobLocations[].name",
+            "employment_type": "jobMetadata.workStatus",
+            "date_posted": "validFromDate",
+        }
+
     def test_find_job_object_at_root(self):
         data = {"title": "Engineer", "description": "Hello"}
         suffix, obj = _find_job_object(data, "props.pageProps")
@@ -465,8 +468,6 @@ class TestNextdataAutoMap:
 
 class TestDomHeuristicSteps:
     def test_h1_with_content(self):
-        from src.shared.extract import flatten
-
         elements = flatten(_DOM_HTML)
         steps = _heuristic_steps(elements)
         assert steps is not None
@@ -477,18 +478,42 @@ class TestDomHeuristicSteps:
         desc_step = steps[1]
         assert desc_step["field"] == "description"
         assert desc_step["html"] is True
+        assert "tag" not in desc_step
+        assert "from" not in desc_step
+        assert "offset" not in desc_step
+
+        # The title step moves the extraction cursor beyond the h1.  The
+        # generated description step must continue from that cursor.
+        content = dom_parse_html(_DOM_HTML, {"steps": steps})
+        assert content.description
+        assert "build amazing products" in content.description
+
+    def test_description_stays_inside_fragment_cursor(self):
+        elements = flatten(
+            """
+            <h1>Page heading</h1><p>Global page content</p>
+            <section><h1 id="job">Fragment job</h1><p>Job description</p></section>
+            """
+        )
+        steps = _heuristic_steps(elements)
+        assert steps is not None
+        fragment_start = next(
+            i for i, element in enumerate(elements) if element["attrs"].get("id") == "job"
+        )
+
+        raw, _ = walk_steps(elements, steps, start=fragment_start)
+
+        assert raw["title"] == "Fragment job"
+        assert "Job description" in raw["description"]
+        assert "Global page content" not in raw["description"]
 
     def test_h1_with_stop_marker(self):
-        from src.shared.extract import flatten
-
         elements = flatten(_DOM_HTML)
         steps = _heuristic_steps(elements)
         desc_step = steps[1]
         assert "stop" in desc_step or "stop_count" in desc_step
 
     def test_location_detected(self):
-        from src.shared.extract import flatten
-
         elements = flatten(_DOM_HTML)
         steps = _heuristic_steps(elements)
         location_steps = [s for s in steps if s.get("field") == "location"]
@@ -496,8 +521,6 @@ class TestDomHeuristicSteps:
         assert location_steps[0]["optional"] is True
 
     def test_no_h1_returns_none(self):
-        from src.shared.extract import flatten
-
         elements = flatten(_NO_H1_HTML)
         steps = _heuristic_steps(elements)
         assert steps is None
@@ -610,7 +633,7 @@ class TestProbeScrapers:
         assert spa_suspect is False
 
     async def test_probe_order(self):
-        """Results should be in display order: json-ld, nextdata, embedded, dom, api_sniffer."""
+        """Results should be in the configured display order."""
         http = _mock_http_client(
             {
                 "https://example.com/job/1": (200, _JSONLD_HTML),
@@ -623,7 +646,15 @@ class TestProbeScrapers:
         )
 
         names = [r[0] for r in results]
-        assert names == ["json-ld", "nextdata", "embedded", "pdf", "dom", "api_sniffer"]
+        assert names == [
+            "json-ld",
+            "nextdata",
+            "embedded",
+            "onlyfy",
+            "pdf",
+            "dom",
+            "api_sniffer",
+        ]
 
     async def test_spa_detection(self):
         """Pages with very little text content should set spa_suspect=True."""
@@ -745,4 +776,12 @@ class TestProbeScrapersPw:
         )
 
         names = [r[0] for r in results]
-        assert names == ["json-ld", "nextdata", "embedded", "pdf", "dom", "api_sniffer"]
+        assert names == [
+            "json-ld",
+            "nextdata",
+            "embedded",
+            "onlyfy",
+            "pdf",
+            "dom",
+            "api_sniffer",
+        ]

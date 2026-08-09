@@ -6,7 +6,8 @@ Jobseek monitors company career pages for new job postings. The system is built 
 
 1. **Coding agents** add companies by creating PRs with CSV config changes
 2. **CSV files** are the source of truth for what to monitor
-3. **Redis-orchestrated workers** process boards and scrape jobs on Hetzner, exporting results to Supabase for the web app
+3. **Redis-orchestrated workers** process boards and scrape jobs on Hetzner,
+   exporting searchable results to Typesense and, temporarily, a legacy mirror
 
 ## System Flow
 
@@ -16,12 +17,13 @@ User request
   -> Coding agent picks issue, creates PR
   -> PR adds rows to data/companies.csv + data/boards.csv
   -> PR merges (auto or human review)
-  -> crawler sync: CSVs -> Local Postgres + Supabase + Redis queues
+  -> crawler sync: CSVs -> Local Postgres -> Redis queues + Typesense
+     (explicit legacy mirror during transition)
   -> Workers claim from Redis, monitor boards, scrape jobs
   -> Results written to Local Postgres
-  -> Exporter CDC: Local Postgres -> Supabase (batch COPY)
+  -> Exporter CDC: Local Postgres -> Typesense (+ optional legacy mirror)
   -> R2 Drain: descriptions -> Cloudflare R2
-  -> Job postings served to users via Supabase
+  -> Job postings served to users via Typesense; web-owned data stays in Postgres
 ```
 
 ## Component Map
@@ -57,8 +59,8 @@ User request
 │           │   └── lookups.py   # Cached lookup table loaders
 │           ├── redis_queue.py   # Lua-backed claim/enqueue/reschedule
 │           ├── lua/             # claim_work.lua, enqueue_task.lua, reschedule_task.lua
-│           ├── exporter.py      # CDC: local Postgres -> Supabase
-│           ├── sync.py          # CSV -> Local Postgres + Supabase + Redis
+│           ├── exporter.py      # CDC: local Postgres -> Typesense + optional mirror
+│           ├── sync.py          # Local-first CSV sync -> Redis + Typesense
 │           ├── bootstrap.py     # One-time: Supabase -> local Postgres copy
 │           ├── cli.py           # Entry point: crawler run/run-browser/export/drain/sync/board
 │           ├── config.py        # Settings
@@ -84,13 +86,19 @@ gets human review for large/complex boards.
 
 ### 2. Job Monitoring (crawler-driven)
 
-The crawler runs continuously on Hetzner. `sync.py` loads CSV configs into local Postgres, Supabase, and Redis queues. Workers claim tasks from Redis tiered ready queues, run monitors to discover listings, then scrape individual jobs when needed. Results are written to local Postgres. An exporter CDC process batch-copies changed rows to Supabase every 1-2 seconds. An R2 drain uploads job descriptions to Cloudflare R2.
+The crawler runs continuously on Hetzner. `sync.py` commits CSV configs to
+local Postgres, then publishes Redis queues and Typesense registry documents.
+Workers claim tasks from Redis tiered ready queues, run monitors to discover
+listings, then scrape individual jobs when needed. Results are written to local
+Postgres. An exporter CDC process publishes changed rows to Typesense and can
+temporarily maintain a legacy relational mirror. An R2 drain uploads job
+descriptions to Cloudflare R2.
 
 ## Key Design Decisions
 
 - **CSV as source of truth**: Git history provides audit trail, diffs are reviewable, agents can edit files directly. The DB is derived state -- rebuilt from CSVs on each deploy.
 - **Separated monitor + scraper**: A monitor discovers *which* jobs exist (URLs or full data). A scraper extracts *details* from individual pages. API monitors (Greenhouse, Lever) return full data and skip the scraper step entirely.
-- **Local Postgres + Redis**: Workers read/write local Postgres (~0.1ms latency). Redis tiered queues handle work distribution with Lua scripts for atomic operations. Supabase receives write-only batch exports via CDC.
+- **Local Postgres + Redis**: Workers read/write local Postgres (~0.1ms latency). Redis tiered queues handle work distribution with Lua scripts for atomic operations. Typesense receives denormalized CDC documents; the relational mirror is transitional.
 - **Agent-driven onboarding**: No custom AI resolver code needed. Standard AGENTS.md-compatible coding agents (Codex, Claude Code, Copilot, Cursor, etc.) follow AGENTS.md instructions to add companies. The instructions are the interface.
 
 ## Related Documents

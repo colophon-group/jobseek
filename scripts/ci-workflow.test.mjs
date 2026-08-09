@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   chmodSync,
+  existsSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -13,7 +14,12 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
+const webBuildEnvAction = readFileSync(
+  ".github/actions/setup-web-build-env/action.yml",
+  "utf8",
+);
 const codeqlWorkflow = readFileSync(".github/workflows/codeql.yml", "utf8");
+const dependabotConfig = readFileSync(".github/dependabot.yml", "utf8");
 const uploadCompanyImagesWorkflow = readFileSync(
   ".github/workflows/upload-company-images.yml",
   "utf8",
@@ -24,6 +30,10 @@ const maybeAutoMergeWorkflow = readFileSync(
 );
 const maybeAutoMergeScript = readFileSync(
   ".github/scripts/maybe-auto-merge-pr.sh",
+  "utf8",
+);
+const dispatchCompanyProductionSyncScript = readFileSync(
+  ".github/scripts/dispatch-company-production-sync.sh",
   "utf8",
 );
 const classifyPrPathsScript = readFileSync(
@@ -44,12 +54,32 @@ const deployCodexRunnerWorkflow = readFileSync(
   ".github/workflows/deploy-codex-runner.yml",
   "utf8",
 );
+const deployCrawlerWorkflow = readFileSync(
+  ".github/workflows/deploy-crawler-browser.yml",
+  "utf8",
+);
+const deployDataBackupsWorkflow = readFileSync(
+  ".github/workflows/deploy-data-backups.yml",
+  "utf8",
+);
+const deployTypesenseHostWorkflow = readFileSync(
+  ".github/workflows/deploy-typesense-host.yml",
+  "utf8",
+);
 const deployCodexRunnerHostScript = readFileSync(
   "scripts/deploy-codex-runner-host.sh",
   "utf8",
 );
 const crawlerScheduledMaintenanceWorkflow = readFileSync(
   ".github/workflows/crawler-scheduled-maintenance.yml",
+  "utf8",
+);
+const syncDataWorkflow = readFileSync(
+  ".github/workflows/sync-data.yml",
+  "utf8",
+);
+const refreshCurrencyRatesWorkflow = readFileSync(
+  ".github/workflows/refresh-currency-rates.yml",
   "utf8",
 );
 const crawlerHostHygieneScript = readFileSync(
@@ -108,6 +138,44 @@ printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
   } catch {
     // A correctly skipped PR does not call `gh workflow run`.
   }
+  rmSync(dir, { recursive: true, force: true });
+  return { ...result, calls };
+}
+
+function runDispatchCompanyProductionSync({
+  defaultBranch = "main",
+  includeDefaultBranch = true,
+} = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "dispatch-company-sync-"));
+  const log = join(dir, "gh.log");
+  const gh = join(dir, "gh");
+  writeFileSync(
+    gh,
+    `#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
+`,
+  );
+  chmodSync(gh, 0o755);
+  const env = {
+    ...process.env,
+    PATH: `${dir}:${process.env.PATH}`,
+    GH_TOKEN: "test-token",
+    REPO: "colophon-group/jobseek",
+    PR: "123",
+    MOCK_GH_LOG: log,
+  };
+  if (includeDefaultBranch) env.DEFAULT_BRANCH = defaultBranch;
+  const result = spawnSync(
+    "bash",
+    [".github/scripts/dispatch-company-production-sync.sh"],
+    {
+      cwd: process.cwd(),
+      env,
+      encoding: "utf8",
+    },
+  );
+  const calls = readFileSync(log, "utf8");
   rmSync(dir, { recursive: true, force: true });
   return { ...result, calls };
 }
@@ -248,7 +316,7 @@ function durationSeconds(value) {
 test("CI change detection uses the pinned paths-filter action", () => {
   assert.match(
     workflow,
-    /uses: dorny\/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4\.0\.2/,
+    /uses: dorny\/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4\.0\.3/,
   );
   assert.match(workflow, /predicate-quantifier: every/);
   assert.match(workflow, /code:\n(?:              - .+\n)+/);
@@ -307,6 +375,7 @@ test("manual PR classification exports the validated PR base context", () => {
 
 test("PR-only CI gates cover pull requests and dispatched PRs", () => {
   const changesJob = jobBlock("changes");
+  const crawlerImageJob = jobBlock("crawler-image");
   const versionJob = jobBlock("version-check");
   const probeJob = jobBlock("probe-new-boards");
   const requiredCiJob = jobBlock("required-ci");
@@ -315,10 +384,20 @@ test("PR-only CI gates cover pull requests and dispatched PRs", () => {
   assert.match(changesJob, /id: manual-pr[\s\S]*classify-pr-paths\.sh/);
   assert.match(changesJob, /id: pull-request[\s\S]*echo "is_pr=true"/);
   assert.match(changesJob, /echo "base_ref=\$BASE_REF"/);
+  assert.match(crawlerImageJob, /if: needs\.changes\.outputs\.is_pr == 'true' && needs\.changes\.outputs\.crawler_code == 'true'/);
+  assert.match(crawlerImageJob, /docker\/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c/);
+  assert.match(crawlerImageJob, /docker\/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a/);
+  assert.match(crawlerImageJob, /context: apps\/crawler/);
+  assert.match(crawlerImageJob, /target: full/);
+  assert.match(crawlerImageJob, /push: false/);
   assert.match(versionJob, /if: needs\.changes\.outputs\.is_pr == 'true'/);
+  assert.match(versionJob, /gh api "repos\/\$GITHUB_REPOSITORY\/pulls\/\$PR_NUMBER"/);
+  assert.match(versionJob, /scripts\/check-crawler-version\.mjs/);
+  assert.match(versionJob, /\.user\.login/);
   assert.match(probeJob, /if: needs\.changes\.outputs\.is_pr == 'true'/);
   assert.match(probeJob, /BASE_REF: \$\{\{ needs\.changes\.outputs\.base_ref \}\}/);
   assert.match(requiredCiJob, /const isPr = needs\.changes\?\.outputs\?\.is_pr === "true"/);
+  assert.match(requiredCiJob, /requireSuccess\("crawler-image", isPr && crawlerCode\)/);
   assert.match(requiredCiJob, /requireSuccess\("version-check", isPr && crawlerCode\)/);
   assert.match(requiredCiJob, /requireSuccess\("probe-new-boards", isPr && boardsCsv\)/);
   assert.doesNotMatch(versionJob, /github\.event_name == 'pull_request'/);
@@ -328,9 +407,58 @@ test("PR-only CI gates cover pull requests and dispatched PRs", () => {
 test("workflow-security runs repository script tests", () => {
   assert.match(workflow, /node --test/);
   assert.match(workflow, /scripts\/ci-workflow\.test\.mjs/);
+  assert.match(workflow, /scripts\/crawler-version\.test\.mjs/);
   assert.match(workflow, /scripts\/crawler-host-hygiene\.test\.mjs/);
   assert.match(workflow, /scripts\/docs-index\.test\.mjs/);
   assert.match(workflow, /scripts\/dealroom-company-requests\.test\.mjs/);
+});
+
+test("crawler deploys derive immutable versions for unchanged releases", () => {
+  assert.match(deployCrawlerWorkflow, /'!apps\/crawler\/ws-package\/\*\*'/);
+  assert.match(
+    deployCrawlerWorkflow,
+    /'\.github\/workflows\/deploy-crawler-browser\.yml'/,
+  );
+  assert.match(deployCrawlerWorkflow, /fetch-depth: 0/);
+  assert.match(
+    deployCrawlerWorkflow,
+    /scripts\/derive-crawler-build-version\.mjs[\s\S]*--write-version apps\/crawler\/VERSION[\s\S]*--github-output "\$GITHUB_OUTPUT"/,
+  );
+  assert.match(
+    deployCrawlerWorkflow,
+    /jobseek-crawler:\$\{\{ steps\.version\.outputs\.image_tag \}\}/,
+  );
+  assert.match(
+    deployCrawlerWorkflow,
+    /CRAWLER_IMAGE_TAG: \$\{\{ steps\.version\.outputs\.image_tag \}\}/,
+  );
+  assert.doesNotMatch(
+    deployCrawlerWorkflow,
+    /steps\.version\.outputs\.version/,
+  );
+});
+
+test("web build jobs use one deterministic secretless environment", () => {
+  for (const jobId of ["test-web-isr", "web-smoke"]) {
+    const job = jobBlock(jobId);
+    assert.match(job, /uses: \.\/\.github\/actions\/setup-web-build-env/);
+    assert.doesNotMatch(job, /environment: Production/);
+    assert.doesNotMatch(job, /secrets\./);
+  }
+
+  for (const variable of [
+    "DATABASE_URL",
+    "DATABASE_URL_UNPOOLED",
+    "TYPESENSE_HOST",
+    "TYPESENSE_PORT",
+    "TYPESENSE_PROTOCOL",
+  ]) {
+    assert.match(webBuildEnvAction, new RegExp(`echo '${variable}='`));
+  }
+  assert.match(webBuildEnvAction, /BETTER_AUTH_URL=\$APP_URL/);
+  assert.match(webBuildEnvAction, /COMPANY_OG_PRERENDER_TOP_N=0/);
+  assert.doesNotMatch(webBuildEnvAction, /secrets\./);
+  assert.doesNotMatch(webBuildEnvAction, /postgres(?:ql)?:\/\//);
 });
 
 test("Codex deploy transport outlives the runner lock wait", () => {
@@ -411,6 +539,43 @@ test("Codex deploy persists Docker lifecycle evidence before daily review", () =
   );
 });
 
+test("Codex deploy installs the maintenance contract without granting runner Docker access", () => {
+  assert.match(
+    deployCodexRunnerHostScript,
+    /install_maintenance_contract[\s\S]*jobseek_maintenance_provenance\.py[\s\S]*jobseek-maintenance\.py/,
+  );
+  assert.match(
+    deployCodexRunnerHostScript,
+    /python3 \/usr\/local\/sbin\/jobseek-maintenance --self-test/,
+  );
+  assert.match(
+    deployCodexRunnerWorkflow,
+    /test ! -w \/var\/run\/docker\.sock/,
+  );
+  assert.match(
+    deployCodexRunnerWorkflow,
+    /runuser -u codex-runner -- docker ps/,
+  );
+  assert.match(
+    deployCodexRunnerWorkflow,
+    /codex-runner unexpectedly has Docker access/,
+  );
+});
+
+test("maintenance wrapper self-test covers the cross-owner lock path", () => {
+  const result = spawnSync(
+    "python3",
+    ["scripts/jobseek-maintenance.py", "--self-test"],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /maintenance provenance self-test passed/);
+});
+
 test("Codex deploy restores prior timer state after failure", () => {
   const dir = mkdtempSync(join(tmpdir(), "codex-deploy-timers-"));
   const log = join(dir, "systemctl.log");
@@ -465,6 +630,82 @@ test("scheduled maintenance always reports host hygiene independently", () => {
   );
 });
 
+test("scheduled maintenance one-offs carry exact validated provenance labels", () => {
+  for (const label of [
+    "com.docker.compose.project=deploy",
+    "com.docker.compose.oneoff=True",
+    "jobseek.maintenance.operation=${TASK}",
+    "jobseek.maintenance.issue=2630",
+    "jobseek.maintenance.revision=${GITHUB_SHA}",
+    "jobseek.maintenance.budget-seconds=${operation_budget}",
+  ]) {
+    assert.ok(
+      crawlerScheduledMaintenanceWorkflow.includes(label),
+      `missing maintenance label ${label}`,
+    );
+  }
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /envs: GITHUB_SHA,EXPECTED_CRAWLER_REVISION/,
+  );
+  assert.match(crawlerScheduledMaintenanceWorkflow, /operation_budget=7200/);
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /if \[\[ "\$TASK" == backfill-typesense \|\| "\$TASK" == verify-typesense-taxonomies \]\]; then[\s\S]*operation_budget=14400/,
+  );
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /timeout --foreground --signal=TERM --kill-after=90s "\$operation_budget" docker run --rm/,
+  );
+  assert.match(crawlerScheduledMaintenanceWorkflow, /command_timeout: 8h/);
+});
+
+test("taxonomy verification dispatch is exact-revision and verification-only", () => {
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /options:[\s\S]*- refresh-typesense[\s\S]*- backfill-typesense[\s\S]*- verify-typesense-taxonomies/,
+  );
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /if \[\[ "\$task" == backfill-typesense \|\| "\$task" == verify-typesense-taxonomies \]\]; then[\s\S]*\^\[0-9a-f\]\{40\}\$/,
+  );
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /if \[\[ "\$TASK" == backfill-typesense \|\| "\$TASK" == verify-typesense-taxonomies \]\]; then[\s\S]*Live crawler revision does not match the requested deployment[\s\S]*Expected exactly one live exporter container[\s\S]*Live exporter still has a relational mirror credential/,
+  );
+  const verificationBranch = crawlerScheduledMaintenanceWorkflow.match(
+    /elif \[\[ "\$TASK" == verify-typesense-taxonomies \]\]; then[\s\S]*?^              fi$/m,
+  );
+  assert.ok(verificationBranch);
+  assert.match(
+    verificationBranch[0],
+    /operation_command=\(uv run --no-sync crawler verify-typesense-taxonomies\)/,
+  );
+  assert.doesNotMatch(verificationBranch[0], /crawler backfill-typesense/);
+  assert.doesNotMatch(verificationBranch[0], /crawler reconcile/);
+  assert.match(
+    crawlerScheduledMaintenanceWorkflow,
+    /\^crawler-\(backfill-typesense\|refresh-typesense\|verify-typesense-taxonomies\)-/,
+  );
+});
+
+test("recurring crawler one-offs use the bounded maintenance wrapper", () => {
+  for (const [source, operation, issue, budget] of [
+    [syncDataWorkflow, "csv-data-sync", "2623", "1800"],
+    [refreshCurrencyRatesWorkflow, "refresh-currency-rates", "3576", "600"],
+  ]) {
+    assert.match(source, /\/usr\/local\/sbin\/jobseek-maintenance oneoff/);
+    assert.ok(source.includes(`--operation ${operation}`));
+    assert.ok(source.includes(`--issue ${issue}`));
+    assert.ok(source.includes(`--budget-seconds ${budget}`));
+    assert.match(source, /--lock-timeout-seconds (900|600)/);
+    assert.ok(source.includes('--revision "$GITHUB_SHA"'));
+    assert.match(source, /envs: GITHUB_SHA/);
+    assert.match(source, /docker run --rm[\s\S]*--name "\$NAME"/);
+    assert.match(source, /command_timeout: (1h|30m)/);
+  }
+});
+
 test("maybe-auto-merge wakes without manual retries", () => {
   const job = workflowJobBlock(maybeAutoMergeWorkflow, "label-and-merge");
   assert.match(maybeAutoMergeWorkflow, /workflow_run:\n    workflows: \["CI", "CodeQL"\]/);
@@ -488,7 +729,44 @@ test("maybe-auto-merge script skips image PRs and retries pending merges", () =>
   assert.match(maybeAutoMergeScript, /wait_for_required_ci\(\)/);
   assert.match(maybeAutoMergeScript, /Required CI is successful/);
   assert.match(maybeAutoMergeScript, /gh pr merge "\$PR" --repo "\$REPO" --rebase/);
+  assert.match(
+    maybeAutoMergeScript,
+    /gh pr merge "\$PR" --repo "\$REPO" --rebase[\s\S]*dispatch-company-production-sync\.sh[\s\S]*close-linked-company-request-issues\.sh/,
+  );
   assert.match(maybeAutoMergeScript, /scheduled\/workflow_run retries will revisit it/);
+});
+
+test("company auto-merges explicitly dispatch production CSV sync", () => {
+  for (const source of [maybeAutoMergeWorkflow, uploadCompanyImagesWorkflow]) {
+    assert.match(
+      source,
+      /cp \.github\/scripts\/dispatch-company-production-sync\.sh "\$RUNNER_TEMP\/trusted-scripts\/dispatch-company-production-sync\.sh"/,
+    );
+  }
+
+  assert.match(
+    uploadCompanyImagesWorkflow,
+    /name: Dispatch production CSV sync[\s\S]*steps\.merge\.outputs\.merged == 'true'[\s\S]*dispatch-company-production-sync\.sh/,
+  );
+  assert.match(
+    dispatchCompanyProductionSyncScript,
+    /gh workflow run sync-data\.yml --repo "\$REPO" --ref "\$default_branch"/,
+  );
+
+  for (const fixture of [
+    { defaultBranch: "main", includeDefaultBranch: false },
+    { defaultBranch: "release", includeDefaultBranch: true },
+  ]) {
+    const result = runDispatchCompanyProductionSync(fixture);
+    assert.equal(result.status, 0, result.stderr);
+    const expectedBranch = fixture.includeDefaultBranch
+      ? fixture.defaultBranch
+      : "main";
+    assert.equal(
+      result.calls,
+      `workflow run sync-data.yml --repo colophon-group/jobseek --ref ${expectedBranch}\n`,
+    );
+  }
 });
 
 test("bot-authored company branch updates dispatch path-aware CI", () => {
@@ -704,7 +982,7 @@ test("CodeQL skips full analysis for non-code pull requests", () => {
   assert.match(changesJob, /name: Detect CodeQL changes/);
   assert.match(changesJob, /id: manual-pr/);
   assert.match(changesJob, /\.github\/scripts\/classify-pr-paths\.sh/);
-  assert.match(changesJob, /uses: dorny\/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4\.0\.2/);
+  assert.match(changesJob, /uses: dorny\/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4\.0\.3/);
   assert.match(changesJob, /predicate-quantifier: every/);
   assert.match(changesJob, /codeql:\n(?:              - .+\n)+/);
 
@@ -730,6 +1008,60 @@ test("CodeQL skips full analysis for non-code pull requests", () => {
   assert.match(analyzeJob, /if: needs\.changes\.outputs\.codeql != 'true'/);
   assert.match(analyzeJob, /Initialize CodeQL[\s\S]*if: needs\.changes\.outputs\.codeql == 'true'/);
   assert.match(analyzeJob, /Perform CodeQL Analysis[\s\S]*if: needs\.changes\.outputs\.codeql == 'true'/);
+});
+
+test("Dependabot updates and groups the pnpm workspace from its root", () => {
+  const npmConfig = dependabotConfig.match(
+    /  - package-ecosystem: "npm"\n([\s\S]*?)(?=\n  - package-ecosystem:)/,
+  )?.[1];
+
+  assert.ok(npmConfig, "missing npm Dependabot configuration");
+  assert.match(npmConfig, /^    directory: "\/"$/m);
+  assert.doesNotMatch(npmConfig, /^    directories:/m);
+  assert.doesNotMatch(npmConfig, /exclude-paths:/);
+  assert.match(
+    npmConfig,
+    /security-updates:\n        applies-to: "security-updates"\n        patterns:\n          - "\*"/,
+  );
+  assert.match(npmConfig, /next-react:\n        applies-to: "version-updates"/);
+  assert.match(npmConfig, /test-tooling:\n        applies-to: "version-updates"/);
+  assert.match(
+    npmConfig,
+    /workspace-dependencies:\n        applies-to: "version-updates"\n        patterns:\n          - "\*"\n        # Keep the catch-all as one reviewable workspace update\./,
+  );
+  assert.doesNotMatch(npmConfig, /group-by: "dependency-name"/);
+});
+
+test("the pnpm workspace has one JavaScript lockfile authority", () => {
+  assert.equal(existsSync("pnpm-lock.yaml"), true);
+  assert.equal(existsSync("apps/trace-viewer/package-lock.json"), false);
+});
+
+test("dependency review scopes the sharp libvips license exception", () => {
+  const dependencyReviewJob = workflowJobBlock(workflow, "dependency-review");
+
+  assert.match(
+    dependencyReviewJob,
+    /deny-licenses: .*LGPL-2\.0, LGPL-2\.1, LGPL-3\.0/,
+  );
+  for (const platform of [
+    "darwin-arm64",
+    "darwin-x64",
+    "linux-arm",
+    "linux-arm64",
+    "linux-ppc64",
+    "linux-riscv64",
+    "linux-s390x",
+    "linux-x64",
+    "linuxmusl-arm64",
+    "linuxmusl-x64",
+  ]) {
+    assert.match(
+      dependencyReviewJob,
+      new RegExp(`pkg:npm/@img/sharp-libvips-${platform}`),
+    );
+  }
+  assert.doesNotMatch(dependencyReviewJob, /allow-licenses:/);
 });
 
 test("main branch ruleset does not require non-path-aware code scanning", () => {
@@ -784,7 +1116,7 @@ test("CI runs Typesense E2E suites against a service container", () => {
   assert.match(crawlerJob, /image: typesense\/typesense:27\.1/);
   assert.match(crawlerJob, /options: --tmpfs \/data:rw/);
   assert.match(crawlerJob, /TYPESENSE_DATA_DIR: \/data/);
-  assert.match(crawlerJob, /TYPESENSE_ADMIN_KEY: local_dev_typesense_key/);
+  assert.match(crawlerJob, /TYPESENSE_OPERATIONS_KEY: local_dev_typesense_key/);
   assert.match(crawlerJob, /REQUIRE_TYPESENSE_E2E: "true"/);
   assert.match(
     crawlerJob,
@@ -792,6 +1124,63 @@ test("CI runs Typesense E2E suites against a service container", () => {
   );
   assert.match(crawlerJob, /uv run python \.\.\/\.\.\/scripts\/typesense-setup\.py --force/);
   assert.match(crawlerJob, /uv run pytest tests\/e2e\/test_typesense_indexing\.py -v/);
+});
+
+test("Typesense credentials are separated by consumer and host promotion is manual", () => {
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /pull_request:\n    branches: \[main\]\n    paths:/,
+  );
+  assert.match(
+    deployCrawlerWorkflow,
+    /TYPESENSE_OPERATIONS_KEY: \$\{\{ secrets\.TYPESENSE_OPERATIONS_KEY \}\}/,
+  );
+  assert.doesNotMatch(deployCrawlerWorkflow, /TYPESENSE_ADMIN_KEY/);
+  assert.match(
+    deployDataBackupsWorkflow,
+    /JOBSEEK_TYPESENSE_BACKUP_KEY: \$\{\{ matrix\.service == 'typesense' && secrets\.TYPESENSE_BACKUP_KEY \|\| '' \}\}/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /TYPESENSE_BOOTSTRAP_KEY: \$\{\{ secrets\.TYPESENSE_BOOTSTRAP_KEY \}\}/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /CLOUDFLARE_TUNNEL_TOKEN: \$\{\{ secrets\.CLOUDFLARE_TUNNEL_TOKEN \}\}/,
+  );
+  assert.doesNotMatch(
+    deployTypesenseHostWorkflow,
+    /envs: [^\n]*TYPESENSE_BOOTSTRAP_KEY[^\n]*CLOUDFLARE_TUNNEL_TOKEN|envs: [^\n]*CLOUDFLARE_TUNNEL_TOKEN[^\n]*TYPESENSE_BOOTSTRAP_KEY/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /deploy:\n    if: github\.event_name == 'workflow_dispatch'/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /--config=\/run\/secrets\/typesense-server\.ini/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /-p 127\.0\.0\.1:18108:8108[\s\S]*http:\/\/127\.0\.0\.1:18108\/health/,
+  );
+  assert.match(deployTypesenseHostWorkflow, /echo '\[server\]'/);
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /--ulimit nofile=65536:65536[\s\S]*--log-opt max-size=50m[\s\S]*--log-opt max-file=3/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /\.State\.Status[\s\S]*docker logs "\$container"[\s\S]*docker inspect "\$container"/,
+  );
+  assert.match(
+    deployTypesenseHostWorkflow,
+    /cleanup\(\)[\s\S]*docker rm -f "\$container"[\s\S]*sudo rm -rf -- "\$root"/,
+  );
+  assert.doesNotMatch(
+    deployTypesenseHostWorkflow,
+    /--api-key[= ]\$\{\{/,
+  );
 });
 
 test("broad CI test jobs exclude service-backed Typesense E2E suites", () => {
@@ -818,6 +1207,21 @@ test("Required CI gates Typesense E2E jobs", () => {
   assert.match(workflow, /"test-crawler-typesense-e2e"/);
 });
 
+test("Required CI gates PostgreSQL reconciliation and sampling E2E", () => {
+  const postgresJob = jobBlock("test-crawler-postgres-cdc-e2e");
+
+  assert.match(workflow, /needs:[\s\S]*- test-crawler-postgres-cdc-e2e/);
+  assert.match(workflow, /"test-crawler-postgres-cdc-e2e"/);
+  assert.match(
+    postgresJob,
+    /uv run pytest[\s\S]*tests\/e2e\/test_postgres_cdc_commit_order\.py/,
+  );
+  assert.match(
+    postgresJob,
+    /tests\/e2e\/test_labeller_sampling_plan\.py[\s\S]*-v/,
+  );
+});
+
 test("setup-uv steps cache uv downloads by crawler lockfile", () => {
   const checkedWorkflows = {
     ci: workflow,
@@ -830,6 +1234,7 @@ test("setup-uv steps cache uv downloads by crawler lockfile", () => {
 
     for (const block of blocks) {
       assert.match(block, /enable-cache: true/);
+      assert.match(block, /prune-cache: true/);
       assert.match(block, /cache-dependency-glob: "apps\/crawler\/uv\.lock"/);
     }
   }
@@ -838,8 +1243,22 @@ test("setup-uv steps cache uv downloads by crawler lockfile", () => {
 test("MCP publish workflow caches the pnpm store", () => {
   assert.match(
     publishMcpServerWorkflow,
-    /pnpm\/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6\.0\.9[\s\S]*actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6/,
+    /pnpm\/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6\.0\.10[\s\S]*actions\/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6/,
   );
   assert.match(publishMcpServerWorkflow, /cache: pnpm/);
   assert.match(publishMcpServerWorkflow, /cache-dependency-path: pnpm-lock\.yaml/);
+});
+
+test("MCP publish workflow uses npm trusted publishing", () => {
+  assert.match(publishMcpServerWorkflow, /id-token: write/);
+  assert.match(
+    publishMcpServerWorkflow,
+    /npm install --global npm@11\.19\.0/,
+  );
+  assert.match(publishMcpServerWorkflow, /npm publish --access public/);
+  assert.doesNotMatch(publishMcpServerWorkflow, /NPM_TOKEN|NODE_AUTH_TOKEN/);
+  assert.doesNotMatch(
+    publishMcpServerWorkflow,
+    /npm view @jseek\/mcp-server version[^\n]*\|\|/,
+  );
 });

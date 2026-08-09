@@ -5,7 +5,6 @@
 # Redis runs locally on the worker machine.
 
 x-common-env: &common-env
-  DATABASE_URL: ${DATABASE_URL}                    # Supabase (exporter writes only)
   LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL}         # Hetzner Postgres machine
   REDIS_URL: redis://localhost:6379/0
   WORKER_ID_PREFIX: hetzner
@@ -18,7 +17,7 @@ x-common-env: &common-env
   TYPESENSE_HOST: ${TYPESENSE_HOST}
   TYPESENSE_PORT: ${TYPESENSE_PORT}
   TYPESENSE_PROTOCOL: ${TYPESENSE_PROTOCOL}
-  TYPESENSE_ADMIN_KEY: ${TYPESENSE_ADMIN_KEY}
+  TYPESENSE_OPERATIONS_KEY: ${TYPESENSE_OPERATIONS_KEY}
   # Proxy provider — applies to boards with ``"proxy": true`` in their
   # monitor_config / scraper_config (see src/shared/proxy.py). Secrets
   # for idle providers stay set so operators can swap with one env flip.
@@ -311,11 +310,11 @@ services:
   # reach the local Hetzner Postgres machine via `LOCAL_DATABASE_URL`,
   # exactly like the crawler workers do. We forward the same DSN as
   # `MURMUR_DB_DSN` (the env var the shim's invoke-lib + claim-kv
-  # actually read); the legacy `DATABASE_URL` points at Supabase and
-  # is exporter-only.
+  # actually read). Neither crawler-mirror nor web-owned database credentials
+  # are exposed to the long-running Compose services.
   #
   # Port choice: 8080. Verified free on the box at deploy time
-  # (existing crawler stack uses 6379, 9093-9098, 12345/12346 only).
+  # (existing crawler stack uses 6379, 9093-9098, 12346/12347 only).
   # The shim's `/health` route is bearer-free per H2 design so this
   # healthcheck and the cloudflared origin-up probe both work without
   # secrets.
@@ -404,26 +403,35 @@ services:
 
   # -- Grafana Alloy (metrics + log collector) --------------------
   alloy:
-    image: grafana/alloy:latest
+    image: grafana/alloy:v1.18.0@sha256:491b0578c04983fd54fe99b587b6fab4404dc46d0dc16677bd6b00cc1140b308
+    user: "0:0"
     restart: unless-stopped
     network_mode: host
-    privileged: true
-    pid: host
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     volumes:
       - ./alloy.river:/etc/alloy/config.river:ro
       - alloy-data:/data-alloy
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /:/host:ro
+    tmpfs:
+      - /tmp:size=16m,mode=1777
     environment:
+      # Leave half the cgroup for the remote-write WAL, mapped files, runtime,
+      # and Docker log tailing. GOMEMLIMIT is a soft Go heap target, not the
+      # container's hard limit.
+      GOMEMLIMIT: 256MiB
       PROM_URL: ${GRAFANA_PROM_URL}
       PROM_USERNAME: ${GRAFANA_PROM_USERNAME}
       PROM_PASSWORD: ${GRAFANA_PROM_PASSWORD}
       LOKI_URL: ${GRAFANA_LOKI_URL}
       LOKI_USERNAME: ${GRAFANA_LOKI_USERNAME}
       LOKI_PASSWORD: ${GRAFANA_LOKI_PASSWORD}
-    command: run --storage.path=/data-alloy --server.http.listen-addr=0.0.0.0:12346 /etc/alloy/config.river
-    mem_limit: 256m
-    cpus: 0.25
+    command: run --storage.path=/data-alloy --server.http.listen-addr=127.0.0.1:12346 /etc/alloy/config.river
+    mem_limit: 512m
+    cpus: 0.5
 
 volumes:
   redis-data:

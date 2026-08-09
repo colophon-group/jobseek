@@ -90,44 +90,63 @@ export function FilterPillsReadOnly({
 }) {
   const { t } = useLingui();
   const pills: FilterPill[] = [];
+  const removeFilterLabel = (name: string) => t({
+    id: "search.filters.removeFilter",
+    comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value",
+    message: `Remove ${name} filter`,
+  });
 
   if (filters.keywords?.length) {
     for (const kw of filters.keywords) {
+      const name = kw;
       pills.push({
         key: `kw-${kw}`,
         icon: null,
         label: kw,
         onRemove: onRemoveKeyword ? () => onRemoveKeyword(kw) : undefined,
         removeLabel: onRemoveKeyword
-          ? t({ id: "search.filters.removeKeyword", comment: "Aria label for remove-keyword X button; {name} is the keyword", message: `Remove keyword ${kw}` })
+          ? t({
+              id: "search.filters.removeKeyword",
+              comment: "Aria label for remove-keyword X button; {name} is the keyword",
+              message: `Remove keyword ${name}`,
+            })
           : undefined,
       });
     }
   }
   if (locations && locations.length > 0) {
     for (const loc of locations) {
-      const label = loc.parentName && loc.type !== "country" && loc.type !== "macro"
+      const name = loc.parentName && loc.type !== "country" && loc.type !== "macro"
         ? `${loc.name}, ${loc.parentName}`
         : loc.name;
       pills.push({
         key: `loc-${loc.id}`,
         icon: <MapPin size={12} />,
-        label,
+        label: name,
         onRemove: onRemoveLocation ? () => onRemoveLocation(loc) : undefined,
         removeLabel: onRemoveLocation
-          ? t({ id: "search.filters.removeLocation", comment: "Aria label for remove-location X button; {name} is the location label", message: `Remove location ${label}` })
+          ? t({
+              id: "search.filters.removeLocation",
+              comment: "Aria label for remove-location X button; {name} is the location label",
+              message: `Remove location ${name}`,
+            })
           : undefined,
       });
     }
   } else if (filters.locationSlugs?.length) {
     for (const slug of filters.locationSlugs) {
+      const name = slug;
       pills.push({
         key: `loc-${slug}`,
         icon: <MapPin size={12} />,
         label: slug,
         onRemove: onRemoveLocationSlug ? () => onRemoveLocationSlug(slug) : undefined,
         removeLabel: onRemoveLocationSlug
-          ? t({ id: "search.filters.removeLocation", comment: "Aria label for remove-location X button; {name} is the location label", message: `Remove location ${slug}` })
+          ? t({
+              id: "search.filters.removeLocation",
+              comment: "Aria label for remove-location X button; {name} is the location label",
+              message: `Remove location ${name}`,
+            })
           : undefined,
       });
     }
@@ -140,7 +159,7 @@ export function FilterPillsReadOnly({
         label: occ.name,
         onRemove: onRemoveOccupation ? () => onRemoveOccupation(occ) : undefined,
         removeLabel: onRemoveOccupation
-          ? t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${occ.name} filter` })
+          ? removeFilterLabel(occ.name)
           : undefined,
       });
     }
@@ -152,7 +171,7 @@ export function FilterPillsReadOnly({
         label: slug,
         onRemove: onRemoveOccupationSlug ? () => onRemoveOccupationSlug(slug) : undefined,
         removeLabel: onRemoveOccupationSlug
-          ? t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${slug} filter` })
+          ? removeFilterLabel(slug)
           : undefined,
       });
     }
@@ -165,7 +184,7 @@ export function FilterPillsReadOnly({
         label: sen.name,
         onRemove: onRemoveSeniority ? () => onRemoveSeniority(sen) : undefined,
         removeLabel: onRemoveSeniority
-          ? t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${sen.name} filter` })
+          ? removeFilterLabel(sen.name)
           : undefined,
       });
     }
@@ -177,7 +196,7 @@ export function FilterPillsReadOnly({
         label: slug,
         onRemove: onRemoveSenioritySlug ? () => onRemoveSenioritySlug(slug) : undefined,
         removeLabel: onRemoveSenioritySlug
-          ? t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${slug} filter` })
+          ? removeFilterLabel(slug)
           : undefined,
       });
     }
@@ -190,7 +209,7 @@ export function FilterPillsReadOnly({
         label: tech.name,
         onRemove: onRemoveTechnology ? () => onRemoveTechnology(tech) : undefined,
         removeLabel: onRemoveTechnology
-          ? t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${tech.name} filter` })
+          ? removeFilterLabel(tech.name)
           : undefined,
       });
     }
@@ -202,7 +221,7 @@ export function FilterPillsReadOnly({
         label: slug,
         onRemove: onRemoveTechnologySlug ? () => onRemoveTechnologySlug(slug) : undefined,
         removeLabel: onRemoveTechnologySlug
-          ? t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${slug} filter` })
+          ? removeFilterLabel(slug)
           : undefined,
       });
     }
@@ -221,7 +240,7 @@ export function FilterPillsReadOnly({
         labelClassName: "capitalize",
         onRemove: onToggleEmploymentType ? () => onToggleEmploymentType(et) : undefined,
         removeLabel: onToggleEmploymentType
-          ? t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${et.replace(/_/g, " ")} filter` })
+          ? removeFilterLabel(et.replace(/_/g, " "))
           : undefined,
       });
     }
@@ -235,7 +254,7 @@ export function FilterPillsReadOnly({
         label,
         onRemove: onToggleWorkMode ? () => onToggleWorkMode(mode) : undefined,
         removeLabel: onToggleWorkMode
-          ? t({ id: "search.filters.removeFilter", comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value", message: `Remove ${label} filter` })
+          ? removeFilterLabel(label)
           : undefined,
       });
     }

@@ -3,6 +3,7 @@ import { buildFilterString, POSTING_BASE_FILTER } from "./typesense-filters";
 import { COMPANY_BATCH_SIZE } from "./constants";
 import { isTypesenseQueryStringSafe } from "./typesense-query-size";
 import type { WatchlistPostingEntry } from "@/lib/actions/watchlists";
+import { normalizePostingTitle } from "@/lib/posting-title";
 
 interface JobPostingDoc {
   id: string;
@@ -47,7 +48,7 @@ async function searchOne<T>(
 function mapHit(doc: JobPostingDoc): WatchlistPostingEntry {
   return {
     id: doc.id,
-    title: doc.title ?? null,
+    title: normalizePostingTitle(doc.title),
     sourceUrl: doc.source_url ?? "",
     firstSeenAt: new Date((doc.first_seen_at ?? 0) * 1000).toISOString(),
     isActive: doc.is_active ?? true,

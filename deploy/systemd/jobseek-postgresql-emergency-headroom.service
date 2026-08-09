@@ -1,0 +1,23 @@
+[Unit]
+Description=Maintain Jobseek PostgreSQL emergency recovery headroom
+Documentation=file:///opt/jobseek-backup/docs/16-hetzner-maintenance.md
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/jobseek-postgresql-emergency-headroom reserve
+RemainAfterExit=yes
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/mnt
+RestrictAddressFamilies=AF_UNIX
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

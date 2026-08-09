@@ -1,4 +1,5 @@
 name: Crawler scheduled maintenance
+run-name: "Crawler maintenance: ${{ inputs.task || 'refresh-typesense' }} @ ${{ inputs.expected_crawler_revision || 'scheduled' }}"
 
 # Periodic ephemeral crawler CLI runs. Kept in-repo so the cadence is
 # reviewable and version-controlled (see #2630). Dispatches to the Hetzner
@@ -12,11 +13,14 @@ name: Crawler scheduled maintenance
 #                        so there is no surface left for the notifier to
 #                        push. Module + CLI subcommand kept for revival;
 #                        no scheduled invocation anywhere in the repo.
-#   reconcile          — NOT this workflow. Runs daily in-process inside the
-#                        exporter container; see docs/11-typesense.md.
+#   reconcile          — NOT this workflow. A deploy-independent systemd
+#                        timer on the crawler host resumes bounded repairs;
+#                        see docs/03-crawler-architecture.md.
 #   backfill-typesense — NOT scheduled. Full re-index, invoked manually via
 #                        workflow_dispatch below when a schema change or
 #                        count drift requires it.
+#   verify-typesense-taxonomies — NOT scheduled. Exact, read-only taxonomy
+#                        proof for an explicitly attested live crawler image.
 
 on:
   schedule:
@@ -34,6 +38,11 @@ on:
         options:
           - refresh-typesense
           - backfill-typesense
+          - verify-typesense-taxonomies
+      expected_crawler_revision:
+        description: "For exact-revision tasks, live crawler deployment SHA to attest"
+        required: false
+        type: string
 
 concurrency:
   # Serialize scheduled runs. Deploys have a separate concurrency group, but
@@ -61,18 +70,36 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: scripts/crawler-host-hygiene.py
+          source: scripts/crawler-host-hygiene.py,apps/crawler/scripts/postgresql-operational-preflight.py
           target: /tmp/jobseek-crawler-maintenance/${{ github.sha }}
           strip_components: 1
 
       - name: Resolve task
         id: task
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TASK: ${{ inputs.task }}
+          INPUT_EXPECTED_CRAWLER_REVISION: ${{ inputs.expected_crawler_revision }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "task=${{ inputs.task }}" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            task="$INPUT_TASK"
+            expected_revision="$INPUT_EXPECTED_CRAWLER_REVISION"
           else
-            echo "task=refresh-typesense" >> "$GITHUB_OUTPUT"
+            task=refresh-typesense
+            expected_revision=""
           fi
+          if [[ "$task" == backfill-typesense || "$task" == verify-typesense-taxonomies ]]; then
+            [[ "$expected_revision" =~ ^[0-9a-f]{40}$ ]] || {
+              echo "${task} requires a full expected_crawler_revision" >&2
+              exit 1
+            }
+          elif [[ -n "$expected_revision" ]]; then
+            echo "expected_crawler_revision is valid only for exact-revision tasks" >&2
+            exit 1
+          fi
+          echo "task=$task" >> "$GITHUB_OUTPUT"
+          echo "expected_revision=$expected_revision" >> "$GITHUB_OUTPUT"
 
       - name: Run via SSH
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
@@ -80,18 +107,60 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: GITHUB_SHA
+          envs: GITHUB_SHA,EXPECTED_CRAWLER_REVISION,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD
           # A full production re-index currently takes about 45 minutes.
-          # Keep the workflow and its concurrency lock alive for the real
-          # remote operation instead of accepting ssh-action's 10m default.
-          command_timeout: 2h
+          # Allow the two-hour host-lock wait plus the bounded four-hour
+          # operation and leave cleanup headroom beyond ssh-action's default.
+          command_timeout: 8h
           script: |
             set -euo pipefail
+            exec 9>/run/lock/jobseek-crawler-mutation.lock
+            flock -w 7200 9 || {
+              echo "Timed out waiting for the crawler mutation lock" >&2
+              exit 1
+            }
+            python3 "/tmp/jobseek-crawler-maintenance/${GITHUB_SHA}/crawler/scripts/postgresql-operational-preflight.py"
             TASK="${{ steps.task.outputs.task }}"
             NAME="crawler-${TASK}-$(date -u +%Y%m%dT%H%M%SZ)"
             tag="$(grep -E '^CRAWLER_IMAGE_TAG=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
             tag="${tag:-latest}"
+            owner="$(grep -E '^OWNER=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
+            [[ -n "$owner" ]] || {
+              echo "Crawler image owner is unavailable" >&2
+              exit 1
+            }
             maintenance_status=0
+            RUNTIME_ENV=""
+
+            if [[ "$TASK" == backfill-typesense || "$TASK" == verify-typesense-taxonomies ]]; then
+              active_revision="$(grep -E '^JOBSEEK_DEPLOY_REVISION=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
+              [[ "$EXPECTED_CRAWLER_REVISION" =~ ^[0-9a-f]{40}$ ]]
+              [[ "$active_revision" == "$EXPECTED_CRAWLER_REVISION" ]] || {
+                echo "Live crawler revision does not match the requested deployment" >&2
+                exit 1
+              }
+              [[ "$tag" != latest && -n "$tag" ]] || {
+                echo "Live crawler image identity is not immutable" >&2
+                exit 1
+              }
+              exporter_id="$(docker ps -q \
+                --filter label=com.docker.compose.project=deploy \
+                --filter label=com.docker.compose.service=exporter)"
+              [[ "$(wc -w <<<"$exporter_id")" -eq 1 ]] || {
+                echo "Expected exactly one live exporter container" >&2
+                exit 1
+              }
+              [[ "$(docker inspect --format '{{.Config.Image}}' "$exporter_id")" == "ghcr.io/${owner}/jobseek-crawler:${tag}" ]] || {
+                echo "Live exporter image does not match the active crawler tag" >&2
+                exit 1
+              }
+              if docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$exporter_id" \
+                | cut -d= -f1 \
+                | grep -Eq '^(DATABASE_URL|DATABASE_URL_UNPOOLED|WEB_DATABASE_URL)$'; then
+                echo "Live exporter still has a relational mirror credential" >&2
+                exit 1
+              fi
+            fi
 
             cleanup() {
               status=$?
@@ -99,23 +168,72 @@ jobs:
               if docker ps -a --format '{{.Names}}' | grep -Fxq "$NAME"; then
                 docker rm -f "$NAME" >/dev/null 2>&1 || true
               fi
+              if [[ -n "$RUNTIME_ENV" ]]; then
+                rm -f "$RUNTIME_ENV"
+              fi
               exit "$status"
             }
             trap cleanup EXIT HUP INT TERM
 
+            RUNTIME_ENV="$(mktemp /run/lock/jobseek-typesense-maintenance-env.XXXXXX)"
+            chmod 0600 "$RUNTIME_ENV"
+            required_env=(
+              LOCAL_DATABASE_URL
+              TYPESENSE_HOST
+              TYPESENSE_PORT
+              TYPESENSE_PROTOCOL
+              TYPESENSE_OPERATIONS_KEY
+            )
+            if [[ "$TASK" == "refresh-typesense" ]]; then
+              required_env+=(WEB_DATABASE_URL)
+            fi
+            for key in "${required_env[@]}"; do
+              mapfile -t matches < <(grep -E "^${key}=" /home/deploy/.env || true)
+              if [[ ${#matches[@]} -ne 1 || -z "${matches[0]#*=}" ]]; then
+                echo "ERROR: required maintenance variable ${key} is missing or duplicated" >&2
+                exit 1
+              fi
+              printf '%s\n' "${matches[0]}" >>"$RUNTIME_ENV"
+            done
+
             # The GitHub concurrency lock cannot see a container orphaned by
             # a cancelled or timed-out older SSH session. Refuse to overlap it
             # with another Typesense maintenance operation.
-            if docker ps --format '{{.Names}}' | grep -Eq '^crawler-(backfill|refresh)-typesense-'; then
+            if docker ps --format '{{.Names}}' \
+              | grep -Eq '^crawler-(backfill-typesense|refresh-typesense|verify-typesense-taxonomies)-'; then
               echo "Another Typesense maintenance container is already running" >&2
               maintenance_status=1
             else
-              docker run --rm \
+              operation_budget=7200
+              operation_command=(uv run --no-sync crawler "$TASK")
+              if [[ "$TASK" == backfill-typesense ]]; then
+                # Prove the entire local PostgreSQL posting set after the
+                # backfill and verify every retained taxonomy document while
+                # the same host mutation lock remains held.
+                operation_budget=14400
+                operation_command=(
+                  sh -ceu
+                  'uv run --no-sync crawler backfill-typesense && uv run --no-sync crawler reconcile --repair --full --fresh-cycle --target typesense && uv run --no-sync crawler verify-typesense-taxonomies'
+                )
+              elif [[ "$TASK" == verify-typesense-taxonomies ]]; then
+                # Verification-only dispatch: prove the live taxonomy state
+                # without repeating a posting backfill or reconciliation.
+                operation_command=(uv run --no-sync crawler verify-typesense-taxonomies)
+              fi
+              timeout --foreground --signal=TERM --kill-after=90s "$operation_budget" docker run --rm \
                 --name "$NAME" \
-                --env-file /home/deploy/.env \
+                --env-file "$RUNTIME_ENV" \
                 --network host \
-                "ghcr.io/colophon-group/jobseek-crawler:${tag}" \
-                uv run --no-sync crawler "$TASK" || maintenance_status=$?
+                --label com.docker.compose.project=deploy \
+                --label "com.docker.compose.service=${TASK}" \
+                --label com.docker.compose.container-number=1 \
+                --label com.docker.compose.oneoff=True \
+                --label "jobseek.maintenance.operation=${TASK}" \
+                --label jobseek.maintenance.issue=2630 \
+                --label "jobseek.maintenance.revision=${GITHUB_SHA}" \
+                --label "jobseek.maintenance.budget-seconds=${operation_budget}" \
+                "ghcr.io/${owner}/jobseek-crawler:${tag}" \
+                "${operation_command[@]}" || maintenance_status=$?
             fi
 
             hygiene_status=0
@@ -130,3 +248,9 @@ jobs:
             if (( maintenance_status != 0 || hygiene_status != 0 )); then
               exit 1
             fi
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          EXPECTED_CRAWLER_REVISION: ${{ steps.task.outputs.expected_revision }}
+          GRAFANA_PROM_URL: ${{ secrets.GRAFANA_PROM_URL }}
+          GRAFANA_PROM_USERNAME: ${{ secrets.GRAFANA_PROM_USERNAME }}
+          GRAFANA_PROM_PASSWORD: ${{ secrets.GRAFANA_PROM_PASSWORD }}

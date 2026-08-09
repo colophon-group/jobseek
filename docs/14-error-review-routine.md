@@ -17,6 +17,12 @@ Prior exemplars (follow their shape): #2622, #2621, #2470, #2431.
   `/home/deploy`, or production env access. Deployment settings and
   maintenance checks live in
   [18-codex-automation-deployment.md](18-codex-automation-deployment.md).
+  Root-owned pre/post hooks also atomically record attempt, success, and
+  in-progress state under `/srv/jobseek-codex/state/`; the independent host
+  sampler publishes only numeric status fields. Mimir records failure,
+  36-hour staleness, or a run stuck over three hours. Production email paging
+  is disabled; see
+  [production paging is disabled](16-hetzner-maintenance.md#production-paging-is-disabled).
 - **Preferred manual route:** local Codex CLI from the repo root, asking it to
   use the `jobseek-error-review` skill.
 - **Manual traceable pilot:** run `codex exec --json` with the skill/runbook as
@@ -46,15 +52,57 @@ window.
 Host-memory classification is container-generation aware. The root collector
 writes `host/docker-cgroup-memory.json` with Docker identity/timestamps and
 cgroup-v2 memory counters. Reviews compare OOM and restart counters only for
-the same container ID; a sticky Docker `OOMKilled=true` flag or a deployment
-that replaced the container is not, by itself, a new daily incident.
+the same pseudonymous `container_generation`; a sticky Docker
+`OOMKilled=true` flag or a deployment that replaced the container is not, by
+itself, a new daily incident. Raw Docker resource IDs do not enter the runner
+bundle.
 
 Container-exit classification is event-backed. The always-on root
 `jobseek-codex-docker-lifecycle.service` filters out health-check noise,
 allowlists non-secret lifecycle fields, and persists them in journald. The
 bundle exports the requested window as `host/docker-lifecycle.jsonl`, so exit
 codes, signals, OOM events, container identity, and replacement/restart timing
-survive Docker's volatile event buffer and container recreation.
+survive Docker's volatile event buffer and container recreation. The root
+collector allowlists the journal again and one-way transforms raw IDs from
+legacy schema rows before the bundle becomes readable by `codex-runner`.
+
+Every file written to the runner bundle passes the same final redaction
+boundary. In addition to credential shapes, it removes IPv4/IPv6 host
+addresses, UUID-shaped domain/resource identifiers, and raw 64-hex
+Docker/image identifiers. The 16-hex `container_generation` remains available
+for same-generation comparisons without exposing the underlying resource ID.
+
+Production maintenance attribution is deterministic rather than inferred from
+container names. Repository-owned one-offs and the
+`/usr/local/sbin/jobseek-maintenance` wrapper attach an all-or-nothing
+operation, GitHub issue, reviewed revision, and runtime budget contract. The
+watcher validates only those exact fields and ignores every other Docker
+label. The root collector writes the derived, command-free
+`host/maintenance-correlation.json` before the unprivileged review starts.
+
+Reviews must correlate synchronized service pauses with that file before
+classifying instability:
+
+- A single validated maintenance window owns only service pauses that overlap
+  it or its bounded two-minute correlation edge.
+- A single exact-overlap candidate takes precedence over windows that reach
+  the pause only through that edge. Multiple exact candidates or multiple
+  padding-only provenance contracts remain ambiguous.
+- Service-pause correlation is limited to the eight monitored long-running
+  crawler services: Redis, three HTTP workers, the browser worker, exporter,
+  drain, and Alloy. Transient Compose init services cannot stretch a crawler
+  maintenance window.
+- Missing, partial, invalid, or conflicting provenance remains unattributed;
+  never infer authorization from a name or an adjacent unlabelled one-off.
+- Authorized maintenance is reported as a maintenance outcome, with its
+  tracking issue, revision, downtime, termination mode, and restoration
+  health, rather than as spontaneous worker instability.
+- OOM/native exits, forced termination, nonzero maintenance one-offs, budget
+  overruns, and failed restoration remain actionable even in an authorized
+  window. The wrapper-owned marker's expected termination is not a failed
+  maintenance one-off; marker OOM still is. Update the maintenance issue or
+  create a deduplicated operational follow-up instead of reopening an
+  unrelated instability issue.
 
 Compatibility fallback:
 [`.claude/commands/jobseek-error-review.md`](../.claude/commands/jobseek-error-review.md).

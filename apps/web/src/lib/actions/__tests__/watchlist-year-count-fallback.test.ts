@@ -1,11 +1,9 @@
 /**
- * Regression test for issue #3056.
+ * Watchlist posting read degradation tests.
  *
- * `getWatchlistPostingYearCount` feeds the "N active · M in the last year"
- * row on watchlist detail pages. The active count already falls back to
- * Postgres when Typesense is unavailable; the year count used to catch
- * the same outage and return 0, producing misleading "0 in the last year"
- * stats for watchlists that still had matching postings in Postgres.
+ * The Supabase `job_posting` mirror is no longer a valid fallback read plane.
+ * When Typesense is unavailable these readers fail closed to empty/zero data;
+ * they must never expose stale crawler rows from Postgres (#6167/#6249).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -195,6 +193,8 @@ vi.mock("@/lib/watchlist-utils", () => ({
 }));
 
 import {
+  getPublicWatchlistPostings,
+  getWatchlistPostingDisplayCounts,
   getWatchlistPostingYearCount,
   getWatchlistPostings,
 } from "../watchlists";
@@ -204,7 +204,23 @@ function makeUuid(index: number): string {
   return `00000000-0000-0000-0000-${String(index).padStart(12, "0")}`;
 }
 
-describe("getWatchlistPostingYearCount fallback (#3056)", () => {
+function postingHit(id: string, textMatch: number, firstSeenAt: number) {
+  return {
+    text_match: textMatch,
+    document: {
+      id,
+      title: `Posting ${id}`,
+      source_url: `https://example.com/${id}`,
+      first_seen_at: firstSeenAt,
+      is_active: true,
+      company_id: "company-1",
+      company_name: "Example",
+      company_slug: "example",
+    },
+  };
+}
+
+describe("watchlist posting read degradation (#6167)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
@@ -230,13 +246,12 @@ describe("getWatchlistPostingYearCount fallback (#3056)", () => {
     vi.restoreAllMocks();
   });
 
-  it("falls back to a filtered Postgres year count when Typesense fails", async () => {
+  it("returns zero without querying Postgres when the year count is unavailable", async () => {
     const typesenseError = Object.assign(new Error("read ECONNRESET"), {
       code: "ECONNRESET",
     });
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     mocks.tsSearch.mockRejectedValueOnce(typesenseError);
-    mocks.dbExecute.mockResolvedValueOnce([{ cnt: 37 }]);
 
     const count = await getWatchlistPostingYearCount({
       companyIds: ["11111111-1111-1111-1111-111111111111"],
@@ -253,38 +268,63 @@ describe("getWatchlistPostingYearCount fallback (#3056)", () => {
       experienceMax: 7,
     });
 
-    expect(count).toBe(37);
+    expect(count).toBe(0);
     expect(mocks.withTypesenseRetry).toHaveBeenCalledTimes(1);
     expect(mocks.tsSearch).toHaveBeenCalledTimes(1);
     expect(mocks.isTypesenseUnavailableError).toHaveBeenCalledWith(typesenseError);
-    expect(mocks.expandLocationIdsBatch).toHaveBeenCalledWith([1]);
-    expect(mocks.expandOccupationIdsBatch).toHaveBeenCalledWith([2]);
-    expect(mocks.withDbRetry).toHaveBeenCalledTimes(1);
-    expect(mocks.dbExecute).toHaveBeenCalledTimes(1);
+    expect(mocks.expandLocationIdsBatch).not.toHaveBeenCalled();
+    expect(mocks.expandOccupationIdsBatch).not.toHaveBeenCalled();
+    expect(mocks.withDbRetry).not.toHaveBeenCalled();
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
     expect(consoleError).toHaveBeenCalledWith(
-      "[getWatchlistPostingYearCount] Typesense failed, falling back to Postgres",
-      typesenseError,
+      "external_client_error",
+      expect.objectContaining({
+        service: "typesense",
+        operation: "watchlist_posting_year_count",
+        code: "ECONNRESET",
+      }),
     );
+  });
 
-    const query = mocks.dbExecute.mock.calls[0]?.[0] as {
-      text: string;
-      values: unknown[];
-    };
-    expect(query.text).toContain("SELECT count(*)::int AS cnt FROM job_posting jp WHERE");
-    expect(query.text).toContain("jp.description_r2_hash IS NOT NULL");
-    expect(query.text).toContain("jp.first_seen_at >=");
-    expect(query.text).toContain("jp.company_id = ANY");
-    expect(query.text).toContain("jp.location_ids &&");
-    expect(query.text).toContain("jp.occupation_id = ANY");
-    expect(query.text).toContain("jp.salary_eur BETWEEN");
-    expect(query.text).not.toContain("jp.is_active = true");
-    expect(
-      query.values.some(
-        (value) =>
-          value instanceof Date &&
-          value.toISOString() === "2025-06-16T12:00:00.000Z",
-      ),
-    ).toBe(true);
+  it("returns an empty authenticated posting page without querying Postgres on outage", async () => {
+    const typesenseError = Object.assign(new Error("read ECONNRESET"), {
+      code: "ECONNRESET",
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.getSessionUserId.mockResolvedValueOnce("user-1");
+    mocks.tsSearch.mockRejectedValueOnce(typesenseError);
+
+    const result = await getWatchlistPostings({
+      companyIds: ["11111111-1111-1111-1111-111111111111"],
+      offset: 40,
+      limit: 20,
+    });
+
+    expect(result).toEqual({ postings: [], total: 0 });
+    expect(mocks.getSessionUserId).toHaveBeenCalledTimes(1);
+    expect(mocks.isTypesenseUnavailableError).toHaveBeenCalledWith(typesenseError);
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+    expect(mocks.withDbRetry).not.toHaveBeenCalled();
+  });
+
+  it("returns an empty session-free public posting page on outage", async () => {
+    const typesenseError = Object.assign(new Error("read ECONNRESET"), {
+      code: "ECONNRESET",
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.tsSearch.mockRejectedValueOnce(typesenseError);
+
+    const result = await getPublicWatchlistPostings({
+      companyIds: ["11111111-1111-1111-1111-111111111111"],
+      offset: 40,
+      limit: 20,
+    });
+
+    expect(result).toEqual({ postings: [], total: 0, truncated: true });
+    expect(mocks.getSessionUserId).not.toHaveBeenCalled();
+    expect(mocks.isTypesenseUnavailableError).toHaveBeenCalledWith(typesenseError);
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+    expect(mocks.withDbRetry).not.toHaveBeenCalled();
   });
 
   it("does not reroute Typesense 429 rate limits to Postgres", async () => {
@@ -325,6 +365,20 @@ describe("getWatchlistPostingYearCount fallback (#3056)", () => {
     expect(mocks.dbExecute).not.toHaveBeenCalled();
   });
 
+  it("keeps cached public posting snapshots session-free (#5980)", async () => {
+    mocks.tsSearch.mockResolvedValue({ found: 0, hits: [] });
+
+    const result = await getPublicWatchlistPostings({
+      companyIds: ["11111111-1111-1111-1111-111111111111"],
+      offset: 0,
+      limit: 20,
+    });
+
+    expect(result).toEqual({ postings: [], total: 0 });
+    expect(mocks.getSessionUserId).not.toHaveBeenCalled();
+    expect(mocks.tsSearch).toHaveBeenCalledTimes(1);
+  });
+
   it("batches active posting queries before the Typesense GET limit (#3477)", async () => {
     const companyIds = Array.from({ length: 99 }, (_, i) => makeUuid(i + 1));
     mocks.tsSearch.mockResolvedValue({ found: 0, hits: [] });
@@ -346,6 +400,62 @@ describe("getWatchlistPostingYearCount fallback (#3056)", () => {
     expect(mocks.dbExecute).not.toHaveBeenCalled();
   });
 
+  it("preserves global keyword relevance and freshness across company batches", async () => {
+    const companyIds = Array.from({ length: 101 }, (_, i) => makeUuid(i + 1));
+    let rowBatch = 0;
+    mocks.getSessionUserId.mockResolvedValueOnce("user-1");
+    mocks.tsSearch.mockImplementation((params: { per_page?: number }) => {
+      if (params.per_page === 0) return { found: 2, hits: [] };
+      rowBatch += 1;
+      if (rowBatch === 1) {
+        return {
+          found: 2,
+          hits: [
+            postingHit("best", 100, 100),
+            postingHit("older-tie", 80, 300),
+          ],
+        };
+      }
+      if (rowBatch === 2) {
+        return {
+          found: 2,
+          hits: [
+            postingHit("second-best", 90, 50),
+            postingHit("newer-tie", 80, 400),
+          ],
+        };
+      }
+      return { found: 0, hits: [] };
+    });
+
+    const result = await getWatchlistPostings({
+      companyIds,
+      keywords: ["staff", "engineer"],
+      offset: 1,
+      limit: 2,
+    });
+
+    expect(rowBatch).toBeGreaterThan(1);
+    expect(result.postings.map((posting) => posting.id)).toEqual([
+      "second-best",
+      "newer-tie",
+    ]);
+    const rowQueries = mocks.tsSearch.mock.calls
+      .map(([params]) => params as { per_page?: number; page?: number; sort_by?: string })
+      .filter((params) => params.per_page !== 0);
+    expect(rowQueries.length).toBeGreaterThan(1);
+    expect(rowQueries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          per_page: 3,
+          page: 1,
+          sort_by: "_text_match:desc,first_seen_at:desc",
+        }),
+      ]),
+    );
+    expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
   it("batches year-count queries instead of returning zero for large watchlists (#3477)", async () => {
     const companyIds = Array.from({ length: 99 }, (_, i) => makeUuid(i + 1));
     mocks.tsSearch.mockResolvedValue({ found: 5, hits: [] });
@@ -363,5 +473,55 @@ describe("getWatchlistPostingYearCount fallback (#3056)", () => {
       expect(idsInFilter.length).toBeLessThan(companyIds.length);
     }
     expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
+  it("includes work mode and employment type in SSR active and year counts", async () => {
+    const combinedFilter =
+      "location_types:[remote] && employment_type:[full_time]";
+    mocks.buildFilterString.mockReturnValueOnce(combinedFilter);
+    mocks.tsSearch
+      .mockResolvedValueOnce({ found: 11, hits: [] })
+      .mockResolvedValueOnce({ found: 27, hits: [] });
+
+    const result = await getWatchlistPostingDisplayCounts({
+      id: "watchlist-1",
+      slug: "remote-full-time",
+      title: "Remote full-time",
+      description: null,
+      isPublic: true,
+      alertsEnabled: false,
+      filters: {
+        workMode: ["remote"],
+        employmentType: ["full_time"],
+      },
+      sourceWatchlistId: null,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      owner: {
+        id: "user-1",
+        username: "alice",
+        displayUsername: null,
+        name: "Alice",
+      },
+      companies: [
+        {
+          id: "11111111-1111-1111-1111-111111111111",
+          name: "Example",
+          slug: "example",
+          icon: null,
+        },
+      ],
+    });
+
+    expect(result).toEqual({ activeJobs: 11, yearJobs: 27 });
+    expect(mocks.buildFilterString).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workMode: ["remote"],
+        employmentTypes: ["full_time"],
+      }),
+    );
+    expect(mocks.tsSearch).toHaveBeenCalledTimes(2);
+    for (const [params] of mocks.tsSearch.mock.calls) {
+      expect((params as { filter_by: string }).filter_by).toContain(combinedFilter);
+    }
   });
 });

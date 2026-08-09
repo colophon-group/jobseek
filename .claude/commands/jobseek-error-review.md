@@ -17,8 +17,10 @@ anything novel, regressing, or spiking. Model output after prior issues
 ================================================================
 TARGET
 ================================================================
-SSH: deploy@116.203.192.19   Key: ~/.ssh/hetzner_deploy
-Compose:  /home/deploy/docker-compose.yml
+Prefer the root-collected runner bundle. For a local manual fallback, resolve
+the production crawler host from approved operator configuration and never
+copy its address into reports, traces, prompts, or GitHub content.
+Compose: /home/deploy/docker-compose.yml
 
 Long-running services — collect logs with
 `docker logs --since <ISO> --until <ISO> <name>`:
@@ -51,10 +53,12 @@ INPUTS
    exactly.
    If a runner evidence bundle is available, read manifest.json,
    host/docker-inspect-state.txt, host/docker-cgroup-memory.json, and
-   host/docker-lifecycle.jsonl first. The lifecycle stream durably records
-   allowlisted create/start/restart/die/oom/kill/stop/destroy events, exit
-   codes/signals, and container IDs; the cgroup file contains generation-safe
-   memory.events counters.
+   host/docker-lifecycle.jsonl first. Also read
+   host/maintenance-correlation.json before classifying a synchronized service
+   stop. The lifecycle stream durably records allowlisted
+   create/start/restart/die/oom/kill/stop/destroy events, exit codes/signals,
+   and pseudonymous container generations; the cgroup file contains
+   generation-safe memory.events counters.
 2. Prior review reports: read every `.md` under
    ~/dev/claude/review-jobseek-errors/ before classifying. That directory
    is the agent's cross-run memory.
@@ -76,7 +80,7 @@ All runnable without sudo by the `deploy` user:
   docker stats --no-stream --format \
     'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}'
   docker inspect --format \
-    '{{.Name}} ID={{.Id}} Image={{.Config.Image}} Created={{.Created}} StartedAt={{.State.StartedAt}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}} RestartCount={{.RestartCount}} FinishedAt={{.State.FinishedAt}} ExitCode={{.State.ExitCode}} Error={{json .State.Error}}' \
+    '{{.Name}} Image={{.Config.Image}} Created={{.Created}} StartedAt={{.State.StartedAt}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}} RestartCount={{.RestartCount}} FinishedAt={{.State.FinishedAt}} ExitCode={{.State.ExitCode}} Error={{json .State.Error}}' \
     $(docker ps -aq)
   dmesg -T 2>/dev/null | tail -n 500
   journalctl -k --since "24 hours ago" --no-pager 2>/dev/null | tail -500
@@ -89,7 +93,7 @@ Flag as INCIDENT if ANY of:
     created in-window has a positive counter, or an exited container/kernel
     log proves an OOM inside the window
   - Same-container RestartCount incremented since yesterday's report
-  - Lifecycle die/start proves a restart inside the window
+  - An unattributed lifecycle die/start proves a restart inside the window
   - Load average (15m) > CPU count × 2
   - Swap usage > 50% of swap total
   - dmesg/journalctl shows "Out of memory: Killed process", "I/O error",
@@ -101,17 +105,26 @@ report under ## Host (e.g. "host kernel log: unavailable") — do not
 treat the gap alone as an incident.
 
 OOMKilled is a sticky historical Docker state and RestartCount is scoped to
-one container object. Compare counters only when container IDs match. A
-changed ID normally means deployment/replacement; do not subtract its values
-from the prior container. OOMKilled=true without a same-generation counter
-delta or timestamped exited/kernel evidence is not a fresh daily incident.
+one container object. Compare counters only when pseudonymous container
+generations match. A changed generation normally means
+deployment/replacement; do not subtract its values from the prior container.
+OOMKilled=true without a same-generation counter delta or timestamped
+exited/kernel evidence is not a fresh daily incident.
 
 Use lifecycle sequences to identify the mechanism: oom+die is an OOM;
-kill+die is a Docker API signal (the caller remains unknown unless correlated
-evidence identifies it); die without kill/oom is a native process exit;
-same-ID die/start is an automatic restart; stop/die/destroy followed by a new
-ID create/start is a replacement. Report stream_closed/connect_error or
-missing journal coverage as an evidence gap rather than a clean window.
+kill+die is a Docker API signal; die without kill/oom is a native process
+exit; same-generation die/start is an automatic restart; stop/die/destroy
+followed by a new generation create/start is a replacement. Report
+stream_closed/connect_error or missing journal coverage as an evidence gap
+rather than a clean window.
+
+Attribute a service pause only when maintenance-correlation.json contains
+exactly one validated overlapping operation/issue/revision/budget window.
+Names, timing alone, and unlabelled one-offs never prove authorization.
+Authorized maintenance is a separate report outcome, not spontaneous
+instability. Forced termination, OOM/native exit, nonzero one-offs, budget
+overrun, and failed restoration remain actionable maintenance outcomes.
+Missing, invalid, or conflicting provenance remains unknown.
 
 ================================================================
 LOG COLLECTION
@@ -184,6 +197,9 @@ Schema:
   | class | service | count | status |
   status ∈ {known, novel, regression, spike, incident}.
 
+  ## Maintenance windows
+  | operation / issue | revision | duration | affected services | outcome |
+
   ## Details
   For every novel/regression/spike/incident class:
     - error class + service
@@ -197,6 +213,10 @@ Schema:
 
   ## Health
   One-line summary.
+
+Always include every correlated maintenance window, including clean ones.
+Record service downtime, forced termination/OOM/native exit, nonzero one-offs,
+budget result, and restoration health. Write "none" when there was no window.
 
 ================================================================
 GITHUB ISSUES
@@ -256,6 +276,8 @@ Strip or summarize before any GitHub write:
   - IPs, port numbers, hostnames beyond jseek.co / public CDNs
   - UUIDs, emails, user IDs, company internal IDs → `<uuid>`,
     `<email>`, `<user_id>`
+  - Raw Docker/container IDs and cloud resource IDs; use the bundle's
+    pseudonymous container generation only in the private report
   - JWTs, cookies, API keys, Authorization headers
   - SQL literal values (keep the statement skeleton)
   - Request/response bodies beyond the exception message itself

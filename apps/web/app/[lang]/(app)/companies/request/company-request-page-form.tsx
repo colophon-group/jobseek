@@ -76,6 +76,7 @@ export function CompanyRequestPageForm({
   }, [state]);
 
   const errorMessage = state?.errorCode ? t(errorMessages[state.errorCode]) : "";
+  const inputId = useId();
   const errorId = useId();
 
   const initialValue = pickDefaultValue(defaultName, defaultWebsite);
@@ -109,7 +110,19 @@ export function CompanyRequestPageForm({
       >
         <input type="hidden" name="locale" value={locale} />
         <div className="flex-1">
+          <label
+            htmlFor={inputId}
+            className="mb-1.5 block text-xs font-medium text-foreground"
+          >
+            <Trans
+              id="companies.request.inputLabel"
+              comment="Label for the company name or careers-page URL request field"
+            >
+              Company name or careers-page URL
+            </Trans>
+          </label>
           <input
+            id={inputId}
             name="input"
             type="text"
             required

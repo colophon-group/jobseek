@@ -19,6 +19,7 @@ import {
   S3Client,
   type _Object,
 } from "@aws-sdk/client-s3";
+import { logExternalError } from "../src/lib/safe-external-error";
 
 type Options = {
   prefix: string;
@@ -427,6 +428,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error("[company-og-prune] failed", err);
+  logExternalError("error", { service: "r2", operation: "prune_company_og" }, err);
   process.exit(1);
 });

@@ -557,6 +557,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
         raise BoardGoneError(
             f"Jobylon embed returned 404 for {url!r}",
             url=url,
+            status_code=404,
         ) from None
     # httpx transport errors / non-404 HTTP errors propagate — the
     # pipeline retries them; flipping a live board to "gone" on a

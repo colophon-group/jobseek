@@ -63,6 +63,10 @@ Codex CLI, the Hetzner governor, or a future Codex scheduler.
 - Run Hetzner Codex routines under a dedicated local user with no sudo,
   no Docker group, no production crawler environment, and no read access to
   crawler `.env` files.
+- Keep raw Docker/container and cloud resource IDs out of runner-visible
+  bundles. Root collectors must allowlist lifecycle fields and replace legacy
+  identifiers with pseudonymous container generations before changing group
+  ownership to `codex-runner`.
 - Treat `~/.codex/auth.json`, GitHub auth, and HuggingFace auth as password
   material. Do not print, upload, commit, or include them in traces.
 - Keep Claude-compatible files only as migration fallbacks. When a fallback is
@@ -78,6 +82,11 @@ Codex CLI, the Hetzner governor, or a future Codex scheduler.
   duplicate HuggingFace rows, GitHub issues, GitHub PRs, or active `ws` claims.
 - Every run must report what it did, what it skipped, and what requires human
   escalation.
+- Daily annotation runs must end with the documented
+  `JOBSEEK_ROUTINE_RESULT=<json>` marker. The runner treats a reported
+  fail-closed phase/error as primary and a missing or invalid HuggingFace
+  partition as downstream verification evidence. The marker is advisory for
+  success: the independent remote row-count check remains authoritative.
 - Secrets and local paths are deployment configuration. Do not write secrets
   to the repo, reports, traces, GitHub comments, or PR bodies.
 - The unofficial ChatGPT usage endpoint probe is best-effort telemetry. The
@@ -223,8 +232,9 @@ Committed deployment templates:
 
 - [`../deploy/systemd/jobseek-codex-docker-lifecycle.service`](../deploy/systemd/jobseek-codex-docker-lifecycle.service)
   - runs a root, read-only Docker event watcher; only allowlisted lifecycle
-    fields reach persistent journald, and the Codex runner retains no Docker
-    access.
+    fields plus validated maintenance provenance reach persistent journald,
+    and the Codex runner retains no Docker access. Container generations are
+    pseudonymous in the runner bundle.
 - [`../deploy/systemd/jobseek-codex-governor.service`](../deploy/systemd/jobseek-codex-governor.service)
   - `Type=oneshot`, low-priority CPU/IO scheduling, `CPUQuota=200%`,
   `MemoryHigh=3G`, `MemoryMax=4G`, `TasksMax=1024`, `ProtectSystem=strict`,
@@ -602,6 +612,12 @@ the directory and count toward the admission ceiling.
   targeted quality review.
 - Preserve remote HuggingFace history and README counts when uploading.
 - Verify `data/<YYYY-MM-DD>.jsonl` has exactly 10 rows after upload.
+- Preserve the first causal failure in the local run ledger. The final Codex
+  message must emit `JOBSEEK_ROUTINE_RESULT=<json>` with `status`, `phase`,
+  and a redacted `primary_error`; a missing date partition is appended only as
+  a downstream symptom. HuggingFace verification has its own bounded
+  120-second timeout and records only a concise error, never the embedded
+  verifier command.
 - Escalate labelling-quality issues that point to a prompt or model weakness;
   do not file routine data rejections as prompt/model issues by default.
 
@@ -614,6 +630,13 @@ the directory and count toward the admission ceiling.
 - Read `host/docker-lifecycle.jsonl` with the generation-aware cgroup and
   inspect files; it preserves allowlisted exit codes, signals, OOM events,
   and replacement/restart timing across container recreation.
+- Read `host/maintenance-correlation.json` before classifying Docker service
+  exits. Only one validated operation/issue/revision/budget window may own a
+  pause; missing or conflicting provenance stays unknown.
+- Report authorized maintenance separately with its measured downtime and
+  restoration result. Forced termination, OOM/native exits, nonzero one-offs,
+  budget overruns, and failed restoration remain actionable maintenance
+  outcomes.
 - Collect host signals before log classification.
 - Classify errors as `known`, `novel`, `regression`, `spike`, or `incident`.
 - Partial evidence windows must be reported as gaps, but they do not
