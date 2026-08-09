@@ -168,6 +168,7 @@ Scraper Types:
   json-ld        Static/PW   No (optional render)  Sites with schema.org/JobPosting
   nextdata       Static/PW   Yes (fields)     Next.js sites with __NEXT_DATA__
   embedded       Static/PW   Yes (fields)     JS-embedded JSON (script tags, variables)
+  onlyfy         Static      No               Onlyfy/Prescreen job pages
   pdf            Static      No               PDF job descriptions
   dom            Static/PW   Yes (steps)      Custom HTML structure
   api_sniffer    HTTP/PW     Optional (fields)  SPA/XHR or direct API
@@ -806,13 +807,19 @@ nextdata — Next.js __NEXT_DATA__ Discovery
     timeout        Navigation timeout in ms (Playwright only)
     url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
     url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
+    source         Embedded source: nextdata (default), reactrouter, rsc,
+                   or phenom_canvas
+    pagination     Page metadata mapping. Example:
+                   {"path":"jobsData.meta","page_count":"totalPages",
+                    "page_param":"page"}
 
   Detection:  ws probe shows "__NEXT_DATA__ — N items at <path>"
               If "(render)" shown, page needs Playwright to load data.
               Auto-searches common paths: props.pageProps.positions,
               props.pageProps.jobs, props.pageProps.openings,
               props.pageProps.allJobs, props.pageProps.data.positions,
-              props.pageProps.data.jobs. Needs >= 5 items (all dicts).
+              props.pageProps.data.jobs, and common RSC equivalents including
+              jobsData.data. Needs >= 5 items (all dicts).
 
   Pair with:  nextdata or json-ld scraper (if URL-only mode)
 
@@ -2827,6 +2834,18 @@ paylocity — Paylocity server-rendered detail scraper
             unsupported-browser warning, so Playwright is not required.
 """
 
+SCRAPER_ONLYFY = """\
+onlyfy — Onlyfy/Prescreen server-rendered detail scraper
+
+  Page:     Public https://{tenant}.onlyfy.jobs/{locale}/job/{handle} URL
+  Fetches:  /job/show/{handle}/full?lang={locale}&mode=candidate
+  Returns:  title, HTML description, locations
+  Config:   language (optional; otherwise derived from the public URL)
+  Note:     The public Next.js page is a client shell. This scraper uses the
+            stable server-rendered candidate endpoint directly, so Playwright
+            is not required.
+"""
+
 SCRAPER_PAYCOM = """\
 paycom — Paycom public detail API scraper
 
@@ -2967,6 +2986,7 @@ SCRAPER_CARDS: dict[str, str] = {
     "json-ld": SCRAPER_JSONLD,
     "nextdata": SCRAPER_NEXTDATA,
     "embedded": SCRAPER_EMBEDDED,
+    "onlyfy": SCRAPER_ONLYFY,
     "dom": SCRAPER_DOM,
     "api_sniffer": SCRAPER_API_SNIFFER,
     "adp": """\
