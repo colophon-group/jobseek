@@ -1303,7 +1303,9 @@ async def paginate_all(
     # an offset appends duplicates and can still miss the tail. When the API
     # advertises a total, request the bounded target once and replace the
     # first-page prefix with the complete response.
-    if pag.style == "cumulative_limit" and result.total_count:
+    if pag.style == "cumulative_limit":
+        if not result.total_count or result.total_count <= 0:
+            raise ValueError("cumulative_limit pagination requires a positive total count")
         target = min(result.total_count, page_size * max_pages)
         if target <= page_size:
             return all_items
