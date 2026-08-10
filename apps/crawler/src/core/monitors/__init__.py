@@ -546,6 +546,8 @@ def _build_comment(name: str, metadata: dict) -> str:
         if urls is not None:
             return f"TalentBrew/Radancy \u2014 {urls} job links found"
         return "TalentBrew/Radancy"
+    if name == "practicematch":
+        return "PracticeMatch employer board (proxy-routed form pagination)"
     if name == "dom":
         urls = metadata.get("urls")
         if urls is not None:
@@ -836,6 +838,7 @@ from src.core.monitors import (  # noqa: E402
     personio,  # noqa: F401
     phenom,  # noqa: F401
     pinpoint,  # noqa: F401
+    practicematch,  # noqa: F401
     recruitee,  # noqa: F401
     recruiter_co_kr,  # noqa: F401
     recruiterbox,  # noqa: F401

@@ -146,6 +146,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "join",
     "personio",
     "recruiterbox",
+    "practicematch",
     "taleo",
     "rippling",
     "smartrecruiters",
@@ -731,6 +732,8 @@ def auto_scraper_type(
         # Tenants whose pages need Playwright render (mcdonalds-*, nationwide
         # detail) override with ``{"render": true}`` in boards.csv.
         return ("json-ld", None)
+    if monitor_type == "practicematch":
+        return ("json-ld", {"proxy": True})
     if monitor_type == "talentbrew":
         return ("json-ld", None)
     if monitor_type == "softgarden":
