@@ -116,7 +116,7 @@ MAINTENANCE_PROVENANCE_LABELS=(
   --label "jobseek.maintenance.revision=${JOBSEEK_DEPLOY_REVISION}"
   --label "jobseek.maintenance.budget-seconds=${MAINTENANCE_BUDGET_SECONDS}"
 )
-ALLOY_IMAGE="grafana/alloy:v1.18.0@sha256:491b0578c04983fd54fe99b587b6fab4404dc46d0dc16677bd6b00cc1140b308"
+ALLOY_IMAGE="grafana/alloy:v1.18.1@sha256:0f4434c92b3e6cdac38bb129b344e1790c246f7b6e2eaffcc16a5fa363240e33"
 ALLOY_STATE_ACTIVATION_REQUIRED=0
 
 stop_maintenance_window() {
