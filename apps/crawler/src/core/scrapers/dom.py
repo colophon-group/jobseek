@@ -143,6 +143,49 @@ _STOP_MARKERS = [
     "Related",
 ]
 
+_KONTACT_MARKER = "kontactintelligence.com"
+
+
+def _kontact_config(htmls: list[str]) -> dict | None:
+    """Build the stable extraction config used by KontactIntelligence pages."""
+
+    matches = sum(_KONTACT_MARKER in html.casefold() for html in htmls)
+    if not matches or matches < len(htmls) / 2:
+        return None
+
+    return {
+        "scope": "#content",
+        "steps": [
+            {
+                "text": "Location:",
+                "offset": 1,
+                "field": "location",
+                "from": 0,
+            },
+            {
+                "tag": "h1",
+                "field": "title",
+                "optional": True,
+                "from": 0,
+            },
+            {
+                "tag": "h2",
+                "attr": "class=opportunityTitle",
+                "field": "title",
+                "optional": True,
+                "from": 0,
+            },
+            {
+                "text": "Overview",
+                "offset": 1,
+                "field": "description",
+                "stop": "Print Opportunity",
+                "html": True,
+                "from": 0,
+            },
+        ],
+    }
+
 
 def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
     """Generate heuristic extraction steps from flattened elements."""
@@ -212,6 +255,10 @@ def can_handle(htmls: list[str]) -> dict | None:
     Uses the first page's structure to generate steps, then validates
     that the title step (h1) matches on other pages too.
     """
+    kontact = _kontact_config(htmls)
+    if kontact is not None:
+        return kontact
+
     # Try each page until we get usable steps
     best_steps = None
 

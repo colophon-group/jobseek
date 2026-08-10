@@ -69,6 +69,33 @@ _LINKEDIN_JOB_TRANSFORM = {
     "replace": r"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/\1",
 }
 
+_KONTACT_MARKER = "kontactintelligence.com"
+_KONTACT_URL_FILTER = r"/Physician_Job/Details/"
+
+
+def _kontact_probe_config(html: str, url: str) -> dict | None:
+    """Return the complete DOM config for a KontactIntelligence board.
+
+    These physician boards expose server-rendered links and use a stable
+    ``?pg=N`` contract, so the regular HTTP pagination path is sufficient.
+    Keeping the provider on that path avoids holding a browser worker while
+    walking what can be dozens of otherwise static result pages.
+    """
+
+    if _KONTACT_MARKER not in html.casefold():
+        return None
+
+    matcher = _build_url_matcher(_KONTACT_URL_FILTER)
+    urls = _extract_links_static(html, url, matcher)
+    return {
+        "urls": len(urls),
+        "url_filter": _KONTACT_URL_FILTER,
+        "pagination": {
+            "param_name": "pg",
+            "max_pages": 1_000,
+        },
+    }
+
 
 def _is_linkedin_job_url(url: str) -> bool:
     """Return whether *url* is a public LinkedIn job-detail link."""
@@ -508,6 +535,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     html = await fetch_page_text(url, client)
     if not html:
         return None
+
+    kontact = _kontact_probe_config(html, url)
+    if kontact is not None:
+        return kontact
 
     urls = _extract_links_static(html, url)
     linkedin_urls = {candidate for candidate in urls if _is_linkedin_job_url(candidate)}
