@@ -12,7 +12,6 @@ from src.core.monitors.workday import (
     _api_base,
     _api_list_stream,
     _api_list_url,
-    _batch_facet_ids,
     _discover_sites,
     _group_split_facet_values,
     _job_url,
