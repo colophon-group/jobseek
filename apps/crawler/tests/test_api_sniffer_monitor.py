@@ -14,6 +14,7 @@ from src.core.monitors.api_sniffer import (
     _discover_live_url,
     _extract_rich,
     _extract_urls_from_template,
+    _materially_below_advertised_total,
     discover,
 )
 
@@ -1545,6 +1546,27 @@ class TestHttpFetchWithRetry:
         assert client.request.await_count == 3
 
 
+@pytest.mark.parametrize(
+    ("discovered", "total", "expected"),
+    [
+        (99, 100, False),
+        (98, 100, True),
+        (9_900, 10_000, False),
+        (9_899, 10_000, True),
+        (8, 10, True),
+        (10, 10, False),
+        (11, 10, False),
+        (0, None, False),
+    ],
+)
+def test_advertised_total_gap_allows_only_race_sized_drift(
+    discovered: int,
+    total: int | None,
+    expected: bool,
+) -> None:
+    assert _materially_below_advertised_total(discovered, total) is expected
+
+
 class TestMaxItemsTruncation:
     """Regression tests for the MAX_ITEMS truncation guard (#3216 / #3267).
 
@@ -1733,6 +1755,33 @@ class TestMaxItemsTruncation:
         assert len(result.urls) == 3
 
     @pytest.mark.asyncio
+    async def test_http_mode_compares_unique_extracted_jobs_to_total(self):
+        from src.core.monitor import MonitorResult
+
+        items = [{"title": f"Job {i}", "url": "/jobs/duplicate", "desc": "HTML"} for i in range(3)]
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"results": items, "total": 3}
+        mock_resp.raise_for_status.return_value = None
+        http = AsyncMock()
+        http.request = AsyncMock(return_value=mock_resp)
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "api_url": "https://example.com/api/jobs",
+                "json_path": "results",
+                "url_field": "url",
+                "max_items": 100,
+                "fields": {"title": "title", "description": "desc"},
+            },
+        }
+
+        result = await discover(board, http, pw=None)
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert result.urls == {"https://example.com/jobs/duplicate"}
+
+    @pytest.mark.asyncio
     async def test_replay_mode_rich_returns_truncated_monitor_result(self, monkeypatch):
         """``_discover_replay`` rich path: > ``MAX_ITEMS`` -> truncated rich result.
 
@@ -1909,6 +1958,37 @@ class TestMaxItemsTruncation:
         assert result.truncated is True
         assert len(result.urls) == 3
 
+    @pytest.mark.asyncio
+    async def test_replay_mode_compares_unique_extracted_jobs_to_total(self, monkeypatch):
+        from src.core.monitor import MonitorResult
+        from src.core.monitors import api_sniffer as api_sniffer_module
+
+        monkeypatch.setattr(api_sniffer_module, "MAX_ITEMS", 100)
+        items = [{"title": f"Job {i}", "url": "/jobs/duplicate", "desc": "HTML"} for i in range(3)]
+        mock_page = AsyncMock()
+        mock_page.evaluate = AsyncMock(
+            return_value={
+                "headers": {},
+                "text": json.dumps({"results": items, "total": 3}),
+            }
+        )
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "api_url": "https://example.com/api/jobs",
+                "json_path": "results",
+                "url_field": "url",
+                "browser": True,
+                "fields": {"title": "title", "description": "desc"},
+            },
+        }
+
+        result = await discover(board, AsyncMock(), pw=_make_mock_pw(mock_page))
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert result.urls == {"https://example.com/jobs/duplicate"}
+
 
 class TestDiscoverAutoTruncation:
     """Regression tests for the MAX_ITEMS truncation guard inside
@@ -2078,6 +2158,29 @@ class TestDiscoverAutoTruncation:
         assert isinstance(result, MonitorResult)
         assert result.truncated is True
         assert len(result.urls) == 3
+
+    @pytest.mark.asyncio
+    async def test_auto_compares_unique_extracted_jobs_to_total(self, monkeypatch):
+        from src.core.monitor import MonitorResult
+
+        items = [
+            {"title": f"Job {i}", "url": "https://example.com/jobs/duplicate", "desc": "HTML"}
+            for i in range(3)
+        ]
+        self._patch_auto_pipeline(monkeypatch, items, total_count=3)
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "fields": {"title": "title", "description": "desc"},
+                "settle": 0,
+            },
+        }
+
+        result = await discover(board, AsyncMock(), pw=_make_mock_pw(AsyncMock()))
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert result.urls == {"https://example.com/jobs/duplicate"}
 
     @pytest.mark.asyncio
     async def test_auto_url_only_returns_truncated_monitor_result(self, monkeypatch):
