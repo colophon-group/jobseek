@@ -40,6 +40,9 @@ MAX_JOBS = 50_000
 PAGE_SIZE = 20
 _LIST_CONCURRENCY = 5  # Parallel site listing during multi-site discovery
 _API_RESULT_CAP = 2000  # Workday caps list results at 2000 per query
+# Large appliedFacets arrays fail with tenant-dependent 4xx/5xx responses.
+# TJX accepts 275 location IDs but rejects 300; keep a conservative margin.
+_MAX_FACET_VALUES_PER_QUERY = 200
 # Pagination retry budget. Symmetric with the accenture monitor (#2735)
 # and api_sniffer monitor (#2733): 3 total attempts, exponential backoff
 # with full jitter starting at 1s. Slightly more relaxed than dom's
@@ -196,6 +199,25 @@ async def _paginate_query(
     return paths, total, facets
 
 
+def _iter_facets(facets: list[dict]):
+    """Yield Workday facets, including nested facet groups.
+
+    Most tenants return a flat list, but some wrap usable facets in a group
+    value (for example ``locationMainGroup`` -> ``locations``).  Treat those
+    wrappers as containers so large boards can still find a safe partition.
+    """
+    for facet in facets:
+        if not isinstance(facet, dict):
+            continue
+        yield facet
+        nested = [
+            value
+            for value in facet.get("values", [])
+            if isinstance(value, dict) and value.get("facetParameter")
+        ]
+        yield from _iter_facets(nested)
+
+
 def _pick_split_facet(facets: list[dict]) -> tuple[str, list[str]] | None:
     """Choose a facet to split on when results hit the 2000 cap.
 
@@ -205,7 +227,7 @@ def _pick_split_facet(facets: list[dict]) -> tuple[str, list[str]] | None:
     best: tuple[str, list[str]] | None = None
     best_count = 0
 
-    for facet in facets:
+    for facet in _iter_facets(facets):
         param = facet.get("facetParameter")
         values = facet.get("values", [])
         if not param or not values:
@@ -219,6 +241,51 @@ def _pick_split_facet(facets: list[dict]) -> tuple[str, list[str]] | None:
             best_count = len(ids)
 
     return best
+
+
+def _group_split_facet_values(
+    facets: list[dict],
+    facet_param: str,
+    facet_ids: list[str],
+) -> list[list[str]]:
+    """Group facet IDs into OR queries that remain below Workday's cap.
+
+    Querying every value separately is prohibitively expensive for facets
+    such as location, which can contain thousands of values.  Workday ORs
+    values within one applied facet, and the advertised counts provide a
+    safe upper bound for the combined result count.  Unknown counts retain
+    the previous one-value-per-query behaviour.
+    """
+    counts: dict[str, int] = {}
+    for facet in _iter_facets(facets):
+        if facet.get("facetParameter") != facet_param:
+            continue
+        for value in facet.get("values", []):
+            if not isinstance(value, dict) or "id" not in value:
+                continue
+            count = value.get("count")
+            if isinstance(count, int) and count >= 0:
+                counts[value["id"]] = count
+
+    groups: list[list[str]] = []
+    current: list[str] = []
+    current_count = 0
+    for facet_id in facet_ids:
+        # An unknown count cannot safely share a capped query with another
+        # value.  Giving it the full per-query budget keeps it isolated.
+        count = counts.get(facet_id, _API_RESULT_CAP - 1)
+        if current and (
+            current_count + count >= _API_RESULT_CAP or len(current) >= _MAX_FACET_VALUES_PER_QUERY
+        ):
+            groups.append(current)
+            current = []
+            current_count = 0
+        current.append(facet_id)
+        current_count += count
+
+    if current:
+        groups.append(current)
+    return groups
 
 
 async def _api_list(
@@ -276,19 +343,21 @@ async def _api_list_stream(
         return
 
     facet_param, facet_ids = split
+    facet_groups = _group_split_facet_values(facets, facet_param, facet_ids)
     log.info(
         "workday.splitting_by_facet",
         company=company,
         site=site,
         facet=facet_param,
         values=len(facet_ids),
+        queries=len(facet_groups),
     )
 
     seen: set[str] = set()
     total_count = 0
 
-    for facet_id in facet_ids:
-        body = {"appliedFacets": {facet_param: [facet_id]}}
+    for facet_group in facet_groups:
+        body = {"appliedFacets": {facet_param: facet_group}}
         sub_paths, sub_total, _ = await _paginate_query(list_url, body, client)
         new_paths: list[str] = []
         for p in sub_paths:

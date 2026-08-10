@@ -5161,6 +5161,7 @@ tipalti,tipalti-greenhouse,https://job-boards.greenhouse.io/tipaltisolutions,gre
 tirlan,tirlan-main,https://careers.tirlan.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.tirlan.com/googlefeed.xml""}",skip,
 titan,titan-ashby,https://jobs.ashbyhq.com/titan,ashby,"{""token"": ""titan""}",skip,
 titan-ai,titan-ai-ashby,https://jobs.ashbyhq.com/titan-ai,ashby,"{""token"": ""titan-ai""}",skip,
+tjx,tjx-careers,https://tjx.wd1.myworkdayjobs.com/tjx_external,workday,"{""company"": ""tjx"", ""wd_instance"": ""wd1"", ""site"": ""tjx_external""}",workday,
 tnt-ventures-gmbh,tnt-ventures-gmbh-join,https://join.com/companies/tntventuresde,join,"{""slug"": ""tntventuresde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 toast,toast-greenhouse,https://job-boards.greenhouse.io/toast,greenhouse,"{""token"": ""toast""}",skip,
 together-ai,together-ai-greenhouse,https://job-boards.greenhouse.io/togetherai,greenhouse,"{""token"": ""togetherai""}",skip,

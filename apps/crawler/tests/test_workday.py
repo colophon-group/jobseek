@@ -10,6 +10,7 @@ from src.core.monitors.workday import (
     _api_base,
     _api_list_url,
     _discover_sites,
+    _group_split_facet_values,
     _job_url,
     _paginate_query,
     _parse_components,
@@ -280,6 +281,67 @@ class TestPickSplitFacet:
     def test_facet_without_values(self):
         facets = [{"facetParameter": "category", "values": []}]
         assert _pick_split_facet(facets) is None
+
+    def test_picks_nested_facet(self):
+        facets = [
+            {
+                "facetParameter": "locationMainGroup",
+                "values": [
+                    {
+                        "facetParameter": "locations",
+                        "values": [
+                            {"id": "loc1", "count": 900},
+                            {"id": "loc2", "count": 800},
+                        ],
+                    }
+                ],
+            }
+        ]
+
+        assert _pick_split_facet(facets) == ("locations", ["loc1", "loc2"])
+
+
+class TestGroupSplitFacetValues:
+    def test_groups_nested_values_below_result_cap(self):
+        facets = [
+            {
+                "facetParameter": "locationMainGroup",
+                "values": [
+                    {
+                        "facetParameter": "locations",
+                        "values": [
+                            {"id": "loc1", "count": 900},
+                            {"id": "loc2", "count": 800},
+                            {"id": "loc3", "count": 500},
+                        ],
+                    }
+                ],
+            }
+        ]
+
+        assert _group_split_facet_values(facets, "locations", ["loc1", "loc2", "loc3"]) == [
+            ["loc1", "loc2"],
+            ["loc3"],
+        ]
+
+    def test_unknown_counts_are_queried_separately(self):
+        facets = [{"facetParameter": "category", "values": [{"id": "known", "count": 1}]}]
+
+        assert _group_split_facet_values(facets, "category", ["unknown", "known"]) == [
+            ["unknown"],
+            ["known"],
+        ]
+
+    def test_limits_values_per_query(self):
+        values = [{"id": f"loc-{i}", "count": 1} for i in range(201)]
+        facets = [{"facetParameter": "locations", "values": values}]
+
+        assert _group_split_facet_values(
+            facets, "locations", [value["id"] for value in values]
+        ) == [
+            [f"loc-{i}" for i in range(200)],
+            ["loc-200"],
+        ]
 
 
 class TestDiscover:
