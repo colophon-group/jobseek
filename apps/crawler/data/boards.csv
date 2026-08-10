@@ -1176,14 +1176,14 @@ commonwealth-bank,commonwealth-bank-careers-bankwest,https://cba.wd3.myworkdayjo
 commonwealth-bank,commonwealth-bank-careers-x15,https://cba.wd3.myworkdayjobs.com/x15_Careers,workday,,workday,
 commvault,commvault-greenhouse,https://job-boards.greenhouse.io/commvault,greenhouse,"{""token"": ""commvault""}",skip,
 comparis,comparis-careers,https://comparis-ch.jobs.personio.de,personio,"{""slug"": ""comparis-ch"", ""language"": ""en""}",skip,
-compass-group,compass-group-north-america,https://jobs.compassgroupcareers.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.compassgroupcareers.com/googlefeed.xml""}",skip,
-compass-group,compass-group-uk-ireland,https://jobs.compass-group.co.uk/search,inploi,"{""api_key"": ""pk_edce29b92c2773898c482851"", ""segment_id"": ""248""}",json-ld,"{""enrich"": [""description""]}"
 compass-group,compass-group-belgium,https://careers.compass-group.be/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.compass-group.be/jobs.rss""}",skip,
 compass-group,compass-group-finland,https://compassgroupfinland-foodnet.onecruiter.com/,dom,"{""url_filter"": ""/jobs/\\d+-""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Paikkakunta"", ""offset"": 1, ""field"": ""locations"", ""optional"": true}, {""text"": ""Työpaikka"", ""offset"": 1, ""field"": ""job_location_type"", ""from"": 0}, {""field"": ""description"", ""html"": true, ""stop"": ""Vastuullinen rekrytoija""}]}"
 compass-group,compass-group-france,https://recrute.compass-group.fr/fr/annonces,sitemap,"{""sitemap_url"": ""https://recrute.compass-group.fr/fr/sitemap.xml"", ""url_filter"": ""/fr/annonce/\\d+-""}",json-ld,
 compass-group,compass-group-germany,https://karriere.compass-group.de/job-finder.html,dom,"{""url_filter"": ""compass-de\\.kandidatenportal\\.eu/job/\\d+""}",dom,"{""steps"": [{""tag"": ""h2"", ""field"": ""title""}, {""text"": ""Ort:"", ""offset"": 1, ""field"": ""locations"", ""from"": 0}, {""text"": ""Anstellungsart:"", ""offset"": 1, ""field"": ""employment_type"", ""from"": 0, ""optional"": true}, {""text"": ""WAS WIR DIR BIETEN"", ""field"": ""description"", ""html"": true, ""stop"": ""INTERESSIERT?"", ""from"": 0}]}"
+compass-group,compass-group-north-america,https://jobs.compassgroupcareers.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.compassgroupcareers.com/googlefeed.xml""}",skip,
 compass-group,compass-group-norway,https://jobb.compass-group.no/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://jobb.compass-group.no/jobs.rss""}",skip,
 compass-group,compass-group-sweden,https://ledigajobb.compass-group.se/,sitemap,"{""sitemap_url"": ""https://ledigajobb.compass-group.se/sitemap.xml"", ""url_filter"": ""/jobs/\\d+-""}",dom,"{""steps"": [{""text"": ""Plats"", ""offset"": 1, ""field"": ""locations"", ""from"": 0}, {""tag"": ""h1"", ""field"": ""title""}, {""field"": ""description"", ""html"": true, ""stop"": ""Ansvarig rekryterare""}]}"
+compass-group,compass-group-uk-ireland,https://jobs.compass-group.co.uk/search,inploi,"{""api_key"": ""pk_edce29b92c2773898c482851"", ""segment_id"": ""248""}",json-ld,"{""enrich"": [""description""]}"
 compass-pathways,compass-pathways-greenhouse,https://job-boards.eu.greenhouse.io/compasspathways,greenhouse,"{""token"": ""compasspathways""}",skip,
 compeer-financial,compeer-financial-greenhouse,https://job-boards.greenhouse.io/compeerfinancial,greenhouse,"{""token"": ""compeerfinancial""}",skip,
 compliancy-group-llc,compliancy-group-llc-greenhouse,https://job-boards.greenhouse.io/compliancygroupllc,greenhouse,"{""token"": ""compliancygroupllc""}",skip,
@@ -3111,7 +3111,8 @@ marksandspencer,marksandspencer-pinpoint,https://marksandspencer.pinpointhq.com,
 marqeta,marqeta-greenhouse,https://job-boards.greenhouse.io/marqeta,greenhouse,"{""token"": ""marqeta""}",skip,
 marqvision,marqvision-greenhouse,https://job-boards.greenhouse.io/marqvision,greenhouse,"{""token"": ""marqvision""}",skip,
 marqvision,marqvision-lever,https://jobs.lever.co/marqvision,lever,"{""token"": ""marqvision""}",skip,
-marriott,marriott-careers,https://careers.marriott.com/jobs,phenom,"{""proxy"":true,""rescrape_policy"":""never""}",json-ld,
+marriott,marriott-careers,https://careers.marriott.com/jobs,sitemap,"{""sitemap_url"": ""https://careers.marriott.com/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
+marriott,marriott-inventory-careers,https://app.mokahr.com/social-recruitment/marriott/141002,mokahr,"{""org_id"": ""marriott"", ""site_id"": 141002}",skip,
 marshmallow,marshmallow-ashby,https://jobs.ashbyhq.com/marshmallow,ashby,"{""token"": ""marshmallow""}",skip,
 martell-ventures,martell-ventures-greenhouse,https://job-boards.greenhouse.io/martellgrowthsolutions,greenhouse,"{""token"": ""martellgrowthsolutions""}",skip,
 maruti-suzuki,maruti-suzuki-careers,https://maruti.app.param.ai/jobs/,api_sniffer,"{""api_url"": ""https://maruti.app.param.ai/api/career/get_job/"", ""method"": ""GET"", ""json_path"": ""data.*.jobs[]"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""employment_type"": ""job_type"", ""date_posted"": ""created_at"", ""locations"": ""locations"", ""metadata.team"": ""category""}, ""wait"": ""networkidle"", ""timeout"": 30000, ""settle"": 5}",skip,
