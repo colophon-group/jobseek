@@ -477,6 +477,59 @@ async def test_discover_allows_configured_advertised_total_tail_tolerance():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("duplicate_row_tolerance", "is_truncated"),
+    [(0, True), (1, False)],
+)
+async def test_discover_requires_explicit_within_page_duplicate_tolerance(
+    duplicate_row_tolerance: int,
+    is_truncated: bool,
+):
+    """Offset overlap must not implicitly bless duplicates within one page."""
+
+    def _job(job_id: int) -> dict:
+        return {
+            "Id": str(job_id),
+            "Title": f"Job {job_id}",
+            "PrimaryLocation": "Boise, ID, United States",
+        }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if ",offset=360" in url:
+            rows = [_job(i) for i in range(360, 400)]
+        elif ",offset=180" in url:
+            rows = [_job(i) for i in range(180, 379)] + [_job(378)]
+        else:
+            rows = [_job(i) for i in range(200)]
+        return httpx.Response(
+            200,
+            json={"items": [{"TotalJobsCount": 400, "requisitionList": rows}]},
+        )
+
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1"
+        ),
+        "metadata": {
+            "host": "example.fa.us2.oraclecloud.com",
+            "site": "CX_1",
+            "offset_overlap": 20,
+            "duplicate_row_tolerance": duplicate_row_tolerance,
+        },
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await discover(board, client)
+
+    assert isinstance(result, MonitorResult) is is_truncated
+    if is_truncated:
+        assert result.truncated is True
+        assert len(result.urls) == 400
+    else:
+        assert len(result) == 400
+
+
+@pytest.mark.asyncio
 async def test_discover_overlap_still_truncates_when_churn_exceeds_margin():
     """A shift larger than the configured overlap must remain fail-closed."""
 
@@ -554,6 +607,24 @@ async def test_discover_rejects_invalid_total_count_tolerance(total_count_tolera
     }
 
     with pytest.raises(ValueError, match="total_count_tolerance"):
+        await discover(board, AsyncMock(spec=httpx.AsyncClient))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("duplicate_row_tolerance", [-1, True, "5"])
+async def test_discover_rejects_invalid_duplicate_row_tolerance(duplicate_row_tolerance):
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1"
+        ),
+        "metadata": {
+            "host": "example.fa.us2.oraclecloud.com",
+            "site": "CX_1",
+            "duplicate_row_tolerance": duplicate_row_tolerance,
+        },
+    }
+
+    with pytest.raises(ValueError, match="duplicate_row_tolerance"):
         await discover(board, AsyncMock(spec=httpx.AsyncClient))
 
 
