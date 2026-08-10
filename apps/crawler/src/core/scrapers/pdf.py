@@ -43,11 +43,12 @@ def _normalize_captured_text(
     """Collapse PDF layout whitespace in a captured scalar field.
 
     Some PDFs split a word after its first capital letter (for example,
-    ``"M\nechanical"``). When explicitly requested, rejoin that ambiguous
-    extraction artefact before collapsing the remaining whitespace.
+    ``"M\nechanical"`` or ``"S enior"``). When explicitly requested, rejoin
+    that ambiguous extraction artefact before collapsing the remaining
+    whitespace.
     """
     if repair_split_initial:
-        value = re.sub(r"\b([A-Z])\s*\n\s*(?=[a-z])", r"\1", value)
+        value = re.sub(r"\b([A-Z])(?:[ \t]+|\s*\n\s*)(?=[a-z])", r"\1", value)
     value = re.sub(r"\s+", " ", value).strip()
     return value or None
 

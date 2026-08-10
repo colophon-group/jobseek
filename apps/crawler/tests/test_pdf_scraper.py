@@ -121,6 +121,12 @@ class TestCapturedText:
             == "Mechanical Engineer"
         )
 
+    def test_rejoins_horizontally_split_capitalized_word(self):
+        assert (
+            _normalize_captured_text("S enior Structural Expert", repair_split_initial=True)
+            == "Senior Structural Expert"
+        )
+
     def test_does_not_rejoin_ambiguous_initial_by_default(self):
         assert _normalize_captured_text("A\nrole") == "A role"
 
