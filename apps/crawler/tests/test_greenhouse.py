@@ -28,6 +28,14 @@ class TestParseJob:
         assert result.description == "<p>Great job</p>"
         assert result.date_posted == "2024-01-01"
 
+    def test_collapses_title_whitespace(self):
+        raw = {
+            "absolute_url": "https://example.com/job",
+            "title": "  Senior\t  Engineer\n",
+        }
+        result = _parse_job(raw)
+        assert result.title == "Senior Engineer"
+
     def test_missing_url_returns_none(self):
         assert _parse_job({}) is None
         assert _parse_job({"title": "No URL"}) is None
@@ -56,6 +64,15 @@ class TestParseJob:
         }
         result = _parse_job(raw)
         assert result.locations == ["HQ", "London"]
+
+    def test_cleans_locations_before_deduplicating(self):
+        raw = {
+            "absolute_url": "https://example.com/job",
+            "location": {"name": "  New\tYork  "},
+            "offices": [{"name": "New York"}, {"name": " Boston\nMA "}],
+        }
+        result = _parse_job(raw)
+        assert result.locations == ["New York", "Boston MA"]
 
     def test_metadata_departments(self):
         raw = {

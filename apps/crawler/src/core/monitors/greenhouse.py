@@ -53,6 +53,14 @@ def _clean_description(html: str | None) -> str | None:
     return cleaned
 
 
+def _clean_text(value: object) -> str | None:
+    """Collapse source formatting whitespace in display fields."""
+    if not isinstance(value, str):
+        return None
+    cleaned = " ".join(value.split())
+    return cleaned or None
+
+
 def _parse_job(job: dict) -> DiscoveredJob | None:
     url = job.get("absolute_url")
     if not url:
@@ -62,11 +70,12 @@ def _parse_job(job: dict) -> DiscoveredJob | None:
     seen: set[str] = set()
     loc = job.get("location")
     if isinstance(loc, dict) and loc.get("name"):
-        name = loc["name"]
-        locations.append(name)
-        seen.add(name)
+        name = _clean_text(loc["name"])
+        if name:
+            locations.append(name)
+            seen.add(name)
     for office in job.get("offices", []):
-        name = office.get("name")
+        name = _clean_text(office.get("name"))
         if name and name not in seen:
             locations.append(name)
             seen.add(name)
@@ -82,7 +91,7 @@ def _parse_job(job: dict) -> DiscoveredJob | None:
 
     return DiscoveredJob(
         url=url,
-        title=job.get("title"),
+        title=_clean_text(job.get("title")),
         description=_clean_description(job.get("content")),
         locations=locations or None,
         date_posted=job.get("first_published"),
