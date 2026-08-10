@@ -519,6 +519,17 @@ class TestNormalizeJobLocationType:
     def test_known_value(self, raw, want):
         assert normalize_job_location_type(raw) == want
 
+    @pytest.mark.parametrize(
+        "raw,want",
+        [
+            ("Onsite (5 Days per Week)", "onsite"),
+            ("Hybrid (3 Days in Office)", "hybrid"),
+            ("Remote (United States)", "remote"),
+        ],
+    )
+    def test_known_base_with_parenthetical_qualifier(self, raw, want):
+        assert normalize_job_location_type(raw) == want
+
     def test_none(self):
         assert normalize_job_location_type(None) is None
 

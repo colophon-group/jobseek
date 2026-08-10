@@ -761,7 +761,7 @@ async def _fetch_job_count(
 
         # If at the cap, derive true count from facet sums
         if total >= _API_RESULT_CAP:
-            for facet in data.get("facets", []):
+            for facet in _iter_facets(data.get("facets", [])):
                 values = facet.get("values", [])
                 if values:
                     facet_sum = sum(v.get("count", 0) for v in values)

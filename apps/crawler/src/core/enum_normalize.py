@@ -327,8 +327,10 @@ def normalize_job_location_type(raw: str | None, default: str | None = None) -> 
 
     Returns ``None`` when *raw* is ``None`` or empty/whitespace.
 
-    Lookup is case-insensitive and trims surrounding whitespace.  If the
-    trimmed value isn't in the map, emits a structured warning
+    Lookup is case-insensitive and trims surrounding whitespace.  A mapped
+    base value followed by a parenthetical qualifier is also accepted (for
+    example, ``"Onsite (5 Days per Week)"``).  If the trimmed value isn't in
+    the map, emits a structured warning
     (``enum_normalize.job_location_type.unknown``) and returns
     *default* (``None`` since #3222).  Callers that want a last-resort
     bucket can pass ``default="onsite"`` explicitly.
@@ -339,6 +341,8 @@ def normalize_job_location_type(raw: str | None, default: str | None = None) -> 
     if not key:
         return None
     mapped = _JOB_LOCATION_TYPE_MAP.get(key)
+    if mapped is None and key.endswith(")") and " (" in key:
+        mapped = _JOB_LOCATION_TYPE_MAP.get(key.split(" (", 1)[0])
     if mapped is None:
         log.warning("enum_normalize.job_location_type.unknown", raw=raw)
         return default
