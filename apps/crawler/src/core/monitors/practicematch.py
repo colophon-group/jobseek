@@ -145,6 +145,7 @@ def _response_listing_html(payload: str, endpoint: str) -> str:
 async def _post_page(
     client: httpx.AsyncClient,
     endpoint: str,
+    board_url: str,
     hidden: dict[str, str],
     *,
     profession_id: str,
@@ -156,7 +157,13 @@ async def _post_page(
         method="POST",
         content=_form(hidden, profession_id=profession_id, page=page),
         headers={
+            # Mirrors jQuery's explicit ``dataType: json`` request. Without
+            # this Accept header ColdFusion serializes the result as WDDX.
+            "Accept": "application/json, text/javascript, */*; q=0.01",
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            # PracticeMatch rejects otherwise-valid form posts with HTTP 405
+            # when they do not carry the employer landing page as referrer.
+            "Referer": board_url,
             "X-Requested-With": "XMLHttpRequest",
         },
         retries=_RETRIES,
@@ -217,6 +224,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             page_urls = await _post_page(
                 client,
                 endpoint,
+                board_url,
                 hidden,
                 profession_id=profession_id,
                 page=page,

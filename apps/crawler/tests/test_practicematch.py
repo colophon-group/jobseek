@@ -115,6 +115,8 @@ class TestDiscover:
             assert form["facilityID"] == ["35789"]
             assert form["siteID"] == ["101,202"]
             assert form["hasMap"] == ["0"]
+            assert request.headers["accept"].startswith("application/json")
+            assert request.headers["referer"] == BOARD_URL
             assert request.headers["x-requested-with"] == "XMLHttpRequest"
 
             if (profession, page) == ("1", 2):
