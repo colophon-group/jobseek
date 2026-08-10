@@ -179,7 +179,7 @@ def _kontact_config(htmls: list[str]) -> dict | None:
                 "text": "Overview",
                 "offset": 1,
                 "field": "description",
-                "stop_tag": "h2",
+                "stop": "Print Opportunity",
                 "html": True,
                 "from": 0,
             },

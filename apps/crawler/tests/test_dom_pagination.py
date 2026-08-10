@@ -138,23 +138,10 @@ class TestCanHandle:
 
         assert result == {
             "urls": 1,
-            "render": True,
-            "wait": "networkidle",
-            "wait_fallback": "domcontentloaded",
-            "timeout": 30_000,
-            "actions": [
-                {
-                    "action": "wait_for",
-                    "selector": 'a[href*="/Physician_Job/Details/"]',
-                    "state": "attached",
-                    "timeout": 10,
-                }
-            ],
             "url_filter": r"/Physician_Job/Details/",
             "pagination": {
                 "param_name": "pg",
                 "max_pages": 1_000,
-                "browser": True,
             },
         }
 

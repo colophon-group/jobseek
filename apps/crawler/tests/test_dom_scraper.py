@@ -100,10 +100,13 @@ class TestDomScraper:
           <div id="content">
             <div class="bold">Location:</div><div>Rome, GA</div>
             <h1 class="opportunityTitle">Cardiothoracic Surgery APP</h1>
-            <h2>Overview</h2>
+            <div>Print Opportunity</div>
+            <h4>Overview</h4>
             <p>Join a collaborative surgical team.</p>
-            <h2>Job Requirements</h2>
+            <h4>Job Requirements</h4>
             <p>Current Georgia license.</p>
+            <div>Print Opportunity</div>
+            <div>Forward Opportunity</div>
           </div>
         </body></html>
         """
@@ -115,7 +118,11 @@ class TestDomScraper:
         result = parse_html(html, config)
         assert result.title == "Cardiothoracic Surgery APP"
         assert result.locations == ["Rome, GA"]
-        assert result.description == "<p>Join a collaborative surgical team.</p>"
+        assert result.description == (
+            "<p>Join a collaborative surgical team.</p>"
+            "<h4>Job Requirements</h4>"
+            "<p>Current Georgia license.</p>"
+        )
 
     def test_kontact_probe_supports_h2_opportunity_title(self):
         from src.core.scrapers.dom import can_handle, parse_html
@@ -126,8 +133,9 @@ class TestDomScraper:
         </head><body><div id="content">
           <div>Location:</div><div>Orlando, FL 32804</div>
           <h2 class="opportunityTitle">Family Medicine Physician</h2>
-          <h2>Overview</h2><p>Lead an outpatient practice.</p>
-          <h2>Client Description</h2><p>Employer boilerplate.</p>
+          <h4>Overview</h4><p>Lead an outpatient practice.</p>
+          <h4>Client Description</h4><p>Employer boilerplate.</p>
+          <div>Print Opportunity</div><div>Search Results</div>
         </div></body></html>
         """
 
@@ -136,7 +144,11 @@ class TestDomScraper:
         result = parse_html(html, config)
         assert result.title == "Family Medicine Physician"
         assert result.locations == ["Orlando, FL 32804"]
-        assert result.description == "<p>Lead an outpatient practice.</p>"
+        assert result.description == (
+            "<p>Lead an outpatient practice.</p>"
+            "<h4>Client Description</h4>"
+            "<p>Employer boilerplate.</p>"
+        )
 
     async def test_missing_steps_returns_empty(self):
         """No 'steps' key → empty JobContent."""

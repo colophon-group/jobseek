@@ -76,11 +76,10 @@ _KONTACT_URL_FILTER = r"/Physician_Job/Details/"
 def _kontact_probe_config(html: str, url: str) -> dict | None:
     """Return the complete DOM config for a KontactIntelligence board.
 
-    These physician boards expose ordinary links, but their first-page
-    response has intermittently arrived before the listing fragment is ready.
-    A browser readiness check plus same-context pagination avoids recording a
-    healthy empty crawl, while the provider's stable ``?pg=N`` contract keeps
-    pagination generic.
+    These physician boards expose server-rendered links and use a stable
+    ``?pg=N`` contract, so the regular HTTP pagination path is sufficient.
+    Keeping the provider on that path avoids holding a browser worker while
+    walking what can be dozens of otherwise static result pages.
     """
 
     if _KONTACT_MARKER not in html.casefold():
@@ -90,23 +89,10 @@ def _kontact_probe_config(html: str, url: str) -> dict | None:
     urls = _extract_links_static(html, url, matcher)
     return {
         "urls": len(urls),
-        "render": True,
-        "wait": "networkidle",
-        "wait_fallback": "domcontentloaded",
-        "timeout": 30_000,
-        "actions": [
-            {
-                "action": "wait_for",
-                "selector": 'a[href*="/Physician_Job/Details/"]',
-                "state": "attached",
-                "timeout": 10,
-            }
-        ],
         "url_filter": _KONTACT_URL_FILTER,
         "pagination": {
             "param_name": "pg",
             "max_pages": 1_000,
-            "browser": True,
         },
     }
 
