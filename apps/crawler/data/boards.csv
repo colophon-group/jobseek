@@ -4468,6 +4468,8 @@ saildrone,saildrone-careers,https://job-boards.greenhouse.io/saildroneinc,greenh
 sakana-ai,sakana-ai-careers,https://sakana.ai/careers/,dom,"{""url_filter"": ""careers/#(?!open-positions)""}",dom,"{""steps"": [{""tag"": ""h2"", ""field"": ""title""}, {""field"": ""description"", ""stop_tag"": ""h2"", ""html"": true}], ""defaults"": {""locations"": [""Tokyo, JP""]}}"
 salesforce,salesforce-careers,https://careers.salesforce.com/en/jobs/,sitemap,"{""url_filter"": ""/en/jobs/""}",json-ld,
 salient,salient-ashby,https://jobs.ashbyhq.com/salient,ashby,"{""token"": ""salient""}",skip,
+sally-beauty-holdings,sally-beauty-holdings-careers,https://eigx.fa.us6.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+sally-beauty-holdings,sally-beauty-holdings-careers-europe,https://careers.sallyeurope.com/jobs,dom,"{""url_filter"": ""/job/"", ""pagination"": {""url_template"": ""https://careers.sallyeurope.com/jobs/{page}"", ""max_pages"": 100}}",json-ld,
 salsify,salsify-greenhouse,https://job-boards.greenhouse.io/salsify,greenhouse,"{""token"": ""salsify""}",skip,
 salt,salt-careers,https://www.jobup.ch/masks/salt/list_salt.asp,dom,,json-ld,
 salt-security,salt-security-greenhouse,https://job-boards.greenhouse.io/saltsecurity,greenhouse,"{""token"": ""saltsecurity""}",skip,

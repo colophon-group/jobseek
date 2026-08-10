@@ -478,6 +478,15 @@ class TestParsePosting:
         result = _parse_posting(posting)
         assert result.title == "Engineer"
 
+    def test_decodes_entities_in_title_and_location(self):
+        posting = {
+            "title": "Visual Merchandising &amp; Space Planning Manager",
+            "jobLocation": {"name": "D&#252;sseldorf &amp; K&#246;ln"},
+        }
+        result = _parse_posting(posting)
+        assert result.title == "Visual Merchandising & Space Planning Manager"
+        assert result.locations == ["Düsseldorf & Köln"]
+
     def test_education_requirements_fallback(self):
         posting = {"educationRequirements": "Bachelor's degree"}
         result = _parse_posting(posting)

@@ -1054,6 +1054,16 @@ def select_monitor(
                 "page_param",
                 "offset_param",
             }
+        elif type_ == "dom":
+            _VALID_PAG_KEYS = {
+                "param_name",
+                "url_template",
+                "start",
+                "start_value",
+                "increment",
+                "max_pages",
+                "browser",
+            }
         else:
             _VALID_PAG_KEYS = {
                 "param_name",
@@ -1080,7 +1090,12 @@ def select_monitor(
                 if suggestions:
                     msg += f". Did you mean: {', '.join(suggestions)}?"
                 out.die(msg)
-            if type_ != "nextdata" and "param_name" not in pag_cfg:
+            if type_ == "dom" and not ({"param_name", "url_template"} & pag_cfg.keys()):
+                out.die(
+                    "DOM pagination config requires 'param_name' or 'url_template'. "
+                    "See: ws help monitor dom"
+                )
+            if type_ not in {"nextdata", "dom"} and "param_name" not in pag_cfg:
                 out.die("Pagination config requires 'param_name'. See: ws help monitor api_sniffer")
 
     # Clean up probe/internal data from config
