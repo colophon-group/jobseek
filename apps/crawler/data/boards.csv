@@ -1029,6 +1029,7 @@ charterup,charterup-greenhouse,https://job-boards.greenhouse.io/charterup,greenh
 chatham-financial,chatham-financial-greenhouse,https://job-boards.greenhouse.io/chathamfinancial,greenhouse,"{""token"": ""chathamfinancial""}",skip,
 chauffeurcenter-ch-ag,chauffeurcenter-ch-ag-join,https://join.com/companies/chauffeurcenterch,join,"{""slug"": ""chauffeurcenterch""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 checkbook,checkbook-greenhouse,https://job-boards.greenhouse.io/checkbook,greenhouse,"{""token"": ""checkbook""}",skip,
+checkers-rallys,checkers-rallys-careers,https://apply.checkers.com/,rss,"{""preset"": ""successfactors""}",skip,
 checkly,checkly-ashby,https://jobs.ashbyhq.com/checkly,ashby,"{""token"": ""checkly""}",skip,
 checkout-com,checkout-com-careers,https://checkout.wd3.myworkdayjobs.com/CheckoutCareers,workday,"{""company"": ""checkout"", ""wd_instance"": ""wd3"", ""site"": ""CheckoutCareers""}",workday,
 checkr,checkr-greenhouse,https://job-boards.greenhouse.io/checkr,greenhouse,"{""token"": ""checkr""}",skip,
