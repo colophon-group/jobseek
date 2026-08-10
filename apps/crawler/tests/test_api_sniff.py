@@ -412,6 +412,19 @@ class TestAutoMapFields:
         assert mapping["description"] == "description"
         assert mapping.get("locations") == "location"
 
+    def test_fountain_position_description(self):
+        items = [
+            {
+                "title": "Pharmacy Technician Assistant",
+                "position_description_html": "<p>Assist pharmacy patients.</p>",
+                "location": {"name": "Walla Walla, WA"},
+            }
+        ]
+
+        mapping = auto_map_fields(items)
+
+        assert mapping["description"] == "position_description_html"
+
     def test_location_array_of_objects(self):
         items = [
             {"title": "Dev", "offices": [{"name": "NYC"}, {"name": "SF"}]},

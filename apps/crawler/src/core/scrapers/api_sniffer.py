@@ -43,6 +43,7 @@ _DESCRIPTION_FIELDS = (
     "details",
     "job_description",
     "jobDescription",
+    "position_description_html",
     "summary",
 )
 
@@ -133,7 +134,15 @@ def _find_single_job(exchanges: list, *, json_path: str | None = None) -> dict |
                 candidates.append((body, score))
 
             # Check nested: common patterns like {data: {...}} or {result: {...}}
-            for key in ("data", "result", "job", "posting", "position", "details"):
+            for key in (
+                "data",
+                "result",
+                "job",
+                "posting",
+                "position",
+                "details",
+                "funnel",
+            ):
                 nested = body.get(key)
                 if isinstance(nested, dict):
                     s = _score_job_object(nested)
