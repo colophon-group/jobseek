@@ -117,6 +117,7 @@ Monitor Types (cheapest first):
   workable          10      Job URLs          Auto-configured
   workday           10      Job URLs          Auto-configured
   personio          10      Full/partial      If descriptions missing (fallback)
+  practicematch     10      Job URLs          Auto-configured
   notion            15      Job URLs          Auto-configured
   recruiter_co_kr   15      Full job data     No (skipped)
   umantis           15      URL set           Yes
@@ -831,6 +832,25 @@ talentbrew — TalentBrew / Radancy Search Results
               Looks for TalentBrew/Radancy static markers plus #search-results.
 
   Pair with:  json-ld (try first) or dom scraper"""
+
+MONITOR_PRACTICEMATCH = """\
+practicematch — PracticeMatch Employer Landing Pages
+
+  Returns:  URL set only (needs scraper)
+  Cap:      50,000 URLs
+
+  PracticeMatch employer pages render physician page 1 in HTML and paginate
+  physician plus advanced-practitioner results through the site's form API.
+  The monitor extracts the page's facility/site identity and follows both
+  result streams until they are exhausted.
+
+  Config:
+    {"proxy": true}       Auto-filled during detection. PracticeMatch drops
+                           direct datacenter connections, so production uses
+                           the configured static proxy transport.
+    {"max_pages": 2000}  Optional safety cap per profession stream.
+
+  Pair with:  json-ld (auto-configured with proxy=true)"""
 
 MONITOR_NEXTDATA = """\
 nextdata — Next.js __NEXT_DATA__ Discovery
@@ -2838,6 +2858,7 @@ MONITOR_CARDS: dict[str, str] = {
     "workday": MONITOR_WORKDAY,
     "paylocity": MONITOR_PAYLOCITY,
     "pinpoint": MONITOR_PINPOINT,
+    "practicematch": MONITOR_PRACTICEMATCH,
     "personio": MONITOR_PERSONIO,
     "rss": MONITOR_RSS,
     "sitemap": MONITOR_SITEMAP,

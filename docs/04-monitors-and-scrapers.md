@@ -74,6 +74,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `paylocity` | Rich | paylocity | Paylocity embedded summaries plus detail enrichment |
 | `personio` | Conditional* | — | Personio XML feed; HTML fallback needs scraper |
 | `pinpoint` | Rich | skip | Pinpoint ATS |
+| `practicematch` | URL-only | json-ld | Proxy-routed PracticeMatch employer listings and form pagination |
 | `recruitee` | Rich | skip | Recruitee ATS |
 | `recruiterbox` | URL-only | json-ld | Recruiterbox / Trakstar Hire server-rendered listings |
 | `taleo` | URL-only | json-ld | Taleo Business Edition total/cursor static listings |

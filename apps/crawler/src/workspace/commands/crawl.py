@@ -960,6 +960,7 @@ _MONITOR_CONFIG_HINTS = {
     "workable": "Requires: token (auto-filled from probe)",
     "workday": "Requires: company, wd_instance, site (auto-filled from probe)",
     "personio": "Requires: slug. Optional: language, backfill_languages",
+    "practicematch": "Optional: max_pages. Proxy-routed employer form pagination.",
     "rss": "Optional: preset/variant/feed_url; legacy SuccessFactors host/company auto-fill",
     "umantis": "Requires: customer_id. Optional: region, listing_path",
     "sitemap": "Optional: sitemap_url, url_filter (regex to include/exclude URLs)",
