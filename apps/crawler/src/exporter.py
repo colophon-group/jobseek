@@ -487,9 +487,12 @@ def _build_typesense_docs(
 
         company_id = row["company_id"]
         company = maps.company_info.get(company_id, {})
-        company_name = company.get("name", "")
-        company_slug = company.get("slug", "")
-        company_icon = company.get("icon")
+        # Production CDC rows include these fields from a direct company JOIN.
+        # Keep the map fallback for callers/tests that build documents from a
+        # legacy posting-only row shape.
+        company_name = row.get("company_name") or company.get("name", "")
+        company_slug = row.get("company_slug") or company.get("slug", "")
+        company_icon = row.get("company_icon") or company.get("icon")
 
         raw_location_ids = row["location_ids"] or []
         location_names = []
@@ -1041,7 +1044,7 @@ async def _export_postings_dual(
     fetch_ts, fetch_id = fetch_cursor
 
     rows = await local_pool.fetch(
-        PostingSchema.select_changed_sql("last_seen_at", "updated_at"),
+        PostingSchema.select_typesense_changed_sql("last_seen_at", "updated_at"),
         fetch_ts,
         fetch_id,
         settings.export_batch_limit,
@@ -1168,7 +1171,7 @@ async def _export_postings_typesense(
 
     last_ts, last_id = ts_cursor
     rows = await local_pool.fetch(
-        PostingSchema.select_changed_sql("last_seen_at", "updated_at"),
+        PostingSchema.select_typesense_changed_sql("last_seen_at", "updated_at"),
         last_ts,
         last_id,
         settings.export_batch_limit,
@@ -1335,6 +1338,32 @@ class PostingSchema:
             + cls.table
             + " WHERE (updated_at, id) > ($1, $2)"
             + " AND updated_at < $4 ORDER BY updated_at, id LIMIT $3"
+        )
+
+    @classmethod
+    def select_typesense_changed_sql(cls, *extras: str) -> str:
+        """Read posting rows with canonical company metadata in one snapshot.
+
+        ``TaxonomyMaps.company_info`` is refreshed every ten minutes. A company
+        created between refreshes previously produced posting documents with
+        empty denormalized name/slug fields. Joining the authoritative company
+        row makes correctness independent of that cache window.
+        """
+        select_columns = [f"jp.{name}" for name in cls.column_names()]
+        select_columns.extend(f"jp.{name}" for name in extras)
+        select_columns.extend(
+            (
+                "c.name AS company_name",
+                "c.slug AS company_slug",
+                "c.icon AS company_icon",
+            )
+        )
+        return (
+            "SELECT "
+            + ", ".join(select_columns)
+            + " FROM job_posting jp JOIN company c ON c.id = jp.company_id"
+            + " WHERE (jp.updated_at, jp.id) > ($1, $2)"
+            + " AND jp.updated_at < $4 ORDER BY jp.updated_at, jp.id LIMIT $3"
         )
 
 
@@ -1767,7 +1796,7 @@ async def backfill_typesense(
         while True:
             last_ts, last_id = cursor
             rows = await local_pool.fetch(
-                PostingSchema.select_changed_sql("last_seen_at", "updated_at"),
+                PostingSchema.select_typesense_changed_sql("last_seen_at", "updated_at"),
                 last_ts,
                 last_id,
                 batch_size,
