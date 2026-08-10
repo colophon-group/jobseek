@@ -13,6 +13,7 @@ from src.core.monitors.workday import (
     _api_list_stream,
     _api_list_url,
     _discover_sites,
+    _fetch_job_count,
     _group_split_facet_values,
     _job_url,
     _list_all_sites,
@@ -305,6 +306,37 @@ class TestPickSplitFacet:
         ]
 
         assert _pick_split_facet(facets) == ("locations", ["loc1", "loc2"])
+
+
+class TestFetchJobCount:
+    async def test_derives_capped_total_from_nested_facet(self):
+        def handler(request):
+            return httpx.Response(
+                200,
+                json={
+                    "total": 2000,
+                    "jobPostings": [],
+                    "facets": [
+                        {
+                            "facetParameter": "locationMainGroup",
+                            "values": [
+                                {
+                                    "facetParameter": "locations",
+                                    "values": [
+                                        {"id": "loc1", "count": 1800},
+                                        {"id": "loc2", "count": 1200},
+                                    ],
+                                }
+                            ],
+                        }
+                    ],
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            count = await _fetch_job_count("co", "wd1", "Site", client)
+
+        assert count == 3000
 
 
 class TestGroupSplitFacetValues:

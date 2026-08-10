@@ -15,6 +15,11 @@ from src.core.monitors.raw import save_text_response
 log = structlog.get_logger()
 
 MAX_URLS = 50_000
+# The sitemap protocol permits a single uncompressed file up to 50 MB. The
+# shared retry helper defaults to 500k characters, which truncates otherwise
+# valid large child sitemaps before XML parsing (for example Foot Locker's
+# ~537k-character global jobs sitemap).
+_MAX_SITEMAP_CHARS = 50 * 1024 * 1024
 NS = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
 # Some generators emit https:// instead of http:// in the namespace declaration.
 NS_HTTPS = "{https://www.sitemaps.org/schemas/sitemap/0.9}"
@@ -187,7 +192,13 @@ async def _fetch_child_xml(url: str, client: httpx.AsyncClient) -> ET.Element | 
     """
     from src.shared.http_retry import fetch_with_retry
 
-    text = await fetch_with_retry(client, url, headers=_SITEMAP_HEADERS, transient_403=True)
+    text = await fetch_with_retry(
+        client,
+        url,
+        headers=_SITEMAP_HEADERS,
+        transient_403=True,
+        max_chars=_MAX_SITEMAP_CHARS,
+    )
     if text is None:
         # 404 / 410 / non-retryable 4xx — child sitemap is gone or
         # the URL is wrong. Caller's ``continue`` is appropriate: a

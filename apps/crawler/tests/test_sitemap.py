@@ -279,6 +279,28 @@ class TestFetchChildXml:
             root = await _fetch_child_xml("https://example.com/sitemap-1.xml", client)
             assert root is not None
 
+    async def test_accepts_child_larger_than_shared_fetch_default(self):
+        from src.core.monitors.sitemap import _fetch_child_xml
+
+        urls = "".join(
+            f"<url><loc>https://example.com/jobs/{i:05d}</loc></url>" for i in range(10_000)
+        )
+        xml_str = (
+            '<?xml version="1.0"?>'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+            f"{urls}</urlset>"
+        )
+        assert len(xml_str) > 500_000
+
+        def handler(request):
+            return httpx.Response(200, text=xml_str)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            root = await _fetch_child_xml("https://example.com/sitemap-large.xml", client)
+
+        assert root is not None
+        assert len(_extract_urls(root)) == 10_000
+
     async def test_404_returns_none(self):
         """Genuinely-missing shard — return None so the caller skips
         without flagging the run as a failure."""
