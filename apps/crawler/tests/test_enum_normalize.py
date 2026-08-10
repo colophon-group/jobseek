@@ -509,6 +509,11 @@ class TestNormalizeJobLocationType:
             ("flexibel", "hybrid"),
             ("Hybride", "hybrid"),
             ("Ibrido", "hybrid"),
+            # Welcome to the Jungle remote-policy codes
+            ("no", "onsite"),
+            ("fulltime", "remote"),
+            ("partial", "hybrid"),
+            ("punctual", "hybrid"),
         ],
     )
     def test_known_value(self, raw, want):

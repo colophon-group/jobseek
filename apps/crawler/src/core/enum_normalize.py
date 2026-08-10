@@ -247,12 +247,14 @@ _JOB_LOCATION_TYPE_MAP: dict[str, str] = {
     "on-premises": "onsite",
     "in-person": "onsite",
     "in person": "onsite",
+    "no": "onsite",  # Welcome to the Jungle remote policy
     "remote": "remote",
     "telecommute": "remote",
     "work from home": "remote",
     "wfh": "remote",
     "fully remote": "remote",
     "100% remote": "remote",
+    "fulltime": "remote",  # Welcome to the Jungle remote policy
     "hybrid": "hybrid",
     "office, remote": "hybrid",
     "remote, office": "hybrid",
@@ -260,6 +262,8 @@ _JOB_LOCATION_TYPE_MAP: dict[str, str] = {
     "remote/office": "hybrid",
     "flexible": "hybrid",
     "partially remote": "hybrid",
+    "partial": "hybrid",  # Welcome to the Jungle remote policy
+    "punctual": "hybrid",  # Welcome to the Jungle occasional remote policy
     # German
     "vor ort": "onsite",
     "büro": "onsite",

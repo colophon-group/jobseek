@@ -217,6 +217,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `traffit`         | Rich     | skip        | Traffit ATS API                         |
 | 10   | `typify`          | Rich     | json-ld     | Typify partitioned vacancy API + description enrichment |
 | 10   | `ukg`             | Rich     | embedded    | UKG Pro search API + detail enrichment  |
+| 10   | `welcometothejungle` | Rich  | skip        | Welcome to the Jungle public jobs APIs  |
 | 10   | `workable`        | URL-only | workable    | Workable API                            |
 | 10   | `workday`         | URL-only | workday     | Workday Job Board API                   |
 | 10   | `ycombinator`     | URL-only | json-ld     | YCombinator Jobs fallback pages         |
