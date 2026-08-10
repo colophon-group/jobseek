@@ -1052,7 +1052,8 @@ inline — Single-Page Extraction (rich)
       the next job starts.  Design steps so the last step's cursor ends
       just before the next job's title.
     - Use stop_tag to limit description collection: {"stop_tag": "h3"}
-      stops before the next job's heading.
+      stops before the next job's heading. When job boundaries use multiple
+      heading tags, pass a list: {"stop_tag": ["h3", "h4"]}.
     - Use optional: true for fields that may not appear on every job.
 
   Detection:   Not auto-detected. Select manually after inspecting the page.
@@ -2480,7 +2481,8 @@ Extraction Steps — DOM scraper step format
 
   Range extraction (collect multiple elements):
     stop        Stop when element text contains this string
-    stop_tag    Stop when element tag matches
+    stop_tag    Stop when element tag matches. Accepts one tag or a list
+                (for example, ["h2", "h3"])
     stop_count  Max elements to collect
     html        If true, preserve HTML tags in output (groups <li> in <ul>)
 
@@ -2507,6 +2509,7 @@ Extraction Steps — DOM scraper step format
     {"text": "Location", "offset": 1, "field": "location"}
     {"text": "About", "field": "description", "stop": "Requirements", "html": true}
     {"tag": "li", "field": "skills", "stop_tag": "h2", "split": ","}
+    {"tag": "p", "field": "description", "stop_tag": ["h2", "h3"], "html": true}
     {"tag": "span", "attr": "class=salary", "field": "salary", "regex": "\\\\$(\\\\d[\\\\d,]+)"}"""
 
 ACTIONS = """\

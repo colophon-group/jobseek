@@ -356,7 +356,8 @@ def walk_steps(
         field      — output field name (omit for anchor-only steps)
         offset     — skip N elements after match before extracting (default 0)
         stop       — stop collecting when element text contains this string
-        stop_tag   — stop collecting when element tag matches
+        stop_tag   — stop collecting when element tag matches; accepts a string
+                     or a list of tag names
         stop_count — max elements to collect in a range
         optional   — if true, suppress warning when step not found
         regex      — regex with capture group; applied to extracted text
@@ -373,6 +374,7 @@ def walk_steps(
         field = step.get("field")
         stop = step.get("stop")
         stop_tag = step.get("stop_tag")
+        stop_tags = {stop_tag} if isinstance(stop_tag, str) else set(stop_tag or [])
         stop_count = step.get("stop_count")
         optional = step.get("optional", False)
         attr = step.get("attr")
@@ -429,7 +431,7 @@ def walk_steps(
                     if stop and _norm(stop) in _norm(elements[i]["text"]):
                         stop_idx = i
                         break
-                    if stop_tag and elements[i]["tag"] == stop_tag:
+                    if elements[i]["tag"] in stop_tags:
                         stop_idx = i
                         break
                 if stop_count and collected >= stop_count:

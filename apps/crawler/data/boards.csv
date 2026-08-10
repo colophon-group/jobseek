@@ -4492,6 +4492,9 @@ sand-tech-holdings-limited,sand-tech-holdings-limited-greenhouse,https://job-boa
 sandbox-vr,sandbox-vr-careers,https://jobs.lever.co/sandboxvr,lever,"{""token"": ""sandboxvr""}",skip,
 sandboxaq,sandboxaq-main,https://jobs.ashbyhq.com/sandboxaq,ashby,"{""token"": ""sandboxaq""}",skip,
 sandstone-care,sandstone-care-greenhouse,https://job-boards.greenhouse.io/sandstonecare,greenhouse,"{""token"": ""sandstonecare""}",skip,
+sanford-health,sanford-health-careers,https://sanford.wd5.myworkdayjobs.com/sanfordhealth,workday,,workday,
+sanford-health,sanford-health-lewis-drug,https://lewisdrug.applicantstack.com/x/openings,dom,"{""render"": false, ""url_filter"": ""/x/detail/""}",json-ld,"{""render"": false}"
+sanford-health,sanford-health-sanford-research,https://research.sanfordhealth.org/careers,inline,"{""render"": false, ""steps"": [{""tag"": ""div"", ""attr"": ""class=gtag-accordion-title"", ""field"": ""title"", ""optional"": true}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_tag"": [""div"", ""h4""]}], ""defaults"": {""locations"": [""Sioux Falls, South Dakota, USA""]}}",skip,
 sanity,sanity-ashby,https://jobs.ashbyhq.com/sanity,ashby,"{""token"": ""sanity""}",skip,
 sanofi,sanofi-careers,https://sanofi.wd3.myworkdayjobs.com/SanofiCareers,workday,"{""company"": ""sanofi"", ""wd_instance"": ""wd3"", ""site"": ""SanofiCareers"", ""all_sites"": false}",workday,
 sanofi,sanofi-careers-opella,https://sanofi.wd3.myworkdayjobs.com/OpellaCareers,workday,"{""company"": ""sanofi"", ""wd_instance"": ""wd3"", ""site"": ""OpellaCareers"", ""all_sites"": false}",workday,

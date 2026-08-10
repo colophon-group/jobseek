@@ -487,6 +487,36 @@ class TestParsePosting:
         assert result.title == "Visual Merchandising & Space Planning Manager"
         assert result.locations == ["Düsseldorf & Köln"]
 
+    def test_falls_back_to_page_title_when_organization_suffix_matches(self):
+        html = """
+        <html><head><title>Pharmacy Technician - Full Time - Lewis Drug</title></head>
+        <body><script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "JobPosting",
+          "title": null,
+          "hiringOrganization": {"@type": "Organization", "name": "Lewis Drug"}
+        }
+        </script></body></html>
+        """
+        result = parse_html(html)
+        assert result.title == "Pharmacy Technician - Full Time"
+
+    def test_does_not_use_generic_page_title_without_matching_organization(self):
+        html = """
+        <html><head><title>Explore our careers</title></head>
+        <body><script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "JobPosting",
+          "title": null,
+          "hiringOrganization": {"@type": "Organization", "name": "Example Corp"}
+        }
+        </script></body></html>
+        """
+        result = parse_html(html)
+        assert result.title is None
+
     def test_education_requirements_fallback(self):
         posting = {"educationRequirements": "Bachelor's degree"}
         result = _parse_posting(posting)
