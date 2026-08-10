@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from src.core.monitor import MonitorResult
-from src.core.monitors.oracle_hcm import _RETRY_ATTEMPTS, _get_with_retry, discover
+from src.core.monitors.oracle_hcm import _RETRY_ATTEMPTS, _get_with_retry, can_handle, discover
 from src.core.scrapers.oracle_hcm import _build_detail_url, scrape
 
 
@@ -25,7 +25,7 @@ class TestGetWithRetry:
         assert resp.status_code == status
         assert client.get.await_count == 1
 
-    @pytest.mark.parametrize("status", [429, 500, 502, 503, 504])
+    @pytest.mark.parametrize("status", [403, 429, 500, 502, 503, 504])
     async def test_retries_on_transient_status_then_succeeds(self, status):
         client = AsyncMock(spec=httpx.AsyncClient)
         client.get = AsyncMock(side_effect=[_response(status), _response(status), _response(200)])
@@ -78,6 +78,35 @@ class TestGetWithRetry:
 
         # _RETRY_ATTEMPTS attempts → _RETRY_ATTEMPTS - 1 sleeps between them
         assert sleep.await_count == _RETRY_ATTEMPTS - 1
+
+
+@pytest.mark.asyncio
+async def test_can_handle_retries_transient_forbidden_response():
+    """Akamai can intermittently return 403 for a valid Oracle tenant."""
+    client = AsyncMock(spec=httpx.AsyncClient)
+    client.get = AsyncMock(
+        side_effect=[
+            _response(403),
+            httpx.Response(
+                200,
+                json={"items": [{"TotalJobsCount": 42}]},
+                request=httpx.Request("GET", "https://example.com/"),
+            ),
+        ]
+    )
+
+    with patch("src.core.monitors.oracle_hcm.asyncio.sleep", new_callable=AsyncMock):
+        config = await can_handle(
+            "https://example.fa.us6.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1",
+            client,
+        )
+
+    assert config == {
+        "host": "example.fa.us6.oraclecloud.com",
+        "site": "CX_1",
+        "jobs_count": 42,
+    }
+    assert client.get.await_count == 2
 
 
 @pytest.mark.asyncio
