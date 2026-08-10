@@ -280,7 +280,7 @@ class PaginationInfo:
     style: str  # "offset", "page", or "cumulative_limit"
     start_value: int
     increment: int
-    location: str  # "query", "body", or raw URL "suffix"
+    location: str  # "query" or "body"
     observed_value: int | None = None
 
 
@@ -783,17 +783,6 @@ def set_body_param(body_str: str, param: str, value: object) -> str:
     return json.dumps(body)
 
 
-def set_url_suffix_param(url: str, param: str, value: object) -> str:
-    """Append pagination inside a compound query value.
-
-    Some APIs, notably Oracle HCM's ``finder`` query parameter, encode
-    pagination as comma-delimited key/value pairs inside the final query
-    value.  Encoding ``offset`` as a normal query parameter (or in the
-    request body) is silently ignored by those APIs.
-    """
-    return f"{url},{param}={value}"
-
-
 def detect_size_param(url: str, post_data: str | None) -> tuple[str, str, int] | None:
     """Find a page-size param in the request. Returns (name, location, value)."""
     qs = parse_qs(urlparse(url).query)
@@ -833,18 +822,6 @@ def detect_size_param(url: str, post_data: str | None) -> tuple[str, str, int] |
 
 def extract_items(data: object, target_path: str) -> list[dict]:
     """Extract the job array from a parsed JSON response."""
-    # Prefer the configured path. ``find_arrays`` intentionally does not
-    # recurse through list elements, so it cannot rediscover paths such as
-    # Oracle HCM's ``items[0].requisitionList`` on later pages.
-    if target_path == "$" and isinstance(data, list):
-        return [item for item in data if isinstance(item, dict)]
-
-    from src.shared.nextdata import resolve_path
-
-    resolved = resolve_path(data, target_path)
-    if isinstance(resolved, list):
-        return [item for item in resolved if isinstance(item, dict)]
-
     arrays = find_arrays(data)
     for path, arr in arrays:
         if path == target_path:
@@ -1369,8 +1346,6 @@ async def paginate_all(
             probe_body = set_body_param(probe_body, sp_name, _DESIRED_PAGE_SIZE)
         if pag.location == "query":
             probe_url = set_url_param(probe_url, pag.param_name, pag.start_value)
-        elif pag.location == "suffix":
-            probe_url = set_url_suffix_param(probe_url, pag.param_name, pag.start_value)
         else:
             probe_body = set_body_param(probe_body, pag.param_name, pag.start_value)
 
@@ -1423,9 +1398,6 @@ async def paginate_all(
     while pages_fetched < total_pages:
         if pag.location == "query":
             fetch_url = set_url_param(ex.url, pag.param_name, current_value)
-            fetch_body = ex.post_data
-        elif pag.location == "suffix":
-            fetch_url = set_url_suffix_param(ex.url, pag.param_name, current_value)
             fetch_body = ex.post_data
         else:
             fetch_url = ex.url
