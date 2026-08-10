@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
 import httpx
 
 from src.core.monitors import slugs_from_url
@@ -198,6 +200,27 @@ class TestScraper:
                 client,
             )
         assert result.description
+
+    async def test_uses_provider_specific_rate_limit_retry_budget(self):
+        client = AsyncMock(spec=httpx.AsyncClient)
+        with patch(
+            "src.core.scrapers.linkedin.fetch_text_page_with_retry",
+            new_callable=AsyncMock,
+            return_value=DETAIL_HTML,
+        ) as fetch:
+            result = await scrape(
+                "https://www.linkedin.com/jobs/view/title-4442073767",
+                {},
+                client,
+            )
+
+        assert result.description
+        fetch.assert_awaited_once_with(
+            client,
+            "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/4442073767",
+            retries=4,
+            base_delay=1.5,
+        )
 
 
 def test_workspace_auto_configuration():
