@@ -19,7 +19,7 @@ import asyncio
 import random
 import re
 from typing import TYPE_CHECKING
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import httpx
 import structlog
@@ -53,6 +53,18 @@ log = structlog.get_logger()
 _TRANSIENT_STATUS = frozenset({302, 403, 429, 500, 502, 503, 504})
 _RETRY_ATTEMPTS = 3
 _RETRY_BASE_DELAY_S = 3.0
+_PAGE_SIZE = 200
+_RESULT_WINDOW_LIMIT = 10_000
+
+# Oracle's public search endpoint stops serving unfiltered offsets at 10,000.
+# Category and organization facets are mutually exclusive on the tenants we
+# support, but only trust them when their counts prove that they form a complete
+# partition of the advertised result set. This lets very large tenants be read
+# in full without making assumptions about the provider's taxonomy.
+_PARTITION_FACETS = (
+    ("categoriesFacet", "selectedCategoriesFacet"),
+    ("organizationsFacet", "selectedOrganizationsFacet"),
+)
 
 
 async def _get_with_retry(
@@ -113,6 +125,50 @@ def _build_api_url(host: str, site: str) -> str:
 
 def _build_url_template(host: str, site: str) -> str:
     return f"https://{host}/hcmUI/CandidateExperience/en/sites/{site}/job/{{Id}}"
+
+
+def _complete_facet_partition(wrapper: dict, total: int) -> list[tuple[str, str, int]] | None:
+    """Return a safe set of finder filters for a result set above 10,000.
+
+    A facet is usable only when every bucket is well formed, no bucket exceeds
+    Oracle's result-window limit, and the bucket counts add up exactly to the
+    unfiltered total. Otherwise the ordinary pagination path is retained and
+    will report a truncated cycle at Oracle's cap.
+    """
+    for response_field, finder_parameter in _PARTITION_FACETS:
+        facets = wrapper.get(response_field)
+        if not isinstance(facets, list) or not facets:
+            continue
+
+        partitions: list[tuple[str, str, int]] = []
+        seen_ids: set[str] = set()
+        valid = True
+        for facet in facets:
+            if not isinstance(facet, dict):
+                valid = False
+                break
+            facet_id = facet.get("Id")
+            count = facet.get("TotalCount")
+            if (
+                facet_id is None
+                or isinstance(count, bool)
+                or not isinstance(count, int)
+                or count <= 0
+                or count > _RESULT_WINDOW_LIMIT
+            ):
+                valid = False
+                break
+            facet_id = str(facet_id)
+            if facet_id in seen_ids:
+                valid = False
+                break
+            seen_ids.add(facet_id)
+            partitions.append((finder_parameter, facet_id, count))
+
+        if valid and sum(count for _, _, count in partitions) == total:
+            return partitions
+
+    return None
 
 
 async def can_handle(
@@ -194,84 +250,116 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
     url_template = _build_url_template(host, site)
     api_url = _build_api_url(host, site)
 
-    offset = 0
-    total = None
+    resp = await _get_with_retry(client, api_url, timeout=30)
+    resp.raise_for_status()
+    initial_wrapper = (resp.json().get("items") or [{}])[0]
+    total = initial_wrapper.get("TotalJobsCount") or 0
+    if total == 0:
+        return
+
+    partitions = (
+        _complete_facet_partition(initial_wrapper, total) if total > _RESULT_WINDOW_LIMIT else None
+    )
+    if partitions:
+        page_sources: list[tuple[str, int, dict | None, str | None]] = [
+            (
+                f"{api_url},{parameter}={quote(facet_id, safe='')}",
+                count,
+                None,
+                facet_id,
+            )
+            for parameter, facet_id, count in partitions
+        ]
+        log.info(
+            "oracle_hcm.partitioned_search",
+            host=host,
+            site=site,
+            advertised_total=total,
+            facet=partitions[0][0],
+            partitions=len(partitions),
+        )
+    else:
+        page_sources = [(api_url, total, initial_wrapper, None)]
+
     seen_job_ids: set[str] = set()
     partial = False
-    while total is None or offset < total:
-        page_url = f"{api_url},offset={offset}" if offset else api_url
-        resp = await _get_with_retry(client, page_url, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
+    for source_url, source_total, cached_wrapper, partition_id in page_sources:
+        offset = 0
+        while offset < source_total:
+            if offset == 0 and cached_wrapper is not None:
+                wrapper = cached_wrapper
+            else:
+                page_url = f"{source_url},offset={offset}" if offset else source_url
+                resp = await _get_with_retry(client, page_url, timeout=30)
+                resp.raise_for_status()
+                wrapper = (resp.json().get("items") or [{}])[0]
 
-        wrapper = (data.get("items") or [{}])[0]
-        page_total = wrapper.get("TotalJobsCount")
-        if total is None:
-            total = page_total or 0
-            if total == 0:
-                return
-        elif page_total is not None and page_total != total:
-            # Offset pagination is not snapshot-isolated. A changing total is
-            # enough to make the cycle unsafe for authoritative gone-detection,
-            # even if every individual response looks well formed.
-            partial = True
-            log.warning(
-                "oracle_hcm.total_changed",
-                host=host,
-                site=site,
-                initial_total=total,
-                page_total=page_total,
-                offset=offset,
-            )
-
-        items = wrapper.get("requisitionList", [])
-        expected_page_size = min(200, max(total - offset, 0))
-        if len(items) != expected_page_size:
-            partial = True
-        if not items:
-            if total is not None and offset < total:
-                # Oracle HCM caps public search windows at 10,000 for large
-                # tenants even when TotalJobsCount advertises more. Signal a
-                # partial cycle so downstream gone-detection does not
-                # tombstone postings outside the accessible window.
+            page_total = wrapper.get("TotalJobsCount")
+            if page_total is not None and page_total != source_total:
+                # Offset pagination is not snapshot-isolated. A changing total
+                # makes the cycle unsafe for authoritative gone-detection.
+                partial = True
                 log.warning(
-                    "oracle_hcm.truncated",
+                    "oracle_hcm.total_changed",
                     host=host,
                     site=site,
-                    discovered=offset,
-                    advertised_total=total,
+                    initial_total=source_total,
+                    page_total=page_total,
+                    offset=offset,
+                    partition_id=partition_id,
                 )
-            break
 
-        jobs: list[DiscoveredJob] = []
-        for item in items:
-            job_id = item.get("Id")
-            if not job_id:
+            items = wrapper.get("requisitionList", [])
+            expected_page_size = min(_PAGE_SIZE, max(source_total - offset, 0))
+            if len(items) != expected_page_size:
                 partial = True
-                continue
-            job_id = str(job_id)
-            if job_id in seen_job_ids:
-                partial = True
-                continue
-            seen_job_ids.add(job_id)
-            url = url_template.format(Id=job_id)
-            jobs.append(
-                DiscoveredJob(
-                    url=url,
-                    title=item.get(fields.get("title", "Title")),
-                    locations=[item[fields["locations"]]]
-                    if item.get(fields.get("locations", "PrimaryLocation"))
-                    else None,
-                    date_posted=item.get(fields.get("date_posted", "PostedDate")),
-                    employment_type=item.get(fields.get("employment_type", "JobSchedule")),
+            if not items:
+                if offset < source_total:
+                    log.warning(
+                        "oracle_hcm.truncated",
+                        host=host,
+                        site=site,
+                        discovered=len(seen_job_ids),
+                        advertised_total=total,
+                        partition_id=partition_id,
+                    )
+                break
+
+            jobs: list[DiscoveredJob] = []
+            for item in items:
+                job_id = item.get("Id")
+                if not job_id:
+                    partial = True
+                    continue
+                job_id = str(job_id)
+                if job_id in seen_job_ids:
+                    partial = True
+                    continue
+                seen_job_ids.add(job_id)
+                url = url_template.format(Id=job_id)
+                jobs.append(
+                    DiscoveredJob(
+                        url=url,
+                        title=item.get(fields.get("title", "Title")),
+                        locations=[item[fields["locations"]]]
+                        if item.get(fields.get("locations", "PrimaryLocation"))
+                        else None,
+                        date_posted=item.get(fields.get("date_posted", "PostedDate")),
+                        employment_type=item.get(fields.get("employment_type", "JobSchedule")),
+                    )
                 )
-            )
 
-        if jobs:
-            yield jobs
-            log.debug("oracle_hcm.stream_batch", offset=offset, batch=len(jobs), total=total)
+            if jobs:
+                yield jobs
+                log.debug(
+                    "oracle_hcm.stream_batch",
+                    offset=offset,
+                    batch=len(jobs),
+                    total=total,
+                    partition_id=partition_id,
+                )
 
-        offset += 200
+            offset += _PAGE_SIZE
 
     if total is not None and len(seen_job_ids) != total:
         partial = True

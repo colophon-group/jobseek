@@ -3131,8 +3131,7 @@ marksandspencer,marksandspencer-pinpoint,https://marksandspencer.pinpointhq.com,
 marqeta,marqeta-greenhouse,https://job-boards.greenhouse.io/marqeta,greenhouse,"{""token"": ""marqeta""}",skip,
 marqvision,marqvision-greenhouse,https://job-boards.greenhouse.io/marqvision,greenhouse,"{""token"": ""marqvision""}",skip,
 marqvision,marqvision-lever,https://jobs.lever.co/marqvision,lever,"{""token"": ""marqvision""}",skip,
-marriott,marriott-careers,https://careers.marriott.com/jobs,sitemap,"{""sitemap_url"": ""https://careers.marriott.com/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
-marriott,marriott-inventory-careers,https://ejwl.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
+marriott,marriott-careers,https://ejwl.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 marshmallow,marshmallow-ashby,https://jobs.ashbyhq.com/marshmallow,ashby,"{""token"": ""marshmallow""}",skip,
 martell-ventures,martell-ventures-greenhouse,https://job-boards.greenhouse.io/martellgrowthsolutions,greenhouse,"{""token"": ""martellgrowthsolutions""}",skip,
 maruti-suzuki,maruti-suzuki-careers,https://maruti.app.param.ai/jobs/,api_sniffer,"{""api_url"": ""https://maruti.app.param.ai/api/career/get_job/"", ""method"": ""GET"", ""json_path"": ""data.*.jobs[]"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""employment_type"": ""job_type"", ""date_posted"": ""created_at"", ""locations"": ""locations"", ""metadata.team"": ""category""}, ""wait"": ""networkidle"", ""timeout"": 30000, ""settle"": 5}",skip,

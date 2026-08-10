@@ -6,7 +6,13 @@ import httpx
 import pytest
 
 from src.core.monitor import MonitorResult
-from src.core.monitors.oracle_hcm import _RETRY_ATTEMPTS, _get_with_retry, can_handle, discover
+from src.core.monitors.oracle_hcm import (
+    _RETRY_ATTEMPTS,
+    _complete_facet_partition,
+    _get_with_retry,
+    can_handle,
+    discover,
+)
 from src.core.scrapers.oracle_hcm import _build_detail_url, scrape
 
 
@@ -78,6 +84,38 @@ class TestGetWithRetry:
 
         # _RETRY_ATTEMPTS attempts → _RETRY_ATTEMPTS - 1 sleeps between them
         assert sleep.await_count == _RETRY_ATTEMPTS - 1
+
+
+def test_complete_facet_partition_falls_back_to_organizations():
+    """An incomplete category taxonomy must not hide a complete safe facet."""
+    wrapper = {
+        "categoriesFacet": [{"Id": "category-a", "TotalCount": 300}],
+        "organizationsFacet": [
+            {"Id": "org-a", "TotalCount": 300},
+            {"Id": "org-b", "TotalCount": 150},
+        ],
+    }
+
+    with patch("src.core.monitors.oracle_hcm._RESULT_WINDOW_LIMIT", 400):
+        partitions = _complete_facet_partition(wrapper, 450)
+
+    assert partitions == [
+        ("selectedOrganizationsFacet", "org-a", 300),
+        ("selectedOrganizationsFacet", "org-b", 150),
+    ]
+
+
+def test_complete_facet_partition_rejects_oversized_bucket():
+    """A mathematically complete facet is unsafe if a bucket still hits the cap."""
+    wrapper = {
+        "categoriesFacet": [
+            {"Id": "category-a", "TotalCount": 401},
+            {"Id": "category-b", "TotalCount": 49},
+        ]
+    }
+
+    with patch("src.core.monitors.oracle_hcm._RESULT_WINDOW_LIMIT", 400):
+        assert _complete_facet_partition(wrapper, 450) is None
 
 
 @pytest.mark.asyncio
@@ -169,6 +207,108 @@ async def test_discover_uses_native_finder_suffix_pagination():
         "Job 200",
         "Job 201",
     ]
+
+
+@pytest.mark.asyncio
+async def test_discover_partitions_results_above_oracle_window_limit():
+    """Complete facets make a large Oracle board fully traversable."""
+    requested_urls: list[str] = []
+
+    def _jobs(start: int, count: int) -> list[dict]:
+        return [
+            {
+                "Id": str(i),
+                "Title": f"Job {i}",
+                "PrimaryLocation": "Bethesda, MD, United States",
+            }
+            for i in range(start, start + count)
+        ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        requested_urls.append(url)
+        if "selectedCategoriesFacet=A" in url:
+            offset = 200 if ",offset=200" in url else 0
+            total = 250
+            rows = _jobs(offset, min(200, total - offset))
+            wrapper = {"TotalJobsCount": total, "requisitionList": rows}
+        elif "selectedCategoriesFacet=B" in url:
+            total = 200
+            wrapper = {"TotalJobsCount": total, "requisitionList": _jobs(250, total)}
+        else:
+            wrapper = {
+                "TotalJobsCount": 450,
+                "requisitionList": _jobs(0, 200),
+                "categoriesFacet": [
+                    {"Id": "A", "TotalCount": 250},
+                    {"Id": "B", "TotalCount": 200},
+                ],
+            }
+        return httpx.Response(200, json={"items": [wrapper]})
+
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001"
+        ),
+        "metadata": {"host": "example.fa.us2.oraclecloud.com", "site": "CX_2001"},
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with patch("src.core.monitors.oracle_hcm._RESULT_WINDOW_LIMIT", 400):
+            result = await discover(board, client)
+
+    assert isinstance(result, list)
+    assert len(result) == 450
+    assert requested_urls[0].endswith("limit=200,sortBy=POSTING_DATES_DESC")
+    assert "selectedCategoriesFacet=A" in requested_urls[1]
+    assert requested_urls[2].endswith("selectedCategoriesFacet=A,offset=200")
+    assert requested_urls[3].endswith("selectedCategoriesFacet=B")
+
+
+@pytest.mark.asyncio
+async def test_discover_marks_cross_partition_duplicate_as_truncated():
+    """Facet churn cannot silently omit a job during a partitioned cycle."""
+
+    def _jobs(start: int, count: int) -> list[dict]:
+        return [
+            {"Id": str(i), "Title": f"Job {i}", "PrimaryLocation": "United States"}
+            for i in range(start, start + count)
+        ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if "selectedCategoriesFacet=A" in url:
+            offset = 200 if ",offset=200" in url else 0
+            total = 250
+            rows = _jobs(offset, min(200, total - offset))
+            wrapper = {"TotalJobsCount": total, "requisitionList": rows}
+        elif "selectedCategoriesFacet=B" in url:
+            # ID 249 moved between categories while the cycle was running;
+            # ID 449 is consequently missing even though counts still match.
+            wrapper = {"TotalJobsCount": 200, "requisitionList": _jobs(249, 200)}
+        else:
+            wrapper = {
+                "TotalJobsCount": 450,
+                "requisitionList": _jobs(0, 200),
+                "categoriesFacet": [
+                    {"Id": "A", "TotalCount": 250},
+                    {"Id": "B", "TotalCount": 200},
+                ],
+            }
+        return httpx.Response(200, json={"items": [wrapper]})
+
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001"
+        ),
+        "metadata": {"host": "example.fa.us2.oraclecloud.com", "site": "CX_2001"},
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with patch("src.core.monitors.oracle_hcm._RESULT_WINDOW_LIMIT", 400):
+            result = await discover(board, client)
+
+    assert isinstance(result, MonitorResult)
+    assert result.truncated is True
+    assert len(result.urls) == 449
 
 
 @pytest.mark.asyncio
