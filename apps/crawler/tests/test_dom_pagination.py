@@ -412,6 +412,34 @@ class TestPaginateUrls:
         assert len(fetched_urls) == 1
         assert result == initial
 
+    async def test_keeps_only_new_identity_representatives(self):
+        """New pages must not re-add duplicate raw URL variants."""
+        pages = {
+            "https://example.com/careers?page=2": _html_with_links(
+                "https://example.com/job/1?apply=1",
+                "https://example.com/job/2",
+                "https://example.com/job/2?apply=1",
+            ),
+            "https://example.com/careers?page=3": _html_with_links(
+                "https://example.com/job/2?apply=1",
+            ),
+        }
+
+        with patch(_FETCH_PATCH, new=_make_fetch(pages)):
+            result = await _paginate_urls(
+                "https://example.com/careers",
+                {"param_name": "page", "max_pages": 5},
+                {"https://example.com/job/1"},
+                MagicMock(),
+                url_matcher=re.compile(r"/job/"),
+                url_transform={"find": r"\?apply=1$", "replace": ""},
+            )
+
+        assert result == {
+            "https://example.com/job/1",
+            "https://example.com/job/2",
+        }
+
     async def test_stops_on_legitimate_end(self):
         """``fetch_with_retry`` returning ``None`` (404/410, empty body)
         stops pagination cleanly — pagination has reached its natural end.

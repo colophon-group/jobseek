@@ -67,7 +67,13 @@ _FIELD_PATTERNS: dict[str, list[str]] = {
     "title": list(_TITLE_FIELD_CANDIDATES),
     "description": list(_DESCRIPTION_FIELD_CANDIDATES),
     "locations": ["location", "locations", "office", "offices"],
-    "employment_type": ["employmentType", "employment_type", "type", "jobType"],
+    "employment_type": [
+        "employmentType",
+        "employment_type",
+        "type",
+        "jobType",
+        "job_type",
+    ],
     "job_location_type": ["locationType", "workplaceType", "remoteType"],
     "date_posted": ["datePosted", "createdAt", "publishedAt", "postedDate", "validFromDate"],
 }
@@ -131,6 +137,12 @@ def _auto_map_fields(job_obj: dict) -> dict[str, str]:
             if cand not in job_obj:
                 continue
             val = job_obj[cand]
+
+            # Keep scanning aliases when a provider emits an empty primary
+            # field beside a populated alternative.  Talent.vn uses
+            # ``locations: []`` and ``offices: [{"name": ...}]``.
+            if val is None or val == "" or val == [] or val == {}:
+                continue
 
             if target == "description" and isinstance(val, dict):
                 for nested in _NESTED_DESCRIPTION_CANDIDATES:
@@ -236,6 +248,7 @@ def can_handle(htmls: list[str]) -> dict | None:
         "window.__INITIAL_STATE__",
         "window.__INITIAL_DATA__",
         "phApp.ddo",  # Phenom People Canvas detail pages
+        "Client.pageData",  # Talent.vn job detail payload
     ]
 
     # Try AF_initDataCallback

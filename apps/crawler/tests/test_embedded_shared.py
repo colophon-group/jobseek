@@ -139,6 +139,11 @@ class TestExtractByVariable:
         result = extract_by_variable(html, "window.__DATA__")
         assert result is None
 
+    def test_prefers_last_parseable_assignment(self):
+        html = 'Client.pageData = {};Client.pageData = {"job": {"name": "Store Manager"}};'
+        result = extract_by_variable(html, "Client.pageData")
+        assert result == {"job": {"name": "Store Manager"}}
+
 
 # ---------------------------------------------------------------------------
 # extract_script_by_id
