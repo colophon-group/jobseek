@@ -2,8 +2,8 @@
 # Install or update the pinned, host-level Jobseek observability surface.
 set -euo pipefail
 
-ALLOY_VERSION="1.18.0"
-ALLOY_IMAGE="grafana/alloy:v${ALLOY_VERSION}@sha256:491b0578c04983fd54fe99b587b6fab4404dc46d0dc16677bd6b00cc1140b308"
+ALLOY_VERSION="1.18.1"
+ALLOY_IMAGE="grafana/alloy:v${ALLOY_VERSION}@sha256:0f4434c92b3e6cdac38bb129b344e1790c246f7b6e2eaffcc16a5fa363240e33"
 ROLE="${1:-}"
 DEPLOY_SHA="${JOBSEEK_OBSERVABILITY_DEPLOY_SHA:-}"
 LOCK_TIMEOUT_S="${JOBSEEK_OBSERVABILITY_DEPLOY_LOCK_TIMEOUT_S:-120}"
