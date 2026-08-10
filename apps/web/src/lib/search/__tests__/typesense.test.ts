@@ -26,6 +26,7 @@ vi.mock("../typesense-client", () => ({
 
 import { TypesenseBrowserProvider } from "../typesense-browser";
 import { clearTypesenseBrowserConfig } from "../typesense-browser-key";
+import { resolveTypesenseCompany } from "../typesense-company";
 import { POSTING_BASE_FILTER } from "../typesense-filters";
 import { TypesenseSearchProvider } from "../typesense";
 
@@ -126,6 +127,53 @@ function mixedCompanyResponse() {
   };
 }
 
+function blankCompanyPostingHit(companyId: string, title: string) {
+  const hit = postingHit(companyId, "", NOW, title);
+  hit.document.company_slug = "";
+  return hit;
+}
+
+function blankCompanyGroupedResponse() {
+  return {
+    grouped_hits: [
+      {
+        group_key: ["company-a"],
+        found: 4_867,
+        hits: [blankCompanyPostingHit("company-a", "Retail Parts Pro Store 5175")],
+      },
+      {
+        group_key: ["company-b"],
+        found: 4_348,
+        hits: [blankCompanyPostingHit("company-b", "Delivery Specialist - Hub")],
+      },
+    ],
+  };
+}
+
+function blankCompanyFacetResponse() {
+  return {
+    facet_counts: [
+      {
+        field_name: "company_id",
+        counts: [
+          { value: "company-a", count: 4_867 },
+          { value: "company-b", count: 4_348 },
+        ],
+        stats: { total_values: 2 },
+      },
+    ],
+  };
+}
+
+function canonicalBlankCompanyResponse() {
+  return {
+    hits: [
+      companyHit("company-a", "Advance Auto Parts", 4_867, 4_867),
+      companyHit("company-b", "O'Reilly Auto Parts", 4_348, 4_348),
+    ],
+  };
+}
+
 beforeEach(() => {
   mocks.calls.length = 0;
   mocks.browserCalls.length = 0;
@@ -201,6 +249,43 @@ describe("TypesenseSearchProvider.listTopCompanies", () => {
     expect(result.companies[0].postings.map((p) => p.title)).toEqual([
       "Fresh role",
       "Older role",
+    ]);
+  });
+
+  it("uses canonical metadata for multiple filtered groups with blank posting metadata", async () => {
+    const provider = new TypesenseSearchProvider();
+
+    mocks.search.mockImplementation(
+      async (collection: string, params: Record<string, unknown>) => {
+        if (collection === "company") return canonicalBlankCompanyResponse();
+        if (params.group_by === "company_id") {
+          return blankCompanyGroupedResponse();
+        }
+        if (String(params.filter_by).includes("first_seen_at:>")) {
+          return blankCompanyFacetResponse();
+        }
+        return blankCompanyFacetResponse();
+      },
+    );
+
+    const result = await provider.listTopCompanies({
+      languages: ["en"],
+      locale: "en",
+      offset: 0,
+      limit: 2,
+    });
+
+    expect(result.companies.map((entry) => entry.company)).toEqual([
+      expect.objectContaining({
+        id: "company-a",
+        name: "Advance Auto Parts",
+        slug: "company-a",
+      }),
+      expect.objectContaining({
+        id: "company-b",
+        name: "O'Reilly Auto Parts",
+        slug: "company-b",
+      }),
     ]);
   });
 });
@@ -305,5 +390,71 @@ describe("TypesenseBrowserProvider.listTopCompanies", () => {
       "Fresh role",
       "Older role",
     ]);
+  });
+
+  it("uses canonical metadata for multiple browser-fetched filtered groups", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url === "/api/typesense-key") {
+          return Response.json({
+            apiKey: "browser-key",
+            host: "typesense.example",
+            port: 443,
+            protocol: "https",
+            expiresAt: Date.now() + 60_000,
+          });
+        }
+
+        const parsed = new URL(url);
+        const collection = parsed.pathname.match(/\/collections\/([^/]+)/)?.[1];
+        if (collection === "company") {
+          return Response.json(canonicalBlankCompanyResponse());
+        }
+        if (parsed.searchParams.get("group_by") === "company_id") {
+          return Response.json(blankCompanyGroupedResponse());
+        }
+        return Response.json(blankCompanyFacetResponse());
+      }),
+    );
+
+    const provider = new TypesenseBrowserProvider();
+    const result = await provider.listTopCompanies({
+      languages: ["en"],
+      locale: "en",
+      offset: 0,
+      limit: 2,
+    });
+
+    expect(result.companies.map((entry) => entry.company.name)).toEqual([
+      "Advance Auto Parts",
+      "O'Reilly Auto Parts",
+    ]);
+    expect(result.companies.every((entry) => entry.company.slug.length > 0)).toBe(
+      true,
+    );
+  });
+});
+
+describe("resolveTypesenseCompany", () => {
+  it("falls back to a later valid posting when the canonical document is unavailable", () => {
+    const blank = postingHit("company-a", "", NOW).document;
+    blank.company_slug = "";
+    const valid = postingHit("company-a", "Advance Auto Parts", NOW - DAY).document;
+
+    expect(resolveTypesenseCompany("company-a", [blank, valid])).toEqual({
+      id: "company-a",
+      name: "Advance Auto Parts",
+      slug: "company-a",
+      icon: null,
+    });
+  });
+
+  it("rejects a group that has no usable company identity", () => {
+    const blank = postingHit("company-a", "", NOW).document;
+    blank.company_slug = "";
+
+    expect(resolveTypesenseCompany("company-a", [blank])).toBeNull();
   });
 });

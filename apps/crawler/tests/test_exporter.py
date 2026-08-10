@@ -346,6 +346,17 @@ class TestPostingSchema:
         assert "updated_at < $4" in sql
         assert "ORDER BY updated_at, id LIMIT $3" in sql
 
+    def test_typesense_query_joins_canonical_company_metadata(self):
+        sql = PostingSchema.select_typesense_changed_sql("last_seen_at", "updated_at")
+
+        assert "JOIN company c ON c.id = jp.company_id" in sql
+        assert "c.name AS company_name" in sql
+        assert "c.slug AS company_slug" in sql
+        assert "c.icon AS company_icon" in sql
+        assert "(jp.updated_at, jp.id) > ($1, $2)" in sql
+        assert "jp.updated_at < $4" in sql
+        assert "ORDER BY jp.updated_at, jp.id LIMIT $3" in sql
+
 
 class TestUpsertToSupabase:
     """Mirror TestExportChangedPostings against the dual-path upsert helper.
@@ -1750,6 +1761,9 @@ def _make_posting_record(
     salary_max: int | None = None,
     salary_currency: str | None = None,
     salary_period: str | None = None,
+    company_name: str | None = None,
+    company_slug: str | None = None,
+    company_icon: str | None = None,
 ) -> MagicMock:
     """Simulate an asyncpg.Record for a job_posting row."""
     company_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -1779,12 +1793,35 @@ def _make_posting_record(
         "source_url": "https://example.com/job",
         "description_r2_hash": description_r2_hash,
     }
+    if company_name is not None:
+        data["company_name"] = company_name
+    if company_slug is not None:
+        data["company_slug"] = company_slug
+    if company_icon is not None:
+        data["company_icon"] = company_icon
     rec = MagicMock()
     rec.keys.return_value = list(data.keys())
     rec.__getitem__ = lambda self, k: data[k]
     rec.__contains__ = lambda self, k: k in data
     rec.get = lambda k, default=None: data.get(k, default)
     return rec
+
+
+class TestBuildTypesenseDocsCompanyMetadata:
+    def test_joined_company_metadata_wins_when_cache_is_stale(self):
+        maps = _make_taxonomy_maps()
+        maps.company_info.clear()
+        row = _make_posting_record(
+            company_name="Canonical Company",
+            company_slug="canonical-company",
+            company_icon="https://assets.example/company.svg",
+        )
+
+        [doc] = _build_typesense_docs([row], maps)
+
+        assert doc["company_name"] == "Canonical Company"
+        assert doc["company_slug"] == "canonical-company"
+        assert doc["company_icon"] == "https://assets.example/company.svg"
 
 
 class TestBuildTypesenseDocsAncestors:

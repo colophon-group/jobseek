@@ -16,6 +16,10 @@ import type {
 } from "./types";
 import { normalizePostingTitle } from "@/lib/posting-title";
 import { logExternalError } from "@/lib/safe-external-error";
+import {
+  resolveTypesenseCompany,
+  type TypesenseCompanyDocument,
+} from "./typesense-company";
 
 interface JobPostingDoc {
   id: string;
@@ -38,15 +42,6 @@ interface JobPostingDoc {
   experience_max?: number;
   locales: string[];
   first_seen_at: number;
-}
-
-interface CompanyDoc {
-  id: string;
-  name: string;
-  slug: string;
-  icon?: string;
-  active_posting_count: number;
-  year_posting_count: number;
 }
 
 type SearchHit<T> = { document: T; text_match?: number };
@@ -156,6 +151,32 @@ function emptyResponse(): SearchResponse {
   return { companies: [], totalCompanies: 0, degraded: true };
 }
 
+async function fetchCompaniesById(
+  cfg: TypesenseBrowserConfig,
+  companyIds: string[],
+): Promise<Map<string, TypesenseCompanyDocument>> {
+  const ids = [...new Set(companyIds.filter((id) => id.trim().length > 0))];
+  if (ids.length === 0) return new Map();
+
+  try {
+    const result = await searchOne<TypesenseCompanyDocument>(cfg, "company", {
+      q: "*",
+      filter_by: `id:[${ids.join(",")}]`,
+      per_page: ids.length,
+    });
+    return new Map(
+      (result.hits ?? []).map((hit) => [hit.document.id, hit.document]),
+    );
+  } catch (error) {
+    logExternalError(
+      "warn",
+      { service: "typesense", operation: "browser_companies_by_id" },
+      error,
+    );
+    return new Map();
+  }
+}
+
 async function fetchYearCounts(
   cfg: TypesenseBrowserConfig,
   companyIds: string[],
@@ -212,18 +233,30 @@ export class TypesenseBrowserProvider implements SearchProvider {
       const totalCompanies = result.facet_counts?.[0]?.stats?.total_values ?? 0;
       const groupedHits = (result.grouped_hits ?? []) as GroupedHit<JobPostingDoc>[];
       const companyIds = groupedHits.map((g) => g.hits[0].document.company_id);
-      const yearMap = await fetchYearCounts(cfg, companyIds, filterStr, keywords.join(" "));
+      const [yearMap, companyMap] = await Promise.all([
+        fetchYearCounts(cfg, companyIds, filterStr, keywords.join(" ")),
+        fetchCompaniesById(cfg, companyIds),
+      ]);
 
-      const companies: SearchResultCompany[] = groupedHits.map((g) => {
-        const first = g.hits[0].document;
-        const cid = first.company_id;
-        return {
-          company: { id: cid, name: first.company_name, slug: first.company_slug, icon: first.company_icon ?? null },
-          activeMatches: g.found ?? 0,
-          yearMatches: yearMap.get(cid) ?? 0,
-          postings: g.hits.map((h) => mapHitToPosting(h, locationIds)),
-        };
-      });
+      const companies: SearchResultCompany[] = groupedHits
+        .map((g) => {
+          const first = g.hits[0]?.document;
+          if (!first) return null;
+          const cid = first.company_id;
+          const company = resolveTypesenseCompany(
+            cid,
+            g.hits.map((hit) => hit.document),
+            companyMap.get(cid),
+          );
+          if (!company) return null;
+          return {
+            company,
+            activeMatches: g.found ?? 0,
+            yearMatches: yearMap.get(cid) ?? 0,
+            postings: g.hits.map((h) => mapHitToPosting(h, locationIds)),
+          };
+        })
+        .filter((company): company is SearchResultCompany => company !== null);
 
       return { companies, totalCompanies };
     } catch (err) {
@@ -279,7 +312,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
     const companyIds = page.map((c) => c.value);
     const activeMap = new Map(page.map((c) => [c.value, c.count] as [string, number]));
 
-    const [yearMap, postingResults] = await Promise.all([
+    const [yearMap, postingResults, companyMap] = await Promise.all([
       fetchYearCounts(cfg, companyIds, filterStr, "*"),
       searchOne<JobPostingDoc>(cfg, "job_posting", {
         q: "*",
@@ -289,6 +322,7 @@ export class TypesenseBrowserProvider implements SearchProvider {
         sort_by: "first_seen_at:desc",
         per_page: companyIds.length,
       }),
+      fetchCompaniesById(cfg, companyIds),
     ]);
 
     const groupMap = new Map<string, GroupedHit<JobPostingDoc>>(
@@ -301,9 +335,16 @@ export class TypesenseBrowserProvider implements SearchProvider {
       .map((cid) => {
         const g = groupMap.get(cid);
         if (!g) return null;
-        const first = g.hits[0].document;
+        const first = g.hits[0]?.document;
+        if (!first) return null;
+        const company = resolveTypesenseCompany(
+          cid,
+          g.hits.map((hit) => hit.document),
+          companyMap.get(cid),
+        );
+        if (!company) return null;
         return {
-          company: { id: cid, name: first.company_name, slug: first.company_slug, icon: first.company_icon ?? null },
+          company,
           activeMatches: activeMap.get(cid) ?? 0,
           yearMatches: yearMap.get(cid) ?? 0,
           postings: mapHitsToPostingsByFreshness(g.hits, locationIds),
@@ -337,33 +378,31 @@ export class TypesenseBrowserProvider implements SearchProvider {
     if (groupedHits.length === 0) return { companies: [], totalCompanies };
 
     const companyIds = groupedHits.map((g) => g.hits[0].document.company_id);
-    const companyResults = await searchOne<CompanyDoc>(cfg, "company", {
-      q: "*",
-      filter_by: `id:[${companyIds.join(",")}]`,
-      per_page: companyIds.length,
-    });
-    const compMap = new Map<string, CompanyDoc>(
-      (companyResults.hits ?? []).map((h) => [h.document.id, h.document]),
-    );
+    const compMap = await fetchCompaniesById(cfg, companyIds);
 
     const companies: SearchResultCompany[] = groupedHits
       .map((g) => {
-        const first = g.hits[0].document;
+        const first = g.hits[0]?.document;
+        if (!first) return null;
         const cid = first.company_id;
         const compDoc = compMap.get(cid);
+        const company = resolveTypesenseCompany(
+          cid,
+          g.hits.map((hit) => hit.document),
+          compDoc,
+        );
+        if (!company) return null;
         return {
-          company: {
-            id: cid,
-            name: compDoc?.name ?? first.company_name,
-            slug: compDoc?.slug ?? first.company_slug,
-            icon: compDoc?.icon ?? first.company_icon ?? null,
-          },
+          company,
           activeMatches: compDoc?.active_posting_count ?? g.found ?? g.hits.length,
           yearMatches: compDoc?.year_posting_count ?? 0,
           postings: mapHitsToPostingsByFreshness(g.hits),
         } satisfies SearchResultCompany;
       })
-      .filter((c) => c.postings.length > 0);
+      .filter(
+        (company): company is SearchResultCompany =>
+          company !== null && company.postings.length > 0,
+      );
 
     return { companies, totalCompanies };
   }
