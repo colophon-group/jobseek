@@ -747,6 +747,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if detail:
             return f"API sniffer \u2014 {detail} at {api_url}"
         return f"API sniffer \u2014 {api_url}"
+    if name == "welcometothejungle":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Welcome to the Jungle \u2014 {slug}, {jobs} jobs"
+        return f"Welcome to the Jungle \u2014 {slug}"
     return str(metadata)
 
 
@@ -853,6 +859,7 @@ from src.core.monitors import (  # noqa: E402
     typify,  # noqa: F401
     ukg,  # noqa: F401
     umantis,  # noqa: F401
+    welcometothejungle,  # noqa: F401
     workable,  # noqa: F401
     workday,  # noqa: F401
     ycombinator,  # noqa: F401

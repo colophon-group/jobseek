@@ -93,6 +93,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "traffit",
         "typify",
         "ukg",
+        "welcometothejungle",
     }
 )
 
@@ -238,6 +239,10 @@ def detect_ats_from_url(url: str) -> str | None:
         return "ashby"
     if host == "jobs.gem.com":
         return "gem"
+    if host == "www.welcometothejungle.com" and re.fullmatch(
+        r"/(?:[a-z]{2}/)?companies/[^/]+/jobs/?", parsed.path
+    ):
+        return "welcometothejungle"
     if adp_board_from_url(url) is not None:
         return "adp"
     if is_avature_vendor_url(url):

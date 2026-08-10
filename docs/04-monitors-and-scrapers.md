@@ -85,6 +85,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `traffit` | Rich | skip | Traffit ATS |
 | `typify` | Rich + enrichment | json-ld | Typify function-partitioned vacancy API plus JSON-LD description enrichment |
 | `ukg` | Rich | embedded | UKG Pro public paginated search API plus embedded detail enrichment |
+| `welcometothejungle` | Rich | skip | Welcome to the Jungle public jobs APIs |
 | `workable` | URL-only | workable | Workable ATS |
 | `workday` | URL-only | workday | Workday ATS |
 | `ycombinator` | URL-only | json-ld | YC Jobs fallback pages |

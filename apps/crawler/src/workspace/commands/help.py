@@ -115,6 +115,7 @@ Monitor Types (cheapest first):
   traffit           10      Full job data     No (skipped)
   ukg               10      Full/partial      Auto-enriched
   workable          10      Job URLs          Auto-configured
+  welcometothejungle 10      Full job data     No (skipped)
   workday           10      Job URLs          Auto-configured
   personio          10      Full/partial      If descriptions missing (fallback)
   practicematch     10      Job URLs          Auto-configured
@@ -2127,6 +2128,28 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
   increase the limit (e.g. result_limit=100) and update pagination.increment
   to match. This reduces the number of API calls needed to fetch all jobs."""
 
+MONITOR_WELCOMETOTHEJUNGLE = """\
+welcometothejungle — Welcome to the Jungle public jobs APIs
+
+  Board:    https://www.welcometothejungle.com/<locale>/companies/<slug>/jobs
+  Returns:  Full job data (title, HTML description, locations, contract,
+            remote policy, posting date, salary, skills and qualifications)
+  Scraper:  Not needed (skipped)
+  Cost:     10
+
+  The monitor resolves the visible company slug through WTTJ's public
+  organization endpoint, queries the public search-only Algolia jobs index,
+  deduplicates marketplace/language mirrors, and hydrates each active job from
+  WTTJ's public organization job endpoint.
+
+  Config (auto-detected):
+    {"slug": "wojo", "locale": "fr", "organization_slug": "nextdoor"}
+
+  slug               Public slug from the company page URL.
+  locale             Two-letter URL locale used for canonical job URLs.
+  organization_slug  Internal WTTJ slug; may be a legacy company name and is
+                     auto-resolved when omitted."""
+
 SCRAPER_JSONLD = """\
 json-ld — Schema.org JobPosting Extractor
 
@@ -2855,6 +2878,7 @@ MONITOR_CARDS: dict[str, str] = {
     "traffit": MONITOR_TRAFFIT,
     "umantis": MONITOR_UMANTIS,
     "workable": MONITOR_WORKABLE,
+    "welcometothejungle": MONITOR_WELCOMETOTHEJUNGLE,
     "workday": MONITOR_WORKDAY,
     "paylocity": MONITOR_PAYLOCITY,
     "pinpoint": MONITOR_PINPOINT,
