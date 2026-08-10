@@ -13,7 +13,11 @@ import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { MobileJobDetailDialog } from "@/components/search/mobile-job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
 import { useSalaryRates } from "@/components/providers/SalaryDisplayProvider";
-import { runSearchJobs, runListTopCompanies } from "@/lib/search/search-runner";
+import {
+  runSearchJobs,
+  runListTopCompanies,
+  tryListTopCompaniesDirect,
+} from "@/lib/search/search-runner";
 import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
 import { useSession } from "@/components/providers/SessionProvider";
 import { parseSearchFilters } from "@/lib/actions/search-input";
@@ -175,6 +179,7 @@ export function SearchPage({
   );
   const [isSearching, setIsSearching] = useState(false);
   const searchCounterRef = useRef(0);
+  const initialDirectRefreshKeyRef = useRef<string | null>(null);
   const [isTruncated, setIsTruncated] = useState(initialTruncated ?? false);
   const [isDegraded, setIsDegraded, isDegradedRef] = useLatestState(
     shouldRestore ? (cached.degraded ?? false) : (initialDegraded ?? false),
@@ -572,6 +577,63 @@ export function SearchPage({
     })();
   };
   function runSearch() { runSearchRef.current(); }
+
+  // The server payload is deliberately cached longer to avoid continuous ISR
+  // regeneration. Refresh the default inventory from browser-direct Typesense
+  // after hydration, without a Server Action fallback, so visitors still see
+  // current results and the refresh cannot add Fluid CPU.
+  const directRefreshLanguagesKey = languages.join(",");
+  useEffect(() => {
+    if (shouldRestore || hasFilters) return;
+
+    const refreshKey = [
+      locale,
+      directRefreshLanguagesKey,
+      userLat ?? "",
+      userLng ?? "",
+    ].join("|");
+    if (initialDirectRefreshKeyRef.current === refreshKey) return;
+    initialDirectRefreshKeyRef.current = refreshKey;
+
+    const id = ++searchCounterRef.current;
+    void tryListTopCompaniesDirect(
+      {
+        locationIds: undefined,
+        occupationIds: undefined,
+        seniorityIds: undefined,
+        technologyIds: undefined,
+        employmentTypes: undefined,
+        workMode: undefined,
+        salaryMinEur: undefined,
+        salaryMaxEur: undefined,
+        experienceMin: undefined,
+        experienceMax: undefined,
+        languages,
+        locale,
+        offset: 0,
+        limit: PAGE_SIZE,
+      },
+      isLoggedInRef.current,
+    ).then((result) => {
+      if (!result || searchCounterRef.current !== id) return;
+      setCompanies(result.companies);
+      serverOffsetRef.current = result.companies.length;
+      setTotalCompanies(result.totalCompanies);
+      setIsTruncated(result.truncated ?? false);
+      setIsDegraded(false);
+    });
+
+    return () => {
+      if (searchCounterRef.current === id) searchCounterRef.current += 1;
+    };
+  }, [
+    directRefreshLanguagesKey,
+    hasFilters,
+    locale,
+    shouldRestore,
+    userLat,
+    userLng,
+  ]);
 
   const handleRemoveKeyword = useCallback(
     (keyword: string) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useTransition, useEffect, useMemo } from "react";
+import { useState, useCallback, useTransition, useEffect, useMemo, useRef } from "react";
 import { Loader2 } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
@@ -9,7 +9,10 @@ import { getCompanyPostingListState } from "./company-posting-state";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
 import { MobileJobDetailDialog } from "@/components/search/mobile-job-detail-dialog";
 import { SearchToolbar } from "@/components/search/search-toolbar";
-import { runGetCompanyPostings } from "@/lib/search/search-runner";
+import {
+  runGetCompanyPostings,
+  tryGetCompanyPostingsDirect,
+} from "@/lib/search/search-runner";
 import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
 import { useSession } from "@/components/providers/SessionProvider";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
@@ -115,6 +118,8 @@ export function CompanyPage({
   const [isSearching, startSearch] = useTransition();
   const [exhausted, setExhausted] = useState(initialPostings.length < PAGE_SIZE);
   const [isTruncated, setIsTruncated] = useState(initialTruncated ?? false);
+  const searchGenerationRef = useRef(0);
+  const initialDirectRefreshKeyRef = useRef<string | null>(null);
 
   // Currency rates for EUR conversion — shared via `SalaryDisplayProvider`
   // which fetches once at the (app) layout root. Previously this page
@@ -202,6 +207,7 @@ export function CompanyPage({
     const salMaxEur = toEur(salaryMaxRef.current);
     const expMin = experienceMinRef.current;
     const expMax = experienceMaxRef.current;
+    const generation = ++searchGenerationRef.current;
     startSearch(async () => {
       const result = await runGetCompanyPostings(
         {
@@ -224,6 +230,7 @@ export function CompanyPage({
         },
         isLoggedInRef.current,
       );
+      if (searchGenerationRef.current !== generation) return;
       setPostings(result.postings);
       setActiveCount(result.activeCount);
       setYearCount(result.yearCount);
@@ -231,6 +238,55 @@ export function CompanyPage({
       setIsTruncated(result.truncated ?? false);
     });
   }
+
+  // Keep the anonymous shell cacheable for an hour, then revalidate the
+  // visible default postings directly from Typesense after hydration. This
+  // path never falls back to a Server Action, so it preserves freshness
+  // without converting page views back into Fluid CPU.
+  const directRefreshLanguagesKey = languages.join(",");
+  useEffect(() => {
+    if (hasFilters) return;
+
+    const refreshKey = [company.id, uiLocale, directRefreshLanguagesKey].join("|");
+    if (initialDirectRefreshKeyRef.current === refreshKey) return;
+    initialDirectRefreshKeyRef.current = refreshKey;
+
+    const generation = ++searchGenerationRef.current;
+    void tryGetCompanyPostingsDirect(
+      {
+        companyId: company.id,
+        keywords: [],
+        locationIds: undefined,
+        occupationIds: undefined,
+        seniorityIds: undefined,
+        technologyIds: undefined,
+        employmentTypes: undefined,
+        workMode: undefined,
+        salaryMinEur: undefined,
+        salaryMaxEur: undefined,
+        experienceMin: undefined,
+        experienceMax: undefined,
+        languages,
+        locale: uiLocale,
+        offset: 0,
+        limit: PAGE_SIZE,
+      },
+      isLoggedInRef.current,
+    ).then((result) => {
+      if (!result || searchGenerationRef.current !== generation) return;
+      setPostings(result.postings);
+      setActiveCount(result.activeCount);
+      setYearCount(result.yearCount);
+      setExhausted(result.postings.length < PAGE_SIZE);
+      setIsTruncated(result.truncated ?? false);
+    });
+
+    return () => {
+      if (searchGenerationRef.current === generation) {
+        searchGenerationRef.current += 1;
+      }
+    };
+  }, [company.id, directRefreshLanguagesKey, hasFilters, uiLocale]);
 
   // Register pageActions so the header SearchBar can interact directly
   useEffect(() => {
@@ -468,6 +524,7 @@ export function CompanyPage({
   }, [displayCurrency]);
 
   async function handleLoadMore() {
+    const generation = ++searchGenerationRef.current;
     const locationIds = locations.map((l) => l.id);
     const occupationIds = occupations.length > 0 ? occupations.map((o) => o.id) : undefined;
     const seniorityIds = seniorities.length > 0 ? seniorities.map((s) => s.id) : undefined;
@@ -498,6 +555,7 @@ export function CompanyPage({
       },
       isLoggedInRef.current,
     );
+    if (searchGenerationRef.current !== generation) return;
     if (result.truncated) setIsTruncated(true);
     if (result.postings.length > 0) {
       setPostings((prev) => {

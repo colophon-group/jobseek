@@ -1,10 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Readable } from "node:stream";
 import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
 vi.mock("server-only", () => ({}));
 
-const s3Mock = vi.hoisted(() => ({
-  send: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  httpsRequest: vi.fn(),
+  s3Send: vi.fn(),
+}));
+
+vi.mock("node:https", () => ({
+  default: { request: mocks.httpsRequest },
 }));
 
 vi.mock("@aws-sdk/client-s3", () => {
@@ -25,7 +31,7 @@ vi.mock("@aws-sdk/client-s3", () => {
   }
 
   class MockS3Client {
-    send = s3Mock.send;
+    send = mocks.s3Send;
   }
 
   return {
@@ -44,10 +50,27 @@ function configureR2Env() {
   });
 }
 
+function mockPublicResponse(statusCode: number, bytes: Uint8Array = new Uint8Array()) {
+  mocks.httpsRequest.mockImplementation(
+    (_url: string, _options: unknown, callback: (response: unknown) => void) => {
+      const response = Readable.from(bytes.length > 0 ? [bytes] : []);
+      Object.assign(response, { statusCode });
+      callback(response);
+      return {
+        destroy: vi.fn(),
+        end: vi.fn(),
+        on: vi.fn(),
+        setTimeout: vi.fn(),
+      };
+    },
+  );
+}
+
 describe("company OG cache", () => {
   withTestEnv({
     COMPANY_OG_RENDERER_VERSION: "renderer123",
     COMPANY_OG_CACHE_BYPASS: undefined,
+    R2_DOMAIN_URL: undefined,
     R2_ENDPOINT_URL: undefined,
     R2_ACCESS_KEY_ID: undefined,
     R2_SECRET_ACCESS_KEY: undefined,
@@ -56,7 +79,8 @@ describe("company OG cache", () => {
 
   beforeEach(() => {
     vi.resetModules();
-    s3Mock.send.mockReset();
+    mocks.httpsRequest.mockReset();
+    mocks.s3Send.mockReset();
   });
 
   it("uses the renderer version in sanitized object keys", async () => {
@@ -74,6 +98,33 @@ describe("company OG cache", () => {
     expect(shouldBypassCompanyOgCache()).toBe(true);
   });
 
+  it("reads public R2 bytes with lightweight built-in HTTPS", async () => {
+    setTestEnv({ R2_DOMAIN_URL: "https://assets.example.test" });
+    mockPublicResponse(200, new Uint8Array([7, 8, 9]));
+    const { readCompanyOgCache } = await import("../company-og-cache");
+
+    const bytes = await readCompanyOgCache("og/company/x/en/acme labs.png");
+
+    expect(Array.from(bytes ?? [])).toEqual([7, 8, 9]);
+    expect(mocks.httpsRequest).toHaveBeenCalledWith(
+      "https://assets.example.test/og/company/x/en/acme%20labs.png",
+      { method: "GET" },
+      expect.any(Function),
+    );
+    expect(mocks.s3Send).not.toHaveBeenCalled();
+  });
+
+  it("treats a public R2 404 as a cache miss without loading the AWS SDK", async () => {
+    setTestEnv({ R2_DOMAIN_URL: "https://assets.example.test" });
+    mockPublicResponse(404);
+    const { readCompanyOgCache } = await import("../company-og-cache");
+
+    await expect(
+      readCompanyOgCache("og/company/x/en/missing.png"),
+    ).resolves.toBeNull();
+    expect(mocks.s3Send).not.toHaveBeenCalled();
+  });
+
   it("soft-disables reads and writes when R2 is not configured", async () => {
     const { readCompanyOgCache, writeCompanyOgCache } = await import("../company-og-cache");
 
@@ -83,17 +134,17 @@ describe("company OG cache", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("reads R2 bodies with transformToByteArray", async () => {
+  it("falls back to a signed R2 read when no public domain is configured", async () => {
     configureR2Env();
     const transformToByteArray = vi.fn().mockResolvedValue(new Uint8Array([4, 5, 6]));
-    s3Mock.send.mockResolvedValueOnce({ Body: { transformToByteArray } });
+    mocks.s3Send.mockResolvedValueOnce({ Body: { transformToByteArray } });
     const { readCompanyOgCache } = await import("../company-og-cache");
 
     const bytes = await readCompanyOgCache("og/company/x/en/acme.png");
 
     expect(Array.from(bytes ?? [])).toEqual([4, 5, 6]);
     expect(transformToByteArray).toHaveBeenCalledOnce();
-    expect(s3Mock.send).toHaveBeenCalledOnce();
+    expect(mocks.s3Send).toHaveBeenCalledOnce();
   });
 
   it("reads iterable R2 bodies", async () => {
@@ -102,12 +153,25 @@ describe("company OG cache", () => {
       yield new Uint8Array([1, 2]);
       yield new Uint8Array([3]);
     }
-    s3Mock.send.mockResolvedValueOnce({ Body: chunks() });
+    mocks.s3Send.mockResolvedValueOnce({ Body: chunks() });
     const { readCompanyOgCache } = await import("../company-og-cache");
 
     const bytes = await readCompanyOgCache("og/company/x/en/acme.png");
 
     expect(Array.from(bytes ?? [])).toEqual([1, 2, 3]);
-    expect(s3Mock.send).toHaveBeenCalledOnce();
+    expect(mocks.s3Send).toHaveBeenCalledOnce();
+  });
+
+  it("lazy-loads the AWS SDK for cache writes", async () => {
+    configureR2Env();
+    mocks.s3Send.mockResolvedValueOnce({});
+    const { writeCompanyOgCache } = await import("../company-og-cache");
+
+    await writeCompanyOgCache(
+      "og/company/x/en/acme.png",
+      new Uint8Array([1, 2, 3]),
+    );
+
+    expect(mocks.s3Send).toHaveBeenCalledOnce();
   });
 });

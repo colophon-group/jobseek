@@ -65,6 +65,7 @@ vi.mock("@/lib/actions/search", () => ({
 vi.mock("@/lib/search/search-runner", () => ({
   runSearchJobs: vi.fn().mockResolvedValue({ companies: [], totalCompanies: 0, truncated: false }),
   runListTopCompanies: vi.fn().mockResolvedValue({ companies: [], totalCompanies: 0, truncated: false }),
+  tryListTopCompaniesDirect: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("@/lib/search/use-clear-typesense-on-auth-change", () => ({

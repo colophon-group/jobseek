@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { cacheLife, cacheTag } from "next/cache";
 import { isLocale, defaultLocale, loadCatalog, initI18nForPage, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { companyCacheTag } from "@/lib/cache-tags";
-import { CACHE_TTL_DETAIL } from "@/lib/cache-ttl";
+import { CACHE_TTL_COMPANY_SHELL } from "@/lib/cache-ttl";
 import { fetchCompanyPageDefaults } from "@/lib/actions/company-page-data";
 import type { Locale } from "@/lib/i18n";
 import { siteConfig } from "@/content/config";
@@ -28,14 +28,14 @@ type Props = {
  */
 async function getCompanyRouteSnapshot(slug: string, locale: Locale) {
   "use cache";
-  cacheLife({ revalidate: CACHE_TTL_DETAIL });
+  cacheLife({ revalidate: CACHE_TTL_COMPANY_SHELL });
   cacheTag(companyCacheTag(slug));
   return fetchCompanyPageDefaults({ slug, locale });
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   "use cache";
-  cacheLife({ revalidate: CACHE_TTL_DETAIL });
+  cacheLife({ revalidate: CACHE_TTL_COMPANY_SHELL });
   const { slug, lang } = await params;
   cacheTag(companyCacheTag(slug));
   const locale = isLocale(lang) ? lang : defaultLocale;
@@ -147,7 +147,7 @@ async function CompanyNotFound({ locale, slug }: { locale: Locale; slug: string 
 
 export default async function CompanyPageRoute({ params }: Props) {
   "use cache";
-  cacheLife({ revalidate: CACHE_TTL_DETAIL });
+  cacheLife({ revalidate: CACHE_TTL_COMPANY_SHELL });
   const locale = await initI18nForPage(params);
   const { slug } = await params;
   cacheTag(companyCacheTag(slug));
@@ -164,10 +164,12 @@ export default async function CompanyPageRoute({ params }: Props) {
   if (!initialData) return <CompanyNotFound locale={locale} slug={slug} />;
   const { company } = initialData;
 
-  // The page body is `'use cache'`-wrapped (10-minute revalidate) so the
+  // The page body is `'use cache'`-wrapped (1-hour revalidate) so the
   // anonymous static shell ships from the per-region cache without
   // invoking a function on every request. Anything that reads
-  // `searchParams`, `headers()`, `cookies()`, or session state inside
+  // `CompanyPage` refreshes anonymous postings directly from Typesense after
+  // hydration, preserving visible freshness. `searchParams`, `headers()`,
+  // `cookies()`, or session state inside
   // this function would either fail the build or kill the cache. The
   // back-link (filter-aware) and similar-companies strip live in client
   // subtrees that read `useSearchParams()` so the shell here stays

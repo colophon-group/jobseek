@@ -1,10 +1,7 @@
 import "server-only";
 
-import {
-  GetObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from "@aws-sdk/client-s3";
+import https from "node:https";
+import type { S3Client } from "@aws-sdk/client-s3";
 import { logExternalError } from "@/lib/safe-external-error";
 
 const CONTENT_TYPE = "image/png";
@@ -53,8 +50,11 @@ function getR2Config():
   return { endpoint, accessKeyId, secretAccessKey, bucket };
 }
 
-function getClient(config: NonNullable<ReturnType<typeof getR2Config>>): S3Client {
+async function getClient(
+  config: NonNullable<ReturnType<typeof getR2Config>>,
+): Promise<S3Client> {
   if (client) return client;
+  const { S3Client } = await import("@aws-sdk/client-s3");
   client = new S3Client({
     endpoint: config.endpoint,
     region: "auto",
@@ -65,6 +65,43 @@ function getClient(config: NonNullable<ReturnType<typeof getR2Config>>): S3Clien
     },
   });
   return client;
+}
+
+function getPublicObjectUrl(key: string): string | null {
+  const domain = process.env.R2_DOMAIN_URL;
+  if (!domain) return null;
+
+  try {
+    const base = new URL(domain.endsWith("/") ? domain : `${domain}/`);
+    if (base.protocol !== "https:") return null;
+    return new URL(key.split("/").map(encodeURIComponent).join("/"), base).toString();
+  } catch {
+    return null;
+  }
+}
+
+async function readPublicObject(
+  url: string,
+): Promise<{ status: number; bytes: Uint8Array | null }> {
+  return new Promise((resolve, reject) => {
+    const request = https.request(url, { method: "GET" }, (response) => {
+      const status = response.statusCode ?? 0;
+      if (status < 200 || status >= 300) {
+        response.resume();
+        resolve({ status, bytes: null });
+        return;
+      }
+
+      void bodyToBytes(response)
+        .then((bytes) => resolve({ status, bytes }))
+        .catch(reject);
+    });
+    request.setTimeout(3000, () => {
+      request.destroy(new Error("R2 public cache probe timed out"));
+    });
+    request.on("error", reject);
+    request.end();
+  });
 }
 
 async function bodyToBytes(body: unknown): Promise<Uint8Array | null> {
@@ -93,12 +130,13 @@ function isMissingObjectError(error: unknown): boolean {
   return name === "NoSuchKey" || name === "NotFound" || code === 404;
 }
 
-export async function readCompanyOgCache(key: string): Promise<Uint8Array | null> {
+async function readCompanyOgCacheSigned(key: string): Promise<Uint8Array | null> {
   const config = getR2Config();
   if (!config) return null;
 
   try {
-    const response = await getClient(config).send(new GetObjectCommand({
+    const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+    const response = await (await getClient(config)).send(new GetObjectCommand({
       Bucket: config.bucket,
       Key: key,
     }));
@@ -110,6 +148,27 @@ export async function readCompanyOgCache(key: string): Promise<Uint8Array | null
   }
 }
 
+export async function readCompanyOgCache(
+  key: string,
+): Promise<Uint8Array | null> {
+  const publicUrl = getPublicObjectUrl(key);
+  if (publicUrl) {
+    try {
+      const result = await readPublicObject(publicUrl);
+      if (result.bytes) return result.bytes;
+      if (result.status === 404) return null;
+    } catch (error) {
+      logExternalError(
+        "warn",
+        { service: "r2", operation: "probe_public_company_og" },
+        error,
+      );
+    }
+  }
+
+  return readCompanyOgCacheSigned(key);
+}
+
 export async function writeCompanyOgCache(
   key: string,
   body: Uint8Array,
@@ -118,7 +177,8 @@ export async function writeCompanyOgCache(
   if (!config) return;
 
   try {
-    await getClient(config).send(new PutObjectCommand({
+    const { PutObjectCommand } = await import("@aws-sdk/client-s3");
+    await (await getClient(config)).send(new PutObjectCommand({
       Bucket: config.bucket,
       Key: key,
       Body: body,
