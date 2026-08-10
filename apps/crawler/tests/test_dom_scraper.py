@@ -89,6 +89,55 @@ FIXTURE_HTML = """
 
 
 class TestDomScraper:
+    def test_kontact_probe_builds_clean_extraction_config(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head>
+          <meta name="Author" content="KontactIntelligence.com">
+        </head><body>
+          <nav><h1>Navigation title</h1></nav>
+          <div id="content">
+            <div class="bold">Location:</div><div>Rome, GA</div>
+            <h1 class="opportunityTitle">Cardiothoracic Surgery APP</h1>
+            <h2>Overview</h2>
+            <p>Join a collaborative surgical team.</p>
+            <h2>Job Requirements</h2>
+            <p>Current Georgia license.</p>
+          </div>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        assert config["scope"] == "#content"
+
+        result = parse_html(html, config)
+        assert result.title == "Cardiothoracic Surgery APP"
+        assert result.locations == ["Rome, GA"]
+        assert result.description == "<p>Join a collaborative surgical team.</p>"
+
+    def test_kontact_probe_supports_h2_opportunity_title(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head>
+          <meta name="Author" content="KontactIntelligence.com">
+        </head><body><div id="content">
+          <div>Location:</div><div>Orlando, FL 32804</div>
+          <h2 class="opportunityTitle">Family Medicine Physician</h2>
+          <h2>Overview</h2><p>Lead an outpatient practice.</p>
+          <h2>Client Description</h2><p>Employer boilerplate.</p>
+        </div></body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        result = parse_html(html, config)
+        assert result.title == "Family Medicine Physician"
+        assert result.locations == ["Orlando, FL 32804"]
+        assert result.description == "<p>Lead an outpatient practice.</p>"
+
     async def test_missing_steps_returns_empty(self):
         """No 'steps' key → empty JobContent."""
         from src.core.scrapers.dom import scrape

@@ -69,6 +69,47 @@ _LINKEDIN_JOB_TRANSFORM = {
     "replace": r"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/\1",
 }
 
+_KONTACT_MARKER = "kontactintelligence.com"
+_KONTACT_URL_FILTER = r"/Physician_Job/Details/"
+
+
+def _kontact_probe_config(html: str, url: str) -> dict | None:
+    """Return the complete DOM config for a KontactIntelligence board.
+
+    These physician boards expose ordinary links, but their first-page
+    response has intermittently arrived before the listing fragment is ready.
+    A browser readiness check plus same-context pagination avoids recording a
+    healthy empty crawl, while the provider's stable ``?pg=N`` contract keeps
+    pagination generic.
+    """
+
+    if _KONTACT_MARKER not in html.casefold():
+        return None
+
+    matcher = _build_url_matcher(_KONTACT_URL_FILTER)
+    urls = _extract_links_static(html, url, matcher)
+    return {
+        "urls": len(urls),
+        "render": True,
+        "wait": "networkidle",
+        "wait_fallback": "domcontentloaded",
+        "timeout": 30_000,
+        "actions": [
+            {
+                "action": "wait_for",
+                "selector": 'a[href*="/Physician_Job/Details/"]',
+                "state": "attached",
+                "timeout": 10,
+            }
+        ],
+        "url_filter": _KONTACT_URL_FILTER,
+        "pagination": {
+            "param_name": "pg",
+            "max_pages": 1_000,
+            "browser": True,
+        },
+    }
+
 
 def _is_linkedin_job_url(url: str) -> bool:
     """Return whether *url* is a public LinkedIn job-detail link."""
@@ -508,6 +549,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     html = await fetch_page_text(url, client)
     if not html:
         return None
+
+    kontact = _kontact_probe_config(html, url)
+    if kontact is not None:
+        return kontact
 
     urls = _extract_links_static(html, url)
     linkedin_urls = {candidate for candidate in urls if _is_linkedin_job_url(candidate)}

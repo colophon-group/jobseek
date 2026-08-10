@@ -121,6 +121,43 @@ class TestBuildUrlMatcher:
 
 
 class TestCanHandle:
+    async def test_kontact_board_returns_complete_browser_pagination_config(self):
+        html = """
+        <html><head>
+          <meta name="Author" content="KontactIntelligence.com">
+        </head><body>
+          <a href="/Physician_Job/Details/Family-Medicine/123">View</a>
+          <a href="?pg=2">2</a>
+        </body></html>
+        """
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=html),
+        ):
+            result = await can_handle("https://example.com/Physician_Jobs", MagicMock())
+
+        assert result == {
+            "urls": 1,
+            "render": True,
+            "wait": "networkidle",
+            "wait_fallback": "domcontentloaded",
+            "timeout": 30_000,
+            "actions": [
+                {
+                    "action": "wait_for",
+                    "selector": 'a[href*="/Physician_Job/Details/"]',
+                    "state": "attached",
+                    "timeout": 10,
+                }
+            ],
+            "url_filter": r"/Physician_Job/Details/",
+            "pagination": {
+                "param_name": "pg",
+                "max_pages": 1_000,
+                "browser": True,
+            },
+        }
+
     async def test_linkedin_jobs_use_public_guest_endpoint(self):
         html = _html_with_links(
             "https://www.linkedin.com/jobs/view/software-engineer-4434484597/",
