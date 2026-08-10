@@ -48,6 +48,9 @@ Per-board config (in ``monitor_config``):
   mchire uses ``["en", "en-us", "es-es", "es-mx"]`` to pick up its
   Spanish franchisee shards (0.4% overlap with English → ~16k extra
   jobs, see issue #2548).
+- ``url_exclude`` — optional regular expression applied to otherwise valid
+  job URLs. Use this only for tenant-specific upstream test postings that
+  are published in the production sitemap.
 """
 
 from __future__ import annotations
@@ -249,6 +252,9 @@ async def discover(
 
     urls, truncated = await _collect_urls(sitemap_url, client, keep_langs)
     job_urls = {u for u in urls if _is_phenom_job_url(u)}
+    if exclude_pattern := metadata.get("url_exclude"):
+        excluded = re.compile(str(exclude_pattern))
+        job_urls = {u for u in job_urls if not excluded.search(u)}
 
     log_fn = log.warning if truncated else log.info
     log_fn(
