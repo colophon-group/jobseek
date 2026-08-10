@@ -5264,6 +5264,7 @@ trustpilot,trustpilot-careers,https://boards.greenhouse.io/trustpilot,greenhouse
 truveta,truveta-greenhouse,https://job-boards.greenhouse.io/truveta,greenhouse,"{""token"": ""truveta""}",skip,
 tsmc,tsmc-main,https://careers.tsmc.com/en_US/careers,sitemap,"{""sitemap_url"": ""https://careers.tsmc.com/en_US/careers/sitemap.xml"", ""url_filter"": ""/JobDetail/"", ""proxy"": true}",json-ld,"{""proxy"": true}"
 tsmc,tsmc-successfactors,https://ro.careers.tsmc.com/search/?createNewAlert=false&q=&locationsearch=,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://ro.careers.tsmc.com/googlefeed.xml""}",json-ld,
+tsmg,tsmg-careers,https://jobs.lever.co/tsmg,lever,,skip,
 tubi,tubi-greenhouse,https://job-boards.greenhouse.io/tubitv,greenhouse,"{""token"": ""tubitv""}",skip,
 tubulis,tubulis-personio,https://tubulis-gmbh.jobs.personio.com/,personio,"{""slug"": ""tubulis-gmbh""}",skip,
 tucows,tucows-greenhouse,https://job-boards.greenhouse.io/tucows,greenhouse,"{""token"": ""tucows""}",skip,
