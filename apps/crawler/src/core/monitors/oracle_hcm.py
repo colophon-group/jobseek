@@ -38,6 +38,10 @@ log = structlog.get_logger()
 # 15 distinct boards all 503'd inside a 2m15s window on 2026-04-17 14:31:59Z
 # — one Oracle infra burp, not 15 separate board failures). Oracle also emitted
 # transient 302 responses with no usable redirect for two tenants in #5715.
+# Albertsons (#6394) additionally returns intermittent Akamai 403 responses
+# for valid finder-pagination requests; retrying the identical request
+# succeeds, so these are upstream/WAF transients rather than authorization
+# failures.
 #
 # Retry in-place with jittered exponential backoff before giving up to the
 # board-level backoff (``_RECORD_FAILURE``, which doubles the next-check
@@ -46,7 +50,7 @@ log = structlog.get_logger()
 #
 # Attempts chosen conservatively — 3 × ~6-18s covers Oracle's typical burp
 # window without stretching a single monitor beyond the 10-min lease budget.
-_TRANSIENT_STATUS = frozenset({302, 429, 500, 502, 503, 504})
+_TRANSIENT_STATUS = frozenset({302, 403, 429, 500, 502, 503, 504})
 _RETRY_ATTEMPTS = 3
 _RETRY_BASE_DELAY_S = 3.0
 
@@ -54,7 +58,7 @@ _RETRY_BASE_DELAY_S = 3.0
 async def _get_with_retry(
     client: httpx.AsyncClient, url: str, *, timeout: float = 30.0
 ) -> httpx.Response:
-    """GET with exponential-jitter backoff on transient 302/429/5xx.
+    """GET with exponential-jitter backoff on transient 302/403/429/5xx.
 
     On a non-transient status or after exhausting retries, returns the final
     response — the caller should still call ``raise_for_status()`` on it so
@@ -133,7 +137,7 @@ async def can_handle(
     # Verify API is accessible
     api_url = _build_api_url(host, site)
     try:
-        resp = await client.get(api_url, timeout=10)
+        resp = await _get_with_retry(client, api_url, timeout=10)
         if resp.status_code != 200:
             return None
         data = resp.json()
