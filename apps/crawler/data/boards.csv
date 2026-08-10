@@ -4166,6 +4166,7 @@ propublica,propublica-greenhouse,https://job-boards.greenhouse.io/propublica,gre
 proqura-gmbh,proqura-gmbh-join,https://join.com/companies/proqurade,join,"{""slug"": ""proqurade""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 prosek-partners,prosek-partners-greenhouse,https://job-boards.greenhouse.io/prosek,greenhouse,"{""token"": ""prosek""}",skip,
 proshares,proshares-greenhouse,https://job-boards.greenhouse.io/proshares,greenhouse,"{""token"": ""proshares""}",skip,
+prosidian,prosidian-careers,https://careers.smartrecruiters.com/prosidianconsulting,smartrecruiters,,smartrecruiters,
 prosper-health,prosper-health-greenhouse,https://job-boards.greenhouse.io/prosperhealth,greenhouse,"{""token"": ""prosperhealth""}",skip,
 prosus,prosus-careers,https://jobs.eu.lever.co/prosus,lever,,skip,
 protege,protege-ashby,https://jobs.ashbyhq.com/protege,ashby,"{""token"": ""protege""}",skip,
