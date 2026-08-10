@@ -203,7 +203,8 @@ FIELD_PATTERNS: dict[str, re.Pattern] = {
     ),
     "description": re.compile(
         r"^(description|body|content|bodyHtml|body_?html|descriptionHtml"
-        r"|description_?html|text|details|job_?description|summary)$",
+        r"|description_?html|text|details|job_?description"
+        r"|position_?description_?html|summary)$",
         re.I,
     ),
     "employment_type": re.compile(

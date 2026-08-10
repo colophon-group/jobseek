@@ -84,6 +84,24 @@ class TestFindSingleJob:
         assert result is not None
         assert result["title"] == "PM"
 
+    def test_finds_fountain_funnel(self):
+        body = {
+            "account": {"name": "Albertsons Companies"},
+            "funnel": {
+                "title": "Pharmacy Technician Assistant",
+                "position_description_html": "<p>" + "A " * 30 + "</p>",
+                "location": {"name": "Walla Walla, WA"},
+                "job_hours": "part_time",
+                "job_type": "permanent",
+            },
+        }
+        ex = _make_exchange(body=body)
+
+        result = _find_single_job([ex])
+
+        assert result is not None
+        assert result["title"] == "Pharmacy Technician Assistant"
+
     def test_returns_none_no_job(self):
         body = {"config": {"theme": "dark"}}
         ex = _make_exchange(body=body)
@@ -141,6 +159,16 @@ class TestExtractHeuristic:
         content = _extract_heuristic({})
         assert content.title is None
         assert content.description is None
+
+    def test_fountain_position_description(self):
+        content = _extract_heuristic(
+            {
+                "title": "Pharmacy Technician Assistant",
+                "position_description_html": "<p>Assist pharmacy patients.</p>",
+            }
+        )
+
+        assert content.description == "<p>Assist pharmacy patients.</p>"
 
 
 class TestExtractFromObject:
