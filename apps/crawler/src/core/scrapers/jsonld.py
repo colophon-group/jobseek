@@ -152,6 +152,14 @@ def _find_job_posting(data: dict | list) -> dict | None:
     return None
 
 
+def _clean_text(value: object) -> str | None:
+    """Decode HTML entities and normalize whitespace in scalar text fields."""
+    if not isinstance(value, str):
+        return None
+    text = re.sub(r"\s+", " ", html_module.unescape(value)).strip()
+    return text or None
+
+
 def _extract_locations(posting: dict) -> list[str] | None:
     """Extract locations from jobLocation field."""
     locations: list[str] = []
@@ -166,14 +174,14 @@ def _extract_locations(posting: dict) -> list[str] | None:
         if not isinstance(loc, dict):
             continue
         # Try name first
-        name = loc.get("name")
+        name = _clean_text(loc.get("name"))
         if name:
             locations.append(name)
             continue
         # Build from address
         address = loc.get("address")
         if isinstance(address, str):
-            text = re.sub(r"\s+", " ", address).strip()
+            text = _clean_text(address)
             if text:
                 locations.append(text)
             continue
@@ -184,7 +192,9 @@ def _extract_locations(posting: dict) -> list[str] | None:
                 if val:
                     if isinstance(val, dict):
                         val = val.get("name", "")
-                    parts.append(str(val))
+                    text = _clean_text(val)
+                    if text:
+                        parts.append(text)
             if parts:
                 locations.append(", ".join(parts))
 
@@ -304,7 +314,7 @@ def _parse_posting(posting: dict) -> JobContent:
         extras["valid_through"] = valid_through
 
     return JobContent(
-        title=posting.get("title") or posting.get("name"),
+        title=_clean_text(posting.get("title") or posting.get("name")),
         description=description,
         locations=_extract_locations(posting),
         employment_type=posting.get("employmentType"),
