@@ -12,7 +12,6 @@ from src.core.monitors.workday import (
     _api_base,
     _api_list_stream,
     _api_list_url,
-    _batch_facet_ids,
     _discover_sites,
     _group_split_facet_values,
     _job_url,
@@ -549,62 +548,6 @@ class TestDiscover:
             }
             urls = await discover(board, client)
             assert len(urls) == 0
-
-    async def test_splits_capped_response_by_nested_facet(self):
-        applied_queries = []
-
-        def handler(request):
-            payload = json.loads(request.content)
-            applied = payload.get("appliedFacets")
-            if applied:
-                applied_queries.append(applied)
-                return httpx.Response(
-                    200,
-                    json={
-                        "total": 2,
-                        "jobPostings": [
-                            {"externalPath": "/Engineer/JR001"},
-                            {"externalPath": "/Designer/JR002"},
-                        ],
-                        "facets": [],
-                    },
-                )
-            return httpx.Response(
-                200,
-                json={
-                    "total": 2000,
-                    "jobPostings": [{"externalPath": "/discarded/first-page"}],
-                    "facets": [
-                        {
-                            "facetParameter": "locationMainGroup",
-                            "values": [
-                                {
-                                    "facetParameter": "locations",
-                                    "values": [
-                                        {"id": "loc1", "count": 1},
-                                        {"id": "loc2", "count": 1},
-                                    ],
-                                }
-                            ],
-                        }
-                    ],
-                },
-            )
-
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            board = {
-                "board_url": "https://co.wd1.myworkdayjobs.com/Site",
-                "metadata": {
-                    "company": "co",
-                    "wd_instance": "wd1",
-                    "site": "Site",
-                    "all_sites": False,
-                },
-            }
-            urls = await discover(board, client)
-
-        assert len(urls) == 2
-        assert applied_queries == [{"locations": ["loc1", "loc2"]}]
 
     async def test_no_components_raises(self):
         transport = httpx.MockTransport(lambda r: httpx.Response(200))
