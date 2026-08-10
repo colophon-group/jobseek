@@ -28,6 +28,16 @@ from src.core.monitors.mokahr import (
 )
 from src.core.scrapers import JobContent
 from src.core.scrapers.mokahr import _parse_detail, _parse_url, scrape
+from src.workspace._compat import auto_scraper_type, auto_skip_crawler_types
+
+
+def test_mokahr_auto_configures_detail_enrichment():
+    assert auto_scraper_type("mokahr") == (
+        "mokahr",
+        {"enrich": ["description"]},
+    )
+    assert "mokahr" not in auto_skip_crawler_types()
+
 
 # ── central normalize_employment_type integration ────────────────────
 

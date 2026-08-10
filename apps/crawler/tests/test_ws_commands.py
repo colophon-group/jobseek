@@ -2209,6 +2209,17 @@ class TestSelectMonitorNaming:
             {"enrich": ["description", "employment_type", "job_location_type"]},
         )
 
+    def test_mokahr_detail_enrichment_is_persisted(self, tmp_path, monkeypatch):
+        """Mokahr listing metadata must schedule the native detail scraper."""
+        self._setup(tmp_path, monkeypatch)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "mokahr"])
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["mokahr"]
+        assert selected["scraper_type"] == "mokahr"
+        assert selected["scraper_config"] == {"enrich": ["description"]}
+
     def test_legacy_successfactors_static_enrichment_is_persisted(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch)
         config = json.dumps(
