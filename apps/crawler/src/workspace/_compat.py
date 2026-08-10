@@ -104,11 +104,9 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 # Crawler types whose ``auto_scraper_type()`` resolves to ("skip", None) —
 # i.e. rich monitors with no enrichment. This is ``_RICH_MONITORS`` minus
 # ``oracle_hcm``, ``adp``, ``bamboohr``, ``beisen``, ``inploi``, ``linkedin``,
-# ``paycom``, ``pageup``, ``paylocity``, legacy ``rss``, ``typify`` and ``ukg``, which
-# auto-resolve to
-# enrichment scrapers (BambooHR uses a
-# generic API preset;
-# LinkedIn and Paycom use dedicated detail scrapers).
+# ``mokahr``, ``paycom``, ``pageup``, ``paylocity``, legacy ``rss``, ``typify``,
+# and ``ukg``, which auto-resolve to enrichment scrapers. BambooHR uses a
+# generic API preset; LinkedIn and Paycom use dedicated detail scrapers.
 # Used by SQL filters and the ``_is_skip_no_scrape`` classifier so implicit
 # rich boards (``scraper_type`` unset in metadata) are treated the same as
 # explicit ``scraper_type = "skip"`` boards. See issue 01-rich-monitor-scheduling.
@@ -116,8 +114,9 @@ _AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {
     "adp",
     "bamboohr",
     "beisen",
-    "linkedin",
     "inploi",
+    "linkedin",
+    "mokahr",
     "oracle_hcm",
     "pageup",
     "paycom",
@@ -454,6 +453,8 @@ def auto_scraper_type(
     # scraping entirely (is_rich_no_scrape = is_rich and not enrich_fields).
     if monitor_type == "oracle_hcm":
         return ("oracle_hcm", {"enrich": ["description"]})
+    if monitor_type == "mokahr":
+        return ("mokahr", {"enrich": ["description"]})
     if monitor_type == "inploi":
         return ("json-ld", {"enrich": ["description"]})
     if monitor_type == "typify":
