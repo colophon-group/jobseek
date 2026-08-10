@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import json
 from unittest.mock import AsyncMock
 
 import httpx
@@ -8,10 +10,14 @@ import pytest
 from src.core.monitors.workday import (
     PAGE_SIZE,
     _api_base,
+    _api_list_stream,
     _api_list_url,
     _discover_sites,
     _group_split_facet_values,
     _job_url,
+    _list_all_sites,
+    _list_all_sites_stream,
+    _materially_below_advertised_total,
     _paginate_query,
     _parse_components,
     _pick_split_facet,
@@ -333,15 +339,161 @@ class TestGroupSplitFacetValues:
         ]
 
     def test_limits_values_per_query(self):
-        values = [{"id": f"loc-{i}", "count": 1} for i in range(201)]
+        values = [{"id": f"loc-{i}", "count": 1} for i in range(101)]
         facets = [{"facetParameter": "locations", "values": values}]
 
         assert _group_split_facet_values(
             facets, "locations", [value["id"] for value in values]
         ) == [
-            [f"loc-{i}" for i in range(200)],
-            ["loc-200"],
+            [f"loc-{i}" for i in range(100)],
+            ["loc-100"],
         ]
+
+
+class TestInventoryCompleteness:
+    def test_allows_only_small_live_inventory_drift(self):
+        assert not _materially_below_advertised_total(990, 1000)
+        assert _materially_below_advertised_total(989, 1000)
+
+    async def test_direct_pagination_reaches_beyond_tenant_cap(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module, "_API_RESULT_CAP", 40)
+        offsets: list[int] = []
+
+        def handler(request):
+            payload = json.loads(request.read())
+            offset = payload["offset"]
+            offsets.append(offset)
+            paths = [f"/job/{i}" for i in range(offset, min(offset + PAGE_SIZE, 45))]
+            return httpx.Response(
+                200,
+                json={"total": 45, "jobPostings": [{"externalPath": p} for p in paths]},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            batches = [batch async for batch in _api_list_stream("co", "wd1", "Site", client)]
+
+        assert [path for batch in batches for path in batch] == [f"/job/{i}" for i in range(45)]
+        assert offsets == [0, 0, 20, 40]
+
+    async def test_direct_pagination_fails_when_offsets_remain_capped(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module, "_API_RESULT_CAP", 40)
+
+        def handler(request):
+            payload = json.loads(request.read())
+            offset = payload["offset"]
+            paths = [f"/job/{i}" for i in range(offset, min(offset + PAGE_SIZE, 40))]
+            return httpx.Response(
+                200,
+                json={"total": 45, "jobPostings": [{"externalPath": p} for p in paths]},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(RuntimeError, match="40 of 45 advertised unique jobs"):
+                _ = [batch async for batch in _api_list_stream("co", "wd1", "Site", client)]
+
+    async def test_faceted_pagination_fails_on_material_inventory_gap(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module, "_API_RESULT_CAP", 10)
+
+        async def fake_paginate(list_url, body, client, *, cap_abort=0):
+            if not body:
+                return (
+                    ["/first-page"],
+                    12,
+                    [
+                        {
+                            "facetParameter": "location",
+                            "values": [
+                                {"id": "a", "count": 6},
+                                {"id": "b", "count": 6},
+                            ],
+                        }
+                    ],
+                )
+            facet_id = body["appliedFacets"]["location"][0]
+            return [f"/{facet_id}/{i}" for i in range(4)], 4, []
+
+        monkeypatch.setattr(wd_module, "_paginate_query", fake_paginate)
+
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(RuntimeError, match="8 of 12 advertised unique jobs"):
+                _ = [batch async for batch in _api_list_stream("co", "wd1", "Site", client)]
+
+    async def test_query_concurrency_is_shared_across_sites(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module, "_API_RESULT_CAP", 10)
+        active = 0
+        max_active = 0
+
+        async def fake_paginate(list_url, body, client, *, cap_abort=0):
+            nonlocal active, max_active
+            site = list_url.rsplit("/", 2)[-2]
+            if not body:
+                return (
+                    [f"/{site}/first"],
+                    12,
+                    [
+                        {
+                            "facetParameter": "location",
+                            "values": [{"id": f"{site}-{i}", "count": 9} for i in range(12)],
+                        }
+                    ],
+                )
+
+            facet_id = body["appliedFacets"]["location"][0]
+            active += 1
+            max_active = max(max_active, active)
+            await asyncio.sleep(0.001)
+            active -= 1
+            return [f"/job/{facet_id}"], 1, []
+
+        monkeypatch.setattr(wd_module, "_paginate_query", fake_paginate)
+
+        async with httpx.AsyncClient() as client:
+            site_paths, truncated = await _list_all_sites("co", "wd1", ["SiteA", "SiteB"], client)
+
+        assert len(site_paths) == 24
+        assert truncated is False
+        assert max_active == wd_module._QUERY_CONCURRENCY
+
+    async def test_site_failure_propagates_in_non_streaming_discovery(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        async def fake_api_list(company, wd_instance, site, client, *, query_sem=None):
+            if site == "SiteB":
+                raise RuntimeError("site unavailable")
+            return ["/job/1"], False
+
+        monkeypatch.setattr(wd_module, "_api_list", fake_api_list)
+
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(RuntimeError, match="site unavailable"):
+                await _list_all_sites("co", "wd1", ["SiteA", "SiteB"], client)
+
+    async def test_site_failure_propagates_in_streaming_discovery(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        async def fake_api_list_stream(company, wd_instance, site, client, *, query_sem=None):
+            if site == "SiteB":
+                raise RuntimeError("site unavailable")
+            yield ["/job/1"]
+
+        monkeypatch.setattr(wd_module, "_api_list_stream", fake_api_list_stream)
+
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(RuntimeError, match="site unavailable"):
+                _ = [
+                    batch
+                    async for batch in _list_all_sites_stream(
+                        "co", "wd1", ["SiteA", "SiteB"], client
+                    )
+                ]
 
 
 class TestDiscover:
