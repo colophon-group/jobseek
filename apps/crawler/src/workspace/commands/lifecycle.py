@@ -245,6 +245,22 @@ def new(
                     f"Reusing existing PR #{pr_number} for issue #{issue} (branch {branch})",
                 )
 
+        # Branch names are deterministic per company.  A different issue can
+        # therefore resolve to the same canonical slug (for example, two ATS
+        # inventory candidates for one company) without being linked to the
+        # PR that already owns the branch.  Deleting that remote branch would
+        # silently close the active PR.  Check branch ownership independently
+        # of issue linkage and fail closed until the active PR is resolved.
+        if not pr_number:
+            branch_pr = git.find_open_pr_for_branch(branch)
+            if branch_pr:
+                issue_detail = f" while starting issue #{issue}" if issue else ""
+                out.die(
+                    f"Branch {branch!r} is owned by open PR #{branch_pr}{issue_detail}; "
+                    "refusing to delete an active PR. Do not close or replace it; "
+                    "leave this issue pending and retry after that PR is resolved."
+                )
+
         # Create a worktree for this workspace so multiple agents
         # can work on different companies concurrently.
         # create_worktree handles stale worktrees and local branches.

@@ -4752,6 +4752,7 @@ class TestNewIdempotent:
         tmp_path,
         *,
         pr_branch=None,
+        branch_pr=None,
         existing_prs=None,
         issue_body="",
         issue_labels=(),
@@ -4779,6 +4780,9 @@ class TestNewIdempotent:
             patch("src.workspace.git.worktrees_dir", return_value=tmp_path / "worktrees")
         )
         stack.enter_context(patch("src.workspace.git.get_main_branch", return_value="main"))
+        stack.enter_context(
+            patch("src.workspace.git.find_open_pr_for_branch", return_value=branch_pr)
+        )
         delete_remote = stack.enter_context(patch("src.workspace.git.delete_remote_branch"))
         create_worktree = stack.enter_context(patch("src.workspace.git.create_worktree"))
         sync_branch = stack.enter_context(patch("src.workspace.git.sync_branch_with_main"))
@@ -5066,6 +5070,27 @@ class TestNewIdempotent:
         reconfig = load_workspace("acme")
         assert reconfig.pr is None
         assert reconfig.branch == "fix-crawler/acme"
+
+    def test_reconfig_refuses_to_delete_branch_owned_by_another_issue(self, tmp_path, monkeypatch):
+        """Two issues that resolve to one company must not replace each other's PR."""
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path, companies="acme,Acme,https://acme.com,,,\n")
+
+        with ExitStack() as stack:
+            *_, create_worktree, delete_remote, _ = self._git_mocks(
+                stack,
+                tmp_path,
+                branch_pr=77,
+            )
+            runner = CliRunner()
+            result = runner.invoke(ws, ["new", "acme", "--issue", "2", "--reconfig"])
+
+        assert result.exit_code != 0
+        assert "Branch 'fix-crawler/acme' is owned by open PR #77" in result.output
+        assert "refusing to delete an active PR" in result.output
+        delete_remote.assert_not_called()
+        create_worktree.assert_not_called()
+        assert not workspace_exists("acme")
 
     def test_new_removes_resumed_worktree_when_main_sync_fails(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
