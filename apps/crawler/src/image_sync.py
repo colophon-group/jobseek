@@ -14,16 +14,20 @@ Environment variables:
 
 from __future__ import annotations
 
+import argparse
 import csv
+import hashlib
 import os
 import shutil
 import sys
+from collections.abc import Iterable
 from io import BytesIO
+from pathlib import Path
 
 import boto3
 from PIL import Image, UnidentifiedImageError
 
-from src.shared.constants import DATA_DIR
+from src.shared.constants import DATA_DIR, SLUG_RE
 
 IMAGES_DIR = DATA_DIR / "images"
 
@@ -67,35 +71,34 @@ def process_icon(path: str) -> bytes:
         return buffer.getvalue()
 
 
-def upload_icon(client, bucket: str, slug: str, img_file) -> tuple[str, str]:
+def _content_addressed_key(slug: str, role: str, extension: str, body: bytes) -> str:
+    digest = hashlib.sha256(body).hexdigest()
+    return f"companies/{slug}/{role}-{digest}{extension}"
+
+
+def upload_icon(client, bucket: str, slug: str, img_file: Path) -> tuple[str, str]:
     """Upload an icon, preferring WebP but falling back to the source asset."""
     try:
-        key = f"companies/{slug}/icon.webp"
-        client.put_object(
-            Bucket=bucket,
-            Key=key,
-            Body=process_icon(str(img_file)),
-            ContentType="image/webp",
-            CacheControl="public, max-age=31536000, immutable",
-        )
-        return key, "image/webp"
+        body = process_icon(str(img_file))
+        extension = ".webp"
+        content_type = "image/webp"
     except (OSError, UnidentifiedImageError):
-        ext = img_file.suffix.lower()
-        content_type = CONTENT_TYPES.get(ext, "application/octet-stream")
-        key = f"companies/{slug}/icon{ext}"
-        client.upload_file(
-            str(img_file),
-            bucket,
-            key,
-            ExtraArgs={
-                "ContentType": content_type,
-                "CacheControl": "public, max-age=31536000, immutable",
-            },
-        )
-        return key, content_type
+        body = img_file.read_bytes()
+        extension = img_file.suffix.lower()
+        content_type = CONTENT_TYPES.get(extension, "application/octet-stream")
+
+    key = _content_addressed_key(slug, "icon", extension, body)
+    client.put_object(
+        Bucket=bucket,
+        Key=key,
+        Body=body,
+        ContentType=content_type,
+        CacheControl="public, max-age=31536000, immutable",
+    )
+    return key, content_type
 
 
-def upload_images() -> dict[str, dict[str, str]]:
+def upload_images(slugs: Iterable[str] | None = None) -> dict[str, dict[str, str]]:
     """Upload images from data/images/<slug>/ to R2.
 
     Returns:
@@ -109,14 +112,19 @@ def upload_images() -> dict[str, dict[str, str]]:
     client = _s3_client()
     results: dict[str, dict[str, str]] = {}
 
-    for slug_dir in sorted(IMAGES_DIR.iterdir()):
+    slug_dirs = (
+        [IMAGES_DIR / slug for slug in dict.fromkeys(slugs)]
+        if slugs is not None
+        else sorted(IMAGES_DIR.iterdir())
+    )
+    for slug_dir in slug_dirs:
         if not slug_dir.is_dir():
             continue
         slug = slug_dir.name
         urls: dict[str, str] = {}
 
         for role in ("logo", "icon"):
-            files = list(slug_dir.glob(f"{role}.*"))
+            files = sorted(slug_dir.glob(f"{role}.*"))
             if not files:
                 continue
             img_file = files[0]
@@ -125,15 +133,14 @@ def upload_images() -> dict[str, dict[str, str]]:
             else:
                 ext = img_file.suffix.lower()
                 content_type = CONTENT_TYPES.get(ext, "application/octet-stream")
-                key = f"companies/{slug}/{role}{ext}"
-                client.upload_file(
-                    str(img_file),
-                    bucket,
-                    key,
-                    ExtraArgs={
-                        "ContentType": content_type,
-                        "CacheControl": "public, max-age=31536000, immutable",
-                    },
+                body = img_file.read_bytes()
+                key = _content_addressed_key(slug, role, ext, body)
+                client.put_object(
+                    Bucket=bucket,
+                    Key=key,
+                    Body=body,
+                    ContentType=content_type,
+                    CacheControl="public, max-age=31536000, immutable",
                 )
             urls[f"{role}_url"] = f"{public_base}/{key}"
             print(f"  Uploaded {key} ({content_type})")
@@ -179,12 +186,25 @@ def cleanup(slugs: list[str]) -> None:
 
 def main() -> None:
     """Entry point for CI."""
-    if not IMAGES_DIR.exists() or not any(IMAGES_DIR.iterdir()):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--slug",
+        action="append",
+        required=True,
+        help="Company image directory to process; repeat for multiple companies",
+    )
+    args = parser.parse_args()
+    slugs = list(dict.fromkeys(args.slug))
+    invalid = [slug for slug in slugs if not SLUG_RE.fullmatch(slug)]
+    if invalid:
+        parser.error(f"invalid company slug(s): {', '.join(invalid)}")
+
+    if not IMAGES_DIR.exists() or not any((IMAGES_DIR / slug).is_dir() for slug in slugs):
         print("No images to upload.")
         return
 
     print("Uploading images to R2...")
-    url_map = upload_images()
+    url_map = upload_images(slugs)
 
     if not url_map:
         print("No images uploaded.")

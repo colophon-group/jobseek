@@ -1702,6 +1702,37 @@ class TestMaxItemsTruncation:
         assert len(result) == 3
 
     @pytest.mark.asyncio
+    async def test_http_mode_advertised_total_gap_is_truncated(self):
+        from src.core.monitor import MonitorResult
+
+        items = [
+            {"title": "Dev", "url": "/jobs/1", "desc": "HTML1"},
+            {"title": "PM", "url": "/jobs/2", "desc": "HTML2"},
+            {"title": "QA", "url": "/jobs/3", "desc": "HTML3"},
+        ]
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"results": items, "total": 10}
+        mock_resp.raise_for_status.return_value = None
+        http = AsyncMock()
+        http.request = AsyncMock(return_value=mock_resp)
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "api_url": "https://example.com/api/jobs",
+                "json_path": "results",
+                "url_field": "url",
+                "max_items": 100,
+                "fields": {"title": "title", "description": "desc"},
+            },
+        }
+
+        result = await discover(board, http, pw=None)
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert len(result.urls) == 3
+
+    @pytest.mark.asyncio
     async def test_replay_mode_rich_returns_truncated_monitor_result(self, monkeypatch):
         """``_discover_replay`` rich path: > ``MAX_ITEMS`` -> truncated rich result.
 
@@ -1843,6 +1874,41 @@ class TestMaxItemsTruncation:
         assert isinstance(result, list)
         assert len(result) == 3
 
+    @pytest.mark.asyncio
+    async def test_replay_mode_advertised_total_gap_is_truncated(self, monkeypatch):
+        from src.core.monitor import MonitorResult
+        from src.core.monitors import api_sniffer as api_sniffer_module
+
+        monkeypatch.setattr(api_sniffer_module, "MAX_ITEMS", 100)
+        items = [
+            {"title": "Dev", "url": "/jobs/1", "desc": "HTML1"},
+            {"title": "PM", "url": "/jobs/2", "desc": "HTML2"},
+            {"title": "QA", "url": "/jobs/3", "desc": "HTML3"},
+        ]
+        mock_page = AsyncMock()
+        mock_page.evaluate = AsyncMock(
+            return_value={
+                "headers": {},
+                "text": json.dumps({"results": items, "total": 10}),
+            }
+        )
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "api_url": "https://example.com/api/jobs",
+                "json_path": "results",
+                "url_field": "url",
+                "browser": True,
+                "fields": {"title": "title", "description": "desc"},
+            },
+        }
+
+        result = await discover(board, AsyncMock(), pw=_make_mock_pw(mock_page))
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert len(result.urls) == 3
+
 
 class TestDiscoverAutoTruncation:
     """Regression tests for the MAX_ITEMS truncation guard inside
@@ -1864,7 +1930,7 @@ class TestDiscoverAutoTruncation:
     """
 
     @staticmethod
-    def _patch_auto_pipeline(monkeypatch, items, *, url_field="url"):
+    def _patch_auto_pipeline(monkeypatch, items, *, url_field="url", total_count=None):
         """Stub the auto-discover pipeline so ``paginate_all`` returns *items*.
 
         Returns the patched module so the caller can `setattr` ``MAX_ITEMS``.
@@ -1887,7 +1953,7 @@ class TestDiscoverAutoTruncation:
         job_list_result = JobListResult(
             candidate=candidate,
             url_field=url_field,
-            total_count=len(items),
+            total_count=len(items) if total_count is None else total_count,
             pagination=None,
         )
 
@@ -1988,6 +2054,30 @@ class TestDiscoverAutoTruncation:
         }
         assert result.jobs_by_url is not None
         assert set(result.jobs_by_url) == result.urls
+
+    @pytest.mark.asyncio
+    async def test_auto_advertised_total_gap_is_truncated(self, monkeypatch):
+        from src.core.monitor import MonitorResult
+
+        items = [
+            {"title": "Dev", "url": "/jobs/1", "desc": "HTML1"},
+            {"title": "PM", "url": "/jobs/2", "desc": "HTML2"},
+            {"title": "QA", "url": "/jobs/3", "desc": "HTML3"},
+        ]
+        self._patch_auto_pipeline(monkeypatch, items, total_count=10)
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "fields": {"title": "title", "description": "desc"},
+                "settle": 0,
+            },
+        }
+
+        result = await discover(board, AsyncMock(), pw=_make_mock_pw(AsyncMock()))
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert len(result.urls) == 3
 
     @pytest.mark.asyncio
     async def test_auto_url_only_returns_truncated_monitor_result(self, monkeypatch):

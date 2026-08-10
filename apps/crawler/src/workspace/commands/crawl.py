@@ -15,6 +15,7 @@ from src.workspace import log as action_log
 from src.workspace import output as out
 from src.workspace._compat import api_monitor_types, auto_scraper_type
 from src.workspace.state import (
+    Board,
     load_board,
     load_workspace,
     resolve_board_alias,
@@ -91,6 +92,14 @@ def _auto_config_name(board, type_: str) -> str:
     while f"{type_}-{n}" in board.configs:
         n += 1
     return f"{type_}-{n}"
+
+
+def _demote_stale_selected_configs(board: Board, active_name: str) -> None:
+    """Keep selection in ``active_config`` instead of stale sibling statuses."""
+    for name, cfg in (board.configs or {}).items():
+        if name == active_name or cfg.get("status") != "selected":
+            continue
+        cfg["status"] = "tested" if cfg.get("run") else "untested"
 
 
 # ── Cost scoring ───────────────────────────────────────────────────────
@@ -1110,6 +1119,7 @@ def select_monitor(
     asyncio.run(_lib_select_monitor(BoardBackedClaimKV(board), type_, name, clean_config))
 
     # Layer in CLI-only metadata (status, cost, auto-scraper).
+    _demote_stale_selected_configs(board, name)
     cfg_entry = board.configs[name]
     cfg_entry["status"] = "selected"
     cfg_entry["cost"] = {
@@ -1342,6 +1352,7 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
         "jobs": job_count,
         "time": round(elapsed, 1),
         "has_rich_data": has_rich,
+        "truncated": bool(result.truncated),
         "sample_urls": random.sample(sorted(result.urls), min(10, len(result.urls))),
         "ran_at": __import__("datetime")
         .datetime.now(__import__("datetime").timezone.utc)
@@ -1405,6 +1416,13 @@ def run_monitor(slug: str | None, board_alias: str | None, config_name: str | No
     # Print results
     if result.filtered_count:
         out.plain("monitor", f"URL filter: {result.filtered_count} URLs removed")
+
+    if result.truncated:
+        out.warn(
+            "monitor",
+            "Monitor reported an incomplete/truncated result. This configuration "
+            "cannot be submitted as good or acceptable.",
+        )
 
     if job_count == 0:
         out.warn(
@@ -2051,6 +2069,7 @@ def select_config(name: str, slug: str | None, board_alias: str | None):
         reason = cfg.get("rejection_reason", "")
         out.warn("config", f"Config {name!r} was previously rejected: {reason}")
 
+    _demote_stale_selected_configs(board, name)
     board.active_config = name
     action_log.append_to_list(board.log, "select config", True, f"Re-activated config: {name!r}")
     save_board(slug, board)
@@ -2369,6 +2388,11 @@ def run_quality_gates(
 
         if cfg.get("status") != "tested":
             blockers.append(f"Board {b.alias}: config not tested")
+        if cfg.get("run", {}).get("truncated"):
+            blockers.append(
+                f"Board {b.alias}: monitor run is truncated/incomplete; "
+                "select a complete configuration"
+            )
         elif cfg.get("run", {}).get("jobs", 0) == 0:
             feedback = cfg.get("feedback") or {}
             if feedback.get("verified_empty_board") and feedback.get("verdict") == "acceptable":

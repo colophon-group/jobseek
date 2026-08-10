@@ -192,7 +192,12 @@ def test_duplicate_check_remains_required_for_seeded_issue() -> None:
     assert 'ws search "<company name>"' in rendered
     assert "Check if the company already exists" in rendered
     assert "verify the company/tenant" in rendered
-    assert "a matching company name is only advisory" in rendered
+    assert "configuration review" in rendered
+    assert "ensure coverage" in rendered
+    assert "is complete" in rendered
+    assert "instead of rejecting the issue" in rendered
+    assert "do not create" in rendered
+    assert "a competing company PR" in rendered
     assert "--reconfig" in rendered
 
 

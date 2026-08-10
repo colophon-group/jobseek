@@ -25,23 +25,24 @@ and `ws help` exclusively. All interaction with the system goes through `ws`.
 ws search "<company name>"
 ```
 
-For an ordinary request, if found, reject with `duplicate`:
-
-```bash
-ws reject --issue {issue} --reason duplicate --message "Already configured as <slug>"
-```
-
-For a **validated inventory seed**, a matching company name is only advisory.
-Reject it only when the exact normalized board URL or exact ATS tenant is
-already configured. If the company exists but this is a new board/tenant, keep
-the existing company metadata and start a reconfiguration workspace:
+An exact company-name match is a **configuration review**, not a reason to
+discard the request. Check that the current boards still work, ensure coverage
+is complete, and follow every concrete tip or board URL in the issue. Start a
+reconfiguration workspace for the existing slug:
 
 ```bash
 ws new <existing-slug> --issue {issue} --reconfig
 ```
 
-The reconfiguration path preserves all existing boards and adds the validated
-native seed as a separate board for live verification and overlap comparison.
+For a **validated inventory seed**, keep the existing company metadata and use
+the seed as evidence for a possible configuration extension. If its exact URL
+or ATS tenant is already configured, re-run and compare the current board
+instead of rejecting the issue. If it is a new board or tenant, add it to the
+reconfiguration workspace for live verification and overlap comparison.
+
+If the company exists only in an open PR and is not on `main` yet, do not create
+a competing company PR. Leave this issue pending and retry it after that PR is
+resolved; it will then enter the reconfiguration path above.
 
 ## Step 2: Verify the company is real and has a careers page
 

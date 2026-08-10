@@ -175,6 +175,20 @@ _DEFAULT_TIMEOUT = 20_000
 _DEFAULT_SETTLE = 3  # seconds to wait after navigation for XHRs to complete
 
 
+def _materially_below_advertised_total(discovered: int, total: int | None) -> bool:
+    """Return whether a trustworthy API total proves discovery incomplete."""
+    return bool(total and total > 0 and discovered < total * 0.8)
+
+
+def _log_incomplete_total(discovered: int, total: int | None) -> None:
+    if _materially_below_advertised_total(discovered, total):
+        log.warning(
+            "api_sniffer.incomplete_total",
+            advertised_total=total,
+            discovered=discovered,
+        )
+
+
 def _derive_url_match(api_url: str) -> str | None:
     """Derive an ``api_url_match`` glob from a URL with rotating-token segments.
 
@@ -998,7 +1012,9 @@ async def _discover_http(
                 urls=len(all_urls),
             )
 
-        return all_urls
+        truncated = _materially_below_advertised_total(len(all_urls), total)
+        _log_incomplete_total(len(all_urls), total)
+        return truncated_url_result(all_urls) if truncated else all_urls
 
     # -- list/items mode ---------------------------------------------------
     if isinstance(content, list):
@@ -1044,6 +1060,7 @@ async def _discover_http(
                 page_cap,
                 item_projector=item_projector,
             )
+            total = job_result.total_count
         elif item_projector:
             items = [item_projector(item) for item in items]
 
@@ -1054,9 +1071,15 @@ async def _discover_http(
         # is not tombstoned. Matches the pattern used by the 29 monitors
         # migrated in #3266 (lever, workday, greenhouse, ...).
         max_items = config.get("max_items", MAX_ITEMS)
-        truncated = len(items) > max_items
+        truncated = len(items) > max_items or _materially_below_advertised_total(len(items), total)
+        _log_incomplete_total(len(items), total)
         if truncated:
-            log.warning("api_sniffer.truncated", total=len(items), cap=max_items)
+            log.warning(
+                "api_sniffer.truncated",
+                total=len(items),
+                cap=max_items,
+                advertised_total=total,
+            )
 
         log.info("api_sniffer.http_items_done", items=len(items))
 
@@ -1225,6 +1248,7 @@ async def _discover_replay(
     request_headers = config.get("request_headers", {})
     fields_map: dict[str, str] = config.get("fields") or {}
     pagination_config = config.get("pagination")
+    total_path = config.get("total_path")
     api_url_match = config.get("api_url_match")
     route_params = config.get("route_params")
 
@@ -1365,6 +1389,14 @@ async def _discover_replay(
             log.warning("api_sniffer.no_items", api_url=api_url, json_path=json_path)
             return list() if fields_map else set()
 
+        total_count: int | None = None
+        if total_path:
+            raw_total = resolve_path(data, total_path)
+            if isinstance(raw_total, (int, float)):
+                total_count = int(raw_total)
+        elif json_path:
+            total_count = find_total_count(data, json_path)
+
         item_projector = _build_item_projector(
             fields_map,
             url_field,
@@ -1391,7 +1423,6 @@ async def _discover_replay(
                 content_type="application/json",
                 phase="load",
             )
-            total_count = find_total_count(data, json_path)
             cand = ArrayCandidate(exchange=ex, json_path=json_path, items=items)
             job_result = JobListResult(
                 candidate=cand,
@@ -1413,6 +1444,7 @@ async def _discover_replay(
                 max_pg,
                 item_projector=item_projector,
             )
+            total_count = job_result.total_count
         elif item_projector:
             items = [item_projector(item) for item in items]
 
@@ -1422,9 +1454,17 @@ async def _discover_replay(
         # ``_MARK_GONE_BY_TIMESTAMP`` and the unseen tail beyond the cap
         # is not tombstoned. Matches the pattern used by the 29 monitors
         # migrated in #3266 (lever, workday, greenhouse, ...).
-        truncated = len(items) > MAX_ITEMS
+        truncated = len(items) > MAX_ITEMS or _materially_below_advertised_total(
+            len(items), total_count
+        )
+        _log_incomplete_total(len(items), total_count)
         if truncated:
-            log.warning("api_sniffer.truncated", total=len(items), cap=MAX_ITEMS)
+            log.warning(
+                "api_sniffer.truncated",
+                total=len(items),
+                cap=MAX_ITEMS,
+                advertised_total=total_count,
+            )
 
         # Build URL map via DOM cross-ref if no url_field and no url_template
         url_map: dict[str, str] | None = None
@@ -1547,9 +1587,17 @@ async def _discover_auto(
         # cap is not tombstoned. Matches the pattern used by the 29
         # monitors migrated in #3266 and the sibling
         # ``_discover_http`` / ``_discover_replay`` paths wired in #3334.
-        truncated = len(items) > MAX_ITEMS
+        truncated = len(items) > MAX_ITEMS or _materially_below_advertised_total(
+            len(items), result.total_count
+        )
+        _log_incomplete_total(len(items), result.total_count)
         if truncated:
-            log.warning("api_sniffer.truncated", total=len(items), cap=MAX_ITEMS)
+            log.warning(
+                "api_sniffer.truncated",
+                total=len(items),
+                cap=MAX_ITEMS,
+                advertised_total=result.total_count,
+            )
 
         # Auto-map fields if not configured
         if not fields_map:

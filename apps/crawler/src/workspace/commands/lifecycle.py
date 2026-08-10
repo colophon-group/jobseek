@@ -1003,6 +1003,17 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
         job_cells.append(str(job_count))
     lines.append(_row("Jobs", job_cells))
 
+    completeness_cells = []
+    for b in boards:
+        run = ((b.configs or {}).get(b.active_config or "") or {}).get("run") or {}
+        if not run:
+            completeness_cells.append("untested")
+        elif run.get("truncated"):
+            completeness_cells.append("**incomplete (truncated)**")
+        else:
+            completeness_cells.append("complete")
+    lines.append(_row("Completeness", completeness_cells))
+
     # Cost row (only if any board has cost data)
     cost_cells = []
     any_cost = False
@@ -1084,9 +1095,18 @@ def _build_pr_body(ws: Workspace, boards: list[Board]) -> str:
                 rejection = cfg.get("rejection_reason", "")
                 # Build status cell
                 if name == b.active_config:
-                    status_cell = "**selected**"
+                    if rejection:
+                        status_cell = "**selected** (rejected)"
+                    elif cfg_status != "tested":
+                        status_cell = f"**selected** ({cfg_status})"
+                    elif (cfg.get("run") or {}).get("truncated"):
+                        status_cell = "**selected** (incomplete)"
+                    else:
+                        status_cell = "**selected**"
                 elif rejection:
                     status_cell = "rejected"
+                elif cfg_status == "selected":
+                    status_cell = "tested" if cfg.get("run") else "untested"
                 else:
                     status_cell = cfg_status
                 # Build notes — show verdict + notes or rejection reason
@@ -1219,7 +1239,8 @@ def _execute_submit_step(
                 board_kwargs["scraper_config"] = ""
             board_add(ws.slug, **board_kwargs)
 
-        # Sort CSVs by slug to minimize merge conflicts
+        # Normalize any out-of-order input before validation and commit. The
+        # validator independently enforces this invariant for direct edits.
         from src.csvtool import sort_csvs
 
         sort_csvs()

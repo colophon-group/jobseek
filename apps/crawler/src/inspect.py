@@ -75,6 +75,9 @@ def validate_csvs() -> list[ValidationError]:
     if missing:
         errors.append(ValidationError("companies.csv", None, f"Missing columns: {missing}"))
         return errors
+    company_order = [row.get("slug", "") for row in company_rows]
+    if company_order != sorted(company_order):
+        errors.append(ValidationError("companies.csv", None, "Rows are not sorted by slug"))
 
     slugs: set[str] = set()
     for i, row in enumerate(company_rows, start=2):
@@ -112,6 +115,15 @@ def validate_csvs() -> list[ValidationError]:
     if missing:
         errors.append(ValidationError("boards.csv", None, f"Missing columns: {missing}"))
         return errors
+    board_order = [(row.get("company_slug", ""), row.get("board_slug", "")) for row in board_rows]
+    if board_order != sorted(board_order):
+        errors.append(
+            ValidationError(
+                "boards.csv",
+                None,
+                "Rows are not sorted by company_slug and board_slug",
+            )
+        )
 
     valid_monitor_types = all_monitor_types()
     valid_scraper_types = set(SCRAPER_REGISTRY) | {
@@ -476,6 +488,15 @@ def validate_csvs() -> list[ValidationError]:
     descs_path = get_data_dir() / "company_descriptions.csv"
     if descs_path.exists():
         desc_headers, desc_rows = read_csv(descs_path)
+        description_order = [row.get("slug", "") for row in desc_rows]
+        if description_order != sorted(description_order):
+            errors.append(
+                ValidationError(
+                    "company_descriptions.csv",
+                    None,
+                    "Rows are not sorted by slug",
+                )
+            )
         for i, row in enumerate(desc_rows, start=2):
             desc_slug = row.get("slug", "")
             if desc_slug and desc_slug not in slugs:

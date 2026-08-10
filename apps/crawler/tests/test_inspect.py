@@ -133,6 +133,48 @@ class TestValidateCsvs:
         errors = validate_csvs()
         assert len(errors) == 0
 
+    @pytest.mark.parametrize(
+        ("companies", "boards", "descriptions", "expected"),
+        [
+            (
+                "slug,name,website\nzeta,Zeta,https://zeta.example\nalpha,Alpha,https://alpha.example\n",
+                "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+                "alpha,alpha-careers,https://alpha.example/jobs,greenhouse,,,\n"
+                "zeta,zeta-careers,https://zeta.example/jobs,greenhouse,,,\n",
+                None,
+                "companies.csv: Rows are not sorted by slug",
+            ),
+            (
+                "slug,name,website\nalpha,Alpha,https://alpha.example\nzeta,Zeta,https://zeta.example\n",
+                "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+                "zeta,zeta-careers,https://zeta.example/jobs,greenhouse,,,\n"
+                "alpha,alpha-careers,https://alpha.example/jobs,greenhouse,,,\n",
+                None,
+                "boards.csv: Rows are not sorted by company_slug and board_slug",
+            ),
+            (
+                "slug,name,website\nalpha,Alpha,https://alpha.example\nzeta,Zeta,https://zeta.example\n",
+                "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+                "alpha,alpha-careers,https://alpha.example/jobs,greenhouse,,,\n"
+                "zeta,zeta-careers,https://zeta.example/jobs,greenhouse,,,\n",
+                "slug,en\nzeta,Zeta description.\nalpha,Alpha description.\n",
+                "company_descriptions.csv: Rows are not sorted by slug",
+            ),
+        ],
+    )
+    def test_rejects_noncanonical_company_registry_order(
+        self, tmp_path, monkeypatch, companies, boards, descriptions, expected
+    ):
+        self._write_csvs(tmp_path, companies, boards)
+        if descriptions is not None:
+            (tmp_path / "company_descriptions.csv").write_text(descriptions)
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+
+        errors = validate_csvs()
+
+        assert expected in {str(error) for error in errors}
+
     def test_missing_companies_file(self, tmp_path, monkeypatch):
         monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
         monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
@@ -496,11 +538,11 @@ class TestValidateCsvs:
         self._write_csvs(
             tmp_path,
             "slug,name,website,logo_url,icon_url,logo_type\n"
-            "stripe,Stripe,https://stripe.com,,\n"
-            "meta,Meta,https://meta.com,,\n",
+            "meta,Meta,https://meta.com,,\n"
+            "stripe,Stripe,https://stripe.com,,\n",
             "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
-            "stripe,stripe-careers,https://boards.greenhouse.io/stripe,greenhouse,,,\n"
-            "meta,meta-careers,https://meta.com/careers,sitemap,,json-ld,\n",
+            "meta,meta-careers,https://meta.com/careers,sitemap,,json-ld,\n"
+            "stripe,stripe-careers,https://boards.greenhouse.io/stripe,greenhouse,,,\n",
         )
         monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
         monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)

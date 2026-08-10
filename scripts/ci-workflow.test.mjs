@@ -724,6 +724,8 @@ test("maybe-auto-merge script skips image PRs and retries pending merges", () =>
   assert.match(maybeAutoMergeScript, /upload-company-images will handle it/);
   assert.match(maybeAutoMergeScript, /label-pr\.sh/);
   assert.match(maybeAutoMergeScript, /git rebase origin\/main/);
+  assert.match(maybeAutoMergeScript, /merge_company_csv_rebase\.py/);
+  assert.doesNotMatch(maybeAutoMergeScript, /grep -qxF/);
   assert.match(maybeAutoMergeScript, /dispatch-pr-checks\.sh/);
   assert.match(maybeAutoMergeScript, /required_ci_state\(\)/);
   assert.match(maybeAutoMergeScript, /wait_for_required_ci\(\)/);
@@ -790,6 +792,27 @@ test("bot-authored company branch updates dispatch path-aware CI", () => {
   assert.match(uploadCompanyImagesWorkflow, /TRUSTED_SCRIPTS_DIR: \$\{\{ runner\.temp \}\}\/trusted-scripts/);
 });
 
+test("company image upload is PR-scoped and waits for Required CI", () => {
+  assert.match(
+    uploadCompanyImagesWorkflow,
+    /git diff --name-only --diff-filter=ACMRT "\$trusted_ref"\.\.\.HEAD/,
+  );
+  assert.match(uploadCompanyImagesWorkflow, /image_args\+=\(--slug "\$slug"\)/);
+  assert.match(
+    uploadCompanyImagesWorkflow,
+    /uv run python -m src\.image_sync "\$\{image_args\[@\]\}"/,
+  );
+  assert.doesNotMatch(uploadCompanyImagesWorkflow, /git add apps\/crawler\/data\//);
+  assert.match(
+    uploadCompanyImagesWorkflow,
+    /Branch protection is unavailable; trusted retry will wait for Required CI/,
+  );
+  assert.doesNotMatch(
+    uploadCompanyImagesWorkflow,
+    /gh pr checks "\$PR" --repo "\$REPO" --watch --fail-fast \|\| true/,
+  );
+});
+
 test("trusted image cleanup dispatches add-company and coding-mode PRs", () => {
   for (const branch of ["add-company/example", "fix-crawler/example-repair"]) {
     const result = runDispatchPrChecks({ branch });
@@ -831,14 +854,18 @@ test("company image cleanup commits cannot absorb trusted source changes", () =>
     uploadCompanyImagesWorkflow,
     /git restore --source="\$trusted_ref" --staged/,
   );
-  assert.match(uploadCompanyImagesWorkflow, /git add apps\/crawler\/data\//);
   assert.match(
     uploadCompanyImagesWorkflow,
-    /git diff --cached --name-only[\s\S]*grep -v '\^apps\/crawler\/data\/'/,
+    /git add -A -- "\$\{target_paths\[@\]\}"/,
   );
   assert.match(
     uploadCompanyImagesWorkflow,
-    /Refusing to commit paths outside apps\/crawler\/data/,
+    /if \[\[ "\$staged_path" == "apps\/crawler\/data\/images\/\$slug\/"\* \]\]/,
+  );
+  assert.match(uploadCompanyImagesWorkflow, /git diff --cached --name-only/);
+  assert.match(
+    uploadCompanyImagesWorkflow,
+    /Refusing to commit paths outside the PR-scoped image update/,
   );
 });
 
@@ -899,6 +926,10 @@ test("company PR workflows capture the semantic diff helper as trusted code", ()
     assert.match(
       source,
       /cp \.github\/scripts\/label_pr_csv_diff\.py "\$RUNNER_TEMP\/trusted-scripts\/label_pr_csv_diff\.py"/,
+    );
+    assert.match(
+      source,
+      /cp \.github\/scripts\/merge_company_csv_rebase\.py "\$RUNNER_TEMP\/trusted-scripts\/merge_company_csv_rebase\.py"/,
     );
   }
 });

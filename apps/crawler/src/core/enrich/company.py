@@ -302,6 +302,27 @@ def _get_claim_value(claims: dict, prop: str) -> str | None:
     return str(value)
 
 
+def _get_ticker_symbol(claims: dict) -> str | None:
+    """Extract a ticker from P249 qualifiers on stock-exchange (P414) claims."""
+    candidates: list[tuple[int, str]] = []
+    rank_priority = {"preferred": 0, "normal": 1, "deprecated": 2}
+    for claim in claims.get("P414", []):
+        if claim.get("rank") == "deprecated":
+            continue
+        priority = rank_priority.get(claim.get("rank", "normal"), 1)
+        for qualifier in (claim.get("qualifiers") or {}).get("P249", []):
+            datavalue = qualifier.get("datavalue") or {}
+            value = datavalue.get("value")
+            if datavalue.get("type") == "string" and isinstance(value, str) and value.strip():
+                candidates.append((priority, value.strip()))
+
+    if candidates:
+        return min(candidates, key=lambda item: (item[0], item[1].casefold()))[1]
+
+    # Some entities model P249 as a direct statement rather than a qualifier.
+    return _get_claim_value(claims, "P249")
+
+
 async def _resolve_labels(http: httpx.AsyncClient, qids: set[str]) -> dict[str, str]:
     """Resolve QIDs to English labels in a single API call."""
     if not qids:
@@ -356,8 +377,8 @@ async def _extract_from_wikidata(http: httpx.AsyncClient, qid: str) -> dict:
         with contextlib.suppress(ValueError):
             result["employee_count"] = int(float(employees.lstrip("+")))
 
-    # Ticker
-    ticker = _get_claim_value(claims, "P414")
+    # Ticker (P249 qualifier on a P414 stock-exchange claim)
+    ticker = _get_ticker_symbol(claims)
     if ticker:
         result["ticker_symbol"] = ticker
 
