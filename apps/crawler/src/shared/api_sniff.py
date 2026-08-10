@@ -277,7 +277,7 @@ class ArrayCandidate:
 @dataclass
 class PaginationInfo:
     param_name: str
-    style: str  # "offset" or "page"
+    style: str  # "offset", "page", or "cumulative_limit"
     start_value: int
     increment: int
     location: str  # "query" or "body"
@@ -1296,6 +1296,43 @@ async def paginate_all(
         return all_items
 
     headers = clean_headers(ex.request_headers)
+
+    # Some search APIs expose only a cumulative result limit: the UI loads
+    # more by requesting limit=15, then limit=30, and so on, with every
+    # response containing the previous prefix again. Treating that value as
+    # an offset appends duplicates and can still miss the tail. When the API
+    # advertises a total, request the bounded target once and replace the
+    # first-page prefix with the complete response.
+    if pag.style == "cumulative_limit":
+        if not result.total_count or result.total_count <= 0:
+            raise ValueError("cumulative_limit pagination requires a positive total count")
+        target = min(result.total_count, page_size * max_pages)
+        if target <= page_size:
+            return all_items
+
+        if pag.location == "query":
+            fetch_url = set_url_param(ex.url, pag.param_name, target)
+            fetch_body = ex.post_data
+        else:
+            fetch_url = ex.url
+            fetch_body = set_body_param(ex.post_data, pag.param_name, target)
+
+        data = await _fetch_page_with_retry(
+            fetch_fn,
+            ex.method,
+            fetch_url,
+            headers,
+            fetch_body,
+        )
+        items = extract_items(data, result.candidate.json_path)
+        if len(items) < target:
+            log.warning(
+                "api_sniff.cumulative_limit_gap",
+                requested=target,
+                discovered=len(items),
+                total_count=result.total_count,
+            )
+        return [project(item) for item in items] if items else all_items
 
     # Try to increase page size
     size_info = detect_size_param(ex.url, ex.post_data)

@@ -710,6 +710,108 @@ class TestFetchFactories:
 
 class TestPaginateAllWithFetchFn:
     @pytest.mark.asyncio
+    async def test_cumulative_limit_requires_advertised_total(self):
+        """Without a total, cumulative pages cannot be bounded or verified."""
+        page1_items = [{"id": i} for i in range(10)]
+
+        async def unexpected_fetch(method, url, headers, body):
+            raise AssertionError("pagination must fail before another request")
+
+        ex = _make_exchange(
+            method="POST",
+            url="https://example.com/api/jobs",
+            post_data=json.dumps({"limit": 10}),
+            body={"jobs": page1_items},
+        )
+        pag = PaginationInfo(
+            param_name="limit",
+            style="cumulative_limit",
+            start_value=10,
+            increment=10,
+            location="body",
+        )
+        result = JobListResult(
+            candidate=ArrayCandidate(exchange=ex, json_path="jobs", items=page1_items),
+            url_field=None,
+            total_count=None,
+            pagination=pag,
+        )
+
+        with pytest.raises(ValueError, match="requires a positive total count"):
+            await paginate_all(unexpected_fetch, result, max_pages=5)
+
+    @pytest.mark.asyncio
+    async def test_cumulative_limit_replaces_prefix_with_complete_response(self):
+        """Cumulative load-more APIs return the prior prefix on every call."""
+        page1_items = [{"id": i} for i in range(10)]
+        all_items = [{"id": i} for i in range(25)]
+        calls = []
+
+        async def mock_fetch(method, url, headers, body):
+            calls.append((method, url, body))
+            assert json.loads(body)["limit"] == 25
+            return {"jobs": all_items, "totalCount": 25}
+
+        ex = _make_exchange(
+            method="POST",
+            url="https://example.com/api/jobs",
+            post_data=json.dumps({"limit": 10}),
+            body={"jobs": page1_items, "totalCount": 25},
+        )
+        pag = PaginationInfo(
+            param_name="limit",
+            style="cumulative_limit",
+            start_value=10,
+            increment=10,
+            location="body",
+        )
+        result = JobListResult(
+            candidate=ArrayCandidate(exchange=ex, json_path="jobs", items=page1_items),
+            url_field=None,
+            total_count=25,
+            pagination=pag,
+        )
+
+        items = await paginate_all(mock_fetch, result, max_pages=5)
+
+        assert items == all_items
+        assert len(calls) == 1
+
+    @pytest.mark.asyncio
+    async def test_cumulative_limit_honours_page_cap(self):
+        """The one-shot cumulative request stays within the caller's cap."""
+        page1_items = [{"id": i} for i in range(10)]
+        capped_items = [{"id": i} for i in range(30)]
+
+        async def mock_fetch(method, url, headers, body):
+            assert json.loads(body)["limit"] == 30
+            return {"jobs": capped_items, "totalCount": 100}
+
+        ex = _make_exchange(
+            method="POST",
+            url="https://example.com/api/jobs",
+            post_data=json.dumps({"limit": 10}),
+            body={"jobs": page1_items, "totalCount": 100},
+        )
+        pag = PaginationInfo(
+            param_name="limit",
+            style="cumulative_limit",
+            start_value=10,
+            increment=10,
+            location="body",
+        )
+        result = JobListResult(
+            candidate=ArrayCandidate(exchange=ex, json_path="jobs", items=page1_items),
+            url_field=None,
+            total_count=100,
+            pagination=pag,
+        )
+
+        items = await paginate_all(mock_fetch, result, max_pages=3)
+
+        assert items == capped_items
+
+    @pytest.mark.asyncio
     async def test_paginate_with_callable(self):
         """paginate_all works with any FetchJsonFn callable."""
         page1_items = [{"title": f"Job {i}"} for i in range(10)]

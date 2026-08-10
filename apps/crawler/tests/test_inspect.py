@@ -761,6 +761,63 @@ class TestMigratedBoardsHaveProxy:
         )
 
 
+class TestReweGroupBoardConfig:
+    """REWE Group's Austrian portal needs cumulative API pagination."""
+
+    def test_austria_uses_cumulative_limit_and_canonical_urls(self):
+        import json
+
+        from src.core.scrapers.dom import parse_html
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        rewe_rows = {r["board_slug"]: r for r in rows if r["company_slug"] == "rewe-group"}
+
+        assert set(rewe_rows) == {"rewe-group-austria", "rewe-group-careers"}
+        assert rewe_rows["rewe-group-careers"]["monitor_type"] == "rss"
+
+        austria = rewe_rows["rewe-group-austria"]
+        assert austria["board_url"] == "https://rewe-group.jobs/de/jobs"
+        assert austria["monitor_type"] == "api_sniffer"
+        assert austria["scraper_type"] == "dom"
+
+        monitor_config = json.loads(austria["monitor_config"])
+        assert monitor_config["browser"] is True
+        assert monitor_config["json_path"] == "jobs"
+        assert monitor_config["pagination"] == {
+            "param_name": "limit",
+            "style": "cumulative_limit",
+            "start_value": 15,
+            "increment": 15,
+            "location": "body",
+            "max_pages": 200,
+        }
+        assert monitor_config["url_template"].endswith("/de/jobs/{jobId}")
+        assert "description" not in monitor_config["fields"]
+
+        scraper_config = json.loads(austria["scraper_config"])
+        assert scraper_config["enrich"] == ["description"]
+        sample_html = """
+        <main>
+          <h1>Store Manager</h1>
+          <p>Join our Austrian retail team.</p>
+          <h2>Stellenbeschreibung</h2>
+          <ul><li>Lead the store team.</li><li>Manage daily operations.</li></ul>
+          <h2>Qualifikationen</h2>
+          <ul><li>Retail leadership experience.</li></ul>
+          <h2>Zusätzliche Informationen</h2>
+          <p>Employee discounts are available.</p>
+        </main>
+        """
+        content = parse_html(sample_html, scraper_config)
+        assert "Lead the store team" in content.description
+        assert "Retail leadership experience" in content.description
+        assert "Employee discounts" not in content.description
+        assert "Lead the store team" in content.extras["responsibilities"][0]
+        assert "Retail leadership experience" in content.extras["qualifications"][0]
+
+
 class TestSafranBoardConfig:
     """Safran's global board and BambooHR subsidiary need pinned transports."""
 
