@@ -82,23 +82,36 @@ export async function runListTopCompanies(
   params: ListInput,
   isLoggedIn: boolean,
 ): Promise<SearchResponse> {
-  if (directEnabled) {
-    if (!isLoggedIn && params.offset >= ANON_MAX_COMPANIES) {
-      return { companies: [], totalCompanies: 0, truncated: true };
-    }
-    try {
-      const provider = await tryBrowserProvider();
-      const result = await provider.listTopCompanies(params);
-      if (!result.degraded) return applyAnonCap(result, params.offset, isLoggedIn);
-    } catch (err) {
-      logExternalError(
-        "error",
-        { service: "typesense", operation: "browser_list_top_companies" },
-        err,
-      );
-    }
-  }
+  const direct = await tryListTopCompaniesDirect(params, isLoggedIn);
+  if (direct) return direct;
   return serverListTopCompanies(params);
+}
+
+/**
+ * Revalidate a server-prerendered explore shell directly against Typesense.
+ * Returns null when browser-direct search is disabled or degraded so mount-time
+ * refreshes never create a duplicate Vercel Server Action invocation.
+ */
+export async function tryListTopCompaniesDirect(
+  params: ListInput,
+  isLoggedIn: boolean,
+): Promise<SearchResponse | null> {
+  if (!directEnabled) return null;
+  if (!isLoggedIn && params.offset >= ANON_MAX_COMPANIES) {
+    return { companies: [], totalCompanies: 0, truncated: true };
+  }
+  try {
+    const provider = await tryBrowserProvider();
+    const result = await provider.listTopCompanies(params);
+    if (!result.degraded) return applyAnonCap(result, params.offset, isLoggedIn);
+  } catch (err) {
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "browser_list_top_companies" },
+      err,
+    );
+  }
+  return null;
 }
 
 type WatchlistPostingsInput = {
@@ -169,24 +182,37 @@ export async function runGetCompanyPostings(
   params: CompanyPostingsInput,
   isLoggedIn: boolean,
 ): Promise<CompanyPostingsResult> {
-  if (directEnabled) {
-    if (!isLoggedIn && params.offset >= ANON_MAX_POSTINGS) {
-      return { postings: [], activeCount: 0, yearCount: 0, truncated: true };
-    }
-    try {
-      const provider = await tryBrowserProvider();
-      const result = await provider.loadPostingsWithCounts(params);
-      if (!isLoggedIn && params.offset + result.postings.length >= ANON_MAX_POSTINGS) {
-        return { ...result, truncated: true };
-      }
-      return result;
-    } catch (err) {
-      logExternalError(
-        "error",
-        { service: "typesense", operation: "browser_company_postings" },
-        err,
-      );
-    }
-  }
+  const direct = await tryGetCompanyPostingsDirect(params, isLoggedIn);
+  if (direct) return direct;
   return serverGetCompanyPostings(params);
+}
+
+/**
+ * Revalidate a server-prerendered company shell directly against Typesense.
+ * The null result is deliberate: callers that are merely refreshing hydrated
+ * data must keep the rendered snapshot instead of falling back to Fluid CPU.
+ */
+export async function tryGetCompanyPostingsDirect(
+  params: CompanyPostingsInput,
+  isLoggedIn: boolean,
+): Promise<CompanyPostingsResult | null> {
+  if (!directEnabled) return null;
+  if (!isLoggedIn && params.offset >= ANON_MAX_POSTINGS) {
+    return { postings: [], activeCount: 0, yearCount: 0, truncated: true };
+  }
+  try {
+    const provider = await tryBrowserProvider();
+    const result = await provider.loadPostingsWithCounts(params);
+    if (!isLoggedIn && params.offset + result.postings.length >= ANON_MAX_POSTINGS) {
+      return { ...result, truncated: true };
+    }
+    return result;
+  } catch (err) {
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "browser_company_postings" },
+      err,
+    );
+    return null;
+  }
 }

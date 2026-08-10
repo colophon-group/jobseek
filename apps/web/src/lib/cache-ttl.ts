@@ -18,10 +18,14 @@
  * | `CACHE_TTL_MEDIUM`  |  300    | Moderate churn (posting detail, company      |
  * |                     |         | postings, filtered watchlist counts,         |
  * |                     |         | default API `maxAge`)                        |
- * | `CACHE_TTL_DETAIL`  |  600    | Company detail page                          |
- * | `CACHE_TTL_LONG`    | 3600    | Semi-static taxonomies, locations, similar   |
- * |                     |         | companies, sitemap, watchlist matching count |
- * | `CACHE_TTL_DAY`     |86400    | Very static / rare-change (blog pages)       |
+ * | `CACHE_TTL_DETAIL`        |   600   | Company detail page                          |
+ * | `CACHE_TTL_EXPLORE_SHELL` |   600   | Anonymous explore prerender; browser         |
+ * |                           |         | Typesense refreshes it after hydration       |
+ * | `CACHE_TTL_LONG`          |  3600   | Semi-static taxonomies, locations, similar   |
+ * |                           |         | companies, sitemap, watchlist matching count |
+ * | `CACHE_TTL_COMPANY_SHELL` |  3600   | Anonymous company prerender; browser         |
+ * |                           |         | Typesense refreshes postings after hydration |
+ * | `CACHE_TTL_DAY`           | 86400   | Very static / rare-change (blog pages)       |
  *
  * Notes:
  * - Built-in Next.js `cacheLife()` profile names (`'hours'`, `'days'`,
@@ -43,8 +47,14 @@ export const CACHE_TTL_MEDIUM = 300;
 /** 600 seconds (10 min) — company detail page (cross-`'use cache'`-boundary dedup). */
 export const CACHE_TTL_DETAIL = 600;
 
+/** 10 minutes — anonymous explore shell; hydrated results refresh from Typesense. */
+export const CACHE_TTL_EXPLORE_SHELL = 600;
+
 /** 3600 seconds (1 hour) — semi-static taxonomies, locations, sitemap, similar companies. */
 export const CACHE_TTL_LONG = 3600;
+
+/** 1 hour — anonymous company shell; hydrated postings refresh from Typesense. */
+export const CACHE_TTL_COMPANY_SHELL = 3600;
 
 /** 86400 seconds (1 day) — very static / rare-change (blog pages). */
 export const CACHE_TTL_DAY = 86400;

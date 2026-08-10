@@ -1,4 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  getCompanyBySlug: vi.fn(),
+}));
 
 vi.mock("server-only", () => ({}));
 
@@ -10,8 +14,12 @@ vi.mock("next/og", () => ({
   },
 }));
 
-vi.mock("@/lib/actions/company", () => ({
-  getCompanyBySlug: vi.fn(),
+vi.mock("next/cache", () => ({
+  cacheLife: vi.fn(),
+}));
+
+vi.mock("@/lib/services/company", () => ({
+  getCompanyBySlug: mocks.getCompanyBySlug,
 }));
 
 vi.mock("@/lib/og/company-og-cache", () => ({
@@ -22,6 +30,11 @@ vi.mock("@/lib/og/company-og-cache", () => ({
 }));
 
 import * as ogImage from "../opengraph-image";
+import * as renderer from "@/lib/og/render-company-og";
+
+beforeEach(() => {
+  mocks.getCompanyBySlug.mockReset();
+});
 
 describe("company opengraph image route rendering mode", () => {
   it("is dynamic because request-time R2 cache IO is intentional", () => {
@@ -33,44 +46,44 @@ describe("company opengraph image route rendering mode", () => {
 describe("company opengraph image icon rendering", () => {
   it("only passes known raster icon URLs to next/og", () => {
     expect(
-      ogImage.getRenderableCompanyOgIconUrl(
+      renderer.getRenderableCompanyOgIconUrl(
         "https://jobseek-assets.colophon-group.org/companies/acme/icon.png",
       ),
     ).toBe("https://jobseek-assets.colophon-group.org/companies/acme/icon.png");
     expect(
-      ogImage.getRenderableCompanyOgIconUrl(
+      renderer.getRenderableCompanyOgIconUrl(
         "https://jobseek-assets.colophon-group.org/companies/acme/icon.jpg?version=1",
       ),
     ).toBe("https://jobseek-assets.colophon-group.org/companies/acme/icon.jpg?version=1");
     expect(
-      ogImage.getRenderableCompanyOgIconUrl(
+      renderer.getRenderableCompanyOgIconUrl(
         "https://jobseek-assets.colophon-group.org/companies/acme/icon.jpeg",
       ),
     ).toBe("https://jobseek-assets.colophon-group.org/companies/acme/icon.jpeg");
 
     expect(
-      ogImage.getRenderableCompanyOgIconUrl(
+      renderer.getRenderableCompanyOgIconUrl(
         "https://jobseek-assets.colophon-group.org/companies/graphcore/icon.svg",
       ),
     ).toBeNull();
     expect(
-      ogImage.getRenderableCompanyOgIconUrl(
+      renderer.getRenderableCompanyOgIconUrl(
         "https://jobseek-assets.colophon-group.org/companies/acme/icon.webp",
       ),
     ).toBeNull();
-    expect(ogImage.getRenderableCompanyOgIconUrl("/local/icon.png")).toBeNull();
+    expect(renderer.getRenderableCompanyOgIconUrl("/local/icon.png")).toBeNull();
   });
 
   it("uses a deterministic fallback mark for unsupported remote icons", () => {
     expect(
-      ogImage.getCompanyOgIconRenderModel({
+      renderer.getCompanyOgIconRenderModel({
         name: "Graphcore",
         icon: "https://jobseek-assets.colophon-group.org/companies/graphcore/icon.svg",
       }),
     ).toEqual({ kind: "fallback", label: "GR" });
 
     expect(
-      ogImage.getCompanyOgIconRenderModel({
+      renderer.getCompanyOgIconRenderModel({
         name: "Acme Labs",
         icon: "https://jobseek-assets.colophon-group.org/companies/acme/icon.png",
       }),
@@ -80,10 +93,45 @@ describe("company opengraph image icon rendering", () => {
     });
 
     expect(
-      ogImage.getCompanyOgIconRenderModel({
+      renderer.getCompanyOgIconRenderModel({
         name: "Acme Labs",
         icon: null,
       }),
     ).toEqual({ kind: "none" });
+  });
+
+  it("preserves the existing PNG renderer on a durable-cache miss", async () => {
+    mocks.getCompanyBySlug.mockResolvedValue({
+      id: "co-1",
+      name: "Acme Labs",
+      slug: "acme",
+      icon: null,
+      logo: null,
+      website: "https://acme.example",
+      description: "A company.",
+      industryId: 1,
+      industryName: "Software",
+      employeeCountRange: null,
+      foundedYear: null,
+      activeJobCount: 12,
+    });
+
+    const result = await renderer.renderCompanyOgImage("acme", "en");
+
+    expect(result.cacheable).toBe(true);
+    expect(new Uint8Array(await result.response.arrayBuffer())).toEqual(
+      new Uint8Array([9, 8, 7]),
+    );
+  });
+
+  it("keeps unknown-company cards out of the durable cache", async () => {
+    mocks.getCompanyBySlug.mockResolvedValue(null);
+
+    const result = await renderer.renderCompanyOgImage("missing", "en");
+
+    expect(result.cacheable).toBe(false);
+    expect(new Uint8Array(await result.response.arrayBuffer())).toEqual(
+      new Uint8Array([9, 8, 7]),
+    );
   });
 });

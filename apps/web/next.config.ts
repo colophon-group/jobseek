@@ -9,11 +9,10 @@ import path from "node:path";
  *
  * The company OG route stores rendered PNGs in R2 under
  * `og/company/<renderer-version>/<locale>/<slug>.png`. The version is a
- * conservative content hash of files that can plausibly affect the PNG.
- * That deliberately creates some false invalidations: changing nearby
- * company route code may rerender images even when the pixels stay the
- * same. The tradeoff is intentional because under-invalidation leaves
- * stale social cards until a manual purge.
+ * content hash of the renderer and its font. Keep this input set narrow:
+ * every new version invalidates every company/locale object, and broad
+ * inputs previously caused thousands of identical cards to be regenerated
+ * after unrelated deploys.
  *
  * Force controls:
  * - `COMPANY_OG_RENDERER_VERSION_SALT=<ticket/date>`: included in the
@@ -24,20 +23,11 @@ import path from "node:path";
  *   bad objects under the current hash; pair with a redeploy for CDN
  *   freshness.
  */
-const COMPANY_OG_HASH_VERSION = "company-og-v1";
+const COMPANY_OG_HASH_VERSION = "company-og-v2";
 
 const COMPANY_OG_HASH_INPUTS = [
-  "app/[lang]/(app)/company/[slug]",
-  "src/lib/actions/company.ts",
-  "src/lib/actions/company-page-data.ts",
-  "src/lib/cache-tags.ts",
-  "src/lib/cache-ttl.ts",
-  "src/lib/i18n.ts",
-  "src/lib/og",
+  "src/lib/og/render-company-og.tsx",
   "public/fonts/JetBrainsMono-Bold.ttf",
-  "package.json",
-  "next.config.ts",
-  "../../pnpm-lock.yaml",
 ];
 
 const HASHED_EXTENSIONS = new Set([
