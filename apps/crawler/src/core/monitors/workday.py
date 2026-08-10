@@ -9,9 +9,10 @@ Public API:
 
 Max ``limit`` per request is **20** (higher values return 400).
 
-The API caps results at **2000** per query.  When `total` reaches 2000 the
+Some tenants cap results at **2000** per query. When `total` reaches 2000 the
 monitor automatically splits into per-facet queries (e.g. by job category)
-so that each sub-query stays below the cap, then deduplicates.
+so that each sub-query stays below the cap, then deduplicates. Tenants without
+a safe split fall back to verified direct pagination beyond offset 2000.
 
 Multi-site discovery
 --------------------
@@ -24,6 +25,7 @@ only the configured site, set ``"all_sites": false`` in board metadata.
 from __future__ import annotations
 
 import asyncio
+import math
 import re
 
 import httpx
@@ -39,7 +41,11 @@ log = structlog.get_logger()
 MAX_JOBS = 50_000
 PAGE_SIZE = 20
 _LIST_CONCURRENCY = 5  # Parallel site listing during multi-site discovery
+_QUERY_CONCURRENCY = 5  # Shared bound across sites and facet/direct queries
 _API_RESULT_CAP = 2000  # Workday caps list results at 2000 per query
+# Large appliedFacets arrays fail with tenant-dependent 4xx/5xx responses.
+# O'Reilly accepts 100 location IDs; larger arrays fail on some tenants.
+_MAX_FACET_VALUES_PER_QUERY = 100
 # Pagination retry budget. Symmetric with the accenture monitor (#2735)
 # and api_sniffer monitor (#2733): 3 total attempts, exponential backoff
 # with full jitter starting at 1s. Slightly more relaxed than dom's
@@ -196,6 +202,25 @@ async def _paginate_query(
     return paths, total, facets
 
 
+def _iter_facets(facets: list[dict]):
+    """Yield Workday facets, including nested facet groups.
+
+    Most tenants return a flat list, but some wrap usable facets in a group
+    value (for example ``locationMainGroup`` -> ``locations``).  Treat those
+    wrappers as containers so large boards can still find a safe partition.
+    """
+    for facet in facets:
+        if not isinstance(facet, dict):
+            continue
+        yield facet
+        nested = [
+            value
+            for value in facet.get("values", [])
+            if isinstance(value, dict) and value.get("facetParameter")
+        ]
+        yield from _iter_facets(nested)
+
+
 def _pick_split_facet(facets: list[dict]) -> tuple[str, list[str]] | None:
     """Choose a facet to split on when results hit the 2000 cap.
 
@@ -205,7 +230,7 @@ def _pick_split_facet(facets: list[dict]) -> tuple[str, list[str]] | None:
     best: tuple[str, list[str]] | None = None
     best_count = 0
 
-    for facet in facets:
+    for facet in _iter_facets(facets):
         param = facet.get("facetParameter")
         values = facet.get("values", [])
         if not param or not values:
@@ -221,11 +246,122 @@ def _pick_split_facet(facets: list[dict]) -> tuple[str, list[str]] | None:
     return best
 
 
+def _group_split_facet_values(
+    facets: list[dict],
+    facet_param: str,
+    facet_ids: list[str],
+) -> list[list[str]]:
+    """Group facet IDs into OR queries that remain below Workday's cap.
+
+    Querying every value separately is prohibitively expensive for facets
+    such as location, which can contain thousands of values.  Workday ORs
+    values within one applied facet, and the advertised counts provide a
+    safe upper bound for the combined result count.  Unknown counts retain
+    the previous one-value-per-query behaviour.
+    """
+    counts: dict[str, int] = {}
+    for facet in _iter_facets(facets):
+        if facet.get("facetParameter") != facet_param:
+            continue
+        for value in facet.get("values", []):
+            if not isinstance(value, dict) or "id" not in value:
+                continue
+            count = value.get("count")
+            if isinstance(count, int) and count >= 0:
+                counts[value["id"]] = count
+
+    groups: list[list[str]] = []
+    current: list[str] = []
+    current_count = 0
+    for facet_id in facet_ids:
+        # An unknown count cannot safely share a capped query with another
+        # value.  Giving it the full per-query budget keeps it isolated.
+        count = counts.get(facet_id, _API_RESULT_CAP - 1)
+        if current and (
+            current_count + count >= _API_RESULT_CAP or len(current) >= _MAX_FACET_VALUES_PER_QUERY
+        ):
+            groups.append(current)
+            current = []
+            current_count = 0
+        current.append(facet_id)
+        current_count += count
+
+    if current:
+        groups.append(current)
+    return groups
+
+
+def _materially_below_advertised_total(discovered: int, advertised: int) -> bool:
+    """Allow normal in-crawl churn, but never accept a materially partial list."""
+    tolerance = max(1, math.ceil(advertised * 0.01))
+    return discovered < advertised - tolerance
+
+
+def _assert_complete_inventory(
+    *,
+    discovered: int,
+    advertised: int,
+    company: str,
+    site: str,
+    strategy: str,
+) -> None:
+    if _materially_below_advertised_total(discovered, advertised):
+        raise RuntimeError(
+            "Workday "
+            f"{strategy} returned {discovered} of {advertised} "
+            f"advertised unique jobs for {company}/{site}"
+        )
+
+
+async def _direct_pagination_stream(
+    list_url: str,
+    advertised_total: int,
+    company: str,
+    site: str,
+    client: httpx.AsyncClient,
+):
+    """Yield an unfaceted query page by page and verify complete coverage."""
+    expected = min(advertised_total, MAX_JOBS)
+    offset = 0
+    seen: set[str] = set()
+
+    while offset < expected:
+        payload = {"limit": PAGE_SIZE, "offset": offset}
+        data = await _post_page_with_retry(client, list_url, payload)
+        postings = data.get("jobPostings", [])
+        if not postings:
+            break
+
+        batch: list[str] = []
+        for item in postings:
+            path = item.get("externalPath")
+            if path and path not in seen:
+                seen.add(path)
+                batch.append(path)
+
+        offset += len(postings)
+        if batch:
+            yield batch
+
+    _assert_complete_inventory(
+        discovered=len(seen),
+        advertised=expected,
+        company=company,
+        site=site,
+        strategy="direct pagination",
+    )
+
+    if advertised_total > MAX_JOBS:
+        yield [_TRUNCATED_PATH]
+
+
 async def _api_list(
     company: str,
     wd_instance: str,
     site: str,
     client: httpx.AsyncClient,
+    *,
+    query_sem: asyncio.Semaphore | None = None,
 ) -> tuple[list[str], bool]:
     """Collect all externalPaths, splitting by facet if the 2000 cap is hit.
 
@@ -237,7 +373,13 @@ async def _api_list(
     """
     paths: list[str] = []
     truncated = False
-    async for batch in _api_list_stream(company, wd_instance, site, client):
+    async for batch in _api_list_stream(
+        company,
+        wd_instance,
+        site,
+        client,
+        query_sem=query_sem,
+    ):
         for p in batch:
             if p == _TRUNCATED_PATH:
                 truncated = True
@@ -251,67 +393,118 @@ async def _api_list_stream(
     wd_instance: str,
     site: str,
     client: httpx.AsyncClient,
+    *,
+    query_sem: asyncio.Semaphore | None = None,
 ):
     """Yield batches of externalPaths, splitting by facet if the 2000 cap is hit."""
     list_url = _api_list_url(company, wd_instance, site)
+    query_sem = query_sem or asyncio.Semaphore(_QUERY_CONCURRENCY)
 
     # First, try unfaceted query (abort early if over cap — we only need facets)
-    paths, total, facets = await _paginate_query(list_url, {}, client, cap_abort=_API_RESULT_CAP)
+    async with query_sem:
+        paths, total, facets = await _paginate_query(
+            list_url,
+            {},
+            client,
+            cap_abort=_API_RESULT_CAP,
+        )
 
     if total < _API_RESULT_CAP:
         # Under the cap — we got everything
-        yield paths[:MAX_JOBS]
+        unique_paths = list(dict.fromkeys(paths))
+        _assert_complete_inventory(
+            discovered=len(unique_paths),
+            advertised=min(total, MAX_JOBS),
+            company=company,
+            site=site,
+            strategy="pagination",
+        )
+        yield unique_paths[:MAX_JOBS]
+        if total > MAX_JOBS:
+            yield [_TRUNCATED_PATH]
         return
 
     # Hit the cap — split by facet to get all jobs
     split = _pick_split_facet(facets)
     if not split:
-        log.warning(
-            "workday.cap_no_split_facet",
+        # The 2,000-result cap is tenant-specific. Some tenants expose no
+        # safe facet but accept offsets beyond 2,000. Verify direct pagination
+        # rather than accepting the first page as a complete inventory.
+        log.info(
+            "workday.direct_pagination_fallback",
             company=company,
             site=site,
             total=total,
         )
-        yield paths[:MAX_JOBS]
+        async with query_sem:
+            async for direct_batch in _direct_pagination_stream(
+                list_url,
+                total,
+                company,
+                site,
+                client,
+            ):
+                yield direct_batch
         return
 
     facet_param, facet_ids = split
+    facet_groups = _group_split_facet_values(facets, facet_param, facet_ids)
     log.info(
         "workday.splitting_by_facet",
         company=company,
         site=site,
         facet=facet_param,
         values=len(facet_ids),
+        queries=len(facet_groups),
     )
 
+    async def _paginate_facet_group(facet_group: list[str]) -> list[str]:
+        body = {"appliedFacets": {facet_param: facet_group}}
+        async with query_sem:
+            sub_paths, _, _ = await _paginate_query(list_url, body, client)
+        return sub_paths
+
     seen: set[str] = set()
-    total_count = 0
+    tasks = [asyncio.create_task(_paginate_facet_group(group)) for group in facet_groups]
+    try:
+        for completed in asyncio.as_completed(tasks):
+            sub_paths = await completed
+            new_paths: list[str] = []
+            for path in sub_paths:
+                if path not in seen:
+                    seen.add(path)
+                    new_paths.append(path)
+                    if total > MAX_JOBS and len(seen) >= MAX_JOBS:
+                        break
 
-    for facet_id in facet_ids:
-        body = {"appliedFacets": {facet_param: [facet_id]}}
-        sub_paths, sub_total, _ = await _paginate_query(list_url, body, client)
-        new_paths: list[str] = []
-        for p in sub_paths:
-            if p not in seen:
-                seen.add(p)
-                new_paths.append(p)
-        total_count += len(new_paths)
+            if new_paths:
+                yield new_paths
 
-        if new_paths:
-            yield new_paths
+            if total > MAX_JOBS and len(seen) >= MAX_JOBS:
+                log.warning(
+                    "workday.truncated",
+                    company=company,
+                    site=site,
+                    total=len(seen),
+                    cap=MAX_JOBS,
+                )
+                yield [_TRUNCATED_PATH]
+                return
+    finally:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
 
-        if total_count >= MAX_JOBS:
-            log.warning(
-                "workday.truncated",
-                company=company,
-                site=site,
-                total=total_count,
-                cap=MAX_JOBS,
-            )
-            yield [_TRUNCATED_PATH]
-            return
+    _assert_complete_inventory(
+        discovered=len(seen),
+        advertised=min(total, MAX_JOBS),
+        company=company,
+        site=site,
+        strategy="faceted pagination",
+    )
 
-    log.info("workday.faceted_total", company=company, site=site, jobs=total_count)
+    log.info("workday.faceted_total", company=company, site=site, jobs=len(seen))
 
 
 # ── Multi-site discovery ─────────────────────────────────────────────
@@ -351,10 +544,17 @@ async def _list_all_sites(
     ``MonitorResult`` so the pipeline suppresses gone-detection (#3216).
     """
     sem = asyncio.Semaphore(_LIST_CONCURRENCY)
+    query_sem = asyncio.Semaphore(_QUERY_CONCURRENCY)
 
     async def _list_one(site: str) -> tuple[list[tuple[str, str]], bool]:
         async with sem:
-            paths, was_truncated = await _api_list(company, wd_instance, site, client)
+            paths, was_truncated = await _api_list(
+                company,
+                wd_instance,
+                site,
+                client,
+                query_sem=query_sem,
+            )
             return [(site, p) for p in paths], was_truncated
 
     results = await asyncio.gather(*[_list_one(s) for s in sites], return_exceptions=True)
@@ -364,6 +564,7 @@ async def _list_all_sites(
     for i, result in enumerate(results):
         if isinstance(result, BaseException):
             log.warning("workday.site_list_error", site=sites[i], error=str(result))
+            raise result
         else:
             pairs, was_truncated = result
             site_paths.extend(pairs)
@@ -387,21 +588,23 @@ async def _list_all_sites_stream(
     :class:`MonitorResult` so the pipeline marks the run partial and
     skips gone-detection (#3216).
     """
-    sem = asyncio.Semaphore(_LIST_CONCURRENCY)
+    query_sem = asyncio.Semaphore(_QUERY_CONCURRENCY)
     total_count = 0
 
     for site in sites:
-        async with sem:
-            try:
-                async for batch in _api_list_stream(company, wd_instance, site, client):
-                    pairs = [(site, p) for p in batch]
-                    total_count += len(pairs)
-                    yield pairs
-                    if total_count >= MAX_JOBS:
-                        yield [_TRUNCATED_SENTINEL]
-                        return
-            except Exception as exc:
-                log.warning("workday.site_list_error", site=site, error=str(exc))
+        async for batch in _api_list_stream(
+            company,
+            wd_instance,
+            site,
+            client,
+            query_sem=query_sem,
+        ):
+            pairs = [(site, p) for p in batch]
+            total_count += sum(path != _TRUNCATED_PATH for _, path in pairs)
+            yield pairs
+            if total_count >= MAX_JOBS:
+                yield [_TRUNCATED_SENTINEL]
+                return
 
 
 # ── Main discover entry point ────────────────────────────────────────
