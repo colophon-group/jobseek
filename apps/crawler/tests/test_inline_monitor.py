@@ -349,6 +349,65 @@ async def test_extracted_fields_override_defaults_by_title():
 
 
 @pytest.mark.asyncio
+async def test_discover_accordion_jobs_with_mixed_boundary_tags():
+    html = """
+    <html><body>
+    <h3>Available Positions</h3>
+    <h3><div class="grow accordion-title">Research President</div></h3>
+    <div class="accordion-content">
+      <p>Lead a multidisciplinary research organization.</p>
+      <p>Applications are accepted by email.</p>
+    </div>
+    <h3><div class="grow accordion-title">Assistant Scientist</div></h3>
+    <div class="accordion-content">
+      <p>Build an independent rare-disease research program.</p>
+    </div>
+    <h3><div class="grow accordion-title">Postdoctoral Fellow</div></h3>
+    <div class="accordion-content">
+      <p>Study cancer biology and biomedical engineering.</p>
+    </div>
+    <h4>Life in the city</h4>
+    <p>General relocation information that is not part of the posting.</p>
+    </body></html>
+    """
+    board = {
+        "board_url": "https://example.com/research-careers",
+        "metadata": {
+            "steps": [
+                {
+                    "tag": "div",
+                    "attr": "class=accordion-title",
+                    "field": "title",
+                    "optional": True,
+                },
+                {
+                    "tag": "p",
+                    "field": "description",
+                    "html": True,
+                    "stop_tag": ["div", "h4"],
+                },
+            ],
+            "defaults": {"locations": ["Sioux Falls, South Dakota, USA"]},
+        },
+    }
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert [job.title for job in jobs] == [
+        "Research President",
+        "Assistant Scientist",
+        "Postdoctoral Fellow",
+    ]
+    assert jobs[0].description == (
+        "<p>Lead a multidisciplinary research organization.</p>"
+        "<p>Applications are accepted by email.</p>"
+    )
+    assert jobs[2].description == ("<p>Study cancer biology and biomedical engineering.</p>")
+    assert "relocation" not in jobs[2].description
+    assert all(job.locations == ["Sioux Falls, South Dakota, USA"] for job in jobs)
+
+
+@pytest.mark.asyncio
 async def test_discover_empty_page():
     client = _FakeClient("<html><body></body></html>")
     board = {

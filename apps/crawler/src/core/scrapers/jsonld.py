@@ -61,7 +61,9 @@ class _JsonLdExtractor(HTMLParser):
     def __init__(self):
         super().__init__()
         self._in_jsonld = False
+        self._in_title = False
         self._data: list[str] = []
+        self._title_data: list[str] = []
         self.results: list[dict] = []
         self.meta: dict[str, str] = {}
 
@@ -77,12 +79,20 @@ class _JsonLdExtractor(HTMLParser):
         if tag == "script" and attr_dict.get("type") == "application/ld+json":
             self._in_jsonld = True
             self._data = []
+        elif tag == "title":
+            self._in_title = True
+            self._title_data = []
 
     def handle_data(self, data):
         if self._in_jsonld:
             self._data.append(data)
+        elif self._in_title:
+            self._title_data.append(data)
 
     def handle_endtag(self, tag):
+        if tag == "title":
+            self._in_title = False
+            return
         if tag == "script" and self._in_jsonld:
             self._in_jsonld = False
             raw = "".join(self._data).strip()
@@ -107,6 +117,10 @@ class _JsonLdExtractor(HTMLParser):
                             # Try the next representation or skip the
                             # optional malformed block.
                             continue
+
+    @property
+    def page_title(self) -> str | None:
+        return _clean_text("".join(self._title_data))
 
 
 def _normalize_keys(data):
@@ -334,6 +348,19 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
         posting = _find_job_posting(block)
         if posting:
             content = _parse_posting(posting)
+            if not content.title and extractor.page_title:
+                organization = posting.get("hiringOrganization")
+                organization_name = (
+                    _clean_text(organization.get("name"))
+                    if isinstance(organization, dict)
+                    else None
+                )
+                if organization_name:
+                    for separator in (" - ", " | ", " – "):
+                        suffix = f"{separator}{organization_name}"
+                        if extractor.page_title.casefold().endswith(suffix.casefold()):
+                            content.title = extractor.page_title[: -len(suffix)].strip() or None
+                            break
             if not content.locations:
                 content.locations = _extract_meta_locations(extractor.meta)
             return content

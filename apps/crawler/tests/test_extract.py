@@ -270,6 +270,25 @@ class TestWalkSteps:
         assert "Middle" in result["section"]
         assert "Next Section" not in result["section"]
 
+    def test_stop_tag_accepts_multiple_tags(self):
+        els = self._els(
+            ("p", "Start"),
+            ("p", "Middle"),
+            ("h3", "Next Job"),
+            ("p", "Other"),
+        )
+        steps = [
+            {
+                "tag": "p",
+                "text": "Start",
+                "field": "section",
+                "stop_tag": ["h2", "h3"],
+            }
+        ]
+        result, cursor = walk_steps(els, steps)
+        assert result["section"] == "Start\nMiddle"
+        assert cursor == 2
+
     def test_stop_count(self):
         els = self._els(
             ("p", "One"),
