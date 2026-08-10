@@ -17,6 +17,14 @@ log = structlog.get_logger()
 _JOB_ID_RE = re.compile(r"(?:-|/)(\d+)$")
 _GUEST_JOB_PATH_RE = re.compile(r"^/jobs-guest/jobs/api/jobPosting/(\d+)$")
 
+# LinkedIn's public detail endpoint commonly allows a short burst and then
+# returns 429 for a few seconds. The shared defaults (three attempts starting
+# at 0.5s) can exhaust before that cooldown clears. Keep this provider-specific
+# budget bounded while giving a serialized domain pipeline enough time to
+# recover instead of repeatedly rescheduling the remainder of a small board.
+_DETAIL_RETRIES = 4
+_DETAIL_BASE_DELAY_S = 1.5
+
 
 def _job_id_from_url(url: str) -> str | None:
     path = urlparse(url).path.rstrip("/")
@@ -96,7 +104,12 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
         return JobContent()
 
     detail_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
-    html = await fetch_text_page_with_retry(http, detail_url)
+    html = await fetch_text_page_with_retry(
+        http,
+        detail_url,
+        retries=_DETAIL_RETRIES,
+        base_delay=_DETAIL_BASE_DELAY_S,
+    )
     if html is None:
         return JobContent()
     return parse_html(html, config)
