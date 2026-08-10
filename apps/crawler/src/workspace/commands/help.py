@@ -2905,7 +2905,17 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
 
   Rich monitor — returns title, location, date, employment_type.
   Pair with oracle_hcm scraper + enrich: ["description"] for descriptions.
-  Handles pagination automatically via finder param offset suffix.""",
+  Handles pagination automatically via finder param offset suffix.
+
+  Optional monitor_config:
+    offset_overlap   Number of rows (0-199) to overlap between 200-row pages.
+                     Use for very large, high-churn boards where Oracle's
+                     offset result set changes during a cycle. The overlap
+                     prevents small left shifts from skipping active jobs.
+    total_count_tolerance
+                     Allowed difference between Oracle's advertised total and
+                     the final accessible rows. Use only for a verified tenant
+                     whose TotalJobsCount consistently overstates its tail.""",
     "dom": MONITOR_DOM,
     "inline": MONITOR_INLINE,
     "kipt": MONITOR_KIPT,

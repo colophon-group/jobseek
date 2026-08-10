@@ -106,6 +106,8 @@ _DEFAULT_FIELDS = {
     "employment_type": "JobSchedule",
 }
 
+_PAGE_SIZE = 200
+
 _ORACLE_HCM_RE = re.compile(
     r"(?:\.fa\.|\.fa\.us\d+\.)(?:ocs\.)?oraclecloud\.com/hcmUI/CandidateExperience",
 )
@@ -247,6 +249,21 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
             return
 
     fields = metadata.get("fields") or _DEFAULT_FIELDS
+    offset_overlap = metadata.get("offset_overlap", 0)
+    if (
+        isinstance(offset_overlap, bool)
+        or not isinstance(offset_overlap, int)
+        or not 0 <= offset_overlap < _PAGE_SIZE
+    ):
+        raise ValueError(f"offset_overlap must be an integer from 0 to {_PAGE_SIZE - 1}")
+    total_count_tolerance = metadata.get("total_count_tolerance", 0)
+    if (
+        isinstance(total_count_tolerance, bool)
+        or not isinstance(total_count_tolerance, int)
+        or total_count_tolerance < 0
+    ):
+        raise ValueError("total_count_tolerance must be a non-negative integer")
+    offset_step = _PAGE_SIZE - offset_overlap
     url_template = _build_url_template(host, site)
     api_url = _build_api_url(host, site)
 
@@ -282,10 +299,14 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
         page_sources = [(api_url, total, initial_wrapper, None)]
 
     seen_job_ids: set[str] = set()
+    minimum_advertised_total = 0
     partial = False
     for source_url, source_total, cached_wrapper, partition_id in page_sources:
         offset = 0
-        while offset < source_total:
+        latest_source_total = source_total
+        minimum_source_total = source_total
+        source_seen_job_ids: set[str] = set()
+        while offset < latest_source_total:
             if offset == 0 and cached_wrapper is not None:
                 wrapper = cached_wrapper
             else:
@@ -295,26 +316,48 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
                 wrapper = (resp.json().get("items") or [{}])[0]
 
             page_total = wrapper.get("TotalJobsCount")
-            if page_total is not None and page_total != source_total:
-                # Offset pagination is not snapshot-isolated. A changing total
-                # makes the cycle unsafe for authoritative gone-detection.
-                partial = True
-                log.warning(
-                    "oracle_hcm.total_changed",
-                    host=host,
-                    site=site,
-                    initial_total=source_total,
-                    page_total=page_total,
-                    offset=offset,
-                    partition_id=partition_id,
-                )
+            if page_total is not None:
+                if (
+                    isinstance(page_total, bool)
+                    or not isinstance(page_total, int)
+                    or page_total < 0
+                ):
+                    partial = True
+                elif page_total != latest_source_total:
+                    total_drop = latest_source_total - page_total
+                    # Plain offset pagination cannot absorb a boundary shift.
+                    # An explicit overlap safely covers deletions up to that
+                    # margin; insertions only repeat already-seen rows and can
+                    # wait until the next cycle.
+                    if offset_overlap == 0 or total_drop > offset_overlap:
+                        partial = True
+                    previous_total = latest_source_total
+                    latest_source_total = page_total
+                    minimum_source_total = min(minimum_source_total, page_total)
+                    log.warning(
+                        "oracle_hcm.total_changed",
+                        host=host,
+                        site=site,
+                        initial_total=source_total,
+                        previous_total=previous_total,
+                        page_total=page_total,
+                        offset=offset,
+                        partition_id=partition_id,
+                    )
 
             items = wrapper.get("requisitionList", [])
-            expected_page_size = min(_PAGE_SIZE, max(source_total - offset, 0))
-            if len(items) != expected_page_size:
+            expected_page_size = min(_PAGE_SIZE, max(latest_source_total - offset, 0))
+            page_shortfall = expected_page_size - len(items)
+            if len(items) > _PAGE_SIZE or (
+                page_shortfall > 0
+                and (
+                    offset + _PAGE_SIZE < latest_source_total
+                    or page_shortfall > total_count_tolerance
+                )
+            ):
                 partial = True
             if not items:
-                if offset < source_total:
+                if offset < latest_source_total:
                     log.warning(
                         "oracle_hcm.truncated",
                         host=host,
@@ -332,7 +375,16 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
                     partial = True
                     continue
                 job_id = str(job_id)
+                if job_id in source_seen_job_ids:
+                    # Cross-page duplicates are the expected overlap margin.
+                    # Without overlap they prove that Oracle reshuffled an
+                    # offset boundary during the cycle.
+                    if offset_overlap == 0:
+                        partial = True
+                    continue
+                source_seen_job_ids.add(job_id)
                 if job_id in seen_job_ids:
+                    # Verified facet partitions must not overlap each other.
                     partial = True
                     continue
                 seen_job_ids.add(job_id)
@@ -355,13 +407,15 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
                     "oracle_hcm.stream_batch",
                     offset=offset,
                     batch=len(jobs),
-                    total=total,
+                    total=latest_source_total,
                     partition_id=partition_id,
                 )
 
-            offset += _PAGE_SIZE
+            offset += offset_step
 
-    if total is not None and len(seen_job_ids) != total:
+        minimum_advertised_total += minimum_source_total
+
+    if len(seen_job_ids) < minimum_advertised_total - total_count_tolerance:
         partial = True
     if partial:
         log.warning(
@@ -370,10 +424,19 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
             site=site,
             discovered=len(seen_job_ids),
             advertised_total=total,
+            minimum_total=minimum_advertised_total,
+            offset_overlap=offset_overlap,
+            total_count_tolerance=total_count_tolerance,
         )
         yield truncated_rich_result([])
 
-    log.info("oracle_hcm.stream_done", host=host, site=site, total=total)
+    log.info(
+        "oracle_hcm.stream_done",
+        host=host,
+        site=site,
+        total=total,
+        discovered=len(seen_job_ids),
+    )
 
 
 register("oracle_hcm", discover, cost=15, can_handle=can_handle, rich=True, stream=discover_stream)
