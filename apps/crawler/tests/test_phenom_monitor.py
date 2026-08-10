@@ -284,6 +284,26 @@ async def test_discover_filters_non_job_urls():
 
 
 @pytest.mark.asyncio
+async def test_discover_excludes_configured_upstream_test_urls():
+    transport = _transport(
+        {
+            "https://careers.example.com/sitemap.xml": (200, _PHENOM_INDEX_SHARDED),
+            "https://careers.example.com/sitemap-0001-en.xml": (200, _SHARD_1),
+            "https://careers.example.com/sitemap-0002-en.xml": (200, _SHARD_2),
+        }
+    )
+    board = {
+        "id": "b1",
+        "board_url": "https://careers.example.com",
+        "metadata": {"url_exclude": r"/job/P8-2$"},
+    }
+    async with httpx.AsyncClient(transport=transport) as client:
+        urls, _ = await discover(board, client)
+
+    assert urls == {"https://careers.example.com/crew-member/job/P8-1"}
+
+
+@pytest.mark.asyncio
 async def test_discover_returns_new_sitemap_url_when_not_cached():
     transport = _transport(
         {

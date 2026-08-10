@@ -138,14 +138,27 @@ def extract_by_pattern(html: str, pattern: str) -> object | None:
 def extract_by_variable(html: str, variable: str) -> object | None:
     """Extract JSON from a variable assignment like ``window.__DATA__ = {...}``.
 
-    Builds a regex pattern from the variable name and delegates to
-    ``extract_by_pattern``.
+    When a page initializes the variable before populating it, prefer the last
+    parseable assignment.  Talent.vn pages, for example, emit
+    ``Client.pageData = {}`` before assigning the real job payload later in the
+    same script.
     """
-    # Escape the variable for regex, then build assignment pattern
     escaped = re.escape(variable)
-    # Match: var/let/const/window.X = or just X =
     pattern = rf"(?:var|let|const)\s+{escaped}\s*=\s*|{escaped}\s*=\s*"
-    return extract_by_pattern(html, pattern)
+
+    for match in reversed(list(re.finditer(pattern, html))):
+        rest = html[match.end() :]
+        for i, ch in enumerate(rest):
+            if ch not in "{[":
+                continue
+            end = find_json_extent(rest, i)
+            if end is not None:
+                parsed = _try_parse_json(rest[i:end])
+                if parsed is not None:
+                    return parsed
+            break
+
+    return None
 
 
 def parse_embedded(html: str, config: dict) -> object | None:

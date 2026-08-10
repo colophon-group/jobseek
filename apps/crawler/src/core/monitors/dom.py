@@ -482,7 +482,11 @@ async def _paginate_urls(
             log.info("dom.pagination.no_new_urls", page=page_num)
             break
 
-        all_urls |= new_urls
+        # Only retain the representatives that introduced a new transformed
+        # identity.  Unioning every raw URL here reintroduced tracking/apply
+        # variants that ``seen_identities`` had correctly classified as
+        # duplicates.
+        all_urls |= added
         log.debug("dom.pagination.page", page=page_num, new=len(added), total=len(all_urls))
         value += increment
 

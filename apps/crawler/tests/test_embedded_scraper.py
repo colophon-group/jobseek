@@ -420,6 +420,36 @@ class TestCanHandle:
         assert result["variable"] == "window.__DATA__"
         assert "fields" in result
 
+    def test_talent_page_data_uses_populated_offices(self):
+        job = {
+            "name": "Store Manager",
+            "content": "<p>Lead the store</p>",
+            "locations": [],
+            "offices": [{"name": "H\u1ed3 Ch\u00ed Minh"}],
+            "job_type": "ft",
+        }
+        html = (
+            f"<script>Client.pageData = {{}};Client.pageData = {json.dumps({'job': job})};</script>"
+        )
+
+        config = can_handle([html])
+
+        assert config == {
+            "variable": "Client.pageData",
+            "path": "job",
+            "fields": {
+                "title": "name",
+                "description": "content",
+                "locations": "offices[].name",
+                "employment_type": "job_type",
+            },
+        }
+        content = parse_html(html, config)
+        assert content.title == "Store Manager"
+        assert content.description == "<p>Lead the store</p>"
+        assert content.locations == ["H\u1ed3 Ch\u00ed Minh"]
+        assert content.employment_type == "ft"
+
     def test_plain_html_returns_none(self):
         html = "<html><body><h1>No embedded data</h1></body></html>"
         result = can_handle([html])
