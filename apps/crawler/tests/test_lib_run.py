@@ -28,6 +28,7 @@ class FakeMonitorResult:
     urls: set[str] = field(default_factory=set)
     jobs_by_url: dict | None = None
     filtered_count: int = 0
+    truncated: bool = False
 
 
 @dataclass
@@ -111,6 +112,18 @@ class TestRunMonitorHappyPath:
             "https://test.example.com/jobs/2",
         ]
         assert result.quality is None
+
+    @pytest.mark.asyncio
+    async def test_truncated_result_is_preserved(self, patched_run_deps):
+        with patch("src.core.monitor.monitor_one", new_callable=AsyncMock) as fake:
+            fake.return_value = FakeMonitorResult(
+                urls={"https://test.example.com/jobs/1"},
+                truncated=True,
+            )
+            result = await run_monitor(_state())
+
+        assert result.truncated is True
+        assert result.to_dict()["truncated"] is True
 
     @pytest.mark.asyncio
     async def test_rich_result_with_quality(self, patched_run_deps):

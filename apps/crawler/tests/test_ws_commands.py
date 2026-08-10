@@ -1319,6 +1319,7 @@ def _as_run_monitor_result(fake_result, elapsed, http_log, *, monitor_type="site
         filtered_count=getattr(fake_result, "filtered_count", 0),
         elapsed_seconds=elapsed,
         has_rich_data=has_rich,
+        truncated=bool(getattr(fake_result, "truncated", False)),
         sample_urls=list(urls_list)[:10],
         description_samples=desc_samples,
         quality=quality,
@@ -1495,6 +1496,30 @@ class TestRunMonitorOutput:
 
         assert "\u2713" in result.output  # Checkmark symbol
         assert "2 jobs" in result.output
+
+    def test_truncated_run_is_persisted_and_warned(self, tmp_path, monkeypatch):
+        self._setup_monitor_board(tmp_path, monkeypatch)
+
+        @dataclass
+        class FakeResult:
+            urls: set[str]
+            jobs_by_url: dict | None
+            filtered_count: int = 0
+            truncated: bool = True
+
+        fake_result = FakeResult(
+            urls={"https://test.com/jobs/1"},
+            jobs_by_url=None,
+        )
+        stack, mock_asyncio = _enter_monitor_patches(tmp_path)
+        with stack:
+            mock_asyncio.run.return_value = _as_run_monitor_result(fake_result, 2.0, [])
+            result = CliRunner().invoke(ws, ["run", "monitor", "test"])
+
+        assert result.exit_code == 0, result.output
+        assert "incomplete/truncated" in result.output
+        board = load_board("test", "careers")
+        assert board.monitor_run["truncated"] is True
 
     def test_inventory_seed_success_is_verified(self, tmp_path, monkeypatch):
         self._setup_inventory_board(tmp_path, monkeypatch)
@@ -2156,6 +2181,8 @@ class TestSelectMonitorNaming:
         assert board.active_config == "greenhouse-2"
         assert "greenhouse" in board.configs
         assert "greenhouse-2" in board.configs
+        assert board.configs["greenhouse"]["status"] == "untested"
+        assert board.configs["greenhouse-2"]["status"] == "selected"
 
     def test_auto_scraper_config_is_persisted(self, tmp_path, monkeypatch):
         """Partial-rich monitors retain their required enrichment config."""
@@ -2460,6 +2487,19 @@ class TestSelectConfig:
 
         board = load_board("test", "careers")
         assert board.active_config == "sitemap-v1"
+
+    def test_reactivate_demotes_stale_selected_sibling(self, tmp_path, monkeypatch):
+        self._setup(tmp_path, monkeypatch)
+        board = load_board("test", "careers")
+        board.configs["gh-api"]["status"] = "selected"
+        board.configs["gh-api"]["run"] = {"jobs": 10}
+        save_board("test", board)
+
+        result = CliRunner().invoke(ws, ["select", "config", "sitemap-v1", "test"])
+
+        assert result.exit_code == 0
+        board = load_board("test", "careers")
+        assert board.configs["gh-api"]["status"] == "tested"
 
     def test_nonexistent_config(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch)
@@ -2986,6 +3026,21 @@ class TestQualityGates:
         blockers, _ = run_quality_gates(ws_obj, [board])
         assert any("0 jobs" in b for b in blockers)
 
+    def test_truncated_run_blocks(self):
+        from src.workspace.commands.crawl import run_quality_gates
+
+        ws_obj = Workspace(slug="test", name="Test", website="https://test.com")
+        board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
+        board.configs["gh"] = {
+            "status": "tested",
+            "run": {"jobs": 10, "truncated": True},
+            "feedback": {"verdict": "good"},
+        }
+        board.active_config = "gh"
+
+        blockers, _ = run_quality_gates(ws_obj, [board])
+        assert any("truncated/incomplete" in blocker for blocker in blockers)
+
     def test_short_descriptions_warns(self, tmp_path, monkeypatch):
         from src.workspace.commands.crawl import run_quality_gates
 
@@ -3362,6 +3417,47 @@ class TestSubmitStepRegistry:
         assert row["scraper_type"] == "paylocity"
         assert row["scraper_config"] == ""
 
+    def test_csv_write_restores_canonical_order(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(
+            tmp_path,
+            companies=(
+                "zeta,Zeta,https://zeta.example,,,\n"
+                "alpha,Alpha,https://alpha.example,,,\n"
+                "test,Old Test,https://old.example,,,\n"
+            ),
+            boards=(
+                "zeta,zeta-jobs,https://zeta.example/jobs,sitemap,,json-ld,\n"
+                "alpha,alpha-jobs,https://alpha.example/jobs,sitemap,,json-ld,\n"
+            ),
+        )
+        ws_obj = Workspace(slug="test", name="Test", website="https://test.example")
+        board = Board(alias="careers", slug="test-careers", url="https://test.example/jobs")
+        board.configs["sitemap"] = {
+            "monitor_type": "sitemap",
+            "scraper_type": "json-ld",
+            "status": "tested",
+            "run": {"jobs": 2},
+        }
+        board.active_config = "sitemap"
+
+        from src.workspace.commands.lifecycle import _execute_submit_step
+
+        _execute_submit_step("csv_written", ws_obj, [board], None)
+
+        company_lines = (tmp_path / "companies.csv").read_text().splitlines()
+        board_lines = (tmp_path / "boards.csv").read_text().splitlines()
+        assert [line.split(",", 1)[0] for line in company_lines[1:4]] == [
+            "alpha",
+            "test",
+            "zeta",
+        ]
+        assert [line.split(",", 1)[0] for line in board_lines[1:4]] == [
+            "alpha",
+            "test",
+            "zeta",
+        ]
+
 
 class TestSubmitIdempotency:
     """Submit skips already-completed steps on rerun."""
@@ -3724,6 +3820,34 @@ class TestBuildPrBody:
         assert "Configurations evaluated" in body
         assert "**selected**" in body
         assert "rejected" in body
+
+    def test_pr_body_normalizes_stale_selection_and_shows_truncation(self):
+        from src.workspace.commands.lifecycle import _build_pr_body
+
+        ws_obj = Workspace(slug="test", name="Test Corp")
+        board = Board(alias="careers", slug="test-careers", url="https://test.com/jobs")
+        board.configs = {
+            "old": {
+                "monitor_type": "api_sniffer",
+                "status": "selected",
+                "run": {"jobs": 10},
+                "feedback": {"verdict": "unusable"},
+            },
+            "current": {
+                "monitor_type": "oracle_hcm",
+                "status": "tested",
+                "run": {"jobs": 9997, "truncated": True},
+                "feedback": {"verdict": "poor"},
+            },
+        }
+        board.active_config = "current"
+
+        body = _build_pr_body(ws_obj, [board])
+
+        assert "| Completeness | **incomplete (truncated)** |" in body
+        assert "| 1 | old | `api_sniffer` |" in body
+        assert "| tested | unusable |" in body
+        assert "**selected** (incomplete)" in body
 
     def test_single_config_no_comparison(self, tmp_path, monkeypatch):
         from src.workspace.commands.lifecycle import _build_pr_body

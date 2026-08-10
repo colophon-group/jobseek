@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
@@ -76,13 +77,15 @@ class TestUploadImages:
             mock_boto3.client.return_value = mock_client
             result = upload_images()
 
+        logo_hash = hashlib.sha256(b"<svg></svg>").hexdigest()
+        icon_hash = hashlib.sha256(b"\x89PNG").hexdigest()
         assert result == {
             "acme": {
-                "logo_url": "https://assets.example.com/companies/acme/logo.svg",
-                "icon_url": "https://assets.example.com/companies/acme/icon.png",
+                "logo_url": (f"https://assets.example.com/companies/acme/logo-{logo_hash}.svg"),
+                "icon_url": (f"https://assets.example.com/companies/acme/icon-{icon_hash}.png"),
             }
         }
-        assert mock_client.upload_file.call_count == 2
+        assert mock_client.put_object.call_count == 2
 
     def test_only_logo(self, tmp_path, monkeypatch):
         images_dir = tmp_path / "images"
@@ -106,6 +109,30 @@ class TestUploadImages:
         assert "logo_url" in result["acme"]
         assert "icon_url" not in result["acme"]
 
+    def test_only_processes_requested_slugs(self, tmp_path, monkeypatch):
+        images_dir = tmp_path / "images"
+        for slug in ("acme", "other"):
+            slug_dir = images_dir / slug
+            slug_dir.mkdir(parents=True)
+            (slug_dir / "logo.svg").write_text(f"<svg>{slug}</svg>")
+
+        monkeypatch.setattr("src.image_sync.IMAGES_DIR", images_dir)
+        monkeypatch.setenv("R2_ENDPOINT_URL", "https://r2.example.com")
+        monkeypatch.setenv("R2_ACCESS_KEY_ID", "test-key")
+        monkeypatch.setenv("R2_SECRET_ACCESS_KEY", "test-secret")
+        monkeypatch.setenv("R2_BUCKET", "test-bucket")
+        monkeypatch.setenv("R2_DOMAIN_URL", "https://assets.example.com")
+
+        mock_client = MagicMock()
+        with patch("src.image_sync.boto3") as mock_boto3:
+            mock_boto3.client.return_value = mock_client
+            result = upload_images(["acme"])
+
+        assert set(result) == {"acme"}
+        assert mock_client.put_object.call_count == 1
+        key = mock_client.put_object.call_args.kwargs["Key"]
+        assert key.startswith("companies/acme/logo-")
+
     def test_skips_non_directories(self, tmp_path, monkeypatch):
         images_dir = tmp_path / "images"
         images_dir.mkdir()
@@ -123,7 +150,7 @@ class TestUploadImages:
             mock_boto3.client.return_value = mock_client
             result = upload_images()
         assert result == {}
-        mock_client.upload_file.assert_not_called()
+        mock_client.put_object.assert_not_called()
 
 
 class TestUpdateCsv:

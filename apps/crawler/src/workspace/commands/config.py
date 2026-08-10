@@ -617,6 +617,15 @@ def _show_career_results(slug: str, html: str, final_url: str, homepage_url: str
             pass
 
 
+def _merge_enrichment_extras(existing: dict, inferred: dict) -> dict:
+    """Fill missing enrichment keys without replacing validated metadata."""
+    merged = dict(existing or {})
+    for key, value in (inferred or {}).items():
+        if key not in merged or merged[key] in (None, "", [], {}):
+            merged[key] = value
+    return merged
+
+
 def _auto_enrich(ws: Workspace) -> None:
     """Auto-enrich company metadata from JSON-LD and Wikidata."""
     import asyncio
@@ -639,7 +648,7 @@ def _auto_enrich(ws: Workspace) -> None:
     if meta.founded_year is not None and ws.founded_year is None:
         ws.founded_year = meta.founded_year
     if meta.extras:
-        ws.enrichment_extras = meta.extras
+        ws.enrichment_extras = _merge_enrichment_extras(ws.enrichment_extras, meta.extras)
 
     # Display results
     _show_enrichment_results(ws, meta)
@@ -951,8 +960,10 @@ def discover_bg(slug: str):
             ws.founded_year = meta.founded_year
             changed = True
         if meta.extras:
-            ws.enrichment_extras = meta.extras
-            changed = True
+            merged_extras = _merge_enrichment_extras(ws.enrichment_extras, meta.extras)
+            if merged_extras != ws.enrichment_extras:
+                ws.enrichment_extras = merged_extras
+                changed = True
         if changed:
             save_workspace(ws)
         status["enrichment"] = "complete"

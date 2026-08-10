@@ -120,14 +120,10 @@ else
           echo "${major}.${minor}.$((patch + 1))" > "$file"
         elif [[ "$file" == *.csv ]]; then
           git checkout --ours "$file"
-          git show REBASE_HEAD:"$file" | while IFS= read -r line; do
-            if ! grep -qxF "$line" "$file"; then
-              echo "$line" >> "$file"
-            fi
-          done
+          python3 "$SCRIPTS_DIR/merge_company_csv_rebase.py" "$file" REBASE_HEAD
         else
-          echo "::warning::Unexpected conflict in $file; keeping base version"
-          git checkout --ours "$file"
+          echo "Unexpected conflict in $file; refusing to discard the PR's changes" >&2
+          exit 1
         fi
         git add "$file"
       done

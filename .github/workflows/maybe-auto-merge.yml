@@ -39,6 +39,7 @@ jobs:
           cp .github/scripts/close-linked-company-request-issues.sh "$RUNNER_TEMP/trusted-scripts/close-linked-company-request-issues.sh"
           cp .github/scripts/dispatch-company-production-sync.sh "$RUNNER_TEMP/trusted-scripts/dispatch-company-production-sync.sh"
           cp .github/scripts/maybe-auto-merge-pr.sh "$RUNNER_TEMP/trusted-scripts/maybe-auto-merge-pr.sh"
+          cp .github/scripts/merge_company_csv_rebase.py "$RUNNER_TEMP/trusted-scripts/merge_company_csv_rebase.py"
           cp .github/scripts/dispatch-pr-checks.sh "$RUNNER_TEMP/trusted-scripts/dispatch-pr-checks.sh"
           chmod +x "$RUNNER_TEMP/trusted-scripts/"*.sh
 

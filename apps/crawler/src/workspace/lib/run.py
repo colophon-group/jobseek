@@ -59,6 +59,7 @@ class RunMonitorResult:
     filtered_count: int
     elapsed_seconds: float
     has_rich_data: bool
+    truncated: bool
     sample_urls: list[str]
     description_samples: list[dict[str, Any]] = field(default_factory=list)
     quality: dict[str, Any] | None = None
@@ -75,6 +76,7 @@ class RunMonitorResult:
             "urls": list(self.urls),
             "job_count": len(self.urls),
             "has_rich_data": self.has_rich_data,
+            "truncated": self.truncated,
             "filtered_count": self.filtered_count,
             "elapsed_seconds": self.elapsed_seconds,
             "sample_urls": list(self.sample_urls),
@@ -240,6 +242,7 @@ async def run_monitor(
         filtered_count=raw_result.filtered_count,
         elapsed_seconds=round(elapsed, 4),
         has_rich_data=has_rich,
+        truncated=bool(getattr(raw_result, "truncated", False)),
         sample_urls=sample,
         description_samples=desc_samples,
         quality=quality,

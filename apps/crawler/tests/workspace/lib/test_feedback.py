@@ -128,6 +128,19 @@ async def test_feedback_rejects_invalid_per_field_quality():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("verdict", ["good", "acceptable"])
+async def test_feedback_rejects_positive_verdict_for_truncated_run(verdict):
+    kv = await _seed_active_config()
+    with pytest.raises(WsConfigInvalid, match="truncated"):
+        await feedback(
+            kv,
+            verdict=verdict,
+            per_field=_all_clean("title", "description"),
+            monitor_run={"jobs": 10, "truncated": True},
+        )
+
+
+@pytest.mark.asyncio
 async def test_feedback_requires_explicit_rating_for_required_fields():
     kv = await _seed_active_config()
     with pytest.raises(WsFeedbackIncomplete):

@@ -90,6 +90,14 @@ class TestCompanyAdd:
         assert rows[0]["slug"] == "existing"
         assert rows[1]["slug"] == "new-co"
 
+    def test_add_restores_canonical_order(self, tmp_path, monkeypatch):
+        self._setup(tmp_path, monkeypatch, companies="zeta,Zeta,https://zeta.example,,,\n")
+
+        company_add("alpha", name="Alpha", website="https://alpha.example")
+
+        _, rows = _read_csv(tmp_path / "companies.csv")
+        assert [row["slug"] for row in rows] == ["alpha", "zeta"]
+
 
 class TestCompanyDel:
     def _setup(self, tmp_path, monkeypatch, companies="", boards=""):
@@ -241,6 +249,37 @@ class TestBoardAdd:
         )
         _, rows = _read_csv(tmp_path / "boards.csv")
         assert len(rows) == 2
+
+    def test_add_restores_canonical_order(self, tmp_path, monkeypatch):
+        self._setup(
+            tmp_path,
+            monkeypatch,
+            companies="alpha,Alpha,,,\nzeta,Zeta,,,\n",
+            boards="zeta,zeta-careers,https://zeta.example/jobs,greenhouse,,,\n",
+        )
+
+        board_add(
+            "alpha",
+            board_slug="alpha-careers",
+            board_url="https://alpha.example/jobs",
+            monitor_type="greenhouse",
+        )
+
+        _, rows = _read_csv(tmp_path / "boards.csv")
+        assert [(row["company_slug"], row["board_slug"]) for row in rows] == [
+            ("alpha", "alpha-careers"),
+            ("zeta", "zeta-careers"),
+        ]
+
+
+def test_company_description_set_restores_canonical_order(tmp_path, monkeypatch):
+    (tmp_path / "company_descriptions.csv").write_text("slug,en\nzeta,Zeta description\n")
+    monkeypatch.setattr("src.csvtool.get_data_dir", lambda: tmp_path)
+
+    company_description_set("alpha", "en", "Alpha description")
+
+    _, rows = _read_csv(tmp_path / "company_descriptions.csv")
+    assert [row["slug"] for row in rows] == ["alpha", "zeta"]
 
 
 class TestBoardDel:

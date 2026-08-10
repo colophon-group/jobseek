@@ -175,6 +175,51 @@ _DEFAULT_TIMEOUT = 20_000
 _DEFAULT_SETTLE = 3  # seconds to wait after navigation for XHRs to complete
 
 
+def _materially_below_advertised_total(discovered: int, total: int | None) -> bool:
+    """Return whether a trustworthy API total proves discovery incomplete."""
+    if not total or total <= 0 or discovered >= total:
+        return False
+
+    # Allow one record (or 1% on large, fast-changing boards) for jobs that
+    # open/close while pagination is in flight. Larger gaps are unsafe to call
+    # complete: even a 5% shortfall can hide hundreds of live postings.
+    tolerated_missing = max(1, ceil(total * 0.01))
+    return total - discovered > tolerated_missing
+
+
+def _log_incomplete_total(discovered: int, total: int | None) -> None:
+    if _materially_below_advertised_total(discovered, total):
+        log.warning(
+            "api_sniffer.incomplete_total",
+            advertised_total=total,
+            discovered=discovered,
+        )
+
+
+def _item_result_is_truncated(
+    *,
+    item_count: int,
+    discovered_count: int,
+    total: int | None,
+    cap: int,
+) -> bool:
+    """Evaluate caps and advertised totals against unique extracted jobs."""
+    incomplete = _materially_below_advertised_total(discovered_count, total)
+    if incomplete:
+        _log_incomplete_total(discovered_count, total)
+
+    truncated = item_count > cap or incomplete
+    if truncated:
+        log.warning(
+            "api_sniffer.truncated",
+            rows=item_count,
+            discovered=discovered_count,
+            cap=cap,
+            advertised_total=total,
+        )
+    return truncated
+
+
 def _derive_url_match(api_url: str) -> str | None:
     """Derive an ``api_url_match`` glob from a URL with rotating-token segments.
 
@@ -998,7 +1043,9 @@ async def _discover_http(
                 urls=len(all_urls),
             )
 
-        return all_urls
+        truncated = _materially_below_advertised_total(len(all_urls), total)
+        _log_incomplete_total(len(all_urls), total)
+        return truncated_url_result(all_urls) if truncated else all_urls
 
     # -- list/items mode ---------------------------------------------------
     if isinstance(content, list):
@@ -1044,6 +1091,7 @@ async def _discover_http(
                 page_cap,
                 item_projector=item_projector,
             )
+            total = job_result.total_count
         elif item_projector:
             items = [item_projector(item) for item in items]
 
@@ -1054,9 +1102,6 @@ async def _discover_http(
         # is not tombstoned. Matches the pattern used by the 29 monitors
         # migrated in #3266 (lever, workday, greenhouse, ...).
         max_items = config.get("max_items", MAX_ITEMS)
-        truncated = len(items) > max_items
-        if truncated:
-            log.warning("api_sniffer.truncated", total=len(items), cap=max_items)
 
         log.info("api_sniffer.http_items_done", items=len(items))
 
@@ -1082,6 +1127,12 @@ async def _discover_http(
                 root=data,
                 url_template_fields=url_template_fields,
             )
+            truncated = _item_result_is_truncated(
+                item_count=len(items),
+                discovered_count=len({job.url for job in jobs}),
+                total=total,
+                cap=max_items,
+            )
             return truncated_rich_result(jobs) if truncated else jobs
         if url_template:
             urls_from_tpl = _extract_urls_from_template(
@@ -1089,6 +1140,12 @@ async def _discover_http(
                 url_template,
                 board_url,
                 url_template_fields=url_template_fields,
+            )
+            truncated = _item_result_is_truncated(
+                item_count=len(items),
+                discovered_count=len(urls_from_tpl),
+                total=total,
+                cap=max_items,
             )
             return truncated_url_result(urls_from_tpl) if truncated else urls_from_tpl
         # Support nested url_field paths (e.g. "data.apply_url")
@@ -1098,8 +1155,20 @@ async def _discover_http(
                 raw = extract_field(item, url_field)
                 if isinstance(raw, str) and raw:
                     urls.add(urljoin(board_url, raw))
+            truncated = _item_result_is_truncated(
+                item_count=len(items),
+                discovered_count=len(urls),
+                total=total,
+                cap=max_items,
+            )
             return truncated_url_result(urls) if truncated else urls
         urls = set(extract_urls(items, url_field, board_url))
+        truncated = _item_result_is_truncated(
+            item_count=len(items),
+            discovered_count=len(urls),
+            total=total,
+            cap=max_items,
+        )
         return truncated_url_result(urls) if truncated else urls
 
     log.warning(
@@ -1225,6 +1294,7 @@ async def _discover_replay(
     request_headers = config.get("request_headers", {})
     fields_map: dict[str, str] = config.get("fields") or {}
     pagination_config = config.get("pagination")
+    total_path = config.get("total_path")
     api_url_match = config.get("api_url_match")
     route_params = config.get("route_params")
 
@@ -1365,6 +1435,14 @@ async def _discover_replay(
             log.warning("api_sniffer.no_items", api_url=api_url, json_path=json_path)
             return list() if fields_map else set()
 
+        total_count: int | None = None
+        if total_path:
+            raw_total = resolve_path(data, total_path)
+            if isinstance(raw_total, (int, float)):
+                total_count = int(raw_total)
+        elif json_path:
+            total_count = find_total_count(data, json_path)
+
         item_projector = _build_item_projector(
             fields_map,
             url_field,
@@ -1391,7 +1469,6 @@ async def _discover_replay(
                 content_type="application/json",
                 phase="load",
             )
-            total_count = find_total_count(data, json_path)
             cand = ArrayCandidate(exchange=ex, json_path=json_path, items=items)
             job_result = JobListResult(
                 candidate=cand,
@@ -1413,6 +1490,7 @@ async def _discover_replay(
                 max_pg,
                 item_projector=item_projector,
             )
+            total_count = job_result.total_count
         elif item_projector:
             items = [item_projector(item) for item in items]
 
@@ -1422,10 +1500,6 @@ async def _discover_replay(
         # ``_MARK_GONE_BY_TIMESTAMP`` and the unseen tail beyond the cap
         # is not tombstoned. Matches the pattern used by the 29 monitors
         # migrated in #3266 (lever, workday, greenhouse, ...).
-        truncated = len(items) > MAX_ITEMS
-        if truncated:
-            log.warning("api_sniffer.truncated", total=len(items), cap=MAX_ITEMS)
-
         # Build URL map via DOM cross-ref if no url_field and no url_template
         url_map: dict[str, str] | None = None
         if not url_field and not url_template:
@@ -1457,6 +1531,12 @@ async def _discover_replay(
                 root=data,
                 url_template_fields=url_template_fields,
             )
+            truncated = _item_result_is_truncated(
+                item_count=len(items),
+                discovered_count=len({job.url for job in jobs}),
+                total=total_count,
+                cap=MAX_ITEMS,
+            )
             return truncated_rich_result(jobs) if truncated else jobs
 
         # URL-only mode
@@ -1467,10 +1547,22 @@ async def _discover_replay(
                 board_url,
                 url_template_fields=url_template_fields,
             )
+            truncated = _item_result_is_truncated(
+                item_count=len(items),
+                discovered_count=len(urls_from_tpl),
+                total=total_count,
+                cap=MAX_ITEMS,
+            )
             return truncated_url_result(urls_from_tpl) if truncated else urls_from_tpl
         urls = extract_urls(items, url_field, board_url)
         if not urls and url_map:
             urls_from_map = set(url_map.values())
+            truncated = _item_result_is_truncated(
+                item_count=len(items),
+                discovered_count=len(urls_from_map),
+                total=total_count,
+                cap=MAX_ITEMS,
+            )
             return truncated_url_result(urls_from_map) if truncated else urls_from_map
         if not urls:
             try:
@@ -1478,6 +1570,12 @@ async def _discover_replay(
             except Exception:
                 log.debug("api_sniffer.dom_crossref_degraded", exc_info=True)
         urls_set = set(urls)
+        truncated = _item_result_is_truncated(
+            item_count=len(items),
+            discovered_count=len(urls_set),
+            total=total_count,
+            cap=MAX_ITEMS,
+        )
         return truncated_url_result(urls_set) if truncated else urls_set
 
 
@@ -1547,10 +1645,6 @@ async def _discover_auto(
         # cap is not tombstoned. Matches the pattern used by the 29
         # monitors migrated in #3266 and the sibling
         # ``_discover_http`` / ``_discover_replay`` paths wired in #3334.
-        truncated = len(items) > MAX_ITEMS
-        if truncated:
-            log.warning("api_sniffer.truncated", total=len(items), cap=MAX_ITEMS)
-
         # Auto-map fields if not configured
         if not fields_map:
             fields_map = auto_map_fields(items)
@@ -1587,15 +1681,33 @@ async def _discover_auto(
                 url_map=url_map,
                 root=root,
             )
+            truncated = _item_result_is_truncated(
+                item_count=len(items),
+                discovered_count=len({job.url for job in jobs}),
+                total=result.total_count,
+                cap=MAX_ITEMS,
+            )
             return truncated_rich_result(jobs) if truncated else jobs
 
         urls = extract_urls(items, url_field, board_url)
         if not urls and url_map:
             urls_from_map = set(url_map.values())
+            truncated = _item_result_is_truncated(
+                item_count=len(items),
+                discovered_count=len(urls_from_map),
+                total=result.total_count,
+                cap=MAX_ITEMS,
+            )
             return truncated_url_result(urls_from_map) if truncated else urls_from_map
         if not urls:
             urls = await extract_urls_via_dom_crossref(page, items, board_url)
         urls_set = set(urls)
+        truncated = _item_result_is_truncated(
+            item_count=len(items),
+            discovered_count=len(urls_set),
+            total=result.total_count,
+            cap=MAX_ITEMS,
+        )
         return truncated_url_result(urls_set) if truncated else urls_set
 
 

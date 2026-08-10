@@ -26,23 +26,35 @@ _SLUG_RE = SLUG_RE
 log = structlog.get_logger()
 
 
+def _sort_company_rows(rows: list[dict[str, str]]) -> None:
+    rows.sort(key=lambda row: row.get("slug", ""))
+
+
+def _sort_board_rows(rows: list[dict[str, str]]) -> None:
+    rows.sort(key=lambda row: (row.get("company_slug", ""), row.get("board_slug", "")))
+
+
+def _sort_description_rows(rows: list[dict[str, str]]) -> None:
+    rows.sort(key=lambda row: row.get("slug", ""))
+
+
 def sort_csvs() -> None:
-    """Sort companies.csv by slug and boards.csv by company_slug + board_slug."""
+    """Restore canonical ordering for every company registry CSV."""
     companies_path = get_data_dir() / "companies.csv"
     boards_path = get_data_dir() / "boards.csv"
 
     headers, rows = _read_csv(companies_path)
-    rows.sort(key=lambda r: r.get("slug", ""))
+    _sort_company_rows(rows)
     _write_csv(companies_path, headers, rows)
 
     b_headers, b_rows = _read_csv(boards_path)
-    b_rows.sort(key=lambda r: (r.get("company_slug", ""), r.get("board_slug", "")))
+    _sort_board_rows(b_rows)
     _write_csv(boards_path, b_headers, b_rows)
 
     descs_path = get_data_dir() / "company_descriptions.csv"
     if descs_path.exists():
         d_headers, d_rows = _read_csv(descs_path)
-        d_rows.sort(key=lambda r: r.get("slug", ""))
+        _sort_description_rows(d_rows)
         _write_csv(descs_path, d_headers, d_rows)
 
 
@@ -86,6 +98,7 @@ def company_description_set(slug: str, locale: str, description: str) -> None:
     else:
         target[locale] = description
 
+    _sort_description_rows(rows)
     _write_csv(descs_path, headers, rows)
     log.info("csvtool.company_description.set", slug=slug, locale=locale)
     tty_message(f"Set {locale} description for {slug!r}")
@@ -144,6 +157,7 @@ def company_add(
         new_row["slug"] = slug
         new_row.update(field_map)
         rows.append(new_row)
+        _sort_company_rows(rows)
         _write_csv(companies_path, headers, rows)
 
         fields = [k for k, v in new_row.items() if v and k != "slug"]
@@ -156,6 +170,7 @@ def company_add(
             raise NothingToUpdateError(f"Company {slug!r} already exists, nothing to update")
 
         target.update(field_map)
+        _sort_company_rows(rows)
         _write_csv(companies_path, headers, rows)
 
         log.info("csvtool.company.updated", slug=slug, fields=list(field_map))
@@ -175,12 +190,14 @@ def company_del(slug: str) -> None:
     if len(rows) == original_len:
         raise SlugNotFoundError(f"Slug {slug!r} not found in companies.csv")
 
+    _sort_company_rows(rows)
     _write_csv(companies_path, headers, rows)
 
     # Remove associated boards
     b_headers, b_rows = _read_csv(boards_path)
     b_original_len = len(b_rows)
     b_rows = [r for r in b_rows if r["company_slug"] != slug]
+    _sort_board_rows(b_rows)
     _write_csv(boards_path, b_headers, b_rows)
 
     removed_boards = b_original_len - len(b_rows)
@@ -239,6 +256,7 @@ def board_add(
             raise NothingToUpdateError(f"Board {board_url!r} already exists, nothing to update")
 
         target.update(updates)
+        _sort_board_rows(rows)
         _write_csv(boards_path, headers, rows)
 
         log.info(
@@ -269,6 +287,7 @@ def board_add(
             new_row["scraper_config"] = scraper_config
         rows.append(new_row)
 
+        _sort_board_rows(rows)
         _write_csv(boards_path, headers, rows)
         log.info(
             "csvtool.board.added",
@@ -289,6 +308,7 @@ def board_del(slug: str, *, board_url: str | None = None) -> None:
         rows = [r for r in rows if not (r["company_slug"] == slug and r["board_url"] == board_url)]
         if len(rows) == original_len:
             raise BoardNotFoundError(f"Board ({slug!r}, {board_url!r}) not found in boards.csv")
+        _sort_board_rows(rows)
         _write_csv(boards_path, headers, rows)
         log.info("csvtool.board.removed", slug=slug, board_url=board_url, removed=1)
         tty_message(f"Removed board {board_url!r} for {slug!r}")
@@ -298,6 +318,7 @@ def board_del(slug: str, *, board_url: str | None = None) -> None:
         removed = original_len - len(rows)
         if removed == 0:
             raise BoardNotFoundError(f"No boards found for {slug!r}")
+        _sort_board_rows(rows)
         _write_csv(boards_path, headers, rows)
         log.info("csvtool.board.removed", slug=slug, board_url=None, removed=removed)
         tty_message(f"Removed {removed} board(s) for {slug!r}")

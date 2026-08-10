@@ -163,6 +163,11 @@ async def feedback(
     # quality dicts. Totals come from ``jobs`` / ``count``.
     monitor_run = monitor_run or {}
     scraper_run = scraper_run or {}
+    if monitor_run.get("truncated") and verdict in {"good", "acceptable"}:
+        raise WsConfigInvalid(
+            "feedback: a truncated monitor run cannot be rated good or acceptable; "
+            "select a complete configuration"
+        )
     monitor_total = int(monitor_run.get("jobs", 0) or 0)
     scraper_total = int(scraper_run.get("count", 0) or 0)
     monitor_quality = monitor_run.get("quality") or {}
