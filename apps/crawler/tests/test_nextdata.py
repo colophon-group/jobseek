@@ -209,6 +209,15 @@ class TestExtractFieldShared:
         result = self._extract(item, [{"each": "missing[*]", "wrap": "<h3>{t}</h3>"}])
         assert result is None
 
+    def test_path_spec_html_unescape(self):
+        item = {"body": "&lt;h2&gt;Tasks&lt;/h2&gt;&lt;p&gt;Build &amp; test.&lt;/p&gt;"}
+        result = self._extract(item, {"path": "body", "html_unescape": True})
+        assert result == "<h2>Tasks</h2><p>Build & test.</p>"
+
+    def test_path_spec_html_unescape_preserves_none(self):
+        result = self._extract({}, {"path": "body", "html_unescape": True})
+        assert result is None
+
 
 class TestExtractFieldLookupJoin:
     """``lookup_from`` + ``key_from`` — sibling-table resolution.

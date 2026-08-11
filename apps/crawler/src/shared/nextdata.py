@@ -11,6 +11,7 @@ Used by both the nextdata monitor and the nextdata scraper.
 
 from __future__ import annotations
 
+import html
 import json
 import re
 
@@ -73,11 +74,20 @@ def extract_field(
            "separator": ", "}
           → "Warsaw, Poland"
 
-    **Dict with "path" + "map"** — value mapping.
-      Resolves the jmespath ``path``, stringifies the result, and looks
-      it up in ``map``.  Returns the mapped value or ``None``::
+    **Dict with "path" + optional "map" / "html_unescape"** — value
+    mapping and post-processing. ``html_unescape`` decodes entity-escaped
+    HTML returned by APIs before the value is stored::
+
+          {"path": "description", "html_unescape": true}
+
+      ``&lt;h2&gt;About&lt;/h2&gt;`` becomes ``<h2>About</h2>``.
+
+      With ``map``, resolves the jmespath ``path``, stringifies the result,
+      and looks it up in ``map``. Returns the mapped value or ``None``::
 
           {"path": "homeOffice", "map": {"True": "remote"}}
+
+      Transforms are applied after mapping.
 
     **Dict with "lookup_from" + "key_from"** — sibling-table lookup.
       Resolves ``item[key_from]`` (jmespath), stringifies it, and uses
@@ -103,8 +113,15 @@ def extract_field(
 
     if isinstance(spec, dict) and "path" in spec:
         if "map" in spec:
-            return _extract_mapped(item, spec)
-        return extract_field(item, spec["path"], root=root)
+            value = _extract_mapped(item, spec)
+        else:
+            value = extract_field(item, spec["path"], root=root)
+        if spec.get("html_unescape"):
+            if isinstance(value, list):
+                return [html.unescape(part) for part in value]
+            if isinstance(value, str):
+                return html.unescape(value)
+        return value
 
     # Constant string (=prefix) — return literal value
     if isinstance(spec, str) and spec.startswith("="):

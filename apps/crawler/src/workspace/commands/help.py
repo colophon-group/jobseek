@@ -2457,6 +2457,8 @@ Job Data Fields — types, formats, importance
   Use map spec for value mapping (boolean/enum conversion):
     "job_location_type": {"path": "homeOffice", "map": {"True": "remote"}}
     Unmapped values produce null (not passthrough).
+  Decode APIs that return HTML as entities before storing descriptions:
+    "description": {"path": "body", "html_unescape": true}
   Use enrich to scrape only specific fields for rich monitors:
     "enrich": ["description"] — fetches only description from detail pages.
     Titles and descriptions must be N/N — 0/N on either = do not submit.
