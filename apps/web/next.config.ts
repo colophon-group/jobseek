@@ -36,11 +36,11 @@ const nextConfig: NextConfig = {
   // and #2835 for the conventions.
   cacheComponents: true,
   images: {
-    // Use the supported Next.js cache floor for optimized transformations.
+    // Use the supported Next/Vercel cache floor for remote URL transforms.
     // Do not try to override `/_next/image` through `headers()`: Next owns
     // that generated response and ignores custom Cache-Control headers for it.
-    // Source and platform behavior can still affect the client-visible header;
-    // see apps/web/docs/edge-requests.md before changing this contract.
+    // String local/public URLs and static imports have different cache
+    // contracts; see apps/web/docs/edge-requests.md before changing this.
     minimumCacheTTL: 31536000,
     // 100% of company icons/logos currently resolve to R2 or DDG. The
     // historical `**` wildcard fallback let any hostname expand source

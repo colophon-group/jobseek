@@ -275,18 +275,32 @@ reduce repeat edge requests.
 | Asset | Cache TTL | Rationale |
 |-------|-----------|-----------|
 | Fonts (`/fonts/*`) | 1 year, `immutable` | Never change between deploys |
-| `next/image` responses (`/_next/image`) | Source/platform-dependent; 1-year configured floor | Next/Vercel owns the generated response; see below |
+| Remote URL through `next/image` | Upstream TTL or 1-year configured floor, whichever is larger | `images.minimumCacheTTL`; live client header was 1 year |
+| String local/public URL through `next/image` | Vercel edge cache up to 31 days; live client header was 1 week | Local content-hash cache key; no blanket 1-year promise |
+| Static image import | Long-lived `immutable` client header | Next content-hashes the imported asset; edge residency remains platform-managed |
 | SVGs, PNGs in `public/` | 1 week | Rarely change; no content hash in URL |
 | JS/CSS chunks (`/_next/static/*`) | 1 year, `immutable` | Content-hashed filenames (Next.js default) |
 | Favicon, manifest, icons | 1 week | Rarely change |
 
 ### Optimized-image cache contract
 
-`images.minimumCacheTTL: 31536000` is the supported Next.js configuration for
-the optimized-image cache floor. Next chooses the larger of this value and the
-upstream image's cache lifetime. A `headers()` entry for `/_next/image` is not
-a supported way to change the generated response: Next warns during builds and
-ignores that override. Keep optimizer policy under `images`, not route headers.
+There are three distinct paths:
+
+- For a **remote URL source**, Vercel documents the optimized-image cache TTL
+  as the larger of the upstream image's `Cache-Control` lifetime and
+  `images.minimumCacheTTL`. This app configures that supported floor as
+  `31536000` seconds.
+- For a **string local/public URL**, Vercel uses a content hash in the local
+  image cache key and documents edge caching for up to 31 days. "Up to" is a
+  ceiling, not a residency guarantee. The downstream/client response can have
+  a different lifetime, as the live seven-day response below demonstrates.
+- A **static image import** is content-hashed by Next and receives a long-lived
+  `immutable` client cache header. That header does not guarantee how long a
+  particular Vercel edge retains the object.
+
+A `headers()` entry for `/_next/image` is not a supported way to change any of
+these generated responses: Next warns during builds and ignores the override.
+Keep optimizer policy under `images`, not generated-route headers.
 
 The client-visible header is not a single app-owned constant. Live checks on
 2026-08-11 returned:
@@ -294,19 +308,26 @@ The client-visible header is not a single app-owned constant. Live checks on
 - a remote company logo: `public, max-age=31536000, must-revalidate`;
 - a local `/publicdomain/*` source: `public, max-age=604800`.
 
-Those observations verify the current Next/Vercel behavior; they do not make
-the response header an API contract. In particular, `minimumCacheTTL` should
-not be tested by copying an expected `Cache-Control` string into app config.
+Those observations verify the current Next/Vercel behavior; they do not turn a
+response header or edge residency into an app-owned contract. In particular,
+`minimumCacheTTL` should not be tested by copying an expected `Cache-Control`
+string into app config.
 See the official [Next.js image configuration](https://nextjs.org/docs/app/api-reference/components/image#minimumcachettl)
 and [Vercel Image Optimization](https://vercel.com/docs/image-optimization)
 references for the supported controls.
 
-If an asset requires a guaranteed one-year browser/edge response, give it a
-content-hashed or versioned URL and serve it directly (or use a Next static
-image import), then verify the deployed response headers. Do not add a custom
-`/_next/image` header. Deploying alone does not invalidate Vercel's optimized
-image cache; change the source URL or use the platform's image-cache purge
-mechanism when immediate invalidation is required.
+Hashing or versioning prevents a changed asset from colliding with a stale
+cache entry; it does not set a TTL. If a directly served asset requires a
+one-year **browser** lifetime, use a content-hashed/versioned URL and set an
+explicit, supported `Cache-Control` header on that direct source route, then
+verify the deployed response. A static import is the Next-managed alternative
+when its long-lived `immutable` client header is appropriate. Neither approach
+promises edge residency; eviction remains platform-managed. Do not add a
+custom `/_next/image` header.
+
+Deploying alone does not invalidate Vercel's optimized-image cache. Change the
+source URL or use the platform's image-cache purge mechanism when immediate
+invalidation is required.
 
 Browser caches for the other public assets persist for their configured TTL.
 If an unversioned `public/` asset changes, browsers will pick up the new version
