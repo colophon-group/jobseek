@@ -4,6 +4,7 @@ import path from "node:path";
 import process from "node:process";
 import { chromium, type Browser } from "playwright";
 import { logExternalError } from "../src/lib/safe-external-error";
+import { inspectVisibleExploreHtml } from "./visible-explore-html";
 
 const port = Number(process.env.SMOKE_PORT ?? "3100");
 const baseUrl = `http://127.0.0.1:${port}`;
@@ -137,12 +138,6 @@ async function smoke(browser: Browser, route: string) {
   await page.close();
 }
 
-function withoutScripts(html: string) {
-  return html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/giu, "")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/giu, "");
-}
-
 async function smokeExploreRawHtml(route: string, heading: string) {
   const response = await fetch(`${baseUrl}${route}`, {
     headers: { accept: "text/html" },
@@ -150,11 +145,11 @@ async function smokeExploreRawHtml(route: string, heading: string) {
   if (response.status !== 200) {
     throw new Error(`${route} raw HTML returned HTTP ${response.status}`);
   }
-  const visibleHtml = withoutScripts(await response.text());
+  const visibleHtml = inspectVisibleExploreHtml(await response.text());
   if (
-    !visibleHtml.includes(heading) ||
-    !visibleHtml.includes("data-explore-static-results") ||
-    !visibleHtml.includes("data-search-result-company=")
+    !visibleHtml.staticTextContent.includes(heading) ||
+    visibleHtml.staticResultsCount === 0 ||
+    visibleHtml.companyResultCount === 0
   ) {
     throw new Error(
       `${route} raw HTML did not contain its localized heading and meaningful initial company results`,
@@ -162,8 +157,7 @@ async function smokeExploreRawHtml(route: string, heading: string) {
   }
   if (
     !hasServerTypesenseConfiguration() &&
-    (!visibleHtml.includes("data-explore-repository-fallback") ||
-      visibleHtml.includes("data-posting-id="))
+    (visibleHtml.repositoryFallbackCount === 0 || visibleHtml.postingResultCount > 0)
   ) {
     throw new Error(
       `${route} secretless raw HTML did not expose the profile-only degraded fallback`,

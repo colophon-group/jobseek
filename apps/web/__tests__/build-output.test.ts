@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, inject, it } from "vitest";
+import { inspectVisibleExploreHtml } from "../script/visible-explore-html";
 
 declare module "vitest" {
   export interface ProvidedContext {
@@ -124,12 +125,6 @@ function readJson(path: string): unknown | null {
 
 function stripAnsi(text: string): string {
   return text.replace(/\x1b\[[0-?]*[ -/]*[@-~]/gu, "");
-}
-
-function stripEmbeddedScriptsAndStyles(html: string): string {
-  return html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/giu, "")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/giu, "");
 }
 
 function buildSucceeded(distDir: string | null): boolean | null {
@@ -355,10 +350,10 @@ describe("build-output classifier (slow lane, #2885)", () => {
       expect(distDir, "production build dist directory is unavailable").toBeTruthy();
       const htmlPath = join(distDir!, "server", "app", locale, "explore.html");
       expect(existsSync(htmlPath), `missing prerendered Explore HTML at ${htmlPath}`).toBe(true);
-      const visibleHtml = stripEmbeddedScriptsAndStyles(readFileSync(htmlPath, "utf8"));
-      expect(visibleHtml).toContain(EXPLORE_HEADINGS[locale]);
-      expect(visibleHtml).toContain("data-explore-static-results");
-      expect(visibleHtml.match(/data-search-result-company=/gu)?.length ?? 0).toBeGreaterThan(0);
+      const visibleHtml = inspectVisibleExploreHtml(readFileSync(htmlPath, "utf8"));
+      expect(visibleHtml.staticTextContent).toContain(EXPLORE_HEADINGS[locale]);
+      expect(visibleHtml.staticResultsCount).toBeGreaterThan(0);
+      expect(visibleHtml.companyResultCount).toBeGreaterThan(0);
     });
   }
 
