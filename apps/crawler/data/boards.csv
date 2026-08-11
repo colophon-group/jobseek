@@ -609,6 +609,8 @@ bamboohr,bamboohr-greenhouse,https://job-boards.greenhouse.io/bamboohr17,greenho
 bamboohr,bamboohr-recruitee,https://bamboohr.recruitee.com,recruitee,"{""token"": ""bamboohr""}",skip,
 bandai-namco-entertainment-america-inc,bandai-namco-entertainment-america-inc-greenhouse,https://job-boards.greenhouse.io/bandainamco,greenhouse,"{""token"": ""bandainamco""}",skip,
 bandwidth,bandwidth-greenhouse,https://job-boards.greenhouse.io/bandwidth,greenhouse,"{""token"": ""bandwidth""}",skip,
+bank-of-america,bank-of-america-campus-programs,https://bankcampuscareers.tal.net/vx/lang-en-GB/mobile-0/brand-4/candidate/jobboard/vacancy/1/adv/,dom,"{""render"": false, ""url_filter"": ""/opp/""}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Apply now"", ""stop_count"": 1000, ""html"": true}, {""text"": ""Location"", ""offset"": 1, ""field"": ""locations"", ""from"": 0, ""optional"": true}]}"
+bank-of-america,bank-of-america-careers,https://ghr.wd1.myworkdayjobs.com/us-emplsv,workday,,workday,
 bank-of-america,bank-of-america-careers-apac,https://ghr.wd1.myworkdayjobs.com/en-US/Lateral-APAC,workday,"{""company"": ""ghr"", ""wd_instance"": ""wd1"", ""site"": ""Lateral-APAC"", ""all_sites"": false}",workday,
 bank-of-america,bank-of-america-careers-continuum,https://ghr.wd1.myworkdayjobs.com/en-US/lateral-ba_continuum,workday,"{""company"": ""ghr"", ""wd_instance"": ""wd1"", ""site"": ""lateral-ba_continuum"", ""all_sites"": false}",workday,
 bank-of-america,bank-of-america-careers-emea,https://ghr.wd1.myworkdayjobs.com/en-US/Lateral-EMEA,workday,"{""company"": ""ghr"", ""wd_instance"": ""wd1"", ""site"": ""Lateral-EMEA"", ""all_sites"": false}",workday,
