@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "website",
       locale: ogLocale(locale),
       alternateLocale: ogAlternateLocales(locale),
-      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Job Seek" }],
+      images: [{ ...siteConfig.ogImage, alt: "Job Seek" }],
     },
   };
 }

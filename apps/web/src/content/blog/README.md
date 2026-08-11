@@ -4,7 +4,7 @@ This directory holds MDX source for posts on `https://jseek.co/{locale}/blog/{sl
 
 - `apps/web/app/[lang]/(public)/blog/page.tsx` — index
 - `apps/web/app/[lang]/(public)/blog/[slug]/page.tsx` — post
-- `apps/web/app/[lang]/(public)/blog/[slug]/opengraph-image.tsx` — per-post OG card
+- `apps/web/app/og/blog/[lang]/[slug]/route.tsx` — per-post OG card, isolated from page traces
 - `apps/web/src/lib/blog.ts` — frontmatter + body loader
 - `apps/web/src/lib/sitemap.ts::blogPostEntries` — sitemap inclusion (English-only canonical)
 - `apps/web/src/components/blog/MdxMentions.tsx` — interactive entity-mention components

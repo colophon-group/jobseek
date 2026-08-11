@@ -145,6 +145,8 @@ printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
 function runDispatchCompanyProductionSync({
   defaultBranch = "main",
   includeDefaultBranch = true,
+  prewarmSha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  watchStatus = 0,
 } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "dispatch-company-sync-"));
   const log = join(dir, "gh.log");
@@ -154,6 +156,11 @@ function runDispatchCompanyProductionSync({
     `#!/usr/bin/env bash
 set -euo pipefail
 printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
+if [[ "$1 $2" == "run list" ]]; then
+  printf '4242\\t%s\\n' "$MOCK_PREWARM_SHA"
+elif [[ "$1 $2" == "run watch" ]]; then
+  exit "$MOCK_WATCH_STATUS"
+fi
 `,
   );
   chmodSync(gh, 0o755);
@@ -164,6 +171,8 @@ printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
     REPO: "colophon-group/jobseek",
     PR: "123",
     MOCK_GH_LOG: log,
+    MOCK_PREWARM_SHA: prewarmSha,
+    MOCK_WATCH_STATUS: String(watchStatus),
   };
   if (includeDefaultBranch) env.DEFAULT_BRANCH = defaultBranch;
   const result = spawnSync(
@@ -738,7 +747,7 @@ test("maybe-auto-merge script skips image PRs and retries pending merges", () =>
   assert.match(maybeAutoMergeScript, /scheduled\/workflow_run retries will revisit it/);
 });
 
-test("company auto-merges explicitly dispatch production CSV sync", () => {
+test("company auto-merges prewarm OG cards before exact-revision production sync", () => {
   for (const source of [maybeAutoMergeWorkflow, uploadCompanyImagesWorkflow]) {
     assert.match(
       source,
@@ -752,7 +761,7 @@ test("company auto-merges explicitly dispatch production CSV sync", () => {
   );
   assert.match(
     dispatchCompanyProductionSyncScript,
-    /gh workflow run sync-data\.yml --repo "\$REPO" --ref "\$default_branch"/,
+    /gh workflow run prewarm-company-og-cache\.yml[\s\S]*gh run watch "\$prewarm_run_id"[\s\S]*gh workflow run sync-data\.yml[\s\S]*-f revision="\$prewarm_sha"/,
   );
 
   for (const fixture of [
@@ -764,11 +773,26 @@ test("company auto-merges explicitly dispatch production CSV sync", () => {
     const expectedBranch = fixture.includeDefaultBranch
       ? fixture.defaultBranch
       : "main";
-    assert.equal(
-      result.calls,
-      `workflow run sync-data.yml --repo colophon-group/jobseek --ref ${expectedBranch}\n`,
+    const calls = result.calls.trim().split("\n");
+    assert.deepEqual(
+      [calls[0], calls[2], calls[3]],
+      [
+        `workflow run prewarm-company-og-cache.yml --repo colophon-group/jobseek --ref ${expectedBranch} -f concurrency=4`,
+        "run watch 4242 --repo colophon-group/jobseek --exit-status",
+        `workflow run sync-data.yml --repo colophon-group/jobseek --ref ${expectedBranch} -f revision=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`,
+      ],
+    );
+    assert.match(
+      calls[1],
+      new RegExp(
+        `^run list --repo colophon-group/jobseek --workflow prewarm-company-og-cache\\.yml --branch ${expectedBranch} --event workflow_dispatch`,
+      ),
     );
   }
+
+  const failedPrewarm = runDispatchCompanyProductionSync({ watchStatus: 1 });
+  assert.equal(failedPrewarm.status, 1);
+  assert.doesNotMatch(failedPrewarm.calls, /workflow run sync-data\.yml/);
 });
 
 test("bot-authored company branch updates dispatch path-aware CI", () => {

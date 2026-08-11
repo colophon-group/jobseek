@@ -26,15 +26,18 @@ const fontPromise = readFile(
   join(process.cwd(), "public/fonts/JetBrainsMono-Bold.ttf"),
 );
 
-export default async function OgImage({
-  params,
-}: {
-  params: Promise<{ lang: string; slug: string }>;
-}) {
+export async function GET(
+  _request: Request,
+  {
+    params,
+  }: {
+    params: Promise<{ lang: string; slug: string }>;
+  },
+) {
   const { lang, slug } = await params;
   // Pass the locale so the per-locale MDX sibling (if any) wins over
-  // the English canonical — `/de/blog/<slug>/opengraph-image-...` then
-  // shows German-translated title + description, not the EN fallback.
+  // the English canonical so the localized OG endpoint shows translated
+  // title + description, not the EN fallback.
   const post = await getBlogPost(slug, isLocale(lang) ? lang : undefined);
   const fontData = await fontPromise;
 

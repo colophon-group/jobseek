@@ -392,7 +392,7 @@ invocations.
 | Dynamic server subtree | Node.js | Page-specific Suspense islands such as settings data |
 | Server action call | Node.js | Each client-triggered `.bind()` or `useActionState` |
 | API route request | Node.js | `/api/v1/*`, `/api/auth/*`, `/api/stripe/*` |
-| OG image generation | Node.js | `opengraph-image.tsx` routes |
+| Dynamic OG image generation | Node.js | Isolated `/og/*` blog, methodology, and public-watchlist routes |
 | `sitemap.xml` / `robots.txt` | Node.js | Generated dynamically per request |
 | Proxy (formerly Middleware) | Edge | Lightweight locale redirect only |
 
@@ -517,15 +517,20 @@ The listed routes typically complete in under 500ms.
 
 ### OG image compute
 
-OG image routes (`opengraph-image.tsx`) use Satori + sharp to render PNGs.
-Each invocation:
+The site-wide and company OG cards are pre-rendered in GitHub Actions and served
+directly from R2/Cloudflare, so they consume no Fluid CPU. The lower-volume
+blog, methodology, and privacy-sensitive public-watchlist cards remain dynamic
+under isolated `/og/*` route handlers. Their Satori/Sharp payload is not
+included in ordinary page Function traces.
+
+Each dynamic OG invocation:
 1. Reads font TTF + logo PNG from filesystem (~5ms)
 2. Renders JSX to SVG via Satori (~20-50ms)
 3. Encodes SVG to PNG via sharp (~30-80ms)
 
-**Estimated duration:** 60-140ms per OG image. These are only requested by
-social media crawlers when links are shared — low volume but relatively
-CPU-heavy per invocation.
+**Estimated duration:** 60-140ms per dynamic OG image. These are primarily
+requested by social media crawlers when links are shared — low volume but
+relatively CPU-heavy per invocation.
 
 ### Compute hotspots
 

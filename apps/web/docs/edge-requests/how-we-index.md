@@ -19,7 +19,8 @@
 
 ## OG image
 
-Has its own dedicated OG image: `/:lang/how-we-index/opengraph-image` (dynamic PNG generation).
+Has its own dedicated OG image at `/og/how-we-index/:lang`. The renderer stays
+dynamic but is isolated from the ordinary page Function trace.
 
 ## Notes
 
@@ -31,7 +32,7 @@ Has its own dedicated OG image: `/:lang/how-we-index/opengraph-image` (dynamic P
 
 **Zero function compute.** Pre-rendered at build time, CDN-served.
 
-The dedicated OG image (`/:lang/how-we-index/opengraph-image`) is the only
+The dedicated OG image (`/og/how-we-index/:lang`) is the only
 compute associated with this page — ~60-140ms per social share.
 
 ## Estimated edge requests
