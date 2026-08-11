@@ -9,13 +9,23 @@ import { searchJobs, listTopCompanies } from "@/lib/services/search";
 import { parseSearchFilters } from "@/lib/services/search-input";
 import { isLocale, locales } from "@/lib/i18n";
 import { logExternalError } from "@/lib/safe-external-error";
-import { checkRateLimit, apiResponse, siteUrl, exploreUrl } from "../_shared";
+import {
+  checkRateLimit,
+  apiResponse,
+  siteUrl,
+  exploreUrl,
+  type RateLimitInfo,
+} from "../_shared";
 
 const MAX_COMPANIES = 5;
 const MAX_POSTINGS_PER_COMPANY = 3;
 
-function searchErrorResponse(error: string, status: 400 | 500) {
-  const response = apiResponse({ error }, { maxAge: 0, status });
+function searchErrorResponse(
+  error: string,
+  status: 400 | 500,
+  rateLimit: RateLimitInfo | null,
+) {
+  const response = apiResponse({ error }, { maxAge: 0, rateLimit, status });
   // Search errors must never be stored by a browser or shared cache. This is
   // stricter than merely setting max-age=0 and keeps a transient provider
   // outage (or a malformed request) from becoming a cached API response.
@@ -79,10 +89,10 @@ function parseIntegerRangeParam(
   ok: false;
   error: string;
 } {
-  if (!raw) return { ok: true, min: undefined, max: undefined };
+  if (raw === undefined) return { ok: true, min: undefined, max: undefined };
 
   const parts = raw.split("-");
-  if (parts.length > 2) {
+  if (parts.length !== 2) {
     return { ok: false, error: `Invalid '${name}' param: expected min-max` };
   }
 
@@ -99,7 +109,14 @@ function parseIntegerRangeParam(
   if (Number.isNaN(min) || Number.isNaN(max)) {
     return {
       ok: false,
-      error: `Invalid '${name}' param: bounds must be positive integers`,
+      error: `Invalid '${name}' param: bounds must be non-negative integers`,
+    };
+  }
+
+  if (min === undefined && max === undefined) {
+    return {
+      ok: false,
+      error: `Invalid '${name}' param: at least one bound is required`,
     };
   }
 
@@ -133,12 +150,13 @@ export async function GET(request: NextRequest) {
     return searchErrorResponse(
       `Invalid 'locale' param. Supported: ${locales.join(", ")}`,
       400,
+      rl,
     );
   }
 
   const langParsed = parseLangParam(sp.get("lang"));
   if (!langParsed.ok) {
-    return searchErrorResponse(langParsed.error, 400);
+    return searchErrorResponse(langParsed.error, 400, rl);
   }
   // `searchJobs` / `listTopCompanies` treat `languages: []` as "no
   // filter" (see `apps/web/src/lib/search/typesense-filters.ts` —
@@ -147,12 +165,12 @@ export async function GET(request: NextRequest) {
 
   const salaryRange = parseIntegerRangeParam("sal", sal);
   if (!salaryRange.ok) {
-    return searchErrorResponse(salaryRange.error, 400);
+    return searchErrorResponse(salaryRange.error, 400, rl);
   }
 
   const experienceRange = parseIntegerRangeParam("exp", exp);
   if (!experienceRange.ok) {
-    return searchErrorResponse(experienceRange.error, 400);
+    return searchErrorResponse(experienceRange.error, 400, rl);
   }
 
   let parsed: Awaited<ReturnType<typeof parseSearchFilters>>;
@@ -164,7 +182,7 @@ export async function GET(request: NextRequest) {
       { service: "typesense", operation: "public_api_search" },
       error,
     );
-    return searchErrorResponse("Search service unavailable", 500);
+    return searchErrorResponse("Search service unavailable", 500, rl);
   }
 
   const locationIds =
@@ -212,7 +230,7 @@ export async function GET(request: NextRequest) {
       { service: "typesense", operation: "public_api_search" },
       error,
     );
-    return searchErrorResponse("Search service unavailable", 500);
+    return searchErrorResponse("Search service unavailable", 500, rl);
   }
 
   const companies = result.companies.slice(0, MAX_COMPANIES).map((c) => ({

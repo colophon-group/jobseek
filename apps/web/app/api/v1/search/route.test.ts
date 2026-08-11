@@ -82,6 +82,10 @@ describe("GET /api/v1/search", () => {
     const call = mocks.listTopCompanies.mock.calls[0][0];
     expect(call.languages).toEqual([]);
     expect(call.locale).toBe("en");
+    expect(call.salaryMinEur).toBeUndefined();
+    expect(call.salaryMaxEur).toBeUndefined();
+    expect(call.experienceMin).toBeUndefined();
+    expect(call.experienceMax).toBeUndefined();
   });
 
   it("passes a single-value `lang=de` through as `languages: ['de']`", async () => {
@@ -135,12 +139,12 @@ describe("GET /api/v1/search", () => {
     {
       caseName: "malformed salary range",
       query: "?locale=en&sal=abc-def",
-      error: "Invalid 'sal' param: bounds must be positive integers",
+      error: "Invalid 'sal' param: bounds must be non-negative integers",
     },
     {
       caseName: "malformed experience range",
       query: "?locale=en&exp=3-nope",
-      error: "Invalid 'exp' param: bounds must be positive integers",
+      error: "Invalid 'exp' param: bounds must be non-negative integers",
     },
     {
       caseName: "reversed salary range",
@@ -150,7 +154,47 @@ describe("GET /api/v1/search", () => {
     {
       caseName: "unsafe integer bound",
       query: "?locale=en&exp=9007199254740992-",
-      error: "Invalid 'exp' param: bounds must be positive integers",
+      error: "Invalid 'exp' param: bounds must be non-negative integers",
+    },
+    {
+      caseName: "empty salary range",
+      query: "?locale=en&sal=",
+      error: "Invalid 'sal' param: expected min-max",
+    },
+    {
+      caseName: "salary range without either bound",
+      query: "?locale=en&sal=-",
+      error: "Invalid 'sal' param: at least one bound is required",
+    },
+    {
+      caseName: "salary range without a separator",
+      query: "?locale=en&sal=100000",
+      error: "Invalid 'sal' param: expected min-max",
+    },
+    {
+      caseName: "negative salary bound",
+      query: "?locale=en&sal=-1-100000",
+      error: "Invalid 'sal' param: expected min-max",
+    },
+    {
+      caseName: "empty experience range",
+      query: "?locale=en&exp=",
+      error: "Invalid 'exp' param: expected min-max",
+    },
+    {
+      caseName: "experience range without either bound",
+      query: "?locale=en&exp=-",
+      error: "Invalid 'exp' param: at least one bound is required",
+    },
+    {
+      caseName: "experience range without a separator",
+      query: "?locale=en&exp=3",
+      error: "Invalid 'exp' param: expected min-max",
+    },
+    {
+      caseName: "negative experience bound",
+      query: "?locale=en&exp=-1-5",
+      error: "Invalid 'exp' param: expected min-max",
     },
   ])("returns the documented 400 contract for $caseName", async ({ query, error }) => {
     const { res, body } = await callRoute(query);
@@ -162,6 +206,28 @@ describe("GET /api/v1/search", () => {
     expect(mocks.parseSearchFilters).not.toHaveBeenCalled();
     expect(mocks.listTopCompanies).not.toHaveBeenCalled();
     expect(mocks.searchJobs).not.toHaveBeenCalled();
+  });
+
+  it("preserves successful rate-limit metadata on validation errors", async () => {
+    const reset = Date.now() + 30_000;
+    mocks.apiLimit.mockResolvedValueOnce({
+      success: true,
+      limit: 30,
+      remaining: 29,
+      reset,
+    });
+
+    const { res, body } = await callRoute("?locale=en&sal=-");
+
+    expect(res.status).toBe(400);
+    expect(body).toEqual({
+      error: "Invalid 'sal' param: at least one bound is required",
+    });
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("X-RateLimit-Limit")).toBe("30");
+    expect(res.headers.get("X-RateLimit-Remaining")).toBe("29");
+    expect(res.headers.get("X-RateLimit-Reset")).toBe(String(reset));
   });
 
   it("uses the `searchJobs` path when `q=` is set, still forwarding `languages`", async () => {
@@ -194,14 +260,48 @@ describe("GET /api/v1/search", () => {
     expect(url.searchParams.get("q")).toBe("engineer");
   });
 
-  it("forwards valid `sal=` and `exp=` ranges as numbers", async () => {
-    await callRoute("?locale=en&sal=90000-140000&exp=3-7");
-    const call = mocks.listTopCompanies.mock.calls[0][0];
-    expect(call.salaryMinEur).toBe(90000);
-    expect(call.salaryMaxEur).toBe(140000);
-    expect(call.experienceMin).toBe(3);
-    expect(call.experienceMax).toBe(7);
-  });
+  it.each([
+    {
+      caseName: "closed ranges",
+      query: "?locale=en&sal=90000-140000&exp=3-7",
+      salaryMinEur: 90000,
+      salaryMaxEur: 140000,
+      experienceMin: 3,
+      experienceMax: 7,
+    },
+    {
+      caseName: "minimum-only open ranges",
+      query: "?locale=en&sal=90000-&exp=3-",
+      salaryMinEur: 90000,
+      salaryMaxEur: undefined,
+      experienceMin: 3,
+      experienceMax: undefined,
+    },
+    {
+      caseName: "maximum-only open ranges",
+      query: "?locale=en&sal=-140000&exp=-7",
+      salaryMinEur: undefined,
+      salaryMaxEur: 140000,
+      experienceMin: undefined,
+      experienceMax: 7,
+    },
+  ])(
+    "forwards valid $caseName as numbers",
+    async ({
+      query,
+      salaryMinEur,
+      salaryMaxEur,
+      experienceMin,
+      experienceMax,
+    }) => {
+      await callRoute(query);
+      const call = mocks.listTopCompanies.mock.calls[0][0];
+      expect(call.salaryMinEur).toBe(salaryMinEur);
+      expect(call.salaryMaxEur).toBe(salaryMaxEur);
+      expect(call.experienceMin).toBe(experienceMin);
+      expect(call.experienceMax).toBe(experienceMax);
+    },
+  );
 
   it("forwards `wm=remote` into `moreAt` (regression for lost work-mode param)", async () => {
     // The API already accepted `wm` and forwarded it to searchJobs, but
@@ -254,12 +354,23 @@ describe("GET /api/v1/search", () => {
     expect(res.status).toBe(429);
     expect(body).toEqual({ error: "Too many requests" });
     expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect(res.headers.get("Retry-After")).not.toBeNull();
+    expect(res.headers.get("X-RateLimit-Limit")).toBe("30");
+    expect(res.headers.get("X-RateLimit-Remaining")).toBe("0");
+    expect(res.headers.get("X-RateLimit-Reset")).toBe(String(reset));
     expect(mocks.parseSearchFilters).not.toHaveBeenCalled();
     expect(mocks.listTopCompanies).not.toHaveBeenCalled();
   });
 
   it("returns a safe 500 body when the search provider fails", async () => {
+    const reset = Date.now() + 30_000;
+    mocks.apiLimit.mockResolvedValueOnce({
+      success: true,
+      limit: 30,
+      remaining: 28,
+      reset,
+    });
     const providerError = Object.assign(
       new Error("provider-internal-canary-do-not-expose"),
       { status: 503 },
@@ -272,6 +383,10 @@ describe("GET /api/v1/search", () => {
     expect(body).toEqual({ error: "Search service unavailable" });
     expect(JSON.stringify(body)).not.toContain("provider-internal-canary");
     expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("X-RateLimit-Limit")).toBe("30");
+    expect(res.headers.get("X-RateLimit-Remaining")).toBe("28");
+    expect(res.headers.get("X-RateLimit-Reset")).toBe(String(reset));
     expect(mocks.logExternalError).toHaveBeenCalledWith(
       "error",
       { service: "typesense", operation: "public_api_search" },

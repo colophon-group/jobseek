@@ -19,9 +19,9 @@
           { "name": "sen", "in": "query", "schema": { "type": "string" }, "description": "Seniority slugs, comma-separated (exact slugs only, use /resolve to look up)" },
           { "name": "tech", "in": "query", "schema": { "type": "string" }, "description": "Technology slugs, comma-separated (exact slugs only, use /resolve to look up)" },
           { "name": "wm", "in": "query", "schema": { "type": "string", "enum": ["onsite", "hybrid", "remote"] }, "description": "Work-mode filter (single value)" },
-          { "name": "sal", "in": "query", "schema": { "type": "string" }, "description": "Salary range in EUR, format: min-max (e.g. 80000-150000)" },
+          { "name": "sal", "in": "query", "schema": { "type": "string", "pattern": "^\\s*(?:\\d+\\s*-\\s*\\d+|\\d+\\s*-\\s*|-\\s*\\d+)\\s*$", "examples": ["80000-150000", "80000-", "-150000"] }, "description": "Salary range in EUR with non-negative integer bounds. Closed (min-max) and one-sided open ranges (min- or -max) are accepted; at least one bound is required. Omit the parameter for no salary bound." },
           { "name": "salcur", "in": "query", "schema": { "type": "string" }, "description": "Salary currency code (e.g. USD, EUR)" },
-          { "name": "exp", "in": "query", "schema": { "type": "string" }, "description": "Experience range in years, format: min-max (e.g. 3-10)" },
+          { "name": "exp", "in": "query", "schema": { "type": "string", "pattern": "^\\s*(?:\\d+\\s*-\\s*\\d+|\\d+\\s*-\\s*|-\\s*\\d+)\\s*$", "examples": ["3-10", "3-", "-10"] }, "description": "Experience range in years with non-negative integer bounds. Closed (min-max) and one-sided open ranges (min- or -max) are accepted; at least one bound is required. Omit the parameter for no experience bound." },
           { "name": "lang", "in": "query", "schema": { "type": "string" }, "description": "Job document language filter (comma-separated codes — en, de, fr, it). Distinct from ``locale`` (which controls response labels/currency formatting). Omit to return postings in any language; the API does not fall back to a cookie or to ``locale`` (public APIs are stateless)." },
           { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en", "enum": ["en", "de", "fr", "it"] }, "description": "UI locale for response labels and currency formatting (en, de, fr, it). Does NOT filter postings by document language — use ``lang`` for that." }
         ],
@@ -71,6 +71,22 @@
               "Cache-Control": {
                 "description": "Always ``no-store`` for error responses.",
                 "schema": { "type": "string", "const": "no-store" }
+              },
+              "Access-Control-Allow-Origin": {
+                "description": "Cross-origin access is permitted for public API clients.",
+                "schema": { "type": "string", "const": "*" }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Request limit when the rate-limit backend is available.",
+                "schema": { "type": "integer" }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Remaining requests when the rate-limit backend is available.",
+                "schema": { "type": "integer" }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Rate-limit reset time in Unix milliseconds when the backend is available.",
+                "schema": { "type": "integer" }
               }
             },
             "content": {
@@ -85,6 +101,22 @@
               "Cache-Control": {
                 "description": "Always ``no-store`` for error responses.",
                 "schema": { "type": "string", "const": "no-store" }
+              },
+              "Access-Control-Allow-Origin": {
+                "description": "Cross-origin access is permitted for public API clients.",
+                "schema": { "type": "string", "const": "*" }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Request limit when the rate-limit backend is available.",
+                "schema": { "type": "integer" }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Remaining requests when the rate-limit backend is available.",
+                "schema": { "type": "integer" }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Rate-limit reset time in Unix milliseconds when the backend is available.",
+                "schema": { "type": "integer" }
               }
             },
             "content": {
@@ -94,7 +126,41 @@
               }
             }
           },
-          "429": { "description": "Rate limit exceeded" }
+          "429": {
+            "description": "Rate limit exceeded. The response is not cacheable.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Always ``no-store`` for rate-limit responses.",
+                "schema": { "type": "string", "const": "no-store" }
+              },
+              "Access-Control-Allow-Origin": {
+                "description": "Cross-origin access is permitted for public API clients.",
+                "schema": { "type": "string", "const": "*" }
+              },
+              "Retry-After": {
+                "description": "Seconds until the client may retry.",
+                "schema": { "type": "integer", "minimum": 1 }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Request limit for the current window.",
+                "schema": { "type": "integer" }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Remaining requests; always zero for this response.",
+                "schema": { "type": "integer", "const": 0 }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Rate-limit reset time in Unix milliseconds.",
+                "schema": { "type": "integer" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "error": "Too many requests" }
+              }
+            }
+          }
         }
       }
     },

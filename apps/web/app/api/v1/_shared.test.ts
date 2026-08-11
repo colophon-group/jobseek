@@ -108,6 +108,13 @@ describe("checkRateLimit — Redis bypass observability (#3175)", () => {
     // Blocked requests return a NextResponse with status 429.
     expect(result).not.toBeNull();
     expect(result && "status" in result && result.status).toBe(429);
+    if (result && "headers" in result) {
+      expect(result.headers.get("Cache-Control")).toBe("no-store");
+      expect(result.headers.get("Access-Control-Allow-Origin")).toBe("*");
+      expect(result.headers.get("Access-Control-Allow-Methods")).toBe("GET");
+      expect(result.headers.get("X-RateLimit-Limit")).toBe("60");
+      expect(result.headers.get("X-RateLimit-Remaining")).toBe("0");
+    }
   });
 });
 

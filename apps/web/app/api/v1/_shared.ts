@@ -26,6 +26,8 @@ export async function checkRateLimit(
             "X-RateLimit-Remaining": "0",
             "X-RateLimit-Reset": String(reset),
             "Cache-Control": "no-store",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET",
           },
         },
       );
