@@ -41,7 +41,7 @@ def _huggingface_token() -> str | None:
     if token:
         return token
     try:
-        from huggingface_hub.utils import get_token
+        from huggingface_hub import get_token
     except Exception:
         return None
     return get_token()
