@@ -44,15 +44,20 @@ async function tryBrowser<T>(fn: () => Promise<T>): Promise<T | null> {
 /**
  * Executes one complete search-bar query through a bounded request plan.
  *
- * Request budget per debounced query:
+ * Application-data request budget per debounced query:
  * - direct disabled: exactly one server-action request;
  * - direct enabled, warm key: at most three Typesense `multi_search` requests
  *   (initial candidates, non-English fallback, posting-count boosts);
  * - direct enabled, cold key: the same plus one scoped-key request;
  * - if a direct candidate/fallback phase fails, one server-action fallback is
- *   added. Because a failure stops the direct plan, the absolute maximum is
- *   four browser network requests. Boost failures deliberately retain the
- *   unboosted candidates and do not trigger another request.
+ *   added. Because a failure stops the direct plan, the maximum is four
+ *   application-initiated data requests. Boost failures deliberately retain
+ *   the unboosted candidates and do not trigger another request.
+ *
+ * This budget does not count Next.js chunks loaded by the dynamic imports or
+ * browser-generated CORS OPTIONS preflights. Those are transport/cache work,
+ * not data requests initiated by this runner; docs/11-typesense.md records
+ * both exclusions so the bound is not mistaken for a wire-level ceiling.
  */
 export async function runSearchBarTypeahead(
   params: SearchBarTypeaheadParams,
