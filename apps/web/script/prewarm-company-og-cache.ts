@@ -22,12 +22,17 @@ import {
 } from "@/lib/safe-external-error";
 import { mapTypesenseCompanyHitToDetail } from "@/lib/services/company-detail-lookup";
 import { renderCompanyOgCard } from "@/lib/og/company-og-card";
-import { companyOgCacheKeyForVersion } from "@/lib/og/company-og-key";
+import {
+  companyOgCacheKeyForVersion,
+  companyOgCompletionKeyForVersion,
+} from "@/lib/og/company-og-key";
 import { computeCompanyOgRendererVersion } from "@/lib/og/company-og-renderer-version";
+import { computeCompanyOgSourceVersion } from "@/lib/og/company-og-source-version";
 
 const ALL_LOCALES = ["en", "de", "fr", "it"] as const;
 const CONTENT_TYPE = "image/png";
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
+const MARKER_CONTENT_TYPE = "application/json";
 const COMPANY_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const COMPANY_DATA_DIR = resolve(process.cwd(), "../crawler/data");
 
@@ -365,6 +370,7 @@ export async function main() {
 
   const rendererVersion = options.rendererVersion ??
     computeCompanyOgRendererVersion(process.cwd());
+  const sourceVersion = computeCompanyOgSourceVersion(process.cwd());
   const prefix = `og/company/${rendererVersion}/`;
   const { client, bucket } = createR2Client();
   const companies = listCompanies(options.maxCompanies);
@@ -396,6 +402,7 @@ export async function main() {
   console.log(JSON.stringify({
     event: "company_og_prewarm_started",
     rendererVersion,
+    sourceVersion,
     companies: companies.length,
     locales: options.locales,
     existing: skipped,
@@ -455,14 +462,54 @@ export async function main() {
     ),
   );
 
+  let completionMarker: string | null = null;
+  const isFullMatrix = options.maxCompanies === null &&
+    options.locales.length === ALL_LOCALES.length &&
+    ALL_LOCALES.every((locale) => options.locales.includes(locale));
+  if (failures.length === 0 && isFullMatrix) {
+    const key = companyOgCompletionKeyForVersion(
+      rendererVersion,
+      sourceVersion,
+    );
+    try {
+      await withRetry(() => client.send(new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: JSON.stringify({
+          complete: true,
+          rendererVersion,
+          sourceVersion,
+          companies: companies.length,
+          locales: options.locales,
+          expected: companies.length * options.locales.length,
+          completedAt: new Date().toISOString(),
+        }),
+        ContentType: MARKER_CONTENT_TYPE,
+        CacheControl: CACHE_CONTROL,
+      })));
+      completionMarker = key;
+    } catch (error) {
+      failures.push({
+        key,
+        error: safeExternalError(error, {
+          service: "r2",
+          operation: "publish_company_og_completion",
+          retryCount: 3,
+        }),
+      });
+    }
+  }
+
   console.log(JSON.stringify({
     event: "company_og_prewarm_completed",
     rendererVersion,
+    sourceVersion,
     companies: companies.length,
     expected: companies.length * options.locales.length,
     skipped,
     uploaded,
     failed: failures.length,
+    completionMarker,
   }));
 
   if (failures.length > 0) {

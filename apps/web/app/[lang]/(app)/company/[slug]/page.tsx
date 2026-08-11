@@ -13,6 +13,7 @@ import { CompanyContent } from "./company-content";
 import { CompanyNotFoundState } from "./company-not-found";
 import { SimilarSection } from "./similar-section";
 import { CompanySkeleton } from "@/components/search/company-skeleton";
+import { getDirectCompanyOgUrl } from "@/lib/og/company-og-direct";
 
 type Props = {
   params: Promise<{ lang: string; slug: string }>;
@@ -83,6 +84,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         values: { countText, name: company.name },
       });
   const path = `/company/${slug}`;
+  const directOgImageUrl = await getDirectCompanyOgUrl(locale, slug);
 
   return {
     title,
@@ -96,10 +98,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // product surface; `follow` keeps PageRank flowing to internal targets
     // (curated watchlists, blog) from any external links pointing here.
     robots: { index: false, follow: true },
-    // No `images` override here — the per-company `opengraph-image.tsx`
-    // sibling generates richer OG cards (logo + name + description + meta
-    // chips) that should win. Setting `images` at the page level would
-    // bypass the file-convention auto-discovery.
     openGraph: {
       title,
       description,
@@ -107,7 +105,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "website",
       locale: ogLocale(locale),
       alternateLocale: ogAlternateLocales(locale),
+      ...(directOgImageUrl
+        ? {
+            images: [{
+              url: directOgImageUrl,
+              width: 1200,
+              height: 630,
+              alt: title,
+            }],
+          }
+        : {}),
     },
+    ...(directOgImageUrl
+      ? {
+          twitter: {
+            card: "summary_large_image" as const,
+            title,
+            description,
+            images: [directOgImageUrl],
+          },
+        }
+      : {}),
   };
 }
 

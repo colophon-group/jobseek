@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import withBundleAnalyzer from "@next/bundle-analyzer";
 import path from "node:path";
 import { computeCompanyOgRendererVersion } from "./src/lib/og/company-og-renderer-version";
+import { computeCompanyOgSourceVersion } from "./src/lib/og/company-og-source-version";
 
 /**
  * Company OG image renderer version.
@@ -27,6 +28,7 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../.."),
   env: {
     COMPANY_OG_RENDERER_VERSION: computeCompanyOgRendererVersion(__dirname),
+    COMPANY_OG_SOURCE_VERSION: computeCompanyOgSourceVersion(__dirname),
   },
   // Stable Cache Components / Partial Prerendering (Next 16). Static
   // shells prerender; `'use cache'` content caches per region; dynamic
