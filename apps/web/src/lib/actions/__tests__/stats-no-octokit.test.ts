@@ -53,12 +53,14 @@ vi.mock("@/lib/search/typesense-retry", () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubEnv("TYPESENSE_SEARCH_KEY", "test-search-key");
   mocks.collections.mockImplementation(() => ({
     documents: () => ({ search: mocks.search }),
   }));
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   vi.resetModules();
 });
 
@@ -91,5 +93,13 @@ describe("stats.ts no longer eagerly pulls octokit (#3193)", () => {
       filter_by: "is_active:true",
       per_page: 0,
     });
+  });
+
+  it("returns the placeholder state before entering the cache during secretless builds", async () => {
+    vi.stubEnv("TYPESENSE_SEARCH_KEY", "");
+    const { getSiteStats } = await import("../stats");
+
+    await expect(getSiteStats()).resolves.toBeNull();
+    expect(mocks.collections).not.toHaveBeenCalled();
   });
 });

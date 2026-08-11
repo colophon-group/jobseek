@@ -18,15 +18,22 @@ import {
 
 const PAGE_SIZE = 10;
 
-export function PublicWatchlistSearch() {
+export function PublicWatchlistSearch({
+  initialWatchlists,
+  initialTotal,
+}: {
+  initialWatchlists: PublicWatchlistEntry[];
+  initialTotal: number;
+}) {
   const params = useParams();
   const locale = (params.lang as string) ?? "en";
   const { t } = useLingui();
   const lp = useLocalePath();
   const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [loading, setLoading] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const initialQueryEffect = useRef(true);
 
   const fetchPage = useCallback(async (q: string, offset: number, limit: number) => {
     const fetcher = q.length >= 2
@@ -47,16 +54,20 @@ export function PublicWatchlistSearch() {
     hasMore,
     loadMore,
   } = usePaginatedLoadMore<PublicWatchlistEntry>({
-    initialItems: [],
-    initialTotal: 0,
+    initialItems: initialWatchlists,
+    initialTotal,
     batchSize: PAGE_SIZE,
     itemKey: (watchlist) => watchlist.id,
-    resetKey: `${locale}:${debouncedQuery ?? "__pending__"}`,
+    resetKey: `${locale}:${debouncedQuery}`,
     fetcher: ({ offset, limit }) => fetchPage(activeQuery, offset, limit),
   });
 
   // Initial load + search on query change
   useEffect(() => {
+    if (initialQueryEffect.current) {
+      initialQueryEffect.current = false;
+      return;
+    }
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       setLoading(true);

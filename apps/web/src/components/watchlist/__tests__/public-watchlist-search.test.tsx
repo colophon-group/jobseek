@@ -58,6 +58,11 @@ function makeWatchlists(count: number) {
   }));
 }
 
+const emptyInitialPage = {
+  initialWatchlists: [],
+  initialTotal: 0,
+};
+
 beforeEach(() => {
   vi.restoreAllMocks();
   infiniteScrollMock.latest = undefined;
@@ -74,8 +79,15 @@ beforeEach(() => {
 });
 
 describe("PublicWatchlistSearch navigation", () => {
+  it("does not issue a read action merely because the server-rendered panel mounted", () => {
+    render(<PublicWatchlistSearch {...emptyInitialPage} />);
+
+    expect(getPopularWatchlistsMock).not.toHaveBeenCalled();
+    expect(searchPublicWatchlistsMock).not.toHaveBeenCalled();
+  });
+
   it("exposes a stable public-watchlist searchbox name", () => {
-    render(<PublicWatchlistSearch />);
+    render(<PublicWatchlistSearch {...emptyInitialPage} />);
 
     const input = screen.getByRole("searchbox", {
       name: "Search public watchlists",
@@ -87,8 +99,19 @@ describe("PublicWatchlistSearch navigation", () => {
 
   it("scrolls to top synchronously when opening a public watchlist result", async () => {
     const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    const initialWatchlists = [{
+      ...makeWatchlists(1)[0],
+      id: "public-watchlist-1",
+      slug: "maangplus",
+      title: "MAANG+",
+    }];
 
-    render(<PublicWatchlistSearch />);
+    render(
+      <PublicWatchlistSearch
+        initialWatchlists={initialWatchlists}
+        initialTotal={1}
+      />,
+    );
 
     const link = await screen.findByRole("link", { name: /maang\+/i });
     fireEvent.click(link);
@@ -100,10 +123,14 @@ describe("PublicWatchlistSearch navigation", () => {
   it("stops infinite scroll when the next full public-watchlist page contains only duplicate ids", async () => {
     const firstPage = makeWatchlists(10);
     getPopularWatchlistsMock
-      .mockResolvedValueOnce({ watchlists: firstPage, total: 20 })
       .mockResolvedValueOnce({ watchlists: firstPage, total: 20 });
 
-    render(<PublicWatchlistSearch />);
+    render(
+      <PublicWatchlistSearch
+        initialWatchlists={firstPage}
+        initialTotal={20}
+      />,
+    );
 
     await screen.findByText("Watchlist 0");
     expect(infiniteScrollMock.latest?.hasMore).toBe(true);
@@ -117,6 +144,7 @@ describe("PublicWatchlistSearch navigation", () => {
       limit: 10,
       locale: "en",
     });
+    expect(getPopularWatchlistsMock).toHaveBeenCalledTimes(1);
     await waitFor(() => {
       expect(infiniteScrollMock.latest?.hasMore).toBe(false);
     });
