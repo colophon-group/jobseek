@@ -18,6 +18,7 @@ test("deploys web runtime and every current workspace input", () => {
     "turbo.json",
     ".github/workflows/deploy-web-production.yml",
     ".github/scripts/classify-vercel-web-change.mjs",
+    ".github/scripts/verify-vercel-server-action-key.mjs",
     ".github/scripts/verify-vercel-promotion.mjs",
   ]) {
     assert.equal(isVercelWebInput(path), true, path);
@@ -88,6 +89,10 @@ test("production workflow stages, verifies, then promotes exact main", () => {
   assert.doesNotMatch(workflow, /--cwd=apps\/web/);
   assert.doesNotMatch(workflow, /--git-branch/);
   assert.match(workflow, /environment: Production/);
+  assert.match(
+    workflow,
+    /vercel@55\.0\.0 pull[\s\S]{0,400}verify-vercel-server-action-key\.mjs[\s\S]{0,400}vercel@55\.0\.0 build/,
+  );
   assert.doesNotMatch(workflow, /environment:\n\s+name: Production\n\s+url:/);
   assert.doesNotMatch(workflow, /pull_request:/);
 });

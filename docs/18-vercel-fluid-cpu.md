@@ -24,6 +24,27 @@ external-call, error, and functionality gates.
 The release target is at least a 50% reduction in visible Active CPU: no more
 than 138.5 seconds in a comparable 12-hour window.
 
+## Stable Server Action deployments
+
+Production must define `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` as the canonical
+base64 encoding of exactly 32 random bytes. Without a persistent key, a new
+Next.js build can rotate the encrypted Server Action metadata. Clients or
+automation retaining an older action ID then invoke Fluid only to receive a
+`Failed to find Server Action` response.
+
+Vercel Sensitive values are intentionally absent from the environment file
+downloaded by a prebuilt CI deployment. Store the same value in both the Vercel
+Production environment as Sensitive and the GitHub `Production` environment as
+an Actions secret. The production workflow injects the GitHub secret only into
+the validation and `vercel build --prod` steps. The check reports only validity
+and never prints the value.
+
+Generate a replacement only during an intentional incident rotation, and
+update both secret stores together; an ordinary deployment must keep the
+existing value. After a deliberate rotation, treat old-action traffic as
+deployment skew, mitigate confirmed obsolete IDs before Functions, and restart
+the 12-hour measurement window.
+
 ## Measurement protocol
 
 1. Record the production deployment SHA and its Vercel `Ready` timestamp.
