@@ -371,17 +371,22 @@ def test_workflow_pins_role_specific_host_identity_on_every_connection() -> None
     assert "ssh-keyscan" not in combined
     assert "StrictHostKeyChecking=yes" in transport
     assert 'ssh-keygen -F "$TARGET_HOST"' in transport
-    assert workflow.count("bash deploy/host-hygiene/run-remote.sh") == 3
+    assert workflow.count("bash deploy/host-hygiene/run-remote.sh") == 7
 
-    for mapping in (
-        "role: crawler\n            host_secret: HETZNER_HOST\n"
-        "            known_hosts_secret: HETZNER_CRAWLER_KNOWN_HOSTS",
-        "role: postgresql\n            host_secret: HETZNER_POSTGRES_HOST\n"
-        "            known_hosts_secret: HETZNER_BACKUP_KNOWN_HOSTS",
-        "role: typesense\n            host_secret: HETZNER_TYPESENSE_HOST\n"
-        "            known_hosts_secret: HETZNER_TYPESENSE_KNOWN_HOSTS",
+    assert "secrets[" not in workflow
+    assert workflow.count("- role: crawler") == 2
+    assert workflow.count("- role: postgresql") == 2
+    assert workflow.count("- role: typesense") == 2
+    for host_secret, known_hosts_secret, expected_connections in (
+        ("HETZNER_HOST", "HETZNER_CRAWLER_KNOWN_HOSTS", 2),
+        ("HETZNER_POSTGRES_HOST", "HETZNER_BACKUP_KNOWN_HOSTS", 3),
+        ("HETZNER_TYPESENSE_HOST", "HETZNER_TYPESENSE_KNOWN_HOSTS", 2),
     ):
-        assert workflow.count(mapping) == 2
-    assert "SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}" in workflow
+        assert (
+            workflow.count(f"TARGET_HOST: ${{{{ secrets.{host_secret} }}}}") == expected_connections
+        )
+        expected_known_hosts = f"SSH_KNOWN_HOSTS: ${{{{ secrets.{known_hosts_secret} }}}}"
+        assert workflow.count(expected_known_hosts) == expected_connections
+    assert "&& secrets." not in workflow
     assert "HETZNER_POSTGRES_KNOWN_HOSTS" not in combined
     assert "SSH_FINGERPRINT" not in combined

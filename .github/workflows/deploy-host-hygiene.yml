@@ -112,24 +112,32 @@ jobs:
       matrix:
         include:
           - role: crawler
-            host_secret: HETZNER_HOST
-            known_hosts_secret: HETZNER_CRAWLER_KNOWN_HOSTS
           - role: postgresql
-            host_secret: HETZNER_POSTGRES_HOST
-            known_hosts_secret: HETZNER_BACKUP_KNOWN_HOSTS
           - role: typesense
-            host_secret: HETZNER_TYPESENSE_HOST
-            known_hosts_secret: HETZNER_TYPESENSE_KNOWN_HOSTS
     env:
-      TARGET_HOST: ${{ secrets[matrix.host_secret] }}
       SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
-      SSH_KNOWN_HOSTS: ${{ secrets[matrix.known_hosts_secret] }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Audit host without installing or cleaning
-        run: bash deploy/host-hygiene/run-remote.sh audit "${{ matrix.role }}"
+      - name: Audit crawler without installing or cleaning
+        if: ${{ matrix.role == 'crawler' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+        run: bash deploy/host-hygiene/run-remote.sh audit crawler
+      - name: Audit PostgreSQL without installing or cleaning
+        if: ${{ matrix.role == 'postgresql' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
+        run: bash deploy/host-hygiene/run-remote.sh audit postgresql
+      - name: Audit Typesense without installing or cleaning
+        if: ${{ matrix.role == 'typesense' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
+        run: bash deploy/host-hygiene/run-remote.sh audit typesense
 
   apply:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.action == 'apply' }}
@@ -144,27 +152,45 @@ jobs:
       matrix:
         include:
           - role: crawler
-            host_secret: HETZNER_HOST
-            known_hosts_secret: HETZNER_CRAWLER_KNOWN_HOSTS
           - role: postgresql
-            host_secret: HETZNER_POSTGRES_HOST
-            known_hosts_secret: HETZNER_BACKUP_KNOWN_HOSTS
           - role: typesense
-            host_secret: HETZNER_TYPESENSE_HOST
-            known_hosts_secret: HETZNER_TYPESENSE_KNOWN_HOSTS
     env:
-      TARGET_HOST: ${{ secrets[matrix.host_secret] }}
       SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
-      SSH_KNOWN_HOSTS: ${{ secrets[matrix.known_hosts_secret] }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install baseline and report remaining reviewed cleanup
+      - name: Install crawler baseline and report remaining reviewed cleanup
+        if: ${{ matrix.role == 'crawler' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
         run: >-
           bash deploy/host-hygiene/run-remote.sh
           apply
-          "${{ matrix.role }}"
+          crawler
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Install PostgreSQL baseline and report remaining reviewed cleanup
+        if: ${{ matrix.role == 'postgresql' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/host-hygiene/run-remote.sh
+          apply
+          postgresql
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Install Typesense baseline and report remaining reviewed cleanup
+        if: ${{ matrix.role == 'typesense' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/host-hygiene/run-remote.sh
+          apply
+          typesense
           "${{ github.sha }}"
           "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
 
