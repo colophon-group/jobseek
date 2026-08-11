@@ -31,6 +31,8 @@ def _healthy_results(now: float) -> dict:
             _row(1, host_role="typesense", service="typesense"),
         ],
         "failed_backups": [],
+        "backup_helper_image_series": [],
+        "backup_helper_image_gc_series": [],
         "postgresql_ready": [_row(1)],
         "postgresql_shared_memory": [_row(1)],
         "postgresql_emergency_reserve": [_row(1)],
@@ -113,8 +115,18 @@ def test_validate_results_accepts_optional_web_postgresql_backup() -> None:
     now = 1_800_000_000.0
     results = _healthy_results(now)
     results["backup_series"].append(_row(1, host_role="typesense", service="web-postgresql"))
+    results["backup_helper_image_series"].append(
+        _row(1, host_role="typesense", service="web-postgresql")
+    )
+    results["backup_helper_image_gc_series"].append(
+        _row(1, host_role="typesense", service="web-postgresql")
+    )
 
     verify.validate_results(results, now=now, max_age_seconds=300)
+
+    results["backup_helper_image_gc_series"] = []
+    with pytest.raises(verify.VerificationError, match="activated web backup"):
+        verify.validate_results(results, now=now, max_age_seconds=300)
 
 
 @pytest.mark.parametrize(

@@ -461,6 +461,15 @@ jobs:
       - run: uv run pytest tests/ -v --ignore=tests/e2e/test_typesense_indexing.py
         working-directory: apps/crawler
 
+      - name: Verify the web backup helper survives real Docker GC
+        env:
+          JOBSEEK_RUN_DOCKER_GC_INTEGRATION: "1"
+          JOBSEEK_ALLOW_DESTRUCTIVE_DOCKER_GC_TEST: github-hosted-ephemeral-runner
+        run: >-
+          uv run pytest tests/test_web_postgresql_backup_image_gc.py -q
+          -k real_docker_prune_retains_the_leased_digest
+        working-directory: apps/crawler
+
       - name: Verify Redis noeviction write pressure
         run: |
           docker run --detach --name jobseek-redis-pressure \

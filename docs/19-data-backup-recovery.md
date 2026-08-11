@@ -517,6 +517,47 @@ container and expanded there through an explicit `--dbname` argument.
 `PGDATABASE` must not carry the URI: the client treats that environment value
 as a literal database name and otherwise falls back to its local Unix socket.
 
+The client image is also a protected host dependency. Installation pulls the
+exact `postgres:17-alpine@sha256:...` reference and creates the stopped,
+networkless, read-only
+`jobseek-web-postgresql-backup-image-lease` container. That container has no
+bind mounts, credentials, or running process. A 64-KiB non-persistent tmpfs
+overrides the upstream image's declared data volume so creating the lease does
+not allocate a durable anonymous volume. Its only operational purpose is to
+keep the immutable image reachable to Docker's unused-image collector. Both
+normal age-based collection and the below-5-GiB `docker image prune --all`
+path therefore retain the digest. The backup keeps `--pull=never` and verifies
+the exact image, stopped lease, and ownership label before contacting the
+database. A mutable tag is never a recovery fallback.
+
+The minute host sampler publishes
+`jobseek_backup_helper_image_available{service="web-postgresql"}` and
+`jobseek_backup_helper_image_gc_protected{service="web-postgresql"}`.
+`WebPostgreSQLBackupHelperImageUnprotected` fires after three minutes, before
+the six-hour backup schedule can breach its nine-hour freshness threshold.
+Check the contract without printing configuration or credentials:
+
+```bash
+image='postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193'
+docker image inspect "$image" >/dev/null
+docker container inspect \
+  --format '{{.Config.Image}}|{{.State.Running}}|{{index .Config.Labels "jobseek.backup.helper-image"}}|{{.HostConfig.NetworkMode}}|{{.HostConfig.ReadonlyRootfs}}|{{json .HostConfig.CapDrop}}|{{json .HostConfig.SecurityOpt}}|{{json .HostConfig.Tmpfs}}|{{json .Mounts}}|{{json .Config.Entrypoint}}' \
+  jobseek-web-postgresql-backup-image-lease
+```
+
+The second command must return the exact digest followed by
+`false|web-postgresql|none|true|["ALL"]|["no-new-privileges:true"]|{"/var/lib/postgresql/data":"rw,noexec,nosuid,nodev,size=65536"}|[]|["/bin/true"]`.
+If either check fails, preserve current backup status and Docker GC journal
+evidence, then rerun the reviewed `web-postgresql` backup deployment. The
+installer performs a bounded pull by the same digest and atomically reconciles
+only its labelled, stopped lease. Do not create a mutable tag, start the lease,
+or force-remove an unrecognised container.
+
+If the final canonical rename fails, the installer exits non-zero and leaves a
+labelled `.candidate.<pid>` container in place. This deliberately keeps the
+digest outside Docker GC while the missing canonical lease remains visible to
+readiness checks and alerting; rerun the reviewed deployment to reconcile it.
+
 Run the first backup manually while its timer is disabled:
 
 ```bash
@@ -528,6 +569,19 @@ set -a; . /etc/jobseek-backup/web-postgresql.env; set +a
 restic -o "sftp.command=${RESTIC_SFTP_COMMAND}" snapshots \
   --tag jobseek-web-postgresql --host jobseek-web-postgresql
 ```
+
+After deploying or repairing the helper-image lease, completion evidence must
+include all of the following; repository tests alone do not close the recovery
+incident:
+
+1. both helper-image metrics are `1` and the helper-image alert is inactive;
+2. a new encrypted backup succeeds, its atomic status is successful and less
+   than nine hours old, and `restic check` passes;
+3. that exact new artifact passes the isolated schema/data, Better Auth, saved
+   job, and product-read restore drill;
+4. the service is not failed and the six-hour timer is enabled, active, and has
+   a visible next run; and
+5. two ordinary timer cycles succeed across at least one hourly Docker GC run.
 
 Do not enable the timer until this backup and the clean restore below pass.
 `DataBackupStale` uses a nine-hour threshold for this six-hour schedule; the

@@ -226,6 +226,23 @@ groups:
           description: "No successful application-data backup has completed inside its recovery window (9 hours for web PostgreSQL; 36 hours for daily data services)."
           runbook: https://github.com/colophon-group/jobseek/blob/main/docs/19-data-backup-recovery.md#failure-and-removal-gates
 
+      - alert: WebPostgreSQLBackupHelperImageUnprotected
+        expr: |
+          (jobseek_backup_helper_image_available{service="web-postgresql"} == 0)
+          or
+          (jobseek_backup_helper_image_gc_protected{service="web-postgresql"} == 0)
+        for: 3m
+        labels:
+          severity: critical
+          component: data-backup
+          owner: codex-error-review
+          route: codex-daily
+          page: production
+        annotations:
+          summary: "{{ $labels.service }} helper image is not GC-safe on {{ $labels.instance }}"
+          description: "The exact digest-pinned PostgreSQL client image or its stopped Docker GC lease is missing. Repair it before the next six-hour backup attempt."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/19-data-backup-recovery.md#web-postgresql-backup-operation
+
       - alert: PostgreSQLUnavailable
         expr: jobseek_postgresql_ready == 0
         for: 2m

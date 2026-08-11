@@ -38,6 +38,11 @@ POSTGRES_RETENTION_OPTIONS = (
 WEB_POSTGRES_IMAGE = (
     "postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193"
 )
+WEB_POSTGRES_IMAGE_LEASE = "jobseek-web-postgresql-backup-image-lease"
+WEB_POSTGRES_IMAGE_LEASE_LABEL = "jobseek.backup.helper-image"
+WEB_POSTGRES_IMAGE_LEASE_TMPFS = {
+    "/var/lib/postgresql/data": "rw,noexec,nosuid,nodev,size=65536"
+}
 # Durable web/product records plus the small relational support set required
 # by their outbound foreign keys. Crawler postings, taxonomies, enrichment
 # batches, Stripe's unused subscription table, and Murmur are deliberately
@@ -573,6 +578,37 @@ def _web_postgres_image() -> str:
     if "@sha256:" not in image:
         raise BackupError("WEB_POSTGRES_IMAGE must be digest-pinned")
     return image
+
+
+def _require_web_postgres_helper_image() -> None:
+    """Require the exact image and its stopped GC-protection lease."""
+    image = _web_postgres_image()
+    run_checked(["docker", "image", "inspect", image], timeout=30)
+    inspected = run_checked(
+        ["docker", "container", "inspect", WEB_POSTGRES_IMAGE_LEASE], timeout=30
+    )
+    try:
+        payload = json.loads(inspected.stdout)
+        container = payload[0]
+        config = container["Config"]
+        state = container["State"]
+        host_config = container["HostConfig"]
+        labels = config.get("Labels") or {}
+    except (IndexError, KeyError, TypeError, json.JSONDecodeError) as exc:
+        raise BackupError("web PostgreSQL helper-image lease is invalid") from exc
+    if (
+        config.get("Image") != image
+        or state.get("Running") is not False
+        or labels.get(WEB_POSTGRES_IMAGE_LEASE_LABEL) != "web-postgresql"
+        or config.get("Entrypoint") != ["/bin/true"]
+        or host_config.get("NetworkMode") != "none"
+        or host_config.get("ReadonlyRootfs") is not True
+        or host_config.get("CapDrop") != ["ALL"]
+        or host_config.get("SecurityOpt") != ["no-new-privileges:true"]
+        or host_config.get("Tmpfs") != WEB_POSTGRES_IMAGE_LEASE_TMPFS
+        or container.get("Mounts") != []
+    ):
+        raise BackupError("web PostgreSQL helper-image lease does not protect the pinned digest")
 
 
 def _web_postgres_env() -> dict[str, str]:
@@ -1124,6 +1160,7 @@ def web_postgresql_backup() -> dict[str, Any]:
     if missing:
         raise BackupError(f"missing Restic configuration: {', '.join(missing)}")
 
+    _require_web_postgres_helper_image()
     env = _web_postgres_env()
     _validate_web_postgres_boundary(env=env)
     server_version = _web_psql("SHOW server_version", env=env)

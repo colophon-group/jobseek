@@ -164,6 +164,7 @@ def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
         "InodesNearFull",
         "DataBackupFailed",
         "DataBackupStale",
+        "WebPostgreSQLBackupHelperImageUnprotected",
         "PostgreSQLUnavailable",
         "PostgreSQLDataVolumeHeadroomLow",
         "PostgreSQLCheckpointPressure",
@@ -177,6 +178,17 @@ def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
         "RequiredContainerUnavailable",
         "HostRebootRequired",
     } <= names
+
+
+def test_web_backup_helper_image_alert_preserves_the_source_service_label() -> None:
+    rule = _alert_rule("WebPostgreSQLBackupHelperImageUnprotected")
+
+    assert "helper_image_available" in rule["expr"]
+    assert "helper_image_gc_protected" in rule["expr"]
+    assert rule["for"] == "3m"
+    assert "service" not in rule["labels"]
+    assert rule["labels"]["component"] == "data-backup"
+    assert rule["labels"]["severity"] == "critical"
 
 
 def test_ats_inventory_alerts_cover_freshness_coverage_and_hard_cap() -> None:
