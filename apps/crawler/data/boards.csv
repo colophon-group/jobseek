@@ -3554,6 +3554,7 @@ nhs,nhs-hsc-northern-ireland,https://jobs.hscni.net/Search?SearchCatID=0,dom,"{"
 nhs,nhs-scotland,https://apply.jobs.scot.nhs.uk/,dom,"{""render"": true, ""url_filter"": ""/Job/JobDetail\\?JobId=""}",json-ld,"{""render"": true}"
 nice,nice-greenhouse,https://job-boards.greenhouse.io/nice,greenhouse,"{""token"": ""nice""}",skip,
 nicoll-curtin,nicoll-curtin-careers,https://careers.nicollcurtin.com/jobs,rss,"{""preset"": ""teamtailor""}",skip,
+nielseniq,nielseniq-careers,https://jobs.smartrecruiters.com/NielsenIQ,smartrecruiters,"{""token"": ""NielsenIQ""}",smartrecruiters,
 nift,nift-greenhouse,https://job-boards.greenhouse.io/nift,greenhouse,"{""token"": ""nift""}",skip,
 nike,nike-careers,https://careers.nike.com,phenom,"{""proxy"":true,""rescrape_policy"":""never""}",json-ld,
 nikon,nikon-careers-eu,https://europebv.nikon.com/all-open-positions,recruitee,,skip,
