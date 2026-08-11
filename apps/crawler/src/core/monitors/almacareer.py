@@ -9,7 +9,9 @@ Detection pipeline
 ------------------
 1. URL-host match (``*.jobs.cz`` or ``*.topjobs.sk``) — extracts slug.
 2. Fetch ``https://{host}/assets/js/script.min.js`` — extracts widgetId + apiKey
-   from the embedded ``widgets.main`` object.
+   from the embedded ``widgets.main`` object.  Newer tenants split the React
+   application into hashed chunks, so the ``react.min.js`` loader and its
+   same-origin chunks are checked when the legacy bundle has no config.
 3. Page-HTML scan for ``cdn.capybara.lmc.cz`` markers (fallback for
    custom-domain portals).
 
@@ -105,6 +107,14 @@ _WIDGET_WINDOW_BYTES = 65536
 _WIDGET_ID_RE = re.compile(r'"id"\s*:\s*"([0-9a-fA-F-]{36})"')
 _API_KEY_RE = re.compile(r'"apiKey"\s*:\s*"([a-fA-F0-9]{32,})"')
 _DETAIL_PATH_RE = re.compile(r'"detailPath"\s*:\s*"([^"]+)"')
+
+# Newer Career Pages builds keep the tenant config in one of the hashed React
+# chunks listed by ``/assets/js/react.min.js`` instead of ``script.min.js``.
+# Restrict names to the exact same-origin filename family emitted by the
+# loader; this prevents arbitrary paths in a compromised loader from becoming
+# crawler requests.
+_REACT_CHUNK_RE = re.compile(r'["\'](react\.[A-Za-z0-9._-]+\.react\.min\.js)["\']')
+_MAX_REACT_CHUNKS = 16
 
 # Employment-type mapping by stable numeric id
 # (``employmentTypesObjects.id``).  Labels are locale-specific (CZ/SK
@@ -340,6 +350,41 @@ class _WidgetConfigGone(Exception):
     """
 
 
+async def _fetch_chunked_widget_config(
+    host: str,
+    client: httpx.AsyncClient,
+) -> dict | None:
+    """Return widget config from a hashed React chunk, if the tenant uses one."""
+    loader_url = f"https://{host}/assets/js/react.min.js"
+    try:
+        loader = await client.get(loader_url, follow_redirects=True)
+    except httpx.HTTPError:
+        return None
+    if loader.status_code != 200:
+        return None
+
+    chunk_names = list(dict.fromkeys(_REACT_CHUNK_RE.findall(loader.text)))
+    for chunk_name in chunk_names[:_MAX_REACT_CHUNKS]:
+        try:
+            response = await client.get(
+                f"https://{host}/assets/js/{chunk_name}",
+                follow_redirects=True,
+            )
+        except httpx.HTTPError:
+            continue
+        if response.status_code != 200:
+            continue
+        config = _extract_widget_config(response.text)
+        if config is not None:
+            log.info(
+                "almacareer.widget_config_chunk_recovered",
+                host=host,
+                chunk=chunk_name,
+            )
+            return config
+    return None
+
+
 async def _fetch_widget_config(
     host: str,
     client: httpx.AsyncClient,
@@ -377,6 +422,8 @@ async def _fetch_widget_config(
                 raise _WidgetConfigGone(host)
             if resp.status_code == 200:
                 config = _extract_widget_config(resp.text)
+                if config is None:
+                    config = await _fetch_chunked_widget_config(host, client)
                 if config is not None:
                     if retried:
                         http_retry_attempts_total.labels(

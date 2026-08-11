@@ -172,8 +172,39 @@ class TestFetchWidgetConfig:
 
         assert config is not None
         assert config["id"] == "075c7246-bbd1-4670-a7b6-347e02e35dd2"
-        assert attempts == 2
+        # The first legacy-bundle miss also checks the React loader before the
+        # second legacy-bundle fetch recovers.
+        assert attempts == 3
         sleep.assert_awaited_once()
+
+    async def test_finds_config_in_hashed_react_chunk(self):
+        requested_paths: list[str] = []
+        loader = '!function(){var e=["react.1111.react.min.js","react.2222.react.min.js"]}();'
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested_paths.append(request.url.path)
+            if request.url.path == "/assets/js/script.min.js":
+                return httpx.Response(200, text="legacy bundle without config")
+            if request.url.path == "/assets/js/react.min.js":
+                return httpx.Response(200, text=loader)
+            if request.url.path == "/assets/js/react.1111.react.min.js":
+                return httpx.Response(200, text="shared React runtime")
+            if request.url.path == "/assets/js/react.2222.react.min.js":
+                return httpx.Response(200, text=self._VALID_SCRIPT)
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            config = await _fetch_widget_config("bat.jobs.cz", client)
+
+        assert config is not None
+        assert config["id"] == "075c7246-bbd1-4670-a7b6-347e02e35dd2"
+        assert config["detail_path"] == "detail-pozicie"
+        assert requested_paths == [
+            "/assets/js/script.min.js",
+            "/assets/js/react.min.js",
+            "/assets/js/react.1111.react.min.js",
+            "/assets/js/react.2222.react.min.js",
+        ]
 
     async def test_persistent_parse_miss_exhausts_bounded_attempts(self):
         attempts = 0
@@ -194,7 +225,9 @@ class TestFetchWidgetConfig:
             )
 
         assert config is None
-        assert attempts == 3
+        # Each bounded attempt checks the legacy bundle and then the React
+        # loader. The loader contains no chunk names in this fixture.
+        assert attempts == 6
         assert sleep.await_count == 2
 
     async def test_permanent_http_error_still_fails_fast(self):
