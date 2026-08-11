@@ -141,9 +141,7 @@ def _raise_if_bot_challenge(url: str, html: str) -> None:
         _CLOUDFLARE_CHALLENGE_PATH in haystack
         and any(text in haystack for text in _CLOUDFLARE_CHALLENGE_TEXTS)
     )
-    is_verification_interstitial = any(
-        text in haystack for text in _VERIFICATION_CHALLENGE_TEXTS
-    )
+    is_verification_interstitial = any(text in haystack for text in _VERIFICATION_CHALLENGE_TEXTS)
     if is_siteground or is_cloudflare or is_verification_interstitial:
         raise BotChallengeError(
             f"bot challenge detected for {url}; configure or verify proxy transport"
