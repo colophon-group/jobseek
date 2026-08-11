@@ -90,7 +90,7 @@ jobs:
           COMMIT_REF: main
         run: |
           deployment="$(pnpm dlx vercel@55.0.0 deploy \
-            --prebuilt --prod --skip-domain --format=json \
+            --prebuilt --prod --skip-domain --archive=tgz --format=json \
             --token="$VERCEL_TOKEN" \
             --meta githubCommitSha="$COMMIT_SHA" \
             --meta githubCommitRef="$COMMIT_REF" \
