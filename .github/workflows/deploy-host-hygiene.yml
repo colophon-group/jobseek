@@ -1,0 +1,226 @@
+name: Deploy Hetzner Host Hygiene
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'deploy/host-hygiene/**'
+      - 'deploy/backups/postgresql/migrate-container.sh'
+      - 'deploy/networking/harden-postgresql.sh'
+      - 'scripts/jobseek-host-hygiene.py'
+      - 'scripts/crawler-host-hygiene.py'
+      - 'scripts/crawler-host-hygiene.test.mjs'
+      - 'scripts/jobseek-ingress-conformance.py'
+      - 'apps/crawler/tests/test_host_hygiene.py'
+      - 'apps/crawler/tests/test_ingress_baseline.py'
+      - 'docs/16-hetzner-maintenance.md'
+      - '.github/workflows/deploy-host-hygiene.yml'
+  schedule:
+    - cron: '17 04 * * *'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Read-only audit, reviewed baseline apply, or identity-bound cleanup
+        required: true
+        type: choice
+        options:
+          - audit
+          - apply
+          - cleanup
+      container_id:
+        description: Cleanup only — reviewed full 64-character container ID
+        required: false
+        type: string
+      image_id:
+        description: Cleanup only — reviewed full sha256 image ID
+        required: false
+        type: string
+      created_at:
+        description: Cleanup only — exact Docker Created timestamp
+        required: false
+        type: string
+      finished_at:
+        description: Cleanup only — exact Docker State.FinishedAt timestamp
+        required: false
+        type: string
+      exit_code:
+        description: Cleanup only — reviewed integer exit code
+        required: false
+        type: string
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: hetzner-host-hygiene-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Validate fail-closed host hygiene contract
+        run: |
+          set -euo pipefail
+          bash -n deploy/host-hygiene/install-host.sh
+          bash -n deploy/host-hygiene/run-remote.sh
+          bash -n deploy/networking/harden-postgresql.sh
+          bash -n deploy/backups/postgresql/migrate-container.sh
+          shellcheck \
+            deploy/host-hygiene/install-host.sh \
+            deploy/host-hygiene/run-remote.sh \
+            deploy/networking/harden-postgresql.sh \
+            deploy/backups/postgresql/migrate-container.sh
+          python3 -m py_compile \
+            scripts/crawler-host-hygiene.py \
+            scripts/jobseek-host-hygiene.py \
+            scripts/jobseek-ingress-conformance.py
+          node --test scripts/crawler-host-hygiene.test.mjs
+          cd apps/crawler
+          uv run --frozen ruff check \
+            ../../scripts/crawler-host-hygiene.py \
+            ../../scripts/jobseek-host-hygiene.py \
+            ../../scripts/jobseek-ingress-conformance.py \
+            tests/test_host_hygiene.py \
+            tests/test_ingress_baseline.py
+          uv run --frozen ruff format --check \
+            ../../scripts/crawler-host-hygiene.py \
+            ../../scripts/jobseek-host-hygiene.py \
+            ../../scripts/jobseek-ingress-conformance.py \
+            tests/test_host_hygiene.py \
+            tests/test_ingress_baseline.py
+          uv run --frozen pytest \
+            tests/test_host_hygiene.py \
+            tests/test_ingress_baseline.py \
+            -q
+
+  audit:
+    if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.action == 'audit') }}
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - role: crawler
+          - role: postgresql
+          - role: typesense
+    env:
+      SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Audit crawler without installing or cleaning
+        if: ${{ matrix.role == 'crawler' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+        run: bash deploy/host-hygiene/run-remote.sh audit crawler
+      - name: Audit PostgreSQL without installing or cleaning
+        if: ${{ matrix.role == 'postgresql' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
+        run: bash deploy/host-hygiene/run-remote.sh audit postgresql
+      - name: Audit Typesense without installing or cleaning
+        if: ${{ matrix.role == 'typesense' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
+        run: bash deploy/host-hygiene/run-remote.sh audit typesense
+
+  apply:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.action == 'apply' }}
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        include:
+          - role: crawler
+          - role: postgresql
+          - role: typesense
+    env:
+      SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install crawler baseline and report remaining reviewed cleanup
+        if: ${{ matrix.role == 'crawler' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/host-hygiene/run-remote.sh
+          apply
+          crawler
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Install PostgreSQL baseline and report remaining reviewed cleanup
+        if: ${{ matrix.role == 'postgresql' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/host-hygiene/run-remote.sh
+          apply
+          postgresql
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Install Typesense baseline and report remaining reviewed cleanup
+        if: ${{ matrix.role == 'typesense' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/host-hygiene/run-remote.sh
+          apply
+          typesense
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+
+  cleanup:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.action == 'cleanup' }}
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    env:
+      TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+      SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
+      CLEANUP_CONTAINER_ID: ${{ inputs.container_id }}
+      CLEANUP_IMAGE_ID: ${{ inputs.image_id }}
+      CLEANUP_CREATED_AT: ${{ inputs.created_at }}
+      CLEANUP_FINISHED_AT: ${{ inputs.finished_at }}
+      CLEANUP_EXIT_CODE: ${{ inputs.exit_code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Dry-run then remove the exact exited container
+        run: >-
+          bash deploy/host-hygiene/run-remote.sh
+          cleanup
+          postgresql
+          "$CLEANUP_CONTAINER_ID"
+          "$CLEANUP_IMAGE_ID"
+          "$CLEANUP_CREATED_AT"
+          "$CLEANUP_FINISHED_AT"
+          "$CLEANUP_EXIT_CODE"
