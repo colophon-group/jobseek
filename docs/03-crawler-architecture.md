@@ -307,8 +307,12 @@ Every steady-state tick:
 2. establish a commit-safe PostgreSQL cutoff (below);
 3. select at most 2,000 rows after the Typesense cursor and strictly before the
    cutoff;
-4. upsert eligible rows to Typesense;
-5. advance only the Typesense cursor after the batch result; and
+4. upsert eligible rows to Typesense and require exactly one object with an
+   explicit boolean `success` for every submitted document;
+5. advance only after that acknowledgement is structurally complete (a
+   well-formed `success: false` remains an intentional logged poison-document
+   drop, while a malformed response pins the whole batch and opens bounded
+   retry backoff); and
 6. release the repair fence.
 
 No deployed crawler command reads or writes Supabase posting rows. The
