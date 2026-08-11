@@ -334,6 +334,10 @@ jobs:
           pnpm --filter @jobseek/web exec vitest run
           --exclude src/lib/search/__tests__/typesense.e2e.test.ts
 
+      - run: pnpm --filter @jobseek/trace-viewer test
+
+      - run: pnpm --filter @jobseek/trace-viewer build
+
   test-web-typesense-e2e:
     name: Test Web Typesense E2E
     needs: changes

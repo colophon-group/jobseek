@@ -1220,6 +1220,8 @@ test("broad CI test jobs exclude service-backed Typesense E2E suites", () => {
     webJob,
     /pnpm --filter @jobseek\/web exec vitest run[\s\S]*--exclude src\/lib\/search\/__tests__\/typesense\.e2e\.test\.ts/,
   );
+  assert.match(webJob, /pnpm --filter @jobseek\/trace-viewer test/);
+  assert.match(webJob, /pnpm --filter @jobseek\/trace-viewer build/);
 
   const crawlerJob = jobBlock("test-crawler");
   assert.match(crawlerJob, /uv run pytest tests\/ -v --ignore=tests\/e2e\/test_typesense_indexing\.py/);
