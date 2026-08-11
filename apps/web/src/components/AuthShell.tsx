@@ -11,7 +11,11 @@ export function AuthShell({ children }: { children: ReactNode }) {
   const lp = useLocalePath();
 
   return (
-    <div className="mx-auto w-full max-w-lg px-4 sm:w-fit sm:min-w-[24rem]">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto w-full max-w-lg px-4 scroll-mt-12 sm:w-fit sm:min-w-[24rem]"
+    >
       <div className="flex min-h-screen flex-col items-center justify-center py-8">
         <Link href={lp("/explore")} prefetch={false} className="mb-6 block h-9 w-36">
           <ThemedImage
@@ -32,6 +36,6 @@ export function AuthShell({ children }: { children: ReactNode }) {
           <LocaleSwitcher />
         </div>
       </div>
-    </div>
+    </main>
   );
 }

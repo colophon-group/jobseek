@@ -158,7 +158,11 @@ export default async function BlogPostPage({ params }: Props) {
   return (
     <>
       <JsonLd data={buildArticleJsonLd(post, locale)} />
-      <main className="mx-auto max-w-2xl px-4 py-12">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="mx-auto max-w-2xl scroll-mt-12 px-4 py-12"
+      >
         <nav className="mb-6 text-sm">
           <Link href={`/${locale}/blog`} className="text-muted hover:underline">
             ← {backLabel}

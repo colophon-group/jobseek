@@ -93,7 +93,11 @@ export default async function BlogIndexPage({ params }: Props) {
   });
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto max-w-3xl scroll-mt-12 px-4 py-12"
+    >
       <h1 className="text-3xl font-bold">{heading}</h1>
       <p className="mt-2 text-muted">{tagline}</p>
 
