@@ -1861,7 +1861,11 @@ class TestInsertSqlContract:
     def test_record_failure_quarantine_is_retryable_and_bounded(self):
         assert "is_enabled = true" in _RECORD_FAILURE
         assert "THEN 'quarantined'" in _RECORD_FAILURE
-        assert "'1440 minutes'" in _RECORD_FAILURE
+        assert "LEAST(jb.consecutive_failures, 9)" in _RECORD_FAILURE
+        assert "* interval '1 minute'" in _RECORD_FAILURE
+        assert "|| ' minutes'" not in _RECORD_FAILURE
+        assert "AS next_failure_count" in _RECORD_FAILURE
+        assert "consecutive_failures = previous.next_failure_count" in _RECORD_FAILURE
         assert "quarantine_probe_count" in _RECORD_FAILURE
 
     def test_delist_board_postings_returns_ids(self):
