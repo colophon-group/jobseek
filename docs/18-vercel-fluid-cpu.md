@@ -41,6 +41,21 @@ than 138.5 seconds in a comparable 12-hour window.
    long-tail route keys. Synthetic repeated requests do not satisfy this gate.
 8. Run the live checks below from production, then evaluate the JSON report.
 
+## Production deployment identity
+
+Do not start a measurement window until the deployment holding the production
+aliases is the current GitHub `main` SHA. Vercel completed two 2026-08-11 main
+deployments out of order and let an older parent commit reacquire `jseek.co`,
+temporarily undoing the company-OG cutover.
+
+The `Guard Vercel production order` workflow checks every successful Vercel
+Production deployment status against the live default-branch SHA. A mismatch
+fails with both SHAs and the deployment URL. Treat that failure as a production
+incident: inspect the Ready deployment for current main, run the functionality
+checks below against its protected URL, and only then use `vercel promote` to
+restore the aliases. The guard detects stale production; issue #6655 tracks a
+future staged-promotion flow that can correct it automatically.
+
 ## Live functionality checks
 
 All checks are mandatory:
