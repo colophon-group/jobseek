@@ -6,6 +6,8 @@ import { defaultLocale, locales, isLocale } from "@/lib/i18n";
 const COOKIE_NAME = "NEXT_LOCALE";
 const LOGGED_IN_HINT_COOKIE = "logged_in";
 const COMPANY_REQUEST_PATH = /^\/(en|de|fr|it)\/companies\/request$/;
+const LOCALIZED_SCANNER_PATH =
+  /^\/(?:en|de|fr|it)\/(?:(?:adminer|cgi-bin|phpmyadmin|wp-admin|wp-content|wp-includes|wp-json|xmlrpc|\.env|\.git)(?:\/|$)|[^/]+\/(?:\.env|\.git)(?:\/|$))/i;
 
 function getLocale(request: NextRequest): string {
   // 1. Explicit cookie from a previous locale switch
@@ -24,6 +26,17 @@ function getLocale(request: NextRequest): string {
 }
 
 export function proxy(request: NextRequest) {
+  // Stop common exploit-probe shapes at the network boundary. Without this,
+  // Cache Components can stream the public-watchlist PPR shell with HTTP 200
+  // before the route-level notFound() guard runs, consuming a Fluid function
+  // invocation and making obvious probes look like valid pages.
+  if (LOCALIZED_SCANNER_PATH.test(request.nextUrl.pathname)) {
+    return new NextResponse("Not Found", {
+      status: 404,
+      headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400" },
+    });
+  }
+
   // The public IndexNow proof filename is derived from a secret at runtime and
   // therefore cannot be listed in the static matcher below. Let that one
   // configured dotted root path continue to the rewrite in next.config.ts.
@@ -96,5 +109,7 @@ export const config = {
   matcher: [
     "/((?!_next|api|mcp|flags|fonts|publicdomain|screenshots|\\.well-known|favicon\\.ico$|favicon-16x16\\.png$|favicon-32x32\\.png$|apple-touch-icon\\.png$|apple-touch-icon-[^/]+\\.png$|android-chrome-192x192\\.png$|android-chrome-512x512\\.png$|site\\.webmanifest$|BingSiteAuth\\.xml$|js_[^/]+\\.svg$|js_missing_screenshot_black\\.png$|js_missing_screenshot_white\\.png$|logo-dark\\.svg$|logo-light\\.svg$|opengraph-image|indexnow-key\\.txt$|llms\\.txt$|openapi\\.json$|openapi\\.yaml$|robots\\.txt$|sitemap\\.xml$|en|de|fr|it).*)",
     "/:lang(en|de|fr|it)/companies/request",
+    "/:lang(en|de|fr|it)/:probe(adminer|cgi-bin|phpmyadmin|wp-admin|wp-content|wp-includes|wp-json|xmlrpc|\\.env|\\.git)/:path*",
+    "/:lang(en|de|fr|it)/:user/:probe(\\.env|\\.git)/:path*",
   ],
 };

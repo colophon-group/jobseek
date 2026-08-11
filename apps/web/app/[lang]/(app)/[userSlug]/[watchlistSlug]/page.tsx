@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { cacheLife, cacheTag } from "next/cache";
+import { notFound } from "next/navigation";
 import {
   isLocale,
   defaultLocale,
@@ -16,6 +17,7 @@ import {
   getWatchlistMatchingCompanyCount,
 } from "@/lib/actions/watchlists";
 import { isQualifyingWatchlist } from "@/lib/watchlist-utils";
+import { isPlausiblePublicWatchlistPath } from "@/lib/public-watchlist-path";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, buildWatchlistItemListJsonLd, JsonLd } from "@/lib/seo";
 import {
@@ -46,6 +48,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   "use cache";
   cacheLife({ revalidate: CACHE_TTL_LONG });
   const { userSlug, watchlistSlug, lang } = await params;
+  // This broad dynamic route also matches exploit probes such as
+  // `/en/wp-admin/install.php`. Reject impossible persisted slugs before
+  // cache tags or external reads; the page body turns the same shape into a
+  // real 404 (#6615).
+  if (!isPlausiblePublicWatchlistPath(userSlug, watchlistSlug)) {
+    notFound();
+  }
   cacheTag(watchlistCacheTag(userSlug, watchlistSlug));
   const locale = isLocale(lang) ? lang : defaultLocale;
   const [detail, { i18n }] = await Promise.all([
@@ -225,6 +234,7 @@ async function WatchlistRuntimeContent({
 
 export default async function WatchlistRoute({ params }: Props) {
   const { lang, userSlug, watchlistSlug } = await params;
+  if (!isPlausiblePublicWatchlistPath(userSlug, watchlistSlug)) notFound();
   const locale = isLocale(lang) ? lang : defaultLocale;
   const snapshot = await getWatchlistRouteSnapshot(
     locale,
