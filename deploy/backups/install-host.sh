@@ -139,6 +139,40 @@ commit_web_candidate() {
   web_candidate_commit_complete=1
 }
 
+typesense_backup_status_is_fresh() {
+  python3 - <<'PY'
+import json
+import time
+from pathlib import Path
+
+try:
+    status = json.loads(
+        Path("/var/lib/jobseek-backup/status/typesense.json").read_text(encoding="utf-8")
+    )
+    last_success = int(status.get("last_success_unix") or 0)
+except (OSError, TypeError, ValueError, json.JSONDecodeError):
+    raise SystemExit(1)
+age = time.time() - last_success
+raise SystemExit(
+    0
+    if status.get("service") == "typesense"
+    and status.get("success") is True
+    and 0 <= age <= 36 * 60 * 60
+    else 1
+)
+PY
+}
+
+typesense_backup_requires_repair() {
+  systemctl is-failed --quiet jobseek-typesense-backup.service || \
+    ! typesense_backup_status_is_fresh
+}
+
+typesense_backup_timer_expected_enabled() {
+  [[ "$TIMER_ACTION" == start ]] || \
+    systemctl is-enabled --quiet jobseek-typesense-backup.timer
+}
+
 cleanup() {
   local status=$?
   local cleanup_failed=0
@@ -373,6 +407,15 @@ fi
 
 if [[ "$SERVICE" == "typesense" && "$typesense_rotation_changed" -eq 1 ]]; then
   typesense_rotation_smoke_and_commit "$LOCK_TIMEOUT_S" 9
+elif [[ "$SERVICE" == "typesense" ]] && \
+  [[ "$TIMER_ACTION" != disable ]] && \
+  typesense_backup_timer_expected_enabled && \
+  typesense_backup_requires_repair; then
+  # A code-only repair otherwise cannot deploy: the old failure remains
+  # latched and the freshness gate rejects its stale status. Run exactly one
+  # backup through the installed systemd unit, with the timer quiesced and its
+  # prior state restored only after fresh atomic status is proven.
+  typesense_rotation_repair_failed_backup "$LOCK_TIMEOUT_S" 9
 elif [[ "$SERVICE" == "web-postgresql" ]]; then
   read_web_timer_state
   if [[ "$web_timer_enabled_state" == enabled ]]; then

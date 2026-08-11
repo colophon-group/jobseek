@@ -428,6 +428,23 @@ host staging directory, uploads it to the encrypted Restic repository, runs
 retention/pruning and `restic check`, then removes both temporary copies. It
 does not stop or restart Typesense.
 
+Typesense's Snapshot API owns the point-in-time data boundary. The backup
+validates the exact seven-alias mapping immediately before and after that API
+call, resolves every alias target as the expected physical collection, and
+accepts ordinary document-count movement while the snapshot is created. The
+post-snapshot counts are retained only as a live diagnostic observation; they
+are not treated as counts inside the checkpoint. If an alias is missing,
+invalid, or changes across the boundary, the job removes that attempt and
+retries the complete snapshot after five seconds, up to three attempts. It
+fails closed before copy/upload if the alias contract does not stabilize.
+
+Deploying a repair to an enabled timer also handles an already-latched failed
+unit or stale status. The installer quiesces the timer, releases the normal
+service lock, resets the failed unit, and runs exactly one backup through the
+installed systemd service. It writes the deployment marker and restores the
+prior timer state only after a new successful atomic status is proven. A
+failed repair leaves the timer disabled for explicit operator review.
+
 The API credential is a dedicated generated key, delivered from the protected
 `TYPESENSE_BACKUP_KEY` GitHub environment secret into the root-owned
 `/etc/jobseek-backup/typesense.env` file as `TYPESENSE_API_KEY`. It is not the
@@ -619,19 +636,21 @@ the Cloudflare tunnel to a restore drill.
 
 ### Typesense
 
-1. Capture a redacted production inventory containing only all seven
-   alias-to-collection mappings and document counts.
+1. Record the exact Restic snapshot ID selected for the drill. A redacted live
+   inventory can help diagnose drift, but counts captured after a live-write
+   snapshot are not expected to equal that checkpoint.
 2. Copy `deploy/backups/typesense/restore-drill.sh` plus temporary root-only
    Restic access to a recovery host that has Docker and at least 4 GiB free.
    Use the same or a newer Restic version than the backup host; older clients
    can reject the repository format. The helper refuses to run if a container
    named `typesense` exists.
-3. Set `JOBSEEK_TYPESENSE_RESTORE_ENV` and
-   `JOBSEEK_TYPESENSE_EXPECTED_INVENTORY`, then run the helper with
-   `latest` or an exact snapshot ID. It restores only into its unique
-   temporary root and binds Typesense only to `127.0.0.1:18108`.
-4. The helper requires health and single-node leadership, exact aliases and
-   counts, a representative job-posting search, and a disposable collection
+3. Set `JOBSEEK_TYPESENSE_RESTORE_ENV`, then run the helper with the exact
+   snapshot ID. Set `JOBSEEK_TYPESENSE_EXPECTED_INVENTORY` only for inventory
+   captured at a proven quiescent checkpoint boundary. It restores only into
+   its unique temporary root and binds Typesense only to `127.0.0.1:18108`.
+4. The helper requires health and single-node leadership, the exact alias set,
+   nonnegative collection counts read from the restored checkpoint, a
+   representative job-posting search, and a disposable collection
    write/read/delete. It emits only snapshot metadata, byte/count totals,
    duration, and named checks.
 5. Its exit trap force-removes the isolated container, restored data, and

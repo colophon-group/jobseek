@@ -71,6 +71,40 @@ def test_backup_deploy_requires_an_enabled_healthy_timer() -> None:
     )
 
 
+def test_failed_or_stale_typesense_backup_is_repaired_before_deploy_marker() -> None:
+    installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
+    rotation = (ROOT / "deploy/backups/typesense/credential-rotation.sh").read_text(
+        encoding="utf-8"
+    )
+
+    install_script = installer.index('"$REPO_ROOT/scripts/jobseek-data-backup.py"')
+    reload_units = installer.index("systemctl daemon-reload", install_script)
+    repair_condition = installer.index("typesense_backup_requires_repair; then", reload_units)
+    repair = installer.index("typesense_rotation_repair_failed_backup", repair_condition)
+    final_health = installer.index(
+        'systemctl is-failed --quiet "jobseek-${SERVICE}-backup.service"', repair
+    )
+    marker = installer.index('>"/var/lib/jobseek-backup/${SERVICE}-deployed-sha.tmp"', repair)
+
+    assert install_script < reload_units < repair_condition < repair < final_health < marker
+    assert "typesense_backup_status_is_fresh" in installer
+    assert "typesense_backup_timer_expected_enabled &&" in installer
+    assert '[[ "$TIMER_ACTION" != disable ]]' in installer
+    assert "0 <= age <= 36 * 60 * 60" in installer
+
+    repair_function = rotation[
+        rotation.index("typesense_rotation_repair_failed_backup()") : rotation.index(
+            "typesense_rotation_smoke_and_commit()"
+        )
+    ]
+    assert '"$typesense_rotation_systemctl_command" start \\' in repair_function
+    assert "typesense_rotation_disable_fail_safe" in repair_function
+    assert '"$typesense_rotation_flock_command" -u' in repair_function
+    assert '"$typesense_rotation_flock_command" -w' in repair_function
+    assert "typesense_rotation_validate_fresh_status" in repair_function
+    assert "typesense_rotation_restore_timer_state" in repair_function
+
+
 def test_typesense_restore_drill_is_isolated_and_self_cleaning() -> None:
     drill = (ROOT / "deploy/backups/typesense/restore-drill.sh").read_text(encoding="utf-8")
 
