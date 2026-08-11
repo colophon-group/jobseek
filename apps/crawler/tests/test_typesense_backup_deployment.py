@@ -171,6 +171,14 @@ def test_typesense_backup_requires_persistent_staging_and_measured_memory_phase(
     assert "/usr/local/sbin/jobseek-verify-typesense-snapshot-mount" in backup_installer
     assert "TYPESENSE_SNAPSHOT_CONTAINER_MOUNT_ROOT=/jobseek-snapshots" in service
     assert "operations/snapshot" in workflow
+    assert "--request POST" in workflow
+    assert "--get" in workflow
+    assert "--data-urlencode 'snapshot_path=/jobseek-snapshots/direct-mount-smoke'" in workflow
+    assert '--output "$snapshot_body"' in workflow
+    assert "--write-out '%{http_code}'" in workflow
+    assert 'SNAPSHOT_HTTP_STATUS="$snapshot_status"' in workflow
+    assert 'payload.get("success") is not True' in workflow
+    assert '--data \'{"snapshot_path"' not in workflow
     assert "mount -t tmpfs" in workflow
     assert "stat -c '%d'" in workflow
     assert "--memory 3g" not in workflow

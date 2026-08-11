@@ -120,12 +120,52 @@ jobs:
           fi
           curl -fsS "http://127.0.0.1:18108/health" |
             python3 -c 'import json,sys; assert json.load(sys.stdin)["ok"] is True'
-          curl -fsS -X POST \
-            -H 'X-TYPESENSE-API-KEY: smoke-bootstrap-key' \
-            -H 'Content-Type: application/json' \
-            --data '{"snapshot_path":"/jobseek-snapshots/direct-mount-smoke"}' \
-            "http://127.0.0.1:18108/operations/snapshot" |
-            python3 -c 'import json,sys; assert json.load(sys.stdin)["success"] is True'
+          snapshot_body="$root/snapshot-response.json"
+          if ! snapshot_status="$(
+            curl --silent --show-error \
+              --output "$snapshot_body" \
+              --write-out '%{http_code}' \
+              --request POST \
+              --get \
+              --data-urlencode 'snapshot_path=/jobseek-snapshots/direct-mount-smoke' \
+              --header 'X-TYPESENSE-API-KEY: smoke-bootstrap-key' \
+              "http://127.0.0.1:18108/operations/snapshot"
+          )"; then
+            echo 'Typesense snapshot smoke request failed at the transport layer' >&2
+            if test -s "$snapshot_body"; then
+              head -c 4096 "$snapshot_body" >&2
+              echo >&2
+            fi
+            exit 1
+          fi
+          SNAPSHOT_RESPONSE_PATH="$snapshot_body" \
+          SNAPSHOT_HTTP_STATUS="$snapshot_status" \
+            python3 - <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          status = os.environ["SNAPSHOT_HTTP_STATUS"]
+          body = Path(os.environ["SNAPSHOT_RESPONSE_PATH"]).read_text(
+              encoding="utf-8", errors="replace"
+          )
+          try:
+              payload = json.loads(body)
+          except json.JSONDecodeError:
+              print(
+                  f"Typesense snapshot smoke returned HTTP {status} with non-JSON body: "
+                  f"{body[:4096]}",
+                  file=sys.stderr,
+              )
+              raise SystemExit(1)
+          if status != "200" or not isinstance(payload, dict) or payload.get("success") is not True:
+              print(
+                  f"Typesense snapshot smoke returned HTTP {status}: {body[:4096]}",
+                  file=sys.stderr,
+              )
+              raise SystemExit(1)
+          PY
           test -d "$root/snapshots/direct-mount-smoke"
           test -n "$(find "$root/snapshots/direct-mount-smoke" -type f -print -quit)"
           docker inspect "$container" >"$root/inspect.json"
