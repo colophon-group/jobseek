@@ -4585,6 +4585,7 @@ seesaw,seesaw-greenhouse,https://job-boards.greenhouse.io/seesaw,greenhouse,"{""
 sei-labs,sei-labs-ashby,https://jobs.ashbyhq.com/sei-labs,ashby,"{""token"": ""sei-labs""}",skip,
 sekoia-io,sekoia-io-careers,https://careers.sekoia.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.sekoia.com/jobs.rss""}",skip,
 select-management-group,select-management-group-greenhouse,https://job-boards.greenhouse.io/selectmanagementgroup,greenhouse,"{""token"": ""selectmanagementgroup""}",skip,
+select-medical,select-medical-careers,https://jobs-selectmedicalcorp.icims.com/,icims,,json-ld,
 self-financial,self-financial-greenhouse,https://job-boards.greenhouse.io/selffinancial,greenhouse,"{""token"": ""selffinancial""}",skip,
 selini-capital,selini-capital-greenhouse,https://job-boards.greenhouse.io/selinicapital,greenhouse,"{""token"": ""selinicapital""}",skip,
 semafor,semafor-greenhouse,https://job-boards.greenhouse.io/semafor,greenhouse,"{""token"": ""semafor""}",skip,
