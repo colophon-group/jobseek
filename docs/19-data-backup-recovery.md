@@ -145,11 +145,15 @@ bash deploy/backups/install-host.sh --start-timer web-postgresql
 ```
 
 After merge, `.github/workflows/deploy-data-backups.yml` copies the reviewed
-main-branch artifacts to both hosts and runs the three installers serially in
-preserve mode. The web job shares the Typesense host only as an execution and
+main-branch artifacts to both hosts and runs the three installers serially.
+Its protected transport explicitly starts the PostgreSQL and Typesense timers,
+matching the production post-install requirement that both durable backup
+schedules are enabled and healthy. That also lets the next reviewed deployment
+recover a timer which a failed rotation or repair deliberately left disabled.
+The retired web PostgreSQL timer remains preserve-mode so deployment cannot
+resurrect it. The web job shares the Typesense host only as an execution and
 encrypted-repository location; it does not read Typesense data or credentials.
-It records the deployed commit without starting, stopping, enabling, or
-disabling an existing timer. Deployment takes a host-wide deployment/identity
+Deployment takes a host-wide deployment/identity
 lock before the per-service data lock, so it cannot replace the shared backup
 runtime during any protected operation or overlap an active backup for that
 service. The production environment secrets
