@@ -17,6 +17,7 @@
     "db:check": "drizzle-kit check",
     "analyze": "ANALYZE=true next build",
     "check:bundle": "tsx script/check-bundle-budget.ts",
+    "cpu:gate": "tsx script/check-fluid-cpu-budget.ts",
     "optimize:svg": "svgo public/*.svg --multipass",
     "og:prewarm": "tsx script/prewarm-company-og-cache.ts",
     "og:prune": "tsx script/prune-company-og-cache.ts",
