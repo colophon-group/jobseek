@@ -68,7 +68,7 @@ jobs:
             sudo rm -rf -- "$root"
           }
           trap cleanup EXIT
-          install -d -m 0700 "$root/data"
+          install -d -m 0700 "$root/data" "$root/snapshots"
           {
             echo '[server]'
             echo 'data-dir = /data'
@@ -81,9 +81,13 @@ jobs:
             --name "$container" \
             -p 127.0.0.1:18108:8108 \
             --ulimit nofile=65536:65536 \
+            --memory 3g \
+            --memory-reservation 2560m \
+            --memory-swap 3g \
             --log-opt max-size=50m \
             --log-opt max-file=3 \
             -v "$root/data:/data" \
+            -v "$root/snapshots:/jobseek-snapshots" \
             -v "$root/typesense-server.ini:/run/secrets/typesense-server.ini:ro" \
             typesense/typesense:27.1 \
             --config=/run/secrets/typesense-server.ini >/dev/null
@@ -125,6 +129,7 @@ jobs:
           container = json.load(sys.stdin)[0]
           ulimits = container["HostConfig"].get("Ulimits") or []
           log_config = container["HostConfig"].get("LogConfig") or {}
+          mounts = container.get("Mounts") or []
           assert any(
               limit.get("Name") == "nofile"
               and int(limit.get("Soft") or 0) == 65536
@@ -134,6 +139,13 @@ jobs:
           assert log_config.get("Type") == "json-file"
           assert (log_config.get("Config") or {}).get("max-size") == "50m"
           assert (log_config.get("Config") or {}).get("max-file") == "3"
+          assert container["HostConfig"].get("Memory") == 3 * 1024**3
+          assert container["HostConfig"].get("MemoryReservation") == 2560 * 1024**2
+          assert container["HostConfig"].get("MemorySwap") == 3 * 1024**3
+          assert any(
+              mount.get("Destination") == "/jobseek-snapshots" and mount.get("RW") is True
+              for mount in mounts
+          )
           '
 
   deploy:

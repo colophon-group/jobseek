@@ -4,8 +4,10 @@ Documentation=file:///opt/jobseek-backup/docs/16-hetzner-maintenance.md
 Requires=docker.service
 After=docker.service network-online.target
 Wants=network-online.target
+RequiresMountsFor=/mnt/jobseek-typesense-backup
 ConditionPathExists=/usr/local/sbin/jobseek-data-backup
 ConditionPathExists=/etc/jobseek-backup/typesense.env
+ConditionPathIsMountPoint=/mnt/jobseek-typesense-backup
 
 [Service]
 Type=oneshot
@@ -15,8 +17,13 @@ EnvironmentFile=/etc/jobseek-backup/typesense.env
 Environment=BACKUP_STATUS_DIR=/var/lib/jobseek-backup/status
 Environment=TYPESENSE_CONTAINER=typesense
 Environment=TYPESENSE_URL=http://127.0.0.1:8108
-Environment=TYPESENSE_SNAPSHOT_CONTAINER_ROOT=/tmp/jobseek-typesense-snapshots
-Environment=TYPESENSE_SNAPSHOT_HOST_ROOT=/var/lib/jobseek-backup/typesense
+Environment=TYPESENSE_SNAPSHOT_CONTAINER_ROOT=/jobseek-snapshots/staging
+Environment=TYPESENSE_SNAPSHOT_CONTAINER_MOUNT_ROOT=/jobseek-snapshots
+Environment=TYPESENSE_SNAPSHOT_HOST_ROOT=/mnt/jobseek-typesense-backup
+Environment=TYPESENSE_LIVE_DATA_HOST_ROOT=/mnt/typesense-data
+Environment=TYPESENSE_SNAPSHOT_MIN_FREE_BYTES=8589934592
+Environment=TYPESENSE_MEMORY_LIMIT_BYTES=3221225472
+Environment=TYPESENSE_MEMORY_RESERVATION_BYTES=2684354560
 ExecStart=/usr/local/sbin/jobseek-data-backup typesense
 TimeoutStartSec=6h
 Nice=10
@@ -33,7 +40,7 @@ ProtectControlGroups=true
 ProtectKernelLogs=true
 ProtectKernelModules=true
 ProtectKernelTunables=true
-ReadWritePaths=/var/lib/jobseek-backup /run
+ReadWritePaths=/var/lib/jobseek-backup /mnt/jobseek-typesense-backup /run
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 RestrictSUIDSGID=true
 LockPersonality=true

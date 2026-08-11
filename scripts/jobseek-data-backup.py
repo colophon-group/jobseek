@@ -563,6 +563,77 @@ def _remove_old_staging(staging_root: Path, *, older_than_seconds: int = 172_800
             shutil.rmtree(child)
 
 
+def _positive_int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name, str(default))
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise BackupError(f"{name} must be an integer") from exc
+    if value <= 0:
+        raise BackupError(f"{name} must be positive")
+    return value
+
+
+def _validate_typesense_snapshot_staging(
+    container: str,
+    host_root: Path,
+    container_mount_root: str,
+) -> dict[str, int]:
+    """Prove snapshot staging and the Typesense memory boundary before writing."""
+    live_root = Path(os.environ.get("TYPESENSE_LIVE_DATA_HOST_ROOT", "/mnt/typesense-data"))
+    try:
+        resolved_host = host_root.resolve(strict=True)
+        resolved_live = live_root.resolve(strict=True)
+        host_stat = resolved_host.stat()
+    except OSError as exc:
+        raise BackupError("Typesense snapshot staging or live data path is unavailable") from exc
+    if resolved_host != host_root or host_root.is_symlink() or not host_root.is_mount():
+        raise BackupError("Typesense snapshot staging is not an exact dedicated mount")
+    if host_stat.st_uid != 0 or stat.S_IMODE(host_stat.st_mode) != 0o700:
+        raise BackupError("Typesense snapshot staging ownership or mode is unsafe")
+    if host_stat.st_dev in {Path("/").stat().st_dev, resolved_live.stat().st_dev}:
+        raise BackupError("Typesense snapshot staging is not isolated from root and live data")
+
+    usage = shutil.disk_usage(host_root)
+    minimum_free = _positive_int_env("TYPESENSE_SNAPSHOT_MIN_FREE_BYTES", 8 * 1024**3)
+    if usage.free < minimum_free:
+        raise BackupError("Typesense snapshot staging does not have the required free headroom")
+
+    try:
+        inspected = json.loads(run_checked(["docker", "inspect", container], timeout=30).stdout)
+        container_info = inspected[0]
+        host_config = container_info["HostConfig"]
+        mounts = container_info["Mounts"]
+    except (IndexError, KeyError, TypeError, json.JSONDecodeError) as exc:
+        raise BackupError("Typesense container headroom contract is not inspectable") from exc
+    if not isinstance(mounts, list) or not any(
+        isinstance(mount, dict)
+        and mount.get("Source") == str(host_root)
+        and mount.get("Destination") == container_mount_root
+        and mount.get("RW") is True
+        for mount in mounts
+    ):
+        raise BackupError("Typesense snapshot staging is not mounted into the container")
+
+    expected_memory = _positive_int_env("TYPESENSE_MEMORY_LIMIT_BYTES", 3 * 1024**3)
+    expected_reservation = _positive_int_env("TYPESENSE_MEMORY_RESERVATION_BYTES", 2560 * 1024**2)
+    memory = int(host_config.get("Memory") or 0)
+    reservation = int(host_config.get("MemoryReservation") or 0)
+    memory_swap = int(host_config.get("MemorySwap") or 0)
+    if (memory, reservation, memory_swap) != (
+        expected_memory,
+        expected_reservation,
+        expected_memory,
+    ):
+        raise BackupError("Typesense container memory headroom contract is not enforced")
+    return {
+        "staging_capacity_bytes": usage.total,
+        "staging_available_bytes_before": usage.free,
+        "memory_limit_bytes": memory,
+        "memory_reservation_bytes": reservation,
+    }
+
+
 def _restic_command(*arguments: str) -> list[str]:
     sftp_command = os.environ.get("RESTIC_SFTP_COMMAND", "")
     if not sftp_command:
@@ -1416,30 +1487,44 @@ def typesense_backup() -> dict[str, Any]:
 
     run_id = utc_now().strftime("%Y%m%dT%H%M%SZ")
     container_root = os.environ.get(
-        "TYPESENSE_SNAPSHOT_CONTAINER_ROOT", "/tmp/jobseek-typesense-snapshots"
+        "TYPESENSE_SNAPSHOT_CONTAINER_ROOT", "/jobseek-snapshots/staging"
     ).rstrip("/")
-    staging_root = (
-        Path(os.environ.get("TYPESENSE_SNAPSHOT_HOST_ROOT", "/var/lib/jobseek-backup/typesense"))
-        / "staging"
+    container_mount_root = os.environ.get(
+        "TYPESENSE_SNAPSHOT_CONTAINER_MOUNT_ROOT", "/jobseek-snapshots"
+    ).rstrip("/")
+    if container_root != f"{container_mount_root}/staging":
+        raise BackupError("Typesense snapshot container paths do not share the exact mount root")
+    host_root = Path(
+        os.environ.get("TYPESENSE_SNAPSHOT_HOST_ROOT", "/mnt/jobseek-typesense-backup")
     )
-    local_path = staging_root / run_id
+    headroom = _validate_typesense_snapshot_staging(
+        container,
+        host_root,
+        container_mount_root,
+    )
+    staging_root = host_root / "staging"
+    attempts_root = staging_root / ".attempts"
+    run_path = staging_root / run_id
+    data_path = run_path / "data"
     _remove_old_staging(staging_root)
-    local_path.mkdir(parents=True, mode=0o700)
-    container_paths: list[str] = []
-    copied = False
+    run_path.mkdir(parents=True, mode=0o700)
+    attempts_root.mkdir(parents=True, mode=0o700, exist_ok=True)
+    _remove_old_staging(attempts_root)
+    attempt_paths: list[Path] = []
+    materialized = False
     success = False
 
     try:
         inventory_after: dict[str, Any] | None = None
-        selected_container_path = ""
         last_alias_error: BackupError | None = None
+        selected_host_path: Path | None = None
         for attempt in range(1, _TYPESENSE_ALIAS_STABILITY_ATTEMPTS + 1):
-            container_path = f"{container_root}/{run_id}-attempt-{attempt}"
-            container_paths.append(container_path)
-            run_checked(
-                ["docker", "exec", container, "rm", "-rf", "--", container_path],
-                timeout=60,
-            )
+            attempt_name = f"{run_id}-attempt-{attempt}"
+            container_path = f"{container_root}/.attempts/{attempt_name}"
+            host_attempt_path = attempts_root / attempt_name
+            attempt_paths.append(host_attempt_path)
+            if host_attempt_path.exists() or host_attempt_path.is_symlink():
+                raise BackupError("Typesense snapshot attempt path already exists")
             try:
                 inventory_before = _typesense_inventory(url, api_key)
             except BackupError as exc:
@@ -1452,33 +1537,31 @@ def typesense_backup() -> dict[str, Any]:
                     last_alias_error = exc
                 else:
                     if candidate_inventory["aliases"] == inventory_before["aliases"]:
+                        if not host_attempt_path.is_dir() or host_attempt_path.is_symlink():
+                            raise BackupError(
+                                "Typesense snapshot did not materialize on isolated staging"
+                            )
                         inventory_after = candidate_inventory
-                        selected_container_path = container_path
+                        selected_host_path = host_attempt_path
                         break
                     last_alias_error = BackupError(
                         "Typesense aliases changed while the snapshot was being created"
                     )
-            run_checked(
-                ["docker", "exec", container, "rm", "-rf", "--", container_path],
-                timeout=60,
-            )
+            shutil.rmtree(host_attempt_path, ignore_errors=True)
             if attempt < _TYPESENSE_ALIAS_STABILITY_ATTEMPTS:
                 time.sleep(_TYPESENSE_ALIAS_STABILITY_RETRY_SECONDS)
-        if inventory_after is None:
+        if inventory_after is None or selected_host_path is None:
             detail = redact(str(last_alias_error or "alias validation failed"))
             raise BackupError(
                 "Typesense alias contract did not stabilize after "
                 f"{_TYPESENSE_ALIAS_STABILITY_ATTEMPTS} attempts: {detail}"
             ) from last_alias_error
 
-        run_checked(
-            ["docker", "cp", f"{container}:{selected_container_path}/.", str(local_path)],
-            timeout=7_200,
-        )
-        copied = True
-        snapshot_bytes = _tree_size(local_path)
-        if snapshot_bytes <= 0:
-            raise BackupError("Typesense snapshot copy is empty")
+        selected_host_path.rename(data_path)
+        materialized = True
+        manifest = _write_typesense_snapshot_manifest(run_path, inventory_after["aliases"])
+        manifest = _verify_typesense_snapshot_manifest(run_path)
+        snapshot_bytes = manifest["snapshot"]["bytes"]
 
         restic_env = os.environ.copy()
         run_checked(
@@ -1488,7 +1571,7 @@ def typesense_backup() -> dict[str, Any]:
                 "jobseek-typesense",
                 "--host",
                 "jobseek-typesense",
-                str(local_path),
+                str(run_path),
             ),
             env=restic_env,
             timeout=14_400,
@@ -1537,18 +1620,22 @@ def typesense_backup() -> dict[str, Any]:
             "repository_snapshot_time": latest_snapshot.get("time"),
             "repository_snapshot_count": len(snapshots),
             "retention": {"keep_daily": 14, "keep_weekly": 4},
+            "snapshot_file_count": manifest["snapshot"]["file_count"],
+            "snapshot_data_sha256": manifest["snapshot"]["sha256"],
+            "snapshot_manifest_sha256": _sha256_file(run_path / "manifest.json"),
             "collection_documents_observation": "live_after_snapshot",
+            "snapshot_peak_local_copies": 1,
+            "staging_isolated": True,
+            **headroom,
             **inventory_after,
         }
     finally:
-        for container_path in container_paths:
+        for attempt_path in attempt_paths:
             with suppress(Exception):
-                run_checked(
-                    ["docker", "exec", container, "rm", "-rf", "--", container_path],
-                    timeout=60,
-                )
-        if success or not copied and not any(local_path.iterdir()):
-            shutil.rmtree(local_path, ignore_errors=True)
+                if attempt_path.is_dir() and not attempt_path.is_symlink():
+                    shutil.rmtree(attempt_path)
+        if success or not materialized and not any(run_path.iterdir()):
+            shutil.rmtree(run_path, ignore_errors=True)
 
 
 def build_parser() -> argparse.ArgumentParser:

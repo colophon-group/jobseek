@@ -257,6 +257,28 @@ if [[ "$SERVICE" == "postgresql" ]]; then
 elif [[ "$SERVICE" == "typesense" ]]; then
   test -s /etc/jobseek-backup/typesense.env
   test -s /etc/jobseek-backup/typesense/id_ed25519
+  typesense_snapshot_dir=/mnt/jobseek-typesense-backup
+  if ! findmnt --mountpoint --noheadings --output TARGET "$typesense_snapshot_dir" |
+    grep -Fxq "$typesense_snapshot_dir"
+  then
+    echo "ERROR: Typesense snapshot staging is not a dedicated mounted filesystem" >&2
+    exit 1
+  fi
+  test ! -L "$typesense_snapshot_dir"
+  test "$(stat -c '%U:%G:%a' "$typesense_snapshot_dir")" = root:root:700
+  typesense_snapshot_device="$(stat -c '%d' "$typesense_snapshot_dir")"
+  if [[ "$typesense_snapshot_device" == "$(stat -c '%d' /)" || \
+    "$typesense_snapshot_device" == "$(stat -c '%d' /mnt/typesense-data)" ]]; then
+    echo "ERROR: Typesense snapshot staging is not isolated from root and live data" >&2
+    exit 1
+  fi
+  typesense_snapshot_free="$(
+    df --output=avail -B1 "$typesense_snapshot_dir" | tail -n 1 | tr -d ' '
+  )"
+  if (( typesense_snapshot_free < 8589934592 )); then
+    echo "ERROR: Typesense snapshot staging has less than 8 GiB free" >&2
+    exit 1
+  fi
   : "${JOBSEEK_TYPESENSE_BACKUP_KEY_FILE:?JOBSEEK_TYPESENSE_BACKUP_KEY_FILE is required}"
   typesense_rotation_prepare
   install -o root -g root -m 0755 \
@@ -266,7 +288,7 @@ elif [[ "$SERVICE" == "typesense" ]]; then
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends restic
   fi
-  install -d -m 0700 /var/lib/jobseek-backup/typesense/staging
+  install -d -o root -g root -m 0700 "$typesense_snapshot_dir/staging"
   install -o root -g root -m 0755 \
     "$REPO_ROOT/deploy/backups/typesense/restore-drill.sh" \
     /usr/local/sbin/jobseek-typesense-restore-drill

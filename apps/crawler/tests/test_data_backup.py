@@ -979,6 +979,125 @@ def test_restic_command_injects_the_restricted_sftp_transport(
     ]
 
 
+def direct_typesense_snapshot(
+    host_root: Path,
+    *,
+    paths: list[str] | None = None,
+    payload: bytes = b"consistent-snapshot",
+):
+    def create(_url: str, _key: str, container_path: str) -> None:
+        if paths is not None:
+            paths.append(container_path)
+        attempt = host_root / "staging" / ".attempts" / Path(container_path).name
+        attempt.mkdir(parents=True)
+        (attempt / "state.bin").write_bytes(payload)
+
+    return create
+
+
+def allow_test_typesense_headroom(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        backup,
+        "_validate_typesense_snapshot_staging",
+        lambda *_: {
+            "staging_capacity_bytes": 16 * 1024**3,
+            "staging_available_bytes_before": 12 * 1024**3,
+            "memory_limit_bytes": 3 * 1024**3,
+            "memory_reservation_bytes": 2560 * 1024**2,
+        },
+    )
+
+
+def test_typesense_snapshot_staging_requires_isolation_and_memory_contract(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    host_root = tmp_path / "snapshot"
+    live_root = tmp_path / "live"
+    host_root.mkdir(mode=0o700)
+    live_root.mkdir()
+    monkeypatch.setenv("TYPESENSE_LIVE_DATA_HOST_ROOT", str(live_root))
+    monkeypatch.setenv("TYPESENSE_SNAPSHOT_MIN_FREE_BYTES", str(8 * 1024**3))
+    original_stat = Path.stat
+
+    def fake_stat(path: Path, *args: object, **kwargs: object) -> object:
+        if path == host_root:
+            return SimpleNamespace(st_uid=0, st_mode=0o40700, st_dev=3)
+        if path == live_root:
+            return SimpleNamespace(st_uid=0, st_mode=0o40700, st_dev=2)
+        if path == Path("/"):
+            return SimpleNamespace(st_uid=0, st_mode=0o40755, st_dev=1)
+        return original_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", fake_stat)
+    monkeypatch.setattr(Path, "is_mount", lambda path: path == host_root)
+    monkeypatch.setattr(
+        backup.shutil,
+        "disk_usage",
+        lambda _path: SimpleNamespace(
+            total=16 * 1024**3,
+            used=4 * 1024**3,
+            free=12 * 1024**3,
+        ),
+    )
+    inspect = [
+        {
+            "HostConfig": {
+                "Memory": 3 * 1024**3,
+                "MemoryReservation": 2560 * 1024**2,
+                "MemorySwap": 3 * 1024**3,
+            },
+            "Mounts": [
+                {
+                    "Source": str(host_root),
+                    "Destination": "/jobseek-snapshots",
+                    "RW": True,
+                }
+            ],
+        }
+    ]
+    monkeypatch.setattr(
+        backup,
+        "run_checked",
+        lambda *_args, **_kwargs: completed(json.dumps(inspect)),
+    )
+
+    result = backup._validate_typesense_snapshot_staging(
+        "typesense", host_root, "/jobseek-snapshots"
+    )
+
+    assert result == {
+        "staging_capacity_bytes": 16 * 1024**3,
+        "staging_available_bytes_before": 12 * 1024**3,
+        "memory_limit_bytes": 3 * 1024**3,
+        "memory_reservation_bytes": 2560 * 1024**2,
+    }
+
+
+def test_typesense_snapshot_staging_rejects_the_root_device(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    host_root = tmp_path / "snapshot"
+    live_root = tmp_path / "live"
+    host_root.mkdir(mode=0o700)
+    live_root.mkdir()
+    monkeypatch.setenv("TYPESENSE_LIVE_DATA_HOST_ROOT", str(live_root))
+    original_stat = Path.stat
+
+    def fake_stat(path: Path, *args: object, **kwargs: object) -> object:
+        device = 2 if path == live_root else 1
+        if path in {host_root, live_root, Path("/")}:
+            return SimpleNamespace(st_uid=0, st_mode=0o40700, st_dev=device)
+        return original_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", fake_stat)
+    monkeypatch.setattr(Path, "is_mount", lambda path: path == host_root)
+
+    with pytest.raises(backup.BackupError, match="not isolated"):
+        backup._validate_typesense_snapshot_staging("typesense", host_root, "/jobseek-snapshots")
+
+
 def test_typesense_backup_snapshots_uploads_validates_and_cleans(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -989,7 +1108,12 @@ def test_typesense_backup_snapshots_uploads_validates_and_cleans(
     monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
     monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
     monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(staging_parent))
-    monkeypatch.setattr(backup, "_snapshot_request", lambda *_: None)
+    allow_test_typesense_headroom(monkeypatch)
+    monkeypatch.setattr(
+        backup,
+        "_snapshot_request",
+        direct_typesense_snapshot(staging_parent),
+    )
     inventory = {
         "aliases": {alias: f"{alias}_v1" for alias in backup._TYPESENSE_ALIASES},
         "collection_documents": {
@@ -1007,10 +1131,6 @@ def test_typesense_backup_snapshots_uploads_validates_and_cleans(
         commands.append(argv)
         if argv[:2] == ["docker", "inspect"]:
             return completed("true\n")
-        if argv[:2] == ["docker", "cp"]:
-            destination = Path(argv[-1])
-            destination.mkdir(parents=True, exist_ok=True)
-            (destination / "state.bin").write_bytes(b"consistent-snapshot")
         if "snapshots" in argv:
             return completed(
                 json.dumps(
@@ -1036,10 +1156,17 @@ def test_typesense_backup_snapshots_uploads_validates_and_cleans(
     assert result["aliases"] == inventory["aliases"]
     assert result["collection_documents"] == inventory["collection_documents"]
     assert result["collection_documents_observation"] == "live_after_snapshot"
+    assert result["snapshot_peak_local_copies"] == 1
+    assert result["staging_isolated"] is True
+    assert result["memory_limit_bytes"] == 3 * 1024**3
+    assert result["snapshot_file_count"] == 1
+    assert len(result["snapshot_data_sha256"]) == 64
+    assert len(result["snapshot_manifest_sha256"]) == 64
     assert not (staging_parent / "staging" / "20260722T020000Z").exists()
     assert any("backup" in command for command in commands)
     assert any("forget" in command and "--prune" in command for command in commands)
     assert any("check" in command for command in commands)
+    assert not any(command[:2] == ["docker", "cp"] for command in commands)
 
 
 def test_typesense_inventory_requires_all_aliases_and_records_counts(
@@ -1108,15 +1235,17 @@ def test_typesense_backup_accepts_live_document_changes_during_snapshot(
     monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
     monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
     monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(tmp_path))
-    monkeypatch.setattr(backup, "_snapshot_request", lambda *_: None)
+    allow_test_typesense_headroom(monkeypatch)
+    monkeypatch.setattr(
+        backup,
+        "_snapshot_request",
+        direct_typesense_snapshot(tmp_path),
+    )
     monkeypatch.setattr(backup, "_typesense_inventory", lambda *_: next(inventories))
 
     def fake_run(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
         if argv[:2] == ["docker", "inspect"]:
             return completed("true\n")
-        if argv[:2] == ["docker", "cp"]:
-            destination = Path(argv[-1])
-            (destination / "state.bin").write_bytes(b"consistent-snapshot")
         if "snapshots" in argv:
             return completed(
                 json.dumps(
@@ -1161,19 +1290,19 @@ def test_typesense_backup_retries_a_concurrent_alias_cutover(
     monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
     monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
     monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(tmp_path))
+    allow_test_typesense_headroom(monkeypatch)
     monkeypatch.setattr(backup, "_typesense_inventory", lambda *_: next(observations))
     monkeypatch.setattr(backup.time, "sleep", lambda *_: None)
     monkeypatch.setattr(
-        backup, "_snapshot_request", lambda _url, _key, path: snapshot_paths.append(path)
+        backup,
+        "_snapshot_request",
+        direct_typesense_snapshot(tmp_path, paths=snapshot_paths, payload=b"second-snapshot"),
     )
 
     def fake_run(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
         commands.append(argv)
         if argv[:2] == ["docker", "inspect"]:
             return completed("true\n")
-        if argv[:2] == ["docker", "cp"]:
-            destination = Path(argv[-1])
-            (destination / "state.bin").write_bytes(b"second-snapshot")
         if "snapshots" in argv:
             return completed(
                 json.dumps(
@@ -1191,11 +1320,10 @@ def test_typesense_backup_retries_a_concurrent_alias_cutover(
     assert snapshot_paths[1].endswith("-attempt-2")
     assert result["aliases"] == aliases_v2
     assert result["collection_documents"] == {alias: 3 for alias in aliases_v2}
-    assert any(
-        command[:6] == ["docker", "exec", "typesense", "rm", "-rf", "--"]
-        and command[-1] == snapshot_paths[0]
-        for command in commands
-    )
+    first_attempt = tmp_path / "staging" / ".attempts" / Path(snapshot_paths[0]).name
+    assert not first_attempt.exists()
+    assert not any(command[:2] == ["docker", "cp"] for command in commands)
+    assert not any(command[:2] == ["docker", "exec"] for command in commands)
 
 
 def test_typesense_backup_fails_after_bounded_alias_retries(
@@ -1216,10 +1344,13 @@ def test_typesense_backup_fails_after_bounded_alias_retries(
     monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
     monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
     monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(tmp_path))
+    allow_test_typesense_headroom(monkeypatch)
     monkeypatch.setattr(backup, "_typesense_inventory", changing_inventory)
     monkeypatch.setattr(backup.time, "sleep", lambda *_: None)
     monkeypatch.setattr(
-        backup, "_snapshot_request", lambda _url, _key, path: snapshot_paths.append(path)
+        backup,
+        "_snapshot_request",
+        direct_typesense_snapshot(tmp_path, paths=snapshot_paths),
     )
 
     def fake_run(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:

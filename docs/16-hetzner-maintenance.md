@@ -42,6 +42,38 @@ surface:
 The Typesense container receives one argument:
 `--config=/run/secrets/typesense-server.ini`. Its bind-mounted source is
 `/etc/jobseek-typesense/typesense-server.ini`, owned by root with mode `0600`.
+The same managed container has a 3 GiB hard memory limit, a 2.5 GiB memory
+reservation, and `memory-swap` equal to the hard limit. On the 4 GiB host this
+leaves a nominal 1 GiB outside the container's cgroup for the kernel, Docker,
+and the Cloudflare tunnel instead of allowing the index to consume the
+machine. The Snapshot API
+writes directly through `/jobseek-snapshots` to the dedicated host filesystem
+mounted at `/mnt/jobseek-typesense-backup`; the backup job never makes a second
+`docker cp` copy on `/`.
+
+Provision the snapshot filesystem before promoting the container contract.
+Create and attach a dedicated Hetzner Volume of at least 10 GiB in the
+Typesense server's location. Resolve the exact new device through
+`/dev/disk/by-id`, prove that it is the intended empty Volume with `lsblk` and
+`blkid`, and format it only when it has no filesystem. Mount its filesystem by
+UUID at `/mnt/jobseek-typesense-backup` with `nodev,nosuid,noexec`, then set the
+mount root to `root:root` mode `0700`. Never format a device that already has a
+filesystem or is mounted at `/mnt/typesense-data`.
+
+The promotion preflight is fail-closed:
+
+```bash
+findmnt --mountpoint /mnt/jobseek-typesense-backup
+stat -c 'owner=%U:%G mode=%a device=%d' /mnt/jobseek-typesense-backup
+stat -c 'root_device=%d' /
+stat -c 'live_device=%d' /mnt/typesense-data
+df -B1 --output=size,used,avail /mnt/jobseek-typesense-backup
+```
+
+The staging device must differ from both printed devices and have at least
+8 GiB free. Persist it in `/etc/fstab` by UUID and verify `mount -a` before
+dispatching `deploy-typesense-host.yml`. The host installer, backup installer,
+systemd unit, and backup process all independently enforce this boundary.
 The Cloudflare token source is
 `/etc/jobseek-typesense/cloudflare-tunnel-token`, also root-owned `0600`;
 systemd copies it into the service credential directory for the dedicated
@@ -120,7 +152,7 @@ Read-only, redacted verification:
 /usr/local/sbin/jobseek-verify-typesense-host-credentials
 systemctl is-active cloudflared.service
 docker inspect typesense --format \
-  'running={{.State.Running}} oom={{.State.OOMKilled}} restarts={{.RestartCount}} cmd={{json .Config.Cmd}}'
+  'running={{.State.Running}} oom={{.State.OOMKilled}} restarts={{.RestartCount}} memory={{.HostConfig.Memory}} reservation={{.HostConfig.MemoryReservation}} swap={{.HostConfig.MemorySwap}} mounts={{json .Mounts}} cmd={{json .Config.Cmd}}'
 curl --fail --silent http://127.0.0.1:8108/health
 curl --fail --silent https://typesense.colophon-group.org/health
 ```
@@ -144,10 +176,22 @@ check. The host sampler also exports:
   snapshot failure, slow requests, and thread-pool exhaustion.
 
 The managed container requires a 65,536 soft/hard `nofile` limit and rotates
-Docker JSON logs at 50 MB with three files. Deployment conformance verifies
-both Docker metadata and the effective process limit. Allow up to 15 minutes
-for the current 2.5-million-document index to reload before declaring a cold
-start failed.
+Docker JSON logs at 50 MB with three files. It also requires the exact 3 GiB /
+2.5 GiB / 3 GiB hard-limit, reservation, and swap tuple plus the writable
+snapshot mount. Deployment conformance verifies all Docker metadata and the
+effective process limit. Allow up to 15 minutes for the current
+2.5-million-document index to reload before declaring a cold start failed.
+
+After promotion, retain seven consecutive days of redacted evidence before
+accepting the capacity remediation: every scheduled backup succeeds with
+`snapshot_peak_local_copies=1` and `staging_isolated=true`; staging never falls
+below 8 GiB free; the container has no OOM or restart; the public tunnel and
+all seven aliases stay healthy; and `jobseek-docker-gc` never enters its
+below-5-GiB emergency all-unused-image path. A failed observation resets the
+seven-day window. Roll back the container contract to the prior reviewed image
+and configuration if the memory cap causes an OOM or sustained readiness
+failure, but keep the dedicated staging mount and investigate index growth
+before selecting a different measured cap.
 
 When readiness fails but the container is running:
 
@@ -1229,6 +1273,8 @@ Current policy:
 
 The crawler-specific rule matters because repeated versioned deploys can
 consume tens of GiB before a normal age-based prune would trigger.
+Typesense snapshot staging is intentionally outside `/`; a backup must not be
+used to justify or trigger the below-5-GiB all-unused-image emergency path.
 
 Before emergency all-image pruning on the Typesense host, verify the web
 PostgreSQL helper lease described in

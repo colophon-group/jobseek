@@ -74,7 +74,7 @@ Host state:
 | Host | Runtime state |
 |---|---|
 | PostgreSQL | `/etc/jobseek-backup/postgresql`, `/var/lib/jobseek-backup/postgresql`, `/mnt/jobseek-postgresql-backups`, and `jobseek-postgres:16-pgbackrest` |
-| Typesense | `/etc/jobseek-backup/typesense.env`, `/etc/jobseek-backup/typesense`, and `/var/lib/jobseek-backup/typesense` |
+| Typesense | `/etc/jobseek-backup/typesense.env`, `/etc/jobseek-backup/typesense`, status under `/var/lib/jobseek-backup/status`, and direct snapshot staging on the dedicated `/mnt/jobseek-typesense-backup` filesystem |
 | Web PostgreSQL (on the Typesense host) | `/etc/jobseek-backup/web-postgresql.env`, `/etc/jobseek-backup/web-postgresql.database-url`, root-only staging/drills under `/run/jobseek-backup/web-postgresql`, installed operation tooling under `/usr/local/sbin`, and aggregate/bound activation evidence under `/var/lib/jobseek-backup/status` |
 
 All three jobs atomically write a redacted JSON result and a Prometheus textfile
@@ -428,19 +428,40 @@ the repository and fresh backup are healthy.
 
 The job asks the live Typesense process to create a consistent snapshot under
 its container-local `/tmp` directory, copies the completed snapshot to a
-host staging directory, uploads it to the encrypted Restic repository, runs
-retention/pruning and `restic check`, then removes both temporary copies. It
-does not stop or restart Typesense.
+host staging packet, uploads it to the encrypted Restic repository, runs
+retention/pruning and `restic check`, then removes both temporary copies. The
+packet keeps the untouched Typesense checkpoint under `data/` and a sibling
+`manifest.json` binds the required alias mapping to a deterministic SHA-256
+digest of every checkpoint path, size, and byte. It does not stop or restart
+Typesense.
 
-Typesense's Snapshot API owns the point-in-time data boundary. The backup
-validates the exact seven-alias mapping immediately before and after that API
-call, resolves every alias target as the expected physical collection, and
-accepts ordinary document-count movement while the snapshot is created. The
-post-snapshot counts are retained only as a live diagnostic observation; they
-are not treated as counts inside the checkpoint. If an alias is missing,
-invalid, or changes across the boundary, the job removes that attempt and
-retries the complete snapshot after five seconds, up to three attempts. It
-fails closed before copy/upload if the alias contract does not stabilize.
+The backup validates the seven-alias contract immediately before and after
+the Snapshot API call. Both observations must contain exactly the required
+aliases, every target must resolve to that exact physical collection, and the
+alias mappings must match. Live document counts are recorded after the
+snapshot as operational evidence, with
+`collection_documents_observation=live_after_snapshot`, but count movement is
+not a consistency failure: ordinary exporter and watchlist writes may continue
+while Typesense creates its own atomic checkpoint. If the alias contract is
+temporarily incomplete or changes during the boundary, that checkpoint is
+discarded and the complete operation is retried after five seconds, up to
+three attempts. A contract that does not stabilize then fails closed before
+copy or upload; retries never silently select one side of a concurrent alias
+cutover. Each attempt is created directly under
+`/mnt/jobseek-typesense-backup/staging/.attempts` through the container's
+`/jobseek-snapshots` bind mount. The stable attempt is atomically renamed into
+the backup packet before hashing and upload, so peak local snapshot copies is
+one. The job refuses to start unless this path is an exact root-owned `0700`
+mount on a device separate from both `/` and `/mnt/typesense-data`, has at
+least 8 GiB free, is the container's writable snapshot mount, and the
+container enforces its reviewed 3 GiB memory boundary.
+
+Before upload, the job reads the manifest back and recomputes the data digest.
+During restore, the helper repeats that digest verification before starting
+the isolated node, then requires the aliases loaded from the checkpoint to
+match the manifest. Collection counts are derived from the restored node and
+cross-checked against wildcard reads, so the restore inventory belongs to the
+artifact instead of a later live-source observation.
 
 Deploying a repair to an enabled timer also handles an already-latched failed
 unit or stale status. The installer quiesces the timer, releases the normal
@@ -482,14 +503,20 @@ systemctl start jobseek-typesense-backup.service
 systemctl status jobseek-typesense-backup.service --no-pager
 journalctl -u jobseek-typesense-backup.service -n 100 --no-pager
 cat /var/lib/jobseek-backup/status/typesense.json
+findmnt --mountpoint /mnt/jobseek-typesense-backup
+df -h /mnt/jobseek-typesense-backup /
+docker inspect typesense --format \
+  'oom={{.State.OOMKilled}} restarts={{.RestartCount}} memory={{.HostConfig.Memory}} reservation={{.HostConfig.MemoryReservation}} swap={{.HostConfig.MemorySwap}}'
 set -a; . /etc/jobseek-backup/typesense.env; set +a
 restic -o "sftp.command=${RESTIC_SFTP_COMMAND}" snapshots --tag jobseek-typesense
 restic -o "sftp.command=${RESTIC_SFTP_COMMAND}" check
 ```
 
-If upload or repository validation fails, the host staging copy is preserved
-for diagnosis. Snapshot directories older than 48 hours are removed before a
-later attempt. Never archive `/mnt/typesense-data` while Typesense is live.
+If upload or repository validation fails, the single host staging copy is
+preserved for diagnosis. Snapshot directories older than 48 hours are removed
+before a later attempt. Never archive `/mnt/typesense-data` while Typesense is
+live, and never redirect snapshot staging back onto `/` to bypass the mount or
+free-space gate.
 
 ## Web PostgreSQL backup operation
 

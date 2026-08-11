@@ -109,6 +109,29 @@ def test_failed_or_stale_typesense_backup_is_repaired_before_deploy_marker() -> 
     assert "typesense_rotation_restore_timer_state" in repair_function
 
 
+def test_typesense_backup_requires_dedicated_staging_and_bounded_memory() -> None:
+    backup_installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
+    host_installer = (ROOT / "deploy/typesense-host/install-host.sh").read_text(encoding="utf-8")
+    service = (ROOT / "deploy/systemd/jobseek-typesense-backup.service").read_text(encoding="utf-8")
+    workflow = (ROOT / ".github/workflows/deploy-typesense-host.yml").read_text(encoding="utf-8")
+
+    for artifact in (backup_installer, host_installer, service):
+        assert "/mnt/jobseek-typesense-backup" in artifact
+        assert "8589934592" in artifact
+    assert "findmnt --mountpoint" in backup_installer
+    assert "stat -c '%d' /mnt/typesense-data" in backup_installer
+    assert '--memory "$TYPESENSE_MEMORY_LIMIT"' in host_installer
+    assert '--memory-reservation "$TYPESENSE_MEMORY_RESERVATION"' in host_installer
+    assert '--memory-swap "$TYPESENSE_MEMORY_LIMIT"' in host_installer
+    assert '"$TYPESENSE_SNAPSHOT_DIR:$TYPESENSE_SNAPSHOT_IN_CONTAINER"' in host_installer
+    assert "RequiresMountsFor=/mnt/jobseek-typesense-backup" in service
+    assert "ConditionPathIsMountPoint=/mnt/jobseek-typesense-backup" in service
+    assert "TYPESENSE_SNAPSHOT_CONTAINER_MOUNT_ROOT=/jobseek-snapshots" in service
+    assert "--memory 3g" in workflow
+    assert "--memory-reservation 2560m" in workflow
+    assert "--memory-swap 3g" in workflow
+
+
 def test_typesense_restore_drill_is_isolated_and_self_cleaning() -> None:
     drill = (ROOT / "deploy/backups/typesense/restore-drill.sh").read_text(encoding="utf-8")
 
