@@ -139,6 +139,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const path = `/${userSlug}/${watchlistSlug}`;
+  const ogImageUrl = `${siteConfig.url}/og/watchlist/${locale}/${encodeURIComponent(userSlug)}/${encodeURIComponent(watchlistSlug)}`;
   // Mirror the sitemap quality gate (#2823): if the watchlist wouldn't
   // be in the sitemap, also `noindex,follow` it on direct discovery
   // (someone shares the link, Google crawls it). Predicate lives in
@@ -154,9 +155,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: buildAlternates(path, locale),
-    // No `images` override — the per-watchlist `opengraph-image.tsx`
-    // sibling generates richer cards (title + owner + company count +
-    // filter count). Setting `images` here would bypass it.
+    // The rich watchlist card remains dynamic because owners can make a
+    // watchlist private, but its renderer lives on a separate route so the
+    // Satori/Resvg payload is absent from the ordinary page Function trace.
     openGraph: {
       title,
       description,
@@ -164,6 +165,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "website",
       locale: ogLocale(locale),
       alternateLocale: ogAlternateLocales(locale),
+      images: [{
+        url: ogImageUrl,
+        width: 1200,
+        height: 630,
+        alt: title,
+      }],
     },
     ...(!indexable && { robots: { index: false, follow: true } }),
   };

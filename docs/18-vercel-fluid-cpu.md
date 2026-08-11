@@ -104,6 +104,16 @@ keeps the build-time source marker as a rollout/outage fallback. This preserves
 fresh OG URLs without giving every company ingestion commit a new Next.js build
 ID and cold PPR cache.
 
+The follow-up static trace audit also found that a root
+`app/opengraph-image.tsx` caused the `next/og` Resvg/WASM/font stack to be
+included in ordinary page Functions. The site-wide card is now pre-rendered to
+the immutable `og/site/<version>.png` R2 key, and ordinary metadata references
+that object directly. Company metadata already uses completed R2 namespaces;
+legacy root and company OG URLs are deployment redirects. This removes both
+renderers from normal page traces while preserving previously shared URLs.
+The build-smoke bundle gate inspects every ordinary `page.js.nft.json` trace
+and fails if the `@vercel/og`/Resvg payload leaks back into one.
+
 In the 16-hour audit sample that exposed this coupling, 42 of 58 main commits
 changed company OG data, five were otherwise unrelated to the web, ten changed
 the web, and one changed a shared root input. The classifier would reduce that

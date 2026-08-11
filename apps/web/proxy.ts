@@ -288,13 +288,11 @@ export const config = {
   // intended 404 into a 500. Redirecting to `/<locale>/<path>` reaches the
   // localized 404 surface correctly.
   //
-  // `opengraph-image*` is excluded so `og:image` URLs that the Metadata
-  // API generates against the root `app/opengraph-image.tsx` reach the
-  // handler directly. Without this, Twitter / LinkedIn / Slack OG fetches
-  // for non-(public) pages 308-redirect to `/<locale>/opengraph-image-<hash>`
-  // and 404. See #2835 critic round 1.
+  // `opengraph-image*` is excluded so previously shared root OG URLs reach
+  // the compatibility redirects in next.config.ts instead of first acquiring
+  // a locale prefix. Current metadata points directly at immutable R2 assets.
   matcher: [
-    "/((?!_next|api|mcp|flags|fonts|publicdomain|screenshots|\\.well-known|favicon\\.ico$|favicon-16x16\\.png$|favicon-32x32\\.png$|apple-touch-icon\\.png$|apple-touch-icon-[^/]+\\.png$|android-chrome-192x192\\.png$|android-chrome-512x512\\.png$|site\\.webmanifest$|BingSiteAuth\\.xml$|js_[^/]+\\.svg$|js_missing_screenshot_black\\.png$|js_missing_screenshot_white\\.png$|logo-dark\\.svg$|logo-light\\.svg$|opengraph-image|indexnow-key\\.txt$|llms\\.txt$|openapi\\.json$|openapi\\.yaml$|robots\\.txt$|sitemap\\.xml$|en|de|fr|it).*)",
+    "/((?!_next|api|mcp|og|flags|fonts|publicdomain|screenshots|\\.well-known|favicon\\.ico$|favicon-16x16\\.png$|favicon-32x32\\.png$|apple-touch-icon\\.png$|apple-touch-icon-[^/]+\\.png$|android-chrome-192x192\\.png$|android-chrome-512x512\\.png$|site\\.webmanifest$|BingSiteAuth\\.xml$|js_[^/]+\\.svg$|js_missing_screenshot_black\\.png$|js_missing_screenshot_white\\.png$|logo-dark\\.svg$|logo-light\\.svg$|opengraph-image|indexnow-key\\.txt$|llms\\.txt$|openapi\\.json$|openapi\\.yaml$|robots\\.txt$|sitemap\\.xml$|en|de|fr|it).*)",
     "/:lang(en|de|fr|it)/companies/request",
     "/:lang(en|de|fr|it)/company/:slug",
     "/:lang(en|de|fr|it)/:userSlug/:watchlistSlug",

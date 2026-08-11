@@ -9,12 +9,15 @@ on:
       - "apps/crawler/data/company_descriptions.csv"
       - "apps/crawler/data/industries.csv"
       - "apps/web/public/fonts/JetBrainsMono-Bold.ttf"
+      - "apps/web/public/android-chrome-512x512.png"
       - "apps/web/script/prewarm-company-og-cache.ts"
       - "apps/web/src/lib/og/company-og-card.tsx"
       - "apps/web/src/lib/og/company-og-key.ts"
       - "apps/web/src/lib/og/company-og-renderer-version.ts"
       - "apps/web/src/lib/og/company-og-source-version.ts"
       - "apps/web/src/lib/og/render-company-og.tsx"
+      - "apps/web/src/lib/og/site-og-card.tsx"
+      - "apps/web/src/lib/og/site-og-key.ts"
   schedule:
     # Reconcile any objects missed by a failed deploy-triggered run.
     - cron: "43 2 * * 0"
