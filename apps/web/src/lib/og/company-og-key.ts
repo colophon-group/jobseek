@@ -17,6 +17,13 @@ export function companyOgCacheKeyForVersion(
   return `og/company/${segment(rendererVersion)}/${segment(locale)}/${segment(slug)}.png`;
 }
 
+export function companyOgCompletionKeyForVersion(
+  rendererVersion: string,
+  sourceVersion: string,
+): string {
+  return `og/company/${segment(rendererVersion)}/_complete/${segment(sourceVersion)}.json`;
+}
+
 export function companyOgCacheKey(locale: string, slug: string): string {
   const rendererVersion =
     process.env.COMPANY_OG_RENDERER_VERSION ||
@@ -30,12 +37,39 @@ export function companyOgPublicUrl(
   rendererVersion: string,
   locale: string,
   slug: string,
+  sourceVersion?: string,
 ): string | null {
   try {
     const base = new URL(domain.endsWith("/") ? domain : `${domain}/`);
     if (base.protocol !== "https:") return null;
     const key = companyOgCacheKeyForVersion(rendererVersion, locale, slug);
-    return new URL(key.split("/").map(encodeURIComponent).join("/"), base).toString();
+    const url = new URL(
+      key.split("/").map(encodeURIComponent).join("/"),
+      base,
+    );
+    if (sourceVersion) url.searchParams.set("v", segment(sourceVersion));
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+export function companyOgCompletionUrl(
+  domain: string,
+  rendererVersion: string,
+  sourceVersion: string,
+): string | null {
+  try {
+    const base = new URL(domain.endsWith("/") ? domain : `${domain}/`);
+    if (base.protocol !== "https:") return null;
+    const key = companyOgCompletionKeyForVersion(
+      rendererVersion,
+      sourceVersion,
+    );
+    return new URL(
+      key.split("/").map(encodeURIComponent).join("/"),
+      base,
+    ).toString();
   } catch {
     return null;
   }

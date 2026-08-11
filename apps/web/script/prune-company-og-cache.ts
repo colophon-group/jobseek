@@ -276,7 +276,9 @@ function versionFromKey(key: string | undefined, prefix: string): string | null 
   const parts = rest.split("/");
   if (parts.length < 3) return null;
   const [version, locale, file] = parts;
-  if (!version || !locale || !file?.endsWith(".png")) return null;
+  const isPng = file?.endsWith(".png");
+  const isCompletionMarker = locale === "_complete" && file?.endsWith(".json");
+  if (!version || !locale || (!isPng && !isCompletionMarker)) return null;
   return version;
 }
 
