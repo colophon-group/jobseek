@@ -2749,7 +2749,7 @@ kargo,kargo-greenhouse,https://job-boards.greenhouse.io/kargo,greenhouse,"{""tok
 karya,karya-greenhouse,https://job-boards.greenhouse.io/karya,greenhouse,"{""token"": ""karya""}",skip,
 kasa,kasa-greenhouse,https://job-boards.greenhouse.io/kasa,greenhouse,"{""token"": ""kasa""}",skip,
 katapult-amsterdam-b-v,katapult-amsterdam-b-v-join,https://join.com/companies/katapultnl,join,"{""slug"": ""katapultnl""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
-kaufland,kaufland-careers,https://jobs.kaufland.com/,rss,"{""preset"": ""successfactors""}",skip,
+kaufland,kaufland-careers,https://jobs.kaufland.com/,rss,"{""preset"": ""successfactors"", ""url_filter"": {""exclude"": ""/Cesko/""}}",skip,
 kaufland,kaufland-careers-ecommerce,https://real-digital.jobs.personio.de/,personio,"{""slug"": ""real-digital""}",skip,
 kaufland-cz,kaufland-cz-almacareer,https://kaufland.jobs.cz/,almacareer,{},skip,
 kaumarie,kaumarie-join,https://join.com/companies/kaumariede,join,"{""slug"": ""kaumariede""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
