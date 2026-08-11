@@ -115,12 +115,12 @@ jobs:
             /en/explore?wm=remote\&q=python \
             /en/company/securitas-ag \
             /en/sign-in; do
-            status="$(pnpm dlx vercel@55.0.0 --token="$VERCEL_TOKEN" curl "$path" \
+            status="$(pnpm dlx vercel@55.0.0 curl "$path" \
               --deployment="$DEPLOYMENT_URL" \
               -- --silent --show-error --output=/dev/null --write-out='%{http_code}')"
             [[ "$status" == "200" ]]
           done
-          scanner_status="$(pnpm dlx vercel@55.0.0 --token="$VERCEL_TOKEN" curl /wp-admin/setup-config.php \
+          scanner_status="$(pnpm dlx vercel@55.0.0 curl /wp-admin/setup-config.php \
             --deployment="$DEPLOYMENT_URL" \
             -- --silent --show-error --output=/dev/null --write-out='%{http_code}')"
           [[ "$scanner_status" == "404" ]]

@@ -49,12 +49,17 @@ test("production workflow stages, verifies, then promotes exact main", () => {
   assert.match(workflow, /production_sha.*current_sha/);
   assert.match(workflow, /current_main=.*commits\/main/);
   assert.match(workflow, /vercel@55\.0\.0 promote/);
-  assert.equal(
-    [...workflow.matchAll(/vercel@55\.0\.0 --token="\$VERCEL_TOKEN" curl/g)]
-      .length,
-    2,
+  assert.match(
+    workflow,
+    /VERCEL_TOKEN: \$\{\{ secrets\.VERCEL_TOKEN \}\}/,
   );
-  assert.doesNotMatch(workflow, /vercel@55\.0\.0 curl/);
+  const curlLines = workflow
+    .split("\n")
+    .filter((line) => line.includes("vercel@55.0.0") && line.includes("curl"));
+  assert.equal(curlLines.length, 2);
+  for (const line of curlLines) {
+    assert.doesNotMatch(line, /--token/);
+  }
   assert.doesNotMatch(workflow, /--cwd=apps\/web/);
   assert.doesNotMatch(workflow, /--git-branch/);
   assert.match(workflow, /environment: Production/);
