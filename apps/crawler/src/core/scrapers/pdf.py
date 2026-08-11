@@ -48,7 +48,7 @@ def _normalize_captured_text(
     whitespace.
     """
     if repair_split_initial:
-        value = re.sub(r"\b([A-Z])(?:[ \t]+|\s*\n\s*)(?=[a-z])", r"\1", value)
+        value = re.sub(r"\b([A-Z])(?:[ \t]+|[ \t]*\r?\n[ \t]*)(?=[a-z])", r"\1", value)
     value = re.sub(r"\s+", " ", value).strip()
     return value or None
 
