@@ -56,6 +56,8 @@ interface SearchToolbarProps {
   ) => void;
   /** Placeholder for the mobile search bar */
   searchPlaceholder?: string;
+  /** Accessible name for the mobile search bar's current scope. */
+  searchAccessibleLabel?: string;
   /**
    * Optional element rendered on the right of the language-note row
    * (next to SaveSearchButton when filters are active). Used by the
@@ -98,6 +100,7 @@ export function SearchToolbar({
   onClearAll,
   onSubmitSearch,
   searchPlaceholder,
+  searchAccessibleLabel,
   statsSlot,
 }: SearchToolbarProps) {
   const { t } = useLingui();
@@ -136,6 +139,7 @@ export function SearchToolbar({
           userLat={userLat}
           userLng={userLng}
           placeholder={searchPlaceholder}
+          accessibleLabel={searchAccessibleLabel}
         />
       </div>
       <div className="flex items-start justify-between gap-4">

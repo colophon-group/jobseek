@@ -83,9 +83,14 @@ export function PublicWatchlistSearch() {
       <div className="mb-4 flex items-center gap-2 rounded-md border border-border-soft px-3 py-2">
         <Search size={14} className="shrink-0 text-muted" />
         <input
-          type="text"
+          type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          aria-label={t({
+            id: "watchlists.explore.searchLabel",
+            comment: "Accessible label for public watchlist search input",
+            message: "Search public watchlists",
+          })}
           placeholder={t({
             id: "watchlists.explore.searchPlaceholder",
             comment: "Placeholder for public watchlist search input",

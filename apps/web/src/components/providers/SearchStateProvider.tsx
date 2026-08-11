@@ -167,6 +167,8 @@ export interface SearchPageActions {
   getTechnologies?: () => { id: number; slug: string; name: string }[];
   /** Custom placeholder for the header SearchBar (e.g. "Search at Google...") */
   placeholder?: string;
+  /** Stable accessible name for the header SearchBar's current scope. */
+  accessibleLabel?: string;
 }
 
 type SearchStateStore = {
