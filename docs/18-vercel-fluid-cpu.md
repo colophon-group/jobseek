@@ -56,6 +56,33 @@ checks below against its protected URL, and only then use `vercel promote` to
 restore the aliases. The guard detects stale production; issue #6655 tracks a
 future staged-promotion flow that can correct it automatically.
 
+`apps/web/vercel.json` disables connected-Git production deployments for
+`main`. The `Deploy web production` workflow owns that path instead: it runs on
+every main push and deterministically classifies the entire delta from the
+currently promoted Vercel SHA to live `main`. This cumulative comparison means
+a newer queued ops-only push cannot hide an earlier web change. The workflow
+stages an exact-SHA production artifact with no domains, smoke-tests it,
+rechecks the live main SHA, and only then promotes it. If main moves during the
+build, the staged artifact is not promoted and the latest serialized run
+re-evaluates the cumulative delta. PR branches remain on the Vercel Git
+integration. Web inputs are `apps/web/**`, `packages/mcp-server/**`, root pnpm
+and Turbo configuration, and dependency patches. Crawler code, crawler board
+configuration, documentation, and company CSV changes do not deploy the web.
+
+Company CSV changes are safe to exclude because the external OG prewarm job
+publishes `og/company/<renderer>/_complete/current.json` only after the full
+company/locale matrix and its immutable source-version marker exist. Company
+metadata resolves that pointer through one shared five-minute cache entry and
+keeps the build-time source marker as a rollout/outage fallback. This preserves
+fresh OG URLs without giving every company ingestion commit a new Next.js build
+ID and cold PPR cache.
+
+In the 16-hour audit sample that exposed this coupling, 42 of 58 main commits
+changed company OG data, five were otherwise unrelated to the web, ten changed
+the web, and one changed a shared root input. The classifier would reduce that
+sample from 58 production deployments to 11 (81%) without suppressing a real
+web input.
+
 ## Live functionality checks
 
 All checks are mandatory:
