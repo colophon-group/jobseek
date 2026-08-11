@@ -8,7 +8,7 @@ tests, repository-wide regression gates where relevant, PR review/CI, safe
 rollout when required, production or artifact verification, and only then
 closure.
 
-The remediation baseline is `origin/main` at
+The original remediation baseline is `origin/main` at
 `6bf39de7e38c9830176062423130d61cde6ac9fe`. The original audit evidence is on
 the isolated `codex/audit-2026-08-11` branch at commit `26d62a252`.
 
@@ -50,12 +50,14 @@ do not require runtime evidence.
 | #6623 exporter acknowledgement/cursor | `/Users/Viktor/jobseek-fix-6623` | `codex/fix-6623-typesense-ack` | subagent `fix_6623_cdc_ack` | local-verified; publish blocked by missing `gh` |
 | #6625 labeller upload integrity | `/Users/Viktor/jobseek-fix-6625` | `codex/fix-6625-labeller-upload-integrity` | subagent `fix_6625_upload_integrity` | local-verified; publish blocked by missing `gh` |
 | #6626 labeller scrub integrity | `/Users/Viktor/jobseek-fix-6626` | `codex/fix-6626-labeller-scrub-integrity` | subagent `fix_6626_scrub_integrity` | local-verified; publish blocked by missing `gh` |
-| #6624 Typesense payload reconciliation | `/Users/Viktor/jobseek-fix-6624` | `codex/fix-6624-typesense-reconciliation` | subagent `fix_6624_reconciliation` | active |
+| #6624 Typesense payload reconciliation | `/Users/Viktor/jobseek-fix-6624` | `codex/fix-6624-typesense-reconciliation` | subagent `fix_6624_reconciliation` | local-verified; integration with #6631 pending |
 | #6627 labelled-sample diversity | `/Users/Viktor/jobseek-fix-6627` | `codex/fix-6627-labeller-sampling` | subagent `fix_6627_sampling_contract` | local-verified; publish blocked by missing `gh` |
 | #6628 crawler test hermeticity | `/Users/Viktor/jobseek-fix-6628` | `codex/fix-6628-test-hermeticity` | root | local-verified; publish blocked by missing `gh` |
 | #6629 sunset automation docs | `/Users/Viktor/jobseek-fix-6629` | `codex/fix-6629-sunset-automation-docs` | root | local-verified; publish blocked by missing `gh` |
-| #6631 PostgreSQL connection budget | `/Users/Viktor/jobseek-fix-6631` | `codex/fix-6631-postgres-pool-budget` | subagent `fix_6631_pool_budget` | implementation committed; root review pending |
+| #6631 PostgreSQL connection budget | `/Users/Viktor/jobseek-fix-6631` | `codex/fix-6631-postgres-pool-budget` | subagent `fix_6631_pool_budget` | second-opinion blockers under correction |
+| #6632 Typesense snapshot headroom | `/Users/Viktor/jobseek-fix-6632` | `codex/fix-6632-typesense-headroom` | root | local-verified; stacked on #6620; production acceptance pending |
 | #6633 retired units and host logs | `/Users/Viktor/jobseek-fix-6633` | `codex/fix-6633-host-hygiene` | subagent `fix_6633_host_hygiene` | active |
+| #3213 public API status semantics | `/Users/Viktor/jobseek-fix-3213` | `codex/fix-3213-api-error-statuses` | subagent `fix_3213_api_statuses` | active |
 
 ## Issue register
 
@@ -67,19 +69,19 @@ do not require runtime evidence.
 | 1 | [#5924](https://github.com/colophon-group/jobseek/issues/5924) | fleet lifecycle/protection/reboots/images | medium | queued | — | protections/labels plus safe reboot and post-check evidence |
 | 1 | [#6629](https://github.com/colophon-group/jobseek/issues/6629) | sunset Codex automation docs | low | local-verified | `d5b23a1e4`; PR pending | repository search contains no active desktop deployment instructions |
 | 1 | [#6631](https://github.com/colophon-group/jobseek/issues/6631) | PostgreSQL connection budget | high | review pending | `41372eea5`; root review pending | normal-load steady state below accepted budget and alert margin |
-| 1 | [#6632](https://github.com/colophon-group/jobseek/issues/6632) | Typesense snapshot headroom | medium | queued | — | measured memory/staging envelope and seven days without emergency image GC |
+| 1 | [#6632](https://github.com/colophon-group/jobseek/issues/6632) | Typesense snapshot headroom | medium | local-verified | `1d6984406`; PR pending, stacked on #6620 | measured memory/staging envelope and seven days without emergency image GC |
 | 1 | [#6633](https://github.com/colophon-group/jobseek/issues/6633) | retired units and host logs | low | active | `codex/fix-6633-host-hygiene` | no obsolete failed unit/container; bounded log policy verified |
 | 2 | [#6617](https://github.com/colophon-group/jobseek/issues/6617) | monitor metrics | medium | local-verified | `60f7fed26`; PR pending | one outcome emission per logical task and live ratio recheck |
 | 2 | [#6618](https://github.com/colophon-group/jobseek/issues/6618) | zero-transition search counts | medium | local-verified | `db61e043a` on integration branch; PR pending | every collection transitions positive counts to zero in Typesense |
 | 2 | [#6622](https://github.com/colophon-group/jobseek/issues/6622) | scheduled Typesense import acknowledgements | medium | local-verified | `36dc2ec41`, `37f575df0` on integration branch; PR pending | rejected import fails cron and blocks dependent pruning |
 | 2 | [#6623](https://github.com/colophon-group/jobseek/issues/6623) | exporter acknowledgement/cursor | medium | local-verified | `5449d49ce`, `27258bc73`; PR pending | malformed/truncated acknowledgements cannot advance CDC cursor |
-| 2 | [#6624](https://github.com/colophon-group/jobseek/issues/6624) | Typesense payload reconciliation | medium | active | `codex/fix-6624-typesense-reconciliation` | bounded same-ID/state drift detection and verified repair |
+| 2 | [#6624](https://github.com/colophon-group/jobseek/issues/6624) | Typesense payload reconciliation | medium | local-verified | `c0c9ad79a`; integration with #6631 pending | bounded same-ID/state drift detection and verified repair |
 | 2 | [#6625](https://github.com/colophon-group/jobseek/issues/6625) | labeller upload integrity | medium | local-verified | `73412b8e5`; PR pending | malformed local JSON prevents all publication |
 | 2 | [#6626](https://github.com/colophon-group/jobseek/issues/6626) | labeller scrub integrity | medium | local-verified | `92fcc181c`, `46038ceef`; PR pending | malformed remote JSONL prevents rewrite |
 | 2 | [#6627](https://github.com/colophon-group/jobseek/issues/6627) | labelled-sample diversity | low | local-verified | `d66e0ea52`; PR pending | documented weighted profession/locale behavior under tests |
 | 2 | [#6628](https://github.com/colophon-group/jobseek/issues/6628) | crawler test hermeticity | low | local-verified | `a72769a02`; PR pending | full suite has no unawaited warnings or host `gh` dependency |
 | 3 | [#2640](https://github.com/colophon-group/jobseek/issues/2640) | Explore initial rendering | medium | queued | — | localized initial HTML has content/H1 and filter hydration works |
-| 3 | [#3213](https://github.com/colophon-group/jobseek/issues/3213) | public API error statuses | medium | queued | — | invalid search parameters return stable HTTP 400 contract |
+| 3 | [#3213](https://github.com/colophon-group/jobseek/issues/3213) | public API error statuses | medium | active | `codex/fix-3213-api-error-statuses` | invalid search parameters return stable HTTP 400 contract |
 | 3 | [#6131](https://github.com/colophon-group/jobseek/issues/6131) | build-time external reads | medium | queued | — | deterministic bounded build during Typesense failure |
 | 3 | [#6638](https://github.com/colophon-group/jobseek/issues/6638) | watchlist URL handoff | medium | queued | — | delayed bootstrap creates exactly once with every supported filter |
 | 3 | [#6639](https://github.com/colophon-group/jobseek/issues/6639) | typeahead race/fan-out | medium | queued | — | stale completions ignored, failures caught, request budget tested |
@@ -101,3 +103,4 @@ do not require runtime evidence.
 | 2026-08-11 13:49 | #6623 now rejects exact-cardinality, malformed, truncated, explicit-failure, and decoder-failure acknowledgements without advancing CDC; #6625/#6626 fail closed before any remote mutation and passed root review. #6618/#6622/#6627/#6628 are active. #6631 is committed and under root review. | Finish #6628 full-suite warning gate and review #6631, then continue through the remaining crawler and infrastructure wave. | Publishing remains blocked by missing `gh`; production-dependent issues remain open until post-merge live acceptance. |
 | 2026-08-11 14:03 | #6627 implemented bounded deterministic occupation/locale rarity weighting and passed 182 labeller tests plus Pyright; #6628 removed all unawaited test debt, isolated missing-CLI behavior, enabled warning-as-error policy, and passed the exact CI-shaped suite (7,656 pass, 20 skip, zero warnings). #6624 is active. | Complete root review of #6631 and the active Typesense fixes, then start the next infrastructure/code wave. | `gh` remains unavailable; all local-verified branches await rebase/publication, and runtime acceptance remains outstanding where specified. |
 | 2026-08-11 14:10 | #6618 and #6622 passed independent review and were semantically integrated on current main `8f9be7a0a`: retained documents now receive explicit zero/false transitions, all upstream facets validate before the first write, every scheduled import requires exact success, and failed zero updates block later collections/pruning. Combined suite: 129 pass plus Ruff/format/Pyright. #6633 is active; #6631 has an independent second-opinion review in progress. | Finish #6631 review and #6624/#6633 implementations; then start Typesense headroom and fleet lifecycle work. | Real Typesense read-back and disposable rejection exercises remain post-merge acceptance; publishing is still blocked by missing `gh`. |
+| 2026-08-11 14:27 | #6624 added bounded full-payload drift detection and a repair path (`c0c9ad79a`, 208 focused tests). #6632 now writes one Typesense snapshot copy directly onto a dedicated fail-closed mount, enforces an exact 3 GiB/2.5 GiB memory contract, and passed 66 backup/deployment tests plus Ruff, formatting, Pyright, Bash syntax, and docs checks (`1d6984406`). #3213 is active. | Obtain independent review of #6632; finish #6631 corrections and #6633/#3213; semantically integrate #6631 before #6624. | #6632 still needs a reviewed volume/container rollout and seven clean days; all publication remains blocked by missing `gh`. |
