@@ -713,10 +713,10 @@ class TestValidateProxyFlag:
 
 
 class TestMigratedBoardsHaveProxy:
-    """The 10 boards migrated off Lightpanda CDP MUST keep ``proxy: true``.
+    """The 9 active boards migrated off Lightpanda CDP MUST keep ``proxy: true``.
 
     The old source of truth was ``data/cdp_routes.csv`` (one CSV, one
-    place); the new source is scattered across 10 rows in
+    place); the new source is scattered across 9 rows in
     ``data/boards.csv``. If a future bulk-edit drops the flag, these
     boards silently go back to WAF captcha — we want CI to catch that.
     """
@@ -726,7 +726,6 @@ class TestMigratedBoardsHaveProxy:
         "eaton-eightfold",
         "kering-careers",
         "lam-research-eightfold",
-        "micron-eightfold",
         "northrop-grumman-eightfold",
         "qualcomm-eightfold",
         "starbucks-eightfold",
@@ -734,7 +733,7 @@ class TestMigratedBoardsHaveProxy:
         "vodafone-jobs",
     )
 
-    def test_all_ten_have_proxy_true_in_monitor_and_scraper(self):
+    def test_all_active_migrations_have_proxy_true_in_monitor_and_scraper(self):
         import json
 
         from src.shared.constants import get_data_dir
