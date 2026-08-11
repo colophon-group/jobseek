@@ -46,6 +46,7 @@ import {
 } from "@/lib/search/typesense-watchlist";
 import { isTrivialWatchlist, buildFilterCacheKey } from "@/lib/watchlist-utils";
 import { notifyIndexNow, logIndexNowResult } from "@/lib/indexnow";
+import { createWatchlistFromHandoffWithDeps } from "@/lib/services/watchlist-handoff";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -330,6 +331,23 @@ export async function createWatchlist(params: {
   }
 
   return { id: row.id, slug };
+}
+
+export async function createWatchlistFromHandoff(params: {
+  title: string;
+  description?: string;
+  companySlugs: string[];
+  filters?: WatchlistFilters;
+}): Promise<{ id: string; slug: string } | { error: string }> {
+  // Keep the company-detail cache/search module off the ordinary watchlist
+  // import path. It is needed only for this explicit public-API handoff.
+  const { getCompanyIdsBySlugs } = await import(
+    "@/lib/services/company-detail"
+  );
+  return createWatchlistFromHandoffWithDeps(params, {
+    getCompanyIdsBySlugs,
+    createWatchlist,
+  });
 }
 
 export async function updateWatchlist(params: {

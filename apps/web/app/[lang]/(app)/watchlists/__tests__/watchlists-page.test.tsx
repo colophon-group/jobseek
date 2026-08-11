@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
   refresh: vi.fn(),
   createWatchlist: vi.fn(),
+  createWatchlistFromHandoff: vi.fn(),
   searchParams: new URLSearchParams(),
   session: {
     user: { username: "alice" } as { username: string } | null,
@@ -34,6 +35,7 @@ vi.mock("@/components/providers/SessionProvider", () => ({
 
 vi.mock("@/lib/actions/watchlists", () => ({
   createWatchlist: mocks.createWatchlist,
+  createWatchlistFromHandoff: mocks.createWatchlistFromHandoff,
 }));
 
 vi.mock("@/components/watchlist/watchlist-card", () => ({
@@ -62,7 +64,9 @@ vi.mock("@/components/ui/upgrade-modal", () => ({
 }));
 
 vi.mock("@/components/ui/Button", () => ({
-  Button: ({ children }: { children: React.ReactNode }) => <button type="button">{children}</button>,
+  Button: ({ children, href }: { children: React.ReactNode; href?: string }) => (
+    href ? <a href={href}>{children}</a> : <button type="button">{children}</button>
+  ),
 }));
 
 import { WatchlistsPage } from "../watchlists-page";
@@ -83,6 +87,8 @@ const overview = [{
 describe("WatchlistsPage deferred counts (#5896)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.createWatchlist.mockReset();
+    mocks.createWatchlistFromHandoff.mockReset();
     mocks.searchParams = new URLSearchParams();
     mocks.session = {
       user: { username: "alice" },
@@ -156,7 +162,9 @@ describe("WatchlistsPage deferred counts (#5896)", () => {
       exp: "5-10",
       companies: "company-1,company-2",
     });
-    mocks.createWatchlist.mockResolvedValue({ slug: "distributed-systems" });
+    mocks.createWatchlistFromHandoff.mockResolvedValue({
+      slug: "distributed-systems",
+    });
 
     const props = {
       initialWatchlists: [],
@@ -175,11 +183,13 @@ describe("WatchlistsPage deferred counts (#5896)", () => {
     };
     rerender(<WatchlistsPage {...props} />);
 
-    await waitFor(() => expect(mocks.createWatchlist).toHaveBeenCalledTimes(1));
-    expect(mocks.createWatchlist).toHaveBeenCalledWith({
+    await waitFor(() => (
+      expect(mocks.createWatchlistFromHandoff).toHaveBeenCalledTimes(1)
+    ));
+    expect(mocks.createWatchlistFromHandoff).toHaveBeenCalledWith({
       title: "Distributed systems",
       description: "Senior platform roles",
-      companyIds: ["company-1", "company-2"],
+      companySlugs: ["company-1", "company-2"],
       filters: {
         keywords: ["platform", "distributed"],
         locationSlugs: ["berlin", "zurich"],
@@ -194,7 +204,6 @@ describe("WatchlistsPage deferred counts (#5896)", () => {
         experienceMin: 5,
         experienceMax: 10,
       },
-      isPublic: false,
     });
     expect(mocks.replace).toHaveBeenCalledWith(
       "/en/alice/distributed-systems",
@@ -202,6 +211,76 @@ describe("WatchlistsPage deferred counts (#5896)", () => {
     expect(mocks.push).not.toHaveBeenCalled();
 
     rerender(<WatchlistsPage {...props} locale="de" />);
-    await waitFor(() => expect(mocks.createWatchlist).toHaveBeenCalledTimes(1));
+    await waitFor(() => (
+      expect(mocks.createWatchlistFromHandoff).toHaveBeenCalledTimes(1)
+    ));
+  });
+
+  it("preserves the handoff across an anonymous sign-in return", async () => {
+    mocks.searchParams = new URLSearchParams({
+      title: "Stripe roles",
+      companies: "stripe",
+    });
+    mocks.session = { user: null, isLoggedIn: false, isPending: false };
+
+    const props = {
+      initialWatchlists: [],
+      username: null,
+      limitReached: false,
+      locale: "en",
+    };
+    const anonymous = render(<WatchlistsPage {...props} />);
+    const signIn = screen.getByRole("link", { name: "Log in" });
+    const signInUrl = new URL(signIn.getAttribute("href")!, "https://jseek.co");
+    expect(signInUrl.pathname).toBe("/en/sign-in");
+    expect(signInUrl.searchParams.get("next")).toBe(
+      "/en/watchlists?title=Stripe+roles&companies=stripe",
+    );
+    expect(mocks.createWatchlistFromHandoff).not.toHaveBeenCalled();
+
+    anonymous.unmount();
+    mocks.session = { user: null, isLoggedIn: false, isPending: true };
+    mocks.createWatchlistFromHandoff.mockResolvedValue({ slug: "stripe-roles" });
+    const authenticated = render(<WatchlistsPage {...props} />);
+    mocks.session = {
+      user: { username: "alice" },
+      isLoggedIn: true,
+      isPending: false,
+    };
+    authenticated.rerender(<WatchlistsPage {...props} username="alice" />);
+
+    await waitFor(() => (
+      expect(mocks.createWatchlistFromHandoff).toHaveBeenCalledTimes(1)
+    ));
+    expect(mocks.createWatchlistFromHandoff).toHaveBeenCalledWith(
+      expect.objectContaining({ companySlugs: ["stripe"] }),
+    );
+  });
+
+  it("handles a terminal handoff failure and retains the retry URL", async () => {
+    mocks.searchParams = new URLSearchParams({
+      title: "Retryable roles",
+      companies: "stripe",
+    });
+    mocks.createWatchlistFromHandoff.mockRejectedValue(
+      new Error("database unavailable"),
+    );
+
+    render(
+      <WatchlistsPage
+        initialWatchlists={[]}
+        username="alice"
+        limitReached={false}
+        locale="en"
+      />,
+    );
+
+    await waitFor(() => (
+      expect(mocks.createWatchlistFromHandoff).toHaveBeenCalledTimes(1)
+    ));
+    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(mocks.searchParams.toString()).toBe(
+      "title=Retryable+roles&companies=stripe",
+    );
   });
 });

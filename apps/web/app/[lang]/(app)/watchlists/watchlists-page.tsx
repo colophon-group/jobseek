@@ -7,7 +7,10 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useSession } from "@/components/providers/SessionProvider";
 import type { UserWatchlistOverview, WatchlistFilters } from "@/lib/actions/watchlists";
-import { createWatchlist } from "@/lib/actions/watchlists";
+import {
+  createWatchlist,
+  createWatchlistFromHandoff,
+} from "@/lib/actions/watchlists";
 import { WatchlistCard, CreateWatchlistCard } from "@/components/watchlist/watchlist-card";
 import { PublicWatchlistSearch } from "@/components/watchlist/public-watchlist-search";
 import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
@@ -16,6 +19,7 @@ import {
   parseEmploymentTypeParam,
   parseWorkModeParam,
 } from "@/lib/search/query-params";
+import { withAuthReturnPath } from "@/lib/auth-return";
 
 function commaSeparatedValues(value: string | null): string[] {
   if (!value) return [];
@@ -97,7 +101,7 @@ export function WatchlistsPage({
       title?: string;
       description?: string;
       filters?: WatchlistFilters;
-      companyIds?: string[];
+      companySlugs?: string[];
     },
     navigation: "push" | "replace" = "push",
   ) {
@@ -112,13 +116,20 @@ export function WatchlistsPage({
     }
     setCreating(true);
     try {
-      const result = await createWatchlist({
-        title: prefill?.title || "New watchlist",
-        description: prefill?.description,
-        companyIds: prefill?.companyIds ?? [],
-        filters: prefill?.filters,
-        isPublic: false,
-      });
+      const result = prefill?.companySlugs !== undefined
+        ? await createWatchlistFromHandoff({
+            title: prefill.title || "New watchlist",
+            description: prefill.description,
+            companySlugs: prefill.companySlugs,
+            filters: prefill.filters,
+          })
+        : await createWatchlist({
+            title: prefill?.title || "New watchlist",
+            description: prefill?.description,
+            companyIds: [],
+            filters: prefill?.filters,
+            isPublic: false,
+          });
       if ("error" in result) {
         // Server-side race: client thought limit wasn't reached, but a
         // concurrent create elsewhere raised the count. Same UX.
@@ -149,7 +160,7 @@ export function WatchlistsPage({
       title: string;
       description?: string;
       filters?: WatchlistFilters;
-      companyIds: string[];
+      companySlugs: string[];
     }) => handleCreate(prefill, "replace"),
   );
 
@@ -184,7 +195,7 @@ export function WatchlistsPage({
     const salcur = searchParams.get("salcur");
     const workMode = parseWorkModeParam(searchParams.get("wm"));
     const employmentType = parseEmploymentTypeParam(searchParams.get("etype"));
-    const companyIds = commaSeparatedValues(searchParams.get("companies"));
+    const companySlugs = commaSeparatedValues(searchParams.get("companies"));
 
     const filters: WatchlistFilters = {};
     if (q) filters.keywords = commaSeparatedValues(q);
@@ -210,9 +221,19 @@ export function WatchlistsPage({
       title,
       description: searchParams.get("description") ?? undefined,
       filters: Object.keys(filters).length > 0 ? filters : undefined,
-      companyIds,
+      companySlugs,
+    }).catch(() => {
+      // Keep the handoff URL intact after a terminal action/database failure.
+      // A reload is then an explicit retry, while this mount stays one-shot.
     });
   }, [isLoggedIn, isPending, limitReached, searchParams]);
+
+  const loginHref = withAuthReturnPath(
+    lp("/sign-in"),
+    searchParams.has("title")
+      ? `${lp("/watchlists")}?${searchParams.toString()}`
+      : null,
+  );
 
   return (
     <>
@@ -236,7 +257,7 @@ export function WatchlistsPage({
                 Sign in to create and manage your own watchlists.
               </Trans>
             </p>
-            <Button href={lp("/sign-in")} variant="primary" size="sm" className="gap-2">
+            <Button href={loginHref} variant="primary" size="sm" className="gap-2">
               <LogIn size={16} />
               {t({ id: "common.auth.login", comment: "Login button label", message: "Log in" })}
             </Button>
