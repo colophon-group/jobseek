@@ -188,7 +188,7 @@ vi.mock("@/db/schema", () => ({
 function makeChain(leafResultFn: () => Promise<unknown>) {
   const chain: Record<string, unknown> = {};
   // Methods that just return the chain to keep fluency:
-  for (const m of ["from", "where", "set", "values", "onConflictDoNothing"]) {
+  for (const m of ["from", "where", "for", "set", "values", "onConflictDoNothing"]) {
     chain[m] = () => chain;
   }
   // Leaf-ish methods that resolve the chain when awaited.
@@ -201,15 +201,21 @@ function makeChain(leafResultFn: () => Promise<unknown>) {
   return chain;
 }
 
-vi.mock("@/db", () => ({
-  db: {
+vi.mock("@/db", () => {
+  const tx = {
     select: () => makeChain(() => Promise.resolve(mocks.selectLimitResult())),
     insert: () => makeChain(() => Promise.resolve(mocks.insertReturningResult())),
     update: () => makeChain(() => Promise.resolve(undefined)),
     delete: () => makeChain(() => Promise.resolve(undefined)),
     execute: (...args: unknown[]) => mocks.dbExecute(...args),
-  },
-}));
+  };
+  return {
+    db: {
+      ...tx,
+      transaction: async <T>(fn: (transaction: typeof tx) => Promise<T>) => fn(tx),
+    },
+  };
+});
 
 // ---- Module under test (must come AFTER vi.mock blocks) ------------
 
@@ -430,12 +436,18 @@ describe("watchlist mutator cache invalidation", () => {
 
   it("copyWatchlist invalidates new copy's slug for both variants", async () => {
     queueOwnerInfo();
-    // First select: source watchlist row; subsequent selects: copied
-    // companies (returns []).
+    // First select: source watchlist slug hint; second: the authoritative
+    // source snapshot inside the transaction; third: copied companies.
+    const source = {
+      title: "Source",
+      description: null,
+      filters: {},
+      isPublic: true,
+      userId: "other",
+    };
     mocks.selectLimitResult
-      .mockResolvedValueOnce([
-        { title: "Source", description: null, filters: {}, isPublic: true, userId: "other" },
-      ]);
+      .mockResolvedValueOnce([source])
+      .mockResolvedValueOnce([source]);
     // `db.select(... companyId).from(watchlistCompany).where(eq(...))`
     // resolves via the chain too (no `.limit`); make the chain
     // resolve on `.where` for the companies query.
