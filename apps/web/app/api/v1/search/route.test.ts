@@ -5,21 +5,24 @@ import { NextRequest } from "next/server";
 // the search actions. The admin-route tests use the same shim pattern.
 vi.mock("server-only", () => ({}));
 
-// Avoid touching Redis / Upstash from a unit test — `checkRateLimit`
-// degrades closed when the limiter throws.
-vi.mock("@/lib/rate-limit", () => ({
-  apiLimiter: {
-    limit: vi.fn(async () => {
-      throw new Error("no redis in unit tests");
-    }),
-  },
-  getClientIp: () => "test-ip",
-}));
-
 const mocks = vi.hoisted(() => ({
+  apiLimit: vi.fn(),
+  logExternalError: vi.fn(),
   parseSearchFilters: vi.fn(),
   searchJobs: vi.fn(),
   listTopCompanies: vi.fn(),
+}));
+
+// Avoid touching Redis / Upstash from a unit test. The default rejection
+// exercises the route's documented fail-open rate-limit behavior; individual
+// tests can override it to cover 429 responses.
+vi.mock("@/lib/rate-limit", () => ({
+  apiLimiter: { limit: mocks.apiLimit },
+  getClientIp: () => "test-ip",
+}));
+
+vi.mock("@/lib/safe-external-error", () => ({
+  logExternalError: mocks.logExternalError,
 }));
 
 // Route handler now imports from `@/lib/services/*` (issue #3231). The
@@ -58,8 +61,11 @@ async function callRoute(qs: string) {
   return { res, body };
 }
 
-describe("GET /api/v1/search — lang= param (issue #3230)", () => {
+describe("GET /api/v1/search", () => {
   beforeEach(() => {
+    mocks.apiLimit.mockReset();
+    mocks.apiLimit.mockRejectedValue(new Error("no redis in unit tests"));
+    mocks.logExternalError.mockReset();
     mocks.parseSearchFilters.mockReset();
     mocks.parseSearchFilters.mockResolvedValue(emptyParsed);
     mocks.searchJobs.mockReset();
@@ -104,27 +110,58 @@ describe("GET /api/v1/search — lang= param (issue #3230)", () => {
     expect(call.languages).toEqual(["de", "fr"]);
   });
 
-  it("rejects `lang=xx` (unknown code) with an error response", async () => {
-    const { res, body } = await callRoute("?locale=en&lang=xx");
-    expect(res.status).toBe(200); // apiResponse always 200 with error body
-    expect(body.error).toMatch(/Invalid 'lang' value/);
-    expect(body.error).toContain("xx");
+  it.each([
+    {
+      caseName: "unsupported UI locale",
+      query: "?locale=es",
+      error: "Invalid 'locale' param. Supported: en, de, fr, it",
+    },
+    {
+      caseName: "unknown document language",
+      query: "?locale=en&lang=xx",
+      error: "Invalid 'lang' value(s): xx. Supported: en, de, fr, it",
+    },
+    {
+      caseName: "empty document-language array",
+      query: "?locale=en&lang=",
+      error:
+        "Invalid 'lang' param: must be a comma-separated list of language codes (en, de, fr, it)",
+    },
+    {
+      caseName: "mixed valid and invalid document-language array",
+      query: "?locale=en&lang=en,xx",
+      error: "Invalid 'lang' value(s): xx. Supported: en, de, fr, it",
+    },
+    {
+      caseName: "malformed salary range",
+      query: "?locale=en&sal=abc-def",
+      error: "Invalid 'sal' param: bounds must be positive integers",
+    },
+    {
+      caseName: "malformed experience range",
+      query: "?locale=en&exp=3-nope",
+      error: "Invalid 'exp' param: bounds must be positive integers",
+    },
+    {
+      caseName: "reversed salary range",
+      query: "?locale=en&sal=200000-100000",
+      error: "Invalid 'sal' param: min cannot be greater than max",
+    },
+    {
+      caseName: "unsafe integer bound",
+      query: "?locale=en&exp=9007199254740992-",
+      error: "Invalid 'exp' param: bounds must be positive integers",
+    },
+  ])("returns the documented 400 contract for $caseName", async ({ query, error }) => {
+    const { res, body } = await callRoute(query);
+
+    expect(res.status).toBe(400);
+    expect(body).toEqual({ error });
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(mocks.parseSearchFilters).not.toHaveBeenCalled();
     expect(mocks.listTopCompanies).not.toHaveBeenCalled();
     expect(mocks.searchJobs).not.toHaveBeenCalled();
-  });
-
-  it("rejects `lang=` (empty) with an error response", async () => {
-    const { res, body } = await callRoute("?locale=en&lang=");
-    expect(res.status).toBe(200);
-    expect(body.error).toMatch(/Invalid 'lang' param/);
-    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
-  });
-
-  it("rejects a mixed-valid/invalid `lang=en,xx` with an error response", async () => {
-    const { body } = await callRoute("?locale=en&lang=en,xx");
-    expect(body.error).toMatch(/Invalid 'lang' value/);
-    expect(body.error).toContain("xx");
-    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
   });
 
   it("uses the `searchJobs` path when `q=` is set, still forwarding `languages`", async () => {
@@ -155,26 +192,6 @@ describe("GET /api/v1/search — lang= param (issue #3230)", () => {
     const url = new URL(body.moreAt as string);
     expect(url.searchParams.has("lang")).toBe(false);
     expect(url.searchParams.get("q")).toBe("engineer");
-  });
-
-  it("rejects malformed `sal=` instead of forwarding NaN", async () => {
-    const { body } = await callRoute("?locale=en&sal=abc-def");
-    expect(body.error).toMatch(/Invalid 'sal' param/);
-    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
-    expect(mocks.searchJobs).not.toHaveBeenCalled();
-  });
-
-  it("rejects malformed `exp=` instead of building an invalid Typesense filter", async () => {
-    const { body } = await callRoute("?locale=en&exp=3-nope");
-    expect(body.error).toMatch(/Invalid 'exp' param/);
-    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
-    expect(mocks.searchJobs).not.toHaveBeenCalled();
-  });
-
-  it("rejects reversed numeric ranges", async () => {
-    const { body } = await callRoute("?locale=en&sal=200000-100000");
-    expect(body.error).toMatch(/min cannot be greater than max/);
-    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
   });
 
   it("forwards valid `sal=` and `exp=` ranges as numbers", async () => {
@@ -221,5 +238,44 @@ describe("GET /api/v1/search — lang= param (issue #3230)", () => {
     const url = new URL(body.moreAt as string);
     expect(url.searchParams.get("etype")).toBe("full_time,internship");
     expect(url.searchParams.get("q")).toBe("designer");
+  });
+
+  it("keeps rate-limit failures distinct from validation failures", async () => {
+    const reset = Date.now() + 30_000;
+    mocks.apiLimit.mockResolvedValueOnce({
+      success: false,
+      limit: 30,
+      remaining: 0,
+      reset,
+    });
+
+    const { res, body } = await callRoute("?locale=en&lang=xx");
+
+    expect(res.status).toBe(429);
+    expect(body).toEqual({ error: "Too many requests" });
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(res.headers.get("Retry-After")).not.toBeNull();
+    expect(mocks.parseSearchFilters).not.toHaveBeenCalled();
+    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
+  });
+
+  it("returns a safe 500 body when the search provider fails", async () => {
+    const providerError = Object.assign(
+      new Error("provider-internal-canary-do-not-expose"),
+      { status: 503 },
+    );
+    mocks.listTopCompanies.mockRejectedValueOnce(providerError);
+
+    const { res, body } = await callRoute("?locale=de");
+
+    expect(res.status).toBe(500);
+    expect(body).toEqual({ error: "Search service unavailable" });
+    expect(JSON.stringify(body)).not.toContain("provider-internal-canary");
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(mocks.logExternalError).toHaveBeenCalledWith(
+      "error",
+      { service: "typesense", operation: "public_api_search" },
+      providerError,
+    );
   });
 });

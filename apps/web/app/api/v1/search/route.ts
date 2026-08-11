@@ -8,10 +8,20 @@ import { type NextRequest, NextResponse } from "next/server";
 import { searchJobs, listTopCompanies } from "@/lib/services/search";
 import { parseSearchFilters } from "@/lib/services/search-input";
 import { isLocale, locales } from "@/lib/i18n";
+import { logExternalError } from "@/lib/safe-external-error";
 import { checkRateLimit, apiResponse, siteUrl, exploreUrl } from "../_shared";
 
 const MAX_COMPANIES = 5;
 const MAX_POSTINGS_PER_COMPANY = 3;
+
+function searchErrorResponse(error: string, status: 400 | 500) {
+  const response = apiResponse({ error }, { maxAge: 0, status });
+  // Search errors must never be stored by a browser or shared cache. This is
+  // stricter than merely setting max-age=0 and keeps a transient provider
+  // outage (or a malformed request) from becoming a cached API response.
+  response.headers.set("Cache-Control", "no-store");
+  return response;
+}
 
 /**
  * Parse the optional `lang=` query param into a validated list of job
@@ -19,10 +29,10 @@ const MAX_POSTINGS_PER_COMPANY = 3;
  * + currency formatting) — ``lang`` filters by the language the posting
  * itself is written in (`job_posting.locales` in Typesense).
  *
- * - absent / empty → returns ``null`` (caller should pass ``[]`` to
- *   ``searchJobs`` / ``listTopCompanies`` so no language filter is
- *   applied — this is a public REST API, callers are stateless and
- *   should not be biased by the UI locale)
+ * - absent → returns ``null`` (caller should pass ``[]`` to ``searchJobs`` /
+ *   ``listTopCompanies`` so no language filter is applied — this is a public
+ *   REST API, callers are stateless and should not be biased by the UI locale)
+ * - present but empty → returns a ``400`` validation error
  * - comma-separated codes (e.g. ``de`` or ``de,fr``) → returns the
  *   validated subset. Unknown codes cause a ``400``.
  *
@@ -80,7 +90,8 @@ function parseIntegerRangeParam(
     const trimmed = value.trim();
     if (trimmed === "") return undefined;
     if (!/^\d+$/.test(trimmed)) return Number.NaN;
-    return Number.parseInt(trimmed, 10);
+    const parsed = Number.parseInt(trimmed, 10);
+    return Number.isSafeInteger(parsed) ? parsed : Number.NaN;
   };
 
   const min = parseBound(parts[0] ?? "");
@@ -118,16 +129,43 @@ export async function GET(request: NextRequest) {
   const exp = sp.get("exp") ?? undefined;
   const locale = sp.get("locale") ?? "en";
 
+  if (!isLocale(locale)) {
+    return searchErrorResponse(
+      `Invalid 'locale' param. Supported: ${locales.join(", ")}`,
+      400,
+    );
+  }
+
   const langParsed = parseLangParam(sp.get("lang"));
   if (!langParsed.ok) {
-    return apiResponse({ error: langParsed.error }, { maxAge: 0 });
+    return searchErrorResponse(langParsed.error, 400);
   }
   // `searchJobs` / `listTopCompanies` treat `languages: []` as "no
   // filter" (see `apps/web/src/lib/search/typesense-filters.ts` —
   // `filters.languages?.length` guards the locales clause).
   const languages = langParsed.langs ?? [];
 
-  const parsed = await parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale });
+  const salaryRange = parseIntegerRangeParam("sal", sal);
+  if (!salaryRange.ok) {
+    return searchErrorResponse(salaryRange.error, 400);
+  }
+
+  const experienceRange = parseIntegerRangeParam("exp", exp);
+  if (!experienceRange.ok) {
+    return searchErrorResponse(experienceRange.error, 400);
+  }
+
+  let parsed: Awaited<ReturnType<typeof parseSearchFilters>>;
+  try {
+    parsed = await parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale });
+  } catch (error) {
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "public_api_search" },
+      error,
+    );
+    return searchErrorResponse("Search service unavailable", 500);
+  }
 
   const locationIds =
     parsed.locations.length > 0 ? parsed.locations.map((l) => l.id) : undefined;
@@ -143,16 +181,6 @@ export async function GET(request: NextRequest) {
     parsed.technologies.length > 0
       ? parsed.technologies.map((t) => t.id)
       : undefined;
-
-  const salaryRange = parseIntegerRangeParam("sal", sal);
-  if (!salaryRange.ok) {
-    return apiResponse({ error: salaryRange.error }, { maxAge: 0 });
-  }
-
-  const experienceRange = parseIntegerRangeParam("exp", exp);
-  if (!experienceRange.ok) {
-    return apiResponse({ error: experienceRange.error }, { maxAge: 0 });
-  }
 
   const searchParams = {
     locationIds,
@@ -172,10 +200,20 @@ export async function GET(request: NextRequest) {
     limit: MAX_COMPANIES,
   };
 
-  const result =
-    parsed.keywords.length > 0
-      ? await searchJobs({ keywords: parsed.keywords, ...searchParams })
-      : await listTopCompanies(searchParams);
+  let result: Awaited<ReturnType<typeof listTopCompanies>>;
+  try {
+    result =
+      parsed.keywords.length > 0
+        ? await searchJobs({ keywords: parsed.keywords, ...searchParams })
+        : await listTopCompanies(searchParams);
+  } catch (error) {
+    logExternalError(
+      "error",
+      { service: "typesense", operation: "public_api_search" },
+      error,
+    );
+    return searchErrorResponse("Search service unavailable", 500);
+  }
 
   const companies = result.companies.slice(0, MAX_COMPANIES).map((c) => ({
     name: c.company.name,
