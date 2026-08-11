@@ -23,6 +23,7 @@ from src.reconciliation import (
     PARTITION_COUNT,
     PartitionResult,
     ReconciliationError,
+    ReconciliationRunFailed,
     RunSummary,
     StoreSnapshot,
     TypesenseReconciliationClient,
@@ -30,6 +31,7 @@ from src.reconciliation import (
     _bootstrap_typesense_buckets,
     _ensure_cycle,
     _persist_run_progress,
+    _record_target_failure,
     _start_run,
     _targets,
     _typesense_documents_snapshot,
@@ -820,6 +822,18 @@ def test_payload_comparison_canonicalizes_unordered_arrays() -> None:
     assert compare_snapshots(local, remote).payload_mismatch == set()
 
 
+def test_payload_comparison_excludes_web_unused_last_seen_bookkeeping() -> None:
+    posting_id = _id(0xAA, 14)
+    local = _typesense_documents_snapshot(
+        [{"id": str(posting_id), "is_active": True, "last_seen_at": 1}]
+    )
+    remote = _typesense_documents_snapshot(
+        [{"id": str(posting_id), "is_active": True, "last_seen_at": 2}]
+    )
+
+    assert compare_snapshots(local, remote).payload_mismatch == set()
+
+
 async def test_injected_supabase_drift_is_repaired_and_verified(monkeypatch) -> None:
     prefix = 0xAA
     shared = _id(prefix, 1)
@@ -894,7 +908,12 @@ async def test_injected_typesense_drift_is_repaired_to_exact_set(monkeypatch) ->
             for row in rows
         ]
 
-    async def upsert(docs: list[dict]) -> set[uuid.UUID]:
+    async def upsert(
+        docs: list[dict],
+        *,
+        log_rejected_documents: bool = True,
+    ) -> set[uuid.UUID]:
+        assert log_rejected_documents is False
         for document in docs:
             remote.states[uuid.UUID(document["id"])] = document["is_active"]
         return set()
@@ -939,7 +958,12 @@ async def test_same_state_typesense_payload_drift_is_repaired_and_verified(monke
             for row in rows
         ]
 
-    async def upsert(docs: list[dict[str, object]]) -> set[str]:
+    async def upsert(
+        docs: list[dict[str, object]],
+        *,
+        log_rejected_documents: bool = True,
+    ) -> set[str]:
+        assert log_rejected_documents is False
         for document in docs:
             remote.documents[uuid.UUID(str(document["id"]))] = dict(document)
         return set()
@@ -994,19 +1018,21 @@ async def test_typesense_payload_repair_fails_closed_without_verified_convergenc
         AsyncMock(return_value=set()),
     )
 
-    with pytest.raises(ReconciliationError, match="verification left 1 unresolved"):
-        await reconcile_partition(
-            local,  # type: ignore[arg-type]
-            None,
-            target="typesense",
-            partition=prefix,
-            repair=True,
-            typesense=remote,  # type: ignore[arg-type]
-            maps=TaxonomyMaps(),
-        )
+    result = await reconcile_partition(
+        local,  # type: ignore[arg-type]
+        None,
+        target="typesense",
+        partition=prefix,
+        repair=True,
+        typesense=remote,  # type: ignore[arg-type]
+        maps=TaxonomyMaps(),
+    )
+
+    assert result.repaired == 0
+    assert result.unresolved == 1
 
 
-async def test_typesense_repair_verifies_fresh_local_truth_without_open_transaction(
+async def test_typesense_repair_verifies_frozen_candidates_without_open_transaction(
     monkeypatch,
 ) -> None:
     prefix = 0xBE
@@ -1049,7 +1075,12 @@ async def test_typesense_repair_verifies_fresh_local_truth_without_open_transact
             for row in rows
         ]
 
-    async def upsert(docs: list[dict[str, object]]) -> set[str]:
+    async def upsert(
+        docs: list[dict[str, object]],
+        *,
+        log_rejected_documents: bool = True,
+    ) -> set[str]:
+        assert log_rejected_documents is False
         assert transaction_active is False
         for document in docs:
             remote.documents[uuid.UUID(str(document["id"]))] = dict(document)
@@ -1069,8 +1100,325 @@ async def test_typesense_repair_verifies_fresh_local_truth_without_open_transact
         maps=TaxonomyMaps(),
     )
 
-    assert partition_reads == 2
+    assert partition_reads == 1
     local.connection.transaction.assert_not_called()  # type: ignore[attr-defined]
+
+
+async def test_typesense_candidate_change_during_write_fails_closed(monkeypatch) -> None:
+    prefix = 0xBE
+    posting_id = _id(prefix, 2)
+    local = _MemoryPool({posting_id: True})
+    remote = _MemoryTypesense({posting_id: False})
+
+    def build_docs(rows: list[dict[str, object]], _maps: TaxonomyMaps) -> list[dict]:
+        return [
+            {
+                "id": str(row["id"]),
+                "is_active": row["is_active"],
+                "reconciliation_bucket": reconciliation_bucket(str(row["id"])),
+            }
+            for row in rows
+        ]
+
+    async def upsert(
+        docs: list[dict[str, object]],
+        *,
+        log_rejected_documents: bool = True,
+    ) -> set[str]:
+        assert log_rejected_documents is False
+        for document in docs:
+            remote.states[uuid.UUID(str(document["id"]))] = bool(document["is_active"])
+        local.states[posting_id] = False
+        return set()
+
+    monkeypatch.setattr("src.reconciliation.export_cursor_fence", _noop_fence)
+    monkeypatch.setattr("src.reconciliation._build_typesense_docs", build_docs)
+    monkeypatch.setattr("src.reconciliation._upsert_to_typesense", upsert)
+
+    result = await reconcile_partition(
+        local,  # type: ignore[arg-type]
+        None,
+        target="typesense",
+        partition=prefix,
+        repair=True,
+        typesense=remote,  # type: ignore[arg-type]
+        maps=TaxonomyMaps(),
+    )
+
+    assert remote.states[posting_id] is True
+    assert local.states[posting_id] is False
+    assert result.repaired == 0
+    assert result.unresolved == 1
+
+
+async def test_typesense_candidate_snapshot_converges_across_repeated_source_races(
+    monkeypatch,
+) -> None:
+    """Unrelated live writes must not repeatedly fail the candidate proof."""
+
+    prefix = 0xBF
+    candidate = _id(prefix, 1)
+    first_concurrent = _id(prefix, 2)
+    second_concurrent = _id(prefix, 3)
+    local = _MemoryPool(
+        {
+            candidate: True,
+            first_concurrent: True,
+            second_concurrent: True,
+        }
+    )
+    remote = _MemoryTypesense(
+        {
+            candidate: False,
+            first_concurrent: True,
+            second_concurrent: True,
+        }
+    )
+    fence_active = False
+    attempt = 0
+
+    @asynccontextmanager
+    async def tracking_fence(_pool: object) -> AsyncIterator[None]:
+        nonlocal fence_active
+        assert fence_active is False
+        fence_active = True
+        try:
+            yield
+        finally:
+            fence_active = False
+
+    def build_docs(rows: list[dict[str, object]], _maps: TaxonomyMaps) -> list[dict]:
+        return [
+            {
+                "id": str(row["id"]),
+                "is_active": row["is_active"],
+                "reconciliation_bucket": reconciliation_bucket(str(row["id"])),
+            }
+            for row in rows
+        ]
+
+    async def upsert(
+        docs: list[dict[str, object]],
+        *,
+        log_rejected_documents: bool = True,
+    ) -> set[str]:
+        nonlocal attempt
+        assert fence_active is True
+        assert log_rejected_documents is False
+        attempt += 1
+        for document in docs:
+            remote.states[uuid.UUID(str(document["id"]))] = bool(document["is_active"])
+        # Crawler writes are intentionally not blocked by the exporter fence.
+        changed = first_concurrent if attempt == 1 else second_concurrent
+        local.states[changed] = False
+        return set()
+
+    def snapshot(states: dict[uuid.UUID, bool]) -> StoreSnapshot:
+        return _typesense_documents_snapshot(
+            {"id": str(posting_id), "is_active": active} for posting_id, active in states.items()
+        )
+
+    monkeypatch.setattr("src.reconciliation.export_cursor_fence", tracking_fence)
+    monkeypatch.setattr("src.reconciliation._build_typesense_docs", build_docs)
+    monkeypatch.setattr("src.reconciliation._upsert_to_typesense", upsert)
+
+    first = await reconcile_partition(
+        local,  # type: ignore[arg-type]
+        None,
+        target="typesense",
+        partition=prefix,
+        repair=True,
+        typesense=remote,  # type: ignore[arg-type]
+        maps=TaxonomyMaps(),
+    )
+    first_full_partition_diff = compare_snapshots(snapshot(local.states), snapshot(remote.states))
+
+    assert first.unresolved == 0
+    assert first_full_partition_diff.actionable_ids("typesense") == {first_concurrent}
+
+    # Model CDC applying the pending source change, then reproduce the same
+    # old whole-partition failure mode with a different live write.
+    remote.states[first_concurrent] = local.states[first_concurrent]
+    remote.states[candidate] = False
+    second = await reconcile_partition(
+        local,  # type: ignore[arg-type]
+        None,
+        target="typesense",
+        partition=prefix,
+        repair=True,
+        typesense=remote,  # type: ignore[arg-type]
+        maps=TaxonomyMaps(),
+    )
+    second_full_partition_diff = compare_snapshots(snapshot(local.states), snapshot(remote.states))
+
+    assert second.unresolved == 0
+    assert second_full_partition_diff.actionable_ids("typesense") == {second_concurrent}
+    assert attempt == 2
+    assert fence_active is False
+
+
+async def test_typesense_rejected_candidate_ack_is_unresolved_without_sensitive_telemetry(
+    monkeypatch,
+) -> None:
+    prefix = 0xC0
+    posting_id = _id(prefix, 1)
+    sensitive_title = "private-candidate-payload"
+    local = _MemoryPool({posting_id: True})
+    remote = _MemoryPayloadTypesense(
+        [{"id": str(posting_id), "is_active": False, "title": "stale"}]
+    )
+    captured_log = MagicMock()
+
+    def build_docs(rows: list[dict[str, object]], _maps: TaxonomyMaps) -> list[dict]:
+        return [
+            {
+                "id": str(row["id"]),
+                "is_active": row["is_active"],
+                "reconciliation_bucket": reconciliation_bucket(str(row["id"])),
+                "title": sensitive_title,
+            }
+            for row in rows
+        ]
+
+    async def rejected_upsert(
+        docs: list[dict[str, object]],
+        *,
+        log_rejected_documents: bool = True,
+    ) -> set[str]:
+        assert log_rejected_documents is False
+        for document in docs:
+            remote.documents[uuid.UUID(str(document["id"]))] = dict(document)
+        return {str(posting_id)}
+
+    monkeypatch.setattr("src.reconciliation.export_cursor_fence", _noop_fence)
+    monkeypatch.setattr("src.reconciliation._build_typesense_docs", build_docs)
+    monkeypatch.setattr("src.reconciliation._upsert_to_typesense", rejected_upsert)
+    monkeypatch.setattr("src.reconciliation.log", captured_log)
+
+    result = await reconcile_partition(
+        local,  # type: ignore[arg-type]
+        None,
+        target="typesense",
+        partition=prefix,
+        repair=True,
+        typesense=remote,  # type: ignore[arg-type]
+        maps=TaxonomyMaps(),
+    )
+
+    assert result.repaired == 0
+    assert result.unresolved == 1
+    assert captured_log.error.call_args.kwargs == {"rejected": 1, "unresolved": 1}
+    telemetry = str(captured_log.method_calls)
+    assert str(posting_id) not in telemetry
+    assert sensitive_title not in telemetry
+
+
+async def test_typesense_failed_candidate_deletion_is_unresolved(monkeypatch) -> None:
+    prefix = 0xC1
+    orphan = _id(prefix, 1)
+    local = _MemoryPool({})
+
+    class NonDeletingTypesense(_MemoryTypesense):
+        async def delete_ids(self, posting_ids: Sequence[str]) -> None:
+            assert posting_ids == [str(orphan)]
+
+    remote = NonDeletingTypesense({orphan: True})
+    monkeypatch.setattr("src.reconciliation.export_cursor_fence", _noop_fence)
+
+    result = await reconcile_partition(
+        local,  # type: ignore[arg-type]
+        None,
+        target="typesense",
+        partition=prefix,
+        repair=True,
+        typesense=remote,  # type: ignore[arg-type]
+        maps=TaxonomyMaps(),
+    )
+
+    assert result.repaired == 0
+    assert result.unresolved == 1
+    assert remote.states == {orphan: True}
+
+
+async def test_verification_failure_persists_nonzero_unresolved_without_advancing(
+    monkeypatch,
+) -> None:
+    lock_connection = MagicMock()
+    lock_connection.fetchval = AsyncMock(side_effect=[True, True])
+    local_pool = MagicMock()
+    local_pool.acquire.return_value = _AsyncContext(lock_connection)
+    unresolved_result = PartitionResult(
+        target="typesense",
+        partition=1,
+        local_rows=10,
+        local_active=8,
+        remote_rows=10,
+        remote_active=8,
+        missing_remote=0,
+        state_mismatch=0,
+        payload_mismatch=5,
+        remote_only_active=0,
+        remote_only_inactive=0,
+        detected=5,
+        repaired=0,
+        unresolved=5,
+        duration_seconds=0.1,
+    )
+    record_failure = AsyncMock()
+    advance = AsyncMock()
+
+    class FakeTypesense:
+        async def aclose(self) -> None:
+            return None
+
+    monkeypatch.setattr("src.reconciliation._start_run", AsyncMock())
+    monkeypatch.setattr("src.reconciliation._finish_run", AsyncMock())
+    monkeypatch.setattr("src.reconciliation._ensure_cycle", AsyncMock(return_value=1))
+    monkeypatch.setattr(
+        "src.reconciliation._get_taxonomy_maps",
+        AsyncMock(return_value=TaxonomyMaps()),
+    )
+    monkeypatch.setattr(
+        "src.reconciliation.reconcile_partition",
+        AsyncMock(return_value=unresolved_result),
+    )
+    monkeypatch.setattr("src.reconciliation._record_target_failure", record_failure)
+    monkeypatch.setattr("src.reconciliation._advance_state", advance)
+    monkeypatch.setattr("src.reconciliation.TypesenseReconciliationClient", FakeTypesense)
+
+    with pytest.raises(ReconciliationRunFailed):
+        await run_reconciliation(
+            local_pool,
+            None,
+            repair=True,
+            max_partitions=1,
+            target_scope="typesense",
+        )
+
+    advance.assert_not_awaited()
+    record_failure.assert_awaited_once_with(
+        local_pool,
+        "typesense",
+        "ReconciliationError",
+        unresolved=5,
+    )
+
+
+async def test_target_failure_update_writes_nonzero_unresolved_to_durable_state() -> None:
+    local_pool = MagicMock()
+    local_pool.execute = AsyncMock()
+
+    await _record_target_failure(
+        local_pool,
+        "typesense",
+        "ReconciliationError",
+        unresolved=5,
+    )
+
+    query, *args = local_pool.execute.await_args.args
+    assert "last_outcome = 'failed'" in query
+    assert "last_unresolved = $2" in query
+    assert args == ["typesense", 5, "ReconciliationError"]
 
 
 async def test_repair_fails_closed_when_downstream_does_not_converge(monkeypatch) -> None:
@@ -1123,6 +1471,7 @@ async def test_typesense_partition_export_requests_and_hashes_payload_fields() -
     include_fields = requests[0].url.params["include_fields"].split(",")
     assert "title" in include_fields
     assert "salary_currency" in include_fields
+    assert "last_seen_at" not in include_fields
     assert requests[0].url.params["filter_by"] == "reconciliation_bucket:=ce"
 
 

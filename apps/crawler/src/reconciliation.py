@@ -117,7 +117,6 @@ TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS: tuple[str, ...] = (
     "locales",
     "first_seen_at",
     "source_url",
-    "last_seen_at",
 )
 _ORDER_INSENSITIVE_TYPESENSE_ARRAY_FIELDS = frozenset(("locales", "occupation_ids"))
 
@@ -291,6 +290,30 @@ def _typesense_documents_snapshot(
         states[posting_id] = active
         payload_fingerprints[posting_id] = _typesense_payload_fingerprint(document)
     return StoreSnapshot(states, payload_fingerprints)
+
+
+def _snapshot_subset(
+    snapshot: StoreSnapshot,
+    posting_ids: frozenset[uuid.UUID],
+) -> StoreSnapshot:
+    """Project a store snapshot onto one frozen repair candidate set."""
+
+    states = {
+        posting_id: active
+        for posting_id, active in snapshot.states.items()
+        if posting_id in posting_ids
+    }
+    payload_fingerprints = snapshot.payload_fingerprints
+    if payload_fingerprints is None:
+        return StoreSnapshot(states)
+    return StoreSnapshot(
+        states,
+        {
+            posting_id: fingerprint
+            for posting_id, fingerprint in payload_fingerprints.items()
+            if posting_id in posting_ids
+        },
+    )
 
 
 def compare_snapshots(local: StoreSnapshot, remote: StoreSnapshot) -> PartitionDiff:
@@ -537,36 +560,58 @@ async def _repair_typesense_partition(
     if not candidate_ids:
         return 0, 0
     ordered_ids = sorted(candidate_ids)
-    absent: set[uuid.UUID] = set()
-
     # The exporter fence serializes this direct write with CDC cursor
     # advancement. Do not hold a PostgreSQL transaction across Typesense I/O:
-    # read the current candidate rows, write them, then verify the complete
-    # partition against a fresh authoritative read before durable progress can
-    # advance. A concurrent source change either appears in that reread and
-    # fails this attempt closed, or remains eligible for the normal CDC pass.
+    # freeze the current candidate rows, write that exact snapshot, then verify
+    # only those candidates (including expected absences) and prove their local
+    # payload stayed stable before durable progress can advance. Unrelated
+    # source changes in the same partition cannot masquerade as a failed repair.
     async with export_cursor_fence(local_pool):
         rows = list(await local_pool.fetch(_TYPESENSE_POSTINGS_BY_ID_SQL, ordered_ids))
         row_ids = {row["id"] for row in rows}
         absent = set(ordered_ids) - row_ids
         documents = _build_typesense_docs(list(rows), maps)
+        expected = _typesense_documents_snapshot(documents)
+        rejected_ids: set[str] = set()
         for batch in _chunks(documents, REPAIR_BATCH_SIZE):
-            failed = await _upsert_to_typesense(list(batch))
-            if failed:
-                raise ReconciliationError(
-                    f"Typesense rejected {len(failed)} reconciliation documents"
+            rejected_ids.update(
+                await _upsert_to_typesense(
+                    list(batch),
+                    log_rejected_documents=False,
                 )
+            )
         for batch in _chunks(sorted(absent), REPAIR_BATCH_SIZE):
             await typesense.delete_ids([str(posting_id) for posting_id in batch])
 
-        expected = await _postgres_typesense_partition_snapshot(local_pool, partition, maps)
-        verified = await typesense.partition_snapshot(partition)
-        unresolved = compare_snapshots(expected, verified).detected("typesense")
-        if unresolved:
-            raise ReconciliationError(
-                f"Typesense reconciliation verification left {unresolved} unresolved rows"
+        verified_partition = await typesense.partition_snapshot(partition)
+        verified = _snapshot_subset(verified_partition, candidate_ids)
+        verification_unresolved = compare_snapshots(expected, verified).actionable_ids("typesense")
+        current_rows = list(await local_pool.fetch(_TYPESENSE_POSTINGS_BY_ID_SQL, ordered_ids))
+        current = _typesense_documents_snapshot(_build_typesense_docs(current_rows, maps))
+        source_changed = compare_snapshots(expected, current).actionable_ids("typesense")
+        unresolved_ids = {str(posting_id) for posting_id in verification_unresolved}
+        unresolved_ids.update(str(posting_id) for posting_id in source_changed)
+        unresolved_ids.update(rejected_ids)
+        unresolved = len(unresolved_ids)
+        if rejected_ids:
+            log.error(
+                "reconciliation.typesense_candidates_rejected",
+                rejected=len(rejected_ids),
+                unresolved=unresolved,
             )
-    return len(candidate_ids), 0
+        if source_changed:
+            log.error(
+                "reconciliation.typesense_candidates_changed_during_repair",
+                changed=len(source_changed),
+                unresolved=unresolved,
+            )
+        if verification_unresolved:
+            log.error(
+                "reconciliation.typesense_candidate_verification_failed",
+                verification_unresolved=len(verification_unresolved),
+                unresolved=unresolved,
+            )
+    return len(candidate_ids) - unresolved, unresolved
 
 
 async def _bootstrap_typesense_buckets(
