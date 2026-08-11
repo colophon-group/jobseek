@@ -56,6 +56,19 @@ describe("GET /api/v1/taxonomies industries service boundary (#3331)", () => {
     expect(mocks.getAllTechnologiesGrouped).not.toHaveBeenCalled();
   });
 
+  it("rejects unsupported locales before loading taxonomy values", async () => {
+    const res = await GET(makeReq("?type=industries&locale=xx"));
+    const body = (await res.json()) as { error?: string };
+
+    expect(res.status).toBe(400);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(body.error).toBe("Invalid 'locale' param. Supported: en, de, fr, it");
+    expect(mocks.suggestIndustries).not.toHaveBeenCalled();
+    expect(mocks.getAllSeniorities).not.toHaveBeenCalled();
+    expect(mocks.getAllOccupationsGrouped).not.toHaveBeenCalled();
+    expect(mocks.getAllTechnologiesGrouped).not.toHaveBeenCalled();
+  });
+
   it("resolves industries through the company service tier", async () => {
     mocks.suggestIndustries.mockResolvedValue([
       { id: 3, name: "Technology" },

@@ -7,14 +7,20 @@ import { type NextRequest, NextResponse } from "next/server";
 // two distinct surfaces.
 import { searchJobs, listTopCompanies } from "@/lib/services/search";
 import { parseSearchFilters } from "@/lib/services/search-input";
-import { isLocale, locales } from "@/lib/i18n";
+import { parsePublicSearchLanguages } from "@/lib/search/language-param";
 import { logExternalError } from "@/lib/safe-external-error";
+import { PUBLIC_SEARCH_QUERY_PARAMETERS } from "@jseek/mcp-server/public-api-contract";
 import {
   checkRateLimit,
   apiResponse,
+  PUBLIC_EMPLOYMENT_TYPE_VALUES,
+  PUBLIC_WORK_MODE_VALUES,
+  parseApiLocale,
   siteUrl,
   exploreUrl,
   type RateLimitInfo,
+  validatePublicEnumListParam,
+  validateResolvedPublicFilters,
 } from "../_shared";
 
 const MAX_COMPANIES = 5;
@@ -31,51 +37,6 @@ function searchErrorResponse(
   // outage (or a malformed request) from becoming a cached API response.
   response.headers.set("Cache-Control", "no-store");
   return response;
-}
-
-/**
- * Parse the optional `lang=` query param into a validated list of job
- * document language codes. Distinct from the UI ``locale`` (i18n labels
- * + currency formatting) — ``lang`` filters by the language the posting
- * itself is written in (`job_posting.locales` in Typesense).
- *
- * - absent → returns ``null`` (caller should pass ``[]`` to ``searchJobs`` /
- *   ``listTopCompanies`` so no language filter is applied — this is a public
- *   REST API, callers are stateless and should not be biased by the UI locale)
- * - present but empty → returns a ``400`` validation error
- * - comma-separated codes (e.g. ``de`` or ``de,fr``) → returns the
- *   validated subset. Unknown codes cause a ``400``.
- *
- * Validated against the same set of locales the UI supports
- * (`apps/web/src/lib/i18n.ts` :data:`locales`).
- */
-function parseLangParam(raw: string | null): {
-  ok: true;
-  langs: string[] | null;
-} | {
-  ok: false;
-  error: string;
-} {
-  if (raw === null) return { ok: true, langs: null };
-  const parts = raw
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (parts.length === 0) {
-    return {
-      ok: false,
-      error: `Invalid 'lang' param: must be a comma-separated list of language codes (${locales.join(", ")})`,
-    };
-  }
-  const invalid = parts.filter((c) => !isLocale(c));
-  if (invalid.length > 0) {
-    return {
-      ok: false,
-      error: `Invalid 'lang' value(s): ${invalid.join(", ")}. Supported: ${locales.join(", ")}`,
-    };
-  }
-  // Dedupe preserving the validated form
-  return { ok: true, langs: Array.from(new Set(parts)) };
 }
 
 function parseIntegerRangeParam(
@@ -135,33 +96,33 @@ export async function GET(request: NextRequest) {
   if (rl instanceof NextResponse) return rl;
 
   const sp = request.nextUrl.searchParams;
-  const q = sp.get("q") ?? undefined;
-  const loc = sp.get("loc") ?? undefined;
-  const occ = sp.get("occ") ?? undefined;
-  const sen = sp.get("sen") ?? undefined;
-  const tech = sp.get("tech") ?? undefined;
-  const wm = sp.get("wm") ?? undefined;
-  const etype = sp.get("etype") ?? undefined;
-  const sal = sp.get("sal") ?? undefined;
-  const exp = sp.get("exp") ?? undefined;
-  const locale = sp.get("locale") ?? "en";
+  const rawParams = Object.fromEntries(
+    PUBLIC_SEARCH_QUERY_PARAMETERS.map((name) => [
+      name,
+      sp.get(name) ?? undefined,
+    ]),
+  ) as Record<(typeof PUBLIC_SEARCH_QUERY_PARAMETERS)[number], string | undefined>;
+  const { q, loc, occ, sen, tech, wm, etype, sal, exp, lang } = rawParams;
 
-  if (!isLocale(locale)) {
-    return searchErrorResponse(
-      `Invalid 'locale' param. Supported: ${locales.join(", ")}`,
-      400,
-      rl,
-    );
+  const locale = parseApiLocale(sp, rl);
+  if (locale instanceof NextResponse) return locale;
+
+  for (const [name, raw, supported] of [
+    ["wm", wm, PUBLIC_WORK_MODE_VALUES],
+    ["etype", etype, PUBLIC_EMPLOYMENT_TYPE_VALUES],
+  ] as const) {
+    const invalid = validatePublicEnumListParam(name, raw, supported, rl);
+    if (invalid) return invalid;
   }
 
-  const langParsed = parseLangParam(sp.get("lang"));
+  const langParsed = parsePublicSearchLanguages(lang);
   if (!langParsed.ok) {
     return searchErrorResponse(langParsed.error, 400, rl);
   }
   // `searchJobs` / `listTopCompanies` treat `languages: []` as "no
   // filter" (see `apps/web/src/lib/search/typesense-filters.ts` —
   // `filters.languages?.length` guards the locales clause).
-  const languages = langParsed.langs ?? [];
+  const languages = langParsed.languages ?? [];
 
   const salaryRange = parseIntegerRangeParam("sal", sal);
   if (!salaryRange.ok) {
@@ -184,6 +145,8 @@ export async function GET(request: NextRequest) {
     );
     return searchErrorResponse("Search service unavailable", 500, rl);
   }
+  const unresolved = validateResolvedPublicFilters(parsed, rl);
+  if (unresolved) return unresolved;
 
   const locationIds =
     parsed.locations.length > 0 ? parsed.locations.map((l) => l.id) : undefined;

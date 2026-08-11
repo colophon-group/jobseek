@@ -54,7 +54,7 @@ Add to `.cursor/mcp.json`:
 
 | Tool | Description |
 |------|-------------|
-| `search_jobs` | Search job postings with filters (keywords, location, seniority, tech stack, salary, experience) |
+| `search_jobs` | Search job postings with filters (keywords, location, seniority, tech stack, work mode, employment type, salary, experience, document language) |
 | `get_job_detail` | Get full metadata for a posting (salary, technologies, seniority, experience, locations) |
 | `search_companies` | Search companies by name |
 | `list_taxonomies` | List valid filter values (seniority levels, occupations, technologies, industries) |
@@ -83,6 +83,8 @@ The server calls `search_companies(q: "Google")` to find the company, then `sear
 **User:** "Create a watchlist for React jobs in Switzerland paying over 100k EUR"
 
 The server resolves "Switzerland" and "React" to slugs, then calls `create_watchlist_link(title: "React Jobs Switzerland 100k+", loc: "switzerland", tech: "react", sal: "100000-")`. Returns a prefilled link the user can open to save the watchlist and receive email alerts for new matching jobs.
+
+`search_jobs` accepts comma-separated `wm` values (`onsite`, `hybrid`, `remote`) and `etype` values (`full_time`, `part_time`, `contract`, `internship`, `temporary`, `volunteer`). Its `sal` range is always EUR; use `lang` to filter by the posting document language independently of the UI `locale`. `create_watchlist_link` also accepts `wm` and `etype`, and retains its separate `salcur` option as UI prefill state.
 
 ### Example 4: Discover filter options
 

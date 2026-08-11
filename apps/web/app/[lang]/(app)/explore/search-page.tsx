@@ -22,6 +22,8 @@ import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-
 import { useSession } from "@/components/providers/SessionProvider";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import { buildFilteredPath } from "@/lib/search/query-params";
+import { parseExploreSearchLanguages } from "@/lib/search/language-param";
+import { resolveJobLanguages } from "@/lib/job-languages";
 import { useLatest, useLatestState } from "@/lib/use-latest";
 import { useBrowserSearchParams } from "@/lib/use-browser-search-params";
 import type { SearchResultCompany, HistogramFilters, WorkMode } from "@/lib/search";
@@ -78,6 +80,8 @@ interface SearchPageProps {
   jobLanguages: string[];
   /** Resolved language filter for search queries */
   languages: string[];
+  /** URL-level override supplied by the public API's `moreAt` link. */
+  initialLanguageOverride?: string[] | null;
   userLat?: number;
   userLng?: number;
 }
@@ -103,7 +107,8 @@ export function SearchPage({
   locale,
   displayCurrency,
   jobLanguages,
-  languages,
+  languages: initialLanguages,
+  initialLanguageOverride,
   userLat,
   userLng,
 }: SearchPageProps) {
@@ -117,6 +122,10 @@ export function SearchPage({
   const { isLoggedIn } = useSession();
   const isLoggedInRef = useLatest(isLoggedIn);
   const { get: getSearchState, set: setSearchState, setPageActions } = useSearchStateStore();
+  const [languageOverride, setLanguageOverride, languageOverrideRef] =
+    useLatestState<string[] | null>(initialLanguageOverride ?? null);
+  const [languages, setLanguages, languagesRef] =
+    useLatestState<string[]>(initialLanguages);
 
   const cachedSnapshot = getSearchState();
   const currentCacheKey = buildCacheKey(
@@ -135,6 +144,7 @@ export function SearchPage({
         : undefined,
       experienceMin: initialExperienceMin,
       experienceMax: initialExperienceMax,
+      languages,
     },
   );
   // Restore the cached snapshot only when it matches the current URL
@@ -300,6 +310,16 @@ export function SearchPage({
     const sal = searchParams.get("sal") ?? undefined;
     const salcur = searchParams.get("salcur") ?? undefined;
     const exp = searchParams.get("exp") ?? undefined;
+    const parsedLanguageOverride = parseExploreSearchLanguages(
+      searchParams.get("lang"),
+    );
+    const nextLanguageOverride = parsedLanguageOverride.ok
+      ? parsedLanguageOverride.languages
+      : null;
+    setLanguageOverride(nextLanguageOverride);
+    setLanguages(
+      nextLanguageOverride ?? resolveJobLanguages(jobLanguages, locale),
+    );
 
     const parseSalParts = sal ? sal.split("-") : [];
     const newSalMin = parseSalParts[0] ? parseInt(parseSalParts[0], 10) : undefined;
@@ -383,8 +403,22 @@ export function SearchPage({
                 : undefined,
             experienceMin: experienceMinRef.current,
             experienceMax: experienceMaxRef.current,
+            languages: languagesRef.current,
           },
         ),
+        hasResultFilters:
+          keywordsRef.current.length > 0 ||
+          locationsRef.current.length > 0 ||
+          occupationsRef.current.length > 0 ||
+          senioritiesRef.current.length > 0 ||
+          technologiesRef.current.length > 0 ||
+          employmentTypesRef.current.length > 0 ||
+          workModeRef.current.length > 0 ||
+          salaryMinRef.current != null ||
+          salaryMaxRef.current != null ||
+          experienceMinRef.current != null ||
+          experienceMaxRef.current != null ||
+          (languageOverrideRef.current?.length ?? 0) > 0,
       });
       setPageActions(null);
     };
@@ -486,6 +520,9 @@ export function SearchPage({
       if (cached.experienceMin != null || cached.experienceMax != null) {
         extra.exp = `${cached.experienceMin ?? ""}-${cached.experienceMax ?? ""}`;
       }
+      if (languageOverrideRef.current !== null) {
+        extra.lang = languageOverrideRef.current.join(",") || "*";
+      }
       const url = buildFilteredPath(
         pathname,
         cached.keywords,
@@ -507,7 +544,7 @@ export function SearchPage({
   }, []);
 
   const hasMore = companies.length < totalCompanies && !isTruncated;
-  const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || employmentTypes.length > 0 || workMode.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null;
+  const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || employmentTypes.length > 0 || workMode.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null || (languageOverride?.length ?? 0) > 0;
 
   /** Update only the `show` query param without touching filter state. */
   function updateShowParam(postingId: string | null) {
@@ -537,6 +574,9 @@ export function SearchPage({
     }
     if (employmentTypesRef.current.length > 0) {
       extra.etype = employmentTypesRef.current.join(",");
+    }
+    if (languageOverrideRef.current !== null) {
+      extra.lang = languageOverrideRef.current.join(",") || "*";
     }
     const url = buildFilteredPath(
       pathname,
@@ -602,7 +642,7 @@ export function SearchPage({
                   salaryMaxEur: salMaxEur,
                   experienceMin: expMin,
                   experienceMax: expMax,
-                  languages,
+                  languages: languagesRef.current,
                   locale,
                   offset: 0,
                   limit: PAGE_SIZE,
@@ -621,7 +661,7 @@ export function SearchPage({
                   salaryMaxEur: salMaxEur,
                   experienceMin: expMin,
                   experienceMax: expMax,
-                  languages,
+                  languages: languagesRef.current,
                   locale,
                   offset: 0,
                   limit: PAGE_SIZE,
@@ -851,6 +891,8 @@ export function SearchPage({
     setSalaryMax(undefined);
     setExperienceMin(undefined);
     setExperienceMax(undefined);
+    setLanguageOverride(null);
+    setLanguages(resolveJobLanguages(jobLanguages, locale));
     setShowPostingId(null);
     updateUrl();
     runSearch();
@@ -870,8 +912,8 @@ export function SearchPage({
     const expMin = experienceMinRef.current;
     const expMax = experienceMaxRef.current;
     const result = kws.length > 0
-      ? await runSearchJobs({ keywords: kws, locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, workMode: wm, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE }, isLoggedInRef.current)
-      : await runListTopCompanies({ locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, workMode: wm, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages, locale, offset, limit: PAGE_SIZE }, isLoggedInRef.current);
+      ? await runSearchJobs({ keywords: kws, locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, workMode: wm, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages: languagesRef.current, locale, offset, limit: PAGE_SIZE }, isLoggedInRef.current)
+      : await runListTopCompanies({ locationIds, occupationIds, seniorityIds, technologyIds, employmentTypes: etypes, workMode: wm, salaryMinEur: salMinEur, salaryMaxEur: salMaxEur, experienceMin: expMin, experienceMax: expMax, languages: languagesRef.current, locale, offset, limit: PAGE_SIZE }, isLoggedInRef.current);
 
     if (result.truncated) setIsTruncated(true);
     if (result.degraded) setIsDegraded(true);
@@ -934,7 +976,13 @@ export function SearchPage({
         salaryMax={salaryMax}
         experienceMin={experienceMin}
         experienceMax={experienceMax}
-        jobLanguages={jobLanguages}
+        jobLanguages={
+          languageOverride === null
+            ? jobLanguages
+            : languageOverride.length > 0
+              ? languageOverride
+              : ["*"]
+        }
         onRemoveKeyword={handleRemoveKeyword}
         onAddLocation={handleAddLocation}
         onRemoveLocation={handleRemoveLocation}

@@ -7,6 +7,7 @@ import type { ExploreData } from "@/lib/actions/explore-page-data";
 // the gate, then swap the action itself for a spy.
 vi.mock("server-only", () => ({}));
 const mockFetchExploreData = vi.fn();
+const mockSearchPageProps = vi.fn();
 vi.mock("@/lib/actions/explore-page-data", async () => {
   const actual =
     await vi.importActual<typeof import("@/lib/actions/explore-page-data")>(
@@ -24,9 +25,14 @@ vi.mock("@/lib/actions/explore-page-data", async () => {
 // initialTotalCompanies prop so the data-routing regression test in #3350
 // can assert which dataset the page mounted ``SearchPage`` with.
 vi.mock("../search-page", () => ({
-  SearchPage: ({ initialTotalCompanies }: { initialTotalCompanies: number }) => (
-    <div data-testid="search-page" data-total={initialTotalCompanies} />
-  ),
+  SearchPage: (props: {
+    initialTotalCompanies: number;
+    initialRepositoryFallbackCompanies?: ExploreData["repositoryFallbackCompanies"];
+    initialLanguageOverride?: string[] | null;
+  }) => {
+    mockSearchPageProps(props);
+    return <div data-testid="search-page" data-total={props.initialTotalCompanies} />;
+  },
 }));
 
 // Skeleton stub — a distinct marker so the #3350 regression test can
@@ -85,6 +91,7 @@ async function flushQueuedEffects(): Promise<void> {
 
 beforeEach(() => {
   mockFetchExploreData.mockReset();
+  mockSearchPageProps.mockReset();
   mockFetchExploreData.mockResolvedValue(makeInitialData());
   setBrowserSearch();
   setDocumentCookie("");
@@ -115,6 +122,27 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     } finally {
       scrollTo.mockRestore();
     }
+  });
+
+  it("forwards repository fallback identities and an explicit language override together", async () => {
+    const repositoryFallbackCompanies = [{ name: "Acme", slug: "acme" }];
+    render(
+      <ExploreContent
+        locale="en"
+        initialData={makeInitialData({
+          repositoryFallbackCompanies,
+          languageOverride: [],
+        })}
+      />,
+    );
+
+    await flushQueuedEffects();
+    expect(mockSearchPageProps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialRepositoryFallbackCompanies: repositoryFallbackCompanies,
+        initialLanguageOverride: [],
+      }),
+    );
   });
 
   it("calls fetchExplorePageData when the `logged_in` hint cookie is present even without filters", async () => {
@@ -170,7 +198,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     // surface stays explicit (e.g. #3275 — `wm` was added to the live
     // code in #2987 but the test list lagged behind, leaving the
     // refetch-trigger contract unguarded).
-    const filterParams = ["q", "loc", "occ", "sen", "tech", "wm", "etype", "sal", "salcur", "exp"];
+    const filterParams = ["q", "loc", "occ", "sen", "tech", "wm", "etype", "sal", "salcur", "exp", "lang"];
     for (const param of filterParams) {
       mockFetchExploreData.mockClear();
       setBrowserSearch(`${param}=x`);

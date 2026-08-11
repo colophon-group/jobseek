@@ -70,6 +70,47 @@ describe("GET /api/v1/watchlist/create — filter params", () => {
     expect(mocks.listTopCompanies).not.toHaveBeenCalled();
   });
 
+  it("rejects unsupported locales before parsing or linking filters", async () => {
+    const { res, body } = await callRoute("?title=Design%20roles&locale=xx");
+
+    expect(res.status).toBe(400);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(body.error).toBe("Invalid 'locale' param. Supported: en, de, fr, it");
+    expect(mocks.parseSearchFilters).not.toHaveBeenCalled();
+    expect(mocks.searchJobs).not.toHaveBeenCalled();
+    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsupported finite-list values before parsing filters", async () => {
+    const { res, body } = await callRoute(
+      "?locale=en&title=Roles&etype=contract,unknown",
+    );
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe(
+      "Invalid 'etype' value(s): unknown. Supported: full_time, part_time, contract, internship, temporary, volunteer",
+    );
+    expect(mocks.parseSearchFilters).not.toHaveBeenCalled();
+  });
+
+  it("rejects unresolved exact slugs before running the preview search", async () => {
+    mocks.parseSearchFilters.mockResolvedValue({
+      ...emptyParsed,
+      unresolvedExplicitSlugs: { tech: ["not-a-tech"] },
+    });
+
+    const { res, body } = await callRoute(
+      "?locale=en&title=Roles&tech=not-a-tech",
+    );
+
+    expect(res.status).toBe(400);
+    expect(body.error).toBe(
+      "Invalid 'tech' slug(s): not-a-tech. Use /api/v1/resolve for exact slugs.",
+    );
+    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
+    expect(mocks.searchJobs).not.toHaveBeenCalled();
+  });
+
   it("forwards `etype=` to the parser, preview search, and create URL", async () => {
     mocks.parseSearchFilters.mockResolvedValue({
       ...emptyParsed,

@@ -220,6 +220,7 @@ const FORBIDDEN_LOCAL_BOUNDARIES = [
   "/src/lib/services/",
 ] as const;
 const ALLOWED_EXTERNAL_PACKAGES = new Set([
+  "@jseek/mcp-server/public-api-contract",
   "@lingui/core",
   "@lingui/react/server",
   "lucide-react",

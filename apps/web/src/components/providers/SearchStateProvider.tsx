@@ -31,6 +31,8 @@ export interface SearchStateSnapshot {
   showPostingId: string | null;
   scrollY: number;
   cacheKey: string;
+  /** Explicit result filters, excluding locale-derived language defaults. */
+  hasResultFilters?: boolean;
 }
 
 export function buildCacheKey(
@@ -47,6 +49,7 @@ export function buildCacheKey(
     salaryCurrency?: string;
     experienceMin?: number;
     experienceMax?: number;
+    languages?: string[];
   },
 ): string {
   // String dimensions (keywords) sort with `canonicalStringCompare`
@@ -72,6 +75,7 @@ export function buildCacheKey(
       filters.salaryCurrency ?? "",
       filters.experienceMin == null ? "" : String(filters.experienceMin),
       filters.experienceMax == null ? "" : String(filters.experienceMax),
+      [...(filters.languages ?? [])].sort(canonicalStringCompare).join(","),
     );
   }
   return parts.join("|");
@@ -90,8 +94,9 @@ export function buildCacheKey(
  * prerendered ``initialData`` had ~10 top companies. See #2989.
  *
  * Additional guard (#3354): never restore a snapshot whose
- * ``companies`` is empty AND whose ``cacheKey`` represents the no-
- * filter view (``||||``). The snapshot only serves the
+ * ``companies`` is empty and whose explicit ``hasResultFilters`` flag is
+ * false. Legacy snapshots fall back to the historical no-filter cache-key
+ * sentinels. The snapshot only serves the
  * "return to the same view after a posting-detail dive" use case — but
  * an empty unfiltered result is never a legitimate destination (the
  * homepage always has top companies). The empty state arises only from
@@ -103,7 +108,7 @@ export function buildCacheKey(
  * Restoration semantics now:
  *   - Same URL filters (or both empty), snapshot has results → restore.
  *   - Same URL filters (or both empty), snapshot has empty companies
- *     AND the no-filter cacheKey → ignore (#3354 poison guard).
+ *     AND no explicit result filters → ignore (#3354 poison guard).
  *   - Different URL filters → ignore the snapshot, render the fresh
  *     ``initialData`` from the server prerender / re-fetch.
  *
@@ -127,6 +132,12 @@ export function shouldRestoreSnapshot(
   // can render. Filtered empty snapshots stay restorable because a
   // 0-result keyword search IS a legitimate destination the user may
   // want to return to.
+  if (
+    cached.hasResultFilters === false &&
+    cached.companies.length === 0
+  ) {
+    return false;
+  }
   if (
     (cached.cacheKey === NO_FILTER_CACHE_KEY ||
       cached.cacheKey === LEGACY_NO_FILTER_CACHE_KEY) &&
