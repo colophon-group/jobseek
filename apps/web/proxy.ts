@@ -6,6 +6,7 @@ import { defaultLocale, locales, isLocale } from "@/lib/i18n";
 const COOKIE_NAME = "NEXT_LOCALE";
 const LOGGED_IN_HINT_COOKIE = "logged_in";
 const COMPANY_REQUEST_PATH = /^\/(en|de|fr|it)\/companies\/request$/;
+const LOCALIZED_EXPLORE_PATH = /^\/(?:en|de|fr|it)\/explore$/;
 const LOCALIZED_SCANNER_PATH =
   /^\/(?:en|de|fr|it)\/(?:(?:adminer|cgi-bin|phpmyadmin|wp-admin|wp-content|wp-includes|wp-json|xmlrpc|\.env|\.git)(?:\/|$)|[^/]+\/(?:\.env|\.git)(?:\/|$))/i;
 
@@ -35,6 +36,32 @@ export function proxy(request: NextRequest) {
       status: 404,
       headers: { "Cache-Control": "public, max-age=86400, s-maxage=86400" },
     });
+  }
+
+  // The Explore RSC shell does not read search params: filters are restored
+  // from the browser URL by ExploreContent after hydration. Normalize only
+  // full HTML document requests to the queryless internal URL so long-tail
+  // filter links share one PPR shell per locale instead of generating a new
+  // Fluid invocation for every query-string permutation.
+  //
+  // RSC navigations and Server Actions intentionally bypass this rewrite.
+  // Their framework query/header state is part of the request protocol and
+  // must reach Next unchanged.
+  if (
+    LOCALIZED_EXPLORE_PATH.test(request.nextUrl.pathname) &&
+    request.nextUrl.search &&
+    (request.method === "GET" || request.method === "HEAD") &&
+    request.headers.get("accept")?.includes("text/html") &&
+    request.headers.get("rsc") !== "1" &&
+    !request.headers.has("next-action")
+  ) {
+    const shellUrl = request.nextUrl.clone();
+    shellUrl.search = "";
+    return NextResponse.rewrite(shellUrl);
+  }
+
+  if (LOCALIZED_EXPLORE_PATH.test(request.nextUrl.pathname)) {
+    return NextResponse.next();
   }
 
   // The public IndexNow proof filename is derived from a secret at runtime and
@@ -109,6 +136,16 @@ export const config = {
   matcher: [
     "/((?!_next|api|mcp|flags|fonts|publicdomain|screenshots|\\.well-known|favicon\\.ico$|favicon-16x16\\.png$|favicon-32x32\\.png$|apple-touch-icon\\.png$|apple-touch-icon-[^/]+\\.png$|android-chrome-192x192\\.png$|android-chrome-512x512\\.png$|site\\.webmanifest$|BingSiteAuth\\.xml$|js_[^/]+\\.svg$|js_missing_screenshot_black\\.png$|js_missing_screenshot_white\\.png$|logo-dark\\.svg$|logo-light\\.svg$|opengraph-image|indexnow-key\\.txt$|llms\\.txt$|openapi\\.json$|openapi\\.yaml$|robots\\.txt$|sitemap\\.xml$|en|de|fr|it).*)",
     "/:lang(en|de|fr|it)/companies/request",
+    {
+      source: "/:lang(en|de|fr|it)/explore",
+      has: [
+        { type: "header", key: "accept", value: ".*text/html.*" },
+      ],
+      missing: [
+        { type: "header", key: "rsc", value: "1" },
+        { type: "header", key: "next-action" },
+      ],
+    },
     "/:lang(en|de|fr|it)/:probe(adminer|cgi-bin|phpmyadmin|wp-admin|wp-content|wp-includes|wp-json|xmlrpc|\\.env|\\.git)/:path*",
     "/:lang(en|de|fr|it)/:user/:probe(\\.env|\\.git)/:path*",
   ],
