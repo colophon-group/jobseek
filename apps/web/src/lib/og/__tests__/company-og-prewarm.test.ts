@@ -1,10 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   parseOptions,
+  TYPESENSE_BATCH_TIMEOUT_SECONDS,
   withRetry,
 } from "../../../../script/prewarm-company-og-cache";
 
 describe("company OG prewarm CLI", () => {
+  it("uses a batch-only Typesense timeout without changing the web client", () => {
+    expect(TYPESENSE_BATCH_TIMEOUT_SECONDS).toBe(30);
+  });
+
   it("parses bounded canary options passed through pnpm", () => {
     expect(parseOptions([
       "--",
