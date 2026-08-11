@@ -75,8 +75,16 @@ jobs:
           --environment=production
           --token="$VERCEL_TOKEN"
 
+      - name: Require stable Server Action encryption
+        if: steps.paths.outputs.deploy == 'true'
+        env:
+          NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${{ secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}
+        run: node .github/scripts/verify-vercel-server-action-key.mjs
+
       - name: Build the production artifact
         if: steps.paths.outputs.deploy == 'true'
+        env:
+          NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${{ secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}
         run: >-
           pnpm dlx vercel@55.0.0 build
           --prod
