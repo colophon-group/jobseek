@@ -37,6 +37,13 @@ async def test_rejected_count_import_records_failed_cron_and_skips_watchlist_sta
     """One rejected document must make the scheduled command unsuccessful."""
     monkeypatch.setenv("CRAWLER_PUSHGATEWAY_URL", "http://pushgateway.test:9091")
     local_conn = AsyncMock()
+    local_conn.fetch.return_value = [
+        {"collection": "location", "document_id": "10", "facet_value": "10"},
+        {"collection": "occupation", "document_id": "10-en", "facet_value": "10"},
+        {"collection": "seniority", "document_id": "10-en", "facet_value": "10"},
+        {"collection": "technology", "document_id": "10", "facet_value": "10"},
+        {"collection": "company", "document_id": "10", "facet_value": "10"},
+    ]
     web_conn = AsyncMock()
     client = MagicMock()
     collections = {

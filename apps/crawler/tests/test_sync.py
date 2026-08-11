@@ -2212,7 +2212,23 @@ class TestRefreshTypesenseCounts:
         expected_count,
         acknowledged_count,
     ):
-        local_conn = AsyncMock()
+        authority_rows = [
+            {
+                "collection": "location",
+                "document_id": location_id,
+                "facet_value": location_id,
+            }
+            for location_id in location_counts
+        ]
+        authority_rows.extend(
+            [
+                {"collection": "occupation", "document_id": "1-en", "facet_value": "1"},
+                {"collection": "seniority", "document_id": "1-en", "facet_value": "1"},
+                {"collection": "technology", "document_id": "1", "facet_value": "1"},
+                {"collection": "company", "document_id": "company-1", "facet_value": "company-1"},
+            ]
+        )
+        local_conn = _count_refresh_connection(authority_rows)
         client = MagicMock()
         collections = {
             name: MagicMock()
@@ -2260,7 +2276,15 @@ class TestRefreshTypesenseCounts:
         )
 
     async def test_successful_acknowledgements_continue_to_later_scheduled_count_updates(self):
-        local_conn = AsyncMock()
+        local_conn = _count_refresh_connection(
+            [
+                {"collection": "location", "document_id": "10", "facet_value": "10"},
+                {"collection": "occupation", "document_id": "10-en", "facet_value": "10"},
+                {"collection": "seniority", "document_id": "10-en", "facet_value": "10"},
+                {"collection": "technology", "document_id": "10", "facet_value": "10"},
+                {"collection": "company", "document_id": "10", "facet_value": "10"},
+            ]
+        )
         client = MagicMock()
         collections = {
             name: MagicMock()
@@ -2271,8 +2295,8 @@ class TestRefreshTypesenseCounts:
         def _facet_counts(_client, field, _filter_by=None):
             return {"10": 3} if field in {"location_ids", "technology_ids"} else {}
 
-        collections["location"].documents.import_.return_value = [{"success": True}]
-        collections["technology"].documents.import_.return_value = [{"success": True}]
+        for collection in collections.values():
+            collection.documents.import_.return_value = [{"success": True}]
 
         with patch("src.sync._fetch_facet_counts", side_effect=_facet_counts):
             await refresh_typesense_counts(local_conn, client)
@@ -2280,8 +2304,51 @@ class TestRefreshTypesenseCounts:
         collections["location"].documents.import_.assert_called_once()
         collections["technology"].documents.import_.assert_called_once()
 
+    async def test_zero_transition_requires_acknowledgement_before_later_collections(self):
+        local_conn = _count_refresh_connection(
+            [
+                {"collection": "location", "document_id": "10", "facet_value": "10"},
+                {"collection": "occupation", "document_id": "10-en", "facet_value": "10"},
+                {"collection": "seniority", "document_id": "10-en", "facet_value": "10"},
+                {"collection": "technology", "document_id": "10", "facet_value": "10"},
+                {"collection": "company", "document_id": "10", "facet_value": "10"},
+            ]
+        )
+        client = MagicMock()
+        collections = {
+            name: MagicMock()
+            for name in ("location", "occupation", "seniority", "technology", "company")
+        }
+        client.collections.__getitem__.side_effect = collections.__getitem__
+        collections["location"].documents.import_.return_value = [{"success": False}]
+
+        with (
+            patch("src.sync._fetch_facet_counts", return_value={}),
+            pytest.raises(
+                RuntimeError,
+                match=(
+                    "collection=location, action=update, expected_count=1, "
+                    "acknowledged_count=1, successful_count=0"
+                ),
+            ),
+        ):
+            await refresh_typesense_counts(local_conn, client)
+
+        submitted = collections["location"].documents.import_.call_args.args[0]
+        assert submitted == [
+            {
+                "id": "10",
+                "active_posting_count": 0,
+                "has_active_postings": False,
+            }
+        ]
+        collections["occupation"].documents.import_.assert_not_called()
+        collections["seniority"].documents.import_.assert_not_called()
+        collections["technology"].documents.import_.assert_not_called()
+        collections["company"].documents.import_.assert_not_called()
+
     async def test_every_scheduled_count_collection_requires_strict_acknowledgements(self):
-        local_conn = AsyncMock()
+        local_conn = _count_refresh_connection()
         client = MagicMock()
 
         with (
