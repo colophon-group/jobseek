@@ -59,10 +59,36 @@ part of a Git branch.
 | `TYPESENSE_OPERATIONS_KEY` | Generated key: `collections:*`, `documents:*`, `aliases:*` on all collections, plus `metrics.json:list` | Exporter, sync, backfill, setup, reconciliation, health metrics | Private network (crawler -> Typesense) |
 | `TYPESENSE_BACKUP_KEY` | Generated, revocable wildcard key | Root-owned Typesense Snapshot API backup service only | Loopback on Typesense host |
 | `TYPESENSE_SEARCH_KEY` | `documents:search` + `documents:get` on all collections | Web app server-side search (server actions) | Cloudflare tunnel |
-| `TYPESENSE_BROWSER_PARENT_KEY` | `documents:search` on all collections (no other action) | Web app `/api/typesense-key` route handler -- mints scoped keys for direct browser->Typesense calls | Cloudflare tunnel (browser, scoped key) |
+| `TYPESENSE_BROWSER_PARENT_KEY` | `documents:search` only on `job_posting`, `company`, `location`, `occupation`, `seniority`, and `technology` | Web app `/api/typesense-key` route handler -- mints scoped keys for direct browser->Typesense calls | Cloudflare tunnel (browser, scoped key) |
 | `TYPESENSE_WRITE_KEY` | `documents:create/upsert/delete/update` on `watchlist` collection only | Web app watchlist mutations | Cloudflare tunnel |
 
 `TYPESENSE_BROWSER_PARENT_KEY` is a separate parent because Typesense rejects scoped keys derived from a parent that has any actions other than `documents:search` (the server returns `Forbidden - a valid x-typesense-api-key header must be sent.` when used with a multi-action parent).
+The six named collections are the complete direct-browser read set. In
+particular, the browser watchlist path searches `job_posting`; it does not read
+the `watchlist` collection. Do not grant the parent wildcard collection access.
+
+Browser scoped keys embed a server-enforced `expires_at` Unix timestamp: five
+minutes for anonymous sessions and ten minutes for authenticated sessions.
+`/api/typesense-key` returns that same boundary in milliseconds for the browser
+cache, which refreshes 30 seconds early. Its response cache max-age is half the
+credential lifetime, so a cached response cannot outlive the signed key.
+
+### Browser parent-key rotation
+
+Rotate `TYPESENSE_BROWSER_PARENT_KEY` after deploying an expiry-policy change
+and on the normal credential-rotation schedule:
+
+1. Create a generated parent with the sole action `documents:search`, exactly
+   the six collections above, and an expiry later than any scoped child expiry.
+2. Replace the protected Vercel `TYPESENSE_BROWSER_PARENT_KEY` value and deploy
+   the web app.
+3. Fetch `/api/typesense-key`, decode its scoped payload to confirm
+   `expires_at`, and perform a browser-path search with the new child key.
+4. Delete the old parent in Typesense. Confirm a child captured from the old
+   parent now receives HTTP 401; revoking a parent invalidates all children
+   derived from it.
+
+Never delete the old parent before the new web deployment is serving keys.
 
 Typesense 27.1 does not accept a generated key restricted to
 `operations:snapshot` or `operations:*` for `POST /operations/snapshot`; a
@@ -362,7 +388,7 @@ The web app can bypass the Vercel server-action proxy and call Typesense directl
 
 **Infrastructure:**
 
-- **Scoped key endpoint** (`GET /api/typesense-key`): mints a Typesense scoped search key (HMAC-SHA256 + base64) from `TYPESENSE_BROWSER_PARENT_KEY`. Embed is just `{ use_cache: true }`. `limit_hits` is intentionally **not** embedded because Typesense counts raw hits (not grouped rows) and would block normal anon traffic on `group_by company_id` with `group_limit 10`.
+- **Scoped key endpoint** (`GET /api/typesense-key`): mints a Typesense scoped search key (HMAC-SHA256 + base64) from `TYPESENSE_BROWSER_PARENT_KEY`. The embed is `{ use_cache: true, expires_at: <Unix seconds> }`. `limit_hits` is intentionally **not** embedded because Typesense counts raw hits (not grouped rows) and would block normal anon traffic on `group_by company_id` with `group_limit 10`.
 - **TTL**: 5 min for anon, 10 min for authed. Browser caches the key in memory and refreshes 30 s before expiry. The cache is cleared via `useClearTypesenseOnAuthChange(isLoggedIn)` (called from each client surface) so a sign-in/out doesn't keep the wrong key.
 - **Browser provider**: `apps/web/src/lib/search/typesense-browser.ts` (postings/companies), `typesense-browser-typeahead.ts` (taxonomy suggest), `typesense-browser-watchlist.ts`. All thin -- no `typesense-js` runtime dependency in the browser bundle.
 - **Anon truncation**: enforced as a soft client-side cap (`ANON_MAX_COMPANIES`, `ANON_MAX_POSTINGS`, `ANON_MAX_WATCHLIST_POSTINGS`) matching the current server-action behaviour. Real abuse protection is the Cloudflare per-IP rate-limit on the tunnel hostname.
@@ -427,5 +453,5 @@ environment variables:
 | `TYPESENSE_BOOTSTRAP_KEY` | Root-only server bootstrap key; protected deployment secret, never a crawler/web variable |
 | `TYPESENSE_BACKUP_KEY` | Root-only generated backup key; protected deployment secret |
 | `TYPESENSE_SEARCH_KEY` | Search/read key for web server-side Typesense calls (via tunnel uses `https`) |
-| `TYPESENSE_BROWSER_PARENT_KEY` | Search-only parent key for `/api/typesense-key` scoped browser keys |
+| `TYPESENSE_BROWSER_PARENT_KEY` | `documents:search`-only parent for scoped browser keys, limited to `job_posting`, `company`, `location`, `occupation`, `seniority`, and `technology` |
 | `TYPESENSE_WRITE_KEY` | Watchlist write key (web app) |
