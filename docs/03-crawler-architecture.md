@@ -329,26 +329,58 @@ the complete posting population deterministically:
 
 - local PostgreSQL is authoritative;
 - UUID high-byte ranges `00` through `ff` form 256 stable, indexed partitions;
-- Typesense must have the exact local document set and matching `is_active`;
-  missing/mismatched documents are upserted and Typesense-only documents are
-  deleted; and
+- Typesense must have the exact local document set, matching `is_active`, and
+  matching user-visible payload; missing/mismatched documents are upserted and
+  Typesense-only documents are deleted; and
 - Typesense documents carry `reconciliation_bucket`, avoiding a whole-index
   materialization during normal runs. During the first cycle, all local
   documents are upserted with a bucket before a streamed cleanup removes only
   legacy unbucketed documents absent from local truth. An unbucketed document
   that still exists locally fails the bootstrap closed.
 
+#### Payload comparison design
+
+Payload reconciliation uses bounded field comparison, not a checksum stored in
+Typesense and not an `updated_at` version. A stored checksum could remain
+unchanged when the document beside it is corrupted, while a version would not
+detect a bad denormalization at the same version. For each UUID partition the
+reconciler builds the expected document with the ordinary exporter and taxonomy
+maps, exports only the defined fields in
+`TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS`, and compares in-process SHA-256
+fingerprints. Map keys and intrinsically unordered locale and occupation-
+ancestor arrays are canonicalized deterministically. Location and technology
+array order remains part of the contract because web readers zip their IDs,
+names, and types by position; sorting those arrays independently could hide a
+user-visible pairing error. The hash is an internal comparison value: neither
+it nor posting fields/IDs are written to logs, metrics, or reconciliation
+tables.
+
+This remains bounded to the current 1/256 UUID partition. The contract covers
+the user-visible title, company, location, occupation, seniority, technology,
+employment, salary, experience, locale, content-presence, source URL, and
+posting timestamps. Missing optional fields canonicalize as null. Payload drift
+has its own durable aggregate and Prometheus metric rather than being folded
+only into ID/state drift.
+
+Migration `0018` restarts an in-progress Typesense cycle at partition zero so a
+cycle that began under the older ID/state-only contract cannot be recorded as a
+complete payload proof. It retains the last completed-cycle evidence and does
+not advance or skip durable progress.
+
 Repair is direct rather than an `updated_at` touch/replay loop. For every
-candidate set it acquires the exporter/operator fence, locks the current local
-rows `FOR SHARE`, writes that current snapshot downstream, and verifies the
-partition before advancing. A concurrent later local change is stamped for
-normal CDC after the row lock releases. A rejection, transport failure,
-verification mismatch, or interrupted process leaves the durable cursor on
-the same partition for an idempotent retry.
+candidate set it acquires the exporter/operator fence, reads the authoritative
+local rows, writes that snapshot downstream without holding a PostgreSQL
+transaction across network I/O, then rereads local truth and verifies the
+partition's current ID, state, and payload before advancing. A concurrent local
+commit therefore makes a stale downstream write fail verification (and remains
+eligible for normal CDC). A rejection, transport failure, verification
+mismatch, or interrupted process leaves the durable cursor on the same
+partition for an idempotent retry.
 
 Two local PostgreSQL tables make scheduling visible across deploys:
 
-- `cross_store_reconciliation_state` holds the Typesense cursor, cycle totals,
+- `cross_store_reconciliation_state` holds the Typesense cursor, exact unique
+  detected count, separate payload mismatch count, cycle totals,
   last attempt/success/outcome, and bootstrap flag (the obsolete Supabase row
   is retained temporarily for rollback-compatible schema cleanup); and
 - `cross_store_reconciliation_run` records bounded run lifecycle and exposes
@@ -361,9 +393,10 @@ repairs at most 16 partitions, so a full cycle normally completes within 16
 successful starts. The host mutation lock serializes it with crawler
 deploys, Typesense refreshes, and backfills; a PostgreSQL advisory lock rejects
 duplicate reconcilers even if host scheduling is bypassed. Reconciliation
-does not restart PostgreSQL, Typesense, or crawler services. It can briefly
-delay one exporter tick and candidate-row updates while its verified repair
-section holds the existing fence/row locks.
+does not restart PostgreSQL, Typesense, or crawler services. Its verified
+repair section can briefly delay an exporter tick or another operator path
+while it holds the existing exporter/operator fence; reconciliation does not
+hold source-row updates.
 
 The CLI is read-only unless `--repair` is explicit:
 

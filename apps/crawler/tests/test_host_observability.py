@@ -552,10 +552,12 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
             return "58\t58\t21600\t181\t239\t19"
         if sql == host.PHANTOM_ACTIVE_STATS_SQL:
             return "4\t136\t7776000"
-        if "to_regclass" in sql:
-            return "cross_store_reconciliation_state"
+        if sql == host.RECONCILIATION_SCHEMA_SQL:
+            return "2"
         if sql == host.RECONCILIATION_STATS_SQL:
-            return "typesense\t1001\t901\t951\t13.5\t670000\t694000\t7\t7\t0\trepaired\t16\t256\t0"
+            return (
+                "typesense\t1001\t901\t951\t13.5\t670000\t694000\t7\t3\t7\t0\trepaired\t16\t256\t0"
+            )
         if "cross_store_reconciliation_run" in sql:
             return "0"
         raise AssertionError(sql)
@@ -594,12 +596,18 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     assert "jobseek_crawler_phantom_active_oldest_seconds 7776000.0" in content
     assert "jobseek_cross_store_reconciliation_schema_ready 1" in content
     assert "WHERE target = 'typesense'" in host.RECONCILIATION_STATS_SQL
+    assert "last_detected" in host.RECONCILIATION_STATS_SQL
+    assert "last_missing_remote +" not in host.RECONCILIATION_STATS_SQL
     assert 'target="supabase"' not in content
     assert (
         'jobseek_cross_store_reconciliation_last_attempt_success{target="typesense"} 1' in content
     )
     assert (
         'jobseek_cross_store_reconciliation_bootstrap_complete{target="typesense"} 0.0' in content
+    )
+    assert (
+        'jobseek_cross_store_reconciliation_last_payload_mismatch{target="typesense"} 3.0'
+        in content
     )
     assert "jobseek_cross_store_reconciliation_stuck_runs 0.0" in content
 
@@ -623,8 +631,8 @@ def test_postgresql_probe_tolerates_reconciliation_schema_not_deployed(monkeypat
             return "0"
         if sql == host.PHANTOM_ACTIVE_STATS_SQL:
             return "0\t0\t0"
-        if "to_regclass" in sql:
-            return ""
+        if sql == host.RECONCILIATION_SCHEMA_SQL:
+            return "0"
         raise AssertionError(sql)
 
     monkeypatch.setattr(host, "_postgresql_query", query)
@@ -636,6 +644,39 @@ def test_postgresql_probe_tolerates_reconciliation_schema_not_deployed(monkeypat
     assert "jobseek_crawler_board_quarantine_schema_ready 0" in "\n".join(lines)
     assert "jobseek_crawler_board_gone_schema_ready 0" in "\n".join(lines)
     assert "jobseek_crawler_phantom_active_postings 0.0" in "\n".join(lines)
+
+
+def test_postgresql_probe_tolerates_pre_payload_reconciliation_schema(monkeypatch) -> None:
+    class Result:
+        returncode = 0
+
+    monkeypatch.setattr(host.subprocess, "run", lambda *_args, **_kwargs: Result())
+    monkeypatch.setattr(
+        host, "_collect_postgresql_emergency_reserve_metrics", lambda _lines, _container: None
+    )
+    monkeypatch.setattr(
+        host, "_collect_postgresql_shared_memory_metrics", lambda _lines, _container: None
+    )
+
+    def query(_container: str, sql: str, **_kwargs) -> str:
+        if sql == host.POSTGRES_STATS_SQL:
+            return "1\t2\t3\t0\t4\t5\t6\t7\t8\t9\t10"
+        if sql in (host.BOARD_QUARANTINE_SCHEMA_SQL, host.BOARD_GONE_SCHEMA_SQL):
+            return "0"
+        if sql == host.PHANTOM_ACTIVE_STATS_SQL:
+            return "0\t0\t0"
+        if sql == host.RECONCILIATION_SCHEMA_SQL:
+            # The reconciliation tables exist, but migration 0018 has not yet
+            # added the payload-observability columns used by the stats query.
+            return "0"
+        raise AssertionError(sql)
+
+    monkeypatch.setattr(host, "_postgresql_query", query)
+    lines: list[str] = []
+
+    host._collect_postgresql_metrics(lines)
+
+    assert "jobseek_cross_store_reconciliation_schema_ready 0" in "\n".join(lines)
 
 
 def test_postgresql_shared_memory_probe_emits_configured_and_live_capacity(

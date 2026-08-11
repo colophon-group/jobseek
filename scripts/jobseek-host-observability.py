@@ -668,8 +668,8 @@ SELECT
   last_duration_seconds,
   last_local_rows,
   last_remote_rows,
-  last_missing_remote + last_state_mismatch + last_remote_only_active
-    + CASE WHEN target = 'typesense' THEN last_remote_only_inactive ELSE 0 END,
+  last_detected,
+  last_payload_mismatch,
   last_repaired,
   last_unresolved,
   last_outcome,
@@ -679,6 +679,17 @@ SELECT
 FROM cross_store_reconciliation_state
 WHERE target = 'typesense'
 ORDER BY target;
+""".strip()
+
+RECONCILIATION_SCHEMA_SQL = """
+SELECT count(*)
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'cross_store_reconciliation_state'
+  AND column_name IN (
+    'last_detected',
+    'last_payload_mismatch'
+  );
 """.strip()
 
 BOARD_QUARANTINE_SCHEMA_SQL = """
@@ -964,11 +975,8 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
     _collect_board_gone_metrics(lines, container)
     _collect_phantom_active_metrics(lines, container)
 
-    relation = _postgresql_query(
-        container,
-        "SELECT COALESCE(to_regclass('cross_store_reconciliation_state')::text, '')",
-    )
-    schema_ready = int(relation == "cross_store_reconciliation_state")
+    schema_columns = _postgresql_query(container, RECONCILIATION_SCHEMA_SQL)
+    schema_ready = int(schema_columns == "2")
     lines.append(_metric("jobseek_cross_store_reconciliation_schema_ready", schema_ready))
     if not schema_ready:
         return
@@ -976,11 +984,11 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
     state_rows = _postgresql_query(container, RECONCILIATION_STATS_SQL)
     for raw in state_rows.splitlines():
         fields = raw.split("\t")
-        if len(fields) != 14:
+        if len(fields) != 15:
             raise ProbeError("reconciliation state query returned an unexpected shape")
         target = fields[0]
-        outcome = fields[10]
-        numbers = (*fields[1:10], *fields[11:14])
+        outcome = fields[11]
+        numbers = (*fields[1:11], *fields[12:15])
         try:
             (
                 last_attempt,
@@ -990,6 +998,7 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
                 local_rows,
                 remote_rows,
                 detected,
+                payload_mismatch,
                 repaired,
                 unresolved,
                 next_partition,
@@ -1028,6 +1037,11 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
                     **labels,
                 ),
                 _metric("jobseek_cross_store_reconciliation_last_detected", detected, **labels),
+                _metric(
+                    "jobseek_cross_store_reconciliation_last_payload_mismatch",
+                    payload_mismatch,
+                    **labels,
+                ),
                 _metric("jobseek_cross_store_reconciliation_last_repaired", repaired, **labels),
                 _metric(
                     "jobseek_cross_store_reconciliation_last_unresolved",
