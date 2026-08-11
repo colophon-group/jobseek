@@ -257,6 +257,13 @@ async function _fetchCurrencyRates(): Promise<CurrencyRate[]> {
 }
 
 export async function getCurrencyRates(): Promise<CurrencyRate[]> {
+  // Secretless CI and local production builds prerender the shared app layout.
+  // Avoid entering the cached database boundary when no database exists: Next
+  // surfaces that build-time cache error outside ordinary userland catches.
+  // Runtime deployments have DATABASE_URL and retain the hours-cached table.
+  if (!process.env.DATABASE_URL) {
+    return [{ currency: "EUR", toEur: 1 }];
+  }
   try {
     return await _fetchCurrencyRates();
   } catch {
