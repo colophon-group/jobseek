@@ -155,6 +155,44 @@ class TestExtractRich:
         assert jobs[0].locations == ["NYC"]
         assert jobs[0].url == "https://example.com/jobs/1"
 
+    def test_entity_encoded_html_fields(self):
+        items = [
+            {
+                "JobTitle": "Service Technician",
+                "PublicationUrl": "https://example.com/jobs/1",
+                "PlaceOfWorkCity": "Netstal",
+                "PlaceOfWorkCountry": "CH",
+                "Organization": "&lt;p&gt;About the employer&lt;/p&gt;",
+                "Tasks": "&lt;h2&gt;Tasks&lt;/h2&gt;&lt;p&gt;Repair appliances.&lt;/p&gt;",
+                "Requirements": (
+                    "&lt;h2&gt;Profile&lt;/h2&gt;&lt;p&gt;Electrical training.&lt;/p&gt;"
+                ),
+            }
+        ]
+        fields = {
+            "title": "JobTitle",
+            "description": [
+                {"path": "Organization", "html_unescape": True},
+                {"path": "Tasks", "html_unescape": True},
+                {"path": "Requirements", "html_unescape": True},
+            ],
+            "locations": {
+                "concat": ["PlaceOfWorkCity", "PlaceOfWorkCountry"],
+                "separator": ", ",
+            },
+        }
+
+        jobs = _extract_rich(items, fields, "PublicationUrl", None, "https://example.com")
+
+        assert len(jobs) == 1
+        assert jobs[0].title == "Service Technician"
+        assert jobs[0].locations == ["Netstal, CH"]
+        assert jobs[0].description == (
+            "<p>About the employer</p>\n\n"
+            "<h2>Tasks</h2><p>Repair appliances.</p>\n\n"
+            "<h2>Profile</h2><p>Electrical training.</p>"
+        )
+
     def test_url_template(self):
         items = [
             {"title": "Dev", "id": "123", "slug": "developer"},
