@@ -189,6 +189,7 @@ def execute_with_status(
         "success": False,
         "last_success_at": previous.get("last_success_at"),
         "last_success_unix": previous.get("last_success_unix", 0),
+        "last_success_details": previous.get("last_success_details", {}),
     }
     try:
         details = operation()
@@ -206,6 +207,7 @@ def execute_with_status(
 
     finished = utc_now()
     record.update(details)
+    record["last_success_details"] = details
     record.update(
         {
             "success": True,
@@ -578,8 +580,8 @@ def _validate_typesense_snapshot_staging(
     container: str,
     host_root: Path,
     container_mount_root: str,
-) -> dict[str, int]:
-    """Prove snapshot staging and the Typesense memory boundary before writing."""
+) -> dict[str, Any]:
+    """Prove isolated staging, measured-policy state, and write headroom."""
     live_root = Path(os.environ.get("TYPESENSE_LIVE_DATA_HOST_ROOT", "/mnt/typesense-data"))
     try:
         resolved_host = host_root.resolve(strict=True)
@@ -589,15 +591,33 @@ def _validate_typesense_snapshot_staging(
         raise BackupError("Typesense snapshot staging or live data path is unavailable") from exc
     if resolved_host != host_root or host_root.is_symlink() or not host_root.is_mount():
         raise BackupError("Typesense snapshot staging is not an exact dedicated mount")
-    if host_stat.st_uid != 0 or stat.S_IMODE(host_stat.st_mode) != 0o700:
+    if host_stat.st_uid != 0 or host_stat.st_gid != 0 or stat.S_IMODE(host_stat.st_mode) != 0o700:
         raise BackupError("Typesense snapshot staging ownership or mode is unsafe")
     if host_stat.st_dev in {Path("/").stat().st_dev, resolved_live.stat().st_dev}:
         raise BackupError("Typesense snapshot staging is not isolated from root and live data")
 
+    staging_root = host_root / "staging"
+    _remove_old_staging(staging_root)
+    _remove_old_staging(staging_root / ".attempts")
     usage = shutil.disk_usage(host_root)
+    minimum_capacity = _positive_int_env("TYPESENSE_SNAPSHOT_MIN_CAPACITY_BYTES", 20 * 1024**3)
     minimum_free = _positive_int_env("TYPESENSE_SNAPSHOT_MIN_FREE_BYTES", 8 * 1024**3)
-    if usage.free < minimum_free:
-        raise BackupError("Typesense snapshot staging does not have the required free headroom")
+    growth_reserve = _positive_int_env("TYPESENSE_SNAPSHOT_GROWTH_RESERVE_BYTES", 4 * 1024**3)
+    if usage.total < minimum_capacity:
+        raise BackupError("Typesense snapshot staging is smaller than the required capacity")
+    live_usage = run_checked(
+        ["du", "--summarize", "--one-file-system", "--block-size=1", str(resolved_live)],
+        timeout=300,
+    ).stdout.split()
+    try:
+        live_allocated = int(live_usage[0])
+    except (IndexError, ValueError) as exc:
+        raise BackupError("Typesense live-data allocation is not measurable") from exc
+    required_before = minimum_free + growth_reserve + live_allocated
+    if usage.free < required_before:
+        raise BackupError(
+            "Typesense snapshot staging lacks snapshot, growth, and free-floor headroom"
+        )
 
     try:
         inspected = json.loads(run_checked(["docker", "inspect", container], timeout=30).stdout)
@@ -615,23 +635,47 @@ def _validate_typesense_snapshot_staging(
     ):
         raise BackupError("Typesense snapshot staging is not mounted into the container")
 
-    expected_memory = _positive_int_env("TYPESENSE_MEMORY_LIMIT_BYTES", 3 * 1024**3)
-    expected_reservation = _positive_int_env("TYPESENSE_MEMORY_RESERVATION_BYTES", 2560 * 1024**2)
     memory = int(host_config.get("Memory") or 0)
     reservation = int(host_config.get("MemoryReservation") or 0)
     memory_swap = int(host_config.get("MemorySwap") or 0)
-    if (memory, reservation, memory_swap) != (
-        expected_memory,
-        expected_reservation,
-        expected_memory,
-    ):
-        raise BackupError("Typesense container memory headroom contract is not enforced")
+    memory_policy_phase = os.environ.get("TYPESENSE_MEMORY_POLICY_PHASE", "measure")
+    if memory_policy_phase != "measure":
+        raise BackupError("Typesense memory policy phase is not recognized")
+    if any((memory, reservation, memory_swap)):
+        raise BackupError("Typesense measured memory phase must not impose an unreviewed limit")
     return {
         "staging_capacity_bytes": usage.total,
         "staging_available_bytes_before": usage.free,
+        "staging_minimum_capacity_bytes": minimum_capacity,
+        "staging_minimum_free_bytes": minimum_free,
+        "staging_growth_reserve_bytes": growth_reserve,
+        "staging_required_bytes_before": required_before,
+        "live_data_allocated_bytes_before": live_allocated,
         "memory_limit_bytes": memory,
         "memory_reservation_bytes": reservation,
+        "memory_swap_limit_bytes": memory_swap,
+        "memory_policy_phase": memory_policy_phase,
+        "memory_limit_enforced": False,
     }
+
+
+def _typesense_local_snapshot_packets(staging_root: Path) -> list[Path]:
+    """Return all materialized or in-progress local packets, failing on odd entries."""
+    if not staging_root.exists():
+        return []
+    packets: list[Path] = []
+    for child in staging_root.iterdir():
+        if child.name == ".attempts":
+            if child.is_symlink() or not child.is_dir():
+                raise BackupError("Typesense snapshot attempts root is unsafe")
+            packets.extend(entry for entry in child.iterdir() if entry.is_dir())
+            if any(entry.is_symlink() or not entry.is_dir() for entry in child.iterdir()):
+                raise BackupError("Typesense snapshot attempts contain an unsafe entry")
+            continue
+        if child.is_symlink() or not child.is_dir():
+            raise BackupError("Typesense snapshot staging contains an unsafe entry")
+        packets.append(child)
+    return packets
 
 
 def _restic_command(*arguments: str) -> list[str]:
@@ -1506,10 +1550,13 @@ def typesense_backup() -> dict[str, Any]:
     attempts_root = staging_root / ".attempts"
     run_path = staging_root / run_id
     data_path = run_path / "data"
-    _remove_old_staging(staging_root)
-    run_path.mkdir(parents=True, mode=0o700)
     attempts_root.mkdir(parents=True, mode=0o700, exist_ok=True)
-    _remove_old_staging(attempts_root)
+    local_packets_before = _typesense_local_snapshot_packets(staging_root)
+    if local_packets_before:
+        raise BackupError(
+            "Typesense preserved snapshot packet exists; resolve it before another snapshot"
+        )
+    run_path.mkdir(parents=True, mode=0o700)
     attempt_paths: list[Path] = []
     materialized = False
     success = False
@@ -1559,6 +1606,14 @@ def typesense_backup() -> dict[str, Any]:
 
         selected_host_path.rename(data_path)
         materialized = True
+        usage_after_snapshot = shutil.disk_usage(host_root)
+        required_after_snapshot = int(headroom["staging_minimum_free_bytes"]) + int(
+            headroom["staging_growth_reserve_bytes"]
+        )
+        if usage_after_snapshot.free < required_after_snapshot:
+            shutil.rmtree(run_path)
+            materialized = False
+            raise BackupError("Typesense snapshot consumed the protected free and growth headroom")
         manifest = _write_typesense_snapshot_manifest(run_path, inventory_after["aliases"])
         manifest = _verify_typesense_snapshot_manifest(run_path)
         snapshot_bytes = manifest["snapshot"]["bytes"]
@@ -1624,8 +1679,12 @@ def typesense_backup() -> dict[str, Any]:
             "snapshot_data_sha256": manifest["snapshot"]["sha256"],
             "snapshot_manifest_sha256": _sha256_file(run_path / "manifest.json"),
             "collection_documents_observation": "live_after_snapshot",
+            "snapshot_local_copies_before": 0,
+            "snapshot_local_copies_after_materialization": 1,
             "snapshot_peak_local_copies": 1,
             "staging_isolated": True,
+            "staging_available_bytes_after_snapshot": usage_after_snapshot.free,
+            "staging_required_bytes_after_snapshot": required_after_snapshot,
             **headroom,
             **inventory_after,
         }
@@ -1634,7 +1693,7 @@ def typesense_backup() -> dict[str, Any]:
             with suppress(Exception):
                 if attempt_path.is_dir() and not attempt_path.is_symlink():
                     shutil.rmtree(attempt_path)
-        if success or not materialized and not any(run_path.iterdir()):
+        if success or (not materialized and (not run_path.exists() or not any(run_path.iterdir()))):
             shutil.rmtree(run_path, ignore_errors=True)
 
 

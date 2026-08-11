@@ -42,17 +42,17 @@ surface:
 The Typesense container receives one argument:
 `--config=/run/secrets/typesense-server.ini`. Its bind-mounted source is
 `/etc/jobseek-typesense/typesense-server.ini`, owned by root with mode `0600`.
-The same managed container has a 3 GiB hard memory limit, a 2.5 GiB memory
-reservation, and `memory-swap` equal to the hard limit. On the 4 GiB host this
-leaves a nominal 1 GiB outside the container's cgroup for the kernel, Docker,
-and the Cloudflare tunnel instead of allowing the index to consume the
-machine. The Snapshot API
-writes directly through `/jobseek-snapshots` to the dedicated host filesystem
-mounted at `/mnt/jobseek-typesense-backup`; the backup job never makes a second
-`docker cp` copy on `/`.
+The Snapshot API writes directly through `/jobseek-snapshots` to the dedicated
+host filesystem mounted at `/mnt/jobseek-typesense-backup`; the backup job
+never makes a second `docker cp` copy on `/`. Memory remains in a measured
+first phase: the managed container has no hard limit, reservation, or synthetic
+swap tuple until seven consecutive production days establish its actual
+current/peak/events envelope and the Docker, Cloudflare tunnel, and OS
+headroom. A later reviewed change may set a cgroup policy from those retained
+measurements; do not infer a safe cap from one `docker stats` sample.
 
 Provision the snapshot filesystem before promoting the container contract.
-Create and attach a dedicated Hetzner Volume of at least 10 GiB in the
+Create and attach a dedicated Hetzner Volume of at least 20 GiB in the
 Typesense server's location. Resolve the exact new device through
 `/dev/disk/by-id`, prove that it is the intended empty Volume with `lsblk` and
 `blkid`, and format it only when it has no filesystem. Mount its filesystem by
@@ -70,10 +70,30 @@ stat -c 'live_device=%d' /mnt/typesense-data
 df -B1 --output=size,used,avail /mnt/jobseek-typesense-backup
 ```
 
-The staging device must differ from both printed devices and have at least
-8 GiB free. Persist it in `/etc/fstab` by UUID and verify `mount -a` before
-dispatching `deploy-typesense-host.yml`. The host installer, backup installer,
-systemd unit, and backup process all independently enforce this boundary.
+The staging device must differ from both printed devices. Persist exactly one
+`/etc/fstab` entry with a `UUID=` source and `nodev,nosuid,noexec`; the live
+mount source, filesystem type, and safety options must match it. Its capacity
+must be at least 20 GiB. Before a snapshot, available bytes must cover the
+current allocated live-data bytes plus a 4 GiB growth reserve and the protected
+8 GiB floor; after materialization, the 4 GiB growth reserve plus 8 GiB floor
+must remain. Both installers call the shared fail-closed verifier and install
+it under `/usr/local/sbin` for the reboot/rollback checks below; the hardened
+backup unit requires the mount point, and the backup code repeats the capacity
+checks around every snapshot.
+
+Before promotion, exercise persistence without rebooting the production
+service:
+
+```bash
+python3 scripts/verify-typesense-snapshot-mount.py
+systemctl stop jobseek-typesense-backup.timer jobseek-typesense-backup.service
+umount /mnt/jobseek-typesense-backup
+mount -a
+python3 scripts/verify-typesense-snapshot-mount.py
+```
+
+Do this before the container receives the bind mount. A later reboot check must
+show the same UUID-backed source before the backup timer is enabled.
 The Cloudflare token source is
 `/etc/jobseek-typesense/cloudflare-tunnel-token`, also root-owned `0600`;
 systemd copies it into the service credential directory for the dedicated
@@ -91,21 +111,66 @@ The protected `production` environment owns four deployment secrets:
 | `CLOUDFLARE_TUNNEL_TOKEN` | one named Cloudflare Tunnel only |
 
 For the initial transition, create the two generated Typesense consumer keys
-and set all four protected secrets first. Merge and verify crawler and backup
-deployments before changing the host. Then dispatch the reviewed `main`
-revision one independent rollback boundary at a time:
+and set all four protected secrets first. Merge the reviewed revision, then use
+this exact staged order. Production backup deployments are manual so a merge
+cannot race the manual host contract:
 
 ```bash
-gh workflow run deploy-typesense-host.yml \
-  --ref main \
-  -f component=typesense
-gh workflow run deploy-typesense-host.yml \
-  --ref main \
-  -f component=cloudflared
+gh workflow run deploy-typesense-host.yml --ref main -f component=typesense
+gh run list --workflow deploy-typesense-host.yml --commit "$(git rev-parse main)" \
+  --event workflow_dispatch --limit 5
+gh run watch <HOST_TYPESENSE_RUN_ID> --exit-status
+
+gh workflow run deploy-data-backups.yml --ref main -f service=typesense
+gh run list --workflow deploy-data-backups.yml --commit "$(git rev-parse main)" \
+  --event workflow_dispatch --limit 5
+gh run watch <TYPESENSE_BACKUP_RUN_ID> --exit-status
+
+gh workflow run deploy-typesense-host.yml --ref main -f component=cloudflared
+gh run list --workflow deploy-typesense-host.yml --commit "$(git rev-parse main)" \
+  --event workflow_dispatch --limit 5
+gh run watch <CLOUDFLARED_RUN_ID> --exit-status
 ```
 
-The Typesense step requires successful backup evidence no older than 36 hours
-and refuses to run while `jobseek-typesense-backup.service` is active. It
+Select the just-created run ID whose head SHA is the printed main SHA; do not
+dispatch the next step until `gh run watch --exit-status` succeeds. The host
+and backup workflows also share host locks, but those locks are a final race
+barrier, not a substitute for waiting on each acceptance gate.
+
+Typesense and cloudflared record separate deployed-revision markers. A
+cloudflared-only reconciliation never rewrites the Typesense SHA used by the
+pending backup contract, so it cannot invalidate or race a staged snapshot.
+
+The Typesense host step acquires the shared deployment and service-data locks,
+then disables the old backup timer before changing the container and leaves a
+revision-bound `backup-contract-pending` marker. The
+backup deployment refuses a different Git SHA or a container without the exact
+direct-mount label, writable source, persistent filesystem, and measured
+memory phase. It installs the new contract, runs a fresh full snapshot even
+when the backup key is unchanged, validates the post-copy floor and status
+fields, then starts the timer and removes the pending marker. Any failed gate
+leaves the timer disabled. Do not dispatch the backup step first or dispatch
+the two workflows from different revisions.
+
+Rollback is staged too. A host transaction that cannot reach readiness
+restores the prior container/config and exact prior timer state. After the host
+step has succeeded, keep the timer disabled and prefer fixing the backup gate
+forward. If the container contract itself must be reverted, dispatch the prior
+reviewed host SHA, verify local/public health, and do not re-enable its legacy
+root-staging backup. Restore a compatible reviewed backup contract manually
+before clearing the pending marker. Detach or remove the Volume only after the
+timer and service are disabled, no container mounts it, `umount` succeeds, and
+its UUID entry has been removed from `/etc/fstab`. On the next reboot, require
+`findmnt --mountpoint /mnt/jobseek-typesense-backup` plus the shared verifier
+before enabling the timer; a missing mount intentionally leaves the service
+condition unsatisfied.
+
+The Typesense step requires independently retained last-success backup
+evidence no older than 36 hours and refuses to run while
+`jobseek-typesense-backup.service` is active. A failed latest attempt does not
+deadlock this corrective host-first rollout when that last-success timestamp
+is still fresh; it remains an outage signal, and the timer stays disabled until
+the new direct-mount smoke succeeds. The step
 pulls the pinned image before stopping the container, waits up to 60 seconds
 for a graceful stop, restores the prior config on failure, and requires local
 health plus a bootstrap-key admin probe. The tunnel step preserves the prior
@@ -134,17 +199,19 @@ bootstrap key before all generated consumer keys are independently working,
 because changing the server bootstrap invalidates the old bootstrap access
 immediately.
 
-For a backup-key rotation, update `TYPESENSE_BACKUP_KEY` first and deploy
-`.github/workflows/deploy-data-backups.yml`. The backup installer probes the
-candidate against `/stats.json` without changing the live environment. When
-the value changed, it quiesces the timer/service, runs a full backup smoke from
-a root-only candidate environment while retaining the host-wide deployment
-lock, reacquires the service-data lock, and only then atomically commits the
-candidate. Rollback stays armed until fresh status, timer health, and the
-deployment marker have committed. Any failure restores the prior value and
-leaves the timer disabled/inactive; treat a reported rollback failure as a hard
-backup outage. Delete the superseded generated key only after that backup and
-the isolated restore drill in `19-data-backup-recovery.md` both pass.
+For a backup-key rotation, update `TYPESENSE_BACKUP_KEY`, dispatch the
+Typesense host component to stage the exact main SHA, then dispatch
+`deploy-data-backups.yml` with `service=typesense` at that SHA. The backup
+installer probes the candidate against `/stats.json` without changing the live
+environment. It quiesces the timer/service and runs a full backup smoke from a
+root-only candidate environment even when the key bytes are unchanged,
+retaining the host-wide deployment lock. It reacquires the service-data lock
+and atomically commits only a changed candidate. Rollback stays armed until
+fresh status, timer health, and the deployment marker have committed. Any
+failure restores the prior value and leaves the timer disabled/inactive; treat
+a reported rollback failure as a hard backup outage. Delete the superseded
+generated key only after that backup and the isolated restore drill in
+`19-data-backup-recovery.md` both pass.
 
 Read-only, redacted verification:
 
@@ -152,7 +219,7 @@ Read-only, redacted verification:
 /usr/local/sbin/jobseek-verify-typesense-host-credentials
 systemctl is-active cloudflared.service
 docker inspect typesense --format \
-  'running={{.State.Running}} oom={{.State.OOMKilled}} restarts={{.RestartCount}} memory={{.HostConfig.Memory}} reservation={{.HostConfig.MemoryReservation}} swap={{.HostConfig.MemorySwap}} mounts={{json .Mounts}} cmd={{json .Config.Cmd}}'
+  'running={{.State.Running}} oom={{.State.OOMKilled}} restarts={{.RestartCount}} memory={{.HostConfig.Memory}} reservation={{.HostConfig.MemoryReservation}} swap={{.HostConfig.MemorySwap}} labels={{json .Config.Labels}} mounts={{json .Mounts}} cmd={{json .Config.Cmd}}'
 curl --fail --silent http://127.0.0.1:8108/health
 curl --fail --silent https://typesense.colophon-group.org/health
 ```
@@ -176,22 +243,58 @@ check. The host sampler also exports:
   snapshot failure, slow requests, and thread-pool exhaustion.
 
 The managed container requires a 65,536 soft/hard `nofile` limit and rotates
-Docker JSON logs at 50 MB with three files. It also requires the exact 3 GiB /
-2.5 GiB / 3 GiB hard-limit, reservation, and swap tuple plus the writable
-snapshot mount. Deployment conformance verifies all Docker metadata and the
-effective process limit. Allow up to 15 minutes for the current
-2.5-million-document index to reload before declaring a cold start failed.
+Docker JSON logs at 50 MB with three files. During the measured phase it
+requires zero Docker hard-limit, reservation, and swap-limit values plus the
+labelled writable snapshot mount. Deployment conformance verifies all Docker
+metadata and the effective process limit. Allow up to 15 minutes for the
+current 2.5-million-document index to reload before declaring a cold start
+failed.
 
-After promotion, retain seven consecutive days of redacted evidence before
-accepting the capacity remediation: every scheduled backup succeeds with
-`snapshot_peak_local_copies=1` and `staging_isolated=true`; staging never falls
-below 8 GiB free; the container has no OOM or restart; the public tunnel and
-all seven aliases stay healthy; and `jobseek-docker-gc` never enters its
-below-5-GiB emergency all-unused-image path. A failed observation resets the
-seven-day window. Roll back the container contract to the prior reviewed image
-and configuration if the memory cap causes an OOM or sustained readiness
-failure, but keep the dedicated staging mount and investigate index growth
-before selecting a different measured cap.
+After promotion, retain seven consecutive days before accepting the capacity
+remediation. Record the exact UTC start/end and deployed SHA in the issue
+ledger, attach the Grafana query results, the Loki result, and the seven fresh
+backup status timestamps. These PromQL gates must all pass for the full window
+(`$typesense` means the Typesense host labels):
+
+```promql
+min_over_time(jobseek_backup_last_attempt_success{service="typesense"}[7d]) == 1
+changes(jobseek_backup_last_success_unixtime{service="typesense"}[7d]) >= 6
+min_over_time(jobseek_typesense_backup_staging_isolated{service="typesense"}[7d]) == 1
+max_over_time(jobseek_typesense_backup_peak_local_copies{service="typesense"}[7d]) <= 1
+min_over_time(jobseek_typesense_snapshot_staging_available_bytes[7d]) >= 12884901888
+max_over_time(jobseek_typesense_snapshot_local_copies[7d]) <= 1
+min_over_time(jobseek_typesense_snapshot_mount_available[7d]) == 1
+min_over_time((jobseek_typesense_backup_staging_available_bytes_before{service="typesense"} - jobseek_typesense_backup_staging_required_bytes_before{service="typesense"})[7d:]) >= 0
+min_over_time((jobseek_typesense_backup_staging_available_bytes_after_snapshot{service="typesense"} - jobseek_typesense_backup_staging_required_bytes_after_snapshot{service="typesense"})[7d:]) >= 0
+max_over_time(jobseek_typesense_backup_local_copies_before{service="typesense"}[7d]) == 0
+min_over_time(jobseek_typesense_backup_local_copies_after_materialization{service="typesense"}[7d]) == 1
+max_over_time(jobseek_container_oom_killed{container="typesense"}[7d]) == 0
+increase(jobseek_container_restart_count{container="typesense"}[7d]) == 0
+increase(jobseek_container_memory_events_total{container="typesense",event=~"oom|oom_kill|oom_group_kill"}[7d]) == 0
+min_over_time(jobseek_container_memory_observation_available{container="typesense"}[7d]) == 1
+max_over_time(jobseek_container_memory_current_bytes{container="typesense"}[7d])
+max_over_time(jobseek_container_memory_peak_bytes{container="typesense"}[7d])
+min_over_time(node_memory_MemAvailable_bytes{host_role="typesense"}[7d])
+max_over_time(jobseek_host_unit_memory_peak_bytes{host_role="typesense",unit=~"docker.service|cloudflared.service"}[7d])
+min_over_time(jobseek_host_unit_memory_observation_available{host_role="typesense",unit=~"docker.service|cloudflared.service"}[7d]) == 1
+min_over_time(jobseek_typesense_healthy[7d]) == 1
+```
+
+The final four memory values are measurements, not pass/fail cap proposals;
+the ledger must state the observed maximum and remaining host headroom. The
+central Loki query below must return no emergency all-unused-image run. The
+Alloy allowlist explicitly retains this unit; do not use a local journal as the
+only seven-day artifact.
+
+```logql
+{host_role="typesense",unit="jobseek-docker-gc.service"}
+  |~ "(?i)(emergency|below.?5.?GiB|all unused image)"
+```
+
+Also verify the public tunnel and all seven aliases once per day. Any failed or
+missing observation resets the seven-day window. Only after the window may a
+separate issue propose a measured memory high-watermark/cgroup policy or host
+resize. The direct staging mount remains in place regardless of that decision.
 
 When readiness fails but the container is running:
 

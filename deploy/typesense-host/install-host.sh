@@ -19,6 +19,8 @@ if [[ "$(id -u)" -ne 0 ]]; then
   echo "ERROR: install-host.sh must run as root" >&2
   exit 1
 fi
+: "${JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA:?Exact host deploy SHA is required}"
+[[ "$JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 STATE_DIR=/var/lib/jobseek-typesense-host
@@ -34,13 +36,25 @@ TYPESENSE_SNAPSHOT_IN_CONTAINER=/jobseek-snapshots
 TYPESENSE_NOFILE_LIMIT=65536
 TYPESENSE_LOG_MAX_SIZE=50m
 TYPESENSE_LOG_MAX_FILES=3
-TYPESENSE_MEMORY_LIMIT=3g
-TYPESENSE_MEMORY_RESERVATION=2560m
-TYPESENSE_MEMORY_LIMIT_BYTES=3221225472
-TYPESENSE_MEMORY_RESERVATION_BYTES=2684354560
+TYPESENSE_SNAPSHOT_CONTRACT=direct-mount-v1
+TYPESENSE_SNAPSHOT_MIN_CAPACITY_BYTES=21474836480
 TYPESENSE_SNAPSHOT_MIN_FREE_BYTES=8589934592
+TYPESENSE_SNAPSHOT_GROWTH_RESERVE_BYTES=4294967296
 TYPESENSE_READY_TIMEOUT_S=900
 LOCK_TIMEOUT_S="${JOBSEEK_TYPESENSE_HOST_DEPLOY_LOCK_TIMEOUT_S:-120}"
+
+typesense_tx_active=0
+typesense_tx_candidate_config=""
+typesense_tx_previous_config=""
+typesense_tx_previous_config_exists=0
+typesense_tx_previous_container_exists=0
+typesense_tx_rollback_container_ready=0
+typesense_tx_prior_timer_enabled=""
+typesense_tx_prior_timer_active=""
+typesense_tx_previous_pending=""
+typesense_tx_previous_pending_exists=0
+typesense_tx_previous_deployed=""
+typesense_tx_previous_deployed_exists=0
 
 install -d -o root -g root -m 0700 "$STATE_DIR" "$CREDENTIAL_DIR"
 exec 9>"$STATE_DIR/deploy.lock"
@@ -107,28 +121,287 @@ PY
 }
 
 validate_typesense_headroom() {
-  local root_device data_device snapshot_device snapshot_free
-  if ! findmnt --mountpoint --noheadings --output TARGET "$TYPESENSE_SNAPSHOT_DIR" |
-    grep -Fxq "$TYPESENSE_SNAPSHOT_DIR"
+  python3 "$REPO_ROOT/scripts/verify-typesense-snapshot-mount.py" \
+    --mount "$TYPESENSE_SNAPSHOT_DIR" \
+    --live-data "$TYPESENSE_DATA_DIR" \
+    --minimum-capacity "$TYPESENSE_SNAPSHOT_MIN_CAPACITY_BYTES" \
+    --minimum-free "$TYPESENSE_SNAPSHOT_MIN_FREE_BYTES" \
+    --growth-reserve "$TYPESENSE_SNAPSHOT_GROWTH_RESERVE_BYTES"
+}
+
+acquire_typesense_backup_locks() {
+  test ! -L /run/jobseek-backup-deployment.lock
+  exec 8>/run/jobseek-backup-deployment.lock
+  chown root:root /run/jobseek-backup-deployment.lock
+  chmod 0600 /run/jobseek-backup-deployment.lock
+  if ! flock -w "$LOCK_TIMEOUT_S" 8; then
+    echo "ERROR: another backup deployment holds the shared lock" >&2
+    return 1
+  fi
+  test ! -L /run/jobseek-data-backup-typesense.lock
+  exec 7>/run/jobseek-data-backup-typesense.lock
+  chown root:root /run/jobseek-data-backup-typesense.lock
+  chmod 0600 /run/jobseek-data-backup-typesense.lock
+  if ! flock -w "$LOCK_TIMEOUT_S" 7; then
+    echo "ERROR: a Typesense backup is active; host cutover did not quiesce it" >&2
+    return 1
+  fi
+}
+
+typesense_backup_timer_state() {
+  local enabled active service_active
+  enabled="$(systemctl is-enabled jobseek-typesense-backup.timer 2>/dev/null || true)"
+  active="$(systemctl is-active jobseek-typesense-backup.timer 2>/dev/null || true)"
+  service_active="$(systemctl is-active jobseek-typesense-backup.service 2>/dev/null || true)"
+  [[ "$enabled" =~ ^(enabled|disabled)$ ]]
+  [[ "$active" =~ ^(active|inactive)$ ]]
+  [[ "$service_active" =~ ^(active|inactive|failed)$ ]]
+  printf '%s %s %s\n' "$enabled" "$active" "$service_active"
+}
+
+quiesce_typesense_backup() {
+  systemctl disable --now jobseek-typesense-backup.timer
+  systemctl stop jobseek-typesense-backup.service
+  [[ "$(typesense_backup_timer_state)" =~ ^disabled\ inactive\ (inactive|failed)$ ]]
+}
+
+restore_typesense_backup_timer() {
+  local enabled=$1
+  local active=$2
+  local failed=0
+  if ! systemctl reset-failed jobseek-typesense-backup.service; then
+    failed=1
+  fi
+  if [[ "$enabled" == enabled ]]; then
+    if ! systemctl enable jobseek-typesense-backup.timer; then
+      failed=1
+    fi
+  fi
+  if [[ "$active" == active ]]; then
+    if ! systemctl start jobseek-typesense-backup.timer; then
+      failed=1
+    fi
+  fi
+  if [[ "$(systemctl is-enabled jobseek-typesense-backup.timer 2>/dev/null || true)" != \
+      "$enabled" || \
+    "$(systemctl is-active jobseek-typesense-backup.timer 2>/dev/null || true)" != \
+      "$active" ]]; then
+    failed=1
+  fi
+  if [[ "$failed" -ne 0 ]]; then
+    echo "ERROR: could not restore the exact prior Typesense backup timer state" >&2
+    if ! quiesce_typesense_backup; then
+      echo "ERROR: Typesense backup timer rollback failed hard" >&2
+    fi
+    return 1
+  fi
+}
+
+recover_typesense_container() {
+  local source_name=$1
+  if [[ "$source_name" != typesense ]]; then
+    docker rename "$source_name" typesense || return 1
+  fi
+  if [[ "$(docker inspect typesense --format '{{.State.Running}}' 2>/dev/null || true)" != \
+      true ]]; then
+    docker start typesense >/dev/null || return 1
+  fi
+  wait_for_typesense
+}
+
+restore_optional_state_file() {
+  local snapshot=$1
+  local existed=$2
+  local destination=$3
+  if [[ "$existed" -eq 1 ]]; then
+    if ! install -o root -g root -m 0644 "$snapshot" "$destination.tmp" ||
+      ! sync -f "$destination.tmp" ||
+      ! mv -f "$destination.tmp" "$destination" ||
+      ! sync -f "$(dirname "$destination")"
+    then
+      return 1
+    fi
+  else
+    if ! rm -f "$destination" "$destination.tmp" ||
+      ! sync -f "$(dirname "$destination")"
+    then
+      return 1
+    fi
+  fi
+}
+
+cleanup_typesense_transaction_files() {
+  if [[ -n "$typesense_tx_candidate_config" ]]; then
+    rm -f "$typesense_tx_candidate_config"
+  fi
+  if [[ -n "$typesense_tx_previous_config" ]]; then
+    rm -f "$typesense_tx_previous_config"
+  fi
+  if [[ -n "$typesense_tx_previous_pending" ]]; then
+    rm -f "$typesense_tx_previous_pending"
+  fi
+  if [[ -n "$typesense_tx_previous_deployed" ]]; then
+    rm -f "$typesense_tx_previous_deployed"
+  fi
+  typesense_tx_previous_config=""
+  typesense_tx_candidate_config=""
+  typesense_tx_previous_pending=""
+  typesense_tx_previous_deployed=""
+}
+
+rollback_typesense_transaction() {
+  local failed=0
+  local container_failed=0
+  local candidate_preserved=0
+  local failed_candidate=typesense-transaction-failed-candidate
+  local prior_container_named=0
+  local prior_container_healthy=0
+  if [[ "$typesense_tx_active" -ne 1 ]]; then
+    return
+  fi
+  echo "ERROR: rolling back the staged Typesense host transaction" >&2
+  if ! quiesce_typesense_backup; then
+    failed=1
+  fi
+
+  if [[ "$typesense_tx_previous_config_exists" -eq 1 ]]; then
+    if ! install -o root -g root -m 0600 \
+      "$typesense_tx_previous_config" "$TYPESENSE_CONFIG"; then
+      failed=1
+    fi
+  elif ! rm -f "$TYPESENSE_CONFIG"; then
+    failed=1
+  fi
+
+  if [[ "$typesense_tx_rollback_container_ready" -eq 1 ]]; then
+    if docker inspect typesense >/dev/null 2>&1; then
+      if docker stop --time 60 typesense >/dev/null && \
+        docker rename typesense "$failed_candidate"
+      then
+        candidate_preserved=1
+      else
+        container_failed=1
+      fi
+    fi
+    if [[ "$container_failed" -eq 0 ]] && \
+      docker rename typesense-credential-rollback typesense
+    then
+      prior_container_named=1
+    else
+      container_failed=1
+    fi
+    if [[ "$container_failed" -ne 0 ]]; then
+      failed=1
+    fi
+  elif [[ "$typesense_tx_previous_container_exists" -eq 1 ]]; then
+    if docker inspect typesense >/dev/null 2>&1; then
+      prior_container_named=1
+    else
+      failed=1
+    fi
+  elif [[ "$typesense_tx_previous_container_exists" -ne 1 ]] && \
+    docker inspect typesense >/dev/null 2>&1 && \
+    ! docker rm --force typesense >/dev/null
   then
-    echo "ERROR: Typesense snapshot staging must be a dedicated mounted filesystem" >&2
-    exit 1
+    failed=1
   fi
-  test ! -L "$TYPESENSE_SNAPSHOT_DIR"
-  root_device="$(stat -c '%d' /)"
-  data_device="$(stat -c '%d' "$TYPESENSE_DATA_DIR")"
-  snapshot_device="$(stat -c '%d' "$TYPESENSE_SNAPSHOT_DIR")"
-  if [[ "$snapshot_device" == "$root_device" || "$snapshot_device" == "$data_device" ]]; then
-    echo "ERROR: Typesense snapshot staging must be isolated from root and live data" >&2
-    exit 1
+
+  if [[ "$typesense_tx_previous_container_exists" -eq 1 && \
+    "$prior_container_named" -eq 1 ]] && recover_typesense_container typesense; then
+    prior_container_healthy=1
   fi
-  snapshot_free="$(df --output=avail -B1 "$TYPESENSE_SNAPSHOT_DIR" | tail -n 1 | tr -d ' ')"
-  if (( snapshot_free < TYPESENSE_SNAPSHOT_MIN_FREE_BYTES )); then
-    echo "ERROR: Typesense snapshot staging has less than 8 GiB free" >&2
-    exit 1
+  if [[ "$prior_container_healthy" -eq 1 && "$candidate_preserved" -eq 1 ]] && \
+    ! docker rm "$failed_candidate" >/dev/null
+  then
+    echo "WARNING: failed Typesense candidate remains for operator cleanup" >&2
   fi
-  chown root:root "$TYPESENSE_SNAPSHOT_DIR"
-  chmod 0700 "$TYPESENSE_SNAPSHOT_DIR"
+
+  if ! restore_optional_state_file \
+      "$typesense_tx_previous_pending" \
+      "$typesense_tx_previous_pending_exists" \
+      "$STATE_DIR/backup-contract-pending"; then
+    failed=1
+  fi
+  if ! restore_optional_state_file \
+      "$typesense_tx_previous_deployed" \
+      "$typesense_tx_previous_deployed_exists" \
+      "$STATE_DIR/deployed-sha"; then
+    failed=1
+  fi
+
+  if [[ "$typesense_tx_previous_container_exists" -eq 1 && \
+    "$prior_container_healthy" -ne 1 ]]; then
+    echo "ERROR: prior Typesense health could not be restored; backup timer remains disabled" >&2
+    failed=1
+  elif [[ "$typesense_tx_previous_container_exists" -ne 1 && \
+    ( "$typesense_tx_prior_timer_enabled" != disabled || \
+      "$typesense_tx_prior_timer_active" != inactive ) ]]; then
+    echo "ERROR: no prior Typesense container exists; refusing to restore an active timer" >&2
+    failed=1
+  fi
+
+  if [[ "$failed" -eq 0 && "$typesense_tx_previous_container_exists" -eq 1 ]]; then
+    if ! restore_typesense_backup_timer \
+      "$typesense_tx_prior_timer_enabled" "$typesense_tx_prior_timer_active"; then
+      failed=1
+    fi
+  elif ! quiesce_typesense_backup; then
+    failed=1
+  fi
+  cleanup_typesense_transaction_files
+  typesense_tx_active=0
+  if [[ "$failed" -ne 0 ]]; then
+    echo "ERROR: Typesense host rollback failed hard; backup timer remains disabled" >&2
+    return 1
+  fi
+}
+
+typesense_host_exit() {
+  local status=$?
+  trap - EXIT
+  if [[ "$typesense_tx_active" -eq 1 ]]; then
+    if [[ "$status" -eq 0 ]]; then
+      echo "ERROR: Typesense host transaction reached exit without an exact revision commit" >&2
+      status=1
+    fi
+    if ! rollback_typesense_transaction; then
+      status=1
+    fi
+  fi
+  exit "$status"
+}
+
+mark_typesense_backup_contract_pending() {
+  : "${JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA:?Typesense deploy SHA is required for staged rollout}"
+  [[ "$JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+  printf '%s\n' "$JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA" >"$STATE_DIR/backup-contract-pending.tmp"
+  chmod 0644 "$STATE_DIR/backup-contract-pending.tmp"
+  sync -f "$STATE_DIR/backup-contract-pending.tmp"
+  mv -f "$STATE_DIR/backup-contract-pending.tmp" "$STATE_DIR/backup-contract-pending"
+  sync -f "$STATE_DIR"
+}
+
+write_typesense_deployed_revision() {
+  : "${JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA:?Typesense deploy SHA is required}"
+  [[ "$JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+  printf '%s\n' "$JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA" >"$STATE_DIR/deployed-sha.tmp"
+  chmod 0644 "$STATE_DIR/deployed-sha.tmp"
+  sync -f "$STATE_DIR/deployed-sha.tmp"
+  mv -f "$STATE_DIR/deployed-sha.tmp" "$STATE_DIR/deployed-sha"
+  sync -f "$STATE_DIR"
+}
+
+write_cloudflared_deployed_revision() {
+  : "${JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA:?Cloudflared deploy SHA is required}"
+  [[ "$JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+  printf '%s\n' "$JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA" \
+    >"$STATE_DIR/cloudflared-deployed-sha.tmp"
+  chmod 0644 "$STATE_DIR/cloudflared-deployed-sha.tmp"
+  sync -f "$STATE_DIR/cloudflared-deployed-sha.tmp"
+  mv -f \
+    "$STATE_DIR/cloudflared-deployed-sha.tmp" \
+    "$STATE_DIR/cloudflared-deployed-sha"
+  sync -f "$STATE_DIR"
 }
 
 run_typesense_container() {
@@ -137,22 +410,23 @@ run_typesense_container() {
     --restart unless-stopped \
     --network host \
     --ulimit "nofile=$TYPESENSE_NOFILE_LIMIT:$TYPESENSE_NOFILE_LIMIT" \
-    --memory "$TYPESENSE_MEMORY_LIMIT" \
-    --memory-reservation "$TYPESENSE_MEMORY_RESERVATION" \
-    --memory-swap "$TYPESENSE_MEMORY_LIMIT" \
     --log-opt "max-size=$TYPESENSE_LOG_MAX_SIZE" \
     --log-opt "max-file=$TYPESENSE_LOG_MAX_FILES" \
     --volume "$TYPESENSE_DATA_DIR:/data" \
     --volume "$TYPESENSE_SNAPSHOT_DIR:$TYPESENSE_SNAPSHOT_IN_CONTAINER" \
     --volume "$TYPESENSE_CONFIG:$TYPESENSE_CONFIG_IN_CONTAINER:ro" \
     --label jobseek.managed-by=deploy-typesense-host \
+    --label "jobseek.typesense-snapshot-contract=$TYPESENSE_SNAPSHOT_CONTRACT" \
     "$TYPESENSE_IMAGE" \
     "--config=$TYPESENSE_CONFIG_IN_CONTAINER" >/dev/null
 }
 
 install_typesense() {
   : "${TYPESENSE_BOOTSTRAP_KEY:?TYPESENSE_BOOTSTRAP_KEY is required}"
+  : "${JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA:?Typesense deploy SHA is required for staged rollout}"
+  [[ "$JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
   validate_secret TYPESENSE_BOOTSTRAP_KEY "$TYPESENSE_BOOTSTRAP_KEY"
+  acquire_typesense_backup_locks
   test -d "$TYPESENSE_DATA_DIR"
   validate_typesense_headroom
 
@@ -166,30 +440,73 @@ status = json.loads(
     Path("/var/lib/jobseek-backup/status/typesense.json").read_text(encoding="utf-8")
 )
 age = time.time() - int(status.get("last_success_unix") or 0)
-if status.get("success") is not True or age < 0 or age > 36 * 60 * 60:
-    raise SystemExit("ERROR: Typesense backup evidence is failed or stale")
+if status.get("service") != "typesense" or age < 0 or age > 36 * 60 * 60:
+    raise SystemExit("ERROR: Typesense last-success backup evidence is missing or stale")
 PY
   else
     echo "ERROR: Typesense backup status is missing" >&2
     exit 1
   fi
   if systemctl is-active --quiet jobseek-typesense-backup.service; then
-    echo "ERROR: Typesense backup is active; refusing to restart the service" >&2
+    echo "ERROR: Typesense backup won the service lock race; refusing to stop it" >&2
     exit 1
   fi
-
-  docker pull "$TYPESENSE_IMAGE" >/dev/null
 
   local rollback_container=typesense-credential-rollback
-  if docker inspect "$rollback_container" >/dev/null 2>&1; then
-    echo "ERROR: stale Typesense rollback container exists; refusing to overwrite it" >&2
+  local failed_candidate=typesense-transaction-failed-candidate
+  if docker inspect "$rollback_container" >/dev/null 2>&1 || \
+    docker inspect "$failed_candidate" >/dev/null 2>&1
+  then
+    echo "ERROR: stale Typesense transaction container exists; refusing to overwrite it" >&2
     exit 1
   fi
+  if docker inspect typesense >/dev/null 2>&1; then
+    typesense_tx_previous_container_exists=1
+  fi
 
-  local candidate previous_config previous_config_exists=0 config_changed=1
+  local backup_service_active
+  read -r \
+    typesense_tx_prior_timer_enabled \
+    typesense_tx_prior_timer_active \
+    backup_service_active <<<"$(typesense_backup_timer_state)"
+  [[ "$backup_service_active" != active ]]
+
+  test ! -L "$STATE_DIR/backup-contract-pending"
+  test ! -L "$STATE_DIR/deployed-sha"
+  test ! -L "$TYPESENSE_CONFIG"
+  typesense_tx_previous_config="$(mktemp /run/jobseek-typesense-config.rollback.XXXXXX)"
+  chmod 0600 "$typesense_tx_previous_config"
+  if [[ -f "$TYPESENSE_CONFIG" ]]; then
+    cp --preserve=mode,ownership "$TYPESENSE_CONFIG" "$typesense_tx_previous_config"
+    typesense_tx_previous_config_exists=1
+  fi
+  typesense_tx_previous_pending="$(mktemp /run/jobseek-typesense-pending.rollback.XXXXXX)"
+  typesense_tx_previous_deployed="$(mktemp /run/jobseek-typesense-deployed.rollback.XXXXXX)"
+  if [[ -f "$STATE_DIR/backup-contract-pending" ]]; then
+    cp -p "$STATE_DIR/backup-contract-pending" "$typesense_tx_previous_pending"
+    typesense_tx_previous_pending_exists=1
+  else
+    rm -f "$typesense_tx_previous_pending"
+  fi
+  if [[ -f "$STATE_DIR/deployed-sha" ]]; then
+    cp -p "$STATE_DIR/deployed-sha" "$typesense_tx_previous_deployed"
+    typesense_tx_previous_deployed_exists=1
+  else
+    rm -f "$typesense_tx_previous_deployed"
+  fi
+  typesense_tx_active=1
+  if ! quiesce_typesense_backup; then
+    echo "ERROR: could not quiesce Typesense backup for the staged host contract" >&2
+    return 1
+  fi
+  if ! docker pull "$TYPESENSE_IMAGE" >/dev/null; then
+    echo "ERROR: could not pull the reviewed Typesense image" >&2
+    return 1
+  fi
+  local candidate config_changed=1
   candidate="$(mktemp "$CREDENTIAL_DIR/.typesense-server.ini.XXXXXX")"
-  previous_config="$(mktemp /run/jobseek-typesense-config.rollback.XXXXXX)"
-  chmod 0600 "$candidate" "$previous_config"
+  typesense_tx_candidate_config="$candidate"
+  chmod 0600 "$candidate"
   printf '%s\n' \
     '[server]' \
     'data-dir = /data' \
@@ -198,8 +515,6 @@ PY
     'listen-address = 0.0.0.0' >"$candidate"
 
   if [[ -f "$TYPESENSE_CONFIG" ]]; then
-    cp --preserve=mode,ownership "$TYPESENSE_CONFIG" "$previous_config"
-    previous_config_exists=1
     if cmp --silent "$candidate" "$TYPESENSE_CONFIG"; then
       config_changed=0
     fi
@@ -207,6 +522,7 @@ PY
   chown root:root "$candidate"
   chmod 0600 "$candidate"
   mv -f "$candidate" "$TYPESENSE_CONFIG"
+  typesense_tx_candidate_config=""
 
   local container_conformant=0
   if docker inspect typesense >/dev/null 2>&1; then
@@ -224,13 +540,14 @@ container = json.load(sys.stdin)[0]
     expected_nofile,
     expected_log_size,
     expected_log_files,
-    expected_memory,
-    expected_memory_reservation,
+    expected_snapshot_contract,
 ) = sys.argv[1:]
 cmd = container["Config"].get("Cmd") or []
 mounts = container.get("Mounts") or []
 ulimits = container["HostConfig"].get("Ulimits") or []
 log_config = container["HostConfig"].get("LogConfig") or {}
+labels = container["Config"].get("Labels") or {}
+state = container.get("State") or {}
 ok = (
     container["Config"].get("Image") == "typesense/typesense:27.1"
     and container["HostConfig"].get("NetworkMode") == "host"
@@ -256,10 +573,13 @@ ok = (
     and log_config.get("Type") == "json-file"
     and (log_config.get("Config") or {}).get("max-size") == expected_log_size
     and (log_config.get("Config") or {}).get("max-file") == expected_log_files
-    and int(container["HostConfig"].get("Memory") or 0) == int(expected_memory)
-    and int(container["HostConfig"].get("MemoryReservation") or 0)
-        == int(expected_memory_reservation)
-    and int(container["HostConfig"].get("MemorySwap") or 0) == int(expected_memory)
+    and int(container["HostConfig"].get("Memory") or 0) == 0
+    and int(container["HostConfig"].get("MemoryReservation") or 0) == 0
+    and int(container["HostConfig"].get("MemorySwap") or 0) == 0
+    and labels.get("jobseek.typesense-snapshot-contract") == expected_snapshot_contract
+    and state.get("Running") is True
+    and state.get("OOMKilled") is False
+    and int(container.get("RestartCount") or 0) == 0
 )
 raise SystemExit(0 if ok else 1)
 ' \
@@ -270,8 +590,7 @@ raise SystemExit(0 if ok else 1)
         "$TYPESENSE_NOFILE_LIMIT" \
         "$TYPESENSE_LOG_MAX_SIZE" \
         "$TYPESENSE_LOG_MAX_FILES" \
-        "$TYPESENSE_MEMORY_LIMIT_BYTES" \
-        "$TYPESENSE_MEMORY_RESERVATION_BYTES"
+        "$TYPESENSE_SNAPSHOT_CONTRACT"
     then
       container_conformant=1
     fi
@@ -280,60 +599,29 @@ raise SystemExit(0 if ok else 1)
   if [[ "$config_changed" -eq 0 && "$container_conformant" -eq 1 ]] &&
     curl --fail --silent --max-time 5 http://127.0.0.1:8108/health >/dev/null
   then
-    rm -f "$previous_config"
-    echo "Typesense credential delivery already conforms; restart skipped"
+    echo "Typesense host contract staged; backup timer remains disabled pending fresh snapshot"
     return
   fi
 
-  local previous_container_exists=0
   if docker inspect typesense >/dev/null 2>&1; then
-    previous_container_exists=1
     if ! docker stop --time 60 typesense >/dev/null; then
-      echo "ERROR: Typesense did not stop cleanly; restoring the prior config" >&2
-      if [[ "$previous_config_exists" -eq 1 ]]; then
-        install -o root -g root -m 0600 "$previous_config" "$TYPESENSE_CONFIG"
-      else
-        rm -f "$TYPESENSE_CONFIG"
-      fi
-      rm -f "$previous_config"
-      exit 1
+      echo "ERROR: Typesense did not stop cleanly" >&2
+      return 1
     fi
     if ! docker rename typesense "$rollback_container"; then
       echo "ERROR: could not preserve the prior Typesense container" >&2
-      if [[ "$previous_config_exists" -eq 1 ]]; then
-        install -o root -g root -m 0600 "$previous_config" "$TYPESENSE_CONFIG"
-      else
-        rm -f "$TYPESENSE_CONFIG"
-      fi
-      docker start typesense >/dev/null 2>&1 || true
-      rm -f "$previous_config"
-      exit 1
+      return 1
     fi
+    typesense_tx_rollback_container_ready=1
   fi
 
   if ! run_typesense_container ||
     ! wait_for_typesense ||
     ! probe_typesense_bootstrap
   then
-    echo "ERROR: managed Typesense start failed; restoring the prior service" >&2
-    docker rm --force typesense >/dev/null 2>&1 || true
-    if [[ "$previous_config_exists" -eq 1 ]]; then
-      install -o root -g root -m 0600 "$previous_config" "$TYPESENSE_CONFIG"
-    else
-      rm -f "$TYPESENSE_CONFIG"
-    fi
-    if [[ "$previous_container_exists" -eq 1 ]]; then
-      docker rename "$rollback_container" typesense >/dev/null 2>&1 || true
-      docker start typesense >/dev/null 2>&1 || true
-      wait_for_typesense || true
-    fi
-    rm -f "$previous_config"
-    exit 1
+    echo "ERROR: managed Typesense start failed" >&2
+    return 1
   fi
-  if [[ "$previous_container_exists" -eq 1 ]]; then
-    docker rm "$rollback_container" >/dev/null
-  fi
-  rm -f "$previous_config"
 
   echo "Installed protected Typesense bootstrap-key delivery"
 }
@@ -369,11 +657,13 @@ install_cloudflared() {
 
   systemd-analyze verify "$REPO_ROOT/deploy/systemd/cloudflared.service"
 
-  local previous_unit previous_token
-  local unit_existed=0 token_existed=0 token_changed=1 unit_changed=1
+  local previous_unit previous_token previous_revision
+  local unit_existed=0 token_existed=0 revision_existed=0
+  local token_changed=1 unit_changed=1
   previous_unit="$(mktemp /run/cloudflared.service.rollback.XXXXXX)"
   previous_token="$(mktemp /run/cloudflared-token.rollback.XXXXXX)"
-  chmod 0600 "$previous_unit" "$previous_token"
+  previous_revision="$(mktemp /run/cloudflared-deployed.rollback.XXXXXX)"
+  chmod 0600 "$previous_unit" "$previous_token" "$previous_revision"
   if [[ -f "$CLOUDFLARED_UNIT" ]]; then
     cp --preserve=mode,ownership "$CLOUDFLARED_UNIT" "$previous_unit"
     unit_existed=1
@@ -391,23 +681,50 @@ install_cloudflared() {
       token_changed=0
     fi
   fi
+  test ! -L "$STATE_DIR/cloudflared-deployed-sha"
+  if [[ -f "$STATE_DIR/cloudflared-deployed-sha" ]]; then
+    cp -p "$STATE_DIR/cloudflared-deployed-sha" "$previous_revision"
+    revision_existed=1
+  else
+    rm -f "$previous_revision"
+  fi
 
   rollback_cloudflared() {
-    systemctl stop cloudflared.service >/dev/null 2>&1 || true
+    local failed=0
+    if ! systemctl stop cloudflared.service >/dev/null 2>&1; then
+      failed=1
+    fi
     if [[ "$unit_existed" -eq 1 ]]; then
-      install -o root -g root -m 0644 "$previous_unit" "$CLOUDFLARED_UNIT"
-    else
-      rm -f "$CLOUDFLARED_UNIT"
+      if ! install -o root -g root -m 0644 "$previous_unit" "$CLOUDFLARED_UNIT"; then
+        failed=1
+      fi
+    elif ! rm -f "$CLOUDFLARED_UNIT"; then
+      failed=1
     fi
     if [[ "$token_existed" -eq 1 ]]; then
-      install -o root -g root -m 0600 \
-        "$previous_token" "$CLOUDFLARED_TOKEN_FILE"
-    else
-      rm -f "$CLOUDFLARED_TOKEN_FILE"
+      if ! install -o root -g root -m 0600 \
+        "$previous_token" "$CLOUDFLARED_TOKEN_FILE"; then
+        failed=1
+      fi
+    elif ! rm -f "$CLOUDFLARED_TOKEN_FILE"; then
+      failed=1
     fi
-    systemctl daemon-reload >/dev/null 2>&1 || true
+    if ! restore_optional_state_file \
+      "$previous_revision" "$revision_existed" \
+      "$STATE_DIR/cloudflared-deployed-sha"; then
+      failed=1
+    fi
+    if ! systemctl daemon-reload >/dev/null 2>&1; then
+      failed=1
+    fi
     if [[ "$unit_existed" -eq 1 ]]; then
-      systemctl restart cloudflared.service >/dev/null 2>&1 || true
+      if ! systemctl restart cloudflared.service >/dev/null 2>&1 ||
+        ! wait_for_tunnel; then
+        failed=1
+      fi
+    fi
+    if [[ "$failed" -ne 0 ]]; then
+      return 1
     fi
   }
 
@@ -419,8 +736,10 @@ install_cloudflared() {
     ! systemctl daemon-reload
   then
     echo "ERROR: could not stage protected Cloudflare Tunnel delivery" >&2
-    rollback_cloudflared
-    rm -f "$previous_unit" "$previous_token"
+    if ! rollback_cloudflared; then
+      echo "ERROR: Cloudflare Tunnel rollback failed hard" >&2
+    fi
+    rm -f "$previous_unit" "$previous_token" "$previous_revision"
     exit 1
   fi
 
@@ -432,23 +751,36 @@ install_cloudflared() {
     systemctl show cloudflared.service -p ExecStart --value |
       grep -Fq -- "--token-file /run/credentials/cloudflared.service/cloudflare-tunnel-token"
   then
-    rm -f "$previous_unit" "$previous_token"
+    if ! write_cloudflared_deployed_revision; then
+      echo "ERROR: could not commit the cloudflared deployed revision" >&2
+      if ! rollback_cloudflared; then
+        echo "ERROR: Cloudflare Tunnel rollback failed hard" >&2
+      fi
+      rm -f "$previous_unit" "$previous_token" "$previous_revision"
+      exit 1
+    fi
+    rm -f "$previous_unit" "$previous_token" "$previous_revision"
     echo "Cloudflare Tunnel credential delivery already conforms; restart skipped"
     return
   fi
 
   if ! systemctl enable cloudflared.service >/dev/null ||
     ! systemctl restart cloudflared.service ||
-    ! wait_for_tunnel
+    ! wait_for_tunnel ||
+    ! write_cloudflared_deployed_revision
   then
     echo "ERROR: protected Cloudflare Tunnel start failed; restoring prior unit" >&2
-    rollback_cloudflared
-    rm -f "$previous_unit" "$previous_token"
+    if ! rollback_cloudflared; then
+      echo "ERROR: Cloudflare Tunnel rollback failed hard" >&2
+    fi
+    rm -f "$previous_unit" "$previous_token" "$previous_revision"
     exit 1
   fi
-  rm -f "$previous_unit" "$previous_token"
+  rm -f "$previous_unit" "$previous_token" "$previous_revision"
   echo "Installed protected Cloudflare Tunnel token-file delivery"
 }
+
+trap typesense_host_exit EXIT
 
 case "$COMPONENT" in
   all)
@@ -466,12 +798,22 @@ esac
 install -o root -g root -m 0755 \
   "$REPO_ROOT/scripts/verify-typesense-host-credentials.py" \
   /usr/local/sbin/jobseek-verify-typesense-host-credentials
-if [[ -n "${JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA:-}" ]]; then
-  [[ "$JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
-  printf '%s\n' "$JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA" >"$STATE_DIR/deployed-sha.tmp"
-  chmod 0644 "$STATE_DIR/deployed-sha.tmp"
-  mv -f "$STATE_DIR/deployed-sha.tmp" "$STATE_DIR/deployed-sha"
-fi
-
+install -o root -g root -m 0755 \
+  "$REPO_ROOT/scripts/verify-typesense-snapshot-mount.py" \
+  /usr/local/sbin/jobseek-verify-typesense-snapshot-mount
 /usr/local/sbin/jobseek-verify-typesense-host-credentials --component "$COMPONENT"
+if [[ "$typesense_tx_active" -eq 1 ]]; then
+  mark_typesense_backup_contract_pending
+  write_typesense_deployed_revision
+  test "$(cat "$STATE_DIR/backup-contract-pending")" = \
+    "$JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA"
+  test "$(cat "$STATE_DIR/deployed-sha")" = "$JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA"
+  typesense_tx_active=0
+  cleanup_typesense_transaction_files
+  if [[ "$typesense_tx_rollback_container_ready" -eq 1 ]] && \
+    ! docker rm typesense-credential-rollback >/dev/null
+  then
+    echo "WARNING: committed Typesense rollback container remains for operator cleanup" >&2
+  fi
+fi
 echo "Installed Typesense host surface; component=$COMPONENT"

@@ -18,6 +18,9 @@ TYPESENSE_CONFIG = Path("/etc/jobseek-typesense/typesense-server.ini")
 CLOUDFLARED_TOKEN = Path("/etc/jobseek-typesense/cloudflare-tunnel-token")
 CLOUDFLARED_UNIT = Path("/etc/systemd/system/cloudflared.service")
 TYPESENSE_CONFIG_IN_CONTAINER = "/run/secrets/typesense-server.ini"
+TYPESENSE_SNAPSHOT_ON_HOST = "/mnt/jobseek-typesense-backup"
+TYPESENSE_SNAPSHOT_IN_CONTAINER = "/jobseek-snapshots"
+TYPESENSE_SNAPSHOT_CONTRACT = "direct-mount-v1"
 TYPESENSE_NOFILE_LIMIT = 65_536
 TYPESENSE_LOG_MAX_SIZE = "50m"
 TYPESENSE_LOG_MAX_FILES = "3"
@@ -111,6 +114,13 @@ def collect_typesense_checks() -> dict[str, bool]:
         and mount.get("RW") is False
         for mount in mounts
     )
+    mounted_snapshot = any(
+        mount.get("Source") == TYPESENSE_SNAPSHOT_ON_HOST
+        and mount.get("Destination") == TYPESENSE_SNAPSHOT_IN_CONTAINER
+        and mount.get("RW") is True
+        for mount in mounts
+    )
+    labels = inspect["Config"].get("Labels") or {}
     environment_names = {value.split("=", 1)[0] for value in container_env}
     health = _http_json("http://127.0.0.1:8108/health")
 
@@ -134,6 +144,15 @@ def collect_typesense_checks() -> dict[str, bool]:
             log_config.get("Type") == "json-file"
             and (log_config.get("Config") or {}).get("max-size") == TYPESENSE_LOG_MAX_SIZE
             and (log_config.get("Config") or {}).get("max-file") == TYPESENSE_LOG_MAX_FILES
+        ),
+        "typesense_snapshot_direct_mount_managed": mounted_snapshot,
+        "typesense_snapshot_contract_label_managed": labels.get(
+            "jobseek.typesense-snapshot-contract"
+        )
+        == TYPESENSE_SNAPSHOT_CONTRACT,
+        "typesense_memory_policy_is_measured": all(
+            int(inspect["HostConfig"].get(field) or 0) == 0
+            for field in ("Memory", "MemoryReservation", "MemorySwap")
         ),
         "typesense_config_only_argv": container_argv
         == [f"--config={TYPESENSE_CONFIG_IN_CONTAINER}"],

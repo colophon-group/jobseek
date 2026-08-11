@@ -128,7 +128,6 @@ install without starting a timer:
 ```bash
 cd /opt/jobseek-backup
 bash deploy/backups/install-host.sh postgresql
-bash deploy/backups/install-host.sh typesense
 bash deploy/backups/install-host.sh web-postgresql
 ```
 
@@ -140,23 +139,29 @@ backup and isolated restore have passed:
 
 ```bash
 bash deploy/backups/install-host.sh --start-timer postgresql
-bash deploy/backups/install-host.sh --start-timer typesense
 bash deploy/backups/install-host.sh --start-timer web-postgresql
 ```
 
-After merge, `.github/workflows/deploy-data-backups.yml` copies the reviewed
-main-branch artifacts to both hosts and runs the three installers serially.
-Its protected transport explicitly starts the PostgreSQL and Typesense timers,
-matching the production post-install requirement that both durable backup
-schedules are enabled and healthy. That also lets the next reviewed deployment
-recover a timer which a failed rotation or repair deliberately left disabled.
-The retired web PostgreSQL timer remains preserve-mode so deployment cannot
-resurrect it. The web job shares the Typesense host only as an execution and
-encrypted-repository location; it does not read Typesense data or credentials.
-Deployment takes a host-wide deployment/identity
-lock before the per-service data lock, so it cannot replace the shared backup
-runtime during any protected operation or overlap an active backup for that
-service. The production environment secrets
+Typesense installation is deliberately not a standalone command: first stage
+the exact revision through `deploy-typesense-host.yml`, which quiesces the old
+timer and writes the pending marker, then dispatch `deploy-data-backups.yml`
+with `service=typesense` at the same revision. The installer always runs a
+fresh direct-mount snapshot and starts the timer only after it passes.
+
+`.github/workflows/deploy-data-backups.yml` is manual for every service. It
+copies the explicitly dispatched revision and selects `all` or one service;
+there is no push-triggered production mutation. Its protected transport
+explicitly starts the PostgreSQL and Typesense timers, matching the production
+post-install requirement that both durable backup schedules are enabled and
+healthy. That also lets the next reviewed deployment recover a timer which a
+failed rotation or repair deliberately left disabled. The retired web
+PostgreSQL timer remains preserve-mode so deployment cannot resurrect it.
+The web job shares the Typesense host only as an execution and encrypted-
+repository location; it does not read Typesense data or credentials.
+Deployment takes a host-wide deployment/identity lock before the per-service
+data lock, so it cannot replace the shared backup runtime during any protected
+operation or overlap an active backup for that service. The production
+environment secrets
 `HETZNER_POSTGRES_HOST` and `HETZNER_TYPESENSE_HOST` select the two hosts; the
 workflow reuses the existing Hetzner SSH deployment credential and validates
 both hosts against the pre-provisioned `HETZNER_BACKUP_KNOWN_HOSTS`. Artifacts
@@ -167,22 +172,21 @@ not used. Host addresses are secrets for log-redaction purposes even though
 they are not authentication material. These are environment-scoped secrets,
 so the workflow resolves them inside runtime steps after the main-only
 `production` environment is attached; do not embed their values in
-`strategy.matrix`, which GitHub expands earlier. The workflow has no manual
-dispatch surface; rerun the trusted latest `main` push run for a resync.
+`strategy.matrix`, which GitHub expands earlier.
 
 For Typesense, the protected `TYPESENSE_BACKUP_KEY` is authorization-probed
 against authenticated `GET /stats.json` while the live host environment remains
 untouched. The installer stages a complete root-owned `0600` candidate beside
-the live file and compares exactly one `TYPESENSE_API_KEY` assignment. An
-unchanged key does not disturb the timer or run a deployment smoke. For a
-changed key, the installer records the exact timer state, proves the timer and
-service quiesced, and releases only the per-service data lock while retaining
+the live file and compares exactly one `TYPESENSE_API_KEY` assignment. Every
+staged Typesense deployment, including an unchanged key, proves the timer and
+service quiesced and releases only the per-service data lock while retaining
 the host-wide deployment lock. It runs a fresh snapshot, encrypted Restic
 upload, retention prune, and repository check directly with the candidate
-environment, then reacquires the service lock before atomically committing the
-candidate and restoring the exact prior timer state. Rollback remains armed
-through status/timer gates and deployment-marker commit. Any failure restores
-the prior root-only environment atomically and leaves the timer disabled and
+environment, validates the direct-mount/headroom evidence, then reacquires the
+service lock before atomically committing a changed candidate. The outer
+staged rollout starts the timer only after status and deployment-marker gates
+pass. Rollback remains armed through those gates. Any failure restores a prior
+root-only environment when it changed and leaves the timer disabled and
 inactive; a lock or credential rollback failure is itself the primary hard
 error and is never swallowed. A failed service, failed latest attempt, or stale
 last success is fatal; the deployed revision is recorded only after those
@@ -426,11 +430,11 @@ the repository and fresh backup are healthy.
 
 ## Typesense backup operation
 
-The job asks the live Typesense process to create a consistent snapshot under
-its container-local `/tmp` directory, copies the completed snapshot to a
-host staging packet, uploads it to the encrypted Restic repository, runs
-retention/pruning and `restic check`, then removes both temporary copies. The
-packet keeps the untouched Typesense checkpoint under `data/` and a sibling
+The job asks the live Typesense process to create a consistent snapshot
+directly on the isolated `/jobseek-snapshots` bind mount, atomically promotes
+that directory to a host packet, uploads it to the encrypted Restic repository,
+runs retention/pruning and `restic check`, then removes the successful packet.
+The packet keeps the untouched Typesense checkpoint under `data/` and a sibling
 `manifest.json` binds the required alias mapping to a deterministic SHA-256
 digest of every checkpoint path, size, and byte. It does not stop or restart
 Typesense.
@@ -453,8 +457,11 @@ cutover. Each attempt is created directly under
 the backup packet before hashing and upload, so peak local snapshot copies is
 one. The job refuses to start unless this path is an exact root-owned `0700`
 mount on a device separate from both `/` and `/mnt/typesense-data`, has at
-least 8 GiB free, is the container's writable snapshot mount, and the
-container enforces its reviewed 3 GiB memory boundary.
+least 20 GiB capacity, retains the live-snapshot estimate plus 4 GiB growth and
+8 GiB free-floor headroom before the call, retains growth plus the floor after
+the call, and is the container's labelled writable snapshot mount. The current
+memory phase explicitly requires no hard cap while durable current, peak, and
+event counters are measured.
 
 Before upload, the job reads the manifest back and recomputes the data digest.
 During restore, the helper repeats that digest verification before starting
@@ -513,10 +520,13 @@ restic -o "sftp.command=${RESTIC_SFTP_COMMAND}" check
 ```
 
 If upload or repository validation fails, the single host staging copy is
-preserved for diagnosis. Snapshot directories older than 48 hours are removed
-before a later attempt. Never archive `/mnt/typesense-data` while Typesense is
-live, and never redirect snapshot staging back onto `/` to bypass the mount or
-free-space gate.
+preserved for diagnosis. A later attempt fails closed while any preserved
+packet remains, so `snapshot_peak_local_copies=1` is an observed invariant, not
+a hard-coded fiction. Resolve or retain the packet explicitly; automatic age
+cleanup applies after 48 hours. A post-copy headroom failure removes its new
+packet immediately to restore the protected reserve. Never archive
+`/mnt/typesense-data` while Typesense is live, and never redirect snapshot
+staging back onto `/` to bypass the mount or free-space gate.
 
 ## Web PostgreSQL backup operation
 

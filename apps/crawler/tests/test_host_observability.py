@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -67,6 +68,126 @@ def test_backup_status_is_republished_without_error_text(tmp_path: Path) -> None
     assert "jobseek_backup_last_attempt_success" in content
     assert 'service="postgresql"' in content
     assert "must-not-escape" not in content
+
+
+def test_typesense_backup_evidence_is_republished_from_last_success(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    (tmp_path / "typesense.json").write_text(
+        json.dumps(
+            {
+                "attempt_unix": 200,
+                "last_success_unix": 190,
+                "duration_seconds": 5,
+                "success": False,
+                "last_success_details": {
+                    "snapshot_bytes": 1234,
+                    "snapshot_peak_local_copies": 1,
+                    "snapshot_local_copies_before": 0,
+                    "staging_available_bytes_after_snapshot": 15_000,
+                    "staging_required_bytes_after_snapshot": 12_000,
+                    "staging_isolated": True,
+                    "memory_policy_phase": "measure",
+                    "memory_limit_enforced": False,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    lines: list[str] = []
+    monkeypatch.setattr(host, "_unit_enabled", lambda _unit: False)
+
+    host._collect_backup_metrics("typesense", tmp_path, lines)
+
+    content = "\n".join(lines)
+    assert "jobseek_typesense_backup_snapshot_bytes" in content
+    assert "jobseek_typesense_backup_peak_local_copies" in content
+    assert "jobseek_typesense_backup_staging_available_bytes_after_snapshot" in content
+    assert 'phase="measure"' in content
+
+
+def test_container_cgroup_memory_exports_current_peak_limit_and_events(tmp_path: Path) -> None:
+    cgroup = tmp_path / "321/root/sys/fs/cgroup"
+    cgroup.mkdir(parents=True)
+    (cgroup / "memory.current").write_text("100\n", encoding="utf-8")
+    (cgroup / "memory.peak").write_text("250\n", encoding="utf-8")
+    (cgroup / "memory.max").write_text("max\n", encoding="utf-8")
+    (cgroup / "memory.swap.current").write_text("0\n", encoding="utf-8")
+    (cgroup / "memory.events.local").write_text(
+        "low 0\nhigh 2\nmax 0\noom 0\noom_kill 0\n",
+        encoding="utf-8",
+    )
+
+    memory = host._read_container_memory(321, tmp_path)
+
+    assert memory["current_bytes"] == 100
+    assert memory["peak_bytes"] == 250
+    assert "limit_bytes" not in memory
+    assert memory["events"]["high"] == 2
+
+
+def test_typesense_snapshot_staging_counts_preserved_and_active_copies(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    staging = tmp_path / "staging"
+    (staging / "preserved" / "data").mkdir(parents=True)
+    (staging / ".attempts" / "active").mkdir(parents=True)
+    monkeypatch.setattr(Path, "is_mount", lambda path: path == tmp_path)
+    monkeypatch.setattr(
+        host.shutil,
+        "disk_usage",
+        lambda _path: SimpleNamespace(total=20_000, used=5_000, free=15_000),
+    )
+    lines: list[str] = []
+
+    host._collect_typesense_snapshot_staging_metrics(lines, tmp_path)
+
+    assert "jobseek_typesense_snapshot_mount_available 1" in lines
+    assert "jobseek_typesense_snapshot_local_copies 2" in lines
+
+
+def test_typesense_snapshot_staging_rejects_untracked_entries(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    (staging / "unexpected-file").write_text("not a snapshot packet", encoding="utf-8")
+    monkeypatch.setattr(Path, "is_mount", lambda path: path == tmp_path)
+    monkeypatch.setattr(
+        host.shutil,
+        "disk_usage",
+        lambda _path: SimpleNamespace(total=20_000, used=5_000, free=15_000),
+    )
+
+    with pytest.raises(host.ProbeError, match="unsafe entry"):
+        host._collect_typesense_snapshot_staging_metrics([], tmp_path)
+
+
+def test_typesense_support_unit_memory_is_durable_metric_input(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        host,
+        "_run",
+        lambda *_args, **_kwargs: subprocess.CompletedProcess(
+            [], 0, stdout="MemoryCurrent=100\nMemoryPeak=250\n", stderr=""
+        ),
+    )
+    lines: list[str] = []
+
+    host._collect_typesense_support_memory_metrics(lines)
+
+    content = "\n".join(lines)
+    assert 'unit="docker.service"' in content
+    assert 'unit="cloudflared.service"' in content
+    assert "jobseek_host_unit_memory_peak_bytes" in content
+
+
+def test_docker_gc_journal_is_forwarded_for_seven_day_acceptance() -> None:
+    alloy = (ROOT / "deploy/observability/alloy-host.alloy").read_text(encoding="utf-8")
+
+    assert "docker-gc" in alloy
+    assert "loki.source.journal" in alloy
 
 
 def test_codex_error_review_status_is_republished_without_result_text(tmp_path: Path) -> None:

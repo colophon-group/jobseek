@@ -226,8 +226,25 @@ if [[ "${FAKE_SMOKE_FAIL:-0}" == 1 ]]; then
     "$now" >"$BACKUP_STATUS_DIR/typesense.json"
   exit 1
 fi
-printf '{"service":"typesense","success":true,"attempt_unix":%s,"last_success_unix":%s}\n' \
-  "$now" "$now" >"$BACKUP_STATUS_DIR/typesense.json"
+python3 - "$now" >"$BACKUP_STATUS_DIR/typesense.json" <<'PY'
+import json
+import sys
+
+now = int(sys.argv[1])
+print(json.dumps({
+    "service": "typesense",
+    "success": True,
+    "attempt_unix": now,
+    "last_success_unix": now,
+    "staging_isolated": True,
+    "snapshot_local_copies_before": 0,
+    "snapshot_peak_local_copies": 1,
+    "staging_available_bytes_after_snapshot": 150,
+    "staging_required_bytes_after_snapshot": 100,
+    "memory_policy_phase": "measure",
+    "memory_limit_enforced": False,
+}))
+PY
 """,
     )
 
@@ -333,7 +350,7 @@ def _assert_timer_safe(harness: RotationHarness) -> None:
     assert harness.service_active.read_text(encoding="utf-8").strip() != "active"
 
 
-def test_unchanged_key_authorizes_without_smoke_or_timer_mutation(
+def test_unchanged_key_still_runs_fresh_contract_smoke(
     rotation_harness: RotationHarness,
 ) -> None:
     rotation_harness.candidate_key.write_text(OLD_KEY, encoding="utf-8")
@@ -344,7 +361,11 @@ def test_unchanged_key_authorizes_without_smoke_or_timer_mutation(
     assert rotation_harness.live_key() == OLD_KEY
     assert rotation_harness.timer_enabled.read_text(encoding="utf-8").strip() == "enabled"
     assert rotation_harness.timer_active.read_text(encoding="utf-8").strip() == "active"
-    assert rotation_harness.action_lines() == ["authorize", "marker"]
+    actions = rotation_harness.action_lines()
+    assert actions.index("authorize") < actions.index("unlock")
+    assert actions.index("unlock") < actions.index("backup")
+    assert actions.index("backup") < actions.index("reacquire") < actions.index("marker")
+    assert any(action.startswith("systemctl:disable:") for action in actions)
     _assert_secret_safe(result)
 
 

@@ -49,6 +49,7 @@ web_timer_enabled_state=""
 web_timer_active_state=""
 web_candidate_commit_started=0
 web_candidate_commit_complete=0
+typesense_contract_pending=0
 
 read_web_timer_state() {
   web_timer_enabled_state=""
@@ -191,6 +192,14 @@ cleanup() {
     elif ! restore_web_timer_state; then
       cleanup_failed=1
     fi
+    if [[ "$SERVICE" == "typesense" && "$typesense_contract_pending" -eq 1 ]]; then
+      if ! systemctl disable --now jobseek-typesense-backup.timer ||
+        ! systemctl stop jobseek-typesense-backup.service
+      then
+        echo "ERROR: staged Typesense backup rollback could not keep the timer disabled" >&2
+        cleanup_failed=1
+      fi
+    fi
   fi
   typesense_rotation_discard
   if [[ -n "$web_candidate_root" ]]; then
@@ -258,32 +267,48 @@ elif [[ "$SERVICE" == "typesense" ]]; then
   test -s /etc/jobseek-backup/typesense.env
   test -s /etc/jobseek-backup/typesense/id_ed25519
   typesense_snapshot_dir=/mnt/jobseek-typesense-backup
-  if ! findmnt --mountpoint --noheadings --output TARGET "$typesense_snapshot_dir" |
-    grep -Fxq "$typesense_snapshot_dir"
-  then
-    echo "ERROR: Typesense snapshot staging is not a dedicated mounted filesystem" >&2
-    exit 1
-  fi
-  test ! -L "$typesense_snapshot_dir"
-  test "$(stat -c '%U:%G:%a' "$typesense_snapshot_dir")" = root:root:700
-  typesense_snapshot_device="$(stat -c '%d' "$typesense_snapshot_dir")"
-  if [[ "$typesense_snapshot_device" == "$(stat -c '%d' /)" || \
-    "$typesense_snapshot_device" == "$(stat -c '%d' /mnt/typesense-data)" ]]; then
-    echo "ERROR: Typesense snapshot staging is not isolated from root and live data" >&2
-    exit 1
-  fi
-  typesense_snapshot_free="$(
-    df --output=avail -B1 "$typesense_snapshot_dir" | tail -n 1 | tr -d ' '
-  )"
-  if (( typesense_snapshot_free < 8589934592 )); then
-    echo "ERROR: Typesense snapshot staging has less than 8 GiB free" >&2
-    exit 1
-  fi
+  : "${JOBSEEK_BACKUP_DEPLOY_SHA:?Typesense backup deploy SHA is required}"
+  [[ "$JOBSEEK_BACKUP_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+  test "$(cat /var/lib/jobseek-typesense-host/deployed-sha)" = "$JOBSEEK_BACKUP_DEPLOY_SHA"
+  test "$(cat /var/lib/jobseek-typesense-host/backup-contract-pending)" = \
+    "$JOBSEEK_BACKUP_DEPLOY_SHA"
+  python3 "$REPO_ROOT/scripts/verify-typesense-snapshot-mount.py" \
+    --mount "$typesense_snapshot_dir" \
+    --live-data /mnt/typesense-data \
+    --minimum-capacity 21474836480 \
+    --minimum-free 8589934592 \
+    --growth-reserve 4294967296
+  docker inspect typesense | python3 -c '
+import json
+import sys
+
+container = json.load(sys.stdin)[0]
+labels = container["Config"].get("Labels") or {}
+mounts = container.get("Mounts") or []
+host_config = container["HostConfig"]
+ok = (
+    labels.get("jobseek.typesense-snapshot-contract") == "direct-mount-v1"
+    and any(
+        mount.get("Source") == "/mnt/jobseek-typesense-backup"
+        and mount.get("Destination") == "/jobseek-snapshots"
+        and mount.get("RW") is True
+        for mount in mounts
+    )
+    and int(host_config.get("Memory") or 0) == 0
+    and int(host_config.get("MemoryReservation") or 0) == 0
+    and int(host_config.get("MemorySwap") or 0) == 0
+)
+raise SystemExit(0 if ok else 1)
+'
+  typesense_contract_pending=1
   : "${JOBSEEK_TYPESENSE_BACKUP_KEY_FILE:?JOBSEEK_TYPESENSE_BACKUP_KEY_FILE is required}"
   typesense_rotation_prepare
   install -o root -g root -m 0755 \
     "$REPO_ROOT/scripts/jobseek-data-backup.py" \
     /usr/local/sbin/jobseek-data-backup
+  install -o root -g root -m 0755 \
+    "$REPO_ROOT/scripts/verify-typesense-snapshot-mount.py" \
+    /usr/local/sbin/jobseek-verify-typesense-snapshot-mount
   if ! command -v restic >/dev/null 2>&1; then
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends restic
@@ -427,7 +452,7 @@ if [[ "$SERVICE" == "web-postgresql" ]] && \
   systemctl reset-failed jobseek-web-postgresql-backup.service
 fi
 
-if [[ "$SERVICE" == "typesense" && "$typesense_rotation_changed" -eq 1 ]]; then
+if [[ "$SERVICE" == "typesense" ]]; then
   typesense_rotation_smoke_and_commit "$LOCK_TIMEOUT_S" 9
 elif [[ "$SERVICE" == "typesense" ]] && \
   [[ "$TIMER_ACTION" != disable ]] && \
@@ -539,5 +564,7 @@ if [[ -n "${JOBSEEK_BACKUP_DEPLOY_SHA:-}" ]]; then
 fi
 if [[ "$SERVICE" == "typesense" ]]; then
   typesense_rotation_finalize
+  rm -f /var/lib/jobseek-typesense-host/backup-contract-pending
+  typesense_contract_pending=0
 fi
 echo "Installed ${SERVICE} backup automation; timer_action=${TIMER_ACTION}"
