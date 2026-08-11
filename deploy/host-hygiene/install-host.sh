@@ -156,11 +156,8 @@ retire_obsolete_reconciliation() {
     return 1
   }
   for unit in "${RETIRED_UNITS[@]}"; do
-    [[ "$(systemctl show "$unit" --property=LoadState --value)" == masked ]]
-    [[ "$(systemctl show "$unit" --property=ActiveState --value)" == inactive ]]
-    [[ "$(systemctl show "$unit" --property=UnitFileState --value)" == masked ]]
-    if systemctl is-failed --quiet "$unit"; then
-      echo "ERROR: retired reconciliation unit remains failed: $unit" >&2
+    if ! "$VERIFIER" verify-retired-unit --unit "$unit"; then
+      echo "ERROR: retired reconciliation unit is not safely masked: $unit" >&2
       return 1
     fi
   done

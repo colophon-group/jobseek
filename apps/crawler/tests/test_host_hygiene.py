@@ -152,23 +152,31 @@ def test_standalone_log_conformance_requires_exact_bounded_options(monkeypatch) 
     ]
 
 
+def _masked_unit_run(command):
+    if command[:2] == ["systemctl", "show"]:
+        unit = command[2]
+        if unit == hygiene.CANONICAL_RECONCILIATION_TIMER:
+            output = "LoadState=loaded\nActiveState=active\nUnitFileState=enabled\n"
+        else:
+            output = "LoadState=masked\nActiveState=inactive\nUnitFileState=masked\n"
+        return hygiene.CommandResult(0, output, "")
+    if command[:2] == ["systemctl", "is-enabled"]:
+        return hygiene.CommandResult(1, "masked\n", "")
+    if command[:2] == ["systemctl", "is-failed"]:
+        return hygiene.CommandResult(1, "inactive\n", "")
+    if command[:2] == ["systemctl", "list-unit-files"]:
+        return hygiene.CommandResult(
+            0,
+            "jobseek-crawler-reconciliation.timer enabled enabled\n"
+            "jobseek-reconciliation-typesense-catchup.timer masked enabled\n",
+            "",
+        )
+    raise AssertionError(command)
+
+
 def test_retired_reconciliation_units_are_masked_without_duplicate_timer(monkeypatch) -> None:
     def run(command):
-        if command[:2] == ["systemctl", "show"]:
-            unit = command[2]
-            if unit == hygiene.CANONICAL_RECONCILIATION_TIMER:
-                output = "LoadState=loaded\nActiveState=active\nUnitFileState=enabled\n"
-            else:
-                output = "LoadState=masked\nActiveState=inactive\nUnitFileState=masked\n"
-            return hygiene.CommandResult(0, output, "")
-        if command[:2] == ["systemctl", "list-unit-files"]:
-            return hygiene.CommandResult(
-                0,
-                "jobseek-crawler-reconciliation.timer enabled enabled\n"
-                "jobseek-reconciliation-typesense-catchup.timer masked enabled\n",
-                "",
-            )
-        raise AssertionError(command)
+        return _masked_unit_run(command)
 
     monkeypatch.setattr(hygiene, "_run", run)
     assert hygiene._retired_reconciliation_findings() == []
@@ -186,6 +194,83 @@ def test_retired_reconciliation_units_are_masked_without_duplicate_timer(monkeyp
         "kind": "duplicate_reconciliation_timer",
         "detail": "jobseek-reconciliation-shadow.timer",
     }
+
+
+def test_not_found_load_state_accepts_only_exact_dev_null_mask(tmp_path: Path, monkeypatch) -> None:
+    service = hygiene.RETIRED_RECONCILIATION_UNITS[0]
+    (tmp_path / service).symlink_to("/dev/null")
+
+    def run(command):
+        if command[:3] == ["systemctl", "show", service]:
+            return hygiene.CommandResult(
+                0,
+                "LoadState=not-found\nActiveState=inactive\nUnitFileState=masked\n",
+                "",
+            )
+        return _masked_unit_run(command)
+
+    monkeypatch.setattr(hygiene, "_run", run)
+    assert hygiene._retired_reconciliation_findings(unit_root=tmp_path) == []
+
+
+@pytest.mark.parametrize("mask_kind", ["absent", "regular", "wrong-target"])
+def test_not_found_load_state_rejects_invalid_exact_mask(
+    mask_kind: str, tmp_path: Path, monkeypatch
+) -> None:
+    service = hygiene.RETIRED_RECONCILIATION_UNITS[0]
+    mask_path = tmp_path / service
+    if mask_kind == "regular":
+        mask_path.write_text("/dev/null\n", encoding="utf-8")
+    elif mask_kind == "wrong-target":
+        wrong_target = tmp_path / "wrong-target"
+        wrong_target.write_text("", encoding="utf-8")
+        mask_path.symlink_to(wrong_target)
+
+    def run(command):
+        if command[:3] == ["systemctl", "show", service]:
+            return hygiene.CommandResult(
+                0,
+                "LoadState=not-found\nActiveState=inactive\nUnitFileState=masked\n",
+                "",
+            )
+        return _masked_unit_run(command)
+
+    monkeypatch.setattr(hygiene, "_run", run)
+    assert {"kind": "retired_reconciliation_unit", "detail": service} in (
+        hygiene._retired_reconciliation_findings(unit_root=tmp_path)
+    )
+
+
+@pytest.mark.parametrize(
+    ("property_output", "enabled_output", "failed_status"),
+    [
+        ("LoadState=not-found\nActiveState=active\nUnitFileState=masked\n", "masked\n", 1),
+        ("LoadState=not-found\nActiveState=inactive\nUnitFileState=disabled\n", "masked\n", 1),
+        ("LoadState=not-found\nActiveState=inactive\nUnitFileState=masked\n", "disabled\n", 1),
+        ("LoadState=not-found\nActiveState=inactive\nUnitFileState=masked\n", "masked\n", 0),
+    ],
+)
+def test_not_found_load_state_requires_every_independent_state_gate(
+    property_output: str,
+    enabled_output: str,
+    failed_status: int,
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    service = hygiene.RETIRED_RECONCILIATION_UNITS[0]
+    (tmp_path / service).symlink_to("/dev/null")
+
+    def run(command):
+        if command[:3] == ["systemctl", "show", service]:
+            return hygiene.CommandResult(0, property_output, "")
+        if command[:3] == ["systemctl", "is-enabled", service]:
+            return hygiene.CommandResult(1, enabled_output, "")
+        if command[:3] == ["systemctl", "is-failed", service]:
+            return hygiene.CommandResult(failed_status, "inactive\n", "")
+        return _masked_unit_run(command)
+
+    monkeypatch.setattr(hygiene, "_run", run)
+    assert not hygiene._retired_unit_is_safely_masked(service, unit_root=tmp_path)
 
 
 def test_cleanup_is_dry_run_by_default_and_removes_only_full_reviewed_identity(
@@ -307,6 +392,7 @@ def test_installer_has_exact_unit_allowlist_and_no_broad_docker_cleanup() -> Non
     assert "canonical_timer_is_healthy" in script
     assert "systemctl reset-failed" in script
     assert "ln -s /dev/null" in script
+    assert 'verify-retired-unit --unit "$unit"' in script
     assert "docker rm" not in script
     assert "docker container prune" not in script
     assert "docker system prune" not in script
