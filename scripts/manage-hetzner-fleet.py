@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import ssl
@@ -32,10 +33,26 @@ MANAGED_LABELS = {
 }
 DEFAULT_ACTION_ATTEMPTS = 60
 DEFAULT_ACTION_INTERVAL_SECONDS = 1.0
+MAX_API_BODY_BYTES = 1_048_576
 
 
 class FleetError(RuntimeError):
     """The desired fleet state could not be proven or safely applied."""
+
+
+class _RejectRedirects(urllib.request.HTTPRedirectHandler):
+    """Never forward the provider credential to a redirected origin."""
+
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: Any,
+        code: int,
+        msg: str,
+        headers: Any,
+        newurl: str,
+    ) -> None:
+        return None
 
 
 @dataclass(frozen=True)
@@ -44,7 +61,6 @@ class DesiredResource:
     collection: str
     name: str
     role: str
-    rebuild_protection: bool = False
 
     @property
     def labels(self) -> dict[str, str]:
@@ -54,25 +70,99 @@ class DesiredResource:
     def protection(self) -> dict[str, bool]:
         result = {"delete": True}
         if self.kind == "server":
-            result["rebuild"] = self.rebuild_protection
+            result["rebuild"] = True
         return result
 
 
 DESIRED_RESOURCES = (
-    DesiredResource("server", "servers", "jobseek-crawler", "crawler-browser", True),
+    DesiredResource("server", "servers", "jobseek-crawler", "crawler-browser"),
     DesiredResource(
         "server",
         "servers",
         "jobseek-postings-postgresql",
         "postgresql",
-        True,
     ),
-    DesiredResource("server", "servers", "jobseek-typesense", "typesense", True),
-    DesiredResource("server", "servers", "murmur-server", "murmur", True),
+    DesiredResource("server", "servers", "jobseek-typesense", "typesense"),
+    DesiredResource("server", "servers", "murmur-server", "murmur"),
     DesiredResource("volume", "volumes", "jobseek-postings-postgresql", "postgresql"),
     DesiredResource("volume", "volumes", "murmur-volume", "murmur"),
     DesiredResource("network", "networks", "jobseek-network", "private-network"),
 )
+
+
+def _validate_request_target(method: str, path: str) -> None:
+    """Constrain transport use to the fixed read, label, and protection surface."""
+    parsed = urllib.parse.urlsplit(path)
+    if parsed.scheme or parsed.netloc or parsed.fragment:
+        raise FleetError("unsupported Hetzner lifecycle request")
+    parts = parsed.path.strip("/").split("/")
+    collections = {desired.collection for desired in DESIRED_RESOURCES}
+
+    if method == "GET" and len(parts) == 1 and parts[0] in collections:
+        try:
+            query = urllib.parse.parse_qs(parsed.query, strict_parsing=True)
+        except ValueError as exc:
+            raise FleetError("unsupported Hetzner lifecycle request") from exc
+        allowed_names = {
+            desired.name for desired in DESIRED_RESOURCES if desired.collection == parts[0]
+        }
+        if (
+            set(query) == {"name", "page", "per_page"}
+            and len(query["name"]) == 1
+            and query["name"][0] in allowed_names
+            and query["page"] == ["1"]
+            and query["per_page"] == ["50"]
+        ):
+            return
+
+    positive_id = len(parts) >= 2 and re.fullmatch(r"[1-9][0-9]*", parts[1]) is not None
+    no_query = not parsed.query
+    if (
+        method == "GET"
+        and no_query
+        and positive_id
+        and len(parts) == 2
+        and (parts[0] in collections or parts[0] == "actions")
+    ):
+        return
+    if method == "PUT" and no_query and positive_id and len(parts) == 2 and parts[0] in collections:
+        return
+    if (
+        method == "POST"
+        and no_query
+        and positive_id
+        and len(parts) == 4
+        and parts[0] in collections
+        and parts[2:] == ["actions", "change_protection"]
+    ):
+        return
+    raise FleetError("unsupported Hetzner lifecycle request")
+
+
+def _validate_request_body(method: str, path: str, body: dict[str, Any] | None) -> None:
+    """Reject payloads that could weaken protection or expand mutation scope."""
+    collection = urllib.parse.urlsplit(path).path.strip("/").split("/")[0]
+    if method == "GET":
+        if body is None:
+            return
+    elif method == "PUT":
+        if (
+            isinstance(body, dict)
+            and set(body) == {"labels"}
+            and isinstance(body["labels"], dict)
+            and all(
+                isinstance(key, str) and isinstance(value, str)
+                for key, value in body["labels"].items()
+            )
+        ):
+            return
+    elif method == "POST" and isinstance(body, dict):
+        expected = (
+            {"delete": True, "rebuild": True} if collection == "servers" else {"delete": True}
+        )
+        if body == expected:
+            return
+    raise FleetError("unsupported Hetzner lifecycle request body")
 
 
 class Transport(Protocol):
@@ -98,6 +188,10 @@ class HttpTransport:
             raise FleetError("HETZNER_API_KEY is missing or invalid")
         self._token = token
         self._context = _trusted_ssl_context()
+        self._opener = urllib.request.build_opener(
+            urllib.request.HTTPSHandler(context=self._context),
+            _RejectRedirects(),
+        )
 
     def request(
         self,
@@ -106,7 +200,14 @@ class HttpTransport:
         *,
         body: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        data = json.dumps(body, separators=(",", ":")).encode() if body is not None else None
+        _validate_request_target(method, path)
+        _validate_request_body(method, path, body)
+        try:
+            data = json.dumps(body, separators=(",", ":")).encode() if body is not None else None
+        except (TypeError, ValueError, UnicodeError) as exc:
+            raise FleetError("Hetzner request body is invalid") from exc
+        if data is not None and len(data) > MAX_API_BODY_BYTES:
+            raise FleetError("Hetzner request body exceeds the safety limit")
         request = urllib.request.Request(
             API_ROOT + path,
             data=data,
@@ -118,23 +219,26 @@ class HttpTransport:
             },
         )
         try:
-            with urllib.request.urlopen(
+            with self._opener.open(
                 request,
                 timeout=30,
-                context=self._context,
             ) as response:
-                payload = response.read()
+                payload = response.read(MAX_API_BODY_BYTES + 1)
         except urllib.error.HTTPError as exc:
+            status = exc.code
+            exc.close()
             raise FleetError(
-                f"Hetzner {method} {_redacted_api_path(path)} returned HTTP {exc.code}"
-            ) from exc
-        except (urllib.error.URLError, TimeoutError) as exc:
-            raise FleetError(f"Hetzner {method} {_redacted_api_path(path)} failed") from exc
+                f"Hetzner {method} {_redacted_api_path(path)} returned HTTP {status}"
+            ) from None
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+            raise FleetError(f"Hetzner {method} {_redacted_api_path(path)} failed") from None
+        if len(payload) > MAX_API_BODY_BYTES:
+            raise FleetError("Hetzner response exceeds the safety limit")
         if not payload:
             return {}
         try:
             parsed = json.loads(payload)
-        except json.JSONDecodeError as exc:
+        except ValueError as exc:
             raise FleetError("Hetzner returned invalid JSON") from exc
         if not isinstance(parsed, dict):
             raise FleetError("Hetzner returned an unexpected response")
@@ -147,8 +251,7 @@ def _trusted_ssl_context() -> ssl.SSLContext:
         context = ssl.create_default_context()
     except (OSError, ssl.SSLError) as exc:
         raise FleetError("the operating system TLS trust store is unavailable") from exc
-    paths = ssl.get_default_verify_paths()
-    if paths.cafile is not None or paths.capath is not None:
+    if context.get_ca_certs():
         return context
     for candidate in (Path("/etc/ssl/cert.pem"), Path("/etc/ssl/certs/ca-certificates.crt")):
         if candidate.is_file():
@@ -189,7 +292,7 @@ class ResourceState:
 
 
 def _inventory_path(desired: DesiredResource) -> str:
-    query = urllib.parse.urlencode({"name": desired.name, "per_page": 50})
+    query = urllib.parse.urlencode({"name": desired.name, "page": 1, "per_page": 50})
     return f"/{desired.collection}?{query}"
 
 
@@ -230,13 +333,50 @@ def discover(transport: Transport) -> list[ResourceState]:
         resources = payload.get(desired.collection)
         if not isinstance(resources, list):
             raise FleetError(f"{desired.kind} inventory is unavailable")
-        meta = payload.get("meta") or {}
+        meta = payload.get("meta")
         if not isinstance(meta, dict):
             raise FleetError(f"invalid {desired.kind} inventory for {desired.name}")
-        pagination = meta.get("pagination") or {}
+        pagination = meta.get("pagination")
         if not isinstance(pagination, dict):
             raise FleetError(f"invalid {desired.kind} inventory for {desired.name}")
-        if pagination.get("next_page") is not None:
+        required_pagination = {
+            "page",
+            "per_page",
+            "previous_page",
+            "next_page",
+            "last_page",
+            "total_entries",
+        }
+        if not required_pagination.issubset(pagination):
+            raise FleetError(f"ambiguous {desired.kind} inventory for {desired.name}")
+        page = pagination["page"]
+        per_page = pagination["per_page"]
+        last_page = pagination["last_page"]
+        total_entries = pagination["total_entries"]
+        if (
+            not isinstance(page, int)
+            or isinstance(page, bool)
+            or page != 1
+            or not isinstance(per_page, int)
+            or isinstance(per_page, bool)
+            or per_page != 50
+            or pagination["previous_page"] is not None
+            or pagination["next_page"] is not None
+            or (
+                last_page is not None
+                and (
+                    not isinstance(last_page, int) or isinstance(last_page, bool) or last_page != 1
+                )
+            )
+            or (
+                total_entries is not None
+                and (
+                    not isinstance(total_entries, int)
+                    or isinstance(total_entries, bool)
+                    or total_entries != len(resources)
+                )
+            )
+        ):
             raise FleetError(f"ambiguous {desired.kind} inventory for {desired.name}")
         if len(resources) != 1:
             raise FleetError(f"expected exactly one {desired.kind} named {desired.name}")
@@ -247,6 +387,32 @@ def discover(transport: Transport) -> list[ResourceState]:
         kind_ids.add(state.provider_id)
         states.append(state)
     return states
+
+
+def _reread_resource(transport: Transport, expected: ResourceState) -> ResourceState:
+    payload = transport.request("GET", _resource_path(expected))
+    resource = payload.get(expected.desired.kind)
+    current = _validate_resource(expected.desired, resource)
+    if current.provider_id != expected.provider_id:
+        raise FleetError(f"{expected.desired.kind} identity changed during apply")
+    return current
+
+
+def _validate_apply_states(states: list[ResourceState]) -> None:
+    if tuple(state.desired for state in states) != DESIRED_RESOURCES:
+        raise FleetError("apply requires the complete fixed Hetzner allowlist")
+    seen: set[tuple[str, int]] = set()
+    for state in states:
+        if (
+            not isinstance(state.provider_id, int)
+            or isinstance(state.provider_id, bool)
+            or state.provider_id <= 0
+        ):
+            raise FleetError("apply received invalid Hetzner resource identity")
+        identity = (state.desired.kind, state.provider_id)
+        if identity in seen:
+            raise FleetError("apply received duplicate Hetzner resource identity")
+        seen.add(identity)
 
 
 def _wait_action(
@@ -262,6 +428,8 @@ def _wait_action(
     if not isinstance(action_id, int) or isinstance(action_id, bool) or action_id <= 0:
         raise FleetError("Hetzner protection response omitted its action")
     status = action.get("status")
+    if status not in {"running", "success", "error"}:
+        raise FleetError("Hetzner protection response has an invalid status")
     if status == "success":
         return
     if status == "error":
@@ -270,7 +438,16 @@ def _wait_action(
         current = transport.request("GET", f"/actions/{action_id}").get("action")
         if not isinstance(current, dict):
             raise FleetError("Hetzner action status is unavailable")
+        current_id = current.get("id")
+        if (
+            not isinstance(current_id, int)
+            or isinstance(current_id, bool)
+            or current_id != action_id
+        ):
+            raise FleetError("Hetzner action identity changed while polling")
         status = current.get("status")
+        if status not in {"running", "success", "error"}:
+            raise FleetError("Hetzner action status is invalid")
         if status == "success":
             return
         if status == "error":
@@ -292,24 +469,66 @@ def apply(
     action_interval_seconds: float = DEFAULT_ACTION_INTERVAL_SECONDS,
 ) -> list[ResourceState]:
     """Apply only safe additive labels and protection, then re-read all state."""
-    if action_attempts <= 0 or action_interval_seconds < 0:
+    if (
+        not isinstance(action_attempts, int)
+        or isinstance(action_attempts, bool)
+        or not 1 <= action_attempts <= DEFAULT_ACTION_ATTEMPTS
+        or not isinstance(action_interval_seconds, (int, float))
+        or isinstance(action_interval_seconds, bool)
+        or not math.isfinite(action_interval_seconds)
+        or not 0 <= action_interval_seconds <= DEFAULT_ACTION_INTERVAL_SECONDS
+    ):
         raise FleetError("invalid action polling bounds")
+
+    _validate_apply_states(states)
+
+    # Protection is monotonic and safety-critical. Complete this phase before
+    # any label replacement so a label error cannot leave later resources
+    # unnecessarily exposed. Protection is deliberately never rolled back.
     for state in states:
+        current = _reread_resource(transport, state)
+        if current.protection_matches:
+            continue
         path = _resource_path(state)
-        if not state.labels_match:
-            transport.request("PUT", path, body={"labels": state.merged_labels})
-        if not state.protection_matches:
-            response = transport.request(
-                "POST",
-                path + "/actions/change_protection",
-                body=state.desired.protection,
-            )
-            _wait_action(
-                transport,
-                response.get("action"),
-                attempts=action_attempts,
-                interval_seconds=action_interval_seconds,
-            )
+        response = transport.request(
+            "POST",
+            path + "/actions/change_protection",
+            body=state.desired.protection,
+        )
+        _wait_action(
+            transport,
+            response.get("action"),
+            attempts=action_attempts,
+            interval_seconds=action_interval_seconds,
+        )
+        if not _reread_resource(transport, state).protection_matches:
+            raise FleetError("Hetzner lifecycle protection could not be verified")
+
+    # Hetzner label updates replace the entire map. Re-read each resource
+    # immediately before the write, confirm the map is stable, merge only the
+    # managed keys, and prove every observed label survived the replacement.
+    for state in states:
+        current = _reread_resource(transport, state)
+        if current.labels_match:
+            continue
+        confirmed = _reread_resource(transport, state)
+        if confirmed.current_labels != current.current_labels:
+            raise FleetError("Hetzner labels changed concurrently during apply")
+        expected_labels = confirmed.merged_labels
+        response = transport.request(
+            "PUT",
+            _resource_path(state),
+            body={"labels": expected_labels},
+        )
+        updated = _validate_resource(state.desired, response.get(state.desired.kind))
+        if updated.provider_id != state.provider_id or any(
+            updated.current_labels.get(key) != value for key, value in expected_labels.items()
+        ):
+            raise FleetError("Hetzner label update could not be verified")
+        reread = _reread_resource(transport, state)
+        if any(reread.current_labels.get(key) != value for key, value in expected_labels.items()):
+            raise FleetError("Hetzner label update could not be verified")
+
     verified = discover(transport)
     if not all(state.compliant for state in verified):
         raise FleetError("post-apply lifecycle verification failed")

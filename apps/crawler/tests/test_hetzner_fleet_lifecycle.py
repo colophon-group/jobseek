@@ -56,7 +56,10 @@ class FakeTransport:
             )
         self.calls: list[tuple[str, str, dict[str, Any] | None]] = []
         self.action_status = "success"
+        self.action_identity_matches = True
         self.mutate = True
+        self.detail_reads: dict[int, int] = {}
+        self.mutate_label_after_detail_read: tuple[int, int] | None = None
 
     def request(
         self,
@@ -70,7 +73,13 @@ class FakeTransport:
         parts = parsed.path.strip("/").split("/")
         collection = parts[0]
         if method == "GET" and collection == "actions":
-            return {"action": {"id": int(parts[1]), "status": self.action_status}}
+            action_id = int(parts[1])
+            return {
+                "action": {
+                    "id": action_id if self.action_identity_matches else action_id + 1,
+                    "status": self.action_status,
+                }
+            }
         if method == "GET" and len(parts) == 1:
             name = urllib.parse.parse_qs(parsed.query).get("name", [""])[0]
             matches = [
@@ -78,10 +87,26 @@ class FakeTransport:
             ]
             return {
                 collection: matches,
-                "meta": {"pagination": {"next_page": None}},
+                "meta": {
+                    "pagination": {
+                        "page": 1,
+                        "per_page": 50,
+                        "previous_page": None,
+                        "next_page": None,
+                        "last_page": 1,
+                        "total_entries": len(matches),
+                    }
+                },
             }
         provider_id = int(parts[1])
         resource = next(item for item in self.resources[collection] if item["id"] == provider_id)
+        if method == "GET" and len(parts) == 2:
+            result = copy.deepcopy(resource)
+            read_count = self.detail_reads.get(provider_id, 0) + 1
+            self.detail_reads[provider_id] = read_count
+            if self.mutate_label_after_detail_read == (provider_id, read_count):
+                resource["labels"]["concurrent"] = "must-survive"
+            return {collection[:-1]: result}
         if method == "PUT" and len(parts) == 2:
             assert body is not None
             if self.mutate:
@@ -128,6 +153,8 @@ def test_apply_uses_exact_endpoints_payloads_and_preserves_unmanaged_labels() ->
     assert all(state.compliant for state in verified)
     mutations = _mutations(transport)
     assert len(mutations) == 14
+    assert [method for method, _path, _body in mutations[:7]] == ["POST"] * 7
+    assert [method for method, _path, _body in mutations[7:]] == ["PUT"] * 7
     for offset, desired in enumerate(fleet.DESIRED_RESOURCES, start=1):
         provider_id = 900_000 + offset
         assert (
@@ -226,16 +253,235 @@ def test_action_polling_is_bounded() -> None:
 
 
 def test_post_apply_reread_must_prove_every_field() -> None:
-    transport = FakeTransport()
+    transport = FakeTransport(compliant=True)
+    transport.resources["servers"][0]["labels"]["owner"] = "wrong-owner"
     transport.mutate = False
 
-    with pytest.raises(fleet.FleetError, match="post-apply lifecycle verification failed"):
+    with pytest.raises(fleet.FleetError, match="label update could not be verified"):
         fleet.apply(
             transport,
             fleet.discover(transport),
             action_attempts=2,
             action_interval_seconds=0,
         )
+
+
+def test_apply_rereads_before_merging_labels() -> None:
+    transport = FakeTransport()
+    initial = fleet.discover(transport)
+    first = transport.resources["servers"][0]
+    first["labels"]["added-after-preflight"] = "must-survive"
+
+    fleet.apply(
+        transport,
+        initial,
+        action_attempts=2,
+        action_interval_seconds=0,
+    )
+
+    assert first["labels"]["added-after-preflight"] == "must-survive"
+
+
+def test_apply_stops_when_labels_change_between_confirmation_reads() -> None:
+    transport = FakeTransport(compliant=True)
+    first = transport.resources["servers"][0]
+    first["labels"]["owner"] = "wrong-owner"
+    transport.mutate_label_after_detail_read = (first["id"], 2)
+
+    with pytest.raises(fleet.FleetError, match="labels changed concurrently"):
+        fleet.apply(
+            transport,
+            fleet.discover(transport),
+            action_attempts=2,
+            action_interval_seconds=0,
+        )
+
+    assert _mutations(transport) == []
+    assert first["labels"]["concurrent"] == "must-survive"
+
+
+def test_apply_stops_if_a_preflight_identity_is_replaced() -> None:
+    transport = FakeTransport()
+    initial = fleet.discover(transport)
+    first = transport.resources["servers"][0]
+    replacement = copy.deepcopy(first)
+    first["name"] = "renamed-concurrently"
+    replacement["id"] += 50_000
+    transport.resources["servers"].append(replacement)
+
+    with pytest.raises(fleet.FleetError, match="invalid server inventory"):
+        fleet.apply(
+            transport,
+            initial,
+            action_attempts=2,
+            action_interval_seconds=0,
+        )
+
+    assert _mutations(transport) == []
+
+
+def test_apply_requires_the_complete_fixed_allowlist() -> None:
+    transport = FakeTransport()
+
+    with pytest.raises(fleet.FleetError, match="complete fixed Hetzner allowlist"):
+        fleet.apply(
+            transport,
+            fleet.discover(transport)[:-1],
+            action_attempts=2,
+            action_interval_seconds=0,
+        )
+
+    assert _mutations(transport) == []
+
+
+def test_inventory_requires_complete_single_page_metadata() -> None:
+    transport = FakeTransport()
+    original_request = transport.request
+
+    def missing_pagination(
+        method: str,
+        path: str,
+        *,
+        body: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        result = original_request(method, path, body=body)
+        if method == "GET" and path.startswith("/servers?"):
+            result["meta"] = {}
+        return result
+
+    transport.request = missing_pagination  # type: ignore[method-assign]
+
+    with pytest.raises(fleet.FleetError, match="invalid server inventory"):
+        fleet.discover(transport)
+
+    assert _mutations(transport) == []
+
+
+def test_action_polling_rejects_a_different_action_identity() -> None:
+    transport = FakeTransport(compliant=True)
+    transport.resources["servers"][0]["protection"]["delete"] = False
+    transport.action_identity_matches = False
+
+    with pytest.raises(fleet.FleetError, match="action identity changed"):
+        fleet.apply(
+            transport,
+            fleet.discover(transport),
+            action_attempts=2,
+            action_interval_seconds=0,
+        )
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("DELETE", "/servers/900001"),
+        ("POST", "/servers/900001/actions/reboot"),
+        ("GET", "//attacker.example/servers"),
+        ("GET", "/servers?name=unmanaged&page=1&per_page=50"),
+        ("GET", "/servers?name=jobseek-crawler&per_page=50"),
+    ],
+)
+def test_transport_rejects_every_endpoint_outside_the_fixed_surface(method: str, path: str) -> None:
+    with pytest.raises(fleet.FleetError, match="unsupported Hetzner lifecycle request"):
+        fleet._validate_request_target(method, path)
+
+
+@pytest.mark.parametrize(
+    ("method", "path", "body"),
+    [
+        ("GET", "/servers/900001", {"unexpected": True}),
+        (
+            "POST",
+            "/servers/900001/actions/change_protection",
+            {"delete": False, "rebuild": True},
+        ),
+        (
+            "POST",
+            "/volumes/900005/actions/change_protection",
+            {"delete": True, "rebuild": True},
+        ),
+        ("PUT", "/servers/900001", {"name": "renamed"}),
+    ],
+)
+def test_transport_rejects_bodies_outside_additive_labels_and_protection(
+    method: str,
+    path: str,
+    body: dict[str, Any],
+) -> None:
+    with pytest.raises(fleet.FleetError, match="unsupported Hetzner lifecycle request body"):
+        fleet._validate_request_body(method, path, body)
+
+
+def test_transport_response_read_is_size_bounded() -> None:
+    class OversizedResponse:
+        def __enter__(self) -> OversizedResponse:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self, amount: int) -> bytes:
+            assert amount == fleet.MAX_API_BODY_BYTES + 1
+            return b"x" * amount
+
+    class FakeOpener:
+        def open(self, _request: object, *, timeout: int) -> OversizedResponse:
+            assert timeout == 30
+            return OversizedResponse()
+
+    transport = object.__new__(fleet.HttpTransport)
+    transport._token = "not-a-real-token"
+    transport._opener = FakeOpener()
+
+    with pytest.raises(fleet.FleetError, match="response exceeds the safety limit"):
+        transport.request("GET", fleet._inventory_path(fleet.DESIRED_RESOURCES[0]))
+
+
+def test_transport_never_follows_redirects() -> None:
+    handler = fleet._RejectRedirects()
+    request = fleet.urllib.request.Request("https://api.hetzner.cloud/v1/servers")
+
+    assert (
+        handler.redirect_request(request, None, 302, "redirect", {}, "https://example.com") is None
+    )
+
+
+@pytest.mark.parametrize(
+    ("attempts", "interval"),
+    [
+        (0, 0),
+        (fleet.DEFAULT_ACTION_ATTEMPTS + 1, 0),
+        (True, 0),
+        (1, -1),
+        (1, float("nan")),
+        (1, fleet.DEFAULT_ACTION_INTERVAL_SECONDS + 0.1),
+    ],
+)
+def test_apply_rejects_unbounded_polling(attempts: object, interval: object) -> None:
+    transport = FakeTransport(compliant=True)
+
+    with pytest.raises(fleet.FleetError, match="invalid action polling bounds"):
+        fleet.apply(
+            transport,
+            fleet.discover(transport),
+            action_attempts=attempts,
+            action_interval_seconds=interval,
+        )
+
+    assert _mutations(transport) == []
+
+
+def test_fixed_allowlist_never_weakens_protection() -> None:
+    assert [(desired.kind, desired.name, desired.role) for desired in fleet.DESIRED_RESOURCES] == [
+        ("server", "jobseek-crawler", "crawler-browser"),
+        ("server", "jobseek-postings-postgresql", "postgresql"),
+        ("server", "jobseek-typesense", "typesense"),
+        ("server", "murmur-server", "murmur"),
+        ("volume", "jobseek-postings-postgresql", "postgresql"),
+        ("volume", "murmur-volume", "murmur"),
+        ("network", "jobseek-network", "private-network"),
+    ]
+    assert all(all(desired.protection.values()) for desired in fleet.DESIRED_RESOURCES)
 
 
 def test_summary_never_exposes_provider_ids_addresses_tokens_or_unmanaged_labels() -> None:

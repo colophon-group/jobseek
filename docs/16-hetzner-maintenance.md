@@ -48,8 +48,12 @@ found drift, and `1` means inventory or API state could not be proved. Output
 is intentionally limited to allowlisted names, booleans, and planned action
 types; it omits provider IDs, addresses, tokens, unrelated label values, and
 API response bodies. Missing resources, duplicate matches, malformed
-protection state, pagination ambiguity, or a non-unique inventory stops the
-whole run before the first mutation.
+protection state, missing or inconsistent single-page metadata, or a
+non-unique inventory stops the whole run before the first mutation. The HTTP
+transport rejects redirects, response or request bodies above 1 MiB, and every
+endpoint outside exact-name reads, exact-ID reads, label updates, protection
+actions, and bounded action-status polling. It cannot issue delete, rebuild,
+reboot, resize, power, snapshot, backup, or network-topology requests.
 
 After reviewing the complete dry-run, enable protection and merge the managed
 labels with the explicit apply flag:
@@ -58,14 +62,24 @@ labels with the explicit apply flag:
 python3 scripts/manage-hetzner-fleet.py --apply
 ```
 
-Apply polls each provider protection action at most 60 times with one-second
-spacing; each HTTPS request also has a 30-second timeout. It stops on the first
-failed, timed-out, or unprovable action. It then resolves all seven resources
-again by exact name and returns success only when every label and protection
-field matches. A partially completed run is safe to repeat: the tool sends
-only still-needed label/protection operations and never weakens protection.
-Retain the successful redacted JSON as rollout evidence. This repository
-change does not itself apply the baseline to production.
+Apply enables and verifies all required deletion/rebuild protections before
+it starts label updates. It polls each provider protection action at most 60
+times with one-second spacing; each HTTPS request also has a 30-second timeout.
+It stops on the first failed, timed-out, mismatched, or unprovable action and
+never rolls back a successfully enabled protection.
+
+Hetzner label writes replace the entire label map; the provider has no
+conditional label-update operation. Before each write, the tool therefore
+reads the exact provider ID twice, rejects a replaced identity or observed
+concurrent label change, merges the managed keys into that stable map, and
+proves that every observed label survived both the response and an immediate
+re-read. Operators must still serialize `--apply` with other Hetzner label
+writers. After all mutations, the tool resolves all seven names again and
+returns success only when every managed label and protection field matches. A
+partially completed run is safe to repeat: it sends only still-needed changes
+and never weakens protection. Retain the successful redacted JSON as rollout
+evidence. This repository change does not itself apply the baseline to
+production.
 
 Protection rollback is deliberately outside this tool. Do not disable delete
 or rebuild protection to troubleshoot an application incident. If an approved
