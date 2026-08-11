@@ -333,6 +333,7 @@ american-college-of-obstetricians-and-gynecologists,american-college-of-obstetri
 american-express,american-express-eightfold,https://aexp.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,
 american-housing,american-housing-ashby,https://jobs.ashbyhq.com/american-housing,ashby,"{""token"": ""american-housing""}",skip,
 american-institute,american-institute-greenhouse,https://job-boards.greenhouse.io/americaninstitute,greenhouse,"{""token"": ""americaninstitute""}",skip,
+american-logistics-authority,american-logistics-authority-careers,https://american-logistics-authority.breezy.hr/,breezy,,json-ld,"{""fallback"": {""type"": ""dom"", ""config"": {""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""li"", ""attr"": ""class=location"", ""field"": ""locations"", ""regex"": ""([A-Za-z .-]+,\\s*[A-Z]{2})""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""%BUTTON_APPLY_TO_POSITION%"", ""html"": true}]}}}"
 ametek,ametek-careers,https://jobs.ametek.com/,rss,"{""preset"": ""successfactors""}",skip,
 ami,ami-ashby,https://jobs.ashbyhq.com/ami,ashby,"{""token"": ""ami""}",skip,
 amo,amo-ashby,https://jobs.ashbyhq.com/amo,ashby,"{""token"": ""amo""}",skip,
