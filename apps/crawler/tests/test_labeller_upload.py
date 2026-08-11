@@ -144,6 +144,53 @@ def test_only_rejected_postings_are_treated_as_zero_records(
         push_to_hub(run_date="2026-04-25", dry_run=False)
 
 
+# --- malformed-input preflight ------------------------------------------
+
+
+def test_malformed_sibling_refuses_before_staging_or_upload(
+    data_root: Path,
+    stub_hf: dict,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One unreadable sibling must not publish a reduced date partition."""
+    _write_posting(data_root, "2026-04-25", "accepted", verdict="accepted")
+    malformed = data_root / "postings" / "2026-04-25" / "broken.json"
+    secret_content = '"private-content-that-must-not-be-logged"'
+    malformed.write_text("{" + secret_content)
+
+    def _fail_if_staging_starts(*args, **kwargs):
+        raise AssertionError("upload staging must not start for malformed input")
+
+    monkeypatch.setattr(
+        "src.labeller.upload.tempfile.TemporaryDirectory",
+        _fail_if_staging_starts,
+    )
+
+    with pytest.raises(UploadGuardError) as exc_info:
+        push_to_hub(run_date="2026-04-25", dry_run=False)
+
+    message = str(exc_info.value)
+    assert "broken.json" in message
+    assert secret_content not in message
+    assert stub_hf["upload_folder"] == []
+
+
+def test_scoped_upload_does_not_parse_other_dates(
+    data_root: Path,
+    stub_hf: dict,
+) -> None:
+    """The malformed-input guard remains limited to the requested date."""
+    _write_posting(data_root, "2026-04-25", "accepted", verdict="accepted")
+    malformed = data_root / "postings" / "2026-04-24" / "broken.json"
+    malformed.parent.mkdir(parents=True, exist_ok=True)
+    malformed.write_text("{")
+
+    push_to_hub(run_date="2026-04-25", dry_run=False)
+
+    assert len(stub_hf["upload_folder"]) == 1
+    assert stub_hf["upload_folder"][0]["allow_patterns"][0] == "data/2026-04-25.jsonl"
+
+
 # --- scoped run skips --confirm requirement ------------------------------
 
 

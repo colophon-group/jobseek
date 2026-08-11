@@ -275,6 +275,23 @@ def _load_optout() -> set[str]:
     return slugs
 
 
+def _load_posting_json(path: Path) -> dict:
+    """Load one posting record, failing closed without echoing its content."""
+    try:
+        raw = path.read_text()
+    except (OSError, UnicodeError):
+        raise UploadGuardError(f"could not read posting JSON file {path.name!r}") from None
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        raise UploadGuardError(f"malformed posting JSON file {path.name!r}") from None
+
+    if not isinstance(data, dict):
+        raise UploadGuardError(f"malformed posting JSON file {path.name!r}: expected a JSON object")
+    return data
+
+
 def _accepted_by_date(run_date: str | None) -> dict[str, list[dict]]:
     base = data_root() / "postings"
     out: dict[str, list[dict]] = {}
@@ -289,10 +306,7 @@ def _accepted_by_date(run_date: str | None) -> dict[str, list[dict]]:
             continue
         accepted: list[dict] = []
         for path in sorted(date_dir.glob("*.json")):
-            try:
-                data = json.loads(path.read_text())
-            except json.JSONDecodeError:
-                continue
+            data = _load_posting_json(path)
             if (data.get("labelling_meta") or {}).get("qa_verdict") != "accepted":
                 continue
             slug = (data.get("source") or {}).get("company_slug")
@@ -316,10 +330,7 @@ def _all_local_counts() -> dict[str, int]:
             continue
         n = 0
         for path in sorted(date_dir.glob("*.json")):
-            try:
-                data = json.loads(path.read_text())
-            except json.JSONDecodeError:
-                continue
+            data = _load_posting_json(path)
             if (data.get("labelling_meta") or {}).get("qa_verdict") != "accepted":
                 continue
             slug = (data.get("source") or {}).get("company_slug")
