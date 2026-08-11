@@ -1538,7 +1538,7 @@ doctolib,doctolib-greenhouse,https://job-boards.greenhouse.io/doctolib,greenhous
 doctrin,doctrin-main,https://career.doctrin.se/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.doctrin.se/jobs.rss""}",skip,
 doit,doit-greenhouse,https://job-boards.greenhouse.io/doitintl,greenhouse,"{""token"": ""doitintl""}",skip,
 dollar-tree,dollar-tree-canada,https://dollartree.wd5.myworkdayjobs.com/dollartreeca,workday,"{""company"": ""dollartree"", ""wd_instance"": ""wd5"", ""site"": ""dollartreeca"", ""all_sites"": false}",workday,
-dollar-tree,dollar-tree-careers,https://dollartree.wd5.myworkdayjobs.com/dollartreeus,workday,"{""company"": ""dollartree"", ""wd_instance"": ""wd5"", ""site"": ""dollartreeus"", ""all_sites"": false}",workday,
+dollar-tree,dollar-tree-us-careers,https://dollartree.wd5.myworkdayjobs.com/dollartreeus,workday,"{""company"": ""dollartree"", ""wd_instance"": ""wd5"", ""site"": ""dollartreeus"", ""all_sites"": false, ""search_text"": ""Dollar Tree""}",workday,
 dome-construction-corporation,dome-construction-corporation-greenhouse,https://job-boards.greenhouse.io/domeconstruction,greenhouse,"{""token"": ""domeconstruction""}",skip,
 domestika,domestika-careers,https://jobs.ashbyhq.com/domestika.org,ashby,"{""token"": ""domestika.org""}",skip,
 domino-data-lab,domino-data-lab-greenhouse,https://job-boards.greenhouse.io/dominodatalab,greenhouse,"{""token"": ""dominodatalab""}",skip,

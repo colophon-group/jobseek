@@ -20,6 +20,10 @@ Workday tenants expose all their job board sites in ``robots.txt`` as
 ``Sitemap:`` entries.  By default the monitor discovers **all** sites for
 the tenant and aggregates jobs from every site in a single run.  To monitor
 only the configured site, set ``"all_sites": false`` in board metadata.
+
+Some tenants combine jobs for distinct brands in one site. Set
+``"search_text": "Brand Name"`` together with ``"all_sites": false`` to
+preserve that Workday search in every direct or faceted pagination request.
 """
 
 from __future__ import annotations
@@ -107,6 +111,18 @@ def _api_list_url(company: str, wd_instance: str, site: str) -> str:
 
 def _job_url(company: str, wd_instance: str, site: str, external_path: str) -> str:
     return f"https://{company}.{wd_instance}.myworkdayjobs.com/{site}{external_path}"
+
+
+def _configured_search_text(metadata: dict, *, all_sites: bool) -> str | None:
+    """Return a validated single-site Workday search constraint."""
+    search_text = metadata.get("search_text")
+    if search_text is None:
+        return None
+    if not isinstance(search_text, str) or not search_text.strip():
+        raise ValueError("Workday search_text must be a non-empty string")
+    if all_sites:
+        raise ValueError("Workday search_text requires all_sites=false")
+    return search_text
 
 
 # ── List pagination ──────────────────────────────────────────────────
@@ -319,6 +335,7 @@ async def _direct_pagination_stream(
     company: str,
     site: str,
     client: httpx.AsyncClient,
+    base_body: dict | None = None,
 ):
     """Yield an unfaceted query page by page and verify complete coverage."""
     expected = min(advertised_total, MAX_JOBS)
@@ -326,7 +343,7 @@ async def _direct_pagination_stream(
     seen: set[str] = set()
 
     while offset < expected:
-        payload = {"limit": PAGE_SIZE, "offset": offset}
+        payload = {**(base_body or {}), "limit": PAGE_SIZE, "offset": offset}
         data = await _post_page_with_retry(client, list_url, payload)
         postings = data.get("jobPostings", [])
         if not postings:
@@ -362,6 +379,7 @@ async def _api_list(
     client: httpx.AsyncClient,
     *,
     query_sem: asyncio.Semaphore | None = None,
+    search_text: str | None = None,
 ) -> tuple[list[str], bool]:
     """Collect all externalPaths, splitting by facet if the 2000 cap is hit.
 
@@ -379,6 +397,7 @@ async def _api_list(
         site,
         client,
         query_sem=query_sem,
+        search_text=search_text,
     ):
         for p in batch:
             if p == _TRUNCATED_PATH:
@@ -395,16 +414,18 @@ async def _api_list_stream(
     client: httpx.AsyncClient,
     *,
     query_sem: asyncio.Semaphore | None = None,
+    search_text: str | None = None,
 ):
     """Yield batches of externalPaths, splitting by facet if the 2000 cap is hit."""
     list_url = _api_list_url(company, wd_instance, site)
     query_sem = query_sem or asyncio.Semaphore(_QUERY_CONCURRENCY)
+    base_body = {"searchText": search_text} if search_text else {}
 
     # First, try unfaceted query (abort early if over cap — we only need facets)
     async with query_sem:
         paths, total, facets = await _paginate_query(
             list_url,
-            {},
+            base_body,
             client,
             cap_abort=_API_RESULT_CAP,
         )
@@ -443,6 +464,7 @@ async def _api_list_stream(
                 company,
                 site,
                 client,
+                base_body=base_body,
             ):
                 yield direct_batch
         return
@@ -459,7 +481,10 @@ async def _api_list_stream(
     )
 
     async def _paginate_facet_group(facet_group: list[str]) -> list[str]:
-        body = {"appliedFacets": {facet_param: facet_group}}
+        body = {
+            **base_body,
+            "appliedFacets": {facet_param: facet_group},
+        }
         async with query_sem:
             sub_paths, _, _ = await _paginate_query(list_url, body, client)
         return sub_paths
@@ -636,6 +661,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
         company, wd_instance, site = parsed
 
     all_sites = metadata.get("all_sites", True)
+    search_text = _configured_search_text(metadata, all_sites=all_sites)
     truncated = False
 
     if all_sites:
@@ -653,7 +679,13 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             postings=len(site_paths),
         )
     else:
-        paths, truncated = await _api_list(company, wd_instance, site, client)
+        paths, truncated = await _api_list(
+            company,
+            wd_instance,
+            site,
+            client,
+            search_text=search_text,
+        )
         site_paths = [(site, p) for p in paths]
         log.info("workday.listed", company=company, site=site, postings=len(site_paths))
 
@@ -692,6 +724,7 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
         company, wd_instance, site = parsed
 
     all_sites = metadata.get("all_sites", True)
+    search_text = _configured_search_text(metadata, all_sites=all_sites)
     truncated = False
 
     if all_sites:
@@ -717,7 +750,13 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
         log.info("workday.stream_done", company=company, total=total_urls)
     else:
         total_urls = 0
-        async for batch in _api_list_stream(company, wd_instance, site, client):
+        async for batch in _api_list_stream(
+            company,
+            wd_instance,
+            site,
+            client,
+            search_text=search_text,
+        ):
             clean_paths = [p for p in batch if p != _TRUNCATED_PATH]
             if any(p == _TRUNCATED_PATH for p in batch):
                 truncated = True

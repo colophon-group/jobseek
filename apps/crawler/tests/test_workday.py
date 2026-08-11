@@ -395,6 +395,7 @@ class TestInventoryCompleteness:
 
         def handler(request):
             payload = json.loads(request.read())
+            assert payload["searchText"] == "Dollar Tree"
             offset = payload["offset"]
             offsets.append(offset)
             paths = [f"/job/{i}" for i in range(offset, min(offset + PAGE_SIZE, 45))]
@@ -404,7 +405,16 @@ class TestInventoryCompleteness:
             )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            batches = [batch async for batch in _api_list_stream("co", "wd1", "Site", client)]
+            batches = [
+                batch
+                async for batch in _api_list_stream(
+                    "co",
+                    "wd1",
+                    "Site",
+                    client,
+                    search_text="Dollar Tree",
+                )
+            ]
 
         assert [path for batch in batches for path in batch] == [f"/job/{i}" for i in range(45)]
         assert offsets == [0, 0, 20, 40]
@@ -604,6 +614,90 @@ class TestDiscover:
             }
             urls = await discover(board, client)
             assert len(urls) == 0
+
+    async def test_search_text_is_preserved_across_facet_queries(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module, "_API_RESULT_CAP", 2)
+        request_bodies: list[dict] = []
+
+        def handler(request):
+            payload = json.loads(request.read())
+            request_bodies.append(payload)
+            assert payload["searchText"] == "Dollar Tree"
+            if "appliedFacets" not in payload:
+                return httpx.Response(
+                    200,
+                    json={
+                        "total": 2,
+                        "jobPostings": [{"externalPath": "/first"}],
+                        "facets": [
+                            {
+                                "facetParameter": "category",
+                                "values": [
+                                    {"id": "stores", "count": 1},
+                                    {"id": "corporate", "count": 1},
+                                ],
+                            }
+                        ],
+                    },
+                )
+
+            category = payload["appliedFacets"]["category"][0]
+            return httpx.Response(
+                200,
+                json={
+                    "total": 1,
+                    "jobPostings": [{"externalPath": f"/{category}"}],
+                    "facets": [],
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://co.wd1.myworkdayjobs.com/Site",
+                "metadata": {
+                    "company": "co",
+                    "wd_instance": "wd1",
+                    "site": "Site",
+                    "all_sites": False,
+                    "search_text": "Dollar Tree",
+                },
+            }
+            urls = await discover(board, client)
+
+        assert len(urls) == 2
+        assert len(request_bodies) == 3
+
+    async def test_search_text_requires_single_site(self):
+        async with httpx.AsyncClient() as client:
+            board = {
+                "board_url": "https://co.wd1.myworkdayjobs.com/Site",
+                "metadata": {
+                    "company": "co",
+                    "wd_instance": "wd1",
+                    "site": "Site",
+                    "search_text": "Dollar Tree",
+                },
+            }
+            with pytest.raises(ValueError, match="requires all_sites=false"):
+                await discover(board, client)
+
+    @pytest.mark.parametrize("search_text", ["", "   ", 42])
+    async def test_search_text_must_be_a_non_empty_string(self, search_text):
+        async with httpx.AsyncClient() as client:
+            board = {
+                "board_url": "https://co.wd1.myworkdayjobs.com/Site",
+                "metadata": {
+                    "company": "co",
+                    "wd_instance": "wd1",
+                    "site": "Site",
+                    "all_sites": False,
+                    "search_text": search_text,
+                },
+            }
+            with pytest.raises(ValueError, match="must be a non-empty string"):
+                await discover(board, client)
 
 
 class TestCanHandle:
