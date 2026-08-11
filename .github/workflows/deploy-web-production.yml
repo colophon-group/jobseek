@@ -117,12 +117,12 @@ jobs:
             /en/sign-in; do
             status="$(pnpm dlx vercel@55.0.0 curl "$path" \
               --deployment="$DEPLOYMENT_URL" \
-              -- --silent --show-error --output=/dev/null --write-out='%{http_code}')"
+              -- --silent --show-error --output /dev/null --write-out '%{http_code}')"
             [[ "$status" == "200" ]]
           done
           scanner_status="$(pnpm dlx vercel@55.0.0 curl /wp-admin/setup-config.php \
             --deployment="$DEPLOYMENT_URL" \
-            -- --silent --show-error --output=/dev/null --write-out='%{http_code}')"
+            -- --silent --show-error --output /dev/null --write-out '%{http_code}')"
           [[ "$scanner_status" == "404" ]]
 
       - name: Promote only if this SHA is still main

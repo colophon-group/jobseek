@@ -60,6 +60,12 @@ test("production workflow stages, verifies, then promotes exact main", () => {
   for (const line of curlLines) {
     assert.doesNotMatch(line, /--token/);
   }
+  assert.equal(
+    [...workflow.matchAll(/--output \/dev\/null --write-out '%\{http_code\}'/g)]
+      .length,
+    2,
+  );
+  assert.doesNotMatch(workflow, /--(?:output|write-out)=/);
   assert.doesNotMatch(workflow, /--cwd=apps\/web/);
   assert.doesNotMatch(workflow, /--git-branch/);
   assert.match(workflow, /environment: Production/);
