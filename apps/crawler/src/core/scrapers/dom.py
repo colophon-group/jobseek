@@ -296,6 +296,7 @@ def parse_html(html: str, config: dict) -> JobContent:
         return JobContent()
     elements = flatten(_scope_html(html, config))
     raw, _ = walk_steps(elements, steps)
+    raw = _apply_defaults(raw, config)
     return _map_to_job_content(raw)
 
 
@@ -347,6 +348,21 @@ def _map_to_job_content(raw: dict[str, str | list[str] | None]) -> JobContent:
         kwargs["extras"] = extras
 
     return JobContent(**kwargs)
+
+
+def _apply_defaults(raw: dict, config: dict) -> dict:
+    """Fill fields that extraction did not produce from board-scoped defaults."""
+    defaults = config.get("defaults")
+    if defaults is None:
+        return raw
+    if not isinstance(defaults, dict):
+        raise ValueError("DOM scraper defaults must be an object")
+
+    merged = dict(raw)
+    for field, value in defaults.items():
+        if merged.get(field) in (None, "", []):
+            merged[field] = value
+    return merged
 
 
 async def scrape(
@@ -438,6 +454,7 @@ async def scrape(
 
     start = _fragment_start(url, elements)
     raw, _ = walk_steps(elements, steps, start=start)
+    raw = _apply_defaults(raw, config)
     content = _map_to_job_content(raw)
 
     log.debug("dom.extracted", url=url, fields=[k for k, v in raw.items() if v is not None])
