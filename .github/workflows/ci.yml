@@ -574,6 +574,7 @@ jobs:
           uv run pytest
           tests/e2e/test_postgres_cdc_commit_order.py
           tests/e2e/test_foreign_relisting.py
+          tests/e2e/test_board_quarantine_backoff.py
           tests/e2e/test_labeller_sampling_plan.py
           tests/e2e/test_location_taxonomy_repair.py
           -v

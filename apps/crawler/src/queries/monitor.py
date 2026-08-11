@@ -258,42 +258,49 @@ SELECT board_status, should_delist, recovered_from FROM updated
 # after strike five.  The board remains enabled and the same exponential
 # schedule reaches a daily ceiling, so a code/config/provider fix can recover
 # without SQL while Redis domain throttles continue to bound pressure.
+# Keep both the exponent and the interval input numeric: comparing minute
+# strings makes LEAST lexical and can select an interval too large to persist.
 _RECORD_FAILURE = """
 WITH previous AS MATERIALIZED (
-    SELECT id, board_status, consecutive_failures
+    SELECT
+        id,
+        board_status,
+        consecutive_failures,
+        LEAST(consecutive_failures::bigint + 1, 2147483647)::integer
+            AS next_failure_count
     FROM job_board
     WHERE id = $1
     FOR UPDATE
 ), updated AS (
     UPDATE job_board jb
-    SET consecutive_failures = jb.consecutive_failures + 1,
+    SET consecutive_failures = previous.next_failure_count,
         last_error = $2,
         next_check_at = now() + LEAST(
-            (5 * pow(2, jb.consecutive_failures)) || ' minutes',
-            '1440 minutes'
-        )::interval,
+            5 * pow(2, LEAST(jb.consecutive_failures, 9)),
+            1440
+        ) * interval '1 minute',
         is_enabled = true,
         board_status = CASE
-            WHEN jb.consecutive_failures + 1 >= 5 THEN 'quarantined'
+            WHEN previous.next_failure_count >= 5 THEN 'quarantined'
             ELSE jb.board_status
         END,
         quarantined_at = CASE
-            WHEN jb.consecutive_failures + 1 >= 5
+            WHEN previous.next_failure_count >= 5
             THEN COALESCE(jb.quarantined_at, now())
             ELSE jb.quarantined_at
         END,
         last_quarantined_at = CASE
-            WHEN jb.consecutive_failures + 1 >= 5
+            WHEN previous.next_failure_count >= 5
              AND previous.board_status IS DISTINCT FROM 'quarantined'
             THEN now()
             ELSE jb.last_quarantined_at
         END,
         last_quarantine_error = CASE
-            WHEN jb.consecutive_failures + 1 >= 5 THEN $2
+            WHEN previous.next_failure_count >= 5 THEN $2
             ELSE jb.last_quarantine_error
         END,
         quarantine_probe_count = CASE
-            WHEN jb.consecutive_failures + 1 >= 5
+            WHEN previous.next_failure_count >= 5
             THEN CASE
                 WHEN previous.board_status = 'quarantined' THEN jb.quarantine_probe_count + 1
                 ELSE 1
