@@ -16,12 +16,14 @@ import os
 import time
 import uuid
 import warnings
+from unittest.mock import AsyncMock
 
 import pytest
 import typesense
 from typesense.exceptions import ObjectNotFound
 
 from src.reconciliation import TypesenseReconciliationClient
+from src.sync import refresh_typesense_counts
 from src.typesense_schema import COLLECTIONS
 
 # ---------------------------------------------------------------------------
@@ -688,6 +690,96 @@ class TestSchemas:
 class TestDataIntegrity:
     """Verify seeded documents have correct sentinel values, denormalized
     names, timestamps, and structural invariants."""
+
+    async def test_count_refresh_persists_zero_transitions(
+        self,
+        ts_client: typesense.Client,
+        alias_map: dict,
+    ):
+        """Exercise the real Typesense import and read refreshed docs back."""
+        location_id = 2_000_000_001
+        occupation_id = 2_000_000_002
+        seniority_id = 2_000_000_003
+        technology_id = 2_000_000_004
+        company_id = f"{_PREFIX}_zero_company"
+        documents = {
+            "location": {
+                "id": str(location_id),
+                "location_id": location_id,
+                "slug": f"{_PREFIX}-zero-location",
+                "name_en": "Zero Location",
+                "type": "city",
+                "has_active_postings": True,
+                "active_posting_count": 17,
+            },
+            "occupation": {
+                "id": f"{occupation_id}-en",
+                "occupation_id": occupation_id,
+                "slug": f"{_PREFIX}-zero-occupation",
+                "name": "Zero Occupation",
+                "aliases": [],
+                "locale": "en",
+                "has_active_postings": True,
+                "active_posting_count": 17,
+            },
+            "seniority": {
+                "id": f"{seniority_id}-en",
+                "seniority_id": seniority_id,
+                "slug": f"{_PREFIX}-zero-seniority",
+                "name": "Zero Seniority",
+                "aliases": [],
+                "locale": "en",
+                "has_active_postings": True,
+                "active_posting_count": 17,
+            },
+            "technology": {
+                "id": str(technology_id),
+                "technology_id": technology_id,
+                "slug": f"{_PREFIX}-zero-technology",
+                "name": "Zero Technology",
+                "has_active_postings": True,
+                "active_posting_count": 17,
+            },
+            "company": {
+                "id": company_id,
+                "name": "Zero Company",
+                "slug": f"{_PREFIX}-zero-company",
+                "active_posting_count": 17,
+                "year_posting_count": 23,
+            },
+        }
+        rows = [
+            {
+                "collection": collection,
+                "document_id": document["id"],
+                "facet_value": (
+                    company_id if collection == "company" else str(document[f"{collection}_id"])
+                ),
+            }
+            for collection, document in documents.items()
+        ]
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(return_value=rows)
+
+        for collection, document in documents.items():
+            _col(ts_client, alias_map, collection).documents.upsert(document)
+
+        try:
+            await refresh_typesense_counts(local_conn, ts_client)
+
+            for collection, document in documents.items():
+                refreshed = (
+                    _col(ts_client, alias_map, collection).documents[document["id"]].retrieve()
+                )
+                assert refreshed["active_posting_count"] == 0
+                if collection == "company":
+                    assert refreshed["year_posting_count"] == 0
+                else:
+                    assert refreshed["has_active_postings"] is False
+        finally:
+            for collection, document in documents.items():
+                with contextlib.suppress(ObjectNotFound):
+                    _col(ts_client, alias_map, collection).documents[document["id"]].delete()
 
     def test_job_posting_denormalized_fields(self, ts_client: typesense.Client, alias_map: dict):
         """For each seeded posting: title is non-empty, company_name matches,
