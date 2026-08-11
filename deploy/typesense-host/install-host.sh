@@ -28,7 +28,7 @@ CREDENTIAL_DIR=/etc/jobseek-typesense
 TYPESENSE_CONFIG="$CREDENTIAL_DIR/typesense-server.ini"
 CLOUDFLARED_TOKEN_FILE="$CREDENTIAL_DIR/cloudflare-tunnel-token"
 CLOUDFLARED_UNIT=/etc/systemd/system/cloudflared.service
-TYPESENSE_IMAGE=typesense/typesense:27.1
+TYPESENSE_IMAGE=typesense/typesense:27.1@sha256:5c12af89130b8ee0be11541321ba8a3a7c7a538d7c6cd95e0409dc2d75ca6455
 TYPESENSE_DATA_DIR=/mnt/typesense-data
 TYPESENSE_SNAPSHOT_DIR=/mnt/jobseek-typesense-backup
 TYPESENSE_CONFIG_IN_CONTAINER=/run/secrets/typesense-server.ini
@@ -561,7 +561,8 @@ log_config = container["HostConfig"].get("LogConfig") or {}
 labels = container["Config"].get("Labels") or {}
 state = container.get("State") or {}
 ok = (
-    container["Config"].get("Image") == "typesense/typesense:27.1"
+    container["Config"].get("Image")
+        == "typesense/typesense:27.1@sha256:5c12af89130b8ee0be11541321ba8a3a7c7a538d7c6cd95e0409dc2d75ca6455"
     and container["HostConfig"].get("NetworkMode") == "host"
     and cmd == [f"--config={expected_config_destination}"]
     and any(

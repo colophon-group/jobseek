@@ -82,6 +82,8 @@ jobs:
       # Belt-and-suspenders alongside the PAT — keeps workflow-level perms
       # from being the surprise blocker if the PAT is ever rotated.
       packages: write
+    outputs:
+      image_digest: ${{ steps.build-shim.outputs.digest }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -99,6 +101,7 @@ jobs:
         run: echo "$GHCR_PAT" | docker login ghcr.io -u viktor-shcherb --password-stdin
 
       - name: Build & push jobseek-murmur-shim
+        id: build-shim
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           # Build context is the monorepo root because the Dockerfile COPYs
@@ -155,7 +158,7 @@ jobs:
           # `envs:` whitelist — only these names are forwarded into the
           # remote shell. Names only; values come from the matching
           # `env:` block below. Never put a secret name into `script:`.
-          envs: GHCR_PAT,MURMUR_TOKEN,DATABASE_URL,LOCAL_DATABASE_URL,OWNER
+          envs: GHCR_PAT,MURMUR_TOKEN,DATABASE_URL,LOCAL_DATABASE_URL,OWNER,SHIM_IMAGE_REF
           # Inline script (no /home/deploy/deploy.sh dependency — this
           # workflow only touches the murmur-shim service). The crawler's
           # deploy.sh is left alone; full-stack redeploys still go via
@@ -173,14 +176,37 @@ jobs:
             # forwarded correctly through `envs:`. Re-export here so
             # docker compose (a child process) sees the values.
             #
-            # We do not write /home/deploy/.env from this workflow on
-            # purpose: the crawler's full-stack deploy.sh owns that file
-            # and any keys this workflow doesn't know about (R2 / Grafana
-            # / Typesense / proxy creds) would be wiped. Re-exporting in
-            # the SSH session is additive and ephemeral, which is exactly
-            # what we want for a single-service redeploy.
-            export MURMUR_TOKEN DATABASE_URL OWNER LOCAL_DATABASE_URL
+            # The session exports the new immutable image reference for
+            # Compose. Only after health passes does this workflow replace
+            # that one line in the crawler-owned .env; all secret and
+            # unrelated settings remain byte-for-byte intact.
+            export MURMUR_TOKEN DATABASE_URL OWNER LOCAL_DATABASE_URL SHIM_IMAGE_REF
             cd /home/deploy
+            [[ "$SHIM_IMAGE_REF" =~ ^ghcr\.io/colophon-group/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]]
+            previous_image_id="$(docker inspect deploy-murmur-shim-1 --format '{{.Image}}')"
+            mapfile -t previous_shim_refs < <(
+              docker image inspect "$previous_image_id" \
+                --format '{{range .RepoDigests}}{{println .}}{{end}}' |
+                grep -E '^ghcr\.io/colophon-group/jobseek-murmur-shim@sha256:[0-9a-f]{64}$'
+            )
+            test "${#previous_shim_refs[@]}" -eq 1
+            previous_shim_ref="${previous_shim_refs[0]}"
+            [[ "$previous_shim_ref" =~ ^ghcr\.io/colophon-group/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]]
+            rollback_armed=0
+            env_candidate=""
+            rollback_shim() {
+              status=$?
+              trap - EXIT
+              if [[ -n "$env_candidate" && -f "$env_candidate" && ! -L "$env_candidate" ]]; then
+                rm -f -- "$env_candidate"
+              fi
+              if [[ "$status" -ne 0 && "$rollback_armed" -eq 1 ]]; then
+                echo "Murmur shim deploy failed; restoring the prior immutable image" >&2
+                SHIM_IMAGE_REF="$previous_shim_ref" docker compose up -d murmur-shim || status=1
+              fi
+              exit "$status"
+            }
+            trap rollback_shim EXIT
             echo "$GHCR_PAT" | docker login ghcr.io -u viktor-shcherb --password-stdin
             # Pull both the shim image AND the runtime-init image. The
             # init service `pull_policy: always` would handle this on
@@ -189,6 +215,7 @@ jobs:
             # only `murmur-shim` was pulled and an upgraded init image
             # would only land on the next compose-triggered pull.
             docker compose pull murmur-shim murmur-shim-runtime-init
+            rollback_armed=1
             docker compose up -d murmur-shim
             docker compose ps murmur-shim
             # Brief settle, then probe the shim's health endpoint via
@@ -197,8 +224,19 @@ jobs:
             # is `https://jobseek-murmur.colophon-group.org/health`.
             sleep 5
             curl -sf http://localhost:8080/health
+            test "$(docker inspect deploy-murmur-shim-1 --format '{{.Config.Image}}')" = "$SHIM_IMAGE_REF"
+            test -f /home/deploy/.env
+            test ! -L /home/deploy/.env
+            env_candidate="$(mktemp /home/deploy/.env.shim.XXXXXX)"
+            awk '!/^SHIM_IMAGE_REF=/' /home/deploy/.env >"$env_candidate"
+            printf 'SHIM_IMAGE_REF=%s\n' "$SHIM_IMAGE_REF" >>"$env_candidate"
+            chmod 0600 "$env_candidate"
+            mv "$env_candidate" /home/deploy/.env
+            env_candidate=""
+            rollback_armed=0
         env:
           OWNER: ${{ github.repository_owner }}
+          SHIM_IMAGE_REF: ghcr.io/colophon-group/jobseek-murmur-shim@${{ needs.build.outputs.image_digest }}
           GHCR_PAT: ${{ secrets.GHCR_PAT || secrets.HETZNER_GH_TOKEN }}
           MURMUR_TOKEN: ${{ secrets.MURMUR_TOKEN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}

@@ -97,6 +97,8 @@ done
 # shellcheck disable=SC1091
 source "$INCOMING_DIR/deploy_helpers.sh"
 IMAGE_TAG="${CRAWLER_IMAGE_TAG:-latest}"
+REDIS_IMAGE="redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241"
+SHIM_IMAGE_REF="${SHIM_IMAGE_REF:-}"
 DEPLOY_MIN_FREE_KB="${DEPLOY_MIN_FREE_KB:-5242880}" # 5 GiB hard floor.
 DEPLOY_PRUNE_FREE_KB="${DEPLOY_PRUNE_FREE_KB:-10485760}" # Prune cache below 10 GiB.
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$DEPLOY_DIR")}"
@@ -140,8 +142,8 @@ start_maintenance_window() {
   MAINTENANCE_MARKER_NAME="jobseek-maintenance-window-crawler-deploy-${JOBSEEK_DEPLOY_REVISION:0:12}"
   marker_image="$(docker inspect --format '{{.Image}}' "${COMPOSE_PROJECT_NAME}-redis-1" 2>/dev/null || true)"
   if [[ ! "$marker_image" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-    docker pull redis:8-alpine >/dev/null
-    marker_image="$(docker image inspect --format '{{.Id}}' redis:8-alpine)"
+    docker pull "$REDIS_IMAGE" >/dev/null
+    marker_image="$(docker image inspect --format '{{.Id}}' "$REDIS_IMAGE")"
   fi
   [[ "$marker_image" =~ ^sha256:[0-9a-f]{64}$ ]] || {
     echo "ERROR: a local Redis image is required for the maintenance marker" >&2
@@ -657,6 +659,46 @@ ensure_deploy_disk_headroom() {
   echo "Deploy disk headroom OK: ${free_kb} KiB available" >&2
 }
 
+resolve_shim_image_ref() {
+  local candidate="$SHIM_IMAGE_REF"
+  local image_id existing_container
+  local -a persisted_refs=()
+  local -a matching_digests=()
+
+  if [[ -z "$candidate" && -f "$ENV_FILE" && ! -L "$ENV_FILE" ]]; then
+    mapfile -t persisted_refs < <(sed -n 's/^SHIM_IMAGE_REF=//p' "$ENV_FILE")
+    if (( ${#persisted_refs[@]} > 1 )); then
+      echo "ERROR: active deploy environment contains duplicate SHIM_IMAGE_REF values" >&2
+      return 1
+    fi
+    if (( ${#persisted_refs[@]} == 1 )); then
+      candidate="${persisted_refs[0]}"
+    fi
+  fi
+
+  if [[ -z "$candidate" ]]; then
+    existing_container="${COMPOSE_PROJECT_NAME}-murmur-shim-1"
+    image_id="$(docker inspect "$existing_container" --format '{{.Image}}' 2>/dev/null || true)"
+    if [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+      mapfile -t matching_digests < <(
+        docker image inspect "$image_id" \
+          --format '{{range .RepoDigests}}{{println .}}{{end}}' 2>/dev/null |
+          grep -E "^ghcr\\.io/${OWNER}/jobseek-murmur-shim@sha256:[0-9a-f]{64}$" || true
+      )
+      if (( ${#matching_digests[@]} == 1 )); then
+        candidate="${matching_digests[0]}"
+      fi
+    fi
+  fi
+
+  if [[ ! "$candidate" =~ ^ghcr\.io/${OWNER}/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]]; then
+    echo "ERROR: SHIM_IMAGE_REF must resolve to exactly one immutable jobseek-murmur-shim digest" >&2
+    return 1
+  fi
+  SHIM_IMAGE_REF="$candidate"
+  export SHIM_IMAGE_REF
+}
+
 running_compose_oneoff_containers() {
   docker ps \
     --filter "label=com.docker.compose.project=${COMPOSE_PROJECT_NAME}" \
@@ -738,6 +780,7 @@ if [[ -f "$ENV_FILE" ]]; then
 fi
 arm_deploy_rollback
 activate_staged_deploy_specs
+resolve_shim_image_ref
 
 # ── Stop any manually-started containers that conflict with compose ──
 # `indexnow` was retired in #2821 (companies left the index); the rm is
@@ -754,6 +797,7 @@ docker rm "${legacy_containers[@]}" 2>/dev/null || true
 cat > "$ENV_FILE" <<EOF
 OWNER=${OWNER}
 CRAWLER_IMAGE_TAG=${IMAGE_TAG}
+SHIM_IMAGE_REF=${SHIM_IMAGE_REF}
 JOBSEEK_DEPLOY_REVISION=${JOBSEEK_DEPLOY_REVISION}
 WEB_DATABASE_URL=${WEB_DATABASE_URL}
 LOCAL_DATABASE_URL=${LOCAL_DATABASE_URL}
