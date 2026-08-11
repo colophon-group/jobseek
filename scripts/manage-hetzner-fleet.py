@@ -59,7 +59,7 @@ class DesiredResource:
 
 
 DESIRED_RESOURCES = (
-    DesiredResource("server", "servers", "jobseek-crawler", "crawler", True),
+    DesiredResource("server", "servers", "jobseek-crawler", "crawler-browser", True),
     DesiredResource(
         "server",
         "servers",
