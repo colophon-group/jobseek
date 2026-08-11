@@ -439,6 +439,44 @@ class TestDomScraper:
         assert result.description is not None
         assert "pipelines" in result.description
 
+    async def test_static_fetch_honors_configured_legacy_encoding(self):
+        """Legacy ATS pages can override an unsupported charset alias."""
+        from src.core.scrapers.dom import scrape
+
+        page_html = """<html><body>
+        <h4 class="jobnames">ソフトウェアエンジニア</h4>
+        <table class="jobtable">
+          <tr><td>職務内容</td><td>製品を開発します</td></tr>
+          <tr><td>勤務地</td><td>東京</td></tr>
+        </table></body></html>"""
+
+        def handler(request):
+            return httpx.Response(
+                200,
+                content=page_html.encode("euc_jp"),
+                headers={"content-type": "text/html; charset=CP51932"},
+                request=request,
+            )
+
+        config = {
+            "encoding": "euc_jp",
+            "steps": [
+                {"tag": "h4", "attr": "class=jobnames", "field": "title"},
+                {"text": "職務内容", "offset": 1, "field": "description"},
+                {"text": "勤務地", "offset": 1, "field": "location", "from": 0},
+            ],
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.jposting.net/u/job.phtml?job_code=13",
+                config,
+                client,
+            )
+
+        assert result.title == "ソフトウェアエンジニア"
+        assert result.description == "製品を開発します"
+        assert result.locations == ["東京"]
+
     async def test_static_fetch_no_steps_returns_empty(self):
         """render: false with no steps returns empty JobContent."""
         from src.core.scrapers.dom import scrape

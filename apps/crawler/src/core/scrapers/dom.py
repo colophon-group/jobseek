@@ -25,6 +25,7 @@ Requires playwright when ``render`` is true:
 
 from __future__ import annotations
 
+import codecs
 import contextlib
 import json
 import re
@@ -424,6 +425,12 @@ async def scrape(
         # status alone never reveals gone-ness on these hosts.
         _check_gone_redirect(str(resp.url), gone_pattern, url)
         resp.raise_for_status()
+        encoding = config.get("encoding")
+        if encoding is not None:
+            if not isinstance(encoding, str) or not encoding:
+                raise ValueError("DOM scraper encoding must be a non-empty codec name")
+            codecs.lookup(encoding)
+            resp.encoding = encoding
         html = resp.text
         _raise_if_bot_challenge(str(resp.url), html)
 
