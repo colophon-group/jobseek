@@ -463,6 +463,7 @@ arx-robotics,arx-robotics-careers-gh,https://job-boards.eu.greenhouse.io/arxrobo
 arx-robotics,arx-robotics-careers-personio,https://arx.jobs.personio.de/?language=en,personio,"{""slug"": ""arx"", ""language"": ""en""}",skip,
 asana,asana-greenhouse,https://job-boards.greenhouse.io/asana,greenhouse,"{""token"": ""asana""}",skip,
 ascend-analytics,ascend-analytics-greenhouse,https://job-boards.greenhouse.io/ascendanalytics,greenhouse,"{""token"": ""ascendanalytics""}",skip,
+ascension,ascension-careers,https://jobs.ascension.org/,phenom,,json-ld,
 ascent,ascent-careers,https://ascenthealthservices.career.softgarden.de/,softgarden,"{""slug"": ""ascenthealthservices""}",json-ld,
 ascento,ascento-careers,https://ascento-ag.breezy.hr/,breezy,"{""slug"": ""ascento-ag""}",json-ld,
 asg,asg-greenhouse,https://job-boards.greenhouse.io/asgjobs,greenhouse,"{""token"": ""asgjobs""}",skip,
