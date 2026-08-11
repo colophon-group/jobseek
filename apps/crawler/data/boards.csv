@@ -3595,7 +3595,7 @@ north-america,north-america-greenhouse,https://job-boards.greenhouse.io/xebiausa
 northbeam,northbeam-greenhouse,https://job-boards.greenhouse.io/northbeam,greenhouse,"{""token"": ""northbeam""}",skip,
 northmarq,northmarq-greenhouse,https://job-boards.greenhouse.io/northmarq,greenhouse,"{""token"": ""northmarq""}",skip,
 northmill,northmill-careers,https://careers.northmill.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.northmill.com/jobs.rss""}",skip,
-northrop-grumman,northrop-grumman-eightfold,https://jobs.northropgrumman.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""]}"
+northrop-grumman,northrop-grumman-eightfold,https://jobs.northropgrumman.com/careers,eightfold,"{""proxy"": true, ""url_filter"": ""/careers/job/""}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 northwest-pipe-fittings,northwest-pipe-fittings-greenhouse,https://job-boards.greenhouse.io/northwestpipefittings,greenhouse,"{""token"": ""northwestpipefittings""}",skip,
 northwood-space,northwood-space-careers,https://jobs.ashbyhq.com/NorthwoodSpace,ashby,"{""org"": ""NorthwoodSpace""}",skip,
 notabene,notabene-ashby,https://jobs.ashbyhq.com/notabene,ashby,"{""token"": ""notabene""}",skip,
