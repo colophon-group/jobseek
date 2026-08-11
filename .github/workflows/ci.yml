@@ -68,6 +68,7 @@ jobs:
           scripts/crawler-host-hygiene.test.mjs
           scripts/docs-index.test.mjs
           scripts/dealroom-company-requests.test.mjs
+          scripts/vercel-web-deploy-paths.test.mjs
           scripts/vercel-production-sha.test.mjs
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0

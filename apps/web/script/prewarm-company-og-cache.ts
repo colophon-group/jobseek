@@ -25,6 +25,7 @@ import { renderCompanyOgCard } from "@/lib/og/company-og-card";
 import {
   companyOgCacheKeyForVersion,
   companyOgCompletionKeyForVersion,
+  companyOgCurrentCompletionKey,
 } from "@/lib/og/company-og-key";
 import { computeCompanyOgRendererVersion } from "@/lib/og/company-og-renderer-version";
 import { computeCompanyOgSourceVersion } from "@/lib/og/company-og-source-version";
@@ -32,6 +33,8 @@ import { computeCompanyOgSourceVersion } from "@/lib/og/company-og-source-versio
 const ALL_LOCALES = ["en", "de", "fr", "it"] as const;
 const CONTENT_TYPE = "image/png";
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
+const CURRENT_MARKER_CACHE_CONTROL =
+  "public, max-age=60, stale-while-revalidate=240";
 const MARKER_CONTENT_TYPE = "application/json";
 const COMPANY_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const COMPANY_DATA_DIR = resolve(process.cwd(), "../crawler/data");
@@ -463,6 +466,7 @@ export async function main() {
   );
 
   let completionMarker: string | null = null;
+  let currentMarker: string | null = null;
   const isFullMatrix = options.maxCompanies === null &&
     options.locales.length === ALL_LOCALES.length &&
     ALL_LOCALES.every((locale) => options.locales.includes(locale));
@@ -471,6 +475,7 @@ export async function main() {
       rendererVersion,
       sourceVersion,
     );
+    let markerKey = key;
     try {
       await withRetry(() => client.send(new PutObjectCommand({
         Bucket: bucket,
@@ -488,9 +493,28 @@ export async function main() {
         CacheControl: CACHE_CONTROL,
       })));
       completionMarker = key;
+
+      const currentKey = companyOgCurrentCompletionKey(rendererVersion);
+      markerKey = currentKey;
+      await withRetry(() => client.send(new PutObjectCommand({
+        Bucket: bucket,
+        Key: currentKey,
+        Body: JSON.stringify({
+          complete: true,
+          rendererVersion,
+          sourceVersion,
+          companies: companies.length,
+          locales: options.locales,
+          expected: companies.length * options.locales.length,
+          completedAt: new Date().toISOString(),
+        }),
+        ContentType: MARKER_CONTENT_TYPE,
+        CacheControl: CURRENT_MARKER_CACHE_CONTROL,
+      })));
+      currentMarker = currentKey;
     } catch (error) {
       failures.push({
-        key,
+        key: markerKey,
         error: safeExternalError(error, {
           service: "r2",
           operation: "publish_company_og_completion",
@@ -510,6 +534,7 @@ export async function main() {
     uploaded,
     failed: failures.length,
     completionMarker,
+    currentMarker,
   }));
 
   if (failures.length > 0) {

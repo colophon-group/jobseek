@@ -1,0 +1,56 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+import {
+  classifyVercelWebChanges,
+  isVercelWebInput,
+} from "../.github/scripts/classify-vercel-web-change.mjs";
+
+test("deploys web runtime and every current workspace input", () => {
+  for (const path of [
+    "apps/web/app/page.tsx",
+    "apps/web/vercel.json",
+    "packages/mcp-server/src/handler.ts",
+    "patches/next@16.2.11.patch",
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "turbo.json",
+    ".github/workflows/deploy-web-production.yml",
+    ".github/scripts/classify-vercel-web-change.mjs",
+  ]) {
+    assert.equal(isVercelWebInput(path), true, path);
+  }
+});
+
+test("does not redeploy for crawler, company-data, docs, or ops changes", () => {
+  const result = classifyVercelWebChanges([
+    "apps/crawler/data/companies.csv",
+    "apps/crawler/data/company_descriptions.csv",
+    "apps/crawler/src/core/monitors/workday.py",
+    ".github/workflows/sync-data.yml",
+    "docs/01-agent-workflow.md",
+  ]);
+  assert.deepEqual(result, { deploy: false, relevant: [] });
+});
+
+test("Vercel Git integration is disabled only for main", () => {
+  const config = JSON.parse(readFileSync("apps/web/vercel.json", "utf8"));
+  assert.deepEqual(config.git, { deploymentEnabled: { main: false } });
+});
+
+test("production workflow stages, verifies, then promotes exact main", () => {
+  const workflow = readFileSync(
+    ".github/workflows/deploy-web-production.yml",
+    "utf8",
+  );
+  assert.match(workflow, /--prod --skip-domain/);
+  assert.match(workflow, /v13\/deployments\/\$PRODUCTION_ALIAS/);
+  assert.match(workflow, /production_sha.*current_sha/);
+  assert.match(workflow, /current_main=.*commits\/main/);
+  assert.match(workflow, /vercel@55\.0\.0 promote/);
+  assert.doesNotMatch(workflow, /--cwd=apps\/web/);
+  assert.match(workflow, /environment: Production/);
+  assert.doesNotMatch(workflow, /environment:\n\s+name: Production\n\s+url:/);
+  assert.doesNotMatch(workflow, /pull_request:/);
+});
