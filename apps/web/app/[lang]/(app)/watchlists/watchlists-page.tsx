@@ -6,7 +6,11 @@ import { Eye, Loader2, LogIn } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useLocalePath } from "@/lib/useLocalePath";
 import { useSession } from "@/components/providers/SessionProvider";
-import type { UserWatchlistOverview, WatchlistFilters } from "@/lib/actions/watchlists";
+import type {
+  PublicWatchlistEntry,
+  UserWatchlistOverview,
+  WatchlistFilters,
+} from "@/lib/actions/watchlists";
 import {
   createWatchlist,
   createWatchlistFromHandoff,
@@ -28,11 +32,15 @@ function commaSeparatedValues(value: string | null): string[] {
 
 export function WatchlistsPage({
   initialWatchlists,
+  initialPopularWatchlists = [],
+  initialPopularTotal = 0,
   username,
   limitReached,
   locale,
 }: {
   initialWatchlists: UserWatchlistOverview[];
+  initialPopularWatchlists?: PublicWatchlistEntry[];
+  initialPopularTotal?: number;
   username: string | null;
   limitReached: boolean;
   locale: string;
@@ -305,7 +313,10 @@ export function WatchlistsPage({
       </div>
 
       {/* Public search — always visible */}
-      <PublicWatchlistSearch />
+      <PublicWatchlistSearch
+        initialWatchlists={initialPopularWatchlists}
+        initialTotal={initialPopularTotal}
+      />
     </div>
     <UpgradeModal open={upgrade.open} onOpenChange={upgrade.setOpen} reason={upgrade.reason} />
     </>

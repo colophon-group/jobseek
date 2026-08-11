@@ -5,11 +5,13 @@ import "@/test-utils/lingui-mock";
 
 const mocks = vi.hoisted(() => ({
   load: vi.fn(),
+  popular: vi.fn(),
   getSession: vi.fn(),
 }));
 
 vi.mock("@/lib/services/watchlists", () => ({
   getUserWatchlistsWithLimit: (...args: unknown[]) => mocks.load(...args),
+  getPopularWatchlists: (...args: unknown[]) => mocks.popular(...args),
 }));
 
 vi.mock("@/lib/sessionCache", () => ({
@@ -19,11 +21,15 @@ vi.mock("@/lib/sessionCache", () => ({
 vi.mock("../watchlists-page", () => ({
   WatchlistsPage: ({
     initialWatchlists,
+    initialPopularWatchlists,
+    initialPopularTotal,
     username,
     limitReached,
     locale,
   }: {
     initialWatchlists: unknown[];
+    initialPopularWatchlists: unknown[];
+    initialPopularTotal: number;
     username: string | null;
     limitReached: boolean;
     locale: string;
@@ -31,6 +37,8 @@ vi.mock("../watchlists-page", () => ({
     <div
       data-testid="watchlists-page"
       data-count={initialWatchlists.length}
+      data-popular-count={initialPopularWatchlists.length}
+      data-popular-total={String(initialPopularTotal)}
       data-username={username ?? ""}
       data-limit-reached={String(limitReached)}
       data-locale={locale}
@@ -44,8 +52,13 @@ describe("WatchlistsLoader server read (#5896)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mocks.load.mockReset();
+    mocks.popular.mockReset();
     mocks.getSession.mockReset();
     mocks.getSession.mockResolvedValue({ user: { username: "alice" } });
+    mocks.popular.mockResolvedValue({
+      watchlists: [{ id: "public-wl-1" }],
+      total: 12,
+    });
   });
 
   it("passes the server-loaded overview to the interactive page", async () => {
@@ -58,11 +71,18 @@ describe("WatchlistsLoader server read (#5896)", () => {
 
     const page = screen.getByTestId("watchlists-page");
     expect(page.getAttribute("data-count")).toBe("1");
+    expect(page.getAttribute("data-popular-count")).toBe("1");
+    expect(page.getAttribute("data-popular-total")).toBe("12");
     expect(page.getAttribute("data-username")).toBe("alice");
     expect(page.getAttribute("data-limit-reached")).toBe("false");
     expect(page.getAttribute("data-locale")).toBe("en");
     expect(mocks.load).toHaveBeenCalledOnce();
     expect(mocks.load).toHaveBeenCalledWith("en");
+    expect(mocks.popular).toHaveBeenCalledWith({
+      offset: 0,
+      limit: 10,
+      locale: "en",
+    });
   });
 
   it("renders the anonymous overview without a username", async () => {
@@ -87,6 +107,22 @@ describe("WatchlistsLoader server read (#5896)", () => {
       "/fr/watchlists",
     );
     expect(mocks.load).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the overview usable when popular-watchlist discovery is unavailable", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.load.mockResolvedValue({
+      watchlists: [{ id: "wl-1" }],
+      limitReached: false,
+    });
+    mocks.popular.mockRejectedValue(new Error("typesense unavailable"));
+
+    render(await WatchlistsLoader({ locale: "it" }));
+
+    const page = screen.getByTestId("watchlists-page");
+    expect(page.getAttribute("data-count")).toBe("1");
+    expect(page.getAttribute("data-popular-count")).toBe("0");
+    expect(page.getAttribute("data-popular-total")).toBe("0");
   });
 });
 
