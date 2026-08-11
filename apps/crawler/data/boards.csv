@@ -3923,6 +3923,8 @@ panasonic,panasonic-careers-na,https://careers.na.panasonic.com/jobs,sitemap,"{"
 panasonic,panasonic-careers-th,https://www.careers-page.com/panasonic-thailand,dom,"{""render"": true, ""url_filter"": ""careers-page.com/panasonic-thailand/job/""}",dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 15000, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""div"", ""offset"": 0, ""field"": ""locations""}, {""tag"": ""h4"", ""text"": ""About the job"", ""field"": ""description"", ""stop"": ""Apply for Position"", ""html"": true}]}"
 panasonic,panasonic-careers-vn,https://careers.vn.panasonic.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.vn.panasonic.com/googlefeed.xml""}",skip,
 pandadoc,pandadoc-greenhouse,https://job-boards.greenhouse.io/pandadoc,greenhouse,"{""token"": ""pandadoc""}",skip,
+panera-bread,panera-bread-careers,https://panerabread.wd5.myworkdayjobs.com/panera_careers,workday,,workday,
+panera-bread,panera-bread-careers-phenom,https://careers.panerabread.com/global/en/search-results,sitemap,"{""sitemap_url"": ""https://careers.panerabread.com/global/en/search-results/sitemap.xml"", ""url_filter"": ""/global/en/job/""}",json-ld,
 panoptyc,panoptyc-ashby,https://jobs.ashbyhq.com/panoptyc,ashby,"{""token"": ""panoptyc""}",skip,
 panthalassa,panthalassa-greenhouse,https://job-boards.greenhouse.io/panthalassa,greenhouse,"{""token"": ""panthalassa""}",skip,
 pantheon-systems-inc,pantheon-systems-inc-greenhouse,https://job-boards.greenhouse.io/pantheon,greenhouse,"{""token"": ""pantheon""}",skip,
