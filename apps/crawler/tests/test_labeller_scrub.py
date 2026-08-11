@@ -165,7 +165,8 @@ def test_scrub_with_only_date_refuses() -> None:
         scrub(ScrubFilter(dates=frozenset({"2026-04-25"})), dry_run=True)
 
 
-def test_malformed_unrelated_line_aborts_before_any_remote_mutation() -> None:
+@pytest.mark.parametrize("invalid_line", ["this content must not appear", "[]"])
+def test_malformed_unrelated_line_aborts_before_any_remote_mutation(invalid_line: str) -> None:
     """A later bad source prevents an earlier valid rewrite from being committed."""
     original = {
         "data/2026-04-25.jsonl": [_row("target", "acme"), _row("keep", "widgets")],
@@ -173,11 +174,7 @@ def test_malformed_unrelated_line_aborts_before_any_remote_mutation() -> None:
         # malformed text below instead of serializing this placeholder.
         "data/2026-04-26.jsonl": [_row("unrelated", "widgets")],
     }
-    malformed_content = (
-        json.dumps(_row("unrelated", "widgets"))
-        + "\n"
-        + "this content must not appear in the error\n"
-    )
+    malformed_content = json.dumps(_row("unrelated", "widgets")) + "\n" + invalid_line + "\n"
     api = MalformedSourceHfApi(
         original,
         malformed_path="data/2026-04-26.jsonl",
@@ -189,7 +186,7 @@ def test_malformed_unrelated_line_aborts_before_any_remote_mutation() -> None:
 
     message = str(exc_info.value)
     assert message == "malformed remote JSONL in data/2026-04-26.jsonl at line 2"
-    assert "this content must not appear" not in message
+    assert invalid_line not in message
     assert api.files == original
     assert not [call for call in api.calls if call[0] in {"upload_file", "delete_file"}]
 

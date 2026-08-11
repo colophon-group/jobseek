@@ -171,7 +171,7 @@ def _iter_jsonl(path: Path, *, source_name: str) -> Iterator[dict]:
             if not line:
                 continue
             try:
-                yield json.loads(line)
+                row = json.loads(line)
             except json.JSONDecodeError:
                 # Deliberately omit both the source line and the decoder's
                 # message: either could expose content from the published
@@ -179,6 +179,11 @@ def _iter_jsonl(path: Path, *, source_name: str) -> Iterator[dict]:
                 raise ScrubSourceError(
                     f"malformed remote JSONL in {source_name} at line {line_number}"
                 ) from None
+            if not isinstance(row, dict):
+                raise ScrubSourceError(
+                    f"malformed remote JSONL in {source_name} at line {line_number}"
+                ) from None
+            yield row
 
 
 def _partition_rows(rows: Iterable[dict], predicate: ScrubFilter) -> tuple[list[dict], list[dict]]:
