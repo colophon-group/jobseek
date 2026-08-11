@@ -186,6 +186,7 @@ PY
 }
 
 typesense_rotation_read_service_state() {
+  local allow_unloaded=${1:-0}
   typesense_rotation_timer_enabled_state=""
   typesense_rotation_timer_active_state=""
   typesense_rotation_service_active_state=""
@@ -212,13 +213,20 @@ typesense_rotation_read_service_state() {
       jobseek-typesense-backup.service 2>/dev/null
   )"; then
     :
+  elif [[ "$allow_unloaded" == 1 && \
+    "$typesense_rotation_service_active_state" == unknown ]]; then
+    :
   elif [[ ! "$typesense_rotation_service_active_state" =~ ^(inactive|failed)$ ]]; then
     echo "ERROR: exact Typesense backup service active state is unavailable" >&2
     return 1
   fi
   [[ "$typesense_rotation_timer_enabled_state" =~ ^(enabled|disabled)$ ]]
   [[ "$typesense_rotation_timer_active_state" =~ ^(active|inactive)$ ]]
-  [[ "$typesense_rotation_service_active_state" =~ ^(active|inactive|failed)$ ]]
+  if [[ "$allow_unloaded" == 1 ]]; then
+    [[ "$typesense_rotation_service_active_state" =~ ^(active|inactive|failed|unknown)$ ]]
+  else
+    [[ "$typesense_rotation_service_active_state" =~ ^(active|inactive|failed)$ ]]
+  fi
 }
 
 typesense_rotation_is_disabled_inactive() {
@@ -251,11 +259,25 @@ typesense_rotation_restore_timer_state() {
   local failed=0
   local expected_enabled=disabled
   local expected_active=inactive
+  local service_failed_state
   if [[ "$typesense_rotation_timer_quiesced" -ne 1 ]]; then
     return
   fi
-  if ! "$typesense_rotation_systemctl_command" reset-failed \
-    jobseek-typesense-backup.service; then
+  # Successful oneshots can be garbage-collected immediately. Accept only the
+  # explicit non-failed states that systemd reports for an inactive or unloaded
+  # unit; any other failure to inspect the state remains fatal.
+  if service_failed_state="$(
+    "$typesense_rotation_systemctl_command" is-failed \
+      jobseek-typesense-backup.service 2>/dev/null
+  )"; then
+    if [[ "$service_failed_state" != failed ]]; then
+      failed=1
+    fi
+    if ! "$typesense_rotation_systemctl_command" reset-failed \
+      jobseek-typesense-backup.service; then
+      failed=1
+    fi
+  elif [[ ! "$service_failed_state" =~ ^(inactive|unknown)$ ]]; then
     failed=1
   fi
   if [[ "$typesense_rotation_timer_was_enabled" -eq 1 ]]; then
@@ -272,10 +294,10 @@ typesense_rotation_restore_timer_state() {
       failed=1
     fi
   fi
-  if ! typesense_rotation_read_service_state || \
+  if ! typesense_rotation_read_service_state 1 || \
     [[ "$typesense_rotation_timer_enabled_state" != "$expected_enabled" ]] || \
     [[ "$typesense_rotation_timer_active_state" != "$expected_active" ]] || \
-    [[ "$typesense_rotation_service_active_state" == active ]]; then
+    [[ ! "$typesense_rotation_service_active_state" =~ ^(inactive|unknown)$ ]]; then
     failed=1
   fi
   if [[ "$failed" -ne 0 ]]; then

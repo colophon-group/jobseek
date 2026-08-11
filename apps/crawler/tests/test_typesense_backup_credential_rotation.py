@@ -118,6 +118,11 @@ case "$command" in
     printf '%s\n' "$state"
     [[ "$state" == active ]]
     ;;
+  is-failed)
+    state="$(cat "$FAKE_SERVICE_ACTIVE")"
+    printf '%s\n' "$state"
+    [[ "$state" == failed ]]
+    ;;
   disable)
     printf 'disabled\n' >"$FAKE_TIMER_ENABLED"
     printf 'inactive\n' >"$FAKE_TIMER_ACTIVE"
@@ -145,10 +150,18 @@ case "$command" in
         BACKUP_STATUS_DIR="$(dirname "$STATUS_FILE")" \
           "$FAKE_BACKUP" typesense
       fi
-      printf 'inactive\n' >"$FAKE_SERVICE_ACTIVE"
+      if [[ "${FAKE_SERVICE_UNLOADED_AFTER_BACKUP:-0}" == 1 ]]; then
+        printf 'unknown\n' >"$FAKE_SERVICE_ACTIVE"
+      else
+        printf 'inactive\n' >"$FAKE_SERVICE_ACTIVE"
+      fi
     fi
     ;;
   reset-failed)
+    if [[ "${FAKE_RESET_NOT_LOADED_AFTER_BACKUP:-0}" == 1 && -f "$STATUS_FILE" ]]; then
+      printf 'Unit jobseek-typesense-backup.service not loaded.\n' >&2
+      exit 5
+    fi
     printf 'inactive\n' >"$FAKE_SERVICE_ACTIVE"
     ;;
   *)
@@ -371,6 +384,8 @@ def test_failed_backup_repair_runs_systemd_once_and_restores_timer(
         RUN_REPAIR="1",
         FAKE_RUN_SYSTEMD_BACKUP="1",
         FAKE_EXPECTED_KEY=OLD_KEY,
+        FAKE_RESET_NOT_LOADED_AFTER_BACKUP="1",
+        FAKE_SERVICE_UNLOADED_AFTER_BACKUP="1",
     )
 
     assert result.returncode == 0, result.stderr
@@ -382,6 +397,7 @@ def test_failed_backup_repair_runs_systemd_once_and_restores_timer(
     reset = actions.index("systemctl:reset-failed:jobseek-typesense-backup.service")
     start = actions.index("systemctl:start:jobseek-typesense-backup.service")
     assert actions.index("unlock") < reset < start < actions.index("backup")
+    assert actions.count("systemctl:reset-failed:jobseek-typesense-backup.service") == 1
     assert actions.index("backup") < actions.index("reacquire") < actions.index("marker")
     _assert_secret_safe(result)
 

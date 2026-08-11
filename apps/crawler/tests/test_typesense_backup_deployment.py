@@ -55,12 +55,16 @@ def test_typesense_credential_rotation_is_probed_atomic_and_rollback_safe() -> N
 
 def test_backup_deploy_requires_an_enabled_healthy_timer() -> None:
     installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
+    receiver = (ROOT / "deploy/backups/install-host-from-stdin.sh").read_text(encoding="utf-8")
     workflow = (ROOT / ".github/workflows/deploy-data-backups.yml").read_text(encoding="utf-8")
 
     assert 'systemctl is-enabled --quiet "jobseek-${SERVICE}-backup.timer"' in installer
     assert 'systemctl is-active --quiet "jobseek-${SERVICE}-backup.timer"' in installer
     assert 'systemctl is-failed --quiet "jobseek-${SERVICE}-backup.service"' in installer
     assert "Typesense backup evidence is failed or stale" in installer
+    assert 'if [[ "$service" != "web-postgresql" ]]' in receiver
+    assert 'installer_args=(--start-timer "$service")' in receiver
+    assert 'bash deploy/backups/install-host.sh "${installer_args[@]}"' in receiver
     assert (
         'systemctl is-enabled "jobseek-${JOBSEEK_BACKUP_SERVICE}-backup.timer" || true'
         not in workflow
