@@ -235,10 +235,54 @@ export interface CurrencyRate {
   toEur: number;
 }
 
+// Cold-build / transient-database fallback for the server-embedded table.
+// Keep this aligned with drizzle/0063_add_salary_experience.sql. Returning the
+// full seeded set matters now that app shells serialize these rates: an
+// EUR-only fallback would remove every other currency from the selector and
+// make non-EUR salary filters use an identity conversion until that route's
+// shell revalidated.
+const FALLBACK_CURRENCY_RATES: CurrencyRate[] = [
+  { currency: "EUR", toEur: 1 },
+  { currency: "USD", toEur: 0.87 },
+  { currency: "GBP", toEur: 1.17 },
+  { currency: "CHF", toEur: 1.04 },
+  { currency: "CAD", toEur: 0.67 },
+  { currency: "SEK", toEur: 0.089 },
+  { currency: "NOK", toEur: 0.086 },
+  { currency: "DKK", toEur: 0.134 },
+  { currency: "PLN", toEur: 0.233 },
+  { currency: "CZK", toEur: 0.04 },
+  { currency: "HUF", toEur: 0.0025 },
+  { currency: "RON", toEur: 0.201 },
+  { currency: "AUD", toEur: 0.58 },
+  { currency: "NZD", toEur: 0.53 },
+  { currency: "JPY", toEur: 0.0061 },
+  { currency: "ISK", toEur: 0.0068 },
+  { currency: "TRY", toEur: 0.026 },
+  { currency: "BGN", toEur: 0.511 },
+  { currency: "BRL", toEur: 0.16 },
+  { currency: "CNY", toEur: 0.126 },
+  { currency: "HKD", toEur: 0.112 },
+  { currency: "IDR", toEur: 0.000055 },
+  { currency: "INR", toEur: 0.0103 },
+  { currency: "KRW", toEur: 0.00065 },
+  { currency: "MXN", toEur: 0.048 },
+  { currency: "MYR", toEur: 0.2 },
+  { currency: "PHP", toEur: 0.016 },
+  { currency: "SGD", toEur: 0.68 },
+  { currency: "THB", toEur: 0.025 },
+  { currency: "ZAR", toEur: 0.05 },
+  { currency: "ILS", toEur: 0.25 },
+];
+
+function fallbackCurrencyRates(): CurrencyRate[] {
+  return FALLBACK_CURRENCY_RATES.map((rate) => ({ ...rate }));
+}
+
 // Per-region in-memory `'use cache'` (cacheLife('hours')). Migrated from
 // Redis-backed `cached(..., { ttl: 3600 })` in #2884 (bucket 5). The
 // fallback try/catch stays *outside* the cache boundary so that the
-// `currency_rate` table-missing path returns the EUR fallback uncached
+// `currency_rate` table-missing path returns the static seed uncached
 // (preserving the original behaviour: don't cache the fallback shape).
 async function _fetchCurrencyRates(): Promise<CurrencyRate[]> {
   "use cache";
@@ -262,13 +306,15 @@ export async function getCurrencyRates(): Promise<CurrencyRate[]> {
   // surfaces that build-time cache error outside ordinary userland catches.
   // Runtime deployments have DATABASE_URL and retain the hours-cached table.
   if (!process.env.DATABASE_URL) {
-    return [{ currency: "EUR", toEur: 1 }];
+    return fallbackCurrencyRates();
   }
   try {
     return await _fetchCurrencyRates();
   } catch {
-    // Table may not exist yet — return fallback without caching
-    return [{ currency: "EUR", toEur: 1 }];
+    // Table may not exist yet — return the complete static seed without
+    // caching it inside `_fetchCurrencyRates`, so a later server call can
+    // still recover the current ECB-backed values.
+    return fallbackCurrencyRates();
   }
 }
 

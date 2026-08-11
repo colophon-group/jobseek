@@ -46,6 +46,10 @@ vi.mock("@/components/search/search-results", () => ({
   SearchResults: () => <div data-testid="search-results-stub" />,
 }));
 
+vi.mock("@/components/search/explore-repository-fallback", () => ({
+  ExploreRepositoryFallback: () => <div role="alert" data-testid="repository-fallback-stub" />,
+}));
+
 vi.mock("@/components/search/zero-results", () => ({
   ZeroResults: () => <div data-testid="zero-results-stub" />,
 }));
@@ -87,7 +91,7 @@ vi.mock("@/lib/search/query-params", () => ({
   buildFilteredPath: () => "/en/explore",
 }));
 
-import { SearchPage } from "../search-page";
+import { SearchPage, resolveInitialRepositoryFallbackCompanies } from "../search-page";
 
 beforeEach(() => {
   // jsdom/happy-dom may not set up window.history.replaceState identically
@@ -135,6 +139,65 @@ describe("SearchPage — heading landmark (#3196)", () => {
 });
 
 describe("SearchPage — impossible empty search state (#3403)", () => {
+  it("retains the offline profiles for a matching degraded filtered snapshot", () => {
+    const fallback = [{ name: "Acme", slug: "acme" }];
+
+    expect(
+      resolveInitialRepositoryFallbackCompanies({
+        shouldRestore: true,
+        cachedCompaniesLength: 0,
+        cachedDegraded: true,
+        initialCompanies: fallback,
+      }),
+    ).toBe(fallback);
+    expect(
+      resolveInitialRepositoryFallbackCompanies({
+        shouldRestore: true,
+        cachedCompaniesLength: 0,
+        cachedDegraded: false,
+        initialCompanies: fallback,
+      }),
+    ).toEqual([]);
+    expect(
+      resolveInitialRepositoryFallbackCompanies({
+        shouldRestore: true,
+        cachedCompaniesLength: 1,
+        cachedDegraded: true,
+        initialCompanies: fallback,
+      }),
+    ).toEqual([]);
+  });
+
+  it("keeps repository fallback profiles separate from live results", async () => {
+    await act(async () => {
+      render(
+        <SearchPage
+          initialCompanies={[]}
+          initialTotalCompanies={0}
+          initialDegraded
+          initialRepositoryFallbackCompanies={[
+            { name: "Acme", slug: "acme" },
+          ]}
+          initialKeywords={[]}
+          initialLocations={[]}
+          initialOccupations={[]}
+          initialSeniorities={[]}
+          initialTechnologies={[]}
+          initialEmploymentTypes={[]}
+          initialWorkMode={[]}
+          locale="en"
+          displayCurrency="EUR"
+          jobLanguages={[]}
+          languages={[]}
+        />,
+      );
+    });
+
+    expect(screen.getByTestId("repository-fallback-stub")).toBeTruthy();
+    expect(screen.queryByTestId("search-results-stub")).toBeNull();
+    expect(screen.queryByTestId("zero-results-stub")).toBeNull();
+  });
+
   it("shows a refresh prompt for an empty unfiltered result set", async () => {
     await act(async () => {
       render(

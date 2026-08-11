@@ -12,8 +12,14 @@ import { resolveJobLanguages } from "@/lib/job-languages";
 import { readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
 import { getSession } from "@/lib/sessionCache";
 import { firstOf, idsOrUndefined, parseRangeParam, getGeoFromHeaders } from "@/lib/search/params";
+import { parseEmploymentTypeParam, parseWorkModeParam } from "@/lib/search/query-params";
 import { convertToEur } from "@/lib/salary";
 import type { SearchResponse } from "@/lib/search";
+import {
+  getExploreRepositoryFallbackCompanies,
+  hasTypesenseSearchConfiguration,
+  type ExploreRepositoryCompany,
+} from "@/lib/explore-repository-fallback";
 
 const PAGE_SIZE = 10;
 
@@ -31,6 +37,12 @@ const EMPTY_PARSED_FILTERS: ParsedSearchFilters = {
 
 export interface ExploreData {
   result: SearchResponse;
+  /**
+   * Real company profile identities used only when Typesense is not
+   * configured (for example, deterministic secretless CI builds). This is a
+   * separate shape so the UI cannot mistake it for live job results.
+   */
+  repositoryFallbackCompanies?: ExploreRepositoryCompany[];
   parsed: ParsedSearchFilters;
   displayCurrency: string;
   jobLanguages: string[];
@@ -42,6 +54,34 @@ export interface ExploreData {
   salaryMaxDisplay: number | undefined;
   experienceMin: number | undefined;
   experienceMax: number | undefined;
+}
+
+function repositoryFallbackFor(
+  result: SearchResponse,
+  typesenseConfigured: boolean,
+): ExploreRepositoryCompany[] | undefined {
+  if (typesenseConfigured || result.companies.length > 0) {
+    return undefined;
+  }
+  return getExploreRepositoryFallbackCompanies();
+}
+
+function unavailableSearchResponse(): SearchResponse {
+  return { companies: [], totalCompanies: 0, degraded: true };
+}
+
+function parseOfflineSearchFilters(params: {
+  q: string | undefined;
+  wm: string | undefined;
+  etype: string | undefined;
+}): ParsedSearchFilters {
+  const query = params.q?.trim();
+  return {
+    ...EMPTY_PARSED_FILTERS,
+    keywords: query ? [query] : [],
+    workMode: parseWorkModeParam(params.wm),
+    employmentTypes: parseEmploymentTypeParam(params.etype),
+  };
 }
 
 export async function fetchExplorePageData(params: {
@@ -60,6 +100,7 @@ export async function fetchExplorePageData(params: {
   const sal = firstOf(searchParams.sal);
   const salcur = firstOf(searchParams.salcur);
   const exp = firstOf(searchParams.exp);
+  const typesenseConfigured = hasTypesenseSearchConfiguration();
 
   const { userLat, userLng } = await getGeoFromHeaders();
 
@@ -70,7 +111,9 @@ export async function fetchExplorePageData(params: {
   // search. Other prefs (display currency etc.) stay anon-defaults.
   const session = await getSession();
   const [parsed, prefs, anonJobLangs] = await Promise.all([
-    parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng }),
+    typesenseConfigured
+      ? parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng })
+      : Promise.resolve(parseOfflineSearchFilters({ q, wm, etype })),
     session ? getPreferences() : Promise.resolve(null),
     session ? Promise.resolve(null) : readAnonJobLanguagesCookie(),
   ]);
@@ -104,8 +147,9 @@ export async function fetchExplorePageData(params: {
   const salaryMaxEur = convertToEur(salaryMaxDisplay, salaryCurrencyParam, rates);
   const { min: experienceMin, max: experienceMax } = parseRangeParam(exp);
 
-  const result =
-    parsed.keywords.length > 0
+  const result = !typesenseConfigured
+    ? unavailableSearchResponse()
+    : parsed.keywords.length > 0
       ? await searchJobs({
           keywords: parsed.keywords,
           locationIds,
@@ -142,6 +186,7 @@ export async function fetchExplorePageData(params: {
 
   return {
     result,
+    repositoryFallbackCompanies: repositoryFallbackFor(result, typesenseConfigured),
     parsed,
     displayCurrency,
     jobLanguages,
@@ -184,28 +229,32 @@ export async function fetchExplorePageDefaults(params: {
   const displayCurrency = DEFAULT_DISPLAY_CURRENCY;
   const jobLanguages: string[] = [];
   const languages = resolveJobLanguages(jobLanguages, locale);
+  const typesenseConfigured = hasTypesenseSearchConfiguration();
 
   // ``listTopCompaniesAnonymous`` (not ``listTopCompanies``) — the
   // ``listTopCompanies`` variant calls ``getSessionUserId`` which awaits
   // ``headers()`` and would silently downgrade the page to dynamic
   // rendering, defeating the ISR optimisation this whole module is for.
-  const result = await listTopCompaniesAnonymous({
-    locationIds: undefined,
-    occupationIds: undefined,
-    seniorityIds: undefined,
-    technologyIds: undefined,
-    salaryMinEur: undefined,
-    salaryMaxEur: undefined,
-    experienceMin: undefined,
-    experienceMax: undefined,
-    languages,
-    locale,
-    offset: 0,
-    limit: PAGE_SIZE,
-  });
+  const result = typesenseConfigured
+    ? await listTopCompaniesAnonymous({
+        locationIds: undefined,
+        occupationIds: undefined,
+        seniorityIds: undefined,
+        technologyIds: undefined,
+        salaryMinEur: undefined,
+        salaryMaxEur: undefined,
+        experienceMin: undefined,
+        experienceMax: undefined,
+        languages,
+        locale,
+        offset: 0,
+        limit: PAGE_SIZE,
+      })
+    : unavailableSearchResponse();
 
   return {
     result,
+    repositoryFallbackCompanies: repositoryFallbackFor(result, typesenseConfigured),
     parsed: EMPTY_PARSED_FILTERS,
     displayCurrency,
     jobLanguages,

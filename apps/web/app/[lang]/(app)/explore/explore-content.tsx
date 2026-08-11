@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { fetchExplorePageData, type ExploreData } from "@/lib/actions/explore-page-data";
 import { hasLoggedInHint, hasAnonJobLanguagesHint } from "@/lib/client-cookies";
 import { logExternalError } from "@/lib/safe-external-error";
@@ -53,7 +52,7 @@ type ExploreContentProps = {
 };
 
 export function ExploreContent({ locale, initialData }: ExploreContentProps) {
-  const searchParams = useSearchParams();
+  const rootRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<ExploreData | null>(initialData ?? null);
 
   // Re-fetch on mount only when the prerendered ``initialData`` doesn't
@@ -67,6 +66,24 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
   // with zero function invocations — the bulk of organic traffic per
   // #2640.
   useEffect(() => {
+    // Keep the cached server snapshot visible until this interactive island
+    // has hydrated successfully. At that point swap the two atomically: the
+    // static representation is hidden from layout and accessibility APIs,
+    // while SearchPage takes over filters, dialogs, pagination, and actions.
+    const interactive = rootRef.current?.closest<HTMLElement>("[data-explore-interactive]");
+    const staticSnapshot = interactive?.previousElementSibling;
+    if (staticSnapshot instanceof HTMLElement && staticSnapshot.hasAttribute("data-explore-static-results")) {
+      staticSnapshot.setAttribute("hidden", "");
+    }
+    interactive?.removeAttribute("hidden");
+
+    // Read the URL from the browser inside the mount effect instead of using
+    // Next's `useSearchParams` render-time API. The cached route intentionally
+    // serves one query-agnostic HTML shell; `useSearchParams` made this entire
+    // result subtree bail out to `loading.tsx`, so crawlers received only
+    // "Loading results" even though `initialData` was serialized in the RSC
+    // payload (#2640).
+    const searchParams = new URLSearchParams(window.location.search);
     const needsPersonalizedFetch =
       hasLoggedInHint() ||
       hasAnonJobLanguagesHint() ||
@@ -118,32 +135,35 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
 
   if (!data) return <ExploreSkeleton />;
 
-  const { result, parsed, displayCurrency, jobLanguages, languages, userLat, userLng, salaryCurrencyParam, salaryMinDisplay, salaryMaxDisplay, experienceMin, experienceMax } = data;
+  const { result, repositoryFallbackCompanies, parsed, displayCurrency, jobLanguages, languages, userLat, userLng, salaryCurrencyParam, salaryMinDisplay, salaryMaxDisplay, experienceMin, experienceMax } = data;
 
   return (
-    <SearchPage
-      initialCompanies={result.companies}
-      initialTotalCompanies={result.totalCompanies}
-      initialTruncated={result.truncated}
-      initialDegraded={result.degraded}
-      initialKeywords={parsed.keywords}
-      initialLocations={parsed.locations}
-      initialOccupations={parsed.occupations}
-      initialSeniorities={parsed.seniorities}
-      initialTechnologies={parsed.technologies}
-      initialEmploymentTypes={parsed.employmentTypes}
-      initialWorkMode={parsed.workMode}
-      initialSalaryCurrency={salaryCurrencyParam !== displayCurrency ? salaryCurrencyParam : undefined}
-      initialSalaryMin={salaryMinDisplay}
-      initialSalaryMax={salaryMaxDisplay}
-      initialExperienceMin={experienceMin}
-      initialExperienceMax={experienceMax}
-      locale={locale}
-      displayCurrency={displayCurrency}
-      jobLanguages={jobLanguages}
-      languages={languages}
-      userLat={userLat}
-      userLng={userLng}
-    />
+    <div ref={rootRef} data-explore-content-root>
+      <SearchPage
+        initialCompanies={result.companies}
+        initialTotalCompanies={result.totalCompanies}
+        initialTruncated={result.truncated}
+        initialDegraded={result.degraded}
+        initialRepositoryFallbackCompanies={repositoryFallbackCompanies}
+        initialKeywords={parsed.keywords}
+        initialLocations={parsed.locations}
+        initialOccupations={parsed.occupations}
+        initialSeniorities={parsed.seniorities}
+        initialTechnologies={parsed.technologies}
+        initialEmploymentTypes={parsed.employmentTypes}
+        initialWorkMode={parsed.workMode}
+        initialSalaryCurrency={salaryCurrencyParam !== displayCurrency ? salaryCurrencyParam : undefined}
+        initialSalaryMin={salaryMinDisplay}
+        initialSalaryMax={salaryMaxDisplay}
+        initialExperienceMin={experienceMin}
+        initialExperienceMax={experienceMax}
+        locale={locale}
+        displayCurrency={displayCurrency}
+        jobLanguages={jobLanguages}
+        languages={languages}
+        userLat={userLat}
+        userLng={userLng}
+      />
+    </div>
   );
 }

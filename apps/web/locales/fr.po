@@ -5124,3 +5124,15 @@ msgstr "Entretien supprimé."
 #: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.deleteError"
 msgstr "Impossible de supprimer l’entretien. Réessayez."
+
+#. Accessible heading shown when live Explore job results are unavailable and repository-owned company profile links are shown instead
+#. js-lingui-explicit-id
+#: src/components/search/explore-repository-fallback.tsx
+msgid "explore.fallback.heading"
+msgstr "Les résultats d’emploi en temps réel sont temporairement indisponibles."
+
+#. Try-again guidance shown above company profile links when live Explore job results are unavailable
+#. js-lingui-explicit-id
+#: src/components/search/explore-repository-fallback.tsx
+msgid "explore.fallback.body"
+msgstr "Essayez d’actualiser la page. En attendant, vous pouvez consulter ces profils d’entreprise."

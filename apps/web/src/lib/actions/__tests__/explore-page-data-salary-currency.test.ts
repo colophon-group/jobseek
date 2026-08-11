@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Hoisted mocks so they apply before module imports below. Mirrors the
 // pattern in `company-page-data-defaults.test.ts`.
@@ -41,15 +41,20 @@ vi.mock("@/lib/actions/search-input", () => ({
   parseSearchFilters: mocks.parseSearchFilters,
 }));
 
-import { fetchExplorePageData } from "../explore-page-data";
+import { fetchExplorePageData, fetchExplorePageDefaults } from "../explore-page-data";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  stubTypesenseConfiguration(true);
   mocks.searchJobs.mockResolvedValue({
     companies: [],
     totalCompanies: 0,
   });
   mocks.listTopCompanies.mockResolvedValue({
+    companies: [],
+    totalCompanies: 0,
+  });
+  mocks.listTopCompaniesAnonymous.mockResolvedValue({
     companies: [],
     totalCompanies: 0,
   });
@@ -76,6 +81,17 @@ beforeEach(() => {
     { currency: "JPY", toEur: 0.006 },
   ]);
 });
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+function stubTypesenseConfiguration(configured: boolean): void {
+  vi.stubEnv("TYPESENSE_HOST", configured ? "typesense.example.test" : "");
+  vi.stubEnv("TYPESENSE_PORT", configured ? "443" : "");
+  vi.stubEnv("TYPESENSE_PROTOCOL", configured ? "https" : "");
+  vi.stubEnv("TYPESENSE_SEARCH_KEY", configured ? "search-key" : "");
+}
 
 describe("fetchExplorePageData — salary EUR conversion (#3178)", () => {
   it("converts USD 100K filter to ~92000 EUR before calling Typesense (was 100000 pre-fix)", async () => {
@@ -180,5 +196,98 @@ describe("fetchExplorePageData — salary EUR conversion (#3178)", () => {
     const callArgs = mocks.listTopCompanies.mock.calls[0][0];
     expect(callArgs.salaryMinEur).toBe(46000); // 50000 * 0.92
     expect(callArgs.salaryMaxEur).toBe(138000); // 150000 * 0.92
+  });
+});
+
+describe("Explore repository fallback — configuration boundary (#2640)", () => {
+  it("adds profile-only fallback identities to a secretless default build", async () => {
+    stubTypesenseConfiguration(false);
+    mocks.listTopCompaniesAnonymous.mockResolvedValueOnce({
+      companies: [],
+      totalCompanies: 0,
+      degraded: true,
+    });
+
+    const data = await fetchExplorePageDefaults({ locale: "en" });
+
+    expect(data.result).toEqual({
+      companies: [],
+      totalCompanies: 0,
+      degraded: true,
+    });
+    expect(data.repositoryFallbackCompanies).toHaveLength(10);
+    expect(data.repositoryFallbackCompanies?.[0]).toEqual({
+      name: "Accenture",
+      slug: "accenture",
+    });
+    expect(mocks.listTopCompaniesAnonymous).not.toHaveBeenCalled();
+  });
+
+  it("does not replace an empty degraded response when Typesense is configured", async () => {
+    stubTypesenseConfiguration(true);
+    mocks.listTopCompaniesAnonymous.mockResolvedValueOnce({
+      companies: [],
+      totalCompanies: 0,
+      degraded: true,
+    });
+
+    const data = await fetchExplorePageDefaults({ locale: "en" });
+
+    expect(data.result.degraded).toBe(true);
+    expect(data.repositoryFallbackCompanies).toBeUndefined();
+  });
+
+  it("keeps a legitimate configured zero-result filtered search distinct", async () => {
+    stubTypesenseConfiguration(true);
+    mocks.parseSearchFilters.mockResolvedValueOnce({
+      keywords: ["no-match"],
+      locations: [],
+      occupations: [],
+      seniorities: [],
+      technologies: [],
+      workMode: [],
+      employmentTypes: [],
+    });
+    mocks.searchJobs.mockResolvedValueOnce({
+      companies: [],
+      totalCompanies: 0,
+    });
+
+    const data = await fetchExplorePageData({
+      searchParams: { q: "no-match" },
+      locale: "en",
+    });
+
+    expect(data.result).toEqual({ companies: [], totalCompanies: 0 });
+    expect(data.repositoryFallbackCompanies).toBeUndefined();
+  });
+
+  it("carries the offline profile fallback through a filtered secretless request", async () => {
+    stubTypesenseConfiguration(false);
+    mocks.parseSearchFilters.mockResolvedValueOnce({
+      keywords: ["python"],
+      locations: [],
+      occupations: [],
+      seniorities: [],
+      technologies: [],
+      workMode: [],
+      employmentTypes: [],
+    });
+    mocks.searchJobs.mockResolvedValueOnce({
+      companies: [],
+      totalCompanies: 0,
+      degraded: true,
+    });
+
+    const data = await fetchExplorePageData({
+      searchParams: { q: "python" },
+      locale: "de",
+    });
+
+    expect(data.result.companies).toEqual([]);
+    expect(data.repositoryFallbackCompanies).toHaveLength(10);
+    expect(data.parsed.keywords).toEqual(["python"]);
+    expect(mocks.parseSearchFilters).not.toHaveBeenCalled();
+    expect(mocks.searchJobs).not.toHaveBeenCalled();
   });
 });

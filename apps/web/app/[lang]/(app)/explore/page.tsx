@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { cacheLife } from "next/cache";
-import { isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales } from "@/lib/i18n";
+import { isLocale, defaultLocale, loadCatalog, ogLocale, ogAlternateLocales, type Locale } from "@/lib/i18n";
 import { CACHE_TTL_EXPLORE_SHELL } from "@/lib/cache-ttl";
 import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
 import { fetchExplorePageDefaults } from "@/lib/actions/explore-page-data";
 import { ExploreContent } from "./explore-content";
+import { ExploreStaticResults } from "./explore-static-results";
 
 const EXPLORE_DEFAULTS_CACHE_LIFE = {
   stale: CACHE_TTL_EXPLORE_SHELL,
   revalidate: CACHE_TTL_EXPLORE_SHELL,
   expire: CACHE_TTL_EXPLORE_SHELL * 5,
 } as const;
-const EXPLORE_DEFAULTS_PAYLOAD_VERSION = "v3";
+const EXPLORE_DEFAULTS_PAYLOAD_VERSION = "v4";
 
 // Cached for 10 minutes. The anonymous, no-filter explore payload is rendered
 // server-side via `fetchExplorePageDefaults` and embedded as `initialData`.
@@ -63,7 +65,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 async function renderExploreContent(
-  locale: string,
+  locale: Locale,
   payloadVersion: string,
 ) {
   "use cache";
@@ -71,9 +73,26 @@ async function renderExploreContent(
   if (payloadVersion !== EXPLORE_DEFAULTS_PAYLOAD_VERSION) {
     throw new Error("Unexpected explore defaults cache version");
   }
-  const initialData = await fetchExplorePageDefaults({ locale });
+  const [initialData, { i18n }] = await Promise.all([
+    fetchExplorePageDefaults({ locale }),
+    loadCatalog(locale),
+  ]);
+  const heading = i18n._({
+    id: "explore.h1",
+    comment: "Hidden page H1 for /explore — screen-reader landmark",
+    message: "Explore Jobs",
+  });
 
-  return <ExploreContent locale={locale} initialData={initialData} />;
+  return (
+    <>
+      <ExploreStaticResults locale={locale} heading={heading} data={initialData} />
+      <div data-explore-interactive hidden>
+        <Suspense fallback={null}>
+          <ExploreContent locale={locale} initialData={initialData} />
+        </Suspense>
+      </div>
+    </>
+  );
 }
 
 export default async function AppPage({ params }: Props) {
