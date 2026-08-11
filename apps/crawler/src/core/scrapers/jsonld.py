@@ -348,6 +348,13 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
         posting = _find_job_posting(block)
         if posting:
             content = _parse_posting(posting)
+            # Some providers synthesize a plausible-looking timestamp rather
+            # than publishing a real posting date.  iCIMS, for example, can
+            # emit the request time minus exactly two years for every job.
+            # Keep this opt-in and board-scoped: valid schema.org dates remain
+            # authoritative everywhere else.
+            if (config or {}).get("ignore_date_posted") is True:
+                content.date_posted = None
             if not content.title and extractor.page_title:
                 organization = posting.get("hiringOrganization")
                 organization_name = (
