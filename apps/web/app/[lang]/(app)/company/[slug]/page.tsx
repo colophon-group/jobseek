@@ -181,6 +181,7 @@ export default async function CompanyPageRoute({ params }: Props) {
         <SimilarSection
           companyId={company.id}
           industryId={company.industryId}
+          initialPage={initialData.similarCompanies}
           locale={locale}
         />
       </Suspense>

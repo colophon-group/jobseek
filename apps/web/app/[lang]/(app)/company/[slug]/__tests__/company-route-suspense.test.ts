@@ -10,6 +10,7 @@ describe("company route partial prerendering", () => {
 
     expect(source).toContain("<Suspense fallback={null}>");
     expect(source).toContain("<SimilarSection");
+    expect(source).toContain("initialPage={initialData.similarCompanies}");
     expect(source).toContain("<Suspense fallback={<CompanySkeleton />}>");
     expect(source).toContain("<CompanyContent");
   });
