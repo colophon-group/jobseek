@@ -15,9 +15,49 @@ from src.workspace.git import (
     check_gh_auth,
     create_draft_pr,
     current_branch,
+    ensure_clone,
     find_open_pr_for_branch,
     sync_branch_with_main,
 )
+
+
+class TestEnsureCloneInstalledMode:
+    def test_fresh_clone_uses_managed_path_without_external_state(self, tmp_path, monkeypatch):
+        managed = tmp_path / "managed" / "repo"
+        repo_url = (tmp_path / "jobseek-fixture.git").as_uri()
+        monkeypatch.setattr("src.workspace.git._MANAGED_REPO", managed)
+        monkeypatch.setenv("WS_REPO_URL", repo_url)
+
+        with patch("src.workspace.git.subprocess.run") as clone:
+            result = ensure_clone()
+
+        assert result == managed
+        clone.assert_called_once_with(
+            ["git", "clone", repo_url, str(managed)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        assert (managed.parent / "repo.lock").is_file()
+
+    def test_existing_clone_fetches_and_resets_inside_managed_path(self, tmp_path, monkeypatch):
+        managed = tmp_path / "managed" / "repo"
+        (managed / "apps" / "crawler" / "data").mkdir(parents=True)
+        monkeypatch.setattr("src.workspace.git._MANAGED_REPO", managed)
+        completed = subprocess.CompletedProcess([], 0, "", "")
+
+        with (
+            patch("src.workspace.git._run", return_value=completed) as run,
+            patch("src.workspace.git.get_main_branch_remote", return_value="main"),
+            patch("src.workspace.git.subprocess.run") as clone,
+        ):
+            result = ensure_clone()
+
+        assert result == managed
+        run.assert_any_call(["git", "fetch", "origin"], cwd=managed)
+        run.assert_any_call(["git", "checkout", "main"], cwd=managed, check=False)
+        run.assert_any_call(["git", "reset", "--hard", "origin/main"], cwd=managed)
+        clone.assert_not_called()
 
 
 class TestGitWrappers:

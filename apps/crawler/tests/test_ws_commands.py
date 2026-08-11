@@ -4938,6 +4938,9 @@ class TestNewIdempotent:
                 return_value=False,
             )
         )
+        ensure_clone = stack.enter_context(
+            patch("src.workspace.git.ensure_clone", return_value=tmp_path)
+        )
         stack.enter_context(patch("src.workspace.git.check_gh_auth", return_value=True))
         stack.enter_context(
             patch(
@@ -4980,6 +4983,7 @@ class TestNewIdempotent:
             create_worktree,
             delete_remote,
             sync_branch,
+            ensure_clone,
         )
 
     def test_new_skips_commit_when_slug_already_in_csv(self, tmp_path, monkeypatch):
@@ -5002,6 +5006,7 @@ class TestNewIdempotent:
                 create_worktree,
                 delete_remote,
                 sync_branch,
+                _,
             ) = self._git_mocks(stack, tmp_path, pr_branch="add-company/acme")
             # Simulate the worktree CSV already containing the slug
             stack.enter_context(
@@ -5037,7 +5042,9 @@ class TestNewIdempotent:
         _setup_csvs(tmp_path)  # empty CSV — slug not present
 
         with ExitStack() as stack:
-            add_files, commit, push, create_pr, _, _, sync_branch = self._git_mocks(stack, tmp_path)
+            add_files, commit, push, create_pr, _, _, sync_branch, ensure_clone = self._git_mocks(
+                stack, tmp_path
+            )
 
             runner = CliRunner()
             result = runner.invoke(ws, ["new", "acme", "--issue", "1"])
@@ -5048,6 +5055,7 @@ class TestNewIdempotent:
         push.assert_not_called()
         create_pr.assert_not_called()
         sync_branch.assert_not_called()
+        ensure_clone.assert_called_once_with(reset=False)
         assert "acme" in (tmp_path / "companies.csv").read_text()
         assert load_workspace("acme").pr is None
         assert load_workspace("acme").ats_inventory == {}
@@ -5058,7 +5066,7 @@ class TestNewIdempotent:
         _setup_csvs(tmp_path)
 
         with ExitStack() as stack:
-            add_files, commit, push, create_pr, _, _, _ = self._git_mocks(
+            add_files, commit, push, create_pr, _, _, _, _ = self._git_mocks(
                 stack,
                 tmp_path,
                 issue_body=_inventory_issue_body(),
@@ -5195,6 +5203,7 @@ class TestNewIdempotent:
                 create_worktree,
                 delete_remote,
                 sync_branch,
+                _,
             ) = self._git_mocks(
                 stack,
                 tmp_path,
@@ -5231,7 +5240,9 @@ class TestNewIdempotent:
         _setup_csvs(tmp_path, companies="acme,Acme,https://acme.com,,,\n")
 
         with ExitStack() as stack:
-            add_files, commit, push, create_pr, _, _, sync_branch = self._git_mocks(stack, tmp_path)
+            add_files, commit, push, create_pr, _, _, sync_branch, _ = self._git_mocks(
+                stack, tmp_path
+            )
             runner = CliRunner()
             result = runner.invoke(ws, ["new", "acme", "--reconfig"])
 
@@ -5251,7 +5262,7 @@ class TestNewIdempotent:
         _setup_csvs(tmp_path, companies="acme,Acme,https://acme.com,,,\n")
 
         with ExitStack() as stack:
-            *_, create_worktree, delete_remote, _ = self._git_mocks(
+            *_, create_worktree, delete_remote, _, _ = self._git_mocks(
                 stack,
                 tmp_path,
                 branch_pr=77,
@@ -5273,7 +5284,7 @@ class TestNewIdempotent:
         from src.workspace.errors import WorkspaceError
 
         with ExitStack() as stack:
-            *_, sync_branch = self._git_mocks(
+            *_, sync_branch, _ = self._git_mocks(
                 stack,
                 tmp_path,
                 pr_branch="add-company/recovered",
