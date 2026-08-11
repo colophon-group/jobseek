@@ -40,9 +40,7 @@ WEB_POSTGRES_IMAGE = (
 )
 WEB_POSTGRES_IMAGE_LEASE = "jobseek-web-postgresql-backup-image-lease"
 WEB_POSTGRES_IMAGE_LEASE_LABEL = "jobseek.backup.helper-image"
-WEB_POSTGRES_IMAGE_LEASE_TMPFS = {
-    "/var/lib/postgresql/data": "rw,noexec,nosuid,nodev,size=65536"
-}
+WEB_POSTGRES_IMAGE_LEASE_TMPFS = {"/var/lib/postgresql/data": "rw,noexec,nosuid,nodev,size=65536"}
 # Durable web/product records plus the small relational support set required
 # by their outbound foreign keys. Crawler postings, taxonomies, enrichment
 # batches, Stripe's unused subscription table, and Murmur are deliberately
@@ -486,6 +484,8 @@ _TYPESENSE_ALIASES = (
     "technology",
     "watchlist",
 )
+_TYPESENSE_ALIAS_STABILITY_ATTEMPTS = 3
+_TYPESENSE_ALIAS_STABILITY_RETRY_SECONDS = 5
 
 
 def _typesense_json_get(url: str, api_key: str, path: str) -> dict[str, Any]:
@@ -506,18 +506,44 @@ def _typesense_json_get(url: str, api_key: str, path: str) -> dict[str, Any]:
 def _typesense_inventory(url: str, api_key: str) -> dict[str, Any]:
     alias_payload = _typesense_json_get(url, api_key, "/aliases")
     try:
-        aliases = {item["name"]: item["collection_name"] for item in alias_payload["aliases"]}
+        alias_rows = alias_payload["aliases"]
     except (KeyError, TypeError) as exc:
         raise BackupError("Typesense alias inventory returned an unexpected shape") from exc
-    if set(aliases) != set(_TYPESENSE_ALIASES):
+    if not isinstance(alias_rows, list):
+        raise BackupError("Typesense alias inventory returned an unexpected shape")
+    aliases: dict[str, str] = {}
+    for item in alias_rows:
+        try:
+            name = item["name"]
+            target = item["collection_name"]
+        except (KeyError, TypeError) as exc:
+            raise BackupError("Typesense alias inventory returned an unexpected shape") from exc
+        if (
+            not isinstance(name, str)
+            or not name
+            or not isinstance(target, str)
+            or not target
+            or name in aliases
+        ):
+            raise BackupError("Typesense alias inventory returned an unexpected shape")
+        aliases[name] = target
+    if len(alias_rows) != len(_TYPESENSE_ALIASES) or set(aliases) != set(_TYPESENSE_ALIASES):
         raise BackupError("Typesense alias inventory is incomplete")
     collection_documents: dict[str, int] = {}
     for alias in _TYPESENSE_ALIASES:
-        collection = _typesense_json_get(url, api_key, f"/collections/{alias}")
+        target = aliases[alias]
+        collection = _typesense_json_get(
+            url,
+            api_key,
+            f"/collections/{urllib.parse.quote(target, safe='')}",
+        )
         try:
+            collection_name = collection["name"]
             count = int(collection["num_documents"])
         except (KeyError, TypeError, ValueError) as exc:
             raise BackupError(f"Typesense collection inventory is invalid for {alias}") from exc
+        if collection_name != target:
+            raise BackupError(f"Typesense alias target is invalid for {alias}")
         if count < 0:
             raise BackupError(f"Typesense collection inventory is negative for {alias}")
         collection_documents[alias] = count
@@ -1388,13 +1414,10 @@ def typesense_backup() -> dict[str, Any]:
     if running != "true":
         raise BackupError(f"Typesense container {container!r} is not running")
 
-    inventory_before = _typesense_inventory(url, api_key)
-
     run_id = utc_now().strftime("%Y%m%dT%H%M%SZ")
     container_root = os.environ.get(
         "TYPESENSE_SNAPSHOT_CONTAINER_ROOT", "/tmp/jobseek-typesense-snapshots"
     ).rstrip("/")
-    container_path = f"{container_root}/{run_id}"
     staging_root = (
         Path(os.environ.get("TYPESENSE_SNAPSHOT_HOST_ROOT", "/var/lib/jobseek-backup/typesense"))
         / "staging"
@@ -1402,17 +1425,54 @@ def typesense_backup() -> dict[str, Any]:
     local_path = staging_root / run_id
     _remove_old_staging(staging_root)
     local_path.mkdir(parents=True, mode=0o700)
+    container_paths: list[str] = []
     copied = False
     success = False
 
     try:
-        run_checked(["docker", "exec", container, "rm", "-rf", "--", container_path], timeout=60)
-        _snapshot_request(url, api_key, container_path)
-        inventory_after = _typesense_inventory(url, api_key)
-        if inventory_after != inventory_before:
-            raise BackupError("Typesense inventory changed while the snapshot was being created")
+        inventory_after: dict[str, Any] | None = None
+        selected_container_path = ""
+        last_alias_error: BackupError | None = None
+        for attempt in range(1, _TYPESENSE_ALIAS_STABILITY_ATTEMPTS + 1):
+            container_path = f"{container_root}/{run_id}-attempt-{attempt}"
+            container_paths.append(container_path)
+            run_checked(
+                ["docker", "exec", container, "rm", "-rf", "--", container_path],
+                timeout=60,
+            )
+            try:
+                inventory_before = _typesense_inventory(url, api_key)
+            except BackupError as exc:
+                last_alias_error = exc
+            else:
+                _snapshot_request(url, api_key, container_path)
+                try:
+                    candidate_inventory = _typesense_inventory(url, api_key)
+                except BackupError as exc:
+                    last_alias_error = exc
+                else:
+                    if candidate_inventory["aliases"] == inventory_before["aliases"]:
+                        inventory_after = candidate_inventory
+                        selected_container_path = container_path
+                        break
+                    last_alias_error = BackupError(
+                        "Typesense aliases changed while the snapshot was being created"
+                    )
+            run_checked(
+                ["docker", "exec", container, "rm", "-rf", "--", container_path],
+                timeout=60,
+            )
+            if attempt < _TYPESENSE_ALIAS_STABILITY_ATTEMPTS:
+                time.sleep(_TYPESENSE_ALIAS_STABILITY_RETRY_SECONDS)
+        if inventory_after is None:
+            detail = redact(str(last_alias_error or "alias validation failed"))
+            raise BackupError(
+                "Typesense alias contract did not stabilize after "
+                f"{_TYPESENSE_ALIAS_STABILITY_ATTEMPTS} attempts: {detail}"
+            ) from last_alias_error
+
         run_checked(
-            ["docker", "cp", f"{container}:{container_path}/.", str(local_path)],
+            ["docker", "cp", f"{container}:{selected_container_path}/.", str(local_path)],
             timeout=7_200,
         )
         copied = True
@@ -1477,14 +1537,16 @@ def typesense_backup() -> dict[str, Any]:
             "repository_snapshot_time": latest_snapshot.get("time"),
             "repository_snapshot_count": len(snapshots),
             "retention": {"keep_daily": 14, "keep_weekly": 4},
+            "collection_documents_observation": "live_after_snapshot",
             **inventory_after,
         }
     finally:
-        with suppress(Exception):
-            run_checked(
-                ["docker", "exec", container, "rm", "-rf", "--", container_path],
-                timeout=60,
-            )
+        for container_path in container_paths:
+            with suppress(Exception):
+                run_checked(
+                    ["docker", "exec", container, "rm", "-rf", "--", container_path],
+                    timeout=60,
+                )
         if success or not copied and not any(local_path.iterdir()):
             shutil.rmtree(local_path, ignore_errors=True)
 

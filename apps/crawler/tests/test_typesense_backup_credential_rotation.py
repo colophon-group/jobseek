@@ -137,6 +137,15 @@ case "$command" in
       printf 'active\n' >"$FAKE_TIMER_ACTIVE"
     else
       printf 'active\n' >"$FAKE_SERVICE_ACTIVE"
+      if [[ "${FAKE_RUN_SYSTEMD_BACKUP:-0}" == 1 ]]; then
+        set -a
+        # shellcheck disable=SC1090
+        source "$LIVE_ENV"
+        set +a
+        BACKUP_STATUS_DIR="$(dirname "$STATUS_FILE")" \
+          "$FAKE_BACKUP" typesense
+      fi
+      printf 'inactive\n' >"$FAKE_SERVICE_ACTIVE"
     fi
     ;;
   reset-failed)
@@ -243,7 +252,11 @@ trap cleanup_harness EXIT
 trap 'trap - HUP INT TERM; echo "interrupted" >&2; exit 1' HUP INT TERM
 
 typesense_rotation_prepare
-typesense_rotation_smoke_and_commit 1 9
+if [[ "${RUN_REPAIR:-0}" == 1 ]]; then
+  typesense_rotation_repair_failed_backup 1 9
+else
+  typesense_rotation_smoke_and_commit 1 9
+fi
 if [[ "${FAKE_FAIL_AFTER_COMMIT:-0}" == 1 ]]; then
   echo "post-commit gate failed" >&2
   false
@@ -344,6 +357,54 @@ def test_changed_key_smokes_candidate_before_atomic_commit_and_marker(
     assert NEW_KEY not in "\n".join(actions)
     assert not list(rotation_harness.live_env.parent.glob(".typesense-candidate.*"))
     assert not list(rotation_harness.live_env.parent.glob(".typesense-env.rollback.*"))
+    _assert_secret_safe(result)
+
+
+def test_failed_backup_repair_runs_systemd_once_and_restores_timer(
+    rotation_harness: RotationHarness,
+) -> None:
+    rotation_harness.candidate_key.write_text(OLD_KEY, encoding="utf-8")
+    rotation_harness.candidate_key.chmod(0o600)
+    rotation_harness.service_active.write_text("failed\n", encoding="utf-8")
+
+    result = rotation_harness.run(
+        RUN_REPAIR="1",
+        FAKE_RUN_SYSTEMD_BACKUP="1",
+        FAKE_EXPECTED_KEY=OLD_KEY,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert rotation_harness.live_key() == OLD_KEY
+    assert rotation_harness.status_file.is_file()
+    assert rotation_harness.timer_enabled.read_text(encoding="utf-8").strip() == "enabled"
+    assert rotation_harness.timer_active.read_text(encoding="utf-8").strip() == "active"
+    actions = rotation_harness.action_lines()
+    reset = actions.index("systemctl:reset-failed:jobseek-typesense-backup.service")
+    start = actions.index("systemctl:start:jobseek-typesense-backup.service")
+    assert actions.index("unlock") < reset < start < actions.index("backup")
+    assert actions.index("backup") < actions.index("reacquire") < actions.index("marker")
+    _assert_secret_safe(result)
+
+
+def test_failed_backup_repair_failure_leaves_timer_disabled(
+    rotation_harness: RotationHarness,
+) -> None:
+    rotation_harness.candidate_key.write_text(OLD_KEY, encoding="utf-8")
+    rotation_harness.candidate_key.chmod(0o600)
+    rotation_harness.service_active.write_text("failed\n", encoding="utf-8")
+
+    result = rotation_harness.run(
+        RUN_REPAIR="1",
+        FAKE_RUN_SYSTEMD_BACKUP="1",
+        FAKE_EXPECTED_KEY=OLD_KEY,
+        FAKE_SMOKE_FAIL="1",
+    )
+
+    assert result.returncode != 0
+    assert rotation_harness.live_key() == OLD_KEY
+    _assert_timer_safe(rotation_harness)
+    assert "repaired Typesense backup smoke failed" in result.stderr
+    assert "marker" not in rotation_harness.action_lines()
     _assert_secret_safe(result)
 
 

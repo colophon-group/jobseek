@@ -1035,6 +1035,7 @@ def test_typesense_backup_snapshots_uploads_validates_and_cleans(
     assert result["retention"] == {"keep_daily": 14, "keep_weekly": 4}
     assert result["aliases"] == inventory["aliases"]
     assert result["collection_documents"] == inventory["collection_documents"]
+    assert result["collection_documents_observation"] == "live_after_snapshot"
     assert not (staging_parent / "staging" / "20260722T020000Z").exists()
     assert any("backup" in command for command in commands)
     assert any("forget" in command and "--prune" in command for command in commands)
@@ -1045,6 +1046,7 @@ def test_typesense_inventory_requires_all_aliases_and_records_counts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     aliases = {alias: f"{alias}_v7" for alias in backup._TYPESENSE_ALIASES}
+    aliases_by_target = {target: alias for alias, target in aliases.items()}
 
     def fake_get(_url: str, _key: str, path: str) -> dict[str, object]:
         if path == "/aliases":
@@ -1053,8 +1055,9 @@ def test_typesense_inventory_requires_all_aliases_and_records_counts(
                     {"name": alias, "collection_name": target} for alias, target in aliases.items()
                 ]
             }
-        alias = path.removeprefix("/collections/")
-        return {"num_documents": len(alias)}
+        target = path.removeprefix("/collections/")
+        alias = aliases_by_target[target]
+        return {"name": target, "num_documents": len(alias)}
 
     monkeypatch.setattr(backup, "_typesense_json_get", fake_get)
 
@@ -1084,7 +1087,7 @@ def test_typesense_inventory_rejects_a_missing_alias(
         backup._typesense_inventory("http://127.0.0.1:8108", "key")
 
 
-def test_typesense_backup_rejects_inventory_changes_during_snapshot(
+def test_typesense_backup_accepts_live_document_changes_during_snapshot(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     first = {
@@ -1095,6 +1098,7 @@ def test_typesense_backup_rejects_inventory_changes_during_snapshot(
         **first,
         "collection_documents": {
             **first["collection_documents"],
+            "company": 0,
             "watchlist": 2,
         },
     }
@@ -1106,14 +1110,154 @@ def test_typesense_backup_rejects_inventory_changes_during_snapshot(
     monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(tmp_path))
     monkeypatch.setattr(backup, "_snapshot_request", lambda *_: None)
     monkeypatch.setattr(backup, "_typesense_inventory", lambda *_: next(inventories))
+
+    def fake_run(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        if argv[:2] == ["docker", "inspect"]:
+            return completed("true\n")
+        if argv[:2] == ["docker", "cp"]:
+            destination = Path(argv[-1])
+            (destination / "state.bin").write_bytes(b"consistent-snapshot")
+        if "snapshots" in argv:
+            return completed(
+                json.dumps(
+                    [
+                        {
+                            "id": "1234567890abcdef",
+                            "short_id": "12345678",
+                            "time": "2026-08-11T02:00:00Z",
+                        }
+                    ]
+                )
+            )
+        return completed()
+
+    monkeypatch.setattr(backup, "run_checked", fake_run)
+
+    result = backup.typesense_backup()
+
+    assert result["aliases"] == first["aliases"]
+    assert result["collection_documents"]["company"] == 0
+    assert result["collection_documents"]["watchlist"] == 2
+    assert result["collection_documents_observation"] == "live_after_snapshot"
+
+
+def test_typesense_backup_retries_a_concurrent_alias_cutover(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    aliases_v1 = {alias: f"{alias}_v1" for alias in backup._TYPESENSE_ALIASES}
+    aliases_v2 = {alias: f"{alias}_v2" for alias in backup._TYPESENSE_ALIASES}
+    observations = iter(
+        (
+            {"aliases": aliases_v1, "collection_documents": {alias: 1 for alias in aliases_v1}},
+            {"aliases": aliases_v2, "collection_documents": {alias: 2 for alias in aliases_v2}},
+            {"aliases": aliases_v2, "collection_documents": {alias: 2 for alias in aliases_v2}},
+            {"aliases": aliases_v2, "collection_documents": {alias: 3 for alias in aliases_v2}},
+        )
+    )
+    snapshot_paths: list[str] = []
+    commands: list[list[str]] = []
+    monkeypatch.setenv("TYPESENSE_API_KEY", "test-key")
+    monkeypatch.setenv("RESTIC_REPOSITORY", "sftp:relative-repository")
+    monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
+    monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
+    monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(tmp_path))
+    monkeypatch.setattr(backup, "_typesense_inventory", lambda *_: next(observations))
+    monkeypatch.setattr(backup.time, "sleep", lambda *_: None)
     monkeypatch.setattr(
-        backup,
-        "run_checked",
-        lambda *_args, **_kwargs: completed("true\n"),
+        backup, "_snapshot_request", lambda _url, _key, path: snapshot_paths.append(path)
     )
 
-    with pytest.raises(backup.BackupError, match="inventory changed"):
+    def fake_run(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        commands.append(argv)
+        if argv[:2] == ["docker", "inspect"]:
+            return completed("true\n")
+        if argv[:2] == ["docker", "cp"]:
+            destination = Path(argv[-1])
+            (destination / "state.bin").write_bytes(b"second-snapshot")
+        if "snapshots" in argv:
+            return completed(
+                json.dumps(
+                    [{"id": "abcdef123456", "short_id": "abcdef12", "time": "2026-08-11T02:00:00Z"}]
+                )
+            )
+        return completed()
+
+    monkeypatch.setattr(backup, "run_checked", fake_run)
+
+    result = backup.typesense_backup()
+
+    assert len(snapshot_paths) == 2
+    assert snapshot_paths[0].endswith("-attempt-1")
+    assert snapshot_paths[1].endswith("-attempt-2")
+    assert result["aliases"] == aliases_v2
+    assert result["collection_documents"] == {alias: 3 for alias in aliases_v2}
+    assert any(
+        command[:6] == ["docker", "exec", "typesense", "rm", "-rf", "--"]
+        and command[-1] == snapshot_paths[0]
+        for command in commands
+    )
+
+
+def test_typesense_backup_fails_after_bounded_alias_retries(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    counter = 0
+
+    def changing_inventory(*_: object) -> dict[str, object]:
+        nonlocal counter
+        counter += 1
+        aliases = {alias: f"{alias}_v{counter}" for alias in backup._TYPESENSE_ALIASES}
+        return {"aliases": aliases, "collection_documents": {alias: counter for alias in aliases}}
+
+    snapshot_paths: list[str] = []
+    commands: list[list[str]] = []
+    monkeypatch.setenv("TYPESENSE_API_KEY", "test-key")
+    monkeypatch.setenv("RESTIC_REPOSITORY", "sftp:relative-repository")
+    monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
+    monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
+    monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(tmp_path))
+    monkeypatch.setattr(backup, "_typesense_inventory", changing_inventory)
+    monkeypatch.setattr(backup.time, "sleep", lambda *_: None)
+    monkeypatch.setattr(
+        backup, "_snapshot_request", lambda _url, _key, path: snapshot_paths.append(path)
+    )
+
+    def fake_run(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        commands.append(argv)
+        if argv[:2] == ["docker", "inspect"]:
+            return completed("true\n")
+        return completed()
+
+    monkeypatch.setattr(backup, "run_checked", fake_run)
+
+    with pytest.raises(backup.BackupError, match="did not stabilize after 3 attempts"):
         backup.typesense_backup()
+
+    assert len(snapshot_paths) == 3
+    assert not any("backup" in command for command in commands)
+    for snapshot_path in snapshot_paths:
+        assert sum(command[-1] == snapshot_path for command in commands) >= 2
+
+
+def test_typesense_inventory_rejects_an_invalid_alias_target(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    aliases = {alias: f"{alias}_v1" for alias in backup._TYPESENSE_ALIASES}
+
+    def fake_get(_url: str, _key: str, path: str) -> dict[str, object]:
+        if path == "/aliases":
+            return {
+                "aliases": [
+                    {"name": alias, "collection_name": target} for alias, target in aliases.items()
+                ]
+            }
+        target = path.removeprefix("/collections/")
+        return {"name": f"wrong-{target}", "num_documents": 1}
+
+    monkeypatch.setattr(backup, "_typesense_json_get", fake_get)
+
+    with pytest.raises(backup.BackupError, match="alias target is invalid"):
+        backup._typesense_inventory("http://127.0.0.1:8108", "key")
 
 
 def test_redact_removes_common_secret_shapes() -> None:

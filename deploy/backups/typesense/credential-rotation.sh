@@ -307,8 +307,64 @@ if (
     or int(status.get("attempt_unix") or 0) < started
     or int(status.get("last_success_unix") or 0) < started
 ):
-    raise SystemExit("ERROR: Typesense credential-change backup smoke did not succeed")
+    raise SystemExit("ERROR: Typesense backup smoke did not succeed")
 PY
+}
+
+typesense_rotation_repair_failed_backup() {
+  local lock_timeout=$1
+  local service_lock_fd=$2
+  local smoke_started
+  if [[ "$typesense_rotation_changed" -ne 0 || \
+    "$typesense_rotation_pending" -ne 0 ]]; then
+    echo "ERROR: Typesense backup repair requires an unchanged credential" >&2
+    return 1
+  fi
+
+  typesense_rotation_read_service_state
+  if [[ "$typesense_rotation_timer_enabled_state" == enabled ]]; then
+    typesense_rotation_timer_was_enabled=1
+  fi
+  if [[ "$typesense_rotation_timer_active_state" == active ]]; then
+    typesense_rotation_timer_was_active=1
+  fi
+
+  # Arm the existing rollback trap before changing timer or lock state. With
+  # an unchanged credential, rollback only has to prove a disabled timer and
+  # regain the service lock; it still retains the prior environment snapshot.
+  typesense_rotation_pending=1
+  typesense_rotation_timer_quiesced=1
+  typesense_rotation_disable_fail_safe
+
+  typesense_rotation_service_lock_held=0
+  if ! "$typesense_rotation_flock_command" -u "$service_lock_fd"; then
+    typesense_rotation_service_lock_held=1
+    echo "ERROR: could not release Typesense service data lock for repair" >&2
+    return 1
+  fi
+
+  smoke_started="$(date +%s)"
+  if ! "$typesense_rotation_systemctl_command" reset-failed \
+    jobseek-typesense-backup.service; then
+    echo "ERROR: could not reset the failed Typesense backup unit" >&2
+    return 1
+  fi
+  if ! "$typesense_rotation_systemctl_command" start \
+    jobseek-typesense-backup.service; then
+    echo "ERROR: repaired Typesense backup smoke failed" >&2
+    return 1
+  fi
+  typesense_rotation_validate_fresh_status "$smoke_started"
+
+  if ! "$typesense_rotation_flock_command" -w "$lock_timeout" \
+    "$service_lock_fd"; then
+    typesense_rotation_lock_reacquire_failed=1
+    echo "ERROR: could not reacquire Typesense service data lock after repair" >&2
+    return 1
+  fi
+  typesense_rotation_service_lock_held=1
+  typesense_rotation_restore_timer_state
+  typesense_rotation_pending=0
 }
 
 typesense_rotation_smoke_and_commit() {
