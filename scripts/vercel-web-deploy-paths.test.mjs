@@ -49,6 +49,12 @@ test("production workflow stages, verifies, then promotes exact main", () => {
   assert.match(workflow, /production_sha.*current_sha/);
   assert.match(workflow, /current_main=.*commits\/main/);
   assert.match(workflow, /vercel@55\.0\.0 promote/);
+  assert.equal(
+    [...workflow.matchAll(/vercel@55\.0\.0 --token="\$VERCEL_TOKEN" curl/g)]
+      .length,
+    2,
+  );
+  assert.doesNotMatch(workflow, /vercel@55\.0\.0 curl/);
   assert.doesNotMatch(workflow, /--cwd=apps\/web/);
   assert.doesNotMatch(workflow, /--git-branch/);
   assert.match(workflow, /environment: Production/);
