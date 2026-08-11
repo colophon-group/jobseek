@@ -97,6 +97,10 @@ function expectSinglePageOutline() {
   expect(main.tabIndex).toBe(-1);
   expect(main.contains(heading)).toBe(true);
   expect(heading.textContent?.trim()).not.toBe("");
+  expect(screen.getAllByRole("link", { name: "Skip to content" })).toHaveLength(1);
+  expect(
+    screen.getByRole("link", { name: "Skip to content" }).getAttribute("href"),
+  ).toBe("#main-content");
 }
 
 function renderAuthRoute(page: ReactElement, ownsShell = false) {
@@ -120,8 +124,6 @@ describe("entry-route page semantics", () => {
     render(layout);
 
     expectSinglePageOutline();
-    expect(screen.getByRole("link", { name: "Skip to content" }).getAttribute("href"))
-      .toBe("#main-content");
   });
 
   it.each([
