@@ -2748,6 +2748,12 @@ just-4-veterans-enterprise,just-4-veterans-enterprise-join,https://join.com/comp
 just-eat-takeaway,just-eat-takeaway-careers,https://careers.justeattakeaway.com/global/en/search-results,sitemap,"{""url_filter"": ""/job/""}",json-ld,"{""render"": true}"
 justworks,justworks-greenhouse,https://job-boards.greenhouse.io/justworks,greenhouse,"{""token"": ""justworks""}",skip,
 juul-labs,juul-labs-greenhouse,https://job-boards.greenhouse.io/juullabs,greenhouse,"{""token"": ""juullabs""}",skip,
+jysk,jysk-baltics,https://careers.smartrecruiters.com/JYSKBaltics,smartrecruiters,"{""token"": ""JYSKBaltics""}",smartrecruiters,
+jysk,jysk-canada,https://careers.smartrecruiters.com/JYSKCanada,smartrecruiters,"{""token"": ""JYSKCanada""}",smartrecruiters,
+jysk,jysk-careers,https://careers.smartrecruiters.com/jysk,smartrecruiters,,smartrecruiters,
+jysk,jysk-iceland,https://alfred.is/vinnustadir/jysk,dom,"{""url_filter"": ""/starf/(?!almenn-umsokn)""}",json-ld,
+jysk,jysk-malta,https://jysk.com.mt/jobs/,dom,"{""url_filter"": ""^https://jysk\\.com\\.mt/jobs/[^#?]+/?$""}",dom,"{""steps"": [{""tag"": ""h2"", ""field"": ""title""}, {""tag"": ""h2"", ""field"": ""description"", ""from"": 0, ""html"": true, ""stop"": ""47 YEARS OF GREAT OFFERS""}], ""defaults"": {""locations"": [""Malta""]}}"
+jysk,jysk-vietnam,https://jysk.vn/tuyen-dung,inline,"{""fetch_urls"": [""https://jysk-vn.translate.goog/tuyen-dung?_x_tr_sl=vi&_x_tr_tl=en&_x_tr_hl=en""], ""steps"": [{""tag"": ""h2"", ""field"": ""title""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop"": ""\u0110\u0103ng nh\u1eadp""}, {""text"": ""Qu\u00ean m\u1eadt kh\u1ea9u?""}], ""defaults"": {""locations"": [""H\u00e0 N\u1ed9i, Vietnam"", ""H\u01b0ng Y\u00ean, Vietnam"", ""H\u1ea3i Ph\u00f2ng, Vietnam"", ""Qu\u1ea3ng Ninh, Vietnam"", ""Thanh H\u00f3a, Vietnam"", ""\u0110\u00e0 N\u1eb5ng, Vietnam"", ""H\u1ed3 Ch\u00ed Minh City, Vietnam""]}}",skip,
 k-health,k-health-greenhouse,https://job-boards.greenhouse.io/khealthcareers,greenhouse,"{""token"": ""khealthcareers""}",skip,
 k-id,k-id-careers,https://api.ashbyhq.com/posting-api/job-board/k-id,ashby,"{""token"": ""k-id""}",skip,
 k-water,k-water-careers,https://k-water.recruiter.co.kr/career/home,recruiter_co_kr,"{""slug"": ""k-water""}",skip,
