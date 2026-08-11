@@ -1159,6 +1159,7 @@ class TestTaskComplete:
             )
             stack.enter_context(patch("src.workspace.git.fetch"))
             push = stack.enter_context(patch("src.workspace.git.push"))
+            unclaim = stack.enter_context(patch("src.workspace.git.unclaim_issue"))
 
             runner = CliRunner()
             result = runner.invoke(ws, ["task", "complete"])
@@ -1169,6 +1170,7 @@ class TestTaskComplete:
         assert "Add KB reflections for test" in commit.call_args[0][0]
         assert "Refs #42" in commit.call_args[0][0]
         push.assert_called_once()
+        unclaim.assert_called_once_with(42)
 
         wf = _load_wf_from_disk("test")
         assert wf.current_step == "done"
@@ -1381,6 +1383,20 @@ def _as_probe_monitor_result(entries, *, board_url="https://test.com/jobs", curr
     )
 
 
+def _enter_asyncio_run_patch(stack: ExitStack) -> MagicMock:
+    """Patch only ``asyncio.run`` and always close the bypassed coroutine."""
+    delegate = MagicMock()
+
+    def _run(coro):
+        try:
+            return delegate(coro)
+        finally:
+            coro.close()
+
+    stack.enter_context(patch("src.workspace.commands.crawl.asyncio.run", side_effect=_run))
+    return delegate
+
+
 def _enter_monitor_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     """Enter common patches for run monitor tests. Returns (stack, mock_asyncio).
 
@@ -1389,7 +1405,7 @@ def _enter_monitor_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     Existing tests pass tuples; use :func:`_as_run_monitor_result` to wrap.
     """
     stack = ExitStack()
-    mock_asyncio = stack.enter_context(patch("src.workspace.commands.crawl.asyncio"))
+    mock_asyncio_run = _enter_asyncio_run_patch(stack)
     stack.enter_context(
         patch(
             "src.workspace.artifacts.monitor_run_dir",
@@ -1401,7 +1417,7 @@ def _enter_monitor_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     stack.enter_context(patch("src.workspace.artifacts.save_http_log"))
     stack.enter_context(patch("src.workspace.artifacts.save_events"))
     stack.enter_context(patch("src.workspace.artifacts.capture_structlog", return_value=[]))
-    return stack, mock_asyncio
+    return stack, MagicMock(run=mock_asyncio_run)
 
 
 def _enter_scraper_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
@@ -1412,7 +1428,7 @@ def _enter_scraper_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     Existing tests pass tuples; use :func:`_as_run_scraper_result` to wrap.
     """
     stack = ExitStack()
-    mock_asyncio = stack.enter_context(patch("src.workspace.commands.crawl.asyncio"))
+    mock_asyncio_run = _enter_asyncio_run_patch(stack)
     stack.enter_context(
         patch(
             "src.workspace.artifacts.scraper_run_dir",
@@ -1427,7 +1443,7 @@ def _enter_scraper_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     stack.enter_context(
         patch("random.sample", return_value=["https://test.com/jobs/1", "https://test.com/jobs/2"])
     )
-    return stack, mock_asyncio
+    return stack, MagicMock(run=mock_asyncio_run)
 
 
 class TestRunMonitorOutput:
@@ -2082,7 +2098,7 @@ class TestRunScraperNamedConfig:
 def _enter_probe_scraper_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     """Enter common patches for probe scraper tests. Returns (stack, mock_asyncio)."""
     stack = ExitStack()
-    mock_asyncio = stack.enter_context(patch("src.workspace.commands.crawl.asyncio"))
+    mock_asyncio_run = _enter_asyncio_run_patch(stack)
     stack.enter_context(
         patch(
             "src.workspace.artifacts.scraper_probe_run_dir",
@@ -2090,7 +2106,7 @@ def _enter_probe_scraper_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
         )
     )
     stack.enter_context(patch("src.workspace.artifacts.save_probe"))
-    return stack, mock_asyncio
+    return stack, MagicMock(run=mock_asyncio_run)
 
 
 class TestProbeScraperQualityGate:
@@ -4509,11 +4525,9 @@ class TestMonitorRegression:
         fake = FakeResult(urls=set(), jobs_by_url=None, filtered_count=0)
 
         with ExitStack() as stack:
-            stack.enter_context(
-                patch(
-                    "src.workspace.commands.crawl.asyncio.run",
-                    return_value=_as_run_monitor_result(fake, 1.0, [], monitor_type="greenhouse"),
-                )
+            asyncio_run = _enter_asyncio_run_patch(stack)
+            asyncio_run.return_value = _as_run_monitor_result(
+                fake, 1.0, [], monitor_type="greenhouse"
             )
             stack.enter_context(patch("src.workspace.commands.crawl.save_board"))
             stack.enter_context(
@@ -4558,11 +4572,9 @@ class TestMonitorRegression:
         fake = FakeResult(urls=set(), jobs_by_url=None, filtered_count=0)
 
         with ExitStack() as stack:
-            stack.enter_context(
-                patch(
-                    "src.workspace.commands.crawl.asyncio.run",
-                    return_value=_as_run_monitor_result(fake, 1.0, [], monitor_type="greenhouse"),
-                )
+            asyncio_run = _enter_asyncio_run_patch(stack)
+            asyncio_run.return_value = _as_run_monitor_result(
+                fake, 1.0, [], monitor_type="greenhouse"
             )
             stack.enter_context(patch("src.workspace.commands.crawl.save_board"))
             stack.enter_context(
