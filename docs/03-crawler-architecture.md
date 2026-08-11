@@ -393,9 +393,10 @@ repairs at most 16 partitions, so a full cycle normally completes within 16
 successful starts. The host mutation lock serializes it with crawler
 deploys, Typesense refreshes, and backfills; a PostgreSQL advisory lock rejects
 duplicate reconcilers even if host scheduling is bypassed. Reconciliation
-does not restart PostgreSQL, Typesense, or crawler services. It can briefly
-delay one exporter tick and candidate-row updates while its verified repair
-section holds the existing fence/row locks.
+does not restart PostgreSQL, Typesense, or crawler services. Its verified
+repair section can briefly delay an exporter tick or another operator path
+while it holds the existing exporter/operator fence; reconciliation does not
+hold source-row updates.
 
 The CLI is read-only unless `--repair` is explicit:
 
