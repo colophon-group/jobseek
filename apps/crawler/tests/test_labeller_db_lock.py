@@ -10,9 +10,10 @@ from pathlib import Path
 
 import pytest
 
-from src.labeller.cli import LabellerDatabaseLockError, _database_process_lock
+from src.labeller.cli import LabellerDatabaseLockError, _database_process_lock, main
 
 CRAWLER_ROOT = Path(__file__).resolve().parents[1]
+LEAK_MARKER = "not-a-real-dsn-password-24c8"
 
 _LOCK_WORKER = """
 import sys
@@ -91,6 +92,33 @@ def test_labeller_database_command_fails_closed_without_shared_lock(monkeypatch)
         _database_process_lock("prepare-pre-llm"),
     ):
         pass
+
+
+@pytest.mark.parametrize("timeout", ["nan", "inf", "-inf"])
+def test_database_process_lock_rejects_nonfinite_timeout_without_dsn_leak(
+    monkeypatch, capsys, tmp_path: Path, timeout: str
+) -> None:
+    output_path = tmp_path / "sample.json"
+    monkeypatch.setenv("CRAWLER_DB_ROLE", "labeller")
+    monkeypatch.setenv("LABELLER_DATA_ROOT", str(tmp_path))
+    monkeypatch.setenv("JOBSEEK_LABELLER_DB_LOCK_FILE", str(tmp_path / "labeller-postgresql.lock"))
+    monkeypatch.setenv("JOBSEEK_LABELLER_DB_LOCK_TIMEOUT_SECONDS", timeout)
+    monkeypatch.setenv("LOCAL_DATABASE_URL", f"postgresql://reader:{LEAK_MARKER}@db/crawler")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["labeller", "sample", "--count", "1", "--out", str(output_path)],
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main()
+
+    assert exc_info.value.code == 5
+    assert not output_path.exists()
+    captured = capsys.readouterr()
+    assert "finite positive number" in captured.err
+    assert LEAK_MARKER not in captured.out
+    assert LEAK_MARKER not in captured.err
 
 
 def test_database_process_lock_wait_is_bounded(tmp_path: Path) -> None:

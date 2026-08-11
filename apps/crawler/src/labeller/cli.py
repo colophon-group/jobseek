@@ -11,6 +11,7 @@ import argparse
 import asyncio
 import fcntl
 import json
+import math
 import os
 import sys
 import time
@@ -61,8 +62,10 @@ def _database_process_lock(command: str) -> Iterator[None]:
         raise LabellerDatabaseLockError(
             "JOBSEEK_LABELLER_DB_LOCK_TIMEOUT_SECONDS must be numeric"
         ) from exc
-    if timeout_seconds <= 0:
-        raise LabellerDatabaseLockError("JOBSEEK_LABELLER_DB_LOCK_TIMEOUT_SECONDS must be positive")
+    if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
+        raise LabellerDatabaseLockError(
+            "JOBSEEK_LABELLER_DB_LOCK_TIMEOUT_SECONDS must be a finite positive number"
+        )
 
     lock_path = Path(raw_path)
     deadline = time.monotonic() + timeout_seconds
