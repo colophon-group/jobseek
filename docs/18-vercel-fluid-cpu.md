@@ -114,6 +114,12 @@ renderers from normal page traces while preserving previously shared URLs.
 The build-smoke bundle gate inspects every ordinary `page.js.nft.json` trace
 and fails if the `@vercel/og`/Resvg payload leaks back into one.
 
+Trusted company auto-merges use `GITHUB_TOKEN`, whose resulting main push does
+not recursively start path-filtered workflows. Their post-merge helper
+explicitly dispatches both production CSV sync and the company OG prewarm so a
+new company cannot become visible before its off-platform cards are ready. The
+helper waits for the prewarm to succeed before dispatching CSV sync.
+
 In the 16-hour audit sample that exposed this coupling, 42 of 58 main commits
 changed company OG data, five were otherwise unrelated to the web, ten changed
 the web, and one changed a shared root input. The classifier would reduce that
