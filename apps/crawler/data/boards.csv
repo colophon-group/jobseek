@@ -5421,6 +5421,9 @@ ubs-digital-art-museum,ubs-digital-art-museum-join,https://join.com/companies/di
 udacity,udacity-greenhouse,https://job-boards.greenhouse.io/udacity,greenhouse,"{""token"": ""udacity""}",skip,
 udemy,udemy-greenhouse,https://job-boards.greenhouse.io/udemy,greenhouse,"{""token"": ""udemy""}",skip,
 udio,udio-greenhouse,https://job-boards.greenhouse.io/udio,greenhouse,"{""token"": ""udio""}",skip,
+uefa,uefa-euro-2028,https://careers.uki2028.com/vacancies,dom,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000, ""url_filter"": ""/job/[0-9]+/?(?:[?#].*)?$""}",json-ld,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000}"
+uefa,uefa-main,https://emp.jobylon.com/companies/2972-uefa/,jobylon,"{""company_id"": ""2972""}",json-ld,"{""enrich"": [""description""]}"
+uefa,uefa-uc3,https://www.uc3.com/careers/,dom,"{""render"": false, ""url_filter"": ""^https://emp\\.jobylon\\.com/jobs/[0-9]+-""}",json-ld,
 uipath,uipath-careers,https://jobs.ashbyhq.com/uipath,ashby,"{""token"": ""uipath""}",skip,
 ultima-genomics,ultima-genomics-greenhouse,https://job-boards.greenhouse.io/ultimagenomics,greenhouse,"{""token"": ""ultimagenomics""}",skip,
 ultra,ultra-ashby,https://jobs.ashbyhq.com/ultra,ashby,"{""token"": ""ultra""}",skip,
