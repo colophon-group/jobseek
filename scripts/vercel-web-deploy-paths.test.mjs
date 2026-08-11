@@ -44,7 +44,7 @@ test("production workflow stages, verifies, then promotes exact main", () => {
     ".github/workflows/deploy-web-production.yml",
     "utf8",
   );
-  assert.match(workflow, /--prod --skip-domain/);
+  assert.match(workflow, /--prod --skip-domain --archive=tgz/);
   assert.match(workflow, /v13\/deployments\/\$PRODUCTION_ALIAS/);
   assert.match(workflow, /production_sha.*current_sha/);
   assert.match(workflow, /current_main=.*commits\/main/);
