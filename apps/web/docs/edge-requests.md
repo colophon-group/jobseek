@@ -61,12 +61,11 @@ The last check is required because Cache Components can begin streaming the
 static app shell before a page-level `notFound()` resolves. Once headers have
 been sent, Next.js can only return a noindex soft 404 with HTTP 200. For full
 GET/HEAD documents, `proxy.ts` therefore performs a bounded 60-second-cached
-existence check and maps a confirmed miss to the localized `%5Fmissing`
-recovery route, renders that private target internally, and returns its body as
-a static, script-free document with HTTP 404. Recovery controls are ordinary
-links; disabling hydration avoids a PPR resume against the original missing URL
-and a duplicate app shell. This boundary is necessary because Next.js discards
-custom rewrite statuses when the App Router renders the destination. RSC
+existence check and returns a small localized recovery document with HTTP 404.
+The document is constructed only from fixed translations and URL-encoded path
+data; it never fetches, parses, or filters App Router HTML. Recovery controls
+are ordinary links and its CSP denies all script execution, preventing a PPR
+resume against the original missing URL and a duplicate app shell. RSC
 navigation and Server Action traffic bypass the check. Upstream failures fail
 open to the existing noindex page fallback; an outage must never turn every
 resource into a false 404.

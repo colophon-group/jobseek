@@ -11,6 +11,7 @@ import {
   hasPublicWatchlistRoute,
   hasWatchlistRouteForViewer,
 } from "@/lib/services/public-resource-status";
+import { staticMissingResourceDocument } from "@/lib/missing-resource-recovery";
 
 const COOKIE_NAME = "NEXT_LOCALE";
 const LOGGED_IN_HINT_COOKIE = "logged_in";
@@ -19,8 +20,6 @@ const LOCALIZED_EXPLORE_PATH = /^\/(?:en|de|fr|it)\/explore$/;
 const LOCALIZED_COMPANY_PATH = /^\/(en|de|fr|it)\/company\/([^/]+)$/;
 const LOCALIZED_WATCHLIST_PATH =
   /^\/(en|de|fr|it)\/([^/]+)\/([^/]+)$/;
-const LOCALIZED_MISSING_RESOURCE_PATH =
-  /^\/(?:en|de|fr|it)\/_missing\/(?:company\/[^/]+|watchlist)$/;
 const LOCALIZED_SCANNER_PATH =
   /^\/(?:en|de|fr|it)\/(?:(?:adminer|cgi-bin|phpmyadmin|wp-admin|wp-content|wp-includes|wp-json|xmlrpc|\.env|\.git)(?:\/|$)|[^/]+\/(?:\.env|\.git)(?:\/|$))/i;
 
@@ -63,63 +62,30 @@ async function authenticatedUserId(request: NextRequest): Promise<string | null>
   return session?.user?.id ?? null;
 }
 
-function staticRecoveryDocument(html: string): string {
-  // The recovered App Router document carries hydration/PPR scripts whose
-  // client router still sees the original public URL. Running them would
-  // resume the missing route and duplicate the shell. Recovery controls are
-  // ordinary links, so serve a deliberately static document instead.
-  return html
-    .replace(/<link\b[^>]*\bas=(["'])script\1[^>]*>/gi, "")
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "");
-}
-
 async function missingResourceResponse(
   request: NextRequest,
   kind: "company" | "watchlist",
   lang: string,
   slug?: string,
 ): Promise<NextResponse> {
-  const missingUrl = request.nextUrl.clone();
-  missingUrl.pathname = kind === "company"
-    ? `/${lang}/_missing/company/${slug}`
-    : `/${lang}/_missing/watchlist`;
-  missingUrl.search = "";
-  const deploymentOrigin = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : process.env.BETTER_AUTH_URL || request.nextUrl.origin;
-  const recoveryUrl = new URL(missingUrl.pathname, deploymentOrigin);
-  const recoveryHeaders = new Headers(request.headers);
-  recoveryHeaders.set("accept", "text/html");
-  recoveryHeaders.delete("content-length");
-  recoveryHeaders.delete("next-action");
-  recoveryHeaders.delete("rsc");
-
-  // Next 16 discards a status attached to a rewrite once the App Router
-  // renders its target. Render the private internal recovery route, then own
-  // the final response status here. This is only an extra round-trip for a
-  // resource already proven absent/inaccessible.
-  const recovery = await fetch(recoveryUrl, {
-    method: request.method,
-    headers: recoveryHeaders,
-    redirect: "manual",
-    cache: "no-store",
+  const locale = isLocale(lang) ? lang : defaultLocale;
+  const responseHeaders = new Headers({
+    "Content-Language": locale,
+    "Content-Type": "text/html; charset=utf-8",
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
   });
-  const responseHeaders = new Headers();
-  for (const name of ["content-language", "content-type", "link", "vary"]) {
-    const value = recovery.headers.get(name);
-    if (value) responseHeaders.set(name, value);
-  }
   // A newly-created company or a watchlist privacy toggle must not be hidden
   // behind a cached 404. The lookup itself is bounded by a short shared cache.
   responseHeaders.set("Cache-Control", "private, no-store");
   responseHeaders.set("X-Robots-Tag", "noindex, follow");
   responseHeaders.set(
     "Content-Security-Policy",
-    "script-src 'none'; object-src 'none'; base-uri 'none'",
+    "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
   );
   const body = request.method === "HEAD"
     ? null
-    : staticRecoveryDocument(await recovery.text());
+    : staticMissingResourceDocument(kind, locale, slug);
   return new NextResponse(body, {
     status: 404,
     headers: responseHeaders,
@@ -184,9 +150,6 @@ async function resolveLocalizedResourceRequest(
 }
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {
-  if (LOCALIZED_MISSING_RESOURCE_PATH.test(request.nextUrl.pathname)) {
-    return NextResponse.next();
-  }
   // Stop common exploit-probe shapes at the network boundary. Without this,
   // Cache Components can stream the public-watchlist PPR shell with HTTP 200
   // before the route-level notFound() guard runs, consuming a Fluid function

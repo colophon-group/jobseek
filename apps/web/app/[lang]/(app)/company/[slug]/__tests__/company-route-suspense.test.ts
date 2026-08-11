@@ -33,16 +33,13 @@ describe("company route partial prerendering", () => {
       "utf8",
     );
     const recoverySource = readFileSync(
-      "app/[lang]/(app)/%5Fmissing/company/[slug]/page.tsx",
+      "app/[lang]/(app)/company/[slug]/not-found.tsx",
       "utf8",
     );
 
     expect(source.match(/if \(!(?:snapshot|initialData)\) notFound\(\);/g)).toHaveLength(2);
-    expect(recoverySource).toContain("const { lang, slug } = await params;");
-    expect(recoverySource).toContain(
-      "const locale = isLocale(lang) ? lang : defaultLocale;",
-    );
-    expect(recoverySource).toContain("locale={locale}");
+    expect(recoverySource).toContain("const { lang, slug } = useParams");
+    expect(recoverySource).toContain("locale={lang}");
     expect(recoverySource).toContain("slug={slug}");
   });
 });

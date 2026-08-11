@@ -28,6 +28,7 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 import { proxy, config } from "../../../proxy";
+import { staticMissingResourceDocument } from "@/lib/missing-resource-recovery";
 
 const redirectSpy = vi.spyOn(NextResponse, "redirect");
 
@@ -180,26 +181,17 @@ describe("company request auth boundary", () => {
 });
 
 describe("missing-resource HTTP boundary", () => {
-  const recoveryFetch = vi.fn();
+  const forbiddenFetch = vi.fn();
 
   beforeEach(() => {
-    vi.stubEnv("BETTER_AUTH_URL", "");
-    vi.stubEnv("VERCEL_URL", "");
     resourceStatusMocks.hasPublicCompanyRoute.mockReset();
     resourceStatusMocks.hasPublicWatchlistRoute.mockReset();
     resourceStatusMocks.hasWatchlistRouteForViewer.mockReset();
     authMocks.getSession.mockReset().mockResolvedValue(null);
-    recoveryFetch.mockReset().mockImplementation(async (input: URL | RequestInfo) => {
-      const url = input.toString();
-      const heading = url.includes("/company/")
-        ? "Unternehmen nicht gefunden"
-        : "Watchlist not found";
-      return new Response(
-        `<html><head><meta name="robots" content="noindex, follow"><link rel="preload" as="script" href="/app.js"><script src="/app.js"></script></head><body><main><h1>${heading}</h1></main><script>resume()</script></body></html>`,
-        { headers: { "content-type": "text/html; charset=utf-8" } },
-      );
-    });
-    vi.stubGlobal("fetch", recoveryFetch);
+    forbiddenFetch.mockReset().mockResolvedValue(new Response(
+      '<html><head><link rel="preload" as="script" href="/leak.js"></head><body><scr<script>ipt>alert(1)</script\t\n bar></body></html>',
+    ));
+    vi.stubGlobal("fetch", forbiddenFetch);
   });
 
   afterEach(() => {
@@ -287,15 +279,50 @@ describe("missing-resource HTTP boundary", () => {
     expect(response.headers.get("x-middleware-rewrite")).toBeNull();
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.get("x-robots-tag")).toBe("noindex, follow");
+    expect(response.headers.get("content-language")).toBe("de");
+    expect(response.headers.get("content-security-policy")).toContain(
+      "default-src 'none'; script-src 'none'",
+    );
+    expect(response.headers.get("link")).toBeNull();
     const body = await response.text();
     expect(body).toContain("<h1>Unternehmen nicht gefunden</h1>");
+    expect(body).toContain('href="/de/explore"');
+    expect(body).toContain(
+      'href="/de/companies/request?name=definitely+missing"',
+    );
     expect(body).not.toContain("<script");
     expect(body).not.toContain('as="script"');
-    const [recoveryUrl, recoveryInit] = recoveryFetch.mock.calls[0];
-    expect(recoveryUrl.toString()).toBe(
-      "http://localhost/de/_missing/company/definitely-missing",
+    expect(forbiddenFetch).not.toHaveBeenCalled();
+  });
+
+  it("never interpolates hostile slug markup or relies on regex filtering", () => {
+    const body = staticMissingResourceDocument(
+      "company",
+      "en",
+      'acme\"><scr<script>ipt>alert(1)</script\t\n bar>',
     );
-    expect(recoveryInit).toMatchObject({ cache: "no-store", redirect: "manual" });
+
+    expect(body).not.toContain("<scr<script>ipt>");
+    expect(body).not.toContain("</script\t\n bar>");
+    expect(body).not.toContain("<script");
+    expect(body).not.toContain('as="script"');
+    expect(body).toContain("name=acme%22%3E%3Cscr%3Cscript%3Eipt%3Ealert%281%29");
+  });
+
+  it("returns the same script-free 404 headers and no body for HEAD", async () => {
+    resourceStatusMocks.hasPublicCompanyRoute.mockResolvedValue(false);
+    const response = await proxy(new NextRequest(
+      "http://localhost/fr/company/definitely-missing",
+      { method: "HEAD" },
+    ));
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("content-language")).toBe("fr");
+    expect(response.headers.get("content-security-policy")).toContain(
+      "script-src 'none'",
+    );
+    expect(await response.text()).toBe("");
+    expect(forbiddenFetch).not.toHaveBeenCalled();
   });
 
   it("passes a known company through without changing its status", async () => {
