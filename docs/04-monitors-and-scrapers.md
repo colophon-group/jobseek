@@ -48,6 +48,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `pageup` | Rich + enrichment | dom | PageUp static listings with streamed total-checked pagination and DOM description enrichment |
 | `adp` | Rich + enrichment | adp | ADP Workforce Now public listing API + native detail/DOCX enrichment |
 | `icims` | URL-only | json-ld | iCIMS server-rendered listings with bounded pagination |
+| `intervieweb` | URL-only | json-ld | Intervieweb/In-recruiting HTML plus CSRF-protected POST pagination |
 | `gupy` | URL-only | json-ld | Gupy single-page NextData inventory |
 | `cornerstone` | Rich | skip | Cornerstone bootstrap + regional paginated search API |
 | `darwinbox` | Rich | skip | Darwinbox browser-session public jobs API |
