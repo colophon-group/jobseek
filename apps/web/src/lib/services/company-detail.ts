@@ -18,6 +18,8 @@ import {
   type CompanyDetail,
 } from "@/lib/services/company-detail-lookup";
 
+const MAX_COMPANY_SLUG_BATCH = 25;
+
 export type { CompanyDetail } from "@/lib/services/company-detail-lookup";
 
 export async function getCompanyBySlug(
@@ -36,6 +38,46 @@ export async function getCompanyBySlug(
     ttl: CACHE_TTL_DETAIL,
     skipIf: (data) => data === null,
   });
+}
+
+/** Resolve a bounded set of canonical slugs to UUIDs in one Typesense read. */
+export async function getCompanyIdsBySlugs(
+  slugs: readonly string[],
+): Promise<Map<string, string>> {
+  if (slugs.length === 0) return new Map();
+  if (slugs.length > MAX_COMPANY_SLUG_BATCH) {
+    throw new Error("Company slug batch exceeds the supported limit");
+  }
+  if (!canResolveCompanyBySlugFromEnv(process.env)) {
+    throw new Error("Company lookup is not configured");
+  }
+  if (slugs.some((slug) => !isSafeCompanySlug(slug))) {
+    return new Map();
+  }
+
+  const result = await withTypesenseRetry(
+    () => getSearchClient()
+      .collections<{ id: string; slug: string }>("company")
+      .documents()
+      .search({
+        q: "*",
+        filter_by: `slug:[${slugs.join(",")}]`,
+        per_page: slugs.length,
+      }),
+    {
+      attempts: 5,
+      baseDelaysMs: [250, 500, 1000, 2000],
+      isRetryable: shouldRetryCompanyTypesenseRead,
+      label: "companyIdsBySlugs",
+    },
+  );
+
+  return new Map(
+    (result.hits ?? []).map((hit) => [
+      String(hit.document.slug),
+      String(hit.document.id),
+    ]),
+  );
 }
 
 async function fetchCompanyBySlug(slug: string, locale: string): Promise<CompanyDetail | null> {
