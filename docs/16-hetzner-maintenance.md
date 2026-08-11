@@ -580,7 +580,7 @@ until fresh sampler, probe, container, backup, PostgreSQL-readiness,
 Typesense-readiness, and Codex daily-review status series are present and
 healthy for every expected role. Only after that ingestion gate passes does it
 remove the retired Jobseek notification routes, contact point, bridge,
-deadman, and synthetic test rule, followed by the six Mimir rule groups. This
+deadman, and synthetic test rule, followed by the owned Mimir rule groups. This
 catches a healthy local sampler whose collector
 silently omits the textfile directory. Environment-scoped host variables are
 resolved inside runtime steps after the protected `production` environment is
@@ -605,14 +605,20 @@ Alert definitions in [`apps/crawler/alerts.yaml`](../apps/crawler/alerts.yaml)
 are transactionally written through the Mimir ruler API. Grafana Cloud limits
 this tenant to 20 rules per group, so the source separates fleet, PostgreSQL
 capacity, Typesense reliability, telemetry delivery, crawler reliability, and
-operator handoff alerts into six logical groups at or below that limit.
+operator handoff alerts into logical groups at or below that limit.
 The sync client first
 captures the complete owned namespace, requires every alert to have a
 repository runbook plus `owner=codex-error-review` and `route=codex-daily`,
 and additionally rejects any critical alert without `page=production` or with
 a pending duration over three minutes,
 verifies the exact active group/rule set, removes stale owned groups, and
-restores the whole prior namespace on failure. This corrects the exporter
+waits through a bounded evaluation window until every owned rule has completed
+a post-sync evaluation and reports `health=ok`; a persistent evaluation error
+restores the whole prior namespace and fails the deployment. Backup alerts
+retain each metric's source `service`
+label (for example, `typesense` or `web-postgresql`) and use
+`component=data-backup` for grouping, so simultaneous failures on one host do
+not collapse to the same alert label set. This corrects the exporter
 alert by selecting only `instance="exporter"` and adds explicit all-host,
 disk/inode, sampler, backup, PostgreSQL, Typesense/tunnel, and reboot alerts.
 It also routes failed, stale, unresolved, and stuck cross-store reconciliation

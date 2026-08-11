@@ -47,6 +47,14 @@ jobs:
             --dry-run --url https://grafana.example.com --api-key test-only
           uv run --frozen python ../../scripts/sync-grafana-rules.py --dry-run
           uv run --frozen pytest tests/test_alertmanager_paging.py tests/test_codex_routine_status.py tests/test_host_observability.py tests/test_observability_config.py tests/test_alloy_config.py tests/test_grafana_host_metrics.py -q
+      - name: Evaluate multi-service backup alert fixture
+        run: |
+          docker run --rm \
+            --entrypoint /bin/promtool \
+            -v "$PWD/apps/crawler:/workspace:ro" \
+            -w /workspace \
+            prom/prometheus:v3.5.0@sha256:63805ebb8d2b3920190daf1cb14a60871b16fd38bed42b857a3182bc621f4996 \
+            test rules tests/fixtures/backup-alerts.test.yaml
 
   disable-paging:
     needs: validate
