@@ -342,13 +342,19 @@ Each posting document contains an optional indexed
 only for the additive rollout; the exporter, backfill, and reconciler write it
 on every upsert.
 
-Normal runs export one bounded bucket at a time and compare exact IDs plus
-`is_active`. Missing/mismatched documents are rebuilt with the ordinary
-denormalization path, and Typesense-only documents are deleted. During the
-first complete repair cycle, all authoritative local documents are upserted
-before a streamed unbucketed cleanup; cleanup fails closed if any unbucketed
-ID still exists locally. No Typesense restart, collection rebuild, or search
-downtime is required.
+Normal runs export one bounded bucket at a time and compare exact IDs,
+`is_active`, and a defined set of user-visible fields. Payload comparison uses
+canonical in-process fingerprints of the actual exported fields; it does not
+trust a checksum stored beside the document. Unordered arrays are sorted before
+comparison, and only aggregate mismatch counts enter durable state or
+telemetry. Missing/mismatched documents are rebuilt with the ordinary
+denormalization path and verified again before the cursor advances, while
+Typesense-only documents are deleted. During the first complete repair cycle,
+all authoritative local documents are upserted before a streamed unbucketed
+cleanup; cleanup fails closed if any unbucketed ID still exists locally. No
+Typesense restart, collection rebuild, or search downtime is required. The
+design rationale and exact bounded contract are in
+[`03-crawler-architecture.md`](03-crawler-architecture.md#payload-comparison-design).
 
 ## Web App Integration
 
@@ -462,6 +468,7 @@ Metrics exposed by the exporter and scraped by Alloy:
 | `jobseek_typesense_slow_request_max_milliseconds` | Slowest request reported during the bounded five-minute log window |
 | `jobseek_typesense_recent_log_events{event="..."}` | Five-minute counts for descriptor exhaustion, leaderlessness, snapshot failure, slow requests, and thread-pool exhaustion |
 | `jobseek_cross_store_reconciliation_last_unresolved{target="typesense"}` | Unresolved drift from the last target outcome, read from durable PostgreSQL state |
+| `jobseek_cross_store_reconciliation_last_payload_mismatch{target="typesense"}` | Same-ID payload mismatches detected in the last complete verified cycle |
 | `jobseek_cross_store_reconciliation_last_success_unixtime{target="typesense"}` | Last complete verified Typesense cycle |
 | `jobseek_cross_store_reconciliation_progress_partition{target="typesense"}` | Durable next UUID partition |
 | `jobseek_cross_store_reconciliation_bootstrap_complete{target="typesense"}` | Whether legacy unbucketed cleanup was verified |

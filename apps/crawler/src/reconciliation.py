@@ -11,6 +11,7 @@ tests only; the production CLI and scheduler can select Typesense only.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import time
 import uuid
@@ -53,10 +54,54 @@ FROM job_posting
 WHERE id >= $1
   AND ($2::uuid IS NULL OR id < $2::uuid)
 """
+_PARTITION_TYPESENSE_SQL = (
+    "SELECT " + PostingSchema.select_list("last_seen_at") + " FROM job_posting WHERE id >= $1 "
+    "AND ($2::uuid IS NULL OR id < $2::uuid) ORDER BY id"
+)
 _LOCKED_POSTINGS_SQL = (
     "SELECT "
     + PostingSchema.select_list("last_seen_at")
     + " FROM job_posting WHERE id = ANY($1::uuid[]) ORDER BY id FOR SHARE"
+)
+
+# These fields form the bounded, user-visible reconciliation contract. The
+# reconciler compares their canonical content directly rather than trusting a
+# checksum stored beside the document it is meant to verify. Arrays are
+# canonicalized as sets because their Typesense search/facet semantics are
+# order-independent.
+TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS: tuple[str, ...] = (
+    "company_id",
+    "company_name",
+    "company_slug",
+    "company_icon",
+    "title",
+    "has_content",
+    "location_ids",
+    "location_direct_ids",
+    "location_names",
+    "location_types",
+    "location_geo_types",
+    "occupation_id",
+    "occupation_ids",
+    "occupation_name",
+    "seniority_id",
+    "seniority_name",
+    "technology_ids",
+    "technology_names",
+    "employment_type",
+    "salary_eur",
+    "salary_min",
+    "salary_max",
+    "salary_currency",
+    "salary_period",
+    "experience_min",
+    "experience_max",
+    "experience_min_years",
+    "experience_max_years",
+    "locales",
+    "first_seen_at",
+    "source_url",
+    "last_seen_at",
 )
 
 
@@ -71,6 +116,13 @@ class ReconciliationRunFailed(ReconciliationError):
 @dataclass(frozen=True, slots=True)
 class StoreSnapshot:
     states: Mapping[uuid.UUID, bool]
+    payload_fingerprints: Mapping[uuid.UUID, str] | None = None
+
+    def __post_init__(self) -> None:
+        if self.payload_fingerprints is not None and set(self.payload_fingerprints) != set(
+            self.states
+        ):
+            raise ReconciliationError("Snapshot payload and state IDs differ")
 
     @property
     def rows(self) -> int:
@@ -85,6 +137,7 @@ class StoreSnapshot:
 class PartitionDiff:
     missing_remote: frozenset[uuid.UUID]
     state_mismatch: frozenset[uuid.UUID]
+    payload_mismatch: frozenset[uuid.UUID]
     remote_only_active: frozenset[uuid.UUID]
     remote_only_inactive: frozenset[uuid.UUID]
 
@@ -94,7 +147,7 @@ class PartitionDiff:
             # Typesense has no foreign-key or user-history consumers. Exact
             # document-set parity is safe and avoids orphan search documents.
             remote_only = remote_only | self.remote_only_inactive
-        return self.missing_remote | self.state_mismatch | remote_only
+        return self.missing_remote | self.state_mismatch | self.payload_mismatch | remote_only
 
     def detected(self, target: ReconciliationTarget) -> int:
         return len(self.actionable_ids(target))
@@ -110,6 +163,7 @@ class PartitionResult:
     remote_active: int
     missing_remote: int
     state_mismatch: int
+    payload_mismatch: int
     remote_only_active: int
     remote_only_inactive: int
     detected: int
@@ -127,6 +181,7 @@ class RunSummary:
     checked_local: int = 0
     checked_remote: int = 0
     detected: int = 0
+    payload_mismatch: int = 0
     repaired: int = 0
     unresolved: int = 0
 
@@ -135,6 +190,7 @@ class RunSummary:
         self.checked_local += result.local_rows
         self.checked_remote += result.remote_rows
         self.detected += result.detected
+        self.payload_mismatch += result.payload_mismatch
         self.repaired += result.repaired
         self.unresolved += result.unresolved
 
@@ -161,11 +217,78 @@ def reconciliation_bucket(posting_id: uuid.UUID | str) -> str:
     return parsed.hex[:2]
 
 
+def _canonical_payload_value(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {
+            str(key): _canonical_payload_value(item)
+            for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
+        }
+    if isinstance(value, list):
+        normalized = [_canonical_payload_value(item) for item in value]
+        return sorted(
+            normalized,
+            key=lambda item: json.dumps(
+                item,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ),
+        )
+    if isinstance(value, float) and value.is_integer():
+        # Typesense may serialize an integral float as either ``1`` or ``1.0``.
+        # The schema value is equivalent, so do not create false payload drift.
+        return int(value)
+    return value
+
+
+def _typesense_payload_fingerprint(document: Mapping[str, object]) -> str:
+    payload = {
+        field: _canonical_payload_value(document.get(field))
+        for field in TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS
+    }
+    canonical = json.dumps(
+        payload,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _typesense_documents_snapshot(
+    documents: Iterable[Mapping[str, object]],
+) -> StoreSnapshot:
+    states: dict[uuid.UUID, bool] = {}
+    payload_fingerprints: dict[uuid.UUID, str] = {}
+    for document in documents:
+        try:
+            posting_id = uuid.UUID(str(document.get("id", "")))
+        except ValueError as exc:
+            raise ReconciliationError("Typesense document has an invalid ID") from exc
+        active = document.get("is_active")
+        if not isinstance(active, bool):
+            raise ReconciliationError("Typesense document has invalid active state")
+        if posting_id in states:
+            raise ReconciliationError("Typesense partition returned a duplicate document")
+        states[posting_id] = active
+        payload_fingerprints[posting_id] = _typesense_payload_fingerprint(document)
+    return StoreSnapshot(states, payload_fingerprints)
+
+
 def compare_snapshots(local: StoreSnapshot, remote: StoreSnapshot) -> PartitionDiff:
     local_ids = set(local.states)
     remote_ids = set(remote.states)
     shared = local_ids & remote_ids
     remote_only = remote_ids - local_ids
+    if (local.payload_fingerprints is None) != (remote.payload_fingerprints is None):
+        raise ReconciliationError("Snapshots disagree on payload comparison support")
+    payload_mismatch: frozenset[uuid.UUID] = frozenset()
+    if local.payload_fingerprints is not None and remote.payload_fingerprints is not None:
+        payload_mismatch = frozenset(
+            posting_id
+            for posting_id in shared
+            if local.payload_fingerprints[posting_id] != remote.payload_fingerprints[posting_id]
+        )
     return PartitionDiff(
         missing_remote=frozenset(local_ids - remote_ids),
         state_mismatch=frozenset(
@@ -173,6 +296,7 @@ def compare_snapshots(local: StoreSnapshot, remote: StoreSnapshot) -> PartitionD
             for posting_id in shared
             if local.states[posting_id] != remote.states[posting_id]
         ),
+        payload_mismatch=payload_mismatch,
         remote_only_active=frozenset(
             posting_id for posting_id in remote_only if remote.states[posting_id]
         ),
@@ -199,6 +323,16 @@ async def _postgres_partition_snapshot(
     return StoreSnapshot(states)
 
 
+async def _postgres_typesense_partition_snapshot(
+    pool: asyncpg.Pool,
+    partition: int,
+    maps: TaxonomyMaps,
+) -> StoreSnapshot:
+    lower, upper = partition_bounds(partition)
+    rows = await pool.fetch(_PARTITION_TYPESENSE_SQL, lower, upper)
+    return _typesense_documents_snapshot(_build_typesense_docs(list(rows), maps))
+
+
 class TypesenseReconciliationClient:
     """Bounded streaming access to the Typesense reconciliation surface."""
 
@@ -220,12 +354,20 @@ class TypesenseReconciliationClient:
     async def partition_snapshot(self, partition: int) -> StoreSnapshot:
         bucket = partition_bucket(partition)
         states: dict[uuid.UUID, bool] = {}
+        payload_fingerprints: dict[uuid.UUID, str] = {}
         async with self._client.stream(
             "GET",
             f"{self._base_url}/export",
             params={
                 "filter_by": f"reconciliation_bucket:={bucket}",
-                "include_fields": "id,is_active,reconciliation_bucket",
+                "include_fields": ",".join(
+                    (
+                        "id",
+                        "is_active",
+                        "reconciliation_bucket",
+                        *TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS,
+                    )
+                ),
                 "batch_size": str(TYPESENSE_EXPORT_BATCH_SIZE),
             },
         ) as response:
@@ -234,16 +376,22 @@ class TypesenseReconciliationClient:
                 if not line:
                     continue
                 document = json.loads(line)
-                posting_id = uuid.UUID(str(document.get("id", "")))
+                if not isinstance(document, dict):
+                    raise ReconciliationError("Typesense export returned a non-object document")
+                if document.get("reconciliation_bucket") != bucket:
+                    raise ReconciliationError("Typesense document is in the wrong partition")
+                try:
+                    posting_id = uuid.UUID(str(document.get("id", "")))
+                except ValueError as exc:
+                    raise ReconciliationError("Typesense document has an invalid ID") from exc
                 active = document.get("is_active")
                 if not isinstance(active, bool):
                     raise ReconciliationError("Typesense document has invalid active state")
-                if document.get("reconciliation_bucket") != bucket:
-                    raise ReconciliationError("Typesense document is in the wrong partition")
                 if posting_id in states:
                     raise ReconciliationError("Typesense partition returned a duplicate document")
                 states[posting_id] = active
-        return StoreSnapshot(states)
+                payload_fingerprints[posting_id] = _typesense_payload_fingerprint(document)
+        return StoreSnapshot(states, payload_fingerprints)
 
     async def unbucketed_batches(
         self,
@@ -371,7 +519,6 @@ async def _repair_typesense_partition(
     if not candidate_ids:
         return 0, 0
     ordered_ids = sorted(candidate_ids)
-    expected: dict[uuid.UUID, bool] = {}
     absent: set[uuid.UUID] = set()
 
     async with (
@@ -382,10 +529,10 @@ async def _repair_typesense_partition(
         rows = await _locked_local_rows(local_conn, ordered_ids)
         row_ids = {row["id"] for row in rows}
         absent = set(ordered_ids) - row_ids
-        expected = {row["id"]: bool(row["is_active"]) for row in rows}
-        for batch in _chunks(rows, REPAIR_BATCH_SIZE):
-            docs = _build_typesense_docs(list(batch), maps)
-            failed = await _upsert_to_typesense(docs)
+        documents = _build_typesense_docs(list(rows), maps)
+        expected = _typesense_documents_snapshot(documents)
+        for batch in _chunks(documents, REPAIR_BATCH_SIZE):
+            failed = await _upsert_to_typesense(list(batch))
             if failed:
                 raise ReconciliationError(
                     f"Typesense rejected {len(failed)} reconciliation documents"
@@ -394,10 +541,14 @@ async def _repair_typesense_partition(
             await typesense.delete_ids([str(posting_id) for posting_id in batch])
 
         verified = await typesense.partition_snapshot(partition)
+        if expected.payload_fingerprints is None or verified.payload_fingerprints is None:
+            raise ReconciliationError("Typesense repair verification lacks payload state")
         unresolved = sum(
             1
-            for posting_id, active in expected.items()
+            for posting_id, active in expected.states.items()
             if verified.states.get(posting_id) != active
+            or verified.payload_fingerprints.get(posting_id)
+            != expected.payload_fingerprints[posting_id]
         )
         unresolved += sum(1 for posting_id in absent if posting_id in verified.states)
         if unresolved:
@@ -478,14 +629,15 @@ async def reconcile_partition(
     maps: TaxonomyMaps | None = None,
 ) -> PartitionResult:
     started = time.monotonic()
-    local = await _postgres_partition_snapshot(local_pool, partition)
     if target == "supabase":
         if supa_pool is None:
             raise ReconciliationError("Supabase reconciliation requires DATABASE_URL")
+        local = await _postgres_partition_snapshot(local_pool, partition)
         remote = await _postgres_partition_snapshot(supa_pool, partition)
     else:
-        if typesense is None:
-            raise ReconciliationError("Typesense client is required")
+        if typesense is None or maps is None:
+            raise ReconciliationError("Typesense reconciliation dependencies are required")
+        local = await _postgres_typesense_partition_snapshot(local_pool, partition, maps)
         remote = await typesense.partition_snapshot(partition)
     diff = compare_snapshots(local, remote)
     detected = diff.detected(target)
@@ -522,6 +674,7 @@ async def reconcile_partition(
         remote_active=remote.active,
         missing_remote=len(diff.missing_remote),
         state_mismatch=len(diff.state_mismatch),
+        payload_mismatch=len(diff.payload_mismatch),
         remote_only_active=len(diff.remote_only_active),
         remote_only_inactive=len(diff.remote_only_inactive),
         detected=detected,
@@ -540,6 +693,7 @@ async def reconcile_partition(
         remote_active=result.remote_active,
         missing_remote=result.missing_remote,
         state_mismatch=result.state_mismatch,
+        payload_mismatch=result.payload_mismatch,
         remote_only_active=result.remote_only_active,
         remote_only_inactive=result.remote_only_inactive,
         repaired=result.repaired,
@@ -579,12 +733,14 @@ async def _persist_run_progress(local_pool: asyncpg.Pool, summary: RunSummary) -
     await local_pool.execute(
         "UPDATE cross_store_reconciliation_run SET "
         "partitions_completed = $2, checked_local = $3, checked_remote = $4, "
-        "detected = $5, repaired = $6, unresolved = $7 WHERE run_id = $1",
+        "detected = $5, payload_mismatch = $6, repaired = $7, unresolved = $8 "
+        "WHERE run_id = $1",
         summary.run_id,
         summary.partitions_completed,
         summary.checked_local,
         summary.checked_remote,
         summary.detected,
+        summary.payload_mismatch,
         summary.repaired,
         summary.unresolved,
     )
@@ -627,7 +783,8 @@ async def _ensure_cycle(
                 "cycle_runtime_seconds = 0, cycle_local_rows = 0, "
                 "cycle_local_active = 0, cycle_remote_rows = 0, "
                 "cycle_remote_active = 0, cycle_missing_remote = 0, "
-                "cycle_state_mismatch = 0, cycle_remote_only_active = 0, "
+                "cycle_state_mismatch = 0, cycle_payload_mismatch = 0, "
+                "cycle_remote_only_active = 0, "
                 "cycle_remote_only_inactive = 0, cycle_repaired = 0, "
                 "last_attempt_at = clock_timestamp(), last_outcome = 'progress', "
                 "last_error_class = NULL, last_unresolved = 0, "
@@ -677,6 +834,7 @@ async def _advance_state(
             "remote_active": int(row["cycle_remote_active"]) + result.remote_active,
             "missing_remote": int(row["cycle_missing_remote"]) + result.missing_remote,
             "state_mismatch": int(row["cycle_state_mismatch"]) + result.state_mismatch,
+            "payload_mismatch": int(row["cycle_payload_mismatch"]) + result.payload_mismatch,
             "remote_only_active": int(row["cycle_remote_only_active"]) + result.remote_only_active,
             "remote_only_inactive": int(row["cycle_remote_only_inactive"])
             + result.remote_only_inactive,
@@ -695,15 +853,17 @@ async def _advance_state(
                 "cycle_local_rows = 0, cycle_local_active = 0, "
                 "cycle_remote_rows = 0, cycle_remote_active = 0, "
                 "cycle_missing_remote = 0, cycle_state_mismatch = 0, "
-                "cycle_remote_only_active = 0, cycle_remote_only_inactive = 0, "
+                "cycle_payload_mismatch = 0, cycle_remote_only_active = 0, "
+                "cycle_remote_only_inactive = 0, "
                 "cycle_repaired = 0, last_started_at = $3, "
                 "last_attempt_at = clock_timestamp(), last_success_at = clock_timestamp(), "
                 "last_duration_seconds = $4, last_local_rows = $5, "
                 "last_local_active = $6, last_remote_rows = $7, "
                 "last_remote_active = $8, last_missing_remote = $9, "
-                "last_state_mismatch = $10, last_remote_only_active = $11, "
-                "last_remote_only_inactive = $12, last_repaired = $13, "
-                "last_unresolved = 0, last_outcome = $14, last_error_class = NULL, "
+                "last_state_mismatch = $10, last_payload_mismatch = $11, "
+                "last_remote_only_active = $12, last_remote_only_inactive = $13, "
+                "last_repaired = $14, last_unresolved = 0, last_outcome = $15, "
+                "last_error_class = NULL, "
                 "updated_at = clock_timestamp() WHERE target = $1",
                 result.target,
                 bootstrap,
@@ -715,6 +875,7 @@ async def _advance_state(
                 totals["remote_active"],
                 totals["missing_remote"],
                 totals["state_mismatch"],
+                totals["payload_mismatch"],
                 totals["remote_only_active"],
                 totals["remote_only_inactive"],
                 totals["repaired"],
@@ -727,8 +888,9 @@ async def _advance_state(
                 "cycle_runtime_seconds = $4, cycle_local_rows = $5, "
                 "cycle_local_active = $6, cycle_remote_rows = $7, "
                 "cycle_remote_active = $8, cycle_missing_remote = $9, "
-                "cycle_state_mismatch = $10, cycle_remote_only_active = $11, "
-                "cycle_remote_only_inactive = $12, cycle_repaired = $13, "
+                "cycle_state_mismatch = $10, cycle_payload_mismatch = $11, "
+                "cycle_remote_only_active = $12, cycle_remote_only_inactive = $13, "
+                "cycle_repaired = $14, "
                 "last_attempt_at = clock_timestamp(), last_outcome = 'progress', "
                 "last_unresolved = 0, last_error_class = NULL, "
                 "updated_at = clock_timestamp() WHERE target = $1",
@@ -742,6 +904,7 @@ async def _advance_state(
                 totals["remote_active"],
                 totals["missing_remote"],
                 totals["state_mismatch"],
+                totals["payload_mismatch"],
                 totals["remote_only_active"],
                 totals["remote_only_inactive"],
                 totals["repaired"],
@@ -850,8 +1013,7 @@ async def run_reconciliation(
                     try:
                         if target == "typesense" and typesense is None:
                             typesense = TypesenseReconciliationClient()
-                            if repair:
-                                maps = await _get_taxonomy_maps(local_pool)
+                            maps = await _get_taxonomy_maps(local_pool)
                         partition = (
                             await _ensure_cycle(local_pool, target, fresh=fresh_cycle)
                             if repair
@@ -897,6 +1059,7 @@ async def run_reconciliation(
                                     remote_active=result.remote_active + active,
                                     missing_remote=result.missing_remote,
                                     state_mismatch=result.state_mismatch,
+                                    payload_mismatch=result.payload_mismatch,
                                     remote_only_active=result.remote_only_active + active,
                                     remote_only_inactive=result.remote_only_inactive + inactive,
                                     detected=result.detected + deleted,

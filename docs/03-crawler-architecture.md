@@ -329,22 +329,47 @@ the complete posting population deterministically:
 
 - local PostgreSQL is authoritative;
 - UUID high-byte ranges `00` through `ff` form 256 stable, indexed partitions;
-- Typesense must have the exact local document set and matching `is_active`;
-  missing/mismatched documents are upserted and Typesense-only documents are
-  deleted; and
+- Typesense must have the exact local document set, matching `is_active`, and
+  matching user-visible payload; missing/mismatched documents are upserted and
+  Typesense-only documents are deleted; and
 - Typesense documents carry `reconciliation_bucket`, avoiding a whole-index
   materialization during normal runs. During the first cycle, all local
   documents are upserted with a bucket before a streamed cleanup removes only
   legacy unbucketed documents absent from local truth. An unbucketed document
   that still exists locally fails the bootstrap closed.
 
+#### Payload comparison design
+
+Payload reconciliation uses bounded field comparison, not a checksum stored in
+Typesense and not an `updated_at` version. A stored checksum could remain
+unchanged when the document beside it is corrupted, while a version would not
+detect a bad denormalization at the same version. For each UUID partition the
+reconciler builds the expected document with the ordinary exporter and taxonomy
+maps, exports only the defined fields in
+`TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS`, canonicalizes order-independent
+arrays, and compares in-process SHA-256 fingerprints. The hash is an internal
+comparison value: neither it nor posting fields/IDs are written to logs,
+metrics, or reconciliation tables.
+
+This remains bounded to the current 1/256 UUID partition. The contract covers
+the user-visible title, company, location, occupation, seniority, technology,
+employment, salary, experience, locale, content-presence, source URL, and
+posting timestamps. Missing optional fields canonicalize as null. Payload drift
+has its own durable aggregate and Prometheus metric rather than being folded
+only into ID/state drift.
+
+Migration `0018` restarts an in-progress Typesense cycle at partition zero so a
+cycle that began under the older ID/state-only contract cannot be recorded as a
+complete payload proof. It retains the last completed-cycle evidence and does
+not advance or skip durable progress.
+
 Repair is direct rather than an `updated_at` touch/replay loop. For every
 candidate set it acquires the exporter/operator fence, locks the current local
 rows `FOR SHARE`, writes that current snapshot downstream, and verifies the
-partition before advancing. A concurrent later local change is stamped for
-normal CDC after the row lock releases. A rejection, transport failure,
-verification mismatch, or interrupted process leaves the durable cursor on
-the same partition for an idempotent retry.
+partition's ID, state, and payload before advancing. A concurrent later local
+change is stamped for normal CDC after the row lock releases. A rejection,
+transport failure, verification mismatch, or interrupted process leaves the
+durable cursor on the same partition for an idempotent retry.
 
 Two local PostgreSQL tables make scheduling visible across deploys:
 

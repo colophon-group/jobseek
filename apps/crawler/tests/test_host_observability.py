@@ -555,7 +555,9 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
         if "to_regclass" in sql:
             return "cross_store_reconciliation_state"
         if sql == host.RECONCILIATION_STATS_SQL:
-            return "typesense\t1001\t901\t951\t13.5\t670000\t694000\t7\t7\t0\trepaired\t16\t256\t0"
+            return (
+                "typesense\t1001\t901\t951\t13.5\t670000\t694000\t7\t3\t7\t0\trepaired\t16\t256\t0"
+            )
         if "cross_store_reconciliation_run" in sql:
             return "0"
         raise AssertionError(sql)
@@ -600,6 +602,10 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     )
     assert (
         'jobseek_cross_store_reconciliation_bootstrap_complete{target="typesense"} 0.0' in content
+    )
+    assert (
+        'jobseek_cross_store_reconciliation_last_payload_mismatch{target="typesense"} 3.0'
+        in content
     )
     assert "jobseek_cross_store_reconciliation_stuck_runs 0.0" in content
 
