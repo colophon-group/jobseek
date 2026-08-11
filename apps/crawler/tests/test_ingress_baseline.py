@@ -386,9 +386,17 @@ def test_postgresql_conformance_requires_exact_private_hba(monkeypatch) -> None:
             "host|10.0.0.2|255.255.255.255|crawler|jobseek_labeller_readonly|scram-sha-256",
         ]
     )
+    bounded_log_config = '{"Type":"json-file","Config":{"max-size":"50m","max-file":"3"}}\n'
 
     def run(command):
         query = command[-1]
+        if command[:4] == [
+            "docker",
+            "inspect",
+            "--format",
+            "{{json .HostConfig.LogConfig}}",
+        ]:
+            return conformance.CommandResult(0, bounded_log_config)
         if command[:2] == ["docker", "inspect"]:
             return conformance.CommandResult(0, "1073741824\n")
         if command[-2:] == ["-B1", "/dev/shm"]:
@@ -412,6 +420,13 @@ def test_postgresql_conformance_requires_exact_private_hba(monkeypatch) -> None:
     private_hba = hba.replace("10.0.0.2", "10.0.0.3")
 
     def compliant_run(command):
+        if command[:4] == [
+            "docker",
+            "inspect",
+            "--format",
+            "{{json .HostConfig.LogConfig}}",
+        ]:
+            return conformance.CommandResult(0, bounded_log_config)
         if command[:2] == ["docker", "inspect"]:
             return conformance.CommandResult(0, "1073741824\n")
         if command[-2:] == ["-B1", "/dev/shm"]:
@@ -434,7 +449,29 @@ def test_postgresql_conformance_requires_exact_private_hba(monkeypatch) -> None:
         "compliant"
     ]
 
+    def unbounded_log_run(command):
+        if command[:4] == [
+            "docker",
+            "inspect",
+            "--format",
+            "{{json .HostConfig.LogConfig}}",
+        ]:
+            return conformance.CommandResult(0, '{"Type":"json-file","Config":{}}\n')
+        return compliant_run(command)
+
+    monkeypatch.setattr(conformance, "_run", unbounded_log_run)
+    unbounded = conformance._postgres_state("container", conformance._private_address("10.0.0.3"))
+    assert unbounded["bounded_container_log"] is False
+    assert unbounded["compliant"] is False
+
     def undersized_run(command):
+        if command[:4] == [
+            "docker",
+            "inspect",
+            "--format",
+            "{{json .HostConfig.LogConfig}}",
+        ]:
+            return conformance.CommandResult(0, bounded_log_config)
         if command[:2] == ["docker", "inspect"]:
             return conformance.CommandResult(0, "67108864\n")
         if command[-2:] == ["-B1", "/dev/shm"]:
@@ -470,6 +507,10 @@ def test_network_scripts_preserve_automatic_and_future_deploy_rollback() -> None
     assert "postgresql-network.env" in migration
     assert '--shm-size "$POSTGRES_SHM_SIZE"' in postgres
     assert '--shm-size "$POSTGRES_SHM_SIZE"' in migration
+    for script in (postgres, migration):
+        assert '--log-driver "$POSTGRES_LOG_DRIVER"' in script
+        assert '--log-opt "max-size=$POSTGRES_LOG_MAX_SIZE"' in script
+        assert '--log-opt "max-file=$POSTGRES_LOG_MAX_FILES"' in script
     assert postgres.count("POSTGRES_SHM_BYTES") >= 3
     assert migration.count("POSTGRES_SHM_BYTES") >= 3
     assert workflow.index("validate-private-paths:") < workflow.index("commit-hosts:")

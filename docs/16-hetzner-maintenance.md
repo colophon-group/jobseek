@@ -794,6 +794,15 @@ verify the installed state and active timer appropriate to their boundary
 before succeeding. The timer remains enabled for subsequent hourly slices;
 the application deploy owns Alembic and the additive Typesense schema patch.
 
+The earlier `jobseek-reconciliation-typesense-catchup.service` and matching
+timer are retired. They are not a failover path: the canonical timer above is
+the only authorized scheduler. The fleet hygiene baseline keeps both obsolete
+names persistently masked and reset while requiring the canonical timer to be
+enabled and active before and after retirement. An archived copy of an exact
+old `/etc/systemd/system` unit may remain under
+`/var/lib/jobseek-host-hygiene/retired-units/<revision>/` for forensic review;
+it is not executable from that location.
+
 The 2026-07-23 outage was an ownership regression, not a cleanup operation.
 The revision preflight was added while the state directory was still created
 as `0700 root:root`. The root deployment check passed, but every service run as
@@ -1189,30 +1198,144 @@ The repository's real-Docker regression performs that destructive prune only
 on an explicitly acknowledged GitHub-hosted ephemeral runner; never enable it
 on a managed or developer host.
 
-## Unmanaged Resource Hygiene
+## Fleet Host and Log Hygiene
 
-The scheduled crawler maintenance workflow runs the read-only
-[`crawler-host-hygiene.py`](../scripts/crawler-host-hygiene.py) check after
-its normal maintenance command. It fails visibly when either of these has
-survived for more than 24 hours:
+[`jobseek-host-hygiene.py`](../scripts/jobseek-host-hygiene.py) is the
+fail-closed conformance boundary for the crawler, PostgreSQL, and Typesense
+hosts. It reports:
 
-- a running Docker container without a Compose project label
-- a transient systemd service that remains `active (exited)`
+- any failed service or timer;
+- any exited container without a Compose, maintenance, backup, or explicit
+  Jobseek ownership label;
+- missing or unbounded `json-file` logging on the standalone `postgres` and
+  `typesense` containers;
+- a missing or altered role-specific journald policy; and
+- on the crawler, an unhealthy canonical reconciliation timer, either retired
+  catch-up name not masked/inactive/reset, or an unexpected second
+  reconciliation timer.
 
-This catches forgotten debug containers, one-off test commands, and completed
-transient units without deleting anything automatically. Run the same check
-manually with:
+`Deploy Hetzner Host Hygiene` runs that audit read-only across all three hosts
+each day. Scheduled execution cannot install policy or invoke cleanup; both
+mutating jobs additionally require an explicit workflow dispatch and the
+production environment approval gate. Every connection is fail-closed against
+the reviewed host identity through native OpenSSH and strict host-key checking.
+The crawler uses `HETZNER_CRAWLER_KNOWN_HOSTS`, PostgreSQL uses the existing
+`HETZNER_BACKUP_KNOWN_HOSTS` key set already scoped to its production backup
+transport, and Typesense uses `HETZNER_TYPESENSE_KNOWN_HOSTS`. The transport
+requires an exact `TARGET_HOST` entry before connecting and never substitutes
+one role's trust material for another. Trust is never learned from the network
+with `accept-new` or `ssh-keyscan`, and third-party SSH/SCP actions are not in
+this workflow.
 
-```bash
-python3 /tmp/jobseek-crawler-maintenance/<deployed-sha>/crawler-host-hygiene.py
-```
+Apply payloads are copied only after the workflow creates and verifies
+`/var/lib/jobseek-host-hygiene/staging/<revision>-<run>-<attempt>` beneath a
+root-owned, mode-`0700`, non-symlink trust boundary. The install connection
+rechecks every boundary component, rejects any symlink or non-root-owned entry,
+removes group/other permissions, and executes only the verified regular files
+inside that boundary. No root-executed payload is staged under `/tmp`.
 
-Before applying a printed cleanup command, inspect the resource and confirm
-that it is not active production work. Removing a stale container uses
-`docker rm -f -- <name>`. Stopping an `active (exited)` transient unit with
-`systemctl stop <unit>` also lets watcher loops waiting on `is-active` exit;
-verify the watcher is gone and run `systemctl reset-failed <unit>` only if a
-failed unit state remains.
+The canonical database and search container contract is `json-file` with
+`max-size=50m` and `max-file=3`. Typesense already enforces this in its host
+installer. Both PostgreSQL creation paths enforce and verify the same values;
+the ingress conformance probe treats an otherwise healthy but unbounded
+database container as nonconformant so the existing staged PostgreSQL
+replacement can repair it behind its backup/readiness/private-path rollback
+gates.
+
+Journald retention is explicit per host:
+
+| Role | Persistent maximum | Keep free | Maximum file | Retention | Runtime maximum |
+|---|---:|---:|---:|---:|---:|
+| crawler | 2 GiB | 5 GiB | 128 MiB | 7 days | 256 MiB |
+| PostgreSQL | 2 GiB | 5 GiB | 128 MiB | 7 days | 256 MiB |
+| Typesense | 1 GiB | 5 GiB | 128 MiB | 7 days | 256 MiB |
+
+The seven-day time ceiling exceeds the 25-hour remote-log window and retains
+multiple daily backup/reconciliation cycles. Size and free-space ceilings can
+expire older history first during pressure. The installer creates persistent
+journal storage, installs
+`/etc/systemd/journald.conf.d/60-jobseek-retention.conf`, restarts journald
+only when that policy changes, verifies the journal, and keeps a root-only
+rollback snapshot. It never runs `journalctl --vacuum-*` or Docker prune.
+
+### Reviewed rollout
+
+1. Require the critical backup repairs to be healthy and record a fresh
+   PostgreSQL backup plus repository check. Run the Hetzner ingress workflow in
+   `audit` mode. After merge, run it in guarded `apply` mode once; an
+   unbounded PostgreSQL log contract now forces the transactional database
+   replacement instead of being mistaken for an already-compliant host.
+   Require private-path validation, `pg_isready`, pgBackRest check, and commit
+   of the rollback container before continuing.
+2. Run `Deploy Hetzner Host Hygiene` with `action=audit`. Review every failed
+   unit and exited-container finding. Then run `action=apply`; this installs
+   each journal budget and, on the crawler only, archives/masks/resets the
+   exact retired catch-up service and timer. Apply reports remaining cleanup
+   but does not remove a container.
+3. On PostgreSQL, locate the audited unmanaged exited container read-only and
+   capture all immutable fields in one review record:
+
+   ```bash
+   docker inspect --format \
+     '{{.Id}} {{.Image}} {{.Config.Image}} {{.Created}} {{.State.FinishedAt}} {{.State.ExitCode}} {{.Name}}' \
+     <candidate-container>
+   docker image inspect --format '{{.Id}} {{json .RepoDigests}}' <full-image-id>
+   ```
+
+   The human-readable/random Docker name is discovery evidence only. It never
+   authorizes removal. Do not print the container environment, command, mount
+   sources, or raw inspect JSON into CI logs; they can contain credentials or
+   private paths. The cleanup verifier checks ownership labels locally without
+   echoing their values.
+4. Enter the full container ID, full `sha256:` image ID, exact creation and
+   finish timestamps, and exact exit code into the production-approved
+   `cleanup` action. The command performs an identity-bound dry run first,
+   re-inspects immediately, refuses running/dead/restarting or Jobseek-managed
+   namespaces, and then invokes only `docker rm -- <full-id>` (no force, volume
+   removal, wildcard, or prune). Any changed field aborts without mutation.
+5. Run the workflow `audit` action again. Record the redacted JSON output and
+   these independent checks:
+
+   ```bash
+   systemctl is-enabled jobseek-crawler-reconciliation.timer
+   systemctl is-active jobseek-crawler-reconciliation.timer
+   systemctl list-unit-files --type=timer | grep reconciliation
+   systemctl --failed --no-pager
+   docker inspect postgres --format '{{json .HostConfig.LogConfig}}'
+   docker inspect typesense --format '{{json .HostConfig.LogConfig}}'
+   journalctl --disk-usage
+   systemd-analyze cat-config systemd/journald.conf
+   ```
+
+Acceptance is one enabled/active canonical reconciliation scheduler, both
+retired names masked/inactive and absent from failed units, no unexpected
+failed units or unmanaged exited containers, exact bounded log settings on
+both standalone services, and the role-specific journal drop-in active. Keep
+at least one normal reconciliation cycle, one PostgreSQL backup cycle, and one
+Typesense backup cycle in the post-rollout observation window before closing
+the issue.
+
+### Rollback
+
+The PostgreSQL logging change uses the ingress workflow's existing staged
+rollback container and 15-minute automatic rollback timer; do not remove that
+container until private-path and database checks pass. A failed journal-policy
+install restores its exact prior policy/verifier and restarts journald. After a
+successful install, an operator can restore the named snapshot under
+`/var/lib/jobseek-host-hygiene/rollback/` and restart journald if retention
+causes a measured regression.
+
+Do not automatically unmask the retired catch-up units during a journal or
+database rollback. If investigation proves one was misclassified, first stop
+the canonical timer, demonstrate why the old unit does not create duplicate
+scheduling, restore only its exact archived file, and obtain a separate
+review. Normal rollback leaves the obsolete names masked.
+
+The older crawler-only
+[`crawler-host-hygiene.py`](../scripts/crawler-host-hygiene.py) check remains a
+read-only, 24-hour detector for running unmanaged containers and active-exited
+transient services in scheduled crawler maintenance. It does not replace the
+fleet conformance or authorize cleanup.
 
 ## Codex Runner Timers
 
