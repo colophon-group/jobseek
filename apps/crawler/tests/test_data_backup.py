@@ -1183,9 +1183,6 @@ def test_typesense_backup_snapshots_uploads_validates_and_cleans(
         result["staging_available_bytes_after_snapshot"]
         >= (result["staging_required_bytes_after_snapshot"])
     )
-    assert result["snapshot_file_count"] == 1
-    assert len(result["snapshot_data_sha256"]) == 64
-    assert len(result["snapshot_manifest_sha256"]) == 64
     assert not (staging_parent / "staging" / "20260722T020000Z").exists()
     assert any("backup" in command for command in commands)
     assert any("forget" in command and "--prune" in command for command in commands)
@@ -1450,7 +1447,10 @@ def test_typesense_backup_fails_after_bounded_alias_retries(
     assert len(snapshot_paths) == 3
     assert not any("backup" in command for command in commands)
     for snapshot_path in snapshot_paths:
-        assert sum(command[-1] == snapshot_path for command in commands) >= 2
+        attempt_path = tmp_path / "staging" / ".attempts" / Path(snapshot_path).name
+        assert not attempt_path.exists()
+    assert not any(command[:2] == ["docker", "cp"] for command in commands)
+    assert not any(command[:2] == ["docker", "exec"] for command in commands)
 
 
 def test_typesense_inventory_rejects_an_invalid_alias_target(

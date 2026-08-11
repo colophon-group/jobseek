@@ -1614,9 +1614,9 @@ def typesense_backup() -> dict[str, Any]:
             shutil.rmtree(run_path)
             materialized = False
             raise BackupError("Typesense snapshot consumed the protected free and growth headroom")
-        manifest = _write_typesense_snapshot_manifest(run_path, inventory_after["aliases"])
-        manifest = _verify_typesense_snapshot_manifest(run_path)
-        snapshot_bytes = manifest["snapshot"]["bytes"]
+        snapshot_bytes = _tree_size(data_path)
+        if snapshot_bytes <= 0:
+            raise BackupError("Typesense snapshot is empty")
 
         restic_env = os.environ.copy()
         run_checked(
@@ -1675,9 +1675,6 @@ def typesense_backup() -> dict[str, Any]:
             "repository_snapshot_time": latest_snapshot.get("time"),
             "repository_snapshot_count": len(snapshots),
             "retention": {"keep_daily": 14, "keep_weekly": 4},
-            "snapshot_file_count": manifest["snapshot"]["file_count"],
-            "snapshot_data_sha256": manifest["snapshot"]["sha256"],
-            "snapshot_manifest_sha256": _sha256_file(run_path / "manifest.json"),
             "collection_documents_observation": "live_after_snapshot",
             "snapshot_local_copies_before": 0,
             "snapshot_local_copies_after_materialization": 1,

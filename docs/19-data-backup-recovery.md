@@ -434,10 +434,9 @@ The job asks the live Typesense process to create a consistent snapshot
 directly on the isolated `/jobseek-snapshots` bind mount, atomically promotes
 that directory to a host packet, uploads it to the encrypted Restic repository,
 runs retention/pruning and `restic check`, then removes the successful packet.
-The packet keeps the untouched Typesense checkpoint under `data/` and a sibling
-`manifest.json` binds the required alias mapping to a deterministic SHA-256
-digest of every checkpoint path, size, and byte. It does not stop or restart
-Typesense.
+The packet keeps the untouched Typesense checkpoint under `data/`; the job
+verifies that the promoted checkpoint is non-empty before upload. It does not
+stop or restart Typesense.
 
 The backup validates the seven-alias contract immediately before and after
 the Snapshot API call. Both observations must contain exactly the required
@@ -463,19 +462,16 @@ the call, and is the container's labelled writable snapshot mount. The current
 memory phase explicitly requires no hard cap while durable current, peak, and
 event counters are measured.
 
-Before upload, the job reads the manifest back and recomputes the data digest.
-During restore, the helper repeats that digest verification before starting
-the isolated node, then requires the aliases loaded from the checkpoint to
-match the manifest. Collection counts are derived from the restored node and
-cross-checked against wildcard reads, so the restore inventory belongs to the
-artifact instead of a later live-source observation.
+During restore, aliases and collection counts are derived from the isolated
+restored node and cross-checked against wildcard reads, so the restore inventory
+belongs to the artifact instead of a later live-source observation.
 
-Deploying a repair to an enabled timer also handles an already-latched failed
-unit or stale status. The installer quiesces the timer, releases the normal
-service lock, resets the failed unit, and runs exactly one backup through the
-installed systemd service. It writes the deployment marker and restores the
-prior timer state only after a new successful atomic status is proven. A
-failed repair leaves the timer disabled for explicit operator review.
+Every reviewed Typesense backup deployment quiesces the timer and runs one
+fresh direct-mount smoke from the staged candidate. It writes the deployment
+marker, clears the pending contract marker, and restores or starts the timer
+only after fresh atomic status is proven. This also recovers an already-latched
+failed unit or stale status; a failed smoke leaves the timer disabled for
+explicit operator review.
 
 The API credential is a dedicated generated key, delivered from the protected
 `TYPESENSE_BACKUP_KEY` GitHub environment secret into the root-owned

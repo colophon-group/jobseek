@@ -74,7 +74,7 @@ def test_backup_deploy_requires_an_enabled_healthy_timer() -> None:
     )
 
 
-def test_failed_or_stale_typesense_backup_is_repaired_before_deploy_marker() -> None:
+def test_failed_typesense_service_uses_reachable_direct_smoke_before_marker() -> None:
     installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
     rotation = (ROOT / "deploy/backups/typesense/credential-rotation.sh").read_text(
         encoding="utf-8"
@@ -82,30 +82,21 @@ def test_failed_or_stale_typesense_backup_is_repaired_before_deploy_marker() -> 
 
     install_script = installer.index('"$REPO_ROOT/scripts/jobseek-data-backup.py"')
     reload_units = installer.index("systemctl daemon-reload", install_script)
-    repair_condition = installer.index("typesense_backup_requires_repair; then", reload_units)
-    repair = installer.index("typesense_rotation_repair_failed_backup", repair_condition)
+    smoke = installer.index("typesense_rotation_smoke_and_commit", reload_units)
     final_health = installer.index(
-        'systemctl is-failed --quiet "jobseek-${SERVICE}-backup.service"', repair
+        'systemctl is-failed --quiet "jobseek-${SERVICE}-backup.service"', smoke
     )
-    marker = installer.index('>"/var/lib/jobseek-backup/${SERVICE}-deployed-sha.tmp"', repair)
+    marker = installer.index('>"/var/lib/jobseek-backup/${SERVICE}-deployed-sha.tmp"', smoke)
 
-    assert install_script < reload_units < repair_condition < repair < final_health < marker
-    assert "typesense_backup_status_is_fresh" in installer
-    assert "typesense_backup_timer_expected_enabled &&" in installer
-    assert '[[ "$TIMER_ACTION" != disable ]]' in installer
-    assert "0 <= age <= 36 * 60 * 60" in installer
-
-    repair_function = rotation[
-        rotation.index("typesense_rotation_repair_failed_backup()") : rotation.index(
-            "typesense_rotation_smoke_and_commit()"
-        )
-    ]
-    assert '"$typesense_rotation_systemctl_command" start \\' in repair_function
-    assert "typesense_rotation_disable_fail_safe" in repair_function
-    assert '"$typesense_rotation_flock_command" -u' in repair_function
-    assert '"$typesense_rotation_flock_command" -w' in repair_function
-    assert "typesense_rotation_validate_fresh_status" in repair_function
-    assert "typesense_rotation_restore_timer_state" in repair_function
+    assert install_script < reload_units < smoke < final_health < marker
+    assert "typesense_rotation_repair_failed_backup" not in installer
+    assert "typesense_rotation_repair_failed_backup" not in rotation
+    smoke_function = rotation[rotation.index("typesense_rotation_smoke_and_commit()") :]
+    assert "typesense_rotation_disable_fail_safe" in smoke_function
+    assert '"$typesense_rotation_flock_command" -u' in smoke_function
+    assert '"$typesense_rotation_flock_command" -w' in smoke_function
+    assert "typesense_rotation_validate_fresh_status" in smoke_function
+    assert "typesense_rotation_restore_timer_state" in smoke_function
 
 
 def test_typesense_rollout_is_manual_revision_bound_and_freshly_smoked() -> None:
