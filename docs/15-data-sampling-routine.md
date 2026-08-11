@@ -155,7 +155,10 @@ data/postings-labelled/
 Intermediates under `_runs/` are kept for debugging but never uploaded.
 The gold record at `postings/<date>/<id>.json` carries its verdict in
 `labelling_meta.qa_verdict`; `upload` filters for `accepted` before
-pushing.
+pushing. Input selection is fail-closed: every posting JSON file in the
+requested date scope must parse as an object before HuggingFace staging starts.
+One malformed sibling aborts the batch and reports only its filename; opt-out
+filtering still applies after valid records are parsed.
 
 ### HuggingFace dataset layout (`viktoroo/jobseek-postings-labelled`)
 
