@@ -15,6 +15,7 @@ import contextlib
 import os
 import time
 import uuid
+import warnings
 
 import pytest
 import typesense
@@ -50,19 +51,30 @@ SCHEMA_BY_NAME = {schema["name"]: schema for schema in COLLECTIONS}
 
 
 def _make_client() -> typesense.Client:
-    return typesense.Client(
-        {
-            "nodes": [
-                {
-                    "host": TYPESENSE_HOST,
-                    "port": TYPESENSE_PORT,
-                    "protocol": TYPESENSE_PROTOCOL,
-                }
-            ],
-            "api_key": TYPESENSE_API_KEY,
-            "connection_timeout_seconds": 5,
-        }
-    )
+    # The current third-party client eagerly constructs its deprecated v1
+    # analytics facade even though this indexing suite never uses analytics.
+    # Keep that dependency-only warning scoped to client construction so the
+    # suite still exposes every warning produced by Jobseek code.
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message=r"SyncAnalyticsV1 is deprecated on v30\+\. Use client\.analytics instead\.",
+            category=DeprecationWarning,
+            module=r"typesense\.sync\.client",
+        )
+        return typesense.Client(
+            {
+                "nodes": [
+                    {
+                        "host": TYPESENSE_HOST,
+                        "port": TYPESENSE_PORT,
+                        "protocol": TYPESENSE_PROTOCOL,
+                    }
+                ],
+                "api_key": TYPESENSE_API_KEY,
+                "connection_timeout_seconds": 5,
+            }
+        )
 
 
 def _typesense_is_reachable() -> bool:

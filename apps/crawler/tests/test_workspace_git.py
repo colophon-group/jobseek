@@ -99,6 +99,20 @@ class TestGitWrappers:
                 raise AssertionError("_run should reject negative retries")
             mock.assert_not_called()
 
+    def test_run_reports_missing_github_cli_at_command_boundary(self):
+        with (
+            patch("src.workspace.git._repo_cwd", return_value=None),
+            patch(
+                "src.workspace.git.subprocess.run",
+                side_effect=FileNotFoundError("gh"),
+            ),
+            pytest.raises(GitHubApiError, match="executable not found: gh") as exc_info,
+        ):
+            _run(["gh", "api", "repos/example/project"])
+
+        assert exc_info.value.returncode == 127
+        assert exc_info.value.cmd[0] == "gh"
+
     def test_sync_branch_with_main_requires_repo_root(self):
         with (
             patch("src.workspace.git._repo_cwd", return_value=None),
