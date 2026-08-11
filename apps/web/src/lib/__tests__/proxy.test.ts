@@ -161,6 +161,22 @@ describe("company request auth boundary", () => {
   });
 });
 
+describe("scanner path boundary", () => {
+  it.each([
+    "/en/wp-admin/install.php",
+    "/de/phpmyadmin/index.php",
+    "/fr/.git/config",
+    "/it/alice/.env",
+  ])("returns a cacheable 404 for %s", (pathname) => {
+    const response = proxy(createRequest(pathname));
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("cache-control")).toBe(
+      "public, max-age=86400, s-maxage=86400",
+    );
+  });
+});
+
 describe("proxy config", () => {
   it("has a matcher pattern", () => {
     expect(config.matcher).toBeDefined();
@@ -181,6 +197,27 @@ describe("proxy config", () => {
         nextConfig: {},
         url: "/en/explore",
       }),
+    ).toBe(false);
+  });
+
+  it.each([
+    "/en/wp-admin/install.php",
+    "/de/phpmyadmin/index.php",
+    "/fr/.git/config",
+    "/it/alice/.env",
+  ])("matches scanner path %s at the proxy boundary", (url) => {
+    expect(
+      unstable_doesMiddlewareMatch({ config, nextConfig: {}, url }),
+    ).toBe(true);
+  });
+
+  it.each([
+    "/en/alice/jobs",
+    "/de/companies/acme",
+    "/fr/explore",
+  ])("does not add proxy work to valid localized path %s", (url) => {
+    expect(
+      unstable_doesMiddlewareMatch({ config, nextConfig: {}, url }),
     ).toBe(false);
   });
 
