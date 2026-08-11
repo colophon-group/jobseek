@@ -3319,6 +3319,7 @@ midea-group,midea-group-careers-personio,https://midea-europe-gmbh.jobs.personio
 midi-health,midi-health-greenhouse,https://job-boards.greenhouse.io/midihealth,greenhouse,"{""token"": ""midihealth""}",skip,
 midstream,midstream-careers,https://jobs.ashbyhq.com/midstream,ashby,"{""token"": ""midstream""}",skip,
 migros,migros-careers,https://jobs.migros.ch/de/unsere-unternehmen/migros-gruppe/offene-stellen,sitemap,"{""url_filter"": {""include"": ""/de/unsere-unternehmen/job/"", ""exclude"": ""/job/galaxus/""}}",json-ld,"{""fallback"": {""type"": ""dom"", ""config"": {""steps"": [{""tag"": ""h3"", ""text"": ""beweg"", ""field"": ""description"", ""html"": true, ""stop"": ""Bewerbung & Kontakt""}]}, ""fields"": [""description""]}}"
+milehigh-adjusters-houston,milehigh-adjusters-houston-careers,https://milehighadjustershoustoninc.applytojob.com/,jazzhr,,jazzhr,
 mill,mill-greenhouse,https://job-boards.greenhouse.io/mill,greenhouse,"{""token"": ""mill""}",skip,
 millennium-management,millennium-management-campus,https://campusjobs.mlp.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,
 millennium-management,millennium-management-experienced,https://career.mlp.com/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,
