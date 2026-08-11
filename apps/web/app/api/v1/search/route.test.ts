@@ -121,9 +121,25 @@ describe("GET /api/v1/search", () => {
       error: "Invalid 'locale' param. Supported: en, de, fr, it",
     },
     {
+      caseName: "unknown work mode",
+      query: "?locale=en&wm=remote,bogus",
+      error: "Invalid 'wm' value(s): bogus. Supported: onsite, hybrid, remote",
+    },
+    {
+      caseName: "unknown employment type",
+      query: "?locale=en&etype=full_time,bogus",
+      error:
+        "Invalid 'etype' value(s): bogus. Supported: full_time, part_time, contract, internship, temporary, volunteer",
+    },
+    {
       caseName: "unknown document language",
       query: "?locale=en&lang=xx",
       error: "Invalid 'lang' value(s): xx. Supported: en, de, fr, it",
+    },
+    {
+      caseName: "UI-only all-language sentinel",
+      query: "?locale=en&lang=*",
+      error: "Invalid 'lang' value(s): *. Supported: en, de, fr, it",
     },
     {
       caseName: "empty document-language array",
@@ -253,10 +269,10 @@ describe("GET /api/v1/search", () => {
     expect(url.searchParams.get("q")).toBe("engineer");
   });
 
-  it("omits `lang=` from `moreAt` when not provided by the caller", async () => {
+  it("pins `moreAt` to all languages when the REST caller omits `lang`", async () => {
     const { body } = await callRoute("?locale=en&q=engineer");
     const url = new URL(body.moreAt as string);
-    expect(url.searchParams.has("lang")).toBe(false);
+    expect(url.searchParams.get("lang")).toBe("*");
     expect(url.searchParams.get("q")).toBe("engineer");
   });
 
@@ -338,6 +354,33 @@ describe("GET /api/v1/search", () => {
     const url = new URL(body.moreAt as string);
     expect(url.searchParams.get("etype")).toBe("full_time,internship");
     expect(url.searchParams.get("q")).toBe("designer");
+  });
+
+  it("returns 400 when an exact slug cannot be resolved", async () => {
+    mocks.parseSearchFilters.mockResolvedValue({
+      ...emptyParsed,
+      unresolvedExplicitSlugs: { loc: ["not-a-location"] },
+    });
+
+    const { res, body } = await callRoute("?locale=en&loc=not-a-location");
+
+    expect(res.status).toBe(400);
+    expect(body).toEqual({
+      error:
+        "Invalid 'loc' slug(s): not-a-location. Use /api/v1/resolve for exact slugs.",
+    });
+    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
+    expect(mocks.searchJobs).not.toHaveBeenCalled();
+  });
+
+  it("pins salary-bearing `moreAt` links to EUR and drops caller salcur", async () => {
+    const { body } = await callRoute(
+      "?locale=en&q=engineer&sal=100000-&salcur=USD",
+    );
+    const url = new URL(body.moreAt as string);
+
+    expect(url.searchParams.get("sal")).toBe("100000-");
+    expect(url.searchParams.get("salcur")).toBe("EUR");
   });
 
   it("keeps rate-limit failures distinct from validation failures", async () => {

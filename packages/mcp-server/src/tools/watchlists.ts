@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { JobseekClient } from "../client.js";
+import { apiLocaleSchema } from "../locale-schema.js";
 
 export function register(server: McpServer, client: JobseekClient) {
   server.tool(
@@ -11,10 +12,7 @@ export function register(server: McpServer, client: JobseekClient) {
         .string()
         .optional()
         .describe("Search query for watchlist title/description"),
-      locale: z
-        .enum(["en", "de", "fr", "it"])
-        .default("en")
-        .describe("Response language"),
+      locale: apiLocaleSchema,
     },
     { title: "Search Watchlists", readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async (params) => {

@@ -88,6 +88,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
       hasLoggedInHint() ||
       hasAnonJobLanguagesHint() ||
       hasSearchFilterParams(searchParams) ||
+      searchParams.has("lang") ||
       initialData === undefined;
     if (!needsPersonalizedFetch) return;
 
@@ -135,7 +136,22 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
 
   if (!data) return <ExploreSkeleton />;
 
-  const { result, repositoryFallbackCompanies, parsed, displayCurrency, jobLanguages, languages, userLat, userLng, salaryCurrencyParam, salaryMinDisplay, salaryMaxDisplay, experienceMin, experienceMax } = data;
+  const {
+    result,
+    repositoryFallbackCompanies,
+    parsed,
+    displayCurrency,
+    jobLanguages,
+    languages,
+    languageOverride,
+    userLat,
+    userLng,
+    salaryCurrencyParam,
+    salaryMinDisplay,
+    salaryMaxDisplay,
+    experienceMin,
+    experienceMax,
+  } = data;
 
   return (
     <div ref={rootRef} data-explore-content-root>
@@ -161,6 +177,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
         displayCurrency={displayCurrency}
         jobLanguages={jobLanguages}
         languages={languages}
+        initialLanguageOverride={languageOverride}
         userLat={userLat}
         userLng={userLng}
       />

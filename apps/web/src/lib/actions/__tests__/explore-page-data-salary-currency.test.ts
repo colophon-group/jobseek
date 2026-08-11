@@ -44,7 +44,7 @@ vi.mock("@/lib/actions/search-input", () => ({
 import { fetchExplorePageData, fetchExplorePageDefaults } from "../explore-page-data";
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   stubTypesenseConfiguration(true);
   mocks.searchJobs.mockResolvedValue({
     companies: [],
@@ -289,5 +289,57 @@ describe("Explore repository fallback — configuration boundary (#2640)", () =>
     expect(data.parsed.keywords).toEqual(["python"]);
     expect(mocks.parseSearchFilters).not.toHaveBeenCalled();
     expect(mocks.searchJobs).not.toHaveBeenCalled();
+  });
+
+  it("preserves an all-language override through a secretless fallback", async () => {
+    stubTypesenseConfiguration(false);
+
+    const data = await fetchExplorePageData({
+      searchParams: { lang: "*" },
+      locale: "en",
+    });
+
+    expect(data.repositoryFallbackCompanies).toHaveLength(10);
+    expect(data.languages).toEqual([]);
+    expect(data.languageOverride).toEqual([]);
+    expect(mocks.parseSearchFilters).not.toHaveBeenCalled();
+    expect(mocks.searchJobs).not.toHaveBeenCalled();
+    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
+  });
+});
+
+describe("fetchExplorePageData — public language override (#6132)", () => {
+  it("uses `lang` instead of locale/preferences for the linked result set", async () => {
+    const data = await fetchExplorePageData({
+      searchParams: { lang: "de,fr" },
+      locale: "en",
+    });
+
+    const callArgs = mocks.listTopCompanies.mock.calls[0][0];
+    expect(callArgs.languages).toEqual(["de", "fr"]);
+    expect(data.languages).toEqual(["de", "fr"]);
+    expect(data.languageOverride).toEqual(["de", "fr"]);
+    expect(data.jobLanguages).toEqual([]);
+  });
+
+  it("maps the Explore `*` sentinel to REST's all-language semantics", async () => {
+    const data = await fetchExplorePageData({
+      searchParams: { lang: "*" },
+      locale: "en",
+    });
+
+    expect(mocks.listTopCompanies.mock.calls[0][0].languages).toEqual([]);
+    expect(data.languages).toEqual([]);
+    expect(data.languageOverride).toEqual([]);
+  });
+
+  it("falls back to the normal preference semantics without `lang`", async () => {
+    const data = await fetchExplorePageData({
+      searchParams: {},
+      locale: "it",
+    });
+
+    expect(mocks.listTopCompanies.mock.calls[0][0].languages).toEqual(["it"]);
+    expect(data.languageOverride).toBeNull();
   });
 });

@@ -126,3 +126,80 @@ describe("apiResponse status contract (#3213)", () => {
     expect(apiResponse({ error: "Bad request" }, { status: 400 }).status).toBe(400);
   });
 });
+
+describe("parseApiLocale public v1 contract (#6132)", () => {
+  it("uses the shared default and accepts every supported locale", async () => {
+    const { parseApiLocale } = await import("./_shared");
+
+    expect(parseApiLocale(new URLSearchParams())).toBe("en");
+    for (const locale of ["en", "de", "fr", "it"]) {
+      expect(parseApiLocale(new URLSearchParams({ locale }))).toBe(locale);
+    }
+  });
+
+  it("returns a non-cacheable 400 with rate-limit metadata for unsupported locales", async () => {
+    const { parseApiLocale } = await import("./_shared");
+    const response = parseApiLocale(
+      new URLSearchParams({ locale: "xx" }),
+      { limit: 30, remaining: 29, reset: 12345 },
+    );
+
+    expect(response).toBeInstanceOf(Response);
+    if (!(response instanceof Response)) return;
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: "Invalid 'locale' param. Supported: en, de, fr, it",
+    });
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("X-RateLimit-Limit")).toBe("30");
+    expect(response.headers.get("X-RateLimit-Remaining")).toBe("29");
+  });
+});
+
+describe("public search-filter contract (#6132)", () => {
+  it("rejects unknown finite-list values without caching the response", async () => {
+    const { validatePublicEnumListParam, PUBLIC_WORK_MODE_VALUES } = await import(
+      "./_shared"
+    );
+    const response = validatePublicEnumListParam(
+      "wm",
+      "remote,bogus",
+      PUBLIC_WORK_MODE_VALUES,
+    );
+
+    expect(response?.status).toBe(400);
+    expect(await response?.json()).toEqual({
+      error: "Invalid 'wm' value(s): bogus. Supported: onsite, hybrid, remote",
+    });
+    expect(response?.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  it("rejects unresolved exact slugs instead of widening the search", async () => {
+    const { validateResolvedPublicFilters } = await import("./_shared");
+    const response = validateResolvedPublicFilters({
+      unresolvedExplicitSlugs: { tech: ["not-a-technology"] },
+    });
+
+    expect(response?.status).toBe(400);
+    expect(await response?.json()).toEqual({
+      error:
+        "Invalid 'tech' slug(s): not-a-technology. Use /api/v1/resolve for exact slugs.",
+    });
+  });
+
+  it("pins Explore links to EUR when the public API applies a salary range", async () => {
+    const { exploreUrl } = await import("./_shared");
+    const url = new URL(
+      exploreUrl(
+        new URLSearchParams("q=engineer&sal=100000-&salcur=USD"),
+        "de",
+      ),
+    );
+
+    expect(url.pathname).toBe("/de/explore");
+    expect(url.searchParams.get("q")).toBe("engineer");
+    expect(url.searchParams.get("sal")).toBe("100000-");
+    expect(url.searchParams.get("salcur")).toBe("EUR");
+  });
+});

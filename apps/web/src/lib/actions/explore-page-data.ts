@@ -14,6 +14,7 @@ import { getSession } from "@/lib/sessionCache";
 import { firstOf, idsOrUndefined, parseRangeParam, getGeoFromHeaders } from "@/lib/search/params";
 import { parseEmploymentTypeParam, parseWorkModeParam } from "@/lib/search/query-params";
 import { convertToEur } from "@/lib/salary";
+import { parseExploreSearchLanguages } from "@/lib/search/language-param";
 import type { SearchResponse } from "@/lib/search";
 import {
   getExploreRepositoryFallbackCompanies,
@@ -47,6 +48,8 @@ export interface ExploreData {
   displayCurrency: string;
   jobLanguages: string[];
   languages: string[];
+  /** Explicit public-API language override carried by a `moreAt` URL. */
+  languageOverride?: string[] | null;
   userLat: number | undefined;
   userLng: number | undefined;
   salaryCurrencyParam: string;
@@ -101,6 +104,8 @@ export async function fetchExplorePageData(params: {
   const salcur = firstOf(searchParams.salcur);
   const exp = firstOf(searchParams.exp);
   const typesenseConfigured = hasTypesenseSearchConfiguration();
+  const languageParam = parseExploreSearchLanguages(firstOf(searchParams.lang));
+  const languageOverride = languageParam.ok ? languageParam.languages : null;
 
   const { userLat, userLng } = await getGeoFromHeaders();
 
@@ -120,7 +125,7 @@ export async function fetchExplorePageData(params: {
 
   const jobLanguages = prefs?.jobLanguages ?? anonJobLangs ?? [];
   const displayCurrency = prefs?.displayCurrency ?? "EUR";
-  const languages = resolveJobLanguages(jobLanguages, locale);
+  const languages = languageOverride ?? resolveJobLanguages(jobLanguages, locale);
 
   const locationIds = idsOrUndefined(parsed.locations);
   const occupationIds = idsOrUndefined(parsed.occupations);
@@ -191,6 +196,7 @@ export async function fetchExplorePageData(params: {
     displayCurrency,
     jobLanguages,
     languages,
+    languageOverride,
     userLat,
     userLng,
     salaryCurrencyParam,
@@ -259,6 +265,7 @@ export async function fetchExplorePageDefaults(params: {
     displayCurrency,
     jobLanguages,
     languages,
+    languageOverride: null,
     userLat: undefined,
     userLng: undefined,
     salaryCurrencyParam: displayCurrency,

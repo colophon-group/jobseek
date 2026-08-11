@@ -1,11 +1,12 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { JobseekClient } from "../client.js";
+import { apiLocaleSchema } from "../locale-schema.js";
 type HC = { found: boolean; activeListings: number; avgViews: number; avgApplications: number; lowEngagement: boolean; signal: string | null };
 type GR = { company: string; overallGhostRisk: number; ghostRate: number; ghostCandidates: number; totalUniqueJobs: number; avgDurationDays: number; recommendation: string; orgGhostSignal: string | null; hiringCafeSignal: HC | null; geminiSummary: string; matchingJobs: Array<{ title: string; durationDays: number; ghostScore: number; ghostReason: string; reposted: boolean }> };
 
 export function register(server: McpServer, client: JobseekClient) {
-  server.tool("search_companies", "Search companies by name on jseek.co. Returns up to 10 matching companies with links to their company pages.", { q: z.string().describe("Company name query (min 2 chars)"), locale: z.enum(["en", "de", "fr", "it"]).default("en").describe("Response language") }, { title: "Search Companies", readOnlyHint: true, destructiveHint: false, openWorldHint: true }, async (p) => ({ content: [{ type: "text", text: JSON.stringify(await client.get("/api/v1/companies", { q: p.q, locale: p.locale }), null, 2) }] }));
+  server.tool("search_companies", "Search companies by name on jseek.co. Returns up to 10 matching companies with links to their company pages.", { q: z.string().describe("Company name query (min 2 chars)"), locale: apiLocaleSchema }, { title: "Search Companies", readOnlyHint: true, destructiveHint: false, openWorldHint: true }, async (p) => ({ content: [{ type: "text", text: JSON.stringify(await client.get("/api/v1/companies", { q: p.q, locale: p.locale }), null, 2) }] }));
 
   server.tool("trigger_ghost_analysis", "Start ghost-job analysis for a career page via Wayback Machine. Detects jobs open months without being filled. Returns runId — poll get_ghost_analysis until SUCCEEDED (3–8 min).", { portalUrl: z.string().url().describe("Career page URL e.g. https://boards.greenhouse.io/stripe"), companyName: z.string().optional(), inventoryMode: z.boolean().optional().describe("CDX mode for Workday/SPA portals"), maxSnapshots: z.number().int().min(10).max(500).optional() }, { title: "Trigger Ghost Analysis", readOnlyHint: false, destructiveHint: false, openWorldHint: true }, async (p) => {
     const d = await client.post("/agentic/api/ghosting", p as Record<string, unknown>) as { runId: string; status: string };
