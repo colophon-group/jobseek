@@ -200,18 +200,38 @@ The repository-owned ingress source of truth is:
 - [`install-host.sh`](../deploy/networking/install-host.sh) for UFW and sshd;
 - [`harden-postgresql.sh`](../deploy/networking/harden-postgresql.sh) for the
   PostgreSQL listener and exact HBA;
+- [`run-remote.sh`](../deploy/networking/run-remote.sh) for the fail-closed,
+  host-identity-pinned OpenSSH transport;
 - [`jobseek-ingress-conformance.py`](../scripts/jobseek-ingress-conformance.py)
   for redacted host evidence; and
 - [`deploy-hetzner-ingress.yml`](../.github/workflows/deploy-hetzner-ingress.yml)
   for protected audit and apply operations.
 
 The protected `production` environment stores `HETZNER_API_TOKEN`,
-`HETZNER_HOST`, `HETZNER_POSTGRES_HOST`, `HETZNER_TYPESENSE_HOST`, and
-`HETZNER_SSH_KEY` as secrets. Host addresses are secrets for log-redaction
-purposes even though they are not authentication material. Do not convert them
-to GitHub variables: Actions prints ordinary variables in step environments.
-The inventory helper emits GitHub masking commands before exporting derived
-private addresses; suppressing that output would disable the masks.
+`HETZNER_HOST`, `HETZNER_POSTGRES_HOST`, `HETZNER_TYPESENSE_HOST`,
+`HETZNER_SSH_KEY`, and three reviewed known-host sets as secrets. The crawler
+uses `HETZNER_CRAWLER_KNOWN_HOSTS`, PostgreSQL uses the existing
+`HETZNER_BACKUP_KNOWN_HOSTS`, and Typesense uses
+`HETZNER_TYPESENSE_KNOWN_HOSTS`. Every audit, payload transfer, private-path
+validation, rollback, and commit connection uses native OpenSSH with strict
+host-key checking and `IdentitiesOnly=yes`; the transport refuses a target
+that is absent from its role's exact known-host set. It never learns trust with
+`accept-new` or `ssh-keyscan`, never substitutes another role's key set, and
+does not use third-party SSH/SCP actions.
+
+Host addresses are secrets for log-redaction purposes even though they are not
+authentication material. Do not convert them to GitHub variables: Actions
+prints ordinary variables in step environments. The inventory helper emits
+GitHub masking commands before exporting derived private addresses;
+suppressing that output would disable the masks.
+
+Apply payloads are archived from the reviewed checkout and extracted only into
+a fresh `/var/lib/jobseek-ingress/staging/<sha>-<run>-<attempt>` directory.
+The transport requires the state root, staging root, and fresh stage to be
+non-symlink directories owned by `root:root` with mode `0700`; rejects any
+symlink, non-root-owned entry, reused stage, or unexpected file; and verifies
+the SHA-256 of every payload before root executes it. No root-executed ingress
+payload is staged under `/tmp`.
 
 The public Hetzner firewall is default-deny inbound and allows only TCP 22 and
 ICMP over IPv4/IPv6. It has no outbound rules, so Hetzner's default outbound
@@ -308,6 +328,15 @@ resource IDs, credentials, connection strings, and raw HBA contents. Future
 PostgreSQL container migrations source the root-owned
 `/etc/jobseek-ingress/postgresql-network.env`; removing or bypassing that file
 would regress the listener to a wildcard and must fail review.
+
+Host commits remain independent only after all three staged policies and the
+fresh crawler private paths have passed. If one host's commit fails, that
+lane attempts every rollback layer still pending and the provider-firewall job
+is withheld; a different lane that already committed keeps its independently
+proven-safe host policy. This is an explicit recovery state rather than a
+fleet-wide atomic commit. Rerun the read-only audit, resolve the failed lane,
+and repeat the guarded apply. Never attach the provider firewall by hand to
+bypass the failed workflow.
 
 ## PostgreSQL Shared Memory
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -12,6 +13,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 FIREWALL_SCRIPT = ROOT / "scripts" / "manage-hetzner-ingress.py"
 CONFORMANCE_SCRIPT = ROOT / "scripts" / "jobseek-ingress-conformance.py"
+INGRESS_WORKFLOW = ROOT / ".github/workflows/deploy-hetzner-ingress.yml"
+INGRESS_TRANSPORT = ROOT / "deploy/networking/run-remote.sh"
 
 
 def _load(name: str, path: Path):
@@ -25,6 +28,13 @@ def _load(name: str, path: Path):
 
 firewall = _load("manage_hetzner_ingress", FIREWALL_SCRIPT)
 conformance = _load("jobseek_ingress_conformance", CONFORMANCE_SCRIPT)
+
+
+def _workflow_job(workflow: str, name: str) -> str:
+    start = workflow.index(f"  {name}:\n")
+    following = re.search(r"^  [a-z0-9-]+:\n", workflow[start + 1 :], flags=re.MULTILINE)
+    end = start + 1 + following.start() if following is not None else len(workflow)
+    return workflow[start:end]
 
 
 def test_provider_rules_are_default_deny_with_only_ssh_and_icmp() -> None:
@@ -494,7 +504,8 @@ def test_network_scripts_preserve_automatic_and_future_deploy_rollback() -> None
     migration = (ROOT / "deploy/backups/postgresql/migrate-container.sh").read_text(
         encoding="utf-8"
     )
-    workflow = (ROOT / ".github/workflows/deploy-hetzner-ingress.yml").read_text(encoding="utf-8")
+    workflow = INGRESS_WORKFLOW.read_text(encoding="utf-8")
+    transport = INGRESS_TRANSPORT.read_text(encoding="utf-8")
 
     assert "--on-active=15m" in host
     assert "--on-active=15m" in postgres
@@ -515,10 +526,11 @@ def test_network_scripts_preserve_automatic_and_future_deploy_rollback() -> None
     assert migration.count("POSTGRES_SHM_BYTES") >= 3
     assert workflow.index("validate-private-paths:") < workflow.index("commit-hosts:")
     assert "rollback-after-staging-or-validation-failure:" in workflow
-    assert "Immediately roll back every staged host" in workflow
-    assert "Roll back any transaction left pending by a failed commit" in workflow
-    assert "Audit host without writing to production" in workflow
-    assert "<scripts/jobseek-ingress-conformance.py" in workflow
+    assert workflow.count("Immediately roll back the staged") == 3
+    assert workflow.count("Roll back any ") == 3
+    assert workflow.count("without writing to production") == 3
+    assert "<scripts/jobseek-ingress-conformance.py" in transport
+    assert "rollback_pending()" in transport
     assert "provider-audit-conformance:" in workflow
     assert "Require exact provider policy and external port state" in workflow
     assert workflow.index("commit-hosts:") < workflow.index("provider-firewall:")
@@ -526,29 +538,28 @@ def test_network_scripts_preserve_automatic_and_future_deploy_rollback() -> None
 
 def test_host_stage_and_postgres_retry_share_exact_conformance_contract() -> None:
     host = (ROOT / "deploy/networking/install-host.sh").read_text(encoding="utf-8")
-    workflow = (ROOT / ".github/workflows/deploy-hetzner-ingress.yml").read_text(encoding="utf-8")
+    workflow = INGRESS_WORKFLOW.read_text(encoding="utf-8")
+    transport = INGRESS_TRANSPORT.read_text(encoding="utf-8")
 
     assert '"$CONFORMANCE" \\\n    --role "$ROLE"' in host
     assert "--host-only" in host
     assert "--require-enforced" in host
     assert "sshd_effective=" not in host
-    assert "PostgreSQL data-plane contract is already compliant; skipping replacement" in workflow
-    assert workflow.count('python3 "$root/scripts/jobseek-ingress-conformance.py"') == 2
+    assert "PostgreSQL data-plane contract is already compliant; skipping replacement" in transport
+    assert transport.count('python3 "${payloads[3]}"') == 2
     assert (
         '[[ "$JOBSEEK_HOST_ROLE" == postgresql && -s /var/lib/jobseek-ingress/postgresql/pending ]]'
-    ) in workflow
-    postgres_stage = 'bash "$root/deploy/networking/harden-postgresql.sh" stage'
-    final_stage_conformance = (
-        'python3 "$root/scripts/jobseek-ingress-conformance.py" \\\n'
-        '              --role "$JOBSEEK_HOST_ROLE"'
-    )
-    assert workflow.index(postgres_stage) < workflow.index(final_stage_conformance)
+    ) not in workflow
+    postgres_stage = 'bash --noprofile --norc "${payloads[1]}" stage'
+    final_stage_conformance = 'python3 "${payloads[3]}" \\\n  --role "$role"'
+    assert transport.index(postgres_stage) < transport.index(final_stage_conformance)
 
 
 def test_network_verification_does_not_sigpipe_live_producers() -> None:
     host = (ROOT / "deploy/networking/install-host.sh").read_text(encoding="utf-8")
     postgres = (ROOT / "deploy/networking/harden-postgresql.sh").read_text(encoding="utf-8")
-    workflow = (ROOT / ".github/workflows/deploy-hetzner-ingress.yml").read_text(encoding="utf-8")
+    workflow = INGRESS_WORKFLOW.read_text(encoding="utf-8")
+    transport = INGRESS_TRANSPORT.read_text(encoding="utf-8")
 
     assert "sshd -T | grep" not in host
     assert "ufw status | grep" not in host
@@ -557,5 +568,113 @@ def test_network_verification_does_not_sigpipe_live_producers() -> None:
     assert "systemctl is-active --quiet ufw.service ||" not in host
     assert host.index("ufw --force disable >/dev/null") < host.index("rm -rf /etc/ufw")
     assert 'settings="$(' in postgres
-    assert workflow.count("-s /var/lib/jobseek-ingress/pending") >= 3
-    assert "-x /usr/local/sbin/jobseek-ingress-baseline" not in workflow
+    assert transport.count("-s /var/lib/jobseek-ingress/pending") >= 2
+    assert "-x /usr/local/sbin/jobseek-ingress-baseline" not in workflow + transport
+
+
+def test_ingress_workflow_pins_every_role_specific_connection() -> None:
+    workflow = INGRESS_WORKFLOW.read_text(encoding="utf-8")
+    transport = INGRESS_TRANSPORT.read_text(encoding="utf-8")
+    combined = workflow + transport
+
+    assert workflow.count("bash deploy/networking/run-remote.sh") == 19
+    assert "secrets[" not in workflow
+    assert "&& secrets." not in workflow
+    assert "appleboy/" not in combined
+    assert "accept-new" not in combined
+    assert "ssh-keyscan" not in combined
+    assert "fingerprint" not in combined.lower()
+    assert "/tmp/jobseek-ingress" not in combined
+    assert "StrictHostKeyChecking=yes" in transport
+    assert "IdentitiesOnly=yes" in transport
+    assert 'ssh-keygen -F "$TARGET_HOST"' in transport
+    assert "HETZNER_POSTGRES_KNOWN_HOSTS" not in combined
+    assert re.search(r"^\s+(?:ssh|scp)\s", workflow, flags=re.MULTILINE) is None
+
+    for host_secret, known_hosts_secret, expected_connections in (
+        ("HETZNER_HOST", "HETZNER_CRAWLER_KNOWN_HOSTS", 7),
+        ("HETZNER_POSTGRES_HOST", "HETZNER_BACKUP_KNOWN_HOSTS", 6),
+        ("HETZNER_TYPESENSE_HOST", "HETZNER_TYPESENSE_KNOWN_HOSTS", 6),
+    ):
+        assert (
+            workflow.count(f"TARGET_HOST: ${{{{ secrets.{host_secret} }}}}") == expected_connections
+        )
+        assert (
+            workflow.count(f"SSH_KNOWN_HOSTS: ${{{{ secrets.{known_hosts_secret} }}}}")
+            == expected_connections
+        )
+
+    remote_steps = [
+        "      - name:" + block
+        for block in workflow.split("      - name:")[1:]
+        if "bash deploy/networking/run-remote.sh" in block
+    ]
+    assert len(remote_steps) == 19
+    role_mappings = {
+        "crawler": ("HETZNER_HOST", "HETZNER_CRAWLER_KNOWN_HOSTS"),
+        "postgresql": ("HETZNER_POSTGRES_HOST", "HETZNER_BACKUP_KNOWN_HOSTS"),
+        "typesense": ("HETZNER_TYPESENSE_HOST", "HETZNER_TYPESENSE_KNOWN_HOSTS"),
+    }
+    for step in remote_steps:
+        roles = [role for role in role_mappings if f"\n          {role}\n" in step]
+        assert len(roles) == 1
+        host_secret, known_hosts_secret = role_mappings[roles[0]]
+        assert step.count("TARGET_HOST:") == 1
+        assert step.count("SSH_KNOWN_HOSTS:") == 1
+        assert f"TARGET_HOST: ${{{{ secrets.{host_secret} }}}}" in step
+        assert f"SSH_KNOWN_HOSTS: ${{{{ secrets.{known_hosts_secret} }}}}" in step
+
+
+def test_ingress_transport_executes_only_verified_root_owned_payloads() -> None:
+    transport = INGRESS_TRANSPORT.read_text(encoding="utf-8")
+
+    assert "/var/lib/jobseek-ingress/staging/" in transport
+    assert "install -d -o root -g root -m 0700" in transport
+    assert '[[ -d "$directory" && ! -L "$directory" ]]' in transport
+    assert "stat -c '%u:%g:%a'" in transport
+    assert "== 0:0:700" in transport
+    assert '[[ ! -e "$stage" && ! -L "$stage" ]]' in transport
+    assert 'find "$stage" -xdev -type l -print -quit' in transport
+    assert "! -user root -o ! -group root" in transport
+    assert r"! \( -type d -o -type f \)" in transport
+    assert "-type d ! -perm 0700" in transport
+    assert '[[ -f "$payload" && ! -L "$payload" ]]' in transport
+    assert 'sha256sum "$payload"' in transport
+    assert 'bash --noprofile --norc "${payloads[0]}"' in transport
+    assert 'bash --noprofile --norc "${payloads[1]}"' in transport
+    assert 'bash --noprofile --norc "$verifier"' in transport
+    assert "tar --create --gzip --file -" in transport
+    assert "tar --extract --gzip --file - --directory '$stage'" in transport
+
+
+def test_ingress_transport_preserves_transactional_order_and_fail_closed_rollback() -> None:
+    transport = INGRESS_TRANSPORT.read_text(encoding="utf-8")
+    workflow = INGRESS_WORKFLOW.read_text(encoding="utf-8")
+
+    assert transport.index('"${payloads[0]}" stage "$role"') < transport.index(
+        '"${payloads[1]}" stage'
+    )
+    assert transport.index('"${payloads[1]}" stage') < transport.index(
+        'python3 "${payloads[3]}" \\\n  --role "$role"'
+    )
+    assert transport.index("jobseek-postgresql-network rollback") < transport.index(
+        "jobseek-ingress-baseline rollback"
+    )
+    assert transport.index('jobseek-ingress-baseline commit "$role"') < transport.index(
+        "jobseek-postgresql-network commit"
+    )
+    assert workflow.index("host-stage-or-audit:") < workflow.index("validate-private-paths:")
+    assert workflow.index("validate-private-paths:") < workflow.index("commit-hosts:")
+    assert workflow.index("commit-hosts:") < workflow.index("provider-firewall:")
+    assert "needs: host-stage-or-audit" in _workflow_job(workflow, "validate-private-paths")
+    assert "needs: validate-private-paths" in _workflow_job(workflow, "commit-hosts")
+    assert "needs: commit-hosts" in _workflow_job(workflow, "provider-firewall")
+
+    rollback = transport.split("<<'REMOTE_ROLLBACK'", 1)[1].split("REMOTE_ROLLBACK", 1)[0]
+    assert "set -euo pipefail" in rollback
+    assert "rollback_status=0" in rollback
+    assert rollback.count("|| rollback_status=$?") == 2
+    assert rollback.index("jobseek-postgresql-network rollback") < rollback.index(
+        "jobseek-ingress-baseline rollback"
+    )
+    assert 'exit "$rollback_status"' in rollback
