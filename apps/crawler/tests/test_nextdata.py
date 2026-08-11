@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 
 from src.core.monitor import monitor_one, monitor_one_stream
-from src.core.monitors import DiscoveredJob
+from src.core.monitors import DiscoveredJob, monitor_needs_browser
 from src.core.monitors.nextdata import (
     _add_query_param,
     _build_url,
@@ -461,6 +461,61 @@ class TestFetchMethods:
 
         assert isinstance(result, list)
         assert len(result) == 2
+
+    async def test_browser_source_maps_client_side_job_list(self):
+        board = {
+            "board_url": "https://example.com/campus",
+            "metadata": {
+                "source": "browser",
+                "browser_expression": "({jobs: jobList})",
+                "path": "jobs",
+                "url_template": "{link}",
+                "fields": {
+                    "title": "title",
+                    "description": "desc",
+                    "locations": "=Shanghai, China",
+                },
+            },
+        }
+        data = {
+            "jobs": [
+                {
+                    "title": "Management Trainee",
+                    "desc": "<p>Rotate through corporate functions.</p>",
+                    "link": "https://apply.example.com/123",
+                }
+            ]
+        }
+
+        with patch(
+            "src.core.monitors.nextdata._evaluate_browser_data",
+            new_callable=AsyncMock,
+            return_value=data,
+        ) as evaluate:
+            result = await discover(board, httpx.AsyncClient(), pw=object())
+
+        evaluate.assert_awaited_once()
+        assert len(result) == 1
+        assert result[0].url == "https://apply.example.com/123"
+        assert result[0].title == "Management Trainee"
+        assert result[0].description == "<p>Rotate through corporate functions.</p>"
+        assert result[0].locations == ["Shanghai, China"]
+        assert monitor_needs_browser("nextdata", board["metadata"]) is True
+
+    async def test_browser_source_requires_expression(self):
+        board = {
+            "board_url": "https://example.com/campus",
+            "metadata": {
+                "source": "browser",
+                "path": "jobs",
+                "url_template": "{link}",
+                "fields": {"title": "title"},
+            },
+        }
+
+        result = await discover(board, httpx.AsyncClient(), pw=object())
+
+        assert result == []
 
 
 # ---------------------------------------------------------------------------
