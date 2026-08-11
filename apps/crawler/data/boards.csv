@@ -2694,6 +2694,8 @@ jetbrains,jetbrains-careers,https://boards.greenhouse.io/jetbrains,greenhouse,,s
 jetzero,jetzero-greenhouse,https://job-boards.greenhouse.io/jetzero,greenhouse,"{""token"": ""jetzero""}",skip,
 jfrog,jfrog-greenhouse,https://job-boards.greenhouse.io/jfrog,greenhouse,"{""token"": ""jfrog""}",skip,
 jimmy,jimmy-careers,https://www.jimmy-energy.eu/carrieres,jarvi,"{""public_api_key"": ""d7124329-e3af-42ad-805c-9aef07f173b4"", ""currency"": ""EUR""}",skip,
+jll,jll-careers,https://jll.wd1.myworkdayjobs.com/jllcareers,workday,"{""company"": ""jll"", ""wd_instance"": ""wd1"", ""site"": ""jllcareers"", ""all_sites"": false}",workday,
+jll,jll-lasalle-careers,https://jll.wd1.myworkdayjobs.com/lasallecareers,workday,"{""company"": ""jll"", ""wd_instance"": ""wd1"", ""site"": ""lasallecareers"", ""all_sites"": false}",workday,
 job-board,job-board-greenhouse,https://job-boards.greenhouse.io/corelight,greenhouse,"{""token"": ""corelight""}",skip,
 jobandtalent,jobandtalent-careers,https://jobs.lever.co/jobandtalent,lever,"{""token"": ""jobandtalent""}",skip,
 jobber,jobber-ashby,https://jobs.ashbyhq.com/jobber,ashby,"{""token"": ""jobber""}",skip,
