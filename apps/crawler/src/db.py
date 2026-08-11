@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
 
 import asyncpg
 
@@ -13,35 +12,29 @@ _web_pool: asyncpg.Pool | None = None
 _local_pool: asyncpg.Pool | None = None
 
 
-async def _init_connection(conn: asyncpg.Connection) -> None:
-    await conn.execute("SET statement_timeout = '5min'")
-    await conn.execute("SET idle_in_transaction_session_timeout = '60s'")
-    # Detect dead clients (OOM kill, network drop) within ~90s
-    await conn.execute("SET tcp_keepalives_idle = 60")
-    await conn.execute("SET tcp_keepalives_interval = 10")
-    await conn.execute("SET tcp_keepalives_count = 3")
-
-
-async def _init_local_connection(conn: asyncpg.Connection) -> None:
-    """Init for the local Postgres pool used by workers.
-
-    Tighter ``statement_timeout`` (30s) than the Supabase pool because worker
-    queries are all narrow single-row reads or small upserts — a slow query is
-    a bug to surface, not a feature to wait through. Keepalives match the
-    remote pool: they cost nothing on the local socket but recycle dead
-    connections within ~90s if the Postgres backend ever becomes unreachable.
-    """
-
-    await conn.execute("SET statement_timeout = '30s'")
-    await conn.execute("SET idle_in_transaction_session_timeout = '60s'")
-    await conn.execute("SET tcp_keepalives_idle = 60")
-    await conn.execute("SET tcp_keepalives_interval = 10")
-    await conn.execute("SET tcp_keepalives_count = 3")
-
-
 def _application_name(pool_name: str) -> str:
     """Return the bounded production owner visible in ``pg_stat_activity``."""
     return f"jobseek:crawler:{settings.crawler_db_role}:{pool_name}"
+
+
+def _server_settings(pool_name: str, *, statement_timeout: str) -> dict[str, str]:
+    """Return connection-startup defaults that survive asyncpg pool reset.
+
+    asyncpg executes ``RESET ALL`` whenever a connection is released. Settings
+    installed by a pool ``init`` callback are therefore lost after the first
+    checkout. Startup parameters remain the session defaults restored by that
+    reset, so every later acquisition retains the same server-side guards.
+    """
+
+    return {
+        "application_name": _application_name(pool_name),
+        "statement_timeout": statement_timeout,
+        "idle_in_transaction_session_timeout": "60s",
+        # Detect dead clients (OOM kill, network drop) within roughly 90s.
+        "tcp_keepalives_idle": "60",
+        "tcp_keepalives_interval": "10",
+        "tcp_keepalives_count": "3",
+    }
 
 
 def _observe_pool(pool: asyncpg.Pool, pool_name: str) -> None:
@@ -60,7 +53,7 @@ async def _create_pool(
     dsn: str,
     *,
     pool_name: str,
-    init: Callable[[asyncpg.Connection], Awaitable[None]],
+    statement_timeout: str,
 ) -> asyncpg.Pool:
     pool = await asyncpg.create_pool(
         dsn,
@@ -69,8 +62,10 @@ async def _create_pool(
         command_timeout=60,
         statement_cache_size=0,
         max_inactive_connection_lifetime=settings.crawler_db_pool_idle_seconds,
-        server_settings={"application_name": _application_name(pool_name)},
-        init=init,
+        server_settings=_server_settings(
+            pool_name,
+            statement_timeout=statement_timeout,
+        ),
     )
     _observe_pool(pool, pool_name)
     return pool
@@ -85,7 +80,7 @@ async def create_pool() -> asyncpg.Pool:
         _pool = await _create_pool(
             settings.database_url,
             pool_name="mirror",
-            init=_init_connection,
+            statement_timeout="5min",
         )
     return _pool
 
@@ -99,7 +94,7 @@ async def create_web_pool() -> asyncpg.Pool:
         _web_pool = await _create_pool(
             settings.web_database_url,
             pool_name="web",
-            init=_init_connection,
+            statement_timeout="5min",
         )
     return _web_pool
 
@@ -111,7 +106,7 @@ async def create_local_pool() -> asyncpg.Pool:
         _local_pool = await _create_pool(
             settings.local_database_url,
             pool_name="local",
-            init=_init_local_connection,
+            statement_timeout="30s",
         )
     return _local_pool
 

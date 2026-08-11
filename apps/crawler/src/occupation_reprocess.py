@@ -108,7 +108,8 @@ def _candidate_rows_sql(
                jp.titles[1] AS title,
                jp.occupation_id AS old_id,
                o.slug AS old_slug,
-               jp.is_active
+               jp.is_active,
+               jp.first_seen_at
           FROM job_posting jp
           LEFT JOIN occupation o ON o.id = jp.occupation_id
          WHERE jp.titles[1] IS NOT NULL
@@ -116,6 +117,25 @@ def _candidate_rows_sql(
            AND (
                 o.slug = ANY($1::text[])
                 {null_clause}
+           )
+           AND (
+                $2::uuid IS NULL
+                OR (
+                    $3::timestamptz IS NOT NULL
+                    AND (
+                        jp.first_seen_at < $3::timestamptz
+                        OR (
+                            jp.first_seen_at = $3::timestamptz
+                            AND jp.id > $2::uuid
+                        )
+                        OR jp.first_seen_at IS NULL
+                    )
+                )
+                OR (
+                    $3::timestamptz IS NULL
+                    AND jp.first_seen_at IS NULL
+                    AND jp.id > $2::uuid
+                )
            )
          ORDER BY jp.first_seen_at DESC NULLS LAST, jp.id
     """
@@ -163,14 +183,34 @@ async def _iter_candidate_rows(
     include_inactive: bool,
     include_nulls: bool,
 ):
-    sql = _candidate_rows_sql(
-        limit=limit,
-        include_inactive=include_inactive,
-        include_nulls=include_nulls,
-    )
-    async with conn.transaction(readonly=True):
-        async for row in conn.cursor(sql, list(parent_slugs), prefetch=FETCH_BATCH):
+    """Yield keyset batches without holding a transaction during client work."""
+
+    remaining = limit
+    after_id = None
+    after_first_seen_at = None
+    while remaining is None or remaining > 0:
+        batch_limit = FETCH_BATCH if remaining is None else min(FETCH_BATCH, remaining)
+        sql = _candidate_rows_sql(
+            limit=batch_limit,
+            include_inactive=include_inactive,
+            include_nulls=include_nulls,
+        )
+        rows = await conn.fetch(
+            sql,
+            list(parent_slugs),
+            after_id,
+            after_first_seen_at,
+        )
+        if not rows:
+            return
+        for row in rows:
             yield row
+        after_id = rows[-1]["id"]
+        after_first_seen_at = rows[-1]["first_seen_at"]
+        if remaining is not None:
+            remaining -= len(rows)
+        if len(rows) < batch_limit:
+            return
 
 
 def _diff_row(row: Any, slug_to_id: dict[str, int]) -> OccupationChange | None:
@@ -275,6 +315,7 @@ async def run_from_args(args: argparse.Namespace) -> int:
         max_inactive_connection_lifetime=60,
         server_settings={
             "application_name": "jobseek:operator:occupation-reprocess",
+            "statement_timeout": "5min",
             "idle_in_transaction_session_timeout": "60s",
         },
     )

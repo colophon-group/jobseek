@@ -5,60 +5,10 @@ from unittest.mock import AsyncMock, patch
 import src.db as db
 
 
-class TestInitLocalConnection:
-    """The local pool init must mirror the Supabase init for keepalives, but
-    tighten ``statement_timeout`` to 30s so slow worker queries surface as
-    errors instead of holding pool slots up to the 5min Supabase ceiling.
-    """
-
-    async def test_sets_30s_statement_timeout(self):
-        conn = AsyncMock()
-        await db._init_local_connection(conn)
-        executed = [call.args[0] for call in conn.execute.await_args_list]
-        assert "SET statement_timeout = '30s'" in executed
-
-    async def test_sets_idle_in_transaction_timeout(self):
-        conn = AsyncMock()
-        await db._init_local_connection(conn)
-        executed = [call.args[0] for call in conn.execute.await_args_list]
-        assert "SET idle_in_transaction_session_timeout = '60s'" in executed
-
-    async def test_sets_tcp_keepalives(self):
-        conn = AsyncMock()
-        await db._init_local_connection(conn)
-        executed = [call.args[0] for call in conn.execute.await_args_list]
-        assert "SET tcp_keepalives_idle = 60" in executed
-        assert "SET tcp_keepalives_interval = 10" in executed
-        assert "SET tcp_keepalives_count = 3" in executed
-
-
-class TestInitConnection:
-    """The Supabase pool init must keep its 5min statement_timeout — the
-    exporter performs batch COPYs that legitimately exceed 30s.
-    """
-
-    async def test_sets_5min_statement_timeout(self):
-        conn = AsyncMock()
-        await db._init_connection(conn)
-        executed = [call.args[0] for call in conn.execute.await_args_list]
-        assert "SET statement_timeout = '5min'" in executed
-
-    async def test_sets_60s_idle_transaction_timeout(self):
-        conn = AsyncMock()
-        await db._init_connection(conn)
-        executed = [call.args[0] for call in conn.execute.await_args_list]
-        assert "SET idle_in_transaction_session_timeout = '60s'" in executed
-
-
 class TestCreateLocalPool:
-    """Regression test for #3188: ``create_local_pool`` must wire the
-    ``_init_local_connection`` callback so the local Postgres backend
-    enforces a statement_timeout server-side, not just the client-side
-    ``command_timeout`` (which leaves the backend running after the
-    client raises).
-    """
+    """The local pool must install persistent startup-level guards."""
 
-    async def test_passes_init_callback(self):
+    async def test_passes_persistent_server_settings(self):
         db._local_pool = None
         try:
             with (
@@ -68,7 +18,15 @@ class TestCreateLocalPool:
                 create.return_value = object()
                 await db.create_local_pool()
                 kwargs = create.await_args.kwargs
-                assert kwargs.get("init") is db._init_local_connection
+                assert "init" not in kwargs
+                assert kwargs["server_settings"] == {
+                    "application_name": "jobseek:crawler:oneoff:local",
+                    "statement_timeout": "30s",
+                    "idle_in_transaction_session_timeout": "60s",
+                    "tcp_keepalives_idle": "60",
+                    "tcp_keepalives_interval": "10",
+                    "tcp_keepalives_count": "3",
+                }
         finally:
             db._local_pool = None
 
@@ -107,7 +65,12 @@ class TestCreateLocalPool:
                 assert kwargs["max_size"] == 8
                 assert kwargs["max_inactive_connection_lifetime"] == 60.0
                 assert kwargs["server_settings"] == {
-                    "application_name": "jobseek:crawler:worker-1:local"
+                    "application_name": "jobseek:crawler:worker-1:local",
+                    "statement_timeout": "30s",
+                    "idle_in_transaction_session_timeout": "60s",
+                    "tcp_keepalives_idle": "60",
+                    "tcp_keepalives_interval": "10",
+                    "tcp_keepalives_count": "3",
                 }
                 observe.assert_called_once_with(created_pool, "local")
         finally:
@@ -115,11 +78,9 @@ class TestCreateLocalPool:
 
 
 class TestCreatePool:
-    """The Supabase pool wiring must not regress — it still passes the
-    long-running ``_init_connection`` (5min).
-    """
+    """The mirror pool retains its longer persistent statement guard."""
 
-    async def test_passes_init_callback(self):
+    async def test_passes_persistent_server_settings(self):
         db._pool = None
         try:
             with (
@@ -129,6 +90,8 @@ class TestCreatePool:
                 create.return_value = object()
                 await db.create_pool()
                 kwargs = create.await_args.kwargs
-                assert kwargs.get("init") is db._init_connection
+                assert "init" not in kwargs
+                assert kwargs["server_settings"]["statement_timeout"] == "5min"
+                assert kwargs["server_settings"]["idle_in_transaction_session_timeout"] == "60s"
         finally:
             db._pool = None

@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import sys
 
+import src.occupation_reprocess as occupation_reprocess
 from src.cli import parse_args
 from src.occupation_reprocess import (
     SPLIT_PARENT_SLUGS,
     _candidate_rows_sql,
     _diff_row,
+    _iter_candidate_rows,
 )
 
 
@@ -54,6 +56,51 @@ def test_candidate_sql_can_skip_null_backfill_scope() -> None:
 
     assert "o.slug = ANY($1::text[])" in sql
     assert "OR jp.occupation_id IS NULL" not in sql
+
+
+async def test_candidate_iteration_closes_each_query_before_client_work(monkeypatch) -> None:
+    class BatchConnection:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, tuple[object, ...]]] = []
+            self.batches = [
+                [
+                    {"id": "posting-1", "first_seen_at": "2026-08-11"},
+                    {"id": "posting-2", "first_seen_at": "2026-08-10"},
+                ],
+                [{"id": "posting-3", "first_seen_at": None}],
+            ]
+
+        def transaction(self, *args, **kwargs):
+            raise AssertionError("batch iteration must not open a long transaction")
+
+        def cursor(self, *args, **kwargs):
+            raise AssertionError("batch iteration must not use a server cursor")
+
+        async def fetch(self, sql: str, *args: object):
+            self.calls.append((sql, args))
+            return self.batches.pop(0)
+
+    monkeypatch.setattr(occupation_reprocess, "FETCH_BATCH", 2)
+    connection = BatchConnection()
+
+    rows = [
+        row
+        async for row in _iter_candidate_rows(
+            connection,
+            SPLIT_PARENT_SLUGS,
+            limit=3,
+            include_inactive=False,
+            include_nulls=True,
+        )
+    ]
+
+    assert [row["id"] for row in rows] == ["posting-1", "posting-2", "posting-3"]
+    assert len(connection.calls) == 2
+    assert connection.calls[0][1][1] is None
+    assert connection.calls[1][1][1] == "posting-2"
+    assert connection.calls[1][1][2] == "2026-08-10"
+    assert "LIMIT 2" in connection.calls[0][0]
+    assert "LIMIT 1" in connection.calls[1][0]
 
 
 def test_diff_row_resolves_new_split_alias_from_null() -> None:
