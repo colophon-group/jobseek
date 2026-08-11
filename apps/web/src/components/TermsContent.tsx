@@ -11,7 +11,7 @@ export function TermsContent() {
   const fullTermsLink = `${siteConfig.repoUrl}/blob/main/TERMS-OF-SERVICE`;
 
   return (
-    <main className="py-12 md:py-20">
+    <main id="main-content" tabIndex={-1} className="scroll-mt-12 py-12 md:py-20">
       <div className="mx-auto max-w-[900px] px-4">
         <div className="flex flex-col gap-12 md:gap-16">
           {/* Hero */}

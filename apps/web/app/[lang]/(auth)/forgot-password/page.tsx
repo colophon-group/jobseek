@@ -59,11 +59,11 @@ export default function ForgotPasswordPage() {
     return (
       <div className="text-center">
         <CircleCheck className="mx-auto mb-4 size-10 text-green-500" />
-        <h2 className="text-xl font-bold">
+        <h1 className="text-xl font-bold">
           <Trans id="auth.forgotPassword.sent.title" comment="Heading after reset email is sent">
             Check your email
           </Trans>
-        </h2>
+        </h1>
         <p className="mt-2 text-sm text-muted">
           <Trans id="auth.forgotPassword.sent.description" comment="Description after reset email is sent">
             If an account exists for that email, we sent a password reset link.
@@ -80,11 +80,11 @@ export default function ForgotPasswordPage() {
 
   return (
     <>
-      <h2 className="text-center text-xl font-bold">
+      <h1 className="text-center text-xl font-bold">
         <Trans id="auth.forgotPassword.title" comment="Forgot password page heading">
           Forgot password?
         </Trans>
-      </h2>
+      </h1>
       <p className="mb-6 text-center text-sm text-muted">
         <Trans id="auth.forgotPassword.subtitle" comment="Forgot password page subtitle">
           Enter your email and we&apos;ll send you a reset link.

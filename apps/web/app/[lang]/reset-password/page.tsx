@@ -30,11 +30,11 @@ export default function ResetPasswordPage() {
     return (
       <AuthShell>
         <div className="text-center">
-          <h2 className="text-xl font-bold">
+          <h1 className="text-xl font-bold">
             <Trans id="auth.resetPassword.error.title" comment="Heading when reset link is invalid">
               Invalid reset link
             </Trans>
-          </h2>
+          </h1>
           <p className="mt-2 text-sm text-muted">
             <Trans id="auth.resetPassword.error.noToken" comment="Message when reset token is missing">
               This password reset link is invalid or has expired. Please request a new one.
@@ -55,11 +55,11 @@ export default function ResetPasswordPage() {
       <AuthShell>
         <div className="text-center">
           <CircleCheck className="mx-auto mb-4 size-10 text-green-500" />
-          <h2 className="text-xl font-bold">
+          <h1 className="text-xl font-bold">
             <Trans id="auth.resetPassword.success.title" comment="Heading after password is successfully reset">
               Password updated
             </Trans>
-          </h2>
+          </h1>
           <p className="mt-2 text-sm text-muted">
             <Trans id="auth.resetPassword.success.description" comment="Description after successful password reset">
               Your password has been reset. You can now sign in with your new password.
@@ -125,11 +125,11 @@ export default function ResetPasswordPage() {
 
   return (
     <AuthShell>
-      <h2 className="text-center text-xl font-bold">
+      <h1 className="text-center text-xl font-bold">
         <Trans id="auth.resetPassword.title" comment="Reset password page heading">
           Set new password
         </Trans>
-      </h2>
+      </h1>
       <p className="mb-6 text-center text-sm text-muted">
         <Trans id="auth.resetPassword.subtitle" comment="Reset password page subtitle">
           Enter your new password below.

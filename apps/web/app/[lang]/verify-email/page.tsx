@@ -44,11 +44,11 @@ export default function VerifyEmailPage() {
     return (
       <AuthShell>
         <div className="text-center">
-          <p className="text-sm text-muted">
+          <h1 className="text-xl font-bold">
             <Trans id="auth.verify.loading" comment="Shown while verifying email token">
               Verifying your email...
             </Trans>
-          </p>
+          </h1>
         </div>
       </AuthShell>
     );
@@ -58,11 +58,11 @@ export default function VerifyEmailPage() {
     return (
       <AuthShell>
         <div className="text-center">
-          <h2 className="text-xl font-bold">
+          <h1 className="text-xl font-bold">
             <Trans id="auth.verify.error.title" comment="Heading when email verification fails">
               Verification failed
             </Trans>
-          </h2>
+          </h1>
           <ErrorAlert message={error} focusOnRender />
           <Button href={lp("/sign-in")} prefetch={false} className="mt-4">
             <Trans id="auth.verify.error.backToSignIn" comment="Link back to sign-in after failed verification">
@@ -78,11 +78,11 @@ export default function VerifyEmailPage() {
     <AuthShell>
       <div className="text-center">
         <CircleCheck className="mx-auto mb-4 size-10 text-green-500" />
-        <h2 className="text-xl font-bold">
+        <h1 className="text-xl font-bold">
           <Trans id="auth.verify.success.title" comment="Heading when email is successfully verified">
             Email verified
           </Trans>
-        </h2>
+        </h1>
         <p className="mt-2 text-sm text-muted">
           <Trans id="auth.verify.success.description" comment="Description after successful email verification">
             Your email has been verified.
