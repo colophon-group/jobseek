@@ -681,6 +681,17 @@ WHERE target = 'typesense'
 ORDER BY target;
 """.strip()
 
+RECONCILIATION_SCHEMA_SQL = """
+SELECT count(*)
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'cross_store_reconciliation_state'
+  AND column_name IN (
+    'last_detected',
+    'last_payload_mismatch'
+  );
+""".strip()
+
 BOARD_QUARANTINE_SCHEMA_SQL = """
 SELECT count(*)
 FROM information_schema.columns
@@ -964,11 +975,8 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
     _collect_board_gone_metrics(lines, container)
     _collect_phantom_active_metrics(lines, container)
 
-    relation = _postgresql_query(
-        container,
-        "SELECT COALESCE(to_regclass('cross_store_reconciliation_state')::text, '')",
-    )
-    schema_ready = int(relation == "cross_store_reconciliation_state")
+    schema_columns = _postgresql_query(container, RECONCILIATION_SCHEMA_SQL)
+    schema_ready = int(schema_columns == "2")
     lines.append(_metric("jobseek_cross_store_reconciliation_schema_ready", schema_ready))
     if not schema_ready:
         return
