@@ -188,6 +188,28 @@ class TestExtractLocations:
         result = _extract_locations(posting)
         assert result == ["NYC", "London"]
 
+    def test_deduplicates_cleaned_locations_in_first_seen_order(self):
+        posting = {
+            "jobLocation": [
+                {"name": " Berlin\t"},
+                {"name": "London"},
+                {"address": {"addressLocality": "Berlin"}},
+                {"address": " London  "},
+            ]
+        }
+
+        assert _extract_locations(posting) == ["Berlin", "London"]
+
+    def test_preserves_case_distinct_locations(self):
+        posting = {
+            "jobLocation": [
+                {"name": "Berlin"},
+                {"name": "berlin"},
+            ]
+        }
+
+        assert _extract_locations(posting) == ["Berlin", "berlin"]
+
     def test_none_returns_none(self):
         assert _extract_locations({}) is None
 
