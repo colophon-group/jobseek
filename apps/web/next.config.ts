@@ -1,8 +1,7 @@
 import type { NextConfig } from "next";
 import withBundleAnalyzer from "@next/bundle-analyzer";
-import crypto from "node:crypto";
-import fs from "node:fs";
 import path from "node:path";
+import { computeCompanyOgRendererVersion } from "./src/lib/og/company-og-renderer-version";
 
 /**
  * Company OG image renderer version.
@@ -23,81 +22,11 @@ import path from "node:path";
  *   bad objects under the current hash; pair with a redeploy for CDN
  *   freshness.
  */
-const COMPANY_OG_HASH_VERSION = "company-og-v2";
-
-const COMPANY_OG_HASH_INPUTS = [
-  "src/lib/og/render-company-og.tsx",
-  "public/fonts/JetBrainsMono-Bold.ttf",
-];
-
-const HASHED_EXTENSIONS = new Set([
-  ".css",
-  ".json",
-  ".mjs",
-  ".ts",
-  ".tsx",
-  ".ttf",
-  ".yaml",
-]);
-
-function collectHashInputFiles(inputPath: string): string[] {
-  const absolute = path.join(__dirname, inputPath);
-  if (!fs.existsSync(absolute)) return [absolute];
-  const stat = fs.statSync(absolute);
-  if (stat.isFile()) return [absolute];
-  if (!stat.isDirectory()) return [];
-
-  const files: string[] = [];
-  const visit = (dir: string) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (
-        entry.name === "node_modules" ||
-        entry.name === ".next" ||
-        entry.name === "coverage"
-      ) {
-        continue;
-      }
-      const child = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        visit(child);
-      } else if (entry.isFile() && HASHED_EXTENSIONS.has(path.extname(entry.name))) {
-        files.push(child);
-      }
-    }
-  };
-  visit(absolute);
-  return files;
-}
-
-function computeCompanyOgRendererVersion(): string {
-  const hash = crypto.createHash("sha256");
-  hash.update(`${COMPANY_OG_HASH_VERSION}\n`);
-  hash.update(`salt:${process.env.COMPANY_OG_RENDERER_VERSION_SALT ?? ""}\n`);
-
-  const files = COMPANY_OG_HASH_INPUTS
-    .flatMap(collectHashInputFiles)
-    .sort((a, b) => a.localeCompare(b));
-
-  for (const file of files) {
-    const relative = path.relative(__dirname, file);
-    hash.update(relative);
-    hash.update("\0");
-    if (fs.existsSync(file) && fs.statSync(file).isFile()) {
-      hash.update(fs.readFileSync(file));
-    } else {
-      hash.update("<missing>");
-    }
-    hash.update("\0");
-  }
-
-  return hash.digest("hex").slice(0, 16);
-}
-
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../.."),
   env: {
-    COMPANY_OG_RENDERER_VERSION: computeCompanyOgRendererVersion(),
+    COMPANY_OG_RENDERER_VERSION: computeCompanyOgRendererVersion(__dirname),
   },
   // Stable Cache Components / Partial Prerendering (Next 16). Static
   // shells prerender; `'use cache'` content caches per region; dynamic
