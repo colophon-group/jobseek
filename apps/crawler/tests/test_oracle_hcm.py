@@ -477,6 +477,57 @@ async def test_discover_allows_configured_advertised_total_tail_tolerance():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("page_shortfall_tolerance", [0, 4])
+async def test_discover_requires_explicit_intermediate_page_shortfall_tolerance(
+    page_shortfall_tolerance: int,
+):
+    """A stable provider-side gap is accepted only for an opted-in tenant."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if ",offset=400" in url:
+            offset, count = 400, 170
+        elif ",offset=200" in url:
+            offset, count = 200, 196
+        else:
+            offset, count = 0, 200
+        rows = [
+            {
+                "Id": str(i),
+                "Title": f"Job {i}",
+                "PrimaryLocation": "Pittsburgh, PA, United States",
+            }
+            for i in range(offset, offset + count)
+        ]
+        return httpx.Response(
+            200,
+            json={"items": [{"TotalJobsCount": 570, "requisitionList": rows}]},
+        )
+
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1"
+        ),
+        "metadata": {
+            "host": "example.fa.us2.oraclecloud.com",
+            "site": "CX_1",
+            "page_shortfall_tolerance": page_shortfall_tolerance,
+            "total_count_tolerance": 4,
+        },
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await discover(board, client)
+
+    if page_shortfall_tolerance:
+        assert not isinstance(result, MonitorResult)
+        assert len(result) == 566
+    else:
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert len(result.urls) == 566
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("duplicate_row_tolerance", "is_truncated"),
     [(0, True), (1, False)],
@@ -607,6 +658,24 @@ async def test_discover_rejects_invalid_total_count_tolerance(total_count_tolera
     }
 
     with pytest.raises(ValueError, match="total_count_tolerance"):
+        await discover(board, AsyncMock(spec=httpx.AsyncClient))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("page_shortfall_tolerance", [-1, 200, True, "5"])
+async def test_discover_rejects_invalid_page_shortfall_tolerance(page_shortfall_tolerance):
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1"
+        ),
+        "metadata": {
+            "host": "example.fa.us2.oraclecloud.com",
+            "site": "CX_1",
+            "page_shortfall_tolerance": page_shortfall_tolerance,
+        },
+    }
+
+    with pytest.raises(ValueError, match="page_shortfall_tolerance"):
         await discover(board, AsyncMock(spec=httpx.AsyncClient))
 
 
