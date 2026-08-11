@@ -74,6 +74,9 @@ Status tags:
   `[routine]` - gold-dataset sampling, labelling, validation, and upload.
 - [16 - Hetzner Maintenance](16-hetzner-maintenance.md) `[runbook]` -
   disk/headroom checks and Docker cleanup on Hetzner hosts.
+- [18 - Vercel Fluid CPU Regression Gate](18-vercel-fluid-cpu.md) `[runbook]` -
+  clean-window measurement protocol, route budgets, functionality checks, and
+  rollback criteria for web CPU interventions.
 - [19 - Hetzner Data Backup and Recovery](19-data-backup-recovery.md)
   `[runbook]` - encrypted PostgreSQL and Typesense backups, restore drills,
   retention, scheduling, and replacement gates for legacy server backups.
