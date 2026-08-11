@@ -2875,6 +2875,73 @@ async def sync_watchlists_typesense(
 # constraint, and at this scale it's a sub-second query.
 _TS_FACET_REFRESH_MAX = 100000
 
+# This query enumerates only the small, retained taxonomy/company authorities;
+# it never scans ``job_posting``.  The document id is kept separate from the
+# facet value because occupation and seniority publish one document per locale.
+_COUNT_REFRESH_TARGETS_SQL = """
+SELECT 'location' AS collection, l.id::text AS document_id, l.id::text AS facet_value
+FROM location l
+UNION ALL
+SELECT DISTINCT
+       'occupation' AS collection,
+       o.id::text || '-' || n.locale AS document_id,
+       o.id::text AS facet_value
+FROM occupation o
+JOIN occupation_name n ON n.occupation_id = o.id
+WHERE n.is_display AND n.locale <> '*'
+UNION ALL
+SELECT DISTINCT
+       'seniority' AS collection,
+       s.id::text || '-' || n.locale AS document_id,
+       s.id::text AS facet_value
+FROM seniority s
+JOIN seniority_name n ON n.seniority_id = s.id
+WHERE n.is_display AND n.locale <> '*'
+UNION ALL
+SELECT 'technology' AS collection, t.id::text AS document_id, t.id::text AS facet_value
+FROM technology t
+UNION ALL
+SELECT 'company' AS collection, c.id::text AS document_id, c.id::text AS facet_value
+FROM company c
+"""
+
+_COUNT_REFRESH_COLLECTIONS = ("location", "occupation", "seniority", "technology", "company")
+
+
+async def _fetch_count_refresh_targets(
+    local_conn: asyncpg.Connection,
+) -> dict[str, dict[str, str]]:
+    """Return retained Typesense document ids keyed by their facet value.
+
+    Local Postgres is authoritative for which taxonomy/company documents are
+    retained.  Requiring every bounded authority to be non-empty prevents a
+    missing or accidentally truncated local source from being mistaken for a
+    legitimate all-zero posting facet.
+    """
+    rows = await local_conn.fetch(_COUNT_REFRESH_TARGETS_SQL)
+    targets: dict[str, dict[str, str]] = {
+        collection: {} for collection in _COUNT_REFRESH_COLLECTIONS
+    }
+    for row in rows:
+        collection = row["collection"]
+        if collection not in targets:
+            raise RuntimeError(f"Unknown count-refresh collection: {collection}")
+        document_id = row["document_id"]
+        facet_value = row["facet_value"]
+        if not isinstance(document_id, str) or not document_id:
+            raise RuntimeError(f"Invalid {collection} count-refresh document id")
+        if not isinstance(facet_value, str) or not facet_value:
+            raise RuntimeError(f"Invalid {collection} count-refresh facet value")
+        previous = targets[collection].setdefault(document_id, facet_value)
+        if previous != facet_value:
+            raise RuntimeError(f"Conflicting {collection} count-refresh target")
+
+    empty_authorities = [collection for collection, values in targets.items() if not values]
+    if empty_authorities:
+        joined = ", ".join(empty_authorities)
+        raise RuntimeError(f"Count-refresh authority is empty for: {joined}")
+    return targets
+
 
 def _fetch_facet_counts(
     client: typesense.Client,
@@ -2914,11 +2981,40 @@ def _fetch_facet_counts(
             "per_page": 0,
         }
     )
-    facets = resp.get("facet_counts", []) or []
+    if not isinstance(resp, dict) or "facet_counts" not in resp:
+        raise RuntimeError(f"Typesense facet response is missing facet_counts for {field}")
+    facets = resp["facet_counts"]
+    if not isinstance(facets, list):
+        raise RuntimeError(f"Typesense facet response has invalid facet_counts for {field}")
     if not facets:
         return {}
-    counts = facets[0].get("counts", []) or []
-    return {fc["value"]: fc["count"] for fc in counts}
+    matching_facets = [
+        facet for facet in facets if isinstance(facet, dict) and facet.get("field_name") == field
+    ]
+    if len(matching_facets) != 1:
+        raise RuntimeError(f"Typesense facet response did not contain exactly one {field} facet")
+    facet = matching_facets[0]
+    if "counts" not in facet or not isinstance(facet["counts"], list):
+        raise RuntimeError(f"Typesense facet response has invalid counts for {field}")
+
+    result: dict[str, int] = {}
+    for entry in facet["counts"]:
+        if not isinstance(entry, dict):
+            raise RuntimeError(f"Typesense facet response has invalid count entry for {field}")
+        value = entry.get("value")
+        count = entry.get("count")
+        if (
+            not isinstance(value, str)
+            or not value
+            or not isinstance(count, int)
+            or isinstance(count, bool)
+            or count < 0
+        ):
+            raise RuntimeError(f"Typesense facet response has invalid count entry for {field}")
+        if value in result:
+            raise RuntimeError(f"Typesense facet response has duplicate value for {field}")
+        result[value] = count
+    return result
 
 
 def _one_year_ago_epoch(now: datetime | None = None) -> int:
@@ -2947,7 +3043,7 @@ def _fetch_company_posting_counts(
 
 
 async def refresh_typesense_counts(
-    _local_conn: asyncpg.Connection,
+    local_conn: asyncpg.Connection,
     client: typesense.Client,
 ) -> None:
     """Refresh active_posting_count on all taxonomy and company collections.
@@ -2962,6 +3058,16 @@ async def refresh_typesense_counts(
     statement timeout on the posting set (issues #4947, #4961, and #5752).
     """
     loop = asyncio.get_event_loop()
+    targets = await _fetch_count_refresh_targets(local_conn)
+
+    # Validate every upstream facet before the first write. A missing or
+    # malformed response must never be reinterpreted as an empty facet and
+    # fan out destructive zeroes to an otherwise healthy collection.
+    loc_facet = await loop.run_in_executor(None, _fetch_facet_counts, client, "location_ids")
+    occ_facet = await loop.run_in_executor(None, _fetch_facet_counts, client, "occupation_ids")
+    sen_facet = await loop.run_in_executor(None, _fetch_facet_counts, client, "seniority_id")
+    tech_facet = await loop.run_in_executor(None, _fetch_facet_counts, client, "technology_ids")
+    active_map, year_map = await loop.run_in_executor(None, _fetch_company_posting_counts, client)
 
     # Count refresh uses action="update" (partial merge). The taxonomy and
     # company docs are fully written by sync_*_typesense; here we only touch
@@ -2969,80 +3075,72 @@ async def refresh_typesense_counts(
     # non-optional fields like `name`. See issue #2622.
 
     # --- Locations (read from Typesense facet — see #2978) ---
-    loc_facet = await loop.run_in_executor(None, _fetch_facet_counts, client, "location_ids")
-    if loc_facet:
-        loc_docs = [
+    loc_docs = []
+    for document_id, facet_value in targets["location"].items():
+        count = loc_facet.get(facet_value, 0)
+        loc_docs.append(
             {
-                "id": str(loc_id),
-                "active_posting_count": cnt,
-                "has_active_postings": True,
+                "id": document_id,
+                "active_posting_count": count,
+                "has_active_postings": count > 0,
             }
-            for loc_id, cnt in loc_facet.items()
-        ]
-        await loop.run_in_executor(None, _ts_bulk_upsert, client, "location", loc_docs, "update")
+        )
+    await loop.run_in_executor(None, _ts_bulk_upsert, client, "location", loc_docs, "update")
 
     # --- Occupations (read from Typesense facet on `occupation_ids` —
     # which carries the leaf occupation + its ancestors in
     # exporter._build_typesense_docs) ---
-    occ_facet = await loop.run_in_executor(None, _fetch_facet_counts, client, "occupation_ids")
-    if occ_facet:
-        # Update all locale variants
-        occ_docs: list[dict] = []
-        for occ_id, cnt in occ_facet.items():
-            for locale in ("en", "de", "fr", "it"):
-                occ_docs.append(
-                    {
-                        "id": f"{occ_id}-{locale}",
-                        "active_posting_count": cnt,
-                        "has_active_postings": True,
-                    }
-                )
-        await loop.run_in_executor(None, _ts_bulk_upsert, client, "occupation", occ_docs, "update")
+    occ_docs: list[dict] = []
+    for document_id, facet_value in targets["occupation"].items():
+        count = occ_facet.get(facet_value, 0)
+        occ_docs.append(
+            {
+                "id": document_id,
+                "active_posting_count": count,
+                "has_active_postings": count > 0,
+            }
+        )
+    await loop.run_in_executor(None, _ts_bulk_upsert, client, "occupation", occ_docs, "update")
 
     # --- Seniorities (read from Typesense facet to avoid the production
     # Postgres aggregate exceeding the statement timeout even with its
     # dedicated partial index; #4947) ---
-    sen_facet = await loop.run_in_executor(None, _fetch_facet_counts, client, "seniority_id")
-    if sen_facet:
-        sen_docs: list[dict] = []
-        for seniority_id, cnt in sen_facet.items():
-            for locale in ("en", "de", "fr", "it"):
-                sen_docs.append(
-                    {
-                        "id": f"{seniority_id}-{locale}",
-                        "active_posting_count": cnt,
-                        "has_active_postings": True,
-                    }
-                )
-        await loop.run_in_executor(None, _ts_bulk_upsert, client, "seniority", sen_docs, "update")
+    sen_docs: list[dict] = []
+    for document_id, facet_value in targets["seniority"].items():
+        count = sen_facet.get(facet_value, 0)
+        sen_docs.append(
+            {
+                "id": document_id,
+                "active_posting_count": count,
+                "has_active_postings": count > 0,
+            }
+        )
+    await loop.run_in_executor(None, _ts_bulk_upsert, client, "seniority", sen_docs, "update")
 
     # --- Technologies (read from Typesense facet to avoid the production
     # Postgres unnest aggregate timing out on the active posting set; #4961) ---
-    tech_facet = await loop.run_in_executor(None, _fetch_facet_counts, client, "technology_ids")
-    if tech_facet:
-        tech_docs = [
+    tech_docs = []
+    for document_id, facet_value in targets["technology"].items():
+        count = tech_facet.get(facet_value, 0)
+        tech_docs.append(
             {
-                "id": str(tech_id),
-                "active_posting_count": cnt,
-                "has_active_postings": True,
+                "id": document_id,
+                "active_posting_count": count,
+                "has_active_postings": count > 0,
             }
-            for tech_id, cnt in tech_facet.items()
-        ]
-        await loop.run_in_executor(None, _ts_bulk_upsert, client, "technology", tech_docs, "update")
+        )
+    await loop.run_in_executor(None, _ts_bulk_upsert, client, "technology", tech_docs, "update")
 
     # --- Companies (indexed facets; issue #5752) ---
-    active_map, year_map = await loop.run_in_executor(None, _fetch_company_posting_counts, client)
-    if active_map or year_map:
-        all_ids = set(active_map) | set(year_map)
-        company_docs = [
-            {
-                "id": cid,
-                "active_posting_count": active_map.get(cid, 0),
-                "year_posting_count": year_map.get(cid, 0),
-            }
-            for cid in all_ids
-        ]
-        await loop.run_in_executor(None, _ts_bulk_upsert, client, "company", company_docs, "update")
+    company_docs = [
+        {
+            "id": document_id,
+            "active_posting_count": active_map.get(facet_value, 0),
+            "year_posting_count": year_map.get(facet_value, 0),
+        }
+        for document_id, facet_value in targets["company"].items()
+    ]
+    await loop.run_in_executor(None, _ts_bulk_upsert, client, "company", company_docs, "update")
 
     log.info("typesense.refresh_counts.done")
 

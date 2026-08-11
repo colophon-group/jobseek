@@ -1627,6 +1627,7 @@ class TestSyncLocationsTypesense:
             captured_docs.extend(docs)
 
         client = MagicMock()
+        client.collections["job_posting"].documents.search.return_value = {"facet_counts": []}
         with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
             await sync_locations_typesense(local_conn, client)
 
@@ -1687,6 +1688,7 @@ class TestSyncLocationsTypesense:
             captured_docs.extend(docs)
 
         client = MagicMock()
+        client.collections["job_posting"].documents.search.return_value = {"facet_counts": []}
         with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
             await sync_locations_typesense(local_conn, client)
 
@@ -1713,8 +1715,10 @@ class TestSyncLocationsTypesense:
         def _capture_upsert(_client, _collection, docs, *_args, **_kwargs):
             captured_docs.extend(docs)
 
+        client = MagicMock()
+        client.collections["job_posting"].documents.search.return_value = {"facet_counts": []}
         with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
-            await sync_locations_typesense(local_conn, MagicMock())
+            await sync_locations_typesense(local_conn, client)
 
         by_id = {doc["location_id"]: doc for doc in captured_docs}
         assert by_id[10]["parent_id"] == 20
@@ -1805,10 +1809,34 @@ class TestFetchFacetCounts:
         client.collections["job_posting"].documents.search.return_value = {"facet_counts": []}
         assert _fetch_facet_counts(client, "location_ids") == {}
 
-    def test_missing_facet_counts_returns_empty_dict(self):
+    def test_missing_facet_counts_fails_closed(self):
         client = MagicMock()
         client.collections["job_posting"].documents.search.return_value = {}
-        assert _fetch_facet_counts(client, "location_ids") == {}
+        with pytest.raises(RuntimeError, match="missing facet_counts"):
+            _fetch_facet_counts(client, "location_ids")
+
+    @pytest.mark.parametrize(
+        "response",
+        [
+            {"facet_counts": None},
+            {"facet_counts": [{}]},
+            {"facet_counts": [{"field_name": "other", "counts": []}]},
+            {"facet_counts": [{"field_name": "location_ids"}]},
+            {
+                "facet_counts": [
+                    {
+                        "field_name": "location_ids",
+                        "counts": [{"value": "1", "count": True}],
+                    }
+                ]
+            },
+        ],
+    )
+    def test_malformed_facet_response_fails_closed(self, response):
+        client = MagicMock()
+        client.collections["job_posting"].documents.search.return_value = response
+        with pytest.raises(RuntimeError, match="facet response"):
+            _fetch_facet_counts(client, "location_ids")
 
     def test_company_counts_use_active_and_flow_filters(self):
         client = MagicMock()
@@ -1841,6 +1869,67 @@ class TestFetchFacetCounts:
         assert _one_year_ago_epoch(now) == int(datetime(2023, 2, 28, 12, tzinfo=UTC).timestamp())
 
 
+def _count_refresh_target_rows() -> list[dict[str, str]]:
+    return [
+        {"collection": "location", "document_id": "30", "facet_value": "30"},
+        {"collection": "location", "document_id": "10", "facet_value": "10"},
+        {"collection": "location", "document_id": "4", "facet_value": "4"},
+        {"collection": "location", "document_id": "99", "facet_value": "99"},
+        *[
+            {
+                "collection": "occupation",
+                "document_id": f"{occupation_id}-{locale}",
+                "facet_value": occupation_id,
+            }
+            for occupation_id, locales in (
+                ("100", ("en", "de", "fr", "it")),
+                ("200", ("en", "de", "fr", "it")),
+                ("300", ("es",)),
+            )
+            for locale in locales
+        ],
+        *[
+            {
+                "collection": "seniority",
+                "document_id": f"{seniority_id}-{locale}",
+                "facet_value": seniority_id,
+            }
+            for seniority_id, locales in (
+                ("2", ("en", "de", "fr", "it")),
+                ("7", ("en", "de", "fr", "it")),
+                ("9", ("es",)),
+            )
+            for locale in locales
+        ],
+        {"collection": "technology", "document_id": "7", "facet_value": "7"},
+        {"collection": "technology", "document_id": "13", "facet_value": "13"},
+        {"collection": "technology", "document_id": "99", "facet_value": "99"},
+        {
+            "collection": "company",
+            "document_id": "co-mcdonalds",
+            "facet_value": "co-mcdonalds",
+        },
+        {
+            "collection": "company",
+            "document_id": "co-accenture",
+            "facet_value": "co-accenture",
+        },
+        {
+            "collection": "company",
+            "document_id": "co-zero",
+            "facet_value": "co-zero",
+        },
+    ]
+
+
+def _count_refresh_connection(rows: list[dict[str, str]] | None = None) -> AsyncMock:
+    connection = AsyncMock()
+    connection.fetch = AsyncMock(
+        return_value=_count_refresh_target_rows() if rows is None else rows
+    )
+    return connection
+
+
 class TestRefreshTypesenseCounts:
     """The location count source must be the Typesense ``location_ids``
     facet (post ancestor expansion), not ``unnest(local.location_ids)``
@@ -1851,13 +1940,7 @@ class TestRefreshTypesenseCounts:
     async def test_locations_counts_come_from_typesense_facet(self):
         # Local Postgres returns leaf-only data, but the function should
         # ignore it for locations and use the facet result instead.
-        local_conn = AsyncMock()
-        local_conn.fetch = AsyncMock(
-            return_value=[
-                # Companies query at the bottom of the function still
-                # touches local_conn — we'll match its shape generically.
-            ]
-        )
+        local_conn = _count_refresh_connection()
 
         # Typesense facet response: country has its full descendant
         # roll-up (2416), city has its leaf count (1086), macro EU has
@@ -1939,19 +2022,27 @@ class TestRefreshTypesenseCounts:
 
         # Occupations: same field strategy; one row per locale.
         occ_docs = next((docs for c, docs in captured if c == "occupation"), [])
-        # 2 occupation ids * 4 locales = 8 docs
-        assert len(occ_docs) == 8
+        # The retained local authority controls locale variants. The extra
+        # Spanish target has no facet entry and must be explicitly cleared.
+        assert len(occ_docs) == 9
         # Parent occupation 200 carries the rolled-up count of 90 in every locale
         en_parent = next(d for d in occ_docs if d["id"] == "200-en")
         assert en_parent["active_posting_count"] == 90
+        assert next(d for d in occ_docs if d["id"] == "300-es") == {
+            "id": "300-es",
+            "active_posting_count": 0,
+            "has_active_postings": False,
+        }
 
         # Seniorities use the same facet strategy. The previous Postgres
         # aggregate still exceeded the 30s timeout with its partial index.
         sen_docs = next((docs for c, docs in captured if c == "seniority"), [])
-        assert len(sen_docs) == 8
+        assert len(sen_docs) == 9
         sen_by_id = {d["id"]: d for d in sen_docs}
         assert sen_by_id["2-en"]["active_posting_count"] == 1200
         assert sen_by_id["7-it"]["active_posting_count"] == 340
+        assert sen_by_id["9-es"]["active_posting_count"] == 0
+        assert sen_by_id["9-es"]["has_active_postings"] is False
 
         # Technologies use the same facet strategy. This avoids the
         # production Postgres unnest aggregate that timed out in #4961.
@@ -1959,6 +2050,18 @@ class TestRefreshTypesenseCounts:
         tech_by_id = {d["id"]: d for d in tech_docs}
         assert tech_by_id["7"]["active_posting_count"] == 440
         assert tech_by_id["13"]["active_posting_count"] == 95
+        assert tech_by_id["99"] == {
+            "id": "99",
+            "active_posting_count": 0,
+            "has_active_postings": False,
+        }
+
+        # A retained location absent from the facet transitions to zero.
+        assert loc_by_id["99"] == {
+            "id": "99",
+            "active_posting_count": 0,
+            "has_active_postings": False,
+        }
 
     async def test_seniority_and_technology_facets_apply_has_content_filter(self):
         """Issue #3288/#4947/#4961: precomputed counts must match the web's
@@ -1966,20 +2069,32 @@ class TestRefreshTypesenseCounts:
         aggregates in the scheduled refresh path.
         """
         captured_sql: list[str] = []
-
-        async def _fetch(sql, *args, **kwargs):
-            captured_sql.append(sql)
-            return []
-
-        local_conn = AsyncMock()
-        local_conn.fetch = AsyncMock(side_effect=_fetch)
+        local_conn = _count_refresh_connection()
 
         client = MagicMock()
         client.collections["job_posting"].documents.search.return_value = {"facet_counts": []}
 
+        async def _authority_fetch(sql, *args, **kwargs):
+            captured_sql.append(sql)
+            return _count_refresh_target_rows()
+
+        local_conn.fetch = AsyncMock(side_effect=_authority_fetch)
+
         with patch("src.sync._ts_bulk_upsert"):
             await refresh_typesense_counts(local_conn, client)
 
+        assert len(captured_sql) == 1
+        authority_sql = captured_sql[0]
+        for table in (
+            "FROM location",
+            "FROM occupation",
+            "JOIN occupation_name",
+            "FROM seniority",
+            "JOIN seniority_name",
+            "FROM technology",
+            "FROM company",
+        ):
+            assert table in authority_sql
         assert not any("SELECT seniority_id" in sql for sql in captured_sql)
         assert not any("unnest(technology_ids)" in sql for sql in captured_sql)
         search_params = [
@@ -1993,7 +2108,7 @@ class TestRefreshTypesenseCounts:
 
     async def test_company_counts_apply_has_content_filter(self):
         """Issue #5752: scheduled company counts use indexed facets only."""
-        local_conn = AsyncMock()
+        local_conn = _count_refresh_connection()
 
         client = MagicMock()
 
@@ -2022,7 +2137,7 @@ class TestRefreshTypesenseCounts:
         with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
             await refresh_typesense_counts(local_conn, client)
 
-        local_conn.fetch.assert_not_awaited()
+        local_conn.fetch.assert_awaited_once()
         company_params = [
             call.args[0]
             for call in client.collections["job_posting"].documents.search.call_args_list
@@ -2039,6 +2154,119 @@ class TestRefreshTypesenseCounts:
         assert by_id["co-mcdonalds"]["year_posting_count"] == 55026
         assert by_id["co-accenture"]["active_posting_count"] == 52273
         assert by_id["co-accenture"]["year_posting_count"] == 81971
+        assert by_id["co-zero"] == {
+            "id": "co-zero",
+            "active_posting_count": 0,
+            "year_posting_count": 0,
+        }
+
+    async def test_active_and_year_company_zero_transitions_are_independent(self):
+        local_conn = _count_refresh_connection()
+        client = MagicMock()
+
+        def _search(params):
+            field = params.get("facet_by")
+            if field != "company_id":
+                return {"facet_counts": []}
+            if params["filter_by"] == "is_active:true && has_content:!=false":
+                counts = [{"value": "co-mcdonalds", "count": 4}]
+            else:
+                counts = [{"value": "co-accenture", "count": 8}]
+            return {"facet_counts": [{"field_name": field, "counts": counts}]}
+
+        client.collections["job_posting"].documents.search.side_effect = _search
+        captured: list[tuple[str, list[dict]]] = []
+
+        def _capture_upsert(_client, collection, docs, *_a, **_kw):
+            captured.append((collection, list(docs)))
+
+        with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
+            await refresh_typesense_counts(local_conn, client)
+
+        company_docs = next(docs for collection, docs in captured if collection == "company")
+        by_id = {doc["id"]: doc for doc in company_docs}
+        assert by_id["co-mcdonalds"] == {
+            "id": "co-mcdonalds",
+            "active_posting_count": 4,
+            "year_posting_count": 0,
+        }
+        assert by_id["co-accenture"] == {
+            "id": "co-accenture",
+            "active_posting_count": 0,
+            "year_posting_count": 8,
+        }
+        assert by_id["co-zero"] == {
+            "id": "co-zero",
+            "active_posting_count": 0,
+            "year_posting_count": 0,
+        }
+
+    async def test_completely_empty_facets_clear_every_retained_document(self):
+        local_conn = _count_refresh_connection()
+        client = MagicMock()
+        client.collections["job_posting"].documents.search.return_value = {"facet_counts": []}
+        captured: list[tuple[str, list[dict]]] = []
+
+        def _capture_upsert(_client, collection, docs, *_a, **_kw):
+            captured.append((collection, list(docs)))
+
+        with patch("src.sync._ts_bulk_upsert", side_effect=_capture_upsert):
+            await refresh_typesense_counts(local_conn, client)
+
+        assert {collection for collection, _docs in captured} == {
+            "location",
+            "occupation",
+            "seniority",
+            "technology",
+            "company",
+        }
+        for collection, docs in captured:
+            assert docs, collection
+            for doc in docs:
+                assert doc["active_posting_count"] == 0
+                if collection == "company":
+                    assert doc["year_posting_count"] == 0
+                else:
+                    assert doc["has_active_postings"] is False
+
+    async def test_missing_facet_response_aborts_before_any_import(self):
+        local_conn = _count_refresh_connection()
+        client = MagicMock()
+
+        def _search(params):
+            if params.get("facet_by") == "seniority_id":
+                return {}
+            return {"facet_counts": []}
+
+        client.collections["job_posting"].documents.search.side_effect = _search
+
+        with (
+            patch("src.sync._ts_bulk_upsert") as bulk_upsert,
+            pytest.raises(RuntimeError, match="missing facet_counts"),
+        ):
+            await refresh_typesense_counts(local_conn, client)
+
+        bulk_upsert.assert_not_called()
+
+    async def test_empty_authoritative_collection_aborts_before_facet_reads(self):
+        rows = [row for row in _count_refresh_target_rows() if row["collection"] != "technology"]
+        local_conn = _count_refresh_connection(rows)
+        client = MagicMock()
+
+        with pytest.raises(RuntimeError, match="authority is empty for: technology"):
+            await refresh_typesense_counts(local_conn, client)
+
+        client.collections["job_posting"].documents.search.assert_not_called()
+
+    async def test_unavailable_authoritative_source_aborts_before_facet_reads(self):
+        local_conn = AsyncMock()
+        local_conn.fetch = AsyncMock(side_effect=ConnectionError("database unavailable"))
+        client = MagicMock()
+
+        with pytest.raises(ConnectionError, match="database unavailable"):
+            await refresh_typesense_counts(local_conn, client)
+
+        client.collections["job_posting"].documents.search.assert_not_called()
 
 
 def _company_row(company_id: str) -> _StubRecord:
