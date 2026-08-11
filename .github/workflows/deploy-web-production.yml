@@ -132,14 +132,23 @@ jobs:
               exit 1
             fi
           done
+          umask 077
+          scanner_headers="$(mktemp "$RUNNER_TEMP/vercel-scanner-headers.XXXXXX")"
+          chmod 600 "$scanner_headers"
+          trap 'rm -f -- "$scanner_headers"' EXIT
           scanner_status="$(pnpm dlx vercel@55.0.0 curl /wp-admin/setup-config.php \
             --deployment="$DEPLOYMENT_URL" \
-            -- --location --silent --show-error --output /dev/null --write-out '%{http_code}')"
+            -- --location --silent --show-error \
+            --dump-header "$scanner_headers" \
+            --output /dev/null --write-out '%{http_code}')"
           echo "Smoke /wp-admin/setup-config.php -> HTTP $scanner_status after redirects"
-          if [[ "$scanner_status" != "404" ]]; then
-            echo "::error title=Scanner path exposed::Expected HTTP 404 after redirects, got $scanner_status"
+          if ! node .github/scripts/verify-vercel-scanner-response.mjs \
+            "$scanner_status" "$scanner_headers"; then
+            echo "::error title=Scanner path exposed::Rejected final HTTP $scanner_status"
             exit 1
           fi
+          rm -f -- "$scanner_headers"
+          trap - EXIT
 
       - name: Promote only if this SHA is still main
         if: steps.paths.outputs.deploy == 'true'
