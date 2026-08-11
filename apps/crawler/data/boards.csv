@@ -4136,6 +4136,7 @@ pricefox,pricefox-greenhouse,https://job-boards.greenhouse.io/pricefox,greenhous
 pricefx,pricefx-jobscore,https://careers.pricefx.eu/,dom,"{""render"": false, ""url_filter"": ""^https://careers\\.pricefx\\.eu/careers/pricefx/jobs/""}",json-ld,"{""render"": false}"
 primary,primary-ashby,https://jobs.ashbyhq.com/primary,ashby,"{""token"": ""primary""}",skip,
 prime,prime-ashby,https://jobs.ashbyhq.com/prime,ashby,"{""token"": ""prime""}",skip,
+prime-healthcare,prime-healthcare-careers,https://careers-primehealthcare.icims.com/,icims,,json-ld,
 primeintellect,primeintellect-ashby,https://jobs.ashbyhq.com/primeintellect,ashby,"{""token"": ""primeintellect""}",skip,
 primer,primer-ashby,https://jobs.ashbyhq.com/primer,ashby,"{""token"": ""primer""}",skip,
 prior-labs,prior-labs-ashby,https://jobs.ashbyhq.com/prior-labs,ashby,"{""token"": ""prior-labs""}",skip,
