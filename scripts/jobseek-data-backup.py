@@ -23,7 +23,7 @@ import time
 import urllib.parse
 import urllib.request
 from collections.abc import Callable, Sequence
-from contextlib import contextmanager, suppress
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -556,13 +556,56 @@ def _tree_size(path: Path) -> int:
     return sum(item.stat().st_size for item in path.rglob("*") if item.is_file())
 
 
-def _remove_old_staging(staging_root: Path, *, older_than_seconds: int = 172_800) -> None:
-    if not staging_root.exists():
+def _directory_metadata(path: Path, description: str) -> os.stat_result:
+    try:
+        metadata = path.lstat()
+    except OSError as exc:
+        raise BackupError(f"{description} is unavailable") from exc
+    if not stat.S_ISDIR(metadata.st_mode):
+        raise BackupError(f"{description} is not a real directory")
+    return metadata
+
+
+def _remove_typesense_packet(path: Path, description: str) -> None:
+    """Remove one known packet without following a replaced directory entry."""
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
         return
+    except OSError as exc:
+        raise BackupError(f"{description} is not inspectable") from exc
+    if not stat.S_ISDIR(metadata.st_mode):
+        raise BackupError(f"{description} is not a real directory")
+    try:
+        shutil.rmtree(path)
+    except OSError as exc:
+        raise BackupError(f"{description} could not be removed safely") from exc
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        raise BackupError(f"{description} removal could not be verified") from exc
+    raise BackupError(f"{description} remained after cleanup")
+
+
+def _remove_old_staging(staging_root: Path, *, older_than_seconds: int = 172_800) -> None:
+    try:
+        metadata = staging_root.lstat()
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        raise BackupError("backup staging root is not inspectable") from exc
+    if not stat.S_ISDIR(metadata.st_mode):
+        raise BackupError("backup staging root is not a real directory")
     cutoff = time.time() - older_than_seconds
     for child in staging_root.iterdir():
-        if child.is_dir() and not child.is_symlink() and child.stat().st_mtime < cutoff:
-            shutil.rmtree(child)
+        try:
+            metadata = child.lstat()
+        except OSError as exc:
+            raise BackupError("backup staging entry is not inspectable") from exc
+        if stat.S_ISDIR(metadata.st_mode) and metadata.st_mtime < cutoff:
+            _remove_typesense_packet(child, "expired backup staging packet")
 
 
 def _positive_int_env(name: str, default: int) -> int:
@@ -597,6 +640,20 @@ def _validate_typesense_snapshot_staging(
         raise BackupError("Typesense snapshot staging is not isolated from root and live data")
 
     staging_root = host_root / "staging"
+    try:
+        staging_root.mkdir(mode=0o700)
+    except FileExistsError:
+        pass
+    except OSError as exc:
+        raise BackupError("Typesense snapshot staging root could not be created") from exc
+    staging_stat = _directory_metadata(staging_root, "Typesense snapshot staging root")
+    if (
+        staging_stat.st_dev != host_stat.st_dev
+        or staging_stat.st_uid != 0
+        or staging_stat.st_gid != 0
+        or stat.S_IMODE(staging_stat.st_mode) != 0o700
+    ):
+        raise BackupError("Typesense snapshot staging root ownership, mode, or device is unsafe")
     _remove_old_staging(staging_root)
     _remove_old_staging(staging_root / ".attempts")
     usage = shutil.disk_usage(host_root)
@@ -663,16 +720,28 @@ def _typesense_local_snapshot_packets(staging_root: Path) -> list[Path]:
     """Return all materialized or in-progress local packets, failing on odd entries."""
     if not staging_root.exists():
         return []
+    _directory_metadata(staging_root, "Typesense snapshot staging root")
     packets: list[Path] = []
     for child in staging_root.iterdir():
+        try:
+            child_metadata = child.lstat()
+        except OSError as exc:
+            raise BackupError("Typesense snapshot staging contains an unreadable entry") from exc
         if child.name == ".attempts":
-            if child.is_symlink() or not child.is_dir():
+            if not stat.S_ISDIR(child_metadata.st_mode):
                 raise BackupError("Typesense snapshot attempts root is unsafe")
-            packets.extend(entry for entry in child.iterdir() if entry.is_dir())
-            if any(entry.is_symlink() or not entry.is_dir() for entry in child.iterdir()):
-                raise BackupError("Typesense snapshot attempts contain an unsafe entry")
+            for entry in child.iterdir():
+                try:
+                    entry_metadata = entry.lstat()
+                except OSError as exc:
+                    raise BackupError(
+                        "Typesense snapshot attempts contain an unreadable entry"
+                    ) from exc
+                if not stat.S_ISDIR(entry_metadata.st_mode):
+                    raise BackupError("Typesense snapshot attempts contain an unsafe entry")
+                packets.append(entry)
             continue
-        if child.is_symlink() or not child.is_dir():
+        if not stat.S_ISDIR(child_metadata.st_mode):
             raise BackupError("Typesense snapshot staging contains an unsafe entry")
         packets.append(child)
     return packets
@@ -1550,14 +1619,38 @@ def typesense_backup() -> dict[str, Any]:
     attempts_root = staging_root / ".attempts"
     run_path = staging_root / run_id
     data_path = run_path / "data"
-    attempts_root.mkdir(parents=True, mode=0o700, exist_ok=True)
+    try:
+        attempts_root.mkdir(mode=0o700)
+    except FileExistsError:
+        pass
+    except OSError as exc:
+        raise BackupError("Typesense snapshot attempts root could not be created") from exc
+    attempts_stat = _directory_metadata(attempts_root, "Typesense snapshot attempts root")
+    staging_stat = _directory_metadata(staging_root, "Typesense snapshot staging root")
+    if (
+        attempts_stat.st_dev != staging_stat.st_dev
+        or attempts_stat.st_uid != staging_stat.st_uid
+        or attempts_stat.st_gid != staging_stat.st_gid
+        or stat.S_IMODE(attempts_stat.st_mode) != 0o700
+    ):
+        raise BackupError("Typesense snapshot attempts root ownership, mode, or device is unsafe")
     local_packets_before = _typesense_local_snapshot_packets(staging_root)
     if local_packets_before:
         raise BackupError(
             "Typesense preserved snapshot packet exists; resolve it before another snapshot"
         )
-    run_path.mkdir(parents=True, mode=0o700)
-    attempt_paths: list[Path] = []
+    try:
+        run_path.mkdir(mode=0o700)
+    except OSError as exc:
+        raise BackupError("Typesense snapshot run path could not be created") from exc
+    run_stat = _directory_metadata(run_path, "Typesense snapshot run path")
+    if (
+        run_stat.st_dev != staging_stat.st_dev
+        or run_stat.st_uid != staging_stat.st_uid
+        or run_stat.st_gid != staging_stat.st_gid
+        or stat.S_IMODE(run_stat.st_mode) != 0o700
+    ):
+        raise BackupError("Typesense snapshot run path ownership, mode, or device is unsafe")
     materialized = False
     success = False
 
@@ -1569,7 +1662,6 @@ def typesense_backup() -> dict[str, Any]:
             attempt_name = f"{run_id}-attempt-{attempt}"
             container_path = f"{container_root}/.attempts/{attempt_name}"
             host_attempt_path = attempts_root / attempt_name
-            attempt_paths.append(host_attempt_path)
             if host_attempt_path.exists() or host_attempt_path.is_symlink():
                 raise BackupError("Typesense snapshot attempt path already exists")
             try:
@@ -1584,17 +1676,19 @@ def typesense_backup() -> dict[str, Any]:
                     last_alias_error = exc
                 else:
                     if candidate_inventory["aliases"] == inventory_before["aliases"]:
-                        if not host_attempt_path.is_dir() or host_attempt_path.is_symlink():
-                            raise BackupError(
-                                "Typesense snapshot did not materialize on isolated staging"
-                            )
+                        attempt_stat = _directory_metadata(
+                            host_attempt_path,
+                            "materialized Typesense snapshot attempt",
+                        )
+                        if attempt_stat.st_dev != staging_stat.st_dev:
+                            raise BackupError("Typesense snapshot materialized on the wrong device")
                         inventory_after = candidate_inventory
                         selected_host_path = host_attempt_path
                         break
                     last_alias_error = BackupError(
                         "Typesense aliases changed while the snapshot was being created"
                     )
-            shutil.rmtree(host_attempt_path, ignore_errors=True)
+            _remove_typesense_packet(host_attempt_path, "discarded Typesense snapshot attempt")
             if attempt < _TYPESENSE_ALIAS_STABILITY_ATTEMPTS:
                 time.sleep(_TYPESENSE_ALIAS_STABILITY_RETRY_SECONDS)
         if inventory_after is None or selected_host_path is None:
@@ -1611,7 +1705,7 @@ def typesense_backup() -> dict[str, Any]:
             headroom["staging_growth_reserve_bytes"]
         )
         if usage_after_snapshot.free < required_after_snapshot:
-            shutil.rmtree(run_path)
+            _remove_typesense_packet(run_path, "headroom-breaching Typesense snapshot packet")
             materialized = False
             raise BackupError("Typesense snapshot consumed the protected free and growth headroom")
         snapshot_bytes = _tree_size(data_path)
@@ -1686,12 +1780,23 @@ def typesense_backup() -> dict[str, Any]:
             **inventory_after,
         }
     finally:
-        for attempt_path in attempt_paths:
-            with suppress(Exception):
-                if attempt_path.is_dir() and not attempt_path.is_symlink():
-                    shutil.rmtree(attempt_path)
-        if success or (not materialized and (not run_path.exists() or not any(run_path.iterdir()))):
-            shutil.rmtree(run_path, ignore_errors=True)
+        # Attempts are removed synchronously before any retry. If the Snapshot
+        # API itself fails, its target is deliberately preserved because the
+        # server may have materialized data after the client lost the response.
+        remove_run_path = success
+        if not success and not materialized:
+            try:
+                run_metadata = run_path.lstat()
+            except FileNotFoundError:
+                pass
+            except OSError as exc:
+                raise BackupError("Typesense snapshot run path is not inspectable") from exc
+            else:
+                if not stat.S_ISDIR(run_metadata.st_mode):
+                    raise BackupError("Typesense snapshot run path is not a real directory")
+                remove_run_path = not any(run_path.iterdir())
+        if remove_run_path:
+            _remove_typesense_packet(run_path, "Typesense snapshot packet")
 
 
 def build_parser() -> argparse.ArgumentParser:

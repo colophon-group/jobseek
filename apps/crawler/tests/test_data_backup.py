@@ -999,6 +999,8 @@ def direct_typesense_snapshot(
 def allow_test_typesense_headroom(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    host_root = Path(os.environ["TYPESENSE_SNAPSHOT_HOST_ROOT"])
+    (host_root / "staging").mkdir(parents=True, mode=0o700, exist_ok=True)
     monkeypatch.setattr(
         backup,
         "_validate_typesense_snapshot_staging",
@@ -1041,6 +1043,14 @@ def test_typesense_snapshot_staging_requires_isolation_and_measured_memory_phase
 
     monkeypatch.setattr(Path, "stat", fake_stat)
     monkeypatch.setattr(Path, "is_mount", lambda path: path == host_root)
+    original_directory_metadata = backup._directory_metadata
+
+    def fake_directory_metadata(path: Path, description: str) -> object:
+        if path == host_root / "staging":
+            return SimpleNamespace(st_uid=0, st_gid=0, st_mode=0o40700, st_dev=3)
+        return original_directory_metadata(path, description)
+
+    monkeypatch.setattr(backup, "_directory_metadata", fake_directory_metadata)
     monkeypatch.setattr(
         backup.shutil,
         "disk_usage",
@@ -1092,6 +1102,20 @@ def test_typesense_snapshot_staging_requires_isolation_and_measured_memory_phase
         "memory_policy_phase": "measure",
         "memory_limit_enforced": False,
     }
+
+
+def test_staging_age_cleanup_refuses_a_symlink_root(tmp_path: Path) -> None:
+    target = tmp_path / "target"
+    expired = target / "expired"
+    expired.mkdir(parents=True)
+    (expired / "must-remain").write_text("evidence", encoding="utf-8")
+    staging = tmp_path / "staging"
+    staging.symlink_to(target, target_is_directory=True)
+
+    with pytest.raises(backup.BackupError, match="not a real directory"):
+        backup._remove_old_staging(staging, older_than_seconds=0)
+
+    assert (expired / "must-remain").read_text(encoding="utf-8") == "evidence"
 
 
 def test_typesense_snapshot_staging_rejects_the_root_device(
@@ -1404,6 +1428,94 @@ def test_typesense_backup_retries_a_concurrent_alias_cutover(
     assert not first_attempt.exists()
     assert not any(command[:2] == ["docker", "cp"] for command in commands)
     assert not any(command[:2] == ["docker", "exec"] for command in commands)
+
+
+def test_typesense_backup_refuses_retry_when_attempt_cleanup_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    aliases_v1 = {alias: f"{alias}_v1" for alias in backup._TYPESENSE_ALIASES}
+    aliases_v2 = {alias: f"{alias}_v2" for alias in backup._TYPESENSE_ALIASES}
+    observations = iter(
+        (
+            {"aliases": aliases_v1, "collection_documents": {alias: 1 for alias in aliases_v1}},
+            {"aliases": aliases_v2, "collection_documents": {alias: 2 for alias in aliases_v2}},
+        )
+    )
+    snapshot_paths: list[str] = []
+    monkeypatch.setenv("TYPESENSE_API_KEY", "test-key")
+    monkeypatch.setenv("RESTIC_REPOSITORY", "sftp:relative-repository")
+    monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
+    monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
+    monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(tmp_path))
+    allow_test_typesense_headroom(monkeypatch)
+    monkeypatch.setattr(backup, "_typesense_inventory", lambda *_: next(observations))
+    monkeypatch.setattr(
+        backup,
+        "_snapshot_request",
+        direct_typesense_snapshot(tmp_path, paths=snapshot_paths),
+    )
+    original_remove = backup._remove_typesense_packet
+
+    def fail_attempt_cleanup(path: Path, description: str) -> None:
+        if description == "discarded Typesense snapshot attempt":
+            raise backup.BackupError("simulated attempt cleanup failure")
+        original_remove(path, description)
+
+    monkeypatch.setattr(backup, "_remove_typesense_packet", fail_attempt_cleanup)
+    monkeypatch.setattr(
+        backup,
+        "run_checked",
+        lambda argv, **_kwargs: (
+            completed("true\n") if argv[:2] == ["docker", "inspect"] else completed()
+        ),
+    )
+
+    with pytest.raises(backup.BackupError, match="simulated attempt cleanup failure"):
+        backup.typesense_backup()
+
+    assert len(snapshot_paths) == 1
+    preserved = tmp_path / "staging" / ".attempts" / Path(snapshot_paths[0]).name
+    assert (preserved / "state.bin").is_file()
+
+
+def test_typesense_backup_preserves_an_ambiguous_snapshot_api_attempt(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    snapshot_paths: list[str] = []
+    monkeypatch.setenv("TYPESENSE_API_KEY", "test-key")
+    monkeypatch.setenv("RESTIC_REPOSITORY", "sftp:relative-repository")
+    monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
+    monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
+    monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(tmp_path))
+    allow_test_typesense_headroom(monkeypatch)
+    inventory = {
+        "aliases": {alias: f"{alias}_v1" for alias in backup._TYPESENSE_ALIASES},
+        "collection_documents": {alias: 1 for alias in backup._TYPESENSE_ALIASES},
+    }
+    monkeypatch.setattr(backup, "_typesense_inventory", lambda *_: inventory)
+
+    def fail_after_materialization(_url: str, _key: str, container_path: str) -> None:
+        snapshot_paths.append(container_path)
+        attempt = tmp_path / "staging" / ".attempts" / Path(container_path).name
+        attempt.mkdir(parents=True)
+        (attempt / "state.bin").write_bytes(b"ambiguous")
+        raise backup.BackupError("snapshot response was lost")
+
+    monkeypatch.setattr(backup, "_snapshot_request", fail_after_materialization)
+    monkeypatch.setattr(
+        backup,
+        "run_checked",
+        lambda argv, **_kwargs: (
+            completed("true\n") if argv[:2] == ["docker", "inspect"] else completed()
+        ),
+    )
+
+    with pytest.raises(backup.BackupError, match="snapshot response was lost"):
+        backup.typesense_backup()
+
+    assert len(snapshot_paths) == 1
+    preserved = tmp_path / "staging" / ".attempts" / Path(snapshot_paths[0]).name
+    assert (preserved / "state.bin").is_file()
 
 
 def test_typesense_backup_fails_after_bounded_alias_retries(

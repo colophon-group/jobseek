@@ -159,7 +159,7 @@ jobs:
                   file=sys.stderr,
               )
               raise SystemExit(1)
-          if status != "200" or not isinstance(payload, dict) or payload.get("success") is not True:
+          if status != "201" or not isinstance(payload, dict) or payload.get("success") is not True:
               print(
                   f"Typesense snapshot smoke returned HTTP {status}: {body[:4096]}",
                   file=sys.stderr,

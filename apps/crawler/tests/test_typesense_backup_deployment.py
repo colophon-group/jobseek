@@ -177,6 +177,7 @@ def test_typesense_backup_requires_persistent_staging_and_measured_memory_phase(
     assert '--output "$snapshot_body"' in workflow
     assert "--write-out '%{http_code}'" in workflow
     assert 'SNAPSHOT_HTTP_STATUS="$snapshot_status"' in workflow
+    assert 'status != "201"' in workflow
     assert 'payload.get("success") is not True' in workflow
     assert '--data \'{"snapshot_path"' not in workflow
     assert "mount -t tmpfs" in workflow
