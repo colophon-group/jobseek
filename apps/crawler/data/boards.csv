@@ -2210,6 +2210,8 @@ graymatter-robotics,graymatter-robotics-ashby,https://jobs.ashbyhq.com/graymatte
 grayscale-investments,grayscale-investments-greenhouse,https://job-boards.greenhouse.io/grayscaleinvestments,greenhouse,"{""token"": ""grayscaleinvestments""}",skip,
 greatquestion,greatquestion-careers,https://jobs.ashbyhq.com/greatquestion,ashby,"{""token"": ""greatquestion""}",skip,
 green-thumb,green-thumb-greenhouse,https://job-boards.greenhouse.io/greenthumbindustries,greenhouse,"{""token"": ""greenthumbindustries""}",skip,
+greeneking,greeneking-apprenticeships,https://lifetimetraining.co.uk/personal/apprenticeship-vacancies/greene-king/,dom,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000, ""url_filter"": ""[?&]vacancyreference=[0-9]+""}",json-ld,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000}"
+greeneking,greeneking-careers,https://careers.smartrecruiters.com/greeneking,smartrecruiters,,smartrecruiters,
 greenlight-financial-technology,greenlight-financial-technology-lever,https://jobs.lever.co/greenlight,lever,"{""token"": ""greenlight""}",skip,
 greenpeace-usa,greenpeace-usa-greenhouse,https://job-boards.greenhouse.io/greenpeace,greenhouse,"{""token"": ""greenpeace""}",skip,
 greenworks,greenworks-greenhouse,https://job-boards.greenhouse.io/greenworkssunriseglobalmarketing,greenhouse,"{""token"": ""greenworkssunriseglobalmarketing""}",skip,
