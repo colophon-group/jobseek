@@ -1299,6 +1299,7 @@ cosmos,cosmos-ashby,https://jobs.ashbyhq.com/cosmos,ashby,"{""token"": ""cosmos"
 cosuno,cosuno-ashby,https://jobs.ashbyhq.com/cosuno,ashby,"{""token"": ""cosuno""}",skip,
 cote-vegas,cote-vegas-greenhouse,https://job-boards.greenhouse.io/cotevegas,greenhouse,"{""token"": ""cotevegas""}",skip,
 cotulla-education,cotulla-education-greenhouse,https://job-boards.greenhouse.io/cotullaeducation,greenhouse,"{""token"": ""cotullaeducation""}",skip,
+coty,coty-global,https://careers.coty.com/go/Open-Positions/8765801,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.coty.com/googlefeed.xml""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop"": ""Apply""}]}"
 couchbase-inc,couchbase-inc-greenhouse,https://job-boards.greenhouse.io/couchbaseinc,greenhouse,"{""token"": ""couchbaseinc""}",skip,
 counsel-health,counsel-health-careers,https://jobs.ashbyhq.com/counsel,ashby,"{""token"": ""counsel""}",skip,
 counterpart,counterpart-greenhouse,https://job-boards.greenhouse.io/counterpart,greenhouse,"{""token"": ""counterpart""}",skip,
