@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import json
 import uuid
 from collections import Counter
 from contextlib import asynccontextmanager
@@ -12,6 +13,7 @@ import asyncpg
 import httpx
 import pytest
 import structlog
+from typesense.exceptions import TypesenseClientError
 
 from src.exporter import (
     _EPOCH,
@@ -28,11 +30,13 @@ from src.exporter import (
     _export_postings_typesense,
     _get_cursor,
     _is_downstream_unavailable,
+    _is_typesense_acknowledgement_parse_failure,
     _save_cursor,
     _save_cursors_atomic,
     _update_metrics,
     _update_typesense_health,
     _upsert_to_supabase,
+    _upsert_to_typesense,
     _upsert_typesense_backfill_batch,
     backfill_typesense,
     run_exporter,
@@ -1137,8 +1141,6 @@ class TestTypesensePerDocFallback:
     async def test_all_docs_succeed_no_drops(self):
         """Happy Typesense path: ``import_`` returns all success → empty
         failed-set, no counter bump."""
-        from src.exporter import _upsert_to_typesense as _upsert_ts
-
         fake_client = MagicMock()
         fake_client.collections = {
             "job_posting": MagicMock(
@@ -1151,7 +1153,7 @@ class TestTypesensePerDocFallback:
 
         before = _counter_total(export_errors_total, table="job_posting", phase="typesense")
         with patch("src.typesense_client.get_typesense_client", return_value=fake_client):
-            failed = await _upsert_ts(docs)
+            failed = await _upsert_to_typesense(docs)
         after = _counter_total(export_errors_total, table="job_posting", phase="typesense")
 
         assert failed == set()
@@ -1162,8 +1164,6 @@ class TestTypesensePerDocFallback:
         is NOT a per-doc poison pill — the caller treats it as a leg
         failure (cursor stays put on that leg). The fallback only
         kicks in for per-doc semantic failures."""
-        from src.exporter import _upsert_to_typesense as _upsert_ts
-
         fake_client = MagicMock()
         fake_client.collections = {
             "job_posting": MagicMock(
@@ -1178,7 +1178,200 @@ class TestTypesensePerDocFallback:
             patch("src.typesense_client.get_typesense_client", return_value=fake_client),
             pytest.raises(RuntimeError, match="typesense down"),
         ):
-            await _upsert_ts(docs)
+            await _upsert_to_typesense(docs)
+
+    def test_unrelated_value_error_is_not_an_acknowledgement_parse_failure(self):
+        assert not _is_typesense_acknowledgement_parse_failure(ValueError("unrelated"))
+
+    @pytest.mark.parametrize(
+        ("acknowledgement", "reason"),
+        [
+            pytest.param([], "cardinality_mismatch", id="empty-list"),
+            pytest.param(
+                [{"success": True}],
+                "cardinality_mismatch",
+                id="short-list",
+            ),
+            pytest.param(
+                [{"success": True}, {"success": True}, {"success": True}],
+                "cardinality_mismatch",
+                id="long-list",
+            ),
+            pytest.param(
+                {"success": True},
+                "response_not_list",
+                id="non-list-response",
+            ),
+            pytest.param(
+                [{"success": True}, "malformed"],
+                "item_not_object",
+                id="non-object-item",
+            ),
+            pytest.param(
+                [{"success": True}, {}],
+                "success_missing",
+                id="missing-success",
+            ),
+            pytest.param(
+                [{"success": True}, {"success": 1}],
+                "success_not_boolean",
+                id="non-boolean-success",
+            ),
+        ],
+    )
+    async def test_malformed_acknowledgement_fails_the_whole_batch(
+        self,
+        acknowledgement,
+        reason,
+    ):
+        fake_client = MagicMock()
+        fake_client.collections = {
+            "job_posting": MagicMock(
+                documents=MagicMock(import_=MagicMock(return_value=acknowledgement))
+            )
+        }
+        docs = [{"id": str(uuid.uuid4())}, {"id": str(uuid.uuid4())}]
+
+        with (
+            patch("src.typesense_client.get_typesense_client", return_value=fake_client),
+            structlog.testing.capture_logs() as logs,
+            pytest.raises(RuntimeError, match="acknowledgement was invalid"),
+        ):
+            await _upsert_to_typesense(docs)
+
+        invalid_events = [
+            event
+            for event in logs
+            if event.get("event") == "exporter.typesense_invalid_acknowledgement"
+        ]
+        assert len(invalid_events) == 1
+        assert invalid_events[0]["reason"] == reason
+        assert invalid_events[0]["expected_count"] == 2
+
+    async def test_malformed_acknowledgement_pins_cursor_and_opens_backoff(self):
+        cursor = (datetime(2026, 7, 1, 10, 0, tzinfo=UTC), _ZERO_UUID)
+        updated_at = datetime(2026, 7, 1, 10, 5, tzinfo=UTC)
+        local = _make_pool()
+        local.fetch = AsyncMock(return_value=[_posting_row(posting_id=uuid.uuid4(), ts=updated_at)])
+        fake_client = MagicMock()
+        import_batch = MagicMock(return_value=[])
+        fake_client.collections = {
+            "job_posting": MagicMock(documents=MagicMock(import_=import_batch))
+        }
+        backoff = _DownstreamBackoff("typesense-invalid-ack-test", 5.0, 300.0)
+
+        with patch("src.typesense_client.get_typesense_client", return_value=fake_client):
+            count, new_cursor = await _export_postings_typesense(
+                local,
+                cursor,
+                TaxonomyMaps(),
+                backoff,
+            )
+            skipped_count, skipped_cursor = await _export_postings_typesense(
+                local,
+                cursor,
+                TaxonomyMaps(),
+                backoff,
+            )
+
+        assert count == 1
+        assert new_cursor == cursor
+        assert backoff.consecutive_failures == 1
+        assert skipped_count == 0
+        assert skipped_cursor == cursor
+        assert local.fetch.await_count == 1
+        import_batch.assert_called_once()
+
+    @pytest.mark.parametrize("wrapped_by_client", [False, True])
+    async def test_response_decode_failure_pins_cursor_and_opens_backoff(
+        self,
+        wrapped_by_client,
+    ):
+        try:
+            json.loads('{"success":')
+        except json.JSONDecodeError as decode_error:
+            if wrapped_by_client:
+                try:
+                    # Typesense Python 2.0's `_parse_import_response` uses
+                    # this exact exception-chain shape.
+                    raise TypesenseClientError("Invalid response") from decode_error
+                except TypesenseClientError as client_error:
+                    import_error = client_error
+            else:
+                import_error = decode_error
+
+        cursor = (datetime(2026, 7, 1, 10, 0, tzinfo=UTC), _ZERO_UUID)
+        updated_at = datetime(2026, 7, 1, 10, 5, tzinfo=UTC)
+        local = _make_pool()
+        local.fetch = AsyncMock(return_value=[_posting_row(posting_id=uuid.uuid4(), ts=updated_at)])
+        fake_client = MagicMock()
+        import_batch = MagicMock(side_effect=import_error)
+        fake_client.collections = {
+            "job_posting": MagicMock(documents=MagicMock(import_=import_batch))
+        }
+        backoff = _DownstreamBackoff(
+            f"typesense-decode-error-{wrapped_by_client}",
+            5.0,
+            300.0,
+        )
+
+        with (
+            patch("src.typesense_client.get_typesense_client", return_value=fake_client),
+            structlog.testing.capture_logs() as logs,
+        ):
+            count, new_cursor = await _export_postings_typesense(
+                local,
+                cursor,
+                TaxonomyMaps(),
+                backoff,
+            )
+            skipped_count, skipped_cursor = await _export_postings_typesense(
+                local,
+                cursor,
+                TaxonomyMaps(),
+                backoff,
+            )
+
+        assert count == 1
+        assert new_cursor == cursor
+        assert backoff.consecutive_failures == 1
+        assert skipped_count == 0
+        assert skipped_cursor == cursor
+        assert local.fetch.await_count == 1
+        import_batch.assert_called_once()
+        assert any(
+            event.get("event") == "exporter.typesense_invalid_acknowledgement"
+            and event.get("reason") == "response_decode_error"
+            for event in logs
+        )
+
+    async def test_dual_path_advances_only_the_acknowledged_target(self):
+        cursor = (datetime(2026, 7, 1, 10, 0, tzinfo=UTC), _ZERO_UUID)
+        updated_at = datetime(2026, 7, 1, 10, 5, tzinfo=UTC)
+        posting_id = uuid.uuid4()
+        local = _make_pool()
+        local.fetch = AsyncMock(return_value=[_posting_row(posting_id=posting_id, ts=updated_at)])
+        supa, _ = _supa_pool_with_capture()
+        fake_client = MagicMock()
+        fake_client.collections = {
+            "job_posting": MagicMock(documents=MagicMock(import_=MagicMock(return_value=[])))
+        }
+        backoff = _DownstreamBackoff("typesense-invalid-ack-dual-test", 5.0, 300.0)
+
+        with patch("src.typesense_client.get_typesense_client", return_value=fake_client):
+            count, new_supa_cursor, new_ts_cursor = await _export_postings_dual(
+                local,
+                supa,
+                cursor,
+                cursor,
+                TaxonomyMaps(),
+                ts_backoff=backoff,
+            )
+
+        assert count == 1
+        assert new_supa_cursor == (updated_at, posting_id)
+        assert new_ts_cursor == cursor
+        assert backoff.consecutive_failures == 1
 
 
 class TestExportPostingsTypesenseOnly:

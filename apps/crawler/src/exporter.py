@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import math
 import time
 import uuid
@@ -622,6 +623,77 @@ def _build_typesense_docs(
 # ---------------------------------------------------------------------------
 
 
+class _TypesenseAcknowledgementError(RuntimeError):
+    """Typesense returned a response that cannot prove the batch was handled."""
+
+
+def _is_typesense_acknowledgement_parse_failure(exc: BaseException) -> bool:
+    """Recognize only JSON decoding failures from the import response parser.
+
+    Typesense Python 2.0 wraps ``JSONDecodeError`` in ``TypesenseClientError``;
+    other client versions may propagate the decoder error directly. Walking
+    the explicit exception chain handles both without treating unrelated
+    ``ValueError`` or client validation errors as acknowledgement failures.
+    """
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, json.JSONDecodeError):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
+def _validate_typesense_acknowledgements(
+    docs: list[dict],
+    results: object,
+) -> list[dict[str, Any]]:
+    """Require one explicit boolean acknowledgement per submitted document.
+
+    The CDC cursor may advance only after Typesense has accounted for every
+    document in the batch. A malformed response is therefore a target-wide
+    protocol failure, not a collection of per-document rejections: none of its
+    entries are trusted and the whole batch must be retried idempotently.
+    """
+    reason: str | None = None
+    invalid_index: int | None = None
+    if not isinstance(results, list):
+        reason = "response_not_list"
+    elif len(results) != len(docs):
+        reason = "cardinality_mismatch"
+    else:
+        for index, result in enumerate(results):
+            if not isinstance(result, dict):
+                reason = "item_not_object"
+                invalid_index = index
+                break
+            if "success" not in result:
+                reason = "success_missing"
+                invalid_index = index
+                break
+            if type(result["success"]) is not bool:
+                reason = "success_not_boolean"
+                invalid_index = index
+                break
+
+    if reason is not None:
+        acknowledged_count = len(results) if isinstance(results, list) else None
+        log.error(
+            "exporter.typesense_invalid_acknowledgement",
+            reason=reason,
+            expected_count=len(docs),
+            acknowledged_count=acknowledged_count,
+            invalid_index=invalid_index,
+            response_type=type(results).__name__,
+        )
+        raise _TypesenseAcknowledgementError(
+            f"Typesense import acknowledgement was invalid: {reason}"
+        ) from None
+
+    return cast(list[dict[str, Any]], results)
+
+
 async def _upsert_to_typesense(
     docs: list[dict],
 ) -> set[str]:
@@ -632,7 +704,7 @@ async def _upsert_to_typesense(
     synchronous, so we run it in an executor.
 
     Returns the set of document IDs that failed to import. The
-    Typesense ``import_`` endpoint returns a per-doc result list
+    Typesense ``import_`` endpoint must return a per-doc result list
     (``[{"success": true|false, "error": "..."}, ...]``) so a single
     bad doc no longer poisons the whole batch (#3180). Each failure is
     logged with the doc id and error string and counted in
@@ -640,10 +712,10 @@ async def _upsert_to_typesense(
     Typesense cursor past failed docs so the exporter doesn't loop on
     them forever.
 
-    A whole-batch transport failure (Typesense unreachable, 5xx, etc.)
-    still raises — that's not a per-doc poison-pill, it's a downstream
-    incident the caller (``_export_postings_dual``) is expected to
-    treat as a leg failure (cursor stays put for that leg).
+    A whole-batch transport failure (Typesense unreachable, 5xx, etc.) or
+    malformed acknowledgement still raises — neither is a per-doc poison
+    pill. The caller keeps the cursor pinned and applies bounded retry
+    backoff to the whole batch.
     """
     from src.typesense_client import get_typesense_client
 
@@ -659,17 +731,30 @@ async def _upsert_to_typesense(
     t0 = time.monotonic()
     try:
         documents = cast(Any, client.collections["job_posting"].documents)
-        results = await loop.run_in_executor(
+        raw_results = await loop.run_in_executor(
             None,
             lambda: documents.import_(docs, {"action": "upsert"}),
         )
-        duration = time.monotonic() - t0
-        typesense_export_duration_seconds.observe(duration)
-    except Exception:
+        results = _validate_typesense_acknowledgements(docs, raw_results)
+    except Exception as exc:
         duration = time.monotonic() - t0
         typesense_export_duration_seconds.observe(duration)
         typesense_export_docs_total.labels(status="error").inc(len(docs))
+        if _is_typesense_acknowledgement_parse_failure(exc):
+            log.error(
+                "exporter.typesense_invalid_acknowledgement",
+                reason="response_decode_error",
+                expected_count=len(docs),
+                acknowledged_count=None,
+                invalid_index=None,
+                response_type=type(exc).__name__,
+            )
+            raise _TypesenseAcknowledgementError(
+                "Typesense import acknowledgement was invalid: response_decode_error"
+            ) from exc
         raise
+    duration = time.monotonic() - t0
+    typesense_export_duration_seconds.observe(duration)
 
     # Per-doc result parsing (#3180). The import endpoint returns one
     # dict per submitted doc, in the same order as the input. A typical
@@ -678,21 +763,20 @@ async def _upsert_to_typesense(
     # ``document`` field, when present, is a JSON-encoded copy of the
     # offending input.
     failed_ids: set[str] = set()
-    if isinstance(results, list):
-        for doc, result in zip(docs, results, strict=False):
-            if isinstance(result, dict) and not result.get("success", True):
-                doc_id = str(doc.get("id", ""))
-                failed_ids.add(doc_id)
-                export_errors_total.labels(table="job_posting", phase="typesense").inc()
-                # ``[exporter] row dropped`` is the grep anchor for the
-                # Loki query ``{app="crawler"} |~ "row dropped"``.
-                log.error(
-                    "exporter.row_dropped",
-                    target="typesense",
-                    posting_id=doc_id,
-                    error=result.get("error"),
-                    code=result.get("code"),
-                )
+    for doc, result in zip(docs, results, strict=True):
+        if result["success"] is False:
+            doc_id = str(doc.get("id", ""))
+            failed_ids.add(doc_id)
+            export_errors_total.labels(table="job_posting", phase="typesense").inc()
+            # ``[exporter] row dropped`` is the grep anchor for the
+            # Loki query ``{app="crawler"} |~ "row dropped"``.
+            log.error(
+                "exporter.row_dropped",
+                target="typesense",
+                posting_id=doc_id,
+                error=result.get("error"),
+                code=result.get("code"),
+            )
 
     succeeded = len(docs) - len(failed_ids)
     if succeeded > 0:
@@ -871,6 +955,11 @@ def _is_downstream_unavailable(exc: BaseException) -> bool:
         or sqlstate in _DOWNSTREAM_UNAVAILABLE_SQLSTATES
         or isinstance(exc, (TimeoutError, ConnectionError, OSError, httpx.RequestError))
     )
+
+
+def _should_backoff_typesense(exc: BaseException) -> bool:
+    """Bound retries for transport and invalid-acknowledgement failures."""
+    return isinstance(exc, _TypesenseAcknowledgementError) or _is_downstream_unavailable(exc)
 
 
 def _record_downstream_recovery(backoff: _DownstreamBackoff) -> None:
@@ -1124,7 +1213,7 @@ async def _export_postings_dual(
             # failures are returned as a set, not raised, so this branch
             # is now strictly for downstream incidents.
             fields = _exc_fields(results[1])
-            if ts_backoff is not None and _is_downstream_unavailable(results[1]):
+            if ts_backoff is not None and _should_backoff_typesense(results[1]):
                 retry_in = ts_backoff.record_failure()
                 fields.update(
                     retry_in_s=round(retry_in, 2),
@@ -1185,7 +1274,7 @@ async def _export_postings_typesense(
         failed_ids = await _upsert_to_typesense(docs)
     except Exception as exc:
         fields = _exc_fields(exc)
-        if ts_backoff is not None and _is_downstream_unavailable(exc):
+        if ts_backoff is not None and _should_backoff_typesense(exc):
             retry_in = ts_backoff.record_failure()
             fields.update(
                 retry_in_s=round(retry_in, 2),

@@ -213,8 +213,12 @@ On each tick:
    commit-safe cutoff.
 2. SELECT changed postings strictly before the cutoff and after the Typesense
    cursor.
-3. Denormalize + expand ancestor IDs, upsert to Typesense, and advance only the
-   Typesense cursor.
+3. Denormalize + expand ancestor IDs and upsert to Typesense.
+4. Require an acknowledgement list with exactly one object containing an
+   explicit boolean `success` per submitted document before advancing the
+   Typesense cursor. A well-formed rejected document follows the logged
+   poison-document policy; an empty, truncated, overlong, or malformed
+   acknowledgement pins the batch and enters bounded retry backoff.
 
 The Typesense document builder (`_build_typesense_docs`) expands `location_ids` and `occupation_ids` with all ancestor IDs using pre-loaded hierarchy maps (`TaxonomyMaps.location_ancestors`, `occupation_ancestors`). This means even legacy Postgres rows with leaf-only IDs produce correct hierarchy-filterable Typesense documents.
 
