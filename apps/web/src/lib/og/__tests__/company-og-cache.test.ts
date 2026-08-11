@@ -114,15 +114,18 @@ describe("company OG cache", () => {
     expect(mocks.s3Send).not.toHaveBeenCalled();
   });
 
-  it("treats a public R2 404 as a cache miss without loading the AWS SDK", async () => {
+  it("falls back to a signed read when the public CDN has a stale 404", async () => {
     setTestEnv({ R2_DOMAIN_URL: "https://assets.example.test" });
+    configureR2Env();
     mockPublicResponse(404);
+    const transformToByteArray = vi.fn().mockResolvedValue(new Uint8Array([3, 2, 1]));
+    mocks.s3Send.mockResolvedValueOnce({ Body: { transformToByteArray } });
     const { readCompanyOgCache } = await import("../company-og-cache");
 
-    await expect(
-      readCompanyOgCache("og/company/x/en/missing.png"),
-    ).resolves.toBeNull();
-    expect(mocks.s3Send).not.toHaveBeenCalled();
+    const bytes = await readCompanyOgCache("og/company/x/en/prewarmed.png");
+
+    expect(Array.from(bytes ?? [])).toEqual([3, 2, 1]);
+    expect(mocks.s3Send).toHaveBeenCalledOnce();
   });
 
   it("soft-disables reads and writes when R2 is not configured", async () => {

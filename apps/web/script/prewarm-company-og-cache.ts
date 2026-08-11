@@ -1,7 +1,7 @@
 /**
  * Pre-render company Open Graph cards outside Vercel Functions.
  *
- * The script pages through the production Typesense company collection once,
+ * The script reads the versioned company sources that feed production,
  * renders the exact same Satori card used by the Next.js fallback route, and
  * uploads only missing objects in the current renderer-version namespace.
  */
@@ -10,8 +10,10 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { Client as TypesenseClient } from "typesense";
+import { parse } from "csv-parse/sync";
 import {
   logExternalError,
   safeExternalError,
@@ -26,8 +28,8 @@ import { computeCompanyOgRendererVersion } from "@/lib/og/company-og-renderer-ve
 const ALL_LOCALES = ["en", "de", "fr", "it"] as const;
 const CONTENT_TYPE = "image/png";
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
-const TYPESENSE_PAGE_SIZE = 250;
-export const TYPESENSE_BATCH_TIMEOUT_SECONDS = 30;
+const COMPANY_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const COMPANY_DATA_DIR = resolve(process.cwd(), "../crawler/data");
 
 class PrewarmExternalError extends Error {
   constructor(
@@ -142,56 +144,132 @@ function createR2Client(): { client: S3Client; bucket: string } {
   };
 }
 
-function createPrewarmTypesenseClient(): TypesenseClient {
-  const host = requiredEnvironment("TYPESENSE_HOST");
-  const port = Number.parseInt(requiredEnvironment("TYPESENSE_PORT"), 10);
-  const protocol = requiredEnvironment("TYPESENSE_PROTOCOL");
-  const apiKey = requiredEnvironment("TYPESENSE_SEARCH_KEY");
-  if (!Number.isSafeInteger(port) || port < 1 || port > 65_535) {
-    throw new Error("TYPESENSE_PORT must be a valid TCP port");
-  }
-
-  // Batch jobs traverse the public Cloudflare tunnel from a GitHub runner and
-  // need a wider timeout than latency-sensitive production requests. Keep
-  // this isolated from getSearchClient(), whose five-second budget is correct
-  // for interactive web traffic.
-  return new TypesenseClient({
-    nodes: [{ host, port, protocol }],
-    apiKey,
-    connectionTimeoutSeconds: TYPESENSE_BATCH_TIMEOUT_SECONDS,
-    numRetries: 1,
-    retryIntervalSeconds: 1,
-  });
+function parseCsv(source: string, label: string): Record<string, string>[] {
+  const rows = parse(source, {
+    bom: true,
+    columns: true,
+    relax_column_count: false,
+    skip_empty_lines: true,
+  }) as Record<string, string>[];
+  if (rows.length === 0) throw new Error(`${label} must contain at least one row`);
+  return rows;
 }
 
-async function listCompanies(
-  client: TypesenseClient,
-  maxCompanies: number | null,
-) {
-  const companies: Record<string, unknown>[] = [];
-  let page = 1;
+function value(row: Record<string, string>, field: string): string | null {
+  const candidate = row[field]?.trim();
+  return candidate ? candidate : null;
+}
 
-  while (true) {
-    const result = await withRetry(
-      () => client.collections<Record<string, unknown>>("company")
-        .documents()
-        .search({
-          q: "*",
-          per_page: TYPESENSE_PAGE_SIZE,
-          page,
-        }),
-      1_000,
-    );
-    const hits = result.hits ?? [];
-    for (const hit of hits) {
-      companies.push(hit.document);
-      if (maxCompanies && companies.length >= maxCompanies) return companies;
+function optionalInteger(
+  row: Record<string, string>,
+  field: string,
+  context: string,
+): number | null {
+  const candidate = value(row, field);
+  if (!candidate) return null;
+  const parsed = Number.parseInt(candidate, 10);
+  if (!Number.isSafeInteger(parsed) || String(parsed) !== candidate) {
+    throw new Error(`${context}.${field} must be an integer`);
+  }
+  return parsed;
+}
+
+/** Build the Typesense-compatible records consumed by the shared card mapper. */
+export function buildCompanyDocuments(
+  companiesSource: string,
+  descriptionsSource: string,
+  industriesSource: string,
+  maxCompanies: number | null,
+): Record<string, unknown>[] {
+  const companyRows = parseCsv(companiesSource, "companies.csv");
+  const descriptionRows = parseCsv(descriptionsSource, "company_descriptions.csv");
+  const industryRows = parseCsv(industriesSource, "industries.csv");
+
+  const industries = new Map<number, string>();
+  for (const row of industryRows) {
+    const id = optionalInteger(row, "id", "industry");
+    const name = value(row, "en") ?? value(row, "name");
+    if (id === null || id < 1 || !name) {
+      throw new Error("Every industry must have a positive id and a name");
     }
-    if (hits.length < TYPESENSE_PAGE_SIZE || companies.length >= result.found) break;
-    page += 1;
+    if (industries.has(id)) throw new Error(`Duplicate industry id: ${id}`);
+    industries.set(id, name);
   }
 
-  return companies;
+  const descriptions = new Map<string, Record<string, string>>();
+  for (const row of descriptionRows) {
+    const slug = value(row, "slug");
+    if (!slug || !COMPANY_SLUG.test(slug)) {
+      throw new Error("Every company description must have a valid slug");
+    }
+    if (descriptions.has(slug)) {
+      throw new Error(`Duplicate company description slug: ${slug}`);
+    }
+    descriptions.set(slug, row);
+  }
+
+  const seenSlugs = new Set<string>();
+  const documents = companyRows.map((row) => {
+    const slug = value(row, "slug");
+    const name = value(row, "name");
+    if (!slug || !COMPANY_SLUG.test(slug) || !name) {
+      throw new Error("Every company must have a valid slug and name");
+    }
+    if (seenSlugs.has(slug)) throw new Error(`Duplicate company slug: ${slug}`);
+    seenSlugs.add(slug);
+
+    const industryId = optionalInteger(row, "industry", `company.${slug}`);
+    const industryName = industryId === null ? null : industries.get(industryId);
+    if (industryId !== null && !industryName) {
+      throw new Error(`company.${slug}.industry references missing id ${industryId}`);
+    }
+
+    const document: Record<string, unknown> = {
+      id: slug,
+      name,
+      slug,
+      active_posting_count: 0,
+    };
+    const directFields = [
+      ["icon", "icon_url"],
+      ["logo", "logo_url"],
+      ["website", "website"],
+    ] as const;
+    for (const [target, source] of directFields) {
+      const fieldValue = value(row, source);
+      if (fieldValue) document[target] = fieldValue;
+    }
+
+    if (industryId !== null) document.industry_id = industryId;
+    if (industryName) document.industry_name = industryName;
+    for (const field of ["employee_count_range", "founded_year"] as const) {
+      const fieldValue = optionalInteger(row, field, `company.${slug}`);
+      if (fieldValue !== null) document[field] = fieldValue;
+    }
+
+    const localizedDescriptions = descriptions.get(slug);
+    for (const locale of ALL_LOCALES) {
+      const description = localizedDescriptions
+        ? value(localizedDescriptions, locale)
+        : null;
+      if (!description) continue;
+      document[locale === "en" ? "description" : `description_${locale}`] =
+        description;
+    }
+
+    return document;
+  });
+
+  return maxCompanies ? documents.slice(0, maxCompanies) : documents;
+}
+
+function listCompanies(maxCompanies: number | null): Record<string, unknown>[] {
+  return buildCompanyDocuments(
+    readFileSync(resolve(COMPANY_DATA_DIR, "companies.csv"), "utf8"),
+    readFileSync(resolve(COMPANY_DATA_DIR, "company_descriptions.csv"), "utf8"),
+    readFileSync(resolve(COMPANY_DATA_DIR, "industries.csv"), "utf8"),
+    maxCompanies,
+  );
 }
 
 async function listExistingKeys(
@@ -285,37 +363,26 @@ export async function main() {
   const options = parseOptions(process.argv.slice(2));
   if (!options.yes) throw new Error(`R2 writes require --yes.\n\n${usage()}`);
 
-  // Validate Typesense configuration before any R2 writes begin.
-  const typesenseClient = createPrewarmTypesenseClient();
-
   const rendererVersion = options.rendererVersion ??
     computeCompanyOgRendererVersion(process.cwd());
   const prefix = `og/company/${rendererVersion}/`;
   const { client, bucket } = createR2Client();
-  const [companies, existingKeys] = await Promise.all([
-    listCompanies(typesenseClient, options.maxCompanies).catch((error) => {
-      throw new PrewarmExternalError(
-        "typesense",
-        "list_company_og_source",
-        error,
-      );
-    }),
-    options.force
-      ? Promise.resolve(new Set<string>())
-      : listExistingKeys(client, bucket, prefix).catch((error) => {
-          throw new PrewarmExternalError(
-            "r2",
-            "list_company_og_cache",
-            error,
-          );
-        }),
-  ]);
+  const companies = listCompanies(options.maxCompanies);
+  const existingKeys = options.force
+    ? new Set<string>()
+    : await listExistingKeys(client, bucket, prefix).catch((error) => {
+        throw new PrewarmExternalError(
+          "r2",
+          "list_company_og_cache",
+          error,
+        );
+      });
 
   const tasks: RenderTask[] = [];
   let skipped = 0;
   for (const company of companies) {
     const slug = typeof company.slug === "string" ? company.slug : "";
-    if (!slug) throw new Error(`Typesense company document ${String(company.id)} has no slug`);
+    if (!slug) throw new Error(`Company document ${String(company.id)} has no slug`);
     for (const locale of options.locales) {
       const key = companyOgCacheKeyForVersion(rendererVersion, locale, slug);
       if (existingKeys.has(key)) {

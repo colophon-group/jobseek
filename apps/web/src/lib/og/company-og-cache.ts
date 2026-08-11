@@ -137,7 +137,6 @@ export async function readCompanyOgCache(
     try {
       const result = await readPublicObject(publicUrl);
       if (result.bytes) return result.bytes;
-      if (result.status === 404) return null;
     } catch (error) {
       logExternalError(
         "warn",
