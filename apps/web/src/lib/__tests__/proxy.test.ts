@@ -161,6 +161,57 @@ describe("company request auth boundary", () => {
   });
 });
 
+describe("Explore PPR shell normalization", () => {
+  it("rewrites query-bearing HTML documents to the locale shell", () => {
+    const request = new NextRequest(
+      "http://localhost/en/explore?q=python&wm=remote",
+      { headers: { accept: "text/html,application/xhtml+xml" } },
+    );
+
+    const response = proxy(request);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-rewrite")).toBe(
+      "http://localhost/en/explore",
+    );
+    expect(request.nextUrl.search).toBe("?q=python&wm=remote");
+  });
+
+  it("does not rewrite queryless Explore documents", () => {
+    const response = proxy(
+      new NextRequest("http://localhost/en/explore", {
+        headers: { accept: "text/html" },
+      }),
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("preserves RSC navigation queries", () => {
+    const response = proxy(
+      new NextRequest("http://localhost/en/explore?q=python&_rsc=abc123", {
+        headers: { accept: "text/x-component", rsc: "1" },
+      }),
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("preserves Server Action queries", () => {
+    const response = proxy(
+      new NextRequest("http://localhost/en/explore?q=python", {
+        method: "POST",
+        headers: { accept: "text/x-component", "next-action": "action-id" },
+      }),
+    );
+
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+});
+
 describe("scanner path boundary", () => {
   it.each([
     "/en/wp-admin/install.php",
@@ -183,7 +234,7 @@ describe("proxy config", () => {
     expect(config.matcher.length).toBeGreaterThan(0);
   });
 
-  it("matches the localized company-request auth boundary only", () => {
+  it("matches localized proxy boundaries", () => {
     expect(
       unstable_doesMiddlewareMatch({
         config,
@@ -195,7 +246,30 @@ describe("proxy config", () => {
       unstable_doesMiddlewareMatch({
         config,
         nextConfig: {},
-        url: "/en/explore",
+        url: "/en/explore?q=python",
+        headers: { accept: "text/html,application/xhtml+xml" },
+      }),
+    ).toBe(true);
+  });
+
+  it("excludes Explore RSC and Server Action traffic before proxy compute", () => {
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: "/en/explore?q=python&_rsc=abc123",
+        headers: { accept: "text/x-component", rsc: "1" },
+      }),
+    ).toBe(false);
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: "/en/explore?q=python",
+        headers: {
+          accept: "text/x-component",
+          "next-action": "action-id",
+        },
       }),
     ).toBe(false);
   });
@@ -214,7 +288,6 @@ describe("proxy config", () => {
   it.each([
     "/en/alice/jobs",
     "/de/companies/acme",
-    "/fr/explore",
   ])("does not add proxy work to valid localized path %s", (url) => {
     expect(
       unstable_doesMiddlewareMatch({ config, nextConfig: {}, url }),
