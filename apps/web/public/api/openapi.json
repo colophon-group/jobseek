@@ -11,7 +11,7 @@
       "get": {
         "operationId": "searchJobs",
         "summary": "Search jobs across companies",
-        "description": "Returns up to 5 companies with their top 3 job postings matching the filters. Only 'q' accepts freetext. All other filter params (loc, occ, sen, tech) require exact slugs — use /api/v1/resolve to convert freetext to slugs first.\n\nUI ``locale`` (response labels) is distinct from ``lang`` (job document language). Omitting ``lang`` returns postings in any language — pass ``lang=en`` (or a comma-separated list) to filter to specific posting languages.",
+        "description": "Returns up to 5 companies with their top 3 job postings matching the filters. Only 'q' accepts freetext. All other filter params (loc, occ, sen, tech) require exact slugs — use /api/v1/resolve to convert freetext to slugs first.\n\nUI ``locale`` (response labels) is distinct from ``lang`` (job document language). Omitting ``lang`` returns postings in any language — pass ``lang=en`` (or a comma-separated list) to filter to specific posting languages. Malformed or unsupported parameters return HTTP 400 with an ``{\"error\": string}`` body; provider failures use HTTP 500 and never include provider details.",
         "parameters": [
           { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "Keywords (free text search)" },
           { "name": "loc", "in": "query", "schema": { "type": "string" }, "description": "Location slugs, comma-separated (exact slugs only, use /resolve to look up)" },
@@ -62,6 +62,35 @@
                     "moreAt": { "type": "string", "description": "Link to full results on jseek.co" }
                   }
                 }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed or unsupported search parameter. The response is not cacheable.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Always ``no-store`` for error responses.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Search provider failure. The message is user-safe and contains no provider detail.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Always ``no-store`` for error responses.",
+                "schema": { "type": "string", "const": "no-store" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "error": "Search service unavailable" }
               }
             }
           },
@@ -343,6 +372,18 @@
               }
             }
           }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error"],
+        "properties": {
+          "error": { "type": "string" }
         }
       }
     }
