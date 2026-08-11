@@ -17,6 +17,9 @@ const COOKIE_NAME = "NEXT_LOCALE";
 const LOGGED_IN_HINT_COOKIE = "logged_in";
 const COMPANY_REQUEST_PATH = /^\/(en|de|fr|it)\/companies\/request$/;
 const LOCALIZED_EXPLORE_PATH = /^\/(?:en|de|fr|it)\/explore$/;
+const OBSOLETE_EXPLORE_ACTION_IDS = new Set([
+  "7ffac6a500b0410a78dcf5f6a75ea0d2253b635222",
+]);
 const LOCALIZED_COMPANY_PATH = /^\/(en|de|fr|it)\/company\/([^/]+)$/;
 const LOCALIZED_WATCHLIST_PATH =
   /^\/(en|de|fr|it)\/([^/]+)\/([^/]+)$/;
@@ -150,6 +153,29 @@ async function resolveLocalizedResourceRequest(
 }
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {
+  // A sustained client is replaying this action ID after its deployment was
+  // retired. Next rejects it as unknown, but only after invoking the full page
+  // Function. Keep this exact deployment-skew signature at the lightweight
+  // proxy boundary as defense in depth behind the zero-Function WAF rule.
+  // Current and future action IDs intentionally continue straight to Next.
+  if (
+    request.method === "POST" &&
+    LOCALIZED_EXPLORE_PATH.test(request.nextUrl.pathname) &&
+    OBSOLETE_EXPLORE_ACTION_IDS.has(
+      request.headers.get("next-action") ?? "",
+    )
+  ) {
+    return new NextResponse("Not Found", {
+      status: 404,
+      headers: {
+        "Cache-Control": "private, no-store",
+        "Content-Type": "text/plain; charset=utf-8",
+        "X-Content-Type-Options": "nosniff",
+        "X-Robots-Tag": "noindex",
+      },
+    });
+  }
+
   // Stop common exploit-probe shapes at the network boundary. Without this,
   // Cache Components can stream the public-watchlist PPR shell with HTTP 200
   // before the route-level notFound() guard runs, consuming a Fluid function
@@ -272,6 +298,16 @@ export const config = {
     "/:lang(en|de|fr|it)/companies/request",
     "/:lang(en|de|fr|it)/company/:slug",
     "/:lang(en|de|fr|it)/:userSlug/:watchlistSlug",
+    {
+      source: "/:lang(en|de|fr|it)/explore",
+      has: [
+        {
+          type: "header",
+          key: "next-action",
+          value: "7ffac6a500b0410a78dcf5f6a75ea0d2253b635222",
+        },
+      ],
+    },
     {
       source: "/:lang(en|de|fr|it)/explore",
       has: [

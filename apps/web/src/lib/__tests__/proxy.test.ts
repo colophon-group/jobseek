@@ -460,6 +460,8 @@ describe("missing-resource HTTP boundary", () => {
 });
 
 describe("Explore PPR shell normalization", () => {
+  const obsoleteActionId = "7ffac6a500b0410a78dcf5f6a75ea0d2253b635222";
+
   it("rewrites query-bearing HTML documents to the locale shell", async () => {
     const request = new NextRequest(
       "http://localhost/en/explore?q=python&wm=remote",
@@ -508,6 +510,26 @@ describe("Explore PPR shell normalization", () => {
     expect(response.headers.get("x-middleware-rewrite")).toBeNull();
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
+
+  it.each(["en", "de", "fr", "it"])(
+    "rejects the confirmed obsolete %s Explore action before the page Function",
+    async (locale) => {
+      const response = await proxy(
+        new NextRequest(`http://localhost/${locale}/explore?q=python`, {
+          method: "POST",
+          headers: {
+            accept: "text/x-component",
+            "next-action": obsoleteActionId,
+          },
+        }),
+      );
+
+      expect(response.status).toBe(404);
+      await expect(response.text()).resolves.toBe("Not Found");
+      expect(response.headers.get("cache-control")).toBe("private, no-store");
+      expect(response.headers.get("x-middleware-next")).toBeNull();
+    },
+  );
 });
 
 describe("scanner path boundary", () => {
@@ -550,7 +572,7 @@ describe("proxy config", () => {
     ).toBe(true);
   });
 
-  it("excludes Explore RSC and Server Action traffic before proxy compute", () => {
+  it("excludes Explore RSC and current Server Action traffic before proxy compute", () => {
     expect(
       unstable_doesMiddlewareMatch({
         config,
@@ -571,6 +593,23 @@ describe("proxy config", () => {
       }),
     ).toBe(false);
   });
+
+  it.each(["en", "de", "fr", "it"])(
+    "matches only the confirmed obsolete %s Explore action at the proxy boundary",
+    (locale) => {
+      expect(
+        unstable_doesMiddlewareMatch({
+          config,
+          nextConfig: {},
+          url: `/${locale}/explore?q=python`,
+          headers: {
+            accept: "text/x-component",
+            "next-action": "7ffac6a500b0410a78dcf5f6a75ea0d2253b635222",
+          },
+        }),
+      ).toBe(true);
+    },
+  );
 
   it.each([
     "/en/wp-admin/install.php",
