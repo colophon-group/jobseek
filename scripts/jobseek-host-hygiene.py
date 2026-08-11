@@ -18,6 +18,7 @@ from typing import Any
 
 ROLES = ("crawler", "postgresql", "typesense")
 POLICY_PATH = Path("/etc/systemd/journald.conf.d/60-jobseek-retention.conf")
+SYSTEMD_UNIT_ROOT = Path("/etc/systemd/system")
 CANONICAL_RECONCILIATION_TIMER = "jobseek-crawler-reconciliation.timer"
 RETIRED_RECONCILIATION_UNITS = (
     "jobseek-reconciliation-typesense-catchup.service",
@@ -174,7 +175,57 @@ def _failed_unit_findings() -> list[dict[str, str]]:
     ]
 
 
-def _retired_reconciliation_findings() -> list[dict[str, str]]:
+def _exact_dev_null_mask_exists(unit: str, *, unit_root: Path) -> bool:
+    if unit not in RETIRED_RECONCILIATION_UNITS:
+        return False
+    path = unit_root / unit
+    try:
+        return path.is_symlink() and path.resolve(strict=True) == Path("/dev/null")
+    except OSError:
+        return False
+
+
+def _retired_unit_is_safely_masked(unit: str, *, unit_root: Path = SYSTEMD_UNIT_ROOT) -> bool:
+    if unit not in RETIRED_RECONCILIATION_UNITS:
+        raise HygieneError(f"retired reconciliation unit is not allowlisted: {unit}")
+
+    result = _run(
+        [
+            "systemctl",
+            "show",
+            unit,
+            "--property=LoadState",
+            "--property=ActiveState",
+            "--property=UnitFileState",
+            "--no-pager",
+        ]
+    )
+    if result.returncode != 0:
+        raise HygieneError(f"retired reconciliation unit inventory failed: {unit}")
+    state = _properties(result.stdout)
+
+    enabled = _run(["systemctl", "is-enabled", unit])
+    if enabled.returncode not in (0, 1):
+        raise HygieneError(f"retired reconciliation unit enablement check failed: {unit}")
+    failed = _run(["systemctl", "is-failed", unit])
+
+    load_state = state.get("LoadState")
+    load_state_is_masked = load_state == "masked" or (
+        load_state == "not-found" and _exact_dev_null_mask_exists(unit, unit_root=unit_root)
+    )
+    return (
+        load_state_is_masked
+        and state.get("ActiveState") == "inactive"
+        and state.get("UnitFileState") == "masked"
+        and enabled.stdout.strip() == "masked"
+        and failed.returncode != 0
+        and failed.stdout.strip() == "inactive"
+    )
+
+
+def _retired_reconciliation_findings(
+    *, unit_root: Path = SYSTEMD_UNIT_ROOT
+) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
     canonical = _run(
         [
@@ -203,25 +254,7 @@ def _retired_reconciliation_findings() -> list[dict[str, str]]:
         )
 
     for unit in RETIRED_RECONCILIATION_UNITS:
-        result = _run(
-            [
-                "systemctl",
-                "show",
-                unit,
-                "--property=LoadState",
-                "--property=ActiveState",
-                "--property=UnitFileState",
-                "--no-pager",
-            ]
-        )
-        if result.returncode != 0:
-            raise HygieneError(f"retired reconciliation unit inventory failed: {unit}")
-        state = _properties(result.stdout)
-        if state != {
-            "LoadState": "masked",
-            "ActiveState": "inactive",
-            "UnitFileState": "masked",
-        }:
+        if not _retired_unit_is_safely_masked(unit, unit_root=unit_root):
             findings.append({"kind": "retired_reconciliation_unit", "detail": unit})
 
     timers = _run(["systemctl", "list-unit-files", "--type=timer", "--no-legend", "--plain"])
@@ -401,6 +434,9 @@ def _parser() -> argparse.ArgumentParser:
         "--policy-path", type=Path, default=POLICY_PATH, help=argparse.SUPPRESS
     )
 
+    retired_unit = subparsers.add_parser("verify-retired-unit")
+    retired_unit.add_argument("--unit", required=True, choices=RETIRED_RECONCILIATION_UNITS)
+
     cleanup = subparsers.add_parser("remove-exited-container")
     cleanup.add_argument("--role", required=True, choices=ROLES)
     cleanup.add_argument("--container-id", required=True)
@@ -419,6 +455,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             findings = _journal_findings(args.role, args.policy_path)
             print(json.dumps({"role": args.role, "findings": findings}, sort_keys=True))
             return 1 if findings else 0
+        if args.command == "verify-retired-unit":
+            conformant = _retired_unit_is_safely_masked(args.unit)
+            print(json.dumps({"unit": args.unit, "conformant": conformant}, sort_keys=True))
+            return 0 if conformant else 1
         if args.command == "audit":
             result = audit(args.role, policy_path=args.policy_path)
             print(json.dumps(result, sort_keys=True))

@@ -803,6 +803,14 @@ old `/etc/systemd/system` unit may remain under
 `/var/lib/jobseek-host-hygiene/retired-units/<revision>/` for forensic review;
 it is not executable from that location.
 
+Some systemd releases report an exact `/etc/systemd/system/<unit> -> /dev/null`
+mask as `LoadState=not-found` after reload. Host hygiene accepts that portable
+representation only when the allowlisted path is a symlink whose canonical
+target is `/dev/null`, `UnitFileState` and `systemctl is-enabled` both report
+`masked`, the unit is inactive, and `systemctl is-failed` does not report a
+failure. An absent path, regular file, or symlink to any other target remains
+nonconformant.
+
 The 2026-07-23 outage was an ownership regression, not a cleanup operation.
 The revision preflight was added while the state directory was still created
 as `0700 root:root`. The root deployment check passed, but every service run as
