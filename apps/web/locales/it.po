@@ -4224,12 +4224,6 @@ msgstr "Termini di servizio"
 msgid "terms.meta.description"
 msgstr "Termini di servizio di Job Seek — regole d'uso, proprietà intellettuale, responsabilità dell'account, limitazione di responsabilità e legge applicabile."
 
-#. Body text shown when a company page slug does not exist
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/page.tsx:102
-msgid "company.notFound.message"
-msgstr "L'azienda che stai cercando non esiste o è stata rimossa."
-
 #. Body text for the company-not-found page; explains the company is either gone or never existed
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/company/[slug]/company-content.tsx:59

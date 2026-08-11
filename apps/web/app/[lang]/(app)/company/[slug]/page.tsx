@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { cacheLife, cacheTag } from "next/cache";
+import { notFound } from "next/navigation";
 import { isLocale, defaultLocale, loadCatalog, initI18nForPage, ogLocale, ogAlternateLocales } from "@/lib/i18n";
 import { companyCacheTag } from "@/lib/cache-tags";
 import { CACHE_TTL_COMPANY_SHELL } from "@/lib/cache-ttl";
@@ -10,7 +11,6 @@ import { siteConfig } from "@/content/config";
 import { buildAlternates } from "@/lib/seo";
 import { CompanyHead } from "./company-head";
 import { CompanyContent } from "./company-content";
-import { CompanyNotFoundState } from "./company-not-found";
 import { SimilarSection } from "./similar-section";
 import { CompanySkeleton } from "@/components/search/company-skeleton";
 import { getDirectCompanyOgUrl } from "@/lib/og/company-og-direct";
@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // would let `[lang]/layout.tsx`'s `metadata.title.default` ("Job
   // Seek") cascade and leave the URL indexable. Tag explicitly as
   // `noindex,follow` to mirror the watchlist null-detail handling.
-  if (!snapshot) return { robots: { index: false, follow: true } };
+  if (!snapshot) notFound();
   const { company } = snapshot;
 
   const title = i18n._({
@@ -129,40 +129,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-async function CompanyNotFound({ locale, slug }: { locale: Locale; slug: string }) {
-  const { i18n } = await loadCatalog(locale);
-  const title = i18n._({
-    id: "company.notFound.title",
-    comment: "Heading shown when a company page slug does not exist",
-    message: "Company not found",
-  });
-  const message = i18n._({
-    id: "company.notFound.message",
-    comment: "Body text shown when a company page slug does not exist",
-    message: "The company you are looking for does not exist or has been removed.",
-  });
-  const exploreLabel = i18n._({
-    id: "company.notFound.explore",
-    comment: "Primary recovery action on the company-not-found page",
-    message: "Explore companies",
-  });
-  const requestLabel = i18n._({
-    id: "company.notFound.request",
-    comment: "Secondary action on the company-not-found page to request that company",
-    message: "Request this company",
-  });
-  return (
-    <CompanyNotFoundState
-      locale={locale}
-      slug={slug}
-      title={title}
-      message={message}
-      exploreLabel={exploreLabel}
-      requestLabel={requestLabel}
-    />
-  );
-}
-
 export default async function CompanyPageRoute({ params }: Props) {
   "use cache";
   cacheLife({ revalidate: CACHE_TTL_COMPANY_SHELL });
@@ -179,7 +145,7 @@ export default async function CompanyPageRoute({ params }: Props) {
   // variant via ``fetchCompanyPageData`` when filters or auth-related
   // hint cookies are present.
   const initialData = await getCompanyRouteSnapshot(slug, locale);
-  if (!initialData) return <CompanyNotFound locale={locale} slug={slug} />;
+  if (!initialData) notFound();
   const { company } = initialData;
 
   // The page body is `'use cache'`-wrapped (1-hour revalidate) so the
