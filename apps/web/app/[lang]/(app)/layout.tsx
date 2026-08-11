@@ -8,6 +8,7 @@ import { UpgradeBanner } from "@/components/UpgradeBanner";
 import { WatchlistTipBanner } from "@/components/watchlist/watchlist-tip-banner";
 import { BackToTop } from "@/components/ui/back-to-top";
 import { SkipToContentLink } from "@/components/SkipToContentLink";
+import { getCurrencyRates } from "@/lib/services/search";
 
 type Props = {
   children: ReactNode;
@@ -17,8 +18,13 @@ type Props = {
 // setI18n + <LinguiClientProvider>); this layout no longer redoes that work.
 // See #2883.
 export default async function AppLayout({ children }: Props) {
+  // Resolve the hours-cached table as part of the shared server shell. Passing
+  // it into the client provider removes one uncached Server Action POST from
+  // every app-page mount while retaining the same EUR fallback behavior.
+  const currencyRates = await getCurrencyRates();
+
   return (
-    <AppBootstrapProvider>
+    <AppBootstrapProvider initialCurrencyRates={currencyRates}>
       <SearchStateProvider>
         <SkipToContentLink />
         <div className="flex min-h-dvh flex-col">

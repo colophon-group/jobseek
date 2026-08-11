@@ -9,6 +9,7 @@ import { SalaryDisplayProvider } from "@/components/providers/SalaryDisplayProvi
 import { BannerProvider } from "@/components/providers/BannerProvider";
 import { PreferencesInitializer } from "@/components/providers/PreferencesInitializer";
 import { clearLoggedInHint, hasLoggedInHint } from "@/lib/client-cookies";
+import type { CurrencyRate } from "@/lib/actions/search";
 
 const ANON_BOOTSTRAP: AppBootstrapData = {
   user: null,
@@ -17,7 +18,13 @@ const ANON_BOOTSTRAP: AppBootstrapData = {
   starredIds: [],
 };
 
-export function AppBootstrapProvider({ children }: { children: ReactNode }) {
+export function AppBootstrapProvider({
+  children,
+  initialCurrencyRates,
+}: {
+  children: ReactNode;
+  initialCurrencyRates: CurrencyRate[];
+}) {
   const [data, setData] = useState<AppBootstrapData | null>(null);
 
   // Re-fetch the bootstrap payload and replace state in place. Used by
@@ -57,6 +64,7 @@ export function AppBootstrapProvider({ children }: { children: ReactNode }) {
       <SavedJobsProvider initialStatuses={data?.savedStatuses}>
         <StarredCompaniesProvider initialIds={data?.starredIds}>
           <SalaryDisplayProvider
+            initialRates={initialCurrencyRates}
             displayCurrency={prefs?.displayCurrency ?? null}
             salaryPeriod={prefs?.salaryPeriod ?? null}
             persistLocally={!isPending && user === null}

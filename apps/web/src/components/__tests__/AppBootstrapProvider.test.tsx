@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, act } from "@testing-library/react";
-// SalaryDisplayProvider (mounted via AppBootstrapProvider) now calls
-// `useLingui()` for the period-suffix label (#3144). Stub the Lingui
-// surface so the provider hierarchy can render without an I18n setup.
+// SalaryDisplayProvider (mounted via AppBootstrapProvider) calls `useLingui()`
+// for the period-suffix label (#3144). Stub the Lingui surface so the provider
+// hierarchy can render without an I18n setup.
 import "@/test-utils/lingui-mock";
 import { useSession } from "../providers/SessionProvider";
 
@@ -43,6 +43,12 @@ if (typeof window !== "undefined") {
 
 // Import after the mock is installed.
 import { AppBootstrapProvider } from "../providers/AppBootstrapProvider";
+import { useSalaryRates } from "../providers/SalaryDisplayProvider";
+
+const initialCurrencyRates = [
+  { currency: "EUR", toEur: 1 },
+  { currency: "CHF", toEur: 1.04 },
+];
 
 function SessionProbe() {
   const { user, isLoggedIn, isPending } = useSession();
@@ -52,6 +58,15 @@ function SessionProbe() {
       <span data-testid="logged-in">{String(isLoggedIn)}</span>
       <span data-testid="user-name">{user?.name ?? "none"}</span>
     </>
+  );
+}
+
+function RatesProbe() {
+  const rates = useSalaryRates();
+  return (
+    <span data-testid="rates">
+      {rates.map((rate) => rate.currency).join(",")}
+    </span>
   );
 }
 
@@ -81,8 +96,9 @@ describe("AppBootstrapProvider", () => {
     });
 
     render(
-      <AppBootstrapProvider>
+      <AppBootstrapProvider initialCurrencyRates={initialCurrencyRates}>
         <SessionProbe />
+        <RatesProbe />
       </AppBootstrapProvider>,
     );
 
@@ -94,6 +110,7 @@ describe("AppBootstrapProvider", () => {
     expect(mockBootstrap).not.toHaveBeenCalled();
     expect(screen.getByTestId("logged-in").textContent).toBe("false");
     expect(screen.getByTestId("user-name").textContent).toBe("none");
+    expect(screen.getByTestId("rates").textContent).toBe("EUR,CHF");
   });
 
   it("calls fetchAppBootstrap and propagates user state when the hint cookie is present", async () => {
@@ -111,7 +128,7 @@ describe("AppBootstrapProvider", () => {
     });
 
     render(
-      <AppBootstrapProvider>
+      <AppBootstrapProvider initialCurrencyRates={initialCurrencyRates}>
         <SessionProbe />
       </AppBootstrapProvider>,
     );
@@ -133,7 +150,7 @@ describe("AppBootstrapProvider", () => {
     );
 
     render(
-      <AppBootstrapProvider>
+      <AppBootstrapProvider initialCurrencyRates={initialCurrencyRates}>
         <SessionProbe />
       </AppBootstrapProvider>,
     );
@@ -190,7 +207,7 @@ describe("AppBootstrapProvider", () => {
     }
 
     render(
-      <AppBootstrapProvider>
+      <AppBootstrapProvider initialCurrencyRates={initialCurrencyRates}>
         <SessionProbe />
         <RefreshProbe />
       </AppBootstrapProvider>,
@@ -251,7 +268,7 @@ describe("AppBootstrapProvider", () => {
     });
 
     render(
-      <AppBootstrapProvider>
+      <AppBootstrapProvider initialCurrencyRates={initialCurrencyRates}>
         <SessionProbe />
       </AppBootstrapProvider>,
     );

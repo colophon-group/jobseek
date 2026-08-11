@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { withTestEnv } from "@/test-utils/env";
+import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
 /**
  * Issue #2930: extends `withDbRetry` (#2929 / #2918) to additional
@@ -212,6 +212,21 @@ describe("issue #2930 — withDbRetry covers additional call sites", () => {
 
     expect(rates.find((r) => r.currency === "USD")?.toEur).toBeCloseTo(0.92);
     expect(dbExecuteMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns the EUR fallback without entering the cache when the database is absent", async () => {
+    const configuredUrl = process.env.DATABASE_URL;
+    setTestEnv({ DATABASE_URL: undefined });
+    try {
+      const { getCurrencyRates } = await import("@/lib/actions/search");
+      await expect(getCurrencyRates()).resolves.toEqual([
+        { currency: "EUR", toEur: 1 },
+      ]);
+    } finally {
+      setTestEnv({ DATABASE_URL: configuredUrl });
+    }
+
+    expect(dbExecuteMock).not.toHaveBeenCalled();
   });
 
   it("propagates non-retryable errors (syntax) without retrying", async () => {
