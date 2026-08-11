@@ -263,6 +263,13 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
         or total_count_tolerance < 0
     ):
         raise ValueError("total_count_tolerance must be a non-negative integer")
+    page_shortfall_tolerance = metadata.get("page_shortfall_tolerance", 0)
+    if (
+        isinstance(page_shortfall_tolerance, bool)
+        or not isinstance(page_shortfall_tolerance, int)
+        or not 0 <= page_shortfall_tolerance < _PAGE_SIZE
+    ):
+        raise ValueError(f"page_shortfall_tolerance must be an integer from 0 to {_PAGE_SIZE - 1}")
     duplicate_row_tolerance = metadata.get("duplicate_row_tolerance", 0)
     if (
         isinstance(duplicate_row_tolerance, bool)
@@ -359,8 +366,14 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
             if len(items) > _PAGE_SIZE or (
                 page_shortfall > 0
                 and (
-                    offset + _PAGE_SIZE < latest_source_total
-                    or page_shortfall > total_count_tolerance
+                    (
+                        offset + _PAGE_SIZE < latest_source_total
+                        and page_shortfall > page_shortfall_tolerance
+                    )
+                    or (
+                        offset + _PAGE_SIZE >= latest_source_total
+                        and page_shortfall > total_count_tolerance
+                    )
                 )
             ):
                 partial = True
@@ -460,6 +473,7 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
             minimum_total=minimum_advertised_total,
             offset_overlap=offset_overlap,
             total_count_tolerance=total_count_tolerance,
+            page_shortfall_tolerance=page_shortfall_tolerance,
             duplicate_rows=duplicate_rows,
             duplicate_row_tolerance=duplicate_row_tolerance,
         )
