@@ -547,6 +547,41 @@ class TestDiscover:
             assert len(urls) == 1
             assert new_sitemap is not None  # rediscovered
 
+    async def test_configured_sitemap_429_fails_closed(self, monkeypatch):
+        """A WAF-blocked configured sitemap must not become a cache miss.
+
+        Operators can route the board through the configured proxy provider;
+        without that transport, preserving the 429 failure prevents an
+        incomplete fallback monitor from becoming authoritative.
+        """
+        import asyncio
+
+        import pytest
+
+        from src.shared.http_retry import PaginationFetchError
+
+        async def _no_sleep(_):
+            return None
+
+        monkeypatch.setattr(asyncio, "sleep", _no_sleep)
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            return httpx.Response(429)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://example.com/careers",
+                "metadata": {"sitemap_url": "https://example.com/sitemap.xml"},
+            }
+            with pytest.raises(PaginationFetchError) as exc:
+                await discover(board, client)
+
+        assert exc.value.last_status == 429
+        assert attempts == 3
+
     async def test_resolves_sitemap_index(self):
         index_xml = """<?xml version="1.0"?>
         <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

@@ -384,7 +384,15 @@ async def discover(
     new_sitemap_url: str | None = None
 
     if cached_sitemap:
-        root = await _try_fetch_xml(cached_sitemap, client)
+        # A configured/cached sitemap is authoritative enough to use the
+        # strict fetch path.  In particular, do not turn a persistent WAF
+        # response (429/403) into a benign cache miss: falling through to
+        # auto-discovery hides the transport problem behind ``No sitemap
+        # found`` and encourages operators to select an incomplete fallback
+        # monitor.  Strict fetching retries transient responses and then
+        # fails closed.  A genuine 404/410 still returns ``None`` and retains
+        # the existing rediscovery behaviour.
+        root = await _fetch_child_xml(cached_sitemap, client)
         if root is None:
             log.warning("sitemap.cache_miss", cached=cached_sitemap)
             sitemap_url, roots = await _discover_sitemap(board["board_url"], client)
