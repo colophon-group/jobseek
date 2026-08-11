@@ -514,9 +514,7 @@ class TestInventoryCompleteness:
         monkeypatch.setattr(wd_module, "_api_list", fake_api_list)
 
         async with httpx.AsyncClient() as client:
-            site_paths, truncated = await _list_all_sites(
-                "co", "wd1", ["SiteA", "SiteB"], client
-            )
+            site_paths, truncated = await _list_all_sites("co", "wd1", ["SiteA", "SiteB"], client)
 
         assert site_paths == [
             ("SiteA", "/job/shared/JR001"),
@@ -536,9 +534,7 @@ class TestInventoryCompleteness:
         async with httpx.AsyncClient() as client:
             batches = [
                 batch
-                async for batch in _list_all_sites_stream(
-                    "co", "wd1", ["SiteA", "SiteB"], client
-                )
+                async for batch in _list_all_sites_stream("co", "wd1", ["SiteA", "SiteB"], client)
             ]
 
         assert batches == [
