@@ -765,7 +765,7 @@ def test_rule_source_has_bounded_owned_groups() -> None:
     }
     assert {group["name"]: len(group["rules"]) for group in groups} == {
         "jobseek_hetzner_fleet": 20,
-        "jobseek_postgresql_capacity": 4,
+        "jobseek_postgresql_capacity": 5,
         "jobseek_typesense_reliability": 7,
         "jobseek_telemetry_delivery": 9,
         "jobseek_crawler_reliability": 19,

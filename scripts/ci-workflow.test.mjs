@@ -516,7 +516,20 @@ test("Codex deploy reserves the next runner-lock handoff", () => {
   );
   assert.match(
     deployCodexRunnerHostScript,
+    /restore_candidates=\("\$\{TIMERS\[@\]\}"\)[\s\S]*restore_candidates=\("\$\{ACTIVE_TIMERS_BEFORE_DEPLOY\[@\]\}"\)/,
+  );
+  assert.match(
+    deployCodexRunnerHostScript,
+    /for timer in "\$\{restore_candidates\[@\]\}"; do[\s\S]*jobseek-codex-daily-annotations\.timer[\s\S]*LABELLER_CONTRACT_VERIFIED[\s\S]*safe_restore\+=\("\$\{timer\}"\)/,
+  );
+  assert.match(
+    deployCodexRunnerHostScript,
+    /if \(\(\$\{#safe_restore\[@\]\} > 0\)\); then[\s\S]*systemctl start "\$\{safe_restore\[@\]\}"/,
+  );
+  assert.doesNotMatch(
+    deployCodexRunnerHostScript,
     /systemctl start "\$\{ACTIVE_TIMERS_BEFORE_DEPLOY\[@\]\}"/,
+    "deployment must restore only timers that satisfy their runtime contracts",
   );
   assert.doesNotMatch(
     deployCodexRunnerHostScript,
@@ -594,12 +607,13 @@ test("Codex deploy restores prior timer state after failure", () => {
       "-c",
       `set -euo pipefail
 source scripts/deploy-codex-runner-host.sh
-TIMERS=(alpha.timer beta.timer)
+TIMERS=(alpha.timer jobseek-codex-daily-annotations.timer beta.timer)
 START_TIMERS=0
+LABELLER_CONTRACT_VERIFIED=0
 systemctl() {
   printf '%s\\n' "$*" >> "$MOCK_SYSTEMCTL_LOG"
   if [[ "$1" == "is-active" ]]; then
-    [[ "$3" == "alpha.timer" ]]
+    [[ "$3" == "alpha.timer" || "$3" == "jobseek-codex-daily-annotations.timer" ]]
     return
   fi
   return 0
@@ -619,9 +633,20 @@ exit 23
 
   assert.equal(result.status, 23, result.stderr);
   assert.match(calls, /^is-active --quiet alpha\.timer$/m);
+  assert.match(
+    calls,
+    /^is-active --quiet jobseek-codex-daily-annotations\.timer$/m,
+  );
   assert.match(calls, /^is-active --quiet beta\.timer$/m);
-  assert.match(calls, /^stop alpha\.timer$/m);
+  assert.match(
+    calls,
+    /^stop alpha\.timer jobseek-codex-daily-annotations\.timer$/m,
+  );
   assert.match(calls, /^start alpha\.timer$/m);
+  assert.doesNotMatch(
+    calls,
+    /^start .*jobseek-codex-daily-annotations\.timer/m,
+  );
   assert.doesNotMatch(calls, /^start beta\.timer$/m);
 });
 
