@@ -1728,7 +1728,13 @@ def _ts_bulk_upsert(
                     acknowledged_count=acknowledged_count,
                     successful_count=successful_count,
                 )
-                raise RuntimeError("Typesense bulk import acknowledgement was invalid") from None
+                raise RuntimeError(
+                    "Typesense bulk import acknowledgement was invalid "
+                    f"(collection={collection}, action={action}, "
+                    f"expected_count={len(batch)}, "
+                    f"acknowledged_count={acknowledged_count}, "
+                    f"successful_count={successful_count})"
+                ) from None
         errors = [r for r in results if not r.get("success", True)]
         if errors:
             log.warning(
@@ -2738,7 +2744,9 @@ async def sync_watchlists_typesense(
     no caller can silently restore that retired read path.
 
     Trivial watchlists (no companies, no meaningful filters) are deleted
-    from Typesense rather than upserted.
+    from Typesense rather than upserted. Import acknowledgements are validated
+    before those dependent deletes, so a partial scheduled refresh cannot
+    prune against an incompletely updated watchlist collection.
     """
     if local_conn is None:
         raise RuntimeError("watchlist sync requires a local Postgres connection")
@@ -2849,7 +2857,16 @@ async def sync_watchlists_typesense(
         docs.append(doc)
 
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, _ts_bulk_upsert, client, "watchlist", docs)
+    await loop.run_in_executor(
+        None,
+        partial(
+            _ts_bulk_upsert,
+            client,
+            "watchlist",
+            docs,
+            fail_on_error=True,
+        ),
+    )
     # Drop any trivial watchlists that were previously indexed (e.g. pre-#2177
     # or a web-side write hook that got skipped). This only touches Typesense;
     # the rows still exist in Postgres for their owner.
@@ -3051,6 +3068,11 @@ async def refresh_typesense_counts(
     Idempotent — can be called after each sync run or on a timer.
     Counts are approximate.
 
+    Every submitted update requires an exact, explicit-success Typesense
+    acknowledgement. The scheduled CLI therefore exits non-zero (and records
+    a failed cron run) rather than reporting partially refreshed counts as
+    successful.
+
     Location, occupation, seniority, technology, and company counts are read
     from the Typesense ``job_posting`` facets so displayed counts match the
     indexed filters they represent. Reading from local Postgres either silently
@@ -3085,7 +3107,17 @@ async def refresh_typesense_counts(
                 "has_active_postings": count > 0,
             }
         )
-    await loop.run_in_executor(None, _ts_bulk_upsert, client, "location", loc_docs, "update")
+    await loop.run_in_executor(
+        None,
+        partial(
+            _ts_bulk_upsert,
+            client,
+            "location",
+            loc_docs,
+            "update",
+            fail_on_error=True,
+        ),
+    )
 
     # --- Occupations (read from Typesense facet on `occupation_ids` —
     # which carries the leaf occupation + its ancestors in
@@ -3100,7 +3132,17 @@ async def refresh_typesense_counts(
                 "has_active_postings": count > 0,
             }
         )
-    await loop.run_in_executor(None, _ts_bulk_upsert, client, "occupation", occ_docs, "update")
+    await loop.run_in_executor(
+        None,
+        partial(
+            _ts_bulk_upsert,
+            client,
+            "occupation",
+            occ_docs,
+            "update",
+            fail_on_error=True,
+        ),
+    )
 
     # --- Seniorities (read from Typesense facet to avoid the production
     # Postgres aggregate exceeding the statement timeout even with its
@@ -3115,7 +3157,17 @@ async def refresh_typesense_counts(
                 "has_active_postings": count > 0,
             }
         )
-    await loop.run_in_executor(None, _ts_bulk_upsert, client, "seniority", sen_docs, "update")
+    await loop.run_in_executor(
+        None,
+        partial(
+            _ts_bulk_upsert,
+            client,
+            "seniority",
+            sen_docs,
+            "update",
+            fail_on_error=True,
+        ),
+    )
 
     # --- Technologies (read from Typesense facet to avoid the production
     # Postgres unnest aggregate timing out on the active posting set; #4961) ---
@@ -3129,7 +3181,17 @@ async def refresh_typesense_counts(
                 "has_active_postings": count > 0,
             }
         )
-    await loop.run_in_executor(None, _ts_bulk_upsert, client, "technology", tech_docs, "update")
+    await loop.run_in_executor(
+        None,
+        partial(
+            _ts_bulk_upsert,
+            client,
+            "technology",
+            tech_docs,
+            "update",
+            fail_on_error=True,
+        ),
+    )
 
     # --- Companies (indexed facets; issue #5752) ---
     company_docs = [
@@ -3140,7 +3202,17 @@ async def refresh_typesense_counts(
         }
         for document_id, facet_value in targets["company"].items()
     ]
-    await loop.run_in_executor(None, _ts_bulk_upsert, client, "company", company_docs, "update")
+    await loop.run_in_executor(
+        None,
+        partial(
+            _ts_bulk_upsert,
+            client,
+            "company",
+            company_docs,
+            "update",
+            fail_on_error=True,
+        ),
+    )
 
     log.info("typesense.refresh_counts.done")
 

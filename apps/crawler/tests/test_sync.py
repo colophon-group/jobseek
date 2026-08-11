@@ -1539,6 +1539,125 @@ class TestSyncWatchlistsTypesense:
 
         web_conn.fetch.assert_not_awaited()
 
+    @pytest.mark.parametrize(
+        "acknowledgement",
+        [
+            pytest.param(
+                [{"success": False, "error": "document contains private details"}],
+                id="rejected",
+            ),
+            pytest.param([], id="truncated"),
+            pytest.param([{}], id="missing-success"),
+            pytest.param(["malformed"], id="non-dict-item"),
+            pytest.param({"success": True}, id="non-list-response"),
+        ],
+    )
+    async def test_invalid_scheduled_import_acknowledgement_blocks_trivial_pruning(
+        self,
+        acknowledgement,
+    ):
+        indexed_id = uuid.uuid4()
+        trivial_id = uuid.uuid4()
+        now = datetime(2026, 8, 11, 12, tzinfo=UTC)
+        rows = [
+            _StubRecord(
+                id=indexed_id,
+                slug="python-jobs",
+                title="Python jobs",
+                description=None,
+                is_public=True,
+                created_at=now,
+                filters={"keywords": ["python"]},
+                owner_name="Public User",
+                owner_username="public-user",
+            ),
+            _StubRecord(
+                id=trivial_id,
+                slug="blank-watchlist",
+                title="Blank watchlist",
+                description=None,
+                is_public=True,
+                created_at=now,
+                filters={},
+                owner_name="Public User",
+                owner_username="public-user",
+            ),
+        ]
+
+        async def _web_fetch(query: str, *_args):
+            if "FROM watchlist w" in query:
+                return rows
+            if "FROM watchlist_company" in query or "source_watchlist_id" in query:
+                return []
+            raise AssertionError(f"unexpected web query: {query}")
+
+        web_conn = AsyncMock()
+        web_conn.fetch = AsyncMock(side_effect=_web_fetch)
+        local_conn = AsyncMock()
+        client = MagicMock()
+        client.collections["watchlist"].documents.import_.return_value = acknowledgement
+
+        with (
+            patch("src.sync._ts_bulk_delete_ids") as delete_ids,
+            pytest.raises(
+                RuntimeError,
+                match=(
+                    "collection=watchlist, action=upsert, expected_count=1, acknowledged_count="
+                ),
+            ) as exc_info,
+        ):
+            await sync_watchlists_typesense(web_conn, local_conn, client)
+
+        delete_ids.assert_not_called()
+        assert "private details" not in str(exc_info.value)
+
+    async def test_successful_scheduled_import_acknowledgement_allows_trivial_pruning(self):
+        indexed_id = uuid.uuid4()
+        trivial_id = uuid.uuid4()
+        now = datetime(2026, 8, 11, 12, tzinfo=UTC)
+        rows = [
+            _StubRecord(
+                id=indexed_id,
+                slug="python-jobs",
+                title="Python jobs",
+                description=None,
+                is_public=True,
+                created_at=now,
+                filters={"keywords": ["python"]},
+                owner_name="Public User",
+                owner_username="public-user",
+            ),
+            _StubRecord(
+                id=trivial_id,
+                slug="blank-watchlist",
+                title="Blank watchlist",
+                description=None,
+                is_public=True,
+                created_at=now,
+                filters={},
+                owner_name="Public User",
+                owner_username="public-user",
+            ),
+        ]
+
+        async def _web_fetch(query: str, *_args):
+            if "FROM watchlist w" in query:
+                return rows
+            if "FROM watchlist_company" in query or "source_watchlist_id" in query:
+                return []
+            raise AssertionError(f"unexpected web query: {query}")
+
+        web_conn = AsyncMock()
+        web_conn.fetch = AsyncMock(side_effect=_web_fetch)
+        local_conn = AsyncMock()
+        client = MagicMock()
+        client.collections["watchlist"].documents.import_.return_value = [{"success": True}]
+
+        with patch("src.sync._ts_bulk_delete_ids") as delete_ids:
+            await sync_watchlists_typesense(web_conn, local_conn, client)
+
+        delete_ids.assert_called_once_with(client, "watchlist", [str(trivial_id)])
+
 
 def _make_loc_row(
     *,
@@ -2062,6 +2181,118 @@ class TestRefreshTypesenseCounts:
             "active_posting_count": 0,
             "has_active_postings": False,
         }
+
+    @pytest.mark.parametrize(
+        ("location_counts", "acknowledgement", "expected_count", "acknowledged_count"),
+        [
+            pytest.param(
+                {"10": 1},
+                [{"success": False, "error": "document contains private details"}],
+                1,
+                1,
+                id="rejected",
+            ),
+            pytest.param({"10": 1}, [], 1, 0, id="empty-acknowledgement"),
+            pytest.param({"10": 1}, [{}], 1, 1, id="missing-success"),
+            pytest.param({"10": 1}, ["malformed"], 1, 1, id="non-dict-item"),
+            pytest.param({"10": 1}, {"success": True}, 1, 0, id="non-list-response"),
+            pytest.param(
+                {"10": 1, "20": 2},
+                [{"success": True}],
+                2,
+                1,
+                id="truncated",
+            ),
+        ],
+    )
+    async def test_invalid_import_acknowledgement_aborts_scheduled_count_refresh(
+        self,
+        location_counts,
+        acknowledgement,
+        expected_count,
+        acknowledged_count,
+    ):
+        local_conn = AsyncMock()
+        client = MagicMock()
+        collections = {
+            name: MagicMock()
+            for name in ("location", "occupation", "seniority", "technology", "company")
+        }
+        client.collections.__getitem__.side_effect = collections.__getitem__
+        collections["location"].documents.import_.return_value = acknowledgement
+
+        def _facet_counts(_client, field, _filter_by=None):
+            return location_counts if field == "location_ids" else {}
+
+        with (
+            patch("src.sync._fetch_facet_counts", side_effect=_facet_counts),
+            patch("src.sync.log") as mock_log,
+            pytest.raises(
+                RuntimeError,
+                match=(
+                    f"collection=location, action=update, expected_count={expected_count}, "
+                    f"acknowledged_count={acknowledged_count}, successful_count="
+                ),
+            ) as exc_info,
+        ):
+            await refresh_typesense_counts(local_conn, client)
+
+        collections["occupation"].documents.import_.assert_not_called()
+        collections["seniority"].documents.import_.assert_not_called()
+        collections["technology"].documents.import_.assert_not_called()
+        collections["company"].documents.import_.assert_not_called()
+        assert "private details" not in str(exc_info.value)
+        mock_log.error.assert_called_once_with(
+            "typesense.bulk_upsert.invalid_acknowledgement",
+            collection="location",
+            action="update",
+            expected_count=expected_count,
+            acknowledged_count=acknowledged_count,
+            successful_count=(
+                sum(
+                    1
+                    for result in acknowledgement
+                    if isinstance(result, dict) and result.get("success") is True
+                )
+                if isinstance(acknowledgement, list)
+                else 0
+            ),
+        )
+
+    async def test_successful_acknowledgements_continue_to_later_scheduled_count_updates(self):
+        local_conn = AsyncMock()
+        client = MagicMock()
+        collections = {
+            name: MagicMock()
+            for name in ("location", "occupation", "seniority", "technology", "company")
+        }
+        client.collections.__getitem__.side_effect = collections.__getitem__
+
+        def _facet_counts(_client, field, _filter_by=None):
+            return {"10": 3} if field in {"location_ids", "technology_ids"} else {}
+
+        collections["location"].documents.import_.return_value = [{"success": True}]
+        collections["technology"].documents.import_.return_value = [{"success": True}]
+
+        with patch("src.sync._fetch_facet_counts", side_effect=_facet_counts):
+            await refresh_typesense_counts(local_conn, client)
+
+        collections["location"].documents.import_.assert_called_once()
+        collections["technology"].documents.import_.assert_called_once()
+
+    async def test_every_scheduled_count_collection_requires_strict_acknowledgements(self):
+        local_conn = AsyncMock()
+        client = MagicMock()
+
+        with (
+            patch("src.sync._fetch_facet_counts", return_value={"10": 3}),
+            patch("src.sync._ts_bulk_upsert") as upsert,
+        ):
+            await refresh_typesense_counts(local_conn, client)
+
+        collections = {call.args[1] for call in upsert.call_args_list}
+        assert collections == {"location", "occupation", "seniority", "technology", "company"}
+        assert all(call.kwargs == {"fail_on_error": True} for call in upsert.call_args_list)
 
     async def test_seniority_and_technology_facets_apply_has_content_filter(self):
         """Issue #3288/#4947/#4961: precomputed counts must match the web's

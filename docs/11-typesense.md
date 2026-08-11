@@ -270,6 +270,9 @@ uv run crawler refresh-typesense
   by `WEB_DATABASE_URL` (upserts missing, deletes stale). Only explicit
   sync/count-refresh jobs receive this credential; long-running crawler
   services receive no web-owned database URL.
+- Validates exact per-document Typesense import acknowledgements before
+  continuing. A rejected, malformed, or truncated acknowledgement aborts the
+  command, records a failed cron run, and blocks dependent watchlist pruning.
 
 **When it runs in production** (two paths, both version-controlled):
 
