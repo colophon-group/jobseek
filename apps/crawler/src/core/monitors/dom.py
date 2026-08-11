@@ -116,6 +116,12 @@ _CLOUDFLARE_CHALLENGE_TEXTS = (
     "enable javascript and cookies",
     "sorry, you have been blocked",
 )
+_VERIFICATION_CHALLENGE_TEXTS = (
+    # Generic interstitial used by vacantescmr.mx. It is served as HTTP 200
+    # with no listing links, so treating it as a healthy empty board would
+    # tombstone every previously discovered posting.
+    "please wait while your request is being verified",
+)
 
 
 class BotChallengeError(RuntimeError):
@@ -135,7 +141,10 @@ def _raise_if_bot_challenge(url: str, html: str) -> None:
         _CLOUDFLARE_CHALLENGE_PATH in haystack
         and any(text in haystack for text in _CLOUDFLARE_CHALLENGE_TEXTS)
     )
-    if is_siteground or is_cloudflare:
+    is_verification_interstitial = any(
+        text in haystack for text in _VERIFICATION_CHALLENGE_TEXTS
+    )
+    if is_siteground or is_cloudflare or is_verification_interstitial:
         raise BotChallengeError(
             f"bot challenge detected for {url}; configure or verify proxy transport"
         )

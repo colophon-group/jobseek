@@ -168,6 +168,27 @@ class TestCanHandle:
 
 
 class TestDomDiscoverInitialFetch:
+    async def test_static_request_verification_challenge_raises(self):
+        """A 200 verification shell must fail instead of returning zero jobs."""
+
+        challenge = (
+            "<html><head><title>Verifying...</title></head>"
+            "<body>Please wait while your request is being verified...</body></html>"
+        )
+
+        def handler(request):
+            return httpx.Response(200, text=challenge, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(BotChallengeError, match="proxy transport"):
+                await dom_discover(
+                    {
+                        "board_url": "https://blocked.example/careers",
+                        "metadata": {"url_filter": "/job/"},
+                    },
+                    client,
+                )
+
     async def test_siteground_challenge_raises_instead_of_successful_empty(self, monkeypatch):
         """A SiteGround HTTP-202 captcha shell is not an empty board."""
 
@@ -245,6 +266,26 @@ class TestDomDiscoverInitialFetch:
                 "<html><head><title>Just a moment...</title></head>"
                 "<body><script src='/cdn-cgi/challenge-platform/scripts/jsd/main.js'>"
                 "</script><p>Enable JavaScript and cookies to continue</p></body></html>"
+            )
+        )
+        monkeypatch.setattr("src.core.monitors.dom.navigate", AsyncMock())
+        monkeypatch.setattr("src.core.monitors.dom.run_actions", AsyncMock())
+
+        with pytest.raises(BotChallengeError, match="proxy transport"):
+            await _extract_links_rendered(
+                page,
+                {"_board_url": "https://blocked.example/careers"},
+            )
+
+    async def test_rendered_request_verification_challenge_raises(self, monkeypatch):
+        """HTTP-200 verification interstitials must not become empty boards."""
+
+        page = MagicMock()
+        page.url = "https://blocked.example/careers"
+        page.content = AsyncMock(
+            return_value=(
+                "<html><head><title>Verifying...</title></head>"
+                "<body>Please wait while your request is being verified...</body></html>"
             )
         )
         monkeypatch.setattr("src.core.monitors.dom.navigate", AsyncMock())
