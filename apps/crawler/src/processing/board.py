@@ -8,9 +8,11 @@ import json
 import random
 import re
 from collections import defaultdict
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from time import monotonic
+from typing import Literal
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import asyncpg
@@ -783,14 +785,33 @@ async def _fetch_diff_batch(
 # ── Monitor Processing ───────────────────────────────────────────────
 
 
+@dataclass(frozen=True, slots=True)
+class BoardMonitorResult:
+    """Processing result returned to the task-owning scheduler.
+
+    ``tasks_total`` is deliberately not emitted by the board processor. The
+    Redis or database scheduler owns the terminal task outcome, after its
+    reschedule/cleanup work has also succeeded. Iteration preserves the
+    historical two-value unpacking contract for internal callers and tests.
+    """
+
+    success: bool
+    duration_seconds: float
+    status: Literal["succeeded", "failed", "tdm_reserved"]
+
+    def __iter__(self) -> Iterator[bool | float]:
+        yield self.success
+        yield self.duration_seconds
+
+
 async def _process_one_board_streaming(
     board: asyncpg.Record,
     pool: asyncpg.Pool,
     http: httpx.AsyncClient,
     extender: object,
     pw=None,
-) -> tuple[bool, float]:
-    """Run a streaming monitor cycle for a single board. Returns (success, duration_s).
+) -> BoardMonitorResult:
+    """Run a streaming monitor cycle and return its scheduler-facing result.
 
     Yields batches from the monitor, processing each incrementally:
     - Extends the DB lease and pulses the deadline extender on each batch
@@ -1379,7 +1400,7 @@ async def _process_one_board_streaming(
                     with contextlib.suppress(Exception):
                         await _batch.get_redis().delete("cache:platform-stats")
                 _emit_board_recovery(recovered_from, board_log, discovered=0)
-            return True, elapsed
+            return BoardMonitorResult(True, elapsed, "succeeded")
 
         # Mark as gone any active posting not seen during this monitor run.
         # Per-board override (#2725): ``metadata.delist_threshold`` lets
@@ -1450,7 +1471,6 @@ async def _process_one_board_streaming(
         )
 
         # Emit Prometheus metrics
-        tasks_total.labels(kind="monitor", status="succeeded").inc()
         if total_new:
             monitor_jobs_discovered.labels(profile="simple", action="new").inc(total_new)
         if total_relisted:
@@ -1465,7 +1485,7 @@ async def _process_one_board_streaming(
             with contextlib.suppress(Exception):
                 await _batch.get_redis().delete("cache:platform-stats")
 
-        return True, elapsed
+        return BoardMonitorResult(True, elapsed, "succeeded")
 
     except TDMReservedError as exc:
         # Publisher emitted the W3C TDM-Reservation opt-out signal (#2842).
@@ -1486,12 +1506,11 @@ async def _process_one_board_streaming(
             board_id=board_id,
             source=getattr(exc, "source", "unknown"),
         ).inc()
-        tasks_total.labels(kind="monitor", status="tdm_reserved").inc()
         # Discard stale location misses from this skipped board. Mirrors
         # the cleanup the failure path does.
         loc_resolver.drain_location_misses()
         # Return success-shaped: the run was not a failure.
-        return True, elapsed
+        return BoardMonitorResult(True, elapsed, "tdm_reserved")
 
     except BoardGoneError as exc:
         # A provider-native gone signal enters a recoverable confirmation
@@ -1506,7 +1525,6 @@ async def _process_one_board_streaming(
             status_code=getattr(exc, "status_code", None),
             duration_s=round(elapsed, 2),
         )
-        tasks_total.labels(kind="monitor", status="board_gone").inc()
         loc_resolver.drain_location_misses()
         board_gone_count = 0
         decision = None
@@ -1570,7 +1588,6 @@ async def _process_one_board_streaming(
         elapsed = monotonic() - t0
         error_msg = _error_message(exc)
         board_log.exception("batch.monitor.error", error=error_msg, duration_s=round(elapsed, 2))
-        tasks_total.labels(kind="monitor", status="failed").inc()
         # Discard stale location misses from this failed board
         loc_resolver.drain_location_misses()
         # Five strikes enter a recoverable quarantine. The board stays enabled
@@ -1600,7 +1617,7 @@ async def _process_one_board_streaming(
                     "batch.monitor.quarantine_probe_failed",
                     retry="daily_capped_backoff",
                 )
-        return False, elapsed
+        return BoardMonitorResult(False, elapsed, "failed")
     finally:
         if pw and pw_owned:
             await pw.stop()
@@ -1621,11 +1638,16 @@ async def _monitor_pipeline(
     for board in boards:
         try:
             extender = DeadlineExtender()
-            ok, elapsed = await _process_one_board_streaming(board, pool, http, extender)
-            result.durations.append(elapsed)
-            if ok:
+            outcome = await _process_one_board_streaming(board, pool, http, extender)
+            result.durations.append(outcome.duration_seconds)
+            tasks_total.labels(kind="monitor", status=outcome.status).inc()
+            if outcome.success:
                 result.succeeded += 1
+        except BoardGoneError:
+            tasks_total.labels(kind="monitor", status="gone").inc()
+            log.warning("batch.monitor.pipeline_gone", board_id=str(board["id"]))
         except Exception:
+            tasks_total.labels(kind="monitor", status="failed").inc()
             log.exception("batch.monitor.pipeline_error", board_id=str(board["id"]))
     return result
 
@@ -1935,9 +1957,11 @@ async def run_single_board(
 
     # Monitor -- always use streaming path
     extender = DeadlineExtender()
-    _ok, monitor_duration = await _process_one_board_streaming(board, pool, http, extender)
+    monitor_result = await _process_one_board_streaming(board, pool, http, extender)
     log.info(
-        "single_board.monitor.done", board_slug=board_slug, duration_s=round(monitor_duration, 2)
+        "single_board.monitor.done",
+        board_slug=board_slug,
+        duration_s=round(monitor_result.duration_seconds, 2),
     )
 
     # Scrape items for this board

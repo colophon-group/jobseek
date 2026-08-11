@@ -53,7 +53,7 @@ from src.core.location_resolve import LocationResolver, ResolvedLocation
 from src.core.monitor import MonitorResult
 from src.core.monitors import DiscoveredJob, api_monitor_types
 from src.core.scrapers import JobContent
-from src.processing.board import _fetch_diff_batch
+from src.processing.board import BoardMonitorResult, _fetch_diff_batch
 
 
 @pytest.fixture(autouse=True)
@@ -1107,6 +1107,8 @@ class TestProcessOneBoard:
     @patch("src.batch.monitor_one_stream")
     async def test_error_records_failure(self, mock_monitor, mock_get_redis, mock_pool, mock_http):
         """monitor_one raises -> _RECORD_FAILURE called with truncated error."""
+        from src.metrics import tasks_total
+
         pool, conn = mock_pool
         long_error = "x" * 1000
         mock_monitor.side_effect = RuntimeError(long_error)
@@ -1115,13 +1117,16 @@ class TestProcessOneBoard:
             "entered_quarantine": False,
         }
         board = _mock_board()
+        task_before = _counter_value(tasks_total, kind="monitor", status="failed")
 
-        await _process_one_board(board, pool, mock_http)
+        outcome = await _process_one_board(board, pool, mock_http)
 
         failure_calls = [c for c in conn.fetchrow.await_args_list if c.args[0] == _RECORD_FAILURE]
         assert len(failure_calls) == 1
         error_arg = failure_calls[0].args[2]
         assert len(error_arg) <= 500
+        assert outcome.status == "failed"
+        assert _counter_value(tasks_total, kind="monitor", status="failed") == task_before
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -1328,6 +1333,7 @@ class TestProcessOneBoard:
     ):
         """A single recent-success 404 records evidence without delisting."""
         from src.core.monitors import BoardGoneError
+        from src.metrics import tasks_total
         from src.processing.board import monitor_gone_events_total
 
         pool, conn = mock_pool
@@ -1354,6 +1360,10 @@ class TestProcessOneBoard:
 
         conn.fetchrow.side_effect = fetchrow
         confirmation_before = _counter_value(monitor_gone_events_total, event="confirmation")
+        task_before = {
+            status: _counter_value(tasks_total, kind="monitor", status=status)
+            for status in ("board_gone", "gone")
+        }
 
         with pytest.raises(BoardGoneError):
             await _process_one_board(_mock_board(), pool, mock_http)
@@ -1364,6 +1374,8 @@ class TestProcessOneBoard:
             == 1
         )
         mock_get_redis.assert_not_called()
+        for status, value in task_before.items():
+            assert _counter_value(tasks_total, kind="monitor", status=status) == value
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -1381,6 +1393,7 @@ class TestProcessOneBoard:
           the worker treats this as a successful cycle and re-queues
           normally.
         """
+        from src.metrics import tasks_total
         from src.processing.board import monitor_skipped_tdm_total
         from src.shared.tdm import TDMReservedError
 
@@ -1392,11 +1405,18 @@ class TestProcessOneBoard:
         )
         board = _mock_board()
         before = _counter_value(monitor_skipped_tdm_total, board_id="board-1", source="header")
+        task_before = _counter_value(tasks_total, kind="monitor", status="tdm_reserved")
 
-        ok, _elapsed = await _process_one_board(board, pool, mock_http)
+        outcome = await _process_one_board_streaming(
+            board,
+            pool,
+            mock_http,
+            DeadlineExtender(),
+        )
 
         # Run reported success — TDM is not a failure.
-        assert ok is True
+        assert outcome.success is True
+        assert outcome.status == "tdm_reserved"
         # No failure ramp.
         failure_calls = [c for c in conn.fetchrow.await_args_list if c.args[0] == _RECORD_FAILURE]
         assert failure_calls == []
@@ -1408,6 +1428,9 @@ class TestProcessOneBoard:
         # Counter went up by 1 for this board's source label.
         after = _counter_value(monitor_skipped_tdm_total, board_id="board-1", source="header")
         assert after - before == 1
+        # The task-owning scheduler, not the board processor, emits the one
+        # terminal crawler_tasks_total sample.
+        assert _counter_value(tasks_total, kind="monitor", status="tdm_reserved") == task_before
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
@@ -2423,7 +2446,7 @@ class TestMonitorPipeline:
         """3 boards, all succeed -> returns 3."""
         pool, _ = mock_pool
         boards = [_mock_board(id=f"b-{i}") for i in range(3)]
-        mock_process.return_value = (True, 1.0)
+        mock_process.return_value = BoardMonitorResult(True, 1.0, "succeeded")
 
         result = await _monitor_pipeline(boards, pool, mock_http)
 
@@ -2436,7 +2459,11 @@ class TestMonitorPipeline:
         """3 boards, 1 raises in _process_one_board -> returns 2."""
         pool, _ = mock_pool
         boards = [_mock_board(id=f"b-{i}") for i in range(3)]
-        mock_process.side_effect = [(True, 1.0), RuntimeError("fail"), (True, 1.0)]
+        mock_process.side_effect = [
+            BoardMonitorResult(True, 1.0, "succeeded"),
+            RuntimeError("fail"),
+            BoardMonitorResult(True, 1.0, "succeeded"),
+        ]
 
         result = await _monitor_pipeline(boards, pool, mock_http)
 
@@ -2447,7 +2474,11 @@ class TestMonitorPipeline:
         """_process_one_board False result should count as failed."""
         pool, _ = mock_pool
         boards = [_mock_board(id=f"b-{i}") for i in range(3)]
-        mock_process.side_effect = [(True, 1.0), (False, 2.0), (True, 1.0)]
+        mock_process.side_effect = [
+            BoardMonitorResult(True, 1.0, "succeeded"),
+            BoardMonitorResult(False, 2.0, "failed"),
+            BoardMonitorResult(True, 1.0, "succeeded"),
+        ]
 
         result = await _monitor_pipeline(boards, pool, mock_http)
 
