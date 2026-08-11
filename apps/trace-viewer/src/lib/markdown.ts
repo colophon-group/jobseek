@@ -7,6 +7,7 @@
  */
 
 import DOMPurify, { type Config } from 'dompurify'
+import { decodeHTML } from 'entities'
 
 const URL_VALIDATION_BASE = new URL('https://trace-viewer.invalid/')
 const DECODE_PASSES = 5
@@ -148,11 +149,9 @@ function undoInputEscaping(value: string): string {
 }
 
 function decodeHtmlEntities(value: string): string {
-  const textarea = document.createElement('textarea')
   let decoded = value
   for (let pass = 0; pass < DECODE_PASSES; pass++) {
-    textarea.innerHTML = decoded
-    const next = textarea.value
+    const next = decodeHTML(decoded)
     if (next === decoded) break
     decoded = next
   }

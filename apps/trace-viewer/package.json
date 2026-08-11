@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "dompurify": "^3.4.13",
+    "entities": "^8.0.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "lucide-react": "^1.30.0"

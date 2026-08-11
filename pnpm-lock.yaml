@@ -134,6 +134,9 @@ importers:
       dompurify:
         specifier: ^3.4.13
         version: 3.4.13
+      entities:
+        specifier: ^8.0.0
+        version: 8.0.0
       lucide-react:
         specifier: ^1.30.0
         version: 1.30.0(react@19.2.8)
