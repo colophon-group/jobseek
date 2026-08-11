@@ -4,13 +4,24 @@ import "@/test-utils/lingui-mock";
 
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
+  replace: vi.fn(),
   refresh: vi.fn(),
   createWatchlist: vi.fn(),
+  searchParams: new URLSearchParams(),
+  session: {
+    user: { username: "alice" } as { username: string } | null,
+    isLoggedIn: true,
+    isPending: false,
+  },
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mocks.push, refresh: mocks.refresh }),
-  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({
+    push: mocks.push,
+    replace: mocks.replace,
+    refresh: mocks.refresh,
+  }),
+  useSearchParams: () => mocks.searchParams,
 }));
 
 vi.mock("@/lib/useLocalePath", () => ({
@@ -18,10 +29,7 @@ vi.mock("@/lib/useLocalePath", () => ({
 }));
 
 vi.mock("@/components/providers/SessionProvider", () => ({
-  useSession: () => ({
-    user: { username: "alice" },
-    isLoggedIn: true,
-  }),
+  useSession: () => mocks.session,
 }));
 
 vi.mock("@/lib/actions/watchlists", () => ({
@@ -75,6 +83,12 @@ const overview = [{
 describe("WatchlistsPage deferred counts (#5896)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.searchParams = new URLSearchParams();
+    mocks.session = {
+      user: { username: "alice" },
+      isLoggedIn: true,
+      isPending: false,
+    };
   });
 
   afterEach(() => {
@@ -123,5 +137,71 @@ describe("WatchlistsPage deferred counts (#5896)", () => {
       "/api/web/watchlists/counts?locale=de",
       expect.objectContaining({ cache: "no-store" }),
     );
+  });
+
+  it("waits for bootstrap and creates one complete URL handoff", async () => {
+    mocks.session = { user: null, isLoggedIn: false, isPending: true };
+    mocks.searchParams = new URLSearchParams({
+      title: "Distributed systems",
+      description: "Senior platform roles",
+      q: "platform,distributed",
+      loc: "berlin,zurich",
+      occ: "software-engineering",
+      sen: "senior,staff",
+      tech: "go,kubernetes",
+      wm: "remote,hybrid",
+      etype: "full_time,contract",
+      sal: "120000-180000",
+      salcur: "CHF",
+      exp: "5-10",
+      companies: "company-1,company-2",
+    });
+    mocks.createWatchlist.mockResolvedValue({ slug: "distributed-systems" });
+
+    const props = {
+      initialWatchlists: [],
+      username: "alice",
+      limitReached: false,
+      locale: "en",
+    };
+    const { rerender } = render(<WatchlistsPage {...props} />);
+
+    expect(mocks.createWatchlist).not.toHaveBeenCalled();
+
+    mocks.session = {
+      user: { username: "alice" },
+      isLoggedIn: true,
+      isPending: false,
+    };
+    rerender(<WatchlistsPage {...props} />);
+
+    await waitFor(() => expect(mocks.createWatchlist).toHaveBeenCalledTimes(1));
+    expect(mocks.createWatchlist).toHaveBeenCalledWith({
+      title: "Distributed systems",
+      description: "Senior platform roles",
+      companyIds: ["company-1", "company-2"],
+      filters: {
+        keywords: ["platform", "distributed"],
+        locationSlugs: ["berlin", "zurich"],
+        occupationSlugs: ["software-engineering"],
+        senioritySlugs: ["senior", "staff"],
+        technologySlugs: ["go", "kubernetes"],
+        workMode: ["remote", "hybrid"],
+        employmentType: ["full_time", "contract"],
+        salaryMin: 120000,
+        salaryMax: 180000,
+        salaryCurrency: "CHF",
+        experienceMin: 5,
+        experienceMax: 10,
+      },
+      isPublic: false,
+    });
+    expect(mocks.replace).toHaveBeenCalledWith(
+      "/en/alice/distributed-systems",
+    );
+    expect(mocks.push).not.toHaveBeenCalled();
+
+    rerender(<WatchlistsPage {...props} locale="de" />);
+    await waitFor(() => expect(mocks.createWatchlist).toHaveBeenCalledTimes(1));
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, Loader2, LogIn } from "lucide-react";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -12,6 +12,15 @@ import { WatchlistCard, CreateWatchlistCard } from "@/components/watchlist/watch
 import { PublicWatchlistSearch } from "@/components/watchlist/public-watchlist-search";
 import { UpgradeModal, useUpgradeModal } from "@/components/ui/upgrade-modal";
 import { Button } from "@/components/ui/Button";
+import {
+  parseEmploymentTypeParam,
+  parseWorkModeParam,
+} from "@/lib/search/query-params";
+
+function commaSeparatedValues(value: string | null): string[] {
+  if (!value) return [];
+  return value.split(",").map((item) => item.trim()).filter(Boolean);
+}
 
 export function WatchlistsPage({
   initialWatchlists,
@@ -27,11 +36,12 @@ export function WatchlistsPage({
   const { t } = useLingui();
   const router = useRouter();
   const lp = useLocalePath();
-  const { user, isLoggedIn } = useSession();
+  const { user, isLoggedIn, isPending } = useSession();
   const searchParams = useSearchParams();
   const [creating, setCreating] = useState(false);
   const [watchlists, setWatchlists] = useState(initialWatchlists);
   const upgrade = useUpgradeModal();
+  const handoffAttemptedRef = useRef(false);
 
   useEffect(() => {
     setWatchlists(initialWatchlists);
@@ -82,7 +92,15 @@ export function WatchlistsPage({
     }));
   }
 
-  async function handleCreate(prefill?: { title?: string; description?: string; filters?: WatchlistFilters }) {
+  async function handleCreate(
+    prefill?: {
+      title?: string;
+      description?: string;
+      filters?: WatchlistFilters;
+      companyIds?: string[];
+    },
+    navigation: "push" | "replace" = "push",
+  ) {
     if (creating || !isLoggedIn) return;
     if (limitReached) {
       // Issue #3036: redirecting to /settings (general tab) hid the
@@ -97,7 +115,7 @@ export function WatchlistsPage({
       const result = await createWatchlist({
         title: prefill?.title || "New watchlist",
         description: prefill?.description,
-        companyIds: [],
+        companyIds: prefill?.companyIds ?? [],
         filters: prefill?.filters,
         isPublic: false,
       });
@@ -108,7 +126,16 @@ export function WatchlistsPage({
         return;
       }
       if ("slug" in result && (username ?? user?.username)) {
-        router.push(lp(`/${username ?? user?.username}/${result.slug}`));
+        const destination = lp(`/${username ?? user?.username}/${result.slug}`);
+        if (navigation === "replace") {
+          router.replace(destination);
+        } else {
+          router.push(destination);
+        }
+      } else if (navigation === "replace") {
+        // A successful handoff without a navigable owner/slug still needs to
+        // lose the mutating query string so refresh/back cannot create again.
+        router.replace(lp("/watchlists"));
       } else {
         router.refresh();
       }
@@ -117,13 +144,28 @@ export function WatchlistsPage({
     }
   }
 
-  // Auto-create watchlist from URL params (e.g. from /api/v1/watchlist/create).
-  // Intentionally one-shot on mount: adding live deps here would retry
-  // the mutating create flow on unrelated session/limit/render changes.
-  // The login path returns to this page with the session already present.
+  const runWatchlistHandoff = useEffectEvent(
+    (prefill: {
+      title: string;
+      description?: string;
+      filters?: WatchlistFilters;
+      companyIds: string[];
+    }) => handleCreate(prefill, "replace"),
+  );
+
+  // Auto-create a watchlist from URL params (for example, the URL emitted by
+  // /api/v1/watchlist/create). Wait for the asynchronous session bootstrap,
+  // then claim this mounted handoff before any mutation or modal side effect.
+  // The ref lets the effect react to bootstrap without allowing later context
+  // or URL identity changes to create the same watchlist twice.
   useEffect(() => {
+    if (isPending || handoffAttemptedRef.current) return;
+
     const title = searchParams.get("title");
-    if (!title || !isLoggedIn) return;
+    if (!title) return;
+
+    handoffAttemptedRef.current = true;
+    if (!isLoggedIn) return;
     if (limitReached) {
       // Issue #3036: arriving with `?title=...` while at the plan
       // limit used to silently no-op. Tell the user why nothing
@@ -140,13 +182,18 @@ export function WatchlistsPage({
     const sal = searchParams.get("sal");
     const exp = searchParams.get("exp");
     const salcur = searchParams.get("salcur");
+    const workMode = parseWorkModeParam(searchParams.get("wm"));
+    const employmentType = parseEmploymentTypeParam(searchParams.get("etype"));
+    const companyIds = commaSeparatedValues(searchParams.get("companies"));
 
     const filters: WatchlistFilters = {};
-    if (q) filters.keywords = q.split(",").filter(Boolean);
-    if (loc) filters.locationSlugs = loc.split(",").filter(Boolean);
-    if (occ) filters.occupationSlugs = occ.split(",").filter(Boolean);
-    if (sen) filters.senioritySlugs = sen.split(",").filter(Boolean);
-    if (tech) filters.technologySlugs = tech.split(",").filter(Boolean);
+    if (q) filters.keywords = commaSeparatedValues(q);
+    if (loc) filters.locationSlugs = commaSeparatedValues(loc);
+    if (occ) filters.occupationSlugs = commaSeparatedValues(occ);
+    if (sen) filters.senioritySlugs = commaSeparatedValues(sen);
+    if (tech) filters.technologySlugs = commaSeparatedValues(tech);
+    if (workMode.length > 0) filters.workMode = workMode;
+    if (employmentType.length > 0) filters.employmentType = employmentType;
     if (salcur) filters.salaryCurrency = salcur;
     if (sal) {
       const [minStr, maxStr] = sal.split("-");
@@ -159,12 +206,13 @@ export function WatchlistsPage({
       if (maxStr) filters.experienceMax = parseInt(maxStr, 10);
     }
 
-    handleCreate({
+    void runWatchlistHandoff({
       title,
       description: searchParams.get("description") ?? undefined,
       filters: Object.keys(filters).length > 0 ? filters : undefined,
+      companyIds,
     });
-  }, []);
+  }, [isLoggedIn, isPending, limitReached, searchParams]);
 
   return (
     <>
