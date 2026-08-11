@@ -1,10 +1,28 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   classifyVercelWebChanges,
   isVercelWebInput,
 } from "../.github/scripts/classify-vercel-web-change.mjs";
+import {
+  ScannerResponseError,
+  verifyScannerResponse,
+} from "../.github/scripts/verify-vercel-scanner-response.mjs";
+
+const scannerVerifier = fileURLToPath(
+  new URL("../.github/scripts/verify-vercel-scanner-response.mjs", import.meta.url),
+);
 
 test("deploys web runtime and every current workspace input", () => {
   for (const path of [
@@ -18,6 +36,7 @@ test("deploys web runtime and every current workspace input", () => {
     "turbo.json",
     ".github/workflows/deploy-web-production.yml",
     ".github/scripts/classify-vercel-web-change.mjs",
+    ".github/scripts/verify-vercel-scanner-response.mjs",
     ".github/scripts/verify-vercel-server-action-key.mjs",
     ".github/scripts/verify-vercel-promotion.mjs",
   ]) {
@@ -82,8 +101,13 @@ test("production workflow stages, verifies, then promotes exact main", () => {
   assert.doesNotMatch(workflow, /--(?:output|write-out)=/);
   assert.match(
     workflow,
-    /scanner_status=[\s\S]{0,240}-- --location --silent/,
+    /scanner_headers=.*RUNNER_TEMP[\s\S]{0,500}--dump-header "\$scanner_headers"/,
   );
+  assert.match(workflow, /umask 077/);
+  assert.match(workflow, /chmod 600 "\$scanner_headers"/);
+  assert.match(workflow, /trap 'rm -f -- "\$scanner_headers"' EXIT/);
+  assert.match(workflow, /verify-vercel-scanner-response\.mjs/);
+  assert.doesNotMatch(workflow, /\bcat\s+.*scanner_headers/);
   assert.match(workflow, /Smoke \$path -> HTTP \$status/);
   assert.match(workflow, /Scanner path exposed/);
   assert.doesNotMatch(workflow, /--cwd=apps\/web/);
@@ -95,4 +119,131 @@ test("production workflow stages, verifies, then promotes exact main", () => {
   );
   assert.doesNotMatch(workflow, /environment:\n\s+name: Production\n\s+url:/);
   assert.doesNotMatch(workflow, /pull_request:/);
+});
+
+test("accepts a normal final 404 scanner response", () => {
+  assert.deepEqual(
+    verifyScannerResponse(
+      "404",
+      "HTTP/2 404\r\ncontent-type: text/html\r\nset-cookie: private=value\r\n\r\n",
+    ),
+    { status: "404", outcome: "not_found" },
+  );
+});
+
+test("accepts only an exact Vercel-mitigated final 403", () => {
+  assert.deepEqual(
+    verifyScannerResponse(
+      "403",
+      "HTTP/2 403\r\nx-vercel-mitigated: deny\r\ncache-control: private, no-store\r\n\r\n",
+    ),
+    { status: "403", outcome: "vercel_mitigated" },
+  );
+});
+
+test("CLI reports only a safe scanner decision", () => {
+  const directory = mkdtempSync(join(tmpdir(), "vercel-scanner-response-"));
+  const headerPath = join(directory, "headers");
+  const sensitiveValue = "sensitive-test-value";
+  writeFileSync(
+    headerPath,
+    [
+      "HTTP/2 403",
+      "x-vercel-mitigated: deny",
+      `set-cookie: session=${sensitiveValue}`,
+      `authorization: Bearer ${sensitiveValue}`,
+      "",
+      "",
+    ].join("\r\n"),
+    { mode: 0o600 },
+  );
+  chmodSync(headerPath, 0o600);
+
+  const result = spawnSync(process.execPath, [scannerVerifier, "403", headerPath], {
+    encoding: "utf8",
+  });
+  rmSync(directory, { recursive: true, force: true });
+
+  assert.equal(result.status, 0);
+  assert.match(result.stdout, /HTTP 403 \(Vercel mitigation confirmed\)/);
+  assert.equal(result.stderr, "");
+  assert.doesNotMatch(`${result.stdout}${result.stderr}`, new RegExp(sensitiveValue));
+});
+
+test("rejects a generic application 403", () => {
+  assert.throws(
+    () =>
+      verifyScannerResponse(
+        "403",
+        "HTTP/2 403\r\ncontent-type: text/html\r\n\r\n",
+      ),
+    ScannerResponseError,
+  );
+});
+
+test("rejects missing, malformed, or ambiguous mitigation evidence", () => {
+  for (const headers of [
+    "HTTP/2 403\r\nx-vercel-mitigated: block\r\n\r\n",
+    "HTTP/2 403\r\nx-vercel-mitigated: Deny\r\n\r\n",
+    "HTTP/2 403\r\nx-vercel-mitigated: deny, challenge\r\n\r\n",
+    "HTTP/2 403\r\nx-vercel-mitigated: deny\r\nx-vercel-mitigated: deny\r\n\r\n",
+    "HTTP/2 403\r\nx-vercel-mitigated deny\r\n\r\n",
+    "HTTP/2 403\r\nx-vercel-mitigated: deny\r\n folded\r\n\r\n",
+  ]) {
+    assert.throws(
+      () => verifyScannerResponse("403", headers),
+      ScannerResponseError,
+      headers,
+    );
+  }
+});
+
+test("rejects exposed 200 and redirect-to-200 responses", () => {
+  assert.throws(
+    () =>
+      verifyScannerResponse(
+        "200",
+        "HTTP/2 200\r\ncontent-type: text/html\r\n\r\n",
+      ),
+    ScannerResponseError,
+  );
+  assert.throws(
+    () =>
+      verifyScannerResponse(
+        "200",
+        "HTTP/2 302\r\nlocation: /login\r\n\r\nHTTP/2 200\r\ncontent-type: text/html\r\n\r\n",
+      ),
+    ScannerResponseError,
+  );
+});
+
+test("uses only the final block in a multi-response header file", () => {
+  const earlierMitigation =
+    "HTTP/2 403\r\nx-vercel-mitigated: deny\r\n\r\n";
+  const finalGeneric403 = "HTTP/2 403\r\ncontent-type: text/html\r\n\r\n";
+
+  assert.throws(
+    () => verifyScannerResponse("403", earlierMitigation + finalGeneric403),
+    ScannerResponseError,
+  );
+  assert.deepEqual(
+    verifyScannerResponse(
+      "403",
+      "HTTP/2 302\r\nlocation: /blocked\r\n\r\n" + earlierMitigation,
+    ),
+    { status: "403", outcome: "vercel_mitigated" },
+  );
+});
+
+test("rejects status/header disagreement and every other status", () => {
+  assert.throws(
+    () => verifyScannerResponse("403", "HTTP/2 404\r\n\r\n"),
+    ScannerResponseError,
+  );
+  for (const status of ["301", "401", "429", "500"]) {
+    assert.throws(
+      () => verifyScannerResponse(status, `HTTP/2 ${status}\r\n\r\n`),
+      ScannerResponseError,
+    );
+  }
 });
