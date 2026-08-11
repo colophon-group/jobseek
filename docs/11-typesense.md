@@ -8,7 +8,8 @@ Current production deployment as of July 2026. The earlier docs in this director
 
 - **Hetzner CX22**: 4 GB RAM, 2 vCPU, dedicated IPv4
 - **OS**: Ubuntu (Docker host)
-- **Container**: `typesense/typesense:27.1`, `--network host`, data at
+- **Container**: Typesense 27.1 pinned by manifest digest in the host installer,
+  `--network host`, data at
   `/mnt/typesense-data`; the only command argument is the path to a read-only
   config file
 - **Port**: 8108
