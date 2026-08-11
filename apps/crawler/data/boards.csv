@@ -2035,6 +2035,7 @@ freenow,freenow-greenhouse,https://job-boards.greenhouse.io/freenow,greenhouse,"
 freeplay,freeplay-ashby,https://jobs.ashbyhq.com/freeplay,ashby,"{""token"": ""freeplay""}",skip,
 freetrade,freetrade-ashby,https://jobs.ashbyhq.com/freetrade,ashby,"{""token"": ""freetrade"", ""blast_radius_floor"": 0.9}",skip,
 freewill,freewill-ashby,https://jobs.ashbyhq.com/freewill,ashby,"{""token"": ""freewill""}",skip,
+fresenius-medical-care,fresenius-medical-care-careers,https://freseniusmedicalcare.wd3.myworkdayjobs.com/fme,workday,,workday,
 fresh-prints,fresh-prints-greenhouse,https://job-boards.greenhouse.io/freshprints,greenhouse,"{""token"": ""freshprints""}",skip,
 freshfields,freshfields-careers-workday,https://freshfields.wd3.myworkdayjobs.com/FBD_101,workday,"{""company"": ""freshfields"", ""wd_instance"": ""wd3"", ""site"": ""FBD_101""}",workday,
 freshpaint,freshpaint-ashby,https://jobs.ashbyhq.com/freshpaint,ashby,"{""token"": ""freshpaint""}",skip,
