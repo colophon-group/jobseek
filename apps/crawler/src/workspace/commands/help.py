@@ -743,7 +743,7 @@ sitemap — XML Sitemap Parser
   Cap:      50,000 URLs
 
   Config:
-    {"sitemap_url": "https://example.com/jobs/sitemap.xml"}
+    {"sitemap_url": "https://example.com/jobs/sitemap.xml", "proxy": true}
 
     sitemap_url  Optional. If omitted, auto-discovers by:
                  1. Walking up the board URL path trying sitemap.xml at each level
@@ -751,6 +751,13 @@ sitemap — XML Sitemap Parser
                  3. Parsing robots.txt for Sitemap: directives
                  4. Recursively resolving sitemap indexes (prefers job-related children)
                  Discovered URL is cached in board metadata for future runs.
+
+    proxy        Optional. Route sitemap, index, and child requests through
+                 the configured proxy provider when live 403/429 WAF evidence
+                 shows that direct crawler egress is blocked. Mirror this in
+                 the scraper config when detail pages use the same origin.
+                 Configured sitemap URLs retry and fail closed on persistent
+                 403/429 responses instead of being reported as not found.
 
   url_filter   Regex filter for discovered URLs (all monitors):
                  String: include pattern — "url_filter": "/jobs/"

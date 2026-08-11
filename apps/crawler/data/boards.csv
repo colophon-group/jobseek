@@ -2409,6 +2409,10 @@ hoist-finance,hoist-finance-spain-teamtailor,https://hoistspain.teamtailor.com/,
 holcim,holcim-careers,https://careers.holcimgroup.com/go/All-Jobs/8790902/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.holcimgroup.com/googlefeed.xml""}",skip,
 home-depot,home-depot-careers-ca,https://homedepot.wd5.myworkdayjobs.com/CareerDepotCanada,workday,"{""company"": ""homedepot"", ""wd_instance"": ""wd5"", ""site"": ""CareerDepotCanada""}",workday,
 home-depot,home-depot-careers-workday,https://homedepot.wd5.myworkdayjobs.com/CareerDepot,workday,"{""company"": ""homedepot"", ""wd_instance"": ""wd5"", ""site"": ""CareerDepot""}",workday,
+home-instead,home-instead-canada,https://www.homeinstead.ca/home-care-jobs/,sitemap,"{""sitemap_url"":""https://www.homeinstead.ca/sitemap.xml"",""url_filter"":""/home-care-jobs/job-details/\\?cid="",""proxy"":true}",json-ld,"{""proxy"":true}"
+home-instead,home-instead-careers,https://careers.smartrecruiters.com/homeinsteadcare,smartrecruiters,"{""token"":""homeinsteadcare""}",smartrecruiters,
+home-instead,home-instead-germany,https://jobs.homeinstead.de/,sitemap,"{""sitemap_url"":""https://jobs.homeinstead.de/sitemap.xml"",""url_filter"":""/job/""}",json-ld,
+home-instead,home-instead-us,https://www.homeinstead.com/home-care-jobs/,sitemap,"{""sitemap_url"":""https://www.homeinstead.com/contentassets/c7e231f6da7542eea92cd193a735f2b6/sitemap_usa_index.xml"",""url_filter"":""/home-care-jobs/job-details/\\?cid="",""proxy"":true}",json-ld,"{""proxy"":true}"
 homebase,homebase-ashby,https://jobs.ashbyhq.com/homebase,ashby,"{""token"": ""homebase""}",skip,
 homelight,homelight-greenhouse,https://job-boards.greenhouse.io/homelight,greenhouse,"{""token"": ""homelight""}",skip,
 hometap,hometap-greenhouse,https://job-boards.greenhouse.io/hometap,greenhouse,"{""token"": ""hometap""}",skip,
