@@ -1,0 +1,419 @@
+{
+  "schemaVersion": 1,
+  "companies": [
+    {
+      "slug": "accenture",
+      "name": "Accenture",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/accenture/icon.webp",
+      "industryName": "Professional Services",
+      "employeeCountRange": 8,
+      "foundedYear": 1989,
+      "descriptions": {
+        "en": "Accenture is a global professional services company specializing in strategy, consulting, technology, and operations services.",
+        "de": "Accenture ist ein globales Unternehmen für professionelle Dienstleistungen, das sich auf Strategie, Beratung, Technologie und operative Prozesse spezialisiert hat.",
+        "fr": "Accenture est une entreprise mondiale de services professionnels spécialisée dans la stratégie, le conseil, la technologie et les services opérationnels.",
+        "it": "Accenture è un'azienda globale di servizi professionali specializzata in strategia, consulenza, tecnologia e servizi operativi."
+      }
+    },
+    {
+      "slug": "affirm",
+      "name": "Affirm",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/affirm/icon.webp",
+      "industryName": "Financial Services",
+      "employeeCountRange": null,
+      "foundedYear": 2012,
+      "descriptions": {
+        "en": "Buy-now-pay-later fintech offering transparent installment plans with no hidden fees, using advanced analytics beyond traditional credit scores.",
+        "de": "Fintech für Ratenzahlung mit transparenten Zahlungsplänen ohne versteckte Gebühren, basierend auf fortschrittlicher Analytik jenseits klassischer Bonitätsbewertungen.",
+        "fr": "Fintech de paiement fractionné proposant des plans de versement transparents sans frais cachés, grâce à des analyses avancées au-delà des scores de crédit traditionnels.",
+        "it": "Fintech buy-now-pay-later che offre piani di pagamento rateali trasparenti senza costi nascosti, utilizzando analisi avanzate oltre i tradizionali punteggi di credito."
+      }
+    },
+    {
+      "slug": "amazon",
+      "name": "Amazon",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/amazon/icon.png",
+      "industryName": "Technology",
+      "employeeCountRange": 8,
+      "foundedYear": 1994,
+      "descriptions": {
+        "en": "Global technology company offering e-commerce, cloud computing, and AI services",
+        "de": "Globales Technologieunternehmen für E-Commerce, Cloud Computing und KI-Dienste",
+        "fr": "Entreprise technologique mondiale proposant e-commerce, cloud computing et services d'IA",
+        "it": "Azienda tecnologica globale che offre e-commerce, cloud computing e servizi di IA"
+      }
+    },
+    {
+      "slug": "anthropic",
+      "name": "Anthropic",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/anthropic/icon.webp",
+      "industryName": "Technology",
+      "employeeCountRange": 5,
+      "foundedYear": 2021,
+      "descriptions": {
+        "en": "AI safety company building reliable, interpretable, and steerable artificial intelligence systems.",
+        "de": "KI-Sicherheitsunternehmen, das zuverlässige, interpretierbare und steuerbare Systeme künstlicher Intelligenz entwickelt.",
+        "fr": "Entreprise de sécurité de l'IA développant des systèmes d'intelligence artificielle fiables, interprétables et contrôlables.",
+        "it": "Azienda di sicurezza dell'IA che sviluppa sistemi di intelligenza artificiale affidabili, interpretabili e controllabili."
+      }
+    },
+    {
+      "slug": "clickhouse",
+      "name": "ClickHouse",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/clickhouse/icon.webp",
+      "industryName": "Technology",
+      "employeeCountRange": null,
+      "foundedYear": 2016,
+      "descriptions": {
+        "en": "Open-source columnar database management system optimized for real-time analytical queries on large datasets using SQL.",
+        "de": "Open-Source-Spaltendatenbank, optimiert für analytische Echtzeitabfragen auf grossen Datenmengen mittels SQL.",
+        "fr": "Système de gestion de base de données colonnaire open source optimisé pour les requêtes analytiques en temps réel sur de grands volumes de données.",
+        "it": "Database colonnare open source ottimizzato per query analitiche in tempo reale su grandi volumi di dati tramite SQL."
+      }
+    },
+    {
+      "slug": "clickup",
+      "name": "Clickup",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/clickup/icon.webp",
+      "industryName": "Technology",
+      "employeeCountRange": 5,
+      "foundedYear": 2016,
+      "descriptions": {
+        "en": "ClickUp is a productivity platform that consolidates tasks, docs, goals, whiteboards, and chat into a single workspace for teams of any size.",
+        "de": "ClickUp ist eine Produktivitatsplattform, die Aufgaben, Dokumente, Ziele, Whiteboards und Chat in einem einzigen Arbeitsbereich fur Teams jeder Grosse vereint.",
+        "fr": "ClickUp est une plateforme de productivite qui regroupe taches, documents, objectifs, tableaux blancs et messagerie dans un espace de travail unique pour les equipes de toute taille.",
+        "it": "ClickUp e una piattaforma di produttivita che riunisce attivita, documenti, obiettivi, lavagne e chat in un unico spazio di lavoro per team di qualsiasi dimensione."
+      }
+    },
+    {
+      "slug": "cresta",
+      "name": "Cresta",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/cresta/icon.webp",
+      "industryName": "Technology",
+      "employeeCountRange": null,
+      "foundedYear": null,
+      "descriptions": {
+        "en": "AI platform for enterprise contact centers that coaches agents in real time, automates quality management, and deploys virtual agents to transform customer interactions.",
+        "de": "KI-Plattform für Unternehmens-Kontaktcenter, die Agenten in Echtzeit coacht, Qualitätsmanagement automatisiert und virtuelle Agenten für bessere Kundeninteraktionen einsetzt.",
+        "fr": "Plateforme d'IA pour centres de contact d'entreprise qui accompagne les agents en temps réel, automatise la gestion de la qualité et déploie des agents virtuels pour transformer les interactions client.",
+        "it": "Piattaforma di IA per contact center aziendali che assiste gli agenti in tempo reale, automatizza la gestione della qualità e utilizza agenti virtuali per trasformare le interazioni con i clienti."
+      }
+    },
+    {
+      "slug": "disney",
+      "name": "Disney",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/disney/icon.webp",
+      "industryName": "Media & Entertainment",
+      "employeeCountRange": 8,
+      "foundedYear": 1923,
+      "descriptions": {
+        "en": "Global entertainment and media conglomerate operating theme parks, film studios, and streaming services",
+        "de": "Globaler Unterhaltungs- und Medienkonzern mit Freizeitparks, Filmstudios und Streaming-Diensten",
+        "fr": "Conglomérat mondial du divertissement et des médias exploitant des parcs à thèmes, des studios de cinéma et des services de streaming",
+        "it": "Conglomerato globale dell'intrattenimento e dei media con parchi tematici, studi cinematografici e servizi di streaming"
+      }
+    },
+    {
+      "slug": "gitlab",
+      "name": "GitLab",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/gitlab/icon.webp",
+      "industryName": "Technology",
+      "employeeCountRange": null,
+      "foundedYear": 2011,
+      "descriptions": {
+        "en": "Comprehensive AI-powered DevSecOps platform that unifies source code management, CI/CD, and security scanning to accelerate software delivery and reduce compliance risk.",
+        "de": "Umfassende KI-gestützte DevSecOps-Plattform, die Quellcodeverwaltung, CI/CD und Sicherheitsscans vereint, um die Softwarebereitstellung zu beschleunigen und Compliance-Risiken zu reduzieren.",
+        "fr": "Plateforme DevSecOps complète alimentée par l'IA qui unifie la gestion du code source, le CI/CD et l'analyse de sécurité pour accélérer la livraison logicielle et réduire les risques de conformité.",
+        "it": "Piattaforma DevSecOps completa basata sull'IA che unifica la gestione del codice sorgente, CI/CD e scansioni di sicurezza per accelerare la distribuzione del software e ridurre i rischi di conformità."
+      }
+    },
+    {
+      "slug": "goldman-sachs",
+      "name": "Goldman Sachs",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/goldman-sachs/icon.webp",
+      "industryName": "Financial Services",
+      "employeeCountRange": 8,
+      "foundedYear": 1869,
+      "descriptions": {
+        "en": "Goldman Sachs is a global investment banking, securities, and investment management firm. It provides a wide range of financial services including advisory, underwriting, lending, and asset management to corporations, governments, and individuals worldwide.",
+        "de": "Goldman Sachs ist ein weltweit tätiges Investmentbanking-, Wertpapier- und Vermögensverwaltungsunternehmen. Es bietet Unternehmen, Regierungen und Privatpersonen umfassende Finanzdienstleistungen wie Beratung, Kapitalbeschaffung, Kreditvergabe und Vermögensverwaltung an.",
+        "fr": "Goldman Sachs est une société mondiale de banque d'investissement, de valeurs mobilières et de gestion d'actifs. Elle fournit une large gamme de services financiers, notamment le conseil, la souscription, le crédit et la gestion de patrimoine, aux entreprises, gouvernements et particuliers du monde entier.",
+        "it": "Goldman Sachs è una società globale di investment banking, titoli e gestione degli investimenti. Offre un'ampia gamma di servizi finanziari tra cui consulenza, sottoscrizione, prestiti e gestione patrimoniale a imprese, governi e privati in tutto il mondo."
+      }
+    },
+    {
+      "slug": "grafana-labs",
+      "name": "Grafana Labs",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/grafana-labs/icon.webp",
+      "industryName": "Technology",
+      "employeeCountRange": null,
+      "foundedYear": null,
+      "descriptions": {
+        "en": "Creator of Grafana, the open-source analytics and monitoring platform, along with Loki, Tempo, and Mimir for unified observability of metrics, logs, and traces.",
+        "de": "Entwickler von Grafana, der Open-Source-Plattform für Analytik und Monitoring, sowie Loki, Tempo und Mimir für einheitliche Observability von Metriken, Logs und Traces.",
+        "fr": "Createur de Grafana, la plateforme open source d'analyse et de monitoring, ainsi que de Loki, Tempo et Mimir pour une observabilite unifiee des metriques, logs et traces.",
+        "it": "Creatore di Grafana, la piattaforma open source di analisi e monitoraggio, insieme a Loki, Tempo e Mimir per un'osservabilita unificata di metriche, log e tracce."
+      }
+    },
+    {
+      "slug": "instacart",
+      "name": "Instacart",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/instacart/icon.webp",
+      "industryName": null,
+      "employeeCountRange": null,
+      "foundedYear": 2012,
+      "descriptions": {
+        "en": "Order same-day delivery or pickup from more than 300 retailers and grocers. Download the Instacart app or start shopping online now with Instacart to get groceries, alcohol, home essentials, and more delivered to you <b>in as fast as 1 hour</b> or select curbside pickup from your favorite local stores.",
+        "de": "Instacart ist ein amerikanisches Technologieunternehmen, das einen Online-Liefer- und Abholservice für Lebensmittel betreibt. Kunden können Lebensmittel und Haushaltsartikel bei lokalen Einzelhändlern bestellen und sich nach Hause liefern lassen.",
+        "fr": "Instacart est une entreprise technologique américaine qui exploite un service de livraison et de retrait de courses en ligne, permettant aux clients de commander des produits alimentaires et ménagers auprès de détaillants locaux et de se les faire livrer à domicile.",
+        "it": "Instacart è un'azienda tecnologica americana che gestisce un servizio di consegna e ritiro di generi alimentari online, consentendo ai clienti di ordinare prodotti alimentari e per la casa dai rivenditori locali e riceverli direttamente a domicilio."
+      }
+    },
+    {
+      "slug": "jpmorgan",
+      "name": "JPMorgan Chase & Co.",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/jpmorgan/icon.webp",
+      "industryName": "Financial Services",
+      "employeeCountRange": 8,
+      "foundedYear": 2000,
+      "descriptions": {
+        "en": "JPMorgan Chase & Co. is a global financial services firm and one of the largest banking institutions in the world, offering investment banking, asset management, commercial banking, and consumer financial services.",
+        "de": "JPMorgan Chase & Co. ist ein globales Finanzdienstleistungsunternehmen und eines der grössten Bankinstitute der Welt. Es bietet Investmentbanking, Vermögensverwaltung, Firmenkundengeschäft und Finanzdienstleistungen für Privatkunden an.",
+        "fr": "JPMorgan Chase & Co. est une société mondiale de services financiers et l'un des plus grands établissements bancaires au monde, proposant des services de banque d'investissement, de gestion d'actifs, de banque commerciale et de services financiers aux particuliers.",
+        "it": "JPMorgan Chase & Co. è una società globale di servizi finanziari e uno dei più grandi istituti bancari al mondo, che offre servizi di investment banking, gestione patrimoniale, banca commerciale e servizi finanziari per i privati."
+      }
+    },
+    {
+      "slug": "keeper-security",
+      "name": "Keeper Security",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/keeper-security/icon.webp",
+      "industryName": "Cybersecurity",
+      "employeeCountRange": null,
+      "foundedYear": null,
+      "descriptions": {
+        "en": "Password management and privileged access management platform protecting individuals and businesses from credential-based cyberattacks.",
+        "de": "Passwort- und Zugriffsverwaltungsplattform, die Privatpersonen und Unternehmen vor Cyberangriffen auf Zugangsdaten schützt.",
+        "fr": "Plateforme de gestion des mots de passe et des accès à privilèges protégeant les particuliers et les entreprises contre les cyberattaques basées sur les identifiants.",
+        "it": "Piattaforma di gestione password e accessi privilegiati che protegge privati e aziende dagli attacchi informatici basati sulle credenziali."
+      }
+    },
+    {
+      "slug": "kraken",
+      "name": "Kraken",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/kraken/icon.png",
+      "industryName": "Financial Services",
+      "employeeCountRange": 6,
+      "foundedYear": 2011,
+      "descriptions": {
+        "en": "Cryptocurrency exchange platform for trading digital assets",
+        "de": "Kryptowährungsbörse für den Handel mit digitalen Vermögenswerten",
+        "fr": "Plateforme d'échange de cryptomonnaies pour le trading d'actifs numériques",
+        "it": "Piattaforma di scambio di criptovalute per il trading di asset digitali"
+      }
+    },
+    {
+      "slug": "microsoft",
+      "name": "Microsoft",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/microsoft/icon.webp",
+      "industryName": "Technology",
+      "employeeCountRange": 8,
+      "foundedYear": 1975,
+      "descriptions": {
+        "en": "Microsoft is a global technology company that develops software, hardware, and cloud services, known for products like Windows, Office, Azure, and Xbox.",
+        "de": "Microsoft ist ein globales Technologieunternehmen, das Software, Hardware und Cloud-Dienste entwickelt und für Produkte wie Windows, Office, Azure und Xbox bekannt ist.",
+        "fr": "Microsoft est une entreprise technologique mondiale qui développe des logiciels, du matériel et des services cloud, connue pour des produits tels que Windows, Office, Azure et Xbox.",
+        "it": "Microsoft è un'azienda tecnologica globale che sviluppa software, hardware e servizi cloud, nota per prodotti come Windows, Office, Azure e Xbox."
+      }
+    },
+    {
+      "slug": "netflix",
+      "name": "Netflix",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/netflix/icon.webp",
+      "industryName": "Media & Entertainment",
+      "employeeCountRange": 8,
+      "foundedYear": 1997,
+      "descriptions": {
+        "en": "Global streaming entertainment service offering a wide library of films, series, documentaries, and games across 190+ countries.",
+        "de": "Globaler Streaming-Unterhaltungsdienst mit einer umfangreichen Bibliothek an Filmen, Serien, Dokumentationen und Spielen in über 190 Ländern.",
+        "fr": "Service mondial de divertissement en streaming proposant une vaste bibliothèque de films, séries, documentaires et jeux dans plus de 190 pays.",
+        "it": "Servizio globale di intrattenimento in streaming che offre un'ampia libreria di film, serie, documentari e giochi in oltre 190 paesi."
+      }
+    },
+    {
+      "slug": "nvidia",
+      "name": "NVIDIA",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/nvidia/icon.webp",
+      "industryName": "Technology",
+      "employeeCountRange": 8,
+      "foundedYear": 1993,
+      "descriptions": {
+        "en": "Semiconductor company designing GPUs and accelerated computing platforms for gaming, AI, and data centers",
+        "de": "Halbleiterhersteller für Grafikprozessoren und Plattformen für beschleunigtes Rechnen in den Bereichen Gaming, KI und Rechenzentren",
+        "fr": "Fabricant de semiconducteurs concevant des GPU et des plateformes de calcul accéléré pour le gaming, l'IA et les centres de données",
+        "it": "Produttore di semiconduttori che progetta GPU e piattaforme di calcolo accelerato per gaming, intelligenza artificiale e data center"
+      }
+    },
+    {
+      "slug": "oliver-wyman",
+      "name": "Oliver Wyman",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/oliver-wyman/icon.webp",
+      "industryName": null,
+      "employeeCountRange": 7,
+      "foundedYear": 1984,
+      "descriptions": {
+        "en": "Oliver Wyman is a global management consulting firm specializing in strategy, operations, risk management, and organizational transformation. A business of Marsh McLennan, it serves clients across industries with a strong focus on financial services.",
+        "de": "Oliver Wyman ist eine globale Managementberatung, die sich auf Strategie, Operations, Risikomanagement und organisatorische Transformation spezialisiert. Als Teil von Marsh McLennan berät das Unternehmen Kunden branchenübergreifend mit besonderem Fokus auf Finanzdienstleistungen.",
+        "fr": "Oliver Wyman est un cabinet de conseil en management international spécialisé dans la stratégie, les opérations, la gestion des risques et la transformation organisationnelle. Filiale de Marsh McLennan, il accompagne ses clients dans tous les secteurs avec une forte expertise en services financiers.",
+        "it": "Oliver Wyman è una società di consulenza gestionale globale specializzata in strategia, operations, gestione del rischio e trasformazione organizzativa. Parte di Marsh McLennan, opera in diversi settori con una forte competenza nei servizi finanziari."
+      }
+    },
+    {
+      "slug": "pinterest",
+      "name": "Pinterest",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/pinterest/icon.webp",
+      "industryName": "Technology",
+      "employeeCountRange": 5,
+      "foundedYear": 2010,
+      "descriptions": {
+        "en": "Visual discovery and bookmarking platform for finding and saving creative ideas and inspiration.",
+        "de": "Visuelle Entdeckungs- und Lesezeichen-Plattform zum Finden und Speichern kreativer Ideen und Inspirationen.",
+        "fr": "Plateforme visuelle de découverte et de partage pour trouver et sauvegarder des idées créatives et de l'inspiration.",
+        "it": "Piattaforma visiva di scoperta e raccolta per trovare e salvare idee creative e ispirazione."
+      }
+    },
+    {
+      "slug": "reddit",
+      "name": "Reddit",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/reddit/icon.webp",
+      "industryName": "Technology",
+      "employeeCountRange": null,
+      "foundedYear": 2005,
+      "descriptions": {
+        "en": "Reddit is a social media platform where millions of people gather in communities to share, discuss, and vote on content across a wide range of topics.",
+        "de": "Reddit ist eine Social-Media-Plattform, auf der Millionen von Menschen in Communities zusammenkommen, um Inhalte zu einer Vielzahl von Themen zu teilen, zu diskutieren und darüber abzustimmen.",
+        "fr": "Reddit est une plateforme de médias sociaux où des millions de personnes se rassemblent en communautés pour partager, discuter et voter sur des contenus couvrant un large éventail de sujets.",
+        "it": "Reddit è una piattaforma di social media dove milioni di persone si riuniscono in comunità per condividere, discutere e votare contenuti su una vasta gamma di argomenti."
+      }
+    },
+    {
+      "slug": "samsara",
+      "name": "Samsara",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/samsara/icon.webp",
+      "industryName": "Technology",
+      "employeeCountRange": null,
+      "foundedYear": null,
+      "descriptions": {
+        "en": "Connected operations platform providing IoT sensors, vehicle telematics, and fleet management solutions for physical operations.",
+        "de": "Plattform fuer vernetzte Betriebsprozesse mit IoT-Sensoren, Fahrzeugtelematik und Flottenmanagement fuer physische Ablaeufe.",
+        "fr": "Plateforme d'operations connectees proposant des capteurs IoT, de la telematique vehicule et des solutions de gestion de flotte pour les operations physiques.",
+        "it": "Piattaforma per operazioni connesse che offre sensori IoT, telematica veicolare e soluzioni di gestione flotte per le operazioni fisiche."
+      }
+    },
+    {
+      "slug": "sezzle",
+      "name": "Sezzle",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/sezzle/icon.webp",
+      "industryName": "Financial Services",
+      "employeeCountRange": null,
+      "foundedYear": 2016,
+      "descriptions": {
+        "en": "Buy-now-pay-later platform that lets shoppers split purchases into four interest-free installments while building credit history through on-time payments.",
+        "de": "Buy-Now-Pay-Later-Plattform, mit der Kaufer ihre Einkaufe in vier zinsfreie Raten aufteilen und gleichzeitig ihre Kreditwurdigkeit durch punktliche Zahlungen aufbauen.",
+        "fr": "Plateforme d'achat fractionne permettant de repartir ses achats en quatre versements sans interet tout en construisant son historique de credit grace aux paiements ponctuels.",
+        "it": "Piattaforma di pagamento rateale che consente di suddividere gli acquisti in quattro rate senza interessi, costruendo al contempo la propria storia creditizia con pagamenti puntuali."
+      }
+    },
+    {
+      "slug": "tether",
+      "name": "Tether",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/tether/icon.webp",
+      "industryName": "Financial Services",
+      "employeeCountRange": 4,
+      "foundedYear": 2014,
+      "descriptions": {
+        "en": "Cryptocurrency company behind the USDT stablecoin, providing blockchain infrastructure and digital asset technology for the global financial ecosystem.",
+        "de": "Kryptowährungsunternehmen hinter dem Stablecoin USDT, das Blockchain-Infrastruktur und digitale Vermögenswert-Technologie für das globale Finanzsystem bereitstellt.",
+        "fr": "Entreprise de cryptomonnaie, createur du stablecoin USDT, fournissant une infrastructure blockchain et des technologies pour le systeme financier mondial.",
+        "it": "Azienda di criptovalute creatrice dello stablecoin USDT, che fornisce infrastruttura blockchain e tecnologie per gli asset digitali nel sistema finanziario globale."
+      }
+    },
+    {
+      "slug": "twilio",
+      "name": "Twilio",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/twilio/icon.webp",
+      "industryName": "Technology",
+      "employeeCountRange": null,
+      "foundedYear": 2008,
+      "descriptions": {
+        "en": "Cloud communications platform providing APIs for SMS, voice, video, and authentication that developers embed directly into their applications.",
+        "de": "Cloud-Kommunikationsplattform mit APIs für SMS, Sprache, Video und Authentifizierung, die Entwickler direkt in ihre Anwendungen integrieren.",
+        "fr": "Plateforme de communication cloud fournissant des API pour SMS, voix, video et authentification, que les developpeurs integrent directement dans leurs applications.",
+        "it": "Piattaforma di comunicazione cloud che fornisce API per SMS, voce, video e autenticazione, integrate direttamente dagli sviluppatori nelle proprie applicazioni."
+      }
+    },
+    {
+      "slug": "veeva",
+      "name": "Veeva",
+      "icon": "https://jobseek-assets.colophon-group.org/companies/veeva/icon.webp",
+      "industryName": "Technology",
+      "employeeCountRange": null,
+      "foundedYear": 2007,
+      "descriptions": {
+        "en": "Veeva Systems delivers cloud-based software for the global life sciences industry, serving over 1000 pharmaceutical and biotech customers.",
+        "de": "Veeva Systems bietet cloudbasierte Software fuer die globale Life-Sciences-Branche und bedient ueber 1000 Pharma- und Biotech-Kunden.",
+        "fr": "Veeva Systems fournit des logiciels cloud pour l'industrie mondiale des sciences de la vie, au service de plus de 1000 clients pharmaceutiques et biotechnologiques.",
+        "it": "Veeva Systems fornisce software cloud per l'industria globale delle scienze della vita, servendo oltre 1000 clienti farmaceutici e biotecnologici."
+      }
+    }
+  ],
+  "watchlists": [
+    {
+      "owner": "colophongroup",
+      "ownerLabel": "colophongroup",
+      "slug": "big-tech-jobs-in-germany",
+      "title": "Big Tech Jobs in Germany",
+      "description": "Discover open positions at the leading global tech companies hiring in Germany. This watchlist tracks Big Tech employers — Magnificent 7 (Google, Microsoft, Apple, Amazon, Meta, NVIDIA, Tesla) plus Adobe, Salesforce, Oracle, IBM, SAP, ServiceNow — alongside major regional tech firms with engineering hubs across Berlin, Munich, Hamburg, and Frankfurt. Filter results by occupation, seniority, and salary to find your next role at Germany's top tech employers. Updated daily as new positions are posted.",
+      "companyCount": null
+    },
+    {
+      "owner": "colophongroup",
+      "ownerLabel": "colophongroup",
+      "slug": "big-tech-jobs-in-spain",
+      "title": "Big Tech Jobs in Spain",
+      "description": "Discover open positions at the leading global tech companies hiring in Spain. This watchlist tracks Big Tech employers — Magnificent 7 (Google, Microsoft, Apple, Amazon, Meta, NVIDIA, Tesla) plus Adobe, Salesforce, Oracle, IBM, SAP, ServiceNow — alongside major regional tech firms with engineering hubs across Madrid, Barcelona, Málaga, and Valencia. Filter results by occupation, seniority, and salary to find your next role at Spain's top tech employers. Updated daily as new positions are posted.",
+      "companyCount": null
+    },
+    {
+      "owner": "colophongroup",
+      "ownerLabel": "colophongroup",
+      "slug": "big-tech-jobs-in-switzerland",
+      "title": "Big Tech Jobs in Switzerland",
+      "description": "Discover open positions at the leading global tech companies hiring in Switzerland. This watchlist tracks Big Tech employers — Magnificent 7 (Google, Microsoft, Apple, Amazon, Meta, NVIDIA, Tesla) plus Adobe, Salesforce, Oracle, IBM, SAP, ServiceNow — alongside major regional tech firms with engineering hubs across Zürich, Lausanne, Geneva, and Basel. Filter results by occupation, seniority, and salary to find your next role at Switzerland's top tech employers. Updated daily as new positions are posted.",
+      "companyCount": null
+    },
+    {
+      "owner": "colophongroup",
+      "ownerLabel": "colophongroup",
+      "slug": "big-tech-jobs-in-united-kingdom",
+      "title": "Big Tech Jobs in United Kingdom",
+      "description": "Discover open positions at the leading global tech companies hiring in United Kingdom. This watchlist tracks Big Tech employers — Magnificent 7 (Google, Microsoft, Apple, Amazon, Meta, NVIDIA, Tesla) plus Adobe, Salesforce, Oracle, IBM, SAP, ServiceNow — alongside major regional tech firms with engineering hubs across London, Cambridge, Manchester, and Edinburgh. Filter results by occupation, seniority, and salary to find your next role at United Kingdom's top tech employers. Updated daily as new positions are posted.",
+      "companyCount": null
+    },
+    {
+      "owner": "colophongroup",
+      "ownerLabel": "colophongroup",
+      "slug": "enterprise-sales-in-switzerland",
+      "title": "Enterprise Sales in Switzerland",
+      "description": "Enterprise Sales Roles throughout Switzerland",
+      "companyCount": null
+    },
+    {
+      "owner": "colophongroup",
+      "ownerLabel": "colophongroup",
+      "slug": "maang",
+      "title": "MAANG",
+      "description": "Meta, Amazon, Apple, Google, and Netflix — the classic five.",
+      "companyCount": 5
+    }
+  ]
+}

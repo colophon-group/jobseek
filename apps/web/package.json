@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "lingui compile && next build",
+    "build": "pnpm blog-mentions:check && lingui compile && next build",
     "start": "next start",
     "lint": "eslint .",
     "extract": "lingui extract",
@@ -24,6 +24,8 @@
     "screenshots": "tsx script/capture-screenshots.ts",
     "smoke": "tsx script/smoke-built-app.ts",
     "notify-blog-indexnow": "tsx script/notify-blog-indexnow.ts",
+    "blog-mentions:check": "tsx script/check-blog-mention-snapshot.ts",
+    "blog-mentions:update": "tsx script/check-blog-mention-snapshot.ts --write",
     "test": "vitest run",
     "test:coverage": "vitest run --config vitest.coverage.config.ts",
     "test:watch": "vitest",

@@ -332,6 +332,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Enforce zero-call blog mention build budget
+        run: pnpm --filter @jobseek/web blog-mentions:check
+
       - run: >
           pnpm --filter @jobseek/web exec vitest run
           --exclude src/lib/search/__tests__/typesense.e2e.test.ts

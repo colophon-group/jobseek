@@ -69,12 +69,6 @@ msgstr "{count, plural, one {# posizione aperta} other {# posizioni aperte}}"
 msgid "company.similar.positionCount"
 msgstr "{count, plural, one {# posizione aperta} other {# posizioni aperte}}"
 
-#. Stat label on a WatchlistCard mention card — pluralized 'active job' / 'active jobs'. {count} is the integer count.
-#. js-lingui-explicit-id
-#: src/components/blog/MdxMentions.tsx:358
-msgid "blog.mention.watchlist.activeJobsLabel"
-msgstr "{count, plural, one {offerta attiva} other {offerte attive}}"
-
 #. Stat label on a CompanyCard mention card — pluralized 'active posting' / 'active postings'. {count} is the integer count.
 #. js-lingui-explicit-id
 #: src/components/blog/MdxMentions.tsx:290
@@ -1889,12 +1883,6 @@ msgstr "Se noti un comportamento anomalo del crawler, preferisci che non indiciz
 #: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:80
 msgid "watchlist.meta.inLocations"
 msgstr "a {locations}"
-
-#. Stat label on a WatchlistCard mention card — 'in the past year' (year-to-date jobs counted by the watchlist filters)
-#. js-lingui-explicit-id
-#: src/components/blog/MdxMentions.tsx:369
-msgid "blog.mention.watchlist.yearJobsLabel"
-msgstr "nell'ultimo anno"
 
 #. Tooltip on a disabled filter pill explaining the row is implied by an already-selected ancestor (e.g. 'Included in European Union' when EU is selected).
 #. js-lingui-explicit-id
