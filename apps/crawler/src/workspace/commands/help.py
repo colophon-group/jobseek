@@ -2915,7 +2915,12 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
     total_count_tolerance
                      Allowed difference between Oracle's advertised total and
                      the final accessible rows. Use only for a verified tenant
-                     whose TotalJobsCount consistently overstates its tail.""",
+                     whose TotalJobsCount consistently overstates its tail.
+    duplicate_row_tolerance
+                     Allowed duplicate IDs inside individual response pages.
+                     Use only for a verified tenant whose TotalJobsCount counts
+                     repeated database rows. Cross-page duplicates remain
+                     governed by offset_overlap.""",
     "dom": MONITOR_DOM,
     "inline": MONITOR_INLINE,
     "kipt": MONITOR_KIPT,

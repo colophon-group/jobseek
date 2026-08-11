@@ -263,6 +263,13 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
         or total_count_tolerance < 0
     ):
         raise ValueError("total_count_tolerance must be a non-negative integer")
+    duplicate_row_tolerance = metadata.get("duplicate_row_tolerance", 0)
+    if (
+        isinstance(duplicate_row_tolerance, bool)
+        or not isinstance(duplicate_row_tolerance, int)
+        or duplicate_row_tolerance < 0
+    ):
+        raise ValueError("duplicate_row_tolerance must be a non-negative integer")
     offset_step = _PAGE_SIZE - offset_overlap
     url_template = _build_url_template(host, site)
     api_url = _build_api_url(host, site)
@@ -300,6 +307,7 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
 
     seen_job_ids: set[str] = set()
     minimum_advertised_total = 0
+    duplicate_rows = 0
     partial = False
     for source_url, source_total, cached_wrapper, partition_id in page_sources:
         offset = 0
@@ -369,12 +377,25 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
                 break
 
             jobs: list[DiscoveredJob] = []
+            page_job_ids: set[str] = set()
+            page_duplicate_rows = 0
             for item in items:
                 job_id = item.get("Id")
                 if not job_id:
                     partial = True
                     continue
                 job_id = str(job_id)
+                if job_id in page_job_ids:
+                    # Some verified tenants return duplicate database rows
+                    # inside one response page and include them in
+                    # TotalJobsCount. Keep this separate from cross-page
+                    # overlap so ordinary boards remain fail-closed.
+                    duplicate_rows += 1
+                    page_duplicate_rows += 1
+                    if duplicate_rows > duplicate_row_tolerance:
+                        partial = True
+                    continue
+                page_job_ids.add(job_id)
                 if job_id in source_seen_job_ids:
                     # Cross-page duplicates are the expected overlap margin.
                     # Without overlap they prove that Oracle reshuffled an
@@ -399,6 +420,18 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
                         date_posted=item.get(fields.get("date_posted", "PostedDate")),
                         employment_type=item.get(fields.get("employment_type", "JobSchedule")),
                     )
+                )
+
+            if page_duplicate_rows:
+                log.warning(
+                    "oracle_hcm.page_duplicates",
+                    host=host,
+                    site=site,
+                    offset=offset,
+                    duplicates=page_duplicate_rows,
+                    duplicates_total=duplicate_rows,
+                    duplicate_row_tolerance=duplicate_row_tolerance,
+                    partition_id=partition_id,
                 )
 
             if jobs:
@@ -427,6 +460,8 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
             minimum_total=minimum_advertised_total,
             offset_overlap=offset_overlap,
             total_count_tolerance=total_count_tolerance,
+            duplicate_rows=duplicate_rows,
+            duplicate_row_tolerance=duplicate_row_tolerance,
         )
         yield truncated_rich_result([])
 
