@@ -36,8 +36,11 @@ const nextConfig: NextConfig = {
   // and #2835 for the conventions.
   cacheComponents: true,
   images: {
-    // Cache optimized images for 1 year. Company logos rarely change, and
-    // Vercel purges its CDN cache on every deploy anyway.
+    // Use the supported Next.js cache floor for optimized transformations.
+    // Do not try to override `/_next/image` through `headers()`: Next owns
+    // that generated response and ignores custom Cache-Control headers for it.
+    // Source and platform behavior can still affect the client-visible header;
+    // see apps/web/docs/edge-requests.md before changing this contract.
     minimumCacheTTL: 31536000,
     // 100% of company icons/logos currently resolve to R2 or DDG. The
     // historical `**` wildcard fallback let any hostname expand source
@@ -93,17 +96,6 @@ const nextConfig: NextConfig = {
     { source: "/:lang(en|de|fr|it)/app/progress", destination: "/:lang/progress", permanent: true },
   ],
   headers: async () => [
-    {
-      // Optimized remote images (company logos) — cache aggressively.
-      // Logos rarely change; Vercel CDN is purged on deploy.
-      source: "/_next/image",
-      headers: [
-        {
-          key: "Cache-Control",
-          value: "public, max-age=31536000, stale-while-revalidate=604800, immutable",
-        },
-      ],
-    },
     {
       // Fonts never change between deploys — cache for 1 year
       source: "/fonts/:path*",

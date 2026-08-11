@@ -275,14 +275,41 @@ reduce repeat edge requests.
 | Asset | Cache TTL | Rationale |
 |-------|-----------|-----------|
 | Fonts (`/fonts/*`) | 1 year, `immutable` | Never change between deploys |
-| `next/image` responses (`/_next/image`) | 1 week (`minimumCacheTTL`) | Default is 60s — far too short |
+| `next/image` responses (`/_next/image`) | Source/platform-dependent; 1-year configured floor | Next/Vercel owns the generated response; see below |
 | SVGs, PNGs in `public/` | 1 week | Rarely change; no content hash in URL |
 | JS/CSS chunks (`/_next/static/*`) | 1 year, `immutable` | Content-hashed filenames (Next.js default) |
 | Favicon, manifest, icons | 1 week | Rarely change |
 
-Vercel purges its CDN cache on every deploy. Browser caches persist for the
-configured TTL — this is acceptable because these assets rarely change.
-If a `public/` asset does change, browsers will pick up the new version
+### Optimized-image cache contract
+
+`images.minimumCacheTTL: 31536000` is the supported Next.js configuration for
+the optimized-image cache floor. Next chooses the larger of this value and the
+upstream image's cache lifetime. A `headers()` entry for `/_next/image` is not
+a supported way to change the generated response: Next warns during builds and
+ignores that override. Keep optimizer policy under `images`, not route headers.
+
+The client-visible header is not a single app-owned constant. Live checks on
+2026-08-11 returned:
+
+- a remote company logo: `public, max-age=31536000, must-revalidate`;
+- a local `/publicdomain/*` source: `public, max-age=604800`.
+
+Those observations verify the current Next/Vercel behavior; they do not make
+the response header an API contract. In particular, `minimumCacheTTL` should
+not be tested by copying an expected `Cache-Control` string into app config.
+See the official [Next.js image configuration](https://nextjs.org/docs/app/api-reference/components/image#minimumcachettl)
+and [Vercel Image Optimization](https://vercel.com/docs/image-optimization)
+references for the supported controls.
+
+If an asset requires a guaranteed one-year browser/edge response, give it a
+content-hashed or versioned URL and serve it directly (or use a Next static
+image import), then verify the deployed response headers. Do not add a custom
+`/_next/image` header. Deploying alone does not invalidate Vercel's optimized
+image cache; change the source URL or use the platform's image-cache purge
+mechanism when immediate invalidation is required.
+
+Browser caches for the other public assets persist for their configured TTL.
+If an unversioned `public/` asset changes, browsers will pick up the new version
 within a week.
 
 ## ThemedImage — single-image strategy
