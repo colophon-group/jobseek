@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import dataclasses
+import json
 import uuid
 from collections import Counter
 from contextlib import asynccontextmanager
@@ -12,6 +13,7 @@ import asyncpg
 import httpx
 import pytest
 import structlog
+from typesense.exceptions import TypesenseClientError
 
 from src.exporter import (
     _EPOCH,
@@ -28,6 +30,7 @@ from src.exporter import (
     _export_postings_typesense,
     _get_cursor,
     _is_downstream_unavailable,
+    _is_typesense_acknowledgement_parse_failure,
     _save_cursor,
     _save_cursors_atomic,
     _update_metrics,
@@ -1177,6 +1180,9 @@ class TestTypesensePerDocFallback:
         ):
             await _upsert_to_typesense(docs)
 
+    def test_unrelated_value_error_is_not_an_acknowledgement_parse_failure(self):
+        assert not _is_typesense_acknowledgement_parse_failure(ValueError("unrelated"))
+
     @pytest.mark.parametrize(
         ("acknowledgement", "reason"),
         [
@@ -1275,6 +1281,69 @@ class TestTypesensePerDocFallback:
         assert skipped_cursor == cursor
         assert local.fetch.await_count == 1
         import_batch.assert_called_once()
+
+    @pytest.mark.parametrize("wrapped_by_client", [False, True])
+    async def test_response_decode_failure_pins_cursor_and_opens_backoff(
+        self,
+        wrapped_by_client,
+    ):
+        try:
+            json.loads('{"success":')
+        except json.JSONDecodeError as decode_error:
+            if wrapped_by_client:
+                try:
+                    # Typesense Python 2.0's `_parse_import_response` uses
+                    # this exact exception-chain shape.
+                    raise TypesenseClientError("Invalid response") from decode_error
+                except TypesenseClientError as client_error:
+                    import_error = client_error
+            else:
+                import_error = decode_error
+
+        cursor = (datetime(2026, 7, 1, 10, 0, tzinfo=UTC), _ZERO_UUID)
+        updated_at = datetime(2026, 7, 1, 10, 5, tzinfo=UTC)
+        local = _make_pool()
+        local.fetch = AsyncMock(return_value=[_posting_row(posting_id=uuid.uuid4(), ts=updated_at)])
+        fake_client = MagicMock()
+        import_batch = MagicMock(side_effect=import_error)
+        fake_client.collections = {
+            "job_posting": MagicMock(documents=MagicMock(import_=import_batch))
+        }
+        backoff = _DownstreamBackoff(
+            f"typesense-decode-error-{wrapped_by_client}",
+            5.0,
+            300.0,
+        )
+
+        with (
+            patch("src.typesense_client.get_typesense_client", return_value=fake_client),
+            structlog.testing.capture_logs() as logs,
+        ):
+            count, new_cursor = await _export_postings_typesense(
+                local,
+                cursor,
+                TaxonomyMaps(),
+                backoff,
+            )
+            skipped_count, skipped_cursor = await _export_postings_typesense(
+                local,
+                cursor,
+                TaxonomyMaps(),
+                backoff,
+            )
+
+        assert count == 1
+        assert new_cursor == cursor
+        assert backoff.consecutive_failures == 1
+        assert skipped_count == 0
+        assert skipped_cursor == cursor
+        assert local.fetch.await_count == 1
+        import_batch.assert_called_once()
+        assert any(
+            event.get("event") == "exporter.typesense_invalid_acknowledgement"
+            and event.get("reason") == "response_decode_error"
+            for event in logs
+        )
 
     async def test_dual_path_advances_only_the_acknowledged_target(self):
         cursor = (datetime(2026, 7, 1, 10, 0, tzinfo=UTC), _ZERO_UUID)

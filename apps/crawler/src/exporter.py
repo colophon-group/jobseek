@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import math
 import time
 import uuid
@@ -626,6 +627,24 @@ class _TypesenseAcknowledgementError(RuntimeError):
     """Typesense returned a response that cannot prove the batch was handled."""
 
 
+def _is_typesense_acknowledgement_parse_failure(exc: BaseException) -> bool:
+    """Recognize only JSON decoding failures from the import response parser.
+
+    Typesense Python 2.0 wraps ``JSONDecodeError`` in ``TypesenseClientError``;
+    other client versions may propagate the decoder error directly. Walking
+    the explicit exception chain handles both without treating unrelated
+    ``ValueError`` or client validation errors as acknowledgement failures.
+    """
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, json.JSONDecodeError):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
 def _validate_typesense_acknowledgements(
     docs: list[dict],
     results: object,
@@ -717,10 +736,22 @@ async def _upsert_to_typesense(
             lambda: documents.import_(docs, {"action": "upsert"}),
         )
         results = _validate_typesense_acknowledgements(docs, raw_results)
-    except Exception:
+    except Exception as exc:
         duration = time.monotonic() - t0
         typesense_export_duration_seconds.observe(duration)
         typesense_export_docs_total.labels(status="error").inc(len(docs))
+        if _is_typesense_acknowledgement_parse_failure(exc):
+            log.error(
+                "exporter.typesense_invalid_acknowledgement",
+                reason="response_decode_error",
+                expected_count=len(docs),
+                acknowledged_count=None,
+                invalid_index=None,
+                response_type=type(exc).__name__,
+            )
+            raise _TypesenseAcknowledgementError(
+                "Typesense import acknowledgement was invalid: response_decode_error"
+            ) from exc
         raise
     duration = time.monotonic() - t0
     typesense_export_duration_seconds.observe(duration)
