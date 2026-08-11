@@ -77,11 +77,15 @@ Compare the crawled job count against the expected ~{{ expected_jobs }} jobs.
 
 ## Step 3: Select and run scraper
 
-**Scraper priority — always try json-ld first:**
-1. `json-ld` — extracts structured `JobPosting` schema (most career pages have
-   it). Use `render: true` if JS-rendered. Tune `timeout` if coverage < 100%.
-2. `embedded` / `nextdata` — for embedded JSON with field mapping.
-3. `dom` — last resort, step-based CSS extraction.
+**Scraper priority:**
+1. `pdf` — use first when the monitor's job-detail URLs are PDF documents.
+   Configure title and location extraction with `ws help scraper pdf`; HTML
+   scrapers cannot extract PDF text.
+2. `json-ld` — otherwise try first; it extracts structured `JobPosting` schema
+   (most career pages have it). Use `render: true` if JS-rendered. Tune
+   `timeout` if coverage < 100%.
+3. `embedded` / `nextdata` — for embedded JSON with field mapping.
+4. `dom` — last resort, step-based CSS extraction.
 
 ```bash
 ws select scraper {{ slug }} {{ scraper_type }} --config '{{ scraper_config }}'
