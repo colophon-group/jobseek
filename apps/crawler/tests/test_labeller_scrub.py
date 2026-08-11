@@ -18,6 +18,7 @@ from src.labeller.scrub import (
     HF_REPO,
     ScrubFilter,
     ScrubGuardError,
+    ScrubSourceError,
     scrub,
 )
 
@@ -114,6 +115,42 @@ class StubHfApi:
         self.extras.pop(path_in_repo, None)
 
 
+class MalformedSourceHfApi(StubHfApi):
+    """Return one malformed source without exposing it through API writes."""
+
+    def __init__(self, files: dict[str, list[dict]], malformed_path: str, text: str):
+        super().__init__(files)
+        self.malformed_path = malformed_path
+        self.malformed_text = text
+
+    def hf_hub_download(
+        self,
+        *,
+        repo_id: str,
+        filename: str,
+        repo_type: str,
+        local_dir: str,
+    ) -> str:
+        if filename != self.malformed_path:
+            return super().hf_hub_download(
+                repo_id=repo_id,
+                filename=filename,
+                repo_type=repo_type,
+                local_dir=local_dir,
+            )
+
+        self.calls.append(
+            (
+                "hf_hub_download",
+                {"filename": filename, "local_dir": local_dir, "repo_id": repo_id},
+            )
+        )
+        local = Path(local_dir) / Path(filename).name
+        local.parent.mkdir(parents=True, exist_ok=True)
+        local.write_text(self.malformed_text)
+        return str(local)
+
+
 # --- guards --------------------------------------------------------------
 
 
@@ -126,6 +163,35 @@ def test_scrub_with_only_date_refuses() -> None:
     """`--date` alone is vacuous — would wipe whole files; use delete_file."""
     with pytest.raises(ScrubGuardError, match="--slug or --posting-id"):
         scrub(ScrubFilter(dates=frozenset({"2026-04-25"})), dry_run=True)
+
+
+def test_malformed_unrelated_line_aborts_before_any_remote_mutation() -> None:
+    """A later bad source prevents an earlier valid rewrite from being committed."""
+    original = {
+        "data/2026-04-25.jsonl": [_row("target", "acme"), _row("keep", "widgets")],
+        # The stub needs the path in its listing; download returns the raw
+        # malformed text below instead of serializing this placeholder.
+        "data/2026-04-26.jsonl": [_row("unrelated", "widgets")],
+    }
+    malformed_content = (
+        json.dumps(_row("unrelated", "widgets"))
+        + "\n"
+        + "this content must not appear in the error\n"
+    )
+    api = MalformedSourceHfApi(
+        original,
+        malformed_path="data/2026-04-26.jsonl",
+        text=malformed_content,
+    )
+
+    with pytest.raises(ScrubSourceError) as exc_info:
+        scrub(ScrubFilter(slug="acme"), api=api)
+
+    message = str(exc_info.value)
+    assert message == "malformed remote JSONL in data/2026-04-26.jsonl at line 2"
+    assert "this content must not appear" not in message
+    assert api.files == original
+    assert not [call for call in api.calls if call[0] in {"upload_file", "delete_file"}]
 
 
 # --- slug matching -------------------------------------------------------
