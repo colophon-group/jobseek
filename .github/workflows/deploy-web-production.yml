@@ -118,12 +118,20 @@ jobs:
             status="$(pnpm dlx vercel@55.0.0 curl "$path" \
               --deployment="$DEPLOYMENT_URL" \
               -- --silent --show-error --output /dev/null --write-out '%{http_code}')"
-            [[ "$status" == "200" ]]
+            echo "Smoke $path -> HTTP $status"
+            if [[ "$status" != "200" ]]; then
+              echo "::error title=Staged smoke failed::$path returned HTTP $status"
+              exit 1
+            fi
           done
           scanner_status="$(pnpm dlx vercel@55.0.0 curl /wp-admin/setup-config.php \
             --deployment="$DEPLOYMENT_URL" \
-            -- --silent --show-error --output /dev/null --write-out '%{http_code}')"
-          [[ "$scanner_status" == "404" ]]
+            -- --location --silent --show-error --output /dev/null --write-out '%{http_code}')"
+          echo "Smoke /wp-admin/setup-config.php -> HTTP $scanner_status after redirects"
+          if [[ "$scanner_status" != "404" ]]; then
+            echo "::error title=Scanner path exposed::Expected HTTP 404 after redirects, got $scanner_status"
+            exit 1
+          fi
 
       - name: Promote only if this SHA is still main
         if: steps.paths.outputs.deploy == 'true'

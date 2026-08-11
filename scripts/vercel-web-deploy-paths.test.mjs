@@ -66,6 +66,12 @@ test("production workflow stages, verifies, then promotes exact main", () => {
     2,
   );
   assert.doesNotMatch(workflow, /--(?:output|write-out)=/);
+  assert.match(
+    workflow,
+    /scanner_status=[\s\S]{0,240}-- --location --silent/,
+  );
+  assert.match(workflow, /Smoke \$path -> HTTP \$status/);
+  assert.match(workflow, /Scanner path exposed/);
   assert.doesNotMatch(workflow, /--cwd=apps\/web/);
   assert.doesNotMatch(workflow, /--git-branch/);
   assert.match(workflow, /environment: Production/);
