@@ -375,7 +375,8 @@ The web app can bypass the Vercel server-action proxy and call Typesense directl
 | Surface | Runner export | Mirrors server action |
 |---------|---------------|----------------------|
 | `/explore` search loop (filter chip changes, load-more) | `runSearchJobs`, `runListTopCompanies` | `searchJobs`, `listTopCompanies` |
-| Header / modal typeahead (per keystroke) | `runSuggestLocations`, `runSuggestOccupations`, `runSuggestSeniorities`, `runSuggestTechnologies` | `suggestLocations`, `suggestOccupations`, `suggestSeniorities`, `suggestTechnologies` |
+| Shared header search-bar typeahead (per debounced query) | `runSearchBarTypeahead` | `suggestSearchBarTypeahead` (one action for company + four taxonomy caches) |
+| Location-only pill / modal typeahead | `runSuggestLocations` | `suggestLocations` |
 | Company detail postings list | `runGetCompanyPostings` | `getCompanyPostings` (calls `loadPostingsWithCounts`) |
 | Public watchlist postings (≤100 companies) | `runGetWatchlistPostings` | `getWatchlistPostings` (≤100 path; >100 falls back) |
 
@@ -397,6 +398,15 @@ The web app can bypass the Vercel server-action proxy and call Typesense directl
 - **Browser provider**: `apps/web/src/lib/search/typesense-browser.ts` (postings/companies), `typesense-browser-typeahead.ts` (taxonomy suggest), `typesense-browser-watchlist.ts`. All thin -- no `typesense-js` runtime dependency in the browser bundle.
 - **Anon truncation**: enforced as a soft client-side cap (`ANON_MAX_COMPANIES`, `ANON_MAX_POSTINGS`, `ANON_MAX_WATCHLIST_POSTINGS`) matching the current server-action behaviour. Real abuse protection is the Cloudflare per-IP rate-limit on the tunnel hostname.
 - **Fallback**: every runner falls back to the corresponding server action when the browser path errors, returns degraded, or hits a code-explicit fallback case (e.g. watchlist >100 companies).
+- **Search-bar request budget**: direct mode batches candidate collections,
+  non-English fallbacks, and posting-count boost facets into at most three
+  sequential `multi_search` requests. A cold scoped key adds one request. A
+  failed direct candidate/fallback phase stops that plan and adds one batched
+  server-action fallback, so the absolute ceiling is four browser network
+  requests per debounced query (also four on a successful cold direct query, one
+  with direct mode disabled). Best-effort boost failure retains the unboosted
+  order and never adds a retry. Query generations prevent any older completion
+  from updating the dropdown.
 
 ## Read paths summary
 

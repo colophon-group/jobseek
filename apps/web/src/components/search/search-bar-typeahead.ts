@@ -1,17 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { suggestCompanies } from "@/lib/actions/company";
 import type { CompanySuggestion } from "@/lib/actions/company";
 import type { LocationSuggestion } from "@/lib/actions/locations";
 import type { TaxonomySuggestion } from "@/lib/actions/taxonomy";
 import type { WorkMode } from "@/lib/search/types";
-import {
-  runSuggestLocations as suggestLocations,
-  runSuggestOccupations as suggestOccupations,
-  runSuggestSeniorities as suggestSeniorities,
-  runSuggestTechnologies as suggestTechnologies,
-} from "@/lib/search/typeahead-runner";
+import { runSearchBarTypeahead } from "@/lib/search/typeahead-runner";
 
 /**
  * Work-mode autocomplete entries - fixed three values, matched
@@ -120,8 +114,9 @@ export function useSearchBarTypeahead({
   const [seniorityResults, setSeniorityResults] = useState<TaxonomySuggestion[]>([]);
   const [technologyResults, setTechnologyResults] = useState<TaxonomySuggestion[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestGenerationRef = useRef(0);
 
-  const clearResults = useCallback(() => {
+  const clearResultState = useCallback(() => {
     setLocationResults([]);
     setCompanyResults([]);
     setOccupationResults([]);
@@ -129,9 +124,19 @@ export function useSearchBarTypeahead({
     setTechnologyResults([]);
   }, []);
 
+  const clearResults = useCallback(() => {
+    requestGenerationRef.current += 1;
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    clearResultState();
+  }, [clearResultState]);
+
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      requestGenerationRef.current += 1;
     };
   }, []);
 
@@ -145,9 +150,16 @@ export function useSearchBarTypeahead({
         return;
       }
 
-      if (matchWorkModes(query, selectedWorkModes).length > 0) {
+      const hasWorkModeMatches = matchWorkModes(query, selectedWorkModes).length > 0;
+      if (hasWorkModeMatches) {
         onOpen();
       }
+
+      // Every accepted input owns a generation. Older promises may continue
+      // (server actions cannot be cancelled reliably), but their completion
+      // is ignored before any state or dropdown callbacks are touched.
+      const generation = requestGenerationRef.current + 1;
+      requestGenerationRef.current = generation;
 
       const baseFilters: TypeaheadFilters = {
         companyId,
@@ -164,73 +176,67 @@ export function useSearchBarTypeahead({
         const { [omit]: _omitted, ...rest } = baseFilters;
         return rest;
       };
-      const setFilteredResults = <T,>(
-        promise: Promise<T[]>,
-        filter: (items: T[]) => T[],
-        setResults: (items: T[]) => void,
-      ) => {
-        promise.then((items) => {
-          const filtered = filter(items);
-          setResults(filtered);
-          if (filtered.length > 0) onOpen();
-        });
-      };
 
       debounceRef.current = setTimeout(() => {
+        debounceRef.current = null;
         onResetActiveIndex();
 
-        if (scopedToCompany) {
-          setCompanyResults([]);
-        } else {
-          suggestCompanies({ query }).then((companies) => {
-            setCompanyResults(companies);
-            if (companies.length > 0 || query.trim().length >= 2) {
-              onOpen();
-            }
-          });
-        }
+        void runSearchBarTypeahead({
+          query,
+          locale: lang,
+          userLat,
+          userLng,
+          includeCompanies: !scopedToCompany,
+          locationFilters: filtersExcluding("locationIds"),
+          occupationFilters: filtersExcluding("occupationIds"),
+          seniorityFilters: filtersExcluding("seniorityIds"),
+          technologyFilters: filtersExcluding("technologyIds"),
+        })
+          .then((results) => {
+            if (requestGenerationRef.current !== generation) return;
 
-        setFilteredResults(
-          suggestLocations({
-            query,
-            locale: lang,
-            userLat,
-            userLng,
-            filters: filtersExcluding("locationIds"),
-          }),
-          (locs) =>
-            selectedLocationIds
-              ? locs.filter((r) => !selectedLocationIds.has(r.id))
-              : locs.filter((r) => !selectedLocationSlugs.has(r.slug)),
-          setLocationResults,
-        );
-        setFilteredResults(
-          suggestOccupations({
-            query,
-            locale: lang,
-            filters: filtersExcluding("occupationIds"),
-          }),
-          (occs) => occs.filter((r) => !selectedOccupationIds.has(r.id)),
-          setOccupationResults,
-        );
-        setFilteredResults(
-          suggestSeniorities({
-            query,
-            locale: lang,
-            filters: filtersExcluding("seniorityIds"),
-          }),
-          (sens) => sens.filter((r) => !selectedSeniorityIds.has(r.id)),
-          setSeniorityResults,
-        );
-        setFilteredResults(
-          suggestTechnologies({
-            query,
-            locale: lang,
-            filters: filtersExcluding("technologyIds"),
-          }),
-          (techs) => techs.filter((r) => !selectedTechnologyIds.has(r.id)),
-          setTechnologyResults,
-        );
+            const locations = selectedLocationIds
+              ? results.locations.filter((item) => !selectedLocationIds.has(item.id))
+              : results.locations.filter((item) => !selectedLocationSlugs.has(item.slug));
+            const occupations = results.occupations.filter(
+              (item) => !selectedOccupationIds.has(item.id),
+            );
+            const seniorities = results.seniorities.filter(
+              (item) => !selectedSeniorityIds.has(item.id),
+            );
+            const technologies = results.technologies.filter(
+              (item) => !selectedTechnologyIds.has(item.id),
+            );
+
+            setLocationResults(locations);
+            setCompanyResults(scopedToCompany ? [] : results.companies);
+            setOccupationResults(occupations);
+            setSeniorityResults(seniorities);
+            setTechnologyResults(technologies);
+
+            if (
+              !scopedToCompany ||
+              hasWorkModeMatches ||
+              locations.length > 0 ||
+              occupations.length > 0 ||
+              seniorities.length > 0 ||
+              technologies.length > 0
+            ) {
+              onOpen();
+            } else {
+              onClose();
+            }
+          })
+          .catch(() => {
+            if (requestGenerationRef.current !== generation) return;
+            // Explicit failure policy: retain prior results while a current
+            // query is loading, then clear them if every direct/server
+            // fallback path for that generation fails. Client-only work-mode
+            // matches remain visible because they need no network response.
+            clearResultState();
+            if (hasWorkModeMatches) onOpen();
+            else onClose();
+          });
       }, 200);
     },
     [
@@ -240,6 +246,7 @@ export function useSearchBarTypeahead({
       baseOccupationIds,
       baseSeniorityIds,
       baseTechnologyIds,
+      clearResultState,
       clearResults,
       companyId,
       lang,
