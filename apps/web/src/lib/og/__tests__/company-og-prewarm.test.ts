@@ -1,13 +1,60 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  buildCompanyDocuments,
   parseOptions,
-  TYPESENSE_BATCH_TIMEOUT_SECONDS,
   withRetry,
 } from "../../../../script/prewarm-company-og-cache";
 
 describe("company OG prewarm CLI", () => {
-  it("uses a batch-only Typesense timeout without changing the web client", () => {
-    expect(TYPESENSE_BATCH_TIMEOUT_SECONDS).toBe(30);
+  it("builds localized card data from the repository sources", () => {
+    const documents = buildCompanyDocuments(
+      [
+        "slug,name,website,logo_url,icon_url,logo_type,industry,employee_count_range,founded_year,extras",
+        "acme,Acme,https://acme.test,,https://assets.test/acme.png,icon,1,3,1999,",
+      ].join("\n"),
+      [
+        "slug,en,de,fr,it",
+        "acme,English description,Deutsche Beschreibung,,",
+      ].join("\n"),
+      ["id,name,keywords", "1,Technology,software"].join("\n"),
+      null,
+    );
+
+    expect(documents).toEqual([{
+      id: "acme",
+      name: "Acme",
+      slug: "acme",
+      active_posting_count: 0,
+      icon: "https://assets.test/acme.png",
+      website: "https://acme.test",
+      industry_id: 1,
+      industry_name: "Technology",
+      employee_count_range: 3,
+      founded_year: 1999,
+      description: "English description",
+      description_de: "Deutsche Beschreibung",
+    }]);
+  });
+
+  it("loads and validates every production company source row", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const companies = await readFile("../crawler/data/companies.csv", "utf8");
+    const descriptions = await readFile(
+      "../crawler/data/company_descriptions.csv",
+      "utf8",
+    );
+    const industries = await readFile("../crawler/data/industries.csv", "utf8");
+
+    const documents = buildCompanyDocuments(
+      companies,
+      descriptions,
+      industries,
+      null,
+    );
+
+    expect(documents.length).toBeGreaterThan(5_000);
+    expect(new Set(documents.map((company) => company.slug)).size)
+      .toBe(documents.length);
   });
 
   it("parses bounded canary options passed through pnpm", () => {

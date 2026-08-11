@@ -30,15 +30,16 @@ reusing the same objects.
 `.github/workflows/prewarm-company-og-cache.yml` runs on renderer/font changes,
 company registry changes, weekly reconciliation, and manual dispatch. It:
 
-1. Reads all company documents from Typesense in bounded pages.
+1. Reads companies, localized descriptions, and industries from the same
+   versioned CSV sources that feed production.
 2. Lists the current R2 namespace once and skips existing locale/slug objects.
 3. Renders the same `ImageResponse` card on a GitHub runner.
 4. Uploads missing PNGs to R2 with bounded concurrency and retries.
 5. Fails the run if any card cannot be rendered or uploaded.
 
-The production GitHub environment supplies the scoped Typesense search key and
-R2 write credentials. No request is sent through the deployed OG route, so a
-prewarm consumes no Vercel Fluid CPU.
+The production GitHub environment supplies R2 write credentials. The job has
+no dependency on the public Typesense tunnel and sends no request through the
+deployed OG route, so a prewarm consumes no Vercel Fluid CPU.
 
 Run a bounded canary before a forced/full reconciliation:
 
@@ -90,10 +91,6 @@ Vercel runtime/build:
 GitHub Production environment:
 
 - the same R2 connection values
-- `TYPESENSE_HOST`
-- `TYPESENSE_PORT`
-- `TYPESENSE_PROTOCOL`
-- `TYPESENSE_SEARCH_KEY`
 - optional `COMPANY_OG_RENDERER_VERSION_SALT` variable
 
 Vercel project env vars are not automatically visible inside `pnpm turbo run
@@ -149,7 +146,8 @@ an unbounded number of objects.
 
 ## Tradeoff
 
-The cache key is renderer-versioned, not company-data-versioned. Company name,
-logo, description, and count changes can leave an existing OG image stale until
-the renderer version changes or a force control is used. That matches the
-existing cache policy while moving the expensive render work off Vercel.
+The cache key is renderer-versioned, not company-data-versioned. Push-triggered
+prewarms therefore force-replace the current namespace when a company source
+changes; scheduled reconciliation skips existing objects. Route-level CDN
+responses can remain cached until their existing cache policy expires, while
+new requests read the updated R2 object without using Vercel CPU to render it.

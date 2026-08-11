@@ -6,6 +6,8 @@ on:
     paths:
       - ".github/workflows/prewarm-company-og-cache.yml"
       - "apps/crawler/data/companies.csv"
+      - "apps/crawler/data/company_descriptions.csv"
+      - "apps/crawler/data/industries.csv"
       - "apps/web/public/fonts/JetBrainsMono-Bold.ttf"
       - "apps/web/src/lib/og/company-og-card.tsx"
       - "apps/web/src/lib/og/company-og-key.ts"
@@ -46,18 +48,19 @@ jobs:
     env:
       PREWARM_CONCURRENCY: ${{ inputs.concurrency || '4' }}
       PREWARM_MAX_COMPANIES: ${{ inputs.max_companies || '' }}
-      PREWARM_FORCE: ${{ inputs.force || false }}
+      # Source or renderer pushes must replace existing cards in the stable
+      # renderer namespace. Scheduled reconciliation still skips existing
+      # objects; manual dispatch honors its explicit force input.
+      PREWARM_FORCE: ${{ github.event_name == 'push' || inputs.force || false }}
       COMPANY_OG_RENDERER_VERSION_SALT: ${{ vars.COMPANY_OG_RENDERER_VERSION_SALT || '' }}
       R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       R2_BUCKET: ${{ secrets.R2_BUCKET || vars.R2_BUCKET }}
-      TYPESENSE_HOST: ${{ secrets.TYPESENSE_HOST }}
-      TYPESENSE_PORT: ${{ secrets.TYPESENSE_PORT }}
-      TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}
-      TYPESENSE_SEARCH_KEY: ${{ secrets.TYPESENSE_SEARCH_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 

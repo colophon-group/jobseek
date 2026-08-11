@@ -51,6 +51,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "better-auth": "^1.6.26",
+    "csv-parse": "^6.1.0",
     "dompurify": "^3.4.13",
     "drizzle-orm": "^0.45.2",
     "entities": "^8.0.0",
