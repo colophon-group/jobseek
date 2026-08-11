@@ -48,6 +48,7 @@ export function Hero() {
               asset={heroArt}
               focus={heroArtFocus}
               crop={{ top: 100, bottom: 100, left: 0, right: 0 }}
+              preload
               className="h-full w-full"
             />
           </div>
