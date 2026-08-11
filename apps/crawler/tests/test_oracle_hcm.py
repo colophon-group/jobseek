@@ -265,6 +265,56 @@ async def test_discover_partitions_results_above_oracle_window_limit():
 
 
 @pytest.mark.asyncio
+async def test_discover_applies_overlap_independently_to_facet_partitions():
+    """Partitioned tenants retain bounded churn protection per facet."""
+
+    def _jobs(start: int, count: int) -> list[dict]:
+        return [
+            {"Id": str(i), "Title": f"Job {i}", "PrimaryLocation": "United States"}
+            for i in range(start, start + count)
+        ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if "selectedCategoriesFacet=A" in url:
+            if ",offset=180" in url:
+                # One deletion before the boundary shifts the remaining rows
+                # left; the 20-row overlap still captures the original set.
+                wrapper = {"TotalJobsCount": 249, "requisitionList": _jobs(181, 69)}
+            else:
+                wrapper = {"TotalJobsCount": 250, "requisitionList": _jobs(0, 200)}
+        elif "selectedCategoriesFacet=B" in url:
+            wrapper = {"TotalJobsCount": 200, "requisitionList": _jobs(250, 200)}
+        else:
+            wrapper = {
+                "TotalJobsCount": 450,
+                "requisitionList": _jobs(0, 200),
+                "categoriesFacet": [
+                    {"Id": "A", "TotalCount": 250},
+                    {"Id": "B", "TotalCount": 200},
+                ],
+            }
+        return httpx.Response(200, json={"items": [wrapper]})
+
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001"
+        ),
+        "metadata": {
+            "host": "example.fa.us2.oraclecloud.com",
+            "site": "CX_2001",
+            "offset_overlap": 20,
+        },
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with patch("src.core.monitors.oracle_hcm._RESULT_WINDOW_LIMIT", 400):
+            result = await discover(board, client)
+
+    assert isinstance(result, list)
+    assert len(result) == 450
+
+
+@pytest.mark.asyncio
 async def test_discover_marks_cross_partition_duplicate_as_truncated():
     """Facet churn cannot silently omit a job during a partitioned cycle."""
 
@@ -342,6 +392,169 @@ async def test_discover_marks_cross_page_duplicate_as_truncated():
     assert isinstance(result, MonitorResult)
     assert result.truncated is True
     assert len(result.urls) == 399
+
+
+@pytest.mark.asyncio
+async def test_discover_overlap_absorbs_total_drop_and_offset_shift():
+    """An overlap catches the row skipped when a deletion shifts later pages."""
+
+    def _job(job_id: int) -> dict:
+        return {
+            "Id": str(job_id),
+            "Title": f"Job {job_id}",
+            "PrimaryLocation": "Boise, ID, United States",
+        }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if ",offset=360" in url:
+            rows = [_job(i) for i in range(361, 400)]
+            total = 399
+        elif ",offset=180" in url:
+            rows = [_job(i) for i in range(181, 381)]
+            total = 399
+        else:
+            rows = [_job(i) for i in range(200)]
+            total = 400
+        return httpx.Response(
+            200,
+            json={"items": [{"TotalJobsCount": total, "requisitionList": rows}]},
+        )
+
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1"
+        ),
+        "metadata": {
+            "host": "example.fa.us2.oraclecloud.com",
+            "site": "CX_1",
+            "offset_overlap": 20,
+        },
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await discover(board, client)
+
+    assert not isinstance(result, MonitorResult)
+    assert len(result) == 400
+    assert {job.url.rsplit("/", 1)[-1] for job in result} == {str(i) for i in range(400)}
+
+
+@pytest.mark.asyncio
+async def test_discover_allows_configured_advertised_total_tail_tolerance():
+    """Some tenants advertise a few more jobs than their final page exposes."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        offset = 200 if ",offset=200" in str(request.url) else 0
+        count = 195 if offset else 200
+        rows = [
+            {
+                "Id": str(i),
+                "Title": f"Job {i}",
+                "PrimaryLocation": "Boise, ID, United States",
+            }
+            for i in range(offset, offset + count)
+        ]
+        return httpx.Response(
+            200,
+            json={"items": [{"TotalJobsCount": 400, "requisitionList": rows}]},
+        )
+
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1"
+        ),
+        "metadata": {
+            "host": "example.fa.us2.oraclecloud.com",
+            "site": "CX_1",
+            "total_count_tolerance": 5,
+        },
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await discover(board, client)
+
+    assert not isinstance(result, MonitorResult)
+    assert len(result) == 395
+
+
+@pytest.mark.asyncio
+async def test_discover_overlap_still_truncates_when_churn_exceeds_margin():
+    """A shift larger than the configured overlap must remain fail-closed."""
+
+    def _job(job_id: int) -> dict:
+        return {
+            "Id": str(job_id),
+            "Title": f"Job {job_id}",
+            "PrimaryLocation": "Boise, ID, United States",
+        }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if ",offset=360" in url:
+            rows = [_job(i) for i in range(385, 400)]
+            total = 375
+        elif ",offset=180" in url:
+            rows = [_job(i) for i in range(205, 400)]
+            total = 375
+        else:
+            rows = [_job(i) for i in range(200)]
+            total = 400
+        return httpx.Response(
+            200,
+            json={"items": [{"TotalJobsCount": total, "requisitionList": rows}]},
+        )
+
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1"
+        ),
+        "metadata": {
+            "host": "example.fa.us2.oraclecloud.com",
+            "site": "CX_1",
+            "offset_overlap": 20,
+        },
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await discover(board, client)
+
+    assert isinstance(result, MonitorResult)
+    assert result.truncated is True
+    assert len(result.urls) == 395
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("offset_overlap", [-1, 200, True, "20"])
+async def test_discover_rejects_invalid_offset_overlap(offset_overlap):
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1"
+        ),
+        "metadata": {
+            "host": "example.fa.us2.oraclecloud.com",
+            "site": "CX_1",
+            "offset_overlap": offset_overlap,
+        },
+    }
+
+    with pytest.raises(ValueError, match="offset_overlap"):
+        await discover(board, AsyncMock(spec=httpx.AsyncClient))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("total_count_tolerance", [-1, True, "5"])
+async def test_discover_rejects_invalid_total_count_tolerance(total_count_tolerance):
+    board = {
+        "board_url": (
+            "https://example.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1"
+        ),
+        "metadata": {
+            "host": "example.fa.us2.oraclecloud.com",
+            "site": "CX_1",
+            "total_count_tolerance": total_count_tolerance,
+        },
+    }
+
+    with pytest.raises(ValueError, match="total_count_tolerance"):
+        await discover(board, AsyncMock(spec=httpx.AsyncClient))
 
 
 @pytest.mark.asyncio
