@@ -466,6 +466,24 @@ class TestDomScraper:
         # Confirms Playwright was used (page.evaluate called by dismiss_overlays)
         page.evaluate.assert_awaited_once()
 
+    async def test_static_verification_challenge_raises(self):
+        """A 200 verification shell is transient, not an empty job detail."""
+        from src.core.monitors.dom import BotChallengeError
+        from src.core.scrapers.dom import scrape
+
+        challenge = (
+            "<html><head><title>Verifying...</title></head>"
+            "<body>Please wait while your request is being verified...</body></html>"
+        )
+
+        def handler(request):
+            return httpx.Response(200, text=challenge, request=request)
+
+        config = {"steps": [{"tag": "h1", "field": "title"}]}
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(BotChallengeError, match="proxy transport"):
+                await scrape("https://blocked.example/job/1", config, client)
+
     async def test_playwright_import_error(self):
         """Raises RuntimeError when playwright is not installed."""
         from src.core.scrapers.dom import scrape

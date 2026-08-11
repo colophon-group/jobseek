@@ -35,6 +35,7 @@ import httpx
 import structlog
 from selectolax.lexbor import LexborHTMLParser
 
+from src.core.monitors.dom import _raise_if_bot_challenge
 from src.core.scrapers import JobContent, register
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
 from src.shared.extract import flatten, walk_steps
@@ -392,7 +393,9 @@ async def scrape(
                     final_url = page.url or ""
                 _check_gone_redirect(final_url, gone_pattern, url)
                 await run_actions(page, browser_config.get("actions", []))
-                return await safe_content(page)
+                html = await safe_content(page)
+                _raise_if_bot_challenge(final_url or url, html)
+                return html
 
         if pw is not None:
             html = await _render_page(pw)
@@ -422,6 +425,7 @@ async def scrape(
         _check_gone_redirect(str(resp.url), gone_pattern, url)
         resp.raise_for_status()
         html = resp.text
+        _raise_if_bot_challenge(str(resp.url), html)
 
     html = _scope_html(html, config)
     elements = flatten(html)
