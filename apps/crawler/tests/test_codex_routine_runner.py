@@ -147,6 +147,10 @@ def test_annotation_child_injects_exact_postgresql_budget_without_secret_rewrite
         "CRAWLER_DB_POOL_IDLE_SECONDS": "60",
     }
     assert {key: env[key] for key in LABELLER_POSTGRES_ENV} == LABELLER_POSTGRES_ENV
+    assert env["JOBSEEK_LABELLER_DB_LOCK_FILE"] == str(
+        config.state_dir / "labeller-postgresql.lock"
+    )
+    assert env["JOBSEEK_LABELLER_DB_LOCK_TIMEOUT_SECONDS"] == "300"
     assert env["JOBSEEK_LABELLER_ENV_FILE"] == "/etc/jobseek-codex/labeller.env"
     assert "LOCAL_DATABASE_URL" not in env
 

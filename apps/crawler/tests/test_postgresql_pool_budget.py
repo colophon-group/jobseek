@@ -6,7 +6,10 @@ from pathlib import Path
 
 import yaml
 
-from src.workspace.codex_routine_runner import LABELLER_POSTGRES_ENV
+from src.workspace.codex_routine_runner import (
+    LABELLER_POSTGRES_ENV,
+    labeller_postgresql_child_env,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 CRAWLER = ROOT / "apps" / "crawler"
@@ -92,6 +95,16 @@ def test_oneoffs_and_readonly_routine_have_explicit_small_budgets() -> None:
         "CRAWLER_DB_POOL_MAX": "2",
         "CRAWLER_DB_POOL_IDLE_SECONDS": "60",
     }
+    labeller_child = labeller_postgresql_child_env(ROOT / "runner-state")
+    assert labeller_child["JOBSEEK_LABELLER_DB_LOCK_FILE"].endswith(
+        "/runner-state/labeller-postgresql.lock"
+    )
+    assert labeller_child["JOBSEEK_LABELLER_DB_LOCK_TIMEOUT_SECONDS"] == "300"
+    labeller_cli = (CRAWLER / "src/labeller/cli.py").read_text(encoding="utf-8")
+    assert '_DATABASE_COMMANDS = frozenset({"sample", "prepare", "prepare-pre-llm"})' in (
+        labeller_cli
+    )
+    assert "with _database_process_lock(args.command)" in labeller_cli
     deployment = (ROOT / "scripts/deploy-codex-runner-host.sh").read_text(encoding="utf-8")
     assert "labeller PostgreSQL pool contract mismatch" in deployment
     assert "labeller.env must contain exactly one LOCAL_DATABASE_URL" in deployment
@@ -101,6 +114,9 @@ def test_oneoffs_and_readonly_routine_have_explicit_small_budgets() -> None:
     assert deployment.index("pause_timer_activations", main) < deployment.index(
         "require_runtime_config", main
     )
+    runbook = RUNBOOK.read_text(encoding="utf-8")
+    assert "aggregate maximum remains exactly 2" in runbook
+    assert "unchanged at 58 connections" in runbook
 
 
 def test_deploy_quiesces_pool_generations_and_stays_below_normal_maximum() -> None:

@@ -344,12 +344,17 @@ HuggingFace cache.
 
 Keep `labeller.env` DSN-only. Existing installations need no secret-file
 rewrite: the committed daily runner injects `CRAWLER_DB_ROLE=labeller`, pool
-min `0`, pool max `2`, and idle lifetime `60` into annotation subprocesses.
-The host deploy fails before timers are restored unless `labeller.env` has
-exactly one `LOCAL_DATABASE_URL` and the imported runner contract matches those
-four values. If that preflight fails, leave the timer stopped, remove only a
-duplicate DSN assignment if present (without printing or replacing the secret),
-restore the committed runner code, and rerun the deployment.
+min `0`, pool max `2`, idle lifetime `60`, and the shared
+`/srv/jobseek-codex/state/labeller-postgresql.lock` path into annotation
+subprocesses. DB-bearing labeller children serialize on that lock before
+creating a pool, enforcing two aggregate connections even if Codex launches
+commands concurrently; non-DB commands do not contend for it. The host deploy
+fails before timers are restored unless `labeller.env` has exactly one
+nonempty PostgreSQL `LOCAL_DATABASE_URL` assignment, contains no other key or
+statement, and the imported runner contract matches the pool and lock values.
+If that preflight fails, leave the timer stopped, correct only the invalid
+shape without printing or replacing the secret, restore the committed runner
+code, and rerun the deployment.
 
 After the dry-run and one manual live pass are clean, enable the timer:
 

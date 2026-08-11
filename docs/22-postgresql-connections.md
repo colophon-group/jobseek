@@ -31,11 +31,20 @@ The Murmur child limit is an invocation semaphore, not an asyncpg pool. Each
 child opens at most one short-lived connection and closes it in `finally`, so
 the two-child limit makes its aggregate maximum exact.
 
-The daily Codex runner injects the exact labeller role/min/max/idle values into
-the annotation subprocess. `/etc/jobseek-codex/labeller.env` remains a
-DSN-only secret file and is not rewritten during rollout. Deployment validates
-both its single-DSN shape and the committed non-secret runner contract before
-restoring timers.
+The daily Codex runner injects the exact labeller role/min/max/idle values and
+one host-shared database lock path into the annotation subprocess. Every
+DB-bearing `uv run labeller` child takes that lock before creating its pool, so
+only one two-slot pool can exist across all worktrees and child processes:
+the labeller row's aggregate maximum remains exactly 2. Non-DB labeller
+commands never take the lock. The wait is bounded at 300 seconds and kernel
+lock release on process exit prevents a dead child from orphaning it.
+
+`/etc/jobseek-codex/labeller.env` remains a DSN-only secret file and is not
+rewritten during rollout. Deployment accepts comments and blank lines but
+requires exactly one nonempty PostgreSQL `LOCAL_DATABASE_URL` assignment and
+rejects every other key or statement without printing the value. It also
+validates the committed non-secret pool and shared-lock contract before
+restoring the annotation timer.
 
 Scheduled and operator surfaces are separately bounded:
 
@@ -44,7 +53,7 @@ Scheduled and operator surfaces are separately bounded:
 | reconciliation | 0 | 4 | shares the crawler mutation lock |
 | Typesense maintenance, CSV sync, currency refresh, location repair | 0 | 4 | one mutation one-off at a time |
 | `docker compose run worker-1 ...` operator one-off | 1 | 8 | worst permitted one-off; deploy refuses to overlap it |
-| daily labeller | 0 | 2 | read-only; may overlap crawler maintenance |
+| daily labeller | 0 | 2 aggregate | DB-bearing children share one host lock; may overlap crawler maintenance |
 | host observability sampler | 0 | 1 | sequential `psql` probes |
 | pgBackRest | 0 | 2 | `process-max=2` reservation |
 | ingress private-path verifier | 0 | 1 | direct, short-lived, may overlap normal services |
@@ -53,9 +62,10 @@ Repository operator scripts use either one direct connection or a four-slot
 pool, set a `jobseek:operator:*` application name, and fit inside the
 eight-slot worst-case Compose one-off row above.
 
-The worst managed non-deploy overlap is therefore 58 connections: 44 steady
-services + one 8-slot Compose operator one-off + two labeller slots + two
-backup slots + one sampler slot + one ingress verifier. Ten further slots are
+The worst managed non-deploy overlap is therefore unchanged at 58 connections:
+44 steady services + one 8-slot Compose operator one-off + one serialized
+two-slot labeller pool + two backup slots + one sampler slot + one ingress
+verifier. Ten further slots are
 reserved for operators (seven ordinary plus the three server-enforced
 superuser slots), leaving 32 ordinary shock/incident slots unallocated. The
 allocated ceiling is 68/100,

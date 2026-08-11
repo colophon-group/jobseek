@@ -13,6 +13,9 @@ BRANCH="${JOBSEEK_CODEX_BRANCH:-main}"
 EXPECTED_SHA="${JOBSEEK_CODEX_EXPECTED_SHA:-}"
 LOCK_TIMEOUT_S="${JOBSEEK_CODEX_DEPLOY_LOCK_TIMEOUT_S:-15000}"
 START_TIMERS="${JOBSEEK_CODEX_START_TIMERS:-0}"
+CONFIG_DIR="${JOBSEEK_CODEX_CONFIG_DIR:-/etc/jobseek-codex}"
+GOVERNOR_ENV_FILE="${CONFIG_DIR}/governor.env"
+LABELLER_ENV_FILE="${CONFIG_DIR}/labeller.env"
 
 LOCK_FILE="${ROOT_DIR}/state/codex-runner.lock"
 
@@ -59,6 +62,71 @@ require_root() {
   fi
 }
 
+_validate_labeller_env_file() {
+  local path="$1"
+  local line=""
+  local trimmed=""
+  local value=""
+  local first=""
+  local last=""
+  local line_number=0
+  local assignment_count=0
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    ((line_number += 1))
+    line="${line%$'\r'}"
+    trimmed="${line#"${line%%[![:space:]]*}"}"
+    if [[ -z "${trimmed}" || "${trimmed:0:1}" == "#" ]]; then
+      continue
+    fi
+    if [[ "${line}" != LOCAL_DATABASE_URL=* ]]; then
+      printf 'ERROR: labeller.env line %d is not an allowed LOCAL_DATABASE_URL assignment\n' \
+        "${line_number}" >&2
+      return 1
+    fi
+
+    ((assignment_count += 1))
+    if ((assignment_count > 1)); then
+      printf 'ERROR: labeller.env contains duplicate LOCAL_DATABASE_URL assignments\n' >&2
+      return 1
+    fi
+
+    value="${line#LOCAL_DATABASE_URL=}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    first="${value:0:1}"
+    last="${value: -1}"
+    if [[ "${first}" == "\"" || "${first}" == "'" || "${last}" == "\"" || "${last}" == "'" ]]; then
+      if [[ ${#value} -lt 2 ]] ||
+        ! { [[ "${first}" == "\"" && "${last}" == "\"" ]] ||
+          [[ "${first}" == "'" && "${last}" == "'" ]]; }; then
+        printf 'ERROR: labeller.env LOCAL_DATABASE_URL has mismatched quotes\n' >&2
+        return 1
+      fi
+      value="${value:1:${#value}-2}"
+      value="${value#"${value%%[![:space:]]*}"}"
+      value="${value%"${value##*[![:space:]]}"}"
+    fi
+    if [[ -z "${value}" ]]; then
+      printf 'ERROR: labeller.env LOCAL_DATABASE_URL must not be empty\n' >&2
+      return 1
+    fi
+    if [[ "${value}" == *[[:space:]]* ]]; then
+      printf 'ERROR: labeller.env LOCAL_DATABASE_URL must not contain whitespace\n' >&2
+      return 1
+    fi
+    if [[ "${value}" != postgresql://?* && "${value}" != postgres://?* ]]; then
+      printf 'ERROR: labeller.env LOCAL_DATABASE_URL must be a PostgreSQL DSN\n' >&2
+      return 1
+    fi
+  done <"${path}"
+
+  if ((assignment_count != 1)); then
+    printf 'ERROR: labeller.env must contain exactly one LOCAL_DATABASE_URL assignment\n' >&2
+    return 1
+  fi
+}
+
 ensure_layout() {
   if ! id -u codex-runner >/dev/null 2>&1; then
     useradd --system --user-group --create-home \
@@ -84,16 +152,14 @@ ensure_layout() {
 }
 
 require_runtime_config() {
-  [[ -r /etc/jobseek-codex/governor.env ]] || fail "missing /etc/jobseek-codex/governor.env"
-  [[ -r /etc/jobseek-codex/labeller.env ]] || fail "missing /etc/jobseek-codex/labeller.env"
-  as_runner test -r /etc/jobseek-codex/governor.env ||
+  [[ -r "${GOVERNOR_ENV_FILE}" ]] || fail "missing ${GOVERNOR_ENV_FILE}"
+  [[ -r "${LABELLER_ENV_FILE}" ]] || fail "missing ${LABELLER_ENV_FILE}"
+  as_runner test -r "${GOVERNOR_ENV_FILE}" ||
     fail "codex-runner cannot read governor.env"
-  as_runner test -r /etc/jobseek-codex/labeller.env ||
+  as_runner test -r "${LABELLER_ENV_FILE}" ||
     fail "codex-runner cannot read labeller.env"
-  local labeller_dsn_count
-  labeller_dsn_count="$(grep -Ec '^LOCAL_DATABASE_URL=' /etc/jobseek-codex/labeller.env || true)"
-  [[ "${labeller_dsn_count}" == "1" ]] ||
-    fail "labeller.env must contain exactly one LOCAL_DATABASE_URL; keep pool settings runner-owned and rerun this deployment"
+  _validate_labeller_env_file "${LABELLER_ENV_FILE}" ||
+    fail "invalid labeller.env; keep it DSN-only, correct it without printing the secret, and rerun this deployment"
 }
 
 update_repo() {
@@ -191,7 +257,8 @@ verify_entrypoints() {
     'import src.workspace.codex_runner; import src.workspace.codex_routine_runner; import src.workspace.trace_backfill'
   as_runner env PYTHONPATH="${REPO_DIR}/apps/crawler" \
     "${REPO_DIR}/apps/crawler/.venv/bin/python" -c \
-    'from src.workspace.codex_routine_runner import LABELLER_POSTGRES_ENV as actual; expected={"CRAWLER_DB_ROLE":"labeller","CRAWLER_DB_POOL_MIN":"0","CRAWLER_DB_POOL_MAX":"2","CRAWLER_DB_POOL_IDLE_SECONDS":"60"}; raise SystemExit(0 if actual == expected else "labeller PostgreSQL pool contract mismatch; keep labeller.env DSN-only, restore the committed runner contract, and redeploy")'
+    'import sys; from pathlib import Path; from src.workspace.codex_routine_runner import labeller_postgresql_child_env; state=Path(sys.argv[1]); actual=labeller_postgresql_child_env(state); expected={"CRAWLER_DB_ROLE":"labeller","CRAWLER_DB_POOL_MIN":"0","CRAWLER_DB_POOL_MAX":"2","CRAWLER_DB_POOL_IDLE_SECONDS":"60","JOBSEEK_LABELLER_DB_LOCK_FILE":str(state / "labeller-postgresql.lock"),"JOBSEEK_LABELLER_DB_LOCK_TIMEOUT_SECONDS":"300"}; raise SystemExit(0 if actual == expected else "labeller PostgreSQL pool contract mismatch; keep labeller.env DSN-only, restore the committed runner contract, and redeploy")' \
+    "${ROOT_DIR}/state"
   LABELLER_CONTRACT_VERIFIED=1
   as_runner "${REPO_DIR}/apps/crawler/.venv/bin/python" \
     "${REPO_DIR}/scripts/codex-trace-backfill.py" --help >/dev/null

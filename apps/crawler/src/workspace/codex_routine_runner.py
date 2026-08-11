@@ -96,6 +96,18 @@ LABELLER_POSTGRES_ENV = {
     "CRAWLER_DB_POOL_MAX": "2",
     "CRAWLER_DB_POOL_IDLE_SECONDS": "60",
 }
+LABELLER_POSTGRES_LOCK_FILENAME = "labeller-postgresql.lock"
+LABELLER_POSTGRES_LOCK_TIMEOUT_SECONDS = "300"
+
+
+def labeller_postgresql_child_env(state_dir: Path) -> dict[str, str]:
+    """Return the per-process budget plus a host-shared serialization lock."""
+
+    return {
+        **LABELLER_POSTGRES_ENV,
+        "JOBSEEK_LABELLER_DB_LOCK_FILE": str(state_dir / LABELLER_POSTGRES_LOCK_FILENAME),
+        "JOBSEEK_LABELLER_DB_LOCK_TIMEOUT_SECONDS": (LABELLER_POSTGRES_LOCK_TIMEOUT_SECONDS),
+    }
 
 
 def utc_run_date(value: str | None = None) -> str:
@@ -319,7 +331,9 @@ class DailyRoutineRunner:
             if os.environ.get(key):
                 env[key] = os.environ[key]
         if self.spec.name == "annotations":
-            env.update(LABELLER_POSTGRES_ENV)
+            state_dir = self.config.state_dir
+            assert state_dir is not None  # RunnerConfig.resolved() supplies this path.
+            env.update(labeller_postgresql_child_env(state_dir))
         return env
 
     def _execute(self, run_id: str) -> DailyRunResult:

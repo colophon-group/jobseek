@@ -278,7 +278,10 @@ Added to `apps/crawler/pyproject.toml`:
   or `JOBSEEK_LABELLER_ENV_FILE=/etc/jobseek-codex/labeller.env` on Hetzner.
   The production file stays DSN-only; the daily runner injects the bounded
   `labeller` PostgreSQL role with pool min `0`, max `2`, and idle lifetime
-  `60` into the Codex child environment.
+  `60` into the Codex child environment. DB-bearing labeller subprocesses also
+  serialize on the runner-owned `state/labeller-postgresql.lock`, so multiple
+  concurrent `uv run labeller` commands cannot multiply that two-connection
+  ceiling.
 - Nothing else needed.
 
 ## Why block-IDs beat anchoring
