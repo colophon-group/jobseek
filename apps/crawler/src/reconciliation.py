@@ -54,9 +54,24 @@ FROM job_posting
 WHERE id >= $1
   AND ($2::uuid IS NULL OR id < $2::uuid)
 """
+_TYPESENSE_LOCAL_SELECT_LIST = ", ".join(
+    (
+        *(f"jp.{name}" for name in PostingSchema.column_names()),
+        "jp.last_seen_at",
+        "c.name AS company_name",
+        "c.slug AS company_slug",
+        "c.icon AS company_icon",
+    )
+)
 _PARTITION_TYPESENSE_SQL = (
-    "SELECT " + PostingSchema.select_list("last_seen_at") + " FROM job_posting WHERE id >= $1 "
-    "AND ($2::uuid IS NULL OR id < $2::uuid) ORDER BY id"
+    f"SELECT {_TYPESENSE_LOCAL_SELECT_LIST} "
+    "FROM job_posting jp JOIN company c ON c.id = jp.company_id "
+    "WHERE jp.id >= $1 AND ($2::uuid IS NULL OR jp.id < $2::uuid) ORDER BY jp.id"
+)
+_TYPESENSE_POSTINGS_BY_ID_SQL = (
+    f"SELECT {_TYPESENSE_LOCAL_SELECT_LIST} "
+    "FROM job_posting jp JOIN company c ON c.id = jp.company_id "
+    "WHERE jp.id = ANY($1::uuid[]) ORDER BY jp.id"
 )
 _LOCKED_POSTINGS_SQL = (
     "SELECT "
@@ -67,9 +82,9 @@ _LOCKED_POSTINGS_SQL = (
 # These fields form the bounded, user-visible reconciliation contract. The
 # reconciler compares their canonical content directly rather than trusting a
 # checksum stored beside the document it is meant to verify. Array order is
-# significant: web readers zip location and technology IDs, names, and types
-# by position, so independently sorting them could hide a user-visible pairing
-# defect.
+# significant for location and technology fields because web readers zip IDs,
+# names, and types by position. Only intrinsically unordered locale and
+# occupation-ancestor arrays are sorted for comparison.
 TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS: tuple[str, ...] = (
     "company_id",
     "company_name",
@@ -104,6 +119,7 @@ TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS: tuple[str, ...] = (
     "source_url",
     "last_seen_at",
 )
+_ORDER_INSENSITIVE_TYPESENSE_ARRAY_FIELDS = frozenset(("locales", "occupation_ids"))
 
 
 class ReconciliationError(RuntimeError):
@@ -234,10 +250,20 @@ def _canonical_payload_value(value: object) -> object:
 
 
 def _typesense_payload_fingerprint(document: Mapping[str, object]) -> str:
-    payload = {
-        field: _canonical_payload_value(document.get(field))
-        for field in TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS
-    }
+    payload: dict[str, object] = {}
+    for field in TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS:
+        value = _canonical_payload_value(document.get(field))
+        if field in _ORDER_INSENSITIVE_TYPESENSE_ARRAY_FIELDS and isinstance(value, list):
+            value = sorted(
+                value,
+                key=lambda item: json.dumps(
+                    item,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+            )
+        payload[field] = value
     canonical = json.dumps(
         payload,
         ensure_ascii=False,
@@ -513,16 +539,17 @@ async def _repair_typesense_partition(
     ordered_ids = sorted(candidate_ids)
     absent: set[uuid.UUID] = set()
 
-    async with (
-        export_cursor_fence(local_pool),
-        local_pool.acquire() as local_conn,
-        local_conn.transaction(),
-    ):
-        rows = await _locked_local_rows(local_conn, ordered_ids)
+    # The exporter fence serializes this direct write with CDC cursor
+    # advancement. Do not hold a PostgreSQL transaction across Typesense I/O:
+    # read the current candidate rows, write them, then verify the complete
+    # partition against a fresh authoritative read before durable progress can
+    # advance. A concurrent source change either appears in that reread and
+    # fails this attempt closed, or remains eligible for the normal CDC pass.
+    async with export_cursor_fence(local_pool):
+        rows = list(await local_pool.fetch(_TYPESENSE_POSTINGS_BY_ID_SQL, ordered_ids))
         row_ids = {row["id"] for row in rows}
         absent = set(ordered_ids) - row_ids
         documents = _build_typesense_docs(list(rows), maps)
-        expected = _typesense_documents_snapshot(documents)
         for batch in _chunks(documents, REPAIR_BATCH_SIZE):
             failed = await _upsert_to_typesense(list(batch))
             if failed:
@@ -532,17 +559,9 @@ async def _repair_typesense_partition(
         for batch in _chunks(sorted(absent), REPAIR_BATCH_SIZE):
             await typesense.delete_ids([str(posting_id) for posting_id in batch])
 
+        expected = await _postgres_typesense_partition_snapshot(local_pool, partition, maps)
         verified = await typesense.partition_snapshot(partition)
-        if expected.payload_fingerprints is None or verified.payload_fingerprints is None:
-            raise ReconciliationError("Typesense repair verification lacks payload state")
-        unresolved = sum(
-            1
-            for posting_id, active in expected.states.items()
-            if verified.states.get(posting_id) != active
-            or verified.payload_fingerprints.get(posting_id)
-            != expected.payload_fingerprints[posting_id]
-        )
-        unresolved += sum(1 for posting_id in absent if posting_id in verified.states)
+        unresolved = compare_snapshots(expected, verified).detected("typesense")
         if unresolved:
             raise ReconciliationError(
                 f"Typesense reconciliation verification left {unresolved} unresolved rows"
@@ -1008,7 +1027,6 @@ async def run_reconciliation(
                     try:
                         if target == "typesense" and typesense is None:
                             typesense = TypesenseReconciliationClient()
-                            maps = await _get_taxonomy_maps(local_pool)
                         partition = (
                             await _ensure_cycle(local_pool, target, fresh=fresh_cycle)
                             if repair
@@ -1016,6 +1034,11 @@ async def run_reconciliation(
                         )
                         budget = PARTITION_COUNT - partition if full else max_partitions
                         for _ in range(budget):
+                            if target == "typesense":
+                                # Refresh long-running reconciliation proofs on
+                                # the same cadence as ordinary CDC so a stale
+                                # taxonomy cache cannot rewrite current names.
+                                maps = await _get_taxonomy_maps(local_pool)
                             result = await reconcile_partition(
                                 local_pool,
                                 supa_pool,

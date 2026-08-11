@@ -18,6 +18,8 @@ import pytest
 from src.cli import parse_args
 from src.exporter import TaxonomyMaps
 from src.reconciliation import (
+    _PARTITION_TYPESENSE_SQL,
+    _TYPESENSE_POSTINGS_BY_ID_SQL,
     PARTITION_COUNT,
     PartitionResult,
     ReconciliationError,
@@ -160,6 +162,14 @@ def test_uuid_partitions_are_contiguous_and_cover_the_keyspace() -> None:
         previous_upper = upper
     assert partition_bounds(0)[0].int == 0
     assert partition_bounds(PARTITION_COUNT - 1)[1] is None
+
+
+def test_typesense_local_snapshots_join_authoritative_company_metadata() -> None:
+    for query in (_PARTITION_TYPESENSE_SQL, _TYPESENSE_POSTINGS_BY_ID_SQL):
+        assert "JOIN company c ON c.id = jp.company_id" in query
+        assert "c.name AS company_name" in query
+        assert "c.slug AS company_slug" in query
+        assert "c.icon AS company_icon" in query
 
 
 def test_migration_persists_independent_target_cursors_and_run_history(monkeypatch) -> None:
@@ -784,6 +794,32 @@ def test_payload_comparison_canonicalizes_integral_floats() -> None:
     assert compare_snapshots(local, remote).payload_mismatch == set()
 
 
+def test_payload_comparison_canonicalizes_unordered_arrays() -> None:
+    posting_id = _id(0xAA, 13)
+    local = _typesense_documents_snapshot(
+        [
+            {
+                "id": str(posting_id),
+                "is_active": True,
+                "occupation_ids": [30, 10, 20],
+                "locales": ["it", "en", "de"],
+            }
+        ]
+    )
+    remote = _typesense_documents_snapshot(
+        [
+            {
+                "id": str(posting_id),
+                "is_active": True,
+                "occupation_ids": [10, 20, 30],
+                "locales": ["de", "it", "en"],
+            }
+        ]
+    )
+
+    assert compare_snapshots(local, remote).payload_mismatch == set()
+
+
 async def test_injected_supabase_drift_is_repaired_and_verified(monkeypatch) -> None:
     prefix = 0xAA
     shared = _id(prefix, 1)
@@ -968,6 +1004,73 @@ async def test_typesense_payload_repair_fails_closed_without_verified_convergenc
             typesense=remote,  # type: ignore[arg-type]
             maps=TaxonomyMaps(),
         )
+
+
+async def test_typesense_repair_verifies_fresh_local_truth_without_open_transaction(
+    monkeypatch,
+) -> None:
+    prefix = 0xBE
+    posting_id = _id(prefix, 1)
+    local = _MemoryPool({posting_id: True})
+    remote = _MemoryPayloadTypesense(
+        [{"id": str(posting_id), "is_active": True, "title": "Stale title"}]
+    )
+    transaction_active = False
+    partition_reads = 0
+
+    class TrackingTransaction(_AsyncContext):
+        async def __aenter__(self) -> None:
+            nonlocal transaction_active
+            transaction_active = True
+
+        async def __aexit__(self, *_args: object) -> None:
+            nonlocal transaction_active
+            transaction_active = False
+
+    local.connection.transaction = MagicMock(return_value=TrackingTransaction())  # type: ignore[method-assign]
+    original_fetch = local.fetch
+
+    async def fetch(query: str, *args: object) -> list[dict[str, object]]:
+        nonlocal partition_reads
+        if "jp.id >= $1" in query:
+            partition_reads += 1
+        return await original_fetch(query, *args)
+
+    local.fetch = fetch  # type: ignore[method-assign]
+
+    def build_docs(rows: list[dict[str, object]], _maps: TaxonomyMaps) -> list[dict]:
+        return [
+            {
+                "id": str(row["id"]),
+                "is_active": row["is_active"],
+                "reconciliation_bucket": reconciliation_bucket(str(row["id"])),
+                "title": "Current title",
+            }
+            for row in rows
+        ]
+
+    async def upsert(docs: list[dict[str, object]]) -> set[str]:
+        assert transaction_active is False
+        for document in docs:
+            remote.documents[uuid.UUID(str(document["id"]))] = dict(document)
+        return set()
+
+    monkeypatch.setattr("src.reconciliation.export_cursor_fence", _noop_fence)
+    monkeypatch.setattr("src.reconciliation._build_typesense_docs", build_docs)
+    monkeypatch.setattr("src.reconciliation._upsert_to_typesense", upsert)
+
+    await reconcile_partition(
+        local,  # type: ignore[arg-type]
+        None,
+        target="typesense",
+        partition=prefix,
+        repair=True,
+        typesense=remote,  # type: ignore[arg-type]
+        maps=TaxonomyMaps(),
+    )
+
+    assert partition_reads == 2
+    local.connection.transaction.assert_not_called()  # type: ignore[attr-defined]
 
 
 async def test_repair_fails_closed_when_downstream_does_not_converge(monkeypatch) -> None:

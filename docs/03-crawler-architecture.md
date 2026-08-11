@@ -346,12 +346,14 @@ unchanged when the document beside it is corrupted, while a version would not
 detect a bad denormalization at the same version. For each UUID partition the
 reconciler builds the expected document with the ordinary exporter and taxonomy
 maps, exports only the defined fields in
-`TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS`, preserves array order, and compares
-in-process SHA-256 fingerprints. Array order is part of the contract because
-web readers zip location and technology IDs/names/types by position; sorting
-each array independently could hide a user-visible pairing error. The hash is an internal
-comparison value: neither it nor posting fields/IDs are written to logs,
-metrics, or reconciliation tables.
+`TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS`, and compares in-process SHA-256
+fingerprints. Map keys and intrinsically unordered locale and occupation-
+ancestor arrays are canonicalized deterministically. Location and technology
+array order remains part of the contract because web readers zip their IDs,
+names, and types by position; sorting those arrays independently could hide a
+user-visible pairing error. The hash is an internal comparison value: neither
+it nor posting fields/IDs are written to logs, metrics, or reconciliation
+tables.
 
 This remains bounded to the current 1/256 UUID partition. The contract covers
 the user-visible title, company, location, occupation, seniority, technology,

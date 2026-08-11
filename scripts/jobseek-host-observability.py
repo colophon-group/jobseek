@@ -315,7 +315,9 @@ def _collect_redis_capacity_metrics(
                 timeout=100,
             )
             rendered = "\n".join(
-                line for line in result.stdout.splitlines() if line.startswith("jobseek_redis_")
+                line
+                for line in result.stdout.splitlines()
+                if line.startswith("jobseek_redis_")
             )
             if "jobseek_redis_capacity_snapshot_unixtime " not in rendered:
                 raise ProbeError("Redis capacity output omitted its snapshot timestamp")
@@ -666,9 +668,7 @@ SELECT
   last_duration_seconds,
   last_local_rows,
   last_remote_rows,
-  last_missing_remote + last_state_mismatch + last_payload_mismatch
-    + last_remote_only_active
-    + CASE WHEN target = 'typesense' THEN last_remote_only_inactive ELSE 0 END,
+  last_detected,
   last_payload_mismatch,
   last_repaired,
   last_unresolved,

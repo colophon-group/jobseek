@@ -596,6 +596,8 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     assert "jobseek_crawler_phantom_active_oldest_seconds 7776000.0" in content
     assert "jobseek_cross_store_reconciliation_schema_ready 1" in content
     assert "WHERE target = 'typesense'" in host.RECONCILIATION_STATS_SQL
+    assert "last_detected" in host.RECONCILIATION_STATS_SQL
+    assert "last_missing_remote +" not in host.RECONCILIATION_STATS_SQL
     assert 'target="supabase"' not in content
     assert (
         'jobseek_cross_store_reconciliation_last_attempt_success{target="typesense"} 1' in content
