@@ -70,9 +70,9 @@ access-healthcare-associates,access-healthcare-associates-greenhouse,https://job
 accesso,accesso-greenhouse,https://job-boards.greenhouse.io/accesso,greenhouse,"{""token"": ""accesso""}",skip,
 accor,accor-careers,https://careers.smartrecruiters.com/AccorHotel,smartrecruiters,"{""token"": ""AccorHotel""}",smartrecruiters,
 accor,accor-d-edge,https://careers.d-edge.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.d-edge.com/jobs.rss""}",skip,
-accor,accor-gleneagles,https://careers.gleneagles.com/,sitemap,"{""sitemap_url"": ""https://careers.gleneagles.com/sitemap.xml"", ""url_filter"": ""^https://careers\\.gleneagles\\.com/[a-z0-9-]+-[0-9]+\\.htm$""}",json-ld,
-accor,accor-orient-express-onboard,https://orientexpress.vcrew.com/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""actions"": [{""action"": ""wait"", ""ms"": 5000}], ""url_filter"": ""^https://vgroup\\.pinpointhq\\.com/en/jobs/[0-9]+$""}",json-ld,
-accor,accor-paris-society,https://careers.paris-society.com/fr/annonces,sitemap,"{""sitemap_url"": ""https://careers.paris-society.com/fr/sitemap.xml"", ""url_filter"": ""/fr/annonce/""}",json-ld,
+accor,accor-gleneagles,https://careers.gleneagles.com/,dom,"{""render"": false, ""url_filter"": ""-[0-9]+\\.htm$"", ""pagination"": {""param_name"": ""page"", ""max_pages"": 10000}}",json-ld,
+accor,accor-orient-express-onboard,https://orientexpress.vcrew.com/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""vgroup\\.pinpointhq\\.com/en/jobs/[0-9]+$""}",json-ld,
+accor,accor-paris-society,https://careers.paris-society.com/fr/annonces,sitemap,"{""url_filter"": ""/fr/annonce/""}",json-ld,"{""render"": true, ""wait"": ""networkidle"", ""wait_fallback"": ""domcontentloaded"", ""timeout"": 30000}"
 accor,accor-wojo,https://www.welcometothejungle.com/fr/companies/wojo/jobs,welcometothejungle,"{""slug"": ""wojo"", ""locale"": ""fr"", ""organization_slug"": ""nextdoor""}",skip,
 accord,accord-ashby,https://jobs.ashbyhq.com/accord,ashby,"{""token"": ""accord""}",skip,
 accrue,accrue-greenhouse,https://job-boards.greenhouse.io/accrue,greenhouse,"{""token"": ""accrue""}",skip,
