@@ -73,7 +73,6 @@ jobs:
           pnpm dlx vercel@55.0.0 pull
           --yes
           --environment=production
-          --git-branch=main
           --token="$VERCEL_TOKEN"
 
       - name: Build the production artifact
