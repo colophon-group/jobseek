@@ -659,6 +659,54 @@ SELECT
   (SELECT COALESCE(sum(pg_database_size(datname)), 0) FROM pg_database WHERE datallowconn);
 """.strip()
 
+POSTGRES_CONNECTION_OWNERS_SQL = """
+WITH owned AS (
+  SELECT
+    CASE application_name
+      WHEN 'jobseek:crawler:worker-1:local' THEN 'worker-1'
+      WHEN 'jobseek:crawler:worker-2:local' THEN 'worker-2'
+      WHEN 'jobseek:crawler:worker-3:local' THEN 'worker-3'
+      WHEN 'jobseek:crawler:browser-1:local' THEN 'browser-1'
+      WHEN 'jobseek:crawler:exporter:local' THEN 'exporter'
+      WHEN 'jobseek:crawler:drain:local' THEN 'drain'
+      WHEN 'jobseek:crawler:reconciliation:local' THEN 'reconciliation'
+      WHEN 'jobseek:crawler:deploy-sync:local' THEN 'deploy-sync'
+      WHEN 'jobseek:crawler:deploy-migrate:local' THEN 'deploy-migrate'
+      WHEN 'jobseek:crawler:maintenance:local' THEN 'maintenance'
+      WHEN 'jobseek:crawler:csv-sync:local' THEN 'csv-sync'
+      WHEN 'jobseek:crawler:currency-refresh:local' THEN 'currency-refresh'
+      WHEN 'jobseek:crawler:location-taxonomy-repair:local'
+        THEN 'location-taxonomy-repair'
+      WHEN 'jobseek:crawler:labeller:local' THEN 'labeller'
+      WHEN 'jobseek:crawler:oneoff:local' THEN 'oneoff'
+      WHEN 'jobseek:murmur:node' THEN 'murmur-node'
+      WHEN 'jobseek:murmur:python' THEN 'murmur-python'
+      WHEN 'jobseek:ingress:private-path-verifier' THEN 'ingress-verifier'
+      WHEN 'jobseek:host-observability' THEN 'host-observability'
+      WHEN 'psql' THEN 'operator-psql'
+      ELSE CASE
+        WHEN application_name LIKE 'pgBackRest%' THEN 'backup'
+        WHEN application_name LIKE 'jobseek:operator:%' THEN 'operator-tool'
+        ELSE 'other'
+      END
+    END AS owner,
+    CASE state
+      WHEN 'active' THEN 'active'
+      WHEN 'idle' THEN 'idle'
+      WHEN 'idle in transaction' THEN 'idle_in_transaction'
+      WHEN 'idle in transaction (aborted)' THEN 'idle_in_transaction_aborted'
+      WHEN 'disabled' THEN 'disabled'
+      ELSE 'other'
+    END AS connection_state
+  FROM pg_stat_activity
+  WHERE backend_type = 'client backend'
+)
+SELECT owner, connection_state, count(*)
+FROM owned
+GROUP BY owner, connection_state
+ORDER BY owner, connection_state;
+""".strip()
+
 RECONCILIATION_STATS_SQL = """
 SELECT
   target,
@@ -774,6 +822,7 @@ def _postgresql_query(container: str, sql: str, *, timeout: int = 60) -> str:
             "sh",
             "-c",
             'db="${POSTGRES_DB:-${POSTGRES_USER:-postgres}}"; '
+            'export PGAPPNAME=jobseek:host-observability; '
             'exec psql -U "${POSTGRES_USER:-postgres}" -d "$db" '
             "-XAt -F '\t' -v ON_ERROR_STOP=1 -c \"$1\"",
             "jobseek-observability",
@@ -970,6 +1019,26 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
         )
     except ValueError as exc:
         raise ProbeError("PostgreSQL statistics query returned a non-numeric value") from exc
+
+    owner_rows = _postgresql_query(container, POSTGRES_CONNECTION_OWNERS_SQL)
+    for owner_row in owner_rows.splitlines():
+        owner_fields = owner_row.split("\t")
+        if len(owner_fields) != 3:
+            raise ProbeError("PostgreSQL connection owner query returned an unexpected shape")
+        owner, state, count = owner_fields
+        try:
+            lines.append(
+                _metric(
+                    "jobseek_postgresql_connections_by_owner",
+                    float(count),
+                    owner=owner,
+                    state=state,
+                )
+            )
+        except ValueError as exc:
+            raise ProbeError(
+                "PostgreSQL connection owner query returned a non-numeric value"
+            ) from exc
 
     _collect_board_quarantine_metrics(lines, container)
     _collect_board_gone_metrics(lines, container)

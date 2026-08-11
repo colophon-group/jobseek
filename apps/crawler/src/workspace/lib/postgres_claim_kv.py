@@ -53,7 +53,17 @@ class PostgresClaimKV:
         self._dsn = dsn
 
     async def _connect(self) -> asyncpg.Connection[Any]:
-        return await asyncpg.connect(self._dsn)
+        return await asyncpg.connect(
+            self._dsn,
+            timeout=5,
+            command_timeout=60,
+            statement_cache_size=0,
+            server_settings={
+                "application_name": "jobseek:murmur:python",
+                "idle_in_transaction_session_timeout": "60s",
+                "statement_timeout": "60s",
+            },
+        )
 
     async def get(self, name: str) -> Any | None:  # noqa: ANN401
         conn = await self._connect()

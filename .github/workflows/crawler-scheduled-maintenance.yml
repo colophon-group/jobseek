@@ -195,6 +195,11 @@ jobs:
               fi
               printf '%s\n' "${matches[0]}" >>"$RUNTIME_ENV"
             done
+            printf '%s\n' \
+              'CRAWLER_DB_ROLE=maintenance' \
+              'CRAWLER_DB_POOL_MIN=0' \
+              'CRAWLER_DB_POOL_MAX=4' \
+              'CRAWLER_DB_POOL_IDLE_SECONDS=60' >>"$RUNTIME_ENV"
 
             # The GitHub concurrency lock cannot see a container orphaned by
             # a cancelled or timed-out older SSH session. Refuse to overlap it

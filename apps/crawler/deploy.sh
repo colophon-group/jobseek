@@ -639,6 +639,7 @@ docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter d
 # ── Run Alembic migrations on local Postgres ─────────────────────────
 docker run --rm \
   -e LOCAL_DATABASE_URL \
+  -e CRAWLER_DB_ROLE=deploy-migrate \
   --network host \
   "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
   --label com.docker.compose.service=deploy-migrate \
@@ -663,6 +664,9 @@ docker run --rm \
 docker run --rm \
   -e LOCAL_DATABASE_URL \
   -e WEB_DATABASE_URL \
+  -e CRAWLER_DB_ROLE=deploy-sync \
+  -e CRAWLER_DB_POOL_MIN=0 \
+  -e CRAWLER_DB_POOL_MAX=4 \
   -e TYPESENSE_HOST \
   -e TYPESENSE_PORT \
   -e TYPESENSE_PROTOCOL \

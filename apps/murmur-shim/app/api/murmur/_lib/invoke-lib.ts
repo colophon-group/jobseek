@@ -72,8 +72,10 @@ export type LibInvoker = (
  *                                     `PostgresClaimKV`.
  *   - `MURMUR_INVOKE_TIMEOUT_MS` (opt) — wallclock cap; defaults to
  *                                     30000.
+ *   - `MURMUR_INVOKER_MAX_CONCURRENCY` — Python child/connection ceiling;
+ *                                     defaults to and may not exceed 2.
  */
-export const defaultInvoker: LibInvoker = async (
+const invokeChild: LibInvoker = async (
   subcommand,
   body,
   claim_token,
@@ -186,6 +188,50 @@ export const defaultInvoker: LibInvoker = async (
       finish({ ok: false, errors: ["internal_error"] });
     }
   });
+};
+
+const INVOKER_MAX_CONCURRENCY = (() => {
+  const value = Number(process.env.MURMUR_INVOKER_MAX_CONCURRENCY ?? 2);
+  if (!Number.isInteger(value) || value < 1 || value > 2) {
+    throw new Error(
+      "MURMUR_INVOKER_MAX_CONCURRENCY must be an integer between 1 and 2",
+    );
+  }
+  return value;
+})();
+
+let activeInvokers = 0;
+const invokerWaiters: Array<() => void> = [];
+
+async function acquireInvokerSlot(): Promise<void> {
+  if (activeInvokers < INVOKER_MAX_CONCURRENCY) {
+    activeInvokers += 1;
+    return;
+  }
+  await new Promise<void>((resolve) => invokerWaiters.push(resolve));
+}
+
+function releaseInvokerSlot(): void {
+  const next = invokerWaiters.shift();
+  if (next) {
+    // Hand the existing slot directly to the oldest waiter.
+    next();
+    return;
+  }
+  activeInvokers -= 1;
+}
+
+/**
+ * Bound Python children because each active child may own one short-lived
+ * asyncpg connection in addition to the Node process's two-connection pool.
+ */
+export const defaultInvoker: LibInvoker = async (...args) => {
+  await acquireInvokerSlot();
+  try {
+    return await invokeChild(...args);
+  } finally {
+    releaseInvokerSlot();
+  }
 };
 
 /**

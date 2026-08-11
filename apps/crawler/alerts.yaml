@@ -267,7 +267,20 @@ groups:
         annotations:
           summary: "PostgreSQL connections exceed 80%"
           description: "Connection use is approaching max_connections and can block crawler/export operations."
-          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/22-postgresql-connections.md#incident-response
+
+      - alert: PostgreSQLIdleInTransaction
+        expr: sum(jobseek_postgresql_connections_by_owner{state=~"idle_in_transaction.*"}) > 0
+        for: 5m
+        labels:
+          severity: high
+          service: postgresql
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "PostgreSQL has idle transactions"
+          description: "Idle transactions have remained continuously present for five minutes despite the 60-second crawler session guard; use the owner dimension to find an unguarded or recurring client."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/22-postgresql-connections.md#incident-response
 
       - alert: PostgreSQLSharedMemoryPressure
         expr: |

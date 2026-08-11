@@ -86,6 +86,9 @@ Status tags:
 - [20 - Supabase Free Downgrade](20-supabase-free-downgrade.md) `[runbook]` -
   guarded migration repair, saved-job cutover order, and production evidence
   gates for removing the crawler-owned mirror.
+- [22 - PostgreSQL Connection Budget](22-postgresql-connections.md) `[runbook]` -
+  exact service and deploy-overlap pool ceilings, ownership metrics, reserves,
+  idle-transaction controls, and seven-day production acceptance.
 - [Didi Reactivation Runbook](runbook-didi-reactivate-2026-05-10.md)
   `[runbook]` - historical Didi reactivation notes.
 

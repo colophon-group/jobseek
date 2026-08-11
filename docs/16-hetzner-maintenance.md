@@ -435,6 +435,12 @@ The host sampler publishes:
 - duration of the sampler's bounded PostgreSQL statistics query; and
 - standard Unix-exporter filesystem size, free-byte, and inode series.
 
+PostgreSQL client ownership, exact service/deploy budgets, idle-transaction
+controls, and the required seven-day acceptance queries live in
+[the PostgreSQL connection budget](22-postgresql-connections.md). Treat that
+inventory as part of the host capacity contract; do not raise
+`max_connections` to compensate for an unattributed or oversized pool.
+
 `PostgreSQLDataVolumeHeadroomLow` is the early capacity control. It remains
 pending for six hours before firing when either the attached XFS Volume has
 less than 25% free or a linear regression over the retained 24-hour database

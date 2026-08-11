@@ -63,16 +63,25 @@ function resolveDsn(): { value: string; name: string } {
   };
 }
 
+function poolMaximum(): number {
+  const value = Number(process.env.MURMUR_DB_POOL_MAX ?? 2);
+  if (!Number.isInteger(value) || value < 1 || value > 2) {
+    throw new Error("MURMUR_DB_POOL_MAX must be an integer between 1 and 2");
+  }
+  return value;
+}
+
 export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
   get(_target, prop, receiver) {
     if (!globalForDb._murmurShimDb) {
       const dsn = resolveDsn();
       globalForDb._murmurShimDb = drizzle(
         postgres(dsn.value, {
-          max: 10,
+          max: poolMaximum(),
           idle_timeout: 20,
           max_lifetime: 300,
           prepare: false,
+          connection: { application_name: "jobseek:murmur:node" },
         }),
         { schema },
       );

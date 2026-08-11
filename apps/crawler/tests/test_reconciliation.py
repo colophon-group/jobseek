@@ -63,8 +63,10 @@ class _AsyncContext:
 class _MemoryConnection:
     def __init__(self, pool: _MemoryPool) -> None:
         self.pool = pool
+        self.transactions_started = 0
 
     def transaction(self) -> _AsyncContext:
+        self.transactions_started += 1
         return _AsyncContext()
 
     async def fetch(self, query: str, *args: object) -> list[dict[str, object]]:
@@ -881,6 +883,7 @@ async def test_injected_supabase_drift_is_repaired_and_verified(monkeypatch) -> 
         remote_active: False,
         remote_inactive: False,
     }
+    assert local.connection.transactions_started == 0
 
 
 async def test_injected_typesense_drift_is_repaired_to_exact_set(monkeypatch) -> None:
@@ -938,6 +941,7 @@ async def test_injected_typesense_drift_is_repaired_to_exact_set(monkeypatch) ->
     assert result.repaired == 4
     assert result.unresolved == 0
     assert remote.states == {shared: True, mismatch: False, missing: True}
+    assert local.connection.transactions_started == 0
 
 
 async def test_same_state_typesense_payload_drift_is_repaired_and_verified(monkeypatch) -> None:
@@ -1764,6 +1768,49 @@ async def test_typesense_partition_export_requests_and_hashes_payload_fields() -
     assert "salary_currency" in include_fields
     assert "last_seen_at" not in include_fields
     assert requests[0].url.params["filter_by"] == "reconciliation_bucket:=ce"
+
+
+async def test_repair_fails_closed_when_local_row_changes_during_network_write(
+    monkeypatch,
+) -> None:
+    prefix = 0xCD
+    posting_id = _id(prefix, 1)
+    local = _MemoryPool({posting_id: True})
+    remote = _MemoryTypesense({})
+
+    def build_docs(rows: list[dict[str, object]], _maps: TaxonomyMaps) -> list[dict]:
+        return [
+            {
+                "id": str(row["id"]),
+                "is_active": row["is_active"],
+                "reconciliation_bucket": reconciliation_bucket(str(row["id"])),
+            }
+            for row in rows
+        ]
+
+    async def upsert(docs: list[dict]) -> set[uuid.UUID]:
+        for document in docs:
+            remote.states[uuid.UUID(document["id"])] = document["is_active"]
+        # Model a worker commit while the downstream request is in flight.
+        local.states[posting_id] = False
+        return set()
+
+    monkeypatch.setattr("src.reconciliation.export_cursor_fence", _noop_fence)
+    monkeypatch.setattr("src.reconciliation._build_typesense_docs", build_docs)
+    monkeypatch.setattr("src.reconciliation._upsert_to_typesense", upsert)
+
+    with pytest.raises(ReconciliationError, match="verification left 1 unresolved"):
+        await reconcile_partition(
+            local,  # type: ignore[arg-type]
+            None,
+            target="typesense",
+            partition=prefix,
+            repair=True,
+            typesense=remote,  # type: ignore[arg-type]
+            maps=TaxonomyMaps(),
+        )
+
+    assert local.connection.transactions_started == 0
 
 
 async def test_typesense_document_delete_url_encodes_untrusted_legacy_ids() -> None:

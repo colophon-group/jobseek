@@ -41,6 +41,45 @@ afterEach(() => {
 });
 
 describe("defaultInvoker subprocess branches", () => {
+  it("never runs more than two PostgreSQL-capable children concurrently", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const tmpScript = path.join(os.tmpdir(), `murmur-bounded-${suffix}.sh`);
+    const marker = path.join(os.tmpdir(), `murmur-bounded-${suffix}.marker`);
+    await fs.writeFile(
+      tmpScript,
+      '#!/bin/sh\nprintf x >> "$MURMUR_TEST_MARKER"\nsleep 1\nprintf \'{"ok":true}\\n\'\n',
+      { mode: 0o755 },
+    );
+    process.env.MURMUR_PY = tmpScript;
+    process.env.MURMUR_TEST_MARKER = marker;
+    process.env.MURMUR_INVOKE_TIMEOUT_MS = "5000";
+
+    try {
+      const invocations = [
+        defaultInvoker("probe_monitor", {}, "claim-1"),
+        defaultInvoker("probe_monitor", {}, "claim-2"),
+        defaultInvoker("probe_monitor", {}, "claim-3"),
+      ];
+      const deadline = Date.now() + 2000;
+      let started = "";
+      while (Date.now() < deadline) {
+        started = await fs.readFile(marker, "utf8").catch(() => "");
+        if (started.length >= 2) break;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      expect(started).toHaveLength(2);
+
+      const results = await Promise.all(invocations);
+      expect(results.every((result) => result.ok)).toBe(true);
+      expect(await fs.readFile(marker, "utf8")).toHaveLength(3);
+    } finally {
+      await fs.unlink(tmpScript).catch(() => {});
+      await fs.unlink(marker).catch(() => {});
+    }
+  });
+
   it("maps a non-zero exit to { ok: false, errors: ['internal_error'] }", async () => {
     // `false` lives at /usr/bin/false on macOS and /bin/false on Linux;
     // probe both.

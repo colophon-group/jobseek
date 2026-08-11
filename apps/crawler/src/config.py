@@ -119,7 +119,14 @@ class Settings(BaseSettings):
     worker_id_prefix: str = ""
     crawler_max_concurrent: int = 20
     crawler_max_browser: int = 3  # separate cap for browser (Playwright) work
-    crawler_db_pool_max: int = 10
+    # PostgreSQL connection ownership and pool ceilings. Production assigns a
+    # distinct role and explicit min/max to every service in docker-compose;
+    # the small defaults keep operator/maintenance commands bounded even when
+    # they are launched outside Compose. See docs/22-postgresql-connections.md.
+    crawler_db_role: str = "oneoff"
+    crawler_db_pool_min: int = 0
+    crawler_db_pool_max: int = 4
+    crawler_db_pool_idle_seconds: float = 60.0
     metrics_port: int = 9091
     r2_max_connections: int = 60  # controls R2 HTTP client pool size
 
@@ -193,6 +200,29 @@ class Settings(BaseSettings):
                 "DRAIN_RETRY_BASE_SECONDS must be positive and no greater than "
                 "DRAIN_RETRY_MAX_SECONDS"
             )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_postgresql_pool(self) -> Settings:
+        if not self.crawler_db_role or any(
+            char not in "abcdefghijklmnopqrstuvwxyz0123456789-" for char in self.crawler_db_role
+        ):
+            raise ValueError(
+                "CRAWLER_DB_ROLE must contain only lowercase letters, digits, and hyphens"
+            )
+        if len(self.crawler_db_role) > 40:
+            raise ValueError("CRAWLER_DB_ROLE must be at most 40 characters")
+        if (
+            self.crawler_db_pool_min < 0
+            or self.crawler_db_pool_max < 1
+            or self.crawler_db_pool_min > self.crawler_db_pool_max
+        ):
+            raise ValueError(
+                "CRAWLER_DB_POOL_MIN must be non-negative and no greater than the "
+                "positive CRAWLER_DB_POOL_MAX"
+            )
+        if self.crawler_db_pool_idle_seconds <= 0:
+            raise ValueError("CRAWLER_DB_POOL_IDLE_SECONDS must be positive")
         return self
 
     @model_validator(mode="after")

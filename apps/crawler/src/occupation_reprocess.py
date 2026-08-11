@@ -272,6 +272,11 @@ async def run_from_args(args: argparse.Namespace) -> int:
         max_size=4,
         command_timeout=300,
         statement_cache_size=0,
+        max_inactive_connection_lifetime=60,
+        server_settings={
+            "application_name": "jobseek:operator:occupation-reprocess",
+            "idle_in_transaction_session_timeout": "60s",
+        },
     )
     try:
         async with pool.acquire() as conn:
