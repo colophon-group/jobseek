@@ -188,6 +188,8 @@ def test_payload_drift_migration_adds_separate_durable_counters(monkeypatch) -> 
 
     statements = "\n".join(call.args[0] for call in execute.call_args_list)
     assert migration.down_revision == "0017"
+    assert "cycle_detected" in statements
+    assert "last_detected" in statements
     assert "cycle_payload_mismatch" in statements
     assert "last_payload_mismatch" in statements
     assert "payload_mismatch" in statements
@@ -525,6 +527,7 @@ async def test_partition_progress_accumulates_payload_drift_separately() -> None
             "cycle_local_active": 8,
             "cycle_remote_rows": 10,
             "cycle_remote_active": 8,
+            "cycle_detected": 9,
             "cycle_missing_remote": 1,
             "cycle_state_mismatch": 2,
             "cycle_payload_mismatch": 3,
@@ -558,8 +561,62 @@ async def test_partition_progress_accumulates_payload_drift_separately() -> None
 
     assert completed is False
     query, *args = connection.execute.await_args.args
-    assert "cycle_payload_mismatch = $11" in query
-    assert args[10] == 10
+    assert "cycle_detected = $9" in query
+    assert args[8] == 10
+    assert "cycle_payload_mismatch = $12" in query
+    assert args[11] == 10
+
+
+async def test_partition_progress_counts_overlapping_state_and_payload_drift_once() -> None:
+    connection = MagicMock()
+    connection.transaction.return_value = _AsyncContext()
+    connection.fetchrow = AsyncMock(
+        return_value={
+            "cycle_id": uuid.uuid4(),
+            "next_partition": 0,
+            "bootstrap_complete": True,
+            "cycle_runtime_seconds": 0,
+            "cycle_local_rows": 0,
+            "cycle_local_active": 0,
+            "cycle_remote_rows": 0,
+            "cycle_remote_active": 0,
+            "cycle_detected": 0,
+            "cycle_missing_remote": 0,
+            "cycle_state_mismatch": 0,
+            "cycle_payload_mismatch": 0,
+            "cycle_remote_only_active": 0,
+            "cycle_remote_only_inactive": 0,
+            "cycle_repaired": 0,
+        }
+    )
+    connection.execute = AsyncMock()
+    pool = MagicMock()
+    pool.acquire.return_value = _AsyncContext(connection)
+    result = PartitionResult(
+        target="typesense",
+        partition=0,
+        local_rows=1,
+        local_active=1,
+        remote_rows=1,
+        remote_active=0,
+        missing_remote=0,
+        state_mismatch=1,
+        payload_mismatch=1,
+        remote_only_active=0,
+        remote_only_inactive=0,
+        detected=1,
+        repaired=0,
+        unresolved=1,
+        duration_seconds=0.1,
+    )
+
+    await _advance_state(pool, result)
+
+    query, *args = connection.execute.await_args.args
+    assert "cycle_detected = $9" in query
+    assert args[8] == 1
+    assert args[10] == 1
+    assert args[11] == 1
 
 
 async def test_cancelled_reconciliation_persists_interruption_and_unlocks(
@@ -657,16 +714,18 @@ def test_snapshot_diff_detects_same_id_same_state_payload_drift_separately() -> 
     assert diff.actionable_ids("typesense") == {posting_id}
 
 
-def test_payload_comparison_canonicalizes_unordered_arrays() -> None:
+def test_payload_comparison_detects_mispaired_location_arrays() -> None:
     posting_id = _id(0xAA, 10)
     local = _typesense_documents_snapshot(
         [
             {
                 "id": str(posting_id),
                 "is_active": True,
-                "location_ids": [100, 20, 3],
-                "technology_names": ["Python", "PostgreSQL"],
-                "locales": ["en", "de"],
+                "location_ids": [100, 20],
+                "location_direct_ids": [100, 20],
+                "location_names": ["Athens", "Paris"],
+                "location_types": ["onsite", "remote"],
+                "location_geo_types": ["city", "city"],
             }
         ]
     )
@@ -675,11 +734,51 @@ def test_payload_comparison_canonicalizes_unordered_arrays() -> None:
             {
                 "id": str(posting_id),
                 "is_active": True,
-                "location_ids": [3, 100, 20],
-                "technology_names": ["PostgreSQL", "Python"],
-                "locales": ["de", "en"],
+                "location_ids": [100, 20],
+                "location_direct_ids": [100, 20],
+                "location_names": ["Paris", "Athens"],
+                "location_types": ["onsite", "remote"],
+                "location_geo_types": ["city", "city"],
             }
         ]
+    )
+
+    assert compare_snapshots(local, remote).payload_mismatch == {posting_id}
+
+
+def test_payload_comparison_detects_mispaired_technology_arrays() -> None:
+    posting_id = _id(0xAA, 11)
+    local = _typesense_documents_snapshot(
+        [
+            {
+                "id": str(posting_id),
+                "is_active": True,
+                "technology_ids": [1, 2],
+                "technology_names": ["Python", "PostgreSQL"],
+            }
+        ]
+    )
+    remote = _typesense_documents_snapshot(
+        [
+            {
+                "id": str(posting_id),
+                "is_active": True,
+                "technology_ids": [1, 2],
+                "technology_names": ["PostgreSQL", "Python"],
+            }
+        ]
+    )
+
+    assert compare_snapshots(local, remote).payload_mismatch == {posting_id}
+
+
+def test_payload_comparison_canonicalizes_integral_floats() -> None:
+    posting_id = _id(0xAA, 12)
+    local = _typesense_documents_snapshot(
+        [{"id": str(posting_id), "is_active": True, "salary_min": 1}]
+    )
+    remote = _typesense_documents_snapshot(
+        [{"id": str(posting_id), "is_active": True, "salary_min": 1.0}]
     )
 
     assert compare_snapshots(local, remote).payload_mismatch == set()

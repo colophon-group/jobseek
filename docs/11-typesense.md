@@ -345,8 +345,9 @@ on every upsert.
 Normal runs export one bounded bucket at a time and compare exact IDs,
 `is_active`, and a defined set of user-visible fields. Payload comparison uses
 canonical in-process fingerprints of the actual exported fields; it does not
-trust a checksum stored beside the document. Unordered arrays are sorted before
-comparison, and only aggregate mismatch counts enter durable state or
+trust a checksum stored beside the document. Positional array order is retained
+so mispaired location/technology fields cannot compare equal, and only exact
+unique detected counts plus aggregate payload mismatch counts enter durable state or
 telemetry. Missing/mismatched documents are rebuilt with the ordinary
 denormalization path and verified again before the cursor advances, while
 Typesense-only documents are deleted. During the first complete repair cycle,

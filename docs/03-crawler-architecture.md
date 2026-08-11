@@ -346,8 +346,10 @@ unchanged when the document beside it is corrupted, while a version would not
 detect a bad denormalization at the same version. For each UUID partition the
 reconciler builds the expected document with the ordinary exporter and taxonomy
 maps, exports only the defined fields in
-`TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS`, canonicalizes order-independent
-arrays, and compares in-process SHA-256 fingerprints. The hash is an internal
+`TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS`, preserves array order, and compares
+in-process SHA-256 fingerprints. Array order is part of the contract because
+web readers zip location and technology IDs/names/types by position; sorting
+each array independently could hide a user-visible pairing error. The hash is an internal
 comparison value: neither it nor posting fields/IDs are written to logs,
 metrics, or reconciliation tables.
 
@@ -364,16 +366,19 @@ complete payload proof. It retains the last completed-cycle evidence and does
 not advance or skip durable progress.
 
 Repair is direct rather than an `updated_at` touch/replay loop. For every
-candidate set it acquires the exporter/operator fence, locks the current local
-rows `FOR SHARE`, writes that current snapshot downstream, and verifies the
-partition's ID, state, and payload before advancing. A concurrent later local
-change is stamped for normal CDC after the row lock releases. A rejection,
-transport failure, verification mismatch, or interrupted process leaves the
-durable cursor on the same partition for an idempotent retry.
+candidate set it acquires the exporter/operator fence, reads the authoritative
+local rows, writes that snapshot downstream without holding a PostgreSQL
+transaction across network I/O, then rereads local truth and verifies the
+partition's current ID, state, and payload before advancing. A concurrent local
+commit therefore makes a stale downstream write fail verification (and remains
+eligible for normal CDC). A rejection, transport failure, verification
+mismatch, or interrupted process leaves the durable cursor on the same
+partition for an idempotent retry.
 
 Two local PostgreSQL tables make scheduling visible across deploys:
 
-- `cross_store_reconciliation_state` holds the Typesense cursor, cycle totals,
+- `cross_store_reconciliation_state` holds the Typesense cursor, exact unique
+  detected count, separate payload mismatch count, cycle totals,
   last attempt/success/outcome, and bootstrap flag (the obsolete Supabase row
   is retained temporarily for rollback-compatible schema cleanup); and
 - `cross_store_reconciliation_run` records bounded run lifecycle and exposes

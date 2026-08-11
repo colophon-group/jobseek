@@ -66,9 +66,10 @@ _LOCKED_POSTINGS_SQL = (
 
 # These fields form the bounded, user-visible reconciliation contract. The
 # reconciler compares their canonical content directly rather than trusting a
-# checksum stored beside the document it is meant to verify. Arrays are
-# canonicalized as sets because their Typesense search/facet semantics are
-# order-independent.
+# checksum stored beside the document it is meant to verify. Array order is
+# significant: web readers zip location and technology IDs, names, and types
+# by position, so independently sorting them could hide a user-visible pairing
+# defect.
 TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS: tuple[str, ...] = (
     "company_id",
     "company_name",
@@ -224,16 +225,7 @@ def _canonical_payload_value(value: object) -> object:
             for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
         }
     if isinstance(value, list):
-        normalized = [_canonical_payload_value(item) for item in value]
-        return sorted(
-            normalized,
-            key=lambda item: json.dumps(
-                item,
-                ensure_ascii=False,
-                separators=(",", ":"),
-                sort_keys=True,
-            ),
-        )
+        return [_canonical_payload_value(item) for item in value]
     if isinstance(value, float) and value.is_integer():
         # Typesense may serialize an integral float as either ``1`` or ``1.0``.
         # The schema value is equivalent, so do not create false payload drift.
@@ -782,7 +774,7 @@ async def _ensure_cycle(
                 "next_partition = 0, cycle_id = $2, cycle_started_at = clock_timestamp(), "
                 "cycle_runtime_seconds = 0, cycle_local_rows = 0, "
                 "cycle_local_active = 0, cycle_remote_rows = 0, "
-                "cycle_remote_active = 0, cycle_missing_remote = 0, "
+                "cycle_remote_active = 0, cycle_detected = 0, cycle_missing_remote = 0, "
                 "cycle_state_mismatch = 0, cycle_payload_mismatch = 0, "
                 "cycle_remote_only_active = 0, "
                 "cycle_remote_only_inactive = 0, cycle_repaired = 0, "
@@ -832,6 +824,7 @@ async def _advance_state(
             "local_active": int(row["cycle_local_active"]) + result.local_active,
             "remote_rows": int(row["cycle_remote_rows"]) + result.remote_rows,
             "remote_active": int(row["cycle_remote_active"]) + result.remote_active,
+            "detected": int(row["cycle_detected"]) + result.detected,
             "missing_remote": int(row["cycle_missing_remote"]) + result.missing_remote,
             "state_mismatch": int(row["cycle_state_mismatch"]) + result.state_mismatch,
             "payload_mismatch": int(row["cycle_payload_mismatch"]) + result.payload_mismatch,
@@ -852,17 +845,17 @@ async def _advance_state(
                 "cycle_started_at = NULL, cycle_runtime_seconds = 0, "
                 "cycle_local_rows = 0, cycle_local_active = 0, "
                 "cycle_remote_rows = 0, cycle_remote_active = 0, "
-                "cycle_missing_remote = 0, cycle_state_mismatch = 0, "
+                "cycle_detected = 0, cycle_missing_remote = 0, cycle_state_mismatch = 0, "
                 "cycle_payload_mismatch = 0, cycle_remote_only_active = 0, "
                 "cycle_remote_only_inactive = 0, "
                 "cycle_repaired = 0, last_started_at = $3, "
                 "last_attempt_at = clock_timestamp(), last_success_at = clock_timestamp(), "
                 "last_duration_seconds = $4, last_local_rows = $5, "
                 "last_local_active = $6, last_remote_rows = $7, "
-                "last_remote_active = $8, last_missing_remote = $9, "
-                "last_state_mismatch = $10, last_payload_mismatch = $11, "
-                "last_remote_only_active = $12, last_remote_only_inactive = $13, "
-                "last_repaired = $14, last_unresolved = 0, last_outcome = $15, "
+                "last_remote_active = $8, last_detected = $9, last_missing_remote = $10, "
+                "last_state_mismatch = $11, last_payload_mismatch = $12, "
+                "last_remote_only_active = $13, last_remote_only_inactive = $14, "
+                "last_repaired = $15, last_unresolved = 0, last_outcome = $16, "
                 "last_error_class = NULL, "
                 "updated_at = clock_timestamp() WHERE target = $1",
                 result.target,
@@ -873,6 +866,7 @@ async def _advance_state(
                 totals["local_active"],
                 totals["remote_rows"],
                 totals["remote_active"],
+                totals["detected"],
                 totals["missing_remote"],
                 totals["state_mismatch"],
                 totals["payload_mismatch"],
@@ -887,10 +881,10 @@ async def _advance_state(
                 "next_partition = $2, bootstrap_complete = $3, "
                 "cycle_runtime_seconds = $4, cycle_local_rows = $5, "
                 "cycle_local_active = $6, cycle_remote_rows = $7, "
-                "cycle_remote_active = $8, cycle_missing_remote = $9, "
-                "cycle_state_mismatch = $10, cycle_payload_mismatch = $11, "
-                "cycle_remote_only_active = $12, cycle_remote_only_inactive = $13, "
-                "cycle_repaired = $14, "
+                "cycle_remote_active = $8, cycle_detected = $9, cycle_missing_remote = $10, "
+                "cycle_state_mismatch = $11, cycle_payload_mismatch = $12, "
+                "cycle_remote_only_active = $13, cycle_remote_only_inactive = $14, "
+                "cycle_repaired = $15, "
                 "last_attempt_at = clock_timestamp(), last_outcome = 'progress', "
                 "last_unresolved = 0, last_error_class = NULL, "
                 "updated_at = clock_timestamp() WHERE target = $1",
@@ -902,6 +896,7 @@ async def _advance_state(
                 totals["local_active"],
                 totals["remote_rows"],
                 totals["remote_active"],
+                totals["detected"],
                 totals["missing_remote"],
                 totals["state_mismatch"],
                 totals["payload_mismatch"],
