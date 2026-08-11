@@ -11,8 +11,13 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { setTimeout as delay } from "node:timers/promises";
-import { logExternalError } from "@/lib/safe-external-error";
-import { getSearchClient } from "@/lib/search/typesense-client";
+import { Client as TypesenseClient } from "typesense";
+import {
+  logExternalError,
+  safeExternalError,
+  type ExternalService,
+  type SafeExternalError,
+} from "@/lib/safe-external-error";
 import { mapTypesenseCompanyHitToDetail } from "@/lib/services/company-detail-lookup";
 import { renderCompanyOgCard } from "@/lib/og/company-og-card";
 import { companyOgCacheKeyForVersion } from "@/lib/og/company-og-key";
@@ -22,6 +27,17 @@ const ALL_LOCALES = ["en", "de", "fr", "it"] as const;
 const CONTENT_TYPE = "image/png";
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
 const TYPESENSE_PAGE_SIZE = 250;
+export const TYPESENSE_BATCH_TIMEOUT_SECONDS = 30;
+
+class PrewarmExternalError extends Error {
+  constructor(
+    readonly service: ExternalService,
+    readonly operation: string,
+    readonly externalCause: unknown,
+  ) {
+    super("Company OG prewarm external dependency failed");
+  }
+}
 
 type Options = {
   concurrency: number;
@@ -126,19 +142,46 @@ function createR2Client(): { client: S3Client; bucket: string } {
   };
 }
 
-async function listCompanies(maxCompanies: number | null) {
-  const client = getSearchClient();
+function createPrewarmTypesenseClient(): TypesenseClient {
+  const host = requiredEnvironment("TYPESENSE_HOST");
+  const port = Number.parseInt(requiredEnvironment("TYPESENSE_PORT"), 10);
+  const protocol = requiredEnvironment("TYPESENSE_PROTOCOL");
+  const apiKey = requiredEnvironment("TYPESENSE_SEARCH_KEY");
+  if (!Number.isSafeInteger(port) || port < 1 || port > 65_535) {
+    throw new Error("TYPESENSE_PORT must be a valid TCP port");
+  }
+
+  // Batch jobs traverse the public Cloudflare tunnel from a GitHub runner and
+  // need a wider timeout than latency-sensitive production requests. Keep
+  // this isolated from getSearchClient(), whose five-second budget is correct
+  // for interactive web traffic.
+  return new TypesenseClient({
+    nodes: [{ host, port, protocol }],
+    apiKey,
+    connectionTimeoutSeconds: TYPESENSE_BATCH_TIMEOUT_SECONDS,
+    numRetries: 1,
+    retryIntervalSeconds: 1,
+  });
+}
+
+async function listCompanies(
+  client: TypesenseClient,
+  maxCompanies: number | null,
+) {
   const companies: Record<string, unknown>[] = [];
   let page = 1;
 
   while (true) {
-    const result = await client.collections<Record<string, unknown>>("company")
-      .documents()
-      .search({
-        q: "*",
-        per_page: TYPESENSE_PAGE_SIZE,
-        page,
-      });
+    const result = await withRetry(
+      () => client.collections<Record<string, unknown>>("company")
+        .documents()
+        .search({
+          q: "*",
+          per_page: TYPESENSE_PAGE_SIZE,
+          page,
+        }),
+      1_000,
+    );
     const hits = result.hits ?? [];
     for (const hit of hits) {
       companies.push(hit.document);
@@ -243,18 +286,29 @@ export async function main() {
   if (!options.yes) throw new Error(`R2 writes require --yes.\n\n${usage()}`);
 
   // Validate Typesense configuration before any R2 writes begin.
-  requiredEnvironment("TYPESENSE_HOST");
-  requiredEnvironment("TYPESENSE_PORT");
-  requiredEnvironment("TYPESENSE_PROTOCOL");
-  requiredEnvironment("TYPESENSE_SEARCH_KEY");
+  const typesenseClient = createPrewarmTypesenseClient();
 
   const rendererVersion = options.rendererVersion ??
     computeCompanyOgRendererVersion(process.cwd());
   const prefix = `og/company/${rendererVersion}/`;
   const { client, bucket } = createR2Client();
   const [companies, existingKeys] = await Promise.all([
-    listCompanies(options.maxCompanies),
-    options.force ? Promise.resolve(new Set<string>()) : listExistingKeys(client, bucket, prefix),
+    listCompanies(typesenseClient, options.maxCompanies).catch((error) => {
+      throw new PrewarmExternalError(
+        "typesense",
+        "list_company_og_source",
+        error,
+      );
+    }),
+    options.force
+      ? Promise.resolve(new Set<string>())
+      : listExistingKeys(client, bucket, prefix).catch((error) => {
+          throw new PrewarmExternalError(
+            "r2",
+            "list_company_og_cache",
+            error,
+          );
+        }),
   ]);
 
   const tasks: RenderTask[] = [];
@@ -285,7 +339,7 @@ export async function main() {
 
   let cursor = 0;
   let uploaded = 0;
-  const failures: Array<{ key: string; error: string }> = [];
+  const failures: Array<{ key: string; error: SafeExternalError }> = [];
 
   const worker = async () => {
     while (true) {
@@ -317,7 +371,11 @@ export async function main() {
       } catch (error) {
         failures.push({
           key,
-          error: error instanceof Error ? error.message : String(error),
+          error: safeExternalError(error, {
+            service: "r2",
+            operation: "upload_company_og",
+            retryCount: 3,
+          }),
         });
       }
     }
@@ -352,11 +410,15 @@ export async function main() {
 const entrypoint = process.argv[1] ?? "";
 if (/prewarm-company-og-cache\.(?:ts|js|mjs|cjs)$/.test(entrypoint)) {
   void main().catch((error) => {
-    logExternalError(
-      "error",
-      { service: "r2", operation: "prewarm_company_og" },
-      error,
-    );
+    if (error instanceof PrewarmExternalError) {
+      logExternalError(
+        "error",
+        { service: error.service, operation: error.operation },
+        error.externalCause,
+      );
+    } else {
+      console.error("company_og_prewarm_failed", { kind: "configuration_or_internal" });
+    }
     process.exitCode = 1;
   });
 }
