@@ -2682,6 +2682,7 @@ jimmy,jimmy-careers,https://www.jimmy-energy.eu/carrieres,jarvi,"{""public_api_k
 job-board,job-board-greenhouse,https://job-boards.greenhouse.io/corelight,greenhouse,"{""token"": ""corelight""}",skip,
 jobandtalent,jobandtalent-careers,https://jobs.lever.co/jobandtalent,lever,"{""token"": ""jobandtalent""}",skip,
 jobber,jobber-ashby,https://jobs.ashbyhq.com/jobber,ashby,"{""token"": ""jobber""}",skip,
+jobgether,jobgether-careers,https://jobs.lever.co/jobgether,lever,,skip,
 jobhive-ag,jobhive-ag-join,https://join.com/companies/jobhive,join,"{""slug"": ""jobhive""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 joe-nimble-gmbh,joe-nimble-gmbh-join,https://join.com/companies/joe-nimble,join,"{""slug"": ""joe-nimble""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 johnson-and-johnson,johnson-and-johnson-careers,https://jj.wd5.myworkdayjobs.com/JJ,workday,,workday,"{""proxy"": true}"
