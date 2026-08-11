@@ -726,6 +726,9 @@ def test_rule_source_has_bounded_owned_groups() -> None:
     }
     for group in groups:
         assert 0 < len(group["rules"]) <= rules.MAX_RULES_PER_GROUP
+        interval = rules._duration_signature(group["interval"])
+        assert isinstance(interval, int)
+        assert interval + 60_000 <= rules.DEFAULT_EVALUATION_WAIT_SECONDS * 1_000
         for rule in group["rules"]:
             assert rule["labels"]["owner"] == "codex-error-review"
             assert rule["labels"]["route"] == "codex-daily"
@@ -831,6 +834,90 @@ def test_remote_namespace_yaml_keeps_all_groups() -> None:
     ]
 
 
+class _ActiveRulesClient:
+    def __init__(self, responses: list[list[dict[str, str]]]) -> None:
+        self.responses = responses
+        self.calls = 0
+
+    def request(self, method: str, path: str) -> tuple[int, bytes]:
+        assert method == "GET"
+        assert path.startswith("/api/v1/rules?")
+        active_rules = self.responses[min(self.calls, len(self.responses) - 1)]
+        self.calls += 1
+        payload = {
+            "status": "success",
+            "data": {
+                "groups": [
+                    {
+                        "name": "group",
+                        "rules": active_rules,
+                    }
+                ]
+            },
+        }
+        return 200, json.dumps(payload).encode()
+
+
+def test_rule_health_waits_for_a_new_successful_evaluation(monkeypatch) -> None:
+    before = "2026-08-11T12:00:00Z"
+    after = "2026-08-11T12:00:30Z"
+    client = _ActiveRulesClient(
+        [
+            [{"name": "Rule", "health": "err", "lastEvaluation": before}],
+            [{"name": "Rule", "health": "ok", "lastEvaluation": after}],
+        ]
+    )
+    group = {"name": "group", "rules": [{"alert": "Rule", "expr": "vector(1)"}]}
+    sleeps: list[float] = []
+    monkeypatch.setattr(rules.time, "sleep", sleeps.append)
+
+    rules._wait_for_rule_evaluation(
+        client,
+        "namespace",
+        [group],
+        previous_evaluations={"Rule": rules._evaluation_time(before)},
+        wait_seconds=10,
+    )
+
+    assert client.calls == 2
+    assert sleeps == [rules.RULE_EVALUATION_POLL_SECONDS]
+
+
+def test_rule_health_rejects_a_persistent_evaluation_error(monkeypatch) -> None:
+    client = _ActiveRulesClient(
+        [[{"name": "Rule", "health": "err", "lastEvaluation": "2026-08-11T12:00:30Z"}]]
+    )
+    group = {"name": "group", "rules": [{"alert": "Rule", "expr": "vector(1)"}]}
+
+    with pytest.raises(rules.RuleSyncError, match=r"Rule=err"):
+        rules._wait_for_rule_evaluation(
+            client,
+            "namespace",
+            [group],
+            previous_evaluations={},
+            wait_seconds=0,
+        )
+
+
+def test_rule_evaluation_rejects_missing_or_not_advanced_rules() -> None:
+    before = "2026-08-11T12:00:00Z"
+    active = {
+        "Present": {"health": "ok", "lastEvaluation": before},
+    }
+
+    assert rules._evaluation_error(active, {"Present", "Missing"}, {}) == (
+        "active rule inventory is missing Missing"
+    )
+    assert (
+        rules._evaluation_error(
+            active,
+            {"Present"},
+            {"Present": rules._evaluation_time(before)},
+        )
+        == "deployed rules have not completed a post-sync evaluation: Present"
+    )
+
+
 def test_sync_rejects_oversized_group_before_remote_access() -> None:
     group = {
         "name": "oversized",
@@ -852,6 +939,7 @@ def test_rule_sync_rolls_back_the_whole_namespace(monkeypatch) -> None:
     deleted: list[str] = []
 
     monkeypatch.setattr(rules, "_remote_groups", lambda *_args: dict(state))
+    monkeypatch.setattr(rules, "_active_rules", lambda *_args: {})
 
     def post(_client, _namespace, group):
         if group["name"] == "second":
@@ -885,6 +973,7 @@ def test_rule_sync_removes_stale_group_after_desired_groups_verify(monkeypatch) 
     state = {"stale": stale}
 
     monkeypatch.setattr(rules, "_remote_groups", lambda *_args: dict(state))
+    monkeypatch.setattr(rules, "_active_rules", lambda *_args: {})
     monkeypatch.setattr(
         rules,
         "_post_group",
@@ -902,7 +991,48 @@ def test_rule_sync_removes_stale_group_after_desired_groups_verify(monkeypatch) 
             set(state) == set(expected) if exact_names else set(expected) <= set(state)
         ),
     )
+    monkeypatch.setattr(
+        rules,
+        "_wait_for_rule_evaluation",
+        lambda *_args, **_kwargs: None,
+    )
 
     rules.sync_groups(object(), "namespace", [desired])
 
     assert state == {"desired": desired}
+
+
+def test_rule_sync_rolls_back_when_post_sync_evaluation_is_unhealthy(monkeypatch) -> None:
+    previous = {"name": "previous", "rules": [{"alert": "Old", "expr": "vector(0)"}]}
+    desired = {"name": "desired", "rules": [{"alert": "New", "expr": "vector(1)"}]}
+    state = {"previous": previous}
+
+    monkeypatch.setattr(rules, "_remote_groups", lambda *_args: dict(state))
+    monkeypatch.setattr(rules, "_active_rules", lambda *_args: {})
+    monkeypatch.setattr(
+        rules,
+        "_post_group",
+        lambda _client, _namespace, group: state.__setitem__(group["name"], group),
+    )
+    monkeypatch.setattr(
+        rules,
+        "_delete_group",
+        lambda _client, _namespace, name: state.pop(name, None),
+    )
+    monkeypatch.setattr(
+        rules,
+        "_groups_match",
+        lambda _client, _namespace, expected, *, exact_names: (
+            set(state) == set(expected) if exact_names else set(expected) <= set(state)
+        ),
+    )
+    monkeypatch.setattr(
+        rules,
+        "_wait_for_rule_evaluation",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(rules.RuleSyncError("New=err")),
+    )
+
+    with pytest.raises(rules.RuleSyncError, match="New=err"):
+        rules.sync_groups(object(), "namespace", [desired])
+
+    assert state == {"previous": previous}

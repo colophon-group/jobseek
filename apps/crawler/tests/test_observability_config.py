@@ -191,6 +191,28 @@ def test_web_backup_helper_image_alert_preserves_the_source_service_label() -> N
     assert rule["labels"]["severity"] == "critical"
 
 
+def test_backup_alerts_keep_simultaneous_service_series_distinct() -> None:
+    source_series = [
+        {"instance": "shared-host", "service": "typesense"},
+        {"instance": "shared-host", "service": "web-postgresql"},
+    ]
+
+    for name in ("DataBackupFailed", "DataBackupStale"):
+        rule = _alert_rule(name)
+        evaluated_labels = []
+        for source_labels in source_series:
+            labels = {**source_labels, **rule["labels"], "alertname": name}
+            evaluated_labels.append(labels)
+
+        assert "service" not in rule["labels"]
+        assert rule["labels"]["component"] == "data-backup"
+        assert {labels["service"] for labels in evaluated_labels} == {
+            "typesense",
+            "web-postgresql",
+        }
+        assert len({tuple(sorted(labels.items())) for labels in evaluated_labels}) == 2
+
+
 def test_ats_inventory_alerts_cover_freshness_coverage_and_hard_cap() -> None:
     alloy = (ROOT / "deploy/observability/alloy-host.alloy").read_text()
     journal_rule = re.search(
