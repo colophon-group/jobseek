@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   getCompanyBySlug: vi.fn(),
   getCompanyPostings: vi.fn(),
   getCompanyPostingsAnonymous: vi.fn(),
+  getSimilarCompanies: vi.fn(),
   getSession: vi.fn(),
   getPreferences: vi.fn(),
   readAnonJobLanguagesCookie: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock("@/lib/actions/company", () => ({
   getCompanyBySlug: mocks.getCompanyBySlug,
   getCompanyPostings: mocks.getCompanyPostings,
   getCompanyPostingsAnonymous: mocks.getCompanyPostingsAnonymous,
+  getSimilarCompanies: mocks.getSimilarCompanies,
 }));
 vi.mock("@/lib/actions/search", () => ({
   getCurrencyRates: mocks.getCurrencyRates,
@@ -58,8 +60,8 @@ function makeCompany(): CompanyDetail {
     logo: null,
     website: null,
     description: null,
-    industryId: null,
-    industryName: null,
+    industryId: 7,
+    industryName: "Software",
     employeeCountRange: null,
     foundedYear: null,
     activeJobCount: 7,
@@ -78,6 +80,18 @@ beforeEach(() => {
     postings: [],
     activeCount: 0,
     yearCount: 0,
+  });
+  mocks.getSimilarCompanies.mockResolvedValue({
+    companies: [
+      {
+        id: "company-2",
+        slug: "peer-company",
+        name: "Peer Company",
+        icon: null,
+        activeJobCount: 3,
+      },
+    ],
+    hasMore: true,
   });
   mocks.getSession.mockResolvedValue(null);
   mocks.getPreferences.mockResolvedValue(null);
@@ -132,6 +146,32 @@ describe("fetchCompanyPageDefaults — ISR-safe prerender variant (#3203)", () =
 
     expect(mocks.getCompanyPostingsAnonymous).toHaveBeenCalledTimes(1);
     expect(mocks.getCompanyPostings).not.toHaveBeenCalled();
+  });
+
+  it("embeds unfiltered similar companies in the cached page snapshot", async () => {
+    const result = await fetchCompanyPageDefaults({
+      slug: "test-company",
+      locale: "en",
+    });
+
+    expect(mocks.getSimilarCompanies).toHaveBeenCalledTimes(1);
+    expect(mocks.getSimilarCompanies).toHaveBeenCalledWith("company-1", 7, {
+      offset: 0,
+      limit: 10,
+      locale: "en",
+    });
+    expect(result?.similarCompanies).toEqual({
+      companies: [
+        {
+          id: "company-2",
+          slug: "peer-company",
+          name: "Peer Company",
+          icon: null,
+          activeJobCount: 3,
+        },
+      ],
+      hasMore: true,
+    });
   });
 
   it("returns anonymous defaults (EUR, no filters, locale-only language)", async () => {
