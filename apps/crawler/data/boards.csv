@@ -2748,6 +2748,11 @@ just-4-veterans-enterprise,just-4-veterans-enterprise-join,https://join.com/comp
 just-eat-takeaway,just-eat-takeaway-careers,https://careers.justeattakeaway.com/global/en/search-results,sitemap,"{""url_filter"": ""/job/""}",json-ld,"{""render"": true}"
 justworks,justworks-greenhouse,https://job-boards.greenhouse.io/justworks,greenhouse,"{""token"": ""justworks""}",skip,
 juul-labs,juul-labs-greenhouse,https://job-boards.greenhouse.io/juullabs,greenhouse,"{""token"": ""juullabs""}",skip,
+jysk,jysk-baltics,https://careers.smartrecruiters.com/JYSKBaltics,smartrecruiters,"{""token"": ""JYSKBaltics""}",smartrecruiters,
+jysk,jysk-canada,https://careers.smartrecruiters.com/JYSKCanada,smartrecruiters,"{""token"": ""JYSKCanada""}",smartrecruiters,
+jysk,jysk-careers,https://careers.smartrecruiters.com/jysk,smartrecruiters,,smartrecruiters,
+jysk,jysk-iceland,https://alfred.is/vinnustadir/jysk,dom,"{""url_filter"": ""/starf/(?!almenn-umsokn)""}",json-ld,
+jysk,jysk-malta,https://jysk.com.mt/jobs/,dom,"{""url_filter"": ""^https://jysk\\.com\\.mt/jobs/[^#?]+/?$""}",dom,"{""steps"": [{""tag"": ""h2"", ""field"": ""title""}, {""tag"": ""h2"", ""field"": ""description"", ""from"": 0, ""html"": true, ""stop"": ""47 YEARS OF GREAT OFFERS""}], ""defaults"": {""locations"": [""Malta""]}}"
 k-health,k-health-greenhouse,https://job-boards.greenhouse.io/khealthcareers,greenhouse,"{""token"": ""khealthcareers""}",skip,
 k-id,k-id-careers,https://api.ashbyhq.com/posting-api/job-board/k-id,ashby,"{""token"": ""k-id""}",skip,
 k-water,k-water-careers,https://k-water.recruiter.co.kr/career/home,recruiter_co_kr,"{""slug"": ""k-water""}",skip,
