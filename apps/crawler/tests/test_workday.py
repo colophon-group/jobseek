@@ -504,6 +504,44 @@ class TestInventoryCompleteness:
         assert truncated is False
         assert max_active == wd_module._QUERY_CONCURRENCY
 
+    async def test_cross_site_mirrors_are_deduplicated_non_streaming(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        async def fake_api_list(company, wd_instance, site, client, *, query_sem=None):
+            paths = ["/job/shared/JR001", f"/job/{site}/JR002"]
+            return paths, False
+
+        monkeypatch.setattr(wd_module, "_api_list", fake_api_list)
+
+        async with httpx.AsyncClient() as client:
+            site_paths, truncated = await _list_all_sites("co", "wd1", ["SiteA", "SiteB"], client)
+
+        assert site_paths == [
+            ("SiteA", "/job/shared/JR001"),
+            ("SiteA", "/job/SiteA/JR002"),
+            ("SiteB", "/job/SiteB/JR002"),
+        ]
+        assert truncated is False
+
+    async def test_cross_site_mirrors_are_deduplicated_streaming(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        async def fake_api_list_stream(company, wd_instance, site, client, *, query_sem=None):
+            yield ["/job/shared/JR001", f"/job/{site}/JR002"]
+
+        monkeypatch.setattr(wd_module, "_api_list_stream", fake_api_list_stream)
+
+        async with httpx.AsyncClient() as client:
+            batches = [
+                batch
+                async for batch in _list_all_sites_stream("co", "wd1", ["SiteA", "SiteB"], client)
+            ]
+
+        assert batches == [
+            [("SiteA", "/job/shared/JR001"), ("SiteA", "/job/SiteA/JR002")],
+            [("SiteB", "/job/SiteB/JR002")],
+        ]
+
     async def test_site_failure_propagates_in_non_streaming_discovery(self, monkeypatch):
         from src.core.monitors import workday as wd_module
 

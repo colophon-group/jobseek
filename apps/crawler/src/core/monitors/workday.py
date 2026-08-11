@@ -18,8 +18,10 @@ Multi-site discovery
 --------------------
 Workday tenants expose all their job board sites in ``robots.txt`` as
 ``Sitemap:`` entries.  By default the monitor discovers **all** sites for
-the tenant and aggregates jobs from every site in a single run.  To monitor
-only the configured site, set ``"all_sites": false`` in board metadata.
+the tenant and aggregates jobs from every site in a single run.  Tenants can
+publish the same external path on multiple sites; those mirrors are collapsed
+before URLs are emitted.  To monitor only the configured site, set
+``"all_sites": false`` in board metadata.
 
 Some tenants combine jobs for distinct brands in one site. Set
 ``"search_text": "Brand Name"`` together with ``"all_sites": false`` to
@@ -585,6 +587,7 @@ async def _list_all_sites(
     results = await asyncio.gather(*[_list_one(s) for s in sites], return_exceptions=True)
 
     site_paths: list[tuple[str, str]] = []
+    seen_paths: set[str] = set()
     any_site_truncated = False
     for i, result in enumerate(results):
         if isinstance(result, BaseException):
@@ -592,7 +595,12 @@ async def _list_all_sites(
             raise result
         else:
             pairs, was_truncated = result
-            site_paths.extend(pairs)
+            for pair in pairs:
+                _, path = pair
+                if path in seen_paths:
+                    continue
+                seen_paths.add(path)
+                site_paths.append(pair)
             if was_truncated:
                 any_site_truncated = True
     truncated = any_site_truncated or len(site_paths) > MAX_JOBS
@@ -615,6 +623,7 @@ async def _list_all_sites_stream(
     """
     query_sem = asyncio.Semaphore(_QUERY_CONCURRENCY)
     total_count = 0
+    seen_paths: set[str] = set()
 
     for site in sites:
         async for batch in _api_list_stream(
@@ -624,9 +633,18 @@ async def _list_all_sites_stream(
             client,
             query_sem=query_sem,
         ):
-            pairs = [(site, p) for p in batch]
-            total_count += sum(path != _TRUNCATED_PATH for _, path in pairs)
-            yield pairs
+            pairs: list[tuple[str, str]] = []
+            for path in batch:
+                if path == _TRUNCATED_PATH:
+                    pairs.append((site, path))
+                    continue
+                if path in seen_paths:
+                    continue
+                seen_paths.add(path)
+                pairs.append((site, path))
+                total_count += 1
+            if pairs:
+                yield pairs
             if total_count >= MAX_JOBS:
                 yield [_TRUNCATED_SENTINEL]
                 return
