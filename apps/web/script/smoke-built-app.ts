@@ -21,6 +21,13 @@ const discoveryRedirectRoutes = [
   ["/llms.txt", "/.well-known/llms.txt"],
   ["/openapi.json", "/api/openapi.json"],
 ] as const;
+const missingResourceRoutes = [
+  ["/en/company/definitely-not-a-real-company", "Company not found"],
+  ["/de/company/definitely-not-a-real-company", "Unternehmen nicht gefunden"],
+  ["/en/not-a-real-user/not-a-real-watchlist", "Watchlist not found"],
+  ["/fr/not-a-real-user/not-a-real-watchlist", "Liste de surveillance introuvable"],
+  ["/en/alice/private.list", "Watchlist not found"],
+] as const;
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -103,6 +110,46 @@ async function smokeDiscoveryRedirect(route: string, location: string) {
   console.log(`smoke ok ${route} 308 ${location}`);
 }
 
+async function smokeMissingResource(
+  browser: Browser,
+  route: string,
+  heading: string,
+) {
+  const page = await browser.newPage();
+  try {
+    const response = await page.goto(`${baseUrl}${route}`, {
+      waitUntil: "networkidle",
+    });
+    if (response?.status() !== 404) {
+      throw new Error(
+        `${route} returned HTTP ${response?.status() ?? "no response"}, expected 404`,
+      );
+    }
+    const headings = page.locator("h1");
+    const renderedHeading = (await headings.textContent())?.trim();
+    const robots = await page.locator('meta[name="robots"]').getAttribute("content");
+    if (
+      renderedHeading !== heading ||
+      !robots?.includes("noindex") ||
+      await headings.count() !== 1 ||
+      await page.locator("main").count() !== 1
+    ) {
+      throw new Error(`${route} did not render its noindex localized recovery UI`);
+    }
+  } finally {
+    await page.close();
+  }
+
+  const headResponse = await fetch(`${baseUrl}${route}`, {
+    method: "HEAD",
+    redirect: "manual",
+  });
+  if (headResponse.status !== 404) {
+    throw new Error(`${route} HEAD returned HTTP ${headResponse.status}, expected 404`);
+  }
+  console.log(`smoke ok ${route} GET/HEAD 404`);
+}
+
 async function main() {
   const server = startServer();
   let browser: Browser | undefined;
@@ -114,6 +161,9 @@ async function main() {
     }
     for (const [route, location] of discoveryRedirectRoutes) {
       await smokeDiscoveryRedirect(route, location);
+    }
+    for (const [route, heading] of missingResourceRoutes) {
+      await smokeMissingResource(browser, route, heading);
     }
     for (const route of routes) {
       await smoke(browser, route);

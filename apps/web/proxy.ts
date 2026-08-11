@@ -2,11 +2,25 @@ import { type NextRequest, NextResponse } from "next/server";
 import { match } from "@formatjs/intl-localematcher";
 import Negotiator from "negotiator";
 import { defaultLocale, locales, isLocale } from "@/lib/i18n";
+import { isPlausiblePublicWatchlistPath } from "@/lib/public-watchlist-path";
+import { isReservedUsername } from "@/lib/username";
+import { logExternalError } from "@/lib/safe-external-error";
+import { auth } from "@/lib/auth";
+import {
+  hasPublicCompanyRoute,
+  hasPublicWatchlistRoute,
+  hasWatchlistRouteForViewer,
+} from "@/lib/services/public-resource-status";
 
 const COOKIE_NAME = "NEXT_LOCALE";
 const LOGGED_IN_HINT_COOKIE = "logged_in";
 const COMPANY_REQUEST_PATH = /^\/(en|de|fr|it)\/companies\/request$/;
 const LOCALIZED_EXPLORE_PATH = /^\/(?:en|de|fr|it)\/explore$/;
+const LOCALIZED_COMPANY_PATH = /^\/(en|de|fr|it)\/company\/([^/]+)$/;
+const LOCALIZED_WATCHLIST_PATH =
+  /^\/(en|de|fr|it)\/([^/]+)\/([^/]+)$/;
+const LOCALIZED_MISSING_RESOURCE_PATH =
+  /^\/(?:en|de|fr|it)\/_missing\/(?:company\/[^/]+|watchlist)$/;
 const LOCALIZED_SCANNER_PATH =
   /^\/(?:en|de|fr|it)\/(?:(?:adminer|cgi-bin|phpmyadmin|wp-admin|wp-content|wp-includes|wp-json|xmlrpc|\.env|\.git)(?:\/|$)|[^/]+\/(?:\.env|\.git)(?:\/|$))/i;
 
@@ -26,7 +40,153 @@ function getLocale(request: NextRequest): string {
   return match(languages, locales as unknown as string[], defaultLocale);
 }
 
-export function proxy(request: NextRequest) {
+function isDocumentRequest(request: NextRequest): boolean {
+  if (request.headers.get("rsc") === "1" || request.headers.has("next-action")) {
+    return false;
+  }
+  if (request.method === "HEAD") return true;
+  if (request.method !== "GET") return false;
+  const accept = request.headers.get("accept");
+  return !accept || accept === "*/*" || accept.includes("text/html");
+}
+
+function hasSessionCookie(request: NextRequest): boolean {
+  return (
+    request.cookies.has("__Secure-better-auth.session_token") ||
+    request.cookies.has("better-auth.session_token")
+  );
+}
+
+async function authenticatedUserId(request: NextRequest): Promise<string | null> {
+  if (!hasSessionCookie(request)) return null;
+  const session = await auth.api.getSession({ headers: request.headers });
+  return session?.user?.id ?? null;
+}
+
+function staticRecoveryDocument(html: string): string {
+  // The recovered App Router document carries hydration/PPR scripts whose
+  // client router still sees the original public URL. Running them would
+  // resume the missing route and duplicate the shell. Recovery controls are
+  // ordinary links, so serve a deliberately static document instead.
+  return html
+    .replace(/<link\b[^>]*\bas=(["'])script\1[^>]*>/gi, "")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "");
+}
+
+async function missingResourceResponse(
+  request: NextRequest,
+  kind: "company" | "watchlist",
+  lang: string,
+  slug?: string,
+): Promise<NextResponse> {
+  const missingUrl = request.nextUrl.clone();
+  missingUrl.pathname = kind === "company"
+    ? `/${lang}/_missing/company/${slug}`
+    : `/${lang}/_missing/watchlist`;
+  missingUrl.search = "";
+  const deploymentOrigin = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : process.env.BETTER_AUTH_URL || request.nextUrl.origin;
+  const recoveryUrl = new URL(missingUrl.pathname, deploymentOrigin);
+  const recoveryHeaders = new Headers(request.headers);
+  recoveryHeaders.set("accept", "text/html");
+  recoveryHeaders.delete("content-length");
+  recoveryHeaders.delete("next-action");
+  recoveryHeaders.delete("rsc");
+
+  // Next 16 discards a status attached to a rewrite once the App Router
+  // renders its target. Render the private internal recovery route, then own
+  // the final response status here. This is only an extra round-trip for a
+  // resource already proven absent/inaccessible.
+  const recovery = await fetch(recoveryUrl, {
+    method: request.method,
+    headers: recoveryHeaders,
+    redirect: "manual",
+    cache: "no-store",
+  });
+  const responseHeaders = new Headers();
+  for (const name of ["content-language", "content-type", "link", "vary"]) {
+    const value = recovery.headers.get(name);
+    if (value) responseHeaders.set(name, value);
+  }
+  // A newly-created company or a watchlist privacy toggle must not be hidden
+  // behind a cached 404. The lookup itself is bounded by a short shared cache.
+  responseHeaders.set("Cache-Control", "private, no-store");
+  responseHeaders.set("X-Robots-Tag", "noindex, follow");
+  responseHeaders.set(
+    "Content-Security-Policy",
+    "script-src 'none'; object-src 'none'; base-uri 'none'",
+  );
+  const body = request.method === "HEAD"
+    ? null
+    : staticRecoveryDocument(await recovery.text());
+  return new NextResponse(body, {
+    status: 404,
+    headers: responseHeaders,
+  });
+}
+
+async function resolveLocalizedResourceRequest(
+  request: NextRequest,
+  companyMatch: RegExpMatchArray | null,
+  watchlistMatch: RegExpMatchArray | null,
+): Promise<NextResponse> {
+  if (companyMatch) {
+    const [, lang, slug] = companyMatch;
+    try {
+      return (await hasPublicCompanyRoute(slug))
+        ? NextResponse.next()
+        : await missingResourceResponse(request, "company", lang, slug);
+    } catch (err) {
+      // Fail open: an upstream outage must not turn every company into a
+      // definitive 404. The page keeps its existing noindex fallback.
+      logExternalError(
+        "error",
+        { service: "typesense", operation: "company_route_status" },
+        err,
+      );
+      return NextResponse.next();
+    }
+  }
+
+  if (watchlistMatch) {
+    const [, lang, userSlug, watchlistSlug] = watchlistMatch;
+    if (isReservedUsername(userSlug.toLowerCase())) {
+      return NextResponse.next();
+    }
+    if (!isPlausiblePublicWatchlistPath(userSlug, watchlistSlug)) {
+      return missingResourceResponse(request, "watchlist", lang);
+    }
+
+    try {
+      const viewerUserId = await authenticatedUserId(request);
+      const routeExists = viewerUserId
+        ? await hasWatchlistRouteForViewer(
+            userSlug,
+            watchlistSlug,
+            viewerUserId,
+          )
+        : await hasPublicWatchlistRoute(userSlug, watchlistSlug);
+      return routeExists
+        ? NextResponse.next()
+        : await missingResourceResponse(request, "watchlist", lang);
+    } catch (err) {
+      logExternalError(
+        "error",
+        { service: "database", operation: "watchlist_route_status" },
+        err,
+      );
+      return NextResponse.next();
+    }
+  }
+
+  return NextResponse.next();
+}
+
+export async function proxy(request: NextRequest): Promise<NextResponse> {
+  if (LOCALIZED_MISSING_RESOURCE_PATH.test(request.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
   // Stop common exploit-probe shapes at the network boundary. Without this,
   // Cache Components can stream the public-watchlist PPR shell with HTTP 200
   // before the route-level notFound() guard runs, consuming a Fluid function
@@ -97,6 +257,17 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(signInUrl);
   }
 
+  const companyMatch = request.nextUrl.pathname.match(LOCALIZED_COMPANY_PATH);
+  const watchlistMatch = request.nextUrl.pathname.match(LOCALIZED_WATCHLIST_PATH);
+  if (isDocumentRequest(request) && (companyMatch || watchlistMatch)) {
+    return resolveLocalizedResourceRequest(
+      request,
+      companyMatch,
+      watchlistMatch,
+    );
+  }
+  if (companyMatch || watchlistMatch) return NextResponse.next();
+
   const cookieLocale = request.cookies.get(COOKIE_NAME)?.value;
   const locale = getLocale(request);
   const url = request.nextUrl.clone();
@@ -136,6 +307,8 @@ export const config = {
   matcher: [
     "/((?!_next|api|mcp|flags|fonts|publicdomain|screenshots|\\.well-known|favicon\\.ico$|favicon-16x16\\.png$|favicon-32x32\\.png$|apple-touch-icon\\.png$|apple-touch-icon-[^/]+\\.png$|android-chrome-192x192\\.png$|android-chrome-512x512\\.png$|site\\.webmanifest$|BingSiteAuth\\.xml$|js_[^/]+\\.svg$|js_missing_screenshot_black\\.png$|js_missing_screenshot_white\\.png$|logo-dark\\.svg$|logo-light\\.svg$|opengraph-image|indexnow-key\\.txt$|llms\\.txt$|openapi\\.json$|openapi\\.yaml$|robots\\.txt$|sitemap\\.xml$|en|de|fr|it).*)",
     "/:lang(en|de|fr|it)/companies/request",
+    "/:lang(en|de|fr|it)/company/:slug",
+    "/:lang(en|de|fr|it)/:userSlug/:watchlistSlug",
     {
       source: "/:lang(en|de|fr|it)/explore",
       has: [

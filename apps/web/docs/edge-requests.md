@@ -51,9 +51,33 @@ narrow dynamic surfaces.
 
 ### Proxy (formerly Middleware)
 
-The proxy only runs for paths **without** a locale prefix (e.g. bare `/`, `/how-we-index`). It redirects to the locale-prefixed version based on `Accept-Language`.
+The proxy normally runs for paths **without** a locale prefix (e.g. bare `/`,
+`/how-we-index`) and redirects to the locale-prefixed version based on
+`Accept-Language`. A narrow set of localized boundaries also opt in: company
+request auth, Explore document normalization, scanner rejection, and company /
+public-watchlist document status checks.
 
-Paths that already have a locale prefix (`/en/...`, `/de/...`) **skip the proxy entirely** — no edge invocation.
+The last check is required because Cache Components can begin streaming the
+static app shell before a page-level `notFound()` resolves. Once headers have
+been sent, Next.js can only return a noindex soft 404 with HTTP 200. For full
+GET/HEAD documents, `proxy.ts` therefore performs a bounded 60-second-cached
+existence check and maps a confirmed miss to the localized `%5Fmissing`
+recovery route, renders that private target internally, and returns its body as
+a static, script-free document with HTTP 404. Recovery controls are ordinary
+links; disabling hydration avoids a PPR resume against the original missing URL
+and a duplicate app shell. This boundary is necessary because Next.js discards
+custom rewrite statuses when the App Router renders the destination. RSC
+navigation and Server Action traffic bypass the check. Upstream failures fail
+open to the existing noindex page fallback; an outage must never turn every
+resource into a false 404.
+
+Anonymous watchlist checks query only `is_public = true`, so absent and private
+resources are indistinguishable. Requests carrying a session cookie are
+verified through Better Auth. A valid session gets an uncached owner-or-public
+existence check; stale, revoked, and forged cookies stay on the anonymous
+public-only path. This preserves private-owner access without disclosing
+private resources. Watchlist mutations and username renames evict the route-
+status cache alongside the existing detail caches.
 
 > Renamed from `middleware.ts` to `proxy.ts` for Next.js 16 (#2887).
 > Same APIs, same execution model — see https://nextjs.org/docs/messages/middleware-to-proxy.
@@ -82,7 +106,11 @@ This tells Next.js which locale variants to pre-render. Without it, `[lang]` is 
 
 ### Keep the proxy matcher narrow
 
-The proxy matcher explicitly excludes locale-prefixed paths. When adding a new locale, **add it to the matcher exclusion list** in `proxy.ts` — otherwise every request to that locale will unnecessarily invoke the proxy.
+The broad matcher excludes locale-prefixed paths; each localized exception is
+listed separately in `proxy.ts`. When adding a locale, update both the broad
+exclusion and every localized exception. Do not broaden the resource-status
+boundary beyond full company/watchlist documents: RSC and Server Action
+requests must stay on the normal App Router path.
 
 ### Use route groups to separate static from dynamic
 

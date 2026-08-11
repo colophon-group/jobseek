@@ -27,17 +27,22 @@ describe("company route partial prerendering", () => {
     expect(source).not.toContain("getCompanyBySlug(slug, locale)");
   });
 
-  it("renders the missing-company fallback with the requested locale and slug", () => {
+  it("routes a missing company to the localized recovery boundary", () => {
     const source = readFileSync(
       "app/[lang]/(app)/company/[slug]/page.tsx",
       "utf8",
     );
-
-    expect(source).toContain("async function CompanyNotFound({ locale, slug }");
-    expect(source).toContain("const { i18n } = await loadCatalog(locale);");
-    expect(source).toContain(
-      "return <CompanyNotFound locale={locale} slug={slug} />;",
+    const recoverySource = readFileSync(
+      "app/[lang]/(app)/%5Fmissing/company/[slug]/page.tsx",
+      "utf8",
     );
-    expect(source).not.toContain("loadCatalog(defaultLocale);");
+
+    expect(source.match(/if \(!(?:snapshot|initialData)\) notFound\(\);/g)).toHaveLength(2);
+    expect(recoverySource).toContain("const { lang, slug } = await params;");
+    expect(recoverySource).toContain(
+      "const locale = isLocale(lang) ? lang : defaultLocale;",
+    );
+    expect(recoverySource).toContain("locale={locale}");
+    expect(recoverySource).toContain("slug={slug}");
   });
 });

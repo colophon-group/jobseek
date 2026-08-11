@@ -4224,12 +4224,6 @@ msgstr "Nutzungsbedingungen"
 msgid "terms.meta.description"
 msgstr "Nutzungsbedingungen von Job Seek — Nutzungsregeln, geistiges Eigentum, Kontoverantwortung, Haftungsbeschränkung und geltendes Recht der Jobsuchplattform."
 
-#. Body text shown when a company page slug does not exist
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/page.tsx:102
-msgid "company.notFound.message"
-msgstr "Das gesuchte Unternehmen existiert nicht oder wurde entfernt."
-
 #. Body text for the company-not-found page; explains the company is either gone or never existed
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/company/[slug]/company-content.tsx:59
