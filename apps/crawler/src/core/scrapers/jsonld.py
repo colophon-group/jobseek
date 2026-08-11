@@ -348,13 +348,18 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
         posting = _find_job_posting(block)
         if posting:
             content = _parse_posting(posting)
-            # Some providers synthesize a plausible-looking timestamp rather
-            # than publishing a real posting date.  iCIMS, for example, can
-            # emit the request time minus exactly two years for every job.
-            # Keep this opt-in and board-scoped: valid schema.org dates remain
+            # Some providers synthesize plausible-looking timestamps rather
+            # than publishing real posting dates or expiry dates.  iCIMS, for
+            # example, can emit the request time minus exactly two years as
+            # datePosted and plus one year as validThrough for every job.  Keep
+            # these opt-ins board-scoped: valid schema.org dates remain
             # authoritative everywhere else.
             if (config or {}).get("ignore_date_posted") is True:
                 content.date_posted = None
+            if (config or {}).get("ignore_valid_through") is True and content.extras:
+                content.extras.pop("valid_through", None)
+                if not content.extras:
+                    content.extras = None
             if not content.title and extractor.page_title:
                 organization = posting.get("hiringOrganization")
                 organization_name = (

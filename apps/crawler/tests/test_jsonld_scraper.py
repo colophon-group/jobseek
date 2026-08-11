@@ -260,11 +260,20 @@ class TestMetaLocationFallback:
     def test_parse_html_can_ignore_provider_generated_posting_date(self):
         html = """<html><head><script type="application/ld+json">
         {"@type":"JobPosting","title":"Housekeeper",
-         "datePosted":"2024-08-11T08:17:42.806Z"}
+         "datePosted":"2024-08-11T08:17:42.806Z",
+         "validThrough":"2027-08-11T08:17:42.806Z"}
         </script></head></html>"""
 
         assert parse_html(html).date_posted == "2024-08-11T08:17:42.806Z"
-        assert parse_html(html, {"ignore_date_posted": True}).date_posted is None
+        assert parse_html(html).extras == {"valid_through": "2027-08-11T08:17:42.806Z"}
+
+        result = parse_html(
+            html,
+            {"ignore_date_posted": True, "ignore_valid_through": True},
+        )
+
+        assert result.date_posted is None
+        assert result.extras is None
 
 
 class TestExtractSalary:
