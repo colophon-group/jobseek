@@ -446,7 +446,8 @@ browser_navigate_fallback_total = Counter(
     # Outcomes: success = the current document reached the fallback state;
     # failed = the fallback state also timed out or errored; disabled = board opted out via
     # wait_fallback=None; match = fallback strategy equals primary so no
-    # fallback wait was attempted.
+    # fallback wait was attempted; http_error = fallback reached a concrete
+    # HTTP(S) 4xx/5xx document.
     "Browser navigate() fallback waits after primary wait-strategy timeout",
     ["primary", "fallback", "outcome"],
 )
