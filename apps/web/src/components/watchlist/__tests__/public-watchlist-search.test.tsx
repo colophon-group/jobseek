@@ -74,6 +74,17 @@ beforeEach(() => {
 });
 
 describe("PublicWatchlistSearch navigation", () => {
+  it("exposes a stable public-watchlist searchbox name", () => {
+    render(<PublicWatchlistSearch />);
+
+    const input = screen.getByRole("searchbox", {
+      name: "Search public watchlists",
+    });
+    expect(input.getAttribute("placeholder")).toBe("Search watchlists...");
+    expect(input.getAttribute("aria-expanded")).toBeNull();
+    expect(input.getAttribute("aria-controls")).toBeNull();
+  });
+
   it("scrolls to top synchronously when opening a public watchlist result", async () => {
     const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
 

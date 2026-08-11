@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useId, useMemo } from "react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Search,
@@ -76,6 +76,8 @@ interface SearchBarProps {
   userLng?: number;
   className?: string;
   placeholder?: string;
+  /** Stable accessible name for the search scope. */
+  accessibleLabel?: string;
 }
 
 export function SearchBar({
@@ -98,6 +100,7 @@ export function SearchBar({
   userLng: serverLng,
   className,
   placeholder: placeholderProp,
+  accessibleLabel: accessibleLabelProp,
 }: SearchBarProps) {
   const { t } = useLingui();
   const router = useRouter();
@@ -123,6 +126,7 @@ export function SearchBar({
   const listRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isKeyboardNav = useRef(false);
+  const listboxId = useId();
 
   const browserGeo = useBrowserCoordinates(serverLat);
   const userLat = serverLat ?? browserGeo?.lat;
@@ -484,6 +488,16 @@ export function SearchBar({
     comment: "Placeholder for the main search bar",
     message: "Search...",
   });
+  const accessibleLabel =
+    accessibleLabelProp ??
+    reactivePageActions?.accessibleLabel ??
+    t({
+      id: "search.bar.label",
+      comment: "Accessible label for the main job search input",
+      message: "Search jobs",
+    });
+  const listboxVisible = isOpen && allSuggestions.length > 0;
+  const optionIdPrefix = `${listboxId}-option`;
 
   // Compute flat indices for each section (keyword → occupations → seniorities → technologies → workMode → locations → companies → request)
   let flatIdx = 0;
@@ -544,16 +558,21 @@ export function SearchBar({
           placeholder={placeholder}
           className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
           role="combobox"
-          aria-expanded={isOpen}
+          aria-label={accessibleLabel}
+          aria-expanded={listboxVisible}
           aria-autocomplete="list"
+          aria-controls={listboxVisible ? listboxId : undefined}
           aria-activedescendant={
-            activeIndex >= 0 ? `search-option-${activeIndex}` : undefined
+            listboxVisible && activeIndex >= 0
+              ? `${optionIdPrefix}-${activeIndex}`
+              : undefined
           }
         />
       </div>
 
-      {isOpen && allSuggestions.length > 0 && (
+      {listboxVisible && (
         <div
+          id={listboxId}
           ref={listRef}
           role="listbox"
           className="absolute left-0 top-full z-50 mt-1 w-full min-w-64 rounded-lg border border-border-soft bg-surface shadow-lg"
@@ -561,7 +580,7 @@ export function SearchBar({
         <ScrollFade className="max-h-[366px]" deps={[allSuggestions.length]}>
           {trimmedInput.length >= 2 && (
             <div
-              id={`search-option-${keywordIndex}`}
+              id={`${optionIdPrefix}-${keywordIndex}`}
               role="option"
               aria-selected={keywordIndex === activeIndex}
               data-suggestion
@@ -592,6 +611,7 @@ export function SearchBar({
               comment: "Section header for occupation suggestions in search bar",
               message: "Roles",
             })}
+            optionIdPrefix={optionIdPrefix}
             startIndex={occStartIndex}
             activeIndex={activeIndex}
             hasDivider={trimmedInput.length >= 2}
@@ -609,6 +629,7 @@ export function SearchBar({
               comment: "Section header for seniority suggestions in search bar",
               message: "Level",
             })}
+            optionIdPrefix={optionIdPrefix}
             startIndex={senStartIndex}
             activeIndex={activeIndex}
             hasDivider={occupationResults.length > 0}
@@ -626,6 +647,7 @@ export function SearchBar({
               comment: "Section header for technology suggestions in search bar",
               message: "Technologies",
             })}
+            optionIdPrefix={optionIdPrefix}
             startIndex={techStartIndex}
             activeIndex={activeIndex}
             hasDivider={occupationResults.length > 0 || seniorityResults.length > 0}
@@ -643,6 +665,7 @@ export function SearchBar({
               comment: "Section header for work-mode (onsite/hybrid/remote) suggestions in search bar",
               message: "Work mode",
             })}
+            optionIdPrefix={optionIdPrefix}
             startIndex={wmStartIndex}
             activeIndex={activeIndex}
             hasDivider={occupationResults.length > 0 || seniorityResults.length > 0 || technologyResults.length > 0}
@@ -661,6 +684,7 @@ export function SearchBar({
               comment: "Section header for location suggestions in search bar",
               message: "Locations",
             })}
+            optionIdPrefix={optionIdPrefix}
             startIndex={locStartIndex}
             activeIndex={activeIndex}
             hasDivider={occupationResults.length > 0 || seniorityResults.length > 0 || technologyResults.length > 0 || workModeResults.length > 0}
@@ -685,6 +709,7 @@ export function SearchBar({
               comment: "Section header for company suggestions in search bar",
               message: "Companies",
             })}
+            optionIdPrefix={optionIdPrefix}
             startIndex={companyStartIndex}
             activeIndex={activeIndex}
             hasDivider={occupationResults.length > 0 || seniorityResults.length > 0 || technologyResults.length > 0 || workModeResults.length > 0 || locationResults.length > 0}
@@ -698,7 +723,7 @@ export function SearchBar({
 
           {showRequestItem && (
             <div
-              id={`search-option-${requestIndex}`}
+              id={`${optionIdPrefix}-${requestIndex}`}
               role="option"
               aria-selected={requestIndex === activeIndex}
               data-suggestion

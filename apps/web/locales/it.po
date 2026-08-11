@@ -14,6 +14,25 @@ msgstr ""
 "Plural-Forms: \n"
 "X-Generator: @lingui/cli\n"
 
+#. Accessible label for job search scoped to one company
+#. js-lingui-explicit-id
+#. placeholder {0}: company.name
+#: app/[lang]/(app)/company/[slug]/company-page.tsx
+msgid "company.page.searchLabel"
+msgstr "Cerca offerte di lavoro presso {0}"
+
+#. Accessible label for the main job search input
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx
+msgid "search.bar.label"
+msgstr "Cerca offerte di lavoro"
+
+#. Accessible label for public watchlist search input
+#. js-lingui-explicit-id
+#: src/components/watchlist/public-watchlist-search.tsx
+msgid "watchlists.explore.searchLabel"
+msgstr "Cerca liste pubbliche"
+
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:47
 #~ msgid "faq.a.whichAts"
