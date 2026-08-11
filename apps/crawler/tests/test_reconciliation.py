@@ -1788,7 +1788,12 @@ async def test_repair_fails_closed_when_local_row_changes_during_network_write(
             for row in rows
         ]
 
-    async def upsert(docs: list[dict]) -> set[uuid.UUID]:
+    async def upsert(
+        docs: list[dict],
+        *,
+        log_rejected_documents: bool = True,
+    ) -> set[uuid.UUID]:
+        assert log_rejected_documents is False
         for document in docs:
             remote.states[uuid.UUID(document["id"])] = document["is_active"]
         # Model a worker commit while the downstream request is in flight.
@@ -1799,17 +1804,19 @@ async def test_repair_fails_closed_when_local_row_changes_during_network_write(
     monkeypatch.setattr("src.reconciliation._build_typesense_docs", build_docs)
     monkeypatch.setattr("src.reconciliation._upsert_to_typesense", upsert)
 
-    with pytest.raises(ReconciliationError, match="verification left 1 unresolved"):
-        await reconcile_partition(
-            local,  # type: ignore[arg-type]
-            None,
-            target="typesense",
-            partition=prefix,
-            repair=True,
-            typesense=remote,  # type: ignore[arg-type]
-            maps=TaxonomyMaps(),
-        )
+    result = await reconcile_partition(
+        local,  # type: ignore[arg-type]
+        None,
+        target="typesense",
+        partition=prefix,
+        repair=True,
+        typesense=remote,  # type: ignore[arg-type]
+        maps=TaxonomyMaps(),
+    )
 
+    assert result.detected == 1
+    assert result.repaired == 0
+    assert result.unresolved == 1
     assert local.connection.transactions_started == 0
 
 

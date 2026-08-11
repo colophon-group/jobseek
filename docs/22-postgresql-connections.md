@@ -16,6 +16,9 @@ one-offs do not start a metrics endpoint and are visible through the host owner
 sampler instead. Direct repository clients set the same ownership and
 transaction guards but do not expose a process-local pool gauge. Production
 Compose sets both pool bounds explicitly.
+The settings validator fails closed above eight connections per pool and for
+non-finite, non-positive, or greater-than-60-second inactive lifetimes, so an
+environment typo cannot silently weaken the repository budget.
 
 | production owner | processes | min each | max each | local maximum | application owner |
 |---|---:|---:|---:|---:|---|
@@ -29,7 +32,9 @@ Compose sets both pool bounds explicitly.
 
 The Murmur child limit is an invocation semaphore, not an asyncpg pool. Each
 child opens at most one short-lived connection and closes it in `finally`, so
-the two-child limit makes its aggregate maximum exact.
+the two-child limit makes its aggregate maximum exact. Time waiting for a
+child slot counts against the existing invocation wall-clock limit, preventing
+an overload from turning the bounded connection queue into unbounded requests.
 
 The daily Codex runner injects the exact labeller role/min/max/idle values and
 one host-shared database lock path into the annotation subprocess. Every
@@ -134,11 +139,12 @@ cannot terminate a server cursor transaction while the client processes a row.
   source series' `service` label and use its new static `component` label for
   routing; do not restore `service: data-backup` while resolving nearby alert
   conflicts from #6631.
-- #6624 will extend Typesense reconciliation to compare same-ID payloads. Resolve
-  conflicts by retaining #6631's no-transaction-across-network-I/O structure,
-  exporter fence, authoritative post-write reread, and fail-closed verification.
-  Add payload comparison inside that structure rather than restoring the old
-  row-lock transaction around downstream requests.
+- #6624's same-ID payload reconciliation is integrated through #7053, with its
+  live-ingestion convergence hardening in #7211. Preserve candidate-scoped ID,
+  state, and payload verification, fence-safe deletes, sanitized aggregate
+  failures, and nonzero unresolved accounting together with #6631's exporter
+  fence and no-transaction-across-network-I/O structure. Do not restore the
+  old row-lock transaction around downstream requests.
 
 ## Seven-day acceptance
 

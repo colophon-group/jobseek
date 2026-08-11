@@ -2,10 +2,11 @@
 
 Local PostgreSQL is authoritative. Supabase is a web-facing relational
 mirror, while Typesense is a derived search index. This module compares both
-directions in bounded UUID partitions and repairs only from a locked local
-snapshot. Progress lives in local PostgreSQL, so container recreation cannot
-reset or hide the schedule. Supabase support is retained for direct rollback
-tests only; the production CLI and scheduler can select Typesense only.
+directions in bounded UUID partitions and repairs from authoritative local
+rereads under the exporter fence. Progress lives in local PostgreSQL, so
+container recreation cannot reset or hide the schedule. Supabase support is
+retained for direct rollback tests only; the production CLI and scheduler can
+select Typesense only.
 """
 
 from __future__ import annotations

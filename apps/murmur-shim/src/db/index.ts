@@ -81,7 +81,10 @@ export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
           idle_timeout: 20,
           max_lifetime: 300,
           prepare: false,
-          connection: { application_name: "jobseek:murmur:node" },
+          connection: {
+            application_name: "jobseek:murmur:node",
+            idle_in_transaction_session_timeout: 60000,
+          },
         }),
         { schema },
       );

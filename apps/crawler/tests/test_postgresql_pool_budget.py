@@ -62,8 +62,10 @@ def test_murmur_enforces_both_connection_owners() -> None:
 
     assert "value > 2" in node_db
     assert 'application_name: "jobseek:murmur:node"' in node_db
+    assert "idle_in_transaction_session_timeout: 60000" in node_db
     assert "value > 2" in invoker
     assert "acquireInvokerSlot" in invoker
+    assert "deadline - Date.now()" in invoker
     assert '"application_name": "jobseek:murmur:python"' in python_kv
 
 

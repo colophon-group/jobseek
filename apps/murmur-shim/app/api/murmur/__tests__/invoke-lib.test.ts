@@ -80,6 +80,36 @@ describe("defaultInvoker subprocess branches", () => {
     }
   });
 
+  it("includes invoker-slot wait time in the wallclock cap", async () => {
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
+    const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const tmpScript = path.join(os.tmpdir(), `murmur-queue-timeout-${suffix}.sh`);
+    await fs.writeFile(
+      tmpScript,
+      '#!/bin/sh\nsleep 1\nprintf \'{"ok":true}\\n\'\n',
+      { mode: 0o755 },
+    );
+    process.env.MURMUR_PY = tmpScript;
+    process.env.MURMUR_INVOKE_TIMEOUT_MS = "5000";
+
+    try {
+      const first = defaultInvoker("probe_monitor", {}, "claim-1");
+      const second = defaultInvoker("probe_monitor", {}, "claim-2");
+      process.env.MURMUR_INVOKE_TIMEOUT_MS = "50";
+      const startedAt = Date.now();
+      const queued = await defaultInvoker("probe_monitor", {}, "claim-3");
+
+      expect(queued).toEqual({ ok: false, errors: ["internal_error"] });
+      expect(Date.now() - startedAt).toBeLessThan(500);
+      expect((await Promise.all([first, second])).every((result) => result.ok)).toBe(
+        true,
+      );
+    } finally {
+      await fs.unlink(tmpScript).catch(() => {});
+    }
+  });
+
   it("maps a non-zero exit to { ok: false, errors: ['internal_error'] }", async () => {
     // `false` lives at /usr/bin/false on macOS and /bin/false on Linux;
     // probe both.

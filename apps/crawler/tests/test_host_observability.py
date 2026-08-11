@@ -674,6 +674,8 @@ def test_postgresql_probe_tolerates_pre_payload_reconciliation_schema(monkeypatc
             return "0"
         if sql == host.PHANTOM_ACTIVE_STATS_SQL:
             return "0\t0\t0"
+        if sql == host.POSTGRES_CONNECTION_OWNERS_SQL:
+            return ""
         if sql == host.RECONCILIATION_SCHEMA_SQL:
             # The reconciliation tables exist, but migration 0018 has not yet
             # added the payload-observability columns used by the stats query.

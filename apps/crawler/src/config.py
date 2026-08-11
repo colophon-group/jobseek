@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from urllib.parse import urlparse
 
 from pydantic import model_validator
@@ -212,17 +213,20 @@ class Settings(BaseSettings):
             )
         if len(self.crawler_db_role) > 40:
             raise ValueError("CRAWLER_DB_ROLE must be at most 40 characters")
+        if self.crawler_db_pool_max < 1 or self.crawler_db_pool_max > 8:
+            raise ValueError("CRAWLER_DB_POOL_MAX must be between 1 and 8")
+        if self.crawler_db_pool_min < 0 or self.crawler_db_pool_min > self.crawler_db_pool_max:
+            raise ValueError(
+                "CRAWLER_DB_POOL_MIN must be non-negative and no greater than CRAWLER_DB_POOL_MAX"
+            )
         if (
-            self.crawler_db_pool_min < 0
-            or self.crawler_db_pool_max < 1
-            or self.crawler_db_pool_min > self.crawler_db_pool_max
+            not math.isfinite(self.crawler_db_pool_idle_seconds)
+            or self.crawler_db_pool_idle_seconds <= 0
+            or self.crawler_db_pool_idle_seconds > 60
         ):
             raise ValueError(
-                "CRAWLER_DB_POOL_MIN must be non-negative and no greater than the "
-                "positive CRAWLER_DB_POOL_MAX"
+                "CRAWLER_DB_POOL_IDLE_SECONDS must be a finite positive value no greater than 60"
             )
-        if self.crawler_db_pool_idle_seconds <= 0:
-            raise ValueError("CRAWLER_DB_POOL_IDLE_SECONDS must be positive")
         return self
 
     @model_validator(mode="after")
