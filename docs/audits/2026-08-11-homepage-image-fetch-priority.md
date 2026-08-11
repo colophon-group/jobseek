@@ -1,16 +1,24 @@
 # Homepage image fetch-priority verification
 
-Issue: #6640  
-Measured: 2026-08-11  
+Issue: #6640
+
+Measured: 2026-08-11
+
 Tooling: Lighthouse 12.8.2 plus the in-app Chromium browser
 
 ## Decision
 
-The Astrologer is the mobile LCP element, so the hero artwork is the single
-homepage public-domain image that is preloaded. The after-Pricing Miser is
-outside the initial viewport at both measured sizes and is left lazy. The
-implementation uses Next.js 16's `preload` image prop instead of the deprecated
-`priority` alias.
+The Astrologer is the mobile LCP element, so the hero artwork is loaded eagerly
+with `fetchPriority="high"`. The after-Pricing Miser is outside the initial
+viewport at both measured sizes and is left lazy with no preload. This follows
+Next.js 16's recommendation to prefer eager loading or high fetch priority over
+the deprecated `priority` alias when an image is discoverable in the body.
+React/Next emits one responsive preload for that eager high-priority image, and
+the link itself carries `fetchpriority="high"`. The two Astrologer theme assets
+have identical alpha and exactly inverted visible RGB pixels. The hero therefore
+uses one invariant light-theme source and the `.dark` class inverts it in CSS
+before first paint. It does not swap the LCP image URL during hydration or a
+theme toggle.
 
 ## Before: deployed production
 
@@ -33,15 +41,18 @@ the hero artwork is LCP at every viewport.
 ## After: local production build
 
 The built page at both viewports contains exactly one public-domain image
-preload, for the Astrologer. The Astrologer has `loading="auto"`; the Miser has
-`loading="lazy"` and no preload.
+preload, for the Astrologer, with `fetchpriority="high"`. The Astrologer image
+has `loading="eager"` and `fetchpriority="high"`; the Miser has
+`loading="lazy"`, no fetch-priority attribute, and no preload. Default-dark and
+persisted-light browser checks retain the same Astrologer URL; only the
+computed CSS filter changes.
 
-In the mobile Lighthouse trace, the Astrologer preload started at 59.3 ms with
+In the mobile Lighthouse trace, the Astrologer preload started at 46.4 ms with
 High network priority and the Miser was not fetched during the measured load.
 The Astrologer remained the LCP element and the lazy-loaded-LCP audit passed.
-In the desktop trace, the Astrologer started at 49.4 ms as a preload and the
-non-preloaded Miser started later at 141.5 ms; the feature screenshot remained
-the desktop LCP element.
+In the desktop trace, the Astrologer started at 47.2 ms as a High-priority
+preload and the non-preloaded Miser started at 147.9 ms with Low priority; the
+feature screenshot remained the desktop LCP element.
 
 The production-before and local-after LCP durations are not presented as a
 performance delta because the origins and image-optimizer cache state differ.

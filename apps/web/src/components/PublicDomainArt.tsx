@@ -17,7 +17,9 @@ type PublicDomainArtProps = {
   crop?: CropInsets;
   credit?: boolean;
   sizes?: string;
-  preload?: boolean;
+  loading?: "eager" | "lazy";
+  fetchPriority?: "high" | "low" | "auto";
+  themeRendering?: "source-swap" | "css-invert";
   className?: string;
   style?: CSSProperties;
   children?: ReactNode;
@@ -29,7 +31,9 @@ export function PublicDomainArt({
   crop,
   credit = true,
   sizes = "(min-width: 1024px) 40vw, 100vw",
-  preload = false,
+  loading = "lazy",
+  fetchPriority,
+  themeRendering = "source-swap",
   className,
   style,
   children,
@@ -37,7 +41,11 @@ export function PublicDomainArt({
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const mode = mounted ? (resolvedTheme ?? "dark") : "dark";
+  const mode = themeRendering === "css-invert"
+    ? "light"
+    : mounted
+      ? (resolvedTheme ?? "dark")
+      : "dark";
 
   const { t } = useLingui();
   const { light, dark, href, alt, width, height, title, author, date, link, crop: assetCrop } = asset;
@@ -58,6 +66,12 @@ export function PublicDomainArt({
     objectFit: "cover",
     objectPosition,
   };
+  // High-priority themed art must keep one source through SSR and hydration.
+  // next-themes applies `.dark` before first paint, so an invertible light
+  // variant can change appearance without a second LCP image request.
+  const imageClassName = themeRendering === "css-invert"
+    ? "theme-art-invert-dark"
+    : undefined;
 
   const creditFallback = t({
     id: "common.art.publicDomain",
@@ -87,7 +101,9 @@ export function PublicDomainArt({
             fill
             sizes={sizes}
             style={imageStyle}
-            preload={preload}
+            loading={loading}
+            fetchPriority={fetchPriority}
+            className={imageClassName}
           />
         </div>
       ) : (
@@ -98,7 +114,9 @@ export function PublicDomainArt({
           fill
           sizes={sizes}
           style={imageStyle}
-          preload={preload}
+          loading={loading}
+          fetchPriority={fetchPriority}
+          className={imageClassName}
         />
       )}
       {children}

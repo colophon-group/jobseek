@@ -125,6 +125,14 @@
   --chart-bar-faint: #334155;
 }
 
+.theme-art-invert-dark {
+  filter: none;
+}
+
+.dark .theme-art-invert-dark {
+  filter: invert(1);
+}
+
 /* ── Job description typography ── */
 .job-description h1,
 .job-description h2,
