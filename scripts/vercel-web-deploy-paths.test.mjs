@@ -18,6 +18,7 @@ test("deploys web runtime and every current workspace input", () => {
     "turbo.json",
     ".github/workflows/deploy-web-production.yml",
     ".github/scripts/classify-vercel-web-change.mjs",
+    ".github/scripts/verify-vercel-promotion.mjs",
   ]) {
     assert.equal(isVercelWebInput(path), true, path);
   }
@@ -49,6 +50,18 @@ test("production workflow stages, verifies, then promotes exact main", () => {
   assert.match(workflow, /production_sha.*current_sha/);
   assert.match(workflow, /current_main=.*commits\/main/);
   assert.match(workflow, /vercel@55\.0\.0 promote/);
+  assert.match(workflow, /id: promote/);
+  assert.match(workflow, /promoted=true/);
+  assert.match(
+    workflow,
+    /if: steps\.promote\.outputs\.promoted == 'true'/,
+  );
+  assert.match(workflow, /verify-vercel-promotion\.mjs/);
+  assert.match(
+    workflow,
+    /classify-vercel-web-change\.mjs[\s\S]{0,160}\$EXPECTED_SHA[\s\S]{0,80}\$current_main/,
+  );
+  assert.match(workflow, /Web change landed during Vercel promotion/);
   assert.match(
     workflow,
     /VERCEL_TOKEN: \$\{\{ secrets\.VERCEL_TOKEN \}\}/,

@@ -135,10 +135,12 @@ jobs:
 
       - name: Promote only if this SHA is still main
         if: steps.paths.outputs.deploy == 'true'
+        id: promote
         env:
           DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
           EXPECTED_SHA: ${{ steps.paths.outputs.current_sha }}
         run: |
+          echo "promoted=false" >> "$GITHUB_OUTPUT"
           current_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
           if [[ "$current_main" != "$EXPECTED_SHA" ]]; then
             echo "Skipping stale staged deployment: expected $EXPECTED_SHA, main is $current_main"
@@ -146,3 +148,34 @@ jobs:
           fi
           pnpm dlx vercel@55.0.0 promote "$DEPLOYMENT_URL" \
             --yes --timeout=3m --token="$VERCEL_TOKEN"
+          echo "promoted=true" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the promoted deployment owns production
+        if: steps.promote.outputs.promoted == 'true'
+        env:
+          EXPECTED_SHA: ${{ steps.paths.outputs.current_sha }}
+          EXPECTED_DEPLOYMENT_ID: ${{ steps.stage.outputs.id }}
+          EXPECTED_DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
+        run: |
+          node .github/scripts/verify-vercel-promotion.mjs
+
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          git fetch --no-tags origin "$current_main"
+          result="$(node .github/scripts/classify-vercel-web-change.mjs \
+            "$EXPECTED_SHA" "$current_main")"
+          deploy="$(jq -r '.deploy' <<<"$result")"
+          relevant="$(jq -r '.relevant | join(", ")' <<<"$result")"
+          if [[ "$deploy" == "true" ]]; then
+            message="Promoted $EXPECTED_SHA ($EXPECTED_DEPLOYMENT_ID), but main $current_main now contains web inputs: $relevant"
+            echo "::error title=Web change landed during Vercel promotion::$message. Staged URL: $EXPECTED_DEPLOYMENT_URL"
+            {
+              echo "## Web change landed during Vercel promotion"
+              echo
+              echo "- Promoted SHA: \`$EXPECTED_SHA\`"
+              echo "- Current main SHA: \`$current_main\`"
+              echo "- Deployment: \`$EXPECTED_DEPLOYMENT_ID\` ($EXPECTED_DEPLOYMENT_URL)"
+              echo "- New web inputs: \`$relevant\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "Production remains current for web inputs at main $current_main"

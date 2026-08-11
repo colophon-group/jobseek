@@ -44,17 +44,18 @@ than 138.5 seconds in a comparable 12-hour window.
 ## Production deployment identity
 
 Do not start a measurement window until the deployment holding the production
-aliases is the current GitHub `main` SHA. Vercel completed two 2026-08-11 main
-deployments out of order and let an older parent commit reacquire `jseek.co`,
-temporarily undoing the company-OG cutover.
+aliases is the most recent web-relevant GitHub `main` SHA. Production can
+legitimately lag crawler-, data-, documentation-, or ops-only commits. Vercel
+completed two 2026-08-11 main deployments out of order and let an older parent
+commit reacquire `jseek.co`, temporarily undoing the company-OG cutover.
 
-The `Guard Vercel production order` workflow checks every successful Vercel
-Production deployment status against the live default-branch SHA. A mismatch
-fails with both SHAs and the deployment URL. Treat that failure as a production
-incident: inspect the Ready deployment for current main, run the functionality
-checks below against its protected URL, and only then use `vercel promote` to
-restore the aliases. The guard detects stale production; issue #6655 tracks a
-future staged-promotion flow that can correct it automatically.
+The `Guard Vercel production order` workflow remains a secondary check for
+successful Vercel Production deployment-status events. It compares such an
+event with the live default-branch SHA, but owned CLI promotions do not
+reliably emit a matching event and an exact-main comparison is intentionally
+stricter than the web-relevant invariant. Treat a guard failure as a signal to
+inspect the deployment and cumulative web delta, not as the primary promotion
+assertion.
 
 `apps/web/vercel.json` disables connected-Git production deployments for
 `main`. The `Deploy web production` workflow owns that path instead: it runs on
@@ -62,12 +63,17 @@ every main push and deterministically classifies the entire delta from the
 currently promoted Vercel SHA to live `main`. This cumulative comparison means
 a newer queued ops-only push cannot hide an earlier web change. The workflow
 stages an exact-SHA production artifact with no domains, smoke-tests it,
-rechecks the live main SHA, and only then promotes it. If main moves during the
-build, the staged artifact is not promoted and the latest serialized run
-re-evaluates the cumulative delta. PR branches remain on the Vercel Git
-integration. Web inputs are `apps/web/**`, `packages/mcp-server/**`, root pnpm
-and Turbo configuration, and dependency patches. Crawler code, crawler board
-configuration, documentation, and company CSV changes do not deploy the web.
+rechecks the live main SHA, and only then promotes it. After promotion, a
+bounded API poll must prove that `jseek.co` resolves to both the staged
+deployment ID and SHA. The workflow then refetches main and fails with both
+SHAs, the deployment identity, and relevant paths if a web change landed during
+promotion. If main moves earlier during the build, the staged artifact is not
+promoted and the latest serialized run re-evaluates the cumulative delta. PR
+branches remain on the Vercel Git integration. Web inputs are `apps/web/**`,
+`packages/mcp-server/**`, the production deployment workflow and helpers, root
+pnpm and Turbo configuration, and dependency patches. Crawler code, crawler
+board configuration, documentation, and company CSV changes do not deploy the
+web.
 
 Company CSV changes are safe to exclude because the external OG prewarm job
 publishes `og/company/<renderer>/_complete/current.json` only after the full
