@@ -506,6 +506,7 @@ def test_web_postgresql_backup_dumps_only_the_allowlist_and_cleans(
     monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
     monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
     monkeypatch.setenv("WEB_POSTGRES_STAGING_ROOT", str(tmp_path / "web-postgresql"))
+    monkeypatch.setattr(backup, "_require_web_postgres_helper_image", lambda: None)
     monkeypatch.setattr(backup, "_validate_web_postgres_boundary", lambda **_: None)
     monkeypatch.setattr(
         backup,
@@ -870,6 +871,23 @@ def test_backup_installer_allows_only_the_staged_web_timer_to_remain_disabled() 
 
     assert 'systemctl is-enabled --quiet "jobseek-${SERVICE}-backup.timer"' in installer
     assert '[[ "$SERVICE" == "typesense" ]] &&' in installer
+
+
+def test_web_backup_installer_repairs_only_the_latched_unit_failure() -> None:
+    installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
+    protection = installer.index("jobseek-web-postgresql-protect-client-image")
+    reset = installer.index(
+        "systemctl reset-failed jobseek-web-postgresql-backup.service", protection
+    )
+    final_health = installer.index(
+        'systemctl is-failed --quiet "jobseek-${SERVICE}-backup.service"', reset
+    )
+
+    assert protection < reset < final_health
+    reset_block = installer[reset - 400 : reset + 100]
+    assert "systemctl start jobseek-web-postgresql-backup.service" not in reset_block
+    assert "atomic" in reset_block
+    assert "backup status remains failed/stale" in reset_block
 
 
 def test_web_backup_candidate_detects_credential_or_restic_configuration_changes() -> None:

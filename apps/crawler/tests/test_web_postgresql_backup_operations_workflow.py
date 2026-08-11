@@ -137,6 +137,7 @@ def test_dispatch_is_bound_to_reviewed_revision_and_installed_helper() -> None:
     assert "DEPLOY_SHA: ${{ steps.deployment-revision.outputs.deploy_sha }}" in deploy
     for output in (
         "data_backup_sha256",
+        "image_protector_sha256",
         "operations_sha256",
         "retirement_migration_sha256",
         "restore_drill_sha256",

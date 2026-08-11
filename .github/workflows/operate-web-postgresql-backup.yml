@@ -65,6 +65,7 @@ jobs:
     outputs:
       deploy_sha: ${{ steps.artifacts.outputs.deploy_sha }}
       data_backup_sha256: ${{ steps.artifacts.outputs.data_backup_sha256 }}
+      image_protector_sha256: ${{ steps.artifacts.outputs.image_protector_sha256 }}
       operations_sha256: ${{ steps.artifacts.outputs.operations_sha256 }}
       retirement_migration_sha256: ${{ steps.artifacts.outputs.retirement_migration_sha256 }}
       restore_drill_sha256: ${{ steps.artifacts.outputs.restore_drill_sha256 }}
@@ -136,6 +137,7 @@ jobs:
           {
             echo "deploy_sha=$deploy_sha"
             echo "data_backup_sha256=$(sha256sum scripts/jobseek-data-backup.py | cut -d' ' -f1)"
+            echo "image_protector_sha256=$(sha256sum deploy/backups/web-postgresql/protect-client-image.sh | cut -d' ' -f1)"
             echo "operations_sha256=$(sha256sum deploy/backups/web-postgresql/operations.py | cut -d' ' -f1)"
             echo "retirement_migration_sha256=$(sha256sum apps/web/drizzle/0086_drop_supabase_job_posting.sql | cut -d' ' -f1)"
             echo "restore_drill_sha256=$(sha256sum deploy/backups/web-postgresql/restore-drill.sh | cut -d' ' -f1)"
@@ -158,6 +160,7 @@ jobs:
       SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
       EXPECTED_DEPLOY_SHA: ${{ needs.authorize.outputs.deploy_sha }}
       EXPECTED_DATA_BACKUP_SHA256: ${{ needs.authorize.outputs.data_backup_sha256 }}
+      EXPECTED_IMAGE_PROTECTOR_SHA256: ${{ needs.authorize.outputs.image_protector_sha256 }}
       EXPECTED_OPERATIONS_SHA256: ${{ needs.authorize.outputs.operations_sha256 }}
       EXPECTED_RETIREMENT_MIGRATION_SHA256: ${{ needs.authorize.outputs.retirement_migration_sha256 }}
       EXPECTED_RESTORE_DRILL_SHA256: ${{ needs.authorize.outputs.restore_drill_sha256 }}
@@ -180,6 +183,7 @@ jobs:
           [[ "$EXPECTED_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
           for digest in \
             "$EXPECTED_DATA_BACKUP_SHA256" \
+            "$EXPECTED_IMAGE_PROTECTOR_SHA256" \
             "$EXPECTED_OPERATIONS_SHA256" \
             "$EXPECTED_RETIREMENT_MIGRATION_SHA256" \
             "$EXPECTED_RESTORE_DRILL_SHA256" \
@@ -233,6 +237,7 @@ jobs:
               exec /usr/local/sbin/jobseek-web-postgresql-operations '$OPERATION_MODE' \
               --expected-deploy-sha '$EXPECTED_DEPLOY_SHA' \
               --expected-data-backup-sha256 '$EXPECTED_DATA_BACKUP_SHA256' \
+              --expected-image-protector-sha256 '$EXPECTED_IMAGE_PROTECTOR_SHA256' \
               --expected-operations-sha256 '$EXPECTED_OPERATIONS_SHA256' \
               --expected-retirement-migration-sha256 '$EXPECTED_RETIREMENT_MIGRATION_SHA256' \
               --expected-restore-drill-sha256 '$EXPECTED_RESTORE_DRILL_SHA256' \

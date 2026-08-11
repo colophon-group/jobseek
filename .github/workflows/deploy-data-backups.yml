@@ -83,9 +83,10 @@ jobs:
           bash -n deploy/backups/typesense/restore-drill.sh
           bash -n deploy/backups/typesense/credential-rotation.sh
           bash -n deploy/backups/postgresql/emergency-headroom.sh
+          bash -n deploy/backups/web-postgresql/protect-client-image.sh
           bash -n deploy/backups/web-postgresql/restore-drill.sh
           cd apps/crawler
-          uv run --frozen pytest tests/test_data_backup.py tests/test_typesense_backup_deployment.py tests/test_typesense_backup_credential_rotation.py tests/test_pgbackrest_retention.py tests/test_postgresql_emergency_headroom.py -q
+          uv run --frozen pytest tests/test_data_backup.py tests/test_typesense_backup_deployment.py tests/test_typesense_backup_credential_rotation.py tests/test_pgbackrest_retention.py tests/test_postgresql_emergency_headroom.py tests/test_web_postgresql_backup_image_gc.py -q
 
       - name: Copy and install over host-key-pinned native OpenSSH
         env:

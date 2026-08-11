@@ -326,6 +326,50 @@ def test_typesense_host_collects_web_backup_only_after_activation(
     lines = []
     host._collect_backup_metrics("typesense", tmp_path, lines)
     assert any('service="web-postgresql"' in line for line in lines)
+    assert any("jobseek_backup_helper_image_available" in line for line in lines)
+    assert any("jobseek_backup_helper_image_gc_protected" in line for line in lines)
+
+
+def test_web_backup_helper_image_metric_requires_the_exact_stopped_lease(monkeypatch) -> None:
+    exact_lease = json.dumps(
+        [
+            {
+                "Config": {
+                    "Image": host.WEB_POSTGRES_HELPER_IMAGE,
+                    "Labels": {host.WEB_POSTGRES_HELPER_IMAGE_LEASE_LABEL: "web-postgresql"},
+                    "Entrypoint": ["/bin/true"],
+                },
+                "State": {"Running": False},
+                "HostConfig": {
+                    "NetworkMode": "none",
+                    "ReadonlyRootfs": True,
+                    "CapDrop": ["ALL"],
+                    "SecurityOpt": ["no-new-privileges:true"],
+                    "Tmpfs": host.WEB_POSTGRES_HELPER_IMAGE_LEASE_TMPFS,
+                },
+                "Mounts": [],
+            }
+        ]
+    )
+    responses = iter(
+        (
+            SimpleNamespace(returncode=0, stdout="[]", stderr=""),
+            SimpleNamespace(returncode=0, stdout=exact_lease, stderr=""),
+        )
+    )
+    monkeypatch.setattr(host.subprocess, "run", lambda *_args, **_kwargs: next(responses))
+
+    assert host._web_postgres_helper_image_state() == (1, 1)
+
+    wrong_lease = exact_lease.replace(host.WEB_POSTGRES_HELPER_IMAGE, "postgres:17-alpine")
+    responses = iter(
+        (
+            SimpleNamespace(returncode=0, stdout="[]", stderr=""),
+            SimpleNamespace(returncode=0, stdout=wrong_lease, stderr=""),
+        )
+    )
+    monkeypatch.setattr(host.subprocess, "run", lambda *_args, **_kwargs: next(responses))
+    assert host._web_postgres_helper_image_state() == (1, 0)
 
 
 def test_collect_writes_atomic_failure_metrics(tmp_path: Path, monkeypatch) -> None:
@@ -670,7 +714,7 @@ def test_rule_source_has_bounded_owned_groups() -> None:
         "jobseek_redis_capacity",
     }
     assert {group["name"]: len(group["rules"]) for group in groups} == {
-        "jobseek_hetzner_fleet": 19,
+        "jobseek_hetzner_fleet": 20,
         "jobseek_postgresql_capacity": 4,
         "jobseek_typesense_reliability": 7,
         "jobseek_telemetry_delivery": 9,

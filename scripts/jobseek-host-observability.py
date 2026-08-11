@@ -31,6 +31,14 @@ DEFAULT_CODEX_ERROR_REVIEW_STATUS = Path("/srv/jobseek-codex/state/error-review-
 REDIS_CAPACITY_CACHE_MAX_AGE_SECONDS = 6 * 60 * 60
 POSTGRES_EMERGENCY_RESERVE_NAME = ".jobseek-postgresql-emergency-reserve"
 POSTGRES_EMERGENCY_RESERVE_BYTES = 2_147_483_648
+WEB_POSTGRES_HELPER_IMAGE = (
+    "postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193"
+)
+WEB_POSTGRES_HELPER_IMAGE_LEASE = "jobseek-web-postgresql-backup-image-lease"
+WEB_POSTGRES_HELPER_IMAGE_LEASE_LABEL = "jobseek.backup.helper-image"
+WEB_POSTGRES_HELPER_IMAGE_LEASE_TMPFS = {
+    "/var/lib/postgresql/data": "rw,noexec,nosuid,nodev,size=65536"
+}
 MAX_LOG_LINES = 200
 ALLOY_METRICS = {
     "alloy_resources_process_resident_memory_bytes": ("resident_memory_bytes", "max"),
@@ -206,6 +214,53 @@ def _docker_state(container: str) -> dict[str, Any]:
     }
 
 
+def _web_postgres_helper_image_state() -> tuple[int, int]:
+    """Return exact-image availability and GC-protection without failing the sampler."""
+    try:
+        image = subprocess.run(
+            ["docker", "image", "inspect", WEB_POSTGRES_HELPER_IMAGE],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if image.returncode:
+            return 0, 0
+        lease = subprocess.run(
+            ["docker", "container", "inspect", WEB_POSTGRES_HELPER_IMAGE_LEASE],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return 0, 0
+    if lease.returncode:
+        return 1, 0
+    try:
+        payload = json.loads(lease.stdout)
+        container = payload[0]
+        config = container["Config"]
+        state = container["State"]
+        host_config = container["HostConfig"]
+        labels = config.get("Labels") or {}
+    except (IndexError, KeyError, TypeError, json.JSONDecodeError):
+        return 1, 0
+    protected = int(
+        config.get("Image") == WEB_POSTGRES_HELPER_IMAGE
+        and state.get("Running") is False
+        and labels.get(WEB_POSTGRES_HELPER_IMAGE_LEASE_LABEL) == "web-postgresql"
+        and config.get("Entrypoint") == ["/bin/true"]
+        and host_config.get("NetworkMode") == "none"
+        and host_config.get("ReadonlyRootfs") is True
+        and host_config.get("CapDrop") == ["ALL"]
+        and host_config.get("SecurityOpt") == ["no-new-privileges:true"]
+        and host_config.get("Tmpfs") == WEB_POSTGRES_HELPER_IMAGE_LEASE_TMPFS
+        and container.get("Mounts") == []
+    )
+    return 1, protected
+
+
 def _collect_container_metrics(role: str, lines: list[str]) -> None:
     for container in ROLE_CONTAINERS[role]:
         state = _docker_state(container)
@@ -374,8 +429,12 @@ def _collect_ats_inventory_metrics(
     lines.extend(
         (
             _metric("jobseek_ats_inventory_status_available", 1),
-            _metric("jobseek_ats_inventory_last_attempt_unixtime", integer("last_attempt_unixtime")),
-            _metric("jobseek_ats_inventory_last_success_unixtime", integer("last_success_unixtime")),
+            _metric(
+                "jobseek_ats_inventory_last_attempt_unixtime", integer("last_attempt_unixtime")
+            ),
+            _metric(
+                "jobseek_ats_inventory_last_success_unixtime", integer("last_success_unixtime")
+            ),
             _metric("jobseek_ats_inventory_last_attempt_success", attempt_success),
             _metric("jobseek_ats_inventory_last_attempt_degraded", attempt_degraded),
             _metric(
@@ -567,6 +626,22 @@ def _collect_backup_metrics(role: str, status_dir: Path, lines: list[str]) -> No
                 ),
             )
         )
+        if service == "web-postgresql":
+            image_available, gc_protected = _web_postgres_helper_image_state()
+            lines.extend(
+                (
+                    _metric(
+                        "jobseek_backup_helper_image_available",
+                        image_available,
+                        **labels,
+                    ),
+                    _metric(
+                        "jobseek_backup_helper_image_gc_protected",
+                        gc_protected,
+                        **labels,
+                    ),
+                )
+            )
 
 
 POSTGRES_STATS_SQL = """

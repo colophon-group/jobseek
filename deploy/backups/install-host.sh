@@ -19,6 +19,7 @@ if [[ "$SERVICE" != "postgresql" && "$SERVICE" != "typesense" && "$SERVICE" != "
   usage
   exit 2
 fi
+WEB_POSTGRES_IMAGE="postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193"
 
 LOCK_TIMEOUT_S="${JOBSEEK_BACKUP_DEPLOY_LOCK_TIMEOUT_S:-60}"
 umask 077
@@ -325,8 +326,11 @@ PY
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends restic
   fi
-  docker pull \
-    postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+  install -o root -g root -m 0755 \
+    "$REPO_ROOT/deploy/backups/web-postgresql/protect-client-image.sh" \
+    /usr/local/sbin/jobseek-web-postgresql-protect-client-image
+  /usr/local/sbin/jobseek-web-postgresql-protect-client-image \
+    "$WEB_POSTGRES_IMAGE"
   install -o root -g root -m 0755 \
     "$REPO_ROOT/deploy/backups/web-postgresql/restore-drill.sh" \
     /usr/local/sbin/jobseek-web-postgresql-restore-drill
@@ -359,6 +363,14 @@ fi
 systemd-analyze verify "/etc/systemd/system/jobseek-${SERVICE}-backup.service"
 systemd-analyze verify "/etc/systemd/system/jobseek-${SERVICE}-backup.timer"
 
+if [[ "$SERVICE" == "web-postgresql" ]] && \
+  systemctl is-failed --quiet jobseek-web-postgresql-backup.service; then
+  # A missing helper image leaves the oneshot failed even after the exact
+  # dependency is repaired. Clear only systemd's latched state; the atomic
+  # backup status remains failed/stale until an actual backup succeeds.
+  systemctl reset-failed jobseek-web-postgresql-backup.service
+fi
+
 if [[ "$SERVICE" == "typesense" && "$typesense_rotation_changed" -eq 1 ]]; then
   typesense_rotation_smoke_and_commit "$LOCK_TIMEOUT_S" 9
 elif [[ "$SERVICE" == "web-postgresql" ]]; then
@@ -386,7 +398,7 @@ elif [[ "$SERVICE" == "web-postgresql" ]]; then
       export CREDENTIALS_DIRECTORY="$web_candidate_root"
       export BACKUP_STATUS_DIR=/var/lib/jobseek-backup/status
       export WEB_POSTGRES_STAGING_ROOT=/run/jobseek-backup/web-postgresql
-      export WEB_POSTGRES_IMAGE=postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+      export WEB_POSTGRES_IMAGE="$WEB_POSTGRES_IMAGE"
       /usr/local/sbin/jobseek-data-backup web-postgresql
     )
     BACKUP_SMOKE_STARTED="$smoke_started" python3 - <<'PY'

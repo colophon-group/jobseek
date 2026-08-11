@@ -1161,12 +1161,27 @@ Current policy:
 - prune unused Docker images older than 72 hours
 - if root free space is below 5 GiB, prune all unused images
 - never prune Docker volumes
+- retain the stopped `jobseek-web-postgresql-backup-image-lease` container on
+  the Typesense host; it references the exact digest-pinned PostgreSQL helper
+  image so both normal and emergency image pruning treat that backup dependency
+  as in use
 - on the crawler host, keep running images plus the two newest versioned
   `jobseek-crawler` and `jobseek-crawler-browser` images, then remove older
   unused version tags immediately
 
 The crawler-specific rule matters because repeated versioned deploys can
 consume tens of GiB before a normal age-based prune would trigger.
+
+Before emergency all-image pruning on the Typesense host, verify the web
+PostgreSQL helper lease described in
+[`19-data-backup-recovery.md#web-postgresql-backup-operation`](19-data-backup-recovery.md#web-postgresql-backup-operation).
+Do not add `docker container prune` to this policy: stopped containers may own
+an intentional image-lifecycle contract. The regression boundary is the exact
+sequence installer digest pull/lease creation, below-floor
+`docker image prune --all --force`, then the scheduled backup dependency check.
+The repository's real-Docker regression performs that destructive prune only
+on an explicitly acknowledged GitHub-hosted ephemeral runner; never enable it
+on a managed or developer host.
 
 ## Unmanaged Resource Hygiene
 
