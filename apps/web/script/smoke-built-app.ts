@@ -21,8 +21,7 @@ const localizedExploreRoutes = [
 const navigationActionRoutes = [
   ["/en/explore", 0],
   ["/de/explore?q=python", 1],
-  ["/en/company/stripe", 0],
-  ["/en/colophongroup/swe-zurich", 0],
+  ["/en/progress", 0],
 ] as const;
 const discoveryNotFoundRoutes = [
   "/api",
@@ -47,6 +46,15 @@ const missingResourceRoutes = [
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function hasServerTypesenseConfiguration() {
+  return [
+    process.env.TYPESENSE_HOST,
+    process.env.TYPESENSE_PORT,
+    process.env.TYPESENSE_PROTOCOL,
+    process.env.TYPESENSE_SEARCH_KEY,
+  ].every((value) => Boolean(value?.trim()));
 }
 
 async function waitForServer(timeoutMs = 45_000) {
@@ -152,6 +160,15 @@ async function smokeExploreRawHtml(route: string, heading: string) {
       `${route} raw HTML did not contain its localized heading and meaningful initial company results`,
     );
   }
+  if (
+    !hasServerTypesenseConfiguration() &&
+    (!visibleHtml.includes("data-explore-repository-fallback") ||
+      visibleHtml.includes("data-posting-id="))
+  ) {
+    throw new Error(
+      `${route} secretless raw HTML did not expose the profile-only degraded fallback`,
+    );
+  }
   console.log(`smoke ok ${route} raw localized results`);
 }
 
@@ -230,16 +247,17 @@ async function smokeSpaExploreNavigation(browser: Browser) {
   });
 
   try {
-    const source = await page.goto(`${baseUrl}/en/company/stripe?q=python`, {
+    const source = await page.goto(`${baseUrl}/en/progress?q=python`, {
       waitUntil: "networkidle",
     });
     if (!source || source.status() >= 400) {
       throw new Error(
-        `/en/company/stripe?q=python returned HTTP ${source?.status() ?? "no response"}`,
+        `/en/progress?q=python returned HTTP ${source?.status() ?? "no response"}`,
       );
     }
 
-    // This is a real Next Link transition. Its first Explore render can still
+    // This is a real cross-route Next Link transition from a deterministic,
+    // service-independent app route. Its first Explore render can still
     // observe the source route's ?q=python until HistoryUpdater commits the
     // target /explore URL, which previously caused a duplicate search action.
     const exploreLink = page.locator('a[aria-label="Explore"]').first();
@@ -264,7 +282,7 @@ async function smokeSpaExploreNavigation(browser: Browser) {
     await page.close();
   }
 
-  console.log("smoke ok query-bearing company -> unfiltered Explore SPA navigation 0 Server Actions");
+  console.log("smoke ok query-bearing progress page -> unfiltered Explore SPA navigation 0 Server Actions");
 }
 
 async function smokeDiscoveryRoute(route: string, expectedStatus: number) {

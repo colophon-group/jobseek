@@ -5124,3 +5124,15 @@ msgstr "Interview deleted."
 #: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.deleteError"
 msgstr "Couldn't delete the interview. Try again."
+
+#. Accessible heading shown when live Explore job results are unavailable and repository-owned company profile links are shown instead
+#. js-lingui-explicit-id
+#: src/components/search/explore-repository-fallback.tsx
+msgid "explore.fallback.heading"
+msgstr "Live job results are temporarily unavailable."
+
+#. Try-again guidance shown above company profile links when live Explore job results are unavailable
+#. js-lingui-explicit-id
+#: src/components/search/explore-repository-fallback.tsx
+msgid "explore.fallback.body"
+msgstr "Try refreshing the page. In the meantime, you can explore these company profiles."

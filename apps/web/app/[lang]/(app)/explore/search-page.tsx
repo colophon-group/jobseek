@@ -6,6 +6,7 @@ import { Trans } from "@lingui/react/macro";
 import type { SelectedLocation } from "@/lib/search/types";
 import { SearchResults } from "@/components/search/search-results";
 import { SearchUnavailable } from "@/components/search/search-unavailable";
+import { ExploreRepositoryFallback } from "@/components/search/explore-repository-fallback";
 import { ZeroResults } from "@/components/search/zero-results";
 import { SkeletonCards } from "@/components/search/skeleton-card";
 import { JobDetailPanel } from "@/components/search/job-detail-dialog";
@@ -24,6 +25,7 @@ import { buildFilteredPath } from "@/lib/search/query-params";
 import { useLatest, useLatestState } from "@/lib/use-latest";
 import { useBrowserSearchParams } from "@/lib/use-browser-search-params";
 import type { SearchResultCompany, HistogramFilters, WorkMode } from "@/lib/search";
+import type { ExploreRepositoryCompany } from "@/lib/explore-repository-fallback";
 import {
   useSearchStateStore,
   buildCacheKey,
@@ -34,11 +36,30 @@ const PAGE_SIZE = 10;
 
 type TaxonomyItem = { id: number; slug: string; name: string };
 
+export function resolveInitialRepositoryFallbackCompanies(params: {
+  shouldRestore: boolean;
+  cachedCompaniesLength: number;
+  cachedDegraded: boolean;
+  initialCompanies: ExploreRepositoryCompany[] | undefined;
+}): ExploreRepositoryCompany[] {
+  const { shouldRestore, cachedCompaniesLength, cachedDegraded, initialCompanies } = params;
+  if (!shouldRestore) return initialCompanies ?? [];
+  // A matching filtered snapshot can legitimately restore with no live
+  // companies. When that snapshot records the same degraded offline state,
+  // retain the only available profile links across the profile-link/back
+  // navigation. Never reintroduce them over restored live or non-degraded
+  // zero-result data.
+  return cachedCompaniesLength === 0 && cachedDegraded
+    ? (initialCompanies ?? [])
+    : [];
+}
+
 interface SearchPageProps {
   initialCompanies: SearchResultCompany[];
   initialTotalCompanies: number;
   initialTruncated?: boolean;
   initialDegraded?: boolean;
+  initialRepositoryFallbackCompanies?: ExploreRepositoryCompany[];
   initialKeywords: string[];
   initialLocations: SelectedLocation[];
   initialOccupations: TaxonomyItem[];
@@ -66,6 +87,7 @@ export function SearchPage({
   initialTotalCompanies,
   initialTruncated,
   initialDegraded,
+  initialRepositoryFallbackCompanies,
   initialKeywords,
   initialLocations,
   initialOccupations,
@@ -188,6 +210,14 @@ export function SearchPage({
   const [isTruncated, setIsTruncated] = useState(initialTruncated ?? false);
   const [isDegraded, setIsDegraded, isDegradedRef] = useLatestState(
     shouldRestore ? (cached.degraded ?? false) : (initialDegraded ?? false),
+  );
+  const [repositoryFallbackCompanies, setRepositoryFallbackCompanies] = useState(
+    resolveInitialRepositoryFallbackCompanies({
+      shouldRestore,
+      cachedCompaniesLength: cached?.companies.length ?? 0,
+      cachedDegraded: cached?.degraded ?? false,
+      initialCompanies: initialRepositoryFallbackCompanies,
+    }),
   );
   // Track server-side offset separately from deduped client list length.
   // Facet-based pagination can return overlapping companies between pages,
@@ -604,6 +634,7 @@ export function SearchPage({
         setTotalCompanies(result.totalCompanies);
         setIsTruncated(result.truncated ?? false);
         setIsDegraded(result.degraded ?? false);
+        if (!result.degraded) setRepositoryFallbackCompanies([]);
       } catch {
         // Keep existing results visible on error
       } finally {
@@ -656,6 +687,7 @@ export function SearchPage({
       setTotalCompanies(result.totalCompanies);
       setIsTruncated(result.truncated ?? false);
       setIsDegraded(false);
+      setRepositoryFallbackCompanies([]);
     });
 
     return () => {
@@ -939,6 +971,11 @@ export function SearchPage({
 
       {companies.length === 0 && isSearching ? (
         <SkeletonCards count={3} />
+      ) : repositoryFallbackCompanies.length > 0 ? (
+        <ExploreRepositoryFallback
+          locale={locale}
+          companies={repositoryFallbackCompanies}
+        />
       ) : showUnavailable ? (
         <SearchUnavailable />
       ) : companies.length === 0 && hasFilters ? (

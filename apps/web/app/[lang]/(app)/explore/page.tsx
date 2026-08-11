@@ -14,7 +14,7 @@ const EXPLORE_DEFAULTS_CACHE_LIFE = {
   revalidate: CACHE_TTL_EXPLORE_SHELL,
   expire: CACHE_TTL_EXPLORE_SHELL * 5,
 } as const;
-const EXPLORE_DEFAULTS_PAYLOAD_VERSION = "v3";
+const EXPLORE_DEFAULTS_PAYLOAD_VERSION = "v4";
 
 // Cached for 10 minutes. The anonymous, no-filter explore payload is rendered
 // server-side via `fetchExplorePageDefaults` and embedded as `initialData`.

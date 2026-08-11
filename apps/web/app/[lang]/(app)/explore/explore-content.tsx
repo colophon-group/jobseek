@@ -135,7 +135,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
 
   if (!data) return <ExploreSkeleton />;
 
-  const { result, parsed, displayCurrency, jobLanguages, languages, userLat, userLng, salaryCurrencyParam, salaryMinDisplay, salaryMaxDisplay, experienceMin, experienceMax } = data;
+  const { result, repositoryFallbackCompanies, parsed, displayCurrency, jobLanguages, languages, userLat, userLng, salaryCurrencyParam, salaryMinDisplay, salaryMaxDisplay, experienceMin, experienceMax } = data;
 
   return (
     <div ref={rootRef} data-explore-content-root>
@@ -144,6 +144,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
         initialTotalCompanies={result.totalCompanies}
         initialTruncated={result.truncated}
         initialDegraded={result.degraded}
+        initialRepositoryFallbackCompanies={repositoryFallbackCompanies}
         initialKeywords={parsed.keywords}
         initialLocations={parsed.locations}
         initialOccupations={parsed.occupations}

@@ -5124,3 +5124,15 @@ msgstr "Colloquio eliminato."
 #: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.deleteError"
 msgstr "Impossibile eliminare il colloquio. Riprova."
+
+#. Accessible heading shown when live Explore job results are unavailable and repository-owned company profile links are shown instead
+#. js-lingui-explicit-id
+#: src/components/search/explore-repository-fallback.tsx
+msgid "explore.fallback.heading"
+msgstr "I risultati delle offerte di lavoro sono temporaneamente indisponibili."
+
+#. Try-again guidance shown above company profile links when live Explore job results are unavailable
+#. js-lingui-explicit-id
+#: src/components/search/explore-repository-fallback.tsx
+msgid "explore.fallback.body"
+msgstr "Prova ad aggiornare la pagina. Nel frattempo, puoi esplorare questi profili aziendali."

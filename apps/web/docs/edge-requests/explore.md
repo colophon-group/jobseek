@@ -9,9 +9,21 @@ Component and passes the serializable result to `ExploreContent`. Raw HTML for
 every supported locale must contain:
 
 - the localized page H1;
-- at least one `data-search-result-company` result card when the upstream
-  search provider is healthy;
+- at least one `data-search-result-company` company link;
 - no `Loading results` fallback in place of the result list.
+
+When server-side Typesense configuration is present, those nodes are live job
+result cards and a legitimate empty response remains empty. When the build is
+intentionally secretless, the page instead uses ten real company identities
+from the repository-owned blog mention snapshot. That offline surface is
+explicitly labelled as temporarily degraded and offers refresh guidance. It
+contains profile links only: no fabricated posting IDs or titles, no activity
+counts, and no save/star actions. Missing configuration also short-circuits the
+search/taxonomy calls, so deterministic builds do not attempt external reads.
+A configured production outage is kept distinct and continues to use the
+normal localized unavailable/refresh state in both the raw and hydrated trees;
+repository data must not mask a live provider failure or a legitimate
+zero-result search.
 
 Filter-bearing document requests are normalized by `proxy.ts` to the same
 queryless cached shell. The address bar keeps the original query. After
