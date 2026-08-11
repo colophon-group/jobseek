@@ -6,6 +6,8 @@ from pathlib import Path
 
 import yaml
 
+from src.workspace.codex_routine_runner import LABELLER_POSTGRES_ENV
+
 ROOT = Path(__file__).resolve().parents[3]
 CRAWLER = ROOT / "apps" / "crawler"
 COMPOSE = CRAWLER / "docker-compose.yml"
@@ -72,13 +74,33 @@ def test_oneoffs_and_readonly_routine_have_explicit_small_budgets() -> None:
             "location-taxonomy-repair",
             4,
         ),
-        "deploy/systemd/jobseek-codex-labeller.env.example": ("labeller", 2),
     }
     for relative_path, (role, maximum) in surfaces.items():
         source = (ROOT / relative_path).read_text(encoding="utf-8")
         assert f"CRAWLER_DB_ROLE={role}" in source
         assert "CRAWLER_DB_POOL_MIN=0" in source
         assert f"CRAWLER_DB_POOL_MAX={maximum}" in source
+
+    labeller_example = (ROOT / "deploy/systemd/jobseek-codex-labeller.env.example").read_text(
+        encoding="utf-8"
+    )
+    assert "LOCAL_DATABASE_URL=" in labeller_example
+    assert "CRAWLER_DB_" not in labeller_example
+    assert LABELLER_POSTGRES_ENV == {
+        "CRAWLER_DB_ROLE": "labeller",
+        "CRAWLER_DB_POOL_MIN": "0",
+        "CRAWLER_DB_POOL_MAX": "2",
+        "CRAWLER_DB_POOL_IDLE_SECONDS": "60",
+    }
+    deployment = (ROOT / "scripts/deploy-codex-runner-host.sh").read_text(encoding="utf-8")
+    assert "labeller PostgreSQL pool contract mismatch" in deployment
+    assert "labeller.env must contain exactly one LOCAL_DATABASE_URL" in deployment
+    assert "LABELLER_CONTRACT_VERIFIED=1" in deployment
+    assert "leaving ${timer} stopped: labeller PostgreSQL contract was not verified" in deployment
+    main = deployment.index("main()")
+    assert deployment.index("pause_timer_activations", main) < deployment.index(
+        "require_runtime_config", main
+    )
 
 
 def test_deploy_quiesces_pool_generations_and_stays_below_normal_maximum() -> None:
@@ -95,11 +117,16 @@ def test_deploy_quiesces_pool_generations_and_stays_below_normal_maximum() -> No
     # connection; sync uses a four-slot local pool. Those phases are serial.
     assert 4 + 1 == 5
     assert 4 + 4 == 8
-    assert max(5, 8, 44) == 44
 
     ingress = (ROOT / "deploy/networking/verify-private-paths.sh").read_text(encoding="utf-8")
     assert '"application_name": "jobseek:ingress:private-path-verifier"' in ingress
-    assert 44 + 1 == 45
+    # Independent deploy overlap: labeller 2 + backup 2 + sampler 1 + ingress 1.
+    independent = 2 + 2 + 1 + 1
+    assert max(5 + independent, 8 + independent, 44 + independent) == 50
+
+    runbook = RUNBOOK.read_text(encoding="utf-8")
+    assert "absolute deployment maximum is therefore 50 connections" in runbook
+    assert "| new or rolled-back stack healthy | 40 | 0 | 4 | 6 | **50** |" in runbook
 
 
 def test_host_capacity_keeps_server_and_operator_reserve_explicit() -> None:

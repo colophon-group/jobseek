@@ -38,6 +38,7 @@ ALWAYS_ON_SERVICES=(
 
 ACTIVE_TIMERS_BEFORE_DEPLOY=()
 TIMER_RESTORE_ARMED=0
+LABELLER_CONTRACT_VERIFIED=0
 
 log() {
   printf '==> %s\n' "$*"
@@ -89,6 +90,10 @@ require_runtime_config() {
     fail "codex-runner cannot read governor.env"
   as_runner test -r /etc/jobseek-codex/labeller.env ||
     fail "codex-runner cannot read labeller.env"
+  local labeller_dsn_count
+  labeller_dsn_count="$(grep -Ec '^LOCAL_DATABASE_URL=' /etc/jobseek-codex/labeller.env || true)"
+  [[ "${labeller_dsn_count}" == "1" ]] ||
+    fail "labeller.env must contain exactly one LOCAL_DATABASE_URL; keep pool settings runner-owned and rerun this deployment"
 }
 
 update_repo() {
@@ -184,6 +189,10 @@ verify_entrypoints() {
   as_runner env PYTHONPATH="${REPO_DIR}/apps/crawler" \
     "${REPO_DIR}/apps/crawler/.venv/bin/python" -c \
     'import src.workspace.codex_runner; import src.workspace.codex_routine_runner; import src.workspace.trace_backfill'
+  as_runner env PYTHONPATH="${REPO_DIR}/apps/crawler" \
+    "${REPO_DIR}/apps/crawler/.venv/bin/python" -c \
+    'from src.workspace.codex_routine_runner import LABELLER_POSTGRES_ENV as actual; expected={"CRAWLER_DB_ROLE":"labeller","CRAWLER_DB_POOL_MIN":"0","CRAWLER_DB_POOL_MAX":"2","CRAWLER_DB_POOL_IDLE_SECONDS":"60"}; raise SystemExit(0 if actual == expected else "labeller PostgreSQL pool contract mismatch; keep labeller.env DSN-only, restore the committed runner contract, and redeploy")'
+  LABELLER_CONTRACT_VERIFIED=1
   as_runner "${REPO_DIR}/apps/crawler/.venv/bin/python" \
     "${REPO_DIR}/scripts/codex-trace-backfill.py" --help >/dev/null
   python3 "${REPO_DIR}/scripts/codex-error-review-bundle.py" --help >/dev/null
@@ -226,15 +235,28 @@ pause_timer_activations() {
 restore_timers_on_exit() {
   local deploy_status=$?
   local restore_status=0
+  local timer
+  local -a restore_candidates=()
+  local -a safe_restore=()
   trap - EXIT
   set +e
 
   if [[ "${TIMER_RESTORE_ARMED}" == "1" ]]; then
     if [[ "${START_TIMERS}" == "1" ]]; then
-      systemctl start "${TIMERS[@]}"
-      restore_status=$?
+      restore_candidates=("${TIMERS[@]}")
     elif ((${#ACTIVE_TIMERS_BEFORE_DEPLOY[@]} > 0)); then
-      systemctl start "${ACTIVE_TIMERS_BEFORE_DEPLOY[@]}"
+      restore_candidates=("${ACTIVE_TIMERS_BEFORE_DEPLOY[@]}")
+    fi
+    for timer in "${restore_candidates[@]}"; do
+      if [[ "${timer}" == "jobseek-codex-daily-annotations.timer" ]] &&
+        [[ "${LABELLER_CONTRACT_VERIFIED}" != "1" ]]; then
+        log "leaving ${timer} stopped: labeller PostgreSQL contract was not verified"
+      else
+        safe_restore+=("${timer}")
+      fi
+    done
+    if ((${#safe_restore[@]} > 0)); then
+      systemctl start "${safe_restore[@]}"
       restore_status=$?
     fi
   fi
@@ -249,8 +271,8 @@ restore_timers_on_exit() {
 main() {
   require_root
   ensure_layout
-  require_runtime_config
   pause_timer_activations
+  require_runtime_config
 
   log "waiting for Codex runner lock: ${LOCK_FILE}"
   exec 9>"${LOCK_FILE}"

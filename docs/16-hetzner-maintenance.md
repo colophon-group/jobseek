@@ -1596,6 +1596,7 @@ raise SystemExit(0 if get_token() else 1)
 PY'
 test -s /etc/jobseek-codex/labeller.env
 sudo -u codex-runner test -r /etc/jobseek-codex/labeller.env
+test "$(grep -Ec '^LOCAL_DATABASE_URL=' /etc/jobseek-codex/labeller.env)" -eq 1
 sudo -u codex-runner test ! -w /var/run/docker.sock
 ```
 
@@ -1608,7 +1609,7 @@ import os
 import asyncpg
 
 async def main():
-    conn = await asyncpg.connect(os.environ["DATABASE_URL"])
+    conn = await asyncpg.connect(os.environ["LOCAL_DATABASE_URL"])
     try:
         value = await conn.fetchval("SELECT count(*) FROM job_posting")
         print("job_posting count readable", value is not None)

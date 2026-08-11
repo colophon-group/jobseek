@@ -276,6 +276,9 @@ Added to `apps/crawler/pyproject.toml`:
   Hetzner.
 - DB read for sampling: reuses `LOCAL_DATABASE_URL` from `.env.local` locally,
   or `JOBSEEK_LABELLER_ENV_FILE=/etc/jobseek-codex/labeller.env` on Hetzner.
+  The production file stays DSN-only; the daily runner injects the bounded
+  `labeller` PostgreSQL role with pool min `0`, max `2`, and idle lifetime
+  `60` into the Codex child environment.
 - Nothing else needed.
 
 ## Why block-IDs beat anchoring

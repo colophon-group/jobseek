@@ -342,6 +342,15 @@ and group `codex-runner`. Prefer a read-only local Postgres role that can
 tokens in this file; HuggingFace upload uses the runner user's local
 HuggingFace cache.
 
+Keep `labeller.env` DSN-only. Existing installations need no secret-file
+rewrite: the committed daily runner injects `CRAWLER_DB_ROLE=labeller`, pool
+min `0`, pool max `2`, and idle lifetime `60` into annotation subprocesses.
+The host deploy fails before timers are restored unless `labeller.env` has
+exactly one `LOCAL_DATABASE_URL` and the imported runner contract matches those
+four values. If that preflight fails, leave the timer stopped, remove only a
+duplicate DSN assignment if present (without printing or replacing the secret),
+restore the committed runner code, and rerun the deployment.
+
 After the dry-run and one manual live pass are clean, enable the timer:
 
 ```bash

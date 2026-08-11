@@ -87,6 +87,16 @@ class ReportedRoutineOutcome:
 _ROUTINE_RESULT_PREFIX = "JOBSEEK_ROUTINE_RESULT="
 _ROUTINE_PHASE_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,63}")
 
+# Non-secret production contract for annotation subprocesses. Keep this in
+# runner-owned environment rather than /etc/jobseek-codex/labeller.env so
+# existing DSN-only secret files are migrated safely without being rewritten.
+LABELLER_POSTGRES_ENV = {
+    "CRAWLER_DB_ROLE": "labeller",
+    "CRAWLER_DB_POOL_MIN": "0",
+    "CRAWLER_DB_POOL_MAX": "2",
+    "CRAWLER_DB_POOL_IDLE_SECONDS": "60",
+}
+
 
 def utc_run_date(value: str | None = None) -> str:
     if not value or value == "today":
@@ -293,6 +303,25 @@ class DailyRoutineRunner:
         governor = CompanyResolverGovernor(self.config, ledger=self.ledger)
         return governor.should_start()
 
+    def _codex_env(self, *, trace_path: Path, run_id: str) -> dict[str, str]:
+        """Build the redacted child environment with routine-owned limits."""
+
+        env = _safe_env()
+        env["CODEX_EXEC_JSONL"] = str(trace_path)
+        env["JOBSEEK_CODEX_RUN_ID"] = run_id
+        env["JOBSEEK_CODEX_ROUTINE"] = self.spec.name
+        env["JOBSEEK_CODEX_RUN_DATE"] = self.run_date
+        env["LABELLER_DATA_ROOT"] = os.environ.get(
+            "LABELLER_DATA_ROOT",
+            str(self.config.root / "data" / "postings-labelled"),
+        )
+        for key in ("JOBSEEK_LABELLER_ENV_FILE", "JOBSEEK_ERROR_REVIEW_BUNDLE"):
+            if os.environ.get(key):
+                env[key] = os.environ[key]
+        if self.spec.name == "annotations":
+            env.update(LABELLER_POSTGRES_ENV)
+        return env
+
     def _execute(self, run_id: str) -> DailyRunResult:
         cfg = self.config
         cfg.traces_dir.mkdir(parents=True, exist_ok=True)  # type: ignore[union-attr]
@@ -302,18 +331,7 @@ class DailyRoutineRunner:
         stderr_path = cfg.logs_dir / f"{run_id}.stderr.log"  # type: ignore[operator]
         worktree = self._prepare_worktree(run_id)
 
-        env = _safe_env()
-        env["CODEX_EXEC_JSONL"] = str(trace_path)
-        env["JOBSEEK_CODEX_RUN_ID"] = run_id
-        env["JOBSEEK_CODEX_ROUTINE"] = self.spec.name
-        env["JOBSEEK_CODEX_RUN_DATE"] = self.run_date
-        env["LABELLER_DATA_ROOT"] = os.environ.get(
-            "LABELLER_DATA_ROOT",
-            str(cfg.root / "data" / "postings-labelled"),
-        )
-        for key in ("JOBSEEK_LABELLER_ENV_FILE", "JOBSEEK_ERROR_REVIEW_BUNDLE"):
-            if os.environ.get(key):
-                env[key] = os.environ[key]
+        env = self._codex_env(trace_path=trace_path, run_id=run_id)
 
         prompt = build_daily_prompt(
             self.spec.name,
