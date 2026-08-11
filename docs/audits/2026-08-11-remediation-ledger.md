@@ -41,20 +41,21 @@ do not require runtime evidence.
 |---|---|---|---|---|
 | Orchestration and ledger | `/Users/Viktor/jobseek-remediation-2026-08-11` | `codex/audit-remediation-2026-08-11` | root | active |
 | #6619 backup alerts/delivery | `/Users/Viktor/jobseek-fix-6619` | `codex/fix-6619-backup-alerts` | subagent `fix_6619_alerts` | active |
-| #6620 Typesense backup | `/Users/Viktor/jobseek-fix-6620` | `codex/fix-6620-typesense-backup` | subagent `fix_6620_typesense_backup` | active |
+| #6620 Typesense backup | `/Users/Viktor/jobseek-fix-6620` | `codex/fix-6620-typesense-backup` | subagent `fix_6620_typesense_backup` | local-verified; publish blocked by missing `gh` |
 | #6621 PostgreSQL backup image | `/Users/Viktor/jobseek-fix-6621` | `codex/fix-6621-postgres-backup-image` | subagent `fix_6621_postgres_backup` | active |
 | #6629 sunset automation docs | `/Users/Viktor/jobseek-fix-6629` | `codex/fix-6629-sunset-automation-docs` | root | local-verified; publish blocked by missing `gh` |
+| #6631 PostgreSQL connection budget | `/Users/Viktor/jobseek-fix-6631` | `codex/fix-6631-postgres-pool-budget` | subagent `fix_6631_pool_budget` | active |
 
 ## Issue register
 
 | Wave | Issue | Surface | Severity | State | Branch/PR | Required terminal evidence |
 |---:|---|---|---|---|---|---|
 | 0 | [#6619](https://github.com/colophon-group/jobseek/issues/6619) | backup alert evaluation and delivery | high | active | `codex/fix-6619-backup-alerts` | distinct healthy rule instances, approved delivery-path exercise |
-| 0 | [#6620](https://github.com/colophon-group/jobseek/issues/6620) | Typesense backup consistency | high | active | `codex/fix-6620-typesense-backup` | fresh artifact plus isolated restore under ordinary writes |
+| 0 | [#6620](https://github.com/colophon-group/jobseek/issues/6620) | Typesense backup consistency | high | local-verified | `a0a9f8fac`; PR pending | fresh artifact plus isolated restore under ordinary writes |
 | 0 | [#6621](https://github.com/colophon-group/jobseek/issues/6621) | web PostgreSQL backup image lifecycle | high | active | `codex/fix-6621-postgres-backup-image` | GC sequence, two timer cycles, fresh isolated restore |
 | 1 | [#5924](https://github.com/colophon-group/jobseek/issues/5924) | fleet lifecycle/protection/reboots/images | medium | queued | — | protections/labels plus safe reboot and post-check evidence |
 | 1 | [#6629](https://github.com/colophon-group/jobseek/issues/6629) | sunset Codex automation docs | low | local-verified | `d5b23a1e4`; PR pending | repository search contains no active desktop deployment instructions |
-| 1 | [#6631](https://github.com/colophon-group/jobseek/issues/6631) | PostgreSQL connection budget | high | queued | — | normal-load steady state below accepted budget and alert margin |
+| 1 | [#6631](https://github.com/colophon-group/jobseek/issues/6631) | PostgreSQL connection budget | high | active | `codex/fix-6631-postgres-pool-budget` | normal-load steady state below accepted budget and alert margin |
 | 1 | [#6632](https://github.com/colophon-group/jobseek/issues/6632) | Typesense snapshot headroom | medium | queued | — | measured memory/staging envelope and seven days without emergency image GC |
 | 1 | [#6633](https://github.com/colophon-group/jobseek/issues/6633) | retired units and host logs | low | queued | — | no obsolete failed unit/container; bounded log policy verified |
 | 2 | [#6617](https://github.com/colophon-group/jobseek/issues/6617) | monitor metrics | medium | queued | — | one outcome emission per logical task and live ratio recheck |
@@ -84,3 +85,4 @@ do not require runtime evidence.
 | 2026-08-11 12:56 | Remediation goal created for all 27 audit-linked issues. | Reconcile current main/issues and create isolated worktrees. | None. |
 | 2026-08-11 13:00 | Current main `6bf39de7e` fetched; every issue verified open and unassigned; four fresh worktrees created. | Implement #6619/#6620/#6621 in parallel. | Runtime acceptance requires reviewed deploy/restore steps after merge. |
 | 2026-08-11 13:12 | #6629 implemented and committed with systemd-only inventory, explicit sunset boundary, and CI docs guard. | Publish focused PR when GitHub CLI prerequisite is available; continue critical wave. | `gh` is not installed; publish workflow requires it. Relevant docs tests pass; broader script suite has four unrelated missing-`jq` failures. |
+| 2026-08-11 13:14 | #6620 reviewed and independently reverified: manifest-bound snapshot data/alias contract, bounded alias-cutover retries, restore-side digest/read/count checks; 47 focused tests, Ruff, formatting, Bash syntax, and diff checks pass. Current `origin/main` advanced independently to `01934c904`. | Publish #6620 after rebasing and run a reviewed production backup plus isolated restore; #6631 implementation is active in a separate worktree. | `gh` remains unavailable. #6620 cannot reach acceptance until a fresh artifact is restored while normal writes continue. |
