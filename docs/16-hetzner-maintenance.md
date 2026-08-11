@@ -18,6 +18,65 @@ Crawler PostgreSQL, Typesense, and web PostgreSQL data protection is documented 
 the source of truth for backup scheduling, validation, restore drills, and
 the removal gate for legacy server backups.
 
+## Provider Lifecycle Baseline
+
+[`manage-hetzner-fleet.py`](../scripts/manage-hetzner-fleet.py) is the
+fail-closed source of truth for the provider-side ownership labels and
+lifecycle protection of the Jobseek production fleet. Its allowlist is fixed
+in code: the `jobseek-crawler`, `jobseek-postings-postgresql`,
+`jobseek-typesense`, and `murmur-server` servers; the
+`jobseek-postings-postgresql` and `murmur-volume` Volumes; and
+`jobseek-network`. The command does not accept names or provider IDs as
+arguments, does not use `hcloud` or `jq`, and does not change placement,
+server backups, snapshots, or any application backup schedule.
+
+The desired labels are `environment=production`, `project=jobseek`,
+`owner=jobseek-operations`, and the resource's fixed `role`. Label updates
+merge these four keys into the current map instead of replacing unrelated
+labels. All four servers require both delete and rebuild protection. Both
+Volumes and the private network require delete protection.
+
+Load `HETZNER_API_KEY` from the root-only operator environment and run the
+default read-only check first:
+
+```bash
+python3 scripts/manage-hetzner-fleet.py
+```
+
+Exit `0` means the complete allowlist is conformant, `2` means the dry-run
+found drift, and `1` means inventory or API state could not be proved. Output
+is intentionally limited to allowlisted names, booleans, and planned action
+types; it omits provider IDs, addresses, tokens, unrelated label values, and
+API response bodies. Missing resources, duplicate matches, malformed
+protection state, pagination ambiguity, or a non-unique inventory stops the
+whole run before the first mutation.
+
+After reviewing the complete dry-run, enable protection and merge the managed
+labels with the explicit apply flag:
+
+```bash
+python3 scripts/manage-hetzner-fleet.py --apply
+```
+
+Apply polls each provider protection action at most 60 times with one-second
+spacing; each HTTPS request also has a 30-second timeout. It stops on the first
+failed, timed-out, or unprovable action. It then resolves all seven resources
+again by exact name and returns success only when every label and protection
+field matches. A partially completed run is safe to repeat: the tool sends
+only still-needed label/protection operations and never weakens protection.
+Retain the successful redacted JSON as rollout evidence. This repository
+change does not itself apply the baseline to production.
+
+Protection rollback is deliberately outside this tool. Do not disable delete
+or rebuild protection to troubleshoot an application incident. If an approved
+provider operation truly requires it, record the exact resource in a private
+change ticket, disable only the required field in the Hetzner control plane,
+perform the bounded operation, and immediately rerun `--apply`. If managed
+label values must be restored, capture their pre-apply values in a root-only
+artifact (never a CI log), restore only those four keys while preserving the
+rest of the label map, then document why the repository baseline must change
+before the next apply.
+
 SSH pattern:
 
 ```bash
