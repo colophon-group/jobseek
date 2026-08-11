@@ -35,20 +35,16 @@ vi.mock("@/components/search/explore-skeleton", () => ({
   ExploreSkeleton: () => <div data-testid="explore-skeleton" />,
 }));
 
-// `useSearchParams` from `next/navigation` returns a `URLSearchParams`-like
-// object in the test environment. Mock it per-test to control the filter
-// state being observed by the component.
-let currentSearchParams = new URLSearchParams();
-vi.mock("next/navigation", () => ({
-  useSearchParams: () => currentSearchParams,
-}));
-
 import { ExploreContent } from "../explore-content";
 
 let cookieSpy: ReturnType<typeof vi.spyOn> | undefined;
 function setDocumentCookie(value: string) {
   cookieSpy?.mockRestore();
   cookieSpy = vi.spyOn(document, "cookie", "get").mockReturnValue(value);
+}
+
+function setBrowserSearch(search = "") {
+  window.history.replaceState(null, "", `/en/explore${search ? `?${search}` : ""}`);
 }
 
 function makeInitialData(overrides: Partial<ExploreData> = {}): ExploreData {
@@ -90,7 +86,7 @@ async function flushQueuedEffects(): Promise<void> {
 beforeEach(() => {
   mockFetchExploreData.mockReset();
   mockFetchExploreData.mockResolvedValue(makeInitialData());
-  currentSearchParams = new URLSearchParams();
+  setBrowserSearch();
   setDocumentCookie("");
 });
 
@@ -133,7 +129,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
   });
 
   it("calls fetchExplorePageData when a filter searchParam is present", async () => {
-    currentSearchParams = new URLSearchParams("q=python");
+    setBrowserSearch("q=python");
 
     const initialData = makeInitialData();
     render(<ExploreContent locale="en" initialData={initialData} />);
@@ -159,7 +155,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
   });
 
   it("does NOT call fetchExplorePageData when a non-filter searchParam is present (e.g. utm tracking)", async () => {
-    currentSearchParams = new URLSearchParams("utm_source=google");
+    setBrowserSearch("utm_source=google");
 
     const initialData = makeInitialData();
     render(<ExploreContent locale="en" initialData={initialData} />);
@@ -177,7 +173,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     const filterParams = ["q", "loc", "occ", "sen", "tech", "wm", "etype", "sal", "salcur", "exp"];
     for (const param of filterParams) {
       mockFetchExploreData.mockClear();
-      currentSearchParams = new URLSearchParams(`${param}=x`);
+      setBrowserSearch(`${param}=x`);
 
       const initialData = makeInitialData();
       const { unmount } = render(
@@ -200,7 +196,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
   // contract in place.
   describe("wm (workMode) filter-param refetch trigger (#3275)", () => {
     it("triggers refetch when ?wm=remote is in the URL", async () => {
-      currentSearchParams = new URLSearchParams("wm=remote");
+      setBrowserSearch("wm=remote");
 
       render(
         <ExploreContent locale="en" initialData={makeInitialData()} />,
@@ -216,7 +212,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     });
 
     it("triggers refetch when ?wm=hybrid is in the URL", async () => {
-      currentSearchParams = new URLSearchParams("wm=hybrid");
+      setBrowserSearch("wm=hybrid");
 
       render(
         <ExploreContent locale="en" initialData={makeInitialData()} />,
@@ -234,7 +230,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     it("does NOT trigger refetch when the wm param is absent", async () => {
       // Sanity: a no-wm anonymous visit must still hit the prerendered
       // initialData path so #2640's zero-invocation guarantee holds.
-      currentSearchParams = new URLSearchParams();
+      setBrowserSearch();
 
       render(
         <ExploreContent locale="en" initialData={makeInitialData()} />,
@@ -247,7 +243,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
 
   describe("etype (employment type) filter-param refetch trigger (#3218)", () => {
     it("triggers refetch when ?etype=internship is in the URL", async () => {
-      currentSearchParams = new URLSearchParams("etype=internship");
+      setBrowserSearch("etype=internship");
 
       render(
         <ExploreContent locale="en" initialData={makeInitialData()} />,
@@ -275,7 +271,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     // a refetch is needed, so ``SearchPage`` mounts ONCE with the
     // filtered data.
     it("renders ExploreSkeleton — NOT SearchPage with stale initialData — between mount and the filtered fetch resolution", async () => {
-      currentSearchParams = new URLSearchParams("loc=eu");
+      setBrowserSearch("loc=eu");
       const filteredData = makeInitialData({
         result: { companies: [], totalCompanies: 1133, truncated: false } as unknown as ExploreData["result"],
       });

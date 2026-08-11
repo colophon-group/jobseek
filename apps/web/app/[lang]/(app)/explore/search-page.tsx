@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
 import { Trans } from "@lingui/react/macro";
 
 import type { SelectedLocation } from "@/lib/search/types";
@@ -23,6 +22,7 @@ import { useSession } from "@/components/providers/SessionProvider";
 import { parseSearchFilters } from "@/lib/actions/search-input";
 import { buildFilteredPath } from "@/lib/search/query-params";
 import { useLatest, useLatestState } from "@/lib/use-latest";
+import { useBrowserSearchParams } from "@/lib/use-browser-search-params";
 import type { SearchResultCompany, HistogramFilters, WorkMode } from "@/lib/search";
 import {
   useSearchStateStore,
@@ -85,8 +85,13 @@ export function SearchPage({
   userLat,
   userLng,
 }: SearchPageProps) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  // The cached route is always `/<locale>/explore`; query state is observed
+  // separately after hydration. Reading `usePathname()` here would suspend
+  // the result-owning subtree during prerender and replace its company cards
+  // with the route loading skeleton, the same failure mode as
+  // `useSearchParams()` in #2640.
+  const pathname = `/${locale}/explore`;
+  const searchParams = useBrowserSearchParams();
   const { isLoggedIn } = useSession();
   const isLoggedInRef = useLatest(isLoggedIn);
   const { get: getSearchState, set: setSearchState, setPageActions } = useSearchStateStore();
@@ -169,7 +174,7 @@ export function SearchPage({
   useClearTypesenseOnAuthChange(isLoggedIn);
 
   const [showPostingId, setShowPostingId, showPostingIdRef] = useLatestState<string | null>(
-    searchParams.get("show") ?? (shouldRestore ? cached.showPostingId : null),
+    shouldRestore ? cached.showPostingId : null,
   );
   const [companies, setCompanies, companiesRef] = useLatestState<SearchResultCompany[]>(
     shouldRestore ? cached.companies : initialCompanies,
@@ -215,12 +220,35 @@ export function SearchPage({
   // Track the last search key we've processed so we only react to genuine
   // external URL changes — not mount, StrictMode double-runs, or our own
   // replaceState calls.
-  const lastSearchKeyRef = useRef(buildExternalSearchKey(searchParams));
+  // Ignore the first observed browser snapshot and use the committed URL as
+  // the baseline. During hydration the hook first exposes its queryless server
+  // snapshot; during cross-route App Router navigation the initial render can
+  // still see the source route until Next's HistoryUpdater commits the target
+  // in an insertion effect. ExploreContent owns the destination's one-time
+  // filtered/personalized fetch, so neither mount shape should trigger a
+  // second SearchPage request.
+  const isBrowserUrlReadyRef = useRef(false);
+  const lastSearchKeyRef = useRef("");
 
   // Detect external URL changes (e.g. header search bar → router.push)
   // and re-parse filters + search, without remounting the component.
   useEffect(() => {
     const currentKey = buildExternalSearchKey(searchParams);
+    if (!isBrowserUrlReadyRef.current) {
+      const committedKey = buildExternalSearchKey(
+        new URLSearchParams(window.location.search),
+      );
+      lastSearchKeyRef.current = committedKey;
+      // Stay in baseline mode while hydration or Next's cross-route
+      // HistoryUpdater still exposes the stale/source snapshot. This also
+      // survives StrictMode's repeated mount effects because readiness only
+      // flips when the subscribed snapshot matches the committed address bar.
+      if (currentKey === committedKey) {
+        isBrowserUrlReadyRef.current = true;
+      }
+      return;
+    }
+
     if (internalUrlChangeRef.current) {
       internalUrlChangeRef.current = false;
       lastSearchKeyRef.current = currentKey;
@@ -271,6 +299,13 @@ export function SearchPage({
       runSearch();
     });
   }, [searchParams, locale, userLat, userLng]);
+
+  // `show` is UI-only and does not participate in the result search key.
+  // Keep it synchronized for external query navigation while preserving the
+  // queryless server snapshot used for hydration-safe raw HTML.
+  useEffect(() => {
+    setShowPostingId(new URLSearchParams(window.location.search).get("show"));
+  }, [searchParams, setShowPostingId]);
 
   /** Convert a salary amount from the user's display currency to EUR. */
   function toEur(amount: number | undefined): number | undefined {
@@ -911,6 +946,7 @@ export function SearchPage({
       ) : (
         <div className={isSearching ? "opacity-60 pointer-events-none transition-opacity" : ""}>
           <SearchResults
+            locale={locale}
             companies={companies}
             keywords={keywords}
             locationIds={locationIds}

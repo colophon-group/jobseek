@@ -443,15 +443,21 @@ fetched once regardless of how many server components call `getSession()`.
 
 The old `(app)` layout fetched session, preferences, saved job statuses, and
 starred companies during every server render. That is no longer true.
-`app/[lang]/(app)/layout.tsx` is a static shell that renders
-`AppBootstrapProvider`.
+`app/[lang]/(app)/layout.tsx` is a cached shell that resolves the
+viewer-independent currency-rate table through an hourly `use cache` service
+read, then renders `AppBootstrapProvider`. The table is serialized into the
+shell; `SalaryDisplayProvider` does not call a Server Action on mount.
+If the database is unavailable while a shell is generated, the service embeds
+the complete approximate seed from the currency-rate migration rather than an
+EUR-only table; the uncached fallback preserves selectors and safe non-EUR
+conversion until a later server read recovers current ECB-backed rates.
 
 Current bootstrap behavior:
 
 | Viewer | Work on initial shell | Follow-up function work |
 |--------|-----------------------|--------------------------|
-| Anonymous, no `logged_in` hint | None | None from bootstrap |
-| Signed in | None | `fetchAppBootstrap()` server action: `getSession()` + one combined bootstrap query |
+| Anonymous, no `logged_in` hint | Cached currency-rate read | None from bootstrap or salary display |
+| Signed in | Cached currency-rate read | `fetchAppBootstrap()` server action: `getSession()` + one combined bootstrap query |
 
 There is no universal per-route layout query floor. Page-specific loaders,
 server actions, and dynamic subtrees define the compute cost.
@@ -466,7 +472,7 @@ invoked.
 |-------|----------------|--------------|---------|-------------|---------------|
 | **Explore** | Cached anonymous defaults | Personalized `fetchExplorePageData()` / search actions when signed in or filtered | Mixed | Defaults 60s; search 5min | 30-250ms when invoked |
 | **Company** | Cached anonymous defaults + metadata | Personalized `fetchCompanyPageData()` when signed in, filtered, or language cookie present | Mixed | Company/detail caches | 30-200ms when invoked |
-| **Shared watchlist** | Cached metadata/body shell | `fetchWatchlistPageData()` after mount | Sequential + parallel | Watchlist lookup cached | 60-300ms |
+| **Shared watchlist** | Cached anonymous public snapshot + metadata | Personalized `fetchWatchlistPageData()` only when viewer/filters require it | Mixed | Watchlist lookup cached | 60-300ms when invoked |
 | **My Jobs** | Static shell | `getMyJobs()` after mount | Sequential | None | 20-100ms |
 | **My Jobs Stats** | Static shell | stats loader action after mount | Parallel | Stats cache | 30-100ms |
 | **Watchlists** | Static shell | bootstrap context + `getUserWatchlistsWithLimit()` after mount | Constant in N | None | 30-120ms |

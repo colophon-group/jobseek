@@ -1,108 +1,91 @@
 # Explore Page (`/:lang/explore`)
 
-**Route group:** `(app)` | **Rendering:** Dynamic (`force-dynamic` on app layout)
+**Route group:** `(app)` | **Rendering:** cached, query-agnostic anonymous shell
 
-## Edge requests on first visit
+## Initial document contract
 
-| # | Request | Type | Source |
-|---|---------|------|--------|
-| 1 | `/:lang/explore` HTML document | SSR | Serverless function — runs DB queries for search results |
-| 2 | Middleware redirect | Edge function | Only if visiting `/explore` without locale prefix |
-| 3-10 | JS chunks | Static (CDN) | Framework + SearchPage + search bar + filter components + company cards + job detail panel (heavy page) |
-| 11 | CSS bundle | Static (CDN) | Tailwind |
-| 12 | `/fonts/JetBrainsMono-Regular.woff2` | Static (CDN) | Primary font |
-| 13 | `/js_wide_logo_black.svg` or `_white.svg` | Static (CDN) | AppHeader logo |
-| 14 | `/favicon.ico` | Static (CDN) | Browser |
-| 15 | Vercel Analytics script | Static (CDN) | `@vercel/analytics` |
-| 16 | Vercel Speed Insights script | Static (CDN) | `@vercel/speed-insights` |
-| 17 | Analytics beacon POST | Edge | Post-load telemetry |
-| 18-N | `/_next/image?url=...` (company logos) | Edge | Next.js image optimization for company logo/icon images from `jobseek-assets.colophon-group.org` |
+`page.tsx` calls `fetchExplorePageDefaults({ locale })` inside a 10-minute Cache
+Component and passes the serializable result to `ExploreContent`. Raw HTML for
+every supported locale must contain:
 
-## Server-side data fetching (during SSR)
+- the localized page H1;
+- at least one `data-search-result-company` result card when the upstream
+  search provider is healthy;
+- no `Loading results` fallback in place of the result list.
 
-These run server-side and do NOT generate additional edge requests:
-- `getSession()` — session check
-- `getPreferences()` — user preferences (currency, language, etc.)
-- `getSavedJobStatuses()` — saved job status map
-- `getStarredCompanyIds()` — starred companies
-- `parseSearchFilters()` — resolve search params to IDs
-- `searchJobs()` or `listTopCompanies()` — main search query
+Filter-bearing document requests are normalized by `proxy.ts` to the same
+queryless cached shell. The address bar keeps the original query. After
+hydration, `ExploreContent` reads `window.location.search`, requests the
+personalized/filtered page data, and replaces the anonymous defaults.
 
-All via server actions (direct DB calls, no HTTP round-trips).
+Do not add request-bound `searchParams`, `headers()`, or `cookies()` reads to
+the cached page. Do not put `useSearchParams()` back in the result-owning
+client subtree: with Cache Components it suspends that subtree and previously
+replaced all meaningful raw result markup with `loading.tsx` (#2640).
 
-## Client-side requests (user interaction)
+## Navigation-time requests
 
-| Request | Type | Trigger |
-|---------|------|---------|
-| Server action: `searchJobs()` | Serverless function | User types search / changes filters |
-| Server action: `listTopCompanies()` | Serverless function | Load more results |
-| Server action: `getPostingDetail()` | Serverless function | Click on a job posting |
-| `fetch(posting.descriptionUrl)` | External | View job description HTML (external URL from company ATS) |
-| Server action: `toggleSavedJob()` | Serverless function | Save/unsave a job |
-| Server action: `toggleStarredCompany()` | Serverless function | Star/unstar a company |
-| `/flags/{country}.svg` | Static (CDN) | Country flag icons in location filters (cached 1 year) |
+For an anonymous, unfiltered navigation:
 
-## Prefetch requests (eliminated)
+| Request | Boundary | Compute behavior |
+|---------|----------|------------------|
+| `/:lang/explore` document | CDN / Cache Component | Anonymous defaults are cached by locale |
+| Currency-rate table | Embedded in app layout | Hourly server cache; no browser request |
+| App bootstrap | Client provider | Skipped when `logged_in` hint is absent |
+| Default inventory refresh | Browser-direct Typesense | No Vercel Server Action fallback |
+| JS, CSS, fonts, logos | Static/image CDN | Normal asset caching applies |
+| Analytics | Vercel telemetry | Post-load, not application data |
 
-Before the prefetch fix, this page was the worst offender for phantom SSR:
+The whole page therefore emits **zero Next Server Action POSTs** on an
+anonymous unfiltered mount. `script/smoke-built-app.ts` verifies this against
+the production build.
 
-| Link | Target | Cost | Status |
-|------|--------|------|--------|
-| 10 company card `<Link>` elements | `/company/:slug` (dynamic SSR) | 10 serverless invocations, each running full company page SSR with DB queries | **Fixed** — `prefetch={false}` |
-| Language note "change" link | `/settings` (dynamic SSR) | 1 serverless invocation | **Fixed** — `prefetch={false}` |
-| Job detail company link | `/company/:slug` (dynamic SSR) | 1 serverless invocation per detail view | **Fixed** — `prefetch={false}` |
+Filtered URLs and signed-in/job-language-hinted viewers deliberately call
+`fetchExplorePageData()` once after hydration because their result set depends
+on request or viewer state. The anonymous result shell remains visible in raw
+HTML while JavaScript loads; the client shows the busy skeleton only while it
+is replacing stale defaults with filtered data.
 
-Up to **11 phantom SSR invocations per explore page view** are now eliminated.
+## Interactive requests
 
-## Notes
+| Operation | Preferred path | Server Action fallback / mutation |
+|-----------|----------------|-----------------------------------|
+| Default inventory refresh | Browser-direct Typesense | None |
+| Search/filter change | Browser-direct Typesense runner | Search Server Action when direct access is unavailable or request exceeds the public bound |
+| Load more companies/postings | Browser-direct where supported | Bounded read action |
+| Posting detail | Cached posting-detail read | `getPostingDetail()` |
+| Save/star/watchlist changes | N/A | Authenticated mutation Server Action |
 
-- **Heaviest page in the app.** The app layout (`force-dynamic`) fetches session, preferences, saved jobs, and starred companies on every request — all server-side.
-- Company logos come from the remote CDN (`jobseek-assets.colophon-group.org`) and are optimized through `/_next/image`. Each visible company generates 1 image optimization edge request (cached after first hit, 1 year TTL).
-- With 10 companies visible by default, expect ~10 additional `/_next/image` requests on first load.
-- Search interactions trigger server actions (Next.js RSC protocol), each counting as 1 edge request + 1 serverless function invocation.
-- Flag SVGs for location chips are served from `/flags/` with 1-year immutable cache.
+All links keep `prefetch={false}` so cards and navigation controls do not spend
+route requests before the user expresses intent.
 
-## Fluid compute (serverless function duration)
+## Currency and personalization
 
-### SSR render
+`app/[lang]/(app)/layout.tsx` resolves `getCurrencyRates()` from the pure server
+service. That function is viewer-independent and has an hourly `use cache`
+profile. The layout passes the serialized table through `AppBootstrapProvider`
+to `SalaryDisplayProvider`, so salary controls have conversion data on their
+first client render without a mount-time Server Action.
+The service's database-error path uses the full approximate migration seed,
+not a EUR-only list, so a cached cold/error shell keeps supported currencies
+functional while a later uncached server attempt can recover current rates.
 
-| Step | Queries | Pattern | Cache | Est. duration |
-|------|---------|---------|-------|---------------|
-| `getSession()` | 1 | — | Redis 5min | 5-90ms |
-| `getPreferences()` | 1 | parallel | None | 10-30ms |
-| `getSavedJobStatuses()` | 1 | parallel | None | 10-30ms |
-| `getStarredCompanyIds()` | 1 | parallel | None | 10-30ms |
-| `parseSearchFilters()` | 0-4 | parallel | None | 5-20ms (slug→ID lookups) |
-| `searchJobs()` or `listTopCompanies()` | 3-5 | mixed | Redis 5-10min | 20-100ms |
-| `getPreferences()` (page) | 0 | — | React `cache()` dedup | 0ms |
+Signed-in preferences still arrive from `fetchAppBootstrap()` and override
+anonymous/local display-currency and salary-period state. Anonymous local
+preferences continue to rehydrate from local storage. Moving the rate table
+does not change either preference authority.
 
-**Total DB queries:** 7-12
-**Estimated function duration:** 80-250ms (warm instance)
+## Acceptance checks
 
-This is the **heaviest page** in the app. The search query uses multi-CTE SQL
-with array intersection filters for location, occupation, technology, and
-seniority. Location/occupation IDs are expanded from parent→children before
-the main query.
+Run these after changing the route, provider tree, or URL synchronization:
 
-Geolocation headers (`x-vercel-ip-latitude/longitude`) are read from
-`headers()` for distance-based sorting — free (injected by Vercel, no extra
-call).
+```bash
+pnpm test
+pnpm build
+pnpm smoke
+```
 
-### Client-side server actions
-
-| Action | Queries | Cache | Est. duration |
-|--------|---------|-------|---------------|
-| `searchJobs()` | 3-5 | Redis 5min | 30-150ms |
-| `listTopCompanies()` | 3-5 | Redis 10min | 30-150ms |
-| `getPostingDetail()` | 3 (sequential) | Redis 5min | 20-100ms |
-| `toggleSavedJob()` | 2 (sequential) | None | 15-50ms |
-| `toggleStarredCompany()` | 2 (sequential) | None | 15-50ms |
-
-Search actions fire on every filter change — high frequency. Redis caching
-absorbs repeated identical queries within the 5-min window.
-
-## Estimated edge requests
-
-**First visit (cold cache):** ~27 (17 base + ~10 company logos)
-**Subsequent visit (warm cache):** ~2 (document always SSR + analytics)
-**Per search interaction:** ~1-2 (server action + optional detail fetch)
+The built-app smoke covers all four localized raw documents, a filter-bearing
+document, and the zero-navigation-Server-Action contract. The unit suite pins
+browser URL observation and ensures the salary provider has no Server Action
+import/effect.

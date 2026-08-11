@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setTestEnv, withTestEnv } from "@/test-utils/env";
 
@@ -35,6 +37,16 @@ const dbExecuteMock = vi.fn();
 const cachedMock = vi.fn(
   async (_key: string, fetcher: () => Promise<unknown>) => fetcher(),
 );
+
+function migrationCurrencyRates() {
+  const migration = readFileSync(
+    path.join(process.cwd(), "drizzle", "0063_add_salary_experience.sql"),
+    "utf8",
+  );
+  return [...migration.matchAll(/\('([A-Z]{3})',\s*([0-9.]+)\)/gu)].map(
+    ([, currency, toEur]) => ({ currency, toEur: Number(toEur) }),
+  );
+}
 
 vi.mock("@/db", () => ({
   db: {
@@ -214,14 +226,13 @@ describe("issue #2930 — withDbRetry covers additional call sites", () => {
     expect(dbExecuteMock).toHaveBeenCalledTimes(2);
   });
 
-  it("returns the EUR fallback without entering the cache when the database is absent", async () => {
+  it("returns the supported-currency fallback without entering the cache when the database is absent", async () => {
     const configuredUrl = process.env.DATABASE_URL;
     setTestEnv({ DATABASE_URL: undefined });
     try {
       const { getCurrencyRates } = await import("@/lib/actions/search");
-      await expect(getCurrencyRates()).resolves.toEqual([
-        { currency: "EUR", toEur: 1 },
-      ]);
+      const rates = await getCurrencyRates();
+      expect(rates).toEqual(migrationCurrencyRates());
     } finally {
       setTestEnv({ DATABASE_URL: configuredUrl });
     }
@@ -229,7 +240,7 @@ describe("issue #2930 — withDbRetry covers additional call sites", () => {
     expect(dbExecuteMock).not.toHaveBeenCalled();
   });
 
-  it("propagates non-retryable errors (syntax) without retrying", async () => {
+  it("returns the full fallback for non-retryable errors (syntax) without retrying", async () => {
     // Sanity check: the wrapper should not retry on errors that aren't
     // connection-class. Pick any wrapped site.
     const syntaxErr = new Error('syntax error at or near "FROM"');
@@ -238,10 +249,10 @@ describe("issue #2930 — withDbRetry covers additional call sites", () => {
     const { getCurrencyRates } = await import("@/lib/actions/search");
 
     // `getCurrencyRates` outer try/catch swallows errors and returns the
-    // EUR fallback shape. Assert we got the fallback AND `db.execute`
-    // was called exactly once (no retry).
+    // complete static seed. Assert the supported-currency fallback AND that
+    // `db.execute` was called exactly once (no retry).
     const rates = await getCurrencyRates();
-    expect(rates).toEqual([{ currency: "EUR", toEur: 1 }]);
+    expect(rates).toEqual(migrationCurrencyRates());
     expect(dbExecuteMock).toHaveBeenCalledTimes(1);
   });
 });

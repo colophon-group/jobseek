@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { X, MapPin, Briefcase, BarChart3, CalendarDays, DollarSign, Clock, Code2, Home } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
 import { SearchBar } from "@/components/search/search-bar";
@@ -122,25 +122,34 @@ export function SearchToolbar({
     <div className="space-y-3">
       {/* Mobile-only: search bar is in the header on desktop */}
       <div className="md:hidden">
-        <SearchBar
-          onAddLocation={onAddLocation}
-          onAddOccupation={onAddOccupation}
-          onAddSeniority={onAddSeniority}
-          onAddTechnology={onAddTechnology}
-          onSubmitSearch={onSubmitSearch}
-          locale={locale}
-          keywords={keywords}
-          locations={locations}
-          occupations={occupations}
-          seniorities={seniorities}
-          technologies={technologies}
-          languages={histogramFilters?.languages}
-          companyId={histogramFilters?.companyId}
-          userLat={userLat}
-          userLng={userLng}
-          placeholder={searchPlaceholder}
-          accessibleLabel={searchAccessibleLabel}
-        />
+        <Suspense
+          fallback={(
+            <div
+              aria-hidden="true"
+              className="h-8 rounded-lg border border-border-soft"
+            />
+          )}
+        >
+          <SearchBar
+            onAddLocation={onAddLocation}
+            onAddOccupation={onAddOccupation}
+            onAddSeniority={onAddSeniority}
+            onAddTechnology={onAddTechnology}
+            onSubmitSearch={onSubmitSearch}
+            locale={locale}
+            keywords={keywords}
+            locations={locations}
+            occupations={occupations}
+            seniorities={seniorities}
+            technologies={technologies}
+            languages={histogramFilters?.languages}
+            companyId={histogramFilters?.companyId}
+            userLat={userLat}
+            userLng={userLng}
+            placeholder={searchPlaceholder}
+            accessibleLabel={searchAccessibleLabel}
+          />
+        </Suspense>
       </div>
       <div className="flex items-start justify-between gap-4">
         <AdvancedSearchPanel
