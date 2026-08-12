@@ -131,7 +131,7 @@ def test_dry_run_reports_all_drift_without_mutating() -> None:
     evidence = fleet.summary(states, mode="dry-run")
 
     assert evidence["compliant"] is False
-    assert evidence["resource_count"] == 7
+    assert evidence["resource_count"] == 8
     assert _mutations(transport) == []
     assert all(
         item["planned_actions"] == ["merge_managed_labels", "enable_lifecycle_protection"]
@@ -152,9 +152,9 @@ def test_apply_uses_exact_endpoints_payloads_and_preserves_unmanaged_labels() ->
 
     assert all(state.compliant for state in verified)
     mutations = _mutations(transport)
-    assert len(mutations) == 14
-    assert [method for method, _path, _body in mutations[:7]] == ["POST"] * 7
-    assert [method for method, _path, _body in mutations[7:]] == ["PUT"] * 7
+    assert len(mutations) == 16
+    assert [method for method, _path, _body in mutations[:8]] == ["POST"] * 8
+    assert [method for method, _path, _body in mutations[8:]] == ["PUT"] * 8
     for offset, desired in enumerate(fleet.DESIRED_RESOURCES, start=1):
         provider_id = 900_000 + offset
         assert (
@@ -478,6 +478,7 @@ def test_fixed_allowlist_never_weakens_protection() -> None:
         ("server", "jobseek-typesense", "typesense"),
         ("server", "murmur-server", "murmur"),
         ("volume", "jobseek-postings-postgresql", "postgresql"),
+        ("volume", "jobseek-typesense-snapshots", "typesense"),
         ("volume", "murmur-volume", "murmur"),
         ("network", "jobseek-network", "private-network"),
     ]
@@ -488,7 +489,7 @@ def test_summary_never_exposes_provider_ids_addresses_tokens_or_unmanaged_labels
     transport = FakeTransport()
     rendered = json.dumps(fleet.summary(fleet.discover(transport), mode="dry-run"))
 
-    for provider_id in range(900_001, 900_008):
+    for provider_id in range(900_001, 900_009):
         assert str(provider_id) not in rendered
     assert "192.0.2." not in rendered
     assert "very-secret-token" not in rendered

@@ -25,16 +25,18 @@ fail-closed source of truth for the provider-side ownership labels and
 lifecycle protection of the Jobseek production fleet. Its allowlist is fixed
 in code: the `jobseek-crawler`, `jobseek-postings-postgresql`,
 `jobseek-typesense`, and `murmur-server` servers; the
-`jobseek-postings-postgresql` and `murmur-volume` Volumes; and
-`jobseek-network`. The command does not accept names or provider IDs as
-arguments, does not use `hcloud` or `jq`, and does not change placement,
-server backups, snapshots, or any application backup schedule.
+`jobseek-postings-postgresql`, `jobseek-typesense-snapshots`, and
+`murmur-volume` Volumes; and `jobseek-network`. The command does not accept
+names or provider IDs as arguments, does not use `hcloud` or `jq`, and does not
+change placement, server backups, snapshots, or any application backup
+schedule.
 
 The desired labels are `environment=production`, `project=jobseek`,
 `owner=jobseek-operations`, and the resource's fixed `role`. Label updates
 merge these four keys into the current map instead of replacing unrelated
-labels. All four servers require both delete and rebuild protection. Both
-Volumes and the private network require delete protection.
+labels. All four servers require both delete and rebuild protection. All three
+Volumes and the private network require delete protection. Volume roles follow
+the owning service: `postgresql`, `typesense`, and `murmur` respectively.
 
 Load `HETZNER_API_KEY` from the root-only operator environment and run the
 default read-only check first:
@@ -74,7 +76,7 @@ reads the exact provider ID twice, rejects a replaced identity or observed
 concurrent label change, merges the managed keys into that stable map, and
 proves that every observed label survived both the response and an immediate
 re-read. Operators must still serialize `--apply` with other Hetzner label
-writers. After all mutations, the tool resolves all seven names again and
+writers. After all mutations, the tool resolves all eight names again and
 returns success only when every managed label and protection field matches. A
 partially completed run is safe to repeat: it sends only still-needed changes
 and never weakens protection. Retain the successful redacted JSON as rollout

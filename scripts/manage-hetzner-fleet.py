@@ -85,6 +85,7 @@ DESIRED_RESOURCES = (
     DesiredResource("server", "servers", "jobseek-typesense", "typesense"),
     DesiredResource("server", "servers", "murmur-server", "murmur"),
     DesiredResource("volume", "volumes", "jobseek-postings-postgresql", "postgresql"),
+    DesiredResource("volume", "volumes", "jobseek-typesense-snapshots", "typesense"),
     DesiredResource("volume", "volumes", "murmur-volume", "murmur"),
     DesiredResource("network", "networks", "jobseek-network", "private-network"),
 )
