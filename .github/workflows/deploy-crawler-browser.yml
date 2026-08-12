@@ -22,7 +22,104 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  murmur:
+    runs-on: ubuntu-latest
+    # GitHub permits at most 360 minutes for a hosted-runner job. This job is
+    # intentionally separate from image builds so its entire budget is
+    # available to cover one running concurrency predecessor plus this push's
+    # selected Murmur run.
+    timeout-minutes: 360
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      run_id: ${{ steps.wait.outputs.run_id }}
+      run_attempt: ${{ steps.wait.outputs.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Wait for same-revision murmur-shim deployment
+        id: wait
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet "$BEFORE_SHA" "$GITHUB_SHA" -- \
+            apps/crawler/deploy.sh \
+            apps/crawler/docker-compose.yml; then
+            echo "This revision does not trigger the murmur-shim host workflow" >&2
+            exit 0
+          fi
+          # A GitHub concurrency group has at most one running and one pending
+          # run. With cancel-in-progress:false, this push can therefore wait
+          # behind one predecessor. Each Murmur run has sequential 20-minute
+          # build, 135-minute deploy, and 10-minute promotion bounds. Two such
+          # runs consume at most 330 minutes; retain 20 minutes for checkout,
+          # run discovery, and scheduling skew inside this dedicated 360-minute
+          # job.
+          deadline=$((SECONDS + 21000))
+          murmur_ready=0
+          murmur_run_id=""
+          murmur_run_attempt=""
+          while (( SECONDS < deadline )); do
+            run="$({
+              gh api --method GET \
+                "repos/${GITHUB_REPOSITORY}/actions/workflows/deploy-murmur-shim.yml/runs" \
+                -f head_sha="$GITHUB_SHA" \
+                -f event=push \
+                -f per_page=10
+            } | jq -c '.workflow_runs | sort_by(.created_at) | last // empty')"
+            if [[ -z "$run" ]]; then
+              echo "Waiting for the same-revision murmur-shim workflow to appear" >&2
+            elif [[ "$(jq -r '.status' <<<"$run")" == "completed" ]]; then
+              conclusion="$(jq -r '.conclusion' <<<"$run")"
+              [[ "$conclusion" == "success" ]] || {
+                echo "ERROR: same-revision murmur-shim workflow concluded ${conclusion}" >&2
+                exit 1
+              }
+              jq -e \
+                --arg sha "$GITHUB_SHA" \
+                --arg branch "$GITHUB_REF_NAME" \
+                '.head_sha == $sha and
+                 .head_branch == $branch and
+                 .event == "push" and
+                 .path == ".github/workflows/deploy-murmur-shim.yml" and
+                 .status == "completed" and
+                 .conclusion == "success"' \
+                <<<"$run" >/dev/null || {
+                  echo "ERROR: malformed or mismatched same-revision Murmur workflow attestation" >&2
+                  exit 1
+                }
+              echo "Same-revision murmur-shim deployment completed successfully" >&2
+              murmur_run_id="$(jq -r '.id' <<<"$run")"
+              murmur_run_attempt="$(jq -r '.run_attempt' <<<"$run")"
+              [[ "$murmur_run_id" =~ ^[1-9][0-9]*$ ]] || {
+                echo "ERROR: same-revision Murmur run has an invalid ID" >&2
+                exit 1
+              }
+              [[ "$murmur_run_attempt" =~ ^[1-9][0-9]*$ ]] || {
+                echo "ERROR: same-revision Murmur run has an invalid attempt" >&2
+                exit 1
+              }
+              murmur_ready=1
+              break
+            else
+              echo "Waiting for the same-revision murmur-shim deployment to complete" >&2
+            fi
+            sleep 15
+          done
+          (( murmur_ready )) || {
+            echo "ERROR: timed out waiting for same-revision murmur-shim deployment" >&2
+            exit 1
+          }
+          printf 'run_id=%s\n' "$murmur_run_id" >>"$GITHUB_OUTPUT"
+          printf 'run_attempt=%s\n' "$murmur_run_attempt" >>"$GITHUB_OUTPUT"
+
   deploy:
+    needs: murmur
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -136,76 +233,22 @@ jobs:
       - name: Wait for same-revision murmur-shim deployment
         id: murmur
         env:
-          BEFORE_SHA: ${{ github.event.before }}
-          GH_TOKEN: ${{ github.token }}
+          MURMUR_RUN_ID: ${{ needs.murmur.outputs.run_id }}
+          MURMUR_RUN_ATTEMPT: ${{ needs.murmur.outputs.run_attempt }}
         run: |
           set -euo pipefail
-          if git diff --quiet "$BEFORE_SHA" "$GITHUB_SHA" -- \
-            apps/crawler/deploy.sh \
-            apps/crawler/docker-compose.yml; then
-            echo "This revision does not trigger the murmur-shim host workflow" >&2
+          murmur_run_id="$MURMUR_RUN_ID"
+          murmur_run_attempt="$MURMUR_RUN_ATTEMPT"
+          if [[ -z "$murmur_run_id" && -z "$murmur_run_attempt" ]]; then
+            echo "This revision has no coupled Murmur release to validate" >&2
             exit 0
           fi
-          # The Murmur host step takes the same two-hour mutation lock as the
-          # crawler deploy. Leave enough room for that bounded wait plus its
-          # deploy/rollback gates instead of racing the shared Compose state.
-          # The dependency has sequential 20-minute build, 135-minute deploy,
-          # and 10-minute promotion bounds. Keep a further 25 minutes for run
-          # discovery and runner skew so this waiter cannot expire before a
-          # valid run can publish its release record.
-          deadline=$((SECONDS + 11400))
-          murmur_ready=0
-          murmur_run_id=""
-          murmur_run_attempt=""
-          while (( SECONDS < deadline )); do
-            run="$({
-              gh api --method GET \
-                "repos/${GITHUB_REPOSITORY}/actions/workflows/deploy-murmur-shim.yml/runs" \
-                -f head_sha="$GITHUB_SHA" \
-                -f event=push \
-                -f per_page=10
-            } | jq -c '.workflow_runs | sort_by(.created_at) | last // empty')"
-            if [[ -z "$run" ]]; then
-              echo "Waiting for the same-revision murmur-shim workflow to appear" >&2
-            elif [[ "$(jq -r '.status' <<<"$run")" == "completed" ]]; then
-              conclusion="$(jq -r '.conclusion' <<<"$run")"
-              [[ "$conclusion" == "success" ]] || {
-                echo "ERROR: same-revision murmur-shim workflow concluded ${conclusion}" >&2
-                exit 1
-              }
-              jq -e \
-                --arg sha "$GITHUB_SHA" \
-                --arg branch "$GITHUB_REF_NAME" \
-                '.head_sha == $sha and
-                 .head_branch == $branch and
-                 .event == "push" and
-                 .path == ".github/workflows/deploy-murmur-shim.yml" and
-                 .status == "completed" and
-                 .conclusion == "success"' \
-                <<<"$run" >/dev/null || {
-                  echo "ERROR: malformed or mismatched same-revision Murmur workflow attestation" >&2
-                  exit 1
-                }
-              echo "Same-revision murmur-shim deployment completed successfully" >&2
-              murmur_run_id="$(jq -r '.id' <<<"$run")"
-              murmur_run_attempt="$(jq -r '.run_attempt' <<<"$run")"
-              [[ "$murmur_run_id" =~ ^[1-9][0-9]*$ ]] || {
-                echo "ERROR: same-revision Murmur run has an invalid ID" >&2
-                exit 1
-              }
-              [[ "$murmur_run_attempt" =~ ^[1-9][0-9]*$ ]] || {
-                echo "ERROR: same-revision Murmur run has an invalid attempt" >&2
-                exit 1
-              }
-              murmur_ready=1
-              break
-            else
-              echo "Waiting for the same-revision murmur-shim deployment to complete" >&2
-            fi
-            sleep 15
-          done
-          (( murmur_ready )) || {
-            echo "ERROR: timed out waiting for same-revision murmur-shim deployment" >&2
+          [[ "$murmur_run_id" =~ ^[1-9][0-9]*$ ]] || {
+            echo "ERROR: selected same-revision Murmur run has an invalid ID" >&2
+            exit 1
+          }
+          [[ "$murmur_run_attempt" =~ ^[1-9][0-9]*$ ]] || {
+            echo "ERROR: selected same-revision Murmur run has an invalid attempt" >&2
             exit 1
           }
 

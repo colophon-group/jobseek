@@ -182,6 +182,7 @@ jobs:
               exit 1
             }
             [[ "$SHIM_IMAGE_REF" =~ ^ghcr\.io/colophon-group/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]]
+            live_dir=/home/deploy
             live_compose=/home/deploy/docker-compose.yml
             live_env=/home/deploy/.env
             staged_compose=/home/deploy/incoming-shim/docker-compose.yml
@@ -289,6 +290,12 @@ jobs:
                 os.fsync(generation_fd)
             finally:
                 os.close(generation_fd)
+            release_root = os.path.dirname(generation)
+            release_root_fd = os.open(release_root, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(release_root_fd)
+            finally:
+                os.close(release_root_fd)
             candidate = f"{active}.{secrets.token_hex(16)}"
             os.symlink(generation, candidate)
             os.replace(candidate, active)
@@ -350,13 +357,17 @@ jobs:
             rollback_armed=0
             compose_activated=0
             env_activated=0
+            compose_candidate=""
             env_candidate=""
             rollback_shim() {
               status=$?
-              trap - EXIT
+              trap - EXIT HUP INT TERM
               set +e
               if [[ -n "$env_candidate" && -f "$env_candidate" && ! -L "$env_candidate" ]]; then
                 rm -f -- "$env_candidate"
+              fi
+              if [[ -n "$compose_candidate" && -f "$compose_candidate" && ! -L "$compose_candidate" ]]; then
+                rm -f -- "$compose_candidate"
               fi
               if [[ "$status" -ne 0 && "$rollback_armed" -eq 1 ]]; then
                 echo "Murmur shim deploy failed; restoring the prior immutable image" >&2
@@ -379,6 +390,23 @@ jobs:
                   "$previous_compose_sha256" ]] || rollback_restore_failed=1
                 [[ "$(sha256sum "$live_env" | awk '{print $1}')" == \
                   "$previous_env_sha256" ]] || rollback_restore_failed=1
+                python3 - "$live_dir" "$live_compose" "$live_env" <<'PY' || rollback_restore_failed=1
+            import os
+            import sys
+
+            directory, *paths = sys.argv[1:]
+            for path in paths:
+                fd = os.open(path, os.O_RDONLY)
+                try:
+                    os.fsync(fd)
+                finally:
+                    os.close(fd)
+            directory_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+            PY
                 rollback_override="$(mktemp "${live_compose}.murmur-rollback-override.XXXXXX")"
                 printf 'services:\n  murmur-shim:\n    image: %s\n' \
                   "$previous_shim_ref" >"$rollback_override"
@@ -413,18 +441,65 @@ jobs:
               exit "$status"
             }
             trap rollback_shim EXIT
-            env_candidate="$(mktemp /home/deploy/.env.shim.XXXXXX)"
+            trap 'exit 129' HUP
+            trap 'exit 130' INT
+            trap 'exit 143' TERM
+            env_candidate="$(mktemp "${live_env}.shim.XXXXXX")"
+            compose_candidate="$(mktemp "${live_compose}.shim.XXXXXX")"
             awk '!/^(CRAWLER_IMAGE_REF|BROWSER_IMAGE_REF|SHIM_IMAGE_REF)=/' \
               "$previous_env" >"$env_candidate"
             printf 'CRAWLER_IMAGE_REF=%s\n' "$CRAWLER_IMAGE_REF" >>"$env_candidate"
             printf 'BROWSER_IMAGE_REF=%s\n' "$BROWSER_IMAGE_REF" >>"$env_candidate"
             printf 'SHIM_IMAGE_REF=%s\n' "$SHIM_IMAGE_REF" >>"$env_candidate"
             chmod 0600 "$env_candidate"
+            install -m 0644 "$staged_compose" "$compose_candidate"
+            # Make rollback evidence and both same-directory publication
+            # candidates durable before declaring mutation intent. From this
+            # point onward every process failure must restore the old pair.
+            python3 - \
+              "$live_dir" \
+              "$previous_compose" "$previous_env" \
+              "$env_candidate" "$compose_candidate" <<'PY'
+            import os
+            import sys
+
+            directory, *paths = sys.argv[1:]
+            for path in paths:
+                fd = os.open(path, os.O_RDONLY)
+                try:
+                    os.fsync(fd)
+                finally:
+                    os.close(fd)
+            directory_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+            PY
+            rollback_armed=1
+            env_activated=1
             mv "$env_candidate" "$live_env"
             env_candidate=""
-            env_activated=1
-            install -m 0644 "$staged_compose" "$live_compose"
             compose_activated=1
+            mv "$compose_candidate" "$live_compose"
+            compose_candidate=""
+            python3 - "$live_dir" "$live_env" "$live_compose" <<'PY'
+            import os
+            import sys
+
+            directory, *paths = sys.argv[1:]
+            for path in paths:
+                fd = os.open(path, os.O_RDONLY)
+                try:
+                    os.fsync(fd)
+                finally:
+                    os.close(fd)
+            directory_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+            PY
 
             echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u viktor-shcherb --password-stdin
             # Pull both the shim image AND the runtime-init image. The
@@ -434,7 +509,6 @@ jobs:
             # only `murmur-shim` was pulled and an upgraded init image
             # would only land on the next compose-triggered pull.
             docker compose pull murmur-shim murmur-shim-runtime-init
-            rollback_armed=1
             docker compose up -d murmur-shim
             docker compose ps murmur-shim
             # Brief settle, then probe the shim's health endpoint via

@@ -400,6 +400,12 @@ try:
     os.fsync(directory_fd)
 finally:
     os.close(directory_fd)
+release_root = os.path.dirname(generation)
+release_root_fd = os.open(release_root, os.O_RDONLY | os.O_DIRECTORY)
+try:
+    os.fsync(release_root_fd)
+finally:
+    os.close(release_root_fd)
 PY
 
   activate_release_generation "$generation"
