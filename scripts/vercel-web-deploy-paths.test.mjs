@@ -23,6 +23,7 @@ import {
 const scannerVerifier = fileURLToPath(
   new URL("../.github/scripts/verify-vercel-scanner-response.mjs", import.meta.url),
 );
+const turboConfig = JSON.parse(readFileSync("turbo.json", "utf8"));
 
 test("deploys web runtime and every current workspace input", () => {
   for (const path of [
@@ -63,6 +64,18 @@ test("redeploys when the company registry changes", () => {
       relevant: ["apps/crawler/data/companies.csv"],
     },
   );
+});
+
+test("company registry changes invalidate the cached web build", () => {
+  const genericBuild = turboConfig.tasks.build;
+  const webBuild = turboConfig.tasks["@jobseek/web#build"];
+  assert.deepEqual(webBuild.inputs, [
+    "$TURBO_DEFAULT$",
+    "$TURBO_ROOT$/apps/crawler/data/companies.csv",
+  ]);
+  for (const key of ["dependsOn", "outputs", "env"]) {
+    assert.deepEqual(webBuild[key], genericBuild[key], key);
+  }
 });
 
 test("Vercel Git integration is disabled only for main", () => {

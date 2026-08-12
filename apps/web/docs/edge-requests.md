@@ -71,7 +71,16 @@ bot-authored company merges, the trusted production dispatcher requests and
 waits for that exact revision; the deployment fails closed if main moves before
 promotion. Only then does the crawler sync publish Typesense data and
 invalidate the company CSV cache tag, evicting any route snapshot created in
-the short deploy-before-sync window.
+the short deploy-before-sync window. The registry is also an explicit input to
+the `@jobseek/web#build` Turbo task; a data-only company change therefore cannot
+restore an older `.next` artifact and skip matcher generation.
+
+The same generator excludes every reserved username prefix from the generic
+two-segment watchlist matcher. This lets explicit multi-segment application
+routes such as `/en/my-jobs/stats` and `/en/settings/billing` bypass Proxy
+instead of being mistaken for public watchlist documents. The exclusions come
+from `src/lib/username.ts`, which remains the single source of truth for route
+and account-name collisions.
 
 The unknown-company and watchlist checks remain necessary because Cache
 Components can begin streaming the static app shell before a page-level

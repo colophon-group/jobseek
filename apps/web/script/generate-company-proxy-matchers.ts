@@ -2,9 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { parse } from "csv-parse/sync";
+import { RESERVED_USERNAMES } from "../src/lib/username";
 
 const GENERATED_START = "    // BEGIN GENERATED COMPANY MISS MATCHERS";
 const GENERATED_END = "    // END GENERATED COMPANY MISS MATCHERS";
+const WATCHLIST_START = "    // BEGIN GENERATED WATCHLIST USER EXCLUSIONS";
+const WATCHLIST_END = "    // END GENERATED WATCHLIST USER EXCLUSIONS";
 const SAFE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 type CompanyRow = { slug?: string };
@@ -124,6 +127,38 @@ function buildMatcherBlock(slugs: readonly string[]): string {
   return lines.join("\n");
 }
 
+function buildWatchlistMatcherBlock(): string {
+  const reserved = [...RESERVED_USERNAMES]
+    .sort()
+    .map(escapeRegExp)
+    .join("|");
+  return [
+    WATCHLIST_START,
+    "    // Reserved application/user prefixes must bypass the generic",
+    "    // watchlist boundary before Proxy so explicit app routes win.",
+    `    ${JSON.stringify(`/:lang(en|de|fr|it)/:userSlug((?!(?:${reserved})(?:/|$))[^/]+)/:watchlistSlug`)},`,
+    WATCHLIST_END,
+  ].join("\n");
+}
+
+function replaceGeneratedBlock(
+  source: string,
+  startMarker: string,
+  endMarker: string,
+  expectedBlock: string,
+): string {
+  const start = source.indexOf(startMarker);
+  const end = source.indexOf(endMarker);
+  if (start < 0 || end < start) {
+    throw new Error(`proxy.ts is missing generated matcher markers: ${startMarker}`);
+  }
+  return [
+    source.slice(0, start),
+    expectedBlock,
+    source.slice(end + endMarker.length),
+  ].join("");
+}
+
 function main(): void {
   const webRoot = process.cwd();
   const registryPath = path.resolve(webRoot, "../crawler/data/companies.csv");
@@ -142,24 +177,30 @@ function main(): void {
   }
 
   const source = fs.readFileSync(proxyPath, "utf8");
-  const start = source.indexOf(GENERATED_START);
-  const end = source.indexOf(GENERATED_END);
-  if (start < 0 || end < start) {
-    throw new Error("proxy.ts is missing generated company matcher markers");
-  }
-  const expected = [
-    source.slice(0, start),
+  const withCompanyMatchers = replaceGeneratedBlock(
+    source,
+    GENERATED_START,
+    GENERATED_END,
     buildMatcherBlock(slugs),
-    source.slice(end + GENERATED_END.length),
-  ].join("");
+  );
+  const expected = replaceGeneratedBlock(
+    withCompanyMatchers,
+    WATCHLIST_START,
+    WATCHLIST_END,
+    buildWatchlistMatcherBlock(),
+  );
 
   if (source === expected) {
-    console.log(`[proxy-matchers] verified ${slugs.length} company exclusions`);
+    console.log(
+      `[proxy-matchers] verified ${slugs.length} company exclusions and ${RESERVED_USERNAMES.length} reserved watchlist prefixes`,
+    );
     return;
   }
   if (process.argv.includes("--write")) {
     fs.writeFileSync(proxyPath, expected);
-    console.log(`[proxy-matchers] wrote ${slugs.length} company exclusions`);
+    console.log(
+      `[proxy-matchers] wrote ${slugs.length} company exclusions and ${RESERVED_USERNAMES.length} reserved watchlist prefixes`,
+    );
     return;
   }
 
