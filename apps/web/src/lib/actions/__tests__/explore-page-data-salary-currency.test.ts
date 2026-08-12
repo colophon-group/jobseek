@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   getGeoFromHeaders: vi.fn(),
   parseSearchFilters: vi.fn(),
   parseRangeParam: vi.fn(),
+  logExternalError: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -39,6 +40,9 @@ vi.mock("@/lib/search/params", () => ({
 }));
 vi.mock("@/lib/actions/search-input", () => ({
   parseSearchFilters: mocks.parseSearchFilters,
+}));
+vi.mock("@/lib/safe-external-error", () => ({
+  logExternalError: mocks.logExternalError,
 }));
 
 import { fetchExplorePageData, fetchExplorePageDefaults } from "../explore-page-data";
@@ -341,5 +345,120 @@ describe("fetchExplorePageData — public language override (#6132)", () => {
 
     expect(mocks.listTopCompanies.mock.calls[0][0].languages).toEqual(["it"]);
     expect(data.languageOverride).toBeNull();
+  });
+});
+
+describe("fetchExplorePageData — unavailable taxonomy resolution (#7218)", () => {
+  it("returns a degraded response and preserves an explicit location slug on timeout", async () => {
+    const timeout = Object.assign(new Error("request timed out"), {
+      code: "ETIMEDOUT",
+    });
+    mocks.parseSearchFilters.mockRejectedValueOnce(timeout);
+
+    const data = await fetchExplorePageData({
+      searchParams: {
+        q: "backend developer",
+        loc: "india,india",
+        wm: "remote",
+        etype: "full_time",
+      },
+      locale: "en",
+    });
+
+    expect(data.result).toEqual({
+      companies: [],
+      totalCompanies: 0,
+      degraded: true,
+    });
+    expect(data.parsed).toMatchObject({
+      keywords: ["backend developer"],
+      workMode: ["remote"],
+      employmentTypes: ["full_time"],
+      unresolvedExplicitSlugs: { loc: ["india"] },
+    });
+    expect(mocks.searchJobs).not.toHaveBeenCalled();
+    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
+    expect(mocks.logExternalError).toHaveBeenCalledWith(
+      "warn",
+      { service: "typesense", operation: "explore_filter_resolution" },
+      timeout,
+    );
+  });
+
+  it("single-flights concurrent identical failed filter parses", async () => {
+    let rejectParse!: (reason?: unknown) => void;
+    mocks.parseSearchFilters.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectParse = reject;
+        }),
+    );
+
+    const request = {
+      searchParams: { loc: "india" },
+      locale: "en",
+    };
+    const first = fetchExplorePageData(request);
+    const second = fetchExplorePageData(request);
+    await vi.waitFor(() => expect(mocks.parseSearchFilters).toHaveBeenCalledTimes(1));
+    rejectParse(Object.assign(new Error("request timed out"), { code: "ETIMEDOUT" }));
+
+    const results = await Promise.all([first, second]);
+    expect(results.map((result) => result.result.degraded)).toEqual([true, true]);
+    expect(results.map((result) => result.parsed.unresolvedExplicitSlugs)).toEqual([
+      { loc: ["india"] },
+      { loc: ["india"] },
+    ]);
+    expect(mocks.parseSearchFilters).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not broaden a search when a configured resolver returns unresolved explicit slugs", async () => {
+    mocks.parseSearchFilters.mockResolvedValueOnce({
+      keywords: [],
+      locations: [],
+      occupations: [],
+      seniorities: [],
+      technologies: [],
+      workMode: [],
+      employmentTypes: [],
+      unresolvedExplicitSlugs: { loc: ["india"] },
+    });
+
+    const data = await fetchExplorePageData({
+      searchParams: { loc: "india" },
+      locale: "en",
+    });
+
+    expect(data.result).toEqual({
+      companies: [],
+      totalCompanies: 0,
+      degraded: true,
+    });
+    expect(mocks.searchJobs).not.toHaveBeenCalled();
+    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
+  });
+
+  it("fails loud with a sanitized error for a non-availability parsing defect", async () => {
+    const defect = Object.assign(new Error("invalid taxonomy document shape SECRET_CANARY"), {
+      httpStatus: 429,
+      config: { headers: { "X-TYPESENSE-API-KEY": "SECRET_CANARY" } },
+    });
+    mocks.parseSearchFilters.mockRejectedValueOnce(defect);
+
+    const rejection = fetchExplorePageData({
+      searchParams: { loc: "india" },
+      locale: "en",
+    });
+    await expect(rejection).rejects.toThrow("Explore filter resolution failed");
+    await rejection.catch((error) => {
+      expect(error).not.toBe(defect);
+      expect(error).not.toHaveProperty("config");
+      expect(JSON.stringify(error)).not.toContain("SECRET_CANARY");
+    });
+    expect(mocks.logExternalError).toHaveBeenCalledWith(
+      "error",
+      { service: "typesense", operation: "explore_filter_resolution" },
+      defect,
+    );
   });
 });

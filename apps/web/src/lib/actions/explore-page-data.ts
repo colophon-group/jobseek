@@ -16,6 +16,8 @@ import { parseEmploymentTypeParam, parseWorkModeParam } from "@/lib/search/query
 import { convertToEur } from "@/lib/salary";
 import { parseExploreSearchLanguages } from "@/lib/search/language-param";
 import type { SearchResponse } from "@/lib/search";
+import { isTypesenseUnavailableError } from "@/lib/search/typesense-retry";
+import { logExternalError } from "@/lib/safe-external-error";
 import {
   getExploreRepositoryFallbackCompanies,
   hasTypesenseSearchConfiguration,
@@ -73,18 +75,124 @@ function unavailableSearchResponse(): SearchResponse {
   return { companies: [], totalCompanies: 0, degraded: true };
 }
 
+function hasUnresolvedExplicitSlugs(parsed: ParsedSearchFilters): boolean {
+  return (["loc", "occ", "sen", "tech"] as const).some(
+    (kind) => (parsed.unresolvedExplicitSlugs?.[kind]?.length ?? 0) > 0,
+  );
+}
+
+function splitExplicitSlugs(raw: string | undefined): string[] {
+  if (!raw) return [];
+  const seen = new Set<string>();
+  const slugs: string[] = [];
+  for (const value of raw.split(",")) {
+    const slug = value.trim();
+    const key = slug.toLowerCase();
+    if (!slug || seen.has(key)) continue;
+    seen.add(key);
+    slugs.push(slug);
+  }
+  return slugs;
+}
+
 function parseOfflineSearchFilters(params: {
-  q: string | undefined;
-  wm: string | undefined;
-  etype: string | undefined;
+  q?: string;
+  loc?: string;
+  occ?: string;
+  sen?: string;
+  tech?: string;
+  wm?: string;
+  etype?: string;
 }): ParsedSearchFilters {
   const query = params.q?.trim();
+  const unresolvedExplicitSlugs = Object.fromEntries(
+    (["loc", "occ", "sen", "tech"] as const)
+      .map((kind) => [kind, splitExplicitSlugs(params[kind])] as const)
+      .filter(([, slugs]) => slugs.length > 0),
+  ) as NonNullable<ParsedSearchFilters["unresolvedExplicitSlugs"]>;
   return {
     ...EMPTY_PARSED_FILTERS,
     keywords: query ? [query] : [],
     workMode: parseWorkModeParam(params.wm),
     employmentTypes: parseEmploymentTypeParam(params.etype),
+    ...(Object.keys(unresolvedExplicitSlugs).length > 0
+      ? { unresolvedExplicitSlugs }
+      : {}),
   };
+}
+
+type SearchFilterParams = Parameters<typeof parseSearchFilters>[0];
+
+/**
+ * A failed cache-component lookup is not retained by Next, so a burst of
+ * identical Explore actions can otherwise multiply the same slow taxonomy
+ * request inside one warm function instance. Keep only live promises and
+ * always remove them after settlement; raw filter values never reach logs or
+ * a persistent cache through this registry.
+ */
+const inflightFilterParses = new Map<string, Promise<ParsedSearchFilters>>();
+
+function filterParseKey(params: SearchFilterParams): string {
+  return JSON.stringify([
+    params.locale,
+    params.q,
+    params.loc,
+    params.occ,
+    params.sen,
+    params.tech,
+    params.wm,
+    params.etype,
+    params.userLat,
+    params.userLng,
+  ]);
+}
+
+function parseSearchFiltersSingleFlight(
+  params: SearchFilterParams,
+): Promise<ParsedSearchFilters> {
+  const key = filterParseKey(params);
+  const existing = inflightFilterParses.get(key);
+  if (existing) return existing;
+
+  const promise = parseSearchFilters(params).finally(() => {
+    if (inflightFilterParses.get(key) === promise) {
+      inflightFilterParses.delete(key);
+    }
+  });
+  inflightFilterParses.set(key, promise);
+  return promise;
+}
+
+export async function fetchExploreFilterPageData(
+  params: SearchFilterParams,
+): Promise<{ parsed: ParsedSearchFilters; degraded: boolean }> {
+  try {
+    return {
+      parsed: await parseSearchFiltersSingleFlight(params),
+      degraded: false,
+    };
+  } catch (err) {
+    if (!isTypesenseUnavailableError(err)) {
+      // SDK/Axios errors can retain credential-bearing request configuration.
+      // Next logs rejected Server Action values, so never rethrow the original
+      // object across that boundary—even for deterministic 4xx responses.
+      logExternalError(
+        "error",
+        { service: "typesense", operation: "explore_filter_resolution" },
+        err,
+      );
+      throw new Error("Explore filter resolution failed");
+    }
+    logExternalError(
+      "warn",
+      { service: "typesense", operation: "explore_filter_resolution" },
+      err,
+    );
+    return {
+      parsed: parseOfflineSearchFilters(params),
+      degraded: true,
+    };
+  }
 }
 
 export async function fetchExplorePageData(params: {
@@ -115,13 +223,17 @@ export async function fetchExplorePageData(params: {
   // toggles in /settings actually flow through to the server-side
   // search. Other prefs (display currency etc.) stay anon-defaults.
   const session = await getSession();
-  const [parsed, prefs, anonJobLangs] = await Promise.all([
+  const [filterResolution, prefs, anonJobLangs] = await Promise.all([
     typesenseConfigured
-      ? parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng })
-      : Promise.resolve(parseOfflineSearchFilters({ q, wm, etype })),
+      ? fetchExploreFilterPageData({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng })
+      : Promise.resolve({
+          parsed: parseOfflineSearchFilters({ q, loc, occ, sen, tech, wm, etype }),
+          degraded: true,
+        }),
     session ? getPreferences() : Promise.resolve(null),
     session ? Promise.resolve(null) : readAnonJobLanguagesCookie(),
   ]);
+  const { parsed } = filterResolution;
 
   const jobLanguages = prefs?.jobLanguages ?? anonJobLangs ?? [];
   const displayCurrency = prefs?.displayCurrency ?? "EUR";
@@ -152,7 +264,13 @@ export async function fetchExplorePageData(params: {
   const salaryMaxEur = convertToEur(salaryMaxDisplay, salaryCurrencyParam, rates);
   const { min: experienceMin, max: experienceMax } = parseRangeParam(exp);
 
-  const result = !typesenseConfigured
+  // If taxonomy resolution failed, searching without the unresolved IDs would
+  // silently broaden the request and present a false zero/success state. Keep
+  // the user's URL/filter payload and return the explicit unavailable state.
+  const result =
+    !typesenseConfigured ||
+    filterResolution.degraded ||
+    hasUnresolvedExplicitSlugs(parsed)
     ? unavailableSearchResponse()
     : parsed.keywords.length > 0
       ? await searchJobs({

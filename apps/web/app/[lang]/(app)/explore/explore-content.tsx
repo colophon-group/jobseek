@@ -166,6 +166,7 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
         initialOccupations={parsed.occupations}
         initialSeniorities={parsed.seniorities}
         initialTechnologies={parsed.technologies}
+        initialUnresolvedExplicitSlugs={parsed.unresolvedExplicitSlugs}
         initialEmploymentTypes={parsed.employmentTypes}
         initialWorkMode={parsed.workMode}
         initialSalaryCurrency={salaryCurrencyParam !== displayCurrency ? salaryCurrencyParam : undefined}

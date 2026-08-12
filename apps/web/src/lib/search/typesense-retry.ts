@@ -87,6 +87,29 @@ const CONFIG_UNAVAILABLE_MESSAGE_FRAGMENTS = [
   "typesense_search_key is not set",
 ];
 
+function nestedHttpStatus(err: unknown, seen = new Set<unknown>()): number | undefined {
+  if ((!err || typeof err !== "object") && typeof err !== "function") return undefined;
+  if (seen.has(err)) return undefined;
+  seen.add(err);
+
+  const e = err as {
+    httpStatus?: unknown;
+    status?: unknown;
+    statusCode?: unknown;
+    cause?: unknown;
+    response?: unknown;
+    originalError?: unknown;
+  };
+  for (const value of [e.httpStatus, e.status, e.statusCode]) {
+    if (typeof value === "number" && Number.isInteger(value)) return value;
+  }
+  for (const nested of [e.cause, e.response, e.originalError]) {
+    const status = nestedHttpStatus(nested, seen);
+    if (status !== undefined) return status;
+  }
+  return undefined;
+}
+
 export function isRetryableError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   const e = err as {
@@ -96,10 +119,12 @@ export function isRetryableError(err: unknown): boolean {
     cause?: unknown;
     name?: unknown;
   };
+  // An explicit HTTP response is authoritative. In particular, a 4xx
+  // response must not become retryable merely because an SDK wrapper reuses
+  // a connection-flavoured message such as "service unavailable".
+  const status = nestedHttpStatus(err);
+  if (status !== undefined) return RETRYABLE_HTTP_STATUSES.has(status);
   if (typeof e.code === "string" && RETRYABLE_NODE_CODES.has(e.code)) {
-    return true;
-  }
-  if (typeof e.httpStatus === "number" && RETRYABLE_HTTP_STATUSES.has(e.httpStatus)) {
     return true;
   }
   if (typeof e.message === "string") {
@@ -136,6 +161,10 @@ export function isTypesenseRateLimitError(err: unknown): boolean {
 export function isTypesenseUnavailableError(err: unknown): boolean {
   if (isRetryableError(err)) return true;
   if (!err || typeof err !== "object") return false;
+  // Preserve the same status precedence as `isRetryableError`: once an SDK
+  // object carries a concrete non-retryable response (notably 429), do not
+  // recurse into a misleading nested message and classify it as an outage.
+  if (nestedHttpStatus(err) !== undefined) return false;
   const e = err as {
     message?: unknown;
     cause?: unknown;

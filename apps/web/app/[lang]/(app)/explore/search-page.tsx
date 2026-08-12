@@ -20,7 +20,8 @@ import {
 } from "@/lib/search/search-runner";
 import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
 import { useSession } from "@/components/providers/SessionProvider";
-import { parseSearchFilters } from "@/lib/actions/search-input";
+import { fetchExploreFilterPageData } from "@/lib/actions/explore-page-data";
+import type { ParsedSearchFilters } from "@/lib/actions/search-input";
 import { buildFilteredPath } from "@/lib/search/query-params";
 import { parseExploreSearchLanguages } from "@/lib/search/language-param";
 import { resolveJobLanguages } from "@/lib/job-languages";
@@ -37,6 +38,30 @@ import {
 const PAGE_SIZE = 10;
 
 type TaxonomyItem = { id: number; slug: string; name: string };
+type UnresolvedExplicitSlugs = NonNullable<
+  ParsedSearchFilters["unresolvedExplicitSlugs"]
+>;
+
+function hasUnresolvedExplicitSlugs(value: UnresolvedExplicitSlugs): boolean {
+  return (["loc", "occ", "sen", "tech"] as const).some(
+    (kind) => (value[kind]?.length ?? 0) > 0,
+  );
+}
+
+function mergedFilterSlugs(
+  resolved: Array<{ slug: string }>,
+  unresolved: string[] | undefined,
+): string {
+  const seen = new Set<string>();
+  return [...resolved.map((item) => item.slug), ...(unresolved ?? [])]
+    .filter((slug) => {
+      const key = slug.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .join(",");
+}
 
 export function resolveInitialRepositoryFallbackCompanies(params: {
   shouldRestore: boolean;
@@ -67,6 +92,7 @@ interface SearchPageProps {
   initialOccupations: TaxonomyItem[];
   initialSeniorities: TaxonomyItem[];
   initialTechnologies: TaxonomyItem[];
+  initialUnresolvedExplicitSlugs?: UnresolvedExplicitSlugs;
   initialEmploymentTypes: string[];
   initialWorkMode: WorkMode[];
   initialSalaryCurrency?: string;
@@ -97,6 +123,7 @@ export function SearchPage({
   initialOccupations,
   initialSeniorities,
   initialTechnologies,
+  initialUnresolvedExplicitSlugs,
   initialEmploymentTypes,
   initialWorkMode,
   initialSalaryCurrency,
@@ -145,6 +172,7 @@ export function SearchPage({
       experienceMin: initialExperienceMin,
       experienceMax: initialExperienceMax,
       languages,
+      unresolvedExplicitSlugs: initialUnresolvedExplicitSlugs,
     },
   );
   // Restore the cached snapshot only when it matches the current URL
@@ -173,6 +201,12 @@ export function SearchPage({
   const [technologies, setTechnologies, technologiesRef] = useLatestState<TaxonomyItem[]>(
     shouldRestore ? cached.technologies : initialTechnologies,
   );
+  const [unresolvedExplicitSlugs, setUnresolvedExplicitSlugs, unresolvedExplicitSlugsRef] =
+    useLatestState<UnresolvedExplicitSlugs>(
+      shouldRestore
+        ? (cached.unresolvedExplicitSlugs ?? {})
+        : (initialUnresolvedExplicitSlugs ?? {}),
+    );
   const [salaryCurrency, setSalaryCurrency, salaryCurrencyRef] = useLatestState(
     shouldRestore ? cached.salaryCurrency : (initialSalaryCurrency ?? displayCurrency),
   );
@@ -216,6 +250,7 @@ export function SearchPage({
   );
   const [isSearching, setIsSearching] = useState(false);
   const searchCounterRef = useRef(0);
+  const externalNavigationCounterRef = useRef(0);
   const initialDirectRefreshKeyRef = useRef<string | null>(null);
   const [isTruncated, setIsTruncated] = useState(initialTruncated ?? false);
   const [isDegraded, setIsDegraded, isDegradedRef] = useLatestState(
@@ -291,6 +326,12 @@ export function SearchPage({
 
     if (internalUrlChangeRef.current) {
       internalUrlChangeRef.current = false;
+      // Filter-changing History API writes already started their own search,
+      // so invalidate only an older taxonomy parse. A `show`-only write has
+      // the same result key and must not cancel the pending navigation.
+      if (currentKey !== lastSearchKeyRef.current) {
+        externalNavigationCounterRef.current += 1;
+      }
       lastSearchKeyRef.current = currentKey;
       return; // our own replaceState — already handled by runSearch
     }
@@ -298,6 +339,10 @@ export function SearchPage({
       return; // same params — mount, StrictMode double-run, or no-op
     }
     lastSearchKeyRef.current = currentKey;
+    const navigationId = ++externalNavigationCounterRef.current;
+    // Cancel ownership of any search started for the previous address before
+    // awaiting taxonomy resolution for this one.
+    searchCounterRef.current += 1;
 
     // External navigation: parse URL params and update state
     const q = searchParams.get("q") ?? undefined;
@@ -338,17 +383,41 @@ export function SearchPage({
     }
 
     setIsSearching(true);
-    parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng }).then((parsed) => {
-      setKeywords(parsed.keywords);
-      setLocations(parsed.locations);
-      setOccupations(parsed.occupations);
-      setSeniorities(parsed.seniorities);
-      setTechnologies(parsed.technologies);
-      setEmploymentTypes(parsed.employmentTypes);
-      setWorkMode(parsed.workMode);
-      runSearch();
-    });
+    fetchExploreFilterPageData({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng })
+      .then(({ parsed, degraded }) => {
+        if (externalNavigationCounterRef.current !== navigationId) return;
+        setKeywords(parsed.keywords);
+        setLocations(parsed.locations);
+        setOccupations(parsed.occupations);
+        setSeniorities(parsed.seniorities);
+        setTechnologies(parsed.technologies);
+        setUnresolvedExplicitSlugs(parsed.unresolvedExplicitSlugs ?? {});
+        setEmploymentTypes(parsed.employmentTypes);
+        setWorkMode(parsed.workMode);
+        if (degraded || hasUnresolvedExplicitSlugs(parsed.unresolvedExplicitSlugs ?? {})) {
+          // Do not run a broader search after losing explicit taxonomy IDs.
+          // The URL still carries the submitted slugs, while the result area
+          // clearly distinguishes upstream unavailability from zero matches.
+          setCompanies([]);
+          setTotalCompanies(0);
+          setIsDegraded(true);
+          setIsSearching(false);
+          return;
+        }
+        runSearch();
+      })
+      .catch(() => {
+        if (externalNavigationCounterRef.current !== navigationId) return;
+        // Unexpected action failures retain the existing result set and end
+        // the pending state. Availability failures are handled above.
+        setIsSearching(false);
+      });
   }, [searchParams, locale, userLat, userLng]);
+
+  useEffect(() => () => {
+    externalNavigationCounterRef.current += 1;
+    searchCounterRef.current += 1;
+  }, []);
 
   // `show` is UI-only and does not participate in the result search key.
   // Keep it synchronized for external query navigation while preserving the
@@ -374,6 +443,7 @@ export function SearchPage({
         occupations: occupationsRef.current,
         seniorities: senioritiesRef.current,
         technologies: technologiesRef.current,
+        unresolvedExplicitSlugs: unresolvedExplicitSlugsRef.current,
         employmentTypes: employmentTypesRef.current,
         workMode: workModeRef.current,
         salaryMinEur: salaryMinRef.current,
@@ -404,6 +474,7 @@ export function SearchPage({
             experienceMin: experienceMinRef.current,
             experienceMax: experienceMaxRef.current,
             languages: languagesRef.current,
+            unresolvedExplicitSlugs: unresolvedExplicitSlugsRef.current,
           },
         ),
         hasResultFilters:
@@ -412,6 +483,7 @@ export function SearchPage({
           occupationsRef.current.length > 0 ||
           senioritiesRef.current.length > 0 ||
           technologiesRef.current.length > 0 ||
+          hasUnresolvedExplicitSlugs(unresolvedExplicitSlugsRef.current) ||
           employmentTypesRef.current.length > 0 ||
           workModeRef.current.length > 0 ||
           salaryMinRef.current != null ||
@@ -430,6 +502,7 @@ export function SearchPage({
       addLocation: (loc) => {
         const updated = [...locationsRef.current, loc];
         setLocations(updated);
+        markExplicitSlugsResolved({ loc: updated });
 
         updateUrl();
         runSearch();
@@ -437,6 +510,7 @@ export function SearchPage({
       addOccupation: (occ) => {
         const updated = [...occupationsRef.current, occ];
         setOccupations(updated);
+        markExplicitSlugsResolved({ occ: updated });
 
         updateUrl();
         runSearch();
@@ -444,6 +518,7 @@ export function SearchPage({
       addSeniority: (sen) => {
         const updated = [...senioritiesRef.current, sen];
         setSeniorities(updated);
+        markExplicitSlugsResolved({ sen: updated });
 
         updateUrl();
         runSearch();
@@ -451,6 +526,7 @@ export function SearchPage({
       addTechnology: (tech) => {
         const updated = [...technologiesRef.current, tech];
         setTechnologies(updated);
+        markExplicitSlugsResolved({ tech: updated });
 
         updateUrl();
         runSearch();
@@ -462,6 +538,12 @@ export function SearchPage({
         if (nextSeniorities) { setSeniorities(nextSeniorities); }
         if (nextTechnologies) { setTechnologies(nextTechnologies); }
         if (nextWorkMode) { setWorkMode(nextWorkMode); }
+        markExplicitSlugsResolved({
+          loc: nextLocations,
+          ...(nextOccupations ? { occ: nextOccupations } : {}),
+          ...(nextSeniorities ? { sen: nextSeniorities } : {}),
+          ...(nextTechnologies ? { tech: nextTechnologies } : {}),
+        });
         setShowPostingId(null);
         updateUrl();
         runSearch();
@@ -523,6 +605,15 @@ export function SearchPage({
       if (languageOverrideRef.current !== null) {
         extra.lang = languageOverrideRef.current.join(",") || "*";
       }
+      const unresolved = cached.unresolvedExplicitSlugs ?? {};
+      const locationSlugs = mergedFilterSlugs(cached.locations, unresolved.loc);
+      const occupationSlugs = mergedFilterSlugs(cached.occupations, unresolved.occ);
+      const senioritySlugs = mergedFilterSlugs(cached.seniorities, unresolved.sen);
+      const technologySlugs = mergedFilterSlugs(cached.technologies, unresolved.tech);
+      if (locationSlugs) extra.loc = locationSlugs;
+      if (occupationSlugs) extra.occ = occupationSlugs;
+      if (senioritySlugs) extra.sen = senioritySlugs;
+      if (technologySlugs) extra.tech = technologySlugs;
       const url = buildFilteredPath(
         pathname,
         cached.keywords,
@@ -544,7 +635,7 @@ export function SearchPage({
   }, []);
 
   const hasMore = companies.length < totalCompanies && !isTruncated;
-  const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || employmentTypes.length > 0 || workMode.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null || (languageOverride?.length ?? 0) > 0;
+  const hasFilters = keywords.length > 0 || locations.length > 0 || occupations.length > 0 || seniorities.length > 0 || technologies.length > 0 || hasUnresolvedExplicitSlugs(unresolvedExplicitSlugs) || employmentTypes.length > 0 || workMode.length > 0 || salaryMin != null || salaryMax != null || experienceMin != null || experienceMax != null || (languageOverride?.length ?? 0) > 0;
 
   /** Update only the `show` query param without touching filter state. */
   function updateShowParam(postingId: string | null) {
@@ -578,6 +669,15 @@ export function SearchPage({
     if (languageOverrideRef.current !== null) {
       extra.lang = languageOverrideRef.current.join(",") || "*";
     }
+    const unresolved = unresolvedExplicitSlugsRef.current;
+    const locationSlugs = mergedFilterSlugs(locationsRef.current, unresolved.loc);
+    const occupationSlugs = mergedFilterSlugs(occupationsRef.current, unresolved.occ);
+    const senioritySlugs = mergedFilterSlugs(senioritiesRef.current, unresolved.sen);
+    const technologySlugs = mergedFilterSlugs(technologiesRef.current, unresolved.tech);
+    if (locationSlugs) extra.loc = locationSlugs;
+    if (occupationSlugs) extra.occ = occupationSlugs;
+    if (senioritySlugs) extra.sen = senioritySlugs;
+    if (technologySlugs) extra.tech = technologySlugs;
     const url = buildFilteredPath(
       pathname,
       keywordsRef.current,
@@ -591,6 +691,28 @@ export function SearchPage({
     window.history.replaceState(null, "", url);
   };
   function updateUrl() { internalUrlChangeRef.current = true; updateUrlRef.current(); }
+
+  function markExplicitSlugsResolved(
+    resolvedByKind: Partial<Record<keyof UnresolvedExplicitSlugs, Array<{ slug: string }>>>,
+  ) {
+    const current = unresolvedExplicitSlugsRef.current;
+    let changed = false;
+    const next: UnresolvedExplicitSlugs = { ...current };
+    for (const kind of ["loc", "occ", "sen", "tech"] as const) {
+      const resolved = resolvedByKind[kind];
+      const unresolved = current[kind];
+      if (!resolved || !unresolved?.length) continue;
+      const resolvedKeys = new Set(resolved.map((item) => item.slug.toLowerCase()));
+      const remaining = unresolved.filter(
+        (slug) => !resolvedKeys.has(slug.toLowerCase()),
+      );
+      if (remaining.length === unresolved.length) continue;
+      changed = true;
+      if (remaining.length > 0) next[kind] = remaining;
+      else delete next[kind];
+    }
+    if (changed) setUnresolvedExplicitSlugs(next);
+  }
 
   // Stabilized for #3198 — passed into `SearchResults` -> `CompanyCard`
   // which is wrapped in `React.memo` with a custom comparator that
@@ -612,6 +734,15 @@ export function SearchPage({
   /** Run a search using current ref state. */
   const runSearchRef = useRef(() => {});
   runSearchRef.current = () => {
+    if (hasUnresolvedExplicitSlugs(unresolvedExplicitSlugsRef.current)) {
+      searchCounterRef.current += 1;
+      setCompanies([]);
+      setTotalCompanies(0);
+      setIsTruncated(false);
+      setIsDegraded(true);
+      setIsSearching(false);
+      return;
+    }
     const kws = keywordsRef.current;
     const locationIds = locationsRef.current.map((l) => l.id);
     const occupationIds = occupationsRef.current.map((o) => o.id);
@@ -757,6 +888,7 @@ export function SearchPage({
     (location: SelectedLocation) => {
       const updated = [...locationsRef.current, location];
       setLocations(updated);
+      markExplicitSlugsResolved({ loc: updated });
 
       updateUrl();
       runSearch();
@@ -768,6 +900,7 @@ export function SearchPage({
     (occ: TaxonomyItem) => {
       const updated = [...occupationsRef.current, occ];
       setOccupations(updated);
+      markExplicitSlugsResolved({ occ: updated });
 
       updateUrl();
       runSearch();
@@ -779,6 +912,7 @@ export function SearchPage({
     (sen: TaxonomyItem) => {
       const updated = [...senioritiesRef.current, sen];
       setSeniorities(updated);
+      markExplicitSlugsResolved({ sen: updated });
 
       updateUrl();
       runSearch();
@@ -793,6 +927,12 @@ export function SearchPage({
       if (nextOccs) { setOccupations(nextOccs); }
       if (nextSens) { setSeniorities(nextSens); }
       if (nextTechs) { setTechnologies(nextTechs); }
+      markExplicitSlugsResolved({
+        loc: nextLocations,
+        ...(nextOccs ? { occ: nextOccs } : {}),
+        ...(nextSens ? { sen: nextSens } : {}),
+        ...(nextTechs ? { tech: nextTechs } : {}),
+      });
       setShowPostingId(null);
       updateUrl();
       runSearch();
@@ -837,6 +977,7 @@ export function SearchPage({
     (tech: TaxonomyItem) => {
       const updated = [...technologiesRef.current, tech];
       setTechnologies(updated);
+      markExplicitSlugsResolved({ tech: updated });
 
       updateUrl();
       runSearch();
@@ -884,6 +1025,7 @@ export function SearchPage({
     setOccupations([]);
     setSeniorities([]);
     setTechnologies([]);
+    setUnresolvedExplicitSlugs({});
     setEmploymentTypes([]);
     setWorkMode([]);
     setSalaryCurrency(displayCurrency);
