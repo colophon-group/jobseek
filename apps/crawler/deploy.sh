@@ -42,10 +42,9 @@ required_vars=(
   # Murmur shim secret. Without this, the shim's compose env
   # substitution `${MURMUR_TOKEN}` resolves to empty on a full-stack
   # redeploy and the shim accepts every request as anonymous. The
-  # H4 deploy workflow (deploy-murmur-shim.yml) sets this transiently
-  # via SSH `env:` block, but its `up -d murmur-shim` does not write
-  # to /home/deploy/.env — so a subsequent crawler full-stack redeploy
-  # would silently lose the token if we didn't pin it here.
+  # H4 deploy workflow (deploy-murmur-shim.yml) persists this in its
+  # transactionally published environment and active release generation;
+  # the full-stack deploy must carry the same protected value forward.
   # Required since H3 (#2775) added the murmur-shim service.
   MURMUR_TOKEN
 )
@@ -79,7 +78,10 @@ ACTIVE_ENV_SNAPSHOT=""
 ACTIVE_ENV_SNAPSHOT_SHA256=""
 DEPLOY_SUCCESS_FILE=""
 ACTIVE_RELEASE_MANIFEST=""
+ACTIVE_RELEASE_FORMAT=""
+ACTIVE_IMAGE_OVERRIDE=""
 ROLLBACK_ACTIVE_RELEASE_TARGET=""
+ROLLBACK_ACTIVE_IMAGE_OVERRIDE=""
 ENV_FILE_WAS_PRESENT=0
 ROLLBACK_ARMED=0
 ROLLBACK_RUNNING=0
@@ -259,10 +261,13 @@ load_active_release() {
   ACTIVE_ENV_SNAPSHOT_SHA256="$target/environment.sha256"
   DEPLOY_SUCCESS_FILE="$target/success.env"
   ACTIVE_RELEASE_MANIFEST="$target/release.manifest"
+  ACTIVE_RELEASE_FORMAT=""
+  ACTIVE_IMAGE_OVERRIDE=""
 }
 
 verify_active_deploy_snapshot() {
   local format_version compose_digest env_digest success_digest actual_success_digest
+  local bootstrap_legacy=""
 
   load_active_release
   verify_active_snapshot_file \
@@ -282,7 +287,7 @@ verify_active_deploy_snapshot() {
     return 1
   }
   format_version="$(read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" RELEASE_FORMAT_VERSION)"
-  [[ "$format_version" == 0 || "$format_version" == 1 ]] || {
+  [[ "$format_version" == 1 || "$format_version" == 2 ]] || {
     echo "ERROR: crawler active-release format is unsupported" >&2
     return 1
   }
@@ -306,17 +311,83 @@ verify_active_deploy_snapshot() {
     return 1
   }
 
-  if [[ "$format_version" == 1 ]]; then
-    local key env_value success_value
-    for key in CRAWLER_IMAGE_TAG CRAWLER_IMAGE_REF BROWSER_IMAGE_REF SHIM_IMAGE_REF JOBSEEK_DEPLOY_REVISION; do
-      env_value="$(read_exact_release_value "$ACTIVE_ENV_SNAPSHOT" "$key")"
-      success_value="$(read_exact_release_value "$DEPLOY_SUCCESS_FILE" "$key")"
-      [[ -n "$env_value" && "$env_value" == "$success_value" ]] || {
-        echo "ERROR: crawler active-release marker and environment disagree on ${key}" >&2
-        return 1
-      }
-    done
+  ACTIVE_RELEASE_FORMAT="$format_version"
+  if [[ "$format_version" == 2 ]]; then
+    local image_override_digest actual_image_override_digest
+    ACTIVE_IMAGE_OVERRIDE="$ACTIVE_RELEASE_DIR/rollback-images.override.yml"
+    image_override_digest="$(
+      read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" IMAGE_OVERRIDE_SHA256
+    )"
+    bootstrap_legacy="$(
+      read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" BOOTSTRAP_LEGACY
+    )"
+    [[ "$image_override_digest" =~ ^[0-9a-f]{64}$ ]] || {
+      echo "ERROR: crawler bootstrap image-override digest is invalid" >&2
+      return 1
+    }
+    [[ "$bootstrap_legacy" == 0 || "$bootstrap_legacy" == 1 ]] || {
+      echo "ERROR: crawler bootstrap generation kind is invalid" >&2
+      return 1
+    }
+    [[ -f "$ACTIVE_IMAGE_OVERRIDE" && ! -L "$ACTIVE_IMAGE_OVERRIDE" ]] || {
+      echo "ERROR: crawler bootstrap image override is unavailable or unsafe" >&2
+      return 1
+    }
+    actual_image_override_digest="$(sha256sum "$ACTIVE_IMAGE_OVERRIDE" | awk '{print $1}')"
+    [[ "$image_override_digest" == "$actual_image_override_digest" ]] || {
+      echo "ERROR: crawler bootstrap image override failed verification" >&2
+      return 1
+    }
   fi
+
+  local -a release_compose_args configured_images
+  local configured_image configured_images_output
+  release_compose_args=(-f "$ACTIVE_COMPOSE_SNAPSHOT")
+  if [[ -n "$ACTIVE_IMAGE_OVERRIDE" ]]; then
+    release_compose_args+=(-f "$ACTIVE_IMAGE_OVERRIDE")
+  fi
+  configured_images_output="$(
+    env -i \
+      "PATH=${PATH:-/usr/local/bin:/usr/bin:/bin}" \
+      "HOME=${HOME:-$DEPLOY_DIR}" \
+      "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" \
+      docker compose --env-file "$ACTIVE_ENV_SNAPSHOT" \
+        "${release_compose_args[@]}" config --images
+  )"
+  [[ -n "$configured_images_output" ]] || {
+    echo "ERROR: crawler active release declares no service images" >&2
+    return 1
+  }
+  mapfile -t configured_images <<<"$configured_images_output"
+  (( ${#configured_images[@]} > 0 )) || {
+    echo "ERROR: crawler active release declares no service images" >&2
+    return 1
+  }
+  for configured_image in "${configured_images[@]}"; do
+    [[ "$configured_image" =~ @sha256:[0-9a-f]{64}$ ]] || {
+      echo "ERROR: crawler active release contains a mutable service image" >&2
+      return 1
+    }
+  done
+
+  local -a identity_keys=(CRAWLER_IMAGE_TAG JOBSEEK_DEPLOY_REVISION)
+  if [[ "$format_version" == 1 ||
+    ( "$format_version" == 2 && "$bootstrap_legacy" == 0 ) ]]
+  then
+    identity_keys=(
+      CRAWLER_IMAGE_TAG CRAWLER_IMAGE_REF BROWSER_IMAGE_REF
+      SHIM_IMAGE_REF JOBSEEK_DEPLOY_REVISION
+    )
+  fi
+  local key env_value success_value
+  for key in "${identity_keys[@]}"; do
+    env_value="$(read_exact_release_value "$ACTIVE_ENV_SNAPSHOT" "$key")"
+    success_value="$(read_exact_release_value "$DEPLOY_SUCCESS_FILE" "$key")"
+    [[ -n "$env_value" && "$env_value" == "$success_value" ]] || {
+      echo "ERROR: crawler active-release marker and environment disagree on ${key}" >&2
+      return 1
+    }
+  done
 }
 
 activate_release_generation() {
@@ -504,7 +575,7 @@ ensure_reconciliation_wrapper_compatible() {
 }
 
 configure_rollback_compose_contract() {
-  local compose_file_count compose_file_value expected
+  local compose_file_count compose_file_value compose_files expected
 
   [[ -f "$ENV_FILE" && ! -L "$ENV_FILE" ]] || {
     echo "ERROR: restored rollback environment is unavailable or unsafe" >&2
@@ -518,8 +589,19 @@ configure_rollback_compose_contract() {
     echo "ERROR: rollback pool-budget override is unavailable or unsafe" >&2
     return 1
   }
+  if [[ -n "${ROLLBACK_ACTIVE_IMAGE_OVERRIDE:-}" &&
+    ( ! -f "$ROLLBACK_ACTIVE_IMAGE_OVERRIDE" || -L "$ROLLBACK_ACTIVE_IMAGE_OVERRIDE" ) ]]
+  then
+    echo "ERROR: rollback image-identity override is unavailable or unsafe" >&2
+    return 1
+  fi
 
-  expected="COMPOSE_FILE=$DEPLOY_DIR/docker-compose.yml:$ROLLBACK_POOL_OVERRIDE"
+  compose_files="$DEPLOY_DIR/docker-compose.yml"
+  if [[ -n "${ROLLBACK_ACTIVE_IMAGE_OVERRIDE:-}" ]]; then
+    compose_files+="${compose_files:+:}$ROLLBACK_ACTIVE_IMAGE_OVERRIDE"
+  fi
+  compose_files+="${compose_files:+:}$ROLLBACK_POOL_OVERRIDE"
+  expected="COMPOSE_FILE=$compose_files"
   compose_file_count="$(grep -Ec '^COMPOSE_FILE=' "$ENV_FILE" || true)"
   compose_file_value="$(grep -E '^COMPOSE_FILE=' "$ENV_FILE" || true)"
   if ((compose_file_count == 0)); then
@@ -532,17 +614,23 @@ configure_rollback_compose_contract() {
 }
 
 rollback_compose() {
+  local -a compose_args
+
   # Compose gives process variables precedence over the restored env file.
   # Run rollback in a clean environment so the failed release tag and every
   # other current SSH input cannot override the previous deployment contract.
+  compose_args=(-f "$DEPLOY_DIR/docker-compose.yml")
+  if [[ -n "${ROLLBACK_ACTIVE_IMAGE_OVERRIDE:-}" ]]; then
+    compose_args+=(-f "$ROLLBACK_ACTIVE_IMAGE_OVERRIDE")
+  fi
+  compose_args+=(-f "$ROLLBACK_POOL_OVERRIDE")
   env -i \
     "PATH=${PATH:-/usr/local/bin:/usr/bin:/bin}" \
     "HOME=${HOME:-$DEPLOY_DIR}" \
     "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" \
     docker compose \
     --env-file "$ENV_FILE" \
-    -f "$DEPLOY_DIR/docker-compose.yml" \
-    -f "$ROLLBACK_POOL_OVERRIDE" \
+    "${compose_args[@]}" \
     "$@"
 }
 
@@ -631,7 +719,10 @@ rollback_deploy() {
     activate_release_generation "$ROLLBACK_ACTIVE_RELEASE_TARGET"
     command_status=$?
     if ((command_status == 0)); then
-      verify_active_deploy_snapshot
+      (
+        set -e
+        verify_active_deploy_snapshot
+      )
       command_status=$?
     fi
   else
@@ -1111,6 +1202,7 @@ ensure_reconciliation_wrapper_compatible
 python3 "$INCOMING_DIR/scripts/postgresql-operational-preflight.py"
 verify_active_deploy_snapshot
 ROLLBACK_ACTIVE_RELEASE_TARGET="$ACTIVE_RELEASE_DIR"
+ROLLBACK_ACTIVE_IMAGE_OVERRIDE="$ACTIVE_IMAGE_OVERRIDE"
 
 # Snapshot the complete active deployment contract before replacing any file
 # or credential. Rollback restores the old Compose spec and old env together,

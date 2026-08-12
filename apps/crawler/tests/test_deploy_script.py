@@ -206,7 +206,9 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert "local services=(redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy)" in (
         script
     )
-    assert '-f "$DEPLOY_DIR/docker-compose.yml" \\\n    -f "$ROLLBACK_POOL_OVERRIDE"' in script
+    assert 'compose_args=(-f "$DEPLOY_DIR/docker-compose.yml")' in script
+    assert 'compose_args+=(-f "$ROLLBACK_ACTIVE_IMAGE_OVERRIDE")' in script
+    assert 'compose_args+=(-f "$ROLLBACK_POOL_OVERRIDE")' in script
     assert ROLLBACK_POOL_OVERRIDE.exists()
     assert "apps/crawler/rollback-pool-budget.override.yml" in workflow
     assert "target: /home/deploy/incoming/" in workflow
@@ -246,14 +248,12 @@ def test_release_generation_root_is_durable_before_pointer_publication() -> None
     assert generation_sync < root_sync < pointer_publish
 
     murmur = MURMUR_DEPLOY_WORKFLOW.read_text()
-    first_rollout = murmur[
-        murmur.index('if [[ ! -e "$active_release" ]]') : murmur.index(
-            'verify_release_generation "$active_generation"'
-        )
+    durable_publish = murmur[
+        murmur.index("fsync_release_generation() {") : murmur.index("verify_release_generation() {")
     ]
-    generation_sync = first_rollout.index("os.fsync(generation_fd)")
-    root_sync = first_rollout.index("os.fsync(release_root_fd)")
-    pointer_publish = first_rollout.index("os.symlink(generation, candidate)")
+    generation_sync = durable_publish.index("os.fsync(generation_fd)")
+    root_sync = durable_publish.index("os.fsync(release_root_fd)")
+    pointer_publish = durable_publish.index("os.symlink(generation, candidate)")
     assert generation_sync < root_sync < pointer_publish
 
 
@@ -283,6 +283,7 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             'ROLLBACK_POOL_OVERRIDE="$DEPLOY_DIR/.crawler-rollback-pool-budget.override.yml"',
             'ACTIVE_RELEASE_POINTER="$DEPLOY_DIR/.crawler-active-release"',
             'ROLLBACK_ACTIVE_RELEASE_TARGET="$DEPLOY_DIR/old-release"',
+            'ROLLBACK_ACTIVE_IMAGE_OVERRIDE=""',
             "ENV_FILE_WAS_PRESENT=1",
             "ROLLBACK_ARMED=0",
             "ROLLBACK_RUNNING=0",
@@ -424,6 +425,7 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
             'ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"',
             'ROLLBACK_POOL_OVERRIDE="$DEPLOY_DIR/.crawler-rollback-pool-budget.override.yml"',
             'ROLLBACK_ACTIVE_RELEASE_TARGET="$DEPLOY_DIR/old-release"',
+            'ROLLBACK_ACTIVE_IMAGE_OVERRIDE=""',
             "ENV_FILE_WAS_PRESENT=1",
             "ROLLBACK_ARMED=1",
             "ROLLBACK_RUNNING=0",
@@ -539,14 +541,319 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
         assert log.read_text(encoding="utf-8").splitlines() == expected_events
 
 
-def test_first_rollout_fails_closed_without_verified_compose_preseed() -> None:
+def test_first_rollout_fails_closed_without_digest_pinned_compose_preseed() -> None:
     murmur = MURMUR_DEPLOY_WORKFLOW.read_text()
     first_rollout = murmur[murmur.index('if [[ ! -e "$active_release" ]]') :]
     assert "$legacy_active_compose" in first_rollout
-    assert 'install -m 0600 "$live_env" "$legacy_generation/environment.env"' in first_rollout
+    assert "rollback-images.override.yml" in first_rollout
+    assert "IMAGE_OVERRIDE_SHA256=$image_override_digest" in first_rollout
+    assert "config --images" in murmur
+    assert '[[ "$configured_image" =~ @sha256:[0-9a-f]{64}$ ]]' in murmur
+    image_writer = murmur[
+        murmur.index("write_exact_image_override() {") : murmur.index(
+            "fsync_release_generation() {"
+        )
+    ]
+    for service in (
+        "redis",
+        "worker-1",
+        "worker-2",
+        "worker-3",
+        "exporter",
+        "drain",
+        "browser-1",
+        "murmur-shim-runtime-init",
+        "murmur-shim",
+        "alloy",
+    ):
+        assert f"  {service}:" in image_writer
     assert "install -m 0644 /home/deploy/.crawler-deploy-success.env" in first_rollout
-    assert "RELEASE_FORMAT_VERSION=0" in first_rollout
-    assert "os.replace(candidate, active)" in first_rollout
+    assert "RELEASE_FORMAT_VERSION=2" in first_rollout
+    assert "BOOTSTRAP_LEGACY=1" in first_rollout
+    assert "BOOTSTRAP_LEGACY=0" in first_rollout
+    assert "RELEASE_FORMAT_VERSION=0" not in first_rollout
+    assert 'activate_release_generation "$legacy_generation"' in first_rollout
+
+
+def test_murmur_bootstrap_digest_resolver_fails_without_exact_identity(
+    tmp_path: Path,
+) -> None:
+    workflow = yaml.safe_load(MURMUR_DEPLOY_WORKFLOW.read_text())
+    remote_script = next(
+        step["with"]["script"]
+        for step in workflow["jobs"]["deploy"]["steps"]
+        if step.get("name") == "Deploy via SSH"
+    )
+    resolver = remote_script[
+        remote_script.index("resolve_running_digest() {") : remote_script.index(
+            "fsync_release_generation() {"
+        )
+    ]
+    repository = "ghcr.io/colophon-group/jobseek-crawler"
+    exact_ref = repository + "@sha256:" + "a" * 64
+    binary_dir = tmp_path / "bin"
+    binary_dir.mkdir()
+    _write_executable(
+        binary_dir / "docker",
+        "#!/usr/bin/env python3\n"
+        "import os\n"
+        "import sys\n"
+        "args = sys.argv[1:]\n"
+        "if args[0] == 'inspect' and '{{.Config.Image}}' in args:\n"
+        "    print(os.environ['CONFIGURED_REF'])\n"
+        "elif args[0] == 'inspect' and '{{.Image}}' in args:\n"
+        "    print('sha256:' + 'f' * 64)\n"
+        "elif args[:2] == ['image', 'inspect']:\n"
+        "    print(os.environ.get('REPO_DIGESTS', ''))\n"
+        "else:\n"
+        "    raise SystemExit(90)\n",
+    )
+    harness = "\n".join(
+        (
+            "set -uo pipefail",
+            resolver,
+            f'resolve_running_digest deploy-worker-1-1 "{repository}"',
+        )
+    )
+    bash_binary = (
+        str(Path("/opt/homebrew/bin/bash")) if Path("/opt/homebrew/bin/bash").exists() else "bash"
+    )
+
+    direct = subprocess.run(
+        [bash_binary, "-c", harness],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "PATH": f"{binary_dir}:{os.environ['PATH']}",
+            "CONFIGURED_REF": exact_ref,
+            "REPO_DIGESTS": "",
+        },
+    )
+    fallback = subprocess.run(
+        [bash_binary, "-c", harness],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "PATH": f"{binary_dir}:{os.environ['PATH']}",
+            "CONFIGURED_REF": repository + ":v1.2.3",
+            "REPO_DIGESTS": exact_ref,
+        },
+    )
+    unresolved = subprocess.run(
+        [bash_binary, "-c", harness],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "PATH": f"{binary_dir}:{os.environ['PATH']}",
+            "CONFIGURED_REF": repository + ":latest",
+            "REPO_DIGESTS": "",
+        },
+    )
+
+    assert direct.returncode == 0
+    assert direct.stdout.strip() == exact_ref
+    assert fallback.returncode == 0
+    assert fallback.stdout.strip() == exact_ref
+    assert unresolved.returncode != 0
+    assert unresolved.stdout == ""
+
+
+def test_coupled_failure_after_murmur_promotion_restores_digest_generation(
+    tmp_path: Path,
+) -> None:
+    script = DEPLOY_SH.read_text()
+    restore = script[
+        script.index("restore_previous_deploy_specs() {") : script.index(
+            "reconciliation_wrapper_is_compatible() {"
+        )
+    ]
+    rollback_support = script[
+        script.index("configure_rollback_compose_contract() {") : script.index(
+            "rollback_deploy() {"
+        )
+    ]
+    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+
+    deploy_dir = tmp_path / "deploy"
+    deploy_dir.mkdir()
+    live_env = deploy_dir / ".env"
+    rollback_env = deploy_dir / ".env.rollback"
+    live_compose = deploy_dir / "docker-compose.yml"
+    rollback_archive = deploy_dir / ".deploy-spec.rollback.tar"
+    image_override = deploy_dir / "release-previous" / "rollback-images.override.yml"
+    image_override.parent.mkdir()
+    pool_override = deploy_dir / ".crawler-rollback-pool-budget.override.yml"
+    log = deploy_dir / "rollback.log"
+
+    crawler_ref = "ghcr.io/colophon-group/jobseek-crawler@sha256:" + "a" * 64
+    browser_ref = "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:" + "b" * 64
+    promoted_shim_ref = "ghcr.io/colophon-group/jobseek-murmur-shim@sha256:" + "c" * 64
+    redis_ref = "redis@sha256:" + "d" * 64
+    alloy_ref = "grafana/alloy@sha256:" + "e" * 64
+    rollback_env.write_text(
+        "\n".join(
+            (
+                "OWNER=colophon-group",
+                "CRAWLER_IMAGE_TAG=v1.2.3",
+                f"CRAWLER_IMAGE_REF={crawler_ref}",
+                f"BROWSER_IMAGE_REF={browser_ref}",
+                f"SHIM_IMAGE_REF={promoted_shim_ref}",
+                "MURMUR_TOKEN=rotated-token",
+                "LOCAL_DATABASE_URL=postgresql://rotated-dsn",
+                "",
+            )
+        ),
+        encoding="utf-8",
+    )
+    live_env.write_text("failed-release\n", encoding="utf-8")
+    live_compose.write_text("services:\n  worker-1:\n    image: failed:latest\n", encoding="utf-8")
+    legacy_compose = deploy_dir / "legacy-compose.yml"
+    legacy_compose.write_text(
+        "services:\n"
+        "  worker-1:\n"
+        "    image: ghcr.io/colophon-group/jobseek-crawler:latest\n"
+        "  murmur-shim:\n"
+        "    image: ghcr.io/colophon-group/jobseek-murmur-shim:latest\n",
+        encoding="utf-8",
+    )
+    with tarfile.open(rollback_archive, "w") as archive:
+        archive.add(legacy_compose, arcname="docker-compose.yml")
+    image_override.write_text(
+        "services:\n"
+        f"  redis:\n    image: {redis_ref}\n"
+        f"  worker-1:\n    image: {crawler_ref}\n"
+        f"  worker-2:\n    image: {crawler_ref}\n"
+        f"  worker-3:\n    image: {crawler_ref}\n"
+        f"  exporter:\n    image: {crawler_ref}\n"
+        f"  drain:\n    image: {crawler_ref}\n"
+        f"  browser-1:\n    image: {browser_ref}\n"
+        f"  murmur-shim-runtime-init:\n    image: {crawler_ref}\n"
+        f"  murmur-shim:\n    image: {promoted_shim_ref}\n"
+        f"  alloy:\n    image: {alloy_ref}\n",
+        encoding="utf-8",
+    )
+    pool_override.write_text("services: {}\n", encoding="utf-8")
+
+    binary_dir = deploy_dir / "bin"
+    binary_dir.mkdir()
+    _write_executable(
+        binary_dir / "docker",
+        "#!/usr/bin/env python3\n"
+        "from pathlib import Path\n"
+        "import re\n"
+        "import sys\n"
+        f"log = Path({str(log)!r})\n"
+        f"expected_compose = {str(live_compose)!r}\n"
+        f"expected_images = {str(image_override)!r}\n"
+        f"expected_pool = {str(pool_override)!r}\n"
+        f"expected_shim = {promoted_shim_ref!r}\n"
+        "args = sys.argv[1:]\n"
+        "if 'stop' in args:\n"
+        "    raise SystemExit(0)\n"
+        "assert 'up' in args and '--remove-orphans' in args, args\n"
+        "compose_files = [args[index + 1] for index, value in enumerate(args) if value == '-f']\n"
+        "assert compose_files == [\n"
+        "    expected_compose, expected_images, expected_pool\n"
+        "], compose_files\n"
+        "env_file = args[args.index('--env-file') + 1]\n"
+        "images = [\n"
+        "    line.strip().split('image: ', 1)[1]\n"
+        "    for line in Path(expected_images).read_text().splitlines()\n"
+        "    if line.strip().startswith('image: ')\n"
+        "]\n"
+        "assert len(images) == 10\n"
+        "assert all(re.search(r'@sha256:[0-9a-f]{64}$', image) for image in images)\n"
+        "assert all('latest' not in image for image in images)\n"
+        "assert expected_shim in images\n"
+        "assert 'MURMUR_TOKEN=rotated-token\\n' in Path(env_file).read_text()\n"
+        "log.write_text(f'digest-override={expected_images}\\n')\n",
+    )
+
+    harness = "\n".join(
+        (
+            "set -Eeuo pipefail",
+            f'DEPLOY_DIR="{deploy_dir}"',
+            f'ENV_FILE="{live_env}"',
+            f'ROLLBACK_ENV_FILE="{rollback_env}"',
+            f'ROLLBACK_SPEC_ARCHIVE="{rollback_archive}"',
+            f'ROLLBACK_POOL_OVERRIDE="{pool_override}"',
+            f'ROLLBACK_ACTIVE_RELEASE_TARGET="{image_override.parent}"',
+            f'ROLLBACK_ACTIVE_IMAGE_OVERRIDE="{image_override}"',
+            "ENV_FILE_WAS_PRESENT=1",
+            "ROLLBACK_ARMED=1",
+            "ROLLBACK_RUNNING=0",
+            'COMPOSE_PROJECT_NAME="deploy"',
+            'MAINTENANCE_MARKER_NAME=""',
+            "stop_maintenance_window() { :; }",
+            "activate_release_generation() { :; }",
+            "verify_active_deploy_snapshot() { :; }",
+            "publish_legacy_success_marker() { :; }",
+            restore,
+            rollback_support,
+            rollback,
+            "wait_for_rollback_core_services() { :; }",
+            "rollback_deploy 23",
+        )
+    )
+    result = subprocess.run(
+        ["bash", "-c", harness],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PATH": f"{binary_dir}:{os.environ['PATH']}"},
+    )
+
+    assert result.returncode == 23, result.stderr
+    restored_env = live_env.read_text(encoding="utf-8")
+    assert "MURMUR_TOKEN=rotated-token\n" in restored_env
+    assert f"SHIM_IMAGE_REF={promoted_shim_ref}\n" in restored_env
+    assert f"COMPOSE_FILE={live_compose}:{image_override}:{pool_override}\n" in restored_env
+    assert log.read_text(encoding="utf-8").strip() == f"digest-override={image_override}"
+
+
+def test_murmur_rotation_is_persisted_before_active_generation_commit() -> None:
+    workflow = yaml.safe_load(MURMUR_DEPLOY_WORKFLOW.read_text())
+    remote_script = next(
+        step["with"]["script"]
+        for step in workflow["jobs"]["deploy"]["steps"]
+        if step.get("name") == "Deploy via SSH"
+    )
+    transaction = remote_script[
+        remote_script.index('env_candidate="$(mktemp') : remote_script.index(
+            "rollback_armed=0",
+            remote_script.index('test "$(readlink "$active_release")"'),
+        )
+    ]
+    assert 'install -m 0644 "$previous_active_generation/docker-compose.yml"' in transaction
+    assert '"$previous_active_generation/environment.env"' in transaction
+    token_filter = transaction.index("MURMUR_TOKEN|LOCAL_DATABASE_URL|COMPOSE_FILE")
+    token_write = transaction.index("printf 'MURMUR_TOKEN=%s")
+    dsn_write = transaction.index("printf 'LOCAL_DATABASE_URL=%s")
+    env_publish = transaction.index('mv "$env_candidate" "$live_env"')
+    health = transaction.index("curl -sf http://localhost:8080/health")
+    generation_token = transaction.index("printf 'MURMUR_TOKEN=%s", health)
+    generation_dsn = transaction.index("printf 'LOCAL_DATABASE_URL=%s", health)
+    release_intent = transaction.index("release_activated=1")
+    release_publish = transaction.index('activate_release_generation "$murmur_generation"')
+    release_verify = transaction.index('verify_release_generation "$murmur_generation"')
+    assert (
+        token_filter
+        < token_write
+        < dsn_write
+        < env_publish
+        < health
+        < generation_token
+        < generation_dsn
+        < release_intent
+        < release_publish
+        < release_verify
+    )
 
 
 def test_deploy_requires_exact_reconciliation_wrapper_before_activation() -> None:
@@ -939,6 +1246,9 @@ def test_murmur_failure_restores_old_contract_before_clean_environment_restart(
             f'previous_compose_sha256="$(sha256sum "{previous_compose}" | awk \'{{print $1}}\')"',
             f'previous_env_sha256="$(sha256sum "{previous_env}" | awk \'{{print $1}}\')"',
             f'previous_shim_ref="{previous_ref}"',
+            'active_image_override=""',
+            "release_activated=0",
+            'murmur_success_temporary=""',
             'MURMUR_TOKEN="new-secret"',
             "export MURMUR_TOKEN",
             rollback,
@@ -1063,10 +1373,14 @@ def test_murmur_publication_login_and_pull_failures_restore_old_contract(
                 f'SHIM_IMAGE_REF="{new_ref}"',
                 'GHCR_PULL_TOKEN="pull-token"',
                 'MURMUR_TOKEN="new-secret"',
-                "export MURMUR_TOKEN",
+                'LOCAL_DATABASE_URL="postgresql://new-dsn"',
+                "export MURMUR_TOKEN LOCAL_DATABASE_URL",
                 "rollback_armed=0",
                 "compose_activated=0",
                 "env_activated=0",
+                "release_activated=0",
+                'active_image_override=""',
+                'murmur_success_temporary=""',
                 'compose_candidate=""',
                 'env_candidate=""',
                 transaction,
