@@ -62,7 +62,7 @@ filesystem or is mounted at `/mnt/typesense-data`.
 The promotion preflight is fail-closed:
 
 ```bash
-findmnt --mountpoint /mnt/jobseek-typesense-backup
+findmnt --mountpoint=/mnt/jobseek-typesense-backup
 stat -c 'owner=%U:%G mode=%a device=%d' /mnt/jobseek-typesense-backup
 stat -c 'root_device=%d' /
 stat -c 'live_device=%d' /mnt/typesense-data
@@ -160,7 +160,7 @@ root-staging backup. Restore a compatible reviewed backup contract manually
 before clearing the pending marker. Detach or remove the Volume only after the
 timer and service are disabled, no container mounts it, `umount` succeeds, and
 its UUID entry has been removed from `/etc/fstab`. On the next reboot, require
-`findmnt --mountpoint /mnt/jobseek-typesense-backup` plus the shared verifier
+`findmnt --mountpoint=/mnt/jobseek-typesense-backup` plus the shared verifier
 before enabling the timer; a missing mount intentionally leaves the service
 condition unsatisfied.
 

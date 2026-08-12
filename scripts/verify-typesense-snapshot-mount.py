@@ -71,6 +71,22 @@ def _run(argv: Sequence[str]) -> str:
     return result.stdout.strip()
 
 
+def _findmnt_exact(mount: Path, output: str) -> str:
+    result = _run(
+        (
+            "findmnt",
+            f"--mountpoint={mount}",
+            "--noheadings",
+            "--output",
+            output,
+        )
+    )
+    rows = result.splitlines()
+    if len(rows) != 1 or not rows[0].strip():
+        raise VerificationError("snapshot mount must resolve to exactly one mounted filesystem")
+    return rows[0].strip()
+
+
 def _allocated_bytes(path: Path) -> int:
     output = _run(("du", "--summarize", "--one-file-system", "--block-size=1", str(path))).split()
     try:
@@ -115,22 +131,11 @@ def verify(
 
     entry = _parse_fstab_entry(fstab_text, mount)
     configured_device = Path(_run(("blkid", "-U", entry.uuid))).resolve(strict=True)
-    mounted_source_text = _run(
-        ("findmnt", "--mountpoint", "--noheadings", "--output", "SOURCE", str(mount))
-    )
+    mounted_source_text = _findmnt_exact(mount, "SOURCE")
     mounted_source = Path(mounted_source_text.split("[", 1)[0]).resolve(strict=True)
     if _device_identity(configured_device) != _device_identity(mounted_source):
         raise VerificationError("mounted snapshot device differs from the persisted UUID source")
-    current_fields = _run(
-        (
-            "findmnt",
-            "--mountpoint",
-            "--noheadings",
-            "--output",
-            "FSTYPE,OPTIONS",
-            str(mount),
-        )
-    ).split(maxsplit=1)
+    current_fields = _findmnt_exact(mount, "FSTYPE,OPTIONS").split(maxsplit=1)
     if len(current_fields) != 2 or current_fields[0] != entry.filesystem:
         raise VerificationError("mounted snapshot filesystem type differs from fstab")
     current_options = frozenset(current_fields[1].split(","))
