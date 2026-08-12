@@ -264,6 +264,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "jobs.jobvite.com",
         "careers.pageuppeople.com",
         "icims",
+        "intervieweb",
         "workable",
         "smartrecruiters",
         "hirehive",

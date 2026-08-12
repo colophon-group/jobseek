@@ -13,6 +13,7 @@ from src.core.monitors.intervieweb import (
     can_handle,
     discover,
 )
+from src.redis_queue import _KNOWN_ATS_DOMAINS
 from src.workspace._compat import auto_scraper_type, detect_ats_from_url
 
 BOARD_URL = "https://acme.intervieweb.it/en/career"
@@ -206,5 +207,6 @@ class TestDetectionAndCompatibility:
 
     def test_workspace_compatibility(self):
         assert "intervieweb" in all_monitor_types()
+        assert "intervieweb" in _KNOWN_ATS_DOMAINS
         assert detect_ats_from_url(BOARD_URL) == "intervieweb"
         assert auto_scraper_type("intervieweb", {}) == ("json-ld", None)
