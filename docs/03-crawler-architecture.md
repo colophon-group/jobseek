@@ -364,6 +364,30 @@ CDC signal. Missing optional fields canonicalize as null. Payload drift has its
 own durable aggregate and Prometheus metric rather than being folded only into
 ID/state drift.
 
+Typesense export acquisition has one bounded whole-stream retry boundary shared
+by partition snapshots and the legacy unbucketed scan. Each request gets at
+most three attempts with 1-second then 2-second capped backoff. HTTPX
+request/read/content-decoding failures and JSON syntax failures retry because a
+successful HTTP response can still end with a truncated NDJSON record. Every
+attempt allocates fresh state, and unbucketed candidates remain buffered until
+the complete stream reaches EOF, so a failed attempt cannot leak rows into a
+comparison, deletion, repair, or durable cursor advance. HTTP status errors and
+decoded semantic invariant failures fail immediately: partition exports reject
+non-object documents, wrong buckets, invalid IDs/states, and duplicates, while
+unbucketed exports reject non-objects and invalid states. Invalid unbucketed IDs
+remain deterministic legacy cleanup candidates and never enter the retry loop.
+Transient HTTP statuses (408, 425, 429, 500, 502, 503, and 504) use the same
+bounded retry; other status failures are immediate. A persistently malformed
+JSON stream exhausts the same three-attempt bound. Retry telemetry contains
+only the consumer category, attempt counts, delay, and exception class.
+
+The unbucketed path buffers cleanup candidates, not the complete index, until
+EOF. It has hard fail-closed ceilings of 50,000 candidates and 16 MiB of UTF-8
+identifier data, comfortably below the one-shot container's 1 GiB memory cap.
+Exceeding either ceiling yields and deletes nothing; the operator must inspect
+the unexpectedly broad legacy drift rather than letting Python memory become
+the safety boundary.
+
 Migration `0018` restarts an in-progress Typesense cycle at partition zero so a
 cycle that began under the older ID/state-only contract cannot be recorded as a
 complete payload proof. It retains the last completed-cycle evidence and does

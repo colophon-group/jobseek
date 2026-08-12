@@ -16,7 +16,7 @@ import hashlib
 import json
 import time
 import uuid
-from collections.abc import AsyncIterator, Iterable, Mapping, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Literal, cast
 from urllib.parse import quote
@@ -47,6 +47,23 @@ REPAIR_BATCH_SIZE = 500
 TYPESENSE_EXPORT_BATCH_SIZE = 1_000
 TYPESENSE_DELETE_CONCURRENCY = 20
 RECONCILIATION_LOCK_ID = 0x5245434F4E434C  # positive bigint, ASCII-ish ``RECONCL``
+_TYPESENSE_EXPORT_MAX_ATTEMPTS = 3
+_TYPESENSE_EXPORT_BACKOFF_BASE_SECONDS = 1.0
+_TYPESENSE_EXPORT_BACKOFF_CAP_SECONDS = 2.0
+_TYPESENSE_EXPORT_RETRYABLE_STATUSES = frozenset((408, 425, 429, 500, 502, 503, 504))
+_TYPESENSE_UNBUCKETED_CANDIDATE_LIMIT = 50_000
+_TYPESENSE_UNBUCKETED_ID_BYTES_LIMIT = 16 * 1024 * 1024
+
+# A 200 response can still terminate while HTTPX is reading or decoding the
+# body, or leave a syntactically incomplete final NDJSON line. Those failures
+# retry the complete export with fresh attempt-local state. HTTP status errors
+# and decoded document invariant failures are deterministic for this request
+# and fail immediately instead of entering the retry loop.
+_TYPESENSE_EXPORT_RETRYABLE_ERRORS = (
+    httpx.RequestError,
+    json.JSONDecodeError,
+    UnicodeDecodeError,
+)
 
 _PARTITION_STATE_SQL = """
 SELECT id, is_active
@@ -411,83 +428,181 @@ class TypesenseReconciliationClient:
     async def aclose(self) -> None:
         await self._client.aclose()
 
+    async def _retry_complete_export[T](
+        self,
+        consumer: Literal["partition", "unbucketed"],
+        attempt_export: Callable[[], Awaitable[T]],
+    ) -> T:
+        """Retry only transient whole-export acquisition failures.
+
+        ``attempt_export`` must allocate every result container inside the
+        callable. Nothing from a failed stream may be returned to comparison,
+        repair, deletion, or durable progress code.
+        """
+
+        for attempt in range(1, _TYPESENSE_EXPORT_MAX_ATTEMPTS + 1):
+            try:
+                return await attempt_export()
+            except httpx.HTTPStatusError as exc:
+                error_class = type(exc).__name__
+                if exc.response.status_code not in _TYPESENSE_EXPORT_RETRYABLE_STATUSES:
+                    # Deterministic status failures must be translated before
+                    # the outer logger can expose the configured address, URL,
+                    # or response body carried by HTTPStatusError.
+                    log.error(
+                        "reconciliation.typesense_export_failed",
+                        consumer=consumer,
+                        attempts=attempt,
+                        error_class=error_class,
+                    )
+                    raise ReconciliationError(
+                        f"Typesense export acquisition failed ({error_class})"
+                    ) from None
+                await self._wait_for_export_retry(consumer, attempt, error_class)
+            except httpx.InvalidURL as exc:
+                error_class = type(exc).__name__
+                log.error(
+                    "reconciliation.typesense_export_failed",
+                    consumer=consumer,
+                    attempts=attempt,
+                    error_class=error_class,
+                )
+                raise ReconciliationError(
+                    f"Typesense export acquisition failed ({error_class})"
+                ) from None
+            except _TYPESENSE_EXPORT_RETRYABLE_ERRORS as exc:
+                error_class = type(exc).__name__
+                await self._wait_for_export_retry(consumer, attempt, error_class)
+
+        raise AssertionError("Typesense export retry loop exhausted without a result")
+
+    async def _wait_for_export_retry(
+        self,
+        consumer: Literal["partition", "unbucketed"],
+        attempt: int,
+        error_class: str,
+    ) -> None:
+        if attempt >= _TYPESENSE_EXPORT_MAX_ATTEMPTS:
+            log.error(
+                "reconciliation.typesense_export_retry_exhausted",
+                consumer=consumer,
+                attempts=attempt,
+                error_class=error_class,
+            )
+            raise ReconciliationError(
+                f"Typesense export acquisition failed after {attempt} attempts ({error_class})"
+            ) from None
+        retry_in = min(
+            _TYPESENSE_EXPORT_BACKOFF_BASE_SECONDS * (2 ** (attempt - 1)),
+            _TYPESENSE_EXPORT_BACKOFF_CAP_SECONDS,
+        )
+        log.warning(
+            "reconciliation.typesense_export_retry",
+            consumer=consumer,
+            attempt=attempt,
+            max_attempts=_TYPESENSE_EXPORT_MAX_ATTEMPTS,
+            retry_in_seconds=retry_in,
+            error_class=error_class,
+        )
+        await asyncio.sleep(retry_in)
+
     async def partition_snapshot(self, partition: int) -> StoreSnapshot:
         bucket = partition_bucket(partition)
-        states: dict[uuid.UUID, bool] = {}
-        payload_fingerprints: dict[uuid.UUID, str] = {}
-        async with self._client.stream(
-            "GET",
-            f"{self._base_url}/export",
-            params={
-                "filter_by": f"reconciliation_bucket:={bucket}",
-                "include_fields": ",".join(
-                    (
-                        "id",
-                        "is_active",
-                        "reconciliation_bucket",
-                        *TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS,
-                    )
-                ),
-                "batch_size": str(TYPESENSE_EXPORT_BATCH_SIZE),
-            },
-        ) as response:
-            response.raise_for_status()
-            async for line in response.aiter_lines():
-                if not line:
-                    continue
-                document = json.loads(line)
-                if not isinstance(document, dict):
-                    raise ReconciliationError("Typesense export returned a non-object document")
-                if document.get("reconciliation_bucket") != bucket:
-                    raise ReconciliationError("Typesense document is in the wrong partition")
-                try:
-                    posting_id = uuid.UUID(str(document.get("id", "")))
-                except ValueError as exc:
-                    raise ReconciliationError("Typesense document has an invalid ID") from exc
-                active = document.get("is_active")
-                if not isinstance(active, bool):
-                    raise ReconciliationError("Typesense document has invalid active state")
-                if posting_id in states:
-                    raise ReconciliationError("Typesense partition returned a duplicate document")
-                states[posting_id] = active
-                payload_fingerprints[posting_id] = _typesense_payload_fingerprint(document)
-        return StoreSnapshot(states, payload_fingerprints)
+
+        async def attempt_export() -> StoreSnapshot:
+            states: dict[uuid.UUID, bool] = {}
+            payload_fingerprints: dict[uuid.UUID, str] = {}
+            async with self._client.stream(
+                "GET",
+                f"{self._base_url}/export",
+                params={
+                    "filter_by": f"reconciliation_bucket:={bucket}",
+                    "include_fields": ",".join(
+                        (
+                            "id",
+                            "is_active",
+                            "reconciliation_bucket",
+                            *TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS,
+                        )
+                    ),
+                    "batch_size": str(TYPESENSE_EXPORT_BATCH_SIZE),
+                },
+            ) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if not line:
+                        continue
+                    document = json.loads(line)
+                    if not isinstance(document, dict):
+                        raise ReconciliationError("Typesense export returned a non-object document")
+                    if document.get("reconciliation_bucket") != bucket:
+                        raise ReconciliationError("Typesense document is in the wrong partition")
+                    try:
+                        posting_id = uuid.UUID(str(document.get("id", "")))
+                    except ValueError:
+                        raise ReconciliationError("Typesense document has an invalid ID") from None
+                    active = document.get("is_active")
+                    if not isinstance(active, bool):
+                        raise ReconciliationError("Typesense document has invalid active state")
+                    if posting_id in states:
+                        raise ReconciliationError(
+                            "Typesense partition returned a duplicate document"
+                        )
+                    states[posting_id] = active
+                    payload_fingerprints[posting_id] = _typesense_payload_fingerprint(document)
+            return StoreSnapshot(states, payload_fingerprints)
+
+        return await self._retry_complete_export("partition", attempt_export)
 
     async def unbucketed_batches(
         self,
         *,
         batch_size: int = REPAIR_BATCH_SIZE,
     ) -> AsyncIterator[list[tuple[str, bool]]]:
-        batch: list[tuple[str, bool]] = []
-        async with self._client.stream(
-            "GET",
-            f"{self._base_url}/export",
-            params={
-                "include_fields": "id,is_active,reconciliation_bucket",
-                "batch_size": str(TYPESENSE_EXPORT_BATCH_SIZE),
-            },
-        ) as response:
-            response.raise_for_status()
-            async for line in response.aiter_lines():
-                if not line:
-                    continue
-                document = json.loads(line)
-                raw_id = str(document.get("id", ""))
-                active = document.get("is_active")
-                if not isinstance(active, bool):
-                    raise ReconciliationError("Typesense document has invalid active state")
-                try:
-                    expected = reconciliation_bucket(raw_id)
-                except ValueError:
-                    expected = ""
-                if document.get("reconciliation_bucket") == expected and expected:
-                    continue
-                batch.append((raw_id, active))
-                if len(batch) >= batch_size:
-                    yield batch
-                    batch = []
-        if batch:
-            yield batch
+        async def attempt_export() -> list[tuple[str, bool]]:
+            # Only unbucketed candidates are retained, but none are exposed to
+            # the deletion consumer until the complete stream reaches EOF.
+            candidates: list[tuple[str, bool]] = []
+            candidate_id_bytes = 0
+            async with self._client.stream(
+                "GET",
+                f"{self._base_url}/export",
+                params={
+                    "include_fields": "id,is_active,reconciliation_bucket",
+                    "batch_size": str(TYPESENSE_EXPORT_BATCH_SIZE),
+                },
+            ) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if not line:
+                        continue
+                    document = json.loads(line)
+                    if not isinstance(document, dict):
+                        raise ReconciliationError("Typesense export returned a non-object document")
+                    raw_id = str(document.get("id", ""))
+                    active = document.get("is_active")
+                    if not isinstance(active, bool):
+                        raise ReconciliationError("Typesense document has invalid active state")
+                    try:
+                        expected = reconciliation_bucket(raw_id)
+                    except ValueError:
+                        expected = ""
+                    if document.get("reconciliation_bucket") == expected and expected:
+                        continue
+                    candidate_id_bytes += len(raw_id.encode("utf-8"))
+                    if (
+                        len(candidates) >= _TYPESENSE_UNBUCKETED_CANDIDATE_LIMIT
+                        or candidate_id_bytes > _TYPESENSE_UNBUCKETED_ID_BYTES_LIMIT
+                    ):
+                        raise ReconciliationError(
+                            "Typesense unbucketed export exceeded its candidate safety limit"
+                        )
+                    candidates.append((raw_id, active))
+            return candidates
+
+        candidates = await self._retry_complete_export("unbucketed", attempt_export)
+        for batch in _chunks(candidates, batch_size):
+            yield list(batch)
 
     async def delete_ids(self, posting_ids: Sequence[str]) -> None:
         semaphore = asyncio.Semaphore(TYPESENSE_DELETE_CONCURRENCY)
