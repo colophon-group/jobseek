@@ -71,6 +71,17 @@ describe("buildCacheKey", () => {
     );
   });
 
+  it("differentiates and canonicalizes unresolved explicit URL slugs", () => {
+    const first = buildCacheKey([], [], [], [], [], {
+      unresolvedExplicitSlugs: { loc: ["india", "europe"] },
+    });
+    const reordered = buildCacheKey([], [], [], [], [], {
+      unresolvedExplicitSlugs: { loc: ["europe", "india"] },
+    });
+    expect(first).toBe(reordered);
+    expect(first).not.toBe(buildCacheKey([], [], [], [], [], {}));
+  });
+
   // #3276 — keyword strings sort with `canonicalStringCompare` so accented
   // entries don't fragment the snapshot key across input permutations.
   it("collapses accented keyword permutations onto one key", () => {

@@ -75,6 +75,12 @@ function unavailableSearchResponse(): SearchResponse {
   return { companies: [], totalCompanies: 0, degraded: true };
 }
 
+function hasUnresolvedExplicitSlugs(parsed: ParsedSearchFilters): boolean {
+  return (["loc", "occ", "sen", "tech"] as const).some(
+    (kind) => (parsed.unresolvedExplicitSlugs?.[kind]?.length ?? 0) > 0,
+  );
+}
+
 function splitExplicitSlugs(raw: string | undefined): string[] {
   if (!raw) return [];
   const seen = new Set<string>();
@@ -157,7 +163,7 @@ function parseSearchFiltersSingleFlight(
   return promise;
 }
 
-export async function resolveExploreFilters(
+export async function fetchExploreFilterPageData(
   params: SearchFilterParams,
 ): Promise<{ parsed: ParsedSearchFilters; degraded: boolean }> {
   try {
@@ -166,7 +172,17 @@ export async function resolveExploreFilters(
       degraded: false,
     };
   } catch (err) {
-    if (!isTypesenseUnavailableError(err)) throw err;
+    if (!isTypesenseUnavailableError(err)) {
+      // SDK/Axios errors can retain credential-bearing request configuration.
+      // Next logs rejected Server Action values, so never rethrow the original
+      // object across that boundary—even for deterministic 4xx responses.
+      logExternalError(
+        "error",
+        { service: "typesense", operation: "explore_filter_resolution" },
+        err,
+      );
+      throw new Error("Explore filter resolution failed");
+    }
     logExternalError(
       "warn",
       { service: "typesense", operation: "explore_filter_resolution" },
@@ -209,7 +225,7 @@ export async function fetchExplorePageData(params: {
   const session = await getSession();
   const [filterResolution, prefs, anonJobLangs] = await Promise.all([
     typesenseConfigured
-      ? resolveExploreFilters({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng })
+      ? fetchExploreFilterPageData({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng })
       : Promise.resolve({
           parsed: parseOfflineSearchFilters({ q, loc, occ, sen, tech, wm, etype }),
           degraded: true,
@@ -251,7 +267,10 @@ export async function fetchExplorePageData(params: {
   // If taxonomy resolution failed, searching without the unresolved IDs would
   // silently broaden the request and present a false zero/success state. Keep
   // the user's URL/filter payload and return the explicit unavailable state.
-  const result = !typesenseConfigured || filterResolution.degraded
+  const result =
+    !typesenseConfigured ||
+    filterResolution.degraded ||
+    hasUnresolvedExplicitSlugs(parsed)
     ? unavailableSearchResponse()
     : parsed.keywords.length > 0
       ? await searchJobs({

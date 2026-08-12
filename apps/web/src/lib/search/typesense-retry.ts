@@ -119,14 +119,14 @@ export function isRetryableError(err: unknown): boolean {
     cause?: unknown;
     name?: unknown;
   };
+  // An explicit HTTP response is authoritative. In particular, a 4xx
+  // response must not become retryable merely because an SDK wrapper reuses
+  // a connection-flavoured message such as "service unavailable".
+  const status = nestedHttpStatus(err);
+  if (status !== undefined) return RETRYABLE_HTTP_STATUSES.has(status);
   if (typeof e.code === "string" && RETRYABLE_NODE_CODES.has(e.code)) {
     return true;
   }
-  if (typeof e.httpStatus === "number" && RETRYABLE_HTTP_STATUSES.has(e.httpStatus)) {
-    return true;
-  }
-  const status = nestedHttpStatus(err);
-  if (status !== undefined && RETRYABLE_HTTP_STATUSES.has(status)) return true;
   if (typeof e.message === "string") {
     const lower = e.message.toLowerCase();
     for (const frag of RETRYABLE_MESSAGE_FRAGMENTS) {
@@ -161,6 +161,10 @@ export function isTypesenseRateLimitError(err: unknown): boolean {
 export function isTypesenseUnavailableError(err: unknown): boolean {
   if (isRetryableError(err)) return true;
   if (!err || typeof err !== "object") return false;
+  // Preserve the same status precedence as `isRetryableError`: once an SDK
+  // object carries a concrete non-retryable response (notably 429), do not
+  // recurse into a misleading nested message and classify it as an outage.
+  if (nestedHttpStatus(err) !== undefined) return false;
   const e = err as {
     message?: unknown;
     cause?: unknown;

@@ -18,6 +18,9 @@ export interface SearchStateSnapshot {
   occupations: { id: number; slug: string; name: string }[];
   seniorities: { id: number; slug: string; name: string }[];
   technologies: { id: number; slug: string; name: string }[];
+  unresolvedExplicitSlugs?: Partial<
+    Record<"loc" | "occ" | "sen" | "tech", string[]>
+  >;
   employmentTypes?: string[];
   workMode: WorkMode[];
   salaryMinEur: number | undefined;
@@ -50,6 +53,9 @@ export function buildCacheKey(
     experienceMin?: number;
     experienceMax?: number;
     languages?: string[];
+    unresolvedExplicitSlugs?: Partial<
+      Record<"loc" | "occ" | "sen" | "tech", string[]>
+    >;
   },
 ): string {
   // String dimensions (keywords) sort with `canonicalStringCompare`
@@ -77,6 +83,22 @@ export function buildCacheKey(
       filters.experienceMax == null ? "" : String(filters.experienceMax),
       [...(filters.languages ?? [])].sort(canonicalStringCompare).join(","),
     );
+    // Preserve the legacy cache-key shape unless unresolved URL slugs are
+    // present; otherwise adding this optional dimension would invalidate every
+    // existing no-filter snapshot sentinel.
+    if (
+      (["loc", "occ", "sen", "tech"] as const).some(
+        (kind) => (filters.unresolvedExplicitSlugs?.[kind]?.length ?? 0) > 0,
+      )
+    ) {
+      parts.push(
+        ...(["loc", "occ", "sen", "tech"] as const).map((kind) =>
+          [...(filters.unresolvedExplicitSlugs?.[kind] ?? [])]
+            .sort(canonicalStringCompare)
+            .join(","),
+        ),
+      );
+    }
   }
   return parts.join("|");
 }

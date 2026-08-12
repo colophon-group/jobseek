@@ -412,13 +412,53 @@ describe("fetchExplorePageData — unavailable taxonomy resolution (#7218)", () 
     expect(mocks.parseSearchFilters).toHaveBeenCalledTimes(1);
   });
 
-  it("does not mask a non-availability parsing defect", async () => {
-    const defect = new Error("invalid taxonomy document shape");
+  it("does not broaden a search when a configured resolver returns unresolved explicit slugs", async () => {
+    mocks.parseSearchFilters.mockResolvedValueOnce({
+      keywords: [],
+      locations: [],
+      occupations: [],
+      seniorities: [],
+      technologies: [],
+      workMode: [],
+      employmentTypes: [],
+      unresolvedExplicitSlugs: { loc: ["india"] },
+    });
+
+    const data = await fetchExplorePageData({
+      searchParams: { loc: "india" },
+      locale: "en",
+    });
+
+    expect(data.result).toEqual({
+      companies: [],
+      totalCompanies: 0,
+      degraded: true,
+    });
+    expect(mocks.searchJobs).not.toHaveBeenCalled();
+    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
+  });
+
+  it("fails loud with a sanitized error for a non-availability parsing defect", async () => {
+    const defect = Object.assign(new Error("invalid taxonomy document shape SECRET_CANARY"), {
+      httpStatus: 429,
+      config: { headers: { "X-TYPESENSE-API-KEY": "SECRET_CANARY" } },
+    });
     mocks.parseSearchFilters.mockRejectedValueOnce(defect);
 
-    await expect(
-      fetchExplorePageData({ searchParams: { loc: "india" }, locale: "en" }),
-    ).rejects.toBe(defect);
-    expect(mocks.logExternalError).not.toHaveBeenCalled();
+    const rejection = fetchExplorePageData({
+      searchParams: { loc: "india" },
+      locale: "en",
+    });
+    await expect(rejection).rejects.toThrow("Explore filter resolution failed");
+    await rejection.catch((error) => {
+      expect(error).not.toBe(defect);
+      expect(error).not.toHaveProperty("config");
+      expect(JSON.stringify(error)).not.toContain("SECRET_CANARY");
+    });
+    expect(mocks.logExternalError).toHaveBeenCalledWith(
+      "error",
+      { service: "typesense", operation: "explore_filter_resolution" },
+      defect,
+    );
   });
 });

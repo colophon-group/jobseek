@@ -80,6 +80,18 @@ describe("isRetryableError", () => {
     expect(isRetryableError(_httpStatus(429, "Too Many Requests"))).toBe(false);
   });
 
+  it("lets an explicit 4xx status override a retry-like wrapper message", () => {
+    expect(
+      isRetryableError(_httpStatus(429, "Service Unavailable after request retry")),
+    ).toBe(false);
+    expect(
+      isRetryableError({
+        message: "Service Unavailable",
+        response: { status: 429 },
+      }),
+    ).toBe(false);
+  });
+
   it("does NOT match arbitrary errors", () => {
     expect(isRetryableError(new Error("collection 'job_posting' has 0 fields"))).toBe(false);
     expect(isRetryableError(new Error("invalid filter expression"))).toBe(false);
@@ -128,6 +140,13 @@ describe("isTypesenseUnavailableError", () => {
   it("does NOT classify HTTP 429 as unavailable", () => {
     expect(isTypesenseUnavailableError(_httpStatus(429, "Too Many Requests"))).toBe(false);
     expect(isTypesenseUnavailableError(new Error("Request failed with HTTP code 429"))).toBe(false);
+    expect(
+      isTypesenseUnavailableError({
+        message: "Service Unavailable",
+        response: { status: 429 },
+        cause: new Error("request timed out"),
+      }),
+    ).toBe(false);
   });
 });
 

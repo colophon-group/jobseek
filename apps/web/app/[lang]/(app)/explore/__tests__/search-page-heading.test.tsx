@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import "@/test-utils/lingui-mock";
 
@@ -39,7 +39,11 @@ vi.mock("@/components/providers/SearchStateProvider", () => ({
 // Heavy children: stub to deterministic markers so the test focuses
 // on the h1 we just added.
 vi.mock("@/components/search/search-toolbar", () => ({
-  SearchToolbar: () => <div data-testid="search-toolbar-stub" />,
+  SearchToolbar: ({ onToggleWorkMode }: { onToggleWorkMode: (mode: "remote") => void }) => (
+    <button data-testid="search-toolbar-stub" onClick={() => onToggleWorkMode("remote")}>
+      toggle remote
+    </button>
+  ),
 }));
 
 vi.mock("@/components/search/search-results", () => ({
@@ -77,7 +81,7 @@ vi.mock("@/lib/search/use-clear-typesense-on-auth-change", () => ({
 }));
 
 vi.mock("@/lib/actions/explore-page-data", () => ({
-  resolveExploreFilters: vi.fn().mockResolvedValue({
+  fetchExploreFilterPageData: vi.fn().mockResolvedValue({
     degraded: false,
     parsed: {
       keywords: [],
@@ -92,16 +96,43 @@ vi.mock("@/lib/actions/explore-page-data", () => ({
 }));
 
 vi.mock("@/lib/search/query-params", () => ({
-  buildFilteredPath: () => "/en/explore",
+  buildFilteredPath: (
+    basePath: string,
+    _keywords: string[],
+    _locations: unknown[],
+    extra?: Record<string, string>,
+  ) => {
+    const query = new URLSearchParams(extra).toString();
+    return `${basePath}${query ? `?${query}` : ""}`;
+  },
 }));
 
 import { SearchPage, resolveInitialRepositoryFallbackCompanies } from "../search-page";
+import { fetchExploreFilterPageData } from "@/lib/actions/explore-page-data";
+import { runListTopCompanies, runSearchJobs } from "@/lib/search/search-runner";
+
+const fetchExploreFilterPageDataMock = vi.mocked(fetchExploreFilterPageData);
+const runListTopCompaniesMock = vi.mocked(runListTopCompanies);
+const runSearchJobsMock = vi.mocked(runSearchJobs);
 
 beforeEach(() => {
   // jsdom/happy-dom may not set up window.history.replaceState identically
   // across versions; stub to a no-op so the component's URL syncs do not
   // throw in the test environment.
   window.history.replaceState = vi.fn() as typeof window.history.replaceState;
+  fetchExploreFilterPageDataMock.mockReset();
+  fetchExploreFilterPageDataMock.mockResolvedValue({
+    degraded: false,
+    parsed: {
+      keywords: [],
+      locations: [],
+      occupations: [],
+      seniorities: [],
+      technologies: [],
+      workMode: [],
+      employmentTypes: [],
+    },
+  });
 });
 
 afterEach(() => {
@@ -278,5 +309,118 @@ describe("SearchPage — impossible empty search state (#3403)", () => {
 
     expect(screen.getByText(/oops, something went wrong/i)).toBeTruthy();
     expect(screen.queryByTestId("zero-results-stub")).toBeNull();
+  });
+});
+
+describe("SearchPage — safe external filter navigation (#7218)", () => {
+  it("ignores an older filter-resolution result that settles after a newer navigation", async () => {
+    let resolveFirst!: (value: Awaited<ReturnType<typeof fetchExploreFilterPageData>>) => void;
+    let resolveSecond!: (value: Awaited<ReturnType<typeof fetchExploreFilterPageData>>) => void;
+    fetchExploreFilterPageDataMock
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
+
+    render(
+      <SearchPage
+        initialCompanies={[]}
+        initialTotalCompanies={0}
+        initialKeywords={[]}
+        initialLocations={[]}
+        initialOccupations={[]}
+        initialSeniorities={[]}
+        initialTechnologies={[]}
+        initialEmploymentTypes={[]}
+        initialWorkMode={[]}
+        locale="en"
+        displayCurrency="EUR"
+        jobLanguages={[]}
+        languages={[]}
+      />,
+    );
+
+    await act(async () => { await Promise.resolve(); });
+    await act(async () => {
+      window.history.pushState(null, "", "/en/explore?loc=india");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await waitFor(() => expect(fetchExploreFilterPageDataMock).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      window.history.pushState(null, "", "/en/explore?q=python");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await waitFor(() => expect(fetchExploreFilterPageDataMock).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      resolveSecond({
+        degraded: false,
+        parsed: {
+          keywords: ["python"],
+          locations: [],
+          occupations: [],
+          seniorities: [],
+          technologies: [],
+          workMode: [],
+          employmentTypes: [],
+        },
+      });
+    });
+    await waitFor(() => expect(runSearchJobsMock).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      resolveFirst({
+        degraded: true,
+        parsed: {
+          keywords: [],
+          locations: [],
+          occupations: [],
+          seniorities: [],
+          technologies: [],
+          workMode: [],
+          employmentTypes: [],
+          unresolvedExplicitSlugs: { loc: ["india"] },
+        },
+      });
+    });
+
+    expect(runSearchJobsMock).toHaveBeenCalledTimes(1);
+    expect(runSearchJobsMock.mock.calls[0]?.[0]).toMatchObject({
+      keywords: ["python"],
+    });
+    expect(runListTopCompaniesMock).not.toHaveBeenCalled();
+    expect(screen.queryByText(/oops, something went wrong/i)).toBeNull();
+  });
+
+  it("preserves unresolved explicit slugs and refuses a broader search on toolbar changes", async () => {
+    render(
+      <SearchPage
+        initialCompanies={[]}
+        initialTotalCompanies={0}
+        initialDegraded
+        initialKeywords={[]}
+        initialLocations={[]}
+        initialOccupations={[]}
+        initialSeniorities={[]}
+        initialTechnologies={[]}
+        initialUnresolvedExplicitSlugs={{ loc: ["india"] }}
+        initialEmploymentTypes={[]}
+        initialWorkMode={[]}
+        locale="en"
+        displayCurrency="EUR"
+        jobLanguages={[]}
+        languages={[]}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("search-toolbar-stub"));
+
+    expect(window.history.replaceState).toHaveBeenCalledWith(
+      null,
+      "",
+      expect.stringMatching(/[?&]loc=india(?:&|$)/),
+    );
+    expect(runSearchJobsMock).not.toHaveBeenCalled();
+    expect(runListTopCompaniesMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/oops, something went wrong/i)).toBeTruthy();
   });
 });

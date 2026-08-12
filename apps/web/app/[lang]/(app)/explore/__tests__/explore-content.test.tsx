@@ -29,6 +29,7 @@ vi.mock("../search-page", () => ({
     initialTotalCompanies: number;
     initialRepositoryFallbackCompanies?: ExploreData["repositoryFallbackCompanies"];
     initialLanguageOverride?: string[] | null;
+    initialUnresolvedExplicitSlugs?: ExploreData["parsed"]["unresolvedExplicitSlugs"];
   }) => {
     mockSearchPageProps(props);
     return <div data-testid="search-page" data-total={props.initialTotalCompanies} />;
@@ -142,6 +143,26 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
         initialRepositoryFallbackCompanies: repositoryFallbackCompanies,
         initialLanguageOverride: [],
       }),
+    );
+  });
+
+  it("forwards unresolved explicit slugs into the interactive search state", async () => {
+    const unresolvedExplicitSlugs = { loc: ["india"] };
+    render(
+      <ExploreContent
+        locale="en"
+        initialData={makeInitialData({
+          parsed: {
+            ...makeInitialData().parsed,
+            unresolvedExplicitSlugs,
+          },
+        })}
+      />,
+    );
+
+    await flushQueuedEffects();
+    expect(mockSearchPageProps).toHaveBeenCalledWith(
+      expect.objectContaining({ initialUnresolvedExplicitSlugs: unresolvedExplicitSlugs }),
     );
   });
 
