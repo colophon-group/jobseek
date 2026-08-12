@@ -87,73 +87,90 @@ const CONFIG_UNAVAILABLE_MESSAGE_FRAGMENTS = [
   "typesense_search_key is not set",
 ];
 
-function nestedHttpStatus(err: unknown, seen = new Set<unknown>()): number | undefined {
-  if ((!err || typeof err !== "object") && typeof err !== "function") return undefined;
-  if (seen.has(err)) return undefined;
-  seen.add(err);
-
-  const e = err as {
-    httpStatus?: unknown;
-    status?: unknown;
-    statusCode?: unknown;
-    cause?: unknown;
-    response?: unknown;
-    originalError?: unknown;
-  };
-  for (const value of [e.httpStatus, e.status, e.statusCode]) {
-    if (typeof value === "number" && Number.isInteger(value)) return value;
+function safeGet(value: unknown, key: PropertyKey): unknown {
+  if ((typeof value !== "object" || value === null) && typeof value !== "function") {
+    return undefined;
   }
-  for (const nested of [e.cause, e.response, e.originalError]) {
-    const status = nestedHttpStatus(nested, seen);
-    if (status !== undefined) return status;
+  try {
+    return Reflect.get(value, key);
+  } catch {
+    return undefined;
+  }
+}
+
+function errorNodes(error: unknown): unknown[] {
+  const nodes: unknown[] = [];
+  const queue: unknown[] = [error];
+  const seen = new Set<unknown>();
+
+  while (queue.length > 0 && nodes.length < 8) {
+    const node = queue.shift();
+    if ((typeof node !== "object" || node === null) && typeof node !== "function") continue;
+    if (seen.has(node)) continue;
+    seen.add(node);
+    nodes.push(node);
+    for (const key of ["cause", "response", "originalError"] as const) {
+      const nested = safeGet(node, key);
+      if (nested !== undefined && nested !== node) queue.push(nested);
+    }
+  }
+  return nodes;
+}
+
+function nestedHttpStatus(err: unknown): number | undefined {
+  for (const node of errorNodes(err)) {
+    for (const key of ["httpStatus", "status", "statusCode"] as const) {
+      const value = safeGet(node, key);
+      // Axios uses status=0 when no HTTP response was received. Only a real
+      // HTTP status is authoritative over its ECONNABORTED/network code.
+      if (
+        typeof value === "number" &&
+        Number.isInteger(value) &&
+        value >= 100 &&
+        value <= 599
+      ) {
+        return value;
+      }
+    }
   }
   return undefined;
 }
 
 export function isRetryableError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
-  const e = err as {
-    code?: unknown;
-    message?: unknown;
-    httpStatus?: unknown;
-    cause?: unknown;
-    name?: unknown;
-  };
   // An explicit HTTP response is authoritative. In particular, a 4xx
   // response must not become retryable merely because an SDK wrapper reuses
   // a connection-flavoured message such as "service unavailable".
   const status = nestedHttpStatus(err);
   if (status !== undefined) return RETRYABLE_HTTP_STATUSES.has(status);
-  if (typeof e.code === "string" && RETRYABLE_NODE_CODES.has(e.code)) {
-    return true;
-  }
-  if (typeof e.message === "string") {
-    const lower = e.message.toLowerCase();
-    for (const frag of RETRYABLE_MESSAGE_FRAGMENTS) {
-      if (lower.includes(frag)) return true;
+  for (const node of errorNodes(err)) {
+    // Boundary-sanitized errors discard the original SDK message/config.
+    // Retain only this boolean so application-level bounded retries keep
+    // working without regaining credential-bearing request state.
+    if (safeGet(node, "typesenseRetryable") === true) return true;
+    const code = safeGet(node, "code");
+    if (typeof code === "string" && RETRYABLE_NODE_CODES.has(code)) return true;
+    const message = safeGet(node, "message");
+    if (typeof message === "string") {
+      const lower = message.toLowerCase();
+      for (const frag of RETRYABLE_MESSAGE_FRAGMENTS) {
+        if (lower.includes(frag)) return true;
+      }
     }
-  }
-  // The Typesense SDK / axios wraps the underlying network error in a
-  // `cause` chain — recurse once to catch the inner ECONNRESET etc.
-  if (e.cause !== undefined && e.cause !== err) {
-    return isRetryableError(e.cause);
   }
   return false;
 }
 
 export function isTypesenseRateLimitError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
-  const e = err as {
-    message?: unknown;
-    httpStatus?: unknown;
-    cause?: unknown;
-  };
-  if (e.httpStatus === 429) return true;
-  if (typeof e.message === "string" && e.message.toLowerCase().includes("http code 429")) {
-    return true;
-  }
-  if (e.cause !== undefined && e.cause !== err) {
-    return isTypesenseRateLimitError(e.cause);
+  const status = nestedHttpStatus(err);
+  if (status !== undefined) return status === 429;
+  for (const node of errorNodes(err)) {
+    if (safeGet(node, "typesenseRateLimited") === true) return true;
+    const message = safeGet(node, "message");
+    if (typeof message === "string" && message.toLowerCase().includes("http code 429")) {
+      return true;
+    }
   }
   return false;
 }
@@ -165,20 +182,67 @@ export function isTypesenseUnavailableError(err: unknown): boolean {
   // object carries a concrete non-retryable response (notably 429), do not
   // recurse into a misleading nested message and classify it as an outage.
   if (nestedHttpStatus(err) !== undefined) return false;
-  const e = err as {
-    message?: unknown;
-    cause?: unknown;
-  };
-  if (typeof e.message === "string") {
-    const lower = e.message.toLowerCase();
-    if (CONFIG_UNAVAILABLE_MESSAGE_FRAGMENTS.some((frag) => lower.includes(frag))) {
-      return true;
+  for (const node of errorNodes(err)) {
+    if (safeGet(node, "typesenseUnavailable") === true) return true;
+  }
+  for (const node of errorNodes(err)) {
+    const message = safeGet(node, "message");
+    if (typeof message === "string") {
+      const lower = message.toLowerCase();
+      if (CONFIG_UNAVAILABLE_MESSAGE_FRAGMENTS.some((frag) => lower.includes(frag))) {
+        return true;
+      }
     }
   }
-  if (e.cause !== undefined && e.cause !== err) {
-    return isTypesenseUnavailableError(e.cause);
-  }
   return false;
+}
+
+/**
+ * Strip Axios/SDK request state before an error crosses a Next cache or
+ * Server Action boundary. Those objects can retain API-key headers, response
+ * bodies and credential-bearing configuration that framework error
+ * serialization may otherwise emit independently of application logging.
+ */
+export function sanitizeTypesenseBoundaryError(err: unknown): Error {
+  const sanitized = new Error("Typesense request failed") as Error & {
+    code?: string;
+    httpStatus?: number;
+    typesenseRateLimited?: true;
+    typesenseRetryable?: true;
+    typesenseUnavailable?: true;
+  };
+  const rateLimited = isTypesenseRateLimitError(err);
+  const retryable = isRetryableError(err);
+  const unavailable = isTypesenseUnavailableError(err);
+  const status = nestedHttpStatus(err);
+  if (status !== undefined) sanitized.httpStatus = status;
+  for (const node of errorNodes(err)) {
+    const code = safeGet(node, "code");
+    if (typeof code === "string" && RETRYABLE_NODE_CODES.has(code)) {
+      sanitized.code = code;
+      break;
+    }
+  }
+  if (rateLimited) sanitized.typesenseRateLimited = true;
+  if (retryable) sanitized.typesenseRetryable = true;
+  if (unavailable) sanitized.typesenseUnavailable = true;
+  return sanitized;
+}
+
+/**
+ * Execute one SDK operation and guarantee that only the deliberately lossy
+ * error envelope can escape. The client proxy uses this central boundary, so
+ * direct SDK calls, retries, Next caches and Server Actions all receive the
+ * same credential-free exception object.
+ */
+export async function withSanitizedTypesenseBoundary<T>(
+  operation: () => PromiseLike<T> | T,
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (err) {
+    throw sanitizeTypesenseBoundaryError(err);
+  }
 }
 
 export interface TypesenseRetryOptions {

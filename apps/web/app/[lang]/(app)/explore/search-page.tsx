@@ -24,6 +24,7 @@ import { fetchExploreFilterPageData } from "@/lib/actions/explore-page-data";
 import type { ParsedSearchFilters } from "@/lib/actions/search-input";
 import { buildFilteredPath } from "@/lib/search/query-params";
 import { parseExploreSearchLanguages } from "@/lib/search/language-param";
+import { parseOfflineSearchFilters } from "@/lib/search/offline-filters";
 import { resolveJobLanguages } from "@/lib/job-languages";
 import { useLatest, useLatestState } from "@/lib/use-latest";
 import { useBrowserSearchParams } from "@/lib/use-browser-search-params";
@@ -372,15 +373,11 @@ export function SearchPage({
     const parseExpParts = exp ? exp.split("-") : [];
     const newExpMin = parseExpParts[0] ? parseInt(parseExpParts[0], 10) : undefined;
     const newExpMax = parseExpParts[1] ? parseInt(parseExpParts[1], 10) : undefined;
-    if (salcur) { setSalaryCurrency(salcur); }
-    if (newSalMin !== undefined || newSalMax !== undefined) {
-      setSalaryMin(newSalMin);
-      setSalaryMax(newSalMax);
-    }
-    if (newExpMin !== undefined || newExpMax !== undefined) {
-      setExperienceMin(newExpMin);
-      setExperienceMax(newExpMax);
-    }
+    setSalaryCurrency(salcur ?? displayCurrency);
+    setSalaryMin(newSalMin);
+    setSalaryMax(newSalMax);
+    setExperienceMin(newExpMin);
+    setExperienceMax(newExpMax);
 
     setIsSearching(true);
     fetchExploreFilterPageData({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng })
@@ -400,7 +397,10 @@ export function SearchPage({
           // clearly distinguishes upstream unavailability from zero matches.
           setCompanies([]);
           setTotalCompanies(0);
+          serverOffsetRef.current = 0;
+          setIsTruncated(false);
           setIsDegraded(true);
+          setRepositoryFallbackCompanies([]);
           setIsSearching(false);
           return;
         }
@@ -408,8 +408,24 @@ export function SearchPage({
       })
       .catch(() => {
         if (externalNavigationCounterRef.current !== navigationId) return;
-        // Unexpected action failures retain the existing result set and end
-        // the pending state. Availability failures are handled above.
+        // The browser URL already moved. Keeping the previous companies here
+        // would put stale/broader results beneath the new filter state. Parse
+        // everything that is safe offline and show explicit unavailability.
+        const parsed = parseOfflineSearchFilters({ q, loc, occ, sen, tech, wm, etype });
+        setKeywords(parsed.keywords);
+        setLocations([]);
+        setOccupations([]);
+        setSeniorities([]);
+        setTechnologies([]);
+        setUnresolvedExplicitSlugs(parsed.unresolvedExplicitSlugs ?? {});
+        setEmploymentTypes(parsed.employmentTypes);
+        setWorkMode(parsed.workMode);
+        setCompanies([]);
+        setTotalCompanies(0);
+        serverOffsetRef.current = 0;
+        setIsTruncated(false);
+        setIsDegraded(true);
+        setRepositoryFallbackCompanies([]);
         setIsSearching(false);
       });
   }, [searchParams, locale, userLat, userLng]);
@@ -714,6 +730,23 @@ export function SearchPage({
     if (changed) setUnresolvedExplicitSlugs(next);
   }
 
+  const handleRemoveUnresolvedSlug = useCallback(
+    (kind: keyof UnresolvedExplicitSlugs, slug: string) => {
+      const current = unresolvedExplicitSlugsRef.current;
+      const remaining = (current[kind] ?? []).filter(
+        (value) => value.toLowerCase() !== slug.toLowerCase(),
+      );
+      const next: UnresolvedExplicitSlugs = { ...current };
+      if (remaining.length > 0) next[kind] = remaining;
+      else delete next[kind];
+      setUnresolvedExplicitSlugs(next);
+
+      updateUrl();
+      runSearch();
+    },
+    [],
+  );
+
   // Stabilized for #3198 — passed into `SearchResults` -> `CompanyCard`
   // which is wrapped in `React.memo` with a custom comparator that
   // checks `onShowPosting` by reference. Without `useCallback`, every
@@ -807,7 +840,15 @@ export function SearchPage({
         setIsDegraded(result.degraded ?? false);
         if (!result.degraded) setRepositoryFallbackCompanies([]);
       } catch {
-        // Keep existing results visible on error
+        if (searchCounterRef.current !== id) return;
+        // The URL/filter controls already changed. Never retain a previous,
+        // broader result set under the new state when its search action fails.
+        setCompanies([]);
+        setTotalCompanies(0);
+        serverOffsetRef.current = 0;
+        setIsTruncated(false);
+        setIsDegraded(true);
+        setRepositoryFallbackCompanies([]);
       } finally {
         if (searchCounterRef.current === id) setIsSearching(false);
       }
@@ -1113,6 +1154,7 @@ export function SearchPage({
         occupations={occupations}
         seniorities={seniorities}
         technologies={technologies}
+        unresolvedExplicitSlugs={unresolvedExplicitSlugs}
         salaryCurrency={salaryCurrency}
         salaryMin={salaryMin}
         salaryMax={salaryMax}
@@ -1134,6 +1176,7 @@ export function SearchPage({
         onRemoveSeniority={handleRemoveSeniority}
         onAddTechnology={handleAddTechnology}
         onRemoveTechnology={handleRemoveTechnology}
+        onRemoveUnresolvedSlug={handleRemoveUnresolvedSlug}
         employmentTypes={employmentTypes}
         onToggleEmploymentType={(type) => {
           const exists = employmentTypesRef.current.includes(type);

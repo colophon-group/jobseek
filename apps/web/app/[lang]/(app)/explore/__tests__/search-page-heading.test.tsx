@@ -39,10 +39,19 @@ vi.mock("@/components/providers/SearchStateProvider", () => ({
 // Heavy children: stub to deterministic markers so the test focuses
 // on the h1 we just added.
 vi.mock("@/components/search/search-toolbar", () => ({
-  SearchToolbar: ({ onToggleWorkMode }: { onToggleWorkMode: (mode: "remote") => void }) => (
-    <button data-testid="search-toolbar-stub" onClick={() => onToggleWorkMode("remote")}>
-      toggle remote
-    </button>
+  SearchToolbar: ({
+    onToggleWorkMode,
+    unresolvedExplicitSlugs,
+  }: {
+    onToggleWorkMode: (mode: "remote") => void;
+    unresolvedExplicitSlugs?: Record<string, string[]>;
+  }) => (
+    <div
+      data-testid="search-toolbar-stub"
+      data-unresolved={JSON.stringify(unresolvedExplicitSlugs ?? {})}
+    >
+      <button onClick={() => onToggleWorkMode("remote")}>toggle remote</button>
+    </div>
   ),
 }));
 
@@ -95,7 +104,8 @@ vi.mock("@/lib/actions/explore-page-data", () => ({
   }),
 }));
 
-vi.mock("@/lib/search/query-params", () => ({
+vi.mock("@/lib/search/query-params", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/search/query-params")>()),
   buildFilteredPath: (
     basePath: string,
     _keywords: string[],
@@ -412,7 +422,7 @@ describe("SearchPage — safe external filter navigation (#7218)", () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId("search-toolbar-stub"));
+    fireEvent.click(screen.getByRole("button", { name: "toggle remote" }));
 
     expect(window.history.replaceState).toHaveBeenCalledWith(
       null,
@@ -422,5 +432,54 @@ describe("SearchPage — safe external filter navigation (#7218)", () => {
     expect(runSearchJobsMock).not.toHaveBeenCalled();
     expect(runListTopCompaniesMock).not.toHaveBeenCalled();
     expect(screen.getByText(/oops, something went wrong/i)).toBeTruthy();
+  });
+
+  it("clears stale companies and preserves URL filters when navigation resolution rejects", async () => {
+    fetchExploreFilterPageDataMock.mockRejectedValueOnce(
+      new Error("Explore filter resolution failed"),
+    );
+    const staleCompany = {
+      company: { id: "stale", name: "Stale", slug: "stale", icon: null },
+      activeMatches: 1,
+      yearMatches: 1,
+      postings: [],
+    };
+
+    render(
+      <SearchPage
+        initialCompanies={[staleCompany]}
+        initialTotalCompanies={1}
+        initialKeywords={[]}
+        initialLocations={[]}
+        initialOccupations={[]}
+        initialSeniorities={[]}
+        initialTechnologies={[]}
+        initialEmploymentTypes={[]}
+        initialWorkMode={[]}
+        locale="en"
+        displayCurrency="EUR"
+        jobLanguages={[]}
+        languages={[]}
+      />,
+    );
+
+    await act(async () => { await Promise.resolve(); });
+    await act(async () => {
+      window.history.pushState(
+        null,
+        "",
+        "/en/explore?q=python&loc=india&wm=remote&etype=full_time",
+      );
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/oops, something went wrong/i)).toBeTruthy();
+    });
+    expect(screen.queryByTestId("search-results-stub")).toBeNull();
+    expect(screen.getByTestId("search-toolbar-stub").getAttribute("data-unresolved"))
+      .toBe(JSON.stringify({ loc: ["india"] }));
+    expect(runSearchJobsMock).not.toHaveBeenCalled();
+    expect(runListTopCompaniesMock).not.toHaveBeenCalled();
   });
 });
