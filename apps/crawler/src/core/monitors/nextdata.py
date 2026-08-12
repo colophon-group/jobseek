@@ -442,8 +442,7 @@ async def discover(
 
     if source == "browser":
         if not isinstance(browser_expression, str) or not browser_expression.strip():
-            log.error("nextdata.missing_browser_expression", board_url=board_url)
-            return list() if fields_map else set()
+            raise ValueError("nextdata browser source requires a non-empty browser_expression")
         data = await _evaluate_browser_data(
             board_url,
             browser_expression,
@@ -464,22 +463,25 @@ async def discover(
             return list() if fields_map else set()
         data = extract_embedded_json(html, source)
     if not data:
+        if source == "browser":
+            raise RuntimeError("nextdata browser expression returned no data")
         log.warning("nextdata.no_data", board_url=board_url, source=source)
         return list() if fields_map else set()
 
     # Walk path to jobs array
     items = resolve_path(data, path)
     if not isinstance(items, list):
+        if source == "browser":
+            raise RuntimeError(f"nextdata browser path did not resolve to a list: {path}")
         log.warning("nextdata.path_not_list", board_url=board_url, path=path)
         return list() if fields_map else set()
 
     # Pagination: fetch remaining pages and merge
     if pagination_cfg and source == "browser":
-        log.warning(
-            "nextdata.browser_source_pagination_unsupported",
-            board_url=board_url,
+        raise ValueError(
+            "nextdata browser source does not support pagination; "
+            "browser_expression must return the complete inventory"
         )
-        pagination_cfg = None
     if pagination_cfg:
         items = await _fetch_remaining_pages(
             items,
@@ -538,12 +540,18 @@ async def discover_stream(
     if not render and actions:
         render = True
 
+    if pagination_cfg and source == "browser":
+        raise ValueError(
+            "nextdata browser source does not support pagination; "
+            "browser_expression must return the complete inventory"
+        )
+
     browser_keys = BROWSER_KEYS if source == "browser" else NAVIGATE_KEYS
     browser_config = {k: v for k, v in metadata.items() if k in browser_keys}
 
     if source == "browser":
         if not isinstance(browser_expression, str) or not browser_expression.strip():
-            return
+            raise ValueError("nextdata browser source requires a non-empty browser_expression")
         data = await _evaluate_browser_data(
             board_url,
             browser_expression,
@@ -562,14 +570,18 @@ async def discover_stream(
             return
         data = extract_embedded_json(html, source)
     if not data:
+        if source == "browser":
+            raise RuntimeError("nextdata browser expression returned no data")
         return
 
     items = resolve_path(data, path)
     if not isinstance(items, list):
+        if source == "browser":
+            raise RuntimeError(f"nextdata browser path did not resolve to a list: {path}")
         return
 
     # No pagination — single yield
-    if not pagination_cfg or source == "browser":
+    if not pagination_cfg:
         if fields_map:
             yield _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
         else:
@@ -701,19 +713,14 @@ async def _evaluate_browser_data(
     structured titles and descriptions without scraping those lossy links.
     """
     if pw is None:
-        log.warning("nextdata.browser_source_missing_playwright", url=url)
-        return None
+        raise RuntimeError("nextdata browser source requires Playwright")
 
-    try:
-        from src.shared.browser import navigate, open_page
+    from src.shared.browser import navigate, open_page
 
-        config = browser_config or {}
-        async with open_page(pw, config, use_proxy=bool(config.get("proxy"))) as page:
-            await navigate(page, url, config)
-            return await page.evaluate(expression)
-    except Exception:
-        log.warning("nextdata.browser_source_failed", url=url, exc_info=True)
-        return None
+    config = browser_config or {}
+    async with open_page(pw, config, use_proxy=bool(config.get("proxy"))) as page:
+        await navigate(page, url, config)
+        return await page.evaluate(expression)
 
 
 async def _fetch_remaining_pages(

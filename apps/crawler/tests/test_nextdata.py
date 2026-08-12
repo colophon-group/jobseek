@@ -4,6 +4,7 @@ import json
 from unittest.mock import AsyncMock, patch
 
 import httpx
+import pytest
 
 from src.core.monitor import monitor_one, monitor_one_stream
 from src.core.monitors import DiscoveredJob, monitor_needs_browser
@@ -513,9 +514,52 @@ class TestFetchMethods:
             },
         }
 
-        result = await discover(board, httpx.AsyncClient(), pw=object())
+        with pytest.raises(ValueError, match="requires a non-empty browser_expression"):
+            await discover(board, httpx.AsyncClient(), pw=object())
 
-        assert result == []
+    async def test_browser_source_propagates_evaluation_failure(self):
+        board = {
+            "board_url": "https://example.com/campus",
+            "metadata": {
+                "source": "browser",
+                "browser_expression": "({jobs: jobList})",
+                "path": "jobs",
+                "url_template": "{link}",
+                "fields": {"title": "title"},
+            },
+        }
+
+        with (
+            patch(
+                "src.core.monitors.nextdata._evaluate_browser_data",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("page changed"),
+            ),
+            pytest.raises(RuntimeError, match="page changed"),
+        ):
+            await discover(board, httpx.AsyncClient(), pw=object())
+
+    async def test_browser_source_rejects_missing_evaluated_data(self):
+        board = {
+            "board_url": "https://example.com/campus",
+            "metadata": {
+                "source": "browser",
+                "browser_expression": "({jobs: jobList})",
+                "path": "jobs",
+                "url_template": "{link}",
+                "fields": {"title": "title"},
+            },
+        }
+
+        with (
+            patch(
+                "src.core.monitors.nextdata._evaluate_browser_data",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+            pytest.raises(RuntimeError, match="returned no data"),
+        ):
+            await discover(board, httpx.AsyncClient(), pw=object())
 
 
 # ---------------------------------------------------------------------------
