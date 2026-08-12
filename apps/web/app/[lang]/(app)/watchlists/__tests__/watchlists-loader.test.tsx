@@ -124,6 +124,34 @@ describe("WatchlistsLoader server read (#5896)", () => {
     expect(page.getAttribute("data-popular-count")).toBe("0");
     expect(page.getAttribute("data-popular-total")).toBe("0");
   });
+
+  it("does not discard a cold popular-watchlist response after three seconds", async () => {
+    vi.useFakeTimers();
+    try {
+      mocks.load.mockResolvedValue({
+        watchlists: [{ id: "wl-1" }],
+        limitReached: false,
+      });
+      mocks.popular.mockImplementation(
+        () => new Promise((resolve) => {
+          setTimeout(() => resolve({
+            watchlists: [{ id: "public-wl-1" }],
+            total: 12,
+          }), 3_100);
+        }),
+      );
+
+      const loader = WatchlistsLoader({ locale: "en" });
+      await vi.advanceTimersByTimeAsync(3_100);
+      render(await loader);
+
+      const page = screen.getByTestId("watchlists-page");
+      expect(page.getAttribute("data-popular-count")).toBe("1");
+      expect(page.getAttribute("data-popular-total")).toBe("12");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("Watchlists route partial prerendering", () => {

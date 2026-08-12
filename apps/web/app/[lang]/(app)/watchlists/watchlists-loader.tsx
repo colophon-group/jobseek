@@ -9,7 +9,6 @@ import { logExternalError } from "@/lib/safe-external-error";
 import { WatchlistsPage } from "./watchlists-page";
 
 const WATCHLIST_LOAD_TIMEOUT_MS = 8_000;
-const PUBLIC_WATCHLIST_LOAD_TIMEOUT_MS = 3_000;
 const PUBLIC_WATCHLIST_PAGE_SIZE = 10;
 
 async function loadWatchlists(locale: string) {
@@ -21,27 +20,6 @@ async function loadWatchlists(locale: string) {
         timeoutId = setTimeout(
           () => reject(new Error("Watchlists request timed out")),
           WATCHLIST_LOAD_TIMEOUT_MS,
-        );
-      }),
-    ]);
-  } finally {
-    if (timeoutId) clearTimeout(timeoutId);
-  }
-}
-
-async function loadPopularWatchlists(locale: string) {
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      getPopularWatchlists({
-        offset: 0,
-        limit: PUBLIC_WATCHLIST_PAGE_SIZE,
-        locale,
-      }),
-      new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(
-          () => reject(new Error("Popular watchlists request timed out")),
-          PUBLIC_WATCHLIST_LOAD_TIMEOUT_MS,
         );
       }),
     ]);
@@ -62,7 +40,14 @@ export async function WatchlistsLoader({ locale }: { locale: string }) {
   try {
     const [{ watchlists, limitReached }, popular] = await Promise.all([
       loadWatchlists(locale),
-      loadPopularWatchlists(locale).catch((err) => {
+      // A cold precise-count pass can take longer than three seconds. Do not
+      // abandon it here: this is the only mount read, so a timed-out result
+      // would leave the public panel empty until the user hard-reloads.
+      getPopularWatchlists({
+        offset: 0,
+        limit: PUBLIC_WATCHLIST_PAGE_SIZE,
+        locale,
+      }).catch((err) => {
         logExternalError(
           "error",
           { service: "typesense", operation: "load_popular_watchlists" },
