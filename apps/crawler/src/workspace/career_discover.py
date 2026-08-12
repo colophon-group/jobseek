@@ -166,6 +166,8 @@ _ATS_URL_RE = re.compile(
     r"|[\w-]+\.wd\d+\.myworkdayjobs\.com(?:/[\w-]+)?"
     # d.vinci
     r"|[\w-]+\.dvinci-hr\.com"
+    # Intervieweb / In-recruiting
+    r"|[\w-]+\.intervieweb\.it(?:/[\w/-]+)?"
     # Softgarden
     r"|[\w-]+\.softgarden\.io"
     # TRAFFIT

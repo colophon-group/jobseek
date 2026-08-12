@@ -499,6 +499,13 @@ def _build_comment(name: str, metadata: dict) -> str:
         jobs = metadata.get("jobs")
         label = f"Inploi API \u2014 segment: {segment}"
         return f"{label}, {jobs} jobs" if jobs is not None else label
+    if name == "intervieweb":
+        jobs = metadata.get("jobs")
+        pages = metadata.get("pages")
+        label = "Intervieweb POST-paginated listing"
+        if jobs is not None and pages is not None:
+            return f"{label} \u2014 {jobs} jobs across {pages} pages"
+        return f"{label} \u2014 {jobs} jobs" if jobs is not None else label
     if name == "typify":
         jobs = metadata.get("jobs")
         label = "Typify partitioned vacancy API"
@@ -836,6 +843,7 @@ from src.core.monitors import (  # noqa: E402
     icims,  # noqa: F401
     inline,  # noqa: F401
     inploi,  # noqa: F401
+    intervieweb,  # noqa: F401
     jarvi,  # noqa: F401
     jazzhr,  # noqa: F401
     jobvite,  # noqa: F401

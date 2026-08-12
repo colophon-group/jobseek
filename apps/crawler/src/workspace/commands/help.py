@@ -98,6 +98,7 @@ Monitor Types (cheapest first):
   herp              10      Job URLs          Auto-configured
   hrmos             10      Job URLs          Auto-configured
   icims             10      Job URLs          Auto-configured
+  intervieweb       10      Job URLs          Auto-configured
   jarvi             10      Full job data     No (skipped)
   jazzhr            10      Job URLs          Auto-configured
   pageup            10      Full/partial      Auto-enriched DOM
@@ -1324,6 +1325,28 @@ avature — Avature public static listing monitor
   A first-page 404/410 is definitive gone; 202/401/403/406 and transport
   failures remain transient. Configure the normal proxy option for WAF-gated
   portals.
+"""
+
+MONITOR_INTERVIEWEB = """\
+intervieweb — Intervieweb / In-recruiting career sites
+
+  Returns:  Complete job-detail URL set
+  Scraper:  Auto-configured JSON-LD
+  Cost:     10
+
+  Intervieweb embeds the first result page in the career-page HTML and loads
+  later pages through a CSRF-protected POST endpoint. The monitor resolves the
+  current endpoint and token on every run and walks every advertised page.
+
+  Config:   No provider config required. Generic url_filter/url_transform and
+            proxy options remain available.
+
+  Detection: Direct *.intervieweb.it career pages containing the
+             url-for-announces, vacancyListCareer, and researchAnnounces
+             protocol markers.
+
+  Pair with: json-ld (auto-configured). Intervieweb detail pages publish
+             structured title, location, description, and posting dates.
 """
 
 
@@ -2909,6 +2932,7 @@ MONITOR_CARDS: dict[str, str] = {
     "jobvite": MONITOR_JOBVITE,
     "pageup": MONITOR_PAGEUP,
     "icims": MONITOR_ICIMS,
+    "intervieweb": MONITOR_INTERVIEWEB,
     "gupy": MONITOR_GUPY,
     "cornerstone": MONITOR_CORNERSTONE,
     "darwinbox": MONITOR_DARWINBOX,
