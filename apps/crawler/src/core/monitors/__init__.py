@@ -239,7 +239,12 @@ def monitor_needs_browser(name: str, config: dict | None = None) -> bool:
         return bool((config or {}).get("render"))
     if name == "nextdata":
         cfg = config or {}
-        return bool(cfg.get("render") or cfg.get("actions"))
+        return bool(
+            cfg.get("render")
+            or cfg.get("actions")
+            or cfg.get("source") == "browser"
+            or cfg.get("browser_expression")
+        )
     return False
 
 

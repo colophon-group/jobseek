@@ -966,7 +966,10 @@ _MONITOR_CONFIG_HINTS = {
     "umantis": "Requires: customer_id. Optional: region, listing_path",
     "sitemap": "Optional: sitemap_url, url_filter (regex to include/exclude URLs)",
     "talentbrew": "Optional: max_pages. Uses search-results pagination.",
-    "nextdata": "Requires: path, url_template. Optional: fields, render, actions, url_filter",
+    "nextdata": (
+        "Requires: path, url_template. Optional: fields, render, actions, source, "
+        "browser_expression, url_filter"
+    ),
     "dom": "Optional: render, actions, wait, timeout, url_filter, encoding",
     "api_sniffer": "Auto-filled from probe: api_url, method, json_path, fields, pagination",
 }

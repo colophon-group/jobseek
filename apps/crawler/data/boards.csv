@@ -5829,6 +5829,9 @@ yousician,yousician-greenhouse,https://job-boards.greenhouse.io/yousician,greenh
 yttp,yttp-join,https://join.com/companies/yttpde,join,"{""slug"": ""yttpde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 yubico,yubico-careers,https://job-boards.greenhouse.io/yubico,greenhouse,"{""token"": ""yubico""}",skip,
 yugabytedb,yugabytedb-greenhouse,https://job-boards.greenhouse.io/yugabyte,greenhouse,"{""token"": ""yugabyte""}",skip,
+yum-china,yum-china-campus,https://campus.51job.com/yumchina/project.html,nextdata,"{""source"": ""browser"", ""browser_expression"": ""({jobs: jobList})"", ""path"": ""jobs"", ""url_template"": ""{link}"", ""fields"": {""title"": ""title"", ""description"": ""desc"", ""locations"": ""=Shanghai, China"", ""employment_type"": ""=full_time"", ""job_location_type"": ""=onsite""}, ""wait"": ""domcontentloaded"", ""timeout"": 30000}",skip,
+yum-china,yum-china-careers,https://yumchina.zhiye.com/Social,beisen,"{""tenant"": ""yumchina"", ""variant"": ""legacy"", ""listing_path"": ""/Social"", ""legacy_template"": ""standard""}",dom,"{""steps"": [{""text"": ""工作职责"", ""field"": ""description"", ""html"": true, ""stop"": ""现在申请""}], ""enrich"": [""description""]}"
+yum-china,yum-china-office,https://yumchinarsc.zhiye.com/social,beisen,"{""tenant"": ""yumchinarsc"", ""variant"": ""modern"", ""portal_id"": ""a69a0b8a-b20d-40e5-b45c-27af4421580f"", ""tenant_id"": 612076}",skip,
 yuno,yuno-careers,https://jobs.lever.co/yuno,lever,"{""token"": ""yuno""}",skip,
 zalando,zalando-workday,https://zalando.wd3.myworkdayjobs.com/ZalandoSiteWD,workday,,,
 zam,zam-greenhouse,https://job-boards.greenhouse.io/zam,greenhouse,"{""token"": ""zam""}",skip,

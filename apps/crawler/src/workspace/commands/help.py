@@ -917,7 +917,12 @@ nextdata — Next.js __NEXT_DATA__ Discovery
     url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
     url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
     source         Embedded source: nextdata (default), reactrouter, rsc,
-                   or phenom_canvas
+                   phenom_canvas, or browser. The browser source evaluates a
+                   JSON-serializable client-side jobs variable after render.
+    browser_expression
+                   JavaScript expression used when source=browser, for example
+                   "({jobs: jobList})". Requires Playwright; actions run before
+                   evaluation. Use only data exposed by the public board.
     pagination     Page metadata mapping. Example:
                    {"path":"jobsData.meta","page_count":"totalPages",
                     "page_param":"page"}
