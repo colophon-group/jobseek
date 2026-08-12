@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
+import { sanitizeTypesenseBoundaryError } from "@/lib/search/typesense-retry";
 
 const PAGE_SIZE = 250;
 const FILTER_BATCH_SIZE = 100;
@@ -70,11 +71,16 @@ async function searchAll<T>(
   const documents: T[] = [];
 
   for (let page = 1; ; page += 1) {
-    const response = await client.collections(collection).documents().search({
-      ...params,
-      page,
-      per_page: PAGE_SIZE,
-    });
+    let response;
+    try {
+      response = await client.collections(collection).documents().search({
+        ...params,
+        page,
+        per_page: PAGE_SIZE,
+      });
+    } catch (err) {
+      throw sanitizeTypesenseBoundaryError(err);
+    }
     const hits = (response.hits ?? []) as unknown as TypesenseHit[];
     documents.push(...hits.map((hit) => hit.document as T));
     if (hits.length < PAGE_SIZE || documents.length >= (response.found ?? 0)) break;

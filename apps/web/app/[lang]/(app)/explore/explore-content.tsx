@@ -5,6 +5,7 @@ import { fetchExplorePageData, type ExploreData } from "@/lib/actions/explore-pa
 import { hasLoggedInHint, hasAnonJobLanguagesHint } from "@/lib/client-cookies";
 import { logExternalError } from "@/lib/safe-external-error";
 import { hasSearchFilterParams } from "@/lib/search/query-params";
+import { buildUnavailableExploreData } from "@/lib/search/explore-degraded";
 import { ExploreSkeleton } from "@/components/search/explore-skeleton";
 import { SearchPage } from "./search-page";
 
@@ -20,8 +21,9 @@ import { SearchPage } from "./search-page";
  * degraded variant from issue #3008).
  *
  * Retry once with a short delay (the second call usually hits a warm
- * function instance + warm Typesense connection). If both fail,
- * surface the error so the existing initialData stays.
+ * function instance + warm Typesense connection). If both fail, the caller
+ * installs a URL-derived unavailable snapshot so explicit filters remain
+ * visible and no stale or broadened initial result set is shown.
  */
 async function fetchExplorePageDataWithRetry(
   args: Parameters<typeof fetchExplorePageData>[0],
@@ -113,19 +115,16 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     fetchExplorePageDataWithRetry({ searchParams: sp, locale })
       .then(setData)
       .catch((err) => {
-        // Both attempts failed. Fall back to the prerendered
-        // ``initialData`` so the page doesn't sit on the skeleton
-        // forever; the user can retry by clicking a filter or
-        // refreshing. Filters in the URL won't be visible in the
-        // toolbar because the prerender doesn't carry them, but that
-        // matches the pre-#2746 cold-error behaviour and beats a
-        // permanent skeleton.
+        // Both attempts failed. Build an explicit unavailable snapshot from
+        // the browser URL. Restoring queryless ``initialData`` here would put
+        // unfiltered companies beneath a filtered URL and erase its toolbar
+        // state—the exact fail-open broadening this boundary prevents.
         logExternalError(
           "error",
           { service: "typesense", operation: "fetch_explore_page", retryCount: 2 },
           err,
         );
-        if (initialData) setData(initialData);
+        setData(buildUnavailableExploreData({ initialData, locale, searchParams: sp }));
       });
     // Empty deps: the conditional-fetch decision is made once on
     // mount. ``initialData`` is stable across re-renders (page

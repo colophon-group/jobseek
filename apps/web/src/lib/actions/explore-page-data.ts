@@ -12,11 +12,14 @@ import { resolveJobLanguages } from "@/lib/job-languages";
 import { readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
 import { getSession } from "@/lib/sessionCache";
 import { firstOf, idsOrUndefined, parseRangeParam, getGeoFromHeaders } from "@/lib/search/params";
-import { parseEmploymentTypeParam, parseWorkModeParam } from "@/lib/search/query-params";
 import { convertToEur } from "@/lib/salary";
 import { parseExploreSearchLanguages } from "@/lib/search/language-param";
 import type { SearchResponse } from "@/lib/search";
 import { isTypesenseUnavailableError } from "@/lib/search/typesense-retry";
+import {
+  EMPTY_PARSED_FILTERS,
+  parseOfflineSearchFilters,
+} from "@/lib/search/offline-filters";
 import { logExternalError } from "@/lib/safe-external-error";
 import {
   getExploreRepositoryFallbackCompanies,
@@ -27,16 +30,6 @@ import {
 const PAGE_SIZE = 10;
 
 const DEFAULT_DISPLAY_CURRENCY = "EUR";
-
-const EMPTY_PARSED_FILTERS: ParsedSearchFilters = {
-  keywords: [],
-  locations: [],
-  occupations: [],
-  seniorities: [],
-  technologies: [],
-  workMode: [],
-  employmentTypes: [],
-};
 
 export interface ExploreData {
   result: SearchResponse;
@@ -79,46 +72,6 @@ function hasUnresolvedExplicitSlugs(parsed: ParsedSearchFilters): boolean {
   return (["loc", "occ", "sen", "tech"] as const).some(
     (kind) => (parsed.unresolvedExplicitSlugs?.[kind]?.length ?? 0) > 0,
   );
-}
-
-function splitExplicitSlugs(raw: string | undefined): string[] {
-  if (!raw) return [];
-  const seen = new Set<string>();
-  const slugs: string[] = [];
-  for (const value of raw.split(",")) {
-    const slug = value.trim();
-    const key = slug.toLowerCase();
-    if (!slug || seen.has(key)) continue;
-    seen.add(key);
-    slugs.push(slug);
-  }
-  return slugs;
-}
-
-function parseOfflineSearchFilters(params: {
-  q?: string;
-  loc?: string;
-  occ?: string;
-  sen?: string;
-  tech?: string;
-  wm?: string;
-  etype?: string;
-}): ParsedSearchFilters {
-  const query = params.q?.trim();
-  const unresolvedExplicitSlugs = Object.fromEntries(
-    (["loc", "occ", "sen", "tech"] as const)
-      .map((kind) => [kind, splitExplicitSlugs(params[kind])] as const)
-      .filter(([, slugs]) => slugs.length > 0),
-  ) as NonNullable<ParsedSearchFilters["unresolvedExplicitSlugs"]>;
-  return {
-    ...EMPTY_PARSED_FILTERS,
-    keywords: query ? [query] : [],
-    workMode: parseWorkModeParam(params.wm),
-    employmentTypes: parseEmploymentTypeParam(params.etype),
-    ...(Object.keys(unresolvedExplicitSlugs).length > 0
-      ? { unresolvedExplicitSlugs }
-      : {}),
-  };
 }
 
 type SearchFilterParams = Parameters<typeof parseSearchFilters>[0];

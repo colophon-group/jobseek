@@ -26,7 +26,12 @@ vi.mock("@/lib/actions/explore-page-data", async () => {
 // can assert which dataset the page mounted ``SearchPage`` with.
 vi.mock("../search-page", () => ({
   SearchPage: (props: {
+    initialCompanies: ExploreData["result"]["companies"];
     initialTotalCompanies: number;
+    initialDegraded?: boolean;
+    initialKeywords: string[];
+    initialEmploymentTypes: string[];
+    initialWorkMode: string[];
     initialRepositoryFallbackCompanies?: ExploreData["repositoryFallbackCompanies"];
     initialLanguageOverride?: string[] | null;
     initialUnresolvedExplicitSlugs?: ExploreData["parsed"]["unresolvedExplicitSlugs"];
@@ -407,13 +412,29 @@ describe("ExploreContent — cold-start retry (#3008)", () => {
     expect(console.warn).toHaveBeenCalled();
   });
 
-  it("logs at error level when both attempts fail and falls back to initialData", async () => {
-    setDocumentCookie("logged_in=1");
+  it("keeps filtered URLs unavailable instead of restoring unfiltered initialData", async () => {
+    setBrowserSearch("q=python&loc=india&wm=remote&etype=full_time");
     mockFetchExploreData
       .mockRejectedValueOnce(new TypeError("Failed to fetch"))
       .mockRejectedValueOnce(new TypeError("Failed to fetch"));
 
-    render(<ExploreContent locale="en" initialData={makeInitialData()} />);
+    const unfilteredCompany = {
+      company: { id: "company-1", name: "Unfiltered", slug: "unfiltered", icon: null },
+      activeMatches: 1,
+      yearMatches: 1,
+      postings: [],
+    } as unknown as ExploreData["result"]["companies"][number];
+    render(
+      <ExploreContent
+        locale="en"
+        initialData={makeInitialData({
+          result: {
+            companies: [unfilteredCompany],
+            totalCompanies: 1,
+          },
+        })}
+      />,
+    );
 
     await waitFor(() => {
       expect(mockFetchExploreData).toHaveBeenCalledTimes(2);
@@ -430,6 +451,45 @@ describe("ExploreContent — cold-start retry (#3008)", () => {
       service: "typesense",
       operation: "fetch_explore_page",
       retry_count: 2,
+    });
+    await waitFor(() => {
+      expect(mockSearchPageProps).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          initialCompanies: [],
+          initialTotalCompanies: 0,
+          initialDegraded: true,
+          initialKeywords: ["python"],
+          initialUnresolvedExplicitSlugs: { loc: ["india"] },
+          initialWorkMode: ["remote"],
+          initialEmploymentTypes: ["full_time"],
+        }),
+      );
+    });
+    expect(window.location.search).toBe(
+      "?q=python&loc=india&wm=remote&etype=full_time",
+    );
+    // The queryless snapshot may render during hydration, but the terminal
+    // mounted SearchPage must be the URL-derived unavailable state.
+    expect(mockSearchPageProps.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({ initialCompanies: [], initialDegraded: true }),
+    );
+  });
+
+  it("leaves the legacy no-initialData path in an explicit unavailable state", async () => {
+    setBrowserSearch("q=python");
+    mockFetchExploreData.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    render(<ExploreContent locale="en" />);
+
+    await waitFor(() => {
+      expect(mockSearchPageProps).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          initialCompanies: [],
+          initialTotalCompanies: 0,
+          initialDegraded: true,
+          initialKeywords: ["python"],
+        }),
+      );
     });
   });
 

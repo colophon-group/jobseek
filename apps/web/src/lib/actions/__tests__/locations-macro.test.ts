@@ -204,6 +204,9 @@ describe("getGlobalLocationsGrouped — Regions cluster (#2940)", () => {
       }),
     );
 
-    await expect(getGlobalLocationsGrouped("en")).rejects.toThrow("429");
+    await expect(getGlobalLocationsGrouped("en")).rejects.toMatchObject({
+      message: "Typesense request failed",
+      httpStatus: 429,
+    });
   });
 });

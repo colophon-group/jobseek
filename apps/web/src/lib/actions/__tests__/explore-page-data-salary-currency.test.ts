@@ -385,6 +385,48 @@ describe("fetchExplorePageData — unavailable taxonomy resolution (#7218)", () 
     );
   });
 
+  it("degrades an axios status-zero timeout without serializing credential state", async () => {
+    const timeout = Object.assign(new Error("timeout of 5000ms exceeded"), {
+      name: "AxiosError",
+      code: "ECONNABORTED",
+      status: 0,
+      response: { status: 0 },
+      config: {
+        headers: { "X-TYPESENSE-API-KEY": "SECRET_CANARY_STATUS_ZERO" },
+      },
+    });
+    mocks.parseSearchFilters.mockRejectedValueOnce(timeout);
+
+    const data = await fetchExplorePageData({
+      searchParams: {
+        q: "python",
+        loc: "india",
+        wm: "remote",
+        etype: "full_time",
+      },
+      locale: "en",
+    });
+
+    expect(data.result).toEqual({
+      companies: [],
+      totalCompanies: 0,
+      degraded: true,
+    });
+    expect(data.parsed).toMatchObject({
+      keywords: ["python"],
+      unresolvedExplicitSlugs: { loc: ["india"] },
+      workMode: ["remote"],
+      employmentTypes: ["full_time"],
+    });
+    expect(mocks.searchJobs).not.toHaveBeenCalled();
+    expect(mocks.listTopCompanies).not.toHaveBeenCalled();
+    const loggedEnvelope = mocks.logExternalError.mock.calls.map(([level, context]) => ({
+      level,
+      context,
+    }));
+    expect(JSON.stringify(loggedEnvelope)).not.toContain("SECRET_CANARY");
+  });
+
   it("single-flights concurrent identical failed filter parses", async () => {
     let rejectParse!: (reason?: unknown) => void;
     mocks.parseSearchFilters.mockImplementationOnce(
