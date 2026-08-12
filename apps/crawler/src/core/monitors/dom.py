@@ -61,7 +61,17 @@ _BROWSER_FETCH_JS = (
 )
 
 _JOB_KEYWORDS = frozenset(
-    {"job", "career", "position", "posting", "opening", "role", "vacancy", "stellenangebot"}
+    {
+        "job",
+        "career",
+        "position",
+        "posting",
+        "opening",
+        "role",
+        "vacancy",
+        "stellenangebot",
+        "advertisement_display",
+    }
 )
 
 _LINKEDIN_JOB_FILTER = r"linkedin\.com/jobs/view/"
@@ -133,6 +143,22 @@ def _is_linkedin_job_url(url: str) -> bool:
     return (host == "linkedin.com" or host.endswith(".linkedin.com")) and parsed.path.startswith(
         "/jobs/view/"
     )
+
+
+def _matches_default_job_url(url: str) -> bool:
+    """Match job keywords outside the hostname.
+
+    Career portals commonly live on ``careers.*`` or ``jobs.*`` hosts.  If
+    the hostname participates in the fallback keyword check, every link on
+    those sites looks job-like, including ``#`` placeholders, login links,
+    filters, and application actions.  Restrict the heuristic to the URL
+    components controlled by each link while keeping explicit
+    ``url_filter`` configurations unchanged.
+    """
+
+    parsed = urlparse(url)
+    candidate = f"{parsed.path}?{parsed.query}#{parsed.fragment}".casefold()
+    return any(keyword in candidate for keyword in _JOB_KEYWORDS)
 
 
 _SITEGROUND_CHALLENGE_PATHS = (
@@ -272,7 +298,7 @@ def _extract_links_static(
         if url_matcher is not None:
             if url_matcher.search(absolute):
                 urls.add(absolute)
-        elif any(kw in absolute.lower() for kw in _JOB_KEYWORDS):
+        elif _matches_default_job_url(absolute):
             urls.add(absolute)
     return urls
 
@@ -310,7 +336,7 @@ async def _extract_links_rendered(
         if url_matcher is not None:
             if url_matcher.search(link):
                 urls.add(link)
-        elif any(kw in link.lower() for kw in _JOB_KEYWORDS):
+        elif _matches_default_job_url(link):
             urls.add(link)
     return urls
 

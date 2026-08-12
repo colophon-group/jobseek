@@ -239,7 +239,12 @@ def monitor_needs_browser(name: str, config: dict | None = None) -> bool:
         return bool((config or {}).get("render"))
     if name == "nextdata":
         cfg = config or {}
-        return bool(cfg.get("render") or cfg.get("actions"))
+        return bool(
+            cfg.get("render")
+            or cfg.get("actions")
+            or cfg.get("source") == "browser"
+            or cfg.get("browser_expression")
+        )
     return False
 
 
@@ -647,6 +652,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Hireology API \u2014 slug: {slug}, {jobs} jobs"
         return f"Hireology API \u2014 slug: {slug}"
+    if name == "turbohire":
+        org_id = metadata.get("org_id", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"TurboHire API \u2014 organization: {org_id}, {jobs} jobs"
+        return f"TurboHire API \u2014 organization: {org_id}"
     if name == "rippling":
         slug = metadata.get("slug", "?")
         jobs = metadata.get("jobs")
@@ -864,6 +875,7 @@ from src.core.monitors import (  # noqa: E402
     talentbrew,  # noqa: F401
     taleo,  # noqa: F401
     traffit,  # noqa: F401
+    turbohire,  # noqa: F401
     typify,  # noqa: F401
     ukg,  # noqa: F401
     umantis,  # noqa: F401

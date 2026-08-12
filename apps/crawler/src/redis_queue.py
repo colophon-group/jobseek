@@ -269,6 +269,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "smartrecruiters",
         "hirehive",
         "hireology",
+        "turbohire",
         "rippling",
         "recruitee",
         "recruiterbox",
