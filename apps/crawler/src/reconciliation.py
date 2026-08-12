@@ -51,18 +51,26 @@ _TYPESENSE_EXPORT_MAX_ATTEMPTS = 3
 _TYPESENSE_EXPORT_BACKOFF_BASE_SECONDS = 1.0
 _TYPESENSE_EXPORT_BACKOFF_CAP_SECONDS = 2.0
 _TYPESENSE_EXPORT_RETRYABLE_STATUSES = frozenset((408, 425, 429, 500, 502, 503, 504))
+_TYPESENSE_EXPORT_RECORD_BYTES_LIMIT = 1024 * 1024
 _TYPESENSE_UNBUCKETED_CANDIDATE_LIMIT = 50_000
 _TYPESENSE_UNBUCKETED_ID_BYTES_LIMIT = 16 * 1024 * 1024
 
+
+class _TypesenseExportFramingError(RuntimeError):
+    """A streamed Typesense export violated the bounded record framing contract."""
+
+
 # A 200 response can still terminate while HTTPX is reading or decoding the
-# body, or leave a syntactically incomplete final NDJSON line. Those failures
-# retry the complete export with fresh attempt-local state. HTTP status errors
+# body, leave a syntactically incomplete final JSONL record, contain invalid
+# UTF-8, or violate the per-record framing bound. Those failures retry the
+# complete export with fresh attempt-local state. Non-transient HTTP statuses
 # and decoded document invariant failures are deterministic for this request
 # and fail immediately instead of entering the retry loop.
 _TYPESENSE_EXPORT_RETRYABLE_ERRORS = (
     httpx.RequestError,
     json.JSONDecodeError,
     UnicodeDecodeError,
+    _TypesenseExportFramingError,
 )
 
 _PARTITION_STATE_SQL = """
@@ -388,6 +396,70 @@ def _chunks[T](values: Sequence[T], size: int) -> Iterable[Sequence[T]]:
         yield values[start : start + size]
 
 
+async def _iter_typesense_jsonl_records(response: httpx.Response) -> AsyncIterator[bytes]:
+    """Frame a Typesense JSONL response on ASCII LF without Unicode line splitting.
+
+    HTTPX's text line iterator follows Unicode line-boundary rules, so a valid
+    JSON string containing U+0085, U+2028, or U+2029 can be split in the middle
+    of a document. Typesense JSONL uses the single byte ``b"\\n"`` as its record
+    delimiter. Keep records as bytes through framing so delimiter handling is
+    strict; the shared parser explicitly decodes UTF-8 afterward.
+
+    Reconciliation exports omit descriptions and other blob fields. A 1 MiB
+    per-record ceiling is therefore more than two orders of magnitude above
+    the production maximum observed when this guard was introduced, while
+    remaining only 0.1% of the one-shot container's 1 GiB memory limit. There
+    is deliberately no whole-stream ceiling.
+    """
+
+    pending = bytearray()
+    async for chunk in response.aiter_bytes():
+        start = 0
+        while True:
+            delimiter = chunk.find(b"\n", start)
+            if delimiter < 0:
+                fragment_length = len(chunk) - start
+                if len(pending) + fragment_length > _TYPESENSE_EXPORT_RECORD_BYTES_LIMIT:
+                    raise _TypesenseExportFramingError(
+                        "Typesense export record exceeded its byte safety limit"
+                    )
+                pending.extend(chunk[start:])
+                break
+
+            segment_length = delimiter - start
+            if len(pending) + segment_length > _TYPESENSE_EXPORT_RECORD_BYTES_LIMIT:
+                raise _TypesenseExportFramingError(
+                    "Typesense export record exceeded its byte safety limit"
+                )
+            segment = chunk[start:delimiter]
+            if pending:
+                pending.extend(segment)
+                record = bytes(pending)
+                pending.clear()
+            else:
+                record = segment
+            if record:
+                yield record
+            start = delimiter + 1
+
+    # Typesense currently omits a trailing LF. A complete final JSON value is
+    # valid; a truncated value reaches json.loads and enters the bounded retry
+    # path just like a malformed LF-terminated record.
+    if pending:
+        yield bytes(pending)
+
+
+def _parse_typesense_json_record(record: bytes) -> object:
+    """Decode one framed record as strict UTF-8 before parsing JSON.
+
+    ``json.loads`` accepts bytes directly but auto-detects UTF-16 and UTF-32.
+    Typesense's JSONL wire contract is UTF-8, so accepting those encodings would
+    make framing and validation disagree about the response format.
+    """
+
+    return json.loads(record.decode("utf-8"))
+
+
 async def _postgres_partition_snapshot(
     pool: asyncpg.Pool,
     partition: int,
@@ -529,10 +601,8 @@ class TypesenseReconciliationClient:
                 },
             ) as response:
                 response.raise_for_status()
-                async for line in response.aiter_lines():
-                    if not line:
-                        continue
-                    document = json.loads(line)
+                async for record in _iter_typesense_jsonl_records(response):
+                    document = _parse_typesense_json_record(record)
                     if not isinstance(document, dict):
                         raise ReconciliationError("Typesense export returned a non-object document")
                     if document.get("reconciliation_bucket") != bucket:
@@ -573,10 +643,8 @@ class TypesenseReconciliationClient:
                 },
             ) as response:
                 response.raise_for_status()
-                async for line in response.aiter_lines():
-                    if not line:
-                        continue
-                    document = json.loads(line)
+                async for record in _iter_typesense_jsonl_records(response):
+                    document = _parse_typesense_json_record(record)
                     if not isinstance(document, dict):
                         raise ReconciliationError("Typesense export returned a non-object document")
                     raw_id = str(document.get("id", ""))

@@ -367,8 +367,16 @@ ID/state drift.
 Typesense export acquisition has one bounded whole-stream retry boundary shared
 by partition snapshots and the legacy unbucketed scan. Each request gets at
 most three attempts with 1-second then 2-second capped backoff. HTTPX
-request/read/content-decoding failures and JSON syntax failures retry because a
-successful HTTP response can still end with a truncated NDJSON record. Every
+request/read/content-decoding failures, byte-framing failures, invalid UTF-8,
+and JSON syntax failures retry because a successful HTTP response can still
+end with a truncated JSONL record. The shared streaming framer reads response
+bytes and recognizes only ASCII LF (`0x0a`) as a record delimiter; Unicode line
+separators inside valid JSON strings are data, not boundaries. Each framed
+record is then explicitly decoded as UTF-8 before JSON parsing; direct
+`json.loads(bytes)` auto-detection is not used, so syntactically valid UTF-16 or
+UTF-32 responses still fail the UTF-8 wire contract. A complete final record is
+accepted without a trailing LF, matching the Typesense export response, while
+an incomplete final record fails parsing and retries. Every
 attempt allocates fresh state, and unbucketed candidates remain buffered until
 the complete stream reaches EOF, so a failed attempt cannot leak rows into a
 comparison, deletion, repair, or durable cursor advance. HTTP status errors and
@@ -380,6 +388,15 @@ Transient HTTP statuses (408, 425, 429, 500, 502, 503, and 504) use the same
 bounded retry; other status failures are immediate. A persistently malformed
 JSON stream exhausts the same three-attempt bound. Retry telemetry contains
 only the consumer category, attempt counts, delay, and exception class.
+
+Each framed JSONL record has a 1 MiB byte ceiling, enforced both on complete
+same-chunk records and before retaining a cross-chunk fragment. Reconciliation
+exports exclude descriptions and blob fields; this is over 250 times the
+largest production record observed when the limit was introduced and 0.1% of
+the one-shot container's 1 GiB memory limit. There is no whole-stream byte
+ceiling, so ordinary large partitions continue streaming in bounded records.
+An over-limit record retries only within the acquisition attempt bound and then
+fails closed without exposing body content, a record ordinal, or posting data.
 
 The unbucketed path buffers cleanup candidates, not the complete index, until
 EOF. It has hard fail-closed ceilings of 50,000 candidates and 16 MiB of UTF-8
