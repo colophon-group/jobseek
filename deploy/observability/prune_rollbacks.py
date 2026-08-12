@@ -24,6 +24,7 @@ EXPECTED_GID = 0
 # The crawler host remains on Ubuntu 22.04 with system Python 3.10.
 UTC = timezone.utc  # noqa: UP017
 SNAPSHOT_RE = re.compile(r"^[0-9]{8}T[0-9]{6}Z$")
+MOUNT_ID_RE = re.compile(r"^mnt_id:\s+([1-9][0-9]*)$")
 ALLOWED_FILES = frozenset(
     {
         "jobseek-alloy",
@@ -89,7 +90,18 @@ def _require_deploy_lock(lock_fd: int) -> None:
         raise RetentionError("retention lock descriptor is not the deployment lock")
 
 
-def _open_root() -> int:
+def _mount_id_for_fd(fd: int) -> int:
+    try:
+        lines = Path(f"/proc/self/fdinfo/{fd}").read_text(encoding="ascii").splitlines()
+    except (OSError, UnicodeError) as exc:
+        raise RetentionError("Linux mount identity is unavailable for retention") from exc
+    matches = [match for line in lines if (match := MOUNT_ID_RE.fullmatch(line))]
+    if len(matches) != 1:
+        raise RetentionError("Linux mount identity is missing or ambiguous")
+    return int(matches[0].group(1))
+
+
+def _open_root() -> tuple[int, int]:
     metadata = _require_exact_path(ROLLBACK_ROOT, directory=True)
     if stat.S_IMODE(metadata.st_mode) != 0o700:
         raise RetentionError("rollback root must be root-owned mode 0700")
@@ -104,7 +116,12 @@ def _open_root() -> int:
     if (opened.st_dev, opened.st_ino) != (metadata.st_dev, metadata.st_ino):
         os.close(root_fd)
         raise RetentionError("rollback root changed while retention was starting")
-    return root_fd
+    try:
+        mount_id = _mount_id_for_fd(root_fd)
+    except RetentionError:
+        os.close(root_fd)
+        raise
+    return root_fd, mount_id
 
 
 def _parse_timestamp(name: str) -> datetime:
@@ -119,7 +136,7 @@ def _parse_timestamp(name: str) -> datetime:
     return parsed
 
 
-def _open_snapshot(root_fd: int, snapshot: Snapshot) -> int:
+def _open_snapshot(root_fd: int, root_mount_id: int, snapshot: Snapshot) -> int:
     flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
     try:
         snapshot_fd = os.open(snapshot.name, flags, dir_fd=root_fd)
@@ -129,10 +146,22 @@ def _open_snapshot(root_fd: int, snapshot: Snapshot) -> int:
     if (opened.st_dev, opened.st_ino) != (snapshot.device, snapshot.inode):
         os.close(snapshot_fd)
         raise RetentionError(f"rollback snapshot changed while opening: {snapshot.name}")
+    try:
+        snapshot_mount_id = _mount_id_for_fd(snapshot_fd)
+    except RetentionError:
+        os.close(snapshot_fd)
+        raise
+    if snapshot_mount_id != root_mount_id:
+        os.close(snapshot_fd)
+        raise RetentionError(f"rollback snapshot is on a different mount: {snapshot.name}")
     return snapshot_fd
 
 
-def _validated_entry_names(snapshot_fd: int, snapshot_name: str) -> tuple[str, ...]:
+def _validated_entry_names(
+    snapshot_fd: int,
+    root_mount_id: int,
+    snapshot_name: str,
+) -> tuple[str, ...]:
     try:
         with os.scandir(snapshot_fd) as entries:
             names = tuple(entry.name for entry in entries)
@@ -155,10 +184,34 @@ def _validated_entry_names(snapshot_fd: int, snapshot_name: str) -> tuple[str, .
             raise RetentionError(
                 f"rollback snapshot entry is not an owned regular file: {snapshot_name}/{name}"
             )
+        try:
+            child_fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=snapshot_fd)
+        except OSError as exc:
+            raise RetentionError(
+                f"rollback snapshot entry cannot be opened safely: {snapshot_name}/{name}"
+            ) from exc
+        try:
+            opened = os.fstat(child_fd)
+            if (opened.st_dev, opened.st_ino) != (child.st_dev, child.st_ino):
+                raise RetentionError(
+                    f"rollback snapshot entry changed while opening: {snapshot_name}/{name}"
+                )
+            if _mount_id_for_fd(child_fd) != root_mount_id:
+                raise RetentionError(
+                    f"rollback snapshot entry is on a different mount: {snapshot_name}/{name}"
+                )
+        finally:
+            os.close(child_fd)
     return tuple(sorted(names))
 
 
-def _validate_snapshot(root_fd: int, name: str, *, expected: Snapshot | None = None) -> Snapshot:
+def _validate_snapshot(
+    root_fd: int,
+    root_mount_id: int,
+    name: str,
+    *,
+    expected: Snapshot | None = None,
+) -> Snapshot:
     created_at = _parse_timestamp(name)
     try:
         metadata = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
@@ -177,22 +230,27 @@ def _validate_snapshot(root_fd: int, name: str, *, expected: Snapshot | None = N
         raise RetentionError(f"rollback snapshot changed before deletion: {name}")
 
     snapshot = Snapshot(name, created_at, metadata.st_dev, metadata.st_ino)
-    snapshot_fd = _open_snapshot(root_fd, snapshot)
+    snapshot_fd = _open_snapshot(root_fd, root_mount_id, snapshot)
     try:
-        _validated_entry_names(snapshot_fd, name)
+        _validated_entry_names(snapshot_fd, root_mount_id, name)
     finally:
         os.close(snapshot_fd)
     return snapshot
 
 
-def _delete_snapshot(root_fd: int, expected: Snapshot) -> None:
-    snapshot = _validate_snapshot(root_fd, expected.name, expected=expected)
-    snapshot_fd = _open_snapshot(root_fd, snapshot)
+def _delete_snapshot(root_fd: int, root_mount_id: int, expected: Snapshot) -> None:
+    snapshot = _validate_snapshot(
+        root_fd,
+        root_mount_id,
+        expected.name,
+        expected=expected,
+    )
+    snapshot_fd = _open_snapshot(root_fd, root_mount_id, snapshot)
     try:
         # Snapshots are deliberately flat. Revalidate and unlink only the
         # allowlisted regular files through the already-verified directory fd;
         # never recurse into an entry that appears after validation.
-        for name in _validated_entry_names(snapshot_fd, snapshot.name):
+        for name in _validated_entry_names(snapshot_fd, root_mount_id, snapshot.name):
             try:
                 os.unlink(name, dir_fd=snapshot_fd)
             except OSError as exc:
@@ -210,7 +268,7 @@ def _delete_snapshot(root_fd: int, expected: Snapshot) -> None:
         ) from exc
 
 
-def _list_snapshots(root_fd: int, *, now: datetime) -> list[Snapshot]:
+def _list_snapshots(root_fd: int, root_mount_id: int, *, now: datetime) -> list[Snapshot]:
     snapshots: list[Snapshot] = []
     try:
         with os.scandir(root_fd) as entries:
@@ -218,7 +276,7 @@ def _list_snapshots(root_fd: int, *, now: datetime) -> list[Snapshot]:
     except OSError as exc:
         raise RetentionError("rollback root cannot be enumerated safely") from exc
     for name in names:
-        snapshot = _validate_snapshot(root_fd, name)
+        snapshot = _validate_snapshot(root_fd, root_mount_id, name)
         if snapshot.created_at > now + FUTURE_SKEW:
             raise RetentionError(f"rollback timestamp is unexpectedly in the future: {name}")
         snapshots.append(snapshot)
@@ -237,9 +295,9 @@ def prune_snapshots(
         raise RetentionError("retention clock must be timezone-aware")
     current_time = current_time.astimezone(UTC)
     _require_deploy_lock(lock_fd)
-    root_fd = _open_root()
+    root_fd, root_mount_id = _open_root()
     try:
-        snapshots = _list_snapshots(root_fd, now=current_time)
+        snapshots = _list_snapshots(root_fd, root_mount_id, now=current_time)
         if protect_name is not None:
             _parse_timestamp(protect_name)
             if not snapshots or snapshots[-1].name != protect_name:
@@ -259,7 +317,7 @@ def prune_snapshots(
         # each target by inode and contents immediately before flat,
         # fd-relative removal.
         for snapshot in to_delete:
-            _delete_snapshot(root_fd, snapshot)
+            _delete_snapshot(root_fd, root_mount_id, snapshot)
         if to_delete:
             os.fsync(root_fd)
         deleted = tuple(snapshot.name for snapshot in to_delete)

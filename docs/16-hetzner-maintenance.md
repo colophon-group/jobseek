@@ -781,11 +781,13 @@ newest timestamped snapshots, removes snapshots older than 14 days, and always
 keeps the just-accepted rollback even when it is the only remaining snapshot.
 The complete root is validated before deletion: its path, ownership, mode,
 timestamp names, directory types, and allowlisted regular-file contents must
-all match the installer contract, with no symlinks. Any unexpected entry stops
-retention without deleting known snapshots; operators must classify and move
-that entry explicitly before rerunning the reviewed deployment. A retention
-failure happens after service acceptance, so it reports deployment failure but
-does not roll the healthy surface back.
+all match the installer contract, with no symlinks. The kernel mount identity
+of every snapshot directory and file must also equal the rollback root, so a
+bind mount is rejected even when it shares the root filesystem's device ID.
+Any unexpected entry stops retention without deleting known snapshots;
+operators must classify and move that entry explicitly before rerunning the
+reviewed deployment. A retention failure happens after service acceptance, so
+it reports deployment failure but does not roll the healthy surface back.
 It restarts only Alloy; it does not restart Docker, PostgreSQL, Typesense, the
 tunnel, or any crawler workload.
 

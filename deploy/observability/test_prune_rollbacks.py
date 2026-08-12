@@ -6,6 +6,7 @@ from __future__ import annotations
 import fcntl
 import os
 import subprocess
+import sys
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -34,11 +35,13 @@ class RollbackRetentionTests(unittest.TestCase):
             retention.DEPLOY_LOCK,
             retention.EXPECTED_UID,
             retention.EXPECTED_GID,
+            retention._mount_id_for_fd,
         )
         retention.ROLLBACK_ROOT = self.root
         retention.DEPLOY_LOCK = self.lock_path
         retention.EXPECTED_UID = os.getuid()
         retention.EXPECTED_GID = os.getgid()
+        retention._mount_id_for_fd = lambda _fd: 1
         self.now = datetime(2026, 8, 12, 2, 0, tzinfo=UTC)
 
     def tearDown(self) -> None:
@@ -47,6 +50,7 @@ class RollbackRetentionTests(unittest.TestCase):
             retention.DEPLOY_LOCK,
             retention.EXPECTED_UID,
             retention.EXPECTED_GID,
+            retention._mount_id_for_fd,
         ) = self.originals
         os.close(self.lock_fd)
         self.temporary.cleanup()
@@ -218,6 +222,49 @@ class RollbackRetentionTests(unittest.TestCase):
                 lock_fd=self.lock_fd,
             )
         self.assertTrue(snapshot.is_dir())
+
+    def test_same_filesystem_bind_mount_identity_is_rejected(self) -> None:
+        old = self.snapshot("20260811T020000Z")
+        newest = self.snapshot("20260812T020000Z")
+        old_metadata = old.stat()
+        self.assertEqual(old_metadata.st_dev, self.root.stat().st_dev)
+
+        def fake_mount_id(fd: int) -> int:
+            opened = os.fstat(fd)
+            if (opened.st_dev, opened.st_ino) == (old_metadata.st_dev, old_metadata.st_ino):
+                return 2
+            return 1
+
+        retention._mount_id_for_fd = fake_mount_id
+        with self.assertRaisesRegex(retention.RetentionError, "different mount"):
+            retention.prune_snapshots(
+                protect_name=newest.name,
+                now=self.now,
+                lock_fd=self.lock_fd,
+            )
+        self.assertTrue(old.is_dir())
+        self.assertTrue(newest.is_dir())
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "Linux fdinfo contract")
+    def test_linux_fdinfo_reports_the_same_mount_for_root_snapshot_and_file(self) -> None:
+        snapshot = self.snapshot("20260812T020000Z")
+        actual_mount_id_for_fd = self.originals[4]
+        root_fd = os.open(self.root, os.O_RDONLY | os.O_DIRECTORY)
+        snapshot_fd = os.open(snapshot, os.O_RDONLY | os.O_DIRECTORY)
+        file_fd = os.open(snapshot / "jobseek-alloy", os.O_RDONLY)
+        try:
+            self.assertEqual(
+                {
+                    actual_mount_id_for_fd(root_fd),
+                    actual_mount_id_for_fd(snapshot_fd),
+                    actual_mount_id_for_fd(file_fd),
+                },
+                {actual_mount_id_for_fd(root_fd)},
+            )
+        finally:
+            os.close(file_fd)
+            os.close(snapshot_fd)
+            os.close(root_fd)
 
 
 class InstallerLifecycleTests(unittest.TestCase):
