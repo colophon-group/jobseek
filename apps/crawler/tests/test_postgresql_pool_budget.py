@@ -14,6 +14,7 @@ from src.workspace.codex_routine_runner import (
 ROOT = Path(__file__).resolve().parents[3]
 CRAWLER = ROOT / "apps" / "crawler"
 COMPOSE = CRAWLER / "docker-compose.yml"
+ROLLBACK_OVERRIDE = CRAWLER / "rollback-pool-budget.override.yml"
 RUNBOOK = ROOT / "docs" / "22-postgresql-connections.md"
 
 
@@ -145,6 +146,72 @@ def test_deploy_quiesces_pool_generations_and_stays_below_normal_maximum() -> No
     runbook = RUNBOOK.read_text(encoding="utf-8")
     assert "absolute deployment maximum is therefore 50 connections" in runbook
     assert "| new or rolled-back stack healthy | 40 | 0 | 4 | 6 | **50** |" in runbook
+
+
+def test_exact_pre_budget_base_archive_is_bounded_by_rollback_override() -> None:
+    """Regression contract for PR base 51625c18 at the first rollout.
+
+    The archived Compose snapshot restores that release's exact crawler pool
+    maxima. Compose environment-map merging must replace all six of them with
+    the reviewed override before any old image starts.
+    """
+
+    archived_base_environments = {
+        "worker-1": {"CRAWLER_DB_POOL_MAX": "20"},
+        "worker-2": {"CRAWLER_DB_POOL_MAX": "20"},
+        "worker-3": {"CRAWLER_DB_POOL_MAX": "20"},
+        "browser-1": {"CRAWLER_DB_POOL_MAX": "10"},
+        # These two inherited Settings.crawler_db_pool_max=10 in the exact
+        # base image because the archived Compose file omitted the variable.
+        "exporter": {},
+        "drain": {},
+    }
+    assert (
+        sum(
+            int(environment.get("CRAWLER_DB_POOL_MAX", "10"))
+            for environment in archived_base_environments.values()
+        )
+        == 90
+    )
+
+    override = yaml.safe_load(ROLLBACK_OVERRIDE.read_text(encoding="utf-8"))
+    services = override["services"]
+    expected = {
+        "worker-1": ("worker-1", 1, 8),
+        "worker-2": ("worker-2", 1, 8),
+        "worker-3": ("worker-3", 1, 8),
+        "browser-1": ("browser-1", 1, 6),
+        "exporter": ("exporter", 1, 4),
+        "drain": ("drain", 1, 6),
+    }
+    merged_maxima = {}
+    for service, (role, minimum, maximum) in expected.items():
+        environment = services[service]["environment"]
+        assert environment == {
+            "CRAWLER_DB_ROLE": role,
+            "CRAWLER_DB_POOL_MIN": str(minimum),
+            "CRAWLER_DB_POOL_MAX": str(maximum),
+            "CRAWLER_DB_POOL_IDLE_SECONDS": "60",
+        }
+        merged_environment = archived_base_environments[service] | environment
+        merged_maxima[service] = int(merged_environment["CRAWLER_DB_POOL_MAX"])
+
+    assert merged_maxima == {
+        "worker-1": 8,
+        "worker-2": 8,
+        "worker-3": 8,
+        "browser-1": 6,
+        "exporter": 4,
+        "drain": 6,
+    }
+    assert sum(merged_maxima.values()) == 40
+    assert services["murmur-shim"]["environment"] == {
+        "MURMUR_DB_POOL_MAX": "2",
+        "MURMUR_INVOKER_MAX_CONCURRENCY": "2",
+    }
+    # Same maximum as the forward stack: crawler 40 + Murmur 4 + the
+    # independently reserved labeller/backup/sampler/ingress clients 6.
+    assert sum(merged_maxima.values()) + 2 + 2 + 6 == 50
 
 
 def test_host_capacity_keeps_server_and_operator_reserve_explicit() -> None:

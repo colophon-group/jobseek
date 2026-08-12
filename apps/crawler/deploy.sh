@@ -64,6 +64,8 @@ INCOMING_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$DEPLOY_DIR/.env"
 ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"
 ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"
+ROLLBACK_POOL_OVERRIDE="$DEPLOY_DIR/.crawler-rollback-pool-budget.override.yml"
+ROLLBACK_POOL_OVERRIDE_SOURCE="$INCOMING_DIR/rollback-pool-budget.override.yml"
 ACTIVE_COMPOSE_SNAPSHOT="$DEPLOY_DIR/.crawler-active-docker-compose.yml"
 ACTIVE_COMPOSE_SNAPSHOT_SHA256="$DEPLOY_DIR/.crawler-active-docker-compose.sha256"
 DEPLOY_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.env"
@@ -87,6 +89,10 @@ for spec in "${DEPLOY_SPEC_FILES[@]}"; do
     exit 1
   }
 done
+[[ -f "$ROLLBACK_POOL_OVERRIDE_SOURCE" && ! -L "$ROLLBACK_POOL_OVERRIDE_SOURCE" ]] || {
+  echo "ERROR: staged rollback pool-budget override is unavailable or unsafe" >&2
+  exit 1
+}
 # Staged path is intentionally dynamic; the workflow verifies and supplies it.
 # shellcheck disable=SC1091
 source "$INCOMING_DIR/deploy_helpers.sh"
@@ -228,12 +234,15 @@ activate_staged_deploy_specs() {
     esac
     install -D -m "$mode" "$INCOMING_DIR/$spec" "$DEPLOY_DIR/$spec"
   done
+  install -m 0644 "$ROLLBACK_POOL_OVERRIDE_SOURCE" "$ROLLBACK_POOL_OVERRIDE"
 }
 
 restore_previous_deploy_specs() {
-  if [[ -f "$ROLLBACK_SPEC_ARCHIVE" ]]; then
-    tar -C "$DEPLOY_DIR" -xpf "$ROLLBACK_SPEC_ARCHIVE"
-  fi
+  [[ -f "$ROLLBACK_SPEC_ARCHIVE" && ! -L "$ROLLBACK_SPEC_ARCHIVE" ]] || {
+    echo "ERROR: rollback deployment archive is unavailable or unsafe" >&2
+    return 1
+  }
+  tar -C "$DEPLOY_DIR" -xpf "$ROLLBACK_SPEC_ARCHIVE"
 }
 
 reconciliation_wrapper_is_compatible() {
@@ -268,36 +277,167 @@ ensure_reconciliation_wrapper_compatible() {
   return 1
 }
 
+configure_rollback_compose_contract() {
+  local compose_file_count compose_file_value expected
+
+  [[ -f "$ENV_FILE" && ! -L "$ENV_FILE" ]] || {
+    echo "ERROR: restored rollback environment is unavailable or unsafe" >&2
+    return 1
+  }
+  [[ -f "$DEPLOY_DIR/docker-compose.yml" && ! -L "$DEPLOY_DIR/docker-compose.yml" ]] || {
+    echo "ERROR: restored rollback Compose file is unavailable or unsafe" >&2
+    return 1
+  }
+  [[ -f "$ROLLBACK_POOL_OVERRIDE" && ! -L "$ROLLBACK_POOL_OVERRIDE" ]] || {
+    echo "ERROR: rollback pool-budget override is unavailable or unsafe" >&2
+    return 1
+  }
+
+  expected="COMPOSE_FILE=$DEPLOY_DIR/docker-compose.yml:$ROLLBACK_POOL_OVERRIDE"
+  compose_file_count="$(grep -Ec '^COMPOSE_FILE=' "$ENV_FILE" || true)"
+  compose_file_value="$(grep -E '^COMPOSE_FILE=' "$ENV_FILE" || true)"
+  if ((compose_file_count == 0)); then
+    printf '\n%s\n' "$expected" >>"$ENV_FILE" || return 1
+  elif ((compose_file_count != 1)) || [[ "$compose_file_value" != "$expected" ]]; then
+    echo "ERROR: restored rollback environment has an unexpected Compose contract" >&2
+    return 1
+  fi
+  chmod 600 "$ENV_FILE"
+}
+
+rollback_compose() {
+  # Compose gives process variables precedence over the restored env file.
+  # Run rollback in a clean environment so the failed release tag and every
+  # other current SSH input cannot override the previous deployment contract.
+  env -i \
+    "PATH=${PATH:-/usr/local/bin:/usr/bin:/bin}" \
+    "HOME=${HOME:-$DEPLOY_DIR}" \
+    "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" \
+    docker compose \
+    --env-file "$ENV_FILE" \
+    -f "$DEPLOY_DIR/docker-compose.yml" \
+    -f "$ROLLBACK_POOL_OVERRIDE" \
+    "$@"
+}
+
+rollback_compose_service_ready() {
+  local service="$1"
+  local container_id state health
+
+  container_id="$(rollback_compose ps -q "$service" 2>/dev/null)" || return 1
+  [[ -n "$container_id" && "$(wc -w <<<"$container_id")" -eq 1 ]] || return 1
+  state="$(docker inspect -f '{{.State.Status}}' "$container_id" 2>/dev/null)" || return 1
+  [[ "$state" == "running" ]] || return 1
+  health="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container_id" 2>/dev/null)" || return 1
+  [[ "$health" == "none" || "$health" == "healthy" ]] || return 1
+  if [[ "$service" == "alloy" ]]; then
+    curl --fail --silent --show-error --max-time 2 \
+      http://127.0.0.1:12346/-/ready >/dev/null
+  fi
+}
+
+wait_for_rollback_core_services() {
+  local services=(redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy)
+  local deadline=$((SECONDS + ${ROLLBACK_HEALTH_TIMEOUT_SECONDS:-180}))
+  local service
+  local missing=()
+
+  while ((SECONDS < deadline)); do
+    missing=()
+    for service in "${services[@]}"; do
+      if ! rollback_compose_service_ready "$service"; then
+        missing+=("$service")
+      fi
+    done
+    if ((${#missing[@]} == 0)); then
+      return 0
+    fi
+    echo "Waiting for rollback services to become ready: ${missing[*]}" >&2
+    sleep 5
+  done
+
+  echo "ERROR: rollback services did not become ready: ${missing[*]}" >&2
+  rollback_compose ps >&2 || true
+  return 1
+}
+
 rollback_deploy() {
   local exit_code="${1:-1}"
+  local command_status=0
+  local rollback_status=0
 
   trap - ERR EXIT HUP INT TERM
   if (( ! ROLLBACK_ARMED || ROLLBACK_RUNNING )); then
     exit "$exit_code"
   fi
   ROLLBACK_RUNNING=1
+  set +e
   echo "Deploy failed — restoring crawler containers on previous image" >&2
 
-  if [[ -f "$ROLLBACK_ENV_FILE" ]]; then
-    mv "$ROLLBACK_ENV_FILE" "$ENV_FILE" || true
-    chmod 600 "$ENV_FILE" || true
-  elif (( ! ENV_FILE_WAS_PRESENT )); then
-    rm -f "$ENV_FILE"
+  cd "$DEPLOY_DIR"
+  command_status=$?
+  if ((command_status != 0)); then
+    rollback_status=$command_status
+  else
+    # Stop every local-PostgreSQL crawler owner before restoring the archived
+    # spec. Starting old and new generations together would violate the same
+    # budget that this rollback is responsible for preserving.
+    docker compose \
+      --env-file "$ENV_FILE" \
+      -f "$DEPLOY_DIR/docker-compose.yml" \
+      stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain
+    command_status=$?
+    if ((command_status != 0 && rollback_status == 0)); then
+      rollback_status=$command_status
+    fi
   fi
-  restore_previous_deploy_specs || true
 
-  cd "$DEPLOY_DIR" || exit "$exit_code"
-  # Compose gives process variables precedence over the restored env file.
-  # Start rollback in a clean environment so the failed release tag and every
-  # other current SSH input cannot override the previous deployment contract.
-  env -i \
-    "PATH=${PATH:-/usr/local/bin:/usr/bin:/bin}" \
-    "HOME=${HOME:-$DEPLOY_DIR}" \
-    "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" \
-    docker compose --env-file "$ENV_FILE" up -d --remove-orphans \
-    2>/dev/null || true
+  if ((ENV_FILE_WAS_PRESENT)); then
+    if [[ -f "$ROLLBACK_ENV_FILE" && ! -L "$ROLLBACK_ENV_FILE" ]]; then
+      mv "$ROLLBACK_ENV_FILE" "$ENV_FILE"
+      command_status=$?
+      if ((command_status == 0)); then
+        chmod 600 "$ENV_FILE"
+        command_status=$?
+      fi
+    else
+      echo "ERROR: rollback environment snapshot is unavailable or unsafe" >&2
+      command_status=1
+    fi
+  else
+    rm -f "$ENV_FILE"
+    command_status=$?
+  fi
+  if ((command_status != 0 && rollback_status == 0)); then
+    rollback_status=$command_status
+  fi
+
+  restore_previous_deploy_specs
+  command_status=$?
+  if ((command_status != 0 && rollback_status == 0)); then
+    rollback_status=$command_status
+  fi
+
+  if ((rollback_status == 0)); then
+    configure_rollback_compose_contract
+    rollback_status=$?
+  fi
+  if ((rollback_status == 0)); then
+    rollback_compose up -d --remove-orphans
+    rollback_status=$?
+  fi
+  if ((rollback_status == 0)); then
+    wait_for_rollback_core_services
+    rollback_status=$?
+  fi
+
   stop_maintenance_window
   ROLLBACK_ARMED=0
+  if ((rollback_status != 0)); then
+    echo "ERROR: crawler rollback failed with status ${rollback_status}" >&2
+    exit "$rollback_status"
+  fi
+  echo "Crawler rollback restored the previous image with bounded PostgreSQL pools" >&2
   exit "$exit_code"
 }
 

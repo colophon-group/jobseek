@@ -102,10 +102,21 @@ makes simultaneous use unlikely.
 | new or rolled-back stack healthy | 40 | 0 | 4 | 6 | **50** |
 
 Compose replaces containers with the same service names, so old and new pool
-generations do not coexist. Rollback follows the same stop-then-start contract.
-The absolute deployment maximum is therefore 50 connections. It includes the
-independent ingress connection and does not assume exclusion based on timer or
-backup cadence.
+generations do not coexist. Rollback explicitly quiesces all six crawler
+PostgreSQL owners before restoring the archived image/spec/env. It then layers
+`rollback-pool-budget.override.yml` over that archived Compose file. The
+override uses environment keys understood by old crawler images (unknown
+ownership/idle keys are safely ignored), so even the pre-budget release keeps
+the 40-connection crawler ceiling. The restored `.env` receives a nonsecret
+`COMPOSE_FILE` entry for the archived spec plus this override, preserving the
+ceiling across later operator `docker compose` commands without changing any
+other rollback setting or credential. Rollback start and the full core-service
+health gate are fail-closed; a stop, restore, Compose, or health failure is
+returned rather than suppressed.
+
+The absolute deployment maximum is therefore 50 connections for both the new
+and rolled-back stack. It includes the independent ingress connection and does
+not assume exclusion based on timer or backup cadence.
 
 ## Ownership metrics
 

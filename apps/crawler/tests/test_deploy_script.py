@@ -16,6 +16,9 @@ DOCKERFILE = Path(__file__).resolve().parent.parent / "Dockerfile"
 DOCKERIGNORE = Path(__file__).resolve().parent.parent / ".dockerignore"
 XVFB_ENTRYPOINT = Path(__file__).resolve().parent.parent / "scripts" / "with-xvfb.sh"
 COMPOSE_FILE = Path(__file__).resolve().parent.parent / "docker-compose.yml"
+ROLLBACK_POOL_OVERRIDE = (
+    Path(__file__).resolve().parent.parent / "rollback-pool-budget.override.yml"
+)
 DEPLOY_WORKFLOW = (
     Path(__file__).resolve().parents[3] / ".github/workflows/deploy-crawler-browser.yml"
 )
@@ -78,9 +81,9 @@ def test_production_env_omits_crawler_mirror_and_scopes_web_database() -> None:
 
     # Migration/schema one-offs receive no web-owned credential. Only the
     # explicit registry/watchlist sync invocation is allowlisted for it.
-    assert script.count('--env-file "$ENV_FILE"') == 1
+    forward_deploy = script[script.index("# ── Write env file") :]
+    assert forward_deploy.count("-e WEB_DATABASE_URL") == 1
     assert "env -i \\\n" in script
-    assert script.count("-e WEB_DATABASE_URL") == 1
 
 
 def test_csv_sync_filters_the_host_environment_to_required_boundaries() -> None:
@@ -164,9 +167,7 @@ def test_deploy_blocks_compose_oneoffs_before_touching_services() -> None:
 def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     script = DEPLOY_SH.read_text()
     workflow = DEPLOY_WORKFLOW.read_text()
-    rollback = script[
-        script.index("rollback_deploy() {") : script.index("compose_service_ready() {")
-    ]
+    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
 
     assert "docker-compose.yml" in script.partition("DEPLOY_SPEC_FILES=(")[2].partition(")")[0]
     assert 'tar -C "$snapshot_dir" -cpf' in script
@@ -174,10 +175,23 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert 'install -m 0644 "$ACTIVE_COMPOSE_SNAPSHOT"' in script
     assert "ACTIVE_COMPOSE_SNAPSHOT_SHA256" in script
     assert 'mv "$active_compose_temporary" "$ACTIVE_COMPOSE_SNAPSHOT"' in script
+    quiesce = rollback.index(
+        "stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain"
+    )
     env_restore = rollback.index('mv "$ROLLBACK_ENV_FILE" "$ENV_FILE"')
     spec_restore = rollback.index("restore_previous_deploy_specs")
-    old_stack_start = rollback.index('docker compose --env-file "$ENV_FILE" up')
-    assert env_restore < spec_restore < old_stack_start
+    contract = rollback.index("configure_rollback_compose_contract")
+    old_stack_start = rollback.index("rollback_compose up -d --remove-orphans")
+    health = rollback.index("wait_for_rollback_core_services")
+    assert quiesce < env_restore < spec_restore < contract < old_stack_start < health
+    assert "|| true" not in rollback
+    assert "rollback failed with status" in rollback
+    assert "local services=(redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy)" in (
+        script
+    )
+    assert '-f "$DEPLOY_DIR/docker-compose.yml" \\\n    -f "$ROLLBACK_POOL_OVERRIDE"' in script
+    assert ROLLBACK_POOL_OVERRIDE.exists()
+    assert "apps/crawler/rollback-pool-budget.override.yml" in workflow
     assert "target: /home/deploy/incoming/" in workflow
     assert "script: bash /home/deploy/incoming/deploy.sh" in workflow
     assert "target: /home/deploy/\n" not in workflow
@@ -201,8 +215,14 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             "reconciliation_wrapper_is_compatible() {"
         )
     ]
-    rollback = script[
-        script.index("rollback_deploy() {") : script.index("compose_service_ready() {")
+    rollback_support = script[
+        script.index("configure_rollback_compose_contract() {") : script.index(
+            "rollback_deploy() {"
+        )
+    ]
+    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    arm = script[
+        script.index("arm_deploy_rollback() {") : script.index("disarm_deploy_rollback() {")
     ]
     harness = "\n".join(
         (
@@ -211,6 +231,7 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             'ENV_FILE="$DEPLOY_DIR/.env"',
             'ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"',
             'ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"',
+            'ROLLBACK_POOL_OVERRIDE="$DEPLOY_DIR/.crawler-rollback-pool-budget.override.yml"',
             "ENV_FILE_WAS_PRESENT=1",
             "ROLLBACK_ARMED=0",
             "ROLLBACK_RUNNING=0",
@@ -220,7 +241,12 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             "  printf 'maintenance-stop\\n' >>\"$TEST_LOG\"",
             "}",
             restore,
+            rollback_support,
             rollback,
+            arm,
+            "wait_for_rollback_core_services() {",
+            "  printf 'health-gate\\n' >>\"$TEST_LOG\"",
+            "}",
             "arm_deploy_rollback",
             "printf 'CRAWLER_IMAGE_TAG=failed-tag\\n' >\"$ENV_FILE\"",
             "printf 'new-compose\\n' >\"$DEPLOY_DIR/docker-compose.yml\"",
@@ -239,11 +265,13 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
         env_file = deploy_dir / ".env"
         rollback_env = deploy_dir / ".env.rollback"
         compose = deploy_dir / "docker-compose.yml"
+        rollback_override = deploy_dir / ".crawler-rollback-pool-budget.override.yml"
         archive = deploy_dir / ".deploy-spec.rollback.tar"
         log = deploy_dir / "rollback.log"
         env_file.write_text("CRAWLER_IMAGE_TAG=failed-tag\n", encoding="utf-8")
         rollback_env.write_text("CRAWLER_IMAGE_TAG=old-tag\n", encoding="utf-8")
         compose.write_text("new-compose\n", encoding="utf-8")
+        rollback_override.write_text("bounded-override\n", encoding="utf-8")
         previous_compose = deploy_dir / "previous-compose.yml"
         previous_compose.write_text("old-compose\n", encoding="utf-8")
         with tarfile.open(archive, "w") as rollback_archive:
@@ -254,9 +282,18 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             binary_dir / "docker",
             "#!/usr/bin/env bash\n"
             "set -euo pipefail\n"
+            'action=""\n'
+            'for arg in "$@"; do\n'
+            '  if [[ "$arg" == stop || "$arg" == up ]]; then action="$arg"; fi\n'
+            "done\n"
             'env_file="$3"\n'
             'deploy_dir="$(dirname "$env_file")"\n'
             'log="$deploy_dir/rollback.log"\n'
+            'if [[ "$action" == stop ]]; then\n'
+            "  printf 'compose-stop\\n' >>\"$log\"\n"
+            "  exit 0\n"
+            "fi\n"
+            '[[ "$action" == up ]]\n'
             "printf 'compose-up\\n' >>\"$log\"\n"
             'printf \'process-tag=%s\\n\' "${CRAWLER_IMAGE_TAG:-unset}" >>"$log"\n'
             'tag="$(sed -n \'s/^CRAWLER_IMAGE_TAG=//p\' "$env_file")"\n'
@@ -279,16 +316,114 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
         )
 
         assert result.returncode == expected_status, result.stderr
-        assert env_file.read_text(encoding="utf-8") == "CRAWLER_IMAGE_TAG=old-tag\n"
+        assert env_file.read_text(encoding="utf-8") == (
+            f"CRAWLER_IMAGE_TAG=old-tag\n\nCOMPOSE_FILE={compose}:{rollback_override}\n"
+        )
         assert compose.read_text(encoding="utf-8") == "old-compose\n"
         events = log.read_text(encoding="utf-8").splitlines()
         assert events == [
+            "compose-stop",
             "compose-up",
             "process-tag=unset",
             "env-tag=old-tag",
             "compose=old-compose",
+            "health-gate",
             "maintenance-stop",
         ]
+
+
+def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -> None:
+    script = DEPLOY_SH.read_text()
+    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    harness = "\n".join(
+        (
+            "set -u",
+            'DEPLOY_DIR="$TEST_DEPLOY_DIR"',
+            'ENV_FILE="$DEPLOY_DIR/.env"',
+            'ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"',
+            "ENV_FILE_WAS_PRESENT=1",
+            "ROLLBACK_ARMED=1",
+            "ROLLBACK_RUNNING=0",
+            'COMPOSE_PROJECT_NAME="deploy"',
+            "docker() {",
+            "  printf 'quiesce\\n' >>\"$TEST_LOG\"",
+            '  return "$STOP_STATUS"',
+            "}",
+            "restore_previous_deploy_specs() {",
+            "  printf 'restore-specs\\n' >>\"$TEST_LOG\"",
+            "}",
+            "configure_rollback_compose_contract() {",
+            "  printf 'configure-contract\\n' >>\"$TEST_LOG\"",
+            "}",
+            "rollback_compose() {",
+            "  printf 'compose-start\\n' >>\"$TEST_LOG\"",
+            '  return "$START_STATUS"',
+            "}",
+            "wait_for_rollback_core_services() {",
+            "  printf 'health-gate\\n' >>\"$TEST_LOG\"",
+            '  return "$HEALTH_STATUS"',
+            "}",
+            "stop_maintenance_window() {",
+            "  printf 'maintenance-stop\\n' >>\"$TEST_LOG\"",
+            "}",
+            rollback,
+            "rollback_deploy 23",
+        )
+    )
+
+    cases = (
+        (5, 0, 0, ["quiesce", "restore-specs", "maintenance-stop"]),
+        (
+            0,
+            6,
+            0,
+            [
+                "quiesce",
+                "restore-specs",
+                "configure-contract",
+                "compose-start",
+                "maintenance-stop",
+            ],
+        ),
+        (
+            0,
+            0,
+            7,
+            [
+                "quiesce",
+                "restore-specs",
+                "configure-contract",
+                "compose-start",
+                "health-gate",
+                "maintenance-stop",
+            ],
+        ),
+    )
+    for index, (stop_status, start_status, health_status, expected_events) in enumerate(cases):
+        case_dir = tmp_path / str(index)
+        case_dir.mkdir()
+        (case_dir / ".env").write_text("failed\n", encoding="utf-8")
+        (case_dir / ".env.rollback").write_text("restored\n", encoding="utf-8")
+        log = case_dir / "events.log"
+        result = subprocess.run(
+            ["bash", "-c", harness],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "TEST_DEPLOY_DIR": str(case_dir),
+                "TEST_LOG": str(log),
+                "STOP_STATUS": str(stop_status),
+                "START_STATUS": str(start_status),
+                "HEALTH_STATUS": str(health_status),
+            },
+        )
+
+        expected_status = stop_status or start_status or health_status
+        assert result.returncode == expected_status, result.stderr
+        assert f"rollback failed with status {expected_status}" in result.stderr
+        assert log.read_text(encoding="utf-8").splitlines() == expected_events
 
 
 def test_first_rollout_fails_closed_without_verified_compose_preseed(tmp_path: Path) -> None:
