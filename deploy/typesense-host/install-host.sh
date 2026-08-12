@@ -542,6 +542,7 @@ import sys
 
 container = json.load(sys.stdin)[0]
 (
+    expected_image,
     expected_config_source,
     expected_config_destination,
     expected_snapshot_source,
@@ -561,8 +562,7 @@ log_config = container["HostConfig"].get("LogConfig") or {}
 labels = container["Config"].get("Labels") or {}
 state = container.get("State") or {}
 ok = (
-    container["Config"].get("Image")
-        == "typesense/typesense:27.1@sha256:5c12af89130b8ee0be11541321ba8a3a7c7a538d7c6cd95e0409dc2d75ca6455"
+    container["Config"].get("Image") == expected_image
     and container["HostConfig"].get("NetworkMode") == "host"
     and cmd == [f"--config={expected_config_destination}"]
     and any(
@@ -597,6 +597,7 @@ ok = (
 )
 raise SystemExit(0 if ok else 1)
 ' \
+        "$TYPESENSE_IMAGE" \
         "$TYPESENSE_CONFIG" \
         "$TYPESENSE_CONFIG_IN_CONTAINER" \
         "$TYPESENSE_SNAPSHOT_DIR" \
