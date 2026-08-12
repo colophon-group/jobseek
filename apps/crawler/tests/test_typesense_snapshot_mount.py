@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import sys
 from pathlib import Path
 
@@ -17,12 +18,13 @@ sys.modules[SPEC.name] = mounts
 SPEC.loader.exec_module(mounts)
 
 
-def _install_fake_findmnt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def _install_fake_findmnt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     findmnt = bin_dir / "findmnt"
     findmnt.write_text(
         "#!/bin/sh\n"
+        "set -eu\n"
         'test "$#" -eq 4\n'
         'test "$1" = --mountpoint=/mnt/jobseek-typesense-backup\n'
         'test "$2" = --noheadings\n'
@@ -33,6 +35,7 @@ def _install_fake_findmnt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     )
     findmnt.chmod(0o755)
     monkeypatch.setenv("PATH", str(bin_dir))
+    return findmnt
 
 
 def test_fstab_contract_requires_one_uuid_entry_and_safety_options() -> None:
@@ -73,6 +76,28 @@ def test_findmnt_exact_mountpoint_uses_attached_option_argument(
     monkeypatch.setenv("FAKE_FINDMNT_OUTPUT", "/dev/sdb\n")
 
     assert mounts._findmnt_exact(Path("/mnt/jobseek-typesense-backup"), "SOURCE") == "/dev/sdb"
+
+
+def test_fake_findmnt_rejects_the_original_malformed_argv(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    findmnt = _install_fake_findmnt(tmp_path, monkeypatch)
+    monkeypatch.setenv("EXPECTED_FINDMNT_COLUMN", "SOURCE")
+    monkeypatch.setenv("FAKE_FINDMNT_OUTPUT", "/dev/sdb\n")
+
+    result = subprocess.run(
+        [
+            str(findmnt),
+            "--mountpoint",
+            "--noheadings",
+            "--output",
+            "SOURCE",
+            "/mnt/jobseek-typesense-backup",
+        ],
+        check=False,
+    )
+
+    assert result.returncode != 0
 
 
 @pytest.mark.parametrize(
