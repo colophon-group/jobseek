@@ -20,7 +20,7 @@ import {
 } from "@/lib/search/search-runner";
 import { useClearTypesenseOnAuthChange } from "@/lib/search/use-clear-typesense-on-auth-change";
 import { useSession } from "@/components/providers/SessionProvider";
-import { parseSearchFilters } from "@/lib/actions/search-input";
+import { resolveExploreFilters } from "@/lib/actions/explore-page-data";
 import { buildFilteredPath } from "@/lib/search/query-params";
 import { parseExploreSearchLanguages } from "@/lib/search/language-param";
 import { resolveJobLanguages } from "@/lib/job-languages";
@@ -338,16 +338,32 @@ export function SearchPage({
     }
 
     setIsSearching(true);
-    parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng }).then((parsed) => {
-      setKeywords(parsed.keywords);
-      setLocations(parsed.locations);
-      setOccupations(parsed.occupations);
-      setSeniorities(parsed.seniorities);
-      setTechnologies(parsed.technologies);
-      setEmploymentTypes(parsed.employmentTypes);
-      setWorkMode(parsed.workMode);
-      runSearch();
-    });
+    resolveExploreFilters({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng })
+      .then(({ parsed, degraded }) => {
+        setKeywords(parsed.keywords);
+        setLocations(parsed.locations);
+        setOccupations(parsed.occupations);
+        setSeniorities(parsed.seniorities);
+        setTechnologies(parsed.technologies);
+        setEmploymentTypes(parsed.employmentTypes);
+        setWorkMode(parsed.workMode);
+        if (degraded) {
+          // Do not run a broader search after losing explicit taxonomy IDs.
+          // The URL still carries the submitted slugs, while the result area
+          // clearly distinguishes upstream unavailability from zero matches.
+          setCompanies([]);
+          setTotalCompanies(0);
+          setIsDegraded(true);
+          setIsSearching(false);
+          return;
+        }
+        runSearch();
+      })
+      .catch(() => {
+        // Unexpected action failures retain the existing result set and end
+        // the pending state. Availability failures are handled above.
+        setIsSearching(false);
+      });
   }, [searchParams, locale, userLat, userLng]);
 
   // `show` is UI-only and does not participate in the result search key.

@@ -115,6 +115,16 @@ describe("isTypesenseUnavailableError", () => {
     expect(isTypesenseUnavailableError(new Error("TYPESENSE_SEARCH_KEY is not set"))).toBe(true);
   });
 
+  it("recognizes retryable statuses nested on SDK response objects", () => {
+    expect(
+      isTypesenseUnavailableError({
+        response: { status: 503 },
+      }),
+    ).toBe(true);
+    expect(isTypesenseUnavailableError({ cause: { statusCode: 504 } })).toBe(true);
+    expect(isTypesenseUnavailableError({ response: { status: 429 } })).toBe(false);
+  });
+
   it("does NOT classify HTTP 429 as unavailable", () => {
     expect(isTypesenseUnavailableError(_httpStatus(429, "Too Many Requests"))).toBe(false);
     expect(isTypesenseUnavailableError(new Error("Request failed with HTTP code 429"))).toBe(false);

@@ -87,6 +87,29 @@ const CONFIG_UNAVAILABLE_MESSAGE_FRAGMENTS = [
   "typesense_search_key is not set",
 ];
 
+function nestedHttpStatus(err: unknown, seen = new Set<unknown>()): number | undefined {
+  if ((!err || typeof err !== "object") && typeof err !== "function") return undefined;
+  if (seen.has(err)) return undefined;
+  seen.add(err);
+
+  const e = err as {
+    httpStatus?: unknown;
+    status?: unknown;
+    statusCode?: unknown;
+    cause?: unknown;
+    response?: unknown;
+    originalError?: unknown;
+  };
+  for (const value of [e.httpStatus, e.status, e.statusCode]) {
+    if (typeof value === "number" && Number.isInteger(value)) return value;
+  }
+  for (const nested of [e.cause, e.response, e.originalError]) {
+    const status = nestedHttpStatus(nested, seen);
+    if (status !== undefined) return status;
+  }
+  return undefined;
+}
+
 export function isRetryableError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   const e = err as {
@@ -102,6 +125,8 @@ export function isRetryableError(err: unknown): boolean {
   if (typeof e.httpStatus === "number" && RETRYABLE_HTTP_STATUSES.has(e.httpStatus)) {
     return true;
   }
+  const status = nestedHttpStatus(err);
+  if (status !== undefined && RETRYABLE_HTTP_STATUSES.has(status)) return true;
   if (typeof e.message === "string") {
     const lower = e.message.toLowerCase();
     for (const frag of RETRYABLE_MESSAGE_FRAGMENTS) {

@@ -76,14 +76,18 @@ vi.mock("@/lib/search/use-clear-typesense-on-auth-change", () => ({
   useClearTypesenseOnAuthChange: () => {},
 }));
 
-vi.mock("@/lib/actions/search-input", () => ({
-  parseSearchFilters: vi.fn().mockResolvedValue({
-    keywords: [],
-    locations: [],
-    occupations: [],
-    seniorities: [],
-    technologies: [],
-    workMode: [],
+vi.mock("@/lib/actions/explore-page-data", () => ({
+  resolveExploreFilters: vi.fn().mockResolvedValue({
+    degraded: false,
+    parsed: {
+      keywords: [],
+      locations: [],
+      occupations: [],
+      seniorities: [],
+      technologies: [],
+      workMode: [],
+      employmentTypes: [],
+    },
   }),
 }));
 
