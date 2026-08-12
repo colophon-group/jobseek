@@ -32,7 +32,7 @@ describe("public watchlist scanner path guard", () => {
 
   it("guards the OG route before its data lookup and font read", () => {
     const source = readFileSync(
-      "app/[lang]/(app)/[userSlug]/[watchlistSlug]/opengraph-image.tsx",
+      "app/og/watchlist/[lang]/[userSlug]/[watchlistSlug]/route.tsx",
       "utf8",
     );
     const guard = source.indexOf(

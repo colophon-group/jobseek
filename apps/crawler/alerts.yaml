@@ -13,11 +13,10 @@
 #   - severity=high     -> urgent degradation or lost safety control
 #   - severity=medium   -> actionable but bounded operational debt
 #
-# Production alert state is consumed by two routes. Every critical alert has
-# `page=production` for the independent Grafana Cloud email receiver, while
-# `route=codex-daily` remains on every alert so the daily Hetzner Codex review
-# can deduplicate context into GitHub issues. The always-firing deadman route
-# repeats daily and the scheduled synthetic test exercises firing + recovery.
+# Production email paging is disabled. Every critical alert retains
+# `page=production` as severity metadata, while `route=codex-daily` identifies
+# alerts owned by the daily Hetzner Codex review. Do not add a contact point,
+# notification route, or synthetic paging test without an operator decision.
 #
 # Each alert's `for:` is sized to debounce deploy-time flapping.
 # `runbook` annotations link to the operator playbook for the failure
@@ -200,7 +199,7 @@ groups:
         for: 3m
         labels:
           severity: critical
-          service: data-backup
+          component: data-backup
           owner: codex-error-review
           route: codex-daily
           page: production
@@ -217,7 +216,7 @@ groups:
         for: 3m
         labels:
           severity: critical
-          service: data-backup
+          component: data-backup
           owner: codex-error-review
           route: codex-daily
           page: production
@@ -268,7 +267,7 @@ groups:
         annotations:
           summary: "PostgreSQL connections exceed 80%"
           description: "Connection use is approaching max_connections and can block crawler/export operations."
-          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/16-hetzner-maintenance.md#fleet-observability
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/22-postgresql-connections.md#incident-response
 
       - alert: PostgreSQLSharedMemoryPressure
         expr: |
@@ -454,6 +453,19 @@ groups:
   - name: jobseek_postgresql_capacity
     interval: 30s
     rules:
+
+      - alert: PostgreSQLIdleInTransaction
+        expr: sum(jobseek_postgresql_connections_by_owner{state=~"idle_in_transaction.*"}) > 0
+        for: 5m
+        labels:
+          severity: high
+          service: postgresql
+          owner: codex-error-review
+          route: codex-daily
+        annotations:
+          summary: "PostgreSQL has idle transactions"
+          description: "Idle transactions have remained continuously present for five minutes despite the 60-second crawler session guard; use the owner dimension to find an unguarded or recurring client."
+          runbook: https://github.com/colophon-group/jobseek/blob/main/docs/22-postgresql-connections.md#incident-response
 
       - alert: PostgreSQLDataVolumeHeadroomLow
         expr: |

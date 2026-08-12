@@ -2,7 +2,7 @@
  * Usernames that are reserved because they collide with app routes,
  * common administrative slugs, or brand terms.
  */
-const RESERVED_USERNAMES = new Set([
+export const RESERVED_USERNAMES = [
   // App routes & route groups
   "app",
   "api",
@@ -14,8 +14,10 @@ const RESERVED_USERNAMES = new Set([
   "check-email",
   "forgot-password",
   "company",
+  "companies",
   "saved",
   "progress",
+  "my-jobs",
   "billing",
   "how-we-index",
   "license",
@@ -79,11 +81,13 @@ const RESERVED_USERNAMES = new Set([
   "example",
   "anonymous",
   "unknown",
-]);
+] as const;
+
+const RESERVED_USERNAME_SET = new Set<string>(RESERVED_USERNAMES);
 
 /** Check whether a username is on the reserved blocklist. */
 export function isReservedUsername(username: string): boolean {
-  return RESERVED_USERNAMES.has(username);
+  return RESERVED_USERNAME_SET.has(username);
 }
 
 /**

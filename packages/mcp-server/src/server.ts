@@ -10,7 +10,7 @@ import { register as registerCreateWatchlist } from "./tools/create-watchlist.js
 
 export function createServer(baseUrl: string) {
   const server = new McpServer(
-    { name: "jobseek", version: "0.1.0" },
+    { name: "jobseek", version: "0.1.4" },
     {
       instructions: `You are connected to Job Seek (jseek.co), a job search engine that monitors 290+ company career pages across Switzerland and Europe.
 

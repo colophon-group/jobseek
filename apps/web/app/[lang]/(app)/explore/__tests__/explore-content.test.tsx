@@ -7,6 +7,7 @@ import type { ExploreData } from "@/lib/actions/explore-page-data";
 // the gate, then swap the action itself for a spy.
 vi.mock("server-only", () => ({}));
 const mockFetchExploreData = vi.fn();
+const mockSearchPageProps = vi.fn();
 vi.mock("@/lib/actions/explore-page-data", async () => {
   const actual =
     await vi.importActual<typeof import("@/lib/actions/explore-page-data")>(
@@ -24,9 +25,20 @@ vi.mock("@/lib/actions/explore-page-data", async () => {
 // initialTotalCompanies prop so the data-routing regression test in #3350
 // can assert which dataset the page mounted ``SearchPage`` with.
 vi.mock("../search-page", () => ({
-  SearchPage: ({ initialTotalCompanies }: { initialTotalCompanies: number }) => (
-    <div data-testid="search-page" data-total={initialTotalCompanies} />
-  ),
+  SearchPage: (props: {
+    initialCompanies: ExploreData["result"]["companies"];
+    initialTotalCompanies: number;
+    initialDegraded?: boolean;
+    initialKeywords: string[];
+    initialEmploymentTypes: string[];
+    initialWorkMode: string[];
+    initialRepositoryFallbackCompanies?: ExploreData["repositoryFallbackCompanies"];
+    initialLanguageOverride?: string[] | null;
+    initialUnresolvedExplicitSlugs?: ExploreData["parsed"]["unresolvedExplicitSlugs"];
+  }) => {
+    mockSearchPageProps(props);
+    return <div data-testid="search-page" data-total={props.initialTotalCompanies} />;
+  },
 }));
 
 // Skeleton stub — a distinct marker so the #3350 regression test can
@@ -35,20 +47,16 @@ vi.mock("@/components/search/explore-skeleton", () => ({
   ExploreSkeleton: () => <div data-testid="explore-skeleton" />,
 }));
 
-// `useSearchParams` from `next/navigation` returns a `URLSearchParams`-like
-// object in the test environment. Mock it per-test to control the filter
-// state being observed by the component.
-let currentSearchParams = new URLSearchParams();
-vi.mock("next/navigation", () => ({
-  useSearchParams: () => currentSearchParams,
-}));
-
 import { ExploreContent } from "../explore-content";
 
 let cookieSpy: ReturnType<typeof vi.spyOn> | undefined;
 function setDocumentCookie(value: string) {
   cookieSpy?.mockRestore();
   cookieSpy = vi.spyOn(document, "cookie", "get").mockReturnValue(value);
+}
+
+function setBrowserSearch(search = "") {
+  window.history.replaceState(null, "", `/en/explore${search ? `?${search}` : ""}`);
 }
 
 function makeInitialData(overrides: Partial<ExploreData> = {}): ExploreData {
@@ -89,8 +97,9 @@ async function flushQueuedEffects(): Promise<void> {
 
 beforeEach(() => {
   mockFetchExploreData.mockReset();
+  mockSearchPageProps.mockReset();
   mockFetchExploreData.mockResolvedValue(makeInitialData());
-  currentSearchParams = new URLSearchParams();
+  setBrowserSearch();
   setDocumentCookie("");
 });
 
@@ -121,6 +130,47 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     }
   });
 
+  it("forwards repository fallback identities and an explicit language override together", async () => {
+    const repositoryFallbackCompanies = [{ name: "Acme", slug: "acme" }];
+    render(
+      <ExploreContent
+        locale="en"
+        initialData={makeInitialData({
+          repositoryFallbackCompanies,
+          languageOverride: [],
+        })}
+      />,
+    );
+
+    await flushQueuedEffects();
+    expect(mockSearchPageProps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initialRepositoryFallbackCompanies: repositoryFallbackCompanies,
+        initialLanguageOverride: [],
+      }),
+    );
+  });
+
+  it("forwards unresolved explicit slugs into the interactive search state", async () => {
+    const unresolvedExplicitSlugs = { loc: ["india"] };
+    render(
+      <ExploreContent
+        locale="en"
+        initialData={makeInitialData({
+          parsed: {
+            ...makeInitialData().parsed,
+            unresolvedExplicitSlugs,
+          },
+        })}
+      />,
+    );
+
+    await flushQueuedEffects();
+    expect(mockSearchPageProps).toHaveBeenCalledWith(
+      expect.objectContaining({ initialUnresolvedExplicitSlugs: unresolvedExplicitSlugs }),
+    );
+  });
+
   it("calls fetchExplorePageData when the `logged_in` hint cookie is present even without filters", async () => {
     setDocumentCookie("logged_in=1");
 
@@ -133,7 +183,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
   });
 
   it("calls fetchExplorePageData when a filter searchParam is present", async () => {
-    currentSearchParams = new URLSearchParams("q=python");
+    setBrowserSearch("q=python");
 
     const initialData = makeInitialData();
     render(<ExploreContent locale="en" initialData={initialData} />);
@@ -159,7 +209,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
   });
 
   it("does NOT call fetchExplorePageData when a non-filter searchParam is present (e.g. utm tracking)", async () => {
-    currentSearchParams = new URLSearchParams("utm_source=google");
+    setBrowserSearch("utm_source=google");
 
     const initialData = makeInitialData();
     render(<ExploreContent locale="en" initialData={initialData} />);
@@ -174,10 +224,10 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     // surface stays explicit (e.g. #3275 — `wm` was added to the live
     // code in #2987 but the test list lagged behind, leaving the
     // refetch-trigger contract unguarded).
-    const filterParams = ["q", "loc", "occ", "sen", "tech", "wm", "etype", "sal", "salcur", "exp"];
+    const filterParams = ["q", "loc", "occ", "sen", "tech", "wm", "etype", "sal", "salcur", "exp", "lang"];
     for (const param of filterParams) {
       mockFetchExploreData.mockClear();
-      currentSearchParams = new URLSearchParams(`${param}=x`);
+      setBrowserSearch(`${param}=x`);
 
       const initialData = makeInitialData();
       const { unmount } = render(
@@ -200,7 +250,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
   // contract in place.
   describe("wm (workMode) filter-param refetch trigger (#3275)", () => {
     it("triggers refetch when ?wm=remote is in the URL", async () => {
-      currentSearchParams = new URLSearchParams("wm=remote");
+      setBrowserSearch("wm=remote");
 
       render(
         <ExploreContent locale="en" initialData={makeInitialData()} />,
@@ -216,7 +266,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     });
 
     it("triggers refetch when ?wm=hybrid is in the URL", async () => {
-      currentSearchParams = new URLSearchParams("wm=hybrid");
+      setBrowserSearch("wm=hybrid");
 
       render(
         <ExploreContent locale="en" initialData={makeInitialData()} />,
@@ -234,7 +284,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     it("does NOT trigger refetch when the wm param is absent", async () => {
       // Sanity: a no-wm anonymous visit must still hit the prerendered
       // initialData path so #2640's zero-invocation guarantee holds.
-      currentSearchParams = new URLSearchParams();
+      setBrowserSearch();
 
       render(
         <ExploreContent locale="en" initialData={makeInitialData()} />,
@@ -247,7 +297,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
 
   describe("etype (employment type) filter-param refetch trigger (#3218)", () => {
     it("triggers refetch when ?etype=internship is in the URL", async () => {
-      currentSearchParams = new URLSearchParams("etype=internship");
+      setBrowserSearch("etype=internship");
 
       render(
         <ExploreContent locale="en" initialData={makeInitialData()} />,
@@ -275,7 +325,7 @@ describe("ExploreContent — server-render initial-data path (#2640)", () => {
     // a refetch is needed, so ``SearchPage`` mounts ONCE with the
     // filtered data.
     it("renders ExploreSkeleton — NOT SearchPage with stale initialData — between mount and the filtered fetch resolution", async () => {
-      currentSearchParams = new URLSearchParams("loc=eu");
+      setBrowserSearch("loc=eu");
       const filteredData = makeInitialData({
         result: { companies: [], totalCompanies: 1133, truncated: false } as unknown as ExploreData["result"],
       });
@@ -362,13 +412,29 @@ describe("ExploreContent — cold-start retry (#3008)", () => {
     expect(console.warn).toHaveBeenCalled();
   });
 
-  it("logs at error level when both attempts fail and falls back to initialData", async () => {
-    setDocumentCookie("logged_in=1");
+  it("keeps filtered URLs unavailable instead of restoring unfiltered initialData", async () => {
+    setBrowserSearch("q=python&loc=india&wm=remote&etype=full_time");
     mockFetchExploreData
       .mockRejectedValueOnce(new TypeError("Failed to fetch"))
       .mockRejectedValueOnce(new TypeError("Failed to fetch"));
 
-    render(<ExploreContent locale="en" initialData={makeInitialData()} />);
+    const unfilteredCompany = {
+      company: { id: "company-1", name: "Unfiltered", slug: "unfiltered", icon: null },
+      activeMatches: 1,
+      yearMatches: 1,
+      postings: [],
+    } as unknown as ExploreData["result"]["companies"][number];
+    render(
+      <ExploreContent
+        locale="en"
+        initialData={makeInitialData({
+          result: {
+            companies: [unfilteredCompany],
+            totalCompanies: 1,
+          },
+        })}
+      />,
+    );
 
     await waitFor(() => {
       expect(mockFetchExploreData).toHaveBeenCalledTimes(2);
@@ -385,6 +451,45 @@ describe("ExploreContent — cold-start retry (#3008)", () => {
       service: "typesense",
       operation: "fetch_explore_page",
       retry_count: 2,
+    });
+    await waitFor(() => {
+      expect(mockSearchPageProps).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          initialCompanies: [],
+          initialTotalCompanies: 0,
+          initialDegraded: true,
+          initialKeywords: ["python"],
+          initialUnresolvedExplicitSlugs: { loc: ["india"] },
+          initialWorkMode: ["remote"],
+          initialEmploymentTypes: ["full_time"],
+        }),
+      );
+    });
+    expect(window.location.search).toBe(
+      "?q=python&loc=india&wm=remote&etype=full_time",
+    );
+    // The queryless snapshot may render during hydration, but the terminal
+    // mounted SearchPage must be the URL-derived unavailable state.
+    expect(mockSearchPageProps.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({ initialCompanies: [], initialDegraded: true }),
+    );
+  });
+
+  it("leaves the legacy no-initialData path in an explicit unavailable state", async () => {
+    setBrowserSearch("q=python");
+    mockFetchExploreData.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    render(<ExploreContent locale="en" />);
+
+    await waitFor(() => {
+      expect(mockSearchPageProps).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          initialCompanies: [],
+          initialTotalCompanies: 0,
+          initialDegraded: true,
+          initialKeywords: ["python"],
+        }),
+      );
     });
   });
 

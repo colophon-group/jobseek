@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { Trans } from "@lingui/react/macro";
 import { useLingui } from "@lingui/react/macro";
@@ -128,7 +129,16 @@ export function AppHeader() {
           </Link>
 
           {/* Search bar (desktop only) */}
-          <SearchBar className="hidden flex-1 md:block md:max-w-md" />
+          <Suspense
+            fallback={(
+              <div
+                aria-hidden="true"
+                className="hidden h-8 flex-1 rounded-lg border border-border-soft md:block md:max-w-md"
+              />
+            )}
+          >
+            <SearchBar className="hidden flex-1 md:block md:max-w-md" />
+          </Suspense>
 
           {/* Spacer pushes right-side items to the edge */}
           <div className="flex-1" />

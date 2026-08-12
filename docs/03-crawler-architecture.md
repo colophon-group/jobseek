@@ -307,8 +307,12 @@ Every steady-state tick:
 2. establish a commit-safe PostgreSQL cutoff (below);
 3. select at most 2,000 rows after the Typesense cursor and strictly before the
    cutoff;
-4. upsert eligible rows to Typesense;
-5. advance only the Typesense cursor after the batch result; and
+4. upsert eligible rows to Typesense and require exactly one object with an
+   explicit boolean `success` for every submitted document;
+5. advance only after that acknowledgement is structurally complete (a
+   well-formed `success: false` remains an intentional logged poison-document
+   drop, while a malformed response pins the whole batch and opens bounded
+   retry backoff); and
 6. release the repair fence.
 
 No deployed crawler command reads or writes Supabase posting rows. The
@@ -325,26 +329,114 @@ the complete posting population deterministically:
 
 - local PostgreSQL is authoritative;
 - UUID high-byte ranges `00` through `ff` form 256 stable, indexed partitions;
-- Typesense must have the exact local document set and matching `is_active`;
-  missing/mismatched documents are upserted and Typesense-only documents are
-  deleted; and
+- Typesense must have the exact local document set, matching `is_active`, and
+  matching user-visible payload; missing/mismatched documents are upserted and
+  Typesense-only documents are deleted; and
 - Typesense documents carry `reconciliation_bucket`, avoiding a whole-index
   materialization during normal runs. During the first cycle, all local
   documents are upserted with a bucket before a streamed cleanup removes only
   legacy unbucketed documents absent from local truth. An unbucketed document
   that still exists locally fails the bootstrap closed.
 
+#### Payload comparison design
+
+Payload reconciliation uses bounded field comparison, not a checksum stored in
+Typesense and not an `updated_at` version. A stored checksum could remain
+unchanged when the document beside it is corrupted, while a version would not
+detect a bad denormalization at the same version. For each UUID partition the
+reconciler builds the expected document with the ordinary exporter and taxonomy
+maps, exports only the defined fields in
+`TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS`, and compares in-process SHA-256
+fingerprints. Map keys and intrinsically unordered locale and occupation-
+ancestor arrays are canonicalized deterministically. Location and technology
+array order remains part of the contract because web readers zip their IDs,
+names, and types by position; sorting those arrays independently could hide a
+user-visible pairing error. The hash is an internal comparison value: neither
+it nor posting fields/IDs are written to logs, metrics, or reconciliation
+tables.
+
+This remains bounded to the current 1/256 UUID partition. The contract covers
+the user-visible title, company, location, occupation, seniority, technology,
+employment, salary, experience, locale, content-presence, source URL, and
+first-seen timestamp. The fast-moving `last_seen_at` monitor bookkeeping field
+is intentionally excluded: no Typesense reader consumes it, and it is not a
+CDC signal. Missing optional fields canonicalize as null. Payload drift has its
+own durable aggregate and Prometheus metric rather than being folded only into
+ID/state drift.
+
+Typesense export acquisition has one bounded whole-stream retry boundary shared
+by partition snapshots and the legacy unbucketed scan. Each request gets at
+most three attempts with 1-second then 2-second capped backoff. HTTPX
+request/read/content-decoding failures, byte-framing failures, invalid UTF-8,
+and JSON syntax failures retry because a successful HTTP response can still
+end with a truncated JSONL record. The shared streaming framer reads response
+bytes and recognizes only ASCII LF (`0x0a`) as a record delimiter; Unicode line
+separators inside valid JSON strings are data, not boundaries. Each framed
+record is then explicitly decoded as UTF-8 before JSON parsing; direct
+`json.loads(bytes)` auto-detection is not used, so syntactically valid UTF-16 or
+UTF-32 responses still fail the UTF-8 wire contract. A complete final record is
+accepted without a trailing LF, matching the Typesense export response, while
+an incomplete final record fails parsing and retries. Every
+attempt allocates fresh state, and unbucketed candidates remain buffered until
+the complete stream reaches EOF, so a failed attempt cannot leak rows into a
+comparison, deletion, repair, or durable cursor advance. HTTP status errors and
+decoded semantic invariant failures fail immediately: partition exports reject
+non-object documents, wrong buckets, invalid IDs/states, and duplicates, while
+unbucketed exports reject non-objects and invalid states. Invalid unbucketed IDs
+remain deterministic legacy cleanup candidates and never enter the retry loop.
+Transient HTTP statuses (408, 425, 429, 500, 502, 503, and 504) use the same
+bounded retry; other status failures are immediate. A persistently malformed
+JSON stream exhausts the same three-attempt bound. Retry telemetry contains
+only the consumer category, attempt counts, delay, and exception class.
+
+Each framed JSONL record has a 1 MiB byte ceiling, enforced both on complete
+same-chunk records and before retaining a cross-chunk fragment. Reconciliation
+exports exclude descriptions and blob fields; this is over 250 times the
+largest production record observed when the limit was introduced and 0.1% of
+the one-shot container's 1 GiB memory limit. There is no whole-stream byte
+ceiling, so ordinary large partitions continue streaming in bounded records.
+An over-limit record retries only within the acquisition attempt bound and then
+fails closed without exposing body content, a record ordinal, or posting data.
+
+The unbucketed path buffers cleanup candidates, not the complete index, until
+EOF. It has hard fail-closed ceilings of 50,000 candidates and 16 MiB of UTF-8
+identifier data, comfortably below the one-shot container's 1 GiB memory cap.
+Exceeding either ceiling yields and deletes nothing; the operator must inspect
+the unexpectedly broad legacy drift rather than letting Python memory become
+the safety boundary.
+
+Migration `0018` restarts an in-progress Typesense cycle at partition zero so a
+cycle that began under the older ID/state-only contract cannot be recorded as a
+complete payload proof. It retains the last completed-cycle evidence and does
+not advance or skip durable progress.
+
 Repair is direct rather than an `updated_at` touch/replay loop. For every
-candidate set it acquires the exporter/operator fence, locks the current local
-rows `FOR SHARE`, writes that current snapshot downstream, and verifies the
-partition before advancing. A concurrent later local change is stamped for
-normal CDC after the row lock releases. A rejection, transport failure,
-verification mismatch, or interrupted process leaves the durable cursor on
-the same partition for an idempotent retry.
+candidate set it acquires the exporter/operator fence, reads the authoritative
+local rows, freezes the exact candidate snapshot (including candidate IDs that
+are now absent), and writes it downstream without holding a PostgreSQL
+transaction across network I/O. Before advancing, it projects a fresh remote
+partition export onto those candidate IDs and verifies their exact ID, state,
+payload, and deletion result, then rereads only the candidate rows and proves
+that their included source payload did not change during the downstream I/O.
+An unrelated source change in the same UUID partition therefore cannot
+masquerade as a failed candidate write, while a candidate change still fails
+closed. Every mutable included posting field is covered by migration `0012`'s
+change-sensitive CDC trigger; identical rich-monitor writes do not churn the
+cursor, and real changes remain exportable after the fence releases. A rejected
+acknowledgement remains unresolved even if the remote value happens to compare
+equal; rejection, transport failure, verification mismatch, candidate change,
+or interruption leaves the durable cursor on the same partition for an
+idempotent retry. Concurrent document deletes settle in full before the
+exporter fence is released, even when one request fails. Exceptional repairs
+conservatively record the known candidate count as unresolved; failed-run
+ledger totals include the attempted checks and drift without counting the
+partition as completed. All repair failure exceptions and telemetry are
+aggregate-only, with no document URLs, IDs, or response payloads.
 
 Two local PostgreSQL tables make scheduling visible across deploys:
 
-- `cross_store_reconciliation_state` holds the Typesense cursor, cycle totals,
+- `cross_store_reconciliation_state` holds the Typesense cursor, exact unique
+  detected count, separate payload mismatch count, cycle totals,
   last attempt/success/outcome, and bootstrap flag (the obsolete Supabase row
   is retained temporarily for rollback-compatible schema cleanup); and
 - `cross_store_reconciliation_run` records bounded run lifecycle and exposes
@@ -357,9 +449,10 @@ repairs at most 16 partitions, so a full cycle normally completes within 16
 successful starts. The host mutation lock serializes it with crawler
 deploys, Typesense refreshes, and backfills; a PostgreSQL advisory lock rejects
 duplicate reconcilers even if host scheduling is bypassed. Reconciliation
-does not restart PostgreSQL, Typesense, or crawler services. It can briefly
-delay one exporter tick and candidate-row updates while its verified repair
-section holds the existing fence/row locks.
+does not restart PostgreSQL, Typesense, or crawler services. Its verified
+repair section can briefly delay an exporter tick or another operator path
+while it holds the existing exporter/operator fence; reconciliation does not
+hold source-row updates.
 
 The CLI is read-only unless `--repair` is explicit:
 

@@ -20,7 +20,7 @@
 
 ## OG image
 
-Inherits from `(public)` layout OG image: `/:lang/opengraph-image` (dynamic PNG generation on first social share).
+Inherits the immutable site-wide R2 card. Social shares do not invoke a Vercel Function.
 
 ## Notes
 

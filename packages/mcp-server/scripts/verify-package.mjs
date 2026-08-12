@@ -2,9 +2,27 @@ import { access, readFile } from "node:fs/promises";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "../dist/server.js";
+import {
+  API_LOCALES,
+  DEFAULT_API_LOCALE,
+  PUBLIC_API_VERSION,
+  PUBLIC_SEARCH_QUERY_PARAMETERS,
+  SEARCH_EMPLOYMENT_TYPE_LIST_PATTERN,
+  SEARCH_EMPLOYMENT_TYPE_VALUES,
+  SEARCH_INTEGER_RANGE_PATTERN,
+  SEARCH_LANGUAGE_LIST_PATTERN,
+  SEARCH_WORK_MODE_LIST_PATTERN,
+  SEARCH_WORK_MODE_VALUES,
+} from "../dist/public-api-contract.js";
 
 const packageJson = JSON.parse(await readFile("package.json", "utf8"));
 const serverJson = JSON.parse(await readFile("server.json", "utf8"));
+const openApi = JSON.parse(
+  await readFile(
+    new URL("../../../apps/web/public/api/openapi.json", import.meta.url),
+    "utf8",
+  ),
+);
 
 function assert(condition, message) {
   if (!condition) {
@@ -62,6 +80,7 @@ const expectedToolSchemas = {
     properties: [
       "companies",
       "description",
+      "etype",
       "exp",
       "loc",
       "locale",
@@ -72,6 +91,7 @@ const expectedToolSchemas = {
       "sen",
       "tech",
       "title",
+      "wm",
     ],
     required: ["title"],
   },
@@ -93,7 +113,7 @@ const expectedToolSchemas = {
     required: ["q"],
   },
   search_jobs: {
-    properties: ["exp", "loc", "locale", "occ", "q", "sal", "sen", "tech"],
+    properties: [...PUBLIC_SEARCH_QUERY_PARAMETERS].sort(),
     required: [],
   },
   search_watchlists: { properties: ["locale", "q"], required: [] },
@@ -107,6 +127,79 @@ const expectedToolSchemas = {
   },
 };
 const expectedTools = Object.keys(expectedToolSchemas).sort();
+assert(
+  openApi.info?.version === PUBLIC_API_VERSION,
+  "OpenAPI info.version must match the public API contract",
+);
+const openApiSearchParameters = openApi.paths?.["/api/v1/search"]?.get?.parameters;
+assert(
+  Array.isArray(openApiSearchParameters),
+  "OpenAPI must define /api/v1/search GET parameters",
+);
+const openApiSearchNames = openApiSearchParameters
+  .filter((parameter) => parameter.in === "query")
+  .map((parameter) => parameter.name)
+  .sort();
+assert(
+  JSON.stringify(openApiSearchNames) ===
+    JSON.stringify([...PUBLIC_SEARCH_QUERY_PARAMETERS].sort()),
+  "OpenAPI search query parameters must match the public API contract",
+);
+
+function openApiQueryParameter(path, name) {
+  return openApi.paths?.[path]?.get?.parameters?.find(
+    (parameter) => parameter.in === "query" && parameter.name === name,
+  );
+}
+
+for (const path of ["/api/v1/search", "/api/v1/watchlist/create"]) {
+  const workModeParameter = openApiQueryParameter(path, "wm");
+  assert(
+    JSON.stringify(workModeParameter?.schema?.items?.enum) ===
+      JSON.stringify(SEARCH_WORK_MODE_VALUES),
+    `OpenAPI ${path} work-mode values must match the public API contract`,
+  );
+  const employmentTypeParameter = openApiQueryParameter(path, "etype");
+  assert(
+    JSON.stringify(employmentTypeParameter?.schema?.items?.enum) ===
+      JSON.stringify(SEARCH_EMPLOYMENT_TYPE_VALUES),
+    `OpenAPI ${path} employment-type values must match the public API contract`,
+  );
+}
+const languageParameter = openApiQueryParameter("/api/v1/search", "lang");
+assert(
+  JSON.stringify(languageParameter?.schema?.items?.enum) ===
+    JSON.stringify(API_LOCALES),
+  "OpenAPI search language values must match the public API contract",
+);
+for (const name of ["sal", "exp"]) {
+  assert(
+    openApiQueryParameter("/api/v1/search", name)?.schema?.pattern ===
+      SEARCH_INTEGER_RANGE_PATTERN,
+    `OpenAPI search ${name} pattern must match the public API contract`,
+  );
+}
+
+for (const [path, pathItem] of Object.entries(openApi.paths ?? {})) {
+  const parameters = pathItem?.get?.parameters;
+  assert(Array.isArray(parameters), `OpenAPI ${path} must define GET parameters`);
+  const localeParameter = parameters.find(
+    (parameter) => parameter.in === "query" && parameter.name === "locale",
+  );
+  assert(localeParameter, `OpenAPI ${path} must define the shared locale query`);
+  assert(
+    JSON.stringify(localeParameter.schema?.enum) === JSON.stringify(API_LOCALES),
+    `OpenAPI ${path} locale enum must match the public API contract`,
+  );
+  assert(
+    localeParameter.schema?.default === DEFAULT_API_LOCALE,
+    `OpenAPI ${path} locale default must match the public API contract`,
+  );
+  assert(
+    pathItem.get?.responses?.["400"],
+    `OpenAPI ${path} must document invalid-request responses`,
+  );
+}
 
 const server = createServer("https://example.invalid");
 const client = new Client({ name: "jobseek-package-verifier", version: "1.0.0" });
@@ -144,6 +237,94 @@ try {
         JSON.stringify(expectedToolSchemas[tool.name]),
       `MCP tool ${tool.name} must preserve its public input interface`,
     );
+    const localeSchema = tool.inputSchema.properties?.locale;
+    if (localeSchema) {
+      assert(
+        JSON.stringify(localeSchema.enum) === JSON.stringify(API_LOCALES),
+        `MCP tool ${tool.name} locale enum must match the public API contract`,
+      );
+      assert(
+        localeSchema.default === DEFAULT_API_LOCALE,
+        `MCP tool ${tool.name} locale default must match the public API contract`,
+      );
+    }
+  }
+
+  const searchTool = tools.find(({ name }) => name === "search_jobs");
+  const searchPatterns = {
+    wm: SEARCH_WORK_MODE_LIST_PATTERN,
+    etype: SEARCH_EMPLOYMENT_TYPE_LIST_PATTERN,
+    sal: SEARCH_INTEGER_RANGE_PATTERN,
+    exp: SEARCH_INTEGER_RANGE_PATTERN,
+    lang: SEARCH_LANGUAGE_LIST_PATTERN,
+  };
+  for (const [name, pattern] of Object.entries(searchPatterns)) {
+    assert(
+      searchTool?.inputSchema?.properties?.[name]?.pattern === pattern,
+      `MCP search_jobs ${name} pattern must match the public API contract`,
+    );
+  }
+  const createWatchlistTool = tools.find(
+    ({ name }) => name === "create_watchlist_link",
+  );
+  for (const [name, pattern] of Object.entries({
+    wm: SEARCH_WORK_MODE_LIST_PATTERN,
+    etype: SEARCH_EMPLOYMENT_TYPE_LIST_PATTERN,
+  })) {
+    assert(
+      createWatchlistTool?.inputSchema?.properties?.[name]?.pattern === pattern,
+      `MCP create_watchlist_link ${name} pattern must match the public API contract`,
+    );
+  }
+
+  const originalFetch = globalThis.fetch;
+  const requestedUrls = [];
+  globalThis.fetch = async (input) => {
+    requestedUrls.push(String(input));
+    return new Response(JSON.stringify({ companies: [], totalCompanies: 0 }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+  try {
+    const validSearch = await client.callTool({
+      name: "search_jobs",
+      arguments: {
+        q: "engineer",
+        loc: "switzerland",
+        occ: "software-engineer",
+        sen: "senior",
+        tech: "typescript",
+        wm: "remote,hybrid",
+        etype: "full_time,contract",
+        sal: "80000-150000",
+        exp: "3-10",
+        lang: "en,de",
+        locale: "fr",
+      },
+    });
+    assert(!validSearch.isError, "MCP search_jobs must accept the shared contract");
+    assert(requestedUrls.length === 1, "MCP search_jobs must issue exactly one API request");
+    const forwarded = new URL(requestedUrls[0]);
+    for (const name of PUBLIC_SEARCH_QUERY_PARAMETERS) {
+      assert(
+        forwarded.searchParams.has(name),
+        `MCP search_jobs must forward ${name} to the REST API`,
+      );
+    }
+
+    requestedUrls.length = 0;
+    const invalidSearch = await client.callTool({
+      name: "search_jobs",
+      arguments: { wm: "remote,bogus" },
+    });
+    assert(invalidSearch.isError, "MCP search_jobs must reject unsupported filter values");
+    assert(
+      requestedUrls.length === 0,
+      "MCP search_jobs must reject invalid input before calling the REST API",
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
   }
 
   const { resourceTemplates } = await client.listResourceTemplates();

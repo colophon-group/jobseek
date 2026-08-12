@@ -27,17 +27,29 @@ describe("company route partial prerendering", () => {
     expect(source).not.toContain("getCompanyBySlug(slug, locale)");
   });
 
-  it("renders the missing-company fallback with the requested locale and slug", () => {
+  it("invalidates cached missing snapshots immediately after crawler sync", () => {
     const source = readFileSync(
       "app/[lang]/(app)/company/[slug]/page.tsx",
       "utf8",
     );
 
-    expect(source).toContain("async function CompanyNotFound({ locale, slug }");
-    expect(source).toContain("const { i18n } = await loadCatalog(locale);");
-    expect(source).toContain(
-      "return <CompanyNotFound locale={locale} slug={slug} />;",
+    expect(source).toContain("companyCsvDataCacheTag");
+    expect(source.match(/cacheTag\(companyCsvDataCacheTag\(\)\)/g)).toHaveLength(3);
+  });
+
+  it("routes a missing company to the localized recovery boundary", () => {
+    const source = readFileSync(
+      "app/[lang]/(app)/company/[slug]/page.tsx",
+      "utf8",
     );
-    expect(source).not.toContain("loadCatalog(defaultLocale);");
+    const recoverySource = readFileSync(
+      "app/[lang]/(app)/company/[slug]/not-found.tsx",
+      "utf8",
+    );
+
+    expect(source.match(/if \(!(?:snapshot|initialData)\) notFound\(\);/g)).toHaveLength(2);
+    expect(recoverySource).toContain("const { lang, slug } = useParams");
+    expect(recoverySource).toContain("locale={lang}");
+    expect(recoverySource).toContain("slug={slug}");
   });
 });

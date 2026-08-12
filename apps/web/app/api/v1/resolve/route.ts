@@ -13,7 +13,7 @@ import {
 import { suggestIndustries } from "@/lib/services/company";
 import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
 import { slugifyTitle } from "@/lib/watchlist-slug";
-import { checkRateLimit, apiResponse } from "../_shared";
+import { checkRateLimit, apiResponse, parseApiLocale } from "../_shared";
 
 const VALID_TYPES = [
   "locations",
@@ -30,7 +30,8 @@ export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams;
   const type = sp.get("type") as (typeof VALID_TYPES)[number] | null;
   const q = sp.get("q");
-  const locale = sp.get("locale") ?? "en";
+  const locale = parseApiLocale(sp, rl);
+  if (locale instanceof NextResponse) return locale;
 
   if (!type || !VALID_TYPES.includes(type)) {
     return apiResponse(

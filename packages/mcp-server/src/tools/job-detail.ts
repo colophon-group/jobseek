@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { JobseekClient } from "../client.js";
+import { apiLocaleSchema } from "../locale-schema.js";
 
 export function register(server: McpServer, client: JobseekClient) {
   server.tool(
@@ -8,10 +9,7 @@ export function register(server: McpServer, client: JobseekClient) {
     "Get full structured metadata for a job posting by ID. Returns salary, technologies, seniority, experience, and locations. Does not include the job description — visit the returned URL on jseek.co to read the full posting. Use posting IDs from search_jobs results.",
     {
       id: z.string().describe("Job posting UUID (from search_jobs topPostings[].id)"),
-      locale: z
-        .enum(["en", "de", "fr", "it"])
-        .default("en")
-        .describe("Response language"),
+      locale: apiLocaleSchema,
     },
     { title: "Get Job Detail", readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async (params) => {

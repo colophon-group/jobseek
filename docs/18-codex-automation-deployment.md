@@ -1,17 +1,18 @@
-# Codex Automation Deployment
+# Hetzner Codex Runner Deployment
 
 This document is the repo-owned deployment and maintenance spec for recurring
-Codex runs. Codex app automation records, local app TOML files, Hetzner
-systemd units, and governor state are deployment artifacts; do not treat them
-as source of truth and do not commit local Codex app state.
+Codex runs. The committed Hetzner systemd units and runner code are the only
+production scheduling surface. Host unit state and governor state are
+deployment artifacts; do not treat them as source of truth.
 
-## Automation Registry
+## Production Runner Inventory
 
-| automation | cadence | execution | source of truth | model policy |
+| systemd unit | cadence | execution | source of truth | model policy |
 |---|---:|---|---|---|
-| `jobseek-daily-classifications` | daily, 08:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per day | [15-data-sampling-routine.md](15-data-sampling-routine.md), [`.agents/skills/jobseek-label-daily/SKILL.md`](../.agents/skills/jobseek-label-daily/SKILL.md) | Sol/high orchestrator; Luna and Terra labeller subagents |
-| `jobseek-daily-error-review` | daily, 09:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, root-collected redacted evidence bundle | [14-error-review-routine.md](14-error-review-routine.md), [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md) | Sol/high orchestrator; no default subagents |
-| `jobseek-company-request-resolver` | self-regulated, checked every 15-30 min | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | Sol/high orchestrator; Terra and Luna `ws` subagents |
+| `jobseek-codex-daily-annotations.timer` | daily, 08:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per day | [15-data-sampling-routine.md](15-data-sampling-routine.md), [`.agents/skills/jobseek-label-daily/SKILL.md`](../.agents/skills/jobseek-label-daily/SKILL.md) | Sol/high orchestrator; Luna and Terra labeller subagents |
+| `jobseek-codex-daily-error-review.timer` | daily, 09:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, root-collected redacted evidence bundle | [14-error-review-routine.md](14-error-review-routine.md), [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md) | Sol/high orchestrator; no default subagents |
+| `jobseek-codex-governor.timer` | self-regulated, checked after each governor run | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | Sol/high orchestrator; Terra and Luna `ws` subagents |
+| `jobseek-codex-docker-lifecycle.service` | continuous | root read-only event watcher producing allowlisted evidence for the isolated runner | this runbook and the committed unit/script | no model invocation |
 
 The recurring company resolver and daily routines must not be triggered by
 GitHub Actions. They run on the Hetzner crawler host through local Codex CLI
@@ -20,6 +21,20 @@ GitHub Actions may still deploy the Hetzner runner host surface. The
 [`deploy-codex-runner.yml`](../.github/workflows/deploy-codex-runner.yml)
 workflow updates `/srv/jobseek-codex/repo`, installs/verifies systemd units,
 and leaves actual Codex execution to the Hetzner timers.
+
+## Sunset Desktop Scheduler Names
+
+The former desktop-scheduled routine names are retained here only so duplicate
+schedulers can be recognized during an audit:
+
+- `jobseek-company-request-resolver`
+- `jobseek-daily-classifications`
+- `jobseek-daily-error-review`
+
+They must remain absent from Codex desktop schedules, local scheduler files,
+systemd, and cron. Do not recreate, pause-and-retain, or use them as a recovery
+path. Manual recovery runs the same committed runner entry point once from a
+throwaway worktree after checking the Hetzner ledger and shared lock.
 
 ## GPT-5.6 Model Policy
 
@@ -49,8 +64,8 @@ ambiguous evidence.
 
 ## Harness Invariants
 
-These rules must hold whether the run is launched by the Codex desktop app,
-Codex CLI, the Hetzner governor, or a future Codex scheduler.
+These rules must hold whether the run is launched manually by Codex CLI, by the
+Hetzner governor/timers, or by a future replacement for those host units.
 
 - The automation prompt must be self-contained. It cannot rely on the
   conversation that created or updated the automation.
@@ -95,8 +110,8 @@ Codex CLI, the Hetzner governor, or a future Codex scheduler.
 
 ## Deployment Procedure
 
-Use this process when creating or changing a Codex app automation or Hetzner
-runner prompt:
+Use this process when creating or changing a Hetzner runner unit, runner
+prompt, or routine source:
 
 1. Update the routine source doc or skill in this repo.
 2. Build a self-contained automation prompt that tells Codex to read the
@@ -118,9 +133,9 @@ runner prompt:
    [`deploy-codex-runner-host.sh`](../scripts/deploy-codex-runner-host.sh)
    with `JOBSEEK_CODEX_START_TIMERS=0`, so it does not start a Codex run.
 
-Do not hand-edit local Codex automation TOML unless recovering from a broken
-app state. If hand recovery is necessary, copy the final settings back into
-this document or the relevant routine source in the same PR.
+Desktop scheduling is not a recovery path. If a host timer is unavailable,
+repair the committed runner/unit configuration or perform one bounded manual
+CLI run using the same ledger, lock, prompt, and verification contracts.
 
 ## Hetzner Codex Runner Implementation Plan
 
@@ -326,6 +341,20 @@ and group `codex-runner`. Prefer a read-only local Postgres role that can
 `descriptions`, `company`, and `job_board`). Do not put HuggingFace or Codex
 tokens in this file; HuggingFace upload uses the runner user's local
 HuggingFace cache.
+
+Keep `labeller.env` DSN-only. Existing installations need no secret-file
+rewrite: the committed daily runner injects `CRAWLER_DB_ROLE=labeller`, pool
+min `0`, pool max `2`, idle lifetime `60`, and the shared
+`/srv/jobseek-codex/state/labeller-postgresql.lock` path into annotation
+subprocesses. DB-bearing labeller children serialize on that lock before
+creating a pool, enforcing two aggregate connections even if Codex launches
+commands concurrently; non-DB commands do not contend for it. The host deploy
+fails before timers are restored unless `labeller.env` has exactly one
+nonempty PostgreSQL `LOCAL_DATABASE_URL` assignment, contains no other key or
+statement, and the imported runner contract matches the pool and lock values.
+If that preflight fails, leave the timer stopped, correct only the invalid
+shape without printing or replacing the secret, restore the committed runner
+code, and rerun the deployment.
 
 After the dry-run and one manual live pass are clean, enable the timer:
 

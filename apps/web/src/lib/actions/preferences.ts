@@ -22,6 +22,7 @@ import { isReservedUsername } from "@/lib/username";
 import { isTrivialWatchlist } from "@/lib/watchlist-utils";
 import { notifyIndexNow } from "@/lib/indexnow";
 import { logExternalError } from "@/lib/safe-external-error";
+import { publicWatchlistRouteStatusCacheKey } from "@/lib/services/public-resource-status";
 import type { WatchlistFilters } from "@/lib/actions/watchlists";
 
 const PASSWORD_RESET_COOLDOWN_SECONDS = 60;
@@ -424,9 +425,11 @@ const USERNAME_RE = /^[a-z0-9][a-z0-9-]*[a-z0-9]$/;
  *    (Better Auth's username plugin mirrors `body.username` →
  *    `body.displayUsername` in its before-hook for `/update-user`), the
  *    OLD slug no longer matches the DB and every visit under the old
- *    URL 404s. The cache tags + Redis `public-watchlist:` entries keyed
- *    on the old slug are busted here so the 404 surfaces immediately
- *    instead of being papered over by a stale render.
+ *    URL 404s. The cache tags + Redis `public-watchlist:` and proxy route-
+ *    status entries keyed on the old slug are busted here so the 404
+ *    surfaces immediately instead of being papered over by stale state.
+ *    The new route-status key is also removed in case someone probed the
+ *    destination username before the rename and cached a negative result.
  *  - Typesense `watchlist` docs carry a denormalised `owner_username`
  *    that's only rewritten when the watchlist itself is mutated. Each
  *    of the user's existing docs is patched here so public watchlist
@@ -551,7 +554,12 @@ export async function renameUsername(
     for (const wl of userWatchlists) {
       updateTag(watchlistCacheTag(oldSlug, wl.slug));
       try {
-        await invalidateRedis(`public-watchlist:${oldSlug}:${wl.slug}`);
+        await Promise.all([
+          invalidateRedis(`public-watchlist:${oldSlug}:${wl.slug}`),
+          invalidateRedis(
+            publicWatchlistRouteStatusCacheKey(oldSlug, wl.slug),
+          ),
+        ]);
       } catch (err) {
         logExternalError(
           "error",
@@ -559,6 +567,19 @@ export async function renameUsername(
           err,
         );
       }
+    }
+  }
+  for (const wl of userWatchlists) {
+    try {
+      await invalidateRedis(
+        publicWatchlistRouteStatusCacheKey(normalized, wl.slug),
+      );
+    } catch (err) {
+      logExternalError(
+        "error",
+        { service: "redis", operation: "rename_user_route_status_invalidate" },
+        err,
+      );
     }
   }
 

@@ -42,7 +42,16 @@ async def verify_postgresql():
     parsed = urllib.parse.urlsplit(settings.local_database_url)
     if parsed.hostname != expected:
         raise SystemExit("crawler PostgreSQL DSN does not use the expected private host")
-    connection = await asyncpg.connect(settings.local_database_url, timeout=10)
+    connection = await asyncpg.connect(
+        settings.local_database_url,
+        timeout=10,
+        command_timeout=30,
+        statement_cache_size=0,
+        server_settings={
+            "application_name": "jobseek:ingress:private-path-verifier",
+            "idle_in_transaction_session_timeout": "60s",
+        },
+    )
     try:
         if await connection.fetchval("select 1") != 1:
             raise SystemExit("PostgreSQL private-path query returned an unexpected value")

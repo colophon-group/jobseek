@@ -1,3 +1,8 @@
+import {
+  SEARCH_EMPLOYMENT_TYPE_VALUES,
+  SEARCH_WORK_MODE_VALUES,
+} from "@jseek/mcp-server/public-api-contract";
+
 export interface PostingLocation {
   name: string;
   type: string;
@@ -25,9 +30,8 @@ export interface SelectedLocation {
  * Issue #2983 — filter-wide multi-select reusing the existing
  * ``location_types`` field on ``job_posting``. No schema change.
  */
-export type WorkMode = "onsite" | "hybrid" | "remote";
-
-export const WORK_MODE_VALUES: readonly WorkMode[] = ["onsite", "hybrid", "remote"] as const;
+export const WORK_MODE_VALUES = SEARCH_WORK_MODE_VALUES;
+export type WorkMode = (typeof WORK_MODE_VALUES)[number];
 
 export function isWorkMode(value: string): value is WorkMode {
   return (WORK_MODE_VALUES as readonly string[]).includes(value);
@@ -39,22 +43,8 @@ export function isWorkMode(value: string): value is WorkMode {
  * `full_or_part`; those are intentionally not accepted as URL filter
  * values because the user-facing filter controls do not expose them.
  */
-export type EmploymentType =
-  | "full_time"
-  | "part_time"
-  | "contract"
-  | "internship"
-  | "temporary"
-  | "volunteer";
-
-export const EMPLOYMENT_TYPE_VALUES: readonly EmploymentType[] = [
-  "full_time",
-  "part_time",
-  "contract",
-  "internship",
-  "temporary",
-  "volunteer",
-] as const;
+export const EMPLOYMENT_TYPE_VALUES = SEARCH_EMPLOYMENT_TYPE_VALUES;
+export type EmploymentType = (typeof EMPLOYMENT_TYPE_VALUES)[number];
 
 export function isEmploymentType(value: string): value is EmploymentType {
   return (EMPLOYMENT_TYPE_VALUES as readonly string[]).includes(value);

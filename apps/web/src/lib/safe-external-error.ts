@@ -120,19 +120,21 @@ function errorNodes(error: unknown): unknown[] {
   return nodes;
 }
 
-function firstNumber(nodes: readonly unknown[], keys: readonly string[]): number | undefined {
+function extractStatus(nodes: readonly unknown[]): number | undefined {
   for (const node of nodes) {
-    for (const key of keys) {
+    for (const key of ["httpStatus", "status", "statusCode"] as const) {
       const candidate = safeGet(node, key);
-      if (typeof candidate === "number" && Number.isInteger(candidate)) return candidate;
+      if (
+        typeof candidate === "number" &&
+        Number.isInteger(candidate) &&
+        candidate >= 100 &&
+        candidate <= 599
+      ) {
+        return candidate;
+      }
     }
   }
   return undefined;
-}
-
-function extractStatus(nodes: readonly unknown[]): number | undefined {
-  const status = firstNumber(nodes, ["httpStatus", "status", "statusCode"]);
-  return status !== undefined && status >= 100 && status <= 599 ? status : undefined;
 }
 
 function extractCode(nodes: readonly unknown[]): string | undefined {
@@ -228,17 +230,17 @@ function extractUrl(nodes: readonly unknown[]): { host?: string; path?: string }
 }
 
 function classify(status: number | undefined, code: string | undefined): ExternalErrorKind {
-  if (code === "ETIMEDOUT" || code === "ECONNABORTED" || code === "UND_ERR_CONNECT_TIMEOUT") {
-    return "timeout";
-  }
-  if (code === "ERR_CANCELED") return "canceled";
-  if (code) return "network";
   if (status === 401 || status === 403) return "auth";
   if (status === 404) return "not_found";
   if (status === 408 || status === 504) return "timeout";
   if (status === 429) return "rate_limited";
   if (status !== undefined && status >= 400 && status < 500) return "invalid_request";
   if (status !== undefined && status >= 500) return "upstream";
+  if (code === "ETIMEDOUT" || code === "ECONNABORTED" || code === "UND_ERR_CONNECT_TIMEOUT") {
+    return "timeout";
+  }
+  if (code === "ERR_CANCELED") return "canceled";
+  if (code) return "network";
   return "unknown";
 }
 
@@ -254,18 +256,14 @@ export function safeExternalError(
   const service = SERVICES.has(context.service) ? context.service : "unknown";
   const operation = sanitizeOperation(context.operation);
   const retryCount = context.retryCount;
+  const kind = classify(status, code);
 
   return {
     event: EXTERNAL_CLIENT_LOG_EVENT,
     service,
     operation,
-    kind: classify(status, code),
-    timeout:
-      code === "ETIMEDOUT" ||
-      code === "ECONNABORTED" ||
-      code === "UND_ERR_CONNECT_TIMEOUT" ||
-      status === 408 ||
-      status === 504,
+    kind,
+    timeout: kind === "timeout",
     ...(status !== undefined ? { status } : {}),
     ...(code !== undefined ? { code } : {}),
     ...(typeof retryCount === "number" && Number.isInteger(retryCount) && retryCount >= 0

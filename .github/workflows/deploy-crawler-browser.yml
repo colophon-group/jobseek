@@ -179,7 +179,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: apps/crawler/deploy.sh,apps/crawler/deploy_helpers.sh,apps/crawler/docker-compose.yml,apps/crawler/alloy.river,apps/crawler/scripts/postgresql-operational-preflight.py
+          source: apps/crawler/deploy.sh,apps/crawler/deploy_helpers.sh,apps/crawler/docker-compose.yml,apps/crawler/rollback-pool-budget.override.yml,apps/crawler/alloy.river,apps/crawler/scripts/postgresql-operational-preflight.py
           target: /home/deploy/incoming/
           strip_components: 2
 
