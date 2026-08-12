@@ -358,9 +358,11 @@ tables.
 This remains bounded to the current 1/256 UUID partition. The contract covers
 the user-visible title, company, location, occupation, seniority, technology,
 employment, salary, experience, locale, content-presence, source URL, and
-posting timestamps. Missing optional fields canonicalize as null. Payload drift
-has its own durable aggregate and Prometheus metric rather than being folded
-only into ID/state drift.
+first-seen timestamp. The fast-moving `last_seen_at` monitor bookkeeping field
+is intentionally excluded: no Typesense reader consumes it, and it is not a
+CDC signal. Missing optional fields canonicalize as null. Payload drift has its
+own durable aggregate and Prometheus metric rather than being folded only into
+ID/state drift.
 
 Migration `0018` restarts an in-progress Typesense cycle at partition zero so a
 cycle that began under the older ID/state-only contract cannot be recorded as a
@@ -369,13 +371,26 @@ not advance or skip durable progress.
 
 Repair is direct rather than an `updated_at` touch/replay loop. For every
 candidate set it acquires the exporter/operator fence, reads the authoritative
-local rows, writes that snapshot downstream without holding a PostgreSQL
-transaction across network I/O, then rereads local truth and verifies the
-partition's current ID, state, and payload before advancing. A concurrent local
-commit therefore makes a stale downstream write fail verification (and remains
-eligible for normal CDC). A rejection, transport failure, verification
-mismatch, or interrupted process leaves the durable cursor on the same
-partition for an idempotent retry.
+local rows, freezes the exact candidate snapshot (including candidate IDs that
+are now absent), and writes it downstream without holding a PostgreSQL
+transaction across network I/O. Before advancing, it projects a fresh remote
+partition export onto those candidate IDs and verifies their exact ID, state,
+payload, and deletion result, then rereads only the candidate rows and proves
+that their included source payload did not change during the downstream I/O.
+An unrelated source change in the same UUID partition therefore cannot
+masquerade as a failed candidate write, while a candidate change still fails
+closed. Every mutable included posting field is covered by migration `0012`'s
+change-sensitive CDC trigger; identical rich-monitor writes do not churn the
+cursor, and real changes remain exportable after the fence releases. A rejected
+acknowledgement remains unresolved even if the remote value happens to compare
+equal; rejection, transport failure, verification mismatch, candidate change,
+or interruption leaves the durable cursor on the same partition for an
+idempotent retry. Concurrent document deletes settle in full before the
+exporter fence is released, even when one request fails. Exceptional repairs
+conservatively record the known candidate count as unresolved; failed-run
+ledger totals include the attempted checks and drift without counting the
+partition as completed. All repair failure exceptions and telemetry are
+aggregate-only, with no document URLs, IDs, or response payloads.
 
 Two local PostgreSQL tables make scheduling visible across deploys:
 

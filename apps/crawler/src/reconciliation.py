@@ -117,7 +117,6 @@ TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS: tuple[str, ...] = (
     "locales",
     "first_seen_at",
     "source_url",
-    "last_seen_at",
 )
 _ORDER_INSENSITIVE_TYPESENSE_ARRAY_FIELDS = frozenset(("locales", "occupation_ids"))
 
@@ -189,6 +188,17 @@ class PartitionResult:
     duration_seconds: float
 
 
+class _PartitionRepairFailed(ReconciliationError):
+    """Carry aggregate partition evidence across a sanitized repair failure."""
+
+    def __init__(self, result: PartitionResult, error_class: str) -> None:
+        super().__init__(
+            f"{result.target} partition repair failed with {result.unresolved} unresolved rows"
+        )
+        self.result = result
+        self.error_class = error_class
+
+
 @dataclass(slots=True)
 class RunSummary:
     run_id: uuid.UUID
@@ -204,6 +214,14 @@ class RunSummary:
 
     def add(self, result: PartitionResult) -> None:
         self.partitions_completed += 1
+        self._add_counts(result)
+
+    def add_failed(self, result: PartitionResult) -> None:
+        """Record observed work without claiming the partition completed."""
+
+        self._add_counts(result)
+
+    def _add_counts(self, result: PartitionResult) -> None:
         self.checked_local += result.local_rows
         self.checked_remote += result.remote_rows
         self.detected += result.detected
@@ -291,6 +309,30 @@ def _typesense_documents_snapshot(
         states[posting_id] = active
         payload_fingerprints[posting_id] = _typesense_payload_fingerprint(document)
     return StoreSnapshot(states, payload_fingerprints)
+
+
+def _snapshot_subset(
+    snapshot: StoreSnapshot,
+    posting_ids: frozenset[uuid.UUID],
+) -> StoreSnapshot:
+    """Project a store snapshot onto one frozen repair candidate set."""
+
+    states = {
+        posting_id: active
+        for posting_id, active in snapshot.states.items()
+        if posting_id in posting_ids
+    }
+    payload_fingerprints = snapshot.payload_fingerprints
+    if payload_fingerprints is None:
+        return StoreSnapshot(states)
+    return StoreSnapshot(
+        states,
+        {
+            posting_id: fingerprint
+            for posting_id, fingerprint in payload_fingerprints.items()
+            if posting_id in posting_ids
+        },
+    )
 
 
 def compare_snapshots(local: StoreSnapshot, remote: StoreSnapshot) -> PartitionDiff:
@@ -458,7 +500,28 @@ class TypesenseReconciliationClient:
                     return
                 response.raise_for_status()
 
-        await asyncio.gather(*(delete_one(posting_id) for posting_id in posting_ids))
+        tasks = [asyncio.create_task(delete_one(posting_id)) for posting_id in posting_ids]
+        if not tasks:
+            return
+        try:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+        except BaseException:
+            # Cancellation must not let a sibling request outlive the caller
+            # (and, for repair, the exporter fence that contains it).
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+
+        failed = sum(isinstance(result, BaseException) for result in results)
+        if failed:
+            # HTTPX exceptions include request URLs and can include response
+            # details. Do not chain any individual exception into the outer
+            # reconciliation logger, where a document UUID or payload could
+            # become telemetry.
+            raise ReconciliationError(
+                f"Typesense delete failed for {failed} reconciliation documents"
+            ) from None
 
 
 async def _locked_local_rows(
@@ -537,36 +600,58 @@ async def _repair_typesense_partition(
     if not candidate_ids:
         return 0, 0
     ordered_ids = sorted(candidate_ids)
-    absent: set[uuid.UUID] = set()
-
     # The exporter fence serializes this direct write with CDC cursor
     # advancement. Do not hold a PostgreSQL transaction across Typesense I/O:
-    # read the current candidate rows, write them, then verify the complete
-    # partition against a fresh authoritative read before durable progress can
-    # advance. A concurrent source change either appears in that reread and
-    # fails this attempt closed, or remains eligible for the normal CDC pass.
+    # freeze the current candidate rows, write that exact snapshot, then verify
+    # only those candidates (including expected absences) and prove their local
+    # payload stayed stable before durable progress can advance. Unrelated
+    # source changes in the same partition cannot masquerade as a failed repair.
     async with export_cursor_fence(local_pool):
         rows = list(await local_pool.fetch(_TYPESENSE_POSTINGS_BY_ID_SQL, ordered_ids))
         row_ids = {row["id"] for row in rows}
         absent = set(ordered_ids) - row_ids
         documents = _build_typesense_docs(list(rows), maps)
+        expected = _typesense_documents_snapshot(documents)
+        rejected_ids: set[str] = set()
         for batch in _chunks(documents, REPAIR_BATCH_SIZE):
-            failed = await _upsert_to_typesense(list(batch))
-            if failed:
-                raise ReconciliationError(
-                    f"Typesense rejected {len(failed)} reconciliation documents"
+            rejected_ids.update(
+                await _upsert_to_typesense(
+                    list(batch),
+                    log_rejected_documents=False,
                 )
+            )
         for batch in _chunks(sorted(absent), REPAIR_BATCH_SIZE):
             await typesense.delete_ids([str(posting_id) for posting_id in batch])
 
-        expected = await _postgres_typesense_partition_snapshot(local_pool, partition, maps)
-        verified = await typesense.partition_snapshot(partition)
-        unresolved = compare_snapshots(expected, verified).detected("typesense")
-        if unresolved:
-            raise ReconciliationError(
-                f"Typesense reconciliation verification left {unresolved} unresolved rows"
+        verified_partition = await typesense.partition_snapshot(partition)
+        verified = _snapshot_subset(verified_partition, candidate_ids)
+        verification_unresolved = compare_snapshots(expected, verified).actionable_ids("typesense")
+        current_rows = list(await local_pool.fetch(_TYPESENSE_POSTINGS_BY_ID_SQL, ordered_ids))
+        current = _typesense_documents_snapshot(_build_typesense_docs(current_rows, maps))
+        source_changed = compare_snapshots(expected, current).actionable_ids("typesense")
+        unresolved_ids = {str(posting_id) for posting_id in verification_unresolved}
+        unresolved_ids.update(str(posting_id) for posting_id in source_changed)
+        unresolved_ids.update(rejected_ids)
+        unresolved = len(unresolved_ids)
+        if rejected_ids:
+            log.error(
+                "reconciliation.typesense_candidates_rejected",
+                rejected=len(rejected_ids),
+                unresolved=unresolved,
             )
-    return len(candidate_ids), 0
+        if source_changed:
+            log.error(
+                "reconciliation.typesense_candidates_changed_during_repair",
+                changed=len(source_changed),
+                unresolved=unresolved,
+            )
+        if verification_unresolved:
+            log.error(
+                "reconciliation.typesense_candidate_verification_failed",
+                verification_unresolved=len(verification_unresolved),
+                unresolved=unresolved,
+            )
+    return len(candidate_ids) - unresolved, unresolved
 
 
 async def _bootstrap_typesense_buckets(
@@ -656,25 +741,48 @@ async def reconcile_partition(
     unresolved = detected
 
     if repair and detected:
-        if target == "supabase":
-            if supa_pool is None:
-                raise ReconciliationError("Supabase reconciliation requires DATABASE_URL")
-            repaired, unresolved = await _repair_supabase_partition(
-                local_pool,
-                supa_pool,
-                diff.actionable_ids(target),
-                partition,
+        try:
+            if target == "supabase":
+                if supa_pool is None:
+                    raise ReconciliationError("Supabase reconciliation requires DATABASE_URL")
+                repaired, unresolved = await _repair_supabase_partition(
+                    local_pool,
+                    supa_pool,
+                    diff.actionable_ids(target),
+                    partition,
+                )
+            else:
+                if typesense is None or maps is None:
+                    raise ReconciliationError("Typesense repair dependencies are required")
+                repaired, unresolved = await _repair_typesense_partition(
+                    local_pool,
+                    typesense,
+                    maps,
+                    diff.actionable_ids(target),
+                    partition,
+                )
+        except Exception as exc:
+            # The initial comparison established the exact candidate count.
+            # A transport/protocol exception leaves the whole candidate set
+            # conservatively unresolved because convergence was not proven.
+            result = PartitionResult(
+                target=target,
+                partition=partition,
+                local_rows=local.rows,
+                local_active=local.active,
+                remote_rows=remote.rows,
+                remote_active=remote.active,
+                missing_remote=len(diff.missing_remote),
+                state_mismatch=len(diff.state_mismatch),
+                payload_mismatch=len(diff.payload_mismatch),
+                remote_only_active=len(diff.remote_only_active),
+                remote_only_inactive=len(diff.remote_only_inactive),
+                detected=detected,
+                repaired=0,
+                unresolved=detected,
+                duration_seconds=time.monotonic() - started,
             )
-        else:
-            if typesense is None or maps is None:
-                raise ReconciliationError("Typesense repair dependencies are required")
-            repaired, unresolved = await _repair_typesense_partition(
-                local_pool,
-                typesense,
-                maps,
-                diff.actionable_ids(target),
-                partition,
-            )
+            raise _PartitionRepairFailed(result, type(exc).__name__) from None
 
     result = PartitionResult(
         target=target,
@@ -1024,6 +1132,7 @@ async def run_reconciliation(
                 )
                 for target in selected_targets:
                     last_result: PartitionResult | None = None
+                    last_result_recorded = False
                     try:
                         if target == "typesense" and typesense is None:
                             typesense = TypesenseReconciliationClient()
@@ -1034,6 +1143,10 @@ async def run_reconciliation(
                         )
                         budget = PARTITION_COUNT - partition if full else max_partitions
                         for _ in range(budget):
+                            # Failure accounting belongs to this exact attempt;
+                            # never reuse a prior partition's successful result.
+                            last_result = None
+                            last_result_recorded = False
                             if target == "typesense":
                                 # Refresh long-running reconciliation proofs on
                                 # the same cadence as ordinary CDC so a stale
@@ -1092,6 +1205,7 @@ async def run_reconciliation(
                                 bootstrap_complete = True
 
                             summary.add(result)
+                            last_result_recorded = True
                             if repair:
                                 completed = await _advance_state(
                                     local_pool,
@@ -1105,7 +1219,18 @@ async def run_reconciliation(
                                 break
                             partition += 1
                     except Exception as exc:
-                        error_class = type(exc).__name__
+                        if isinstance(exc, _PartitionRepairFailed):
+                            last_result = exc.result
+                            error_class = exc.error_class
+                        else:
+                            error_class = type(exc).__name__
+                        if (
+                            last_result is not None
+                            and last_result.unresolved
+                            and not last_result_recorded
+                        ):
+                            summary.add_failed(last_result)
+                            last_result_recorded = True
                         failures.append(error_class)
                         if repair:
                             await _record_target_failure(

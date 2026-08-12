@@ -696,6 +696,8 @@ def _validate_typesense_acknowledgements(
 
 async def _upsert_to_typesense(
     docs: list[dict],
+    *,
+    log_rejected_documents: bool = True,
 ) -> set[str]:
     """Batch upsert documents to Typesense job_posting collection.
 
@@ -715,7 +717,9 @@ async def _upsert_to_typesense(
     A whole-batch transport failure (Typesense unreachable, 5xx, etc.) or
     malformed acknowledgement still raises — neither is a per-doc poison
     pill. The caller keeps the cursor pinned and applies bounded retry
-    backoff to the whole batch.
+    backoff to the whole batch. Reconciliation disables per-document failure
+    logs and emits only an aggregate count; its durable state and telemetry
+    must not contain posting IDs or payload details.
     """
     from src.typesense_client import get_typesense_client
 
@@ -768,15 +772,16 @@ async def _upsert_to_typesense(
             doc_id = str(doc.get("id", ""))
             failed_ids.add(doc_id)
             export_errors_total.labels(table="job_posting", phase="typesense").inc()
-            # ``[exporter] row dropped`` is the grep anchor for the
-            # Loki query ``{app="crawler"} |~ "row dropped"``.
-            log.error(
-                "exporter.row_dropped",
-                target="typesense",
-                posting_id=doc_id,
-                error=result.get("error"),
-                code=result.get("code"),
-            )
+            if log_rejected_documents:
+                # ``[exporter] row dropped`` is the grep anchor for the
+                # Loki query ``{app="crawler"} |~ "row dropped"``.
+                log.error(
+                    "exporter.row_dropped",
+                    target="typesense",
+                    posting_id=doc_id,
+                    error=result.get("error"),
+                    code=result.get("code"),
+                )
 
     succeeded = len(docs) - len(failed_ids)
     if succeeded > 0:

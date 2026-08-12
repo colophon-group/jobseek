@@ -1159,6 +1159,42 @@ class TestTypesensePerDocFallback:
         assert failed == set()
         assert after == before
 
+    async def test_reconciliation_can_suppress_rejected_document_details(self):
+        posting_id = uuid.uuid4()
+        sensitive_payload = "private-reconciliation-payload"
+        fake_client = MagicMock()
+        fake_client.collections = {
+            "job_posting": MagicMock(
+                documents=MagicMock(
+                    import_=MagicMock(
+                        return_value=[
+                            {
+                                "success": False,
+                                "error": sensitive_payload,
+                                "code": 400,
+                            }
+                        ]
+                    )
+                )
+            )
+        }
+        docs = [{"id": str(posting_id), "title": sensitive_payload}]
+
+        with (
+            patch("src.typesense_client.get_typesense_client", return_value=fake_client),
+            structlog.testing.capture_logs() as logs,
+        ):
+            failed = await _upsert_to_typesense(
+                docs,
+                log_rejected_documents=False,
+            )
+
+        assert failed == {str(posting_id)}
+        telemetry = json.dumps(logs)
+        assert "exporter.row_dropped" not in telemetry
+        assert str(posting_id) not in telemetry
+        assert sensitive_payload not in telemetry
+
     async def test_transport_failure_still_raises(self):
         """Whole-batch transport failure (Typesense unreachable, 5xx)
         is NOT a per-doc poison pill — the caller treats it as a leg
