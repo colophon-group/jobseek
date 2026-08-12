@@ -17,6 +17,9 @@ flock -w 7200 9 || {
 # ── Validate required env vars ─────────────────────────────────────────
 required_vars=(
   OWNER
+  CRAWLER_IMAGE_TAG
+  CRAWLER_IMAGE_REF
+  BROWSER_IMAGE_REF
   JOBSEEK_DEPLOY_REVISION
   JOBSEEK_RECONCILIATION_WRAPPER_SHA256
   WEB_DATABASE_URL
@@ -96,7 +99,7 @@ done
 # Staged path is intentionally dynamic; the workflow verifies and supplies it.
 # shellcheck disable=SC1091
 source "$INCOMING_DIR/deploy_helpers.sh"
-IMAGE_TAG="${CRAWLER_IMAGE_TAG:-latest}"
+IMAGE_TAG="$CRAWLER_IMAGE_TAG"
 REDIS_IMAGE="redis:8-alpine@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241"
 SHIM_IMAGE_REF="${SHIM_IMAGE_REF:-}"
 DEPLOY_MIN_FREE_KB="${DEPLOY_MIN_FREE_KB:-5242880}" # 5 GiB hard floor.
@@ -109,6 +112,22 @@ MAINTENANCE_BUDGET_SECONDS=1800
 MAINTENANCE_MARKER_NAME=""
 if [[ ! "$JOBSEEK_DEPLOY_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
   echo "ERROR: JOBSEEK_DEPLOY_REVISION must be a full lowercase Git commit SHA" >&2
+  exit 1
+fi
+if [[ ! "$OWNER" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+  echo "ERROR: OWNER must be a lowercase GitHub owner" >&2
+  exit 1
+fi
+if [[ ! "$IMAGE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-build\.[1-9][0-9]*\.g[0-9a-f]{7,12})?$ ]]; then
+  echo "ERROR: CRAWLER_IMAGE_TAG must be a versioned release/build tag" >&2
+  exit 1
+fi
+if [[ ! "$CRAWLER_IMAGE_REF" =~ ^ghcr\.io/${OWNER}/jobseek-crawler@sha256:[0-9a-f]{64}$ ]]; then
+  echo "ERROR: CRAWLER_IMAGE_REF must be an immutable crawler digest" >&2
+  exit 1
+fi
+if [[ ! "$BROWSER_IMAGE_REF" =~ ^ghcr\.io/${OWNER}/jobseek-crawler-browser@sha256:[0-9a-f]{64}$ ]]; then
+  echo "ERROR: BROWSER_IMAGE_REF must be an immutable crawler-browser digest" >&2
   exit 1
 fi
 if [[ ! "$JOBSEEK_RECONCILIATION_WRAPPER_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
@@ -699,6 +718,35 @@ resolve_shim_image_ref() {
   export SHIM_IMAGE_REF
 }
 
+verify_compose_service_image() {
+  local service="$1"
+  local expected_ref="$2"
+  local container_id actual_ref
+
+  container_id="$(docker compose ps -aq "$service" 2>/dev/null || true)"
+  if [[ -z "$container_id" ]]; then
+    echo "ERROR: image identity check found no container for ${service}" >&2
+    return 1
+  fi
+  actual_ref="$(docker inspect "$container_id" --format '{{.Config.Image}}')"
+  if [[ "$actual_ref" != "$expected_ref" ]]; then
+    echo "ERROR: ${service} image identity does not match the deployment manifest" >&2
+    return 1
+  fi
+}
+
+verify_deployed_image_identity() {
+  local service
+
+  verify_compose_service_image redis "$REDIS_IMAGE"
+  for service in worker-1 worker-2 worker-3 exporter drain murmur-shim-runtime-init; do
+    verify_compose_service_image "$service" "$CRAWLER_IMAGE_REF"
+  done
+  verify_compose_service_image browser-1 "$BROWSER_IMAGE_REF"
+  verify_compose_service_image murmur-shim "$SHIM_IMAGE_REF"
+  verify_compose_service_image alloy "$ALLOY_IMAGE"
+}
+
 running_compose_oneoff_containers() {
   docker ps \
     --filter "label=com.docker.compose.project=${COMPOSE_PROJECT_NAME}" \
@@ -797,6 +845,8 @@ docker rm "${legacy_containers[@]}" 2>/dev/null || true
 cat > "$ENV_FILE" <<EOF
 OWNER=${OWNER}
 CRAWLER_IMAGE_TAG=${IMAGE_TAG}
+CRAWLER_IMAGE_REF=${CRAWLER_IMAGE_REF}
+BROWSER_IMAGE_REF=${BROWSER_IMAGE_REF}
 SHIM_IMAGE_REF=${SHIM_IMAGE_REF}
 JOBSEEK_DEPLOY_REVISION=${JOBSEEK_DEPLOY_REVISION}
 WEB_DATABASE_URL=${WEB_DATABASE_URL}
@@ -861,7 +911,7 @@ docker run --rm \
   --network host \
   "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
   --label com.docker.compose.service=deploy-migrate \
-  "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
+  "$CRAWLER_IMAGE_REF" \
   uv run --no-sync alembic -c src/migrations/alembic.ini upgrade head
 
 # ── Patch Typesense schema (idempotent — adds new fields if missing) ─
@@ -875,7 +925,7 @@ docker run --rm \
   --network host \
   "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
   --label com.docker.compose.service=deploy-setup-typesense \
-  "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
+  "$CRAWLER_IMAGE_REF" \
   uv run --no-sync crawler setup-typesense
 
 # ── Sync board config from CSV → local Postgres + Redis + Typesense ──
@@ -892,7 +942,7 @@ docker run --rm \
   --network host \
   "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
   --label com.docker.compose.service=deploy-sync \
-  "ghcr.io/${OWNER}/jobseek-crawler:${IMAGE_TAG}" \
+  "$CRAWLER_IMAGE_REF" \
   uv run --no-sync crawler sync
 
 # ── Start the full stack on the freshly seeded Redis state ───────────
@@ -915,6 +965,7 @@ docker compose up -d --force-recreate alloy
 # backburnered; a shim issue should not fail the crawler deploy.
 wait_for_core_services
 reconciliation_wrapper_is_compatible
+verify_deployed_image_identity
 stop_maintenance_window
 
 # ── Cleanup ──────────────────────────────────────────────────────────
@@ -924,8 +975,15 @@ deploy_success_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-deploy-success.XXXXXX
 install -m 0644 "$DEPLOY_DIR/docker-compose.yml" "$active_compose_temporary"
 sha256sum "$active_compose_temporary" | awk '{print $1}' >"$active_compose_digest_temporary"
 chmod 0644 "$active_compose_digest_temporary"
-printf 'CRAWLER_IMAGE_TAG=%s\nJOBSEEK_DEPLOY_REVISION=%s\n' \
-  "$IMAGE_TAG" "$JOBSEEK_DEPLOY_REVISION" >"$deploy_success_temporary"
+printf '%s\n' \
+  "CRAWLER_IMAGE_TAG=$IMAGE_TAG" \
+  "CRAWLER_IMAGE_REF=$CRAWLER_IMAGE_REF" \
+  "BROWSER_IMAGE_REF=$BROWSER_IMAGE_REF" \
+  "REDIS_IMAGE_REF=$REDIS_IMAGE" \
+  "SHIM_IMAGE_REF=$SHIM_IMAGE_REF" \
+  "ALLOY_IMAGE_REF=$ALLOY_IMAGE" \
+  "JOBSEEK_DEPLOY_REVISION=$JOBSEEK_DEPLOY_REVISION" \
+  >"$deploy_success_temporary"
 chmod 0644 "$deploy_success_temporary"
 mv "$active_compose_temporary" "$ACTIVE_COMPOSE_SNAPSHOT"
 mv "$active_compose_digest_temporary" "$ACTIVE_COMPOSE_SNAPSHOT_SHA256"

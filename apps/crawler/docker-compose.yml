@@ -51,7 +51,7 @@ services:
   # Each worker has 1 CPU / 1 GiB. Keep discovery at the code default and
   # cap monitors at five; paginating monitors must stream bounded batches.
   worker-1:
-    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
     init: true
     restart: unless-stopped
     network_mode: host
@@ -80,7 +80,7 @@ services:
     cpus: 1.0
 
   worker-2:
-    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
     init: true
     restart: unless-stopped
     network_mode: host
@@ -107,7 +107,7 @@ services:
     cpus: 1.0
 
   worker-3:
-    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
     init: true
     restart: unless-stopped
     network_mode: host
@@ -135,7 +135,7 @@ services:
 
   # -- Exporter ----------------------------------------------------
   exporter:
-    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
     init: true
     restart: unless-stopped
     network_mode: host
@@ -154,7 +154,7 @@ services:
 
   # -- R2 Drain ----------------------------------------------------
   drain:
-    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
     init: true
     restart: unless-stopped
     network_mode: host
@@ -180,7 +180,7 @@ services:
 
   # -- Browser -----------------------------------------------------
   browser-1:
-    image: ghcr.io/${OWNER}/jobseek-crawler-browser:${CRAWLER_IMAGE_TAG:-latest}
+    image: ${BROWSER_IMAGE_REF:?BROWSER_IMAGE_REF must be an immutable GHCR digest}
     init: true
     restart: unless-stopped
     network_mode: host
@@ -236,7 +236,7 @@ services:
   # `depends_on` with `service_completed_successfully` is the gate
   # that withholds the shim until the copy finishes (or fails loudly).
   murmur-shim-runtime-init:
-    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
+    image: ${CRAWLER_IMAGE_REF:?CRAWLER_IMAGE_REF must be an immutable GHCR digest}
     pull_policy: always
     restart: "no"
     # `cp -a` preserves modes + symlinks, which we need for the venv's

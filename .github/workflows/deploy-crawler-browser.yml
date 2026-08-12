@@ -61,6 +61,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push slim image (worker, exporter, drain)
+        id: build-slim
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: apps/crawler
@@ -73,6 +74,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=crawler-slim,ignore-error=true
 
       - name: Build and push browser image (full)
+        id: build-browser
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: apps/crawler
@@ -91,7 +93,7 @@ jobs:
       # gates the SSH deploy on the image's idempotency.
       - name: Smoke-test setup-typesense (idempotency)
         env:
-          IMAGE: ghcr.io/${{ github.repository_owner }}/jobseek-crawler:${{ steps.version.outputs.image_tag }}
+          IMAGE: ghcr.io/${{ github.repository_owner }}/jobseek-crawler@${{ steps.build-slim.outputs.digest }}
         run: |
           set -euo pipefail
           # Always tear down on exit, including on early failure, so a
@@ -103,7 +105,8 @@ jobs:
           # runner filesystem.
           docker run -d --name ts-smoke --network host \
             --tmpfs /data:rw \
-            typesense/typesense:27.1 --data-dir /data --api-key=smoke
+            typesense/typesense:27.1@sha256:5c12af89130b8ee0be11541321ba8a3a7c7a538d7c6cd95e0409dc2d75ca6455 \
+            --data-dir /data --api-key=smoke
 
           ready=0
           for _ in $(seq 1 90); do
@@ -189,11 +192,13 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: OWNER,CRAWLER_IMAGE_TAG,JOBSEEK_DEPLOY_REVISION,JOBSEEK_RECONCILIATION_WRAPPER_SHA256,WEB_DATABASE_URL,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_OPERATIONS_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URL,DECODO_PROXY_URL,MURMUR_TOKEN
+          envs: OWNER,CRAWLER_IMAGE_TAG,CRAWLER_IMAGE_REF,BROWSER_IMAGE_REF,JOBSEEK_DEPLOY_REVISION,JOBSEEK_RECONCILIATION_WRAPPER_SHA256,WEB_DATABASE_URL,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_OPERATIONS_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URL,DECODO_PROXY_URL,MURMUR_TOKEN
           script: bash /home/deploy/incoming/deploy.sh
         env:
           OWNER: ${{ github.repository_owner }}
           CRAWLER_IMAGE_TAG: ${{ steps.version.outputs.image_tag }}
+          CRAWLER_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/jobseek-crawler@${{ steps.build-slim.outputs.digest }}
+          BROWSER_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/jobseek-crawler-browser@${{ steps.build-browser.outputs.digest }}
           JOBSEEK_DEPLOY_REVISION: ${{ github.sha }}
           JOBSEEK_RECONCILIATION_WRAPPER_SHA256: ${{ steps.reconciliation.outputs.wrapper_sha256 }}
           # Keep the retained web-owned watchlist boundary separately named

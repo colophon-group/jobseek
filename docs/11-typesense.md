@@ -181,9 +181,14 @@ Redis reseed race with live workers. Typesense itself remains online throughout.
 The deploy workflow also smoke-runs `setup-typesense` twice against an ephemeral
 Typesense container before SSHing to prod (the second run exercises the patch
 path on existing collections), so a schema regression fails CI rather than
-aborting the deploy mid-stream. The script keeps a rollback copy of
-`/home/deploy/.env`, starts the previous image again on failure, and only lets
-the workflow promote the new images to `latest` after the SSH deploy succeeds.
+aborting the deploy mid-stream. BuildKit's crawler and browser manifest
+digests, rather than their version tags, are passed into production Compose.
+The deploy rejects missing, malformed, or mutable image references, keeps a
+rollback copy of `/home/deploy/.env` plus the active Compose contract, verifies
+each running container against the candidate digest manifest, and only then
+publishes the atomic success marker. Version and `latest` tags remain discovery
+and compatibility aliases; the workflow promotes `latest` only after the
+digest-addressed SSH deployment succeeds.
 
 ### Company Collection (extended for company detail page)
 

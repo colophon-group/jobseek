@@ -17,9 +17,9 @@
 # never kill an in-flight deploy mid-restart.
 #
 # Secrets resolve from the `production` environment on the deploy job.
-# Required: HETZNER_HOST, HETZNER_SSH_KEY, GHCR_PAT (with write:packages
-# for the build job; pull-only is fine for the SSH login step but a
-# single PAT covers both), MURMUR_TOKEN, DATABASE_URL.
+# Required: HETZNER_HOST, HETZNER_SSH_KEY, HETZNER_GH_TOKEN
+# (pull-only `read:packages` for the host), MURMUR_TOKEN, DATABASE_URL.
+# Build and compatibility-tag promotion use the job-scoped GITHUB_TOKEN.
 #
 # Lessons baked in (from the murmur deploy this session):
 #   1. `docker/login-action@v3` is broken with classic PATs against GHCR
@@ -34,12 +34,9 @@
 #      is safe (file has exactly 2 leading components -> lands as
 #      `/home/deploy/docker-compose.yml`). If we ever bundle the
 #      shim sources too, split per-depth into separate SCP steps.
-#   4. PAT must have `write:packages` scope (read:packages alone broke
-#      the first GHCR push in murmur).
-#   5. `gh secret set --body -` is taken as the literal "-", not stdin;
-#      use no `--body` (reads stdin) or `< file`. Confirm GHCR_PAT on
-#      this repo is the actual token, not the literal "-".
-#   6. SHA-pin every action — no @v3 floating tags.
+#   4. The runner's GITHUB_TOKEN has job-scoped `packages: write`; the
+#      host receives only its pull credential.
+#   5. SHA-pin every action — no @v3 floating tags.
 #
 # Action SHA pins (mirror apps/crawler/.github/workflows/deploy-crawler-browser.yml
 # so all jobseek deploys pin to the same versions):
@@ -79,8 +76,6 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
-      # Belt-and-suspenders alongside the PAT — keeps workflow-level perms
-      # from being the surprise blocker if the PAT is ever rotated.
       packages: write
     outputs:
       image_digest: ${{ steps.build-shim.outputs.digest }}
@@ -91,14 +86,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
-      # Direct `docker login` (NOT docker/login-action). The action's
-      # auth probe is incompatible with classic PATs against GHCR even
-      # when the same PAT works fine via the CLI — see lesson #1 above.
-      # Username is the PAT owner (viktor-shcherb), not the org.
-      - name: Log in to GHCR (PAT, stdin)
+      - name: Log in to GHCR (job token, stdin)
         env:
-          GHCR_PAT: ${{ secrets.GHCR_PAT || secrets.HETZNER_GH_TOKEN }}
-        run: echo "$GHCR_PAT" | docker login ghcr.io -u viktor-shcherb --password-stdin
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Build & push jobseek-murmur-shim
         id: build-shim
@@ -113,7 +104,6 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/colophon-group/jobseek-murmur-shim:latest
             ghcr.io/colophon-group/jobseek-murmur-shim:${{ github.sha }}
           cache-from: type=gha,scope=murmur-shim
           cache-to: type=gha,mode=max,scope=murmur-shim,ignore-error=true
@@ -146,7 +136,7 @@ jobs:
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
           source: apps/crawler/docker-compose.yml
-          target: /home/deploy/
+          target: /home/deploy/incoming-shim/
           strip_components: 2
 
       - name: Deploy via SSH
@@ -158,7 +148,7 @@ jobs:
           # `envs:` whitelist — only these names are forwarded into the
           # remote shell. Names only; values come from the matching
           # `env:` block below. Never put a secret name into `script:`.
-          envs: GHCR_PAT,MURMUR_TOKEN,DATABASE_URL,LOCAL_DATABASE_URL,OWNER,SHIM_IMAGE_REF
+          envs: GHCR_PULL_TOKEN,MURMUR_TOKEN,DATABASE_URL,LOCAL_DATABASE_URL,OWNER,SHIM_IMAGE_REF
           # Inline script (no /home/deploy/deploy.sh dependency — this
           # workflow only touches the murmur-shim service). The crawler's
           # deploy.sh is left alone; full-stack redeploys still go via
@@ -183,31 +173,102 @@ jobs:
             export MURMUR_TOKEN DATABASE_URL OWNER LOCAL_DATABASE_URL SHIM_IMAGE_REF
             cd /home/deploy
             [[ "$SHIM_IMAGE_REF" =~ ^ghcr\.io/colophon-group/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]]
-            previous_image_id="$(docker inspect deploy-murmur-shim-1 --format '{{.Image}}')"
-            mapfile -t previous_shim_refs < <(
-              docker image inspect "$previous_image_id" \
-                --format '{{range .RepoDigests}}{{println .}}{{end}}' |
-                grep -E '^ghcr\.io/colophon-group/jobseek-murmur-shim@sha256:[0-9a-f]{64}$'
-            )
-            test "${#previous_shim_refs[@]}" -eq 1
-            previous_shim_ref="${previous_shim_refs[0]}"
-            [[ "$previous_shim_ref" =~ ^ghcr\.io/colophon-group/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]]
+            live_compose=/home/deploy/docker-compose.yml
+            staged_compose=/home/deploy/incoming-shim/docker-compose.yml
+            test -f "$live_compose"
+            test ! -L "$live_compose"
+            test -f "$staged_compose"
+            test ! -L "$staged_compose"
+            test -f /home/deploy/.env
+            test ! -L /home/deploy/.env
+
+            resolve_running_digest() {
+              container="$1"
+              repository="$2"
+              configured_ref="$(docker inspect "$container" --format '{{.Config.Image}}')"
+              if [[ "$configured_ref" =~ ^${repository}@sha256:[0-9a-f]{64}$ ]]; then
+                printf '%s\n' "$configured_ref"
+                return 0
+              fi
+              image_id="$(docker inspect "$container" --format '{{.Image}}')"
+              [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
+              mapfile -t digest_refs < <(
+                docker image inspect "$image_id" \
+                  --format '{{range .RepoDigests}}{{println .}}{{end}}' |
+                  grep -E "^${repository}@sha256:[0-9a-f]{64}$"
+              )
+              test "${#digest_refs[@]}" -eq 1
+              printf '%s\n' "${digest_refs[0]}"
+            }
+
+            CRAWLER_IMAGE_REF="$(
+              resolve_running_digest deploy-worker-1-1 \
+                ghcr.io/colophon-group/jobseek-crawler
+            )"
+            BROWSER_IMAGE_REF="$(
+              resolve_running_digest deploy-browser-1-1 \
+                ghcr.io/colophon-group/jobseek-crawler-browser
+            )"
+            previous_shim_ref="$(
+              resolve_running_digest deploy-murmur-shim-1 \
+                ghcr.io/colophon-group/jobseek-murmur-shim
+            )"
+            export CRAWLER_IMAGE_REF BROWSER_IMAGE_REF
+
+            previous_compose="$(mktemp /home/deploy/.docker-compose.shim.rollback.XXXXXX)"
+            previous_env="$(mktemp /home/deploy/.env.shim.rollback.XXXXXX)"
+            cp --preserve=mode,ownership "$live_compose" "$previous_compose"
+            cp --preserve=mode,ownership /home/deploy/.env "$previous_env"
+            chmod 0600 "$previous_env"
             rollback_armed=0
+            compose_activated=0
+            env_activated=0
             env_candidate=""
             rollback_shim() {
               status=$?
               trap - EXIT
+              set +e
               if [[ -n "$env_candidate" && -f "$env_candidate" && ! -L "$env_candidate" ]]; then
                 rm -f -- "$env_candidate"
               fi
               if [[ "$status" -ne 0 && "$rollback_armed" -eq 1 ]]; then
                 echo "Murmur shim deploy failed; restoring the prior immutable image" >&2
-                SHIM_IMAGE_REF="$previous_shim_ref" docker compose up -d murmur-shim || status=1
+                if ! SHIM_IMAGE_REF="$previous_shim_ref" docker compose up -d murmur-shim ||
+                  ! sleep 5 ||
+                  ! curl -sf http://localhost:8080/health >/dev/null ||
+                  [[ "$(docker inspect deploy-murmur-shim-1 --format '{{.Config.Image}}')" \
+                    != "$previous_shim_ref" ]]
+                then
+                  echo "Murmur shim rollback did not converge" >&2
+                  status=1
+                fi
               fi
+              if [[ "$status" -ne 0 && "$compose_activated" -eq 1 ]]; then
+                mv -f "$previous_compose" "$live_compose" || status=1
+                compose_activated=0
+              fi
+              if [[ "$status" -ne 0 && "$env_activated" -eq 1 ]]; then
+                mv -f "$previous_env" /home/deploy/.env || status=1
+                env_activated=0
+              fi
+              rm -f -- "$previous_compose" "$previous_env" "$staged_compose"
               exit "$status"
             }
             trap rollback_shim EXIT
-            echo "$GHCR_PAT" | docker login ghcr.io -u viktor-shcherb --password-stdin
+            env_candidate="$(mktemp /home/deploy/.env.shim.XXXXXX)"
+            awk '!/^(CRAWLER_IMAGE_REF|BROWSER_IMAGE_REF|SHIM_IMAGE_REF)=/' \
+              "$previous_env" >"$env_candidate"
+            printf 'CRAWLER_IMAGE_REF=%s\n' "$CRAWLER_IMAGE_REF" >>"$env_candidate"
+            printf 'BROWSER_IMAGE_REF=%s\n' "$BROWSER_IMAGE_REF" >>"$env_candidate"
+            printf 'SHIM_IMAGE_REF=%s\n' "$SHIM_IMAGE_REF" >>"$env_candidate"
+            chmod 0600 "$env_candidate"
+            mv "$env_candidate" /home/deploy/.env
+            env_candidate=""
+            env_activated=1
+            install -m 0644 "$staged_compose" "$live_compose"
+            compose_activated=1
+
+            echo "$GHCR_PULL_TOKEN" | docker login ghcr.io -u viktor-shcherb --password-stdin
             # Pull both the shim image AND the runtime-init image. The
             # init service `pull_policy: always` would handle this on
             # `up`, but pulling explicitly here surfaces auth/network
@@ -225,19 +286,14 @@ jobs:
             sleep 5
             curl -sf http://localhost:8080/health
             test "$(docker inspect deploy-murmur-shim-1 --format '{{.Config.Image}}')" = "$SHIM_IMAGE_REF"
-            test -f /home/deploy/.env
-            test ! -L /home/deploy/.env
-            env_candidate="$(mktemp /home/deploy/.env.shim.XXXXXX)"
-            awk '!/^SHIM_IMAGE_REF=/' /home/deploy/.env >"$env_candidate"
-            printf 'SHIM_IMAGE_REF=%s\n' "$SHIM_IMAGE_REF" >>"$env_candidate"
-            chmod 0600 "$env_candidate"
-            mv "$env_candidate" /home/deploy/.env
-            env_candidate=""
             rollback_armed=0
+            compose_activated=0
+            env_activated=0
+            rm -f -- "$previous_compose" "$previous_env" "$staged_compose"
         env:
           OWNER: ${{ github.repository_owner }}
           SHIM_IMAGE_REF: ghcr.io/colophon-group/jobseek-murmur-shim@${{ needs.build.outputs.image_digest }}
-          GHCR_PAT: ${{ secrets.GHCR_PAT || secrets.HETZNER_GH_TOKEN }}
+          GHCR_PULL_TOKEN: ${{ secrets.HETZNER_GH_TOKEN }}
           MURMUR_TOKEN: ${{ secrets.MURMUR_TOKEN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           # Forwarded so the compose `MURMUR_DB_DSN: ${LOCAL_DATABASE_URL}`
@@ -246,3 +302,26 @@ jobs:
           # /home/deploy/.env, but this workflow runs without invoking
           # deploy.sh, so the inline export above is the only path.
           LOCAL_DATABASE_URL: ${{ secrets.LOCAL_DATABASE_URL }}
+
+  promote:
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to GHCR (job token, stdin)
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Promote deployed shim to compatibility tag
+        run: |
+          set -euo pipefail
+          docker buildx imagetools create \
+            -t ghcr.io/colophon-group/jobseek-murmur-shim:latest \
+            "ghcr.io/colophon-group/jobseek-murmur-shim@${{ needs.build.outputs.image_digest }}"

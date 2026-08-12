@@ -1949,13 +1949,17 @@ First identify active and rollback images:
 ```bash
 cd /home/deploy
 docker compose ps
-grep '^CRAWLER_IMAGE_TAG=' /home/deploy/.env
+grep -E '^(CRAWLER_IMAGE_TAG|CRAWLER_IMAGE_REF|BROWSER_IMAGE_REF|SHIM_IMAGE_REF)=' \
+  /home/deploy/.env
+cat /home/deploy/.crawler-deploy-success.env
 docker images 'ghcr.io/colophon-group/jobseek-crawler*' \
   --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.Size}} {{.CreatedSince}}'
 ```
 
-Keep the currently deployed crawler/browser tag and at least one recent
-rollback pair. Remove older unused version tags with `docker rmi <image-ref>`.
+Treat the digest references in the atomic success marker and rollback `.env`
+as authoritative. Keep their crawler/browser images and at least one recent
+rollback pair. Version tags are only human-readable aliases; remove older
+unused aliases/images with `docker rmi <image-ref>`.
 Docker will reject removal of any image still referenced by a container unless
 forced; do not force-remove running deployment images.
 
