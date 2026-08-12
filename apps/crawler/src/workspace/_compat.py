@@ -73,6 +73,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "hibob",
         "hirehive",
         "hireology",
+        "turbohire",
         "inline",
         "inploi",
         "jarvi",
@@ -141,6 +142,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "herp",
     "hrmos",
     "icims",
+    "intervieweb",
     "jazzhr",
     "jobvite",
     "join",
@@ -364,8 +366,12 @@ def detect_ats_from_url(url: str) -> str | None:
         return "hireology"
     if host.endswith(".hirehive.com"):
         return "hirehive"
+    if host.endswith(".turbohire.co"):
+        return "turbohire"
     if host.endswith(".dvinci-hr.com"):
         return "dvinci"
+    if host == "intervieweb.it" or host.endswith(".intervieweb.it"):
+        return "intervieweb"
     if host.endswith(".softgarden.io"):
         return "softgarden"
     if host.endswith(".traffit.com"):
@@ -670,6 +676,8 @@ def auto_scraper_type(
     if monitor_type == "jobvite":
         return ("json-ld", None)
     if monitor_type == "icims":
+        return ("json-ld", None)
+    if monitor_type == "intervieweb":
         return ("json-ld", None)
     if monitor_type == "herp":
         return ("json-ld", None)

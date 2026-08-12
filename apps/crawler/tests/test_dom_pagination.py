@@ -102,6 +102,19 @@ class TestExtractLinksStatic:
         # /emploi/ doesn't match keywords, /jobs/ does
         assert urls == {"https://example.com/jobs/456"}
 
+    def test_ignores_job_keyword_in_hostname(self):
+        """A careers hostname must not make navigation links look like jobs."""
+        html = _html_with_links(
+            "#",
+            "/?page=login",
+            "/?page=advertisement&sort=date",
+            "/?page=advertisement_display&id=15794",
+        )
+
+        urls = _extract_links_static(html, "https://careers.example.com/?page=advertisement")
+
+        assert urls == {"https://careers.example.com/?page=advertisement_display&id=15794"}
+
 
 class TestBuildUrlMatcher:
     def test_string_filter(self):

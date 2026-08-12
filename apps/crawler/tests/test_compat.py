@@ -79,6 +79,15 @@ def test_detect_ats_hirehive_host():
     assert detect_ats_from_url("https://acme.hirehive.com") == "hirehive"
 
 
+def test_detect_ats_turbohire_host():
+    assert (
+        detect_ats_from_url(
+            "https://acme.turbohire.co/careerpage/4d757ba0-3d57-448a-b82c-238ed87ac90f"
+        )
+        == "turbohire"
+    )
+
+
 def test_detect_ats_welcometothejungle_company_jobs_url():
     assert (
         detect_ats_from_url("https://www.welcometothejungle.com/fr/companies/wojo/jobs")

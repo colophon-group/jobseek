@@ -52,7 +52,7 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 import structlog
 
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
-from src.shared.browser import NAVIGATE_KEYS
+from src.shared.browser import BROWSER_KEYS, NAVIGATE_KEYS
 from src.shared.nextdata import (
     extract_embedded_json,
     extract_field,
@@ -421,9 +421,10 @@ async def discover(
         return set()
 
     source: str = metadata.get("source", "nextdata")
+    browser_expression = metadata.get("browser_expression")
     fields_map: dict[str, str | dict] = metadata.get("fields") or {}
     slug_fields: list[str] | None = metadata.get("slug_fields")
-    render = metadata.get("render", False)
+    render = metadata.get("render", False) or source == "browser"
     actions = metadata.get("actions")
     pagination_cfg: dict | None = metadata.get("pagination")
     base_salary_cfg: dict | None = metadata.get("base_salary")
@@ -436,33 +437,51 @@ async def discover(
         )
         render = True
 
-    browser_config = {k: v for k, v in metadata.items() if k in NAVIGATE_KEYS}
+    browser_keys = BROWSER_KEYS if source == "browser" else NAVIGATE_KEYS
+    browser_config = {k: v for k, v in metadata.items() if k in browser_keys}
 
-    # Fetch the page
-    html = await _fetch_html(
-        board_url,
-        render,
-        client,
-        pw=pw,
-        browser_config=browser_config,
-    )
-    if not html:
-        log.warning("nextdata.fetch_failed", board_url=board_url)
-        return list() if fields_map else set()
-
-    # Extract embedded JSON (source-aware)
-    data = extract_embedded_json(html, source)
+    if source == "browser":
+        if not isinstance(browser_expression, str) or not browser_expression.strip():
+            raise ValueError("nextdata browser source requires a non-empty browser_expression")
+        data = await _evaluate_browser_data(
+            board_url,
+            browser_expression,
+            pw,
+            browser_config,
+        )
+    else:
+        # Fetch the page and extract embedded JSON (source-aware).
+        html = await _fetch_html(
+            board_url,
+            render,
+            client,
+            pw=pw,
+            browser_config=browser_config,
+        )
+        if not html:
+            log.warning("nextdata.fetch_failed", board_url=board_url)
+            return list() if fields_map else set()
+        data = extract_embedded_json(html, source)
     if not data:
+        if source == "browser":
+            raise RuntimeError("nextdata browser expression returned no data")
         log.warning("nextdata.no_data", board_url=board_url, source=source)
         return list() if fields_map else set()
 
     # Walk path to jobs array
     items = resolve_path(data, path)
     if not isinstance(items, list):
+        if source == "browser":
+            raise RuntimeError(f"nextdata browser path did not resolve to a list: {path}")
         log.warning("nextdata.path_not_list", board_url=board_url, path=path)
         return list() if fields_map else set()
 
     # Pagination: fetch remaining pages and merge
+    if pagination_cfg and source == "browser":
+        raise ValueError(
+            "nextdata browser source does not support pagination; "
+            "browser_expression must return the complete inventory"
+        )
     if pagination_cfg:
         items = await _fetch_remaining_pages(
             items,
@@ -510,9 +529,10 @@ async def discover_stream(
         return
 
     source: str = metadata.get("source", "nextdata")
+    browser_expression = metadata.get("browser_expression")
     fields_map: dict[str, str | dict] = metadata.get("fields") or {}
     slug_fields: list[str] | None = metadata.get("slug_fields")
-    render = metadata.get("render", False)
+    render = metadata.get("render", False) or source == "browser"
     actions = metadata.get("actions")
     pagination_cfg: dict | None = metadata.get("pagination")
     base_salary_cfg: dict | None = metadata.get("base_salary")
@@ -520,24 +540,44 @@ async def discover_stream(
     if not render and actions:
         render = True
 
-    browser_config = {k: v for k, v in metadata.items() if k in NAVIGATE_KEYS}
+    if pagination_cfg and source == "browser":
+        raise ValueError(
+            "nextdata browser source does not support pagination; "
+            "browser_expression must return the complete inventory"
+        )
 
-    html = await _fetch_html(
-        board_url,
-        render,
-        client,
-        pw=pw,
-        browser_config=browser_config,
-    )
-    if not html:
-        return
+    browser_keys = BROWSER_KEYS if source == "browser" else NAVIGATE_KEYS
+    browser_config = {k: v for k, v in metadata.items() if k in browser_keys}
 
-    data = extract_embedded_json(html, source)
+    if source == "browser":
+        if not isinstance(browser_expression, str) or not browser_expression.strip():
+            raise ValueError("nextdata browser source requires a non-empty browser_expression")
+        data = await _evaluate_browser_data(
+            board_url,
+            browser_expression,
+            pw,
+            browser_config,
+        )
+    else:
+        html = await _fetch_html(
+            board_url,
+            render,
+            client,
+            pw=pw,
+            browser_config=browser_config,
+        )
+        if not html:
+            return
+        data = extract_embedded_json(html, source)
     if not data:
+        if source == "browser":
+            raise RuntimeError("nextdata browser expression returned no data")
         return
 
     items = resolve_path(data, path)
     if not isinstance(items, list):
+        if source == "browser":
+            raise RuntimeError(f"nextdata browser path did not resolve to a list: {path}")
         return
 
     # No pagination — single yield
@@ -657,6 +697,30 @@ async def _fetch_html(
             log.warning("nextdata.render_failed", url=url, exc_info=True)
             return None
     return await fetch_page_text(url, client)
+
+
+async def _evaluate_browser_data(
+    url: str,
+    expression: str,
+    pw,
+    browser_config: dict | None = None,
+) -> object | None:
+    """Evaluate a JSON-serializable jobs expression in a rendered page.
+
+    Some campaign sites keep their complete job list in a client-side
+    JavaScript variable while rendering application links whose destination is
+    only a login shell.  Reading the list in the page context preserves the
+    structured titles and descriptions without scraping those lossy links.
+    """
+    if pw is None:
+        raise RuntimeError("nextdata browser source requires Playwright")
+
+    from src.shared.browser import navigate, open_page
+
+    config = browser_config or {}
+    async with open_page(pw, config, use_proxy=bool(config.get("proxy"))) as page:
+        await navigate(page, url, config)
+        return await page.evaluate(expression)
 
 
 async def _fetch_remaining_pages(

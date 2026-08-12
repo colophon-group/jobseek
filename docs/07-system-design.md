@@ -180,6 +180,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `paycom`          | Rich     | paycom      | Paycom bootstrap + preview API + detail enrichment |
 | 10   | `jazzhr`          | URL-only | jazzhr      | ApplyToJob static listing + JSON-LD/DOM detail parsing |
 | 10   | `icims`           | URL-only | json-ld     | iCIMS static listings + bounded pagination |
+| 10   | `intervieweb`     | URL-only | json-ld     | Intervieweb HTML + CSRF-protected POST pagination |
 | 10   | `gupy`            | URL-only | json-ld     | Gupy single-page NextData inventory |
 | 10   | `cornerstone`     | Rich     | skip        | Cornerstone bootstrap + regional paginated search API |
 | 10   | `darwinbox`       | Rich     | skip        | Darwinbox browser-session public jobs API |
@@ -197,6 +198,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `hibob`           | Rich     | skip        | HiBob public career-site API            |
 | 10   | `hirehive`        | Rich     | skip        | HireHive public Jobs API                |
 | 10   | `hireology`       | Rich     | skip        | Hireology Careers API                   |
+| 10   | `turbohire`       | Rich     | skip        | TurboHire public career API             |
 | 10   | `jarvi`           | Rich     | skip        | Jarvi public careers API                |
 | 10   | `jobylon`         | Rich     | skip        | Jobylon iframe embed data               |
 | 10   | `keka`            | Rich     | skip        | Keka public career-portal jobs API      |

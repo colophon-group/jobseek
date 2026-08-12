@@ -94,9 +94,11 @@ Monitor Types (cheapest first):
   hibob             10      Full job data     No (skipped)
   hirehive          10      Full job data     No (skipped)
   hireology         10      Full job data     No (skipped)
+  turbohire         10      Full job data     No (skipped)
   herp              10      Job URLs          Auto-configured
   hrmos             10      Job URLs          Auto-configured
   icims             10      Job URLs          Auto-configured
+  intervieweb       10      Job URLs          Auto-configured
   jarvi             10      Full job data     No (skipped)
   jazzhr            10      Job URLs          Auto-configured
   pageup            10      Full/partial      Auto-enriched DOM
@@ -631,6 +633,28 @@ hireology — Hireology Careers API
   Detection:  ws probe shows "Hireology API — slug: X, N jobs"
   Zero jobs?  Verify slug — try the API URL directly in a browser"""
 
+MONITOR_TURBOHIRE = """\
+turbohire — TurboHire Public Career API
+
+  API:      GET /api/token/noauth, POST /api/careerpagev2/filteredjobs,
+            GET /api/publicjobs?jobId=... on thapi.azurewebsites.net
+  Returns:  Full job data (title, complete HTML description, locations,
+            employment_type, date_posted, language, skills)
+            metadata: id, job_code, department, client_name, experience range
+  Scraper:  Not needed (detail API returns full data, scraper step is skipped)
+  Cap:      50,000 jobs
+  Note:     Fetches TurboHire's short-lived public token once per cycle and
+            retrieves details with bounded concurrency.
+
+  Config:
+    {"org_id": "4d757ba0-3d57-448a-b82c-238ed87ac90f"}
+
+    org_id   Organization UUID. Auto-filled from /careerpage/{org_id} or
+             /dashboardv2?orgId={org_id} URLs.
+
+  Detection:  ws probe shows "TurboHire API — organization: X, N jobs"
+  Zero jobs?  Verify the organization UUID and that the public career page is published"""
+
 MONITOR_LEVER = """\
 lever — Lever Postings API
 
@@ -894,7 +918,12 @@ nextdata — Next.js __NEXT_DATA__ Discovery
     url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
     url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
     source         Embedded source: nextdata (default), reactrouter, rsc,
-                   or phenom_canvas
+                   phenom_canvas, or browser. The browser source evaluates a
+                   JSON-serializable client-side jobs variable after render.
+    browser_expression
+                   JavaScript expression used when source=browser, for example
+                   "({jobs: jobList})". Requires Playwright; actions run before
+                   evaluation. Use only data exposed by the public board.
     pagination     Page metadata mapping. Example:
                    {"path":"jobsData.meta","page_count":"totalPages",
                     "page_param":"page"}
@@ -1296,6 +1325,28 @@ avature — Avature public static listing monitor
   A first-page 404/410 is definitive gone; 202/401/403/406 and transport
   failures remain transient. Configure the normal proxy option for WAF-gated
   portals.
+"""
+
+MONITOR_INTERVIEWEB = """\
+intervieweb — Intervieweb / In-recruiting career sites
+
+  Returns:  Complete job-detail URL set
+  Scraper:  Auto-configured JSON-LD
+  Cost:     10
+
+  Intervieweb embeds the first result page in the career-page HTML and loads
+  later pages through a CSRF-protected POST endpoint. The monitor resolves the
+  current endpoint and token on every run and walks every advertised page.
+
+  Config:   No provider config required. Generic url_filter/url_transform and
+            proxy options remain available.
+
+  Detection: Direct *.intervieweb.it career pages containing the
+             url-for-announces, vacancyListCareer, and researchAnnounces
+             protocol markers.
+
+  Pair with: json-ld (auto-configured). Intervieweb detail pages publish
+             structured title, location, description, and posting dates.
 """
 
 
@@ -2864,6 +2915,7 @@ MONITOR_CARDS: dict[str, str] = {
     "hibob": MONITOR_HIBOB,
     "hirehive": MONITOR_HIREHIVE,
     "hireology": MONITOR_HIREOLOGY,
+    "turbohire": MONITOR_TURBOHIRE,
     "jarvi": MONITOR_JARVI,
     "jobylon": MONITOR_JOBYLON,
     "join": MONITOR_JOIN,
@@ -2880,6 +2932,7 @@ MONITOR_CARDS: dict[str, str] = {
     "jobvite": MONITOR_JOBVITE,
     "pageup": MONITOR_PAGEUP,
     "icims": MONITOR_ICIMS,
+    "intervieweb": MONITOR_INTERVIEWEB,
     "gupy": MONITOR_GUPY,
     "cornerstone": MONITOR_CORNERSTONE,
     "darwinbox": MONITOR_DARWINBOX,
