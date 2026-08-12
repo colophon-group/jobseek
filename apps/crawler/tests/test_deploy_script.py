@@ -216,11 +216,13 @@ def test_deploy_publishes_exact_success_marker_only_after_commit() -> None:
     staged_identity = script.index('verify_shim_deploy_contract "$deploy_success_temporary"')
     committed_identity = script.index('verify_shim_deploy_contract "$DEPLOY_SUCCESS_FILE"')
 
-    assert health < prepare < staged_identity < disarm < publish < committed_identity
+    assert health < prepare < staged_identity < publish < committed_identity < disarm
     assert '"CRAWLER_IMAGE_REF=$CRAWLER_IMAGE_REF"' in script
     assert '"BROWSER_IMAGE_REF=$BROWSER_IMAGE_REF"' in script
     assert '"SHIM_IMAGE_REF=$SHIM_IMAGE_REF"' in script
     assert 'DEPLOY_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.env"' in script
+    assert 'ROLLBACK_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.rollback"' in script
+    assert 'mv "$ROLLBACK_SUCCESS_FILE" "$DEPLOY_SUCCESS_FILE"' in script
 
 
 def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) -> None:
@@ -247,6 +249,8 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             'ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"',
             'ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"',
             'ROLLBACK_POOL_OVERRIDE="$DEPLOY_DIR/.crawler-rollback-pool-budget.override.yml"',
+            'DEPLOY_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.env"',
+            'ROLLBACK_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.rollback"',
             "ENV_FILE_WAS_PRESENT=1",
             "ROLLBACK_ARMED=0",
             "ROLLBACK_RUNNING=0",
@@ -292,11 +296,15 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
         compose = deploy_dir / "docker-compose.yml"
         rollback_override = deploy_dir / ".crawler-rollback-pool-budget.override.yml"
         archive = deploy_dir / ".deploy-spec.rollback.tar"
+        deploy_success = deploy_dir / ".crawler-deploy-success.env"
+        rollback_success = deploy_dir / ".crawler-deploy-success.rollback"
         log = deploy_dir / "rollback.log"
         env_file.write_text("CRAWLER_IMAGE_TAG=failed-tag\n", encoding="utf-8")
         rollback_env.write_text("CRAWLER_IMAGE_TAG=old-tag\n", encoding="utf-8")
         compose.write_text("new-compose\n", encoding="utf-8")
         rollback_override.write_text("bounded-override\n", encoding="utf-8")
+        deploy_success.write_text("CRAWLER_IMAGE_TAG=failed-tag\n", encoding="utf-8")
+        rollback_success.write_text("CRAWLER_IMAGE_TAG=old-tag\n", encoding="utf-8")
         previous_compose = deploy_dir / "previous-compose.yml"
         previous_compose.write_text("old-compose\n", encoding="utf-8")
         with tarfile.open(archive, "w") as rollback_archive:
@@ -348,6 +356,7 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             f"CRAWLER_IMAGE_TAG=old-tag\n\nCOMPOSE_FILE={compose}:{rollback_override}\n"
         )
         assert compose.read_text(encoding="utf-8") == "old-compose\n"
+        assert deploy_success.read_text(encoding="utf-8") == "CRAWLER_IMAGE_TAG=old-tag\n"
         events = log.read_text(encoding="utf-8").splitlines()
         expected_events = [
             "compose-stop",

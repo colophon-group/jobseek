@@ -74,6 +74,7 @@ ACTIVE_COMPOSE_SNAPSHOT_SHA256="$DEPLOY_DIR/.crawler-active-docker-compose.sha25
 ACTIVE_ENV_SNAPSHOT="$DEPLOY_DIR/.crawler-active.env"
 ACTIVE_ENV_SNAPSHOT_SHA256="$DEPLOY_DIR/.crawler-active-env.sha256"
 DEPLOY_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.env"
+ROLLBACK_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.rollback"
 ENV_FILE_WAS_PRESENT=0
 ROLLBACK_ARMED=0
 ROLLBACK_RUNNING=0
@@ -424,6 +425,7 @@ rollback_deploy() {
   local quiesce_complete=0
   local env_restore_complete=0
   local spec_restore_complete=0
+  local success_marker_restore_complete=0
   local bounded_contract_persisted=0
   local rollback_stack_started=0
 
@@ -455,7 +457,6 @@ rollback_deploy() {
   if ((command_status != 0 && rollback_status == 0)); then
     rollback_status=$command_status
   fi
-
   if ((ENV_FILE_WAS_PRESENT)); then
     if [[ -f "$ROLLBACK_ENV_FILE" && ! -L "$ROLLBACK_ENV_FILE" ]]; then
       mv "$ROLLBACK_ENV_FILE" "$ENV_FILE"
@@ -476,6 +477,23 @@ rollback_deploy() {
     env_restore_complete=1
   fi
   if ((command_status != 0 && rollback_status == 0)); then
+    rollback_status=$command_status
+  fi
+
+  if [[ -f "$ROLLBACK_SUCCESS_FILE" && ! -L "$ROLLBACK_SUCCESS_FILE" ]]; then
+    mv "$ROLLBACK_SUCCESS_FILE" "$DEPLOY_SUCCESS_FILE"
+    command_status=$?
+    if ((command_status == 0)); then
+      chmod 0644 "$DEPLOY_SUCCESS_FILE"
+      command_status=$?
+    fi
+  else
+    echo "ERROR: crawler rollback success marker is unavailable or unsafe" >&2
+    command_status=1
+  fi
+  if ((command_status == 0)); then
+    success_marker_restore_complete=1
+  elif ((rollback_status == 0)); then
     rollback_status=$command_status
   fi
 
@@ -504,7 +522,7 @@ rollback_deploy() {
   if (( ! quiesce_complete && bounded_contract_persisted )); then
     echo "ERROR: rollback quiesce was incomplete; bounded old-stack contract persisted but restart skipped" >&2
   fi
-  if ((quiesce_complete && env_restore_complete && spec_restore_complete && bounded_contract_persisted)); then
+  if ((quiesce_complete && env_restore_complete && spec_restore_complete && success_marker_restore_complete && bounded_contract_persisted)); then
     rollback_compose up -d --remove-orphans
     command_status=$?
     if ((command_status == 0)); then
@@ -914,6 +932,12 @@ verify_active_deploy_snapshot
 # or credential. Rollback restores the old Compose spec and old env together,
 # so an old image never starts with the new credential semantics.
 rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"
+if [[ -f "$DEPLOY_SUCCESS_FILE" && ! -L "$DEPLOY_SUCCESS_FILE" ]]; then
+  install -m 0644 "$DEPLOY_SUCCESS_FILE" "$ROLLBACK_SUCCESS_FILE"
+else
+  echo "ERROR: crawler success marker is unavailable or unsafe" >&2
+  exit 1
+fi
 snapshot_active_deploy_specs
 ENV_FILE_WAS_PRESENT=1
 install -m 0600 "$ACTIVE_ENV_SNAPSHOT" "$ROLLBACK_ENV_FILE"
@@ -1073,12 +1097,13 @@ printf '%s\n' \
 chmod 0644 "$deploy_success_temporary"
 verify_shim_deploy_contract "$deploy_success_temporary"
 publish_active_deploy_snapshot
-# Publish the exact committed release only after all health gates pass and the
-# rollback trap is disarmed. Consumers must use this atomic marker rather than
-# the earlier .env write, which is intentionally part of the rollback window.
-disarm_deploy_rollback
+# Publish and verify the exact committed release after all health gates pass
+# while rollback is still armed. Consumers must use this atomic marker rather
+# than the earlier .env write, which is intentionally part of the rollback
+# window.
 mv "$deploy_success_temporary" "$DEPLOY_SUCCESS_FILE"
 verify_shim_deploy_contract "$DEPLOY_SUCCESS_FILE"
-rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE" || true
+disarm_deploy_rollback
+rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE" "$ROLLBACK_SUCCESS_FILE" || true
 docker image prune -f || true
 echo "Deploy complete: $(docker compose ps --format '{{.Name}}' | tr '\n' ' ')"
