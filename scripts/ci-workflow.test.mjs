@@ -414,6 +414,11 @@ test("PR-only CI gates cover pull requests and dispatched PRs", () => {
 });
 
 test("workflow-security runs repository script tests", () => {
+  assert.match(workflow, /name: Test observability rollback retention/);
+  assert.match(
+    workflow,
+    /python3 deploy\/observability\/test_prune_rollbacks\.py/,
+  );
   assert.match(workflow, /node --test/);
   assert.match(workflow, /scripts\/ci-workflow\.test\.mjs/);
   assert.match(workflow, /scripts\/crawler-version\.test\.mjs/);
