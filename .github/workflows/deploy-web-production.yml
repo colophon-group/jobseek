@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      revision:
+        description: Optional exact main revision to deploy
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -40,8 +45,22 @@ jobs:
 
       - name: Classify the cumulative undeployed delta
         id: paths
+        env:
+          REQUESTED_SHA: ${{ inputs.revision }}
         run: |
-          current_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          current_sha="$current_main"
+          if [[ -n "$REQUESTED_SHA" ]]; then
+            if [[ ! "$REQUESTED_SHA" =~ ^[a-f0-9]{40}$ ]]; then
+              echo "Invalid requested revision: $REQUESTED_SHA" >&2
+              exit 1
+            fi
+            if [[ "$current_main" != "$REQUESTED_SHA" ]]; then
+              echo "Requested revision $REQUESTED_SHA is stale; main is $current_main" >&2
+              exit 1
+            fi
+            current_sha="$REQUESTED_SHA"
+          fi
           production="$(pnpm dlx vercel@55.0.0 api \
             "/v13/deployments/$PRODUCTION_ALIAS?teamId=$VERCEL_ORG_ID" \
             --raw --token="$VERCEL_TOKEN")"
@@ -156,11 +175,16 @@ jobs:
         env:
           DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
           EXPECTED_SHA: ${{ steps.paths.outputs.current_sha }}
+          REQUIRE_EXACT_PROMOTION: ${{ github.event_name == 'workflow_dispatch' && inputs.revision != '' }}
         run: |
           echo "promoted=false" >> "$GITHUB_OUTPUT"
           current_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
           if [[ "$current_main" != "$EXPECTED_SHA" ]]; then
             echo "Skipping stale staged deployment: expected $EXPECTED_SHA, main is $current_main"
+            if [[ "$REQUIRE_EXACT_PROMOTION" == "true" ]]; then
+              echo "The requested company revision was not promoted" >&2
+              exit 1
+            fi
             exit 0
           fi
           pnpm dlx vercel@55.0.0 promote "$DEPLOYMENT_URL" \

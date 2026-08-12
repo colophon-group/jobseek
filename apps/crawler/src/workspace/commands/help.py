@@ -1115,6 +1115,9 @@ dom — Link Extraction (fallback)
     headless       Run headless (default: true)
     proxy          Route traffic through the configured proxy provider. Use for
                    origins that block the crawler's datacenter IP.
+    encoding       Optional Python codec name for legacy static HTML whose
+                   declared charset is unsupported or incorrect (for example,
+                   "euc_jp"). Ignored when render=true.
     retry_statuses Static HTTP status-to-retry-count map, for provider-specific
                    transient responses only (HTTP 400-599, maximum 5 retries).
     persistent_context
@@ -2325,6 +2328,9 @@ dom — Step-based Extraction Engine
     headless       Run headless (default: true)
     proxy          Route traffic through the configured proxy provider. Use for
                    origins that block the crawler's datacenter IP.
+    encoding       Optional Python codec name for legacy static HTML whose
+                   declared charset is unsupported or incorrect (for example,
+                   "euc_jp"). Ignored when render=true.
     persistent_context
                    Use a real browser profile shape for anti-bot challenges.
                    Usually pair with channel: "chrome" and headless: false.
