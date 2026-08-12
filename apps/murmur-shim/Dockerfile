@@ -109,7 +109,7 @@
 #   intentionally bearer-free so the healthcheck and the cloudflared
 #   origin-up probe both work without secrets.
 
-ARG NODE_IMAGE=node:22-trixie-slim
+ARG NODE_IMAGE=node:22.23.2-trixie-slim@sha256:db8a96a63e5264607ada2d206758876ebbed6a12be2ada7517793cbfb0c2a29c
 # pnpm@10.30.0 matches the root `package.json`'s `packageManager` field.
 # Mismatched versions would emit a hard Corepack error rather than
 # silent drift.

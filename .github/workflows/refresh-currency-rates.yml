@@ -43,8 +43,11 @@ jobs:
               'CRAWLER_DB_POOL_MIN=0' \
               'CRAWLER_DB_POOL_MAX=4' \
               'CRAWLER_DB_POOL_IDLE_SECONDS=60' >>"$RUNTIME_ENV"
-            tag="$(grep -E '^CRAWLER_IMAGE_TAG=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
-            tag="${tag:-latest}"
+            mapfile -t image_refs < <(sed -n 's/^CRAWLER_IMAGE_REF=//p' /home/deploy/.env 2>/dev/null)
+            [[ ${#image_refs[@]} -eq 1 && "${image_refs[0]}" =~ ^ghcr\.io/colophon-group/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || {
+              echo "ERROR: committed crawler image digest is missing, duplicated, or invalid" >&2
+              exit 1
+            }
             /usr/local/sbin/jobseek-maintenance oneoff \
               --operation refresh-currency-rates \
               --issue 3576 \
@@ -56,5 +59,5 @@ jobs:
               --name "$NAME" \
               --env-file "$RUNTIME_ENV" \
               --network host \
-              "ghcr.io/colophon-group/jobseek-crawler:${tag}" \
+              "${image_refs[0]}" \
               uv run --no-sync crawler refresh-currency-rates

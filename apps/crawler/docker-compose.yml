@@ -227,10 +227,10 @@ services:
   # image keeps the shim's runtime in lockstep with the workers'
   # without an additional host-provisioning step.
   #
-  # `pull_policy: always` forces compose to fetch the crawler image's
-  # requested tag on every `up`, so a new crawler build rehydrates the
-  # volume the next time this init runs. Without it, compose could skip
-  # the pull and the volume would keep stale dep snapshots indefinitely.
+  # `pull_policy: always` forces Compose to verify the requested crawler
+  # manifest digest on every `up`, so a changed deployment ref rehydrates
+  # the volume the next time this init runs. Without it, Compose could skip
+  # the pull and the volume would keep stale dependency snapshots indefinitely.
   #
   # `restart: "no"` makes this a true one-shot. The shim's
   # `depends_on` with `service_completed_successfully` is the gate

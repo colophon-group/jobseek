@@ -23,21 +23,23 @@ payload_size="$(stat -c '%s' "$payload")"
   exit 1
 }
 mapfile -t fields <"$payload"
-[[ ${#fields[@]} -eq 6 ]] || { echo "ERROR: invalid ATS deployment payload" >&2; exit 1; }
+[[ ${#fields[@]} -eq 7 ]] || { echo "ERROR: invalid ATS deployment payload" >&2; exit 1; }
 deploy_sha="${fields[0]}"
 [[ "$deploy_sha" =~ ^[0-9a-f]{40}$ ]] || exit 2
 expected_crawler_tag="${fields[1]}"
-expected_crawler_revision="${fields[2]}"
+expected_crawler_ref="${fields[2]}"
+expected_crawler_revision="${fields[3]}"
 [[ "$expected_crawler_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][a-zA-Z0-9.]+)?$ ]] || exit 2
+[[ "$expected_crawler_ref" =~ ^ghcr\.io/colophon-group/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || exit 2
 [[ "$expected_crawler_revision" =~ ^[0-9a-f]{40}$ ]] || exit 2
 
 credential_root="$(mktemp -d /run/jobseek-ats-inventory-credentials.XXXXXX)"
 app_id_file="$credential_root/github-app-id"
 installation_id_file="$credential_root/github-app-installation-id"
 private_key_file="$credential_root/github-app-private-key"
-printf '%s' "${fields[3]}" | base64 --decode >"$app_id_file"
-printf '%s' "${fields[4]}" | base64 --decode >"$installation_id_file"
-printf '%s' "${fields[5]}" | base64 --decode >"$private_key_file"
+printf '%s' "${fields[4]}" | base64 --decode >"$app_id_file"
+printf '%s' "${fields[5]}" | base64 --decode >"$installation_id_file"
+printf '%s' "${fields[6]}" | base64 --decode >"$private_key_file"
 chown root:root "$app_id_file" "$installation_id_file" "$private_key_file"
 chmod 0600 "$app_id_file" "$installation_id_file" "$private_key_file"
 unset fields
@@ -46,6 +48,7 @@ rm -f -- "$payload"
 cd /opt/jobseek-ats-inventory
 JOBSEEK_ATS_INVENTORY_DEPLOY_SHA="$deploy_sha" \
 JOBSEEK_EXPECTED_CRAWLER_IMAGE_TAG="$expected_crawler_tag" \
+JOBSEEK_EXPECTED_CRAWLER_IMAGE_REF="$expected_crawler_ref" \
 JOBSEEK_EXPECTED_CRAWLER_DEPLOY_REVISION="$expected_crawler_revision" \
 JOBSEEK_GITHUB_APP_ID_FILE="$app_id_file" \
 JOBSEEK_GITHUB_APP_INSTALLATION_ID_FILE="$installation_id_file" \

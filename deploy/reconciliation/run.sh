@@ -43,12 +43,12 @@ flock -w 7200 9 || {
   exit 1
 }
 
-tag="$(sed -n 's/^CRAWLER_IMAGE_TAG=//p' "$ENV_FILE" | tail -n1)"
-[[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
-  echo "ERROR: deployed crawler image tag is missing or invalid" >&2
+mapfile -t image_refs < <(sed -n 's/^CRAWLER_IMAGE_REF=//p' "$ENV_FILE")
+[[ ${#image_refs[@]} -eq 1 && "${image_refs[0]}" =~ ^ghcr\.io/colophon-group/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || {
+  echo "ERROR: deployed crawler image digest is missing, duplicated, or invalid" >&2
   exit 1
 }
-image="ghcr.io/colophon-group/jobseek-crawler:${tag}"
+image="${image_refs[0]}"
 RUNTIME_ENV=""
 
 cleanup() {

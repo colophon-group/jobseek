@@ -88,9 +88,9 @@ def test_wrapper_digest_state_is_atomic_validated_and_group_readable(tmp_path: P
 def test_runner_is_bounded_immutable_and_fail_closed() -> None:
     source = RUNNER.read_text(encoding="utf-8")
 
-    assert "CRAWLER_IMAGE_TAG" in source
-    assert "^v[0-9]+\\.[0-9]+\\.[0-9]+$" in source
-    assert 'image="ghcr.io/colophon-group/jobseek-crawler:${tag}"' in source
+    assert "CRAWLER_IMAGE_REF" in source
+    assert "jobseek-crawler@sha256:[0-9a-f]{64}" in source
+    assert 'image="${image_refs[0]}"' in source
     assert "ghcr.io/colophon-group/jobseek-crawler:latest" not in source
     assert "--read-only" in source
     assert "--memory 1g" in source
@@ -281,12 +281,12 @@ def test_exact_revision_dispatches_attest_the_live_deployment() -> None:
         '"$TASK" == verify-typesense-taxonomies ]]' in maintenance
     )
     assert "EXPECTED_CRAWLER_REVISION: ${{ steps.task.outputs.expected_revision }}" in maintenance
-    assert "JOBSEEK_DEPLOY_REVISION=" in maintenance
+    assert "read_exact_env JOBSEEK_DEPLOY_REVISION" in maintenance
     assert '[[ "$active_revision" == "$EXPECTED_CRAWLER_REVISION" ]]' in maintenance
-    assert '[[ "$tag" != latest && -n "$tag" ]]' in maintenance
+    assert "jobseek-crawler@sha256:[0-9a-f]{64}" in maintenance
     assert "Expected exactly one live exporter container" in maintenance
     assert "com.docker.compose.service=exporter" in maintenance
-    assert "Live exporter image does not match the active crawler tag" in maintenance
+    assert "Live exporter image does not match the active crawler digest" in maintenance
     assert "Live exporter still has a relational mirror credential" in maintenance
 
 
@@ -328,14 +328,14 @@ def test_backfill_proof_is_one_locked_fail_closed_chain() -> None:
     assert "command_timeout: 8h" in maintenance
 
 
-def test_scheduled_refresh_resolves_the_common_image_owner_before_dispatch() -> None:
+def test_scheduled_refresh_resolves_the_committed_digest_before_dispatch() -> None:
     maintenance = MAINTENANCE.read_text(encoding="utf-8")
 
-    owner = maintenance.index("owner=\"$(grep -E '^OWNER='")
+    image_ref = maintenance.index('image="$(read_exact_env CRAWLER_IMAGE_REF)"')
     exact_revision_gate = maintenance.index(
         'if [[ "$TASK" == backfill-typesense || "$TASK" == verify-typesense-taxonomies ]]'
     )
-    image = maintenance.index('"ghcr.io/${owner}/jobseek-crawler:${tag}"')
+    image = maintenance.index('                "$image" \\')
 
-    assert owner < exact_revision_gate < image
-    assert '[[ -n "$owner" ]]' in maintenance
+    assert image_ref < exact_revision_gate < image
+    assert "jobseek-crawler@sha256:[0-9a-f]{64}" in maintenance

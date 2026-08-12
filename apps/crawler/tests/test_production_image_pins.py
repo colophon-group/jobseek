@@ -35,6 +35,14 @@ def test_redis_and_murmur_shim_require_immutable_production_images() -> None:
         "jobseek-crawler-browser@${{ steps.build-browser.outputs.digest }}" in workflow
     )
     assert "IMAGE: ghcr.io/${{ github.repository_owner }}/jobseek-crawler@" in workflow
+    assert '"ghcr.io/${owner}/jobseek-crawler@${{ steps.build-slim.outputs.digest }}"' in workflow
+    assert (
+        '"ghcr.io/${owner}/jobseek-crawler-browser@'
+        '${{ steps.build-browser.outputs.digest }}"' in workflow
+    )
+    promote = workflow[workflow.index("- name: Promote deployed images to latest") :]
+    assert "jobseek-crawler:${version}" not in promote
+    assert "jobseek-crawler-browser:${version}" not in promote
     assert "CRAWLER_IMAGE_TAG must be a versioned release/build tag" in deploy
     assert "CRAWLER_IMAGE_REF must be an immutable crawler digest" in deploy
     assert "BROWSER_IMAGE_REF must be an immutable crawler-browser digest" in deploy
@@ -67,12 +75,17 @@ def test_murmur_shim_deploy_promotes_and_persists_the_built_digest() -> None:
     assert "restoring the prior immutable image" in workflow
     assert 'SHIM_IMAGE_REF="$previous_shim_ref"' in workflow
     assert "resolve_running_digest" in workflow
+    assert "jobseek-crawler-mutation.lock" in workflow
+    assert "flock -w 7200 9" in workflow
     assert "CRAWLER_IMAGE_REF=" in workflow
     assert "BROWSER_IMAGE_REF=" in workflow
     assert "previous_compose=" in workflow
     assert "previous_env=" in workflow
     assert 'mv -f "$previous_compose" "$live_compose"' in workflow
     assert 'mv -f "$previous_env" /home/deploy/.env' in workflow
+    assert "active_env=/home/deploy/.crawler-active.env" in workflow
+    assert 'verify_snapshot "$active_env" "$active_env_sha256" environment' in workflow
+    assert 'install -m 0600 /home/deploy/.env "$active_env_candidate"' in workflow
     assert "target: /home/deploy/incoming-shim/" in workflow
     assert "test ! -L /home/deploy/.env" in workflow
     assert "CRAWLER_IMAGE_REF|BROWSER_IMAGE_REF|SHIM_IMAGE_REF" in workflow
@@ -106,3 +119,13 @@ def test_typesense_host_and_smoke_use_the_same_manifest_digest() -> None:
     )
     assert mutable_assignment is None
     assert "            typesense/typesense:27.1 \\" not in workflow
+
+
+def test_production_build_inputs_are_digest_pinned() -> None:
+    crawler = (ROOT / "apps/crawler/Dockerfile").read_text(encoding="utf-8")
+    shim = (ROOT / "apps/murmur-shim/Dockerfile").read_text(encoding="utf-8")
+
+    assert "FROM python:3.13.15-slim-trixie@sha256:" in crawler
+    assert "ghcr.io/astral-sh/uv:0.12.3@sha256:" in crawler
+    assert "ghcr.io/astral-sh/uv:latest" not in crawler
+    assert "ARG NODE_IMAGE=node:22.23.2-trixie-slim@sha256:" in shim

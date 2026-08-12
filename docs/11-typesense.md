@@ -184,7 +184,8 @@ path on existing collections), so a schema regression fails CI rather than
 aborting the deploy mid-stream. BuildKit's crawler and browser manifest
 digests, rather than their version tags, are passed into production Compose.
 The deploy rejects missing, malformed, or mutable image references, keeps a
-rollback copy of `/home/deploy/.env` plus the active Compose contract, verifies
+verified crawler-confirmed snapshots of `/home/deploy/.env` and the active
+Compose contract, verifies
 each running container against the candidate digest manifest, and only then
 publishes the atomic success marker. Version and `latest` tags remain discovery
 and compatibility aliases; the workflow promotes `latest` only after the
@@ -304,7 +305,7 @@ running `refresh-typesense`.
 
 The production dispatch requires the exact 40-character live crawler revision.
 Before mutation it verifies that `/home/deploy/.env` records that revision and
-an immutable image tag, that exactly one exporter uses the same image, and that
+an immutable image digest, that exactly one exporter uses the same image, and that
 the exporter has no relational-mirror credential. One fail-closed container
 then runs the following chain while the host mutation lock remains held:
 

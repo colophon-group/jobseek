@@ -27,6 +27,10 @@ TYPESENSE_LOG_MAX_FILES = "3"
 TYPESENSE_MEMORY_LIMIT = 3 * 1024**3
 TYPESENSE_MEMORY_RESERVATION = 2560 * 1024**2
 TYPESENSE_MEMORY_SWAP = TYPESENSE_MEMORY_LIMIT
+TYPESENSE_IMAGE = (
+    "typesense/typesense:27.1@sha256:"
+    "5c12af89130b8ee0be11541321ba8a3a7c7a538d7c6cd95e0409dc2d75ca6455"
+)
 FORBIDDEN_TYPESENSE_ENV = {
     "TYPESENSE_ADMIN_KEY",
     "TYPESENSE_API_KEY",
@@ -132,7 +136,7 @@ def collect_typesense_checks() -> dict[str, bool]:
         "typesense_healthy": health.get("ok") is True,
         "typesense_restart_count_zero": int(inspect.get("RestartCount") or 0) == 0,
         "typesense_not_oom_killed": inspect["State"].get("OOMKilled") is False,
-        "typesense_image_pinned": inspect["Config"].get("Image") == "typesense/typesense:27.1",
+        "typesense_image_pinned": inspect["Config"].get("Image") == TYPESENSE_IMAGE,
         "typesense_host_network": inspect["HostConfig"].get("NetworkMode") == "host",
         "typesense_nofile_limit_managed": any(
             limit.get("Name") == "nofile"

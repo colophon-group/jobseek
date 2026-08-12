@@ -379,7 +379,7 @@ systemctl start jobseek-ats-inventory.service
 
 `disable` writes the gate first and then stops any active service. The wrapper
 also rechecks the gate immediately before its GitHub phase. Deployment waits
-for the exact reviewed crawler tag and full revision under the crawler mutation
+for the exact reviewed crawler tag, manifest digest, and full revision under the crawler mutation
 lock, snapshots the prior host surface, and requires both the timer and active
 service to stop cleanly before replacement. Every install runs the new surface
 once in report mode against an exact-image acceptance pin while rollback remains

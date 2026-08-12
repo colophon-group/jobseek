@@ -182,12 +182,16 @@ tag="$(read_exact_release "$release_file" CRAWLER_IMAGE_TAG)"
   echo "ERROR: committed crawler image tag is invalid" >&2
   exit 1
 }
+image="$(read_exact_release "$release_file" CRAWLER_IMAGE_REF)"
+[[ "$image" =~ ^ghcr\.io/colophon-group/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || {
+  echo "ERROR: committed crawler image digest is invalid" >&2
+  exit 1
+}
 crawler_revision="$(read_exact_release "$release_file" JOBSEEK_DEPLOY_REVISION)"
 [[ "$crawler_revision" =~ ^[0-9a-f]{40}$ ]] || {
   echo "ERROR: committed crawler deployment revision is invalid" >&2
   exit 1
 }
-image="ghcr.io/colophon-group/jobseek-crawler:${tag}"
 
 if docker ps --format '{{.Names}}' | grep -Fxq "$CONTAINER"; then
   echo "ERROR: ATS inventory container already exists" >&2

@@ -88,12 +88,12 @@ describe("crawler docker-compose: murmur-shim service", () => {
     expect(compose.services["murmur-shim"]).toBeTruthy();
   });
 
-  it("pins the shim image to ghcr.io/<owner>/jobseek-murmur-shim with a tag override", () => {
+  it("requires the deploy-resolved immutable shim image reference", () => {
     const compose = loadCompose();
     const image = compose.services["murmur-shim"]?.image ?? "";
-    // OWNER substitution + tag override let H4 deploy individual SHAs.
-    expect(image).toContain("jobseek-murmur-shim");
-    expect(image).toMatch(/\$\{?SHIM_IMAGE_TAG/);
+    expect(image).toContain("SHIM_IMAGE_REF");
+    expect(image).toContain("immutable GHCR digest");
+    expect(image).not.toContain("SHIM_IMAGE_TAG");
   });
 
   it("uses `network_mode: host` so it can reach the local Postgres + redis", () => {
@@ -175,14 +175,12 @@ describe("crawler docker-compose: murmur-shim-runtime-init", () => {
     const compose = loadCompose();
     const init = compose.services["murmur-shim-runtime-init"];
     expect(init).toBeTruthy();
-    expect(init?.image ?? "").toContain("jobseek-crawler:");
+    expect(init?.image ?? "").toContain("CRAWLER_IMAGE_REF");
   });
 
   it("forces a fresh image pull on every up so a new crawler image rehydrates the volume", () => {
-    // Without `pull_policy: always`, compose only pulls when the tag
-    // changes. We deploy with `:latest`, so a content change behind
-    // `:latest` would not trigger the init copy without an explicit
-    // pull_policy.
+    // Keep an explicit registry check even though the manifest digest is
+    // immutable; a changed deployment ref must rehydrate the shared runtime.
     const compose = loadCompose();
     expect(compose.services["murmur-shim-runtime-init"]?.pull_policy).toBe("always");
   });

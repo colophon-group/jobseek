@@ -145,7 +145,10 @@ jobs:
             echo "This revision does not trigger the murmur-shim host workflow" >&2
             exit 0
           fi
-          deadline=$((SECONDS + 2700))
+          # The Murmur host step takes the same two-hour mutation lock as the
+          # crawler deploy. Leave enough room for that bounded wait plus its
+          # deploy/rollback gates instead of racing the shared Compose state.
+          deadline=$((SECONDS + 8400))
           murmur_ready=0
           while (( SECONDS < deadline )); do
             run="$({
@@ -242,11 +245,10 @@ jobs:
       - name: Promote deployed images to latest
         run: |
           set -euo pipefail
-          version="${{ steps.version.outputs.image_tag }}"
           owner="${{ github.repository_owner }}"
           docker buildx imagetools create \
             -t "ghcr.io/${owner}/jobseek-crawler:latest" \
-            "ghcr.io/${owner}/jobseek-crawler:${version}"
+            "ghcr.io/${owner}/jobseek-crawler@${{ steps.build-slim.outputs.digest }}"
           docker buildx imagetools create \
             -t "ghcr.io/${owner}/jobseek-crawler-browser:latest" \
-            "ghcr.io/${owner}/jobseek-crawler-browser:${version}"
+            "ghcr.io/${owner}/jobseek-crawler-browser@${{ steps.build-browser.outputs.digest }}"

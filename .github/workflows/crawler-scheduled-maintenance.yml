@@ -4,7 +4,7 @@ run-name: "Crawler maintenance: ${{ inputs.task || 'refresh-typesense' }} @ ${{ 
 # Periodic ephemeral crawler CLI runs. Kept in-repo so the cadence is
 # reviewable and version-controlled (see #2630). Dispatches to the Hetzner
 # crawler host via SSH and runs the task as `docker run --rm` using the
-# image tag currently recorded in `/home/deploy/.env`.
+# image digest currently recorded in `/home/deploy/.env`.
 #
 # What runs here (vs. elsewhere):
 #   refresh-typesense  — this workflow, every 4h + at every deploy (inline
@@ -122,25 +122,28 @@ jobs:
             python3 "/tmp/jobseek-crawler-maintenance/${GITHUB_SHA}/crawler/scripts/postgresql-operational-preflight.py"
             TASK="${{ steps.task.outputs.task }}"
             NAME="crawler-${TASK}-$(date -u +%Y%m%dT%H%M%SZ)"
-            tag="$(grep -E '^CRAWLER_IMAGE_TAG=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
-            tag="${tag:-latest}"
-            owner="$(grep -E '^OWNER=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
-            [[ -n "$owner" ]] || {
-              echo "Crawler image owner is unavailable" >&2
+            read_exact_env() {
+              key="$1"
+              mapfile -t matches < <(sed -n "s/^${key}=//p" /home/deploy/.env 2>/dev/null)
+              [[ ${#matches[@]} -eq 1 && -n "${matches[0]}" ]] || {
+                echo "Crawler deployment identity is missing or duplicated: ${key}" >&2
+                return 1
+              }
+              printf '%s' "${matches[0]}"
+            }
+            image="$(read_exact_env CRAWLER_IMAGE_REF)"
+            [[ "$image" =~ ^ghcr\.io/colophon-group/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || {
+              echo "Crawler image reference is not an approved immutable digest" >&2
               exit 1
             }
             maintenance_status=0
             RUNTIME_ENV=""
 
             if [[ "$TASK" == backfill-typesense || "$TASK" == verify-typesense-taxonomies ]]; then
-              active_revision="$(grep -E '^JOBSEEK_DEPLOY_REVISION=' /home/deploy/.env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
+              active_revision="$(read_exact_env JOBSEEK_DEPLOY_REVISION)"
               [[ "$EXPECTED_CRAWLER_REVISION" =~ ^[0-9a-f]{40}$ ]]
               [[ "$active_revision" == "$EXPECTED_CRAWLER_REVISION" ]] || {
                 echo "Live crawler revision does not match the requested deployment" >&2
-                exit 1
-              }
-              [[ "$tag" != latest && -n "$tag" ]] || {
-                echo "Live crawler image identity is not immutable" >&2
                 exit 1
               }
               exporter_id="$(docker ps -q \
@@ -150,8 +153,8 @@ jobs:
                 echo "Expected exactly one live exporter container" >&2
                 exit 1
               }
-              [[ "$(docker inspect --format '{{.Config.Image}}' "$exporter_id")" == "ghcr.io/${owner}/jobseek-crawler:${tag}" ]] || {
-                echo "Live exporter image does not match the active crawler tag" >&2
+              [[ "$(docker inspect --format '{{.Config.Image}}' "$exporter_id")" == "$image" ]] || {
+                echo "Live exporter image does not match the active crawler digest" >&2
                 exit 1
               }
               if docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$exporter_id" \
@@ -237,7 +240,7 @@ jobs:
                 --label jobseek.maintenance.issue=2630 \
                 --label "jobseek.maintenance.revision=${GITHUB_SHA}" \
                 --label "jobseek.maintenance.budget-seconds=${operation_budget}" \
-                "ghcr.io/${owner}/jobseek-crawler:${tag}" \
+                "$image" \
                 "${operation_command[@]}" || maintenance_status=$?
             fi
 

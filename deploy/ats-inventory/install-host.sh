@@ -12,6 +12,7 @@ CRAWLER_LOCK=/run/lock/jobseek-crawler-mutation.lock
 ACCEPTANCE_PIN="$STATE_ROOT/acceptance-crawler.env"
 DEPLOY_SHA="${JOBSEEK_ATS_INVENTORY_DEPLOY_SHA:-}"
 EXPECTED_CRAWLER_TAG="${JOBSEEK_EXPECTED_CRAWLER_IMAGE_TAG:-}"
+EXPECTED_CRAWLER_REF="${JOBSEEK_EXPECTED_CRAWLER_IMAGE_REF:-}"
 EXPECTED_CRAWLER_REVISION="${JOBSEEK_EXPECTED_CRAWLER_DEPLOY_REVISION:-}"
 APP_ID_FILE="${JOBSEEK_GITHUB_APP_ID_FILE:-}"
 INSTALLATION_ID_FILE="${JOBSEEK_GITHUB_APP_INSTALLATION_ID_FILE:-}"
@@ -46,6 +47,10 @@ ROLLBACK_ARMED=0
 [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "ERROR: deployment SHA is invalid" >&2; exit 1; }
 [[ "$EXPECTED_CRAWLER_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][a-zA-Z0-9.]+)?$ ]] || {
   echo "ERROR: expected crawler image tag is invalid" >&2
+  exit 1
+}
+[[ "$EXPECTED_CRAWLER_REF" =~ ^ghcr\.io/colophon-group/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || {
+  echo "ERROR: expected crawler image digest is invalid" >&2
   exit 1
 }
 [[ "$EXPECTED_CRAWLER_REVISION" =~ ^[0-9a-f]{40}$ ]] || {
@@ -183,6 +188,10 @@ flock -w 300 8 || { echo "ERROR: timed out waiting for crawler mutation lock" >&
   echo "ERROR: committed crawler image does not match this ATS deployment" >&2
   exit 1
 }
+[[ "$(read_exact_release CRAWLER_IMAGE_REF)" == "$EXPECTED_CRAWLER_REF" ]] || {
+  echo "ERROR: committed crawler digest does not match this ATS deployment" >&2
+  exit 1
+}
 [[ "$(read_exact_release JOBSEEK_DEPLOY_REVISION)" == "$EXPECTED_CRAWLER_REVISION" ]] || {
   echo "ERROR: committed crawler revision does not match this ATS deployment" >&2
   exit 1
@@ -247,8 +256,9 @@ rm -f "$STATE_ROOT/wrapper-sha256.tmp"
 # root-owned pin keeps this run on the release verified under the crawler lock,
 # even if a later crawler deploy begins while the data refresh is running.
 acceptance_temporary="$(mktemp "$STATE_ROOT/acceptance-crawler.XXXXXX")"
-printf 'CRAWLER_IMAGE_TAG=%s\nJOBSEEK_DEPLOY_REVISION=%s\n' \
-  "$EXPECTED_CRAWLER_TAG" "$EXPECTED_CRAWLER_REVISION" >"$acceptance_temporary"
+printf 'CRAWLER_IMAGE_TAG=%s\nCRAWLER_IMAGE_REF=%s\nJOBSEEK_DEPLOY_REVISION=%s\n' \
+  "$EXPECTED_CRAWLER_TAG" "$EXPECTED_CRAWLER_REF" "$EXPECTED_CRAWLER_REVISION" \
+  >"$acceptance_temporary"
 chown root:deploy "$acceptance_temporary"
 chmod 0640 "$acceptance_temporary"
 mv "$acceptance_temporary" "$ACCEPTANCE_PIN"
