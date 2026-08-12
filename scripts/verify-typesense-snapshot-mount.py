@@ -72,7 +72,7 @@ def _run(argv: Sequence[str]) -> str:
 
 
 def _findmnt_exact(mount: Path, output: str) -> str:
-    return _run(
+    result = _run(
         (
             "findmnt",
             f"--mountpoint={mount}",
@@ -81,6 +81,10 @@ def _findmnt_exact(mount: Path, output: str) -> str:
             output,
         )
     )
+    rows = result.splitlines()
+    if len(rows) != 1 or not rows[0].strip():
+        raise VerificationError("snapshot mount must resolve to exactly one mounted filesystem")
+    return rows[0].strip()
 
 
 def _allocated_bytes(path: Path) -> int:

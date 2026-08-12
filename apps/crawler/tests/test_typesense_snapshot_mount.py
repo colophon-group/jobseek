@@ -17,6 +17,24 @@ sys.modules[SPEC.name] = mounts
 SPEC.loader.exec_module(mounts)
 
 
+def _install_fake_findmnt(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    findmnt = bin_dir / "findmnt"
+    findmnt.write_text(
+        "#!/bin/sh\n"
+        'test "$#" -eq 4\n'
+        'test "$1" = --mountpoint=/mnt/jobseek-typesense-backup\n'
+        'test "$2" = --noheadings\n'
+        'test "$3" = --output\n'
+        'test "$4" = "$EXPECTED_FINDMNT_COLUMN"\n'
+        "printf '%s' \"$FAKE_FINDMNT_OUTPUT\"\n",
+        encoding="utf-8",
+    )
+    findmnt.chmod(0o755)
+    monkeypatch.setenv("PATH", str(bin_dir))
+
+
 def test_fstab_contract_requires_one_uuid_entry_and_safety_options() -> None:
     target = Path("/mnt/jobseek-typesense-backup")
     entry = mounts._parse_fstab_entry(
@@ -50,20 +68,33 @@ def test_fstab_contract_rejects_duplicate_mount_entries() -> None:
 def test_findmnt_exact_mountpoint_uses_attached_option_argument(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    bin_dir = tmp_path / "bin"
-    bin_dir.mkdir()
-    findmnt = bin_dir / "findmnt"
-    findmnt.write_text(
-        "#!/bin/sh\n"
-        'test "$#" -eq 4\n'
-        'test "$1" = --mountpoint=/mnt/jobseek-typesense-backup\n'
-        'test "$2" = --noheadings\n'
-        'test "$3" = --output\n'
-        'test "$4" = SOURCE\n'
-        "printf '%s\\n' /dev/sdb\n",
-        encoding="utf-8",
-    )
-    findmnt.chmod(0o755)
-    monkeypatch.setenv("PATH", str(bin_dir))
+    _install_fake_findmnt(tmp_path, monkeypatch)
+    monkeypatch.setenv("EXPECTED_FINDMNT_COLUMN", "SOURCE")
+    monkeypatch.setenv("FAKE_FINDMNT_OUTPUT", "/dev/sdb\n")
 
     assert mounts._findmnt_exact(Path("/mnt/jobseek-typesense-backup"), "SOURCE") == "/dev/sdb"
+
+
+@pytest.mark.parametrize(
+    ("column", "output"),
+    (
+        ("SOURCE", ""),
+        ("SOURCE", "/dev/sdb\n/dev/sdc\n"),
+        (
+            "FSTYPE,OPTIONS",
+            "ext4 rw,nodev,nosuid,noexec\nxfs rw,nodev,nosuid,noexec\n",
+        ),
+    ),
+)
+def test_findmnt_exact_mountpoint_rejects_missing_or_overmounted_rows(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    column: str,
+    output: str,
+) -> None:
+    _install_fake_findmnt(tmp_path, monkeypatch)
+    monkeypatch.setenv("EXPECTED_FINDMNT_COLUMN", column)
+    monkeypatch.setenv("FAKE_FINDMNT_OUTPUT", output)
+
+    with pytest.raises(mounts.VerificationError, match="exactly one"):
+        mounts._findmnt_exact(Path("/mnt/jobseek-typesense-backup"), column)
