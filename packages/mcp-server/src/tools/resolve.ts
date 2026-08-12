@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { JobseekClient } from "../client.js";
+import { apiLocaleSchema } from "../locale-schema.js";
 
 export function register(server: McpServer, client: JobseekClient) {
   server.tool(
@@ -11,10 +12,7 @@ export function register(server: McpServer, client: JobseekClient) {
         .enum(["locations", "occupations", "seniority", "technologies", "industries"])
         .describe("Which taxonomy to search"),
       q: z.string().describe("Freetext query (min 2 chars)"),
-      locale: z
-        .enum(["en", "de", "fr", "it"])
-        .default("en")
-        .describe("Response language"),
+      locale: apiLocaleSchema,
     },
     { title: "Resolve Slugs", readOnlyHint: true, destructiveHint: false, openWorldHint: true, idempotentHint: true },
     async (params) => {

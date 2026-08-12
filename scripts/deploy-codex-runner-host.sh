@@ -13,6 +13,9 @@ BRANCH="${JOBSEEK_CODEX_BRANCH:-main}"
 EXPECTED_SHA="${JOBSEEK_CODEX_EXPECTED_SHA:-}"
 LOCK_TIMEOUT_S="${JOBSEEK_CODEX_DEPLOY_LOCK_TIMEOUT_S:-15000}"
 START_TIMERS="${JOBSEEK_CODEX_START_TIMERS:-0}"
+CONFIG_DIR="${JOBSEEK_CODEX_CONFIG_DIR:-/etc/jobseek-codex}"
+GOVERNOR_ENV_FILE="${CONFIG_DIR}/governor.env"
+LABELLER_ENV_FILE="${CONFIG_DIR}/labeller.env"
 
 LOCK_FILE="${ROOT_DIR}/state/codex-runner.lock"
 
@@ -38,6 +41,7 @@ ALWAYS_ON_SERVICES=(
 
 ACTIVE_TIMERS_BEFORE_DEPLOY=()
 TIMER_RESTORE_ARMED=0
+LABELLER_CONTRACT_VERIFIED=0
 
 log() {
   printf '==> %s\n' "$*"
@@ -55,6 +59,71 @@ as_runner() {
 require_root() {
   if [[ "$(id -u)" -ne 0 ]]; then
     fail "must run as root"
+  fi
+}
+
+_validate_labeller_env_file() {
+  local path="$1"
+  local line=""
+  local trimmed=""
+  local value=""
+  local first=""
+  local last=""
+  local line_number=0
+  local assignment_count=0
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    ((line_number += 1))
+    line="${line%$'\r'}"
+    trimmed="${line#"${line%%[![:space:]]*}"}"
+    if [[ -z "${trimmed}" || "${trimmed:0:1}" == "#" ]]; then
+      continue
+    fi
+    if [[ "${line}" != LOCAL_DATABASE_URL=* ]]; then
+      printf 'ERROR: labeller.env line %d is not an allowed LOCAL_DATABASE_URL assignment\n' \
+        "${line_number}" >&2
+      return 1
+    fi
+
+    ((assignment_count += 1))
+    if ((assignment_count > 1)); then
+      printf 'ERROR: labeller.env contains duplicate LOCAL_DATABASE_URL assignments\n' >&2
+      return 1
+    fi
+
+    value="${line#LOCAL_DATABASE_URL=}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    first="${value:0:1}"
+    last="${value: -1}"
+    if [[ "${first}" == "\"" || "${first}" == "'" || "${last}" == "\"" || "${last}" == "'" ]]; then
+      if [[ ${#value} -lt 2 ]] ||
+        ! { [[ "${first}" == "\"" && "${last}" == "\"" ]] ||
+          [[ "${first}" == "'" && "${last}" == "'" ]]; }; then
+        printf 'ERROR: labeller.env LOCAL_DATABASE_URL has mismatched quotes\n' >&2
+        return 1
+      fi
+      value="${value:1:${#value}-2}"
+      value="${value#"${value%%[![:space:]]*}"}"
+      value="${value%"${value##*[![:space:]]}"}"
+    fi
+    if [[ -z "${value}" ]]; then
+      printf 'ERROR: labeller.env LOCAL_DATABASE_URL must not be empty\n' >&2
+      return 1
+    fi
+    if [[ "${value}" == *[[:space:]]* ]]; then
+      printf 'ERROR: labeller.env LOCAL_DATABASE_URL must not contain whitespace\n' >&2
+      return 1
+    fi
+    if [[ "${value}" != postgresql://?* && "${value}" != postgres://?* ]]; then
+      printf 'ERROR: labeller.env LOCAL_DATABASE_URL must be a PostgreSQL DSN\n' >&2
+      return 1
+    fi
+  done <"${path}"
+
+  if ((assignment_count != 1)); then
+    printf 'ERROR: labeller.env must contain exactly one LOCAL_DATABASE_URL assignment\n' >&2
+    return 1
   fi
 }
 
@@ -83,12 +152,14 @@ ensure_layout() {
 }
 
 require_runtime_config() {
-  [[ -r /etc/jobseek-codex/governor.env ]] || fail "missing /etc/jobseek-codex/governor.env"
-  [[ -r /etc/jobseek-codex/labeller.env ]] || fail "missing /etc/jobseek-codex/labeller.env"
-  as_runner test -r /etc/jobseek-codex/governor.env ||
+  [[ -r "${GOVERNOR_ENV_FILE}" ]] || fail "missing ${GOVERNOR_ENV_FILE}"
+  [[ -r "${LABELLER_ENV_FILE}" ]] || fail "missing ${LABELLER_ENV_FILE}"
+  as_runner test -r "${GOVERNOR_ENV_FILE}" ||
     fail "codex-runner cannot read governor.env"
-  as_runner test -r /etc/jobseek-codex/labeller.env ||
+  as_runner test -r "${LABELLER_ENV_FILE}" ||
     fail "codex-runner cannot read labeller.env"
+  _validate_labeller_env_file "${LABELLER_ENV_FILE}" ||
+    fail "invalid labeller.env; keep it DSN-only, correct it without printing the secret, and rerun this deployment"
 }
 
 update_repo() {
@@ -184,6 +255,11 @@ verify_entrypoints() {
   as_runner env PYTHONPATH="${REPO_DIR}/apps/crawler" \
     "${REPO_DIR}/apps/crawler/.venv/bin/python" -c \
     'import src.workspace.codex_runner; import src.workspace.codex_routine_runner; import src.workspace.trace_backfill'
+  as_runner env PYTHONPATH="${REPO_DIR}/apps/crawler" \
+    "${REPO_DIR}/apps/crawler/.venv/bin/python" -c \
+    'import sys; from pathlib import Path; from src.workspace.codex_routine_runner import labeller_postgresql_child_env; state=Path(sys.argv[1]); actual=labeller_postgresql_child_env(state); expected={"CRAWLER_DB_ROLE":"labeller","CRAWLER_DB_POOL_MIN":"0","CRAWLER_DB_POOL_MAX":"2","CRAWLER_DB_POOL_IDLE_SECONDS":"60","JOBSEEK_LABELLER_DB_LOCK_FILE":str(state / "labeller-postgresql.lock"),"JOBSEEK_LABELLER_DB_LOCK_TIMEOUT_SECONDS":"300"}; raise SystemExit(0 if actual == expected else "labeller PostgreSQL pool contract mismatch; keep labeller.env DSN-only, restore the committed runner contract, and redeploy")' \
+    "${ROOT_DIR}/state"
+  LABELLER_CONTRACT_VERIFIED=1
   as_runner "${REPO_DIR}/apps/crawler/.venv/bin/python" \
     "${REPO_DIR}/scripts/codex-trace-backfill.py" --help >/dev/null
   python3 "${REPO_DIR}/scripts/codex-error-review-bundle.py" --help >/dev/null
@@ -226,15 +302,28 @@ pause_timer_activations() {
 restore_timers_on_exit() {
   local deploy_status=$?
   local restore_status=0
+  local timer
+  local -a restore_candidates=()
+  local -a safe_restore=()
   trap - EXIT
   set +e
 
   if [[ "${TIMER_RESTORE_ARMED}" == "1" ]]; then
     if [[ "${START_TIMERS}" == "1" ]]; then
-      systemctl start "${TIMERS[@]}"
-      restore_status=$?
+      restore_candidates=("${TIMERS[@]}")
     elif ((${#ACTIVE_TIMERS_BEFORE_DEPLOY[@]} > 0)); then
-      systemctl start "${ACTIVE_TIMERS_BEFORE_DEPLOY[@]}"
+      restore_candidates=("${ACTIVE_TIMERS_BEFORE_DEPLOY[@]}")
+    fi
+    for timer in "${restore_candidates[@]}"; do
+      if [[ "${timer}" == "jobseek-codex-daily-annotations.timer" ]] &&
+        [[ "${LABELLER_CONTRACT_VERIFIED}" != "1" ]]; then
+        log "leaving ${timer} stopped: labeller PostgreSQL contract was not verified"
+      else
+        safe_restore+=("${timer}")
+      fi
+    done
+    if ((${#safe_restore[@]} > 0)); then
+      systemctl start "${safe_restore[@]}"
       restore_status=$?
     fi
   fi
@@ -249,8 +338,8 @@ restore_timers_on_exit() {
 main() {
   require_root
   ensure_layout
-  require_runtime_config
   pause_timer_activations
+  require_runtime_config
 
   log "waiting for Codex runner lock: ${LOCK_FILE}"
   exec 9>"${LOCK_FILE}"

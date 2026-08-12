@@ -32,7 +32,7 @@ async def test_web_pool_uses_only_the_provider_neutral_url(monkeypatch) -> None:
     monkeypatch.setattr(db.settings, "web_database_url", "postgresql://web.invalid/db")
     monkeypatch.setattr(db, "_web_pool", None)
 
-    with patch("src.db.asyncpg.create_pool", new=create):
+    with patch("src.db.asyncpg.create_pool", new=create), patch("src.db._observe_pool"):
         pool = await db.create_web_pool()
 
     assert pool is sentinel

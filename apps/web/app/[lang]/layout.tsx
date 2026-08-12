@@ -28,17 +28,20 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   twitter: {
     card: "summary_large_image",
-    images: [{ url: "/opengraph-image", alt: "Job Seek" }],
+    images: [{ url: siteConfig.ogImage.url, alt: "Job Seek" }],
   },
-  // `images` here is the fallback for any page whose own
-  // `generateMetadata` doesn't return its own `openGraph.images`. The
-  // `/opengraph-image` URL is exempt from the locale-redirect proxy
-  // (`apps/web/proxy.ts:52`), so the og:image meta tag resolves
-  // directly to `app/opengraph-image.tsx` without a 308 to `/<locale>/...`.
+  // The deterministic fallback card is rendered and uploaded by the R2 OG
+  // prewarmer. Keeping next/og out of the application route graph prevents
+  // its Resvg/WASM/font stack from inflating every ordinary page Function.
   openGraph: {
     type: "website",
     siteName: "Job Seek",
-    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Job Seek" }],
+    images: [{
+      url: siteConfig.ogImage.url,
+      width: siteConfig.ogImage.width,
+      height: siteConfig.ogImage.height,
+      alt: "Job Seek",
+    }],
   },
 };
 

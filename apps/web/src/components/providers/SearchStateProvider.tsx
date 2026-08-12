@@ -18,6 +18,9 @@ export interface SearchStateSnapshot {
   occupations: { id: number; slug: string; name: string }[];
   seniorities: { id: number; slug: string; name: string }[];
   technologies: { id: number; slug: string; name: string }[];
+  unresolvedExplicitSlugs?: Partial<
+    Record<"loc" | "occ" | "sen" | "tech", string[]>
+  >;
   employmentTypes?: string[];
   workMode: WorkMode[];
   salaryMinEur: number | undefined;
@@ -31,6 +34,8 @@ export interface SearchStateSnapshot {
   showPostingId: string | null;
   scrollY: number;
   cacheKey: string;
+  /** Explicit result filters, excluding locale-derived language defaults. */
+  hasResultFilters?: boolean;
 }
 
 export function buildCacheKey(
@@ -47,6 +52,10 @@ export function buildCacheKey(
     salaryCurrency?: string;
     experienceMin?: number;
     experienceMax?: number;
+    languages?: string[];
+    unresolvedExplicitSlugs?: Partial<
+      Record<"loc" | "occ" | "sen" | "tech", string[]>
+    >;
   },
 ): string {
   // String dimensions (keywords) sort with `canonicalStringCompare`
@@ -72,7 +81,24 @@ export function buildCacheKey(
       filters.salaryCurrency ?? "",
       filters.experienceMin == null ? "" : String(filters.experienceMin),
       filters.experienceMax == null ? "" : String(filters.experienceMax),
+      [...(filters.languages ?? [])].sort(canonicalStringCompare).join(","),
     );
+    // Preserve the legacy cache-key shape unless unresolved URL slugs are
+    // present; otherwise adding this optional dimension would invalidate every
+    // existing no-filter snapshot sentinel.
+    if (
+      (["loc", "occ", "sen", "tech"] as const).some(
+        (kind) => (filters.unresolvedExplicitSlugs?.[kind]?.length ?? 0) > 0,
+      )
+    ) {
+      parts.push(
+        ...(["loc", "occ", "sen", "tech"] as const).map((kind) =>
+          [...(filters.unresolvedExplicitSlugs?.[kind] ?? [])]
+            .sort(canonicalStringCompare)
+            .join(","),
+        ),
+      );
+    }
   }
   return parts.join("|");
 }
@@ -90,8 +116,9 @@ export function buildCacheKey(
  * prerendered ``initialData`` had ~10 top companies. See #2989.
  *
  * Additional guard (#3354): never restore a snapshot whose
- * ``companies`` is empty AND whose ``cacheKey`` represents the no-
- * filter view (``||||``). The snapshot only serves the
+ * ``companies`` is empty and whose explicit ``hasResultFilters`` flag is
+ * false. Legacy snapshots fall back to the historical no-filter cache-key
+ * sentinels. The snapshot only serves the
  * "return to the same view after a posting-detail dive" use case — but
  * an empty unfiltered result is never a legitimate destination (the
  * homepage always has top companies). The empty state arises only from
@@ -101,9 +128,11 @@ export function buildCacheKey(
  * ``initialCompanies`` is overridden by the empty snapshot.
  *
  * Restoration semantics now:
+ *   - Any explicitly degraded snapshot → ignore so a recovered server result
+ *     can replace it, even when the filtered cache key is unchanged.
  *   - Same URL filters (or both empty), snapshot has results → restore.
  *   - Same URL filters (or both empty), snapshot has empty companies
- *     AND the no-filter cacheKey → ignore (#3354 poison guard).
+ *     AND no explicit result filters → ignore (#3354 poison guard).
  *   - Different URL filters → ignore the snapshot, render the fresh
  *     ``initialData`` from the server prerender / re-fetch.
  *
@@ -120,6 +149,10 @@ export function shouldRestoreSnapshot(
 ): boolean {
   if (cached === null) return false;
   if (cached.cacheKey !== currentCacheKey) return false;
+  // An unavailable upstream result is never durable view state. Restoring it
+  // after the backend has recovered would override fresh healthy initialData
+  // and trap a same-filter return navigation in the old outage indefinitely.
+  if (cached.degraded === true) return false;
   // #3354 poison guard: an unfiltered snapshot with 0 companies is
   // always a degraded prior state (Typesense glitch / silent failure)
   // and never a legitimate "saved view" worth restoring. Reject it so
@@ -127,6 +160,12 @@ export function shouldRestoreSnapshot(
   // can render. Filtered empty snapshots stay restorable because a
   // 0-result keyword search IS a legitimate destination the user may
   // want to return to.
+  if (
+    cached.hasResultFilters === false &&
+    cached.companies.length === 0
+  ) {
+    return false;
+  }
   if (
     (cached.cacheKey === NO_FILTER_CACHE_KEY ||
       cached.cacheKey === LEGACY_NO_FILTER_CACHE_KEY) &&
@@ -167,6 +206,8 @@ export interface SearchPageActions {
   getTechnologies?: () => { id: number; slug: string; name: string }[];
   /** Custom placeholder for the header SearchBar (e.g. "Search at Google...") */
   placeholder?: string;
+  /** Stable accessible name for the header SearchBar's current scope. */
+  accessibleLabel?: string;
 }
 
 type SearchStateStore = {

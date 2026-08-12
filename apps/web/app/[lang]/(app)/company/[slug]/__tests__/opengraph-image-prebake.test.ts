@@ -22,25 +22,10 @@ vi.mock("@/lib/services/company", () => ({
   getCompanyBySlug: mocks.getCompanyBySlug,
 }));
 
-vi.mock("@/lib/og/company-og-cache", () => ({
-  companyOgCacheKey: vi.fn(() => "og/company/test/en/acme.png"),
-  readCompanyOgCache: vi.fn(),
-  shouldBypassCompanyOgCache: vi.fn(() => false),
-  writeCompanyOgCache: vi.fn(),
-}));
-
-import * as ogImage from "../opengraph-image";
 import * as renderer from "@/lib/og/render-company-og";
 
 beforeEach(() => {
   mocks.getCompanyBySlug.mockReset();
-});
-
-describe("company opengraph image route rendering mode", () => {
-  it("is dynamic because request-time R2 cache IO is intentional", () => {
-    expect(ogImage.dynamic).toBe("force-dynamic");
-    expect("generateStaticParams" in ogImage).toBe(false);
-  });
 });
 
 describe("company opengraph image icon rendering", () => {

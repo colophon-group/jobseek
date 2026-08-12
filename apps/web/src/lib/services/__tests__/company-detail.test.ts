@@ -44,7 +44,7 @@ vi.mock("@/lib/search/typesense-retry", () => ({
   withTypesenseRetry: (fn: () => Promise<unknown>) => fn(),
 }));
 
-import { getCompanyBySlug } from "../company-detail";
+import { getCompanyBySlug, getCompanyIdsBySlugs } from "../company-detail";
 
 const searchMock = mocks.search;
 const cachedMock = mocks.cached;
@@ -150,5 +150,29 @@ describe("getCompanyBySlug", () => {
       }),
     );
     errorSpy.mockRestore();
+  });
+});
+
+describe("getCompanyIdsBySlugs", () => {
+  it("resolves the handoff company set in one exact batched search", async () => {
+    searchMock.mockResolvedValue({
+      hits: [
+        { document: { id: "uuid-stripe", slug: "stripe" } },
+        { document: { id: "uuid-gitlab", slug: "gitlab" } },
+      ],
+    });
+
+    await expect(getCompanyIdsBySlugs(["stripe", "gitlab"])).resolves.toEqual(
+      new Map([
+        ["stripe", "uuid-stripe"],
+        ["gitlab", "uuid-gitlab"],
+      ]),
+    );
+    expect(searchMock).toHaveBeenCalledTimes(1);
+    expect(searchMock).toHaveBeenCalledWith({
+      q: "*",
+      filter_by: "slug:[stripe,gitlab]",
+      per_page: 2,
+    });
   });
 });

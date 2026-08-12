@@ -1,0 +1,444 @@
+# docker-compose.yml — Hetzner crawler deployment (worker machine)
+#
+# All containers use network_mode: host (no bridge network).
+# Postgres runs on a separate dedicated machine.
+# Redis runs locally on the worker machine.
+
+x-common-env: &common-env
+  LOCAL_DATABASE_URL: ${LOCAL_DATABASE_URL}         # Hetzner Postgres machine
+  REDIS_URL: redis://localhost:6379/0
+  WORKER_ID_PREFIX: hetzner
+  LOG_LEVEL: INFO
+  R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
+  R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
+  R2_ENDPOINT_URL: ${R2_ENDPOINT_URL}
+  R2_DOMAIN_URL: ${R2_DOMAIN_URL}
+  R2_BUCKET: ${R2_BUCKET}
+  TYPESENSE_HOST: ${TYPESENSE_HOST}
+  TYPESENSE_PORT: ${TYPESENSE_PORT}
+  TYPESENSE_PROTOCOL: ${TYPESENSE_PROTOCOL}
+  TYPESENSE_OPERATIONS_KEY: ${TYPESENSE_OPERATIONS_KEY}
+  # Proxy provider — applies to boards with ``"proxy": true`` in their
+  # monitor_config / scraper_config (see src/shared/proxy.py). Secrets
+  # for idle providers stay set so operators can swap with one env flip.
+  PROXY_PROVIDER: ${PROXY_PROVIDER:-none}
+  WEBSHARE_PROXY_URL: ${WEBSHARE_PROXY_URL:-}
+  DECODO_PROXY_URL: ${DECODO_PROXY_URL:-}
+
+services:
+  # -- Redis -------------------------------------------------------
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    network_mode: host
+    # Sized for the steady-state scrape backlog, not the initial reseed.
+    # ~550k keys at 2026-04-23 used ~373 MB (73% of the old 512 MB cap),
+    # nearly triggering noeviction-stalled writes. 1 GB gives headroom
+    # while the pipeline drains stale per-domain queues (#2526) and the
+    # SuccessFactors URL-canonicalization fix (#2524) cuts cardinality.
+    command: redis-server --maxmemory 1gb --maxmemory-policy noeviction --bind 127.0.0.1
+    volumes:
+      - redis-data:/data
+    mem_limit: 1536m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # -- Workers (3x HTTP, each on its own metrics port) -------------
+  # Each worker has 1 CPU / 1 GiB. Keep discovery at the code default and
+  # cap monitors at five; paginating monitors must stream bounded batches.
+  worker-1:
+    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    # Give the cli.py SIGTERM handler time to close the Postgres pool
+    # under load. Default 10s is too tight; 30s is conservative.
+    stop_grace_period: 30s
+    command: uv run --no-sync crawler run
+    environment:
+      <<: *common-env
+      METRICS_PORT: "9095"
+      DISCOVERY_CONCURRENCY: "20"
+      MONITOR_CONCURRENCY: "5"
+      CRAWLER_DB_POOL_MAX: "20"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9095/\")'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 1g
+    cpus: 1.0
+
+  worker-2:
+    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 30s  # see worker-1 — gives Postgres pool time to drain
+    command: uv run --no-sync crawler run
+    environment:
+      <<: *common-env
+      METRICS_PORT: "9096"
+      DISCOVERY_CONCURRENCY: "20"
+      MONITOR_CONCURRENCY: "5"
+      CRAWLER_DB_POOL_MAX: "20"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9096/\")'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 1g
+    cpus: 1.0
+
+  worker-3:
+    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 30s  # see worker-1 — gives Postgres pool time to drain
+    command: uv run --no-sync crawler run
+    environment:
+      <<: *common-env
+      METRICS_PORT: "9097"
+      DISCOVERY_CONCURRENCY: "20"
+      MONITOR_CONCURRENCY: "5"
+      CRAWLER_DB_POOL_MAX: "20"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9097/\")'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    mem_limit: 1g
+    cpus: 1.0
+
+  # -- Exporter ----------------------------------------------------
+  exporter:
+    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 30s  # uniform with workers — gives Postgres pool time to drain
+    command: uv run --no-sync crawler export
+    environment:
+      <<: *common-env
+      METRICS_PORT: "9093"
+    depends_on:
+      redis:
+        condition: service_healthy
+    mem_limit: 256m
+
+  # -- R2 Drain ----------------------------------------------------
+  drain:
+    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 30s  # uniform with workers — gives in-flight R2 PUTs time to complete
+    command: uv run --no-sync crawler drain
+    environment:
+      <<: *common-env
+      METRICS_PORT: "9094"
+    depends_on:
+      redis:
+        condition: service_healthy
+    mem_limit: 256m
+
+  # IndexNow notifier removed in #2821. Companies are no longer indexed
+  # (`/company/{slug}` is `noindex,follow` and the URLs are out of the
+  # sitemap), so there is no remaining set of URLs to push to Bing /
+  # Yandex / Seznam / Naver / Yep. `crawler notify-indexnow` and
+  # `apps/crawler/src/indexnow.py` are kept in the codebase but no
+  # longer scheduled — they short-circuit on `INDEXNOW_KEY` unset.
+
+  # -- Browser -----------------------------------------------------
+  browser-1:
+    image: ghcr.io/${OWNER}/jobseek-crawler-browser:${CRAWLER_IMAGE_TAG:-latest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 30s  # see worker-1 — gives Postgres pool time to drain
+    command: uv run --no-sync crawler run-browser
+    environment:
+      <<: *common-env
+      METRICS_PORT: "9098"
+      DISCOVERY_CONCURRENCY: "7"
+      MONITOR_CONCURRENCY: "4"
+      CRAWLER_DB_POOL_MAX: "10"
+      # Bound the lifetime of each long-lived Playwright Node driver. Recycle
+      # only between claims; in-flight browser tasks are never interrupted.
+      BROWSER_PLAYWRIGHT_RECYCLE_SECONDS: "21600"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:9098/\")'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    mem_limit: 6g
+    pids_limit: 4096
+    cpus: 3.0
+
+  # -- Murmur shim runtime init (one-shot) ------------------------
+  #
+  # Populates a named volume with the python interpreter, stdlib,
+  # crawler venv site-packages, and the crawler `src/` tree by copying
+  # them out of the already-pulled crawler image. The murmur-shim
+  # container then mounts that volume read-only at the H2 contract
+  # paths (`/opt/jobseek-crawler-venv` and `/opt/jobseek-crawler-src`)
+  # so its Node process can `spawn(MURMUR_PY, ["-m",
+  # "src.workspace.lib.cli_shim"])` without baking ~1 GB of Python +
+  # Playwright into the shim image.
+  #
+  # Why a one-shot init instead of a host bind-mount: the crawler box
+  # is fully containerized — there is no host-side `.venv` under
+  # `/opt/` or `/home/deploy/`. Extracting from the running crawler
+  # image keeps the shim's runtime in lockstep with the workers'
+  # without an additional host-provisioning step.
+  #
+  # `pull_policy: always` forces compose to fetch the crawler image's
+  # requested tag on every `up`, so a new crawler build rehydrates the
+  # volume the next time this init runs. Without it, compose could skip
+  # the pull and the volume would keep stale dep snapshots indefinitely.
+  #
+  # `restart: "no"` makes this a true one-shot. The shim's
+  # `depends_on` with `service_completed_successfully` is the gate
+  # that withholds the shim until the copy finishes (or fails loudly).
+  murmur-shim-runtime-init:
+    image: ghcr.io/${OWNER}/jobseek-crawler:${CRAWLER_IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: "no"
+    # `cp -a` preserves modes + symlinks, which we need for the venv's
+    # `bin/python3 -> /usr/local/bin/python3` symlink to resolve once
+    # `/usr/local` is also under the runtime tree (we expose it via
+    # the shim's `/opt/jobseek-crawler-runtime/usr-local`). The shim
+    # doesn't actually rely on that symlink — it uses the absolute
+    # base interpreter path directly — but mirroring the layout keeps
+    # `python3 -m site` debug output sane for the operator.
+    #
+    # Using `set -e` so a failed copy aborts before the shim depends-on
+    # gate flips green.
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        # Wipe-and-rehydrate so an old image's deps don't leak into the
+        # new copy. The volume itself persists across deploys; only its
+        # contents get refreshed.
+        rm -rf /runtime/venv /runtime/src /runtime/code
+        # `cp -a /usr/local/bin/python3.13 /runtime/venv/bin/python3.13`
+        # below requires the destination's parent dir to already exist —
+        # cp does NOT auto-create `bin/` even with `-a`. Without this
+        # explicit `mkdir -p /runtime/venv/bin`, the init service exits 1
+        # with `cp: cannot create regular file '/runtime/venv/bin/python3.13':
+        # No such file or directory`, the `service_completed_successfully`
+        # depends-on gate stays red, and the shim never starts.
+        # Live evidence: deploy run 25137948546 init container logs.
+        mkdir -p /runtime/venv /runtime/venv/bin /runtime/venv/lib/python3.13 /runtime/code
+
+        # Build a relocatable Python install at /runtime/venv/. CPython
+        # locates stdlib relative to the executable, so co-locating the
+        # binary, stdlib, libpython, and merged site-packages under one
+        # prefix lets the shim invoke `/.../venv/bin/python3` without
+        # any `PYTHONPATH`/`PYTHONHOME` gymnastics — invoke-lib only
+        # sets PYTHONPATH=MURMUR_CRAWLER_ROOT for `-m` discovery.
+        cp -a /usr/local/bin/python3.13 /runtime/venv/bin/python3.13
+        ln -sf python3.13 /runtime/venv/bin/python3
+        ln -sf python3.13 /runtime/venv/bin/python
+        # libpython is loaded via `../lib/libpython3.13.so.1.0` (RPATH),
+        # so it must live at /runtime/venv/lib/.
+        cp -a /usr/local/lib/libpython3.13.so* /runtime/venv/lib/ 2>/dev/null || true
+        cp -a /usr/local/lib/libpython3.so /runtime/venv/lib/ 2>/dev/null || true
+        # stdlib + shared site-packages root.
+        cp -a /usr/local/lib/python3.13/. /runtime/venv/lib/python3.13/
+        # Merge the crawler venv's site-packages on top of the base
+        # interpreter's stdlib site-packages. Order matters: cp -a
+        # over the existing dir is additive — pre-existing files win
+        # only if `cp -a` is told to skip-existing, which it isn't, so
+        # the venv's site-packages overwrite duplicates (intended).
+        cp -a /app/.venv/lib/python3.13/site-packages/. \
+              /runtime/venv/lib/python3.13/site-packages/
+
+        # Crawler source (cli_shim et al.). Lives at a peer path so
+        # invoke-lib's `cwd: MURMUR_CRAWLER_ROOT` lands somewhere with
+        # `src/workspace/lib/cli_shim.py` resolvable from PYTHONPATH.
+        #
+        # The `src/` directory level MUST be preserved so that the shim's
+        # `python3 -m src.workspace.lib.cli_shim` invocation can resolve
+        # `src` as a package under PYTHONPATH=MURMUR_CRAWLER_ROOT. Copying
+        # the *contents* of /app/src into /runtime/src would strip the
+        # `src/` parent and leave `workspace/` at the PYTHONPATH root —
+        # `ModuleNotFoundError: No module named 'src'`. We instead copy
+        # `/app/src` (no trailing dot) into `/runtime/code/`, which yields
+        # `/runtime/code/src/workspace/lib/cli_shim.py`. The shim's
+        # subpath mount uses `code` so `/opt/jobseek-crawler-src/` ends
+        # up as the parent of `src/`. Live evidence: probe_monitor exit
+        # 1 with `ModuleNotFoundError: No module named 'src'` after the
+        # `cp -a /app/src/. /runtime/src/` form.
+        cp -a /app/src /runtime/code/src
+
+        echo "murmur-shim runtime hydrated: $(du -sh /runtime | cut -f1)"
+    volumes:
+      - murmur-shim-runtime:/runtime
+    mem_limit: 256m
+
+  # -- Murmur shim ------------------------------------------------
+  #
+  # Sidecar that exposes Murmur's HTTP surface (claim/probe/run/
+  # select/feedback/health) over `:8080` on the host loopback. The
+  # cloudflared tunnel — provisioned out-of-band by H5 — fronts this
+  # at `https://jobseek-murmur.colophon-group.org`.
+  #
+  # `network_mode: host` because the shim's PostgresClaimKV needs to
+  # reach the local Hetzner Postgres machine via `LOCAL_DATABASE_URL`,
+  # exactly like the crawler workers do. We forward the same DSN as
+  # `MURMUR_DB_DSN` (the env var the shim's invoke-lib + claim-kv
+  # actually read). Neither crawler-mirror nor web-owned database credentials
+  # are exposed to the long-running Compose services.
+  #
+  # Port choice: 8080. Verified free on the box at deploy time
+  # (existing crawler stack uses 6379, 9093-9098, 12346/12347 only).
+  # The shim's `/health` route is bearer-free per H2 design so this
+  # healthcheck and the cloudflared origin-up probe both work without
+  # secrets.
+  #
+  # The runtime mounts use the named volume populated by
+  # `murmur-shim-runtime-init`. They are read-only — the shim must
+  # never mutate the crawler's source tree or venv.
+  #
+  # NOTE on libc: the shim image is `node:22-alpine` (musl libc) and
+  # the crawler image's python is glibc-built. The container will go
+  # `(healthy)` because `/health` is python-free, but invocations of
+  # `probe`/`run`/`select`/`feedback` fail until the shim base is
+  # switched to `node:22-bookworm-slim` (one-line H2 follow-up). This
+  # H3 PR intentionally leaves that follow-up to keep blast radius
+  # small; the deploy-ready milestone for end-to-end auth + health
+  # probe is achievable with the current shape.
+  murmur-shim:
+    image: ghcr.io/${OWNER}/jobseek-murmur-shim:${SHIM_IMAGE_TAG:-latest}
+    init: true
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 15s
+    depends_on:
+      murmur-shim-runtime-init:
+        condition: service_completed_successfully
+    environment:
+      PORT: "8080"
+      MURMUR_TOKEN: ${MURMUR_TOKEN}
+      # Forward LOCAL_DATABASE_URL (Hetzner Postgres) as MURMUR_DB_DSN
+      # so the shim's PostgresClaimKV connects to the same DB the
+      # crawler workers use. Compose env-substitution: the var on the
+      # right is read from `.env` / shell at compose-up time; the var
+      # on the left is exported into the container.
+      MURMUR_DB_DSN: ${LOCAL_DATABASE_URL}
+      MURMUR_ACCEPT_TARGET: postgres
+      MURMUR_PY: /opt/jobseek-crawler-venv/bin/python3
+      MURMUR_CRAWLER_ROOT: /opt/jobseek-crawler-src
+    volumes:
+      # Subpath mounts into the named volume populated by
+      # `murmur-shim-runtime-init`. Compose v2 (>= 2.20) supports
+      # `volume.subpath`; the box runs current compose (verified by
+      # the existing long-form `condition: service_healthy` syntax).
+      # Both mounts are read-only — the shim must never mutate the
+      # crawler's source tree or venv. The init step assembled
+      # `/runtime/venv/` as a relocatable Python install (binary +
+      # stdlib + libpython + merged venv site-packages), so calling
+      # `/opt/jobseek-crawler-venv/bin/python3 -m
+      # src.workspace.lib.cli_shim` with `PYTHONPATH=
+      # /opt/jobseek-crawler-src` (set by invoke-lib at spawn time)
+      # is the entire boundary contract.
+      - type: volume
+        source: murmur-shim-runtime
+        target: /opt/jobseek-crawler-venv
+        read_only: true
+        volume:
+          subpath: venv
+      - type: volume
+        source: murmur-shim-runtime
+        target: /opt/jobseek-crawler-src
+        read_only: true
+        volume:
+          # Mount `code/` (containing the preserved `src/` dir) at
+          # /opt/jobseek-crawler-src so the shim's
+          # `python3 -m src.workspace.lib.cli_shim` resolves `src` as a
+          # package under PYTHONPATH=MURMUR_CRAWLER_ROOT. See the
+          # `cp -a /app/src /runtime/code/src` note in the init service
+          # for why a `src` subpath would have stripped the `src/` level.
+          subpath: code
+    # Mirror the image-level HEALTHCHECK in apps/murmur-shim/Dockerfile:
+    # `node:22-bookworm-slim` has neither `wget` nor `curl`, so the
+    # previous `wget -q -O- ...` probe would exit 127 every interval and
+    # the container would go UNHEALTHY despite the JS server answering
+    # /health correctly. Compose's `healthcheck:` overrides the
+    # Dockerfile's HEALTHCHECK, so we have to restate the working probe
+    # here — using Node's built-in `fetch` (Node 18+) keeps the slim
+    # image free of extra HTTP clients. `process.env.PORT` keeps the
+    # probe correct if PORT is overridden in compose.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:'+process.env.PORT+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    mem_limit: 256m
+    cpus: 0.5
+
+  # -- Grafana Alloy (metrics + log collector) --------------------
+  alloy:
+    image: grafana/alloy:v1.18.1@sha256:0f4434c92b3e6cdac38bb129b344e1790c246f7b6e2eaffcc16a5fa363240e33
+    user: "0:0"
+    restart: unless-stopped
+    network_mode: host
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    volumes:
+      - ./alloy.river:/etc/alloy/config.river:ro
+      - alloy-data:/data-alloy
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    environment:
+      # Leave half the cgroup for the remote-write WAL, mapped files, runtime,
+      # and Docker log tailing. GOMEMLIMIT is a soft Go heap target, not the
+      # container's hard limit.
+      GOMEMLIMIT: 256MiB
+      PROM_URL: ${GRAFANA_PROM_URL}
+      PROM_USERNAME: ${GRAFANA_PROM_USERNAME}
+      PROM_PASSWORD: ${GRAFANA_PROM_PASSWORD}
+      LOKI_URL: ${GRAFANA_LOKI_URL}
+      LOKI_USERNAME: ${GRAFANA_LOKI_USERNAME}
+      LOKI_PASSWORD: ${GRAFANA_LOKI_PASSWORD}
+    command: run --storage.path=/data-alloy --server.http.listen-addr=127.0.0.1:12346 /etc/alloy/config.river
+    mem_limit: 512m
+    cpus: 0.5
+
+volumes:
+  redis-data:
+  alloy-data:
+    external: true
+    name: "${COMPOSE_PROJECT_NAME}_alloy-data"
+  # Hydrated at deploy time by `murmur-shim-runtime-init` from the
+  # crawler image; consumed read-only by `murmur-shim` via subpath
+  # mounts. See the init service for the layout (venv/ + src/).
+  murmur-shim-runtime:

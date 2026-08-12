@@ -38,7 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: `${siteConfig.url}/${locale}`,
       locale: ogLocale(locale),
       alternateLocale: ogAlternateLocales(locale),
-      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "Job Seek" }],
+      images: [{ ...siteConfig.ogImage, alt: "Job Seek" }],
     },
   };
 }
@@ -68,24 +68,25 @@ export default async function HomePage({ params }: Props) {
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
       }} />
-      <Hero />
-      <Features />
-      <Pricing />
-      {afterPricingArt && (
-        <section className="py-20">
-          <div className="mx-auto max-w-[1200px] px-4">
-            <div className="mx-auto h-[360px] w-full max-w-[768px] sm:h-[460px] lg:h-[560px]">
-              <PublicDomainArt
-                asset={afterPricingArt}
-                focus={siteConfig.homepageArt.focus}
-                sizes="(min-width: 768px) 768px, 100vw"
-                priority
-                className="h-full w-full"
-              />
+      <main id="main-content" tabIndex={-1} className="scroll-mt-12">
+        <Hero />
+        <Features />
+        <Pricing />
+        {afterPricingArt && (
+          <section className="py-20">
+            <div className="mx-auto max-w-[1200px] px-4">
+              <div className="mx-auto h-[360px] w-full max-w-[768px] sm:h-[460px] lg:h-[560px]">
+                <PublicDomainArt
+                  asset={afterPricingArt}
+                  focus={siteConfig.homepageArt.focus}
+                  sizes="(min-width: 768px) 768px, 100vw"
+                  className="h-full w-full"
+                />
+              </div>
             </div>
-          </div>
-        </section>
-      )}
+          </section>
+        )}
+      </main>
     </>
   );
 }

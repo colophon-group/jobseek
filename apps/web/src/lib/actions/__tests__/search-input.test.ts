@@ -161,3 +161,34 @@ describe("parseSearchFilters — employment type URL param (#3218)", () => {
     expect(r.employmentTypes).toEqual(["full_time", "temporary"]);
   });
 });
+
+describe("parseSearchFilters — explicit slug resolution contract (#6132)", () => {
+  it("reports unresolved exact slugs without changing lenient UI results", async () => {
+    mocks.resolveLocationSlugs.mockResolvedValue(
+      new Map([
+        [
+          "zurich",
+          {
+            id: 1,
+            slug: "zurich",
+            name: "Zurich",
+            type: "city",
+            parentName: "Switzerland",
+          },
+        ],
+      ]),
+    );
+
+    const result = await parseSearchFilters({
+      loc: "zurich,not-a-location",
+      tech: "not-a-tech",
+      locale: "en",
+    });
+
+    expect(result.locations.map(({ slug }) => slug)).toEqual(["zurich"]);
+    expect(result.unresolvedExplicitSlugs).toEqual({
+      loc: ["not-a-location"],
+      tech: ["not-a-tech"],
+    });
+  });
+});

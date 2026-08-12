@@ -506,6 +506,7 @@ def test_web_postgresql_backup_dumps_only_the_allowlist_and_cleans(
     monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
     monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
     monkeypatch.setenv("WEB_POSTGRES_STAGING_ROOT", str(tmp_path / "web-postgresql"))
+    monkeypatch.setattr(backup, "_require_web_postgres_helper_image", lambda: None)
     monkeypatch.setattr(backup, "_validate_web_postgres_boundary", lambda **_: None)
     monkeypatch.setattr(
         backup,
@@ -675,7 +676,8 @@ def test_web_postgresql_service_keeps_database_url_in_systemd_credential() -> No
     assert "RuntimeDirectory=jobseek-backup/web-postgresql" in service
     assert "RuntimeDirectoryPreserve=yes" in service
     assert "WEB_POSTGRES_STAGING_ROOT=/run/jobseek-backup/web-postgresql" in service
-    assert "service: [postgresql, typesense, web-postgresql]" in workflow
+    assert "workflow_dispatch:" in workflow
+    assert "fromJSON(inputs.service" in workflow
     assert "max-parallel: 1" in workflow
     assert 'elif [[ "$service" != "web-postgresql" ]]' in receiver
     assert "docker network create --driver bridge --internal" in restore
@@ -872,6 +874,23 @@ def test_backup_installer_allows_only_the_staged_web_timer_to_remain_disabled() 
     assert '[[ "$SERVICE" == "typesense" ]] &&' in installer
 
 
+def test_web_backup_installer_repairs_only_the_latched_unit_failure() -> None:
+    installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
+    protection = installer.index("jobseek-web-postgresql-protect-client-image")
+    reset = installer.index(
+        "systemctl reset-failed jobseek-web-postgresql-backup.service", protection
+    )
+    final_health = installer.index(
+        'systemctl is-failed --quiet "jobseek-${SERVICE}-backup.service"', reset
+    )
+
+    assert protection < reset < final_health
+    reset_block = installer[reset - 400 : reset + 100]
+    assert "systemctl start jobseek-web-postgresql-backup.service" not in reset_block
+    assert "atomic" in reset_block
+    assert "backup status remains failed/stale" in reset_block
+
+
 def test_web_backup_candidate_detects_credential_or_restic_configuration_changes() -> None:
     installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
 
@@ -961,6 +980,171 @@ def test_restic_command_injects_the_restricted_sftp_transport(
     ]
 
 
+def direct_typesense_snapshot(
+    host_root: Path,
+    *,
+    paths: list[str] | None = None,
+    payload: bytes = b"consistent-snapshot",
+):
+    def create(_url: str, _key: str, container_path: str) -> None:
+        if paths is not None:
+            paths.append(container_path)
+        attempt = host_root / "staging" / ".attempts" / Path(container_path).name
+        attempt.mkdir(parents=True)
+        (attempt / "state.bin").write_bytes(payload)
+
+    return create
+
+
+def allow_test_typesense_headroom(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    host_root = Path(os.environ["TYPESENSE_SNAPSHOT_HOST_ROOT"])
+    (host_root / "staging").mkdir(parents=True, mode=0o700, exist_ok=True)
+    monkeypatch.setattr(
+        backup,
+        "_validate_typesense_snapshot_staging",
+        lambda *_: {
+            "staging_capacity_bytes": 24 * 1024**3,
+            "staging_available_bytes_before": 20 * 1024**3,
+            "staging_minimum_capacity_bytes": 20 * 1024**3,
+            "staging_minimum_free_bytes": 8 * 1024**3,
+            "staging_growth_reserve_bytes": 4 * 1024**3,
+            "staging_required_bytes_before": 13 * 1024**3,
+            "live_data_allocated_bytes_before": 1024**3,
+            "memory_limit_bytes": 3 * 1024**3,
+            "memory_reservation_bytes": 2560 * 1024**2,
+            "memory_swap_limit_bytes": 3 * 1024**3,
+            "memory_policy_phase": "enforced",
+            "memory_limit_enforced": True,
+        },
+    )
+
+
+def test_typesense_snapshot_staging_requires_isolation_and_bounded_memory_policy(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    host_root = tmp_path / "snapshot"
+    live_root = tmp_path / "live"
+    host_root.mkdir(mode=0o700)
+    live_root.mkdir()
+    monkeypatch.setenv("TYPESENSE_LIVE_DATA_HOST_ROOT", str(live_root))
+    monkeypatch.setenv("TYPESENSE_SNAPSHOT_MIN_FREE_BYTES", str(8 * 1024**3))
+    original_stat = Path.stat
+
+    def fake_stat(path: Path, *args: object, **kwargs: object) -> object:
+        if path == host_root:
+            return SimpleNamespace(st_uid=0, st_gid=0, st_mode=0o40700, st_dev=3)
+        if path == live_root:
+            return SimpleNamespace(st_uid=0, st_gid=0, st_mode=0o40700, st_dev=2)
+        if path == Path("/"):
+            return SimpleNamespace(st_uid=0, st_gid=0, st_mode=0o40755, st_dev=1)
+        return original_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", fake_stat)
+    monkeypatch.setattr(Path, "is_mount", lambda path: path == host_root)
+    original_directory_metadata = backup._directory_metadata
+
+    def fake_directory_metadata(path: Path, description: str) -> object:
+        if path == host_root / "staging":
+            return SimpleNamespace(st_uid=0, st_gid=0, st_mode=0o40700, st_dev=3)
+        return original_directory_metadata(path, description)
+
+    monkeypatch.setattr(backup, "_directory_metadata", fake_directory_metadata)
+    monkeypatch.setattr(
+        backup.shutil,
+        "disk_usage",
+        lambda _path: SimpleNamespace(
+            total=24 * 1024**3,
+            used=4 * 1024**3,
+            free=20 * 1024**3,
+        ),
+    )
+    inspect = [
+        {
+            "HostConfig": {
+                "Memory": 3 * 1024**3,
+                "MemoryReservation": 2560 * 1024**2,
+                "MemorySwap": 3 * 1024**3,
+            },
+            "Mounts": [
+                {
+                    "Source": str(host_root),
+                    "Destination": "/jobseek-snapshots",
+                    "RW": True,
+                }
+            ],
+        }
+    ]
+    monkeypatch.setattr(
+        backup,
+        "run_checked",
+        lambda argv, **_kwargs: (
+            completed("1073741824\t/live\n") if argv[0] == "du" else completed(json.dumps(inspect))
+        ),
+    )
+
+    result = backup._validate_typesense_snapshot_staging(
+        "typesense", host_root, "/jobseek-snapshots"
+    )
+
+    assert result == {
+        "staging_capacity_bytes": 24 * 1024**3,
+        "staging_available_bytes_before": 20 * 1024**3,
+        "staging_minimum_capacity_bytes": 20 * 1024**3,
+        "staging_minimum_free_bytes": 8 * 1024**3,
+        "staging_growth_reserve_bytes": 4 * 1024**3,
+        "staging_required_bytes_before": 13 * 1024**3,
+        "live_data_allocated_bytes_before": 1024**3,
+        "memory_limit_bytes": 3 * 1024**3,
+        "memory_reservation_bytes": 2560 * 1024**2,
+        "memory_swap_limit_bytes": 3 * 1024**3,
+        "memory_policy_phase": "enforced",
+        "memory_limit_enforced": True,
+    }
+
+    inspect[0]["HostConfig"]["Memory"] = 0
+    with pytest.raises(backup.BackupError, match="reviewed memory policy"):
+        backup._validate_typesense_snapshot_staging("typesense", host_root, "/jobseek-snapshots")
+
+
+def test_staging_age_cleanup_refuses_a_symlink_root(tmp_path: Path) -> None:
+    target = tmp_path / "target"
+    expired = target / "expired"
+    expired.mkdir(parents=True)
+    (expired / "must-remain").write_text("evidence", encoding="utf-8")
+    staging = tmp_path / "staging"
+    staging.symlink_to(target, target_is_directory=True)
+
+    with pytest.raises(backup.BackupError, match="not a real directory"):
+        backup._remove_old_staging(staging, older_than_seconds=0)
+
+    assert (expired / "must-remain").read_text(encoding="utf-8") == "evidence"
+
+
+def test_typesense_snapshot_staging_rejects_the_root_device(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    host_root = tmp_path / "snapshot"
+    live_root = tmp_path / "live"
+    host_root.mkdir(mode=0o700)
+    live_root.mkdir()
+    monkeypatch.setenv("TYPESENSE_LIVE_DATA_HOST_ROOT", str(live_root))
+    original_stat = Path.stat
+
+    def fake_stat(path: Path, *args: object, **kwargs: object) -> object:
+        device = 2 if path == live_root else 1
+        if path in {host_root, live_root, Path("/")}:
+            return SimpleNamespace(st_uid=0, st_gid=0, st_mode=0o40700, st_dev=device)
+        return original_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", fake_stat)
+    monkeypatch.setattr(Path, "is_mount", lambda path: path == host_root)
+
+    with pytest.raises(backup.BackupError, match="not isolated"):
+        backup._validate_typesense_snapshot_staging("typesense", host_root, "/jobseek-snapshots")
+
+
 def test_typesense_backup_snapshots_uploads_validates_and_cleans(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -971,7 +1155,12 @@ def test_typesense_backup_snapshots_uploads_validates_and_cleans(
     monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
     monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
     monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(staging_parent))
-    monkeypatch.setattr(backup, "_snapshot_request", lambda *_: None)
+    allow_test_typesense_headroom(monkeypatch)
+    monkeypatch.setattr(
+        backup,
+        "_snapshot_request",
+        direct_typesense_snapshot(staging_parent),
+    )
     inventory = {
         "aliases": {alias: f"{alias}_v1" for alias in backup._TYPESENSE_ALIASES},
         "collection_documents": {
@@ -989,10 +1178,6 @@ def test_typesense_backup_snapshots_uploads_validates_and_cleans(
         commands.append(argv)
         if argv[:2] == ["docker", "inspect"]:
             return completed("true\n")
-        if argv[:2] == ["docker", "cp"]:
-            destination = Path(argv[-1])
-            destination.mkdir(parents=True, exist_ok=True)
-            (destination / "state.bin").write_bytes(b"consistent-snapshot")
         if "snapshots" in argv:
             return completed(
                 json.dumps(
@@ -1017,16 +1202,89 @@ def test_typesense_backup_snapshots_uploads_validates_and_cleans(
     assert result["retention"] == {"keep_daily": 14, "keep_weekly": 4}
     assert result["aliases"] == inventory["aliases"]
     assert result["collection_documents"] == inventory["collection_documents"]
+    assert result["collection_documents_observation"] == "live_after_snapshot"
+    assert result["snapshot_peak_local_copies"] == 1
+    assert result["staging_isolated"] is True
+    assert result["memory_limit_bytes"] == 3 * 1024**3
+    assert result["memory_reservation_bytes"] == 2560 * 1024**2
+    assert result["memory_swap_limit_bytes"] == 3 * 1024**3
+    assert result["memory_policy_phase"] == "enforced"
+    assert result["memory_limit_enforced"] is True
+    assert (
+        result["staging_available_bytes_after_snapshot"]
+        >= (result["staging_required_bytes_after_snapshot"])
+    )
     assert not (staging_parent / "staging" / "20260722T020000Z").exists()
     assert any("backup" in command for command in commands)
     assert any("forget" in command and "--prune" in command for command in commands)
     assert any("check" in command for command in commands)
+    assert not any(command[:2] == ["docker", "cp"] for command in commands)
+
+
+def test_typesense_backup_refuses_a_second_copy_while_a_packet_is_preserved(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    staging = tmp_path / "staging"
+    (staging / "preserved-run" / "data").mkdir(parents=True)
+    monkeypatch.setenv("TYPESENSE_API_KEY", "test-key")
+    monkeypatch.setenv("RESTIC_REPOSITORY", "sftp:relative-repository")
+    monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
+    monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
+    monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(tmp_path))
+    allow_test_typesense_headroom(monkeypatch)
+    monkeypatch.setattr(
+        backup,
+        "run_checked",
+        lambda argv, **_kwargs: (
+            completed("true\n") if argv[:2] == ["docker", "inspect"] else completed()
+        ),
+    )
+
+    with pytest.raises(backup.BackupError, match="preserved snapshot packet exists"):
+        backup.typesense_backup()
+
+    assert (staging / "preserved-run" / "data").is_dir()
+
+
+def test_typesense_backup_removes_snapshot_that_breaches_post_copy_headroom(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("TYPESENSE_API_KEY", "test-key")
+    monkeypatch.setenv("RESTIC_REPOSITORY", "sftp:relative-repository")
+    monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
+    monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
+    monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(tmp_path))
+    allow_test_typesense_headroom(monkeypatch)
+    monkeypatch.setattr(backup, "_snapshot_request", direct_typesense_snapshot(tmp_path))
+    inventory = {
+        "aliases": {alias: f"{alias}_v1" for alias in backup._TYPESENSE_ALIASES},
+        "collection_documents": {alias: 1 for alias in backup._TYPESENSE_ALIASES},
+    }
+    monkeypatch.setattr(backup, "_typesense_inventory", lambda *_: inventory)
+    monkeypatch.setattr(
+        backup.shutil,
+        "disk_usage",
+        lambda _path: SimpleNamespace(total=24 * 1024**3, used=20 * 1024**3, free=4 * 1024**3),
+    )
+    monkeypatch.setattr(
+        backup,
+        "run_checked",
+        lambda argv, **_kwargs: (
+            completed("true\n") if argv[:2] == ["docker", "inspect"] else completed()
+        ),
+    )
+
+    with pytest.raises(backup.BackupError, match="consumed the protected"):
+        backup.typesense_backup()
+
+    assert not list((tmp_path / "staging").glob("*/data"))
 
 
 def test_typesense_inventory_requires_all_aliases_and_records_counts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     aliases = {alias: f"{alias}_v7" for alias in backup._TYPESENSE_ALIASES}
+    aliases_by_target = {target: alias for alias, target in aliases.items()}
 
     def fake_get(_url: str, _key: str, path: str) -> dict[str, object]:
         if path == "/aliases":
@@ -1035,8 +1293,9 @@ def test_typesense_inventory_requires_all_aliases_and_records_counts(
                     {"name": alias, "collection_name": target} for alias, target in aliases.items()
                 ]
             }
-        alias = path.removeprefix("/collections/")
-        return {"num_documents": len(alias)}
+        target = path.removeprefix("/collections/")
+        alias = aliases_by_target[target]
+        return {"name": target, "num_documents": len(alias)}
 
     monkeypatch.setattr(backup, "_typesense_json_get", fake_get)
 
@@ -1066,7 +1325,7 @@ def test_typesense_inventory_rejects_a_missing_alias(
         backup._typesense_inventory("http://127.0.0.1:8108", "key")
 
 
-def test_typesense_backup_rejects_inventory_changes_during_snapshot(
+def test_typesense_backup_accepts_live_document_changes_during_snapshot(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     first = {
@@ -1077,6 +1336,7 @@ def test_typesense_backup_rejects_inventory_changes_during_snapshot(
         **first,
         "collection_documents": {
             **first["collection_documents"],
+            "company": 0,
             "watchlist": 2,
         },
     }
@@ -1086,16 +1346,251 @@ def test_typesense_backup_rejects_inventory_changes_during_snapshot(
     monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
     monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
     monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(tmp_path))
-    monkeypatch.setattr(backup, "_snapshot_request", lambda *_: None)
+    allow_test_typesense_headroom(monkeypatch)
+    monkeypatch.setattr(
+        backup,
+        "_snapshot_request",
+        direct_typesense_snapshot(tmp_path),
+    )
     monkeypatch.setattr(backup, "_typesense_inventory", lambda *_: next(inventories))
+
+    def fake_run(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        if argv[:2] == ["docker", "inspect"]:
+            return completed("true\n")
+        if "snapshots" in argv:
+            return completed(
+                json.dumps(
+                    [
+                        {
+                            "id": "1234567890abcdef",
+                            "short_id": "12345678",
+                            "time": "2026-08-11T02:00:00Z",
+                        }
+                    ]
+                )
+            )
+        return completed()
+
+    monkeypatch.setattr(backup, "run_checked", fake_run)
+
+    result = backup.typesense_backup()
+
+    assert result["aliases"] == first["aliases"]
+    assert result["collection_documents"]["company"] == 0
+    assert result["collection_documents"]["watchlist"] == 2
+    assert result["collection_documents_observation"] == "live_after_snapshot"
+
+
+def test_typesense_backup_retries_a_concurrent_alias_cutover(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    aliases_v1 = {alias: f"{alias}_v1" for alias in backup._TYPESENSE_ALIASES}
+    aliases_v2 = {alias: f"{alias}_v2" for alias in backup._TYPESENSE_ALIASES}
+    observations = iter(
+        (
+            {"aliases": aliases_v1, "collection_documents": {alias: 1 for alias in aliases_v1}},
+            {"aliases": aliases_v2, "collection_documents": {alias: 2 for alias in aliases_v2}},
+            {"aliases": aliases_v2, "collection_documents": {alias: 2 for alias in aliases_v2}},
+            {"aliases": aliases_v2, "collection_documents": {alias: 3 for alias in aliases_v2}},
+        )
+    )
+    snapshot_paths: list[str] = []
+    commands: list[list[str]] = []
+    monkeypatch.setenv("TYPESENSE_API_KEY", "test-key")
+    monkeypatch.setenv("RESTIC_REPOSITORY", "sftp:relative-repository")
+    monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
+    monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
+    monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(tmp_path))
+    allow_test_typesense_headroom(monkeypatch)
+    monkeypatch.setattr(backup, "_typesense_inventory", lambda *_: next(observations))
+    monkeypatch.setattr(backup.time, "sleep", lambda *_: None)
+    monkeypatch.setattr(
+        backup,
+        "_snapshot_request",
+        direct_typesense_snapshot(tmp_path, paths=snapshot_paths, payload=b"second-snapshot"),
+    )
+
+    def fake_run(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        commands.append(argv)
+        if argv[:2] == ["docker", "inspect"]:
+            return completed("true\n")
+        if "snapshots" in argv:
+            return completed(
+                json.dumps(
+                    [{"id": "abcdef123456", "short_id": "abcdef12", "time": "2026-08-11T02:00:00Z"}]
+                )
+            )
+        return completed()
+
+    monkeypatch.setattr(backup, "run_checked", fake_run)
+
+    result = backup.typesense_backup()
+
+    assert len(snapshot_paths) == 2
+    assert snapshot_paths[0].endswith("-attempt-1")
+    assert snapshot_paths[1].endswith("-attempt-2")
+    assert result["aliases"] == aliases_v2
+    assert result["collection_documents"] == {alias: 3 for alias in aliases_v2}
+    first_attempt = tmp_path / "staging" / ".attempts" / Path(snapshot_paths[0]).name
+    assert not first_attempt.exists()
+    assert not any(command[:2] == ["docker", "cp"] for command in commands)
+    assert not any(command[:2] == ["docker", "exec"] for command in commands)
+
+
+def test_typesense_backup_refuses_retry_when_attempt_cleanup_fails(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    aliases_v1 = {alias: f"{alias}_v1" for alias in backup._TYPESENSE_ALIASES}
+    aliases_v2 = {alias: f"{alias}_v2" for alias in backup._TYPESENSE_ALIASES}
+    observations = iter(
+        (
+            {"aliases": aliases_v1, "collection_documents": {alias: 1 for alias in aliases_v1}},
+            {"aliases": aliases_v2, "collection_documents": {alias: 2 for alias in aliases_v2}},
+        )
+    )
+    snapshot_paths: list[str] = []
+    monkeypatch.setenv("TYPESENSE_API_KEY", "test-key")
+    monkeypatch.setenv("RESTIC_REPOSITORY", "sftp:relative-repository")
+    monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
+    monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
+    monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(tmp_path))
+    allow_test_typesense_headroom(monkeypatch)
+    monkeypatch.setattr(backup, "_typesense_inventory", lambda *_: next(observations))
+    monkeypatch.setattr(
+        backup,
+        "_snapshot_request",
+        direct_typesense_snapshot(tmp_path, paths=snapshot_paths),
+    )
+    original_remove = backup._remove_typesense_packet
+
+    def fail_attempt_cleanup(path: Path, description: str) -> None:
+        if description == "discarded Typesense snapshot attempt":
+            raise backup.BackupError("simulated attempt cleanup failure")
+        original_remove(path, description)
+
+    monkeypatch.setattr(backup, "_remove_typesense_packet", fail_attempt_cleanup)
     monkeypatch.setattr(
         backup,
         "run_checked",
-        lambda *_args, **_kwargs: completed("true\n"),
+        lambda argv, **_kwargs: (
+            completed("true\n") if argv[:2] == ["docker", "inspect"] else completed()
+        ),
     )
 
-    with pytest.raises(backup.BackupError, match="inventory changed"):
+    with pytest.raises(backup.BackupError, match="simulated attempt cleanup failure"):
         backup.typesense_backup()
+
+    assert len(snapshot_paths) == 1
+    preserved = tmp_path / "staging" / ".attempts" / Path(snapshot_paths[0]).name
+    assert (preserved / "state.bin").is_file()
+
+
+def test_typesense_backup_preserves_an_ambiguous_snapshot_api_attempt(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    snapshot_paths: list[str] = []
+    monkeypatch.setenv("TYPESENSE_API_KEY", "test-key")
+    monkeypatch.setenv("RESTIC_REPOSITORY", "sftp:relative-repository")
+    monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
+    monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
+    monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(tmp_path))
+    allow_test_typesense_headroom(monkeypatch)
+    inventory = {
+        "aliases": {alias: f"{alias}_v1" for alias in backup._TYPESENSE_ALIASES},
+        "collection_documents": {alias: 1 for alias in backup._TYPESENSE_ALIASES},
+    }
+    monkeypatch.setattr(backup, "_typesense_inventory", lambda *_: inventory)
+
+    def fail_after_materialization(_url: str, _key: str, container_path: str) -> None:
+        snapshot_paths.append(container_path)
+        attempt = tmp_path / "staging" / ".attempts" / Path(container_path).name
+        attempt.mkdir(parents=True)
+        (attempt / "state.bin").write_bytes(b"ambiguous")
+        raise backup.BackupError("snapshot response was lost")
+
+    monkeypatch.setattr(backup, "_snapshot_request", fail_after_materialization)
+    monkeypatch.setattr(
+        backup,
+        "run_checked",
+        lambda argv, **_kwargs: (
+            completed("true\n") if argv[:2] == ["docker", "inspect"] else completed()
+        ),
+    )
+
+    with pytest.raises(backup.BackupError, match="snapshot response was lost"):
+        backup.typesense_backup()
+
+    assert len(snapshot_paths) == 1
+    preserved = tmp_path / "staging" / ".attempts" / Path(snapshot_paths[0]).name
+    assert (preserved / "state.bin").is_file()
+
+
+def test_typesense_backup_fails_after_bounded_alias_retries(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    counter = 0
+
+    def changing_inventory(*_: object) -> dict[str, object]:
+        nonlocal counter
+        counter += 1
+        aliases = {alias: f"{alias}_v{counter}" for alias in backup._TYPESENSE_ALIASES}
+        return {"aliases": aliases, "collection_documents": {alias: counter for alias in aliases}}
+
+    snapshot_paths: list[str] = []
+    commands: list[list[str]] = []
+    monkeypatch.setenv("TYPESENSE_API_KEY", "test-key")
+    monkeypatch.setenv("RESTIC_REPOSITORY", "sftp:relative-repository")
+    monkeypatch.setenv("RESTIC_PASSWORD_FILE", "/root-only/password")
+    monkeypatch.setenv("RESTIC_SFTP_COMMAND", "ssh -i /root-only/key -p 23")
+    monkeypatch.setenv("TYPESENSE_SNAPSHOT_HOST_ROOT", str(tmp_path))
+    allow_test_typesense_headroom(monkeypatch)
+    monkeypatch.setattr(backup, "_typesense_inventory", changing_inventory)
+    monkeypatch.setattr(backup.time, "sleep", lambda *_: None)
+    monkeypatch.setattr(
+        backup,
+        "_snapshot_request",
+        direct_typesense_snapshot(tmp_path, paths=snapshot_paths),
+    )
+
+    def fake_run(argv: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        commands.append(argv)
+        if argv[:2] == ["docker", "inspect"]:
+            return completed("true\n")
+        return completed()
+
+    monkeypatch.setattr(backup, "run_checked", fake_run)
+
+    with pytest.raises(backup.BackupError, match="did not stabilize after 3 attempts"):
+        backup.typesense_backup()
+
+    assert len(snapshot_paths) == 3
+    assert not any("backup" in command for command in commands)
+    for snapshot_path in snapshot_paths:
+        attempt_path = tmp_path / "staging" / ".attempts" / Path(snapshot_path).name
+        assert not attempt_path.exists()
+    assert not any(command[:2] == ["docker", "cp"] for command in commands)
+    assert not any(command[:2] == ["docker", "exec"] for command in commands)
+
+
+def test_typesense_inventory_rejects_an_invalid_alias_target(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    aliases = {alias: f"{alias}_v1" for alias in backup._TYPESENSE_ALIASES}
+
+    def fake_get(_url: str, _key: str, path: str) -> dict[str, object]:
+        if path == "/aliases":
+            return {
+                "aliases": [
+                    {"name": alias, "collection_name": target} for alias, target in aliases.items()
+                ]
+            }
+        target = path.removeprefix("/collections/")
+        return {"name": f"wrong-{target}", "num_documents": 1}
+
+    monkeypatch.setattr(backup, "_typesense_json_get", fake_get)
+
+    with pytest.raises(backup.BackupError, match="alias target is invalid"):
+        backup._typesense_inventory("http://127.0.0.1:8108", "key")
 
 
 def test_redact_removes_common_secret_shapes() -> None:

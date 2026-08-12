@@ -131,7 +131,15 @@ async def _run(dry_run: bool, batch_size: int) -> None:
         log.error("backfill.no_dsn", hint="set LOCAL_DATABASE_URL")
         sys.exit(1)
 
-    conn = await asyncpg.connect(dsn)
+    conn = await asyncpg.connect(
+        dsn,
+        command_timeout=60,
+        statement_cache_size=0,
+        server_settings={
+            "application_name": "jobseek:operator:clear-rich-scrape",
+            "idle_in_transaction_session_timeout": "60s",
+        },
+    )
     try:
         rows = await conn.fetch(_COUNT_STUCK)
         if not rows:

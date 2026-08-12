@@ -57,6 +57,10 @@ describe("taxonomy outage policy", () => {
       }),
     );
 
-    await expect(getAllSeniorities("en")).rejects.toThrow("429");
+    const rejection = getAllSeniorities("en");
+    await expect(rejection).rejects.toMatchObject({
+      message: "Typesense request failed",
+      httpStatus: 429,
+    });
   });
 });

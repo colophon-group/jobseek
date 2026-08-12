@@ -13,8 +13,8 @@ Workflow
 For each ``data/<date>.jsonl`` on the HF repo:
 
 1. ``hf_hub_download`` to a tempdir.
-2. Iterate JSONL lines and partition into ``keep`` vs ``drop`` using the
-   filter predicate (slug + posting-id + date, AND-semantics).
+2. Validate and partition every selected JSONL before making any remote
+   change. The first malformed line aborts the entire scrub.
 3. If nothing dropped → no-op for that file.
 4. If everything dropped → ``delete_file`` to remove the dated JSONL
    entirely (the dataset card's ``data_files: data/*.jsonl`` glob would
@@ -35,6 +35,9 @@ Safety
   doesn't need this command.
 - ``--dry-run`` skips both the HF token check and any HF write call;
   it lists the files+rows that would change and returns.
+- Every selected remote JSONL is parsed before the first remote write. A
+  malformed line aborts with only its repository path and line number, so a
+  scrub cannot silently discard unrelated source data or expose its content.
 - Slug matching reuses the same lowercased ``source.company_slug``
   comparison as ``upload._accepted_by_date`` so the opt-out filter and
   the scrub command stay in lockstep.
@@ -54,6 +57,10 @@ from .upload import HF_REPO, _accepted_by_date, _readme_text
 
 class ScrubGuardError(RuntimeError):
     """Raised when scrub refuses to run (no filters, etc.)."""
+
+
+class ScrubSourceError(ScrubGuardError):
+    """Raised when a remote source file is unsafe to rewrite."""
 
 
 @dataclass
@@ -157,19 +164,26 @@ def _date_from_path(hf_path: str) -> str:
     return Path(hf_path).stem
 
 
-def _iter_jsonl(path: Path) -> Iterator[dict]:
+def _iter_jsonl(path: Path, *, source_name: str) -> Iterator[dict]:
     with path.open() as fh:
-        for raw in fh:
+        for line_number, raw in enumerate(fh, start=1):
             line = raw.strip()
             if not line:
                 continue
             try:
-                yield json.loads(line)
+                row = json.loads(line)
             except json.JSONDecodeError:
-                # Practically the dataset is produced by `upload.py`,
-                # which always emits valid JSON. Skip the corrupt line
-                # rather than abort the whole scrub.
-                continue
+                # Deliberately omit both the source line and the decoder's
+                # message: either could expose content from the published
+                # record in logs or a terminal transcript.
+                raise ScrubSourceError(
+                    f"malformed remote JSONL in {source_name} at line {line_number}"
+                ) from None
+            if not isinstance(row, dict):
+                raise ScrubSourceError(
+                    f"malformed remote JSONL in {source_name} at line {line_number}"
+                ) from None
+            yield row
 
 
 def _partition_rows(rows: Iterable[dict], predicate: ScrubFilter) -> tuple[list[dict], list[dict]]:
@@ -239,6 +253,10 @@ def scrub(
 
     with tempfile.TemporaryDirectory(prefix="labeller-scrub-") as workdir_str:
         workdir = Path(workdir_str)
+        prepared: list[tuple[FileChange, Path | None]] = []
+
+        # Preflight every selected source before the first remote mutation.
+        # A later corrupt file must not leave earlier files partially scrubbed.
         for hf_path in hf_paths:
             date = _date_from_path(hf_path)
             if not predicate.matches_date_file(date):
@@ -251,7 +269,7 @@ def scrub(
                 local_dir=str(workdir / date),
             )
             local_path = Path(local)
-            rows = list(_iter_jsonl(local_path))
+            rows = list(_iter_jsonl(local_path, source_name=hf_path))
             keep, drop = _partition_rows(rows, predicate)
             change = FileChange(
                 date=date,
@@ -261,28 +279,32 @@ def scrub(
                 drop_ids=[r.get("id") for r in drop if isinstance(r.get("id"), str)],
             )
             files.append(change)
+            rewritten: Path | None = None
+            if change.changed and keep:
+                rewritten = workdir / f"rewrite-{change.date}.jsonl"
+                _write_jsonl(rewritten, keep)
+            prepared.append((change, rewritten))
 
+        for change, rewritten in prepared:
             if dry_run or not change.changed:
                 continue
 
-            if not keep:
+            if rewritten is None:
                 api.delete_file(
-                    path_in_repo=hf_path,
+                    path_in_repo=change.path,
                     repo_id=HF_REPO,
                     repo_type="dataset",
-                    commit_message=f"scrub:{label} (delete {hf_path})",
+                    commit_message=f"scrub:{label} (delete {change.path})",
                 )
                 change.deleted = True
                 continue
 
-            rewritten = workdir / f"rewrite-{date}.jsonl"
-            _write_jsonl(rewritten, keep)
             api.upload_file(
                 path_or_fileobj=str(rewritten),
-                path_in_repo=hf_path,
+                path_in_repo=change.path,
                 repo_id=HF_REPO,
                 repo_type="dataset",
-                commit_message=f"scrub:{label} ({change.dropped} row(s) from {hf_path})",
+                commit_message=(f"scrub:{label} ({change.dropped} row(s) from {change.path})"),
             )
 
     if not dry_run and any(f.changed for f in files):
