@@ -200,6 +200,20 @@ describe("shouldRestoreSnapshot — #2989 regression", () => {
     expect(shouldRestoreSnapshot(cached, currentKey)).toBe(true);
   });
 
+  it("does NOT restore a degraded filtered snapshot after the backend recovers (#7218)", () => {
+    const currentKey = buildCacheKey(["python"], [], [], [], []);
+    const cached = makeSnapshot({
+      keywords: ["python"],
+      cacheKey: currentKey,
+      companies: [],
+      totalCompanies: 0,
+      degraded: true,
+      hasResultFilters: true,
+    });
+
+    expect(shouldRestoreSnapshot(cached, currentKey)).toBe(false);
+  });
+
   /**
    * Core #2989 case: snapshot was saved from a previous filtered search
    * that returned 0 results. User navigates to /explore (no URL

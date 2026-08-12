@@ -128,6 +128,8 @@ export function buildCacheKey(
  * ``initialCompanies`` is overridden by the empty snapshot.
  *
  * Restoration semantics now:
+ *   - Any explicitly degraded snapshot → ignore so a recovered server result
+ *     can replace it, even when the filtered cache key is unchanged.
  *   - Same URL filters (or both empty), snapshot has results → restore.
  *   - Same URL filters (or both empty), snapshot has empty companies
  *     AND no explicit result filters → ignore (#3354 poison guard).
@@ -147,6 +149,10 @@ export function shouldRestoreSnapshot(
 ): boolean {
   if (cached === null) return false;
   if (cached.cacheKey !== currentCacheKey) return false;
+  // An unavailable upstream result is never durable view state. Restoring it
+  // after the backend has recovered would override fresh healthy initialData
+  // and trap a same-filter return navigation in the old outage indefinitely.
+  if (cached.degraded === true) return false;
   // #3354 poison guard: an unfiltered snapshot with 0 companies is
   // always a degraded prior state (Typesense glitch / silent failure)
   // and never a legitimate "saved view" worth restoring. Reject it so
