@@ -1770,6 +1770,432 @@ async def test_typesense_partition_export_requests_and_hashes_payload_fields() -
     assert requests[0].url.params["filter_by"] == "reconciliation_bucket:=ce"
 
 
+async def test_typesense_partition_export_retries_truncated_final_line_without_state_leakage(
+    monkeypatch,
+) -> None:
+    prefix = 0xD1
+    discarded_id = _id(prefix, 1)
+    retained_id = _id(prefix, 2)
+    attempts = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            complete = json.dumps(
+                {
+                    "id": str(discarded_id),
+                    "is_active": True,
+                    "reconciliation_bucket": f"{prefix:02x}",
+                }
+            )
+            return httpx.Response(
+                200,
+                text=f'{complete}\n{{"id":"sensitive-truncated-document',
+                request=request,
+            )
+        document = {
+            "id": str(retained_id),
+            "is_active": False,
+            "reconciliation_bucket": f"{prefix:02x}",
+        }
+        return httpx.Response(200, text=f"{json.dumps(document)}\n", request=request)
+
+    monkeypatch.setattr("src.reconciliation._TYPESENSE_EXPORT_BACKOFF_BASE_SECONDS", 0)
+    client = TypesenseReconciliationClient.__new__(TypesenseReconciliationClient)
+    client._base_url = "https://typesense.invalid/collections/job_posting/documents"
+    client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        with structlog.testing.capture_logs() as logs:
+            snapshot = await client.partition_snapshot(prefix)
+    finally:
+        await client.aclose()
+
+    assert attempts == 2
+    assert snapshot.states == {retained_id: False}
+    assert discarded_id not in snapshot.states
+    assert logs == [
+        {
+            "consumer": "partition",
+            "attempt": 1,
+            "max_attempts": 3,
+            "retry_in_seconds": 0,
+            "error_class": "JSONDecodeError",
+            "event": "reconciliation.typesense_export_retry",
+            "log_level": "warning",
+        }
+    ]
+    assert "sensitive-truncated-document" not in json.dumps(logs)
+
+
+async def test_typesense_partition_export_retries_midstream_transport_failure(
+    monkeypatch,
+) -> None:
+    prefix = 0xD2
+    discarded_id = _id(prefix, 1)
+    retained_id = _id(prefix, 2)
+    attempts = 0
+    failed_stream_closed = asyncio.Event()
+
+    class FailingStream(httpx.AsyncByteStream):
+        async def __aiter__(self) -> AsyncIterator[bytes]:
+            document = {
+                "id": str(discarded_id),
+                "is_active": True,
+                "reconciliation_bucket": f"{prefix:02x}",
+            }
+            yield f"{json.dumps(document)}\n".encode()
+            raise httpx.ReadError("sensitive stream failure")
+
+        async def aclose(self) -> None:
+            failed_stream_closed.set()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            return httpx.Response(200, stream=FailingStream(), request=request)
+        document = {
+            "id": str(retained_id),
+            "is_active": True,
+            "reconciliation_bucket": f"{prefix:02x}",
+        }
+        return httpx.Response(200, text=f"{json.dumps(document)}\n", request=request)
+
+    monkeypatch.setattr("src.reconciliation._TYPESENSE_EXPORT_BACKOFF_BASE_SECONDS", 0)
+    client = TypesenseReconciliationClient.__new__(TypesenseReconciliationClient)
+    client._base_url = "https://typesense.invalid/collections/job_posting/documents"
+    client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        with structlog.testing.capture_logs() as logs:
+            snapshot = await client.partition_snapshot(prefix)
+    finally:
+        await client.aclose()
+
+    assert attempts == 2
+    assert failed_stream_closed.is_set()
+    assert snapshot.states == {retained_id: True}
+    assert discarded_id not in snapshot.states
+    assert logs[0]["error_class"] == "ReadError"
+    assert "sensitive stream failure" not in json.dumps(logs)
+
+
+async def test_typesense_partition_export_retry_exhaustion_is_sanitized_and_fail_closed(
+    monkeypatch,
+) -> None:
+    attempts = 0
+    sleep = AsyncMock()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(
+            200,
+            text='{"title":"sensitive malformed payload',
+            request=request,
+        )
+
+    monkeypatch.setattr("src.reconciliation.asyncio.sleep", sleep)
+    client = TypesenseReconciliationClient.__new__(TypesenseReconciliationClient)
+    client._base_url = "https://typesense.invalid/collections/job_posting/documents"
+    client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        with (
+            structlog.testing.capture_logs() as logs,
+            pytest.raises(ReconciliationError) as exc,
+        ):
+            await client.partition_snapshot(0xD3)
+    finally:
+        await client.aclose()
+
+    assert attempts == 3
+    assert [call.args[0] for call in sleep.await_args_list] == [1.0, 2.0]
+    assert str(exc.value) == (
+        "Typesense export acquisition failed after 3 attempts (JSONDecodeError)"
+    )
+    telemetry = json.dumps(logs)
+    assert "sensitive malformed payload" not in telemetry
+    assert "typesense.invalid" not in telemetry
+    assert [event["event"] for event in logs] == [
+        "reconciliation.typesense_export_retry",
+        "reconciliation.typesense_export_retry",
+        "reconciliation.typesense_export_retry_exhausted",
+    ]
+
+
+async def test_typesense_export_deterministic_http_status_is_sanitized_without_retry() -> None:
+    attempts = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(
+            401,
+            text="sensitive response body",
+            request=request,
+        )
+
+    client = TypesenseReconciliationClient.__new__(TypesenseReconciliationClient)
+    client._base_url = "https://sensitive-typesense-address.invalid/documents"
+    client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        with (
+            structlog.testing.capture_logs() as logs,
+            pytest.raises(ReconciliationError) as exc,
+        ):
+            await client.partition_snapshot(0xD3)
+    finally:
+        await client.aclose()
+
+    assert attempts == 1
+    assert str(exc.value) == "Typesense export acquisition failed (HTTPStatusError)"
+    telemetry = json.dumps(logs)
+    assert "sensitive response body" not in telemetry
+    assert "sensitive-typesense-address" not in telemetry
+    assert logs == [
+        {
+            "consumer": "partition",
+            "attempts": 1,
+            "error_class": "HTTPStatusError",
+            "event": "reconciliation.typesense_export_failed",
+            "log_level": "error",
+        }
+    ]
+
+
+async def test_typesense_export_retries_transient_http_status(monkeypatch) -> None:
+    posting_id = _id(0xD3, 1)
+    attempts = 0
+    sleep = AsyncMock()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            return httpx.Response(503, text="sensitive transient body", request=request)
+        document = {
+            "id": str(posting_id),
+            "is_active": True,
+            "reconciliation_bucket": "d3",
+        }
+        return httpx.Response(200, text=f"{json.dumps(document)}\n", request=request)
+
+    monkeypatch.setattr("src.reconciliation.asyncio.sleep", sleep)
+    client = TypesenseReconciliationClient.__new__(TypesenseReconciliationClient)
+    client._base_url = "https://sensitive-typesense-address.invalid/documents"
+    client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        with structlog.testing.capture_logs() as logs:
+            snapshot = await client.partition_snapshot(0xD3)
+    finally:
+        await client.aclose()
+
+    assert attempts == 2
+    sleep.assert_awaited_once_with(1.0)
+    assert snapshot.states == {posting_id: True}
+    telemetry = json.dumps(logs)
+    assert "sensitive transient body" not in telemetry
+    assert "sensitive-typesense-address" not in telemetry
+    assert logs[0]["error_class"] == "HTTPStatusError"
+
+
+@pytest.mark.parametrize(
+    "documents, message",
+    (
+        (
+            [
+                {
+                    "id": str(_id(0xD4, 1)),
+                    "is_active": True,
+                    "reconciliation_bucket": "d5",
+                }
+            ],
+            "wrong partition",
+        ),
+        (
+            [{"id": "not-a-uuid", "is_active": True, "reconciliation_bucket": "d4"}],
+            "invalid ID",
+        ),
+        (
+            [
+                {
+                    "id": str(_id(0xD4, 1)),
+                    "is_active": "yes",
+                    "reconciliation_bucket": "d4",
+                }
+            ],
+            "invalid active state",
+        ),
+        (
+            [
+                {
+                    "id": str(_id(0xD4, 1)),
+                    "is_active": True,
+                    "reconciliation_bucket": "d4",
+                },
+                {
+                    "id": str(_id(0xD4, 1)),
+                    "is_active": True,
+                    "reconciliation_bucket": "d4",
+                },
+            ],
+            "duplicate document",
+        ),
+    ),
+)
+async def test_typesense_partition_semantic_invariants_do_not_retry(
+    documents: list[dict[str, object]],
+    message: str,
+) -> None:
+    attempts = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        body = "".join(f"{json.dumps(document)}\n" for document in documents)
+        return httpx.Response(200, text=body, request=request)
+
+    client = TypesenseReconciliationClient.__new__(TypesenseReconciliationClient)
+    client._base_url = "https://typesense.invalid/collections/job_posting/documents"
+    client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        with pytest.raises(ReconciliationError, match=message):
+            await client.partition_snapshot(0xD4)
+    finally:
+        await client.aclose()
+
+    assert attempts == 1
+
+
+async def test_typesense_unbucketed_export_retries_whole_stream_before_yielding(
+    monkeypatch,
+) -> None:
+    discarded_id = str(_id(0xD5, 1))
+    retained_id = str(_id(0xD5, 2))
+    attempts = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            candidate = {"id": discarded_id, "is_active": True}
+            return httpx.Response(
+                200,
+                text=f'{json.dumps(candidate)}\n{{"id":"sensitive-truncated',
+                request=request,
+            )
+        documents = (
+            {
+                "id": discarded_id,
+                "is_active": True,
+                "reconciliation_bucket": reconciliation_bucket(discarded_id),
+            },
+            {"id": retained_id, "is_active": False},
+        )
+        return httpx.Response(
+            200,
+            text="".join(f"{json.dumps(document)}\n" for document in documents),
+            request=request,
+        )
+
+    monkeypatch.setattr("src.reconciliation._TYPESENSE_EXPORT_BACKOFF_BASE_SECONDS", 0)
+    client = TypesenseReconciliationClient.__new__(TypesenseReconciliationClient)
+    client._base_url = "https://typesense.invalid/collections/job_posting/documents"
+    client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    batches: list[list[tuple[str, bool]]] = []
+    try:
+        async for batch in client.unbucketed_batches(batch_size=1):
+            batches.append(batch)
+    finally:
+        await client.aclose()
+
+    assert attempts == 2
+    assert batches == [[(retained_id, False)]]
+
+
+@pytest.mark.parametrize(
+    ("constant", "limit"),
+    (
+        ("_TYPESENSE_UNBUCKETED_CANDIDATE_LIMIT", 1),
+        ("_TYPESENSE_UNBUCKETED_ID_BYTES_LIMIT", 1),
+    ),
+)
+async def test_typesense_unbucketed_export_limits_fail_before_any_yield(
+    monkeypatch,
+    constant: str,
+    limit: int,
+) -> None:
+    attempts = 0
+    documents = (
+        {"id": str(_id(0xD5, 1)), "is_active": True},
+        {"id": str(_id(0xD5, 2)), "is_active": False},
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(
+            200,
+            text="".join(f"{json.dumps(document)}\n" for document in documents),
+            request=request,
+        )
+
+    monkeypatch.setattr(f"src.reconciliation.{constant}", limit)
+    client = TypesenseReconciliationClient.__new__(TypesenseReconciliationClient)
+    client._base_url = "https://typesense.invalid/collections/job_posting/documents"
+    client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    batches: list[list[tuple[str, bool]]] = []
+    try:
+        with pytest.raises(ReconciliationError, match="candidate safety limit"):
+            async for batch in client.unbucketed_batches(batch_size=1):
+                batches.append(batch)
+    finally:
+        await client.aclose()
+
+    assert attempts == 1
+    assert batches == []
+
+
+async def test_typesense_export_cancellation_closes_stream_without_retry() -> None:
+    prefix = 0xD6
+    stream_started = asyncio.Event()
+    stream_closed = asyncio.Event()
+    attempts = 0
+
+    class BlockingStream(httpx.AsyncByteStream):
+        async def __aiter__(self) -> AsyncIterator[bytes]:
+            stream_started.set()
+            await asyncio.Event().wait()
+            yield b"unreachable"
+
+        async def aclose(self) -> None:
+            stream_closed.set()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(200, stream=BlockingStream(), request=request)
+
+    client = TypesenseReconciliationClient.__new__(TypesenseReconciliationClient)
+    client._base_url = "https://typesense.invalid/collections/job_posting/documents"
+    client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    task = asyncio.create_task(client.partition_snapshot(prefix))
+    try:
+        await stream_started.wait()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert attempts == 1
+        assert stream_closed.is_set()
+    finally:
+        if not task.done():
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+        await client.aclose()
+
+    assert client._client.is_closed
+
+
 async def test_repair_fails_closed_when_local_row_changes_during_network_write(
     monkeypatch,
 ) -> None:
