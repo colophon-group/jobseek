@@ -7,11 +7,10 @@ import argparse
 import fcntl
 import os
 import re
-import shutil
 import stat
 import sys
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROLLBACK_ROOT = Path("/var/lib/jobseek-observability/rollback")
@@ -22,6 +21,8 @@ MAX_AGE = timedelta(days=14)
 FUTURE_SKEW = timedelta(minutes=5)
 EXPECTED_UID = 0
 EXPECTED_GID = 0
+# The crawler host remains on Ubuntu 22.04 with system Python 3.10.
+UTC = timezone.utc  # noqa: UP017
 SNAPSHOT_RE = re.compile(r"^[0-9]{8}T[0-9]{6}Z$")
 ALLOWED_FILES = frozenset(
     {
@@ -118,6 +119,45 @@ def _parse_timestamp(name: str) -> datetime:
     return parsed
 
 
+def _open_snapshot(root_fd: int, snapshot: Snapshot) -> int:
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    try:
+        snapshot_fd = os.open(snapshot.name, flags, dir_fd=root_fd)
+    except OSError as exc:
+        raise RetentionError(f"rollback snapshot cannot be opened safely: {snapshot.name}") from exc
+    opened = os.fstat(snapshot_fd)
+    if (opened.st_dev, opened.st_ino) != (snapshot.device, snapshot.inode):
+        os.close(snapshot_fd)
+        raise RetentionError(f"rollback snapshot changed while opening: {snapshot.name}")
+    return snapshot_fd
+
+
+def _validated_entry_names(snapshot_fd: int, snapshot_name: str) -> tuple[str, ...]:
+    try:
+        with os.scandir(snapshot_fd) as entries:
+            names = tuple(entry.name for entry in entries)
+    except OSError as exc:
+        raise RetentionError(
+            f"rollback snapshot cannot be enumerated safely: {snapshot_name}"
+        ) from exc
+    for name in names:
+        if name not in ALLOWED_FILES:
+            raise RetentionError(
+                f"rollback snapshot contains an unexpected entry: {snapshot_name}/{name}"
+            )
+        try:
+            child = os.stat(name, dir_fd=snapshot_fd, follow_symlinks=False)
+        except OSError as exc:
+            raise RetentionError(
+                f"rollback snapshot entry is unavailable: {snapshot_name}/{name}"
+            ) from exc
+        if not stat.S_ISREG(child.st_mode) or child.st_uid != EXPECTED_UID or child.st_nlink != 1:
+            raise RetentionError(
+                f"rollback snapshot entry is not an owned regular file: {snapshot_name}/{name}"
+            )
+    return tuple(sorted(names))
+
+
 def _validate_snapshot(root_fd: int, name: str, *, expected: Snapshot | None = None) -> Snapshot:
     created_at = _parse_timestamp(name)
     try:
@@ -136,34 +176,38 @@ def _validate_snapshot(root_fd: int, name: str, *, expected: Snapshot | None = N
     ):
         raise RetentionError(f"rollback snapshot changed before deletion: {name}")
 
-    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    snapshot = Snapshot(name, created_at, metadata.st_dev, metadata.st_ino)
+    snapshot_fd = _open_snapshot(root_fd, snapshot)
     try:
-        snapshot_fd = os.open(name, flags, dir_fd=root_fd)
-    except OSError as exc:
-        raise RetentionError(f"rollback snapshot cannot be opened safely: {name}") from exc
-    try:
-        opened = os.fstat(snapshot_fd)
-        if (opened.st_dev, opened.st_ino) != (metadata.st_dev, metadata.st_ino):
-            raise RetentionError(f"rollback snapshot changed while opening: {name}")
-        with os.scandir(snapshot_fd) as entries:
-            for entry in entries:
-                if entry.name not in ALLOWED_FILES:
-                    raise RetentionError(
-                        f"rollback snapshot contains an unexpected entry: {name}/{entry.name}"
-                    )
-                child = entry.stat(follow_symlinks=False)
-                if (
-                    entry.is_symlink()
-                    or not stat.S_ISREG(child.st_mode)
-                    or child.st_uid != EXPECTED_UID
-                    or child.st_nlink != 1
-                ):
-                    raise RetentionError(
-                        f"rollback snapshot entry is not an owned regular file: {name}/{entry.name}"
-                    )
+        _validated_entry_names(snapshot_fd, name)
     finally:
         os.close(snapshot_fd)
-    return Snapshot(name, created_at, metadata.st_dev, metadata.st_ino)
+    return snapshot
+
+
+def _delete_snapshot(root_fd: int, expected: Snapshot) -> None:
+    snapshot = _validate_snapshot(root_fd, expected.name, expected=expected)
+    snapshot_fd = _open_snapshot(root_fd, snapshot)
+    try:
+        # Snapshots are deliberately flat. Revalidate and unlink only the
+        # allowlisted regular files through the already-verified directory fd;
+        # never recurse into an entry that appears after validation.
+        for name in _validated_entry_names(snapshot_fd, snapshot.name):
+            try:
+                os.unlink(name, dir_fd=snapshot_fd)
+            except OSError as exc:
+                raise RetentionError(
+                    f"rollback snapshot entry could not be removed safely: {snapshot.name}/{name}"
+                ) from exc
+        os.fsync(snapshot_fd)
+    finally:
+        os.close(snapshot_fd)
+    try:
+        os.rmdir(snapshot.name, dir_fd=root_fd)
+    except OSError as exc:
+        raise RetentionError(
+            f"rollback snapshot could not be removed safely: {snapshot.name}"
+        ) from exc
 
 
 def _list_snapshots(root_fd: int, *, now: datetime) -> list[Snapshot]:
@@ -188,8 +232,6 @@ def prune_snapshots(
     lock_fd: int = DEPLOY_LOCK_FD,
 ) -> RetentionReport:
     """Validate the full root, then retain a bounded recent rollback set."""
-    if not shutil.rmtree.avoids_symlink_attacks:
-        raise RetentionError("platform lacks symlink-safe recursive removal")
     current_time = now or datetime.now(UTC)
     if current_time.tzinfo is None:
         raise RetentionError("retention clock must be timezone-aware")
@@ -214,16 +256,10 @@ def prune_snapshots(
         ]
 
         # The complete root is validated before the first deletion. Revalidate
-        # each target by inode and contents immediately before fd-relative,
-        # symlink-resistant removal.
+        # each target by inode and contents immediately before flat,
+        # fd-relative removal.
         for snapshot in to_delete:
-            _validate_snapshot(root_fd, snapshot.name, expected=snapshot)
-            try:
-                shutil.rmtree(snapshot.name, dir_fd=root_fd)
-            except OSError as exc:
-                raise RetentionError(
-                    f"rollback snapshot could not be removed safely: {snapshot.name}"
-                ) from exc
+            _delete_snapshot(root_fd, snapshot)
         if to_delete:
             os.fsync(root_fd)
         deleted = tuple(snapshot.name for snapshot in to_delete)

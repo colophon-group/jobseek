@@ -8,13 +8,15 @@ import os
 import subprocess
 import tempfile
 import unittest
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import prune_rollbacks as retention  # pyright: ignore[reportMissingImports]
 
 HERE = Path(__file__).resolve().parent
 INSTALLER = HERE / "install-host.sh"
+# Match the Ubuntu 22.04 production interpreter supported by the helper.
+UTC = timezone.utc  # noqa: UP017
 
 
 class RollbackRetentionTests(unittest.TestCase):
