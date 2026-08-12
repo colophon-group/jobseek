@@ -186,6 +186,11 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert quiesce < env_restore < spec_restore < contract < old_stack_start < health
     assert "|| true" not in rollback
     assert "rollback failed with status" in rollback
+    assert "if ((env_restore_complete && spec_restore_complete)); then" in rollback
+    assert (
+        "if ((quiesce_complete && env_restore_complete && spec_restore_complete && "
+        "bounded_contract_persisted)); then" in rollback
+    )
     assert "local services=(redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy)" in (
         script
     )
@@ -334,6 +339,11 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
 
 def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -> None:
     script = DEPLOY_SH.read_text()
+    configure = script[
+        script.index("configure_rollback_compose_contract() {") : script.index(
+            "rollback_compose() {"
+        )
+    ]
     rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
     harness = "\n".join(
         (
@@ -341,6 +351,7 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
             'DEPLOY_DIR="$TEST_DEPLOY_DIR"',
             'ENV_FILE="$DEPLOY_DIR/.env"',
             'ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"',
+            'ROLLBACK_POOL_OVERRIDE="$DEPLOY_DIR/.crawler-rollback-pool-budget.override.yml"',
             "ENV_FILE_WAS_PRESENT=1",
             "ROLLBACK_ARMED=1",
             "ROLLBACK_RUNNING=0",
@@ -352,9 +363,7 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
             "restore_previous_deploy_specs() {",
             "  printf 'restore-specs\\n' >>\"$TEST_LOG\"",
             "}",
-            "configure_rollback_compose_contract() {",
-            "  printf 'configure-contract\\n' >>\"$TEST_LOG\"",
-            "}",
+            configure,
             "rollback_compose() {",
             "  printf 'compose-start\\n' >>\"$TEST_LOG\"",
             '  return "$START_STATUS"',
@@ -380,7 +389,6 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
             [
                 "quiesce",
                 "restore-specs",
-                "configure-contract",
                 "compose-start",
                 "maintenance-stop",
             ],
@@ -392,7 +400,6 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
             [
                 "quiesce",
                 "restore-specs",
-                "configure-contract",
                 "compose-start",
                 "health-gate",
                 "maintenance-stop",
@@ -404,6 +411,10 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
         case_dir.mkdir()
         (case_dir / ".env").write_text("failed\n", encoding="utf-8")
         (case_dir / ".env.rollback").write_text("restored\n", encoding="utf-8")
+        compose = case_dir / "docker-compose.yml"
+        compose.write_text("old-compose\n", encoding="utf-8")
+        rollback_override = case_dir / ".crawler-rollback-pool-budget.override.yml"
+        rollback_override.write_text("bounded-override\n", encoding="utf-8")
         log = case_dir / "events.log"
         result = subprocess.run(
             ["bash", "-c", harness],
@@ -423,6 +434,12 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
         expected_status = stop_status or start_status or health_status
         assert result.returncode == expected_status, result.stderr
         assert f"rollback failed with status {expected_status}" in result.stderr
+        assert ("bounded old-stack contract persisted but restart skipped" in result.stderr) == (
+            stop_status != 0
+        )
+        assert (case_dir / ".env").read_text(encoding="utf-8") == (
+            f"restored\n\nCOMPOSE_FILE={compose}:{rollback_override}\n"
+        )
         assert log.read_text(encoding="utf-8").splitlines() == expected_events
 
 

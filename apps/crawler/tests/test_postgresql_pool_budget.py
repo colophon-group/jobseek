@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+import os
+import shutil
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -15,11 +20,76 @@ ROOT = Path(__file__).resolve().parents[3]
 CRAWLER = ROOT / "apps" / "crawler"
 COMPOSE = CRAWLER / "docker-compose.yml"
 ROLLBACK_OVERRIDE = CRAWLER / "rollback-pool-budget.override.yml"
+BASE_REVISION = "51625c18e3d1d03cdf606b307001b96b6dc85868"
+BASE_COMPOSE_FIXTURE = CRAWLER / "tests" / "fixtures" / f"docker-compose.base-{BASE_REVISION}.yml"
+BASE_COMPOSE_SHA256 = "67f8209fe6316932d85ed3d32b5d1a5da2c1d242fffa7f5d55ad9b73f4b6a32e"
 RUNBOOK = ROOT / "docs" / "22-postgresql-connections.md"
 
 
 def _compose() -> dict:
     return yaml.safe_load(COMPOSE.read_text(encoding="utf-8"))
+
+
+def _render_compose_config(*files: Path) -> dict:
+    docker = shutil.which("docker")
+    assert docker is not None, "Docker Compose is required for the rollback contract test"
+    # Intentionally exclude the caller's environment values. Compose gives
+    # process variables precedence over its env file, so synthetic inputs are
+    # the only way for this regression test to remain deterministic and avoid
+    # surfacing any developer or CI secret in failure output.
+    environment = {
+        key: os.environ[key] for key in ("PATH", "HOME", "DOCKER_CONFIG") if key in os.environ
+    }
+    environment.update(
+        {
+            "COMPOSE_PROJECT_NAME": "rollback-base-contract",
+            "CRAWLER_IMAGE_TAG": "base-fixture",
+            "DECODO_PROXY_URL": "",
+            "GRAFANA_LOKI_PASSWORD": "fixture",
+            "GRAFANA_LOKI_URL": "https://fixture.invalid/loki",
+            "GRAFANA_LOKI_USERNAME": "fixture",
+            "GRAFANA_PROM_PASSWORD": "fixture",
+            "GRAFANA_PROM_URL": "https://fixture.invalid/prom",
+            "GRAFANA_PROM_USERNAME": "fixture",
+            "LOCAL_DATABASE_URL": "postgresql://fixture.invalid/jobseek",
+            "MURMUR_TOKEN": "fixture",
+            "OWNER": "fixture",
+            "PROXY_PROVIDER": "none",
+            "R2_ACCESS_KEY_ID": "fixture",
+            "R2_BUCKET": "fixture",
+            "R2_DOMAIN_URL": "https://fixture.invalid/r2",
+            "R2_ENDPOINT_URL": "https://fixture.invalid/r2",
+            "R2_SECRET_ACCESS_KEY": "fixture",
+            "SHIM_IMAGE_TAG": "bounded-fixture",
+            "TYPESENSE_HOST": "fixture.invalid",
+            "TYPESENSE_OPERATIONS_KEY": "fixture",
+            "TYPESENSE_PORT": "8108",
+            "TYPESENSE_PROTOCOL": "https",
+            "WEBSHARE_PROXY_URL": "",
+        }
+    )
+    command = [
+        docker,
+        "compose",
+        "--env-file",
+        os.devnull,
+        "--project-directory",
+        str(CRAWLER),
+        "--project-name",
+        "rollback-base-contract",
+    ]
+    for file in files:
+        command.extend(("-f", str(file)))
+    command.extend(("config", "--format", "json"))
+    result = subprocess.run(
+        command,
+        check=False,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    assert result.returncode == 0, result.stderr
+    return json.loads(result.stdout)
 
 
 def test_long_running_pool_budget_is_explicit_and_below_steady_target() -> None:
@@ -149,53 +219,42 @@ def test_deploy_quiesces_pool_generations_and_stays_below_normal_maximum() -> No
 
 
 def test_exact_pre_budget_base_archive_is_bounded_by_rollback_override() -> None:
-    """Regression contract for PR base 51625c18 at the first rollout.
+    """Exercise Compose's real merge contract for the exact PR base artifact.
 
-    The archived Compose snapshot restores that release's exact crawler pool
-    maxima. Compose environment-map merging must replace all six of them with
-    the reviewed override before any old image starts.
+    The fixture is the byte-exact docker-compose.yml from BASE_REVISION. Its
+    pinned digest makes accidental fixture edits visible without requiring
+    that commit to exist in a shallow test checkout.
     """
 
-    archived_base_environments = {
-        "worker-1": {"CRAWLER_DB_POOL_MAX": "20"},
-        "worker-2": {"CRAWLER_DB_POOL_MAX": "20"},
-        "worker-3": {"CRAWLER_DB_POOL_MAX": "20"},
-        "browser-1": {"CRAWLER_DB_POOL_MAX": "10"},
-        # These two inherited Settings.crawler_db_pool_max=10 in the exact
-        # base image because the archived Compose file omitted the variable.
-        "exporter": {},
-        "drain": {},
-    }
-    assert (
-        sum(
-            int(environment.get("CRAWLER_DB_POOL_MAX", "10"))
-            for environment in archived_base_environments.values()
-        )
-        == 90
+    assert hashlib.sha256(BASE_COMPOSE_FIXTURE.read_bytes()).hexdigest() == BASE_COMPOSE_SHA256
+    base = _render_compose_config(BASE_COMPOSE_FIXTURE)
+    crawler_services = (
+        "worker-1",
+        "worker-2",
+        "worker-3",
+        "browser-1",
+        "exporter",
+        "drain",
     )
-
-    override = yaml.safe_load(ROLLBACK_OVERRIDE.read_text(encoding="utf-8"))
-    services = override["services"]
-    expected = {
-        "worker-1": ("worker-1", 1, 8),
-        "worker-2": ("worker-2", 1, 8),
-        "worker-3": ("worker-3", 1, 8),
-        "browser-1": ("browser-1", 1, 6),
-        "exporter": ("exporter", 1, 4),
-        "drain": ("drain", 1, 6),
+    base_maxima = {
+        service: int(base["services"][service]["environment"].get("CRAWLER_DB_POOL_MAX", "10"))
+        for service in crawler_services
     }
-    merged_maxima = {}
-    for service, (role, minimum, maximum) in expected.items():
-        environment = services[service]["environment"]
-        assert environment == {
-            "CRAWLER_DB_ROLE": role,
-            "CRAWLER_DB_POOL_MIN": str(minimum),
-            "CRAWLER_DB_POOL_MAX": str(maximum),
-            "CRAWLER_DB_POOL_IDLE_SECONDS": "60",
-        }
-        merged_environment = archived_base_environments[service] | environment
-        merged_maxima[service] = int(merged_environment["CRAWLER_DB_POOL_MAX"])
+    assert base_maxima == {
+        "worker-1": 20,
+        "worker-2": 20,
+        "worker-3": 20,
+        "browser-1": 10,
+        "exporter": 10,
+        "drain": 10,
+    }
+    assert sum(base_maxima.values()) == 90
 
+    merged = _render_compose_config(BASE_COMPOSE_FIXTURE, ROLLBACK_OVERRIDE)
+    merged_maxima = {
+        service: int(merged["services"][service]["environment"]["CRAWLER_DB_POOL_MAX"])
+        for service in crawler_services
+    }
     assert merged_maxima == {
         "worker-1": 8,
         "worker-2": 8,
@@ -205,10 +264,9 @@ def test_exact_pre_budget_base_archive_is_bounded_by_rollback_override() -> None
         "drain": 6,
     }
     assert sum(merged_maxima.values()) == 40
-    assert services["murmur-shim"]["environment"] == {
-        "MURMUR_DB_POOL_MAX": "2",
-        "MURMUR_INVOKER_MAX_CONCURRENCY": "2",
-    }
+    murmur = merged["services"]["murmur-shim"]["environment"]
+    assert murmur["MURMUR_DB_POOL_MAX"] == "2"
+    assert murmur["MURMUR_INVOKER_MAX_CONCURRENCY"] == "2"
     # Same maximum as the forward stack: crawler 40 + Murmur 4 + the
     # independently reserved labeller/backup/sampler/ingress clients 6.
     assert sum(merged_maxima.values()) + 2 + 2 + 6 == 50

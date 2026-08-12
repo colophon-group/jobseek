@@ -365,6 +365,11 @@ rollback_deploy() {
   local exit_code="${1:-1}"
   local command_status=0
   local rollback_status=0
+  local quiesce_complete=0
+  local env_restore_complete=0
+  local spec_restore_complete=0
+  local bounded_contract_persisted=0
+  local rollback_stack_started=0
 
   trap - ERR EXIT HUP INT TERM
   if (( ! ROLLBACK_ARMED || ROLLBACK_RUNNING )); then
@@ -387,9 +392,12 @@ rollback_deploy() {
       -f "$DEPLOY_DIR/docker-compose.yml" \
       stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain
     command_status=$?
-    if ((command_status != 0 && rollback_status == 0)); then
-      rollback_status=$command_status
+    if ((command_status == 0)); then
+      quiesce_complete=1
     fi
+  fi
+  if ((command_status != 0 && rollback_status == 0)); then
+    rollback_status=$command_status
   fi
 
   if ((ENV_FILE_WAS_PRESENT)); then
@@ -408,27 +416,53 @@ rollback_deploy() {
     rm -f "$ENV_FILE"
     command_status=$?
   fi
+  if ((command_status == 0)); then
+    env_restore_complete=1
+  fi
   if ((command_status != 0 && rollback_status == 0)); then
     rollback_status=$command_status
   fi
 
   restore_previous_deploy_specs
   command_status=$?
+  if ((command_status == 0)); then
+    spec_restore_complete=1
+  fi
   if ((command_status != 0 && rollback_status == 0)); then
     rollback_status=$command_status
   fi
 
-  if ((rollback_status == 0)); then
+  # Persist the bounded old-stack contract whenever both authoritative
+  # rollback inputs were restored, even if quiescing returned nonzero. A
+  # partial stop must prevent restart, but it must not leave later operator
+  # recovery pointed at the unbounded pre-budget Compose contract.
+  if ((env_restore_complete && spec_restore_complete)); then
     configure_rollback_compose_contract
-    rollback_status=$?
+    command_status=$?
+    if ((command_status == 0)); then
+      bounded_contract_persisted=1
+    elif ((rollback_status == 0)); then
+      rollback_status=$command_status
+    fi
   fi
-  if ((rollback_status == 0)); then
+  if (( ! quiesce_complete && bounded_contract_persisted )); then
+    echo "ERROR: rollback quiesce was incomplete; bounded old-stack contract persisted but restart skipped" >&2
+  fi
+  if ((quiesce_complete && env_restore_complete && spec_restore_complete && bounded_contract_persisted)); then
     rollback_compose up -d --remove-orphans
-    rollback_status=$?
+    command_status=$?
+    if ((command_status == 0)); then
+      rollback_stack_started=1
+    elif ((rollback_status == 0)); then
+      rollback_status=$command_status
+    fi
   fi
-  if ((rollback_status == 0)); then
+  if ((rollback_stack_started)); then
     wait_for_rollback_core_services
-    rollback_status=$?
+    command_status=$?
+    if ((command_status != 0 && rollback_status == 0)); then
+      rollback_status=$command_status
+    fi
   fi
 
   stop_maintenance_window

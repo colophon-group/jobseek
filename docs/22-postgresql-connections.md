@@ -112,7 +112,11 @@ the 40-connection crawler ceiling. The restored `.env` receives a nonsecret
 ceiling across later operator `docker compose` commands without changing any
 other rollback setting or credential. Rollback start and the full core-service
 health gate are fail-closed; a stop, restore, Compose, or health failure is
-returned rather than suppressed.
+returned rather than suppressed. If quiescing is partial or returns nonzero,
+the restored env/spec still receive the bounded Compose contract, but the old
+stack is not started and the original stop failure is returned. Later operator
+recovery therefore cannot accidentally use the pre-budget 90-connection
+contract.
 
 The absolute deployment maximum is therefore 50 connections for both the new
 and rolled-back stack. It includes the independent ingress connection and does
