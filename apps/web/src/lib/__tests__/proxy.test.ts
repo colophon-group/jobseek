@@ -14,6 +14,8 @@ import {
   request as sendHttpRequest,
 } from "node:http";
 import type { AddressInfo } from "node:net";
+import { parse } from "csv-parse/sync";
+import { readFileSync } from "node:fs";
 
 const resourceStatusMocks = vi.hoisted(() => ({
   hasPublicCompanyRoute: vi.fn(),
@@ -29,6 +31,11 @@ vi.mock("@/lib/auth", () => ({
 
 import { proxy, config } from "../../../proxy";
 import { staticMissingResourceDocument } from "@/lib/missing-resource-recovery";
+
+const companyRegistry = parse(
+  readFileSync("../crawler/data/companies.csv", "utf8"),
+  { columns: true, skip_empty_lines: true },
+) as Array<{ slug: string }>;
 
 const redirectSpy = vi.spyOn(NextResponse, "redirect");
 
@@ -570,7 +577,34 @@ describe("proxy config", () => {
         headers: { accept: "text/html,application/xhtml+xml" },
       }),
     ).toBe(true);
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: "/en/company/amazon",
+      }),
+    ).toBe(false);
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: "/en/company/definitely-not-real",
+      }),
+    ).toBe(true);
   });
+
+  it("bypasses Proxy for every canonical company in the registry", () => {
+    for (const { slug } of companyRegistry) {
+      expect(
+        unstable_doesMiddlewareMatch({
+          config,
+          nextConfig: {},
+          url: `/en/company/${slug}`,
+        }),
+        slug,
+      ).toBe(false);
+    }
+  }, 30_000);
 
   it("excludes Explore RSC and current Server Action traffic before proxy compute", () => {
     expect(

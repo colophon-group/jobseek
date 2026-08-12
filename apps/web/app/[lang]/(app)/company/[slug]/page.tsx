@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { cacheLife, cacheTag } from "next/cache";
 import { notFound } from "next/navigation";
 import { isLocale, defaultLocale, loadCatalog, initI18nForPage, ogLocale, ogAlternateLocales } from "@/lib/i18n";
-import { companyCacheTag } from "@/lib/cache-tags";
+import { companyCacheTag, companyCsvDataCacheTag } from "@/lib/cache-tags";
 import { CACHE_TTL_COMPANY_SHELL } from "@/lib/cache-ttl";
 import { fetchCompanyPageDefaults } from "@/lib/actions/company-page-data";
 import type { Locale } from "@/lib/i18n";
@@ -31,6 +31,7 @@ async function getCompanyRouteSnapshot(slug: string, locale: Locale) {
   "use cache";
   cacheLife({ revalidate: CACHE_TTL_COMPANY_SHELL });
   cacheTag(companyCacheTag(slug));
+  cacheTag(companyCsvDataCacheTag());
   return fetchCompanyPageDefaults({ slug, locale });
 }
 
@@ -39,6 +40,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   cacheLife({ revalidate: CACHE_TTL_COMPANY_SHELL });
   const { slug, lang } = await params;
   cacheTag(companyCacheTag(slug));
+  cacheTag(companyCsvDataCacheTag());
   const locale = isLocale(lang) ? lang : defaultLocale;
   const [snapshot, { i18n }] = await Promise.all([
     getCompanyRouteSnapshot(slug, locale),
@@ -135,6 +137,7 @@ export default async function CompanyPageRoute({ params }: Props) {
   const locale = await initI18nForPage(params);
   const { slug } = await params;
   cacheTag(companyCacheTag(slug));
+  cacheTag(companyCsvDataCacheTag());
 
   // Prerender the unauthenticated, no-filter ``CompanyPageData`` and
   // embed it as ``initialData`` so anonymous visitors hit a CDN-cached

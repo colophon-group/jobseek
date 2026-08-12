@@ -27,6 +27,16 @@ describe("company route partial prerendering", () => {
     expect(source).not.toContain("getCompanyBySlug(slug, locale)");
   });
 
+  it("invalidates cached missing snapshots immediately after crawler sync", () => {
+    const source = readFileSync(
+      "app/[lang]/(app)/company/[slug]/page.tsx",
+      "utf8",
+    );
+
+    expect(source).toContain("companyCsvDataCacheTag");
+    expect(source.match(/cacheTag\(companyCsvDataCacheTag\(\)\)/g)).toHaveLength(3);
+  });
+
   it("routes a missing company to the localized recovery boundary", () => {
     const source = readFileSync(
       "app/[lang]/(app)/company/[slug]/page.tsx",

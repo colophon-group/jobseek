@@ -29,7 +29,10 @@ pre-rendered for every locale via `generateStaticParams` in
 /en/my-jobs       — static shell; data loads through a server action
 ```
 
-The shell itself produces **zero function invocations** when served from cache.
+The shell itself is intended to produce no page Function invocation when
+served from cache. Company documents have an additional routing constraint
+described below; do not call that surface zero-Function until a production
+canary confirms both a page-cache `HIT` and a non-Function request source.
 Personalized data is fetched later by client components through server actions,
 or by page-specific dynamic subtrees wrapped in `<Suspense>`.
 
@@ -54,14 +57,28 @@ narrow dynamic surfaces.
 The proxy normally runs for paths **without** a locale prefix (e.g. bare `/`,
 `/how-we-index`) and redirects to the locale-prefixed version based on
 `Accept-Language`. A narrow set of localized boundaries also opt in: company
-request auth, Explore document normalization, scanner rejection, and company /
-public-watchlist document status checks.
+request auth, Explore document normalization, scanner rejection, unknown
+company candidates, and public-watchlist document status checks.
 
-The last check is required because Cache Components can begin streaming the
-static app shell before a page-level `notFound()` resolves. Once headers have
-been sent, Next.js can only return a noindex soft 404 with HTTP 200. For full
-GET/HEAD documents, `proxy.ts` therefore performs a bounded 60-second-cached
-existence check and returns a small localized recovery document with HTTP 404.
+The company matcher is generated from `apps/crawler/data/companies.csv`.
+Registered canonical slugs do not match Proxy at all, so a warm company page
+can reach Vercel's page cache without first consuming a middleware invocation.
+Only slug candidates absent from that deployment's registry enter the
+Typesense status check. `pnpm dev` and `pnpm build` refresh the generated block;
+`pnpm proxy-matchers:check` is available as a read-only freshness gate. The
+production deploy classifier treats the company registry as a web input. For
+bot-authored company merges, the trusted production dispatcher requests and
+waits for that exact revision; the deployment fails closed if main moves before
+promotion. Only then does the crawler sync publish Typesense data and
+invalidate the company CSV cache tag, evicting any route snapshot created in
+the short deploy-before-sync window.
+
+The unknown-company and watchlist checks remain necessary because Cache
+Components can begin streaming the static app shell before a page-level
+`notFound()` resolves. Once headers have been sent, Next.js can only return a
+noindex soft 404 with HTTP 200. For full GET/HEAD candidates, `proxy.ts`
+therefore performs a bounded 60-second-cached existence check and returns a
+small localized recovery document with HTTP 404.
 The document is constructed only from fixed translations and URL-encoded path
 data; it never fetches, parses, or filters App Router HTML. Recovery controls
 are ordinary links and its CSP denies all script execution, preventing a PPR
@@ -107,9 +124,11 @@ This tells Next.js which locale variants to pre-render. Without it, `[lang]` is 
 
 The broad matcher excludes locale-prefixed paths; each localized exception is
 listed separately in `proxy.ts`. When adding a locale, update both the broad
-exclusion and every localized exception. Do not broaden the resource-status
-boundary beyond full company/watchlist documents: RSC and Server Action
-requests must stay on the normal App Router path.
+exclusion and every localized exception. After changing the company registry,
+run `pnpm proxy-matchers:update`; dev, test, CI, and production builds refresh
+the block as well. Do not broaden the resource-status boundary beyond full
+unknown-company or watchlist documents: RSC and Server Action requests must
+stay on the normal App Router path.
 
 ### Use route groups to separate static from dynamic
 
@@ -396,8 +415,10 @@ invocations.
 | `sitemap.xml` / `robots.txt` | Node.js | Generated dynamically per request |
 | Proxy (formerly Middleware) | Edge | Lightweight locale redirect only |
 
-Static pages, cached shells, and CDN assets do **not** invoke functions when
-served from cache.
+Static pages and CDN assets do not invoke Functions. Cached company shells are
+expected to avoid both page and middleware compute after this matcher split,
+but that claim remains provisional until the production canary verifies the
+request source and visible CPU.
 
 ### Database driver and connection model
 
