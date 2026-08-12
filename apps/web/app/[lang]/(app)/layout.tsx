@@ -4,6 +4,7 @@ import { AppBootstrapProvider } from "@/components/providers/AppBootstrapProvide
 import { AppHeader } from "@/components/AppHeader";
 import { CookieBanner } from "@/components/CookieBanner";
 import { SearchStateProvider } from "@/components/providers/SearchStateProvider";
+import { ViewerTimezoneCookie } from "@/components/ViewerTimezoneCookie";
 import { UpgradeBanner } from "@/components/UpgradeBanner";
 import { WatchlistTipBanner } from "@/components/watchlist/watchlist-tip-banner";
 import { BackToTop } from "@/components/ui/back-to-top";
@@ -26,6 +27,7 @@ export default async function AppLayout({ children }: Props) {
   return (
     <AppBootstrapProvider initialCurrencyRates={currencyRates}>
       <SearchStateProvider>
+        <ViewerTimezoneCookie />
         <SkipToContentLink />
         <div className="flex min-h-dvh flex-col">
           <AppHeader />
