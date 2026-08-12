@@ -308,9 +308,6 @@ export function SearchPage({
   // Detect external URL changes (e.g. header search bar → router.push)
   // and re-parse filters + search, without remounting the component.
   useEffect(() => {
-    // Every observed URL snapshot invalidates an older filter-resolution
-    // promise, including snapshots produced by our own History API writes.
-    const navigationId = ++externalNavigationCounterRef.current;
     const currentKey = buildExternalSearchKey(searchParams);
     if (!isBrowserUrlReadyRef.current) {
       const committedKey = buildExternalSearchKey(
@@ -329,6 +326,12 @@ export function SearchPage({
 
     if (internalUrlChangeRef.current) {
       internalUrlChangeRef.current = false;
+      // Filter-changing History API writes already started their own search,
+      // so invalidate only an older taxonomy parse. A `show`-only write has
+      // the same result key and must not cancel the pending navigation.
+      if (currentKey !== lastSearchKeyRef.current) {
+        externalNavigationCounterRef.current += 1;
+      }
       lastSearchKeyRef.current = currentKey;
       return; // our own replaceState — already handled by runSearch
     }
@@ -336,6 +339,7 @@ export function SearchPage({
       return; // same params — mount, StrictMode double-run, or no-op
     }
     lastSearchKeyRef.current = currentKey;
+    const navigationId = ++externalNavigationCounterRef.current;
     // Cancel ownership of any search started for the previous address before
     // awaiting taxonomy resolution for this one.
     searchCounterRef.current += 1;
