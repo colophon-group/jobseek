@@ -142,7 +142,7 @@ def test_typesense_rollout_is_manual_revision_bound_and_freshly_smoked() -> None
     assert "rm -f /var/lib/jobseek-typesense-host/backup-contract-pending" in backup_installer
 
 
-def test_typesense_backup_requires_persistent_staging_and_measured_memory_phase() -> None:
+def test_typesense_backup_requires_persistent_staging_and_bounded_memory_policy() -> None:
     backup_installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
     host_installer = (ROOT / "deploy/typesense-host/install-host.sh").read_text(encoding="utf-8")
     service = (ROOT / "deploy/systemd/jobseek-typesense-backup.service").read_text(encoding="utf-8")
@@ -157,9 +157,11 @@ def test_typesense_backup_requires_persistent_staging_and_measured_memory_phase(
     assert "4294967296" in service
     assert "UUID=" in verifier
     assert "nodev,nosuid,noexec" in verifier
-    assert "--memory " not in host_installer
-    assert "--memory-reservation" not in host_installer
-    assert "--memory-swap" not in host_installer
+    assert '--memory "$TYPESENSE_MEMORY_LIMIT"' in host_installer
+    assert '--memory-reservation "$TYPESENSE_MEMORY_RESERVATION"' in host_installer
+    assert '--memory-swap "$TYPESENSE_MEMORY_SWAP"' in host_installer
+    assert "TYPESENSE_MEMORY_LIMIT_BYTES=3221225472" in host_installer
+    assert "TYPESENSE_MEMORY_RESERVATION_BYTES=2684354560" in host_installer
     assert '"$TYPESENSE_SNAPSHOT_DIR:$TYPESENSE_SNAPSHOT_IN_CONTAINER"' in host_installer
     assert 'chown root:root "$TYPESENSE_SNAPSHOT_DIR"' not in host_installer
     assert "/usr/local/sbin/jobseek-verify-typesense-snapshot-mount" in host_installer
@@ -182,8 +184,10 @@ def test_typesense_backup_requires_persistent_staging_and_measured_memory_phase(
     assert '--data \'{"snapshot_path"' not in workflow
     assert "mount -t tmpfs" in workflow
     assert "stat -c '%d'" in workflow
-    assert "--memory 3g" not in workflow
-    assert "MemoryReservation" in workflow
+    assert "--memory 3g" in workflow
+    assert "--memory-reservation 2560m" in workflow
+    assert "--memory-swap 3g" in workflow
+    assert "Environment=TYPESENSE_MEMORY_POLICY_PHASE=enforced" in service
 
 
 def test_typesense_restore_drill_is_isolated_and_self_cleaning() -> None:

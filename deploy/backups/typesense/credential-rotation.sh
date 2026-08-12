@@ -333,8 +333,8 @@ if (
     or int(status.get("snapshot_peak_local_copies") or 0) != 1
     or int(status.get("staging_available_bytes_after_snapshot") or 0)
         < int(status.get("staging_required_bytes_after_snapshot") or 1)
-    or status.get("memory_policy_phase") != "measure"
-    or status.get("memory_limit_enforced") is not False
+    or status.get("memory_policy_phase") != "enforced"
+    or status.get("memory_limit_enforced") is not True
 ):
     raise SystemExit("ERROR: fresh Typesense direct-mount backup smoke did not succeed")
 PY

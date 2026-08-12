@@ -799,6 +799,8 @@ def _collect_backup_metrics(role: str, status_dir: Path, lines: list[str]) -> No
                 "jobseek_typesense_backup_live_data_allocated_bytes_before"
             ),
             "memory_limit_bytes": "jobseek_typesense_backup_memory_limit_bytes",
+            "memory_reservation_bytes": ("jobseek_typesense_backup_memory_reservation_bytes"),
+            "memory_swap_limit_bytes": ("jobseek_typesense_backup_memory_swap_limit_bytes"),
         }
         for field, metric in metric_fields.items():
             lines.append(_metric(metric, _backup_number(details, field), **labels))
@@ -816,8 +818,8 @@ def _collect_backup_metrics(role: str, status_dir: Path, lines: list[str]) -> No
                 ),
                 _metric(
                     "jobseek_typesense_backup_memory_policy_info",
-                    int(details.get("memory_policy_phase") == "measure"),
-                    phase="measure",
+                    int(details.get("memory_policy_phase") == "enforced"),
+                    phase="enforced",
                     **labels,
                 ),
             )
@@ -1002,7 +1004,7 @@ def _postgresql_query(container: str, sql: str, *, timeout: int = 60) -> str:
             "sh",
             "-c",
             'db="${POSTGRES_DB:-${POSTGRES_USER:-postgres}}"; '
-            'export PGAPPNAME=jobseek:host-observability; '
+            "export PGAPPNAME=jobseek:host-observability; "
             'exec psql -U "${POSTGRES_USER:-postgres}" -d "$db" '
             "-XAt -F '\t' -v ON_ERROR_STOP=1 -c \"$1\"",
             "jobseek-observability",

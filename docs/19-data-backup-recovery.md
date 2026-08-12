@@ -458,9 +458,10 @@ one. The job refuses to start unless this path is an exact root-owned `0700`
 mount on a device separate from both `/` and `/mnt/typesense-data`, has at
 least 20 GiB capacity, retains the live-snapshot estimate plus 4 GiB growth and
 8 GiB free-floor headroom before the call, retains growth plus the floor after
-the call, and is the container's labelled writable snapshot mount. The current
-memory phase explicitly requires no hard cap while durable current, peak, and
-event counters are measured.
+the call, and is the container's labelled writable snapshot mount. The
+container must also expose the exact reviewed 3 GiB hard limit, 2.5 GiB
+reservation, and 3 GiB memory-plus-swap ceiling while durable current, peak,
+and event counters are retained.
 
 During restore, aliases and collection counts are derived from the isolated
 restored node and cross-checked against wildcard reads, so the restore inventory

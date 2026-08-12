@@ -44,12 +44,11 @@ The Typesense container receives one argument:
 `/etc/jobseek-typesense/typesense-server.ini`, owned by root with mode `0600`.
 The Snapshot API writes directly through `/jobseek-snapshots` to the dedicated
 host filesystem mounted at `/mnt/jobseek-typesense-backup`; the backup job
-never makes a second `docker cp` copy on `/`. Memory remains in a measured
-first phase: the managed container has no hard limit, reservation, or synthetic
-swap tuple until seven consecutive production days establish its actual
-current/peak/events envelope and the Docker, Cloudflare tunnel, and OS
-headroom. A later reviewed change may set a cgroup policy from those retained
-measurements; do not infer a safe cap from one `docker stats` sample.
+never makes a second `docker cp` copy on `/`. The managed container has a 3 GiB
+hard memory limit, 2.5 GiB reservation, and a 3 GiB memory-plus-swap ceiling,
+so swap cannot silently extend its resource envelope. Durable current, peak,
+event, Docker, Cloudflare tunnel, and OS headroom measurements still gate the
+seven-day acceptance window.
 
 Provision the snapshot filesystem before promoting the container contract.
 Create and attach a dedicated Hetzner Volume of at least 20 GiB in the
@@ -145,8 +144,8 @@ The Typesense host step acquires the shared deployment and service-data locks,
 then disables the old backup timer before changing the container and leaves a
 revision-bound `backup-contract-pending` marker. The
 backup deployment refuses a different Git SHA or a container without the exact
-direct-mount label, writable source, persistent filesystem, and measured
-memory phase. It installs the new contract, runs a fresh full snapshot even
+direct-mount label, writable source, persistent filesystem, and exact bounded
+memory policy. It installs the new contract, runs a fresh full snapshot even
 when the backup key is unchanged, validates the post-copy floor and status
 fields, then starts the timer and removes the pending marker. Any failed gate
 leaves the timer disabled. Do not dispatch the backup step first or dispatch
@@ -242,13 +241,12 @@ check. The host sampler also exports:
 - bounded five-minute event counts for descriptor exhaustion, leaderlessness,
   snapshot failure, slow requests, and thread-pool exhaustion.
 
-The managed container requires a 65,536 soft/hard `nofile` limit and rotates
-Docker JSON logs at 50 MB with three files. During the measured phase it
-requires zero Docker hard-limit, reservation, and swap-limit values plus the
-labelled writable snapshot mount. Deployment conformance verifies all Docker
-metadata and the effective process limit. Allow up to 15 minutes for the
-current 2.5-million-document index to reload before declaring a cold start
-failed.
+The managed container requires a 65,536 soft/hard `nofile` limit, rotates
+Docker JSON logs at 50 MB with three files, and enforces the exact 3 GiB hard
+limit / 2.5 GiB reservation / 3 GiB memory-plus-swap tuple plus the labelled
+writable snapshot mount. Deployment conformance verifies all Docker metadata
+and the effective process limit. Allow up to 15 minutes for the current
+2.5-million-document index to reload before declaring a cold start failed.
 
 After promotion, retain seven consecutive days before accepting the capacity
 remediation. Record the exact UTC start/end and deployed SHA in the issue
@@ -268,6 +266,11 @@ min_over_time((jobseek_typesense_backup_staging_available_bytes_before{service="
 min_over_time((jobseek_typesense_backup_staging_available_bytes_after_snapshot{service="typesense"} - jobseek_typesense_backup_staging_required_bytes_after_snapshot{service="typesense"})[7d:]) >= 0
 max_over_time(jobseek_typesense_backup_local_copies_before{service="typesense"}[7d]) == 0
 min_over_time(jobseek_typesense_backup_local_copies_after_materialization{service="typesense"}[7d]) == 1
+min_over_time(jobseek_typesense_backup_memory_limit_enforced{service="typesense"}[7d]) == 1
+min_over_time(jobseek_typesense_backup_memory_policy_info{service="typesense",phase="enforced"}[7d]) == 1
+min_over_time(jobseek_typesense_backup_memory_limit_bytes{service="typesense"}[7d]) == 3221225472
+min_over_time(jobseek_typesense_backup_memory_reservation_bytes{service="typesense"}[7d]) == 2684354560
+min_over_time(jobseek_typesense_backup_memory_swap_limit_bytes{service="typesense"}[7d]) == 3221225472
 max_over_time(jobseek_container_oom_killed{container="typesense"}[7d]) == 0
 increase(jobseek_container_restart_count{container="typesense"}[7d]) == 0
 increase(jobseek_container_memory_events_total{container="typesense",event=~"oom|oom_kill|oom_group_kill"}[7d]) == 0
@@ -280,7 +283,7 @@ min_over_time(jobseek_host_unit_memory_observation_available{host_role="typesens
 min_over_time(jobseek_typesense_healthy[7d]) == 1
 ```
 
-The final four memory values are measurements, not pass/fail cap proposals;
+The final four memory values verify that the bounded policy remains healthy;
 the ledger must state the observed maximum and remaining host headroom. The
 central Loki query below must return no emergency all-unused-image run. The
 Alloy allowlist explicitly retains this unit; do not use a local journal as the
@@ -292,9 +295,9 @@ only seven-day artifact.
 ```
 
 Also verify the public tunnel and all seven aliases once per day. Any failed or
-missing observation resets the seven-day window. Only after the window may a
-separate issue propose a measured memory high-watermark/cgroup policy or host
-resize. The direct staging mount remains in place regardless of that decision.
+missing observation resets the seven-day window. A later reviewed issue may
+resize the host or adjust the policy only from this durable evidence. The
+direct staging mount remains in place regardless of that decision.
 
 When readiness fails but the container is running:
 

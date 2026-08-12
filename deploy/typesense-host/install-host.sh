@@ -36,6 +36,12 @@ TYPESENSE_SNAPSHOT_IN_CONTAINER=/jobseek-snapshots
 TYPESENSE_NOFILE_LIMIT=65536
 TYPESENSE_LOG_MAX_SIZE=50m
 TYPESENSE_LOG_MAX_FILES=3
+TYPESENSE_MEMORY_LIMIT=3g
+TYPESENSE_MEMORY_RESERVATION=2560m
+TYPESENSE_MEMORY_SWAP=3g
+TYPESENSE_MEMORY_LIMIT_BYTES=3221225472
+TYPESENSE_MEMORY_RESERVATION_BYTES=2684354560
+TYPESENSE_MEMORY_SWAP_BYTES=3221225472
 TYPESENSE_SNAPSHOT_CONTRACT=direct-mount-v1
 TYPESENSE_SNAPSHOT_MIN_CAPACITY_BYTES=21474836480
 TYPESENSE_SNAPSHOT_MIN_FREE_BYTES=8589934592
@@ -412,6 +418,9 @@ run_typesense_container() {
     --ulimit "nofile=$TYPESENSE_NOFILE_LIMIT:$TYPESENSE_NOFILE_LIMIT" \
     --log-opt "max-size=$TYPESENSE_LOG_MAX_SIZE" \
     --log-opt "max-file=$TYPESENSE_LOG_MAX_FILES" \
+    --memory "$TYPESENSE_MEMORY_LIMIT" \
+    --memory-reservation "$TYPESENSE_MEMORY_RESERVATION" \
+    --memory-swap "$TYPESENSE_MEMORY_SWAP" \
     --volume "$TYPESENSE_DATA_DIR:/data" \
     --volume "$TYPESENSE_SNAPSHOT_DIR:$TYPESENSE_SNAPSHOT_IN_CONTAINER" \
     --volume "$TYPESENSE_CONFIG:$TYPESENSE_CONFIG_IN_CONTAINER:ro" \
@@ -540,6 +549,9 @@ container = json.load(sys.stdin)[0]
     expected_nofile,
     expected_log_size,
     expected_log_files,
+    expected_memory,
+    expected_memory_reservation,
+    expected_memory_swap,
     expected_snapshot_contract,
 ) = sys.argv[1:]
 cmd = container["Config"].get("Cmd") or []
@@ -573,9 +585,10 @@ ok = (
     and log_config.get("Type") == "json-file"
     and (log_config.get("Config") or {}).get("max-size") == expected_log_size
     and (log_config.get("Config") or {}).get("max-file") == expected_log_files
-    and int(container["HostConfig"].get("Memory") or 0) == 0
-    and int(container["HostConfig"].get("MemoryReservation") or 0) == 0
-    and int(container["HostConfig"].get("MemorySwap") or 0) == 0
+    and int(container["HostConfig"].get("Memory") or 0) == int(expected_memory)
+    and int(container["HostConfig"].get("MemoryReservation") or 0)
+        == int(expected_memory_reservation)
+    and int(container["HostConfig"].get("MemorySwap") or 0) == int(expected_memory_swap)
     and labels.get("jobseek.typesense-snapshot-contract") == expected_snapshot_contract
     and state.get("Running") is True
     and state.get("OOMKilled") is False
@@ -590,6 +603,9 @@ raise SystemExit(0 if ok else 1)
         "$TYPESENSE_NOFILE_LIMIT" \
         "$TYPESENSE_LOG_MAX_SIZE" \
         "$TYPESENSE_LOG_MAX_FILES" \
+        "$TYPESENSE_MEMORY_LIMIT_BYTES" \
+        "$TYPESENSE_MEMORY_RESERVATION_BYTES" \
+        "$TYPESENSE_MEMORY_SWAP_BYTES" \
         "$TYPESENSE_SNAPSHOT_CONTRACT"
     then
       container_conformant=1

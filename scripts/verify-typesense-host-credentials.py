@@ -24,6 +24,9 @@ TYPESENSE_SNAPSHOT_CONTRACT = "direct-mount-v1"
 TYPESENSE_NOFILE_LIMIT = 65_536
 TYPESENSE_LOG_MAX_SIZE = "50m"
 TYPESENSE_LOG_MAX_FILES = "3"
+TYPESENSE_MEMORY_LIMIT = 3 * 1024**3
+TYPESENSE_MEMORY_RESERVATION = 2560 * 1024**2
+TYPESENSE_MEMORY_SWAP = TYPESENSE_MEMORY_LIMIT
 FORBIDDEN_TYPESENSE_ENV = {
     "TYPESENSE_ADMIN_KEY",
     "TYPESENSE_API_KEY",
@@ -150,9 +153,11 @@ def collect_typesense_checks() -> dict[str, bool]:
             "jobseek.typesense-snapshot-contract"
         )
         == TYPESENSE_SNAPSHOT_CONTRACT,
-        "typesense_memory_policy_is_measured": all(
-            int(inspect["HostConfig"].get(field) or 0) == 0
-            for field in ("Memory", "MemoryReservation", "MemorySwap")
+        "typesense_memory_policy_is_enforced": (
+            int(inspect["HostConfig"].get("Memory") or 0) == TYPESENSE_MEMORY_LIMIT
+            and int(inspect["HostConfig"].get("MemoryReservation") or 0)
+            == TYPESENSE_MEMORY_RESERVATION
+            and int(inspect["HostConfig"].get("MemorySwap") or 0) == TYPESENSE_MEMORY_SWAP
         ),
         "typesense_config_only_argv": container_argv
         == [f"--config={TYPESENSE_CONFIG_IN_CONTAINER}"],

@@ -87,8 +87,11 @@ def test_typesense_backup_evidence_is_republished_from_last_success(
                     "staging_available_bytes_after_snapshot": 15_000,
                     "staging_required_bytes_after_snapshot": 12_000,
                     "staging_isolated": True,
-                    "memory_policy_phase": "measure",
-                    "memory_limit_enforced": False,
+                    "memory_limit_bytes": 3 * 1024**3,
+                    "memory_reservation_bytes": 2560 * 1024**2,
+                    "memory_swap_limit_bytes": 3 * 1024**3,
+                    "memory_policy_phase": "enforced",
+                    "memory_limit_enforced": True,
                 },
             }
         ),
@@ -103,7 +106,11 @@ def test_typesense_backup_evidence_is_republished_from_last_success(
     assert "jobseek_typesense_backup_snapshot_bytes" in content
     assert "jobseek_typesense_backup_peak_local_copies" in content
     assert "jobseek_typesense_backup_staging_available_bytes_after_snapshot" in content
-    assert 'phase="measure"' in content
+    assert "jobseek_typesense_backup_memory_limit_bytes" in content
+    assert "jobseek_typesense_backup_memory_reservation_bytes" in content
+    assert "jobseek_typesense_backup_memory_swap_limit_bytes" in content
+    assert "jobseek_typesense_backup_memory_limit_enforced" in content
+    assert 'phase="enforced"' in content
 
 
 def test_container_cgroup_memory_exports_current_peak_limit_and_events(tmp_path: Path) -> None:

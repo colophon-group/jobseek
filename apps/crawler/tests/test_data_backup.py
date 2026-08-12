@@ -1012,16 +1012,16 @@ def allow_test_typesense_headroom(
             "staging_growth_reserve_bytes": 4 * 1024**3,
             "staging_required_bytes_before": 13 * 1024**3,
             "live_data_allocated_bytes_before": 1024**3,
-            "memory_limit_bytes": 0,
-            "memory_reservation_bytes": 0,
-            "memory_swap_limit_bytes": 0,
-            "memory_policy_phase": "measure",
-            "memory_limit_enforced": False,
+            "memory_limit_bytes": 3 * 1024**3,
+            "memory_reservation_bytes": 2560 * 1024**2,
+            "memory_swap_limit_bytes": 3 * 1024**3,
+            "memory_policy_phase": "enforced",
+            "memory_limit_enforced": True,
         },
     )
 
 
-def test_typesense_snapshot_staging_requires_isolation_and_measured_memory_phase(
+def test_typesense_snapshot_staging_requires_isolation_and_bounded_memory_policy(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     host_root = tmp_path / "snapshot"
@@ -1063,9 +1063,9 @@ def test_typesense_snapshot_staging_requires_isolation_and_measured_memory_phase
     inspect = [
         {
             "HostConfig": {
-                "Memory": 0,
-                "MemoryReservation": 0,
-                "MemorySwap": 0,
+                "Memory": 3 * 1024**3,
+                "MemoryReservation": 2560 * 1024**2,
+                "MemorySwap": 3 * 1024**3,
             },
             "Mounts": [
                 {
@@ -1096,12 +1096,16 @@ def test_typesense_snapshot_staging_requires_isolation_and_measured_memory_phase
         "staging_growth_reserve_bytes": 4 * 1024**3,
         "staging_required_bytes_before": 13 * 1024**3,
         "live_data_allocated_bytes_before": 1024**3,
-        "memory_limit_bytes": 0,
-        "memory_reservation_bytes": 0,
-        "memory_swap_limit_bytes": 0,
-        "memory_policy_phase": "measure",
-        "memory_limit_enforced": False,
+        "memory_limit_bytes": 3 * 1024**3,
+        "memory_reservation_bytes": 2560 * 1024**2,
+        "memory_swap_limit_bytes": 3 * 1024**3,
+        "memory_policy_phase": "enforced",
+        "memory_limit_enforced": True,
     }
+
+    inspect[0]["HostConfig"]["Memory"] = 0
+    with pytest.raises(backup.BackupError, match="reviewed memory policy"):
+        backup._validate_typesense_snapshot_staging("typesense", host_root, "/jobseek-snapshots")
 
 
 def test_staging_age_cleanup_refuses_a_symlink_root(tmp_path: Path) -> None:
@@ -1201,8 +1205,11 @@ def test_typesense_backup_snapshots_uploads_validates_and_cleans(
     assert result["collection_documents_observation"] == "live_after_snapshot"
     assert result["snapshot_peak_local_copies"] == 1
     assert result["staging_isolated"] is True
-    assert result["memory_limit_bytes"] == 0
-    assert result["memory_policy_phase"] == "measure"
+    assert result["memory_limit_bytes"] == 3 * 1024**3
+    assert result["memory_reservation_bytes"] == 2560 * 1024**2
+    assert result["memory_swap_limit_bytes"] == 3 * 1024**3
+    assert result["memory_policy_phase"] == "enforced"
+    assert result["memory_limit_enforced"] is True
     assert (
         result["staging_available_bytes_after_snapshot"]
         >= (result["staging_required_bytes_after_snapshot"])

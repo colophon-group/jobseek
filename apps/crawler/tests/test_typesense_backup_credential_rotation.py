@@ -244,8 +244,8 @@ print(json.dumps({
     "snapshot_peak_local_copies": 1,
     "staging_available_bytes_after_snapshot": 150,
     "staging_required_bytes_after_snapshot": 100,
-    "memory_policy_phase": "measure",
-    "memory_limit_enforced": False,
+    "memory_policy_phase": "enforced",
+    "memory_limit_enforced": True,
 }))
 PY
 """,

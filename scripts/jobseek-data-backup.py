@@ -624,7 +624,7 @@ def _validate_typesense_snapshot_staging(
     host_root: Path,
     container_mount_root: str,
 ) -> dict[str, Any]:
-    """Prove isolated staging, measured-policy state, and write headroom."""
+    """Prove isolated staging, bounded-memory policy, and write headroom."""
     live_root = Path(os.environ.get("TYPESENSE_LIVE_DATA_HOST_ROOT", "/mnt/typesense-data"))
     try:
         resolved_host = host_root.resolve(strict=True)
@@ -695,11 +695,12 @@ def _validate_typesense_snapshot_staging(
     memory = int(host_config.get("Memory") or 0)
     reservation = int(host_config.get("MemoryReservation") or 0)
     memory_swap = int(host_config.get("MemorySwap") or 0)
-    memory_policy_phase = os.environ.get("TYPESENSE_MEMORY_POLICY_PHASE", "measure")
-    if memory_policy_phase != "measure":
+    memory_policy_phase = os.environ.get("TYPESENSE_MEMORY_POLICY_PHASE", "enforced")
+    if memory_policy_phase != "enforced":
         raise BackupError("Typesense memory policy phase is not recognized")
-    if any((memory, reservation, memory_swap)):
-        raise BackupError("Typesense measured memory phase must not impose an unreviewed limit")
+    expected_memory_policy = (3 * 1024**3, 2560 * 1024**2, 3 * 1024**3)
+    if (memory, reservation, memory_swap) != expected_memory_policy:
+        raise BackupError("Typesense container does not enforce the reviewed memory policy")
     return {
         "staging_capacity_bytes": usage.total,
         "staging_available_bytes_before": usage.free,
@@ -712,7 +713,7 @@ def _validate_typesense_snapshot_staging(
         "memory_reservation_bytes": reservation,
         "memory_swap_limit_bytes": memory_swap,
         "memory_policy_phase": memory_policy_phase,
-        "memory_limit_enforced": False,
+        "memory_limit_enforced": True,
     }
 
 
