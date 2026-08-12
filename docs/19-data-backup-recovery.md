@@ -507,7 +507,7 @@ systemctl start jobseek-typesense-backup.service
 systemctl status jobseek-typesense-backup.service --no-pager
 journalctl -u jobseek-typesense-backup.service -n 100 --no-pager
 cat /var/lib/jobseek-backup/status/typesense.json
-findmnt --mountpoint /mnt/jobseek-typesense-backup
+findmnt --mountpoint=/mnt/jobseek-typesense-backup
 df -h /mnt/jobseek-typesense-backup /
 docker inspect typesense --format \
   'oom={{.State.OOMKilled}} restarts={{.RestartCount}} memory={{.HostConfig.Memory}} reservation={{.HostConfig.MemoryReservation}} swap={{.HostConfig.MemorySwap}}'

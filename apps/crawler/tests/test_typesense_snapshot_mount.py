@@ -45,3 +45,25 @@ def test_fstab_contract_rejects_duplicate_mount_entries() -> None:
     line = "UUID=12345678-abcd /mnt/jobseek-typesense-backup ext4 defaults,nodev,nosuid,noexec 0 2"
     with pytest.raises(mounts.VerificationError, match="exactly one"):
         mounts._parse_fstab_entry(f"{line}\n{line}\n", Path("/mnt/jobseek-typesense-backup"))
+
+
+def test_findmnt_exact_mountpoint_uses_attached_option_argument(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    findmnt = bin_dir / "findmnt"
+    findmnt.write_text(
+        "#!/bin/sh\n"
+        'test "$#" -eq 4\n'
+        'test "$1" = --mountpoint=/mnt/jobseek-typesense-backup\n'
+        'test "$2" = --noheadings\n'
+        'test "$3" = --output\n'
+        'test "$4" = SOURCE\n'
+        "printf '%s\\n' /dev/sdb\n",
+        encoding="utf-8",
+    )
+    findmnt.chmod(0o755)
+    monkeypatch.setenv("PATH", str(bin_dir))
+
+    assert mounts._findmnt_exact(Path("/mnt/jobseek-typesense-backup"), "SOURCE") == "/dev/sdb"
