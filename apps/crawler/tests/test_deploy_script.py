@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import tarfile
@@ -211,8 +213,10 @@ def test_deploy_publishes_exact_success_marker_only_after_commit() -> None:
     health = script.index("\nwait_for_core_services\n")
     disarm = script.index("\ndisarm_deploy_rollback\n")
     publish = script.index('mv "$deploy_success_temporary" "$DEPLOY_SUCCESS_FILE"')
+    staged_identity = script.index('verify_shim_deploy_contract "$deploy_success_temporary"')
+    committed_identity = script.index('verify_shim_deploy_contract "$DEPLOY_SUCCESS_FILE"')
 
-    assert health < prepare < disarm < publish
+    assert health < prepare < staged_identity < disarm < publish < committed_identity
     assert '"CRAWLER_IMAGE_REF=$CRAWLER_IMAGE_REF"' in script
     assert '"BROWSER_IMAGE_REF=$BROWSER_IMAGE_REF"' in script
     assert '"SHIM_IMAGE_REF=$SHIM_IMAGE_REF"' in script
@@ -578,6 +582,273 @@ def test_crawler_host_mutation_waits_for_same_revision_murmur_workflow() -> None
     assert "deadline=$((SECONDS + 8400))" in workflow
     assert "same-revision murmur-shim workflow concluded" in workflow
     assert "timed out waiting for same-revision murmur-shim deployment" in workflow
+    assert "malformed or mismatched same-revision Murmur workflow attestation" in workflow
+    assert 'revision_ref="${repository}:${GITHUB_SHA}"' in workflow
+    assert 'docker buildx imagetools inspect "$revision_ref"' in workflow
+    assert 'printf \'image_ref=%s\\n\' "$shim_image_ref" >>"$GITHUB_OUTPUT"' in workflow
+    assert "SHIM_IMAGE_REF: ${{ steps.murmur.outputs.image_ref }}" in workflow
+
+
+def test_murmur_revision_resolver_fails_closed_on_invalid_attestations(
+    tmp_path: Path,
+) -> None:
+    workflow = yaml.safe_load(DEPLOY_WORKFLOW.read_text())
+    wait_script = next(
+        step["run"]
+        for step in workflow["jobs"]["deploy"]["steps"]
+        if step.get("name") == "Wait for same-revision murmur-shim deployment"
+    )
+    resolver = wait_script[wait_script.index("# The Murmur workflow tags") :]
+    revision = "1" * 40
+    manifest_digest = "sha256:" + "2" * 64
+    runnable_digest = "sha256:" + "3" * 64
+    provenance_digest = "sha256:" + "4" * 64
+    valid_manifest = {
+        "schemaVersion": 2,
+        "mediaType": "application/vnd.oci.image.index.v1+json",
+        "digest": manifest_digest,
+        "manifests": [
+            {
+                "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                "digest": runnable_digest,
+                "platform": {"architecture": "amd64", "os": "linux"},
+            },
+            {
+                "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                "digest": provenance_digest,
+                "platform": {"architecture": "unknown", "os": "unknown"},
+                "annotations": {
+                    "vnd.docker.reference.digest": runnable_digest,
+                    "vnd.docker.reference.type": "attestation-manifest",
+                },
+            },
+        ],
+    }
+    valid_provenance = {
+        "SLSA": {
+            "invocation": {
+                "configSource": {
+                    "uri": f"https://github.com/colophon-group/jobseek/commit/{revision}"
+                }
+            }
+        }
+    }
+    binary_dir = tmp_path / "bin"
+    binary_dir.mkdir()
+    jq_binary = Path("/opt/homebrew/bin/jq")
+    if not jq_binary.exists():
+        discovered_jq = shutil.which("jq")
+        assert discovered_jq is not None
+        jq_binary = Path(discovered_jq)
+    _write_executable(
+        binary_dir / "jq",
+        f'#!/usr/bin/env bash\nexec "{jq_binary}" "$@"\n',
+    )
+    _write_executable(
+        binary_dir / "docker",
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'if [[ "$*" == *".Manifest"* ]]; then\n'
+        "  printf '%s\\n' \"$TEST_MANIFEST_JSON\"\n"
+        'elif [[ "$*" == *".Provenance"* ]]; then\n'
+        "  printf '%s\\n' \"$TEST_PROVENANCE_JSON\"\n"
+        "else\n"
+        "  exit 90\n"
+        "fi\n",
+    )
+    bash_binary = (
+        Path("/opt/homebrew/bin/bash") if Path("/opt/homebrew/bin/bash").exists() else Path("bash")
+    )
+
+    def run_resolver(manifest: dict[str, object], provenance: dict[str, object]):
+        output = tmp_path / "github-output"
+        output.write_text("", encoding="utf-8")
+        result = subprocess.run(
+            [str(bash_binary), "-c", f"set -euo pipefail\n{resolver}"],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "PATH": f"{binary_dir}:{os.environ['PATH']}",
+                "GITHUB_OUTPUT": str(output),
+                "GITHUB_REPOSITORY_OWNER": "colophon-group",
+                "GITHUB_SHA": revision,
+                "TEST_MANIFEST_JSON": json.dumps(manifest, separators=(",", ":")),
+                "TEST_PROVENANCE_JSON": json.dumps(provenance, separators=(",", ":")),
+            },
+        )
+        return result, output.read_text(encoding="utf-8")
+
+    accepted, output = run_resolver(valid_manifest, valid_provenance)
+    assert accepted.returncode == 0, accepted.stderr
+    assert output == (f"image_ref=ghcr.io/colophon-group/jobseek-murmur-shim@{manifest_digest}\n")
+
+    invalid_cases: list[tuple[dict[str, object], dict[str, object], str]] = []
+    missing = json.loads(json.dumps(valid_manifest))
+    missing["manifests"] = missing["manifests"][:1]
+    invalid_cases.append((missing, valid_provenance, "zero or multiple SLSA"))
+    multiple = json.loads(json.dumps(valid_manifest))
+    duplicate = json.loads(json.dumps(multiple["manifests"][1]))
+    duplicate["digest"] = "sha256:" + "5" * 64
+    multiple["manifests"].append(duplicate)
+    invalid_cases.append((multiple, valid_provenance, "zero or multiple SLSA"))
+    malformed_attestation = json.loads(json.dumps(valid_manifest))
+    malformed_attestation["manifests"][1]["digest"] = "sha256:not-a-digest"
+    invalid_cases.append((malformed_attestation, valid_provenance, "zero or multiple SLSA"))
+    malformed = json.loads(json.dumps(valid_manifest))
+    malformed["digest"] = "sha256:not-a-digest"
+    invalid_cases.append((malformed, valid_provenance, "zero or multiple manifest"))
+    mismatched_provenance = json.loads(json.dumps(valid_provenance))
+    mismatched_provenance["SLSA"]["invocation"]["configSource"]["uri"] = "0" * 40
+    invalid_cases.append(
+        (valid_manifest, mismatched_provenance, "does not attest the exact source revision")
+    )
+
+    for manifest, provenance, expected_error in invalid_cases:
+        rejected, output = run_resolver(manifest, provenance)
+        assert rejected.returncode != 0
+        assert output == ""
+        assert expected_error in rejected.stderr
+
+
+def test_same_revision_murmur_digest_survives_crawler_rollback_and_retry(
+    tmp_path: Path,
+) -> None:
+    script = DEPLOY_SH.read_text()
+    resolver = script[
+        script.index("resolve_shim_image_ref() {") : script.index("read_exact_shim_ref() {")
+    ]
+    old_ref = "ghcr.io/colophon-group/jobseek-murmur-shim@sha256:" + "a" * 64
+    same_revision_ref = "ghcr.io/colophon-group/jobseek-murmur-shim@sha256:" + "b" * 64
+    env_file = tmp_path / ".env"
+    env_file.write_text(f"SHIM_IMAGE_REF={old_ref}\n", encoding="utf-8")
+    harness = "\n".join(
+        (
+            "set -euo pipefail",
+            'OWNER="colophon-group"',
+            'COMPOSE_PROJECT_NAME="deploy"',
+            'ENV_FILE="$TEST_ENV_FILE"',
+            resolver,
+            # Attempt one receives the digest attested by the successful
+            # same-head Murmur workflow even though the active crawler
+            # snapshot still names the previous digest.
+            'SHIM_IMAGE_REF="$TEST_SAME_REVISION_REF"',
+            "resolve_shim_image_ref",
+            "printf 'first=%s\\n' \"$SHIM_IMAGE_REF\"",
+            # Model the failed crawler attempt restoring the old .env, then
+            # rerun with the same workflow output. The resolver must not read
+            # the old digest back from live state.
+            'printf \'SHIM_IMAGE_REF=%s\\n\' "$TEST_OLD_REF" >"$ENV_FILE"',
+            'SHIM_IMAGE_REF="$TEST_SAME_REVISION_REF"',
+            "resolve_shim_image_ref",
+            "printf 'retry=%s\\n' \"$SHIM_IMAGE_REF\"",
+        )
+    )
+
+    result = subprocess.run(
+        [
+            str(Path("/opt/homebrew/bin/bash"))
+            if Path("/opt/homebrew/bin/bash").exists()
+            else "bash",
+            "-c",
+            harness,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "TEST_ENV_FILE": str(env_file),
+            "TEST_OLD_REF": old_ref,
+            "TEST_SAME_REVISION_REF": same_revision_ref,
+        },
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == [
+        f"first={same_revision_ref}",
+        f"retry={same_revision_ref}",
+    ]
+
+
+def test_shim_release_gate_requires_live_container_and_success_marker_equality(
+    tmp_path: Path,
+) -> None:
+    script = DEPLOY_SH.read_text()
+    verifier = script[
+        script.index("read_exact_shim_ref() {") : script.index("verify_compose_service_image() {")
+    ]
+    image_ref = "ghcr.io/colophon-group/jobseek-murmur-shim@sha256:" + "c" * 64
+    env_file = tmp_path / ".env"
+    marker = tmp_path / ".crawler-deploy-success.env"
+    env_file.write_text(f"SHIM_IMAGE_REF={image_ref}\n", encoding="utf-8")
+    marker.write_text(f"SHIM_IMAGE_REF={image_ref}\n", encoding="utf-8")
+    binary_dir = tmp_path / "bin"
+    binary_dir.mkdir()
+    _write_executable(
+        binary_dir / "docker",
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'if [[ "$1 $2 $3" == "compose ps -aq" ]]; then\n'
+        "  printf 'shim-container\\n'\n"
+        'elif [[ "$1 $2" == "inspect shim-container" ]]; then\n'
+        "  printf '%s\\n' \"$TEST_CONTAINER_REF\"\n"
+        "else\n"
+        "  exit 91\n"
+        "fi\n",
+    )
+    harness = "\n".join(
+        (
+            "set -euo pipefail",
+            'OWNER="colophon-group"',
+            'ENV_FILE="$TEST_ENV_FILE"',
+            'SHIM_IMAGE_REF="$TEST_EXPECTED_REF"',
+            verifier,
+            'verify_shim_deploy_contract "$TEST_MARKER"',
+        )
+    )
+    base_env = {
+        **os.environ,
+        "PATH": f"{binary_dir}:{os.environ['PATH']}",
+        "TEST_ENV_FILE": str(env_file),
+        "TEST_MARKER": str(marker),
+        "TEST_EXPECTED_REF": image_ref,
+    }
+
+    accepted = subprocess.run(
+        [
+            str(Path("/opt/homebrew/bin/bash"))
+            if Path("/opt/homebrew/bin/bash").exists()
+            else "bash",
+            "-c",
+            harness,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={**base_env, "TEST_CONTAINER_REF": image_ref},
+    )
+    assert accepted.returncode == 0, accepted.stderr
+
+    mismatched = subprocess.run(
+        [
+            str(Path("/opt/homebrew/bin/bash"))
+            if Path("/opt/homebrew/bin/bash").exists()
+            else "bash",
+            "-c",
+            harness,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={
+            **base_env,
+            "TEST_CONTAINER_REF": ("ghcr.io/colophon-group/jobseek-murmur-shim@sha256:" + "d" * 64),
+        },
+    )
+    assert mismatched.returncode != 0
+    assert "live environment, container, and success marker disagree" in mismatched.stderr
 
 
 def test_operator_worker_restart_uses_compose_credential_allowlist() -> None:
