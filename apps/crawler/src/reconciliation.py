@@ -402,8 +402,8 @@ async def _iter_typesense_jsonl_records(response: httpx.Response) -> AsyncIterat
     HTTPX's text line iterator follows Unicode line-boundary rules, so a valid
     JSON string containing U+0085, U+2028, or U+2029 can be split in the middle
     of a document. Typesense JSONL uses the single byte ``b"\\n"`` as its record
-    delimiter. Keep records as bytes through framing and ``json.loads`` so both
-    delimiter handling and UTF-8 validation are strict.
+    delimiter. Keep records as bytes through framing so delimiter handling is
+    strict; the shared parser explicitly decodes UTF-8 afterward.
 
     Reconciliation exports omit descriptions and other blob fields. A 1 MiB
     per-record ceiling is therefore more than two orders of magnitude above
@@ -447,6 +447,17 @@ async def _iter_typesense_jsonl_records(response: httpx.Response) -> AsyncIterat
     # path just like a malformed LF-terminated record.
     if pending:
         yield bytes(pending)
+
+
+def _parse_typesense_json_record(record: bytes) -> object:
+    """Decode one framed record as strict UTF-8 before parsing JSON.
+
+    ``json.loads`` accepts bytes directly but auto-detects UTF-16 and UTF-32.
+    Typesense's JSONL wire contract is UTF-8, so accepting those encodings would
+    make framing and validation disagree about the response format.
+    """
+
+    return json.loads(record.decode("utf-8"))
 
 
 async def _postgres_partition_snapshot(
@@ -591,7 +602,7 @@ class TypesenseReconciliationClient:
             ) as response:
                 response.raise_for_status()
                 async for record in _iter_typesense_jsonl_records(response):
-                    document = json.loads(record)
+                    document = _parse_typesense_json_record(record)
                     if not isinstance(document, dict):
                         raise ReconciliationError("Typesense export returned a non-object document")
                     if document.get("reconciliation_bucket") != bucket:
@@ -633,7 +644,7 @@ class TypesenseReconciliationClient:
             ) as response:
                 response.raise_for_status()
                 async for record in _iter_typesense_jsonl_records(response):
-                    document = json.loads(record)
+                    document = _parse_typesense_json_record(record)
                     if not isinstance(document, dict):
                         raise ReconciliationError("Typesense export returned a non-object document")
                     raw_id = str(document.get("id", ""))

@@ -2046,6 +2046,62 @@ async def test_typesense_partition_export_invalid_utf8_exhaustion_is_sanitized(
     assert "typesense-address" not in telemetry
 
 
+@pytest.mark.parametrize(
+    ("encoding", "error_class"),
+    (
+        # BOM-prefixed encodings fail the explicit UTF-8 decode. BOMless
+        # variants contain valid UTF-8 NUL bytes but fail JSON parsing after
+        # decoding; json.loads(bytes) would auto-detect and accept every case.
+        ("utf-16", "UnicodeDecodeError"),
+        ("utf-16-le", "JSONDecodeError"),
+        ("utf-16-be", "JSONDecodeError"),
+        ("utf-32", "UnicodeDecodeError"),
+        ("utf-32-le", "JSONDecodeError"),
+        ("utf-32-be", "JSONDecodeError"),
+    ),
+)
+async def test_typesense_partition_export_rejects_non_utf8_json_encodings(
+    monkeypatch,
+    encoding: str,
+    error_class: str,
+) -> None:
+    prefix = 0xD3
+    attempts = 0
+    sleep = AsyncMock()
+    document = {
+        "id": str(_id(prefix, 5)),
+        "is_active": True,
+        "reconciliation_bucket": f"{prefix:02x}",
+        "title": "Syntactically valid JSON in the wrong wire encoding",
+    }
+    body = json.dumps(document).encode(encoding)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(200, content=body, request=request)
+
+    monkeypatch.setattr("src.reconciliation.asyncio.sleep", sleep)
+    client = TypesenseReconciliationClient.__new__(TypesenseReconciliationClient)
+    client._base_url = "https://sensitive-typesense-address.invalid/documents"
+    client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        with (
+            structlog.testing.capture_logs() as logs,
+            pytest.raises(ReconciliationError) as exc,
+        ):
+            await client.partition_snapshot(prefix)
+    finally:
+        await client.aclose()
+
+    assert attempts == 3
+    assert [call.args[0] for call in sleep.await_args_list] == [1.0, 2.0]
+    assert str(exc.value) == f"Typesense export acquisition failed after 3 attempts ({error_class})"
+    telemetry = json.dumps(logs)
+    assert "Syntactically valid" not in telemetry
+    assert "typesense-address" not in telemetry
+
+
 async def test_typesense_partition_export_retry_exhaustion_is_sanitized_and_fail_closed(
     monkeypatch,
 ) -> None:

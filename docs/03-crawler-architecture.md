@@ -371,9 +371,12 @@ request/read/content-decoding failures, byte-framing failures, invalid UTF-8,
 and JSON syntax failures retry because a successful HTTP response can still
 end with a truncated JSONL record. The shared streaming framer reads response
 bytes and recognizes only ASCII LF (`0x0a`) as a record delimiter; Unicode line
-separators inside valid JSON strings are data, not boundaries. A complete final
-record is accepted without a trailing LF, matching the Typesense export
-response, while an incomplete final record fails parsing and retries. Every
+separators inside valid JSON strings are data, not boundaries. Each framed
+record is then explicitly decoded as UTF-8 before JSON parsing; direct
+`json.loads(bytes)` auto-detection is not used, so syntactically valid UTF-16 or
+UTF-32 responses still fail the UTF-8 wire contract. A complete final record is
+accepted without a trailing LF, matching the Typesense export response, while
+an incomplete final record fails parsing and retries. Every
 attempt allocates fresh state, and unbucketed candidates remain buffered until
 the complete stream reaches EOF, so a failed attempt cannot leak rows into a
 comparison, deletion, repair, or durable cursor advance. HTTP status errors and
