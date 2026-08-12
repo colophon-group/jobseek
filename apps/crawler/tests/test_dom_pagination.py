@@ -121,6 +121,46 @@ class TestBuildUrlMatcher:
 
 
 class TestCanHandle:
+    async def test_jposting_empty_board_returns_provider_preset(self):
+        html = """
+        <html><head><style>.jobname { font-weight: bold; }</style></head>
+        <body><a href="#pagetop">Page top</a></body></html>
+        """
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=html),
+        ):
+            result = await can_handle(
+                "https://js03.jposting.net/example/u/job.phtml",
+                MagicMock(),
+            )
+
+        assert result == {
+            "urls": 0,
+            "url_filter": r"[?&]job_code=[^&#]+",
+            "encoding": "euc_jp",
+        }
+
+    async def test_jposting_populated_board_counts_only_detail_links(self):
+        html = """
+        <html><head><style>.jobname { font-weight: bold; }</style></head><body>
+          <a href="?job_code=13">Role</a>
+          <a href="job.phtml?job_code=14#details">Another role</a>
+          <a href="#pagetop">Page top</a>
+        </body></html>
+        """
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=html),
+        ):
+            result = await can_handle(
+                "https://js03.jposting.net/example/u/job.phtml",
+                MagicMock(),
+            )
+
+        assert result is not None
+        assert result["urls"] == 2
+
     async def test_kontact_board_returns_complete_browser_pagination_config(self):
         html = """
         <html><head>
@@ -168,6 +208,20 @@ class TestCanHandle:
 
 
 class TestDomDiscoverInitialFetch:
+    async def test_fragment_only_self_link_is_not_a_job(self):
+        page = _html_with_links("#pagetop")
+
+        def handler(request):
+            return httpx.Response(200, text=page, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await dom_discover(
+                {"board_url": "https://example.com/job.phtml", "metadata": {}},
+                client,
+            )
+
+        assert result == set()
+
     async def test_static_request_verification_challenge_raises(self):
         """A 200 verification shell must fail instead of returning zero jobs."""
 

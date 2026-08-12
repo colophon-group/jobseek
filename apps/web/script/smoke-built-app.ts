@@ -299,6 +299,30 @@ async function smokeDiscoveryRedirect(route: string, location: string) {
   console.log(`smoke ok ${route} 308 ${location}`);
 }
 
+async function smokeReservedApplicationRoute() {
+  const route = "/en/my-jobs/stats";
+  const response = await fetch(`${baseUrl}${route}`, {
+    headers: {
+      accept: "text/html",
+      // The stats server component intentionally waits for this browser-owned
+      // value before rendering data. Supply it so the production-start smoke
+      // can distinguish the real route from the generic watchlist catch-all.
+      cookie: "JSEEK_VIEWER_TIME_ZONE=UTC",
+    },
+  });
+  const html = await response.text();
+  if (
+    response.status !== 200 ||
+    !html.includes(">Application Stats</h1>") ||
+    html.includes(">Watchlist not found</h1>")
+  ) {
+    throw new Error(
+      `${route} did not render the application stats page with HTTP 200`,
+    );
+  }
+  console.log(`smoke ok ${route} reserved application route 200`);
+}
+
 async function smokeMissingResource(
   browser: Browser,
   route: string,
@@ -351,6 +375,7 @@ async function main() {
     for (const [route, location] of discoveryRedirectRoutes) {
       await smokeDiscoveryRedirect(route, location);
     }
+    await smokeReservedApplicationRoute();
     for (const [route, heading] of missingResourceRoutes) {
       await smokeMissingResource(browser, route, heading);
     }

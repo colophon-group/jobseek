@@ -23,11 +23,13 @@ import {
 const scannerVerifier = fileURLToPath(
   new URL("../.github/scripts/verify-vercel-scanner-response.mjs", import.meta.url),
 );
+const turboConfig = JSON.parse(readFileSync("turbo.json", "utf8"));
 
 test("deploys web runtime and every current workspace input", () => {
   for (const path of [
     "apps/web/app/page.tsx",
     "apps/web/vercel.json",
+    "apps/crawler/data/companies.csv",
     "packages/mcp-server/src/handler.ts",
     "patches/next@16.2.11.patch",
     "package.json",
@@ -44,15 +46,36 @@ test("deploys web runtime and every current workspace input", () => {
   }
 });
 
-test("does not redeploy for crawler, company-data, docs, or ops changes", () => {
+test("does not redeploy for unrelated crawler data, docs, or ops changes", () => {
   const result = classifyVercelWebChanges([
-    "apps/crawler/data/companies.csv",
     "apps/crawler/data/company_descriptions.csv",
     "apps/crawler/src/core/monitors/workday.py",
     ".github/workflows/sync-data.yml",
     "docs/01-agent-workflow.md",
   ]);
   assert.deepEqual(result, { deploy: false, relevant: [] });
+});
+
+test("redeploys when the company registry changes", () => {
+  assert.deepEqual(
+    classifyVercelWebChanges(["apps/crawler/data/companies.csv"]),
+    {
+      deploy: true,
+      relevant: ["apps/crawler/data/companies.csv"],
+    },
+  );
+});
+
+test("company registry changes invalidate the cached web build", () => {
+  const genericBuild = turboConfig.tasks.build;
+  const webBuild = turboConfig.tasks["@jobseek/web#build"];
+  assert.deepEqual(webBuild.inputs, [
+    "$TURBO_DEFAULT$",
+    "$TURBO_ROOT$/apps/crawler/data/companies.csv",
+  ]);
+  for (const key of ["dependsOn", "outputs", "env"]) {
+    assert.deepEqual(webBuild[key], genericBuild[key], key);
+  }
 });
 
 test("Vercel Git integration is disabled only for main", () => {
@@ -69,9 +92,12 @@ test("production workflow stages, verifies, then promotes exact main", () => {
   assert.match(workflow, /v13\/deployments\/\$PRODUCTION_ALIAS/);
   assert.match(workflow, /production_sha.*current_sha/);
   assert.match(workflow, /current_main=.*commits\/main/);
+  assert.match(workflow, /REQUESTED_SHA: \$\{\{ inputs\.revision \}\}/);
+  assert.match(workflow, /Requested revision \$REQUESTED_SHA is stale/);
   assert.match(workflow, /vercel@55\.0\.0 promote/);
   assert.match(workflow, /id: promote/);
   assert.match(workflow, /promoted=true/);
+  assert.match(workflow, /REQUIRE_EXACT_PROMOTION/);
   assert.match(
     workflow,
     /if: steps\.promote\.outputs\.promoted == 'true'/,
