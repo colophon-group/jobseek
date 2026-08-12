@@ -73,6 +73,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "hibob",
         "hirehive",
         "hireology",
+        "turbohire",
         "inline",
         "inploi",
         "jarvi",
@@ -364,6 +365,8 @@ def detect_ats_from_url(url: str) -> str | None:
         return "hireology"
     if host.endswith(".hirehive.com"):
         return "hirehive"
+    if host.endswith(".turbohire.co"):
+        return "turbohire"
     if host.endswith(".dvinci-hr.com"):
         return "dvinci"
     if host.endswith(".softgarden.io"):

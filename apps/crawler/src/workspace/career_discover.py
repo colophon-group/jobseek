@@ -161,6 +161,7 @@ _ATS_URL_RE = re.compile(
     r"|ats(?:\.[\w]+)?\.rippling\.com/[\w-]+"
     r"|careers\.hireology\.com/[\w-]+"
     r"|[\w-]+\.hirehive\.com"
+    r"|[\w-]+\.turbohire\.co/careerpage/[0-9a-f-]{36}"
     r"|[\w-]*recruiting\.paylocity\.com/recruiting/jobs/[\w/-]+"
     r"|[\w-]+\.wd\d+\.myworkdayjobs\.com(?:/[\w-]+)?"
     # d.vinci
