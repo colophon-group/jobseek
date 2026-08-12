@@ -7,7 +7,7 @@ umask 077
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 STATE_ROOT=/var/lib/jobseek-ats-inventory
 CONFIG_ROOT=/etc/jobseek-ats-inventory
-DEPLOY_SUCCESS=/home/deploy/.crawler-deploy-success.env
+DEPLOY_SUCCESS=/home/deploy/.crawler-active-release/success.env
 CRAWLER_LOCK=/run/lock/jobseek-crawler-mutation.lock
 ACCEPTANCE_PIN="$STATE_ROOT/acceptance-crawler.env"
 DEPLOY_SHA="${JOBSEEK_ATS_INVENTORY_DEPLOY_SHA:-}"

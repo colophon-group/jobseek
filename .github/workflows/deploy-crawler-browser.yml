@@ -149,8 +149,14 @@ jobs:
           # The Murmur host step takes the same two-hour mutation lock as the
           # crawler deploy. Leave enough room for that bounded wait plus its
           # deploy/rollback gates instead of racing the shared Compose state.
-          deadline=$((SECONDS + 8400))
+          # The dependency has sequential 20-minute build, 135-minute deploy,
+          # and 10-minute promotion bounds. Keep a further 25 minutes for run
+          # discovery and runner skew so this waiter cannot expire before a
+          # valid run can publish its release record.
+          deadline=$((SECONDS + 11400))
           murmur_ready=0
+          murmur_run_id=""
+          murmur_run_attempt=""
           while (( SECONDS < deadline )); do
             run="$({
               gh api --method GET \
@@ -181,6 +187,16 @@ jobs:
                   exit 1
                 }
               echo "Same-revision murmur-shim deployment completed successfully" >&2
+              murmur_run_id="$(jq -r '.id' <<<"$run")"
+              murmur_run_attempt="$(jq -r '.run_attempt' <<<"$run")"
+              [[ "$murmur_run_id" =~ ^[1-9][0-9]*$ ]] || {
+                echo "ERROR: same-revision Murmur run has an invalid ID" >&2
+                exit 1
+              }
+              [[ "$murmur_run_attempt" =~ ^[1-9][0-9]*$ ]] || {
+                echo "ERROR: same-revision Murmur run has an invalid attempt" >&2
+                exit 1
+              }
               murmur_ready=1
               break
             else
@@ -193,32 +209,66 @@ jobs:
             exit 1
           }
 
-          # The Murmur workflow tags its single-platform build with this exact
-          # Git revision. Resolve that revision tag only after the matching
-          # workflow has succeeded, then validate the OCI provenance and the
-          # one runnable/one provenance-manifest shape before exporting an
-          # immutable ref. A crawler retry must repeat this resolution instead
-          # of trusting live host state, which rollback may have restored to
-          # the previous shim release.
+          # Download the immutable release record from the exact successful
+          # push run selected above. Never resolve the mutable revision tag
+          # here: another workflow_dispatch run for the same Git SHA can replace
+          # that tag without being the push run whose host deploy we attested.
+          artifact_dir="$(mktemp -d)"
+          trap 'rm -rf "$artifact_dir"' EXIT
+          gh run download "$murmur_run_id" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "murmur-release-${murmur_run_id}-${murmur_run_attempt}" \
+            --dir "$artifact_dir"
+          release_record="$artifact_dir/murmur-release.json"
+          [[ -f "$release_record" && ! -L "$release_record" ]] || {
+            echo "ERROR: exact-run Murmur release record is unavailable or unsafe" >&2
+            exit 1
+          }
+          release_digest="$({
+            jq -er \
+              --argjson run_id "$murmur_run_id" \
+              --argjson run_attempt "$murmur_run_attempt" \
+              --arg head_sha "$GITHUB_SHA" '
+                select(
+                  type == "object" and
+                  keys == ["event", "head_sha", "image_digest", "run_attempt", "run_id"] and
+                  .run_id == $run_id and
+                  .run_attempt == $run_attempt and
+                  .head_sha == $head_sha and
+                  .event == "push" and
+                  (.image_digest | test("^sha256:[0-9a-f]{64}$"))
+                ) |
+                .image_digest
+              ' "$release_record"
+          })"
+          [[ "$release_digest" =~ ^sha256:[0-9a-f]{64}$ ]] || {
+            echo "ERROR: exact-run Murmur release record is malformed or mismatched" >&2
+            exit 1
+          }
+
+          # Validate the exact recorded manifest, its OCI provenance, and the
+          # one runnable/one provenance-manifest shape before exporting it. A
+          # crawler retry downloads the same run-bound record even when host
+          # rollback has restored the previous shim release.
           repository="ghcr.io/${GITHUB_REPOSITORY_OWNER}/jobseek-murmur-shim"
-          revision_ref="${repository}:${GITHUB_SHA}"
+          revision_ref="${repository}@${release_digest}"
           manifest_json="$(
             docker buildx imagetools inspect "$revision_ref" \
               --format '{{json .Manifest}}'
           )"
           mapfile -t manifest_digests < <(
-            jq -er '
+            jq -er --arg digest "$release_digest" '
               select(
                 .schemaVersion == 2 and
                 .mediaType == "application/vnd.oci.image.index.v1+json" and
-                (.digest | test("^sha256:[0-9a-f]{64}$")) and
+                .digest == $digest and
                 (.manifests | type == "array")
               ) |
               .digest
             ' <<<"$manifest_json"
           )
           [[ "${#manifest_digests[@]}" -eq 1 ]] || {
-            echo "ERROR: revision tag resolved to zero or multiple manifest digests" >&2
+            echo "ERROR: recorded Murmur release resolved to zero or multiple manifest digests" >&2
             exit 1
           }
           mapfile -t runnable_digests < <(
@@ -236,7 +286,7 @@ jobs:
             ' <<<"$manifest_json"
           )
           [[ "${#runnable_digests[@]}" -eq 1 ]] || {
-            echo "ERROR: revision tag contains zero or multiple linux/amd64 images" >&2
+            echo "ERROR: recorded Murmur release contains zero or multiple linux/amd64 images" >&2
             exit 1
           }
           mapfile -t provenance_digests < <(
@@ -255,7 +305,7 @@ jobs:
             ' <<<"$manifest_json"
           )
           [[ "${#provenance_digests[@]}" -eq 1 ]] || {
-            echo "ERROR: revision tag contains zero or multiple SLSA provenance attestations" >&2
+            echo "ERROR: recorded Murmur release contains zero or multiple SLSA provenance attestations" >&2
             exit 1
           }
 
@@ -267,13 +317,16 @@ jobs:
             type == "object" and
             keys == ["SLSA"] and
             (.SLSA | type == "object") and
-            any(.SLSA | .. | strings; contains($revision))
+            any(
+              .SLSA | .. | strings;
+              test("(^|[^0-9a-f])" + $revision + "([^0-9a-f]|$)")
+            )
           ' <<<"$provenance_json" >/dev/null || {
             echo "ERROR: Murmur provenance does not attest the exact source revision" >&2
             exit 1
           }
 
-          shim_image_ref="${repository}@${manifest_digests[0]}"
+          shim_image_ref="${repository}@${release_digest}"
           [[ "$shim_image_ref" =~ ^ghcr\.io/${GITHUB_REPOSITORY_OWNER}/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]] || {
             echo "ERROR: resolved Murmur image reference is malformed" >&2
             exit 1

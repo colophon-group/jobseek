@@ -1710,7 +1710,7 @@ For one bounded Docker one-off:
   docker run --rm --name repair-example \
     --env-file /run/lock/repair-example.env \
     --network host \
-    "$(sed -n 's/^CRAWLER_IMAGE_REF=//p' /home/deploy/.crawler-deploy-success.env)" \
+    "$(sed -n 's/^CRAWLER_IMAGE_REF=//p' /home/deploy/.crawler-active-release/success.env)" \
     /app/.venv/bin/crawler <bounded-command>
 ```
 
@@ -1951,7 +1951,7 @@ cd /home/deploy
 docker compose ps
 grep -E '^(CRAWLER_IMAGE_TAG|CRAWLER_IMAGE_REF|BROWSER_IMAGE_REF|SHIM_IMAGE_REF)=' \
   /home/deploy/.env
-cat /home/deploy/.crawler-deploy-success.env
+cat /home/deploy/.crawler-active-release/success.env
 docker images 'ghcr.io/colophon-group/jobseek-crawler*' \
   --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.Size}} {{.CreatedSince}}'
 ```

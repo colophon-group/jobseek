@@ -297,11 +297,12 @@ interactive terminal also receives a readable JSON report.
 Production runs as `jobseek-ats-inventory.timer` on the ordinary crawler host,
 not as a Codex task. The persistent daily timer uses a 45-minute randomized
 delay. Its hardened one-shot resolves the immutable crawler image from the
-atomic `/home/deploy/.crawler-deploy-success.env` marker published only after
-the crawler health gates pass and rollback is disarmed. It mounts only the
-persistent cache subdirectory and one short-lived GitHub App installation-token
-file, and invokes the installed `crawler` entry point directly. It never
-installs or executes upstream code. The data-only container uses a dedicated
+atomic `/home/deploy/.crawler-active-release/success.env` marker selected only
+after the crawler health gates pass and then verified before rollback is
+disarmed. It mounts only the persistent cache subdirectory and one short-lived
+GitHub App installation-token file, and invokes the installed `crawler` entry
+point directly. It never installs or executes upstream code. The data-only
+container uses a dedicated
 IPv4-only Docker bridge. A root oneshot rebuilds its `DOCKER-USER` egress chain
 before every run: host input and private/reserved destinations are rejected,
 inter-container communication is disabled, and only public HTTPS/DNS egress is
