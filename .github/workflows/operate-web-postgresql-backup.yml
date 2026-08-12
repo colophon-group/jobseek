@@ -118,22 +118,8 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"
-          deploy_paths=(
-            'deploy/backups/**'
-            'deploy/systemd/jobseek-postgresql-backup.*'
-            'deploy/systemd/jobseek-postgresql-backup-repository.service'
-            'deploy/systemd/jobseek-postgresql-emergency-headroom.service'
-            'deploy/systemd/jobseek-typesense-backup.*'
-            'deploy/systemd/jobseek-web-postgresql-backup.*'
-            'scripts/jobseek-data-backup.py'
-            'docs/16-hetzner-maintenance.md'
-            'docs/19-data-backup-recovery.md'
-            '.github/workflows/deploy-data-backups.yml'
-            '.github/workflows/operate-web-postgresql-backup.yml'
-          )
-          deploy_sha="$(git log -1 --format=%H "$DISPATCH_SHA" -- "${deploy_paths[@]}")"
+          deploy_sha="$DISPATCH_SHA"
           [[ "$deploy_sha" =~ ^[0-9a-f]{40}$ ]]
-          git merge-base --is-ancestor "$deploy_sha" "$DISPATCH_SHA"
           {
             echo "deploy_sha=$deploy_sha"
             echo "data_backup_sha256=$(sha256sum scripts/jobseek-data-backup.py | cut -d' ' -f1)"
