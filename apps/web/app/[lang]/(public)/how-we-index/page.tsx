@@ -39,6 +39,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: `${siteConfig.url}/${locale}/how-we-index`,
       locale: ogLocale(locale),
       alternateLocale: ogAlternateLocales(locale),
+      images: [{
+        url: `${siteConfig.url}/og/how-we-index/${locale}`,
+        width: 1200,
+        height: 630,
+        alt: title,
+      }],
     },
   };
 }

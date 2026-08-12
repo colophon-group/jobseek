@@ -1,3 +1,5 @@
+import { SITE_OG_PUBLIC_URL } from "@/lib/og/site-og-key";
+
 /**
  * Non-translatable site configuration.
  *
@@ -50,6 +52,12 @@ export const siteConfig = {
     dark: "/js_wide_logo_white.svg",
     width: 144,
     height: 36,
+  },
+
+  ogImage: {
+    url: SITE_OG_PUBLIC_URL,
+    width: 1200,
+    height: 630,
   },
 
   nav: {

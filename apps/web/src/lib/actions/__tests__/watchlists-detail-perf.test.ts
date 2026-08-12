@@ -333,7 +333,7 @@ describe("getWatchlistByUserAndSlug — single-query fold (#3211)", () => {
     expect(detail!.companies).toEqual([]);
     // Critical: consumers iterate this array unconditionally
     // (page.tsx line ~80: `detail.companies.length`,
-    //  opengraph-image.tsx: `detail.companies.length`,
+    //  app/og/watchlist route: `detail.companies.length`,
     //  watchlist-page-data.ts: `detail.companies.map(c => c.id)`).
     expect(Array.isArray(detail!.companies)).toBe(true);
   });

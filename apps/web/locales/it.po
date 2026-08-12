@@ -14,6 +14,25 @@ msgstr ""
 "Plural-Forms: \n"
 "X-Generator: @lingui/cli\n"
 
+#. Accessible label for job search scoped to one company
+#. js-lingui-explicit-id
+#. placeholder {0}: company.name
+#: app/[lang]/(app)/company/[slug]/company-page.tsx
+msgid "company.page.searchLabel"
+msgstr "Cerca offerte di lavoro presso {0}"
+
+#. Accessible label for the main job search input
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx
+msgid "search.bar.label"
+msgstr "Cerca offerte di lavoro"
+
+#. Accessible label for public watchlist search input
+#. js-lingui-explicit-id
+#: src/components/watchlist/public-watchlist-search.tsx
+msgid "watchlists.explore.searchLabel"
+msgstr "Cerca liste pubbliche"
+
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:47
 #~ msgid "faq.a.whichAts"
@@ -68,12 +87,6 @@ msgstr "{count, plural, one {# posizione aperta} other {# posizioni aperte}}"
 #: src/components/company/similar-company-card.tsx:42
 msgid "company.similar.positionCount"
 msgstr "{count, plural, one {# posizione aperta} other {# posizioni aperte}}"
-
-#. Stat label on a WatchlistCard mention card — pluralized 'active job' / 'active jobs'. {count} is the integer count.
-#. js-lingui-explicit-id
-#: src/components/blog/MdxMentions.tsx:358
-msgid "blog.mention.watchlist.activeJobsLabel"
-msgstr "{count, plural, one {offerta attiva} other {offerte attive}}"
 
 #. Stat label on a CompanyCard mention card — pluralized 'active posting' / 'active postings'. {count} is the integer count.
 #. js-lingui-explicit-id
@@ -1889,12 +1902,6 @@ msgstr "Se noti un comportamento anomalo del crawler, preferisci che non indiciz
 #: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:80
 msgid "watchlist.meta.inLocations"
 msgstr "a {locations}"
-
-#. Stat label on a WatchlistCard mention card — 'in the past year' (year-to-date jobs counted by the watchlist filters)
-#. js-lingui-explicit-id
-#: src/components/blog/MdxMentions.tsx:369
-msgid "blog.mention.watchlist.yearJobsLabel"
-msgstr "nell'ultimo anno"
 
 #. Tooltip on a disabled filter pill explaining the row is implied by an already-selected ancestor (e.g. 'Included in European Union' when EU is selected).
 #. js-lingui-explicit-id
@@ -4217,12 +4224,6 @@ msgstr "Termini di servizio"
 msgid "terms.meta.description"
 msgstr "Termini di servizio di Job Seek — regole d'uso, proprietà intellettuale, responsabilità dell'account, limitazione di responsabilità e legge applicabile."
 
-#. Body text shown when a company page slug does not exist
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/page.tsx:102
-msgid "company.notFound.message"
-msgstr "L'azienda che stai cercando non esiste o è stata rimossa."
-
 #. Body text for the company-not-found page; explains the company is either gone or never existed
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/company/[slug]/company-content.tsx:59
@@ -5123,3 +5124,15 @@ msgstr "Colloquio eliminato."
 #: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.deleteError"
 msgstr "Impossibile eliminare il colloquio. Riprova."
+
+#. Accessible heading shown when live Explore job results are unavailable and repository-owned company profile links are shown instead
+#. js-lingui-explicit-id
+#: src/components/search/explore-repository-fallback.tsx
+msgid "explore.fallback.heading"
+msgstr "I risultati delle offerte di lavoro sono temporaneamente indisponibili."
+
+#. Try-again guidance shown above company profile links when live Explore job results are unavailable
+#. js-lingui-explicit-id
+#: src/components/search/explore-repository-fallback.tsx
+msgid "explore.fallback.body"
+msgstr "Prova ad aggiornare la pagina. Nel frattempo, puoi esplorare questi profili aziendali."

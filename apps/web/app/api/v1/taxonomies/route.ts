@@ -11,7 +11,7 @@ import {
 } from "@/lib/services/taxonomy";
 import { suggestIndustries } from "@/lib/services/company";
 import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
-import { checkRateLimit, apiResponse } from "../_shared";
+import { checkRateLimit, apiResponse, parseApiLocale } from "../_shared";
 
 const VALID_TYPES = ["seniority", "occupations", "technologies", "industries"] as const;
 
@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
 
   const sp = request.nextUrl.searchParams;
   const type = sp.get("type") as (typeof VALID_TYPES)[number] | null;
-  const locale = sp.get("locale") ?? "en";
+  const locale = parseApiLocale(sp, rl);
+  if (locale instanceof NextResponse) return locale;
 
   if (!type || !VALID_TYPES.includes(type)) {
     return apiResponse(

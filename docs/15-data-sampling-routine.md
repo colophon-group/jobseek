@@ -155,7 +155,10 @@ data/postings-labelled/
 Intermediates under `_runs/` are kept for debugging but never uploaded.
 The gold record at `postings/<date>/<id>.json` carries its verdict in
 `labelling_meta.qa_verdict`; `upload` filters for `accepted` before
-pushing.
+pushing. Input selection is fail-closed: every posting JSON file in the
+requested date scope must parse as an object before HuggingFace staging starts.
+One malformed sibling aborts the batch and reports only its filename; opt-out
+filtering still applies after valid records are parsed.
 
 ### HuggingFace dataset layout (`viktoroo/jobseek-postings-labelled`)
 
@@ -197,11 +200,28 @@ Rationale: the dataset's purpose is to *train* a canonicalizer that is better th
 ## Sampling
 
 `labeller sample --date {{date}} --count N` queries the crawler's local
-Postgres for active postings with `first_seen_at` in the last 24h, ordered by
-`first_seen_at DESC, id`. It groups by company, samples one per company until
-reaching N (or exhausting companies), then fills with a weighted tail drawing
-under-represented postings. The UUID tie-breaker makes the database input order
-stable, so the sampler is deterministic given a seed and runs can be replayed.
+Postgres for active postings with `first_seen_at` in the configured lookback
+(24 hours by default), ordered by `first_seen_at DESC, id`. The indexed read is
+bounded to the newest `max(10,000, N * 250)` candidates, capped at 50,000. If a
+window exceeds that bound, older candidates in the same window are deliberately
+omitted rather than allowing an unbounded daily-run allocation.
+
+The product requirement remains company-first representation followed by a
+weighted diversity tail. The sampler groups by company and samples one per
+company until reaching N (or exhausting companies). For remaining slots it
+uses the bounded window's resolved `occupation_id` as the observable
+pre-label profession proxy and the normalized primary locale (`de-CH` and
+`de_CH` both become `de`). Missing values are neutral, not falsely considered
+rare. Each observed stratum receives the square root of
+`largest_stratum_count / stratum_count`, capped at 4x; a posting's occupation
+and locale factors are averaged. A seeded exponential-clock draw then samples
+the tail without replacement, so rarer occupation or locale strata have a
+greater opportunity without displacing the one-per-company first pass.
+
+The UUID tie-breaker makes the database input order stable, so the sampler is
+deterministic given a seed and runs can be replayed. Unit tests exercise both
+occupation and locale distributions across fixed seed ranges and retain the
+company-first invariant.
 
 Migration `0014` owns the matching partial btree
 `idx_jp_active_first_seen (first_seen_at DESC, id) WHERE is_active`. It is
@@ -256,6 +276,12 @@ Added to `apps/crawler/pyproject.toml`:
   Hetzner.
 - DB read for sampling: reuses `LOCAL_DATABASE_URL` from `.env.local` locally,
   or `JOBSEEK_LABELLER_ENV_FILE=/etc/jobseek-codex/labeller.env` on Hetzner.
+  The production file stays DSN-only; the daily runner injects the bounded
+  `labeller` PostgreSQL role with pool min `0`, max `2`, and idle lifetime
+  `60` into the Codex child environment. DB-bearing labeller subprocesses also
+  serialize on the runner-owned `state/labeller-postgresql.lock`, so multiple
+  concurrent `uv run labeller` commands cannot multiply that two-connection
+  ceiling.
 - Nothing else needed.
 
 ## Why block-IDs beat anchoring

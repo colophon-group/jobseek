@@ -81,6 +81,11 @@ for key in "${required_env[@]}"; do
   fi
   printf '%s\n' "${matches[0]}" >>"$RUNTIME_ENV"
 done
+printf '%s\n' \
+  'CRAWLER_DB_ROLE=reconciliation' \
+  'CRAWLER_DB_POOL_MIN=0' \
+  'CRAWLER_DB_POOL_MAX=4' \
+  'CRAWLER_DB_POOL_IDLE_SECONDS=60' >>"$RUNTIME_ENV"
 
 if docker ps --format '{{.Names}}' | grep -Fxq "$CONTAINER"; then
   echo "ERROR: reconciliation container already exists despite the host lock" >&2

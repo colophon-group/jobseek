@@ -5,8 +5,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import src.salary_reprocess as salary_reprocess
 from src.cli import parse_args
-from src.salary_reprocess import _country_rows_sql, _resolve_country_ids
+from src.salary_reprocess import _country_rows_sql, _iter_country_rows, _resolve_country_ids
 
 
 def _compact(sql: str) -> str:
@@ -31,6 +32,46 @@ def test_country_set_all_includes_both_salary_scopes() -> None:
 
     assert all_scopes == {**scope_a, **scope_b}
     assert len(all_scopes) == 19
+
+
+async def test_country_iteration_closes_each_query_before_salary_extraction(monkeypatch) -> None:
+    class BatchConnection:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, tuple[object, ...]]] = []
+            self.batches = [
+                [{"id": "posting-1"}, {"id": "posting-2"}],
+                [{"id": "posting-3"}],
+            ]
+
+        def transaction(self, *args, **kwargs):
+            raise AssertionError("batch iteration must not open a long transaction")
+
+        def cursor(self, *args, **kwargs):
+            raise AssertionError("batch iteration must not use a server cursor")
+
+        async def fetch(self, sql: str, *args: object):
+            self.calls.append((sql, args))
+            return self.batches.pop(0)
+
+    monkeypatch.setattr(salary_reprocess, "FETCH_BATCH", 2)
+    connection = BatchConnection()
+
+    rows = [
+        row
+        async for row in _iter_country_rows(
+            connection,
+            [1, 2],
+            limit=3,
+            include_inactive=False,
+        )
+    ]
+
+    assert [row["id"] for row in rows] == ["posting-1", "posting-2", "posting-3"]
+    assert len(connection.calls) == 2
+    assert connection.calls[0][1][1] is None
+    assert connection.calls[1][1][1] == "posting-2"
+    assert "LIMIT 2" in connection.calls[0][0]
+    assert "LIMIT 1" in connection.calls[1][0]
 
 
 def test_crawler_cli_exposes_salary_reprocess_command(monkeypatch) -> None:

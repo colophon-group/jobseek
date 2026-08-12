@@ -135,7 +135,9 @@ test("host hygiene reports only stale unmanaged resources", () => {
   assert.equal(result.status, 1, result.stderr);
   assert.match(result.stderr, /found 2 stale resource/);
   assert.match(result.stderr, /tesla-debug/);
-  assert.match(result.stderr, /docker rm -f -- tesla-debug/);
+  assert.match(result.stderr, /do not remove by name/);
+  assert.match(result.stderr, /candidate-id=stale-container-id/);
+  assert.doesNotMatch(result.stderr, /docker rm/);
   assert.match(result.stderr, /starbucks-backfill\.service/);
   assert.match(result.stderr, /systemctl stop starbucks-backfill\.service/);
   assert.doesNotMatch(result.stderr, /worker/);

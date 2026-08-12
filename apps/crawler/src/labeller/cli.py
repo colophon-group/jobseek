@@ -9,9 +9,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import fcntl
 import json
+import math
 import os
 import sys
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -21,6 +26,72 @@ if os.environ.get("JOBSEEK_LABELLER_ENV_FILE"):
     dotenv.load_dotenv(os.environ["JOBSEEK_LABELLER_ENV_FILE"])
 dotenv.load_dotenv(".env.local")
 dotenv.load_dotenv(".env")
+
+_DATABASE_COMMANDS = frozenset({"sample", "prepare", "prepare-pre-llm"})
+_DATABASE_LOCK_POLL_SECONDS = 0.05
+
+
+class LabellerDatabaseLockError(RuntimeError):
+    """Raised when a production labeller DB command cannot serialize safely."""
+
+
+@contextmanager
+def _database_process_lock(command: str) -> Iterator[None]:
+    """Serialize DB-bearing labeller processes under the aggregate pool budget.
+
+    The daily runner may let Codex launch multiple ``uv run labeller`` children.
+    A process-local asyncpg pool limit cannot bound their aggregate, so every
+    DB-bearing child using the production ``labeller`` role takes one shared
+    host lock before it creates a pool. The wait is bounded and the kernel
+    releases the lock if a child exits, avoiding an orchestration deadlock.
+    """
+
+    if command not in _DATABASE_COMMANDS or os.environ.get("CRAWLER_DB_ROLE") != "labeller":
+        yield
+        return
+
+    raw_path = os.environ.get("JOBSEEK_LABELLER_DB_LOCK_FILE", "").strip()
+    if not raw_path:
+        raise LabellerDatabaseLockError(
+            "JOBSEEK_LABELLER_DB_LOCK_FILE is required for the labeller database role"
+        )
+    raw_timeout = os.environ.get("JOBSEEK_LABELLER_DB_LOCK_TIMEOUT_SECONDS", "300")
+    try:
+        timeout_seconds = float(raw_timeout)
+    except ValueError as exc:
+        raise LabellerDatabaseLockError(
+            "JOBSEEK_LABELLER_DB_LOCK_TIMEOUT_SECONDS must be numeric"
+        ) from exc
+    if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
+        raise LabellerDatabaseLockError(
+            "JOBSEEK_LABELLER_DB_LOCK_TIMEOUT_SECONDS must be a finite positive number"
+        )
+
+    lock_path = Path(raw_path)
+    deadline = time.monotonic() + timeout_seconds
+    try:
+        handle = lock_path.open("a+", encoding="utf-8")
+    except OSError as exc:
+        raise LabellerDatabaseLockError(
+            "cannot open the runner-owned labeller database lock"
+        ) from exc
+
+    with handle:
+        while True:
+            try:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise LabellerDatabaseLockError(
+                        "timed out waiting for another labeller database process"
+                    ) from None
+                time.sleep(min(_DATABASE_LOCK_POLL_SECONDS, remaining))
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def _parse_iso_date(value: str) -> datetime:
@@ -453,23 +524,28 @@ def main() -> None:
 
     async_handlers = {"sample", "prepare", "prepare-pre-llm"}
 
-    if args.command in async_handlers:
-        handlers = {
-            "sample": _cmd_sample,
-            "prepare": _cmd_prepare,
-            "prepare-pre-llm": _cmd_prepare_pre_llm,
-        }
-        rc = asyncio.run(handlers[args.command](args))
-    else:
-        handlers = {
-            "render-task": _cmd_render_task,
-            "validate": _cmd_validate,
-            "merge": _cmd_merge,
-            "upload": _cmd_upload,
-            "scrub": _cmd_scrub,
-            "prepare-post-llm": _cmd_prepare_post_llm,
-        }
-        rc = handlers[args.command](args)
+    try:
+        with _database_process_lock(args.command):
+            if args.command in async_handlers:
+                handlers = {
+                    "sample": _cmd_sample,
+                    "prepare": _cmd_prepare,
+                    "prepare-pre-llm": _cmd_prepare_pre_llm,
+                }
+                rc = asyncio.run(handlers[args.command](args))
+            else:
+                handlers = {
+                    "render-task": _cmd_render_task,
+                    "validate": _cmd_validate,
+                    "merge": _cmd_merge,
+                    "upload": _cmd_upload,
+                    "scrub": _cmd_scrub,
+                    "prepare-post-llm": _cmd_prepare_post_llm,
+                }
+                rc = handlers[args.command](args)
+    except LabellerDatabaseLockError as exc:
+        print(f"labeller database serialization failed: {exc}", file=sys.stderr)
+        rc = 5
 
     sys.exit(rc)
 

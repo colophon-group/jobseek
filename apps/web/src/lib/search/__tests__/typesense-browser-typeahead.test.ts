@@ -21,7 +21,10 @@ vi.mock("../typesense-browser-key", () => ({
   })),
 }));
 
-import { suggestLocationsBrowser } from "../typesense-browser-typeahead";
+import {
+  suggestLocationsBrowser,
+  suggestSearchBarBrowser,
+} from "../typesense-browser-typeahead";
 
 const EU_DOC = {
   location_id: 4,
@@ -151,5 +154,146 @@ describe("suggestLocationsBrowser — macro region aliases (#2939)", () => {
       name: "Berlin",
       parentName: "Germany",
     });
+  });
+});
+
+describe("suggestSearchBarBrowser — bounded multi_search plan (#6639)", () => {
+  const originalFetch = globalThis.fetch;
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it("batches all uncached candidate collections into one request", async () => {
+    const calls: Array<{ url: string; searches: Array<Record<string, unknown>> }> = [];
+    globalThis.fetch = vi.fn(async (input, init) => {
+      const searches = (JSON.parse(String(init?.body)) as {
+        searches: Array<Record<string, unknown>>;
+      }).searches;
+      calls.push({ url: String(input), searches });
+      return new Response(
+        JSON.stringify({ results: searches.map(() => ({ hits: [] })) }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+
+    const params = {
+      query: "batch-candidates-6639",
+      locale: "en",
+      includeCompanies: true,
+    };
+    await suggestSearchBarBrowser(params);
+    await suggestSearchBarBrowser(params);
+
+    // The second call is served entirely from the existing per-kind LRUs.
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe("https://typesense.test:443/multi_search");
+    expect(calls[0].searches.map((search) => search.collection)).toEqual([
+      "location",
+      "company",
+      "occupation",
+      "seniority",
+      "technology",
+    ]);
+  });
+
+  it("uses at most three multi_search phases for fallback and posting boosts", async () => {
+    const calls: Array<Array<Record<string, unknown>>> = [];
+    globalThis.fetch = vi.fn(async (_input, init) => {
+      const searches = (JSON.parse(String(init?.body)) as {
+        searches: Array<Record<string, unknown>>;
+      }).searches;
+      calls.push(searches);
+      const results = searches.map((search) => {
+        if (search.collection === "location") {
+          return { hits: [{ document: BERLIN_DOC }] };
+        }
+        if (search.collection === "company") {
+          return {
+            hits: [{ document: { id: "acme", name: "Acme", slug: "acme", icon: null } }],
+          };
+        }
+        if (search.collection === "technology") {
+          return {
+            hits: [
+              { document: { technology_id: 40, slug: "react", name: "React" } },
+              { document: { technology_id: 41, slug: "rust", name: "Rust" } },
+            ],
+          };
+        }
+        if (
+          search.collection === "occupation" &&
+          search.filter_by === "has_active_postings:true && locale:en"
+        ) {
+          return {
+            hits: [{ document: { occupation_id: 20, slug: "engineer", name: "Engineer" } }],
+          };
+        }
+        if (
+          search.collection === "seniority" &&
+          search.filter_by === "has_active_postings:true && locale:en"
+        ) {
+          return {
+            hits: [{ document: { seniority_id: 30, slug: "senior", name: "Senior" } }],
+          };
+        }
+        if (search.collection === "job_posting") {
+          const matchedId =
+            search.facet_by === "location_ids"
+              ? "100"
+              : search.facet_by === "occupation_id"
+                ? "20"
+                : search.facet_by === "seniority_id"
+                  ? "30"
+                  : "41";
+          return {
+            facet_counts: [
+              {
+                field_name: search.facet_by,
+                counts: [{ value: matchedId, count: 1 }],
+              },
+            ],
+          };
+        }
+        return { hits: [] };
+      });
+      return new Response(JSON.stringify({ results }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+
+    const filters = { keywords: ["engineer"] };
+    const result = await suggestSearchBarBrowser({
+      query: "cold-de-plan-6639",
+      locale: "de",
+      includeCompanies: true,
+      locationFilters: filters,
+      occupationFilters: filters,
+      seniorityFilters: filters,
+      technologyFilters: filters,
+    });
+
+    expect(calls).toHaveLength(3);
+    expect(calls[0].map((search) => search.collection)).toEqual([
+      "location",
+      "company",
+      "occupation",
+      "seniority",
+      "technology",
+    ]);
+    expect(calls[1].map((search) => search.collection)).toEqual([
+      "occupation",
+      "seniority",
+    ]);
+    expect(calls[2]).toHaveLength(4);
+    expect(calls[2].every((search) => search.collection === "job_posting")).toBe(true);
+    expect(result.companies[0].name).toBe("Acme");
+    expect(result.occupations[0].name).toBe("Engineer");
+    expect(result.seniorities[0].name).toBe("Senior");
+    expect(result.technologies.map((technology) => technology.name)).toEqual([
+      "Rust",
+      "React",
+    ]);
   });
 });

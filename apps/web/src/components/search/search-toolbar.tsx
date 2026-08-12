@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { X, MapPin, Briefcase, BarChart3, CalendarDays, DollarSign, Clock, Code2, Home } from "lucide-react";
 import { useLingui } from "@lingui/react/macro";
 import { SearchBar } from "@/components/search/search-bar";
@@ -11,6 +11,9 @@ import type { SelectedLocation } from "@/lib/search/types";
 import type { HistogramFilters, WorkMode } from "@/lib/search";
 
 type TaxonomyItem = { id: number; slug: string; name: string };
+type UnresolvedExplicitSlugs = Partial<
+  Record<"loc" | "occ" | "sen" | "tech", string[]>
+>;
 
 interface SearchToolbarProps {
   locale: string;
@@ -22,6 +25,7 @@ interface SearchToolbarProps {
   occupations: TaxonomyItem[];
   seniorities: TaxonomyItem[];
   technologies?: TaxonomyItem[];
+  unresolvedExplicitSlugs?: UnresolvedExplicitSlugs;
   salaryCurrency?: string;
   salaryMin?: number;
   salaryMax?: number;
@@ -39,6 +43,10 @@ interface SearchToolbarProps {
   onRemoveSeniority: (id: number) => void;
   onAddTechnology?: (tech: TaxonomyItem) => void;
   onRemoveTechnology?: (id: number) => void;
+  onRemoveUnresolvedSlug?: (
+    kind: keyof UnresolvedExplicitSlugs,
+    slug: string,
+  ) => void;
   employmentTypes?: string[];
   onToggleEmploymentType?: (type: string) => void;
   workMode?: WorkMode[];
@@ -56,6 +64,8 @@ interface SearchToolbarProps {
   ) => void;
   /** Placeholder for the mobile search bar */
   searchPlaceholder?: string;
+  /** Accessible name for the mobile search bar's current scope. */
+  searchAccessibleLabel?: string;
   /**
    * Optional element rendered on the right of the language-note row
    * (next to SaveSearchButton when filters are active). Used by the
@@ -73,6 +83,7 @@ export function SearchToolbar({
   occupations,
   seniorities,
   technologies,
+  unresolvedExplicitSlugs,
   salaryCurrency,
   salaryMin,
   salaryMax,
@@ -88,6 +99,7 @@ export function SearchToolbar({
   onRemoveSeniority,
   onAddTechnology,
   onRemoveTechnology,
+  onRemoveUnresolvedSlug,
   employmentTypes,
   onToggleEmploymentType,
   workMode,
@@ -98,16 +110,21 @@ export function SearchToolbar({
   onClearAll,
   onSubmitSearch,
   searchPlaceholder,
+  searchAccessibleLabel,
   statsSlot,
 }: SearchToolbarProps) {
   const { t } = useLingui();
 
+  const hasUnresolvedExplicitSlugs = Object.values(
+    unresolvedExplicitSlugs ?? {},
+  ).some((slugs) => (slugs?.length ?? 0) > 0);
   const hasFilters =
     keywords.length > 0 ||
     locations.length > 0 ||
     occupations.length > 0 ||
     seniorities.length > 0 ||
     (technologies?.length ?? 0) > 0 ||
+    hasUnresolvedExplicitSlugs ||
     (employmentTypes?.length ?? 0) > 0 ||
     (workMode?.length ?? 0) > 0 ||
     salaryMin != null ||
@@ -119,24 +136,34 @@ export function SearchToolbar({
     <div className="space-y-3">
       {/* Mobile-only: search bar is in the header on desktop */}
       <div className="md:hidden">
-        <SearchBar
-          onAddLocation={onAddLocation}
-          onAddOccupation={onAddOccupation}
-          onAddSeniority={onAddSeniority}
-          onAddTechnology={onAddTechnology}
-          onSubmitSearch={onSubmitSearch}
-          locale={locale}
-          keywords={keywords}
-          locations={locations}
-          occupations={occupations}
-          seniorities={seniorities}
-          technologies={technologies}
-          languages={histogramFilters?.languages}
-          companyId={histogramFilters?.companyId}
-          userLat={userLat}
-          userLng={userLng}
-          placeholder={searchPlaceholder}
-        />
+        <Suspense
+          fallback={(
+            <div
+              aria-hidden="true"
+              className="h-8 rounded-lg border border-border-soft"
+            />
+          )}
+        >
+          <SearchBar
+            onAddLocation={onAddLocation}
+            onAddOccupation={onAddOccupation}
+            onAddSeniority={onAddSeniority}
+            onAddTechnology={onAddTechnology}
+            onSubmitSearch={onSubmitSearch}
+            locale={locale}
+            keywords={keywords}
+            locations={locations}
+            occupations={occupations}
+            seniorities={seniorities}
+            technologies={technologies}
+            languages={histogramFilters?.languages}
+            companyId={histogramFilters?.companyId}
+            userLat={userLat}
+            userLng={userLng}
+            placeholder={searchPlaceholder}
+            accessibleLabel={searchAccessibleLabel}
+          />
+        </Suspense>
       </div>
       <div className="flex items-start justify-between gap-4">
         <AdvancedSearchPanel
@@ -168,7 +195,7 @@ export function SearchToolbar({
           onExperienceChange={onExperienceChange}
           histogramFilters={histogramFilters}
         />
-        {hasFilters && (
+        {hasFilters && !hasUnresolvedExplicitSlugs && (
           <SaveSearchButton
             keywords={keywords}
             locations={locations}
@@ -187,6 +214,35 @@ export function SearchToolbar({
       </div>
       {hasFilters && (
         <div className="flex flex-wrap items-center gap-2">
+          {(Object.entries(unresolvedExplicitSlugs ?? {}) as Array<
+            [keyof UnresolvedExplicitSlugs, string[]]
+          >).flatMap(([kind, slugs]) =>
+            slugs.map((slug) => (
+              <span
+                key={`unresolved-${kind}-${slug.toLowerCase()}`}
+                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
+              >
+                {kind === "loc" ? <MapPin size={12} className="shrink-0" /> : null}
+                {kind === "occ" ? <Briefcase size={12} className="shrink-0" /> : null}
+                {kind === "sen" ? <BarChart3 size={12} className="shrink-0" /> : null}
+                {kind === "tech" ? <Code2 size={12} className="shrink-0" /> : null}
+                {slug}
+                {onRemoveUnresolvedSlug ? (
+                  <button
+                    onClick={() => onRemoveUnresolvedSlug(kind, slug)}
+                    className="ml-0.5 cursor-pointer rounded-full p-0.5 transition-colors hover:bg-primary/20"
+                    aria-label={t({
+                      id: "search.filters.removeFilter",
+                      comment: "Aria label for remove-filter X button on a filter pill; {name} is the filter value",
+                      message: `Remove ${slug} filter`,
+                    })}
+                  >
+                    <X size={12} aria-hidden="true" />
+                  </button>
+                ) : null}
+              </span>
+            )),
+          )}
           {occupations.map((occ) => {
             const name = occ.name;
             return (

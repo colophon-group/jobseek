@@ -1,25 +1,14 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import { getMyJobs } from "@/lib/actions/my-jobs";
 import { MyJobsPage } from "./my-jobs-page";
 
-type MyJobsData = Awaited<ReturnType<typeof getMyJobs>>;
-
-export function MyJobsLoader({ locale: _locale }: { locale: string }) {
-  const [data, setData] = useState<MyJobsData | null>(null);
-
-  useEffect(() => {
-    getMyJobs({ offset: 0, limit: 20 }).then(setData);
-  }, []);
-
-  if (!data) {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-      </div>
-    );
-  }
+/**
+ * The initial page of saved jobs is a read, so resolve it in the server tree
+ * instead of issuing an uncached Server Action POST after hydration. The
+ * action retains the existing session-enforced data boundary; the parent
+ * Suspense boundary streams the same spinner on cold reads.
+ */
+export async function MyJobsLoader({ locale: _locale }: { locale: string }) {
+  const data = await getMyJobs({ offset: 0, limit: 20 });
 
   return <MyJobsPage initialJobs={data.jobs} initialTotal={data.total} />;
 }

@@ -19,6 +19,7 @@ import { Client } from "typesense";
 import { withTestEnvForAll } from "@/test-utils/env";
 import type { CollectionCreateSchema } from "typesense/lib/Typesense/Collections";
 import { TypesenseSearchProvider } from "../typesense";
+import { generateScopedSearchKey } from "../scoped-key";
 
 // ── Constants ───────────────────────────────────────────────────────
 
@@ -481,6 +482,43 @@ function skipIfUnavailable() {
   }
   return false;
 }
+
+describe("scoped search key expiry", () => {
+  it("accepts a live key and rejects a past expires_at on Typesense 27.1", async () => {
+    if (skipIfUnavailable()) return;
+
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const parent = await adminClient.keys().create({
+      actions: ["documents:search"],
+      collections: [JOB_POSTING_COLLECTION],
+      description: "scoped expiry E2E parent",
+      expires_at: nowSeconds + 3_600,
+    });
+    if (!parent.value) throw new Error("Typesense did not return the test parent key");
+
+    const search = (apiKey: string) =>
+      fetch(
+        `http://localhost:8108/collections/${JOB_POSTING_COLLECTION}/documents/search?q=*&query_by=title`,
+        { headers: { "x-typesense-api-key": apiKey } },
+      );
+
+    try {
+      const liveKey = generateScopedSearchKey(parent.value, {
+        use_cache: true,
+        expires_at: nowSeconds + 60,
+      });
+      const expiredKey = generateScopedSearchKey(parent.value, {
+        use_cache: true,
+        expires_at: nowSeconds - 1,
+      });
+
+      await expect(search(liveKey)).resolves.toMatchObject({ status: 200 });
+      await expect(search(expiredKey)).resolves.toMatchObject({ status: 401 });
+    } finally {
+      await adminClient.keys(parent.id).delete();
+    }
+  });
+});
 
 // =====================================================================
 // SearchProvider.search()

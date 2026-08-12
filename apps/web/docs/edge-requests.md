@@ -51,9 +51,32 @@ narrow dynamic surfaces.
 
 ### Proxy (formerly Middleware)
 
-The proxy only runs for paths **without** a locale prefix (e.g. bare `/`, `/how-we-index`). It redirects to the locale-prefixed version based on `Accept-Language`.
+The proxy normally runs for paths **without** a locale prefix (e.g. bare `/`,
+`/how-we-index`) and redirects to the locale-prefixed version based on
+`Accept-Language`. A narrow set of localized boundaries also opt in: company
+request auth, Explore document normalization, scanner rejection, and company /
+public-watchlist document status checks.
 
-Paths that already have a locale prefix (`/en/...`, `/de/...`) **skip the proxy entirely** — no edge invocation.
+The last check is required because Cache Components can begin streaming the
+static app shell before a page-level `notFound()` resolves. Once headers have
+been sent, Next.js can only return a noindex soft 404 with HTTP 200. For full
+GET/HEAD documents, `proxy.ts` therefore performs a bounded 60-second-cached
+existence check and returns a small localized recovery document with HTTP 404.
+The document is constructed only from fixed translations and URL-encoded path
+data; it never fetches, parses, or filters App Router HTML. Recovery controls
+are ordinary links and its CSP denies all script execution, preventing a PPR
+resume against the original missing URL and a duplicate app shell. RSC
+navigation and Server Action traffic bypass the check. Upstream failures fail
+open to the existing noindex page fallback; an outage must never turn every
+resource into a false 404.
+
+Anonymous watchlist checks query only `is_public = true`, so absent and private
+resources are indistinguishable. Requests carrying a session cookie are
+verified through Better Auth. A valid session gets an uncached owner-or-public
+existence check; stale, revoked, and forged cookies stay on the anonymous
+public-only path. This preserves private-owner access without disclosing
+private resources. Watchlist mutations and username renames evict the route-
+status cache alongside the existing detail caches.
 
 > Renamed from `middleware.ts` to `proxy.ts` for Next.js 16 (#2887).
 > Same APIs, same execution model — see https://nextjs.org/docs/messages/middleware-to-proxy.
@@ -82,7 +105,11 @@ This tells Next.js which locale variants to pre-render. Without it, `[lang]` is 
 
 ### Keep the proxy matcher narrow
 
-The proxy matcher explicitly excludes locale-prefixed paths. When adding a new locale, **add it to the matcher exclusion list** in `proxy.ts` — otherwise every request to that locale will unnecessarily invoke the proxy.
+The broad matcher excludes locale-prefixed paths; each localized exception is
+listed separately in `proxy.ts`. When adding a locale, update both the broad
+exclusion and every localized exception. Do not broaden the resource-status
+boundary beyond full company/watchlist documents: RSC and Server Action
+requests must stay on the normal App Router path.
 
 ### Use route groups to separate static from dynamic
 
@@ -275,14 +302,62 @@ reduce repeat edge requests.
 | Asset | Cache TTL | Rationale |
 |-------|-----------|-----------|
 | Fonts (`/fonts/*`) | 1 year, `immutable` | Never change between deploys |
-| `next/image` responses (`/_next/image`) | 1 week (`minimumCacheTTL`) | Default is 60s — far too short |
+| Remote URL through `next/image` | Upstream TTL or 1-year configured floor, whichever is larger | `images.minimumCacheTTL`; live client header was 1 year |
+| String local/public URL through `next/image` | Vercel edge cache up to 31 days; live client header was 1 week | Local content-hash cache key; no blanket 1-year promise |
+| Static image import | Long-lived `immutable` client header | Next content-hashes the imported asset; edge residency remains platform-managed |
 | SVGs, PNGs in `public/` | 1 week | Rarely change; no content hash in URL |
 | JS/CSS chunks (`/_next/static/*`) | 1 year, `immutable` | Content-hashed filenames (Next.js default) |
 | Favicon, manifest, icons | 1 week | Rarely change |
 
-Vercel purges its CDN cache on every deploy. Browser caches persist for the
-configured TTL — this is acceptable because these assets rarely change.
-If a `public/` asset does change, browsers will pick up the new version
+### Optimized-image cache contract
+
+There are three distinct paths:
+
+- For a **remote URL source**, Vercel documents the optimized-image cache TTL
+  as the larger of the upstream image's `Cache-Control` lifetime and
+  `images.minimumCacheTTL`. This app configures that supported floor as
+  `31536000` seconds.
+- For a **string local/public URL**, Vercel uses a content hash in the local
+  image cache key and documents edge caching for up to 31 days. "Up to" is a
+  ceiling, not a residency guarantee. The downstream/client response can have
+  a different lifetime, as the live seven-day response below demonstrates.
+- A **static image import** is content-hashed by Next and receives a long-lived
+  `immutable` client cache header. That header does not guarantee how long a
+  particular Vercel edge retains the object.
+
+A `headers()` entry for `/_next/image` is not a supported way to change any of
+these generated responses: Next warns during builds and ignores the override.
+Keep optimizer policy under `images`, not generated-route headers.
+
+The client-visible header is not a single app-owned constant. Live checks on
+2026-08-11 returned:
+
+- a remote company logo: `public, max-age=31536000, must-revalidate`;
+- a local `/publicdomain/*` source: `public, max-age=604800`.
+
+Those observations verify the current Next/Vercel behavior; they do not turn a
+response header or edge residency into an app-owned contract. In particular,
+`minimumCacheTTL` should not be tested by copying an expected `Cache-Control`
+string into app config.
+See the official [Next.js image configuration](https://nextjs.org/docs/app/api-reference/components/image#minimumcachettl)
+and [Vercel Image Optimization](https://vercel.com/docs/image-optimization)
+references for the supported controls.
+
+Hashing or versioning prevents a changed asset from colliding with a stale
+cache entry; it does not set a TTL. If a directly served asset requires a
+one-year **browser** lifetime, use a content-hashed/versioned URL and set an
+explicit, supported `Cache-Control` header on that direct source route, then
+verify the deployed response. A static import is the Next-managed alternative
+when its long-lived `immutable` client header is appropriate. Neither approach
+promises edge residency; eviction remains platform-managed. Do not add a
+custom `/_next/image` header.
+
+Deploying alone does not invalidate Vercel's optimized-image cache. Change the
+source URL or use the platform's image-cache purge mechanism when immediate
+invalidation is required.
+
+Browser caches for the other public assets persist for their configured TTL.
+If an unversioned `public/` asset changes, browsers will pick up the new version
 within a week.
 
 ## ThemedImage — single-image strategy
@@ -317,7 +392,7 @@ invocations.
 | Dynamic server subtree | Node.js | Page-specific Suspense islands such as settings data |
 | Server action call | Node.js | Each client-triggered `.bind()` or `useActionState` |
 | API route request | Node.js | `/api/v1/*`, `/api/auth/*`, `/api/stripe/*` |
-| OG image generation | Node.js | `opengraph-image.tsx` routes |
+| Dynamic OG image generation | Node.js | Isolated `/og/*` blog, methodology, and public-watchlist routes |
 | `sitemap.xml` / `robots.txt` | Node.js | Generated dynamically per request |
 | Proxy (formerly Middleware) | Edge | Lightweight locale redirect only |
 
@@ -368,15 +443,21 @@ fetched once regardless of how many server components call `getSession()`.
 
 The old `(app)` layout fetched session, preferences, saved job statuses, and
 starred companies during every server render. That is no longer true.
-`app/[lang]/(app)/layout.tsx` is a static shell that renders
-`AppBootstrapProvider`.
+`app/[lang]/(app)/layout.tsx` is a cached shell that resolves the
+viewer-independent currency-rate table through an hourly `use cache` service
+read, then renders `AppBootstrapProvider`. The table is serialized into the
+shell; `SalaryDisplayProvider` does not call a Server Action on mount.
+If the database is unavailable while a shell is generated, the service embeds
+the complete approximate seed from the currency-rate migration rather than an
+EUR-only table; the uncached fallback preserves selectors and safe non-EUR
+conversion until a later server read recovers current ECB-backed rates.
 
 Current bootstrap behavior:
 
 | Viewer | Work on initial shell | Follow-up function work |
 |--------|-----------------------|--------------------------|
-| Anonymous, no `logged_in` hint | None | None from bootstrap |
-| Signed in | None | `fetchAppBootstrap()` server action: `getSession()` + one combined bootstrap query |
+| Anonymous, no `logged_in` hint | Cached currency-rate read | None from bootstrap or salary display |
+| Signed in | Cached currency-rate read | `fetchAppBootstrap()` server action: `getSession()` + one combined bootstrap query |
 
 There is no universal per-route layout query floor. Page-specific loaders,
 server actions, and dynamic subtrees define the compute cost.
@@ -391,7 +472,7 @@ invoked.
 |-------|----------------|--------------|---------|-------------|---------------|
 | **Explore** | Cached anonymous defaults | Personalized `fetchExplorePageData()` / search actions when signed in or filtered | Mixed | Defaults 60s; search 5min | 30-250ms when invoked |
 | **Company** | Cached anonymous defaults + metadata | Personalized `fetchCompanyPageData()` when signed in, filtered, or language cookie present | Mixed | Company/detail caches | 30-200ms when invoked |
-| **Shared watchlist** | Cached metadata/body shell | `fetchWatchlistPageData()` after mount | Sequential + parallel | Watchlist lookup cached | 60-300ms |
+| **Shared watchlist** | Cached anonymous public snapshot + metadata | Personalized `fetchWatchlistPageData()` only when viewer/filters require it | Mixed | Watchlist lookup cached | 60-300ms when invoked |
 | **My Jobs** | Static shell | `getMyJobs()` after mount | Sequential | None | 20-100ms |
 | **My Jobs Stats** | Static shell | stats loader action after mount | Parallel | Stats cache | 30-100ms |
 | **Watchlists** | Static shell | bootstrap context + `getUserWatchlistsWithLimit()` after mount | Constant in N | None | 30-120ms |
@@ -442,15 +523,20 @@ The listed routes typically complete in under 500ms.
 
 ### OG image compute
 
-OG image routes (`opengraph-image.tsx`) use Satori + sharp to render PNGs.
-Each invocation:
+The site-wide and company OG cards are pre-rendered in GitHub Actions and served
+directly from R2/Cloudflare, so they consume no Fluid CPU. The lower-volume
+blog, methodology, and privacy-sensitive public-watchlist cards remain dynamic
+under isolated `/og/*` route handlers. Their Satori/Sharp payload is not
+included in ordinary page Function traces.
+
+Each dynamic OG invocation:
 1. Reads font TTF + logo PNG from filesystem (~5ms)
 2. Renders JSX to SVG via Satori (~20-50ms)
 3. Encodes SVG to PNG via sharp (~30-80ms)
 
-**Estimated duration:** 60-140ms per OG image. These are only requested by
-social media crawlers when links are shared — low volume but relatively
-CPU-heavy per invocation.
+**Estimated duration:** 60-140ms per dynamic OG image. These are primarily
+requested by social media crawlers when links are shared — low volume but
+relatively CPU-heavy per invocation.
 
 ### Compute hotspots
 

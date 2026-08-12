@@ -1,0 +1,53 @@
+# Backward-compatible PostgreSQL pool ceiling for deployment rollback.
+#
+# The archived Compose file and image remain the authoritative rollback
+# contract. This override changes only connection-ownership settings already
+# understood (or safely ignored) by older crawler images, so restoring a
+# pre-budget release cannot restore its former 90-connection crawler ceiling.
+services:
+  worker-1:
+    environment:
+      CRAWLER_DB_ROLE: worker-1
+      CRAWLER_DB_POOL_MIN: "1"
+      CRAWLER_DB_POOL_MAX: "8"
+      CRAWLER_DB_POOL_IDLE_SECONDS: "60"
+
+  worker-2:
+    environment:
+      CRAWLER_DB_ROLE: worker-2
+      CRAWLER_DB_POOL_MIN: "1"
+      CRAWLER_DB_POOL_MAX: "8"
+      CRAWLER_DB_POOL_IDLE_SECONDS: "60"
+
+  worker-3:
+    environment:
+      CRAWLER_DB_ROLE: worker-3
+      CRAWLER_DB_POOL_MIN: "1"
+      CRAWLER_DB_POOL_MAX: "8"
+      CRAWLER_DB_POOL_IDLE_SECONDS: "60"
+
+  exporter:
+    environment:
+      CRAWLER_DB_ROLE: exporter
+      CRAWLER_DB_POOL_MIN: "1"
+      CRAWLER_DB_POOL_MAX: "4"
+      CRAWLER_DB_POOL_IDLE_SECONDS: "60"
+
+  drain:
+    environment:
+      CRAWLER_DB_ROLE: drain
+      CRAWLER_DB_POOL_MIN: "1"
+      CRAWLER_DB_POOL_MAX: "6"
+      CRAWLER_DB_POOL_IDLE_SECONDS: "60"
+
+  browser-1:
+    environment:
+      CRAWLER_DB_ROLE: browser-1
+      CRAWLER_DB_POOL_MIN: "1"
+      CRAWLER_DB_POOL_MAX: "6"
+      CRAWLER_DB_POOL_IDLE_SECONDS: "60"
+
+  murmur-shim:
+    environment:
+      MURMUR_DB_POOL_MAX: "2"
+      MURMUR_INVOKER_MAX_CONCURRENCY: "2"

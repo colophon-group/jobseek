@@ -153,8 +153,10 @@ def _country_rows_sql(limit: int | None, include_inactive: bool = False) -> str:
                WHERE posting_id = jp.id
                ORDER BY (locale = jp.locales[1]) DESC NULLS LAST, updated_at DESC
                LIMIT 1
-          ) d ON true
+         ) d ON true
          WHERE jp.location_ids && $1::int[]{active_clause}
+           AND ($2::uuid IS NULL OR jp.id > $2::uuid)
+         ORDER BY jp.id
     """
     if limit:
         sql += f" LIMIT {int(limit)}"
@@ -247,17 +249,28 @@ async def _iter_country_rows(
     limit: int | None,
     include_inactive: bool = False,
 ):
-    """Yield rows for one country via a server-side cursor (in a transaction).
+    """Yield keyset batches without a transaction spanning client processing.
 
     Default scope is active postings only. ``include_inactive=True`` (issue
     #3359) drops the ``is_active`` predicate so closed/historical postings
     are reprocessed too. Closed postings retain their ``descriptions`` rows,
     so the same LATERAL JOIN resolves the primary-locale HTML.
     """
-    sql = _country_rows_sql(limit=limit, include_inactive=include_inactive)
-    async with read_conn.transaction():
-        async for row in read_conn.cursor(sql, ids, prefetch=FETCH_BATCH):
+    remaining = limit
+    after_id = None
+    while remaining is None or remaining > 0:
+        batch_limit = FETCH_BATCH if remaining is None else min(FETCH_BATCH, remaining)
+        sql = _country_rows_sql(limit=batch_limit, include_inactive=include_inactive)
+        rows = await read_conn.fetch(sql, ids, after_id)
+        if not rows:
+            return
+        for row in rows:
             yield row
+        after_id = rows[-1]["id"]
+        if remaining is not None:
+            remaining -= len(rows)
+        if len(rows) < batch_limit:
+            return
 
 
 def _diff_payload(row, new) -> dict | None:
@@ -374,7 +387,17 @@ async def run_from_args(args: argparse.Namespace) -> int:
 
     print(f"[reprocess-salary-eu] connecting to {dsn.rsplit('@', 1)[-1]}", flush=True)
     pool = await asyncpg.create_pool(
-        dsn, min_size=1, max_size=4, command_timeout=300, statement_cache_size=0
+        dsn,
+        min_size=1,
+        max_size=4,
+        command_timeout=300,
+        statement_cache_size=0,
+        max_inactive_connection_lifetime=60,
+        server_settings={
+            "application_name": "jobseek:operator:salary-reprocess",
+            "statement_timeout": "5min",
+            "idle_in_transaction_session_timeout": "60s",
+        },
     )
     try:
         async with pool.acquire() as conn:

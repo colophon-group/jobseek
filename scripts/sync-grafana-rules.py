@@ -9,6 +9,7 @@ import os
 import re
 import time
 import urllib.parse
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,8 @@ import yaml
 DEFAULT_NAMESPACE = "jobseek_crawler_reliability"
 DEFAULT_RULE_FILE = Path(__file__).resolve().parents[1] / "apps" / "crawler" / "alerts.yaml"
 MAX_RULES_PER_GROUP = 20
+DEFAULT_EVALUATION_WAIT_SECONDS = 360
+RULE_EVALUATION_POLL_SECONDS = 5
 _DURATION_PART = re.compile(r"(\d+)(ms|y|w|d|h|m|s)")
 _DURATION_MS = {
     "ms": 1,
@@ -162,22 +165,68 @@ def _yaml_groups(payload: bytes, *, namespace: str) -> list[dict[str, Any]]:
     return []
 
 
-def _remote_rule_names(client: MimirClient, namespace: str, group_name: str) -> set[str]:
-    query = urllib.parse.urlencode({"file": namespace, "rule_group": group_name})
+def _active_rule_groups(
+    client: MimirClient,
+    namespace: str,
+    *,
+    group_name: str | None = None,
+) -> list[dict[str, Any]]:
+    parameters = {"file": namespace}
+    if group_name is not None:
+        parameters["rule_group"] = group_name
+    query = urllib.parse.urlencode(parameters)
     _, payload = client.request("GET", f"/api/v1/rules?{query}")
     try:
         response = json.loads(payload)
         groups = response["data"]["groups"]
     except (KeyError, TypeError, json.JSONDecodeError) as exc:
         raise RuleSyncError("Mimir returned invalid active-rule JSON") from exc
+    if response.get("status") != "success" or not isinstance(groups, list):
+        raise RuleSyncError("Mimir did not return active rule groups")
+    return [group for group in groups if isinstance(group, dict)]
+
+
+def _remote_rule_names(client: MimirClient, namespace: str, group_name: str) -> set[str]:
     names: set[str] = set()
-    for group in groups:
+    for group in _active_rule_groups(client, namespace, group_name=group_name):
         if group.get("name") != group_name:
             continue
-        for rule in group.get("rules", []):
-            if isinstance(rule.get("name"), str):
+        group_rules = group.get("rules")
+        if not isinstance(group_rules, list):
+            raise RuleSyncError("Mimir returned invalid active-rule JSON")
+        for rule in group_rules:
+            if isinstance(rule, dict) and isinstance(rule.get("name"), str):
                 names.add(rule["name"])
     return names
+
+
+def _active_rules(client: MimirClient, namespace: str) -> dict[str, dict[str, Any]]:
+    active: dict[str, dict[str, Any]] = {}
+    for group in _active_rule_groups(client, namespace):
+        group_rules = group.get("rules")
+        if not isinstance(group_rules, list):
+            raise RuleSyncError("Mimir returned invalid active-rule JSON")
+        for rule in group_rules:
+            name = rule.get("name") if isinstance(rule, dict) else None
+            if not isinstance(name, str) or not name:
+                raise RuleSyncError("Mimir returned an active rule without a name")
+            if name in active:
+                raise RuleSyncError(f"Mimir returned duplicate active rule {name}")
+            active[name] = rule
+    return active
+
+
+def _evaluation_time(value: Any) -> float | None:
+    if not isinstance(value, str) or not value:
+        return None
+    normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.timestamp()
 
 
 def _duration_signature(value: Any) -> str | int:
@@ -294,6 +343,74 @@ def _wait_for_groups(
     raise RuleSyncError(f"Mimir did not expose the {qualifier}expected rule groups")
 
 
+def _evaluation_error(
+    active: dict[str, dict[str, Any]],
+    expected_names: set[str],
+    previous_evaluations: dict[str, float | None],
+) -> str | None:
+    missing = sorted(expected_names - set(active))
+    if missing:
+        return "active rule inventory is missing " + ", ".join(missing[:8])
+
+    unhealthy: list[str] = []
+    unevaluated: list[str] = []
+    for name in sorted(expected_names):
+        rule = active[name]
+        health = rule.get("health")
+        if health != "ok":
+            unhealthy.append(f"{name}={health if isinstance(health, str) else 'missing'}")
+        evaluated_at = _evaluation_time(rule.get("lastEvaluation"))
+        previous = previous_evaluations.get(name)
+        if evaluated_at is None or (
+            name in previous_evaluations
+            and previous is not None
+            and evaluated_at <= previous
+        ):
+            unevaluated.append(name)
+    if unhealthy:
+        return "deployed rules have non-OK health: " + ", ".join(unhealthy[:8])
+    if unevaluated:
+        return "deployed rules have not completed a post-sync evaluation: " + ", ".join(
+            unevaluated[:8]
+        )
+    return None
+
+
+def _wait_for_rule_evaluation(
+    client: MimirClient,
+    namespace: str,
+    groups: list[dict[str, Any]],
+    *,
+    previous_evaluations: dict[str, float | None],
+    wait_seconds: int,
+) -> None:
+    expected_names = {
+        str(rule.get("alert") or rule.get("record"))
+        for group in groups
+        for rule in group["rules"]
+    }
+    deadline = time.monotonic() + wait_seconds
+    last_error = "Mimir rule evaluation has not completed"
+    while True:
+        try:
+            last_error = (
+                _evaluation_error(
+                    _active_rules(client, namespace),
+                    expected_names,
+                    previous_evaluations,
+                )
+                or ""
+            )
+            if not last_error:
+                return
+        except RuleSyncError as exc:
+            last_error = str(exc)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise RuleSyncError(last_error)
+        time.sleep(min(RULE_EVALUATION_POLL_SECONDS, remaining))
+
+
 def _restore_namespace(
     client: MimirClient,
     namespace: str,
@@ -307,7 +424,13 @@ def _restore_namespace(
     _wait_for_groups(client, namespace, previous, exact_names=True)
 
 
-def sync_groups(client: MimirClient, namespace: str, groups: list[dict[str, Any]]) -> None:
+def sync_groups(
+    client: MimirClient,
+    namespace: str,
+    groups: list[dict[str, Any]],
+    *,
+    evaluation_wait_seconds: int = DEFAULT_EVALUATION_WAIT_SECONDS,
+) -> None:
     for group in groups:
         group_rules = group.get("rules")
         if (
@@ -323,6 +446,10 @@ def sync_groups(client: MimirClient, namespace: str, groups: list[dict[str, Any]
     if len(desired) != len(groups):
         raise RuleSyncError("rule group names must be unique")
     previous = _remote_groups(client, namespace)
+    previous_evaluations = {
+        name: _evaluation_time(rule.get("lastEvaluation"))
+        for name, rule in _active_rules(client, namespace).items()
+    }
     try:
         for group in groups:
             _post_group(client, namespace, group)
@@ -330,6 +457,13 @@ def sync_groups(client: MimirClient, namespace: str, groups: list[dict[str, Any]
         for stale_name in sorted(set(previous) - set(desired)):
             _delete_group(client, namespace, stale_name)
         _wait_for_groups(client, namespace, desired, exact_names=True)
+        _wait_for_rule_evaluation(
+            client,
+            namespace,
+            groups,
+            previous_evaluations=previous_evaluations,
+            wait_seconds=evaluation_wait_seconds,
+        )
     except Exception as sync_error:
         try:
             _restore_namespace(client, namespace, previous)
@@ -348,6 +482,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--url", default=os.environ.get("GRAFANA_PROM_URL"))
     parser.add_argument("--username", default=os.environ.get("GRAFANA_PROM_USERNAME"))
     parser.add_argument("--password", default=os.environ.get("GRAFANA_PROM_PASSWORD"))
+    parser.add_argument(
+        "--evaluation-wait-seconds",
+        type=int,
+        default=DEFAULT_EVALUATION_WAIT_SECONDS,
+    )
     parser.add_argument("--dry-run", action="store_true")
     return parser
 
@@ -368,7 +507,12 @@ def main() -> int:
     if not args.url or not args.username or not args.password:
         raise SystemExit("Grafana URL, username, and password are required")
     client = MimirClient(args.url, args.username, args.password)
-    sync_groups(client, args.namespace, groups)
+    sync_groups(
+        client,
+        args.namespace,
+        groups,
+        evaluation_wait_seconds=args.evaluation_wait_seconds,
+    )
     rule_count = sum(len(group["rules"]) for group in groups)
     print(f"synced namespace={args.namespace} groups={len(groups)} rules={rule_count}")
     return 0

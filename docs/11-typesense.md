@@ -59,10 +59,36 @@ part of a Git branch.
 | `TYPESENSE_OPERATIONS_KEY` | Generated key: `collections:*`, `documents:*`, `aliases:*` on all collections, plus `metrics.json:list` | Exporter, sync, backfill, setup, reconciliation, health metrics | Private network (crawler -> Typesense) |
 | `TYPESENSE_BACKUP_KEY` | Generated, revocable wildcard key | Root-owned Typesense Snapshot API backup service only | Loopback on Typesense host |
 | `TYPESENSE_SEARCH_KEY` | `documents:search` + `documents:get` on all collections | Web app server-side search (server actions) | Cloudflare tunnel |
-| `TYPESENSE_BROWSER_PARENT_KEY` | `documents:search` on all collections (no other action) | Web app `/api/typesense-key` route handler -- mints scoped keys for direct browser->Typesense calls | Cloudflare tunnel (browser, scoped key) |
+| `TYPESENSE_BROWSER_PARENT_KEY` | `documents:search` only on `job_posting`, `company`, `location`, `occupation`, `seniority`, and `technology` | Web app `/api/typesense-key` route handler -- mints scoped keys for direct browser->Typesense calls | Cloudflare tunnel (browser, scoped key) |
 | `TYPESENSE_WRITE_KEY` | `documents:create/upsert/delete/update` on `watchlist` collection only | Web app watchlist mutations | Cloudflare tunnel |
 
 `TYPESENSE_BROWSER_PARENT_KEY` is a separate parent because Typesense rejects scoped keys derived from a parent that has any actions other than `documents:search` (the server returns `Forbidden - a valid x-typesense-api-key header must be sent.` when used with a multi-action parent).
+The six named collections are the complete direct-browser read set. In
+particular, the browser watchlist path searches `job_posting`; it does not read
+the `watchlist` collection. Do not grant the parent wildcard collection access.
+
+Browser scoped keys embed a server-enforced `expires_at` Unix timestamp: five
+minutes for anonymous sessions and ten minutes for authenticated sessions.
+`/api/typesense-key` returns that same boundary in milliseconds for the browser
+cache, which refreshes 30 seconds early. Its response cache max-age is half the
+credential lifetime, so a cached response cannot outlive the signed key.
+
+### Browser parent-key rotation
+
+Rotate `TYPESENSE_BROWSER_PARENT_KEY` after deploying an expiry-policy change
+and on the normal credential-rotation schedule:
+
+1. Create a generated parent with the sole action `documents:search`, exactly
+   the six collections above, and an expiry later than any scoped child expiry.
+2. Replace the protected Vercel `TYPESENSE_BROWSER_PARENT_KEY` value and deploy
+   the web app.
+3. Fetch `/api/typesense-key`, decode its scoped payload to confirm
+   `expires_at`, and perform a browser-path search with the new child key.
+4. Delete the old parent in Typesense. Confirm a child captured from the old
+   parent now receives HTTP 401; revoking a parent invalidates all children
+   derived from it.
+
+Never delete the old parent before the new web deployment is serving keys.
 
 Typesense 27.1 does not accept a generated key restricted to
 `operations:snapshot` or `operations:*` for `POST /operations/snapshot`; a
@@ -187,8 +213,12 @@ On each tick:
    commit-safe cutoff.
 2. SELECT changed postings strictly before the cutoff and after the Typesense
    cursor.
-3. Denormalize + expand ancestor IDs, upsert to Typesense, and advance only the
-   Typesense cursor.
+3. Denormalize + expand ancestor IDs and upsert to Typesense.
+4. Require an acknowledgement list with exactly one object containing an
+   explicit boolean `success` per submitted document before advancing the
+   Typesense cursor. A well-formed rejected document follows the logged
+   poison-document policy; an empty, truncated, overlong, or malformed
+   acknowledgement pins the batch and enters bounded retry backoff.
 
 The Typesense document builder (`_build_typesense_docs`) expands `location_ids` and `occupation_ids` with all ancestor IDs using pre-loaded hierarchy maps (`TaxonomyMaps.location_ancestors`, `occupation_ancestors`). This means even legacy Postgres rows with leaf-only IDs produce correct hierarchy-filterable Typesense documents.
 
@@ -231,11 +261,18 @@ web-owned read through `WEB_DATABASE_URL`.
 uv run crawler refresh-typesense
 ```
 
-- Refreshes `active_posting_count` / `has_active_postings` on all taxonomy and company collections
+- Refreshes `active_posting_count` / `has_active_postings` on all retained
+  taxonomy and company documents. Retained document IDs and localized
+  occupation/seniority variants come from the bounded local Postgres
+  authorities; counts come from exhaustive Typesense facets. IDs absent from a
+  valid facet are explicitly reset to zero/false.
 - Reconciles the `watchlist` collection against the web-owned database selected
   by `WEB_DATABASE_URL` (upserts missing, deletes stale). Only explicit
   sync/count-refresh jobs receive this credential; long-running crawler
   services receive no web-owned database URL.
+- Validates exact per-document Typesense import acknowledgements before
+  continuing. A rejected, malformed, or truncated acknowledgement aborts the
+  command, records a failed cron run, and blocks dependent watchlist pruning.
 
 **When it runs in production** (two paths, both version-controlled):
 
@@ -305,13 +342,21 @@ Each posting document contains an optional indexed
 only for the additive rollout; the exporter, backfill, and reconciler write it
 on every upsert.
 
-Normal runs export one bounded bucket at a time and compare exact IDs plus
-`is_active`. Missing/mismatched documents are rebuilt with the ordinary
-denormalization path, and Typesense-only documents are deleted. During the
-first complete repair cycle, all authoritative local documents are upserted
-before a streamed unbucketed cleanup; cleanup fails closed if any unbucketed
-ID still exists locally. No Typesense restart, collection rebuild, or search
-downtime is required.
+Normal runs export one bounded bucket at a time and compare exact IDs,
+`is_active`, and a defined set of user-visible fields. Payload comparison uses
+canonical in-process fingerprints of the actual exported fields; it does not
+trust a checksum stored beside the document. Unordered arrays/maps are
+canonicalized deterministically, while positional location/technology order is
+retained so mispaired fields cannot compare equal. Only exact unique detected
+counts plus aggregate payload mismatch counts enter durable state or telemetry.
+Missing/mismatched documents are rebuilt with the ordinary
+denormalization path and verified again before the cursor advances, while
+Typesense-only documents are deleted. During the first complete repair cycle,
+all authoritative local documents are upserted before a streamed unbucketed
+cleanup; cleanup fails closed if any unbucketed ID still exists locally. No
+Typesense restart, collection rebuild, or search downtime is required. The
+design rationale and exact bounded contract are in
+[`03-crawler-architecture.md`](03-crawler-architecture.md#payload-comparison-design).
 
 ## Web App Integration
 
@@ -345,7 +390,8 @@ The web app can bypass the Vercel server-action proxy and call Typesense directl
 | Surface | Runner export | Mirrors server action |
 |---------|---------------|----------------------|
 | `/explore` search loop (filter chip changes, load-more) | `runSearchJobs`, `runListTopCompanies` | `searchJobs`, `listTopCompanies` |
-| Header / modal typeahead (per keystroke) | `runSuggestLocations`, `runSuggestOccupations`, `runSuggestSeniorities`, `runSuggestTechnologies` | `suggestLocations`, `suggestOccupations`, `suggestSeniorities`, `suggestTechnologies` |
+| Shared header search-bar typeahead (per debounced query) | `runSearchBarTypeahead` | `suggestSearchBarTypeahead` (one action for company + four taxonomy caches) |
+| Location-only pill / modal typeahead | `runSuggestLocations` | `suggestLocations` |
 | Company detail postings list | `runGetCompanyPostings` | `getCompanyPostings` (calls `loadPostingsWithCounts`) |
 | Public watchlist postings (≤100 companies) | `runGetWatchlistPostings` | `getWatchlistPostings` (≤100 path; >100 falls back) |
 
@@ -362,11 +408,24 @@ The web app can bypass the Vercel server-action proxy and call Typesense directl
 
 **Infrastructure:**
 
-- **Scoped key endpoint** (`GET /api/typesense-key`): mints a Typesense scoped search key (HMAC-SHA256 + base64) from `TYPESENSE_BROWSER_PARENT_KEY`. Embed is just `{ use_cache: true }`. `limit_hits` is intentionally **not** embedded because Typesense counts raw hits (not grouped rows) and would block normal anon traffic on `group_by company_id` with `group_limit 10`.
+- **Scoped key endpoint** (`GET /api/typesense-key`): mints a Typesense scoped search key (HMAC-SHA256 + base64) from `TYPESENSE_BROWSER_PARENT_KEY`. The embed is `{ use_cache: true, expires_at: <Unix seconds> }`. `limit_hits` is intentionally **not** embedded because Typesense counts raw hits (not grouped rows) and would block normal anon traffic on `group_by company_id` with `group_limit 10`.
 - **TTL**: 5 min for anon, 10 min for authed. Browser caches the key in memory and refreshes 30 s before expiry. The cache is cleared via `useClearTypesenseOnAuthChange(isLoggedIn)` (called from each client surface) so a sign-in/out doesn't keep the wrong key.
 - **Browser provider**: `apps/web/src/lib/search/typesense-browser.ts` (postings/companies), `typesense-browser-typeahead.ts` (taxonomy suggest), `typesense-browser-watchlist.ts`. All thin -- no `typesense-js` runtime dependency in the browser bundle.
 - **Anon truncation**: enforced as a soft client-side cap (`ANON_MAX_COMPANIES`, `ANON_MAX_POSTINGS`, `ANON_MAX_WATCHLIST_POSTINGS`) matching the current server-action behaviour. Real abuse protection is the Cloudflare per-IP rate-limit on the tunnel hostname.
 - **Fallback**: every runner falls back to the corresponding server action when the browser path errors, returns degraded, or hits a code-explicit fallback case (e.g. watchlist >100 companies).
+- **Search-bar application-data request budget**: direct mode batches candidate
+  collections, non-English fallbacks, and posting-count boost facets into at
+  most three sequential `multi_search` requests. The strict ceiling is four
+  application-initiated data requests per debounced query: one scoped-key fetch
+  plus three searches on a successful cold worst case, or a stopped direct plan
+  plus one batched server-action fallback. Direct-disabled mode uses one action.
+  A warm key removes the key fetch; warm candidates remove the candidate and
+  locale-fallback searches (a filter-aware warm hit can still need one boost
+  search). Best-effort boost failure retains unboosted order and never retries.
+  This is deliberately not described as an absolute browser-wire count: cold
+  Next.js dynamic-import chunks and browser-generated cross-origin CORS
+  `OPTIONS` preflights are cache/transport requests outside the runner's data
+  budget. Query generations prevent older completions from updating the UI.
 
 ## Read paths summary
 
@@ -374,7 +433,7 @@ Three data tiers, three read paths:
 
 | Tier | Role | Reads |
 |------|------|-------|
-| Local Postgres (Hetzner) | Source of truth for `job_posting`, taxonomies, companies | Crawler workers, exporter, `refresh-typesense` count aggregations, watchlist active-posting counts (via crawler) |
+| Local Postgres (Hetzner) | Source of truth for `job_posting`, taxonomies, companies | Crawler workers, exporter, `refresh-typesense` retained document IDs, watchlist active-posting counts (via crawler) |
 | Web-owned Postgres | **Only home** for user-facing tables (`user`, `session`, `watchlist`, `watchlist_company`, `saved_job`, ...) | Auth, watchlist mutations, saved-job snapshots, and watchlist company-pair lookups |
 | Typesense | In-memory search + denormalized read layer | Job search and posting detail, all typeaheads and taxonomy resolvers, browse-all modals, watchlist search/discovery/posting lists/counts, company autocomplete/detail/location/industry reads, public site stats, similar-company strip |
 
@@ -387,7 +446,11 @@ Aggregation queries against `job_posting` are deliberately kept on local Postgre
   Python. Uses the partial index
   `idx_jp_company_active ON job_posting(company_id) WHERE is_active`.
 - **Public Discover `anyCompany` counts**: the `watchlist` Typesense doc carries a sanitized `filters_json` payload with public filters plus resolved taxonomy IDs. Discover cards use that payload to run an exact live `job_posting` count for `anyCompany` watchlists without hydrating `watchlist.filters` from Postgres. Company-scoped public cards keep using the denormalized `active_job_count` field.
-- **Per-company taxonomy counts** (`refresh_typesense_counts`): aggregated against local Postgres directly, then upserted to the `company` / `location` / `occupation` / `seniority` / `technology` collections as `active_posting_count`.
+- **Per-company taxonomy counts** (`refresh_typesense_counts`): reads exhaustive
+  `job_posting` facets from Typesense so counts match web-visible filters, then
+  updates every retained local Postgres taxonomy/company document. A retained
+  ID missing from a valid facet receives an explicit zero; malformed or
+  unavailable facet responses abort the refresh.
 
 Most web pages do not aggregate `job_posting` directly -- they read precomputed counts from the Typesense doc fields above. Public Discover is the exception for `anyCompany` watchlists: it computes a live, exact Typesense count from the indexed filter payload because the company join is intentionally empty.
 
@@ -407,6 +470,7 @@ Metrics exposed by the exporter and scraped by Alloy:
 | `jobseek_typesense_slow_request_max_milliseconds` | Slowest request reported during the bounded five-minute log window |
 | `jobseek_typesense_recent_log_events{event="..."}` | Five-minute counts for descriptor exhaustion, leaderlessness, snapshot failure, slow requests, and thread-pool exhaustion |
 | `jobseek_cross_store_reconciliation_last_unresolved{target="typesense"}` | Unresolved drift from the last target outcome, read from durable PostgreSQL state |
+| `jobseek_cross_store_reconciliation_last_payload_mismatch{target="typesense"}` | Same-ID payload mismatches detected in the last complete verified cycle |
 | `jobseek_cross_store_reconciliation_last_success_unixtime{target="typesense"}` | Last complete verified Typesense cycle |
 | `jobseek_cross_store_reconciliation_progress_partition{target="typesense"}` | Durable next UUID partition |
 | `jobseek_cross_store_reconciliation_bootstrap_complete{target="typesense"}` | Whether legacy unbucketed cleanup was verified |
@@ -427,5 +491,5 @@ environment variables:
 | `TYPESENSE_BOOTSTRAP_KEY` | Root-only server bootstrap key; protected deployment secret, never a crawler/web variable |
 | `TYPESENSE_BACKUP_KEY` | Root-only generated backup key; protected deployment secret |
 | `TYPESENSE_SEARCH_KEY` | Search/read key for web server-side Typesense calls (via tunnel uses `https`) |
-| `TYPESENSE_BROWSER_PARENT_KEY` | Search-only parent key for `/api/typesense-key` scoped browser keys |
+| `TYPESENSE_BROWSER_PARENT_KEY` | `documents:search`-only parent for scoped browser keys, limited to `job_posting`, `company`, `location`, `occupation`, `seniority`, and `technology` |
 | `TYPESENSE_WRITE_KEY` | Watchlist write key (web app) |

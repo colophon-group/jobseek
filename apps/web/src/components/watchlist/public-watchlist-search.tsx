@@ -18,15 +18,22 @@ import {
 
 const PAGE_SIZE = 10;
 
-export function PublicWatchlistSearch() {
+export function PublicWatchlistSearch({
+  initialWatchlists,
+  initialTotal,
+}: {
+  initialWatchlists: PublicWatchlistEntry[];
+  initialTotal: number;
+}) {
   const params = useParams();
   const locale = (params.lang as string) ?? "en";
   const { t } = useLingui();
   const lp = useLocalePath();
   const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [loading, setLoading] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const initialQueryEffect = useRef(true);
 
   const fetchPage = useCallback(async (q: string, offset: number, limit: number) => {
     const fetcher = q.length >= 2
@@ -47,16 +54,20 @@ export function PublicWatchlistSearch() {
     hasMore,
     loadMore,
   } = usePaginatedLoadMore<PublicWatchlistEntry>({
-    initialItems: [],
-    initialTotal: 0,
+    initialItems: initialWatchlists,
+    initialTotal,
     batchSize: PAGE_SIZE,
     itemKey: (watchlist) => watchlist.id,
-    resetKey: `${locale}:${debouncedQuery ?? "__pending__"}`,
+    resetKey: `${locale}:${debouncedQuery}`,
     fetcher: ({ offset, limit }) => fetchPage(activeQuery, offset, limit),
   });
 
   // Initial load + search on query change
   useEffect(() => {
+    if (initialQueryEffect.current) {
+      initialQueryEffect.current = false;
+      return;
+    }
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       setLoading(true);
@@ -83,9 +94,14 @@ export function PublicWatchlistSearch() {
       <div className="mb-4 flex items-center gap-2 rounded-md border border-border-soft px-3 py-2">
         <Search size={14} className="shrink-0 text-muted" />
         <input
-          type="text"
+          type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          aria-label={t({
+            id: "watchlists.explore.searchLabel",
+            comment: "Accessible label for public watchlist search input",
+            message: "Search public watchlists",
+          })}
           placeholder={t({
             id: "watchlists.explore.searchPlaceholder",
             comment: "Placeholder for public watchlist search input",

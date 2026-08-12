@@ -31,6 +31,12 @@ QUERIES = {
     "stopped_containers": "jobseek_container_running == 0",
     "backup_series": "jobseek_backup_last_attempt_success",
     "failed_backups": "jobseek_backup_last_attempt_success == 0",
+    "backup_helper_image_series": (
+        'jobseek_backup_helper_image_available{service="web-postgresql"}'
+    ),
+    "backup_helper_image_gc_series": (
+        'jobseek_backup_helper_image_gc_protected{service="web-postgresql"}'
+    ),
     "postgresql_ready": "count(jobseek_postgresql_ready == 1)",
     "postgresql_shared_memory": "count(jobseek_postgresql_shared_memory_configured_bytes)",
     "postgresql_emergency_reserve": "count(jobseek_postgresql_emergency_reserve_bytes)",
@@ -146,6 +152,13 @@ def validate_results(
         if unexpected_backups:
             details.append(f"unexpected={_format_series(unexpected_backups)}")
         raise VerificationError("application-data backup coverage invalid: " + "; ".join(details))
+    expected_helper_series = (
+        {("typesense", "web-postgresql")} if ("typesense", "web-postgresql") in backups else set()
+    )
+    for name in ("backup_helper_image_series", "backup_helper_image_gc_series"):
+        helper_series = _series_keys(results, name, ("host_role", "service"))
+        if helper_series != expected_helper_series:
+            raise VerificationError(f"{name} coverage does not match the activated web backup")
     if _scalar(results, "postgresql_ready") != 1:
         raise VerificationError("PostgreSQL readiness metric is missing or unhealthy")
     if _scalar(results, "postgresql_shared_memory") != 1:

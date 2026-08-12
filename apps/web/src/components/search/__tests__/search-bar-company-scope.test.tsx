@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   submitSearch: vi.fn(),
   parseSearchFilters: vi.fn(),
   suggestLocations: vi.fn(),
+  suggestSearchBar: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -24,10 +25,7 @@ vi.mock("@/lib/actions/company", () => ({
 }));
 
 vi.mock("@/lib/search/typeahead-runner", () => ({
-  runSuggestLocations: (...args: unknown[]) => mocks.suggestLocations(...args),
-  runSuggestOccupations: vi.fn(async () => []),
-  runSuggestSeniorities: vi.fn(async () => []),
-  runSuggestTechnologies: vi.fn(async () => []),
+  runSearchBarTypeahead: (...args: unknown[]) => mocks.suggestSearchBar(...args),
 }));
 
 vi.mock("@/lib/actions/search-input", () => ({
@@ -47,6 +45,13 @@ beforeEach(() => {
   mocks.submitSearch.mockReset();
   mocks.parseSearchFilters.mockReset();
   mocks.suggestLocations.mockReset();
+  mocks.suggestSearchBar.mockImplementation(async (params: unknown) => ({
+    locations: await mocks.suggestLocations(params),
+    companies: [],
+    occupations: [],
+    seniorities: [],
+    technologies: [],
+  }));
 });
 
 function CompanySearchHarness() {
@@ -100,6 +105,9 @@ describe("SearchBar company scope", () => {
     const input = screen.getByRole("combobox");
     await userEvent.type(input, "merck");
     expect(await screen.findByText("Merced")).toBeTruthy();
+    expect(mocks.suggestSearchBar).toHaveBeenCalledWith(
+      expect.objectContaining({ includeCompanies: false }),
+    );
     await userEvent.type(input, "{Enter}");
 
     await waitFor(() => {

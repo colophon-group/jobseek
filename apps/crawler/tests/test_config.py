@@ -13,6 +13,9 @@ class TestSettings:
         assert s.crawler_max_concurrent == 20
         assert s.metrics_port == 9091
         assert s.browser_playwright_recycle_seconds == 6 * 60 * 60
+        assert s.crawler_db_role == "oneoff"
+        assert s.crawler_db_pool_min == 0
+        assert s.crawler_db_pool_max == 4
 
     def test_custom_values(self, monkeypatch):
         monkeypatch.setenv("DATABASE_URL", "postgresql://custom@localhost/custom")
@@ -52,4 +55,31 @@ class TestSettings:
                 _env_file=None,
                 drain_retry_base_seconds=base,
                 drain_retry_max_seconds=maximum,
+            )
+
+    @pytest.mark.parametrize(
+        ("role", "minimum", "maximum", "idle", "message"),
+        [
+            ("Worker_1", 0, 4, 60, "CRAWLER_DB_ROLE"),
+            ("x" * 41, 0, 4, 60, "CRAWLER_DB_ROLE"),
+            ("worker-1", -1, 4, 60, "CRAWLER_DB_POOL_MIN"),
+            ("worker-1", 5, 4, 60, "CRAWLER_DB_POOL_MIN"),
+            ("worker-1", 0, 0, 60, "CRAWLER_DB_POOL_MAX"),
+            ("worker-1", 0, 9, 60, "CRAWLER_DB_POOL_MAX"),
+            ("worker-1", 0, 4, 0, "CRAWLER_DB_POOL_IDLE_SECONDS"),
+            ("worker-1", 0, 4, 61, "CRAWLER_DB_POOL_IDLE_SECONDS"),
+            ("worker-1", 0, 4, float("nan"), "CRAWLER_DB_POOL_IDLE_SECONDS"),
+            ("worker-1", 0, 4, float("inf"), "CRAWLER_DB_POOL_IDLE_SECONDS"),
+        ],
+    )
+    def test_invalid_postgresql_pool_budget_is_rejected(
+        self, role, minimum, maximum, idle, message
+    ):
+        with pytest.raises(ValueError, match=message):
+            Settings(
+                _env_file=None,
+                crawler_db_role=role,
+                crawler_db_pool_min=minimum,
+                crawler_db_pool_max=maximum,
+                crawler_db_pool_idle_seconds=idle,
             )

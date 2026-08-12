@@ -2,13 +2,25 @@ import { type NextRequest, NextResponse } from "next/server";
 // Public REST routes use the plain service tier — see issue #3231.
 import { listTopCompanies, searchJobs } from "@/lib/services/search";
 import { parseSearchFilters } from "@/lib/services/search-input";
-import { checkRateLimit, apiResponse, siteUrl } from "../../_shared";
+import {
+  checkRateLimit,
+  apiResponse,
+  PUBLIC_EMPLOYMENT_TYPE_VALUES,
+  PUBLIC_WORK_MODE_VALUES,
+  parseApiLocale,
+  siteUrl,
+  validatePublicEnumListParam,
+  validateResolvedPublicFilters,
+} from "../../_shared";
 
 export async function GET(request: NextRequest) {
   const rl = await checkRateLimit(request);
   if (rl instanceof NextResponse) return rl;
 
   const sp = request.nextUrl.searchParams;
+  const locale = parseApiLocale(sp, rl);
+  if (locale instanceof NextResponse) return locale;
+
   const title = sp.get("title");
   if (!title) {
     return apiResponse(
@@ -17,7 +29,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const locale = sp.get("locale") ?? "en";
   const q = sp.get("q") ?? undefined;
   const loc = sp.get("loc") ?? undefined;
   const occ = sp.get("occ") ?? undefined;
@@ -31,8 +42,18 @@ export async function GET(request: NextRequest) {
   const description = sp.get("description") ?? undefined;
   const companies = sp.get("companies") ?? undefined;
 
+  for (const [name, raw, supported] of [
+    ["wm", wm, PUBLIC_WORK_MODE_VALUES],
+    ["etype", etype, PUBLIC_EMPLOYMENT_TYPE_VALUES],
+  ] as const) {
+    const invalid = validatePublicEnumListParam(name, raw, supported, rl);
+    if (invalid) return invalid;
+  }
+
   // Resolve slugs to get matching counts for the preview
   const parsed = await parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale });
+  const unresolved = validateResolvedPublicFilters(parsed, rl);
+  if (unresolved) return unresolved;
 
   const locationIds =
     parsed.locations.length > 0 ? parsed.locations.map((l) => l.id) : undefined;

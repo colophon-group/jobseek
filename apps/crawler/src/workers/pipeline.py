@@ -17,6 +17,7 @@ import contextlib
 import json
 import time
 import uuid
+from typing import cast
 from urllib.parse import urlparse
 
 import asyncpg
@@ -1095,6 +1096,7 @@ async def _process_monitor_work(
     worker_log = worker_log.bind(board_id=board_id, crawler_type=config.get("crawler_type"))
     provider_incident = _monitor_provider_incident(config)
     half_open_provider_probe = False
+    terminal_outcome_emitted = False
 
     try:
         # Self-heal stale Redis work for boards removed from configuration.
@@ -1107,6 +1109,7 @@ async def _process_monitor_work(
             )
         if board_status == "disabled":
             tasks_total.labels(kind="monitor", status="skipped_disabled").inc()
+            terminal_outcome_emitted = True
             worker_log.info(
                 "pipeline.monitor.skipped_disabled",
                 board_status=board_status,
@@ -1143,6 +1146,7 @@ async def _process_monitor_work(
                         first_time=False,
                     )
                     tasks_total.labels(kind="monitor", status="rerouted_to_browser").inc()
+                    terminal_outcome_emitted = True
                     worker_log.info(
                         "pipeline.monitor.rerouted_to_browser",
                         domain=domain,
@@ -1192,6 +1196,7 @@ async def _process_monitor_work(
                 host_circuit_state.labels(egress_host=fallback_host).set(1)
                 host_circuit_skipped_total.labels(egress_host=fallback_host).inc()
                 tasks_total.labels(kind="monitor", status="host_circuit_open").inc()
+                terminal_outcome_emitted = True
                 worker_log.warning(
                     "pipeline.monitor.host_circuit_deferred",
                     egress_host=fallback_host,
@@ -1228,6 +1233,7 @@ async def _process_monitor_work(
                     )
                     host_circuit_skipped_total.labels(egress_host=fallback_host).inc()
                     tasks_total.labels(kind="monitor", status="host_circuit_half_open").inc()
+                    terminal_outcome_emitted = True
                     worker_log.info(
                         "pipeline.monitor.host_circuit_probe_deferred",
                         egress_host=fallback_host,
@@ -1245,6 +1251,7 @@ async def _process_monitor_work(
 
         from src.processing.board import (
             BoardGoneError,
+            BoardMonitorResult,
             DeadlineExtender,
             _process_one_board_streaming,
         )
@@ -1258,9 +1265,18 @@ async def _process_monitor_work(
         try:
             try:
                 with track_request_hosts() as host_tracker:
-                    success, duration = await _process_one_board_streaming(
+                    raw_result: object = await _process_one_board_streaming(
                         board_record, local_pool, http, extender, pw=pw
                     )
+                    if isinstance(raw_result, BoardMonitorResult):
+                        success = raw_result.success
+                        duration = raw_result.duration_seconds
+                        outcome_status = raw_result.status
+                    else:
+                        # Keep focused worker tests and transitional callers
+                        # returning the historical tuple contract readable.
+                        success, duration = cast(tuple[bool, float], raw_result)
+                        outcome_status = "succeeded" if success else "failed"
             finally:
                 # Streaming bounds the live result set. Return allocator
                 # arenas after each board so a previous large response does
@@ -1290,7 +1306,6 @@ async def _process_monitor_work(
             # gone is an upstream signal, not a crawler defect, and
             # operators need a separate rollup so it doesn't dilute
             # the failure-rate alert (#3200).
-            tasks_total.labels(kind="monitor", status="gone").inc()
             if half_open_provider_probe:
                 await _release_monitor_provider_probe(provider_incident, worker_log)
                 half_open_provider_probe = False
@@ -1299,6 +1314,8 @@ async def _process_monitor_work(
                 time.time() + 60,
             )
             await reschedule_task(domain, board_id, "monitor", next_check_at, browser=browser)
+            tasks_total.labels(kind="monitor", status="gone").inc()
+            terminal_outcome_emitted = True
             return
 
         circuit_open_until = await _record_monitor_host_outcome(
@@ -1338,16 +1355,14 @@ async def _process_monitor_work(
                 next_check_at = max(next_check_at, provider_open_until)
         await reschedule_task(domain, board_id, "monitor", next_check_at, browser=browser)
 
-        # Emit the success/failure rollup for monitor tasks so Grafana
+        # Emit the terminal rollup for monitor tasks so Grafana
         # panels and ``TaskFailureRateHigh`` (which sum over
         # ``tasks_total{kind="monitor"}``) reflect monitor outcomes —
         # the scrape path already does this at the matching site
         # (#3200; mirrors the ``status = "succeeded" if success else
         # "failed"`` increment in ``_process_scrape_work``).
-        tasks_total.labels(
-            kind="monitor",
-            status="succeeded" if success else "failed",
-        ).inc()
+        tasks_total.labels(kind="monitor", status=outcome_status).inc()
+        terminal_outcome_emitted = True
 
         worker_log.info(
             "pipeline.monitor.done",
@@ -1367,7 +1382,8 @@ async def _process_monitor_work(
         # panel and ``TaskFailureRateHigh`` see monitor exceptions
         # (#3200). The per-board counter alone is high-cardinality and
         # not what the alert sums over.
-        tasks_total.labels(kind="monitor", status="failed").inc()
+        if not terminal_outcome_emitted:
+            tasks_total.labels(kind="monitor", status="failed").inc()
         worker_log.exception("pipeline.monitor.error", board_id=board_id)
         # Reschedule with backoff — guard so Redis errors don't kill the worker
         try:

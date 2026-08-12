@@ -9,7 +9,10 @@ import {
   typeaheadTechnologiesCacheTag,
 } from "@/lib/cache-tags";
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
-import { isTypesenseUnavailableError } from "@/lib/search/typesense-retry";
+import {
+  isTypesenseUnavailableError,
+  sanitizeTypesenseBoundaryError,
+} from "@/lib/search/typesense-retry";
 import {
   fetchOccupationDocuments,
   fetchSeniorityDocuments,
@@ -107,7 +110,7 @@ async function _fetchOccupationSuggestionsCached(
   } catch (err) {
     // Throw past the cache boundary so the wrapper returns `[]` without
     // pinning the slot for the next 3600s.
-    throw err instanceof Error ? err : new Error(String(err));
+    throw sanitizeTypesenseBoundaryError(err);
   }
 
   if (!result.hits || result.hits.length === 0) return [];
@@ -206,7 +209,7 @@ async function _fetchSenioritySuggestionsCached(
   } catch (err) {
     // Throw past the cache boundary so the wrapper returns `[]` without
     // pinning the slot for the next 3600s.
-    throw err instanceof Error ? err : new Error(String(err));
+    throw sanitizeTypesenseBoundaryError(err);
   }
 
   if (!result.hits || result.hits.length === 0) return [];
@@ -296,7 +299,7 @@ async function _fetchTechnologySuggestionsCached(
   } catch (err) {
     // Throw past the cache boundary so the wrapper returns `[]` without
     // pinning the slot for the next 3600s.
-    throw err instanceof Error ? err : new Error(String(err));
+    throw sanitizeTypesenseBoundaryError(err);
   }
 
   if (!result.hits || result.hits.length === 0) return [];
@@ -543,7 +546,7 @@ export async function getAllOccupationsGrouped(
       ttl: CACHE_TTL_LONG,
     });
   } catch (err) {
-    if (!isTypesenseUnavailableError(err)) throw err;
+    if (!isTypesenseUnavailableError(err)) throw sanitizeTypesenseBoundaryError(err);
     logExternalError(
       "error",
       { service: "typesense", operation: "all_occupations_grouped" },
@@ -893,7 +896,7 @@ export async function getAllSeniorities(
       ttl: CACHE_TTL_LONG,
     });
   } catch (err) {
-    if (!isTypesenseUnavailableError(err)) throw err;
+    if (!isTypesenseUnavailableError(err)) throw sanitizeTypesenseBoundaryError(err);
     logExternalError("error", { service: "typesense", operation: "all_seniorities" }, err);
     return [];
   }
@@ -1004,7 +1007,7 @@ export async function getAllTechnologiesGrouped(
       ttl: CACHE_TTL_LONG,
     });
   } catch (err) {
-    if (!isTypesenseUnavailableError(err)) throw err;
+    if (!isTypesenseUnavailableError(err)) throw sanitizeTypesenseBoundaryError(err);
     logExternalError(
       "error",
       { service: "typesense", operation: "all_technologies_grouped" },

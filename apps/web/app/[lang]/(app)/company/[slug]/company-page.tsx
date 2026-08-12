@@ -153,6 +153,11 @@ export function CompanyPage({
     comment: "Placeholder for search bar when on company page",
     message: `Search at ${company.name}...`,
   });
+  const searchAccessibleLabel = t({
+    id: "company.page.searchLabel",
+    comment: "Accessible label for job search scoped to one company",
+    message: `Search jobs at ${company.name}`,
+  });
 
   /** Update only the `show` query param without touching filter state. */
   function updateShowParam(postingId: string | null) {
@@ -365,9 +370,10 @@ export function CompanyPage({
         runSearch();
       },
       placeholder: searchPlaceholder,
+      accessibleLabel: searchAccessibleLabel,
     });
     return () => setPageActions(null);
-  }, [setPageActions, searchPlaceholder]);
+  }, [setPageActions, searchAccessibleLabel, searchPlaceholder]);
 
   const handleRemoveKeyword = useCallback(
     (keyword: string) => {
@@ -671,6 +677,7 @@ export function CompanyPage({
         onClearAll={handleClearAll}
         onSubmitSearch={handleSubmitSearch}
         searchPlaceholder={searchPlaceholder}
+        searchAccessibleLabel={searchAccessibleLabel}
         statsSlot={statsSlot}
       />
 

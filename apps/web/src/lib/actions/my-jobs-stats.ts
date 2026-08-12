@@ -4,21 +4,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { withDbRetry } from "@/lib/db-retry";
 import { getSessionUserId } from "@/lib/sessionCache";
-
-// IANA time-zone names are limited to ASCII letters, digits, '+', '-',
-// '_', and '/'. The pattern intentionally rejects anything else (e.g.
-// SQL meta-characters, whitespace, quotes) before the value is handed
-// to Postgres. We still pass the value through a parameter via the
-// drizzle `sql` tagged template, but validating up-front lets the
-// fallback to UTC kick in cleanly when a bad / malformed value arrives.
-// Length is also bounded — the longest real IANA name today
-// ("America/Argentina/ComodRivadavia") is 32 chars, so 64 is generous.
-const IANA_TZ_RE = /^[A-Za-z][A-Za-z0-9_+\-/]{0,63}$/;
-
-function normalizeTz(tz: string | undefined | null): string {
-  if (!tz) return "UTC";
-  return IANA_TZ_RE.test(tz) ? tz : "UTC";
-}
+import { normalizeViewerTimeZone } from "@/lib/viewer-tz";
 
 export interface FunnelData {
   saved: number;
@@ -72,7 +58,7 @@ export async function getMyJobsStats(params?: {
     };
   }
 
-  const tz = normalizeTz(params?.tz);
+  const tz = normalizeViewerTimeZone(params?.tz);
   const from = params?.from ?? null;
   const to = params?.to ?? null;
   // Date-range filter: interpret `from`/`to` as calendar days in the

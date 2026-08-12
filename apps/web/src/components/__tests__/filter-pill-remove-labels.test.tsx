@@ -91,6 +91,52 @@ describe("filter pill remove buttons", () => {
     }
   });
 
+  it("renders and removes unresolved outage filters with Clear all available", () => {
+    const remove = vi.fn();
+    render(
+      <SearchToolbar
+        locale="en"
+        keywords={[]}
+        locations={[]}
+        occupations={[]}
+        seniorities={[]}
+        technologies={[]}
+        unresolvedExplicitSlugs={{
+          loc: ["india"],
+          occ: ["software-engineer"],
+          sen: ["senior"],
+          tech: ["python"],
+        }}
+        jobLanguages={[]}
+        onRemoveKeyword={() => {}}
+        onAddLocation={() => {}}
+        onRemoveLocation={() => {}}
+        onAddOccupation={() => {}}
+        onRemoveOccupation={() => {}}
+        onAddSeniority={() => {}}
+        onRemoveSeniority={() => {}}
+        onAddTechnology={() => {}}
+        onRemoveTechnology={() => {}}
+        onRemoveUnresolvedSlug={remove}
+        onClearAll={() => {}}
+        onSubmitSearch={() => {}}
+      />,
+    );
+
+    for (const name of [
+      "Remove india filter",
+      "Remove software-engineer filter",
+      "Remove senior filter",
+      "Remove python filter",
+    ]) {
+      expect(screen.getByRole("button", { name })).toBeTruthy();
+    }
+    expect(screen.getByRole("button", { name: /clear all/i })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove india filter" }));
+    expect(remove).toHaveBeenCalledWith("loc", "india");
+  });
+
   it("names every active WatchlistFilterEditor remove button", () => {
     render(
       <WatchlistFilterEditor

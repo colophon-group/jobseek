@@ -1,21 +1,19 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import { Trans } from "@lingui/react/macro";
 import { Construction, Building2, Briefcase } from "lucide-react";
 import { siteConfig } from "@/content/config";
-import { getSiteStats } from "@/lib/actions/stats";
 import { CompanyRequestForm } from "./company-request-form";
 
 type StatsData = { companyCount: number; jobPostingCount: number };
 
-export function ProgressLoader({ locale, lang }: { locale: string; lang: string }) {
-  const [stats, setStats] = useState<StatsData | null>(null);
-
-  useEffect(() => {
-    getSiteStats().then(setStats).catch(() => setStats(null));
-  }, []);
-
+export function ProgressLoader({
+  locale,
+  lang,
+  stats,
+}: {
+  locale: string;
+  lang: string;
+  stats: StatsData | null;
+}) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
       <Construction className="mb-6 h-16 w-16 text-muted" />
