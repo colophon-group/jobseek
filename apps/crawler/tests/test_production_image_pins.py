@@ -119,6 +119,36 @@ def test_murmur_shim_deploy_promotes_and_persists_the_built_digest() -> None:
     assert "previous_compose_sha256" in rollback
     assert "previous_env_sha256" in rollback
     assert 'docker compose --env-file "$live_env"' in rollback
+    transaction = workflow[
+        workflow.index("trap rollback_shim EXIT") : workflow.index(
+            "rollback_armed=0", workflow.index("curl -sf http://localhost:8080/health")
+        )
+    ]
+    arm = transaction.index("rollback_armed=1")
+    env_intent = transaction.index("env_activated=1", arm)
+    env_publish = transaction.index('mv "$env_candidate" "$live_env"')
+    compose_intent = transaction.index("compose_activated=1", env_publish)
+    compose_publish = transaction.index('mv "$compose_candidate" "$live_compose"')
+    login = transaction.index("docker login ghcr.io")
+    pull = transaction.index("docker compose pull murmur-shim")
+    up = transaction.index("docker compose up -d murmur-shim")
+    identity = transaction.index("docker inspect deploy-murmur-shim-1")
+    assert (
+        arm
+        < env_intent
+        < env_publish
+        < compose_intent
+        < compose_publish
+        < login
+        < pull
+        < up
+        < identity
+    )
+    assert 'compose_candidate="$(mktemp "${live_compose}.shim.XXXXXX")"' in transaction
+    assert "os.fsync(directory_fd)" in transaction
+    assert "trap 'exit 129' HUP" in transaction
+    assert "trap 'exit 130' INT" in transaction
+    assert "trap 'exit 143' TERM" in transaction
     assert "needs: [build, deploy]" in workflow
     assert "jobseek-murmur-shim:latest" in workflow  # Post-deploy compatibility tag only.
     build_job = workflow[workflow.index("  build:") : workflow.index("\n  deploy:")]

@@ -145,12 +145,15 @@ def collect_typesense_checks() -> dict[str, bool]:
             for limit in ulimits
         ),
         "typesense_process_nofile_limit_effective": (
-            nofile_soft == TYPESENSE_NOFILE_LIMIT and nofile_hard == TYPESENSE_NOFILE_LIMIT
+            nofile_soft == TYPESENSE_NOFILE_LIMIT
+            and nofile_hard == TYPESENSE_NOFILE_LIMIT
         ),
         "typesense_log_rotation_managed": (
             log_config.get("Type") == "json-file"
-            and (log_config.get("Config") or {}).get("max-size") == TYPESENSE_LOG_MAX_SIZE
-            and (log_config.get("Config") or {}).get("max-file") == TYPESENSE_LOG_MAX_FILES
+            and (log_config.get("Config") or {}).get("max-size")
+            == TYPESENSE_LOG_MAX_SIZE
+            and (log_config.get("Config") or {}).get("max-file")
+            == TYPESENSE_LOG_MAX_FILES
         ),
         "typesense_snapshot_direct_mount_managed": mounted_snapshot,
         "typesense_snapshot_contract_label_managed": labels.get(
@@ -161,17 +164,23 @@ def collect_typesense_checks() -> dict[str, bool]:
             int(inspect["HostConfig"].get("Memory") or 0) == TYPESENSE_MEMORY_LIMIT
             and int(inspect["HostConfig"].get("MemoryReservation") or 0)
             == TYPESENSE_MEMORY_RESERVATION
-            and int(inspect["HostConfig"].get("MemorySwap") or 0) == TYPESENSE_MEMORY_SWAP
+            and int(inspect["HostConfig"].get("MemorySwap") or 0)
+            == TYPESENSE_MEMORY_SWAP
         ),
         "typesense_config_only_argv": container_argv
         == [f"--config={TYPESENSE_CONFIG_IN_CONTAINER}"],
-        "typesense_process_has_no_inline_api_key": not has_inline_flag(typesense_argv, "--api-key"),
-        "typesense_inspect_has_no_secret_env": not (environment_names & FORBIDDEN_TYPESENSE_ENV),
+        "typesense_process_has_no_inline_api_key": not has_inline_flag(
+            typesense_argv, "--api-key"
+        ),
+        "typesense_inspect_has_no_secret_env": not (
+            environment_names & FORBIDDEN_TYPESENSE_ENV
+        ),
         "typesense_config_mounted_read_only": mounted_config,
         "typesense_config_root_owned_0600": config_stat.st_uid == 0
         and config_stat.st_gid == 0
         and _mode(TYPESENSE_CONFIG) == 0o600,
-        "typesense_config_has_server_section": bool(config_lines) and config_lines[0] == "[server]",
+        "typesense_config_has_server_section": bool(config_lines)
+        and config_lines[0] == "[server]",
         "typesense_config_denied_to_nobody": nobody_config.returncode != 0,
         "docker_inspect_denied_to_nobody": nobody_docker.returncode != 0,
     }
@@ -215,17 +224,24 @@ def collect_cloudflared_checks() -> dict[str, bool]:
             ["systemctl", "is-active", "cloudflared.service"], check=False
         ).returncode
         == 0,
-        "cloudflared_process_has_no_inline_token": not has_inline_flag(cloudflared_argv, "--token"),
+        "cloudflared_process_has_no_inline_token": not has_inline_flag(
+            cloudflared_argv, "--token"
+        ),
         "cloudflared_unit_has_no_inline_token": "--token " not in unit_text
         and "--token=" not in unit_text,
         "cloudflared_uses_systemd_credential": (
             f"LoadCredential=cloudflare-tunnel-token:{CLOUDFLARED_TOKEN}" in unit_text
-            and ("/run/credentials/cloudflared.service/cloudflare-tunnel-token" in cloudflared_argv)
+            and (
+                "/run/credentials/cloudflared.service/cloudflare-tunnel-token"
+                in cloudflared_argv
+            )
         ),
         "cloudflared_runs_unprivileged": unit_properties.get("User") == "cloudflared"
         and unit_properties.get("Group") == "cloudflared",
-        "cloudflared_no_new_privileges": unit_properties.get("NoNewPrivileges") == "yes",
-        "cloudflared_protect_system_strict": unit_properties.get("ProtectSystem") == "strict",
+        "cloudflared_no_new_privileges": unit_properties.get("NoNewPrivileges")
+        == "yes",
+        "cloudflared_protect_system_strict": unit_properties.get("ProtectSystem")
+        == "strict",
         "cloudflared_token_root_owned_0600": token_stat.st_uid == 0
         and token_stat.st_gid == 0
         and _mode(CLOUDFLARED_TOKEN) == 0o600,
@@ -248,7 +264,9 @@ def self_test() -> None:
     assert not has_inline_flag(["server", "--config=/run/secret.ini"], "--api-key")
     assert has_inline_flag(["cloudflared", "--token", "secret"], "--token")
     assert has_inline_flag(["cloudflared", "--token=secret"], "--token")
-    assert not has_inline_flag(["cloudflared", "--token-file", "/run/credential"], "--token")
+    assert not has_inline_flag(
+        ["cloudflared", "--token-file", "/run/credential"], "--token"
+    )
 
 
 def main() -> int:

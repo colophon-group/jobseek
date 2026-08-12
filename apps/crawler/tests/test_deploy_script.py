@@ -233,6 +233,30 @@ def test_deploy_publishes_exact_success_marker_only_after_commit() -> None:
     assert "os.replace(temporary, active)" in script
 
 
+def test_release_generation_root_is_durable_before_pointer_publication() -> None:
+    crawler = DEPLOY_SH.read_text()
+    publish = crawler[
+        crawler.index("publish_active_deploy_release() {") : crawler.index(
+            "snapshot_active_deploy_specs() {"
+        )
+    ]
+    generation_sync = publish.index("os.fsync(directory_fd)")
+    root_sync = publish.index("os.fsync(release_root_fd)")
+    pointer_publish = publish.index('activate_release_generation "$generation"')
+    assert generation_sync < root_sync < pointer_publish
+
+    murmur = MURMUR_DEPLOY_WORKFLOW.read_text()
+    first_rollout = murmur[
+        murmur.index('if [[ ! -e "$active_release" ]]') : murmur.index(
+            'verify_release_generation "$active_generation"'
+        )
+    ]
+    generation_sync = first_rollout.index("os.fsync(generation_fd)")
+    root_sync = first_rollout.index("os.fsync(release_root_fd)")
+    pointer_publish = first_rollout.index("os.symlink(generation, candidate)")
+    assert generation_sync < root_sync < pointer_publish
+
+
 def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) -> None:
     script = DEPLOY_SH.read_text()
     restore = script[
@@ -550,14 +574,18 @@ def test_deploy_requires_exact_reconciliation_wrapper_before_activation() -> Non
 
 def test_crawler_host_mutation_waits_for_same_revision_murmur_workflow() -> None:
     workflow = DEPLOY_WORKFLOW.read_text()
+    parsed = yaml.safe_load(workflow)
 
     wait = workflow.index("- name: Wait for same-revision murmur-shim deployment")
     host_copy = workflow.index("- name: Copy deploy files")
     assert wait < host_copy
+    assert parsed["jobs"]["murmur"]["timeout-minutes"] == 360
+    assert parsed["jobs"]["deploy"]["needs"] == "murmur"
     assert "actions: read" in workflow
     assert "actions/workflows/deploy-murmur-shim.yml/runs" in workflow
     assert '-f head_sha="$GITHUB_SHA"' in workflow
-    assert "deadline=$((SECONDS + 11400))" in workflow
+    assert "deadline=$((SECONDS + 21000))" in workflow
+    assert "behind one predecessor" in workflow
     assert "same-revision murmur-shim workflow concluded" in workflow
     assert "timed out waiting for same-revision murmur-shim deployment" in workflow
     assert "malformed or mismatched same-revision Murmur workflow attestation" in workflow
@@ -902,7 +930,9 @@ def test_murmur_failure_restores_old_contract_before_clean_environment_restart(
             f'previous_compose="{previous_compose}"',
             f'previous_env="{previous_env}"',
             f'staged_compose="{staged_compose}"',
+            f'live_dir="{tmp_path}"',
             'env_candidate=""',
+            'compose_candidate=""',
             "rollback_armed=1",
             "compose_activated=1",
             "env_activated=1",
@@ -935,6 +965,131 @@ def test_murmur_failure_restores_old_contract_before_clean_environment_restart(
         "env=MURMUR_TOKEN=old-secret",
         "process-token=unset",
     ]
+
+
+def test_murmur_publication_login_and_pull_failures_restore_old_contract(
+    tmp_path: Path,
+) -> None:
+    workflow = yaml.safe_load(MURMUR_DEPLOY_WORKFLOW.read_text())
+    remote_script = next(
+        step["with"]["script"]
+        for step in workflow["jobs"]["deploy"]["steps"]
+        if step.get("name") == "Deploy via SSH"
+    )
+    transaction_start = remote_script.index("rollback_shim() {")
+    identity_gate = remote_script.index(
+        'test "$(docker inspect deploy-murmur-shim-1', transaction_start
+    )
+    transaction_end = remote_script.index("rollback_armed=0", identity_gate)
+    transaction = remote_script[transaction_start:transaction_end]
+    old_ref = "ghcr.io/colophon-group/jobseek-murmur-shim@sha256:" + "a" * 64
+    new_ref = "ghcr.io/colophon-group/jobseek-murmur-shim@sha256:" + "b" * 64
+    crawler_ref = "ghcr.io/colophon-group/jobseek-crawler@sha256:" + "c" * 64
+    browser_ref = "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:" + "d" * 64
+
+    for failure_mode in ("compose-publication", "login", "pull"):
+        case_dir = tmp_path / failure_mode
+        case_dir.mkdir()
+        live_compose = case_dir / "docker-compose.yml"
+        live_env = case_dir / ".env"
+        previous_compose = case_dir / "previous-compose.yml"
+        previous_env = case_dir / "previous.env"
+        staged_compose = case_dir / "staged-compose.yml"
+        injected = case_dir / "injected"
+        log = case_dir / "rollback.log"
+        live_compose.write_text("old-compose\n", encoding="utf-8")
+        live_env.write_text(
+            f"MURMUR_TOKEN=old-secret\nSHIM_IMAGE_REF={old_ref}\n", encoding="utf-8"
+        )
+        previous_compose.write_text("old-compose\n", encoding="utf-8")
+        previous_env.write_text(
+            f"MURMUR_TOKEN=old-secret\nSHIM_IMAGE_REF={old_ref}\n", encoding="utf-8"
+        )
+        staged_compose.write_text("new-compose\n", encoding="utf-8")
+        binary_dir = case_dir / "bin"
+        binary_dir.mkdir()
+        _write_executable(
+            binary_dir / "mv",
+            "#!/usr/bin/env bash\n"
+            "set -euo pipefail\n"
+            'destination="${!#}"\n'
+            f'if [[ "{failure_mode}" == compose-publication && '
+            f'"$destination" == "{live_compose}" && ! -e "{injected}" ]]; then\n'
+            f'  : >"{injected}"\n'
+            "  exit 88\n"
+            "fi\n"
+            'exec /bin/mv "$@"\n',
+        )
+        _write_executable(
+            binary_dir / "docker",
+            "#!/usr/bin/env bash\n"
+            "set -euo pipefail\n"
+            'if [[ "$1" == login ]]; then\n'
+            "  cat >/dev/null\n"
+            f'  [[ "{failure_mode}" != login ]] || exit 89\n'
+            'elif [[ "$1 $2" == "compose pull" ]]; then\n'
+            f'  [[ "{failure_mode}" != pull ]] || exit 90\n'
+            'elif [[ "$1" == compose && "$*" == *" up -d murmur-shim"* ]]; then\n'
+            f'  printf "compose=%s\\n" "$(cat "{live_compose}")" >>"{log}"\n'
+            f'  printf "env=%s\\n" "$(tr \'\\n\' \';\' <"{live_env}")" >>"{log}"\n'
+            f'  printf "process-token=%s\\n" "${{MURMUR_TOKEN:-unset}}" >>"{log}"\n'
+            'elif [[ "$1" == inspect ]]; then\n'
+            f'  printf "%s\\n" "{old_ref}"\n'
+            "else\n"
+            "  exit 91\n"
+            "fi\n",
+        )
+        _write_executable(binary_dir / "curl", "#!/usr/bin/env bash\nexit 0\n")
+        _write_executable(binary_dir / "sleep", "#!/usr/bin/env bash\nexit 0\n")
+        _write_executable(
+            binary_dir / "sha256sum",
+            '#!/usr/bin/env bash\nexec shasum -a 256 "$1"\n',
+        )
+        harness = "\n".join(
+            (
+                "set -Eeuo pipefail",
+                f'live_dir="{case_dir}"',
+                f'live_compose="{live_compose}"',
+                f'live_env="{live_env}"',
+                f'previous_compose="{previous_compose}"',
+                f'previous_env="{previous_env}"',
+                f'staged_compose="{staged_compose}"',
+                f'previous_compose_sha256="$(sha256sum "{previous_compose}" | awk '
+                "'{print $1}')\"",
+                f'previous_env_sha256="$(sha256sum "{previous_env}" | awk \'{{print $1}}\')"',
+                f'previous_shim_ref="{old_ref}"',
+                f'CRAWLER_IMAGE_REF="{crawler_ref}"',
+                f'BROWSER_IMAGE_REF="{browser_ref}"',
+                f'SHIM_IMAGE_REF="{new_ref}"',
+                'GHCR_PULL_TOKEN="pull-token"',
+                'MURMUR_TOKEN="new-secret"',
+                "export MURMUR_TOKEN",
+                "rollback_armed=0",
+                "compose_activated=0",
+                "env_activated=0",
+                'compose_candidate=""',
+                'env_candidate=""',
+                transaction,
+            )
+        )
+        result = subprocess.run(
+            ["bash", "-c", harness],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "PATH": f"{binary_dir}:{os.environ['PATH']}"},
+        )
+
+        assert result.returncode != 0, (failure_mode, result.stdout, result.stderr)
+        assert live_compose.read_text(encoding="utf-8") == "old-compose\n"
+        assert live_env.read_text(encoding="utf-8") == (
+            f"MURMUR_TOKEN=old-secret\nSHIM_IMAGE_REF={old_ref}\n"
+        )
+        assert log.read_text(encoding="utf-8").splitlines() == [
+            "compose=old-compose",
+            f"env=MURMUR_TOKEN=old-secret;SHIM_IMAGE_REF={old_ref};",
+            "process-token=unset",
+        ]
 
 
 def test_same_revision_murmur_digest_survives_crawler_rollback_and_retry(
