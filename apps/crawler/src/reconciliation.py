@@ -2,10 +2,11 @@
 
 Local PostgreSQL is authoritative. Supabase is a web-facing relational
 mirror, while Typesense is a derived search index. This module compares both
-directions in bounded UUID partitions and repairs only from a locked local
-snapshot. Progress lives in local PostgreSQL, so container recreation cannot
-reset or hide the schedule. Supabase support is retained for direct rollback
-tests only; the production CLI and scheduler can select Typesense only.
+directions in bounded UUID partitions and repairs from authoritative local
+rereads under the exporter fence. Progress lives in local PostgreSQL, so
+container recreation cannot reset or hide the schedule. Supabase support is
+retained for direct rollback tests only; the production CLI and scheduler can
+select Typesense only.
 """
 
 from __future__ import annotations
@@ -23,7 +24,6 @@ from urllib.parse import quote
 import asyncpg
 import httpx
 import structlog
-from asyncpg.pool import PoolConnectionProxy
 
 from src.config import settings
 from src.export_cursor_fence import export_cursor_fence
@@ -73,10 +73,10 @@ _TYPESENSE_POSTINGS_BY_ID_SQL = (
     "FROM job_posting jp JOIN company c ON c.id = jp.company_id "
     "WHERE jp.id = ANY($1::uuid[]) ORDER BY jp.id"
 )
-_LOCKED_POSTINGS_SQL = (
+_AUTHORITATIVE_POSTINGS_SQL = (
     "SELECT "
     + PostingSchema.select_list("last_seen_at")
-    + " FROM job_posting WHERE id = ANY($1::uuid[]) ORDER BY id FOR SHARE"
+    + " FROM job_posting WHERE id = ANY($1::uuid[]) ORDER BY id"
 )
 
 # These fields form the bounded, user-visible reconciliation contract. The
@@ -524,13 +524,13 @@ class TypesenseReconciliationClient:
             ) from None
 
 
-async def _locked_local_rows(
-    connection: asyncpg.Connection | PoolConnectionProxy,
+async def _authoritative_local_rows(
+    pool: asyncpg.Pool,
     posting_ids: Sequence[uuid.UUID],
 ) -> list[asyncpg.Record]:
     if not posting_ids:
         return []
-    return list(await connection.fetch(_LOCKED_POSTINGS_SQL, list(posting_ids)))
+    return list(await pool.fetch(_AUTHORITATIVE_POSTINGS_SQL, list(posting_ids)))
 
 
 async def _deactivate_supabase_ids(
@@ -554,21 +554,16 @@ async def _repair_supabase_partition(
     if not candidate_ids:
         return 0, 0
     ordered_ids = sorted(candidate_ids)
-    expected: dict[uuid.UUID, bool] = {}
-    absent: set[uuid.UUID] = set()
 
-    # The exporter fence prevents a newer CDC write from being overwritten by
-    # this direct repair. Row locks make the snapshot current before the
-    # network write; changes after release receive a later CDC timestamp.
-    async with (
-        export_cursor_fence(local_pool),
-        local_pool.acquire() as local_conn,
-        local_conn.transaction(),
-    ):
-        rows = await _locked_local_rows(local_conn, ordered_ids)
+    # Keep the exporter cursor pinned across the direct repair, but never keep
+    # a PostgreSQL transaction open across downstream network I/O. Workers may
+    # still update a candidate concurrently; the authoritative post-write read
+    # below detects that race and fails the partition closed. The worker's
+    # updated_at remains above the pinned cursor and is exported after release.
+    async with export_cursor_fence(local_pool):
+        rows = await _authoritative_local_rows(local_pool, ordered_ids)
         row_ids = {row["id"] for row in rows}
         absent = set(ordered_ids) - row_ids
-        expected = {row["id"]: bool(row["is_active"]) for row in rows}
         for batch in _chunks(rows, REPAIR_BATCH_SIZE):
             failed = await _upsert_to_supabase(supa_pool, list(batch))
             if failed:
@@ -576,13 +571,17 @@ async def _repair_supabase_partition(
         for batch in _chunks(sorted(absent), REPAIR_BATCH_SIZE):
             await _deactivate_supabase_ids(supa_pool, batch)
 
+        current_rows = await _authoritative_local_rows(local_pool, ordered_ids)
+        current_ids = {row["id"] for row in current_rows}
+        current = {row["id"]: bool(row["is_active"]) for row in current_rows}
+        currently_absent = set(ordered_ids) - current_ids
         verified = await _postgres_partition_snapshot(supa_pool, partition)
         unresolved = sum(
-            1
-            for posting_id, active in expected.items()
-            if verified.states.get(posting_id) != active
+            1 for posting_id, active in current.items() if verified.states.get(posting_id) != active
         )
-        unresolved += sum(1 for posting_id in absent if verified.states.get(posting_id) is True)
+        unresolved += sum(
+            1 for posting_id in currently_absent if verified.states.get(posting_id) is True
+        )
         if unresolved:
             raise ReconciliationError(
                 f"Supabase reconciliation verification left {unresolved} unresolved rows"

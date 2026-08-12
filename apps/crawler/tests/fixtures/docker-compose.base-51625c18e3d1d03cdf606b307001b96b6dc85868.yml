@@ -9,7 +9,6 @@ x-common-env: &common-env
   REDIS_URL: redis://localhost:6379/0
   WORKER_ID_PREFIX: hetzner
   LOG_LEVEL: INFO
-  CRAWLER_DB_POOL_IDLE_SECONDS: "60"
   R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
   R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
   R2_ENDPOINT_URL: ${R2_ENDPOINT_URL}
@@ -64,9 +63,7 @@ services:
       METRICS_PORT: "9095"
       DISCOVERY_CONCURRENCY: "20"
       MONITOR_CONCURRENCY: "5"
-      CRAWLER_DB_ROLE: worker-1
-      CRAWLER_DB_POOL_MIN: "1"
-      CRAWLER_DB_POOL_MAX: "8"
+      CRAWLER_DB_POOL_MAX: "20"
     depends_on:
       redis:
         condition: service_healthy
@@ -91,9 +88,7 @@ services:
       METRICS_PORT: "9096"
       DISCOVERY_CONCURRENCY: "20"
       MONITOR_CONCURRENCY: "5"
-      CRAWLER_DB_ROLE: worker-2
-      CRAWLER_DB_POOL_MIN: "1"
-      CRAWLER_DB_POOL_MAX: "8"
+      CRAWLER_DB_POOL_MAX: "20"
     depends_on:
       redis:
         condition: service_healthy
@@ -118,9 +113,7 @@ services:
       METRICS_PORT: "9097"
       DISCOVERY_CONCURRENCY: "20"
       MONITOR_CONCURRENCY: "5"
-      CRAWLER_DB_ROLE: worker-3
-      CRAWLER_DB_POOL_MIN: "1"
-      CRAWLER_DB_POOL_MAX: "8"
+      CRAWLER_DB_POOL_MAX: "20"
     depends_on:
       redis:
         condition: service_healthy
@@ -144,9 +137,6 @@ services:
     environment:
       <<: *common-env
       METRICS_PORT: "9093"
-      CRAWLER_DB_ROLE: exporter
-      CRAWLER_DB_POOL_MIN: "1"
-      CRAWLER_DB_POOL_MAX: "4"
     depends_on:
       redis:
         condition: service_healthy
@@ -163,9 +153,6 @@ services:
     environment:
       <<: *common-env
       METRICS_PORT: "9094"
-      CRAWLER_DB_ROLE: drain
-      CRAWLER_DB_POOL_MIN: "1"
-      CRAWLER_DB_POOL_MAX: "6"
     depends_on:
       redis:
         condition: service_healthy
@@ -191,9 +178,7 @@ services:
       METRICS_PORT: "9098"
       DISCOVERY_CONCURRENCY: "7"
       MONITOR_CONCURRENCY: "4"
-      CRAWLER_DB_ROLE: browser-1
-      CRAWLER_DB_POOL_MIN: "1"
-      CRAWLER_DB_POOL_MAX: "6"
+      CRAWLER_DB_POOL_MAX: "10"
       # Bound the lifetime of each long-lived Playwright Node driver. Recycle
       # only between claims; in-flight browser tasks are never interrupted.
       BROWSER_PLAYWRIGHT_RECYCLE_SECONDS: "21600"
@@ -364,8 +349,6 @@ services:
       # right is read from `.env` / shell at compose-up time; the var
       # on the left is exported into the container.
       MURMUR_DB_DSN: ${LOCAL_DATABASE_URL}
-      MURMUR_DB_POOL_MAX: "2"
-      MURMUR_INVOKER_MAX_CONCURRENCY: "2"
       MURMUR_ACCEPT_TARGET: postgres
       MURMUR_PY: /opt/jobseek-crawler-venv/bin/python3
       MURMUR_CRAWLER_ROOT: /opt/jobseek-crawler-src

@@ -542,6 +542,8 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     def query(_container: str, sql: str, **_kwargs) -> str:
         if sql == host.POSTGRES_STATS_SQL:
             return "12\t100\t500\t2\t700\t900\t1234.5\t67.8\t4000\t1800000000\t19000000000"
+        if sql == host.POSTGRES_CONNECTION_OWNERS_SQL:
+            return "exporter\tidle\t2\nworker-1\tidle_in_transaction\t1"
         if sql == host.BOARD_QUARANTINE_SCHEMA_SQL:
             return "6"
         if sql == host.BOARD_QUARANTINE_STATS_SQL:
@@ -570,6 +572,11 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     content = "\n".join(lines)
     assert "jobseek_postgresql_ready 1" in content
     assert "jobseek_postgresql_connections 12.0" in content
+    assert 'jobseek_postgresql_connections_by_owner{owner="exporter",state="idle"} 2.0' in content
+    assert (
+        'jobseek_postgresql_connections_by_owner{owner="worker-1",state="idle_in_transaction"} 1.0'
+        in content
+    )
     assert "jobseek_postgresql_archive_failed_total 2.0" in content
     assert "jobseek_postgresql_stats_query_duration_seconds " in content
     assert "jobseek_postgresql_checkpoint_write_seconds_total 1.2345" in content
@@ -627,6 +634,8 @@ def test_postgresql_probe_tolerates_reconciliation_schema_not_deployed(monkeypat
     def query(_container: str, sql: str, **_kwargs) -> str:
         if sql == host.POSTGRES_STATS_SQL:
             return "1\t2\t3\t0\t4\t5\t6\t7\t8\t9\t10"
+        if sql == host.POSTGRES_CONNECTION_OWNERS_SQL:
+            return "host-observability\tactive\t1"
         if sql in (host.BOARD_QUARANTINE_SCHEMA_SQL, host.BOARD_GONE_SCHEMA_SQL):
             return "0"
         if sql == host.PHANTOM_ACTIVE_STATS_SQL:
@@ -665,6 +674,8 @@ def test_postgresql_probe_tolerates_pre_payload_reconciliation_schema(monkeypatc
             return "0"
         if sql == host.PHANTOM_ACTIVE_STATS_SQL:
             return "0\t0\t0"
+        if sql == host.POSTGRES_CONNECTION_OWNERS_SQL:
+            return ""
         if sql == host.RECONCILIATION_SCHEMA_SQL:
             # The reconciliation tables exist, but migration 0018 has not yet
             # added the payload-observability columns used by the stats query.
@@ -756,7 +767,7 @@ def test_rule_source_has_bounded_owned_groups() -> None:
     }
     assert {group["name"]: len(group["rules"]) for group in groups} == {
         "jobseek_hetzner_fleet": 20,
-        "jobseek_postgresql_capacity": 4,
+        "jobseek_postgresql_capacity": 5,
         "jobseek_typesense_reliability": 7,
         "jobseek_telemetry_delivery": 9,
         "jobseek_crawler_reliability": 19,

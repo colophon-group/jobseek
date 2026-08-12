@@ -133,6 +133,7 @@ apply() {
     postgres \
       -c "listen_addresses=${POSTGRES_LISTEN_ADDRESSES}" \
       -c 'max_connections=100' \
+      -c 'superuser_reserved_connections=3' \
       -c 'shared_buffers=1GB' \
       -c 'work_mem=16MB' \
       -c 'wal_level=replica' \
@@ -159,7 +160,7 @@ apply() {
   docker exec --user postgres "$CURRENT_NAME" touch /var/spool/pgbackrest/archive-enabled
   docker exec --user postgres "$CURRENT_NAME" pgbackrest --stanza=jobseek check
   docker exec "$CURRENT_NAME" psql -U crawler -d crawler -v ON_ERROR_STOP=1 -Atc \
-    "select current_setting('server_version'), current_setting('archive_mode'), current_setting('wal_level'), current_setting('max_wal_senders'), current_setting('max_wal_size'), current_setting('shared_buffers')"
+    "select current_setting('server_version'), current_setting('archive_mode'), current_setting('wal_level'), current_setting('max_wal_senders'), current_setting('max_wal_size'), current_setting('shared_buffers'), current_setting('max_connections'), current_setting('superuser_reserved_connections')"
 
   rollback_needed=0
   trap - ERR

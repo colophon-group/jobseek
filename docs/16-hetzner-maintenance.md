@@ -435,6 +435,12 @@ The host sampler publishes:
 - duration of the sampler's bounded PostgreSQL statistics query; and
 - standard Unix-exporter filesystem size, free-byte, and inode series.
 
+PostgreSQL client ownership, exact service/deploy budgets, idle-transaction
+controls, and the required seven-day acceptance queries live in
+[the PostgreSQL connection budget](22-postgresql-connections.md). Treat that
+inventory as part of the host capacity contract; do not raise
+`max_connections` to compensate for an unattributed or oversized pool.
+
 `PostgreSQLDataVolumeHeadroomLow` is the early capacity control. It remains
 pending for six hours before firing when either the attached XFS Volume has
 less than 25% free or a linear regression over the retained 24-hour database
@@ -1590,6 +1596,7 @@ raise SystemExit(0 if get_token() else 1)
 PY'
 test -s /etc/jobseek-codex/labeller.env
 sudo -u codex-runner test -r /etc/jobseek-codex/labeller.env
+bash -lc 'source /srv/jobseek-codex/repo/scripts/deploy-codex-runner-host.sh; _validate_labeller_env_file /etc/jobseek-codex/labeller.env'
 sudo -u codex-runner test ! -w /var/run/docker.sock
 ```
 
@@ -1602,7 +1609,7 @@ import os
 import asyncpg
 
 async def main():
-    conn = await asyncpg.connect(os.environ["DATABASE_URL"])
+    conn = await asyncpg.connect(os.environ["LOCAL_DATABASE_URL"])
     try:
         value = await conn.fetchval("SELECT count(*) FROM job_posting")
         print("job_posting count readable", value is not None)

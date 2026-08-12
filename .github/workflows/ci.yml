@@ -597,6 +597,7 @@ jobs:
           tests/e2e/test_board_quarantine_backoff.py
           tests/e2e/test_labeller_sampling_plan.py
           tests/e2e/test_location_taxonomy_repair.py
+          tests/e2e/test_postgres_pool_session_guards.py
           -v
         working-directory: apps/crawler
 

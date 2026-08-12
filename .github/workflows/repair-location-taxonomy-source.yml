@@ -220,7 +220,12 @@ jobs:
             test "$local_url" != "$source_url"
             printf 'LOCAL_DATABASE_URL=%s\n' "$local_url" > "$RUNTIME_ENV"
             printf 'WEB_DATABASE_URL=%s\n' "$source_url" >> "$RUNTIME_ENV"
-            test "$(wc -l < "$RUNTIME_ENV")" -eq 2
+            printf '%s\n' \
+              'CRAWLER_DB_ROLE=location-taxonomy-repair' \
+              'CRAWLER_DB_POOL_MIN=0' \
+              'CRAWLER_DB_POOL_MAX=4' \
+              'CRAWLER_DB_POOL_IDLE_SECONDS=60' >> "$RUNTIME_ENV"
+            test "$(wc -l < "$RUNTIME_ENV")" -eq 6
 
             set +e
             evidence="$(
