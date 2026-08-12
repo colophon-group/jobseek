@@ -174,7 +174,10 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert 'tar -C "$DEPLOY_DIR" -xpf "$ROLLBACK_SPEC_ARCHIVE"' in script
     assert 'install -m 0644 "$ACTIVE_COMPOSE_SNAPSHOT"' in script
     assert "ACTIVE_COMPOSE_SNAPSHOT_SHA256" in script
-    assert 'mv "$active_compose_temporary" "$ACTIVE_COMPOSE_SNAPSHOT"' in script
+    assert "ACTIVE_ENV_SNAPSHOT" in script
+    assert 'install -m 0600 "$ACTIVE_ENV_SNAPSHOT" "$ROLLBACK_ENV_FILE"' in script
+    assert 'mv "$compose_temporary" "$ACTIVE_COMPOSE_SNAPSHOT"' in script
+    assert 'mv "$env_temporary" "$ACTIVE_ENV_SNAPSHOT"' in script
     quiesce = rollback.index(
         "stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain"
     )
@@ -204,12 +207,15 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
 
 def test_deploy_publishes_exact_success_marker_only_after_commit() -> None:
     script = DEPLOY_SH.read_text()
-    prepare = script.index("printf 'CRAWLER_IMAGE_TAG=%s\\nJOBSEEK_DEPLOY_REVISION=%s\\n'")
+    prepare = script.index('"CRAWLER_IMAGE_TAG=$IMAGE_TAG"')
     health = script.index("\nwait_for_core_services\n")
     disarm = script.index("\ndisarm_deploy_rollback\n")
     publish = script.index('mv "$deploy_success_temporary" "$DEPLOY_SUCCESS_FILE"')
 
     assert health < prepare < disarm < publish
+    assert '"CRAWLER_IMAGE_REF=$CRAWLER_IMAGE_REF"' in script
+    assert '"BROWSER_IMAGE_REF=$BROWSER_IMAGE_REF"' in script
+    assert '"SHIM_IMAGE_REF=$SHIM_IMAGE_REF"' in script
     assert 'DEPLOY_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.env"' in script
 
 
@@ -245,6 +251,12 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             "stop_maintenance_window() {",
             "  printf 'maintenance-stop\\n' >>\"$TEST_LOG\"",
             "}",
+            "wait_for_core_services() {",
+            "  printf 'rollback-ready\\n' >>\"$TEST_LOG\"",
+            "}",
+            "publish_active_deploy_snapshot() {",
+            "  printf 'snapshot-publish\\n' >>\"$TEST_LOG\"",
+            "}",
             restore,
             rollback_support,
             rollback,
@@ -264,7 +276,11 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
         )
     )
 
-    for mode, expected_status in (("signal", 129), ("error", 1)):
+    for mode, expected_status in (
+        ("signal", 129),
+        ("error", 1),
+        ("restart-failure", 1),
+    ):
         deploy_dir = tmp_path / mode
         deploy_dir.mkdir()
         env_file = deploy_dir / ".env"
@@ -303,8 +319,11 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             'printf \'process-tag=%s\\n\' "${CRAWLER_IMAGE_TAG:-unset}" >>"$log"\n'
             'tag="$(sed -n \'s/^CRAWLER_IMAGE_TAG=//p\' "$env_file")"\n'
             'printf \'env-tag=%s\\n\' "$tag" >>"$log"\n'
-            'printf \'compose=%s\\n\' "$(cat "$deploy_dir/docker-compose.yml")" >>"$log"\n',
+            'printf \'compose=%s\\n\' "$(cat "$deploy_dir/docker-compose.yml")" >>"$log"\n'
+            '[[ ! -e "$deploy_dir/fail-restart" ]]\n',
         )
+        if mode == "restart-failure":
+            (deploy_dir / "fail-restart").touch()
 
         result = subprocess.run(
             ["bash", "-c", harness, "deploy-rollback-test", mode],
@@ -326,15 +345,19 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
         )
         assert compose.read_text(encoding="utf-8") == "old-compose\n"
         events = log.read_text(encoding="utf-8").splitlines()
-        assert events == [
+        expected_events = [
             "compose-stop",
             "compose-up",
             "process-tag=unset",
             "env-tag=old-tag",
             "compose=old-compose",
-            "health-gate",
-            "maintenance-stop",
         ]
+        if mode != "restart-failure":
+            expected_events.extend(("health-gate", "snapshot-publish"))
+        expected_events.append("maintenance-stop")
+        assert events == expected_events
+        if mode == "restart-failure":
+            assert "retaining the last verified crawler snapshot" in result.stderr
 
 
 def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -> None:
@@ -446,25 +469,33 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
 def test_first_rollout_fails_closed_without_verified_compose_preseed(tmp_path: Path) -> None:
     script = DEPLOY_SH.read_text()
     verifier = script[
-        script.index("verify_active_compose_snapshot() {") : script.index(
+        script.index("verify_active_snapshot_file() {") : script.index(
             "snapshot_active_deploy_specs() {"
         )
     ]
     snapshot = tmp_path / "active-compose.yml"
     digest = tmp_path / "active-compose.sha256"
+    env_snapshot = tmp_path / "active.env"
+    env_digest = tmp_path / "active-env.sha256"
     binary_dir = tmp_path / "bin"
     binary_dir.mkdir()
     _write_executable(
         binary_dir / "sha256sum",
         '#!/usr/bin/env bash\nshasum -a 256 "$1"\n',
     )
+    _write_executable(
+        binary_dir / "stat",
+        '#!/usr/bin/env bash\nprintf "600\\n"\n',
+    )
     harness = "\n".join(
         (
             "set -euo pipefail",
             'ACTIVE_COMPOSE_SNAPSHOT="$TEST_SNAPSHOT"',
             'ACTIVE_COMPOSE_SNAPSHOT_SHA256="$TEST_DIGEST"',
+            'ACTIVE_ENV_SNAPSHOT="$TEST_ENV_SNAPSHOT"',
+            'ACTIVE_ENV_SNAPSHOT_SHA256="$TEST_ENV_DIGEST"',
             verifier,
-            "verify_active_compose_snapshot",
+            "verify_active_deploy_snapshot",
         )
     )
     env = {
@@ -472,6 +503,8 @@ def test_first_rollout_fails_closed_without_verified_compose_preseed(tmp_path: P
         "PATH": f"{binary_dir}:{os.environ['PATH']}",
         "TEST_SNAPSHOT": str(snapshot),
         "TEST_DIGEST": str(digest),
+        "TEST_ENV_SNAPSHOT": str(env_snapshot),
+        "TEST_ENV_DIGEST": str(env_digest),
     }
 
     missing = subprocess.run(
@@ -497,6 +530,11 @@ def test_first_rollout_fails_closed_without_verified_compose_preseed(tmp_path: P
     assert "snapshot failed verification" in mismatch.stderr
 
     digest.write_text(f"{hashlib.sha256(snapshot.read_bytes()).hexdigest()}\n", encoding="ascii")
+    env_snapshot.write_text("OWNER=old-owner\n", encoding="utf-8")
+    env_snapshot.chmod(0o600)
+    env_digest.write_text(
+        f"{hashlib.sha256(env_snapshot.read_bytes()).hexdigest()}\n", encoding="ascii"
+    )
     verified = subprocess.run(
         ["bash", "-c", harness],
         check=False,
@@ -512,7 +550,7 @@ def test_deploy_requires_exact_reconciliation_wrapper_before_activation() -> Non
     workflow = DEPLOY_WORKFLOW.read_text()
 
     guard = script.index("\nensure_reconciliation_wrapper_compatible\n")
-    compose_preseed = script.index("\nverify_active_compose_snapshot\n")
+    compose_preseed = script.index("\nverify_active_deploy_snapshot\n")
     rollback_cleanup = script.index('rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"')
     snapshot = script.index("\nsnapshot_active_deploy_specs\n")
     activation = script.index("\nactivate_staged_deploy_specs\n")
@@ -537,7 +575,7 @@ def test_crawler_host_mutation_waits_for_same_revision_murmur_workflow() -> None
     assert "actions: read" in workflow
     assert "actions/workflows/deploy-murmur-shim.yml/runs" in workflow
     assert '-f head_sha="$GITHUB_SHA"' in workflow
-    assert "deadline=$((SECONDS + 2700))" in workflow
+    assert "deadline=$((SECONDS + 8400))" in workflow
     assert "same-revision murmur-shim workflow concluded" in workflow
     assert "timed out waiting for same-revision murmur-shim deployment" in workflow
 
@@ -612,8 +650,10 @@ def test_crawler_image_stays_on_python_313_for_fasttext_wheels() -> None:
     dockerfile = DOCKERFILE.read_text()
     dockerignore = DOCKERIGNORE.read_text().splitlines()
 
-    assert "FROM python:3.13-slim AS base" in dockerfile
+    assert "FROM python:3.13.15-slim-trixie@sha256:" in dockerfile
     assert "python:3.14" not in dockerfile
+    assert "ghcr.io/astral-sh/uv:0.12.3@sha256:" in dockerfile
+    assert "ghcr.io/astral-sh/uv:latest" not in dockerfile
     assert "COPY scripts/with-xvfb.sh /usr/local/bin/with-xvfb" in dockerfile
     assert 'ENTRYPOINT ["/usr/local/bin/with-xvfb"]' in dockerfile
     assert "scripts/*" in dockerignore

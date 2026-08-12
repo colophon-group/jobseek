@@ -1016,7 +1016,7 @@ telemetry incident even when application services remain healthy.
 not a GitHub cron and not an in-process exporter loop. Its first start is 20
 minutes after the timer is activated; it launches
 `/usr/local/sbin/jobseek-crawler-reconciliation` as the unprivileged `deploy`
-user. The wrapper resolves the immutable image tag already deployed in
+user. The wrapper resolves the immutable image digest already deployed in
 `/home/deploy/.env` and starts a read-only one-shot container with a 1 GiB
 memory limit, one CPU, a PID cap, and no persistent container filesystem. It
 explicitly targets Typesense, processes at most 16 partitions, and then exits. Lock acquisition
@@ -1167,7 +1167,7 @@ survive disable, failed installs, and transactional host-surface rollback.
 Disabling also stops an active run after publishing the gate; the wrapper
 rechecks that gate immediately before its credentialed GitHub phase.
 
-Host-surface deployment verifies the committed crawler tag and full Git
+Host-surface deployment verifies the committed crawler tag, manifest digest, and full Git
 revision while holding `/run/lock/jobseek-crawler-mutation.lock`, then pins that
 exact release for a report-only acceptance run. The prior runner remains the
 rollback target until the fresh report succeeds and the timer is active. A stop
@@ -1710,7 +1710,7 @@ For one bounded Docker one-off:
   docker run --rm --name repair-example \
     --env-file /run/lock/repair-example.env \
     --network host \
-    ghcr.io/colophon-group/jobseek-crawler:<deployed-version> \
+    "$(sed -n 's/^CRAWLER_IMAGE_REF=//p' /home/deploy/.crawler-deploy-success.env)" \
     /app/.venv/bin/crawler <bounded-command>
 ```
 

@@ -171,11 +171,11 @@ jobs:
 
             active_revision="$(read_exact_env JOBSEEK_DEPLOY_REVISION)"
             active_tag="$(read_exact_env CRAWLER_IMAGE_TAG)"
-            owner="$(read_exact_env OWNER)"
+            active_image_ref="$(read_exact_env CRAWLER_IMAGE_REF)"
             test "$active_revision" = "$EXPECTED_CRAWLER_REVISION"
             test "$active_tag" = "$EXPECTED_IMAGE_TAG"
-            test "$owner" = colophon-group
             test "$active_tag" != latest
+            [[ "$active_image_ref" =~ ^ghcr\.io/colophon-group/jobseek-crawler@sha256:[0-9a-f]{64}$ ]]
 
             if grep -Eq '^(DATABASE_URL|DATABASE_URL_UNPOOLED)=' "$ENV_FILE"; then
               echo "Legacy crawler mirror credential is still present" >&2
@@ -190,7 +190,7 @@ jobs:
               exit 1
             }
             test "$(docker inspect --format '{{.Config.Image}}' "$exporter_id")" = \
-              "ghcr.io/${owner}/jobseek-crawler:${active_tag}"
+              "$active_image_ref"
             if docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$exporter_id" \
               | cut -d= -f1 \
               | grep -Eq '^(DATABASE_URL|DATABASE_URL_UNPOOLED|WEB_DATABASE_URL)$'; then
@@ -242,7 +242,7 @@ jobs:
                 --label jobseek.maintenance.issue=6282 \
                 --label "jobseek.maintenance.revision=${EXPECTED_CRAWLER_REVISION}" \
                 --label jobseek.maintenance.budget-seconds=900 \
-                "ghcr.io/${owner}/jobseek-crawler:${active_tag}" \
+                "$active_image_ref" \
                 uv run --no-sync crawler repair-location-taxonomy-source 2>&1
             )"
             operation_status=$?

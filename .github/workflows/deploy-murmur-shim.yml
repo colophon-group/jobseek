@@ -111,7 +111,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The host mutation lock may be held by a bounded crawler maintenance job
+    # for up to two hours. Never bypass that lock to rewrite shared deploy state.
+    timeout-minutes: 135
     # `environment: production` is what makes the production-env secrets
     # available to this job. Required reviewers / wait-timer can be
     # added later via repo settings without changing this file.
@@ -125,9 +127,9 @@ jobs:
 
       # Single SCP, single file. `strip_components: 2` strips
       # `apps/crawler/`, landing the file at
-      # `/home/deploy/docker-compose.yml` — matches what the existing
-      # crawler deploy (`deploy-crawler-browser.yml`) ships and what the
-      # box's deploy.sh expects. Do NOT mix multi-depth sources here
+      # `/home/deploy/incoming-shim/docker-compose.yml`, where the locked
+      # host script can validate and activate it transactionally. Do NOT mix
+      # multi-depth sources here
       # (see lesson #3); add a second SCP step instead.
       - name: Copy docker-compose.yml to box
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
@@ -145,6 +147,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
+          command_timeout: 130m
           # `envs:` whitelist — only these names are forwarded into the
           # remote shell. Names only; values come from the matching
           # `env:` block below. Never put a secret name into `script:`.
@@ -172,15 +175,57 @@ jobs:
             # unrelated settings remain byte-for-byte intact.
             export MURMUR_TOKEN DATABASE_URL OWNER LOCAL_DATABASE_URL SHIM_IMAGE_REF
             cd /home/deploy
+            exec 9>/run/lock/jobseek-crawler-mutation.lock
+            flock -w 7200 9 || {
+              echo "Timed out waiting for the crawler mutation lock" >&2
+              exit 1
+            }
             [[ "$SHIM_IMAGE_REF" =~ ^ghcr\.io/colophon-group/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]]
             live_compose=/home/deploy/docker-compose.yml
             staged_compose=/home/deploy/incoming-shim/docker-compose.yml
+            active_compose=/home/deploy/.crawler-active-docker-compose.yml
+            active_compose_sha256=/home/deploy/.crawler-active-docker-compose.sha256
+            active_env=/home/deploy/.crawler-active.env
+            active_env_sha256=/home/deploy/.crawler-active-env.sha256
             test -f "$live_compose"
             test ! -L "$live_compose"
             test -f "$staged_compose"
             test ! -L "$staged_compose"
             test -f /home/deploy/.env
             test ! -L /home/deploy/.env
+
+            verify_snapshot() {
+              snapshot="$1"
+              digest_file="$2"
+              label="$3"
+              test -f "$snapshot"
+              test ! -L "$snapshot"
+              test -f "$digest_file"
+              test ! -L "$digest_file"
+              expected="$(tr -d '[:space:]' <"$digest_file")"
+              [[ "$expected" =~ ^[0-9a-f]{64}$ ]]
+              actual="$(sha256sum "$snapshot" | awk '{print $1}')"
+              if [[ "$actual" != "$expected" ]]; then
+                echo "Crawler-confirmed ${label} snapshot failed verification" >&2
+                return 1
+              fi
+            }
+
+            verify_snapshot "$active_compose" "$active_compose_sha256" Compose
+            if [[ ! -e "$active_env" && ! -e "$active_env_sha256" ]]; then
+              # The Compose snapshot predates the immutable-image rollout.
+              # Seed its paired environment before changing the live file so
+              # the following crawler deploy has one coherent rollback target.
+              active_env_candidate="$(mktemp /home/deploy/.crawler-active-env.XXXXXX)"
+              active_env_digest_candidate="$(mktemp /home/deploy/.crawler-active-env-digest.XXXXXX)"
+              install -m 0600 /home/deploy/.env "$active_env_candidate"
+              sha256sum "$active_env_candidate" | awk '{print $1}' >"$active_env_digest_candidate"
+              chmod 0644 "$active_env_digest_candidate"
+              mv "$active_env_candidate" "$active_env"
+              mv "$active_env_digest_candidate" "$active_env_sha256"
+            fi
+            verify_snapshot "$active_env" "$active_env_sha256" environment
+            test "$(stat -c '%a' "$active_env")" = 600
 
             resolve_running_digest() {
               container="$1"

@@ -137,8 +137,8 @@ flock -w 300 8 || {
 release_file="$DEPLOY_SUCCESS"
 [[ ! -e "$STATE_ROOT/acceptance-crawler.env" ]] || \
   release_file="$STATE_ROOT/acceptance-crawler.env"
-mapfile -t tags < <(sed -n 's/^CRAWLER_IMAGE_TAG=//p' "$release_file" 2>/dev/null)
-[[ ${#tags[@]} -eq 1 && "${tags[0]}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][a-zA-Z0-9.]+)?$ ]] || {
+mapfile -t image_refs < <(sed -n 's/^CRAWLER_IMAGE_REF=//p' "$release_file" 2>/dev/null)
+[[ ${#image_refs[@]} -eq 1 && "${image_refs[0]}" =~ ^ghcr\.io/colophon-group/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || {
   echo "ERROR: committed crawler image is unavailable for network verification" >&2
   exit 1
 }
@@ -172,7 +172,7 @@ done
 "${IPT[@]}" -I DOCKER-USER 1 -i "$BRIDGE" -j "$EGRESS_CHAIN"
 "${IPT[@]}" -I INPUT 1 -i "$BRIDGE" -j "$INPUT_CHAIN"
 
-image="ghcr.io/colophon-group/jobseek-crawler:${tags[0]}"
+image="${image_refs[0]}"
 docker image inspect "$image" >/dev/null
 docker run --rm \
   --name "$PROBE_CONTAINER" \

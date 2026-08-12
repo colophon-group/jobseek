@@ -71,6 +71,8 @@ ROLLBACK_POOL_OVERRIDE="$DEPLOY_DIR/.crawler-rollback-pool-budget.override.yml"
 ROLLBACK_POOL_OVERRIDE_SOURCE="$INCOMING_DIR/rollback-pool-budget.override.yml"
 ACTIVE_COMPOSE_SNAPSHOT="$DEPLOY_DIR/.crawler-active-docker-compose.yml"
 ACTIVE_COMPOSE_SNAPSHOT_SHA256="$DEPLOY_DIR/.crawler-active-docker-compose.sha256"
+ACTIVE_ENV_SNAPSHOT="$DEPLOY_DIR/.crawler-active.env"
+ACTIVE_ENV_SNAPSHOT_SHA256="$DEPLOY_DIR/.crawler-active-env.sha256"
 DEPLOY_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.env"
 ENV_FILE_WAS_PRESENT=0
 ROLLBACK_ARMED=0
@@ -185,27 +187,60 @@ start_maintenance_window() {
     "trap 'exit 0' TERM INT; sleep 28800" >/dev/null
 }
 
-verify_active_compose_snapshot() {
-  local actual expected
+verify_active_snapshot_file() {
+  local snapshot="$1"
+  local digest_file="$2"
+  local label="$3"
+  local expected actual
 
-  [[ -f "$ACTIVE_COMPOSE_SNAPSHOT" ]] || {
-    echo "ERROR: crawler-confirmed active Compose snapshot is unavailable" >&2
+  [[ -f "$snapshot" && ! -L "$snapshot" ]] || {
+    echo "ERROR: crawler-confirmed active ${label} snapshot is unavailable or unsafe" >&2
     return 1
   }
-  [[ -f "$ACTIVE_COMPOSE_SNAPSHOT_SHA256" ]] || {
-    echo "ERROR: crawler-confirmed active Compose digest is unavailable" >&2
+  [[ -f "$digest_file" && ! -L "$digest_file" ]] || {
+    echo "ERROR: crawler-confirmed active ${label} digest is unavailable or unsafe" >&2
     return 1
   }
-  expected="$(tr -d '[:space:]' <"$ACTIVE_COMPOSE_SNAPSHOT_SHA256")"
+  expected="$(tr -d '[:space:]' <"$digest_file")"
   [[ "$expected" =~ ^[0-9a-f]{64}$ ]] || {
-    echo "ERROR: crawler-confirmed active Compose digest is invalid" >&2
+    echo "ERROR: crawler-confirmed active ${label} digest is invalid" >&2
     return 1
   }
-  actual="$(sha256sum "$ACTIVE_COMPOSE_SNAPSHOT" | awk '{print $1}')"
+  actual="$(sha256sum "$snapshot" | awk '{print $1}')"
   [[ "$actual" == "$expected" ]] || {
-    echo "ERROR: crawler-confirmed active Compose snapshot failed verification" >&2
+    echo "ERROR: crawler-confirmed active ${label} snapshot failed verification" >&2
     return 1
   }
+}
+
+verify_active_deploy_snapshot() {
+  verify_active_snapshot_file \
+    "$ACTIVE_COMPOSE_SNAPSHOT" "$ACTIVE_COMPOSE_SNAPSHOT_SHA256" Compose
+  verify_active_snapshot_file \
+    "$ACTIVE_ENV_SNAPSHOT" "$ACTIVE_ENV_SNAPSHOT_SHA256" environment
+  [[ "$(stat -c '%a' "$ACTIVE_ENV_SNAPSHOT")" == 600 ]] || {
+    echo "ERROR: crawler-confirmed active environment snapshot permissions are unsafe" >&2
+    return 1
+  }
+}
+
+publish_active_deploy_snapshot() {
+  local compose_temporary compose_digest_temporary
+  local env_temporary env_digest_temporary
+
+  compose_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-compose.XXXXXX")"
+  compose_digest_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-compose-digest.XXXXXX")"
+  env_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-env.XXXXXX")"
+  env_digest_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-env-digest.XXXXXX")"
+  install -m 0644 "$DEPLOY_DIR/docker-compose.yml" "$compose_temporary"
+  install -m 0600 "$ENV_FILE" "$env_temporary"
+  sha256sum "$compose_temporary" | awk '{print $1}' >"$compose_digest_temporary"
+  sha256sum "$env_temporary" | awk '{print $1}' >"$env_digest_temporary"
+  chmod 0644 "$compose_digest_temporary" "$env_digest_temporary"
+  mv "$compose_temporary" "$ACTIVE_COMPOSE_SNAPSHOT"
+  mv "$compose_digest_temporary" "$ACTIVE_COMPOSE_SNAPSHOT_SHA256"
+  mv "$env_temporary" "$ACTIVE_ENV_SNAPSHOT"
+  mv "$env_digest_temporary" "$ACTIVE_ENV_SNAPSHOT_SHA256"
 }
 
 snapshot_active_deploy_specs() {
@@ -484,6 +519,17 @@ rollback_deploy() {
     if ((command_status != 0 && rollback_status == 0)); then
       rollback_status=$command_status
     fi
+  fi
+
+  if ((rollback_status == 0)); then
+    publish_active_deploy_snapshot
+    command_status=$?
+    if ((command_status != 0)); then
+      echo "ERROR: crawler rollback could not republish its restored contract" >&2
+      rollback_status=$command_status
+    fi
+  else
+    echo "ERROR: retaining the last verified crawler snapshot after rollback failure" >&2
   fi
 
   stop_maintenance_window
@@ -814,18 +860,15 @@ ensure_no_running_compose_oneoffs
 ensure_no_running_typesense_maintenance
 ensure_reconciliation_wrapper_compatible
 python3 "$INCOMING_DIR/scripts/postgresql-operational-preflight.py"
-verify_active_compose_snapshot
+verify_active_deploy_snapshot
 
 # Snapshot the complete active deployment contract before replacing any file
 # or credential. Rollback restores the old Compose spec and old env together,
 # so an old image never starts with the new credential semantics.
 rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"
 snapshot_active_deploy_specs
-if [[ -f "$ENV_FILE" ]]; then
-  ENV_FILE_WAS_PRESENT=1
-  cp "$ENV_FILE" "$ROLLBACK_ENV_FILE"
-  chmod 600 "$ROLLBACK_ENV_FILE"
-fi
+ENV_FILE_WAS_PRESENT=1
+install -m 0600 "$ACTIVE_ENV_SNAPSHOT" "$ROLLBACK_ENV_FILE"
 arm_deploy_rollback
 activate_staged_deploy_specs
 resolve_shim_image_ref
@@ -969,12 +1012,7 @@ verify_deployed_image_identity
 stop_maintenance_window
 
 # ── Cleanup ──────────────────────────────────────────────────────────
-active_compose_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-compose.XXXXXX")"
-active_compose_digest_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-compose-digest.XXXXXX")"
 deploy_success_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-deploy-success.XXXXXX")"
-install -m 0644 "$DEPLOY_DIR/docker-compose.yml" "$active_compose_temporary"
-sha256sum "$active_compose_temporary" | awk '{print $1}' >"$active_compose_digest_temporary"
-chmod 0644 "$active_compose_digest_temporary"
 printf '%s\n' \
   "CRAWLER_IMAGE_TAG=$IMAGE_TAG" \
   "CRAWLER_IMAGE_REF=$CRAWLER_IMAGE_REF" \
@@ -985,8 +1023,7 @@ printf '%s\n' \
   "JOBSEEK_DEPLOY_REVISION=$JOBSEEK_DEPLOY_REVISION" \
   >"$deploy_success_temporary"
 chmod 0644 "$deploy_success_temporary"
-mv "$active_compose_temporary" "$ACTIVE_COMPOSE_SNAPSHOT"
-mv "$active_compose_digest_temporary" "$ACTIVE_COMPOSE_SNAPSHOT_SHA256"
+publish_active_deploy_snapshot
 # Publish the exact committed release only after all health gates pass and the
 # rollback trap is disarmed. Consumers must use this atomic marker rather than
 # the earlier .env write, which is intentionally part of the rollback window.

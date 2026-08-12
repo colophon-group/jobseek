@@ -629,7 +629,7 @@ crawler board <slug>     # Process single board (debug)
 
 ```bash
 # docker-compose.yml defines: redis, worker (x3), browser, exporter, drain, alloy
-# deploy.sh: writes a rollback-backed least-privilege env, pulls the requested tag, stops processors, migrates Postgres, patches Typesense, runs plain crawler sync, starts + gates services
+# deploy.sh: writes a rollback-backed least-privilege env, pulls the requested manifest digests, stops processors, migrates Postgres, patches Typesense, runs plain crawler sync, starts + gates services
 # CI: .github/workflows/deploy-crawler-browser.yml builds versioned slim + full images, then promotes them to latest after deploy succeeds
 ```
 

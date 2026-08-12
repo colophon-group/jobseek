@@ -192,7 +192,8 @@ def test_rate_limited_complete_report_is_degraded_not_fresh_success(tmp_path: Pa
 
 def test_runner_uses_immutable_image_ephemeral_token_and_bounded_resources() -> None:
     source = RUNNER.read_text(encoding="utf-8")
-    assert 'image="ghcr.io/colophon-group/jobseek-crawler:${tag}"' in source
+    assert 'image="$(read_exact_release "$release_file" CRAWLER_IMAGE_REF)"' in source
+    assert "jobseek-crawler@sha256:[0-9a-f]{64}" in source
     assert "ghcr.io/colophon-group/jobseek-crawler:latest" not in source
     assert "jobseek-ats-inventory-host.lock" in source
     assert "flock -n 9" in source
@@ -298,8 +299,9 @@ def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
     assert "JOBSEEK_GITHUB_APP_PRIVATE_KEY_FILE" in installer
     receiver = RECEIVER.read_text(encoding="utf-8")
     assert '"$payload_size" -le 131072' in receiver
-    assert "${#fields[@]} -eq 6" in receiver
+    assert "${#fields[@]} -eq 7" in receiver
     assert "JOBSEEK_EXPECTED_CRAWLER_IMAGE_TAG" in receiver
+    assert "JOBSEEK_EXPECTED_CRAWLER_IMAGE_REF" in receiver
     assert "JOBSEEK_EXPECTED_CRAWLER_DEPLOY_REVISION" in receiver
     assert "jobseek-ats-inventory-network.service" in installer
     assert "jobseek-ats-inventory-network-probe" in installer
@@ -372,6 +374,7 @@ def test_remote_deploy_waits_for_exact_image_before_quiescing_install() -> None:
     assert "jobseek-crawler-mutation.lock" in source[:install]
     assert ".crawler-deploy-success.env" in source[:install]
     assert "CRAWLER_IMAGE_TAG" in gate
+    assert "CRAWLER_IMAGE_REF" in gate
     assert "JOBSEEK_DEPLOY_REVISION" in gate
     assert 'exec 8<"$lock"' in source[:install]
     assert 'exec 8>"$lock"' not in source[:install]

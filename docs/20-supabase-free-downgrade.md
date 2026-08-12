@@ -129,6 +129,8 @@ this before merging or dispatching a change that can independently replace the
 shared Compose file:
 
 ```bash
+exec 9>/run/lock/jobseek-crawler-mutation.lock
+flock -w 300 9
 install -m 0644 /home/deploy/docker-compose.yml \
   /home/deploy/.crawler-active-docker-compose.yml
 sha256sum /home/deploy/.crawler-active-docker-compose.yml \
@@ -136,12 +138,25 @@ sha256sum /home/deploy/.crawler-active-docker-compose.yml \
 chmod 0644 /home/deploy/.crawler-active-docker-compose.sha256.tmp
 mv /home/deploy/.crawler-active-docker-compose.sha256.tmp \
   /home/deploy/.crawler-active-docker-compose.sha256
+install -m 0600 /home/deploy/.env /home/deploy/.crawler-active.env
+sha256sum /home/deploy/.crawler-active.env \
+  | awk '{print $1}' > /home/deploy/.crawler-active-env.sha256.tmp
+chmod 0644 /home/deploy/.crawler-active-env.sha256.tmp
+mv /home/deploy/.crawler-active-env.sha256.tmp \
+  /home/deploy/.crawler-active-env.sha256
+test "$(sha256sum /home/deploy/.crawler-active-docker-compose.yml | awk '{print $1}')" = \
+  "$(cat /home/deploy/.crawler-active-docker-compose.sha256)"
+test "$(sha256sum /home/deploy/.crawler-active.env | awk '{print $1}')" = \
+  "$(cat /home/deploy/.crawler-active-env.sha256)"
+test "$(stat -c '%a' /home/deploy/.crawler-active.env)" = 600
 ```
 
 The deploy does not infer first-rollout state from a Git revision: a skipped or
 failed prior deploy can leave the host behind Git. Missing or mismatched
-snapshot evidence fails closed before mutation. Every successful crawler
-deploy replaces both files for the next rollback. The deploy also fails closed
+snapshot evidence fails closed before mutation. The coupled Murmur rollout may
+seed the environment pair only while holding the shared mutation lock and
+before changing the live env. Every successful crawler deploy replaces both
+verified file/digest pairs for the next rollback. The deploy also fails closed
 before activation unless the installed reconciliation wrapper's content and
 completed-install digest marker exactly match the required Typesense-only
 wrapper contract.
@@ -239,7 +254,7 @@ Run only after the repair release has deployed successfully from `main`:
 
 The workflow shares both the crawler deployment concurrency group and
 `/run/lock/jobseek-crawler-mutation.lock`. It verifies PostgreSQL recovery
-headroom, exact deployed revision, immutable crawler image tag, exporter image
+headroom, exact deployed revision, immutable crawler manifest digest, exporter image
 identity, and absence of relational credentials from the exporter. The repair
 container receives only `LOCAL_DATABASE_URL` and the separately named retained
 `WEB_DATABASE_URL`; neither value is printed or copied to GitHub.
@@ -296,7 +311,7 @@ downgrade issue:
    samples per taxonomy), frozen posting-floor coverage, plus saved-job
    coverage pass;
 4. the posting exporter no longer receives any web/mirror database credential,
-   its active revision and immutable image tag are recorded durably, and its
+   its active revision and immutable image digest are recorded durably, and its
    rollback path has been exercised. The deploy/sync one-shot may retain the
    separately named `WEB_DATABASE_URL` for smaller retained web-owned or
    taxonomy boundaries; it is not forwarded to the long-lived exporter;

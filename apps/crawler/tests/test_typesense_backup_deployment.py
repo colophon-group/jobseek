@@ -193,6 +193,9 @@ def test_typesense_backup_requires_persistent_staging_and_bounded_memory_policy(
 def test_typesense_restore_drill_is_isolated_and_self_cleaning() -> None:
     drill = (ROOT / "deploy/backups/typesense/restore-drill.sh").read_text(encoding="utf-8")
 
+    assert "typesense/typesense:27.1@sha256:" in drill
+    assert "typesense/typesense:27.1}" not in drill
+    assert "restore image must be a reviewed digest-pinned 27.1 artifact" in drill
     assert "production container name 'typesense' exists" in drill
     assert "--publish" in drill
     assert '"127.0.0.1:$PORT:8108"' in drill

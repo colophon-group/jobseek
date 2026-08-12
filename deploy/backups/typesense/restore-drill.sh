@@ -19,7 +19,7 @@ EXPECTED_INVENTORY="${JOBSEEK_TYPESENSE_EXPECTED_INVENTORY:-}"
 RESTORE_ROOT="${JOBSEEK_TYPESENSE_RESTORE_ROOT:-/var/lib/jobseek-typesense-restore}"
 READY_TIMEOUT_S="${JOBSEEK_TYPESENSE_RESTORE_READY_TIMEOUT_S:-1200}"
 MIN_FREE_BYTES="${JOBSEEK_TYPESENSE_RESTORE_MIN_FREE_BYTES:-4294967296}"
-IMAGE="${JOBSEEK_TYPESENSE_RESTORE_IMAGE:-typesense/typesense:27.1}"
+IMAGE="${JOBSEEK_TYPESENSE_RESTORE_IMAGE:-typesense/typesense:27.1@sha256:5c12af89130b8ee0be11541321ba8a3a7c7a538d7c6cd95e0409dc2d75ca6455}"
 PORT="${JOBSEEK_TYPESENSE_RESTORE_PORT:-18108}"
 SNAPSHOT="${1:-latest}"
 EXPECTED_ALIASES=(
@@ -31,6 +31,11 @@ EXPECTED_ALIASES=(
   technology
   watchlist
 )
+
+[[ "$IMAGE" =~ ^typesense/typesense:27\.1@sha256:[0-9a-f]{64}$ ]] || {
+  echo "ERROR: Typesense restore image must be a reviewed digest-pinned 27.1 artifact" >&2
+  exit 1
+}
 
 if docker container inspect typesense >/dev/null 2>&1; then
   echo "ERROR: production container name 'typesense' exists; use an isolated recovery host" >&2

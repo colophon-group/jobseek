@@ -94,13 +94,15 @@ for ((attempt = 1; attempt <= 120; attempt++)); do
   open_shared_lock
   if flock -w 30 8; then
     deployed_tag="$(read_exact CRAWLER_IMAGE_TAG || true)"
+    deployed_ref="$(read_exact CRAWLER_IMAGE_REF || true)"
     deployed_revision="$(read_exact JOBSEEK_DEPLOY_REVISION || true)"
     flock -u 8
     if [[ "$deployed_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][a-zA-Z0-9.]+)?$ && \
+          "$deployed_ref" =~ ^ghcr\.io/colophon-group/jobseek-crawler@sha256:[0-9a-f]{64}$ && \
           "$deployed_revision" =~ ^[0-9a-f]{40}$ && \
           ( "$expected_tag" == current || \
             ( "$deployed_tag" == "$expected_tag" && "$deployed_revision" == "$expected_revision" ) ) ]]; then
-      printf '%s %s\n' "$deployed_tag" "$deployed_revision"
+      printf '%s %s %s\n' "$deployed_tag" "$deployed_ref" "$deployed_revision"
       exit 0
     fi
   fi
@@ -110,14 +112,16 @@ echo "ERROR: exact committed crawler release did not become available" >&2
 exit 1
 REMOTE
 )"
-read -r resolved_tag resolved_revision extra <<<"$resolved_release"
+read -r resolved_tag resolved_ref resolved_revision extra <<<"$resolved_release"
 [[ -z "${extra:-}" ]] || exit 1
 [[ "$resolved_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][a-zA-Z0-9.]+)?$ ]] || exit 1
+[[ "$resolved_ref" =~ ^ghcr\.io/colophon-group/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || exit 1
 [[ "$resolved_revision" =~ ^[0-9a-f]{40}$ ]] || exit 1
 
 {
   printf '%s\n' "$DEPLOY_SHA"
   printf '%s\n' "$resolved_tag"
+  printf '%s\n' "$resolved_ref"
   printf '%s\n' "$resolved_revision"
   printf '%s' "$ATS_GITHUB_APP_ID" | base64 | tr -d '\n'; printf '\n'
   printf '%s' "$ATS_GITHUB_APP_INSTALLATION_ID" | base64 | tr -d '\n'; printf '\n'

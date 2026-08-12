@@ -54,10 +54,13 @@ describe("crawler deploy.sh: murmur-shim integration", () => {
     expect(sh).toContain("set -euo pipefail");
     // The .env heredoc still overwrites the box env file on every run;
     // the path now goes through ENV_FILE so deploy.sh can keep a
-    // rollback copy and restore it if the new image fails to start.
+    // verified crawler-confirmed snapshot and restore it if the new image
+    // fails to start.
     expect(sh).toContain('ENV_FILE="$DEPLOY_DIR/.env"');
     expect(sh).toContain('ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"');
-    expect(sh).toContain('cp "$ENV_FILE" "$ROLLBACK_ENV_FILE"');
+    expect(sh).toContain(
+      'install -m 0600 "$ACTIVE_ENV_SNAPSHOT" "$ROLLBACK_ENV_FILE"',
+    );
     expect(sh).toContain('cat > "$ENV_FILE" <<EOF');
   });
 });

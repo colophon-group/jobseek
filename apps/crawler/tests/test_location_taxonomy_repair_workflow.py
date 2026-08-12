@@ -102,9 +102,11 @@ def test_operation_attests_exact_deployment_image_and_credentials_without_exposi
 
     assert "JOBSEEK_DEPLOY_REVISION" in repair
     assert "CRAWLER_IMAGE_TAG" in repair
+    assert "CRAWLER_IMAGE_REF" in repair
     assert 'test "$active_revision" = "$EXPECTED_CRAWLER_REVISION"' in repair
     assert 'test "$active_tag" = "$EXPECTED_IMAGE_TAG"' in repair
-    assert 'test "$owner" = colophon-group' in repair
+    assert "jobseek-crawler@sha256:[0-9a-f]{64}" in repair
+    assert '"$active_image_ref"' in repair
     assert "Expected exactly one live exporter container" in repair
     assert "Live exporter has a forbidden database credential" in repair
     assert "LOCAL_DATABASE_URL" in repair
