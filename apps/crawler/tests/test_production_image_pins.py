@@ -54,12 +54,23 @@ def test_redis_and_murmur_shim_require_immutable_production_images() -> None:
     assert "SHIM_IMAGE_REF:?SHIM_IMAGE_REF must be an immutable GHCR digest" in compose
     assert "SHIM_IMAGE_TAG:-latest" not in compose
     assert "resolve_shim_image_ref" in deploy
-    assert "duplicate SHIM_IMAGE_REF" in deploy
+    assert "active deploy environment must contain exactly one SHIM_IMAGE_REF" in deploy
+    assert "live environment and Murmur container do not attest one immutable image" in deploy
     assert "jobseek-murmur-shim@sha256:[0-9a-f]{64}" in deploy
     assert "SHIM_IMAGE_REF=${SHIM_IMAGE_REF}" in deploy
+    assert "verify_shim_deploy_contract" in deploy
+    assert "Murmur live environment, container, and success marker disagree" in deploy
     assert deploy.index("resolve_shim_image_ref", deploy.index("activate_staged_deploy_specs")) < (
         deploy.index('cat > "$ENV_FILE"')
     )
+    assert "id: murmur" in workflow
+    assert "steps.murmur.outputs.image_ref" in workflow
+    assert "BROWSER_IMAGE_REF,SHIM_IMAGE_REF,JOBSEEK_DEPLOY_REVISION" in workflow
+    assert 'docker buildx imagetools inspect "$revision_ref"' in workflow
+    assert 'keys == ["SLSA"]' in workflow
+    assert "Murmur provenance does not attest the exact source revision" in workflow
+    assert "zero or multiple linux/amd64 images" in workflow
+    assert "zero or multiple SLSA provenance attestations" in workflow
 
 
 def test_murmur_shim_deploy_promotes_and_persists_the_built_digest() -> None:

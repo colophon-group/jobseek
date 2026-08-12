@@ -726,42 +726,90 @@ ensure_deploy_disk_headroom() {
 
 resolve_shim_image_ref() {
   local candidate="$SHIM_IMAGE_REF"
-  local image_id existing_container
+  local existing_container configured_ref persisted_ref
   local -a persisted_refs=()
-  local -a matching_digests=()
 
-  if [[ -z "$candidate" && -f "$ENV_FILE" && ! -L "$ENV_FILE" ]]; then
-    mapfile -t persisted_refs < <(sed -n 's/^SHIM_IMAGE_REF=//p' "$ENV_FILE")
-    if (( ${#persisted_refs[@]} > 1 )); then
-      echo "ERROR: active deploy environment contains duplicate SHIM_IMAGE_REF values" >&2
+  # A coupled Murmur/crawler rollout passes the attested same-revision digest
+  # explicitly. Never replace it with live state: a prior crawler attempt may
+  # have failed and rolled the host back to the previous shim release.
+  if [[ -n "$candidate" ]]; then
+    if [[ ! "$candidate" =~ ^ghcr\.io/${OWNER}/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]]; then
+      echo "ERROR: SHIM_IMAGE_REF must be an immutable jobseek-murmur-shim digest" >&2
       return 1
     fi
-    if (( ${#persisted_refs[@]} == 1 )); then
-      candidate="${persisted_refs[0]}"
-    fi
+    export SHIM_IMAGE_REF
+    return 0
   fi
 
-  if [[ -z "$candidate" ]]; then
-    existing_container="${COMPOSE_PROJECT_NAME}-murmur-shim-1"
-    image_id="$(docker inspect "$existing_container" --format '{{.Image}}' 2>/dev/null || true)"
-    if [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-      mapfile -t matching_digests < <(
-        docker image inspect "$image_id" \
-          --format '{{range .RepoDigests}}{{println .}}{{end}}' 2>/dev/null |
-          grep -E "^ghcr\\.io/${OWNER}/jobseek-murmur-shim@sha256:[0-9a-f]{64}$" || true
-      )
-      if (( ${#matching_digests[@]} == 1 )); then
-        candidate="${matching_digests[0]}"
-      fi
+  # Crawler-only revisions do not build a same-head shim. Resolve their shim
+  # from the live environment only when the running container agrees exactly;
+  # accepting either source alone would allow drift to become the next release.
+  if [[ -f "$ENV_FILE" && ! -L "$ENV_FILE" ]]; then
+    mapfile -t persisted_refs < <(sed -n 's/^SHIM_IMAGE_REF=//p' "$ENV_FILE")
+    if (( ${#persisted_refs[@]} != 1 )); then
+      echo "ERROR: active deploy environment must contain exactly one SHIM_IMAGE_REF value" >&2
+      return 1
     fi
-  fi
-
-  if [[ ! "$candidate" =~ ^ghcr\.io/${OWNER}/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]]; then
-    echo "ERROR: SHIM_IMAGE_REF must resolve to exactly one immutable jobseek-murmur-shim digest" >&2
+    persisted_ref="${persisted_refs[0]}"
+  else
+    echo "ERROR: active deploy environment is unavailable for SHIM_IMAGE_REF resolution" >&2
     return 1
   fi
-  SHIM_IMAGE_REF="$candidate"
+
+  existing_container="${COMPOSE_PROJECT_NAME}-murmur-shim-1"
+  configured_ref="$(
+    docker inspect "$existing_container" --format '{{.Config.Image}}' 2>/dev/null || true
+  )"
+  if [[ ! "$persisted_ref" =~ ^ghcr\.io/${OWNER}/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]] ||
+    [[ "$configured_ref" != "$persisted_ref" ]]
+  then
+    echo "ERROR: live environment and Murmur container do not attest one immutable image" >&2
+    return 1
+  fi
+  SHIM_IMAGE_REF="$persisted_ref"
   export SHIM_IMAGE_REF
+}
+
+read_exact_shim_ref() {
+  local file="$1"
+  local label="$2"
+  local -a refs=()
+
+  if [[ ! -f "$file" || -L "$file" ]]; then
+    echo "ERROR: ${label} is not a regular non-symlink file" >&2
+    return 1
+  fi
+  mapfile -t refs < <(sed -n 's/^SHIM_IMAGE_REF=//p' "$file")
+  if (( ${#refs[@]} != 1 )); then
+    echo "ERROR: ${label} must contain exactly one SHIM_IMAGE_REF value" >&2
+    return 1
+  fi
+  if [[ ! "${refs[0]}" =~ ^ghcr\.io/${OWNER}/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]]; then
+    echo "ERROR: ${label} contains a malformed SHIM_IMAGE_REF value" >&2
+    return 1
+  fi
+  printf '%s\n' "${refs[0]}"
+}
+
+verify_shim_deploy_contract() {
+  local success_file="$1"
+  local live_ref success_ref container_id container_ref
+
+  live_ref="$(read_exact_shim_ref "$ENV_FILE" "active deploy environment")"
+  success_ref="$(read_exact_shim_ref "$success_file" "crawler success marker")"
+  container_id="$(docker compose ps -aq murmur-shim 2>/dev/null || true)"
+  if [[ -z "$container_id" ]]; then
+    echo "ERROR: Murmur deploy contract found no live container" >&2
+    return 1
+  fi
+  container_ref="$(docker inspect "$container_id" --format '{{.Config.Image}}')"
+  if [[ "$live_ref" != "$SHIM_IMAGE_REF" ||
+    "$container_ref" != "$SHIM_IMAGE_REF" ||
+    "$success_ref" != "$SHIM_IMAGE_REF" ]]
+  then
+    echo "ERROR: Murmur live environment, container, and success marker disagree" >&2
+    return 1
+  fi
 }
 
 verify_compose_service_image() {
@@ -1023,12 +1071,14 @@ printf '%s\n' \
   "JOBSEEK_DEPLOY_REVISION=$JOBSEEK_DEPLOY_REVISION" \
   >"$deploy_success_temporary"
 chmod 0644 "$deploy_success_temporary"
+verify_shim_deploy_contract "$deploy_success_temporary"
 publish_active_deploy_snapshot
 # Publish the exact committed release only after all health gates pass and the
 # rollback trap is disarmed. Consumers must use this atomic marker rather than
 # the earlier .env write, which is intentionally part of the rollback window.
 disarm_deploy_rollback
 mv "$deploy_success_temporary" "$DEPLOY_SUCCESS_FILE"
+verify_shim_deploy_contract "$DEPLOY_SUCCESS_FILE"
 rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE" || true
 docker image prune -f || true
 echo "Deploy complete: $(docker compose ps --format '{{.Name}}' | tr '\n' ' ')"
