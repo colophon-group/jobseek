@@ -26,6 +26,10 @@ def run_migrations_online() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args={
+            "application_name": f"jobseek:crawler:{settings.crawler_db_role}:local",
+            "options": "-c idle_in_transaction_session_timeout=60000",
+        },
     )
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=None)

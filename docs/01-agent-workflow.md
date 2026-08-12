@@ -140,7 +140,7 @@ The CSV config for the company should be included in the same PR alongside the c
 ## Company Resolver Automation
 
 The primary recurring path is the Hetzner-hosted local Codex runner documented
-in [18 - Codex Automation Deployment](18-codex-automation-deployment.md). It
+in [18 - Hetzner Codex Runner Deployment](18-codex-automation-deployment.md). It
 checks the backlog every 15-30 minutes, self-regulates against Codex usage and
 host capacity, selects at most one open `company-request` issue per accepted
 run, claims it with the shared `ws` claim protocol, and runs

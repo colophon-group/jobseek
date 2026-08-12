@@ -46,6 +46,8 @@ import {
 } from "@/lib/search/typesense-watchlist";
 import { isTrivialWatchlist, buildFilterCacheKey } from "@/lib/watchlist-utils";
 import { notifyIndexNow, logIndexNowResult } from "@/lib/indexnow";
+import { createWatchlistFromHandoffWithDeps } from "@/lib/services/watchlist-handoff";
+import { publicWatchlistRouteStatusCacheKey } from "@/lib/services/public-resource-status";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -330,6 +332,23 @@ export async function createWatchlist(params: {
   }
 
   return { id: row.id, slug };
+}
+
+export async function createWatchlistFromHandoff(params: {
+  title: string;
+  description?: string;
+  companySlugs: string[];
+  filters?: WatchlistFilters;
+}): Promise<{ id: string; slug: string } | { error: string }> {
+  // Keep the company-detail cache/search module off the ordinary watchlist
+  // import path. It is needed only for this explicit public-API handoff.
+  const { getCompanyIdsBySlugs } = await import(
+    "@/lib/services/company-detail"
+  );
+  return createWatchlistFromHandoffWithDeps(params, {
+    getCompanyIdsBySlugs,
+    createWatchlist,
+  });
 }
 
 export async function updateWatchlist(params: {
@@ -2421,8 +2440,9 @@ function _unixNowSeconds(): number {
 /**
  * Invalidate every cache layer that could be holding a public watchlist's
  * pre-mutation state: the per-region `'use cache'` page entry (tagged via
- * `watchlistCacheTag`) AND the Redis-backed `cached("public-watchlist:...")`
- * SQL fetch. Required for both privacy toggles AND title renames AND
+ * `watchlistCacheTag`), the Redis-backed `cached("public-watchlist:...")`
+ * SQL fetch, AND the proxy's public-route status cache. Required for both
+ * privacy toggles AND title renames AND
  * filter/companies edits — without this, the watchlist page (and its OG
  * meta tags + JSON-LD ItemList) keep showing the pre-edit state for up to
  * cacheLife.revalidate (1 hour for /[user]/[watchlist]).
@@ -2452,7 +2472,10 @@ async function _invalidateWatchlistCaches(
       // `updateTag` invalidates so the next read fetches fresh DB data.
       updateTag(watchlistCacheTag(userSlug, slug));
       try {
-        await invalidate(`public-watchlist:${userSlug}:${slug}`);
+        await Promise.all([
+          invalidate(`public-watchlist:${userSlug}:${slug}`),
+          invalidate(publicWatchlistRouteStatusCacheKey(userSlug, slug)),
+        ]);
       } catch (err) {
         logExternalError("error", { service: "redis", operation: "invalidate_watchlist_caches" }, err);
       }

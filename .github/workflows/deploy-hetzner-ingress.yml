@@ -25,15 +25,26 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       - name: Validate ingress tooling
         run: |
           set -euo pipefail
           bash -n deploy/networking/install-host.sh
           bash -n deploy/networking/harden-postgresql.sh
           bash -n deploy/networking/verify-private-paths.sh
+          bash -n deploy/networking/run-remote.sh
+          shellcheck \
+            deploy/networking/install-host.sh \
+            deploy/networking/harden-postgresql.sh \
+            deploy/networking/verify-private-paths.sh \
+            deploy/networking/run-remote.sh
           python3 -m py_compile \
             scripts/jobseek-ingress-conformance.py \
             scripts/manage-hetzner-ingress.py
+          cd apps/crawler
+          uv run --frozen pytest tests/test_ingress_baseline.py -q
 
   control-plane-audit:
     needs: validate
@@ -48,6 +59,8 @@ jobs:
       HETZNER_TYPESENSE_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Audit firewall and derive private inventory
         run: |
           set -euo pipefail
@@ -71,99 +84,125 @@ jobs:
       HETZNER_CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
       HETZNER_POSTGRES_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
       HETZNER_TYPESENSE_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
-      TARGET_HOST: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && secrets.HETZNER_POSTGRES_HOST || secrets.HETZNER_TYPESENSE_HOST }}
-      JOBSEEK_HOST_ROLE: ${{ matrix.service }}
-      JOBSEEK_INGRESS_DEPLOY_SHA: ${{ github.sha }}
+      SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Derive private inventory
         run: |
           set -euo pipefail
           python3 scripts/manage-hetzner-ingress.py audit \
             --state "${RUNNER_TEMP}/unused-firewall-state.json" \
             --github-env "$GITHUB_ENV"
-      - name: Copy reviewed ingress tooling
-        if: ${{ inputs.action == 'apply' }}
-        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
-        with:
-          host: ${{ env.TARGET_HOST }}
-          username: root
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: deploy/networking/install-host.sh,deploy/networking/harden-postgresql.sh,deploy/networking/verify-private-paths.sh,scripts/jobseek-ingress-conformance.py
-          target: /tmp/jobseek-ingress/${{ github.sha }}
-      - name: Audit host without writing to production
-        if: ${{ inputs.action == 'audit' }}
+      - name: Audit crawler without writing to production
+        if: ${{ inputs.action == 'audit' && matrix.service == 'crawler' }}
         env:
-          SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
-          JOBSEEK_CRAWLER_PRIVATE_IP: ${{ env.JOBSEEK_CRAWLER_PRIVATE_IP }}
-        run: |
-          set -euo pipefail
-          key="${RUNNER_TEMP}/hetzner-ssh-key"
-          known_hosts="${RUNNER_TEMP}/hetzner-known-hosts"
-          trap 'rm -f "$key" "$known_hosts"' EXIT
-          install -m 0600 /dev/null "$key"
-          printf '%s\n' "$SSH_KEY" >"$key"
-          ssh \
-            -i "$key" \
-            -o BatchMode=yes \
-            -o ConnectTimeout=20 \
-            -o LogLevel=ERROR \
-            -o StrictHostKeyChecking=accept-new \
-            -o UserKnownHostsFile="$known_hosts" \
-            "root@${TARGET_HOST}" \
-            "python3 - --role '${JOBSEEK_HOST_ROLE}' --crawler-private-ip '${JOBSEEK_CRAWLER_PRIVATE_IP}' --require-enforced" \
-            <scripts/jobseek-ingress-conformance.py
-      - name: Stage host policy
-        if: ${{ inputs.action == 'apply' }}
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          audit
+          crawler
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+      - name: Audit PostgreSQL without writing to production
+        if: ${{ inputs.action == 'audit' && matrix.service == 'postgresql' }}
         env:
-          JOBSEEK_CRAWLER_PRIVATE_IP: ${{ env.JOBSEEK_CRAWLER_PRIVATE_IP }}
-          JOBSEEK_POSTGRES_PRIVATE_IP: ${{ env.JOBSEEK_POSTGRES_PRIVATE_IP }}
-          JOBSEEK_INGRESS_DEPLOY_SHA: ${{ github.sha }}
-        with:
-          host: ${{ env.TARGET_HOST }}
-          username: root
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: JOBSEEK_HOST_ROLE,JOBSEEK_INGRESS_DEPLOY_SHA,JOBSEEK_CRAWLER_PRIVATE_IP,JOBSEEK_POSTGRES_PRIVATE_IP
-          command_timeout: 20m
-          script: |
-            set -euo pipefail
-            root="/tmp/jobseek-ingress/${JOBSEEK_INGRESS_DEPLOY_SHA}"
-            bash "$root/deploy/networking/install-host.sh" stage "$JOBSEEK_HOST_ROLE"
-            if [[ "$JOBSEEK_HOST_ROLE" == postgresql ]]; then
-              if python3 "$root/scripts/jobseek-ingress-conformance.py" \
-                --role postgresql \
-                --crawler-private-ip "$JOBSEEK_CRAWLER_PRIVATE_IP" \
-                --require-enforced; then
-                echo "PostgreSQL data-plane contract is already compliant; skipping replacement"
-              else
-                bash "$root/deploy/networking/harden-postgresql.sh" stage
-              fi
-            fi
-            python3 "$root/scripts/jobseek-ingress-conformance.py" \
-              --role "$JOBSEEK_HOST_ROLE" \
-              --crawler-private-ip "$JOBSEEK_CRAWLER_PRIVATE_IP" \
-              --require-enforced
-      - name: Roll back a failed host stage
-        if: ${{ failure() && inputs.action == 'apply' }}
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+          TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          audit
+          postgresql
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+      - name: Audit Typesense without writing to production
+        if: ${{ inputs.action == 'audit' && matrix.service == 'typesense' }}
         env:
-          JOBSEEK_CRAWLER_PRIVATE_IP: ${{ env.JOBSEEK_CRAWLER_PRIVATE_IP }}
-          JOBSEEK_POSTGRES_PRIVATE_IP: ${{ env.JOBSEEK_POSTGRES_PRIVATE_IP }}
-        with:
-          host: ${{ env.TARGET_HOST }}
-          username: root
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: JOBSEEK_HOST_ROLE,JOBSEEK_CRAWLER_PRIVATE_IP,JOBSEEK_POSTGRES_PRIVATE_IP
-          command_timeout: 10m
-          script: |
-            set +e
-            if [[ "$JOBSEEK_HOST_ROLE" == postgresql && -s /var/lib/jobseek-ingress/postgresql/pending ]]; then
-              /usr/local/sbin/jobseek-postgresql-network rollback
-            fi
-            if [[ -s /var/lib/jobseek-ingress/pending ]]; then
-              /usr/local/sbin/jobseek-ingress-baseline rollback "$JOBSEEK_HOST_ROLE"
-            fi
+          TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          audit
+          typesense
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+      - name: Stage crawler host policy
+        if: ${{ inputs.action == 'apply' && matrix.service == 'crawler' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          stage
+          crawler
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
+      - name: Stage PostgreSQL host policy
+        if: ${{ inputs.action == 'apply' && matrix.service == 'postgresql' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          stage
+          postgresql
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
+      - name: Stage Typesense host policy
+        if: ${{ inputs.action == 'apply' && matrix.service == 'typesense' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          stage
+          typesense
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
+      - name: Roll back a failed crawler host stage
+        if: ${{ failure() && inputs.action == 'apply' && matrix.service == 'crawler' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          rollback
+          crawler
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
+      - name: Roll back a failed PostgreSQL host stage
+        if: ${{ failure() && inputs.action == 'apply' && matrix.service == 'postgresql' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          rollback
+          postgresql
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
+      - name: Roll back a failed Typesense host stage
+        if: ${{ failure() && inputs.action == 'apply' && matrix.service == 'typesense' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          rollback
+          typesense
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
 
   provider-audit-conformance:
     if: ${{ always() && inputs.action == 'audit' }}
@@ -179,6 +218,8 @@ jobs:
       HETZNER_TYPESENSE_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Require exact provider policy and external port state
         run: |
           set -euo pipefail
@@ -197,9 +238,11 @@ jobs:
       HETZNER_CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
       HETZNER_POSTGRES_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
       HETZNER_TYPESENSE_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
-      JOBSEEK_INGRESS_DEPLOY_SHA: ${{ github.sha }}
+      SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Derive private inventory
         run: |
           set -euo pipefail
@@ -207,19 +250,17 @@ jobs:
             --state "${RUNNER_TEMP}/unused-firewall-state.json" \
             --github-env "$GITHUB_ENV"
       - name: Verify real crawler private paths over a fresh SSH session
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         env:
-          JOBSEEK_POSTGRES_PRIVATE_IP: ${{ env.JOBSEEK_POSTGRES_PRIVATE_IP }}
-          JOBSEEK_TYPESENSE_PRIVATE_IP: ${{ env.JOBSEEK_TYPESENSE_PRIVATE_IP }}
-        with:
-          host: ${{ secrets.HETZNER_HOST }}
-          username: root
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: JOBSEEK_INGRESS_DEPLOY_SHA,JOBSEEK_POSTGRES_PRIVATE_IP,JOBSEEK_TYPESENSE_PRIVATE_IP
-          command_timeout: 5m
-          script: |
-            set -euo pipefail
-            bash "/tmp/jobseek-ingress/${JOBSEEK_INGRESS_DEPLOY_SHA}/deploy/networking/verify-private-paths.sh"
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          verify-private-paths
+          crawler
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
+          "$JOBSEEK_TYPESENSE_PRIVATE_IP"
 
   rollback-after-staging-or-validation-failure:
     if: ${{ always() && inputs.action == 'apply' && (needs.host-stage-or-audit.result == 'failure' || (needs.host-stage-or-audit.result == 'success' && needs.validate-private-paths.result != 'success')) }}
@@ -237,35 +278,56 @@ jobs:
       HETZNER_CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
       HETZNER_POSTGRES_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
       HETZNER_TYPESENSE_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
-      TARGET_HOST: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && secrets.HETZNER_POSTGRES_HOST || secrets.HETZNER_TYPESENSE_HOST }}
-      JOBSEEK_HOST_ROLE: ${{ matrix.service }}
+      SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Derive private inventory
         run: |
           set -euo pipefail
           python3 scripts/manage-hetzner-ingress.py audit \
             --state "${RUNNER_TEMP}/unused-firewall-state.json" \
             --github-env "$GITHUB_ENV"
-      - name: Immediately roll back every staged host
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+      - name: Immediately roll back the staged crawler host
+        if: ${{ matrix.service == 'crawler' }}
         env:
-          JOBSEEK_CRAWLER_PRIVATE_IP: ${{ env.JOBSEEK_CRAWLER_PRIVATE_IP }}
-          JOBSEEK_POSTGRES_PRIVATE_IP: ${{ env.JOBSEEK_POSTGRES_PRIVATE_IP }}
-        with:
-          host: ${{ env.TARGET_HOST }}
-          username: root
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: JOBSEEK_HOST_ROLE,JOBSEEK_CRAWLER_PRIVATE_IP,JOBSEEK_POSTGRES_PRIVATE_IP
-          command_timeout: 10m
-          script: |
-            set +e
-            if [[ "$JOBSEEK_HOST_ROLE" == postgresql && -s /var/lib/jobseek-ingress/postgresql/pending ]]; then
-              /usr/local/sbin/jobseek-postgresql-network rollback
-            fi
-            if [[ -s /var/lib/jobseek-ingress/pending ]]; then
-              /usr/local/sbin/jobseek-ingress-baseline rollback "$JOBSEEK_HOST_ROLE"
-            fi
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          rollback
+          crawler
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
+      - name: Immediately roll back the staged PostgreSQL host
+        if: ${{ matrix.service == 'postgresql' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          rollback
+          postgresql
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
+      - name: Immediately roll back the staged Typesense host
+        if: ${{ matrix.service == 'typesense' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          rollback
+          typesense
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
 
   commit-hosts:
     if: ${{ inputs.action == 'apply' }}
@@ -283,56 +345,95 @@ jobs:
       HETZNER_CRAWLER_HOST: ${{ secrets.HETZNER_HOST }}
       HETZNER_POSTGRES_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
       HETZNER_TYPESENSE_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
-      TARGET_HOST: ${{ matrix.service == 'crawler' && secrets.HETZNER_HOST || matrix.service == 'postgresql' && secrets.HETZNER_POSTGRES_HOST || secrets.HETZNER_TYPESENSE_HOST }}
-      JOBSEEK_HOST_ROLE: ${{ matrix.service }}
-      JOBSEEK_INGRESS_DEPLOY_SHA: ${{ github.sha }}
+      SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_KEY }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Derive private inventory
         run: |
           set -euo pipefail
           python3 scripts/manage-hetzner-ingress.py audit \
             --state "${RUNNER_TEMP}/unused-firewall-state.json" \
             --github-env "$GITHUB_ENV"
-      - name: Commit host policy after fresh-session and private-path proof
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+      - name: Commit crawler host policy after fresh-session and private-path proof
+        if: ${{ matrix.service == 'crawler' }}
         env:
-          JOBSEEK_CRAWLER_PRIVATE_IP: ${{ env.JOBSEEK_CRAWLER_PRIVATE_IP }}
-          JOBSEEK_POSTGRES_PRIVATE_IP: ${{ env.JOBSEEK_POSTGRES_PRIVATE_IP }}
-        with:
-          host: ${{ env.TARGET_HOST }}
-          username: root
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: JOBSEEK_HOST_ROLE,JOBSEEK_INGRESS_DEPLOY_SHA,JOBSEEK_CRAWLER_PRIVATE_IP,JOBSEEK_POSTGRES_PRIVATE_IP
-          command_timeout: 10m
-          script: |
-            set -euo pipefail
-            /usr/local/sbin/jobseek-ingress-baseline commit "$JOBSEEK_HOST_ROLE"
-            if [[ "$JOBSEEK_HOST_ROLE" == postgresql && -s /var/lib/jobseek-ingress/postgresql/pending ]]; then
-              /usr/local/sbin/jobseek-postgresql-network commit
-            elif [[ "$JOBSEEK_HOST_ROLE" == postgresql ]]; then
-              echo "PostgreSQL data-plane contract was already compliant; no replacement to commit"
-            fi
-      - name: Roll back any transaction left pending by a failed commit
-        if: ${{ failure() }}
-        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          commit
+          crawler
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
+      - name: Commit PostgreSQL host policy after fresh-session and private-path proof
+        if: ${{ matrix.service == 'postgresql' }}
         env:
-          JOBSEEK_CRAWLER_PRIVATE_IP: ${{ env.JOBSEEK_CRAWLER_PRIVATE_IP }}
-          JOBSEEK_POSTGRES_PRIVATE_IP: ${{ env.JOBSEEK_POSTGRES_PRIVATE_IP }}
-        with:
-          host: ${{ env.TARGET_HOST }}
-          username: root
-          key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: JOBSEEK_HOST_ROLE,JOBSEEK_CRAWLER_PRIVATE_IP,JOBSEEK_POSTGRES_PRIVATE_IP
-          command_timeout: 10m
-          script: |
-            set +e
-            if [[ "$JOBSEEK_HOST_ROLE" == postgresql && -s /var/lib/jobseek-ingress/postgresql/pending ]]; then
-              /usr/local/sbin/jobseek-postgresql-network rollback
-            fi
-            if [[ -s /var/lib/jobseek-ingress/pending ]]; then
-              /usr/local/sbin/jobseek-ingress-baseline rollback "$JOBSEEK_HOST_ROLE"
-            fi
+          TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          commit
+          postgresql
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
+      - name: Commit Typesense host policy after fresh-session and private-path proof
+        if: ${{ matrix.service == 'typesense' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          commit
+          typesense
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
+      - name: Roll back any crawler transaction left pending by a failed commit
+        if: ${{ failure() && matrix.service == 'crawler' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_CRAWLER_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          rollback
+          crawler
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
+      - name: Roll back any PostgreSQL transaction left pending by a failed commit
+        if: ${{ failure() && matrix.service == 'postgresql' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_POSTGRES_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_BACKUP_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          rollback
+          postgresql
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
+      - name: Roll back any Typesense transaction left pending by a failed commit
+        if: ${{ failure() && matrix.service == 'typesense' }}
+        env:
+          TARGET_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
+          SSH_KNOWN_HOSTS: ${{ secrets.HETZNER_TYPESENSE_KNOWN_HOSTS }}
+        run: >-
+          bash deploy/networking/run-remote.sh
+          rollback
+          typesense
+          "${{ github.sha }}"
+          "${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          "$JOBSEEK_CRAWLER_PRIVATE_IP"
+          "$JOBSEEK_POSTGRES_PRIVATE_IP"
 
   provider-firewall:
     if: ${{ inputs.action == 'apply' }}
@@ -348,6 +449,8 @@ jobs:
       HETZNER_TYPESENSE_HOST: ${{ secrets.HETZNER_TYPESENSE_HOST }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Apply, verify, and transactionally retain the provider firewall
         run: |
           set -euo pipefail

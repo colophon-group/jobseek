@@ -24,6 +24,12 @@ export function companyOgCompletionKeyForVersion(
   return `og/company/${segment(rendererVersion)}/_complete/${segment(sourceVersion)}.json`;
 }
 
+export function companyOgCurrentCompletionKey(
+  rendererVersion: string,
+): string {
+  return `og/company/${segment(rendererVersion)}/_complete/current.json`;
+}
+
 export function companyOgCacheKey(locale: string, slug: string): string {
   const rendererVersion =
     process.env.COMPANY_OG_RENDERER_VERSION ||
@@ -66,6 +72,23 @@ export function companyOgCompletionUrl(
       rendererVersion,
       sourceVersion,
     );
+    return new URL(
+      key.split("/").map(encodeURIComponent).join("/"),
+      base,
+    ).toString();
+  } catch {
+    return null;
+  }
+}
+
+export function companyOgCurrentCompletionUrl(
+  domain: string,
+  rendererVersion: string,
+): string | null {
+  try {
+    const base = new URL(domain.endsWith("/") ? domain : `${domain}/`);
+    if (base.protocol !== "https:") return null;
+    const key = companyOgCurrentCompletionKey(rendererVersion);
     return new URL(
       key.split("/").map(encodeURIComponent).join("/"),
       base,

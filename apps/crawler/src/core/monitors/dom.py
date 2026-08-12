@@ -12,12 +12,13 @@ Requires playwright when ``render`` is true:
 from __future__ import annotations
 
 import asyncio
+import codecs
 import random
 import re
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import TYPE_CHECKING
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlsplit, urlunsplit
 
 import structlog
 
@@ -81,6 +82,34 @@ _LINKEDIN_JOB_TRANSFORM = {
 
 _KONTACT_MARKER = "kontactintelligence.com"
 _KONTACT_URL_FILTER = r"/Physician_Job/Details/"
+
+_JPOSTING_HOST_SUFFIX = ".jposting.net"
+_JPOSTING_JOB_FILTER = r"[?&]job_code=[^&#]+"
+
+
+def _jposting_probe_config(html: str, url: str) -> dict | None:
+    """Return a stable DOM preset for Japan Job Posting listing pages.
+
+    JPosting uses query-string detail links and legacy EUC-JP HTML. Empty
+    boards contain only a ``#pagetop`` self-link, which the generic keyword
+    heuristic previously misclassified as one live job. The first-party host
+    and route are sufficient provider identity, and returning ``urls=0`` is
+    intentional: JPosting renders an explicit authoritative empty listing.
+    """
+
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").casefold()
+    if not host.endswith(_JPOSTING_HOST_SUFFIX) or not parsed.path.endswith("/u/job.phtml"):
+        return None
+    if not html.strip():
+        return None
+    matcher = _build_url_matcher(_JPOSTING_JOB_FILTER)
+    urls = _extract_links_static(html, url, matcher)
+    return {
+        "urls": len(urls),
+        "url_filter": _JPOSTING_JOB_FILTER,
+        "encoding": "euc_jp",
+    }
 
 
 def _kontact_probe_config(html: str, url: str) -> dict | None:
@@ -453,6 +482,7 @@ async def _paginate_urls(
     page=None,
     url_matcher: re.Pattern | None = None,
     url_transform: dict | None = None,
+    encoding: str | None = None,
 ) -> set[str]:
     """Fetch paginated pages and merge discovered links with *initial_urls*.
 
@@ -520,7 +550,7 @@ async def _paginate_urls(
         if use_browser:
             html = await _fetch_via_page(page, page_url)
         else:
-            html = await fetch_with_retry(client, page_url)
+            html = await fetch_with_retry(client, page_url, encoding=encoding)
 
         if not html:
             # Legitimate end-of-pagination (404/410, empty body, or
@@ -573,6 +603,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     if kontact is not None:
         return kontact
 
+    jposting = _jposting_probe_config(html, url)
+    if jposting is not None:
+        return jposting
+
     urls = _extract_links_static(html, url)
     linkedin_urls = {candidate for candidate in urls if _is_linkedin_job_url(candidate)}
     if linkedin_urls and len(linkedin_urls) * 2 >= len(urls):
@@ -611,6 +645,11 @@ async def dom_discover(
     pagination = metadata.get("pagination")
     url_matcher = _build_url_matcher(metadata.get("url_filter"))
     url_transform = metadata.get("url_transform")
+    encoding = metadata.get("encoding")
+    if encoding is not None:
+        if not isinstance(encoding, str) or not encoding:
+            raise ValueError("DOM monitor encoding must be a non-empty codec name")
+        codecs.lookup(encoding)
 
     if not render and actions:
         log.warning(
@@ -636,6 +675,7 @@ async def dom_discover(
                         browser_page,
                         url_matcher,
                         url_transform,
+                        encoding,
                     )
         else:
             try:
@@ -661,6 +701,7 @@ async def dom_discover(
                         browser_page,
                         url_matcher,
                         url_transform,
+                        encoding,
                     )
     else:
         from src.shared.http_retry import fetch_with_retry
@@ -670,6 +711,7 @@ async def dom_discover(
             board_url,
             transient_403=True,
             retryable_statuses={202},
+            encoding=encoding,
         )
         if not html:
             log.warning("dom.fetch_failed", board_url=board_url)
@@ -684,11 +726,17 @@ async def dom_discover(
                 client,
                 url_matcher=url_matcher,
                 url_transform=url_transform,
+                encoding=encoding,
             )
 
     # Exclude the board URL itself — it's the listing page, not a job
     normalized_board = board_url.rstrip("/")
-    urls = {u for u in urls if u.rstrip("/") != normalized_board}
+
+    def _without_fragment(url: str) -> str:
+        parts = urlsplit(url)
+        return urlunsplit((parts.scheme, parts.netloc, parts.path, parts.query, "")).rstrip("/")
+
+    urls = {u for u in urls if _without_fragment(u) != normalized_board}
 
     if len(urls) > MAX_URLS:
         log.warning("dom.truncated", total=len(urls), cap=MAX_URLS)

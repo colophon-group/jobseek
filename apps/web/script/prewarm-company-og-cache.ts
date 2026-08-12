@@ -1,9 +1,9 @@
 /**
- * Pre-render company Open Graph cards outside Vercel Functions.
+ * Pre-render Open Graph cards outside Vercel Functions.
  *
- * The script reads the versioned company sources that feed production,
- * renders the exact same Satori card used by the Next.js fallback route, and
- * uploads only missing objects in the current renderer-version namespace.
+ * The script uploads the deterministic site-wide fallback card and reads the
+ * versioned company sources that feed production to fill any missing objects
+ * in the current company renderer-version namespace.
  */
 import {
   ListObjectsV2Command,
@@ -22,16 +22,21 @@ import {
 } from "@/lib/safe-external-error";
 import { mapTypesenseCompanyHitToDetail } from "@/lib/services/company-detail-lookup";
 import { renderCompanyOgCard } from "@/lib/og/company-og-card";
+import { renderSiteOgCard } from "@/lib/og/site-og-card";
 import {
   companyOgCacheKeyForVersion,
   companyOgCompletionKeyForVersion,
+  companyOgCurrentCompletionKey,
 } from "@/lib/og/company-og-key";
 import { computeCompanyOgRendererVersion } from "@/lib/og/company-og-renderer-version";
 import { computeCompanyOgSourceVersion } from "@/lib/og/company-og-source-version";
+import { SITE_OG_KEY } from "@/lib/og/site-og-key";
 
 const ALL_LOCALES = ["en", "de", "fr", "it"] as const;
 const CONTENT_TYPE = "image/png";
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
+const CURRENT_MARKER_CACHE_CONTROL =
+  "public, max-age=60, stale-while-revalidate=240";
 const MARKER_CONTENT_TYPE = "application/json";
 const COMPANY_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const COMPANY_DATA_DIR = resolve(process.cwd(), "../crawler/data");
@@ -316,6 +321,39 @@ function isPng(bytes: Uint8Array): boolean {
   );
 }
 
+async function renderAndUploadSiteOg(
+  client: S3Client,
+  bucket: string,
+): Promise<void> {
+  const response = await renderSiteOgCard();
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  if (!isPng(bytes)) {
+    throw new Error("Site OG renderer did not produce PNG bytes");
+  }
+
+  await client.send(new PutObjectCommand({
+    Bucket: bucket,
+    Key: SITE_OG_KEY,
+    Body: bytes,
+    ContentType: CONTENT_TYPE,
+    CacheControl: CACHE_CONTROL,
+  }));
+}
+
+export async function prewarmSiteOgCard(
+  client: S3Client,
+  bucket: string,
+  force: boolean,
+): Promise<"existing" | "uploaded"> {
+  if (!force) {
+    const existing = await listExistingKeys(client, bucket, "og/site/");
+    if (existing.has(SITE_OG_KEY)) return "existing";
+  }
+
+  await withRetry(() => renderAndUploadSiteOg(client, bucket));
+  return "uploaded";
+}
+
 async function renderAndUpload(
   client: S3Client,
   bucket: string,
@@ -373,6 +411,11 @@ export async function main() {
   const sourceVersion = computeCompanyOgSourceVersion(process.cwd());
   const prefix = `og/company/${rendererVersion}/`;
   const { client, bucket } = createR2Client();
+  const siteOg = await prewarmSiteOgCard(client, bucket, options.force).catch(
+    (error) => {
+      throw new PrewarmExternalError("r2", "prewarm_site_og", error);
+    },
+  );
   const companies = listCompanies(options.maxCompanies);
   const existingKeys = options.force
     ? new Set<string>()
@@ -409,6 +452,7 @@ export async function main() {
     pending: tasks.length,
     concurrency: options.concurrency,
     force: options.force,
+    siteOg,
   }));
 
   let cursor = 0;
@@ -463,6 +507,7 @@ export async function main() {
   );
 
   let completionMarker: string | null = null;
+  let currentMarker: string | null = null;
   const isFullMatrix = options.maxCompanies === null &&
     options.locales.length === ALL_LOCALES.length &&
     ALL_LOCALES.every((locale) => options.locales.includes(locale));
@@ -471,6 +516,7 @@ export async function main() {
       rendererVersion,
       sourceVersion,
     );
+    let markerKey = key;
     try {
       await withRetry(() => client.send(new PutObjectCommand({
         Bucket: bucket,
@@ -488,9 +534,28 @@ export async function main() {
         CacheControl: CACHE_CONTROL,
       })));
       completionMarker = key;
+
+      const currentKey = companyOgCurrentCompletionKey(rendererVersion);
+      markerKey = currentKey;
+      await withRetry(() => client.send(new PutObjectCommand({
+        Bucket: bucket,
+        Key: currentKey,
+        Body: JSON.stringify({
+          complete: true,
+          rendererVersion,
+          sourceVersion,
+          companies: companies.length,
+          locales: options.locales,
+          expected: companies.length * options.locales.length,
+          completedAt: new Date().toISOString(),
+        }),
+        ContentType: MARKER_CONTENT_TYPE,
+        CacheControl: CURRENT_MARKER_CACHE_CONTROL,
+      })));
+      currentMarker = currentKey;
     } catch (error) {
       failures.push({
-        key,
+        key: markerKey,
         error: safeExternalError(error, {
           service: "r2",
           operation: "publish_company_og_completion",
@@ -510,6 +575,8 @@ export async function main() {
     uploaded,
     failed: failures.length,
     completionMarker,
+    currentMarker,
+    siteOg,
   }));
 
   if (failures.length > 0) {

@@ -15,9 +15,9 @@ runs:
         APP_URL: ${{ inputs.app-url }}
       run: |
         {
-          # Backing services are intentionally absent. Company and watchlist
-          # lookups then exercise their supported build-time fallback instead
-          # of reaching production or treating an invalid placeholder as a DSN.
+          # Backing services are intentionally absent. Blog company/watchlist
+          # mentions use their reviewed repository snapshot and have a zero-call
+          # build budget; other routes exercise their supported build fallback.
           echo 'DATABASE_URL='
           echo 'DATABASE_URL_UNPOOLED='
           echo 'TYPESENSE_HOST='

@@ -33,20 +33,25 @@ Allows all agents to `/` with disallow paths for auth/settings/API routes. Inclu
 
 ## OpenGraph Images
 
-Each OG image route generates a PNG dynamically using `ImageResponse` from `next/og`.
+The high-volume site-wide and company cards are pre-rendered outside Vercel and
+served directly from R2/Cloudflare. A few content-specific or privacy-sensitive
+cards remain dynamic `ImageResponse` routes.
 
 | Route | Scope | Notes |
 |-------|-------|-------|
-| `/opengraph-image` | Root fallback | Default OG image for pages without a specific one |
-| `/:lang/opengraph-image` | Public pages | Locale-aware OG image for landing + public pages |
-| `/:lang/how-we-index/opengraph-image` | How We Index page | Dedicated OG image |
-| `/:lang/company/:slug/opengraph-image` | Company pages | Dynamic — includes company name/logo |
+| `https://jobseek-assets.colophon-group.org/og/site/<version>.png` | Root fallback | Immutable off-platform site card; ordinary metadata points here directly |
+| `https://jobseek-assets.colophon-group.org/og/company/<renderer>/<lang>/<slug>.png` | Company pages | Off-platform card, gated by completed namespace markers |
+| `/og/how-we-index/:lang` | How We Index page | Dynamic dedicated card |
+| `/og/blog/:lang/:slug` | Blog post | Dynamic content-specific card |
+| `/og/watchlist/:lang/:user/:watchlist` | Public watchlist | Dynamic card with bounded privacy-safe TTL |
 
-Each access: 1 edge request + 1 serverless function invocation. OG images are typically requested by:
+R2 assets require no Vercel Function invocation. Each remaining dynamic route
+requires one Function invocation. OG images are typically requested by:
 - Social media crawlers (Twitter, Facebook, LinkedIn, Slack) when a link is shared
 - SEO tools scanning the site
 
-Font files (`JetBrainsMono-Bold.ttf`) and logo are read from `/public/` during generation — these are file system reads, not HTTP requests.
+The site and company font/logo reads happen only in the GitHub prewarmer. The
+remaining dynamic routes read their assets from `/public/` inside the Function.
 
 **Edge requests per share:** 1
 
@@ -94,10 +99,14 @@ All API routes count as 1 edge request + 1 serverless function invocation per ca
 
 ## Redirects
 
-The 6 permanent redirects configured in `next.config.ts` each generate 1 edge request (302 response, no serverless function):
+The permanent redirects configured in `next.config.ts` each generate one edge
+response (308, no serverless function):
 
 | From | To |
 |------|----|
+| `/opengraph-image` and `/opengraph-image-*` | Immutable site-wide R2 card |
+| `/:lang/company/:slug/opengraph-image-*` | Versioned company R2 card |
+| `/apple-touch-icon-:variant.png` | `/apple-touch-icon.png` |
 | `/:lang/app` | `/:lang/explore` |
 | `/:lang/app/saved` | `/:lang/my-jobs` |
 | `/:lang/saved` | `/:lang/my-jobs` |
@@ -111,8 +120,8 @@ The 6 permanent redirects configured in `next.config.ts` each generate 1 edge re
 |-------|-----------|----------|---------------|
 | `sitemap.xml` | 1 (watchlists) | URL generation + XML serialization | 30-120ms |
 | `robots.txt` | 0 | Template string | <5ms |
-| OG images (root) | 0 | Font read + Satori render + sharp PNG encode | 60-140ms |
-| OG images (company) | 1 (company lookup) | Font read + Satori + sharp + logo embed | 80-180ms |
+| OG images (root/company) | 0 | Rendered off-platform; R2/Cloudflare serves bytes | 0ms |
+| OG images (blog/how-we-index/watchlist) | route-dependent | Font read + Satori + PNG encode | 60-180ms |
 | `/api/v1/search` | 3-5 | Rate limit (Redis) + response serialization | 40-180ms |
 | `/api/v1/job` | 3 | Rate limit (Redis) + response serialization | 30-120ms |
 | `/api/v1/companies` | 1 | Rate limit (Redis) + response serialization | 15-60ms |

@@ -7,6 +7,7 @@ on:
       - 'deploy/typesense-host/**'
       - 'deploy/systemd/cloudflared.service'
       - 'scripts/verify-typesense-host-credentials.py'
+      - 'scripts/verify-typesense-snapshot-mount.py'
       - '.github/workflows/deploy-typesense-host.yml'
   push:
     branches: [main]
@@ -14,6 +15,7 @@ on:
       - 'deploy/typesense-host/**'
       - 'deploy/systemd/cloudflared.service'
       - 'scripts/verify-typesense-host-credentials.py'
+      - 'scripts/verify-typesense-snapshot-mount.py'
       - '.github/workflows/deploy-typesense-host.yml'
   workflow_dispatch:
     inputs:
@@ -47,11 +49,13 @@ jobs:
           set -euo pipefail
           bash -n deploy/typesense-host/install-host.sh
           shellcheck deploy/typesense-host/install-host.sh
+          python3 -m py_compile scripts/verify-typesense-snapshot-mount.py
           python3 -m py_compile scripts/verify-typesense-host-credentials.py
           python3 scripts/verify-typesense-host-credentials.py --self-test
           test -s deploy/systemd/cloudflared.service
           if grep -Eq -- '--(api-key|token)(=|[[:space:]])[^<]' \
               deploy/typesense-host/install-host.sh \
+              scripts/verify-typesense-snapshot-mount.py \
               deploy/systemd/cloudflared.service; then
             echo "secret-bearing command-line flag found in host artifacts" >&2
             exit 1
@@ -64,11 +68,15 @@ jobs:
           container=jobseek-typesense-config-smoke
           cleanup() {
             docker rm -f "$container" >/dev/null 2>&1 || true
+            sudo umount "$root/snapshots" >/dev/null 2>&1 || true
             # Typesense runs as root and leaves root-owned files in the bind mount.
             sudo rm -rf -- "$root"
           }
           trap cleanup EXIT
-          install -d -m 0700 "$root/data"
+          install -d -m 0700 "$root/data" "$root/snapshots"
+          sudo mount -t tmpfs -o size=512m,nodev,nosuid,noexec \
+            tmpfs "$root/snapshots"
+          test "$(stat -c '%d' "$root/data")" != "$(stat -c '%d' "$root/snapshots")"
           {
             echo '[server]'
             echo 'data-dir = /data'
@@ -83,8 +91,13 @@ jobs:
             --ulimit nofile=65536:65536 \
             --log-opt max-size=50m \
             --log-opt max-file=3 \
+            --memory 3g \
+            --memory-reservation 2560m \
+            --memory-swap 3g \
             -v "$root/data:/data" \
+            -v "$root/snapshots:/jobseek-snapshots" \
             -v "$root/typesense-server.ini:/run/secrets/typesense-server.ini:ro" \
+            --label jobseek.typesense-snapshot-contract=direct-mount-v1 \
             typesense/typesense:27.1 \
             --config=/run/secrets/typesense-server.ini >/dev/null
           healthy=0
@@ -110,6 +123,54 @@ jobs:
           fi
           curl -fsS "http://127.0.0.1:18108/health" |
             python3 -c 'import json,sys; assert json.load(sys.stdin)["ok"] is True'
+          snapshot_body="$root/snapshot-response.json"
+          if ! snapshot_status="$(
+            curl --silent --show-error \
+              --output "$snapshot_body" \
+              --write-out '%{http_code}' \
+              --request POST \
+              --get \
+              --data-urlencode 'snapshot_path=/jobseek-snapshots/direct-mount-smoke' \
+              --header 'X-TYPESENSE-API-KEY: smoke-bootstrap-key' \
+              "http://127.0.0.1:18108/operations/snapshot"
+          )"; then
+            echo 'Typesense snapshot smoke request failed at the transport layer' >&2
+            if test -s "$snapshot_body"; then
+              head -c 4096 "$snapshot_body" >&2
+              echo >&2
+            fi
+            exit 1
+          fi
+          SNAPSHOT_RESPONSE_PATH="$snapshot_body" \
+          SNAPSHOT_HTTP_STATUS="$snapshot_status" \
+            python3 - <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          status = os.environ["SNAPSHOT_HTTP_STATUS"]
+          body = Path(os.environ["SNAPSHOT_RESPONSE_PATH"]).read_text(
+              encoding="utf-8", errors="replace"
+          )
+          try:
+              payload = json.loads(body)
+          except json.JSONDecodeError:
+              print(
+                  f"Typesense snapshot smoke returned HTTP {status} with non-JSON body: "
+                  f"{body[:4096]}",
+                  file=sys.stderr,
+              )
+              raise SystemExit(1)
+          if status != "201" or not isinstance(payload, dict) or payload.get("success") is not True:
+              print(
+                  f"Typesense snapshot smoke returned HTTP {status}: {body[:4096]}",
+                  file=sys.stderr,
+              )
+              raise SystemExit(1)
+          PY
+          test -d "$root/snapshots/direct-mount-smoke"
+          test -n "$(find "$root/snapshots/direct-mount-smoke" -type f -print -quit)"
           docker inspect "$container" >"$root/inspect.json"
           if grep -Fq 'smoke-bootstrap-key' "$root/inspect.json"; then
             echo "bootstrap key leaked through Docker metadata" >&2
@@ -125,6 +186,8 @@ jobs:
           container = json.load(sys.stdin)[0]
           ulimits = container["HostConfig"].get("Ulimits") or []
           log_config = container["HostConfig"].get("LogConfig") or {}
+          mounts = container.get("Mounts") or []
+          labels = container["Config"].get("Labels") or {}
           assert any(
               limit.get("Name") == "nofile"
               and int(limit.get("Soft") or 0) == 65536
@@ -134,6 +197,14 @@ jobs:
           assert log_config.get("Type") == "json-file"
           assert (log_config.get("Config") or {}).get("max-size") == "50m"
           assert (log_config.get("Config") or {}).get("max-file") == "3"
+          assert int(container["HostConfig"].get("Memory") or 0) == 3221225472
+          assert int(container["HostConfig"].get("MemoryReservation") or 0) == 2684354560
+          assert int(container["HostConfig"].get("MemorySwap") or 0) == 3221225472
+          assert labels.get("jobseek.typesense-snapshot-contract") == "direct-mount-v1"
+          assert any(
+              mount.get("Destination") == "/jobseek-snapshots" and mount.get("RW") is True
+              for mount in mounts
+          )
           '
 
   deploy:
@@ -146,13 +217,23 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Bind production deployment to the dispatched main revision
+        env:
+          DISPATCH_REF: ${{ github.ref }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$DISPATCH_REF" = refs/heads/main
+          [[ "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"
+
       - name: Copy Typesense-host deployment artifacts
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.HETZNER_TYPESENSE_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: deploy/typesense-host,deploy/systemd/cloudflared.service,scripts/verify-typesense-host-credentials.py
+          source: deploy/typesense-host,deploy/systemd/cloudflared.service,scripts/verify-typesense-host-credentials.py,scripts/verify-typesense-snapshot-mount.py
           target: /opt/jobseek-typesense-host
           overwrite: true
 
@@ -167,7 +248,7 @@ jobs:
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
           envs: JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA,TYPESENSE_BOOTSTRAP_KEY
-          command_timeout: 20m
+          command_timeout: 40m
           script: |
             set -euo pipefail
             cd /opt/jobseek-typesense-host
@@ -198,8 +279,18 @@ jobs:
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
             set -euo pipefail
-            test "$(cat /var/lib/jobseek-typesense-host/deployed-sha)" \
-              = "${{ github.sha }}"
+            case "${{ inputs.component }}" in
+              all)
+                test "$(cat /var/lib/jobseek-typesense-host/deployed-sha)" = "${{ github.sha }}"
+                test "$(cat /var/lib/jobseek-typesense-host/cloudflared-deployed-sha)" = "${{ github.sha }}"
+                ;;
+              typesense)
+                test "$(cat /var/lib/jobseek-typesense-host/deployed-sha)" = "${{ github.sha }}"
+                ;;
+              cloudflared)
+                test "$(cat /var/lib/jobseek-typesense-host/cloudflared-deployed-sha)" = "${{ github.sha }}"
+                ;;
+            esac
             /usr/local/sbin/jobseek-verify-typesense-host-credentials \
               --component "${{ inputs.component }}"
 

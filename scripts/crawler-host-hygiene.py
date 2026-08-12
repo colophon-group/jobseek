@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 COMPOSE_PROJECT_LABEL = "com.docker.compose.project"
-UTC = timezone.utc
+UTC = timezone.utc  # noqa: UP017 -- the crawler host still supports Python 3.10
 
 
 class HygieneError(RuntimeError):
@@ -76,6 +76,7 @@ def _container_findings(now: datetime, max_age_seconds: float) -> list[Finding]:
             continue
 
         container_id = str(container.get("Id", ""))[:12] or "unknown"
+        full_container_id = str(container.get("Id", "")) or "unknown"
         name = str(container.get("Name", "")).lstrip("/") or container_id
         image = str(config.get("Image", "")) or "unknown"
         findings.append(
@@ -84,7 +85,10 @@ def _container_findings(now: datetime, max_age_seconds: float) -> list[Finding]:
                 name=name,
                 age_seconds=age_seconds,
                 detail=f"id={container_id} image={image}",
-                cleanup=f"docker rm -f -- {shlex.quote(name)}",
+                cleanup=(
+                    "do not remove by name; review immutable identity with "
+                    f"jobseek-host-hygiene candidate-id={shlex.quote(full_container_id)}"
+                ),
             )
         )
     return findings
@@ -94,9 +98,7 @@ def _properties(output: str) -> dict[str, str]:
     return dict(line.split("=", 1) for line in output.splitlines() if "=" in line)
 
 
-def _transient_unit_findings(
-    *, max_age_seconds: float, uptime_seconds: float
-) -> list[Finding]:
+def _transient_unit_findings(*, max_age_seconds: float, uptime_seconds: float) -> list[Finding]:
     output = _run(
         [
             "systemctl",
@@ -195,8 +197,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     print(
-        f"host hygiene found {len(findings)} stale resource(s) older than "
-        f"{args.max_age_hours:g}h:",
+        f"host hygiene found {len(findings)} stale resource(s) older than {args.max_age_hours:g}h:",
         file=sys.stderr,
     )
     for finding in findings:

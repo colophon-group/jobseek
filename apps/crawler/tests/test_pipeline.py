@@ -965,6 +965,139 @@ async def test_process_monitor_work_emits_tasks_total_succeeded():
 
 
 @pytest.mark.asyncio
+async def test_process_monitor_work_preserves_tdm_reserved_terminal_status():
+    from src.processing.board import BoardMonitorResult
+
+    before = _tasks_total_value("monitor", "tdm_reserved")
+    succeeded_before = _tasks_total_value("monitor", "succeeded")
+    with (
+        patch(
+            "src.processing.board._process_one_board_streaming",
+            new=AsyncMock(return_value=BoardMonitorResult(True, 0.1, "tdm_reserved")),
+        ),
+        patch("src.workers.pipeline.reschedule_task", new=AsyncMock(return_value=None)),
+    ):
+        await _process_monitor_work(
+            structlog.get_logger(),
+            _make_board_work(),
+            _make_monitor_local_pool(),
+            AsyncMock(),
+        )
+
+    assert _tasks_total_value("monitor", "tdm_reserved") - before == pytest.approx(1.0)
+    assert _tasks_total_value("monitor", "succeeded") == succeeded_before
+
+
+@pytest.mark.asyncio
+async def test_process_monitor_work_disabled_skip_emits_once_without_processing():
+    local_pool = _make_monitor_local_pool()
+    local_pool.acquire.return_value.__aenter__.return_value.fetchval = AsyncMock(
+        return_value="disabled"
+    )
+    process = AsyncMock()
+    before = _tasks_total_value("monitor", "skipped_disabled")
+    with patch("src.processing.board._process_one_board_streaming", new=process):
+        await _process_monitor_work(
+            structlog.get_logger(),
+            _make_board_work(),
+            local_pool,
+            AsyncMock(),
+        )
+
+    assert _tasks_total_value("monitor", "skipped_disabled") - before == pytest.approx(1.0)
+    process.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_process_monitor_work_browser_reroute_emits_once_after_enqueue():
+    work = _make_board_work()
+    work.config["crawler_type"] = "accenture"
+    enqueue = AsyncMock(return_value=None)
+    process = AsyncMock()
+    before = _tasks_total_value("monitor", "rerouted_to_browser")
+    with (
+        patch("src.workers.pipeline.enqueue_monitor", new=enqueue),
+        patch("src.processing.board._process_one_board_streaming", new=process),
+    ):
+        await _process_monitor_work(
+            structlog.get_logger(),
+            work,
+            _make_monitor_local_pool(),
+            AsyncMock(),
+            browser=False,
+        )
+
+    assert _tasks_total_value("monitor", "rerouted_to_browser") - before == pytest.approx(1.0)
+    enqueue.assert_awaited_once()
+    process.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_process_monitor_work_real_board_seam_emits_one_terminal_outcome():
+    """The real board processor and Redis task owner must emit only once.
+
+    This keeps the lower-layer metric side effect in the seam, closing the
+    mock-only gap that allowed #6617's duplicate counter regression.
+    """
+    from src.workers.monitor_memory import MemoryReclaim
+
+    async def empty_monitor_stream(*_args, **_kwargs):
+        if False:
+            yield None
+
+    work = _make_board_work()
+    local_pool = _make_monitor_local_pool()
+    conn = local_pool.acquire.return_value.__aenter__.return_value
+    conn.fetch = AsyncMock(return_value=[])
+    transaction = MagicMock()
+    transaction.__aenter__ = AsyncMock(return_value=None)
+    transaction.__aexit__ = AsyncMock(return_value=False)
+    conn.transaction = MagicMock(return_value=transaction)
+    resolver = MagicMock()
+    before = _tasks_total_value("monitor", "succeeded")
+
+    with (
+        patch("src.batch.monitor_one_stream", new=empty_monitor_stream),
+        patch(
+            "src.batch._get_location_resolver",
+            new=AsyncMock(return_value=resolver),
+        ),
+        patch("src.batch._get_currency_rates", new=AsyncMock(return_value={})),
+        patch("src.batch._get_technology_ids", new=AsyncMock(return_value={})),
+        patch("src.batch._get_occupation_ids", new=AsyncMock(return_value={})),
+        patch("src.batch._get_seniority_ids", new=AsyncMock(return_value={})),
+        patch(
+            "src.workers.pipeline._record_monitor_host_outcome",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "src.workers.pipeline._record_monitor_provider_outcome",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "src.workers.pipeline._refresh_board_metadata_cache",
+            new=AsyncMock(return_value=None),
+        ),
+        patch("src.workers.pipeline.reschedule_task", new=AsyncMock(return_value=None)),
+        patch(
+            "src.workers.pipeline.reclaim_process_memory",
+            return_value=MemoryReclaim(0, False, 0, 0, None, None),
+        ),
+        patch("src.workers.pipeline.process_rss_bytes", return_value=0),
+        patch("src.workers.pipeline.cgroup_memory_bytes", return_value=None),
+    ):
+        await _process_monitor_work(
+            structlog.get_logger(),
+            work,
+            local_pool,
+            AsyncMock(),
+            browser=False,
+        )
+
+    assert _tasks_total_value("monitor", "succeeded") - before == pytest.approx(1.0)
+
+
+@pytest.mark.asyncio
 async def test_process_monitor_work_reclaims_memory_after_monitor():
     """Allocator cleanup runs after discovery while monitor concurrency is held."""
 
@@ -1368,6 +1501,8 @@ async def test_half_open_circuit_defers_siblings_while_single_probe_is_leased(
 
     monitor = AsyncMock(return_value=(True, 0.1))
     reschedule = AsyncMock(return_value=None)
+    deferred_before = _tasks_total_value("monitor", "host_circuit_half_open")
+    failed_before = _tasks_total_value("monitor", "failed")
     with (
         patch("src.processing.board._process_one_board_streaming", new=monitor),
         patch("src.workers.pipeline.reschedule_task", new=reschedule),
@@ -1387,6 +1522,10 @@ async def test_half_open_circuit_defers_siblings_while_single_probe_is_leased(
         "monitor",
     )
     assert reschedule.await_args.args[3] >= now + 599
+    assert _tasks_total_value(
+        "monitor", "host_circuit_half_open"
+    ) - deferred_before == pytest.approx(1.0)
+    assert _tasks_total_value("monitor", "failed") == failed_before
 
 
 @pytest.mark.asyncio

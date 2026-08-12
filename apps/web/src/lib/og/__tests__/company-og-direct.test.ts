@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: vi.fn() }));
 
-import { checkCompanyOgNamespaceComplete } from "../company-og-direct";
+import {
+  checkCompanyOgNamespaceComplete,
+  getCurrentCompanyOgSourceVersion,
+} from "../company-og-direct";
 
 describe("direct company OG completion gate", () => {
   it("accepts only a matching successful completion marker", async () => {
@@ -48,6 +51,51 @@ describe("direct company OG completion gate", () => {
       "source-v1",
       mismatched,
     )).resolves.toBe(false);
+  });
+
+  it("resolves only a fully completed current source pointer", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      complete: true,
+      rendererVersion: "render-v1",
+      sourceVersion: "source-v2",
+    }), { status: 200 }));
+
+    await expect(getCurrentCompanyOgSourceVersion(
+      "https://assets.example.test",
+      "render-v1",
+      fetcher,
+    )).resolves.toBe("source-v2");
+    expect(fetcher).toHaveBeenCalledWith(
+      "https://assets.example.test/og/company/render-v1/_complete/current.json",
+      {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      },
+    );
+  });
+
+  it("rejects malformed or cross-renderer current pointers", async () => {
+    const malformed = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      complete: true,
+      rendererVersion: "render-v1",
+      sourceVersion: "../../escape",
+    }), { status: 200 }));
+    const mismatched = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      complete: true,
+      rendererVersion: "render-v0",
+      sourceVersion: "source-v2",
+    }), { status: 200 }));
+
+    await expect(getCurrentCompanyOgSourceVersion(
+      "https://assets.example.test",
+      "render-v1",
+      malformed,
+    )).resolves.toBeNull();
+    await expect(getCurrentCompanyOgSourceVersion(
+      "https://assets.example.test",
+      "render-v1",
+      mismatched,
+    )).resolves.toBeNull();
   });
 
   it("fails closed on public R2 transport errors", async () => {

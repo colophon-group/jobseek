@@ -2,15 +2,22 @@
 
 ## Architecture
 
-The `(app)` route group serves **static page shells from CDN**. All data
-fetching happens client-side via Next.js server actions called on mount.
+The `(app)` route group serves **cached page shells from CDN**. Reads use the
+cheapest boundary that preserves correctness:
+
+- anonymous, viewer-independent defaults render in cached Server Components;
+- signed-in or request-specific data loads through narrowly scoped Server
+  Actions after hydration;
+- interactive search refreshes use browser-direct Typesense where the public
+  search contract permits it;
+- mutations remain Server Actions.
 
 ```
-Browser loads static HTML (CDN)
-  → AppBootstrapProvider calls fetchAppBootstrap() once
-  → Each page's loader component calls its data server action
-  → Server actions execute DB queries, return JSON
-  → Client renders with fetched data
+Browser loads cached HTML with anonymous result markup (CDN)
+  → App layout embeds cached, viewer-independent currency rates
+  → Anonymous AppBootstrapProvider selects local anonymous context (no RPC)
+  → Signed-in/bootstrap or filtered views request personalized data
+  → Client owns subsequent interaction and mutation state
 ```
 
 ### Why not SSR?
@@ -20,13 +27,16 @@ every page navigation to trigger a full server-side render — 4+ DB queries in
 the layout alone (session, preferences, saved jobs, starred companies), plus
 7-12 per page. This drove high Vercel fluid compute costs.
 
-With client-side fetching:
-- The layout renders once as static HTML, served from CDN (zero compute)
-- `AppBootstrapProvider` fetches user data once on mount via a single
-  server action, and the data persists across navigations (React doesn't
-  unmount layouts)
-- Each page shows a skeleton, then loads data — the server action invocation
-  is much cheaper than a full SSR render (JSON response vs. full React tree)
+With cached defaults plus conditional client fetching:
+- Anonymous Explore/company/watchlist documents contain meaningful result
+  markup before JavaScript runs.
+- `AppBootstrapProvider` calls `fetchAppBootstrap()` only when the
+  non-sensitive `logged_in` hint says a personalized session may exist.
+- Viewer-independent currency rates come from the server layout's hourly
+  `use cache` service read; the client provider does not POST a Server Action
+  on mount. Cold/error shells receive the migration's complete approximate
+  currency seed rather than a EUR-only identity-conversion fallback.
+- Filtered and signed-in views retain the personalized behavior they need.
 
 ### Why server actions, not the `/api/v1/*` routes?
 
@@ -118,7 +128,7 @@ IP rate limiter (30 req/60s), comprehensive scraping is uneconomical.
 ## Bootstrap Flow
 
 `AppBootstrapProvider` (client component in the layout) calls a single
-`fetchAppBootstrap()` server action on mount:
+`fetchAppBootstrap()` Server Action only when `logged_in` is present:
 
 ```
 fetchAppBootstrap()
@@ -133,7 +143,12 @@ fetchAppBootstrap()
 ```
 
 This replaces the 4 separate SSR fetches that ran on every navigation.
-The data is passed to nested providers (`SessionProvider`,
+Anonymous viewers take a synchronous local path with no bootstrap request.
+The cached server layout separately passes the currency-rate table into
+`SalaryDisplayProvider`; this data is public and viewer-independent, so it
+does not belong in either the authenticated bootstrap or a mount effect.
+
+The authenticated data is passed to nested providers (`SessionProvider`,
 `SavedJobsProvider`, `StarredCompaniesProvider`, etc.) and persists
 across page navigations.
 
@@ -145,26 +160,28 @@ buttons, truncation prompt) check this to avoid flashing incorrect UI.
 
 ## ISR for SEO
 
-Company and watchlist detail pages use `export const revalidate = 600`
-for `generateMetadata()`. This caches OG tags and page titles for 10
-minutes via ISR, preserving SEO without per-request compute. The page
-body itself is a client component that fetches its own data.
+Explore, company, and watchlist detail routes use Cache Components to embed
+anonymous defaults and cached metadata without request-bound APIs. Dynamic
+personalization stays outside those cache functions. Keep the production-build
+classification assertions in `__tests__/build-output.test.ts` green.
 
 ## Page Conversion Pattern
 
-Each page follows this structure:
+High-traffic public app routes follow this structure:
 
 ```
-page.tsx (server component, sync)
+page.tsx (cached server component)
   → resolves locale from params
-  → renders <PageLoader locale={locale} />
+  → fetches viewer-independent defaults
+  → renders the client page with initialData
 
-page-loader.tsx (client component)
-  → calls server action on mount
-  → shows skeleton while loading
-  → renders existing page component with data
+client page
+  → renders initialData in raw HTML
+  → conditionally calls a personalized Server Action for auth/filter hints
+  → handles subsequent interaction through browser search/actions
 ```
 
-The existing client components (SearchPage, CompanyPage, etc.) are
-unchanged — they still receive initial data as props. The loader is a
-thin bridge that replaces the former SSR data fetch.
+Do not use `useSearchParams()` in the cached result-owning subtree merely to
+restore filters after hydration: it suspends the subtree and can replace raw
+results with `loading.tsx`. Use a query-agnostic server snapshot and observe
+the browser URL after hydration instead.

@@ -1,11 +1,58 @@
+import { ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  renderSiteOgCard: vi.fn(),
+}));
+
+vi.mock("@/lib/og/site-og-card", () => ({
+  renderSiteOgCard: mocks.renderSiteOgCard,
+}));
+
 import {
   buildCompanyDocuments,
   parseOptions,
+  prewarmSiteOgCard,
   withRetry,
 } from "../../../../script/prewarm-company-og-cache";
+import { SITE_OG_KEY } from "../site-og-key";
 
 describe("company OG prewarm CLI", () => {
+  it("keeps an existing immutable site-wide card", async () => {
+    const send = vi.fn().mockResolvedValue({
+      Contents: [{ Key: SITE_OG_KEY }],
+      IsTruncated: false,
+    });
+    const client = { send } as unknown as S3Client;
+
+    await expect(prewarmSiteOgCard(client, "test-bucket", false))
+      .resolves.toBe("existing");
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]?.[0]).toBeInstanceOf(ListObjectsV2Command);
+    expect(mocks.renderSiteOgCard).not.toHaveBeenCalled();
+  });
+
+  it("uploads a missing site-wide card with immutable cache headers", async () => {
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4, 5]);
+    mocks.renderSiteOgCard.mockResolvedValue(new Response(png));
+    const send = vi.fn()
+      .mockResolvedValueOnce({ Contents: [], IsTruncated: false })
+      .mockResolvedValueOnce({});
+    const client = { send } as unknown as S3Client;
+
+    await expect(prewarmSiteOgCard(client, "test-bucket", false))
+      .resolves.toBe("uploaded");
+    expect(send).toHaveBeenCalledTimes(2);
+    const upload = send.mock.calls[1]?.[0];
+    expect(upload).toBeInstanceOf(PutObjectCommand);
+    expect((upload as PutObjectCommand).input).toMatchObject({
+      Bucket: "test-bucket",
+      Key: SITE_OG_KEY,
+      ContentType: "image/png",
+      CacheControl: "public, max-age=31536000, immutable",
+    });
+  });
+
   it("builds localized card data from the repository sources", () => {
     const documents = buildCompanyDocuments(
       [

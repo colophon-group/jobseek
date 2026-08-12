@@ -53,8 +53,10 @@ fail() {
 
 require_root() {
   [[ "$(id -u)" -eq 0 ]] || fail "must run as root"
-  command -v docker >/dev/null || fail "docker is required to obtain the pinned Alloy binary"
-  command -v systemctl >/dev/null || fail "systemd is required"
+  local command
+  for command in docker flock install python3 readlink stat systemctl; do
+    command -v "$command" >/dev/null || fail "required command is unavailable: ${command}"
+  done
   local name value
   for name in "${REQUIRED_ENV[@]}"; do
     value="${!name:-}"
@@ -64,6 +66,19 @@ require_root() {
   if [[ -n "$DEPLOY_SHA" ]]; then
     [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || fail "invalid deployment SHA"
   fi
+}
+
+prepare_rollback_root() {
+  if [[ -L "$ROLLBACK_ROOT" || ( -e "$ROLLBACK_ROOT" && ! -d "$ROLLBACK_ROOT" ) ]]; then
+    fail "rollback root must be an exact directory, not a link or other entry"
+  fi
+  if [[ ! -e "$ROLLBACK_ROOT" ]]; then
+    install -d -o root -g root -m 0700 "$ROLLBACK_ROOT"
+  fi
+  [[ "$(readlink -f -- "$ROLLBACK_ROOT")" == "$ROLLBACK_ROOT" ]] ||
+    fail "rollback root does not resolve to its exact path"
+  [[ "$(stat -c '%u:%g:%a:%F' -- "$ROLLBACK_ROOT")" == "0:0:700:directory" ]] ||
+    fail "rollback root must be root-owned mode 0700"
 }
 
 write_env_line() {
@@ -123,7 +138,8 @@ snapshot_previous() {
   local stamp path unit
   stamp="$(date -u +%Y%m%dT%H%M%SZ)"
   path="${ROLLBACK_ROOT}/${stamp}"
-  install -d -m 0700 "$path"
+  [[ ! -e "$path" && ! -L "$path" ]] || fail "rollback snapshot timestamp already exists"
+  install -d -o root -g root -m 0700 "$path"
   for source in \
     "$BINARY" \
     "$SAMPLER" \
@@ -131,16 +147,35 @@ snapshot_previous() {
     "${CONFIG_ROOT}/alloy.env" \
     "${CONFIG_ROOT}/host.env" \
     "${STATE_ROOT}/deployed-sha"; do
-    if [[ -e "$source" ]]; then
-      cp --archive "$source" "$path/"
+    if [[ -e "$source" || -L "$source" ]]; then
+      [[ -f "$source" && ! -L "$source" ]] ||
+        fail "rollback source is not an exact regular file: ${source}"
+      cp --archive --no-dereference "$source" "$path/"
     fi
   done
   for unit in "${UNITS[@]}"; do
-    if [[ -e "/etc/systemd/system/${unit}" ]]; then
-      cp --archive "/etc/systemd/system/${unit}" "$path/"
+    local source="/etc/systemd/system/${unit}"
+    if [[ -e "$source" || -L "$source" ]]; then
+      [[ -f "$source" && ! -L "$source" ]] ||
+        fail "rollback unit source is not an exact regular file: ${source}"
+      cp --archive --no-dereference "$source" "$path/"
     fi
   done
   printf '%s\n' "$path"
+}
+
+prune_rollback_snapshots() {
+  local rollback="$1" name="${1##*/}"
+  [[ "$rollback" == "${ROLLBACK_ROOT}/${name}" ]] ||
+    fail "accepted rollback is outside the exact rollback root"
+  python3 "${REPO_ROOT}/deploy/observability/prune_rollbacks.py" \
+    --protect-name "$name"
+}
+
+disarm_rollback_and_prune() {
+  ROLLBACK_ARMED=0
+  trap - EXIT
+  prune_rollback_snapshots "$ROLLBACK_PATH"
 }
 
 restore_previous() {
@@ -273,7 +308,7 @@ main() {
   # Alloy stays unprivileged: it can traverse only the config/textfile roots
   # it needs, while secret env and rollback material remain root-only.
   install -d -o root -g jobseek-alloy -m 0750 "$CONFIG_ROOT" "$STATE_ROOT"
-  install -d -o root -g root -m 0700 "$ROLLBACK_ROOT"
+  prepare_rollback_root
   install -d -o root -g jobseek-alloy -m 0750 "${STATE_ROOT}/textfile"
   install -d -o root -g root -m 0700 "${STATE_ROOT}/state"
 
@@ -283,9 +318,10 @@ main() {
   ROLLBACK_ARMED=1
   trap rollback_on_exit EXIT
   install_surface
-  ROLLBACK_ARMED=0
-  trap - EXIT
+  disarm_rollback_and_prune
   log "installed host observability role=${ROLE} sha=${DEPLOY_SHA:-manual}"
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

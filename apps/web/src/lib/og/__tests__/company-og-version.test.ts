@@ -3,6 +3,8 @@ import {
   companyOgCacheKeyForVersion,
   companyOgCompletionKeyForVersion,
   companyOgCompletionUrl,
+  companyOgCurrentCompletionKey,
+  companyOgCurrentCompletionUrl,
   companyOgPublicUrl,
 } from "../company-og-key";
 import { computeCompanyOgRendererVersion } from "../company-og-renderer-version";
@@ -61,6 +63,16 @@ describe("company OG renderer namespace", () => {
       ),
     ).toBe(
       "https://assets.example.test/og/company/renderer-123/_complete/source-456.json",
+    );
+    expect(companyOgCurrentCompletionKey("Renderer 123"))
+      .toBe("og/company/renderer-123/_complete/current.json");
+    expect(
+      companyOgCurrentCompletionUrl(
+        "https://assets.example.test",
+        "Renderer 123",
+      ),
+    ).toBe(
+      "https://assets.example.test/og/company/renderer-123/_complete/current.json",
     );
   });
 

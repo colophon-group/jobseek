@@ -1,7 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
 // Public REST routes use the plain service tier — see issue #3231.
 import { getPostingDetail } from "@/lib/services/search";
-import { checkRateLimit, apiResponse, siteUrl } from "../_shared";
+import {
+  checkRateLimit,
+  apiResponse,
+  parseApiLocale,
+  siteUrl,
+} from "../_shared";
 
 export async function GET(request: NextRequest) {
   const rl = await checkRateLimit(request);
@@ -9,7 +14,8 @@ export async function GET(request: NextRequest) {
 
   const sp = request.nextUrl.searchParams;
   const id = sp.get("id");
-  const locale = sp.get("locale") ?? "en";
+  const locale = parseApiLocale(sp, rl);
+  if (locale instanceof NextResponse) return locale;
 
   if (!id) {
     return apiResponse(

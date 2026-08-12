@@ -4,7 +4,7 @@ This directory holds MDX source for posts on `https://jseek.co/{locale}/blog/{sl
 
 - `apps/web/app/[lang]/(public)/blog/page.tsx` — index
 - `apps/web/app/[lang]/(public)/blog/[slug]/page.tsx` — post
-- `apps/web/app/[lang]/(public)/blog/[slug]/opengraph-image.tsx` — per-post OG card
+- `apps/web/app/og/blog/[lang]/[slug]/route.tsx` — per-post OG card, isolated from page traces
 - `apps/web/src/lib/blog.ts` — frontmatter + body loader
 - `apps/web/src/lib/sitemap.ts::blogPostEntries` — sitemap inclusion (English-only canonical)
 - `apps/web/src/components/blog/MdxMentions.tsx` — interactive entity-mention components
@@ -96,7 +96,28 @@ Currently `relatedCompanies` and `relatedWatchlists` are advisory frontmatter �
 
 ## MDX components catalogue
 
-Components are server-rendered, fetch their entity at compile time, and fall back to `<code>{Type slug}</code>` if the entity is missing — so a broken reference is visible during draft review.
+Components are server-rendered from `mention-snapshot.json` and fall back to `<code>{Type slug}</code>` if the entity is missing — so a broken reference is visible during draft review. They never fetch an entity while `next build` prerenders the four locale variants.
+
+### Build-time data and call budget
+
+The complete `en` / `de` / `fr` / `it` blog build has an external-call budget of **zero** for MDX mentions. Production Typesense, Postgres, Redis, and their credentials are not inputs to this path. A 503 or 429 from the search plane therefore cannot trigger per-component retry amplification or change the rendered post.
+
+`mention-snapshot.json` is the only approved build input:
+
+- Company rows are generated from the versioned `apps/crawler/data/companies.csv`, `company_descriptions.csv`, and `industries.csv` sources. The snapshot contains one row per unique company slug used across all locale MDX files; localized descriptions are selected from that single row with English fallback.
+- Watchlist rows are reviewed editorial snapshots. Volatile active/year posting counts are deliberately excluded. Include a company count only when the post author explicitly approves it as point-in-time editorial content.
+
+Every production build runs `pnpm blog-mentions:check`. The gate scans every MDX file, requires exactly one snapshot row for each unique company/watchlist reference, verifies generated company fields against the repository CSVs, and walks the mention component's local import graph. Imports of database/search service layers, Typesense/Postgres/network clients, or a direct `fetch()` fail the build. This both asserts the zero-call budget in CI and prevents a production-host fallback from being introduced behind the snapshot.
+
+After adding or changing a mention:
+
+```bash
+cd apps/web
+pnpm blog-mentions:update  # regenerate company rows; preserve reviewed watchlists
+pnpm blog-mentions:check   # same zero-call gate run by CI and `pnpm build`
+```
+
+Review the snapshot diff. A newly referenced watchlist has no repository CSV source, so add its stable title/description to `mention-snapshot.json` before running the update command.
 
 ### `<Company slug="..." />`
 
@@ -106,7 +127,7 @@ Inline pill linking to `/{locale}/company/{slug}`. Renders the company's icon (o
 The shift was led by <Company slug="stripe" /> and <Company slug="openai" />.
 ```
 
-Source: `MdxMentions.tsx::CompanyMention`. Resolves via the ISR-safe `getCompanyBySlug`.
+Source: `MdxMentions.tsx::CompanyMention`. Resolves synchronously from the approved snapshot; no search-plane client is in its import graph.
 
 ### `<Watchlist owner="..." slug="..." />`
 
@@ -116,17 +137,17 @@ Inline pill linking to `/{locale}/{owner}/{slug}`. Renders a checklist glyph + t
 For the curated set, see <Watchlist owner="colophongroup" slug="big-tech-jobs-in-switzerland" />.
 ```
 
-Source: `MdxMentions.tsx::WatchlistMention`. Resolves via the ISR-safe `getPublicWatchlistByUserAndSlug`.
+Source: `MdxMentions.tsx::WatchlistMention`. Resolves synchronously from the approved snapshot.
 
 ### Adding a new mention type
 
 The future-mention candidates flagged in #2828 are `<Job id="..." />`, `<Occupation slug="..." />`, `<Location slug="..." />`, `<Author slug="..." />`. To add one:
 
-1. **Pick an ISR-safe data action.** It must NOT read session/cookies/headers (see `app/__tests__/isr-routes.test.ts::TAINTED_HELPERS`). The blog post page is `revalidate=86400`; tainted helpers would silently break that.
-2. **Add a server component to `MdxMentions.tsx`** following the `CompanyMention` shape: `cache()`-wrap the data action, `MentionPill` for the visual, `MissingMention` for the fallback.
+1. **Add a reviewed repository snapshot source.** Build-time and request-time data actions are forbidden in the MDX mention import graph.
+2. **Add a server component to `MdxMentions.tsx`** following the `CompanyMention` shape: synchronous snapshot lookup, `MentionPill` for the visual, `MissingMention` for the fallback.
 3. **Register in `buildMdxComponents()`** with a TitleCase MDX tag.
 4. **Document here** with one usage example.
-5. **Test rendering** in dev — the live data should resolve, and an intentionally bad reference should fall through to `{Type ...}`.
+5. **Test rendering** in dev — the snapshot data should resolve, and an intentionally bad reference should fall through to `{Type ...}`.
 
 The `MentionPill` skeleton is shared so a new type inherits the visual treatment for free; only the `icon`, `label`, and (optional) `meta` differ.
 
@@ -154,10 +175,10 @@ behavior.
 
 ```bash
 cd apps/web
-pnpm install            # if first time in the worktree
-pnpm dev                # starts Next.js at localhost:3000
-                        # ensure .env.local exists — DB-backed mention
-                        # components throw without DATABASE_URL
+pnpm install                 # if first time in the worktree
+pnpm blog-mentions:check     # validate exact snapshot coverage + zero-call boundary
+pnpm dev                     # starts Next.js at localhost:3000
+                             # blog mentions do not require service credentials
 ```
 
 Author MDX, save, browser hot-reloads.

@@ -316,7 +316,16 @@ async def backfill(limit: int | None = None):
     print(f"  {len(csv_companies)} companies from CSV")
 
     print("Connecting to Hetzner Postgres...")
-    conn = await asyncpg.connect(db_url, ssl="disable")
+    conn = await asyncpg.connect(
+        db_url,
+        ssl="disable",
+        command_timeout=300,
+        statement_cache_size=0,
+        server_settings={
+            "application_name": "jobseek:operator:typesense-backfill",
+            "idle_in_transaction_session_timeout": "60s",
+        },
+    )
 
     print("Loading taxonomy maps...")
     maps = await _load_taxonomy_maps(conn)

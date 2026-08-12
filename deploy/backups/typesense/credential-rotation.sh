@@ -186,6 +186,7 @@ PY
 }
 
 typesense_rotation_read_service_state() {
+  local allow_unloaded=${1:-0}
   typesense_rotation_timer_enabled_state=""
   typesense_rotation_timer_active_state=""
   typesense_rotation_service_active_state=""
@@ -212,13 +213,20 @@ typesense_rotation_read_service_state() {
       jobseek-typesense-backup.service 2>/dev/null
   )"; then
     :
+  elif [[ "$allow_unloaded" == 1 && \
+    "$typesense_rotation_service_active_state" == unknown ]]; then
+    :
   elif [[ ! "$typesense_rotation_service_active_state" =~ ^(inactive|failed)$ ]]; then
     echo "ERROR: exact Typesense backup service active state is unavailable" >&2
     return 1
   fi
   [[ "$typesense_rotation_timer_enabled_state" =~ ^(enabled|disabled)$ ]]
   [[ "$typesense_rotation_timer_active_state" =~ ^(active|inactive)$ ]]
-  [[ "$typesense_rotation_service_active_state" =~ ^(active|inactive|failed)$ ]]
+  if [[ "$allow_unloaded" == 1 ]]; then
+    [[ "$typesense_rotation_service_active_state" =~ ^(active|inactive|failed|unknown)$ ]]
+  else
+    [[ "$typesense_rotation_service_active_state" =~ ^(active|inactive|failed)$ ]]
+  fi
 }
 
 typesense_rotation_is_disabled_inactive() {
@@ -251,11 +259,25 @@ typesense_rotation_restore_timer_state() {
   local failed=0
   local expected_enabled=disabled
   local expected_active=inactive
+  local service_failed_state
   if [[ "$typesense_rotation_timer_quiesced" -ne 1 ]]; then
     return
   fi
-  if ! "$typesense_rotation_systemctl_command" reset-failed \
-    jobseek-typesense-backup.service; then
+  # Successful oneshots can be garbage-collected immediately. Accept only the
+  # explicit non-failed states that systemd reports for an inactive or unloaded
+  # unit; any other failure to inspect the state remains fatal.
+  if service_failed_state="$(
+    "$typesense_rotation_systemctl_command" is-failed \
+      jobseek-typesense-backup.service 2>/dev/null
+  )"; then
+    if [[ "$service_failed_state" != failed ]]; then
+      failed=1
+    fi
+    if ! "$typesense_rotation_systemctl_command" reset-failed \
+      jobseek-typesense-backup.service; then
+      failed=1
+    fi
+  elif [[ ! "$service_failed_state" =~ ^(inactive|unknown)$ ]]; then
     failed=1
   fi
   if [[ "$typesense_rotation_timer_was_enabled" -eq 1 ]]; then
@@ -272,10 +294,10 @@ typesense_rotation_restore_timer_state() {
       failed=1
     fi
   fi
-  if ! typesense_rotation_read_service_state || \
+  if ! typesense_rotation_read_service_state 1 || \
     [[ "$typesense_rotation_timer_enabled_state" != "$expected_enabled" ]] || \
     [[ "$typesense_rotation_timer_active_state" != "$expected_active" ]] || \
-    [[ "$typesense_rotation_service_active_state" == active ]]; then
+    [[ ! "$typesense_rotation_service_active_state" =~ ^(inactive|unknown)$ ]]; then
     failed=1
   fi
   if [[ "$failed" -ne 0 ]]; then
@@ -306,8 +328,15 @@ if (
     or status.get("success") is not True
     or int(status.get("attempt_unix") or 0) < started
     or int(status.get("last_success_unix") or 0) < started
+    or status.get("staging_isolated") is not True
+    or int(status.get("snapshot_local_copies_before", -1)) != 0
+    or int(status.get("snapshot_peak_local_copies") or 0) != 1
+    or int(status.get("staging_available_bytes_after_snapshot") or 0)
+        < int(status.get("staging_required_bytes_after_snapshot") or 1)
+    or status.get("memory_policy_phase") != "enforced"
+    or status.get("memory_limit_enforced") is not True
 ):
-    raise SystemExit("ERROR: Typesense credential-change backup smoke did not succeed")
+    raise SystemExit("ERROR: fresh Typesense direct-mount backup smoke did not succeed")
 PY
 }
 
@@ -315,10 +344,6 @@ typesense_rotation_smoke_and_commit() {
   local lock_timeout=$1
   local service_lock_fd=$2
   local smoke_started
-  if [[ "$typesense_rotation_changed" -ne 1 ]]; then
-    return
-  fi
-
   typesense_rotation_read_service_state
   if [[ "$typesense_rotation_timer_enabled_state" == enabled ]]; then
     typesense_rotation_timer_was_enabled=1
@@ -350,7 +375,7 @@ typesense_rotation_smoke_and_commit() {
     export BACKUP_STATUS_DIR="$backup_status_dir"
     "$typesense_rotation_backup_command" typesense
   ); then
-    echo "ERROR: Typesense credential-change backup smoke failed" >&2
+    echo "ERROR: fresh Typesense direct-mount backup smoke failed" >&2
     return 1
   fi
   typesense_rotation_validate_fresh_status "$smoke_started"
@@ -363,11 +388,13 @@ typesense_rotation_smoke_and_commit() {
   fi
   typesense_rotation_service_lock_held=1
 
-  typesense_rotation_commit_started=1
-  mv -f "$typesense_rotation_candidate_env" "$typesense_rotation_live_env"
-  typesense_rotation_candidate_env=""
-  typesense_rotation_validate_file "$typesense_rotation_live_env"
-  typesense_rotation_commit_complete=1
+  if [[ "$typesense_rotation_changed" -eq 1 ]]; then
+    typesense_rotation_commit_started=1
+    mv -f "$typesense_rotation_candidate_env" "$typesense_rotation_live_env"
+    typesense_rotation_candidate_env=""
+    typesense_rotation_validate_file "$typesense_rotation_live_env"
+    typesense_rotation_commit_complete=1
+  fi
   typesense_rotation_restore_timer_state
 }
 
@@ -407,6 +434,13 @@ typesense_rotation_rollback() {
   local service_lock_fd=$2
   local failed=0
   if [[ "$typesense_rotation_pending" -ne 1 ]]; then
+    if [[ "$typesense_rotation_timer_quiesced" -eq 1 ]]; then
+      if ! typesense_rotation_disable_fail_safe; then
+        echo "ERROR: failed direct-mount smoke could not keep timer disabled" >&2
+        return 1
+      fi
+      typesense_rotation_timer_quiesced=0
+    fi
     return
   fi
 

@@ -308,6 +308,18 @@ local_db_pool_idle = Gauge("crawler_local_db_pool_idle", "Local Postgres pool id
 supa_db_pool_size = Gauge("crawler_supa_db_pool_size", "Supabase pool total connections")
 supa_db_pool_idle = Gauge("crawler_supa_db_pool_idle", "Supabase pool idle connections")
 
+postgresql_pool_connections = Gauge(
+    "crawler_postgresql_pool_connections",
+    "Connections currently owned by a crawler PostgreSQL pool",
+    ["role", "pool", "state"],
+)
+
+postgresql_pool_limit = Gauge(
+    "crawler_postgresql_pool_limit",
+    "Configured crawler PostgreSQL pool connection limit",
+    ["role", "pool", "limit"],
+)
+
 # ── Backward compat aliases ─────────────────────────────────────────
 
 db_pool_size = Gauge("crawler_db_pool_size", "Total connections in pool")

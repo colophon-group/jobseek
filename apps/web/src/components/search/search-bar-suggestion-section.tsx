@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 export function SearchBarSuggestionSection<T>({
   items,
   header,
+  optionIdPrefix,
   startIndex,
   activeIndex,
   hasDivider,
@@ -18,6 +19,7 @@ export function SearchBarSuggestionSection<T>({
 }: {
   items: readonly T[];
   header: string;
+  optionIdPrefix: string;
   startIndex: number;
   activeIndex: number;
   hasDivider: boolean;
@@ -45,7 +47,7 @@ export function SearchBarSuggestionSection<T>({
         return (
           <div
             key={getKey(item)}
-            id={`search-option-${flatIndex}`}
+            id={`${optionIdPrefix}-${flatIndex}`}
             role="option"
             aria-selected={flatIndex === activeIndex}
             data-suggestion

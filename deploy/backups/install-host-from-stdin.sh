@@ -44,10 +44,17 @@ unset fields
 rm -f -- "$payload"
 
 cd /opt/jobseek-backup
+installer_args=("$service")
+if [[ "$service" != "web-postgresql" ]]; then
+  # The production deployment contract below requires the durable data-backup
+  # timers to be enabled. Make that intent explicit so a fail-safe-disabled
+  # timer can be recovered by the next reviewed deployment.
+  installer_args=(--start-timer "$service")
+fi
 JOBSEEK_BACKUP_DEPLOY_SHA="$deploy_sha" \
 JOBSEEK_TYPESENSE_BACKUP_KEY_FILE="$typesense_key_file" \
 JOBSEEK_WEB_DATABASE_URL_FILE="$web_database_url_file" \
-  bash deploy/backups/install-host.sh "$service"
+  bash deploy/backups/install-host.sh "${installer_args[@]}"
 
 if systemctl is-enabled --quiet "jobseek-${service}-backup.timer"; then
   systemctl is-active "jobseek-${service}-backup.timer"

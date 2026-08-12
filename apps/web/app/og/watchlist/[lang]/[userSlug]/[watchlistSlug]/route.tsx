@@ -42,11 +42,14 @@ function countFilters(
     + (f.technologySlugs?.length ?? 0);
 }
 
-export default async function OgImage({
-  params,
-}: {
-  params: Promise<{ lang: string; userSlug: string; watchlistSlug: string }>;
-}) {
+export async function GET(
+  _request: Request,
+  {
+    params,
+  }: {
+    params: Promise<{ lang: string; userSlug: string; watchlistSlug: string }>;
+  },
+) {
   const { userSlug, watchlistSlug } = await params;
   if (!isPlausiblePublicWatchlistPath(userSlug, watchlistSlug)) notFound();
   const detail = await getPublicWatchlistByUserAndSlug(userSlug, watchlistSlug);
