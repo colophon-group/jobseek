@@ -774,7 +774,18 @@ and units under the root-only
 `/var/lib/jobseek-observability/rollback/` directory and automatically
 restores them if validation, service startup, or loopback readiness fails;
 artifacts that did not exist before the attempt are removed rather than left
-as a partial installation.
+as a partial installation. Failed attempts never run retention. After a new
+surface is fully accepted and its automatic rollback trap is disarmed, the
+installer prunes under the same deployment lock. It keeps at most the three
+newest timestamped snapshots, removes snapshots older than 14 days, and always
+keeps the just-accepted rollback even when it is the only remaining snapshot.
+The complete root is validated before deletion: its path, ownership, mode,
+timestamp names, directory types, and allowlisted regular-file contents must
+all match the installer contract, with no symlinks. Any unexpected entry stops
+retention without deleting known snapshots; operators must classify and move
+that entry explicitly before rerunning the reviewed deployment. A retention
+failure happens after service acceptance, so it reports deployment failure but
+does not roll the healthy surface back.
 It restarts only Alloy; it does not restart Docker, PostgreSQL, Typesense, the
 tunnel, or any crawler workload.
 

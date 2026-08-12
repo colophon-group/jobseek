@@ -41,6 +41,8 @@ jobs:
         run: |
           set -euo pipefail
           bash -n deploy/observability/install-host.sh
+          python3 -m py_compile deploy/observability/prune_rollbacks.py
+          python3 deploy/observability/test_prune_rollbacks.py
           python3 -m py_compile scripts/codex-routine-status.py scripts/jobseek-host-observability.py scripts/sync-grafana-alertmanager.py scripts/sync-grafana-rules.py scripts/verify-grafana-host-metrics.py
           cd apps/crawler
           uv run --frozen python ../../scripts/sync-grafana-alertmanager.py \
