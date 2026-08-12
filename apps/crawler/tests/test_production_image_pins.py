@@ -98,7 +98,17 @@ def test_murmur_shim_deploy_promotes_and_persists_the_built_digest() -> None:
     assert 'mv -f "$previous_env" "$live_env"' in workflow
     assert "active_release=/home/deploy/.crawler-active-release" in workflow
     assert 'verify_release_generation "$active_generation"' in workflow
-    assert 'install -m 0600 "$live_env" "$legacy_generation/environment.env"' in workflow
+    assert "rollback-images.override.yml" in workflow
+    assert "IMAGE_OVERRIDE_SHA256=$image_override_digest" in workflow
+    assert "RELEASE_FORMAT_VERSION=2" in workflow
+    assert "BOOTSTRAP_LEGACY=1" in workflow
+    assert "BOOTSTRAP_LEGACY=0" in workflow
+    assert "config --images" in workflow
+    assert "MURMUR_TOKEN=%s" in workflow
+    assert "LOCAL_DATABASE_URL=%s" in workflow
+    assert 'ROLLBACK_ACTIVE_IMAGE_OVERRIDE="$ACTIVE_IMAGE_OVERRIDE"' in (
+        ROOT / "apps/crawler/deploy.sh"
+    ).read_text(encoding="utf-8")
     assert "target: /home/deploy/incoming-shim/" in workflow
     assert 'test ! -L "$live_env"' in workflow
     assert "CRAWLER_IMAGE_REF|BROWSER_IMAGE_REF|SHIM_IMAGE_REF" in workflow
@@ -119,6 +129,11 @@ def test_murmur_shim_deploy_promotes_and_persists_the_built_digest() -> None:
     assert "previous_compose_sha256" in rollback
     assert "previous_env_sha256" in rollback
     assert 'docker compose --env-file "$live_env"' in rollback
+    image_baseline = rollback.index('rollback_compose_args=(-f "$live_compose")')
+    bootstrap_images = rollback.index('rollback_compose_args+=(-f "$active_image_override")')
+    shim_identity = rollback.index('rollback_compose_args+=(-f "$rollback_override")')
+    clean_restart = rollback.index("env -i \\", shim_identity)
+    assert image_baseline < bootstrap_images < shim_identity < clean_restart
     transaction = workflow[
         workflow.index("trap rollback_shim EXIT") : workflow.index(
             "rollback_armed=0", workflow.index("curl -sf http://localhost:8080/health")

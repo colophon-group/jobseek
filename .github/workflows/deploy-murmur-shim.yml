@@ -170,10 +170,11 @@ jobs:
             # forwarded correctly through `envs:`. Re-export here so
             # docker compose (a child process) sees the values.
             #
-            # The session exports the new immutable image reference for
-            # Compose. Only after health passes does this workflow replace
-            # that one line in the crawler-owned .env; all secret and
-            # unrelated settings remain byte-for-byte intact.
+            # The session exports the new immutable image reference and the
+            # protected shim credentials for Compose. The workflow publishes
+            # their same-directory candidates with rollback already armed,
+            # then commits the durable active generation only after health and
+            # exact container identity pass.
             export MURMUR_TOKEN OWNER LOCAL_DATABASE_URL SHIM_IMAGE_REF
             cd /home/deploy
             exec 9>/run/lock/jobseek-crawler-mutation.lock
@@ -214,69 +215,68 @@ jobs:
               fi
             }
 
-            verify_release_generation() {
-              generation="$1"
-              test -d "$generation"
-              test ! -L "$generation"
-              verify_snapshot \
-                "$generation/docker-compose.yml" "$generation/docker-compose.sha256" Compose
-              verify_snapshot \
-                "$generation/environment.env" "$generation/environment.sha256" environment
-              test "$(stat -c '%a' "$generation/environment.env")" = 600
-              test -f "$generation/success.env"
-              test ! -L "$generation/success.env"
-              test -f "$generation/release.manifest"
-              test ! -L "$generation/release.manifest"
-              format_version="$(sed -n 's/^RELEASE_FORMAT_VERSION=//p' "$generation/release.manifest")"
-              compose_digest="$(sed -n 's/^COMPOSE_SHA256=//p' "$generation/release.manifest")"
-              env_digest="$(sed -n 's/^ENVIRONMENT_SHA256=//p' "$generation/release.manifest")"
-              success_digest="$(sed -n 's/^SUCCESS_SHA256=//p' "$generation/release.manifest")"
-              [[ "$format_version" == 0 || "$format_version" == 1 ]]
-              [[ "$compose_digest" =~ ^[0-9a-f]{64}$ ]]
-              [[ "$env_digest" =~ ^[0-9a-f]{64}$ ]]
-              [[ "$success_digest" =~ ^[0-9a-f]{64}$ ]]
-              test "$compose_digest" = "$(tr -d '[:space:]' <"$generation/docker-compose.sha256")"
-              test "$env_digest" = "$(tr -d '[:space:]' <"$generation/environment.sha256")"
-              test "$success_digest" = "$(sha256sum "$generation/success.env" | awk '{print $1}')"
+            resolve_running_digest() {
+              container="$1"
+              repository="$2"
+              configured_ref="$(
+                docker inspect "$container" --format '{{.Config.Image}}'
+              )" || return 1
+              if [[ "$configured_ref" =~ ^${repository}(:[^@]+)?@sha256:[0-9a-f]{64}$ ]]; then
+                printf '%s\n' "$configured_ref"
+                return 0
+              fi
+              image_id="$(
+                docker inspect "$container" --format '{{.Image}}'
+              )" || return 1
+              [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]] || return 1
+              digest_refs_output="$(
+                docker image inspect "$image_id" \
+                  --format '{{range .RepoDigests}}{{println .}}{{end}}'
+              )" || return 1
+              mapfile -t digest_refs < <(
+                printf '%s\n' "$digest_refs_output" |
+                  grep -E "^${repository}@sha256:[0-9a-f]{64}$"
+              )
+              test "${#digest_refs[@]}" -eq 1 || return 1
+              printf '%s\n' "${digest_refs[0]}"
             }
 
-            if [[ ! -e "$active_release" ]]; then
-              # First rollout: bundle the last crawler-confirmed Compose file,
-              # current credential environment, and committed marker, then
-              # atomically select the complete legacy generation before the
-              # shim workflow changes either live file.
-              verify_snapshot \
-                "$legacy_active_compose" "$legacy_active_compose_sha256" Compose
-              test -f /home/deploy/.crawler-deploy-success.env
-              test ! -L /home/deploy/.crawler-deploy-success.env
-              test ! -e "$release_root" || {
-                test -d "$release_root"
-                test ! -L "$release_root"
-              }
-              install -d -m 0700 "$release_root"
-              legacy_generation="$(mktemp -d "$release_root/legacy.XXXXXX")"
-              install -m 0644 "$legacy_active_compose" "$legacy_generation/docker-compose.yml"
-              install -m 0600 "$live_env" "$legacy_generation/environment.env"
-              install -m 0644 /home/deploy/.crawler-deploy-success.env \
-                "$legacy_generation/success.env"
-              compose_digest="$(sha256sum "$legacy_generation/docker-compose.yml" | awk '{print $1}')"
-              env_digest="$(sha256sum "$legacy_generation/environment.env" | awk '{print $1}')"
-              success_digest="$(sha256sum "$legacy_generation/success.env" | awk '{print $1}')"
-              printf '%s\n' "$compose_digest" >"$legacy_generation/docker-compose.sha256"
-              printf '%s\n' "$env_digest" >"$legacy_generation/environment.sha256"
-              printf '%s\n' \
-                'RELEASE_FORMAT_VERSION=0' \
-                "COMPOSE_SHA256=$compose_digest" \
-                "ENVIRONMENT_SHA256=$env_digest" \
-                "SUCCESS_SHA256=$success_digest" \
-                >"$legacy_generation/release.manifest"
-              chmod 0644 "$legacy_generation"/*.sha256 "$legacy_generation/release.manifest"
-              python3 - "$legacy_generation" "$active_release" <<'PY'
+            write_exact_image_override() {
+              output="$1"
+              shim_ref="$2"
+              cat >"$output" <<EOF
+            services:
+              redis:
+                image: ${previous_redis_ref}
+              worker-1:
+                image: ${CRAWLER_IMAGE_REF}
+              worker-2:
+                image: ${CRAWLER_IMAGE_REF}
+              worker-3:
+                image: ${CRAWLER_IMAGE_REF}
+              exporter:
+                image: ${CRAWLER_IMAGE_REF}
+              drain:
+                image: ${CRAWLER_IMAGE_REF}
+              browser-1:
+                image: ${BROWSER_IMAGE_REF}
+              murmur-shim-runtime-init:
+                image: ${CRAWLER_IMAGE_REF}
+              murmur-shim:
+                image: ${shim_ref}
+              alloy:
+                image: ${previous_alloy_ref}
+            EOF
+              chmod 0644 "$output"
+            }
+
+            fsync_release_generation() {
+              generation="$1"
+              python3 - "$generation" <<'PY'
             import os
-            import secrets
             import sys
 
-            generation, active = sys.argv[1:]
+            generation = sys.argv[1]
             for name in os.listdir(generation):
                 path = os.path.join(generation, name)
                 if os.path.isfile(path) and not os.path.islink(path):
@@ -296,47 +296,121 @@ jobs:
                 os.fsync(release_root_fd)
             finally:
                 os.close(release_root_fd)
+            PY
+            }
+
+            activate_release_generation() {
+              generation="$1"
+              python3 - "$generation" "$active_release" <<'PY'
+            import os
+            import secrets
+            import sys
+
+            generation, active = sys.argv[1:]
             candidate = f"{active}.{secrets.token_hex(16)}"
             os.symlink(generation, candidate)
             os.replace(candidate, active)
-            directory_fd = os.open("/home/deploy", os.O_RDONLY | os.O_DIRECTORY)
+            directory_fd = os.open(os.path.dirname(active), os.O_RDONLY | os.O_DIRECTORY)
             try:
                 os.fsync(directory_fd)
             finally:
                 os.close(directory_fd)
             PY
-            fi
-            test -d "$release_root"
-            test ! -L "$release_root"
-            test -L "$active_release"
-            active_generation="$(readlink "$active_release")"
-            [[ "$active_generation" == "$release_root/"* ]]
-            [[ "${active_generation#"$release_root/"}" != */* ]]
-            verify_release_generation "$active_generation"
-
-            resolve_running_digest() {
-              container="$1"
-              repository="$2"
-              configured_ref="$(docker inspect "$container" --format '{{.Config.Image}}')"
-              if [[ "$configured_ref" =~ ^${repository}@sha256:[0-9a-f]{64}$ ]]; then
-                printf '%s\n' "$configured_ref"
-                return 0
-              fi
-              image_id="$(docker inspect "$container" --format '{{.Image}}')"
-              [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
-              mapfile -t digest_refs < <(
-                docker image inspect "$image_id" \
-                  --format '{{range .RepoDigests}}{{println .}}{{end}}' |
-                  grep -E "^${repository}@sha256:[0-9a-f]{64}$"
-              )
-              test "${#digest_refs[@]}" -eq 1
-              printf '%s\n' "${digest_refs[0]}"
             }
 
+            verify_release_generation() {
+              generation="$1"
+              image_override=""
+              bootstrap_legacy=""
+              test -d "$generation"
+              test ! -L "$generation"
+              verify_snapshot \
+                "$generation/docker-compose.yml" "$generation/docker-compose.sha256" Compose
+              verify_snapshot \
+                "$generation/environment.env" "$generation/environment.sha256" environment
+              test "$(stat -c '%a' "$generation/environment.env")" = 600
+              test -f "$generation/success.env"
+              test ! -L "$generation/success.env"
+              test -f "$generation/release.manifest"
+              test ! -L "$generation/release.manifest"
+              format_version="$(sed -n 's/^RELEASE_FORMAT_VERSION=//p' "$generation/release.manifest")"
+              compose_digest="$(sed -n 's/^COMPOSE_SHA256=//p' "$generation/release.manifest")"
+              env_digest="$(sed -n 's/^ENVIRONMENT_SHA256=//p' "$generation/release.manifest")"
+              success_digest="$(sed -n 's/^SUCCESS_SHA256=//p' "$generation/release.manifest")"
+              [[ "$format_version" == 1 || "$format_version" == 2 ]]
+              [[ "$compose_digest" =~ ^[0-9a-f]{64}$ ]]
+              [[ "$env_digest" =~ ^[0-9a-f]{64}$ ]]
+              [[ "$success_digest" =~ ^[0-9a-f]{64}$ ]]
+              test "$compose_digest" = "$(tr -d '[:space:]' <"$generation/docker-compose.sha256")"
+              test "$env_digest" = "$(tr -d '[:space:]' <"$generation/environment.sha256")"
+              test "$success_digest" = "$(sha256sum "$generation/success.env" | awk '{print $1}')"
+              if [[ "$format_version" == 2 ]]; then
+                image_override="$generation/rollback-images.override.yml"
+                image_override_digest="$(sed -n 's/^IMAGE_OVERRIDE_SHA256=//p' "$generation/release.manifest")"
+                bootstrap_legacy="$(sed -n 's/^BOOTSTRAP_LEGACY=//p' "$generation/release.manifest")"
+                [[ "$image_override_digest" =~ ^[0-9a-f]{64}$ ]]
+                [[ "$bootstrap_legacy" == 0 || "$bootstrap_legacy" == 1 ]]
+                test -f "$image_override"
+                test ! -L "$image_override"
+                test "$image_override_digest" = "$(sha256sum "$image_override" | awk '{print $1}')"
+              fi
+              compose_args=(-f "$generation/docker-compose.yml")
+              if [[ -n "$image_override" ]]; then
+                compose_args+=(-f "$image_override")
+              fi
+              configured_images_output="$(
+                env -i \
+                  "PATH=${PATH:-/usr/local/bin:/usr/bin:/bin}" \
+                  "HOME=${HOME:-/home/deploy}" \
+                  COMPOSE_PROJECT_NAME=deploy \
+                  docker compose --env-file "$generation/environment.env" \
+                    "${compose_args[@]}" config --images
+              )"
+              test -n "$configured_images_output"
+              mapfile -t configured_images <<<"$configured_images_output"
+              test "${#configured_images[@]}" -gt 0
+              for configured_image in "${configured_images[@]}"; do
+                [[ "$configured_image" =~ @sha256:[0-9a-f]{64}$ ]]
+              done
+              identity_keys=(CRAWLER_IMAGE_TAG JOBSEEK_DEPLOY_REVISION)
+              if [[ "$format_version" == 1 ||
+                ( "$format_version" == 2 && "$bootstrap_legacy" == 0 ) ]]
+              then
+                identity_keys=(
+                  CRAWLER_IMAGE_TAG CRAWLER_IMAGE_REF BROWSER_IMAGE_REF
+                  SHIM_IMAGE_REF JOBSEEK_DEPLOY_REVISION
+                )
+              fi
+              for identity_key in "${identity_keys[@]}"; do
+                mapfile -t environment_values < <(
+                  sed -n "s/^${identity_key}=//p" "$generation/environment.env"
+                )
+                mapfile -t success_values < <(
+                  sed -n "s/^${identity_key}=//p" "$generation/success.env"
+                )
+                test "${#environment_values[@]}" -eq 1
+                test "${#success_values[@]}" -eq 1
+                test -n "${environment_values[0]}"
+                test "${environment_values[0]}" = "${success_values[0]}"
+              done
+            }
+
+            previous_redis_ref="$(
+              resolve_running_digest deploy-redis-1 redis
+            )"
             CRAWLER_IMAGE_REF="$(
               resolve_running_digest deploy-worker-1-1 \
                 ghcr.io/colophon-group/jobseek-crawler
             )"
+            for crawler_container in \
+              deploy-worker-2-1 deploy-worker-3-1 deploy-exporter-1 \
+              deploy-drain-1
+            do
+              test "$(
+                resolve_running_digest "$crawler_container" \
+                  ghcr.io/colophon-group/jobseek-crawler
+              )" = "$CRAWLER_IMAGE_REF"
+            done
             BROWSER_IMAGE_REF="$(
               resolve_running_digest deploy-browser-1-1 \
                 ghcr.io/colophon-group/jobseek-crawler-browser
@@ -345,7 +419,71 @@ jobs:
               resolve_running_digest deploy-murmur-shim-1 \
                 ghcr.io/colophon-group/jobseek-murmur-shim
             )"
+            previous_alloy_ref="$(
+              resolve_running_digest deploy-alloy-1 grafana/alloy
+            )"
             export CRAWLER_IMAGE_REF BROWSER_IMAGE_REF
+
+            if [[ ! -e "$active_release" ]]; then
+              # First rollout: bundle the last crawler-confirmed Compose file,
+              # current credential environment, and committed marker, then
+              # atomically select the complete legacy generation before the
+              # shim workflow changes either live file.
+              verify_snapshot \
+                "$legacy_active_compose" "$legacy_active_compose_sha256" Compose
+              test -f /home/deploy/.crawler-deploy-success.env
+              test ! -L /home/deploy/.crawler-deploy-success.env
+              test ! -e "$release_root" || {
+                test -d "$release_root"
+                test ! -L "$release_root"
+              }
+              install -d -m 0700 "$release_root"
+              legacy_generation="$(mktemp -d "$release_root/legacy.XXXXXX")"
+              install -m 0644 "$legacy_active_compose" "$legacy_generation/docker-compose.yml"
+              awk '!/^(CRAWLER_IMAGE_REF|BROWSER_IMAGE_REF|SHIM_IMAGE_REF|COMPOSE_FILE)=/' \
+                "$live_env" >"$legacy_generation/environment.env"
+              printf 'CRAWLER_IMAGE_REF=%s\n' "$CRAWLER_IMAGE_REF" \
+                >>"$legacy_generation/environment.env"
+              printf 'BROWSER_IMAGE_REF=%s\n' "$BROWSER_IMAGE_REF" \
+                >>"$legacy_generation/environment.env"
+              printf 'SHIM_IMAGE_REF=%s\n' "$previous_shim_ref" \
+                >>"$legacy_generation/environment.env"
+              chmod 0600 "$legacy_generation/environment.env"
+              install -m 0644 /home/deploy/.crawler-deploy-success.env \
+                "$legacy_generation/success.env"
+              write_exact_image_override \
+                "$legacy_generation/rollback-images.override.yml" \
+                "$previous_shim_ref"
+              compose_digest="$(sha256sum "$legacy_generation/docker-compose.yml" | awk '{print $1}')"
+              env_digest="$(sha256sum "$legacy_generation/environment.env" | awk '{print $1}')"
+              success_digest="$(sha256sum "$legacy_generation/success.env" | awk '{print $1}')"
+              image_override_digest="$(sha256sum "$legacy_generation/rollback-images.override.yml" | awk '{print $1}')"
+              printf '%s\n' "$compose_digest" >"$legacy_generation/docker-compose.sha256"
+              printf '%s\n' "$env_digest" >"$legacy_generation/environment.sha256"
+              printf '%s\n' \
+                'RELEASE_FORMAT_VERSION=2' \
+                "COMPOSE_SHA256=$compose_digest" \
+                "ENVIRONMENT_SHA256=$env_digest" \
+                "SUCCESS_SHA256=$success_digest" \
+                "IMAGE_OVERRIDE_SHA256=$image_override_digest" \
+                'BOOTSTRAP_LEGACY=1' \
+                >"$legacy_generation/release.manifest"
+              chmod 0644 "$legacy_generation"/*.sha256 "$legacy_generation/release.manifest"
+              fsync_release_generation "$legacy_generation"
+              activate_release_generation "$legacy_generation"
+            fi
+            test -d "$release_root"
+            test ! -L "$release_root"
+            test -L "$active_release"
+            active_generation="$(readlink "$active_release")"
+            [[ "$active_generation" == "$release_root/"* ]]
+            [[ "${active_generation#"$release_root/"}" != */* ]]
+            verify_release_generation "$active_generation"
+            previous_active_generation="$active_generation"
+            active_image_override=""
+            if [[ -f "$active_generation/rollback-images.override.yml" ]]; then
+              active_image_override="$active_generation/rollback-images.override.yml"
+            fi
 
             previous_compose="$(mktemp /home/deploy/.docker-compose.shim.rollback.XXXXXX)"
             previous_env="$(mktemp /home/deploy/.env.shim.rollback.XXXXXX)"
@@ -357,6 +495,7 @@ jobs:
             rollback_armed=0
             compose_activated=0
             env_activated=0
+            release_activated=0
             compose_candidate=""
             env_candidate=""
             rollback_shim() {
@@ -407,17 +546,42 @@ jobs:
             finally:
                 os.close(directory_fd)
             PY
+                if [[ "${release_activated:-0}" -eq 1 ]]; then
+                  release_restore_status="$rollback_restore_failed"
+                  if [[ "$release_restore_status" -eq 0 ]]; then
+                    activate_release_generation "$previous_active_generation"
+                    release_restore_status=$?
+                  fi
+                  if [[ "$release_restore_status" -eq 0 ]]; then
+                    (
+                      set -e
+                      verify_release_generation "$previous_active_generation"
+                      test "$(readlink "$active_release")" = "$previous_active_generation"
+                    )
+                    release_restore_status=$?
+                  fi
+                  if [[ "$release_restore_status" -eq 0 ]]; then
+                    release_activated=0
+                  else
+                    rollback_restore_failed=1
+                  fi
+                fi
                 rollback_override="$(mktemp "${live_compose}.murmur-rollback-override.XXXXXX")"
                 printf 'services:\n  murmur-shim:\n    image: %s\n' \
                   "$previous_shim_ref" >"$rollback_override"
                 chmod 0600 "$rollback_override"
+                rollback_compose_args=(-f "$live_compose")
+                if [[ -n "${active_image_override:-}" ]]; then
+                  rollback_compose_args+=(-f "$active_image_override")
+                fi
+                rollback_compose_args+=(-f "$rollback_override")
                 if [[ "$rollback_restore_failed" -ne 0 ]] ||
                   ! env -i \
                     "PATH=${PATH:-/usr/local/bin:/usr/bin:/bin}" \
                     "HOME=${HOME:-/home/deploy}" \
                     COMPOSE_PROJECT_NAME=deploy \
                     docker compose --env-file "$live_env" \
-                      -f "$live_compose" -f "$rollback_override" \
+                      "${rollback_compose_args[@]}" \
                       up -d murmur-shim ||
                   ! sleep 5 ||
                   ! env -i "PATH=${PATH:-/usr/local/bin:/usr/bin:/bin}" \
@@ -446,11 +610,13 @@ jobs:
             trap 'exit 143' TERM
             env_candidate="$(mktemp "${live_env}.shim.XXXXXX")"
             compose_candidate="$(mktemp "${live_compose}.shim.XXXXXX")"
-            awk '!/^(CRAWLER_IMAGE_REF|BROWSER_IMAGE_REF|SHIM_IMAGE_REF)=/' \
+            awk '!/^(CRAWLER_IMAGE_REF|BROWSER_IMAGE_REF|SHIM_IMAGE_REF|MURMUR_TOKEN|LOCAL_DATABASE_URL|COMPOSE_FILE)=/' \
               "$previous_env" >"$env_candidate"
             printf 'CRAWLER_IMAGE_REF=%s\n' "$CRAWLER_IMAGE_REF" >>"$env_candidate"
             printf 'BROWSER_IMAGE_REF=%s\n' "$BROWSER_IMAGE_REF" >>"$env_candidate"
             printf 'SHIM_IMAGE_REF=%s\n' "$SHIM_IMAGE_REF" >>"$env_candidate"
+            printf 'MURMUR_TOKEN=%s\n' "$MURMUR_TOKEN" >>"$env_candidate"
+            printf 'LOCAL_DATABASE_URL=%s\n' "$LOCAL_DATABASE_URL" >>"$env_candidate"
             chmod 0600 "$env_candidate"
             install -m 0644 "$staged_compose" "$compose_candidate"
             # Make rollback evidence and both same-directory publication
@@ -518,9 +684,84 @@ jobs:
             sleep 5
             curl -sf http://localhost:8080/health
             test "$(docker inspect deploy-murmur-shim-1 --format '{{.Config.Image}}')" = "$SHIM_IMAGE_REF"
+
+            # Commit the independently health-confirmed shim release to the
+            # same generation ledger used by crawler rollback. This makes a
+            # manual credential rotation durable and makes a coupled crawler
+            # failure restore the just-confirmed shim digest instead of the
+            # legacy mutable `latest` tag.
+            mapfile -t crawler_image_tags < <(
+              sed -n 's/^CRAWLER_IMAGE_TAG=//p' \
+                "$previous_active_generation/environment.env"
+            )
+            mapfile -t deploy_revisions < <(
+              sed -n 's/^JOBSEEK_DEPLOY_REVISION=//p' \
+                "$previous_active_generation/environment.env"
+            )
+            test "${#crawler_image_tags[@]}" -eq 1
+            test -n "${crawler_image_tags[0]}"
+            test "${#deploy_revisions[@]}" -eq 1
+            [[ "${deploy_revisions[0]}" =~ ^[0-9a-f]{40}$ ]]
+            murmur_generation="$(mktemp -d "$release_root/murmur.XXXXXX")"
+            # The shim workflow applies only the shim service. Preserve the
+            # prior full-stack Compose contract as rollback evidence and layer
+            # the exact identities that are actually running after this
+            # transaction; unrelated staged Compose changes remain uncommitted
+            # until the coupled crawler rollout verifies the whole stack.
+            install -m 0644 "$previous_active_generation/docker-compose.yml" \
+              "$murmur_generation/docker-compose.yml"
+            awk '!/^(CRAWLER_IMAGE_REF|BROWSER_IMAGE_REF|SHIM_IMAGE_REF|MURMUR_TOKEN|LOCAL_DATABASE_URL|COMPOSE_FILE)=/' \
+              "$previous_active_generation/environment.env" \
+              >"$murmur_generation/environment.env"
+            printf 'CRAWLER_IMAGE_REF=%s\n' "$CRAWLER_IMAGE_REF" \
+              >>"$murmur_generation/environment.env"
+            printf 'BROWSER_IMAGE_REF=%s\n' "$BROWSER_IMAGE_REF" \
+              >>"$murmur_generation/environment.env"
+            printf 'SHIM_IMAGE_REF=%s\n' "$SHIM_IMAGE_REF" \
+              >>"$murmur_generation/environment.env"
+            printf 'MURMUR_TOKEN=%s\n' "$MURMUR_TOKEN" \
+              >>"$murmur_generation/environment.env"
+            printf 'LOCAL_DATABASE_URL=%s\n' "$LOCAL_DATABASE_URL" \
+              >>"$murmur_generation/environment.env"
+            chmod 0600 "$murmur_generation/environment.env"
+            murmur_success_file="$murmur_generation/success.env"
+            printf '%s\n' \
+              "CRAWLER_IMAGE_TAG=${crawler_image_tags[0]}" \
+              "CRAWLER_IMAGE_REF=$CRAWLER_IMAGE_REF" \
+              "BROWSER_IMAGE_REF=$BROWSER_IMAGE_REF" \
+              "REDIS_IMAGE_REF=$previous_redis_ref" \
+              "SHIM_IMAGE_REF=$SHIM_IMAGE_REF" \
+              "ALLOY_IMAGE_REF=$previous_alloy_ref" \
+              "JOBSEEK_DEPLOY_REVISION=${deploy_revisions[0]}" \
+              >"$murmur_success_file"
+            chmod 0644 "$murmur_success_file"
+            write_exact_image_override \
+              "$murmur_generation/rollback-images.override.yml" \
+              "$SHIM_IMAGE_REF"
+            compose_digest="$(sha256sum "$murmur_generation/docker-compose.yml" | awk '{print $1}')"
+            env_digest="$(sha256sum "$murmur_generation/environment.env" | awk '{print $1}')"
+            success_digest="$(sha256sum "$murmur_success_file" | awk '{print $1}')"
+            image_override_digest="$(sha256sum "$murmur_generation/rollback-images.override.yml" | awk '{print $1}')"
+            printf '%s\n' "$compose_digest" >"$murmur_generation/docker-compose.sha256"
+            printf '%s\n' "$env_digest" >"$murmur_generation/environment.sha256"
+            printf '%s\n' \
+              'RELEASE_FORMAT_VERSION=2' \
+              "COMPOSE_SHA256=$compose_digest" \
+              "ENVIRONMENT_SHA256=$env_digest" \
+              "SUCCESS_SHA256=$success_digest" \
+              "IMAGE_OVERRIDE_SHA256=$image_override_digest" \
+              'BOOTSTRAP_LEGACY=0' \
+              >"$murmur_generation/release.manifest"
+            chmod 0644 "$murmur_generation"/*.sha256 "$murmur_generation/release.manifest"
+            fsync_release_generation "$murmur_generation"
+            release_activated=1
+            activate_release_generation "$murmur_generation"
+            verify_release_generation "$murmur_generation"
+            test "$(readlink "$active_release")" = "$murmur_generation"
             rollback_armed=0
             compose_activated=0
             env_activated=0
+            release_activated=0
             rm -f -- "$previous_compose" "$previous_env" "$staged_compose"
         env:
           OWNER: ${{ github.repository_owner }}
@@ -528,10 +769,9 @@ jobs:
           GHCR_PULL_TOKEN: ${{ secrets.HETZNER_GH_TOKEN }}
           MURMUR_TOKEN: ${{ secrets.MURMUR_TOKEN }}
           # Forwarded so the compose `MURMUR_DB_DSN: ${LOCAL_DATABASE_URL}`
-          # substitution resolves on this single-service redeploy. The
-          # crawler's full-stack deploy already pins the same secret in
-          # /home/deploy/.env, but this workflow runs without invoking
-          # deploy.sh, so the inline export above is the only path.
+          # substitution resolves on this single-service redeploy. The remote
+          # transaction persists this value and MURMUR_TOKEN together with the
+          # exact shim digest in the committed active generation.
           LOCAL_DATABASE_URL: ${{ secrets.LOCAL_DATABASE_URL }}
 
   promote:

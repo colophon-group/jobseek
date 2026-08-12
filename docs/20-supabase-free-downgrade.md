@@ -127,13 +127,18 @@ The deploy does not infer first-rollout state from a Git revision: a skipped or
 failed prior deploy can leave the host behind Git. Missing or mismatched
 snapshot evidence fails closed before mutation. On the first coupled rollout,
 the Murmur workflow verifies the legacy crawler-confirmed Compose snapshot and
-atomically selects a generation that bundles it with the current 0600 env and
-committed success marker, all while holding the shared mutation lock and before
-changing either live file. Every successful crawler deploy writes a complete
-generation under `/home/deploy/.crawler-release-generations/` and atomically
-replaces `/home/deploy/.crawler-active-release`; Compose, environment, their
-digests, and the success marker therefore cannot be split by process failure or
-host restart. The deploy also fails closed
+resolves every running service to an exact registry digest before atomically
+selecting a generation. That bootstrap generation bundles the legacy Compose
+snapshot, a 0600 environment augmented with exact crawler/browser/shim refs,
+the committed marker, and a checksummed all-service image override. Rollback
+therefore never resolves the legacy crawler or shim `latest` expressions. A
+successful Murmur-only deploy persists its protected token/DSN and verified
+shim digest in the same generation ledger while retaining the prior full-stack
+Compose baseline. Every successful crawler deploy writes a complete generation
+under `/home/deploy/.crawler-release-generations/` and atomically replaces
+`/home/deploy/.crawler-active-release`; Compose, environment, their digests,
+the success marker, and any transitional image override therefore cannot be
+split by process failure or host restart. The deploy also fails closed
 before activation unless the installed reconciliation wrapper's content and
 completed-install digest marker exactly match the required Typesense-only
 wrapper contract.
