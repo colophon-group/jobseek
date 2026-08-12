@@ -44,23 +44,25 @@ def _patch_registry(monkeypatch):
     async def _dom_can_handle(url, client, pw=None):
         return {"urls": 15}
 
-    mk = AsyncMock()
+    async def _discover(*args, **kwargs):
+        return set()
+
     fake_registry = [
-        MonitorType(name="greenhouse", cost=10, discover=mk(), can_handle=_gh_can_handle),
-        MonitorType(name="lever", cost=10, discover=mk(), can_handle=_lever_can_handle),
+        MonitorType(name="greenhouse", cost=10, discover=_discover, can_handle=_gh_can_handle),
+        MonitorType(name="lever", cost=10, discover=_discover, can_handle=_lever_can_handle),
         MonitorType(
             name="nextdata",
             cost=20,
-            discover=mk(),
+            discover=_discover,
             can_handle=_nextdata_can_handle,
         ),
         MonitorType(
             name="sitemap",
             cost=50,
-            discover=mk(),
+            discover=_discover,
             can_handle=_sitemap_can_handle,
         ),
-        MonitorType(name="dom", cost=100, discover=mk(), can_handle=_dom_can_handle),
+        MonitorType(name="dom", cost=100, discover=_discover, can_handle=_dom_can_handle),
     ]
     monkeypatch.setattr("src.core.monitors._REGISTRY", fake_registry)
     return fake_registry

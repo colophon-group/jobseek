@@ -3,31 +3,20 @@
  *
  * The `/explore` and `/company/<slug>` pages historically fired
  * `getCurrencyRates()` three times per view (SalaryDisplayProvider +
- * SearchPage/CompanyPage + SalaryModal). The fix hoists the fetch into
- * the provider and exposes the table via a new `useSalaryRates()` hook.
- * These tests pin that contract:
+ * SearchPage/CompanyPage + SalaryModal). #3181 hoisted that to one provider
+ * RPC; #7197 resolves the hours-cached table in the shared server layout and
+ * injects it into the provider. These tests pin the final contract:
  *
- *   1. mounting the provider triggers exactly one fetch
- *   2. multiple consumers reading via the hook share the same fetch
+ *   1. multiple consumers receive the same server-supplied table immediately
+ *   2. mounting the provider triggers no browser Server Action
  *   3. consumers without a provider in scope still mount and receive
  *      a graceful empty table (no fallback fetch, no crash)
  */
 import { useState } from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@/test-utils/lingui-mock";
 
-const getCurrencyRatesMock = vi.fn();
-
-// The real `@/lib/actions/search` is a server action that transitively
-// imports `server-only`, which throws when loaded outside a Next runtime.
-vi.mock("server-only", () => ({}));
-vi.mock("@/lib/actions/search", () => ({
-  getCurrencyRates: (...args: unknown[]) => getCurrencyRatesMock(...args),
-}));
-
-// Import after the mock is installed so the provider closes over the
-// mocked module.
 import {
   SalaryDisplayProvider,
   useSalaryRates,
@@ -85,6 +74,7 @@ function BootstrapPreferenceHarness() {
         Load account preferences
       </button>
       <SalaryDisplayProvider
+        initialRates={[]}
         displayCurrency={preferences.currency}
         salaryPeriod={preferences.period}
       >
@@ -95,7 +85,6 @@ function BootstrapPreferenceHarness() {
 }
 
 beforeEach(() => {
-  getCurrencyRatesMock.mockReset();
   const memory = new Map<string, string>();
   const stub: Storage = {
     get length() {
@@ -117,15 +106,15 @@ beforeEach(() => {
   });
 });
 
-describe("SalaryDisplayProvider rate sharing (issue #3181)", () => {
-  it("fetches currency rates exactly once when multiple consumers mount", async () => {
-    getCurrencyRatesMock.mockResolvedValue([
+describe("SalaryDisplayProvider rate sharing (#3181, #7197)", () => {
+  it("shares the injected currency rates when multiple consumers mount", () => {
+    const initialRates = [
       { currency: "EUR", toEur: 1 },
       { currency: "USD", toEur: 0.92 },
-    ]);
+    ];
 
     render(
-      <SalaryDisplayProvider>
+      <SalaryDisplayProvider initialRates={initialRates}>
         <RatesProbe testId="probe-a" />
         <RatesProbe testId="probe-b" />
         <RatesProbe testId="probe-c" />
@@ -133,37 +122,28 @@ describe("SalaryDisplayProvider rate sharing (issue #3181)", () => {
       </SalaryDisplayProvider>,
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId("probe-a").textContent).toContain("EUR:1");
-    });
-
-    // All consumers see the same payload — and we only paid for one
-    // round-trip to do it.
-    expect(getCurrencyRatesMock).toHaveBeenCalledTimes(1);
+    // All consumers synchronously see the same server-shell payload. No client
+    // action is imported or fired by the provider.
+    expect(screen.getByTestId("probe-a").textContent).toContain("EUR:1");
     expect(screen.getByTestId("probe-b").textContent).toBe("EUR:1,USD:0.92");
     expect(screen.getByTestId("probe-c").textContent).toBe("EUR:1,USD:0.92");
     expect(screen.getByTestId("formatter-rates").textContent).toBe("2");
   });
 
   it("returns an empty rate list when no provider is in scope (no fallback fetch, no crash)", () => {
-    // No mock setup: if the hook fell through to its own fetch, the
-    // assertion below would still pass (mock returns undefined), but
-    // `getCurrencyRatesMock.toHaveBeenCalledTimes(0)` would catch it.
     render(<RatesProbe testId="orphan" />);
 
     expect(screen.getByTestId("orphan").textContent).toBe("");
-    expect(getCurrencyRatesMock).toHaveBeenCalledTimes(0);
   });
 });
 
 describe("SalaryDisplayProvider preference persistence (#6035)", () => {
   it("rehydrates anonymous preferences and persists updates across remounts", async () => {
-    getCurrencyRatesMock.mockResolvedValue([]);
     window.localStorage.setItem("pref-display-currency", "USD");
     window.localStorage.setItem("pref-salary-period", "monthly");
 
     const first = render(
-      <SalaryDisplayProvider>
+      <SalaryDisplayProvider initialRates={[]}>
         <PreferenceProbe />
       </SalaryDisplayProvider>,
     );
@@ -179,7 +159,7 @@ describe("SalaryDisplayProvider preference persistence (#6035)", () => {
     first.unmount();
 
     render(
-      <SalaryDisplayProvider>
+      <SalaryDisplayProvider initialRates={[]}>
         <PreferenceProbe />
       </SalaryDisplayProvider>,
     );
@@ -190,7 +170,6 @@ describe("SalaryDisplayProvider preference persistence (#6035)", () => {
   });
 
   it("lets asynchronously loaded account preferences override anonymous values", async () => {
-    getCurrencyRatesMock.mockResolvedValue([]);
     window.localStorage.setItem("pref-display-currency", "USD");
     window.localStorage.setItem("pref-salary-period", "monthly");
 

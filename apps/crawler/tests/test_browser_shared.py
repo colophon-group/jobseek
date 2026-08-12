@@ -22,6 +22,7 @@ from src.shared.browser import (
     NAVIGATE_KEYS,
     OVERLAY_SELECTORS,
     VALID_WAIT_STRATEGIES,
+    BrowserNavigationHTTPStatusError,
     _resolve_headless,
     _resolve_placeholders,
     _x_server_alive,
@@ -42,7 +43,7 @@ from src.shared.browser import (
 def _make_page() -> MagicMock:
     """Return a mock Playwright Page with common methods stubbed."""
     page = MagicMock()
-    page.goto = AsyncMock()
+    page.goto = AsyncMock(return_value=None)
     page.wait_for_load_state = AsyncMock()
     page.evaluate = AsyncMock()
     page.content = AsyncMock(return_value="<html></html>")
@@ -56,6 +57,22 @@ def _make_page() -> MagicMock:
     locator.first = locator_first
     page.locator = MagicMock(return_value=locator)
     return page
+
+
+def _make_navigation_response(
+    page: MagicMock,
+    *,
+    status: int,
+    url: str = "https://example.com/final",
+    main_frame: bool = True,
+) -> MagicMock:
+    """Return a response shaped like a main-document Playwright response."""
+    response = MagicMock()
+    response.status = status
+    response.url = url
+    response.frame = page.main_frame if main_frame else MagicMock()
+    response.request.is_navigation_request.return_value = True
+    return response
 
 
 def _make_pw(page: MagicMock | None = None) -> MagicMock:
@@ -165,6 +182,59 @@ class TestNavigate:
         page = _make_page()
         with pytest.raises(ValueError, match="Invalid wait strategy"):
             await navigate(page, "https://example.com", {"wait": "bogus"})
+
+    @pytest.mark.parametrize("status", [400, 403, 404, 500, 599])
+    async def test_http_error_response_raises(self, status):
+        page = _make_page()
+        page.goto.return_value = _make_navigation_response(page, status=status)
+
+        with pytest.raises(BrowserNavigationHTTPStatusError) as exc_info:
+            await navigate(page, "https://example.com/requested")
+
+        assert exc_info.value.status == status
+        assert exc_info.value.requested_url == "https://example.com/requested"
+        assert exc_info.value.response_url == "https://example.com/final"
+        assert exc_info.value.phase == "primary"
+        assert f"HTTP {status}" in str(exc_info.value)
+
+    async def test_successful_redirect_response_is_allowed(self):
+        page = _make_page()
+        page.goto.return_value = _make_navigation_response(
+            page,
+            status=200,
+            url="https://careers.example.com/jobs",
+        )
+
+        await navigate(page, "https://example.com/careers")
+
+    async def test_non_http_error_response_is_allowed(self):
+        page = _make_page()
+        page.goto.return_value = _make_navigation_response(
+            page,
+            status=500,
+            url="data:text/html,error",
+        )
+
+        await navigate(page, "data:text/html,error")
+
+    async def test_missing_response_is_allowed(self):
+        page = _make_page()
+        page.goto.return_value = None
+
+        await navigate(page, "about:blank")
+
+    async def test_response_without_concrete_url_is_allowed(self):
+        page = _make_page()
+        page.goto.return_value = AsyncMock()
+
+        await navigate(page, "https://example.com")
+
+    async def test_response_listener_is_removed_after_primary_navigation(self):
+        page = _make_page()
+
+        await navigate(page, "https://example.com")
+
+        page.remove_listener.assert_called_once_with("response", page.on.call_args.args[1])
 
 
 # ---------------------------------------------------------------------------
@@ -299,6 +369,61 @@ class TestNavigateFallback:
                 "https://example.com",
                 {"wait": "networkidle", "wait_fallback": "bogus"},
             )
+
+    @pytest.mark.parametrize("status", [403, 500])
+    async def test_fallback_rejects_captured_http_error(self, status):
+        page = _make_page()
+        handlers = []
+        page.on.side_effect = lambda event, handler: handlers.append(handler)
+        response = _make_navigation_response(page, status=status)
+
+        async def _goto(*_args, **_kwargs):
+            handlers[0](response)
+            raise PlaywrightTimeoutError("Timeout")
+
+        page.goto.side_effect = _goto
+
+        with pytest.raises(BrowserNavigationHTTPStatusError) as exc_info:
+            await navigate(page, "https://example.com/requested")
+
+        assert exc_info.value.status == status
+        assert exc_info.value.phase == "fallback"
+        page.wait_for_load_state.assert_awaited_once()
+        page.remove_listener.assert_called_once_with("response", handlers[0])
+
+    async def test_fallback_uses_final_redirect_response(self):
+        page = _make_page()
+        handlers = []
+        page.on.side_effect = lambda event, handler: handlers.append(handler)
+        redirect = _make_navigation_response(page, status=302, url="https://example.com/login")
+        final = _make_navigation_response(page, status=503, url="https://example.com/error")
+
+        async def _goto(*_args, **_kwargs):
+            handlers[0](redirect)
+            handlers[0](final)
+            raise PlaywrightTimeoutError("Timeout")
+
+        page.goto.side_effect = _goto
+
+        with pytest.raises(BrowserNavigationHTTPStatusError) as exc_info:
+            await navigate(page, "https://example.com/requested")
+
+        assert exc_info.value.response_url == "https://example.com/error"
+        assert exc_info.value.status == 503
+
+    async def test_fallback_ignores_subframe_http_error(self):
+        page = _make_page()
+        handlers = []
+        page.on.side_effect = lambda event, handler: handlers.append(handler)
+        subframe_error = _make_navigation_response(page, status=500, main_frame=False)
+
+        async def _goto(*_args, **_kwargs):
+            handlers[0](subframe_error)
+            raise PlaywrightTimeoutError("Timeout")
+
+        page.goto.side_effect = _goto
+
+        await navigate(page, "https://example.com")
 
 
 # ---------------------------------------------------------------------------
@@ -983,6 +1108,21 @@ class TestRender:
         with patch("playwright.async_api.async_playwright", return_value=mock_async_pw):
             html = await render("https://example.com", None)
         assert html == "<html></html>"
+
+    async def test_http_error_stops_actions_and_content_extraction(self):
+        mock_page = _make_page()
+        mock_page.goto.return_value = _make_navigation_response(mock_page, status=503)
+        mock_pw = _make_pw(mock_page)
+
+        with pytest.raises(BrowserNavigationHTTPStatusError):
+            await render(
+                "https://example.com",
+                {"actions": [{"action": "dismiss_overlays"}]},
+                pw=mock_pw,
+            )
+
+        mock_page.evaluate.assert_not_awaited()
+        mock_page.content.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------

@@ -310,7 +310,8 @@ def _run(
     """Run a subprocess command and return the result.
 
     When *cwd* is not given, defaults to the detected repo root (if any).
-    When *check* is True, ``CalledProcessError`` is translated into
+    When *check* is True, ``CalledProcessError`` is translated. A missing
+    executable is translated regardless of *check*. Both become
     ``GitCommandError`` (for ``git``) or ``GitHubApiError`` (for ``gh``).
     Transient failures are retried up to *retries* times.
     """
@@ -340,6 +341,14 @@ def _run(
                 time.sleep(_RETRY_DELAY)
                 continue
             raise last_err from exc
+        except FileNotFoundError as exc:
+            is_gh = args[0] == "gh"
+            err_cls = GitHubApiError if is_gh else GitCommandError
+            raise err_cls(
+                cmd=args,
+                returncode=127,
+                stderr=f"executable not found: {args[0]}",
+            ) from exc
 
     # Should not reach here, but satisfy type checker if the loop invariant changes.
     raise RuntimeError("subprocess retry loop exited without a result")

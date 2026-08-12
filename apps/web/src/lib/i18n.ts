@@ -1,9 +1,13 @@
 import { type I18n, type Messages, setupI18n } from "@lingui/core";
 import { setI18n } from "@lingui/react/server";
+import {
+  API_LOCALES,
+  DEFAULT_API_LOCALE,
+} from "@jseek/mcp-server/public-api-contract";
 
-export const locales = ["en", "de", "fr", "it"] as const;
+export const locales = API_LOCALES;
 export type Locale = (typeof locales)[number];
-export const defaultLocale: Locale = "en";
+export const defaultLocale: Locale = DEFAULT_API_LOCALE;
 
 export function isLocale(value: string): value is Locale {
   return locales.includes(value as Locale);

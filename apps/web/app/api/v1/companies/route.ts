@@ -4,7 +4,12 @@ import { type NextRequest, NextResponse } from "next/server";
 // issues #3231 / #3331.
 import { suggestCompanies } from "@/lib/services/company";
 import { CACHE_TTL_LONG } from "@/lib/cache-ttl";
-import { checkRateLimit, apiResponse, siteUrl } from "../_shared";
+import {
+  checkRateLimit,
+  apiResponse,
+  parseApiLocale,
+  siteUrl,
+} from "../_shared";
 
 const MAX_RESULTS = 10;
 
@@ -14,7 +19,8 @@ export async function GET(request: NextRequest) {
 
   const sp = request.nextUrl.searchParams;
   const q = sp.get("q");
-  const locale = sp.get("locale") ?? "en";
+  const locale = parseApiLocale(sp, rl);
+  if (locale instanceof NextResponse) return locale;
 
   if (!q) {
     return apiResponse(

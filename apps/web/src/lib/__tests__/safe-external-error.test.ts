@@ -103,6 +103,46 @@ describe("safeExternalError", () => {
     });
   });
 
+  it("ignores axios status 0 while retaining its safe timeout code", () => {
+    const safe = safeExternalError(
+      {
+        status: 0,
+        code: "ECONNABORTED",
+        config: {
+          headers: { "X-TYPESENSE-API-KEY": "SECRET_CANARY_STATUS_ZERO" },
+        },
+      },
+      { service: "typesense", operation: "taxonomy_lookup" },
+    );
+
+    expect(safe).toMatchObject({
+      kind: "timeout",
+      timeout: true,
+      code: "ECONNABORTED",
+    });
+    expect(safe).not.toHaveProperty("status");
+    expect(JSON.stringify(safe)).not.toContain("SECRET_CANARY");
+  });
+
+  it("lets a nested real 429 override wrapper status zero and timeout code", () => {
+    const safe = safeExternalError(
+      {
+        status: 0,
+        code: "ECONNABORTED",
+        response: { status: 429, data: "SECRET_CANARY_RATE_LIMIT" },
+      },
+      { service: "typesense", operation: "taxonomy_lookup" },
+    );
+
+    expect(safe).toMatchObject({
+      kind: "rate_limited",
+      timeout: false,
+      status: 429,
+      code: "ECONNABORTED",
+    });
+    expect(JSON.stringify(safe)).not.toContain("SECRET_CANARY");
+  });
+
   it("logs only the sanitized envelope", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     logExternalError(

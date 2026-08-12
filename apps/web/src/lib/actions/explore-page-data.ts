@@ -13,28 +13,38 @@ import { readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
 import { getSession } from "@/lib/sessionCache";
 import { firstOf, idsOrUndefined, parseRangeParam, getGeoFromHeaders } from "@/lib/search/params";
 import { convertToEur } from "@/lib/salary";
+import { parseExploreSearchLanguages } from "@/lib/search/language-param";
 import type { SearchResponse } from "@/lib/search";
+import { isTypesenseUnavailableError } from "@/lib/search/typesense-retry";
+import {
+  EMPTY_PARSED_FILTERS,
+  parseOfflineSearchFilters,
+} from "@/lib/search/offline-filters";
+import { logExternalError } from "@/lib/safe-external-error";
+import {
+  getExploreRepositoryFallbackCompanies,
+  hasTypesenseSearchConfiguration,
+  type ExploreRepositoryCompany,
+} from "@/lib/explore-repository-fallback";
 
 const PAGE_SIZE = 10;
 
 const DEFAULT_DISPLAY_CURRENCY = "EUR";
 
-const EMPTY_PARSED_FILTERS: ParsedSearchFilters = {
-  keywords: [],
-  locations: [],
-  occupations: [],
-  seniorities: [],
-  technologies: [],
-  workMode: [],
-  employmentTypes: [],
-};
-
 export interface ExploreData {
   result: SearchResponse;
+  /**
+   * Real company profile identities used only when Typesense is not
+   * configured (for example, deterministic secretless CI builds). This is a
+   * separate shape so the UI cannot mistake it for live job results.
+   */
+  repositoryFallbackCompanies?: ExploreRepositoryCompany[];
   parsed: ParsedSearchFilters;
   displayCurrency: string;
   jobLanguages: string[];
   languages: string[];
+  /** Explicit public-API language override carried by a `moreAt` URL. */
+  languageOverride?: string[] | null;
   userLat: number | undefined;
   userLng: number | undefined;
   salaryCurrencyParam: string;
@@ -42,6 +52,100 @@ export interface ExploreData {
   salaryMaxDisplay: number | undefined;
   experienceMin: number | undefined;
   experienceMax: number | undefined;
+}
+
+function repositoryFallbackFor(
+  result: SearchResponse,
+  typesenseConfigured: boolean,
+): ExploreRepositoryCompany[] | undefined {
+  if (typesenseConfigured || result.companies.length > 0) {
+    return undefined;
+  }
+  return getExploreRepositoryFallbackCompanies();
+}
+
+function unavailableSearchResponse(): SearchResponse {
+  return { companies: [], totalCompanies: 0, degraded: true };
+}
+
+function hasUnresolvedExplicitSlugs(parsed: ParsedSearchFilters): boolean {
+  return (["loc", "occ", "sen", "tech"] as const).some(
+    (kind) => (parsed.unresolvedExplicitSlugs?.[kind]?.length ?? 0) > 0,
+  );
+}
+
+type SearchFilterParams = Parameters<typeof parseSearchFilters>[0];
+
+/**
+ * A failed cache-component lookup is not retained by Next, so a burst of
+ * identical Explore actions can otherwise multiply the same slow taxonomy
+ * request inside one warm function instance. Keep only live promises and
+ * always remove them after settlement; raw filter values never reach logs or
+ * a persistent cache through this registry.
+ */
+const inflightFilterParses = new Map<string, Promise<ParsedSearchFilters>>();
+
+function filterParseKey(params: SearchFilterParams): string {
+  return JSON.stringify([
+    params.locale,
+    params.q,
+    params.loc,
+    params.occ,
+    params.sen,
+    params.tech,
+    params.wm,
+    params.etype,
+    params.userLat,
+    params.userLng,
+  ]);
+}
+
+function parseSearchFiltersSingleFlight(
+  params: SearchFilterParams,
+): Promise<ParsedSearchFilters> {
+  const key = filterParseKey(params);
+  const existing = inflightFilterParses.get(key);
+  if (existing) return existing;
+
+  const promise = parseSearchFilters(params).finally(() => {
+    if (inflightFilterParses.get(key) === promise) {
+      inflightFilterParses.delete(key);
+    }
+  });
+  inflightFilterParses.set(key, promise);
+  return promise;
+}
+
+export async function fetchExploreFilterPageData(
+  params: SearchFilterParams,
+): Promise<{ parsed: ParsedSearchFilters; degraded: boolean }> {
+  try {
+    return {
+      parsed: await parseSearchFiltersSingleFlight(params),
+      degraded: false,
+    };
+  } catch (err) {
+    if (!isTypesenseUnavailableError(err)) {
+      // SDK/Axios errors can retain credential-bearing request configuration.
+      // Next logs rejected Server Action values, so never rethrow the original
+      // object across that boundary—even for deterministic 4xx responses.
+      logExternalError(
+        "error",
+        { service: "typesense", operation: "explore_filter_resolution" },
+        err,
+      );
+      throw new Error("Explore filter resolution failed");
+    }
+    logExternalError(
+      "warn",
+      { service: "typesense", operation: "explore_filter_resolution" },
+      err,
+    );
+    return {
+      parsed: parseOfflineSearchFilters(params),
+      degraded: true,
+    };
+  }
 }
 
 export async function fetchExplorePageData(params: {
@@ -60,6 +164,9 @@ export async function fetchExplorePageData(params: {
   const sal = firstOf(searchParams.sal);
   const salcur = firstOf(searchParams.salcur);
   const exp = firstOf(searchParams.exp);
+  const typesenseConfigured = hasTypesenseSearchConfiguration();
+  const languageParam = parseExploreSearchLanguages(firstOf(searchParams.lang));
+  const languageOverride = languageParam.ok ? languageParam.languages : null;
 
   const { userLat, userLng } = await getGeoFromHeaders();
 
@@ -69,15 +176,21 @@ export async function fetchExplorePageData(params: {
   // toggles in /settings actually flow through to the server-side
   // search. Other prefs (display currency etc.) stay anon-defaults.
   const session = await getSession();
-  const [parsed, prefs, anonJobLangs] = await Promise.all([
-    parseSearchFilters({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng }),
+  const [filterResolution, prefs, anonJobLangs] = await Promise.all([
+    typesenseConfigured
+      ? fetchExploreFilterPageData({ q, loc, occ, sen, tech, wm, etype, locale, userLat, userLng })
+      : Promise.resolve({
+          parsed: parseOfflineSearchFilters({ q, loc, occ, sen, tech, wm, etype }),
+          degraded: true,
+        }),
     session ? getPreferences() : Promise.resolve(null),
     session ? Promise.resolve(null) : readAnonJobLanguagesCookie(),
   ]);
+  const { parsed } = filterResolution;
 
   const jobLanguages = prefs?.jobLanguages ?? anonJobLangs ?? [];
   const displayCurrency = prefs?.displayCurrency ?? "EUR";
-  const languages = resolveJobLanguages(jobLanguages, locale);
+  const languages = languageOverride ?? resolveJobLanguages(jobLanguages, locale);
 
   const locationIds = idsOrUndefined(parsed.locations);
   const occupationIds = idsOrUndefined(parsed.occupations);
@@ -104,8 +217,15 @@ export async function fetchExplorePageData(params: {
   const salaryMaxEur = convertToEur(salaryMaxDisplay, salaryCurrencyParam, rates);
   const { min: experienceMin, max: experienceMax } = parseRangeParam(exp);
 
+  // If taxonomy resolution failed, searching without the unresolved IDs would
+  // silently broaden the request and present a false zero/success state. Keep
+  // the user's URL/filter payload and return the explicit unavailable state.
   const result =
-    parsed.keywords.length > 0
+    !typesenseConfigured ||
+    filterResolution.degraded ||
+    hasUnresolvedExplicitSlugs(parsed)
+    ? unavailableSearchResponse()
+    : parsed.keywords.length > 0
       ? await searchJobs({
           keywords: parsed.keywords,
           locationIds,
@@ -142,10 +262,12 @@ export async function fetchExplorePageData(params: {
 
   return {
     result,
+    repositoryFallbackCompanies: repositoryFallbackFor(result, typesenseConfigured),
     parsed,
     displayCurrency,
     jobLanguages,
     languages,
+    languageOverride,
     userLat,
     userLng,
     salaryCurrencyParam,
@@ -184,32 +306,37 @@ export async function fetchExplorePageDefaults(params: {
   const displayCurrency = DEFAULT_DISPLAY_CURRENCY;
   const jobLanguages: string[] = [];
   const languages = resolveJobLanguages(jobLanguages, locale);
+  const typesenseConfigured = hasTypesenseSearchConfiguration();
 
   // ``listTopCompaniesAnonymous`` (not ``listTopCompanies``) — the
   // ``listTopCompanies`` variant calls ``getSessionUserId`` which awaits
   // ``headers()`` and would silently downgrade the page to dynamic
   // rendering, defeating the ISR optimisation this whole module is for.
-  const result = await listTopCompaniesAnonymous({
-    locationIds: undefined,
-    occupationIds: undefined,
-    seniorityIds: undefined,
-    technologyIds: undefined,
-    salaryMinEur: undefined,
-    salaryMaxEur: undefined,
-    experienceMin: undefined,
-    experienceMax: undefined,
-    languages,
-    locale,
-    offset: 0,
-    limit: PAGE_SIZE,
-  });
+  const result = typesenseConfigured
+    ? await listTopCompaniesAnonymous({
+        locationIds: undefined,
+        occupationIds: undefined,
+        seniorityIds: undefined,
+        technologyIds: undefined,
+        salaryMinEur: undefined,
+        salaryMaxEur: undefined,
+        experienceMin: undefined,
+        experienceMax: undefined,
+        languages,
+        locale,
+        offset: 0,
+        limit: PAGE_SIZE,
+      })
+    : unavailableSearchResponse();
 
   return {
     result,
+    repositoryFallbackCompanies: repositoryFallbackFor(result, typesenseConfigured),
     parsed: EMPTY_PARSED_FILTERS,
     displayCurrency,
     jobLanguages,
     languages,
+    languageOverride: null,
     userLat: undefined,
     userLng: undefined,
     salaryCurrencyParam: displayCurrency,

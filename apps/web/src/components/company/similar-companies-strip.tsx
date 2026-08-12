@@ -24,6 +24,8 @@ type Props = {
   initialHasMore: boolean;
   /** True when anonymous-user pagination cap is already reached on page 0. */
   initialTruncated?: boolean;
+  /** True when the cached route snapshot already resolved unfiltered page 0. */
+  initialPageLoaded?: boolean;
   locale: Locale;
 };
 
@@ -35,6 +37,7 @@ export function SimilarCompaniesStrip({
   initialCompanies,
   initialHasMore,
   initialTruncated = false,
+  initialPageLoaded = false,
   locale,
 }: Props) {
   const { t } = useLingui();
@@ -47,11 +50,10 @@ export function SimilarCompaniesStrip({
     () => searchFilterParamsToObject(new URLSearchParams(paramsKey)),
     [paramsKey],
   );
-  // Suppress the inaugural fetch only when SSR already produced
-  // cards. When the parent passes `initialCompanies=[]` (the page is
-  // statically prerendered and hands off to the client to load), the
-  // first effect run must fire to actually populate the strip.
-  const skipNextFetch = useRef(initialCompanies.length > 0);
+  // The server snapshot is unfiltered. Suppress the inaugural read when it
+  // matches the current URL, including a legitimate empty result. A filtered
+  // entry URL still fetches its filtered ranking after hydration.
+  const skipNextFetch = useRef(initialPageLoaded && paramsKey === "");
 
   const [companies, setCompanies] = useState<SimilarCompany[]>(initialCompanies);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -64,6 +66,15 @@ export function SimilarCompaniesStrip({
   useEffect(() => {
     if (skipNextFetch.current) {
       skipNextFetch.current = false;
+      return;
+    }
+    // When a user clears filters, restore the already-resolved unfiltered
+    // snapshot instead of creating another Server Action read.
+    if (initialPageLoaded && paramsKey === "") {
+      setCompanies(initialCompanies);
+      setHasMore(initialHasMore);
+      setTruncated(initialTruncated);
+      scrollRef.current?.scrollTo({ left: 0 });
       return;
     }
     let cancelled = false;
@@ -83,7 +94,17 @@ export function SimilarCompaniesStrip({
     return () => {
       cancelled = true;
     };
-  }, [paramsKey, companyId, industryId, locale, spObject]);
+  }, [
+    paramsKey,
+    companyId,
+    industryId,
+    initialCompanies,
+    initialHasMore,
+    initialPageLoaded,
+    initialTruncated,
+    locale,
+    spObject,
+  ]);
 
   const loadMore = useCallback(async () => {
     if (industryId == null) return;

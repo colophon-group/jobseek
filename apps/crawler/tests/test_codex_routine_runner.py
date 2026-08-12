@@ -6,6 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from src.workspace.codex_routine_runner import (
+    LABELLER_POSTGRES_ENV,
     DailyRoutineRunner,
     ReportedRoutineOutcome,
     _compose_routine_error,
@@ -123,6 +124,35 @@ def test_annotation_verifier_uses_safe_env_and_labeller_data_root(
     assert captured["LABELLER_DATA_ROOT"] == "/srv/jobseek-codex/data/postings-labelled"
     assert "LOCAL_DATABASE_URL" not in captured
     assert "HF_TOKEN" not in captured
+
+
+def test_annotation_child_injects_exact_postgresql_budget_without_secret_rewrite(
+    monkeypatch, tmp_path: Path
+) -> None:
+    config = _config(tmp_path, dry_run=False)
+    runner = DailyRoutineRunner(
+        config,
+        routine="annotations",
+        run_date="2026-07-09",
+    )
+    monkeypatch.setenv("JOBSEEK_LABELLER_ENV_FILE", "/etc/jobseek-codex/labeller.env")
+    monkeypatch.setenv("LOCAL_DATABASE_URL", "postgresql://must-not-leak")
+
+    env = runner._codex_env(trace_path=tmp_path / "trace.jsonl", run_id="annotations-1")
+
+    assert LABELLER_POSTGRES_ENV == {
+        "CRAWLER_DB_ROLE": "labeller",
+        "CRAWLER_DB_POOL_MIN": "0",
+        "CRAWLER_DB_POOL_MAX": "2",
+        "CRAWLER_DB_POOL_IDLE_SECONDS": "60",
+    }
+    assert {key: env[key] for key in LABELLER_POSTGRES_ENV} == LABELLER_POSTGRES_ENV
+    assert env["JOBSEEK_LABELLER_DB_LOCK_FILE"] == str(
+        config.state_dir / "labeller-postgresql.lock"
+    )
+    assert env["JOBSEEK_LABELLER_DB_LOCK_TIMEOUT_SECONDS"] == "300"
+    assert env["JOBSEEK_LABELLER_ENV_FILE"] == "/etc/jobseek-codex/labeller.env"
+    assert "LOCAL_DATABASE_URL" not in env
 
 
 def test_annotation_verifier_reports_bounded_timeout(monkeypatch, tmp_path: Path) -> None:

@@ -1,7 +1,9 @@
 import { ImageResponse } from "next/og";
+import { notFound } from "next/navigation";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getPublicWatchlistByUserAndSlug } from "@/lib/actions/watchlists";
+import { isPlausiblePublicWatchlistPath } from "@/lib/public-watchlist-path";
 
 export const alt = "Watchlist on Job Seek";
 export const size = { width: 1200, height: 630 };
@@ -40,12 +42,16 @@ function countFilters(
     + (f.technologySlugs?.length ?? 0);
 }
 
-export default async function OgImage({
-  params,
-}: {
-  params: Promise<{ lang: string; userSlug: string; watchlistSlug: string }>;
-}) {
+export async function GET(
+  _request: Request,
+  {
+    params,
+  }: {
+    params: Promise<{ lang: string; userSlug: string; watchlistSlug: string }>;
+  },
+) {
   const { userSlug, watchlistSlug } = await params;
+  if (!isPlausiblePublicWatchlistPath(userSlug, watchlistSlug)) notFound();
   const detail = await getPublicWatchlistByUserAndSlug(userSlug, watchlistSlug);
   const fontData = await fontPromise;
 

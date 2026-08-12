@@ -1,10 +1,9 @@
 "use client";
 
-import { memo, useEffect, useRef, useMemo } from "react";
+import { memo, Suspense, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { CompanyIcon } from "@/components/CompanyIcon";
-import { useParams } from "next/navigation";
 import { timeAgoShort } from "@/lib/time";
 import { getMorePostings } from "@/lib/actions/search";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
@@ -24,6 +23,7 @@ import type { SearchResultCompany, SearchResultPosting, WorkMode } from "@/lib/s
 const POSTINGS_BATCH = 20;
 
 interface CompanyCardProps {
+  locale?: string;
   result: SearchResultCompany;
   keywords: string[];
   locationIds?: number[];
@@ -42,9 +42,7 @@ interface CompanyCardProps {
   selectedPostingId?: string | null;
 }
 
-function CompanyCardImpl({ result, keywords, locationIds, locations, occupations, seniorities, technologies, employmentTypes, workMode, salaryMinEur, salaryMaxEur, experienceMin, experienceMax, languages, onShowPosting, selectedPostingId }: CompanyCardProps) {
-  const params = useParams();
-  const locale = (params.lang as string) ?? "en";
+function CompanyCardImpl({ locale = "en", result, keywords, locationIds, locations, occupations, seniorities, technologies, employmentTypes, workMode, salaryMinEur, salaryMaxEur, experienceMin, experienceMax, languages, onShowPosting, selectedPostingId }: CompanyCardProps) {
   const { t } = useLingui();
   const { company, activeMatches, yearMatches } = result;
 
@@ -129,14 +127,19 @@ function CompanyCardImpl({ result, keywords, locationIds, locations, occupations
   const { sentinelRef, isLoading } = useInfiniteScroll({ hasMore, load: loadMore, root: scrollRef, rootMargin: "50px" });
 
   return (
-    <div className="rounded-md border border-divider bg-surface p-4">
+    <div
+      className="rounded-md border border-divider bg-surface p-4"
+      data-search-result-company={company.slug}
+    >
       {/* Header */}
       <div className="flex items-center gap-3">
         <Link href={companyHref} prefetch={false} className="flex items-center gap-3 transition-opacity hover:opacity-80">
           <CompanyIcon icon={company.icon} alt={company.name} size={32} />
           <span className="text-sm font-semibold">{company.name}</span>
         </Link>
-        <StarButton companyId={company.id} />
+        <Suspense fallback={<span aria-hidden="true" className="ml-auto size-6" />}>
+          <StarButton companyId={company.id} />
+        </Suspense>
       </div>
 
       {/* Stats */}
@@ -208,9 +211,11 @@ function CompanyCardImpl({ result, keywords, locationIds, locations, occupations
                 <PendingJobIcon />
               </span>
             )}
-            <span className="relative z-10 shrink-0">
-              <SaveButton postingId={posting.id} />
-            </span>
+            <Suspense fallback={<span aria-hidden="true" className="size-4 shrink-0" />}>
+              <span className="relative z-10 shrink-0">
+                <SaveButton postingId={posting.id} />
+              </span>
+            </Suspense>
             <span suppressHydrationWarning className="w-8 shrink-0 text-left text-[10px] tabular-nums text-muted">
               {timeAgoShort(posting.firstSeenAt, locale)}
             </span>
@@ -295,6 +300,8 @@ export function companyCardPropsEqual(prev: CompanyCardProps, next: CompanyCardP
   // companies array on every search response, so a new reference always
   // signals genuinely new data. We don't deep-walk postings here.
   if (prev.result !== next.result) return false;
+
+  if (prev.locale !== next.locale) return false;
 
   // Primitives.
   if (prev.salaryMinEur !== next.salaryMinEur) return false;

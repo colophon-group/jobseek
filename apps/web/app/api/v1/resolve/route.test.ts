@@ -98,6 +98,15 @@ describe("GET /api/v1/resolve?type=industries (issue #3228)", () => {
     expect(mocks.suggestIndustries).not.toHaveBeenCalled();
   });
 
+  it("rejects unsupported locales before resolving taxonomy values", async () => {
+    const { res, body } = await call("?type=industries&q=tech&locale=xx");
+
+    expect(res.status).toBe(400);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(body.error).toBe("Invalid 'locale' param. Supported: en, de, fr, it");
+    expect(mocks.suggestIndustries).not.toHaveBeenCalled();
+  });
+
   it("emits a slug-shaped string for each industry, NOT the stringified id", async () => {
     mocks.suggestIndustries.mockResolvedValue([
       { id: 3, name: "Technology" },

@@ -18,6 +18,81 @@ Crawler PostgreSQL, Typesense, and web PostgreSQL data protection is documented 
 the source of truth for backup scheduling, validation, restore drills, and
 the removal gate for legacy server backups.
 
+## Provider Lifecycle Baseline
+
+[`manage-hetzner-fleet.py`](../scripts/manage-hetzner-fleet.py) is the
+fail-closed source of truth for the provider-side ownership labels and
+lifecycle protection of the Jobseek production fleet. Its allowlist is fixed
+in code: the `jobseek-crawler`, `jobseek-postings-postgresql`,
+`jobseek-typesense`, and `murmur-server` servers; the
+`jobseek-postings-postgresql`, `jobseek-typesense-snapshots`, and
+`murmur-volume` Volumes; and `jobseek-network`. The command does not accept
+names or provider IDs as arguments, does not use `hcloud` or `jq`, and does not
+change placement, server backups, snapshots, or any application backup
+schedule.
+
+The desired labels are `environment=production`, `project=jobseek`,
+`owner=jobseek-operations`, and the resource's fixed `role`. Label updates
+merge these four keys into the current map instead of replacing unrelated
+labels. All four servers require both delete and rebuild protection. All three
+Volumes and the private network require delete protection. Volume roles follow
+the owning service: `postgresql`, `typesense`, and `murmur` respectively.
+
+Load `HETZNER_API_KEY` from the root-only operator environment and run the
+default read-only check first:
+
+```bash
+python3 scripts/manage-hetzner-fleet.py
+```
+
+Exit `0` means the complete allowlist is conformant, `2` means the dry-run
+found drift, and `1` means inventory or API state could not be proved. Output
+is intentionally limited to allowlisted names, booleans, and planned action
+types; it omits provider IDs, addresses, tokens, unrelated label values, and
+API response bodies. Missing resources, duplicate matches, malformed
+protection state, missing or inconsistent single-page metadata, or a
+non-unique inventory stops the whole run before the first mutation. The HTTP
+transport rejects redirects, response or request bodies above 1 MiB, and every
+endpoint outside exact-name reads, exact-ID reads, label updates, protection
+actions, and bounded action-status polling. It cannot issue delete, rebuild,
+reboot, resize, power, snapshot, backup, or network-topology requests.
+
+After reviewing the complete dry-run, enable protection and merge the managed
+labels with the explicit apply flag:
+
+```bash
+python3 scripts/manage-hetzner-fleet.py --apply
+```
+
+Apply enables and verifies all required deletion/rebuild protections before
+it starts label updates. It polls each provider protection action at most 60
+times with one-second spacing; each HTTPS request also has a 30-second timeout.
+It stops on the first failed, timed-out, mismatched, or unprovable action and
+never rolls back a successfully enabled protection.
+
+Hetzner label writes replace the entire label map; the provider has no
+conditional label-update operation. Before each write, the tool therefore
+reads the exact provider ID twice, rejects a replaced identity or observed
+concurrent label change, merges the managed keys into that stable map, and
+proves that every observed label survived both the response and an immediate
+re-read. Operators must still serialize `--apply` with other Hetzner label
+writers. After all mutations, the tool resolves all eight names again and
+returns success only when every managed label and protection field matches. A
+partially completed run is safe to repeat: it sends only still-needed changes
+and never weakens protection. Retain the successful redacted JSON as rollout
+evidence. This repository change does not itself apply the baseline to
+production.
+
+Protection rollback is deliberately outside this tool. Do not disable delete
+or rebuild protection to troubleshoot an application incident. If an approved
+provider operation truly requires it, record the exact resource in a private
+change ticket, disable only the required field in the Hetzner control plane,
+perform the bounded operation, and immediately rerun `--apply`. If managed
+label values must be restored, capture their pre-apply values in a root-only
+artifact (never a CI log), restore only those four keys while preserving the
+rest of the label map, then document why the repository baseline must change
+before the next apply.
+
 SSH pattern:
 
 ```bash
@@ -42,6 +117,57 @@ surface:
 The Typesense container receives one argument:
 `--config=/run/secrets/typesense-server.ini`. Its bind-mounted source is
 `/etc/jobseek-typesense/typesense-server.ini`, owned by root with mode `0600`.
+The Snapshot API writes directly through `/jobseek-snapshots` to the dedicated
+host filesystem mounted at `/mnt/jobseek-typesense-backup`; the backup job
+never makes a second `docker cp` copy on `/`. The managed container has a 3 GiB
+hard memory limit, 2.5 GiB reservation, and a 3 GiB memory-plus-swap ceiling,
+so swap cannot silently extend its resource envelope. Durable current, peak,
+event, Docker, Cloudflare tunnel, and OS headroom measurements still gate the
+seven-day acceptance window.
+
+Provision the snapshot filesystem before promoting the container contract.
+Create and attach a dedicated Hetzner Volume of at least 20 GiB in the
+Typesense server's location. Resolve the exact new device through
+`/dev/disk/by-id`, prove that it is the intended empty Volume with `lsblk` and
+`blkid`, and format it only when it has no filesystem. Mount its filesystem by
+UUID at `/mnt/jobseek-typesense-backup` with `nodev,nosuid,noexec`, then set the
+mount root to `root:root` mode `0700`. Never format a device that already has a
+filesystem or is mounted at `/mnt/typesense-data`.
+
+The promotion preflight is fail-closed:
+
+```bash
+findmnt --mountpoint=/mnt/jobseek-typesense-backup
+stat -c 'owner=%U:%G mode=%a device=%d' /mnt/jobseek-typesense-backup
+stat -c 'root_device=%d' /
+stat -c 'live_device=%d' /mnt/typesense-data
+df -B1 --output=size,used,avail /mnt/jobseek-typesense-backup
+```
+
+The staging device must differ from both printed devices. Persist exactly one
+`/etc/fstab` entry with a `UUID=` source and `nodev,nosuid,noexec`; the live
+mount source, filesystem type, and safety options must match it. Its capacity
+must be at least 20 GiB. Before a snapshot, available bytes must cover the
+current allocated live-data bytes plus a 4 GiB growth reserve and the protected
+8 GiB floor; after materialization, the 4 GiB growth reserve plus 8 GiB floor
+must remain. Both installers call the shared fail-closed verifier and install
+it under `/usr/local/sbin` for the reboot/rollback checks below; the hardened
+backup unit requires the mount point, and the backup code repeats the capacity
+checks around every snapshot.
+
+Before promotion, exercise persistence without rebooting the production
+service:
+
+```bash
+python3 scripts/verify-typesense-snapshot-mount.py
+systemctl stop jobseek-typesense-backup.timer jobseek-typesense-backup.service
+umount /mnt/jobseek-typesense-backup
+mount -a
+python3 scripts/verify-typesense-snapshot-mount.py
+```
+
+Do this before the container receives the bind mount. A later reboot check must
+show the same UUID-backed source before the backup timer is enabled.
 The Cloudflare token source is
 `/etc/jobseek-typesense/cloudflare-tunnel-token`, also root-owned `0600`;
 systemd copies it into the service credential directory for the dedicated
@@ -59,21 +185,66 @@ The protected `production` environment owns four deployment secrets:
 | `CLOUDFLARE_TUNNEL_TOKEN` | one named Cloudflare Tunnel only |
 
 For the initial transition, create the two generated Typesense consumer keys
-and set all four protected secrets first. Merge and verify crawler and backup
-deployments before changing the host. Then dispatch the reviewed `main`
-revision one independent rollback boundary at a time:
+and set all four protected secrets first. Merge the reviewed revision, then use
+this exact staged order. Production backup deployments are manual so a merge
+cannot race the manual host contract:
 
 ```bash
-gh workflow run deploy-typesense-host.yml \
-  --ref main \
-  -f component=typesense
-gh workflow run deploy-typesense-host.yml \
-  --ref main \
-  -f component=cloudflared
+gh workflow run deploy-typesense-host.yml --ref main -f component=typesense
+gh run list --workflow deploy-typesense-host.yml --commit "$(git rev-parse main)" \
+  --event workflow_dispatch --limit 5
+gh run watch <HOST_TYPESENSE_RUN_ID> --exit-status
+
+gh workflow run deploy-data-backups.yml --ref main -f service=typesense
+gh run list --workflow deploy-data-backups.yml --commit "$(git rev-parse main)" \
+  --event workflow_dispatch --limit 5
+gh run watch <TYPESENSE_BACKUP_RUN_ID> --exit-status
+
+gh workflow run deploy-typesense-host.yml --ref main -f component=cloudflared
+gh run list --workflow deploy-typesense-host.yml --commit "$(git rev-parse main)" \
+  --event workflow_dispatch --limit 5
+gh run watch <CLOUDFLARED_RUN_ID> --exit-status
 ```
 
-The Typesense step requires successful backup evidence no older than 36 hours
-and refuses to run while `jobseek-typesense-backup.service` is active. It
+Select the just-created run ID whose head SHA is the printed main SHA; do not
+dispatch the next step until `gh run watch --exit-status` succeeds. The host
+and backup workflows also share host locks, but those locks are a final race
+barrier, not a substitute for waiting on each acceptance gate.
+
+Typesense and cloudflared record separate deployed-revision markers. A
+cloudflared-only reconciliation never rewrites the Typesense SHA used by the
+pending backup contract, so it cannot invalidate or race a staged snapshot.
+
+The Typesense host step acquires the shared deployment and service-data locks,
+then disables the old backup timer before changing the container and leaves a
+revision-bound `backup-contract-pending` marker. The
+backup deployment refuses a different Git SHA or a container without the exact
+direct-mount label, writable source, persistent filesystem, and exact bounded
+memory policy. It installs the new contract, runs a fresh full snapshot even
+when the backup key is unchanged, validates the post-copy floor and status
+fields, then starts the timer and removes the pending marker. Any failed gate
+leaves the timer disabled. Do not dispatch the backup step first or dispatch
+the two workflows from different revisions.
+
+Rollback is staged too. A host transaction that cannot reach readiness
+restores the prior container/config and exact prior timer state. After the host
+step has succeeded, keep the timer disabled and prefer fixing the backup gate
+forward. If the container contract itself must be reverted, dispatch the prior
+reviewed host SHA, verify local/public health, and do not re-enable its legacy
+root-staging backup. Restore a compatible reviewed backup contract manually
+before clearing the pending marker. Detach or remove the Volume only after the
+timer and service are disabled, no container mounts it, `umount` succeeds, and
+its UUID entry has been removed from `/etc/fstab`. On the next reboot, require
+`findmnt --mountpoint=/mnt/jobseek-typesense-backup` plus the shared verifier
+before enabling the timer; a missing mount intentionally leaves the service
+condition unsatisfied.
+
+The Typesense step requires independently retained last-success backup
+evidence no older than 36 hours and refuses to run while
+`jobseek-typesense-backup.service` is active. A failed latest attempt does not
+deadlock this corrective host-first rollout when that last-success timestamp
+is still fresh; it remains an outage signal, and the timer stays disabled until
+the new direct-mount smoke succeeds. The step
 pulls the pinned image before stopping the container, waits up to 60 seconds
 for a graceful stop, restores the prior config on failure, and requires local
 health plus a bootstrap-key admin probe. The tunnel step preserves the prior
@@ -102,17 +273,19 @@ bootstrap key before all generated consumer keys are independently working,
 because changing the server bootstrap invalidates the old bootstrap access
 immediately.
 
-For a backup-key rotation, update `TYPESENSE_BACKUP_KEY` first and deploy
-`.github/workflows/deploy-data-backups.yml`. The backup installer probes the
-candidate against `/stats.json` without changing the live environment. When
-the value changed, it quiesces the timer/service, runs a full backup smoke from
-a root-only candidate environment while retaining the host-wide deployment
-lock, reacquires the service-data lock, and only then atomically commits the
-candidate. Rollback stays armed until fresh status, timer health, and the
-deployment marker have committed. Any failure restores the prior value and
-leaves the timer disabled/inactive; treat a reported rollback failure as a hard
-backup outage. Delete the superseded generated key only after that backup and
-the isolated restore drill in `19-data-backup-recovery.md` both pass.
+For a backup-key rotation, update `TYPESENSE_BACKUP_KEY`, dispatch the
+Typesense host component to stage the exact main SHA, then dispatch
+`deploy-data-backups.yml` with `service=typesense` at that SHA. The backup
+installer probes the candidate against `/stats.json` without changing the live
+environment. It quiesces the timer/service and runs a full backup smoke from a
+root-only candidate environment even when the key bytes are unchanged,
+retaining the host-wide deployment lock. It reacquires the service-data lock
+and atomically commits only a changed candidate. Rollback stays armed until
+fresh status, timer health, and the deployment marker have committed. Any
+failure restores the prior value and leaves the timer disabled/inactive; treat
+a reported rollback failure as a hard backup outage. Delete the superseded
+generated key only after that backup and the isolated restore drill in
+`19-data-backup-recovery.md` both pass.
 
 Read-only, redacted verification:
 
@@ -120,7 +293,7 @@ Read-only, redacted verification:
 /usr/local/sbin/jobseek-verify-typesense-host-credentials
 systemctl is-active cloudflared.service
 docker inspect typesense --format \
-  'running={{.State.Running}} oom={{.State.OOMKilled}} restarts={{.RestartCount}} cmd={{json .Config.Cmd}}'
+  'running={{.State.Running}} oom={{.State.OOMKilled}} restarts={{.RestartCount}} memory={{.HostConfig.Memory}} reservation={{.HostConfig.MemoryReservation}} swap={{.HostConfig.MemorySwap}} labels={{json .Config.Labels}} mounts={{json .Mounts}} cmd={{json .Config.Cmd}}'
 curl --fail --silent http://127.0.0.1:8108/health
 curl --fail --silent https://typesense.colophon-group.org/health
 ```
@@ -143,11 +316,63 @@ check. The host sampler also exports:
 - bounded five-minute event counts for descriptor exhaustion, leaderlessness,
   snapshot failure, slow requests, and thread-pool exhaustion.
 
-The managed container requires a 65,536 soft/hard `nofile` limit and rotates
-Docker JSON logs at 50 MB with three files. Deployment conformance verifies
-both Docker metadata and the effective process limit. Allow up to 15 minutes
-for the current 2.5-million-document index to reload before declaring a cold
-start failed.
+The managed container requires a 65,536 soft/hard `nofile` limit, rotates
+Docker JSON logs at 50 MB with three files, and enforces the exact 3 GiB hard
+limit / 2.5 GiB reservation / 3 GiB memory-plus-swap tuple plus the labelled
+writable snapshot mount. Deployment conformance verifies all Docker metadata
+and the effective process limit. Allow up to 15 minutes for the current
+2.5-million-document index to reload before declaring a cold start failed.
+
+After promotion, retain seven consecutive days before accepting the capacity
+remediation. Record the exact UTC start/end and deployed SHA in the issue
+ledger, attach the Grafana query results, the Loki result, and the seven fresh
+backup status timestamps. These PromQL gates must all pass for the full window
+(`$typesense` means the Typesense host labels):
+
+```promql
+min_over_time(jobseek_backup_last_attempt_success{service="typesense"}[7d]) == 1
+changes(jobseek_backup_last_success_unixtime{service="typesense"}[7d]) >= 6
+min_over_time(jobseek_typesense_backup_staging_isolated{service="typesense"}[7d]) == 1
+max_over_time(jobseek_typesense_backup_peak_local_copies{service="typesense"}[7d]) <= 1
+min_over_time(jobseek_typesense_snapshot_staging_available_bytes[7d]) >= 12884901888
+max_over_time(jobseek_typesense_snapshot_local_copies[7d]) <= 1
+min_over_time(jobseek_typesense_snapshot_mount_available[7d]) == 1
+min_over_time((jobseek_typesense_backup_staging_available_bytes_before{service="typesense"} - jobseek_typesense_backup_staging_required_bytes_before{service="typesense"})[7d:]) >= 0
+min_over_time((jobseek_typesense_backup_staging_available_bytes_after_snapshot{service="typesense"} - jobseek_typesense_backup_staging_required_bytes_after_snapshot{service="typesense"})[7d:]) >= 0
+max_over_time(jobseek_typesense_backup_local_copies_before{service="typesense"}[7d]) == 0
+min_over_time(jobseek_typesense_backup_local_copies_after_materialization{service="typesense"}[7d]) == 1
+min_over_time(jobseek_typesense_backup_memory_limit_enforced{service="typesense"}[7d]) == 1
+min_over_time(jobseek_typesense_backup_memory_policy_info{service="typesense",phase="enforced"}[7d]) == 1
+min_over_time(jobseek_typesense_backup_memory_limit_bytes{service="typesense"}[7d]) == 3221225472
+min_over_time(jobseek_typesense_backup_memory_reservation_bytes{service="typesense"}[7d]) == 2684354560
+min_over_time(jobseek_typesense_backup_memory_swap_limit_bytes{service="typesense"}[7d]) == 3221225472
+max_over_time(jobseek_container_oom_killed{container="typesense"}[7d]) == 0
+increase(jobseek_container_restart_count{container="typesense"}[7d]) == 0
+increase(jobseek_container_memory_events_total{container="typesense",event=~"oom|oom_kill|oom_group_kill"}[7d]) == 0
+min_over_time(jobseek_container_memory_observation_available{container="typesense"}[7d]) == 1
+max_over_time(jobseek_container_memory_current_bytes{container="typesense"}[7d])
+max_over_time(jobseek_container_memory_peak_bytes{container="typesense"}[7d])
+min_over_time(node_memory_MemAvailable_bytes{host_role="typesense"}[7d])
+max_over_time(jobseek_host_unit_memory_peak_bytes{host_role="typesense",unit=~"docker.service|cloudflared.service"}[7d])
+min_over_time(jobseek_host_unit_memory_observation_available{host_role="typesense",unit=~"docker.service|cloudflared.service"}[7d]) == 1
+min_over_time(jobseek_typesense_healthy[7d]) == 1
+```
+
+The final four memory values verify that the bounded policy remains healthy;
+the ledger must state the observed maximum and remaining host headroom. The
+central Loki query below must return no emergency all-unused-image run. The
+Alloy allowlist explicitly retains this unit; do not use a local journal as the
+only seven-day artifact.
+
+```logql
+{host_role="typesense",unit="jobseek-docker-gc.service"}
+  |~ "(?i)(emergency|below.?5.?GiB|all unused image)"
+```
+
+Also verify the public tunnel and all seven aliases once per day. Any failed or
+missing observation resets the seven-day window. A later reviewed issue may
+resize the host or adjust the policy only from this durable evidence. The
+direct staging mount remains in place regardless of that decision.
 
 When readiness fails but the container is running:
 
@@ -200,18 +425,38 @@ The repository-owned ingress source of truth is:
 - [`install-host.sh`](../deploy/networking/install-host.sh) for UFW and sshd;
 - [`harden-postgresql.sh`](../deploy/networking/harden-postgresql.sh) for the
   PostgreSQL listener and exact HBA;
+- [`run-remote.sh`](../deploy/networking/run-remote.sh) for the fail-closed,
+  host-identity-pinned OpenSSH transport;
 - [`jobseek-ingress-conformance.py`](../scripts/jobseek-ingress-conformance.py)
   for redacted host evidence; and
 - [`deploy-hetzner-ingress.yml`](../.github/workflows/deploy-hetzner-ingress.yml)
   for protected audit and apply operations.
 
 The protected `production` environment stores `HETZNER_API_TOKEN`,
-`HETZNER_HOST`, `HETZNER_POSTGRES_HOST`, `HETZNER_TYPESENSE_HOST`, and
-`HETZNER_SSH_KEY` as secrets. Host addresses are secrets for log-redaction
-purposes even though they are not authentication material. Do not convert them
-to GitHub variables: Actions prints ordinary variables in step environments.
-The inventory helper emits GitHub masking commands before exporting derived
-private addresses; suppressing that output would disable the masks.
+`HETZNER_HOST`, `HETZNER_POSTGRES_HOST`, `HETZNER_TYPESENSE_HOST`,
+`HETZNER_SSH_KEY`, and three reviewed known-host sets as secrets. The crawler
+uses `HETZNER_CRAWLER_KNOWN_HOSTS`, PostgreSQL uses the existing
+`HETZNER_BACKUP_KNOWN_HOSTS`, and Typesense uses
+`HETZNER_TYPESENSE_KNOWN_HOSTS`. Every audit, payload transfer, private-path
+validation, rollback, and commit connection uses native OpenSSH with strict
+host-key checking and `IdentitiesOnly=yes`; the transport refuses a target
+that is absent from its role's exact known-host set. It never learns trust with
+`accept-new` or `ssh-keyscan`, never substitutes another role's key set, and
+does not use third-party SSH/SCP actions.
+
+Host addresses are secrets for log-redaction purposes even though they are not
+authentication material. Do not convert them to GitHub variables: Actions
+prints ordinary variables in step environments. The inventory helper emits
+GitHub masking commands before exporting derived private addresses;
+suppressing that output would disable the masks.
+
+Apply payloads are archived from the reviewed checkout and extracted only into
+a fresh `/var/lib/jobseek-ingress/staging/<sha>-<run>-<attempt>` directory.
+The transport requires the state root, staging root, and fresh stage to be
+non-symlink directories owned by `root:root` with mode `0700`; rejects any
+symlink, non-root-owned entry, reused stage, or unexpected file; and verifies
+the SHA-256 of every payload before root executes it. No root-executed ingress
+payload is staged under `/tmp`.
 
 The public Hetzner firewall is default-deny inbound and allows only TCP 22 and
 ICMP over IPv4/IPv6. It has no outbound rules, so Hetzner's default outbound
@@ -309,6 +554,15 @@ PostgreSQL container migrations source the root-owned
 `/etc/jobseek-ingress/postgresql-network.env`; removing or bypassing that file
 would regress the listener to a wildcard and must fail review.
 
+Host commits remain independent only after all three staged policies and the
+fresh crawler private paths have passed. If one host's commit fails, that
+lane attempts every rollback layer still pending and the provider-firewall job
+is withheld; a different lane that already committed keeps its independently
+proven-safe host policy. This is an explicit recovery state rather than a
+fleet-wide atomic commit. Rerun the read-only audit, resolve the failed lane,
+and repeat the guarded apply. Never attach the provider firewall by hand to
+bypass the failed workflow.
+
 ## PostgreSQL Shared Memory
 
 The live PostgreSQL container contract includes a 4 GiB memory cgroup and a
@@ -405,6 +659,12 @@ The host sampler publishes:
 - checkpoint buffers and the statistics-reset timestamp;
 - duration of the sampler's bounded PostgreSQL statistics query; and
 - standard Unix-exporter filesystem size, free-byte, and inode series.
+
+PostgreSQL client ownership, exact service/deploy budgets, idle-transaction
+controls, and the required seven-day acceptance queries live in
+[the PostgreSQL connection budget](22-postgresql-connections.md). Treat that
+inventory as part of the host capacity contract; do not raise
+`max_connections` to compensate for an unattributed or oversized pool.
 
 `PostgreSQLDataVolumeHeadroomLow` is the early capacity control. It remains
 pending for six hours before firing when either the attached XFS Volume has
@@ -580,7 +840,7 @@ until fresh sampler, probe, container, backup, PostgreSQL-readiness,
 Typesense-readiness, and Codex daily-review status series are present and
 healthy for every expected role. Only after that ingestion gate passes does it
 remove the retired Jobseek notification routes, contact point, bridge,
-deadman, and synthetic test rule, followed by the six Mimir rule groups. This
+deadman, and synthetic test rule, followed by the owned Mimir rule groups. This
 catches a healthy local sampler whose collector
 silently omits the textfile directory. Environment-scoped host variables are
 resolved inside runtime steps after the protected `production` environment is
@@ -589,7 +849,20 @@ and units under the root-only
 `/var/lib/jobseek-observability/rollback/` directory and automatically
 restores them if validation, service startup, or loopback readiness fails;
 artifacts that did not exist before the attempt are removed rather than left
-as a partial installation.
+as a partial installation. Failed attempts never run retention. After a new
+surface is fully accepted and its automatic rollback trap is disarmed, the
+installer prunes under the same deployment lock. It keeps at most the three
+newest timestamped snapshots, removes snapshots older than 14 days, and always
+keeps the just-accepted rollback even when it is the only remaining snapshot.
+The complete root is validated before deletion: its path, ownership, mode,
+timestamp names, directory types, and allowlisted regular-file contents must
+all match the installer contract, with no symlinks. The kernel mount identity
+of every snapshot directory and file must also equal the rollback root, so a
+bind mount is rejected even when it shares the root filesystem's device ID.
+Any unexpected entry stops retention without deleting known snapshots;
+operators must classify and move that entry explicitly before rerunning the
+reviewed deployment. A retention failure happens after service acceptance, so
+it reports deployment failure but does not roll the healthy surface back.
 It restarts only Alloy; it does not restart Docker, PostgreSQL, Typesense, the
 tunnel, or any crawler workload.
 
@@ -605,14 +878,20 @@ Alert definitions in [`apps/crawler/alerts.yaml`](../apps/crawler/alerts.yaml)
 are transactionally written through the Mimir ruler API. Grafana Cloud limits
 this tenant to 20 rules per group, so the source separates fleet, PostgreSQL
 capacity, Typesense reliability, telemetry delivery, crawler reliability, and
-operator handoff alerts into six logical groups at or below that limit.
+operator handoff alerts into logical groups at or below that limit.
 The sync client first
 captures the complete owned namespace, requires every alert to have a
 repository runbook plus `owner=codex-error-review` and `route=codex-daily`,
 and additionally rejects any critical alert without `page=production` or with
 a pending duration over three minutes,
 verifies the exact active group/rule set, removes stale owned groups, and
-restores the whole prior namespace on failure. This corrects the exporter
+waits through a bounded evaluation window until every owned rule has completed
+a post-sync evaluation and reports `health=ok`; a persistent evaluation error
+restores the whole prior namespace and fails the deployment. Backup alerts
+retain each metric's source `service`
+label (for example, `typesense` or `web-postgresql`) and use
+`component=data-backup` for grouping, so simultaneous failures on one host do
+not collapse to the same alert label set. This corrects the exporter
 alert by selecting only `instance="exporter"` and adds explicit all-host,
 disk/inode, sampler, backup, PostgreSQL, Typesense/tunnel, and reboot alerts.
 It also routes failed, stale, unresolved, and stuck cross-store reconciliation
@@ -787,6 +1066,23 @@ reconciliation deploy, crawler deploy, and crawler-host observability deploy
 verify the installed state and active timer appropriate to their boundary
 before succeeding. The timer remains enabled for subsequent hourly slices;
 the application deploy owns Alembic and the additive Typesense schema patch.
+
+The earlier `jobseek-reconciliation-typesense-catchup.service` and matching
+timer are retired. They are not a failover path: the canonical timer above is
+the only authorized scheduler. The fleet hygiene baseline keeps both obsolete
+names persistently masked and reset while requiring the canonical timer to be
+enabled and active before and after retirement. An archived copy of an exact
+old `/etc/systemd/system` unit may remain under
+`/var/lib/jobseek-host-hygiene/retired-units/<revision>/` for forensic review;
+it is not executable from that location.
+
+Some systemd releases report an exact `/etc/systemd/system/<unit> -> /dev/null`
+mask as `LoadState=not-found` after reload. Host hygiene accepts that portable
+representation only when the allowlisted path is a symlink whose canonical
+target is `/dev/null`, `UnitFileState` and `systemctl is-enabled` both report
+`masked`, the unit is inactive, and `systemctl is-failed` does not report a
+failure. An absent path, regular file, or symlink to any other target remains
+nonconformant.
 
 The 2026-07-23 outage was an ownership regression, not a cleanup operation.
 The revision preflight was added while the state directory was still created
@@ -1161,37 +1457,168 @@ Current policy:
 - prune unused Docker images older than 72 hours
 - if root free space is below 5 GiB, prune all unused images
 - never prune Docker volumes
+- retain the stopped `jobseek-web-postgresql-backup-image-lease` container on
+  the Typesense host; it references the exact digest-pinned PostgreSQL helper
+  image so both normal and emergency image pruning treat that backup dependency
+  as in use
 - on the crawler host, keep running images plus the two newest versioned
   `jobseek-crawler` and `jobseek-crawler-browser` images, then remove older
   unused version tags immediately
 
 The crawler-specific rule matters because repeated versioned deploys can
 consume tens of GiB before a normal age-based prune would trigger.
+Typesense snapshot staging is intentionally outside `/`; a backup must not be
+used to justify or trigger the below-5-GiB all-unused-image emergency path.
 
-## Unmanaged Resource Hygiene
+Before emergency all-image pruning on the Typesense host, verify the web
+PostgreSQL helper lease described in
+[`19-data-backup-recovery.md#web-postgresql-backup-operation`](19-data-backup-recovery.md#web-postgresql-backup-operation).
+Do not add `docker container prune` to this policy: stopped containers may own
+an intentional image-lifecycle contract. The regression boundary is the exact
+sequence installer digest pull/lease creation, below-floor
+`docker image prune --all --force`, then the scheduled backup dependency check.
+The repository's real-Docker regression performs that destructive prune only
+on an explicitly acknowledged GitHub-hosted ephemeral runner; never enable it
+on a managed or developer host.
 
-The scheduled crawler maintenance workflow runs the read-only
-[`crawler-host-hygiene.py`](../scripts/crawler-host-hygiene.py) check after
-its normal maintenance command. It fails visibly when either of these has
-survived for more than 24 hours:
+## Fleet Host and Log Hygiene
 
-- a running Docker container without a Compose project label
-- a transient systemd service that remains `active (exited)`
+[`jobseek-host-hygiene.py`](../scripts/jobseek-host-hygiene.py) is the
+fail-closed conformance boundary for the crawler, PostgreSQL, and Typesense
+hosts. It reports:
 
-This catches forgotten debug containers, one-off test commands, and completed
-transient units without deleting anything automatically. Run the same check
-manually with:
+- any failed service or timer;
+- any exited container without a Compose, maintenance, backup, or explicit
+  Jobseek ownership label;
+- missing or unbounded `json-file` logging on the standalone `postgres` and
+  `typesense` containers;
+- a missing or altered role-specific journald policy; and
+- on the crawler, an unhealthy canonical reconciliation timer, either retired
+  catch-up name not masked/inactive/reset, or an unexpected second
+  reconciliation timer.
 
-```bash
-python3 /tmp/jobseek-crawler-maintenance/<deployed-sha>/crawler-host-hygiene.py
-```
+`Deploy Hetzner Host Hygiene` runs that audit read-only across all three hosts
+each day. Scheduled execution cannot install policy or invoke cleanup; both
+mutating jobs additionally require an explicit workflow dispatch and the
+production environment approval gate. Every connection is fail-closed against
+the reviewed host identity through native OpenSSH and strict host-key checking.
+The crawler uses `HETZNER_CRAWLER_KNOWN_HOSTS`, PostgreSQL uses the existing
+`HETZNER_BACKUP_KNOWN_HOSTS` key set already scoped to its production backup
+transport, and Typesense uses `HETZNER_TYPESENSE_KNOWN_HOSTS`. The transport
+requires an exact `TARGET_HOST` entry before connecting and never substitutes
+one role's trust material for another. Trust is never learned from the network
+with `accept-new` or `ssh-keyscan`, and third-party SSH/SCP actions are not in
+this workflow.
 
-Before applying a printed cleanup command, inspect the resource and confirm
-that it is not active production work. Removing a stale container uses
-`docker rm -f -- <name>`. Stopping an `active (exited)` transient unit with
-`systemctl stop <unit>` also lets watcher loops waiting on `is-active` exit;
-verify the watcher is gone and run `systemctl reset-failed <unit>` only if a
-failed unit state remains.
+Apply payloads are copied only after the workflow creates and verifies
+`/var/lib/jobseek-host-hygiene/staging/<revision>-<run>-<attempt>` beneath a
+root-owned, mode-`0700`, non-symlink trust boundary. The install connection
+rechecks every boundary component, rejects any symlink or non-root-owned entry,
+removes group/other permissions, and executes only the verified regular files
+inside that boundary. No root-executed payload is staged under `/tmp`.
+
+The canonical database and search container contract is `json-file` with
+`max-size=50m` and `max-file=3`. Typesense already enforces this in its host
+installer. Both PostgreSQL creation paths enforce and verify the same values;
+the ingress conformance probe treats an otherwise healthy but unbounded
+database container as nonconformant so the existing staged PostgreSQL
+replacement can repair it behind its backup/readiness/private-path rollback
+gates.
+
+Journald retention is explicit per host:
+
+| Role | Persistent maximum | Keep free | Maximum file | Retention | Runtime maximum |
+|---|---:|---:|---:|---:|---:|
+| crawler | 2 GiB | 5 GiB | 128 MiB | 7 days | 256 MiB |
+| PostgreSQL | 2 GiB | 5 GiB | 128 MiB | 7 days | 256 MiB |
+| Typesense | 1 GiB | 5 GiB | 128 MiB | 7 days | 256 MiB |
+
+The seven-day time ceiling exceeds the 25-hour remote-log window and retains
+multiple daily backup/reconciliation cycles. Size and free-space ceilings can
+expire older history first during pressure. The installer creates persistent
+journal storage, installs
+`/etc/systemd/journald.conf.d/60-jobseek-retention.conf`, restarts journald
+only when that policy changes, verifies the journal, and keeps a root-only
+rollback snapshot. It never runs `journalctl --vacuum-*` or Docker prune.
+
+### Reviewed rollout
+
+1. Require the critical backup repairs to be healthy and record a fresh
+   PostgreSQL backup plus repository check. Run the Hetzner ingress workflow in
+   `audit` mode. After merge, run it in guarded `apply` mode once; an
+   unbounded PostgreSQL log contract now forces the transactional database
+   replacement instead of being mistaken for an already-compliant host.
+   Require private-path validation, `pg_isready`, pgBackRest check, and commit
+   of the rollback container before continuing.
+2. Run `Deploy Hetzner Host Hygiene` with `action=audit`. Review every failed
+   unit and exited-container finding. Then run `action=apply`; this installs
+   each journal budget and, on the crawler only, archives/masks/resets the
+   exact retired catch-up service and timer. Apply reports remaining cleanup
+   but does not remove a container.
+3. On PostgreSQL, locate the audited unmanaged exited container read-only and
+   capture all immutable fields in one review record:
+
+   ```bash
+   docker inspect --format \
+     '{{.Id}} {{.Image}} {{.Config.Image}} {{.Created}} {{.State.FinishedAt}} {{.State.ExitCode}} {{.Name}}' \
+     <candidate-container>
+   docker image inspect --format '{{.Id}} {{json .RepoDigests}}' <full-image-id>
+   ```
+
+   The human-readable/random Docker name is discovery evidence only. It never
+   authorizes removal. Do not print the container environment, command, mount
+   sources, or raw inspect JSON into CI logs; they can contain credentials or
+   private paths. The cleanup verifier checks ownership labels locally without
+   echoing their values.
+4. Enter the full container ID, full `sha256:` image ID, exact creation and
+   finish timestamps, and exact exit code into the production-approved
+   `cleanup` action. The command performs an identity-bound dry run first,
+   re-inspects immediately, refuses running/dead/restarting or Jobseek-managed
+   namespaces, and then invokes only `docker rm -- <full-id>` (no force, volume
+   removal, wildcard, or prune). Any changed field aborts without mutation.
+5. Run the workflow `audit` action again. Record the redacted JSON output and
+   these independent checks:
+
+   ```bash
+   systemctl is-enabled jobseek-crawler-reconciliation.timer
+   systemctl is-active jobseek-crawler-reconciliation.timer
+   systemctl list-unit-files --type=timer | grep reconciliation
+   systemctl --failed --no-pager
+   docker inspect postgres --format '{{json .HostConfig.LogConfig}}'
+   docker inspect typesense --format '{{json .HostConfig.LogConfig}}'
+   journalctl --disk-usage
+   systemd-analyze cat-config systemd/journald.conf
+   ```
+
+Acceptance is one enabled/active canonical reconciliation scheduler, both
+retired names masked/inactive and absent from failed units, no unexpected
+failed units or unmanaged exited containers, exact bounded log settings on
+both standalone services, and the role-specific journal drop-in active. Keep
+at least one normal reconciliation cycle, one PostgreSQL backup cycle, and one
+Typesense backup cycle in the post-rollout observation window before closing
+the issue.
+
+### Rollback
+
+The PostgreSQL logging change uses the ingress workflow's existing staged
+rollback container and 15-minute automatic rollback timer; do not remove that
+container until private-path and database checks pass. A failed journal-policy
+install restores its exact prior policy/verifier and restarts journald. After a
+successful install, an operator can restore the named snapshot under
+`/var/lib/jobseek-host-hygiene/rollback/` and restart journald if retention
+causes a measured regression.
+
+Do not automatically unmask the retired catch-up units during a journal or
+database rollback. If investigation proves one was misclassified, first stop
+the canonical timer, demonstrate why the old unit does not create duplicate
+scheduling, restore only its exact archived file, and obtain a separate
+review. Normal rollback leaves the obsolete names masked.
+
+The older crawler-only
+[`crawler-host-hygiene.py`](../scripts/crawler-host-hygiene.py) check remains a
+read-only, 24-hour detector for running unmanaged containers and active-exited
+transient services in scheduled crawler maintenance. It does not replace the
+fleet conformance or authorize cleanup.
 
 ## Codex Runner Timers
 
@@ -1205,17 +1632,18 @@ Host-surface deployment is CI/CD-owned by
 That workflow updates the checked-out repo and systemd units; it does not run
 `codex exec`, select issues, upload labels, or perform error reviews.
 
-The local Codex desktop automation records for these three routines should be
-`PAUSED` after Hetzner cutover. They are retained only as local app state, not
-as the production scheduler:
+The former desktop scheduler names below must remain absent after Hetzner
+cutover. They are identifiers for duplicate-scheduler detection only, not
+deployable or retained fallback state:
 
 - `jobseek-company-request-resolver`
 - `jobseek-daily-classifications`
 - `jobseek-daily-error-review`
 
-Do not add or restore GitHub Actions that execute these routines. Manual
-recovery uses the same local Codex CLI path from a throwaway worktree, with
-`CODEX_EXEC_JSONL` set for trace capture.
+Do not recreate those desktop schedules or add/restore GitHub Actions that
+execute the routines. Manual recovery uses the same committed Codex CLI path
+from a throwaway worktree, with the Hetzner ledger, shared lock, and `ws`
+claims checked first. Keep `CODEX_EXEC_JSONL` set for trace capture.
 
 Check the last CI/CD host deploy:
 
@@ -1408,6 +1836,7 @@ raise SystemExit(0 if get_token() else 1)
 PY'
 test -s /etc/jobseek-codex/labeller.env
 sudo -u codex-runner test -r /etc/jobseek-codex/labeller.env
+bash -lc 'source /srv/jobseek-codex/repo/scripts/deploy-codex-runner-host.sh; _validate_labeller_env_file /etc/jobseek-codex/labeller.env'
 sudo -u codex-runner test ! -w /var/run/docker.sock
 ```
 
@@ -1420,7 +1849,7 @@ import os
 import asyncpg
 
 async def main():
-    conn = await asyncpg.connect(os.environ["DATABASE_URL"])
+    conn = await asyncpg.connect(os.environ["LOCAL_DATABASE_URL"])
     try:
         value = await conn.fetchval("SELECT count(*) FROM job_posting")
         print("job_posting count readable", value is not None)

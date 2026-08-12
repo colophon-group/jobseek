@@ -1,0 +1,113 @@
+name: Prewarm company OG cache
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/prewarm-company-og-cache.yml"
+      - "apps/crawler/data/companies.csv"
+      - "apps/crawler/data/company_descriptions.csv"
+      - "apps/crawler/data/industries.csv"
+      - "apps/web/public/fonts/JetBrainsMono-Bold.ttf"
+      - "apps/web/public/android-chrome-512x512.png"
+      - "apps/web/script/prewarm-company-og-cache.ts"
+      - "apps/web/src/lib/og/company-og-card.tsx"
+      - "apps/web/src/lib/og/company-og-key.ts"
+      - "apps/web/src/lib/og/company-og-renderer-version.ts"
+      - "apps/web/src/lib/og/company-og-source-version.ts"
+      - "apps/web/src/lib/og/render-company-og.tsx"
+      - "apps/web/src/lib/og/site-og-card.tsx"
+      - "apps/web/src/lib/og/site-og-key.ts"
+  schedule:
+    # Reconcile any objects missed by a failed deploy-triggered run.
+    - cron: "43 2 * * 0"
+  workflow_dispatch:
+    inputs:
+      concurrency:
+        description: "Parallel render/upload workers"
+        required: false
+        default: "4"
+      max_companies:
+        description: "Optional positive company limit for a canary"
+        required: false
+        default: ""
+      force:
+        description: "Overwrite objects already in the current namespace"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prewarm-company-og-cache-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prewarm:
+    name: Render company OG cards outside Vercel
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    environment: Production
+    env:
+      PREWARM_CONCURRENCY: ${{ inputs.concurrency || '4' }}
+      PREWARM_MAX_COMPANIES: ${{ inputs.max_companies || '' }}
+      PREWARM_FORCE: ${{ inputs.force || false }}
+      PREWARM_EVENT_NAME: ${{ github.event_name }}
+      PREWARM_BEFORE_SHA: ${{ github.event.before || '' }}
+      PREWARM_SHA: ${{ github.sha }}
+      COMPANY_OG_RENDERER_VERSION_SALT: ${{ vars.COMPANY_OG_RENDERER_VERSION_SALT || '' }}
+      R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET || vars.R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Render and upload missing cards
+        shell: bash
+        run: |
+          if [[ ! "$PREWARM_CONCURRENCY" =~ ^[1-9][0-9]*$ ]]; then
+            echo "concurrency must be a positive integer" >&2
+            exit 1
+          fi
+          if [[ -n "$PREWARM_MAX_COMPANIES" && ! "$PREWARM_MAX_COMPANIES" =~ ^[1-9][0-9]*$ ]]; then
+            echo "max_companies must be empty or a positive integer" >&2
+            exit 1
+          fi
+
+          force="$PREWARM_FORCE"
+          if [[ "$PREWARM_EVENT_NAME" == "push" ]]; then
+            # Source changes reuse the renderer namespace and must replace
+            # existing cards. Renderer changes have a new namespace; script
+            # or workflow-only changes can reconcile incrementally.
+            if ! git diff --quiet "$PREWARM_BEFORE_SHA" "$PREWARM_SHA" -- \
+              apps/crawler/data/companies.csv \
+              apps/crawler/data/company_descriptions.csv \
+              apps/crawler/data/industries.csv; then
+              force=true
+            fi
+          fi
+
+          args=(--yes --concurrency "$PREWARM_CONCURRENCY")
+          if [[ -n "$PREWARM_MAX_COMPANIES" ]]; then
+            args+=(--max-companies "$PREWARM_MAX_COMPANIES")
+          fi
+          if [[ "$force" == "true" ]]; then
+            args+=(--force)
+          fi
+
+          pnpm --filter @jobseek/web og:prewarm -- "${args[@]}"

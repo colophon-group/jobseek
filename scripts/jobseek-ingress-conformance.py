@@ -30,6 +30,8 @@ KNOWN_PORTS = {
 CRAWLER_METRICS_PORTS = {9093, 9094, 9095, 9096, 9097, 9098}
 POSTGRES_NETWORK_CONFIG = Path("/etc/jobseek-ingress/postgresql-network.env")
 POSTGRES_SHM_MIN_BYTES = 1024 * 1024 * 1024
+POSTGRES_LOG_DRIVER = "json-file"
+POSTGRES_LOG_OPTIONS = {"max-size": "50m", "max-file": "3"}
 
 
 class ConformanceError(RuntimeError):
@@ -204,6 +206,9 @@ def _postgres_container() -> str | None:
 
 def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[str, Any]:
     shared_memory = _run(["docker", "inspect", "--format", "{{.HostConfig.ShmSize}}", container])
+    log_config_result = _run(
+        ["docker", "inspect", "--format", "{{json .HostConfig.LogConfig}}", container]
+    )
     shared_memory_mount = _run(["docker", "exec", container, "df", "-B1", "/dev/shm"])
     try:
         shared_memory_bytes = int(shared_memory.stdout.strip())
@@ -216,6 +221,16 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
         and shared_memory_mount.returncode == 0
         and shared_memory_bytes >= POSTGRES_SHM_MIN_BYTES
         and shared_memory_capacity_bytes >= POSTGRES_SHM_MIN_BYTES
+    )
+    try:
+        log_config = json.loads(log_config_result.stdout)
+    except json.JSONDecodeError:
+        log_config = {}
+    bounded_log_match = (
+        log_config_result.returncode == 0
+        and isinstance(log_config, dict)
+        and log_config.get("Type") == POSTGRES_LOG_DRIVER
+        and log_config.get("Config") == POSTGRES_LOG_OPTIONS
     )
     settings = _run(
         [
@@ -240,6 +255,7 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
             "shared_memory_bytes": shared_memory_bytes,
             "shared_memory_capacity_bytes": shared_memory_capacity_bytes,
             "shared_memory_contract": shared_memory_match,
+            "bounded_container_log": bounded_log_match,
             "compliant": False,
         }
     parsed_settings = dict(
@@ -331,6 +347,7 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
         "shared_memory_bytes": shared_memory_bytes,
         "shared_memory_capacity_bytes": shared_memory_capacity_bytes,
         "shared_memory_contract": shared_memory_match,
+        "bounded_container_log": bounded_log_match,
         "private_and_loopback_bind_only": listen_match,
         "repo_owned_listener_policy": config_match,
         "scram_password_encryption": encryption_match,
@@ -338,6 +355,7 @@ def _postgres_state(container: str, crawler_ip: ipaddress.IPv4Address) -> dict[s
         "hba_exact": rules_match,
         "compliant": (
             shared_memory_match
+            and bounded_log_match
             and listen_match
             and config_match
             and encryption_match

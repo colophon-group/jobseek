@@ -55,7 +55,16 @@ async def seed():
         sys.exit(1)
 
     ts = _ts()
-    conn = await asyncpg.connect(db_url, ssl="disable")
+    conn = await asyncpg.connect(
+        db_url,
+        ssl="disable",
+        command_timeout=300,
+        statement_cache_size=0,
+        server_settings={
+            "application_name": "jobseek:operator:typesense-seed-taxonomy",
+            "idle_in_transaction_session_timeout": "60s",
+        },
+    )
 
     # Active posting counts
     print("Computing posting counts...")

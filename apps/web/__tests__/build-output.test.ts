@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, inject, it } from "vitest";
+import { inspectVisibleExploreHtml } from "../script/visible-explore-html";
 
 declare module "vitest" {
   export interface ProvidedContext {
@@ -97,6 +98,12 @@ const CLASSIFICATION_LABEL: Record<Classification, string> = {
 };
 
 const REPRESENTATIVE_LOCALES = ["en", "de", "fr", "it"] as const;
+const EXPLORE_HEADINGS: Record<(typeof REPRESENTATIVE_LOCALES)[number], string> = {
+  en: "Explore Jobs",
+  de: "Jobs entdecken",
+  fr: "Explorer les emplois",
+  it: "Esplora lavori",
+};
 
 type BuildMeta = {
   headers?: Record<string, string>;
@@ -337,6 +344,18 @@ describe("build-output classifier (slow lane, #2885)", () => {
       ].join("\n"),
     ).not.toBe(false);
   });
+
+  for (const locale of REPRESENTATIVE_LOCALES) {
+    it(`/${locale}/explore embeds localized meaningful result HTML`, () => {
+      expect(distDir, "production build dist directory is unavailable").toBeTruthy();
+      const htmlPath = join(distDir!, "server", "app", locale, "explore.html");
+      expect(existsSync(htmlPath), `missing prerendered Explore HTML at ${htmlPath}`).toBe(true);
+      const visibleHtml = inspectVisibleExploreHtml(readFileSync(htmlPath, "utf8"));
+      expect(visibleHtml.staticTextContent).toContain(EXPLORE_HEADINGS[locale]);
+      expect(visibleHtml.staticResultsCount).toBeGreaterThan(0);
+      expect(visibleHtml.companyResultCount).toBeGreaterThan(0);
+    });
+  }
 
   /**
    * Parse-guard #2: ensure the parser actually matched routes. If the

@@ -1,0 +1,36 @@
+name: Fluid CPU regression gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      metrics_json:
+        description: "JSON report copied from the clean post-deploy Vercel observation window"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    name: Evaluate route CPU budgets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FLUID_CPU_REPORT_JSON: ${{ inputs.metrics_json }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Evaluate clean-window budgets
+        run: pnpm --filter @jobseek/web cpu:gate | tee -a "$GITHUB_STEP_SUMMARY"

@@ -4,7 +4,9 @@ import {
   getCompanyBySlug,
   getCompanyPostings,
   getCompanyPostingsAnonymous,
+  getSimilarCompanies,
   type CompanyDetail,
+  type SimilarCompaniesPage,
 } from "@/lib/actions/company";
 import { getCurrencyRates } from "@/lib/actions/search";
 import { parseSearchFilters, type ParsedSearchFilters } from "@/lib/actions/search-input";
@@ -32,6 +34,12 @@ const EMPTY_PARSED_FILTERS: ParsedSearchFilters = {
 
 export interface CompanyPageData {
   company: CompanyDetail;
+  /**
+   * Unfiltered first page of same-industry companies embedded in the cached
+   * anonymous route snapshot. Personalized reads intentionally omit this: the
+   * strip owns filter changes after hydration.
+   */
+  similarCompanies?: SimilarCompaniesPage;
   postings: SearchResultPosting[];
   activeCount: number;
   yearCount: number;
@@ -187,17 +195,30 @@ export async function fetchCompanyPageDefaults(params: {
   // would silently downgrade the page to dynamic rendering, defeating
   // the ISR optimisation this function exists for. See the parallel
   // pattern in `explore-page-data.ts::fetchExplorePageDefaults` (#2640).
-  const postingsResult = await getCompanyPostingsAnonymous({
-    companyId: company.id,
-    keywords: [],
-    languages,
-    locale,
-    offset: 0,
-    limit: PAGE_SIZE,
-  });
+  // The first similar-company page is stable enough to share the route's
+  // cached snapshot. Fetch it alongside postings so the browser does not emit
+  // an uncached Server Action POST merely because the strip mounted (#6614).
+  // Page zero never reaches the anonymous pagination cap, so this call does
+  // not read session headers and remains safe inside the ISR snapshot.
+  const [postingsResult, similarCompanies] = await Promise.all([
+    getCompanyPostingsAnonymous({
+      companyId: company.id,
+      keywords: [],
+      languages,
+      locale,
+      offset: 0,
+      limit: PAGE_SIZE,
+    }),
+    getSimilarCompanies(company.id, company.industryId, {
+      offset: 0,
+      limit: 10,
+      locale,
+    }),
+  ]);
 
   return {
     company,
+    similarCompanies,
     postings: postingsResult.postings,
     activeCount: postingsResult.activeCount,
     yearCount: postingsResult.yearCount,

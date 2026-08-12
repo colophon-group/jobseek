@@ -130,9 +130,15 @@ async def test_seed_locations_uses_current_location_schema_query(
     conn = FakeConnection()
     client = FakeTypesenseClient()
 
-    async def fake_connect(db_url: str, ssl: str) -> FakeConnection:
+    async def fake_connect(db_url: str, ssl: str, **kwargs: object) -> FakeConnection:
         assert db_url == "postgresql://example/crawler"
         assert ssl == "disable"
+        assert kwargs["command_timeout"] == 300
+        assert kwargs["statement_cache_size"] == 0
+        assert kwargs["server_settings"] == {
+            "application_name": "jobseek:operator:typesense-seed-taxonomy",
+            "idle_in_transaction_session_timeout": "60s",
+        }
         return conn
 
     data_dir = tmp_path / "data"

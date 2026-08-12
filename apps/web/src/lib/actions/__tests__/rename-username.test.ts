@@ -259,6 +259,18 @@ describe("renameUsername", () => {
     expect(mocks.invalidateRedis).toHaveBeenCalledWith(
       "public-watchlist:old:beta",
     );
+    expect(mocks.invalidateRedis).toHaveBeenCalledWith(
+      "public-resource-status:watchlist:old:alpha",
+    );
+    expect(mocks.invalidateRedis).toHaveBeenCalledWith(
+      "public-resource-status:watchlist:old:beta",
+    );
+    expect(mocks.invalidateRedis).toHaveBeenCalledWith(
+      "public-resource-status:watchlist:new:alpha",
+    );
+    expect(mocks.invalidateRedis).toHaveBeenCalledWith(
+      "public-resource-status:watchlist:new:beta",
+    );
 
     // Sitemap Redis bust.
     expect(mocks.invalidateRedis).toHaveBeenCalledWith("sitemap:watchlists");

@@ -112,4 +112,33 @@ describe("Typesense taxonomy provider", () => {
     expect(documents.map((document) => document.location_id)).toEqual([10, 20, 30]);
     expect(mocks.search).toHaveBeenCalledTimes(3);
   });
+
+  it("sanitizes credentialed client errors before they leave the provider", async () => {
+    const raw = Object.assign(new Error("timeout SECRET_CANARY_MESSAGE"), {
+      code: "ECONNABORTED",
+      status: 0,
+      config: {
+        headers: { "X-TYPESENSE-API-KEY": "SECRET_CANARY_HEADER" },
+      },
+      request: { responseURL: "https://SECRET_CANARY_URL.example" },
+    });
+    mocks.search.mockRejectedValueOnce(raw);
+
+    let rejection: unknown;
+    try {
+      await fetchLocationDocumentsBySlugs(["india"]);
+    } catch (err) {
+      rejection = err;
+    }
+
+    expect(rejection).toBeInstanceOf(Error);
+    expect(rejection).not.toBe(raw);
+    expect(rejection).toMatchObject({
+      message: "Typesense request failed",
+      code: "ECONNABORTED",
+    });
+    expect(rejection).not.toHaveProperty("config");
+    expect(rejection).not.toHaveProperty("request");
+    expect(JSON.stringify(rejection)).not.toContain("SECRET_CANARY");
+  });
 });
