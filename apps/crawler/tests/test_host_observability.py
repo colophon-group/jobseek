@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -67,6 +68,133 @@ def test_backup_status_is_republished_without_error_text(tmp_path: Path) -> None
     assert "jobseek_backup_last_attempt_success" in content
     assert 'service="postgresql"' in content
     assert "must-not-escape" not in content
+
+
+def test_typesense_backup_evidence_is_republished_from_last_success(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    (tmp_path / "typesense.json").write_text(
+        json.dumps(
+            {
+                "attempt_unix": 200,
+                "last_success_unix": 190,
+                "duration_seconds": 5,
+                "success": False,
+                "last_success_details": {
+                    "snapshot_bytes": 1234,
+                    "snapshot_peak_local_copies": 1,
+                    "snapshot_local_copies_before": 0,
+                    "staging_available_bytes_after_snapshot": 15_000,
+                    "staging_required_bytes_after_snapshot": 12_000,
+                    "staging_isolated": True,
+                    "memory_limit_bytes": 3 * 1024**3,
+                    "memory_reservation_bytes": 2560 * 1024**2,
+                    "memory_swap_limit_bytes": 3 * 1024**3,
+                    "memory_policy_phase": "enforced",
+                    "memory_limit_enforced": True,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    lines: list[str] = []
+    monkeypatch.setattr(host, "_unit_enabled", lambda _unit: False)
+
+    host._collect_backup_metrics("typesense", tmp_path, lines)
+
+    content = "\n".join(lines)
+    assert "jobseek_typesense_backup_snapshot_bytes" in content
+    assert "jobseek_typesense_backup_peak_local_copies" in content
+    assert "jobseek_typesense_backup_staging_available_bytes_after_snapshot" in content
+    assert "jobseek_typesense_backup_memory_limit_bytes" in content
+    assert "jobseek_typesense_backup_memory_reservation_bytes" in content
+    assert "jobseek_typesense_backup_memory_swap_limit_bytes" in content
+    assert "jobseek_typesense_backup_memory_limit_enforced" in content
+    assert 'phase="enforced"' in content
+
+
+def test_container_cgroup_memory_exports_current_peak_limit_and_events(tmp_path: Path) -> None:
+    cgroup = tmp_path / "321/root/sys/fs/cgroup"
+    cgroup.mkdir(parents=True)
+    (cgroup / "memory.current").write_text("100\n", encoding="utf-8")
+    (cgroup / "memory.peak").write_text("250\n", encoding="utf-8")
+    (cgroup / "memory.max").write_text("max\n", encoding="utf-8")
+    (cgroup / "memory.swap.current").write_text("0\n", encoding="utf-8")
+    (cgroup / "memory.events.local").write_text(
+        "low 0\nhigh 2\nmax 0\noom 0\noom_kill 0\n",
+        encoding="utf-8",
+    )
+
+    memory = host._read_container_memory(321, tmp_path)
+
+    assert memory["current_bytes"] == 100
+    assert memory["peak_bytes"] == 250
+    assert "limit_bytes" not in memory
+    assert memory["events"]["high"] == 2
+
+
+def test_typesense_snapshot_staging_counts_preserved_and_active_copies(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    staging = tmp_path / "staging"
+    (staging / "preserved" / "data").mkdir(parents=True)
+    (staging / ".attempts" / "active").mkdir(parents=True)
+    monkeypatch.setattr(Path, "is_mount", lambda path: path == tmp_path)
+    monkeypatch.setattr(
+        host.shutil,
+        "disk_usage",
+        lambda _path: SimpleNamespace(total=20_000, used=5_000, free=15_000),
+    )
+    lines: list[str] = []
+
+    host._collect_typesense_snapshot_staging_metrics(lines, tmp_path)
+
+    assert "jobseek_typesense_snapshot_mount_available 1" in lines
+    assert "jobseek_typesense_snapshot_local_copies 2" in lines
+
+
+def test_typesense_snapshot_staging_rejects_untracked_entries(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    staging = tmp_path / "staging"
+    staging.mkdir()
+    (staging / "unexpected-file").write_text("not a snapshot packet", encoding="utf-8")
+    monkeypatch.setattr(Path, "is_mount", lambda path: path == tmp_path)
+    monkeypatch.setattr(
+        host.shutil,
+        "disk_usage",
+        lambda _path: SimpleNamespace(total=20_000, used=5_000, free=15_000),
+    )
+
+    with pytest.raises(host.ProbeError, match="unsafe entry"):
+        host._collect_typesense_snapshot_staging_metrics([], tmp_path)
+
+
+def test_typesense_support_unit_memory_is_durable_metric_input(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        host,
+        "_run",
+        lambda *_args, **_kwargs: subprocess.CompletedProcess(
+            [], 0, stdout="MemoryCurrent=100\nMemoryPeak=250\n", stderr=""
+        ),
+    )
+    lines: list[str] = []
+
+    host._collect_typesense_support_memory_metrics(lines)
+
+    content = "\n".join(lines)
+    assert 'unit="docker.service"' in content
+    assert 'unit="cloudflared.service"' in content
+    assert "jobseek_host_unit_memory_peak_bytes" in content
+
+
+def test_docker_gc_journal_is_forwarded_for_seven_day_acceptance() -> None:
+    alloy = (ROOT / "deploy/observability/alloy-host.alloy").read_text(encoding="utf-8")
+
+    assert "docker-gc" in alloy
+    assert "loki.source.journal" in alloy
 
 
 def test_codex_error_review_status_is_republished_without_result_text(tmp_path: Path) -> None:
@@ -542,6 +670,8 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     def query(_container: str, sql: str, **_kwargs) -> str:
         if sql == host.POSTGRES_STATS_SQL:
             return "12\t100\t500\t2\t700\t900\t1234.5\t67.8\t4000\t1800000000\t19000000000"
+        if sql == host.POSTGRES_CONNECTION_OWNERS_SQL:
+            return "exporter\tidle\t2\nworker-1\tidle_in_transaction\t1"
         if sql == host.BOARD_QUARANTINE_SCHEMA_SQL:
             return "6"
         if sql == host.BOARD_QUARANTINE_STATS_SQL:
@@ -552,10 +682,12 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
             return "58\t58\t21600\t181\t239\t19"
         if sql == host.PHANTOM_ACTIVE_STATS_SQL:
             return "4\t136\t7776000"
-        if "to_regclass" in sql:
-            return "cross_store_reconciliation_state"
+        if sql == host.RECONCILIATION_SCHEMA_SQL:
+            return "2"
         if sql == host.RECONCILIATION_STATS_SQL:
-            return "typesense\t1001\t901\t951\t13.5\t670000\t694000\t7\t7\t0\trepaired\t16\t256\t0"
+            return (
+                "typesense\t1001\t901\t951\t13.5\t670000\t694000\t7\t3\t7\t0\trepaired\t16\t256\t0"
+            )
         if "cross_store_reconciliation_run" in sql:
             return "0"
         raise AssertionError(sql)
@@ -568,6 +700,11 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     content = "\n".join(lines)
     assert "jobseek_postgresql_ready 1" in content
     assert "jobseek_postgresql_connections 12.0" in content
+    assert 'jobseek_postgresql_connections_by_owner{owner="exporter",state="idle"} 2.0' in content
+    assert (
+        'jobseek_postgresql_connections_by_owner{owner="worker-1",state="idle_in_transaction"} 1.0'
+        in content
+    )
     assert "jobseek_postgresql_archive_failed_total 2.0" in content
     assert "jobseek_postgresql_stats_query_duration_seconds " in content
     assert "jobseek_postgresql_checkpoint_write_seconds_total 1.2345" in content
@@ -594,12 +731,18 @@ def test_postgresql_probe_emits_capacity_and_durability_metrics(monkeypatch) -> 
     assert "jobseek_crawler_phantom_active_oldest_seconds 7776000.0" in content
     assert "jobseek_cross_store_reconciliation_schema_ready 1" in content
     assert "WHERE target = 'typesense'" in host.RECONCILIATION_STATS_SQL
+    assert "last_detected" in host.RECONCILIATION_STATS_SQL
+    assert "last_missing_remote +" not in host.RECONCILIATION_STATS_SQL
     assert 'target="supabase"' not in content
     assert (
         'jobseek_cross_store_reconciliation_last_attempt_success{target="typesense"} 1' in content
     )
     assert (
         'jobseek_cross_store_reconciliation_bootstrap_complete{target="typesense"} 0.0' in content
+    )
+    assert (
+        'jobseek_cross_store_reconciliation_last_payload_mismatch{target="typesense"} 3.0'
+        in content
     )
     assert "jobseek_cross_store_reconciliation_stuck_runs 0.0" in content
 
@@ -619,12 +762,14 @@ def test_postgresql_probe_tolerates_reconciliation_schema_not_deployed(monkeypat
     def query(_container: str, sql: str, **_kwargs) -> str:
         if sql == host.POSTGRES_STATS_SQL:
             return "1\t2\t3\t0\t4\t5\t6\t7\t8\t9\t10"
+        if sql == host.POSTGRES_CONNECTION_OWNERS_SQL:
+            return "host-observability\tactive\t1"
         if sql in (host.BOARD_QUARANTINE_SCHEMA_SQL, host.BOARD_GONE_SCHEMA_SQL):
             return "0"
         if sql == host.PHANTOM_ACTIVE_STATS_SQL:
             return "0\t0\t0"
-        if "to_regclass" in sql:
-            return ""
+        if sql == host.RECONCILIATION_SCHEMA_SQL:
+            return "0"
         raise AssertionError(sql)
 
     monkeypatch.setattr(host, "_postgresql_query", query)
@@ -636,6 +781,41 @@ def test_postgresql_probe_tolerates_reconciliation_schema_not_deployed(monkeypat
     assert "jobseek_crawler_board_quarantine_schema_ready 0" in "\n".join(lines)
     assert "jobseek_crawler_board_gone_schema_ready 0" in "\n".join(lines)
     assert "jobseek_crawler_phantom_active_postings 0.0" in "\n".join(lines)
+
+
+def test_postgresql_probe_tolerates_pre_payload_reconciliation_schema(monkeypatch) -> None:
+    class Result:
+        returncode = 0
+
+    monkeypatch.setattr(host.subprocess, "run", lambda *_args, **_kwargs: Result())
+    monkeypatch.setattr(
+        host, "_collect_postgresql_emergency_reserve_metrics", lambda _lines, _container: None
+    )
+    monkeypatch.setattr(
+        host, "_collect_postgresql_shared_memory_metrics", lambda _lines, _container: None
+    )
+
+    def query(_container: str, sql: str, **_kwargs) -> str:
+        if sql == host.POSTGRES_STATS_SQL:
+            return "1\t2\t3\t0\t4\t5\t6\t7\t8\t9\t10"
+        if sql in (host.BOARD_QUARANTINE_SCHEMA_SQL, host.BOARD_GONE_SCHEMA_SQL):
+            return "0"
+        if sql == host.PHANTOM_ACTIVE_STATS_SQL:
+            return "0\t0\t0"
+        if sql == host.POSTGRES_CONNECTION_OWNERS_SQL:
+            return ""
+        if sql == host.RECONCILIATION_SCHEMA_SQL:
+            # The reconciliation tables exist, but migration 0018 has not yet
+            # added the payload-observability columns used by the stats query.
+            return "0"
+        raise AssertionError(sql)
+
+    monkeypatch.setattr(host, "_postgresql_query", query)
+    lines: list[str] = []
+
+    host._collect_postgresql_metrics(lines)
+
+    assert "jobseek_cross_store_reconciliation_schema_ready 0" in "\n".join(lines)
 
 
 def test_postgresql_shared_memory_probe_emits_configured_and_live_capacity(
@@ -715,7 +895,7 @@ def test_rule_source_has_bounded_owned_groups() -> None:
     }
     assert {group["name"]: len(group["rules"]) for group in groups} == {
         "jobseek_hetzner_fleet": 20,
-        "jobseek_postgresql_capacity": 4,
+        "jobseek_postgresql_capacity": 5,
         "jobseek_typesense_reliability": 7,
         "jobseek_telemetry_delivery": 9,
         "jobseek_crawler_reliability": 19,

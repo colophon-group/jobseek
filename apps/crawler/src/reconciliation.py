@@ -2,19 +2,21 @@
 
 Local PostgreSQL is authoritative. Supabase is a web-facing relational
 mirror, while Typesense is a derived search index. This module compares both
-directions in bounded UUID partitions and repairs only from a locked local
-snapshot. Progress lives in local PostgreSQL, so container recreation cannot
-reset or hide the schedule. Supabase support is retained for direct rollback
-tests only; the production CLI and scheduler can select Typesense only.
+directions in bounded UUID partitions and repairs from authoritative local
+rereads under the exporter fence. Progress lives in local PostgreSQL, so
+container recreation cannot reset or hide the schedule. Supabase support is
+retained for direct rollback tests only; the production CLI and scheduler can
+select Typesense only.
 """
 
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import time
 import uuid
-from collections.abc import AsyncIterator, Iterable, Mapping, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Literal, cast
 from urllib.parse import quote
@@ -22,7 +24,6 @@ from urllib.parse import quote
 import asyncpg
 import httpx
 import structlog
-from asyncpg.pool import PoolConnectionProxy
 
 from src.config import settings
 from src.export_cursor_fence import export_cursor_fence
@@ -46,6 +47,31 @@ REPAIR_BATCH_SIZE = 500
 TYPESENSE_EXPORT_BATCH_SIZE = 1_000
 TYPESENSE_DELETE_CONCURRENCY = 20
 RECONCILIATION_LOCK_ID = 0x5245434F4E434C  # positive bigint, ASCII-ish ``RECONCL``
+_TYPESENSE_EXPORT_MAX_ATTEMPTS = 3
+_TYPESENSE_EXPORT_BACKOFF_BASE_SECONDS = 1.0
+_TYPESENSE_EXPORT_BACKOFF_CAP_SECONDS = 2.0
+_TYPESENSE_EXPORT_RETRYABLE_STATUSES = frozenset((408, 425, 429, 500, 502, 503, 504))
+_TYPESENSE_EXPORT_RECORD_BYTES_LIMIT = 1024 * 1024
+_TYPESENSE_UNBUCKETED_CANDIDATE_LIMIT = 50_000
+_TYPESENSE_UNBUCKETED_ID_BYTES_LIMIT = 16 * 1024 * 1024
+
+
+class _TypesenseExportFramingError(RuntimeError):
+    """A streamed Typesense export violated the bounded record framing contract."""
+
+
+# A 200 response can still terminate while HTTPX is reading or decoding the
+# body, leave a syntactically incomplete final JSONL record, contain invalid
+# UTF-8, or violate the per-record framing bound. Those failures retry the
+# complete export with fresh attempt-local state. Non-transient HTTP statuses
+# and decoded document invariant failures are deterministic for this request
+# and fail immediately instead of entering the retry loop.
+_TYPESENSE_EXPORT_RETRYABLE_ERRORS = (
+    httpx.RequestError,
+    json.JSONDecodeError,
+    UnicodeDecodeError,
+    _TypesenseExportFramingError,
+)
 
 _PARTITION_STATE_SQL = """
 SELECT id, is_active
@@ -53,11 +79,71 @@ FROM job_posting
 WHERE id >= $1
   AND ($2::uuid IS NULL OR id < $2::uuid)
 """
-_LOCKED_POSTINGS_SQL = (
+_TYPESENSE_LOCAL_SELECT_LIST = ", ".join(
+    (
+        *(f"jp.{name}" for name in PostingSchema.column_names()),
+        "jp.last_seen_at",
+        "c.name AS company_name",
+        "c.slug AS company_slug",
+        "c.icon AS company_icon",
+    )
+)
+_PARTITION_TYPESENSE_SQL = (
+    f"SELECT {_TYPESENSE_LOCAL_SELECT_LIST} "
+    "FROM job_posting jp JOIN company c ON c.id = jp.company_id "
+    "WHERE jp.id >= $1 AND ($2::uuid IS NULL OR jp.id < $2::uuid) ORDER BY jp.id"
+)
+_TYPESENSE_POSTINGS_BY_ID_SQL = (
+    f"SELECT {_TYPESENSE_LOCAL_SELECT_LIST} "
+    "FROM job_posting jp JOIN company c ON c.id = jp.company_id "
+    "WHERE jp.id = ANY($1::uuid[]) ORDER BY jp.id"
+)
+_AUTHORITATIVE_POSTINGS_SQL = (
     "SELECT "
     + PostingSchema.select_list("last_seen_at")
-    + " FROM job_posting WHERE id = ANY($1::uuid[]) ORDER BY id FOR SHARE"
+    + " FROM job_posting WHERE id = ANY($1::uuid[]) ORDER BY id"
 )
+
+# These fields form the bounded, user-visible reconciliation contract. The
+# reconciler compares their canonical content directly rather than trusting a
+# checksum stored beside the document it is meant to verify. Array order is
+# significant for location and technology fields because web readers zip IDs,
+# names, and types by position. Only intrinsically unordered locale and
+# occupation-ancestor arrays are sorted for comparison.
+TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS: tuple[str, ...] = (
+    "company_id",
+    "company_name",
+    "company_slug",
+    "company_icon",
+    "title",
+    "has_content",
+    "location_ids",
+    "location_direct_ids",
+    "location_names",
+    "location_types",
+    "location_geo_types",
+    "occupation_id",
+    "occupation_ids",
+    "occupation_name",
+    "seniority_id",
+    "seniority_name",
+    "technology_ids",
+    "technology_names",
+    "employment_type",
+    "salary_eur",
+    "salary_min",
+    "salary_max",
+    "salary_currency",
+    "salary_period",
+    "experience_min",
+    "experience_max",
+    "experience_min_years",
+    "experience_max_years",
+    "locales",
+    "first_seen_at",
+    "source_url",
+)
+_ORDER_INSENSITIVE_TYPESENSE_ARRAY_FIELDS = frozenset(("locales", "occupation_ids"))
 
 
 class ReconciliationError(RuntimeError):
@@ -71,6 +157,13 @@ class ReconciliationRunFailed(ReconciliationError):
 @dataclass(frozen=True, slots=True)
 class StoreSnapshot:
     states: Mapping[uuid.UUID, bool]
+    payload_fingerprints: Mapping[uuid.UUID, str] | None = None
+
+    def __post_init__(self) -> None:
+        if self.payload_fingerprints is not None and set(self.payload_fingerprints) != set(
+            self.states
+        ):
+            raise ReconciliationError("Snapshot payload and state IDs differ")
 
     @property
     def rows(self) -> int:
@@ -85,6 +178,7 @@ class StoreSnapshot:
 class PartitionDiff:
     missing_remote: frozenset[uuid.UUID]
     state_mismatch: frozenset[uuid.UUID]
+    payload_mismatch: frozenset[uuid.UUID]
     remote_only_active: frozenset[uuid.UUID]
     remote_only_inactive: frozenset[uuid.UUID]
 
@@ -94,7 +188,7 @@ class PartitionDiff:
             # Typesense has no foreign-key or user-history consumers. Exact
             # document-set parity is safe and avoids orphan search documents.
             remote_only = remote_only | self.remote_only_inactive
-        return self.missing_remote | self.state_mismatch | remote_only
+        return self.missing_remote | self.state_mismatch | self.payload_mismatch | remote_only
 
     def detected(self, target: ReconciliationTarget) -> int:
         return len(self.actionable_ids(target))
@@ -110,12 +204,24 @@ class PartitionResult:
     remote_active: int
     missing_remote: int
     state_mismatch: int
+    payload_mismatch: int
     remote_only_active: int
     remote_only_inactive: int
     detected: int
     repaired: int
     unresolved: int
     duration_seconds: float
+
+
+class _PartitionRepairFailed(ReconciliationError):
+    """Carry aggregate partition evidence across a sanitized repair failure."""
+
+    def __init__(self, result: PartitionResult, error_class: str) -> None:
+        super().__init__(
+            f"{result.target} partition repair failed with {result.unresolved} unresolved rows"
+        )
+        self.result = result
+        self.error_class = error_class
 
 
 @dataclass(slots=True)
@@ -127,14 +233,24 @@ class RunSummary:
     checked_local: int = 0
     checked_remote: int = 0
     detected: int = 0
+    payload_mismatch: int = 0
     repaired: int = 0
     unresolved: int = 0
 
     def add(self, result: PartitionResult) -> None:
         self.partitions_completed += 1
+        self._add_counts(result)
+
+    def add_failed(self, result: PartitionResult) -> None:
+        """Record observed work without claiming the partition completed."""
+
+        self._add_counts(result)
+
+    def _add_counts(self, result: PartitionResult) -> None:
         self.checked_local += result.local_rows
         self.checked_remote += result.remote_rows
         self.detected += result.detected
+        self.payload_mismatch += result.payload_mismatch
         self.repaired += result.repaired
         self.unresolved += result.unresolved
 
@@ -161,11 +277,103 @@ def reconciliation_bucket(posting_id: uuid.UUID | str) -> str:
     return parsed.hex[:2]
 
 
+def _canonical_payload_value(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {
+            str(key): _canonical_payload_value(item)
+            for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
+        }
+    if isinstance(value, list):
+        return [_canonical_payload_value(item) for item in value]
+    if isinstance(value, float) and value.is_integer():
+        # Typesense may serialize an integral float as either ``1`` or ``1.0``.
+        # The schema value is equivalent, so do not create false payload drift.
+        return int(value)
+    return value
+
+
+def _typesense_payload_fingerprint(document: Mapping[str, object]) -> str:
+    payload: dict[str, object] = {}
+    for field in TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS:
+        value = _canonical_payload_value(document.get(field))
+        if field in _ORDER_INSENSITIVE_TYPESENSE_ARRAY_FIELDS and isinstance(value, list):
+            value = sorted(
+                value,
+                key=lambda item: json.dumps(
+                    item,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+            )
+        payload[field] = value
+    canonical = json.dumps(
+        payload,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _typesense_documents_snapshot(
+    documents: Iterable[Mapping[str, object]],
+) -> StoreSnapshot:
+    states: dict[uuid.UUID, bool] = {}
+    payload_fingerprints: dict[uuid.UUID, str] = {}
+    for document in documents:
+        try:
+            posting_id = uuid.UUID(str(document.get("id", "")))
+        except ValueError as exc:
+            raise ReconciliationError("Typesense document has an invalid ID") from exc
+        active = document.get("is_active")
+        if not isinstance(active, bool):
+            raise ReconciliationError("Typesense document has invalid active state")
+        if posting_id in states:
+            raise ReconciliationError("Typesense partition returned a duplicate document")
+        states[posting_id] = active
+        payload_fingerprints[posting_id] = _typesense_payload_fingerprint(document)
+    return StoreSnapshot(states, payload_fingerprints)
+
+
+def _snapshot_subset(
+    snapshot: StoreSnapshot,
+    posting_ids: frozenset[uuid.UUID],
+) -> StoreSnapshot:
+    """Project a store snapshot onto one frozen repair candidate set."""
+
+    states = {
+        posting_id: active
+        for posting_id, active in snapshot.states.items()
+        if posting_id in posting_ids
+    }
+    payload_fingerprints = snapshot.payload_fingerprints
+    if payload_fingerprints is None:
+        return StoreSnapshot(states)
+    return StoreSnapshot(
+        states,
+        {
+            posting_id: fingerprint
+            for posting_id, fingerprint in payload_fingerprints.items()
+            if posting_id in posting_ids
+        },
+    )
+
+
 def compare_snapshots(local: StoreSnapshot, remote: StoreSnapshot) -> PartitionDiff:
     local_ids = set(local.states)
     remote_ids = set(remote.states)
     shared = local_ids & remote_ids
     remote_only = remote_ids - local_ids
+    if (local.payload_fingerprints is None) != (remote.payload_fingerprints is None):
+        raise ReconciliationError("Snapshots disagree on payload comparison support")
+    payload_mismatch: frozenset[uuid.UUID] = frozenset()
+    if local.payload_fingerprints is not None and remote.payload_fingerprints is not None:
+        payload_mismatch = frozenset(
+            posting_id
+            for posting_id in shared
+            if local.payload_fingerprints[posting_id] != remote.payload_fingerprints[posting_id]
+        )
     return PartitionDiff(
         missing_remote=frozenset(local_ids - remote_ids),
         state_mismatch=frozenset(
@@ -173,6 +381,7 @@ def compare_snapshots(local: StoreSnapshot, remote: StoreSnapshot) -> PartitionD
             for posting_id in shared
             if local.states[posting_id] != remote.states[posting_id]
         ),
+        payload_mismatch=payload_mismatch,
         remote_only_active=frozenset(
             posting_id for posting_id in remote_only if remote.states[posting_id]
         ),
@@ -187,6 +396,70 @@ def _chunks[T](values: Sequence[T], size: int) -> Iterable[Sequence[T]]:
         yield values[start : start + size]
 
 
+async def _iter_typesense_jsonl_records(response: httpx.Response) -> AsyncIterator[bytes]:
+    """Frame a Typesense JSONL response on ASCII LF without Unicode line splitting.
+
+    HTTPX's text line iterator follows Unicode line-boundary rules, so a valid
+    JSON string containing U+0085, U+2028, or U+2029 can be split in the middle
+    of a document. Typesense JSONL uses the single byte ``b"\\n"`` as its record
+    delimiter. Keep records as bytes through framing so delimiter handling is
+    strict; the shared parser explicitly decodes UTF-8 afterward.
+
+    Reconciliation exports omit descriptions and other blob fields. A 1 MiB
+    per-record ceiling is therefore more than two orders of magnitude above
+    the production maximum observed when this guard was introduced, while
+    remaining only 0.1% of the one-shot container's 1 GiB memory limit. There
+    is deliberately no whole-stream ceiling.
+    """
+
+    pending = bytearray()
+    async for chunk in response.aiter_bytes():
+        start = 0
+        while True:
+            delimiter = chunk.find(b"\n", start)
+            if delimiter < 0:
+                fragment_length = len(chunk) - start
+                if len(pending) + fragment_length > _TYPESENSE_EXPORT_RECORD_BYTES_LIMIT:
+                    raise _TypesenseExportFramingError(
+                        "Typesense export record exceeded its byte safety limit"
+                    )
+                pending.extend(chunk[start:])
+                break
+
+            segment_length = delimiter - start
+            if len(pending) + segment_length > _TYPESENSE_EXPORT_RECORD_BYTES_LIMIT:
+                raise _TypesenseExportFramingError(
+                    "Typesense export record exceeded its byte safety limit"
+                )
+            segment = chunk[start:delimiter]
+            if pending:
+                pending.extend(segment)
+                record = bytes(pending)
+                pending.clear()
+            else:
+                record = segment
+            if record:
+                yield record
+            start = delimiter + 1
+
+    # Typesense currently omits a trailing LF. A complete final JSON value is
+    # valid; a truncated value reaches json.loads and enters the bounded retry
+    # path just like a malformed LF-terminated record.
+    if pending:
+        yield bytes(pending)
+
+
+def _parse_typesense_json_record(record: bytes) -> object:
+    """Decode one framed record as strict UTF-8 before parsing JSON.
+
+    ``json.loads`` accepts bytes directly but auto-detects UTF-16 and UTF-32.
+    Typesense's JSONL wire contract is UTF-8, so accepting those encodings would
+    make framing and validation disagree about the response format.
+    """
+
+    return json.loads(record.decode("utf-8"))
+
+
 async def _postgres_partition_snapshot(
     pool: asyncpg.Pool,
     partition: int,
@@ -197,6 +470,16 @@ async def _postgres_partition_snapshot(
     if len(states) != len(rows):
         raise ReconciliationError("PostgreSQL partition returned duplicate posting IDs")
     return StoreSnapshot(states)
+
+
+async def _postgres_typesense_partition_snapshot(
+    pool: asyncpg.Pool,
+    partition: int,
+    maps: TaxonomyMaps,
+) -> StoreSnapshot:
+    lower, upper = partition_bounds(partition)
+    rows = await pool.fetch(_PARTITION_TYPESENSE_SQL, lower, upper)
+    return _typesense_documents_snapshot(_build_typesense_docs(list(rows), maps))
 
 
 class TypesenseReconciliationClient:
@@ -217,69 +500,177 @@ class TypesenseReconciliationClient:
     async def aclose(self) -> None:
         await self._client.aclose()
 
+    async def _retry_complete_export[T](
+        self,
+        consumer: Literal["partition", "unbucketed"],
+        attempt_export: Callable[[], Awaitable[T]],
+    ) -> T:
+        """Retry only transient whole-export acquisition failures.
+
+        ``attempt_export`` must allocate every result container inside the
+        callable. Nothing from a failed stream may be returned to comparison,
+        repair, deletion, or durable progress code.
+        """
+
+        for attempt in range(1, _TYPESENSE_EXPORT_MAX_ATTEMPTS + 1):
+            try:
+                return await attempt_export()
+            except httpx.HTTPStatusError as exc:
+                error_class = type(exc).__name__
+                if exc.response.status_code not in _TYPESENSE_EXPORT_RETRYABLE_STATUSES:
+                    # Deterministic status failures must be translated before
+                    # the outer logger can expose the configured address, URL,
+                    # or response body carried by HTTPStatusError.
+                    log.error(
+                        "reconciliation.typesense_export_failed",
+                        consumer=consumer,
+                        attempts=attempt,
+                        error_class=error_class,
+                    )
+                    raise ReconciliationError(
+                        f"Typesense export acquisition failed ({error_class})"
+                    ) from None
+                await self._wait_for_export_retry(consumer, attempt, error_class)
+            except httpx.InvalidURL as exc:
+                error_class = type(exc).__name__
+                log.error(
+                    "reconciliation.typesense_export_failed",
+                    consumer=consumer,
+                    attempts=attempt,
+                    error_class=error_class,
+                )
+                raise ReconciliationError(
+                    f"Typesense export acquisition failed ({error_class})"
+                ) from None
+            except _TYPESENSE_EXPORT_RETRYABLE_ERRORS as exc:
+                error_class = type(exc).__name__
+                await self._wait_for_export_retry(consumer, attempt, error_class)
+
+        raise AssertionError("Typesense export retry loop exhausted without a result")
+
+    async def _wait_for_export_retry(
+        self,
+        consumer: Literal["partition", "unbucketed"],
+        attempt: int,
+        error_class: str,
+    ) -> None:
+        if attempt >= _TYPESENSE_EXPORT_MAX_ATTEMPTS:
+            log.error(
+                "reconciliation.typesense_export_retry_exhausted",
+                consumer=consumer,
+                attempts=attempt,
+                error_class=error_class,
+            )
+            raise ReconciliationError(
+                f"Typesense export acquisition failed after {attempt} attempts ({error_class})"
+            ) from None
+        retry_in = min(
+            _TYPESENSE_EXPORT_BACKOFF_BASE_SECONDS * (2 ** (attempt - 1)),
+            _TYPESENSE_EXPORT_BACKOFF_CAP_SECONDS,
+        )
+        log.warning(
+            "reconciliation.typesense_export_retry",
+            consumer=consumer,
+            attempt=attempt,
+            max_attempts=_TYPESENSE_EXPORT_MAX_ATTEMPTS,
+            retry_in_seconds=retry_in,
+            error_class=error_class,
+        )
+        await asyncio.sleep(retry_in)
+
     async def partition_snapshot(self, partition: int) -> StoreSnapshot:
         bucket = partition_bucket(partition)
-        states: dict[uuid.UUID, bool] = {}
-        async with self._client.stream(
-            "GET",
-            f"{self._base_url}/export",
-            params={
-                "filter_by": f"reconciliation_bucket:={bucket}",
-                "include_fields": "id,is_active,reconciliation_bucket",
-                "batch_size": str(TYPESENSE_EXPORT_BATCH_SIZE),
-            },
-        ) as response:
-            response.raise_for_status()
-            async for line in response.aiter_lines():
-                if not line:
-                    continue
-                document = json.loads(line)
-                posting_id = uuid.UUID(str(document.get("id", "")))
-                active = document.get("is_active")
-                if not isinstance(active, bool):
-                    raise ReconciliationError("Typesense document has invalid active state")
-                if document.get("reconciliation_bucket") != bucket:
-                    raise ReconciliationError("Typesense document is in the wrong partition")
-                if posting_id in states:
-                    raise ReconciliationError("Typesense partition returned a duplicate document")
-                states[posting_id] = active
-        return StoreSnapshot(states)
+
+        async def attempt_export() -> StoreSnapshot:
+            states: dict[uuid.UUID, bool] = {}
+            payload_fingerprints: dict[uuid.UUID, str] = {}
+            async with self._client.stream(
+                "GET",
+                f"{self._base_url}/export",
+                params={
+                    "filter_by": f"reconciliation_bucket:={bucket}",
+                    "include_fields": ",".join(
+                        (
+                            "id",
+                            "is_active",
+                            "reconciliation_bucket",
+                            *TYPESENSE_RECONCILIATION_PAYLOAD_FIELDS,
+                        )
+                    ),
+                    "batch_size": str(TYPESENSE_EXPORT_BATCH_SIZE),
+                },
+            ) as response:
+                response.raise_for_status()
+                async for record in _iter_typesense_jsonl_records(response):
+                    document = _parse_typesense_json_record(record)
+                    if not isinstance(document, dict):
+                        raise ReconciliationError("Typesense export returned a non-object document")
+                    if document.get("reconciliation_bucket") != bucket:
+                        raise ReconciliationError("Typesense document is in the wrong partition")
+                    try:
+                        posting_id = uuid.UUID(str(document.get("id", "")))
+                    except ValueError:
+                        raise ReconciliationError("Typesense document has an invalid ID") from None
+                    active = document.get("is_active")
+                    if not isinstance(active, bool):
+                        raise ReconciliationError("Typesense document has invalid active state")
+                    if posting_id in states:
+                        raise ReconciliationError(
+                            "Typesense partition returned a duplicate document"
+                        )
+                    states[posting_id] = active
+                    payload_fingerprints[posting_id] = _typesense_payload_fingerprint(document)
+            return StoreSnapshot(states, payload_fingerprints)
+
+        return await self._retry_complete_export("partition", attempt_export)
 
     async def unbucketed_batches(
         self,
         *,
         batch_size: int = REPAIR_BATCH_SIZE,
     ) -> AsyncIterator[list[tuple[str, bool]]]:
-        batch: list[tuple[str, bool]] = []
-        async with self._client.stream(
-            "GET",
-            f"{self._base_url}/export",
-            params={
-                "include_fields": "id,is_active,reconciliation_bucket",
-                "batch_size": str(TYPESENSE_EXPORT_BATCH_SIZE),
-            },
-        ) as response:
-            response.raise_for_status()
-            async for line in response.aiter_lines():
-                if not line:
-                    continue
-                document = json.loads(line)
-                raw_id = str(document.get("id", ""))
-                active = document.get("is_active")
-                if not isinstance(active, bool):
-                    raise ReconciliationError("Typesense document has invalid active state")
-                try:
-                    expected = reconciliation_bucket(raw_id)
-                except ValueError:
-                    expected = ""
-                if document.get("reconciliation_bucket") == expected and expected:
-                    continue
-                batch.append((raw_id, active))
-                if len(batch) >= batch_size:
-                    yield batch
-                    batch = []
-        if batch:
-            yield batch
+        async def attempt_export() -> list[tuple[str, bool]]:
+            # Only unbucketed candidates are retained, but none are exposed to
+            # the deletion consumer until the complete stream reaches EOF.
+            candidates: list[tuple[str, bool]] = []
+            candidate_id_bytes = 0
+            async with self._client.stream(
+                "GET",
+                f"{self._base_url}/export",
+                params={
+                    "include_fields": "id,is_active,reconciliation_bucket",
+                    "batch_size": str(TYPESENSE_EXPORT_BATCH_SIZE),
+                },
+            ) as response:
+                response.raise_for_status()
+                async for record in _iter_typesense_jsonl_records(response):
+                    document = _parse_typesense_json_record(record)
+                    if not isinstance(document, dict):
+                        raise ReconciliationError("Typesense export returned a non-object document")
+                    raw_id = str(document.get("id", ""))
+                    active = document.get("is_active")
+                    if not isinstance(active, bool):
+                        raise ReconciliationError("Typesense document has invalid active state")
+                    try:
+                        expected = reconciliation_bucket(raw_id)
+                    except ValueError:
+                        expected = ""
+                    if document.get("reconciliation_bucket") == expected and expected:
+                        continue
+                    candidate_id_bytes += len(raw_id.encode("utf-8"))
+                    if (
+                        len(candidates) >= _TYPESENSE_UNBUCKETED_CANDIDATE_LIMIT
+                        or candidate_id_bytes > _TYPESENSE_UNBUCKETED_ID_BYTES_LIMIT
+                    ):
+                        raise ReconciliationError(
+                            "Typesense unbucketed export exceeded its candidate safety limit"
+                        )
+                    candidates.append((raw_id, active))
+            return candidates
+
+        candidates = await self._retry_complete_export("unbucketed", attempt_export)
+        for batch in _chunks(candidates, batch_size):
+            yield list(batch)
 
     async def delete_ids(self, posting_ids: Sequence[str]) -> None:
         semaphore = asyncio.Semaphore(TYPESENSE_DELETE_CONCURRENCY)
@@ -292,16 +683,37 @@ class TypesenseReconciliationClient:
                     return
                 response.raise_for_status()
 
-        await asyncio.gather(*(delete_one(posting_id) for posting_id in posting_ids))
+        tasks = [asyncio.create_task(delete_one(posting_id)) for posting_id in posting_ids]
+        if not tasks:
+            return
+        try:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+        except BaseException:
+            # Cancellation must not let a sibling request outlive the caller
+            # (and, for repair, the exporter fence that contains it).
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+
+        failed = sum(isinstance(result, BaseException) for result in results)
+        if failed:
+            # HTTPX exceptions include request URLs and can include response
+            # details. Do not chain any individual exception into the outer
+            # reconciliation logger, where a document UUID or payload could
+            # become telemetry.
+            raise ReconciliationError(
+                f"Typesense delete failed for {failed} reconciliation documents"
+            ) from None
 
 
-async def _locked_local_rows(
-    connection: asyncpg.Connection | PoolConnectionProxy,
+async def _authoritative_local_rows(
+    pool: asyncpg.Pool,
     posting_ids: Sequence[uuid.UUID],
 ) -> list[asyncpg.Record]:
     if not posting_ids:
         return []
-    return list(await connection.fetch(_LOCKED_POSTINGS_SQL, list(posting_ids)))
+    return list(await pool.fetch(_AUTHORITATIVE_POSTINGS_SQL, list(posting_ids)))
 
 
 async def _deactivate_supabase_ids(
@@ -325,21 +737,16 @@ async def _repair_supabase_partition(
     if not candidate_ids:
         return 0, 0
     ordered_ids = sorted(candidate_ids)
-    expected: dict[uuid.UUID, bool] = {}
-    absent: set[uuid.UUID] = set()
 
-    # The exporter fence prevents a newer CDC write from being overwritten by
-    # this direct repair. Row locks make the snapshot current before the
-    # network write; changes after release receive a later CDC timestamp.
-    async with (
-        export_cursor_fence(local_pool),
-        local_pool.acquire() as local_conn,
-        local_conn.transaction(),
-    ):
-        rows = await _locked_local_rows(local_conn, ordered_ids)
+    # Keep the exporter cursor pinned across the direct repair, but never keep
+    # a PostgreSQL transaction open across downstream network I/O. Workers may
+    # still update a candidate concurrently; the authoritative post-write read
+    # below detects that race and fails the partition closed. The worker's
+    # updated_at remains above the pinned cursor and is exported after release.
+    async with export_cursor_fence(local_pool):
+        rows = await _authoritative_local_rows(local_pool, ordered_ids)
         row_ids = {row["id"] for row in rows}
         absent = set(ordered_ids) - row_ids
-        expected = {row["id"]: bool(row["is_active"]) for row in rows}
         for batch in _chunks(rows, REPAIR_BATCH_SIZE):
             failed = await _upsert_to_supabase(supa_pool, list(batch))
             if failed:
@@ -347,13 +754,17 @@ async def _repair_supabase_partition(
         for batch in _chunks(sorted(absent), REPAIR_BATCH_SIZE):
             await _deactivate_supabase_ids(supa_pool, batch)
 
+        current_rows = await _authoritative_local_rows(local_pool, ordered_ids)
+        current_ids = {row["id"] for row in current_rows}
+        current = {row["id"]: bool(row["is_active"]) for row in current_rows}
+        currently_absent = set(ordered_ids) - current_ids
         verified = await _postgres_partition_snapshot(supa_pool, partition)
         unresolved = sum(
-            1
-            for posting_id, active in expected.items()
-            if verified.states.get(posting_id) != active
+            1 for posting_id, active in current.items() if verified.states.get(posting_id) != active
         )
-        unresolved += sum(1 for posting_id in absent if verified.states.get(posting_id) is True)
+        unresolved += sum(
+            1 for posting_id in currently_absent if verified.states.get(posting_id) is True
+        )
         if unresolved:
             raise ReconciliationError(
                 f"Supabase reconciliation verification left {unresolved} unresolved rows"
@@ -371,40 +782,58 @@ async def _repair_typesense_partition(
     if not candidate_ids:
         return 0, 0
     ordered_ids = sorted(candidate_ids)
-    expected: dict[uuid.UUID, bool] = {}
-    absent: set[uuid.UUID] = set()
-
-    async with (
-        export_cursor_fence(local_pool),
-        local_pool.acquire() as local_conn,
-        local_conn.transaction(),
-    ):
-        rows = await _locked_local_rows(local_conn, ordered_ids)
+    # The exporter fence serializes this direct write with CDC cursor
+    # advancement. Do not hold a PostgreSQL transaction across Typesense I/O:
+    # freeze the current candidate rows, write that exact snapshot, then verify
+    # only those candidates (including expected absences) and prove their local
+    # payload stayed stable before durable progress can advance. Unrelated
+    # source changes in the same partition cannot masquerade as a failed repair.
+    async with export_cursor_fence(local_pool):
+        rows = list(await local_pool.fetch(_TYPESENSE_POSTINGS_BY_ID_SQL, ordered_ids))
         row_ids = {row["id"] for row in rows}
         absent = set(ordered_ids) - row_ids
-        expected = {row["id"]: bool(row["is_active"]) for row in rows}
-        for batch in _chunks(rows, REPAIR_BATCH_SIZE):
-            docs = _build_typesense_docs(list(batch), maps)
-            failed = await _upsert_to_typesense(docs)
-            if failed:
-                raise ReconciliationError(
-                    f"Typesense rejected {len(failed)} reconciliation documents"
+        documents = _build_typesense_docs(list(rows), maps)
+        expected = _typesense_documents_snapshot(documents)
+        rejected_ids: set[str] = set()
+        for batch in _chunks(documents, REPAIR_BATCH_SIZE):
+            rejected_ids.update(
+                await _upsert_to_typesense(
+                    list(batch),
+                    log_rejected_documents=False,
                 )
+            )
         for batch in _chunks(sorted(absent), REPAIR_BATCH_SIZE):
             await typesense.delete_ids([str(posting_id) for posting_id in batch])
 
-        verified = await typesense.partition_snapshot(partition)
-        unresolved = sum(
-            1
-            for posting_id, active in expected.items()
-            if verified.states.get(posting_id) != active
-        )
-        unresolved += sum(1 for posting_id in absent if posting_id in verified.states)
-        if unresolved:
-            raise ReconciliationError(
-                f"Typesense reconciliation verification left {unresolved} unresolved rows"
+        verified_partition = await typesense.partition_snapshot(partition)
+        verified = _snapshot_subset(verified_partition, candidate_ids)
+        verification_unresolved = compare_snapshots(expected, verified).actionable_ids("typesense")
+        current_rows = list(await local_pool.fetch(_TYPESENSE_POSTINGS_BY_ID_SQL, ordered_ids))
+        current = _typesense_documents_snapshot(_build_typesense_docs(current_rows, maps))
+        source_changed = compare_snapshots(expected, current).actionable_ids("typesense")
+        unresolved_ids = {str(posting_id) for posting_id in verification_unresolved}
+        unresolved_ids.update(str(posting_id) for posting_id in source_changed)
+        unresolved_ids.update(rejected_ids)
+        unresolved = len(unresolved_ids)
+        if rejected_ids:
+            log.error(
+                "reconciliation.typesense_candidates_rejected",
+                rejected=len(rejected_ids),
+                unresolved=unresolved,
             )
-    return len(candidate_ids), 0
+        if source_changed:
+            log.error(
+                "reconciliation.typesense_candidates_changed_during_repair",
+                changed=len(source_changed),
+                unresolved=unresolved,
+            )
+        if verification_unresolved:
+            log.error(
+                "reconciliation.typesense_candidate_verification_failed",
+                verification_unresolved=len(verification_unresolved),
+                unresolved=unresolved,
+            )
+    return len(candidate_ids) - unresolved, unresolved
 
 
 async def _bootstrap_typesense_buckets(
@@ -478,14 +907,15 @@ async def reconcile_partition(
     maps: TaxonomyMaps | None = None,
 ) -> PartitionResult:
     started = time.monotonic()
-    local = await _postgres_partition_snapshot(local_pool, partition)
     if target == "supabase":
         if supa_pool is None:
             raise ReconciliationError("Supabase reconciliation requires DATABASE_URL")
+        local = await _postgres_partition_snapshot(local_pool, partition)
         remote = await _postgres_partition_snapshot(supa_pool, partition)
     else:
-        if typesense is None:
-            raise ReconciliationError("Typesense client is required")
+        if typesense is None or maps is None:
+            raise ReconciliationError("Typesense reconciliation dependencies are required")
+        local = await _postgres_typesense_partition_snapshot(local_pool, partition, maps)
         remote = await typesense.partition_snapshot(partition)
     diff = compare_snapshots(local, remote)
     detected = diff.detected(target)
@@ -493,25 +923,48 @@ async def reconcile_partition(
     unresolved = detected
 
     if repair and detected:
-        if target == "supabase":
-            if supa_pool is None:
-                raise ReconciliationError("Supabase reconciliation requires DATABASE_URL")
-            repaired, unresolved = await _repair_supabase_partition(
-                local_pool,
-                supa_pool,
-                diff.actionable_ids(target),
-                partition,
+        try:
+            if target == "supabase":
+                if supa_pool is None:
+                    raise ReconciliationError("Supabase reconciliation requires DATABASE_URL")
+                repaired, unresolved = await _repair_supabase_partition(
+                    local_pool,
+                    supa_pool,
+                    diff.actionable_ids(target),
+                    partition,
+                )
+            else:
+                if typesense is None or maps is None:
+                    raise ReconciliationError("Typesense repair dependencies are required")
+                repaired, unresolved = await _repair_typesense_partition(
+                    local_pool,
+                    typesense,
+                    maps,
+                    diff.actionable_ids(target),
+                    partition,
+                )
+        except Exception as exc:
+            # The initial comparison established the exact candidate count.
+            # A transport/protocol exception leaves the whole candidate set
+            # conservatively unresolved because convergence was not proven.
+            result = PartitionResult(
+                target=target,
+                partition=partition,
+                local_rows=local.rows,
+                local_active=local.active,
+                remote_rows=remote.rows,
+                remote_active=remote.active,
+                missing_remote=len(diff.missing_remote),
+                state_mismatch=len(diff.state_mismatch),
+                payload_mismatch=len(diff.payload_mismatch),
+                remote_only_active=len(diff.remote_only_active),
+                remote_only_inactive=len(diff.remote_only_inactive),
+                detected=detected,
+                repaired=0,
+                unresolved=detected,
+                duration_seconds=time.monotonic() - started,
             )
-        else:
-            if typesense is None or maps is None:
-                raise ReconciliationError("Typesense repair dependencies are required")
-            repaired, unresolved = await _repair_typesense_partition(
-                local_pool,
-                typesense,
-                maps,
-                diff.actionable_ids(target),
-                partition,
-            )
+            raise _PartitionRepairFailed(result, type(exc).__name__) from None
 
     result = PartitionResult(
         target=target,
@@ -522,6 +975,7 @@ async def reconcile_partition(
         remote_active=remote.active,
         missing_remote=len(diff.missing_remote),
         state_mismatch=len(diff.state_mismatch),
+        payload_mismatch=len(diff.payload_mismatch),
         remote_only_active=len(diff.remote_only_active),
         remote_only_inactive=len(diff.remote_only_inactive),
         detected=detected,
@@ -540,6 +994,7 @@ async def reconcile_partition(
         remote_active=result.remote_active,
         missing_remote=result.missing_remote,
         state_mismatch=result.state_mismatch,
+        payload_mismatch=result.payload_mismatch,
         remote_only_active=result.remote_only_active,
         remote_only_inactive=result.remote_only_inactive,
         repaired=result.repaired,
@@ -579,12 +1034,14 @@ async def _persist_run_progress(local_pool: asyncpg.Pool, summary: RunSummary) -
     await local_pool.execute(
         "UPDATE cross_store_reconciliation_run SET "
         "partitions_completed = $2, checked_local = $3, checked_remote = $4, "
-        "detected = $5, repaired = $6, unresolved = $7 WHERE run_id = $1",
+        "detected = $5, payload_mismatch = $6, repaired = $7, unresolved = $8 "
+        "WHERE run_id = $1",
         summary.run_id,
         summary.partitions_completed,
         summary.checked_local,
         summary.checked_remote,
         summary.detected,
+        summary.payload_mismatch,
         summary.repaired,
         summary.unresolved,
     )
@@ -626,8 +1083,9 @@ async def _ensure_cycle(
                 "next_partition = 0, cycle_id = $2, cycle_started_at = clock_timestamp(), "
                 "cycle_runtime_seconds = 0, cycle_local_rows = 0, "
                 "cycle_local_active = 0, cycle_remote_rows = 0, "
-                "cycle_remote_active = 0, cycle_missing_remote = 0, "
-                "cycle_state_mismatch = 0, cycle_remote_only_active = 0, "
+                "cycle_remote_active = 0, cycle_detected = 0, cycle_missing_remote = 0, "
+                "cycle_state_mismatch = 0, cycle_payload_mismatch = 0, "
+                "cycle_remote_only_active = 0, "
                 "cycle_remote_only_inactive = 0, cycle_repaired = 0, "
                 "last_attempt_at = clock_timestamp(), last_outcome = 'progress', "
                 "last_error_class = NULL, last_unresolved = 0, "
@@ -675,8 +1133,10 @@ async def _advance_state(
             "local_active": int(row["cycle_local_active"]) + result.local_active,
             "remote_rows": int(row["cycle_remote_rows"]) + result.remote_rows,
             "remote_active": int(row["cycle_remote_active"]) + result.remote_active,
+            "detected": int(row["cycle_detected"]) + result.detected,
             "missing_remote": int(row["cycle_missing_remote"]) + result.missing_remote,
             "state_mismatch": int(row["cycle_state_mismatch"]) + result.state_mismatch,
+            "payload_mismatch": int(row["cycle_payload_mismatch"]) + result.payload_mismatch,
             "remote_only_active": int(row["cycle_remote_only_active"]) + result.remote_only_active,
             "remote_only_inactive": int(row["cycle_remote_only_inactive"])
             + result.remote_only_inactive,
@@ -694,16 +1154,18 @@ async def _advance_state(
                 "cycle_started_at = NULL, cycle_runtime_seconds = 0, "
                 "cycle_local_rows = 0, cycle_local_active = 0, "
                 "cycle_remote_rows = 0, cycle_remote_active = 0, "
-                "cycle_missing_remote = 0, cycle_state_mismatch = 0, "
-                "cycle_remote_only_active = 0, cycle_remote_only_inactive = 0, "
+                "cycle_detected = 0, cycle_missing_remote = 0, cycle_state_mismatch = 0, "
+                "cycle_payload_mismatch = 0, cycle_remote_only_active = 0, "
+                "cycle_remote_only_inactive = 0, "
                 "cycle_repaired = 0, last_started_at = $3, "
                 "last_attempt_at = clock_timestamp(), last_success_at = clock_timestamp(), "
                 "last_duration_seconds = $4, last_local_rows = $5, "
                 "last_local_active = $6, last_remote_rows = $7, "
-                "last_remote_active = $8, last_missing_remote = $9, "
-                "last_state_mismatch = $10, last_remote_only_active = $11, "
-                "last_remote_only_inactive = $12, last_repaired = $13, "
-                "last_unresolved = 0, last_outcome = $14, last_error_class = NULL, "
+                "last_remote_active = $8, last_detected = $9, last_missing_remote = $10, "
+                "last_state_mismatch = $11, last_payload_mismatch = $12, "
+                "last_remote_only_active = $13, last_remote_only_inactive = $14, "
+                "last_repaired = $15, last_unresolved = 0, last_outcome = $16, "
+                "last_error_class = NULL, "
                 "updated_at = clock_timestamp() WHERE target = $1",
                 result.target,
                 bootstrap,
@@ -713,8 +1175,10 @@ async def _advance_state(
                 totals["local_active"],
                 totals["remote_rows"],
                 totals["remote_active"],
+                totals["detected"],
                 totals["missing_remote"],
                 totals["state_mismatch"],
+                totals["payload_mismatch"],
                 totals["remote_only_active"],
                 totals["remote_only_inactive"],
                 totals["repaired"],
@@ -726,9 +1190,10 @@ async def _advance_state(
                 "next_partition = $2, bootstrap_complete = $3, "
                 "cycle_runtime_seconds = $4, cycle_local_rows = $5, "
                 "cycle_local_active = $6, cycle_remote_rows = $7, "
-                "cycle_remote_active = $8, cycle_missing_remote = $9, "
-                "cycle_state_mismatch = $10, cycle_remote_only_active = $11, "
-                "cycle_remote_only_inactive = $12, cycle_repaired = $13, "
+                "cycle_remote_active = $8, cycle_detected = $9, cycle_missing_remote = $10, "
+                "cycle_state_mismatch = $11, cycle_payload_mismatch = $12, "
+                "cycle_remote_only_active = $13, cycle_remote_only_inactive = $14, "
+                "cycle_repaired = $15, "
                 "last_attempt_at = clock_timestamp(), last_outcome = 'progress', "
                 "last_unresolved = 0, last_error_class = NULL, "
                 "updated_at = clock_timestamp() WHERE target = $1",
@@ -740,8 +1205,10 @@ async def _advance_state(
                 totals["local_active"],
                 totals["remote_rows"],
                 totals["remote_active"],
+                totals["detected"],
                 totals["missing_remote"],
                 totals["state_mismatch"],
+                totals["payload_mismatch"],
                 totals["remote_only_active"],
                 totals["remote_only_inactive"],
                 totals["repaired"],
@@ -847,11 +1314,10 @@ async def run_reconciliation(
                 )
                 for target in selected_targets:
                     last_result: PartitionResult | None = None
+                    last_result_recorded = False
                     try:
                         if target == "typesense" and typesense is None:
                             typesense = TypesenseReconciliationClient()
-                            if repair:
-                                maps = await _get_taxonomy_maps(local_pool)
                         partition = (
                             await _ensure_cycle(local_pool, target, fresh=fresh_cycle)
                             if repair
@@ -859,6 +1325,15 @@ async def run_reconciliation(
                         )
                         budget = PARTITION_COUNT - partition if full else max_partitions
                         for _ in range(budget):
+                            # Failure accounting belongs to this exact attempt;
+                            # never reuse a prior partition's successful result.
+                            last_result = None
+                            last_result_recorded = False
+                            if target == "typesense":
+                                # Refresh long-running reconciliation proofs on
+                                # the same cadence as ordinary CDC so a stale
+                                # taxonomy cache cannot rewrite current names.
+                                maps = await _get_taxonomy_maps(local_pool)
                             result = await reconcile_partition(
                                 local_pool,
                                 supa_pool,
@@ -897,6 +1372,7 @@ async def run_reconciliation(
                                     remote_active=result.remote_active + active,
                                     missing_remote=result.missing_remote,
                                     state_mismatch=result.state_mismatch,
+                                    payload_mismatch=result.payload_mismatch,
                                     remote_only_active=result.remote_only_active + active,
                                     remote_only_inactive=result.remote_only_inactive + inactive,
                                     detected=result.detected + deleted,
@@ -911,6 +1387,7 @@ async def run_reconciliation(
                                 bootstrap_complete = True
 
                             summary.add(result)
+                            last_result_recorded = True
                             if repair:
                                 completed = await _advance_state(
                                     local_pool,
@@ -924,7 +1401,18 @@ async def run_reconciliation(
                                 break
                             partition += 1
                     except Exception as exc:
-                        error_class = type(exc).__name__
+                        if isinstance(exc, _PartitionRepairFailed):
+                            last_result = exc.result
+                            error_class = exc.error_class
+                        else:
+                            error_class = type(exc).__name__
+                        if (
+                            last_result is not None
+                            and last_result.unresolved
+                            and not last_result_recorded
+                        ):
+                            summary.add_failed(last_result)
+                            last_result_recorded = True
                         failures.append(error_class)
                         if repair:
                             await _record_target_failure(

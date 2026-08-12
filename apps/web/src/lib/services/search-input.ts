@@ -27,6 +27,10 @@ export interface ParsedSearchFilters {
   technologies: { id: number; slug: string; name: string }[];
   workMode: WorkMode[];
   employmentTypes: EmploymentType[];
+  /** Exact public-API slugs that could not be resolved. UI callers stay lenient. */
+  unresolvedExplicitSlugs?: Partial<
+    Record<"loc" | "occ" | "sen" | "tech", string[]>
+  >;
 }
 
 /**
@@ -228,6 +232,23 @@ export async function parseSearchFilters(params: {
       : Promise.resolve(new Map()),
   ]);
 
+  const unresolvedExplicitSlugs: NonNullable<
+    ParsedSearchFilters["unresolvedExplicitSlugs"]
+  > = {};
+  for (const [name, requested, resolved] of [
+    ["loc", explicitLocSlugs, resolvedExplicitLocs],
+    ["occ", explicitOccSlugs, resolvedOccs],
+    ["sen", explicitSenSlugs, resolvedSens],
+    ["tech", explicitTechSlugs, resolvedTechs],
+  ] as const) {
+    const unresolved = requested.filter((slug) => !resolved.has(slug));
+    if (unresolved.length > 0) unresolvedExplicitSlugs[name] = unresolved;
+  }
+  const unresolvedResult =
+    Object.keys(unresolvedExplicitSlugs).length > 0
+      ? { unresolvedExplicitSlugs }
+      : {};
+
   const locations: SelectedLocation[] = explicitLocSlugs
     .map((slug) => resolvedExplicitLocs.get(slug))
     .filter((location): location is NonNullable<typeof location> => location !== undefined)
@@ -295,6 +316,7 @@ export async function parseSearchFilters(params: {
       technologies,
       workMode,
       employmentTypes,
+      ...unresolvedResult,
     };
   }
 
@@ -481,5 +503,6 @@ export async function parseSearchFilters(params: {
     technologies,
     workMode,
     employmentTypes,
+    ...unresolvedResult,
   };
 }

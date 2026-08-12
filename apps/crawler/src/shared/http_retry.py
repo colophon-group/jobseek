@@ -512,6 +512,7 @@ async def fetch_with_retry(
     max_chars: int = 500_000,
     timeout: float | None = None,
     headers: dict | None = None,
+    encoding: str | None = None,
     transient_403: bool = False,
     retryable_statuses: Collection[int] = (),
 ) -> str | None:
@@ -556,6 +557,10 @@ async def fetch_with_retry(
     into a hard failure would 5-strike-disable boards on first
     encounter.
 
+    ``encoding`` overrides a missing or non-Python-compatible response
+    charset before decoding. This is intended for legacy HTML providers that
+    advertise aliases such as ``CP51932`` while serving EUC-JP bytes.
+
     ``retryable_statuses`` lets a caller opt specific non-standard statuses
     into the same retry-and-fail contract.  SiteGround, for example, serves
     crawler-IP captcha shells as HTTP 202; a DOM monitor must not record that
@@ -598,6 +603,8 @@ async def fetch_with_retry(
             )
             last_status = resp.status_code
             if resp.status_code == 200:
+                if encoding is not None:
+                    resp.encoding = encoding
                 text = resp.text
                 if text:
                     # TDM-Reservation respect (#2842). Inspect the response

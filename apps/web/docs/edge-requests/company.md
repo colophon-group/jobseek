@@ -1,6 +1,6 @@
 # Company Page (`/:lang/company/:slug`)
 
-**Route group:** `(app)` | **Rendering:** Dynamic (`force-dynamic` on app layout)
+**Route group:** `(app)` | **Rendering:** PPR (cached company shell with dynamic personalized subtrees)
 
 ## Edge requests on first visit
 
@@ -39,7 +39,9 @@
 ## OG image
 
 When shared on social media:
-- `/:lang/company/:slug/opengraph-image` — dynamically generated PNG with company name/logo (1 edge + 1 serverless function invocation)
+- Metadata points directly to `https://jobseek-assets.colophon-group.org/og/company/<renderer>/<lang>/<slug>.png?v=<source>`.
+- The PNG is pre-rendered in GitHub Actions and served by R2/Cloudflare, so it consumes no Vercel Function CPU.
+- Previously shared `/:lang/company/:slug/opengraph-image-*` URLs permanently redirect to the same R2 namespace without invoking a Function.
 
 ## Notes
 

@@ -250,6 +250,8 @@ function expectedInvalidateKeyPair(slug: string) {
   return [
     `public-watchlist:${USER_NAME}:${slug}`,
     `public-watchlist:${DISPLAY_USER_NAME}:${slug}`,
+    `public-resource-status:watchlist:${USER_NAME}:${slug}`,
+    `public-resource-status:watchlist:${DISPLAY_USER_NAME}:${slug}`,
   ];
 }
 
@@ -589,7 +591,7 @@ describe("watchlist mutation audit logs", () => {
 // ---- Special-case behavior ------------------------------------------
 
 describe("updateWatchlist title rename", () => {
-  it("invalidates BOTH old and new slug for both username variants (4 tag + 4 invalidate calls)", async () => {
+  it("invalidates BOTH old and new slug for both username variants (4 tag + 8 invalidate calls)", async () => {
     queueOwnerInfo();
     mocks.selectLimitResult.mockResolvedValue([
       {
@@ -613,7 +615,8 @@ describe("updateWatchlist title rename", () => {
     });
     await flushAfterQueue();
 
-    // 2 slug variants × 2 username variants = 4 calls each.
+    // 2 slug variants × 2 username variants = 4 tag calls. Each route also
+    // invalidates its public detail and public-existence cache entries.
     const tagCalls = mocks.updateTag.mock.calls.map((c) => c[0]);
     expect(tagCalls).toHaveLength(4);
     expect(new Set(tagCalls)).toEqual(
@@ -621,7 +624,7 @@ describe("updateWatchlist title rename", () => {
     );
 
     const invalidateCalls = mocks.invalidate.mock.calls.map((c) => c[0]);
-    expect(invalidateCalls).toHaveLength(4);
+    expect(invalidateCalls).toHaveLength(8);
     expect(new Set(invalidateCalls)).toEqual(
       new Set([
         ...expectedInvalidateKeyPair(SLUG),

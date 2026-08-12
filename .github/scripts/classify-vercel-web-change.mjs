@@ -5,7 +5,11 @@ import { pathToFileURL } from "node:url";
 
 const EXACT_WEB_INPUTS = new Set([
   ".github/scripts/classify-vercel-web-change.mjs",
+  ".github/scripts/verify-vercel-scanner-response.mjs",
+  ".github/scripts/verify-vercel-server-action-key.mjs",
+  ".github/scripts/verify-vercel-promotion.mjs",
   ".github/workflows/deploy-web-production.yml",
+  "apps/crawler/data/companies.csv",
   "package.json",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",

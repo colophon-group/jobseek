@@ -187,8 +187,12 @@ describe("getGlobalLocationsGrouped — Regions cluster (#2940)", () => {
    * Typesense outage: keep working but return an empty response instead of
    * propagating. The modal renders the empty-state message in this case.
    */
-  it("returns empty shape when Typesense is unreachable", async () => {
-    mocks.search.mockRejectedValue(Object.assign(new Error("Typesense down"), { code: "ECONNRESET" }));
+  it("returns empty shape when a macro-region lookup receives a nested 503", async () => {
+    mocks.search.mockRejectedValue(
+      Object.assign(new Error("Typesense unavailable"), {
+        response: { status: 503 },
+      }),
+    );
     const out = await getGlobalLocationsGrouped("en");
     expect(out).toEqual({ macros: [], countries: [] });
   });
@@ -200,6 +204,9 @@ describe("getGlobalLocationsGrouped — Regions cluster (#2940)", () => {
       }),
     );
 
-    await expect(getGlobalLocationsGrouped("en")).rejects.toThrow("429");
+    await expect(getGlobalLocationsGrouped("en")).rejects.toMatchObject({
+      message: "Typesense request failed",
+      httpStatus: 429,
+    });
   });
 });

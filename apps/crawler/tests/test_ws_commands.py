@@ -1159,6 +1159,7 @@ class TestTaskComplete:
             )
             stack.enter_context(patch("src.workspace.git.fetch"))
             push = stack.enter_context(patch("src.workspace.git.push"))
+            unclaim = stack.enter_context(patch("src.workspace.git.unclaim_issue"))
 
             runner = CliRunner()
             result = runner.invoke(ws, ["task", "complete"])
@@ -1169,6 +1170,7 @@ class TestTaskComplete:
         assert "Add KB reflections for test" in commit.call_args[0][0]
         assert "Refs #42" in commit.call_args[0][0]
         push.assert_called_once()
+        unclaim.assert_called_once_with(42)
 
         wf = _load_wf_from_disk("test")
         assert wf.current_step == "done"
@@ -1381,6 +1383,20 @@ def _as_probe_monitor_result(entries, *, board_url="https://test.com/jobs", curr
     )
 
 
+def _enter_asyncio_run_patch(stack: ExitStack) -> MagicMock:
+    """Patch only ``asyncio.run`` and always close the bypassed coroutine."""
+    delegate = MagicMock()
+
+    def _run(coro):
+        try:
+            return delegate(coro)
+        finally:
+            coro.close()
+
+    stack.enter_context(patch("src.workspace.commands.crawl.asyncio.run", side_effect=_run))
+    return delegate
+
+
 def _enter_monitor_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     """Enter common patches for run monitor tests. Returns (stack, mock_asyncio).
 
@@ -1389,7 +1405,7 @@ def _enter_monitor_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     Existing tests pass tuples; use :func:`_as_run_monitor_result` to wrap.
     """
     stack = ExitStack()
-    mock_asyncio = stack.enter_context(patch("src.workspace.commands.crawl.asyncio"))
+    mock_asyncio_run = _enter_asyncio_run_patch(stack)
     stack.enter_context(
         patch(
             "src.workspace.artifacts.monitor_run_dir",
@@ -1401,7 +1417,7 @@ def _enter_monitor_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     stack.enter_context(patch("src.workspace.artifacts.save_http_log"))
     stack.enter_context(patch("src.workspace.artifacts.save_events"))
     stack.enter_context(patch("src.workspace.artifacts.capture_structlog", return_value=[]))
-    return stack, mock_asyncio
+    return stack, MagicMock(run=mock_asyncio_run)
 
 
 def _enter_scraper_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
@@ -1412,7 +1428,7 @@ def _enter_scraper_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     Existing tests pass tuples; use :func:`_as_run_scraper_result` to wrap.
     """
     stack = ExitStack()
-    mock_asyncio = stack.enter_context(patch("src.workspace.commands.crawl.asyncio"))
+    mock_asyncio_run = _enter_asyncio_run_patch(stack)
     stack.enter_context(
         patch(
             "src.workspace.artifacts.scraper_run_dir",
@@ -1427,7 +1443,7 @@ def _enter_scraper_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     stack.enter_context(
         patch("random.sample", return_value=["https://test.com/jobs/1", "https://test.com/jobs/2"])
     )
-    return stack, mock_asyncio
+    return stack, MagicMock(run=mock_asyncio_run)
 
 
 class TestRunMonitorOutput:
@@ -2082,7 +2098,7 @@ class TestRunScraperNamedConfig:
 def _enter_probe_scraper_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
     """Enter common patches for probe scraper tests. Returns (stack, mock_asyncio)."""
     stack = ExitStack()
-    mock_asyncio = stack.enter_context(patch("src.workspace.commands.crawl.asyncio"))
+    mock_asyncio_run = _enter_asyncio_run_patch(stack)
     stack.enter_context(
         patch(
             "src.workspace.artifacts.scraper_probe_run_dir",
@@ -2090,7 +2106,7 @@ def _enter_probe_scraper_patches(tmp_path) -> tuple[ExitStack, MagicMock]:
         )
     )
     stack.enter_context(patch("src.workspace.artifacts.save_probe"))
-    return stack, mock_asyncio
+    return stack, MagicMock(run=mock_asyncio_run)
 
 
 class TestProbeScraperQualityGate:
@@ -4509,11 +4525,9 @@ class TestMonitorRegression:
         fake = FakeResult(urls=set(), jobs_by_url=None, filtered_count=0)
 
         with ExitStack() as stack:
-            stack.enter_context(
-                patch(
-                    "src.workspace.commands.crawl.asyncio.run",
-                    return_value=_as_run_monitor_result(fake, 1.0, [], monitor_type="greenhouse"),
-                )
+            asyncio_run = _enter_asyncio_run_patch(stack)
+            asyncio_run.return_value = _as_run_monitor_result(
+                fake, 1.0, [], monitor_type="greenhouse"
             )
             stack.enter_context(patch("src.workspace.commands.crawl.save_board"))
             stack.enter_context(
@@ -4558,11 +4572,9 @@ class TestMonitorRegression:
         fake = FakeResult(urls=set(), jobs_by_url=None, filtered_count=0)
 
         with ExitStack() as stack:
-            stack.enter_context(
-                patch(
-                    "src.workspace.commands.crawl.asyncio.run",
-                    return_value=_as_run_monitor_result(fake, 1.0, [], monitor_type="greenhouse"),
-                )
+            asyncio_run = _enter_asyncio_run_patch(stack)
+            asyncio_run.return_value = _as_run_monitor_result(
+                fake, 1.0, [], monitor_type="greenhouse"
             )
             stack.enter_context(patch("src.workspace.commands.crawl.save_board"))
             stack.enter_context(
@@ -4926,6 +4938,9 @@ class TestNewIdempotent:
                 return_value=False,
             )
         )
+        ensure_clone = stack.enter_context(
+            patch("src.workspace.git.ensure_clone", return_value=tmp_path)
+        )
         stack.enter_context(patch("src.workspace.git.check_gh_auth", return_value=True))
         stack.enter_context(
             patch(
@@ -4968,6 +4983,7 @@ class TestNewIdempotent:
             create_worktree,
             delete_remote,
             sync_branch,
+            ensure_clone,
         )
 
     def test_new_skips_commit_when_slug_already_in_csv(self, tmp_path, monkeypatch):
@@ -4990,6 +5006,7 @@ class TestNewIdempotent:
                 create_worktree,
                 delete_remote,
                 sync_branch,
+                _,
             ) = self._git_mocks(stack, tmp_path, pr_branch="add-company/acme")
             # Simulate the worktree CSV already containing the slug
             stack.enter_context(
@@ -5025,7 +5042,9 @@ class TestNewIdempotent:
         _setup_csvs(tmp_path)  # empty CSV — slug not present
 
         with ExitStack() as stack:
-            add_files, commit, push, create_pr, _, _, sync_branch = self._git_mocks(stack, tmp_path)
+            add_files, commit, push, create_pr, _, _, sync_branch, ensure_clone = self._git_mocks(
+                stack, tmp_path
+            )
 
             runner = CliRunner()
             result = runner.invoke(ws, ["new", "acme", "--issue", "1"])
@@ -5036,6 +5055,7 @@ class TestNewIdempotent:
         push.assert_not_called()
         create_pr.assert_not_called()
         sync_branch.assert_not_called()
+        ensure_clone.assert_called_once_with(reset=False)
         assert "acme" in (tmp_path / "companies.csv").read_text()
         assert load_workspace("acme").pr is None
         assert load_workspace("acme").ats_inventory == {}
@@ -5046,7 +5066,7 @@ class TestNewIdempotent:
         _setup_csvs(tmp_path)
 
         with ExitStack() as stack:
-            add_files, commit, push, create_pr, _, _, _ = self._git_mocks(
+            add_files, commit, push, create_pr, _, _, _, _ = self._git_mocks(
                 stack,
                 tmp_path,
                 issue_body=_inventory_issue_body(),
@@ -5183,6 +5203,7 @@ class TestNewIdempotent:
                 create_worktree,
                 delete_remote,
                 sync_branch,
+                _,
             ) = self._git_mocks(
                 stack,
                 tmp_path,
@@ -5219,7 +5240,9 @@ class TestNewIdempotent:
         _setup_csvs(tmp_path, companies="acme,Acme,https://acme.com,,,\n")
 
         with ExitStack() as stack:
-            add_files, commit, push, create_pr, _, _, sync_branch = self._git_mocks(stack, tmp_path)
+            add_files, commit, push, create_pr, _, _, sync_branch, _ = self._git_mocks(
+                stack, tmp_path
+            )
             runner = CliRunner()
             result = runner.invoke(ws, ["new", "acme", "--reconfig"])
 
@@ -5239,7 +5262,7 @@ class TestNewIdempotent:
         _setup_csvs(tmp_path, companies="acme,Acme,https://acme.com,,,\n")
 
         with ExitStack() as stack:
-            *_, create_worktree, delete_remote, _ = self._git_mocks(
+            *_, create_worktree, delete_remote, _, _ = self._git_mocks(
                 stack,
                 tmp_path,
                 branch_pr=77,
@@ -5261,7 +5284,7 @@ class TestNewIdempotent:
         from src.workspace.errors import WorkspaceError
 
         with ExitStack() as stack:
-            *_, sync_branch = self._git_mocks(
+            *_, sync_branch, _ = self._git_mocks(
                 stack,
                 tmp_path,
                 pr_branch="add-company/recovered",

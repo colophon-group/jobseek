@@ -166,6 +166,7 @@ def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
         "DataBackupStale",
         "WebPostgreSQLBackupHelperImageUnprotected",
         "PostgreSQLUnavailable",
+        "PostgreSQLIdleInTransaction",
         "PostgreSQLDataVolumeHeadroomLow",
         "PostgreSQLCheckpointPressure",
         "PostgreSQLBackupRepositoryHeadroomLow",
@@ -211,6 +212,21 @@ def test_backup_alerts_keep_simultaneous_service_series_distinct() -> None:
             "web-postgresql",
         }
         assert len({tuple(sorted(labels.items())) for labels in evaluated_labels}) == 2
+
+
+def test_postgresql_connection_alerts_preserve_capacity_and_transaction_guards() -> None:
+    capacity = _alert_rule("PostgreSQLConnectionsHigh")
+    idle_transaction = _alert_rule("PostgreSQLIdleInTransaction")
+
+    assert "> 0.80" in capacity["expr"]
+    assert capacity["for"] == "15m"
+    assert 'state=~"idle_in_transaction.*"' in idle_transaction["expr"]
+    assert idle_transaction["for"] == "5m"
+    for rule in (capacity, idle_transaction):
+        assert rule["labels"]["severity"] == "high"
+        assert rule["annotations"]["runbook"].endswith(
+            "docs/22-postgresql-connections.md#incident-response"
+        )
 
 
 def test_ats_inventory_alerts_cover_freshness_coverage_and_hard_cap() -> None:

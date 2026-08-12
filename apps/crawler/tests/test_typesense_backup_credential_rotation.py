@@ -130,6 +130,9 @@ case "$command" in
   stop)
     if [[ "$1" == *.timer ]]; then
       printf 'inactive\n' >"$FAKE_TIMER_ACTIVE"
+    elif [[ "${FAKE_PRESERVE_FAILED_ON_STOP:-0}" == 1 ]] &&
+      [[ "$(cat "$FAKE_SERVICE_ACTIVE")" == failed ]]; then
+      :
     else
       printf 'inactive\n' >"$FAKE_SERVICE_ACTIVE"
     fi
@@ -226,8 +229,25 @@ if [[ "${FAKE_SMOKE_FAIL:-0}" == 1 ]]; then
     "$now" >"$BACKUP_STATUS_DIR/typesense.json"
   exit 1
 fi
-printf '{"service":"typesense","success":true,"attempt_unix":%s,"last_success_unix":%s}\n' \
-  "$now" "$now" >"$BACKUP_STATUS_DIR/typesense.json"
+python3 - "$now" >"$BACKUP_STATUS_DIR/typesense.json" <<'PY'
+import json
+import sys
+
+now = int(sys.argv[1])
+print(json.dumps({
+    "service": "typesense",
+    "success": True,
+    "attempt_unix": now,
+    "last_success_unix": now,
+    "staging_isolated": True,
+    "snapshot_local_copies_before": 0,
+    "snapshot_peak_local_copies": 1,
+    "staging_available_bytes_after_snapshot": 150,
+    "staging_required_bytes_after_snapshot": 100,
+    "memory_policy_phase": "enforced",
+    "memory_limit_enforced": True,
+}))
+PY
 """,
     )
 
@@ -265,11 +285,7 @@ trap cleanup_harness EXIT
 trap 'trap - HUP INT TERM; echo "interrupted" >&2; exit 1' HUP INT TERM
 
 typesense_rotation_prepare
-if [[ "${RUN_REPAIR:-0}" == 1 ]]; then
-  typesense_rotation_repair_failed_backup 1 9
-else
-  typesense_rotation_smoke_and_commit 1 9
-fi
+typesense_rotation_smoke_and_commit 1 9
 if [[ "${FAKE_FAIL_AFTER_COMMIT:-0}" == 1 ]]; then
   echo "post-commit gate failed" >&2
   false
@@ -333,7 +349,7 @@ def _assert_timer_safe(harness: RotationHarness) -> None:
     assert harness.service_active.read_text(encoding="utf-8").strip() != "active"
 
 
-def test_unchanged_key_authorizes_without_smoke_or_timer_mutation(
+def test_unchanged_key_still_runs_fresh_contract_smoke(
     rotation_harness: RotationHarness,
 ) -> None:
     rotation_harness.candidate_key.write_text(OLD_KEY, encoding="utf-8")
@@ -344,7 +360,11 @@ def test_unchanged_key_authorizes_without_smoke_or_timer_mutation(
     assert rotation_harness.live_key() == OLD_KEY
     assert rotation_harness.timer_enabled.read_text(encoding="utf-8").strip() == "enabled"
     assert rotation_harness.timer_active.read_text(encoding="utf-8").strip() == "active"
-    assert rotation_harness.action_lines() == ["authorize", "marker"]
+    actions = rotation_harness.action_lines()
+    assert actions.index("authorize") < actions.index("unlock")
+    assert actions.index("unlock") < actions.index("backup")
+    assert actions.index("backup") < actions.index("reacquire") < actions.index("marker")
+    assert any(action.startswith("systemctl:disable:") for action in actions)
     _assert_secret_safe(result)
 
 
@@ -373,7 +393,7 @@ def test_changed_key_smokes_candidate_before_atomic_commit_and_marker(
     _assert_secret_safe(result)
 
 
-def test_failed_backup_repair_runs_systemd_once_and_restores_timer(
+def test_failed_service_direct_smoke_resets_failure_and_restores_timer(
     rotation_harness: RotationHarness,
 ) -> None:
     rotation_harness.candidate_key.write_text(OLD_KEY, encoding="utf-8")
@@ -381,11 +401,8 @@ def test_failed_backup_repair_runs_systemd_once_and_restores_timer(
     rotation_harness.service_active.write_text("failed\n", encoding="utf-8")
 
     result = rotation_harness.run(
-        RUN_REPAIR="1",
-        FAKE_RUN_SYSTEMD_BACKUP="1",
         FAKE_EXPECTED_KEY=OLD_KEY,
-        FAKE_RESET_NOT_LOADED_AFTER_BACKUP="1",
-        FAKE_SERVICE_UNLOADED_AFTER_BACKUP="1",
+        FAKE_PRESERVE_FAILED_ON_STOP="1",
     )
 
     assert result.returncode == 0, result.stderr
@@ -395,14 +412,13 @@ def test_failed_backup_repair_runs_systemd_once_and_restores_timer(
     assert rotation_harness.timer_active.read_text(encoding="utf-8").strip() == "active"
     actions = rotation_harness.action_lines()
     reset = actions.index("systemctl:reset-failed:jobseek-typesense-backup.service")
-    start = actions.index("systemctl:start:jobseek-typesense-backup.service")
-    assert actions.index("unlock") < reset < start < actions.index("backup")
+    assert actions.index("unlock") < actions.index("backup") < actions.index("reacquire") < reset
     assert actions.count("systemctl:reset-failed:jobseek-typesense-backup.service") == 1
     assert actions.index("backup") < actions.index("reacquire") < actions.index("marker")
     _assert_secret_safe(result)
 
 
-def test_failed_backup_repair_failure_leaves_timer_disabled(
+def test_failed_service_direct_smoke_failure_leaves_timer_disabled(
     rotation_harness: RotationHarness,
 ) -> None:
     rotation_harness.candidate_key.write_text(OLD_KEY, encoding="utf-8")
@@ -410,8 +426,6 @@ def test_failed_backup_repair_failure_leaves_timer_disabled(
     rotation_harness.service_active.write_text("failed\n", encoding="utf-8")
 
     result = rotation_harness.run(
-        RUN_REPAIR="1",
-        FAKE_RUN_SYSTEMD_BACKUP="1",
         FAKE_EXPECTED_KEY=OLD_KEY,
         FAKE_SMOKE_FAIL="1",
     )
@@ -419,7 +433,7 @@ def test_failed_backup_repair_failure_leaves_timer_disabled(
     assert result.returncode != 0
     assert rotation_harness.live_key() == OLD_KEY
     _assert_timer_safe(rotation_harness)
-    assert "repaired Typesense backup smoke failed" in result.stderr
+    assert "direct-mount backup smoke failed" in result.stderr
     assert "marker" not in rotation_harness.action_lines()
     _assert_secret_safe(result)
 

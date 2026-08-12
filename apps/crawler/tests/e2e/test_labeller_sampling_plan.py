@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 import asyncpg
 import pytest
 
-from src.labeller.sampling import SAMPLE_CANDIDATES_SQL
+from src.labeller.sampling import CANDIDATE_LIMIT_FLOOR, SAMPLE_CANDIDATES_SQL
 
 REQUIRE_POSTGRES_E2E = os.getenv("REQUIRE_POSTGRES_E2E") == "true"
 pytestmark = pytest.mark.skipif(
@@ -87,6 +87,7 @@ async def test_recent_active_sampling_is_bounded_and_index_driven() -> None:
             f"EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) {SAMPLE_CANDIDATES_SQL}",
             start,
             end,
+            CANDIDATE_LIMIT_FLOOR,
         )
         if isinstance(explained, str):
             explained = json.loads(explained)

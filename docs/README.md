@@ -61,10 +61,10 @@ Status tags:
 - [17 - Codex Migration Verification Runbook](17-codex-migration-verification-runbook.md)
   `[runbook]` - pilot checks and rollback criteria for Codex migration
   surfaces.
-- [18 - Codex Automation Deployment](18-codex-automation-deployment.md)
-  `[runbook]` - recurring Codex automation registry, Hetzner runner
-  implementation plan, deployment procedure, maintenance checks, and
-  harness-invariant contracts.
+- [18 - Hetzner Codex Runner Deployment](18-codex-automation-deployment.md)
+  `[runbook]` - production systemd runner inventory, deployment procedure,
+  maintenance checks, desktop-scheduler sunset boundary, and harness-invariant
+  contracts.
 
 ## Operations And Routines
 
@@ -86,6 +86,9 @@ Status tags:
 - [20 - Supabase Free Downgrade](20-supabase-free-downgrade.md) `[runbook]` -
   guarded migration repair, saved-job cutover order, and production evidence
   gates for removing the crawler-owned mirror.
+- [22 - PostgreSQL Connection Budget](22-postgresql-connections.md) `[runbook]` -
+  exact service and deploy-overlap pool ceilings, ownership metrics, reserves,
+  idle-transaction controls, and seven-day production acceptance.
 - [Didi Reactivation Runbook](runbook-didi-reactivate-2026-05-10.md)
   `[runbook]` - historical Didi reactivation notes.
 

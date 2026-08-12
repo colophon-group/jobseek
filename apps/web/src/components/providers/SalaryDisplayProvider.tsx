@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useMemo, useCallback, type ReactNode } from "react";
 import { useLingui } from "@lingui/react/macro";
-import { getCurrencyRates, type CurrencyRate } from "@/lib/actions/search";
+import type { CurrencyRate } from "@/lib/actions/search";
 import { formatSalary, type PeriodLabel, type SalaryPeriod } from "@/lib/salary";
 import { localPrefs } from "@/lib/preference-timestamps";
 
@@ -41,24 +41,22 @@ const SalaryDisplayContext = createContext<SalaryDisplayContextValue>({
 });
 
 export function SalaryDisplayProvider({
+  initialRates,
   displayCurrency: initialCurrency = null,
   salaryPeriod: initialPeriod = null,
   persistLocally = true,
   children,
 }: {
+  initialRates: CurrencyRate[];
   displayCurrency?: string | null;
   salaryPeriod?: string | null;
   persistLocally?: boolean;
   children: ReactNode;
 }) {
   const { t } = useLingui();
-  const [rates, setRates] = useState<CurrencyRate[]>([]);
+  const rates = initialRates;
   const [displayCurrency, setDisplayCurrency] = useState(initialCurrency);
   const [salaryPeriod, setSalaryPeriod] = useState(initialPeriod);
-
-  useEffect(() => {
-    getCurrencyRates().then(setRates);
-  }, []);
 
   useEffect(() => {
     if (initialCurrency !== null) {
@@ -135,15 +133,15 @@ export function useSalaryDisplay() {
 }
 
 /**
- * Returns the cached currency-rate table fetched once by
- * `SalaryDisplayProvider` on mount.
+ * Returns the hours-cached currency-rate table embedded by the shared server
+ * layout and supplied through `SalaryDisplayProvider`.
  *
  * Consumers (search page, company page, salary modal) historically each
  * fired their own `getCurrencyRates()` server action on mount, producing
  * three identical round-trips per `/explore` or `/company/<slug>` view
- * (~90–240ms of serial latency before salary filters were interactive —
- * see #3181). Reading the rates from context collapses that to a single
- * fetch.
+ * (~90–240ms of serial latency before salary filters were interactive — see
+ * #3181). The first fix collapsed those to one provider RPC; #7197 removes the
+ * last browser RPC by resolving the cache once in the server shell.
  *
  * Returns `[]` when no provider is in scope (the context default), so
  * callers can treat the result as a graceful empty list. The salary

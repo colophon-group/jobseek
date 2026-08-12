@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      revision:
+        description: Optional exact main revision to deploy
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -40,8 +45,22 @@ jobs:
 
       - name: Classify the cumulative undeployed delta
         id: paths
+        env:
+          REQUESTED_SHA: ${{ inputs.revision }}
         run: |
-          current_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          current_sha="$current_main"
+          if [[ -n "$REQUESTED_SHA" ]]; then
+            if [[ ! "$REQUESTED_SHA" =~ ^[a-f0-9]{40}$ ]]; then
+              echo "Invalid requested revision: $REQUESTED_SHA" >&2
+              exit 1
+            fi
+            if [[ "$current_main" != "$REQUESTED_SHA" ]]; then
+              echo "Requested revision $REQUESTED_SHA is stale; main is $current_main" >&2
+              exit 1
+            fi
+            current_sha="$REQUESTED_SHA"
+          fi
           production="$(pnpm dlx vercel@55.0.0 api \
             "/v13/deployments/$PRODUCTION_ALIAS?teamId=$VERCEL_ORG_ID" \
             --raw --token="$VERCEL_TOKEN")"
@@ -75,8 +94,16 @@ jobs:
           --environment=production
           --token="$VERCEL_TOKEN"
 
+      - name: Require stable Server Action encryption
+        if: steps.paths.outputs.deploy == 'true'
+        env:
+          NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${{ secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}
+        run: node .github/scripts/verify-vercel-server-action-key.mjs
+
       - name: Build the production artifact
         if: steps.paths.outputs.deploy == 'true'
+        env:
+          NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${{ secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}
         run: >-
           pnpm dlx vercel@55.0.0 build
           --prod
@@ -124,25 +151,72 @@ jobs:
               exit 1
             fi
           done
+          umask 077
+          scanner_headers="$(mktemp "$RUNNER_TEMP/vercel-scanner-headers.XXXXXX")"
+          chmod 600 "$scanner_headers"
+          trap 'rm -f -- "$scanner_headers"' EXIT
           scanner_status="$(pnpm dlx vercel@55.0.0 curl /wp-admin/setup-config.php \
             --deployment="$DEPLOYMENT_URL" \
-            -- --location --silent --show-error --output /dev/null --write-out '%{http_code}')"
+            -- --location --silent --show-error \
+            --dump-header "$scanner_headers" \
+            --output /dev/null --write-out '%{http_code}')"
           echo "Smoke /wp-admin/setup-config.php -> HTTP $scanner_status after redirects"
-          if [[ "$scanner_status" != "404" ]]; then
-            echo "::error title=Scanner path exposed::Expected HTTP 404 after redirects, got $scanner_status"
+          if ! node .github/scripts/verify-vercel-scanner-response.mjs \
+            "$scanner_status" "$scanner_headers"; then
+            echo "::error title=Scanner path exposed::Rejected final HTTP $scanner_status"
             exit 1
           fi
+          rm -f -- "$scanner_headers"
+          trap - EXIT
 
       - name: Promote only if this SHA is still main
         if: steps.paths.outputs.deploy == 'true'
+        id: promote
         env:
           DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
           EXPECTED_SHA: ${{ steps.paths.outputs.current_sha }}
+          REQUIRE_EXACT_PROMOTION: ${{ github.event_name == 'workflow_dispatch' && inputs.revision != '' }}
         run: |
+          echo "promoted=false" >> "$GITHUB_OUTPUT"
           current_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
           if [[ "$current_main" != "$EXPECTED_SHA" ]]; then
             echo "Skipping stale staged deployment: expected $EXPECTED_SHA, main is $current_main"
+            if [[ "$REQUIRE_EXACT_PROMOTION" == "true" ]]; then
+              echo "The requested company revision was not promoted" >&2
+              exit 1
+            fi
             exit 0
           fi
           pnpm dlx vercel@55.0.0 promote "$DEPLOYMENT_URL" \
             --yes --timeout=3m --token="$VERCEL_TOKEN"
+          echo "promoted=true" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the promoted deployment owns production
+        if: steps.promote.outputs.promoted == 'true'
+        env:
+          EXPECTED_SHA: ${{ steps.paths.outputs.current_sha }}
+          EXPECTED_DEPLOYMENT_ID: ${{ steps.stage.outputs.id }}
+          EXPECTED_DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
+        run: |
+          node .github/scripts/verify-vercel-promotion.mjs
+
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          git fetch --no-tags origin "$current_main"
+          result="$(node .github/scripts/classify-vercel-web-change.mjs \
+            "$EXPECTED_SHA" "$current_main")"
+          deploy="$(jq -r '.deploy' <<<"$result")"
+          relevant="$(jq -r '.relevant | join(", ")' <<<"$result")"
+          if [[ "$deploy" == "true" ]]; then
+            message="Promoted $EXPECTED_SHA ($EXPECTED_DEPLOYMENT_ID), but main $current_main now contains web inputs: $relevant"
+            echo "::error title=Web change landed during Vercel promotion::$message. Staged URL: $EXPECTED_DEPLOYMENT_URL"
+            {
+              echo "## Web change landed during Vercel promotion"
+              echo
+              echo "- Promoted SHA: \`$EXPECTED_SHA\`"
+              echo "- Current main SHA: \`$current_main\`"
+              echo "- Deployment: \`$EXPECTED_DEPLOYMENT_ID\` ($EXPECTED_DEPLOYMENT_URL)"
+              echo "- New web inputs: \`$relevant\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "Production remains current for web inputs at main $current_main"

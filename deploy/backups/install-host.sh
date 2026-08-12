@@ -49,6 +49,7 @@ web_timer_enabled_state=""
 web_timer_active_state=""
 web_candidate_commit_started=0
 web_candidate_commit_complete=0
+typesense_contract_pending=0
 
 read_web_timer_state() {
   web_timer_enabled_state=""
@@ -139,40 +140,6 @@ commit_web_candidate() {
   web_candidate_commit_complete=1
 }
 
-typesense_backup_status_is_fresh() {
-  python3 - <<'PY'
-import json
-import time
-from pathlib import Path
-
-try:
-    status = json.loads(
-        Path("/var/lib/jobseek-backup/status/typesense.json").read_text(encoding="utf-8")
-    )
-    last_success = int(status.get("last_success_unix") or 0)
-except (OSError, TypeError, ValueError, json.JSONDecodeError):
-    raise SystemExit(1)
-age = time.time() - last_success
-raise SystemExit(
-    0
-    if status.get("service") == "typesense"
-    and status.get("success") is True
-    and 0 <= age <= 36 * 60 * 60
-    else 1
-)
-PY
-}
-
-typesense_backup_requires_repair() {
-  systemctl is-failed --quiet jobseek-typesense-backup.service || \
-    ! typesense_backup_status_is_fresh
-}
-
-typesense_backup_timer_expected_enabled() {
-  [[ "$TIMER_ACTION" == start ]] || \
-    systemctl is-enabled --quiet jobseek-typesense-backup.timer
-}
-
 cleanup() {
   local status=$?
   local cleanup_failed=0
@@ -190,6 +157,14 @@ cleanup() {
       web_timer_quiesced=0
     elif ! restore_web_timer_state; then
       cleanup_failed=1
+    fi
+    if [[ "$SERVICE" == "typesense" && "$typesense_contract_pending" -eq 1 ]]; then
+      if ! systemctl disable --now jobseek-typesense-backup.timer ||
+        ! systemctl stop jobseek-typesense-backup.service
+      then
+        echo "ERROR: staged Typesense backup rollback could not keep the timer disabled" >&2
+        cleanup_failed=1
+      fi
     fi
   fi
   typesense_rotation_discard
@@ -257,16 +232,54 @@ if [[ "$SERVICE" == "postgresql" ]]; then
 elif [[ "$SERVICE" == "typesense" ]]; then
   test -s /etc/jobseek-backup/typesense.env
   test -s /etc/jobseek-backup/typesense/id_ed25519
+  typesense_snapshot_dir=/mnt/jobseek-typesense-backup
+  : "${JOBSEEK_BACKUP_DEPLOY_SHA:?Typesense backup deploy SHA is required}"
+  [[ "$JOBSEEK_BACKUP_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+  test "$(cat /var/lib/jobseek-typesense-host/deployed-sha)" = "$JOBSEEK_BACKUP_DEPLOY_SHA"
+  test "$(cat /var/lib/jobseek-typesense-host/backup-contract-pending)" = \
+    "$JOBSEEK_BACKUP_DEPLOY_SHA"
+  python3 "$REPO_ROOT/scripts/verify-typesense-snapshot-mount.py" \
+    --mount "$typesense_snapshot_dir" \
+    --live-data /mnt/typesense-data \
+    --minimum-capacity 21474836480 \
+    --minimum-free 8589934592 \
+    --growth-reserve 4294967296
+  docker inspect typesense | python3 -c '
+import json
+import sys
+
+container = json.load(sys.stdin)[0]
+labels = container["Config"].get("Labels") or {}
+mounts = container.get("Mounts") or []
+host_config = container["HostConfig"]
+ok = (
+    labels.get("jobseek.typesense-snapshot-contract") == "direct-mount-v1"
+    and any(
+        mount.get("Source") == "/mnt/jobseek-typesense-backup"
+        and mount.get("Destination") == "/jobseek-snapshots"
+        and mount.get("RW") is True
+        for mount in mounts
+    )
+    and int(host_config.get("Memory") or 0) == 3221225472
+    and int(host_config.get("MemoryReservation") or 0) == 2684354560
+    and int(host_config.get("MemorySwap") or 0) == 3221225472
+)
+raise SystemExit(0 if ok else 1)
+'
+  typesense_contract_pending=1
   : "${JOBSEEK_TYPESENSE_BACKUP_KEY_FILE:?JOBSEEK_TYPESENSE_BACKUP_KEY_FILE is required}"
   typesense_rotation_prepare
   install -o root -g root -m 0755 \
     "$REPO_ROOT/scripts/jobseek-data-backup.py" \
     /usr/local/sbin/jobseek-data-backup
+  install -o root -g root -m 0755 \
+    "$REPO_ROOT/scripts/verify-typesense-snapshot-mount.py" \
+    /usr/local/sbin/jobseek-verify-typesense-snapshot-mount
   if ! command -v restic >/dev/null 2>&1; then
     apt-get update
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends restic
   fi
-  install -d -m 0700 /var/lib/jobseek-backup/typesense/staging
+  install -d -o root -g root -m 0700 "$typesense_snapshot_dir/staging"
   install -o root -g root -m 0755 \
     "$REPO_ROOT/deploy/backups/typesense/restore-drill.sh" \
     /usr/local/sbin/jobseek-typesense-restore-drill
@@ -405,17 +418,8 @@ if [[ "$SERVICE" == "web-postgresql" ]] && \
   systemctl reset-failed jobseek-web-postgresql-backup.service
 fi
 
-if [[ "$SERVICE" == "typesense" && "$typesense_rotation_changed" -eq 1 ]]; then
+if [[ "$SERVICE" == "typesense" ]]; then
   typesense_rotation_smoke_and_commit "$LOCK_TIMEOUT_S" 9
-elif [[ "$SERVICE" == "typesense" ]] && \
-  [[ "$TIMER_ACTION" != disable ]] && \
-  typesense_backup_timer_expected_enabled && \
-  typesense_backup_requires_repair; then
-  # A code-only repair otherwise cannot deploy: the old failure remains
-  # latched and the freshness gate rejects its stale status. Run exactly one
-  # backup through the installed systemd unit, with the timer quiesced and its
-  # prior state restored only after fresh atomic status is proven.
-  typesense_rotation_repair_failed_backup "$LOCK_TIMEOUT_S" 9
 elif [[ "$SERVICE" == "web-postgresql" ]]; then
   read_web_timer_state
   if [[ "$web_timer_enabled_state" == enabled ]]; then
@@ -517,5 +521,7 @@ if [[ -n "${JOBSEEK_BACKUP_DEPLOY_SHA:-}" ]]; then
 fi
 if [[ "$SERVICE" == "typesense" ]]; then
   typesense_rotation_finalize
+  rm -f /var/lib/jobseek-typesense-host/backup-contract-pending
+  typesense_contract_pending=0
 fi
 echo "Installed ${SERVICE} backup automation; timer_action=${TIMER_ACTION}"

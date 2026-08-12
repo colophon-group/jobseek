@@ -14,6 +14,9 @@ NETWORK_CONFIG=/etc/jobseek-ingress/postgresql-network.env
 POSTGRES_LISTEN_ADDRESSES='*'
 POSTGRES_SHM_SIZE=1g
 POSTGRES_SHM_BYTES=1073741824
+POSTGRES_LOG_DRIVER=json-file
+POSTGRES_LOG_MAX_SIZE=50m
+POSTGRES_LOG_MAX_FILES=3
 
 if [[ -f "$NETWORK_CONFIG" ]]; then
   # shellcheck disable=SC1090
@@ -116,6 +119,9 @@ apply() {
     --network host \
     --memory 4g \
     --shm-size "$POSTGRES_SHM_SIZE" \
+    --log-driver "$POSTGRES_LOG_DRIVER" \
+    --log-opt "max-size=$POSTGRES_LOG_MAX_SIZE" \
+    --log-opt "max-file=$POSTGRES_LOG_MAX_FILES" \
     --restart unless-stopped \
     --env-file "$CONFIG_DIR/postgres.env" \
     --volume "$DATA_DIR:/var/lib/postgresql/data" \
@@ -127,6 +133,7 @@ apply() {
     postgres \
       -c "listen_addresses=${POSTGRES_LISTEN_ADDRESSES}" \
       -c 'max_connections=100' \
+      -c 'superuser_reserved_connections=3' \
       -c 'shared_buffers=1GB' \
       -c 'work_mem=16MB' \
       -c 'wal_level=replica' \
@@ -142,6 +149,9 @@ apply() {
 
   wait_ready
   [[ "$(docker inspect "$CURRENT_NAME" --format '{{.HostConfig.ShmSize}}')" == "$POSTGRES_SHM_BYTES" ]]
+  [[ "$(docker inspect "$CURRENT_NAME" --format '{{.HostConfig.LogConfig.Type}}')" == "$POSTGRES_LOG_DRIVER" ]]
+  [[ "$(docker inspect "$CURRENT_NAME" --format '{{index .HostConfig.LogConfig.Config "max-size"}}')" == "$POSTGRES_LOG_MAX_SIZE" ]]
+  [[ "$(docker inspect "$CURRENT_NAME" --format '{{index .HostConfig.LogConfig.Config "max-file"}}')" == "$POSTGRES_LOG_MAX_FILES" ]]
   [[ "$(
     docker exec "$CURRENT_NAME" df -B1 /dev/shm |
       awk 'NR == 2 { print $2 }'
@@ -150,7 +160,7 @@ apply() {
   docker exec --user postgres "$CURRENT_NAME" touch /var/spool/pgbackrest/archive-enabled
   docker exec --user postgres "$CURRENT_NAME" pgbackrest --stanza=jobseek check
   docker exec "$CURRENT_NAME" psql -U crawler -d crawler -v ON_ERROR_STOP=1 -Atc \
-    "select current_setting('server_version'), current_setting('archive_mode'), current_setting('wal_level'), current_setting('max_wal_senders'), current_setting('max_wal_size'), current_setting('shared_buffers')"
+    "select current_setting('server_version'), current_setting('archive_mode'), current_setting('wal_level'), current_setting('max_wal_senders'), current_setting('max_wal_size'), current_setting('shared_buffers'), current_setting('max_connections'), current_setting('superuser_reserved_connections')"
 
   rollback_needed=0
   trap - ERR
@@ -167,6 +177,9 @@ case "${1:-}" in
   finalize)
     [[ "$(docker inspect "$CURRENT_NAME" --format '{{.Config.Image}}')" == "$TARGET_IMAGE" ]]
     [[ "$(docker inspect "$CURRENT_NAME" --format '{{.HostConfig.ShmSize}}')" == "$POSTGRES_SHM_BYTES" ]]
+    [[ "$(docker inspect "$CURRENT_NAME" --format '{{.HostConfig.LogConfig.Type}}')" == "$POSTGRES_LOG_DRIVER" ]]
+    [[ "$(docker inspect "$CURRENT_NAME" --format '{{index .HostConfig.LogConfig.Config "max-size"}}')" == "$POSTGRES_LOG_MAX_SIZE" ]]
+    [[ "$(docker inspect "$CURRENT_NAME" --format '{{index .HostConfig.LogConfig.Config "max-file"}}')" == "$POSTGRES_LOG_MAX_FILES" ]]
     [[ "$(docker inspect "$ROLLBACK_NAME" --format '{{.State.Running}}')" == "false" ]]
     docker rm "$ROLLBACK_NAME" >/dev/null
     echo "Removed validated PostgreSQL rollback container"
