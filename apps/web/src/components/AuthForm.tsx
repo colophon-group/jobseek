@@ -167,11 +167,11 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   return (
     <>
-      <h2 className="text-center text-xl font-bold">
+      <h1 className="text-center text-xl font-bold">
         {isSignUp
           ? <Trans id="auth.signUp.title" comment="Sign-up page heading">Create an account</Trans>
           : <Trans id="auth.signIn.title" comment="Sign-in page heading">Sign in</Trans>}
-      </h2>
+      </h1>
       <p className="mb-6 text-center text-sm text-muted">
         {isSignUp
           ? <Trans id="auth.signUp.subtitle" comment="Sign-up page subtitle">Get started with Job Seek</Trans>

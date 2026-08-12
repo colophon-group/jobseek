@@ -29,7 +29,7 @@ function FaqItem({ item }: { item: FaqItem }) {
 
 export function FaqContent({ items }: { items: FaqItem[] }) {
   return (
-    <main className="py-12 md:py-20">
+    <main id="main-content" tabIndex={-1} className="scroll-mt-12 py-12 md:py-20">
       <div className="mx-auto max-w-[720px] px-4">
         <div className="flex flex-col gap-4 text-center">
           <span className={eyebrowClass}>

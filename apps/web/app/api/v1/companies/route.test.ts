@@ -45,6 +45,16 @@ describe("GET /api/v1/companies service boundary (#3331)", () => {
     expect(mocks.suggestCompanies).not.toHaveBeenCalled();
   });
 
+  it("rejects unsupported locales before constructing company URLs", async () => {
+    const res = await GET(makeReq("?q=goo&locale=xx"));
+    const body = (await res.json()) as { error?: string };
+
+    expect(res.status).toBe(400);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(body.error).toBe("Invalid 'locale' param. Supported: en, de, fr, it");
+    expect(mocks.suggestCompanies).not.toHaveBeenCalled();
+  });
+
   it("resolves company suggestions through the service tier", async () => {
     mocks.suggestCompanies.mockResolvedValue([
       {

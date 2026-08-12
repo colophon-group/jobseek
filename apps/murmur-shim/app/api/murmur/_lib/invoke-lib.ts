@@ -72,19 +72,20 @@ export type LibInvoker = (
  *                                     `PostgresClaimKV`.
  *   - `MURMUR_INVOKE_TIMEOUT_MS` (opt) — wallclock cap; defaults to
  *                                     30000.
+ *   - `MURMUR_INVOKER_MAX_CONCURRENCY` — Python child/connection ceiling;
+ *                                     defaults to and may not exceed 2.
  */
-export const defaultInvoker: LibInvoker = async (
-  subcommand,
-  body,
-  claim_token,
-) => {
+async function invokeChild(
+  subcommand: LibSubcommand,
+  body: unknown,
+  claim_token: string,
+  timeoutMs: number,
+): Promise<InvokeLibResult> {
   const interpreter = process.env.MURMUR_PY ?? "python3";
   const crawlerRoot =
     process.env.MURMUR_CRAWLER_ROOT ??
     path.resolve(process.cwd(), "../crawler");
   const dsn = process.env.MURMUR_DB_DSN ?? "";
-  const timeoutMs = Number(process.env.MURMUR_INVOKE_TIMEOUT_MS ?? 30000);
-
   const payload = JSON.stringify({
     subcommand,
     body,
@@ -186,6 +187,79 @@ export const defaultInvoker: LibInvoker = async (
       finish({ ok: false, errors: ["internal_error"] });
     }
   });
+}
+
+function invocationTimeoutMs(): number {
+  const value = Number(process.env.MURMUR_INVOKE_TIMEOUT_MS ?? 30000);
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value < 1) {
+    throw new Error("MURMUR_INVOKE_TIMEOUT_MS must be a positive integer");
+  }
+  return value;
+}
+
+const INVOKER_MAX_CONCURRENCY = (() => {
+  const value = Number(process.env.MURMUR_INVOKER_MAX_CONCURRENCY ?? 2);
+  if (!Number.isInteger(value) || value < 1 || value > 2) {
+    throw new Error(
+      "MURMUR_INVOKER_MAX_CONCURRENCY must be an integer between 1 and 2",
+    );
+  }
+  return value;
+})();
+
+let activeInvokers = 0;
+const invokerWaiters: Array<() => void> = [];
+
+async function acquireInvokerSlot(timeoutMs: number): Promise<boolean> {
+  if (activeInvokers < INVOKER_MAX_CONCURRENCY) {
+    activeInvokers += 1;
+    return true;
+  }
+  return await new Promise<boolean>((resolve) => {
+    let settled = false;
+    const resume = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(true);
+    };
+    const timer = setTimeout(() => {
+      const index = invokerWaiters.indexOf(resume);
+      if (index !== -1) invokerWaiters.splice(index, 1);
+      if (settled) return;
+      settled = true;
+      resolve(false);
+    }, timeoutMs);
+    invokerWaiters.push(resume);
+  });
+}
+
+function releaseInvokerSlot(): void {
+  const next = invokerWaiters.shift();
+  if (next) {
+    // Hand the existing slot directly to the oldest waiter.
+    next();
+    return;
+  }
+  activeInvokers -= 1;
+}
+
+/**
+ * Bound Python children because each active child may own one short-lived
+ * asyncpg connection in addition to the Node process's two-connection pool.
+ */
+export const defaultInvoker: LibInvoker = async (...args) => {
+  const timeoutMs = invocationTimeoutMs();
+  const deadline = Date.now() + timeoutMs;
+  if (!(await acquireInvokerSlot(timeoutMs))) {
+    console.error("[murmur invoke-lib] timed out waiting for an invoker slot");
+    return { ok: false, errors: ["internal_error"] };
+  }
+  try {
+    return await invokeChild(...args, Math.max(1, deadline - Date.now()));
+  } finally {
+    releaseInvokerSlot();
+  }
 };
 
 /**

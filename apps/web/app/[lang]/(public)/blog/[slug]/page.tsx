@@ -54,14 +54,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // off `<link rel="alternate" hreflang="de" ...>` instead of pointing
   // crawlers at duplicate-content fallbacks (#2849).
   const availableLocales = await getBlogPostLocales(slug);
+  const ogImageUrl = `${siteConfig.url}/og/blog/${locale}/${encodeURIComponent(slug)}`;
 
   return {
     title: post.title,
     description: post.description,
     alternates: buildAlternates(`/blog/${slug}`, locale, availableLocales),
-    // No `images` override — the per-post `opengraph-image.tsx` sibling
-    // generates a card with title + date + author. Setting `images`
-    // here would bypass the file-convention auto-discovery.
+    // Keep the title/date/author card on a separate route so its
+    // Satori/Resvg payload is absent from the ordinary post trace.
     openGraph: {
       title: post.title,
       description: post.description,
@@ -74,6 +74,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       alternateLocale: availableLocales
         .filter((l) => l !== locale)
         .map((l) => ogLocale(l)),
+      images: [{
+        url: ogImageUrl,
+        width: 1200,
+        height: 630,
+        alt: post.title,
+      }],
     },
   };
 }
@@ -158,7 +164,11 @@ export default async function BlogPostPage({ params }: Props) {
   return (
     <>
       <JsonLd data={buildArticleJsonLd(post, locale)} />
-      <main className="mx-auto max-w-2xl px-4 py-12">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="mx-auto max-w-2xl scroll-mt-12 px-4 py-12"
+      >
         <nav className="mb-6 text-sm">
           <Link href={`/${locale}/blog`} className="text-muted hover:underline">
             ← {backLabel}

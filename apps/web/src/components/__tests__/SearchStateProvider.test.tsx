@@ -63,6 +63,25 @@ describe("buildCacheKey", () => {
     );
   });
 
+  it("differentiates language-filtered snapshots", () => {
+    expect(
+      buildCacheKey([], [], [], [], [], { languages: ["de"] }),
+    ).not.toBe(
+      buildCacheKey([], [], [], [], [], { languages: ["en"] }),
+    );
+  });
+
+  it("differentiates and canonicalizes unresolved explicit URL slugs", () => {
+    const first = buildCacheKey([], [], [], [], [], {
+      unresolvedExplicitSlugs: { loc: ["india", "europe"] },
+    });
+    const reordered = buildCacheKey([], [], [], [], [], {
+      unresolvedExplicitSlugs: { loc: ["europe", "india"] },
+    });
+    expect(first).toBe(reordered);
+    expect(first).not.toBe(buildCacheKey([], [], [], [], [], {}));
+  });
+
   // #3276 — keyword strings sort with `canonicalStringCompare` so accented
   // entries don't fragment the snapshot key across input permutations.
   it("collapses accented keyword permutations onto one key", () => {
@@ -150,6 +169,48 @@ describe("shouldRestoreSnapshot — #2989 regression", () => {
       totalCompanies: 0,
     });
     const currentKey = buildCacheKey([], [], [], [], []);
+    expect(shouldRestoreSnapshot(cached, currentKey)).toBe(false);
+  });
+
+  it("does NOT restore a default-language empty snapshot with no result filters (#3354)", () => {
+    const currentKey = buildCacheKey([], [], [], [], [], {
+      languages: ["en"],
+    });
+    const cached = makeSnapshot({
+      cacheKey: currentKey,
+      companies: [],
+      totalCompanies: 0,
+      hasResultFilters: false,
+    });
+
+    expect(shouldRestoreSnapshot(cached, currentKey)).toBe(false);
+  });
+
+  it("keeps legitimate empty snapshots for an explicit language filter", () => {
+    const currentKey = buildCacheKey([], [], [], [], [], {
+      languages: ["de"],
+    });
+    const cached = makeSnapshot({
+      cacheKey: currentKey,
+      companies: [],
+      totalCompanies: 0,
+      hasResultFilters: true,
+    });
+
+    expect(shouldRestoreSnapshot(cached, currentKey)).toBe(true);
+  });
+
+  it("does NOT restore a degraded filtered snapshot after the backend recovers (#7218)", () => {
+    const currentKey = buildCacheKey(["python"], [], [], [], []);
+    const cached = makeSnapshot({
+      keywords: ["python"],
+      cacheKey: currentKey,
+      companies: [],
+      totalCompanies: 0,
+      degraded: true,
+      hasResultFilters: true,
+    });
+
     expect(shouldRestoreSnapshot(cached, currentKey)).toBe(false);
   });
 

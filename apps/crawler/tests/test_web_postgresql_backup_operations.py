@@ -352,6 +352,47 @@ def test_loaded_unit_rejects_drop_ins_or_daemon_reload_drift(
         operations.validate_loaded_unit(operations.BACKUP_UNIT, expected_path)
 
 
+def test_readiness_requires_the_exact_stopped_helper_image_lease(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    operations = load_operations()
+    exact = json.dumps(
+        [
+            {
+                "Config": {
+                    "Image": operations.RESTORE_IMAGE,
+                    "Labels": {operations.HELPER_IMAGE_LEASE_LABEL: "web-postgresql"},
+                    "Entrypoint": ["/bin/true"],
+                },
+                "State": {"Running": False},
+                "HostConfig": {
+                    "NetworkMode": "none",
+                    "ReadonlyRootfs": True,
+                    "CapDrop": ["ALL"],
+                    "SecurityOpt": ["no-new-privileges:true"],
+                    "Tmpfs": operations.HELPER_IMAGE_LEASE_TMPFS,
+                },
+                "Mounts": [],
+            }
+        ]
+    )
+    monkeypatch.setattr(
+        operations,
+        "run_checked",
+        lambda argv, **_kwargs: exact if argv[:3] == ["docker", "container", "inspect"] else "",
+    )
+    operations.validate_helper_image_lease()
+
+    wrong = exact.replace(operations.RESTORE_IMAGE, "postgres:17-alpine")
+    monkeypatch.setattr(
+        operations,
+        "run_checked",
+        lambda argv, **_kwargs: wrong if argv[:3] == ["docker", "container", "inspect"] else "",
+    )
+    with pytest.raises(operations.OperationError, match="pinned digest"):
+        operations.validate_helper_image_lease()
+
+
 def test_enable_timer_requires_disabled_and_inactive_before_mutation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

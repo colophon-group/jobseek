@@ -15,33 +15,31 @@
  *    when the mention IS the content — a featured spotlight, a "see
  *    also" reference, or a stat anchor.
  *
- * All variants resolve their entity at server-render time so the post
- * body reflects current state. Missing references fall back to
- * `<code>{Type ...}</code>` so broken links are visible during review.
+ * All variants resolve from the reviewed, repository-owned blog mention
+ * snapshot. Prerendering therefore has a zero external-call budget and does
+ * not turn a four-locale build into a retry fan-out against Typesense.
+ * Missing references fall back to `<code>{Type ...}</code>` so broken links
+ * remain visible during review.
  *
  * Iconography follows `apps/web/docs/icons.md` — `Building2` for
  * companies (avatar fallback), `Eye` for watchlists (matches the
  * watchlists nav slot in `AppHeader`). Don't introduce new icons
  * without adding rows to `icons.md` first.
  *
- * To add a new mention type: write the inline + card pair, fetch the
- * entity via an ISR-safe action (must NOT read session/cookies/headers
- * — see `app/__tests__/isr-routes.test.ts`'s `TAINTED_HELPERS`),
- * register both variants in `buildMdxComponents()`. Mention components
- * run inside the post page's `compileMDX` call which is itself
- * ISR-cached at revalidate=86400.
+ * To add a new mention type: write the inline + card pair, add the
+ * entity to the checked-in snapshot, then register both variants in
+ * `buildMdxComponents()`. Do not add request-time or build-time data clients
+ * here; `pnpm blog-mentions:check` enforces that boundary.
  */
 
-import { cache } from "react";
 import { Eye, Briefcase } from "lucide-react";
 import { CompanyIcon } from "@/components/CompanyIcon";
 import { NavLink } from "@/components/NavLink";
 import { loadCatalog, isLocale, defaultLocale, type Locale } from "@/lib/i18n";
-import { getCompanyBySlug } from "@/lib/actions/company";
 import {
-  getPublicWatchlistByUserAndSlug,
-  getWatchlistPostingDisplayCounts,
-} from "@/lib/actions/watchlists";
+  resolveBlogCompanyMention,
+  resolveBlogWatchlistMention,
+} from "@/lib/blog-mention-snapshot";
 
 /**
  * Helper: load the Lingui catalog for a string locale, normalizing
@@ -169,14 +167,6 @@ function MentionCard({
   );
 }
 
-// ── Data resolvers ─────────────────────────────────────────────────
-
-// React-cache wrappers so the same entity referenced multiple times
-// in one post is fetched once per render. Falls back to a fresh fetch
-// on the next ISR regen (revalidate=86400 on the post page).
-const cachedCompany = cache(getCompanyBySlug);
-const cachedWatchlist = cache(getPublicWatchlistByUserAndSlug);
-
 function companyIcon(
   icon: string | null | undefined,
   size: 16 | 24,
@@ -187,14 +177,14 @@ function companyIcon(
 
 // ── Inline mentions ────────────────────────────────────────────────
 
-export async function CompanyMention({
+export function CompanyMention({
   slug,
   locale,
 }: {
   slug: string;
   locale: string;
 }) {
-  const company = await cachedCompany(slug, locale);
+  const company = resolveBlogCompanyMention(slug, locale);
   if (!company) return <MissingMention raw={`{Company ${slug}}`} />;
   return (
     <MentionPill
@@ -205,7 +195,7 @@ export async function CompanyMention({
   );
 }
 
-export async function WatchlistMention({
+export function WatchlistMention({
   owner,
   slug,
   locale,
@@ -214,17 +204,15 @@ export async function WatchlistMention({
   slug: string;
   locale: string;
 }) {
-  const detail = await cachedWatchlist(owner, slug);
+  const detail = resolveBlogWatchlistMention(owner, slug);
   if (!detail) return <MissingMention raw={`{Watchlist ${owner}/${slug}}`} />;
-  const ownerLabel =
-    detail.owner.displayUsername ?? detail.owner.username ?? detail.owner.name;
   return (
     <MentionPill
       href={`/${locale}/${owner}/${slug}`}
       // `Eye` matches the watchlists nav slot in AppHeader (see icons.md).
       icon={<Eye size={14} aria-hidden="true" />}
       label={detail.title}
-      meta={`@${ownerLabel}`}
+      meta={`@${detail.ownerLabel}`}
     />
   );
 }
@@ -255,7 +243,7 @@ export async function CompanyCard({
   slug: string;
   locale: string;
 }) {
-  const company = await cachedCompany(slug, locale);
+  const company = resolveBlogCompanyMention(slug, locale);
   if (!company) return <MissingMention raw={`{CompanyCard ${slug}}`} />;
 
   const { i18n } = await loadLocaleCatalog(locale);
@@ -325,53 +313,24 @@ export async function WatchlistCard({
   slug: string;
   locale: string;
 }) {
-  const detail = await cachedWatchlist(owner, slug);
+  const detail = resolveBlogWatchlistMention(owner, slug);
   if (!detail) return <MissingMention raw={`{WatchlistCard ${owner}/${slug}}`} />;
 
   const { i18n } = await loadLocaleCatalog(locale);
 
-  // Posting counts mirror the in-app "N active · M in the last year"
-  // stats row so the card embed reads consistently with the watchlist
-  // detail view. ISR-safe (session-free Typesense queries).
-  const counts = await getWatchlistPostingDisplayCounts(detail);
-
-  const ownerLabel =
-    detail.owner.displayUsername ?? detail.owner.username ?? detail.owner.name;
-
   const stats: { label: string; value: string }[] = [];
-  // Skip the company-count stat for `anyCompany` watchlists — the
-  // numbers in `detail.companies` are leftover noise, not what the
-  // watchlist tracks (same caveat as in PR #2833).
-  if (!detail.filters.anyCompany) {
+  // Volatile active/year counts never enter the build snapshot. Render a
+  // company count only when an author explicitly approved that editorial
+  // point-in-time value (for example, the stable five-company MAANG set).
+  if (typeof detail.companyCount === "number") {
     stats.push({
       label: i18n._({
         id: "blog.mention.watchlist.companiesLabel",
         comment: "Stat label on a WatchlistCard mention card — pluralized 'company' / 'companies'. {count} is the integer count.",
         message: "{count, plural, one {company} other {companies}}",
-        values: { count: detail.companies.length },
+        values: { count: detail.companyCount },
       }),
-      value: String(detail.companies.length),
-    });
-  }
-  if (counts.activeJobs > 0) {
-    stats.push({
-      label: i18n._({
-        id: "blog.mention.watchlist.activeJobsLabel",
-        comment: "Stat label on a WatchlistCard mention card — pluralized 'active job' / 'active jobs'. {count} is the integer count.",
-        message: "{count, plural, one {active job} other {active jobs}}",
-        values: { count: counts.activeJobs },
-      }),
-      value: String(counts.activeJobs),
-    });
-  }
-  if (counts.yearJobs > 0) {
-    stats.push({
-      label: i18n._({
-        id: "blog.mention.watchlist.yearJobsLabel",
-        comment: "Stat label on a WatchlistCard mention card — 'in the past year' (year-to-date jobs counted by the watchlist filters)",
-        message: "in the past year",
-      }),
-      value: String(counts.yearJobs),
+      value: String(detail.companyCount),
     });
   }
 
@@ -387,7 +346,7 @@ export async function WatchlistCard({
       eyebrow={eyebrow}
       icon={<Eye size={14} aria-hidden="true" />}
       title={detail.title}
-      meta={`@${ownerLabel}`}
+      meta={`@${detail.ownerLabel}`}
       description={detail.description ?? undefined}
       stats={stats.length > 0 ? stats : undefined}
     />
@@ -401,8 +360,9 @@ export const __FUTURE_JOB_ICON_HINT = Briefcase;
 
 /**
  * Build the `components` map passed to `compileMDX` from the post page.
- * Each entry is a partially-applied async component — locale is bound
- * at the call site so MDX authors don't need to pass it through.
+ * Each entry is a partially-applied component — locale is bound at the call
+ * site so MDX authors don't need to pass it through. Cards stay async only to
+ * load their Lingui catalog; entity resolution itself is synchronous.
  *
  * To register a new mention type:
  *

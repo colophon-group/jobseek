@@ -1,13 +1,38 @@
 import type { NextConfig } from "next";
 import withBundleAnalyzer from "@next/bundle-analyzer";
-import crypto from "node:crypto";
-import fs from "node:fs";
 import path from "node:path";
+import { computeCompanyOgRendererVersion } from "./src/lib/og/company-og-renderer-version";
+import { computeCompanyOgSourceVersion } from "./src/lib/og/company-og-source-version";
+import { SITE_OG_PUBLIC_URL } from "./src/lib/og/site-og-key";
+
+const companyOgRendererVersion = computeCompanyOgRendererVersion(__dirname);
+const companyOgSourceVersion = computeCompanyOgSourceVersion(__dirname);
+
+function configuredR2PublicOrigin(): string | null {
+  const candidate = process.env.R2_DOMAIN_URL;
+  if (!candidate) return null;
+
+  try {
+    const url = new URL(candidate);
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash
+    ) {
+      return null;
+    }
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Company OG image renderer version.
  *
- * The company OG route stores rendered PNGs in R2 under
+ * The company OG prewarmer stores rendered PNGs in R2 under
  * `og/company/<renderer-version>/<locale>/<slug>.png`. The version is a
  * content hash of the renderer and its font. Keep this input set narrow:
  * every new version invalidates every company/locale object, and broad
@@ -18,86 +43,15 @@ import path from "node:path";
  * - `COMPANY_OG_RENDERER_VERSION_SALT=<ticket/date>`: included in the
  *   hash at build time. Use this to force a new object namespace without
  *   changing code.
- * - `COMPANY_OG_CACHE_BYPASS=1`: used by the route at build/request time
- *   to skip R2 reads and overwrite the current key. Useful for repairing
- *   bad objects under the current hash; pair with a redeploy for CDN
- *   freshness.
+ * Repair bad objects under the current hash by dispatching the prewarm
+ * workflow with `force=true`; pair that with a CDN purge when necessary.
  */
-const COMPANY_OG_HASH_VERSION = "company-og-v2";
-
-const COMPANY_OG_HASH_INPUTS = [
-  "src/lib/og/render-company-og.tsx",
-  "public/fonts/JetBrainsMono-Bold.ttf",
-];
-
-const HASHED_EXTENSIONS = new Set([
-  ".css",
-  ".json",
-  ".mjs",
-  ".ts",
-  ".tsx",
-  ".ttf",
-  ".yaml",
-]);
-
-function collectHashInputFiles(inputPath: string): string[] {
-  const absolute = path.join(__dirname, inputPath);
-  if (!fs.existsSync(absolute)) return [absolute];
-  const stat = fs.statSync(absolute);
-  if (stat.isFile()) return [absolute];
-  if (!stat.isDirectory()) return [];
-
-  const files: string[] = [];
-  const visit = (dir: string) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (
-        entry.name === "node_modules" ||
-        entry.name === ".next" ||
-        entry.name === "coverage"
-      ) {
-        continue;
-      }
-      const child = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        visit(child);
-      } else if (entry.isFile() && HASHED_EXTENSIONS.has(path.extname(entry.name))) {
-        files.push(child);
-      }
-    }
-  };
-  visit(absolute);
-  return files;
-}
-
-function computeCompanyOgRendererVersion(): string {
-  const hash = crypto.createHash("sha256");
-  hash.update(`${COMPANY_OG_HASH_VERSION}\n`);
-  hash.update(`salt:${process.env.COMPANY_OG_RENDERER_VERSION_SALT ?? ""}\n`);
-
-  const files = COMPANY_OG_HASH_INPUTS
-    .flatMap(collectHashInputFiles)
-    .sort((a, b) => a.localeCompare(b));
-
-  for (const file of files) {
-    const relative = path.relative(__dirname, file);
-    hash.update(relative);
-    hash.update("\0");
-    if (fs.existsSync(file) && fs.statSync(file).isFile()) {
-      hash.update(fs.readFileSync(file));
-    } else {
-      hash.update("<missing>");
-    }
-    hash.update("\0");
-  }
-
-  return hash.digest("hex").slice(0, 16);
-}
-
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../.."),
   env: {
-    COMPANY_OG_RENDERER_VERSION: computeCompanyOgRendererVersion(),
+    COMPANY_OG_RENDERER_VERSION: companyOgRendererVersion,
+    COMPANY_OG_SOURCE_VERSION: companyOgSourceVersion,
   },
   // Stable Cache Components / Partial Prerendering (Next 16). Static
   // shells prerender; `'use cache'` content caches per region; dynamic
@@ -105,8 +59,11 @@ const nextConfig: NextConfig = {
   // and #2835 for the conventions.
   cacheComponents: true,
   images: {
-    // Cache optimized images for 1 year. Company logos rarely change, and
-    // Vercel purges its CDN cache on every deploy anyway.
+    // Use the supported Next/Vercel cache floor for remote URL transforms.
+    // Do not try to override `/_next/image` through `headers()`: Next owns
+    // that generated response and ignores custom Cache-Control headers for it.
+    // String local/public URLs and static imports have different cache
+    // contracts; see apps/web/docs/edge-requests.md before changing this.
     minimumCacheTTL: 31536000,
     // 100% of company icons/logos currently resolve to R2 or DDG. The
     // historical `**` wildcard fallback let any hostname expand source
@@ -148,31 +105,61 @@ const nextConfig: NextConfig = {
     const key = process.env.INDEXNOW_KEY;
     return key ? [{ source: `/${key}.txt`, destination: "/indexnow-key.txt" }] : [];
   },
-  redirects: async () => [
-    {
-      source: "/apple-touch-icon-:variant.png",
-      destination: "/apple-touch-icon.png",
-      permanent: true,
-    },
-    { source: "/:lang(en|de|fr|it)/app", destination: "/:lang/explore", permanent: true },
-    { source: "/:lang(en|de|fr|it)/app/saved", destination: "/:lang/my-jobs", permanent: true },
-    { source: "/:lang(en|de|fr|it)/saved", destination: "/:lang/my-jobs", permanent: true },
-    { source: "/:lang(en|de|fr|it)/app/settings/:path*", destination: "/:lang/settings/:path*", permanent: true },
-    { source: "/:lang(en|de|fr|it)/app/watchlists", destination: "/:lang/watchlists", permanent: true },
-    { source: "/:lang(en|de|fr|it)/app/progress", destination: "/:lang/progress", permanent: true },
-  ],
+  redirects: async () => {
+    const r2Origin = configuredR2PublicOrigin();
+    return [
+      // Preserve every previously shared site-wide OG URL after moving the
+      // deterministic renderer out of Vercel Functions.
+      {
+        source: "/opengraph-image",
+        destination: SITE_OG_PUBLIC_URL,
+        permanent: true,
+      },
+      {
+        source: "/opengraph-image-:hash",
+        destination: SITE_OG_PUBLIC_URL,
+        permanent: true,
+      },
+      // Metadata now points straight at R2. This compatibility redirect keeps
+      // old company OG links alive without retaining a dynamic Function.
+      {
+        source: "/:lang(en|de|fr|it)/company/:slug/opengraph-image-:hash",
+        destination: r2Origin
+          ? `${r2Origin}/og/company/${companyOgRendererVersion}/:lang/:slug.png?v=${companyOgSourceVersion}`
+          : SITE_OG_PUBLIC_URL,
+        permanent: true,
+      },
+      // Keep hashed file-convention URLs from prior deployments working after
+      // isolating the remaining dynamic renderers from ordinary page traces.
+      {
+        source: "/:lang(en|de|fr|it)/blog/:slug/opengraph-image-:hash",
+        destination: "/og/blog/:lang/:slug",
+        permanent: true,
+      },
+      {
+        source: "/:lang(en|de|fr|it)/how-we-index/opengraph-image-:hash",
+        destination: "/og/how-we-index/:lang",
+        permanent: true,
+      },
+      {
+        source: "/:lang(en|de|fr|it)/:userSlug/:watchlistSlug/opengraph-image-:hash",
+        destination: "/og/watchlist/:lang/:userSlug/:watchlistSlug",
+        permanent: true,
+      },
+      {
+        source: "/apple-touch-icon-:variant.png",
+        destination: "/apple-touch-icon.png",
+        permanent: true,
+      },
+      { source: "/:lang(en|de|fr|it)/app", destination: "/:lang/explore", permanent: true },
+      { source: "/:lang(en|de|fr|it)/app/saved", destination: "/:lang/my-jobs", permanent: true },
+      { source: "/:lang(en|de|fr|it)/saved", destination: "/:lang/my-jobs", permanent: true },
+      { source: "/:lang(en|de|fr|it)/app/settings/:path*", destination: "/:lang/settings/:path*", permanent: true },
+      { source: "/:lang(en|de|fr|it)/app/watchlists", destination: "/:lang/watchlists", permanent: true },
+      { source: "/:lang(en|de|fr|it)/app/progress", destination: "/:lang/progress", permanent: true },
+    ];
+  },
   headers: async () => [
-    {
-      // Optimized remote images (company logos) — cache aggressively.
-      // Logos rarely change; Vercel CDN is purged on deploy.
-      source: "/_next/image",
-      headers: [
-        {
-          key: "Cache-Control",
-          value: "public, max-age=31536000, stale-while-revalidate=604800, immutable",
-        },
-      ],
-    },
     {
       // Fonts never change between deploys — cache for 1 year
       source: "/fonts/:path*",

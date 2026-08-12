@@ -25,7 +25,7 @@
 ## OG image
 
 When shared on social media, crawlers fetch:
-- `/:lang/opengraph-image` — dynamically generated PNG via `ImageResponse` (1 edge + 1 serverless function invocation)
+- `https://jobseek-assets.colophon-group.org/og/site/jobseek-v1.png` — immutable R2 object (no Vercel Function invocation)
 
 ## Prefetch requests (eliminated)
 

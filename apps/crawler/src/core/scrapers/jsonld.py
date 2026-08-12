@@ -177,6 +177,7 @@ def _clean_text(value: object) -> str | None:
 def _extract_locations(posting: dict) -> list[str] | None:
     """Extract locations from jobLocation field."""
     locations: list[str] = []
+    seen: set[str] = set()
     job_location = posting.get("jobLocation")
 
     if job_location is None:
@@ -190,13 +191,16 @@ def _extract_locations(posting: dict) -> list[str] | None:
         # Try name first
         name = _clean_text(loc.get("name"))
         if name:
-            locations.append(name)
+            if name not in seen:
+                seen.add(name)
+                locations.append(name)
             continue
         # Build from address
         address = loc.get("address")
         if isinstance(address, str):
             text = _clean_text(address)
-            if text:
+            if text and text not in seen:
+                seen.add(text)
                 locations.append(text)
             continue
         if isinstance(address, dict):
@@ -210,7 +214,10 @@ def _extract_locations(posting: dict) -> list[str] | None:
                     if text:
                         parts.append(text)
             if parts:
-                locations.append(", ".join(parts))
+                text = ", ".join(parts)
+                if text not in seen:
+                    seen.add(text)
+                    locations.append(text)
 
     return locations or None
 

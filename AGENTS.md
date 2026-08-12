@@ -51,7 +51,7 @@ Jobseek monitors company career pages for new job postings. Companies are config
 │   ├── 15-data-sampling-routine.md # Daily labelled-postings routine spec
 │   ├── 16-murmur-codex-mcp-transition.md # Murmur Codex MCP transition plan
 │   ├── 17-codex-migration-verification-runbook.md # Codex pilot verification
-│   └── 18-codex-automation-deployment.md # Codex automation deployment + maintenance
+│   └── 18-codex-automation-deployment.md # Hetzner Codex runner deployment + maintenance
 └── .github/workflows/       # CI + agent automation
 ```
 
@@ -110,9 +110,10 @@ Deployment and maintenance rules live in
 - `docs/17-codex-migration-verification-runbook.md` — central pilot
   verification checklist for Codex migration surfaces, including agent trace
   collection and local fallback guardrails.
-- `docs/18-codex-automation-deployment.md` — active automation registry,
-  Hetzner company resolver plan, harness-invariant contracts, deployment
-  procedure, and maintenance checks.
+- `docs/18-codex-automation-deployment.md` — production Hetzner runner
+  inventory, company resolver plan, harness-invariant contracts, deployment
+  procedure, and maintenance checks. Codex desktop schedules are sunset and
+  must not be recreated.
 
 Web app (from `apps/web/`):
 

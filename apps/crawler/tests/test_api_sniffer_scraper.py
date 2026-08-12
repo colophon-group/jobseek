@@ -368,6 +368,36 @@ class TestProbePw:
         assert metadata is None
         assert "1/3" in comment
 
+    async def test_navigation_http_status_error_propagates(self):
+        from src.shared.browser import BrowserNavigationHTTPStatusError
+
+        error = BrowserNavigationHTTPStatusError(
+            requested_url="https://example.com/job/1",
+            response_url="https://example.com/error",
+            status=503,
+            phase="primary",
+        )
+
+        async def fake_capture(page, host):
+            return []
+
+        async def fake_navigate(page, url, opts):
+            raise error
+
+        mock_open_page = MagicMock()
+        mock_open_page.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
+        mock_open_page.return_value.__aexit__ = AsyncMock(return_value=False)
+
+        with (
+            patch("src.shared.browser.open_page", mock_open_page),
+            patch("src.core.scrapers.api_sniffer.capture_exchanges", fake_capture),
+            patch("src.shared.browser.navigate", fake_navigate),
+            pytest.raises(BrowserNavigationHTTPStatusError) as exc_info,
+        ):
+            await probe_pw(["https://example.com/job/1"], MagicMock())
+
+        assert exc_info.value is error
+
 
 class TestScrapeHttpEmptyItems:
     """Pin the INFO/WARN split in _scrape_http (#2227)."""

@@ -46,6 +46,8 @@ import {
 } from "@/lib/search/typesense-watchlist";
 import { isTrivialWatchlist, buildFilterCacheKey } from "@/lib/watchlist-utils";
 import { notifyIndexNow, logIndexNowResult } from "@/lib/indexnow";
+import { createWatchlistFromHandoffWithDeps } from "@/lib/services/watchlist-handoff";
+import { publicWatchlistRouteStatusCacheKey } from "@/lib/services/public-resource-status";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -218,6 +220,8 @@ function _logWatchlistAudit({ userId, ...entry }: WatchlistAuditInput): void {
   console.info(JSON.stringify(payload));
 }
 
+class WatchlistCopySourceUnavailableError extends Error {}
+
 // ── Actions ─────────────────────────────────────────────────────────
 
 export async function createWatchlist(params: {
@@ -239,33 +243,40 @@ export async function createWatchlist(params: {
   // double-fire of the Create button) used to crash one of the two
   // callers with an un-handled 23505 here; the helper catches the
   // violation, regenerates a fresh `-N` suffix, and retries.
+  //
+  // Keep the transaction *inside* the retry callback. A 23505 aborts
+  // its transaction in Postgres; allowing that transaction to reject
+  // before the helper retries gives every slug candidate a fresh
+  // transaction while keeping the parent + company rows atomic.
   const { row, slug } = await insertWatchlistWithUniqueSlug(
     userId,
     params.title,
-    async (candidate) => {
-      const [r] = await db
-        .insert(watchlist)
-        .values({
-          userId,
-          slug: candidate,
-          title: params.title,
-          description: params.description ?? null,
-          isPublic: params.isPublic ?? false,
-          filters: { anyCompany: true, ...params.filters },
-        })
-        .returning({ id: watchlist.id });
-      return r;
-    },
-  );
+    async (candidate) =>
+      db.transaction(async (tx) => {
+        const [r] = await tx
+          .insert(watchlist)
+          .values({
+            userId,
+            slug: candidate,
+            title: params.title,
+            description: params.description ?? null,
+            isPublic: params.isPublic ?? false,
+            filters: { anyCompany: true, ...params.filters },
+          })
+          .returning({ id: watchlist.id });
 
-  if (params.companyIds.length > 0) {
-    await db.insert(watchlistCompany).values(
-      params.companyIds.map((companyId) => ({
-        watchlistId: row.id,
-        companyId,
-      })),
-    );
-  }
+        if (params.companyIds.length > 0) {
+          await tx.insert(watchlistCompany).values(
+            params.companyIds.map((companyId) => ({
+              watchlistId: r.id,
+              companyId,
+            })),
+          );
+        }
+
+        return r;
+      }),
+  );
 
   // Typesense + IndexNow hook: upsert if public and non-trivial.
   // Wrapped in after() so the registration is synchronous in the
@@ -323,6 +334,23 @@ export async function createWatchlist(params: {
   return { id: row.id, slug };
 }
 
+export async function createWatchlistFromHandoff(params: {
+  title: string;
+  description?: string;
+  companySlugs: string[];
+  filters?: WatchlistFilters;
+}): Promise<{ id: string; slug: string } | { error: string }> {
+  // Keep the company-detail cache/search module off the ordinary watchlist
+  // import path. It is needed only for this explicit public-API handoff.
+  const { getCompanyIdsBySlugs } = await import(
+    "@/lib/services/company-detail"
+  );
+  return createWatchlistFromHandoffWithDeps(params, {
+    getCompanyIdsBySlugs,
+    createWatchlist,
+  });
+}
+
 export async function updateWatchlist(params: {
   watchlistId: string;
   title?: string;
@@ -371,26 +399,30 @@ export async function updateWatchlist(params: {
   if (params.filters !== undefined) updates.filters = params.filters;
   if (params.isPublic !== undefined) updates.isPublic = params.isPublic;
 
-  if (Object.keys(updates).length > 0) {
-    await db
-      .update(watchlist)
-      .set(updates)
-      .where(eq(watchlist.id, params.watchlistId));
-  }
+  if (Object.keys(updates).length > 0 || params.companyIds !== undefined) {
+    await db.transaction(async (tx) => {
+      if (Object.keys(updates).length > 0) {
+        await tx
+          .update(watchlist)
+          .set(updates)
+          .where(eq(watchlist.id, params.watchlistId));
+      }
 
-  if (params.companyIds !== undefined) {
-    await db
-      .delete(watchlistCompany)
-      .where(eq(watchlistCompany.watchlistId, params.watchlistId));
+      if (params.companyIds !== undefined) {
+        await tx
+          .delete(watchlistCompany)
+          .where(eq(watchlistCompany.watchlistId, params.watchlistId));
 
-    if (params.companyIds.length > 0) {
-      await db.insert(watchlistCompany).values(
-        params.companyIds.map((companyId) => ({
-          watchlistId: params.watchlistId,
-          companyId,
-        })),
-      );
-    }
+        if (params.companyIds.length > 0) {
+          await tx.insert(watchlistCompany).values(
+            params.companyIds.map((companyId) => ({
+              watchlistId: params.watchlistId,
+              companyId,
+            })),
+          );
+        }
+      }
+    });
   }
 
   // Typesense + IndexNow hook. A doc is indexed when the watchlist is
@@ -543,46 +575,86 @@ export async function copyWatchlist(
     return { error: "not_found" };
   }
 
-  const sourceFilters = (source.filters ?? {}) as WatchlistFilters;
-
   // Same race shape as createWatchlist (#3201): two fast clicks of the
   // "Copy" button on a public watchlist used to race the SELECT-then-
   // INSERT slug pick and crash the loser. The helper retries on a
-  // `idx_wl_user_slug` 23505.
-  const { row, slug } = await insertWatchlistWithUniqueSlug(
-    userId,
-    source.title,
-    async (candidate) => {
-      const [r] = await db
-        .insert(watchlist)
-        .values({
-          userId,
-          slug: candidate,
-          title: source.title,
-          description: source.description,
-          isPublic: false,
-          filters: sourceFilters,
-          sourceWatchlistId: watchlistId,
-        })
-        .returning({ id: watchlist.id });
-      return r;
-    },
-  );
+  // `idx_wl_user_slug` 23505. As in create, each retry attempt owns a
+  // fresh transaction so a rejected candidate never poisons the next. Re-read
+  // and authorize the source inside that transaction too: the first read is
+  // only a slug-allocation hint, while the repeatable-read snapshot supplies
+  // every field and company row that is actually copied.
+  let inserted;
+  try {
+    inserted = await insertWatchlistWithUniqueSlug(
+      userId,
+      source.title,
+      async (candidate) =>
+        db.transaction(
+          async (tx) => {
+            const [currentSource] = await tx
+              .select({
+                title: watchlist.title,
+                description: watchlist.description,
+                filters: watchlist.filters,
+                isPublic: watchlist.isPublic,
+                userId: watchlist.userId,
+              })
+              .from(watchlist)
+              .where(eq(watchlist.id, watchlistId))
+              .for("share")
+              .limit(1);
 
-  // Copy companies (even in anyCompany mode, so toggling it off reveals them)
-  const companies = await db
-    .select({ companyId: watchlistCompany.companyId })
-    .from(watchlistCompany)
-    .where(eq(watchlistCompany.watchlistId, watchlistId));
+            if (
+              !currentSource
+              || (!currentSource.isPublic && currentSource.userId !== userId)
+            ) {
+              throw new WatchlistCopySourceUnavailableError();
+            }
 
-  if (companies.length > 0) {
-    await db.insert(watchlistCompany).values(
-      companies.map((c) => ({
-        watchlistId: row.id,
-        companyId: c.companyId,
-      })),
+            const [r] = await tx
+              .insert(watchlist)
+              .values({
+                userId,
+                slug: candidate,
+                title: currentSource.title,
+                description: currentSource.description,
+                isPublic: false,
+                filters: (currentSource.filters ?? {}) as WatchlistFilters,
+                sourceWatchlistId: watchlistId,
+              })
+              .returning({ id: watchlist.id });
+
+            // Copy companies (even in anyCompany mode, so toggling it off reveals them).
+            // The parent and child rows share a transaction so a malformed/stale
+            // company reference cannot leave behind an empty partial copy.
+            const companies = await tx
+              .select({ companyId: watchlistCompany.companyId })
+              .from(watchlistCompany)
+              .where(eq(watchlistCompany.watchlistId, watchlistId));
+
+            if (companies.length > 0) {
+              await tx.insert(watchlistCompany).values(
+                companies.map((c) => ({
+                  watchlistId: r.id,
+                  companyId: c.companyId,
+                })),
+              );
+            }
+
+            return { row: r, companies };
+          },
+          { isolationLevel: "repeatable read" },
+        ),
     );
+  } catch (error) {
+    if (error instanceof WatchlistCopySourceUnavailableError) {
+      return { error: "not_found" };
+    }
+    throw error;
   }
+
+  const { row: copyResult, slug } = inserted;
+  const { row, companies } = copyResult;
 
   _logWatchlistAudit({
     action: "watchlist.copy",
@@ -2368,8 +2440,9 @@ function _unixNowSeconds(): number {
 /**
  * Invalidate every cache layer that could be holding a public watchlist's
  * pre-mutation state: the per-region `'use cache'` page entry (tagged via
- * `watchlistCacheTag`) AND the Redis-backed `cached("public-watchlist:...")`
- * SQL fetch. Required for both privacy toggles AND title renames AND
+ * `watchlistCacheTag`), the Redis-backed `cached("public-watchlist:...")`
+ * SQL fetch, AND the proxy's public-route status cache. Required for both
+ * privacy toggles AND title renames AND
  * filter/companies edits — without this, the watchlist page (and its OG
  * meta tags + JSON-LD ItemList) keep showing the pre-edit state for up to
  * cacheLife.revalidate (1 hour for /[user]/[watchlist]).
@@ -2399,7 +2472,10 @@ async function _invalidateWatchlistCaches(
       // `updateTag` invalidates so the next read fetches fresh DB data.
       updateTag(watchlistCacheTag(userSlug, slug));
       try {
-        await invalidate(`public-watchlist:${userSlug}:${slug}`);
+        await Promise.all([
+          invalidate(`public-watchlist:${userSlug}:${slug}`),
+          invalidate(publicWatchlistRouteStatusCacheKey(userSlug, slug)),
+        ]);
       } catch (err) {
         logExternalError("error", { service: "redis", operation: "invalidate_watchlist_caches" }, err);
       }

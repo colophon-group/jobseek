@@ -17,6 +17,6 @@ describe("SearchBar source structure (#3082)", () => {
     expect((searchBar.match(/data-suggestion/g) ?? []).length).toBeLessThanOrEqual(3);
     expect(searchBar).not.toContain("suggestCompanies({ query })");
     expect(typeahead).toContain("function useSearchBarTypeahead");
-    expect(typeahead).toContain("setFilteredResults");
+    expect(typeahead).toContain("requestGenerationRef");
   });
 });

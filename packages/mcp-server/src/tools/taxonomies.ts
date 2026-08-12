@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { JobseekClient } from "../client.js";
+import { apiLocaleSchema } from "../locale-schema.js";
 
 export function register(server: McpServer, client: JobseekClient) {
   server.tool(
@@ -10,10 +11,7 @@ export function register(server: McpServer, client: JobseekClient) {
       type: z
         .enum(["seniority", "occupations", "technologies", "industries"])
         .describe("Which taxonomy to list"),
-      locale: z
-        .enum(["en", "de", "fr", "it"])
-        .default("en")
-        .describe("Response language"),
+      locale: apiLocaleSchema,
     },
     { title: "List Taxonomies", readOnlyHint: true, destructiveHint: false, openWorldHint: true, idempotentHint: true },
     async (params) => {

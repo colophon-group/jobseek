@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from inspect import isawaitable
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -366,8 +367,13 @@ class TestExtractUrlsFromTemplate:
 
 def _make_mock_pw(mock_page):
     """Create a mock Playwright instance that yields the given page."""
+    if isinstance(mock_page.on, AsyncMock):
+        mock_page.on = MagicMock()
+    if isinstance(mock_page.remove_listener, AsyncMock):
+        mock_page.remove_listener = MagicMock()
+
     mock_pw = MagicMock()
-    mock_context = AsyncMock()
+    mock_context = MagicMock()
     mock_context.new_page = AsyncMock(return_value=mock_page)
     mock_context.close = AsyncMock()
 
@@ -838,6 +844,14 @@ def _make_mock_response(url, data=None):
     return resp
 
 
+async def _emit_response(handlers, response):
+    """Emit a response to every listener registered on a mock page."""
+    for handler in list(handlers):
+        result = handler(response)
+        if isawaitable(result):
+            await result
+
+
 class TestLiveUrlDiscovery:
     """Test api_url_match dynamic URL discovery."""
 
@@ -854,18 +868,20 @@ class TestLiveUrlDiscovery:
         api_url_match = "gateway.example.com/*/v1/api/jobs/search"
 
         mock_page = AsyncMock()
-        captured_handler = None
+        captured_handlers = []
 
         def capture_on(event, handler):
-            nonlocal captured_handler
             if event == "response":
-                captured_handler = handler
+                captured_handlers.append(handler)
 
         mock_page.on = capture_on
+        mock_page.remove_listener = MagicMock()
 
         async def fake_navigate(*args, **kwargs):
-            if captured_handler:
-                captured_handler(_make_mock_response(live_response_url, {"jobs": []}))
+            await _emit_response(
+                captured_handlers,
+                _make_mock_response(live_response_url, {"jobs": []}),
+            )
 
         mock_page.goto = fake_navigate
 
@@ -893,6 +909,7 @@ class TestLiveUrlDiscovery:
 
         mock_page = AsyncMock()
         mock_page.on = lambda event, handler: None
+        mock_page.remove_listener = MagicMock()
 
         url, data = await _discover_live_url(
             mock_page,
@@ -915,18 +932,20 @@ class TestLiveUrlDiscovery:
         api_url_match = "gateway.example.com/*/v1/api/jobs/search"
 
         mock_page = AsyncMock()
-        captured_handler = None
+        captured_handlers = []
 
         def capture_on(event, handler):
-            nonlocal captured_handler
             if event == "response":
-                captured_handler = handler
+                captured_handlers.append(handler)
 
         mock_page.on = capture_on
+        mock_page.remove_listener = MagicMock()
 
         async def fake_navigate(*args, **kwargs):
-            if captured_handler:
-                captured_handler(_make_mock_response(live_response_url, {"jobs": []}))
+            await _emit_response(
+                captured_handlers,
+                _make_mock_response(live_response_url, {"jobs": []}),
+            )
 
         mock_page.goto = fake_navigate
 
@@ -951,6 +970,7 @@ class TestLiveUrlDiscovery:
 
         mock_page = AsyncMock()
         mock_page.on = lambda event, handler: None
+        mock_page.remove_listener = MagicMock()
         mock_page.goto = AsyncMock(side_effect=Exception("Akamai blocked"))
 
         url, data = await _discover_live_url(
@@ -965,6 +985,39 @@ class TestLiveUrlDiscovery:
 
         assert url == stored_url
         assert data is None
+
+    @pytest.mark.asyncio
+    async def test_navigation_http_status_error_propagates(self, monkeypatch):
+        """A concrete error document must not degrade to a stale API replay."""
+        from src.shared import browser as browser_module
+        from src.shared.browser import BrowserNavigationHTTPStatusError
+
+        error = BrowserNavigationHTTPStatusError(
+            requested_url="https://www.example.com/careers",
+            response_url="https://www.example.com/error",
+            status=503,
+            phase="primary",
+        )
+
+        async def _raise_http_status(*_args, **_kwargs):
+            raise error
+
+        monkeypatch.setattr(browser_module, "navigate", _raise_http_status)
+        mock_page = AsyncMock()
+        mock_page.on = lambda event, handler: None
+
+        with pytest.raises(BrowserNavigationHTTPStatusError) as exc_info:
+            await _discover_live_url(
+                mock_page,
+                board_url="https://www.example.com/careers",
+                api_url="https://gateway.example.com/api/jobs",
+                api_url_match="gateway.example.com/api/jobs",
+                wait="load",
+                timeout=20_000,
+                settle=0,
+            )
+
+        assert exc_info.value is error
 
     @pytest.mark.asyncio
     async def test_end_to_end_replay_with_api_url_match_and_route_params(self):
@@ -992,18 +1045,16 @@ class TestLiveUrlDiscovery:
         board = {"board_url": "https://www.example.com/careers", "metadata": config}
 
         mock_page = AsyncMock()
-        captured_handler = None
+        captured_handlers = []
 
         def capture_on(event, handler):
-            nonlocal captured_handler
             if event == "response":
-                captured_handler = handler
+                captured_handlers.append(handler)
 
         mock_page.on = capture_on
 
         async def fake_goto(*args, **kwargs):
-            if captured_handler:
-                captured_handler(_make_mock_response(live_url, api_response))
+            await _emit_response(captured_handlers, _make_mock_response(live_url, api_response))
 
         mock_page.goto = fake_goto
         mock_page.route = AsyncMock()
@@ -1064,7 +1115,10 @@ class TestLiveUrlDiscovery:
             goto_count += 1
             # Second navigation (retry) triggers the response handler
             if goto_count >= 2 and captured_handlers:
-                captured_handlers[-1](_make_mock_response(live_url, api_response))
+                await _emit_response(
+                    captured_handlers,
+                    _make_mock_response(live_url, api_response),
+                )
 
         mock_page.goto = fake_goto
 
@@ -1100,13 +1154,12 @@ class TestLiveUrlDiscovery:
         board = {"board_url": "https://www.example.com/careers", "metadata": config}
 
         mock_page = AsyncMock()
-        captured_handler = None
+        captured_handlers = []
         routed_pattern = None
 
         def capture_on(event, handler):
-            nonlocal captured_handler
             if event == "response":
-                captured_handler = handler
+                captured_handlers.append(handler)
 
         mock_page.on = capture_on
 
@@ -1117,13 +1170,13 @@ class TestLiveUrlDiscovery:
         mock_page.route = fake_route
 
         async def fake_goto(*args, **kwargs):
-            if captured_handler:
-                captured_handler(
-                    _make_mock_response(
-                        "https://gateway.example.com/apigw-TOKEN/v1/api/jobs/search?pageSize=1000",
-                        api_response,
-                    )
-                )
+            await _emit_response(
+                captured_handlers,
+                _make_mock_response(
+                    "https://gateway.example.com/apigw-TOKEN/v1/api/jobs/search?pageSize=1000",
+                    api_response,
+                ),
+            )
 
         mock_page.goto = fake_goto
         mock_pw = _make_mock_pw(mock_page)
@@ -1180,7 +1233,10 @@ class TestRetryWithApiUrlMatch:
             # First navigation: API hasn't fired yet (slow JS) — no match
             # Second navigation (retry): API fires, handler captures response
             if goto_count >= 2 and captured_handlers:
-                captured_handlers[-1](_make_mock_response(live_url, api_response))
+                await _emit_response(
+                    captured_handlers,
+                    _make_mock_response(live_url, api_response),
+                )
 
         mock_page.goto = fake_goto
 
@@ -1266,8 +1322,10 @@ class TestHttpModeUrlMatchFallback:
         mock_page.on = capture_on
 
         async def fake_goto(*args, **kwargs):
-            if captured_handlers:
-                captured_handlers[-1](_make_mock_response(live_url, api_response))
+            await _emit_response(
+                captured_handlers,
+                _make_mock_response(live_url, api_response),
+            )
 
         mock_page.goto = fake_goto
         mock_pw = _make_mock_pw(mock_page)
@@ -1326,8 +1384,9 @@ class TestHttpModeUrlMatchFallback:
         async def fake_goto(*args, **kwargs):
             if captured_handlers:
                 # Response matched but body read will fail
-                captured_handlers[-1](
-                    _make_mock_response(live_url, None)  # json() raises
+                await _emit_response(
+                    captured_handlers,
+                    _make_mock_response(live_url, None),  # json() raises
                 )
 
         mock_page.goto = fake_goto
@@ -1426,8 +1485,7 @@ class TestHttpModeUrlMatchFallback:
         mock_page.on = capture_on
 
         async def fake_goto(*args, **kwargs):
-            if captured_handlers:
-                captured_handlers[-1](_make_mock_response(url, api_response))
+            await _emit_response(captured_handlers, _make_mock_response(url, api_response))
 
         mock_page.goto = fake_goto
         mock_pw = _make_mock_pw(mock_page)

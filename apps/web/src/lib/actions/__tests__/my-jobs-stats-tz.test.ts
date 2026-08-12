@@ -15,9 +15,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  *     viewer's IANA timezone (passed from the client),
  *   - server: interpret `from`/`to` calendar-day filters at that same
  *     TZ's midnight rather than UTC midnight,
- *   - server: validate the supplied TZ against an IANA-shaped pattern
- *     and fall back to "UTC" otherwise — both as defense-in-depth and
- *     so older clients (no `tz` field) keep working.
+ *   - server: validate the supplied TZ against a bounded IANA shape and
+ *     the runtime timezone database, then fall back to "UTC" otherwise —
+ *     both as defense-in-depth and so older clients keep working.
  *
  * The cell grid on the client still uses browser-TZ `Date` accessors,
  * but with the server bucketing in the same TZ the day keys align.
@@ -199,6 +199,7 @@ describe("#3199 — getMyJobsStats TZ-aware day bucketing", () => {
       "UTC; SELECT 1",
       "America/New_York'",
       "../etc/passwd",
+      "Mars/Olympus",
       " ",
       "a".repeat(100),
     ];

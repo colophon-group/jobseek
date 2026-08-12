@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { fetchExplorePageData, type ExploreData } from "@/lib/actions/explore-page-data";
 import { hasLoggedInHint, hasAnonJobLanguagesHint } from "@/lib/client-cookies";
 import { logExternalError } from "@/lib/safe-external-error";
 import { hasSearchFilterParams } from "@/lib/search/query-params";
+import { buildUnavailableExploreData } from "@/lib/search/explore-degraded";
 import { ExploreSkeleton } from "@/components/search/explore-skeleton";
 import { SearchPage } from "./search-page";
 
@@ -21,8 +21,9 @@ import { SearchPage } from "./search-page";
  * degraded variant from issue #3008).
  *
  * Retry once with a short delay (the second call usually hits a warm
- * function instance + warm Typesense connection). If both fail,
- * surface the error so the existing initialData stays.
+ * function instance + warm Typesense connection). If both fail, the caller
+ * installs a URL-derived unavailable snapshot so explicit filters remain
+ * visible and no stale or broadened initial result set is shown.
  */
 async function fetchExplorePageDataWithRetry(
   args: Parameters<typeof fetchExplorePageData>[0],
@@ -53,7 +54,7 @@ type ExploreContentProps = {
 };
 
 export function ExploreContent({ locale, initialData }: ExploreContentProps) {
-  const searchParams = useSearchParams();
+  const rootRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<ExploreData | null>(initialData ?? null);
 
   // Re-fetch on mount only when the prerendered ``initialData`` doesn't
@@ -67,10 +68,29 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
   // with zero function invocations — the bulk of organic traffic per
   // #2640.
   useEffect(() => {
+    // Keep the cached server snapshot visible until this interactive island
+    // has hydrated successfully. At that point swap the two atomically: the
+    // static representation is hidden from layout and accessibility APIs,
+    // while SearchPage takes over filters, dialogs, pagination, and actions.
+    const interactive = rootRef.current?.closest<HTMLElement>("[data-explore-interactive]");
+    const staticSnapshot = interactive?.previousElementSibling;
+    if (staticSnapshot instanceof HTMLElement && staticSnapshot.hasAttribute("data-explore-static-results")) {
+      staticSnapshot.setAttribute("hidden", "");
+    }
+    interactive?.removeAttribute("hidden");
+
+    // Read the URL from the browser inside the mount effect instead of using
+    // Next's `useSearchParams` render-time API. The cached route intentionally
+    // serves one query-agnostic HTML shell; `useSearchParams` made this entire
+    // result subtree bail out to `loading.tsx`, so crawlers received only
+    // "Loading results" even though `initialData` was serialized in the RSC
+    // payload (#2640).
+    const searchParams = new URLSearchParams(window.location.search);
     const needsPersonalizedFetch =
       hasLoggedInHint() ||
       hasAnonJobLanguagesHint() ||
       hasSearchFilterParams(searchParams) ||
+      searchParams.has("lang") ||
       initialData === undefined;
     if (!needsPersonalizedFetch) return;
 
@@ -95,19 +115,16 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
     fetchExplorePageDataWithRetry({ searchParams: sp, locale })
       .then(setData)
       .catch((err) => {
-        // Both attempts failed. Fall back to the prerendered
-        // ``initialData`` so the page doesn't sit on the skeleton
-        // forever; the user can retry by clicking a filter or
-        // refreshing. Filters in the URL won't be visible in the
-        // toolbar because the prerender doesn't carry them, but that
-        // matches the pre-#2746 cold-error behaviour and beats a
-        // permanent skeleton.
+        // Both attempts failed. Build an explicit unavailable snapshot from
+        // the browser URL. Restoring queryless ``initialData`` here would put
+        // unfiltered companies beneath a filtered URL and erase its toolbar
+        // state—the exact fail-open broadening this boundary prevents.
         logExternalError(
           "error",
           { service: "typesense", operation: "fetch_explore_page", retryCount: 2 },
           err,
         );
-        if (initialData) setData(initialData);
+        setData(buildUnavailableExploreData({ initialData, locale, searchParams: sp }));
       });
     // Empty deps: the conditional-fetch decision is made once on
     // mount. ``initialData`` is stable across re-renders (page
@@ -118,32 +135,52 @@ export function ExploreContent({ locale, initialData }: ExploreContentProps) {
 
   if (!data) return <ExploreSkeleton />;
 
-  const { result, parsed, displayCurrency, jobLanguages, languages, userLat, userLng, salaryCurrencyParam, salaryMinDisplay, salaryMaxDisplay, experienceMin, experienceMax } = data;
+  const {
+    result,
+    repositoryFallbackCompanies,
+    parsed,
+    displayCurrency,
+    jobLanguages,
+    languages,
+    languageOverride,
+    userLat,
+    userLng,
+    salaryCurrencyParam,
+    salaryMinDisplay,
+    salaryMaxDisplay,
+    experienceMin,
+    experienceMax,
+  } = data;
 
   return (
-    <SearchPage
-      initialCompanies={result.companies}
-      initialTotalCompanies={result.totalCompanies}
-      initialTruncated={result.truncated}
-      initialDegraded={result.degraded}
-      initialKeywords={parsed.keywords}
-      initialLocations={parsed.locations}
-      initialOccupations={parsed.occupations}
-      initialSeniorities={parsed.seniorities}
-      initialTechnologies={parsed.technologies}
-      initialEmploymentTypes={parsed.employmentTypes}
-      initialWorkMode={parsed.workMode}
-      initialSalaryCurrency={salaryCurrencyParam !== displayCurrency ? salaryCurrencyParam : undefined}
-      initialSalaryMin={salaryMinDisplay}
-      initialSalaryMax={salaryMaxDisplay}
-      initialExperienceMin={experienceMin}
-      initialExperienceMax={experienceMax}
-      locale={locale}
-      displayCurrency={displayCurrency}
-      jobLanguages={jobLanguages}
-      languages={languages}
-      userLat={userLat}
-      userLng={userLng}
-    />
+    <div ref={rootRef} data-explore-content-root>
+      <SearchPage
+        initialCompanies={result.companies}
+        initialTotalCompanies={result.totalCompanies}
+        initialTruncated={result.truncated}
+        initialDegraded={result.degraded}
+        initialRepositoryFallbackCompanies={repositoryFallbackCompanies}
+        initialKeywords={parsed.keywords}
+        initialLocations={parsed.locations}
+        initialOccupations={parsed.occupations}
+        initialSeniorities={parsed.seniorities}
+        initialTechnologies={parsed.technologies}
+        initialUnresolvedExplicitSlugs={parsed.unresolvedExplicitSlugs}
+        initialEmploymentTypes={parsed.employmentTypes}
+        initialWorkMode={parsed.workMode}
+        initialSalaryCurrency={salaryCurrencyParam !== displayCurrency ? salaryCurrencyParam : undefined}
+        initialSalaryMin={salaryMinDisplay}
+        initialSalaryMax={salaryMaxDisplay}
+        initialExperienceMin={experienceMin}
+        initialExperienceMax={experienceMax}
+        locale={locale}
+        displayCurrency={displayCurrency}
+        jobLanguages={jobLanguages}
+        languages={languages}
+        initialLanguageOverride={languageOverride}
+        userLat={userLat}
+        userLng={userLng}
+      />
+    </div>
   );
 }

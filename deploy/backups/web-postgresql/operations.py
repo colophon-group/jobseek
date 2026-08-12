@@ -42,6 +42,11 @@ DATABASE_CREDENTIAL_PATH = Path("/etc/jobseek-backup/web-postgresql.database-url
 RESTORE_IMAGE = (
     "postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193"
 )
+HELPER_IMAGE_LEASE = "jobseek-web-postgresql-backup-image-lease"
+HELPER_IMAGE_LEASE_LABEL = "jobseek.backup.helper-image"
+HELPER_IMAGE_LEASE_TMPFS = {
+    "/var/lib/postgresql/data": "rw,noexec,nosuid,nodev,size=65536"
+}
 BACKUP_FAILURE_ERROR_LIMIT = 512
 BACKUP_FAILURE_DIAGNOSTIC_LIMIT = 768
 _BACKUP_FAILURE_URI = re.compile(r"(?i)\b[a-z][a-z0-9+.-]*://[^\s'\"<>]+")
@@ -56,6 +61,7 @@ _BACKUP_FAILURE_SECRET = re.compile(
 _BACKUP_FAILURE_CONTROL = re.compile(r"[\x00-\x1f\x7f]+")
 ARTIFACT_PATHS = {
     "data_backup": Path("/usr/local/sbin/jobseek-data-backup"),
+    "image_protector": Path("/usr/local/sbin/jobseek-web-postgresql-protect-client-image"),
     "operations": Path("/usr/local/sbin/jobseek-web-postgresql-operations"),
     "retirement_migration": Path(
         "/usr/local/share/jobseek-backup/0086_drop_supabase_job_posting.sql"
@@ -66,6 +72,7 @@ ARTIFACT_PATHS = {
 }
 ARTIFACT_MODES = {
     "data_backup": 0o755,
+    "image_protector": 0o755,
     "operations": 0o755,
     "retirement_migration": 0o644,
     "restore_drill": 0o755,
@@ -687,6 +694,33 @@ def validate_loaded_unit(unit: str, expected_path: Path) -> None:
         raise OperationError(f"loaded systemd unit does not match reviewed artifact: {unit}")
 
 
+def validate_helper_image_lease() -> None:
+    run_checked(["docker", "image", "inspect", RESTORE_IMAGE])
+    output = run_checked(["docker", "container", "inspect", HELPER_IMAGE_LEASE])
+    try:
+        payload = json.loads(output)
+        container = payload[0]
+        config = container["Config"]
+        state = container["State"]
+        host_config = container["HostConfig"]
+        labels = config.get("Labels") or {}
+    except (IndexError, KeyError, TypeError, json.JSONDecodeError) as exc:
+        raise OperationError("web PostgreSQL helper-image lease is invalid") from exc
+    if (
+        config.get("Image") != RESTORE_IMAGE
+        or state.get("Running") is not False
+        or labels.get(HELPER_IMAGE_LEASE_LABEL) != "web-postgresql"
+        or config.get("Entrypoint") != ["/bin/true"]
+        or host_config.get("NetworkMode") != "none"
+        or host_config.get("ReadonlyRootfs") is not True
+        or host_config.get("CapDrop") != ["ALL"]
+        or host_config.get("SecurityOpt") != ["no-new-privileges:true"]
+        or host_config.get("Tmpfs") != HELPER_IMAGE_LEASE_TMPFS
+        or container.get("Mounts") != []
+    ):
+        raise OperationError("web PostgreSQL helper-image lease does not protect the pinned digest")
+
+
 def validate_host_readiness(expected: ExpectedIdentity) -> None:
     validate_identity(expected)
     if os.geteuid() != 0:
@@ -726,7 +760,7 @@ def validate_host_readiness(expected: ExpectedIdentity) -> None:
         validate_loaded_unit(unit, path)
         run_checked(["systemctl", "cat", unit])
         run_checked(["systemd-analyze", "verify", str(path)])
-    run_checked(["docker", "image", "inspect", RESTORE_IMAGE])
+    validate_helper_image_lease()
     repository_output = run_checked(
         [
             "bash",
@@ -996,6 +1030,7 @@ def expected_identity(args: argparse.Namespace) -> ExpectedIdentity:
         deploy_sha=args.expected_deploy_sha,
         artifact_sha256={
             "data_backup": args.expected_data_backup_sha256,
+            "image_protector": args.expected_image_protector_sha256,
             "operations": args.expected_operations_sha256,
             "retirement_migration": args.expected_retirement_migration_sha256,
             "restore_drill": args.expected_restore_drill_sha256,
@@ -1010,6 +1045,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("mode", choices=("verify", "backup", "restore", "enable-timer"))
     parser.add_argument("--expected-deploy-sha", required=True)
     parser.add_argument("--expected-data-backup-sha256", required=True)
+    parser.add_argument("--expected-image-protector-sha256", required=True)
     parser.add_argument("--expected-operations-sha256", required=True)
     parser.add_argument("--expected-retirement-migration-sha256", required=True)
     parser.add_argument("--expected-restore-drill-sha256", required=True)
