@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import re
@@ -23,6 +22,9 @@ ROLLBACK_POOL_OVERRIDE = (
 )
 DEPLOY_WORKFLOW = (
     Path(__file__).resolve().parents[3] / ".github/workflows/deploy-crawler-browser.yml"
+)
+MURMUR_DEPLOY_WORKFLOW = (
+    Path(__file__).resolve().parents[3] / ".github/workflows/deploy-murmur-shim.yml"
 )
 SYNC_DATA_WORKFLOW = Path(__file__).resolve().parents[3] / ".github/workflows/sync-data.yml"
 POSTGRES_PREFLIGHT = (
@@ -175,25 +177,30 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert 'tar -C "$snapshot_dir" -cpf' in script
     assert 'tar -C "$DEPLOY_DIR" -xpf "$ROLLBACK_SPEC_ARCHIVE"' in script
     assert 'install -m 0644 "$ACTIVE_COMPOSE_SNAPSHOT"' in script
-    assert "ACTIVE_COMPOSE_SNAPSHOT_SHA256" in script
-    assert "ACTIVE_ENV_SNAPSHOT" in script
+    assert "ACTIVE_RELEASE_POINTER" in script
+    assert "ACTIVE_RELEASE_MANIFEST" in script
     assert 'install -m 0600 "$ACTIVE_ENV_SNAPSHOT" "$ROLLBACK_ENV_FILE"' in script
-    assert 'mv "$compose_temporary" "$ACTIVE_COMPOSE_SNAPSHOT"' in script
-    assert 'mv "$env_temporary" "$ACTIVE_ENV_SNAPSHOT"' in script
     quiesce = rollback.index(
         "stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain"
+    )
+    assert 'activate_release_generation "$ROLLBACK_ACTIVE_RELEASE_TARGET"' in script
+    release_restore = rollback.index(
+        'activate_release_generation "$ROLLBACK_ACTIVE_RELEASE_TARGET"'
     )
     env_restore = rollback.index('mv "$ROLLBACK_ENV_FILE" "$ENV_FILE"')
     spec_restore = rollback.index("restore_previous_deploy_specs")
     contract = rollback.index("configure_rollback_compose_contract")
     old_stack_start = rollback.index("rollback_compose up -d --remove-orphans")
     health = rollback.index("wait_for_rollback_core_services")
-    assert quiesce < env_restore < spec_restore < contract < old_stack_start < health
+    assert (
+        quiesce < release_restore < env_restore < spec_restore < contract < old_stack_start < health
+    )
     assert "|| true" not in rollback
     assert "rollback failed with status" in rollback
     assert "if ((env_restore_complete && spec_restore_complete)); then" in rollback
     assert (
-        "if ((quiesce_complete && env_restore_complete && spec_restore_complete && "
+        "if ((quiesce_complete && release_restore_complete && env_restore_complete && "
+        "spec_restore_complete && "
         "bounded_contract_persisted)); then" in rollback
     )
     assert "local services=(redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy)" in (
@@ -212,7 +219,7 @@ def test_deploy_publishes_exact_success_marker_only_after_commit() -> None:
     prepare = script.index('"CRAWLER_IMAGE_TAG=$IMAGE_TAG"')
     health = script.index("\nwait_for_core_services\n")
     disarm = script.index("\ndisarm_deploy_rollback\n")
-    publish = script.index('mv "$deploy_success_temporary" "$DEPLOY_SUCCESS_FILE"')
+    publish = script.index('publish_active_deploy_release "$deploy_success_temporary"')
     staged_identity = script.index('verify_shim_deploy_contract "$deploy_success_temporary"')
     committed_identity = script.index('verify_shim_deploy_contract "$DEPLOY_SUCCESS_FILE"')
 
@@ -220,9 +227,10 @@ def test_deploy_publishes_exact_success_marker_only_after_commit() -> None:
     assert '"CRAWLER_IMAGE_REF=$CRAWLER_IMAGE_REF"' in script
     assert '"BROWSER_IMAGE_REF=$BROWSER_IMAGE_REF"' in script
     assert '"SHIM_IMAGE_REF=$SHIM_IMAGE_REF"' in script
-    assert 'DEPLOY_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.env"' in script
-    assert 'ROLLBACK_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.rollback"' in script
-    assert 'mv "$ROLLBACK_SUCCESS_FILE" "$DEPLOY_SUCCESS_FILE"' in script
+    assert 'ACTIVE_RELEASE_POINTER="$DEPLOY_DIR/.crawler-active-release"' in script
+    assert "RELEASE_FORMAT_VERSION=1" in script
+    assert '[[ -d "$ACTIVE_RELEASE_ROOT" && ! -L "$ACTIVE_RELEASE_ROOT" ]]' in script
+    assert "os.replace(temporary, active)" in script
 
 
 def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) -> None:
@@ -249,8 +257,8 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             'ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"',
             'ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"',
             'ROLLBACK_POOL_OVERRIDE="$DEPLOY_DIR/.crawler-rollback-pool-budget.override.yml"',
-            'DEPLOY_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.env"',
-            'ROLLBACK_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.rollback"',
+            'ACTIVE_RELEASE_POINTER="$DEPLOY_DIR/.crawler-active-release"',
+            'ROLLBACK_ACTIVE_RELEASE_TARGET="$DEPLOY_DIR/old-release"',
             "ENV_FILE_WAS_PRESENT=1",
             "ROLLBACK_ARMED=0",
             "ROLLBACK_RUNNING=0",
@@ -262,8 +270,14 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             "wait_for_core_services() {",
             "  printf 'rollback-ready\\n' >>\"$TEST_LOG\"",
             "}",
-            "publish_active_deploy_snapshot() {",
-            "  printf 'snapshot-publish\\n' >>\"$TEST_LOG\"",
+            "activate_release_generation() {",
+            "  printf 'release-restore\\n' >>\"$TEST_LOG\"",
+            "}",
+            "verify_active_deploy_snapshot() {",
+            "  printf 'release-verify\\n' >>\"$TEST_LOG\"",
+            "}",
+            "publish_legacy_success_marker() {",
+            "  printf 'legacy-publish\\n' >>\"$TEST_LOG\"",
             "}",
             restore,
             rollback_support,
@@ -296,15 +310,11 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
         compose = deploy_dir / "docker-compose.yml"
         rollback_override = deploy_dir / ".crawler-rollback-pool-budget.override.yml"
         archive = deploy_dir / ".deploy-spec.rollback.tar"
-        deploy_success = deploy_dir / ".crawler-deploy-success.env"
-        rollback_success = deploy_dir / ".crawler-deploy-success.rollback"
         log = deploy_dir / "rollback.log"
         env_file.write_text("CRAWLER_IMAGE_TAG=failed-tag\n", encoding="utf-8")
         rollback_env.write_text("CRAWLER_IMAGE_TAG=old-tag\n", encoding="utf-8")
         compose.write_text("new-compose\n", encoding="utf-8")
         rollback_override.write_text("bounded-override\n", encoding="utf-8")
-        deploy_success.write_text("CRAWLER_IMAGE_TAG=failed-tag\n", encoding="utf-8")
-        rollback_success.write_text("CRAWLER_IMAGE_TAG=old-tag\n", encoding="utf-8")
         previous_compose = deploy_dir / "previous-compose.yml"
         previous_compose.write_text("old-compose\n", encoding="utf-8")
         with tarfile.open(archive, "w") as rollback_archive:
@@ -356,17 +366,18 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             f"CRAWLER_IMAGE_TAG=old-tag\n\nCOMPOSE_FILE={compose}:{rollback_override}\n"
         )
         assert compose.read_text(encoding="utf-8") == "old-compose\n"
-        assert deploy_success.read_text(encoding="utf-8") == "CRAWLER_IMAGE_TAG=old-tag\n"
         events = log.read_text(encoding="utf-8").splitlines()
         expected_events = [
             "compose-stop",
+            "release-restore",
+            "release-verify",
             "compose-up",
             "process-tag=unset",
             "env-tag=old-tag",
             "compose=old-compose",
         ]
         if mode != "restart-failure":
-            expected_events.extend(("health-gate", "snapshot-publish"))
+            expected_events.extend(("health-gate", "release-verify", "legacy-publish"))
         expected_events.append("maintenance-stop")
         assert events == expected_events
         if mode == "restart-failure":
@@ -388,6 +399,7 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
             'ENV_FILE="$DEPLOY_DIR/.env"',
             'ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"',
             'ROLLBACK_POOL_OVERRIDE="$DEPLOY_DIR/.crawler-rollback-pool-budget.override.yml"',
+            'ROLLBACK_ACTIVE_RELEASE_TARGET="$DEPLOY_DIR/old-release"',
             "ENV_FILE_WAS_PRESENT=1",
             "ROLLBACK_ARMED=1",
             "ROLLBACK_RUNNING=0",
@@ -398,6 +410,15 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
             "}",
             "restore_previous_deploy_specs() {",
             "  printf 'restore-specs\\n' >>\"$TEST_LOG\"",
+            "}",
+            "activate_release_generation() {",
+            "  printf 'release-restore\\n' >>\"$TEST_LOG\"",
+            "}",
+            "verify_active_deploy_snapshot() {",
+            "  printf 'release-verify\\n' >>\"$TEST_LOG\"",
+            "}",
+            "publish_legacy_success_marker() {",
+            "  printf 'legacy-publish\\n' >>\"$TEST_LOG\"",
             "}",
             configure,
             "rollback_compose() {",
@@ -417,13 +438,26 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
     )
 
     cases = (
-        (5, 0, 0, ["quiesce", "restore-specs", "maintenance-stop"]),
+        (
+            5,
+            0,
+            0,
+            [
+                "quiesce",
+                "release-restore",
+                "release-verify",
+                "restore-specs",
+                "maintenance-stop",
+            ],
+        ),
         (
             0,
             6,
             0,
             [
                 "quiesce",
+                "release-restore",
+                "release-verify",
                 "restore-specs",
                 "compose-start",
                 "maintenance-stop",
@@ -435,6 +469,8 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
             7,
             [
                 "quiesce",
+                "release-restore",
+                "release-verify",
                 "restore-specs",
                 "compose-start",
                 "health-gate",
@@ -479,83 +515,14 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
         assert log.read_text(encoding="utf-8").splitlines() == expected_events
 
 
-def test_first_rollout_fails_closed_without_verified_compose_preseed(tmp_path: Path) -> None:
-    script = DEPLOY_SH.read_text()
-    verifier = script[
-        script.index("verify_active_snapshot_file() {") : script.index(
-            "snapshot_active_deploy_specs() {"
-        )
-    ]
-    snapshot = tmp_path / "active-compose.yml"
-    digest = tmp_path / "active-compose.sha256"
-    env_snapshot = tmp_path / "active.env"
-    env_digest = tmp_path / "active-env.sha256"
-    binary_dir = tmp_path / "bin"
-    binary_dir.mkdir()
-    _write_executable(
-        binary_dir / "sha256sum",
-        '#!/usr/bin/env bash\nshasum -a 256 "$1"\n',
-    )
-    _write_executable(
-        binary_dir / "stat",
-        '#!/usr/bin/env bash\nprintf "600\\n"\n',
-    )
-    harness = "\n".join(
-        (
-            "set -euo pipefail",
-            'ACTIVE_COMPOSE_SNAPSHOT="$TEST_SNAPSHOT"',
-            'ACTIVE_COMPOSE_SNAPSHOT_SHA256="$TEST_DIGEST"',
-            'ACTIVE_ENV_SNAPSHOT="$TEST_ENV_SNAPSHOT"',
-            'ACTIVE_ENV_SNAPSHOT_SHA256="$TEST_ENV_DIGEST"',
-            verifier,
-            "verify_active_deploy_snapshot",
-        )
-    )
-    env = {
-        **os.environ,
-        "PATH": f"{binary_dir}:{os.environ['PATH']}",
-        "TEST_SNAPSHOT": str(snapshot),
-        "TEST_DIGEST": str(digest),
-        "TEST_ENV_SNAPSHOT": str(env_snapshot),
-        "TEST_ENV_DIGEST": str(env_digest),
-    }
-
-    missing = subprocess.run(
-        ["bash", "-c", harness],
-        check=False,
-        capture_output=True,
-        text=True,
-        env=env,
-    )
-    assert missing.returncode != 0
-    assert "active Compose snapshot is unavailable" in missing.stderr
-
-    snapshot.write_text("known-old-compose\n", encoding="utf-8")
-    digest.write_text(f"{'0' * 64}\n", encoding="ascii")
-    mismatch = subprocess.run(
-        ["bash", "-c", harness],
-        check=False,
-        capture_output=True,
-        text=True,
-        env=env,
-    )
-    assert mismatch.returncode != 0
-    assert "snapshot failed verification" in mismatch.stderr
-
-    digest.write_text(f"{hashlib.sha256(snapshot.read_bytes()).hexdigest()}\n", encoding="ascii")
-    env_snapshot.write_text("OWNER=old-owner\n", encoding="utf-8")
-    env_snapshot.chmod(0o600)
-    env_digest.write_text(
-        f"{hashlib.sha256(env_snapshot.read_bytes()).hexdigest()}\n", encoding="ascii"
-    )
-    verified = subprocess.run(
-        ["bash", "-c", harness],
-        check=False,
-        capture_output=True,
-        text=True,
-        env=env,
-    )
-    assert verified.returncode == 0, verified.stderr
+def test_first_rollout_fails_closed_without_verified_compose_preseed() -> None:
+    murmur = MURMUR_DEPLOY_WORKFLOW.read_text()
+    first_rollout = murmur[murmur.index('if [[ ! -e "$active_release" ]]') :]
+    assert "$legacy_active_compose" in first_rollout
+    assert 'install -m 0600 "$live_env" "$legacy_generation/environment.env"' in first_rollout
+    assert "install -m 0644 /home/deploy/.crawler-deploy-success.env" in first_rollout
+    assert "RELEASE_FORMAT_VERSION=0" in first_rollout
+    assert "os.replace(candidate, active)" in first_rollout
 
 
 def test_deploy_requires_exact_reconciliation_wrapper_before_activation() -> None:
@@ -564,7 +531,9 @@ def test_deploy_requires_exact_reconciliation_wrapper_before_activation() -> Non
 
     guard = script.index("\nensure_reconciliation_wrapper_compatible\n")
     compose_preseed = script.index("\nverify_active_deploy_snapshot\n")
-    rollback_cleanup = script.index('rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"')
+    rollback_cleanup = script.index(
+        'rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"', compose_preseed
+    )
     snapshot = script.index("\nsnapshot_active_deploy_specs\n")
     activation = script.index("\nactivate_staged_deploy_specs\n")
     env_write = script.index('cat > "$ENV_FILE"')
@@ -588,11 +557,12 @@ def test_crawler_host_mutation_waits_for_same_revision_murmur_workflow() -> None
     assert "actions: read" in workflow
     assert "actions/workflows/deploy-murmur-shim.yml/runs" in workflow
     assert '-f head_sha="$GITHUB_SHA"' in workflow
-    assert "deadline=$((SECONDS + 8400))" in workflow
+    assert "deadline=$((SECONDS + 11400))" in workflow
     assert "same-revision murmur-shim workflow concluded" in workflow
     assert "timed out waiting for same-revision murmur-shim deployment" in workflow
     assert "malformed or mismatched same-revision Murmur workflow attestation" in workflow
-    assert 'revision_ref="${repository}:${GITHUB_SHA}"' in workflow
+    assert 'gh run download "$murmur_run_id"' in workflow
+    assert 'revision_ref="${repository}@${release_digest}"' in workflow
     assert 'docker buildx imagetools inspect "$revision_ref"' in workflow
     assert 'printf \'image_ref=%s\\n\' "$shim_image_ref" >>"$GITHUB_OUTPUT"' in workflow
     assert "SHIM_IMAGE_REF: ${{ steps.murmur.outputs.image_ref }}" in workflow
@@ -607,7 +577,7 @@ def test_murmur_revision_resolver_fails_closed_on_invalid_attestations(
         for step in workflow["jobs"]["deploy"]["steps"]
         if step.get("name") == "Wait for same-revision murmur-shim deployment"
     )
-    resolver = wait_script[wait_script.index("# The Murmur workflow tags") :]
+    resolver = wait_script[wait_script.index("# Validate the exact recorded manifest") :]
     revision = "1" * 40
     manifest_digest = "sha256:" + "2" * 64
     runnable_digest = "sha256:" + "3" * 64
@@ -683,6 +653,7 @@ def test_murmur_revision_resolver_fails_closed_on_invalid_attestations(
                 "GITHUB_OUTPUT": str(output),
                 "GITHUB_REPOSITORY_OWNER": "colophon-group",
                 "GITHUB_SHA": revision,
+                "release_digest": manifest_digest,
                 "TEST_MANIFEST_JSON": json.dumps(manifest, separators=(",", ":")),
                 "TEST_PROVENANCE_JSON": json.dumps(provenance, separators=(",", ":")),
             },
@@ -719,6 +690,251 @@ def test_murmur_revision_resolver_fails_closed_on_invalid_attestations(
         assert rejected.returncode != 0
         assert output == ""
         assert expected_error in rejected.stderr
+
+
+def test_murmur_release_record_is_bound_to_exact_push_run() -> None:
+    crawler_workflow = DEPLOY_WORKFLOW.read_text()
+    murmur_workflow = MURMUR_DEPLOY_WORKFLOW.read_text()
+
+    assert "murmur-release-${{ github.run_id }}-${{ github.run_attempt }}" in murmur_workflow
+    assert "run_id: $run_id" in murmur_workflow
+    assert "run_attempt: $run_attempt" in murmur_workflow
+    assert "head_sha: $head_sha" in murmur_workflow
+    assert "event: $event" in murmur_workflow
+    assert "image_digest: $image_digest" in murmur_workflow
+    assert 'gh run download "$murmur_run_id"' in crawler_workflow
+    assert '--name "murmur-release-${murmur_run_id}-${murmur_run_attempt}"' in crawler_workflow
+    assert ".run_id == $run_id" in crawler_workflow
+    assert ".run_attempt == $run_attempt" in crawler_workflow
+    assert ".head_sha == $head_sha" in crawler_workflow
+    assert '.event == "push"' in crawler_workflow
+    resolver = crawler_workflow[crawler_workflow.index("# Download the immutable release record") :]
+    assert "${repository}:${GITHUB_SHA}" not in resolver
+
+
+def test_murmur_release_record_rejects_cross_run_and_cross_event_digest(
+    tmp_path: Path,
+) -> None:
+    workflow = yaml.safe_load(DEPLOY_WORKFLOW.read_text())
+    wait_script = next(
+        step["run"]
+        for step in workflow["jobs"]["deploy"]["steps"]
+        if step.get("name") == "Wait for same-revision murmur-shim deployment"
+    )
+    record_gate = wait_script[
+        wait_script.index("# Download the immutable release record") : wait_script.index(
+            "# Validate the exact recorded manifest"
+        )
+    ]
+    binary_dir = tmp_path / "bin"
+    binary_dir.mkdir()
+    jq_binary = Path("/opt/homebrew/bin/jq")
+    if not jq_binary.exists():
+        discovered_jq = shutil.which("jq")
+        assert discovered_jq is not None
+        jq_binary = Path(discovered_jq)
+    _write_executable(binary_dir / "jq", f'#!/usr/bin/env bash\nexec "{jq_binary}" "$@"\n')
+    _write_executable(
+        binary_dir / "gh",
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'destination=""\n'
+        "while [[ $# -gt 0 ]]; do\n"
+        '  if [[ "$1" == --dir ]]; then destination="$2"; shift 2; else shift; fi\n'
+        "done\n"
+        '[[ -n "$destination" ]]\n'
+        'printf \'%s\\n\' "$TEST_RELEASE_RECORD" >"$destination/murmur-release.json"\n',
+    )
+    revision = "1" * 40
+    digest = "sha256:" + "2" * 64
+    bash_binary = (
+        Path("/opt/homebrew/bin/bash") if Path("/opt/homebrew/bin/bash").exists() else Path("bash")
+    )
+
+    def validate(record: dict[str, object]) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [str(bash_binary), "-c", f"set -euo pipefail\n{record_gate}"],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "PATH": f"{binary_dir}:{os.environ['PATH']}",
+                "GITHUB_REPOSITORY": "colophon-group/jobseek",
+                "GITHUB_SHA": revision,
+                "murmur_run_id": "12345",
+                "murmur_run_attempt": "3",
+                "TEST_RELEASE_RECORD": json.dumps(record, separators=(",", ":")),
+            },
+        )
+
+    valid = {
+        "run_id": 12345,
+        "run_attempt": 3,
+        "head_sha": revision,
+        "event": "push",
+        "image_digest": digest,
+    }
+    assert validate(valid).returncode == 0
+    for key, value in (
+        ("run_id", 54321),
+        ("run_attempt", 2),
+        ("head_sha", "3" * 40),
+        ("event", "workflow_dispatch"),
+        ("image_digest", "sha256:not-a-digest"),
+    ):
+        mismatched = dict(valid)
+        mismatched[key] = value
+        rejected = validate(mismatched)
+        assert rejected.returncode != 0, (key, rejected.stdout, rejected.stderr)
+
+
+def test_release_pointer_never_exposes_a_partially_prepared_generation(tmp_path: Path) -> None:
+    script = DEPLOY_SH.read_text()
+    activation = script[
+        script.index("activate_release_generation() {") : script.index(
+            "publish_legacy_success_marker() {"
+        )
+    ]
+    release_root = tmp_path / "releases"
+    release_root.mkdir()
+    old = release_root / "old"
+    new = release_root / "new"
+    old.mkdir()
+    new.mkdir()
+    (old / "success.env").write_text("JOBSEEK_DEPLOY_REVISION=old\n", encoding="utf-8")
+    # Model a process dying after writing only part of the candidate bundle.
+    (new / "success.env").write_text("JOBSEEK_DEPLOY_REVISION=new\n", encoding="utf-8")
+    active = tmp_path / ".crawler-active-release"
+    active.symlink_to(old)
+    assert (active / "success.env").read_text(encoding="utf-8").endswith("old\n")
+    # Finishing the unreferenced directory cannot change what readers see;
+    # only the final pointer replacement publishes the complete generation.
+    for name in (
+        "docker-compose.yml",
+        "docker-compose.sha256",
+        "environment.env",
+        "environment.sha256",
+        "release.manifest",
+    ):
+        (new / name).write_text(f"{name}\n", encoding="utf-8")
+
+    harness = "\n".join(
+        (
+            "set -euo pipefail",
+            'DEPLOY_DIR="$TEST_DEPLOY_DIR"',
+            'ACTIVE_RELEASE_ROOT="$TEST_RELEASE_ROOT"',
+            'ACTIVE_RELEASE_POINTER="$TEST_ACTIVE"',
+            activation,
+            'activate_release_generation "$TEST_NEW"',
+        )
+    )
+    completed = subprocess.run(
+        ["bash", "-c", harness],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "TEST_DEPLOY_DIR": str(tmp_path),
+            "TEST_RELEASE_ROOT": str(release_root),
+            "TEST_ACTIVE": str(active),
+            "TEST_NEW": str(new),
+        },
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert active.is_symlink()
+    assert active.resolve() == new
+    assert (active / "success.env").read_text(encoding="utf-8").endswith("new\n")
+
+
+def test_murmur_failure_restores_old_contract_before_clean_environment_restart(
+    tmp_path: Path,
+) -> None:
+    workflow = yaml.safe_load(MURMUR_DEPLOY_WORKFLOW.read_text())
+    remote_script = next(
+        step["with"]["script"]
+        for step in workflow["jobs"]["deploy"]["steps"]
+        if step.get("name") == "Deploy via SSH"
+    )
+    rollback = remote_script[
+        remote_script.index("rollback_shim() {") : remote_script.index("trap rollback_shim EXIT")
+    ]
+    live_compose = tmp_path / "docker-compose.yml"
+    live_env = tmp_path / ".env"
+    previous_compose = tmp_path / "previous-compose.yml"
+    previous_env = tmp_path / "previous.env"
+    staged_compose = tmp_path / "staged-compose.yml"
+    log = tmp_path / "rollback.log"
+    live_compose.write_text("new-compose\n", encoding="utf-8")
+    live_env.write_text("MURMUR_TOKEN=new-secret\n", encoding="utf-8")
+    previous_compose.write_text("old-compose\n", encoding="utf-8")
+    previous_env.write_text("MURMUR_TOKEN=old-secret\n", encoding="utf-8")
+    staged_compose.write_text("staged-compose\n", encoding="utf-8")
+    previous_ref = "ghcr.io/colophon-group/jobseek-murmur-shim@sha256:" + "a" * 64
+    binary_dir = tmp_path / "bin"
+    binary_dir.mkdir()
+    _write_executable(
+        binary_dir / "docker",
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'if [[ "$1" == compose ]]; then\n'
+        f'  printf "compose=%s\\n" "$(cat "{live_compose}")" >>"{log}"\n'
+        f'  printf "env=%s\\n" "$(cat "{live_env}")" >>"{log}"\n'
+        f'  printf "process-token=%s\\n" "${{MURMUR_TOKEN:-unset}}" >>"{log}"\n'
+        'elif [[ "$1" == inspect ]]; then\n'
+        f'  printf "%s\\n" "{previous_ref}"\n'
+        "else\n"
+        "  exit 91\n"
+        "fi\n",
+    )
+    _write_executable(binary_dir / "curl", "#!/usr/bin/env bash\nexit 0\n")
+    _write_executable(binary_dir / "sleep", "#!/usr/bin/env bash\nexit 0\n")
+    _write_executable(
+        binary_dir / "sha256sum",
+        '#!/usr/bin/env bash\nexec shasum -a 256 "$1"\n',
+    )
+    harness = "\n".join(
+        (
+            "set -uo pipefail",
+            f'live_compose="{live_compose}"',
+            f'live_env="{live_env}"',
+            f'previous_compose="{previous_compose}"',
+            f'previous_env="{previous_env}"',
+            f'staged_compose="{staged_compose}"',
+            'env_candidate=""',
+            "rollback_armed=1",
+            "compose_activated=1",
+            "env_activated=1",
+            f'previous_compose_sha256="$(sha256sum "{previous_compose}" | awk \'{{print $1}}\')"',
+            f'previous_env_sha256="$(sha256sum "{previous_env}" | awk \'{{print $1}}\')"',
+            f'previous_shim_ref="{previous_ref}"',
+            'MURMUR_TOKEN="new-secret"',
+            "export MURMUR_TOKEN",
+            rollback,
+            "false",
+            "rollback_shim",
+        )
+    )
+    result = subprocess.run(
+        ["bash", "-c", harness],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "PATH": f"{binary_dir}:{os.environ['PATH']}",
+        },
+    )
+    assert result.returncode == 1, result.stderr
+    assert live_compose.read_text(encoding="utf-8") == "old-compose\n"
+    assert live_env.read_text(encoding="utf-8") == "MURMUR_TOKEN=old-secret\n"
+    assert log.exists(), result.stderr
+    assert log.read_text(encoding="utf-8").splitlines() == [
+        "compose=old-compose",
+        "env=MURMUR_TOKEN=old-secret",
+        "process-token=unset",
+    ]
 
 
 def test_same_revision_murmur_digest_survives_crawler_rollback_and_retry(

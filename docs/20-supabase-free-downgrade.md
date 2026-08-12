@@ -123,46 +123,24 @@ allowlist. Rollback starts Compose with an empty process environment plus the
 restored env file, so the failed SSH process's `CRAWLER_IMAGE_TAG` and other
 inputs cannot override the old contract.
 
-Before the first rollout of this mechanism, explicitly capture the actual
-host-active Compose file while the old crawler deployment still owns it. Do
-this before merging or dispatching a change that can independently replace the
-shared Compose file:
-
-```bash
-exec 9>/run/lock/jobseek-crawler-mutation.lock
-flock -w 300 9
-install -m 0644 /home/deploy/docker-compose.yml \
-  /home/deploy/.crawler-active-docker-compose.yml
-sha256sum /home/deploy/.crawler-active-docker-compose.yml \
-  | awk '{print $1}' > /home/deploy/.crawler-active-docker-compose.sha256.tmp
-chmod 0644 /home/deploy/.crawler-active-docker-compose.sha256.tmp
-mv /home/deploy/.crawler-active-docker-compose.sha256.tmp \
-  /home/deploy/.crawler-active-docker-compose.sha256
-install -m 0600 /home/deploy/.env /home/deploy/.crawler-active.env
-sha256sum /home/deploy/.crawler-active.env \
-  | awk '{print $1}' > /home/deploy/.crawler-active-env.sha256.tmp
-chmod 0644 /home/deploy/.crawler-active-env.sha256.tmp
-mv /home/deploy/.crawler-active-env.sha256.tmp \
-  /home/deploy/.crawler-active-env.sha256
-test "$(sha256sum /home/deploy/.crawler-active-docker-compose.yml | awk '{print $1}')" = \
-  "$(cat /home/deploy/.crawler-active-docker-compose.sha256)"
-test "$(sha256sum /home/deploy/.crawler-active.env | awk '{print $1}')" = \
-  "$(cat /home/deploy/.crawler-active-env.sha256)"
-test "$(stat -c '%a' /home/deploy/.crawler-active.env)" = 600
-```
-
 The deploy does not infer first-rollout state from a Git revision: a skipped or
 failed prior deploy can leave the host behind Git. Missing or mismatched
-snapshot evidence fails closed before mutation. The coupled Murmur rollout may
-seed the environment pair only while holding the shared mutation lock and
-before changing the live env. Every successful crawler deploy replaces both
-verified file/digest pairs for the next rollback. The deploy also fails closed
+snapshot evidence fails closed before mutation. On the first coupled rollout,
+the Murmur workflow verifies the legacy crawler-confirmed Compose snapshot and
+atomically selects a generation that bundles it with the current 0600 env and
+committed success marker, all while holding the shared mutation lock and before
+changing either live file. Every successful crawler deploy writes a complete
+generation under `/home/deploy/.crawler-release-generations/` and atomically
+replaces `/home/deploy/.crawler-active-release`; Compose, environment, their
+digests, and the success marker therefore cannot be split by process failure or
+host restart. The deploy also fails closed
 before activation unless the installed reconciliation wrapper's content and
 completed-install digest marker exactly match the required Typesense-only
 wrapper contract.
 Once activation is armed, ordinary errors, shell exit, SSH hangup, and
 termination signals all run the same guarded rollback exactly once; the guard
-is disarmed only after service readiness and the durable Compose snapshot pass.
+is disarmed only after service readiness and validation of the atomically
+selected release generation.
 
 Least privilege is enforced at each runtime surface:
 

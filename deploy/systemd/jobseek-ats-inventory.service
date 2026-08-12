@@ -5,7 +5,7 @@ Requires=docker.service jobseek-ats-inventory-network.service
 After=docker.service jobseek-ats-inventory-network.service network-online.target
 Wants=network-online.target
 ConditionPathExists=/usr/local/sbin/jobseek-ats-inventory
-ConditionPathExists=/home/deploy/.crawler-deploy-success.env
+ConditionPathExists=/home/deploy/.crawler-active-release/success.env
 
 [Service]
 Type=oneshot

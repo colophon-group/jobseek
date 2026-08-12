@@ -66,6 +66,8 @@ def test_redis_and_murmur_shim_require_immutable_production_images() -> None:
     assert "id: murmur" in workflow
     assert "steps.murmur.outputs.image_ref" in workflow
     assert "BROWSER_IMAGE_REF,SHIM_IMAGE_REF,JOBSEEK_DEPLOY_REVISION" in workflow
+    assert 'gh run download "$murmur_run_id"' in workflow
+    assert 'revision_ref="${repository}@${release_digest}"' in workflow
     assert 'docker buildx imagetools inspect "$revision_ref"' in workflow
     assert 'keys == ["SLSA"]' in workflow
     assert "Murmur provenance does not attest the exact source revision" in workflow
@@ -84,7 +86,7 @@ def test_murmur_shim_deploy_promotes_and_persists_the_built_digest() -> None:
     )
     assert "previous_shim_ref=" in workflow
     assert "restoring the prior immutable image" in workflow
-    assert 'SHIM_IMAGE_REF="$previous_shim_ref"' in workflow
+    assert "murmur-rollback-override" in workflow
     assert "resolve_running_digest" in workflow
     assert "jobseek-crawler-mutation.lock" in workflow
     assert "flock -w 7200 9" in workflow
@@ -93,16 +95,30 @@ def test_murmur_shim_deploy_promotes_and_persists_the_built_digest() -> None:
     assert "previous_compose=" in workflow
     assert "previous_env=" in workflow
     assert 'mv -f "$previous_compose" "$live_compose"' in workflow
-    assert 'mv -f "$previous_env" /home/deploy/.env' in workflow
-    assert "active_env=/home/deploy/.crawler-active.env" in workflow
-    assert 'verify_snapshot "$active_env" "$active_env_sha256" environment' in workflow
-    assert 'install -m 0600 /home/deploy/.env "$active_env_candidate"' in workflow
+    assert 'mv -f "$previous_env" "$live_env"' in workflow
+    assert "active_release=/home/deploy/.crawler-active-release" in workflow
+    assert 'verify_release_generation "$active_generation"' in workflow
+    assert 'install -m 0600 "$live_env" "$legacy_generation/environment.env"' in workflow
     assert "target: /home/deploy/incoming-shim/" in workflow
-    assert "test ! -L /home/deploy/.env" in workflow
+    assert 'test ! -L "$live_env"' in workflow
     assert "CRAWLER_IMAGE_REF|BROWSER_IMAGE_REF|SHIM_IMAGE_REF" in workflow
     assert "SHIM_IMAGE_REF=%s" in workflow
     assert "GHCR_PULL_TOKEN: ${{ secrets.HETZNER_GH_TOKEN }}" in workflow
     assert "GHCR_PAT:" not in workflow
+    assert "DATABASE_URL: ${{ secrets.DATABASE_URL }}" not in workflow
+    assert "GHCR_PULL_TOKEN,MURMUR_TOKEN,DATABASE_URL" not in workflow
+    assert "export MURMUR_TOKEN DATABASE_URL" not in workflow
+    rollback = workflow[
+        workflow.index("rollback_shim() {") : workflow.index("trap rollback_shim EXIT")
+    ]
+    restore_compose = rollback.index('mv -f "$previous_compose" "$live_compose"')
+    restore_env = rollback.index('mv -f "$previous_env" "$live_env"')
+    clean_restart = rollback.index("env -i \\")
+    assert restore_compose < clean_restart
+    assert restore_env < clean_restart
+    assert "previous_compose_sha256" in rollback
+    assert "previous_env_sha256" in rollback
+    assert 'docker compose --env-file "$live_env"' in rollback
     assert "needs: [build, deploy]" in workflow
     assert "jobseek-murmur-shim:latest" in workflow  # Post-deploy compatibility tag only.
     build_job = workflow[workflow.index("  build:") : workflow.index("\n  deploy:")]

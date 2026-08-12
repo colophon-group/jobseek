@@ -271,7 +271,7 @@ def test_control_and_installer_are_fail_closed_and_rollback_safe() -> None:
     assert "ATS_INVENTORY_ROLLOUT_CAP=1" in installer
     assert 'install -o root -g deploy -m 0640 /dev/null "$CONFIG_ROOT/writes-disabled"' in installer
     assert "jobseek-crawler-mutation.lock" in installer
-    assert ".crawler-deploy-success.env" in installer
+    assert ".crawler-active-release/success.env" in installer
     assert "acceptance-crawler.env" in installer
     assert "acceptance-cache" in installer
     files = installer.partition("FILES=(")[2].partition(")")[0]
@@ -372,7 +372,7 @@ def test_remote_deploy_waits_for_exact_image_before_quiescing_install() -> None:
     assert image_gate < install
     gate = source[image_gate:install]
     assert "jobseek-crawler-mutation.lock" in source[:install]
-    assert ".crawler-deploy-success.env" in source[:install]
+    assert ".crawler-active-release/success.env" in source[:install]
     assert "CRAWLER_IMAGE_TAG" in gate
     assert "CRAWLER_IMAGE_REF" in gate
     assert "JOBSEEK_DEPLOY_REVISION" in gate
@@ -392,7 +392,7 @@ def test_remote_deploy_waits_for_exact_image_before_quiescing_install() -> None:
 
 def test_runner_uses_only_committed_release_or_transactional_acceptance_pin() -> None:
     source = RUNNER.read_text(encoding="utf-8")
-    assert "DEPLOY_SUCCESS=/home/deploy/.crawler-deploy-success.env" in source
+    assert "DEPLOY_SUCCESS=/home/deploy/.crawler-active-release/success.env" in source
     assert 'ACCEPTANCE_PIN="$STATE_ROOT/acceptance-crawler.env"' in source
     assert 'release_file="$DEPLOY_SUCCESS"' in source
     assert 'release_file="$ACCEPTANCE_PIN"' in source

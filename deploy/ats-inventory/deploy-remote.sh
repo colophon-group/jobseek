@@ -67,7 +67,7 @@ resolved_release="$(timeout --foreground --signal=TERM --kill-after=30s 60m \
 set -euo pipefail
 expected_tag="$1"
 expected_revision="$2"
-marker=/home/deploy/.crawler-deploy-success.env
+marker=/home/deploy/.crawler-active-release/success.env
 lock=/run/lock/jobseek-crawler-mutation.lock
 open_shared_lock() {
   if [[ ! -e "$lock" ]]; then

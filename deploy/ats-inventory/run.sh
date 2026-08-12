@@ -6,7 +6,7 @@ umask 077
 STATE_ROOT=/var/lib/jobseek-ats-inventory
 CONFIG=/etc/jobseek-ats-inventory/config.env
 WRITE_DISABLED=/etc/jobseek-ats-inventory/writes-disabled
-DEPLOY_SUCCESS=/home/deploy/.crawler-deploy-success.env
+DEPLOY_SUCCESS=/home/deploy/.crawler-active-release/success.env
 ACCEPTANCE_PIN="$STATE_ROOT/acceptance-crawler.env"
 CACHE_ROOT="$STATE_ROOT/cache"
 CONTAINER=jobseek-ats-inventory

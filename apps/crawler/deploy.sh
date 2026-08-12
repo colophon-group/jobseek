@@ -69,12 +69,17 @@ ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"
 ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"
 ROLLBACK_POOL_OVERRIDE="$DEPLOY_DIR/.crawler-rollback-pool-budget.override.yml"
 ROLLBACK_POOL_OVERRIDE_SOURCE="$INCOMING_DIR/rollback-pool-budget.override.yml"
-ACTIVE_COMPOSE_SNAPSHOT="$DEPLOY_DIR/.crawler-active-docker-compose.yml"
-ACTIVE_COMPOSE_SNAPSHOT_SHA256="$DEPLOY_DIR/.crawler-active-docker-compose.sha256"
-ACTIVE_ENV_SNAPSHOT="$DEPLOY_DIR/.crawler-active.env"
-ACTIVE_ENV_SNAPSHOT_SHA256="$DEPLOY_DIR/.crawler-active-env.sha256"
-DEPLOY_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.env"
-ROLLBACK_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.rollback"
+ACTIVE_RELEASE_ROOT="$DEPLOY_DIR/.crawler-release-generations"
+ACTIVE_RELEASE_POINTER="$DEPLOY_DIR/.crawler-active-release"
+LEGACY_DEPLOY_SUCCESS_FILE="$DEPLOY_DIR/.crawler-deploy-success.env"
+ACTIVE_RELEASE_DIR=""
+ACTIVE_COMPOSE_SNAPSHOT=""
+ACTIVE_COMPOSE_SNAPSHOT_SHA256=""
+ACTIVE_ENV_SNAPSHOT=""
+ACTIVE_ENV_SNAPSHOT_SHA256=""
+DEPLOY_SUCCESS_FILE=""
+ACTIVE_RELEASE_MANIFEST=""
+ROLLBACK_ACTIVE_RELEASE_TARGET=""
 ENV_FILE_WAS_PRESENT=0
 ROLLBACK_ARMED=0
 ROLLBACK_RUNNING=0
@@ -214,7 +219,52 @@ verify_active_snapshot_file() {
   }
 }
 
+read_exact_release_value() {
+  local file="$1"
+  local key="$2"
+  local -a values=()
+
+  [[ -f "$file" && ! -L "$file" ]] || return 1
+  mapfile -t values < <(sed -n "s/^${key}=//p" "$file")
+  (( ${#values[@]} == 1 )) || return 1
+  printf '%s\n' "${values[0]}"
+}
+
+load_active_release() {
+  local target
+
+  [[ -d "$ACTIVE_RELEASE_ROOT" && ! -L "$ACTIVE_RELEASE_ROOT" ]] || {
+    echo "ERROR: crawler active-release generation root is unavailable or unsafe" >&2
+    return 1
+  }
+  [[ -L "$ACTIVE_RELEASE_POINTER" ]] || {
+    echo "ERROR: crawler active-release pointer is unavailable or unsafe" >&2
+    return 1
+  }
+  target="$(readlink "$ACTIVE_RELEASE_POINTER")"
+  [[ "$target" == "$ACTIVE_RELEASE_ROOT/"* &&
+    "${target#"$ACTIVE_RELEASE_ROOT/"}" =~ ^[a-zA-Z0-9._-]+$ ]] || {
+    echo "ERROR: crawler active-release pointer escapes its generation root" >&2
+    return 1
+  }
+  [[ -d "$target" && ! -L "$target" ]] || {
+    echo "ERROR: crawler active-release generation is unavailable or unsafe" >&2
+    return 1
+  }
+
+  ACTIVE_RELEASE_DIR="$target"
+  ACTIVE_COMPOSE_SNAPSHOT="$target/docker-compose.yml"
+  ACTIVE_COMPOSE_SNAPSHOT_SHA256="$target/docker-compose.sha256"
+  ACTIVE_ENV_SNAPSHOT="$target/environment.env"
+  ACTIVE_ENV_SNAPSHOT_SHA256="$target/environment.sha256"
+  DEPLOY_SUCCESS_FILE="$target/success.env"
+  ACTIVE_RELEASE_MANIFEST="$target/release.manifest"
+}
+
 verify_active_deploy_snapshot() {
+  local format_version compose_digest env_digest success_digest actual_success_digest
+
+  load_active_release
   verify_active_snapshot_file \
     "$ACTIVE_COMPOSE_SNAPSHOT" "$ACTIVE_COMPOSE_SNAPSHOT_SHA256" Compose
   verify_active_snapshot_file \
@@ -223,25 +273,138 @@ verify_active_deploy_snapshot() {
     echo "ERROR: crawler-confirmed active environment snapshot permissions are unsafe" >&2
     return 1
   }
+  [[ -f "$DEPLOY_SUCCESS_FILE" && ! -L "$DEPLOY_SUCCESS_FILE" ]] || {
+    echo "ERROR: crawler-confirmed release marker is unavailable or unsafe" >&2
+    return 1
+  }
+  [[ -f "$ACTIVE_RELEASE_MANIFEST" && ! -L "$ACTIVE_RELEASE_MANIFEST" ]] || {
+    echo "ERROR: crawler active-release manifest is unavailable or unsafe" >&2
+    return 1
+  }
+  format_version="$(read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" RELEASE_FORMAT_VERSION)"
+  [[ "$format_version" == 0 || "$format_version" == 1 ]] || {
+    echo "ERROR: crawler active-release format is unsupported" >&2
+    return 1
+  }
+  compose_digest="$(read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" COMPOSE_SHA256)"
+  env_digest="$(read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" ENVIRONMENT_SHA256)"
+  success_digest="$(read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" SUCCESS_SHA256)"
+  [[ "$compose_digest" =~ ^[0-9a-f]{64}$ &&
+    "$env_digest" =~ ^[0-9a-f]{64}$ &&
+    "$success_digest" =~ ^[0-9a-f]{64}$ ]] || {
+    echo "ERROR: crawler active-release manifest contains an invalid digest" >&2
+    return 1
+  }
+  [[ "$compose_digest" == "$(tr -d '[:space:]' <"$ACTIVE_COMPOSE_SNAPSHOT_SHA256")" &&
+    "$env_digest" == "$(tr -d '[:space:]' <"$ACTIVE_ENV_SNAPSHOT_SHA256")" ]] || {
+    echo "ERROR: crawler active-release manifest disagrees with its snapshots" >&2
+    return 1
+  }
+  actual_success_digest="$(sha256sum "$DEPLOY_SUCCESS_FILE" | awk '{print $1}')"
+  [[ "$success_digest" == "$actual_success_digest" ]] || {
+    echo "ERROR: crawler active-release marker failed verification" >&2
+    return 1
+  }
+
+  if [[ "$format_version" == 1 ]]; then
+    local key env_value success_value
+    for key in CRAWLER_IMAGE_TAG CRAWLER_IMAGE_REF BROWSER_IMAGE_REF SHIM_IMAGE_REF JOBSEEK_DEPLOY_REVISION; do
+      env_value="$(read_exact_release_value "$ACTIVE_ENV_SNAPSHOT" "$key")"
+      success_value="$(read_exact_release_value "$DEPLOY_SUCCESS_FILE" "$key")"
+      [[ -n "$env_value" && "$env_value" == "$success_value" ]] || {
+        echo "ERROR: crawler active-release marker and environment disagree on ${key}" >&2
+        return 1
+      }
+    done
+  fi
 }
 
-publish_active_deploy_snapshot() {
-  local compose_temporary compose_digest_temporary
-  local env_temporary env_digest_temporary
+activate_release_generation() {
+  local generation="$1"
 
-  compose_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-compose.XXXXXX")"
-  compose_digest_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-compose-digest.XXXXXX")"
-  env_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-env.XXXXXX")"
-  env_digest_temporary="$(mktemp "${DEPLOY_DIR}/.crawler-active-env-digest.XXXXXX")"
-  install -m 0644 "$DEPLOY_DIR/docker-compose.yml" "$compose_temporary"
-  install -m 0600 "$ENV_FILE" "$env_temporary"
-  sha256sum "$compose_temporary" | awk '{print $1}' >"$compose_digest_temporary"
-  sha256sum "$env_temporary" | awk '{print $1}' >"$env_digest_temporary"
-  chmod 0644 "$compose_digest_temporary" "$env_digest_temporary"
-  mv "$compose_temporary" "$ACTIVE_COMPOSE_SNAPSHOT"
-  mv "$compose_digest_temporary" "$ACTIVE_COMPOSE_SNAPSHOT_SHA256"
-  mv "$env_temporary" "$ACTIVE_ENV_SNAPSHOT"
-  mv "$env_digest_temporary" "$ACTIVE_ENV_SNAPSHOT_SHA256"
+  [[ -d "$ACTIVE_RELEASE_ROOT" && ! -L "$ACTIVE_RELEASE_ROOT" &&
+    "$generation" == "$ACTIVE_RELEASE_ROOT/"* &&
+    "${generation#"$ACTIVE_RELEASE_ROOT/"}" =~ ^[a-zA-Z0-9._-]+$ &&
+    -d "$generation" && ! -L "$generation" ]] || return 1
+  python3 - "$generation" "$ACTIVE_RELEASE_POINTER" "$DEPLOY_DIR" <<'PY'
+import os
+import secrets
+import sys
+
+generation, active, parent = sys.argv[1:]
+temporary = f"{active}.{secrets.token_hex(16)}"
+os.symlink(generation, temporary)
+os.replace(temporary, active)
+directory_fd = os.open(parent, os.O_RDONLY | os.O_DIRECTORY)
+try:
+    os.fsync(directory_fd)
+finally:
+    os.close(directory_fd)
+PY
+}
+
+publish_legacy_success_marker() {
+  local temporary
+
+  temporary="$(mktemp "${DEPLOY_DIR}/.crawler-deploy-success-link.XXXXXX")"
+  rm -f "$temporary"
+  ln "$DEPLOY_SUCCESS_FILE" "$temporary"
+  mv "$temporary" "$LEGACY_DEPLOY_SUCCESS_FILE"
+}
+
+publish_active_deploy_release() {
+  local success_file="$1"
+  local generation compose_digest env_digest success_digest
+
+  [[ ! -e "$ACTIVE_RELEASE_ROOT" ||
+    ( -d "$ACTIVE_RELEASE_ROOT" && ! -L "$ACTIVE_RELEASE_ROOT" ) ]] || {
+    echo "ERROR: crawler active-release generation root is unsafe" >&2
+    return 1
+  }
+  install -d -m 0700 "$ACTIVE_RELEASE_ROOT"
+  generation="$(mktemp -d "${ACTIVE_RELEASE_ROOT}/release-${JOBSEEK_DEPLOY_REVISION}.XXXXXX")"
+  install -m 0644 "$DEPLOY_DIR/docker-compose.yml" "$generation/docker-compose.yml"
+  install -m 0600 "$ENV_FILE" "$generation/environment.env"
+  install -m 0644 "$success_file" "$generation/success.env"
+  compose_digest="$(sha256sum "$generation/docker-compose.yml" | awk '{print $1}')"
+  env_digest="$(sha256sum "$generation/environment.env" | awk '{print $1}')"
+  success_digest="$(sha256sum "$generation/success.env" | awk '{print $1}')"
+  printf '%s\n' "$compose_digest" >"$generation/docker-compose.sha256"
+  printf '%s\n' "$env_digest" >"$generation/environment.sha256"
+  printf '%s\n' \
+    'RELEASE_FORMAT_VERSION=1' \
+    "COMPOSE_SHA256=$compose_digest" \
+    "ENVIRONMENT_SHA256=$env_digest" \
+    "SUCCESS_SHA256=$success_digest" \
+    >"$generation/release.manifest"
+  chmod 0644 \
+    "$generation/docker-compose.sha256" \
+    "$generation/environment.sha256" \
+    "$generation/release.manifest"
+
+  python3 - "$generation" <<'PY'
+import os
+import sys
+
+generation = sys.argv[1]
+for name in os.listdir(generation):
+    path = os.path.join(generation, name)
+    if os.path.isfile(path) and not os.path.islink(path):
+        fd = os.open(path, os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+directory_fd = os.open(generation, os.O_RDONLY | os.O_DIRECTORY)
+try:
+    os.fsync(directory_fd)
+finally:
+    os.close(directory_fd)
+PY
+
+  activate_release_generation "$generation"
+  load_active_release
+  verify_active_deploy_snapshot
 }
 
 snapshot_active_deploy_specs() {
@@ -423,9 +586,9 @@ rollback_deploy() {
   local command_status=0
   local rollback_status=0
   local quiesce_complete=0
+  local release_restore_complete=0
   local env_restore_complete=0
   local spec_restore_complete=0
-  local success_marker_restore_complete=0
   local bounded_contract_persisted=0
   local rollback_stack_started=0
 
@@ -457,6 +620,24 @@ rollback_deploy() {
   if ((command_status != 0 && rollback_status == 0)); then
     rollback_status=$command_status
   fi
+
+  if [[ -n "$ROLLBACK_ACTIVE_RELEASE_TARGET" ]]; then
+    activate_release_generation "$ROLLBACK_ACTIVE_RELEASE_TARGET"
+    command_status=$?
+    if ((command_status == 0)); then
+      verify_active_deploy_snapshot
+      command_status=$?
+    fi
+  else
+    echo "ERROR: crawler rollback release generation is unavailable" >&2
+    command_status=1
+  fi
+  if ((command_status == 0)); then
+    release_restore_complete=1
+  elif ((rollback_status == 0)); then
+    rollback_status=$command_status
+  fi
+
   if ((ENV_FILE_WAS_PRESENT)); then
     if [[ -f "$ROLLBACK_ENV_FILE" && ! -L "$ROLLBACK_ENV_FILE" ]]; then
       mv "$ROLLBACK_ENV_FILE" "$ENV_FILE"
@@ -477,23 +658,6 @@ rollback_deploy() {
     env_restore_complete=1
   fi
   if ((command_status != 0 && rollback_status == 0)); then
-    rollback_status=$command_status
-  fi
-
-  if [[ -f "$ROLLBACK_SUCCESS_FILE" && ! -L "$ROLLBACK_SUCCESS_FILE" ]]; then
-    mv "$ROLLBACK_SUCCESS_FILE" "$DEPLOY_SUCCESS_FILE"
-    command_status=$?
-    if ((command_status == 0)); then
-      chmod 0644 "$DEPLOY_SUCCESS_FILE"
-      command_status=$?
-    fi
-  else
-    echo "ERROR: crawler rollback success marker is unavailable or unsafe" >&2
-    command_status=1
-  fi
-  if ((command_status == 0)); then
-    success_marker_restore_complete=1
-  elif ((rollback_status == 0)); then
     rollback_status=$command_status
   fi
 
@@ -522,7 +686,7 @@ rollback_deploy() {
   if (( ! quiesce_complete && bounded_contract_persisted )); then
     echo "ERROR: rollback quiesce was incomplete; bounded old-stack contract persisted but restart skipped" >&2
   fi
-  if ((quiesce_complete && env_restore_complete && spec_restore_complete && success_marker_restore_complete && bounded_contract_persisted)); then
+  if ((quiesce_complete && release_restore_complete && env_restore_complete && spec_restore_complete && bounded_contract_persisted)); then
     rollback_compose up -d --remove-orphans
     command_status=$?
     if ((command_status == 0)); then
@@ -540,18 +704,31 @@ rollback_deploy() {
   fi
 
   if ((rollback_status == 0)); then
-    publish_active_deploy_snapshot
+    verify_active_deploy_snapshot
     command_status=$?
     if ((command_status != 0)); then
-      echo "ERROR: crawler rollback could not republish its restored contract" >&2
+      echo "ERROR: crawler rollback release generation failed final verification" >&2
       rollback_status=$command_status
     fi
-  else
+  fi
+  if ((rollback_status == 0)); then
+    publish_legacy_success_marker || {
+      echo "WARNING: crawler rollback could not refresh its legacy release marker" >&2
+    }
+  fi
+  if ((rollback_status != 0)); then
     echo "ERROR: retaining the last verified crawler snapshot after rollback failure" >&2
   fi
 
   stop_maintenance_window
   ROLLBACK_ARMED=0
+  if ((rollback_status == 0)); then
+    rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"
+    command_status=$?
+    if ((command_status != 0)); then
+      echo "WARNING: crawler rollback could not remove temporary snapshots" >&2
+    fi
+  fi
   if ((rollback_status != 0)); then
     echo "ERROR: crawler rollback failed with status ${rollback_status}" >&2
     exit "$rollback_status"
@@ -927,17 +1104,12 @@ ensure_no_running_typesense_maintenance
 ensure_reconciliation_wrapper_compatible
 python3 "$INCOMING_DIR/scripts/postgresql-operational-preflight.py"
 verify_active_deploy_snapshot
+ROLLBACK_ACTIVE_RELEASE_TARGET="$ACTIVE_RELEASE_DIR"
 
 # Snapshot the complete active deployment contract before replacing any file
 # or credential. Rollback restores the old Compose spec and old env together,
 # so an old image never starts with the new credential semantics.
 rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"
-if [[ -f "$DEPLOY_SUCCESS_FILE" && ! -L "$DEPLOY_SUCCESS_FILE" ]]; then
-  install -m 0644 "$DEPLOY_SUCCESS_FILE" "$ROLLBACK_SUCCESS_FILE"
-else
-  echo "ERROR: crawler success marker is unavailable or unsafe" >&2
-  exit 1
-fi
 snapshot_active_deploy_specs
 ENV_FILE_WAS_PRESENT=1
 install -m 0600 "$ACTIVE_ENV_SNAPSHOT" "$ROLLBACK_ENV_FILE"
@@ -1096,14 +1268,16 @@ printf '%s\n' \
   >"$deploy_success_temporary"
 chmod 0644 "$deploy_success_temporary"
 verify_shim_deploy_contract "$deploy_success_temporary"
-publish_active_deploy_snapshot
-# Publish and verify the exact committed release after all health gates pass
-# while rollback is still armed. Consumers must use this atomic marker rather
-# than the earlier .env write, which is intentionally part of the rollback
-# window.
-mv "$deploy_success_temporary" "$DEPLOY_SUCCESS_FILE"
+publish_active_deploy_release "$deploy_success_temporary"
+# The active generation pointer is the one atomic commit for Compose, env, and
+# success-marker state. Keep rollback armed through validation of that exact
+# generation; a process crash before the pointer swap leaves the prior release
+# selected, while a crash after it leaves the complete new release selected.
 verify_shim_deploy_contract "$DEPLOY_SUCCESS_FILE"
 disarm_deploy_rollback
-rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE" "$ROLLBACK_SUCCESS_FILE" || true
+rm -f "$deploy_success_temporary" "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE" || true
+publish_legacy_success_marker || {
+  echo "WARNING: could not refresh deprecated crawler success-marker path" >&2
+}
 docker image prune -f || true
 echo "Deploy complete: $(docker compose ps --format '{{.Name}}' | tr '\n' ' ')"
