@@ -14,6 +14,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
+import structlog
 
 from src.cli import parse_args
 from src.exporter import TaxonomyMaps
@@ -30,6 +31,7 @@ from src.reconciliation import (
     _advance_state,
     _bootstrap_typesense_buckets,
     _ensure_cycle,
+    _PartitionRepairFailed,
     _persist_run_progress,
     _record_target_failure,
     _start_run,
@@ -1340,6 +1342,192 @@ async def test_typesense_failed_candidate_deletion_is_unresolved(monkeypatch) ->
     assert remote.states == {orphan: True}
 
 
+async def test_delete_http_failure_persists_unresolved_without_sensitive_outer_logs(
+    monkeypatch,
+) -> None:
+    prefix = 0xC2
+    orphan = _id(prefix, 1)
+    sensitive_payload = "private-delete-response-payload"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, text=sensitive_payload, request=request)
+
+    typesense = TypesenseReconciliationClient.__new__(TypesenseReconciliationClient)
+    typesense._base_url = "https://typesense.invalid/collections/job_posting/documents"
+    typesense._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    typesense.partition_snapshot = AsyncMock(  # type: ignore[method-assign]
+        return_value=_typesense_documents_snapshot([{"id": str(orphan), "is_active": True}])
+    )
+    authority = _MemoryPool({})
+    actual_reconcile_partition = reconcile_partition
+
+    async def reconcile_with_real_httpx(
+        *_args: object,
+        target: str,
+        partition: int,
+        repair: bool,
+        **_kwargs: object,
+    ) -> PartitionResult:
+        assert target == "typesense"
+        return await actual_reconcile_partition(
+            authority,  # type: ignore[arg-type]
+            None,
+            target="typesense",
+            partition=partition,
+            repair=repair,
+            typesense=typesense,
+            maps=TaxonomyMaps(),
+        )
+
+    lock_connection = MagicMock()
+    lock_connection.fetchval = AsyncMock(side_effect=[True, True])
+    local_pool = MagicMock()
+    local_pool.acquire.return_value = _AsyncContext(lock_connection)
+    record_failure = AsyncMock()
+    finish_run = AsyncMock()
+    advance = AsyncMock()
+
+    monkeypatch.setattr("src.reconciliation.export_cursor_fence", _noop_fence)
+    monkeypatch.setattr("src.reconciliation._start_run", AsyncMock())
+    monkeypatch.setattr("src.reconciliation._finish_run", finish_run)
+    monkeypatch.setattr("src.reconciliation._ensure_cycle", AsyncMock(return_value=prefix))
+    monkeypatch.setattr("src.reconciliation._record_target_failure", record_failure)
+    monkeypatch.setattr("src.reconciliation._advance_state", advance)
+    monkeypatch.setattr(
+        "src.reconciliation._get_taxonomy_maps",
+        AsyncMock(return_value=TaxonomyMaps()),
+    )
+    monkeypatch.setattr("src.reconciliation.reconcile_partition", reconcile_with_real_httpx)
+    monkeypatch.setattr("src.reconciliation.TypesenseReconciliationClient", lambda: typesense)
+
+    with (
+        structlog.testing.capture_logs() as logs,
+        pytest.raises(ReconciliationRunFailed),
+    ):
+        await run_reconciliation(
+            local_pool,
+            None,
+            repair=True,
+            max_partitions=1,
+            target_scope="typesense",
+        )
+
+    record_failure.assert_awaited_once_with(
+        local_pool,
+        "typesense",
+        "ReconciliationError",
+        unresolved=1,
+    )
+    advance.assert_not_awaited()
+    assert finish_run.await_args is not None
+    failed_summary = finish_run.await_args.args[1]
+    assert failed_summary.partitions_completed == 0
+    assert failed_summary.detected == 1
+    assert failed_summary.unresolved == 1
+    telemetry = json.dumps(logs, default=str)
+    assert str(orphan) not in telemetry
+    assert sensitive_payload not in telemetry
+    assert f"documents/{orphan}" not in telemetry
+
+
+async def test_malformed_ack_exception_persists_candidate_count_and_failed_ledger(
+    monkeypatch,
+) -> None:
+    prefix = 0xC3
+    posting_id = _id(prefix, 1)
+    authority = _MemoryPool({posting_id: True})
+
+    class RunTypesense(_MemoryTypesense):
+        async def aclose(self) -> None:
+            return None
+
+    typesense = RunTypesense({posting_id: False})
+    actual_reconcile_partition = reconcile_partition
+
+    def build_docs(rows: list[dict[str, object]], _maps: TaxonomyMaps) -> list[dict]:
+        return [
+            {
+                "id": str(row["id"]),
+                "is_active": row["is_active"],
+                "reconciliation_bucket": reconciliation_bucket(str(row["id"])),
+            }
+            for row in rows
+        ]
+
+    fake_client = MagicMock()
+    fake_client.collections = {
+        "job_posting": MagicMock(
+            documents=MagicMock(import_=MagicMock(return_value=[{"not_success": True}]))
+        )
+    }
+
+    async def reconcile_with_malformed_ack(
+        *_args: object,
+        target: str,
+        partition: int,
+        repair: bool,
+        **_kwargs: object,
+    ) -> PartitionResult:
+        assert target == "typesense"
+        return await actual_reconcile_partition(
+            authority,  # type: ignore[arg-type]
+            None,
+            target="typesense",
+            partition=partition,
+            repair=repair,
+            typesense=typesense,  # type: ignore[arg-type]
+            maps=TaxonomyMaps(),
+        )
+
+    lock_connection = MagicMock()
+    lock_connection.fetchval = AsyncMock(side_effect=[True, True])
+    local_pool = MagicMock()
+    local_pool.acquire.return_value = _AsyncContext(lock_connection)
+    record_failure = AsyncMock()
+    finish_run = AsyncMock()
+    advance = AsyncMock()
+
+    monkeypatch.setattr("src.reconciliation.export_cursor_fence", _noop_fence)
+    monkeypatch.setattr("src.reconciliation._build_typesense_docs", build_docs)
+    monkeypatch.setattr("src.typesense_client.get_typesense_client", lambda **_kwargs: fake_client)
+    monkeypatch.setattr("src.reconciliation._start_run", AsyncMock())
+    monkeypatch.setattr("src.reconciliation._finish_run", finish_run)
+    monkeypatch.setattr("src.reconciliation._ensure_cycle", AsyncMock(return_value=prefix))
+    monkeypatch.setattr("src.reconciliation._record_target_failure", record_failure)
+    monkeypatch.setattr("src.reconciliation._advance_state", advance)
+    monkeypatch.setattr(
+        "src.reconciliation._get_taxonomy_maps",
+        AsyncMock(return_value=TaxonomyMaps()),
+    )
+    monkeypatch.setattr("src.reconciliation.reconcile_partition", reconcile_with_malformed_ack)
+    monkeypatch.setattr("src.reconciliation.TypesenseReconciliationClient", lambda: typesense)
+
+    with pytest.raises(ReconciliationRunFailed):
+        await run_reconciliation(
+            local_pool,
+            None,
+            repair=True,
+            max_partitions=1,
+            target_scope="typesense",
+        )
+
+    record_failure.assert_awaited_once_with(
+        local_pool,
+        "typesense",
+        "_TypesenseAcknowledgementError",
+        unresolved=1,
+    )
+    advance.assert_not_awaited()
+    assert finish_run.await_args is not None
+    failed_summary = finish_run.await_args.args[1]
+    assert failed_summary.partitions_completed == 0
+    assert failed_summary.checked_local == 1
+    assert failed_summary.checked_remote == 1
+    assert failed_summary.detected == 1
+    assert failed_summary.repaired == 0
+    assert failed_summary.unresolved == 1
+
+
 async def test_verification_failure_persists_nonzero_unresolved_without_advancing(
     monkeypatch,
 ) -> None:
@@ -1372,7 +1560,8 @@ async def test_verification_failure_persists_nonzero_unresolved_without_advancin
             return None
 
     monkeypatch.setattr("src.reconciliation._start_run", AsyncMock())
-    monkeypatch.setattr("src.reconciliation._finish_run", AsyncMock())
+    finish_run = AsyncMock()
+    monkeypatch.setattr("src.reconciliation._finish_run", finish_run)
     monkeypatch.setattr("src.reconciliation._ensure_cycle", AsyncMock(return_value=1))
     monkeypatch.setattr(
         "src.reconciliation._get_taxonomy_maps",
@@ -1402,6 +1591,104 @@ async def test_verification_failure_persists_nonzero_unresolved_without_advancin
         "ReconciliationError",
         unresolved=5,
     )
+    assert finish_run.await_args is not None
+    failed_summary = finish_run.await_args.args[1]
+    assert failed_summary.partitions_completed == 0
+    assert failed_summary.checked_local == 10
+    assert failed_summary.checked_remote == 10
+    assert failed_summary.detected == 5
+    assert failed_summary.payload_mismatch == 5
+    assert failed_summary.repaired == 0
+    assert failed_summary.unresolved == 5
+
+
+async def test_later_unresolved_partition_uses_its_own_failed_ledger_result(
+    monkeypatch,
+) -> None:
+    lock_connection = MagicMock()
+    lock_connection.fetchval = AsyncMock(side_effect=[True, True])
+    local_pool = MagicMock()
+    local_pool.acquire.return_value = _AsyncContext(lock_connection)
+    first = PartitionResult(
+        target="typesense",
+        partition=0,
+        local_rows=3,
+        local_active=3,
+        remote_rows=3,
+        remote_active=3,
+        missing_remote=0,
+        state_mismatch=0,
+        payload_mismatch=0,
+        remote_only_active=0,
+        remote_only_inactive=0,
+        detected=0,
+        repaired=0,
+        unresolved=0,
+        duration_seconds=0.1,
+    )
+    second = PartitionResult(
+        target="typesense",
+        partition=1,
+        local_rows=4,
+        local_active=4,
+        remote_rows=4,
+        remote_active=4,
+        missing_remote=0,
+        state_mismatch=0,
+        payload_mismatch=2,
+        remote_only_active=0,
+        remote_only_inactive=0,
+        detected=2,
+        repaired=0,
+        unresolved=2,
+        duration_seconds=0.2,
+    )
+    reconcile = AsyncMock(side_effect=[first, second])
+    advance = AsyncMock(return_value=False)
+    record_failure = AsyncMock()
+    finish_run = AsyncMock()
+
+    class FakeTypesense:
+        async def aclose(self) -> None:
+            return None
+
+    monkeypatch.setattr("src.reconciliation._start_run", AsyncMock())
+    monkeypatch.setattr("src.reconciliation._finish_run", finish_run)
+    monkeypatch.setattr("src.reconciliation._ensure_cycle", AsyncMock(return_value=0))
+    monkeypatch.setattr(
+        "src.reconciliation._get_taxonomy_maps", AsyncMock(return_value=TaxonomyMaps())
+    )
+    monkeypatch.setattr("src.reconciliation.reconcile_partition", reconcile)
+    monkeypatch.setattr("src.reconciliation._record_target_failure", record_failure)
+    monkeypatch.setattr("src.reconciliation._advance_state", advance)
+    monkeypatch.setattr("src.reconciliation._persist_run_progress", AsyncMock())
+    monkeypatch.setattr("src.reconciliation.TypesenseReconciliationClient", FakeTypesense)
+
+    with pytest.raises(ReconciliationRunFailed):
+        await run_reconciliation(
+            local_pool,
+            None,
+            repair=True,
+            max_partitions=2,
+            target_scope="typesense",
+        )
+
+    advance.assert_awaited_once()
+    assert advance.await_args.args[1] is first
+    record_failure.assert_awaited_once_with(
+        local_pool,
+        "typesense",
+        "ReconciliationError",
+        unresolved=2,
+    )
+    assert finish_run.await_args is not None
+    failed_summary = finish_run.await_args.args[1]
+    assert failed_summary.partitions_completed == 1
+    assert failed_summary.checked_local == 7
+    assert failed_summary.checked_remote == 7
+    assert failed_summary.detected == 2
+    assert failed_summary.payload_mismatch == 2
+    assert failed_summary.unresolved == 2
 
 
 async def test_target_failure_update_writes_nonzero_unresolved_to_durable_state() -> None:
@@ -1433,7 +1720,9 @@ async def test_repair_fails_closed_when_downstream_does_not_converge(monkeypatch
         AsyncMock(return_value=set()),
     )
 
-    with pytest.raises(ReconciliationError, match="verification left 1 unresolved"):
+    with pytest.raises(
+        _PartitionRepairFailed, match="partition repair failed with 1 unresolved rows"
+    ) as exc:
         await reconcile_partition(
             local,  # type: ignore[arg-type]
             remote,  # type: ignore[arg-type]
@@ -1441,6 +1730,8 @@ async def test_repair_fails_closed_when_downstream_does_not_converge(monkeypatch
             partition=prefix,
             repair=True,
         )
+
+    assert exc.value.result.unresolved == 1
 
 
 async def test_typesense_partition_export_requests_and_hashes_payload_fields() -> None:
@@ -1491,6 +1782,87 @@ async def test_typesense_document_delete_url_encodes_untrusted_legacy_ids() -> N
         await client.aclose()
 
     assert requests[0].url.raw_path.endswith(b"/legacy%2Fid%20%3F%23")
+
+
+async def test_typesense_delete_waits_for_every_sibling_before_repair_fence_unwinds(
+    monkeypatch,
+) -> None:
+    prefix = 0xCF
+    failing_id = _id(prefix, 1)
+    blocked_id = _id(prefix, 2)
+    failing_response_returned = asyncio.Event()
+    blocked_started = asyncio.Event()
+    release_blocked = asyncio.Event()
+    blocked_finished = asyncio.Event()
+    fence_active = False
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith(str(failing_id)):
+            failing_response_returned.set()
+            return httpx.Response(500, text="sensitive failure body", request=request)
+        assert request.url.path.endswith(str(blocked_id))
+        blocked_started.set()
+        try:
+            await release_blocked.wait()
+            return httpx.Response(200, request=request)
+        finally:
+            blocked_finished.set()
+
+    @asynccontextmanager
+    async def tracking_fence(_pool: object) -> AsyncIterator[None]:
+        nonlocal fence_active
+        fence_active = True
+        try:
+            yield
+        finally:
+            fence_active = False
+
+    client = TypesenseReconciliationClient.__new__(TypesenseReconciliationClient)
+    client._base_url = "https://typesense.invalid/collections/job_posting/documents"
+    client._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    client.partition_snapshot = AsyncMock(  # type: ignore[method-assign]
+        return_value=_typesense_documents_snapshot(
+            [
+                {"id": str(failing_id), "is_active": True},
+                {"id": str(blocked_id), "is_active": True},
+            ]
+        )
+    )
+    monkeypatch.setattr("src.reconciliation.export_cursor_fence", tracking_fence)
+
+    repair_task = asyncio.create_task(
+        reconcile_partition(
+            _MemoryPool({}),  # type: ignore[arg-type]
+            None,
+            target="typesense",
+            partition=prefix,
+            repair=True,
+            typesense=client,
+            maps=TaxonomyMaps(),
+        )
+    )
+    try:
+        await asyncio.gather(failing_response_returned.wait(), blocked_started.wait())
+        await asyncio.sleep(0)
+        assert repair_task.done() is False
+        assert fence_active is True
+        assert blocked_finished.is_set() is False
+
+        release_blocked.set()
+        with pytest.raises(
+            _PartitionRepairFailed, match="repair failed with 2 unresolved rows"
+        ) as exc:
+            await repair_task
+    finally:
+        release_blocked.set()
+        if not repair_task.done():
+            repair_task.cancel()
+            await asyncio.gather(repair_task, return_exceptions=True)
+        await client.aclose()
+
+    assert exc.value.result.unresolved == 2
+    assert blocked_finished.is_set() is True
+    assert fence_active is False
 
 
 async def test_typesense_bootstrap_fails_closed_for_unbucketed_local_document() -> None:

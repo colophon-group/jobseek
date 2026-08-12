@@ -385,7 +385,12 @@ cursor, and real changes remain exportable after the fence releases. A rejected
 acknowledgement remains unresolved even if the remote value happens to compare
 equal; rejection, transport failure, verification mismatch, candidate change,
 or interruption leaves the durable cursor on the same partition for an
-idempotent retry. All repair failure telemetry is aggregate-only.
+idempotent retry. Concurrent document deletes settle in full before the
+exporter fence is released, even when one request fails. Exceptional repairs
+conservatively record the known candidate count as unresolved; failed-run
+ledger totals include the attempted checks and drift without counting the
+partition as completed. All repair failure exceptions and telemetry are
+aggregate-only, with no document URLs, IDs, or response payloads.
 
 Two local PostgreSQL tables make scheduling visible across deploys:
 

@@ -188,6 +188,17 @@ class PartitionResult:
     duration_seconds: float
 
 
+class _PartitionRepairFailed(ReconciliationError):
+    """Carry aggregate partition evidence across a sanitized repair failure."""
+
+    def __init__(self, result: PartitionResult, error_class: str) -> None:
+        super().__init__(
+            f"{result.target} partition repair failed with {result.unresolved} unresolved rows"
+        )
+        self.result = result
+        self.error_class = error_class
+
+
 @dataclass(slots=True)
 class RunSummary:
     run_id: uuid.UUID
@@ -203,6 +214,14 @@ class RunSummary:
 
     def add(self, result: PartitionResult) -> None:
         self.partitions_completed += 1
+        self._add_counts(result)
+
+    def add_failed(self, result: PartitionResult) -> None:
+        """Record observed work without claiming the partition completed."""
+
+        self._add_counts(result)
+
+    def _add_counts(self, result: PartitionResult) -> None:
         self.checked_local += result.local_rows
         self.checked_remote += result.remote_rows
         self.detected += result.detected
@@ -481,7 +500,28 @@ class TypesenseReconciliationClient:
                     return
                 response.raise_for_status()
 
-        await asyncio.gather(*(delete_one(posting_id) for posting_id in posting_ids))
+        tasks = [asyncio.create_task(delete_one(posting_id)) for posting_id in posting_ids]
+        if not tasks:
+            return
+        try:
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+        except BaseException:
+            # Cancellation must not let a sibling request outlive the caller
+            # (and, for repair, the exporter fence that contains it).
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+
+        failed = sum(isinstance(result, BaseException) for result in results)
+        if failed:
+            # HTTPX exceptions include request URLs and can include response
+            # details. Do not chain any individual exception into the outer
+            # reconciliation logger, where a document UUID or payload could
+            # become telemetry.
+            raise ReconciliationError(
+                f"Typesense delete failed for {failed} reconciliation documents"
+            ) from None
 
 
 async def _locked_local_rows(
@@ -701,25 +741,48 @@ async def reconcile_partition(
     unresolved = detected
 
     if repair and detected:
-        if target == "supabase":
-            if supa_pool is None:
-                raise ReconciliationError("Supabase reconciliation requires DATABASE_URL")
-            repaired, unresolved = await _repair_supabase_partition(
-                local_pool,
-                supa_pool,
-                diff.actionable_ids(target),
-                partition,
+        try:
+            if target == "supabase":
+                if supa_pool is None:
+                    raise ReconciliationError("Supabase reconciliation requires DATABASE_URL")
+                repaired, unresolved = await _repair_supabase_partition(
+                    local_pool,
+                    supa_pool,
+                    diff.actionable_ids(target),
+                    partition,
+                )
+            else:
+                if typesense is None or maps is None:
+                    raise ReconciliationError("Typesense repair dependencies are required")
+                repaired, unresolved = await _repair_typesense_partition(
+                    local_pool,
+                    typesense,
+                    maps,
+                    diff.actionable_ids(target),
+                    partition,
+                )
+        except Exception as exc:
+            # The initial comparison established the exact candidate count.
+            # A transport/protocol exception leaves the whole candidate set
+            # conservatively unresolved because convergence was not proven.
+            result = PartitionResult(
+                target=target,
+                partition=partition,
+                local_rows=local.rows,
+                local_active=local.active,
+                remote_rows=remote.rows,
+                remote_active=remote.active,
+                missing_remote=len(diff.missing_remote),
+                state_mismatch=len(diff.state_mismatch),
+                payload_mismatch=len(diff.payload_mismatch),
+                remote_only_active=len(diff.remote_only_active),
+                remote_only_inactive=len(diff.remote_only_inactive),
+                detected=detected,
+                repaired=0,
+                unresolved=detected,
+                duration_seconds=time.monotonic() - started,
             )
-        else:
-            if typesense is None or maps is None:
-                raise ReconciliationError("Typesense repair dependencies are required")
-            repaired, unresolved = await _repair_typesense_partition(
-                local_pool,
-                typesense,
-                maps,
-                diff.actionable_ids(target),
-                partition,
-            )
+            raise _PartitionRepairFailed(result, type(exc).__name__) from None
 
     result = PartitionResult(
         target=target,
@@ -1069,6 +1132,7 @@ async def run_reconciliation(
                 )
                 for target in selected_targets:
                     last_result: PartitionResult | None = None
+                    last_result_recorded = False
                     try:
                         if target == "typesense" and typesense is None:
                             typesense = TypesenseReconciliationClient()
@@ -1079,6 +1143,10 @@ async def run_reconciliation(
                         )
                         budget = PARTITION_COUNT - partition if full else max_partitions
                         for _ in range(budget):
+                            # Failure accounting belongs to this exact attempt;
+                            # never reuse a prior partition's successful result.
+                            last_result = None
+                            last_result_recorded = False
                             if target == "typesense":
                                 # Refresh long-running reconciliation proofs on
                                 # the same cadence as ordinary CDC so a stale
@@ -1137,6 +1205,7 @@ async def run_reconciliation(
                                 bootstrap_complete = True
 
                             summary.add(result)
+                            last_result_recorded = True
                             if repair:
                                 completed = await _advance_state(
                                     local_pool,
@@ -1150,7 +1219,18 @@ async def run_reconciliation(
                                 break
                             partition += 1
                     except Exception as exc:
-                        error_class = type(exc).__name__
+                        if isinstance(exc, _PartitionRepairFailed):
+                            last_result = exc.result
+                            error_class = exc.error_class
+                        else:
+                            error_class = type(exc).__name__
+                        if (
+                            last_result is not None
+                            and last_result.unresolved
+                            and not last_result_recorded
+                        ):
+                            summary.add_failed(last_result)
+                            last_result_recorded = True
                         failures.append(error_class)
                         if repair:
                             await _record_target_failure(
