@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 from uuid import UUID
 
 import httpx
@@ -205,6 +205,12 @@ def _description(raw: dict) -> str | None:
     return None
 
 
+def _public_job_url(portal_origin: str, public_id: str) -> str:
+    """Build a single path-segment URL from a possibly pre-encoded ID."""
+    encoded_id = quote(unquote(public_id), safe="")
+    return f"{portal_origin}/job/publicjobs/{encoded_id}"
+
+
 def _parse_job(raw: dict, *, portal_origin: str) -> DiscoveredJob:
     job_id = _clean_string(raw.get("JobId"))
     public_id = _clean_string(raw.get("JobIdObfuscated"))
@@ -258,7 +264,7 @@ def _parse_job(raw: dict, *, portal_origin: str) -> DiscoveredJob:
     ) or raw.get("PublishedDate")
 
     return DiscoveredJob(
-        url=f"{portal_origin}/job/publicjobs/{public_id}",
+        url=_public_job_url(portal_origin, public_id),
         title=title,
         description=_description(raw),
         locations=_locations(raw.get("Location")),

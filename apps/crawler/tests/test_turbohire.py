@@ -11,6 +11,7 @@ from src.core.monitors.turbohire import (
     _locations,
     _org_id_from_url,
     _parse_job,
+    _public_job_url,
     can_handle,
     discover,
 )
@@ -98,6 +99,13 @@ def test_parse_rich_job():
         "experience_min": 5,
         "experience_max": 10,
     }
+
+
+def test_public_job_url_keeps_id_in_one_path_segment():
+    assert (
+        _public_job_url("https://flipkart.turbohire.co", "../abc?draft=true#section")
+        == "https://flipkart.turbohire.co/job/publicjobs/..%2Fabc%3Fdraft%3Dtrue%23section"
+    )
 
 
 def _handler(request: httpx.Request) -> httpx.Response:
