@@ -330,7 +330,7 @@ async def probe_pw(
     Opens each URL, captures XHR/fetch exchanges, and checks for single-job
     JSON responses.  Returns ``(metadata, comment)`` or ``(None, comment)``.
     """
-    from src.shared.browser import navigate, open_page
+    from src.shared.browser import BrowserNavigationHTTPStatusError, navigate, open_page
 
     wait = _DEFAULT_WAIT
     timeout = _DEFAULT_TIMEOUT
@@ -358,6 +358,8 @@ async def probe_pw(
                 if job_obj is None:
                     return None, None
                 return _extract_heuristic(job_obj), job_obj
+        except BrowserNavigationHTTPStatusError:
+            raise
         except Exception:
             log.debug("api_sniffer_scraper.probe_pw_error", url=url, exc_info=True)
             return None, None
@@ -495,7 +497,13 @@ async def scrape(
     if config.get("api_url"):
         return await _scrape_http(url, config, http)
 
-    from src.shared.browser import BROWSER_KEYS, NAVIGATE_KEYS, navigate, open_page
+    from src.shared.browser import (
+        BROWSER_KEYS,
+        NAVIGATE_KEYS,
+        BrowserNavigationHTTPStatusError,
+        navigate,
+        open_page,
+    )
 
     use_proxy = bool(config.get("proxy"))
 
@@ -535,6 +543,8 @@ async def scrape(
         async with async_playwright() as p:
             return await _do_scrape(p)
 
+    except BrowserNavigationHTTPStatusError:
+        raise
     except Exception:
         log.error("api_sniffer_scraper.failed", url=url, exc_info=True)
         return JobContent()

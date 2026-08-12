@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import hashlib
 import re
-import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -23,42 +21,6 @@ def _job(workflow: str, name: str) -> str:
     )
     assert match is not None, f"missing workflow job {name}"
     return match.group("body")
-
-
-def _deploy_trigger_paths(workflow: str) -> tuple[str, ...]:
-    match = re.search(
-        r"^    paths:\n(?P<body>(?:      - ['\"].+['\"]\n)+)",
-        workflow,
-        flags=re.MULTILINE,
-    )
-    assert match is not None, "missing deploy trigger path list"
-    return tuple(
-        line.split("- ", 1)[1].strip().strip("'\"") for line in match.group("body").splitlines()
-    )
-
-
-def _authorization_deploy_paths(workflow: str) -> tuple[str, ...]:
-    match = re.search(
-        r"^          deploy_paths=\(\n(?P<body>.*?)^          \)$",
-        workflow,
-        flags=re.MULTILINE | re.DOTALL,
-    )
-    assert match is not None, "missing authorization deploy path list"
-    return tuple(line.strip()[1:-1] for line in match.group("body").splitlines() if line.strip())
-
-
-def _git(repository: Path, *arguments: str) -> str:
-    return subprocess.run(
-        ["git", *arguments],
-        cwd=repository,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-
-
-def _latest_deploy_sha(repository: Path, dispatch_sha: str, paths: tuple[str, ...]) -> str:
-    return _git(repository, "log", "-1", "--format=%H", dispatch_sha, "--", *paths)
 
 
 def test_operations_require_owner_review_main_and_exact_confirmation() -> None:
@@ -127,16 +89,16 @@ def test_dispatch_is_bound_to_reviewed_revision_and_installed_helper() -> None:
 
     assert 'test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"' in authorize
     assert "fetch-depth: 0" in authorize
-    assert 'git log -1 --format=%H "$DISPATCH_SHA" -- "${deploy_paths[@]}"' in authorize
-    assert 'git merge-base --is-ancestor "$deploy_sha" "$DISPATCH_SHA"' in authorize
-    assert _authorization_deploy_paths(workflow) == _deploy_trigger_paths(deploy)
-    assert _authorization_deploy_paths(deploy) == _deploy_trigger_paths(deploy)
-    assert "workflow_dispatch:" not in deploy
+    assert 'deploy_sha="$DISPATCH_SHA"' in authorize
+    assert "deploy_paths=(" not in authorize
+    assert "workflow_dispatch:" in deploy
+    assert "  push:" not in deploy
     assert "fetch-depth: 0" in deploy
-    assert 'git log -1 --format=%H "$CHECKOUT_SHA" -- "${deploy_paths[@]}"' in deploy
+    assert 'echo "deploy_sha=$CHECKOUT_SHA"' in deploy
     assert "DEPLOY_SHA: ${{ steps.deployment-revision.outputs.deploy_sha }}" in deploy
     for output in (
         "data_backup_sha256",
+        "image_protector_sha256",
         "operations_sha256",
         "retirement_migration_sha256",
         "restore_drill_sha256",
@@ -161,7 +123,6 @@ def test_dispatch_is_bound_to_reviewed_revision_and_installed_helper() -> None:
     assert installer.index("umask 077") < installer_lock
     assert "/usr/local/sbin/jobseek-web-postgresql-operations" in installer
     assert '"/var/lib/jobseek-backup/${SERVICE}-deployed-sha"' in installer
-    assert "'.github/workflows/operate-web-postgresql-backup.yml'" in deploy
     assert "py_compile deploy/backups/web-postgresql/operations.py" in deploy
 
 
@@ -191,40 +152,16 @@ def test_backup_deploy_uses_strict_native_transport_and_stdin_credentials() -> N
     assert "apps/web/drizzle/0086_drop_supabase_job_posting.sql" in transport
 
 
-def test_deploy_revision_ignores_unrelated_commits_but_tracks_relevant_changes(
-    tmp_path: Path,
-) -> None:
-    repository = tmp_path / "repository"
-    repository.mkdir()
-    _git(repository, "init", "-q")
-    _git(repository, "config", "user.name", "Backup Test")
-    _git(repository, "config", "user.email", "backup-test@example.invalid")
-    artifact = repository / "deploy/backups/web-postgresql/operations.py"
-    artifact.parent.mkdir(parents=True)
-    artifact.write_text("version one\n", encoding="utf-8")
-    _git(repository, "add", ".")
-    _git(repository, "commit", "-qm", "Add backup artifact")
-    deployed_sha = _git(repository, "rev-parse", "HEAD")
-    deployed_artifact_hash = hashlib.sha256(artifact.read_bytes()).hexdigest()
+def test_deploy_revision_is_the_exact_explicitly_dispatched_sha() -> None:
+    deploy = DEPLOY_WORKFLOW_PATH.read_text(encoding="utf-8")
+    operate = _workflow()
 
-    (repository / "README.md").write_text("unrelated\n", encoding="utf-8")
-    _git(repository, "add", "README.md")
-    _git(repository, "commit", "-qm", "Unrelated main change")
-    unrelated_dispatch_sha = _git(repository, "rev-parse", "HEAD")
-    deploy_paths = _deploy_trigger_paths(DEPLOY_WORKFLOW_PATH.read_text(encoding="utf-8"))
-
-    assert _latest_deploy_sha(repository, unrelated_dispatch_sha, deploy_paths) == deployed_sha
-
-    artifact.write_text("version two\n", encoding="utf-8")
-    _git(repository, "add", str(artifact.relative_to(repository)))
-    _git(repository, "commit", "-qm", "Change backup artifact")
-    relevant_dispatch_sha = _git(repository, "rev-parse", "HEAD")
-
-    assert _latest_deploy_sha(repository, relevant_dispatch_sha, deploy_paths) == (
-        relevant_dispatch_sha
-    )
-    assert relevant_dispatch_sha != deployed_sha
-    assert hashlib.sha256(artifact.read_bytes()).hexdigest() != deployed_artifact_hash
+    assert 'test "$(git rev-parse HEAD)" = "$CHECKOUT_SHA"' in deploy
+    assert 'echo "deploy_sha=$CHECKOUT_SHA"' in deploy
+    assert 'test "$(git rev-parse HEAD)" = "$DISPATCH_SHA"' in operate
+    assert 'deploy_sha="$DISPATCH_SHA"' in operate
+    assert "git log -1 --format=%H" not in deploy
+    assert "git log -1 --format=%H" not in operate
 
 
 def test_only_the_web_installer_leg_can_advance_the_web_revision_marker() -> None:

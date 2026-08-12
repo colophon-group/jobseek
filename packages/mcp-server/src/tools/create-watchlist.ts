@@ -1,6 +1,13 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { JobseekClient } from "../client.js";
+import {
+  SEARCH_EMPLOYMENT_TYPE_LIST_PATTERN,
+  SEARCH_EMPLOYMENT_TYPE_VALUES,
+  SEARCH_WORK_MODE_LIST_PATTERN,
+  SEARCH_WORK_MODE_VALUES,
+} from "../public-api-contract.js";
+import { apiLocaleSchema } from "../locale-schema.js";
 
 export function register(server: McpServer, client: JobseekClient) {
   server.tool(
@@ -23,6 +30,18 @@ export function register(server: McpServer, client: JobseekClient) {
         .string()
         .optional()
         .describe("Technology slugs, comma-separated"),
+      wm: z
+        .string()
+        .regex(new RegExp(SEARCH_WORK_MODE_LIST_PATTERN))
+        .optional()
+        .describe(`Work mode, comma-separated: ${SEARCH_WORK_MODE_VALUES.join(", ")}`),
+      etype: z
+        .string()
+        .regex(new RegExp(SEARCH_EMPLOYMENT_TYPE_LIST_PATTERN))
+        .optional()
+        .describe(
+          `Employment type, comma-separated: ${SEARCH_EMPLOYMENT_TYPE_VALUES.join(", ")}`,
+        ),
       sal: z.string().optional().describe("Salary range, format: min-max"),
       salcur: z.string().optional().describe("Salary currency code (e.g. EUR, USD, CHF)"),
       exp: z
@@ -33,10 +52,7 @@ export function register(server: McpServer, client: JobseekClient) {
         .string()
         .optional()
         .describe("Company slugs, comma-separated"),
-      locale: z
-        .enum(["en", "de", "fr", "it"])
-        .default("en")
-        .describe("Response language"),
+      locale: apiLocaleSchema,
     },
     { title: "Create Watchlist Link", readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     async (params) => {
@@ -48,6 +64,8 @@ export function register(server: McpServer, client: JobseekClient) {
         occ: params.occ,
         sen: params.sen,
         tech: params.tech,
+        wm: params.wm,
+        etype: params.etype,
         sal: params.sal,
         salcur: params.salcur,
         exp: params.exp,

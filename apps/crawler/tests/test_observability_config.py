@@ -164,7 +164,9 @@ def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
         "InodesNearFull",
         "DataBackupFailed",
         "DataBackupStale",
+        "WebPostgreSQLBackupHelperImageUnprotected",
         "PostgreSQLUnavailable",
+        "PostgreSQLIdleInTransaction",
         "PostgreSQLDataVolumeHeadroomLow",
         "PostgreSQLCheckpointPressure",
         "PostgreSQLBackupRepositoryHeadroomLow",
@@ -177,6 +179,54 @@ def test_fleet_alerts_cover_all_hosts_backups_and_core_services() -> None:
         "RequiredContainerUnavailable",
         "HostRebootRequired",
     } <= names
+
+
+def test_web_backup_helper_image_alert_preserves_the_source_service_label() -> None:
+    rule = _alert_rule("WebPostgreSQLBackupHelperImageUnprotected")
+
+    assert "helper_image_available" in rule["expr"]
+    assert "helper_image_gc_protected" in rule["expr"]
+    assert rule["for"] == "3m"
+    assert "service" not in rule["labels"]
+    assert rule["labels"]["component"] == "data-backup"
+    assert rule["labels"]["severity"] == "critical"
+
+
+def test_backup_alerts_keep_simultaneous_service_series_distinct() -> None:
+    source_series = [
+        {"instance": "shared-host", "service": "typesense"},
+        {"instance": "shared-host", "service": "web-postgresql"},
+    ]
+
+    for name in ("DataBackupFailed", "DataBackupStale"):
+        rule = _alert_rule(name)
+        evaluated_labels = []
+        for source_labels in source_series:
+            labels = {**source_labels, **rule["labels"], "alertname": name}
+            evaluated_labels.append(labels)
+
+        assert "service" not in rule["labels"]
+        assert rule["labels"]["component"] == "data-backup"
+        assert {labels["service"] for labels in evaluated_labels} == {
+            "typesense",
+            "web-postgresql",
+        }
+        assert len({tuple(sorted(labels.items())) for labels in evaluated_labels}) == 2
+
+
+def test_postgresql_connection_alerts_preserve_capacity_and_transaction_guards() -> None:
+    capacity = _alert_rule("PostgreSQLConnectionsHigh")
+    idle_transaction = _alert_rule("PostgreSQLIdleInTransaction")
+
+    assert "> 0.80" in capacity["expr"]
+    assert capacity["for"] == "15m"
+    assert 'state=~"idle_in_transaction.*"' in idle_transaction["expr"]
+    assert idle_transaction["for"] == "5m"
+    for rule in (capacity, idle_transaction):
+        assert rule["labels"]["severity"] == "high"
+        assert rule["annotations"]["runbook"].endswith(
+            "docs/22-postgresql-connections.md#incident-response"
+        )
 
 
 def test_ats_inventory_alerts_cover_freshness_coverage_and_hard_cap() -> None:

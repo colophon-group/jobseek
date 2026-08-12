@@ -1,4 +1,5 @@
 import { isLocale, defaultLocale } from "@/lib/i18n";
+import { getSiteStats } from "@/lib/actions/stats";
 import { ProgressLoader } from "./progress-loader";
 
 type Props = {
@@ -8,5 +9,6 @@ type Props = {
 export default async function AppPage({ params }: Props) {
   const { lang } = await params;
   const locale = isLocale(lang) ? lang : defaultLocale;
-  return <ProgressLoader locale={locale} lang={lang} />;
+  const stats = await getSiteStats().catch(() => null);
+  return <ProgressLoader locale={locale} lang={lang} stats={stats} />;
 }

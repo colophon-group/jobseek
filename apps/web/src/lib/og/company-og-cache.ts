@@ -4,34 +4,15 @@ import https from "node:https";
 import type { S3Client } from "@aws-sdk/client-s3";
 import { logExternalError } from "@/lib/safe-external-error";
 
+export { companyOgCacheKey } from "@/lib/og/company-og-key";
+
 const CONTENT_TYPE = "image/png";
 const CACHE_CONTROL = "public, max-age=31536000, immutable";
 
 let client: S3Client | null = null;
 
-function getRendererVersion(): string {
-  return (
-    process.env.COMPANY_OG_RENDERER_VERSION ||
-    process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 16) ||
-    "local"
-  );
-}
-
 export function shouldBypassCompanyOgCache(): boolean {
   return process.env.COMPANY_OG_CACHE_BYPASS === "1";
-}
-
-function segment(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 120) || "unknown";
-}
-
-export function companyOgCacheKey(locale: string, slug: string): string {
-  return `og/company/${getRendererVersion()}/${segment(locale)}/${segment(slug)}.png`;
 }
 
 function getR2Config():
@@ -156,7 +137,6 @@ export async function readCompanyOgCache(
     try {
       const result = await readPublicObject(publicUrl);
       if (result.bytes) return result.bytes;
-      if (result.status === 404) return null;
     } catch (error) {
       logExternalError(
         "warn",

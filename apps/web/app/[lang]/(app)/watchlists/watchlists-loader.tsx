@@ -1,11 +1,16 @@
 import { RefreshCw } from "lucide-react";
 import { Trans } from "@lingui/react/macro";
 import { getSession } from "@/lib/sessionCache";
-import { getUserWatchlistsWithLimit } from "@/lib/services/watchlists";
+import {
+  getPopularWatchlists,
+  getUserWatchlistsWithLimit,
+} from "@/lib/services/watchlists";
 import { logExternalError } from "@/lib/safe-external-error";
 import { WatchlistsPage } from "./watchlists-page";
 
 const WATCHLIST_LOAD_TIMEOUT_MS = 8_000;
+const PUBLIC_WATCHLIST_LOAD_TIMEOUT_MS = 3_000;
+const PUBLIC_WATCHLIST_PAGE_SIZE = 10;
 
 async function loadWatchlists(locale: string) {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -24,6 +29,27 @@ async function loadWatchlists(locale: string) {
   }
 }
 
+async function loadPopularWatchlists(locale: string) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      getPopularWatchlists({
+        offset: 0,
+        limit: PUBLIC_WATCHLIST_PAGE_SIZE,
+        locale,
+      }),
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(
+          () => reject(new Error("Popular watchlists request timed out")),
+          PUBLIC_WATCHLIST_LOAD_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 /**
  * Initial watchlist data is a read, so load it in the server tree instead
  * of calling a Server Action from a client effect. The latter left the
@@ -34,10 +60,22 @@ export async function WatchlistsLoader({ locale }: { locale: string }) {
   const session = await getSession();
 
   try {
-    const { watchlists, limitReached } = await loadWatchlists(locale);
+    const [{ watchlists, limitReached }, popular] = await Promise.all([
+      loadWatchlists(locale),
+      loadPopularWatchlists(locale).catch((err) => {
+        logExternalError(
+          "error",
+          { service: "typesense", operation: "load_popular_watchlists" },
+          err,
+        );
+        return { watchlists: [], total: 0 };
+      }),
+    ]);
     return (
       <WatchlistsPage
         initialWatchlists={watchlists}
+        initialPopularWatchlists={popular.watchlists}
+        initialPopularTotal={popular.total}
         username={session?.user.username ?? null}
         limitReached={limitReached}
         locale={locale}

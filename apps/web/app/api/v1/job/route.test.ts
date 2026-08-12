@@ -45,6 +45,15 @@ describe("GET /api/v1/job status contract (#3213)", () => {
     expect(mocks.getPostingDetail).not.toHaveBeenCalled();
   });
 
+  it("rejects unsupported locales before loading or linking a posting", async () => {
+    const { res, body } = await callRoute("?id=job-1&locale=xx");
+
+    expect(res.status).toBe(400);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(body.error).toBe("Invalid 'locale' param. Supported: en, de, fr, it");
+    expect(mocks.getPostingDetail).not.toHaveBeenCalled();
+  });
+
   it("returns 404 when the requested posting is not found", async () => {
     mocks.getPostingDetail.mockResolvedValue(null);
 

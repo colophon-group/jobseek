@@ -17,6 +17,7 @@ import tempfile
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from urllib.parse import urlsplit
 
 import structlog
 from playwright.async_api import Error as PlaywrightError
@@ -129,6 +130,27 @@ NAVIGATE_KEYS = frozenset({"wait", "wait_fallback", "timeout", "actions"})
 # Keep the classification here so callers do not import Playwright's private
 # ``_impl`` package.
 _TARGET_CLOSED_MARKER = "Target page, context or browser has been closed"
+
+
+class BrowserNavigationHTTPStatusError(RuntimeError):
+    """A browser navigation completed with an HTTP error document."""
+
+    def __init__(
+        self,
+        *,
+        requested_url: str,
+        response_url: str,
+        status: int,
+        phase: str,
+    ) -> None:
+        self.requested_url = requested_url
+        self.response_url = response_url
+        self.status = status
+        self.phase = phase
+        super().__init__(
+            f"Browser navigation returned HTTP {status} during {phase} navigation "
+            f"(requested_url={requested_url!r}, response_url={response_url!r})"
+        )
 
 
 def is_target_closed_error(exc: BaseException) -> bool:
@@ -484,6 +506,33 @@ async def _open_persistent_page(
         shutil.rmtree(user_data_dir, ignore_errors=True)
 
 
+def _raise_for_navigation_http_status(response, requested_url: str, phase: str) -> None:
+    """Reject a concrete HTTP(S) main-document error response."""
+    if response is None:
+        return
+
+    response_url = getattr(response, "url", "")
+    if not isinstance(response_url, str):
+        # Keep compatibility with custom Page implementations and loose test
+        # doubles that return a response-like object without a concrete URL.
+        return
+    try:
+        scheme = urlsplit(response_url).scheme.lower()
+    except (TypeError, ValueError):
+        return
+    if scheme not in {"http", "https"}:
+        return
+
+    status = getattr(response, "status", None)
+    if isinstance(status, int) and 400 <= status <= 599:
+        raise BrowserNavigationHTTPStatusError(
+            requested_url=requested_url,
+            response_url=response_url,
+            status=status,
+            phase=phase,
+        )
+
+
 async def navigate(
     page,  # playwright Page
     url: str,
@@ -525,49 +574,79 @@ async def navigate(
             f"must be one of {sorted(VALID_WAIT_STRATEGIES)}"
         )
 
+    fallback_response = None
+
+    def _capture_main_navigation_response(response) -> None:
+        nonlocal fallback_response
+        try:
+            is_main_navigation = (
+                response.frame == page.main_frame and response.request.is_navigation_request()
+            )
+        except (AttributeError, TypeError):
+            return
+        if is_main_navigation:
+            # Redirects emit one response per hop. Retaining the latest one
+            # gives the final committed document when goto times out while
+            # waiting for a stricter state such as networkidle.
+            fallback_response = response
+
+    page.on("response", _capture_main_navigation_response)
     try:
-        await page.goto(url, wait_until=wait_strategy, timeout=timeout)
-        return
-    except PlaywrightTimeoutError:
-        if not fallback_strategy:
-            # Board opted out via wait_fallback=None. Record separately from
-            # the match-primary case so operators can tell why the retry was
-            # skipped.
+        try:
+            response = await page.goto(url, wait_until=wait_strategy, timeout=timeout)
+        except PlaywrightTimeoutError:
+            if not fallback_strategy:
+                # Board opted out via wait_fallback=None. Record separately from
+                # the match-primary case so operators can tell why the retry was
+                # skipped.
+                metrics.browser_navigate_fallback_total.labels(
+                    primary=wait_strategy, fallback="none", outcome="disabled"
+                ).inc()
+                raise
+            if fallback_strategy == wait_strategy:
+                # Fallback equals primary — nothing to gain from a second attempt.
+                metrics.browser_navigate_fallback_total.labels(
+                    primary=wait_strategy, fallback=fallback_strategy, outcome="match"
+                ).inc()
+                raise
+        else:
+            _raise_for_navigation_http_status(response, url, "primary")
+            return
+
+        fallback_timeout = min(timeout, FALLBACK_WAIT_TIMEOUT)
+        log.info(
+            "browser.navigate.fallback_wait",
+            url=url,
+            primary=wait_strategy,
+            fallback=fallback_strategy,
+            timeout_ms=fallback_timeout,
+        )
+        try:
+            # A wait-strategy timeout does not imply that navigation failed. In
+            # the common networkidle case the document is already committed and
+            # DOMContentLoaded has fired; reissuing goto discards that usable page,
+            # doubles origin traffic, and can turn a recoverable wait into another
+            # timeout. Check the current document's state instead (#5708).
+            await page.wait_for_load_state(fallback_strategy, timeout=fallback_timeout)
+        except Exception:
             metrics.browser_navigate_fallback_total.labels(
-                primary=wait_strategy, fallback="none", outcome="disabled"
-            ).inc()
-            raise
-        if fallback_strategy == wait_strategy:
-            # Fallback equals primary — nothing to gain from a second attempt.
-            metrics.browser_navigate_fallback_total.labels(
-                primary=wait_strategy, fallback=fallback_strategy, outcome="match"
+                primary=wait_strategy, fallback=fallback_strategy, outcome="failed"
             ).inc()
             raise
 
-    fallback_timeout = min(timeout, FALLBACK_WAIT_TIMEOUT)
-    log.info(
-        "browser.navigate.fallback_wait",
-        url=url,
-        primary=wait_strategy,
-        fallback=fallback_strategy,
-        timeout_ms=fallback_timeout,
-    )
-    try:
-        # A wait-strategy timeout does not imply that navigation failed. In
-        # the common networkidle case the document is already committed and
-        # DOMContentLoaded has fired; reissuing goto discards that usable page,
-        # doubles origin traffic, and can turn a recoverable wait into another
-        # timeout. Check the current document's state instead (#5708).
-        await page.wait_for_load_state(fallback_strategy, timeout=fallback_timeout)
-    except Exception:
-        metrics.browser_navigate_fallback_total.labels(
-            primary=wait_strategy, fallback=fallback_strategy, outcome="failed"
-        ).inc()
-        raise
-    else:
+        try:
+            _raise_for_navigation_http_status(fallback_response, url, "fallback")
+        except BrowserNavigationHTTPStatusError:
+            metrics.browser_navigate_fallback_total.labels(
+                primary=wait_strategy, fallback=fallback_strategy, outcome="http_error"
+            ).inc()
+            raise
         metrics.browser_navigate_fallback_total.labels(
             primary=wait_strategy, fallback=fallback_strategy, outcome="success"
         ).inc()
+    finally:
+        with contextlib.suppress(Exception):
+            page.remove_listener("response", _capture_main_navigation_response)
 
 
 ACTION_TIMEOUT = 10.0  # seconds

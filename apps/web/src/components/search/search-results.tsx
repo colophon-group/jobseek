@@ -9,6 +9,7 @@ import type { SerializableLocation, SerializableOccupation, SerializableSeniorit
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 
 interface SearchResultsProps {
+  locale: string;
   companies: SearchResultCompany[];
   keywords: string[];
   locationIds?: number[];
@@ -31,6 +32,7 @@ interface SearchResultsProps {
 }
 
 export function SearchResults({
+  locale,
   companies,
   keywords,
   locationIds,
@@ -65,7 +67,7 @@ export function SearchResults({
         // occupations, ...), which is the hot path called out in the
         // issue (salary slider drag).
         <div key={`${result.company.id}-${keywords.join(",")}`}>
-          <CompanyCard result={result} keywords={keywords} locationIds={locationIds} locations={locations} occupations={occupations} seniorities={seniorities} technologies={technologies} employmentTypes={employmentTypes} workMode={workMode} salaryMinEur={salaryMinEur} salaryMaxEur={salaryMaxEur} experienceMin={experienceMin} experienceMax={experienceMax} languages={languages} onShowPosting={onShowPosting} selectedPostingId={selectedPostingId} />
+          <CompanyCard locale={locale} result={result} keywords={keywords} locationIds={locationIds} locations={locations} occupations={occupations} seniorities={seniorities} technologies={technologies} employmentTypes={employmentTypes} workMode={workMode} salaryMinEur={salaryMinEur} salaryMaxEur={salaryMaxEur} experienceMin={experienceMin} experienceMax={experienceMax} languages={languages} onShowPosting={onShowPosting} selectedPostingId={selectedPostingId} />
         </div>
       ))}
       {hasMore && <InfiniteScrollSentinel sentinelRef={sentinelRef} isLoading={isLoading} />}

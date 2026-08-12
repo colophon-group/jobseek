@@ -13,6 +13,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import time
 import urllib.error
@@ -28,9 +29,18 @@ DEFAULT_BACKUP_STATUS_DIR = Path("/var/lib/jobseek-backup/status")
 DEFAULT_RECONCILIATION_REVISION = Path("/var/lib/jobseek-reconciliation/deployed-sha")
 DEFAULT_ATS_INVENTORY_STATUS = Path("/var/lib/jobseek-ats-inventory/status/current.json")
 DEFAULT_CODEX_ERROR_REVIEW_STATUS = Path("/srv/jobseek-codex/state/error-review-status.json")
+DEFAULT_TYPESENSE_SNAPSHOT_ROOT = Path("/mnt/jobseek-typesense-backup")
 REDIS_CAPACITY_CACHE_MAX_AGE_SECONDS = 6 * 60 * 60
 POSTGRES_EMERGENCY_RESERVE_NAME = ".jobseek-postgresql-emergency-reserve"
 POSTGRES_EMERGENCY_RESERVE_BYTES = 2_147_483_648
+WEB_POSTGRES_HELPER_IMAGE = (
+    "postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193"
+)
+WEB_POSTGRES_HELPER_IMAGE_LEASE = "jobseek-web-postgresql-backup-image-lease"
+WEB_POSTGRES_HELPER_IMAGE_LEASE_LABEL = "jobseek.backup.helper-image"
+WEB_POSTGRES_HELPER_IMAGE_LEASE_TMPFS = {
+    "/var/lib/postgresql/data": "rw,noexec,nosuid,nodev,size=65536"
+}
 MAX_LOG_LINES = 200
 ALLOY_METRICS = {
     "alloy_resources_process_resident_memory_bytes": ("resident_memory_bytes", "max"),
@@ -192,18 +202,125 @@ def _atomic_write(path: Path, content: str) -> None:
     os.replace(temporary, path)
 
 
-def _docker_state(container: str) -> dict[str, Any]:
+def _parse_cgroup_value(value: str) -> int | None:
+    normalized = value.strip()
+    if not normalized or normalized == "max":
+        return None
+    try:
+        parsed = int(normalized)
+    except ValueError:
+        return None
+    return parsed if parsed >= 0 else None
+
+
+def _read_container_memory(pid: int, proc_root: Path = Path("/proc")) -> dict[str, Any]:
+    if pid <= 0:
+        return {}
+    cgroup_root = proc_root / str(pid) / "root/sys/fs/cgroup"
+    result: dict[str, Any] = {}
+    for filename, key in (
+        ("memory.current", "current_bytes"),
+        ("memory.peak", "peak_bytes"),
+        ("memory.max", "limit_bytes"),
+        ("memory.swap.current", "swap_current_bytes"),
+    ):
+        try:
+            value = _parse_cgroup_value((cgroup_root / filename).read_text(encoding="utf-8"))
+        except OSError:
+            continue
+        if value is not None:
+            result[key] = value
+    events: dict[str, int] = {}
+    events_read = False
+    for filename in ("memory.events.local", "memory.events"):
+        try:
+            event_text = (cgroup_root / filename).read_text(encoding="utf-8")
+        except OSError:
+            continue
+        events_read = True
+        for line in event_text.splitlines():
+            fields = line.split()
+            if len(fields) != 2 or fields[0] not in {
+                "low",
+                "high",
+                "max",
+                "oom",
+                "oom_kill",
+                "oom_group_kill",
+            }:
+                continue
+            try:
+                events[fields[0]] = int(fields[1])
+            except ValueError:
+                continue
+        if events:
+            break
+    if events_read:
+        result["events"] = events
+    return result
+
+
+def _docker_state(container: str, proc_root: Path = Path("/proc")) -> dict[str, Any]:
     result = _run(["docker", "inspect", container], timeout=30)
     try:
         inspected = json.loads(result.stdout)[0]
     except (IndexError, TypeError, json.JSONDecodeError) as exc:
         raise ProbeError(f"unparseable docker inspect output for {container}") from exc
     state = inspected.get("State") or {}
+    pid = int(state.get("Pid") or 0)
     return {
         "running": bool(state.get("Running")),
         "oom_killed": bool(state.get("OOMKilled")),
         "restart_count": int(inspected.get("RestartCount") or 0),
+        "memory": _read_container_memory(pid, proc_root),
     }
+
+
+def _web_postgres_helper_image_state() -> tuple[int, int]:
+    """Return exact-image availability and GC-protection without failing the sampler."""
+    try:
+        image = subprocess.run(
+            ["docker", "image", "inspect", WEB_POSTGRES_HELPER_IMAGE],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if image.returncode:
+            return 0, 0
+        lease = subprocess.run(
+            ["docker", "container", "inspect", WEB_POSTGRES_HELPER_IMAGE_LEASE],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return 0, 0
+    if lease.returncode:
+        return 1, 0
+    try:
+        payload = json.loads(lease.stdout)
+        container = payload[0]
+        config = container["Config"]
+        state = container["State"]
+        host_config = container["HostConfig"]
+        labels = config.get("Labels") or {}
+    except (IndexError, KeyError, TypeError, json.JSONDecodeError):
+        return 1, 0
+    protected = int(
+        config.get("Image") == WEB_POSTGRES_HELPER_IMAGE
+        and state.get("Running") is False
+        and labels.get(WEB_POSTGRES_HELPER_IMAGE_LEASE_LABEL) == "web-postgresql"
+        and config.get("Entrypoint") == ["/bin/true"]
+        and host_config.get("NetworkMode") == "none"
+        and host_config.get("ReadonlyRootfs") is True
+        and host_config.get("CapDrop") == ["ALL"]
+        and host_config.get("SecurityOpt") == ["no-new-privileges:true"]
+        and host_config.get("Tmpfs") == WEB_POSTGRES_HELPER_IMAGE_LEASE_TMPFS
+        and container.get("Mounts") == []
+    )
+    return 1, protected
 
 
 def _collect_container_metrics(role: str, lines: list[str]) -> None:
@@ -213,6 +330,33 @@ def _collect_container_metrics(role: str, lines: list[str]) -> None:
         lines.append(_metric("jobseek_container_running", int(state["running"]), **labels))
         lines.append(_metric("jobseek_container_oom_killed", int(state["oom_killed"]), **labels))
         lines.append(_metric("jobseek_container_restart_count", state["restart_count"], **labels))
+        memory = state["memory"]
+        available = int({"current_bytes", "peak_bytes", "events"} <= memory.keys())
+        lines.append(_metric("jobseek_container_memory_observation_available", available, **labels))
+        if not memory:
+            continue
+        for field, metric in (
+            ("current_bytes", "jobseek_container_memory_current_bytes"),
+            ("peak_bytes", "jobseek_container_memory_peak_bytes"),
+            ("swap_current_bytes", "jobseek_container_memory_swap_current_bytes"),
+        ):
+            if field in memory:
+                lines.append(_metric(metric, memory[field], **labels))
+        limit = memory.get("limit_bytes")
+        lines.append(
+            _metric("jobseek_container_memory_limit_enforced", int(limit is not None), **labels)
+        )
+        lines.append(_metric("jobseek_container_memory_limit_bytes", limit or 0, **labels))
+        events = memory.get("events", {})
+        for event in ("low", "high", "max", "oom", "oom_kill", "oom_group_kill"):
+            lines.append(
+                _metric(
+                    "jobseek_container_memory_events_total",
+                    events.get(event, 0),
+                    event=event,
+                    **labels,
+                )
+            )
 
 
 def _collect_redis_capacity_metrics(
@@ -260,9 +404,7 @@ def _collect_redis_capacity_metrics(
                 timeout=100,
             )
             rendered = "\n".join(
-                line
-                for line in result.stdout.splitlines()
-                if line.startswith("jobseek_redis_")
+                line for line in result.stdout.splitlines() if line.startswith("jobseek_redis_")
             )
             if "jobseek_redis_capacity_snapshot_unixtime " not in rendered:
                 raise ProbeError("Redis capacity output omitted its snapshot timestamp")
@@ -304,6 +446,43 @@ def _collect_unit_metrics(role: str, lines: list[str]) -> None:
                 unit=unit,
             )
         )
+
+
+def _collect_typesense_support_memory_metrics(lines: list[str]) -> None:
+    for unit in ("docker.service", "cloudflared.service"):
+        result = _run(
+            [
+                "systemctl",
+                "show",
+                unit,
+                "--property=MemoryCurrent",
+                "--property=MemoryPeak",
+            ]
+        )
+        values: dict[str, int] = {}
+        for line in result.stdout.splitlines():
+            key, separator, raw_value = line.partition("=")
+            if not separator:
+                continue
+            parsed = _parse_cgroup_value(raw_value)
+            if parsed is not None:
+                values[key] = parsed
+        labels = {"host_role": "typesense", "unit": unit}
+        lines.append(
+            _metric(
+                "jobseek_host_unit_memory_observation_available",
+                int({"MemoryCurrent", "MemoryPeak"} <= values.keys()),
+                **labels,
+            )
+        )
+        if "MemoryCurrent" in values:
+            lines.append(
+                _metric("jobseek_host_unit_memory_current_bytes", values["MemoryCurrent"], **labels)
+            )
+        if "MemoryPeak" in values:
+            lines.append(
+                _metric("jobseek_host_unit_memory_peak_bytes", values["MemoryPeak"], **labels)
+            )
 
 
 def _collect_reconciliation_deployment_metrics(
@@ -374,8 +553,12 @@ def _collect_ats_inventory_metrics(
     lines.extend(
         (
             _metric("jobseek_ats_inventory_status_available", 1),
-            _metric("jobseek_ats_inventory_last_attempt_unixtime", integer("last_attempt_unixtime")),
-            _metric("jobseek_ats_inventory_last_success_unixtime", integer("last_success_unixtime")),
+            _metric(
+                "jobseek_ats_inventory_last_attempt_unixtime", integer("last_attempt_unixtime")
+            ),
+            _metric(
+                "jobseek_ats_inventory_last_success_unixtime", integer("last_success_unixtime")
+            ),
             _metric("jobseek_ats_inventory_last_attempt_success", attempt_success),
             _metric("jobseek_ats_inventory_last_attempt_degraded", attempt_degraded),
             _metric(
@@ -567,6 +750,80 @@ def _collect_backup_metrics(role: str, status_dir: Path, lines: list[str]) -> No
                 ),
             )
         )
+        if service == "web-postgresql":
+            image_available, gc_protected = _web_postgres_helper_image_state()
+            lines.extend(
+                (
+                    _metric(
+                        "jobseek_backup_helper_image_available",
+                        image_available,
+                        **labels,
+                    ),
+                    _metric(
+                        "jobseek_backup_helper_image_gc_protected",
+                        gc_protected,
+                        **labels,
+                    ),
+                )
+            )
+        if service != "typesense":
+            continue
+        details = record if record.get("success") else record.get("last_success_details", {})
+        if not isinstance(details, dict):
+            raise ProbeError("invalid Typesense last-success backup evidence")
+        metric_fields = {
+            "snapshot_bytes": "jobseek_typesense_backup_snapshot_bytes",
+            "snapshot_peak_local_copies": "jobseek_typesense_backup_peak_local_copies",
+            "snapshot_local_copies_before": "jobseek_typesense_backup_local_copies_before",
+            "snapshot_local_copies_after_materialization": (
+                "jobseek_typesense_backup_local_copies_after_materialization"
+            ),
+            "staging_capacity_bytes": "jobseek_typesense_backup_staging_capacity_bytes",
+            "staging_available_bytes_before": (
+                "jobseek_typesense_backup_staging_available_bytes_before"
+            ),
+            "staging_available_bytes_after_snapshot": (
+                "jobseek_typesense_backup_staging_available_bytes_after_snapshot"
+            ),
+            "staging_required_bytes_before": (
+                "jobseek_typesense_backup_staging_required_bytes_before"
+            ),
+            "staging_required_bytes_after_snapshot": (
+                "jobseek_typesense_backup_staging_required_bytes_after_snapshot"
+            ),
+            "staging_minimum_free_bytes": "jobseek_typesense_backup_staging_minimum_free_bytes",
+            "staging_growth_reserve_bytes": (
+                "jobseek_typesense_backup_staging_growth_reserve_bytes"
+            ),
+            "live_data_allocated_bytes_before": (
+                "jobseek_typesense_backup_live_data_allocated_bytes_before"
+            ),
+            "memory_limit_bytes": "jobseek_typesense_backup_memory_limit_bytes",
+            "memory_reservation_bytes": ("jobseek_typesense_backup_memory_reservation_bytes"),
+            "memory_swap_limit_bytes": ("jobseek_typesense_backup_memory_swap_limit_bytes"),
+        }
+        for field, metric in metric_fields.items():
+            lines.append(_metric(metric, _backup_number(details, field), **labels))
+        lines.extend(
+            (
+                _metric(
+                    "jobseek_typesense_backup_staging_isolated",
+                    int(details.get("staging_isolated") is True),
+                    **labels,
+                ),
+                _metric(
+                    "jobseek_typesense_backup_memory_limit_enforced",
+                    int(details.get("memory_limit_enforced") is True),
+                    **labels,
+                ),
+                _metric(
+                    "jobseek_typesense_backup_memory_policy_info",
+                    int(details.get("memory_policy_phase") == "enforced"),
+                    phase="enforced",
+                    **labels,
+                ),
+            )
+        )
 
 
 POSTGRES_STATS_SQL = """
@@ -584,6 +841,54 @@ SELECT
   (SELECT COALESCE(sum(pg_database_size(datname)), 0) FROM pg_database WHERE datallowconn);
 """.strip()
 
+POSTGRES_CONNECTION_OWNERS_SQL = """
+WITH owned AS (
+  SELECT
+    CASE application_name
+      WHEN 'jobseek:crawler:worker-1:local' THEN 'worker-1'
+      WHEN 'jobseek:crawler:worker-2:local' THEN 'worker-2'
+      WHEN 'jobseek:crawler:worker-3:local' THEN 'worker-3'
+      WHEN 'jobseek:crawler:browser-1:local' THEN 'browser-1'
+      WHEN 'jobseek:crawler:exporter:local' THEN 'exporter'
+      WHEN 'jobseek:crawler:drain:local' THEN 'drain'
+      WHEN 'jobseek:crawler:reconciliation:local' THEN 'reconciliation'
+      WHEN 'jobseek:crawler:deploy-sync:local' THEN 'deploy-sync'
+      WHEN 'jobseek:crawler:deploy-migrate:local' THEN 'deploy-migrate'
+      WHEN 'jobseek:crawler:maintenance:local' THEN 'maintenance'
+      WHEN 'jobseek:crawler:csv-sync:local' THEN 'csv-sync'
+      WHEN 'jobseek:crawler:currency-refresh:local' THEN 'currency-refresh'
+      WHEN 'jobseek:crawler:location-taxonomy-repair:local'
+        THEN 'location-taxonomy-repair'
+      WHEN 'jobseek:crawler:labeller:local' THEN 'labeller'
+      WHEN 'jobseek:crawler:oneoff:local' THEN 'oneoff'
+      WHEN 'jobseek:murmur:node' THEN 'murmur-node'
+      WHEN 'jobseek:murmur:python' THEN 'murmur-python'
+      WHEN 'jobseek:ingress:private-path-verifier' THEN 'ingress-verifier'
+      WHEN 'jobseek:host-observability' THEN 'host-observability'
+      WHEN 'psql' THEN 'operator-psql'
+      ELSE CASE
+        WHEN application_name LIKE 'pgBackRest%' THEN 'backup'
+        WHEN application_name LIKE 'jobseek:operator:%' THEN 'operator-tool'
+        ELSE 'other'
+      END
+    END AS owner,
+    CASE state
+      WHEN 'active' THEN 'active'
+      WHEN 'idle' THEN 'idle'
+      WHEN 'idle in transaction' THEN 'idle_in_transaction'
+      WHEN 'idle in transaction (aborted)' THEN 'idle_in_transaction_aborted'
+      WHEN 'disabled' THEN 'disabled'
+      ELSE 'other'
+    END AS connection_state
+  FROM pg_stat_activity
+  WHERE backend_type = 'client backend'
+)
+SELECT owner, connection_state, count(*)
+FROM owned
+GROUP BY owner, connection_state
+ORDER BY owner, connection_state;
+""".strip()
+
 RECONCILIATION_STATS_SQL = """
 SELECT
   target,
@@ -593,8 +898,8 @@ SELECT
   last_duration_seconds,
   last_local_rows,
   last_remote_rows,
-  last_missing_remote + last_state_mismatch + last_remote_only_active
-    + CASE WHEN target = 'typesense' THEN last_remote_only_inactive ELSE 0 END,
+  last_detected,
+  last_payload_mismatch,
   last_repaired,
   last_unresolved,
   last_outcome,
@@ -604,6 +909,17 @@ SELECT
 FROM cross_store_reconciliation_state
 WHERE target = 'typesense'
 ORDER BY target;
+""".strip()
+
+RECONCILIATION_SCHEMA_SQL = """
+SELECT count(*)
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'cross_store_reconciliation_state'
+  AND column_name IN (
+    'last_detected',
+    'last_payload_mismatch'
+  );
 """.strip()
 
 BOARD_QUARANTINE_SCHEMA_SQL = """
@@ -688,6 +1004,7 @@ def _postgresql_query(container: str, sql: str, *, timeout: int = 60) -> str:
             "sh",
             "-c",
             'db="${POSTGRES_DB:-${POSTGRES_USER:-postgres}}"; '
+            "export PGAPPNAME=jobseek:host-observability; "
             'exec psql -U "${POSTGRES_USER:-postgres}" -d "$db" '
             "-XAt -F '\t' -v ON_ERROR_STOP=1 -c \"$1\"",
             "jobseek-observability",
@@ -885,15 +1202,32 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
     except ValueError as exc:
         raise ProbeError("PostgreSQL statistics query returned a non-numeric value") from exc
 
+    owner_rows = _postgresql_query(container, POSTGRES_CONNECTION_OWNERS_SQL)
+    for owner_row in owner_rows.splitlines():
+        owner_fields = owner_row.split("\t")
+        if len(owner_fields) != 3:
+            raise ProbeError("PostgreSQL connection owner query returned an unexpected shape")
+        owner, state, count = owner_fields
+        try:
+            lines.append(
+                _metric(
+                    "jobseek_postgresql_connections_by_owner",
+                    float(count),
+                    owner=owner,
+                    state=state,
+                )
+            )
+        except ValueError as exc:
+            raise ProbeError(
+                "PostgreSQL connection owner query returned a non-numeric value"
+            ) from exc
+
     _collect_board_quarantine_metrics(lines, container)
     _collect_board_gone_metrics(lines, container)
     _collect_phantom_active_metrics(lines, container)
 
-    relation = _postgresql_query(
-        container,
-        "SELECT COALESCE(to_regclass('cross_store_reconciliation_state')::text, '')",
-    )
-    schema_ready = int(relation == "cross_store_reconciliation_state")
+    schema_columns = _postgresql_query(container, RECONCILIATION_SCHEMA_SQL)
+    schema_ready = int(schema_columns == "2")
     lines.append(_metric("jobseek_cross_store_reconciliation_schema_ready", schema_ready))
     if not schema_ready:
         return
@@ -901,11 +1235,11 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
     state_rows = _postgresql_query(container, RECONCILIATION_STATS_SQL)
     for raw in state_rows.splitlines():
         fields = raw.split("\t")
-        if len(fields) != 14:
+        if len(fields) != 15:
             raise ProbeError("reconciliation state query returned an unexpected shape")
         target = fields[0]
-        outcome = fields[10]
-        numbers = (*fields[1:10], *fields[11:14])
+        outcome = fields[11]
+        numbers = (*fields[1:11], *fields[12:15])
         try:
             (
                 last_attempt,
@@ -915,6 +1249,7 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
                 local_rows,
                 remote_rows,
                 detected,
+                payload_mismatch,
                 repaired,
                 unresolved,
                 next_partition,
@@ -953,6 +1288,11 @@ def _collect_postgresql_metrics(lines: list[str], container: str = "postgres") -
                     **labels,
                 ),
                 _metric("jobseek_cross_store_reconciliation_last_detected", detected, **labels),
+                _metric(
+                    "jobseek_cross_store_reconciliation_last_payload_mismatch",
+                    payload_mismatch,
+                    **labels,
+                ),
                 _metric("jobseek_cross_store_reconciliation_last_repaired", repaired, **labels),
                 _metric(
                     "jobseek_cross_store_reconciliation_last_unresolved",
@@ -1089,6 +1429,45 @@ def _collect_typesense_metrics(
     lines.append(_metric("jobseek_typesense_healthy", int(healthy)))
     if not healthy:
         raise ProbeError("Typesense health endpoint did not report ok")
+
+
+def _collect_typesense_snapshot_staging_metrics(
+    lines: list[str], root: Path = DEFAULT_TYPESENSE_SNAPSHOT_ROOT
+) -> None:
+    if root.is_symlink() or not root.is_mount():
+        lines.extend(
+            (
+                _metric("jobseek_typesense_snapshot_mount_available", 0),
+                _metric("jobseek_typesense_snapshot_staging_capacity_bytes", 0),
+                _metric("jobseek_typesense_snapshot_staging_available_bytes", 0),
+                _metric("jobseek_typesense_snapshot_local_copies", 0),
+            )
+        )
+        return
+    usage = shutil.disk_usage(root)
+    staging_root = root / "staging"
+    local_copies = 0
+    if staging_root.exists():
+        for entry in staging_root.iterdir():
+            if entry.name == ".attempts":
+                if entry.is_symlink() or not entry.is_dir():
+                    raise ProbeError("Typesense snapshot attempts root is unsafe")
+                for child in entry.iterdir():
+                    local_copies += 1
+                    if child.is_symlink() or not child.is_dir():
+                        raise ProbeError("Typesense snapshot attempts contain an unsafe entry")
+                continue
+            local_copies += 1
+            if entry.is_symlink() or not entry.is_dir():
+                raise ProbeError("Typesense snapshot staging contains an unsafe entry")
+    lines.extend(
+        (
+            _metric("jobseek_typesense_snapshot_mount_available", 1),
+            _metric("jobseek_typesense_snapshot_staging_capacity_bytes", usage.total),
+            _metric("jobseek_typesense_snapshot_staging_available_bytes", usage.free),
+            _metric("jobseek_typesense_snapshot_local_copies", local_copies),
+        )
+    )
 
 
 def _read_loopback(url: str, *, timeout: int = 10) -> str:
@@ -1244,7 +1623,19 @@ def collect(
     if role == "postgresql":
         probes.append(("postgresql", lambda: _collect_postgresql_metrics(lines)))
     elif role == "typesense":
-        probes.append(("typesense", lambda: _collect_typesense_metrics(lines)))
+        probes.extend(
+            (
+                ("typesense", lambda: _collect_typesense_metrics(lines)),
+                (
+                    "typesense-snapshot-staging",
+                    lambda: _collect_typesense_snapshot_staging_metrics(lines),
+                ),
+                (
+                    "typesense-support-memory",
+                    lambda: _collect_typesense_support_memory_metrics(lines),
+                ),
+            )
+        )
     elif role == "crawler":
         probes.extend(
             (

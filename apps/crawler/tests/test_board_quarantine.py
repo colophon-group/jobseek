@@ -27,7 +27,12 @@ def test_five_strikes_enter_daily_capped_recoverable_quarantine() -> None:
 
     assert "is_enabled = true" in sql
     assert "THEN 'quarantined'" in sql
-    assert "'1440 minutes'" in sql
+    assert "LEAST( 5 * pow(2, LEAST(jb.consecutive_failures, 9)), 1440 )" in sql
+    assert "* interval '1 minute'" in sql
+    assert "|| ' minutes'" not in sql
+    assert "AS next_failure_count" in sql
+    assert "consecutive_failures = previous.next_failure_count" in sql
+    assert "jb.consecutive_failures + 1" not in sql
     assert "entered_quarantine" in sql
     assert "last_quarantined_at" in sql
     assert "last_quarantine_error" in sql

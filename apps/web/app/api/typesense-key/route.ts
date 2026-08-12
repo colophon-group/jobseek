@@ -21,15 +21,21 @@ export async function GET() {
 
   const userId = await getSessionUserId();
   const ttl = userId ? AUTHED_TTL_SECONDS : ANON_TTL_SECONDS;
+  const expiresAtSeconds = Math.floor(Date.now() / 1000) + ttl;
 
   // limit_hits is intentionally omitted: it counts raw hits (not grouped rows),
   // so it would block normal anon traffic that uses group_by company_id with
   // group_limit 10. Anon truncation is enforced as a soft client-side cap; the
   // Cloudflare per-IP rate-limit on typesense.colophon-group.org is the real
   // abuse brake.
-  const apiKey = generateScopedSearchKey(parentKey, { use_cache: true });
+  const apiKey = generateScopedSearchKey(parentKey, {
+    use_cache: true,
+    expires_at: expiresAtSeconds,
+  });
 
-  const expiresAt = Date.now() + ttl * 1000;
+  // Keep browser metadata on the exact signed boundary. Typesense validates
+  // expires_at as Unix seconds while the browser cache consumes milliseconds.
+  const expiresAt = expiresAtSeconds * 1000;
   const cacheControl = userId
     ? `private, max-age=${Math.floor(ttl / 2)}`
     : `public, s-maxage=${Math.floor(ttl / 2)}, max-age=0`;

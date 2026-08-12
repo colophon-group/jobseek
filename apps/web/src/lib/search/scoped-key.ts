@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
 
 export interface ScopedKeyEmbed {
+  expires_at: number;
   filter_by?: string;
   exclude_fields?: string;
   use_cache?: boolean;

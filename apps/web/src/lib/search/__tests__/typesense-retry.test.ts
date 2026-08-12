@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   isRetryableError,
+  sanitizeTypesenseBoundaryError,
   isTypesenseRateLimitError,
   isTypesenseUnavailableError,
   withTypesenseRetry,
@@ -80,6 +81,46 @@ describe("isRetryableError", () => {
     expect(isRetryableError(_httpStatus(429, "Too Many Requests"))).toBe(false);
   });
 
+  it("lets an explicit 4xx status override a retry-like wrapper message", () => {
+    expect(
+      isRetryableError(_httpStatus(429, "Service Unavailable after request retry")),
+    ).toBe(false);
+    expect(
+      isRetryableError({
+        message: "Service Unavailable",
+        response: { status: 429 },
+      }),
+    ).toBe(false);
+  });
+
+  it("ignores axios status 0 and honors its connection timeout code", () => {
+    const timeout = {
+      name: "AxiosError",
+      message: "timeout of 5000ms exceeded",
+      code: "ECONNABORTED",
+      status: 0,
+      response: { status: 0 },
+      config: {
+        headers: { "X-TYPESENSE-API-KEY": "SECRET_CANARY_STATUS_ZERO" },
+      },
+    };
+
+    expect(isRetryableError(timeout)).toBe(true);
+    expect(isTypesenseUnavailableError(timeout)).toBe(true);
+  });
+
+  it("keeps a real 429 authoritative over a connection-looking wrapper", () => {
+    const rateLimited = {
+      code: "ECONNABORTED",
+      status: 0,
+      response: { status: 429 },
+      cause: new Error("request timed out"),
+    };
+
+    expect(isRetryableError(rateLimited)).toBe(false);
+    expect(isTypesenseUnavailableError(rateLimited)).toBe(false);
+  });
+
   it("does NOT match arbitrary errors", () => {
     expect(isRetryableError(new Error("collection 'job_posting' has 0 fields"))).toBe(false);
     expect(isRetryableError(new Error("invalid filter expression"))).toBe(false);
@@ -115,9 +156,77 @@ describe("isTypesenseUnavailableError", () => {
     expect(isTypesenseUnavailableError(new Error("TYPESENSE_SEARCH_KEY is not set"))).toBe(true);
   });
 
+  it("recognizes retryable statuses nested on SDK response objects", () => {
+    expect(
+      isTypesenseUnavailableError({
+        response: { status: 503 },
+      }),
+    ).toBe(true);
+    expect(isTypesenseUnavailableError({ cause: { statusCode: 504 } })).toBe(true);
+    expect(isTypesenseUnavailableError({ response: { status: 429 } })).toBe(false);
+  });
+
   it("does NOT classify HTTP 429 as unavailable", () => {
     expect(isTypesenseUnavailableError(_httpStatus(429, "Too Many Requests"))).toBe(false);
     expect(isTypesenseUnavailableError(new Error("Request failed with HTTP code 429"))).toBe(false);
+    expect(
+      isTypesenseUnavailableError({
+        message: "Service Unavailable",
+        response: { status: 429 },
+        cause: new Error("request timed out"),
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("sanitizeTypesenseBoundaryError", () => {
+  it("keeps only classification fields from a credentialed axios timeout", () => {
+    const raw = {
+      message: "timeout of 5000ms exceeded SECRET_CANARY_MESSAGE",
+      code: "ECONNABORTED",
+      status: 0,
+      config: {
+        headers: { "X-TYPESENSE-API-KEY": "SECRET_CANARY_HEADER" },
+      },
+      request: { responseURL: "https://SECRET_CANARY_URL.example" },
+    };
+
+    const sanitized = sanitizeTypesenseBoundaryError(raw) as Error & {
+      code?: string;
+      httpStatus?: number;
+    };
+
+    expect(sanitized).not.toBe(raw);
+    expect(sanitized.message).toBe("Typesense request failed");
+    expect(sanitized.code).toBe("ECONNABORTED");
+    expect(sanitized.httpStatus).toBeUndefined();
+    expect(sanitized).not.toHaveProperty("config");
+    expect(sanitized).not.toHaveProperty("request");
+    expect(JSON.stringify(sanitized)).not.toContain("SECRET_CANARY");
+    expect(isTypesenseUnavailableError(sanitized)).toBe(true);
+  });
+
+  it("preserves message-only outage classification without preserving its message", () => {
+    const sanitized = sanitizeTypesenseBoundaryError(
+      new Error("Network Error SECRET_CANARY_MESSAGE_ONLY"),
+    ) as Error & { typesenseUnavailable?: true };
+
+    expect(sanitized.typesenseUnavailable).toBe(true);
+    expect(sanitized.message).toBe("Typesense request failed");
+    expect(isTypesenseUnavailableError(sanitized)).toBe(true);
+    expect(JSON.stringify(sanitized)).not.toContain("SECRET_CANARY");
+  });
+
+  it("retains a real HTTP status without copying raw response state", () => {
+    const sanitized = sanitizeTypesenseBoundaryError({
+      code: "ECONNABORTED",
+      response: { status: 429, data: "SECRET_CANARY_BODY" },
+    }) as Error & { code?: string; httpStatus?: number };
+
+    expect(sanitized.httpStatus).toBe(429);
+    expect(sanitized.code).toBe("ECONNABORTED");
+    expect(isTypesenseUnavailableError(sanitized)).toBe(false);
+    expect(JSON.stringify(sanitized)).not.toContain("SECRET_CANARY");
   });
 });
 

@@ -75,3 +75,55 @@ test("docs README and ADR relative markdown links resolve", () => {
     }
   }
 });
+
+test("production Codex guidance rejects sunset desktop scheduler deployment", () => {
+  const guidancePaths = [
+    "AGENTS.md",
+    "docs/00-overview.md",
+    "docs/01-agent-workflow.md",
+    "docs/16-hetzner-maintenance.md",
+    "docs/18-codex-automation-deployment.md",
+    "docs/README.md",
+  ];
+  const forbidden = [
+    /automation\.toml/i,
+    /Codex app automation/i,
+    /active automation registry/i,
+    /desktop automation records?[^.\n]*paused/i,
+  ];
+
+  for (const guidancePath of guidancePaths) {
+    const source = readFileSync(guidancePath, "utf8");
+    for (const pattern of forbidden) {
+      assert.doesNotMatch(
+        source,
+        pattern,
+        `${guidancePath} must not contain deployable desktop scheduler guidance`,
+      );
+    }
+  }
+
+  const runbook = readFileSync(
+    "docs/18-codex-automation-deployment.md",
+    "utf8",
+  );
+  for (const unit of [
+    "jobseek-codex-governor.timer",
+    "jobseek-codex-daily-annotations.timer",
+    "jobseek-codex-daily-error-review.timer",
+    "jobseek-codex-docker-lifecycle.service",
+  ]) {
+    assert.ok(runbook.includes(`\`${unit}\``), `runner inventory lists ${unit}`);
+  }
+  for (const legacyName of [
+    "jobseek-company-request-resolver",
+    "jobseek-daily-classifications",
+    "jobseek-daily-error-review",
+  ]) {
+    assert.ok(
+      runbook.includes(`\`${legacyName}\``),
+      `sunset note lists ${legacyName}`,
+    );
+  }
+  assert.match(runbook, /must remain absent/i);
+});

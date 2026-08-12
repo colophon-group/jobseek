@@ -89,6 +89,35 @@ FIXTURE_HTML = """
 
 
 class TestDomScraper:
+    def test_parse_html_applies_defaults_only_to_missing_fields(self):
+        from src.core.scrapers.dom import parse_html
+
+        result = parse_html(
+            "<html><body><h1>Sales Assistant</h1></body></html>",
+            {
+                "steps": [{"tag": "h1", "field": "title"}],
+                "defaults": {
+                    "title": "Fallback title",
+                    "locations": ["Malta"],
+                },
+            },
+        )
+
+        assert result.title == "Sales Assistant"
+        assert result.locations == ["Malta"]
+
+    def test_parse_html_rejects_non_object_defaults(self):
+        from src.core.scrapers.dom import parse_html
+
+        with pytest.raises(ValueError, match="defaults must be an object"):
+            parse_html(
+                "<html><body><h1>Sales Assistant</h1></body></html>",
+                {
+                    "steps": [{"tag": "h1", "field": "title"}],
+                    "defaults": ["Malta"],
+                },
+            )
+
     def test_kontact_probe_builds_clean_extraction_config(self):
         from src.core.scrapers.dom import can_handle, parse_html
 

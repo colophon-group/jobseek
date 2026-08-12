@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { cacheLife, cacheTag } from "next/cache";
+import { notFound } from "next/navigation";
 import {
   isLocale,
   defaultLocale,
@@ -16,6 +17,7 @@ import {
   getWatchlistMatchingCompanyCount,
 } from "@/lib/actions/watchlists";
 import { isQualifyingWatchlist } from "@/lib/watchlist-utils";
+import { isPlausiblePublicWatchlistPath } from "@/lib/public-watchlist-path";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, buildWatchlistItemListJsonLd, JsonLd } from "@/lib/seo";
 import {
@@ -46,6 +48,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   "use cache";
   cacheLife({ revalidate: CACHE_TTL_LONG });
   const { userSlug, watchlistSlug, lang } = await params;
+  // This broad dynamic route also matches exploit probes such as
+  // `/en/wp-admin/install.php`. Reject impossible persisted slugs before
+  // cache tags or external reads; the page body turns the same shape into a
+  // real 404 (#6615).
+  if (!isPlausiblePublicWatchlistPath(userSlug, watchlistSlug)) {
+    notFound();
+  }
   cacheTag(watchlistCacheTag(userSlug, watchlistSlug));
   const locale = isLocale(lang) ? lang : defaultLocale;
   const [detail, { i18n }] = await Promise.all([
@@ -130,6 +139,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const path = `/${userSlug}/${watchlistSlug}`;
+  const ogImageUrl = `${siteConfig.url}/og/watchlist/${locale}/${encodeURIComponent(userSlug)}/${encodeURIComponent(watchlistSlug)}`;
   // Mirror the sitemap quality gate (#2823): if the watchlist wouldn't
   // be in the sitemap, also `noindex,follow` it on direct discovery
   // (someone shares the link, Google crawls it). Predicate lives in
@@ -145,9 +155,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: buildAlternates(path, locale),
-    // No `images` override — the per-watchlist `opengraph-image.tsx`
-    // sibling generates richer cards (title + owner + company count +
-    // filter count). Setting `images` here would bypass it.
+    // The rich watchlist card remains dynamic because owners can make a
+    // watchlist private, but its renderer lives on a separate route so the
+    // Satori/Resvg payload is absent from the ordinary page Function trace.
     openGraph: {
       title,
       description,
@@ -155,6 +165,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: "website",
       locale: ogLocale(locale),
       alternateLocale: ogAlternateLocales(locale),
+      images: [{
+        url: ogImageUrl,
+        width: 1200,
+        height: 630,
+        alt: title,
+      }],
     },
     ...(!indexable && { robots: { index: false, follow: true } }),
   };
@@ -225,6 +241,7 @@ async function WatchlistRuntimeContent({
 
 export default async function WatchlistRoute({ params }: Props) {
   const { lang, userSlug, watchlistSlug } = await params;
+  if (!isPlausiblePublicWatchlistPath(userSlug, watchlistSlug)) notFound();
   const locale = isLocale(lang) ? lang : defaultLocale;
   const snapshot = await getWatchlistRouteSnapshot(
     locale,

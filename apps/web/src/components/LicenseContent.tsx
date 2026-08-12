@@ -25,7 +25,7 @@ export function LicenseContent() {
   ];
 
   return (
-    <main className="py-12 md:py-20">
+    <main id="main-content" tabIndex={-1} className="scroll-mt-12 py-12 md:py-20">
       <div className="mx-auto max-w-[1200px] px-4">
         <div className="flex flex-col items-start gap-12 lg:flex-row lg:gap-20">
           <div className="flex flex-1 flex-col gap-12 md:gap-16">

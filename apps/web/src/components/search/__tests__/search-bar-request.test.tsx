@@ -25,6 +25,7 @@ vi.mock("next/navigation", () => ({
 
 // Server actions / typeahead runners — controlled per test.
 const suggestCompaniesMock = vi.fn();
+const suggestSearchBarMock = vi.fn();
 vi.mock("@/lib/actions/company", async () => {
   const actual =
     await vi.importActual<typeof import("@/lib/actions/company")>(
@@ -37,10 +38,7 @@ vi.mock("@/lib/actions/company", async () => {
 });
 
 vi.mock("@/lib/search/typeahead-runner", () => ({
-  runSuggestLocations: vi.fn(async () => []),
-  runSuggestOccupations: vi.fn(async () => []),
-  runSuggestSeniorities: vi.fn(async () => []),
-  runSuggestTechnologies: vi.fn(async () => []),
+  runSearchBarTypeahead: (...args: unknown[]) => suggestSearchBarMock(...args),
 }));
 
 // `parseSearchFilters` is a server action — only used on the keyword
@@ -64,6 +62,13 @@ import { SearchBar } from "../search-bar";
 beforeEach(() => {
   pushMock.mockReset();
   suggestCompaniesMock.mockReset();
+  suggestSearchBarMock.mockImplementation(async (params: { query: string }) => ({
+    locations: [],
+    companies: await suggestCompaniesMock({ query: params.query }),
+    occupations: [],
+    seniorities: [],
+    technologies: [],
+  }));
   currentPathname = "/en";
 });
 

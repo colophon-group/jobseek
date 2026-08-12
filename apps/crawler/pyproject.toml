@@ -59,6 +59,10 @@ packages = ["src"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 timeout = 30
+filterwarnings = [
+    "error::RuntimeWarning",
+    "error::pytest.PytestUnraisableExceptionWarning",
+]
 
 [tool.ruff]
 target-version = "py313"

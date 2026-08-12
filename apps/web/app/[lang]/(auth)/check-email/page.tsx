@@ -71,33 +71,35 @@ export default function CheckEmailPage() {
     setCooldown(COOLDOWN_SECONDS);
   }, [email, lp, t]);
 
-  if (!email) return null;
-
   return (
     <div className="text-center">
       <Mail className="mx-auto mb-4 size-10 text-muted" />
-      <h2 className="text-xl font-bold">
+      <h1 className="text-xl font-bold">
         <Trans id="auth.verify.checkEmail.title" comment="Heading after sign-up telling user to check email">
           Check your email
         </Trans>
-      </h2>
-      <p className="mt-2 text-sm text-muted">
-        <Trans id="auth.verify.checkEmail.description" comment="Description telling user a verification link was sent">
-          We sent a verification link to <strong>{email}</strong>. Click the link to verify your account. It may take a few minutes to arrive.
-        </Trans>
-      </p>
-      <button
-        type="button"
-        onClick={handleResend}
-        disabled={resending || cooldown > 0}
-        className="mt-4 text-sm font-semibold transition-colors hover:text-muted disabled:opacity-50 cursor-pointer"
-      >
-        {resending
-          ? t({ id: "auth.verify.resending", comment: "Resend button while sending", message: "Sending..." })
-          : cooldown > 0
-            ? t({ id: "auth.verify.cooldown", comment: "Resend button during cooldown with seconds remaining", message: `Resend in ${cooldown}s` })
-            : t({ id: "auth.verify.resend", comment: "Button to resend verification email", message: "Resend verification email" })}
-      </button>
+      </h1>
+      {email && (
+        <>
+          <p className="mt-2 text-sm text-muted">
+            <Trans id="auth.verify.checkEmail.description" comment="Description telling user a verification link was sent">
+              We sent a verification link to <strong>{email}</strong>. Click the link to verify your account. It may take a few minutes to arrive.
+            </Trans>
+          </p>
+          <button
+            type="button"
+            onClick={handleResend}
+            disabled={resending || cooldown > 0}
+            className="mt-4 cursor-pointer text-sm font-semibold transition-colors hover:text-muted disabled:opacity-50"
+          >
+            {resending
+              ? t({ id: "auth.verify.resending", comment: "Resend button while sending", message: "Sending..." })
+              : cooldown > 0
+                ? t({ id: "auth.verify.cooldown", comment: "Resend button during cooldown with seconds remaining", message: `Resend in ${cooldown}s` })
+                : t({ id: "auth.verify.resend", comment: "Button to resend verification email", message: "Resend verification email" })}
+          </button>
+        </>
+      )}
       <ErrorAlert message={error} focusOnRender />
     </div>
   );

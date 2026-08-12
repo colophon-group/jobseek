@@ -1205,7 +1205,7 @@ async def _discover_live_url(
     """
     from fnmatch import fnmatch
 
-    from src.shared.browser import navigate
+    from src.shared.browser import BrowserNavigationHTTPStatusError, navigate
 
     live_response = None  # Playwright Response object
 
@@ -1237,6 +1237,8 @@ async def _discover_live_url(
 
     try:
         await navigate(page, board_url, {"wait": wait, "timeout": timeout})
+    except BrowserNavigationHTTPStatusError:
+        raise
     except Exception:
         log.warning("api_sniffer.navigation_failed", board_url=board_url, exc_info=True)
     await asyncio.sleep(settle)
@@ -1279,7 +1281,12 @@ async def _discover_replay(
     ``user_agent``) are forwarded to Playwright.
     """
     from src.shared.api_sniff import ArrayCandidate, Exchange, JobListResult, PaginationInfo
-    from src.shared.browser import BROWSER_KEYS, navigate, open_page
+    from src.shared.browser import (
+        BROWSER_KEYS,
+        BrowserNavigationHTTPStatusError,
+        navigate,
+        open_page,
+    )
 
     api_url = config["api_url"]
     params = config.get("params")
@@ -1328,6 +1335,8 @@ async def _discover_replay(
             nav_exchanges = await capture_exchanges(page, api_parsed.netloc)
             try:
                 await navigate(page, board_url, {"wait": wait, "timeout": timeout})
+            except BrowserNavigationHTTPStatusError:
+                raise
             except Exception:
                 log.warning("api_sniffer.navigation_failed", board_url=board_url, exc_info=True)
             await asyncio.sleep(settle)
@@ -1585,7 +1594,13 @@ async def _discover_auto(
     pw,
 ) -> list[DiscoveredJob] | set[str] | MonitorResult:
     """Full auto-discover: capture exchanges, detect, paginate."""
-    from src.shared.browser import BROWSER_KEYS, dismiss_overlays, navigate, open_page
+    from src.shared.browser import (
+        BROWSER_KEYS,
+        BrowserNavigationHTTPStatusError,
+        dismiss_overlays,
+        navigate,
+        open_page,
+    )
 
     fields_map: dict[str, str] = config.get("fields") or {}
 
@@ -1601,6 +1616,8 @@ async def _discover_auto(
 
         try:
             await navigate(page, board_url, {"wait": wait, "timeout": timeout})
+        except BrowserNavigationHTTPStatusError:
+            raise
         except Exception:
             log.warning("api_sniffer.navigation_failed", board_url=board_url, exc_info=True)
 

@@ -14,6 +14,25 @@ msgstr ""
 "Plural-Forms: \n"
 "X-Generator: @lingui/cli\n"
 
+#. Accessible label for job search scoped to one company
+#. js-lingui-explicit-id
+#. placeholder {0}: company.name
+#: app/[lang]/(app)/company/[slug]/company-page.tsx
+msgid "company.page.searchLabel"
+msgstr "Search jobs at {0}"
+
+#. Accessible label for the main job search input
+#. js-lingui-explicit-id
+#: src/components/search/search-bar.tsx
+msgid "search.bar.label"
+msgstr "Search jobs"
+
+#. Accessible label for public watchlist search input
+#. js-lingui-explicit-id
+#: src/components/watchlist/public-watchlist-search.tsx
+msgid "watchlists.explore.searchLabel"
+msgstr "Search public watchlists"
+
 #. js-lingui-explicit-id
 #: app/[lang]/(public)/faq/page.tsx:47
 #~ msgid "faq.a.whichAts"
@@ -68,12 +87,6 @@ msgstr "{count, plural, one {# open position} other {# open positions}}"
 #: src/components/company/similar-company-card.tsx:42
 msgid "company.similar.positionCount"
 msgstr "{count, plural, one {# open position} other {# open positions}}"
-
-#. Stat label on a WatchlistCard mention card — pluralized 'active job' / 'active jobs'. {count} is the integer count.
-#. js-lingui-explicit-id
-#: src/components/blog/MdxMentions.tsx:358
-msgid "blog.mention.watchlist.activeJobsLabel"
-msgstr "{count, plural, one {active job} other {active jobs}}"
 
 #. Stat label on a CompanyCard mention card — pluralized 'active posting' / 'active postings'. {count} is the integer count.
 #. js-lingui-explicit-id
@@ -1889,12 +1902,6 @@ msgstr "If you notice unusual crawler behaviour, prefer that we do not index you
 #: app/[lang]/(app)/[userSlug]/[watchlistSlug]/page.tsx:80
 msgid "watchlist.meta.inLocations"
 msgstr "in {locations}"
-
-#. Stat label on a WatchlistCard mention card — 'in the past year' (year-to-date jobs counted by the watchlist filters)
-#. js-lingui-explicit-id
-#: src/components/blog/MdxMentions.tsx:369
-msgid "blog.mention.watchlist.yearJobsLabel"
-msgstr "in the past year"
 
 #. Tooltip on a disabled filter pill explaining the row is implied by an already-selected ancestor (e.g. 'Included in European Union' when EU is selected).
 #. js-lingui-explicit-id
@@ -4217,12 +4224,6 @@ msgstr "Terms of Service"
 msgid "terms.meta.description"
 msgstr "Terms of Service for Job Seek — usage rules, intellectual property, account responsibilities, limitation of liability, and governing law for the job search platform."
 
-#. Body text shown when a company page slug does not exist
-#. js-lingui-explicit-id
-#: app/[lang]/(app)/company/[slug]/page.tsx:102
-msgid "company.notFound.message"
-msgstr "The company you are looking for does not exist or has been removed."
-
 #. Body text for the company-not-found page; explains the company is either gone or never existed
 #. js-lingui-explicit-id
 #: app/[lang]/(app)/company/[slug]/company-content.tsx:59
@@ -5123,3 +5124,15 @@ msgstr "Interview deleted."
 #: src/components/my-jobs/interview-list.tsx
 msgid "myJobs.interview.deleteError"
 msgstr "Couldn't delete the interview. Try again."
+
+#. Accessible heading shown when live Explore job results are unavailable and repository-owned company profile links are shown instead
+#. js-lingui-explicit-id
+#: src/components/search/explore-repository-fallback.tsx
+msgid "explore.fallback.heading"
+msgstr "Live job results are temporarily unavailable."
+
+#. Try-again guidance shown above company profile links when live Explore job results are unavailable
+#. js-lingui-explicit-id
+#: src/components/search/explore-repository-fallback.tsx
+msgid "explore.fallback.body"
+msgstr "Try refreshing the page. In the meantime, you can explore these company profiles."

@@ -110,7 +110,9 @@ def test_operation_attests_exact_deployment_image_and_credentials_without_exposi
     assert "LOCAL_DATABASE_URL" in repair
     assert "WEB_DATABASE_URL" in repair
     assert "DATABASE_URL_UNPOOLED" in repair
-    assert 'test "$(wc -l < "$RUNTIME_ENV")" -eq 2' in repair
+    assert 'test "$(wc -l < "$RUNTIME_ENV")" -eq 6' in repair
+    assert "CRAWLER_DB_ROLE=location-taxonomy-repair" in repair
+    assert "CRAWLER_DB_POOL_MAX=4" in repair
     assert "postgres(ql)?://|password=" in repair
     assert "Repair output violated the nonsecret evidence contract" in repair
     assert "${{ secrets.DATABASE_URL" not in workflow

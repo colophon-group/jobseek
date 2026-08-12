@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { getLanguage } from "@/lib/job-languages";
 
@@ -13,9 +12,7 @@ interface LanguageNoteProps {
 
 export function LanguageNote({ jobLanguages, locale }: LanguageNoteProps) {
   const { t } = useLingui();
-  const params = useParams();
-  const lang = (params.lang as string) ?? locale;
-  const settingsHref = `/${lang}/settings`;
+  const settingsHref = `/${locale}/settings`;
 
   const isAll = jobLanguages.includes("*");
   const isDefault = jobLanguages.length === 0;

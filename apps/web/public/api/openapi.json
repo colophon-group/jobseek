@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Job Seek API",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Public API for AI agents to search jobs, companies, watchlists, and taxonomies on jseek.co. Rate limited to 30 requests per minute per IP.\n\nIMPORTANT: Filter parameters (loc, occ, sen, tech) require exact slugs, NOT freetext. Use /api/v1/resolve to convert freetext to slugs first, or /api/v1/taxonomies to list all valid slugs. Passing freetext like loc=Zurich will NOT work — use loc=zurich (the slug)."
   },
   "servers": [{ "url": "https://jseek.co" }],
@@ -11,18 +11,18 @@
       "get": {
         "operationId": "searchJobs",
         "summary": "Search jobs across companies",
-        "description": "Returns up to 5 companies with their top 3 job postings matching the filters. Only 'q' accepts freetext. All other filter params (loc, occ, sen, tech) require exact slugs — use /api/v1/resolve to convert freetext to slugs first.\n\nUI ``locale`` (response labels) is distinct from ``lang`` (job document language). Omitting ``lang`` returns postings in any language — pass ``lang=en`` (or a comma-separated list) to filter to specific posting languages.",
+        "description": "Returns up to 5 companies with their top 3 job postings matching the filters. Only 'q' accepts freetext. Slug filters (loc, occ, sen, tech) require exact slugs — use /api/v1/resolve to convert freetext to slugs first.\n\nUI ``locale`` (response labels) is distinct from ``lang`` (job document language). Omitting ``lang`` returns postings in any language — pass ``lang=en`` (or a comma-separated list) to filter to specific posting languages. Unsupported locale, language, enum, slug, and range values return HTTP 400 with an ``{\"error\": string}`` body. Provider failures use HTTP 500 and never include provider details.",
         "parameters": [
           { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "Keywords (free text search)" },
           { "name": "loc", "in": "query", "schema": { "type": "string" }, "description": "Location slugs, comma-separated (exact slugs only, use /resolve to look up)" },
           { "name": "occ", "in": "query", "schema": { "type": "string" }, "description": "Occupation slugs, comma-separated (exact slugs only, use /resolve to look up)" },
           { "name": "sen", "in": "query", "schema": { "type": "string" }, "description": "Seniority slugs, comma-separated (exact slugs only, use /resolve to look up)" },
           { "name": "tech", "in": "query", "schema": { "type": "string" }, "description": "Technology slugs, comma-separated (exact slugs only, use /resolve to look up)" },
-          { "name": "wm", "in": "query", "schema": { "type": "string", "enum": ["onsite", "hybrid", "remote"] }, "description": "Work-mode filter (single value)" },
-          { "name": "sal", "in": "query", "schema": { "type": "string" }, "description": "Salary range in EUR, format: min-max (e.g. 80000-150000)" },
-          { "name": "salcur", "in": "query", "schema": { "type": "string" }, "description": "Salary currency code (e.g. USD, EUR)" },
-          { "name": "exp", "in": "query", "schema": { "type": "string" }, "description": "Experience range in years, format: min-max (e.g. 3-10)" },
-          { "name": "lang", "in": "query", "schema": { "type": "string" }, "description": "Job document language filter (comma-separated codes — en, de, fr, it). Distinct from ``locale`` (which controls response labels/currency formatting). Omit to return postings in any language; the API does not fall back to a cookie or to ``locale`` (public APIs are stateless)." },
+          { "name": "wm", "in": "query", "style": "form", "explode": false, "schema": { "type": "array", "items": { "type": "string", "enum": ["onsite", "hybrid", "remote"] } }, "description": "Work modes, comma-separated. Unsupported values return HTTP 400." },
+          { "name": "etype", "in": "query", "style": "form", "explode": false, "schema": { "type": "array", "items": { "type": "string", "enum": ["full_time", "part_time", "contract", "internship", "temporary", "volunteer"] } }, "description": "Employment types, comma-separated. Unsupported values return HTTP 400." },
+          { "name": "sal", "in": "query", "schema": { "type": "string", "pattern": "^\\s*(?:\\d+\\s*-\\s*\\d+|\\d+\\s*-\\s*|-\\s*\\d+)\\s*$", "examples": ["80000-150000", "80000-", "-150000"] }, "description": "Salary range in EUR with non-negative integer bounds. Closed (min-max) and one-sided open ranges (min- or -max) are accepted; at least one bound is required. Omit the parameter for no salary bound." },
+          { "name": "exp", "in": "query", "schema": { "type": "string", "pattern": "^\\s*(?:\\d+\\s*-\\s*\\d+|\\d+\\s*-\\s*|-\\s*\\d+)\\s*$", "examples": ["3-10", "3-", "-10"] }, "description": "Experience range in years with non-negative integer bounds. Closed (min-max) and one-sided open ranges (min- or -max) are accepted; at least one bound is required. Omit the parameter for no experience bound." },
+          { "name": "lang", "in": "query", "style": "form", "explode": false, "schema": { "type": "array", "items": { "type": "string", "enum": ["en", "de", "fr", "it"] } }, "description": "Job document language filter (comma-separated codes). Distinct from ``locale`` (which controls response labels/currency formatting). Omit to return postings in any language; the API does not fall back to a cookie or to ``locale`` (public APIs are stateless)." },
           { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en", "enum": ["en", "de", "fr", "it"] }, "description": "UI locale for response labels and currency formatting (en, de, fr, it). Does NOT filter postings by document language — use ``lang`` for that." }
         ],
         "responses": {
@@ -59,13 +59,108 @@
                       }
                     },
                     "totalCompanies": { "type": "integer" },
-                    "moreAt": { "type": "string", "description": "Link to full results on jseek.co" }
+                    "moreAt": { "type": "string", "description": "Link to the equivalent full result set on jseek.co. When ``lang`` is omitted, the link carries the UI's ``*`` sentinel to preserve the API's all-language default." }
                   }
                 }
               }
             }
           },
-          "429": { "description": "Rate limit exceeded" }
+          "400": {
+            "description": "Malformed or unsupported search parameter. The response is not cacheable.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Always ``no-store`` for error responses.",
+                "schema": { "type": "string", "const": "no-store" }
+              },
+              "Access-Control-Allow-Origin": {
+                "description": "Cross-origin access is permitted for public API clients.",
+                "schema": { "type": "string", "const": "*" }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Request limit when the rate-limit backend is available.",
+                "schema": { "type": "integer" }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Remaining requests when the rate-limit backend is available.",
+                "schema": { "type": "integer" }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Rate-limit reset time in Unix milliseconds when the backend is available.",
+                "schema": { "type": "integer" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Search provider failure. The message is user-safe and contains no provider detail.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Always ``no-store`` for error responses.",
+                "schema": { "type": "string", "const": "no-store" }
+              },
+              "Access-Control-Allow-Origin": {
+                "description": "Cross-origin access is permitted for public API clients.",
+                "schema": { "type": "string", "const": "*" }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Request limit when the rate-limit backend is available.",
+                "schema": { "type": "integer" }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Remaining requests when the rate-limit backend is available.",
+                "schema": { "type": "integer" }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Rate-limit reset time in Unix milliseconds when the backend is available.",
+                "schema": { "type": "integer" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "error": "Search service unavailable" }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. The response is not cacheable.",
+            "headers": {
+              "Cache-Control": {
+                "description": "Always ``no-store`` for rate-limit responses.",
+                "schema": { "type": "string", "const": "no-store" }
+              },
+              "Access-Control-Allow-Origin": {
+                "description": "Cross-origin access is permitted for public API clients.",
+                "schema": { "type": "string", "const": "*" }
+              },
+              "Retry-After": {
+                "description": "Seconds until the client may retry.",
+                "schema": { "type": "integer", "minimum": 1 }
+              },
+              "X-RateLimit-Limit": {
+                "description": "Request limit for the current window.",
+                "schema": { "type": "integer" }
+              },
+              "X-RateLimit-Remaining": {
+                "description": "Remaining requests; always zero for this response.",
+                "schema": { "type": "integer", "const": 0 }
+              },
+              "X-RateLimit-Reset": {
+                "description": "Rate-limit reset time in Unix milliseconds.",
+                "schema": { "type": "integer" }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": { "error": "Too many requests" }
+              }
+            }
+          }
         }
       }
     },
@@ -76,7 +171,7 @@
         "description": "Returns structured metadata for a single job posting: salary, technologies, seniority, experience, locations. Does not include the job description text — visit the returned URL on jseek.co to read the full posting.",
         "parameters": [
           { "name": "id", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Job posting UUID (from search results topPostings[].id)" },
-          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en" }, "description": "Response language (en, de, fr, it)" }
+          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en", "enum": ["en", "de", "fr", "it"] }, "description": "Response language (en, de, fr, it)" }
         ],
         "responses": {
           "200": {
@@ -152,7 +247,7 @@
               }
             }
           },
-          "400": { "description": "Missing required parameter: id" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
           "404": { "description": "Job posting not found" },
           "429": { "description": "Rate limit exceeded" }
         }
@@ -165,7 +260,7 @@
         "description": "Returns all valid slugs for a taxonomy type. Use these exact slugs in filter params. For locations, use /api/v1/resolve instead (too many to enumerate).",
         "parameters": [
           { "name": "type", "in": "query", "required": true, "schema": { "type": "string", "enum": ["seniority", "occupations", "technologies", "industries"] } },
-          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en" } }
+          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en", "enum": ["en", "de", "fr", "it"] } }
         ],
         "responses": {
           "200": {
@@ -181,7 +276,8 @@
                 }
               }
             }
-          }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
         }
       }
     },
@@ -192,7 +288,7 @@
         "description": "Returns up to 10 companies matching the query. Use company slugs in watchlist creation.",
         "parameters": [
           { "name": "q", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Company name query (min 2 chars)" },
-          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en" } }
+          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en", "enum": ["en", "de", "fr", "it"] } }
         ],
         "responses": {
           "200": {
@@ -218,7 +314,8 @@
                 }
               }
             }
-          }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
         }
       }
     },
@@ -229,7 +326,7 @@
         "description": "Returns up to 10 public watchlists. Without query, returns most popular.",
         "parameters": [
           { "name": "q", "in": "query", "schema": { "type": "string" }, "description": "Search query for watchlist title/description" },
-          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en" } }
+          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en", "enum": ["en", "de", "fr", "it"] } }
         ],
         "responses": {
           "200": {
@@ -256,7 +353,8 @@
                 }
               }
             }
-          }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
         }
       }
     },
@@ -264,7 +362,7 @@
       "get": {
         "operationId": "createWatchlistLink",
         "summary": "Generate a prefilled watchlist creation link",
-        "description": "Returns a URL that opens the watchlist creation page with filters, title, and description prefilled. The user must log in to save. Also returns a preview with matching job/company counts so the agent can verify the filters are useful before handing off.",
+        "description": "Returns a URL that opens the watchlist creation page with filters, title, and description prefilled. The user must log in to save. Also returns a preview with matching job/company counts so the agent can verify the filters are useful before handing off. Unsupported locale, enum, and exact-slug values return HTTP 400.",
         "parameters": [
           { "name": "title", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Watchlist title" },
           { "name": "description", "in": "query", "schema": { "type": "string" }, "description": "Watchlist description" },
@@ -273,11 +371,13 @@
           { "name": "occ", "in": "query", "schema": { "type": "string" } },
           { "name": "sen", "in": "query", "schema": { "type": "string" } },
           { "name": "tech", "in": "query", "schema": { "type": "string" } },
+          { "name": "wm", "in": "query", "style": "form", "explode": false, "schema": { "type": "array", "items": { "type": "string", "enum": ["onsite", "hybrid", "remote"] } }, "description": "Work modes, comma-separated" },
+          { "name": "etype", "in": "query", "style": "form", "explode": false, "schema": { "type": "array", "items": { "type": "string", "enum": ["full_time", "part_time", "contract", "internship", "temporary", "volunteer"] } }, "description": "Employment types, comma-separated" },
           { "name": "sal", "in": "query", "schema": { "type": "string" } },
           { "name": "salcur", "in": "query", "schema": { "type": "string" } },
           { "name": "exp", "in": "query", "schema": { "type": "string" } },
           { "name": "companies", "in": "query", "schema": { "type": "string" }, "description": "Company slugs, comma-separated" },
-          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en" } }
+          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en", "enum": ["en", "de", "fr", "it"] } }
         ],
         "responses": {
           "200": {
@@ -301,7 +401,8 @@
                 }
               }
             }
-          }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
         }
       }
     },
@@ -313,7 +414,7 @@
         "parameters": [
           { "name": "type", "in": "query", "required": true, "schema": { "type": "string", "enum": ["locations", "occupations", "seniority", "technologies", "industries"] }, "description": "Which taxonomy to search" },
           { "name": "q", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Freetext query (min 2 chars)" },
-          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en" }, "description": "Response language" }
+          { "name": "locale", "in": "query", "schema": { "type": "string", "default": "en", "enum": ["en", "de", "fr", "it"] }, "description": "Response language" }
         ],
         "responses": {
           "200": {
@@ -342,7 +443,30 @@
                 }
               }
             }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "BadRequest": {
+        "description": "A required parameter is missing or a parameter value is unsupported. The response is not cacheable.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
           }
+        }
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["error"],
+        "properties": {
+          "error": { "type": "string" }
         }
       }
     }

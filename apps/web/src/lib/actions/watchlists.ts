@@ -21,6 +21,12 @@ export async function createWatchlist(
   return service.createWatchlist(...args);
 }
 
+export async function createWatchlistFromHandoff(
+  ...args: Parameters<typeof service.createWatchlistFromHandoff>
+): ReturnType<typeof service.createWatchlistFromHandoff> {
+  return service.createWatchlistFromHandoff(...args);
+}
+
 export async function updateWatchlist(
   ...args: Parameters<typeof service.updateWatchlist>
 ): ReturnType<typeof service.updateWatchlist> {

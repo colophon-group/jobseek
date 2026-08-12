@@ -145,6 +145,8 @@ printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
 function runDispatchCompanyProductionSync({
   defaultBranch = "main",
   includeDefaultBranch = true,
+  prewarmSha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  watchStatus = 0,
 } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "dispatch-company-sync-"));
   const log = join(dir, "gh.log");
@@ -154,6 +156,11 @@ function runDispatchCompanyProductionSync({
     `#!/usr/bin/env bash
 set -euo pipefail
 printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
+if [[ "$1 $2" == "run list" ]]; then
+  printf '4242\\t%s\\n' "$MOCK_PREWARM_SHA"
+elif [[ "$1 $2" == "run watch" ]]; then
+  exit "$MOCK_WATCH_STATUS"
+fi
 `,
   );
   chmodSync(gh, 0o755);
@@ -164,6 +171,8 @@ printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
     REPO: "colophon-group/jobseek",
     PR: "123",
     MOCK_GH_LOG: log,
+    MOCK_PREWARM_SHA: prewarmSha,
+    MOCK_WATCH_STATUS: String(watchStatus),
   };
   if (includeDefaultBranch) env.DEFAULT_BRANCH = defaultBranch;
   const result = spawnSync(
@@ -405,6 +414,11 @@ test("PR-only CI gates cover pull requests and dispatched PRs", () => {
 });
 
 test("workflow-security runs repository script tests", () => {
+  assert.match(workflow, /name: Test observability rollback retention/);
+  assert.match(
+    workflow,
+    /python3 deploy\/observability\/test_prune_rollbacks\.py/,
+  );
   assert.match(workflow, /node --test/);
   assert.match(workflow, /scripts\/ci-workflow\.test\.mjs/);
   assert.match(workflow, /scripts\/crawler-version\.test\.mjs/);
@@ -507,7 +521,20 @@ test("Codex deploy reserves the next runner-lock handoff", () => {
   );
   assert.match(
     deployCodexRunnerHostScript,
+    /restore_candidates=\("\$\{TIMERS\[@\]\}"\)[\s\S]*restore_candidates=\("\$\{ACTIVE_TIMERS_BEFORE_DEPLOY\[@\]\}"\)/,
+  );
+  assert.match(
+    deployCodexRunnerHostScript,
+    /for timer in "\$\{restore_candidates\[@\]\}"; do[\s\S]*jobseek-codex-daily-annotations\.timer[\s\S]*LABELLER_CONTRACT_VERIFIED[\s\S]*safe_restore\+=\("\$\{timer\}"\)/,
+  );
+  assert.match(
+    deployCodexRunnerHostScript,
+    /if \(\(\$\{#safe_restore\[@\]\} > 0\)\); then[\s\S]*systemctl start "\$\{safe_restore\[@\]\}"/,
+  );
+  assert.doesNotMatch(
+    deployCodexRunnerHostScript,
     /systemctl start "\$\{ACTIVE_TIMERS_BEFORE_DEPLOY\[@\]\}"/,
+    "deployment must restore only timers that satisfy their runtime contracts",
   );
   assert.doesNotMatch(
     deployCodexRunnerHostScript,
@@ -585,12 +612,13 @@ test("Codex deploy restores prior timer state after failure", () => {
       "-c",
       `set -euo pipefail
 source scripts/deploy-codex-runner-host.sh
-TIMERS=(alpha.timer beta.timer)
+TIMERS=(alpha.timer jobseek-codex-daily-annotations.timer beta.timer)
 START_TIMERS=0
+LABELLER_CONTRACT_VERIFIED=0
 systemctl() {
   printf '%s\\n' "$*" >> "$MOCK_SYSTEMCTL_LOG"
   if [[ "$1" == "is-active" ]]; then
-    [[ "$3" == "alpha.timer" ]]
+    [[ "$3" == "alpha.timer" || "$3" == "jobseek-codex-daily-annotations.timer" ]]
     return
   fi
   return 0
@@ -610,9 +638,20 @@ exit 23
 
   assert.equal(result.status, 23, result.stderr);
   assert.match(calls, /^is-active --quiet alpha\.timer$/m);
+  assert.match(
+    calls,
+    /^is-active --quiet jobseek-codex-daily-annotations\.timer$/m,
+  );
   assert.match(calls, /^is-active --quiet beta\.timer$/m);
-  assert.match(calls, /^stop alpha\.timer$/m);
+  assert.match(
+    calls,
+    /^stop alpha\.timer jobseek-codex-daily-annotations\.timer$/m,
+  );
   assert.match(calls, /^start alpha\.timer$/m);
+  assert.doesNotMatch(
+    calls,
+    /^start .*jobseek-codex-daily-annotations\.timer/m,
+  );
   assert.doesNotMatch(calls, /^start beta\.timer$/m);
 });
 
@@ -738,7 +777,7 @@ test("maybe-auto-merge script skips image PRs and retries pending merges", () =>
   assert.match(maybeAutoMergeScript, /scheduled\/workflow_run retries will revisit it/);
 });
 
-test("company auto-merges explicitly dispatch production CSV sync", () => {
+test("company auto-merges prewarm OG cards before exact-revision production sync", () => {
   for (const source of [maybeAutoMergeWorkflow, uploadCompanyImagesWorkflow]) {
     assert.match(
       source,
@@ -752,7 +791,7 @@ test("company auto-merges explicitly dispatch production CSV sync", () => {
   );
   assert.match(
     dispatchCompanyProductionSyncScript,
-    /gh workflow run sync-data\.yml --repo "\$REPO" --ref "\$default_branch"/,
+    /gh workflow run prewarm-company-og-cache\.yml[\s\S]*gh run watch "\$prewarm_run_id"[\s\S]*gh workflow run sync-data\.yml[\s\S]*-f revision="\$prewarm_sha"/,
   );
 
   for (const fixture of [
@@ -764,11 +803,26 @@ test("company auto-merges explicitly dispatch production CSV sync", () => {
     const expectedBranch = fixture.includeDefaultBranch
       ? fixture.defaultBranch
       : "main";
-    assert.equal(
-      result.calls,
-      `workflow run sync-data.yml --repo colophon-group/jobseek --ref ${expectedBranch}\n`,
+    const calls = result.calls.trim().split("\n");
+    assert.deepEqual(
+      [calls[0], calls[2], calls[3]],
+      [
+        `workflow run prewarm-company-og-cache.yml --repo colophon-group/jobseek --ref ${expectedBranch} -f concurrency=4`,
+        "run watch 4242 --repo colophon-group/jobseek --exit-status",
+        `workflow run sync-data.yml --repo colophon-group/jobseek --ref ${expectedBranch} -f revision=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`,
+      ],
+    );
+    assert.match(
+      calls[1],
+      new RegExp(
+        `^run list --repo colophon-group/jobseek --workflow prewarm-company-og-cache\\.yml --branch ${expectedBranch} --event workflow_dispatch`,
+      ),
     );
   }
+
+  const failedPrewarm = runDispatchCompanyProductionSync({ watchStatus: 1 });
+  assert.equal(failedPrewarm.status, 1);
+  assert.doesNotMatch(failedPrewarm.calls, /workflow run sync-data\.yml/);
 });
 
 test("bot-authored company branch updates dispatch path-aware CI", () => {
@@ -1220,6 +1274,8 @@ test("broad CI test jobs exclude service-backed Typesense E2E suites", () => {
     webJob,
     /pnpm --filter @jobseek\/web exec vitest run[\s\S]*--exclude src\/lib\/search\/__tests__\/typesense\.e2e\.test\.ts/,
   );
+  assert.match(webJob, /pnpm --filter @jobseek\/trace-viewer test/);
+  assert.match(webJob, /pnpm --filter @jobseek\/trace-viewer build/);
 
   const crawlerJob = jobBlock("test-crawler");
   assert.match(crawlerJob, /uv run pytest tests\/ -v --ignore=tests\/e2e\/test_typesense_indexing\.py/);
