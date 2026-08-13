@@ -550,6 +550,14 @@ class TestSetBodyParam:
         parsed = json.loads(result)
         assert parsed["offset"] == 20
 
+    def test_urlencoded_set_value(self):
+        result = set_body_param("action=get_offers&nonce=stale&page=1", "nonce", "fresh token")
+        assert result == "action=get_offers&nonce=fresh+token&page=1"
+
+    def test_urlencoded_missing_param_returns_unchanged(self):
+        body = "action=get_offers&page=1"
+        assert set_body_param(body, "nonce", "fresh") == body
+
 
 class TestMultipartHelpers:
     def test_is_multipart(self):

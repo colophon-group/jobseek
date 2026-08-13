@@ -14,7 +14,7 @@ import random
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
+from urllib.parse import parse_qs, parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 import httpx
 import structlog
@@ -769,13 +769,18 @@ def _is_multipart(body_str: str) -> bool:
 
 
 def set_body_param(body_str: str, param: str, value: object) -> str:
-    """Set a single field in a POST body (JSON or multipart/form-data)."""
+    """Set a single field in a JSON, multipart, or URL-encoded POST body."""
     if _is_multipart(body_str):
         return _set_multipart_param(body_str, param, value)
     try:
         body = json.loads(body_str)
     except (json.JSONDecodeError, TypeError):
-        return body_str
+        fields = parse_qsl(body_str, keep_blank_values=True)
+        if not fields or param not in {key for key, _value in fields}:
+            return body_str
+        return urlencode(
+            [(key, str(value) if key == param else current) for key, current in fields]
+        )
     parts = param.split(".")
     obj = body
     for part in parts[:-1]:

@@ -16,8 +16,91 @@ from src.core.monitors.api_sniffer import (
     _extract_rich,
     _extract_urls_from_template,
     _materially_below_advertised_total,
+    _refresh_post_data,
     discover,
 )
+
+
+class TestPostDataRefresh:
+    @pytest.mark.asyncio
+    async def test_refreshes_urlencoded_token_and_establishes_page_session(self):
+        page_response = MagicMock()
+        page_response.text = '<section data-action="get_offers" data-nonce="fresh-123"></section>'
+        page_response.raise_for_status.return_value = None
+        client = AsyncMock()
+        client.get.return_value = page_response
+
+        result = await _refresh_post_data(
+            client,
+            "https://example.com/careers",
+            "action=get_offers&nonce=stale&page=1",
+            {
+                "fields": {
+                    "nonce": r'data-action="get_offers"[^>]*data-nonce="([^"]+)"',
+                }
+            },
+        )
+
+        assert result == "action=get_offers&nonce=fresh-123&page=1"
+        client.get.assert_awaited_once_with(
+            "https://example.com/careers",
+            follow_redirects=True,
+            timeout=30,
+        )
+
+    @pytest.mark.asyncio
+    async def test_missing_token_fails_instead_of_returning_false_empty(self):
+        page_response = MagicMock()
+        page_response.text = "<html></html>"
+        page_response.raise_for_status.return_value = None
+        client = AsyncMock()
+        client.get.return_value = page_response
+
+        with pytest.raises(ValueError, match="must match exactly one value"):
+            await _refresh_post_data(
+                client,
+                "https://example.com/careers",
+                "nonce=stale",
+                {"fields": {"nonce": r'data-nonce="([^"]+)"'}},
+            )
+
+    @pytest.mark.asyncio
+    async def test_http_discovery_refreshes_token_before_api_replay(self):
+        page_response = MagicMock()
+        page_response.text = '<section data-action="jobs" data-nonce="fresh"></section>'
+        page_response.raise_for_status.return_value = None
+
+        api_response = MagicMock()
+        api_response.raise_for_status.return_value = None
+        api_response.json.return_value = {
+            "jobs": [{"url": "https://example.com/jobs/1"}],
+        }
+
+        client = AsyncMock()
+        client.get.return_value = page_response
+        client.request.return_value = api_response
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "api_url": "https://example.com/api/jobs",
+                "method": "POST",
+                "request_headers": {"content-type": "application/x-www-form-urlencoded"},
+                "post_data": "action=jobs&nonce=stale&page=1",
+                "post_data_refresh": {
+                    "fields": {
+                        "nonce": r'data-action="jobs"[^>]*data-nonce="([^"]+)"',
+                    }
+                },
+                "json_path": "jobs",
+                "url_field": "url",
+            },
+        }
+
+        result = await discover(board, client)
+
+        assert result == {"https://example.com/jobs/1"}
+        request_kwargs = client.request.await_args.kwargs
+        assert request_kwargs["content"] == "action=jobs&nonce=fresh&page=1"
 
 
 class TestItemProjector:
