@@ -11,7 +11,8 @@ extracted from the SPA's ``init-data`` attribute.
 This scraper:
 
 1. Parses ``org_id``, ``site_id``, and ``job_id`` from the source URL
-   (e.g. ``https://app.mokahr.com/social-recruitment/zte/47588#/job/<uuid>``).
+   (e.g. ``https://app.mokahr.com/social-recruitment/zte/47588#/job/<uuid>``),
+   including the same route on company-owned custom domains.
 2. Fetches the SPA root to obtain the parsed ``init-data`` block — both
    the AES IV (``aesIv``) and the ``cityId -> cityName`` lookup mined
    from ``jobsGroupedByLocation``.
@@ -41,6 +42,7 @@ Pair with the ``mokahr`` monitor and declare
 from __future__ import annotations
 
 import re
+from urllib.parse import urlsplit
 
 import httpx
 import structlog
@@ -58,13 +60,13 @@ from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
 
-_DETAIL_URL = "https://app.mokahr.com/api/outer/ats-apply/website/job"
+_DETAIL_PATH = "/api/outer/ats-apply/website/job"
 
 # Source URLs from the monitor look like:
 #   https://app.mokahr.com/social-recruitment/<org>/<site>#/job/<job_id>
 #   https://app.mokahr.com/campus-recruitment/<org>/<site>#/job/<job_id>
 _URL_RE = re.compile(
-    r"app\.mokahr\.com/(?P<path>(?:social|campus)[_-](?:recruitment|apply))/"
+    r"https?://[^/]+/(?P<path>(?:social|campus)[_-](?:recruitment|apply))/"
     r"(?P<org>[\w-]+)/(?P<site>\d+)(?:[#/?].*?/job/(?P<job>[\w-]+))?",
     re.IGNORECASE,
 )
@@ -151,6 +153,8 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
         log.warning("mokahr_scraper.unparseable_url", url=url)
         return JobContent()
     path, org_id, site_id, job_id = parsed
+    parsed_url = urlsplit(url)
+    origin = f"{parsed_url.scheme}://{parsed_url.netloc}"
 
     locale = config.get("locale", "zh-CN")
     # The monitor's _job_url always emits ``social-recruitment`` regardless of
@@ -165,7 +169,7 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
     init_data: dict | None = None
     page_url: str | None = None
     for attempt_path in paths_to_try:
-        page_url = f"https://app.mokahr.com/{attempt_path}/{org_id}/{site_id}"
+        page_url = f"{origin}/{attempt_path}/{org_id}/{site_id}"
         init_data = await _get_init_data(page_url, http)
         if init_data and init_data.get("aesIv"):
             break
@@ -181,7 +185,7 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
 
     body = {"orgId": org_id, "siteId": site_id, "jobId": job_id, "locale": locale}
     try:
-        resp = await http.post(_DETAIL_URL, json=body)
+        resp = await http.post(f"{origin}{_DETAIL_PATH}", json=body)
     except httpx.HTTPError as exc:
         log.warning("mokahr_scraper.transport_error", url=url, error=str(exc))
         return JobContent()
