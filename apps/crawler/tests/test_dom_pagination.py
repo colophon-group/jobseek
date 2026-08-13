@@ -206,6 +206,34 @@ class TestCanHandle:
         )
         client.get.assert_not_called()
 
+    async def test_talentsoft_returns_complete_static_pagination_config(self):
+        html = """
+        <html><body>
+          <a class="ts-search-engine-form__rss-cta" href="/job/all-rss-feeds.aspx">RSS</a>
+          <li class="ts-offer-list-item">
+            <a href="/job/job-credit-risk-analyst_112267.aspx">Credit Risk Analyst</a>
+          </li>
+          <a href="/offre-de-emploi/emploi-wealth-manager_112582.aspx">Wealth Manager</a>
+          <a href="/candidate/login.aspx">Sign in</a>
+        </body></html>
+        """
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=html),
+        ):
+            result = await can_handle(
+                "https://jobs.example.com/offre-de-emploi/liste-toutes-offres.aspx",
+                MagicMock(),
+            )
+
+        assert result is not None
+        assert result["urls"] == 2
+        assert result["pagination"] == {"param_name": "page", "max_pages": 1_000}
+        assert re.search(
+            result["url_filter"],
+            "https://jobs.example.com/job/job-credit-risk-analyst_112267.aspx",
+        )
+
     async def test_jposting_empty_board_returns_provider_preset(self):
         html = """
         <html><head><style>.jobname { font-weight: bold; }</style></head>

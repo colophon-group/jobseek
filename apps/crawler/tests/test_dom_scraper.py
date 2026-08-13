@@ -89,6 +89,46 @@ FIXTURE_HTML = """
 
 
 class TestDomScraper:
+    def test_talentsoft_probe_builds_locale_independent_config(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><body>
+          <h1 class="ts-offer-page__title ts-title">Credit Risk Analyst</h1>
+          <div class="ts-offer-page__body">
+            <h2 class="JobDescription">Description du poste</h2>
+            <h3>Type de contrat</h3>
+            <p id="fldjobdescription_contract">CDI</p>
+            <h3>Missions</h3>
+            <div><p>Review applications.</p><ul><li>Assess credit risk.</li></ul></div>
+            <h2 class="Location">Localisation du poste</h2>
+            <h3>Zone géographique</h3>
+            <p id="fldlocation_location_geographicalareacollection">Europe, Monaco</p>
+            <h2 class="ApplicantCriteria">Critères candidat</h2>
+            <h3>Formation</h3><p>Master in finance.</p>
+            <h2 class="FooterSection">Informations générales</h2>
+          </div>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        result = parse_html(html, config)
+
+        assert result.title == "Credit Risk Analyst"
+        assert result.description == (
+            '<h2>Description du poste</h2><h3>Type de contrat</h3>'
+            '<p>CDI</p><h3>Missions</h3><p>Review applications.</p>'
+            '<ul><li>Assess credit risk.</li></ul>'
+        )
+        assert result.locations == ["Europe, Monaco"]
+        assert result.employment_type == "CDI"
+        assert result.extras == {
+            "qualifications": [
+                "<h2>Critères candidat</h2><h3>Formation</h3><p>Master in finance.</p>"
+            ]
+        }
+
     def test_parse_html_applies_defaults_only_to_missing_fields(self):
         from src.core.scrapers.dom import parse_html
 
