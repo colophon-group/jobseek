@@ -1779,6 +1779,8 @@ ecorobotix,ecorobotix-global,https://erp.ecorobotix.com/en_US/jobs,dom,"{""rende
 ecovadis,ecovadis-main,https://careers.smartrecruiters.com/ecovadis,smartrecruiters,"{""token"": ""ecovadis""}",smartrecruiters,
 editasmedicine,editasmedicine-pinpoint,https://editasmedicine.pinpointhq.com,pinpoint,"{""slug"": ""editasmedicine""}",skip,
 edmentum,edmentum-greenhouse,https://job-boards.greenhouse.io/edmentum,greenhouse,"{""token"": ""edmentum""}",skip,
+edmond-de-rothschild,edmond-de-rothschild-careers,https://evht.fa.ocs.oraclecloud.eu/hcmUI/CandidateExperience/en/sites/CX_7001,oracle_hcm,"{""host"": ""evht.fa.ocs.oraclecloud.eu"", ""site"": ""CX_7001""}",oracle_hcm,"{""host"": ""evht.fa.ocs.oraclecloud.eu"", ""site"": ""CX_7001"", ""enrich"": [""description""]}"
+edmond-de-rothschild,edmond-de-rothschild-internships,https://www.jobteaser.com/fr/companies/edmond-de-rothschild/job-offers,sitemap,"{""sitemap_url"": ""https://assets-cf.jobteaser.com/sitemaps/sitemap.xml"", ""url_filter"": ""^https://www\\.jobteaser\\.com/fr/job-offers/[0-9a-f-]+-edmond-de-rothschild(?:-|$)""}",json-ld,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000, ""persistent_context"": true, ""channel"": ""chrome"", ""headless"": false, ""proxy"": true}"
 edo,edo-greenhouse,https://job-boards.greenhouse.io/edo,greenhouse,"{""token"": ""edo""}",skip,
 educate,educate-greenhouse,https://job-boards.greenhouse.io/educate,greenhouse,"{""token"": ""educate""}",skip,
 eei,eei-greenhouse,https://job-boards.greenhouse.io/eei,greenhouse,"{""token"": ""eei""}",skip,

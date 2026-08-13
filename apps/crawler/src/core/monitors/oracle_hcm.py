@@ -109,7 +109,7 @@ _DEFAULT_FIELDS = {
 _PAGE_SIZE = 200
 
 _ORACLE_HCM_RE = re.compile(
-    r"(?:\.fa\.|\.fa\.us\d+\.)(?:ocs\.)?oraclecloud\.com/hcmUI/CandidateExperience",
+    r"(?:\.fa\.|\.fa\.us\d+\.)(?:ocs\.)?oraclecloud\.(?:com|eu)/hcmUI/CandidateExperience",
 )
 
 
