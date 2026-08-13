@@ -129,6 +129,12 @@ For each new board:
    Otherwise: `ws probe monitor {{ slug }} -n <expected-job-count> --board <alias>`
 3. **Decide testing strategy based on probe results:**
 
+   For every URL-only monitor, run the selected monitor once and then run
+   `ws probe scraper {{ slug }} --board <alias>` before choosing scraper
+   candidates. This probe recognizes provider-specific detail scrapers such as
+   `onlyfy`; do not assume that a generic `dom` monitor also requires a generic
+   `dom` or `json-ld` scraper.
+
    **Fast path (single test, no subagents):** If the probe's top result is a
    **known stable ATS** — greenhouse, ashby, comeet, lever, gem, inploi, recruitee, personio,
    welcometothejungle,
