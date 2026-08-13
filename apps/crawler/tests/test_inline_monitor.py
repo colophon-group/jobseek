@@ -210,6 +210,31 @@ async def test_discover_with_defaults():
 
 
 @pytest.mark.asyncio
+async def test_discover_excludes_non_job_card_and_continues():
+    html = """
+    <html><body>
+    <h3>Talent Community</h3><p>Register for future openings.</p>
+    <h3>Watchmaker</h3><p>Assemble and test watch movements.</p>
+    </body></html>
+    """
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "steps": [
+                {"tag": "h3", "field": "title"},
+                {"tag": "p", "field": "description", "stop_tag": "h3"},
+            ],
+            "exclude_titles": ["Talent Community"],
+        },
+    }
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert [job.title for job in jobs] == ["Watchmaker"]
+    assert jobs[0].description == "Assemble and test watch movements."
+
+
+@pytest.mark.asyncio
 async def test_discover_fetch_url_keeps_canonical_job_url_and_description_default():
     client = _FakeClient("<html><head><title>Evergreen Driver</title></head></html>")
     board = {
