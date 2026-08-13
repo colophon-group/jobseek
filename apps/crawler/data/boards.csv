@@ -1106,6 +1106,9 @@ chip-city,chip-city-greenhouse,https://job-boards.greenhouse.io/chipcity,greenho
 chipmind,chipmind-careers,https://www.chipmind.ai/careers,dom,,dom,"{""steps"": [{""tag"": ""h1"", ""attr"": ""class=topcard__title"", ""field"": ""title""}, {""tag"": ""div"", ""attr"": ""class=topcard__flavor-row"", ""field"": ""locations"", ""regex"": ""([A-Z]\\w*,\\s+.+)$""}, {""text"": ""About"", ""field"": ""description"", ""html"": true, ""stop"": ""Show more""}, {""text"": ""Employment type"", ""offset"": 1, ""field"": ""employment_type""}]}"
 chiquita,chiquita-careers-global,https://jobs.smartrecruiters.com/ChiquitaBrandsInternationalSrl,smartrecruiters,"{""token"": ""ChiquitaBrandsInternationalSrl""}",smartrecruiters,
 chomps,chomps-greenhouse,https://job-boards.greenhouse.io/chompscareers,greenhouse,"{""token"": ""chompscareers""}",skip,
+chopard,chopard-global,https://chopard.csod.com/ux/ats/careersite/1/home?c=chopard,cornerstone,"{""tenant"": ""chopard"", ""site_id"": 1, ""corp"": ""chopard""}",skip,
+chopard,chopard-hotel-place-vendome,https://chopard.csod.com/ux/ats/careersite/5/home?c=chopard,cornerstone,"{""tenant"": ""chopard"", ""site_id"": 5, ""corp"": ""chopard""}",skip,
+chopard,chopard-spontaneous,https://chopard.csod.com/ux/ats/careersite/4/home?c=chopard,cornerstone,"{""tenant"": ""chopard"", ""site_id"": 4, ""corp"": ""chopard""}",skip,
 chowbus,chowbus-greenhouse,https://job-boards.greenhouse.io/chowbus,greenhouse,"{""token"": ""chowbus""}",skip,
 chromatic,chromatic-ashby,https://jobs.ashbyhq.com/chromatic,ashby,"{""token"": ""chromatic""}",skip,
 chromaway,chromaway-teamtailor,https://career.chromaway.com/jobs,dom,"{""render"": true, ""wait"": ""networkidle"", ""url_filter"": ""/jobs/""}",json-ld,
