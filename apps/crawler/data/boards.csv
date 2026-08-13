@@ -851,6 +851,7 @@ braze,braze-greenhouse,https://job-boards.greenhouse.io/braze,greenhouse,"{""tok
 breeze,breeze-greenhouse,https://job-boards.greenhouse.io/breezecash,greenhouse,"{""token"": ""breezecash""}",skip,
 breeze-airways,breeze-airways-greenhouse,https://job-boards.greenhouse.io/breezeairways,greenhouse,"{""token"": ""breezeairways""}",skip,
 breezeway,breezeway-greenhouse,https://job-boards.greenhouse.io/breezeway,greenhouse,"{""token"": ""breezeway""}",skip,
+breitling,breitling-careers,https://careers.breitling.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.breitling.com/googlefeed.xml""}",skip,
 brennan-industries,brennan-industries-greenhouse,https://job-boards.greenhouse.io/brennan,greenhouse,"{""token"": ""brennan""}",skip,
 brex,brex-greenhouse,https://job-boards.greenhouse.io/brex,greenhouse,"{""token"": ""brex""}",skip,
 bridge-to-enter-advanced-mathematics-beam,bridge-to-enter-advanced-mathematics-beam-greenhouse,https://job-boards.greenhouse.io/beam,greenhouse,"{""token"": ""beam""}",skip,
