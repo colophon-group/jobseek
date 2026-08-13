@@ -146,6 +146,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "intervieweb",
     "jazzhr",
     "jobvite",
+    "jobs_ch",
     "join",
     "personio",
     "recruiterbox",
@@ -388,6 +389,12 @@ def detect_ats_from_url(url: str) -> str | None:
     if host in ("join.com", "www.join.com"):
         return "join"
 
+    # jobs.ch — employer profiles backed by the public JobCloud search API
+    if host in ("jobs.ch", "www.jobs.ch") and any(
+        segment in parsed.path.lower() for segment in ("/firmen/", "/entreprises/", "/companies/")
+    ):
+        return "jobs_ch"
+
     # Jobylon — cdn.jobylon.com embed or emp.jobylon.com detail URLs
     if host == "cdn.jobylon.com" or host == "emp.jobylon.com" or host.endswith(".jobylon.com"):
         return "jobylon"
@@ -466,6 +473,8 @@ def auto_scraper_type(
         return ("json-ld", {"enrich": ["description"]})
     if monitor_type == "typify":
         return ("json-ld", {"enrich": ["description"]})
+    if monitor_type == "jobs_ch":
+        return ("json-ld", None)
     if monitor_type == "bamboohr":
         return (
             "api_sniffer",

@@ -3042,6 +3042,22 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
                      governed by offset_overlap.""",
     "dom": MONITOR_DOM,
     "inline": MONITOR_INLINE,
+    "jobs_ch": """\
+jobs_ch — jobs.ch Employer Profiles
+
+  Returns:  Job detail URLs from the public JobCloud search API
+  Scraper:  json-ld (auto-configured)
+  Cost:     10
+  Browser:  No
+
+  Auto-detected for jobs.ch employer-profile URLs in German, French, or
+  English. The numeric company ID and locale are inferred from the URL.
+  Pagination is exhaustive and checked against totalHits. An explicit API
+  result with totalHits=0 is a verified empty board.
+
+  Optional config:
+    {"company_id": "134466", "locale": "fr"}
+""",
     "kipt": MONITOR_KIPT,
     "api_sniffer": MONITOR_API_SNIFFER,
     "mokahr": MONITOR_MOKAHR,
