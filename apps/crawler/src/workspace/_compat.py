@@ -62,6 +62,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "ashby",
         "bamboohr",
         "beisen",
+        "brassring",
         "comeet",
         "cornerstone",
         "darwinbox",

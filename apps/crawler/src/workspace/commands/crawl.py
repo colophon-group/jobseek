@@ -924,6 +924,7 @@ _MONITOR_CONFIG_HINTS = {
     "ashby": "Requires: token (auto-filled from probe)",
     "bamboohr": "Requires: tenant (auto-filled from a BambooHR careers URL)",
     "beisen": "Requires: tenant + portal variant (auto-filled from a *.zhiye.com URL)",
+    "brassring": "Requires: partner_id and site_id (auto-filled from a TGnewUI URL)",
     "paycom": "Requires: token (auto-filled from a Paycom public portal URL)",
     "jazzhr": "Requires: tenant (auto-filled from an applytojob.com URL)",
     "jobvite": "Requires: tenant + listing_url (auto-filled from a jobs.jobvite.com URL)",
