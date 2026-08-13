@@ -2314,6 +2314,7 @@ hailo,hailo-hailo,https://hailo.ai/company-overview/careers/,dom,"{""url_filter"
 haize-labs,haize-labs-greenhouse,https://job-boards.greenhouse.io/haizelabs,greenhouse,"{""token"": ""haizelabs""}",skip,
 hala,hala-greenhouse,https://job-boards.greenhouse.io/hala,greenhouse,"{""token"": ""hala""}",skip,
 halcyon,halcyon-greenhouse,https://job-boards.greenhouse.io/halcyon,greenhouse,"{""token"": ""halcyon""}",skip,
+haleon,haleon-germany-china-russia,https://gsknch.wd3.myworkdayjobs.com/GSKCareers,workday,"{""company"": ""gsknch"", ""wd_instance"": ""wd3"", ""site"": ""GSKCareers""}",workday,
 handelsbanken,handelsbanken-jobylon,https://cdn.jobylon.com/jobs/companies/2204/embed/v2/?page_size=1000,jobylon,"{""company_id"": ""2204""}",json-ld,
 hang,hang-ashby,https://jobs.ashbyhq.com/hang,ashby,"{""token"": ""hang""}",skip,
 hanmi-pharm,hanmi-pharm-careers,https://hanmi.recruiter.co.kr/career/home,recruiter_co_kr,"{""slug"": ""hanmi""}",skip,
