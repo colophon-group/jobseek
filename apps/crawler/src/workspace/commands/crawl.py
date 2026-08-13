@@ -937,6 +937,7 @@ _MONITOR_CONFIG_HINTS = {
     "dayforce": "Requires: tenant, portal (auto-filled from a Dayforce public board URL)",
     "herp": "Requires: slug (auto-filled from a herp.careers URL)",
     "hrmos": "Requires: tenant (auto-filled from an hrmos.co URL)",
+    "prospective": "Requires: tenant (auto-filled from a v1 Career Center URL)",
     "bite": "Requires: key (auto-filled from probe)",
     "breezy": "Optional: portal_url or slug (auto-filled from probe)",
     "comeet": "No config required (company and board ID are derived from the URL)",

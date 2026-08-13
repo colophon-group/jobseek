@@ -150,6 +150,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "personio",
     "recruiterbox",
     "practicematch",
+    "prospective",
     "taleo",
     "rippling",
     "smartrecruiters",
@@ -239,6 +240,10 @@ def detect_ats_from_url(url: str) -> str | None:
         return "linkedin"
     if host == "jobs.ashbyhq.com":
         return "ashby"
+    if host == "ohws.prospective.ch" and re.fullmatch(
+        r"/public/v1/careercenter/\d+/?", parsed.path
+    ):
+        return "prospective"
     if host == "jobs.gem.com":
         return "gem"
     if host == "www.welcometothejungle.com" and re.fullmatch(
@@ -749,6 +754,8 @@ def auto_scraper_type(
         return ("json-ld", None)
     if monitor_type == "practicematch":
         return ("json-ld", {"proxy": True})
+    if monitor_type == "prospective":
+        return ("json-ld", None)
     if monitor_type == "talentbrew":
         return ("json-ld", None)
     if monitor_type == "softgarden":

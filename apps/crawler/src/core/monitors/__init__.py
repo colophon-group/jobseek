@@ -426,6 +426,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"HRMOS static listing \u2014 tenant: {tenant}, {jobs} jobs"
         return f"HRMOS static listing \u2014 tenant: {tenant}"
+    if name == "prospective":
+        tenant = metadata.get("tenant", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Prospective Career Center \u2014 tenant: {tenant}, {jobs} jobs"
+        return f"Prospective Career Center \u2014 tenant: {tenant}"
     if name == "gupy":
         tenant = metadata.get("tenant", "?")
         jobs = metadata.get("jobs")
@@ -869,6 +875,7 @@ from src.core.monitors import (  # noqa: E402
     phenom,  # noqa: F401
     pinpoint,  # noqa: F401
     practicematch,  # noqa: F401
+    prospective,  # noqa: F401
     recruitee,  # noqa: F401
     recruiter_co_kr,  # noqa: F401
     recruiterbox,  # noqa: F401

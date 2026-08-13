@@ -299,7 +299,8 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "ukg",
         "deel",
         "jobs.dayforcehcm.com",
-        "workforcenow.adp.com",
+    "workforcenow.adp.com",
+    "ohws.prospective.ch",
     }
 )
 
