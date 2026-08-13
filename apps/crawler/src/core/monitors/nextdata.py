@@ -325,7 +325,7 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
             result = _find_jobs_path(data, _PHENOM_CANVAS_PATHS)
             if result:
                 path, count = result
-                meta = _phenom_canvas_meta(data, path, count)
+                meta = _phenom_canvas_meta(data, path, count, url)
                 log.info(
                     "nextdata.detected", url=url, path=path, count=count, source="phenom_canvas"
                 )
@@ -356,7 +356,7 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
                         render=True,
                     )
                     if source == "phenom_canvas":
-                        meta = _phenom_canvas_meta(data, path, count)
+                        meta = _phenom_canvas_meta(data, path, count, url)
                         meta["render"] = True
                         return meta
                     meta = _detection_metadata(source, data, path, count)
@@ -368,7 +368,7 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     return None
 
 
-def _phenom_canvas_meta(data: dict, path: str, count: int) -> dict:
+def _phenom_canvas_meta(data: dict, path: str, count: int, board_url: str) -> dict:
     """Build auto-detection metadata for a Phenom Canvas page.
 
     Includes the pagination config so ``ws probe`` surfaces a ready-to-run
@@ -384,6 +384,13 @@ def _phenom_canvas_meta(data: dict, path: str, count: int) -> dict:
         "path": path,
         "count": count,
     }
+    parsed = urlparse(board_url)
+    path_without_slash = parsed.path.rstrip("/")
+    if path_without_slash.endswith("/search-results"):
+        detail_path = f"{path_without_slash.removesuffix('/search-results')}/job/{{jobId}}"
+        meta["url_template"] = urlunparse(
+            (parsed.scheme, parsed.netloc, detail_path, "", "", "")
+        )
     if isinstance(total, int) and isinstance(page_size, int) and page_size > 0:
         meta["pagination"] = {
             "mode": "offset",

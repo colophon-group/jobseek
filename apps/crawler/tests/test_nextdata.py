@@ -1897,9 +1897,31 @@ class TestCanvasAutoDetect:
         assert meta["path"] == "eagerLoadRefineSearch.data.jobs"
         assert meta["count"] == 10
         assert meta["total"] == 250
+        assert meta["url_template"] == "https://x.com/us/en/job/{jobId}"
         assert meta["pagination"]["mode"] == "offset"
         assert meta["pagination"]["page_size"] == 10
         assert meta["pagination"]["offset_param"] == "from"
+
+    async def test_monitor_can_handle_phenom_canvas_preserves_locale_with_query(self):
+        jobs = [{"jobId": f"R{i}", "title": f"Job {i}"} for i in range(10)]
+        data = {
+            "eagerLoadRefineSearch": {
+                "hits": 10,
+                "totalHits": 10,
+                "data": {"jobs": jobs},
+            },
+        }
+        html = _html_with_canvas_ddo(data)
+        async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
+            meta = await can_handle(
+                "https://careers.example.com/global/en/search-results/?from=10",
+                client,
+            )
+
+        assert meta is not None
+        assert meta["url_template"] == (
+            "https://careers.example.com/global/en/job/{jobId}"
+        )
 
     def test_scraper_can_handle_phenom_canvas_detail(self):
         """Embedded scraper auto-detects phApp.ddo detail pages at depth 3."""
