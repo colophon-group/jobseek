@@ -13,7 +13,11 @@ from src.core.monitors.oracle_hcm import (
     can_handle,
     discover,
 )
-from src.core.scrapers.oracle_hcm import _build_detail_url, scrape
+from src.core.scrapers.oracle_hcm import (
+    _build_detail_url,
+    scrape,
+)
+from src.core.scrapers.oracle_hcm import can_handle as scraper_can_handle
 
 
 def _response(status: int) -> httpx.Response:
@@ -145,6 +149,40 @@ async def test_can_handle_retries_transient_forbidden_response():
         "jobs_count": 42,
     }
     assert client.get.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_can_handle_oraclecloud_eu_tenant():
+    """European Oracle HCM tenants use oraclecloud.eu as well as .com."""
+    client = AsyncMock(spec=httpx.AsyncClient)
+    client.get = AsyncMock(
+        return_value=httpx.Response(
+            200,
+            json={"items": [{"TotalJobsCount": 30}]},
+            request=httpx.Request("GET", "https://example.com/"),
+        )
+    )
+
+    config = await can_handle(
+        "https://evht.fa.ocs.oraclecloud.eu/hcmUI/CandidateExperience/en/sites/CX_7001",
+        client,
+    )
+
+    assert config == {
+        "host": "evht.fa.ocs.oraclecloud.eu",
+        "site": "CX_7001",
+        "jobs_count": 30,
+    }
+
+
+@pytest.mark.asyncio
+async def test_scraper_can_handle_oraclecloud_eu_job_url():
+    config = await scraper_can_handle(
+        "https://evht.fa.ocs.oraclecloud.eu/hcmUI/CandidateExperience/en/sites/CX_7001/job/2334",
+        AsyncMock(spec=httpx.AsyncClient),
+    )
+
+    assert config == {}
 
 
 @pytest.mark.asyncio

@@ -36,7 +36,7 @@ _DEFAULT_FIELDS = {
 _JOB_ID_RE = re.compile(r"/(?:job|requisitions/preview)/([^/?#]+)")
 
 _ORACLE_HCM_URL_RE = re.compile(
-    r"(?:\.fa\.|\.fa\.us\d+\.)(?:ocs\.)?oraclecloud\.com/hcmUI/CandidateExperience",
+    r"(?:\.fa\.|\.fa\.us\d+\.)(?:ocs\.)?oraclecloud\.(?:com|eu)/hcmUI/CandidateExperience",
 )
 
 
