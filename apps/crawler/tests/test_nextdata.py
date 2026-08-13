@@ -647,6 +647,37 @@ class TestCanHandle:
         assert "render" not in result
         mock_render.assert_not_awaited()
 
+    async def test_rsc_jobs_nested_in_component_tree(self):
+        """App Router listings may live in a deeply nested component prop."""
+        jobs = [
+            {
+                "id": f"job-{i}",
+                "position": {"name": "Watchmaker"},
+                "description": f"Build watch movements {i}",
+                "production": {"production_id": {"name": "Factory", "area": "Tokyo"}},
+            }
+            for i in range(6)
+        ]
+        data = {
+            "children": [
+                "$",
+                "$component",
+                None,
+                {"filters": [{"id": str(i), "label": f"Filter {i}"} for i in range(8)]},
+                ["$", "$list", None, {"items": jobs}],
+            ]
+        }
+        html = _html_with_rsc_data(data)
+
+        async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
+            result = await can_handle("https://example.com/careers", client)
+
+        assert result == {
+            "source": "rsc",
+            "path": "children[4][3].items",
+            "count": 6,
+        }
+
 
 # ---------------------------------------------------------------------------
 # Error handling tests
@@ -1585,6 +1616,37 @@ class TestRscDiscover:
         async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
             result = await discover(BOARD_RSC, client)
         assert result == []
+
+    async def test_recovers_when_component_tree_path_shifts(self):
+        jobs = [
+            {
+                "id": f"job-{i}",
+                "position": {"name": "Watchmaker"},
+                "description": f"Build watch movements {i}",
+            }
+            for i in range(6)
+        ]
+        html = _html_with_rsc_data({"children": ["$", "$component", None, {"items": jobs}]})
+        board = {
+            "board_url": "https://example.com/jobs",
+            "metadata": {
+                "source": "rsc",
+                # A deploy inserted a component and shifted the old index.
+                "path": "children[4][3].items",
+                "url_template": "https://example.com/jobs/{id}",
+                "fields": {
+                    "title": "position.name",
+                    "description": "description",
+                },
+            },
+        }
+
+        async with httpx.AsyncClient(transport=_mock_transport(html)) as client:
+            result = await discover(board, client)
+
+        assert len(result) == 6
+        assert result[0].title == "Watchmaker"
+        assert result[0].description == "Build watch movements 0"
 
 
 def _onlyfy_rsc_data(page: int, *, page_count: int = 2, page_size: int = 5) -> dict:

@@ -160,6 +160,7 @@ async def discover(
         fetch_urls — ordered alternate read URLs; canonical URLs use board_url
         defaults   — default field values applied to all jobs
         defaults_by_title — per-title defaults applied to missing fields
+        exclude_titles — exact titles to skip after extraction
         + browser keys (wait, timeout, actions, etc.)
     """
     board_url = board["board_url"]
@@ -172,6 +173,7 @@ async def discover(
 
     defaults = metadata.get("defaults") or {}
     defaults_by_title = metadata.get("defaults_by_title") or {}
+    exclude_titles = set(metadata.get("exclude_titles") or [])
 
     html = await _fetch_html(board_url, metadata, client, pw)
     elements = flatten(html)
@@ -194,6 +196,9 @@ async def discover(
             break
 
         cursor = new_cursor
+
+        if title in exclude_titles:
+            continue
 
         url = _generate_url(board_url, title, seen_jids)
 

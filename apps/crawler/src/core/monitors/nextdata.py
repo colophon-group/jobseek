@@ -278,6 +278,73 @@ def _find_jobs_path(data: dict, paths: list[str] | None = None) -> tuple[str, in
             and all(isinstance(item, dict) for item in arr[:5])
         ):
             return path, len(arr)
+    return _find_nested_jobs_path(data)
+
+
+def _find_nested_jobs_path(data: dict) -> tuple[str, int] | None:
+    """Find a job array nested inside an App Router component tree.
+
+    Next.js RSC payloads do not guarantee a stable top-level property for page
+    data.  Some applications pass their listing to a deeply nested component
+    prop (for example ``children[...].items``).  Keep the normal, explicit
+    paths as the fast path, then walk the component tree for arrays whose
+    objects consistently look like jobs.
+
+    Requiring an identifier, a description, and either a direct title or a
+    named nested position avoids mistaking filter-option arrays for postings.
+    """
+
+    def _job_like(item: object) -> bool:
+        if not isinstance(item, dict) or item.get("id") is None:
+            return False
+        if not any(item.get(key) for key in ("description", "jobDescription", "content")):
+            return False
+        if any(item.get(key) for key in ("title", "name", "jobTitle", "job_title")):
+            return True
+        position = item.get("position")
+        return isinstance(position, dict) and bool(position.get("name") or position.get("title"))
+
+    def _walk(value: object, path: str) -> tuple[str, int] | None:
+        if isinstance(value, list):
+            if len(value) >= 5 and all(_job_like(item) for item in value[:5]):
+                return path, len(value)
+            for index, child in enumerate(value):
+                found = _walk(child, f"{path}[{index}]")
+                if found:
+                    return found
+            return None
+
+        if isinstance(value, dict):
+            for key, child in value.items():
+                child_path = f"{path}.{key}" if path else key
+                found = _walk(child, child_path)
+                if found:
+                    return found
+        return None
+
+    return _walk(data, "")
+
+
+def _resolve_items(data: dict, path: str, source: str) -> list | None:
+    """Resolve configured items, recovering from shifted RSC component indexes."""
+    items = resolve_path(data, path)
+    if isinstance(items, list):
+        return items
+    if source != "rsc":
+        return None
+
+    nested = _find_nested_jobs_path(data)
+    if not nested:
+        return None
+    recovered_path, _ = nested
+    recovered = resolve_path(data, recovered_path)
+    if isinstance(recovered, list):
+        log.info(
+            "nextdata.rsc_path_recovered",
+            configured_path=path,
+            recovered_path=recovered_path,
+        )
+        return recovered
     return None
 
 
@@ -474,7 +541,7 @@ async def discover(
         return list() if fields_map else set()
 
     # Walk path to jobs array
-    items = resolve_path(data, path)
+    items = _resolve_items(data, path, source)
     if not isinstance(items, list):
         if source == "browser":
             raise RuntimeError(f"nextdata browser path did not resolve to a list: {path}")
@@ -579,7 +646,7 @@ async def discover_stream(
             raise RuntimeError("nextdata browser expression returned no data")
         return
 
-    items = resolve_path(data, path)
+    items = _resolve_items(data, path, source)
     if not isinstance(items, list):
         if source == "browser":
             raise RuntimeError(f"nextdata browser path did not resolve to a list: {path}")
