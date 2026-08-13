@@ -3650,6 +3650,8 @@ nimble-gravity,nimble-gravity-greenhouse,https://job-boards.greenhouse.io/nimble
 ninjatrader,ninjatrader-greenhouse,https://job-boards.greenhouse.io/ninjatrader,greenhouse,"{""token"": ""ninjatrader""}",skip,
 nintendo,nintendo-greenhouse,https://job-boards.greenhouse.io/nintendo,greenhouse,"{""token"": ""nintendo""}",skip,
 nira-energy,nira-energy-greenhouse,https://job-boards.greenhouse.io/niraenergy,greenhouse,"{""token"": ""niraenergy""}",skip,
+nissan,nissan-australia-livehire,https://www.livehire.com/careers/nissan/jobs,dom,,json-ld,
+nissan,nissan-global-workday,https://alliance.wd3.myworkdayjobs.com/nissanjobs,workday,"{""company"": ""alliance"", ""wd_instance"": ""wd3"", ""site"": ""nissanjobs""}",workday,
 nitricity,nitricity-greenhouse,https://job-boards.greenhouse.io/nitricity,greenhouse,"{""token"": ""nitricity""}",skip,
 nivoda,nivoda-ashby,https://jobs.ashbyhq.com/nivoda,ashby,"{""token"": ""nivoda""}",skip,
 nmi,nmi-greenhouse,https://job-boards.greenhouse.io/nmi,greenhouse,"{""token"": ""nmi""}",skip,
