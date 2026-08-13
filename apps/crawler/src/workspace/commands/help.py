@@ -1157,6 +1157,10 @@ dom — Link Extraction (fallback)
                    Include the board URL itself as a discovered job after a
                    successful fetch. Use only when the board URL is a direct
                    job document (for example, a PDF), not a listing page.
+    link_selector  Optional CSS selector for the job anchors themselves.
+                   Matching links are trusted as jobs, so this is useful when
+                   stable job-card markup exists but URLs lack job keywords.
+                   Example: "li.job-card a.details-link"
     url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
                    Keep patterns broad enough to include URL variants
     url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
@@ -1210,7 +1214,8 @@ dom — Link Extraction (fallback)
     with Cloudflare error 1005 before a browser context can be established.
     Pair with ``json-ld`` and ``{"proxy": true}`` for detail enrichment.
 
-  Discovery:   Extracts all <a href> links, filters for URLs containing
+  Discovery:   Extracts links matching link_selector when configured. Otherwise
+               extracts all <a href> links and filters for URLs containing
                job/career/position/posting/opening/role/vacancy keywords.
 
   Detection:   ws probe checks static HTML for job links.

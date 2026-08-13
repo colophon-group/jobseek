@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import urljoin, urlparse, urlsplit, urlunsplit
 
 import structlog
+from selectolax.lexbor import LexborHTMLParser
 
 from src.core.monitors import register
 from src.core.monitors.raw import save_text_response
@@ -321,24 +322,34 @@ def _extract_links_static(
     html: str,
     base_url: str,
     url_matcher: re.Pattern | None = None,
+    link_selector: str | None = None,
 ) -> set[str]:
     """Parse ``<a href>`` links from raw HTML and filter for job URLs.
 
     When *url_matcher* is provided it is used instead of the default keyword
-    filter, allowing non-English career pages to work.
+    filter, allowing non-English career pages to work. When *link_selector* is
+    provided, only matching anchors are considered and they are treated as job
+    links unless *url_matcher* narrows them further.
     """
-    parser = _LinkExtractor()
-    parser.feed(html)
+    if link_selector is not None:
+        tree = LexborHTMLParser(html)
+        hrefs = [node.attributes.get("href") for node in tree.css(link_selector)]
+    else:
+        parser = _LinkExtractor()
+        parser.feed(html)
+        hrefs = parser.hrefs
 
     urls: set[str] = set()
-    for href in parser.hrefs:
+    for href in hrefs:
+        if not href:
+            continue
         absolute = urljoin(base_url, href)
         if not absolute.startswith("http"):
             continue
         if url_matcher is not None:
             if url_matcher.search(absolute):
                 urls.add(absolute)
-        elif _matches_default_job_url(absolute):
+        elif link_selector is not None or _matches_default_job_url(absolute):
             urls.add(absolute)
     return urls
 
@@ -366,17 +377,22 @@ async def _extract_links_rendered(
     html = await safe_content(page)
     _raise_if_bot_challenge(page.url, html)
 
-    links = await page.evaluate("""
-        () => Array.from(document.querySelectorAll('a[href]'))
+    link_selector = metadata.get("link_selector")
+    selector = link_selector or "a[href]"
+    links = await page.evaluate(
+        """
+        (selector) => Array.from(document.querySelectorAll(selector))
             .map(a => a.href)
             .filter(h => h.startsWith('http'))
-    """)
+    """,
+        selector,
+    )
     urls: set[str] = set()
     for link in links:
         if url_matcher is not None:
             if url_matcher.search(link):
                 urls.add(link)
-        elif _matches_default_job_url(link):
+        elif link_selector is not None or _matches_default_job_url(link):
             urls.add(link)
     return urls
 
@@ -523,6 +539,7 @@ async def _paginate_urls(
     url_matcher: re.Pattern | None = None,
     url_transform: dict | None = None,
     encoding: str | None = None,
+    link_selector: str | None = None,
 ) -> set[str]:
     """Fetch paginated pages and merge discovered links with *initial_urls*.
 
@@ -600,7 +617,7 @@ async def _paginate_urls(
             break
 
         _raise_if_bot_challenge(page_url, html)
-        new_urls = _extract_links_static(html, page_url, url_matcher)
+        new_urls = _extract_links_static(html, page_url, url_matcher, link_selector)
         added: set[str] = set()
         for url in sorted(new_urls):
             identity = _url_identity(url, identity_transform)
@@ -695,7 +712,12 @@ async def dom_discover(
     pagination = metadata.get("pagination")
     url_matcher = _build_url_matcher(metadata.get("url_filter"))
     url_transform = metadata.get("url_transform")
+    link_selector = metadata.get("link_selector")
     encoding = metadata.get("encoding")
+    if link_selector is not None and (
+        not isinstance(link_selector, str) or not link_selector.strip()
+    ):
+        raise ValueError("DOM monitor link_selector must be a non-empty CSS selector")
     if encoding is not None:
         if not isinstance(encoding, str) or not encoding:
             raise ValueError("DOM monitor encoding must be a non-empty codec name")
@@ -726,6 +748,7 @@ async def dom_discover(
                         url_matcher,
                         url_transform,
                         encoding,
+                        link_selector,
                     )
         else:
             try:
@@ -752,6 +775,7 @@ async def dom_discover(
                         url_matcher,
                         url_transform,
                         encoding,
+                        link_selector,
                     )
     else:
         from src.shared.http_retry import fetch_with_retry
@@ -767,7 +791,7 @@ async def dom_discover(
             log.warning("dom.fetch_failed", board_url=board_url)
             return set()
         _raise_if_bot_challenge(board_url, html)
-        urls = _extract_links_static(html, board_url, url_matcher)
+        urls = _extract_links_static(html, board_url, url_matcher, link_selector)
         if pagination:
             urls = await _paginate_urls(
                 board_url,
@@ -777,6 +801,7 @@ async def dom_discover(
                 url_matcher=url_matcher,
                 url_transform=url_transform,
                 encoding=encoding,
+                link_selector=link_selector,
             )
 
     # Exclude the board URL itself by default — it is normally the listing

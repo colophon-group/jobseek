@@ -972,7 +972,7 @@ _MONITOR_CONFIG_HINTS = {
         "Requires: path, url_template. Optional: fields, render, actions, source, "
         "browser_expression, url_filter"
     ),
-    "dom": "Optional: render, actions, wait, timeout, url_filter, encoding",
+    "dom": "Optional: render, actions, wait, timeout, link_selector, url_filter, encoding",
     "api_sniffer": "Auto-filled from probe: api_url, method, json_path, fields, pagination",
 }
 
