@@ -2724,6 +2724,7 @@ itm-radiopharma,itm-radiopharma-careers,https://itm.onlyfy.jobs/en,nextdata,"{""
 its-logistics-llc,its-logistics-llc-greenhouse,https://job-boards.greenhouse.io/itslogisticsllc,greenhouse,"{""token"": ""itslogisticsllc""}",skip,
 ivalua,ivalua-greenhouse,https://job-boards.greenhouse.io/ivalua,greenhouse,"{""token"": ""ivalua""}",skip,
 ixl-learning,ixl-learning-greenhouse,https://job-boards.greenhouse.io/ixllearning,greenhouse,"{""token"": ""ixllearning""}",skip,
+j-safra-sarasin,j-safra-sarasin-careers,https://jsafrasarasin.umantis.com/Jobs/All,umantis,"{""customer_id"": ""jsafrasarasin"", ""cname"": ""jsafrasarasin.umantis.com"", ""region"": """"}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""li"", ""field"": ""locations""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop"": ""Apply""}]}"
 jade-biosciences,jade-biosciences-greenhouse,https://job-boards.greenhouse.io/jadebiosciences,greenhouse,"{""token"": ""jadebiosciences""}",skip,
 jane-street,jane-street-greenhouse,https://job-boards.greenhouse.io/janestreet,greenhouse,"{""token"": ""janestreet""}",skip,
 jane-street-events,jane-street-events-greenhouse,https://job-boards.greenhouse.io/janestreetevents,greenhouse,"{""token"": ""janestreetevents""}",skip,
