@@ -4391,6 +4391,7 @@ rebag,rebag-greenhouse,https://job-boards.greenhouse.io/rebag,greenhouse,"{""tok
 rebtel,rebtel-teamtailor,https://rebtel.teamtailor.com/,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://rebtel.teamtailor.com/jobs.rss""}",skip,
 recharge,recharge-greenhouse,https://job-boards.greenhouse.io/recharge,greenhouse,"{""token"": ""recharge""}",skip,
 recidiviz,recidiviz-greenhouse,https://job-boards.greenhouse.io/recidiviz,greenhouse,"{""token"": ""recidiviz""}",skip,
+reckitt,reckitt-global,https://careers.reckitt.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.reckitt.com/googlefeed.xml""}",skip,
 recora-inc,recora-inc-greenhouse,https://job-boards.greenhouse.io/aviary,greenhouse,"{""token"": ""aviary""}",skip,
 recorded-future,recorded-future-greenhouse,https://job-boards.greenhouse.io/recordedfuture,greenhouse,"{""token"": ""recordedfuture""}",skip,
 recraft,recraft-careers,https://jobs.ashbyhq.com/recraft,ashby,"{""token"": ""recraft""}",skip,
