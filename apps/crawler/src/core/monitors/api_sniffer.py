@@ -842,6 +842,52 @@ def _extract_urls_from_html(
     return urls
 
 
+async def _refresh_post_data(
+    client: httpx.AsyncClient,
+    board_url: str,
+    post_data: str | None,
+    refresh_config: dict | None,
+) -> str | None:
+    """Refresh dynamic POST fields from the current board page.
+
+    Some APIs protect otherwise public listing requests with a short-lived
+    token embedded in the careers page. ``post_data_refresh.fields`` maps a
+    POST field name to a regex with exactly one capture group. Fetching the
+    source page through the board client also establishes any cookies tied to
+    that token before the API request is replayed.
+    """
+    if not refresh_config:
+        return post_data
+    if not post_data:
+        raise ValueError("post_data_refresh requires post_data")
+
+    fields = refresh_config.get("fields")
+    if not isinstance(fields, dict) or not fields:
+        raise ValueError("post_data_refresh.fields must be a non-empty mapping")
+
+    source_url = refresh_config.get("source_url") or board_url
+    response = await client.get(source_url, follow_redirects=True, timeout=30)
+    response.raise_for_status()
+    html = response.text
+
+    refreshed = post_data
+    for field, pattern in fields.items():
+        if not isinstance(field, str) or not isinstance(pattern, str):
+            raise ValueError("post_data_refresh fields and patterns must be strings")
+        match = re.search(pattern, html)
+        if match is None or match.lastindex != 1:
+            raise ValueError(
+                f"post_data_refresh pattern for {field!r} must match exactly one value"
+            )
+        updated = set_body_param(refreshed, field, match.group(1))
+        if updated == refreshed:
+            raise ValueError(f"post_data_refresh field {field!r} is missing from post_data")
+        refreshed = updated
+
+    log.info("api_sniffer.post_data_refreshed", fields=sorted(fields))
+    return refreshed
+
+
 async def _discover_http(
     board: dict,
     client: httpx.AsyncClient,
@@ -882,6 +928,12 @@ async def _discover_http(
     fields_map: dict[str, str] = config.get("fields") or {}
     pagination_config = config.get("pagination")
 
+    post_data = await _refresh_post_data(
+        client,
+        board_url,
+        post_data,
+        config.get("post_data_refresh"),
+    )
     headers = clean_headers(request_headers)
 
     # -- first page --------------------------------------------------------

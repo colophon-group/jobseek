@@ -2152,6 +2152,13 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                      increase page size, and update pagination.increment to match.
     request_headers  Cleaned request headers (auto-filled)
     post_data        POST body string (for POST APIs, null for GET)
+    post_data_refresh
+                     Refresh short-lived POST fields from the board page before
+                     every crawl. ``fields`` maps each POST field to a regex with
+                     exactly one capture group; ``source_url`` optionally
+                     overrides the board URL. The page fetch shares the API
+                     client's cookies. Example:
+                       {"fields": {"nonce": "data-nonce=\\\"([^\\\"]+)\\\""}}
     pagination       Pagination config (auto-detected from multiple requests)
                      style is "offset" or "page" for ordinary pagination.
                      Use "cumulative_limit" when a load-more API accepts only
