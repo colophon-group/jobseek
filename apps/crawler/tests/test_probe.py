@@ -308,6 +308,19 @@ _DOM_HTML_2 = """\
 
 _NO_H1_HTML = "<html><body><p>Just some text</p></body></html>"
 
+_DOM_LOWER_HEADING_HTML = """\
+<html><head><title>Gestionnaire prévoyance individuelle</title></head><body>
+<main class="news-job">
+<h4>Gestionnaire prévoyance individuelle</h4>
+<ul class="location-taux"><li>Sion</li><li>80-100%</li></ul>
+<div class="description">
+<p>Gérez les dossiers de prévoyance individuelle de notre clientèle.</p>
+<h5>Concrètement ?</h5>
+<ul><li>Administrez les comptes clients et les contrats.</li></ul>
+</div>
+</main>
+</body></html>"""
+
 
 class TestScraperCanHandle:
     def test_jsonld_detected(self):
@@ -398,6 +411,17 @@ class TestScraperCanHandle:
     def test_dom_no_h1(self):
         result = dom_can_handle([_NO_H1_HTML])
         assert result is None
+
+    def test_dom_detects_document_title_in_lower_heading(self):
+        result = dom_can_handle([_DOM_LOWER_HEADING_HTML])
+
+        assert result is not None
+        content = dom_parse_html(_DOM_LOWER_HEADING_HTML, result)
+        assert content.title == "Gestionnaire prévoyance individuelle"
+        assert content.locations == ["Sion"]
+        assert content.description is not None
+        assert "dossiers de prévoyance" in content.description
+        assert "80-100%" not in content.description
 
 
 class TestNextdataAutoMap:
@@ -526,6 +550,19 @@ class TestDomHeuristicSteps:
         elements = flatten(_NO_H1_HTML)
         steps = _heuristic_steps(elements)
         assert steps is None
+
+    def test_matching_document_title_h4_with_workload_metadata(self):
+        steps = _heuristic_steps(flatten(_DOM_LOWER_HEADING_HTML))
+
+        assert steps is not None
+        assert steps[0] == {"tag": "h4", "field": "title"}
+        assert steps[1] == {"tag": "li", "field": "location", "optional": True}
+        assert steps[2] == {"tag": "li"}
+
+        content = dom_parse_html(_DOM_LOWER_HEADING_HTML, {"steps": steps})
+        assert content.locations == ["Sion"]
+        assert content.description is not None
+        assert "80-100%" not in content.description
 
 
 def _mock_http_client(responses: dict[str, tuple[int, str]]) -> AsyncMock:
