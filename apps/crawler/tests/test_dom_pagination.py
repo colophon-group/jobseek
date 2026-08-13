@@ -116,6 +116,35 @@ class TestExtractLinksStatic:
 
         assert urls == {"https://careers.example.com/?page=advertisement_display&id=15794"}
 
+    def test_link_selector_scopes_and_trusts_matching_anchors(self):
+        html = """
+        <a class="job-card" href="/fr/emploi/analyste">Analyste</a>
+        <a class="support-card" href="/fr/carrieres/formation">Formation</a>
+        """
+
+        urls = _extract_links_static(
+            html,
+            "https://example.com/carrieres",
+            link_selector="a.job-card",
+        )
+
+        assert urls == {"https://example.com/fr/emploi/analyste"}
+
+    def test_url_matcher_can_further_narrow_link_selector(self):
+        html = """
+        <a class="job-card" href="/emploi/active/1">Active</a>
+        <a class="job-card" href="/emploi/archive/2">Archived</a>
+        """
+
+        urls = _extract_links_static(
+            html,
+            "https://example.com",
+            url_matcher=re.compile(r"/active/"),
+            link_selector="a.job-card",
+        )
+
+        assert urls == {"https://example.com/emploi/active/1"}
+
 
 class TestBuildUrlMatcher:
     def test_string_filter(self):
@@ -485,6 +514,25 @@ class TestDomDiscoverInitialFetch:
         )
 
         assert urls == {"https://example.com/job/123"}
+
+    async def test_rendered_link_selector_scopes_and_trusts_links(self, monkeypatch):
+        page = MagicMock()
+        page.url = "https://example.com/carrieres"
+        page.content = AsyncMock(return_value="<html></html>")
+        page.evaluate = AsyncMock(return_value=["https://example.com/fr/emploi/analyste"])
+        monkeypatch.setattr("src.core.monitors.dom.navigate", AsyncMock())
+        monkeypatch.setattr("src.core.monitors.dom.run_actions", AsyncMock())
+
+        urls = await _extract_links_rendered(
+            page,
+            {
+                "_board_url": "https://example.com/carrieres",
+                "link_selector": "a.job-card",
+            },
+        )
+
+        assert urls == {"https://example.com/fr/emploi/analyste"}
+        assert page.evaluate.await_args.args[1] == "a.job-card"
 
     async def test_initial_403_raises_instead_of_successful_empty(self, monkeypatch):
         """A blocked listing page must fail the monitor cycle.
