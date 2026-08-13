@@ -12,6 +12,7 @@ from src.core.monitors.workday import (
     _api_base,
     _api_list_stream,
     _api_list_url,
+    _cross_site_path_key,
     _discover_sites,
     _fetch_job_count,
     _group_split_facet_values,
@@ -76,6 +77,19 @@ class TestApiListUrl:
     def test_basic(self):
         result = _api_list_url("nvidia", "wd5", "ExtSite")
         assert result == "https://nvidia.wd5.myworkdayjobs.com/wday/cxs/nvidia/ExtSite/jobs"
+
+
+class TestCrossSitePathKey:
+    def test_strips_workday_distribution_copy_suffix(self):
+        assert (
+            _cross_site_path_key("/job/USA-WI-Marinette/Engineer_885928-2")
+            == "/job/USA-WI-Marinette/Engineer_885928"
+        )
+
+    def test_preserves_paths_without_workday_requisition_separator(self):
+        assert _cross_site_path_key("/job/USA-WI-Marinette/JR-2") == (
+            "/job/USA-WI-Marinette/JR-2"
+        )
 
 
 class TestDetailUrl:
@@ -508,7 +522,11 @@ class TestInventoryCompleteness:
         from src.core.monitors import workday as wd_module
 
         async def fake_api_list(company, wd_instance, site, client, *, query_sem=None):
-            paths = ["/job/shared/JR001", f"/job/{site}/JR002"]
+            copy_suffix = "-1" if site == "SiteA" else ""
+            paths = [
+                f"/job/shared/Engineer_123456{copy_suffix}",
+                f"/job/{site}/JR002",
+            ]
             return paths, False
 
         monkeypatch.setattr(wd_module, "_api_list", fake_api_list)
@@ -517,7 +535,7 @@ class TestInventoryCompleteness:
             site_paths, truncated = await _list_all_sites("co", "wd1", ["SiteA", "SiteB"], client)
 
         assert site_paths == [
-            ("SiteA", "/job/shared/JR001"),
+            ("SiteA", "/job/shared/Engineer_123456-1"),
             ("SiteA", "/job/SiteA/JR002"),
             ("SiteB", "/job/SiteB/JR002"),
         ]
@@ -527,7 +545,11 @@ class TestInventoryCompleteness:
         from src.core.monitors import workday as wd_module
 
         async def fake_api_list_stream(company, wd_instance, site, client, *, query_sem=None):
-            yield ["/job/shared/JR001", f"/job/{site}/JR002"]
+            copy_suffix = "-1" if site == "SiteA" else ""
+            yield [
+                f"/job/shared/Engineer_123456{copy_suffix}",
+                f"/job/{site}/JR002",
+            ]
 
         monkeypatch.setattr(wd_module, "_api_list_stream", fake_api_list_stream)
 
@@ -538,7 +560,10 @@ class TestInventoryCompleteness:
             ]
 
         assert batches == [
-            [("SiteA", "/job/shared/JR001"), ("SiteA", "/job/SiteA/JR002")],
+            [
+                ("SiteA", "/job/shared/Engineer_123456-1"),
+                ("SiteA", "/job/SiteA/JR002"),
+            ],
             [("SiteB", "/job/SiteB/JR002")],
         ]
 

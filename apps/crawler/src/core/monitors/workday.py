@@ -18,9 +18,10 @@ Multi-site discovery
 --------------------
 Workday tenants expose all their job board sites in ``robots.txt`` as
 ``Sitemap:`` entries.  By default the monitor discovers **all** sites for
-the tenant and aggregates jobs from every site in a single run.  Tenants can
-publish the same external path on multiple sites; those mirrors are collapsed
-before URLs are emitted.  To monitor only the configured site, set
+the tenant and aggregates jobs from every site in a single run. Tenants can
+publish the same requisition on multiple sites. Workday may add a site-specific
+numeric suffix to an otherwise identical external path; those mirrors are
+collapsed before URLs are emitted. To monitor only the configured site, set
 ``"all_sites": false`` in board metadata.
 
 Some tenants combine jobs for distinct brands in one site. Set
@@ -74,6 +75,12 @@ _TRUNCATED_PATH = "__workday_truncated__"
 _TRUNCATED_SENTINEL = ("__workday_truncated__", _TRUNCATED_PATH)
 
 _SITEMAP_RE = re.compile(r"myworkdayjobs\.com/([^/]+)/siteMap")
+# Workday appends ``-1``, ``-2``, etc. to the final path segment when one
+# requisition is published through multiple tenant sites. The stable
+# requisition portion follows the final underscore (for example
+# ``Engineer_123456-2``). Without removing that generated suffix, multi-site
+# discovery emits a separate posting for every distribution channel.
+_SITE_COPY_SUFFIX_RE = re.compile(r"(?P<stable>_[^/]+?)-\d+$")
 
 # Matches Workday board URLs, optionally with locale prefix (e.g. /en-US/)
 _URL_RE = re.compile(
@@ -113,6 +120,11 @@ def _api_list_url(company: str, wd_instance: str, site: str) -> str:
 
 def _job_url(company: str, wd_instance: str, site: str, external_path: str) -> str:
     return f"https://{company}.{wd_instance}.myworkdayjobs.com/{site}{external_path}"
+
+
+def _cross_site_path_key(external_path: str) -> str:
+    """Return the stable identity for a Workday path mirrored across sites."""
+    return _SITE_COPY_SUFFIX_RE.sub(r"\g<stable>", external_path)
 
 
 def _configured_search_text(metadata: dict, *, all_sites: bool) -> str | None:
@@ -597,9 +609,10 @@ async def _list_all_sites(
             pairs, was_truncated = result
             for pair in pairs:
                 _, path = pair
-                if path in seen_paths:
+                path_key = _cross_site_path_key(path)
+                if path_key in seen_paths:
                     continue
-                seen_paths.add(path)
+                seen_paths.add(path_key)
                 site_paths.append(pair)
             if was_truncated:
                 any_site_truncated = True
@@ -638,9 +651,10 @@ async def _list_all_sites_stream(
                 if path == _TRUNCATED_PATH:
                     pairs.append((site, path))
                     continue
-                if path in seen_paths:
+                path_key = _cross_site_path_key(path)
+                if path_key in seen_paths:
                     continue
-                seen_paths.add(path)
+                seen_paths.add(path_key)
                 pairs.append((site, path))
                 total_count += 1
             if pairs:
