@@ -42,6 +42,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `avature` | URL-only | dom | Avature static listings and map data, with streamed pagination |
 | `bamboohr` | Rich | api_sniffer | BambooHR summaries plus detail API enrichment |
 | `beisen` | Rich/hybrid | skip or DOM enrichment | Beisen modern public API + legacy server-rendered listings |
+| `brassring` | Rich | skip | BrassRing/Infinite Talent TGnewUI browser-session search API |
 | `paycom` | Rich | paycom | Paycom public preview API plus detail API enrichment |
 | `jazzhr` | URL-only | jazzhr | JazzHR static listing with JSON-LD/DOM detail composition |
 | `jobvite` | URL-only | json-ld | Jobvite static listings, including branded career-site routes |

@@ -1,0 +1,299 @@
+"""BrassRing / Infinite Talent public job-search monitor.
+
+BrassRing's ``TGnewUI`` boards bootstrap an Angular application with a small
+set of featured jobs.  Submitting the empty search loads the authoritative
+inventory from ``Search/Ajax/MatchedJobs`` and subsequent pages from
+``Search/Ajax/ProcessSortAndShowMoreJobs``.  Both responses contain complete
+job records, so this monitor captures those first-party JSON responses instead
+of scraping the transient result DOM.
+"""
+
+from __future__ import annotations
+
+import html
+import json
+import math
+import re
+from datetime import datetime
+from typing import TYPE_CHECKING
+from urllib.parse import parse_qs, urlparse
+
+import structlog
+
+from src.core.monitors import DiscoveredJob, register
+from src.shared.browser import BROWSER_KEYS, navigate, open_page
+from src.shared.html_normalize import normalize_description_html
+from src.shared.truncation import truncated_rich_result
+
+if TYPE_CHECKING:
+    import httpx
+
+log = structlog.get_logger()
+
+PAGE_SIZE = 50
+MAX_JOBS = 50_000
+_BOARD_PATH_RE = re.compile(r"/tgnewui/search/", re.IGNORECASE)
+_MATCHED_JOBS_PATH = "/Search/Ajax/MatchedJobs"
+_NEXT_PAGE_PATH = "/Search/Ajax/ProcessSortAndShowMoreJobs"
+_SEARCH_SELECTOR = "#clearResumeJobsBtn"
+_NEXT_SELECTOR = 'button[title="Next Page"]:not(.disabled-link)'
+
+
+def _clean_string(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    cleaned = " ".join(html.unescape(value).split())
+    return cleaned or None
+
+
+def _board_ids(url: str) -> tuple[str, str] | None:
+    """Return the numeric partner/site IDs for a public TGnewUI board."""
+
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return None
+    if not _BOARD_PATH_RE.search(parsed.path):
+        return None
+    query = parse_qs(parsed.query)
+    partner_id = (query.get("partnerid") or query.get("partnerId") or [None])[0]
+    site_id = (query.get("siteid") or query.get("siteId") or [None])[0]
+    if not (
+        isinstance(partner_id, str)
+        and partner_id.isdigit()
+        and isinstance(site_id, str)
+        and site_id.isdigit()
+    ):
+        return None
+    return partner_id, site_id
+
+
+def _questions(raw: object) -> dict[str, object]:
+    if not isinstance(raw, list):
+        return {}
+    result: dict[str, object] = {}
+    for question in raw:
+        if not isinstance(question, dict):
+            continue
+        name = question.get("QuestionName")
+        if isinstance(name, str) and name:
+            result[name.casefold()] = question.get("Value")
+    return result
+
+
+def _safe_date(value: object) -> str | None:
+    raw = _clean_string(value)
+    if raw is None:
+        return None
+    try:
+        return datetime.strptime(raw, "%d-%b-%Y").date().isoformat()
+    except ValueError:
+        return None
+
+
+def _location(questions: dict[str, object]) -> list[str] | None:
+    parts: list[str] = []
+    seen: set[str] = set()
+    # ADM and other BrassRing tenants use these fields for city, state/region,
+    # and country.  Treat them as components of one place, not three separate
+    # job locations.
+    for key in ("formtext8", "formtext9", "formtext10"):
+        part = _clean_string(questions.get(key))
+        if part and part.casefold() not in seen:
+            seen.add(part.casefold())
+            parts.append(part)
+    return [", ".join(parts)] if parts else None
+
+
+def _parse_job(raw: object, partner_id: str, site_id: str) -> DiscoveredJob | None:
+    if not isinstance(raw, dict):
+        return None
+    questions = _questions(raw.get("Questions"))
+    job_id = _clean_string(questions.get("reqid"))
+    title = _clean_string(questions.get("jobtitle"))
+    link = _clean_string(raw.get("Link"))
+    if not job_id or not job_id.isdigit() or not title or not link:
+        return None
+
+    link_ids = _board_ids(link)
+    parsed_link = urlparse(link)
+    link_query = parse_qs(parsed_link.query)
+    link_job_id = (link_query.get("jobid") or [None])[0]
+    if link_ids != (partner_id, site_id) or link_job_id != job_id:
+        return None
+
+    raw_description = questions.get("jobdescription") or questions.get("formtext3")
+    description = normalize_description_html(
+        raw_description if isinstance(raw_description, str) else None
+    )
+    if not description:
+        return None
+
+    metadata: dict[str, object] = {
+        "provider": "brassring",
+        "requisition_id": job_id,
+    }
+    department = _clean_string(questions.get("department"))
+    if department:
+        metadata["department"] = department
+
+    return DiscoveredJob(
+        url=link,
+        title=title,
+        description=description,
+        locations=_location(questions),
+        date_posted=_safe_date(questions.get("lastupdated")),
+        metadata=metadata,
+    )
+
+
+def _parse_page(payload: object) -> tuple[int, list[object]]:
+    if not isinstance(payload, dict):
+        raise ValueError("BrassRing search returned a non-object response")
+    total = payload.get("JobsCount")
+    jobs_obj = payload.get("Jobs")
+    rows = jobs_obj.get("Job") if isinstance(jobs_obj, dict) else None
+    if not isinstance(total, int) or isinstance(total, bool) or total < 0:
+        raise ValueError("BrassRing search omitted a valid JobsCount")
+    if rows is None and total == 0:
+        return total, []
+    if not isinstance(rows, list):
+        raise ValueError("BrassRing search omitted its Jobs.Job list")
+    return total, rows
+
+
+async def _click_for_json(page, selector: str, response_path: str) -> object:
+    async with page.expect_response(
+        lambda response: response_path.casefold() in response.url.casefold(),
+        timeout=60_000,
+    ) as pending:
+        await page.locator(selector).first.click()
+    response = await pending.value
+    if response.status != 200:
+        raise ValueError(f"BrassRing search returned HTTP {response.status}")
+    body = await response.text()
+    from src.shared.tdm import check_browser_response
+
+    check_browser_response(dict(response.headers), body, url=response.url)
+    try:
+        return json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise ValueError("BrassRing search returned invalid JSON") from exc
+
+
+async def _discover_page(board_url: str, metadata: dict, partner_id: str, site_id: str, pw):
+    browser_config = {
+        "wait": "domcontentloaded",
+        "timeout": 60_000,
+        **{key: value for key, value in metadata.items() if key in BROWSER_KEYS},
+    }
+    async with open_page(pw, browser_config, use_proxy=bool(metadata.get("proxy"))) as page:
+        await navigate(page, board_url, browser_config)
+        await page.locator(_SEARCH_SELECTOR).first.wait_for(state="visible", timeout=60_000)
+
+        payload = await _click_for_json(page, _SEARCH_SELECTOR, _MATCHED_JOBS_PATH)
+        total, rows = _parse_page(payload)
+        expected_total = min(total, MAX_JOBS)
+        if expected_total and not rows:
+            raise ValueError(f"BrassRing returned no first-page rows for {total} jobs")
+        page_size = len(rows) or PAGE_SIZE
+        expected_pages = math.ceil(expected_total / page_size) if expected_total else 0
+
+        if expected_pages > 1:
+            await page.wait_for_function(
+                """expected => {
+                    const current = document.querySelector(
+                        '.pagewise-pagination[aria-current="page"]'
+                    );
+                    return current && current.textContent.trim() === String(expected);
+                }""",
+                arg=1,
+                timeout=60_000,
+            )
+
+        for page_number in range(2, expected_pages + 1):
+            next_button = page.locator(_NEXT_SELECTOR).first
+            if await next_button.count() == 0:
+                raise ValueError(
+                    f"BrassRing pagination ended at page {page_number - 1} "
+                    f"with {len(rows)} of {total} rows"
+                )
+            next_payload = await _click_for_json(page, _NEXT_SELECTOR, _NEXT_PAGE_PATH)
+            next_total, next_rows = _parse_page(next_payload)
+            if next_total != total:
+                raise ValueError(
+                    f"BrassRing JobsCount changed during pagination: {total} -> {next_total}"
+                )
+            rows.extend(next_rows)
+            # The XHR resolves before Angular has necessarily committed its
+            # new pageNumber.  Without this barrier the next loop iteration
+            # can click the old control again and silently collect duplicate
+            # pages while skipping the tail.
+            await page.wait_for_function(
+                """expected => {
+                    const current = document.querySelector(
+                        '.pagewise-pagination[aria-current="page"]'
+                    );
+                    return current && current.textContent.trim() === String(expected);
+                }""",
+                arg=page_number,
+                timeout=60_000,
+            )
+
+    jobs: list[DiscoveredJob] = []
+    seen: set[str] = set()
+    for raw in rows[:expected_total]:
+        job = _parse_job(raw, partner_id, site_id)
+        if job is None or job.url in seen:
+            continue
+        seen.add(job.url)
+        jobs.append(job)
+
+    if len(jobs) != expected_total:
+        raise ValueError(
+            f"BrassRing returned {len(jobs)} valid unique jobs for {expected_total} expected rows"
+        )
+    if total > MAX_JOBS:
+        return truncated_rich_result(jobs)
+    return jobs
+
+
+async def discover(board: dict, client: httpx.AsyncClient = None, pw=None):
+    board_url = board["board_url"]
+    ids = _board_ids(board_url)
+    if ids is None:
+        raise ValueError(f"Cannot derive BrassRing partner/site IDs from {board_url!r}")
+    partner_id, site_id = ids
+    metadata = board.get("metadata") or {}
+
+    if pw is not None:
+        return await _discover_page(board_url, metadata, partner_id, site_id, pw)
+
+    try:
+        from playwright.async_api import async_playwright
+    except ImportError as err:  # pragma: no cover - dependency is required in browser workers
+        raise RuntimeError("playwright is required for the BrassRing monitor") from err
+    async with async_playwright() as playwright:
+        return await _discover_page(board_url, metadata, partner_id, site_id, playwright)
+
+
+async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | None:
+    ids = _board_ids(url)
+    if ids is None:
+        return None
+    # The TGnewUI route plus its required numeric identifiers is a stable
+    # provider fingerprint.  A lightweight page check prevents similarly
+    # shaped non-BrassRing routes from being selected speculatively.
+    response = await client.get(url, follow_redirects=True)
+    if response.status_code != 200:
+        return None
+    from src.shared.tdm import check_response
+
+    check_response(response, body_excerpt=response.text[:500_000])
+    body = response.text.casefold()
+    if 'id="searchresults"' not in body or "angular" not in body:
+        return None
+    partner_id, site_id = ids
+    return {"partner_id": partner_id, "site_id": site_id}
+
+
+register("brassring", discover, cost=10, can_handle=can_handle, rich=True)

@@ -81,6 +81,7 @@ Monitor Types (cheapest first):
   bamboohr          10      Full/partial      Auto-enriched
   beisen            10      Full/partial      Auto skip/DOM enrich
   bite              10      Job URLs          Auto-configured
+  brassring         10      Full job data     No (skipped)
   breezy            10      Job URLs          Auto-configured
   comeet            10      Full job data     No (skipped)
   cornerstone       10      Full job data     No (skipped)
@@ -1351,6 +1352,26 @@ intervieweb — Intervieweb / In-recruiting career sites
 
   Pair with: json-ld (auto-configured). Intervieweb detail pages publish
              structured title, location, description, and posting dates.
+"""
+
+
+MONITOR_BRASSRING = """\
+brassring — BrassRing / Infinite Talent TGnewUI
+
+  Listing:  https://{host}/TGnewUI/Search/Home/Home?partnerid={id}&siteid={id}
+  Returns:  Full job data (title, HTML description, location, posting date,
+            department metadata, and stable job-detail URL)
+  Scraper:  Skipped — the public search responses are rich
+  Cost:     10 (one browser session; bounded 50-row API pages)
+
+  Config:   partner_id and site_id are auto-detected from the board URL.
+
+  The monitor submits an unfiltered empty search, captures the first-party
+  MatchedJobs response, and walks every advertised result page. Pagination
+  fails closed when totals change, a page is skipped, or required fields are
+  malformed, preventing an incomplete cycle from delisting the missing tail.
+  Boards may use branded hosts; the TGnewUI route and numeric partner/site IDs
+  are the provider fingerprint.
 """
 
 
@@ -2931,6 +2952,7 @@ MONITOR_CARDS: dict[str, str] = {
     "ukg": MONITOR_UKG,
     "bamboohr": MONITOR_BAMBOOHR,
     "beisen": MONITOR_BEISEN,
+    "brassring": MONITOR_BRASSRING,
     "paycom": MONITOR_PAYCOM,
     "jazzhr": MONITOR_JAZZHR,
     "jobvite": MONITOR_JOBVITE,
