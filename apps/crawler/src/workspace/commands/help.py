@@ -3182,7 +3182,10 @@ pdf — PDF document scraper
   Returns:  title, HTML description, locations (when configured)
   Config:   title_source ("url" or "text"), title_pattern (regex),
             location_pattern (regex applied to PDF text),
-            repair_split_initial (opt-in repair for M\\nechanical-style artefacts)
+            repair_split_initial (opt-in repair for M\\nechanical-style artefacts),
+            ocr (opt-in fallback for image-only PDFs),
+            ocr_languages (Tesseract languages, default "eng"),
+            ocr_scale (integer PDF render scale, default 2)
   Note:     Typically paired with a dom monitor using url_filter to
             discover PDF links on the careers page.
 """

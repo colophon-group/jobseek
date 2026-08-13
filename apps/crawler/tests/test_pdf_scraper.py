@@ -127,6 +127,12 @@ class TestCapturedText:
             == "Senior Structural Expert"
         )
 
+    def test_rejoins_split_capitalized_word_with_accent(self):
+        assert (
+            _normalize_captured_text("R égleur / R égleuse", repair_split_initial=True)
+            == "Régleur / Régleuse"
+        )
+
     def test_does_not_rejoin_ambiguous_initial_by_default(self):
         assert _normalize_captured_text("A\nrole") == "A role"
 
@@ -230,6 +236,46 @@ class TestScrape:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await scrape("https://example.com/Marketing_Intern.pdf", {}, client)
             assert result.title == "Marketing Intern"
+
+    async def test_empty_pdf_can_use_opt_in_ocr(self, monkeypatch):
+        import pypdf
+
+        writer = pypdf.PdfWriter()
+        writer.add_blank_page(width=612, height=792)
+        buf = io.BytesIO()
+        writer.write(buf)
+
+        def handler(request):
+            return httpx.Response(200, content=buf.getvalue())
+
+        def fake_ocr(content: bytes, *, languages: str, scale: int) -> str:
+            assert content == buf.getvalue()
+            assert languages == "deu+eng"
+            assert scale == 3
+            return (
+                "Location: Neuhausen am Rheinfall, CH\n"
+                "DIRECTOR PEOPLE & CULTURE\n\nRole description"
+            )
+
+        monkeypatch.setattr("src.core.scrapers.pdf._ocr_pdf", fake_ocr)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.com/request.pdf",
+                {
+                    "ocr": True,
+                    "ocr_languages": "deu+eng",
+                    "ocr_scale": 3,
+                    "title_source": "text",
+                    "title_pattern": r"(DIRECTOR PEOPLE & CULTURE)",
+                    "location_pattern": r"Location:\s*([^\n]+)",
+                },
+                client,
+            )
+
+        assert result.title == "DIRECTOR PEOPLE & CULTURE"
+        assert result.locations == ["Neuhausen am Rheinfall, CH"]
+        assert result.description is not None
+        assert "Role description" in result.description
 
     async def test_saves_artifact(self, tmp_path):
         pdf_bytes = _make_pdf("Test Job")
