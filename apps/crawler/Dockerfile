@@ -5,6 +5,12 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
+# OCR is an opt-in fallback for job offers published as image-only PDFs.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       tesseract-ocr tesseract-ocr-deu tesseract-ocr-eng \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install Python dependencies (cached layer)
 COPY pyproject.toml uv.lock VERSION ./
 RUN uv sync --frozen --no-dev --no-install-project

@@ -18,10 +18,14 @@ Config:
     repair_split_initial
                    Opt in to joining a capital initial split from the rest of
                    its word by a PDF extraction newline (M\\nechanical).
+    ocr            Opt in to OCR when the PDF has no extractable text.
+    ocr_languages  Tesseract language expression (default: "eng").
+    ocr_scale      Integer PDF render scale used for OCR (default: 2).
 """
 
 from __future__ import annotations
 
+import asyncio
 import io
 import re
 from pathlib import Path
@@ -48,7 +52,11 @@ def _normalize_captured_text(
     whitespace.
     """
     if repair_split_initial:
-        value = re.sub(r"\b([A-Z])(?:[ \t]+|[ \t]*\r?\n[ \t]*)(?=[a-z])", r"\1", value)
+        value = re.sub(
+            r"\b([A-Z])(?:[ \t]+|[ \t]*\r?\n[ \t]*)(?=[^\W\d_])",
+            r"\1",
+            value,
+        )
     value = re.sub(r"\s+", " ", value).strip()
     return value or None
 
@@ -136,6 +144,28 @@ def _text_to_html(text: str) -> str:
     return "\n".join(f"<p>{p}</p>" for p in paragraphs)
 
 
+def _ocr_pdf(content: bytes, *, languages: str, scale: int) -> str:
+    """Render and OCR every page of an image-only PDF."""
+    import pypdfium2
+    import pytesseract
+
+    document = pypdfium2.PdfDocument(content)
+    pages_text: list[str] = []
+    try:
+        for page in document:
+            bitmap = page.render(scale=scale)
+            try:
+                text = pytesseract.image_to_string(bitmap.to_pil(), lang=languages)
+            finally:
+                bitmap.close()
+                page.close()
+            if text.strip():
+                pages_text.append(text)
+    finally:
+        document.close()
+    return "\n\n".join(pages_text).strip()
+
+
 async def scrape(
     url: str,
     config: dict,
@@ -165,6 +195,17 @@ async def scrape(
             pages_text.append(text)
 
     full_text = "\n\n".join(pages_text).strip()
+
+    if not full_text and config.get("ocr"):
+        languages = str(config.get("ocr_languages", "eng"))
+        scale = int(config.get("ocr_scale", 2))
+        full_text = await asyncio.to_thread(
+            _ocr_pdf,
+            response.content,
+            languages=languages,
+            scale=scale,
+        )
+        log.info("pdf.ocr", url=url, text_length=len(full_text))
 
     if not full_text:
         log.warning("pdf.empty", url=url)
