@@ -949,11 +949,12 @@ mokahr — Mokahr ATS (Chinese recruitment platform)
   Returns:  Rich (title, locations, date_posted, employment_type)
   Cost:     Low — paginated API with AES-128-CBC decryption, no browser.
 
-  Mokahr (app.mokahr.com) is a Chinese ATS. The API encrypts responses
+  Mokahr is a Chinese ATS, normally hosted on app.mokahr.com but also
+  available through company-owned custom domains. The API encrypts responses
   with AES-128-CBC using a per-response key and a per-site IV embedded
   in the SPA HTML. The monitor handles decryption transparently.
 
-  Auto-detected from app.mokahr.com URLs.
+  Auto-detected from standard Mokahr paths and custom-domain SPA bootstrap data.
 
   Config:
     org_id    Organisation slug (e.g. "zte")
@@ -3201,7 +3202,7 @@ skip — Placeholder scraper (auto-configured)
 SCRAPER_MOKAHR = """\
 mokahr — Mokahr ATS Detail API scraper
 
-  API:      POST https://app.mokahr.com/api/outer/ats-apply/website/job
+  API:      POST https://<board-origin>/api/outer/ats-apply/website/job
   Returns:  title, HTML description (jobDescription), locations,
             employment_type (mapped from commitment), date_posted,
             metadata (department)

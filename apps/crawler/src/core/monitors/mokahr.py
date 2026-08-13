@@ -1,6 +1,8 @@
 """Mokahr ATS monitor.
 
-Mokahr (app.mokahr.com) is a Chinese ATS used by companies like ZTE.
+Mokahr is a Chinese ATS used by companies like ZTE. Tenants normally use
+``app.mokahr.com``, but the same SPA and API can also be served from a
+company-owned custom domain.
 The API encrypts responses with AES-128-CBC using a per-response key
 (``necromancer``) and a per-site IV embedded in the SPA HTML.
 
@@ -16,6 +18,7 @@ import base64
 import json
 import re
 from html import unescape
+from urllib.parse import urlsplit
 
 import httpx
 import structlog
@@ -25,7 +28,8 @@ from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
-_API_URL = "https://app.mokahr.com/api/outer/ats-apply/website/jobs/v2"
+_DEFAULT_ORIGIN = "https://app.mokahr.com"
+_LIST_PATH = "/api/outer/ats-apply/website/jobs/v2"
 _PAGE_SIZE = 20
 _MAX_JOBS = 50_000
 
@@ -205,8 +209,21 @@ def _parse_salary(detail: dict) -> dict | None:
     }
 
 
-def _build_board_url(org_id: str, site_id: int, path: str = "social-recruitment") -> str:
-    return f"https://app.mokahr.com/{path}/{org_id}/{site_id}"
+def _origin(url: str) -> str:
+    """Return a URL origin, falling back to Mokahr's shared host."""
+    parsed = urlsplit(url)
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return _DEFAULT_ORIGIN
+
+
+def _build_board_url(
+    org_id: str,
+    site_id: int,
+    path: str = "social-recruitment",
+    origin: str = _DEFAULT_ORIGIN,
+) -> str:
+    return f"{origin.rstrip('/')}/{path}/{org_id}/{site_id}"
 
 
 def _lookup_city_name(cid: int | None, city_name_map: dict[int, str] | None) -> str:
@@ -286,8 +303,15 @@ def _parse_locations(job: dict, city_name_map: dict[int, str] | None = None) -> 
     return parts or None
 
 
-def _job_url(org_id: str, site_id: int, job_id: str) -> str:
-    return f"https://app.mokahr.com/social-recruitment/{org_id}/{site_id}#/job/{job_id}"
+def _job_url(
+    org_id: str,
+    site_id: int,
+    job_id: str,
+    *,
+    origin: str = _DEFAULT_ORIGIN,
+    path: str = "social-recruitment",
+) -> str:
+    return f"{origin.rstrip('/')}/{path}/{org_id}/{site_id}#/job/{job_id}"
 
 
 def _parse_metadata(job: dict) -> dict:
@@ -338,7 +362,13 @@ def _parse_experience(job: dict) -> dict | None:
 
 
 def _parse_job(
-    job: dict, org_id: str, site_id: int, city_name_map: dict[int, str] | None = None
+    job: dict,
+    org_id: str,
+    site_id: int,
+    city_name_map: dict[int, str] | None = None,
+    *,
+    origin: str = _DEFAULT_ORIGIN,
+    path: str = "social-recruitment",
 ) -> DiscoveredJob | None:
     job_id = job.get("id")
     title = job.get("title")
@@ -357,7 +387,7 @@ def _parse_job(
         extras["experience"] = experience
 
     return DiscoveredJob(
-        url=_job_url(org_id, site_id, job_id),
+        url=_job_url(org_id, site_id, job_id, origin=origin, path=path),
         title=title,
         description=job.get("jobDescription"),
         locations=_parse_locations(job, city_name_map),
@@ -384,14 +414,15 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     # Determine the recruitment path from the board URL.
     board_url = board.get("board_url", "")
-    m = re.search(r"app\.mokahr\.com/((?:social|campus)[_-](?:recruitment|apply))/", board_url)
+    m = re.search(r"/((?:social|campus)[_-](?:recruitment|apply))/", board_url)
     path = (
         m.group(1)
         if m
         else ("campus-recruitment" if "campus" in board_url else "social-recruitment")
     )
 
-    page_url = _build_board_url(org_id, site_id, path)
+    origin = _origin(board_url)
+    page_url = _build_board_url(org_id, site_id, path, origin)
     init_data = await _get_init_data(page_url, client, raise_on_404=True)
     iv = init_data.get("aesIv") if init_data else None
     if not iv:
@@ -415,7 +446,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
             "needStat": offset == 0,
             "locale": locale,
         }
-        resp = await client.post(_API_URL, json=body)
+        resp = await client.post(f"{origin}{_LIST_PATH}", json=body)
         resp.raise_for_status()
         envelope = resp.json()
 
@@ -433,7 +464,14 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
             break
 
         for raw in raw_jobs:
-            parsed = _parse_job(raw, org_id, site_id, city_name_map)
+            parsed = _parse_job(
+                raw,
+                org_id,
+                site_id,
+                city_name_map,
+                origin=origin,
+                path=path,
+            )
             if parsed:
                 jobs.append(parsed)
 
@@ -450,13 +488,30 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
 
 async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
-    """Detect Mokahr from URL pattern."""
-    m = re.search(
-        r"app\.mokahr\.com/(?:social|campus)[_-](?:recruitment|apply)/([\w-]+)/(\d+)", url
-    )
-    if not m:
+    """Detect shared-host and custom-domain Mokahr career sites."""
+    m = re.search(r"/(?:social|campus)[_-](?:recruitment|apply)/([\w-]+)/(\d+)", url)
+    if m:
+        return {"org_id": m.group(1), "site_id": int(m.group(2))}
+
+    # Custom domains commonly redirect a short root URL to the full Mokahr
+    # route. Probe the public SPA bootstrap rather than maintaining a list of
+    # branded hosts.
+    if client is None:
         return None
-    return {"org_id": m.group(1), "site_id": int(m.group(2))}
+    try:
+        init_data = await _get_init_data(url, client)
+    except httpx.HTTPError:
+        return None
+    if not init_data or not init_data.get("aesIv"):
+        return None
+    org = init_data.get("org")
+    org_id = org.get("id") if isinstance(org, dict) else None
+    site_id = init_data.get("siteId")
+    if isinstance(site_id, str) and site_id.isdigit():
+        site_id = int(site_id)
+    if not isinstance(org_id, str) or not org_id or not isinstance(site_id, int):
+        return None
+    return {"org_id": org_id, "site_id": site_id}
 
 
 register("mokahr", discover, cost=10, can_handle=can_handle, rich=True)

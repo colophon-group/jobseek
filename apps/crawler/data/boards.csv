@@ -4363,6 +4363,8 @@ power-digital,power-digital-greenhouse,https://job-boards.greenhouse.io/powerdig
 powercell-sweden,powercell-sweden-main,https://careers.powercellgroup.com/,sitemap,"{""sitemap_url"": ""https://careers.powercellgroup.com/sitemap.xml"", ""url_filter"": ""^https://careers\\.powercellgroup\\.com/jobs/[0-9]+(?:-|$)""}",json-ld,"{""render"": true}"
 ppro,ppro-careers,https://jobs.lever.co/ppro,lever,"{""token"": ""ppro""}",skip,
 practice-better,practice-better-greenhouse,https://job-boards.greenhouse.io/practicebetter,greenhouse,"{""token"": ""practicebetter""}",skip,
+prada-group,prada-group-china,https://jobschina.prada.cn/,mokahr,"{""org_id"": ""pradagroup"", ""site_id"": 151069}",mokahr,"{""enrich"": [""description""]}"
+prada-group,prada-group-global,https://jobs.pradagroup.com/viewalljobs/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.pradagroup.com/googlefeed.xml"", ""variant"": ""feed""}",skip,
 praxent,praxent-greenhouse,https://job-boards.greenhouse.io/praxent,greenhouse,"{""token"": ""praxent""}",skip,
 praxis-precision-medicines-inc,praxis-precision-medicines-inc-greenhouse,https://job-boards.greenhouse.io/praxisprecisionmedicines,greenhouse,"{""token"": ""praxisprecisionmedicines""}",skip,
 precision-aq,precision-aq-greenhouse,https://job-boards.greenhouse.io/precisionaq,greenhouse,"{""token"": ""precisionaq""}",skip,

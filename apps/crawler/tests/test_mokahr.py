@@ -175,3 +175,54 @@ class TestCanHandle:
 
     async def test_rejects_unrelated_url(self):
         assert await can_handle("https://example.com/careers") is None
+
+    async def test_detects_custom_domain_from_spa_bootstrap(self):
+        iv = "de7c21ed8d6f50fe"
+        init_data = {
+            "aesIv": iv,
+            "org": {"id": "pradagroup"},
+            "siteId": "151069",
+        }
+        init_value = json.dumps(init_data).replace('"', "&quot;")
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                text=f'<input id="init-data" value="{init_value}">',
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://jobschina.prada.cn/", client)
+
+        assert result == {"org_id": "pradagroup", "site_id": 151069}
+
+    async def test_custom_domain_listing_uses_same_origin(self):
+        iv = "de7c21ed8d6f50fe"
+        key = "1234567890abcdef"
+        seen_urls: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen_urls.append(str(request.url))
+            if request.method == "GET":
+                return httpx.Response(200, text=_spa_html(iv), request=request)
+            return httpx.Response(
+                200,
+                json=_encrypted_jobs([_raw_job("custom")], key, iv),
+                request=request,
+            )
+
+        board = {
+            "board_url": "https://jobschina.prada.cn/",
+            "metadata": {"org_id": "pradagroup", "site_id": 151069},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(board, client)
+
+        assert seen_urls == [
+            "https://jobschina.prada.cn/social-recruitment/pradagroup/151069",
+            "https://jobschina.prada.cn/api/outer/ats-apply/website/jobs/v2",
+        ]
+        assert jobs[0].url == (
+            "https://jobschina.prada.cn/social-recruitment/pradagroup/151069#/job/custom"
+        )

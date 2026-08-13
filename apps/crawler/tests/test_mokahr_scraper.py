@@ -412,6 +412,18 @@ class TestParseUrl:
     def test_returns_none_for_unrelated_url(self):
         assert _parse_url("https://example.com/foo") is None
 
+    def test_parses_custom_domain_url(self):
+        url = (
+            "https://jobschina.prada.cn/social-recruitment/pradagroup/151069/"
+            "#/job/17840f0c-7632-41a4-b555-41dd273144ce"
+        )
+        assert _parse_url(url) == (
+            "social-recruitment",
+            "pradagroup",
+            151069,
+            "17840f0c-7632-41a4-b555-41dd273144ce",
+        )
+
 
 class TestParseDetail:
     def _detail(self, **overrides) -> dict:
@@ -595,6 +607,43 @@ async def test_scrape_decrypts_full_detail():
         "education": "本科",
         "job_function": "研发类",
     }
+
+
+@pytest.mark.asyncio
+async def test_scrape_custom_domain_uses_same_origin():
+    iv = "de7c21ed8d6f50fe"
+    key = "1234567890abcdef"
+    init_value = json.dumps({"aesIv": iv}).replace('"', "&quot;")
+    detail = {
+        "title": "Client Advisor",
+        "jobDescription": "<p>Serve Prada clients.</p>",
+        "locations": [{"cityName": "上海", "country": "中国"}],
+    }
+    encrypted_data = _aes_encrypt(
+        json.dumps({"data": detail}, ensure_ascii=False).encode(), key, iv
+    )
+    seen_urls: list[str] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        seen_urls.append(str(request.url))
+        if request.method == "GET":
+            return httpx.Response(200, text=f'<input id="init-data" value="{init_value}">')
+        return httpx.Response(200, json={"data": encrypted_data, "necromancer": key})
+
+    url = (
+        "https://jobschina.prada.cn/social-recruitment/pradagroup/151069/"
+        "#/job/17840f0c-7632-41a4-b555-41dd273144ce"
+    )
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        content = await scrape(url, {}, client)
+
+    assert seen_urls == [
+        "https://jobschina.prada.cn/social-recruitment/pradagroup/151069",
+        "https://jobschina.prada.cn/api/outer/ats-apply/website/job",
+    ]
+    assert content.title == "Client Advisor"
+    assert content.description == "<p>Serve Prada clients.</p>"
+    assert content.locations == ["上海, 中国"]
 
 
 @pytest.mark.asyncio
