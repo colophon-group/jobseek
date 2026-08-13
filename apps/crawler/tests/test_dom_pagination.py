@@ -15,6 +15,7 @@ from src.core.monitors.dom import (
     _extract_links_static,
     _fetch_via_page,
     _paginate_urls,
+    _vagas_probe_config,
     can_handle,
     dom_discover,
 )
@@ -134,6 +135,48 @@ class TestBuildUrlMatcher:
 
 
 class TestCanHandle:
+    def test_vagas_employer_board_uses_proxy_pagination_preset(self):
+        assert _vagas_probe_config(
+            "https://trabalheconosco.vagas.com.br/beiersdorf/oportunidades"
+        ) == {
+            "proxy": True,
+            "url_filter": (
+                r"^https://trabalheconosco\.vagas\.com\.br/[^/?#]+/"
+                r"oportunidade/[^?#]+/\d+(?:[?#].*)?$"
+            ),
+            "pagination": {
+                "param_name": "pagina",
+                "max_pages": 1_000,
+            },
+        }
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://trabalheconosco.vagas.com.br/beiersdorf",
+            "https://trabalheconosco.vagas.com.br/beiersdorf/oportunidade/role/1",
+            "https://www.vagas.com.br/beiersdorf/oportunidades",
+            "http://trabalheconosco.vagas.com.br/beiersdorf/oportunidades",
+            "https://trabalheconosco.vagas.com.br:444/beiersdorf/oportunidades",
+            "https://evil.example/beiersdorf/oportunidades",
+        ],
+    )
+    def test_vagas_preset_rejects_non_listing_routes(self, url):
+        assert _vagas_probe_config(url) is None
+
+    async def test_vagas_probe_does_not_fetch_blocked_listing(self):
+        client = MagicMock()
+
+        result = await can_handle(
+            "https://trabalheconosco.vagas.com.br/beiersdorf/oportunidades",
+            client,
+        )
+
+        assert result == _vagas_probe_config(
+            "https://trabalheconosco.vagas.com.br/beiersdorf/oportunidades"
+        )
+        client.get.assert_not_called()
+
     async def test_jposting_empty_board_returns_provider_preset(self):
         html = """
         <html><head><style>.jobname { font-weight: bold; }</style></head>
