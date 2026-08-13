@@ -2846,6 +2846,7 @@ kiavi,kiavi-greenhouse,https://job-boards.greenhouse.io/kiavi,greenhouse,"{""tok
 kickstarter-pbc,kickstarter-pbc-greenhouse,https://job-boards.greenhouse.io/kickstarter,greenhouse,"{""token"": ""kickstarter""}",skip,
 kiddom,kiddom-lever,https://jobs.lever.co/kiddom,lever,"{""token"": ""kiddom""}",skip,
 kilocode,kilocode-ashby,https://jobs.ashbyhq.com/kilocode,ashby,"{""token"": ""kilocode""}",skip,
+kimberly-clark,kimberly-clark-careers,https://kimberlyclark.wd1.myworkdayjobs.com/GLOBAL,workday,"{""company"": ""kimberlyclark"", ""wd_instance"": ""wd1"", ""site"": ""GLOBAL""}",workday,
 kin,kin-ashby,https://jobs.ashbyhq.com/kin,ashby,"{""token"": ""kin""}",skip,
 kinder-s,kinder-s-greenhouse,https://job-boards.greenhouse.io/kinders,greenhouse,"{""token"": ""kinders""}",skip,
 kindred,kindred-ashby,https://jobs.ashbyhq.com/kindred,ashby,"{""token"": ""kindred""}",skip,
