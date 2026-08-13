@@ -47,6 +47,17 @@ def _listing(
     )
 
 
+def _empty_listing(*, tenant: str = TENANT) -> str:
+    return (
+        "<html><head>"
+        f'<link rel="canonical" href="https://hrmos.co/pages/{tenant}/jobs">'
+        "</head><body>"
+        '<section class="sg-wrapper sg-unavailable-notifier">'
+        f"<h2>公開されている {tenant} の求人はありません。</h2>"
+        "</section></body></html>"
+    )
+
+
 class TestTenantAndUrls:
     @pytest.mark.parametrize(
         "url",
@@ -141,6 +152,13 @@ class TestMonitor:
     async def test_empty_listing_is_authoritative(self):
         transport = httpx.MockTransport(
             lambda request: httpx.Response(200, text=_listing(total=0), request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            assert await discover({"board_url": BOARD_URL}, client) == set()
+
+    async def test_explicit_unavailable_page_is_authoritative_empty(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=_empty_listing(), request=request)
         )
         async with httpx.AsyncClient(transport=transport) as client:
             assert await discover({"board_url": BOARD_URL}, client) == set()
@@ -373,6 +391,13 @@ class TestDetection:
         )
         async with httpx.AsyncClient(transport=transport) as client:
             assert await can_handle(BOARD_URL, client) == {"tenant": TENANT, "jobs": 123}
+
+    async def test_direct_url_verifies_explicit_empty_listing(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=_empty_listing(), request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            assert await can_handle(BOARD_URL, client) == {"tenant": TENANT, "jobs": 0}
 
     async def test_embedded_link_is_detected_and_verified(self):
         requests: list[str] = []

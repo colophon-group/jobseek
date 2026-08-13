@@ -2508,6 +2508,8 @@ hemab-therapeutics,hemab-therapeutics-hitalento,https://career.hitalento.com/hem
 hemnet,hemnet-careers,https://career.hemnet.se/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.hemnet.se/jobs.rss""}",skip,
 herald,herald-greenhouse,https://job-boards.greenhouse.io/heraldapi,greenhouse,"{""token"": ""heraldapi""}",skip,
 here,here-greenhouse,https://job-boards.greenhouse.io/hereio,greenhouse,"{""token"": ""hereio""}",skip,
+hermes,hermes-careers,https://talents.hermes.com/en/sites/CX/jobs,oracle_hcm,"{""host"": ""fa-eoic-saasfaprod1.fa.ocs.oraclecloud.com"", ""site"": ""CX""}",oracle_hcm,"{""host"": ""fa-eoic-saasfaprod1.fa.ocs.oraclecloud.com"", ""site"": ""CX"", ""enrich"": [""description""]}"
+hermes,hermes-careers-jp,https://hrmos.co/pages/hermes/jobs,hrmos,"{""tenant"": ""hermes""}",json-ld,
 hermeus,hermeus-pinpoint,https://hermeus.pinpointhq.com,pinpoint,"{""slug"": ""hermeus""}",skip,
 heron-power,heron-power-careers,https://jobs.ashbyhq.com/heron-power,ashby,"{""token"": ""heron-power""}",skip,
 hex-technologies,hex-technologies-greenhouse,https://job-boards.greenhouse.io/hextechnologies,greenhouse,"{""token"": ""hextechnologies""}",skip,

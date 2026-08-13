@@ -42,6 +42,10 @@ _PAGE_PATTERNS = [
     )
 ]
 _LISTING_MARKER_RE = re.compile(r"\bid=[\"']jsi-joblist[\"']", re.IGNORECASE)
+_EMPTY_LISTING_MARKER_RE = re.compile(
+    r"class=[\"'][^\"']*\bsg-unavailable-notifier\b[^\"']*[\"']",
+    re.IGNORECASE,
+)
 _COUNT_RE = re.compile(r"全\s*([\d,]+)\s*件中\s*([\d,]+)\s*件")
 _CURRENT_PAGE_RE = re.compile(
     r"class=[\"'][^\"']*\bcurrent\b[^\"']*[\"'][^>]*>\s*(\d+)\s*<",
@@ -173,7 +177,7 @@ async def _fetch_listing(
     if page is None:  # Strict status handling above makes this unreachable.
         raise RuntimeError(f"HRMOS listing fetch returned no page for {tenant!r}")
     _raise_if_bot_challenge(url, page)
-    if _LISTING_MARKER_RE.search(page) is None:
+    if _LISTING_MARKER_RE.search(page) is None and _EMPTY_LISTING_MARKER_RE.search(page) is None:
         raise ValueError(f"HRMOS tenant {tenant!r} returned a non-listing page")
     return page
 
@@ -183,6 +187,8 @@ async def _discover_pages(
     client: httpx.AsyncClient,
 ) -> tuple[set[str], bool, int]:
     first_page = await _fetch_listing(tenant, 1, client)
+    if _EMPTY_LISTING_MARKER_RE.search(first_page):
+        return set(), False, 1
     total_jobs, displayed, current, linked_page_max = _page_metadata(first_page)
     if current not in {None, 1}:
         raise ValueError(f"HRMOS tenant {tenant!r} returned page {current} for page 1")
@@ -260,6 +266,8 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
 async def _probe_tenant(tenant: str, client: httpx.AsyncClient) -> ProbeResult:
     try:
         page = await _fetch_listing(tenant, 1, client)
+        if _EMPTY_LISTING_MARKER_RE.search(page):
+            return True, 0
         total, displayed, _current, _linked_max = _page_metadata(page)
         if total > 0 and (displayed == 0 or not _parse_listing(page, tenant)):
             raise ValueError("HRMOS listing advertised jobs without detail links")
