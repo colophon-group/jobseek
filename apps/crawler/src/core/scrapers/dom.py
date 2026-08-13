@@ -146,6 +146,36 @@ _STOP_MARKERS = [
 ]
 
 _KONTACT_MARKER = "kontactintelligence.com"
+_WORKLOAD_RE = re.compile(r"^\s*\d{1,3}(?:\s*[-–]\s*\d{1,3})?\s*%\s*$")
+
+
+def _title_heading(elements: list[dict]) -> tuple[int, str] | None:
+    """Find the page's job-title heading without guessing from site chrome.
+
+    ``h1`` remains the preferred semantic signal. Some CMS job templates use a
+    lower-level heading for the visible title, however. In that case, accept an
+    ``h2``-``h4`` only when its normalized text exactly matches the document
+    title. This keeps the fallback useful without treating an arbitrary section
+    heading as the job title.
+    """
+
+    for i, element in enumerate(elements):
+        if element["tag"] == "h1":
+            return i, "h1"
+
+    document_title = next(
+        (element["text"] for element in elements if element["tag"] == "title"),
+        None,
+    )
+    if not document_title:
+        return None
+    normalized_title = " ".join(document_title.split()).casefold()
+    for i, element in enumerate(elements):
+        if element["tag"] in {"h2", "h3", "h4"} and (
+            " ".join(element["text"].split()).casefold() == normalized_title
+        ):
+            return i, element["tag"]
+    return None
 
 
 def _kontact_config(htmls: list[str]) -> dict | None:
@@ -194,19 +224,36 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
     if not elements:
         return None
 
-    # Find first h1 — title
-    h1_idx = None
-    for i, el in enumerate(elements):
-        if el["tag"] == "h1":
-            h1_idx = i
+    title_heading = _title_heading(elements)
+    if title_heading is None:
+        return None
+    title_idx, title_tag = title_heading
+
+    steps: list[dict] = [{"tag": title_tag, "field": "title"}]
+
+    # A common compact job header is ``title, location, workload`` where the
+    # latter two values are adjacent list items (for example ``Sion`` and
+    # ``80-100%``). Capture the location and advance past the workload before
+    # collecting the description. The percentage check prevents an ordinary
+    # content list from being mistaken for job metadata.
+    workload_location = False
+    for i in range(title_idx + 1, min(title_idx + 6, len(elements) - 1)):
+        if (
+            elements[i]["tag"] == "li"
+            and elements[i + 1]["tag"] == "li"
+            and _WORKLOAD_RE.fullmatch(elements[i + 1]["text"])
+        ):
+            steps.extend(
+                [
+                    {"tag": "li", "field": "location", "optional": True},
+                    {"tag": "li"},
+                ]
+            )
+            workload_location = True
             break
 
-    if h1_idx is None:
-        return None
-
-    steps: list[dict] = [{"tag": "h1", "field": "title"}]
-
-    # Description: continue from the cursor immediately after the title h1.
+    # Description: continue from the cursor immediately after the title
+    # heading (and compact metadata, when detected).
     # Leaving the selector empty intentionally matches the current element;
     # re-seeking the h1 would either miss it or escape a URL-fragment anchor.
     desc_step: dict = {
@@ -215,8 +262,8 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
         "optional": True,
     }
 
-    # Look for a stop marker in elements after h1
-    for i in range(h1_idx + 1, len(elements)):
+    # Look for a stop marker in elements after the title.
+    for i in range(title_idx + 1, len(elements)):
         text = elements[i]["text"]
         for marker in _STOP_MARKERS:
             if marker.lower() in text.lower() and len(text) < 60:
@@ -227,25 +274,26 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
 
     # If no stop marker found, use stop_count based on remaining content
     if "stop" not in desc_step:
-        remaining = len(elements) - h1_idx - 1
+        remaining = len(elements) - title_idx - 1
         desc_step["stop_count"] = min(remaining, 50)
 
     steps.append(desc_step)
 
     # Location: look for an element with "location" in its text
-    for el in elements:
-        text_lower = el["text"].lower()
-        if "location" in text_lower and len(el["text"]) < 40:
-            steps.append(
-                {
-                    "text": "Location",
-                    "offset": 1,
-                    "field": "location",
-                    "optional": True,
-                    "from": 0,
-                }
-            )
-            break
+    if not workload_location:
+        for el in elements:
+            text_lower = el["text"].lower()
+            if "location" in text_lower and len(el["text"]) < 40:
+                steps.append(
+                    {
+                        "text": "Location",
+                        "offset": 1,
+                        "field": "location",
+                        "optional": True,
+                        "from": 0,
+                    }
+                )
+                break
 
     return steps
 
@@ -276,15 +324,15 @@ def can_handle(htmls: list[str]) -> dict | None:
     if not best_steps:
         return None
 
-    # Validate h1 exists on other pages too (title step consistency)
-    h1_found = 0
+    # Validate a trustworthy title heading exists on other pages too.
+    title_found = 0
     for html in htmls:
         elements = flatten(html)
-        if any(el["tag"] == "h1" for el in elements):
-            h1_found += 1
+        if _title_heading(elements) is not None:
+            title_found += 1
 
-    # Require h1 on at least half the pages
-    if h1_found < len(htmls) / 2:
+    # Require a title heading on at least half the pages.
+    if title_found < len(htmls) / 2:
         return None
 
     return {"steps": best_steps}
