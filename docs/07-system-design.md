@@ -202,6 +202,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `turbohire`       | Rich     | skip        | TurboHire public career API             |
 | 10   | `jarvi`           | Rich     | skip        | Jarvi public careers API                |
 | 10   | `jobylon`         | Rich     | skip        | Jobylon iframe embed data               |
+| 10   | `jobs_ch`         | URL-only | json-ld     | jobs.ch employer profile search API     |
 | 10   | `keka`            | Rich     | skip        | Keka public career-portal jobs API      |
 | 10   | `lever`           | Rich     | skip        | Lever Postings API                      |
 | 10   | `linkedin`        | Rich     | linkedin    | LinkedIn guest-job summaries + detail enrich |

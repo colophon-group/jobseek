@@ -70,6 +70,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `turbohire` | Rich | skip | TurboHire token-authenticated public career API |
 | `jarvi` | Rich | skip | Jarvi public careers API embeds |
 | `jobylon` | Rich | skip | Jobylon iframe embeds |
+| `jobs_ch` | URL-only | json-ld | jobs.ch employer profiles and paginated public search API |
 | `keka` | Rich | skip | Keka career-portal bootstrap and public rich-jobs API |
 | `lever` | Rich | skip | Lever ATS |
 | `linkedin` | Rich | linkedin | LinkedIn guest-job summaries plus detail enrichment |
