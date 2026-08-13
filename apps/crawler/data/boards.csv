@@ -1277,6 +1277,7 @@ coindcx,coindcx-pinpoint,https://coindcx.pinpointhq.com,pinpoint,"{""slug"": ""c
 coinswitch,coinswitch-careers,https://recruiterflow.com/coinswitch/jobs,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""/coinswitch/jobs/""}",json-ld,
 cointracker,cointracker-ashby,https://jobs.ashbyhq.com/cointracker,ashby,"{""token"": ""cointracker""}",skip,
 colab-software,colab-software-greenhouse,https://job-boards.greenhouse.io/colabsoftware,greenhouse,"{""token"": ""colabsoftware""}",skip,
+colgate-palmolive,colgate-palmolive-global,https://jobs.colgate.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.colgate.com/googlefeed.xml""}",skip,
 collective,collective-ashby,https://jobs.ashbyhq.com/collective,ashby,"{""token"": ""collective""}",skip,
 collective,collective-recruitee,https://collective.recruitee.com,recruitee,"{""token"": ""collective""}",skip,
 collibra,collibra-greenhouse,https://job-boards.greenhouse.io/collibra,greenhouse,"{""token"": ""collibra""}",skip,
