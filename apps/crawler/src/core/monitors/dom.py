@@ -277,6 +277,48 @@ class _LinkExtractor(HTMLParser):
                     self.hrefs.append(value)
 
 
+class _PageTextExtractor(HTMLParser):
+    """Collect human-readable page text while ignoring scripts and styles."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.parts: list[str] = []
+        self._ignored_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in {"script", "style"}:
+            self._ignored_depth += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"script", "style"} and self._ignored_depth:
+            self._ignored_depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if not self._ignored_depth:
+            self.parts.append(data)
+
+
+def _has_authoritative_empty_text(html: str, empty_text: object) -> bool:
+    """Return whether an explicitly configured empty-board notice is present.
+
+    ``empty_text`` is deliberately an exact, case-insensitive text fragment
+    instead of a regular expression. Board configs should quote the
+    publisher's authoritative no-openings notice, keeping this opt-in guard
+    narrow enough that stale job-detail links can be ignored without making
+    generic navigation copy look like an empty listing.
+    """
+    if empty_text is None:
+        return False
+    if not isinstance(empty_text, str) or not empty_text.strip():
+        raise ValueError("DOM monitor empty_text must be a non-empty string")
+
+    parser = _PageTextExtractor()
+    parser.feed(html)
+    page_text = " ".join(" ".join(parser.parts).split()).casefold()
+    marker = " ".join(empty_text.split()).casefold()
+    return marker in page_text
+
+
 def _extract_links_static(
     html: str,
     base_url: str,
@@ -325,6 +367,9 @@ async def _extract_links_rendered(
     # board and the monitor reports a successful empty cycle.
     html = await safe_content(page)
     _raise_if_bot_challenge(page.url, html)
+    if _has_authoritative_empty_text(html, metadata.get("empty_text")):
+        log.info("dom.authoritative_empty", board_url=board_url, render=True)
+        return set()
 
     links = await page.evaluate("""
         () => Array.from(document.querySelectorAll('a[href]'))
@@ -717,6 +762,9 @@ async def dom_discover(
             log.warning("dom.fetch_failed", board_url=board_url)
             return set()
         _raise_if_bot_challenge(board_url, html)
+        if _has_authoritative_empty_text(html, metadata.get("empty_text")):
+            log.info("dom.authoritative_empty", board_url=board_url, render=False)
+            return set()
         urls = _extract_links_static(html, board_url, url_matcher)
         if pagination:
             urls = await _paginate_urls(

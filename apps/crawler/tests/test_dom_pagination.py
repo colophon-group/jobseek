@@ -14,6 +14,7 @@ from src.core.monitors.dom import (
     _extract_links_rendered,
     _extract_links_static,
     _fetch_via_page,
+    _has_authoritative_empty_text,
     _paginate_urls,
     can_handle,
     dom_discover,
@@ -114,6 +115,32 @@ class TestExtractLinksStatic:
         urls = _extract_links_static(html, "https://careers.example.com/?page=advertisement")
 
         assert urls == {"https://careers.example.com/?page=advertisement_display&id=15794"}
+
+
+class TestAuthoritativeEmptyText:
+    def test_matches_normalized_case_insensitive_page_text(self):
+        html = """
+        <html><head><style>.notice { display: block; }</style></head>
+        <body><p>Actuellement, il n'y a pas<br>d'offres d'emploi disponibles.</p></body></html>
+        """
+
+        assert _has_authoritative_empty_text(
+            html,
+            "ACTUELLEMENT, IL N'Y A PAS D'OFFRES D'EMPLOI DISPONIBLES.",
+        )
+
+    def test_ignores_marker_in_script_or_style(self):
+        html = """
+        <html><head><style>.empty::after { content: "No roles available"; }</style></head>
+        <body><script>const empty = "No roles available";</script><p>One role</p></body></html>
+        """
+
+        assert not _has_authoritative_empty_text(html, "No roles available")
+
+    @pytest.mark.parametrize("empty_text", ["", "   ", [], 123])
+    def test_rejects_invalid_config(self, empty_text):
+        with pytest.raises(ValueError, match="non-empty string"):
+            _has_authoritative_empty_text("<p>No jobs</p>", empty_text)
 
 
 class TestBuildUrlMatcher:
@@ -221,6 +248,67 @@ class TestCanHandle:
 
 
 class TestDomDiscoverInitialFetch:
+    async def test_authoritative_empty_text_wins_over_stale_job_links(self):
+        page = """
+        <p>Actuellement, il n'y a pas d'offres d'emploi disponibles.</p>
+        <a href="/documents/expired-role-pdf">Expired role</a>
+        """
+
+        def handler(request):
+            return httpx.Response(200, text=page, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/carriere",
+                    "metadata": {
+                        "empty_text": "Actuellement, il n'y a pas d'offres d'emploi disponibles.",
+                        "url_filter": r"/documents/.+-pdf$",
+                    },
+                },
+                client,
+            )
+
+        assert result == set()
+
+    async def test_job_links_resume_when_authoritative_empty_text_is_absent(self):
+        page = '<a href="/documents/current-role-pdf">Current role</a>'
+
+        def handler(request):
+            return httpx.Response(200, text=page, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/carriere",
+                    "metadata": {
+                        "empty_text": "Actuellement, il n'y a pas d'offres d'emploi disponibles.",
+                        "url_filter": r"/documents/.+-pdf$",
+                    },
+                },
+                client,
+            )
+
+        assert result == {"https://example.com/documents/current-role-pdf"}
+
+    async def test_rendered_authoritative_empty_text_skips_link_evaluation(self, monkeypatch):
+        page = MagicMock()
+        page.url = "https://example.com/carriere"
+        page.content = AsyncMock(return_value="<p>No current vacancies</p>")
+        page.evaluate = AsyncMock(side_effect=AssertionError("links must not be evaluated"))
+        monkeypatch.setattr("src.core.monitors.dom.navigate", AsyncMock())
+        monkeypatch.setattr("src.core.monitors.dom.run_actions", AsyncMock())
+
+        urls = await _extract_links_rendered(
+            page,
+            {
+                "_board_url": "https://example.com/carriere",
+                "empty_text": "No current vacancies",
+            },
+        )
+
+        assert urls == set()
+
     async def test_fragment_only_self_link_is_not_a_job(self):
         page = _html_with_links("#pagetop")
 

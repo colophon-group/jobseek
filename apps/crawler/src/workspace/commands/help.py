@@ -1144,6 +1144,10 @@ dom — Link Extraction (fallback)
                    "euc_jp"). Ignored when render=true.
     retry_statuses Static HTTP status-to-retry-count map, for provider-specific
                    transient responses only (HTTP 400-599, maximum 5 retries).
+    empty_text     Exact, case-insensitive text of an authoritative no-openings
+                   notice. When present in the page text, return 0 jobs before
+                   evaluating stale links. Use only publisher-owned notices,
+                   not generic navigation or marketing copy.
     persistent_context
                    Use a real browser profile shape for anti-bot challenges.
                    Usually pair with channel: "chrome" and headless: false.

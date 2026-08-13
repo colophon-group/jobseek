@@ -968,6 +968,7 @@ cadwell,cadwell-greenhouse,https://job-boards.greenhouse.io/cadwell,greenhouse,"
 caffeine-ai,caffeine-ai-careers,https://jobs.gem.com/caffeine-ai,gem,"{""token"": ""caffeine-ai""}",skip,
 cailabs,cailabs-careers,https://rejoignez.cailabs.com/en/cailabs/offres/,sitemap,"{""sitemap_url"": ""https://rejoignez.cailabs.com/sitemap.xml""}",json-ld,
 cais,cais-greenhouse,https://job-boards.greenhouse.io/cais,greenhouse,"{""token"": ""cais""}",skip,
+caisse-epargne-de-cossonay,caisse-epargne-de-cossonay-careers,https://cedc.ch/carri%C3%A8re,dom,"{""empty_text"": ""Actuellement, il n'y a pas d'offres d'emploi disponibles."", ""url_filter"": ""/documents/d/cco/.+-pdf$""}",pdf,"{""title_source"": ""text"", ""title_pattern"": ""Nous recherchons[^\\n]*\\n\\s*([^\\n]+)"", ""location_pattern"": ""(Cossonay(?:/Sullens)?)""}"
 calendly,calendly-greenhouse,https://job-boards.greenhouse.io/calendly,greenhouse,"{""token"": ""calendly""}",skip,
 calendly,calendly-recruitee,https://calendly.recruitee.com,recruitee,"{""token"": ""calendly""}",skip,
 california-academy-of-sciences,california-academy-of-sciences-greenhouse,https://job-boards.greenhouse.io/californiaacademyofsciences,greenhouse,"{""token"": ""californiaacademyofsciences""}",skip,

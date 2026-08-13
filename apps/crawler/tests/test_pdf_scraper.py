@@ -130,6 +130,11 @@ class TestCapturedText:
     def test_does_not_rejoin_ambiguous_initial_by_default(self):
         assert _normalize_captured_text("A\nrole") == "A role"
 
+    def test_normalizes_private_use_font_glyphs(self):
+        assert _normalize_captured_text("Conseiller\uf09eère en financement") == (
+            "Conseiller·ère en financement"
+        )
+
     def test_extracts_and_normalizes_capture_group(self):
         text = "Location\n Sawston,\n Cambridge\nWho we are"
         pattern = r"(?s)Location\s*(.*?)\s*Who we are"
