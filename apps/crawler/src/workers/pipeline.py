@@ -125,6 +125,13 @@ def _configured_egress_host(config: dict) -> str:
         if resolved_host:
             return normalize_egress_host(resolved_host)
 
+    if config.get("crawler_type") == "prospective" and isinstance(metadata, dict):
+        from src.core.monitors.prospective import prospective_request_host
+
+        resolved_host = prospective_request_host(str(config.get("board_url") or ""), metadata)
+        if resolved_host:
+            return normalize_egress_host(resolved_host)
+
     if config.get("crawler_type") == "taleo" and isinstance(metadata, dict):
         from src.shared.taleo import taleo_request_host
 

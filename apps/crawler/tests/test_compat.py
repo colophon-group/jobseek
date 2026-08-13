@@ -58,6 +58,13 @@ def test_detect_ats_breezy_host():
     assert detect_ats_from_url("https://acme.breezy.hr") == "breezy"
 
 
+def test_detect_ats_prospective_canonical_url():
+    assert (
+        detect_ats_from_url("https://ohws.prospective.ch/public/v1/careercenter/1000394/?lang=de")
+        == "prospective"
+    )
+
+
 def test_detect_ats_avature_vendor_url_is_strict():
     assert detect_ats_from_url("https://acme.avature.net/en_US/careers/SearchJobs") == "avature"
     assert (

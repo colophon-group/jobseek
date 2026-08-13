@@ -132,6 +132,7 @@ async def test_save_raw_logs_handler_failures(
         "lever",
         "nextdata",
         "personio",
+        "prospective",
         "recruitee",
         "rippling",
         "rss",
