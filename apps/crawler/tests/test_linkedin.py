@@ -99,6 +99,7 @@ class TestMonitor:
     async def test_discovers_rich_summaries(self):
         def handler(request: httpx.Request) -> httpx.Response:
             assert request.url.params.get("f_C") == COMPANY_ID
+            assert request.url.params.get("location") == "Worldwide"
             return httpx.Response(200, text=_listing_html(), request=request)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:

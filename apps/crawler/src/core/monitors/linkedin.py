@@ -158,6 +158,10 @@ def _listing_url(
     params: dict[str, str | int] = {"start": start}
     if company_id is not None:
         params["f_C"] = company_id
+        # LinkedIn otherwise localizes results to the request's inferred region,
+        # which can hide a company's jobs in other countries. Company boards are
+        # global sources, so make that scope explicit.
+        params["location"] = "Worldwide"
     if keywords is not None:
         params["keywords"] = keywords
     query = urlencode(params)
