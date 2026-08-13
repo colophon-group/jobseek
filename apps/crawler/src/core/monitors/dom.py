@@ -86,6 +86,46 @@ _KONTACT_URL_FILTER = r"/Physician_Job/Details/"
 _JPOSTING_HOST_SUFFIX = ".jposting.net"
 _JPOSTING_JOB_FILTER = r"[?&]job_code=[^&#]+"
 
+_VAGAS_HOST = "trabalheconosco.vagas.com.br"
+_VAGAS_JOB_FILTER = (
+    r"^https://trabalheconosco\.vagas\.com\.br/[^/?#]+/"
+    r"oportunidade/[^?#]+/\d+(?:[?#].*)?$"
+)
+
+
+def _vagas_probe_config(url: str) -> dict | None:
+    """Return the proxy-routed preset for Vagas.com employer boards.
+
+    Vagas.com rejects crawler-host geographies with Cloudflare error 1005,
+    including before a browser context can be established.  The public
+    employer route itself is a stable provider identifier, so recognize it
+    before the generic probe fetch and route both listing pages and detail
+    pages through the configured production proxy.
+    """
+
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or (parsed.hostname or "").casefold() != _VAGAS_HOST
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or not re.fullmatch(r"/[^/]+/oportunidades/?", parsed.path)
+    ):
+        return None
+    return {
+        "proxy": True,
+        "url_filter": _VAGAS_JOB_FILTER,
+        "pagination": {
+            "param_name": "pagina",
+            "max_pages": 1_000,
+        },
+    }
+
 
 def _jposting_probe_config(html: str, url: str) -> dict | None:
     """Return a stable DOM preset for Japan Job Posting listing pages.
@@ -593,6 +633,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
 
     Returns metadata dict when job links are found, None otherwise.
     """
+    vagas = _vagas_probe_config(url)
+    if vagas is not None:
+        return vagas
+
     from src.core.monitors import fetch_page_text
 
     html = await fetch_page_text(url, client)

@@ -1202,6 +1202,13 @@ dom — Link Extraction (fallback)
     The repeat action injects frame links into the parent page for discovery.
     See: ws task troubleshoot (KB: dom-monitor-jobs-inside-cross-origin-iframe-widget)
 
+  Vagas.com employer boards:
+    URLs matching trabalheconosco.vagas.com.br/<employer>/oportunidades are
+    auto-configured with their stable ``pagina`` pagination, job-detail URL
+    filter, and ``proxy: true``. Vagas.com may reject crawler-host geographies
+    with Cloudflare error 1005 before a browser context can be established.
+    Pair with ``json-ld`` and ``{"proxy": true}`` for detail enrichment.
+
   Discovery:   Extracts all <a href> links, filters for URLs containing
                job/career/position/posting/opening/role/vacancy keywords.
 
