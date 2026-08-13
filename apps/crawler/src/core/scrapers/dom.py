@@ -178,6 +178,54 @@ def _title_heading(elements: list[dict]) -> tuple[int, str] | None:
     return None
 
 
+def _talentsoft_config(htmls: list[str]) -> dict | None:
+    """Build locale-independent extraction steps for Talentsoft details."""
+
+    matches = sum(
+        "ts-offer-page__body" in html
+        and "fldlocation_location_geographicalareacollection" in html
+        for html in htmls
+    )
+    if not matches or matches < len(htmls) / 2:
+        return None
+    return {
+        "steps": [
+            {
+                "tag": "h1",
+                "attr": "class=ts-offer-page__title",
+                "field": "title",
+            },
+            {
+                "tag": "h2",
+                "attr": "class=JobDescription",
+                "field": "description",
+                "html": True,
+                "stop_tag": "h2",
+            },
+            {
+                "attr": "id=fldjobdescription_contract",
+                "field": "employment_type",
+                "from": 0,
+                "optional": True,
+            },
+            {
+                "attr": "id=fldlocation_location_geographicalareacollection",
+                "field": "locations",
+                "from": 0,
+            },
+            {
+                "tag": "h2",
+                "attr": "class=ApplicantCriteria",
+                "field": "qualifications",
+                "html": True,
+                "stop_tag": "h2",
+                "from": 0,
+                "optional": True,
+            },
+        ]
+    }
+
+
 def _kontact_config(htmls: list[str]) -> dict | None:
     """Build the stable extraction config used by KontactIntelligence pages."""
 
@@ -309,6 +357,10 @@ def can_handle(htmls: list[str]) -> dict | None:
     kontact = _kontact_config(htmls)
     if kontact is not None:
         return kontact
+
+    talentsoft = _talentsoft_config(htmls)
+    if talentsoft is not None:
+        return talentsoft
 
     # Try each page until we get usable steps
     best_steps = None

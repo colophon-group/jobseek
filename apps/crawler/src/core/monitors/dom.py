@@ -84,6 +84,11 @@ _LINKEDIN_JOB_TRANSFORM = {
 _KONTACT_MARKER = "kontactintelligence.com"
 _KONTACT_URL_FILTER = r"/Physician_Job/Details/"
 
+_TALENTSOFT_MARKERS = ("ts-offer-list-item", "ts-search-engine-form__rss-cta")
+_TALENTSOFT_URL_FILTER = (
+    r"/(?:job/job|offre-de-emploi/emploi)-[^/?#]+_\d+\.aspx(?:[?#]|$)"
+)
+
 _JPOSTING_HOST_SUFFIX = ".jposting.net"
 _JPOSTING_JOB_FILTER = r"[?&]job_code=[^&#]+"
 
@@ -172,6 +177,31 @@ def _kontact_probe_config(html: str, url: str) -> dict | None:
         "url_filter": _KONTACT_URL_FILTER,
         "pagination": {
             "param_name": "pg",
+            "max_pages": 1_000,
+        },
+    }
+
+
+def _talentsoft_probe_config(html: str, url: str) -> dict | None:
+    """Return the complete static-listing config for Cegid Talentsoft.
+
+    Talentsoft renders fifty authoritative detail links per page and exposes
+    the remaining pages through a regular ``page=N`` query parameter. Its RSS
+    endpoint is intentionally capped to the newest twenty vacancies, so it
+    cannot be used for gone detection on larger boards.
+    """
+
+    if not all(marker in html for marker in _TALENTSOFT_MARKERS):
+        return None
+    matcher = _build_url_matcher(_TALENTSOFT_URL_FILTER)
+    urls = _extract_links_static(html, url, matcher)
+    if not urls:
+        return None
+    return {
+        "urls": len(urls),
+        "url_filter": _TALENTSOFT_URL_FILTER,
+        "pagination": {
+            "param_name": "page",
             "max_pages": 1_000,
         },
     }
@@ -677,6 +707,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     kontact = _kontact_probe_config(html, url)
     if kontact is not None:
         return kontact
+
+    talentsoft = _talentsoft_probe_config(html, url)
+    if talentsoft is not None:
+        return talentsoft
 
     jposting = _jposting_probe_config(html, url)
     if jposting is not None:
