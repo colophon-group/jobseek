@@ -81,11 +81,14 @@ Compare the crawled job count against the expected ~{{ expected_jobs }} jobs.
 1. `pdf` — use first when the monitor's job-detail URLs are PDF documents.
    Configure title and location extraction with `ws help scraper pdf`; HTML
    scrapers cannot extract PDF text.
-2. `json-ld` — otherwise try first; it extracts structured `JobPosting` schema
+2. A provider-specific scraper detected by `ws probe scraper` — for example,
+   use `onlyfy` for Onlyfy/Prescreen job URLs. Provider-specific scrapers know
+   the stable detail endpoint and should be tested before generic HTML parsers.
+3. `json-ld` — otherwise try first; it extracts structured `JobPosting` schema
    (most career pages have it). Use `render: true` if JS-rendered. Tune
    `timeout` if coverage < 100%.
-3. `embedded` / `nextdata` — for embedded JSON with field mapping.
-4. `dom` — last resort, step-based CSS extraction.
+4. `embedded` / `nextdata` — for embedded JSON with field mapping.
+5. `dom` — last resort, step-based CSS extraction.
 
 ```bash
 ws select scraper {{ slug }} {{ scraper_type }} --config '{{ scraper_config }}'

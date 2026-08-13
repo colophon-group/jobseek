@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -279,3 +280,25 @@ def test_orchestrator_keeps_additional_board_research_and_all_gates() -> None:
     assert "current registry duplicate" in fallback
     assert "Do not rerun `inventory-seed`" in fallback
     assert "--config inventory-seed" not in fallback
+
+
+def test_parallel_prompts_probe_provider_specific_scrapers() -> None:
+    prompts = Path(__file__).parents[1] / "src/workspace/steps/parallel"
+    tester = (prompts / "config-tester.md").read_text()
+    rendered = render_parallel_prompt(
+        "orchestrator",
+        {
+            "slug": "acme",
+            "company_name": "Acme",
+            "ats_inventory_seed": None,
+            "track_a_prompt": "A",
+            "track_b_prompt": "B",
+            "track_c_prompt": "C",
+            "config_tester_raw": tester,
+            "config_comparison_raw": "compare",
+        },
+    )
+
+    assert "ws probe scraper acme --board <alias>" in rendered
+    assert "use `onlyfy` for Onlyfy/Prescreen job URLs" in rendered
+    assert "do not assume that a generic `dom` monitor" in rendered

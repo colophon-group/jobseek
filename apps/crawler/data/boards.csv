@@ -481,6 +481,14 @@ artisan-partners,artisan-partners-greenhouse,https://job-boards.greenhouse.io/ar
 artsy,artsy-ashby,https://jobs.ashbyhq.com/artsy,ashby,"{""token"": ""artsy""}",skip,
 arx-robotics,arx-robotics-careers-gh,https://job-boards.eu.greenhouse.io/arxroboticsgmbh,greenhouse,"{""token"": ""arxroboticsgmbh""}",skip,
 arx-robotics,arx-robotics-careers-personio,https://arx.jobs.personio.de/?language=en,personio,"{""slug"": ""arx"", ""language"": ""en""}",skip,
+aryzta,aryzta-australia,https://aryzta.applynow.net.au/,dom,"{""render"":false,""url_filter"":""/jobs/""}",dom,"{""steps"":[{""tag"":""h1"",""field"":""title""},{""text"":""Location:"",""field"":""location"",""regex"":""Location:\\s*(.+)"",""from"":0},{""tag"":""p"",""field"":""description"",""html"":true,""stop"":""Apply Now""}]}"
+aryzta,aryzta-france-coup-de-pates,https://www.coupdepates-france.fr/nous-rejoindre/offres-d-emploi,dom,"{""render"":false,""url_filter"":""/offre/""}",dom,"{""steps"":[{""tag"":""h1""},{""tag"":""h1"",""field"":""title""},{""tag"":""shared-place"",""field"":""location"",""from"":0},{""tag"":""h6"",""field"":""description"",""html"":true,""stop_count"":50,""from"":0}]}"
+aryzta,aryzta-germany,https://aryzta-germany.onlyfy.jobs/candidate/widget/zs6p1mz8,dom,"{""render"":false,""url_filter"":""/candidate/widget/zs6p1mz8/job/""}",onlyfy,"{""language"":""de""}"
+aryzta,aryzta-global,https://careers.aryzta.com/,rss,"{""preset"":""successfactors"",""feed_url"":""https://careers.aryzta.com/googlefeed.xml""}",skip,
+aryzta,aryzta-hungary-fornetti,https://www.fornetti.hu/en/career,dom,"{""render"":false,""url_filter"":""/en/career/.+\\.html""}",dom,"{""scope"":"".main-col-details"",""steps"":[{""tag"":""h1""},{""tag"":""h2"",""field"":""title""},{""text"":""Munkavégzés helye:"",""field"":""location"",""stop_count"":2,""regex"":""Munkavégzés helye:\\s*(.+?)(?:\\n|💡|Amennyiben|$)"",""from"":0},{""tag"":""h2"",""field"":""description"",""html"":true,""stop"":""Jelentkezés"",""from"":0}]}"
+aryzta,aryzta-japan,https://hrmos.co/pages/aryzta/jobs,hrmos,"{""tenant"":""aryzta""}",json-ld,
+aryzta,aryzta-netherlands-prepain,https://werkenbij.prepain.com/,dom,"{""render"":false,""url_filter"":""job-page\\.com/pre-pain-""}",dom,"{""scope"":""main"",""defaults"":{""locations"":[""Oldenzaal, NL""]},""steps"":[{""tag"":""h1"",""field"":""title""},{""field"":""description"",""html"":true,""stop"":""Neem contact op""}]}"
+aryzta,aryzta-switzerland-hiestand,https://apply.refline.ch/940351/positions.html,dom,"{""render"":false,""url_filter"":""apply\\.refline\\.ch/940351/\\d+/pub/""}",json-ld,
 asana,asana-greenhouse,https://job-boards.greenhouse.io/asana,greenhouse,"{""token"": ""asana""}",skip,
 ascend-analytics,ascend-analytics-greenhouse,https://job-boards.greenhouse.io/ascendanalytics,greenhouse,"{""token"": ""ascendanalytics""}",skip,
 ascension,ascension-careers,https://jobs.ascension.org/,phenom,,json-ld,
