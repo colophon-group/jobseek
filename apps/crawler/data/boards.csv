@@ -4680,6 +4680,7 @@ schollmaier-schollmaier-partmbb-steuerberatungsgesellschaft,schollmaier-schollma
 schonfeld,schonfeld-greenhouse,https://job-boards.greenhouse.io/schonfeld,greenhouse,"{""token"": ""schonfeld""}",skip,
 schonlau-werke-geseke,schonlau-werke-geseke-join,https://join.com/companies/schonlau-werkede,join,"{""slug"": ""schonlau-werkede""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 schr-dinger,schr-dinger-greenhouse,https://job-boards.greenhouse.io/schrdinger,greenhouse,"{""token"": ""schrdinger""}",skip,
+schroders,schroders-careers-experienced,https://ekbq.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 schwarzman-animal-medical-center,schwarzman-animal-medical-center-greenhouse,https://job-boards.greenhouse.io/animalmedicalcenter,greenhouse,"{""token"": ""animalmedicalcenter""}",skip,
 sciforium,sciforium-ashby,https://jobs.ashbyhq.com/sciforium,ashby,"{""token"": ""sciforium""}",skip,
 scopely,scopely-greenhouse,https://job-boards.greenhouse.io/scopely,greenhouse,"{""token"": ""scopely""}",skip,
