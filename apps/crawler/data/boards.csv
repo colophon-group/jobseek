@@ -464,6 +464,10 @@ arqit,arqit-greenhouse-eu,https://job-boards.eu.greenhouse.io/arqitlimited,green
 array-education,array-education-greenhouse,https://job-boards.greenhouse.io/arrayeducation,greenhouse,"{""token"": ""arrayeducation""}",skip,
 artefact,artefact-greenhouse,https://job-boards.greenhouse.io/artefact,greenhouse,"{""token"": ""artefact""}",skip,
 artera,artera-lever,https://jobs.lever.co/artera,lever,"{""token"": ""artera""}",skip,
+arthur-d-little,arthur-d-little-global-careers,https://careers-adlittle.icims.com/jobs/search?in_iframe=1,dom,"{""render"": false, ""url_filter"": ""/jobs/[0-9]+/"", ""pagination"": {""url_template"": ""https://careers-adlittle.icims.com/jobs/search?pr={page}&in_iframe=1"", ""start"": -1, ""increment"": 1, ""max_pages"": 100}}",dom,"{""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Job Locations"", ""offset"": 1, ""field"": ""locations""}, {""text"": ""Posted Date"", ""offset"": 1, ""field"": ""date_posted"", ""regex"": ""\\(([^)]+)\\)"", ""optional"": true}, {""text"": ""Overview"", ""field"": ""description"", ""stop"": ""Options"", ""html"": true}]}"
+arthur-d-little,arthur-d-little-global-internships,https://internships-adlittle.icims.com/jobs/search?ss=1&in_iframe=1,icims,"{""host"": ""internships-adlittle.icims.com""}",json-ld,
+arthur-d-little,arthur-d-little-western-europe-careers,https://careerswe-adlittle.icims.com/jobs/search?ss=1&in_iframe=1,icims,"{""host"": ""careerswe-adlittle.icims.com""}",json-ld,
+arthur-d-little,arthur-d-little-western-europe-internships,https://internshipswe-adlittle.icims.com/jobs/search?ss=1&in_iframe=1,icims,"{""host"": ""internshipswe-adlittle.icims.com""}",json-ld,
 artie,artie-ashby,https://jobs.ashbyhq.com/artie,ashby,"{""token"": ""artie""}",skip,
 artifact,artifact-careers,https://artifactsa.recruitee.com/,recruitee,"{""slug"": ""artifactsa""}",skip,
 artisan,artisan-ashby,https://jobs.ashbyhq.com/artisan,ashby,"{""token"": ""artisan""}",skip,
