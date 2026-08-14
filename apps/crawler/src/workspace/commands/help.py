@@ -130,6 +130,7 @@ Monitor Types (cheapest first):
   sitemap           50      URL set           Yes
   kipt              60      Full job data     No (skipped)
   api_sniffer       80      URLs or full      If URL-only (no fields)
+  njoyn             80      Job URLs          DOM scraper
   dom               100     URL set           Yes
 
 Interpretation guide (after ws probe monitor):
@@ -865,6 +866,29 @@ talentbrew — TalentBrew / Radancy Search Results
               Looks for TalentBrew/Radancy static markers plus #search-results.
 
   Pair with:  json-ld (try first) or dom scraper"""
+
+MONITOR_NJOYN = """\
+njoyn — Njoyn XWeb browser monitor
+
+  Returns:  Complete URL set (needs scraper)
+  Cost:     Browser pagination; one session per board cycle
+
+  Njoyn listings paginate by submitting a session-bound form. The monitor
+  clicks the live NEXT control in one browser context, collects every page,
+  and verifies the URL count against the visible "Search Results (N)" total.
+  A repeated page, bot challenge, max-page cap, or count mismatch fails the
+  cycle rather than returning a partial URL set.
+
+  Config:
+    {"persistent_context": true, "headless": false, "stealth": true,
+     "proxy": true, "max_pages": 100, "page_wait_ms": 1000}
+
+    max_pages       Safety cap (default/system cap 200)
+    page_wait_ms    Delay after each form submission (default 1000)
+    proxy           Route the browser through the configured proxy provider
+
+  Detection:  *.njoyn.com/.../xweb/XWeb.asp listing URLs
+  Pair with:  dom scraper rendered in a warmed Njoyn session"""
 
 MONITOR_PRACTICEMATCH = """\
 practicematch — PracticeMatch Employer Landing Pages
@@ -3046,6 +3070,7 @@ MONITOR_CARDS: dict[str, str] = {
     "rss": MONITOR_RSS,
     "sitemap": MONITOR_SITEMAP,
     "talentbrew": MONITOR_TALENTBREW,
+    "njoyn": MONITOR_NJOYN,
     "phenom": MONITOR_PHENOM,
     "nextdata": MONITOR_NEXTDATA,
     "notion": MONITOR_NOTION,

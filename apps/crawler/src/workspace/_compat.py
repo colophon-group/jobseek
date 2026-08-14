@@ -163,6 +163,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "talentbrew",
     "phenom",
     "nextdata",
+    "njoyn",
     "notion",
     "dom",
     "api_sniffer",

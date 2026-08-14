@@ -99,6 +99,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `umantis` | URL-only | — | Umantis server-rendered listings |
 | `nextdata` | Conditional* | skip/— | Embedded JSON / Next.js data; rich when `fields` is configured |
 | `talentbrew` | URL-only | json-ld | TalentBrew / Radancy search pages |
+| `njoyn` | URL-only | — | Njoyn XWeb listings with session-bound form pagination |
 | `sitemap` | URL-only | — | Site has an XML sitemap with job URLs |
 | `inline` | Rich | skip | Single-page inline job listings |
 | `kipt` | Rich | skip | NSC KIPT active PDF vacancy bulletins |

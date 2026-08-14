@@ -968,6 +968,7 @@ _MONITOR_CONFIG_HINTS = {
     "umantis": "Requires: customer_id. Optional: region, listing_path",
     "sitemap": "Optional: sitemap_url, url_filter (regex to include/exclude URLs)",
     "talentbrew": "Optional: max_pages. Uses search-results pagination.",
+    "njoyn": "Optional: max_pages, page_wait_ms. Uses session-bound form pagination.",
     "nextdata": (
         "Requires: path, url_template. Optional: fields, render, actions, source, "
         "browser_expression, url_filter"
