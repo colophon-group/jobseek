@@ -1247,6 +1247,12 @@ dom — Link Extraction (fallback)
                extracts all <a href> links and filters for URLs containing
                job/career/position/posting/opening/role/vacancy keywords.
 
+  VAGAS.com:   trabalheconosco.vagas.com.br/{tenant} is detected without a
+               page fetch because the origin blocks datacenter egress. The
+               generated preset uses the complete /oportunidades listing,
+               ?pagina=N pagination, proxy transport, and an auto-configured
+               proxy-backed json-ld scraper.
+
   Detection:   ws probe checks static HTML for job links.
                If detected: shows "✓ N URLs". If not: shows "✗ Not detected".
                LinkedIn job-detail links are automatically filtered and

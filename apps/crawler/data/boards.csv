@@ -696,6 +696,11 @@ bcge,bcge-careers,https://jobs.bcge.ch/en,dom,"{""render"": true, ""url_filter""
 bcs,bcs-greenhouse,https://job-boards.greenhouse.io/bcscareers,greenhouse,"{""token"": ""bcscareers""}",skip,
 bcv,bcv-jobs,https://jobs.bcv.ch/search/?q=&searchResultView=LIST,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.bcv.ch/googlefeed.xml""}",skip,
 bda,bda-greenhouse,https://job-boards.greenhouse.io/bdainc,greenhouse,"{""token"": ""bdainc""}",skip,
+bdo,bdo-australia,https://bdoau.wd105.myworkdayjobs.com/en-GB/BDOEarlyCareers,workday,"{""company"": ""bdoau"", ""wd_instance"": ""wd105"", ""site"": ""BDOEarlyCareers""}",workday,
+bdo,bdo-austria,https://karriere.bdo.at/jobs,dom,"{""url_filter"": ""#JobEntry""}",json-ld,
+bdo,bdo-belgium,https://careers-bdobelgium.icims.com/jobs/search,icims,"{""host"": ""careers-bdobelgium.icims.com""}",json-ld,
+bdo,bdo-brazil,https://trabalheconosco.vagas.com.br/bdobrazil/oportunidades,dom,"{""vagas_tenant"": ""bdobrazil"", ""proxy"": true, ""url_filter"": ""/bdobrazil/oportunidade/[^/?#]+/\\d+(?:[/?#]|$)"", ""pagination"": {""param_name"": ""pagina"", ""max_pages"": 1000}}",json-ld,"{""proxy"": true}"
+bdo,bdo-canada,https://bdo.wd3.myworkdayjobs.com/en-US/BDO,workday,"{""company"": ""bdo"", ""wd_instance"": ""wd3"", ""site"": ""BDO""}",workday,
 be-our-guest,be-our-guest-join,https://join.com/companies/beourguesttacom,join,"{""slug"": ""beourguesttacom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 beacon-biosignals,beacon-biosignals-greenhouse,https://job-boards.greenhouse.io/beaconbiosignals,greenhouse,"{""token"": ""beaconbiosignals""}",skip,
 beacon-software,beacon-software-greenhouse,https://job-boards.greenhouse.io/beaconsoftware,greenhouse,"{""token"": ""beaconsoftware""}",skip,

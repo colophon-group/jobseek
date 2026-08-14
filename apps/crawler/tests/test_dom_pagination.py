@@ -19,6 +19,7 @@ from src.core.monitors.dom import (
     can_handle,
     dom_discover,
 )
+from src.workspace._compat import auto_scraper_type
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -165,25 +166,56 @@ class TestBuildUrlMatcher:
 
 class TestCanHandle:
     def test_vagas_employer_board_uses_proxy_pagination_preset(self):
-        assert _vagas_probe_config(
+        result = _vagas_probe_config(
             "https://trabalheconosco.vagas.com.br/beiersdorf/oportunidades"
-        ) == {
+        )
+        assert result == {
+            "vagas_tenant": "beiersdorf",
             "proxy": True,
             "url_filter": (
-                r"^https://trabalheconosco\.vagas\.com\.br/[^/?#]+/"
-                r"oportunidade/[^?#]+/\d+(?:[?#].*)?$"
+                r"(?i:^https://trabalheconosco\.vagas\.com\.br/beiersdorf/"
+                r"oportunidade/[^/?#]+/\d+/?(?:[?#].*)?$)"
             ),
             "pagination": {"param_name": "pagina", "max_pages": 1_000},
+        }
+        assert auto_scraper_type("dom", result) == ("json-ld", {"proxy": True})
+
+        matcher = re.compile(result["url_filter"])
+        assert matcher.search(
+            "https://trabalheconosco.vagas.com.br/beiersdorf/oportunidade/role/123"
+        )
+        assert not matcher.search(
+            "https://evil.example/beiersdorf/oportunidade/role/123"
+        )
+        assert not matcher.search(
+            "https://trabalheconosco.vagas.com.br/other/oportunidade/role/123"
+        )
+
+    def test_vagas_tenant_home_paginates_the_canonical_complete_listing(self):
+        result = _vagas_probe_config("https://trabalheconosco.vagas.com.br/bdobrazil")
+
+        assert result is not None
+        assert result["pagination"] == {
+            "param_name": "pagina",
+            "max_pages": 1_000,
+            "url_template": (
+                "https://trabalheconosco.vagas.com.br/bdobrazil/"
+                "oportunidades?pagina={page}"
+            ),
+            "start": 0,
         }
 
     @pytest.mark.parametrize(
         "url",
         [
-            "https://trabalheconosco.vagas.com.br/beiersdorf",
             "https://trabalheconosco.vagas.com.br/beiersdorf/oportunidade/role/1",
+            "https://trabalheconosco.vagas.com.br/beiersdorf/oportunidades?pagina=1",
+            "https://trabalheconosco.vagas.com.br/beiersdorf/oportunidades#jobs",
             "https://www.vagas.com.br/beiersdorf/oportunidades",
             "http://trabalheconosco.vagas.com.br/beiersdorf/oportunidades",
+            "https://user:secret@trabalheconosco.vagas.com.br/beiersdorf/oportunidades",
             "https://trabalheconosco.vagas.com.br:444/beiersdorf/oportunidades",
+            "https://trabalheconosco.vagas.com.br:invalid/beiersdorf/oportunidades",
             "https://evil.example/beiersdorf/oportunidades",
         ],
     )
@@ -419,6 +451,29 @@ class TestCanHandle:
 
 
 class TestDomDiscoverInitialFetch:
+    async def test_vagas_tenant_home_discovers_full_listing_not_only_featured_jobs(self):
+        tenant_home = "https://trabalheconosco.vagas.com.br/bdobrazil"
+        listing = f"{tenant_home}/oportunidades"
+        job_1 = f"{tenant_home}/oportunidade/role-one/1001"
+        job_2 = f"{tenant_home}/oportunidade/role-two/1002"
+        job_3 = f"{tenant_home}/oportunidade/role-three/1003"
+        pages = {
+            tenant_home: _html_with_links(job_1),
+            f"{listing}?pagina=1": _html_with_links(job_1, job_2),
+            f"{listing}?pagina=2": _html_with_links(job_3),
+            f"{listing}?pagina=3": _html_with_links(job_3),
+        }
+        config = _vagas_probe_config(tenant_home)
+        assert config is not None
+
+        with patch(_FETCH_PATCH, new=_make_fetch(pages)):
+            result = await dom_discover(
+                {"board_url": tenant_home, "metadata": config},
+                MagicMock(),
+            )
+
+        assert result == {job_1, job_2, job_3}
+
     async def test_direct_document_can_include_board_url(self):
         board_url = "https://example.com/jobs/current-opening.pdf"
 

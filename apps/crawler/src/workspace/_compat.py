@@ -461,6 +461,12 @@ def auto_scraper_type(
 
     Returns None when manual scraper selection is needed.
     """
+    # VAGAS.com detail pages publish complete JobPosting JSON-LD. Both listing
+    # and detail hosts use the same Cloudflare policy, so preserve proxy routing
+    # on the auto-configured scraper as well as the DOM monitor preset.
+    if monitor_type == "dom" and (config or {}).get("vagas_tenant"):
+        return ("json-ld", {"proxy": True})
+
     # oracle_hcm is a rich monitor (returns DiscoveredJob with title/location/date)
     # but needs a scraper for descriptions. The ``enrich`` key in scraper_config
     # tells the batch processor to schedule scrapes for newly discovered jobs

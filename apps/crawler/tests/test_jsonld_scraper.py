@@ -41,6 +41,26 @@ class TestJsonLdExtractor:
         extractor.feed(html)
         assert extractor.results == [{"@type": "JobPosting", "title": "R&D Engineer"}]
 
+    def test_extracts_vagas_style_javascript_cdata_block(self):
+        html = """<html><head><script type="application/ld+json">
+        //<![CDATA[
+        {"@context":"https://schema.org","@type":"JobPosting",
+         "title":"Analista Contábil",
+         "description":"Responsabilidades e requisitos da função.",
+         "datePosted":"2026-07-17","validThrough":"2026-08-17",
+         "jobLocation":{"@type":"Place","address":{"@type":"PostalAddress",
+         "addressLocality":"Campinas","addressRegion":"SP","addressCountry":"Brasil"}}}
+        //]]>
+        </script></head></html>"""
+
+        content = parse_html(html)
+
+        assert content.title == "Analista Contábil"
+        assert content.description == "Responsabilidades e requisitos da função."
+        assert content.locations == ["Campinas, SP, Brasil"]
+        assert content.date_posted == "2026-07-17"
+        assert content.extras == {"valid_through": "2026-08-17"}
+
     def test_extracts_multiple_blocks(self):
         html = """<html><head>
         <script type="application/ld+json">{"@type": "Organization"}</script>

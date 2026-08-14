@@ -91,10 +91,7 @@ _JPOSTING_HOST_SUFFIX = ".jposting.net"
 _JPOSTING_JOB_FILTER = r"[?&]job_code=[^&#]+"
 
 _VAGAS_HOST = "trabalheconosco.vagas.com.br"
-_VAGAS_JOB_FILTER = (
-    r"^https://trabalheconosco\.vagas\.com\.br/[^/?#]+/"
-    r"oportunidade/[^?#]+/\d+(?:[?#].*)?$"
-)
+_VAGAS_TENANT_RE = re.compile(r"[a-z0-9][a-z0-9_-]*")
 
 _REXX_PROVIDER_HOSTS = frozenset({"rexx-systems.com", "www.rexx-systems.com"})
 _REXX_JOB_PATH_FILTER = r"/(?:[^/?#]+/)*(?:[^/?#]+-j\d+\.html|job-offer\.html\?yid=\d+)(?:[&#].*)?$"
@@ -122,6 +119,10 @@ def _vagas_probe_config(url: str) -> dict | None:
     employer route itself is a stable provider identifier, so recognize it
     before the generic probe fetch and route both listing pages and detail
     pages through the configured production proxy.
+
+    Tenant home pages show only featured openings. When one is supplied as
+    the board URL, pagination starts at page 1 of the canonical
+    ``/oportunidades`` listing so discovery does not silently miss jobs.
     """
 
     try:
@@ -135,16 +136,41 @@ def _vagas_probe_config(url: str) -> dict | None:
         or parsed.username is not None
         or parsed.password is not None
         or port not in {None, 443}
-        or not re.fullmatch(r"/[^/]+/oportunidades/?", parsed.path)
+        or parsed.query
+        or parsed.fragment
     ):
         return None
+
+    parts = [part for part in parsed.path.split("/") if part]
+    if not parts or len(parts) > 2:
+        return None
+    tenant = parts[0].casefold()
+    if not _VAGAS_TENANT_RE.fullmatch(tenant):
+        return None
+    if len(parts) == 2 and parts[1].casefold() != "oportunidades":
+        return None
+
+    listing_url = f"https://{_VAGAS_HOST}/{tenant}/oportunidades"
+    pagination: dict = {
+        "param_name": "pagina",
+        "max_pages": 1_000,
+    }
+    if len(parts) == 1:
+        pagination.update(
+            {
+                "url_template": f"{listing_url}?pagina={{page}}",
+                "start": 0,
+            }
+        )
+
     return {
+        "vagas_tenant": tenant,
         "proxy": True,
-        "url_filter": _VAGAS_JOB_FILTER,
-        "pagination": {
-            "param_name": "pagina",
-            "max_pages": 1_000,
-        },
+        "url_filter": (
+            rf"(?i:^https://{re.escape(_VAGAS_HOST)}/{re.escape(tenant)}/"
+            r"oportunidade/[^/?#]+/\d+/?(?:[?#].*)?$)"
+        ),
+        "pagination": pagination,
     }
 
 
