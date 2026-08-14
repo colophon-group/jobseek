@@ -4698,6 +4698,7 @@ schroders,schroders-careers-experienced,https://ekbq.fa.em2.oraclecloud.com/hcmU
 schwarzman-animal-medical-center,schwarzman-animal-medical-center-greenhouse,https://job-boards.greenhouse.io/animalmedicalcenter,greenhouse,"{""token"": ""animalmedicalcenter""}",skip,
 sciforium,sciforium-ashby,https://jobs.ashbyhq.com/sciforium,ashby,"{""token"": ""sciforium""}",skip,
 scopely,scopely-greenhouse,https://job-boards.greenhouse.io/scopely,greenhouse,"{""token"": ""scopely""}",skip,
+scor,scor-global,https://fa-errt-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001/jobs?mode=location,oracle_hcm,"{""host"": ""fa-errt-saasfaprod1.fa.ocs.oraclecloud.com"", ""site"": ""CX_2001"", ""total_count_tolerance"": 1, ""page_shortfall_tolerance"": 1}",oracle_hcm,"{""enrich"": [""description""]}"
 scorpion-enterprises-llc,scorpion-enterprises-llc-greenhouse,https://job-boards.greenhouse.io/scorpionenterprisesllc,greenhouse,"{""token"": ""scorpionenterprisesllc""}",skip,
 scotch,scotch-greenhouse,https://job-boards.greenhouse.io/scotch,greenhouse,"{""token"": ""scotch""}",skip,
 scout-ai,scout-ai-greenhouse,https://job-boards.greenhouse.io/scoutai,greenhouse,"{""token"": ""scoutai""}",skip,
