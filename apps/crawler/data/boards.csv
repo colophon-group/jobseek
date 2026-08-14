@@ -4402,6 +4402,7 @@ quantcast,quantcast-pinpoint,https://quantcast.pinpointhq.com,pinpoint,"{""slug"
 quantexa,quantexa-careers,https://apply.workable.com/quantexa,workable,"{""token"": ""quantexa""}",workable,
 quanthealth,quanthealth-greenhouse,https://job-boards.greenhouse.io/quanthealth,greenhouse,"{""token"": ""quanthealth""}",skip,
 quantinuum,quantinuum-lever-global,https://jobs.eu.lever.co/quantinuum,lever,"{""token"": ""quantinuum""}",skip,
+quantis,quantis-workable,https://apply.workable.com/quantis/,workable,"{""token"": ""quantis""}",workable,
 quantori,quantori-global-careers,https://career.quantori.com/positions,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""/positions/""}",dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""text"": ""Location"", ""offset"": 1, ""field"": ""locations""}, {""tag"": ""h2"", ""field"": ""description"", ""stop"": ""required"", ""html"": true}]}"
 quantrolox,quantrolox-careers,https://quantrolox.com/careers/,inline,"{""render"": false, ""steps"": [{""tag"": ""h2"", ""field"": ""title""}, {""tag"": ""h4"", ""field"": ""location"", ""regex"": ""Location:\\s*(.*?)(?:\\s+Department:|$)""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_tag"": ""h2""}]}",skip,
 quantum,quantum-ashby,https://jobs.ashbyhq.com/quantum,ashby,"{""token"": ""quantum""}",skip,
