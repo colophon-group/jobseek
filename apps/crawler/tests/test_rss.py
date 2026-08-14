@@ -10,6 +10,7 @@ from src.core.monitors import DiscoveredJob
 from src.core.monitors.rss import (
     RssFeedNotXml,
     _add_pagination,
+    _advertised_rss_feed_url,
     _build_feed_url,
     _g,
     _parse_feed,
@@ -318,6 +319,23 @@ class TestParseGenericItem:
         assert result.date_posted == "Tue, 15 Jan 2024 12:00:00 GMT"
         assert result.metadata == {"id": "G-001"}
 
+    def test_vendor_location_and_job_id_extensions(self):
+        item = _make_item(
+            """
+            <title />
+            <link>https://example.com/?page=advertisement_display&amp;id=458</link>
+            <JobID>458</JobID>
+            <Location>Lausanne</Location>
+            """
+        )
+
+        result = _parse_generic_item(item)
+
+        assert result is not None
+        assert result.title is None
+        assert result.locations == ["Lausanne"]
+        assert result.metadata == {"id": "458"}
+
     def test_no_link_returns_none(self):
         xml = "<item><title>No link</title></item>"
         item = ET.fromstring(xml)
@@ -349,6 +367,28 @@ class TestBuildFeedUrl:
     def test_preserves_scheme(self):
         result = _build_feed_url("http://example.com/jobs", "/feed.xml")
         assert result == "http://example.com/feed.xml"
+
+
+class TestAdvertisedRssFeedUrl:
+    def test_resolves_relative_feed(self):
+        html = (
+            '<link rel="alternate" type="application/rss+xml" '
+            'href="/careers/feed.xml">'
+        )
+
+        assert _advertised_rss_feed_url("https://example.com/jobs", html) == (
+            "https://example.com/careers/feed.xml"
+        )
+
+    def test_upgrades_same_host_legacy_http_feed(self):
+        html = (
+            '<link rel="alternate" type="application/rss+xml" '
+            'href="http://example.com/rss.php">'
+        )
+
+        assert _advertised_rss_feed_url("https://example.com/jobs", html) == (
+            "https://example.com/rss.php"
+        )
 
 
 # ── _add_pagination ──────────────────────────────────────────────────────
@@ -680,6 +720,36 @@ class TestCanHandle:
             result = await can_handle("https://example.com/careers", client)
             assert result is not None
             assert result["preset"] == "teamtailor"
+
+    async def test_detects_advertised_generic_feed(self):
+        rss_xml = _rss_xml(
+            """
+            <item>
+                <link>https://example.com/job/1</link>
+                <Location>Lausanne</Location>
+            </item>
+            """
+        )
+
+        def handler(request):
+            if request.url.path == "/rss.php":
+                return httpx.Response(200, text=rss_xml)
+            return httpx.Response(
+                200,
+                text=(
+                    '<html><head><link rel="alternate" type="application/rss+xml" '
+                    'href="/rss.php"></head></html>'
+                ),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://example.com/careers", client)
+
+        assert result == {
+            "preset": "generic",
+            "feed_url": "https://example.com/rss.php",
+            "jobs": 1,
+        }
 
     async def test_no_match(self):
         def handler(request):
