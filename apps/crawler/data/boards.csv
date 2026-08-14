@@ -4965,6 +4965,8 @@ socar-trading,socar-trading-linkedin,https://www.linkedin.com/company/socartradi
 soci,soci-greenhouse,https://job-boards.greenhouse.io/soci,greenhouse,"{""token"": ""soci""}",skip,
 social-discovery-group,social-discovery-group-careers-breezy,https://social-discovery-ventures.breezy.hr/,breezy,"{""portal_url"": ""https://social-discovery-ventures.breezy.hr"", ""slug"": ""social-discovery-ventures""}",json-ld,
 socialpoint,socialpoint-careers,https://job-boards.greenhouse.io/spcareers,greenhouse,"{""token"": ""spcareers""}",skip,
+societe-generale,societe-generale-africa-mediterranean-overseas,https://joinus.afs.societegenerale.com/viewalljobs/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://joinus.afs.societegenerale.com/googlefeed.xml""}",skip,
+societe-generale,societe-generale-global,https://careers.societegenerale.com/en/search,sitemap,"{""sitemap_url"": ""https://careers.societegenerale.com/en/sitemap.xml"", ""url_filter"": {""include"": ""-[0-9A-Z]{6,}-[a-z]{2}$""}}",json-ld,
 socket,socket-ashby,https://jobs.ashbyhq.com/socket,ashby,"{""token"": ""socket""}",skip,
 socure,socure-ashby,https://jobs.ashbyhq.com/socure,ashby,"{""token"": ""socure""}",skip,
 sofi,sofi-greenhouse,https://job-boards.greenhouse.io/sofi,greenhouse,"{""token"": ""sofi""}",skip,
