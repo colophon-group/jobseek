@@ -219,6 +219,41 @@ class TestDomScraper:
             "<p>Employer boilerplate.</p>"
         )
 
+    def test_elvium_probe_builds_scoped_retrying_extraction_config(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head><title>Broker Assistant at Howden Denmark</title></head><body>
+          <section class="career-page job-posting-layout">
+            <div class="job-posting-widget">
+              <p>Help clients navigate a changing risk landscape.</p>
+              <p>Support clients with insurance and risk-management solutions.</p>
+              <h2>What we offer</h2><p>Join an employee-owned global group.</p>
+            </div>
+            <div class="contact-info-widget">
+              <h3>Kontakt Info</h3>
+              <p>Howden Denmark<br>Dokken 10<br>6700 Esbjerg<br>Denmark</p>
+            </div>
+          </section>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        assert config["scope"] == "section.job-posting-layout"
+        assert config["include_document_title"] is True
+        assert config["retry_statuses"] == {"429": 3}
+
+        result = parse_html(html, config)
+        assert result.title == "Broker Assistant"
+        assert result.locations == ["Howden Denmark Dokken 10 6700 Esbjerg Denmark"]
+        assert result.description == (
+            "<p>Help clients navigate a changing risk landscape.</p>"
+            "<p>Support clients with insurance and risk-management solutions.</p>"
+            "<h2>What we offer</h2>"
+            "<p>Join an employee-owned global group.</p>"
+        )
+
     async def test_missing_steps_returns_empty(self):
         """No 'steps' key → empty JobContent."""
         from src.core.scrapers.dom import scrape
