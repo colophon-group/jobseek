@@ -176,6 +176,26 @@ class TestFindUrlField:
         ]
         assert find_url_field(items) == "page"
 
+    def test_nested_canonical_link_wins_over_apply_link(self):
+        items = [
+            {
+                "title": "Dev",
+                "application": {"apply_link": "https://ats.example.com/apply/1"},
+                "links": {"directlink": "https://example.com/jobs/1"},
+            },
+            {
+                "title": "PM",
+                "application": {"apply_link": "https://ats.example.com/apply/2"},
+                "links": {"directlink": "https://example.com/jobs/2"},
+            },
+            {
+                "title": "QA",
+                "application": {"apply_link": "https://ats.example.com/apply/3"},
+                "links": {"directlink": "https://example.com/jobs/3"},
+            },
+        ]
+        assert find_url_field(items) == "links.directlink"
+
     def test_no_match(self):
         items = [
             {"title": "Dev", "score": 10},
@@ -340,6 +360,17 @@ class TestExtractUrls:
         items = [{"url": "https://other.com/1"}]
         urls = extract_urls(items, "url", "https://example.com")
         assert urls == ["https://other.com/1"]
+
+    def test_nested_url_field(self):
+        items = [
+            {"links": {"directlink": "/jobs/1"}},
+            {"links": {"directlink": "https://other.example/jobs/2"}},
+        ]
+
+        assert extract_urls(items, "links.directlink", "https://example.com/careers") == [
+            "https://example.com/jobs/1",
+            "https://other.example/jobs/2",
+        ]
 
     def test_no_url_field_fallback(self):
         items = [{"page": "https://example.com/job/1"}]
