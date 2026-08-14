@@ -1855,6 +1855,11 @@ eqt-group,eqt-group-greenhouse,https://job-boards.greenhouse.io/eqtpartners,gree
 equal-experts,equal-experts-greenhouse,https://job-boards.greenhouse.io/equalexperts,greenhouse,"{""token"": ""equalexperts""}",skip,
 equal1,equal1-ashby,https://jobs.ashbyhq.com/equal1,ashby,"{""token"": ""equal1""}",skip,
 eqvilent,eqvilent-greenhouse,https://job-boards.greenhouse.io/eqvilentjobs,greenhouse,"{""token"": ""eqvilentjobs""}",skip,
+eraneos,eraneos-eve-personio,https://smp-ag-strategy-consulting.jobs.personio.de/,personio,"{""slug"": ""smp-ag-strategy-consulting""}",skip,
+eraneos,eraneos-germany-personio,https://eraneos.jobs.personio.com/,personio,"{""slug"": ""eraneos""}",skip,
+eraneos,eraneos-netherlands-recruitee,https://eraneos.recruitee.com/,recruitee,"{""slug"": ""eraneos""}",skip,
+eraneos,eraneos-spain-recruitee,https://eraneosiberia.recruitee.com/,recruitee,"{""slug"": ""eraneosiberia""}",skip,
+eraneos,eraneos-switzerland-workday,https://eraneos.wd3.myworkdayjobs.com/Eraneos_External_Career_Site,workday,"{""company"": ""eraneos"", ""wd_instance"": ""wd3"", ""site"": ""Eraneos_External_Career_Site""}",workday,
 ergon,ergon-careers,https://www.ergon.ch/en/careers/jobs,dom,,dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""li"", ""field"": ""employment_type""}, {""tag"": ""li""}, {""tag"": ""li"", ""field"": ""locations""}, {""text"": ""Jetzt bewerben""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Noch Fragen"", ""html"": true}]}"
 ergon,ergon-careers-de,https://www.ergon.ch/de/karriere/jobs,dom,,dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""li"", ""field"": ""employment_type""}, {""tag"": ""li""}, {""tag"": ""li"", ""field"": ""locations""}, {""text"": ""Jetzt bewerben""}, {""tag"": ""p"", ""field"": ""description"", ""stop"": ""Noch Fragen"", ""html"": true}]}"
 ericsson,ericsson-pinpoint,https://ericsson.pinpointhq.com,pinpoint,"{""slug"": ""ericsson""}",skip,
