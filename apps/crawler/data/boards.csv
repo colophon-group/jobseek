@@ -2603,6 +2603,7 @@ immunocore,immunocore-peoplecore,https://peoplecore.my.salesforce-sites.com/recr
 impact-com,impact-com-greenhouse,https://job-boards.greenhouse.io/impact,greenhouse,"{""token"": ""impact""}",skip,
 impinj,impinj-greenhouse,https://job-boards.greenhouse.io/impinjexternal,greenhouse,"{""token"": ""impinjexternal""}",skip,
 impiricus,impiricus-greenhouse,https://job-boards.greenhouse.io/impiricus,greenhouse,"{""token"": ""impiricus""}",skip,
+implement-consulting-group,implement-consulting-group-smartrecruiters,https://careers.smartrecruiters.com/ImplementConsultingGroup,smartrecruiters,"{""token"": ""ImplementConsultingGroup""}",smartrecruiters,
 imply,imply-careers,https://boards.greenhouse.io/imply,greenhouse,"{""token"": ""imply""}",skip,
 imprint,imprint-ashby,https://jobs.ashbyhq.com/imprint,ashby,"{""token"": ""imprint""}",skip,
 improbable,improbable-ashby,https://jobs.ashbyhq.com/improbable,ashby,"{""token"": ""improbable""}",skip,
