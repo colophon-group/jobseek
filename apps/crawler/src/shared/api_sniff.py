@@ -330,8 +330,44 @@ def _looks_like_url(value: str) -> bool:
     return bool(value.startswith(("http://", "https://", "/")) and len(value) > 5)
 
 
+def _nested_scalar_paths(item: dict, prefix: str = "") -> list[tuple[str, str, object]]:
+    """Return dotted paths for scalar values nested in dictionaries.
+
+    Job-list APIs commonly group canonical links below a small ``links``
+    object. Keep list traversal out of automatic detection: choosing one URL
+    from a list of related links is ambiguous, while dictionary paths map
+    directly onto the field-path syntax already supported by api_sniffer.
+    """
+    paths: list[tuple[str, str, object]] = []
+    for key, value in item.items():
+        path = f"{prefix}.{key}" if prefix else key
+        if isinstance(value, dict):
+            paths.extend(_nested_scalar_paths(value, path))
+        elif not isinstance(value, (list, tuple, set)):
+            paths.append((path, key, value))
+    return paths
+
+
+def _url_field_priority(key: str) -> int:
+    """Prefer canonical/detail links over application endpoints."""
+    normalized = re.sub(r"[^a-z]", "", key.lower())
+    if "canonical" in normalized:
+        return 100
+    if "directlink" in normalized or "detail" in normalized:
+        return 90
+    if "apply" in normalized:
+        return 10
+    if "url" in normalized or "href" in normalized:
+        return 80
+    if "link" in normalized:
+        return 70
+    if "slug" in normalized or "path" in normalized or "uri" in normalized:
+        return 60
+    return 0
+
+
 def find_url_field(items: list[dict]) -> str | None:
-    """Detect which field holds job URLs — first by name, then by value pattern."""
+    """Detect which field holds job URLs, including nested link objects."""
     if not items:
         return None
     sample = items[:5]
@@ -348,6 +384,23 @@ def find_url_field(items: list[dict]) -> str | None:
     for key in sample[0]:
         if all(_looks_like_url(str(it.get(key, ""))) for it in sample if key in it):
             return key
+
+    # Nested dictionary paths, e.g. Prospective's ``links.directlink``.
+    # Rank candidates so a canonical/detail page wins over a sibling apply
+    # endpoint when both are present in every item.
+    from src.shared.nextdata import resolve_path
+
+    candidates: list[tuple[int, int, str]] = []
+    seen: set[str] = set()
+    for path, key, _value in _nested_scalar_paths(sample[0]):
+        if path in seen or not URL_FIELDS.search(key):
+            continue
+        seen.add(path)
+        values = [resolve_path(item, path) for item in sample]
+        if values and all(isinstance(value, str) and _looks_like_url(value) for value in values):
+            candidates.append((_url_field_priority(key), -len(candidates), path))
+    if candidates:
+        return max(candidates)[2]
 
     return None
 
@@ -485,8 +538,10 @@ def extract_urls(items: list[dict], url_field: str | None, page_url: str) -> lis
     """Normalize relative->absolute URLs from JSON items."""
     urls = []
     if url_field:
+        from src.shared.nextdata import resolve_path
+
         for item in items:
-            val = item.get(url_field)
+            val = resolve_path(item, url_field) if "." in url_field else item.get(url_field)
             if isinstance(val, str) and val:
                 urls.append(urljoin(page_url, val))
     else:
