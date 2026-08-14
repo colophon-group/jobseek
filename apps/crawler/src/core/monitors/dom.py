@@ -634,7 +634,13 @@ async def dom_discover(
     client: httpx.AsyncClient | None = None,
     pw=None,
 ) -> set[str]:
-    """Discover job URLs from a career page."""
+    """Discover job URLs from a career page.
+
+    ``include_board_url`` is an explicit escape hatch for boards whose URL
+    is itself a job-detail document (for example, a directly linked PDF).
+    The normal fetch still runs first, so a removed document produces an
+    empty result and follows the regular gone-detection path.
+    """
     if client is None:
         raise ValueError("DOM monitor requires an HTTP client")
     metadata = board.get("metadata") or {}
@@ -729,7 +735,9 @@ async def dom_discover(
                 encoding=encoding,
             )
 
-    # Exclude the board URL itself — it's the listing page, not a job
+    # Exclude the board URL itself by default — it is normally the listing
+    # page, not a job. Direct document boards opt in after the successful
+    # fetch above so the source URL is emitted as their one job URL.
     normalized_board = board_url.rstrip("/")
 
     def _without_fragment(url: str) -> str:
@@ -737,6 +745,8 @@ async def dom_discover(
         return urlunsplit((parts.scheme, parts.netloc, parts.path, parts.query, "")).rstrip("/")
 
     urls = {u for u in urls if _without_fragment(u) != normalized_board}
+    if metadata.get("include_board_url"):
+        urls.add(board_url)
 
     if len(urls) > MAX_URLS:
         log.warning("dom.truncated", total=len(urls), cap=MAX_URLS)

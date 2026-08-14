@@ -1766,6 +1766,8 @@ egon-zehnder,egon-zehnder-global-workable,https://apply.workable.com/ezrecruitin
 egon-zehnder,egon-zehnder-linkedin-global,https://www.linkedin.com/company/egon-zehnder/jobs/,linkedin,"{""company_id"": ""5652"", ""company_slug"": ""egon-zehnder""}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 egym,egym-personio,https://egym.jobs.personio.com/,personio,"{""slug"": ""egym""}",skip,
 eigen-labs,eigen-labs-careers,https://jobs.ashbyhq.com/eigen-labs,ashby,"{""token"": ""eigen-labs""}",skip,
+eight-advisory,eight-advisory-careers,https://8advisory.recruitee.com/l/en/,recruitee,"{""slug"": ""8advisory"", ""api_base"": ""https://8advisory.recruitee.com""}",skip,
+eight-advisory,eight-advisory-careers-it,https://www.newdealadvisors.com/wp-content/uploads/2026/01/JobPost-2026.pdf,dom,"{""include_board_url"": true}",pdf,"{""title_source"": ""text"", ""location_pattern"": ""(?i)\\b(Milano|Milan|Roma|Rome|Torino|Turin)\\b""}"
 eikon-therapeutics,eikon-therapeutics-greenhouse,https://job-boards.greenhouse.io/eikontherapeutics,greenhouse,"{""token"": ""eikontherapeutics""}",skip,
 einride,einride-global,https://careers.einride.tech/,jobylon,"{""company_id"": ""3143""}",json-ld,"{""enrich"": [""description""]}"
 ekimetrics,ekimetrics-pinpoint,https://ekimetrics.pinpointhq.com,pinpoint,"{""slug"": ""ekimetrics""}",skip,

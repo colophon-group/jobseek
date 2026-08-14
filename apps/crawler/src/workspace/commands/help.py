@@ -1151,6 +1151,10 @@ dom — Link Extraction (fallback)
     stealth        Use Chromium's less-detectable new headless mode.
     warmup_url     Visit this URL in the same browser context before the board.
     actions        Browser action pipeline (see: ws help actions)
+    include_board_url
+                   Include the board URL itself as a discovered job after a
+                   successful fetch. Use only when the board URL is a direct
+                   job document (for example, a PDF), not a listing page.
     url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
                    Keep patterns broad enough to include URL variants
     url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)

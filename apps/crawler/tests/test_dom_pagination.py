@@ -221,6 +221,45 @@ class TestCanHandle:
 
 
 class TestDomDiscoverInitialFetch:
+    async def test_direct_document_can_include_board_url(self):
+        board_url = "https://example.com/jobs/current-opening.pdf"
+
+        def handler(request):
+            return httpx.Response(
+                200,
+                content=b"%PDF-1.7 direct job document",
+                headers={"content-type": "application/pdf"},
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await dom_discover(
+                {
+                    "board_url": board_url,
+                    "metadata": {"include_board_url": True},
+                },
+                client,
+            )
+
+        assert result == {board_url}
+
+    async def test_missing_direct_document_is_not_included(self):
+        board_url = "https://example.com/jobs/removed-opening.pdf"
+
+        def handler(request):
+            return httpx.Response(404, text="Not found", request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await dom_discover(
+                {
+                    "board_url": board_url,
+                    "metadata": {"include_board_url": True},
+                },
+                client,
+            )
+
+        assert result == set()
+
     async def test_fragment_only_self_link_is_not_a_job(self):
         page = _html_with_links("#pagetop")
 
