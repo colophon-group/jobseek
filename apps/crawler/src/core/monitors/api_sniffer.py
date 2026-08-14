@@ -79,6 +79,7 @@ from src.shared.http_retry import (
     is_retryable_status,
 )
 from src.shared.nextdata import extract_field, resolve_path
+from src.shared.slug import slugify
 from src.shared.truncation import truncated_rich_result, truncated_url_result
 
 if TYPE_CHECKING:
@@ -836,6 +837,7 @@ def _build_item_projector(
     url_field: str | None,
     url_template: str | None,
     url_template_fields: dict[str, str],
+    slug_fields: list[str] | None = None,
 ) -> Callable[[dict], dict] | None:
     """Build a conservative projector for explicitly configured rich APIs.
 
@@ -869,6 +871,8 @@ def _build_item_projector(
             if "{" in format_spec:
                 return None
             alias = field_name.split(".", 1)[0].split("[", 1)[0]
+            if alias == "slug" and slug_fields:
+                continue
             alias_path = url_template_fields.get(alias)
             root = _item_path_root(alias_path) if alias_path is not None else _item_path_root(alias)
             if root is None:
@@ -876,6 +880,12 @@ def _build_item_projector(
             roots.add(root)
 
     for path in url_template_fields.values():
+        root = _item_path_root(path)
+        if root is None:
+            return None
+        roots.add(root)
+
+    for path in slug_fields or []:
         root = _item_path_root(path)
         if root is None:
             return None
@@ -1242,6 +1252,7 @@ async def _discover_http(
     url_field = config.get("url_field")
     url_template = config.get("url_template")
     url_template_fields = config.get("url_template_fields") or {}
+    slug_fields = config.get("slug_fields") or []
     url_regex = config.get("url_regex")
     total_path = config.get("total_path")
     post_data = config.get("post_data") or config.get("post_body")
@@ -1433,6 +1444,7 @@ async def _discover_http(
             url_field,
             url_template,
             url_template_fields,
+            slug_fields,
         )
 
         if pagination_config and items:
@@ -1502,6 +1514,7 @@ async def _discover_http(
                 board_url,
                 root=data,
                 url_template_fields=url_template_fields,
+                slug_fields=slug_fields,
             )
             truncated = _item_result_is_truncated(
                 item_count=len(items),
@@ -1516,6 +1529,7 @@ async def _discover_http(
                 url_template,
                 board_url,
                 url_template_fields=url_template_fields,
+                slug_fields=slug_fields,
             )
             truncated = _item_result_is_truncated(
                 item_count=len(items),
@@ -1681,6 +1695,7 @@ async def _discover_replay(
     url_field = config.get("url_field")
     url_template = config.get("url_template")
     url_template_fields = config.get("url_template_fields") or {}
+    slug_fields = config.get("slug_fields") or []
     post_data = config.get("post_data")
     request_headers = config.get("request_headers", {})
     fields_map: dict[str, str] = config.get("fields") or {}
@@ -1841,6 +1856,7 @@ async def _discover_replay(
             url_field,
             url_template,
             url_template_fields,
+            slug_fields,
         )
 
         # Paginate if configured
@@ -1923,6 +1939,7 @@ async def _discover_replay(
                 url_map=url_map,
                 root=data,
                 url_template_fields=url_template_fields,
+                slug_fields=slug_fields,
             )
             truncated = _item_result_is_truncated(
                 item_count=len(items),
@@ -1939,6 +1956,7 @@ async def _discover_replay(
                 url_template,
                 board_url,
                 url_template_fields=url_template_fields,
+                slug_fields=slug_fields,
             )
             truncated = _item_result_is_truncated(
                 item_count=len(items),
@@ -2127,6 +2145,7 @@ def _extract_rich(
     *,
     root: dict | None = None,
     url_template_fields: dict[str, str] | None = None,
+    slug_fields: list[str] | None = None,
 ) -> list[DiscoveredJob]:
     """Extract DiscoveredJob objects from items using field mapping.
 
@@ -2161,7 +2180,12 @@ def _extract_rich(
         url = None
         if url_template:
             with contextlib.suppress(KeyError, IndexError, ValueError):
-                url = _format_url_template(item, url_template, url_template_fields)
+                url = _format_url_template(
+                    item,
+                    url_template,
+                    url_template_fields,
+                    slug_fields,
+                )
         if not url and url_map and id_field:
             item_id = str(item.get(id_field, ""))
             url = url_map.get(item_id)
@@ -2233,6 +2257,7 @@ def _extract_urls_from_template(
     board_url: str,
     *,
     url_template_fields: dict[str, str] | None = None,
+    slug_fields: list[str] | None = None,
 ) -> set[str]:
     """Build URL-only set from items using a URL template."""
     from urllib.parse import urljoin
@@ -2242,7 +2267,12 @@ def _extract_urls_from_template(
         if not isinstance(item, dict):
             continue
         try:
-            url = _format_url_template(item, url_template, url_template_fields)
+            url = _format_url_template(
+                item,
+                url_template,
+                url_template_fields,
+                slug_fields,
+            )
             urls.add(urljoin(board_url, url))
         except (KeyError, IndexError, ValueError):
             continue
@@ -2253,6 +2283,7 @@ def _format_url_template(
     item: dict,
     url_template: str,
     url_template_fields: dict[str, str] | None,
+    slug_fields: list[str] | None = None,
 ) -> str:
     """Render a job URL from top-level fields plus explicit nested aliases.
 
@@ -2269,6 +2300,14 @@ def _format_url_template(
         value = extract_field(item, path)
         if isinstance(value, (str, int, float)):
             values[alias] = value
+    if slug_fields:
+        slug_parts = []
+        for path in slug_fields:
+            value = extract_field(item, path)
+            if value is not None:
+                slug_parts.append(slugify(str(value)))
+        if slug_parts:
+            values["slug"] = "-".join(slug_parts)
     return url_template.format_map(values)
 
 
