@@ -3524,8 +3524,11 @@ class TestSubmitIdempotency:
             "_active_configs": {
                 "careers": {
                     "active": "greenhouse",
+                    "url": "https://test.com/jobs",
                     "monitor_type": "greenhouse",
+                    "monitor_config": {},
                     "scraper_type": None,
+                    "scraper_config": {},
                 }
             },
             "csv_written": True,
@@ -3559,6 +3562,51 @@ class TestSubmitIdempotency:
 
         # Should detect stale config and restart
         assert "config changed" in result.output
+
+    def test_stale_submit_rewrites_changed_scraper_config(self, tmp_path, monkeypatch):
+        ws_obj, board = _setup_submittable_workspace(tmp_path, monkeypatch)
+        from src.csvtool import board_add
+
+        stale_config = {"enrich": ["description", "valid_through"]}
+        current_config = {"enrich": ["description"]}
+        board.configs["greenhouse"]["scraper_type"] = "api_sniffer"
+        board.configs["greenhouse"]["scraper_config"] = current_config
+        save_board("test", board)
+
+        board_add(
+            "test",
+            board_slug="test-careers",
+            board_url="https://test.com/jobs",
+            monitor_type="greenhouse",
+            scraper_type="api_sniffer",
+            scraper_config=json.dumps(stale_config),
+        )
+        ws_obj.submit_state = {
+            "_active_configs": {
+                "careers": {
+                    "active": "greenhouse",
+                    "url": "https://test.com/jobs",
+                    "monitor_type": "greenhouse",
+                    "monitor_config": {},
+                    "scraper_type": "api_sniffer",
+                    "scraper_config": stale_config,
+                }
+            },
+            "csv_written": True,
+        }
+        save_workspace(ws_obj)
+
+        with ExitStack() as stack:
+            stack.enter_context(patch("src.workspace.git._run"))
+            runner = CliRunner()
+            result = runner.invoke(ws, ["submit", "test"])
+
+        assert "config changed" in result.output
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(tmp_path / "boards.csv")
+        row = next(row for row in rows if row["board_slug"] == "test-careers")
+        assert json.loads(row["scraper_config"]) == current_config
 
     def test_unpublished_workspace_creates_one_pr_after_push(self, tmp_path, monkeypatch):
         ws_obj, _ = _setup_submittable_workspace(tmp_path, monkeypatch)
