@@ -5613,6 +5613,7 @@ varo-bank,varo-bank-kula,https://careers.kula.ai/varo-money,api_sniffer,"{""api_
 vast,vast-greenhouse,https://job-boards.greenhouse.io/vast,greenhouse,"{""token"": ""vast""}",skip,
 vastspace,vastspace-pinpoint,https://vastspace.pinpointhq.com,pinpoint,"{""slug"": ""vastspace""}",skip,
 vatic-labs,vatic-labs-greenhouse,https://job-boards.greenhouse.io/vaticlabs,greenhouse,"{""token"": ""vaticlabs""}",skip,
+vaudoise,vaudoise-jobs,https://vaudoise.softgarden.io/,dom,"{""render"": false, ""url_filter"": ""/job/""}",json-ld,
 vaxcyte,vaxcyte-greenhouse,https://job-boards.greenhouse.io/vaxcyte,greenhouse,"{""token"": ""vaxcyte""}",skip,
 vay,vay-greenhouse,https://job-boards.eu.greenhouse.io/vay,greenhouse,"{""token"": ""vay""}",skip,
 vayyar,vayyar-onsite,https://vayyar.com/recruitment/,sitemap,"{""sitemap_url"": ""https://vayyar.com/sitemap.xml"", ""url_filter"": ""^https://vayyar\\.com/recruitment/?$""}",dom,"{""render"": true, ""wait"": ""domcontentloaded"", ""actions"": [{""action"": ""evaluate"", ""script"": ""const m=document.querySelector(\""#modal-ae58399\"");if(m){document.body.innerHTML=m.innerHTML;const p=document.querySelector(\""pre\"");if(p){const h=document.createElement(\""h1\"");h.innerHTML=p.innerHTML;p.replaceWith(h);}}""}], ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h1"", ""from"": 0, ""field"": ""location"", ""regex"": ""- (US)$""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_count"": 30}]}"
