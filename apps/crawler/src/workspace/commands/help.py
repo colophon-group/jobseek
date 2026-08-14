@@ -2684,6 +2684,22 @@ Browser Action Pipeline — pre-extraction actions for Playwright
         Use frame option when the job listing widget runs inside an iframe
         (e.g. onlyfy, prescreen, or other embedded ATS widgets).
 
+    {"action": "paginate_collect", "next_selector": "a.next", "max_pages": 50,
+     "wait_ms": 5000}
+        Click through pagination that replaces the current page and collect links
+        from every visited page. The collected links are injected into the final
+        DOM so the monitor returns the complete URL set.
+        Options:
+          next_selector       CSS selector for the enabled next-page control
+                              (required for non-SuccessFactors layouts)
+          max_pages           Max pagination clicks (default: 50)
+          wait_ms             Ms to wait after each click (default: 5000)
+          page_size_selector  Optional CSS selector for a page-size dropdown
+          page_size           Optional value to select before pagination
+        Use this instead of repeat when each click replaces the current result
+        page, including JSF/Visualforce postback pagination. Make next_selector
+        exclude the disabled last-page control so pagination terminates cleanly.
+
   Per-action timeout:
     {"action": "click", "selector": ".btn", "timeout": 5}
         Override default 10s timeout (value in seconds)
@@ -2697,6 +2713,12 @@ Browser Action Pipeline — pre-extraction actions for Playwright
 
     "actions": [
       {"action": "repeat", "selector": "button.load-more", "max": 30, "wait_ms": 1500}
+    ]
+
+    # Collect links across numbered/replacement-style result pages:
+    "actions": [
+      {"action": "paginate_collect", "next_selector": "a.pagination-next",
+       "max_pages": 50, "wait_ms": 2000}
     ]
 
     # Click "Show more" inside a cross-origin iframe widget:

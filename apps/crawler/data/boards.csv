@@ -5311,6 +5311,7 @@ sword-group,sword-group-careers-be,https://swordtechnologies.recruitee.com,recru
 sword-group,sword-group-careers-ch,https://sword-services.ch/l/en/offres,recruitee,"{""token"": ""careers-analytics""}",skip,
 sword-group,sword-group-careers-tech,https://swordtech.recruitee.com/open-positions,recruitee,"{""token"": ""swordtech""}",skip,
 sword-health,sword-health-lever,https://jobs.lever.co/swordhealth,lever,"{""token"": ""swordhealth""}",skip,
+sygnum-bank,sygnum-bank-salesforce,https://sygnumpeopleportal.my.salesforce-sites.com/recruit/fRecruit__ApplyJobList,dom,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000, ""actions"": [{""action"": ""paginate_collect"", ""next_selector"": ""a.link-pagination:nth-last-child(2)"", ""wait_ms"": 1000, ""max_pages"": 10}], ""url_filter"": ""fRecruit__ApplyJob\\?vacancyNo=""}",json-ld,
 sylogist,sylogist-greenhouse,https://job-boards.greenhouse.io/sylogist,greenhouse,"{""token"": ""sylogist""}",skip,
 sylvera,sylvera-ashby,https://jobs.ashbyhq.com/sylvera,ashby,"{""token"": ""sylvera""}",skip,
 symbolica-ai,symbolica-ai-greenhouse,https://job-boards.greenhouse.io/symbolica,greenhouse,"{""token"": ""symbolica""}",skip,
