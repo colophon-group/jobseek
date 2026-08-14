@@ -1007,6 +1007,7 @@ capco,capco-greenhouse,https://job-boards.greenhouse.io/capco,greenhouse,"{""tok
 cape,cape-ashby,https://jobs.ashbyhq.com/cape,ashby,"{""token"": ""cape""}",skip,
 capintel,capintel-greenhouse,https://job-boards.greenhouse.io/capintel,greenhouse,"{""token"": ""capintel""}",skip,
 capital-farm-credit,capital-farm-credit-greenhouse,https://job-boards.greenhouse.io/capitalfarmcredit,greenhouse,"{""token"": ""capitalfarmcredit""}",skip,
+capital-group,capital-group-careers,https://capgroup.wd1.myworkdayjobs.com/capitalgroupcareers,workday,"{""company"": ""capgroup"", ""wd_instance"": ""wd1"", ""site"": ""capitalgroupcareers""}",workday,
 capital-on-tap,capital-on-tap-greenhouse,https://job-boards.greenhouse.io/capitalontap,greenhouse,"{""token"": ""capitalontap""}",skip,
 capital-one,capital-one-workday,https://capitalone.wd12.myworkdayjobs.com/Capital_One,workday,"{""company"": ""capitalone"", ""wd_instance"": ""wd12"", ""site"": ""Capital_One""}",workday,
 capital-technology-group,capital-technology-group-greenhouse,https://job-boards.greenhouse.io/capitaltg,greenhouse,"{""token"": ""capitaltg""}",skip,
