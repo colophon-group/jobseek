@@ -2696,6 +2696,7 @@ intus,intus-ashby,https://jobs.ashbyhq.com/intus,ashby,"{""token"": ""intus""}",
 inuru,inuru-join,https://join.com/companies/inuru,join,"{""slug"": ""inuru""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 inversion,inversion-greenhouse,https://job-boards.greenhouse.io/inversionspace,greenhouse,"{""token"": ""inversionspace""}",skip,
 invert,invert-ashby,https://jobs.ashbyhq.com/invert,ashby,"{""token"": ""invert""}",skip,
+invesco,invesco-global,https://invesco.wd1.myworkdayjobs.com/IVZ,sitemap,"{""sitemap_url"": ""https://invesco.wd1.myworkdayjobs.com/IVZ/siteMap.xml"", ""url_filter"": ""/IVZ/job/""}",json-ld,
 investors-community-bank,investors-community-bank-greenhouse,https://job-boards.greenhouse.io/icb,greenhouse,"{""token"": ""icb""}",skip,
 invgate,invgate-greenhouse,https://job-boards.greenhouse.io/invgate,greenhouse,"{""token"": ""invgate""}",skip,
 invisible-technologies,invisible-technologies-greenhouse,https://job-boards.greenhouse.io/invisibletech,greenhouse,"{""token"": ""invisibletech""}",skip,
