@@ -899,6 +899,67 @@ class TestSafranBoardConfig:
         }
 
 
+class TestBnpParibasBoardConfig:
+    """BNP Paribas's global WordPress listing is WAF-gated on Hetzner."""
+
+    def test_global_board_uses_fail_closed_proxy_pagination_and_dom_details(self):
+        import json
+
+        from src.core.scrapers.dom import parse_html
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next((r for r in rows if r["board_slug"] == "bnp-paribas-global"), None)
+        assert row is not None, "bnp-paribas-global row missing from boards.csv"
+        assert row["board_url"] == ("https://group.bnpparibas/en/careers/all-job-offers")
+        assert row["monitor_type"] == "dom"
+        assert row["scraper_type"] == "dom"
+
+        monitor_config = json.loads(row["monitor_config"])
+        scraper_config = json.loads(row["scraper_config"])
+        assert monitor_config["render"] is False
+        assert monitor_config["proxy"] is True
+        assert monitor_config["rescrape_policy"] == "never"
+        assert monitor_config["pagination"] == {
+            "param_name": "page",
+            "start": 0,
+            "increment": 1,
+            "max_pages": 1000,
+            "transient_403": True,
+        }
+        assert scraper_config["render"] is False
+        assert scraper_config["proxy"] is True
+
+        sample_html = """
+        <main>
+          <h1>London - Long Internship 2026 - ABS/CLO Trading</h1>
+          <dl>
+            <dt>Job type</dt><dd>Trainee / Internship</dd>
+            <dt>Brand</dt><dd>BNP Paribas CIB</dd>
+            <dt>Location</dt><dd>London, England, United Kingdom</dd>
+          </dl>
+          <p>Last update 13.08.2026</p>
+          <h2>Business Area</h2>
+          <p>BNP Paribas is a leading bank in Europe with an international reach.</p>
+          <h2>Job Purpose</h2>
+          <p>Support the ABS/CLO trading team and improve desk infrastructure.</p>
+          <h2>Requirements</h2>
+          <ul><li>Good understanding of financial markets.</li></ul>
+          <h2>Offers you may be interested in</h2>
+          <p>Another role</p>
+        </main>
+        """
+        content = parse_html(sample_html, scraper_config)
+        assert content.title == "London - Long Internship 2026 - ABS/CLO Trading"
+        assert content.employment_type == "Trainee / Internship"
+        assert content.locations == ["London, England, United Kingdom"]
+        assert content.date_posted == "13.08.2026"
+        assert "Support the ABS/CLO trading team" in content.description
+        assert "Good understanding of financial markets" in content.description
+        assert "Another role" not in content.description
+
+
 class TestHasbroBoardConfig:
     """Hasbro's retired Eightfold board returns 404; keep it on Greenhouse."""
 

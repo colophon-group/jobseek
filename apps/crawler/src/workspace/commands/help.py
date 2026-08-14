@@ -1181,6 +1181,11 @@ dom — Link Extraction (fallback)
                             expected real page count; low caps silently undercount.
     pagination.browser      If true, fetch via page.evaluate(fetch(...)) inside
                             Playwright context — preserves cookies (default: false)
+    pagination.transient_403
+                            Retry HTTP 401/403 and fail the cycle if they persist
+                            instead of accepting a partial crawl (default: false).
+                            Enable for WAF-gated boards whose proxy may be
+                            blocked or throttled between pagination requests.
     pagination.url_template Format string with {page} placeholder for path-based
                             pagination (e.g. "https://example.com/jobs/page/{page}").
                             When set, replaces param_name-based URL building.

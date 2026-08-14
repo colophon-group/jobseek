@@ -464,6 +464,7 @@ async def _fetch_via_page(
     *,
     retries: int = _BROWSER_FETCH_RETRIES,
     base_delay: float = _BROWSER_FETCH_BASE_DELAY,
+    transient_403: bool = False,
 ) -> str | None:
     """Fetch ``url`` via Playwright ``page.evaluate(fetch(...))`` with bounded retries.
 
@@ -472,7 +473,8 @@ async def _fetch_via_page(
           with a **non-empty** body.
         - ``None`` on HTTP 404 / 410 (legitimate end-of-pagination), or
           any other non-retryable 4xx (lenient stop, mirrors the
-          httpx-side ``fetch_with_retry``).
+          httpx-side ``fetch_with_retry``). When ``transient_403`` is true,
+          HTTP 401/403 instead consume the retry budget and fail closed.
 
     Raises:
         :exc:`BotChallengeError` when the response body is a recognized
@@ -544,7 +546,7 @@ async def _fetch_via_page(
                 )
             elif status in END_OF_PAGINATION_STATUSES:
                 return None
-            elif is_retryable_status(status):
+            elif is_retryable_status(status) or (transient_403 and status in {401, 403}):
                 last_exc = None  # status-only, no exception
             else:
                 # Other 4xx (auth, forbidden, bad-request) — not
@@ -622,8 +624,10 @@ async def _paginate_urls(
 
     - Return ``None`` on 404/410 (legitimate end-of-pagination — break).
     - Return the body on 200 (continue).
-    - Return ``None`` on other 4xx (e.g. 403) — lenient stop so
-      misconfigured paginators don't poison the run as a failure.
+    - Return ``None`` on other 4xx (e.g. 403) by default — lenient stop so
+      misconfigured paginators don't poison the run as a failure. Boards with
+      ``pagination.transient_403=true`` instead retry HTTP 401/403 and raise
+      on exhaustion so a WAF-blocked tail cannot be accepted as complete.
     - **Raise** :exc:`PaginationFetchError` on persistent 5xx, 429,
       timeout, network error, or Playwright ``page.evaluate`` exception
       after the retry budget. The exception propagates out of
@@ -646,6 +650,7 @@ async def _paginate_urls(
     increment = pagination.get("increment", 1)
     max_pages = min(pagination.get("max_pages", _MAX_PAGINATION_PAGES), _MAX_PAGINATION_PAGES)
     use_browser = pagination.get("browser", False) and page is not None
+    transient_403 = bool(pagination.get("transient_403", False))
     if not url_template and not isinstance(param_name, str):
         raise ValueError("DOM pagination requires param_name or url_template")
 
@@ -661,9 +666,18 @@ async def _paginate_urls(
             page_url = set_url_param(board_url, param_name, value)
 
         if use_browser:
-            html = await _fetch_via_page(page, page_url)
+            html = await _fetch_via_page(
+                page,
+                page_url,
+                transient_403=transient_403,
+            )
         else:
-            html = await fetch_with_retry(client, page_url, encoding=encoding)
+            html = await fetch_with_retry(
+                client,
+                page_url,
+                encoding=encoding,
+                transient_403=transient_403,
+            )
 
         if not html:
             # Legitimate end-of-pagination (404/410, empty body, or
