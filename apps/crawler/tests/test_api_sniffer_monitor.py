@@ -12,11 +12,13 @@ import pytest
 from src.core.monitors.api_sniffer import (
     ApiSnifferFallbackError,
     _build_item_projector,
+    _detect_prospective_config,
     _discover_live_url,
     _extract_rich,
     _extract_urls_from_template,
     _materially_below_advertised_total,
     _refresh_post_data,
+    can_handle,
     discover,
 )
 
@@ -187,6 +189,93 @@ class TestPostDataRefresh:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(ValueError, match="neither a job list"):
                 await discover(board, client)
+class TestProspectiveDetection:
+    @pytest.mark.asyncio
+    async def test_can_handle_uses_plain_http_detection_without_playwright(self):
+        expected = {"api_url": "https://ohws.prospective.ch/jobs"}
+        with patch(
+            "src.core.monitors.api_sniffer._detect_prospective_config",
+            AsyncMock(return_value=expected),
+        ):
+            config = await can_handle(
+                "https://jobs.example.com/",
+                AsyncMock(),
+                pw=None,
+            )
+
+        assert config is expected
+
+    @pytest.mark.asyncio
+    async def test_builds_rich_direct_api_config_from_careercenter_asset(self):
+        html = """
+        <html lang="fr">
+          <link href="/careercenter/1002787/assets/css/company.css" rel="stylesheet">
+        </html>
+        """
+        payload = {
+            "medium_id": "1002787",
+            "total": 38,
+            "jobs": [
+                {
+                    "id": "101",
+                    "title": "Analyste",
+                    "links": {"directlink": "https://jobs.example.com/jobs/101"},
+                }
+            ],
+        }
+
+        with (
+            patch(
+                "src.core.monitors.api_sniffer.fetch_text_page_with_retry",
+                AsyncMock(return_value=html),
+            ),
+            patch(
+                "src.core.monitors.api_sniffer.http_fetch_with_retry",
+                AsyncMock(return_value=payload),
+            ) as fetch_api,
+        ):
+            config = await _detect_prospective_config(
+                "https://jobs.example.com/",
+                AsyncMock(),
+            )
+
+        assert config is not None
+        assert config["api_url"] == ("https://ohws.prospective.ch/public/v1/medium/1002787/jobs")
+        assert config["params"] == {"lang": "fr", "offset": "0", "limit": "12"}
+        assert config["json_path"] == "jobs"
+        assert config["total_path"] == "total"
+        assert config["url_field"] == "links.directlink"
+        assert config["fields"]["locations"] == 'szas."sza_location.city"'
+        assert config["fields"]["description"] == [
+            "szas.sza_introduction",
+            "szas.sza_tasks",
+            "szas.sza_requirements",
+        ]
+        assert config["items"] == 1
+        assert config["total"] == 38
+        api_url = fetch_api.await_args.args[2]
+        assert api_url.startswith("https://ohws.prospective.ch/public/v1/medium/1002787/jobs?")
+        assert "lang=fr" in api_url
+
+    @pytest.mark.asyncio
+    async def test_rejects_unverified_medium_payload(self):
+        html = '<link href="/careercenter/1002787/assets/site.css">'
+        with (
+            patch(
+                "src.core.monitors.api_sniffer.fetch_text_page_with_retry",
+                AsyncMock(return_value=html),
+            ),
+            patch(
+                "src.core.monitors.api_sniffer.http_fetch_with_retry",
+                AsyncMock(return_value={"medium_id": "other", "jobs": []}),
+            ),
+        ):
+            config = await _detect_prospective_config(
+                "https://jobs.example.com/",
+                AsyncMock(),
+            )
+
+        assert config is None
 
 
 class TestItemProjector:
