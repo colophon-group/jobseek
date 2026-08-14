@@ -1423,8 +1423,11 @@ def submit(slug: str | None, summary: str | None, force: bool):
         cfg = b._active_cfg()
         current_configs[b.alias] = {
             "active": b.active_config,
+            "url": b.url,
             "monitor_type": cfg.get("monitor_type"),
+            "monitor_config": copy.deepcopy(cfg.get("monitor_config") or {}),
             "scraper_type": cfg.get("scraper_type"),
+            "scraper_config": copy.deepcopy(cfg.get("scraper_config") or {}),
         }
     prev_configs = ws.submit_state.get("_active_configs")
     if prev_configs and prev_configs != current_configs:
