@@ -382,6 +382,27 @@ class TestItemProjector:
             "itemID",
         }
 
+    def test_keeps_slug_field_for_template_projection(self):
+        projector = _build_item_projector(
+            {"title": "details.title"},
+            None,
+            "https://example.com/jobs/{id}/{slug}",
+            {},
+            ["details.title"],
+        )
+
+        assert projector is not None
+        assert projector(
+            {
+                "id": "123",
+                "details": {"title": "Senior Risk & Insurance Advisor"},
+                "unused": "large",
+            }
+        ) == {
+            "id": "123",
+            "details": {"title": "Senior Risk & Insurance Advisor"},
+        }
+
     def test_keeps_absolute_url_fallback(self):
         projector = _build_item_projector(
             {"title": "title"},
@@ -647,6 +668,19 @@ class TestExtractRich:
         assert len(jobs) == 1
         assert jobs[0].url == ("https://example.com/jobs?jobId=616994&itemId=9201870385175_1")
 
+    def test_url_template_with_generated_slug(self):
+        jobs = _extract_rich(
+            [{"reqId": "R_123", "title": "Risk & Insurance Advisor"}],
+            {"title": "title"},
+            None,
+            "https://example.com/jobs/{reqId}/{slug}",
+            "https://example.com",
+            slug_fields=["title"],
+        )
+
+        assert len(jobs) == 1
+        assert jobs[0].url == "https://example.com/jobs/R_123/risk-and-insurance-advisor"
+
     def test_metadata_fields(self):
         items = [{"title": "Dev", "url": "/jobs/1", "department": "Eng"}]
         fields = {"title": "title", "metadata.team": "department"}
@@ -763,6 +797,16 @@ class TestExtractUrlsFromTemplate:
         assert urls == {
             "https://example.com/jobs?jobId=616994&itemId=9201870385175_1",
         }
+
+    def test_generated_slug(self):
+        urls = _extract_urls_from_template(
+            [{"reqId": "R_123", "title": "Risk & Insurance Advisor"}],
+            "https://example.com/jobs/{reqId}/{slug}",
+            "https://example.com",
+            slug_fields=["title"],
+        )
+
+        assert urls == {"https://example.com/jobs/R_123/risk-and-insurance-advisor"}
 
 
 def _make_mock_pw(mock_page):

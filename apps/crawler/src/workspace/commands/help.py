@@ -2127,6 +2127,7 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
       "url_field": "url",
       "url_template": "https://example.com/jobs/{id}",
       "url_template_fields": {"public_id": "customFields[0].value"},
+      "slug_fields": ["title"],
       "pagination": {
         "param_name": "offset",
         "style": "offset",
@@ -2153,9 +2154,11 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
     url_template_fields
                      Optional placeholder aliases for nested item values.
                      Values use the same field-path syntax as fields. Example:
-                       {"public_id": "customFields[0].value"}
+                     {"public_id": "customFields[0].value"}
                      makes {public_id} available inside url_template alongside
                      top-level scalar fields.
+    slug_fields      Optional item paths slugified and joined into the {slug}
+                     URL-template placeholder.
     params           Query parameters merged into api_url at request time.
                      Auto-filled from the captured URL (empty and pagination
                      params stripped). Edit result_limit / per_page here to
