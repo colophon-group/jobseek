@@ -177,6 +177,52 @@ def _rexx_probe_config(html: str, url: str) -> dict | None:
     }
 
 
+_TALENTLINK_HOST_SUFFIX = ".tal.net"
+_TALENTLINK_BOARD_PATH = re.compile(
+    r"/candidate/jobboard/vacancy/\d+(?:/adv)?/?$",
+)
+_TALENTLINK_JOB_FILTER = r"/opp/"
+_TALENTLINK_EMPTY_MARKER = re.compile(
+    r"\bid=[\"']no_results_message[\"']",
+    re.IGNORECASE,
+)
+
+
+def _talentlink_probe_config(html: str, url: str) -> dict | None:
+    """Return a stable DOM preset for Oleeo/TalentLink vacancy boards.
+
+    TalentLink injects a per-render ``xf-<token>`` path segment and its
+    generic link heuristic therefore sees the board switcher, talent bank,
+    and the listing page itself as vacancies. Real opportunity links have a
+    stable ``/opp/`` segment. Empty boards render the same first-party page
+    with ``#no_results_message``, so the provider and route identify a
+    healthy zero-job board without relying on noisy link counts.
+    """
+
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").casefold()
+    is_talentlink_host = host == "tal.net" or host.endswith(_TALENTLINK_HOST_SUFFIX)
+    if not is_talentlink_host or not _TALENTLINK_BOARD_PATH.search(parsed.path):
+        return None
+
+    # Provider markers prevent an unrelated page on the shared host from
+    # being accepted solely because its path resembles a vacancy board.
+    if "WCN.global_config" not in html or "candidate/jobboard/vacancy/" not in html:
+        return None
+
+    matcher = _build_url_matcher(_TALENTLINK_JOB_FILTER)
+    urls = _extract_links_static(html, url, matcher)
+    if not urls and not _TALENTLINK_EMPTY_MARKER.search(html):
+        # A provider shell without either opportunities or the explicit empty
+        # marker may be a partial/error response. Let the generic probe treat
+        # it conservatively instead of blessing a destructive empty cycle.
+        return None
+    return {
+        "urls": len(urls),
+        "url_filter": _TALENTLINK_JOB_FILTER,
+    }
+
+
 def _jposting_probe_config(html: str, url: str) -> dict | None:
     """Return a stable DOM preset for Japan Job Posting listing pages.
 
@@ -793,6 +839,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     rexx = _rexx_probe_config(html, url)
     if rexx is not None:
         return rexx
+
+    talentlink = _talentlink_probe_config(html, url)
+    if talentlink is not None:
+        return talentlink
 
     urls = _extract_links_static(html, url)
     linkedin_urls = {candidate for candidate in urls if _is_linkedin_job_url(candidate)}

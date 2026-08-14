@@ -173,10 +173,7 @@ class TestCanHandle:
                 r"^https://trabalheconosco\.vagas\.com\.br/[^/?#]+/"
                 r"oportunidade/[^?#]+/\d+(?:[?#].*)?$"
             ),
-            "pagination": {
-                "param_name": "pagina",
-                "max_pages": 1_000,
-            },
+            "pagination": {"param_name": "pagina", "max_pages": 1_000},
         }
 
     @pytest.mark.parametrize(
@@ -195,12 +192,10 @@ class TestCanHandle:
 
     async def test_vagas_probe_does_not_fetch_blocked_listing(self):
         client = MagicMock()
-
         result = await can_handle(
             "https://trabalheconosco.vagas.com.br/beiersdorf/oportunidades",
             client,
         )
-
         assert result == _vagas_probe_config(
             "https://trabalheconosco.vagas.com.br/beiersdorf/oportunidades"
         )
@@ -218,15 +213,11 @@ class TestCanHandle:
           <a href="/candidate/login.aspx">Sign in</a>
         </body></html>
         """
-        with patch(
-            "src.core.monitors.fetch_page_text",
-            new=AsyncMock(return_value=html),
-        ):
+        with patch("src.core.monitors.fetch_page_text", new=AsyncMock(return_value=html)):
             result = await can_handle(
                 "https://jobs.example.com/offre-de-emploi/liste-toutes-offres.aspx",
                 MagicMock(),
             )
-
         assert result is not None
         assert result["urls"] == 2
         assert result["pagination"] == {"param_name": "page", "max_pages": 1_000}
@@ -235,8 +226,7 @@ class TestCanHandle:
             "https://jobs.example.com/job/job-credit-risk-analyst_112267.aspx",
         )
         assert not re.search(
-            result["url_filter"],
-            "https://evil.example/job/job-lookalike_999.aspx",
+            result["url_filter"], "https://evil.example/job/job-lookalike_999.aspx"
         )
 
     async def test_rexx_board_uses_detail_pattern_and_ignores_job_alert(self):
@@ -248,15 +238,8 @@ class TestCanHandle:
           <a href="https://www.rexx-systems.com/en/">Rexx Systems</a>
         </body></html>
         """
-        with patch(
-            "src.core.monitors.fetch_page_text",
-            new=AsyncMock(return_value=html),
-        ):
-            result = await can_handle(
-                "https://talent.example.com/job-offers.html",
-                MagicMock(),
-            )
-
+        with patch("src.core.monitors.fetch_page_text", new=AsyncMock(return_value=html)):
+            result = await can_handle("https://talent.example.com/job-offers.html", MagicMock())
         assert result == {
             "urls": 1,
             "url_filter": (
@@ -273,18 +256,72 @@ class TestCanHandle:
           <a href="https://www.rexx-systems.com/en/">Rexx Systems</a>
         </body></html>
         """
-        with patch(
-            "src.core.monitors.fetch_page_text",
-            new=AsyncMock(return_value=html),
-        ):
-            result = await can_handle(
-                "https://talent.example.com/job-offers.html",
-                MagicMock(),
-            )
-
+        with patch("src.core.monitors.fetch_page_text", new=AsyncMock(return_value=html)):
+            result = await can_handle("https://talent.example.com/job-offers.html", MagicMock())
         assert result is not None
         assert result["urls"] == 0
         assert result["url_filter"].startswith(r"^https://talent\.example\.com/")
+
+    async def test_talentlink_empty_board_returns_provider_preset(self):
+        html = """
+        <html><head><script>
+          WCN.global_config.baseUrl = "https://example.tal.net/vx/candidate";
+        </script></head><body>
+          <a href="/candidate/jobboard/vacancy/1/adv/">Programmes</a>
+          <a href="/candidate/jobboard/vacancy/2/adv/">Events</a>
+          <p id="no_results_message">No active programmes.</p>
+        </body></html>
+        """
+        with patch("src.core.monitors.fetch_page_text", new=AsyncMock(return_value=html)):
+            result = await can_handle(
+                "https://example.tal.net/vx/lang-en-GB/brand-5/candidate/jobboard/vacancy/1/adv/",
+                MagicMock(),
+            )
+        assert result == {"urls": 0, "url_filter": r"/opp/"}
+
+    async def test_talentlink_populated_board_counts_only_opportunities(self):
+        html = """
+        <html><head><script>
+          WCN.global_config.baseUrl = "https://example.tal.net/vx/candidate";
+        </script></head><body>
+          <a href="/candidate/jobboard/vacancy/1/adv/">Programmes</a>
+          <a href="/vx/xf-a1b2c3/candidate/so/pm/1/pl/1/opp/42-Analyst/en-GB">Analyst</a>
+          <a href="/candidate/jobboard/talentbank/1">Register interest</a>
+        </body></html>
+        """
+        with patch("src.core.monitors.fetch_page_text", new=AsyncMock(return_value=html)):
+            result = await can_handle(
+                "https://example.tal.net/vx/candidate/jobboard/vacancy/1",
+                MagicMock(),
+            )
+        assert result == {"urls": 1, "url_filter": r"/opp/"}
+
+    async def test_talentlink_preset_does_not_claim_non_board_pages(self):
+        html = """
+        <html><head><script>
+          WCN.global_config.baseUrl = "https://example.tal.net/vx/candidate";
+        </script></head><body>
+          <a href="/candidate/jobboard/vacancy/1/adv/">Programmes</a>
+        </body></html>
+        """
+        with patch("src.core.monitors.fetch_page_text", new=AsyncMock(return_value=html)):
+            result = await can_handle("https://example.tal.net/vx/candidate/login", MagicMock())
+        assert result == {"urls": 1}
+
+    async def test_talentlink_preset_rejects_partial_board_shell(self):
+        html = """
+        <html><head><script>
+          WCN.global_config.baseUrl = "https://example.tal.net/vx/candidate";
+        </script></head><body>
+          <a href="/candidate/jobboard/vacancy/2/adv/">Events</a>
+        </body></html>
+        """
+        with patch("src.core.monitors.fetch_page_text", new=AsyncMock(return_value=html)):
+            result = await can_handle(
+                "https://example.tal.net/vx/candidate/jobboard/vacancy/1/adv/",
+                MagicMock(),
+            )
+        assert result == {"urls": 1}
 
     async def test_jposting_empty_board_returns_provider_preset(self):
         html = """
