@@ -591,6 +591,25 @@ class TestDomScraper:
             with pytest.raises(BotChallengeError, match="proxy transport"):
                 await scrape("https://blocked.example/job/1", config, client)
 
+    async def test_rendered_incapsula_interstitial_retries_once(self):
+        """A transient full-page Incapsula iframe gets one fresh context."""
+        from src.core.scrapers.dom import scrape
+
+        challenge = (
+            '<html><body><iframe id="main-iframe" '
+            'src="/_Incapsula_Resource?CWUDNSAI=23&incident_id=6110">'
+            "</iframe></body></html>"
+        )
+        page = _make_page()
+        page.content = AsyncMock(side_effect=[challenge, FIXTURE_HTML])
+        config = {"render": True, "steps": [{"tag": "h1", "field": "title"}]}
+
+        with _patch_playwright(page):
+            result = await scrape("https://example.com/job/1", config, httpx.AsyncClient())
+
+        assert result.title == "Software Engineer"
+        assert page.content.await_count == 2
+
     async def test_playwright_import_error(self):
         """Raises RuntimeError when playwright is not installed."""
         from src.core.scrapers.dom import scrape

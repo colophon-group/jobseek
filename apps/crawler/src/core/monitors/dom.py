@@ -368,6 +368,10 @@ _VERIFICATION_CHALLENGE_TEXTS = (
     # tombstone every previously discovered posting.
     "please wait while your request is being verified",
 )
+_INCAPSULA_INTERSTITIAL_MARKERS = (
+    'id="main-iframe"',
+    "/_incapsula_resource?cwudnsai=",
+)
 
 
 class BotChallengeError(RuntimeError):
@@ -388,7 +392,14 @@ def _raise_if_bot_challenge(url: str, html: str) -> None:
         and any(text in haystack for text in _CLOUDFLARE_CHALLENGE_TEXTS)
     )
     is_verification_interstitial = any(text in haystack for text in _VERIFICATION_CHALLENGE_TEXTS)
-    if is_siteground or is_cloudflare or is_verification_interstitial:
+    # Imperva/Incapsula can return a full-page HTTP-200 interstitial whose
+    # only body content is an iframe pointing at ``/_Incapsula_Resource``.
+    # Do not match the ordinary Incapsula sensor script used by legitimate
+    # pages (for example PeopleStrong); require both full-page markers.
+    is_incapsula_interstitial = all(
+        marker in haystack for marker in _INCAPSULA_INTERSTITIAL_MARKERS
+    )
+    if is_siteground or is_cloudflare or is_verification_interstitial or is_incapsula_interstitial:
         raise BotChallengeError(
             f"bot challenge detected for {url}; configure or verify proxy transport"
         )
