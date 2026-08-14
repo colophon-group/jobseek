@@ -2232,6 +2232,8 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                    string. Default: matches all href attribute values.
 
   Detection:  ws probe shows "API sniffer — N items, total: M, score: S at <url>"
+              Prospective CareerCenter pages are detected from their embedded
+              medium ID and replayed through the public JSON jobs endpoint.
   Zero jobs?  Verify api_url is correct, check if cookies/auth context is needed
               (page is navigated first to establish cookies), check pagination config.
 

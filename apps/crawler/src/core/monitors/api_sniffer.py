@@ -183,6 +183,110 @@ _DEFAULT_WAIT = "load"
 _DEFAULT_TIMEOUT = 20_000
 _DEFAULT_SETTLE = 3  # seconds to wait after navigation for XHRs to complete
 
+_PROSPECTIVE_MEDIUM_RE = re.compile(r"/careercenter/(?P<medium_id>\d+)(?:/|[?'\"])")
+_HTML_LANG_RE = re.compile(r"<html[^>]+\blang=[\"'](?P<lang>[a-z]{2})(?:[-_][A-Z]{2})?[\"']", re.I)
+
+
+async def _detect_prospective_config(
+    url: str,
+    client: httpx.AsyncClient,
+) -> dict | None:
+    """Detect a Prospective CareerCenter and return a direct API config.
+
+    Prospective supports branded career sites whose public page is server-rendered
+    and whose JSON listing request therefore never appears in the XHR capture used
+    by the generic sniffer.  The page still embeds a stable ``careercenter/<id>``
+    asset path.  Resolve that identifier to Prospective's public ``medium`` API so
+    scheduled runs use the authoritative JSON feed instead of the branded page,
+    which may be protected by a WAF.
+    """
+    try:
+        html = await fetch_text_page_with_retry(
+            client,
+            url,
+            retries=3,
+            base_delay=0.25,
+            require_nonempty=True,
+            max_chars=250_000,
+            log_event="api_sniffer.prospective_page_backoff",
+        )
+    except PaginationFetchError:
+        return None
+    if not html:
+        return None
+
+    medium_match = _PROSPECTIVE_MEDIUM_RE.search(html)
+    if medium_match is None:
+        return None
+
+    medium_id = medium_match.group("medium_id")
+    lang_match = _HTML_LANG_RE.search(html)
+    lang = lang_match.group("lang").lower() if lang_match else "de"
+    api_url = f"https://ohws.prospective.ch/public/v1/medium/{medium_id}/jobs"
+    params = {"lang": lang, "offset": "0", "limit": "12"}
+
+    try:
+        payload = await http_fetch_with_retry(
+            client,
+            "GET",
+            _merge_params(api_url, params),
+        )
+    except PaginationFetchError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    jobs = payload.get("jobs")
+    if str(payload.get("medium_id")) != medium_id or not isinstance(jobs, list):
+        return None
+
+    return {
+        "api_url": api_url,
+        "method": "GET",
+        "json_path": "jobs",
+        "total_path": "total",
+        "url_field": "links.directlink",
+        "params": params,
+        "pagination": {
+            "param_name": "offset",
+            "style": "offset",
+            "start_value": 0,
+            "increment": 12,
+            "location": "query",
+        },
+        "fields": {
+            "title": "title",
+            "description": [
+                "szas.sza_introduction",
+                "szas.sza_tasks",
+                "szas.sza_requirements",
+            ],
+            "locations": 'szas."sza_location.city"',
+            "employment_type": {
+                "path": "szas.sza_employment_type",
+                "map": {
+                    "Festanstellung": "full_time",
+                    "Temporäre Anstellung": "temporary",
+                    "Befristet": "temporary",
+                    "Emploi fixe": "full_time",
+                    "Emploi temporaire": "temporary",
+                    "Impiego fisso": "full_time",
+                    "Impiego temporaneo": "temporary",
+                },
+            },
+            "date_posted": "start_date",
+            "base_salary": "szas.sza_salary",
+            "responsibilities": "szas.sza_tasks",
+            "qualifications": "szas.sza_requirements",
+            "valid_through": "end_date",
+            "metadata.language": "language",
+            "metadata.ats_job_id": "id",
+            "metadata.apply_link": "szas.sza_apply_link",
+        },
+        "items": len(jobs),
+        "total": payload.get("total"),
+        "score": 100,
+    }
+
 
 def _materially_below_advertised_total(discovered: int, total: int | None) -> bool:
     """Return whether a trustworthy API total proves discovery incomplete."""
@@ -279,12 +383,17 @@ async def can_handle(
     """Detect whether *url* loads job data via XHR/fetch APIs.
 
     Returns a metadata dict suitable for use as monitor_config, or None
-    if no job-list API is detected.  Requires Playwright (*pw*).
+    if no job-list API is detected.  Prospective CareerCenter pages can be
+    detected over plain HTTP; other platforms require Playwright (*pw*).
 
     When *diagnostics* is provided, it is populated with exchange summaries,
     script URL discoveries, and CMS detection results — even when detection
     fails.  This allows callers to show diagnostic output to the user.
     """
+    prospective_config = await _detect_prospective_config(url, client)
+    if prospective_config is not None:
+        return prospective_config
+
     if pw is None:
         return None
 
