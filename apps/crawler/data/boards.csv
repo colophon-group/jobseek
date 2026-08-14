@@ -561,6 +561,7 @@ autozone,autozone-careers,https://egud.fa.us2.oraclecloud.com/hcmUI/CandidateExp
 autura,autura-greenhouse,https://job-boards.greenhouse.io/autura,greenhouse,"{""token"": ""autura""}",skip,
 ava-labs,ava-labs-greenhouse,https://job-boards.greenhouse.io/avalabs,greenhouse,"{""token"": ""avalabs""}",skip,
 avala,avala-ashby,https://jobs.ashbyhq.com/avala,ashby,"{""token"": ""avala""}",skip,
+avaloq,avaloq-smartrecruiters,https://careers.smartrecruiters.com/Avaloq1,smartrecruiters,"{""token"": ""Avaloq1""}",smartrecruiters,
 avant,avant-external-careers,https://avant.wd503.myworkdayjobs.com/External_Careers,sitemap,"{""sitemap_url"": ""https://avant.wd503.myworkdayjobs.com/External_Careers/siteMap.xml"", ""url_filter"": ""/External_Careers/job/""}",json-ld,
 avantium,avantium-greenhouse,https://job-boards.greenhouse.io/avantium,greenhouse,"{""token"": ""avantium""}",skip,
 aven,aven-ashby,https://jobs.ashbyhq.com/aven,ashby,"{""token"": ""aven""}",skip,
