@@ -193,6 +193,18 @@ class TestHelp:
             assert 'channel: "chrome"' in result.output
             assert "warmup_url" in result.output
 
+    def test_help_actions_documents_paginated_page_collection(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        runner = CliRunner()
+
+        result = runner.invoke(ws, ["help", "actions"])
+
+        assert result.exit_code == 0
+        assert '"action": "paginate_collect"' in result.output
+        assert "next_selector" in result.output
+        assert "page_size_selector" in result.output
+        assert "max_pages" in result.output
+
     def test_help_industries_uses_repo_data_and_supports_legacy_schema(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         (tmp_path / "industries.csv").write_text(
