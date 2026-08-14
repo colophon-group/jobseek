@@ -258,7 +258,10 @@ async def probe_scraper(
         targets = [sample_url]
     else:
         targets = list(state.sample_urls)
-    targets = targets[:10]
+    # Three pages are enough to identify a scraper and cover the workflow's
+    # required 2-3 sample verification. Fetching ten detail pages at once can
+    # trip ATS rate limits before a viable scraper is even selected.
+    targets = targets[:3]
 
     if not targets:
         raise WsConfigMissing(

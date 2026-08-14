@@ -23,11 +23,13 @@ construct or own those paths.
 
 from __future__ import annotations
 
+import asyncio
 import re
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from src.workspace.lib.board_config import BoardConfigState
 from src.workspace.lib.exceptions import (
@@ -259,6 +261,7 @@ async def run_scraper(
     artifact_dir: Path | None = None,
     capture_http_log: list[dict[str, Any]] | None = None,
     log_events: list[dict[str, Any]] | None = None,
+    respect_domain_throttle: bool = False,
 ) -> RunScraperResult:
     """Test-run ``scrape_one`` against the provided / inherited sample URLs.
 
@@ -271,6 +274,9 @@ async def run_scraper(
             dumps. Lib never creates or writes here.
         capture_http_log: Pre-allocated list for HTTP exchanges.
         log_events: Pre-allocated list for structlog events.
+        respect_domain_throttle: Wait between consecutive requests to the
+            same host using the crawler's production throttle. The CLI enables
+            this so configuration tests do not trigger ATS rate limits.
 
     Returns:
         :class:`RunScraperResult` with extracted content per URL.
@@ -309,6 +315,13 @@ async def run_scraper(
     try:
         async with async_playwright() as pw:
             for i, url in enumerate(targets):
+                if respect_domain_throttle and i:
+                    host = urlparse(url).hostname
+                    previous_host = urlparse(targets[i - 1]).hostname
+                    if host and host == previous_host:
+                        from src.redis_queue import delay_for_domain
+
+                        await asyncio.sleep(delay_for_domain(host))
                 job_id = f"sample-{i}"
                 start = time.monotonic()
                 try:

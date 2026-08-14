@@ -467,6 +467,30 @@ class TestDiscover:
             assert isinstance(jobs[0], DiscoveredJob)
             assert jobs[0].url == "https://example.com/job/1"
 
+    async def test_successfactors_title_placeholder_is_not_a_description(self):
+        feed_xml = _rss_xml(f"""
+            <item>
+                <title>Claims Specialist</title>
+                <link>https://example.com/job/1</link>
+                <description><![CDATA[Claims Specialist]]></description>
+                <g:location xmlns:g="{_G_NS}">CH</g:location>
+            </item>
+        """)
+
+        def handler(request):
+            return httpx.Response(200, text=feed_xml)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(
+                {
+                    "board_url": "https://jobs.example.com/careers",
+                    "metadata": {"preset": "successfactors"},
+                },
+                client,
+            )
+
+        assert jobs[0].description is None
+
     async def test_teamtailor_preset_paginated(self):
         page1_xml = _rss_xml("""
             <item>

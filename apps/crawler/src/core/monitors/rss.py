@@ -163,6 +163,16 @@ def _parse_sf_item(item: ET.Element) -> DiscoveredJob | None:
 
     raw_desc = _text(item, "description")
     description = html.unescape(raw_desc) if raw_desc else None
+    # Some SuccessFactors tenants populate the Google feed's description
+    # with the job title only. Treat that placeholder as missing so the
+    # configuration tooling can require detail-page enrichment instead of
+    # incorrectly classifying the feed as self-contained rich data.
+    if description and title:
+        plain_description = re.sub(r"<[^>]+>", " ", description)
+        plain_description = " ".join(plain_description.split()).casefold()
+        plain_title = " ".join(html.unescape(title).split()).casefold()
+        if plain_description == plain_title:
+            description = None
 
     location = _g(item, "location")
     locations = [location] if location else None
