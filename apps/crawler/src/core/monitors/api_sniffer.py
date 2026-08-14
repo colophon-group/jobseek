@@ -185,6 +185,11 @@ _DEFAULT_SETTLE = 3  # seconds to wait after navigation for XHRs to complete
 
 _PROSPECTIVE_MEDIUM_RE = re.compile(r"/careercenter/(?P<medium_id>\d+)(?:/|[?'\"])")
 _HTML_LANG_RE = re.compile(r"<html[^>]+\blang=[\"'](?P<lang>[a-z]{2})(?:[-_][A-Z]{2})?[\"']", re.I)
+_PROSPECTIVE_HOST = "ohws.prospective.ch"
+_PROSPECTIVE_CAREERCENTER_PATH = re.compile(
+    r"^/public/v[12]/careercenter/(?P<medium_id>\d+)/?$"
+)
+_PROSPECTIVE_PAGE_SIZE = 100
 
 
 async def _detect_prospective_config(
@@ -410,6 +415,103 @@ def _merge_params(url: str, params: dict) -> str:
     return urlunparse(parsed._replace(query=new_query))
 
 
+def _prospective_fields(items: list[dict]) -> dict:
+    """Map fields shared by Prospective's public career-center payloads."""
+
+    szas_keys = {
+        key
+        for item in items[:10]
+        if isinstance(item.get("szas"), dict)
+        for key in item["szas"]
+    }
+    fields: dict = {
+        "title": "title",
+        "date_posted": "start_date",
+        "metadata.language": "language",
+        "metadata.end_date": "end_date",
+    }
+
+    description_parts: list[str] = []
+    for heading, key in (
+        ("Introduction", "sza_introduction"),
+        ("Tasks", "sza_tasks"),
+        ("Requirements", "sza_requirements"),
+        ("Benefits", "sza_benefits"),
+    ):
+        if key in szas_keys:
+            description_parts.extend((f"=<h3>{heading}</h3>", f"szas.{key}"))
+    if description_parts:
+        fields["description"] = description_parts
+    if "sza_tasks" in szas_keys:
+        fields["responsibilities"] = "szas.sza_tasks"
+    if "sza_requirements" in szas_keys:
+        fields["qualifications"] = "szas.sza_requirements"
+
+    if "sza_location.city" in szas_keys:
+        fields["locations"] = 'szas."sza_location.city"'
+    if "sza_employment_type" in szas_keys:
+        fields["employment_type"] = "szas.sza_employment_type"
+    if "sza_pensum" in szas_keys:
+        fields["metadata.pensum"] = "szas.sza_pensum"
+    return fields
+
+
+async def _prospective_probe_config(url: str, client: httpx.AsyncClient) -> dict | None:
+    """Build a direct HTTP config for a Prospective career-center URL.
+
+    The rendered career center exposes only HTML form pagination. Its public
+    medium endpoint is stable, complete, and contains rich job data, but some
+    branded pages never issue a browser XHR for the sniffer to observe.
+    """
+
+    parsed = urlparse(url)
+    match = _PROSPECTIVE_CAREERCENTER_PATH.fullmatch(parsed.path)
+    if (parsed.hostname or "").casefold() != _PROSPECTIVE_HOST or match is None:
+        return None
+
+    medium_id = match.group("medium_id")
+    lang = parse_qs(parsed.query).get("lang", ["de"])[0] or "de"
+    api_url = f"https://{_PROSPECTIVE_HOST}/public/v1/medium/{medium_id}/jobs"
+    params = {
+        "lang": lang,
+        "offset": "0",
+        "limit": str(_PROSPECTIVE_PAGE_SIZE),
+    }
+    try:
+        data = await http_fetch_with_retry(client, "GET", _merge_params(api_url, params))
+    except PaginationFetchError:
+        log.debug("api_sniffer.prospective_probe_failed", api_url=api_url, exc_info=True)
+        return None
+    if not isinstance(data, dict) or str(data.get("medium_id")) != medium_id:
+        return None
+    items = data.get("jobs")
+    if not isinstance(items, list) or not all(isinstance(item, dict) for item in items):
+        return None
+
+    total = data.get("total")
+    runtime_page_size = len(items) or _PROSPECTIVE_PAGE_SIZE
+    params["limit"] = str(runtime_page_size)
+    return {
+        "api_url": api_url,
+        "method": "GET",
+        "json_path": "jobs",
+        "total_path": "total",
+        "url_field": "links.directlink",
+        "params": params,
+        "pagination": {
+            "param_name": "offset",
+            "style": "offset",
+            "start_value": 0,
+            "increment": runtime_page_size,
+            "location": "query",
+        },
+        "fields": _prospective_fields(items),
+        "items": len(items),
+        "total": total if isinstance(total, int) else len(items),
+        "score": 100,
+    }
+
+
 # ---------------------------------------------------------------------------
 # can_handle
 # ---------------------------------------------------------------------------
@@ -431,6 +533,10 @@ async def can_handle(
     script URL discoveries, and CMS detection results — even when detection
     fails.  This allows callers to show diagnostic output to the user.
     """
+    prospective = await _prospective_probe_config(url, client)
+    if prospective is not None:
+        return prospective
+
     prospective_config = await _detect_prospective_config(url, client)
     if prospective_config is not None:
         return prospective_config

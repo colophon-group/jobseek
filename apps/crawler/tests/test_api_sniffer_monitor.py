@@ -434,6 +434,93 @@ def _http_status_error_resp(status: int) -> MagicMock:
     return resp
 
 
+class TestCanHandle:
+    async def test_prospective_careercenter_uses_public_medium_api_without_browser(self):
+        payload = {
+            "medium_id": "1002048",
+            "total": 2,
+            "jobs": [
+                {
+                    "title": "Engineer",
+                    "start_date": "2026-08-01T00:00:00Z",
+                    "end_date": "2026-09-01T00:00:00Z",
+                    "language": "de",
+                    "links": {"directlink": "https://jobs.example.com/engineer/one"},
+                    "szas": {
+                        "sza_tasks": "<p>Build services.</p>",
+                        "sza_requirements": "<p>Python.</p>",
+                        "sza_benefits": "<p>Flexible work.</p>",
+                        "sza_location.city": "Zürich",
+                        "sza_employment_type": "Festanstellung",
+                        "sza_pensum": "Vollzeit",
+                    },
+                },
+                {
+                    "title": "Analyst",
+                    "start_date": "2026-08-02T00:00:00Z",
+                    "end_date": "2026-09-02T00:00:00Z",
+                    "language": "fr",
+                    "links": {"directlink": "https://jobs.example.com/analyst/two"},
+                    "szas": {},
+                },
+            ],
+        }
+
+        def handler(request):
+            assert request.url.path == "/public/v1/medium/1002048/jobs"
+            assert dict(request.url.params) == {
+                "lang": "fr",
+                "offset": "0",
+                "limit": "100",
+            }
+            return httpx.Response(200, json=payload, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle(
+                "https://ohws.prospective.ch/public/v1/careercenter/1002048/?lang=fr",
+                client,
+                pw=None,
+            )
+
+        assert result == {
+            "api_url": "https://ohws.prospective.ch/public/v1/medium/1002048/jobs",
+            "method": "GET",
+            "json_path": "jobs",
+            "total_path": "total",
+            "url_field": "links.directlink",
+            "params": {"lang": "fr", "offset": "0", "limit": "2"},
+            "pagination": {
+                "param_name": "offset",
+                "style": "offset",
+                "start_value": 0,
+                "increment": 2,
+                "location": "query",
+            },
+            "fields": {
+                "title": "title",
+                "date_posted": "start_date",
+                "metadata.language": "language",
+                "metadata.end_date": "end_date",
+                "description": [
+                    "=<h3>Tasks</h3>",
+                    "szas.sza_tasks",
+                    "=<h3>Requirements</h3>",
+                    "szas.sza_requirements",
+                    "=<h3>Benefits</h3>",
+                    "szas.sza_benefits",
+                ],
+                "responsibilities": "szas.sza_tasks",
+                "qualifications": "szas.sza_requirements",
+                "locations": 'szas."sza_location.city"',
+                "employment_type": "szas.sza_employment_type",
+                "metadata.pensum": "szas.sza_pensum",
+            },
+            "items": 2,
+            "total": 2,
+            "score": 100,
+        }
+
+
 @pytest.fixture(autouse=True)
 def _zero_settle():
     """Eliminate 3-second settle sleeps in tests."""
