@@ -96,6 +96,9 @@ _VAGAS_JOB_FILTER = (
     r"oportunidade/[^?#]+/\d+(?:[?#].*)?$"
 )
 
+_REXX_MARKER = "rexx-systems.com"
+_REXX_JOB_FILTER = r"(?:-j\d+\.html|/job-offer\.html\?yid=\d+)(?:[&#].*)?$"
+
 
 def _vagas_probe_config(url: str) -> dict | None:
     """Return the proxy-routed preset for Vagas.com employer boards.
@@ -128,6 +131,27 @@ def _vagas_probe_config(url: str) -> dict | None:
             "param_name": "pagina",
             "max_pages": 1_000,
         },
+    }
+
+
+def _rexx_probe_config(html: str, url: str) -> dict | None:
+    """Return a clean DOM preset for Rexx Systems hosted talent portals.
+
+    Rexx boards use human-readable detail URLs ending in ``-j<ID>.html``.
+    Their navigation also contains a prominent ``jobalert-<lang>.html`` link,
+    which the generic job-keyword heuristic mistakes for a posting. Detecting
+    the provider marker and applying its stable detail pattern keeps probes
+    from selecting that alert page while preserving localized job URLs.
+    """
+
+    if _REXX_MARKER not in html.casefold():
+        return None
+
+    matcher = _build_url_matcher(_REXX_JOB_FILTER)
+    urls = _extract_links_static(html, url, matcher)
+    return {
+        "urls": len(urls),
+        "url_filter": _REXX_JOB_FILTER,
     }
 
 
@@ -743,6 +767,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     jposting = _jposting_probe_config(html, url)
     if jposting is not None:
         return jposting
+
+    rexx = _rexx_probe_config(html, url)
+    if rexx is not None:
+        return rexx
 
     urls = _extract_links_static(html, url)
     linkedin_urls = {candidate for candidate in urls if _is_linkedin_job_url(candidate)}
