@@ -235,6 +235,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 60   | `inline`          | Rich     | skip        | Inline single-page job extraction       |
 | 60   | `kipt`            | Rich     | skip        | Active KIPT PDF bulletin splitting      |
 | 80   | `api_sniffer`     | Conditional* | skip/-- | Direct API or Playwright XHR/fetch capture |
+| 80   | `njoyn`           | URL-only | --          | Njoyn XWeb session-bound form pagination |
 | 100  | `dom`             | URL-only | --          | Static/Playwright DOM link extraction   |
 
 *Conditional monitors return rich data only when their runtime source/config
