@@ -7,9 +7,10 @@ By default (``render: false``), fetches the page via static HTTP.  Set
 ``render: true`` to render with Playwright for JS-heavy sites.
 
 Config uses ``steps`` (same format as ``walk_steps``), an optional ``scope``
-CSS selector that limits extraction to one content container, plus browser
-lifecycle keys (``wait``, ``timeout``, ``user_agent``, ``headless``, ``actions``)
-which are only used when rendering.
+CSS selector that limits extraction to one content container, and optional
+``include_document_title`` when a scoped layout keeps its title in ``<head>``.
+Browser lifecycle keys (``wait``, ``timeout``, ``user_agent``, ``headless``,
+``actions``) are only used when rendering.
 
 Optional ``gone_url_pattern`` is a regex matched against the FINAL URL after
 all redirects. When the upstream site redirects archived/removed postings to
@@ -63,12 +64,18 @@ def _scope_html(html: str, config: dict) -> str:
     if not isinstance(scope, str) or not scope.strip() or len(scope) > 256 or "\x00" in scope:
         raise ValueError("DOM scraper scope must be a non-empty CSS selector up to 256 chars")
     try:
-        node = LexborHTMLParser(html).css_first(scope)
+        document = LexborHTMLParser(html)
+        node = document.css_first(scope)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"DOM scraper scope is not a valid CSS selector: {scope!r}") from exc
     if node is None:
         raise ValueError(f"DOM scraper scope did not match the page: {scope!r}")
-    return node.html
+    scoped_html = node.html
+    if config.get("include_document_title"):
+        title = document.css_first("title")
+        if title is not None:
+            scoped_html = f"{title.html}{scoped_html}"
+    return scoped_html
 
 
 def _check_gone_redirect(final_url: str, pattern: str | None, source_url: str) -> None:
@@ -226,6 +233,12 @@ def _talentsoft_config(htmls: list[str]) -> dict | None:
         ]
     }
 
+_ELVIUM_MARKERS = (
+    "career-page job-posting-layout",
+    "job-posting-widget",
+    "contact-info-widget",
+)
+
 
 def _kontact_config(htmls: list[str]) -> dict | None:
     """Build the stable extraction config used by KontactIntelligence pages."""
@@ -264,6 +277,42 @@ def _kontact_config(htmls: list[str]) -> dict | None:
                 "html": True,
                 "from": 0,
             },
+        ],
+    }
+
+
+def _elvium_config(htmls: list[str]) -> dict | None:
+    """Build a resilient DOM preset for Elvium job-detail pages.
+
+    Elvium pages do not publish ``JobPosting`` JSON-LD and their visible title
+    is commonly a styled ``<p>`` rather than a heading.  The generic DOM
+    heuristic therefore cannot identify them.  Their stable job layout does,
+    however, expose a dedicated content section followed by a contact-address
+    widget.  Scope extraction to that layout and retry Elvium's bursty 429
+    responses so a board can use the existing DOM monitor/scraper pair.
+    """
+
+    matches = sum(all(marker in html for marker in _ELVIUM_MARKERS) for html in htmls)
+    if not matches or matches < len(htmls) / 2:
+        return None
+
+    return {
+        "scope": "section.job-posting-layout",
+        "include_document_title": True,
+        "retry_statuses": {"429": 3},
+        "steps": [
+            {
+                "tag": "title",
+                "field": "title",
+                "regex": r"^(.*?)\s+at\s+.+$",
+            },
+            {
+                "tag": "p",
+                "field": "description",
+                "html": True,
+                "stop": "Kontakt Info",
+            },
+            {"tag": "p", "field": "locations"},
         ],
     }
 
@@ -362,6 +411,10 @@ def can_handle(htmls: list[str]) -> dict | None:
     talentsoft = _talentsoft_config(htmls)
     if talentsoft is not None:
         return talentsoft
+
+    elvium = _elvium_config(htmls)
+    if elvium is not None:
+        return elvium
 
     # Try each page until we get usable steps
     best_steps = None
