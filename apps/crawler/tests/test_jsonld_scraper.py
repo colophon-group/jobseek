@@ -15,6 +15,7 @@ from src.core.scrapers.jsonld import (
     _parse_posting,
     _strip_html,
     _text_or_list,
+    can_handle,
     parse_html,
     probe,
     scrape,
@@ -316,6 +317,58 @@ class TestMetaLocationFallback:
 
         assert result.date_posted is None
         assert result.extras is None
+
+    def test_parses_job_meta_fallback_with_secondary_locations(self):
+        html = """<html><head>
+        <meta name="job-title" content="Lead Product Owner">
+        <meta name="job-workingmode" content="Hybrid">
+        <meta name="job-posteddate" content="2026-05-28T04:51:22Z">
+        <meta name="job-city" content="Manila">
+        <meta name="job-region" content="">
+        <meta name="job-country" content="Philippines">
+        <meta name="job-id" content="21014070">
+        <meta name="job-function" content="Product Management">
+        <meta name="job-experiencelevel" content="Experienced">
+        <meta name="job-secondarylocations"
+              content="Hyderabad,India; Mumbai,India; New Delhi,India">
+        <meta name="job-description"
+              content="&lt;p&gt;Own the product roadmap &amp;amp; delivery.&lt;/p&gt;">
+        </head></html>"""
+
+        result = parse_html(html)
+
+        assert result.title == "Lead Product Owner"
+        assert result.description == "<p>Own the product roadmap &amp; delivery.</p>"
+        assert result.locations == [
+            "Manila, Philippines",
+            "Hyderabad, India",
+            "Mumbai, India",
+            "New Delhi, India",
+        ]
+        assert result.job_location_type == "Hybrid"
+        assert result.date_posted == "2026-05-28T04:51:22Z"
+        assert result.extras == {
+            "requisition_id": "21014070",
+            "job_function": "Product Management",
+            "experience_level": "Experienced",
+        }
+
+    def test_job_meta_fallback_requires_full_description(self):
+        html = """<html><head>
+        <meta name="job-title" content="Engineer">
+        <meta name="job-city" content="London">
+        </head></html>"""
+
+        assert parse_html(html).title is None
+        assert can_handle([html]) is None
+
+    def test_can_handle_job_meta_fallback_on_majority(self):
+        job_html = """<html><head>
+        <meta name="job-title" content="Engineer">
+        <meta name="job-description" content="&lt;p&gt;Build systems&lt;/p&gt;">
+        </head></html>"""
+
+        assert can_handle([job_html, job_html, "<html></html>"]) == {}
 
 
 class TestExtractSalary:

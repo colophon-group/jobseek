@@ -1,7 +1,8 @@
-"""JSON-LD scraper — extracts schema.org/JobPosting data from page HTML.
+"""Structured job scraper for JSON-LD and job-specific HTML metadata.
 
 Parses <script type="application/ld+json"> blocks for JobPosting structured data.
-No configuration needed — handles all standard schema.org fields automatically.
+When a provider omits JSON-LD, falls back to explicit ``job-*`` meta tags used
+by server-rendered career sites. No field mapping is needed.
 """
 
 from __future__ import annotations
@@ -269,12 +270,57 @@ def _normalize_meta_locations(raw: str | None) -> list[str] | None:
 
 
 def _extract_meta_locations(meta: dict[str, str]) -> list[str] | None:
-    """Extract fallback locations from common TalentBrew/Radancy meta tags."""
+    """Extract fallback locations from common career-site meta tags."""
     for key in ("gtm_tbcn_location", "dimension7"):
         locations = _normalize_meta_locations(meta.get(key))
         if locations:
             return locations
+
+    primary_parts = [
+        _clean_text(meta.get(key))
+        for key in ("job-city", "job-region", "job-country")
+    ]
+    primary = ", ".join(part for part in primary_parts if part)
+    secondary = _normalize_meta_locations(meta.get("job-secondarylocations")) or []
+
+    locations: list[str] = []
+    for location in ([primary] if primary else []) + secondary:
+        if location not in locations:
+            locations.append(location)
+    if locations:
+        return locations
     return None
+
+
+def _parse_meta_job(meta: dict[str, str]) -> JobContent | None:
+    """Parse an explicit ``job-*`` metadata payload when JSON-LD is absent.
+
+    Requiring both a title and a full description keeps this fallback scoped to
+    real detail pages instead of accepting generic SEO tags that happen to use
+    a similar name.
+    """
+    title = _clean_text(meta.get("job-title"))
+    description = meta.get("job-description")
+    if not title or not description or not _strip_html(description):
+        return None
+
+    extras = {
+        key: value
+        for key, value in {
+            "requisition_id": _clean_text(meta.get("job-id")),
+            "job_function": _clean_text(meta.get("job-function")),
+            "experience_level": _clean_text(meta.get("job-experiencelevel")),
+        }.items()
+        if value
+    }
+    return JobContent(
+        title=title,
+        description=description,
+        locations=_extract_meta_locations(meta),
+        job_location_type=_clean_text(meta.get("job-workingmode")),
+        date_posted=_clean_text(meta.get("job-posteddate")),
+        extras=extras or None,
+    )
 
 
 def _extract_salary(posting: dict) -> dict | None:
@@ -368,7 +414,7 @@ def _parse_posting(posting: dict) -> JobContent:
 
 
 def parse_html(html: str, config: dict | None = None) -> JobContent:
-    """Extract JobPosting data from pre-fetched HTML."""
+    """Extract structured job data from pre-fetched HTML."""
     extractor = _JsonLdExtractor()
     extractor.feed(html)
 
@@ -405,18 +451,23 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
                 content.locations = _extract_meta_locations(extractor.meta)
             return content
 
+    meta_content = _parse_meta_job(extractor.meta)
+    if meta_content:
+        return meta_content
     return JobContent()
 
 
 def can_handle(htmls: list[str]) -> dict | None:
-    """Check if pages contain JSON-LD JobPosting. Returns ``{}`` if majority have it."""
+    """Return ``{}`` when most pages contain supported structured job data."""
     found = 0
     for html in htmls:
         extractor = _JsonLdExtractor()
         extractor.feed(html)
-        if any(_find_job_posting(block) for block in extractor.results):
+        if any(_find_job_posting(block) for block in extractor.results) or _parse_meta_job(
+            extractor.meta
+        ):
             found += 1
-    # Require at least half the pages to have JSON-LD
+    # Require at least half the pages to expose supported structured job data.
     if found > 0 and found >= len(htmls) / 2:
         return {}
     return None
