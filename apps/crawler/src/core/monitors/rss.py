@@ -22,10 +22,11 @@ from collections.abc import AsyncIterator, Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
 import httpx
 import structlog
+from selectolax.lexbor import LexborHTMLParser
 
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
 from src.core.monitors.raw import save_text_response
@@ -280,7 +281,8 @@ def _parse_generic_item(item: ET.Element) -> DiscoveredJob | None:
     raw_desc = _text(item, "description")
     description = html.unescape(raw_desc) if raw_desc else None
     date_posted = _text(item, "pubDate")
-    guid = _text(item, "guid")
+    guid = _text(item, "guid") or _text(item, "JobID")
+    location = _text(item, "location") or _text(item, "Location")
 
     metadata: dict = {}
     if guid:
@@ -290,6 +292,7 @@ def _parse_generic_item(item: ET.Element) -> DiscoveredJob | None:
         url=link,
         title=title,
         description=description,
+        locations=[location] if location else None,
         date_posted=date_posted,
         metadata=metadata or None,
     )
@@ -484,6 +487,51 @@ async def _probe_feed(
         return False, None
 
 
+def _advertised_rss_feed_url(page_url: str, html_text: str) -> str | None:
+    """Return an RSS feed explicitly advertised by a careers page.
+
+    Generic career portals often publish a valid RSS endpoint via
+    ``<link rel="alternate" type="application/rss+xml">`` without using one
+    of the ATS-specific paths known to this monitor. Prefer that first-party
+    declaration over guessing provider routes. When an HTTPS page advertises
+    an HTTP URL on the same host, upgrade it to HTTPS to avoid mixed-content
+    legacy links such as older recruitment portals still emit.
+    """
+
+    if not html_text:
+        return None
+    try:
+        links = LexborHTMLParser(html_text).css("link")
+    except (TypeError, ValueError):
+        return None
+
+    page = urlparse(page_url)
+    for link in links:
+        attrs = link.attributes
+        rel = {token.casefold() for token in (attrs.get("rel") or "").split()}
+        media_type = (attrs.get("type") or "").split(";", 1)[0].strip().casefold()
+        href = (attrs.get("href") or "").strip()
+        if "alternate" not in rel or media_type != "application/rss+xml" or not href:
+            continue
+
+        candidate = urlparse(urljoin(page_url, href))
+        if (
+            candidate.scheme not in {"http", "https"}
+            or not candidate.hostname
+            or candidate.username is not None
+            or candidate.password is not None
+        ):
+            continue
+        if (
+            page.scheme == "https"
+            and candidate.scheme == "http"
+            and candidate.hostname.casefold() == (page.hostname or "").casefold()
+        ):
+            candidate = candidate._replace(scheme="https")
+        return urlunparse(candidate)
+    return None
+
+
 # ── Discover ────────────────────────────────────────────────────────────
 
 
@@ -656,6 +704,16 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
 
     # 1. Fetch page HTML once for all preset pattern checks
     html_text = await fetch_page_text(url, client)
+
+    advertised_feed = _advertised_rss_feed_url(url, html_text or "")
+    if advertised_feed:
+        found, count = await _probe_feed(advertised_feed, client, "generic")
+        if found:
+            result: dict = {"preset": "generic", "feed_url": advertised_feed}
+            if count is not None:
+                result["jobs"] = count
+            log.info("rss.detected_advertised_feed", url=url, feed=advertised_feed, jobs=count)
+            return result
 
     for preset_name, preset in _PRESETS.items():
         detected = False

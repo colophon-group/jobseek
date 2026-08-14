@@ -4640,6 +4640,7 @@ resortpass,resortpass-greenhouse,https://job-boards.greenhouse.io/resortpass,gre
 resource-environmental-solutions-llc,resource-environmental-solutions-llc-greenhouse,https://job-boards.greenhouse.io/res,greenhouse,"{""token"": ""res""}",skip,
 results-physiotherapy,results-physiotherapy-greenhouse,https://job-boards.greenhouse.io/resultspt,greenhouse,"{""token"": ""resultspt""}",skip,
 retail-insights,retail-insights-greenhouse,https://job-boards.greenhouse.io/retailinsights,greenhouse,"{""token"": ""retailinsights""}",skip,
+retraites-populaires,retraites-populaires-careers,https://carriere.retraitespopulaires.ch/,rss,"{""preset"": ""generic"", ""feed_url"": ""https://carriere.retraitespopulaires.ch/rss.php"", ""url_transform"": {""find"": ""^http://"", ""replace"": ""https://""}}",dom,"{""encoding"": ""iso-8859-1"", ""scope"": ""#advert"", ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""field"": ""description"", ""html"": true, ""stop_count"": 1000}], ""enrich"": [""description""]}"
 reunion-marketing,reunion-marketing-greenhouse,https://job-boards.greenhouse.io/reunionmarketing,greenhouse,"{""token"": ""reunionmarketing""}",skip,
 rev,rev-ashby,https://jobs.ashbyhq.com/rev,ashby,"{""token"": ""rev""}",skip,
 revenuecat,revenuecat-ashby,https://jobs.ashbyhq.com/revenuecat,ashby,"{""token"": ""revenuecat""}",skip,
