@@ -278,6 +278,27 @@ class TestRunScraperHappyPath:
         assert state.to_dict() == before
 
     @pytest.mark.asyncio
+    async def test_respects_domain_throttle_when_requested(self, patched_run_deps):
+        urls = (
+            "https://job.example.com/jobs/1",
+            "https://job.example.com/jobs/2",
+            "https://other.example.com/jobs/3",
+        )
+        with (
+            patch("src.core.scrape.scrape_one", new_callable=AsyncMock) as fake,
+            patch("src.processing.scrape._apply_defaults", side_effect=lambda c, _cfg: c),
+            patch("src.redis_queue.delay_for_domain", return_value=1.25),
+            patch("src.workspace.lib.run.asyncio.sleep", new_callable=AsyncMock) as sleep,
+        ):
+            fake.return_value = FakeJobContent(title="x", description="<p>y</p>")
+            await run_scraper(
+                _state(sample_urls=urls),
+                respect_domain_throttle=True,
+            )
+
+        sleep.assert_awaited_once_with(1.25)
+
+    @pytest.mark.asyncio
     async def test_no_filesystem_writes(self, patched_run_deps, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         before = sorted(os.listdir("."))

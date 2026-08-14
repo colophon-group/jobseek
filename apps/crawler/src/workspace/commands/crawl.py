@@ -1839,6 +1839,7 @@ def run_scraper(
                 sample_urls=target_urls,
                 artifact_dir=run_dir,
                 log_events=log_events,
+                respect_domain_throttle=True,
             )
         )
     except WsConfigMissing as exc:

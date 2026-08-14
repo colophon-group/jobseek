@@ -172,6 +172,16 @@ class TestProbeScraperHappyPath:
         assert urls_seen == [["https://example.com/new/1"]]
 
     @pytest.mark.asyncio
+    async def test_caps_upstream_probe_to_three_samples(self, patched_playwright_and_http):
+        urls = tuple(f"https://example.com/jobs/{i}" for i in range(10))
+        with patch("src.core.scrapers.probe_scrapers", new_callable=AsyncMock) as probe_fn:
+            probe_fn.return_value = ([], False)
+            result = await probe_scraper(_fixture_state(sample_urls=urls))
+
+        assert result.sample_urls == list(urls[:3])
+        assert probe_fn.await_args.args[0] == list(urls[:3])
+
+    @pytest.mark.asyncio
     async def test_no_filesystem_writes(self, patched_playwright_and_http, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         before = sorted(os.listdir("."))
