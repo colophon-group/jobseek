@@ -336,6 +336,7 @@ american-housing,american-housing-ashby,https://jobs.ashbyhq.com/american-housin
 american-institute,american-institute-greenhouse,https://job-boards.greenhouse.io/americaninstitute,greenhouse,"{""token"": ""americaninstitute""}",skip,
 ametek,ametek-careers,https://jobs.ametek.com/,rss,"{""preset"": ""successfactors""}",skip,
 ami,ami-ashby,https://jobs.ashbyhq.com/ami,ashby,"{""token"": ""ami""}",skip,
+amina-bank,amina-bank-careers-personio,https://amina.jobs.personio.com/,personio,"{""slug"": ""amina""}",dom,"{""steps"": [{""tag"": ""h2"", ""field"": ""description"", ""stop"": ""Apply for this job"", ""html"": true}]}"
 amo,amo-ashby,https://jobs.ashbyhq.com/amo,ashby,"{""token"": ""amo""}",skip,
 amoria-group,amoria-group-greenhouse,https://job-boards.greenhouse.io/amoriabond,greenhouse,"{""token"": ""amoriabond""}",skip,
 amp-ai-powered-sortation-for-waste-and-recycling,amp-ai-powered-sortation-for-waste-and-recycling-greenhouse,https://job-boards.greenhouse.io/ampsortation,greenhouse,"{""token"": ""ampsortation""}",skip,
