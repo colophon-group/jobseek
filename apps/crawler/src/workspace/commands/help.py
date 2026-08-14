@@ -2303,7 +2303,7 @@ welcometothejungle — Welcome to the Jungle public jobs APIs
                      auto-resolved when omitted."""
 
 SCRAPER_JSONLD = """\
-json-ld — Schema.org JobPosting Extractor
+json-ld — Structured JobPosting Extractor
 
   Fetch:    Static HTTP (default) or Playwright (render: true)
   Config:   No field mapping needed
@@ -2311,6 +2311,9 @@ json-ld — Schema.org JobPosting Extractor
   Parses <script type="application/ld+json"> blocks for JobPosting data.
   Handles @graph arrays and nested structures automatically.
   Uses the first JSON-LD block that contains a JobPosting.
+  If JSON-LD is absent, supports explicit job-title/job-description/job-city
+  metadata, including primary and secondary locations, working mode, posting
+  date, requisition ID, job function, and experience level.
 
   Optional runtime config:
     render         Use Playwright (default: false)
@@ -2337,7 +2340,8 @@ json-ld — Schema.org JobPosting Extractor
   When to use:  Try first for any URL-only monitor. Many career sites
                 (Workable, Lever-hosted, Indeed, LinkedIn) embed JSON-LD.
 
-  Empty fields?  Page may have partial or no JSON-LD. Try dom scraper."""
+  Empty fields?  Page may have partial or unsupported structured metadata.
+                 Try dom scraper."""
 
 SCRAPER_NEXTDATA = """\
 nextdata — Next.js __NEXT_DATA__ Page Extractor
