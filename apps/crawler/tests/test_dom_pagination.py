@@ -792,6 +792,34 @@ class TestPaginateUrls:
             else:
                 raise AssertionError("expected PaginationFetchError to propagate")
 
+    async def test_transient_403_opt_in_fails_closed(self, monkeypatch):
+        """A WAF block after page one must not accept a partial inventory."""
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr("src.shared.http_retry.asyncio.sleep", AsyncMock())
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            return httpx.Response(403, text="Access denied", request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await _paginate_urls(
+                    "https://blocked.example/careers",
+                    {
+                        "param_name": "page",
+                        "max_pages": 5,
+                        "transient_403": True,
+                    },
+                    {"https://blocked.example/job/1"},
+                    client,
+                )
+
+        assert attempts == 3
+        assert exc_info.value.last_status == 403
+
     async def test_browser_path_propagates_persistent_fetch_error(self, monkeypatch):
         """Same contract as the static path, but for ``pagination.browser=true``
         (#2737). A persistent Playwright-side failure must raise rather than
@@ -1022,6 +1050,24 @@ class TestFetchViaPage:
         result = await _fetch_via_page(page, "https://example.com/forbidden")
         assert result is None
         assert page.evaluate.await_count == 1
+
+    async def test_transient_403_opt_in_retries_then_raises(self, monkeypatch):
+        """Browser pagination can fail closed for explicitly WAF-gated boards."""
+        from src.shared.http_retry import PaginationFetchError
+
+        monkeypatch.setattr("src.core.monitors.dom.asyncio.sleep", AsyncMock())
+        page = MagicMock()
+        page.evaluate = AsyncMock(return_value={"status": 403, "text": "Access denied"})
+
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await _fetch_via_page(
+                page,
+                "https://example.com/forbidden",
+                transient_403=True,
+            )
+
+        assert page.evaluate.await_count == 2
+        assert exc_info.value.last_status == 403
 
     async def test_cloudflare_403_raises_instead_of_stopping(self):
         """A WAF block is not a legitimate end-of-pagination."""
