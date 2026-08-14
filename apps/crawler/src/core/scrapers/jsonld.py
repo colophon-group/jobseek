@@ -31,6 +31,27 @@ log = structlog.get_logger()
 
 _CTRL_REPLACEMENTS = {"\n": "\\n", "\r": "\\r", "\t": "\\t"}
 
+_CDATA_WRAPPERS = (
+    ("//<![CDATA[", "//]]>"),
+    ("/*<![CDATA[*/", "/*]]>*/"),
+    ("<![CDATA[", "]]>"),
+)
+
+
+def _strip_cdata_wrapper(raw: str) -> str:
+    """Remove legacy CDATA guards around a JSON-LD script body.
+
+    HTML5 does not require CDATA around inline JSON, but older Rails-style
+    templates still emit JavaScript comment guards.  The guards are not JSON
+    and previously made otherwise valid JobPosting data disappear silently.
+    """
+
+    stripped = raw.strip()
+    for prefix, suffix in _CDATA_WRAPPERS:
+        if stripped.startswith(prefix) and stripped.endswith(suffix):
+            return stripped[len(prefix) : -len(suffix)].strip()
+    return stripped
+
 
 def _escape_control_chars_in_strings(raw: str) -> str:
     """Escape control characters that appear inside JSON string values only."""
@@ -95,7 +116,7 @@ class _JsonLdExtractor(HTMLParser):
             return
         if tag == "script" and self._in_jsonld:
             self._in_jsonld = False
-            raw = "".join(self._data).strip()
+            raw = _strip_cdata_wrapper("".join(self._data))
             if raw:
                 # Prefer the standards-compliant raw block. If that fails,
                 # support providers such as Gupy that HTML-entity-encode the
