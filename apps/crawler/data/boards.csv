@@ -5220,6 +5220,7 @@ tastytrade,tastytrade-greenhouse,https://job-boards.greenhouse.io/tastytrade,gre
 tata-capital,tata-capital-careers,https://eofh.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_3001,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 tata-motors,tata-motors-careers,https://careers.tatamotors.com,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.tatamotors.com/googlefeed.xml""}",skip,
 tatari,tatari-greenhouse,https://job-boards.greenhouse.io/tatari,greenhouse,"{""token"": ""tatari""}",skip,
+taurus,taurus-join,https://join.com/companies/taurusgroup,join,"{""slug"": ""taurusgroup""}",json-ld,
 tavus,tavus-ashby,https://jobs.ashbyhq.com/tavus,ashby,"{""token"": ""tavus""}",skip,
 taxbit,taxbit-greenhouse,https://job-boards.greenhouse.io/taxbit,greenhouse,"{""token"": ""taxbit""}",skip,
 tbhc-delivers,tbhc-delivers-greenhouse,https://job-boards.greenhouse.io/tbhcdelivers,greenhouse,"{""token"": ""tbhcdelivers""}",skip,
