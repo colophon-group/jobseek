@@ -4758,6 +4758,9 @@ routine-labs,routine-labs-join,https://join.com/companies/routinelabs,join,"{""s
 rover,rover-lever,https://jobs.lever.co/rover,lever,"{""token"": ""rover""}",skip,
 rovop,rovop-global,https://jobs.rovop.com/jobs.aspx,dom,"{""url_filter"": ""/job/""}",json-ld,
 rowden-technologies,rowden-technologies-careers,https://rowdentech.pinpointhq.com/,pinpoint,"{""slug"": ""rowdentech""}",skip,
+rsm,rsm-australia,https://rsmaus.wd105.myworkdayjobs.com/RSMCareers,workday,"{""company"": ""rsmaus"", ""wd_instance"": ""wd105"", ""site"": ""RSMCareers""}",workday,
+rsm,rsm-austria,https://karriere.rsm.at/,recruitee,"{""slug"": ""careers-analytics"", ""api_base"": ""https://karriere.rsm.at""}",skip,
+rsm,rsm-us,https://jobs.rsmus.com/,api_sniffer,"{""api_url"": ""https://jobs-cms.rsmus.com/google-search/process/get-jobs.php"", ""method"": ""GET"", ""params"": {""ajax"": ""1"", ""spage"": ""1""}, ""json_path"": ""jobs.*"", ""total_path"": ""size"", ""url_field"": ""detailUrl"", ""pagination"": {""param_name"": ""spage"", ""style"": ""page"", ""start_value"": 1, ""increment"": 1, ""location"": ""query""}, ""fields"": {""title"": ""title"", ""description"": ""overview"", ""locations"": ""fullLocations"", ""employment_type"": ""workType"", ""date_posted"": ""publishedDate"", ""metadata.requisition_id"": ""requisitionId"", ""metadata.experience_level"": ""experienceLevel"", ""metadata.category"": ""category"", ""metadata.job_level"": ""jobLevel"", ""metadata.company"": ""company""}}",,
 rtx,rtx-careers,https://careers.rtx.com/global/en,sitemap,"{""url"": ""https://careers.rtx.com/global/en/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
 rtx,rtx-careers-workday,https://globalhr.wd5.myworkdayjobs.com/REC_RTX_Ext_Gateway,workday,"{""tenant"": ""globalhr"", ""board_id"": ""REC_RTX_Ext_Gateway""}",workday,"{""proxy"": true}"
 rubrik-job-board,rubrik-job-board-greenhouse,https://job-boards.greenhouse.io/rubrik,greenhouse,"{""token"": ""rubrik""}",skip,

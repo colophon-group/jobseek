@@ -884,6 +884,24 @@ def detect_size_param(url: str, post_data: str | None) -> tuple[str, str, int] |
 
 def extract_items(data: object, target_path: str) -> list[dict]:
     """Extract the job array from a parsed JSON response."""
+    # Resolve the configured expression first.  ``find_arrays`` can only
+    # describe literal list nodes, so JMESPath projections such as
+    # ``jobs.*`` (a dict keyed by requisition ID) otherwise work on the
+    # first page but disappear during pagination.  An exact empty result
+    # must also stay empty instead of falling back to an unrelated array in
+    # the response (for example, filter values).
+    if target_path:
+        from jmespath.exceptions import JMESPathError
+
+        from src.shared.nextdata import resolve_path
+
+        try:
+            resolved = data if target_path == "$" else resolve_path(data, target_path)
+        except (JMESPathError, TypeError):
+            resolved = None
+        if isinstance(resolved, list):
+            return [item for item in resolved if isinstance(item, dict)]
+
     arrays = find_arrays(data)
     for path, arr in arrays:
         if path == target_path:
