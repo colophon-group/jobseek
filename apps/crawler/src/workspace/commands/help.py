@@ -2701,6 +2701,8 @@ Browser Action Pipeline — pre-extraction actions for Playwright
         exclude the disabled last-page control so pagination terminates cleanly.
         Pagination errors, no-progress clicks, and page-cap exhaustion fail the
         board cycle rather than accepting a partial inventory.
+        For example, Prospective boards use the disabled-aware selector
+        #button-forward:not(.disableClick).
 
   Per-action timeout:
     {"action": "click", "selector": ".btn", "timeout": 5}
@@ -2717,10 +2719,11 @@ Browser Action Pipeline — pre-extraction actions for Playwright
       {"action": "repeat", "selector": "button.load-more", "max": 30, "wait_ms": 1500}
     ]
 
-    # Collect links across numbered/replacement-style result pages:
+    # Collect links across full-page or SPA next-page navigation:
     "actions": [
-      {"action": "paginate_collect", "next_selector": "a.pagination-next",
-       "max_pages": 50, "wait_ms": 2000}
+      {"action": "paginate_collect",
+       "next_selector": "#button-forward:not(.disableClick)",
+       "wait_ms": 1500, "max_pages": 50}
     ]
 
     # Click "Show more" inside a cross-origin iframe widget:
