@@ -1278,7 +1278,8 @@ class TestPaginateCollectAction:
             async def count(self):
                 return int(self.page.index < len(self.page.pages) - 1)
 
-            async def click(self):
+            async def click(self, *, force=False):
+                assert force is True
                 # A real anchor replaces the document here. The Python-side
                 # controller must resume against the newly loaded page.
                 self.page.index += 1
@@ -1313,6 +1314,7 @@ class TestPaginateCollectAction:
                         "next_selector": "[data-testid=next-page]",
                         "wait_ms": 0,
                         "max_pages": 10,
+                        "force": True,
                     }
                 ],
             )
@@ -1323,6 +1325,60 @@ class TestPaginateCollectAction:
             "https://example.com/job/2",
             "https://example.com/job/3",
         ]
+
+    async def test_fails_closed_when_later_click_fails(self):
+        """A failed pagination action must not expose a partial URL set."""
+
+        class FakeNext:
+            def __init__(self, page):
+                self.page = page
+                self.first = self
+
+            async def count(self):
+                return 1
+
+            async def click(self, *, force=False):
+                assert force is False
+                if self.page.index == 1:
+                    raise RuntimeError("overlay intercepted click")
+                self.page.index += 1
+
+        class FakePage:
+            def __init__(self):
+                self.pages = [
+                    ["https://example.com/job/1"],
+                    ["https://example.com/job/2"],
+                ]
+                self.index = 0
+                self.injected = None
+
+            def locator(self, _selector):
+                return FakeNext(self)
+
+            async def evaluate(self, _script, arg=None):
+                if arg is not None:
+                    self.injected = arg
+                    return None
+                return self.pages[self.index]
+
+        page = FakePage()
+        with (
+            patch.object(asyncio, "sleep", new_callable=AsyncMock),
+            pytest.raises(RuntimeError, match="overlay intercepted"),
+        ):
+            await run_actions(
+                page,
+                [
+                    {
+                        "action": "paginate_collect",
+                        "next_selector": "a.next",
+                        "wait_ms": 0,
+                        "max_pages": 10,
+                    }
+                ],
+            )
+
+        assert page.injected is None
 
     async def test_fails_closed_when_next_click_makes_no_progress(self):
         page = _make_page()

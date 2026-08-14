@@ -2731,6 +2731,8 @@ Browser Action Pipeline — pre-extraction actions for Playwright
           wait_ms             Ms to wait after each click (default: 5000)
           page_size_selector  Optional CSS selector for a page-size dropdown
           page_size           Optional value to select before pagination
+          force               If true, use Playwright force-click. Useful when
+                              consent overlays intercept page controls.
         Use this instead of repeat when each click replaces the current result
         page, including JSF/Visualforce postback pagination. Make next_selector
         exclude the disabled last-page control so pagination terminates cleanly.
