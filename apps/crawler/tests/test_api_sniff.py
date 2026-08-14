@@ -697,6 +697,24 @@ class TestExtractItems:
         items = extract_items(data, "nonexistent")
         assert len(items) == 10
 
+    def test_jmespath_dict_values_projection(self):
+        data = {
+            "jobs": {
+                "JR101": {"id": "JR101", "title": "Auditor"},
+                "JR102": {"id": "JR102", "title": "Consultant"},
+            }
+        }
+
+        assert extract_items(data, "jobs.*") == list(data["jobs"].values())
+
+    def test_exact_empty_path_does_not_fallback_to_unrelated_array(self):
+        data = {
+            "jobs": {},
+            "filters": [{"id": 1}, {"id": 2}, {"id": 3}],
+        }
+
+        assert extract_items(data, "jobs.*") == []
+
     def test_no_arrays(self):
         assert extract_items({"key": "value"}, "key") == []
 
@@ -821,6 +839,59 @@ class TestPaginateAllWithFetchFn:
         )
 
         assert await paginate_all(unexpected_fetch, result, max_pages=5) == page1_items
+
+    @pytest.mark.asyncio
+    async def test_paginate_jmespath_dict_values_projection(self):
+        """Keyed job objects remain extractable after the first page."""
+        pages = {
+            2: {
+                "jobs": {
+                    "JR103": {"id": "JR103"},
+                    "JR104": {"id": "JR104"},
+                },
+                "size": 5,
+            },
+            3: {"jobs": {"JR105": {"id": "JR105"}}, "size": 5},
+        }
+
+        async def mock_fetch(method, url, headers, body):
+            page = int(url.rsplit("=", 1)[1])
+            return pages[page]
+
+        page1_items = [{"id": "JR101"}, {"id": "JR102"}]
+        ex = _make_exchange(
+            url="https://example.com/jobs?spage=1",
+            body={
+                "jobs": {item["id"]: item for item in page1_items},
+                "size": 5,
+            },
+        )
+        result = JobListResult(
+            candidate=ArrayCandidate(
+                exchange=ex,
+                json_path="jobs.*",
+                items=page1_items,
+            ),
+            url_field=None,
+            total_count=5,
+            pagination=PaginationInfo(
+                param_name="spage",
+                style="page",
+                start_value=1,
+                increment=1,
+                location="query",
+            ),
+        )
+
+        items = await paginate_all(mock_fetch, result, max_pages=5)
+
+        assert [item["id"] for item in items] == [
+            "JR101",
+            "JR102",
+            "JR103",
+            "JR104",
+            "JR105",
+        ]
 
     @pytest.mark.asyncio
     async def test_cumulative_limit_requires_advertised_total(self):
