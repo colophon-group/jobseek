@@ -239,6 +239,49 @@ class TestCanHandle:
             "https://evil.example/job/job-lookalike_999.aspx",
         )
 
+    async def test_rexx_board_uses_detail_pattern_and_ignores_job_alert(self):
+        html = """
+        <html><body>
+          <a href="https://talent.example.com/jobalert-eng.html">Job alert</a>
+          <a href="/Senior-Impact-Manager-eng-j346.html">Role</a>
+          <a href="https://www.rexx-systems.com/en/">Rexx Systems</a>
+        </body></html>
+        """
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=html),
+        ):
+            result = await can_handle(
+                "https://talent.example.com/job-offers.html",
+                MagicMock(),
+            )
+
+        assert result == {
+            "urls": 1,
+            "url_filter": r"(?:-j\d+\.html|/job-offer\.html\?yid=\d+)(?:[&#].*)?$",
+        }
+
+    async def test_rexx_empty_board_keeps_provider_preset(self):
+        html = """
+        <html><body>
+          <p>No vacancies are currently available.</p>
+          <a href="https://talent.example.com/jobalert-eng.html">Job alert</a>
+          <a href="https://www.rexx-systems.com/en/">Rexx Systems</a>
+        </body></html>
+        """
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=html),
+        ):
+            result = await can_handle(
+                "https://talent.example.com/job-offers.html",
+                MagicMock(),
+            )
+
+        assert result is not None
+        assert result["urls"] == 0
+        assert result["url_filter"].startswith("(?:-j")
+
     async def test_jposting_empty_board_returns_provider_preset(self):
         html = """
         <html><head><style>.jobname { font-weight: bold; }</style></head>
