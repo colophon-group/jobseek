@@ -817,12 +817,15 @@ async def _execute_paginate_collect(page, action: dict) -> None:
         page_size (int|str): Value to set on the page-size dropdown.
         wait_ms (int): Delay in ms after each navigation (default 5000).
         max_pages (int): Safety cap on pagination clicks (default 50).
+        force (bool): Use Playwright's force-click behavior when consent
+            overlays or other non-semantic elements intercept the control.
     """
     next_sel = action.get("next_selector", "li.next:not(.next_disabled) a")
     ps_selector = action.get("page_size_selector", "")
     page_size = action.get("page_size", "")
     wait_ms = action.get("wait_ms", 5000)
     max_pages = action.get("max_pages", 50)
+    force = action.get("force", False)
 
     if ps_selector and page_size:
         await page.evaluate(
@@ -853,7 +856,7 @@ async def _execute_paginate_collect(page, action: dict) -> None:
         next_el = page.locator(next_sel).first
         if await next_el.count() == 0:
             break
-        await next_el.click()
+        await next_el.click(force=force)
         await asyncio.sleep(wait_ms / 1000)
         page_links = set(await page.evaluate(collect_js))
         if not page_links - all_links:
