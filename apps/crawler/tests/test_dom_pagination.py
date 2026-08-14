@@ -616,6 +616,27 @@ class TestDomDiscoverInitialFetch:
                 {"_board_url": "https://blocked.example/careers"},
             )
 
+    async def test_rendered_incapsula_interstitial_raises(self, monkeypatch):
+        """Imperva's HTTP-200 iframe shell must not look like an empty board."""
+
+        page = MagicMock()
+        page.url = "https://blocked.example/careers"
+        page.content = AsyncMock(
+            return_value=(
+                '<html><body><iframe id="main-iframe" '
+                'src="/_Incapsula_Resource?CWUDNSAI=23&incident_id=6110">'
+                "</iframe></body></html>"
+            )
+        )
+        monkeypatch.setattr("src.core.monitors.dom.navigate", AsyncMock())
+        monkeypatch.setattr("src.core.monitors.dom.run_actions", AsyncMock())
+
+        with pytest.raises(BotChallengeError, match="proxy transport"):
+            await _extract_links_rendered(
+                page,
+                {"_board_url": "https://blocked.example/careers"},
+            )
+
     async def test_rendered_cloudflare_block_page_raises(self, monkeypatch):
         """Cloudflare's permanent block page must also fail the cycle."""
 

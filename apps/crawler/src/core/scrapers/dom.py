@@ -36,7 +36,7 @@ import httpx
 import structlog
 from selectolax.lexbor import LexborHTMLParser
 
-from src.core.monitors.dom import _raise_if_bot_challenge
+from src.core.monitors.dom import BotChallengeError, _raise_if_bot_challenge
 from src.core.scrapers import JobContent, register
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
 from src.shared.extract import flatten, walk_steps
@@ -44,6 +44,8 @@ from src.shared.http import is_avature_job_detail_url
 from src.shared.http_retry import fetch_response_with_status_retries
 
 log = structlog.get_logger()
+
+_RENDER_CHALLENGE_RETRIES = 1
 
 
 def _scope_html(html: str, config: dict) -> str:
@@ -516,8 +518,22 @@ async def scrape(
                 _raise_if_bot_challenge(final_url or url, html)
                 return html
 
+        async def _render_with_challenge_retry(p):
+            for attempt in range(_RENDER_CHALLENGE_RETRIES + 1):
+                try:
+                    return await _render_page(p)
+                except BotChallengeError:
+                    if attempt == _RENDER_CHALLENGE_RETRIES:
+                        raise
+                    log.info(
+                        "dom.render.retry_bot_challenge",
+                        url=url,
+                        attempt=attempt + 1,
+                    )
+            raise AssertionError("unreachable")
+
         if pw is not None:
-            html = await _render_page(pw)
+            html = await _render_with_challenge_retry(pw)
         else:
             try:
                 from playwright.async_api import async_playwright
@@ -528,7 +544,7 @@ async def scrape(
                 ) from err
 
             async with async_playwright() as p:
-                html = await _render_page(p)
+                html = await _render_with_challenge_retry(p)
     else:
         retry_limits = _status_retry_limits(config, url)
         resp = await fetch_response_with_status_retries(
