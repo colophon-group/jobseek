@@ -182,8 +182,7 @@ def _talentsoft_config(htmls: list[str]) -> dict | None:
     """Build locale-independent extraction steps for Talentsoft details."""
 
     matches = sum(
-        "ts-offer-page__body" in html
-        and "fldlocation_location_geographicalareacollection" in html
+        "ts-offer-page__body" in html and "fldlocation_location_geographicalareacollection" in html
         for html in htmls
     )
     if not matches or matches < len(htmls) / 2:
