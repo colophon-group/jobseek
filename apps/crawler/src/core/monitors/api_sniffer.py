@@ -904,6 +904,18 @@ def _build_item_projector(
     return _project
 
 
+def _validated_slug_fields(config: dict) -> list[str]:
+    """Return a well-formed list of item paths used for ``{slug}``."""
+    value = config.get("slug_fields")
+    if value is None:
+        return []
+    if not isinstance(value, list) or not all(
+        isinstance(path, str) and path.strip() for path in value
+    ):
+        raise ValueError("api_sniffer slug_fields must be a list of non-empty field paths")
+    return value
+
+
 def score_array(path: str, items: list[dict], api_url: str) -> int:
     """Score an array-of-dicts as a likely job list.
 
@@ -1252,7 +1264,7 @@ async def _discover_http(
     url_field = config.get("url_field")
     url_template = config.get("url_template")
     url_template_fields = config.get("url_template_fields") or {}
-    slug_fields = config.get("slug_fields") or []
+    slug_fields = _validated_slug_fields(config)
     url_regex = config.get("url_regex")
     total_path = config.get("total_path")
     post_data = config.get("post_data") or config.get("post_body")
@@ -1695,7 +1707,7 @@ async def _discover_replay(
     url_field = config.get("url_field")
     url_template = config.get("url_template")
     url_template_fields = config.get("url_template_fields") or {}
-    slug_fields = config.get("slug_fields") or []
+    slug_fields = _validated_slug_fields(config)
     post_data = config.get("post_data")
     request_headers = config.get("request_headers", {})
     fields_map: dict[str, str] = config.get("fields") or {}
@@ -2305,7 +2317,9 @@ def _format_url_template(
         for path in slug_fields:
             value = extract_field(item, path)
             if value is not None:
-                slug_parts.append(slugify(str(value)))
+                slug = slugify(str(value))
+                if slug:
+                    slug_parts.append(slug)
         if slug_parts:
             values["slug"] = "-".join(slug_parts)
     return url_template.format_map(values)

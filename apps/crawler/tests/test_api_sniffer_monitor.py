@@ -18,6 +18,7 @@ from src.core.monitors.api_sniffer import (
     _extract_urls_from_template,
     _materially_below_advertised_total,
     _refresh_post_data,
+    _validated_slug_fields,
     can_handle,
     discover,
 )
@@ -438,6 +439,16 @@ class TestItemProjector:
         assert _build_item_projector(fields, url_field, None, {}) is None
 
 
+class TestSlugFields:
+    @pytest.mark.parametrize("value", ["title", [""], [1], {"title": True}])
+    def test_rejects_invalid_config(self, value):
+        with pytest.raises(ValueError, match="slug_fields"):
+            _validated_slug_fields({"slug_fields": value})
+
+    def test_accepts_field_path_list(self):
+        assert _validated_slug_fields({"slug_fields": ["details.title"]}) == ["details.title"]
+
+
 def _http_status_error_resp(status: int) -> MagicMock:
     """Build a mock httpx.Response whose ``raise_for_status()`` raises a real
     :class:`httpx.HTTPStatusError`. The api_sniffer retry classifier
@@ -807,6 +818,16 @@ class TestExtractUrlsFromTemplate:
         )
 
         assert urls == {"https://example.com/jobs/R_123/risk-and-insurance-advisor"}
+
+    def test_non_sluggable_value_does_not_emit_malformed_url(self):
+        urls = _extract_urls_from_template(
+            [{"reqId": "R_123", "title": "東京"}],
+            "https://example.com/jobs/{reqId}/{slug}",
+            "https://example.com",
+            slug_fields=["title"],
+        )
+
+        assert urls == set()
 
 
 def _make_mock_pw(mock_page):
