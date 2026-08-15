@@ -861,6 +861,8 @@ talentbrew — TalentBrew / Radancy Search Results
     {"page_max_chars": 8000000}
                          Optional first-page/pagination HTML read cap
                          (default 5,000,000; max 25,000,000).
+    {"proxy": true}      Route WAF-gated listing and pagination requests
+                         through the configured proxy provider.
 
   Detection:  ws probe shows "TalentBrew/Radancy — N jobs across M pages"
               Looks for TalentBrew/Radancy static markers plus #search-results.
@@ -1882,6 +1884,8 @@ paylocity — Paylocity embedded job data
             and remain detectable with a 0-job count.
 
   Config:   None needed — the board URL is used directly.
+            Optional {"proxy": true} routes rate-limited or WAF-gated boards
+            through the configured proxy provider.
 
   Detection:  ws probe shows "Paylocity embedded data — N jobs"
   Zero jobs?  Confirm window.pageData.Jobs is empty; search-engine counts may
@@ -3168,7 +3172,8 @@ paylocity — Paylocity server-rendered detail scraper
   Page:     GET https://{tenant}recruiting.paylocity.com/Recruiting/Jobs/Details/{id}
   Returns:  title, HTML description, locations, employment_type,
             job_location_type
-  Config:   None needed
+  Config:   None needed. Optional {"proxy": true} routes WAF-gated detail
+            requests through the configured proxy provider.
   Note:     Auto-configured when selecting the paylocity monitor. The detail
             content is server-rendered despite Paylocity's surrounding
             unsupported-browser warning, so Playwright is not required.

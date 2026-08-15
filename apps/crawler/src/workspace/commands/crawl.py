@@ -950,7 +950,7 @@ _MONITOR_CONFIG_HINTS = {
     "jarvi": "Requires: public_api_key; optional currency (auto-filled from probe)",
     "lever": "Requires: token (auto-filled from probe)",
     "linkedin": "Requires: company_id (numeric f_C value; auto-filled from probe)",
-    "paylocity": "No config required (uses embedded window.pageData)",
+    "paylocity": "Optional: proxy. Uses embedded window.pageData.",
     "pinpoint": "Requires: slug (auto-filled from probe)",
     "recruitee": "Requires: slug or api_base (auto-filled from probe)",
     "recruiterbox": "Requires: tenant (auto-filled from a Recruiterbox / Trakstar Hire URL)",
@@ -967,7 +967,7 @@ _MONITOR_CONFIG_HINTS = {
     "rss": "Optional: preset/variant/feed_url; legacy SuccessFactors host/company auto-fill",
     "umantis": "Requires: customer_id. Optional: region, listing_path",
     "sitemap": "Optional: sitemap_url, url_filter (regex to include/exclude URLs)",
-    "talentbrew": "Optional: max_pages. Uses search-results pagination.",
+    "talentbrew": "Optional: max_pages, page_size, proxy. Uses search-results pagination.",
     "njoyn": "Optional: max_pages, page_wait_ms. Uses session-bound form pagination.",
     "nextdata": (
         "Requires: path, url_template. Optional: fields, render, actions, source, "
