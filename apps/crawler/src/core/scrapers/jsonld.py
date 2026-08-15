@@ -277,8 +277,7 @@ def _extract_meta_locations(meta: dict[str, str]) -> list[str] | None:
             return locations
 
     primary_parts = [
-        _clean_text(meta.get(key))
-        for key in ("job-city", "job-region", "job-country")
+        _clean_text(meta.get(key)) for key in ("job-city", "job-region", "job-country")
     ]
     primary = ", ".join(part for part in primary_parts if part)
     secondary = _normalize_meta_locations(meta.get("job-secondarylocations")) or []
@@ -304,7 +303,7 @@ def _parse_meta_job(meta: dict[str, str]) -> JobContent | None:
     if not title or not description or not _strip_html(description):
         return None
 
-    extras = {
+    metadata = {
         key: value
         for key, value in {
             "requisition_id": _clean_text(meta.get("job-id")),
@@ -319,7 +318,7 @@ def _parse_meta_job(meta: dict[str, str]) -> JobContent | None:
         locations=_extract_meta_locations(meta),
         job_location_type=_clean_text(meta.get("job-workingmode")),
         date_posted=_clean_text(meta.get("job-posteddate")),
-        extras=extras or None,
+        metadata=metadata or None,
     )
 
 
