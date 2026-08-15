@@ -39,6 +39,7 @@ MAX_JOBS = 1_000
 _PAGE_DELAY_S = 1.0
 _RETRY_ATTEMPTS = 4
 _RETRY_BASE_DELAY_S = 1.5
+_WORLDWIDE_LOCATION = "Worldwide"
 
 _COMPANY_PATH_RE = re.compile(r"^/company/([^/?#]+)/jobs/?$", re.IGNORECASE)
 _JOB_URN_RE = re.compile(r"urn:li:jobPosting:(\d+)")
@@ -114,8 +115,16 @@ def _clean_text(node: LexborNode | None) -> str | None:
 def _canonical_job_url(job_id: str, href: str | None) -> str:
     if href:
         parsed = urlparse(href)
-        if _is_linkedin_host((parsed.hostname or "").lower()) and parsed.path.startswith(
-            "/jobs/view/"
+        path_id = re.search(r"(?:-|/)(\d+)/?$", parsed.path)
+        if (
+            _is_linkedin_host((parsed.hostname or "").lower())
+            and parsed.scheme.lower() == "https"
+            and not parsed.username
+            and not parsed.password
+            and parsed.port is None
+            and parsed.path.startswith("/jobs/view/")
+            and path_id
+            and path_id.group(1) == job_id
         ):
             return urlunparse(("https", "www.linkedin.com", parsed.path, "", "", ""))
     return f"https://www.linkedin.com/jobs/view/{job_id}"
@@ -130,10 +139,10 @@ def _parse_listing_cards(html: str) -> list[_ListingJob]:
         urn = card.attributes.get("data-entity-urn") or ""
         match = _JOB_URN_RE.search(urn)
         if not match:
-            continue
+            raise ValueError("LinkedIn listing card has no numeric job URN")
         job_id = match.group(1)
         if job_id in seen:
-            continue
+            raise ValueError(f"LinkedIn listing page repeats job {job_id}")
         seen.add(job_id)
 
         link = card.css_first(".base-card__full-link")
@@ -162,13 +171,16 @@ def _listing_url(
     keywords: str | None = None,
     start: int = 0,
 ) -> str:
-    params: dict[str, str | int] = {"start": start}
+    # The guest endpoint can localize or relevance-rank an otherwise exact
+    # company filter. Worldwide/date-descending scope makes pagination stable
+    # and independent of crawler egress location.
+    params: dict[str, str | int] = {
+        "location": _WORLDWIDE_LOCATION,
+        "sortBy": "DD",
+        "start": start,
+    }
     if company_id is not None:
         params["f_C"] = company_id
-        # LinkedIn otherwise localizes results to the request's inferred region,
-        # which can hide a company's jobs in other countries. Company boards are
-        # global sources, so make that scope explicit.
-        params["location"] = "Worldwide"
     if keywords is not None:
         params["keywords"] = keywords
     query = urlencode(params)
@@ -179,37 +191,50 @@ def _detail_url(job_id: str) -> str:
     return f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
 
 
-async def _fetch_listings(
+def _is_empty_listing_fragment(html: str) -> bool:
+    """Recognize LinkedIn's comment-only end-of-pagination fragment."""
+    return not re.sub(r"<!--.*?-->", "", html, flags=re.DOTALL).strip()
+
+
+async def _fetch_listing_query(
     client: httpx.AsyncClient,
     company_id: str,
     *,
     company_slug: str | None = None,
+    keywords: str | None = None,
 ) -> tuple[list[_ListingJob], bool]:
     jobs: list[_ListingJob] = []
     seen: set[str] = set()
     start = 0
 
     while True:
-        page_url = _listing_url(company_id=company_id, start=start)
+        page_url = _listing_url(company_id=company_id, keywords=keywords, start=start)
         html = await fetch_text_page_with_retry(
             client,
             page_url,
             retries=_RETRY_ATTEMPTS,
             base_delay=_RETRY_BASE_DELAY_S,
             log_event="linkedin.list_backoff",
+            retryable_statuses={401, 403, 999},
         )
         if html is None:
             break
         page = _parse_listing_cards(html)
         if not page:
-            break
+            if _is_empty_listing_fragment(html):
+                break
+            raise ValueError("LinkedIn listing returned non-empty HTML without job cards")
 
         for job in page:
             if company_slug and job.company_slug != company_slug:
-                continue
-            if job.job_id not in seen:
-                seen.add(job.job_id)
-                jobs.append(job)
+                raise ValueError(
+                    f"LinkedIn company filter returned {job.company_slug!r}, "
+                    f"expected {company_slug!r}"
+                )
+            if job.job_id in seen:
+                raise ValueError(f"LinkedIn pagination repeated job {job.job_id}")
+            seen.add(job.job_id)
+            jobs.append(job)
 
         if len(jobs) >= MAX_JOBS:
             return jobs[:MAX_JOBS], True
@@ -219,6 +244,40 @@ async def _fetch_listings(
         await asyncio.sleep(_PAGE_DELAY_S)
 
     return jobs, False
+
+
+async def _fetch_listings(
+    client: httpx.AsyncClient,
+    company_id: str,
+    *,
+    company_slug: str | None = None,
+    keywords: str | None = None,
+) -> tuple[list[_ListingJob], bool]:
+    """Fetch the exact company query plus any keyword recovery query as a union."""
+    jobs, truncated = await _fetch_listing_query(
+        client,
+        company_id,
+        company_slug=company_slug,
+    )
+    if truncated or not keywords:
+        return jobs, truncated
+
+    # Keywords work around LinkedIn tenants whose f_C-only search is empty or
+    # relevance-ranked. They are supplemental: replacing the exact query could
+    # silently exclude valid titles that do not contain the company name.
+    await asyncio.sleep(_PAGE_DELAY_S)
+    recovered, recovered_truncated = await _fetch_listing_query(
+        client,
+        company_id,
+        company_slug=company_slug,
+        keywords=keywords,
+    )
+    by_id = {job.job_id: job for job in jobs}
+    for job in recovered:
+        by_id.setdefault(job.job_id, job)
+    combined = list(by_id.values())
+    truncated = recovered_truncated or len(combined) >= MAX_JOBS
+    return combined[:MAX_JOBS], truncated
 
 
 async def _resolve_company_id(company_slug: str, client: httpx.AsyncClient) -> str | None:
@@ -251,16 +310,21 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     company_id = metadata.get("company_id") or _company_id_from_url(board_url)
     if not company_id and company_slug:
         company_id = await _resolve_company_id(company_slug, client)
-    if not company_id:
+    if not company_id or not str(company_id).isdigit():
         raise ValueError(
             "LinkedIn monitor requires company_id (numeric f_C value) or a resolvable "
             f"company jobs URL; got {board_url!r}"
         )
 
+    keywords = metadata.get("keywords")
+    if keywords is not None and (not isinstance(keywords, str) or not keywords.strip()):
+        raise ValueError("LinkedIn keywords must be a non-empty string when configured")
+
     jobs, truncated = await _fetch_listings(
         client,
         str(company_id),
         company_slug=company_slug,
+        keywords=keywords.strip() if isinstance(keywords, str) else None,
     )
     discovered = [job.discovered(str(company_id)) for job in jobs]
     log.info(
@@ -327,7 +391,10 @@ async def save_raw(
     await save_text_response(
         artifact_dir,
         client,
-        _listing_url(company_id=str(company_id)),
+        _listing_url(
+            company_id=str(company_id),
+            keywords=str(metadata["keywords"]).strip() if metadata.get("keywords") else None,
+        ),
         filename="listing.html",
         follow_redirects=True,
     )

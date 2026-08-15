@@ -3,6 +3,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 import httpx
+import pytest
 
 from src.core.monitors import slugs_from_url
 from src.core.monitors.linkedin import (
@@ -87,6 +88,21 @@ class TestListingParser:
         assert jobs[0].date_posted == "2026-07-20"
         assert jobs[0].company_slug == "damora-therapeutics"
 
+    def test_ignores_untrusted_or_mismatched_job_href(self):
+        html = _listing_html().replace(
+            "https://www.linkedin.com/jobs/view/manager-regulatory-affairs-at-damora-therapeutics-4442073767?position=1",
+            "https://attacker.example/jobs/view/wrong-9999999999",
+        )
+
+        jobs = _parse_listing_cards(html)
+
+        assert jobs[0].url == "https://www.linkedin.com/jobs/view/4442073767"
+
+    def test_rejects_malformed_listing_card(self):
+        html = _listing_html().replace("urn:li:jobPosting:4442073767", "missing-job-urn")
+        with pytest.raises(ValueError, match="numeric job URN"):
+            _parse_listing_cards(html)
+
     def test_url_detection(self):
         assert _company_slug_from_url(BOARD_URL) == "damora-therapeutics"
         assert (
@@ -104,6 +120,7 @@ class TestMonitor:
         def handler(request: httpx.Request) -> httpx.Response:
             assert request.url.params.get("f_C") == COMPANY_ID
             assert request.url.params.get("location") == "Worldwide"
+            assert request.url.params.get("sortBy") == "DD"
             return httpx.Response(200, text=_listing_html(), request=request)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -158,6 +175,98 @@ class TestMonitor:
         assert len(result) == 11
         assert requested_starts == [0, 10]
         sleep.assert_awaited_once_with(1.0)
+
+    async def test_keyword_query_supplements_instead_of_replacing_exact_company_query(self):
+        requested_keywords: list[str | None] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            keyword = request.url.params.get("keywords")
+            requested_keywords.append(keyword)
+            job_id = "4442073768" if keyword else "4442073767"
+            return httpx.Response(200, text=_listing_html(job_id=job_id), request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with patch("src.core.monitors.linkedin.asyncio.sleep", new_callable=AsyncMock) as sleep:
+                result = await discover(
+                    {
+                        "board_url": BOARD_URL,
+                        "metadata": {
+                            "company_id": COMPANY_ID,
+                            "company_slug": "damora-therapeutics",
+                            "keywords": "Damora Therapeutics",
+                        },
+                    },
+                    client,
+                )
+
+        assert {job.metadata["job_id"] for job in result} == {"4442073767", "4442073768"}
+        assert requested_keywords == [None, "Damora Therapeutics"]
+        sleep.assert_awaited_once_with(1.0)
+
+    async def test_rejects_foreign_company_card_in_filtered_results(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                text=_listing_html(company_slug="different-company"),
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="company filter returned"):
+                await discover(
+                    {
+                        "board_url": BOARD_URL,
+                        "metadata": {
+                            "company_id": COMPANY_ID,
+                            "company_slug": "damora-therapeutics",
+                        },
+                    },
+                    client,
+                )
+
+    async def test_rejects_repeated_job_across_pages(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            start = int(request.url.params["start"])
+            if start == 0:
+                html = "".join(
+                    _listing_html(job_id=str(4_442_073_767 + offset)) for offset in range(10)
+                )
+            else:
+                html = _listing_html(job_id="4442073767")
+            return httpx.Response(200, text=html, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with (
+                patch("src.core.monitors.linkedin.asyncio.sleep", new_callable=AsyncMock),
+                pytest.raises(ValueError, match="pagination repeated job"),
+            ):
+                await discover(
+                    {
+                        "board_url": BOARD_URL,
+                        "metadata": {
+                            "company_id": COMPANY_ID,
+                            "company_slug": "damora-therapeutics",
+                        },
+                    },
+                    client,
+                )
+
+    async def test_rejects_nonempty_authwall_without_cards(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text="<html>authwall</html>", request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="without job cards"):
+                await discover(
+                    {
+                        "board_url": BOARD_URL,
+                        "metadata": {
+                            "company_id": COMPANY_ID,
+                            "company_slug": "damora-therapeutics",
+                        },
+                    },
+                    client,
+                )
 
     async def test_probe_resolves_company_id_from_exact_slug(self):
         def handler(request: httpx.Request) -> httpx.Response:
