@@ -423,6 +423,11 @@ class TestScraperCanHandle:
         assert "dossiers de prévoyance" in content.description
         assert "80-100%" not in content.description
 
+    def test_dom_rejects_inconsistent_lower_heading_tags(self):
+        h3_page = _DOM_LOWER_HEADING_HTML.replace("<h4>", "<h3>").replace("</h4>", "</h3>")
+
+        assert dom_can_handle([_DOM_LOWER_HEADING_HTML, h3_page, h3_page]) is None
+
 
 class TestNextdataAutoMap:
     def test_simple_keys(self):
@@ -563,6 +568,17 @@ class TestDomHeuristicSteps:
         assert content.locations == ["Sion"]
         assert content.description is not None
         assert "80-100%" not in content.description
+
+    def test_does_not_misalign_location_after_an_earlier_list_item(self):
+        html = _DOM_LOWER_HEADING_HTML.replace(
+            '<ul class="location-taux">',
+            '<ul><li>Unrelated navigation</li></ul><ul class="location-taux">',
+        )
+
+        steps = _heuristic_steps(flatten(html))
+
+        assert steps is not None
+        assert not any(step.get("field") == "location" for step in steps)
 
 
 def _mock_http_client(responses: dict[str, tuple[int, str]]) -> AsyncMock:
