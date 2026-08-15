@@ -5146,6 +5146,7 @@ studyflash,studyflash-careers,https://join.com/companies/studyflash,join,,json-l
 stuut-technologies,stuut-technologies-careers,https://jobs.ashbyhq.com/stuut-ai,ashby,"{""token"": ""stuut-ai""}",skip,
 stytch,stytch-ashby,https://jobs.ashbyhq.com/stytch,ashby,"{""token"": ""stytch""}",skip,
 substack,substack-ashby,https://jobs.ashbyhq.com/substack,ashby,"{""token"": ""substack""}",skip,
+sucafina,sucafina-careers,https://career55.sapsf.eu/career?company=sucafinasa&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH&,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""career_job_req_id=[0-9]+"", ""url_transform"": {""find"": ""/career\\?.*career_job_req_id=([0-9]+).*"", ""replace"": ""/sfcareer/jobreqcareer?jobId=\\1&company=sucafinasa""}}",dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""steps"": [{""tag"": ""h1"", ""field"": ""title"", ""regex"": ""^Career Opportunities:\\s*(.*?)\\s*\\(\\d+\\)\\s*$""}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""from"": 0, ""stop_count"": 6}], ""defaults"": {""locations"": [""Global""]}}"
 sugarcrm,sugarcrm-lever,https://jobs.lever.co/sugarcrm,lever,"{""token"": ""sugarcrm""}",skip,
 sui,sui-pinpoint,https://sui.pinpointhq.com,pinpoint,"{""slug"": ""sui""}",skip,
 suind,suind-suind,https://suind.notion.site/Career-at-SUIND-988b0ffc7f804ce997543d038b534ff6,notion,"{""collection_index"": 0}",notion,
