@@ -24,61 +24,81 @@ from src.core.monitors.api_sniffer import (
 class TestPostDataRefresh:
     @pytest.mark.asyncio
     async def test_refreshes_urlencoded_token_and_establishes_page_session(self):
-        page_response = MagicMock()
-        page_response.text = '<section data-action="get_offers" data-nonce="fresh-123"></section>'
-        page_response.raise_for_status.return_value = None
-        client = AsyncMock()
-        client.get.return_value = page_response
+        requests: list[httpx.Request] = []
 
-        result = await _refresh_post_data(
-            client,
-            "https://example.com/careers",
-            "action=get_offers&nonce=stale&page=1",
-            {
-                "fields": {
-                    "nonce": r'data-action="get_offers"[^>]*data-nonce="([^"]+)"',
-                }
-            },
-        )
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(
+                200,
+                text='<section data-action="get_offers" data-nonce="fresh-123"></section>',
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await _refresh_post_data(
+                client,
+                "https://example.com/careers",
+                "action=get_offers&nonce=stale&page=1",
+                {
+                    "fields": {
+                        "nonce": r'data-action="get_offers"[^>]*data-nonce="([^"]+)"',
+                    }
+                },
+            )
 
         assert result == "action=get_offers&nonce=fresh-123&page=1"
-        client.get.assert_awaited_once_with(
-            "https://example.com/careers",
-            follow_redirects=True,
-            timeout=30,
-        )
+        assert [str(request.url) for request in requests] == ["https://example.com/careers"]
 
     @pytest.mark.asyncio
     async def test_missing_token_fails_instead_of_returning_false_empty(self):
-        page_response = MagicMock()
-        page_response.text = "<html></html>"
-        page_response.raise_for_status.return_value = None
-        client = AsyncMock()
-        client.get.return_value = page_response
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text="<html></html>", request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="did not match one bounded value"):
+                await _refresh_post_data(
+                    client,
+                    "https://example.com/careers",
+                    "nonce=stale",
+                    {"fields": {"nonce": r'data-nonce="([^"]+)"'}},
+                )
 
-        with pytest.raises(ValueError, match="must match exactly one value"):
-            await _refresh_post_data(
-                client,
-                "https://example.com/careers",
-                "nonce=stale",
-                {"fields": {"nonce": r'data-nonce="([^"]+)"'}},
+    @pytest.mark.asyncio
+    async def test_pattern_definition_requires_exactly_one_capture_group(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                text='<section data-key="nonce" data-nonce="fresh"></section>',
+                request=request,
             )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="exactly one capture group"):
+                await _refresh_post_data(
+                    client,
+                    "https://example.com/careers",
+                    "nonce=stale",
+                    {"fields": {"nonce": r'data-(key)="nonce".*data-nonce="([^"]+)"'}},
+                )
 
     @pytest.mark.asyncio
     async def test_http_discovery_refreshes_token_before_api_replay(self):
-        page_response = MagicMock()
-        page_response.text = '<section data-action="jobs" data-nonce="fresh"></section>'
-        page_response.raise_for_status.return_value = None
+        requests: list[httpx.Request] = []
 
-        api_response = MagicMock()
-        api_response.raise_for_status.return_value = None
-        api_response.json.return_value = {
-            "jobs": [{"url": "https://example.com/jobs/1"}],
-        }
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            if request.method == "GET":
+                return httpx.Response(
+                    200,
+                    text='<section data-action="jobs" data-nonce="fresh"></section>',
+                    request=request,
+                )
+            return httpx.Response(
+                200,
+                json={"jobs": [{"url": "https://example.com/jobs/1"}]},
+                request=request,
+            )
 
-        client = AsyncMock()
-        client.get.return_value = page_response
-        client.request.return_value = api_response
         board = {
             "board_url": "https://example.com/careers",
             "metadata": {
@@ -96,11 +116,77 @@ class TestPostDataRefresh:
             },
         }
 
-        result = await discover(board, client)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
 
         assert result == {"https://example.com/jobs/1"}
-        request_kwargs = client.request.await_args.kwargs
-        assert request_kwargs["content"] == "action=jobs&nonce=fresh&page=1"
+        assert [request.method for request in requests] == ["GET", "POST"]
+        assert requests[1].content == b"action=jobs&nonce=fresh&page=1"
+
+    @pytest.mark.asyncio
+    async def test_explicit_empty_response_requires_all_markers(self):
+        response_payload = {
+            "status": 201,
+            "action": "get_offers",
+            "label": "No offer available",
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.method == "GET":
+                return httpx.Response(
+                    200,
+                    text='<section data-nonce="fresh"></section>',
+                    request=request,
+                )
+            return httpx.Response(200, json=response_payload, request=request)
+
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "api_url": "https://example.com/api/jobs",
+                "method": "POST",
+                "post_data": "nonce=stale",
+                "post_data_refresh": {"fields": {"nonce": r'data-nonce="([^"]+)"'}},
+                "json_path": "elements",
+                "url_field": "link",
+                "empty_response": response_payload,
+            },
+        }
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            assert await discover(board, client) == set()
+
+    @pytest.mark.asyncio
+    async def test_unrecognized_missing_job_list_fails_closed(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.method == "GET":
+                return httpx.Response(
+                    200,
+                    text='<section data-nonce="fresh"></section>',
+                    request=request,
+                )
+            return httpx.Response(
+                200,
+                json={"status": 403, "label": "Invalid nonce"},
+                request=request,
+            )
+
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "api_url": "https://example.com/api/jobs",
+                "method": "POST",
+                "post_data": "nonce=stale",
+                "post_data_refresh": {"fields": {"nonce": r'data-nonce="([^"]+)"'}},
+                "json_path": "elements",
+                "url_field": "link",
+                "empty_response": {"status": 201, "label": "No offer available"},
+            },
+        }
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="neither a job list"):
+                await discover(board, client)
 
 
 class TestItemProjector:
