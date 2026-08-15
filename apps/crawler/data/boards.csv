@@ -2225,6 +2225,7 @@ genpeach-ai,genpeach-ai-careers,https://jobs.ashbyhq.com/genpeach,ashby,"{""toke
 genscript-probio,genscript-probio-greenhouse,https://job-boards.greenhouse.io/genscript,greenhouse,"{""token"": ""genscript""}",skip,
 gensyn,gensyn-greenhouse,https://job-boards.greenhouse.io/gensyn,greenhouse,"{""token"": ""gensyn""}",skip,
 geotab,geotab-greenhouse,https://job-boards.greenhouse.io/geotab,greenhouse,"{""token"": ""geotab""}",skip,
+gerald-group,gerald-group-careers,https://gerald.hire.trakstar.com/,recruiterbox,"{""tenant"": ""gerald""}",json-ld,
 get-well-network,get-well-network-greenhouse,https://job-boards.greenhouse.io/getwellnetwork,greenhouse,"{""token"": ""getwellnetwork""}",skip,
 getnet,getnet-careers,https://job-boards.eu.greenhouse.io/getnet,greenhouse,,skip,
 getnet,getnet-gupy,https://getnet.gupy.io/,dom,"{""render"": true}",json-ld,"{""render"": true}"
