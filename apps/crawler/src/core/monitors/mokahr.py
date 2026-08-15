@@ -18,6 +18,7 @@ import base64
 import json
 import re
 from html import unescape
+from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
 
 import httpx
@@ -26,12 +27,18 @@ import structlog
 from src.core.monitors import BoardGoneError, DiscoveredJob, register
 from src.shared.truncation import truncated_rich_result
 
+if TYPE_CHECKING:
+    from src.core.monitor import MonitorResult
+
 log = structlog.get_logger()
 
 _DEFAULT_ORIGIN = "https://app.mokahr.com"
 _LIST_PATH = "/api/outer/ats-apply/website/jobs/v2"
 _PAGE_SIZE = 20
 _MAX_JOBS = 50_000
+_ROUTE_RE = re.compile(r"(?:social|campus)[_-](?:recruitment|apply)", re.IGNORECASE)
+_ORG_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,128}")
+_SITE_ID_RE = re.compile(r"[1-9]\d{0,11}")
 
 # Mokahr commitment values pass through unchanged — the central
 # :func:`src.core.enum_normalize.normalize_employment_type` map handles
@@ -209,12 +216,44 @@ def _parse_salary(detail: dict) -> dict | None:
     }
 
 
-def _origin(url: str) -> str:
-    """Return a URL origin, falling back to Mokahr's shared host."""
+def _origin(url: str) -> str | None:
+    """Return a normalized, public-facing HTTPS origin or ``None``.
+
+    Custom Mokahr hosts become API origins, so reject credentials, cleartext
+    HTTP, and non-standard ports rather than reflecting an untrusted netloc
+    into subsequent requests.
+    """
+    try:
+        parsed = urlsplit(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    host = (parsed.hostname or "").lower().rstrip(".")
+    if (
+        parsed.scheme != "https"
+        or not host
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+    ):
+        return None
+    return f"https://{host}"
+
+
+def _parse_board_route(url: str) -> tuple[str, str, int] | None:
+    """Return ``(path, org_id, site_id)`` for an exact Mokahr SPA route."""
+    if _origin(url) is None:
+        return None
     parsed = urlsplit(url)
-    if parsed.scheme in {"http", "https"} and parsed.netloc:
-        return f"{parsed.scheme}://{parsed.netloc}"
-    return _DEFAULT_ORIGIN
+    segments = [segment for segment in parsed.path.split("/") if segment]
+    if (
+        len(segments) != 3
+        or _ROUTE_RE.fullmatch(segments[0]) is None
+        or _ORG_ID_RE.fullmatch(segments[1]) is None
+        or _SITE_ID_RE.fullmatch(segments[2]) is None
+    ):
+        return None
+    return segments[0], segments[1], int(segments[2])
 
 
 def _build_board_url(
@@ -399,7 +438,9 @@ def _parse_job(
     )
 
 
-async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
+async def discover(
+    board: dict, client: httpx.AsyncClient, pw=None
+) -> list[DiscoveredJob] | MonitorResult:
     """Fetch all jobs from Mokahr's encrypted API."""
     config = board.get("metadata") or {}
     if isinstance(config, str):
@@ -414,14 +455,16 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
     # Determine the recruitment path from the board URL.
     board_url = board.get("board_url", "")
-    m = re.search(r"/((?:social|campus)[_-](?:recruitment|apply))/", board_url)
+    route = _parse_board_route(board_url)
     path = (
-        m.group(1)
-        if m
+        route[0]
+        if route is not None
         else ("campus-recruitment" if "campus" in board_url else "social-recruitment")
     )
 
     origin = _origin(board_url)
+    if origin is None:
+        raise ValueError("Mokahr board URL must use a trusted HTTPS origin")
     page_url = _build_board_url(org_id, site_id, path, origin)
     init_data = await _get_init_data(page_url, client, raise_on_404=True)
     iv = init_data.get("aesIv") if init_data else None
@@ -489,13 +532,16 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
 
 async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Detect shared-host and custom-domain Mokahr career sites."""
-    m = re.search(r"/(?:social|campus)[_-](?:recruitment|apply)/([\w-]+)/(\d+)", url)
-    if m:
-        return {"org_id": m.group(1), "site_id": int(m.group(2))}
+    origin = _origin(url)
+    if origin is None:
+        return None
+    route = _parse_board_route(url)
+    if route is not None and origin == _DEFAULT_ORIGIN:
+        return {"org_id": route[1], "site_id": route[2]}
 
-    # Custom domains commonly redirect a short root URL to the full Mokahr
-    # route. Probe the public SPA bootstrap rather than maintaining a list of
-    # branded hosts.
+    # A route-shaped path is not proof on an arbitrary host. Custom domains
+    # must expose the Mokahr SPA bootstrap, and any route IDs must agree with
+    # that authoritative payload.
     if client is None:
         return None
     try:
@@ -507,9 +553,17 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     org = init_data.get("org")
     org_id = org.get("id") if isinstance(org, dict) else None
     site_id = init_data.get("siteId")
-    if isinstance(site_id, str) and site_id.isdigit():
+    if isinstance(site_id, str) and _SITE_ID_RE.fullmatch(site_id):
         site_id = int(site_id)
-    if not isinstance(org_id, str) or not org_id or not isinstance(site_id, int):
+    if (
+        not isinstance(org_id, str)
+        or _ORG_ID_RE.fullmatch(org_id) is None
+        or isinstance(site_id, bool)
+        or not isinstance(site_id, int)
+        or site_id <= 0
+    ):
+        return None
+    if route is not None and (route[1] != org_id or route[2] != site_id):
         return None
     return {"org_id": org_id, "site_id": site_id}
 

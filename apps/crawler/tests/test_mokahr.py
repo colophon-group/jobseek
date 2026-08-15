@@ -176,6 +176,18 @@ class TestCanHandle:
     async def test_rejects_unrelated_url(self):
         assert await can_handle("https://example.com/careers") is None
 
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://app.mokahr.com/social-recruitment/zte/47588",
+            "https://user@app.mokahr.com/social-recruitment/zte/47588",
+            "https://app.mokahr.com:8443/social-recruitment/zte/47588",
+            "https://example.com/social-recruitment/zte/47588",
+        ],
+    )
+    async def test_rejects_untrusted_or_unverified_route(self, url: str):
+        assert await can_handle(url) is None
+
     async def test_detects_custom_domain_from_spa_bootstrap(self):
         iv = "de7c21ed8d6f50fe"
         init_data = {
@@ -194,6 +206,46 @@ class TestCanHandle:
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await can_handle("https://jobschina.prada.cn/", client)
+
+        assert result == {"org_id": "pradagroup", "site_id": 151069}
+
+    async def test_custom_domain_route_requires_matching_bootstrap_ids(self):
+        init_data = {
+            "aesIv": "de7c21ed8d6f50fe",
+            "org": {"id": "different-org"},
+            "siteId": 999,
+        }
+        init_value = json.dumps(init_data).replace('"', "&quot;")
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                text=f'<input id="init-data" value="{init_value}">',
+                request=request,
+            )
+
+        url = "https://jobs.example.com/social-recruitment/pradagroup/151069"
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            assert await can_handle(url, client) is None
+
+    async def test_custom_domain_route_accepts_matching_bootstrap_ids(self):
+        init_data = {
+            "aesIv": "de7c21ed8d6f50fe",
+            "org": {"id": "pradagroup"},
+            "siteId": 151069,
+        }
+        init_value = json.dumps(init_data).replace('"', "&quot;")
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                text=f'<input id="init-data" value="{init_value}">',
+                request=request,
+            )
+
+        url = "https://jobs.example.com/social-recruitment/pradagroup/151069"
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle(url, client)
 
         assert result == {"org_id": "pradagroup", "site_id": 151069}
 
