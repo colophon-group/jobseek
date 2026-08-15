@@ -72,6 +72,19 @@ class TestFlatten:
         els = flatten(html)
         assert [(el["tag"], el["text"]) for el in els] == [("h1", "Job title")]
 
+    def test_malformed_list_in_header_does_not_hide_page_content(self):
+        html = (
+            "<header><ul><li>Jobs<li>Locations</ul></header>"
+            "<main><h1>Warehouse Specialist</h1><p>Move freight safely.</p></main>"
+        )
+
+        els = flatten(html)
+
+        assert [(el["tag"], el["text"]) for el in els] == [
+            ("h1", "Warehouse Specialist"),
+            ("p", "Move freight safely."),
+        ]
+
     def test_aria_hidden_excluded(self):
         html = (
             '<div>Visible</div><div aria-hidden="true"><p>Hidden subtree</p></div><div>After</div>'
