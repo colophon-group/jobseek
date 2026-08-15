@@ -58,6 +58,13 @@ def _empty_listing(*, tenant: str = TENANT) -> str:
     )
 
 
+def _listing_with_unavailable_template(*job_ids: str, total: int) -> str:
+    return _listing(*job_ids, total=total).replace(
+        "</html>",
+        '<section class="sg-unavailable-notifier" hidden></section></html>',
+    )
+
+
 class TestTenantAndUrls:
     @pytest.mark.parametrize(
         "url",
@@ -162,6 +169,14 @@ class TestMonitor:
         )
         async with httpx.AsyncClient(transport=transport) as client:
             assert await discover({"board_url": BOARD_URL}, client) == set()
+
+    async def test_hidden_unavailable_template_does_not_override_jobs(self):
+        page = _listing_with_unavailable_template(JOB_ID, total=1)
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=page, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            assert await discover({"board_url": BOARD_URL}, client) == {JOB_URL}
 
     @pytest.mark.parametrize("status", [404, 410])
     async def test_terminal_first_page_status_is_board_gone(self, status: int):
@@ -398,6 +413,14 @@ class TestDetection:
         )
         async with httpx.AsyncClient(transport=transport) as client:
             assert await can_handle(BOARD_URL, client) == {"tenant": TENANT, "jobs": 0}
+
+    async def test_direct_url_prefers_listing_over_unavailable_template(self):
+        page = _listing_with_unavailable_template(JOB_ID, total=1)
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=page, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            assert await can_handle(BOARD_URL, client) == {"tenant": TENANT, "jobs": 1}
 
     async def test_embedded_link_is_detected_and_verified(self):
         requests: list[str] = []
