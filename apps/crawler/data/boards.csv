@@ -3983,6 +3983,13 @@ ohpen,ohpen-careers,https://ohpen.jobs.personio.com/,personio,"{""slug"": ""ohpe
 oklo,oklo-greenhouse,https://job-boards.greenhouse.io/oklo,greenhouse,"{""token"": ""oklo""}",skip,
 okta,okta-greenhouse,https://job-boards.greenhouse.io/okta,greenhouse,"{""token"": ""okta""}",skip,
 okx,okx-greenhouse,https://job-boards.greenhouse.io/okx,greenhouse,"{""token"": ""okx""}",skip,
+olam-group,olam-group-global,https://careers.olamgroup.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.olamgroup.com/googlefeed.xml""}",skip,
+olam-group,olam-group-ofi-brazil,https://oficarreiras.gupy.io/,nextdata,"{""path"": ""props.pageProps.jobs"", ""url_template"": ""https://oficarreiras.gupy.io/jobs/{id}""}",json-ld,
+olam-group,olam-group-ofi-global,https://careers.ofi.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.ofi.com/googlefeed.xml""}",skip,
+olam-group,olam-group-ofi-north-america,https://www.oficareers.com/search/jobs,talentbrew,"{""page_size"": 1000, ""proxy"": true}",json-ld,"{""proxy"": true}"
+olam-group,olam-group-olam-agri-americas,https://recruiting.paylocity.com/recruiting/jobs/All/665e2832-b1d5-40b1-9d0c-f89c8c0c64d1/Olam-Agri-Americas-Inc,paylocity,"{""proxy"": true}",paylocity,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""], ""proxy"": true}"
+olam-group,olam-group-olam-agri-brazil,https://ogacarreiras.gupy.io/,nextdata,"{""path"": ""props.pageProps.jobs"", ""url_template"": ""https://ogacarreiras.gupy.io/jobs/{id}""}",json-ld,
+olam-group,olam-group-olam-agri-global,https://careers.olamagri.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.olamagri.com/googlefeed.xml""}",skip,
 olema-oncology,olema-oncology-greenhouse,https://job-boards.greenhouse.io/olema,greenhouse,"{""token"": ""olema""}",skip,
 olipop,olipop-greenhouse,https://job-boards.greenhouse.io/olipop,greenhouse,"{""token"": ""olipop""}",skip,
 oliv-ai,oliv-ai-greenhouse,https://job-boards.greenhouse.io/olivai,greenhouse,"{""token"": ""olivai""}",skip,
