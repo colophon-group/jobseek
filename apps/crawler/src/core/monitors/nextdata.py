@@ -388,9 +388,7 @@ def _phenom_canvas_meta(data: dict, path: str, count: int, board_url: str) -> di
     path_without_slash = parsed.path.rstrip("/")
     if path_without_slash.endswith("/search-results"):
         detail_path = f"{path_without_slash.removesuffix('/search-results')}/job/{{jobId}}"
-        meta["url_template"] = urlunparse(
-            (parsed.scheme, parsed.netloc, detail_path, "", "", "")
-        )
+        meta["url_template"] = urlunparse((parsed.scheme, parsed.netloc, detail_path, "", "", ""))
     if isinstance(total, int) and isinstance(page_size, int) and page_size > 0:
         meta["pagination"] = {
             "mode": "offset",
