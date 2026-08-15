@@ -75,12 +75,12 @@ _TRUNCATED_PATH = "__workday_truncated__"
 _TRUNCATED_SENTINEL = ("__workday_truncated__", _TRUNCATED_PATH)
 
 _SITEMAP_RE = re.compile(r"myworkdayjobs\.com/([^/]+)/siteMap")
-# Workday appends ``-1``, ``-2``, etc. to the final path segment when one
-# requisition is published through multiple tenant sites. The stable
-# requisition portion follows the final underscore (for example
-# ``Engineer_123456-2``). Without removing that generated suffix, multi-site
-# discovery emits a separate posting for every distribution channel.
-_SITE_COPY_SUFFIX_RE = re.compile(r"(?P<stable>_[^/]+?)-\d+$")
+# Workday appends ``-1``, ``-2``, etc. after an already numeric requisition
+# token when one posting is published through multiple tenant sites (for
+# example ``Engineer_123456-2`` or ``Engineer_R-123456-2``). Requiring a digit
+# before the candidate suffix is important: many tenants use stable IDs such
+# as ``Engineer_R-123456``, whose numeric component is not a copy suffix.
+_SITE_COPY_SUFFIX_RE = re.compile(r"(?P<stable>_[^/]*\d)-\d+$")
 
 # Matches Workday board URLs, optionally with locale prefix (e.g. /en-US/)
 _URL_RE = re.compile(

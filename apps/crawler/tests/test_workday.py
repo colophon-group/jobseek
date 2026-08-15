@@ -80,16 +80,31 @@ class TestApiListUrl:
 
 
 class TestCrossSitePathKey:
-    def test_strips_workday_distribution_copy_suffix(self):
-        assert (
-            _cross_site_path_key("/job/USA-WI-Marinette/Engineer_885928-2")
-            == "/job/USA-WI-Marinette/Engineer_885928"
-        )
+    @pytest.mark.parametrize(
+        ("path", "expected"),
+        [
+            (
+                "/job/USA-WI-Marinette/Engineer_885928-2",
+                "/job/USA-WI-Marinette/Engineer_885928",
+            ),
+            (
+                "/job/USA-WI-Marinette/Engineer_R-258265-2",
+                "/job/USA-WI-Marinette/Engineer_R-258265",
+            ),
+        ],
+    )
+    def test_strips_workday_distribution_copy_suffix(self, path, expected):
+        assert _cross_site_path_key(path) == expected
 
-    def test_preserves_paths_without_workday_requisition_separator(self):
-        assert _cross_site_path_key("/job/USA-WI-Marinette/JR-2") == (
-            "/job/USA-WI-Marinette/JR-2"
-        )
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "/job/USA-WI-Marinette/JR-2",
+            "/job/US-Gaithersburg/Capital-Projects-Director_R-258265",
+        ],
+    )
+    def test_preserves_paths_without_copy_suffix(self, path):
+        assert _cross_site_path_key(path) == path
 
 
 class TestDetailUrl:
