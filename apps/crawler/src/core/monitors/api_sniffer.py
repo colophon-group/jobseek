@@ -186,9 +186,7 @@ _DEFAULT_SETTLE = 3  # seconds to wait after navigation for XHRs to complete
 _PROSPECTIVE_MEDIUM_RE = re.compile(r"/careercenter/(?P<medium_id>\d+)(?:/|[?'\"])")
 _HTML_LANG_RE = re.compile(r"<html[^>]+\blang=[\"'](?P<lang>[a-z]{2})(?:[-_][A-Z]{2})?[\"']", re.I)
 _PROSPECTIVE_HOST = "ohws.prospective.ch"
-_PROSPECTIVE_CAREERCENTER_PATH = re.compile(
-    r"^/public/v[12]/careercenter/(?P<medium_id>\d+)/?$"
-)
+_PROSPECTIVE_CAREERCENTER_PATH = re.compile(r"^/public/v[12]/careercenter/(?P<medium_id>\d+)/?$")
 _PROSPECTIVE_PAGE_SIZE = 100
 
 
@@ -419,16 +417,14 @@ def _prospective_fields(items: list[dict]) -> dict:
     """Map fields shared by Prospective's public career-center payloads."""
 
     szas_keys = {
-        key
-        for item in items[:10]
-        if isinstance(item.get("szas"), dict)
-        for key in item["szas"]
+        key for item in items if isinstance(item.get("szas"), dict) for key in item["szas"]
     }
     fields: dict = {
         "title": "title",
         "date_posted": "start_date",
         "metadata.language": "language",
         "metadata.end_date": "end_date",
+        "metadata.ats_job_id": "id",
     }
 
     description_parts: list[str] = []
@@ -453,6 +449,10 @@ def _prospective_fields(items: list[dict]) -> dict:
         fields["employment_type"] = "szas.sza_employment_type"
     if "sza_pensum" in szas_keys:
         fields["metadata.pensum"] = "szas.sza_pensum"
+    if "sza_salary" in szas_keys:
+        fields["base_salary"] = "szas.sza_salary"
+    if "sza_apply_link" in szas_keys:
+        fields["metadata.apply_link"] = "szas.sza_apply_link"
     return fields
 
 
@@ -464,13 +464,27 @@ async def _prospective_probe_config(url: str, client: httpx.AsyncClient) -> dict
     branded pages never issue a browser XHR for the sniffer to observe.
     """
 
-    parsed = urlparse(url)
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+    except ValueError:
+        return None
     match = _PROSPECTIVE_CAREERCENTER_PATH.fullmatch(parsed.path)
-    if (parsed.hostname or "").casefold() != _PROSPECTIVE_HOST or match is None:
+    if (
+        parsed.scheme.casefold() != "https"
+        or (parsed.hostname or "").casefold() != _PROSPECTIVE_HOST
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or match is None
+    ):
         return None
 
     medium_id = match.group("medium_id")
-    lang = parse_qs(parsed.query).get("lang", ["de"])[0] or "de"
+    raw_lang = parse_qs(parsed.query).get("lang", ["de"])[0] or "de"
+    lang = (
+        raw_lang[:2].lower() if re.fullmatch(r"[a-z]{2}(?:[-_][a-z]{2})?", raw_lang, re.I) else "de"
+    )
     api_url = f"https://{_PROSPECTIVE_HOST}/public/v1/medium/{medium_id}/jobs"
     params = {
         "lang": lang,
