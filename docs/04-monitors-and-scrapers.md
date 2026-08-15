@@ -64,6 +64,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `gem` | Rich | skip | Gem ATS |
 | `inploi` | Rich + enrichment | json-ld | Inploi public candidate-experience search API plus JSON-LD description enrichment |
 | `greenhouse` | Rich | skip | Greenhouse ATS |
+| `headhunter` | Rich | headhunter | Proxy-routed HeadHunter employer summaries plus detail API enrichment |
 | `hibob` | Rich | skip | HiBob public career sites |
 | `hirehive` | Rich | skip | HireHive public Jobs API |
 | `hireology` | Rich | skip | Hireology ATS |
@@ -109,9 +110,9 @@ A monitor takes a board config and returns either **full job data** (rich monito
 
 Rich monitors return complete job data in a single request — no scraper needed. URL-only monitors with auto-scrapers need no manual scraper selection; the scraper is configured automatically. Monitors marked "—" require manual scraper selection. Conditional monitors return rich data only under the condition named in the table; otherwise they need a scraper or runtime coverage check.
 
-`linkedin` and `paylocity` are partial-rich exceptions: their listing responses
-provide clean summary fields while their auto-configured scrapers hydrate the
-remaining detail fields on the daily schedule.
+`headhunter`, `linkedin`, and `paylocity` are partial-rich exceptions: their
+listing responses provide clean summary fields while their auto-configured
+scrapers hydrate the remaining detail fields on the daily schedule.
 
 ### rss / SuccessFactors
 
@@ -283,6 +284,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `dom` | Static or Playwright | Step-based extraction engine |
 | `eightfold` | Static | JSON-LD extraction with Eightfold position API fallback |
 | `embedded` | Static | Extracts from embedded JSON/JS data in page source |
+| `headhunter` | Static | Fetches proxy-routed HeadHunter vacancy detail JSON |
 | `json-ld` | Static | Parses `<script type="application/ld+json">` |
 | `linkedin` | Static | Fetches LinkedIn public guest-job detail fragments |
 | `mokahr` | Static | Fetches and decrypts Mokahr detail API records |
@@ -484,6 +486,7 @@ Monitor implementations are adapted from the current crawler:
 | Location | Description |
 |----------|-------------|
 | `src/core/monitors/greenhouse.py` | Greenhouse JSON API monitor |
+| `src/core/monitors/headhunter.py` | Proxy-routed HeadHunter employer API monitor |
 | `src/core/monitors/lever.py` | Lever Postings API monitor |
 | `src/core/monitors/sitemap.py` | XML sitemap parser monitor |
 | `src/core/monitors/nextdata.py` | Next.js `__NEXT_DATA__` monitor |

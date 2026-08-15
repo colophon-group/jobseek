@@ -950,6 +950,7 @@ _MONITOR_CONFIG_HINTS = {
     "jarvi": "Requires: public_api_key; optional currency (auto-filled from probe)",
     "lever": "Requires: token (auto-filled from probe)",
     "linkedin": "Requires: company_id (numeric f_C value; auto-filled from probe)",
+    "headhunter": "Requires: employer_id (numeric; auto-filled from employer URL). Proxy-routed.",
     "paylocity": "Optional: proxy. Uses embedded window.pageData.",
     "pinpoint": "Requires: slug (auto-filled from probe)",
     "recruitee": "Requires: slug or api_base (auto-filled from probe)",

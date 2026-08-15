@@ -196,6 +196,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `gem`             | Rich     | skip        | Gem ATS API                             |
 | 10   | `inploi`          | Rich     | json-ld     | Inploi public search API + description enrichment |
 | 10   | `greenhouse`      | Rich     | skip        | Greenhouse JSON API                     |
+| 10   | `headhunter`      | Rich     | headhunter  | Proxy-routed HeadHunter employer API + detail enrichment |
 | 10   | `hibob`           | Rich     | skip        | HiBob public career-site API            |
 | 10   | `hirehive`        | Rich     | skip        | HireHive public Jobs API                |
 | 10   | `hireology`       | Rich     | skip        | Hireology Careers API                   |
@@ -267,6 +268,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `dom`          | Step-based DOM extraction (static or Playwright)   | `{steps, scope?, render, ...}` |
 | `eightfold`    | JSON-LD extraction with Eightfold position API fallback | None              |
 | `embedded`     | Parse embedded JSON/RSC data from page source      | `{pattern/script_id/source, path, fields}` |
+| `headhunter`   | Fetch proxy-routed HeadHunter vacancy detail JSON  | None                   |
 | `json-ld`      | Parse `<script type="application/ld+json">` (JobPosting schema) | None (auto)    |
 | `mokahr`       | Fetch and decrypt Mokahr detail API records        | None                   |
 | `nextdata`     | Extract from `__NEXT_DATA__` JSON                  | `{path, fields}`       |

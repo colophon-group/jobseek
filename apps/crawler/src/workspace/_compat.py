@@ -71,6 +71,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "dvinci",
         "gem",
         "greenhouse",
+        "headhunter",
         "hibob",
         "hirehive",
         "hireology",
@@ -106,9 +107,10 @@ _RICH_MONITORS: frozenset[str] = frozenset(
 # Crawler types whose ``auto_scraper_type()`` resolves to ("skip", None) —
 # i.e. rich monitors with no enrichment. This is ``_RICH_MONITORS`` minus
 # ``oracle_hcm``, ``adp``, ``bamboohr``, ``beisen``, ``inploi``, ``linkedin``,
-# ``mokahr``, ``paycom``, ``pageup``, ``paylocity``, legacy ``rss``, ``typify``,
-# and ``ukg``, which auto-resolve to enrichment scrapers. BambooHR uses a
-# generic API preset; LinkedIn and Paycom use dedicated detail scrapers.
+# ``headhunter``, ``mokahr``, ``paycom``, ``pageup``, ``paylocity``, legacy
+# ``rss``, ``typify``, and ``ukg``, which auto-resolve to enrichment scrapers.
+# BambooHR uses a generic API preset; HeadHunter, LinkedIn, and Paycom use
+# dedicated detail scrapers.
 # Used by SQL filters and the ``_is_skip_no_scrape`` classifier so implicit
 # rich boards (``scraper_type`` unset in metadata) are treated the same as
 # explicit ``scraper_type = "skip"`` boards. See issue 01-rich-monitor-scheduling.
@@ -117,6 +119,7 @@ _AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {
     "bamboohr",
     "beisen",
     "inploi",
+    "headhunter",
     "linkedin",
     "mokahr",
     "oracle_hcm",
@@ -189,6 +192,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "dom",
         "eightfold",
         "embedded",
+        "headhunter",
         "jazzhr",
         "json-ld",
         "linkedin",
@@ -244,6 +248,24 @@ def detect_ats_from_url(url: str) -> str | None:
         return "ashby"
     if host == "jobs.gem.com":
         return "gem"
+    if host in {
+        "hh.ru",
+        "www.hh.ru",
+        "api.hh.ru",
+        "rabota.by",
+        "www.rabota.by",
+        "api.rabota.by",
+    } and (
+        re.fullmatch(r"/employer/\d+/?", parsed.path, re.IGNORECASE)
+        or (
+            parsed.path.rstrip("/") == "/vacancies"
+            and any(
+                key == "employer_id" and value.isdigit()
+                for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+            )
+        )
+    ):
+        return "headhunter"
     if host == "www.welcometothejungle.com" and re.fullmatch(
         r"/(?:[a-z]{2}/)?companies/[^/]+/jobs/?", parsed.path
     ):
@@ -572,6 +594,21 @@ def auto_scraper_type(
         return (
             "linkedin",
             {"enrich": ["description", "employment_type", "job_location_type"]},
+        )
+    if monitor_type == "headhunter":
+        return (
+            "headhunter",
+            {
+                "proxy": True,
+                "enrich": [
+                    "description",
+                    "locations",
+                    "employment_type",
+                    "job_location_type",
+                    "date_posted",
+                    "base_salary",
+                ],
+            },
         )
     if monitor_type == "pageup":
         return (
