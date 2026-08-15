@@ -2842,6 +2842,8 @@ intermex-wire-transfer,intermex-wire-transfer-greenhouse,https://job-boards.gree
 internal-job-board,internal-job-board-greenhouse,https://job-boards.greenhouse.io/internaljobsatlush,greenhouse,"{""token"": ""internaljobsatlush""}",skip,
 interplay,interplay-ashby,https://jobs.ashbyhq.com/interplay,ashby,"{""token"": ""interplay""}",skip,
 interstellar-lab,interstellar-lab-greenhouse,https://job-boards.greenhouse.io/interstellarlab,greenhouse,"{""token"": ""interstellarlab""}",skip,
+intertek,intertek-germany,https://intertek.softgarden.io/de/vacancies,softgarden,"{""slug"": ""intertek""}",json-ld,
+intertek,intertek-global,https://hcog.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001,oracle_hcm,,oracle_hcm,"{""enrich"": [""description""]}"
 interview-engineering,interview-engineering-greenhouse,https://job-boards.greenhouse.io/interviewengineering,greenhouse,"{""token"": ""interviewengineering""}",skip,
 interview-kickstart,interview-kickstart-greenhouse,https://job-boards.greenhouse.io/interviewkickstart,greenhouse,"{""token"": ""interviewkickstart""}",skip,
 interworks,interworks-greenhouse,https://job-boards.greenhouse.io/interworks,greenhouse,"{""token"": ""interworks""}",skip,
