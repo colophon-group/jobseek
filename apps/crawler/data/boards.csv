@@ -3453,6 +3453,10 @@ meriton,meriton-greenhouse,https://job-boards.greenhouse.io/meriton,greenhouse,"
 merqube-inc,merqube-inc-greenhouse,https://job-boards.greenhouse.io/merqube,greenhouse,"{""token"": ""merqube""}",skip,
 mesh,mesh-greenhouse,https://job-boards.greenhouse.io/mesh,greenhouse,"{""token"": ""mesh""}",skip,
 meshy,meshy-ashby,https://jobs.ashbyhq.com/meshy,ashby,"{""token"": ""meshy""}",skip,
+met-group,met-group-careers,https://careers.smartrecruiters.com/METGroup,smartrecruiters,"{""token"": ""METGroup""}",smartrecruiters,
+met-group,met-group-comax-france,https://www.comaxfrance.com/carrieres/,dom,"{""render"": false, ""url_filter"": ""^https://www\\.comaxfrance\\.com/electromecanicien/?$""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""h2"", ""field"": ""description"", ""stop_tag"": ""h4"", ""html"": true}, {""text"": ""Langon / Bordeaux"", ""field"": ""locations"", ""regex"": ""Localisation\\s*:\\s*(.+)"", ""from"": 0}, {""text"": ""CDI"", ""field"": ""employment_type"", ""regex"": ""Type de contrat\\s*:\\s*(.+)"", ""from"": 0}]}"
+met-group,met-group-dunamenti,https://www.dert.hu/hu/allasajanlatok,dom,"{""render"": false, ""url_filter"": ""/hu/blokk-elektrikus(?:[/?#]|$)""}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop_count"": 25}, {""text"": ""Sz\u00e1zhalombatta"", ""field"": ""locations"", ""from"": 0, ""regex"": ""(?i)(sz\u00e1zhalombatta)"", ""optional"": true}]}"
+met-group,met-group-mega-group,https://megagroupinternational.recruitee.com/,recruitee,"{""slug"": ""megagroupinternational""}",skip,
 meta,meta-careers,https://www.metacareers.com/jobsearch/sitemap.xml,sitemap,"{""url_filter"": ""/profile/job_details/""}",json-ld,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 45000}"
 metabase,metabase-lever,https://jobs.lever.co/metabase,lever,"{""token"": ""metabase""}",skip,
 metabit-technology-llc,metabit-technology-llc-greenhouse,https://job-boards.greenhouse.io/metabittechnologyllc,greenhouse,"{""token"": ""metabittechnologyllc""}",skip,
