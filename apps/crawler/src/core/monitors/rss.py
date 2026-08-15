@@ -505,7 +505,13 @@ def _advertised_rss_feed_url(page_url: str, html_text: str) -> str | None:
     except (TypeError, ValueError):
         return None
 
-    page = urlparse(page_url)
+    try:
+        page = urlparse(page_url)
+        page_port = page.port or ({"http": 80, "https": 443}.get(page.scheme))
+    except ValueError:
+        return None
+    if page.scheme not in {"http", "https"} or not page.hostname or page_port is None:
+        return None
     for link in links:
         attrs = link.attributes
         rel = {token.casefold() for token in (attrs.get("rel") or "").split()}
@@ -514,20 +520,29 @@ def _advertised_rss_feed_url(page_url: str, html_text: str) -> str | None:
         if "alternate" not in rel or media_type != "application/rss+xml" or not href:
             continue
 
-        candidate = urlparse(urljoin(page_url, href))
+        try:
+            candidate = urlparse(urljoin(page_url, href))
+            candidate_port = candidate.port or ({"http": 80, "https": 443}.get(candidate.scheme))
+        except ValueError:
+            continue
         if (
             candidate.scheme not in {"http", "https"}
             or not candidate.hostname
+            or candidate_port is None
             or candidate.username is not None
             or candidate.password is not None
+            or candidate.hostname.casefold() != (page.hostname or "").casefold()
         ):
             continue
-        if (
-            page.scheme == "https"
-            and candidate.scheme == "http"
-            and candidate.hostname.casefold() == (page.hostname or "").casefold()
-        ):
-            candidate = candidate._replace(scheme="https")
+        if page.scheme == "https" and candidate.scheme == "http":
+            # Keep the trusted page origin rather than carrying an explicitly
+            # advertised port across the scheme upgrade.
+            if candidate.port not in {None, 80}:
+                continue
+            candidate = candidate._replace(scheme="https", netloc=page.netloc)
+            candidate_port = page_port
+        if candidate.scheme != page.scheme or candidate_port != page_port:
+            continue
         return urlunparse(candidate)
     return None
 

@@ -371,24 +371,42 @@ class TestBuildFeedUrl:
 
 class TestAdvertisedRssFeedUrl:
     def test_resolves_relative_feed(self):
-        html = (
-            '<link rel="alternate" type="application/rss+xml" '
-            'href="/careers/feed.xml">'
-        )
+        html = '<link rel="alternate" type="application/rss+xml" href="/careers/feed.xml">'
 
         assert _advertised_rss_feed_url("https://example.com/jobs", html) == (
             "https://example.com/careers/feed.xml"
         )
 
     def test_upgrades_same_host_legacy_http_feed(self):
-        html = (
-            '<link rel="alternate" type="application/rss+xml" '
-            'href="http://example.com/rss.php">'
-        )
+        html = '<link rel="alternate" type="application/rss+xml" href="http://example.com/rss.php">'
 
         assert _advertised_rss_feed_url("https://example.com/jobs", html) == (
             "https://example.com/rss.php"
         )
+
+    def test_rejects_cross_origin_feed(self):
+        html = (
+            '<link rel="alternate" type="application/rss+xml" '
+            'href="https://attacker.example/rss.php">'
+        )
+
+        assert _advertised_rss_feed_url("https://example.com/jobs", html) is None
+
+    def test_rejects_same_host_different_port(self):
+        html = (
+            '<link rel="alternate" type="application/rss+xml" '
+            'href="https://example.com:8443/rss.php">'
+        )
+
+        assert _advertised_rss_feed_url("https://example.com/jobs", html) is None
+
+    def test_rejects_malformed_port(self):
+        html = (
+            '<link rel="alternate" type="application/rss+xml" '
+            'href="https://example.com:not-a-port/rss.php">'
+        )
+
+        assert _advertised_rss_feed_url("https://example.com/jobs", html) is None
 
 
 # ── _add_pagination ──────────────────────────────────────────────────────
