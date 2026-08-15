@@ -891,22 +891,17 @@ def extract_items(data: object, target_path: str) -> list[dict]:
     # must also stay empty instead of falling back to an unrelated array in
     # the response (for example, filter values).
     if target_path:
-        from jmespath.exceptions import JMESPathError
-
         from src.shared.nextdata import resolve_path
 
-        try:
-            resolved = data if target_path == "$" else resolve_path(data, target_path)
-        except (JMESPathError, TypeError):
-            resolved = None
+        resolved = data if target_path == "$" else resolve_path(data, target_path)
         if isinstance(resolved, list):
             return [item for item in resolved if isinstance(item, dict)]
+        # A configured path is authoritative. Missing/null/non-list data is
+        # an empty page, not permission to ingest an unrelated response array.
+        return []
 
     arrays = find_arrays(data)
-    for path, arr in arrays:
-        if path == target_path:
-            return arr
-    # Fallback: largest array
+    # Without a configured path, retain the probe heuristic: largest array.
     if arrays:
         return max(arrays, key=lambda x: len(x[1]))[1]
     return []

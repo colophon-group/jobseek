@@ -694,8 +694,17 @@ class TestExtractItems:
             "small": [{"id": 1}, {"id": 2}, {"id": 3}],
             "large": [{"id": i} for i in range(10)],
         }
-        items = extract_items(data, "nonexistent")
+        items = extract_items(data, "")
         assert len(items) == 10
+
+    def test_missing_configured_path_does_not_fallback(self):
+        data = {
+            "jobs": None,
+            "filters": [{"id": 1}, {"id": 2}, {"id": 3}],
+        }
+
+        assert extract_items(data, "jobs.*") == []
+        assert extract_items(data, "missing.*") == []
 
     def test_jmespath_dict_values_projection(self):
         data = {
