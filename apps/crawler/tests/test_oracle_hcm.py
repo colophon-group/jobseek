@@ -124,7 +124,8 @@ def test_complete_facet_partition_rejects_oversized_bucket():
 
 
 @pytest.mark.asyncio
-async def test_can_handle_retries_transient_forbidden_response():
+@pytest.mark.parametrize("region", ["us6", "em2"])
+async def test_can_handle_retries_transient_forbidden_response(region):
     """Akamai can intermittently return 403 for a valid Oracle tenant."""
     client = AsyncMock(spec=httpx.AsyncClient)
     client.get = AsyncMock(
@@ -140,12 +141,12 @@ async def test_can_handle_retries_transient_forbidden_response():
 
     with patch("src.core.monitors.oracle_hcm.asyncio.sleep", new_callable=AsyncMock):
         config = await can_handle(
-            "https://example.fa.us6.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1",
+            f"https://example.fa.{region}.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1",
             client,
         )
 
     assert config == {
-        "host": "example.fa.us6.oraclecloud.com",
+        "host": f"example.fa.{region}.oraclecloud.com",
         "site": "CX_1",
         "jobs_count": 42,
     }
