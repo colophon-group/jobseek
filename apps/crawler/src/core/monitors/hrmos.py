@@ -149,6 +149,14 @@ def _page_metadata(page: str) -> tuple[int, int, int | None, int]:
     return total, displayed, current, linked_page_max
 
 
+def _is_explicit_empty_listing(page: str) -> bool:
+    """Return true only when the unavailable marker replaces the job list."""
+    return (
+        _EMPTY_LISTING_MARKER_RE.search(page) is not None
+        and _LISTING_MARKER_RE.search(page) is None
+    )
+
+
 async def _fetch_listing(
     tenant: str,
     page_number: int,
@@ -187,7 +195,7 @@ async def _discover_pages(
     client: httpx.AsyncClient,
 ) -> tuple[set[str], bool, int]:
     first_page = await _fetch_listing(tenant, 1, client)
-    if _EMPTY_LISTING_MARKER_RE.search(first_page):
+    if _is_explicit_empty_listing(first_page):
         return set(), False, 1
     total_jobs, displayed, current, linked_page_max = _page_metadata(first_page)
     if current not in {None, 1}:
@@ -266,7 +274,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
 async def _probe_tenant(tenant: str, client: httpx.AsyncClient) -> ProbeResult:
     try:
         page = await _fetch_listing(tenant, 1, client)
-        if _EMPTY_LISTING_MARKER_RE.search(page):
+        if _is_explicit_empty_listing(page):
             return True, 0
         total, displayed, _current, _linked_max = _page_metadata(page)
         if total > 0 and (displayed == 0 or not _parse_listing(page, tenant)):
