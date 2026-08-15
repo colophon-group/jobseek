@@ -10,13 +10,16 @@ the existing JSON-LD scraper.
 from __future__ import annotations
 
 import re
+from math import ceil
 from urllib.parse import urlparse
+from uuid import UUID
 
 import httpx
 import structlog
 
 from src.core.monitors import register
-from src.shared.tdm import check_response as check_tdm_response
+from src.shared.http_retry import fetch_json_page_with_retry
+from src.shared.tdm import TDMReservedError
 
 log = structlog.get_logger()
 
@@ -24,9 +27,10 @@ API_URL = "https://job-search-api.jobs.ch/search"
 ROWS = 100
 MAX_PAGES = 500
 
+_UUID_PATTERN = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 _COMPANY_PATH_RE = re.compile(
     r"^/(?P<locale>de|fr|en)/(?:firmen|entreprises|companies)/"
-    r"(?P<company_id>\d+)(?:[-/]|$)",
+    rf"(?P<company_id>(?:{_UUID_PATTERN}|\d{{1,20}}))(?:[-/]|$)",
     re.IGNORECASE,
 )
 _DETAIL_PATHS = {
@@ -36,23 +40,47 @@ _DETAIL_PATHS = {
 }
 
 
+def _normalize_company_id(value: object) -> str | None:
+    company_id = str(value).strip() if isinstance(value, (str, int)) else ""
+    if company_id.isdigit():
+        return company_id if len(company_id) <= 20 else None
+    try:
+        canonical = str(UUID(company_id))
+    except (ValueError, AttributeError):
+        return None
+    return canonical if canonical == company_id.lower() else None
+
+
 def _ids_from_url(url: str) -> tuple[str | None, str | None]:
-    parsed = urlparse(url)
-    if (parsed.hostname or "").lower() not in {"jobs.ch", "www.jobs.ch"}:
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+    except ValueError:
+        return None, None
+    if (
+        parsed.scheme != "https"
+        or (parsed.hostname or "").lower() not in {"jobs.ch", "www.jobs.ch"}
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+    ):
         return None, None
     match = _COMPANY_PATH_RE.match(parsed.path)
     if not match:
         return None, None
-    return match.group("company_id"), match.group("locale").lower()
+    company_id = _normalize_company_id(match.group("company_id"))
+    if company_id is None:
+        return None, None
+    return company_id, match.group("locale").lower()
 
 
 def _board_metadata(board: dict) -> tuple[str, str]:
     metadata = board.get("metadata") or {}
     url_company_id, url_locale = _ids_from_url(board["board_url"])
-    company_id = str(metadata.get("company_id") or url_company_id or "")
+    company_id = _normalize_company_id(metadata.get("company_id") or url_company_id)
     locale = str(metadata.get("locale") or url_locale or "de").lower()
-    if not company_id.isdigit():
-        raise ValueError("jobs_ch requires a numeric company_id or jobs.ch employer URL")
+    if company_id is None:
+        raise ValueError("jobs_ch requires a numeric or UUID company_id or employer URL")
     if locale not in _DETAIL_PATHS:
         raise ValueError("jobs_ch locale must be one of: de, fr, en")
     return company_id, locale
@@ -63,24 +91,23 @@ async def _fetch_page(
     company_id: str,
     page: int,
 ) -> dict:
-    response = await client.get(
+    payload = await fetch_json_page_with_retry(
+        client,
         API_URL,
-        params=[
-            ("companyIds", company_id),
-            ("page", str(page)),
-            ("publishedOn", "SEARCH"),
-            ("publishedOn", "SEARCH_COMPANY_PROFILE"),
-            ("rows", str(ROWS)),
-        ],
+        expect_shape=dict,
+        params={
+            "companyIds": company_id,
+            "page": page,
+            "publishedOn": ["SEARCH", "SEARCH_COMPANY_PROFILE"],
+            "rows": ROWS,
+        },
         follow_redirects=True,
+        log_event="jobs_ch.list_backoff",
     )
-    response.raise_for_status()
-    check_tdm_response(response, body_excerpt=response.text[:10_000])
-    payload = response.json()
-    if not isinstance(payload, dict) or not isinstance(payload.get("documents"), list):
+    if not isinstance(payload.get("documents"), list):
         raise ValueError("jobs.ch search payload is missing its documents array")
     for key in ("numPages", "currentPage", "totalHits"):
-        if not isinstance(payload.get(key), int):
+        if type(payload.get(key)) is not int or payload[key] < 0:
             raise ValueError(f"jobs.ch search payload has invalid {key}")
     if payload["currentPage"] != page:
         raise ValueError(
@@ -90,6 +117,8 @@ async def _fetch_page(
         raise ValueError(
             f"jobs.ch board exceeds pagination safety cap ({payload['numPages']} pages)"
         )
+    if payload.get("rows") != ROWS or payload.get("start") != (page - 1) * ROWS:
+        raise ValueError("jobs.ch search payload has inconsistent pagination metadata")
     return payload
 
 
@@ -103,21 +132,41 @@ async def discover(
     company_id, locale = _board_metadata(board)
     first = await _fetch_page(client, company_id, 1)
     pages = first["numPages"]
+    total_hits = first["totalHits"]
+    expected_pages = ceil(total_hits / ROWS)
+    if pages != expected_pages:
+        raise ValueError(
+            f"jobs.ch reported {pages} pages for {total_hits} jobs; expected {expected_pages}"
+        )
     payloads = [first]
     for page in range(2, pages + 1):
-        payloads.append(await _fetch_page(client, company_id, page))
+        payload = await _fetch_page(client, company_id, page)
+        if payload["numPages"] != pages or payload["totalHits"] != total_hits:
+            raise ValueError("jobs.ch pagination totals changed during discovery")
+        payloads.append(payload)
 
     urls: set[str] = set()
-    for payload in payloads:
+    for index, payload in enumerate(payloads, start=1):
+        expected_documents = min(ROWS, max(0, total_hits - (index - 1) * ROWS))
+        if len(payload["documents"]) != expected_documents:
+            raise ValueError(
+                f"jobs.ch page {index} returned {len(payload['documents'])} documents; "
+                f"expected {expected_documents}"
+            )
         for document in payload["documents"]:
             job_id = document.get("id") if isinstance(document, dict) else None
-            if not isinstance(job_id, str) or not job_id.strip():
+            if not isinstance(job_id, str):
                 raise ValueError("jobs.ch search result is missing a job id")
+            try:
+                canonical_job_id = str(UUID(job_id))
+            except (ValueError, AttributeError):
+                raise ValueError("jobs.ch search result has an invalid job id") from None
+            if canonical_job_id != job_id.lower():
+                raise ValueError("jobs.ch search result has a non-canonical job id")
             urls.add(
-                f"https://www.jobs.ch/{locale}/{_DETAIL_PATHS[locale]}/detail/{job_id.strip()}/"
+                f"https://www.jobs.ch/{locale}/{_DETAIL_PATHS[locale]}/detail/{canonical_job_id}/"
             )
 
-    total_hits = first["totalHits"]
     if len(urls) != total_hits:
         raise ValueError(
             f"jobs.ch pagination returned {len(urls)} unique jobs, expected {total_hits}"
@@ -143,6 +192,8 @@ async def can_handle(
         return None
     try:
         payload = await _fetch_page(client, company_id, 1)
+    except TDMReservedError:
+        raise
     except Exception:
         log.debug("jobs_ch.probe_failed", url=url, exc_info=True)
         return None

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from uuid import UUID
+
 import httpx
 import pytest
 
@@ -24,6 +26,7 @@ def _payload(page: int, pages: int, total: int, ids: list[str]) -> dict:
         "numPages": pages,
         "currentPage": page,
         "documents": [{"id": job_id} for job_id in ids],
+        "start": (page - 1) * 100,
         "totalHits": total,
     }
 
@@ -37,6 +40,19 @@ def _payload(page: int, pages: int, total: int, ids: list[str]) -> dict:
         ),
         ("https://jobs.ch/de/firmen/42-example/offene-stellen/", ("42", "de")),
         ("https://www.jobs.ch/en/companies/9-example/", ("9", "en")),
+        (
+            "https://www.jobs.ch/de/firmen/0fb7f075-a3f1-40b3-b3dd-6e6304f550f5-tertianum-ag/",
+            ("0fb7f075-a3f1-40b3-b3dd-6e6304f550f5", "de"),
+        ),
+        ("http://www.jobs.ch/fr/entreprises/134466-cite-gestion-sa/", (None, None)),
+        (
+            "https://user@www.jobs.ch/fr/entreprises/134466-cite-gestion-sa/",
+            (None, None),
+        ),
+        (
+            "https://www.jobs.ch.evil.example/fr/entreprises/134466-cite-gestion-sa/",
+            (None, None),
+        ),
         ("https://example.com/fr/entreprises/134466-cite-gestion-sa/", (None, None)),
         ("https://www.jobs.ch/fr/offres-emplois/", (None, None)),
     ],
@@ -61,10 +77,16 @@ async def test_discover_accepts_explicit_empty_board() -> None:
 @pytest.mark.asyncio
 async def test_discover_paginates_and_builds_localized_urls() -> None:
     requested: list[httpx.Request] = []
+    job_a = "644c296f-ee65-4fd5-b90d-77541692be5b"
+    job_b = "20cf6e2f-366e-452b-9f28-e65a6fefa976"
+    job_c = "3e0fe269-1742-4ac4-aad4-f84c34306c57"
     pages = {
-        1: _payload(1, 2, 3, ["job-a", "job-b"]),
-        2: _payload(2, 2, 3, ["job-c"]),
+        1: _payload(1, 2, 101, [job_a] * 100),
+        2: _payload(2, 2, 101, [job_c]),
     }
+    pages[1]["documents"] = [{"id": str(UUID(int=index + 1))} for index in range(100)]
+    pages[1]["documents"][0] = {"id": job_a}
+    pages[1]["documents"][1] = {"id": job_b}
     async with _client(pages, requested) as client:
         jobs = await discover(
             {
@@ -74,11 +96,10 @@ async def test_discover_paginates_and_builds_localized_urls() -> None:
             client,
         )
 
-    assert jobs == {
-        "https://www.jobs.ch/en/vacancies/detail/job-a/",
-        "https://www.jobs.ch/en/vacancies/detail/job-b/",
-        "https://www.jobs.ch/en/vacancies/detail/job-c/",
-    }
+    assert len(jobs) == 101
+    assert f"https://www.jobs.ch/en/vacancies/detail/{job_a}/" in jobs
+    assert f"https://www.jobs.ch/en/vacancies/detail/{job_b}/" in jobs
+    assert f"https://www.jobs.ch/en/vacancies/detail/{job_c}/" in jobs
     assert [request.url.params["page"] for request in requested] == ["1", "2"]
     assert requested[0].url.params.get_list("publishedOn") == [
         "SEARCH",
@@ -88,9 +109,9 @@ async def test_discover_paginates_and_builds_localized_urls() -> None:
 
 @pytest.mark.asyncio
 async def test_discover_fails_closed_on_incomplete_pagination() -> None:
-    pages = {1: _payload(1, 1, 2, ["job-a"])}
+    pages = {1: _payload(1, 1, 2, ["644c296f-ee65-4fd5-b90d-77541692be5b"])}
     async with _client(pages) as client:
-        with pytest.raises(ValueError, match="expected 2"):
+        with pytest.raises(ValueError, match="returned 1 documents; expected 2"):
             await discover(
                 {
                     "board_url": "https://www.jobs.ch/de/firmen/42-example/",

@@ -3051,7 +3051,7 @@ jobs_ch — jobs.ch Employer Profiles
   Browser:  No
 
   Auto-detected for jobs.ch employer-profile URLs in German, French, or
-  English. The numeric company ID and locale are inferred from the URL.
+  English. The numeric or UUID company ID and locale are inferred from the URL.
   Pagination is exhaustive and checked against totalHits. An explicit API
   result with totalHits=0 is a verified empty board.
 
