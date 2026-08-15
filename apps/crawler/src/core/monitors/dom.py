@@ -85,9 +85,7 @@ _KONTACT_MARKER = "kontactintelligence.com"
 _KONTACT_URL_FILTER = r"/Physician_Job/Details/"
 
 _TALENTSOFT_MARKERS = ("ts-offer-list-item", "ts-search-engine-form__rss-cta")
-_TALENTSOFT_URL_FILTER = (
-    r"/(?:job/job|offre-de-emploi/emploi)-[^/?#]+_\d+\.aspx(?:[?#]|$)"
-)
+_TALENTSOFT_PATH_FILTER = r"/(?:job/job|offre-de-emploi/emploi)-[^/?#]+_\d+\.aspx(?:[?#]|$)"
 
 _JPOSTING_HOST_SUFFIX = ".jposting.net"
 _JPOSTING_JOB_FILTER = r"[?&]job_code=[^&#]+"
@@ -193,13 +191,27 @@ def _talentsoft_probe_config(html: str, url: str) -> dict | None:
 
     if not all(marker in html for marker in _TALENTSOFT_MARKERS):
         return None
-    matcher = _build_url_matcher(_TALENTSOFT_URL_FILTER)
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname is None
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+    ):
+        return None
+    url_filter = rf"^https://{re.escape(parsed.netloc)}{_TALENTSOFT_PATH_FILTER}"
+    matcher = _build_url_matcher(url_filter)
     urls = _extract_links_static(html, url, matcher)
     if not urls:
         return None
     return {
         "urls": len(urls),
-        "url_filter": _TALENTSOFT_URL_FILTER,
+        "url_filter": url_filter,
         "pagination": {
             "param_name": "page",
             "max_pages": 1_000,

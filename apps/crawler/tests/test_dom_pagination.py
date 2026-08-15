@@ -214,6 +214,7 @@ class TestCanHandle:
             <a href="/job/job-credit-risk-analyst_112267.aspx">Credit Risk Analyst</a>
           </li>
           <a href="/offre-de-emploi/emploi-wealth-manager_112582.aspx">Wealth Manager</a>
+          <a href="https://evil.example/job/job-lookalike_999.aspx">External lookalike</a>
           <a href="/candidate/login.aspx">Sign in</a>
         </body></html>
         """
@@ -232,6 +233,10 @@ class TestCanHandle:
         assert re.search(
             result["url_filter"],
             "https://jobs.example.com/job/job-credit-risk-analyst_112267.aspx",
+        )
+        assert not re.search(
+            result["url_filter"],
+            "https://evil.example/job/job-lookalike_999.aspx",
         )
 
     async def test_jposting_empty_board_returns_provider_preset(self):

@@ -117,9 +117,9 @@ class TestDomScraper:
 
         assert result.title == "Credit Risk Analyst"
         assert result.description == (
-            '<h2>Description du poste</h2><h3>Type de contrat</h3>'
-            '<p>CDI</p><h3>Missions</h3><p>Review applications.</p>'
-            '<ul><li>Assess credit risk.</li></ul>'
+            "<h2>Description du poste</h2><h3>Type de contrat</h3>"
+            "<p>CDI</p><h3>Missions</h3><p>Review applications.</p>"
+            "<ul><li>Assess credit risk.</li></ul>"
         )
         assert result.locations == ["Europe, Monaco"]
         assert result.employment_type == "CDI"
