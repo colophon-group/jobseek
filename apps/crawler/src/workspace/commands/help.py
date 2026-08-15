@@ -92,6 +92,7 @@ Monitor Types (cheapest first):
   gem               10      Full job data     No (skipped)
   greenhouse        10      Full job data     No (skipped)
   gupy              10      Job URLs          Auto-configured
+  headhunter        10      Full/partial      Auto-enriched
   hibob             10      Full job data     No (skipped)
   hirehive          10      Full job data     No (skipped)
   hireology         10      Full job data     No (skipped)
@@ -700,6 +701,31 @@ linkedin — LinkedIn public guest-jobs endpoints
 
   Detection:  ws probe shows "LinkedIn guest jobs — company: X, N jobs"
   Zero jobs?  Verify the f_C value; an empty company board is valid."""
+
+MONITOR_HEADHUNTER = """\
+headhunter — HeadHunter employer vacancies API
+
+  Listing:  GET https://api.hh.ru/vacancies?employer_id={employer_id}&page=N
+  Detail:   GET https://api.hh.ru/vacancies/{vacancy_id}
+  Returns:  Rich summaries (URL, title, location, employment_type,
+            job_location_type, date_posted, base_salary and metadata)
+  Scraper:  Auto-configured (headhunter) — hydrates the description and all
+            detail fields on the daily scrape schedule
+  Cap:      2,000 jobs (upstream deep-pagination limit)
+  Note:     HeadHunter's ddos-guard blocks some datacenter networks. Detected
+            employer boards therefore set proxy=true automatically and use the
+            crawler's configured static proxy transport.
+
+  Config:
+    {"employer_id": "4556149", "proxy": true}
+
+    employer_id  Numeric ID from hh.ru/employer/{id}. Auto-filled by probe.
+    proxy        Keep enabled for production crawler egress.
+
+  Detection:  ws probe shows "HeadHunter API — employer: X, N jobs" when
+              directly reachable, or "(proxy required)" when ddos-guard blocks
+              the probe host.
+  Zero jobs?  Verify employer_id and that the public employer page has openings."""
 
 MONITOR_JOBYLON = """\
 jobylon — Jobylon (Nordic ATS, inline-embed widget)
@@ -3076,6 +3102,7 @@ MONITOR_CARDS: dict[str, str] = {
     "join": MONITOR_JOIN,
     "lever": MONITOR_LEVER,
     "linkedin": MONITOR_LINKEDIN,
+    "headhunter": MONITOR_HEADHUNTER,
     "ashby": MONITOR_ASHBY,
     "adp": MONITOR_ADP,
     "avature": MONITOR_AVATURE,
@@ -3217,6 +3244,18 @@ linkedin — LinkedIn public guest-job detail scraper
   Config:   None needed — derives the numeric ID from the public job URL
   Note:     Auto-configured when selecting the linkedin monitor. Runs on the
             daily scrape schedule rather than every monitor cycle.
+"""
+
+SCRAPER_HEADHUNTER = """\
+headhunter — HeadHunter vacancy detail API scraper
+
+  API:      GET https://api.hh.ru/vacancies/{vacancy_id}
+  Returns:  title, HTML description, locations, employment_type,
+            job_location_type, date_posted, base_salary, skills and metadata
+  Config:   proxy=true plus the standard enrich list (auto-configured)
+  Note:     Derives the numeric ID from hh.ru/vacancy/{id}. Runs through the
+            configured proxy on the daily scrape schedule so the hourly
+            employer monitor remains a single paginated listing pass.
 """
 
 SCRAPER_ONLYFY = """\
@@ -3411,6 +3450,7 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
   scraper fills in description from the detail API.""",
     "skip": SCRAPER_SKIP,
     "linkedin": SCRAPER_LINKEDIN,
+    "headhunter": SCRAPER_HEADHUNTER,
     "paycom": SCRAPER_PAYCOM,
     "jazzhr": SCRAPER_JAZZHR,
     "paylocity": SCRAPER_PAYLOCITY,

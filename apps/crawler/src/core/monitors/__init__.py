@@ -538,6 +538,11 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"LinkedIn guest jobs \u2014 company: {company_id}, {jobs} jobs"
         return f"LinkedIn guest jobs \u2014 company: {company_id}"
+    if name == "headhunter":
+        employer_id = metadata.get("employer_id", "?")
+        jobs = metadata.get("jobs")
+        label = f"HeadHunter API \u2014 employer: {employer_id}"
+        return f"{label}, {jobs} jobs" if jobs is not None else f"{label} (proxy required)"
     if name == "nextdata":
         path = metadata.get("path", "?")
         count = metadata.get("count")
@@ -849,6 +854,7 @@ from src.core.monitors import (  # noqa: E402
     gem,  # noqa: F401
     greenhouse,  # noqa: F401
     gupy,  # noqa: F401
+    headhunter,  # noqa: F401
     herp,  # noqa: F401
     hibob,  # noqa: F401
     hirehive,  # noqa: F401

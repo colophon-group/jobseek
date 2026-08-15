@@ -375,6 +375,7 @@ from src.core.scrapers import (  # noqa: E402
     dom,  # noqa: F401
     eightfold,  # noqa: F401
     embedded,  # noqa: F401
+    headhunter,  # noqa: F401
     jazzhr,  # noqa: F401
     jsonld,  # noqa: F401
     linkedin,  # noqa: F401
