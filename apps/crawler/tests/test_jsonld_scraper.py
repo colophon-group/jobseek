@@ -347,7 +347,8 @@ class TestMetaLocationFallback:
         ]
         assert result.job_location_type == "Hybrid"
         assert result.date_posted == "2026-05-28T04:51:22Z"
-        assert result.extras == {
+        assert result.extras is None
+        assert result.metadata == {
             "requisition_id": "21014070",
             "job_function": "Product Management",
             "experience_level": "Experienced",
