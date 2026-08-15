@@ -562,6 +562,15 @@ def _build_comment(name: str, metadata: dict) -> str:
         if urls is not None:
             return f"TalentBrew/Radancy \u2014 {urls} job links found"
         return "TalentBrew/Radancy"
+    if name == "talemetry":
+        jobs = metadata.get("jobs")
+        pages = metadata.get("pages")
+        if jobs is not None and pages is not None:
+            return f"Talemetry/Jobvite Career Sites \u2014 {jobs} jobs across {pages} pages"
+        urls = metadata.get("urls")
+        if urls is not None:
+            return f"Talemetry/Jobvite Career Sites \u2014 {urls} job links found"
+        return "Talemetry/Jobvite Career Sites"
     if name == "practicematch":
         return "PracticeMatch employer board (proxy-routed form pagination)"
     if name == "dom":
@@ -879,6 +888,7 @@ from src.core.monitors import (  # noqa: E402
     sitemap,  # noqa: F401
     smartrecruiters,  # noqa: F401
     softgarden,  # noqa: F401
+    talemetry,  # noqa: F401
     talentbrew,  # noqa: F401
     taleo,  # noqa: F401
     traffit,  # noqa: F401

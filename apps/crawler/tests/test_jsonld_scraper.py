@@ -87,6 +87,34 @@ class TestJsonLdExtractor:
         extractor.feed(html)
         assert len(extractor.results) == 0
 
+    def test_repairs_talemetry_missing_property_comma(self):
+        html = """<html><head><script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "JobPosting",
+          "title": "Sanitation Team Member",
+          "description": "<p>Keep the facility safe.</p>",
+          "datePosted": "2026-08-15"
+          "hiringOrganization": {"@type": "Organization", "name": "OFI"},
+          "jobLocation": {
+            "@type": "Place",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Bayonne",
+              "addressRegion": "NJ",
+              "addressCountry": "United States"
+            }
+          }
+        }
+        </script></head></html>"""
+
+        content = parse_html(html)
+
+        assert content.title == "Sanitation Team Member"
+        assert content.description == "<p>Keep the facility safe.</p>"
+        assert content.date_posted == "2026-08-15"
+        assert content.locations == ["Bayonne, NJ, United States"]
+
     def test_handles_empty_script(self):
         html = """<html><head>
         <script type="application/ld+json">  </script>

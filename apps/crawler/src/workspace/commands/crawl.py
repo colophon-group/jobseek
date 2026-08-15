@@ -967,6 +967,7 @@ _MONITOR_CONFIG_HINTS = {
     "rss": "Optional: preset/variant/feed_url; legacy SuccessFactors host/company auto-fill",
     "umantis": "Requires: customer_id. Optional: region, listing_path",
     "sitemap": "Optional: sitemap_url, url_filter (regex to include/exclude URLs)",
+    "talemetry": "Optional: max_pages, page_max_chars, proxy. Uses fail-closed ?page=N pagination.",
     "talentbrew": "Optional: max_pages, page_size, proxy. Uses search-results pagination.",
     "njoyn": "Optional: max_pages, page_wait_ms. Uses session-bound form pagination.",
     "nextdata": (
