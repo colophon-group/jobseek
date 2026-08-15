@@ -25,11 +25,10 @@ const scannerVerifier = fileURLToPath(
 );
 const turboConfig = JSON.parse(readFileSync("turbo.json", "utf8"));
 
-test("deploys web runtime and every current workspace input", () => {
+test("deploys web runtime and production-workflow inputs", () => {
   for (const path of [
     "apps/web/app/page.tsx",
     "apps/web/vercel.json",
-    "apps/crawler/data/companies.csv",
     "packages/mcp-server/src/handler.ts",
     "patches/next@16.2.11.patch",
     "package.json",
@@ -56,17 +55,22 @@ test("does not redeploy for unrelated crawler data, docs, or ops changes", () =>
   assert.deepEqual(result, { deploy: false, relevant: [] });
 });
 
-test("redeploys when the company registry changes", () => {
+test("does not replace the web deployment for company registry changes", () => {
   assert.deepEqual(
     classifyVercelWebChanges(["apps/crawler/data/companies.csv"]),
-    {
-      deploy: true,
-      relevant: ["apps/crawler/data/companies.csv"],
-    },
+    { deploy: false, relevant: [] },
+  );
+  assert.equal(isVercelWebInput("apps/crawler/data/companies.csv"), false);
+  assert.deepEqual(
+    classifyVercelWebChanges([
+      "apps/crawler/data/companies.csv",
+      "apps/web/app/page.tsx",
+    ]),
+    { deploy: true, relevant: ["apps/web/app/page.tsx"] },
   );
 });
 
-test("company registry changes invalidate the cached web build", () => {
+test("genuine web builds still regenerate from the current company registry", () => {
   const genericBuild = turboConfig.tasks.build;
   const webBuild = turboConfig.tasks["@jobseek/web#build"];
   assert.deepEqual(webBuild.inputs, [

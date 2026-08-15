@@ -69,8 +69,10 @@ Company PRs merged by the repository's trusted auto-merge workflow use
 `GITHUB_TOKEN`, so GitHub intentionally suppresses their recursive `push`
 workflows. The same post-merge helper that dispatches production CSV sync also
 dispatches this prewarm explicitly and waits for it to succeed before starting
-the CSV sync at that exact prewarmed main SHA; neither data consumer may rely
-solely on a push path filter.
+the CSV sync at that exact prewarmed main SHA. It deliberately does not replace
+the web deployment: a new slug uses the deployed Proxy snapshot's bounded
+Typesense path until the next genuine web release includes it in the fast
+bypass matcher. Neither data consumer may rely solely on a push path filter.
 
 The production GitHub environment supplies R2 write credentials. The job has
 no dependency on the public Typesense tunnel and sends no request through the

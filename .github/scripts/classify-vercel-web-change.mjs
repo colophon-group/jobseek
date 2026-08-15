@@ -9,12 +9,17 @@ const EXACT_WEB_INPUTS = new Set([
   ".github/scripts/verify-vercel-server-action-key.mjs",
   ".github/scripts/verify-vercel-promotion.mjs",
   ".github/workflows/deploy-web-production.yml",
-  "apps/crawler/data/companies.csv",
   "package.json",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
   "turbo.json",
 ]);
+
+// `apps/crawler/data/companies.csv` is intentionally absent. A deployed
+// matcher snapshot bypasses Proxy for the companies it already knows, while a
+// newly synced slug takes the bounded Typesense status path until the next
+// genuine web build. Treating every registry change as a web input replaces
+// the Next.js build ID and cold-starts the entire Cache Components namespace.
 
 const WEB_INPUT_PREFIXES = [
   "apps/web/",

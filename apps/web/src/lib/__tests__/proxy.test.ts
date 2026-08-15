@@ -333,10 +333,12 @@ describe("missing-resource HTTP boundary", () => {
     expect(forbiddenFetch).not.toHaveBeenCalled();
   });
 
-  it("passes a known company through without changing its status", async () => {
+  it("passes a company recognized after deployment without a matcher update", async () => {
     resourceStatusMocks.hasPublicCompanyRoute.mockResolvedValue(true);
 
-    const response = await proxy(documentRequest("/en/company/acme"));
+    const response = await proxy(
+      documentRequest("/en/company/newly-synced-company"),
+    );
 
     expect(response.status).toBe(200);
     expect(response.headers.get("x-middleware-next")).toBe("1");
@@ -590,6 +592,16 @@ describe("proxy config", () => {
         config,
         nextConfig: {},
         url: "/en/company/definitely-not-real",
+      }),
+    ).toBe(true);
+  });
+
+  it("routes post-deployment company additions through the status boundary", () => {
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url: "/en/company/newly-synced-company",
       }),
     ).toBe(true);
   });
