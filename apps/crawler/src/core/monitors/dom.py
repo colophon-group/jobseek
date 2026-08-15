@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import urljoin, urlparse, urlsplit, urlunsplit
 
 import structlog
-from selectolax.lexbor import LexborHTMLParser
+from selectolax.lexbor import LexborHTMLParser, SelectolaxError
 
 from src.core.monitors import register
 from src.core.monitors.raw import save_text_response
@@ -352,6 +352,20 @@ def _extract_links_static(
         elif link_selector is not None or _matches_default_job_url(absolute):
             urls.add(absolute)
     return urls
+
+
+def _validate_link_selector(value: object) -> str | None:
+    """Return a bounded valid CSS selector, or ``None`` when unset."""
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip() or len(value) > 256 or "\x00" in value:
+        raise ValueError("DOM monitor link_selector must be a CSS selector up to 256 chars")
+    selector = value.strip()
+    try:
+        LexborHTMLParser("<a href='/job'>job</a>").css(selector)
+    except SelectolaxError as exc:
+        raise ValueError(f"DOM monitor link_selector is invalid: {selector!r}") from exc
+    return selector
 
 
 # ---------------------------------------------------------------------------
@@ -712,12 +726,8 @@ async def dom_discover(
     pagination = metadata.get("pagination")
     url_matcher = _build_url_matcher(metadata.get("url_filter"))
     url_transform = metadata.get("url_transform")
-    link_selector = metadata.get("link_selector")
+    link_selector = _validate_link_selector(metadata.get("link_selector"))
     encoding = metadata.get("encoding")
-    if link_selector is not None and (
-        not isinstance(link_selector, str) or not link_selector.strip()
-    ):
-        raise ValueError("DOM monitor link_selector must be a non-empty CSS selector")
     if encoding is not None:
         if not isinstance(encoding, str) or not encoding:
             raise ValueError("DOM monitor encoding must be a non-empty codec name")
