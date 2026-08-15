@@ -181,11 +181,24 @@ _TALENTLINK_HOST_SUFFIX = ".tal.net"
 _TALENTLINK_BOARD_PATH = re.compile(
     r"/candidate/jobboard/vacancy/\d+(?:/adv)?/?$",
 )
-_TALENTLINK_JOB_FILTER = r"/opp/"
 _TALENTLINK_EMPTY_MARKER = re.compile(
     r"\bid=[\"']no_results_message[\"']",
     re.IGNORECASE,
 )
+
+
+def _talentlink_url_filter(url: str) -> str | None:
+    """Build a same-origin opportunity filter for a TalentLink board."""
+    parsed = urlsplit(url)
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+    ):
+        return None
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    return rf"^{re.escape(origin)}/[^?#]*/opp/[^?#]+(?:[?#].*)?$"
 
 
 def _talentlink_probe_config(html: str, url: str) -> dict | None:
@@ -210,7 +223,10 @@ def _talentlink_probe_config(html: str, url: str) -> dict | None:
     if "WCN.global_config" not in html or "candidate/jobboard/vacancy/" not in html:
         return None
 
-    matcher = _build_url_matcher(_TALENTLINK_JOB_FILTER)
+    url_filter = _talentlink_url_filter(url)
+    if url_filter is None:
+        return None
+    matcher = _build_url_matcher(url_filter)
     urls = _extract_links_static(html, url, matcher)
     if not urls and not _TALENTLINK_EMPTY_MARKER.search(html):
         # A provider shell without either opportunities or the explicit empty
@@ -219,7 +235,7 @@ def _talentlink_probe_config(html: str, url: str) -> dict | None:
         return None
     return {
         "urls": len(urls),
-        "url_filter": _TALENTLINK_JOB_FILTER,
+        "url_filter": url_filter,
     }
 
 
