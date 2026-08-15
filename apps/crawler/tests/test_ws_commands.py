@@ -4154,6 +4154,46 @@ class TestPreflight:
         issues = run_preflight(ws_obj)
         assert not issues
 
+    def test_preflight_pivots_for_explicit_workspace_in_different_tty(self, tmp_path, monkeypatch):
+        from src.workspace.preflight import run_preflight
+
+        _patch_all(monkeypatch, tmp_path)
+
+        outer_root = tmp_path / "resolver-worktree"
+        managed_worktree = tmp_path / "managed-worktree"
+        (managed_worktree / "apps" / "crawler" / "data").mkdir(parents=True)
+        repo_root = {"path": outer_root}
+
+        monkeypatch.setattr("src.shared.constants.get_repo_root", lambda: repo_root["path"])
+        monkeypatch.setattr(
+            "src.shared.constants.set_repo_root",
+            lambda path: repo_root.__setitem__("path", path),
+        )
+
+        def mock_run(args, **kwargs):
+            result = MagicMock(returncode=0)
+            if "branch" in args and "--list" in args:
+                result.stdout = (
+                    "  add-company/test\n" if repo_root["path"] == managed_worktree else ""
+                )
+            elif "rev-parse" in args and "--abbrev-ref" in args:
+                result.stdout = "add-company/test\n"
+            else:
+                result.stdout = ""
+            return result
+
+        monkeypatch.setattr("src.workspace.git._run", mock_run)
+
+        ws_obj = Workspace(
+            slug="test",
+            branch="add-company/test",
+            worktree=str(managed_worktree),
+        )
+        issues = run_preflight(ws_obj)
+
+        assert repo_root["path"] == managed_worktree
+        assert not issues
+
     def test_preflight_no_branch_check_when_disabled(self, tmp_path, monkeypatch):
         from src.workspace.preflight import run_preflight
 

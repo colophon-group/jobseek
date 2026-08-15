@@ -8,6 +8,7 @@ Runs inside ``_resolve_board()`` to catch obvious environment issues
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -19,6 +20,25 @@ class PreflightIssue:
     code: str
     message: str
     severity: str  # "critical" | "warning" | "info"
+
+
+def pivot_to_workspace_worktree(ws: Workspace) -> None:
+    """Point repo-scoped operations at the workspace's managed worktree.
+
+    CLI startup normally performs this pivot from the active-workspace
+    pointer.  That pointer is intentionally TTY-scoped, though, so a command
+    that supplies the workspace slug explicitly may run in a different PTY
+    without an active pointer.  Use the workspace record itself as the
+    authoritative fallback before running git checks or board commands.
+    """
+    if not ws.worktree:
+        return
+
+    from src.shared.constants import get_repo_root, set_repo_root
+
+    worktree = Path(ws.worktree)
+    if get_repo_root() != worktree and (worktree / "apps" / "crawler" / "data").exists():
+        set_repo_root(worktree)
 
 
 def run_preflight(
@@ -45,6 +65,8 @@ def run_preflight(
 
     if check_branch and ws.branch:
         from src.workspace import git
+
+        pivot_to_workspace_worktree(ws)
 
         try:
             # Check if expected branch exists locally
