@@ -2159,6 +2159,11 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                      overrides the board URL. The page fetch shares the API
                      client's cookies. Example:
                        {"fields": {"nonce": "data-nonce=\\\"([^\\\"]+)\\\""}}
+    empty_response   Optional mapping of response paths to exact scalar values
+                     that authoritatively identify a successful empty result.
+                     When configured, a missing job list fails unless all
+                     markers match. Example:
+                       {"status": 201, "label": "No offer available"}
     pagination       Pagination config (auto-detected from multiple requests)
                      style is "offset" or "page" for ordinary pagination.
                      Use "cumulative_limit" when a load-more API accepts only

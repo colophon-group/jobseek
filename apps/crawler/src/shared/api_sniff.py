@@ -775,7 +775,10 @@ def set_body_param(body_str: str, param: str, value: object) -> str:
     try:
         body = json.loads(body_str)
     except (json.JSONDecodeError, TypeError):
-        fields = parse_qsl(body_str, keep_blank_values=True)
+        try:
+            fields = parse_qsl(body_str, keep_blank_values=True, max_num_fields=1_024)
+        except ValueError:
+            return body_str
         if not fields or param not in {key for key, _value in fields}:
             return body_str
         return urlencode(

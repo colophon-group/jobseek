@@ -73,7 +73,11 @@ from src.shared.api_sniff import (
     set_url_param,
     trigger_interactions,
 )
-from src.shared.http_retry import PaginationFetchError, is_retryable_status
+from src.shared.http_retry import (
+    PaginationFetchError,
+    fetch_text_page_with_retry,
+    is_retryable_status,
+)
 from src.shared.nextdata import extract_field, resolve_path
 from src.shared.truncation import truncated_rich_result, truncated_url_result
 
@@ -82,6 +86,11 @@ if TYPE_CHECKING:
     from src.core.monitor import MonitorResult
 
 log = structlog.get_logger()
+
+_MAX_REFRESH_FIELDS = 16
+_MAX_REFRESH_PATTERN_CHARS = 4_096
+_MAX_REFRESH_VALUE_CHARS = 16_384
+_MAX_REFRESH_PAGE_BYTES = 2_000_000
 
 
 MAX_ITEMS = 10_000
@@ -864,28 +873,70 @@ async def _refresh_post_data(
     fields = refresh_config.get("fields")
     if not isinstance(fields, dict) or not fields:
         raise ValueError("post_data_refresh.fields must be a non-empty mapping")
+    if len(fields) > _MAX_REFRESH_FIELDS:
+        raise ValueError(f"post_data_refresh supports at most {_MAX_REFRESH_FIELDS} fields")
 
     source_url = refresh_config.get("source_url") or board_url
-    response = await client.get(source_url, follow_redirects=True, timeout=30)
-    response.raise_for_status()
-    html = response.text
+    if not isinstance(source_url, str) or not source_url:
+        raise ValueError("post_data_refresh.source_url must be a non-empty URL")
+    html = await fetch_text_page_with_retry(
+        client,
+        source_url,
+        timeout=30,
+        follow_redirects=True,
+        end_of_pagination_statuses=(),
+        require_nonempty=True,
+        max_bytes=_MAX_REFRESH_PAGE_BYTES,
+        log_event="api_sniffer.refresh_page_backoff",
+    )
+    if html is None:
+        raise RuntimeError("post_data_refresh source page returned no content")
 
     refreshed = post_data
     for field, pattern in fields.items():
         if not isinstance(field, str) or not isinstance(pattern, str):
             raise ValueError("post_data_refresh fields and patterns must be strings")
-        match = re.search(pattern, html)
-        if match is None or match.lastindex != 1:
+        if not field or len(field) > 256:
+            raise ValueError("post_data_refresh field names must contain 1-256 characters")
+        if not pattern or len(pattern) > _MAX_REFRESH_PATTERN_CHARS:
             raise ValueError(
-                f"post_data_refresh pattern for {field!r} must match exactly one value"
+                f"post_data_refresh patterns must contain 1-{_MAX_REFRESH_PATTERN_CHARS} characters"
             )
-        updated = set_body_param(refreshed, field, match.group(1))
+        try:
+            compiled = re.compile(pattern)
+        except re.error as exc:
+            raise ValueError(f"invalid post_data_refresh pattern for {field!r}") from exc
+        if compiled.groups != 1:
+            raise ValueError(
+                f"post_data_refresh pattern for {field!r} must have exactly one capture group"
+            )
+        match = compiled.search(html)
+        value = match.group(1) if match is not None else None
+        if value is None or not value or len(value) > _MAX_REFRESH_VALUE_CHARS:
+            raise ValueError(
+                f"post_data_refresh pattern for {field!r} did not match one bounded value"
+            )
+        updated = set_body_param(refreshed, field, value)
         if updated == refreshed:
             raise ValueError(f"post_data_refresh field {field!r} is missing from post_data")
         refreshed = updated
 
     log.info("api_sniffer.post_data_refreshed", fields=sorted(fields))
     return refreshed
+
+
+def _matches_explicit_empty_response(data: dict, config: object) -> bool:
+    """Validate provider-specific markers for a successful empty response."""
+    if not isinstance(config, dict) or not config:
+        raise ValueError("empty_response must be a non-empty path-to-value mapping")
+    for path, expected in config.items():
+        if not isinstance(path, str) or not path or len(path) > 256:
+            raise ValueError("empty_response paths must contain 1-256 characters")
+        if isinstance(expected, (dict, list)):
+            raise ValueError("empty_response expected values must be JSON scalars")
+        if resolve_path(data, path) != expected:
+            return False
+    return True
 
 
 async def _discover_http(
@@ -981,7 +1032,10 @@ async def _discover_http(
             api_url = fresh_url
             data = await http_fetch_with_retry(client, method, api_url, headers, post_data)
 
+    empty_response = config.get("empty_response")
     if data is None:
+        if empty_response is not None:
+            raise ValueError("API did not return the configured explicit empty response")
         return list() if fields_map else set()
 
     # -- decrypt encrypted response field ----------------------------------
@@ -1222,6 +1276,14 @@ async def _discover_http(
             cap=max_items,
         )
         return truncated_url_result(urls) if truncated else urls
+
+    if empty_response is not None:
+        if not isinstance(data, dict):
+            raise ValueError("explicit empty-response validation requires a JSON object")
+        if _matches_explicit_empty_response(data, empty_response):
+            log.info("api_sniffer.explicit_empty_response")
+            return list() if fields_map else set()
+        raise ValueError("API response was neither a job list nor the configured empty response")
 
     log.warning(
         "api_sniffer.unexpected_content_type",
