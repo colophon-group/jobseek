@@ -45,6 +45,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `brassring` | Rich | skip | BrassRing/Infinite Talent TGnewUI browser-session search API |
 | `paycom` | Rich | paycom | Paycom public preview API plus detail API enrichment |
 | `jazzhr` | URL-only | jazzhr | JazzHR static listing with JSON-LD/DOM detail composition |
+| `jobbank104` | URL-only | json-ld | 104 Job Bank server-rendered company listings, proxy-capable for Cloudflare challenges |
 | `jobvite` | URL-only | json-ld | Jobvite static listings, including branded career-site routes |
 | `pageup` | Rich + enrichment | dom | PageUp static listings with streamed total-checked pagination and DOM description enrichment |
 | `adp` | Rich + enrichment | adp | ADP Workforce Now public listing API + native detail/DOCX enrichment |
