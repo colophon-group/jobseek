@@ -13,6 +13,7 @@ page whenever existence is checked.
 
 from __future__ import annotations
 
+import asyncio
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -30,8 +31,14 @@ from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
 
-PAGE_SIZE = 25
+# LinkedIn's public guest endpoint currently returns ten cards per request.
+# Pagination must advance by the provider page size: treating it as 25 both
+# stops on the first ten-card page and skips offsets 10-24.
+PAGE_SIZE = 10
 MAX_JOBS = 1_000
+_PAGE_DELAY_S = 1.0
+_RETRY_ATTEMPTS = 4
+_RETRY_BASE_DELAY_S = 1.5
 
 _COMPANY_PATH_RE = re.compile(r"^/company/([^/?#]+)/jobs/?$", re.IGNORECASE)
 _JOB_URN_RE = re.compile(r"urn:li:jobPosting:(\d+)")
@@ -184,7 +191,13 @@ async def _fetch_listings(
 
     while True:
         page_url = _listing_url(company_id=company_id, start=start)
-        html = await fetch_text_page_with_retry(client, page_url)
+        html = await fetch_text_page_with_retry(
+            client,
+            page_url,
+            retries=_RETRY_ATTEMPTS,
+            base_delay=_RETRY_BASE_DELAY_S,
+            log_event="linkedin.list_backoff",
+        )
         if html is None:
             break
         page = _parse_listing_cards(html)
@@ -203,6 +216,7 @@ async def _fetch_listings(
         if len(page) < PAGE_SIZE:
             break
         start += PAGE_SIZE
+        await asyncio.sleep(_PAGE_DELAY_S)
 
     return jobs, False
 

@@ -19,12 +19,16 @@ BOARD_URL = "https://www.linkedin.com/company/damora-therapeutics/jobs/"
 COMPANY_ID = "109559449"
 
 
-def _listing_html(*, company_slug: str = "damora-therapeutics") -> str:
+def _listing_html(
+    *,
+    company_slug: str = "damora-therapeutics",
+    job_id: str = "4442073767",
+) -> str:
     return f"""
     <li>
-      <div class="base-search-card" data-entity-urn="urn:li:jobPosting:4442073767">
+      <div class="base-search-card" data-entity-urn="urn:li:jobPosting:{job_id}">
         <a class="base-card__full-link"
-           href="https://www.linkedin.com/jobs/view/manager-regulatory-affairs-at-damora-therapeutics-4442073767?position=1">
+           href="https://www.linkedin.com/jobs/view/manager-regulatory-affairs-at-damora-therapeutics-{job_id}?position=1">
           Manager/Senior Manager, Regulatory Affairs
         </a>
         <h3 class="base-search-card__title">Manager/Senior Manager, Regulatory Affairs</h3>
@@ -125,6 +129,35 @@ class TestMonitor:
             "linkedin_company_id": COMPANY_ID,
             "linkedin_company_slug": "damora-therapeutics",
         }
+
+    async def test_paginates_provider_ten_card_pages_without_skipping_offsets(self):
+        requested_starts: list[int] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            start = int(request.url.params["start"])
+            requested_starts.append(start)
+            count = 10 if start == 0 else 1
+            html = "".join(
+                _listing_html(job_id=str(4_442_073_767 + start + offset)) for offset in range(count)
+            )
+            return httpx.Response(200, text=html, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with patch("src.core.monitors.linkedin.asyncio.sleep", new_callable=AsyncMock) as sleep:
+                result = await discover(
+                    {
+                        "board_url": BOARD_URL,
+                        "metadata": {
+                            "company_id": COMPANY_ID,
+                            "company_slug": "damora-therapeutics",
+                        },
+                    },
+                    client,
+                )
+
+        assert len(result) == 11
+        assert requested_starts == [0, 10]
+        sleep.assert_awaited_once_with(1.0)
 
     async def test_probe_resolves_company_id_from_exact_slug(self):
         def handler(request: httpx.Request) -> httpx.Response:
