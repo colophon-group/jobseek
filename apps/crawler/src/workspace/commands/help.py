@@ -2710,6 +2710,7 @@ Extraction Steps — DOM scraper step format
     stop        Stop when element text contains this string
     stop_tag    Stop when element tag matches. Accepts one tag or a list
                 (for example, ["h2", "h3"])
+    stop_attr   Stop when an element attribute matches (same format as attr)
     stop_count  Max elements to collect
     html        If true, preserve HTML tags in output (groups <li> in <ul>)
 

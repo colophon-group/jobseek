@@ -358,6 +358,8 @@ def walk_steps(
         stop       — stop collecting when element text contains this string
         stop_tag   — stop collecting when element tag matches; accepts a string
                      or a list of tag names
+        stop_attr  — stop collecting when an element attribute matches
+                     (same ``key=substring`` format as ``attr``)
         stop_count — max elements to collect in a range
         optional   — if true, suppress warning when step not found
         regex      — regex with capture group; applied to extracted text
@@ -375,6 +377,7 @@ def walk_steps(
         stop = step.get("stop")
         stop_tag = step.get("stop_tag")
         stop_tags = {stop_tag} if isinstance(stop_tag, str) else set(stop_tag or [])
+        stop_attr = step.get("stop_attr")
         stop_count = step.get("stop_count")
         optional = step.get("optional", False)
         attr = step.get("attr")
@@ -419,7 +422,7 @@ def walk_steps(
         # Apply offset — skip N elements after the match
         match_idx = min(match_idx + offset, len(elements) - 1)
 
-        is_range = stop or stop_tag or stop_count
+        is_range = stop or stop_tag or stop_attr or stop_count
 
         if field and is_range:
             # Collect elements from match, stopping on stop text / stop tag / stop count
@@ -434,6 +437,18 @@ def walk_steps(
                     if elements[i]["tag"] in stop_tags:
                         stop_idx = i
                         break
+                    if stop_attr:
+                        if "=" in stop_attr:
+                            a_key, a_val = stop_attr.split("=", 1)
+                            attr_matches = (
+                                a_key in elements[i]["attrs"]
+                                and a_val in elements[i]["attrs"][a_key]
+                            )
+                        else:
+                            attr_matches = stop_attr in elements[i]["attrs"]
+                        if attr_matches:
+                            stop_idx = i
+                            break
                 if stop_count and collected >= stop_count:
                     stop_idx = i
                     break
