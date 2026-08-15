@@ -8,6 +8,7 @@ import pytest
 from src.core.scrapers.pdf import (
     _extract_pattern,
     _normalize_captured_text,
+    _ocr_pdf,
     _text_to_html,
     _title_from_text,
     _title_from_url,
@@ -276,6 +277,68 @@ class TestScrape:
         assert result.locations == ["Neuhausen am Rheinfall, CH"]
         assert result.description is not None
         assert "Role description" in result.description
+
+    @pytest.mark.parametrize("scale", [0, 5, "not-a-number"])
+    async def test_ocr_rejects_unbounded_render_scale(self, scale):
+        import pypdf
+
+        writer = pypdf.PdfWriter()
+        writer.add_blank_page(width=612, height=792)
+        buf = io.BytesIO()
+        writer.write(buf)
+
+        def handler(request):
+            return httpx.Response(200, content=buf.getvalue())
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="ocr_scale"):
+                await scrape(
+                    "https://example.com/request.pdf",
+                    {"ocr": True, "ocr_scale": scale},
+                    client,
+                )
+
+    async def test_ocr_rejects_invalid_language_expression(self):
+        import pypdf
+
+        writer = pypdf.PdfWriter()
+        writer.add_blank_page(width=612, height=792)
+        buf = io.BytesIO()
+        writer.write(buf)
+
+        def handler(request):
+            return httpx.Response(200, content=buf.getvalue())
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="ocr_languages"):
+                await scrape(
+                    "https://example.com/request.pdf",
+                    {"ocr": True, "ocr_languages": "deu; rm -rf /"},
+                    client,
+                )
+
+    def test_ocr_rejects_excessive_page_count(self):
+        import pypdf
+
+        writer = pypdf.PdfWriter()
+        for _ in range(21):
+            writer.add_blank_page(width=612, height=792)
+        buf = io.BytesIO()
+        writer.write(buf)
+
+        with pytest.raises(ValueError, match="limited to 20 pages"):
+            _ocr_pdf(buf.getvalue(), languages="eng", scale=2)
+
+    def test_ocr_rejects_excessive_render_dimensions(self):
+        import pypdf
+
+        writer = pypdf.PdfWriter()
+        writer.add_blank_page(width=10_000, height=10_000)
+        buf = io.BytesIO()
+        writer.write(buf)
+
+        with pytest.raises(ValueError, match="would render"):
+            _ocr_pdf(buf.getvalue(), languages="eng", scale=2)
 
     async def test_saves_artifact(self, tmp_path):
         pdf_bytes = _make_pdf("Test Job")

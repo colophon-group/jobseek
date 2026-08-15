@@ -3185,7 +3185,8 @@ pdf — PDF document scraper
             repair_split_initial (opt-in repair for M\\nechanical-style artefacts),
             ocr (opt-in fallback for image-only PDFs),
             ocr_languages (Tesseract languages, default "eng"),
-            ocr_scale (integer PDF render scale, default 2)
+            ocr_scale (integer PDF render scale 1-4, default 2; OCR is
+            limited to 20 pages and 30 million rendered pixels per page)
   Note:     Typically paired with a dom monitor using url_filter to
             discover PDF links on the careers page.
 """

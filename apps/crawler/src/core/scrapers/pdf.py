@@ -20,13 +20,15 @@ Config:
                    its word by a PDF extraction newline (M\\nechanical).
     ocr            Opt in to OCR when the PDF has no extractable text.
     ocr_languages  Tesseract language expression (default: "eng").
-    ocr_scale      Integer PDF render scale used for OCR (default: 2).
+    ocr_scale      Integer PDF render scale from 1 to 4 (default: 2).
+                   OCR is limited to 20 pages and 30 million pixels per page.
 """
 
 from __future__ import annotations
 
 import asyncio
 import io
+import math
 import re
 from pathlib import Path
 from urllib.parse import unquote
@@ -37,6 +39,11 @@ import structlog
 from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
+
+_MAX_OCR_PAGES = 20
+_MAX_OCR_SCALE = 4
+_MAX_OCR_PIXELS = 30_000_000
+_OCR_LANGUAGES_RE = re.compile(r"[A-Za-z0-9_+-]{1,64}")
 
 
 def _normalize_captured_text(
@@ -145,19 +152,36 @@ def _text_to_html(text: str) -> str:
 
 
 def _ocr_pdf(content: bytes, *, languages: str, scale: int) -> str:
-    """Render and OCR every page of an image-only PDF."""
+    """Render and OCR a bounded image-only PDF."""
     import pypdfium2
     import pytesseract
 
     document = pypdfium2.PdfDocument(content)
     pages_text: list[str] = []
     try:
-        for page in document:
-            bitmap = page.render(scale=scale)
+        page_count = len(document)
+        if page_count > _MAX_OCR_PAGES:
+            raise ValueError(f"PDF OCR is limited to {_MAX_OCR_PAGES} pages; got {page_count}")
+        for page_index in range(page_count):
+            page = document[page_index]
             try:
-                text = pytesseract.image_to_string(bitmap.to_pil(), lang=languages)
+                width, height = page.get_size()
+                if not (
+                    math.isfinite(width) and math.isfinite(height) and width > 0 and height > 0
+                ):
+                    raise ValueError(f"PDF OCR page {page_index + 1} has invalid dimensions")
+                rendered_pixels = width * height * scale * scale
+                if rendered_pixels > _MAX_OCR_PIXELS:
+                    raise ValueError(
+                        f"PDF OCR page {page_index + 1} would render "
+                        f"{rendered_pixels:.0f} pixels; limit is {_MAX_OCR_PIXELS}"
+                    )
+                bitmap = page.render(scale=scale)
+                try:
+                    text = pytesseract.image_to_string(bitmap.to_pil(), lang=languages)
+                finally:
+                    bitmap.close()
             finally:
-                bitmap.close()
                 page.close()
             if text.strip():
                 pages_text.append(text)
@@ -197,8 +221,15 @@ async def scrape(
     full_text = "\n\n".join(pages_text).strip()
 
     if not full_text and config.get("ocr"):
-        languages = str(config.get("ocr_languages", "eng"))
-        scale = int(config.get("ocr_scale", 2))
+        languages = str(config.get("ocr_languages", "eng")).strip()
+        if not _OCR_LANGUAGES_RE.fullmatch(languages):
+            raise ValueError("PDF ocr_languages must be a non-empty Tesseract language expression")
+        try:
+            scale = int(config.get("ocr_scale", 2))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("PDF ocr_scale must be an integer from 1 to 4") from exc
+        if not 1 <= scale <= _MAX_OCR_SCALE:
+            raise ValueError("PDF ocr_scale must be an integer from 1 to 4")
         full_text = await asyncio.to_thread(
             _ocr_pdf,
             response.content,
