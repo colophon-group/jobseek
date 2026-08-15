@@ -230,6 +230,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 15   | `recruiter_co_kr` | Rich     | skip        | Recruiter.co.kr API                     |
 | 15   | `umantis`         | URL-only | --          | Umantis HTML listings                   |
 | 20   | `nextdata`        | Conditional* | skip/-- | Embedded JSON / Next.js data extraction |
+| 45   | `talemetry`       | URL-only | json-ld     | Talemetry/Jobvite result-range pagination |
 | 45   | `talentbrew`      | URL-only | json-ld     | TalentBrew/Radancy search results       |
 | 50   | `sitemap`         | URL-only | --          | XML sitemap parsing (auto-discovery)    |
 | 60   | `inline`          | Rich     | skip        | Inline single-page job extraction       |

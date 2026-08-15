@@ -136,6 +136,7 @@ async def test_save_raw_logs_handler_failures(
         "rippling",
         "rss",
         "sitemap",
+        "talemetry",
         "talentbrew",
         "taleo",
     ],

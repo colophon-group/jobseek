@@ -1881,3 +1881,56 @@ class TestZteMokahrHasMokahrScraperAndEnrich:
         )
         # Pure HTTP — no Playwright dependency, must run on slim workers.
         assert scraper.needs_browser is False
+
+
+class TestOlamGroupBoardConfig:
+    def test_all_seven_sources_use_verified_monitor_and_scraper_pairs(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {row["board_slug"]: row for row in rows if row["company_slug"] == "olam-group"}
+        assert set(by_slug) == {
+            "olam-group-global",
+            "olam-group-ofi-brazil",
+            "olam-group-ofi-global",
+            "olam-group-ofi-north-america",
+            "olam-group-olam-agri-americas",
+            "olam-group-olam-agri-brazil",
+            "olam-group-olam-agri-global",
+        }
+
+        talemetry = by_slug["olam-group-ofi-north-america"]
+        assert talemetry["monitor_type"] == "talemetry"
+        assert json.loads(talemetry["monitor_config"]) == {"proxy": True}
+        assert talemetry["scraper_type"] == "json-ld"
+        assert json.loads(talemetry["scraper_config"]) == {"proxy": True}
+
+        paylocity = by_slug["olam-group-olam-agri-americas"]
+        assert paylocity["monitor_type"] == "paylocity"
+        assert json.loads(paylocity["monitor_config"]) == {"proxy": True}
+        assert paylocity["scraper_type"] == "paylocity"
+        assert json.loads(paylocity["scraper_config"]) == {
+            "enrich": ["description", "employment_type", "job_location_type"],
+            "proxy": True,
+        }
+
+        rss_slugs = {
+            "olam-group-global",
+            "olam-group-ofi-global",
+            "olam-group-olam-agri-global",
+        }
+        for slug in rss_slugs:
+            row = by_slug[slug]
+            assert row["monitor_type"] == "rss"
+            assert json.loads(row["monitor_config"])["preset"] == "successfactors"
+            assert row["scraper_type"] == "skip"
+
+        gupy_slugs = {"olam-group-ofi-brazil", "olam-group-olam-agri-brazil"}
+        for slug in gupy_slugs:
+            row = by_slug[slug]
+            assert row["monitor_type"] == "nextdata"
+            assert json.loads(row["monitor_config"])["path"] == "props.pageProps.jobs"
+            assert row["scraper_type"] == "json-ld"

@@ -31,6 +31,10 @@ log = structlog.get_logger()
 # pages (#5710), so those receive two bounded retries.
 
 _CTRL_REPLACEMENTS = {"\n": "\\n", "\r": "\\r", "\t": "\\t"}
+_TALEMETRY_MISSING_COMMA_RE = re.compile(
+    r'("datePosted"\s*:\s*"(?:\\.|[^"\\])*")(\s*)("hiringOrganization"\s*:)',
+    re.DOTALL,
+)
 
 _CDATA_WRAPPERS = (
     ("//<![CDATA[", "//]]>"),
@@ -75,6 +79,18 @@ def _escape_control_chars_in_strings(raw: str) -> str:
             continue
         out.append(ch)
     return "".join(out)
+
+
+def _repair_talemetry_missing_comma(raw: str) -> str:
+    """Repair Talemetry's stable missing property comma.
+
+    Talemetry Career Sites currently emit otherwise-valid JobPosting JSON-LD
+    with no comma between ``datePosted`` and ``hiringOrganization``.  Keep the
+    repair deliberately narrow so arbitrary malformed structured data still
+    fails rather than being guessed into shape.
+    """
+
+    return _TALEMETRY_MISSING_COMMA_RE.sub(r"\1,\2\3", raw)
 
 
 class _JsonLdExtractor(HTMLParser):
@@ -122,23 +138,24 @@ class _JsonLdExtractor(HTMLParser):
                 # Prefer the standards-compliant raw block. If that fails,
                 # support providers such as Gupy that HTML-entity-encode the
                 # entire JSON document inside the script element.
+                parsed_block = None
                 for candidate in (raw, html_module.unescape(raw)):
-                    try:
-                        parsed = json.loads(candidate)
-                        self.results.append(parsed)
-                        break
-                    except json.JSONDecodeError:
-                        # Some sites emit literal control chars (newlines,
-                        # tabs) inside JSON strings. Escape them and retry.
-                        cleaned = _escape_control_chars_in_strings(candidate)
+                    for variant in (candidate, _repair_talemetry_missing_comma(candidate)):
                         try:
-                            parsed = json.loads(cleaned)
-                            self.results.append(parsed)
+                            parsed_block = json.loads(variant)
                             break
                         except json.JSONDecodeError:
-                            # Try the next representation or skip the
-                            # optional malformed block.
-                            continue
+                            # Some sites emit literal control chars (newlines,
+                            # tabs) inside JSON strings. Escape them and retry.
+                            cleaned = _escape_control_chars_in_strings(variant)
+                            try:
+                                parsed_block = json.loads(cleaned)
+                                break
+                            except json.JSONDecodeError:
+                                continue
+                    if parsed_block is not None:
+                        self.results.append(parsed_block)
+                        break
 
     @property
     def page_title(self) -> str | None:

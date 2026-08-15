@@ -98,6 +98,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `recruiter_co_kr` | Rich | skip | Recruiter.co.kr ATS |
 | `umantis` | URL-only | — | Umantis server-rendered listings |
 | `nextdata` | Conditional* | skip/— | Embedded JSON / Next.js data; rich when `fields` is configured |
+| `talemetry` | URL-only | json-ld | Talemetry / Jobvite Career Sites with fail-closed result-range pagination |
 | `talentbrew` | URL-only | json-ld | TalentBrew / Radancy search pages |
 | `njoyn` | URL-only | — | Njoyn XWeb listings with session-bound form pagination |
 | `sitemap` | URL-only | — | Site has an XML sitemap with job URLs |

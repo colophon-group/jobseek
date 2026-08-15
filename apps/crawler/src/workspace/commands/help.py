@@ -126,6 +126,7 @@ Monitor Types (cheapest first):
   recruiter_co_kr   15      Full job data     No (skipped)
   umantis           15      URL set           Yes
   nextdata          20      URLs or full      If URL-only
+  talemetry         45      URL set           Yes
   talentbrew        45      URL set           Yes
   sitemap           50      URL set           Yes
   kipt              60      Full job data     No (skipped)
@@ -891,6 +892,33 @@ njoyn — Njoyn XWeb browser monitor
 
   Detection:  *.njoyn.com/.../xweb/XWeb.asp listing URLs
   Pair with:  dom scraper rendered in a warmed Njoyn session"""
+
+MONITOR_TALEMETRY = """\
+talemetry — Talemetry / Jobvite Career Sites
+
+  Returns:  Complete URL set only (needs scraper)
+  Cap:      50,000 URLs
+
+  Talemetry pages render same-origin /jobs/<id>-<slug> links inside
+  .jobs-section__list and publish a textual count such as
+  "Showing 1-25 of 85 results". The monitor follows ?page=N and validates
+  every page range and the final total. Any missing, repeated, or inconsistent
+  page fails the cycle instead of returning a partial set to gone detection.
+
+  Config:
+    {}  — no configuration required
+    {"max_pages": 500}   Optional safety ceiling; exceeding it fails closed.
+    {"page_max_chars": 8000000}
+                         Optional HTML read cap (default 5,000,000;
+                         max 25,000,000).
+    {"proxy": true}      Route listing and pagination requests through the
+                         configured proxy provider.
+
+  Detection:  requires Talemetry Career Sites markers, an authoritative
+              result range, and matching same-origin job links.
+
+  Pair with:  json-ld (the parser repairs Talemetry's known missing comma
+              between datePosted and hiringOrganization)"""
 
 MONITOR_PRACTICEMATCH = """\
 practicematch — PracticeMatch Employer Landing Pages
@@ -3085,6 +3113,7 @@ MONITOR_CARDS: dict[str, str] = {
     "personio": MONITOR_PERSONIO,
     "rss": MONITOR_RSS,
     "sitemap": MONITOR_SITEMAP,
+    "talemetry": MONITOR_TALEMETRY,
     "talentbrew": MONITOR_TALENTBREW,
     "njoyn": MONITOR_NJOYN,
     "phenom": MONITOR_PHENOM,

@@ -160,6 +160,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "workday",
     "ycombinator",
     "sitemap",
+    "talemetry",
     "talentbrew",
     "phenom",
     "nextdata",
@@ -766,6 +767,8 @@ def auto_scraper_type(
     if monitor_type == "practicematch":
         return ("json-ld", {"proxy": True})
     if monitor_type == "talentbrew":
+        return ("json-ld", None)
+    if monitor_type == "talemetry":
         return ("json-ld", None)
     if monitor_type == "softgarden":
         return ("json-ld", None)
