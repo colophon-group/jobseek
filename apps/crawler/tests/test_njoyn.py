@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 from src.core.monitors import monitor_needs_browser
+from src.core.monitors.dom import BotChallengeError
 from src.core.monitors.njoyn import (
     _discover_page,
     _expected_count,
@@ -93,6 +94,11 @@ async def test_can_handle_returns_hardened_browser_defaults() -> None:
     assert monitor_needs_browser("njoyn", config)
 
 
+async def test_can_handle_rejects_job_detail_url() -> None:
+    async with httpx.AsyncClient() as client:
+        assert await can_handle(_job("J0826-0527", 1324213), client) is None
+
+
 async def test_collects_form_paginated_listing_and_checks_total() -> None:
     page = _FakePage(
         [[_job("J1", 1)], [_job("J2", 2)], [_job("J3", 3)]],
@@ -154,3 +160,18 @@ async def test_fails_closed_when_next_repeats_same_page() -> None:
         pytest.raises(RuntimeError, match="repeated page"),
     ):
         await _discover_page(page, page.url, {"page_wait_ms": 1})
+
+
+async def test_fails_closed_on_radware_challenge() -> None:
+    page = _FakePage([[_job("J1", 1)]], expected=1)
+    page.url = "https://validate.perfdrive.com/?ssk=botmanager_support@radware.com"
+    with (
+        patch("src.core.monitors.njoyn.navigate", new_callable=AsyncMock),
+        patch(
+            "src.core.monitors.njoyn.safe_content",
+            new_callable=AsyncMock,
+            return_value="<html><head><title>Radware Captcha Page</title></head></html>",
+        ),
+        pytest.raises(BotChallengeError, match="proxy transport"),
+    ):
+        await _discover_page(page, page.url, {})

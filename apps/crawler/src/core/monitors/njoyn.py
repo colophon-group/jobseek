@@ -43,6 +43,13 @@ def _is_njoyn_board(url: str) -> bool:
     return host.endswith(".njoyn.com") and "/xweb/" in parsed.path.lower()
 
 
+def _is_njoyn_listing_url(url: str) -> bool:
+    if not _is_njoyn_board(url):
+        return False
+    query = {key.casefold(): values for key, values in parse_qs(urlsplit(url).query).items()}
+    return (query.get("page") or [""])[0].casefold() == "joblisting"
+
+
 def _is_job_detail_url(url: str) -> bool:
     if not _is_njoyn_board(url):
         return False
@@ -140,7 +147,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
     """Collect every Njoyn job URL through the listing's POST pagination."""
     _ = client
     board_url = board["board_url"]
-    if not _is_njoyn_board(board_url):
+    if not _is_njoyn_listing_url(board_url):
         raise ValueError(f"Unsupported Njoyn board URL: {board_url!r}")
 
     metadata = board.get("metadata") or {}
@@ -171,7 +178,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
 async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | None:
     """Recognize Njoyn's stable public XWeb listing URL shape."""
     _ = client, pw
-    if not _is_njoyn_board(url):
+    if not _is_njoyn_listing_url(url):
         return None
     return {
         "wait": "domcontentloaded",
