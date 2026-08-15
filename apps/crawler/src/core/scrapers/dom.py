@@ -242,6 +242,7 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
             elements[i]["tag"] == "li"
             and elements[i + 1]["tag"] == "li"
             and _WORKLOAD_RE.fullmatch(elements[i + 1]["text"])
+            and not any(element["tag"] == "li" for element in elements[title_idx + 1 : i])
         ):
             steps.extend(
                 [
@@ -325,10 +326,12 @@ def can_handle(htmls: list[str]) -> dict | None:
         return None
 
     # Validate a trustworthy title heading exists on other pages too.
+    expected_title_tag = best_steps[0].get("tag")
     title_found = 0
     for html in htmls:
         elements = flatten(html)
-        if _title_heading(elements) is not None:
+        heading = _title_heading(elements)
+        if heading is not None and heading[1] == expected_title_tag:
             title_found += 1
 
     # Require a title heading on at least half the pages.
