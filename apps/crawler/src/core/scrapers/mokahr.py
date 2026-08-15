@@ -52,6 +52,8 @@ from src.core.monitors.mokahr import (
     _build_city_name_map,
     _decrypt,
     _get_init_data,
+    _origin,
+    _parse_board_route,
     _parse_experience,
     _parse_metadata,
     _parse_salary,
@@ -62,29 +64,23 @@ log = structlog.get_logger()
 
 _DETAIL_PATH = "/api/outer/ats-apply/website/job"
 
-# Source URLs from the monitor look like:
-#   https://app.mokahr.com/social-recruitment/<org>/<site>#/job/<job_id>
-#   https://app.mokahr.com/campus-recruitment/<org>/<site>#/job/<job_id>
-_URL_RE = re.compile(
-    r"https?://[^/]+/(?P<path>(?:social|campus)[_-](?:recruitment|apply))/"
-    r"(?P<org>[\w-]+)/(?P<site>\d+)(?:[#/?].*?/job/(?P<job>[\w-]+))?",
-    re.IGNORECASE,
-)
+_JOB_FRAGMENT_RE = re.compile(r"/?job/(?P<job>[A-Za-z0-9_-]{1,128})/?")
 
 
 def _parse_url(url: str) -> tuple[str, str, int, str] | None:
     """Return ``(path, org_id, site_id, job_id)`` or ``None``."""
-    m = _URL_RE.search(url)
-    if not m:
-        return None
-    job_id = m.group("job")
-    if not job_id:
+    route = _parse_board_route(url)
+    if route is None:
         return None
     try:
-        site_id = int(m.group("site"))
-    except (TypeError, ValueError):
+        parsed = urlsplit(url)
+    except ValueError:
         return None
-    return m.group("path"), m.group("org"), site_id, job_id
+    match = _JOB_FRAGMENT_RE.fullmatch(parsed.fragment)
+    if match is None:
+        return None
+    path, org_id, site_id = route
+    return path, org_id, site_id, match.group("job")
 
 
 def _parse_detail(detail: dict, city_name_map: dict[int, str] | None = None) -> JobContent:
@@ -153,8 +149,8 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
         log.warning("mokahr_scraper.unparseable_url", url=url)
         return JobContent()
     path, org_id, site_id, job_id = parsed
-    parsed_url = urlsplit(url)
-    origin = f"{parsed_url.scheme}://{parsed_url.netloc}"
+    origin = _origin(url)
+    assert origin is not None  # _parse_url already enforces this invariant.
 
     locale = config.get("locale", "zh-CN")
     # The monitor's _job_url always emits ``social-recruitment`` regardless of

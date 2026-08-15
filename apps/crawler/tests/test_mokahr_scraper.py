@@ -412,6 +412,19 @@ class TestParseUrl:
     def test_returns_none_for_unrelated_url(self):
         assert _parse_url("https://example.com/foo") is None
 
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://jobschina.prada.cn/social-recruitment/pradagroup/151069#/job/abc",
+            "https://user@jobschina.prada.cn/social-recruitment/pradagroup/151069#/job/abc",
+            "https://jobschina.prada.cn:8443/social-recruitment/pradagroup/151069#/job/abc",
+            "https://jobschina.prada.cn/prefix/social-recruitment/pradagroup/151069#/job/abc",
+            "https://jobschina.prada.cn/social-recruitment/pradagroup/151069#/job/abc/extra",
+        ],
+    )
+    def test_rejects_untrusted_or_malformed_custom_url(self, url: str):
+        assert _parse_url(url) is None
+
     def test_parses_custom_domain_url(self):
         url = (
             "https://jobschina.prada.cn/social-recruitment/pradagroup/151069/"
