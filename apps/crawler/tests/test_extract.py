@@ -289,6 +289,26 @@ class TestWalkSteps:
         assert result["section"] == "Start\nMiddle"
         assert cursor == 2
 
+    def test_stop_attr(self):
+        els = [
+            {"tag": "div", "attrs": {"class": "intro"}, "text": "Introduction"},
+            {"tag": "li", "attrs": {}, "text": "Responsibility"},
+            {"tag": "h3", "attrs": {"class": "contact-title"}, "text": "Contact"},
+            {"tag": "div", "attrs": {}, "text": "Recruiter details"},
+        ]
+        steps = [
+            {
+                "attr": "class=intro",
+                "field": "description",
+                "stop_attr": "class=contact-title",
+            }
+        ]
+
+        result, cursor = walk_steps(els, steps)
+
+        assert result["description"] == "Introduction\nResponsibility"
+        assert cursor == 2
+
     def test_stop_count(self):
         els = self._els(
             ("p", "One"),

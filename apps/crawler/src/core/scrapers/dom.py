@@ -245,6 +245,52 @@ _ELVIUM_MARKERS = (
     "job-posting-widget",
     "contact-info-widget",
 )
+_SOLIQUE_MARKERS = (
+    "solique.ch/",
+    'class="job-title"',
+    'class="tasks-profile-wrapper"',
+)
+
+
+def _solique_config(htmls: list[str]) -> dict | None:
+    """Build a static extraction config for Solique publication pages.
+
+    Solique puts the visible job title in a ``div`` inside ``header`` rather
+    than an ``h1``. The generic flattener intentionally excludes header
+    chrome, so the normal h1 heuristic cannot identify these otherwise fully
+    static pages. Their content classes are stable across branded tenants and
+    languages, making them a safer detection signal than translated headings.
+    """
+
+    matches = sum(
+        all(marker in html.casefold() for marker in _SOLIQUE_MARKERS) for html in htmls
+    )
+    if not matches or matches < len(htmls) / 2:
+        return None
+
+    return {
+        "steps": [
+            {
+                "tag": "title",
+                "field": "title",
+                "regex": r"^(.*?)(?:\s+-\s+\d{1,3}(?:\s*-\s*\d{1,3})?%)?$",
+                "from": 0,
+            },
+            {
+                "attr": "class=intro",
+                "field": "description",
+                "stop_attr": "class=contact-title",
+                "html": True,
+                "from": 0,
+            },
+            {
+                "tag": "div",
+                "attr": "class=location",
+                "field": "location",
+                "from": 0,
+            },
+        ]
+    }
 
 
 def _kontact_config(htmls: list[str]) -> dict | None:
@@ -411,6 +457,10 @@ def can_handle(htmls: list[str]) -> dict | None:
     Uses the first page's structure to generate steps, then validates
     that the title step (h1) matches on other pages too.
     """
+    solique = _solique_config(htmls)
+    if solique is not None:
+        return solique
+
     kontact = _kontact_config(htmls)
     if kontact is not None:
         return kontact

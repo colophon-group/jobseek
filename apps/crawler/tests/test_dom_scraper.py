@@ -254,6 +254,43 @@ class TestDomScraper:
             "<p>Join an employee-owned global group.</p>"
         )
 
+    def test_solique_probe_extracts_static_publication_content(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head><title>Chauffeur Kat. CE (m/w/d) - 80-100%</title></head><body>
+          <header>
+            <div class="job-title">Chauffeur Kat. CE (m/w/d)</div>
+            <a href="https://live.solique.ch/acme/apply/id/123">Apply</a>
+          </header>
+          <div class="intro">Move goods safely for our customers.</div>
+          <div class="tasks-profile-wrapper">
+            <h3 class="tasks-title">What you do</h3>
+            <ul><li>Drive scheduled routes.</li><li>Load the vehicle.</li></ul>
+            <h3 class="profile-title">What you bring</h3>
+            <ul><li>Category CE licence.</li></ul>
+          </div>
+          <h3 class="contact-title">Your contact</h3>
+          <div class="contact">Recruiting Team</div>
+          <h3 class="location-title">Workplace</h3>
+          <div class="location">Industriestrasse 1 8000 Zurich</div>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+
+        result = parse_html(html, config)
+        assert result.title == "Chauffeur Kat. CE (m/w/d)"
+        assert result.description == (
+            "<div>Move goods safely for our customers.</div>"
+            "<h3>What you do</h3>"
+            "<ul><li>Drive scheduled routes.</li><li>Load the vehicle.</li></ul>"
+            "<h3>What you bring</h3>"
+            "<ul><li>Category CE licence.</li></ul>"
+        )
+        assert result.locations == ["Industriestrasse 1 8000 Zurich"]
+
     async def test_missing_steps_returns_empty(self):
         """No 'steps' key → empty JobContent."""
         from src.core.scrapers.dom import scrape
