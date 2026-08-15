@@ -1252,6 +1252,7 @@ code3,code3-greenhouse,https://job-boards.greenhouse.io/code3,greenhouse,"{""tok
 codepath,codepath-greenhouse,https://job-boards.greenhouse.io/codepath,greenhouse,"{""token"": ""codepath""}",skip,
 coder,coder-ashby,https://jobs.ashbyhq.com/coder,ashby,"{""token"": ""coder""}",skip,
 coefficient,coefficient-greenhouse,https://job-boards.greenhouse.io/coefficient,greenhouse,"{""token"": ""coefficient""}",skip,
+cofco-international,cofco-international-global,https://careers.cofcointernational.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.cofcointernational.com/googlefeed.xml""}",skip,
 cofertility,cofertility-greenhouse,https://job-boards.greenhouse.io/cofertility,greenhouse,"{""token"": ""cofertility""}",skip,
 cofra-holding,cofra-holding-greenhouse,https://job-boards.greenhouse.io/cofraholding,greenhouse,"{""token"": ""cofraholding""}",skip,
 cognition,cognition-ashby,https://jobs.ashbyhq.com/cognition,ashby,"{""token"": ""cognition""}",skip,
