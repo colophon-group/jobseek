@@ -635,6 +635,27 @@ class TestDomDiscoverInitialFetch:
 
 
 class TestPaginateUrls:
+    async def test_explicit_one_based_start_fetches_page_two_first(self):
+        """``start`` names the already-fetched listing page."""
+        initial = {"https://example.com/jobs/1"}
+        pages: dict[str, str | None] = {
+            "https://example.com/careers?page=2": _html_with_links("https://example.com/jobs/2"),
+            "https://example.com/careers?page=3": _html_with_links("https://example.com/jobs/3"),
+        }
+        with patch(_FETCH_PATCH, new=_make_fetch(pages)):
+            result = await _paginate_urls(
+                "https://example.com/careers",
+                {"param_name": "page", "start": 1, "max_pages": 3},
+                initial,
+                MagicMock(),
+            )
+
+        assert result == {
+            "https://example.com/jobs/1",
+            "https://example.com/jobs/2",
+            "https://example.com/jobs/3",
+        }
+
     async def test_accumulates_urls(self):
         """Pages with different job links get merged."""
         initial = {"https://example.com/jobs/1"}
@@ -819,6 +840,19 @@ class TestPaginateUrls:
 
         assert attempts == 3
         assert exc_info.value.last_status == 403
+
+    async def test_transient_403_must_be_boolean(self):
+        with pytest.raises(ValueError, match="transient_403 must be a boolean"):
+            await _paginate_urls(
+                "https://example.com/careers",
+                {
+                    "param_name": "page",
+                    "max_pages": 5,
+                    "transient_403": "true",
+                },
+                {"https://example.com/job/1"},
+                MagicMock(),
+            )
 
     async def test_browser_path_propagates_persistent_fetch_error(self, monkeypatch):
         """Same contract as the static path, but for ``pagination.browser=true``

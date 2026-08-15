@@ -923,7 +923,7 @@ class TestBnpParibasBoardConfig:
         assert monitor_config["rescrape_policy"] == "never"
         assert monitor_config["pagination"] == {
             "param_name": "page",
-            "start": 0,
+            "start": 1,
             "increment": 1,
             "max_pages": 1000,
             "transient_403": True,
@@ -935,8 +935,8 @@ class TestBnpParibasBoardConfig:
         <main>
           <h1>London - Long Internship 2026 - ABS/CLO Trading</h1>
           <dl>
-            <dt>Job type</dt><dd>Trainee / Internship</dd>
             <dt>Brand</dt><dd>BNP Paribas CIB</dd>
+            <dt>Schedule</dt><dd>Full-Time/Part-Time</dd>
             <dt>Location</dt><dd>London, England, United Kingdom</dd>
           </dl>
           <p>Last update 13.08.2026</p>
@@ -952,7 +952,7 @@ class TestBnpParibasBoardConfig:
         """
         content = parse_html(sample_html, scraper_config)
         assert content.title == "London - Long Internship 2026 - ABS/CLO Trading"
-        assert content.employment_type == "Trainee / Internship"
+        assert content.employment_type is None
         assert content.locations == ["London, England, United Kingdom"]
         assert content.date_posted == "13.08.2026"
         assert "Support the ABS/CLO trading team" in content.description
