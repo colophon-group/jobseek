@@ -1919,9 +1919,7 @@ class TestCanvasAutoDetect:
             )
 
         assert meta is not None
-        assert meta["url_template"] == (
-            "https://careers.example.com/global/en/job/{jobId}"
-        )
+        assert meta["url_template"] == ("https://careers.example.com/global/en/job/{jobId}")
 
     def test_scraper_can_handle_phenom_canvas_detail(self):
         """Embedded scraper auto-detects phApp.ddo detail pages at depth 3."""
