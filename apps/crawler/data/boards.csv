@@ -5727,7 +5727,6 @@ vaco-llc,vaco-llc-greenhouse,https://job-boards.greenhouse.io/vaco,greenhouse,"{
 vail-health-hospital,vail-health-hospital-greenhouse,https://job-boards.greenhouse.io/vailclinicincdbavailhealthhospital,greenhouse,"{""token"": ""vailclinicincdbavailhealthhospital""}",skip,
 vale,vale-eightfold,https://vale.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/""}",eightfold,
 valera-health,valera-health-greenhouse,https://job-boards.greenhouse.io/valerahealth,greenhouse,"{""token"": ""valerahealth""}",skip,
-valiant,valiant-prospective,https://jobs.valiant.ch/public/v1/careercenter/1000394/?lang=de,prospective,"{""tenant"": ""1000394"", ""lang"": ""de""}",json-ld,
 valiant,valiant-successfactors,https://careers.valiant.ch/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.valiant.ch/googlefeed.xml""}",skip,
 validio,validio-main,https://jobs.validio.io/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://jobs.validio.io/jobs.rss""}",skip,
 valo-health,valo-health-greenhouse,https://job-boards.greenhouse.io/valohealth,greenhouse,"{""token"": ""valohealth""}",skip,

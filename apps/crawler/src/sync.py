@@ -38,7 +38,6 @@ if TYPE_CHECKING:
 
 from src.config import settings
 from src.core.monitors import api_monitor_types, monitor_needs_browser
-from src.core.monitors.prospective import prospective_request_host
 from src.core.occupation_resolve import match_occupation, occupation_locale_columns
 from src.core.scrapers import scraper_needs_browser
 from src.db import close_all_pools, create_local_pool, create_pool, create_web_pool
@@ -655,10 +654,6 @@ def _compute_throttle_key(
             return resolved.host
     if monitor_type == "avature":
         resolved_host = avature_request_host(board_url, metadata or {})
-        if resolved_host:
-            return resolved_host
-    if monitor_type == "prospective":
-        resolved_host = prospective_request_host(board_url, dict(metadata or {}))
         if resolved_host:
             return resolved_host
     if monitor_type == "pageup":
