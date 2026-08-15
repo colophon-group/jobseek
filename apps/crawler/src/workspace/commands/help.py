@@ -689,15 +689,19 @@ linkedin — LinkedIn public guest-jobs endpoints
   Returns:  Rich summaries (URL, title, location, date)
   Scraper:  Auto-configured (linkedin) — enriches description and work types
   Cap:      1,000 jobs
+  Scope:    Worldwide, newest first (avoids location/ranking truncation)
   Note:     Intended for companies whose official careers link points only to
             LinkedIn. Prefer a first-party ATS whenever one exists.
 
   Config:
-    {"company_id": "109559449", "company_slug": "damora-therapeutics"}
+    {"company_id": "109559449", "company_slug": "damora-therapeutics",
+     "keywords": "Damora Therapeutics"}
 
     company_id    Numeric LinkedIn company ID (the f_C search-filter value).
                   Auto-resolved for active company jobs pages during probing.
     company_slug  Optional exact company slug used to reject unrelated cards.
+    keywords      Optional company-name search term for tenants where LinkedIn's
+                  company filter returns only a ranked subset without it.
 
   Detection:  ws probe shows "LinkedIn guest jobs — company: X, N jobs"
   Zero jobs?  Verify the f_C value; an empty company board is valid."""

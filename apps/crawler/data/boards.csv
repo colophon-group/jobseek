@@ -2892,6 +2892,8 @@ itm-radiopharma,itm-radiopharma-careers,https://itm.onlyfy.jobs/en,nextdata,"{""
 its-logistics-llc,its-logistics-llc-greenhouse,https://job-boards.greenhouse.io/itslogisticsllc,greenhouse,"{""token"": ""itslogisticsllc""}",skip,
 ivalua,ivalua-greenhouse,https://job-boards.greenhouse.io/ivalua,greenhouse,"{""token"": ""ivalua""}",skip,
 ixl-learning,ixl-learning-greenhouse,https://job-boards.greenhouse.io/ixllearning,greenhouse,"{""token"": ""ixllearning""}",skip,
+ixm,ixm-china-campus,https://app.mokahr.com/campus-recruitment/ixmetals/140496?locale=zh-CN,mokahr,"{""org_id"": ""ixmetals"", ""site_id"": 140496, ""locale"": ""zh-CN""}",mokahr,"{""enrich"": [""description""]}"
+ixm,ixm-linkedin,https://www.linkedin.com/company/ixm/jobs/,linkedin,"{""company_id"": ""18656467"", ""company_slug"": ""ixm"", ""keywords"": ""IXM""}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 j-safra-sarasin,j-safra-sarasin-careers,https://jsafrasarasin.umantis.com/Jobs/All,umantis,"{""customer_id"": ""jsafrasarasin"", ""cname"": ""jsafrasarasin.umantis.com"", ""region"": """"}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""li"", ""field"": ""locations""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop"": ""Apply""}]}"
 jade-biosciences,jade-biosciences-greenhouse,https://job-boards.greenhouse.io/jadebiosciences,greenhouse,"{""token"": ""jadebiosciences""}",skip,
 jane-street,jane-street-greenhouse,https://job-boards.greenhouse.io/janestreet,greenhouse,"{""token"": ""janestreet""}",skip,
