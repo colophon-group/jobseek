@@ -150,7 +150,9 @@ async def _run(dry_run: bool, batch_size: int) -> None:
 
         total = 0
         for row in rows:
-            log.info("backfill.stuck", crawler_type=row["crawler_type"], count=row["cnt"])
+            log.info(
+                "backfill.stuck", crawler_type=row["crawler_type"], count=row["cnt"]
+            )
             total += row["cnt"]
         log.info("backfill.total_stuck", count=total)
 
