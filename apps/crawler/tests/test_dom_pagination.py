@@ -332,6 +332,21 @@ class TestDomDiscoverInitialFetch:
 
         assert result == set()
 
+    @pytest.mark.parametrize("selector", ["", "   ", "a[", "a\x00b", "a" * 257, 123])
+    async def test_rejects_invalid_or_unbounded_link_selector(self, selector):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text="<html></html>", request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="link_selector"):
+                await dom_discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": {"link_selector": selector},
+                    },
+                    client,
+                )
+
     async def test_fragment_only_self_link_is_not_a_job(self):
         page = _html_with_links("#pagetop")
 
