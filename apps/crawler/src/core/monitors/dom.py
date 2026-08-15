@@ -372,6 +372,12 @@ _INCAPSULA_INTERSTITIAL_MARKERS = (
     'id="main-iframe"',
     "/_incapsula_resource?cwudnsai=",
 )
+_RADWARE_CHALLENGE_MARKERS = (
+    "validate.perfdrive.com",
+    "<title>radware captcha page",
+    "botmanager_support@radware.com",
+    "captcha.perfdrive.com/captcha-public/",
+)
 
 
 class BotChallengeError(RuntimeError):
@@ -399,7 +405,14 @@ def _raise_if_bot_challenge(url: str, html: str) -> None:
     is_incapsula_interstitial = all(
         marker in haystack for marker in _INCAPSULA_INTERSTITIAL_MARKERS
     )
-    if is_siteground or is_cloudflare or is_verification_interstitial or is_incapsula_interstitial:
+    is_radware = any(marker in haystack for marker in _RADWARE_CHALLENGE_MARKERS)
+    if (
+        is_siteground
+        or is_cloudflare
+        or is_verification_interstitial
+        or is_incapsula_interstitial
+        or is_radware
+    ):
         raise BotChallengeError(
             f"bot challenge detected for {url}; configure or verify proxy transport"
         )
