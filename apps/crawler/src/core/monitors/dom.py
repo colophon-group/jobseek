@@ -96,8 +96,22 @@ _VAGAS_JOB_FILTER = (
     r"oportunidade/[^?#]+/\d+(?:[?#].*)?$"
 )
 
-_REXX_MARKER = "rexx-systems.com"
-_REXX_JOB_FILTER = r"(?:-j\d+\.html|/job-offer\.html\?yid=\d+)(?:[&#].*)?$"
+_REXX_PROVIDER_HOSTS = frozenset({"rexx-systems.com", "www.rexx-systems.com"})
+_REXX_JOB_PATH_FILTER = r"/(?:[^/?#]+/)*(?:[^/?#]+-j\d+\.html|job-offer\.html\?yid=\d+)(?:[&#].*)?$"
+
+
+def _rexx_url_filter(url: str) -> str | None:
+    """Build a same-origin detail filter for a Rexx listing URL."""
+    parsed = urlsplit(url)
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+    ):
+        return None
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    return rf"^{re.escape(origin)}{_REXX_JOB_PATH_FILTER}"
 
 
 def _vagas_probe_config(url: str) -> dict | None:
@@ -144,14 +158,22 @@ def _rexx_probe_config(html: str, url: str) -> dict | None:
     from selecting that alert page while preserving localized job URLs.
     """
 
-    if _REXX_MARKER not in html.casefold():
+    parser = _LinkExtractor()
+    parser.feed(html)
+    if not any(
+        (urlparse(urljoin(url, href)).hostname or "").casefold() in _REXX_PROVIDER_HOSTS
+        for href in parser.hrefs
+    ):
         return None
 
-    matcher = _build_url_matcher(_REXX_JOB_FILTER)
+    url_filter = _rexx_url_filter(url)
+    if url_filter is None:
+        return None
+    matcher = _build_url_matcher(url_filter)
     urls = _extract_links_static(html, url, matcher)
     return {
         "urls": len(urls),
-        "url_filter": _REXX_JOB_FILTER,
+        "url_filter": url_filter,
     }
 
 

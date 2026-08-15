@@ -960,6 +960,48 @@ class TestBnpParibasBoardConfig:
         assert "Another role" not in content.description
 
 
+class TestLgtGroupBoardConfig:
+    def test_three_distinct_sources_and_same_origin_rexx_filter(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {row["board_slug"]: row for row in rows if row["company_slug"] == "lgt-group"}
+        assert set(by_slug) == {
+            "lgt-group-capital-partners-workday",
+            "lgt-group-global",
+            "lgt-group-venture-philanthropy",
+        }
+
+        global_board = by_slug["lgt-group-global"]
+        assert global_board["monitor_type"] == "workday"
+        assert json.loads(global_board["monitor_config"]) == {
+            "company": "lgt",
+            "wd_instance": "wd3",
+            "site": "lgtcurrentvacancies",
+        }
+
+        capital_board = by_slug["lgt-group-capital-partners-workday"]
+        assert capital_board["monitor_type"] == "workday"
+        assert json.loads(capital_board["monitor_config"]) == {
+            "company": "lgtcp",
+            "wd_instance": "wd502",
+            "site": "lgtcpcurrentvacancies",
+        }
+
+        venture_board = by_slug["lgt-group-venture-philanthropy"]
+        assert venture_board["monitor_type"] == "dom"
+        assert venture_board["scraper_type"] == "json-ld"
+        assert json.loads(venture_board["monitor_config"]) == {
+            "url_filter": (
+                r"^https://talent\.lgtvp\.com/(?:[^/?#]+/)*"
+                r"(?:[^/?#]+-j\d+\.html|job-offer\.html\?yid=\d+)(?:[&#].*)?$"
+            )
+        }
+
+
 class TestHasbroBoardConfig:
     """Hasbro's retired Eightfold board returns 404; keep it on Greenhouse."""
 
