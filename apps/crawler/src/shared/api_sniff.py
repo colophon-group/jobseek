@@ -340,7 +340,8 @@ def _nested_scalar_paths(item: dict, prefix: str = "") -> list[tuple[str, str, o
     """
     paths: list[tuple[str, str, object]] = []
     for key, value in item.items():
-        path = f"{prefix}.{key}" if prefix else key
+        path_key = _quote_key(key)
+        path = f"{prefix}.{path_key}" if prefix else path_key
         if isinstance(value, dict):
             paths.extend(_nested_scalar_paths(value, path))
         elif not isinstance(value, (list, tuple, set)):
@@ -372,22 +373,9 @@ def find_url_field(items: list[dict]) -> str | None:
         return None
     sample = items[:5]
 
-    # By field name
-    for item in sample:
-        for key in item:
-            if URL_FIELDS.search(key) and any(
-                _looks_like_url(str(it.get(key, ""))) for it in sample
-            ):
-                return key
-
-    # By value pattern
-    for key in sample[0]:
-        if all(_looks_like_url(str(it.get(key, ""))) for it in sample if key in it):
-            return key
-
-    # Nested dictionary paths, e.g. Prospective's ``links.directlink``.
-    # Rank candidates so a canonical/detail page wins over a sibling apply
-    # endpoint when both are present in every item.
+    # Rank named candidates across both top-level and nested dictionary paths,
+    # e.g. Prospective's ``links.directlink``. Considering them together makes
+    # a canonical/detail page win even when the sibling apply URL is top-level.
     from src.shared.nextdata import resolve_path
 
     candidates: list[tuple[int, int, str]] = []
@@ -401,6 +389,16 @@ def find_url_field(items: list[dict]) -> str | None:
             candidates.append((_url_field_priority(key), -len(candidates), path))
     if candidates:
         return max(candidates)[2]
+
+    # Value-pattern fallback for APIs whose URL field has an unusual name.
+    # Keep this at the top level to avoid selecting unrelated nested links.
+    for key, value in sample[0].items():
+        if isinstance(value, (dict, list, tuple, set)):
+            continue
+        path = _quote_key(key)
+        values = [resolve_path(item, path) for item in sample]
+        if all(isinstance(value, str) and _looks_like_url(value) for value in values):
+            return path
 
     return None
 
@@ -541,7 +539,7 @@ def extract_urls(items: list[dict], url_field: str | None, page_url: str) -> lis
         from src.shared.nextdata import resolve_path
 
         for item in items:
-            val = resolve_path(item, url_field) if "." in url_field else item.get(url_field)
+            val = resolve_path(item, url_field)
             if isinstance(val, str) and val:
                 urls.append(urljoin(page_url, val))
     else:

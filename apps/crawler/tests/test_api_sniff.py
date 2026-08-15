@@ -196,6 +196,33 @@ class TestFindUrlField:
         ]
         assert find_url_field(items) == "links.directlink"
 
+    def test_nested_canonical_link_wins_over_top_level_apply_url(self):
+        items = [
+            {
+                "apply_url": f"https://ats.example.com/apply/{index}",
+                "links": {"directlink": f"https://example.com/jobs/{index}"},
+            }
+            for index in range(3)
+        ]
+
+        assert find_url_field(items) == "links.directlink"
+
+    def test_nested_key_with_punctuation_is_quoted(self):
+        items = [
+            {"links": {"direct-link": f"https://example.com/jobs/{index}"}} for index in range(3)
+        ]
+
+        assert find_url_field(items) == 'links."direct-link"'
+
+    def test_does_not_select_partially_populated_value_field(self):
+        items = [
+            {"page": "https://example.com/jobs/1"},
+            {"page": None},
+            {"page": "https://example.com/jobs/3"},
+        ]
+
+        assert find_url_field(items) is None
+
     def test_no_match(self):
         items = [
             {"title": "Dev", "score": 10},
@@ -370,6 +397,13 @@ class TestExtractUrls:
         assert extract_urls(items, "links.directlink", "https://example.com/careers") == [
             "https://example.com/jobs/1",
             "https://other.example/jobs/2",
+        ]
+
+    def test_quoted_url_field(self):
+        items = [{"direct-link": "/jobs/1"}]
+
+        assert extract_urls(items, '"direct-link"', "https://example.com/careers") == [
+            "https://example.com/jobs/1"
         ]
 
     def test_no_url_field_fallback(self):
