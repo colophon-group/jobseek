@@ -147,7 +147,6 @@ function runDispatchCompanyProductionSync({
   includeDefaultBranch = true,
   prewarmSha = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   prewarmWatchStatus = 0,
-  deployWatchStatus = 0,
 } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "dispatch-company-sync-"));
   const log = join(dir, "gh.log");
@@ -164,10 +163,7 @@ if [[ "$1 $2" == "run list" ]]; then
     printf '4343\\n'
   fi
 elif [[ "$1 $2" == "run watch" ]]; then
-  if [[ "$3" == "4242" ]]; then
-    exit "$MOCK_PREWARM_WATCH_STATUS"
-  fi
-  exit "$MOCK_DEPLOY_WATCH_STATUS"
+  exit "$MOCK_PREWARM_WATCH_STATUS"
 fi
 `,
   );
@@ -181,7 +177,6 @@ fi
     MOCK_GH_LOG: log,
     MOCK_PREWARM_SHA: prewarmSha,
     MOCK_PREWARM_WATCH_STATUS: String(prewarmWatchStatus),
-    MOCK_DEPLOY_WATCH_STATUS: String(deployWatchStatus),
   };
   if (includeDefaultBranch) env.DEFAULT_BRANCH = defaultBranch;
   const result = spawnSync(
@@ -786,7 +781,7 @@ test("maybe-auto-merge script skips image PRs and retries pending merges", () =>
   assert.match(maybeAutoMergeScript, /scheduled\/workflow_run retries will revisit it/);
 });
 
-test("company auto-merges prewarm and deploy before exact-revision production sync", () => {
+test("company auto-merges prewarm before exact-revision production sync without deploying web", () => {
   for (const source of [maybeAutoMergeWorkflow, uploadCompanyImagesWorkflow]) {
     assert.match(
       source,
@@ -800,7 +795,11 @@ test("company auto-merges prewarm and deploy before exact-revision production sy
   );
   assert.match(
     dispatchCompanyProductionSyncScript,
-    /gh workflow run prewarm-company-og-cache\.yml[\s\S]*gh run watch "\$prewarm_run_id"[\s\S]*gh workflow run deploy-web-production\.yml[\s\S]*gh run watch "\$web_deploy_run_id"[\s\S]*gh workflow run sync-data\.yml[\s\S]*-f revision="\$prewarm_sha"/,
+    /gh workflow run prewarm-company-og-cache\.yml[\s\S]*gh run watch "\$prewarm_run_id"[\s\S]*gh workflow run sync-data\.yml[\s\S]*-f revision="\$prewarm_sha"/,
+  );
+  assert.doesNotMatch(
+    dispatchCompanyProductionSyncScript,
+    /deploy-web-production\.yml/,
   );
 
   for (const fixture of [
@@ -814,12 +813,10 @@ test("company auto-merges prewarm and deploy before exact-revision production sy
       : "main";
     const calls = result.calls.trim().split("\n");
     assert.deepEqual(
-      [calls[0], calls[2], calls[3], calls[5], calls[6]],
+      [calls[0], calls[2], calls[3]],
       [
         `workflow run prewarm-company-og-cache.yml --repo colophon-group/jobseek --ref ${expectedBranch} -f concurrency=4`,
         "run watch 4242 --repo colophon-group/jobseek --exit-status",
-        `workflow run deploy-web-production.yml --repo colophon-group/jobseek --ref ${expectedBranch} -f revision=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`,
-        "run watch 4343 --repo colophon-group/jobseek --exit-status",
         `workflow run sync-data.yml --repo colophon-group/jobseek --ref ${expectedBranch} -f revision=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`,
       ],
     );
@@ -829,12 +826,7 @@ test("company auto-merges prewarm and deploy before exact-revision production sy
         `^run list --repo colophon-group/jobseek --workflow prewarm-company-og-cache\\.yml --branch ${expectedBranch} --event workflow_dispatch`,
       ),
     );
-    assert.match(
-      calls[4],
-      new RegExp(
-        `^run list --repo colophon-group/jobseek --workflow deploy-web-production\\.yml --branch ${expectedBranch} --event workflow_dispatch`,
-      ),
-    );
+    assert.doesNotMatch(result.calls, /deploy-web-production\.yml/);
   }
 
   const failedPrewarm = runDispatchCompanyProductionSync({ prewarmWatchStatus: 1 });
@@ -842,10 +834,6 @@ test("company auto-merges prewarm and deploy before exact-revision production sy
   assert.doesNotMatch(failedPrewarm.calls, /workflow run deploy-web-production\.yml/);
   assert.doesNotMatch(failedPrewarm.calls, /workflow run sync-data\.yml/);
 
-  const failedDeploy = runDispatchCompanyProductionSync({ deployWatchStatus: 1 });
-  assert.equal(failedDeploy.status, 1);
-  assert.match(failedDeploy.calls, /workflow run deploy-web-production\.yml/);
-  assert.doesNotMatch(failedDeploy.calls, /workflow run sync-data\.yml/);
 });
 
 test("bot-authored company branch updates dispatch path-aware CI", () => {

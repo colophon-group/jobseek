@@ -63,17 +63,20 @@ company candidates, and public-watchlist document status checks.
 The company matcher is generated from `apps/crawler/data/companies.csv`.
 Registered canonical slugs do not match Proxy at all, so a warm company page
 can reach Vercel's page cache without first consuming a middleware invocation.
-Only slug candidates absent from that deployment's registry enter the
-Typesense status check. `pnpm dev` and `pnpm build` refresh the generated block;
-`pnpm proxy-matchers:check` is available as a read-only freshness gate. The
-production deploy classifier treats the company registry as a web input. For
-bot-authored company merges, the trusted production dispatcher requests and
-waits for that exact revision; the deployment fails closed if main moves before
-promotion. Only then does the crawler sync publish Typesense data and
-invalidate the company CSV cache tag, evicting any route snapshot created in
-the short deploy-before-sync window. The registry is also an explicit input to
-the `@jobseek/web#build` Turbo task; a data-only company change therefore cannot
-restore an older `.next` artifact and skip matcher generation.
+Only slug candidates absent from that deployment's registry enter the bounded
+Typesense status check. That includes newly added companies until the next
+genuine web release, so company data can become visible immediately without
+replacing the current deployment. `pnpm dev` and `pnpm build` refresh the
+generated block; `pnpm proxy-matchers:check` is available as a read-only
+freshness gate. The production deploy classifier deliberately does not treat
+the company registry as a web input: replacing the Next.js build for every
+company addition changes the build-keyed Cache Components namespace and
+cold-starts the entire page cache. The trusted production dispatcher instead
+waits for the exact revision's OG prewarm, then publishes its Typesense data and
+invalidates the company CSV cache tag. The registry remains an explicit input
+to the `@jobseek/web#build` Turbo task so every unrelated, genuine web build
+regenerates the fast bypass matcher from the current registry rather than
+restoring an older `.next` artifact.
 
 The same generator excludes every reserved username prefix from the generic
 two-segment watchlist matcher. This lets explicit multi-segment application

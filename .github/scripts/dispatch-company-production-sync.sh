@@ -45,46 +45,13 @@ fi
 echo "Waiting for company OG prewarm run $prewarm_run_id"
 gh run watch "$prewarm_run_id" --repo "$REPO" --exit-status
 
-# Company routes are compiled out of Proxy from the registry. Bot-authored
-# merges do not emit push workflows, so explicitly deploy and wait for the
-# exact prewarmed revision before publishing its Typesense data. A failure
-# leaves the company unpublished instead of serving it through a stale Proxy
-# matcher or exposing a broken social image.
-web_deploy_started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-gh workflow run deploy-web-production.yml \
-  --repo "$REPO" \
-  --ref "$default_branch" \
-  -f revision="$prewarm_sha"
-
-web_deploy_run_id=""
-for attempt in $(seq 1 30); do
-  web_deploy_run_id=$(gh run list \
-    --repo "$REPO" \
-    --workflow deploy-web-production.yml \
-    --branch "$default_branch" \
-    --event workflow_dispatch \
-    --limit 20 \
-    --json databaseId,createdAt,headSha \
-    --jq ".[] | select(.createdAt >= \"$web_deploy_started\" and .headSha == \"$prewarm_sha\") | .databaseId" \
-    | head -n1)
-  if [[ "$web_deploy_run_id" =~ ^[0-9]+$ ]]; then
-    break
-  fi
-  web_deploy_run_id=""
-  echo "Waiting for web deployment run to appear (attempt $attempt/30)"
-  sleep 2
-done
-
-if [[ -z "$web_deploy_run_id" ]]; then
-  echo "Unable to identify the dispatched web deployment run for $prewarm_sha" >&2
-  exit 1
-fi
-
-echo "Waiting for web deployment run $web_deploy_run_id"
-gh run watch "$web_deploy_run_id" --repo "$REPO" --exit-status
-
-# Publish through the normal CSV sync only after the matching web deployment
-# is live. The sync invalidates the company CSV tag after Typesense is ready.
+# Publish through the normal CSV sync after the matching OG namespace is
+# complete. The deployed Proxy snapshot deliberately does not need to contain
+# a brand-new slug: candidates absent from that snapshot take the bounded
+# Typesense status path until the next genuine web release regenerates the
+# fast bypass matcher. This preserves immediate visibility and hard 404s
+# without replacing the Next.js build ID and cold-starting every page cache.
+# The sync invalidates the company CSV tag after Typesense is ready.
 gh workflow run sync-data.yml \
   --repo "$REPO" \
   --ref "$default_branch" \
