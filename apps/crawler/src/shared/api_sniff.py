@@ -1441,9 +1441,9 @@ async def paginate_all(
             log.debug("api_sniff.page_size_probe_failed", exc_info=True)
 
     # Calculate total pages
-    if result.total_count and page_size > 0 and result.total_count > page_size:
+    if result.total_count is not None and page_size > 0:
         total_pages = min(
-            (result.total_count + page_size - 1) // page_size,
+            max(1, (result.total_count + page_size - 1) // page_size),
             max_pages,
         )
     else:
@@ -1497,7 +1497,11 @@ async def paginate_all(
         current_value += pag.increment
 
     # Warn if pagination increment doesn't match actual page size
-    if pag.style == "offset" and pag.increment > page_size:
+    if (
+        pag.style == "offset"
+        and pag.increment > page_size
+        and (result.total_count is None or result.total_count > page_size)
+    ):
         log.warning(
             "api_sniff.page_size_mismatch",
             configured_increment=pag.increment,
