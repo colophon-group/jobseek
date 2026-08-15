@@ -103,6 +103,7 @@ Monitor Types (cheapest first):
   intervieweb       10      Job URLs          Auto-configured
   jarvi             10      Full job data     No (skipped)
   jazzhr            10      Job URLs          Auto-configured
+  jobbank104        10      Job URLs          Auto-configured JSON-LD
   pageup            10      Full/partial      Auto-enriched DOM
   keka              10      Full job data     No (skipped)
   lever             10      Full job data     No (skipped)
@@ -2045,6 +2046,28 @@ jazzhr — JazzHR / ApplyToJob static listing
   Detection:  ws probe shows "JazzHR static listing — tenant: X, N jobs"
   Zero jobs?  A valid page still contains the job_listings_wrapper marker."""
 
+MONITOR_JOBBANK104 = """\
+jobbank104 — 104 Job Bank company listing
+
+  Listing:  GET https://www.104.com.tw/company/{token}
+  Returns:  Canonical https://www.104.com.tw/job/{job_id} detail URLs
+  Scraper:  Auto-configured JSON-LD scraper
+  Note:     Uses the public server-rendered employer page instead of 104's
+            Cloudflare-guarded private JSON endpoints. Enable proxy for both
+            monitor and scraper when crawler egress receives a challenge.
+            Count drift produces a truncation-safe result, preventing false
+            delisting when a larger employer page is only partially rendered.
+
+  Config:
+    {"token": "auzu36g", "proxy": true}
+
+    token  Company identifier from /company/{token}. Auto-filled only from an
+           exact unfiltered www.104.com.tw company URL.
+    proxy  Routes company and detail requests through the configured provider.
+
+  Detection:  ws probe shows "104 Job Bank company listing — token: X, N jobs"
+  Zero jobs?  A valid page explicitly advertises 工作機會(0)."""
+
 MONITOR_ICIMS = """\
 icims — iCIMS server-rendered listings
 
@@ -3122,6 +3145,7 @@ MONITOR_CARDS: dict[str, str] = {
     "brassring": MONITOR_BRASSRING,
     "paycom": MONITOR_PAYCOM,
     "jazzhr": MONITOR_JAZZHR,
+    "jobbank104": MONITOR_JOBBANK104,
     "jobvite": MONITOR_JOBVITE,
     "pageup": MONITOR_PAGEUP,
     "icims": MONITOR_ICIMS,

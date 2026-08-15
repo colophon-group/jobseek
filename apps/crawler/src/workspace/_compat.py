@@ -148,6 +148,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "icims",
     "intervieweb",
     "jazzhr",
+    "jobbank104",
     "jobvite",
     "jobs_ch",
     "join",
@@ -360,6 +361,16 @@ def detect_ats_from_url(url: str) -> str | None:
         )
     ):
         return "jazzhr"
+    if (
+        host == "www.104.com.tw"
+        and not parsed.query
+        and re.fullmatch(
+            r"/company/[a-z0-9]{5,16}/?",
+            parsed.path,
+            re.IGNORECASE,
+        )
+    ):
+        return "jobbank104"
     if (
         host.endswith(".icims.com")
         and host.count(".") == 2
@@ -737,6 +748,8 @@ def auto_scraper_type(
         return ("nextdata", None)
     if monitor_type == "jazzhr":
         return ("jazzhr", None)
+    if monitor_type == "jobbank104":
+        return ("json-ld", None)
     if monitor_type == "jobvite":
         return ("json-ld", None)
     if monitor_type == "icims":

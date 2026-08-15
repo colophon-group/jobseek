@@ -927,6 +927,10 @@ _MONITOR_CONFIG_HINTS = {
     "brassring": "Requires: partner_id and site_id (auto-filled from a TGnewUI URL)",
     "paycom": "Requires: token (auto-filled from a Paycom public portal URL)",
     "jazzhr": "Requires: tenant (auto-filled from an applytojob.com URL)",
+    "jobbank104": (
+        "Requires: token (auto-filled from a www.104.com.tw/company URL); "
+        "use proxy when challenged"
+    ),
     "jobvite": "Requires: tenant + listing_url (auto-filled from a jobs.jobvite.com URL)",
     "pageup": "Requires: instance, source_pointer, locale (auto-filled from a PageUp URL)",
     "icims": "Requires: host (auto-filled from an icims.com URL)",

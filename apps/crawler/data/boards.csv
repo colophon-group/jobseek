@@ -991,6 +991,11 @@ built-robotics,built-robotics-ashby,https://jobs.ashbyhq.com/built-robotics,ashb
 built-technologies,built-technologies-greenhouse,https://job-boards.greenhouse.io/getbuilt,greenhouse,"{""token"": ""getbuilt""}",skip,
 bumble,bumble-careers,https://jobs.lever.co/bumbleinc,lever,"{""token"": ""bumbleinc""}",skip,
 bunq,bunq-careers,https://careers.bunq.com/all-openings,dom,"{""url_filter"": ""/positions/""}",dom,"{""render"": true, ""steps"": [{""tag"": ""title"", ""field"": ""title"", ""regex"": ""^(.+?) at bunq""}, {""text"": ""Ready to get shit done?"", ""field"": ""description"", ""stop"": ""Apply now"", ""html"": true, ""optional"": true}, {""text"": ""Apply now"", ""offset"": 2, ""field"": ""job_location_type""}, {""offset"": 0, ""field"": ""locations"", ""stop"": ""40"", ""stop_count"": 6}]}"
+bureau-veritas,bureau-veritas-canada-labs,https://bureauveritas.applytojob.com/apply/,jazzhr,"{""tenant"": ""bureauveritas""}",jazzhr,
+bureau-veritas,bureau-veritas-global,https://careers.bureauveritas.com/go/Our-job-offers/4113401/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.bureauveritas.com/googlefeed.xml"", ""variant"": ""feed""}",skip,
+bureau-veritas,bureau-veritas-japan,https://hrmos.co/pages/bureauveritas/jobs,hrmos,"{""tenant"": ""bureauveritas""}",json-ld,
+bureau-veritas,bureau-veritas-taiwan,https://www.104.com.tw/company/auzu36g,jobbank104,"{""token"": ""auzu36g"", ""proxy"": true}",json-ld,"{""proxy"": true}"
+bureau-veritas,bureau-veritas-taiwan-cps,https://www.104.com.tw/company/a3upryg,jobbank104,"{""token"": ""a3upryg"", ""proxy"": true}",json-ld,"{""proxy"": true}"
 business-insider,business-insider-greenhouse,https://job-boards.greenhouse.io/insider,greenhouse,"{""token"": ""insider""}",skip,
 butternut-box,butternut-box-greenhouse,https://job-boards.greenhouse.io/butternutbox,greenhouse,"{""token"": ""butternutbox""}",skip,
 bux,bux-main,https://careers.getbux.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.getbux.com/jobs.rss""}",skip,
