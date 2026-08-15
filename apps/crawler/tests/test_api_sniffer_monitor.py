@@ -501,6 +501,7 @@ class TestCanHandle:
                 "date_posted": "start_date",
                 "metadata.language": "language",
                 "metadata.end_date": "end_date",
+                "metadata.ats_job_id": "id",
                 "description": [
                     "=<h3>Tasks</h3>",
                     "szas.sza_tasks",
@@ -519,6 +520,19 @@ class TestCanHandle:
             "total": 2,
             "score": 100,
         }
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://ohws.prospective.ch/public/v1/careercenter/1002048/",
+            "https://ohws.prospective.ch:8443/public/v1/careercenter/1002048/",
+            "https://user@ohws.prospective.ch/public/v1/careercenter/1002048/",
+            "https://example.com/public/v1/careercenter/1002048/",
+        ],
+    )
+    async def test_prospective_careercenter_rejects_noncanonical_origin(self, url):
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda request: None)) as client:
+            assert await can_handle(url, client, pw=None) is None
 
 
 @pytest.fixture(autouse=True)
