@@ -268,7 +268,12 @@ def _extract_salary(item: dict, cfg: dict) -> dict | None:
 # ---------------------------------------------------------------------------
 
 
-def _find_jobs_path(data: dict, paths: list[str] | None = None) -> tuple[str, int] | None:
+def _find_jobs_path(
+    data: dict,
+    paths: list[str] | None = None,
+    *,
+    allow_nested: bool = False,
+) -> tuple[str, int] | None:
     """Search common paths for a plausible jobs array. Returns (path, count) or None."""
     for path in paths or _COMMON_PATHS:
         arr = resolve_path(data, path)
@@ -278,7 +283,9 @@ def _find_jobs_path(data: dict, paths: list[str] | None = None) -> tuple[str, in
             and all(isinstance(item, dict) for item in arr[:5])
         ):
             return path, len(arr)
-    return _find_nested_jobs_path(data)
+    if allow_nested:
+        return _find_nested_jobs_path(data)
+    return None
 
 
 def _find_nested_jobs_path(data: dict) -> tuple[str, int] | None:
@@ -380,7 +387,7 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
         # Try RSC flight payload (Next.js App Router)
         data = extract_rsc_data(html)
         if data:
-            result = _find_jobs_path(data, _RSC_PATHS)
+            result = _find_jobs_path(data, _RSC_PATHS, allow_nested=True)
             if result:
                 path, count = result
                 log.info("nextdata.detected", url=url, source="rsc", path=path, count=count)
@@ -411,7 +418,7 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
         ]:
             data = extractor(rendered_html)
             if data:
-                result = _find_jobs_path(data, paths)
+                result = _find_jobs_path(data, paths, allow_nested=source == "rsc")
                 if result:
                     path, count = result
                     log.info(

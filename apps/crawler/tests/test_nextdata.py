@@ -12,6 +12,7 @@ from src.core.monitors.nextdata import (
     _add_query_param,
     _build_url,
     _extract_salary,
+    _find_jobs_path,
     _resolve_field,
     can_handle,
     discover,
@@ -568,6 +569,23 @@ class TestFetchMethods:
 
 
 class TestCanHandle:
+    def test_nested_job_search_is_opt_in_for_rsc_payloads(self):
+        jobs = [
+            {
+                "id": f"job-{i}",
+                "title": "Watchmaker",
+                "description": f"Build watch movements {i}",
+            }
+            for i in range(6)
+        ]
+        data = {"component": {"items": jobs}}
+
+        assert _find_jobs_path(data) is None
+        assert _find_jobs_path(data, allow_nested=True) == (
+            "component.items",
+            6,
+        )
+
     async def test_nextjs_page_with_jobs(self):
         # can_handle requires >=5 items to consider the array plausible
         data = {
