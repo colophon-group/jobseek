@@ -3178,7 +3178,7 @@ lg,lg-careers-greenhouse,https://job-boards.greenhouse.io/lgelectronics,greenhou
 lg-energy-solution-arizona,lg-energy-solution-arizona-greenhouse,https://job-boards.greenhouse.io/lgenergyaz,greenhouse,"{""token"": ""lgenergyaz""}",skip,
 lgt-group,lgt-group-capital-partners-workday,https://lgtcp.wd502.myworkdayjobs.com/lgtcpcurrentvacancies,workday,"{""company"": ""lgtcp"", ""wd_instance"": ""wd502"", ""site"": ""lgtcpcurrentvacancies""}",workday,
 lgt-group,lgt-group-global,https://lgt.wd3.myworkdayjobs.com/lgtcurrentvacancies,workday,"{""company"": ""lgt"", ""wd_instance"": ""wd3"", ""site"": ""lgtcurrentvacancies""}",workday,
-lgt-group,lgt-group-venture-philanthropy,https://talent.lgtvp.com/job-offers.html,dom,"{""url_filter"": ""(?:-j\\d+\\.html|/job-offer\\.html\\?yid=\\d+)(?:[&#].*)?$""}",json-ld,
+lgt-group,lgt-group-venture-philanthropy,https://talent.lgtvp.com/job-offers.html,dom,"{""url_filter"": ""^https://talent\\.lgtvp\\.com/(?:[^/?#]+/)*(?:[^/?#]+-j\\d+\\.html|job-offer\\.html\\?yid=\\d+)(?:[&#].*)?$""}",json-ld,
 li-fi,li-fi-ashby,https://jobs.ashbyhq.com/li.fi,ashby,"{""token"": ""li.fi""}",skip,
 liberate,liberate-greenhouse,https://job-boards.greenhouse.io/liberate,greenhouse,"{""token"": ""liberate""}",skip,
 liberis,liberis-greenhouse,https://job-boards.greenhouse.io/liberis,greenhouse,"{""token"": ""liberis""}",skip,
