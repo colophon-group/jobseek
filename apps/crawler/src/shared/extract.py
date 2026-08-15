@@ -219,19 +219,27 @@ class FlattenParser(HTMLParser):
         if tag in VOID_TAGS:
             return
 
-        # Pop stack
+        # Pop stack. HTMLParser does not imply optional end tags (for example,
+        # a new ``<li>`` does not close the previous one), so real-world
+        # minified HTML frequently reaches this branch with several open
+        # descendants. Keep ``_skip_depth`` in sync with every entry removed;
+        # otherwise one malformed list inside a skipped header/nav/footer can
+        # make the parser treat the rest of the document as noise.
+        popped: list[tuple[str, dict, bool]] = []
         if self._stack and self._stack[-1][0] == tag:
-            _, _, was_skipped = self._stack.pop()
-            if was_skipped:
-                self._skip_depth = max(0, self._skip_depth - 1)
-                return
+            popped.append(self._stack.pop())
         elif self._stack:
             # Mismatched tag — try to find it
             for i in range(len(self._stack) - 1, -1, -1):
                 if self._stack[i][0] == tag:
-                    while len(self._stack) > i:
-                        self._stack.pop()
+                    popped.extend(self._stack[i:])
+                    del self._stack[i:]
                     break
+
+        skipped_popped = sum(1 for _, _, was_skipped in popped if was_skipped)
+        if skipped_popped:
+            self._skip_depth = max(0, self._skip_depth - skipped_popped)
+            return
 
         if self._skip_depth > 0:
             return
