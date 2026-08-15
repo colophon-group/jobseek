@@ -4967,6 +4967,7 @@ sipfront-gmbh,sipfront-gmbh-join,https://join.com/companies/sipfrontcom,join,"{"
 siren,siren-hibob,https://siren.careers.hibob.com/,hibob,"{""origin"": ""https://siren.careers.hibob.com""}",skip,
 sirona-medical,sirona-medical-greenhouse,https://job-boards.greenhouse.io/sironamedical,greenhouse,"{""token"": ""sironamedical""}",skip,
 sisense,sisense-greenhouse,https://job-boards.greenhouse.io/sisense,greenhouse,"{""token"": ""sisense""}",skip,
+sita,sita-careers,https://careers.sita.aero/jobs,sitemap,"{""sitemap_url"": ""https://careers.sita.aero/sitemap.xml"", ""url_filter"": ""^https://careers\\.sita\\.aero/jobs/""}",json-ld,
 siteline,siteline-greenhouse,https://job-boards.greenhouse.io/siteline,greenhouse,"{""token"": ""siteline""}",skip,
 siteminder,siteminder-ashby,https://jobs.ashbyhq.com/siteminder,ashby,"{""token"": ""siteminder""}",skip,
 sitoo,sitoo-careers,https://careers.sitoo.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.sitoo.com/jobs.rss""}",skip,
