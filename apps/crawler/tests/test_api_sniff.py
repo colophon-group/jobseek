@@ -796,6 +796,33 @@ class TestFetchFactories:
 
 class TestPaginateAllWithFetchFn:
     @pytest.mark.asyncio
+    async def test_advertised_total_complete_on_first_page_makes_no_extra_request(self):
+        page1_items = [{"id": i} for i in range(68)]
+
+        async def unexpected_fetch(method, url, headers, body):
+            raise AssertionError("the authoritative total is already complete")
+
+        ex = _make_exchange(
+            url="https://example.com/api/jobs?offset=0&limit=100",
+            body={"jobs": page1_items, "total": 68},
+        )
+        pag = PaginationInfo(
+            param_name="offset",
+            style="offset",
+            start_value=0,
+            increment=100,
+            location="query",
+        )
+        result = JobListResult(
+            candidate=ArrayCandidate(exchange=ex, json_path="jobs", items=page1_items),
+            url_field=None,
+            total_count=68,
+            pagination=pag,
+        )
+
+        assert await paginate_all(unexpected_fetch, result, max_pages=5) == page1_items
+
+    @pytest.mark.asyncio
     async def test_cumulative_limit_requires_advertised_total(self):
         """Without a total, cumulative pages cannot be bounded or verified."""
         page1_items = [{"id": i} for i in range(10)]
