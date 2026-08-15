@@ -452,7 +452,7 @@ async def _open_persistent_page(
     channel: str | None,
     extra_args: list[str],
     pw_proxy: dict | None,
-    user_agent: str,
+    user_agent: str | None,
     viewport: dict | None,
     locale: str | None,
     cookies: list[dict] | None,
@@ -670,8 +670,12 @@ async def run_actions(page, actions: list[dict]) -> None:
             await asyncio.wait_for(_execute_action(page, action, kind), timeout=timeout)
         except TimeoutError:
             log.warning("browser.action.timeout", action=kind, timeout=timeout)
+            if kind == "paginate_collect":
+                raise
         except Exception:
             log.warning("browser.action.failed", action=kind, exc_info=True)
+            if kind == "paginate_collect":
+                raise
 
 
 async def _execute_action(page, action: dict, kind: str | None) -> None:
@@ -851,7 +855,13 @@ async def _execute_paginate_collect(page, action: dict) -> None:
             break
         await next_el.click()
         await asyncio.sleep(wait_ms / 1000)
-        all_links.update(await page.evaluate(collect_js))
+        page_links = set(await page.evaluate(collect_js))
+        if not page_links - all_links:
+            raise RuntimeError("paginate_collect made no progress after clicking next page")
+        all_links.update(page_links)
+    else:
+        if await page.locator(next_sel).first.count() > 0:
+            raise RuntimeError(f"paginate_collect reached max_pages={max_pages} before the end")
 
     await page.evaluate(
         """urls => {

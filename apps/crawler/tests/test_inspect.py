@@ -1056,6 +1056,57 @@ class TestFidelityInternationalBoardConfig:
         assert "Support Italian wholesale" in content.description
 
 
+class TestSygnumBankBoardConfig:
+    def test_salesforce_board_uses_fail_closed_replacement_pagination(self):
+        import json
+        import re
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(r for r in rows if r["board_slug"] == "sygnum-bank-salesforce")
+        assert row["monitor_type"] == "dom"
+        assert row["scraper_type"] == "json-ld"
+
+        config = json.loads(row["monitor_config"])
+        assert config["render"] is True
+        assert config["wait"] == "domcontentloaded"
+        assert config["actions"] == [
+            {
+                "action": "paginate_collect",
+                "next_selector": 'a.link-pagination:has-text("Next")',
+                "wait_ms": 1000,
+                "max_pages": 10,
+            }
+        ]
+
+        matcher = re.compile(config["url_filter"])
+        assert matcher.search(
+            "https://sygnumpeopleportal.my.salesforce-sites.com/"
+            "recruit/fRecruit__ApplyJob?vacancyNo=VN192"
+        )
+        assert not matcher.search(
+            "https://attacker.example/recruit/fRecruit__ApplyJob?vacancyNo=VN192"
+        )
+
+        scraper_config = json.loads(row["scraper_config"])
+        assert scraper_config["fallback"]["type"] == "dom"
+        assert scraper_config["fallback"]["fields"] == ["description"]
+        from src.core.scrapers.dom import parse_html
+
+        sample_html = """
+        <th>About Sygnum</th><td>Sygnum is a global digital asset banking group.</td>
+        <th>About the role</th><td>Build secure digital asset banking systems.</td>
+        <th>Our ideal candidate</th><td>Write reliable and well-tested code.</td>
+        <th>Employment Type</th><td>Permanent</td>
+        """
+        content = parse_html(sample_html, scraper_config["fallback"]["config"])
+        assert "Build secure digital asset" in content.description
+        assert "Write reliable" in content.description
+        assert "Permanent" not in content.description
+
+
 class TestHasbroBoardConfig:
     """Hasbro's retired Eightfold board returns 404; keep it on Greenhouse."""
 

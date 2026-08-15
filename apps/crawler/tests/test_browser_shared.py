@@ -1324,6 +1324,56 @@ class TestPaginateCollectAction:
             "https://example.com/job/3",
         ]
 
+    async def test_fails_closed_when_next_click_makes_no_progress(self):
+        page = _make_page()
+        page.evaluate = AsyncMock(
+            side_effect=[
+                ["https://example.com/job/1"],
+                ["https://example.com/job/1"],
+            ]
+        )
+
+        with (
+            patch.object(asyncio, "sleep", new_callable=AsyncMock),
+            pytest.raises(RuntimeError, match="made no progress"),
+        ):
+            await run_actions(
+                page,
+                [
+                    {
+                        "action": "paginate_collect",
+                        "next_selector": "a.next",
+                        "wait_ms": 0,
+                        "max_pages": 10,
+                    }
+                ],
+            )
+
+    async def test_fails_closed_when_page_cap_is_exhausted(self):
+        page = _make_page()
+        page.evaluate = AsyncMock(
+            side_effect=[
+                ["https://example.com/job/1"],
+                ["https://example.com/job/2"],
+            ]
+        )
+
+        with (
+            patch.object(asyncio, "sleep", new_callable=AsyncMock),
+            pytest.raises(RuntimeError, match="reached max_pages=1"),
+        ):
+            await run_actions(
+                page,
+                [
+                    {
+                        "action": "paginate_collect",
+                        "next_selector": "a.next",
+                        "wait_ms": 0,
+                        "max_pages": 1,
+                    }
+                ],
+            )
+
 
 # ---------------------------------------------------------------------------
 # TestResolvePlaceholders
