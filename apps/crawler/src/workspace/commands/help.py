@@ -2699,6 +2699,8 @@ Browser Action Pipeline — pre-extraction actions for Playwright
         Use this instead of repeat when each click replaces the current result
         page, including JSF/Visualforce postback pagination. Make next_selector
         exclude the disabled last-page control so pagination terminates cleanly.
+        Pagination errors, no-progress clicks, and page-cap exhaustion fail the
+        board cycle rather than accepting a partial inventory.
 
   Per-action timeout:
     {"action": "click", "selector": ".btn", "timeout": 5}
