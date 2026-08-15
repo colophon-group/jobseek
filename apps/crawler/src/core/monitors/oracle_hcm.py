@@ -108,9 +108,74 @@ _DEFAULT_FIELDS = {
 
 _PAGE_SIZE = 200
 
-_ORACLE_HCM_RE = re.compile(
-    r"(?:\.fa\.|\.fa\.us\d+\.)(?:ocs\.)?oraclecloud\.(?:com|eu)/hcmUI/CandidateExperience",
+_ORACLE_HCM_HOST_RE = re.compile(
+    r"^(?:[a-z0-9-]{1,63}\.)+fa\.(?:(?:[a-z]{2}\d+|ocs)\.)?"
+    r"oraclecloud(?:\d{1,3})?\.(?:com|eu)$",
+    re.IGNORECASE,
 )
+_ORACLE_SITE_RE = re.compile(r"[A-Za-z0-9_-]{1,128}")
+_ORACLE_JOB_ID_RE = re.compile(r"[A-Za-z0-9._-]{1,128}")
+
+
+def _normalize_oracle_host(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    host = value.strip().lower().rstrip(".")
+    return host if _ORACLE_HCM_HOST_RE.fullmatch(host) else None
+
+
+def _normalize_oracle_site(value: object) -> str | None:
+    if not isinstance(value, str):
+        return None
+    return value if _ORACLE_SITE_RE.fullmatch(value) else None
+
+
+def _parse_candidate_url(
+    url: str, *, require_job: bool = False
+) -> tuple[str, str, str | None] | None:
+    """Parse a trusted Oracle Candidate Experience URL."""
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    host = _normalize_oracle_host(parsed.hostname)
+    if (
+        parsed.scheme != "https"
+        or host is None
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+    ):
+        return None
+    parts = [part for part in parsed.path.split("/") if part]
+    if (
+        len(parts) < 5
+        or parts[0:2] != ["hcmUI", "CandidateExperience"]
+        or re.fullmatch(r"[A-Za-z]{2}(?:[-_][A-Za-z]{2})?", parts[2]) is None
+        or parts[3] != "sites"
+    ):
+        return None
+    site = _normalize_oracle_site(parts[4])
+    if site is None:
+        return None
+    tail = parts[5:]
+    job_id: str | None = None
+    if not tail or tail in (["jobs"], ["requisitions"]):
+        pass
+    elif len(tail) == 2 and tail[0] == "job" and _ORACLE_JOB_ID_RE.fullmatch(tail[1]):
+        job_id = tail[1]
+    elif (
+        len(tail) == 3
+        and tail[0:2] == ["requisitions", "preview"]
+        and _ORACLE_JOB_ID_RE.fullmatch(tail[2])
+    ):
+        job_id = tail[2]
+    else:
+        return None
+    if require_job and job_id is None:
+        return None
+    return host, site, job_id
 
 
 def _build_api_url(host: str, site: str) -> str:
@@ -179,18 +244,10 @@ async def can_handle(
     pw=None,
 ) -> dict | None:
     """Detect Oracle Cloud HCM career sites."""
-    if not _ORACLE_HCM_RE.search(url):
+    candidate = _parse_candidate_url(url)
+    if candidate is None:
         return None
-
-    parsed = urlparse(url)
-    host = parsed.hostname
-    # Extract site from path: /en/sites/{site}/...
-    parts = parsed.path.rstrip("/").split("/")
-    try:
-        idx = parts.index("sites")
-        site = parts[idx + 1]
-    except (ValueError, IndexError):
-        return None
+    host, site, _job_id = candidate
 
     # Verify API is accessible
     api_url = _build_api_url(host, site)
@@ -234,19 +291,22 @@ async def discover(
 async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
     """Yield batches of DiscoveredJob per API page, pulsing heartbeats."""
     metadata = board.get("metadata") or {}
-    host = metadata.get("host")
-    site = metadata.get("site")
+    raw_host = metadata.get("host")
+    raw_site = metadata.get("site")
+    host = _normalize_oracle_host(raw_host)
+    site = _normalize_oracle_site(raw_site)
+    if raw_host is not None and host is None:
+        raise ValueError("Oracle HCM host metadata is invalid")
+    if raw_site is not None and site is None:
+        raise ValueError("Oracle HCM site metadata is invalid")
 
     if not host or not site:
-        parsed = urlparse(board["board_url"])
-        host = host or parsed.hostname
-        parts = parsed.path.rstrip("/").split("/")
-        try:
-            idx = parts.index("sites")
-            site = site or parts[idx + 1]
-        except (ValueError, IndexError):
+        candidate = _parse_candidate_url(board["board_url"])
+        if candidate is None:
             log.error("oracle_hcm.missing_host_or_site", board_url=board["board_url"])
             return
+        host = host or candidate[0]
+        site = site or candidate[1]
 
     fields = metadata.get("fields") or _DEFAULT_FIELDS
     offset_overlap = metadata.get("offset_overlap", 0)

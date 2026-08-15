@@ -10,6 +10,7 @@ from src.core.monitors.oracle_hcm import (
     _RETRY_ATTEMPTS,
     _complete_facet_partition,
     _get_with_retry,
+    _parse_candidate_url,
     can_handle,
     discover,
 )
@@ -183,6 +184,69 @@ async def test_scraper_can_handle_oraclecloud_eu_job_url():
     )
 
     assert config == {}
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        (
+            "https://evht.fa.ocs.oraclecloud.eu/hcmUI/CandidateExperience/en/sites/CX_7001",
+            ("evht.fa.ocs.oraclecloud.eu", "CX_7001", None),
+        ),
+        (
+            "https://hcbt.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX/jobs",
+            ("hcbt.fa.em2.oraclecloud.com", "CX", None),
+        ),
+        (
+            "https://emit.fa.ca3.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_2001",
+            ("emit.fa.ca3.oraclecloud.com", "CX_2001", None),
+        ),
+        (
+            "https://iaayey.fa.ocs.oraclecloud26.com/hcmUI/CandidateExperience/en/sites/CX_1",
+            ("iaayey.fa.ocs.oraclecloud26.com", "CX_1", None),
+        ),
+        (
+            "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/requisitions/preview/240348971",
+            ("jpmc.fa.oraclecloud.com", "CX_1001", "240348971"),
+        ),
+    ],
+)
+def test_parse_candidate_url_accepts_supported_oracle_tenants(url, expected):
+    assert _parse_candidate_url(url) == expected
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://evht.fa.ocs.oraclecloud.eu/hcmUI/CandidateExperience/en/sites/CX_7001",
+        "https://user@evht.fa.ocs.oraclecloud.eu/hcmUI/CandidateExperience/en/sites/CX_7001",
+        "https://evht.fa.ocs.oraclecloud.eu:8443/hcmUI/CandidateExperience/en/sites/CX_7001",
+        "https://evil.example/evht.fa.ocs.oraclecloud.eu/hcmUI/CandidateExperience/en/sites/CX_7001",
+        "https://evht.fa.ocs.oraclecloud.eu.evil.example/hcmUI/CandidateExperience/en/sites/CX_7001",
+        "https://evht.fa.ocs.oraclecloud.eu/hcmUI/CandidateExperience/en/sites",
+        "https://evht.fa.ocs.oraclecloud.eu/hcmUI/CandidateExperience/en/sites/CX_7001/other",
+        "https://evht.fa.ocs.oraclecloud.eu/hcmUI/CandidateExperience/en/sites/CX_7001/job/1/extra",
+    ],
+)
+def test_parse_candidate_url_rejects_untrusted_or_malformed_urls(url):
+    assert _parse_candidate_url(url) is None
+
+
+def test_parse_candidate_url_requires_job_route_when_requested():
+    board_url = "https://evht.fa.ocs.oraclecloud.eu/hcmUI/CandidateExperience/en/sites/CX_7001"
+
+    assert _parse_candidate_url(board_url, require_job=True) is None
+
+
+@pytest.mark.asyncio
+async def test_scraper_can_handle_rejects_oracle_lookalike_url():
+    config = await scraper_can_handle(
+        "https://evil.example/evht.fa.ocs.oraclecloud.eu"
+        "/hcmUI/CandidateExperience/en/sites/CX_7001/job/2334",
+        AsyncMock(spec=httpx.AsyncClient),
+    )
+
+    assert config is None
 
 
 @pytest.mark.asyncio
