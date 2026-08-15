@@ -122,7 +122,6 @@ Monitor Types (cheapest first):
   workday           10      Job URLs          Auto-configured
   personio          10      Full/partial      If descriptions missing (fallback)
   practicematch     10      Job URLs          Auto-configured
-  prospective       10      Job URLs          Auto-configured
   notion            15      Job URLs          Auto-configured
   recruiter_co_kr   15      Full job data     No (skipped)
   umantis           15      URL set           Yes
@@ -2098,27 +2097,6 @@ hrmos — HRMOS server-rendered listings
   Detection:  ws probe shows "HRMOS static listing — tenant: X, N jobs"
   Zero jobs?  A valid page still contains the jsi-joblist container and count."""
 
-MONITOR_PROSPECTIVE = """\
-prospective — Prospective Career Center server-rendered listings
-
-  Listing:  GET + form POST pagination at
-            https://ohws.prospective.ch/public/v1/careercenter/{tenant}/
-  Returns:  Stable branded job-detail URLs
-  Scraper:  Auto-configured JSON-LD scraper
-  Note:     Uses the canonical Prospective host even when a branded board CNAME
-            blocks crawler egress. Pagination is unfiltered and follows the
-            server-rendered offset/limit form until its authoritative tail.
-
-  Config:
-    {"tenant": "1000394", "lang": "de"}
-
-    tenant  Numeric Career Center identity, auto-filled from the board URL.
-    lang    Two-letter listing language; defaults to de.
-
-  Detection: ws probe shows "Prospective Career Center — tenant: X, N jobs".
-  Zero jobs? A valid empty Career Center retains its listing form and jobs-list
-             container; missing markers fail instead of delisting jobs."""
-
 MONITOR_API_SNIFFER = """\
 api_sniffer — Direct API Replay or XHR/Fetch Capture
 
@@ -2995,7 +2973,6 @@ MONITOR_CARDS: dict[str, str] = {
     "dayforce": MONITOR_DAYFORCE,
     "herp": MONITOR_HERP,
     "hrmos": MONITOR_HRMOS,
-    "prospective": MONITOR_PROSPECTIVE,
     "recruitee": MONITOR_RECRUITEE,
     "recruiterbox": MONITOR_RECRUITERBOX,
     "keka": MONITOR_KEKA,
