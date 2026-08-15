@@ -650,7 +650,9 @@ async def _paginate_urls(
     increment = pagination.get("increment", 1)
     max_pages = min(pagination.get("max_pages", _MAX_PAGINATION_PAGES), _MAX_PAGINATION_PAGES)
     use_browser = pagination.get("browser", False) and page is not None
-    transient_403 = bool(pagination.get("transient_403", False))
+    transient_403 = pagination.get("transient_403", False)
+    if not isinstance(transient_403, bool):
+        raise ValueError("DOM pagination transient_403 must be a boolean")
     if not url_template and not isinstance(param_name, str):
         raise ValueError("DOM pagination requires param_name or url_template")
 
