@@ -277,7 +277,10 @@ class TestCanHandle:
                 "https://example.tal.net/vx/lang-en-GB/brand-5/candidate/jobboard/vacancy/1/adv/",
                 MagicMock(),
             )
-        assert result == {"urls": 0, "url_filter": r"/opp/"}
+        assert result == {
+            "urls": 0,
+            "url_filter": r"^https://example\.tal\.net/[^?#]*/opp/[^?#]+(?:[?#].*)?$",
+        }
 
     async def test_talentlink_populated_board_counts_only_opportunities(self):
         html = """
@@ -285,7 +288,10 @@ class TestCanHandle:
           WCN.global_config.baseUrl = "https://example.tal.net/vx/candidate";
         </script></head><body>
           <a href="/candidate/jobboard/vacancy/1/adv/">Programmes</a>
-          <a href="/vx/xf-a1b2c3/candidate/so/pm/1/pl/1/opp/42-Analyst/en-GB">Analyst</a>
+          <a href="/vx/xf-a1b2c3/candidate/so/pm/1/pl/1/opp/42-Analyst/en-GB">
+            Analyst
+          </a>
+          <a href="https://attacker.example/opp/999-Fake/en-GB">Other host</a>
           <a href="/candidate/jobboard/talentbank/1">Register interest</a>
         </body></html>
         """
@@ -294,7 +300,10 @@ class TestCanHandle:
                 "https://example.tal.net/vx/candidate/jobboard/vacancy/1",
                 MagicMock(),
             )
-        assert result == {"urls": 1, "url_filter": r"/opp/"}
+        assert result == {
+            "urls": 1,
+            "url_filter": r"^https://example\.tal\.net/[^?#]*/opp/[^?#]+(?:[?#].*)?$",
+        }
 
     async def test_talentlink_preset_does_not_claim_non_board_pages(self):
         html = """

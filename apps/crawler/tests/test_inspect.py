@@ -1002,6 +1002,60 @@ class TestLgtGroupBoardConfig:
         }
 
 
+class TestFidelityInternationalBoardConfig:
+    def test_distinct_workday_and_origin_bound_talentlink_sources(self):
+        import json
+
+        from src.core.scrapers.dom import parse_html
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {
+            row["board_slug"]: row
+            for row in rows
+            if row["company_slug"] == "fidelity-international"
+        }
+        assert set(by_slug) == {
+            "fidelity-international-early-careers",
+            "fidelity-international-professionals",
+        }
+
+        professional = by_slug["fidelity-international-professionals"]
+        assert professional["monitor_type"] == "workday"
+        assert json.loads(professional["monitor_config"]) == {
+            "company": "fil",
+            "wd_instance": "wd3",
+            "site": "001",
+        }
+
+        early = by_slug["fidelity-international-early-careers"]
+        assert early["monitor_type"] == "dom"
+        assert json.loads(early["monitor_config"]) == {
+            "url_filter": (
+                r"^https://fidelityinternational\.tal\.net/"
+                r"[^?#]*/opp/[^?#]+(?:[?#].*)?$"
+            )
+        }
+
+        scraper_config = json.loads(early["scraper_config"])
+        sample_html = """
+        <h1 class="section">J65768 - Wholesale Internship Programme 2026 - Milan</h1>
+        <span>Job description</span>
+        <p>Support Italian wholesale and institutional clients.</p>
+        <div data-item_id="69123">Business Unit</div>
+        <span>Sales and Marketing</span>
+        <div data-item_id="17048">Programme</div>
+        <span>Internship</span>
+        """
+        content = parse_html(sample_html, scraper_config)
+        assert content.title == "Wholesale Internship Programme 2026"
+        assert content.locations == ["Milan"]
+        assert content.employment_type == "Internship"
+        assert content.metadata == {"business_unit": "Sales and Marketing"}
+        assert "Support Italian wholesale" in content.description
+
+
 class TestHasbroBoardConfig:
     """Hasbro's retired Eightfold board returns 404; keep it on Greenhouse."""
 

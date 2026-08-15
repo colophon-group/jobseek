@@ -258,8 +258,8 @@ Link extraction from career pages. By default (``render: false``) fetches via st
 
 Link discovery filters `<a href>` URLs containing job-related keywords (job, career, position, posting, opening, role, vacancy).
 Oleeo/TalentLink vacancy boards use a provider preset that accepts their
-authoritative empty state and limits discovery to real `/opp/` detail links,
-excluding board-switcher, event, and talent-bank navigation.
+authoritative empty state and limits discovery to same-origin `/opp/` detail
+links, excluding board-switcher, event, and talent-bank navigation.
 
 **Returns**: URL set only. Needs a scraper to extract job details.
 
