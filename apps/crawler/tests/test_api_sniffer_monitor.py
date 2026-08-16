@@ -446,7 +446,7 @@ class TestSlugFields:
             _validated_slug_fields({"slug_fields": value})
 
     def test_accepts_field_path_list(self):
-        assert _validated_slug_fields({"slug_fields": ["details.title"]}) == ["details.title"]
+        assert _validated_slug_fields({"slug_fields": [" details.title "]}) == ["details.title"]
 
 
 def _http_status_error_resp(status: int) -> MagicMock:

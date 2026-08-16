@@ -913,7 +913,7 @@ def _validated_slug_fields(config: dict) -> list[str]:
         isinstance(path, str) and path.strip() for path in value
     ):
         raise ValueError("api_sniffer slug_fields must be a list of non-empty field paths")
-    return value
+    return [path.strip() for path in value]
 
 
 def score_array(path: str, items: list[dict], api_url: str) -> int:
