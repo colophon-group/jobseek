@@ -113,7 +113,9 @@ def test_murmur_shim_deploy_promotes_and_persists_the_built_digest() -> None:
     assert 'test ! -L "$live_env"' in workflow
     assert "CRAWLER_IMAGE_REF|BROWSER_IMAGE_REF|SHIM_IMAGE_REF" in workflow
     assert "SHIM_IMAGE_REF=%s" in workflow
-    assert "GHCR_PULL_TOKEN: ${{ secrets.HETZNER_GH_TOKEN }}" in workflow
+    assert "packages: read" in workflow
+    assert "GHCR_PULL_TOKEN: ${{ github.token }}" in workflow
+    assert "HETZNER_GH_TOKEN" not in workflow
     assert "GHCR_PAT:" not in workflow
     assert "DATABASE_URL: ${{ secrets.DATABASE_URL }}" not in workflow
     assert "GHCR_PULL_TOKEN,MURMUR_TOKEN,DATABASE_URL" not in workflow
