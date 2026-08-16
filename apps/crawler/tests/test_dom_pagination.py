@@ -184,9 +184,7 @@ class TestCanHandle:
         assert matcher.search(
             "https://trabalheconosco.vagas.com.br/beiersdorf/oportunidade/role/123"
         )
-        assert not matcher.search(
-            "https://evil.example/beiersdorf/oportunidade/role/123"
-        )
+        assert not matcher.search("https://evil.example/beiersdorf/oportunidade/role/123")
         assert not matcher.search(
             "https://trabalheconosco.vagas.com.br/other/oportunidade/role/123"
         )
@@ -199,8 +197,7 @@ class TestCanHandle:
             "param_name": "pagina",
             "max_pages": 1_000,
             "url_template": (
-                "https://trabalheconosco.vagas.com.br/bdobrazil/"
-                "oportunidades?pagina={page}"
+                "https://trabalheconosco.vagas.com.br/bdobrazil/oportunidades?pagina={page}"
             ),
             "start": 0,
         }
