@@ -48,6 +48,36 @@ window for active abuse. Compare each dimension with its usual baseline:
 - Server Action paths with clockwork cadence or fixed query fingerprints;
 - `public_read.rate_limited` and `public_read.rate_limit_unavailable` events.
 
+The Hobby project needs two complementary sources. The Firewall Traffic
+dashboard exposes IP, ASN, country, user-agent, JA4, path, host, and firewall
+action concentrations, but `vercel metrics` queries require Observability Plus.
+The CLI request-log stream exposes method, response status, cache result,
+deployment, source, and runtime messages, but omits IP, ASN, user-agent, and
+JA4. Do not use either source alone for the daily review.
+
+1. Open [Firewall Traffic](https://vercel.com/viktor-shcherbakovs-projects/jobseek-web/firewall/traffic?range=1d),
+   select **Past Day**, and record the top IPs, ASNs, JA4 digests, user agents,
+   request paths, hosts, and firewall outcomes. Then switch to **Past Hour** to
+   identify attacks that began recently and would be diluted in the daily
+   totals.
+2. For each concentrated path, inspect a bounded recent runtime-log sample:
+
+   ```bash
+   vercel logs --environment production --since 1h \
+     --query 'path:/en/explore' --limit 500 --json
+   ```
+
+   Aggregate method, status, cache/cache reason, timestamp span, source, and
+   repeated error/action identifiers. A saturated 500-entry result is a sample,
+   not a daily total; report its exact time span when deriving a request rate.
+3. Review the unpublished firewall state before recommending any intervention:
+
+   ```bash
+   vercel firewall diff --json
+   ```
+
+   Distinguish staged controls from live controls in every report.
+
 Investigate one client producing more than 300 public read actions in five
 minutes, more than half of a route's requests, or a sustained non-human
 cadence. A browser user-agent alone is not evidence of a browser; corroborate
