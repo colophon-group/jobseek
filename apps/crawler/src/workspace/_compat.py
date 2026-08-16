@@ -254,7 +254,16 @@ def detect_ats_from_url(url: str) -> str | None:
         "api.hh.ru",
         "rabota.by",
         "www.rabota.by",
-        "api.rabota.by",
+        "hh1.az",
+        "www.hh1.az",
+        "hh.uz",
+        "www.hh.uz",
+        "hh.kz",
+        "www.hh.kz",
+        "headhunter.ge",
+        "www.headhunter.ge",
+        "headhunter.kg",
+        "www.headhunter.kg",
     } and (
         re.fullmatch(r"/employer/\d+/?", parsed.path, re.IGNORECASE)
         or (
