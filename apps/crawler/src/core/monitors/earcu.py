@@ -113,6 +113,7 @@ def _parse_feed(text: str, feed_url: str) -> list[DiscoveredJob]:
                 "reference": _text(position, "VacancyRef"),
                 "job_function": _text(position, "JobFunction"),
                 "brand": _text(position, "Brand"),
+                "salary_description": _text(position, "DisplaySalaryDescription"),
             }.items()
             if value is not None
         }
@@ -123,7 +124,6 @@ def _parse_feed(text: str, feed_url: str) -> list[DiscoveredJob]:
                 description=_text(position, "Description"),
                 locations=locations or None,
                 date_posted=_text(position, "LastPublishedDate"),
-                base_salary=_text(position, "DisplaySalaryDescription"),
                 metadata=metadata or None,
             )
         )

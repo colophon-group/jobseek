@@ -72,6 +72,7 @@ def test_parse_feed_returns_rich_jobs():
         "reference": "1408",
         "job_function": "Sales",
         "brand": "Travelbag",
+        "salary_description": "Competitive",
     }
     assert jobs[1].url == "https://careers.example/jobs/vacancy/branch-manager/1425/description/"
 
