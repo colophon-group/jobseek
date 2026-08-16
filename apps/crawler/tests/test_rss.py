@@ -491,6 +491,70 @@ class TestDiscover:
 
         assert jobs[0].description is None
 
+    async def test_successfactors_can_enrich_legal_employer(self):
+        feed_xml = _rss_xml(f"""
+            <item>
+                <title>Pilot (Lisbon, PT)</title>
+                <link>https://example.com/job/1</link>
+                <description>Full description</description>
+                <g:location xmlns:g="{_G_NS}">Lisbon, PT</g:location>
+            </item>
+        """)
+
+        def handler(request):
+            if request.url.path == "/googlefeed.xml":
+                return httpx.Response(200, text=feed_xml)
+            return httpx.Response(
+                200,
+                text=(
+                    '<span data-careersite-propertyid="customfield1">'
+                    "Executive Jet Management (Europe) Limited</span>"
+                ),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": {
+                        "preset": "successfactors",
+                        "feed_url": "https://example.com/googlefeed.xml",
+                        "fetch_company": True,
+                    },
+                },
+                client,
+            )
+
+        assert jobs[0].metadata["company"] == "Executive Jet Management (Europe) Limited"
+
+    async def test_successfactors_company_enrichment_fails_closed(self):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Pilot</title>
+                <link>https://example.com/job/1</link>
+                <description>Full description</description>
+            </item>
+        """)
+
+        def handler(request):
+            if request.url.path == "/googlefeed.xml":
+                return httpx.Response(200, text=feed_xml)
+            return httpx.Response(503)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(RuntimeError, match="company enrichment failed"):
+                await discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": {
+                            "preset": "successfactors",
+                            "feed_url": "https://example.com/googlefeed.xml",
+                            "fetch_company": True,
+                        },
+                    },
+                    client,
+                )
+
     async def test_teamtailor_preset_paginated(self):
         page1_xml = _rss_xml("""
             <item>

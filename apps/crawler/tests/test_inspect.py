@@ -1135,6 +1135,38 @@ class TestHasbroBoardConfig:
         assert row["scraper_config"] == ""
 
 
+class TestNetJetsMixedTenantConfig:
+    """NetJets' SAP feed also publishes independently recruiting brands (#6880)."""
+
+    def test_regional_boards_fetch_and_filter_legal_employer(self):
+        import json
+        import re
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {row["board_slug"]: row for row in rows}
+
+        europe = by_slug["netjets-europe"]
+        us = by_slug["netjets-us"]
+        for row, path in ((europe, "/europe/job/"), (us, "/us/job/")):
+            assert row["monitor_type"] == "rss"
+            assert row["scraper_type"] == "skip"
+            config = json.loads(row["monitor_config"])
+            assert config["preset"] == "successfactors"
+            assert config["fetch_company"] is True
+            assert config["url_filter"] == path
+
+        europe_exclude = re.compile(json.loads(europe["monitor_config"])["job_filter"]["exclude"])
+        us_exclude = re.compile(json.loads(us["monitor_config"])["job_filter"]["exclude"])
+        assert europe_exclude.search("Executive Jet Management (Europe) Limited")
+        assert europe_exclude.search("Praetor 600 (EJME)")
+        assert not europe_exclude.search("NetJets Management Limited")
+        assert us_exclude.search("QS Security Services LLC")
+        assert not us_exclude.search("NetJets Aviation, Inc.")
+
+
 class TestNokiaSitemapFilter:
     """Nokia's Oracle HCM sitemap contains localized non-job pages (#4964)."""
 

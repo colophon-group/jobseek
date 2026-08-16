@@ -159,6 +159,11 @@ All monitors support url_filter to include/exclude URLs by regex:
   "url_filter": "/jobs/"                          Include only
   "url_filter": {"include": "/jobs/", "exclude": "/blog/"}
 
+Rich monitors support job_filter to include/exclude discovered job content:
+  "job_filter": {"exclude": "(?i)subsidiary name"}
+  Matches title, description, locations, and metadata. URL-only monitors
+  cannot apply this filter.
+
 All monitors support url_transform to rewrite discovered URLs:
   "url_transform": {"find": "/profile/job_details/", "replace": "/jobs/"}
   Uses regex find/replace. Applied after url_filter.
@@ -1882,6 +1887,8 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors (presets: successfactors, t
 
   Config:
     {"preset": "successfactors", "feed_url": "https://jobs.sap.com/googlefeed.xml"}
+    {"preset": "successfactors", "fetch_company": true,
+     "job_filter": {"exclude": "(?i)subsidiary name"}}
     {"preset": "successfactors", "variant": "legacy",
      "host": "career5.successfactors.eu", "company": "1657261P"}
     {"preset": "teamtailor", "feed_url": "https://company.teamtailor.com/jobs.rss"}
@@ -1893,6 +1900,10 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors (presets: successfactors, t
                the board URL; for generic feeds set it explicitly.
     variant    SuccessFactors only: "feed" or "legacy". Legacy identity and
                listing_url are auto-filled from strict SAP board URLs.
+    fetch_company  SuccessFactors feed only: fetch each public detail page and
+               store its legal-employer custom field in metadata.company.
+               Use with job_filter for mixed-tenant career sites. Enrichment
+               fails closed when a detail page cannot be read.
 
   Detection:  ws probe shows labels like:
               "SuccessFactors RSS — <feed_url>, N jobs"
