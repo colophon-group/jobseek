@@ -239,12 +239,53 @@ async def _detect_prospective_config(
     if str(payload.get("medium_id")) != medium_id or not isinstance(jobs, list):
         return None
 
+    origins: set[str] = set()
+    for job in jobs:
+        if not isinstance(job, dict) or not isinstance(job.get("links"), dict):
+            return None
+        directlink = job["links"].get("directlink")
+        if not isinstance(directlink, str):
+            return None
+        try:
+            parsed_link = urlparse(directlink)
+            port = parsed_link.port
+        except ValueError:
+            return None
+        if (
+            parsed_link.scheme.lower() != "https"
+            or parsed_link.hostname is None
+            or parsed_link.username is not None
+            or parsed_link.password is not None
+            or port not in (None, 443)
+        ):
+            return None
+        origins.add(f"https://{parsed_link.netloc.lower()}")
+
+    parsed_board = urlparse(url)
+    try:
+        board_port = parsed_board.port
+    except ValueError:
+        return None
+    if (
+        parsed_board.scheme.lower() != "https"
+        or parsed_board.hostname is None
+        or parsed_board.username is not None
+        or parsed_board.password is not None
+        or board_port not in (None, 443)
+    ):
+        return None
+    board_origin = f"https://{parsed_board.netloc.lower()}"
+    if origins and origins != {board_origin}:
+        return None
+    canonical_origin = board_origin
+
     return {
         "api_url": api_url,
         "method": "GET",
         "json_path": "jobs",
         "total_path": "total",
         "url_field": "links.directlink",
+        "url_filter": rf"(?i)^{re.escape(canonical_origin)}/",
         "params": params,
         "pagination": {
             "param_name": "offset",
