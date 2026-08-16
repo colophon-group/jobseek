@@ -28,6 +28,7 @@
 // IDs) for what is already a public REST surface.
 
 import * as service from "@/lib/services/search";
+import { assertBoundedPublicPagination } from "@/lib/public-read-input";
 
 export async function getPostingDetail(
   ...args: Parameters<typeof service.getPostingDetail>
@@ -38,18 +39,21 @@ export async function getPostingDetail(
 export async function searchJobs(
   ...args: Parameters<typeof service.searchJobs>
 ): ReturnType<typeof service.searchJobs> {
+  assertBoundedPublicPagination(args[0]);
   return service.searchJobs(...args);
 }
 
 export async function listTopCompanies(
   ...args: Parameters<typeof service.listTopCompanies>
 ): ReturnType<typeof service.listTopCompanies> {
+  assertBoundedPublicPagination(args[0]);
   return service.listTopCompanies(...args);
 }
 
 export async function listTopCompaniesAnonymous(
   ...args: Parameters<typeof service.listTopCompaniesAnonymous>
 ): ReturnType<typeof service.listTopCompaniesAnonymous> {
+  assertBoundedPublicPagination(args[0]);
   return service.listTopCompaniesAnonymous(...args);
 }
 
@@ -74,6 +78,7 @@ export async function getExperienceHistogram(
 export async function getMorePostings(
   ...args: Parameters<typeof service.getMorePostings>
 ): ReturnType<typeof service.getMorePostings> {
+  assertBoundedPublicPagination(args[0]);
   return service.getMorePostings(...args);
 }
 

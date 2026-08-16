@@ -97,6 +97,8 @@ describe("rate-limit configuration", () => {
       { prefix: "rl:pw-reset", tokens: 3, window: "300 s" },
       { prefix: "rl:company-req", tokens: 5, window: "3600 s" },
       { prefix: "rl:api", tokens: 30, window: "60 s" },
+      { prefix: "rl:public-read:minute:v1", tokens: 30, window: "60 s" },
+      { prefix: "rl:public-read:hour:v1", tokens: 300, window: "3600 s" },
     ]);
   });
 });

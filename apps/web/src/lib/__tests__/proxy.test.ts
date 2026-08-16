@@ -23,10 +23,20 @@ const resourceStatusMocks = vi.hoisted(() => ({
   hasWatchlistRouteForViewer: vi.fn(),
 }));
 const authMocks = vi.hoisted(() => ({ getSession: vi.fn() }));
+const rateLimitMocks = vi.hoisted(() => ({
+  burst: vi.fn(),
+  sustained: vi.fn(),
+  getClientIp: vi.fn(),
+}));
 
 vi.mock("@/lib/services/public-resource-status", () => resourceStatusMocks);
 vi.mock("@/lib/auth", () => ({
   auth: { api: { getSession: authMocks.getSession } },
+}));
+vi.mock("@/lib/rate-limit", () => ({
+  getClientIp: rateLimitMocks.getClientIp,
+  publicReadBurstLimiter: { limit: rateLimitMocks.burst },
+  publicReadSustainedLimiter: { limit: rateLimitMocks.sustained },
 }));
 
 import { proxy, config } from "../../../proxy";
@@ -39,6 +49,22 @@ const companyRegistry = parse(
 ) as Array<{ slug: string }>;
 
 const redirectSpy = vi.spyOn(NextResponse, "redirect");
+
+beforeEach(() => {
+  rateLimitMocks.burst.mockReset().mockResolvedValue({
+    success: true,
+    limit: 30,
+    remaining: 29,
+    reset: Date.now() + 60_000,
+  });
+  rateLimitMocks.sustained.mockReset().mockResolvedValue({
+    success: true,
+    limit: 300,
+    remaining: 299,
+    reset: Date.now() + 3_600_000,
+  });
+  rateLimitMocks.getClientIp.mockReset().mockReturnValue("203.0.113.7");
+});
 
 function createRequest(
   pathname: string,
@@ -519,6 +545,8 @@ describe("Explore PPR shell normalization", () => {
 
     expect(response.headers.get("x-middleware-rewrite")).toBeNull();
     expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(rateLimitMocks.burst).toHaveBeenCalledWith("203.0.113.7");
+    expect(rateLimitMocks.sustained).toHaveBeenCalledWith("203.0.113.7");
   });
 
   it.each(["en", "de", "fr", "it"])(
@@ -540,6 +568,86 @@ describe("Explore PPR shell normalization", () => {
       expect(response.headers.get("x-middleware-next")).toBeNull();
     },
   );
+});
+
+describe("public browsing Server Action rate limit", () => {
+  it.each([
+    ["explore", "/en/explore"],
+    ["company", "/de/company/acme"],
+    ["watchlists", "/fr/watchlists"],
+    ["watchlist detail", "/it/alice/backend-jobs"],
+  ])("checks both windows for %s actions", async (_surface, pathname) => {
+    const response = await proxy(new NextRequest(`http://localhost${pathname}`, {
+      method: "POST",
+      headers: {
+        "next-action": "current-deployment-action-id",
+        "x-forwarded-for": "spoofed, 203.0.113.7",
+      },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(rateLimitMocks.burst).toHaveBeenCalledWith("203.0.113.7");
+    expect(rateLimitMocks.sustained).toHaveBeenCalledWith("203.0.113.7");
+  });
+
+  it("returns a non-cacheable 429 before the page action when either window is exhausted", async () => {
+    const reset = Date.now() + 45_000;
+    rateLimitMocks.burst.mockResolvedValue({
+      success: false,
+      limit: 30,
+      remaining: 0,
+      reset,
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const response = await proxy(new NextRequest("http://localhost/en/company/acme", {
+      method: "POST",
+      headers: { "next-action": "current-deployment-action-id" },
+    }));
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(Number(response.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(response.headers.get("x-middleware-next")).toBeNull();
+    await expect(response.text()).resolves.toBe("Too Many Requests");
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining(
+      '"event":"public_read.rate_limited"',
+    ));
+    expect(warn.mock.calls.flat().join(" ")).not.toContain("203.0.113.7");
+    warn.mockRestore();
+  });
+
+  it("fails open on Redis transport errors and logs only a hashed client reference", async () => {
+    rateLimitMocks.burst.mockRejectedValue(new Error("secret transport detail"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await proxy(new NextRequest("http://localhost/en/watchlists", {
+      method: "POST",
+      headers: { "next-action": "current-deployment-action-id" },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    const logged = error.mock.calls.flat().join(" ");
+    expect(logged).toContain('"event":"public_read.rate_limit_unavailable"');
+    expect(logged).not.toContain("203.0.113.7");
+    expect(logged).not.toContain("secret transport detail");
+    error.mockRestore();
+  });
+
+  it("does not rate-limit ordinary documents or reserved application routes", async () => {
+    await proxy(new NextRequest("http://localhost/en/explore", {
+      headers: { accept: "text/html" },
+    }));
+    await proxy(new NextRequest("http://localhost/en/settings/account", {
+      method: "POST",
+      headers: { "next-action": "settings-action" },
+    }));
+
+    expect(rateLimitMocks.burst).not.toHaveBeenCalled();
+    expect(rateLimitMocks.sustained).not.toHaveBeenCalled();
+  });
 });
 
 describe("scanner path boundary", () => {
@@ -617,7 +725,7 @@ describe("proxy config", () => {
         slug,
       ).toBe(false);
     }
-  }, 30_000);
+  }, 60_000);
 
   it("bypasses the watchlist boundary for every reserved application prefix", () => {
     const watchlistOnlyConfig = { matcher: [config.matcher.at(-1)!] };
@@ -655,7 +763,7 @@ describe("proxy config", () => {
     ).toBe(true);
   });
 
-  it("excludes Explore RSC and current Server Action traffic before proxy compute", () => {
+  it("excludes Explore RSC but matches current Server Actions at the proxy boundary", () => {
     expect(
       unstable_doesMiddlewareMatch({
         config,
@@ -674,11 +782,11 @@ describe("proxy config", () => {
           "next-action": "action-id",
         },
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it.each(["en", "de", "fr", "it"])(
-    "matches only the confirmed obsolete %s Explore action at the proxy boundary",
+    "matches the confirmed obsolete %s Explore action at the proxy boundary",
     (locale) => {
       expect(
         unstable_doesMiddlewareMatch({
@@ -693,6 +801,22 @@ describe("proxy config", () => {
       ).toBe(true);
     },
   );
+
+  it.each([
+    "/en/explore",
+    "/de/watchlists",
+    "/fr/company/amazon",
+    "/it/alice/backend-jobs",
+  ])("matches protected Server Action surface %s", (url) => {
+    expect(
+      unstable_doesMiddlewareMatch({
+        config,
+        nextConfig: {},
+        url,
+        headers: { "next-action": "current-deployment-action-id" },
+      }),
+    ).toBe(true);
+  });
 
   it.each([
     "/en/wp-admin/install.php",
