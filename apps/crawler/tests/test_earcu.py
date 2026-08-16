@@ -1,0 +1,140 @@
+from __future__ import annotations
+
+import httpx
+import pytest
+
+from src.core.monitors.earcu import (
+    EArcuParseError,
+    _candidate_feed_urls,
+    _parse_feed,
+    can_handle,
+    discover,
+)
+
+FEED = """\
+<?xml version="1.0" encoding="UTF-8"?>
+<positions>
+  <position>
+    <LastPublishedDate>2026-08-11T13:06:50.987</LastPublishedDate>
+    <Id>1426</Id>
+    <VacancyRef>1408</VacancyRef>
+    <JobTitle>Travel Specialist</JobTitle>
+    <DisplaySalaryDescription>Competitive</DisplaySalaryDescription>
+    <JobFunction>Sales</JobFunction>
+    <Brand>Travelbag</Brand>
+    <DescriptionURL>https://careers.example/jobs/vacancy/travel-specialist/1426/description/</DescriptionURL>
+    <Locations><Location>Marlow</Location><Location>Hybrid</Location></Locations>
+    <Description><![CDATA[<div><p>Create exceptional trips.</p></div>]]></Description>
+  </position>
+  <position>
+    <LastPublishedDate>2026-08-12T09:30:00</LastPublishedDate>
+    <Id>1425</Id>
+    <VacancyRef>1407</VacancyRef>
+    <JobTitle>Branch Manager</JobTitle>
+    <DescriptionURL>/jobs/vacancy/branch-manager/1425/description/</DescriptionURL>
+    <Locations><Location>Knutsford</Location></Locations>
+    <Description><![CDATA[<p>Lead the branch.</p>]]></Description>
+  </position>
+</positions>
+"""
+
+
+def test_candidate_feed_url_preserves_portal_prefix():
+    assert _candidate_feed_urls("https://careers.example/jobs/vacancy/find/results/") == [
+        "https://careers.example/jobs/allvacancies/",
+        "https://careers.example/allvacancies/",
+    ]
+
+
+def test_parse_feed_returns_rich_jobs():
+    jobs = _parse_feed(FEED, "https://careers.example/jobs/allvacancies/")
+
+    assert len(jobs) == 2
+    assert jobs[0].title == "Travel Specialist"
+    assert jobs[0].description == "<div><p>Create exceptional trips.</p></div>"
+    assert jobs[0].locations == ["Marlow", "Hybrid"]
+    assert jobs[0].date_posted == "2026-08-11T13:06:50.987"
+    assert jobs[0].metadata == {
+        "reference": "1408",
+        "job_function": "Sales",
+        "brand": "Travelbag",
+    }
+    assert jobs[1].url == "https://careers.example/jobs/vacancy/branch-manager/1425/description/"
+
+
+def test_parse_feed_rejects_incomplete_position():
+    with pytest.raises(EArcuParseError, match="missing DescriptionURL or JobTitle"):
+        _parse_feed(
+            "<positions><position><JobTitle>Missing URL</JobTitle></position></positions>",
+            "https://careers.example/jobs/allvacancies/",
+        )
+
+
+def test_parse_feed_accepts_valid_empty_inventory():
+    assert _parse_feed("<positions />", "https://careers.example/allvacancies/") == []
+
+
+def test_parse_feed_rejects_malformed_or_unexpected_xml():
+    with pytest.raises(EArcuParseError, match="Invalid eArcu XML"):
+        _parse_feed("<positions>", "https://careers.example/allvacancies/")
+    with pytest.raises(EArcuParseError, match="Unexpected eArcu root element"):
+        _parse_feed("<urlset />", "https://careers.example/allvacancies/")
+
+
+async def test_can_handle_bypasses_waf_listing_and_detects_feed():
+    requested: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append(str(request.url))
+        if request.url.path == "/jobs/allvacancies/":
+            return httpx.Response(200, text=FEED)
+        if request.url.path == "/jobs/vacancy/find/results/":
+            return httpx.Response(202, headers={"x-amzn-waf-action": "challenge"})
+        return httpx.Response(404)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await can_handle(
+            "https://careers.example/jobs/vacancy/find/results/",
+            client,
+        )
+
+    assert result == {
+        "feed_url": "https://careers.example/jobs/allvacancies/",
+        "jobs": 2,
+    }
+    assert "https://careers.example/jobs/vacancy/find/results/" not in requested
+
+
+async def test_discover_uses_configured_feed():
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, text=FEED))
+    async with httpx.AsyncClient(transport=transport) as client:
+        jobs = await discover(
+            {
+                "board_url": "https://careers.example/jobs/vacancy/find/results/",
+                "metadata": {"feed_url": "https://careers.example/jobs/allvacancies/"},
+            },
+            client,
+        )
+
+    assert [job.title for job in jobs] == ["Travel Specialist", "Branch Manager"]
+
+
+async def test_discover_fails_closed_when_configured_feed_is_missing():
+    transport = httpx.MockTransport(lambda request: httpx.Response(404))
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(EArcuParseError, match="feed not found"):
+            await discover(
+                {
+                    "board_url": "https://careers.example/jobs/vacancy/find/results/",
+                    "metadata": {"feed_url": "https://careers.example/jobs/allvacancies/"},
+                },
+                client,
+            )
+
+
+async def test_can_handle_rejects_non_earcu_xml():
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, text="<urlset><url /></urlset>")
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        assert await can_handle("https://example.com/careers", client) is None
