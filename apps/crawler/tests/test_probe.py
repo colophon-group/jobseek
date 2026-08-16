@@ -707,6 +707,7 @@ class TestProbeScrapers:
             "embedded",
             "onlyfy",
             "pdf",
+            "taleo",
             "dom",
             "api_sniffer",
         ]
@@ -837,6 +838,7 @@ class TestProbeScrapersPw:
             "embedded",
             "onlyfy",
             "pdf",
+            "taleo",
             "dom",
             "api_sniffer",
         ]

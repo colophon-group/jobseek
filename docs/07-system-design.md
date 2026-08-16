@@ -284,6 +284,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `rippling`     | Fetch Rippling detail API records                  | None                   |
 | `skip`         | No-scrape marker for rich monitor output           | None                   |
 | `smartrecruiters` | Fetch SmartRecruiters detail API records        | None                   |
+| `taleo`       | Parse Taleo Enterprise embedded detail payload      | None                   |
 | `workable`     | Fetch Workable detail API records                  | None                   |
 | `workday`      | Fetch Workday detail API records                   | None                   |
 
