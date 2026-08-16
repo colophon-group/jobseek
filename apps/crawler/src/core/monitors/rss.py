@@ -18,7 +18,7 @@ import html
 import random
 import re
 import xml.etree.ElementTree as ET
-from collections.abc import AsyncIterator, Callable, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -44,6 +44,7 @@ _HTTP_CHUNK_BYTES = 64 * 1024
 _SNIFF_BYTES = 512
 _SF_DETAIL_CONCURRENCY = 16
 _SF_COMPANY_SELECTOR = '[data-careersite-propertyid="customfield1"]'
+_SF_JOB_SELECTOR = '[data-careersite-propertyid="title"]'
 
 
 async def _sleep(delay: float) -> None:
@@ -317,7 +318,65 @@ _PARSERS: dict[str, Callable[[ET.Element], DiscoveredJob | None]] = {
 }
 
 
-async def _enrich_sf_companies(jobs: list[DiscoveredJob], client: httpx.AsyncClient) -> None:
+def _sf_company_candidates(
+    jobs: list[DiscoveredJob], raw_url_filter: object
+) -> list[DiscoveredJob]:
+    """Apply dispatcher URL-filter semantics before making detail requests.
+
+    The dispatcher still performs the authoritative filtering after discovery.
+    This early pass only prevents each regional board from fetching every job
+    in a shared tenant before irrelevant URLs are removed.
+    """
+    if not raw_url_filter:
+        return jobs
+    if isinstance(raw_url_filter, str):
+        include, exclude = raw_url_filter, None
+    elif isinstance(raw_url_filter, Mapping):
+        include = raw_url_filter.get("include")
+        exclude = raw_url_filter.get("exclude")
+    else:
+        return jobs
+    try:
+        include_re = re.compile(include) if include else None
+        exclude_re = re.compile(exclude) if exclude else None
+    except re.error:
+        return jobs
+    return [
+        job
+        for job in jobs
+        if (include_re is None or include_re.search(job.url))
+        and (exclude_re is None or not exclude_re.search(job.url))
+    ]
+
+
+def _same_https_origin(url: str, origin: str) -> bool:
+    """Restrict optional detail enrichment to the configured feed origin."""
+    try:
+        candidate = urlparse(url)
+        source = urlparse(origin)
+        candidate_port = candidate.port
+        source_port = source.port
+    except (TypeError, ValueError):
+        return False
+    return (
+        candidate.scheme.casefold() == source.scheme.casefold() == "https"
+        and candidate.hostname is not None
+        and source.hostname is not None
+        and candidate.hostname.casefold().rstrip(".") == source.hostname.casefold().rstrip(".")
+        and candidate_port in {None, 443}
+        and source_port in {None, 443}
+        and candidate.username is None
+        and candidate.password is None
+    )
+
+
+async def _enrich_sf_companies(
+    jobs: list[DiscoveredJob],
+    client: httpx.AsyncClient,
+    *,
+    feed_url: str,
+    url_filter: object = None,
+) -> None:
     """Populate SuccessFactors' legal-employer custom field from detail pages.
 
     The Google feed's ``g:employer`` is commonly the generic value
@@ -330,19 +389,25 @@ async def _enrich_sf_companies(jobs: list[DiscoveredJob], client: httpx.AsyncCli
     semaphore = asyncio.Semaphore(_SF_DETAIL_CONCURRENCY)
 
     async def _one(job: DiscoveredJob) -> None:
+        if not _same_https_origin(job.url, feed_url):
+            raise RuntimeError(f"SuccessFactors company enrichment rejected URL: {job.url}")
         async with semaphore:
             page = await fetch_page_text(job.url, client)
         if page is None:
             raise RuntimeError(f"SuccessFactors company enrichment failed: {job.url}")
 
-        node = LexborHTMLParser(page).css_first(_SF_COMPANY_SELECTOR)
+        document = LexborHTMLParser(page)
+        if document.css_first(_SF_JOB_SELECTOR) is None:
+            raise RuntimeError(f"SuccessFactors company enrichment got invalid page: {job.url}")
+        node = document.css_first(_SF_COMPANY_SELECTOR)
         company = node.text(strip=True) if node is not None else None
         if company:
             metadata = dict(job.metadata or {})
             metadata["company"] = company
             job.metadata = metadata
 
-    await asyncio.gather(*(_one(job) for job in jobs))
+    candidates = _sf_company_candidates(jobs, url_filter)
+    await asyncio.gather(*(_one(job) for job in candidates))
 
 
 # ── Feed URL helpers ────────────────────────────────────────────────────
@@ -652,12 +717,22 @@ async def discover_stream(
             if total_jobs >= MAX_JOBS:
                 log.warning("rss.truncated", feed=feed_url, total=total_jobs, cap=MAX_JOBS)
                 if preset_name == "successfactors" and metadata.get("fetch_company"):
-                    await _enrich_sf_companies(jobs, client)
+                    await _enrich_sf_companies(
+                        jobs,
+                        client,
+                        feed_url=feed_url,
+                        url_filter=metadata.get("url_filter"),
+                    )
                 yield truncated_rich_result(jobs)
                 return
             if len(jobs) >= _STREAM_BATCH:
                 if preset_name == "successfactors" and metadata.get("fetch_company"):
-                    await _enrich_sf_companies(jobs, client)
+                    await _enrich_sf_companies(
+                        jobs,
+                        client,
+                        feed_url=feed_url,
+                        url_filter=metadata.get("url_filter"),
+                    )
                 yield jobs
                 jobs = []
 
@@ -667,7 +742,12 @@ async def discover_stream(
 
     if jobs:
         if preset_name == "successfactors" and metadata.get("fetch_company"):
-            await _enrich_sf_companies(jobs, client)
+            await _enrich_sf_companies(
+                jobs,
+                client,
+                feed_url=feed_url,
+                url_filter=metadata.get("url_filter"),
+            )
         yield jobs
 
 
