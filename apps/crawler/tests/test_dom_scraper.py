@@ -291,6 +291,22 @@ class TestDomScraper:
         )
         assert result.locations == ["Industriestrasse 1 8000 Zurich"]
 
+    def test_solique_probe_accepts_class_tokens_and_single_quotes(self):
+        from src.core.scrapers.dom import can_handle
+
+        html = """
+        <html><head><title>Dispatcher - 100%</title></head><body>
+          <header><div class='branded job-title'>Dispatcher</div></header>
+          <a href='https://live.solique.ch/acme/apply/id/123'>Apply</a>
+          <div class='intro'>Introduction</div>
+          <div class='layout tasks-profile-wrapper expanded'>Tasks</div>
+          <h3 class='contact-title'>Contact</h3>
+          <div class='location'>Zurich</div>
+        </body></html>
+        """
+
+        assert can_handle([html]) is not None
+
     async def test_missing_steps_returns_empty(self):
         """No 'steps' key → empty JobContent."""
         from src.core.scrapers.dom import scrape
