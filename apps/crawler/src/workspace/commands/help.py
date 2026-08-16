@@ -2049,7 +2049,9 @@ bamboohr — BambooHR public careers API
                               shared group tenant when only one employer brand
                               belongs on the board.
                               Enabling it adds one detail API request per job;
-                              any detail failure fails the cycle rather than
+                              filtering is limited to boards with at most 500
+                              listed jobs and 1,000-character patterns.
+                              Any detail failure fails the cycle rather than
                               risking false delisting.
 
   Detection:  ws probe shows "BambooHR API — tenant: X, N jobs"

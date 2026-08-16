@@ -41,6 +41,8 @@ log = structlog.get_logger()
 
 MAX_JOBS = 50_000
 _DETAIL_CONCURRENCY = 10
+_DESCRIPTION_FILTER_MAX_JOBS = 500
+_DESCRIPTION_FILTER_MAX_PATTERN_LENGTH = 1_000
 
 _TENANT_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
@@ -185,6 +187,12 @@ def _description_include_pattern(metadata: dict) -> re.Pattern[str] | None:
         return None
     if not isinstance(value, str) or not value.strip():
         raise ValueError("BambooHR description_include_regex must be a non-empty string")
+    value = value.strip()
+    if len(value) > _DESCRIPTION_FILTER_MAX_PATTERN_LENGTH:
+        raise ValueError(
+            "BambooHR description_include_regex must be at most "
+            f"{_DESCRIPTION_FILTER_MAX_PATTERN_LENGTH} characters"
+        )
     try:
         return re.compile(value)
     except re.error as exc:
@@ -224,20 +232,27 @@ async def _filter_jobs_by_description(
     pattern: re.Pattern[str],
     client: httpx.AsyncClient,
 ) -> list[DiscoveredJob]:
-    semaphore = asyncio.Semaphore(_DETAIL_CONCURRENCY)
+    if len(jobs) > _DESCRIPTION_FILTER_MAX_JOBS:
+        raise ValueError(
+            "BambooHR description filtering is limited to "
+            f"{_DESCRIPTION_FILTER_MAX_JOBS} listed jobs; got {len(jobs)}"
+        )
 
     async def matches(job: DiscoveredJob) -> DiscoveredJob | None:
         metadata = job.metadata or {}
         job_id = metadata.get("job_id")
-        async with semaphore:
-            description = await _fetch_detail_description(tenant, job_id, client)
+        description = await _fetch_detail_description(tenant, job_id, client)
         if pattern.search(_description_text(description)) is None:
             return None
         job.description = description
         return job
 
-    results = await asyncio.gather(*(matches(job) for job in jobs))
-    return [job for job in results if job is not None]
+    filtered: list[DiscoveredJob] = []
+    for start in range(0, len(jobs), _DETAIL_CONCURRENCY):
+        window = jobs[start : start + _DETAIL_CONCURRENCY]
+        results = await asyncio.gather(*(matches(job) for job in window))
+        filtered.extend(job for job in results if job is not None)
+    return filtered
 
 
 def _is_retirement_redirect(exc: PaginationFetchError) -> bool:

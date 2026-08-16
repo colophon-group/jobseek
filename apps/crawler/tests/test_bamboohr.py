@@ -240,7 +240,7 @@ class TestMonitor:
             "https://acme.bamboohr.com/careers/349/detail",
         }
 
-    @pytest.mark.parametrize("value", ["", 123, "["])
+    @pytest.mark.parametrize("value", ["", 123, "[", "x" * 1_001])
     async def test_description_include_regex_must_be_valid(self, value: object):
         board = {
             "board_url": BOARD_URL,
@@ -262,6 +262,24 @@ class TestMonitor:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(ValueError, match="has no string description"):
                 await discover(board, client)
+
+    async def test_description_filter_rejects_unbounded_detail_fanout(self):
+        requested: list[str] = []
+        jobs = [{**JOBS[0], "id": str(job_id)} for job_id in range(1, 502)]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested.append(str(request.url))
+            return httpx.Response(200, json=_payload(jobs), request=request)
+
+        board = {
+            "board_url": BOARD_URL,
+            "metadata": {"description_include_regex": "ExecuJet"},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="limited to 500 listed jobs"):
+                await discover(board, client)
+
+        assert requested == ["https://acme.bamboohr.com/careers/list"]
 
     async def test_empty_board_is_authoritative(self):
         transport = httpx.MockTransport(
