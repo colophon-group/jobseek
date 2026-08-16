@@ -10,10 +10,15 @@ HTML description and posting date live on the per-job detail endpoint. The
 generic API scraper performs that enrichment on the normal scrape schedule,
 using a BambooHR preset supplied by the workspace compatibility layer, so
 hourly monitoring stays one request per board without a dedicated scraper.
+Shared group tenants may opt into detail-description filtering; that mode
+fetches each detail during discovery so employer-specific boards do not ingest
+sibling brands.
 """
 
 from __future__ import annotations
 
+import asyncio
+import html
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -35,8 +40,10 @@ if TYPE_CHECKING:
 log = structlog.get_logger()
 
 MAX_JOBS = 50_000
+_DETAIL_CONCURRENCY = 10
 
 _TENANT_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
 _HOST_RE = re.compile(r"^([a-z0-9][a-z0-9-]*)\.bamboohr\.com$")
 _PAGE_PATTERNS = [
     re.compile(r"https?://([a-z0-9][a-z0-9-]*)\.bamboohr\.com/careers", re.IGNORECASE)
@@ -78,6 +85,10 @@ def _list_url(tenant: str) -> str:
 
 def _detail_url(tenant: str, job_id: object) -> str:
     return f"{_origin(tenant)}/careers/{job_id}"
+
+
+def _detail_api_url(tenant: str, job_id: object) -> str:
+    return f"{_detail_url(tenant, job_id)}/detail"
 
 
 def _clean_part(value: object) -> str | None:
@@ -168,6 +179,67 @@ async def _fetch_listing(tenant: str, client: httpx.AsyncClient) -> dict:
     )
 
 
+def _description_include_pattern(metadata: dict) -> re.Pattern[str] | None:
+    value = metadata.get("description_include_regex")
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("BambooHR description_include_regex must be a non-empty string")
+    try:
+        return re.compile(value)
+    except re.error as exc:
+        raise ValueError(f"Invalid BambooHR description_include_regex: {exc}") from exc
+
+
+def _description_text(description: str) -> str:
+    return " ".join(html.unescape(_HTML_TAG_RE.sub(" ", description)).split())
+
+
+async def _fetch_detail_description(
+    tenant: str,
+    job_id: object,
+    client: httpx.AsyncClient,
+) -> str:
+    payload = await fetch_json_page_with_retry(
+        client,
+        _detail_api_url(tenant, job_id),
+        expect_shape=dict,
+        retries=3,
+        base_delay=0.5,
+        log_event="bamboohr.detail_backoff",
+    )
+    result = payload.get("result")
+    opening = result.get("jobOpening") if isinstance(result, dict) else None
+    description = opening.get("description") if isinstance(opening, dict) else None
+    if not isinstance(description, str):
+        raise ValueError(
+            f"BambooHR detail for tenant {tenant!r}, job {job_id!r} has no string description"
+        )
+    return description
+
+
+async def _filter_jobs_by_description(
+    jobs: list[DiscoveredJob],
+    tenant: str,
+    pattern: re.Pattern[str],
+    client: httpx.AsyncClient,
+) -> list[DiscoveredJob]:
+    semaphore = asyncio.Semaphore(_DETAIL_CONCURRENCY)
+
+    async def matches(job: DiscoveredJob) -> DiscoveredJob | None:
+        metadata = job.metadata or {}
+        job_id = metadata.get("job_id")
+        async with semaphore:
+            description = await _fetch_detail_description(tenant, job_id, client)
+        if pattern.search(_description_text(description)) is None:
+            return None
+        job.description = description
+        return job
+
+    results = await asyncio.gather(*(matches(job) for job in jobs))
+    return [job for job in results if job is not None]
+
+
 def _is_retirement_redirect(exc: PaginationFetchError) -> bool:
     if exc.last_status not in _REDIRECT_STATUSES or not exc.last_location:
         return False
@@ -246,6 +318,7 @@ async def discover(
             f"Cannot derive BambooHR tenant from board URL {board['board_url']!r} "
             "and no valid tenant is present in metadata"
         )
+    description_include = _description_include_pattern(metadata)
 
     try:
         payload = await _fetch_listing(tenant, client)
@@ -258,6 +331,15 @@ async def discover(
         raise
 
     jobs, truncated = _parse_listing(payload, tenant)
+    listed_jobs = len(jobs)
+    if description_include is not None:
+        jobs = await _filter_jobs_by_description(jobs, tenant, description_include, client)
+        log.info(
+            "bamboohr.description_filter_applied",
+            tenant=tenant,
+            before=listed_jobs,
+            after=len(jobs),
+        )
     if truncated:
         meta = payload.get("meta")
         total = meta.get("totalCount") if isinstance(meta, dict) else None
@@ -270,7 +352,7 @@ async def discover(
         )
         return truncated_rich_result(jobs)
 
-    log.info("bamboohr.discovered", tenant=tenant, jobs=len(jobs))
+    log.info("bamboohr.discovered", tenant=tenant, jobs=len(jobs), listed_jobs=listed_jobs)
     return jobs
 
 
