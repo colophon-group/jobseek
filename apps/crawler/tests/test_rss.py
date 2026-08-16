@@ -507,6 +507,7 @@ class TestDiscover:
             return httpx.Response(
                 200,
                 text=(
+                    '<h1 data-careersite-propertyid="title">Pilot</h1>'
                     '<span data-careersite-propertyid="customfield1">'
                     "Executive Jet Management (Europe) Limited</span>"
                 ),
@@ -526,6 +527,103 @@ class TestDiscover:
             )
 
         assert jobs[0].metadata["company"] == "Executive Jet Management (Europe) Limited"
+
+    async def test_successfactors_enriches_only_url_filtered_jobs(self):
+        feed_xml = _rss_xml(f"""
+            <item>
+                <title>European Pilot</title>
+                <link>https://example.com/europe/job/1</link>
+                <g:location xmlns:g="{_G_NS}">Lisbon, PT</g:location>
+            </item>
+            <item>
+                <title>US Pilot</title>
+                <link>https://example.com/us/job/2</link>
+                <g:location xmlns:g="{_G_NS}">Columbus, OH</g:location>
+            </item>
+        """)
+        requested_paths: list[str] = []
+
+        def handler(request):
+            requested_paths.append(request.url.path)
+            if request.url.path == "/googlefeed.xml":
+                return httpx.Response(200, text=feed_xml)
+            return httpx.Response(
+                200,
+                text=(
+                    '<h1 data-careersite-propertyid="title">Pilot</h1>'
+                    '<span data-careersite-propertyid="customfield1">NetJets</span>'
+                ),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            await discover(
+                {
+                    "board_url": "https://example.com/europe",
+                    "metadata": {
+                        "preset": "successfactors",
+                        "feed_url": "https://example.com/googlefeed.xml",
+                        "fetch_company": True,
+                        "url_filter": "/europe/job/",
+                    },
+                },
+                client,
+            )
+
+        assert requested_paths == ["/googlefeed.xml", "/europe/job/1"]
+
+    async def test_successfactors_company_enrichment_rejects_off_origin_url(self):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Pilot</title>
+                <link>https://other.example/job/1</link>
+            </item>
+        """)
+
+        def handler(request):
+            if request.url.path == "/googlefeed.xml":
+                return httpx.Response(200, text=feed_xml)
+            raise AssertionError("off-origin detail URL must not be fetched")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(RuntimeError, match="rejected URL"):
+                await discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": {
+                            "preset": "successfactors",
+                            "feed_url": "https://example.com/googlefeed.xml",
+                            "fetch_company": True,
+                        },
+                    },
+                    client,
+                )
+
+    async def test_successfactors_company_enrichment_rejects_invalid_html_page(self):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Pilot</title>
+                <link>https://example.com/job/1</link>
+            </item>
+        """)
+
+        def handler(request):
+            if request.url.path == "/googlefeed.xml":
+                return httpx.Response(200, text=feed_xml)
+            return httpx.Response(200, text="<html><h1>Access denied</h1></html>")
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(RuntimeError, match="invalid page"):
+                await discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": {
+                            "preset": "successfactors",
+                            "feed_url": "https://example.com/googlefeed.xml",
+                            "fetch_company": True,
+                        },
+                    },
+                    client,
+                )
 
     async def test_successfactors_company_enrichment_fails_closed(self):
         feed_xml = _rss_xml("""
