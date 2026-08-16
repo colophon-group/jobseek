@@ -928,8 +928,7 @@ _MONITOR_CONFIG_HINTS = {
     "paycom": "Requires: token (auto-filled from a Paycom public portal URL)",
     "jazzhr": "Requires: tenant (auto-filled from an applytojob.com URL)",
     "jobbank104": (
-        "Requires: token (auto-filled from a www.104.com.tw/company URL); "
-        "use proxy when challenged"
+        "Requires: token (auto-filled from a www.104.com.tw/company URL); use proxy when challenged"
     ),
     "jobvite": "Requires: tenant + listing_url (auto-filled from a jobs.jobvite.com URL)",
     "pageup": "Requires: instance, source_pointer, locale (auto-filled from a PageUp URL)",
