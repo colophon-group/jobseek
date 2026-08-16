@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
-from src.core.monitors.headhunter import REQUEST_HEADERS, _parse_job
+from src.core.monitors.headhunter import REQUEST_HEADERS, _parse_job, _site_host_from_url
 from src.core.scrapers import JobContent, register
 
 log = structlog.get_logger()
@@ -18,13 +18,7 @@ _VACANCY_PATH_RE = re.compile(r"^/vacancy/(\d+)/?$", re.IGNORECASE)
 
 def _vacancy_id_from_url(url: str) -> str | None:
     parsed = urlparse(url)
-    host = (parsed.hostname or "").lower()
-    if host not in {
-        "hh.ru",
-        "www.hh.ru",
-        "rabota.by",
-        "www.rabota.by",
-    }:
+    if (parsed.hostname or "").lower() == "api.hh.ru" or _site_host_from_url(url) is None:
         return None
     match = _VACANCY_PATH_RE.match(parsed.path)
     return match.group(1) if match else None
@@ -34,10 +28,10 @@ def _detail_url(vacancy_id: str) -> str:
     return f"https://api.hh.ru/vacancies/{vacancy_id}"
 
 
-def parse_payload(payload: dict) -> JobContent:
+def parse_payload(payload: dict, *, site_host: str = "hh.ru") -> JobContent:
     employer = payload.get("employer")
     employer_id = str(employer.get("id") or "") if isinstance(employer, dict) else ""
-    parsed = _parse_job(payload, employer_id=employer_id)
+    parsed = _parse_job(payload, employer_id=employer_id, site_host=site_host)
     if parsed is None:
         return JobContent()
     return JobContent(
@@ -58,18 +52,23 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
     """Hydrate one public HeadHunter vacancy through its JSON detail API."""
     _ = config, kwargs
     vacancy_id = _vacancy_id_from_url(url)
-    if not vacancy_id:
+    site_host = _site_host_from_url(url)
+    if not vacancy_id or not site_host:
         log.warning("headhunter_scraper.invalid_url", url=url)
         return JobContent()
 
-    response = await http.get(_detail_url(vacancy_id), headers=REQUEST_HEADERS)
+    response = await http.get(
+        _detail_url(vacancy_id), params={"host": site_host}, headers=REQUEST_HEADERS
+    )
     if response.status_code == 404:
         return JobContent()
     response.raise_for_status()
     payload = response.json()
     if not isinstance(payload, dict):
         raise ValueError(f"HeadHunter vacancy {vacancy_id} returned non-object JSON")
-    return parse_payload(payload)
+    if str(payload.get("id") or "") != vacancy_id:
+        raise ValueError(f"HeadHunter vacancy response ID does not match {vacancy_id}")
+    return parse_payload(payload, site_host=site_host)
 
 
 register("headhunter", scrape)

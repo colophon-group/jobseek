@@ -711,15 +711,18 @@ headhunter — HeadHunter employer vacancies API
             job_location_type, date_posted, base_salary and metadata)
   Scraper:  Auto-configured (headhunter) — hydrates the description and all
             detail fields on the daily scrape schedule
-  Cap:      2,000 jobs (upstream deep-pagination limit)
+  Cap:      2,000 jobs (upstream deep-pagination limit; returned as a
+            non-destructive truncated result). Page/count/ID drift fails closed.
   Note:     HeadHunter's ddos-guard blocks some datacenter networks. Detected
             employer boards therefore set proxy=true automatically and use the
             crawler's configured static proxy transport.
 
   Config:
-    {"employer_id": "4556149", "proxy": true}
+    {"employer_id": "4556149", "host": "hh.ru", "proxy": true}
 
     employer_id  Numeric ID from hh.ru/employer/{id}. Auto-filled by probe.
+    host         Public site selected by the board URL (for example hh.ru,
+                 rabota.by, or hh.kz). Normally inferred automatically.
     proxy        Keep enabled for production crawler egress.
 
   Detection:  ws probe shows "HeadHunter API — employer: X, N jobs" when
