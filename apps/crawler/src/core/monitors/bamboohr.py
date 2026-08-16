@@ -391,27 +391,27 @@ async def _probe_tenant(tenant: str, client: httpx.AsyncClient) -> tuple[bool, i
 
 
 async def _fetch_job_count(
-    tenant: str,
+    token: str,
     client: httpx.AsyncClient,
     context: None,
 ) -> ProbeCount | None:
     _ = context
-    found, count = await _probe_tenant(tenant, client)
+    found, count = await _probe_tenant(token, client)
     return count if found else None
 
 
 async def _probe_candidate(
-    tenant: str,
+    token: str,
     client: httpx.AsyncClient,
     context: None,
 ) -> ProbeResult:
     _ = context
-    return await _probe_tenant(tenant, client)
+    return await _probe_tenant(token, client)
 
 
-def _build_result(tenant: str, count: ProbeCount | None, context: None) -> dict:
+def _build_result(token: str, count: ProbeCount | None, context: None) -> dict:
     _ = context
-    result: dict = {"tenant": tenant}
+    result: dict = {"tenant": token}
     if count is not None:
         result["jobs"] = count
     return result
