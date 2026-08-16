@@ -970,6 +970,7 @@ _MONITOR_CONFIG_HINTS = {
     "practicematch": "Optional: max_pages. Proxy-routed employer form pagination.",
     "rss": "Optional: preset/variant/feed_url; legacy SuccessFactors host/company auto-fill",
     "umantis": "Requires: customer_id. Optional: region, listing_path",
+    "earcu": "Requires: feed_url (auto-filled from an eArcu careers URL)",
     "sitemap": "Optional: sitemap_url, url_filter (regex to include/exclude URLs)",
     "talemetry": "Optional: max_pages, page_max_chars, proxy. Uses fail-closed ?page=N pagination.",
     "talentbrew": "Optional: max_pages, page_size, proxy. Uses search-results pagination.",

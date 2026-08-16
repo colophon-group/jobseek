@@ -69,6 +69,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "dayforce",
         "deel",
         "dvinci",
+        "earcu",
         "gem",
         "greenhouse",
         "headhunter",
@@ -400,6 +401,8 @@ def detect_ats_from_url(url: str) -> str | None:
         return "hibob"
     if host.endswith(".eightfold.ai"):
         return "eightfold"
+    if re.search(r"/vacancy/find/results(?:/|$)", parsed.path, re.IGNORECASE):
+        return "earcu"
 
     # Suffix-based patterns
     if host.endswith(".recruitee.com"):

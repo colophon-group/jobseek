@@ -62,6 +62,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `comeet` | Rich | skip | Comeet hosted data and Careers API |
 | `deel` | Rich | skip | Deel ATS |
 | `dvinci` | Rich | skip | d.vinci ATS |
+| `earcu` | Rich | skip | eArcu live-vacancy XML feeds on branded career sites |
 | `gem` | Rich | skip | Gem ATS |
 | `inploi` | Rich + enrichment | json-ld | Inploi public candidate-experience search API plus JSON-LD description enrichment |
 | `greenhouse` | Rich | skip | Greenhouse ATS |

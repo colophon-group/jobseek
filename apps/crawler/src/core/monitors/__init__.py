@@ -438,6 +438,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Gupy NextData listing \u2014 tenant: {tenant}, {jobs} jobs"
         return f"Gupy NextData listing \u2014 tenant: {tenant}"
+    if name == "earcu":
+        feed_url = metadata.get("feed_url", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"eArcu live-vacancy feed \u2014 {jobs} jobs at {feed_url}"
+        return f"eArcu live-vacancy feed \u2014 {feed_url}"
     if name == "cornerstone":
         tenant = metadata.get("tenant", "?")
         site_id = metadata.get("site_id", "?")
@@ -856,6 +862,7 @@ from src.core.monitors import (  # noqa: E402
     deel,  # noqa: F401
     dom,  # noqa: F401
     dvinci,  # noqa: F401
+    earcu,  # noqa: F401
     eightfold,  # noqa: F401
     gem,  # noqa: F401
     greenhouse,  # noqa: F401

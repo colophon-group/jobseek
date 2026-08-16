@@ -89,6 +89,7 @@ Monitor Types (cheapest first):
   dayforce          10      Full job data     No (skipped)
   deel              10      Full job data     No (skipped)
   dvinci            10      Full job data     No (skipped)
+  earcu             10      Full job data     No (skipped)
   gem               10      Full job data     No (skipped)
   greenhouse        10      Full job data     No (skipped)
   gupy              10      Job URLs          Auto-configured
@@ -1765,6 +1766,27 @@ umantis — Umantis ATS (Haufe Group / Abacus)
   Zero jobs?  Verify customer_id — visit the listing URL directly
   Pair with:  json-ld (try first) or dom scraper"""
 
+MONITOR_EARCU = """\
+earcu — eArcu live-vacancy XML feed
+
+  Feed:     GET {portal-prefix}/allvacancies/
+  Returns:  Full job data (URL, title, description, locations, publication date)
+  Scraper:  Not needed (feed returns full data)
+  Cap:      50,000 jobs
+  Note:     Uses eArcu's live-only vacancy feed. This remains accessible when
+            the browser search route is protected by AWS WAF and avoids the
+            soft-200 "Vacancy Closed" response used by inactive detail pages.
+
+  Config:
+    {"feed_url": "https://careers.example.com/jobs/allvacancies/"}
+
+    feed_url  Public eArcu allvacancies XML URL. Auto-filled by ws probe
+              from listing URLs such as /jobs/vacancy/find/results/.
+
+  Detection:  ws probe shows "eArcu live-vacancy feed — N jobs at URL"
+  Zero jobs?  A valid empty <positions> feed means the board currently has
+              no advertised vacancies."""
+
 MONITOR_RIPPLING = """\
 rippling — Rippling ATS Job Board API
 
@@ -3166,6 +3188,7 @@ MONITOR_CARDS: dict[str, str] = {
     "smartrecruiters": MONITOR_SMARTRECRUITERS,
     "softgarden": MONITOR_SOFTGARDEN,
     "traffit": MONITOR_TRAFFIT,
+    "earcu": MONITOR_EARCU,
     "umantis": MONITOR_UMANTIS,
     "workable": MONITOR_WORKABLE,
     "welcometothejungle": MONITOR_WELCOMETOTHEJUNGLE,

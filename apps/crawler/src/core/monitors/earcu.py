@@ -1,0 +1,161 @@
+"""eArcu live-vacancy XML feed monitor.
+
+eArcu career sites expose a public ``allvacancies`` XML feed containing
+only currently advertised positions.  The browser-facing search endpoint
+is frequently protected by AWS WAF, while both the feed and detail pages
+remain publicly accessible.
+
+The feed is rich: it includes the canonical detail URL, title, description,
+location, publication timestamp, and useful taxonomy metadata.  Reading it
+directly also avoids eArcu's soft-200 response for closed detail pages.
+"""
+
+from __future__ import annotations
+
+import xml.etree.ElementTree as ET
+from urllib.parse import urljoin, urlparse
+
+import httpx
+
+from src.core.monitors import DiscoveredJob, register
+from src.shared.http_retry import fetch_with_retry
+
+MAX_JOBS = 50_000
+_MAX_FEED_CHARS = 50 * 1024 * 1024
+
+
+class EArcuParseError(Exception):
+    """Raised when an eArcu feed is present but malformed or incomplete."""
+
+
+def _candidate_feed_urls(board_url: str) -> list[str]:
+    """Return likely ``allvacancies`` feeds from an eArcu board URL."""
+    parsed = urlparse(board_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return []
+
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    path = parsed.path.rstrip("/")
+    prefixes: list[str] = []
+
+    marker = "/vacancy/"
+    if marker in path.lower():
+        marker_at = path.lower().index(marker)
+        prefixes.append(path[:marker_at])
+    elif path:
+        # eArcu CNAMEs commonly mount the portal at one first-level segment,
+        # e.g. /jobs/vacancy/find/results/ and /jobs/allvacancies/.
+        prefixes.append(f"/{path.strip('/').split('/', 1)[0]}")
+    prefixes.append("")
+
+    urls: list[str] = []
+    for prefix in prefixes:
+        candidate = f"{origin}{prefix}/allvacancies/"
+        if candidate not in urls:
+            urls.append(candidate)
+    return urls
+
+
+def _text(element: ET.Element, tag: str) -> str | None:
+    child = element.find(tag)
+    if child is None or child.text is None:
+        return None
+    value = child.text.strip()
+    return value or None
+
+
+def _parse_feed(text: str, feed_url: str) -> list[DiscoveredJob]:
+    try:
+        root = ET.fromstring(text)
+    except ET.ParseError as exc:
+        raise EArcuParseError(f"Invalid eArcu XML at {feed_url}") from exc
+
+    if root.tag.lower() != "positions":
+        raise EArcuParseError(f"Unexpected eArcu root element at {feed_url}: {root.tag}")
+
+    jobs: list[DiscoveredJob] = []
+    for position in root.findall("position"):
+        url = _text(position, "DescriptionURL")
+        title = _text(position, "JobTitle")
+        if not url or not title:
+            raise EArcuParseError(
+                f"eArcu position missing DescriptionURL or JobTitle at {feed_url}"
+            )
+
+        locations = [
+            location.text.strip()
+            for location in position.findall("./Locations/Location")
+            if location.text and location.text.strip()
+        ]
+        metadata = {
+            key: value
+            for key, value in {
+                "reference": _text(position, "VacancyRef"),
+                "job_function": _text(position, "JobFunction"),
+                "brand": _text(position, "Brand"),
+            }.items()
+            if value is not None
+        }
+        jobs.append(
+            DiscoveredJob(
+                url=urljoin(feed_url, url),
+                title=title,
+                description=_text(position, "Description"),
+                locations=locations or None,
+                date_posted=_text(position, "LastPublishedDate"),
+                base_salary=_text(position, "DisplaySalaryDescription"),
+                metadata=metadata or None,
+            )
+        )
+
+    if len(jobs) > MAX_JOBS:
+        raise EArcuParseError(f"eArcu feed exceeds {MAX_JOBS} jobs at {feed_url}")
+    return jobs
+
+
+async def _fetch_feed(client: httpx.AsyncClient, feed_url: str) -> str | None:
+    return await fetch_with_retry(
+        client,
+        feed_url,
+        max_chars=_MAX_FEED_CHARS,
+        transient_403=True,
+    )
+
+
+async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
+    metadata = board.get("metadata") or {}
+    feed_url = metadata.get("feed_url")
+    if not feed_url:
+        detected = await can_handle(board["board_url"], client)
+        if not detected:
+            raise EArcuParseError(f"No eArcu allvacancies feed found for {board['board_url']}")
+        feed_url = detected["feed_url"]
+
+    text = await _fetch_feed(client, feed_url)
+    if text is None:
+        raise EArcuParseError(f"eArcu feed not found at {feed_url}")
+    return _parse_feed(text, feed_url)
+
+
+async def can_handle(
+    url: str,
+    client: httpx.AsyncClient | None = None,
+    pw=None,
+) -> dict | None:
+    """Detect an eArcu CNAME by probing its live-vacancy feed."""
+    if client is None:
+        return None
+
+    for feed_url in _candidate_feed_urls(url):
+        try:
+            text = await _fetch_feed(client, feed_url)
+            if text is None:
+                continue
+            jobs = _parse_feed(text, feed_url)
+            return {"feed_url": feed_url, "jobs": len(jobs)}
+        except EArcuParseError:
+            continue
+    return None
+
+
+register("earcu", discover, cost=10, can_handle=can_handle, rich=True)
