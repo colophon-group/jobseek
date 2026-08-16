@@ -268,6 +268,21 @@ async def test_can_handle_rejects_noncanonical_oracle_url(url):
     client.get.assert_not_awaited()
 
 
+@pytest.mark.parametrize(
+    "host",
+    [
+        "example.fa.em2.oraclecloud.com",
+        "fa-example-saasfaprod1.fa.ocs.oraclecloud.com",
+        "example.fa.ocs.oraclecloud26.com",
+        "example.fa.ocs.oraclecloud.eu",
+    ],
+)
+def test_host_allowlist_covers_configured_oracle_cloud_domains(host):
+    from src.core.monitors.oracle_hcm import _ORACLE_HCM_HOST_RE
+
+    assert _ORACLE_HCM_HOST_RE.fullmatch(host)
+
+
 @pytest.mark.asyncio
 async def test_discover_uses_native_finder_suffix_pagination():
     """The workspace path paginates past short pages via Oracle's finder suffix."""
