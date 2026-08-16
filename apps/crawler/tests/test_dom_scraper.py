@@ -304,6 +304,22 @@ class TestDomScraper:
                 {"scope": scope, "steps": [{"tag": "h2", "field": "title"}]},
             )
 
+    @pytest.mark.parametrize(
+        "config",
+        [
+            {"scope": "#job-content", "include_document_title": "yes"},
+            {"include_document_title": True},
+        ],
+    )
+    def test_document_title_option_requires_boolean_and_scope(self, config):
+        from src.core.scrapers.dom import parse_html
+
+        with pytest.raises(ValueError, match="include_document_title"):
+            parse_html(
+                '<div id="job-content"><h2>Role</h2></div>',
+                {**config, "steps": [{"tag": "h2", "field": "title"}]},
+            )
+
     async def test_title_extraction_from_semantic_header(self):
         """Animated headings nested in a page header remain extractable."""
         from src.core.scrapers.dom import scrape
