@@ -245,11 +245,21 @@ _ELVIUM_MARKERS = (
     "job-posting-widget",
     "contact-info-widget",
 )
-_SOLIQUE_MARKERS = (
-    "solique.ch/",
-    'class="job-title"',
-    'class="tasks-profile-wrapper"',
-)
+_SOLIQUE_HOST_MARKER = "solique.ch/"
+_SOLIQUE_CLASS_MARKERS = ("job-title", "tasks-profile-wrapper")
+
+
+def _has_html_class(html: str, class_name: str) -> bool:
+    """Return whether raw HTML contains *class_name* as a class token."""
+
+    return bool(
+        re.search(
+            rf"\bclass\s*=\s*(['\"])[^'\"]*(?<![^\s'\"]){re.escape(class_name)}"
+            rf"(?![^\s'\"])\s*[^'\"]*\1",
+            html,
+            re.IGNORECASE,
+        )
+    )
 
 
 def _solique_config(htmls: list[str]) -> dict | None:
@@ -263,7 +273,9 @@ def _solique_config(htmls: list[str]) -> dict | None:
     """
 
     matches = sum(
-        all(marker in html.casefold() for marker in _SOLIQUE_MARKERS) for html in htmls
+        _SOLIQUE_HOST_MARKER in html.casefold()
+        and all(_has_html_class(html, marker) for marker in _SOLIQUE_CLASS_MARKERS)
+        for html in htmls
     )
     if not matches or matches < len(htmls) / 2:
         return None
