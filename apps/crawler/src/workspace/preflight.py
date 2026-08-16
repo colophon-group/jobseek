@@ -22,7 +22,7 @@ class PreflightIssue:
     severity: str  # "critical" | "warning" | "info"
 
 
-def pivot_to_workspace_worktree(ws: Workspace) -> None:
+def pivot_to_workspace_worktree(ws: Workspace) -> PreflightIssue | None:
     """Point repo-scoped operations at the workspace's managed worktree.
 
     CLI startup normally performs this pivot from the active-workspace
@@ -32,13 +32,39 @@ def pivot_to_workspace_worktree(ws: Workspace) -> None:
     authoritative fallback before running git checks or board commands.
     """
     if not ws.worktree:
-        return
+        return None
 
     from src.shared.constants import get_repo_root, set_repo_root
+    from src.workspace import git
 
-    worktree = Path(ws.worktree)
-    if get_repo_root() != worktree and (worktree / "apps" / "crawler" / "data").exists():
+    configured = Path(ws.worktree).expanduser()
+    try:
+        worktree = configured.resolve(strict=True)
+        expected = (git.worktrees_dir() / ws.slug).resolve(strict=True)
+    except OSError:
+        return PreflightIssue(
+            "worktree_missing",
+            f"Managed worktree for {ws.slug!r} is missing: {configured}",
+            "critical",
+        )
+
+    if worktree != expected:
+        return PreflightIssue(
+            "worktree_mismatch",
+            f"Workspace {ws.slug!r} records an unexpected worktree path: {configured}",
+            "critical",
+        )
+
+    if not (worktree / ".git").exists() or not (worktree / "apps" / "crawler" / "data").is_dir():
+        return PreflightIssue(
+            "worktree_invalid",
+            f"Managed worktree for {ws.slug!r} is not a valid Jobseek checkout: {worktree}",
+            "critical",
+        )
+
+    if get_repo_root() != worktree:
         set_repo_root(worktree)
+    return None
 
 
 def run_preflight(
@@ -63,10 +89,13 @@ def run_preflight(
 
     issues: list[PreflightIssue] = []
 
+    if ws.worktree:
+        worktree_issue = pivot_to_workspace_worktree(ws)
+        if worktree_issue:
+            return [worktree_issue]
+
     if check_branch and ws.branch:
         from src.workspace import git
-
-        pivot_to_workspace_worktree(ws)
 
         try:
             # Check if expected branch exists locally
