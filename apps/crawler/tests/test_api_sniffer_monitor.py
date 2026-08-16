@@ -189,6 +189,8 @@ class TestPostDataRefresh:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(ValueError, match="neither a job list"):
                 await discover(board, client)
+
+
 class TestProspectiveDetection:
     @pytest.mark.asyncio
     async def test_can_handle_uses_plain_http_detection_without_playwright(self):
@@ -245,6 +247,7 @@ class TestProspectiveDetection:
         assert config["json_path"] == "jobs"
         assert config["total_path"] == "total"
         assert config["url_field"] == "links.directlink"
+        assert config["url_filter"] == r"(?i)^https://jobs\.example\.com/"
         assert config["fields"]["locations"] == 'szas."sza_location.city"'
         assert config["fields"]["description"] == [
             "szas.sza_introduction",
@@ -276,6 +279,44 @@ class TestProspectiveDetection:
             )
 
         assert config is None
+
+    @pytest.mark.asyncio
+    async def test_rejects_mixed_or_untrusted_directlink_origins(self):
+        html = '<link href="/careercenter/1002787/assets/site.css">'
+
+        for directlink in (
+            "http://jobs.example.com/jobs/101",
+            "https://user@jobs.example.com/jobs/101",
+            "https://jobs.example.com.evil.test/jobs/101",
+        ):
+            with (
+                patch(
+                    "src.core.monitors.api_sniffer.fetch_text_page_with_retry",
+                    AsyncMock(return_value=html),
+                ),
+                patch(
+                    "src.core.monitors.api_sniffer.http_fetch_with_retry",
+                    AsyncMock(
+                        return_value={
+                            "medium_id": "1002787",
+                            "jobs": [
+                                {
+                                    "id": "101",
+                                    "title": "Analyst",
+                                    "links": {"directlink": directlink},
+                                }
+                            ],
+                        }
+                    ),
+                ),
+            ):
+                assert (
+                    await _detect_prospective_config(
+                        "https://jobs.example.com/",
+                        AsyncMock(),
+                    )
+                    is None
+                )
 
 
 class TestItemProjector:
