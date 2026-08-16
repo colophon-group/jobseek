@@ -543,6 +543,13 @@ def _serialize_post_data(value: object) -> str | None:
     raise ValueError("post_data must be a string, JSON object, or JSON array")
 
 
+def _configured_post_data(config: dict) -> str | None:
+    """Read the canonical POST body without treating empty JSON as absent."""
+
+    value = config["post_data"] if "post_data" in config else config.get("post_body")
+    return _serialize_post_data(value)
+
+
 # ---------------------------------------------------------------------------
 # can_handle
 # ---------------------------------------------------------------------------
@@ -1283,7 +1290,7 @@ async def _discover_http(
     slug_fields = _validated_slug_fields(config)
     url_regex = config.get("url_regex")
     total_path = config.get("total_path")
-    post_data = _serialize_post_data(config.get("post_data") or config.get("post_body"))
+    post_data = _configured_post_data(config)
     request_headers = config.get("request_headers") or config.get("headers") or {}
     fields_map: dict[str, str] = config.get("fields") or {}
     pagination_config = config.get("pagination")
@@ -1724,7 +1731,7 @@ async def _discover_replay(
     url_template = config.get("url_template")
     url_template_fields = config.get("url_template_fields") or {}
     slug_fields = _validated_slug_fields(config)
-    post_data = _serialize_post_data(config.get("post_data"))
+    post_data = _configured_post_data(config)
     request_headers = config.get("request_headers", {})
     fields_map: dict[str, str] = config.get("fields") or {}
     pagination_config = config.get("pagination")
