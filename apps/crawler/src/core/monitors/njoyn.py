@@ -26,6 +26,7 @@ log = structlog.get_logger()
 
 MAX_JOBS = 50_000
 MAX_PAGES = 200
+_PAGE_CHANGE_POLL_MS = 500
 
 _RESULT_COUNT_RE = re.compile(r"\bSearch\s+Results\s*\(([\d,\s]+)\)", re.IGNORECASE)
 _NEXT_SELECTORS = (
@@ -38,24 +39,68 @@ _NEXT_SELECTORS = (
 
 
 def _is_njoyn_board(url: str) -> bool:
-    parsed = urlsplit(url)
+    try:
+        parsed = urlsplit(url)
+        port = parsed.port
+    except ValueError:
+        return False
     host = (parsed.hostname or "").lower()
-    return host.endswith(".njoyn.com") and "/xweb/" in parsed.path.lower()
+    return (
+        parsed.scheme.lower() == "https"
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
+        and host.endswith(".njoyn.com")
+        and "/xweb/" in parsed.path.lower()
+    )
+
+
+def _query_values(url: str) -> dict[str, list[str]]:
+    return {
+        key.casefold(): values
+        for key, values in parse_qs(urlsplit(url).query, keep_blank_values=True).items()
+    }
+
+
+def _single_query_value(query: dict[str, list[str]], key: str) -> str | None:
+    values = query.get(key)
+    if values is None or len(values) != 1:
+        return None
+    value = values[0].strip()
+    return value or None
+
+
+def _board_identity(url: str) -> tuple[str, int, str] | None:
+    if not _is_njoyn_board(url):
+        return None
+    parsed = urlsplit(url)
+    clid = _single_query_value(_query_values(url), "clid")
+    if clid is None:
+        return None
+    return (parsed.hostname or "").lower(), parsed.port or 443, clid.casefold()
 
 
 def _is_njoyn_listing_url(url: str) -> bool:
-    if not _is_njoyn_board(url):
+    if _board_identity(url) is None:
         return False
-    query = {key.casefold(): values for key, values in parse_qs(urlsplit(url).query).items()}
-    return (query.get("page") or [""])[0].casefold() == "joblisting"
+    page = _single_query_value(_query_values(url), "page")
+    return page is not None and page.casefold() == "joblisting"
 
 
-def _is_job_detail_url(url: str) -> bool:
-    if not _is_njoyn_board(url):
+def _is_job_detail_url(url: str, *, board_url: str | None = None) -> bool:
+    identity = _board_identity(url)
+    if identity is None:
         return False
-    query = {key.casefold(): values for key, values in parse_qs(urlsplit(url).query).items()}
-    page = (query.get("page") or [""])[0].casefold()
-    return page == "jobdetails" and bool(query.get("jobid")) and bool(query.get("brid"))
+    if board_url is not None and identity != _board_identity(board_url):
+        return False
+    query = _query_values(url)
+    page = _single_query_value(query, "page")
+    return (
+        page is not None
+        and page.casefold() == "jobdetails"
+        and _single_query_value(query, "jobid") is not None
+        and _single_query_value(query, "brid") is not None
+    )
 
 
 def _expected_count(text: str) -> int | None:
@@ -65,14 +110,14 @@ def _expected_count(text: str) -> int | None:
     return int(re.sub(r"\D", "", match.group(1)))
 
 
-async def _page_snapshot(page) -> tuple[set[str], str]:
+async def _page_snapshot(page, board_url: str) -> tuple[set[str], str]:
     snapshot = await page.evaluate(
         """() => ({
             links: Array.from(document.querySelectorAll('a[href]')).map(a => a.href),
             text: document.body ? document.body.innerText : ''
         })"""
     )
-    links = {url for url in snapshot["links"] if _is_job_detail_url(url)}
+    links = {url for url in snapshot["links"] if _is_job_detail_url(url, board_url=board_url)}
     return links, snapshot["text"]
 
 
@@ -89,7 +134,8 @@ async def _discover_page(page, board_url: str, config: dict) -> set[str]:
 
     html = await safe_content(page)
     _raise_if_bot_challenge(page.url or board_url, html)
-    urls, text = await _page_snapshot(page)
+    current_page_urls, text = await _page_snapshot(page, board_url)
+    urls = set(current_page_urls)
     expected = _expected_count(text)
     if expected is None:
         raise RuntimeError("Njoyn listing is missing its Search Results total")
@@ -100,6 +146,11 @@ async def _discover_page(page, board_url: str, config: dict) -> set[str]:
     if max_pages < 1:
         raise ValueError("Njoyn max_pages must be at least 1")
     wait_ms = max(0, int(config.get("page_wait_ms", 1000)))
+    page_change_timeout_ms = min(
+        60_000,
+        max(_PAGE_CHANGE_POLL_MS, int(config.get("page_change_timeout_ms", 15_000))),
+    )
+    page_change_polls = (page_change_timeout_ms + _PAGE_CHANGE_POLL_MS - 1) // _PAGE_CHANGE_POLL_MS
 
     for page_number in range(2, max_pages + 1):
         if len(urls) >= expected:
@@ -116,13 +167,27 @@ async def _discover_page(page, board_url: str, config: dict) -> set[str]:
         if wait_ms:
             await asyncio.sleep(wait_ms / 1000)
 
-        html = await safe_content(page)
-        _raise_if_bot_challenge(page.url or board_url, html)
-        page_urls, _ = await _page_snapshot(page)
+        page_urls: set[str] | None = None
+        for poll in range(page_change_polls):
+            html = await safe_content(page)
+            _raise_if_bot_challenge(page.url or board_url, html)
+            candidate_urls, _ = await _page_snapshot(page, board_url)
+            if candidate_urls != current_page_urls:
+                page_urls = candidate_urls
+                break
+            if poll + 1 < page_change_polls:
+                await asyncio.sleep(_PAGE_CHANGE_POLL_MS / 1000)
+        if page_urls is None:
+            raise RuntimeError(
+                f"Njoyn pagination repeated page {page_number - 1}; "
+                f"collected {len(urls)} of {expected} jobs"
+            )
+
+        current_page_urls = page_urls
         urls.update(page_urls)
         if len(urls) == before:
             raise RuntimeError(
-                f"Njoyn pagination repeated page {page_number - 1}; "
+                f"Njoyn pagination added no jobs after page {page_number - 1}; "
                 f"collected {len(urls)} of {expected} jobs"
             )
     else:
