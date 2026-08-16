@@ -251,6 +251,24 @@ async def test_scraper_can_handle_rejects_oracle_lookalike_url():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://example.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1",
+        "https://user@example.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1",
+        "https://evil.test/example.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1",
+        "https://example.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,offset=200",
+        "https://example.fa.em2.oraclecloud.com/other/en/sites/CX_1",
+    ],
+)
+async def test_can_handle_rejects_noncanonical_oracle_url(url):
+    client = AsyncMock(spec=httpx.AsyncClient)
+
+    assert await can_handle(url, client) is None
+    client.get.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_discover_uses_native_finder_suffix_pagination():
     """The workspace path paginates past short pages via Oracle's finder suffix."""
     requested_urls: list[str] = []
