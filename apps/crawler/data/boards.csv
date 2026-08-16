@@ -5357,6 +5357,7 @@ tacto,tacto-ashby,https://jobs.ashbyhq.com/tacto,ashby,"{""token"": ""tacto""}",
 tacton-systems,tacton-systems-careers,https://careers.tacton.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.tacton.com/jobs.rss""}",skip,
 tadaweb,tadaweb-careers,https://www.tadaweb.com/careers,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""^https://www\\.tadaweb\\.com/careers/[a-z]""}",json-ld,
 tado,tado-personio,https://tado.jobs.personio.de/,personio,"{""slug"": ""tado""}",skip,
+tag-aviation,tag-aviation-global-careers,https://career.tagaviation.com/,recruitee,"{""slug"": ""careers-analytics"", ""api_base"": ""https://career.tagaviation.com""}",skip,
 tailorcare,tailorcare-greenhouse,https://job-boards.greenhouse.io/tailorcare2023,greenhouse,"{""token"": ""tailorcare2023""}",skip,
 tailored-brands,tailored-brands-eightfold,https://tailoredbrands.eightfold.ai/careers,eightfold,"{""url_filter"": ""/careers/job/"", ""proxy"": true}",eightfold,"{""enrich"": [""description""], ""proxy"": true}"
 tailscale,tailscale-greenhouse,https://job-boards.greenhouse.io/tailscale,greenhouse,"{""token"": ""tailscale""}",skip,
