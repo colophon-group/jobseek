@@ -46,6 +46,20 @@ def test_candidate_feed_url_preserves_portal_prefix():
     ]
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://careers.example/jobs/vacancy/find/results/",
+        "https://user@careers.example/jobs/vacancy/find/results/",
+        "https://careers.example:8443/jobs/vacancy/find/results/",
+        "https://careers.example/jobs/vacancy/find/results/#fragment",
+        "https://careers.example:bad/jobs/vacancy/find/results/",
+    ],
+)
+def test_candidate_feed_urls_reject_unsafe_board_urls(url):
+    assert _candidate_feed_urls(url) == []
+
+
 def test_parse_feed_returns_rich_jobs():
     jobs = _parse_feed(FEED, "https://careers.example/jobs/allvacancies/")
 
@@ -68,6 +82,44 @@ def test_parse_feed_rejects_incomplete_position():
             "<positions><position><JobTitle>Missing URL</JobTitle></position></positions>",
             "https://careers.example/jobs/allvacancies/",
         )
+
+
+@pytest.mark.parametrize(
+    "description_url",
+    [
+        "http://careers.example/jobs/vacancy/role/1/description/",
+        "https://other.example/jobs/vacancy/role/1/description/",
+        "https://user@careers.example/jobs/vacancy/role/1/description/",
+        "https://careers.example:8443/jobs/vacancy/role/1/description/",
+        "https://careers.example/jobs/not-a-vacancy/1/",
+        "https://careers.example/jobs/vacancy/role/1/description/?token=x",
+        "https://careers.example/jobs/vacancy/role/1/description/#fragment",
+    ],
+)
+def test_parse_feed_rejects_unsafe_job_urls(description_url):
+    feed = (
+        "<positions><position><JobTitle>Role</JobTitle>"
+        f"<DescriptionURL>{description_url}</DescriptionURL>"
+        "</position></positions>"
+    )
+    with pytest.raises(EArcuParseError, match="unsafe job URL"):
+        _parse_feed(feed, "https://careers.example/jobs/allvacancies/")
+
+
+def test_parse_feed_rejects_duplicate_urls_and_xml_entities():
+    duplicate = FEED.replace(
+        "/jobs/vacancy/branch-manager/1425/description/",
+        "https://careers.example/jobs/vacancy/travel-specialist/1426/description/",
+    )
+    with pytest.raises(EArcuParseError, match="duplicate job URL"):
+        _parse_feed(duplicate, "https://careers.example/jobs/allvacancies/")
+
+    entity = """<!DOCTYPE positions [<!ENTITY x "expanded">]>
+    <positions><position><JobTitle>&x;</JobTitle>
+    <DescriptionURL>/jobs/vacancy/role/1/description/</DescriptionURL>
+    </position></positions>"""
+    with pytest.raises(EArcuParseError, match="Invalid eArcu XML"):
+        _parse_feed(entity, "https://careers.example/jobs/allvacancies/")
 
 
 def test_parse_feed_accepts_valid_empty_inventory():
@@ -132,9 +184,38 @@ async def test_discover_fails_closed_when_configured_feed_is_missing():
             )
 
 
+async def test_discover_rejects_a_configured_feed_outside_the_board_portal():
+    transport = httpx.MockTransport(lambda request: pytest.fail("must not fetch unsafe feed"))
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(EArcuParseError, match="Unsafe eArcu feed URL"):
+            await discover(
+                {
+                    "board_url": "https://careers.example/jobs/vacancy/find/results/",
+                    "metadata": {"feed_url": "https://other.example/jobs/allvacancies/"},
+                },
+                client,
+            )
+
+
 async def test_can_handle_rejects_non_earcu_xml():
     transport = httpx.MockTransport(
         lambda request: httpx.Response(200, text="<urlset><url /></urlset>")
     )
     async with httpx.AsyncClient(transport=transport) as client:
         assert await can_handle("https://example.com/careers", client) is None
+
+
+async def test_can_handle_does_not_fall_back_after_a_malformed_scoped_feed():
+    requested: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append(request.url.path)
+        if request.url.path == "/jobs/allvacancies/":
+            return httpx.Response(200, text="<html>soft failure</html>")
+        return httpx.Response(200, text=FEED)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        assert (
+            await can_handle("https://careers.example/jobs/vacancy/find/results/", client) is None
+        )
+    assert requested == ["/jobs/allvacancies/"]
