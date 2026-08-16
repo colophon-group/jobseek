@@ -2039,9 +2039,18 @@ bamboohr — BambooHR public careers API
   Config:
     {"tenant": "acme"}
 
-    tenant   BambooHR subdomain. Auto-filled from direct or explicitly linked
-             https://{tenant}.bamboohr.com/careers URLs. Jobseek does not make
-             blind tenant guesses.
+    tenant                    BambooHR subdomain. Auto-filled from direct or
+                              explicitly linked
+                              https://{tenant}.bamboohr.com/careers URLs.
+                              Jobseek does not make blind tenant guesses.
+    description_include_regex
+                              Optional regex applied to normalized plain text
+                              from each job's detail description. Use for a
+                              shared group tenant when only one employer brand
+                              belongs on the board.
+                              Enabling it adds one detail API request per job;
+                              any detail failure fails the cycle rather than
+                              risking false delisting.
 
   Detection:  ws probe shows "BambooHR API — tenant: X, N jobs"
   Zero jobs?  Confirm /careers/list returns an empty result array."""

@@ -187,6 +187,82 @@ class TestMonitor:
         assert result == []
         assert seen == ["https://acme.bamboohr.com/careers/list"]
 
+    async def test_description_include_regex_filters_shared_tenant(self):
+        requested: list[str] = []
+        shared_jobs = [
+            JOBS[0],
+            JOBS[1],
+            {**JOBS[1], "id": "349", "jobOpeningName": "FBO Support Officer"},
+        ]
+        descriptions = {
+            "347": "<p>ExecuJet Middle East is seeking a captain.</p>",
+            "348": "<p>Luxaviation operates terminals under the ExecuJet brand.</p>",
+            "349": "<p>Business aviation is rewarding. ExecuJet Auckland's FBO is hiring.</p>",
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested.append(str(request.url))
+            if request.url.path == "/careers/list":
+                return httpx.Response(200, json=_payload(shared_jobs), request=request)
+            job_id = request.url.path.split("/")[2]
+            return httpx.Response(
+                200,
+                json={
+                    "result": {
+                        "jobOpening": {"description": descriptions[job_id]},
+                    }
+                },
+                request=request,
+            )
+
+        board = {
+            "board_url": BOARD_URL,
+            "metadata": {
+                "tenant": "acme",
+                "description_include_regex": (
+                    r"(?i)(?:^ExecuJet\b|\bExecuJet(?:\s+[\w-]+)?['’]s\s+FBO\b)"
+                ),
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+
+        assert isinstance(result, list)
+        assert [job.url for job in result] == [
+            "https://acme.bamboohr.com/careers/347",
+            "https://acme.bamboohr.com/careers/349",
+        ]
+        assert result[0].description == descriptions["347"]
+        assert set(requested) == {
+            "https://acme.bamboohr.com/careers/list",
+            "https://acme.bamboohr.com/careers/347/detail",
+            "https://acme.bamboohr.com/careers/348/detail",
+            "https://acme.bamboohr.com/careers/349/detail",
+        }
+
+    @pytest.mark.parametrize("value", ["", 123, "["])
+    async def test_description_include_regex_must_be_valid(self, value: object):
+        board = {
+            "board_url": BOARD_URL,
+            "metadata": {"description_include_regex": value},
+        }
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="description_include_regex"):
+                await discover(board, client)
+
+    async def test_description_filter_fails_when_detail_is_malformed(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            payload = _payload(JOBS[:1]) if request.url.path == "/careers/list" else {"result": {}}
+            return httpx.Response(200, json=payload, request=request)
+
+        board = {
+            "board_url": BOARD_URL,
+            "metadata": {"description_include_regex": "ExecuJet"},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="has no string description"):
+                await discover(board, client)
+
     async def test_empty_board_is_authoritative(self):
         transport = httpx.MockTransport(
             lambda request: httpx.Response(200, json=_payload([]), request=request)

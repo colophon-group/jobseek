@@ -922,7 +922,10 @@ _MONITOR_CONFIG_HINTS = {
     "avature": "Requires: listing_url, portal_id (auto-filled from an Avature public portal)",
     "join": "Optional: slug (auto-derived from join.com URL), description_path(s)",
     "ashby": "Requires: token (auto-filled from probe)",
-    "bamboohr": "Requires: tenant (auto-filled from a BambooHR careers URL)",
+    "bamboohr": (
+        "Requires: tenant (auto-filled from a BambooHR careers URL); optional "
+        "description_include_regex for shared group tenants"
+    ),
     "beisen": "Requires: tenant + portal variant (auto-filled from a *.zhiye.com URL)",
     "brassring": "Requires: partner_id and site_id (auto-filled from a TGnewUI URL)",
     "paycom": "Requires: token (auto-filled from a Paycom public portal URL)",
