@@ -226,7 +226,7 @@ def detect_ats_from_url(url: str) -> str | None:
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower()
     try:
-        _ = parsed.port
+        port = parsed.port
     except ValueError:
         return None
 
@@ -363,7 +363,12 @@ def detect_ats_from_url(url: str) -> str | None:
         return "jazzhr"
     if (
         host == "www.104.com.tw"
+        and parsed.scheme == "https"
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
         and not parsed.query
+        and not parsed.fragment
         and re.fullmatch(
             r"/company/[a-z0-9]{5,16}/?",
             parsed.path,

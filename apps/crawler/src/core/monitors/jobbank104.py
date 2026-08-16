@@ -23,6 +23,7 @@ import structlog
 from src.core.monitors import BoardGoneError, register
 from src.core.monitors.dom import _extract_links_static, _raise_if_bot_challenge
 from src.core.monitors.raw import save_text_response
+from src.shared.extract import flatten
 from src.shared.http_retry import PaginationFetchError, fetch_text_page_with_retry
 from src.shared.tdm import TDMReservedError
 from src.shared.truncation import truncated_url_result
@@ -34,8 +35,9 @@ MAX_HTML_CHARS = 5_000_000
 
 _TOKEN_RE = re.compile(r"^[a-z0-9]{5,16}$", re.IGNORECASE)
 _JOB_ID_RE = re.compile(r"^[a-z0-9]{5,16}$", re.IGNORECASE)
+_VISIBLE_COUNT_RE = re.compile(r"工作機會\s*[（(]\s*([\d,]+)\s*[）)]")
 _COUNT_PATTERNS = (
-    re.compile(r"工作機會\s*[（(]\s*([\d,]+)\s*[）)]"),
+    _VISIBLE_COUNT_RE,
     re.compile(r'["\']jobCount["\']\s*:\s*["\']?([\d,]+)', re.IGNORECASE),
 )
 _GONE_STATUSES = frozenset({404, 410})
@@ -122,6 +124,19 @@ def _advertised_count(page: str) -> int | None:
     return None
 
 
+def _explicitly_advertises_zero_jobs(page: str) -> bool:
+    """Only visible listing text can authorize an empty inventory.
+
+    A generic SPA shell may contain a JSON default such as ``jobCount: 0``
+    before client-side data loads. Treating that bootstrap value as a real
+    empty board would allow one shell response to delist every known job.
+    """
+
+    visible_text = " ".join(element["text"] for element in flatten(page))
+    match = _VISIBLE_COUNT_RE.search(visible_text)
+    return match is not None and int(match.group(1).replace(",", "")) == 0
+
+
 async def _fetch_listing(token: str, client: httpx.AsyncClient) -> str:
     url = _listing_url(token)
     try:
@@ -152,14 +167,14 @@ async def _fetch_listing(token: str, client: httpx.AsyncClient) -> str:
 def _validated_listing(page: str, token: str) -> tuple[set[str], bool]:
     urls = _parse_listing(page, token)
     advertised = _advertised_count(page)
-    if not urls and advertised != 0:
+    if not urls and not _explicitly_advertises_zero_jobs(page):
         raise ValueError(f"104 Job Bank company {token!r} returned a non-listing page")
 
     truncated = len(page) >= MAX_HTML_CHARS or len(urls) > MAX_JOBS
-    if advertised is not None and advertised != len(urls):
+    if advertised is None or advertised != len(urls):
         # Fail safely: retain what the public page returned but prevent gone
-        # detection from tombstoning jobs when the provider paginates or
-        # partially renders a larger employer.
+        # detection from tombstoning jobs when the count disappears, the
+        # provider paginates, or a larger employer is only partially rendered.
         truncated = True
     if len(urls) > MAX_JOBS:
         urls = set(sorted(urls)[:MAX_JOBS])
@@ -228,13 +243,16 @@ async def save_raw(
     token = _resolve_token(board_url, metadata)
     if token is None:
         return
-    await save_text_response(
-        artifact_dir,
-        client,
-        _listing_url(token),
-        filename="jobbank104-listing.html",
-        follow_redirects=False,
-    )
+    from src.shared.http import client_for
+
+    async with client_for(client, metadata) as routed_client:
+        await save_text_response(
+            artifact_dir,
+            routed_client,
+            _listing_url(token),
+            filename="jobbank104-listing.html",
+            follow_redirects=False,
+        )
 
 
 register("jobbank104", discover, cost=10, can_handle=can_handle, save_raw=save_raw)

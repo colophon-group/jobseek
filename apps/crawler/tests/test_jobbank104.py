@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 import httpx
 import pytest
 
@@ -10,6 +12,7 @@ from src.core.monitors.jobbank104 import (
     _token_from_url,
     can_handle,
     discover,
+    save_raw,
 )
 from src.shared.http_retry import PaginationFetchError
 from src.workspace._compat import auto_scraper_type, detect_ats_from_url
@@ -60,6 +63,7 @@ class TestIdentity:
     )
     def test_rejects_untrusted_or_scoped_urls(self, url: str):
         assert _token_from_url(url) is None
+        assert detect_ats_from_url(url) != "jobbank104"
 
     def test_canonicalizes_job_urls(self):
         assert (
@@ -131,6 +135,27 @@ class TestMonitor:
         assert result.urls == {"https://www.104.com.tw/job/8jld1"}
         assert result.truncated is True
 
+    async def test_missing_count_is_safe_truncation(self):
+        page = '<html><body><a href="/job/8jld1">Role</a></body></html>'
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=page, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover({"board_url": BOARD_URL}, client)
+
+        assert isinstance(result, MonitorResult)
+        assert result.urls == {"https://www.104.com.tw/job/8jld1"}
+        assert result.truncated is True
+
+    async def test_json_bootstrap_zero_is_not_authoritative_empty(self):
+        page = '<html><body><script>window.state = {"jobCount": 0}</script></body></html>'
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=page, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="non-listing"):
+                await discover({"board_url": BOARD_URL}, client)
+
     async def test_non_listing_page_fails_not_empty(self):
         transport = httpx.MockTransport(
             lambda request: httpx.Response(200, text="<html>not a board</html>", request=request)
@@ -156,6 +181,29 @@ class TestMonitor:
             with pytest.raises(PaginationFetchError) as exc_info:
                 await discover({"board_url": BOARD_URL}, client)
         assert exc_info.value.last_status == 403
+
+    async def test_raw_artifact_uses_proxy_aware_client(self, tmp_path, monkeypatch):
+        seen: list[dict] = []
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=_listing("8jld1"), request=request)
+        )
+
+        async with (
+            httpx.AsyncClient() as base_client,
+            httpx.AsyncClient(transport=transport) as routed_client,
+        ):
+
+            @asynccontextmanager
+            async def fake_client_for(client, config):
+                assert client is base_client
+                seen.append(config)
+                yield routed_client
+
+            monkeypatch.setattr("src.shared.http.client_for", fake_client_for)
+            await save_raw(tmp_path, BOARD_URL, {"token": TOKEN, "proxy": True}, base_client)
+
+        assert seen == [{"token": TOKEN, "proxy": True}]
+        assert (tmp_path / "jobbank104-listing.html").read_text() == _listing("8jld1")
 
 
 class TestProbe:
