@@ -42,6 +42,8 @@ MAX_JOBS = 50_000
 _STREAM_BATCH = 200
 _HTTP_CHUNK_BYTES = 64 * 1024
 _SNIFF_BYTES = 512
+_SF_DETAIL_CONCURRENCY = 16
+_SF_COMPANY_SELECTOR = '[data-careersite-propertyid="customfield1"]'
 
 
 async def _sleep(delay: float) -> None:
@@ -313,6 +315,34 @@ _PARSERS: dict[str, Callable[[ET.Element], DiscoveredJob | None]] = {
     "teamtailor": _parse_tt_item,
     "generic": _parse_generic_item,
 }
+
+
+async def _enrich_sf_companies(jobs: list[DiscoveredJob], client: httpx.AsyncClient) -> None:
+    """Populate SuccessFactors' legal-employer custom field from detail pages.
+
+    The Google feed's ``g:employer`` is commonly the generic value
+    ``Careers`` even when one tenant publishes jobs for multiple legal
+    employers.  Career-site detail pages expose the real value as
+    ``customfield1``.  This optional enrichment is fail-closed so a transient
+    detail failure cannot silently admit a sister company's posting through a
+    configured ``job_filter``.
+    """
+    semaphore = asyncio.Semaphore(_SF_DETAIL_CONCURRENCY)
+
+    async def _one(job: DiscoveredJob) -> None:
+        async with semaphore:
+            page = await fetch_page_text(job.url, client)
+        if page is None:
+            raise RuntimeError(f"SuccessFactors company enrichment failed: {job.url}")
+
+        node = LexborHTMLParser(page).css_first(_SF_COMPANY_SELECTOR)
+        company = node.text(strip=True) if node is not None else None
+        if company:
+            metadata = dict(job.metadata or {})
+            metadata["company"] = company
+            job.metadata = metadata
+
+    await asyncio.gather(*(_one(job) for job in jobs))
 
 
 # ── Feed URL helpers ────────────────────────────────────────────────────
@@ -621,9 +651,13 @@ async def discover_stream(
 
             if total_jobs >= MAX_JOBS:
                 log.warning("rss.truncated", feed=feed_url, total=total_jobs, cap=MAX_JOBS)
+                if preset_name == "successfactors" and metadata.get("fetch_company"):
+                    await _enrich_sf_companies(jobs, client)
                 yield truncated_rich_result(jobs)
                 return
             if len(jobs) >= _STREAM_BATCH:
+                if preset_name == "successfactors" and metadata.get("fetch_company"):
+                    await _enrich_sf_companies(jobs, client)
                 yield jobs
                 jobs = []
 
@@ -632,6 +666,8 @@ async def discover_stream(
         offset += preset.page_size
 
     if jobs:
+        if preset_name == "successfactors" and metadata.get("fetch_company"):
+            await _enrich_sf_companies(jobs, client)
         yield jobs
 
 

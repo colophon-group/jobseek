@@ -3,7 +3,13 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from src.core.monitor import MonitorResult, _apply_url_filter, _normalize_discovered, monitor_one
+from src.core.monitor import (
+    MonitorResult,
+    _apply_job_filter,
+    _apply_url_filter,
+    _normalize_discovered,
+    monitor_one,
+)
 from src.core.monitors import DiscoveredJob
 
 
@@ -158,6 +164,87 @@ class TestApplyUrlFilter:
         filtered = _apply_url_filter(result, {"url_filter": "/jobs/"})
         assert filtered.metadata_updates == {"pcsx_watermark": {"max_ts": 999}}
         assert filtered.hybrid is True
+
+
+class TestApplyJobFilter:
+    def _make_result(self):
+        jobs = {
+            "https://example.com/jobs/1": DiscoveredJob(
+                url="https://example.com/jobs/1",
+                title="Engineer",
+                description="<p>Build products for Example Corp.</p>",
+                locations=["London"],
+                metadata={"department": "Technology"},
+            ),
+            "https://example.com/jobs/2": DiscoveredJob(
+                url="https://example.com/jobs/2",
+                title="Pilot",
+                description="<p>Join Executive Jet Management.</p>",
+                locations=["Lisbon"],
+                metadata={"department": "Flight Operations"},
+            ),
+        }
+        return MonitorResult(urls=set(jobs), jobs_by_url=jobs)
+
+    def test_excludes_matching_rich_job_content(self):
+        filtered = _apply_job_filter(
+            self._make_result(),
+            {"job_filter": {"exclude": "(?i)executive jet management"}},
+        )
+
+        assert filtered.urls == {"https://example.com/jobs/1"}
+        assert filtered.jobs_by_url is not None
+        assert set(filtered.jobs_by_url) == filtered.urls
+        assert filtered.filtered_count == 1
+
+    def test_include_searches_locations_and_metadata(self):
+        by_location = _apply_job_filter(self._make_result(), {"job_filter": "London"})
+        by_metadata = _apply_job_filter(self._make_result(), {"job_filter": "Flight Operations"})
+
+        assert by_location.urls == {"https://example.com/jobs/1"}
+        assert by_metadata.urls == {"https://example.com/jobs/2"}
+
+    def test_invalid_regex_leaves_result_unchanged(self):
+        result = self._make_result()
+        filtered = _apply_job_filter(result, {"job_filter": {"exclude": "[invalid"}})
+
+        assert filtered is result
+
+    def test_url_only_result_is_left_unchanged(self):
+        result = MonitorResult(urls={"https://example.com/jobs/1"})
+        filtered = _apply_job_filter(result, {"job_filter": {"exclude": "Example"}})
+
+        assert filtered is result
+
+    def test_accumulates_prior_filter_count_and_preserves_flags(self):
+        result = self._make_result()
+        result.filtered_count = 3
+        result.metadata_updates = {"cursor": 123}
+        result.hybrid = True
+        result.truncated = True
+
+        filtered = _apply_job_filter(
+            result, {"job_filter": {"exclude": "Executive Jet Management"}}
+        )
+
+        assert filtered.filtered_count == 4
+        assert filtered.metadata_updates == {"cursor": 123}
+        assert filtered.hybrid is True
+        assert filtered.truncated is True
+
+    def test_preserves_url_only_part_of_hybrid_result(self):
+        result = self._make_result()
+        result.urls.add("https://example.com/jobs/url-only")
+        result.hybrid = True
+
+        filtered = _apply_job_filter(
+            result, {"job_filter": {"exclude": "Executive Jet Management"}}
+        )
+
+        assert filtered.urls == {
+            "https://example.com/jobs/1",
+            "https://example.com/jobs/url-only",
+        }
 
 
 class TestMonitorOne:

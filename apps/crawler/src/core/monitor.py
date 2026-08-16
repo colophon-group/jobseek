@@ -6,6 +6,7 @@ No database awareness, no side effects beyond HTTP requests.
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -103,7 +104,72 @@ def _apply_url_filter(result: MonitorResult, config: dict) -> MonitorResult:
         urls=filtered_urls,
         jobs_by_url=filtered_jobs,
         new_sitemap_url=result.new_sitemap_url,
-        filtered_count=removed,
+        filtered_count=result.filtered_count + removed,
+        metadata_updates=result.metadata_updates,
+        hybrid=result.hybrid,
+        truncated=result.truncated,
+    )
+
+
+def _apply_job_filter(result: MonitorResult, config: dict) -> MonitorResult:
+    """Filter rich jobs by regexes over their discovered content.
+
+    ``job_filter`` accepts the same string or ``{include, exclude}`` shape as
+    ``url_filter``.  The searchable text contains the title, description,
+    locations, and metadata.  URL-only monitors cannot apply this filter and
+    are left unchanged with a warning.
+    """
+    raw_filter = config.get("job_filter")
+    if not raw_filter:
+        return result
+
+    if result.jobs_by_url is None:
+        structlog.get_logger().warning("monitor.job_filter_unavailable")
+        return result
+
+    if isinstance(raw_filter, str):
+        include, exclude = raw_filter, None
+    else:
+        include = raw_filter.get("include")
+        exclude = raw_filter.get("exclude")
+
+    try:
+        include_re = re.compile(include) if include else None
+        exclude_re = re.compile(exclude) if exclude else None
+    except re.error as e:
+        structlog.get_logger().warning("monitor.job_filter_invalid", error=str(e))
+        return result
+
+    filtered_jobs: dict[str, DiscoveredJob] = {}
+    for url, job in result.jobs_by_url.items():
+        content = "\n".join(
+            part
+            for part in (
+                job.title,
+                job.description,
+                "\n".join(job.locations or []),
+                json.dumps(job.metadata, ensure_ascii=False, sort_keys=True)
+                if job.metadata
+                else None,
+            )
+            if part
+        )
+        if include_re and not include_re.search(content):
+            continue
+        if exclude_re and exclude_re.search(content):
+            continue
+        filtered_jobs[url] = job
+
+    # Hybrid monitors may carry URL-only entries alongside their rich subset.
+    # Those entries have no content to evaluate, so preserve them fail-open.
+    url_only = result.urls - result.jobs_by_url.keys()
+    filtered_urls = url_only | (result.urls & filtered_jobs.keys())
+    removed = len(result.urls) - len(filtered_urls)
+    return MonitorResult(
+        urls=filtered_urls,
+        jobs_by_url=filtered_jobs,
+        new_sitemap_url=result.new_sitemap_url,
+        filtered_count=result.filtered_count + removed,
         metadata_updates=result.metadata_updates,
         hybrid=result.hybrid,
         truncated=result.truncated,
@@ -145,6 +211,7 @@ def _apply_url_transform(result: MonitorResult, config: dict) -> MonitorResult:
         urls=new_urls,
         jobs_by_url=new_jobs,
         new_sitemap_url=result.new_sitemap_url,
+        filtered_count=result.filtered_count,
         metadata_updates=result.metadata_updates,
         hybrid=result.hybrid,
         truncated=result.truncated,
@@ -210,12 +277,23 @@ async def monitor_one(
     async with client_for(http, config) as client:
         discovered = await discoverer(board, client, pw=pw)
     result = _normalize_discovered(discovered)
+    before_filter = len(result.urls)
     result = _apply_url_filter(result, config)
-    if result.filtered_count:
+    url_removed = before_filter - len(result.urls)
+    if url_removed:
         structlog.get_logger().info(
             "monitor.url_filter",
             kept=len(result.urls),
-            removed=result.filtered_count,
+            removed=url_removed,
+        )
+    before_filter = len(result.urls)
+    result = _apply_job_filter(result, config)
+    job_removed = before_filter - len(result.urls)
+    if job_removed:
+        structlog.get_logger().info(
+            "monitor.job_filter",
+            kept=len(result.urls),
+            removed=job_removed,
         )
     result = _apply_url_transform(result, config)
 
@@ -249,5 +327,6 @@ async def monitor_one_stream(
         async for batch in stream_fn(board, client, pw=pw):
             result = _normalize_discovered(batch)
             result = _apply_url_filter(result, config)
+            result = _apply_job_filter(result, config)
             result = _apply_url_transform(result, config)
             yield result
