@@ -16,6 +16,8 @@ import xml.etree.ElementTree as ET
 from urllib.parse import urljoin, urlparse
 
 import httpx
+from defusedxml import ElementTree as SafeElementTree
+from defusedxml.common import DefusedXmlException
 
 from src.core.monitors import DiscoveredJob, register
 from src.shared.http_retry import fetch_with_retry
@@ -30,11 +32,22 @@ class EArcuParseError(Exception):
 
 def _candidate_feed_urls(board_url: str) -> list[str]:
     """Return likely ``allvacancies`` feeds from an eArcu board URL."""
-    parsed = urlparse(board_url)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+    try:
+        parsed = urlparse(board_url)
+        port = parsed.port
+    except ValueError:
+        return []
+    if (
+        parsed.scheme.casefold() != "https"
+        or parsed.hostname is None
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.fragment
+    ):
         return []
 
-    origin = f"{parsed.scheme}://{parsed.netloc}"
+    origin = f"https://{parsed.hostname.casefold()}"
     path = parsed.path.rstrip("/")
     prefixes: list[str] = []
 
@@ -66,21 +79,28 @@ def _text(element: ET.Element, tag: str) -> str | None:
 
 def _parse_feed(text: str, feed_url: str) -> list[DiscoveredJob]:
     try:
-        root = ET.fromstring(text)
-    except ET.ParseError as exc:
+        root = SafeElementTree.fromstring(text)
+    except (ET.ParseError, DefusedXmlException) as exc:
         raise EArcuParseError(f"Invalid eArcu XML at {feed_url}") from exc
 
     if root.tag.lower() != "positions":
         raise EArcuParseError(f"Unexpected eArcu root element at {feed_url}: {root.tag}")
 
     jobs: list[DiscoveredJob] = []
+    seen_urls: set[str] = set()
     for position in root.findall("position"):
-        url = _text(position, "DescriptionURL")
+        raw_url = _text(position, "DescriptionURL")
         title = _text(position, "JobTitle")
-        if not url or not title:
+        if not raw_url or not title:
             raise EArcuParseError(
                 f"eArcu position missing DescriptionURL or JobTitle at {feed_url}"
             )
+        url = _canonical_job_url(feed_url, raw_url)
+        if url is None:
+            raise EArcuParseError(f"eArcu position has an unsafe job URL at {feed_url}")
+        if url in seen_urls:
+            raise EArcuParseError(f"eArcu feed contains a duplicate job URL at {feed_url}")
+        seen_urls.add(url)
 
         locations = [
             location.text.strip()
@@ -98,7 +118,7 @@ def _parse_feed(text: str, feed_url: str) -> list[DiscoveredJob]:
         }
         jobs.append(
             DiscoveredJob(
-                url=urljoin(feed_url, url),
+                url=url,
                 title=title,
                 description=_text(position, "Description"),
                 locations=locations or None,
@@ -113,6 +133,43 @@ def _parse_feed(text: str, feed_url: str) -> list[DiscoveredJob]:
     return jobs
 
 
+def _canonical_job_url(feed_url: str, raw_url: str) -> str | None:
+    """Accept only canonical HTTPS vacancy URLs from the feed's own portal."""
+    try:
+        feed = urlparse(feed_url)
+        candidate = urlparse(urljoin(feed_url, raw_url))
+        feed_port = feed.port
+        candidate_port = candidate.port
+    except ValueError:
+        return None
+
+    feed_suffix = "/allvacancies/"
+    if not feed.path.casefold().endswith(feed_suffix):
+        return None
+    portal_prefix = feed.path[: -len(feed_suffix)]
+    vacancy_prefix = f"{portal_prefix}/vacancy/"
+    if (
+        feed.scheme.casefold() != "https"
+        or candidate.scheme.casefold() != "https"
+        or feed.hostname is None
+        or candidate.hostname is None
+        or candidate.hostname.casefold() != feed.hostname.casefold()
+        or feed.username is not None
+        or feed.password is not None
+        or candidate.username is not None
+        or candidate.password is not None
+        or feed_port not in {None, 443}
+        or candidate_port not in {None, 443}
+        or feed.query
+        or feed.fragment
+        or candidate.query
+        or candidate.fragment
+        or not candidate.path.casefold().startswith(vacancy_prefix.casefold())
+    ):
+        return None
+    return candidate._replace(scheme="https", netloc=feed.hostname.casefold()).geturl()
+
+
 async def _fetch_feed(client: httpx.AsyncClient, feed_url: str) -> str | None:
     return await fetch_with_retry(
         client,
@@ -125,6 +182,11 @@ async def _fetch_feed(client: httpx.AsyncClient, feed_url: str) -> str | None:
 async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[DiscoveredJob]:
     metadata = board.get("metadata") or {}
     feed_url = metadata.get("feed_url")
+    candidates = _candidate_feed_urls(board["board_url"])
+    if not candidates:
+        raise EArcuParseError(f"Unsafe eArcu board URL: {board['board_url']}")
+    if feed_url and feed_url not in candidates:
+        raise EArcuParseError(f"Unsafe eArcu feed URL for {board['board_url']}")
     if not feed_url:
         detected = await can_handle(board["board_url"], client)
         if not detected:
@@ -154,7 +216,7 @@ async def can_handle(
             jobs = _parse_feed(text, feed_url)
             return {"feed_url": feed_url, "jobs": len(jobs)}
         except EArcuParseError:
-            continue
+            return None
     return None
 
 
