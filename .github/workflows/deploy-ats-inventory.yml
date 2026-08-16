@@ -96,6 +96,7 @@ jobs:
             if (( crawler_changed )); then
               version_output="$(mktemp)"
               node scripts/derive-crawler-build-version.mjs \
+                --base "$BEFORE_SHA" \
                 --write-version apps/crawler/VERSION \
                 --github-output "$version_output"
               expected_tag="$(sed -n 's/^image_tag=//p' "$version_output")"

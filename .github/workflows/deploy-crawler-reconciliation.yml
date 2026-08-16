@@ -68,7 +68,25 @@ jobs:
               --expected-revision "$JOBSEEK_RECONCILIATION_DEPLOY_SHA" \
               --expected-wrapper-sha256 "$JOBSEEK_RECONCILIATION_WRAPPER_SHA256"
             systemctl is-active --quiet jobseek-crawler-reconciliation.timer
-            systemctl reset-failed jobseek-crawler-reconciliation.service || true
-            systemctl start --no-block jobseek-crawler-reconciliation.service
-            sleep 5
-            ! systemctl is-failed --quiet jobseek-crawler-reconciliation.service
+            [[ -r /home/deploy/.env ]] || {
+              echo "ERROR: crawler deployment environment is unavailable" >&2
+              exit 1
+            }
+            mapfile -t crawler_image_refs < <(sed -n 's/^CRAWLER_IMAGE_REF=//p' /home/deploy/.env)
+            if [[ ${#crawler_image_refs[@]} -eq 1 && \
+              "${crawler_image_refs[0]}" =~ ^ghcr\.io/colophon-group/jobseek-crawler@sha256:[0-9a-f]{64}$ ]]; then
+              systemctl reset-failed jobseek-crawler-reconciliation.service || true
+              systemctl start --no-block jobseek-crawler-reconciliation.service
+              sleep 5
+              ! systemctl is-failed --quiet jobseek-crawler-reconciliation.service
+            else
+              mapfile -t crawler_image_tags < <(sed -n 's/^CRAWLER_IMAGE_TAG=//p' /home/deploy/.env)
+              if [[ ${#crawler_image_refs[@]} -eq 0 && \
+                ${#crawler_image_tags[@]} -eq 1 && \
+                "${crawler_image_tags[0]}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+                echo "Legacy crawler rollout detected; deferring the digest-only smoke start" >&2
+              else
+                echo "ERROR: crawler image identity is missing, duplicated, or malformed" >&2
+                exit 1
+              fi
+            fi

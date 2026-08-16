@@ -85,11 +85,17 @@ function optionalArgument(name) {
 function main() {
   const versionPath = optionalArgument("--write-version") ?? "apps/crawler/VERSION";
   const githubOutput = optionalArgument("--github-output");
+  const baseRevision = optionalArgument("--base") ?? "HEAD^";
   const sourceVersion = readFileSync(versionPath, "utf8").trim();
   let parentVersion = null;
   try {
-    parentVersion = git("show", `HEAD^:${versionPath}`);
-  } catch {
+    parentVersion = git("show", `${baseRevision}:${versionPath}`);
+  } catch (error) {
+    if (baseRevision !== "HEAD^") {
+      throw new Error(`Unable to read ${versionPath} from base revision ${baseRevision}`, {
+        cause: error,
+      });
+    }
     // The repository's first deployable commit has no parent to compare.
   }
   const result = deriveCrawlerBuildVersion({
@@ -97,7 +103,7 @@ function main() {
     parentVersion,
     commitCount: git("rev-list", "--first-parent", "--count", "HEAD"),
     sha: git("rev-parse", "HEAD"),
-    files: git("diff", "--name-only", "HEAD^", "HEAD")
+    files: git("diff", "--name-only", baseRevision, "HEAD")
       .split("\n")
       .filter(Boolean),
   });

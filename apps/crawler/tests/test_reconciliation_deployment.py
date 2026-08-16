@@ -259,6 +259,10 @@ def test_install_and_workflow_preserve_rollback_and_privilege_boundary() -> None
     assert "username: root" in workflow
     assert "JOBSEEK_RECONCILIATION_DEPLOY_SHA" in workflow
     assert "JOBSEEK_RECONCILIATION_WRAPPER_SHA256" in workflow
+    assert "crawler deployment environment is unavailable" in workflow
+    assert "mapfile -t crawler_image_refs" in workflow
+    assert "Legacy crawler rollout detected" in workflow
+    assert "crawler image identity is missing, duplicated, or malformed" in workflow
     assert "systemctl start --no-block jobseek-crawler-reconciliation.service" in workflow
     assert "! systemctl is-failed --quiet jobseek-crawler-reconciliation.service" in workflow
     for action in ("actions/checkout", "appleboy/scp-action", "appleboy/ssh-action"):
