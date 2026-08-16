@@ -2682,6 +2682,8 @@ api_sniffer — XHR/Fetch API Capture (single page)
 
   Auto-probed via Playwright in ws probe scraper. Requires Playwright.
   Can also be manually selected: ws select scraper api_sniffer
+  SEEK AU/NZ job URLs are auto-probed through SEEK's public GraphQL detail
+  endpoint, avoiding Cloudflare-blocked direct detail-page navigation.
 
   How it works (browser mode):
     1. Opens job page with Playwright

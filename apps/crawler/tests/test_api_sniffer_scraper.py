@@ -15,6 +15,7 @@ from src.core.scrapers.api_sniffer import (
     _find_single_job,
     _score_job_object,
     _scrape_http,
+    _seek_http_config,
     probe_pw,
 )
 from src.shared.api_sniff import Exchange
@@ -241,6 +242,94 @@ class TestScrapeHttpPlaceholders:
         assert content.title == "WMS Clerk"
         assert content.description == "<p>Manage warehouse inventory.</p>"
         assert content.locations == ["Wilmer, TX, US"]
+
+
+class TestSeekHttpPreset:
+    def test_recognizes_canonical_au_job_urls(self):
+        config = _seek_http_config(
+            [
+                "https://au.seek.com/job/93985149?cid=company-profile",
+                "https://www.seek.com.au/job/93985150",
+            ]
+        )
+
+        assert config is not None
+        assert config["api_url"] == "https://au.seek.com/graphql"
+        assert config["method"] == "POST"
+        assert config["json_path"] == "data.jobDetails.job"
+        assert config["fields"]["description"] == "content"
+        assert config["fields"]["locations"] == "location.label"
+        assert '"id":"{id}"' in config["post_body"]
+        assert 'locale: \\"en-AU\\"' in config["post_body"]
+
+    @pytest.mark.parametrize(
+        "urls",
+        [
+            ["https://example.com/job/93985149"],
+            ["https://au.seek.com/jobs/93985149"],
+            ["https://au.seek.com/job/not-a-number"],
+            ["http://au.seek.com/job/93985149"],
+            [
+                "https://au.seek.com/job/93985149",
+                "https://nz.seek.com/job/93985150",
+            ],
+        ],
+    )
+    def test_rejects_noncanonical_or_mixed_market_urls(self, urls):
+        assert _seek_http_config(urls) is None
+
+    @pytest.mark.asyncio
+    async def test_probe_uses_graphql_without_detail_page_navigation(self):
+        requested_ids: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            body = __import__("json").loads(request.content)
+            job_id = body["variables"]["id"]
+            requested_ids.append(job_id)
+            return httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "jobDetails": {
+                            "job": {
+                                "id": job_id,
+                                "title": f"Aircraft Engineer {job_id}",
+                                "content": "<p>Maintain Pilatus aircraft safely.</p>",
+                                "abstract": "Maintain aircraft.",
+                                "location": {"label": "Adelaide SA"},
+                                "advertiser": {
+                                    "id": "34477850",
+                                    "name": "Pilatus Aircraft Australia Pty Ltd",
+                                },
+                                "workTypes": {"label": "Full time"},
+                                "createdAt": {"dateTimeUtc": "2026-08-14T07:46:34Z"},
+                                "expiresAt": {"dateTimeUtc": "2026-09-13T13:59:59Z"},
+                                "isExpired": False,
+                                "status": "Active",
+                            }
+                        }
+                    }
+                },
+            )
+
+        def make_client():
+            return httpx.AsyncClient(transport=httpx.MockTransport(handler))
+
+        urls = [
+            "https://au.seek.com/job/93985149?cid=company-profile",
+            "https://au.seek.com/job/93985150?cid=company-profile",
+        ]
+        with patch("src.shared.http.create_http_client", side_effect=make_client):
+            metadata, comment = await probe_pw(urls, MagicMock())
+
+        assert requested_ids == ["93985149", "93985150"]
+        assert metadata is not None
+        assert metadata["total"] == 2
+        assert metadata["titles"] == 2
+        assert metadata["descriptions"] == 2
+        assert metadata["locations"] == 2
+        assert metadata["config"]["api_url"] == "https://au.seek.com/graphql"
+        assert "SEEK GraphQL" in comment
 
 
 class TestProbePw:

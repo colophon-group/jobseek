@@ -1971,3 +1971,32 @@ class TestOlamEmployerBoardConfig:
             assert row["monitor_type"] == "nextdata"
             assert json.loads(row["monitor_config"])["path"] == "props.pageProps.jobs"
             assert row["scraper_type"] == "json-ld"
+
+
+class TestPilatusBoardConfig:
+    def test_global_boards_include_seek_graphql_details(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {row["board_slug"]: row for row in rows if row["company_slug"] == "pilatus"}
+        assert set(by_slug) == {
+            "pilatus-careers",
+            "pilatus-careers-australia",
+            "pilatus-careers-europe",
+        }
+
+        australia = by_slug["pilatus-careers-australia"]
+        assert australia["monitor_type"] == "dom"
+        monitor_config = json.loads(australia["monitor_config"])
+        assert monitor_config["render"] is True
+        assert "job-list-view-job-link" in monitor_config["link_selector"]
+
+        assert australia["scraper_type"] == "api_sniffer"
+        scraper_config = json.loads(australia["scraper_config"])
+        assert scraper_config["api_url"] == "https://au.seek.com/graphql"
+        assert scraper_config["json_path"] == "data.jobDetails.job"
+        assert scraper_config["fields"]["description"] == "content"
+        assert scraper_config["fields"]["locations"] == "location.label"
