@@ -58,8 +58,14 @@ def _scope_html(html: str, config: dict) -> str:
     shadowing job fields without introducing provider-specific parsing.
     """
 
+    include_document_title = config.get("include_document_title", False)
+    if not isinstance(include_document_title, bool):
+        raise ValueError("DOM scraper include_document_title must be a boolean")
+
     scope = config.get("scope")
     if scope is None:
+        if include_document_title:
+            raise ValueError("DOM scraper include_document_title requires scope")
         return html
     if not isinstance(scope, str) or not scope.strip() or len(scope) > 256 or "\x00" in scope:
         raise ValueError("DOM scraper scope must be a non-empty CSS selector up to 256 chars")
@@ -71,7 +77,7 @@ def _scope_html(html: str, config: dict) -> str:
     if node is None:
         raise ValueError(f"DOM scraper scope did not match the page: {scope!r}")
     scoped_html = node.html
-    if config.get("include_document_title"):
+    if include_document_title:
         title = document.css_first("title")
         if title is not None:
             scoped_html = f"{title.html}{scoped_html}"
@@ -232,6 +238,7 @@ def _talentsoft_config(htmls: list[str]) -> dict | None:
             },
         ]
     }
+
 
 _ELVIUM_MARKERS = (
     "career-page job-posting-layout",
