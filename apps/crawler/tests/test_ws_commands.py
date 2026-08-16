@@ -4160,10 +4160,13 @@ class TestPreflight:
         _patch_all(monkeypatch, tmp_path)
 
         outer_root = tmp_path / "resolver-worktree"
-        managed_worktree = tmp_path / "managed-worktree"
+        managed_worktrees = tmp_path / "managed-worktrees"
+        managed_worktree = managed_worktrees / "test"
         (managed_worktree / "apps" / "crawler" / "data").mkdir(parents=True)
+        (managed_worktree / ".git").touch()
         repo_root = {"path": outer_root}
 
+        monkeypatch.setattr("src.workspace.git.worktrees_dir", lambda: managed_worktrees)
         monkeypatch.setattr("src.shared.constants.get_repo_root", lambda: repo_root["path"])
         monkeypatch.setattr(
             "src.shared.constants.set_repo_root",
@@ -4193,6 +4196,62 @@ class TestPreflight:
 
         assert repo_root["path"] == managed_worktree
         assert not issues
+
+    def test_preflight_rejects_noncanonical_workspace_worktree(self, tmp_path, monkeypatch):
+        from src.workspace.preflight import run_preflight
+
+        _patch_all(monkeypatch, tmp_path)
+
+        managed_worktrees = tmp_path / "managed-worktrees"
+        unexpected = tmp_path / "other-checkout"
+        (managed_worktrees / "test" / "apps" / "crawler" / "data").mkdir(parents=True)
+        (managed_worktrees / "test" / ".git").touch()
+        (unexpected / "apps" / "crawler" / "data").mkdir(parents=True)
+        (unexpected / ".git").touch()
+        outer_root = tmp_path / "resolver-worktree"
+        repo_root = {"path": outer_root}
+
+        monkeypatch.setattr("src.workspace.git.worktrees_dir", lambda: managed_worktrees)
+        monkeypatch.setattr("src.shared.constants.get_repo_root", lambda: repo_root["path"])
+        monkeypatch.setattr(
+            "src.shared.constants.set_repo_root",
+            lambda path: repo_root.__setitem__("path", path),
+        )
+
+        issues = run_preflight(
+            Workspace(
+                slug="test",
+                branch="add-company/test",
+                worktree=str(unexpected),
+            )
+        )
+
+        assert repo_root["path"] == outer_root
+        assert [(issue.code, issue.severity) for issue in issues] == [
+            ("worktree_mismatch", "critical")
+        ]
+
+    def test_preflight_rejects_non_git_workspace_worktree(self, tmp_path, monkeypatch):
+        from src.workspace.preflight import run_preflight
+
+        _patch_all(monkeypatch, tmp_path)
+
+        managed_worktrees = tmp_path / "managed-worktrees"
+        managed_worktree = managed_worktrees / "test"
+        (managed_worktree / "apps" / "crawler" / "data").mkdir(parents=True)
+        monkeypatch.setattr("src.workspace.git.worktrees_dir", lambda: managed_worktrees)
+
+        issues = run_preflight(
+            Workspace(
+                slug="test",
+                branch="add-company/test",
+                worktree=str(managed_worktree),
+            )
+        )
+
+        assert [(issue.code, issue.severity) for issue in issues] == [
+            ("worktree_invalid", "critical")
+        ]
 
     def test_preflight_no_branch_check_when_disabled(self, tmp_path, monkeypatch):
         from src.workspace.preflight import run_preflight
