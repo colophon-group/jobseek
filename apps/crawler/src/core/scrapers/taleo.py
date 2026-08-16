@@ -29,18 +29,29 @@ _FILL_LIST_MARKER_RE = re.compile(
     r"api\.fillList\(\s*['\"]requisitionDescriptionInterface['\"]\s*,\s*"
     r"['\"]descRequisition['\"]\s*,\s*"
 )
-_DETAIL_PATH_RE = re.compile(r"^/careersection/[^/]+/jobdetail\.ftl$", re.IGNORECASE)
+_DETAIL_PATH_RE = re.compile(
+    r"^/careersection/[a-z0-9_-]{1,64}/jobdetail\.ftl$",
+    re.IGNORECASE,
+)
 _WORKPLACE_RE = re.compile(r"#LI[-_ ]?(hybrid|remote|on[- ]?site)", re.IGNORECASE)
 
 
 def _detail_url(url: str) -> bool:
-    parsed = urlparse(url)
+    try:
+        parsed = urlparse(url)
+        port = parsed.port
+    except ValueError:
+        return False
     host = (parsed.hostname or "").lower()
     job = parse_qs(parsed.query).get("job", [""])[0]
     return bool(
         parsed.scheme == "https"
         and host.endswith(".taleo.net")
         and not host.endswith(".tbe.taleo.net")
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
+        and not parsed.fragment
         and _DETAIL_PATH_RE.fullmatch(parsed.path)
         and job.isdigit()
     )
@@ -155,9 +166,7 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
 
     title = unescape(values[9]).strip() or None
     description_parts = [
-        part
-        for index in (11, 13)
-        if (part := _decoded_html(values[index])) is not None
+        part for index in (11, 13) if (part := _decoded_html(values[index])) is not None
     ]
     description = "\n".join(description_parts) or None
     location = unescape(values[17]).strip() or None

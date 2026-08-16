@@ -71,8 +71,7 @@ def test_can_handle_requires_usable_taleo_payload_on_half_the_pages() -> None:
 
 def test_parse_html_rejects_non_string_fill_list_values() -> None:
     html = (
-        "<script>api.fillList('requisitionDescriptionInterface', "
-        "'descRequisition', [1]);</script>"
+        "<script>api.fillList('requisitionDescriptionInterface', 'descRequisition', [1]);</script>"
     )
 
     with pytest.raises(ValueError, match="non-string"):
@@ -105,3 +104,20 @@ async def test_scrape_rejects_taleo_business_edition_url() -> None:
                 {},
                 client,
             )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://easyjet.taleo.net/careersection/2/jobdetail.ftl?job=17204",
+        "https://user@easyjet.taleo.net/careersection/2/jobdetail.ftl?job=17204",
+        "https://easyjet.taleo.net:444/careersection/2/jobdetail.ftl?job=17204",
+        "https://easyjet.taleo.net/careersection/../../jobdetail.ftl?job=17204",
+        "https://easyjet.taleo.net/careersection/2/jobdetail.ftl?job=17204#other",
+    ],
+)
+async def test_scrape_rejects_noncanonical_enterprise_url(url: str) -> None:
+    async with httpx.AsyncClient() as client:
+        with pytest.raises(ValueError, match="invalid Taleo Enterprise"):
+            await scrape(url, {}, client)

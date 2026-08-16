@@ -1044,6 +1044,46 @@ class TestPaginateAllWithFetchFn:
         assert len(items) >= 10  # At least page 1
 
     @pytest.mark.asyncio
+    async def test_known_total_continues_after_variable_short_page(self):
+        """A short page is not terminal while the advertised total is unmet."""
+        page1_items = [{"id": i} for i in range(25)]
+        pages = {
+            2: [{"id": i} for i in range(25, 45)],
+            3: [{"id": i} for i in range(45, 63)],
+        }
+        requested: list[int] = []
+
+        async def mock_fetch(method, url, headers, body):
+            page = json.loads(body)["pageNo"]
+            requested.append(page)
+            return {"jobs": pages[page], "pagingData": {"totalCount": 63}}
+
+        ex = _make_exchange(
+            method="POST",
+            url="https://example.com/api/jobs",
+            post_data=json.dumps({"pageNo": 1}),
+            body={"jobs": page1_items, "pagingData": {"totalCount": 63}},
+        )
+        pag = PaginationInfo(
+            param_name="pageNo",
+            style="page",
+            start_value=1,
+            increment=1,
+            location="body",
+        )
+        result = JobListResult(
+            candidate=ArrayCandidate(exchange=ex, json_path="jobs", items=page1_items),
+            url_field=None,
+            total_count=63,
+            pagination=pag,
+        )
+
+        items = await paginate_all(mock_fetch, result, max_pages=5)
+
+        assert requested == [2, 3]
+        assert [item["id"] for item in items] == list(range(63))
+
+    @pytest.mark.asyncio
     async def test_paginate_no_pagination(self):
         """paginate_all returns items as-is when no pagination info."""
         page1_items = [{"title": f"Job {i}"} for i in range(5)]

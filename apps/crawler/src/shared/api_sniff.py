@@ -1503,7 +1503,9 @@ async def paginate_all(
         else:
             empty_count = 0
             all_items.extend(project(item) for item in items)
-            if len(items) < page_size:
+            if len(items) < page_size and (
+                not result.total_count or len(all_items) >= result.total_count
+            ):
                 break
 
         pages_fetched += 1

@@ -12,6 +12,7 @@ import pytest
 from src.core.monitors.api_sniffer import (
     ApiSnifferFallbackError,
     _build_item_projector,
+    _configured_post_data,
     _detect_prospective_config,
     _discover_live_url,
     _extract_rich,
@@ -32,6 +33,12 @@ def test_serialize_post_data_accepts_json_values_and_existing_strings():
     assert _serialize_post_data(None) is None
     with pytest.raises(ValueError, match="post_data must be"):
         _serialize_post_data(1)
+
+
+def test_configured_post_data_preserves_explicit_empty_json():
+    assert _configured_post_data({"post_data": {}, "post_body": "fallback=1"}) == "{}"
+    assert _configured_post_data({"post_data": [], "post_body": "fallback=1"}) == "[]"
+    assert _configured_post_data({"post_body": "fallback=1"}) == "fallback=1"
 
 
 class TestPostDataRefresh:
