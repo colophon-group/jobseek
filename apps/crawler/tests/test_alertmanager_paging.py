@@ -191,6 +191,68 @@ def test_request_diagnostics_are_bounded_and_redacted(monkeypatch) -> None:
     assert len(caught.value.detail) <= 300
 
 
+def test_grafana_read_retries_transient_readiness_failures(monkeypatch) -> None:
+    request = httpx.Request("GET", "https://grafana.example.com/api/test")
+    responses = iter(
+        (
+            httpx.Response(503, request=request),
+            httpx.Response(503, request=request),
+            httpx.Response(200, json={"ready": True}, request=request),
+        )
+    )
+    sleeps: list[int] = []
+    monkeypatch.setattr(paging.httpx, "request", lambda *_args, **_kwargs: next(responses))
+    monkeypatch.setattr(paging.time, "sleep", sleeps.append)
+
+    status, payload = paging.GrafanaClient("https://grafana.example.com", "secret").request(
+        "GET", "/api/test"
+    )
+
+    assert status == 200
+    assert payload == {"ready": True}
+    assert sleeps == [1, 2]
+
+
+def test_grafana_read_retries_are_bounded(monkeypatch) -> None:
+    request = httpx.Request("GET", "https://grafana.example.com/api/test")
+    calls = 0
+    sleeps: list[int] = []
+
+    def unavailable(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        return httpx.Response(503, request=request)
+
+    monkeypatch.setattr(paging.httpx, "request", unavailable)
+    monkeypatch.setattr(paging.time, "sleep", sleeps.append)
+
+    with pytest.raises(paging.GrafanaRequestError) as caught:
+        paging.GrafanaClient("https://grafana.example.com", "secret").request("GET", "/api/test")
+
+    assert caught.value.status_code == 503
+    assert calls == paging.GRAFANA_READ_ATTEMPTS
+    assert sleeps == [1, 2, 4, 8]
+
+
+def test_grafana_writes_do_not_retry(monkeypatch) -> None:
+    request = httpx.Request("PUT", "https://grafana.example.com/api/test")
+    calls = 0
+
+    def unavailable(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        return httpx.Response(503, request=request)
+
+    monkeypatch.setattr(paging.httpx, "request", unavailable)
+
+    with pytest.raises(paging.GrafanaRequestError):
+        paging.GrafanaClient("https://grafana.example.com", "secret").request(
+            "PUT", "/api/test", json_body={"enabled": False}
+        )
+
+    assert calls == 1
+
+
 def test_cli_rejects_the_removed_activation_mode(monkeypatch) -> None:
     monkeypatch.setattr(sys, "argv", [str(SCRIPT)])
 

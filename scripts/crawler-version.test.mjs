@@ -101,6 +101,28 @@ test("explicit release builds retain their clean version and tag", () => {
   );
 });
 
+test("batched push releases may end in an unrelated commit", () => {
+  assert.deepEqual(
+    deriveCrawlerBuildVersion({
+      sourceVersion: "0.13.153",
+      parentVersion: "0.13.152",
+      commitCount: "6203",
+      sha: "fedcba9876543210",
+      files: [
+        "apps/crawler/src/cli.py",
+        "apps/crawler/VERSION",
+        ".github/scripts/label-pr.sh",
+      ],
+    }),
+    {
+      sourceVersion: "0.13.153",
+      packageVersion: "0.13.153",
+      imageTag: "v0.13.153",
+      derived: false,
+    },
+  );
+});
+
 test("unchanged releases get deterministic commit-specific build versions", () => {
   assert.deepEqual(
     deriveCrawlerBuildVersion({

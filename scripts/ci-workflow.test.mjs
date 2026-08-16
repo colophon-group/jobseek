@@ -440,7 +440,7 @@ test("crawler deploys derive immutable versions for unchanged releases", () => {
   assert.match(deployCrawlerWorkflow, /fetch-depth: 0/);
   assert.match(
     deployCrawlerWorkflow,
-    /scripts\/derive-crawler-build-version\.mjs[\s\S]*--write-version apps\/crawler\/VERSION[\s\S]*--github-output "\$GITHUB_OUTPUT"/,
+    /BASE_SHA: \$\{\{ github\.event\.before \}\}[\s\S]*scripts\/derive-crawler-build-version\.mjs[\s\S]*--base "\$BASE_SHA"[\s\S]*--write-version apps\/crawler\/VERSION[\s\S]*--github-output "\$GITHUB_OUTPUT"/,
   );
   assert.match(
     deployCrawlerWorkflow,

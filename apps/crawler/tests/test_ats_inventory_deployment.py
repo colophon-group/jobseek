@@ -350,6 +350,7 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
     assert "expected_tag=current" in workflow
     assert "expected_revision=current" in workflow
     assert "derive-crawler-build-version.mjs" in workflow
+    assert '--base "$BEFORE_SHA"' in workflow
     assert "fetch-depth: 0" in workflow
     assert 'changed_paths="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")"' in workflow
     assert 'done <<< "$changed_paths"' in workflow

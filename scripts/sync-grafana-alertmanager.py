@@ -7,6 +7,7 @@ import argparse
 import copy
 import os
 import re
+import time
 from typing import Any
 from urllib.parse import quote, urlsplit
 
@@ -17,6 +18,8 @@ BRIDGE_RULE_UID = "jobseek-production-page-bridge"
 DEADMAN_RULE_UID = "jobseek-paging-route-deadman"
 SYNTHETIC_TEST_RULE_UID = "jobseek-paging-e2e-test"
 PAGING_RULE_UIDS = (BRIDGE_RULE_UID, DEADMAN_RULE_UID, SYNTHETIC_TEST_RULE_UID)
+GRAFANA_READ_ATTEMPTS = 5
+GRAFANA_RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
 
 
 class AlertmanagerSyncError(RuntimeError):
@@ -122,19 +125,34 @@ class GrafanaClient:
         headers = {"Authorization": f"Bearer {self.api_key}"}
         if disable_provenance:
             headers["X-Disable-Provenance"] = "true"
-        try:
-            response = httpx.request(
-                method,
-                f"{self.base_url}{path}",
-                json=json_body,
-                headers=headers,
-                timeout=30,
-                follow_redirects=False,
-            )
-        except httpx.HTTPError as exc:
-            raise AlertmanagerSyncError(
-                f"Grafana {method} {path.split('?', 1)[0]} failed: {type(exc).__name__}"
-            ) from exc
+        method = method.upper()
+        max_attempts = GRAFANA_READ_ATTEMPTS if method == "GET" else 1
+        response: httpx.Response | None = None
+        for attempt in range(max_attempts):
+            try:
+                response = httpx.request(
+                    method,
+                    f"{self.base_url}{path}",
+                    json=json_body,
+                    headers=headers,
+                    timeout=30,
+                    follow_redirects=False,
+                )
+            except httpx.HTTPError as exc:
+                if attempt + 1 < max_attempts:
+                    time.sleep(2**attempt)
+                    continue
+                raise AlertmanagerSyncError(
+                    f"Grafana {method} {path.split('?', 1)[0]} failed: {type(exc).__name__}"
+                ) from exc
+            if (
+                response.status_code in GRAFANA_RETRYABLE_STATUSES
+                and attempt + 1 < max_attempts
+            ):
+                time.sleep(2**attempt)
+                continue
+            break
+        assert response is not None
         if allow_not_found and response.status_code == 404:
             return response.status_code, None
         if response.is_error:
