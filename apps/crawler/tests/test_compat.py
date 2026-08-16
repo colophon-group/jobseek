@@ -59,9 +59,7 @@ def test_detect_ats_breezy_host():
 
 
 def test_detect_ats_earcu_listing_path():
-    assert (
-        detect_ats_from_url("https://careers.example.com/jobs/vacancy/find/results/") == "earcu"
-    )
+    assert detect_ats_from_url("https://careers.example.com/jobs/vacancy/find/results/") == "earcu"
 
 
 def test_detect_ats_avature_vendor_url_is_strict():
