@@ -10,7 +10,7 @@ import structlog
 from selectolax.lexbor import LexborHTMLParser
 
 from src.core.scrapers import JobContent, register
-from src.shared.http_retry import fetch_text_page_with_retry
+from src.shared.http_retry import PaginationFetchError, fetch_text_page_with_retry
 
 log = structlog.get_logger()
 
@@ -104,14 +104,27 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> J
         return JobContent()
 
     detail_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
-    html = await fetch_text_page_with_retry(
-        http,
-        detail_url,
-        retries=_DETAIL_RETRIES,
-        base_delay=_DETAIL_BASE_DELAY_S,
-    )
-    if html is None:
-        return JobContent()
+    try:
+        html = await fetch_text_page_with_retry(
+            http,
+            detail_url,
+            retries=_DETAIL_RETRIES,
+            base_delay=_DETAIL_BASE_DELAY_S,
+            # A detail URL is not pagination: 404/410 means this exact job is
+            # closed. Surface that signal to the scrape-side delisting path.
+            end_of_pagination_statuses=(),
+        )
+    except PaginationFetchError as exc:
+        if exc.last_status not in (404, 410):
+            raise
+        request = httpx.Request("GET", detail_url)
+        response = httpx.Response(exc.last_status, request=request)
+        raise httpx.HTTPStatusError(
+            f"LinkedIn job {job_id} is no longer available",
+            request=request,
+            response=response,
+        ) from exc
+    assert html is not None
     return parse_html(html, config)
 
 

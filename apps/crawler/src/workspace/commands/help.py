@@ -701,7 +701,9 @@ linkedin — LinkedIn public guest-jobs endpoints
                   Auto-resolved for active company jobs pages during probing.
     company_slug  Optional exact company slug used to reject unrelated cards.
     keywords      Optional company-name search term for tenants where LinkedIn's
-                  company filter returns only a ranked subset without it.
+                  company filter returns only a ranked subset without it. The
+                  monitor unions both queries and marks the cycle partial so
+                  varying guest-search subsets cannot tombstone valid jobs.
 
   Detection:  ws probe shows "LinkedIn guest jobs — company: X, N jobs"
   Zero jobs?  Verify the f_C value; an empty company board is valid."""

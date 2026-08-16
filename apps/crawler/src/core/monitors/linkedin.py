@@ -327,14 +327,19 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
         keywords=keywords.strip() if isinstance(keywords, str) else None,
     )
     discovered = [job.discovered(str(company_id)) for job in jobs]
+    # A configured keyword is an explicit recovery path for tenants where
+    # LinkedIn serves non-authoritative, varying subsets for the same f_C
+    # filter. Preserve every discovered URL, but suppress monitor-level gone
+    # detection; the daily detail scraper remains authoritative for closure.
+    partial = truncated or keywords is not None
     log.info(
         "linkedin.discovered",
         company_id=company_id,
         company_slug=company_slug,
         jobs=len(discovered),
-        truncated=truncated,
+        truncated=partial,
     )
-    if truncated:
+    if partial:
         return truncated_rich_result(discovered)
     return discovered
 

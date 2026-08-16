@@ -199,7 +199,11 @@ class TestMonitor:
                     client,
                 )
 
-        assert {job.metadata["job_id"] for job in result} == {"4442073767", "4442073768"}
+        assert result.truncated is True
+        assert {job.metadata["job_id"] for job in result.jobs_by_url.values()} == {
+            "4442073767",
+            "4442073768",
+        }
         assert requested_keywords == [None, "Damora Therapeutics"]
         sleep.assert_awaited_once_with(1.0)
 
@@ -344,6 +348,15 @@ class TestScraper:
             )
         assert result.description
 
+    @pytest.mark.parametrize("status", [404, 410])
+    async def test_surfaces_closed_job_for_immediate_delisting(self, status: int):
+        transport = httpx.MockTransport(lambda request: httpx.Response(status, request=request))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(httpx.HTTPStatusError) as error:
+                await scrape("https://www.linkedin.com/jobs/view/4442073767", {}, client)
+
+        assert error.value.response.status_code == status
+
     async def test_uses_provider_specific_rate_limit_retry_budget(self):
         client = AsyncMock(spec=httpx.AsyncClient)
         with patch(
@@ -363,6 +376,7 @@ class TestScraper:
             "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/4442073767",
             retries=4,
             base_delay=1.5,
+            end_of_pagination_statuses=(),
         )
 
 
