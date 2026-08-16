@@ -89,8 +89,9 @@ jobs:
 
       - name: Log in to GHCR (job token, stdin)
         env:
+          GHCR_USERNAME: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
 
       - name: Build & push jobseek-murmur-shim
         id: build-shim
@@ -787,8 +788,9 @@ jobs:
 
       - name: Log in to GHCR (job token, stdin)
         env:
+          GHCR_USERNAME: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
 
       - name: Promote deployed shim to compatibility tag
         run: |
