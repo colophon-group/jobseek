@@ -98,19 +98,8 @@ def run_preflight(
         from src.workspace import git
 
         try:
-            # Workspace state is anchored to the resolver's outer worktree,
-            # while the feature branch lives in the managed company worktree.
-            # Check the branch where it actually lives even when the CLI could
-            # not pivot automatically (for example, when active-workspace
-            # session markers are unavailable to a non-interactive command).
-            cwd = Path(ws.worktree) if ws.worktree else None
-
             # Check if expected branch exists locally
-            result = git._run(
-                ["git", "branch", "--list", ws.branch],
-                cwd=cwd,
-                check=False,
-            )
+            result = git._run(["git", "branch", "--list", ws.branch], check=False)
             if ws.branch not in result.stdout:
                 issues.append(
                     PreflightIssue(
@@ -120,10 +109,7 @@ def run_preflight(
                     )
                 )
             else:
-                current = git._run(
-                    ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                    cwd=cwd,
-                ).stdout.strip()
+                current = git.current_branch()
                 if current != ws.branch:
                     issues.append(
                         PreflightIssue(
