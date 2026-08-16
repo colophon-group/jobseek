@@ -1883,32 +1883,37 @@ class TestZteMokahrHasMokahrScraperAndEnrich:
         assert scraper.needs_browser is False
 
 
-class TestOlamGroupBoardConfig:
-    def test_all_seven_sources_use_verified_monitor_and_scraper_pairs(self):
+class TestOlamEmployerBoardConfig:
+    def test_sources_preserve_current_separate_employer_identities(self):
         import json
 
         from src.shared.constants import get_data_dir
         from src.shared.csv_io import read_csv
 
         _, rows = read_csv(get_data_dir() / "boards.csv")
-        by_slug = {row["board_slug"]: row for row in rows if row["company_slug"] == "olam-group"}
-        assert set(by_slug) == {
-            "olam-group-global",
-            "olam-group-ofi-brazil",
-            "olam-group-ofi-global",
-            "olam-group-ofi-north-america",
-            "olam-group-olam-agri-americas",
-            "olam-group-olam-agri-brazil",
-            "olam-group-olam-agri-global",
+        by_slug = {
+            row["board_slug"]: row
+            for row in rows
+            if row["company_slug"] in {"ofi", "olam-agri", "olam-group"}
         }
+        expected_companies = {
+            "ofi-brazil": "ofi",
+            "ofi-global": "ofi",
+            "ofi-north-america": "ofi",
+            "olam-agri-americas": "olam-agri",
+            "olam-agri-brazil": "olam-agri",
+            "olam-agri-global": "olam-agri",
+            "olam-group-global": "olam-group",
+        }
+        assert {slug: row["company_slug"] for slug, row in by_slug.items()} == (expected_companies)
 
-        talemetry = by_slug["olam-group-ofi-north-america"]
+        talemetry = by_slug["ofi-north-america"]
         assert talemetry["monitor_type"] == "talemetry"
         assert json.loads(talemetry["monitor_config"]) == {"proxy": True}
         assert talemetry["scraper_type"] == "json-ld"
         assert json.loads(talemetry["scraper_config"]) == {"proxy": True}
 
-        paylocity = by_slug["olam-group-olam-agri-americas"]
+        paylocity = by_slug["olam-agri-americas"]
         assert paylocity["monitor_type"] == "paylocity"
         assert json.loads(paylocity["monitor_config"]) == {"proxy": True}
         assert paylocity["scraper_type"] == "paylocity"
@@ -1919,8 +1924,8 @@ class TestOlamGroupBoardConfig:
 
         rss_slugs = {
             "olam-group-global",
-            "olam-group-ofi-global",
-            "olam-group-olam-agri-global",
+            "ofi-global",
+            "olam-agri-global",
         }
         for slug in rss_slugs:
             row = by_slug[slug]
@@ -1928,7 +1933,7 @@ class TestOlamGroupBoardConfig:
             assert json.loads(row["monitor_config"])["preset"] == "successfactors"
             assert row["scraper_type"] == "skip"
 
-        gupy_slugs = {"olam-group-ofi-brazil", "olam-group-olam-agri-brazil"}
+        gupy_slugs = {"ofi-brazil", "olam-agri-brazil"}
         for slug in gupy_slugs:
             row = by_slug[slug]
             assert row["monitor_type"] == "nextdata"
