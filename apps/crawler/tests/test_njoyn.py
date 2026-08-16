@@ -33,17 +33,25 @@ class _FakeLocator:
         return int(is_njoyn_next and self.page.has_next)
 
     async def click(self) -> None:
-        if not self.page.repeat:
-            self.page.index += 1
+        self.page.click_next()
 
 
 class _FakePage:
-    def __init__(self, pages: list[list[str]], expected: int | None, *, repeat: bool = False):
+    def __init__(
+        self,
+        pages: list[list[str]],
+        expected: int | None,
+        *,
+        repeat: bool = False,
+        change_after_polls: int = 0,
+    ):
         self.pages = pages
         self.expected = expected
         self.repeat = repeat
+        self.change_after_polls = change_after_polls
+        self.pending_polls: int | None = None
         self.index = 0
-        self.url = "https://cgi.njoyn.com/corp/xweb/XWeb.asp?page=joblisting"
+        self.url = "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&page=joblisting"
 
     @property
     def has_next(self) -> bool:
@@ -52,7 +60,21 @@ class _FakePage:
     def locator(self, selector: str) -> _FakeLocator:
         return _FakeLocator(self, selector)
 
+    def click_next(self) -> None:
+        if self.repeat:
+            return
+        if self.change_after_polls:
+            self.pending_polls = self.change_after_polls
+        else:
+            self.index += 1
+
     async def evaluate(self, _script: str):
+        if self.pending_polls is not None:
+            if self.pending_polls == 0:
+                self.index += 1
+                self.pending_polls = None
+            else:
+                self.pending_polls -= 1
         result_text = "" if self.expected is None else f"Search Results ({self.expected})"
         return {
             "links": self.pages[self.index],
@@ -69,6 +91,28 @@ def test_recognizes_njoyn_detail_urls_case_insensitively() -> None:
         "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&page=joblisting"
     )
     assert not _is_job_detail_url("https://example.com/?Page=JobDetails&Jobid=1&BRID=2")
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=1&BRID=2",
+        "https://user@cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=1&BRID=2",
+        "https://cgi.njoyn.com:444/corp/xweb/XWeb.asp?CLID=21001&Page=JobDetails&Jobid=1&BRID=2",
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&CLID=22002&Page=JobDetails&Jobid=1&BRID=2",
+    ],
+)
+def test_rejects_unsafe_or_ambiguous_detail_urls(url: str) -> None:
+    assert not _is_job_detail_url(url)
+
+
+def test_rejects_detail_urls_from_a_different_board_tenant() -> None:
+    board_url = "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=21001&Page=JobListing"
+    other_tenant = (
+        "https://cgi.njoyn.com/corp/xweb/XWeb.asp?CLID=22002&Page=JobDetails&Jobid=J1&BRID=1"
+    )
+
+    assert not _is_job_detail_url(other_tenant, board_url=board_url)
 
 
 def test_parses_advertised_result_count() -> None:
@@ -119,6 +163,27 @@ async def test_collects_form_paginated_listing_and_checks_total() -> None:
     assert page.index == 2
 
 
+async def test_waits_for_slow_form_pagination_to_replace_results() -> None:
+    page = _FakePage(
+        [[_job("J1", 1)], [_job("J2", 2)]],
+        expected=2,
+        change_after_polls=2,
+    )
+    with (
+        patch("src.core.monitors.njoyn.navigate", new_callable=AsyncMock),
+        patch(
+            "src.core.monitors.njoyn.safe_content",
+            new_callable=AsyncMock,
+            return_value="<html>jobs</html>",
+        ),
+        patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock) as sleep,
+    ):
+        urls = await _discover_page(page, page.url, {"page_wait_ms": 1})
+
+    assert urls == {_job("J1", 1), _job("J2", 2)}
+    assert sleep.await_count >= 3
+
+
 async def test_fails_closed_when_next_control_disappears_before_total() -> None:
     page = _FakePage([[_job("J1", 1)]], expected=2)
     with (
@@ -159,7 +224,11 @@ async def test_fails_closed_when_next_repeats_same_page() -> None:
         patch("src.core.monitors.njoyn.asyncio.sleep", new_callable=AsyncMock),
         pytest.raises(RuntimeError, match="repeated page"),
     ):
-        await _discover_page(page, page.url, {"page_wait_ms": 1})
+        await _discover_page(
+            page,
+            page.url,
+            {"page_wait_ms": 1, "page_change_timeout_ms": 500},
+        )
 
 
 async def test_fails_closed_on_radware_challenge() -> None:
