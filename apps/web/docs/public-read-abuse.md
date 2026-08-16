@@ -60,16 +60,21 @@ JA4. Do not use either source alone for the daily review.
    request paths, hosts, and firewall outcomes. Then switch to **Past Hour** to
    identify attacks that began recently and would be diluted in the daily
    totals.
-2. For each concentrated path, inspect a bounded recent runtime-log sample:
+2. For each concentrated path, inspect a bounded recent runtime-log sample.
+   The CLI `--query` option searches log messages; it does not filter request
+   metadata. Pipe the JSONL through the repository analyzer to filter the exact
+   `requestPath` locally:
 
    ```bash
-   vercel logs --environment production --since 1h \
-     --query 'path:/en/explore' --limit 500 --json
+   vercel logs --environment production --since 1h --limit 1000 --json \
+     | pnpm --dir apps/web traffic:analyze --path /en/explore
    ```
 
    Aggregate method, status, cache/cache reason, timestamp span, source, and
-   repeated error/action identifiers. A saturated 500-entry result is a sample,
-   not a daily total; report its exact time span when deriving a request rate.
+   repeated error/action identifiers. Repeat `--path` to include a dynamic route
+   template emitted as a separate log entry. A saturated 1,000-entry result is
+   a sample, not a daily total; report its exact time span when deriving a
+   request rate, and move `--since`/`--until` to inspect an older interval.
 3. Review the unpublished firewall state before recommending any intervention:
 
    ```bash
