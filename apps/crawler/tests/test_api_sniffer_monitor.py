@@ -18,10 +18,20 @@ from src.core.monitors.api_sniffer import (
     _extract_urls_from_template,
     _materially_below_advertised_total,
     _refresh_post_data,
+    _serialize_post_data,
     _validated_slug_fields,
     can_handle,
     discover,
 )
+
+
+def test_serialize_post_data_accepts_json_values_and_existing_strings():
+    assert _serialize_post_data({"pageNo": 1}) == '{"pageNo":1}'
+    assert _serialize_post_data(["one", 2]) == '["one",2]'
+    assert _serialize_post_data("page=1") == "page=1"
+    assert _serialize_post_data(None) is None
+    with pytest.raises(ValueError, match="post_data must be"):
+        _serialize_post_data(1)
 
 
 class TestPostDataRefresh:

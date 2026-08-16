@@ -208,6 +208,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "rippling",
         "skip",
         "smartrecruiters",
+        "taleo",
         "workable",
         "workday",
     }

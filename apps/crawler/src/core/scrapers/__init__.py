@@ -155,6 +155,7 @@ _PROBE_ORDER = [
     "embedded",
     "onlyfy",
     "pdf",
+    "taleo",
     "dom",
     "api_sniffer",
 ]
@@ -390,6 +391,7 @@ from src.core.scrapers import (  # noqa: E402
     rippling,  # noqa: F401
     skip,  # noqa: F401
     smartrecruiters,  # noqa: F401
+    taleo,  # noqa: F401
     workable,  # noqa: F401
     workday,  # noqa: F401
 )

@@ -2285,6 +2285,8 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                      increase page size, and update pagination.increment to match.
     request_headers  Cleaned request headers (auto-filled)
     post_data        POST body string (for POST APIs, null for GET)
+                     JSON objects/arrays are serialized compactly at runtime,
+                     avoiding nested JSON-string escaping in boards.csv.
     post_data_refresh
                      Refresh short-lived POST fields from the board page before
                      every crawl. ``fields`` maps each POST field to a regex with
@@ -3451,6 +3453,19 @@ SCRAPER_CARDS: dict[str, str] = {
     "onlyfy": SCRAPER_ONLYFY,
     "dom": SCRAPER_DOM,
     "api_sniffer": SCRAPER_API_SNIFFER,
+    "taleo": """\
+taleo — Oracle Taleo Enterprise detail scraper
+
+  Parses the bounded api.fillList payload embedded in public Taleo Enterprise
+  jobdetail.ftl pages. No browser is needed for detail scraping.
+
+  Pair with an api_sniffer monitor for /careersection/<id>/jobsearch.ftl boards.
+  Taleo Business Edition (*.tbe.taleo.net) continues to use json-ld.
+
+  Config: none
+  Returns: title, HTML description and qualifications, location,
+           employment_type, job_location_type when tagged, valid_through,
+           business-area and requisition metadata.""",
     "adp": """\
 adp — ADP Workforce Now Detail API scraper
 

@@ -527,6 +527,22 @@ async def _prospective_probe_config(url: str, client: httpx.AsyncClient) -> dict
     }
 
 
+def _serialize_post_data(value: object) -> str | None:
+    """Normalize configured POST data to the transport's string contract.
+
+    JSON objects are easier and safer to represent in ``boards.csv`` than a
+    JSON string containing a second escaped JSON document. Existing string
+    bodies (JSON, form-encoded, or multipart) remain unchanged.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, separators=(",", ":"))
+    raise ValueError("post_data must be a string, JSON object, or JSON array")
+
+
 # ---------------------------------------------------------------------------
 # can_handle
 # ---------------------------------------------------------------------------
@@ -1267,7 +1283,7 @@ async def _discover_http(
     slug_fields = _validated_slug_fields(config)
     url_regex = config.get("url_regex")
     total_path = config.get("total_path")
-    post_data = config.get("post_data") or config.get("post_body")
+    post_data = _serialize_post_data(config.get("post_data") or config.get("post_body"))
     request_headers = config.get("request_headers") or config.get("headers") or {}
     fields_map: dict[str, str] = config.get("fields") or {}
     pagination_config = config.get("pagination")
@@ -1708,7 +1724,7 @@ async def _discover_replay(
     url_template = config.get("url_template")
     url_template_fields = config.get("url_template_fields") or {}
     slug_fields = _validated_slug_fields(config)
-    post_data = config.get("post_data")
+    post_data = _serialize_post_data(config.get("post_data"))
     request_headers = config.get("request_headers", {})
     fields_map: dict[str, str] = config.get("fields") or {}
     pagination_config = config.get("pagination")
