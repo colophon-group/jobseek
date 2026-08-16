@@ -14,6 +14,7 @@
 // through the server-action transform.
 
 import * as service from "@/lib/services/watchlists";
+import { assertBoundedPublicPagination } from "@/lib/public-read-input";
 
 export async function createWatchlist(
   ...args: Parameters<typeof service.createWatchlist>
@@ -90,24 +91,28 @@ export async function getWatchlistMatchingCompanyCount(
 export async function searchPublicWatchlists(
   ...args: Parameters<typeof service.searchPublicWatchlists>
 ): ReturnType<typeof service.searchPublicWatchlists> {
+  assertBoundedPublicPagination(args[0]);
   return service.searchPublicWatchlists(...args);
 }
 
 export async function getPopularWatchlists(
   ...args: Parameters<typeof service.getPopularWatchlists>
 ): ReturnType<typeof service.getPopularWatchlists> {
+  assertBoundedPublicPagination(args[0]);
   return service.getPopularWatchlists(...args);
 }
 
 export async function getWatchlistPostings(
   ...args: Parameters<typeof service.getWatchlistPostings>
 ): ReturnType<typeof service.getWatchlistPostings> {
+  assertBoundedPublicPagination(args[0]);
   return service.getWatchlistPostings(...args);
 }
 
 export async function getPublicWatchlistPostings(
   ...args: Parameters<typeof service.getPublicWatchlistPostings>
 ): ReturnType<typeof service.getPublicWatchlistPostings> {
+  assertBoundedPublicPagination(args[0]);
   return service.getPublicWatchlistPostings(...args);
 }
 

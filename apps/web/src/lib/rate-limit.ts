@@ -61,3 +61,23 @@ export const apiLimiter = new Ratelimit({
   limiter: Ratelimit.slidingWindow(30, "60 s"),
   prefix: "rl:api",
 });
+
+/**
+ * Public browsing Server Actions (Explore, companies, and watchlists).
+ *
+ * The minute window stops bursty action replay before it reaches the page
+ * Function. The hour window also bounds slow-and-steady enumeration that
+ * deliberately stays just below the burst ceiling. Both are keyed with the
+ * platform-authoritative IP at the proxy boundary.
+ */
+export const publicReadBurstLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(30, "60 s"),
+  prefix: "rl:public-read:minute:v1",
+});
+
+export const publicReadSustainedLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(300, "3600 s"),
+  prefix: "rl:public-read:hour:v1",
+});

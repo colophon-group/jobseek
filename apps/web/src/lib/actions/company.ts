@@ -11,6 +11,7 @@
 // can disappear from the server-action transform and break client imports.
 
 import * as service from "@/lib/services/company";
+import { assertBoundedPublicPagination } from "@/lib/public-read-input";
 
 export async function suggestCompanies(
   ...args: Parameters<typeof service.suggestCompanies>
@@ -21,6 +22,7 @@ export async function suggestCompanies(
 export async function searchCompaniesForWatchlist(
   ...args: Parameters<typeof service.searchCompaniesForWatchlist>
 ): ReturnType<typeof service.searchCompaniesForWatchlist> {
+  assertBoundedPublicPagination(args[0]);
   return service.searchCompaniesForWatchlist(...args);
 }
 
@@ -39,18 +41,21 @@ export async function getCompanyBySlug(
 export async function getSimilarCompanies(
   ...args: Parameters<typeof service.getSimilarCompanies>
 ): ReturnType<typeof service.getSimilarCompanies> {
+  assertBoundedPublicPagination(args[2] ?? {});
   return service.getSimilarCompanies(...args);
 }
 
 export async function getCompanyPostings(
   ...args: Parameters<typeof service.getCompanyPostings>
 ): ReturnType<typeof service.getCompanyPostings> {
+  assertBoundedPublicPagination(args[0]);
   return service.getCompanyPostings(...args);
 }
 
 export async function getCompanyPostingsAnonymous(
   ...args: Parameters<typeof service.getCompanyPostingsAnonymous>
 ): ReturnType<typeof service.getCompanyPostingsAnonymous> {
+  assertBoundedPublicPagination(args[0]);
   return service.getCompanyPostingsAnonymous(...args);
 }
 

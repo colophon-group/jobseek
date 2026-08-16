@@ -58,7 +58,8 @@ The proxy normally runs for paths **without** a locale prefix (e.g. bare `/`,
 `/how-we-index`) and redirects to the locale-prefixed version based on
 `Accept-Language`. A narrow set of localized boundaries also opt in: company
 request auth, Explore document normalization, scanner rejection, unknown
-company candidates, and public-watchlist document status checks.
+company candidates, public-watchlist document status checks, and Server
+Action abuse controls for the public browse surfaces.
 
 The company matcher is generated from `apps/crawler/data/companies.csv`.
 Registered canonical slugs do not match Proxy at all, so a warm company page
@@ -95,9 +96,11 @@ The document is constructed only from fixed translations and URL-encoded path
 data; it never fetches, parses, or filters App Router HTML. Recovery controls
 are ordinary links and its CSP denies all script execution, preventing a PPR
 resume against the original missing URL and a duplicate app shell. RSC
-navigation and Server Action traffic bypass the check. Upstream failures fail
-open to the existing noindex page fallback; an outage must never turn every
-resource into a false 404.
+navigation and Server Action traffic bypass the existence check. Protected
+public-read Server Actions still pass through the shared request rate limit
+described in `public-read-abuse.md`. Upstream failures fail open to the
+existing noindex page fallback; an outage must never turn every resource into
+a false 404.
 
 Anonymous watchlist checks query only `is_public = true`, so absent and private
 resources are indistinguishable. Requests carrying a session cookie are
@@ -136,11 +139,14 @@ This tells Next.js which locale variants to pre-render. Without it, `[lang]` is 
 
 The broad matcher excludes locale-prefixed paths; each localized exception is
 listed separately in `proxy.ts`. When adding a locale, update both the broad
-exclusion and every localized exception. After changing the company registry,
+exclusion and every localized exception. Protected Server Action matchers must
+require a non-empty `Next-Action` header so ordinary cached documents continue
+to bypass Proxy. After changing the company registry,
 run `pnpm proxy-matchers:update`; dev, test, CI, and production builds refresh
 the block as well. Do not broaden the resource-status boundary beyond full
-unknown-company or watchlist documents: RSC and Server Action requests must
-stay on the normal App Router path.
+unknown-company or watchlist documents. RSC requests stay on the normal App
+Router path; only the documented public-read Server Action surfaces opt into
+the rate-limit boundary.
 
 ### Use route groups to separate static from dynamic
 

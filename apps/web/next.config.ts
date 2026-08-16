@@ -49,6 +49,13 @@ function configuredR2PublicOrigin(): string | null {
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../.."),
+  experimental: {
+    // Public actions only exchange compact filter/pagination payloads. Keep
+    // the transport ceiling far below Next's 1 MB default so oversized
+    // replay requests are rejected before application deserialization while
+    // leaving ample room for watchlist forms with many company IDs.
+    serverActions: { bodySizeLimit: "128kb" },
+  },
   env: {
     COMPANY_OG_RENDERER_VERSION: companyOgRendererVersion,
     COMPANY_OG_SOURCE_VERSION: companyOgSourceVersion,
