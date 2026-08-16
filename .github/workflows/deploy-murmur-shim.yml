@@ -17,9 +17,9 @@
 # never kill an in-flight deploy mid-restart.
 #
 # Secrets resolve from the `production` environment on the deploy job.
-# Required: HETZNER_HOST, HETZNER_SSH_KEY, HETZNER_GH_TOKEN
-# (pull-only `read:packages` for the host), MURMUR_TOKEN, LOCAL_DATABASE_URL.
-# Build and compatibility-tag promotion use the job-scoped GITHUB_TOKEN.
+# Required: HETZNER_HOST, HETZNER_SSH_KEY, MURMUR_TOKEN, LOCAL_DATABASE_URL.
+# Build, host image pulls, and compatibility-tag promotion use a job-scoped
+# GITHUB_TOKEN; no long-lived host package token is required.
 #
 # Lessons baked in (from the murmur deploy this session):
 #   1. `docker/login-action@v3` is broken with classic PATs against GHCR
@@ -34,8 +34,9 @@
 #      is safe (file has exactly 2 leading components -> lands as
 #      `/home/deploy/docker-compose.yml`). If we ever bundle the
 #      shim sources too, split per-depth into separate SCP steps.
-#   4. The runner's GITHUB_TOKEN has job-scoped `packages: write`; the
-#      host receives only its pull credential.
+#   4. The build runner's GITHUB_TOKEN has job-scoped `packages: write`;
+#      the deploy runner forwards its short-lived `packages: read` token to
+#      the host only for the transaction's authenticated image pulls.
 #   5. SHA-pin every action — no @v3 floating tags.
 #
 # Action SHA pins (mirror apps/crawler/.github/workflows/deploy-crawler-browser.yml
@@ -122,6 +123,7 @@ jobs:
     environment: production
     permissions:
       contents: read
+      packages: read
 
     steps:
       - name: Checkout (for compose file)
@@ -767,7 +769,7 @@ jobs:
         env:
           OWNER: ${{ github.repository_owner }}
           SHIM_IMAGE_REF: ghcr.io/colophon-group/jobseek-murmur-shim@${{ needs.build.outputs.image_digest }}
-          GHCR_PULL_TOKEN: ${{ secrets.HETZNER_GH_TOKEN }}
+          GHCR_PULL_TOKEN: ${{ github.token }}
           MURMUR_TOKEN: ${{ secrets.MURMUR_TOKEN }}
           # Forwarded so the compose `MURMUR_DB_DSN: ${LOCAL_DATABASE_URL}`
           # substitution resolves on this single-service redeploy. The remote
