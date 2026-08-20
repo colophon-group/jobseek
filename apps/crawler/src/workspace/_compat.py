@@ -481,10 +481,18 @@ def detect_ats_from_url(url: str) -> str | None:
     if host in ("join.com", "www.join.com"):
         return "join"
 
-    # jobs.ch — employer profiles backed by the public JobCloud search API
-    if host in ("jobs.ch", "www.jobs.ch") and any(
-        segment in parsed.path.lower() for segment in ("/firmen/", "/entreprises/", "/companies/")
-    ):
+    # jobs.ch / jobup.ch — employer profiles backed by JobCloud search APIs
+    jobcloud_profile = (
+        host in ("jobs.ch", "www.jobs.ch")
+        and any(
+            segment in parsed.path.lower()
+            for segment in ("/firmen/", "/entreprises/", "/companies/")
+        )
+    ) or (
+        host in ("jobup.ch", "www.jobup.ch")
+        and any(segment in parsed.path.lower() for segment in ("/societes/", "/enterprises/"))
+    )
+    if jobcloud_profile:
         return "jobs_ch"
 
     # Jobylon — cdn.jobylon.com embed or emp.jobylon.com detail URLs

@@ -3269,6 +3269,9 @@ learneo,learneo-greenhouse,https://job-boards.greenhouse.io/learneo,greenhouse,"
 learning-commons,learning-commons-greenhouse,https://job-boards.greenhouse.io/education,greenhouse,"{""token"": ""education""}",skip,
 learnlux,learnlux-greenhouse,https://job-boards.greenhouse.io/learnlux,greenhouse,"{""token"": ""learnlux""}",skip,
 learnupon,learnupon-greenhouse,https://job-boards.greenhouse.io/learnupon,greenhouse,"{""token"": ""learnupon""}",skip,
+leclanche,leclanche-germany-onlyfy,https://leclanche.onlyfy.jobs/,dom,"{""render"": false, ""url_filter"": ""/en/job/""}",onlyfy,"{""language"": ""de""}"
+leclanche,leclanche-global-linkedin,https://www.linkedin.com/company/leclanch-sa/jobs/,linkedin,"{""company_id"": ""1543467"", ""company_slug"": ""leclanch-sa""}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
+leclanche,leclanche-switzerland-jobup,https://www.jobup.ch/en/enterprises/6099-leclanche-sa/,jobs_ch,"{""company_id"": ""6099"", ""locale"": ""en"", ""portal"": ""jobup""}",json-ld,
 ledger,ledger-ashby,https://jobs.ashbyhq.com/ledger,ashby,"{""token"": ""ledger""}",skip,
 ledger,ledger-lever,https://jobs.lever.co/ledger,lever,"{""token"": ""ledger""}",skip,
 ledgy,ledgy-greenhouse,https://job-boards.greenhouse.io/ledgy,greenhouse,"{""token"": ""ledgy""}",skip,
