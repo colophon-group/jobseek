@@ -436,6 +436,66 @@ class TestFetchChildXml:
             assert root is not None
             assert attempts == 2
 
+    async def test_202_waf_challenge_recovers_within_budget(self, monkeypatch):
+        """A transient AWS WAF 202 on a cached sitemap is retried (#6110)."""
+        import asyncio
+
+        from src.core.monitors.sitemap import _fetch_child_xml
+
+        async def _no_sleep(_):
+            return None
+
+        monkeypatch.setattr(asyncio, "sleep", _no_sleep)
+
+        xml_str = '<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://example.com/j1</loc></url></urlset>'
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                return httpx.Response(
+                    202,
+                    headers={"x-amzn-waf-action": "challenge"},
+                )
+            return httpx.Response(200, text=xml_str)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            root = await _fetch_child_xml("https://example.com/sitemap-flaky.xml", client)
+
+        assert root is not None
+        assert attempts == 2
+
+    async def test_persistent_202_waf_challenge_raises(self, monkeypatch):
+        """Persistent 202 fails closed instead of triggering rediscovery (#6110)."""
+        import asyncio
+
+        import pytest
+
+        from src.core.monitors.sitemap import _fetch_child_xml
+        from src.shared.http_retry import PaginationFetchError
+
+        async def _no_sleep(_):
+            return None
+
+        monkeypatch.setattr(asyncio, "sleep", _no_sleep)
+        attempts = 0
+
+        def handler(request):
+            nonlocal attempts
+            attempts += 1
+            return httpx.Response(
+                202,
+                headers={"x-amzn-waf-action": "challenge"},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc:
+                await _fetch_child_xml("https://example.com/sitemap-blocked.xml", client)
+
+        assert exc.value.last_status == 202
+        assert attempts == 3
+
 
 class TestParseRobotsSitemaps:
     async def test_parses_sitemaps(self):
