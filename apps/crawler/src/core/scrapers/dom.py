@@ -245,6 +245,12 @@ _ELVIUM_MARKERS = (
     "job-posting-widget",
     "contact-info-widget",
 )
+_CLINCH_CLASS_MARKERS = (
+    "job-description-container",
+    "job-title",
+    "job-description",
+    "job-component-location",
+)
 _SOLIQUE_HOST_MARKER = "solique.ch/"
 _SOLIQUE_CLASS_MARKERS = ("job-title", "tasks-profile-wrapper")
 
@@ -382,6 +388,64 @@ def _elvium_config(htmls: list[str]) -> dict | None:
     }
 
 
+def _clinch_config(htmls: list[str]) -> dict | None:
+    """Build a rendered DOM config for PageUp Clinch job pages.
+
+    Clinch career sites use stable job-component classes but commonly put a
+    marketing slogan in ``h1`` and the actual job title in ``h3.job-title``.
+    The generic heading heuristic therefore extracts the wrong title.  Some
+    tenants also challenge static HTTP requests while serving the complete
+    page to Chromium, so the rendered probe adds the browser flags separately.
+    """
+
+    matches = sum(
+        all(_has_html_class(html, marker) for marker in _CLINCH_CLASS_MARKERS) for html in htmls
+    )
+    if not matches or matches < len(htmls) / 2:
+        return None
+
+    return {
+        "scope": ".job-description-container",
+        "steps": [
+            {"tag": "h3", "attr": "class=job-title", "field": "title"},
+            {
+                "tag": "li",
+                "attr": "class=job-component-workplace-type",
+                "field": "job_location_type",
+                "from": 0,
+                "optional": True,
+            },
+            {
+                "tag": "li",
+                "attr": "class=job-component-location",
+                "field": "locations",
+                "from": 0,
+            },
+            {
+                "tag": "li",
+                "attr": "class=job-component-department",
+                "field": "metadata.department",
+                "from": 0,
+                "optional": True,
+            },
+            {
+                "tag": "li",
+                "attr": "class=job-component-employment-type",
+                "field": "employment_type",
+                "from": 0,
+                "optional": True,
+            },
+            {
+                "tag": "div",
+                "attr": "class=job-description-controls",
+                "optional": True,
+                "from": 0,
+            },
+            {"field": "description", "html": True, "stop_count": 200},
+        ],
+    }
+
+
 def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
     """Generate heuristic extraction steps from flattened elements."""
     if not elements:
@@ -485,6 +549,10 @@ def can_handle(htmls: list[str]) -> dict | None:
     if elvium is not None:
         return elvium
 
+    clinch = _clinch_config(htmls)
+    if clinch is not None:
+        return clinch
+
     # Try each page until we get usable steps
     best_steps = None
 
@@ -514,6 +582,68 @@ def can_handle(htmls: list[str]) -> dict | None:
         return None
 
     return {"steps": best_steps}
+
+
+async def probe_pw(urls: list[str], pw) -> tuple[dict | None, str]:
+    """Render samples when static scraper probing is blocked or shell-only.
+
+    This is a bounded setup-time fallback.  Runtime scraping still happens
+    only when the returned config is selected for a board.
+    """
+
+    htmls: list[str] = []
+    browser_config = {
+        "wait": "domcontentloaded",
+        "timeout": 30_000,
+        "stealth": True,
+    }
+    for url in urls[:3]:
+        try:
+            async with open_page(pw, browser_config) as page:
+                await navigate(page, url, browser_config)
+                # Turbo/Stimulus career sites may commit the document before
+                # their server-rendered job block is attached.  Keep this
+                # setup-only fallback short and bounded.
+                await page.wait_for_timeout(2_000)
+                html = await safe_content(page)
+                _raise_if_bot_challenge(page.url or url, html)
+                htmls.append(html)
+        except Exception:
+            log.debug("dom.probe_pw.fetch_failed", url=url, exc_info=True)
+
+    if not htmls:
+        return None, "Rendered fetch failed"
+
+    detected = can_handle(htmls)
+    if detected is None:
+        return None, "Rendered DOM not detected"
+
+    config = {**browser_config, "render": True, **detected}
+    contents = [parse_html(html, config) for html in htmls]
+    titles = sum(content.title is not None for content in contents)
+    descriptions = sum(content.description is not None for content in contents)
+    locations = sum(content.locations is not None for content in contents)
+    total = len(contents)
+    metadata = {
+        "config": config,
+        "total": total,
+        "titles": titles,
+        "descriptions": descriptions,
+        "locations": locations,
+        "fields": {
+            name: count
+            for name, count in {
+                "title": titles,
+                "description": descriptions,
+                "locations": locations,
+            }.items()
+            if count
+        },
+    }
+    return metadata, (
+        f"Rendered: {titles}/{total} titles, {descriptions}/{total} desc, "
+        f"{locations}/{total} locations"
+    )
 
 
 def parse_html(html: str, config: dict) -> JobContent:
@@ -708,4 +838,10 @@ async def scrape(
     return content
 
 
-register("dom", scrape, can_handle=can_handle, parse_html=parse_html)
+register(
+    "dom",
+    scrape,
+    can_handle=can_handle,
+    parse_html=parse_html,
+    probe_pw=probe_pw,
+)
