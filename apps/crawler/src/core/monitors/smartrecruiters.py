@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 import structlog
@@ -41,6 +41,11 @@ _PAGE_PATTERNS = [
 
 _IGNORE_TOKENS = frozenset({"api", "v1", "js", "css", "assets", "postings", "companies"})
 _HTML_SIGNAL_RE = re.compile(r"\b(?:smartrecruiters\.com|smartrecruiters)\b", re.IGNORECASE)
+_CUSTOM_API_SIGNAL_RE = re.compile(r'["\'`]/?api/jobs(?:[?"\'`])', re.IGNORECASE)
+_ONECLICK_TOKEN_RE = re.compile(
+    r"(?:jobs|careers)\.smartrecruiters\.com/oneclick-ui/company/([\w-]+)/(?:publication|job)/",
+    re.IGNORECASE,
+)
 
 
 def _is_smartrecruiters_host(host: str) -> bool:
@@ -221,6 +226,60 @@ async def _probe_token_with_count(
     return count is not None, count
 
 
+async def _detect_custom_portal(
+    url: str,
+    client: httpx.AsyncClient,
+) -> dict | None:
+    """Detect branded portals backed by SmartRecruiters one-click URLs.
+
+    Some companies put a custom frontend in front of SmartRecruiters.  The
+    page itself contains no SmartRecruiters hostname, but loads a same-origin
+    ``/api/jobs`` endpoint whose records link to the public one-click UI.
+    Only probe that endpoint when the page explicitly references it, then
+    validate the extracted tenant against SmartRecruiters' public API.
+    """
+    try:
+        page = await client.get(url, follow_redirects=True)
+        if page.status_code != 200 or not _CUSTOM_API_SIGNAL_RE.search(page.text):
+            return None
+
+        api_url = urljoin(str(page.url), "/api/jobs")
+        response = await client.get(api_url, params={"page": 1})
+        if response.status_code != 200:
+            return None
+        data = response.json()
+        jobs = data.get("jobs")
+        if not isinstance(jobs, list):
+            return None
+
+        tokens: set[str] = set()
+        for job in jobs:
+            if not isinstance(job, dict):
+                continue
+            job_url = job.get("url")
+            if not isinstance(job_url, str):
+                continue
+            match = _ONECLICK_TOKEN_RE.search(job_url)
+            if match:
+                tokens.add(match.group(1))
+        if len(tokens) != 1:
+            if len(tokens) > 1:
+                log.debug(
+                    "smartrecruiters.custom_portal_ambiguous",
+                    url=url,
+                    tenants=sorted(tokens),
+                )
+            return None
+        token = next(iter(tokens))
+
+        count = await _fetch_job_count(token, client)
+        if count is None:
+            return None
+        return {"token": token, "jobs": count}
+    except (httpx.HTTPError, ValueError, TypeError):
+        return None
+
+
 async def _resolve_direct_token(
     url: str,
     token: str,
@@ -257,7 +316,7 @@ def _signal_slug_candidates(url: str, html: str, context: None) -> tuple[str, ..
 async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Detect SmartRecruiters: URL pattern -> page HTML scan -> slug-based API probe."""
     _ = pw
-    return await ats_can_handle(
+    result = await ats_can_handle(
         url,
         client,
         monitor_name="smartrecruiters",
@@ -274,6 +333,9 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
         extra_probe_log_event="smartrecruiters.detected_by_probe",
         allow_slug_guess=False,
     )
+    if result is not None or client is None:
+        return result
+    return await _detect_custom_portal(url, client)
 
 
 register("smartrecruiters", discover, cost=10, can_handle=can_handle, rich=False)
