@@ -23,7 +23,7 @@ import structlog
 
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
 from src.shared.http_retry import fetch_text_page_with_retry
-from src.shared.truncation import truncated_rich_result
+from src.shared.truncation import truncated_rich_result, truncated_url_result
 
 log = structlog.get_logger()
 
@@ -284,6 +284,21 @@ def _parse_discovered_jobs_from_html(html: str, base_url: str) -> list[Discovere
     return parser.jobs
 
 
+def _uses_rich_listing_results(metadata: dict) -> bool:
+    """Return rich rows only when the board explicitly enriches them.
+
+    Existing Umantis boards rely on URL-only discovery so their configured
+    detail scraper still runs.  A rich monitor result without ``enrich`` is
+    treated as complete by the board pipeline and would otherwise skip those
+    detail scrapes, dropping descriptions.
+    """
+    scraper_config = metadata.get("scraper_config")
+    if not isinstance(scraper_config, dict):
+        return False
+    enrich = scraper_config.get("enrich")
+    return isinstance(enrich, list) and bool(enrich)
+
+
 # ── Pagination fetch with retries ───────────────────────────────────────
 
 
@@ -409,10 +424,18 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
         if not current.employment_type and job.employment_type:
             current.employment_type = job.employment_type
 
+    rich_results = list(unique.values())
+    if _uses_rich_listing_results(metadata):
+        if truncated:
+            log.warning("umantis.truncated", total=len(jobs), cap=MAX_JOBS)
+            return truncated_rich_result(rich_results)
+        return rich_results
+
+    urls = set(unique)
     if truncated:
         log.warning("umantis.truncated", total=len(jobs), cap=MAX_JOBS)
-        return truncated_rich_result(list(unique.values()))
-    return list(unique.values())
+        return truncated_url_result(urls)
+    return urls
 
 
 # ── Probing ─────────────────────────────────────────────────────────────

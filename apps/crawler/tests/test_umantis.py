@@ -164,7 +164,24 @@ class TestExtractTableNr:
 
 
 class TestDiscover:
-    async def test_returns_urls(self):
+    async def test_returns_rich_jobs_for_enrichment(self):
+        def handler(request):
+            return httpx.Response(200, text=_LISTING_HTML)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://recruitingapp-2698.umantis.com/Jobs/All",
+                "metadata": {
+                    "customer_id": "2698",
+                    "scraper_config": {"enrich": ["description"]},
+                },
+            }
+            jobs = await discover(board, client)
+            assert isinstance(jobs, list)
+            assert len(jobs) == 2
+            assert all("/Vacancies/" in job.url for job in jobs)
+
+    async def test_returns_urls_without_enrichment(self):
         def handler(request):
             return httpx.Response(200, text=_LISTING_HTML)
 
@@ -173,10 +190,12 @@ class TestDiscover:
                 "board_url": "https://recruitingapp-2698.umantis.com/Jobs/All",
                 "metadata": {"customer_id": "2698"},
             }
-            jobs = await discover(board, client)
-            assert isinstance(jobs, list)
-            assert len(jobs) == 2
-            assert all("/Vacancies/" in job.url for job in jobs)
+            urls = await discover(board, client)
+            assert isinstance(urls, set)
+            assert urls == {
+                "https://recruitingapp-2698.umantis.com/Vacancies/100/Description/1",
+                "https://recruitingapp-2698.umantis.com/Vacancies/200/Description/2",
+            }
 
     async def test_empty_listing(self):
         def handler(request):
@@ -228,9 +247,9 @@ class TestDiscover:
                 "board_url": "https://mycompany.umantis.com/Jobs/All",
                 "metadata": {"cname": "mycompany.umantis.com"},
             }
-            jobs = await discover(board, client)
-            assert len(jobs) == 2
-            assert all("mycompany.umantis.com/Vacancies/" in job.url for job in jobs)
+            urls = await discover(board, client)
+            assert len(urls) == 2
+            assert all("mycompany.umantis.com/Vacancies/" in url for url in urls)
 
     async def test_pagination(self):
         page1_html = """\
