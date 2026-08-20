@@ -1490,6 +1490,7 @@ cryptio,cryptio-ashby,https://jobs.ashbyhq.com/cryptio,ashby,"{""token"": ""cryp
 crypto-com,crypto-com-lever,https://jobs.lever.co/crypto,lever,"{""token"": ""crypto""}",skip,
 cryptonext-security,cryptonext-security-workable,https://apply.workable.com/cryptonext-security/,workable,"{""token"": ""cryptonext-security""}",workable,
 csem,csem-main,https://www.csem.ch/en/jobs/,dom,"{""render"": true, ""url_filter"": ""/en/jobs/[0-9]+""}",json-ld,
+csl,csl-careers,https://jobs.csl.com/en/jobs,sitemap,"{""sitemap_url"": ""https://jobs.csl.com/sitemap.xml"", ""skip_ssl"": true, ""url_filter"": {""include"": ""^https://jobs\\.csl\\.com/en/jobs/[^?]+$"", ""exclude"": ""/(search|category|location|language|sitemap|privacy|terms)(/|$)""}}",json-ld,"{""skip_ssl"": true}"
 csob,csob-cz-almacareer,https://csob.jobs.cz/,almacareer,{},skip,
 css,css-main,https://css.prospective.ch/,dom,"{""render"":true,""wait"":""networkidle"",""timeout"":30000,""actions"":[{""action"":""dismiss_overlays""},{""action"":""paginate_collect"",""next_selector"":""#button-forward:not(.disableClick)"",""wait_ms"":1500,""max_pages"":20}],""url_filter"":""^https://jobs\\.css\\.ch/offene-stellen/[^/?#]+/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/?$""}",json-ld,
 ctc-lateral-website-linkedin,ctc-lateral-website-linkedin-greenhouse,https://job-boards.greenhouse.io/chicagotrading,greenhouse,"{""token"": ""chicagotrading""}",skip,
