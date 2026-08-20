@@ -39,6 +39,10 @@ _MAX_JOBS = 50_000
 _ROUTE_RE = re.compile(r"(?:social|campus)[_-](?:recruitment|apply)", re.IGNORECASE)
 _ORG_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,128}")
 _SITE_ID_RE = re.compile(r"[1-9]\d{0,11}")
+_CLOSED_PAGE_TITLE_RE = re.compile(
+    r"<title[^>]*>\s*当前网页已关停\s*</title>",
+    re.IGNORECASE,
+)
 
 # Mokahr commitment values pass through unchanged — the central
 # :func:`src.core.enum_normalize.normalize_employment_type` map handles
@@ -113,6 +117,8 @@ async def _get_init_data(
         raise BoardGoneError("Mokahr board page returned 404", url=str(resp.url))
     if resp.status_code != 200:
         return None
+    if raise_on_404 and _CLOSED_PAGE_TITLE_RE.search(resp.text):
+        raise BoardGoneError("Mokahr board page is explicitly shut down", url=str(resp.url))
     m = re.search(r'id="init-data"[^>]*value="([^"]*)"', resp.text)
     if not m:
         return None

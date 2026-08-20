@@ -50,7 +50,7 @@ from src.queries.scrape import (
     _RECORD_SCRAPE_TRANSIENT,
     _UPDATE_ENRICH_CONTENT,
 )
-from src.shared.browser import is_target_closed_error
+from src.shared.browser import BrowserNavigationHTTPStatusError, is_target_closed_error
 from src.shared.html_normalize import normalize_description_html
 from src.shared.http import is_avature_job_detail_url
 from src.shared.langdetect import detect_all_languages, detect_language
@@ -208,13 +208,33 @@ class _BoardScraperInfo:
 # "back off, try later".
 
 
+def _http_status_code(exc: BaseException) -> int | None:
+    """Return a terminal HTTP status across static and browser transports."""
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code
+    if isinstance(exc, BrowserNavigationHTTPStatusError):
+        return exc.status
+    return None
+
+
+def _http_error_url(exc: BaseException) -> str | None:
+    if isinstance(exc, httpx.HTTPStatusError):
+        return str(exc.request.url)
+    if isinstance(exc, BrowserNavigationHTTPStatusError):
+        return exc.response_url or exc.requested_url
+    return None
+
+
 def _is_permanent_gone(exc: BaseException) -> bool:
     """Return True for HTTP 404 / 410 — RFC-defined "this resource is
     gone". The caller short-circuits the budget and tombstones on the
     first failure when this returns True.
 
-    Coverage caveat: this only fires when the underlying scraper raises
-    ``httpx.HTTPStatusError``. Several scrapers swallow the status and
+    Static HTTP scrapers raise ``httpx.HTTPStatusError`` while rendered
+    scrapers raise ``BrowserNavigationHTTPStatusError``. Both carry the
+    same upstream semantics and must take the same delisting path.
+
+    Coverage caveat: several scrapers swallow the status and
     return an empty ``JobContent()`` instead — eightfold (jsonld
     fallback), workday (S22 / 404 returns blank), api_sniffer scraper.
     For those, a real 404 reaches us as an empty-extraction signal,
@@ -223,9 +243,7 @@ def _is_permanent_gone(exc: BaseException) -> bool:
     monitor delists it. Documented in
     docs/03-crawler-architecture.md.
     """
-    if not isinstance(exc, httpx.HTTPStatusError):
-        return False
-    return exc.response.status_code in (404, 410)
+    return _http_status_code(exc) in (404, 410)
 
 
 def _is_budget_eligible_failure(exc: BaseException) -> bool:
@@ -241,13 +259,15 @@ def _is_budget_eligible_failure(exc: BaseException) -> bool:
     stay disjoint at the call site: callers test ``permanent_gone``
     first, then ``budget_eligible``, then fall through to transient.
     """
-    if not isinstance(exc, httpx.HTTPStatusError):
+    status = _http_status_code(exc)
+    if status is None:
         return False
-    s = exc.response.status_code
+    s = status
     if s in (404, 410):
         # Disjoint from _is_permanent_gone. See docstring.
         return False
-    if s == 406 and is_avature_job_detail_url(str(exc.request.url)):
+    error_url = _http_error_url(exc)
+    if s == 406 and error_url and is_avature_job_detail_url(error_url):
         # #5710: five Avature tenants emitted bursty 406s for live pages that
         # later returned 200 unchanged. Counting these toward the three-strike
         # tombstone budget can hide valid jobs during a provider throttle.
