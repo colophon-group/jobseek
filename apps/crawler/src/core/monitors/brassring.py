@@ -166,6 +166,19 @@ def _parse_page(payload: object) -> tuple[int, list[object]]:
     return total, rows
 
 
+def _bounded_inventory_rows(
+    rows: list[object],
+    expected_total: int,
+    *,
+    truncated: bool,
+) -> list[object]:
+    if len(rows) < expected_total or (not truncated and len(rows) != expected_total):
+        raise _SnapshotChanged(
+            f"BrassRing returned {len(rows)} rows for {expected_total} expected jobs"
+        )
+    return rows[:expected_total]
+
+
 async def _click_for_json(page, selector: str, response_path: str) -> object:
     async with page.expect_response(
         lambda response: response_path.casefold() in response.url.casefold(),
@@ -244,10 +257,8 @@ async def _discover_page(board_url: str, metadata: dict, partner_id: str, site_i
                 timeout=60_000,
             )
 
-    if len(rows) != expected_total:
-        raise _SnapshotChanged(
-            f"BrassRing returned {len(rows)} rows for {expected_total} expected jobs"
-        )
+    truncated = total > MAX_JOBS
+    rows = _bounded_inventory_rows(rows, expected_total, truncated=truncated)
 
     jobs: list[DiscoveredJob] = []
     seen: set[str] = set()
@@ -255,12 +266,14 @@ async def _discover_page(board_url: str, metadata: dict, partner_id: str, site_i
         job = _parse_job(raw, partner_id, site_id)
         if job is None:
             raise _SnapshotChanged("BrassRing returned a row without valid job identity")
-        job_id = str(job.metadata["requisition_id"])
+        job_id = job.metadata.get("requisition_id") if job.metadata is not None else None
+        if not isinstance(job_id, str):
+            raise _SnapshotChanged("BrassRing returned a row without valid requisition identity")
         if job_id in seen:
             raise _SnapshotChanged(f"BrassRing repeated requisition {job_id}")
         seen.add(job_id)
         jobs.append(job)
-    if total > MAX_JOBS:
+    if truncated:
         return truncated_rich_result(jobs)
     return jobs
 

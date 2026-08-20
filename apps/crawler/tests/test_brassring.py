@@ -7,6 +7,7 @@ import pytest
 from src.core.monitors import monitor_needs_browser
 from src.core.monitors.brassring import (
     _board_ids,
+    _bounded_inventory_rows,
     _parse_job,
     _parse_page,
     _SnapshotChanged,
@@ -130,6 +131,17 @@ def test_parse_page_accepts_authoritative_empty_board():
 def test_parse_page_rejects_malformed_payload(payload):
     with pytest.raises(ValueError):
         _parse_page(payload)
+
+
+def test_bounded_inventory_accepts_and_slices_non_aligned_final_page():
+    rows = list(range(6))
+
+    assert _bounded_inventory_rows(rows, 5, truncated=True) == list(range(5))
+
+
+def test_uncapped_inventory_rejects_extra_rows():
+    with pytest.raises(_SnapshotChanged, match="6 rows for 5 expected"):
+        _bounded_inventory_rows(list(range(6)), 5, truncated=False)
 
 
 async def test_discover_retries_snapshot_churn_once():
