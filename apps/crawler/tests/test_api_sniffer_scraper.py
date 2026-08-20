@@ -294,9 +294,15 @@ class TestSeekHttpPreset:
                             "job": {
                                 "id": job_id,
                                 "title": f"Aircraft Engineer {job_id}",
-                                "content": "<p>Maintain Pilatus aircraft safely.</p>",
+                                "content": (
+                                    "<p>Maintain Pilatus aircraft safely.</p>"
+                                    if job_id == "93985149"
+                                    else None
+                                ),
                                 "abstract": "Maintain aircraft.",
-                                "location": {"label": "Adelaide SA"},
+                                "location": (
+                                    {"label": "Adelaide SA"} if job_id == "93985149" else None
+                                ),
                                 "advertiser": {
                                     "id": "34477850",
                                     "name": "Pilatus Aircraft Australia Pty Ltd",
@@ -324,10 +330,10 @@ class TestSeekHttpPreset:
 
         assert requested_ids == ["93985149", "93985150"]
         assert metadata is not None
-        assert metadata["total"] == 2
-        assert metadata["titles"] == 2
-        assert metadata["descriptions"] == 2
-        assert metadata["locations"] == 2
+        assert metadata["total"] == 1
+        assert metadata["titles"] == 1
+        assert metadata["descriptions"] == 1
+        assert metadata["locations"] == 1
         assert metadata["config"]["api_url"] == "https://au.seek.com/graphql"
         assert "SEEK GraphQL" in comment
 

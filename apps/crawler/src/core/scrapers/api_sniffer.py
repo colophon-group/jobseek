@@ -449,13 +449,16 @@ async def _probe_seek_http(urls: list[str], config: dict) -> tuple[dict | None, 
         await http.aclose()
 
     contents = [result for result in raw_results if isinstance(result, JobContent)]
-    detected = sum(bool(item.title and item.description and item.locations) for item in contents)
+    detected_contents = [
+        item for item in contents if item.title and item.description and item.locations
+    ]
+    detected = len(detected_contents)
     total = len(urls)
     if detected == 0 or detected / total < 0.5:
         return None, f"SEEK GraphQL not detected ({detected}/{total} complete jobs)"
 
     field_counts = {
-        field: sum(bool(getattr(item, field, None)) for item in contents)
+        field: sum(bool(getattr(item, field, None)) for item in detected_contents)
         for field in quality_fields
     }
     metadata = {
