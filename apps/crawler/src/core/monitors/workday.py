@@ -350,11 +350,17 @@ async def _direct_pagination_stream(
     site: str,
     client: httpx.AsyncClient,
     base_body: dict | None = None,
+    known_paths: set[str] | None = None,
 ):
-    """Yield an unfaceted query page by page and verify complete coverage."""
+    """Yield an unfaceted query page by page and verify complete coverage.
+
+    ``known_paths`` carries a bounded first-pass inventory into a recovery
+    pass. This lets two individually churned snapshots reconcile to the
+    advertised total without weakening the final completeness assertion.
+    """
     expected = min(advertised_total, MAX_JOBS)
     offset = 0
-    seen: set[str] = set()
+    seen = set(known_paths or ())
 
     while offset < expected:
         payload = {**(base_body or {}), "limit": PAGE_SIZE, "offset": offset}
@@ -445,11 +451,42 @@ async def _api_list_stream(
         )
 
     if total < _API_RESULT_CAP:
-        # Under the cap — we got everything
         unique_paths = list(dict.fromkeys(paths))
+        expected = min(total, MAX_JOBS)
+        if _materially_below_advertised_total(len(unique_paths), expected):
+            # Workday inventories can churn between page requests and some
+            # tenants occasionally repeat rows at an offset. Reconcile one
+            # bounded unfaceted pass with the first snapshot, then retain the
+            # same fail-closed completeness assertion in the direct helper.
+            log.warning(
+                "workday.pagination_incomplete_direct_recovery",
+                company=company,
+                site=site,
+                discovered=len(unique_paths),
+                advertised=expected,
+                deficit=expected - len(unique_paths),
+            )
+            recovered = list(unique_paths)
+            recovered_seen = set(unique_paths)
+            async with query_sem:
+                async for direct_batch in _direct_pagination_stream(
+                    list_url,
+                    total,
+                    company,
+                    site,
+                    client,
+                    base_body=base_body,
+                    known_paths=recovered_seen,
+                ):
+                    for path in direct_batch:
+                        if path not in recovered_seen:
+                            recovered_seen.add(path)
+                            recovered.append(path)
+            unique_paths = recovered
+
         _assert_complete_inventory(
             discovered=len(unique_paths),
-            advertised=min(total, MAX_JOBS),
+            advertised=expected,
             company=company,
             site=site,
             strategy="pagination",
@@ -494,20 +531,33 @@ async def _api_list_stream(
         queries=len(facet_groups),
     )
 
-    async def _paginate_facet_group(facet_group: list[str]) -> list[str]:
+    async def _paginate_facet_group(
+        facet_group: list[str],
+    ) -> tuple[list[str], int, int]:
         body = {
             **base_body,
             "appliedFacets": {facet_param: facet_group},
         }
         async with query_sem:
-            sub_paths, _, _ = await _paginate_query(list_url, body, client)
-        return sub_paths
+            sub_paths, sub_total, _ = await _paginate_query(list_url, body, client)
+        return sub_paths, sub_total, len(facet_group)
 
     seen: set[str] = set()
     tasks = [asyncio.create_task(_paginate_facet_group(group)) for group in facet_groups]
     try:
         for completed in asyncio.as_completed(tasks):
-            sub_paths = await completed
+            sub_paths, sub_total, group_values = await completed
+            sub_unique = len(set(sub_paths))
+            log.info(
+                "workday.facet_group_total",
+                company=company,
+                site=site,
+                facet=facet_param,
+                values=group_values,
+                advertised=sub_total,
+                rows=len(sub_paths),
+                unique=sub_unique,
+            )
             new_paths: list[str] = []
             for path in sub_paths:
                 if path not in seen:
@@ -535,9 +585,45 @@ async def _api_list_stream(
                 task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
 
+    expected = min(total, MAX_JOBS)
+    if _materially_below_advertised_total(len(seen), expected):
+        # Some Workday facets are neither exhaustive nor mutually exclusive.
+        # PWC, for example, advertises overlapping location groups that omit
+        # jobs without a location facet, while the same tenant supports deep
+        # direct offsets. Preserve the fast facet path for complete tenants,
+        # then use the already verified direct-pagination path only when the
+        # deduplicated facet inventory is materially short. The direct helper
+        # retains the same completeness assertion, so capped tenants still
+        # fail closed instead of accepting a partial inventory.
+        log.warning(
+            "workday.faceted_incomplete_direct_fallback",
+            company=company,
+            site=site,
+            discovered=len(seen),
+            advertised=expected,
+            deficit=expected - len(seen),
+        )
+        async with query_sem:
+            async for direct_batch in _direct_pagination_stream(
+                list_url,
+                total,
+                company,
+                site,
+                client,
+                base_body=base_body,
+                known_paths=seen,
+            ):
+                if direct_batch == [_TRUNCATED_PATH]:
+                    yield direct_batch
+                    continue
+                new_paths = [path for path in direct_batch if path not in seen]
+                seen.update(new_paths)
+                if new_paths:
+                    yield new_paths
+
     _assert_complete_inventory(
         discovered=len(seen),
-        advertised=min(total, MAX_JOBS),
+        advertised=expected,
         company=company,
         site=site,
         strategy="faceted pagination",

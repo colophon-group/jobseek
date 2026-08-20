@@ -466,7 +466,46 @@ class TestInventoryCompleteness:
             with pytest.raises(RuntimeError, match="40 of 45 advertised unique jobs"):
                 _ = [batch async for batch in _api_list_stream("co", "wd1", "Site", client)]
 
-    async def test_faceted_pagination_fails_on_material_inventory_gap(self, monkeypatch):
+    async def test_under_cap_pagination_recovers_from_a_second_snapshot(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        first_paths = [f"/job/{i}" for i in range(8)]
+
+        async def incomplete_first_pass(list_url, body, client, *, cap_abort=0):
+            return first_paths, 12, []
+
+        async def recovering_direct(*args, known_paths=None, **kwargs):
+            assert known_paths == set(first_paths)
+            yield [f"/job/{i}" for i in range(8, 12)]
+
+        monkeypatch.setattr(wd_module, "_paginate_query", incomplete_first_pass)
+        monkeypatch.setattr(wd_module, "_direct_pagination_stream", recovering_direct)
+
+        async with httpx.AsyncClient() as client:
+            batches = [batch async for batch in _api_list_stream("co", "wd1", "Site", client)]
+
+        assert batches == [[f"/job/{i}" for i in range(12)]]
+
+    async def test_under_cap_pagination_fails_when_recovery_is_incomplete(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        async def incomplete_first_pass(list_url, body, client, *, cap_abort=0):
+            return [f"/job/{i}" for i in range(8)], 12, []
+
+        async def incomplete_direct(*args, **kwargs):
+            yield ["/job/8"]
+            raise RuntimeError(
+                "Workday direct pagination returned 9 of 12 advertised unique jobs for co/Site"
+            )
+
+        monkeypatch.setattr(wd_module, "_paginate_query", incomplete_first_pass)
+        monkeypatch.setattr(wd_module, "_direct_pagination_stream", incomplete_direct)
+
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(RuntimeError, match="direct pagination returned 9 of 12"):
+                _ = [batch async for batch in _api_list_stream("co", "wd1", "Site", client)]
+
+    async def test_faceted_pagination_recovers_material_inventory_gap(self, monkeypatch):
         from src.core.monitors import workday as wd_module
 
         monkeypatch.setattr(wd_module, "_API_RESULT_CAP", 10)
@@ -491,8 +530,56 @@ class TestInventoryCompleteness:
 
         monkeypatch.setattr(wd_module, "_paginate_query", fake_paginate)
 
+        async def fake_direct(*args, **kwargs):
+            yield [f"/{i}" for i in range(12)]
+
+        monkeypatch.setattr(wd_module, "_direct_pagination_stream", fake_direct)
+
         async with httpx.AsyncClient() as client:
-            with pytest.raises(RuntimeError, match="8 of 12 advertised unique jobs"):
+            batches = [batch async for batch in _api_list_stream("co", "wd1", "Site", client)]
+
+        paths = [path for batch in batches for path in batch]
+        assert set(paths) == {
+            *(f"/a/{i}" for i in range(4)),
+            *(f"/b/{i}" for i in range(4)),
+            *(f"/{i}" for i in range(12)),
+        }
+        assert len(paths) == 20
+
+    async def test_faceted_pagination_fails_when_direct_recovery_is_incomplete(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module, "_API_RESULT_CAP", 10)
+
+        async def fake_paginate(list_url, body, client, *, cap_abort=0):
+            if not body:
+                return (
+                    ["/first-page"],
+                    12,
+                    [
+                        {
+                            "facetParameter": "location",
+                            "values": [
+                                {"id": "a", "count": 6},
+                                {"id": "b", "count": 6},
+                            ],
+                        }
+                    ],
+                )
+            facet_id = body["appliedFacets"]["location"][0]
+            return [f"/{facet_id}/{i}" for i in range(4)], 4, []
+
+        async def incomplete_direct(*args, **kwargs):
+            yield [f"/{i}" for i in range(8)]
+            raise RuntimeError(
+                "Workday direct pagination returned 8 of 12 advertised unique jobs for co/Site"
+            )
+
+        monkeypatch.setattr(wd_module, "_paginate_query", fake_paginate)
+        monkeypatch.setattr(wd_module, "_direct_pagination_stream", incomplete_direct)
+
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(RuntimeError, match="direct pagination returned 8 of 12"):
                 _ = [batch async for batch in _api_list_stream("co", "wd1", "Site", client)]
 
     async def test_query_concurrency_is_shared_across_sites(self, monkeypatch):
