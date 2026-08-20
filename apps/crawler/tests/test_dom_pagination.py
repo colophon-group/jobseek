@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -19,6 +20,7 @@ from src.core.monitors.dom import (
     can_handle,
     dom_discover,
 )
+from src.shared.http_retry import PaginationFetchError
 from src.workspace._compat import auto_scraper_type
 
 # ---------------------------------------------------------------------------
@@ -230,7 +232,7 @@ class TestCanHandle:
         )
         client.get.assert_not_called()
 
-    async def test_talentsoft_returns_complete_static_pagination_config(self):
+    async def test_talentsoft_without_safran_facets_keeps_ordinary_pagination(self):
         html = """
         <html><body>
           <a class="ts-search-engine-form__rss-cta" href="/job/all-rss-feeds.aspx">RSS</a>
@@ -257,6 +259,41 @@ class TestCanHandle:
         assert not re.search(
             result["url_filter"], "https://evil.example/job/job-lookalike_999.aspx"
         )
+
+    async def test_talentsoft_with_counted_facets_enables_partitioning(self):
+        html = """
+        <html>
+          <head><title>Search results(2 vacancies/1)</title></head>
+          <body>
+            <a class="ts-search-engine-form__rss-cta" href="/job/all-rss-feeds.aspx">RSS</a>
+            <li class="ts-offer-list-item">
+              <a href="/job/job-engineer_1.aspx">Engineer</a>
+            </li>
+            <ul class="facette-titre-niv1">
+              <li><a href="?changefacet=1&amp;facet_Contract=10">Permanent (2)</a></li>
+              <li><a href="?changefacet=1&amp;facet_JobFamily=20">Engineering (2)</a></li>
+            </ul>
+          </body>
+        </html>
+        """
+        with patch("src.core.monitors.fetch_page_text", new=AsyncMock(return_value=html)):
+            result = await can_handle(
+                "https://jobs.example.com/job/list-of-all-jobs.aspx?LCID=2057",
+                MagicMock(),
+            )
+
+        assert result is not None
+        assert result["pagination"] == {
+            "param_name": "page",
+            "max_pages": 1_000,
+            "partition_selector": "ul.facette-titre-niv1 a[href*='facet_Contract=']",
+            "partition_fallback_selector": ("ul.facette-titre-niv1 a[href*='facet_JobFamily=']"),
+            "partition_count_regex": r"\((\d+)\s+(?:vacancies|offres)",
+            "partition_result_limit": 1_000,
+            "partition_validate_total": True,
+            "partition_drop_params": ["changefacet"],
+            "partition_stateless": True,
+        }
 
     async def test_rexx_board_uses_detail_pattern_and_ignores_job_alert(self):
         html = """
@@ -448,6 +485,281 @@ class TestCanHandle:
 
 
 class TestDomDiscoverInitialFetch:
+    async def test_partitioned_pagination_unions_every_talentsoft_facet(self):
+        board_url = "https://jobs.example.com/job/list-of-all-jobs.aspx?LCID=2057"
+        partition_one_link = (
+            "https://jobs.example.com/job/list-of-all-jobs.aspx?changefacet=1&facet_JobFamily=100"
+        )
+        partition_two_link = (
+            "https://jobs.example.com/job/list-of-all-jobs.aspx?changefacet=1&facet_JobFamily=200"
+        )
+        partition_one = (
+            "https://jobs.example.com/job/list-of-all-jobs.aspx?LCID=2057&facet_JobFamily=100"
+        )
+        partition_two = (
+            "https://jobs.example.com/job/list-of-all-jobs.aspx?LCID=2057&facet_JobFamily=200"
+        )
+        job_one = "https://jobs.example.com/job/job-engineer_1.aspx"
+        job_two = "https://jobs.example.com/job/job-manager_2.aspx"
+        job_three = "https://jobs.example.com/job/job-analyst_3.aspx"
+        initial = f"""
+        <ul class="facette-titre-niv1">
+          <li><a href="{partition_one_link}">Engineering</a></li>
+          <li><a href="{partition_two_link}">Management</a></li>
+        </ul>
+        <a href="{job_one}">capped unfiltered result</a>
+        """
+        pages = {
+            board_url: initial,
+            partition_one: _html_with_links(job_one),
+            f"{partition_one}&page=2": _html_with_links(job_two),
+            f"{partition_one}&page=3": _html_with_links(job_two),
+            partition_two: _html_with_links(job_three),
+            f"{partition_two}&page=2": _html_with_links(job_three),
+        }
+        metadata = {
+            "url_filter": (
+                r"^https://jobs\.example\.com/"
+                r"(?:job/job|offre-de-emploi/emploi)-[^/?#]+_\d+\.aspx(?:[?#]|$)"
+            ),
+            "pagination": {
+                "param_name": "page",
+                "max_pages": 10,
+                "partition_selector": ("ul.facette-titre-niv1 a[href*='facet_JobFamily=']"),
+                "partition_drop_params": ["changefacet"],
+                "partition_stateless": True,
+            },
+        }
+
+        fetch = _make_fetch(pages)
+
+        async def stateless_fetch(client, url, **kwargs):
+            if url != board_url:
+                assert kwargs.get("headers") == {"Cookie": ""}
+            return await fetch(client, url, **kwargs)
+
+        with patch(_FETCH_PATCH, new=stateless_fetch):
+            result = await dom_discover(
+                {"board_url": board_url, "metadata": metadata},
+                MagicMock(),
+            )
+
+        assert result == {job_one, job_two, job_three}
+
+    async def test_partitioned_pagination_bounds_parallel_facets(self):
+        board_url = "https://jobs.example.com/job/list.aspx"
+        partition_urls = [f"{board_url}?facet_JobFamily={number}" for number in range(6)]
+        job_urls = [f"https://jobs.example.com/job/job-role_{number}.aspx" for number in range(6)]
+        initial = (
+            "<ul class='facette-titre-niv1'>"
+            + "".join(f"<li><a href='{url}'>Family</a></li>" for url in partition_urls)
+            + "</ul>"
+        )
+        active = 0
+        max_active = 0
+
+        async def fetch(_client, url, **_kwargs):
+            nonlocal active, max_active
+            if url == board_url:
+                return initial
+            for partition_url, job_url in zip(partition_urls, job_urls, strict=True):
+                if url == partition_url:
+                    active += 1
+                    max_active = max(max_active, active)
+                    await asyncio.sleep(0.01)
+                    active -= 1
+                    return _html_with_links(job_url)
+                if url == f"{partition_url}&page=2":
+                    return _html_with_links(job_url)
+            return None
+
+        metadata = {
+            "url_filter": r"^https://jobs\.example\.com/job/job-.+_\d+\.aspx$",
+            "pagination": {
+                "param_name": "page",
+                "max_pages": 10,
+                "partition_selector": "ul.facette-titre-niv1 a[href*='facet_JobFamily=']",
+            },
+        }
+
+        with patch(_FETCH_PATCH, new=fetch):
+            result = await dom_discover(
+                {"board_url": board_url, "metadata": metadata},
+                MagicMock(),
+            )
+
+        assert result == set(job_urls)
+        assert max_active == 4
+
+    async def test_partitioned_pagination_splits_oversized_primary_facet(self):
+        board_url = "https://jobs.example.com/job/list.aspx?LCID=2057"
+        small_link = f"{board_url.split('?')[0]}?changefacet=1&facet_Contract=10"
+        large_link = f"{board_url.split('?')[0]}?changefacet=1&facet_Contract=20"
+        small = f"{board_url.split('?')[0]}?LCID=2057&facet_Contract=10"
+        large = f"{board_url.split('?')[0]}?LCID=2057&facet_Contract=20"
+        child_one = f"{large}&facet_JobFamily=100"
+        child_two = f"{large}&facet_JobFamily=200"
+        jobs = [f"https://jobs.example.com/job/job-role_{number}.aspx" for number in range(5)]
+
+        def counted_page(count, *links, facets=""):
+            return (
+                f"<html><head><title>Search results({count} vacancies/1)</title></head>"
+                f"<body>{facets}{''.join(f'<a href={url!r}>job</a>' for url in links)}</body>"
+                "</html>"
+            )
+
+        initial = counted_page(
+            5,
+            jobs[0],
+            facets=(
+                "<ul class='facette-titre-niv1'>"
+                f"<li><a href='{small_link}'>Fixed (2)</a></li>"
+                f"<li><a href='{large_link}'>Permanent (3)</a></li>"
+                "</ul>"
+            ),
+        )
+        large_page = counted_page(
+            3,
+            jobs[2],
+            facets=(
+                "<ul class='facette-titre-niv1'>"
+                "<li><a href='?changefacet=1&facet_JobFamily=100'>Family A (1)</a></li>"
+                "<li><a href='?changefacet=1&facet_JobFamily=200'>Family B (2)</a></li>"
+                "</ul>"
+            ),
+        )
+        pages = {
+            board_url: initial,
+            small: counted_page(2, jobs[0], jobs[1]),
+            f"{small}&page=2": counted_page(2, jobs[0], jobs[1]),
+            large: large_page,
+            child_one: counted_page(1, jobs[2]),
+            f"{child_one}&page=2": counted_page(1, jobs[2]),
+            child_two: counted_page(2, jobs[3], jobs[4]),
+            f"{child_two}&page=2": counted_page(2, jobs[3], jobs[4]),
+        }
+        metadata = {
+            "url_filter": r"^https://jobs\.example\.com/job/job-.+_\d+\.aspx$",
+            "pagination": {
+                "param_name": "page",
+                "max_pages": 10,
+                "partition_selector": "ul.facette-titre-niv1 a[href*='facet_Contract=']",
+                "partition_fallback_selector": (
+                    "ul.facette-titre-niv1 a[href*='facet_JobFamily=']"
+                ),
+                "partition_count_regex": r"\((\d+)\s+vacancies",
+                "partition_result_limit": 2,
+                "partition_validate_total": True,
+                "partition_drop_params": ["changefacet"],
+            },
+        }
+
+        with patch(_FETCH_PATCH, new=_make_fetch(pages)):
+            result = await dom_discover(
+                {"board_url": board_url, "metadata": metadata},
+                MagicMock(),
+            )
+
+        assert result == set(jobs)
+
+    async def test_partitioned_pagination_caps_fallbacks_across_all_parents(self):
+        board_url = "https://jobs.example.com/job/list.aspx?LCID=2057"
+        base = board_url.split("?")[0]
+        primary_urls = [f"{base}?LCID=2057&facet_Contract={number}" for number in (10, 20)]
+        child_urls = [
+            [f"{primary}&facet_JobFamily={family}" for family in (100, 200)]
+            for primary in primary_urls
+        ]
+        jobs = [f"https://jobs.example.com/job/job-role_{number}.aspx" for number in range(4)]
+
+        def counted_page(count, job_url, facets=""):
+            return (
+                f"<html><head><title>Search results({count} vacancies/1)</title></head>"
+                f"<body>{facets}<a href='{job_url}'>job</a></body></html>"
+            )
+
+        initial_facets = (
+            "<ul class='facette-titre-niv1'>"
+            + "".join(
+                f"<li><a href='?changefacet=1&facet_Contract={number}'>Contract ({2})</a></li>"
+                for number in (10, 20)
+            )
+            + "</ul>"
+        )
+        child_facets = (
+            "<ul class='facette-titre-niv1'>"
+            + "".join(
+                f"<li><a href='?changefacet=1&facet_JobFamily={number}'>Family (1)</a></li>"
+                for number in (100, 200)
+            )
+            + "</ul>"
+        )
+        pages = {
+            board_url: counted_page(4, jobs[0], initial_facets),
+            primary_urls[0]: counted_page(2, jobs[0], child_facets),
+            primary_urls[1]: counted_page(2, jobs[2], child_facets),
+            child_urls[0][0]: counted_page(1, jobs[0]),
+            child_urls[0][1]: counted_page(1, jobs[1]),
+        }
+        seen: list[str] = []
+        fetch = _make_fetch(pages)
+
+        async def recording_fetch(client, url, **kwargs):
+            seen.append(url)
+            return await fetch(client, url, **kwargs)
+
+        metadata = {
+            "url_filter": r"^https://jobs\.example\.com/job/job-.+_\d+\.aspx$",
+            "pagination": {
+                "param_name": "page",
+                "max_pages": 10,
+                "partition_selector": "ul.facette-titre-niv1 a[href*='facet_Contract=']",
+                "partition_fallback_selector": (
+                    "ul.facette-titre-niv1 a[href*='facet_JobFamily=']"
+                ),
+                "partition_count_regex": r"\((\d+)\s+vacancies",
+                "partition_result_limit": 1,
+                "partition_validate_total": True,
+                "partition_drop_params": ["changefacet"],
+            },
+        }
+
+        with (
+            patch(_FETCH_PATCH, new=recording_fetch),
+            patch("src.core.monitors.dom._MAX_PAGINATION_PARTITIONS", 3),
+            pytest.raises(ValueError, match="global partition limit"),
+        ):
+            await dom_discover(
+                {"board_url": board_url, "metadata": metadata},
+                MagicMock(),
+            )
+
+        assert not set(child_urls[1]) & set(seen)
+
+    async def test_partitioned_pagination_fails_closed_on_missing_partition(self):
+        board_url = "https://jobs.example.com/job/list.aspx"
+        partition = "https://jobs.example.com/job/list.aspx?facet_JobFamily=100"
+        initial = (
+            f"<ul class='facette-titre-niv1'><li><a href='{partition}'>Engineering</a></li></ul>"
+        )
+        metadata = {
+            "url_filter": r"^https://jobs\.example\.com/job/job-.+_\d+\.aspx$",
+            "pagination": {
+                "param_name": "page",
+                "max_pages": 10,
+                "partition_selector": ("ul.facette-titre-niv1 a[href*='facet_JobFamily=']"),
+            },
+        }
+
+        with (
+            patch(_FETCH_PATCH, new=_make_fetch({board_url: initial, partition: None})),
+            pytest.raises(PaginationFetchError, match="empty partition"),
+        ):
+            await dom_discover(
+                {"board_url": board_url, "metadata": metadata},
+                MagicMock(),
+            )
+
     async def test_vagas_tenant_home_discovers_full_listing_not_only_featured_jobs(self):
         tenant_home = "https://trabalheconosco.vagas.com.br/bdobrazil"
         listing = f"{tenant_home}/oportunidades"

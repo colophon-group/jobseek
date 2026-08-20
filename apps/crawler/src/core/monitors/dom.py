@@ -18,7 +18,7 @@ import re
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import TYPE_CHECKING
-from urllib.parse import urljoin, urlparse, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlsplit, urlunsplit
 
 import structlog
 from selectolax.lexbor import LexborHTMLParser, SelectolaxError
@@ -86,6 +86,11 @@ _KONTACT_URL_FILTER = r"/Physician_Job/Details/"
 
 _TALENTSOFT_MARKERS = ("ts-offer-list-item", "ts-search-engine-form__rss-cta")
 _TALENTSOFT_PATH_FILTER = r"/(?:job/job|offre-de-emploi/emploi)-[^/?#]+_\d+\.aspx(?:[?#]|$)"
+_TALENTSOFT_PARTITION_SELECTOR = "ul.facette-titre-niv1 a[href*='facet_Contract=']"
+_TALENTSOFT_PARTITION_FALLBACK_SELECTOR = "ul.facette-titre-niv1 a[href*='facet_JobFamily=']"
+_TALENTSOFT_PARTITION_COUNT_REGEX = r"\((\d+)\s+(?:vacancies|offres)"
+_MAX_PAGINATION_PARTITIONS = 500
+_PAGINATION_PARTITION_CONCURRENCY = 4
 
 _JPOSTING_HOST_SUFFIX = ".jposting.net"
 _JPOSTING_JOB_FILTER = r"[?&]job_code=[^&#]+"
@@ -343,13 +348,44 @@ def _talentsoft_probe_config(html: str, url: str) -> dict | None:
     urls = _extract_links_static(html, url, matcher)
     if not urls:
         return None
+    pagination = {
+        "param_name": "page",
+        "max_pages": 1_000,
+    }
+    tree = LexborHTMLParser(html)
+    title = tree.css_first("title")
+    title_text = title.text(strip=True) if title is not None else ""
+    has_primary_facets = bool(
+        _extract_links_static(html, url, link_selector=_TALENTSOFT_PARTITION_SELECTOR)
+    )
+    has_fallback_facets = bool(
+        _extract_links_static(
+            html,
+            url,
+            link_selector=_TALENTSOFT_PARTITION_FALLBACK_SELECTOR,
+        )
+    )
+    if (
+        has_primary_facets
+        and has_fallback_facets
+        and re.search(_TALENTSOFT_PARTITION_COUNT_REGEX, title_text, re.IGNORECASE)
+    ):
+        pagination.update(
+            {
+                "partition_selector": _TALENTSOFT_PARTITION_SELECTOR,
+                "partition_fallback_selector": _TALENTSOFT_PARTITION_FALLBACK_SELECTOR,
+                "partition_count_regex": _TALENTSOFT_PARTITION_COUNT_REGEX,
+                "partition_result_limit": 1_000,
+                "partition_validate_total": True,
+                "partition_drop_params": ["changefacet"],
+                "partition_stateless": True,
+            }
+        )
+
     return {
         "urls": len(urls),
         "url_filter": url_filter,
-        "pagination": {
-            "param_name": "page",
-            "max_pages": 1_000,
-        },
+        "pagination": pagination,
     }
 
 
@@ -756,6 +792,8 @@ async def _paginate_urls(
     url_transform: dict | None = None,
     encoding: str | None = None,
     link_selector: str | None = None,
+    request_headers: dict | None = None,
+    request_semaphore: asyncio.Semaphore | None = None,
 ) -> set[str]:
     """Fetch paginated pages and merge discovered links with *initial_urls*.
 
@@ -832,12 +870,23 @@ async def _paginate_urls(
                 transient_403=transient_403,
             )
         else:
-            html = await fetch_with_retry(
-                client,
-                page_url,
-                encoding=encoding,
-                transient_403=transient_403,
-            )
+            if request_semaphore is None:
+                html = await fetch_with_retry(
+                    client,
+                    page_url,
+                    encoding=encoding,
+                    transient_403=transient_403,
+                    headers=request_headers,
+                )
+            else:
+                async with request_semaphore:
+                    html = await fetch_with_retry(
+                        client,
+                        page_url,
+                        encoding=encoding,
+                        transient_403=transient_403,
+                        headers=request_headers,
+                    )
 
         if not html:
             # Legitimate end-of-pagination (404/410, empty body, or
@@ -866,6 +915,299 @@ async def _paginate_urls(
         all_urls |= added
         log.debug("dom.pagination.page", page=page_num, new=len(added), total=len(all_urls))
         value += increment
+
+    return all_urls
+
+
+async def _paginate_partitioned_urls(
+    board_url: str,
+    initial_html: str,
+    pagination: dict,
+    client: httpx.AsyncClient,
+    url_matcher: re.Pattern | None,
+    url_transform: dict | None,
+    encoding: str | None,
+    link_selector: str | None,
+) -> set[str]:
+    """Paginate every bounded facet partition advertised by a listing.
+
+    Cegid Talentsoft exposes at most 1,000 results from an unfiltered search,
+    even when its result counter reports several thousand vacancies. Boards
+    can opt into this helper with
+    ``pagination.partition_selector`` so gone detection receives the union of
+    every partition instead of a silently truncated first 1,000 URLs.
+    Oversized primary facets can be split once more with
+    ``partition_fallback_selector`` and ``partition_result_limit``.
+    ``partition_drop_params`` removes state-changing query flags before page
+    numbers are appended, while ``partition_stateless`` suppresses cookies so
+    concurrent ASP.NET facet requests do not serialize on one server session.
+
+    A missing selector, empty partition, or cross-origin facet fails the whole
+    monitor cycle. Accepting a partial partition union would otherwise
+    tombstone every job in the missing slice.
+    """
+    from src.shared.http_retry import PaginationFetchError, fetch_with_retry
+
+    partition_selector = _validate_link_selector(pagination.get("partition_selector"))
+    if partition_selector is None:
+        raise ValueError("DOM partitioned pagination requires partition_selector")
+
+    drop_params = pagination.get("partition_drop_params", [])
+    if (
+        not isinstance(drop_params, list)
+        or len(drop_params) > 16
+        or any(not isinstance(param, str) or not param for param in drop_params)
+    ):
+        raise ValueError("DOM partition_drop_params must be a list of at most 16 names")
+
+    def canonicalize_partition_url(url: str, inherited_url: str = board_url) -> str:
+        parts = urlsplit(url)
+        inherited_parts = urlsplit(inherited_url)
+        current_pairs = parse_qsl(parts.query, keep_blank_values=True)
+        current_names = {name for name, _ in current_pairs}
+        inherited_pairs = [
+            (name, value)
+            for name, value in parse_qsl(inherited_parts.query, keep_blank_values=True)
+            if name not in current_names
+        ]
+        retained = [
+            (name, value)
+            for name, value in inherited_pairs + current_pairs
+            if name not in drop_params
+        ]
+        return urlunsplit(
+            (
+                parts.scheme,
+                parts.netloc,
+                parts.path,
+                urlencode(retained, doseq=True),
+                parts.fragment,
+            )
+        )
+
+    partition_urls = sorted(
+        {
+            canonicalize_partition_url(url)
+            for url in _extract_links_static(
+                initial_html,
+                board_url,
+                link_selector=partition_selector,
+            )
+        }
+    )
+    if not partition_urls:
+        raise ValueError("DOM partitioned pagination found no partition links")
+    if len(partition_urls) > _MAX_PAGINATION_PARTITIONS:
+        raise ValueError(
+            "DOM partitioned pagination found too many partitions "
+            f"({len(partition_urls)} > {_MAX_PAGINATION_PARTITIONS})"
+        )
+
+    board_origin = urlsplit(board_url)[:2]
+    if any(urlsplit(url)[:2] != board_origin for url in partition_urls):
+        raise ValueError("DOM partitioned pagination requires same-origin partition links")
+
+    transient_403 = pagination.get("transient_403", False)
+    partition_stateless = pagination.get("partition_stateless", False)
+    if not isinstance(partition_stateless, bool):
+        raise ValueError("DOM partition_stateless must be a boolean")
+    fallback_selector_raw = pagination.get("partition_fallback_selector")
+    fallback_selector = (
+        _validate_link_selector(fallback_selector_raw)
+        if fallback_selector_raw is not None
+        else None
+    )
+    count_regex_raw = pagination.get("partition_count_regex")
+    if count_regex_raw is not None and not isinstance(count_regex_raw, str):
+        raise ValueError("DOM partition_count_regex must be a string")
+    count_regex = re.compile(count_regex_raw, re.IGNORECASE) if count_regex_raw else None
+    result_limit = pagination.get("partition_result_limit")
+    if result_limit is not None and (not isinstance(result_limit, int) or result_limit < 1):
+        raise ValueError("DOM partition_result_limit must be a positive integer")
+    validate_total = pagination.get("partition_validate_total", False)
+    if not isinstance(validate_total, bool):
+        raise ValueError("DOM partition_validate_total must be a boolean")
+    if fallback_selector is not None and (count_regex is None or result_limit is None):
+        raise ValueError(
+            "DOM partition fallback requires partition_count_regex and partition_result_limit"
+        )
+    if validate_total and count_regex is None:
+        raise ValueError("DOM partition_validate_total requires partition_count_regex")
+
+    request_headers = {"Cookie": ""} if partition_stateless else None
+    semaphore = asyncio.Semaphore(_PAGINATION_PARTITION_CONCURRENCY)
+
+    def extract_count(html: str, url: str) -> int:
+        assert count_regex is not None
+        tree = LexborHTMLParser(html)
+        title = tree.css_first("title")
+        match = count_regex.search(title.text(strip=True) if title is not None else "")
+        if match is None:
+            raise ValueError(f"DOM partition count not found: {url}")
+        return int(match.group(1))
+
+    async def fetch_partition(partition_url: str) -> tuple[str, set[str], int | None]:
+        async with semaphore:
+            html = await fetch_with_retry(
+                client,
+                partition_url,
+                encoding=encoding,
+                transient_403=transient_403,
+                headers=request_headers,
+            )
+        if not html:
+            raise PaginationFetchError(
+                partition_url,
+                attempts=1,
+                last_error="empty partition",
+            )
+        _raise_if_bot_challenge(partition_url, html)
+        initial_urls = _extract_links_static(
+            html,
+            partition_url,
+            url_matcher,
+            link_selector,
+        )
+        if not initial_urls:
+            raise ValueError(f"DOM partition contains no job links: {partition_url}")
+        count = extract_count(html, partition_url) if count_regex is not None else None
+        return html, initial_urls, count
+
+    async def gather_cancel_on_error(tasks):
+        try:
+            return await asyncio.gather(*tasks)
+        except BaseException:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            raise
+
+    primary_tasks = [asyncio.create_task(fetch_partition(url)) for url in partition_urls]
+    primary_results = await gather_cancel_on_error(primary_tasks)
+
+    if validate_total:
+        expected_total = extract_count(initial_html, board_url)
+        primary_total = sum(count or 0 for _, _, count in primary_results)
+        if primary_total != expected_total:
+            raise ValueError(
+                "DOM primary partition counts do not match listing total "
+                f"({primary_total} != {expected_total})"
+            )
+    else:
+        expected_total = None
+
+    expanded: list[tuple[str, str, set[str], int | None]] = []
+    for primary_index, (partition_url, (html, initial_urls, count)) in enumerate(
+        zip(partition_urls, primary_results, strict=True)
+    ):
+        if result_limit is None or count is None or count <= result_limit:
+            expanded.append((partition_url, html, initial_urls, count))
+            continue
+        if fallback_selector is None:
+            raise ValueError(
+                f"DOM partition exceeds result limit ({count} > {result_limit}): {partition_url}"
+            )
+
+        child_urls = sorted(
+            {
+                canonicalize_partition_url(url, partition_url)
+                for url in _extract_links_static(
+                    html,
+                    partition_url,
+                    link_selector=fallback_selector,
+                )
+            }
+        )
+        if not child_urls:
+            raise ValueError(f"DOM oversized partition has no fallback links: {partition_url}")
+        if len(child_urls) > _MAX_PAGINATION_PARTITIONS:
+            raise ValueError(
+                "DOM partition fallback found too many links "
+                f"({len(child_urls)} > {_MAX_PAGINATION_PARTITIONS})"
+            )
+        if any(urlsplit(url)[:2] != board_origin for url in child_urls):
+            raise ValueError("DOM partition fallback requires same-origin links")
+        remaining_primary = len(partition_urls) - primary_index - 1
+        minimum_expanded_total = len(expanded) + len(child_urls) + remaining_primary
+        if minimum_expanded_total > _MAX_PAGINATION_PARTITIONS:
+            raise ValueError(
+                "DOM partition fallback would exceed the global partition limit "
+                f"({minimum_expanded_total} > {_MAX_PAGINATION_PARTITIONS})"
+            )
+
+        child_tasks = [asyncio.create_task(fetch_partition(url)) for url in child_urls]
+        child_results = await gather_cancel_on_error(child_tasks)
+        child_total = sum(child_count or 0 for _, _, child_count in child_results)
+        if child_total != count:
+            raise ValueError(
+                "DOM fallback partition counts do not match parent total "
+                f"({child_total} != {count}): {partition_url}"
+            )
+        for child_url, (child_html, child_initial_urls, child_count) in zip(
+            child_urls, child_results, strict=True
+        ):
+            if child_count is not None and child_count > result_limit:
+                raise ValueError(
+                    "DOM fallback partition still exceeds result limit "
+                    f"({child_count} > {result_limit}): {child_url}"
+                )
+            expanded.append((child_url, child_html, child_initial_urls, child_count))
+
+    if len(expanded) > _MAX_PAGINATION_PARTITIONS:
+        raise ValueError(
+            "DOM partition expansion found too many partitions "
+            f"({len(expanded)} > {_MAX_PAGINATION_PARTITIONS})"
+        )
+
+    async def paginate_partition(
+        partition_url: str,
+        initial_urls: set[str],
+    ) -> set[str]:
+        return await _paginate_urls(
+            partition_url,
+            pagination,
+            initial_urls,
+            client,
+            url_matcher=url_matcher,
+            url_transform=url_transform,
+            encoding=encoding,
+            link_selector=link_selector,
+            request_headers=request_headers,
+            request_semaphore=semaphore,
+        )
+
+    tasks = [
+        asyncio.create_task(paginate_partition(url, initial_urls))
+        for url, _, initial_urls, _ in expanded
+    ]
+    partition_results = await gather_cancel_on_error(tasks)
+
+    all_urls: set[str] = set()
+    for partition_num, (expanded_partition, partition_urls_found) in enumerate(
+        zip(expanded, partition_results, strict=True), start=1
+    ):
+        partition_url, _, _, partition_count = expanded_partition
+        if partition_count is not None and len(partition_urls_found) != partition_count:
+            raise ValueError(
+                "DOM partition URL count does not match advertised count "
+                f"({len(partition_urls_found)} != {partition_count}): {partition_url}"
+            )
+        all_urls.update(partition_urls_found)
+        log.debug(
+            "dom.pagination.partition",
+            partition=partition_num,
+            partitions=len(expanded),
+            partition_urls=len(partition_urls_found),
+            total=len(all_urls),
+        )
+
+    if expected_total is not None and len(all_urls) < expected_total:
+        log.info(
+            "dom.pagination.partition_deduplicated",
+            advertised=expected_total,
+            unique_urls=len(all_urls),
+            duplicates=expected_total - len(all_urls),
+        )
 
     return all_urls
 
@@ -1031,16 +1373,28 @@ async def dom_discover(
         _raise_if_bot_challenge(board_url, html)
         urls = _extract_links_static(html, board_url, url_matcher, link_selector)
         if pagination:
-            urls = await _paginate_urls(
-                board_url,
-                pagination,
-                urls,
-                client,
-                url_matcher=url_matcher,
-                url_transform=url_transform,
-                encoding=encoding,
-                link_selector=link_selector,
-            )
+            if pagination.get("partition_selector"):
+                urls = await _paginate_partitioned_urls(
+                    board_url,
+                    html,
+                    pagination,
+                    client,
+                    url_matcher,
+                    url_transform,
+                    encoding,
+                    link_selector,
+                )
+            else:
+                urls = await _paginate_urls(
+                    board_url,
+                    pagination,
+                    urls,
+                    client,
+                    url_matcher=url_matcher,
+                    url_transform=url_transform,
+                    encoding=encoding,
+                    link_selector=link_selector,
+                )
 
     # Exclude the board URL itself by default — it is normally the listing
     # page, not a job. Direct document boards opt in after the successful
