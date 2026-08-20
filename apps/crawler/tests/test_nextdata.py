@@ -1105,6 +1105,31 @@ class TestPagination:
 
         assert page_two_calls == 3
 
+    async def test_empty_required_page_fails_run_after_retries(self):
+        """A valid embedded shell with no jobs is still an incomplete page."""
+        page_two_calls = 0
+
+        def handler(request: httpx.Request):
+            nonlocal page_two_calls
+            page = int(request.url.params.get("page", "1"))
+            data = _paginated_data(page, 3)
+            if page == 2:
+                page_two_calls += 1
+                data["props"]["pageProps"]["data"]["jobs"] = []
+            return httpx.Response(200, text=_html_with_next_data(data))
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with (
+                patch("src.core.monitors.nextdata.asyncio.sleep", new_callable=AsyncMock),
+                pytest.raises(
+                    RuntimeError,
+                    match="path resolved to an empty required page",
+                ),
+            ):
+                await discover(BOARD_PAGINATED, client)
+
+        assert page_two_calls == 3
+
     async def test_stream_validates_unique_count_against_first_page_total(self):
         board = {
             **BOARD_PAGINATED,

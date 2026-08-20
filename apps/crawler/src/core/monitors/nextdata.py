@@ -875,9 +875,13 @@ async def _fetch_embedded_page_with_retry(
                 failure = f"missing {source} embedded data"
             else:
                 items = _resolve_items(data, path, source)
-                if isinstance(items, list):
+                if isinstance(items, list) and items:
                     return data, items
-                failure = f"path did not resolve to a list: {path}"
+                failure = (
+                    f"path resolved to an empty required page: {path}"
+                    if isinstance(items, list)
+                    else f"path did not resolve to a list: {path}"
+                )
 
         if attempt < _PAGE_FETCH_ATTEMPTS - 1:
             delay = _PAGE_FETCH_BASE_DELAY * (2**attempt)
