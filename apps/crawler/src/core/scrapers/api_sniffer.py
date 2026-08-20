@@ -107,9 +107,7 @@ _SEEK_MARKETS = {
     "www.seek.co.nz": ("en-NZ", "anz-1"),
 }
 _SEEK_JOB_PATH_RE = re.compile(r"^/job/(?P<id>\d+)/?$")
-_AJINGA_JOB_PATH_RE = re.compile(
-    r"^/job-description/(?P<id>[A-Za-z0-9_-]{8,64})/?$"
-)
+_AJINGA_JOB_PATH_RE = re.compile(r"^/job-description/(?P<id>[A-Za-z0-9_-]{8,64})/?$")
 _SEEK_JOB_DETAILS_QUERY = """\
 query JobDetails($id: ID!) {
   jobDetails(id: $id) {

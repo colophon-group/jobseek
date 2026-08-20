@@ -351,9 +351,7 @@ class TestAjingaHttpPreset:
         )
 
         assert config is not None
-        assert config["api_url"] == (
-            "https://www.ajinga.com/django_rest/job-detail/info/{id}/"
-        )
+        assert config["api_url"] == ("https://www.ajinga.com/django_rest/job-detail/info/{id}/")
         assert config["method"] == "GET"
         assert config["json_path"] == "data.data.job"
         assert config["fields"]["description"] == "description || cn_description"
