@@ -252,7 +252,7 @@ async def _detect_custom_portal(
         if not isinstance(jobs, list):
             return None
 
-        token = None
+        tokens: set[str] = set()
         for job in jobs:
             if not isinstance(job, dict):
                 continue
@@ -261,10 +261,16 @@ async def _detect_custom_portal(
                 continue
             match = _ONECLICK_TOKEN_RE.search(job_url)
             if match:
-                token = match.group(1)
-                break
-        if not token:
+                tokens.add(match.group(1))
+        if len(tokens) != 1:
+            if len(tokens) > 1:
+                log.debug(
+                    "smartrecruiters.custom_portal_ambiguous",
+                    url=url,
+                    tenants=sorted(tokens),
+                )
             return None
+        token = next(iter(tokens))
 
         count = await _fetch_job_count(token, client)
         if count is None:

@@ -345,6 +345,36 @@ class TestCanHandle:
             result = await can_handle("https://jobs.example.com/", client)
             assert result is None
 
+    async def test_custom_api_with_conflicting_tenants_is_rejected(self):
+        requested_api_tenants: list[str] = []
+
+        def handler(request):
+            if request.url.host == "jobs.example.com" and request.url.path == "/":
+                return httpx.Response(200, text='<script>fetch("/api/jobs")</script>')
+            if request.url.host == "jobs.example.com" and request.url.path == "/api/jobs":
+                return httpx.Response(
+                    200,
+                    json={
+                        "jobs": [
+                            {
+                                "url": "https://jobs.smartrecruiters.com/oneclick-ui/company/Acme/publication/abc-123"
+                            },
+                            {
+                                "url": "https://jobs.smartrecruiters.com/oneclick-ui/company/Other/job/def-456"
+                            },
+                        ]
+                    },
+                )
+            if request.url.host == "api.smartrecruiters.com":
+                requested_api_tenants.append(request.url.path)
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://jobs.example.com/", client)
+
+        assert result is None
+        assert requested_api_tenants == []
+
 
 # ── Scraper tests ────────────────────────────────────────────────────────
 
