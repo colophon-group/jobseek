@@ -333,6 +333,7 @@ async function _fetchTechnologySuggestionsCached(
 export async function resolveOccupationSlugs(
   slugs: string[],
   locale: string,
+  options: { abortSignal?: AbortSignal } = {},
 ): Promise<Map<string, TaxonomySuggestion>> {
   if (slugs.length === 0) return new Map();
   // `canonicalStringCompare` instead of raw `.sort()` so accented slugs
@@ -340,6 +341,13 @@ export async function resolveOccupationSlugs(
   // `'use cache'` slot between callers passing the same logical input in
   // different orders. See #3276 (follow-up to #3221).
   const sorted = [...slugs].sort(canonicalStringCompare);
+  if (options.abortSignal) {
+    return new Map(
+      Object.entries(
+        await _resolveOccupationSlugs(sorted, locale, options.abortSignal),
+      ),
+    );
+  }
   const record = await _resolveOccupationSlugsCached(sorted, locale);
   return new Map(Object.entries(record));
 }
@@ -352,7 +360,18 @@ async function _resolveOccupationSlugsCached(
   cacheLife("days");
   cacheTag(typeaheadOccupationsCacheTag());
 
-  const rows = await fetchOccupationDocuments(locale);
+  return _resolveOccupationSlugs(sortedSlugs, locale);
+}
+
+async function _resolveOccupationSlugs(
+  sortedSlugs: string[],
+  locale: string,
+  abortSignal?: AbortSignal,
+): Promise<Record<string, TaxonomySuggestion>> {
+
+  const rows = abortSignal
+    ? await fetchOccupationDocuments(locale, abortSignal)
+    : await fetchOccupationDocuments(locale);
   const wanted = new Set(sortedSlugs);
   const result: Record<string, TaxonomySuggestion> = {};
   for (const row of rows) {
@@ -369,10 +388,18 @@ async function _resolveOccupationSlugsCached(
 export async function resolveSenioritySlugs(
   slugs: string[],
   locale: string,
+  options: { abortSignal?: AbortSignal } = {},
 ): Promise<Map<string, TaxonomySuggestion>> {
   if (slugs.length === 0) return new Map();
   // See `resolveOccupationSlugs` for the canonicalization rationale.
   const sorted = [...slugs].sort(canonicalStringCompare);
+  if (options.abortSignal) {
+    return new Map(
+      Object.entries(
+        await _resolveSenioritySlugs(sorted, locale, options.abortSignal),
+      ),
+    );
+  }
   const record = await _resolveSenioritySlugsCached(sorted, locale);
   return new Map(Object.entries(record));
 }
@@ -385,7 +412,18 @@ async function _resolveSenioritySlugsCached(
   cacheLife("days");
   cacheTag(typeaheadSenioritiesCacheTag());
 
-  const rows = await fetchSeniorityDocuments(locale);
+  return _resolveSenioritySlugs(sortedSlugs, locale);
+}
+
+async function _resolveSenioritySlugs(
+  sortedSlugs: string[],
+  locale: string,
+  abortSignal?: AbortSignal,
+): Promise<Record<string, TaxonomySuggestion>> {
+
+  const rows = abortSignal
+    ? await fetchSeniorityDocuments(locale, abortSignal)
+    : await fetchSeniorityDocuments(locale);
   const wanted = new Set(sortedSlugs);
   const result: Record<string, TaxonomySuggestion> = {};
   for (const row of rows) {
@@ -461,10 +499,18 @@ async function _expandOccupationIdsBatchCached(
 
 export async function resolveTechnologySlugs(
   slugs: string[],
+  options: { abortSignal?: AbortSignal } = {},
 ): Promise<Map<string, TaxonomySuggestion>> {
   if (slugs.length === 0) return new Map();
   // See `resolveOccupationSlugs` for the canonicalization rationale.
   const sorted = [...slugs].sort(canonicalStringCompare);
+  if (options.abortSignal) {
+    return new Map(
+      Object.entries(
+        await _resolveTechnologySlugs(sorted, options.abortSignal),
+      ),
+    );
+  }
   const record = await _resolveTechnologySlugsCached(sorted);
   return new Map(Object.entries(record));
 }
@@ -476,7 +522,17 @@ async function _resolveTechnologySlugsCached(
   cacheLife("days");
   cacheTag(typeaheadTechnologiesCacheTag());
 
-  const rows = await fetchTechnologyDocuments();
+  return _resolveTechnologySlugs(sortedSlugs);
+}
+
+async function _resolveTechnologySlugs(
+  sortedSlugs: string[],
+  abortSignal?: AbortSignal,
+): Promise<Record<string, TaxonomySuggestion>> {
+
+  const rows = abortSignal
+    ? await fetchTechnologyDocuments(abortSignal)
+    : await fetchTechnologyDocuments();
   const wanted = new Set(sortedSlugs);
   const result: Record<string, TaxonomySuggestion> = {};
   for (const row of rows) {

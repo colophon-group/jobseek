@@ -49,6 +49,7 @@ const mocks = vi.hoisted(() => {
   );
 
   return {
+    assertTypesenseSearchResult: vi.fn(),
     buildFilterString: vi.fn(),
     dbExecute: vi.fn(),
     expandLocationIdsBatch: vi.fn(),
@@ -164,7 +165,12 @@ vi.mock("@/lib/search/typesense-filters", () => ({
 }));
 
 vi.mock("@/lib/search/typesense-retry", () => ({
+  assertTypesenseSearchResult: mocks.assertTypesenseSearchResult,
   isTypesenseUnavailableError: mocks.isTypesenseUnavailableError,
+  malformedTypesenseResponseError: () =>
+    Object.assign(new Error("Typesense response was malformed"), {
+      typesenseUnavailable: true,
+    }),
   withTypesenseRetry: mocks.withTypesenseRetry,
 }));
 
@@ -226,6 +232,18 @@ describe("watchlist posting read degradation (#6167)", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-16T12:00:00.000Z"));
     mocks.buildFilterString.mockReturnValue("");
+    mocks.assertTypesenseSearchResult.mockImplementation((value: unknown) => {
+      if (
+        typeof value !== "object" ||
+        value === null ||
+        !("found" in value) ||
+        typeof (value as { found?: unknown }).found !== "number"
+      ) {
+        throw Object.assign(new Error("Typesense response was malformed"), {
+          typesenseUnavailable: true,
+        });
+      }
+    });
     mocks.expandLocationIdsBatch.mockResolvedValue([1, 10, 11]);
     mocks.expandOccupationIdsBatch.mockResolvedValue([2, 20]);
     mocks.getSessionUserId.mockResolvedValue(null);
@@ -233,8 +251,11 @@ describe("watchlist posting read degradation (#6167)", () => {
       return (
         typeof err === "object" &&
         err !== null &&
-        "code" in err &&
-        (err as { code?: unknown }).code === "ECONNRESET"
+        (("code" in err &&
+          (err as { code?: unknown }).code === "ECONNRESET") ||
+          ("typesenseUnavailable" in err &&
+            (err as { typesenseUnavailable?: unknown })
+              .typesenseUnavailable === true))
       );
     });
     mocks.localesOrNoneClause.mockReturnValue(undefined);
@@ -379,6 +400,25 @@ describe("watchlist posting read degradation (#6167)", () => {
     expect(mocks.tsSearch).toHaveBeenCalledTimes(1);
   });
 
+  it("degrades a malformed posting timestamp instead of throwing a 500", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.tsSearch.mockResolvedValue({
+      found: 1,
+      hits: [postingHit("malformed", 0, "bad" as unknown as number)],
+    });
+
+    await expect(
+      getPublicWatchlistPostings({
+        companyIds: ["11111111-1111-1111-1111-111111111111"],
+        offset: 0,
+        limit: 20,
+      }),
+    ).resolves.toEqual({ postings: [], total: 0 });
+    expect(mocks.isTypesenseUnavailableError).toHaveBeenCalledWith(
+      expect.objectContaining({ typesenseUnavailable: true }),
+    );
+  });
+
   it("batches active posting queries before the Typesense GET limit (#3477)", async () => {
     const companyIds = Array.from({ length: 99 }, (_, i) => makeUuid(i + 1));
     mocks.tsSearch.mockResolvedValue({ found: 0, hits: [] });
@@ -454,6 +494,31 @@ describe("watchlist posting read degradation (#6167)", () => {
       ]),
     );
     expect(mocks.dbExecute).not.toHaveBeenCalled();
+  });
+
+  it("degrades malformed posting fields in the batched path", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const companyIds = Array.from({ length: 99 }, (_, i) => makeUuid(i + 1));
+    mocks.tsSearch.mockImplementation((params: { per_page?: number }) =>
+      params.per_page === 0
+        ? { found: 1, hits: [] }
+        : {
+            found: 1,
+            hits: [postingHit("malformed", 0, Number.POSITIVE_INFINITY)],
+          },
+    );
+
+    await expect(
+      getPublicWatchlistPostings({
+        companyIds,
+        offset: 0,
+        limit: 20,
+      }),
+    ).resolves.toEqual({ postings: [], total: 0 });
+    expect(mocks.tsSearch.mock.calls.length).toBeGreaterThan(1);
+    expect(mocks.isTypesenseUnavailableError).toHaveBeenCalledWith(
+      expect.objectContaining({ typesenseUnavailable: true }),
+    );
   });
 
   it("batches year-count queries instead of returning zero for large watchlists (#3477)", async () => {

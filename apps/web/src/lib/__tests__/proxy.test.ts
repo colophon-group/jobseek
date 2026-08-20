@@ -577,6 +577,7 @@ describe("public browsing Server Action rate limit", () => {
     ["watchlists", "/fr/watchlists"],
     ["watchlist detail", "/it/alice/backend-jobs"],
   ])("checks both windows for %s actions", async (_surface, pathname) => {
+    resourceStatusMocks.hasPublicWatchlistRoute.mockResolvedValue(true);
     const response = await proxy(new NextRequest(`http://localhost${pathname}`, {
       method: "POST",
       headers: {
@@ -589,6 +590,61 @@ describe("public browsing Server Action rate limit", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
     expect(rateLimitMocks.burst).toHaveBeenCalledWith("203.0.113.7");
     expect(rateLimitMocks.sustained).toHaveBeenCalledWith("203.0.113.7");
+  });
+
+  it("hard-404s a missing watchlist action before it can reach Typesense", async () => {
+    resourceStatusMocks.hasPublicWatchlistRoute.mockResolvedValue(false);
+
+    const response = await proxy(new NextRequest(
+      "http://localhost/en/alice/missing-list",
+      {
+        method: "POST",
+        headers: { "next-action": "stale-watchlist-action-id" },
+      },
+    ));
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("x-robots-tag")).toBe("noindex, follow");
+    expect(response.headers.get("x-middleware-next")).toBeNull();
+    expect(resourceStatusMocks.hasPublicWatchlistRoute).toHaveBeenCalledWith(
+      "alice",
+      "missing-list",
+    );
+  });
+
+  it("passes an existing watchlist action through after the authoritative check", async () => {
+    resourceStatusMocks.hasPublicWatchlistRoute.mockResolvedValue(true);
+
+    const response = await proxy(new NextRequest(
+      "http://localhost/en/alice/backend-jobs",
+      {
+        method: "POST",
+        headers: { "next-action": "current-watchlist-action-id" },
+      },
+    ));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("fails open instead of false-404ing a watchlist action when Postgres is unavailable", async () => {
+    resourceStatusMocks.hasPublicWatchlistRoute.mockRejectedValue(
+      new Error("database unavailable"),
+    );
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await proxy(new NextRequest(
+      "http://localhost/en/alice/backend-jobs",
+      {
+        method: "POST",
+        headers: { "next-action": "current-watchlist-action-id" },
+      },
+    ));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    error.mockRestore();
   });
 
   it("returns a non-cacheable 429 before the page action when either window is exhausted", async () => {

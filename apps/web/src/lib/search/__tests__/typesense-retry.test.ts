@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  assertTypesenseSearchResult,
   isRetryableError,
+  malformedTypesenseResponseError,
   sanitizeTypesenseBoundaryError,
   isTypesenseRateLimitError,
   isTypesenseUnavailableError,
@@ -64,6 +66,10 @@ describe("isRetryableError", () => {
 
   it("matches 'service unavailable' (Typesense returns 503 during boot)", () => {
     expect(isRetryableError(new Error("Service Unavailable"))).toBe(true);
+  });
+
+  it("matches Typesense's status-less not-ready response", () => {
+    expect(isRetryableError(new Error("Not Ready or Lagging"))).toBe(true);
   });
 
   it("recurses into `cause` (axios wraps the underlying network error)", () => {
@@ -230,6 +236,41 @@ describe("sanitizeTypesenseBoundaryError", () => {
   });
 });
 
+describe("assertTypesenseSearchResult", () => {
+  it("accepts ordinary result and count-only result shapes", () => {
+    expect(() => assertTypesenseSearchResult({ found: 0, hits: [] }, { expectHits: true })).not.toThrow();
+    expect(() => assertTypesenseSearchResult({ found: 12 })).not.toThrow();
+  });
+
+  it.each([
+    null,
+    "upstream html",
+    {},
+    { found: "1", hits: [] },
+    { found: 1 },
+    { found: 1, hits: "truncated" },
+    { found: 1, hits: [{ document: null }] },
+  ])("rejects malformed search result %# with a safe unavailable error", (value) => {
+    let thrown: unknown;
+    try {
+      assertTypesenseSearchResult(value, { expectHits: true });
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect(isTypesenseUnavailableError(thrown)).toBe(true);
+    expect(JSON.stringify(thrown)).not.toContain("upstream html");
+  });
+
+  it("creates a content-free malformed-response envelope", () => {
+    const error = malformedTypesenseResponseError();
+    expect(isTypesenseUnavailableError(error)).toBe(true);
+    expect(error).not.toHaveProperty("response");
+    expect(error).not.toHaveProperty("config");
+  });
+});
+
 describe("withTypesenseRetry", () => {
   // Pin Math.random so the jitter component is deterministic in the
   // sleep-arg assertion. 0 jitter keeps the math obvious: each delay
@@ -367,5 +408,29 @@ describe("withTypesenseRetry", () => {
       .calls[0] as [string, Record<string, unknown>];
     expect(event).toBe("external_client_error");
     expect(payload).toMatchObject({ operation: "search_retry", code: "ECONNRESET" });
+  });
+
+  it("does not start another request when aborted during retry backoff", async () => {
+    const controller = new AbortController();
+    let markSleeping: (() => void) | undefined;
+    const sleeping = new Promise<void>((resolve) => {
+      markSleeping = resolve;
+    });
+    const fn = vi.fn().mockRejectedValue(_econnreset());
+    const sleep = vi.fn().mockImplementation(async () => {
+      markSleeping?.();
+      await new Promise<void>(() => {});
+    });
+
+    const result = withTypesenseRetry(fn, {
+      sleep,
+      abortSignal: controller.signal,
+    });
+    await sleeping;
+    controller.abort();
+
+    await expect(result).rejects.toSatisfy(isTypesenseUnavailableError);
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(sleep).toHaveBeenCalledTimes(1);
   });
 });

@@ -32,7 +32,9 @@ import { normalizePostingTitle } from "@/lib/posting-title";
 import { logExternalError } from "@/lib/safe-external-error";
 import { buildFilterString, POSTING_BASE_FILTER, POSTING_FLOW_FILTER } from "@/lib/search/typesense-filters";
 import {
+  assertTypesenseSearchResult,
   isTypesenseUnavailableError,
+  malformedTypesenseResponseError,
   withTypesenseRetry,
 } from "@/lib/search/typesense-retry";
 import {
@@ -170,6 +172,7 @@ type WatchlistPostingFilterParams = {
   experienceMin?: number;
   experienceMax?: number;
   languages?: string[];
+  abortSignal?: AbortSignal;
 };
 
 type WatchlistPostingQueryParams = WatchlistPostingFilterParams & {
@@ -1777,11 +1780,16 @@ export async function getWatchlistPostingYearCount(
           () =>
             client.collections("job_posting").documents().search(
               buildSearchParams(batch),
+              { abortSignal: params.abortSignal },
             ),
-          { label: "getWatchlistPostingYearCount" },
+          {
+            label: "getWatchlistPostingYearCount",
+            abortSignal: params.abortSignal,
+          },
         ),
       ),
     );
+    for (const result of results) assertTypesenseSearchResult(result);
     return results.reduce((sum, result) => sum + (result.found ?? 0), 0);
   } catch (err) {
     if (!isTypesenseUnavailableError(err)) throw err;
@@ -2129,6 +2137,52 @@ function buildWatchlistPostingFilter(
   ].filter(Boolean).join(" && ");
 }
 
+function mapWatchlistPostingHit(hit: {
+  document: object;
+}): WatchlistPostingEntry {
+  const doc = hit.document as Record<string, unknown>;
+  const optionalString = (value: unknown) =>
+    value == null || typeof value === "string";
+  if (
+    typeof doc.id !== "string" ||
+    !optionalString(doc.title) ||
+    !optionalString(doc.source_url) ||
+    typeof doc.first_seen_at !== "number" ||
+    !Number.isFinite(doc.first_seen_at) ||
+    (doc.is_active != null && typeof doc.is_active !== "boolean") ||
+    !optionalString(doc.company_id) ||
+    !optionalString(doc.company_name) ||
+    !optionalString(doc.company_slug) ||
+    !optionalString(doc.company_icon)
+  ) {
+    throw malformedTypesenseResponseError();
+  }
+
+  const firstSeenAt = new Date(doc.first_seen_at * 1000);
+  if (!Number.isFinite(firstSeenAt.getTime())) {
+    throw malformedTypesenseResponseError();
+  }
+
+  return {
+    id: doc.id,
+    title: normalizePostingTitle(doc.title),
+    locationNames: Array.isArray(doc.location_names)
+      ? doc.location_names.filter(
+          (name): name is string => typeof name === "string" && name.length > 0,
+        )
+      : [],
+    sourceUrl: doc.source_url ?? "",
+    firstSeenAt: firstSeenAt.toISOString(),
+    isActive: doc.is_active ?? true,
+    company: {
+      id: doc.company_id ?? "",
+      name: doc.company_name ?? "",
+      slug: doc.company_slug ?? "",
+      icon: doc.company_icon ?? null,
+    },
+  };
+}
+
 async function _getWatchlistPostingsTypesense(
   params: WatchlistPostingQueryParams,
   userId: string | null,
@@ -2180,32 +2234,18 @@ async function _getWatchlistPostingsTypesense(
 
   const result = await withTypesenseRetry(
     () =>
-      client.collections("job_posting").documents().search(searchParams),
-    { label: "getWatchlistPostings" },
+      client.collections("job_posting").documents().search(
+        searchParams,
+        { abortSignal: params.abortSignal },
+      ),
+    { label: "getWatchlistPostings", abortSignal: params.abortSignal },
   );
+  assertTypesenseSearchResult(result, { expectHits: params.limit !== 0 });
 
   const total = result.found ?? 0;
   if (total === 0 || params.limit === 0) return { postings: [], total };
 
-  const postings: WatchlistPostingEntry[] = (result.hits ?? []).map((hit) => {
-    const doc = hit.document as Record<string, unknown>;
-    return {
-      id: doc.id as string,
-      title: normalizePostingTitle(doc.title as string | undefined),
-      locationNames: Array.isArray(doc.location_names)
-        ? doc.location_names.filter((name): name is string => typeof name === "string" && name.length > 0)
-        : [],
-      sourceUrl: (doc.source_url as string) ?? "",
-      firstSeenAt: new Date(((doc.first_seen_at as number) ?? 0) * 1000).toISOString(),
-      isActive: (doc.is_active as boolean) ?? true,
-      company: {
-        id: (doc.company_id as string) ?? "",
-        name: (doc.company_name as string) ?? "",
-        slug: (doc.company_slug as string) ?? "",
-        icon: (doc.company_icon as string) ?? null,
-      },
-    };
-  });
+  const postings = (result.hits ?? []).map(mapWatchlistPostingHit);
 
   return {
     postings,
@@ -2270,11 +2310,16 @@ async function _getWatchlistPostingsBatched(
         () =>
           client.collections("job_posting").documents().search(
             buildCountSearchParams(batch),
+            { abortSignal: params.abortSignal },
           ),
-        { label: "getWatchlistPostings.batched.count" },
+        {
+          label: "getWatchlistPostings.batched.count",
+          abortSignal: params.abortSignal,
+        },
       );
     }),
   );
+  for (const result of countResults) assertTypesenseSearchResult(result);
 
   const total = countResults.reduce((sum, r) => sum + (r.found ?? 0), 0);
   if (total === 0 || params.limit === 0) return { postings: [], total };
@@ -2289,11 +2334,18 @@ async function _getWatchlistPostingsBatched(
         () =>
           client.collections("job_posting").documents().search(
             buildRowsSearchParams(batch),
+            { abortSignal: params.abortSignal },
           ),
-        { label: "getWatchlistPostings.batched.rows" },
+        {
+          label: "getWatchlistPostings.batched.rows",
+          abortSignal: params.abortSignal,
+        },
       );
     }),
   );
+  for (const result of postingsResults) {
+    assertTypesenseSearchResult(result, { expectHits: true });
+  }
 
   // Merge all hits, sort, and paginate
   const allHits = postingsResults.flatMap((r) => r.hits ?? []);
@@ -2309,25 +2361,7 @@ async function _getWatchlistPostingsBatched(
 
   const pageHits = allHits.slice(params.offset, params.offset + params.limit);
 
-  const postings: WatchlistPostingEntry[] = pageHits.map((hit) => {
-    const doc = hit.document as Record<string, unknown>;
-    return {
-      id: doc.id as string,
-      title: normalizePostingTitle(doc.title as string | undefined),
-      locationNames: Array.isArray(doc.location_names)
-        ? doc.location_names.filter((name): name is string => typeof name === "string" && name.length > 0)
-        : [],
-      sourceUrl: (doc.source_url as string) ?? "",
-      firstSeenAt: new Date(((doc.first_seen_at as number) ?? 0) * 1000).toISOString(),
-      isActive: (doc.is_active as boolean) ?? true,
-      company: {
-        id: (doc.company_id as string) ?? "",
-        name: (doc.company_name as string) ?? "",
-        slug: (doc.company_slug as string) ?? "",
-        icon: (doc.company_icon as string) ?? null,
-      },
-    };
-  });
+  const postings = pageHits.map(mapWatchlistPostingHit);
 
   return {
     postings,

@@ -1,6 +1,29 @@
 import type { WatchlistFilters } from "@/lib/services/watchlists";
 import { canonicalStringCompare } from "@/lib/sort";
 
+type SlugItem = { slug: string };
+
+/**
+ * Preserve stored taxonomy slugs that could not be resolved for the current
+ * render. This is especially important during a Typesense outage: the owner
+ * UI may receive no resolved chips, and an unrelated edit must not rewrite
+ * the saved filters as empty.
+ */
+export function mergeWatchlistTaxonomySlugs(
+  storedSlugs: readonly string[] | undefined,
+  initiallyResolved: readonly SlugItem[],
+  nextResolved: readonly SlugItem[],
+): string[] | undefined {
+  const resolvedAtLoad = new Set(initiallyResolved.map((item) => item.slug));
+  const unresolved = (storedSlugs ?? []).filter(
+    (slug) => !resolvedAtLoad.has(slug),
+  );
+  const merged = [
+    ...new Set([...nextResolved.map((item) => item.slug), ...unresolved]),
+  ];
+  return merged.length > 0 ? merged : undefined;
+}
+
 
 // A watchlist is "trivial" when it carries no meaningful filters and tracks
 // no companies — effectively a blank shell. We exclude these from public

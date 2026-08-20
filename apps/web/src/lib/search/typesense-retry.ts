@@ -68,6 +68,7 @@ const RETRYABLE_MESSAGE_FRAGMENTS = [
   "connection terminated",
   "network error",
   "service unavailable",
+  "not ready or lagging",
   "request retry",
   "econnreset",
   "etimedout",
@@ -87,6 +88,11 @@ const CONFIG_UNAVAILABLE_MESSAGE_FRAGMENTS = [
   "typesense_search_key is not set",
 ];
 
+type TypesenseSearchResultShape = {
+  found: number;
+  hits?: Array<{ document: Record<string, unknown> }>;
+};
+
 function safeGet(value: unknown, key: PropertyKey): unknown {
   if ((typeof value !== "object" || value === null) && typeof value !== "function") {
     return undefined;
@@ -95,6 +101,69 @@ function safeGet(value: unknown, key: PropertyKey): unknown {
     return Reflect.get(value, key);
   } catch {
     return undefined;
+  }
+}
+
+/**
+ * Create a deliberately content-free error for a successful HTTP response
+ * whose body does not satisfy the Typesense search contract. Raw upstream
+ * bodies must never cross a cache or Server Action boundary.
+ */
+export function malformedTypesenseResponseError(): Error {
+  return Object.assign(new Error("Typesense response was malformed"), {
+    typesenseUnavailable: true as const,
+  });
+}
+
+function typesenseAbortError(): Error {
+  return Object.assign(new Error("Typesense request was aborted"), {
+    typesenseUnavailable: true as const,
+  });
+}
+
+function throwIfTypesenseAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) throw typesenseAbortError();
+}
+
+/**
+ * Runtime guard for SDK search responses. TypeScript's SDK types cannot
+ * protect callers from a truncated proxy body or a non-JSON/malformed
+ * upstream response, so validate the small shape readers rely on before
+ * dereferencing it.
+ */
+export function assertTypesenseSearchResult(
+  value: unknown,
+  options: { expectHits?: boolean } = {},
+): asserts value is TypesenseSearchResultShape {
+  if (typeof value !== "object" || value === null) {
+    throw malformedTypesenseResponseError();
+  }
+
+  const found = safeGet(value, "found");
+  if (
+    typeof found !== "number" ||
+    !Number.isInteger(found) ||
+    found < 0
+  ) {
+    throw malformedTypesenseResponseError();
+  }
+
+  const hits = safeGet(value, "hits");
+  if (hits !== undefined && !Array.isArray(hits)) {
+    throw malformedTypesenseResponseError();
+  }
+  if (options.expectHits && found > 0 && !Array.isArray(hits)) {
+    throw malformedTypesenseResponseError();
+  }
+  if (
+    Array.isArray(hits) &&
+    hits.some((hit) => {
+      if (typeof hit !== "object" || hit === null) return true;
+      const document = safeGet(hit, "document");
+      return typeof document !== "object" || document === null || Array.isArray(document);
+    })
+  ) {
+    throw malformedTypesenseResponseError();
   }
 }
 
@@ -261,10 +330,36 @@ export interface TypesenseRetryOptions {
   isRetryable?: (err: unknown) => boolean;
   /** Label used in retry log lines. */
   label?: string;
+  /** Stops the active request and prevents any later retry attempt. */
+  abortSignal?: AbortSignal;
 }
 
 const defaultSleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
+
+async function abortableRetrySleep(
+  ms: number,
+  sleep: (ms: number) => Promise<void>,
+  signal: AbortSignal | undefined,
+): Promise<void> {
+  if (!signal) {
+    await sleep(ms);
+    return;
+  }
+  throwIfTypesenseAborted(signal);
+
+  let onAbort: (() => void) | undefined;
+  const aborted = new Promise<never>((_resolve, reject) => {
+    onAbort = () => reject(typesenseAbortError());
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+  try {
+    await Promise.race([sleep(ms), aborted]);
+  } finally {
+    if (onAbort) signal.removeEventListener("abort", onAbort);
+  }
+  throwIfTypesenseAborted(signal);
+}
 
 /**
  * Run `fn`, retrying on transient connection-class errors. Returns the
@@ -287,9 +382,11 @@ export async function withTypesenseRetry<T>(
 
   let lastErr: unknown;
   for (let attempt = 1; attempt <= attempts; attempt++) {
+    throwIfTypesenseAborted(opts.abortSignal);
     try {
       return await fn();
     } catch (err) {
+      throwIfTypesenseAborted(opts.abortSignal);
       lastErr = err;
       const isLast = attempt >= attempts;
       if (isLast || !retryable(err)) {
@@ -308,7 +405,7 @@ export async function withTypesenseRetry<T>(
         },
         err,
       );
-      await sleep(delay);
+      await abortableRetrySleep(delay, sleep, opts.abortSignal);
     }
   }
   // Unreachable: the loop either returns or throws. Re-throw lastErr to
