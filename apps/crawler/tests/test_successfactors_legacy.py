@@ -493,6 +493,92 @@ class TestDetectionAndWorkspace:
             "jobs": 1,
         }
 
+    async def test_wrapper_page_follows_embedded_legacy_board_to_google_feed(self):
+        wrapper = (
+            '<html><body><a href="https://career5.successfactors.eu/career?'
+            "career_company=Acme&amp;lang=en_US&amp;company=Acme&amp;site=&amp;"
+            'loginFlowRequired=true&amp;_s.crb=session">Apply</a></body></html>'
+        )
+        feed = """<?xml version="1.0"?><rss><channel><item>
+        <title>Engineer</title><link>https://careers.acme.example/job/1</link>
+        </item></channel></rss>"""
+
+        def handler(request: httpx.Request):
+            if request.url.host == "jobs.acme.example":
+                return httpx.Response(200, text=wrapper)
+            if request.url.host == "career5.successfactors.eu":
+                return httpx.Response(
+                    302,
+                    headers={"location": "https://careers.acme.example/search/"},
+                )
+            if request.url == httpx.URL("https://careers.acme.example/googlefeed.xml"):
+                return httpx.Response(200, text=feed)
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://jobs.acme.example/careers", client)
+
+        assert result == {
+            "preset": "successfactors",
+            "variant": "feed",
+            "feed_url": "https://careers.acme.example/googlefeed.xml",
+            "jobs": 1,
+        }
+
+    async def test_wrapper_page_rejects_job_specific_legacy_link(self):
+        wrapper = (
+            '<html><body><a href="https://career5.successfactors.eu/career?'
+            'company=Acme&amp;career_job_req_id=123">Apply</a></body></html>'
+        )
+        requested_hosts: list[str] = []
+
+        def handler(request: httpx.Request):
+            requested_hosts.append(request.url.host)
+            if request.url.host == "jobs.acme.example":
+                return httpx.Response(200, text=wrapper)
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://jobs.acme.example/careers", client)
+
+        assert result is None
+        assert "career5.successfactors.eu" not in requested_hosts
+
+    @pytest.mark.parametrize(
+        "links",
+        [
+            (
+                "https://career5.successfactors.eu/career?company=Acme",
+                "https://career5.successfactors.eu/career?company=Other",
+            ),
+            (
+                "https://career5.successfactors.eu/career?company=Acme",
+                "https://career6.successfactors.eu/career?company=Acme",
+            ),
+        ],
+        ids=["mixed-companies", "mixed-tenants"],
+    )
+    async def test_wrapper_page_rejects_mixed_legacy_identities(self, links):
+        wrapper = (
+            "<html><body>"
+            + "".join(f'<a href="{link}">Apply</a>' for link in links)
+            + "</body></html>"
+        )
+        requested_hosts: list[str] = []
+
+        def handler(request: httpx.Request):
+            requested_hosts.append(request.url.host)
+            if request.url.host == "jobs.acme.example":
+                return httpx.Response(200, text=wrapper)
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://jobs.acme.example/careers", client)
+
+        assert result is None
+        assert "career5.successfactors.eu" not in requested_hosts
+        assert "career6.successfactors.eu" not in requested_hosts
+
     async def test_legacy_host_redirect_is_resolved_before_configuring(self):
         original = "https://performancemanager4.successfactors.com/career?company=Acme"
 

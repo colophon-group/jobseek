@@ -22,7 +22,7 @@ from collections.abc import AsyncIterator, Callable, Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
-from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
+from urllib.parse import parse_qs, parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 import httpx
 import structlog
@@ -32,7 +32,11 @@ from src.core.monitors import DiscoveredJob, fetch_page_text, register
 from src.core.monitors.dom import BotChallengeError, _raise_if_bot_challenge
 from src.core.monitors.raw import save_text_response
 from src.shared.http_retry import PaginationFetchError, fetch_text_page_with_retry
-from src.shared.successfactors import successfactors_legacy_board_from_url
+from src.shared.successfactors import (
+    SuccessFactorsLegacyBoard,
+    normalize_successfactors_company,
+    successfactors_legacy_board_from_url,
+)
 from src.shared.truncation import truncated_rich_result
 
 if TYPE_CHECKING:
@@ -47,11 +51,25 @@ _SNIFF_BYTES = 512
 _SF_DETAIL_CONCURRENCY = 16
 _SF_DETAIL_ATTEMPTS = 3
 _SF_DETAIL_MAX_CHARS = 5_000_000
+_DETECTION_MAX_CHARS = 2_000_000
 _SF_DETAIL_MAX_REDIRECTS = 3
 _SF_DETAIL_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 _SF_DETAIL_RETRYABLE_STATUSES = frozenset({401, 403, 429})
 _SF_COMPANY_SELECTOR = '[data-careersite-propertyid="customfield1"]'
 _SF_JOB_SELECTOR = '[data-careersite-propertyid="title"]'
+_SF_WRAPPER_QUERY_KEYS = frozenset(
+    {
+        "_s.crb",
+        "career_company",
+        "career_ns",
+        "company",
+        "lang",
+        "loginFlowRequired",
+        "navBarLevel",
+        "rcm_site_locale",
+        "site",
+    }
+)
 
 
 async def _sleep(delay: float) -> None:
@@ -873,6 +891,142 @@ async def discover(
 # ── Can Handle (auto-detection) ─────────────────────────────────────────
 
 
+def _embedded_legacy_boards(page: str) -> list[SuccessFactorsLegacyBoard]:
+    """Return unfiltered legacy SuccessFactors boards linked by a wrapper page.
+
+    Some companies render their own job-search shell while linking applications
+    to a legacy SuccessFactors tenant.  Those links include login/session query
+    parameters that the strict public board parser intentionally rejects.  Parse
+    only anchor destinations, allow the known wrapper parameters, and reduce the
+    result back to the strict host + company identity before probing it.
+    """
+
+    if not page:
+        return []
+    document = LexborHTMLParser(page)
+    boards: list[SuccessFactorsLegacyBoard] = []
+    seen: set[SuccessFactorsLegacyBoard] = set()
+    for anchor in document.css("a[href]"):
+        href = anchor.attributes.get("href")
+        if not href:
+            continue
+        try:
+            parsed = urlparse(html.unescape(href))
+            port = parsed.port
+            pairs = parse_qsl(parsed.query, keep_blank_values=True, max_num_fields=16)
+        except (TypeError, ValueError):
+            continue
+        if (
+            parsed.scheme.casefold() != "https"
+            or parsed.username is not None
+            or parsed.password is not None
+            or port not in {None, 443}
+            or parsed.fragment
+            or parsed.path.rstrip("/").casefold() != "/career"
+        ):
+            continue
+        if not pairs or any(name not in _SF_WRAPPER_QUERY_KEYS for name, _value in pairs):
+            continue
+        params: dict[str, str] = {}
+        duplicate = False
+        for name, value in pairs:
+            if name in params:
+                duplicate = True
+                break
+            params[name] = value
+        if duplicate:
+            continue
+        company = normalize_successfactors_company(params.get("company"))
+        career_company = normalize_successfactors_company(params.get("career_company"))
+        if (
+            company is None
+            or ("career_company" in params and career_company is None)
+            or (career_company is not None and career_company != company)
+            or params.get("career_ns") not in {None, "", "job_listing_summary"}
+            or params.get("navBarLevel") not in {None, "", "JOB_SEARCH"}
+        ):
+            continue
+        canonical = urlunparse(
+            (
+                "https",
+                parsed.netloc,
+                "/career",
+                "",
+                urlencode({"company": company}),
+                "",
+            )
+        )
+        board = successfactors_legacy_board_from_url(canonical)
+        if board is not None and board not in seen:
+            boards.append(board)
+            seen.add(board)
+    return boards
+
+
+async def _probe_legacy_board(
+    legacy_board: SuccessFactorsLegacyBoard,
+    client: httpx.AsyncClient,
+) -> dict | None:
+    """Probe a legacy board, following safe same-company migrations."""
+
+    from src.core.monitors._successfactors_legacy import (
+        SuccessFactorsLegacyRedirect,
+        probe_legacy,
+    )
+    from src.shared.tdm import TDMReservedError
+
+    probe_board = legacy_board
+    migrated_location: str | None = None
+    for _hop in range(3):
+        try:
+            return await probe_legacy(probe_board, client)
+        except SuccessFactorsLegacyRedirect as exc:
+            redirected_board = successfactors_legacy_board_from_url(exc.location)
+            if (
+                redirected_board is not None
+                and redirected_board.company == probe_board.company
+                and redirected_board != probe_board
+            ):
+                probe_board = redirected_board
+                continue
+            migrated_location = exc.location
+            break
+        except TDMReservedError:
+            raise
+        except Exception:
+            log.debug(
+                "rss.successfactors_legacy_probe_failed",
+                url=legacy_board.listing_url,
+                exc_info=True,
+            )
+            break
+
+    if migrated_location:
+        try:
+            redirected = urlparse(migrated_location)
+            if (
+                redirected.scheme.casefold() == "https"
+                and redirected.hostname
+                and redirected.username is None
+                and redirected.password is None
+                and redirected.port in {None, 443}
+            ):
+                feed = f"https://{redirected.hostname}/googlefeed.xml"
+                found, count = await _probe_feed(feed, client, "successfactors")
+                if found:
+                    migrated: dict = {
+                        "preset": "successfactors",
+                        "variant": "feed",
+                        "feed_url": feed,
+                    }
+                    if count is not None:
+                        migrated["jobs"] = count
+                    return migrated
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
 async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None) -> dict | None:
     """Detect RSS-based ATS: HTML scan for preset markers → feed probe."""
     if client is None:
@@ -884,60 +1038,33 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     # site; in that case prefer the redirected origin's existing Google feed.
     legacy_board = successfactors_legacy_board_from_url(url)
     if legacy_board is not None:
-        from src.core.monitors._successfactors_legacy import (
-            SuccessFactorsLegacyRedirect,
-            probe_legacy,
-        )
-        from src.shared.tdm import TDMReservedError
-
-        probe_board = legacy_board
-        migrated_location: str | None = None
-        for _hop in range(3):
-            try:
-                return await probe_legacy(probe_board, client)
-            except SuccessFactorsLegacyRedirect as exc:
-                redirected_board = successfactors_legacy_board_from_url(exc.location)
-                if (
-                    redirected_board is not None
-                    and redirected_board.company == probe_board.company
-                    and redirected_board != probe_board
-                ):
-                    probe_board = redirected_board
-                    continue
-                migrated_location = exc.location
-                break
-            except TDMReservedError:
-                raise
-            except Exception:
-                log.debug("rss.successfactors_legacy_probe_failed", url=url, exc_info=True)
-                break
-
-        if migrated_location:
-            try:
-                redirected = urlparse(migrated_location)
-                if (
-                    redirected.scheme.casefold() == "https"
-                    and redirected.hostname
-                    and redirected.username is None
-                    and redirected.password is None
-                    and redirected.port in {None, 443}
-                ):
-                    feed = f"https://{redirected.hostname}/googlefeed.xml"
-                    found, count = await _probe_feed(feed, client, "successfactors")
-                    if found:
-                        migrated: dict = {
-                            "preset": "successfactors",
-                            "variant": "feed",
-                            "feed_url": feed,
-                        }
-                        if count is not None:
-                            migrated["jobs"] = count
-                        return migrated
-            except (TypeError, ValueError):
-                pass
+        result = await _probe_legacy_board(legacy_board, client)
+        if result is not None:
+            return result
 
     # 1. Fetch page HTML once for all preset pattern checks
-    html_text = await fetch_page_text(url, client)
+    # Large corporate wrapper pages can place the actual ATS application link
+    # after the generic 500 kB probe cap (Liebherr is currently about 1 MB).
+    html_text = await fetch_page_text(url, client, max_chars=_DETECTION_MAX_CHARS)
+
+    embedded_boards = _embedded_legacy_boards(html_text or "")
+    if len(embedded_boards) == 1:
+        embedded_board = embedded_boards[0]
+        result = await _probe_legacy_board(embedded_board, client)
+        if result is not None:
+            log.info(
+                "rss.successfactors_wrapper_detected",
+                url=url,
+                host=embedded_board.host,
+                company=embedded_board.company,
+            )
+            return result
+    elif embedded_boards:
+        log.info(
+            "rss.successfactors_wrapper_ambiguous",
+            url=url,
+            identities=len(embedded_boards),
+        )
 
     advertised_feed = _advertised_rss_feed_url(url, html_text or "")
     if advertised_feed:
