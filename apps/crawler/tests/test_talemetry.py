@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
 import httpx
 import pytest
 
@@ -190,11 +192,48 @@ class TestDiscover:
             )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            with pytest.raises(ValueError, match="total changed"):
+            with (
+                patch("src.core.monitors.talemetry.asyncio.sleep", new=AsyncMock()),
+                pytest.raises(ValueError, match="total changed"),
+            ):
                 await discover(
                     {"board_url": "https://careers.example.com/search/jobs", "metadata": {}},
                     client,
                 )
+
+    async def test_retries_repeated_page_snapshot_and_recovers(self):
+        first_page_calls = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal first_page_calls
+            if request.url.params.get("page") != "2":
+                first_page_calls += 1
+                return httpx.Response(
+                    200,
+                    text=_html(
+                        start=1,
+                        end=2,
+                        total=3,
+                        links=["/jobs/1-first", "/jobs/2-second"],
+                    ),
+                )
+            links = ["/jobs/2-second"] if first_page_calls == 1 else ["/jobs/3-third"]
+            return httpx.Response(200, text=_html(start=3, end=3, total=3, links=links))
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with patch("src.core.monitors.talemetry.asyncio.sleep", new=AsyncMock()) as sleep:
+                urls = await discover(
+                    {"board_url": "https://careers.example.com/search/jobs", "metadata": {}},
+                    client,
+                )
+
+        assert urls == {
+            "https://careers.example.com/jobs/1-first",
+            "https://careers.example.com/jobs/2-second",
+            "https://careers.example.com/jobs/3-third",
+        }
+        assert first_page_calls == 2
+        sleep.assert_awaited_once()
 
     async def test_max_pages_guard_fails_instead_of_returning_a_truncated_set(self):
         def handler(request: httpx.Request) -> httpx.Response:

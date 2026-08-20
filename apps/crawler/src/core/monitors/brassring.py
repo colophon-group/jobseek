@@ -10,6 +10,7 @@ of scraping the transient result DOM.
 
 from __future__ import annotations
 
+import asyncio
 import html
 import json
 import math
@@ -37,6 +38,12 @@ _MATCHED_JOBS_PATH = "/Search/Ajax/MatchedJobs"
 _NEXT_PAGE_PATH = "/Search/Ajax/ProcessSortAndShowMoreJobs"
 _SEARCH_SELECTOR = "#clearResumeJobsBtn"
 _NEXT_SELECTOR = 'button[title="Next Page"]:not(.disabled-link)'
+_SNAPSHOT_ATTEMPTS = 2
+_SNAPSHOT_RETRY_DELAY = 1.0
+
+
+class _SnapshotChanged(ValueError):
+    """The board inventory changed while its paginated snapshot was collected."""
 
 
 def _clean_string(value: object) -> str | None:
@@ -125,8 +132,6 @@ def _parse_job(raw: object, partner_id: str, site_id: str) -> DiscoveredJob | No
     description = normalize_description_html(
         raw_description if isinstance(raw_description, str) else None
     )
-    if not description:
-        return None
 
     metadata: dict[str, object] = {
         "provider": "brassring",
@@ -159,6 +164,19 @@ def _parse_page(payload: object) -> tuple[int, list[object]]:
     if not isinstance(rows, list):
         raise ValueError("BrassRing search omitted its Jobs.Job list")
     return total, rows
+
+
+def _bounded_inventory_rows(
+    rows: list[object],
+    expected_total: int,
+    *,
+    truncated: bool,
+) -> list[object]:
+    if len(rows) < expected_total or (not truncated and len(rows) != expected_total):
+        raise _SnapshotChanged(
+            f"BrassRing returned {len(rows)} rows for {expected_total} expected jobs"
+        )
+    return rows[:expected_total]
 
 
 async def _click_for_json(page, selector: str, response_path: str) -> object:
@@ -194,7 +212,7 @@ async def _discover_page(board_url: str, metadata: dict, partner_id: str, site_i
         total, rows = _parse_page(payload)
         expected_total = min(total, MAX_JOBS)
         if expected_total and not rows:
-            raise ValueError(f"BrassRing returned no first-page rows for {total} jobs")
+            raise _SnapshotChanged(f"BrassRing returned no first-page rows for {total} jobs")
         page_size = len(rows) or PAGE_SIZE
         expected_pages = math.ceil(expected_total / page_size) if expected_total else 0
 
@@ -213,14 +231,14 @@ async def _discover_page(board_url: str, metadata: dict, partner_id: str, site_i
         for page_number in range(2, expected_pages + 1):
             next_button = page.locator(_NEXT_SELECTOR).first
             if await next_button.count() == 0:
-                raise ValueError(
+                raise _SnapshotChanged(
                     f"BrassRing pagination ended at page {page_number - 1} "
                     f"with {len(rows)} of {total} rows"
                 )
             next_payload = await _click_for_json(page, _NEXT_SELECTOR, _NEXT_PAGE_PATH)
             next_total, next_rows = _parse_page(next_payload)
             if next_total != total:
-                raise ValueError(
+                raise _SnapshotChanged(
                     f"BrassRing JobsCount changed during pagination: {total} -> {next_total}"
                 )
             rows.extend(next_rows)
@@ -239,20 +257,23 @@ async def _discover_page(board_url: str, metadata: dict, partner_id: str, site_i
                 timeout=60_000,
             )
 
+    truncated = total > MAX_JOBS
+    rows = _bounded_inventory_rows(rows, expected_total, truncated=truncated)
+
     jobs: list[DiscoveredJob] = []
     seen: set[str] = set()
-    for raw in rows[:expected_total]:
+    for raw in rows:
         job = _parse_job(raw, partner_id, site_id)
-        if job is None or job.url in seen:
-            continue
-        seen.add(job.url)
+        if job is None:
+            raise _SnapshotChanged("BrassRing returned a row without valid job identity")
+        job_id = job.metadata.get("requisition_id") if job.metadata is not None else None
+        if not isinstance(job_id, str):
+            raise _SnapshotChanged("BrassRing returned a row without valid requisition identity")
+        if job_id in seen:
+            raise _SnapshotChanged(f"BrassRing repeated requisition {job_id}")
+        seen.add(job_id)
         jobs.append(job)
-
-    if len(jobs) != expected_total:
-        raise ValueError(
-            f"BrassRing returned {len(jobs)} valid unique jobs for {expected_total} expected rows"
-        )
-    if total > MAX_JOBS:
+    if truncated:
         return truncated_rich_result(jobs)
     return jobs
 
@@ -265,15 +286,31 @@ async def discover(board: dict, client: httpx.AsyncClient = None, pw=None):
     partner_id, site_id = ids
     metadata = board.get("metadata") or {}
 
+    async def collect(playwright):
+        for attempt in range(1, _SNAPSHOT_ATTEMPTS + 1):
+            try:
+                return await _discover_page(board_url, metadata, partner_id, site_id, playwright)
+            except _SnapshotChanged as exc:
+                if attempt == _SNAPSHOT_ATTEMPTS:
+                    raise
+                log.warning(
+                    "brassring.snapshot_changed",
+                    board_url=board_url,
+                    attempt=attempt,
+                    error=str(exc),
+                )
+                await asyncio.sleep(_SNAPSHOT_RETRY_DELAY)
+        raise AssertionError("unreachable")
+
     if pw is not None:
-        return await _discover_page(board_url, metadata, partner_id, site_id, pw)
+        return await collect(pw)
 
     try:
         from playwright.async_api import async_playwright
     except ImportError as err:  # pragma: no cover - dependency is required in browser workers
         raise RuntimeError("playwright is required for the BrassRing monitor") from err
     async with async_playwright() as playwright:
-        return await _discover_page(board_url, metadata, partner_id, site_id, playwright)
+        return await collect(playwright)
 
 
 async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | None:
