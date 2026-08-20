@@ -2000,8 +2000,9 @@ class TestHttpFetchWithRetry:
     """``http_fetch_with_retry`` mirrors ``fetch_with_retry``'s contract on
     api_sniffer's httpx surface: retryable statuses (5xx, 408/425/429)
     retry-then-raise, 404/410 return None (legitimate end-of-pagination),
-    other non-retryable 4xx return None with a warning, and arbitrary
-    network exceptions retry-then-raise. Pinned for #2733.
+    other non-retryable 4xx are lenient by default but can be raised for
+    detail enrichment, and arbitrary network exceptions retry-then-raise.
+    Pinned for #2733.
     """
 
     @pytest.mark.asyncio
@@ -2036,6 +2037,26 @@ class TestHttpFetchWithRetry:
         client.request = AsyncMock(return_value=_http_status_error_resp(403))
         out = await http_fetch_with_retry(client, "GET", "https://x/api")
         assert out is None
+        assert client.request.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_strict_mode_raises_on_403(self):
+        """Detail scrapers must not turn a forbidden response into empty content."""
+        from src.core.monitors.api_sniffer import http_fetch_with_retry
+        from src.shared.http_retry import PaginationFetchError
+
+        client = AsyncMock()
+        client.request = AsyncMock(return_value=_http_status_error_resp(403))
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await http_fetch_with_retry(
+                client,
+                "GET",
+                "https://x/api",
+                raise_non_retryable=True,
+            )
+
+        assert exc_info.value.attempts == 1
+        assert exc_info.value.last_status == 403
         assert client.request.await_count == 1
 
     @pytest.mark.asyncio
@@ -2110,8 +2131,7 @@ class TestHttpFetchWithRetry:
     async def test_lenient_http_fetch_returns_none_on_persistent_5xx(self, monkeypatch):
         """The legacy ``http_fetch`` wrapper preserves the "any failure → None"
         contract by catching ``PaginationFetchError`` from
-        ``http_fetch_with_retry``. Used by the api_sniffer scraper which
-        treats None as "no content found"."""
+        ``http_fetch_with_retry`` for legacy monitor callers."""
         from src.core.monitors import api_sniffer as api_sniffer_module
         from src.core.monitors.api_sniffer import http_fetch
 

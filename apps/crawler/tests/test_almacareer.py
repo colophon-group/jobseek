@@ -5,12 +5,15 @@ from unittest.mock import AsyncMock
 
 import httpx
 import pytest
+from structlog.testing import capture_logs
 
 from src.core.monitors import DiscoveredJob
+from src.core.monitors import almacareer as almacareer_module
 from src.core.monitors.almacareer import (
     GRAPHQL_URL,
     _detail_url,
     _extract_widget_config,
+    _fetch_job_html,
     _fetch_widget_config,
     _flatten_groups,
     _host_from_board,
@@ -854,6 +857,66 @@ class TestDiscover:
         assert len(jobs) == 1
         # description left at the teaser value from the listing payload.
         assert jobs[0].description == "teaser-fallback"
+
+    async def test_detail_fetch_retries_transient_status_then_recovers(self, monkeypatch):
+        attempts = 0
+        monkeypatch.setattr(almacareer_module, "_GRAPHQL_RETRY_BASE_DELAY_S", 0)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal attempts
+            attempts += 1
+            if attempts < 3:
+                return httpx.Response(502, text="upstream unavailable", request=request)
+            return httpx.Response(
+                200,
+                json={
+                    "data": {
+                        "widget": {"jobAd": {"content": {"htmlContent": "<p>Full detail</p>"}}}
+                    }
+                },
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            html = await _fetch_job_html(
+                client,
+                widget_id="11111111-2222-3333-4444-555555555555",
+                api_key="a" * 64,
+                host="acme.jobs.cz",
+                job_id="99",
+            )
+
+        assert html == "<p>Full detail</p>"
+        assert attempts == 3
+
+    async def test_detail_fetch_exhaustion_logs_stable_error_context(self, monkeypatch):
+        attempts = 0
+        monkeypatch.setattr(almacareer_module, "_GRAPHQL_RETRY_BASE_DELAY_S", 0)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal attempts
+            attempts += 1
+            raise httpx.ReadTimeout("", request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with capture_logs() as logs:
+                html = await _fetch_job_html(
+                    client,
+                    widget_id="11111111-2222-3333-4444-555555555555",
+                    api_key="a" * 64,
+                    host="acme.jobs.cz",
+                    job_id="99",
+                )
+
+        assert html is None
+        assert attempts == 3
+        failed = next(log for log in logs if log["event"] == "almacareer.detail_failed")
+        assert failed["stage"] == "detail_graphql"
+        assert failed["error_class"] == "PaginationFetchError"
+        assert failed["attempts"] == 3
+        assert failed["last_status"] is None
+        assert failed["last_error"] == "ReadTimeout"
+        assert failed["error"]
 
 
 class TestCanHandle:

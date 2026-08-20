@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import httpx
 import pytest
+from structlog.testing import capture_logs
 
 from src.core.scrapers.eightfold import (
     _api_url,
@@ -242,6 +243,33 @@ class TestScrapeFullFlow:
             )
         assert api_called
         assert content.title == "Backup Title"
+
+    async def test_empty_transport_error_keeps_safe_failure_context_on_recovery(self):
+        """An empty exception message must not erase the failure's identity."""
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if "/api/apply/v2/jobs/" in str(request.url):
+                return httpx.Response(
+                    200,
+                    json={"name": "Recovered", "job_description": "<p>ok</p>"},
+                )
+            raise httpx.ReadTimeout("", request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with capture_logs() as logs:
+                content = await scrape(
+                    "https://citi.eightfold.ai/careers/job/42?domain=citi.com",
+                    {},
+                    client,
+                )
+
+        assert content.title == "Recovered"
+        failed = next(log for log in logs if log["event"] == "eightfold_scraper.html_fetch_failed")
+        assert failed["error"] == ""
+        assert failed["error_class"] == "ReadTimeout"
+        recovered = next(log for log in logs if log["event"] == "eightfold_scraper.api_hit")
+        assert recovered["recovered_from"] == "html_fetch_failed"
+        assert recovered["error_class"] == "ReadTimeout"
 
     async def test_unparseable_url_skips_api(self):
         """A URL without a job id must not attempt the API call."""

@@ -1014,6 +1014,7 @@ async def http_fetch_with_retry(
     *,
     retries: int = _API_SNIFFER_FETCH_RETRIES,
     base_delay: float = _API_SNIFFER_FETCH_BASE_DELAY,
+    raise_non_retryable: bool = False,
 ) -> dict | None:
     """Fetch JSON via httpx with bounded retries (#2733).
 
@@ -1024,7 +1025,9 @@ async def http_fetch_with_retry(
           fallback path interprets ``None`` as "go look up the live URL").
         - ``None`` on other non-retryable 4xx (auth, forbidden, bad
           request) with a warning, mirroring the lenient stop semantic
-          used by ``fetch_with_retry`` on the dom/sitemap path.
+          used by ``fetch_with_retry`` on the dom/sitemap path. Callers that
+          cannot safely accept partial data pass ``raise_non_retryable=True``
+          to preserve the status in :class:`PaginationFetchError` instead.
 
     Raises:
         :class:`PaginationFetchError` after exhausting *retries* on
@@ -1086,6 +1089,12 @@ async def http_fetch_with_retry(
                     url=url,
                     status=status,
                 )
+                if raise_non_retryable:
+                    raise PaginationFetchError(
+                        url,
+                        attempts=attempt + 1,
+                        last_status=status,
+                    ) from exc
                 return None
             # else retryable — fall through to backoff
         except Exception as exc:  # noqa: BLE001 — timeout, network, parse error

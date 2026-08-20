@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 import structlog
+from structlog.testing import capture_logs
 
 from src.core.scrapers.api_sniffer import (
     _extract_from_object,
@@ -19,6 +20,7 @@ from src.core.scrapers.api_sniffer import (
     probe_pw,
 )
 from src.shared.api_sniff import Exchange
+from src.shared.http_retry import PaginationFetchError
 
 
 def _make_exchange(url="https://example.com/api/job", body=None, phase="load"):
@@ -499,9 +501,9 @@ class TestScrapeHttpEmptyItems:
 
     @staticmethod
     def _patched_fetch(body):
-        """Patch http_fetch to return *body* regardless of input."""
+        """Patch the strict fetcher to return *body* regardless of input."""
         return patch(
-            "src.core.monitors.api_sniffer.http_fetch",
+            "src.core.monitors.api_sniffer.http_fetch_with_retry",
             new=AsyncMock(return_value=body),
         )
 
@@ -548,3 +550,33 @@ class TestScrapeHttpEmptyItems:
         warn_records = [r for r in caplog.records if "no_job_data" in r.getMessage()]
         assert warn_records, "expected api_sniffer_scraper.no_job_data log"
         assert warn_records[0].levelname == "WARNING"
+
+    @pytest.mark.asyncio
+    async def test_fetch_failure_propagates_with_stable_context(self):
+        """A failed detail fetch is retryable pipeline failure, not empty success."""
+        error = PaginationFetchError(
+            "https://x/api",
+            attempts=3,
+            last_status=502,
+        )
+        cfg = {"api_url": "https://x/api", "fields": {}}
+
+        async with httpx.AsyncClient() as http:
+            with (
+                patch(
+                    "src.core.monitors.api_sniffer.http_fetch_with_retry",
+                    new=AsyncMock(side_effect=error),
+                ),
+                capture_logs() as logs,
+                pytest.raises(PaginationFetchError) as exc_info,
+            ):
+                await _scrape_http("https://x/job/1", cfg, http)
+
+        assert exc_info.value is error
+        failed = next(
+            log for log in logs if log["event"] == "api_sniffer_scraper.http_fetch_failed"
+        )
+        assert failed["error_class"] == "PaginationFetchError"
+        assert failed["attempts"] == 3
+        assert failed["last_status"] == 502
+        assert failed["last_error"] is None
