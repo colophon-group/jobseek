@@ -85,6 +85,9 @@ such as `tesla-debug`, `stupefied_hofstadter`, and `goofy_haibt`.
    Read `host/maintenance-correlation.json` before classifying any synchronized
    service stop. It contains deterministic, command-free correlation of
    validated maintenance operation/issue/revision/budget labels.
+   Read `host/cross-store-reconciliation.log` when a reconciliation one-shot
+   exits nonzero; it retains the unit's bounded, redacted application journal
+   after Compose removes the short-lived container.
 2. Read every `.md` report under
    `~/dev/claude/review-jobseek-errors/` before classifying. The directory
    name is legacy; keep using it for cross-run continuity unless a migration

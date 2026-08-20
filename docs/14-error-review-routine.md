@@ -80,6 +80,13 @@ watcher validates only those exact fields and ignores every other Docker
 label. The root collector writes the derived, command-free
 `host/maintenance-correlation.json` before the unprivileged review starts.
 
+The deploy-independent reconciliation unit also writes through journald. The
+bundle exports its exact review window as
+`host/cross-store-reconciliation.log`, preserving the inner exception and
+target after the short-lived Compose container has been removed. The same
+size bound and final credential/address/resource-ID redaction apply before the
+unprivileged runner can read it.
+
 Reviews must correlate synchronized service pauses with that file before
 classifying instability:
 
