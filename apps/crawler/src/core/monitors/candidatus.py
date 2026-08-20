@@ -68,8 +68,13 @@ def _canonical_detail_url(url: str) -> str | None:
     return urlunsplit(("https", _HOST, parsed.path, "", ""))
 
 
-def _card_indexes(html: str) -> list[int]:
-    """Return WinDev row indexes in document order after validating cards."""
+def _card_indexes(html: str, *, strict: bool = False) -> list[int]:
+    """Return WinDev row indexes in document order after validating cards.
+
+    Probes may inspect a partially matching page leniently, but discovery must
+    reject any malformed title control.  Silently skipping one would turn an
+    upstream markup change into an authoritative partial inventory.
+    """
     if not all(marker in html for marker in _LISTING_MARKERS):
         return []
     document = LexborHTMLParser(html)
@@ -79,9 +84,9 @@ def _card_indexes(html: str) -> list[int]:
         href = anchor.attributes.get("href", "")
         id_match = _CARD_ID_RE.fullmatch(identifier)
         value_match = _CARD_VALUE_RE.search(href)
-        if id_match is None or value_match is None:
-            continue
-        if id_match.group(1) != value_match.group(1):
+        if id_match is None or value_match is None or id_match.group(1) != value_match.group(1):
+            if strict:
+                raise RuntimeError("Candidatus listing has a malformed WinDev job-title control")
             continue
         indexes.append(int(id_match.group(1)))
     return indexes
@@ -91,7 +96,7 @@ async def _listing_indexes(page, board_url: str, config: dict) -> list[int]:
     await navigate(page, board_url, config)
     html = await safe_content(page)
     _raise_if_bot_challenge(page.url or board_url, html)
-    indexes = _card_indexes(html)
+    indexes = _card_indexes(html, strict=True)
     if not indexes:
         raise RuntimeError("Candidatus listing returned no WinDev job cards")
     if len(indexes) != len(set(indexes)):

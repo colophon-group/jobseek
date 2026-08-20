@@ -84,6 +84,8 @@ def test_extracts_only_consistent_windev_cards() -> None:
         '<a id="c-3-A20" href="javascript:_PAGE_.A18.value=4;">Mismatch</a></body>',
     )
     assert _card_indexes(html) == [1, 2]
+    with pytest.raises(RuntimeError, match="malformed WinDev job-title control"):
+        _card_indexes(html, strict=True)
     assert _card_indexes("<html>ordinary links</html>") == []
 
 
@@ -129,6 +131,21 @@ async def test_duplicate_detail_url_fails_closed() -> None:
             return_value=_listing(1, 2),
         ),
         pytest.raises(RuntimeError, match="duplicate URL"),
+    ):
+        await _discover_page(page, BOARD_URL, {})
+
+
+async def test_malformed_listing_control_fails_closed() -> None:
+    page = _FakePage([1, 2])
+    malformed = _listing(1, 2).replace("_PAGE_.A18.value=2", "_PAGE_.A18.value=3")
+    with (
+        patch("src.core.monitors.candidatus.navigate", new_callable=AsyncMock),
+        patch(
+            "src.core.monitors.candidatus.safe_content",
+            new_callable=AsyncMock,
+            return_value=malformed,
+        ),
+        pytest.raises(RuntimeError, match="malformed WinDev job-title control"),
     ):
         await _discover_page(page, BOARD_URL, {})
 
