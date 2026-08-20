@@ -93,6 +93,13 @@ class TestParseJob:
         with pytest.raises(ValueError, match="valid ID or title"):
             _parse_job(_row(1, job_name_show="", job_name=""), "https://example.cnstaff.com")
 
+    def test_rejects_job_without_rich_description(self):
+        with pytest.raises(ValueError, match="without a description"):
+            _parse_job(
+                _row(1, job_detail="", job_desc2=""),
+                "https://example.cnstaff.com",
+            )
+
     def test_omits_zero_date_and_blank_optional_fields(self):
         job = _parse_job(
             _row(

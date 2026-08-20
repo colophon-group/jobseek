@@ -111,6 +111,8 @@ def _parse_job(raw: dict, origin: str) -> DiscoveredJob:
     description = normalize_description_html(
         "\n".join(part for part in (responsibilities, qualifications) if part)
     )
+    if description is None:
+        raise ValueError("CNStaff returned a job without a description")
 
     location = _clean_string(raw.get("job_address_name"))
     extras = {
