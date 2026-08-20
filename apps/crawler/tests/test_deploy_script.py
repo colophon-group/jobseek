@@ -51,6 +51,11 @@ def test_deploy_refreshes_short_lived_ghcr_auth_before_release_mutation() -> Non
     deploy_step = next(
         step for step in jobs["deploy"]["steps"] if step.get("name") == "Deploy via SSH"
     )
+    murmur_step = next(
+        step
+        for step in jobs["deploy"]["steps"]
+        if step.get("name") == "Wait for same-revision murmur-shim deployment"
+    )
 
     required = script.partition("required_vars=(")[2].partition(")")[0]
     assert "GHCR_PULL_USERNAME" in required
@@ -89,6 +94,8 @@ def test_deploy_refreshes_short_lived_ghcr_auth_before_release_mutation() -> Non
     assert deploy_step["env"]["GHCR_PULL_TOKEN"] == "${{ github.token }}"
     assert jobs["build"]["permissions"]["packages"] == "write"
     assert jobs["deploy"]["permissions"]["packages"] == "read"
+    assert jobs["deploy"]["permissions"]["actions"] == "read"
+    assert murmur_step["env"]["GH_TOKEN"] == "${{ github.token }}"
     assert jobs["promote"]["permissions"]["packages"] == "write"
     assert set(jobs["deploy"]["needs"]) == {"murmur", "build"}
     assert set(jobs["promote"]["needs"]) == {"build", "deploy"}
