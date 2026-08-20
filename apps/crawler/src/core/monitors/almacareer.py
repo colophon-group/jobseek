@@ -42,6 +42,7 @@ import httpx
 import structlog
 
 from src.core.monitors import BoardGoneError, DiscoveredJob, fetch_page_text, register
+from src.shared.http_retry import PaginationFetchError, fetch_text_page_with_retry
 from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
@@ -63,6 +64,9 @@ _DETAIL_CONCURRENCY = 8
 # HTTP failures, while keeping the total well inside the monitor lease.
 _CONFIG_RETRY_ATTEMPTS = 3
 _CONFIG_RETRY_BASE_DELAY_S = 0.5
+_GRAPHQL_MAX_BYTES = 10_000_000
+_GRAPHQL_RETRY_BASE_DELAY_S = 0.5
+_GRAPHQL_TRANSIENT_STATUSES = frozenset({401, 403, 429})
 
 # Supported country TLDs and the domain suffix Alma Career uses there.
 _COUNTRY_BY_SUFFIX = {
@@ -626,13 +630,22 @@ async def _post_graphql(
     api_key: str,
     host: str,
 ) -> dict:
-    resp = await client.post(
+    raw = await fetch_text_page_with_retry(
+        client,
         GRAPHQL_URL,
-        headers=_build_headers(api_key, host),
+        method="POST",
         content=json.dumps({"query": query, "variables": variables}),
+        headers=_build_headers(api_key, host),
+        retryable_statuses=_GRAPHQL_TRANSIENT_STATUSES,
+        end_of_pagination_statuses=(),
+        require_nonempty=True,
+        max_bytes=_GRAPHQL_MAX_BYTES,
+        base_delay=_GRAPHQL_RETRY_BASE_DELAY_S,
+        log_event="almacareer.graphql_backoff",
     )
-    resp.raise_for_status()
-    payload = resp.json()
+    if raw is None:  # Strict status handling above makes this unreachable.
+        raise RuntimeError("AlmaCareer GraphQL returned no response")
+    payload = json.loads(raw)
     errors = payload.get("errors")
     data = payload.get("data") or {}
     if errors:
@@ -706,7 +719,20 @@ async def _fetch_job_html(
             host=host,
         )
     except Exception as exc:
-        log.warning("almacareer.detail_failed", job_id=job_id, host=host, error=str(exc))
+        log_fields: dict[str, object] = {
+            "job_id": job_id,
+            "host": host,
+            "stage": "detail_graphql",
+            "error": str(exc),
+            "error_class": type(exc).__name__,
+        }
+        if isinstance(exc, PaginationFetchError):
+            log_fields.update(
+                attempts=exc.attempts,
+                last_status=exc.last_status,
+                last_error=exc.last_error,
+            )
+        log.warning("almacareer.detail_failed", **log_fields)
         return None
     widget = data.get("widget") or {}
     job_ad = widget.get("jobAd") or {}

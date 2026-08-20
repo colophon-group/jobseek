@@ -582,7 +582,8 @@ async def _scrape_http(
     before extracting fields. ``url_pattern`` may provide named capture
     groups for IDs stored outside the final URL path segment.
     """
-    from src.core.monitors.api_sniffer import clean_headers, http_fetch
+    from src.core.monitors.api_sniffer import clean_headers, http_fetch_with_retry
+    from src.shared.http_retry import PaginationFetchError
 
     api_url = config["api_url"]
     method = config.get("method", "GET")
@@ -613,9 +614,27 @@ async def _scrape_http(
         for key, val in placeholders.items():
             post_body = post_body.replace(f"{{{key}}}", val)
 
-    data = await http_fetch(http, method, api_url, headers, post_body)
+    try:
+        data = await http_fetch_with_retry(
+            http,
+            method,
+            api_url,
+            headers,
+            post_body,
+            raise_non_retryable=True,
+        )
+    except PaginationFetchError as exc:
+        log.warning(
+            "api_sniffer_scraper.http_fetch_failed",
+            url=url,
+            error_class=type(exc).__name__,
+            attempts=exc.attempts,
+            last_status=exc.last_status,
+            last_error=exc.last_error,
+        )
+        raise
     if data is None:
-        log.warning("api_sniffer_scraper.http_fetch_failed", url=url)
+        log.info("api_sniffer_scraper.empty_result", url=url, reason="gone")
         return JobContent()
 
     # Navigate to job object via json_path

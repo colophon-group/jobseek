@@ -191,12 +191,19 @@ async def scrape(
     """
     # Fast path — fetch the HTML once and hand it to the json-ld parser.
     html: str = ""
+    html_failure: dict[str, object] | None = None
     try:
         response = await http.get(url, follow_redirects=True)
         response.raise_for_status()
         html = response.text
     except httpx.HTTPError as exc:
-        log.warning("eightfold_scraper.html_fetch_failed", url=url, error=str(exc))
+        html_failure = {
+            "error": str(exc),
+            "error_class": type(exc).__name__,
+        }
+        if isinstance(exc, httpx.HTTPStatusError):
+            html_failure["status"] = exc.response.status_code
+        log.warning("eightfold_scraper.html_fetch_failed", url=url, **html_failure)
 
     content = _jsonld_parse_html(html, config) if html else JobContent()
 
@@ -214,10 +221,17 @@ async def scrape(
             url=url,
             has_title=api_content.title is not None,
             has_description=api_content.description is not None,
+            recovered_from="html_fetch_failed" if html_failure else "jsonld_empty",
+            **(html_failure or {}),
         )
         return _merge_from_fallback(content, api_content)
 
-    log.warning("eightfold_scraper.no_content", url=url)
+    log.warning(
+        "eightfold_scraper.no_content",
+        url=url,
+        fallback_reason="html_fetch_failed" if html_failure else "jsonld_empty",
+        **(html_failure or {}),
+    )
     return content
 
 
