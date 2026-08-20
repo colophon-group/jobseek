@@ -9,6 +9,7 @@ from src.core.monitors.umantis import (
     _base_url,
     _extract_table_nr,
     _get_page_with_retry,
+    _parse_discovered_jobs_from_html,
     _parse_host,
     _parse_jobs_from_html,
     can_handle,
@@ -120,6 +121,33 @@ class TestParseJobsFromHtml:
         jobs = _parse_jobs_from_html(html, "https://x.com")
         assert jobs[0][0] == "https://x.com/Vacancies/1/Description/1"
 
+    def test_extracts_listing_fields(self):
+        html = """\
+<table><tr><td><ul>
+<li><a href="/Vacancies/1/Description/1" class="HSTableLinkSubTitle">Engineer</a></li>
+<li><span class="visually-hidden">Art</span><i class="icon icon-jobtype"></i>
+<span class="column-value">Vollzeit</span></li>
+<li><span class="visually-hidden">Anstellungsort</span><i class="icon icon-department"></i>
+<span class="column-value">D&uuml;bendorf</span></li>
+</ul></td></tr></table>
+"""
+        jobs = _parse_discovered_jobs_from_html(html, "https://recruiting.example.com")
+        assert len(jobs) == 1
+        assert jobs[0].title == "Engineer"
+        assert jobs[0].locations == ["Dübendorf"]
+        assert jobs[0].employment_type == "Vollzeit"
+
+    def test_translated_location_label_fallback(self):
+        html = """\
+<table><tr><td><ul>
+<li><a href="/Vacancies/2/Description/2" class="HSTableLinkSubTitle">Engineer</a></li>
+<li><span class="visually-hidden">Location</span>
+<span class="column-value">Geneva</span></li>
+</ul></td></tr></table>
+"""
+        jobs = _parse_discovered_jobs_from_html(html, "https://recruiting.example.com")
+        assert jobs[0].locations == ["Geneva"]
+
 
 class TestExtractTableNr:
     def test_from_json(self):
@@ -136,7 +164,24 @@ class TestExtractTableNr:
 
 
 class TestDiscover:
-    async def test_returns_urls(self):
+    async def test_returns_rich_jobs_for_enrichment(self):
+        def handler(request):
+            return httpx.Response(200, text=_LISTING_HTML)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://recruitingapp-2698.umantis.com/Jobs/All",
+                "metadata": {
+                    "customer_id": "2698",
+                    "scraper_config": {"enrich": ["description"]},
+                },
+            }
+            jobs = await discover(board, client)
+            assert isinstance(jobs, list)
+            assert len(jobs) == 2
+            assert all("/Vacancies/" in job.url for job in jobs)
+
+    async def test_returns_urls_without_enrichment(self):
         def handler(request):
             return httpx.Response(200, text=_LISTING_HTML)
 
@@ -147,8 +192,10 @@ class TestDiscover:
             }
             urls = await discover(board, client)
             assert isinstance(urls, set)
-            assert len(urls) == 2
-            assert all("/Vacancies/" in u for u in urls)
+            assert urls == {
+                "https://recruitingapp-2698.umantis.com/Vacancies/100/Description/1",
+                "https://recruitingapp-2698.umantis.com/Vacancies/200/Description/2",
+            }
 
     async def test_empty_listing(self):
         def handler(request):
@@ -202,7 +249,7 @@ class TestDiscover:
             }
             urls = await discover(board, client)
             assert len(urls) == 2
-            assert all("mycompany.umantis.com/Vacancies/" in u for u in urls)
+            assert all("mycompany.umantis.com/Vacancies/" in url for url in urls)
 
     async def test_pagination(self):
         page1_html = """\

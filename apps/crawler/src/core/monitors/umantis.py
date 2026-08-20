@@ -6,9 +6,9 @@ Job links use class ``HSTableLinkSubTitle`` across all customer templates.
 Listing:  GET /Jobs/All  (paginated via ``tc{tableNr}=p{page}``)
 Detail:   /Vacancies/{id}/Description/{langId}
 
-URL-only monitor — returns ``set[str]`` of job detail URLs.
-Templates vary widely across customers; no shared structured data
-(no JSON-LD, no common DOM) on detail pages.
+Returns partial rich data from the shared listing template: URL, title,
+location, and employment type. Templates vary widely across customers, so a
+detail scraper is still required for descriptions.
 """
 
 from __future__ import annotations
@@ -21,9 +21,9 @@ from urllib.parse import urljoin, urlparse
 import httpx
 import structlog
 
-from src.core.monitors import fetch_page_text, register
+from src.core.monitors import DiscoveredJob, fetch_page_text, register
 from src.shared.http_retry import fetch_text_page_with_retry
-from src.shared.truncation import truncated_url_result
+from src.shared.truncation import truncated_rich_result, truncated_url_result
 
 log = structlog.get_logger()
 
@@ -88,22 +88,124 @@ def _base_url(customer_id: str, region: str = "") -> str:
 
 
 class _JobLinkParser(HTMLParser):
-    """Extract job links with class ``HSTableLinkSubTitle`` from listing HTML."""
+    """Extract partial job data from Umantis listing rows.
+
+    The job link class is stable across Umantis customer templates. Listing
+    fields are identified by their stable icon classes, with translated column
+    labels as a fallback. Detail templates are customer-specific, but the
+    listing rows consistently expose the location and employment type needed
+    to enrich those detail scrapes.
+    """
 
     def __init__(self, base_url: str):
         super().__init__()
         self.base = base_url
-        self.jobs: list[tuple[str, str]] = []  # (url, title)
+        self.jobs: list[DiscoveredJob] = []
+        self._in_row = False
         self._in_link = False
         self._current_url: str | None = None
         self._current_title: str = ""
+        self._current_location: str | None = None
+        self._current_employment_type: str | None = None
+        self._current_field: str | None = None
+        self._capture_label = False
+        self._current_label = ""
+        self._capture_value = False
+        self._current_value = ""
+
+    def _reset_job(self) -> None:
+        self._current_url = None
+        self._current_title = ""
+        self._current_location = None
+        self._current_employment_type = None
+        self._current_field = None
+        self._capture_label = False
+        self._current_label = ""
+        self._capture_value = False
+        self._current_value = ""
+
+    def _append_job(self) -> None:
+        title = self._current_title.strip()
+        if self._current_url and title:
+            self.jobs.append(
+                DiscoveredJob(
+                    url=self._current_url,
+                    title=title,
+                    locations=[self._current_location] if self._current_location else None,
+                    employment_type=self._current_employment_type,
+                )
+            )
+        self._reset_job()
+
+    @staticmethod
+    def _field_from_label(label: str) -> str | None:
+        normalized = re.sub(r"\s+", " ", label).strip().rstrip(":").casefold()
+        if normalized in {
+            "anstellungsort",
+            "arbeitsort",
+            "standort",
+            "ort",
+            "location",
+            "lieu",
+            "localité",
+            "localita",
+            "località",
+            "luogo",
+            "sede",
+        }:
+            return "location"
+        if normalized in {
+            "art",
+            "beschäftigungsart",
+            "employment category",
+            "employment type",
+            "type d'emploi",
+            "tipo di impiego",
+        }:
+            return "employment_type"
+        return None
+
+    def _store_value(self, value: str) -> None:
+        clean = re.sub(r"\s+", " ", value).strip()
+        if not clean:
+            return
+        if self._current_field == "location":
+            self._current_location = clean
+        elif self._current_field == "employment_type":
+            self._current_employment_type = clean
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag != "a":
-            return
         attrs_dict = dict(attrs)
-        cls = attrs_dict.get("class", "")
-        if "HSTableLinkSubTitle" not in cls:
+        cls = attrs_dict.get("class", "") or ""
+
+        if tag == "tr":
+            if self._in_row:
+                self._append_job()
+            self._in_row = True
+            self._reset_job()
+            return
+
+        if tag == "li" and self._in_row:
+            self._current_field = None
+            self._current_label = ""
+            return
+
+        if tag == "i" and self._in_row:
+            if "icon-department" in cls:
+                self._current_field = "location"
+            elif "icon-jobtype" in cls:
+                self._current_field = "employment_type"
+            return
+
+        if tag == "span" and self._in_row:
+            if "visually-hidden" in cls:
+                self._capture_label = True
+                self._current_label = ""
+            elif "column-value" in cls:
+                self._capture_value = True
+                self._current_value = ""
+
+        if tag != "a" or "HSTableLinkSubTitle" not in cls:
             return
         href = attrs_dict.get("href")
         if not href or "/Vacancies/" not in href:
@@ -117,15 +219,39 @@ class _JobLinkParser(HTMLParser):
     def handle_data(self, data: str) -> None:
         if self._in_link:
             self._current_title += data
+        if self._capture_label:
+            self._current_label += data
+        if self._capture_value:
+            self._current_value += data
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "a" and self._in_link:
             self._in_link = False
-            title = self._current_title.strip()
-            if self._current_url and title:
-                self.jobs.append((self._current_url, title))
-            self._current_url = None
-            self._current_title = ""
+            # Some custom CNAME templates expose bare links without table
+            # rows. Preserve the previous URL/title-only fallback for them.
+            if not self._in_row:
+                self._append_job()
+            return
+
+        if tag == "span" and self._capture_label:
+            self._capture_label = False
+            self._current_field = self._field_from_label(self._current_label)
+            return
+
+        if tag == "span" and self._capture_value:
+            self._capture_value = False
+            self._store_value(self._current_value)
+            self._current_value = ""
+            return
+
+        if tag == "li" and self._in_row:
+            self._current_field = None
+            self._current_label = ""
+            return
+
+        if tag == "tr" and self._in_row:
+            self._append_job()
+            self._in_row = False
 
 
 def _extract_table_nr(html: str) -> str | None:
@@ -147,9 +273,30 @@ def _extract_table_nr(html: str) -> str | None:
 
 def _parse_jobs_from_html(html: str, base_url: str) -> list[tuple[str, str]]:
     """Parse job links from listing HTML. Returns [(url, title), ...]."""
+    return [(job.url, job.title or "") for job in _parse_discovered_jobs_from_html(html, base_url)]
+
+
+def _parse_discovered_jobs_from_html(html: str, base_url: str) -> list[DiscoveredJob]:
+    """Parse partial rich job data from an Umantis listing page."""
     parser = _JobLinkParser(base_url)
     parser.feed(html)
+    parser.close()
     return parser.jobs
+
+
+def _uses_rich_listing_results(metadata: dict) -> bool:
+    """Return rich rows only when the board explicitly enriches them.
+
+    Existing Umantis boards rely on URL-only discovery so their configured
+    detail scraper still runs.  A rich monitor result without ``enrich`` is
+    treated as complete by the board pipeline and would otherwise skip those
+    detail scrapes, dropping descriptions.
+    """
+    scraper_config = metadata.get("scraper_config")
+    if not isinstance(scraper_config, dict):
+        return False
+    enrich = scraper_config.get("enrich")
+    return isinstance(enrich, list) and bool(enrich)
 
 
 # ── Pagination fetch with retries ───────────────────────────────────────
@@ -177,11 +324,12 @@ async def _get_page_with_retry(
 # ── Discovery ──────────────────────────────────────────────────────────
 
 
-async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
-    """Discover job URLs from an Umantis board.
+async def discover(board: dict, client: httpx.AsyncClient, pw=None):
+    """Discover partial rich jobs from an Umantis board.
 
     Paginates through /Jobs/All using tc{tableNr}=p{page} params.
-    Returns a set of job detail URLs.
+    Returns URL, title, location, and employment type from listing rows. A
+    detail scraper remains responsible for the description.
     """
     metadata = board.get("metadata") or {}
     customer_id = metadata.get("customer_id")
@@ -219,7 +367,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
     resp.raise_for_status()
     html = resp.text
 
-    jobs = _parse_jobs_from_html(html, base)
+    jobs = _parse_discovered_jobs_from_html(html, base)
     table_nr = _extract_table_nr(html)
 
     # Paginate. Page-fetch failures route through ``_get_page_with_retry``:
@@ -241,12 +389,12 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
             if page_html is None:
                 # 404/410 — legitimate end-of-pagination.
                 break
-            page_jobs = _parse_jobs_from_html(page_html, base)
+            page_jobs = _parse_discovered_jobs_from_html(page_html, base)
             if not page_jobs:
                 break
             # Check for duplicates (pagination loops)
-            new_urls = {url for url, _ in page_jobs}
-            existing_urls = {url for url, _ in jobs}
+            new_urls = {job.url for job in page_jobs}
+            existing_urls = {job.url for job in jobs}
             if not (new_urls - existing_urls):
                 break
             jobs.extend(page_jobs)
@@ -264,17 +412,30 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
     log.info("umantis.listed", customer_id=label, jobs=len(jobs))
 
     # Deduplicate by URL
-    seen: set[str] = set()
-    unique: set[str] = set()
-    for url, _ in jobs:
-        if url not in seen:
-            seen.add(url)
-            unique.add(url)
+    unique: dict[str, DiscoveredJob] = {}
+    for job in jobs:
+        current = unique.get(job.url)
+        if current is None:
+            unique[job.url] = job
+            continue
+        # Prefer whichever duplicate publication carries listing fields.
+        if not current.locations and job.locations:
+            current.locations = job.locations
+        if not current.employment_type and job.employment_type:
+            current.employment_type = job.employment_type
 
+    rich_results = list(unique.values())
+    if _uses_rich_listing_results(metadata):
+        if truncated:
+            log.warning("umantis.truncated", total=len(jobs), cap=MAX_JOBS)
+            return truncated_rich_result(rich_results)
+        return rich_results
+
+    urls = set(unique)
     if truncated:
         log.warning("umantis.truncated", total=len(jobs), cap=MAX_JOBS)
-        return truncated_url_result(unique)
-    return unique
+        return truncated_url_result(urls)
+    return urls
 
 
 # ── Probing ─────────────────────────────────────────────────────────────

@@ -127,7 +127,7 @@ Monitor Types (cheapest first):
   practicematch     10      Job URLs          Auto-configured
   notion            15      Job URLs          Auto-configured
   recruiter_co_kr   15      Full job data     No (skipped)
-  umantis           15      URL set           Yes
+  umantis           15      Full/partial      Description enrichment
   nextdata          20      URLs or full      If URL-only
   talemetry         45      URL set           Yes
   talentbrew        45      URL set           Yes
@@ -142,7 +142,7 @@ Interpretation guide (after ws probe monitor):
      strong signal, but validate sample content and coverage.
   2. nextdata / api_sniffer detected:
      inspect mapped fields before accepting.
-  3. URL-only monitors (sitemap/umantis/dom):
+  3. URL/partial monitors (sitemap/umantis/dom):
      compare discovered count with visible listings and validate filters.
   4. Nothing detected:
      gather more evidence (rendered probe/deep probe) before deciding.
@@ -1747,13 +1747,13 @@ MONITOR_UMANTIS = """\
 umantis — Umantis ATS (Haufe Group / Abacus)
 
   Listing:  GET https://recruitingapp-{ID}[.de].umantis.com/Jobs/All
-  Returns:  URL set only (needs scraper)
+  Returns:  Partial job data (URL, title, location, employment type)
   Cap:      50,000 URLs
   Note:     Paginated HTML listing pages (10 per page).
             Pagination via tc{tableNr}=p{page} query params.
             1,000+ customers in DACH (Switzerland, Germany, Austria).
-            Each customer has a unique HTML template on detail pages —
-            no shared structured data (no JSON-LD).
+            Each customer has a unique HTML template on detail pages, so a
+            scraper is still required for descriptions.
 
   Config:
     {"customer_id": "2698"}
@@ -1769,7 +1769,7 @@ umantis — Umantis ATS (Haufe Group / Abacus)
 
   Detection:  ws probe shows "Umantis — ID: X, N jobs"
   Zero jobs?  Verify customer_id — visit the listing URL directly
-  Pair with:  json-ld (try first) or dom scraper"""
+  Pair with:  json-ld (try first) or dom scraper with enrich: [description]"""
 
 MONITOR_EARCU = """\
 earcu — eArcu live-vacancy XML feed
