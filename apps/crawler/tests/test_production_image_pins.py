@@ -28,17 +28,17 @@ def test_redis_and_murmur_shim_require_immutable_production_images() -> None:
     assert "id: build-browser" in workflow
     assert (
         "CRAWLER_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/jobseek-crawler@"
-        "${{ steps.build-slim.outputs.digest }}" in workflow
+        "${{ needs.build.outputs.slim_digest }}" in workflow
     )
     assert (
         "BROWSER_IMAGE_REF: ghcr.io/${{ github.repository_owner }}/"
-        "jobseek-crawler-browser@${{ steps.build-browser.outputs.digest }}" in workflow
+        "jobseek-crawler-browser@${{ needs.build.outputs.browser_digest }}" in workflow
     )
     assert "IMAGE: ghcr.io/${{ github.repository_owner }}/jobseek-crawler@" in workflow
-    assert '"ghcr.io/${owner}/jobseek-crawler@${{ steps.build-slim.outputs.digest }}"' in workflow
+    assert '"ghcr.io/${owner}/jobseek-crawler@${{ needs.build.outputs.slim_digest }}"' in workflow
     assert (
         '"ghcr.io/${owner}/jobseek-crawler-browser@'
-        '${{ steps.build-browser.outputs.digest }}"' in workflow
+        '${{ needs.build.outputs.browser_digest }}"' in workflow
     )
     promote = workflow[workflow.index("- name: Promote deployed images to latest") :]
     assert "jobseek-crawler:${version}" not in promote
