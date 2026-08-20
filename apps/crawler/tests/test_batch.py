@@ -373,6 +373,35 @@ class TestProcessOneBoard:
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
+    async def test_empty_result_persists_recovered_sitemap_with_empty_check(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """A valid empty replacement sitemap must evict the stale cached URL."""
+        pool, conn = mock_pool
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls=set(),
+                new_sitemap_url="https://example.com/current-sitemap.xml",
+            )
+        )
+        conn.fetch.return_value = [
+            {"board_status": "active", "should_delist": False, "recovered_from": None}
+        ]
+
+        await _process_one_board(_mock_board(), pool, mock_http)
+
+        metadata_calls = [
+            call for call in conn.execute.await_args_list if call.args[0] == _UPDATE_METADATA
+        ]
+        assert len(metadata_calls) == 1
+        assert json.loads(metadata_calls[0].args[2]) == {
+            "sitemap_url": "https://example.com/current-sitemap.xml"
+        }
+        conn.fetch.assert_awaited_once_with(_RECORD_EMPTY_CHECK, "board-1")
+        mock_get_redis.assert_not_called()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
     async def test_valid_empty_result_recovers_quarantined_board(
         self, mock_monitor, mock_get_redis, mock_pool, mock_http
     ):
@@ -2118,7 +2147,13 @@ class TestDuplicateSourceUrl:
         mark every active posting as gone)."""
         pool, conn = mock_pool
         garbage = "https://example.com/"
-        mock_monitor.side_effect = _mock_stream(MonitorResult(urls={garbage}, jobs_by_url=None))
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(
+                urls={garbage},
+                jobs_by_url=None,
+                new_sitemap_url="https://example.com/garbage-sitemap.xml",
+            )
+        )
         conn.fetch.return_value = [{"board_status": "active"}]
         board = _mock_board(board_url="https://example.com/careers")
 
@@ -2127,6 +2162,7 @@ class TestDuplicateSourceUrl:
         # Only _RECORD_EMPTY_CHECK was called — not _DIFF_BATCH or MARK_GONE.
         assert conn.fetch.await_count == 1
         conn.fetch.assert_awaited_with(_RECORD_EMPTY_CHECK, "board-1")
+        assert not any(call.args[0] == _UPDATE_METADATA for call in conn.execute.await_args_list)
 
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")

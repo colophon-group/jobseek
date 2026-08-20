@@ -3,6 +3,7 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 
 import httpx
+from structlog.testing import capture_logs
 
 from src.core.monitors.sitemap import (
     _common_nonstandard_candidates,
@@ -546,6 +547,98 @@ class TestDiscover:
             urls, new_sitemap = await discover(board, client)
             assert len(urls) == 1
             assert new_sitemap is not None  # rediscovered
+
+    async def test_cached_index_without_usable_children_rediscovers(self):
+        stale_index = """<?xml version="1.0"?>
+        <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <sitemap><loc>https://example.com/old-jobs.xml</loc></sitemap>
+        </sitemapindex>"""
+        replacement = """<?xml version="1.0"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <url><loc>https://example.com/jobs/1</loc></url>
+        </urlset>"""
+        requested: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            url = str(request.url)
+            requested.append(url)
+            if url == "https://example.com/old-index.xml":
+                return httpx.Response(
+                    200,
+                    text=stale_index,
+                    headers={"content-type": "application/xml"},
+                )
+            if url == "https://example.com/old-jobs.xml":
+                return httpx.Response(404)
+            if url == "https://example.com/careers/sitemap.xml":
+                return httpx.Response(
+                    200,
+                    text=replacement,
+                    headers={"content-type": "application/xml"},
+                )
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            board = {
+                "board_url": "https://example.com/careers",
+                "metadata": {"sitemap_url": "https://example.com/old-index.xml"},
+            }
+            with capture_logs() as logs:
+                urls, new_sitemap = await discover(board, client)
+
+        assert urls == {"https://example.com/jobs/1"}
+        assert new_sitemap == "https://example.com/careers/sitemap.xml"
+        assert requested[:3] == [
+            "https://example.com/old-index.xml",
+            "https://example.com/old-jobs.xml",
+            "https://example.com/robots.txt",
+        ]
+        unusable = next(log for log in logs if log["event"] == "sitemap.index_no_usable_children")
+        assert unusable["total_children"] == 1
+        assert unusable["selected_children"] == 1
+        assert unusable["missing_or_invalid"] == 1
+        assert unusable["nested_empty"] == 0
+        assert unusable["cycle_skipped"] == 0
+        assert any(log["event"] == "sitemap.cache_index_unusable" for log in logs)
+        assert any(log["event"] == "sitemap.cache_recovered" for log in logs)
+
+    async def test_cached_index_recovers_to_valid_empty_sitemap(self):
+        stale_index = """<?xml version="1.0"?>
+        <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <sitemap><loc>https://example.com/old-jobs.xml</loc></sitemap>
+        </sitemapindex>"""
+        empty_replacement = """<?xml version="1.0"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>"""
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            url = str(request.url)
+            if url == "https://example.com/old-index.xml":
+                return httpx.Response(
+                    200,
+                    text=stale_index,
+                    headers={"content-type": "application/xml"},
+                )
+            if url == "https://example.com/old-jobs.xml":
+                return httpx.Response(404)
+            if url == "https://example.com/careers/sitemap.xml":
+                return httpx.Response(
+                    200,
+                    text=empty_replacement,
+                    headers={"content-type": "application/xml"},
+                )
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls, new_sitemap = await discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": {"sitemap_url": "https://example.com/old-index.xml"},
+                },
+                client,
+            )
+
+        assert urls == set()
+        assert new_sitemap == "https://example.com/careers/sitemap.xml"
 
     async def test_configured_sitemap_429_fails_closed(self, monkeypatch):
         """A WAF-blocked configured sitemap must not become a cache miss.

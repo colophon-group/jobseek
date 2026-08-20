@@ -881,6 +881,10 @@ async def _process_one_board_streaming(
         # gone-detection (#3216). The MAX_JOBS cap means the unseen tail
         # would otherwise be tombstoned by _MARK_GONE_BY_TIMESTAMP.
         any_truncated = False
+        # A streamed monitor may emit state on an empty batch before it emits
+        # any URLs. Hold that patch until the first posting batch commits, or
+        # until a valid empty run records its empty-check transition.
+        pending_metadata_patch: dict = {}
 
         async for result in _batch.monitor_one_stream(
             board_url, crawler_type, metadata, effective_http, pw=pw
@@ -890,6 +894,12 @@ async def _process_one_board_streaming(
             is_rich = result.jobs_by_url is not None
             if getattr(result, "truncated", False):
                 any_truncated = True
+            new_sitemap_url = getattr(result, "new_sitemap_url", None)
+            if new_sitemap_url:
+                pending_metadata_patch["sitemap_url"] = new_sitemap_url
+            metadata_updates = getattr(result, "metadata_updates", None)
+            if metadata_updates:
+                pending_metadata_patch.update(metadata_updates)
 
             # Pulse heartbeat + extend DB lease (shielded to avoid
             # destroying the pool connection on task cancellation)
@@ -973,12 +983,7 @@ async def _process_one_board_streaming(
                 # pool-acquire TimeoutError (#5489).
                 meta_patch: dict = {}
                 if _chunk_start == 0:
-                    new_sitemap_url = getattr(result, "new_sitemap_url", None)
-                    if new_sitemap_url:
-                        meta_patch["sitemap_url"] = new_sitemap_url
-                    metadata_updates = getattr(result, "metadata_updates", None)
-                    if metadata_updates:
-                        meta_patch.update(metadata_updates)
+                    meta_patch.update(pending_metadata_patch)
 
                 is_rich_no_scrape = is_rich and not enrich_fields
                 rows = await _fetch_diff_batch(
@@ -1285,6 +1290,7 @@ async def _process_one_board_streaming(
                                 board_id,
                                 json.dumps(meta_patch),
                             )
+                    pending_metadata_patch.clear()
 
                 # Metrics, lifecycle logs, and Redis all run after commit.
                 if n_rich_dedup:
@@ -1381,6 +1387,16 @@ async def _process_one_board_streaming(
             recovered_from: str | None = None
             try:
                 async with pool.acquire() as conn, conn.transaction():
+                    # Persist metadata for a genuinely empty inventory, such
+                    # as a recovered but currently vacant sitemap. Do not
+                    # advance state when raw URLs were present but all were
+                    # rejected as implausible.
+                    if total_discovered == 0 and pending_metadata_patch:
+                        await conn.execute(
+                            _UPDATE_METADATA,
+                            board_id,
+                            json.dumps(pending_metadata_patch),
+                        )
                     rows = await conn.fetch(_RECORD_EMPTY_CHECK, board_id)
                     if rows:
                         recovered_from = rows[0]["recovered_from"]
