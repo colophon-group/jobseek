@@ -258,6 +258,7 @@ _KNOWN_ATS_DOMAINS = frozenset(
         "bamboohr",
         "beisen",
         "brassring",
+        "candidatus.com",
         "cornerstone",
         "dayforce",
         "paycom",
