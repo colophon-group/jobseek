@@ -2,7 +2,8 @@
 
 Talemetry career sites render authoritative job links in a
 ``.jobs-section__list`` container and expose a textual result range such as
-``Showing 1-25 of 85 results``.  Pagination uses ``?page=N``.
+``Showing 1-25 of 85 results`` (or TTC Portals' ``Viewing`` variant).
+Pagination uses ``?page=N``.
 
 The strict count/range checks are intentional.  Returning a partial URL set
 from a failed later page would make gone detection retire still-live jobs.
@@ -38,7 +39,7 @@ _SNAPSHOT_ATTEMPTS = 2
 _SNAPSHOT_RETRY_DELAY = 1.0
 _PROVIDER_MARKERS = ("window.talemetry", "talemetry_careersites")
 _RESULT_COUNT_RE = re.compile(
-    r"\bShowing\s+([\d,]+)\s*-\s*([\d,]+)\s+of\s+([\d,]+)\s+results\b",
+    r"\b(?:Showing|Viewing)\s+([\d,]+)\s*-\s*([\d,]+)\s+of\s+([\d,]+)\s+results\b",
     re.IGNORECASE,
 )
 _JOB_PATH_RE = re.compile(r"^/jobs/\d+(?:-[^/?#]+)?/?$", re.IGNORECASE)

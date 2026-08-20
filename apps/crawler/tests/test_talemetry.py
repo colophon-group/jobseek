@@ -61,6 +61,21 @@ class TestParsePage:
             "https://careers.example.com/jobs/17872728-shipping-clerk",
         }
 
+    def test_accepts_ttc_portals_viewing_result_range(self):
+        parsed = _parse_page(
+            _html(
+                start=1,
+                end=1,
+                total=1,
+                links=["/jobs/18023449-assembly-and-test-a-2nd-shift"],
+            ).replace("Showing 1-1", "Viewing 1-1"),
+            "https://parkercareers.ttcportals.com/search/jobs",
+        )
+
+        assert parsed.range_start == 1
+        assert parsed.range_end == 1
+        assert parsed.total_jobs == 1
+
 
 class TestPageUrl:
     def test_adds_and_replaces_page_parameter(self):
