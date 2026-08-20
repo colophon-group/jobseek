@@ -545,6 +545,7 @@ async def discover(
                 source=source,
                 pw=pw,
                 browser_config=browser_config,
+                allow_empty=True,
             )
         else:
             html = await _fetch_html(
@@ -573,6 +574,7 @@ async def discover(
             "browser_expression must return the complete inventory"
         )
     if pagination_cfg:
+        _validate_empty_first_page(items, data, pagination_cfg, board_url=board_url)
         items = await _fetch_remaining_pages(
             items,
             data,
@@ -669,6 +671,7 @@ async def discover_stream(
                 source=source,
                 pw=pw,
                 browser_config=browser_config,
+                allow_empty=True,
             )
         else:
             html = await _fetch_html(
@@ -704,6 +707,7 @@ async def discover_stream(
         return
 
     # Determine page count
+    _validate_empty_first_page(items, data, pagination_cfg, board_url=board_url)
     page_count = _resolve_page_count(data, pagination_cfg)
     if page_count is None:
         raise ValueError("nextdata pagination metadata did not provide a valid page count")
@@ -851,6 +855,7 @@ async def _fetch_embedded_page_with_retry(
     source: str,
     pw=None,
     browser_config: dict | None = None,
+    allow_empty: bool = False,
 ) -> tuple[dict, list]:
     """Fetch and parse one required embedded-data page or fail the run.
 
@@ -875,7 +880,7 @@ async def _fetch_embedded_page_with_retry(
                 failure = f"missing {source} embedded data"
             else:
                 items = _resolve_items(data, path, source)
-                if isinstance(items, list) and items:
+                if isinstance(items, list) and (items or allow_empty):
                     return data, items
                 failure = (
                     f"path resolved to an empty required page: {path}"
@@ -896,6 +901,28 @@ async def _fetch_embedded_page_with_retry(
 
     raise RuntimeError(
         f"nextdata required page failed after {_PAGE_FETCH_ATTEMPTS} attempts: {url} ({failure})"
+    )
+
+
+def _validate_empty_first_page(
+    items: list,
+    data: dict,
+    pagination_cfg: dict,
+    *,
+    board_url: str,
+) -> None:
+    """Allow an empty first page only when pagination proves inventory is empty."""
+    if items:
+        return
+
+    expected = _resolve_total_records(data, pagination_cfg)
+    page_count = _resolve_page_count(data, pagination_cfg)
+    if expected == 0 or (expected is None and page_count is not None and page_count <= 1):
+        return
+
+    raise RuntimeError(
+        f"nextdata first page was empty for non-empty paginated inventory: {board_url} "
+        f"(expected={expected}, page_count={page_count})"
     )
 
 

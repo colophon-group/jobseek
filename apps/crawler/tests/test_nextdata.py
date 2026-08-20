@@ -16,6 +16,7 @@ from src.core.monitors.nextdata import (
     _resolve_field,
     can_handle,
     discover,
+    discover_stream,
 )
 from src.shared.nextdata import (
     extract_field as _extract_field,
@@ -993,6 +994,19 @@ class TestPagination:
             result = await discover(BOARD_PAGINATED, client)
         assert isinstance(result, set)
         assert len(result) == 2
+
+    async def test_confirmed_empty_first_page_is_valid(self):
+        """A one-page empty inventory must reach confirmed-empty handling."""
+        transport = _paginated_transport(page_count=1, items_per_page=0)
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover(BOARD_PAGINATED, client)
+        assert result == set()
+
+    async def test_stream_confirmed_empty_first_page_is_valid(self):
+        transport = _paginated_transport(page_count=1, items_per_page=0)
+        async with httpx.AsyncClient(transport=transport) as client:
+            batches = [batch async for batch in discover_stream(BOARD_PAGINATED, client)]
+        assert batches == [set()]
 
     async def test_multi_page_merges_items(self):
         """Three pages of 2 items each → 6 total URLs."""
