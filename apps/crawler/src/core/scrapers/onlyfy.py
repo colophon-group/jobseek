@@ -34,6 +34,7 @@ _LOCATION_RE = re.compile(
     r"(?:Standort|Location)\s*:\s*(.+?)(?=\s*(?:Zeitpunkt|Start(?:\s+date)?|$))",
     re.IGNORECASE,
 )
+_MIN_META_DESCRIPTION_CHARS = 200
 
 
 def _job_handle_and_locale(url: str, configured_language: str | None = None) -> tuple[str, str]:
@@ -125,6 +126,17 @@ def _parse_description(tree: LexborHTMLParser) -> str | None:
     return "\n".join(fragments) or None
 
 
+def _parse_meta_description(tree: LexborHTMLParser) -> str | None:
+    """Return a substantive public-shell description, not a short SEO teaser."""
+    for selector in ('meta[name="description"]', 'meta[property="og:description"]'):
+        node = tree.css_first(selector)
+        value = node.attributes.get("content", "") if node is not None else ""
+        description = re.sub(r"\s+", " ", value).strip()
+        if len(description) >= _MIN_META_DESCRIPTION_CHARS:
+            return description
+    return None
+
+
 def parse_html(html: str, config: dict | None = None) -> JobContent:
     """Parse a server-rendered Onlyfy candidate page.
 
@@ -135,7 +147,10 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
     config = config or {}
     tree = LexborHTMLParser(html)
 
-    title_node = tree.css_first("h1.text-element-header_text") or tree.css_first("title")
+    # The candidate endpoint's document title is the posting title. Branded
+    # tenants may prepend a marketing slogan as the first matching H1 and put
+    # the actual role in a later H1, so the former H1-first order was unsafe.
+    title_node = tree.css_first("title") or tree.css_first("h1.text-element-header_text")
     title = title_node.text(strip=True) if title_node is not None else None
     locations = _parse_location(tree)
 
@@ -149,7 +164,7 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
 
     return JobContent(
         title=title or None,
-        description=_parse_description(tree),
+        description=_parse_description(tree) or _parse_meta_description(tree),
         locations=locations,
         language=config.get("language"),
     )
@@ -180,6 +195,15 @@ async def scrape(
         (artifact_dir / "onlyfy-candidate.html").write_text(response.text)
 
     content = parse_html(response.text, config)
+    if not content.description:
+        source_response = await http.get(url, follow_redirects=True)
+        if source_response.status_code == 200:
+            if artifact_dir is not None:
+                (artifact_dir / "onlyfy-source.html").write_text(source_response.text)
+            source_content = parse_html(source_response.text, config)
+            content.description = source_content.description
+            if not content.locations:
+                content.locations = source_content.locations
     if not content.locations:
         handle, _locale = _job_handle_and_locale(url, config.get("language"))
         listing_url = _listing_url(url, config.get("language"))

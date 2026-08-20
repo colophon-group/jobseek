@@ -52,6 +52,34 @@ ONLYFY_CANDIDATE = """
 """
 
 
+ONLYFY_BRANDED_CANDIDATE = """
+<html>
+  <head><title>Mechatroniker für Betriebstechnik (m/w/x)</title></head>
+  <body>
+    <h1 class="text-element-header_text">Leclanché: Wir sorgen für morgen!</h1>
+    <h1 class="text-element-header_text">Mechatroniker für Betriebstechnik (m/w/x)</h1>
+    <p class="text-element-body_text">Maintain production equipment.</p>
+  </body>
+</html>
+"""
+
+
+ONLYFY_SUBSTANTIVE_SHELL = """
+<html>
+  <head>
+    <title>Initiativbewerbung</title>
+    <meta name="description"
+          content="Join our environmental problem-solving team. Our company
+                   develops and manufactures lithium-ion cells and complete
+                   energy-storage systems for electric transportation and
+                   stationary applications. We welcome speculative applications
+                   from qualified candidates across engineering and production." />
+  </head>
+  <body><a href="/candidate/job/print/speculative">Print</a></body>
+</html>
+"""
+
+
 def _rsc_listing_html() -> str:
     payload = json.dumps(
         [
@@ -111,6 +139,21 @@ def test_parse_candidate_page():
     assert "Standort" not in content.description
 
 
+def test_parse_candidate_prefers_document_title_over_branded_heading():
+    content = parse_html(ONLYFY_BRANDED_CANDIDATE)
+
+    assert content.title == "Mechatroniker für Betriebstechnik (m/w/x)"
+    assert content.description == "<p>Maintain production equipment.</p>"
+
+
+def test_parse_shell_uses_only_substantive_meta_description():
+    content = parse_html(ONLYFY_SUBSTANTIVE_SHELL)
+
+    assert content.title == "Initiativbewerbung"
+    assert content.description is not None
+    assert "speculative applications" in content.description
+
+
 @pytest.mark.asyncio
 async def test_scrape_fetches_server_rendered_candidate_endpoint():
     requested_urls: list[str] = []
@@ -160,4 +203,37 @@ async def test_scrape_uses_listing_location_when_detail_omits_it():
         "https://example.onlyfy.jobs/job/show/abc123/full?lang=en&mode=candidate",
         "https://example.onlyfy.jobs/en",
     ]
+    assert content.locations == ["Hof"]
+
+
+@pytest.mark.asyncio
+async def test_scrape_falls_back_to_public_shell_for_missing_description():
+    candidate_without_body = "<html><head><title>Initiativbewerbung</title></head></html>"
+    requested_urls: list[str] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        requested_urls.append(str(request.url))
+        if request.url.path.startswith("/job/show/"):
+            text = candidate_without_body
+        elif request.url.path == "/en/job/speculative":
+            text = ONLYFY_SUBSTANTIVE_SHELL
+        else:
+            text = _rsc_listing_html().replace("abc123", "speculative")
+        return httpx.Response(200, text=text, request=request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        content = await scrape(
+            "https://example.onlyfy.jobs/en/job/speculative",
+            {},
+            client,
+        )
+
+    assert requested_urls == [
+        "https://example.onlyfy.jobs/job/show/speculative/full?lang=en&mode=candidate",
+        "https://example.onlyfy.jobs/en/job/speculative",
+        "https://example.onlyfy.jobs/en",
+    ]
+    assert content.title == "Initiativbewerbung"
+    assert content.description is not None
+    assert "speculative applications" in content.description
     assert content.locations == ["Hof"]
