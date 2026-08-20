@@ -282,6 +282,7 @@ alibaba,alibaba-careers-trendyol,https://jobs.lever.co/trendyol,lever,,skip,
 alice-and-bob,alice-and-bob-careers,https://jobs.lever.co/alice-bob,lever,"{""token"": ""alice-bob""}",skip,
 alight,alight-global,https://alight.wd5.myworkdayjobs.com/Careers,workday,"{""company"": ""alight"", ""wd_instance"": ""wd5"", ""site"": ""Careers""}",workday,
 alika-personal-gmbh,alika-personal-gmbh-join,https://join.com/companies/alika-personalcom,join,"{""slug"": ""alika-personalcom""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
+alivedx,alivedx-successfactors,https://jobs.alivedx.com/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.alivedx.com/googlefeed.xml""}",skip,
 alixpartners,alixpartners-greenhouse,https://job-boards.greenhouse.io/alixpartners,greenhouse,"{""token"": ""alixpartners""}",skip,
 all-space,all-space-careers,https://apply.workable.com/allspace/,workable,"{""token"": ""allspace""}",workable,
 allarahealth,allarahealth-ashby,https://jobs.ashbyhq.com/allarahealth,ashby,"{""token"": ""allarahealth""}",skip,
