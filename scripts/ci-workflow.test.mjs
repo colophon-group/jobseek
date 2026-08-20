@@ -1320,21 +1320,24 @@ test("Required CI gates PostgreSQL reconciliation and sampling E2E", () => {
   );
 });
 
-test("setup-uv steps cache uv downloads by crawler lockfile", () => {
-  const checkedWorkflows = {
-    ci: workflow,
-    "upload-company-images": uploadCompanyImagesWorkflow,
-  };
+test("CI setup-uv steps cache uv downloads by crawler lockfile", () => {
+  const blocks = setupUvBlocks(workflow);
+  assert.ok(blocks.length > 0, "CI should use setup-uv");
 
-  for (const [name, source] of Object.entries(checkedWorkflows)) {
-    const blocks = setupUvBlocks(source);
-    assert.ok(blocks.length > 0, `${name} should use setup-uv`);
+  for (const block of blocks) {
+    assert.match(block, /enable-cache: true/);
+    assert.match(block, /prune-cache: true/);
+    assert.match(block, /cache-dependency-glob: "apps\/crawler\/uv\.lock"/);
+  }
+});
 
-    for (const block of blocks) {
-      assert.match(block, /enable-cache: true/);
-      assert.match(block, /prune-cache: true/);
-      assert.match(block, /cache-dependency-glob: "apps\/crawler\/uv\.lock"/);
-    }
+test("pull_request_target image uploads disable the uv cache", () => {
+  const blocks = setupUvBlocks(uploadCompanyImagesWorkflow);
+  assert.ok(blocks.length > 0, "upload-company-images should use setup-uv");
+
+  for (const block of blocks) {
+    assert.match(block, /enable-cache: false/);
+    assert.doesNotMatch(block, /prune-cache|cache-dependency-glob/);
   }
 });
 
