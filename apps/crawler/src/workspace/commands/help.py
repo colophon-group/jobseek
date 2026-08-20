@@ -3447,7 +3447,8 @@ pdf — PDF document scraper
   Config:   title_source ("url" or "text"), title_pattern (regex),
             location_pattern (regex applied to PDF text),
             fields_pattern (regex with named title/location groups for
-            table-like PDF layouts),
+            table-like PDF layouts; named values take precedence and the
+            field-specific patterns remain fallbacks),
             repair_split_initial (opt-in repair for M\\nechanical-style artefacts),
             ocr (opt-in fallback for image-only PDFs),
             ocr_languages (Tesseract languages, default "eng"),

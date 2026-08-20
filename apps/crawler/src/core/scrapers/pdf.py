@@ -18,6 +18,8 @@ Config:
     fields_pattern Optional regex with named ``title`` and/or ``location``
                    capture groups. This is useful for table-like PDFs where
                    both values must be matched from the same row layout.
+                   Named values take precedence; title_pattern and
+                   location_pattern remain field-specific fallbacks.
     repair_split_initial
                    Opt in to joining a capital initial split from the rest of
                    its word by a PDF extraction newline (M\\nechanical).
@@ -297,10 +299,13 @@ async def scrape(
     elif not title:
         title = _title_from_url(url, title_pattern)
 
+    # Keep the legacy location_pattern normalization unchanged. The split-
+    # initial repair was historically title-only and can corrupt legitimate
+    # locations such as "A Coruna" by turning them into "ACoruna". A named
+    # fields_pattern opts into the shared repair behavior explicitly.
     location = named_fields.get("location") or _extract_pattern(
         full_text,
         config.get("location_pattern"),
-        repair_split_initial=repair_split_initial,
     )
     description = _text_to_html(full_text)
 

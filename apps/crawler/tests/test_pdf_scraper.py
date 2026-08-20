@@ -154,6 +154,12 @@ class TestCapturedText:
             "location": "Tokyo",
         }
 
+    def test_extracts_only_configured_named_field(self):
+        assert _extract_named_fields(
+            "Role\nProject Manager\nSalary",
+            r"(?s)Role\s+(?P<title>.+?)\s+Salary",
+        ) == {"title": "Project Manager"}
+
 
 class TestTextToHtml:
     def test_single_paragraph(self):
@@ -422,6 +428,43 @@ class TestScrape:
             )
             assert result.title == "Field Service Engineer"
             assert result.locations == ["Osaka or Shizuoka"]
+
+    async def test_named_fields_take_precedence_with_per_field_fallbacks(self):
+        pdf_bytes = _make_pdf("Role Location\nNamed Title\nTokyo\nLegacy location: Zurich\nSalary")
+
+        def handler(request):
+            return httpx.Response(200, content=pdf_bytes)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.com/Filename_Title.pdf",
+                {
+                    "fields_pattern": r"(?s)Role\s+Location\s+(?P<title>.+?)\s+Tokyo",
+                    "location_pattern": r"Legacy location:\s*([^\n]+)",
+                },
+                client,
+            )
+
+        assert result.title == "Named Title"
+        assert result.locations == ["Zurich"]
+
+    async def test_legacy_location_pattern_does_not_repair_single_letter_word(self):
+        pdf_bytes = _make_pdf("Role\nLocation: A Coruna")
+
+        def handler(request):
+            return httpx.Response(200, content=pdf_bytes)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.com/Engineer.pdf",
+                {
+                    "repair_split_initial": True,
+                    "location_pattern": r"Location:\s*([^\n]+)",
+                },
+                client,
+            )
+
+        assert result.locations == ["A Coruna"]
 
     async def test_title_pattern_no_match_falls_back(self):
         """When title_pattern doesn't match text, falls back to heading heuristic."""
