@@ -5525,6 +5525,7 @@ tailwind,tailwind-ashby,https://jobs.ashbyhq.com/tailwind,ashby,"{""token"": ""t
 take-two-interactive-software-inc,take-two-interactive-software-inc-greenhouse,https://job-boards.greenhouse.io/taketwo,greenhouse,"{""token"": ""taketwo""}",skip,
 takealot-com,takealot-com-greenhouse,https://job-boards.greenhouse.io/takealotcom,greenhouse,"{""token"": ""takealotcom""}",skip,
 takealot-group,takealot-group-greenhouse,https://job-boards.greenhouse.io/takealotgroup,greenhouse,"{""token"": ""takealotgroup""}",skip,
+takeda,takeda-global,https://jobs.takeda.com/search-jobs,sitemap,"{""sitemap_url"": ""https://jobs.takeda.com/sitemap.xml"", ""url_filter"": ""^https://jobs\\.takeda\\.com/job/""}",json-ld,
 tako,tako-careers,https://jobs.ashbyhq.com/tako,ashby,"{""token"": ""tako""}",skip,
 taktile,taktile-careers,https://jobs.ashbyhq.com/taktile,ashby,"{""token"": ""taktile""}",skip,
 talentful,talentful-ashby,https://jobs.ashbyhq.com/talentful,ashby,"{""token"": ""talentful""}",skip,
