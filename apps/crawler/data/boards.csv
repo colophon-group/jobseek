@@ -4062,6 +4062,7 @@ odle-sales,odle-sales-greenhouse,https://job-boards.greenhouse.io/odlesalescaree
 odoo,odoo-careers,https://www.odoo.com/jobs?all_countries=1,dom,"{""render"": false, ""url_filter"": ""/jobs/[a-z0-9-]+-\\d+"", ""pagination"": {""param_name"": ""page"", ""max_pages"": 100}}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""attr"": ""class=align-items-baseline"", ""field"": ""locations""}, {""text"": ""Apply"", ""offset"": 1, ""field"": ""description"", ""stop"": ""Any questions"", ""html"": true}]}"
 odyssey,odyssey-ashby,https://jobs.ashbyhq.com/odyssey,ashby,"{""token"": ""odyssey""}",skip,
 odysseyhotelgroup,odysseyhotelgroup-pinpoint,https://odysseyhotelgroup.pinpointhq.com,pinpoint,"{""slug"": ""odysseyhotelgroup""}",skip,
+oerlikon,oerlikon-global,https://careers.oerlikon.com/job,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.oerlikon.com/googlefeed.xml""}",skip,
 offerup,offerup-greenhouse,https://job-boards.greenhouse.io/offerup,greenhouse,"{""token"": ""offerup""}",skip,
 offerzen,offerzen-greenhouse,https://job-boards.greenhouse.io/offerzen,greenhouse,"{""token"": ""offerzen""}",skip,
 office-hours,office-hours-ashby,https://jobs.ashbyhq.com/office-hours,ashby,"{""token"": ""office-hours""}",skip,
