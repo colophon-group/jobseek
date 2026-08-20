@@ -39,7 +39,6 @@ import httpx
 import structlog
 
 from src.core.monitors import BoardGoneError, DiscoveredJob, register
-from src.shared.http_retry import fetch_response_with_status_retries
 from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
@@ -60,7 +59,6 @@ _HARD_PAGE_CAP = 200  # 200 * 100 = 20,000 jobs
 _TRANSIENT_STATUS = frozenset({429, 500, 502, 503, 504})
 _RETRY_ATTEMPTS = 3
 _RETRY_BASE_DELAY_S = 2.0
-_DETAIL_RETRY_LIMITS = {status: _RETRY_ATTEMPTS - 1 for status in _TRANSIENT_STATUS}
 _TENANT_GONE_CODES = frozenset(
     {
         "NotFoundCompanyException",
@@ -354,19 +352,45 @@ async def _fetch_list_page(
     return resp.json()
 
 
+async def _get_detail_with_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    headers: dict[str, str],
+) -> httpx.Response:
+    """Fetch one detail within a single three-attempt status/transport budget."""
+    for attempt in range(1, _RETRY_ATTEMPTS + 1):
+        status: int | None = None
+        error: httpx.TransportError | None = None
+        try:
+            response = await client.get(url, headers=headers, follow_redirects=True)
+            status = response.status_code
+            if status not in _TRANSIENT_STATUS or attempt == _RETRY_ATTEMPTS:
+                return response
+        except httpx.TransportError as exc:
+            error = exc
+            if attempt == _RETRY_ATTEMPTS:
+                raise
+
+        delay = _RETRY_BASE_DELAY_S * (2 ** (attempt - 1)) * (0.5 + random.random())
+        log.info(
+            "recruiter_co_kr.detail_retry",
+            url=url,
+            attempt=attempt,
+            attempt_limit=_RETRY_ATTEMPTS,
+            status=status,
+            error_type=type(error).__name__ if error is not None else None,
+            delay_s=round(delay, 2),
+        )
+        await asyncio.sleep(delay)
+    raise AssertionError("unreachable")
+
+
 async def _fetch_detail(slug: str, client: httpx.AsyncClient, sn: int | str) -> dict | None:
     """Fetch the v2 detail record for one positionSn. Returns None on 404."""
     url = _API_BASE + _DETAIL_PATH_FMT.format(sn=sn)
     try:
-        resp = await fetch_response_with_status_retries(
-            client,
-            url,
-            headers=_api_headers(slug),
-            retry_limits=_DETAIL_RETRY_LIMITS,
-            base_delay=_RETRY_BASE_DELAY_S,
-            log_event="recruiter_co_kr.detail_retry",
-            sleep=asyncio.sleep,
-        )
+        resp = await _get_detail_with_retry(client, url, headers=_api_headers(slug))
     except httpx.HTTPError as exc:
         log.warning(
             "recruiter_co_kr.detail_error",
