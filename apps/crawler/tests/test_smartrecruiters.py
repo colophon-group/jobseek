@@ -279,6 +279,72 @@ class TestCanHandle:
             result = await can_handle("https://www.example.com/careers", client)
             assert result is None
 
+    async def test_detects_custom_portal_oneclick_api(self):
+        def handler(request):
+            host = (request.url.host or "").lower()
+            path = request.url.path
+            if host == "jobs.example.com" and path == "/":
+                return httpx.Response(200, text='<script>fetch("/api/jobs?page=1")</script>')
+            if host == "jobs.example.com" and path == "/api/jobs":
+                return httpx.Response(
+                    200,
+                    json={
+                        "jobs": [
+                            {
+                                "url": "https://jobs.smartrecruiters.com/oneclick-ui/company/Acme/publication/abc-123"
+                            }
+                        ],
+                        "total": 42,
+                    },
+                )
+            if host == "api.smartrecruiters.com" and "/companies/Acme/postings" in path:
+                return httpx.Response(200, json={"totalFound": 42, "content": []})
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://jobs.example.com/", client)
+            assert result == {"token": "Acme", "jobs": 42}
+
+    async def test_detects_backtick_custom_api_signal(self):
+        def handler(request):
+            host = (request.url.host or "").lower()
+            path = request.url.path
+            if host == "jobs.example.com" and path == "/":
+                return httpx.Response(200, text="<script>const url = `/api/jobs?page=1`</script>")
+            if host == "jobs.example.com" and path == "/api/jobs":
+                return httpx.Response(
+                    200,
+                    json={
+                        "jobs": [
+                            {
+                                "url": "https://jobs.smartrecruiters.com/oneclick-ui/company/Acme/publication/abc-123"
+                            }
+                        ]
+                    },
+                )
+            if host == "api.smartrecruiters.com" and "/companies/Acme/postings" in path:
+                return httpx.Response(200, json={"totalFound": 42, "content": []})
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://jobs.example.com/", client)
+            assert result == {"token": "Acme", "jobs": 42}
+
+    async def test_custom_api_without_oneclick_url_is_rejected(self):
+        def handler(request):
+            if request.url.path == "/":
+                return httpx.Response(200, text='<script>fetch("/api/jobs")</script>')
+            if request.url.path == "/api/jobs":
+                return httpx.Response(
+                    200,
+                    json={"jobs": [{"url": "https://example.com/jobs/123"}], "total": 1},
+                )
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://jobs.example.com/", client)
+            assert result is None
+
 
 # ── Scraper tests ────────────────────────────────────────────────────────
 
@@ -295,6 +361,20 @@ class TestParseJobUrl:
     def test_careers_subdomain(self):
         url = "https://careers.smartrecruiters.com/AcmeCorp/123456789"
         assert _parse_job_url(url) == ("AcmeCorp", "123456789")
+
+    def test_oneclick_publication_url(self):
+        url = (
+            "https://jobs.smartrecruiters.com/oneclick-ui/company/SyngentaGroup/"
+            "publication/12f9fb80-af14-423a-a3c4-bfd826bdcb11?dcr_ci=SyngentaGroup"
+        )
+        assert _parse_job_url(url) == (
+            "SyngentaGroup",
+            "12f9fb80-af14-423a-a3c4-bfd826bdcb11",
+        )
+
+    def test_oneclick_job_url(self):
+        url = "https://careers.smartrecruiters.com/oneclick-ui/company/Acme/job/12345?lang=en"
+        assert _parse_job_url(url) == ("Acme", "12345")
 
     def test_non_matching(self):
         assert _parse_job_url("https://example.com/job/123") == (None, None)

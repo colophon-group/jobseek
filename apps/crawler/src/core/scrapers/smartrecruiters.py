@@ -23,10 +23,17 @@ log = structlog.get_logger()
 # e.g. https://jobs.smartrecruiters.com/Nexthink/743999106810286
 #      https://jobs.smartrecruiters.com/Nexthink/743999106810286-senior-software-engineer
 _JOB_URL_RE = re.compile(r"(?:jobs|careers)\.smartrecruiters\.com/([\w-]+)/([\w-]+)")
+_ONECLICK_JOB_URL_RE = re.compile(
+    r"(?:jobs|careers)\.smartrecruiters\.com/oneclick-ui/company/([\w-]+)"
+    r"/(?:publication|job)/([\w-]+)"
+)
 
 
 def _parse_job_url(url: str) -> tuple[str | None, str | None]:
     """Extract (token, posting_id) from a SmartRecruiters job URL."""
+    oneclick_match = _ONECLICK_JOB_URL_RE.search(url)
+    if oneclick_match:
+        return oneclick_match.group(1), oneclick_match.group(2)
     match = _JOB_URL_RE.search(url)
     if not match:
         return None, None
