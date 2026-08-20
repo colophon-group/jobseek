@@ -341,6 +341,122 @@ class TestDiscover:
         assert jobs[0].employment_type == "CAREER"
         assert jobs[0].date_posted == "2026-04-01"
 
+    async def test_detail_transient_status_retries_then_recovers(self):
+        detail_calls = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal detail_calls
+            if request.url.path == "/position/v1/jobflex":
+                return httpx.Response(
+                    200,
+                    json={
+                        "pagination": {
+                            "page": 1,
+                            "size": 100,
+                            "totalCount": 1,
+                            "totalPages": 1,
+                        },
+                        "list": [{"positionSn": 42, "title": "From List"}],
+                    },
+                    request=request,
+                )
+            if request.url.path == "/position/v2/jobflex/42":
+                detail_calls += 1
+                if detail_calls == 1:
+                    return httpx.Response(502, request=request)
+                return httpx.Response(200, json={"title": "From Detail"}, request=request)
+            return httpx.Response(404, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with patch("src.core.monitors.recruiter_co_kr.asyncio.sleep", new_callable=AsyncMock):
+                jobs = await discover(
+                    {
+                        "board_url": "https://mcdonalds.recruiter.co.kr/career/home",
+                        "metadata": {"slug": "mcdonalds"},
+                    },
+                    client,
+                )
+
+        assert detail_calls == 2
+        assert jobs[0].title == "From Detail"
+
+    async def test_detail_transport_error_retries_then_recovers(self):
+        detail_calls = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal detail_calls
+            if request.url.path == "/position/v1/jobflex":
+                return httpx.Response(
+                    200,
+                    json={
+                        "pagination": {
+                            "page": 1,
+                            "size": 100,
+                            "totalCount": 1,
+                            "totalPages": 1,
+                        },
+                        "list": [{"positionSn": 42, "title": "From List"}],
+                    },
+                    request=request,
+                )
+            if request.url.path == "/position/v2/jobflex/42":
+                detail_calls += 1
+                if detail_calls == 1:
+                    raise httpx.ReadTimeout("detail timeout", request=request)
+                return httpx.Response(200, json={"title": "From Detail"}, request=request)
+            return httpx.Response(404, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with patch("src.core.monitors.recruiter_co_kr.asyncio.sleep", new_callable=AsyncMock):
+                jobs = await discover(
+                    {
+                        "board_url": "https://mcdonalds.recruiter.co.kr/career/home",
+                        "metadata": {"slug": "mcdonalds"},
+                    },
+                    client,
+                )
+
+        assert detail_calls == 2
+        assert jobs[0].title == "From Detail"
+
+    async def test_detail_rotating_transient_statuses_share_one_attempt_budget(self):
+        detail_calls = 0
+        statuses = iter((429, 500, 502))
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal detail_calls
+            if request.url.path == "/position/v1/jobflex":
+                return httpx.Response(
+                    200,
+                    json={
+                        "pagination": {
+                            "page": 1,
+                            "size": 100,
+                            "totalCount": 1,
+                            "totalPages": 1,
+                        },
+                        "list": [{"positionSn": 42, "title": "From List"}],
+                    },
+                    request=request,
+                )
+            if request.url.path == "/position/v2/jobflex/42":
+                detail_calls += 1
+                return httpx.Response(next(statuses), request=request)
+            return httpx.Response(404, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with patch("src.core.monitors.recruiter_co_kr.asyncio.sleep", new_callable=AsyncMock):
+                jobs = await discover(
+                    {
+                        "board_url": "https://mcdonalds.recruiter.co.kr/career/home",
+                        "metadata": {"slug": "mcdonalds"},
+                    },
+                    client,
+                )
+
+        assert detail_calls == _RETRY_ATTEMPTS
+        assert jobs[0].title == "From List"
+
     async def test_no_slug_raises(self):
         transport = httpx.MockTransport(lambda r: httpx.Response(200))
         async with httpx.AsyncClient(transport=transport) as client:
@@ -714,13 +830,17 @@ class TestTenantGoneSemantics:
     (retried by the worker).
     """
 
-    async def test_not_found_company_raises_board_gone(self):
+    @pytest.mark.parametrize(
+        "code",
+        ["NotFoundCompanyException", "NotFoundPostedDesignException"],
+    )
+    async def test_provider_gone_code_raises_board_gone(self, code: str):
         from src.core.monitors import BoardGoneError
 
         def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(
                 400,
-                json={"code": "NotFoundCompanyException", "message": "no"},
+                json={"code": code, "message": "no"},
             )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
