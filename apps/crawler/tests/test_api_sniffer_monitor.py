@@ -727,6 +727,26 @@ class TestExtractRich:
         jobs = _extract_rich(items, fields, "url", None, "https://example.com")
         assert jobs[0].locations == ["NYC", "SF"]
 
+    def test_array_description_fragments_are_joined(self):
+        items = [
+            {
+                "title": "Dev",
+                "url": "/jobs/1",
+                "modularContent": [
+                    {"text": "<p>About the role</p>"},
+                    {"text": "<ul><li>Build things</li></ul>"},
+                ],
+            }
+        ]
+        fields = {
+            "title": "title",
+            "description": "modularContent[].text",
+        }
+
+        jobs = _extract_rich(items, fields, "url", None, "https://example.com")
+
+        assert jobs[0].description == ("<p>About the role</p>\n\n<ul><li>Build things</li></ul>")
+
     def test_no_url_skipped(self):
         items = [{"title": "Dev", "score": 5}]
         fields = {"title": "title"}
