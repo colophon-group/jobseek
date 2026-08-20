@@ -62,6 +62,18 @@ class TestJsonLdExtractor:
         assert content.date_posted == "2026-07-17"
         assert content.extras == {"valid_through": "2026-08-17"}
 
+    def test_parses_talentbrew_double_escaped_description_line_breaks(self):
+        html = """<html><head><script type="application/ld+json">
+        {"@type":"JobPosting","title":"Engineer",
+         "description":"<p>Build devices.</p>&amp;#xa;&amp;#xa;<p>Test them.</p>",
+         "jobLocation":{"name":"Franklin Lakes, NJ"}}
+        </script></head></html>"""
+
+        content = parse_html(html)
+
+        assert content.description == "<p>Build devices.</p>\n\n<p>Test them.</p>"
+        assert content.locations == ["Franklin Lakes, NJ"]
+
     def test_extracts_multiple_blocks(self):
         html = """<html><head>
         <script type="application/ld+json">{"@type": "Organization"}</script>
@@ -628,6 +640,33 @@ class TestParsePosting:
         result = _parse_posting(posting)
         assert result.title == "Visual Merchandising & Space Planning Manager"
         assert result.locations == ["Düsseldorf & Köln"]
+
+    def test_decodes_talentbrew_double_escaped_description_line_breaks(self):
+        posting = {
+            "description": (
+                "<p>Build medical devices &amp; diagnostics.</p>"
+                "&amp;#xa;&amp;#x0A;&amp;#10;"
+                "<p>Improve patient outcomes.</p>"
+            )
+        }
+
+        result = _parse_posting(posting)
+
+        assert result.description == (
+            "<p>Build medical devices &amp; diagnostics.</p>\n\n\n"
+            "<p>Improve patient outcomes.</p>"
+        )
+
+    def test_preserves_double_escaped_non_whitespace_description_entities(self):
+        posting = {
+            "description": "<p>Literal &amp;#60;markup&amp;#62; &amp;amp; text.</p>"
+        }
+
+        result = _parse_posting(posting)
+
+        assert result.description == (
+            "<p>Literal &amp;#60;markup&amp;#62; &amp;amp; text.</p>"
+        )
 
     def test_falls_back_to_page_title_when_organization_suffix_matches(self):
         html = """
