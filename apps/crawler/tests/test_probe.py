@@ -818,6 +818,37 @@ class TestProbeScrapersPw:
         assert api_sniffer[1]["titles"] == 1
         assert "titles" in api_sniffer[2]
 
+    async def test_dom_uses_rendered_probe_when_static_fetch_is_blocked(self):
+        """A provider DOM preset can recover from a static WAF response."""
+        http = _mock_http_client(
+            {
+                "https://example.com/job/1": (202, ""),
+            }
+        )
+        fake_metadata = {
+            "config": {"render": True, "steps": [{"tag": "h3", "field": "title"}]},
+            "total": 1,
+            "titles": 1,
+            "descriptions": 1,
+            "locations": 1,
+            "fields": {"title": 1, "description": 1, "locations": 1},
+        }
+
+        async def fake_probe_pw(urls, pw):
+            return fake_metadata, "Rendered: 1/1 titles, 1/1 desc, 1/1 locations"
+
+        registry = __import__("src.core.scrapers", fromlist=["_REGISTRY"])._REGISTRY
+        with patch.object(registry["dom"], "probe_pw", fake_probe_pw):
+            results, _ = await probe_scrapers(
+                ["https://example.com/job/1"],
+                http,
+                pw=MagicMock(),
+            )
+
+        dom = next(result for result in results if result[0] == "dom")
+        assert dom[1] == fake_metadata
+        assert dom[2].startswith("Rendered:")
+
     async def test_probe_order_includes_api_sniffer(self):
         """Results should include api_sniffer in the probe order."""
         http = _mock_http_client(

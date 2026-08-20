@@ -89,6 +89,47 @@ FIXTURE_HTML = """
 
 
 class TestDomScraper:
+    def test_clinch_probe_uses_job_component_layout(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><body>
+          <h1>Build something bigger than your career</h1>
+          <div class="block-wrapper job-description-container">
+            <h3 class="job-title">Corporate Strategy Associate</h3>
+            <ul>
+              <li class="job-component-icon-and-text job-component-workplace-type">Hybrid</li>
+              <li class="job-component-icon-and-text job-component-location">
+                Boston, Massachusetts, United States
+              </li>
+              <li class="job-component-icon-and-text job-component-department">CEO Office</li>
+              <li class="job-component-icon-and-text job-component-employment-type">Full-time</li>
+            </ul>
+            <div class="job-description-controls">Add to favorites</div>
+            <div class="job-description">
+              <p>Shape the company's long-term growth strategy.</p>
+              <h4>Requirements</h4>
+              <ul><li>Strategy consulting experience.</li></ul>
+            </div>
+          </div>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        assert config["scope"] == ".job-description-container"
+
+        result = parse_html(html, config)
+        assert result.title == "Corporate Strategy Associate"
+        assert result.locations == ["Boston, Massachusetts, United States"]
+        assert result.job_location_type == "Hybrid"
+        assert result.employment_type == "Full-time"
+        assert result.metadata == {"department": "CEO Office"}
+        assert result.description is not None
+        assert "long-term growth strategy" in result.description
+        assert "Strategy consulting experience" in result.description
+        assert "Add to favorites" not in result.description
+
     def test_talentsoft_probe_builds_locale_independent_config(self):
         from src.core.scrapers.dom import can_handle, parse_html
 

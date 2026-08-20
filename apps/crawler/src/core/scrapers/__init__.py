@@ -298,8 +298,14 @@ async def probe_scrapers(
             continue
         scraper = _REGISTRY[name]
 
-        # Playwright-based probe path — needs more time (browser per URL)
-        if scraper.probe_pw is not None:
+        # Playwright-based probe path — needs more time (browser per URL).
+        # Hybrid scrapers such as DOM use it only when static requests failed
+        # or returned a shell-only SPA/challenge document; otherwise preserve
+        # the cheaper static can_handle + parse_html path below.
+        use_pw_probe = scraper.probe_pw is not None and (
+            scraper.can_handle is None or scraper.parse_html is None or static_failed or spa_suspect
+        )
+        if use_pw_probe:
             if pw is None:
                 results.append((name, None, "Skipped \u2014 Playwright not available"))
                 continue
