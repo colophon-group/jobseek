@@ -1452,6 +1452,65 @@ async def test_avature_406_scrape_failures_open_host_circuit(mock_redis, monkeyp
 
 
 @pytest.mark.asyncio
+async def test_generic_403_scrape_failures_open_host_circuit(mock_redis, monkeypatch):
+    """Three blocked posting fetches defer the remaining host cohort."""
+    from src.config import settings
+    from src.shared.http import RequestHostTracker
+    from src.workers.pipeline import _record_scrape_host_outcome
+
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    monkeypatch.setattr(settings, "host_circuit_failure_window_seconds", 600)
+    monkeypatch.setattr(settings, "host_circuit_open_seconds", 1800)
+
+    domain = "blocked.example.com"
+    for attempt in range(3):
+        tracker = RequestHostTracker()
+        tracker.note_request(domain, f"https://{domain}/jobs/{attempt}")
+        tracker.note_response(domain, 403)
+        open_until = await _record_scrape_host_outcome(
+            "board-generic-403",
+            domain,
+            "",
+            tracker,
+            False,
+            structlog.get_logger(),
+        )
+        if attempt < 2:
+            assert open_until is None
+
+    assert open_until is not None
+    assert await rq.get_host_circuit_open_until(domain) == pytest.approx(open_until)
+
+
+@pytest.mark.asyncio
+async def test_avature_detail_403_does_not_open_host_circuit(mock_redis, monkeypatch):
+    """Archived Avature requisitions must not pause their entire tenant."""
+    from src.config import settings
+    from src.shared.http import RequestHostTracker
+    from src.workers.pipeline import _record_scrape_host_outcome
+
+    monkeypatch.setattr(settings, "host_circuit_failure_threshold", 3)
+    domain = "jobs.example.com"
+    url = f"https://{domain}/en_US/careers/JobDetail/Role/123"
+
+    for _ in range(3):
+        tracker = RequestHostTracker()
+        tracker.note_request(domain, url)
+        tracker.note_response(domain, 403)
+        open_until = await _record_scrape_host_outcome(
+            "board-avature-403",
+            domain,
+            "",
+            tracker,
+            False,
+            structlog.get_logger(),
+        )
+        assert open_until is None
+
+    assert await rq.get_host_circuit_open_until(domain) is None
+
+
+@pytest.mark.asyncio
 async def test_workday_invalid_payload_failures_open_host_circuit(mock_redis, monkeypatch):
     """Three exhausted invalid API responses defer the remaining tenant burst."""
     from src.config import settings
