@@ -2743,6 +2743,8 @@ icici-bank,icici-bank-careers,https://www.icicicareers.com/CareerApplicant/caree
 icon,icon-greenhouse,https://job-boards.greenhouse.io/iconcareers,greenhouse,"{""token"": ""iconcareers""}",skip,
 iconiq,iconiq-greenhouse,https://job-boards.greenhouse.io/iconiq,greenhouse,"{""token"": ""iconiq""}",skip,
 id-me,id-me-greenhouse,https://job-boards.greenhouse.io/idme,greenhouse,"{""token"": ""idme""}",skip,
+id-quantique,id-quantique-greenhouse-eu,https://job-boards.eu.greenhouse.io/idquantique,greenhouse,"{""token"": ""idquantique""}",skip,
+id-quantique,id-quantique-native-careers,https://www.idquantique.com/careers-sitemap.xml,sitemap,"{""sitemap_url"": ""https://www.idquantique.com/careers-sitemap.xml""}",dom,"{""steps"": [{""tag"": ""p"", ""text"": ""Geneva"", ""field"": ""locations"", ""regex"": ""(Geneva(?:, Switzerland)?)"", ""optional"": true}, {""tag"": ""h1"", ""field"": ""title"", ""from"": 0}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop"": ""Apply""}]}"
 ideo,ideo-greenhouse,https://job-boards.greenhouse.io/ideo,greenhouse,"{""token"": ""ideo""}",skip,
 ideogram,ideogram-ashby,https://jobs.ashbyhq.com/ideogram,ashby,"{""token"": ""ideogram""}",skip,
 idiap,idiap-main,https://www.idiap.ch/en/careers,dom,"{""url_filter"": ""careers.werecruit.io""}",json-ld,
