@@ -67,8 +67,7 @@ def test_ids_from_url(url: str, expected: tuple[str | None, str | None]) -> None
 
 def test_workspace_detects_jobup_employer_profile() -> None:
     assert (
-        detect_ats_from_url("https://www.jobup.ch/en/enterprises/6099-leclanche-sa/")
-        == "jobs_ch"
+        detect_ats_from_url("https://www.jobup.ch/en/enterprises/6099-leclanche-sa/") == "jobs_ch"
     )
 
 
