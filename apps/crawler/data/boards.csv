@@ -44,6 +44,7 @@ abnormal,abnormal-greenhouse,https://job-boards.greenhouse.io/abnormalsecurity,g
 abound,abound-ashby,https://jobs.ashbyhq.com/abound,ashby,"{""token"": ""abound""}",skip,
 abridge,abridge-careers,https://jobs.ashbyhq.com/Abridge,ashby,,skip,
 absci,absci-greenhouse,https://job-boards.greenhouse.io/absci,greenhouse,"{""token"": ""absci""}",skip,
+ac-immune,ac-immune-careers,https://www.acimmune.com/careers/join-us/,dom,"{""render"": false, ""link_selector"": ""a[href$=\"".pdf\""]"", ""url_filter"": ""^https://www\\.acimmune\\.com/wp-content/uploads/[0-9]{4}/[0-9]{2}/[^/?#]+\\.pdf(?:[?#].*)?$""}",pdf,"{""title_source"": ""text"", ""title_pattern"": ""^([^\\n]+)"", ""location_pattern"": ""(Lausanne(?:,? Switzerland)?)""}"
 academia,academia-ashby,https://jobs.ashbyhq.com/academia,ashby,"{""token"": ""academia""}",skip,
 acadia-pharmaceuticals-inc,acadia-pharmaceuticals-inc-greenhouse,https://job-boards.greenhouse.io/acadiapharmaceuticals,greenhouse,"{""token"": ""acadiapharmaceuticals""}",skip,
 accel-club,accel-club-careers,https://careers.accelclub.com/jobs/,api_sniffer,"{""api_url"": ""https://jobdesk-api.accelclub.pro/v1/vacancies/"", ""method"": ""GET"", ""json_path"": ""results"", ""url_field"": ""url"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""locations[].name"", ""job_location_type"": ""location_types[0]"", ""employment_type"": ""employment_types[0]"", ""metadata.team"": ""team.name""}}",,
