@@ -1566,6 +1566,7 @@ daymark-health,daymark-health-greenhouse,https://job-boards.greenhouse.io/daymar
 db-e-c-o-north-america,db-e-c-o-north-america-greenhouse,https://job-boards.greenhouse.io/dbeconorthamerica,greenhouse,"{""token"": ""dbeconorthamerica""}",skip,
 dbt-capital,dbt-capital-teamtailor,https://careers.dbt.se/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.dbt.se/jobs.rss""}",skip,
 dbt-labs,dbt-labs-greenhouse,https://job-boards.greenhouse.io/dbtlabsinc,greenhouse,"{""token"": ""dbtlabsinc""}",skip,
+debiopharm,debiopharm-workable,https://apply.workable.com/debiopharm/,workable,"{""token"": ""debiopharm""}",workable,
 debtbook,debtbook-greenhouse,https://job-boards.greenhouse.io/debtbook,greenhouse,"{""token"": ""debtbook""}",skip,
 debut-biotech,debut-biotech-greenhouse,https://job-boards.greenhouse.io/debutbiotech25,greenhouse,"{""token"": ""debutbiotech25""}",skip,
 decagon,decagon-ashby,https://jobs.ashbyhq.com/decagon,ashby,"{""token"": ""decagon""}",skip,
