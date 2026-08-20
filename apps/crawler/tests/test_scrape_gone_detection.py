@@ -34,12 +34,22 @@ from src.processing.scrape import (
     _is_permanent_gone,
 )
 from src.queries.scrape import _RECORD_SCRAPE_FAILURE, _RECORD_SCRAPE_TRANSIENT
+from src.shared.browser import BrowserNavigationHTTPStatusError
 
 
 def _http_error(status: int, url: str) -> httpx.HTTPStatusError:
     request = httpx.Request("GET", url)
     response = httpx.Response(status, request=request)
     return httpx.HTTPStatusError(f"{status}", request=request, response=response)
+
+
+def _browser_error(status: int, url: str) -> BrowserNavigationHTTPStatusError:
+    return BrowserNavigationHTTPStatusError(
+        requested_url=url,
+        response_url=url,
+        status=status,
+        phase="primary",
+    )
 
 
 # ─── _is_permanent_gone: universal status codes only ─────────────────
@@ -49,6 +59,11 @@ def _http_error(status: int, url: str) -> httpx.HTTPStatusError:
 def test_404_and_410_signal_permanent_gone(status: int) -> None:
     """RFC-defined "this resource is gone" semantics. Universal."""
     assert _is_permanent_gone(_http_error(status, "https://example.com/jobs/x")) is True
+
+
+@pytest.mark.parametrize("status", [404, 410])
+def test_browser_404_and_410_signal_permanent_gone(status: int) -> None:
+    assert _is_permanent_gone(_browser_error(status, "https://example.com/jobs/x")) is True
 
 
 @pytest.mark.parametrize(
@@ -71,6 +86,23 @@ def test_non_http_exceptions_are_not_permanent_gone() -> None:
     assert _is_permanent_gone(httpx.ConnectError("refused")) is False
     assert _is_permanent_gone(ValueError("bad")) is False
     assert _is_permanent_gone(RuntimeError("boom")) is False
+
+
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [
+        (400, True),
+        (401, False),
+        (403, False),
+        (404, False),
+        (410, False),
+        (429, False),
+        (500, False),
+    ],
+)
+def test_browser_status_uses_same_budget_classification(status: int, expected: bool) -> None:
+    exc = _browser_error(status, "https://example.com/jobs/x")
+    assert _is_budget_eligible_failure(exc) is expected
 
 
 # ─── SQL shape: budget tombstone + permanent-gone short-circuit ──────
@@ -114,8 +146,10 @@ def test_record_failure_sql_clears_lease_unconditionally() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("transport", ["httpx", "browser"])
 async def test_do_one_scrape_passes_permanent_gone_true_on_404(
     monkeypatch: pytest.MonkeyPatch,
+    transport: str,
 ) -> None:
     """End-to-end: 404 from the inner scraper -> exception handler ->
     SQL receives permanent_gone=True so the immediate-tombstone branch
@@ -126,6 +160,8 @@ async def test_do_one_scrape_passes_permanent_gone_true_on_404(
     url = "https://anyhost.example/jobs/abc"
 
     async def _boom(*args, **kwargs):  # type: ignore[no-untyped-def]
+        if transport == "browser":
+            raise _browser_error(404, url)
         raise _http_error(404, url)
 
     monkeypatch.setattr(scrape_mod._batch, "scrape_one", _boom, raising=False)
