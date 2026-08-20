@@ -436,6 +436,39 @@ class TestDomScraper:
         )
         assert result.locations == ["Industriestrasse 1 8000 Zurich"]
 
+    def test_rexx_portal7_probe_extracts_stable_detail_fields(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head>
+          <title>Stellenangebot Inside Sales Manager (m/w/d) bei Jobportal</title>
+          <meta name="generator" content="Rexx Recruitment - Portal7">
+          <meta name="description" content="Vertrieb in Mannheim">
+        </head><body>
+          <div id="jobTplContainer" class="ck_content">
+            <p>VAG develops valves for water infrastructure.</p>
+            <h3>Ihre Aufgaben</h3>
+            <ul><li>Advise customers.</li><li>Prepare quotations.</li></ul>
+          </div>
+          <div id="footer_links">Apply</div>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        assert config["scope"] == "#jobTplContainer"
+        assert config["include_document_title"] is True
+        assert config["include_document_description"] is True
+
+        result = parse_html(html, config)
+        assert result.title == "Inside Sales Manager (m/w/d)"
+        assert result.locations == ["Mannheim"]
+        assert result.description == (
+            "<p>VAG develops valves for water infrastructure.</p>"
+            "<h3>Ihre Aufgaben</h3>"
+            "<ul><li>Advise customers.</li><li>Prepare quotations.</li></ul>"
+        )
+
     def test_solique_probe_accepts_class_tokens_and_single_quotes(self):
         from src.core.scrapers.dom import can_handle
 
@@ -507,12 +540,14 @@ class TestDomScraper:
         [
             {"scope": "#job-content", "include_document_title": "yes"},
             {"include_document_title": True},
+            {"scope": "#job-content", "include_document_description": "yes"},
+            {"include_document_description": True},
         ],
     )
-    def test_document_title_option_requires_boolean_and_scope(self, config):
+    def test_document_metadata_options_require_boolean_and_scope(self, config):
         from src.core.scrapers.dom import parse_html
 
-        with pytest.raises(ValueError, match="include_document_title"):
+        with pytest.raises(ValueError, match="document|include_document"):
             parse_html(
                 '<div id="job-content"><h2>Role</h2></div>',
                 {**config, "steps": [{"tag": "h2", "field": "title"}]},

@@ -8,7 +8,8 @@ By default (``render: false``), fetches the page via static HTTP.  Set
 
 Config uses ``steps`` (same format as ``walk_steps``), an optional ``scope``
 CSS selector that limits extraction to one content container, and optional
-``include_document_title`` when a scoped layout keeps its title in ``<head>``.
+``include_document_title`` / ``include_document_description`` flags when a
+scoped layout keeps useful metadata in ``<head>``.
 Browser lifecycle keys (``wait``, ``timeout``, ``user_agent``, ``headless``,
 ``actions``) are only used when rendering.
 
@@ -30,6 +31,7 @@ import codecs
 import contextlib
 import json
 import re
+from html import escape
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -59,13 +61,16 @@ def _scope_html(html: str, config: dict) -> str:
     """
 
     include_document_title = config.get("include_document_title", False)
+    include_document_description = config.get("include_document_description", False)
     if not isinstance(include_document_title, bool):
         raise ValueError("DOM scraper include_document_title must be a boolean")
+    if not isinstance(include_document_description, bool):
+        raise ValueError("DOM scraper include_document_description must be a boolean")
 
     scope = config.get("scope")
     if scope is None:
-        if include_document_title:
-            raise ValueError("DOM scraper include_document_title requires scope")
+        if include_document_title or include_document_description:
+            raise ValueError("DOM scraper document metadata options require scope")
         return html
     if not isinstance(scope, str) or not scope.strip() or len(scope) > 256 or "\x00" in scope:
         raise ValueError("DOM scraper scope must be a non-empty CSS selector up to 256 chars")
@@ -76,12 +81,21 @@ def _scope_html(html: str, config: dict) -> str:
         raise ValueError(f"DOM scraper scope is not a valid CSS selector: {scope!r}") from exc
     if node is None:
         raise ValueError(f"DOM scraper scope did not match the page: {scope!r}")
-    scoped_html = node.html
+    prefixes: list[str] = []
     if include_document_title:
         title = document.css_first("title")
         if title is not None:
-            scoped_html = f"{title.html}{scoped_html}"
-    return scoped_html
+            prefixes.append(title.html)
+    if include_document_description:
+        description = document.css_first('meta[name="description"]')
+        content = description.attributes.get("content") if description is not None else None
+        if content:
+            prefixes.append(f'<p data-document-description="true">{escape(content)}</p>')
+        # A visible sentinel gives range steps a stable boundary between
+        # injected document metadata and scoped content. Consumers match its
+        # attribute and use offset=1, so it never enters extracted output.
+        prefixes.append('<p data-document-scope-start="true">scope</p>')
+    return "".join(prefixes) + node.html
 
 
 def _check_gone_redirect(final_url: str, pattern: str | None, source_url: str) -> None:
@@ -285,6 +299,7 @@ _CLINCH_CLASS_MARKERS = (
 )
 _SOLIQUE_HOST_MARKER = "solique.ch/"
 _SOLIQUE_CLASS_MARKERS = ("job-title", "tasks-profile-wrapper")
+_REXX_PORTAL7_MARKERS = ("rexx recruitment - portal7", "jobtplcontainer")
 
 
 def _has_html_class(html: str, class_name: str) -> bool:
@@ -298,6 +313,51 @@ def _has_html_class(html: str, class_name: str) -> bool:
             re.IGNORECASE,
         )
     )
+
+
+def _rexx_portal7_config(htmls: list[str]) -> dict | None:
+    """Build a static config for legacy Rexx Portal7 detail pages.
+
+    Portal7 keeps the role body in ``#jobTplContainer``, the title in the
+    document title, and the location at the end of the meta description.
+    Listing URLs often carry an expiring ``sid``; the DOM monitor removes that
+    token before these pages reach the scraper.
+    """
+
+    matches = sum(
+        all(marker in html.casefold() for marker in _REXX_PORTAL7_MARKERS)
+        for html in htmls
+    )
+    if not matches or matches < len(htmls) / 2:
+        return None
+
+    return {
+        "scope": "#jobTplContainer",
+        "include_document_title": True,
+        "include_document_description": True,
+        "steps": [
+            {
+                "tag": "title",
+                "field": "title",
+                "regex": r"^(?:Stellenangebot|Job offer)\s+(.+?)\s+(?:bei|at)\s+",
+                "from": 0,
+            },
+            {
+                "attr": "data-document-description=true",
+                "field": "locations",
+                "regex": r"(?s)^.*\bin\s+(.+?)\s*$",
+                "from": 0,
+            },
+            {
+                "attr": "data-document-scope-start=true",
+                "offset": 1,
+                "field": "description",
+                "html": True,
+                "stop_count": 200,
+                "from": 0,
+            },
+        ],
+    }
 
 
 def _solique_config(htmls: list[str]) -> dict | None:
@@ -590,6 +650,10 @@ def can_handle(htmls: list[str]) -> dict | None:
     Uses the first page's structure to generate steps, then validates
     that the title step (h1) matches on other pages too.
     """
+    rexx_portal7 = _rexx_portal7_config(htmls)
+    if rexx_portal7 is not None:
+        return rexx_portal7
+
     solique = _solique_config(htmls)
     if solique is not None:
         return solique
