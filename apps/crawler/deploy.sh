@@ -17,6 +17,8 @@ flock -w 7200 9 || {
 # ── Validate required env vars ─────────────────────────────────────────
 required_vars=(
   OWNER
+  GHCR_PULL_USERNAME
+  GHCR_PULL_TOKEN
   CRAWLER_IMAGE_TAG
   CRAWLER_IMAGE_REF
   BROWSER_IMAGE_REF
@@ -82,6 +84,7 @@ ACTIVE_RELEASE_FORMAT=""
 ACTIVE_IMAGE_OVERRIDE=""
 ROLLBACK_ACTIVE_RELEASE_TARGET=""
 ROLLBACK_ACTIVE_IMAGE_OVERRIDE=""
+GHCR_DOCKER_CONFIG=""
 ENV_FILE_WAS_PRESENT=0
 ROLLBACK_ARMED=0
 ROLLBACK_RUNNING=0
@@ -155,6 +158,54 @@ MAINTENANCE_PROVENANCE_LABELS=(
 )
 ALLOY_IMAGE="grafana/alloy:v1.18.1@sha256:0f4434c92b3e6cdac38bb129b344e1790c246f7b6e2eaffcc16a5fa363240e33"
 ALLOY_STATE_ACTIVATION_REQUIRED=0
+
+cleanup_ghcr_docker_config() {
+  local config_dir="${GHCR_DOCKER_CONFIG:-}"
+
+  if [[ -z "$config_dir" ]]; then
+    unset DOCKER_CONFIG
+    return 0
+  fi
+  if [[ "$config_dir" != "$DEPLOY_DIR"/.ghcr-docker-config.* ||
+    ! -d "$config_dir" || -L "$config_dir" ]]
+  then
+    echo "ERROR: refusing to remove an unsafe GHCR Docker config path" >&2
+    return 1
+  fi
+  rm -rf -- "$config_dir"
+  GHCR_DOCKER_CONFIG=""
+  unset DOCKER_CONFIG
+}
+
+cleanup_ghcr_docker_config_on_exit() {
+  local exit_code="${1:-1}"
+  local cleanup_status=0
+
+  trap - ERR EXIT HUP INT TERM
+  cleanup_ghcr_docker_config || cleanup_status=$?
+  if ((exit_code == 0 && cleanup_status != 0)); then
+    exit_code=$cleanup_status
+  fi
+  exit "$exit_code"
+}
+
+initialize_ghcr_docker_config() {
+  GHCR_DOCKER_CONFIG="$(mktemp -d "${DEPLOY_DIR}/.ghcr-docker-config.XXXXXX")"
+  chmod 0700 "$GHCR_DOCKER_CONFIG"
+  export DOCKER_CONFIG="$GHCR_DOCKER_CONFIG"
+  trap 'cleanup_ghcr_docker_config_on_exit $?' EXIT
+  trap 'exit 129' HUP
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+
+  if ! printf '%s' "$GHCR_PULL_TOKEN" |
+    docker login ghcr.io --username "$GHCR_PULL_USERNAME" --password-stdin >/dev/null
+  then
+    echo "ERROR: failed to authenticate GHCR image pulls" >&2
+    return 1
+  fi
+  unset GHCR_PULL_TOKEN GHCR_PULL_USERNAME
+}
 
 stop_maintenance_window() {
   if [[ -z "$MAINTENANCE_MARKER_NAME" ]]; then
@@ -615,6 +666,11 @@ configure_rollback_compose_contract() {
 
 rollback_compose() {
   local -a compose_args
+  local -a clean_environment=(
+    "PATH=${PATH:-/usr/local/bin:/usr/bin:/bin}"
+    "HOME=${HOME:-$DEPLOY_DIR}"
+    "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME"
+  )
 
   # Compose gives process variables precedence over the restored env file.
   # Run rollback in a clean environment so the failed release tag and every
@@ -624,10 +680,10 @@ rollback_compose() {
     compose_args+=(-f "$ROLLBACK_ACTIVE_IMAGE_OVERRIDE")
   fi
   compose_args+=(-f "$ROLLBACK_POOL_OVERRIDE")
-  env -i \
-    "PATH=${PATH:-/usr/local/bin:/usr/bin:/bin}" \
-    "HOME=${HOME:-$DEPLOY_DIR}" \
-    "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" \
+  if [[ -n "${DOCKER_CONFIG:-}" ]]; then
+    clean_environment+=("DOCKER_CONFIG=$DOCKER_CONFIG")
+  fi
+  env -i "${clean_environment[@]}" \
     docker compose \
     --env-file "$ENV_FILE" \
     "${compose_args[@]}" \
@@ -687,6 +743,12 @@ rollback_deploy() {
   local rollback_stack_started=0
 
   trap - ERR EXIT HUP INT TERM
+  if declare -F cleanup_ghcr_docker_config_on_exit >/dev/null; then
+    trap 'cleanup_ghcr_docker_config_on_exit $?' EXIT
+    trap 'exit 129' HUP
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+  fi
   if (( ! ROLLBACK_ARMED || ROLLBACK_RUNNING )); then
     exit "$exit_code"
   fi
@@ -845,6 +907,7 @@ arm_deploy_rollback() {
 
 disarm_deploy_rollback() {
   ROLLBACK_ARMED=0
+  cleanup_ghcr_docker_config
   trap - ERR EXIT HUP INT TERM
 }
 
@@ -1200,6 +1263,8 @@ ensure_no_running_compose_oneoffs
 ensure_no_running_typesense_maintenance
 ensure_reconciliation_wrapper_compatible
 python3 "$INCOMING_DIR/scripts/postgresql-operational-preflight.py"
+initialize_ghcr_docker_config
+
 verify_active_deploy_snapshot
 ROLLBACK_ACTIVE_RELEASE_TARGET="$ACTIVE_RELEASE_DIR"
 ROLLBACK_ACTIVE_IMAGE_OVERRIDE="$ACTIVE_IMAGE_OVERRIDE"

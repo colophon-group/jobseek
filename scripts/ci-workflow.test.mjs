@@ -448,7 +448,7 @@ test("crawler deploys derive immutable versions for unchanged releases", () => {
   );
   assert.match(
     deployCrawlerWorkflow,
-    /CRAWLER_IMAGE_TAG: \$\{\{ steps\.version\.outputs\.image_tag \}\}/,
+    /CRAWLER_IMAGE_TAG: \$\{\{ needs\.build\.outputs\.image_tag \}\}/,
   );
   assert.doesNotMatch(
     deployCrawlerWorkflow,

@@ -44,6 +44,115 @@ def test_deploy_preflights_disk_before_pull_and_quiesce() -> None:
     assert preflight < pull < quiesce
 
 
+def test_deploy_refreshes_short_lived_ghcr_auth_before_release_mutation() -> None:
+    script = DEPLOY_SH.read_text()
+    workflow = yaml.safe_load(DEPLOY_WORKFLOW.read_text())
+    jobs = workflow["jobs"]
+    deploy_step = next(
+        step for step in jobs["deploy"]["steps"] if step.get("name") == "Deploy via SSH"
+    )
+
+    required = script.partition("required_vars=(")[2].partition(")")[0]
+    assert "GHCR_PULL_USERNAME" in required
+    assert "GHCR_PULL_TOKEN" in required
+    credential_setup = script[
+        script.index("initialize_ghcr_docker_config() {") : script.index(
+            "stop_maintenance_window() {"
+        )
+    ]
+    assert 'mktemp -d "${DEPLOY_DIR}/.ghcr-docker-config.XXXXXX"' in credential_setup
+    assert 'chmod 0700 "$GHCR_DOCKER_CONFIG"' in credential_setup
+    assert 'export DOCKER_CONFIG="$GHCR_DOCKER_CONFIG"' in credential_setup
+    assert "docker login ghcr.io" in credential_setup
+    assert "unset GHCR_PULL_TOKEN GHCR_PULL_USERNAME" in credential_setup
+    assert "trap 'cleanup_ghcr_docker_config_on_exit $?' EXIT" in credential_setup
+
+    initialize = script.index("\ninitialize_ghcr_docker_config\n")
+    snapshot = script.index("\nsnapshot_active_deploy_specs\n")
+    pull = script.index("\npull_deploy_images\n")
+    assert initialize < snapshot < pull
+
+    rollback_compose = script[
+        script.index("rollback_compose() {") : script.index("rollback_compose_service_ready() {")
+    ]
+    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    disarm_start = script.index("disarm_deploy_rollback() {")
+    disarm = script[disarm_start : script.index("compose_service_ready() {", disarm_start)]
+    assert 'clean_environment+=("DOCKER_CONFIG=$DOCKER_CONFIG")' in rollback_compose
+    assert "trap 'cleanup_ghcr_docker_config_on_exit $?' EXIT" in rollback
+    assert disarm.index("cleanup_ghcr_docker_config") < disarm.index("trap - ERR EXIT")
+
+    forwarded = deploy_step["with"]["envs"].split(",")
+    assert "GHCR_PULL_USERNAME" in forwarded
+    assert "GHCR_PULL_TOKEN" in forwarded
+    assert deploy_step["env"]["GHCR_PULL_USERNAME"] == "${{ github.actor }}"
+    assert deploy_step["env"]["GHCR_PULL_TOKEN"] == "${{ github.token }}"
+    assert jobs["build"]["permissions"]["packages"] == "write"
+    assert jobs["deploy"]["permissions"]["packages"] == "read"
+    assert jobs["promote"]["permissions"]["packages"] == "write"
+    assert set(jobs["deploy"]["needs"]) == {"murmur", "build"}
+    assert set(jobs["promote"]["needs"]) == {"build", "deploy"}
+
+    env_start = script.index('cat > "$ENV_FILE"')
+    persisted_env = script[env_start : script.index("EOF", env_start)]
+    assert "GHCR_PULL_USERNAME" not in persisted_env
+    assert "GHCR_PULL_TOKEN" not in persisted_env
+
+
+def test_deploy_removes_transaction_scoped_ghcr_auth_on_success_and_failure(
+    tmp_path: Path,
+) -> None:
+    script = DEPLOY_SH.read_text()
+    credential_support = script[
+        script.index("cleanup_ghcr_docker_config() {") : script.index("stop_maintenance_window() {")
+    ]
+    binary_dir = tmp_path / "bin"
+    binary_dir.mkdir()
+    _write_executable(
+        binary_dir / "docker",
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        "cat >/dev/null\n"
+        'test "$1" = login\n'
+        'test "$2" = ghcr.io\n'
+        'test -d "$DOCKER_CONFIG"\n'
+        'printf "{}\\n" >"$DOCKER_CONFIG/config.json"\n'
+        'exit "${DOCKER_LOGIN_EXIT:-0}"\n',
+    )
+    harness = "\n".join(
+        (
+            "set -Eeuo pipefail",
+            'DEPLOY_DIR="$TEST_DEPLOY_DIR"',
+            'GHCR_DOCKER_CONFIG=""',
+            'GHCR_PULL_USERNAME="github-actions[bot]"',
+            'GHCR_PULL_TOKEN="short-lived-token"',
+            credential_support,
+            "initialize_ghcr_docker_config",
+            'test -z "${GHCR_PULL_USERNAME+x}"',
+            'test -z "${GHCR_PULL_TOKEN+x}"',
+            'test -f "$DOCKER_CONFIG/config.json"',
+        )
+    )
+
+    for login_exit in (0, 91):
+        case_dir = tmp_path / f"case-{login_exit}"
+        case_dir.mkdir()
+        result = subprocess.run(
+            ["bash", "-c", harness],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "PATH": f"{binary_dir}:{os.environ['PATH']}",
+                "TEST_DEPLOY_DIR": str(case_dir),
+                "DOCKER_LOGIN_EXIT": str(login_exit),
+            },
+        )
+        assert result.returncode == (0 if login_exit == 0 else 1), result.stderr
+        assert list(case_dir.glob(".ghcr-docker-config.*")) == []
+
+
 def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
     script = DEPLOY_SH.read_text()
 
@@ -887,7 +996,7 @@ def test_crawler_host_mutation_waits_for_same_revision_murmur_workflow() -> None
     host_copy = workflow.index("- name: Copy deploy files")
     assert wait < host_copy
     assert parsed["jobs"]["murmur"]["timeout-minutes"] == 360
-    assert parsed["jobs"]["deploy"]["needs"] == "murmur"
+    assert set(parsed["jobs"]["deploy"]["needs"]) == {"murmur", "build"}
     assert "actions: read" in workflow
     assert "actions/workflows/deploy-murmur-shim.yml/runs" in workflow
     assert '-f head_sha="$GITHUB_SHA"' in workflow
