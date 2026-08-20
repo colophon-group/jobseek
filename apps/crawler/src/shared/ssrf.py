@@ -16,10 +16,10 @@ The guard is implemented at the **httpx transport layer**:
      169.254/16, ::1/128, fc00::/7) plus the IETF-reserved ranges that
      are equally dangerous (unspecified, multicast, CGNAT, link-local
      v6, IPv4-mapped v6, metadata).
-  2. :func:`resolve_host_or_raise` — runs ``socket.getaddrinfo`` for
-     the host once, rejects when *any* returned address is private.
-     Returns the chosen address so the caller can short-circuit a
-     second resolution.
+  2. :func:`resolve_host_or_raise` — runs ``socket.getaddrinfo`` and rejects
+     when *any* returned address is private. The async transport retries only
+     temporary ``EAI_AGAIN`` resolver failures with a bounded backoff; every
+     successful answer is still validated fail-closed.
   3. :func:`is_internal_host_allowed` — opt-in exemption list, sourced
      from ``INTERNAL_HOSTS_ALLOW`` env (comma-separated host[:port]
      entries) plus the proxy / Typesense / Postgres / Redis hosts the
@@ -56,6 +56,7 @@ testing; it is not required for the live deployment.
 
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import os
 import socket
@@ -69,6 +70,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 log = structlog.get_logger()
+
+DNS_RETRY_BACKOFF_SECONDS = (0.05, 0.1)
 
 
 class SSRFError(Exception):
@@ -251,31 +254,12 @@ def is_internal_host_allowed(host: str) -> bool:
     return h in _gather_internal_hosts()
 
 
-def resolve_host_or_raise(url: str, host: str) -> str:
-    """Resolve ``host`` and reject when any returned address is private.
-
-    Returns the first resolved address. The ``url`` is only used for
-    error reporting / log context.
-
-    DNS-rebinding posture: we resolve *once* and inspect *every*
-    address in the answer. An attacker who flips the authoritative
-    DNS between this call and the eventual socket connect can still
-    swing the answer — Python's stdlib has no zero-cost way to pin
-    httpx's underlying ``httpcore.AsyncHTTPConnection`` to a captured
-    IP. The first-line defence is the host-resolution check (catches
-    almost every accidental misconfiguration plus a static-DNS
-    attack); the second-line defence is the network firewall on the
-    Hetzner box (port 5432 / 6379 / 8108 accept only the private
-    network, not the public Internet). The Murmur shim's TS sibling
-    pins the captured IP because Node exposes the ``lookup`` hook;
-    httpx does not. If httpx ever exposes one, lift it from
-    ``apps/murmur-shim/src/lib/murmur/ssrf.ts``.
-    """
-    try:
-        infos = socket.getaddrinfo(host, None)
-    except socket.gaierror as exc:
-        raise SSRFError(url, f"dns_failed: {exc}", host=host) from exc
-
+def _public_address_from_infos(
+    url: str,
+    host: str,
+    infos: Iterable[tuple[Any, ...]],
+) -> str:
+    """Validate one resolver answer and choose its first public address."""
     chosen: str | None = None
     for family, _socktype, _proto, _canonname, sockaddr in infos:
         if family == socket.AF_INET:
@@ -301,13 +285,61 @@ def resolve_host_or_raise(url: str, host: str) -> str:
     return chosen
 
 
-def validate_request_url(url: str | httpx.URL) -> None:
-    """Public guard. Raises :class:`SSRFError` when ``url`` would SSRF.
+def _raise_dns_failure(url: str, host: str, exc: socket.gaierror) -> None:
+    raise SSRFError(url, f"dns_failed: {exc}", host=host) from exc
 
-    Called from :class:`SSRFGuardedTransport` for every request that
-    httpx dispatches (including each redirect hop). Also exported for
-    callers that want to fail-fast before queuing work.
+
+def resolve_host_or_raise(url: str, host: str) -> str:
+    """Synchronously resolve ``host`` and reject private answer records.
+
+    Returns the first resolved address. The ``url`` is only used for
+    error reporting / log context.
+
+    DNS-rebinding posture: we inspect *every* address in each successful
+    answer. An attacker who flips the authoritative
+    DNS between this call and the eventual socket connect can still
+    swing the answer — Python's stdlib has no zero-cost way to pin
+    httpx's underlying ``httpcore.AsyncHTTPConnection`` to a captured
+    IP. The first-line defence is the host-resolution check (catches
+    almost every accidental misconfiguration plus a static-DNS
+    attack); the second-line defence is the network firewall on the
+    Hetzner box (port 5432 / 6379 / 8108 accept only the private
+    network, not the public Internet). The Murmur shim's TS sibling
+    pins the captured IP because Node exposes the ``lookup`` hook;
+    httpx does not. If httpx ever exposes one, lift it from
+    ``apps/murmur-shim/src/lib/murmur/ssrf.ts``.
     """
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror as exc:
+        _raise_dns_failure(url, host, exc)
+    return _public_address_from_infos(url, host, infos)
+
+
+async def _resolve_host_or_raise_with_retry(url: str, host: str) -> str:
+    """Resolve off-loop and retry only temporary resolver unavailability."""
+    max_attempts = len(DNS_RETRY_BACKOFF_SECONDS) + 1
+    for attempt in range(1, max_attempts + 1):
+        try:
+            infos = await asyncio.to_thread(socket.getaddrinfo, host, None)
+        except socket.gaierror as exc:
+            if exc.errno != socket.EAI_AGAIN or attempt == max_attempts:
+                _raise_dns_failure(url, host, exc)
+            log.warning(
+                "ssrf.dns.retry",
+                host=host,
+                attempt=attempt,
+                max_attempts=max_attempts,
+                error_type=type(exc).__name__,
+            )
+            await asyncio.sleep(DNS_RETRY_BACKOFF_SECONDS[attempt - 1])
+            continue
+        return _public_address_from_infos(url, host, infos)
+    raise AssertionError("bounded DNS retry loop exhausted without a result")
+
+
+def _host_requiring_dns_validation(url: str | httpx.URL) -> tuple[str, str] | None:
+    """Validate URL shape/literals and return a hostname that needs DNS."""
     url_str = str(url)
     try:
         parsed = urlparse(url_str)
@@ -316,31 +348,42 @@ def validate_request_url(url: str | httpx.URL) -> None:
 
     scheme = (parsed.scheme or "").lower()
     if scheme not in ("http", "https"):
-        # ``file://``, ``gopher://``, ``data://`` etc. — none of these
-        # are legitimate board URLs. ``http(s)`` is the only egress.
         raise SSRFError(url_str, f"scheme_not_allowed:{scheme or 'empty'}")
 
     host = (parsed.hostname or "").lower()
     if not host:
         raise SSRFError(url_str, "host_missing")
 
-    # Internal-by-design hosts skip the IP check. The deployment routes
-    # to Typesense / Postgres / Redis over the private network and the
-    # proxy URL may also live there.
     if is_internal_host_allowed(host):
-        return
+        return None
 
-    # IP literals: classify directly, no DNS needed.
     try:
         ip = ipaddress.ip_address(host)
     except ValueError:
-        # Hostname path — go through getaddrinfo.
-        resolve_host_or_raise(url_str, host)
-        return
+        return url_str, host
 
-    if _ip_in_blocklist(ip) is not None:
-        reason = _ip_in_blocklist(ip)
+    reason = _ip_in_blocklist(ip)
+    if reason is not None:
         raise SSRFError(url_str, f"private_ip_literal:{reason}", host=host)
+    return None
+
+
+def validate_request_url(url: str | httpx.URL) -> None:
+    """Public guard. Raises :class:`SSRFError` when ``url`` would SSRF.
+
+    Called from :class:`SSRFGuardedTransport` for every request that
+    httpx dispatches (including each redirect hop). Also exported for
+    callers that want to fail-fast before queuing work.
+    """
+    target = _host_requiring_dns_validation(url)
+    if target is not None:
+        resolve_host_or_raise(*target)
+
+
+async def _validate_request_url_with_dns_retry(url: str | httpx.URL) -> None:
+    target = _host_requiring_dns_validation(url)
+    if target is not None:
+        await _resolve_host_or_raise_with_retry(*target)
 
 
 class SSRFGuardedTransport(httpx.AsyncBaseTransport):
@@ -362,7 +405,7 @@ class SSRFGuardedTransport(httpx.AsyncBaseTransport):
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         try:
-            validate_request_url(request.url)
+            await _validate_request_url_with_dns_retry(request.url)
         except SSRFError as exc:
             log.warning(
                 "ssrf.guard.blocked",

@@ -17,8 +17,9 @@ deterministically simulate a hostname that resolves to a private IP
 
 from __future__ import annotations
 
+import asyncio
 import socket
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -267,6 +268,109 @@ class TestSSRFGuardedTransport:
         async with httpx.AsyncClient(transport=guarded) as client:
             resp = await client.get("http://8.8.8.8/")
         assert resp.status_code == 200
+
+    async def test_retries_temporary_dns_failure_then_allows_public_answer(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, text="ok")
+
+        public_answer = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("93.184.216.34", 0))]
+        guarded = SSRFGuardedTransport(httpx.MockTransport(handler))
+        with (
+            patch.object(
+                socket,
+                "getaddrinfo",
+                side_effect=[
+                    socket.gaierror(socket.EAI_AGAIN, "temporary failure"),
+                    public_answer,
+                ],
+            ) as resolver,
+            patch.object(asyncio, "sleep", new_callable=AsyncMock) as sleep,
+        ):
+            async with httpx.AsyncClient(transport=guarded) as client:
+                response = await client.get("http://example.com/")
+
+        assert response.status_code == 200
+        assert resolver.call_count == 2
+        sleep.assert_awaited_once_with(0.05)
+
+    async def test_does_not_retry_permanent_dns_failure(self) -> None:
+        calls: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls.append(request)
+            return httpx.Response(200, text="should not get here")
+
+        guarded = SSRFGuardedTransport(httpx.MockTransport(handler))
+        with (
+            patch.object(
+                socket,
+                "getaddrinfo",
+                side_effect=socket.gaierror(socket.EAI_NONAME, "not found"),
+            ) as resolver,
+            patch.object(asyncio, "sleep", new_callable=AsyncMock) as sleep,
+        ):
+            async with httpx.AsyncClient(transport=guarded) as client:
+                with pytest.raises(SSRFError) as exc:
+                    await client.get("http://does-not-exist.example/")
+
+        assert exc.value.reason.startswith("dns_failed")
+        assert resolver.call_count == 1
+        sleep.assert_not_awaited()
+        assert calls == []
+
+    async def test_temporary_dns_retries_are_bounded(self) -> None:
+        calls: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls.append(request)
+            return httpx.Response(200, text="should not get here")
+
+        guarded = SSRFGuardedTransport(httpx.MockTransport(handler))
+        with (
+            patch.object(
+                socket,
+                "getaddrinfo",
+                side_effect=socket.gaierror(socket.EAI_AGAIN, "temporary failure"),
+            ) as resolver,
+            patch.object(asyncio, "sleep", new_callable=AsyncMock) as sleep,
+        ):
+            async with httpx.AsyncClient(transport=guarded) as client:
+                with pytest.raises(SSRFError) as exc:
+                    await client.get("http://temporarily-unavailable.example/")
+
+        assert exc.value.reason.startswith("dns_failed")
+        assert resolver.call_count == 3
+        assert [args.args[0] for args in sleep.await_args_list] == [0.05, 0.1]
+        assert calls == []
+
+    async def test_retry_answer_with_private_ip_is_still_blocked(self) -> None:
+        calls: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls.append(request)
+            return httpx.Response(200, text="should not get here")
+
+        private_answer = [(socket.AF_INET, socket.SOCK_STREAM, 0, "", ("10.0.0.5", 0))]
+        guarded = SSRFGuardedTransport(httpx.MockTransport(handler))
+        with (
+            patch.object(
+                socket,
+                "getaddrinfo",
+                side_effect=[
+                    socket.gaierror(socket.EAI_AGAIN, "temporary failure"),
+                    private_answer,
+                ],
+            ) as resolver,
+            patch.object(asyncio, "sleep", new_callable=AsyncMock) as sleep,
+        ):
+            async with httpx.AsyncClient(transport=guarded) as client:
+                with pytest.raises(SSRFError) as exc:
+                    await client.get("http://attacker.example/")
+
+        assert "resolves_to_private_ip" in exc.value.reason
+        assert resolver.call_count == 2
+        sleep.assert_awaited_once_with(0.05)
+        assert calls == []
 
     async def test_blocks_redirect_to_private_ip(self) -> None:
         """A response carrying ``Location: http://127.0.0.1/`` must be
