@@ -10,6 +10,7 @@ Auto-probed via Playwright when ``ws probe scraper`` runs.
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
@@ -98,6 +99,110 @@ _WORKPLACE_TYPE_FIELDS = (
 _DEFAULT_WAIT = "load"
 _DEFAULT_TIMEOUT = 20_000
 _DEFAULT_SETTLE = 3  # seconds to wait after navigation for XHRs to complete
+
+_SEEK_MARKETS = {
+    "au.seek.com": ("en-AU", "anz-1"),
+    "www.seek.com.au": ("en-AU", "anz-1"),
+    "nz.seek.com": ("en-NZ", "anz-1"),
+    "www.seek.co.nz": ("en-NZ", "anz-1"),
+}
+_SEEK_JOB_PATH_RE = re.compile(r"^/job/(?P<id>\d+)/?$")
+_SEEK_JOB_DETAILS_QUERY = """\
+query JobDetails($id: ID!) {
+  jobDetails(id: $id) {
+    job {
+      id
+      title
+      content
+      abstract
+      location { label(locale: \"{locale}\") }
+      advertiser { id name(locale: \"{locale}\") }
+      workTypes { label(locale: \"{locale}\") }
+      createdAt { dateTimeUtc }
+      expiresAt { dateTimeUtc }
+      isExpired
+      status
+      url(zone: \"{zone}\", locale: \"{locale}\")
+    }
+  }
+}
+"""
+
+
+def _seek_http_config(urls: list[str]) -> dict | None:
+    """Return SEEK's public GraphQL detail config for canonical job URLs.
+
+    SEEK's company-profile listing is public, but direct ``/job/<id>``
+    navigation can be replaced by a Cloudflare verification page for crawler
+    egress. The same detail data is available from the first-party GraphQL
+    endpoint used by SEEK's candidate UI. Recognize only canonical AU/NZ SEEK
+    job URLs, and require every probe sample to belong to the same market.
+    """
+
+    if not urls:
+        return None
+
+    market: tuple[str, str] | None = None
+    api_host: str | None = None
+    for url in urls:
+        try:
+            parsed = urlparse(url)
+            port = parsed.port
+        except ValueError:
+            return None
+        host = (parsed.hostname or "").casefold()
+        current_market = _SEEK_MARKETS.get(host)
+        if (
+            parsed.scheme.casefold() != "https"
+            or current_market is None
+            or parsed.username is not None
+            or parsed.password is not None
+            or port not in (None, 443)
+            or _SEEK_JOB_PATH_RE.fullmatch(parsed.path) is None
+        ):
+            return None
+        if market is None:
+            market = current_market
+            api_host = "au.seek.com" if current_market[0] == "en-AU" else "nz.seek.com"
+        elif market != current_market:
+            return None
+
+    assert market is not None and api_host is not None
+    locale, zone = market
+    query = _SEEK_JOB_DETAILS_QUERY.replace("{locale}", locale).replace("{zone}", zone)
+    post_body = json.dumps(
+        {
+            "operationName": "JobDetails",
+            "variables": {"id": "{id}"},
+            "query": query,
+        },
+        separators=(",", ":"),
+    )
+    return {
+        "api_url": f"https://{api_host}/graphql",
+        "method": "POST",
+        "post_body": post_body,
+        "url_pattern": r"/job/(?P<id>\d+)",
+        "json_path": "data.jobDetails.job",
+        "request_headers": {
+            "content-type": "application/json",
+            "referer": f"https://{api_host}/",
+        },
+        "fields": {
+            "title": "title",
+            "description": "content",
+            "locations": "location.label",
+            "employment_type": "workTypes.label",
+            "date_posted": "createdAt.dateTimeUtc",
+            "valid_through": "expiresAt.dateTimeUtc",
+            "metadata.seek_id": "id",
+            "metadata.advertiser": "advertiser.name",
+            "metadata.advertiser_id": "advertiser.id",
+            "metadata.abstract": "abstract",
+            "metadata.status": "status",
+            "metadata.is_expired": "isExpired",
+        },
+    }
 
 
 def _find_single_job(exchanges: list, *, json_path: str | None = None) -> dict | None:
@@ -321,6 +426,55 @@ def _extract_heuristic(obj: dict) -> JobContent:
     return JobContent(**kwargs)
 
 
+async def _probe_seek_http(urls: list[str], config: dict) -> tuple[dict | None, str]:
+    """Verify the SEEK preset against each sampled job through direct HTTP."""
+
+    from src.shared.http import create_http_client
+
+    quality_fields = (
+        "title",
+        "description",
+        "locations",
+        "employment_type",
+        "job_location_type",
+        "date_posted",
+    )
+    http = create_http_client()
+    try:
+        raw_results = await asyncio.gather(
+            *[_scrape_http(url, config, http) for url in urls],
+            return_exceptions=True,
+        )
+    finally:
+        await http.aclose()
+
+    contents = [result for result in raw_results if isinstance(result, JobContent)]
+    detected = sum(bool(item.title and item.description and item.locations) for item in contents)
+    total = len(urls)
+    if detected == 0 or detected / total < 0.5:
+        return None, f"SEEK GraphQL not detected ({detected}/{total} complete jobs)"
+
+    field_counts = {
+        field: sum(bool(getattr(item, field, None)) for item in contents)
+        for field in quality_fields
+    }
+    metadata = {
+        "config": config,
+        "total": detected,
+        "titles": field_counts["title"],
+        "descriptions": field_counts["description"],
+        "locations": field_counts["locations"],
+        "fields": {field: count for field, count in field_counts.items() if count > 0},
+    }
+    comment = (
+        "SEEK GraphQL — "
+        f"{field_counts['title']}/{detected} titles, "
+        f"{field_counts['description']}/{detected} desc, "
+        f"{field_counts['locations']}/{detected} locations"
+    )
+    return metadata, comment
+
+
 async def probe_pw(
     urls: list[str],
     pw,
@@ -330,6 +484,13 @@ async def probe_pw(
     Opens each URL, captures XHR/fetch exchanges, and checks for single-job
     JSON responses.  Returns ``(metadata, comment)`` or ``(None, comment)``.
     """
+    seek_config = _seek_http_config(urls)
+    if seek_config is not None:
+        # Do not navigate to SEEK detail pages: Cloudflare may replace them
+        # with a 403 verification document even though the public first-party
+        # GraphQL detail endpoint remains available.
+        return await _probe_seek_http(urls, seek_config)
+
     from src.shared.browser import BrowserNavigationHTTPStatusError, navigate, open_page
 
     wait = _DEFAULT_WAIT
