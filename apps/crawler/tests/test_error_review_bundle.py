@@ -230,3 +230,79 @@ def test_collect_docker_lifecycle_journal_uses_exact_window(tmp_path, monkeypatc
     }
     assert manifest["docker_lifecycle"]["returncode"] == 0
     assert manifest["maintenance_correlation"]["path"].endswith("host/maintenance-correlation.json")
+
+
+def test_collect_reconciliation_journal_retains_redacted_exact_window(tmp_path, monkeypatch):
+    calls = []
+    raw_id = "123e4567-e89b-12d3-a456-426614174000"
+
+    def fake_run(command, **_kwargs):
+        calls.append(command)
+        return (
+            0,
+            '{"event":"reconciliation.error","posting_id":"'
+            f'{raw_id}","exception":"ConnectError: 192.0.2.4 TOKEN=secret"}}\n',
+        )
+
+    monkeypatch.setattr(bundle, "_run", fake_run)
+    manifest = {}
+    since = bundle.datetime(2026, 8, 14, 9, 0, tzinfo=bundle.UTC)
+    until = bundle.datetime(2026, 8, 15, 9, 0, tzinfo=bundle.UTC)
+
+    bundle._collect_reconciliation_journal(
+        tmp_path,
+        manifest,
+        since=since,
+        until=until,
+    )
+
+    assert calls == [
+        [
+            "journalctl",
+            "--unit",
+            "jobseek-crawler-reconciliation.service",
+            "--since",
+            "@1786698000",
+            "--until",
+            "@1786784400",
+            "--output=cat",
+            "--quiet",
+            "--no-pager",
+        ]
+    ]
+    journal = (tmp_path / "host" / "cross-store-reconciliation.log").read_text()
+    assert "reconciliation.error" in journal
+    assert raw_id not in journal
+    assert "192.0.2.4" not in journal
+    assert "secret" not in journal
+    assert journal.count("<redacted-resource-id>") == 1
+    assert journal.count("<redacted-host-address>") == 1
+    assert journal.count("TOKEN=<redacted>") == 1
+    assert manifest["reconciliation_journal"] == {
+        "unit": "jobseek-crawler-reconciliation.service",
+        "returncode": 0,
+        "window_filtered": True,
+        "path": str(tmp_path / "host" / "cross-store-reconciliation.log"),
+        "bytes": len(journal.encode()),
+        "truncated": False,
+    }
+
+
+def test_collect_reconciliation_journal_marks_failed_collection_incomplete(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        bundle,
+        "_run",
+        lambda *_args, **_kwargs: (None, "TimeoutExpired: journalctl timed out\n"),
+    )
+    manifest = {}
+
+    bundle._collect_reconciliation_journal(
+        tmp_path,
+        manifest,
+        since=bundle.datetime(2026, 8, 14, 9, 0, tzinfo=bundle.UTC),
+        until=bundle.datetime(2026, 8, 15, 9, 0, tzinfo=bundle.UTC),
+    )
+
+    assert manifest["reconciliation_journal"]["returncode"] is None
+    assert manifest["reconciliation_journal"]["window_filtered"] is False
+    assert "TimeoutExpired" in (tmp_path / "host" / "cross-store-reconciliation.log").read_text()

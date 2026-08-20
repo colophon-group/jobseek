@@ -544,6 +544,39 @@ def _collect_docker_lifecycle_journal(
     manifest["maintenance_correlation"] = correlation_info
 
 
+def _collect_reconciliation_journal(
+    run_dir: Path,
+    manifest: dict[str, object],
+    *,
+    since: datetime,
+    until: datetime,
+) -> None:
+    """Retain bounded one-shot logs after Compose removes the container."""
+    unit = "jobseek-crawler-reconciliation.service"
+    code, output = _run(
+        [
+            "journalctl",
+            "--unit",
+            unit,
+            "--since",
+            f"@{since.timestamp():.0f}",
+            "--until",
+            f"@{until.timestamp():.0f}",
+            "--output=cat",
+            "--quiet",
+            "--no-pager",
+        ],
+        timeout=180,
+    )
+    file_info = _write(run_dir / "host" / "cross-store-reconciliation.log", output)
+    manifest["reconciliation_journal"] = {
+        "unit": unit,
+        "returncode": code,
+        "window_filtered": code == 0,
+        **file_info,
+    }
+
+
 def _chgrp_readable(path: Path, *, group: str) -> None:
     import grp
 
@@ -615,6 +648,7 @@ def collect_bundle(out_root: Path, *, window_hours: int, group: str) -> Path:
     )
     _collect_container_cgroup_memory(run_dir, manifest)
     _collect_docker_lifecycle_journal(run_dir, manifest, since=since, until=until)
+    _collect_reconciliation_journal(run_dir, manifest, since=since, until=until)
     kernel_log_command = (
         f"journalctl -k --since '{since.isoformat()}' --until '{until.isoformat()}' "
         "--no-pager 2>/dev/null | tail -500"
