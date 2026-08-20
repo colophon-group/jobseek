@@ -913,6 +913,40 @@ class TestProbeRow:
         assert result.status == "ok"
         assert captured["url"] == "https://acme.recruitee.com/api/offers/"
 
+    async def test_recruitee_uses_custom_api_base_from_config(self):
+        row = _row(
+            board_slug="acme-recruitee",
+            board_url="https://www.acme.example/careers",
+            monitor_type="recruitee",
+            monitor_config=json.dumps({"api_base": "https://apply.acme.example/"}),
+        )
+        captured = {}
+
+        def handler(request):
+            captured["url"] = str(request.url)
+            return httpx.Response(200, json={"offers": []})
+
+        result = await self._run(row, handler)
+        assert result.status == "ok"
+        assert captured["url"] == "https://apply.acme.example/api/offers/"
+
+    async def test_recruitee_uses_slug_from_config(self):
+        row = _row(
+            board_slug="acme-recruitee",
+            board_url="https://www.acme.example/careers",
+            monitor_type="recruitee",
+            monitor_config=json.dumps({"slug": "acme"}),
+        )
+        captured = {}
+
+        def handler(request):
+            captured["url"] = str(request.url)
+            return httpx.Response(200, json={"offers": []})
+
+        result = await self._run(row, handler)
+        assert result.status == "ok"
+        assert captured["url"] == "https://acme.recruitee.com/api/offers/"
+
     async def test_workday_parses_url_components(self):
         row = _row(
             board_slug="acme-workday",

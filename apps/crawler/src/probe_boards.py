@@ -678,8 +678,26 @@ async def _probe_hrmos(row: dict, client: httpx.AsyncClient) -> ProbeResult:
 
 
 async def _probe_recruitee(row: dict, client: httpx.AsyncClient) -> ProbeResult:
-    host = urlparse(row["board_url"]).hostname or ""
-    if not host:
+    api_base = _token_from_config(row["monitor_config"], "api_base")
+    slug = _token_from_config(row["monitor_config"], "slug")
+    if api_base:
+        parsed_api_base = urlparse(api_base)
+        if parsed_api_base.scheme not in {"http", "https"} or not parsed_api_base.hostname:
+            return ProbeResult(
+                row["board_slug"],
+                "recruitee",
+                row["board_url"],
+                "warn",
+                "invalid api_base in monitor_config",
+            )
+        base = api_base.rstrip("/")
+    elif slug:
+        base = f"https://{slug}.recruitee.com"
+    else:
+        host = urlparse(row["board_url"]).hostname or ""
+        base = f"https://{host}" if host else ""
+
+    if not base:
         return ProbeResult(
             row["board_slug"],
             "recruitee",
@@ -687,7 +705,7 @@ async def _probe_recruitee(row: dict, client: httpx.AsyncClient) -> ProbeResult:
             "warn",
             "cannot parse host",
         )
-    url = f"https://{host}/api/offers/"
+    url = f"{base}/api/offers/"
     resp = await _retry(lambda: _get(client, url))
     return _classify(row, "recruitee", url, resp)
 
