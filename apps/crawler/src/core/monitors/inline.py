@@ -158,6 +158,7 @@ async def discover(
         steps      — extraction steps (same format as DOM scraper)
         render     — if true, use Playwright (default: false)
         fetch_urls — ordered alternate read URLs; canonical URLs use board_url
+        include_hidden — include HTML hidden by tab/accordion state (default: false)
         defaults   — default field values applied to all jobs
         defaults_by_title — per-title defaults applied to missing fields
         exclude_titles — exact titles to skip after extraction
@@ -176,7 +177,7 @@ async def discover(
     exclude_titles = set(metadata.get("exclude_titles") or [])
 
     html = await _fetch_html(board_url, metadata, client, pw)
-    elements = flatten(html)
+    elements = flatten(html, include_hidden=bool(metadata.get("include_hidden")))
 
     if not elements:
         log.info("inline.empty_page", url=board_url)

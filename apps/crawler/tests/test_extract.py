@@ -12,6 +12,15 @@ from src.shared.extract import (
 
 
 class TestFlatten:
+    def test_hidden_content_can_be_included_explicitly(self):
+        html = '<div aria-hidden="true"><h3>Hidden role</h3></div><h3>Visible role</h3>'
+
+        assert [el["text"] for el in flatten(html)] == ["Visible role"]
+        assert [el["text"] for el in flatten(html, include_hidden=True)] == [
+            "Hidden role",
+            "Visible role",
+        ]
+
     def test_basic_block_elements(self):
         html = "<p>Hello</p><div>World</div><h1>Title</h1>"
         els = flatten(html)
