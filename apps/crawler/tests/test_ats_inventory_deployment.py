@@ -363,7 +363,7 @@ def test_workflow_uses_protected_app_credentials_native_ssh_and_provisions_label
     assert "appleboy/" not in workflow
     checkout = [line for line in workflow.splitlines() if "uses: actions/checkout@" in line]
     assert checkout and all("@v" not in line for line in checkout)
-    assert "uses: astral-sh/setup-uv@c771a70" in workflow
+    assert "uses: astral-sh/setup-uv@20cfd1b" in workflow
 
 
 def test_remote_deploy_waits_for_exact_image_before_quiescing_install() -> None:
