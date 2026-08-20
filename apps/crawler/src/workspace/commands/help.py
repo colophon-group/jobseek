@@ -2887,6 +2887,8 @@ Extraction Steps — DOM scraper step format
     stop_attr   Stop when an element attribute matches (same format as attr)
     stop_regex  Stop when element text matches this regex
     stop_count  Max elements to collect
+    to_end      Collect through the final element. Use with scope when the
+                complete scoped container is the field value.
     html        If true, preserve HTML tags in output (groups <li> in <ul>)
 
   Post-processing:

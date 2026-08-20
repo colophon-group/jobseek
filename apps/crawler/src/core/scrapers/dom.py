@@ -325,8 +325,7 @@ def _rexx_portal7_config(htmls: list[str]) -> dict | None:
     """
 
     matches = sum(
-        all(marker in html.casefold() for marker in _REXX_PORTAL7_MARKERS)
-        for html in htmls
+        all(marker in html.casefold() for marker in _REXX_PORTAL7_MARKERS) for html in htmls
     )
     if not matches or matches < len(htmls) / 2:
         return None
@@ -347,13 +346,14 @@ def _rexx_portal7_config(htmls: list[str]) -> dict | None:
                 "field": "locations",
                 "regex": r"(?s)^.*\bin\s+(.+?)\s*$",
                 "from": 0,
+                "optional": True,
             },
             {
                 "attr": "data-document-scope-start=true",
                 "offset": 1,
                 "field": "description",
                 "html": True,
-                "stop_count": 200,
+                "to_end": True,
                 "from": 0,
             },
         ],

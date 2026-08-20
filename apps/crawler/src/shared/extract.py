@@ -374,6 +374,7 @@ def walk_steps(
                      (same ``key=substring`` format as ``attr``)
         stop_regex — stop collecting when element text matches a regex
         stop_count — max elements to collect in a range
+        to_end     — collect through the final flattened element
         optional   — if true, suppress warning when step not found
         regex      — regex with capture group; applied to extracted text
         split      — split extracted text into a list on this delimiter
@@ -394,6 +395,7 @@ def walk_steps(
         stop_attr = step.get("stop_attr")
         stop_regex = step.get("stop_regex")
         stop_count = step.get("stop_count")
+        to_end = step.get("to_end", False)
         optional = step.get("optional", False)
         attr = step.get("attr")
         regex = step.get("regex")
@@ -440,7 +442,7 @@ def walk_steps(
         # Apply offset — skip N elements after the match
         match_idx = min(match_idx + offset, len(elements) - 1)
 
-        is_range = stop or stop_tag or stop_attr or stop_regex or stop_count
+        is_range = stop or stop_tag or stop_attr or stop_regex or stop_count or to_end
 
         if field and is_range:
             # Collect elements from match, stopping on stop text / stop tag / stop count
