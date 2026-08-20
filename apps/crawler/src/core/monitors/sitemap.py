@@ -166,7 +166,7 @@ async def _fetch_child_xml(url: str, client: httpx.AsyncClient) -> ET.Element | 
     Returns the parsed root on 200 + parseable XML, or ``None`` on
     legitimate not-found (404/410) and on non-parseable bodies. **Raises**
     :exc:`PaginationFetchError` when transient errors (5xx, 429, 401,
-    403, timeout, network) persist past the retry budget.
+    403, 202, timeout, network) persist past the retry budget.
 
     The 2026-04-26 NHS spike (#2722) showed why this distinction
     matters: a multi-shard sitemap (e.g. ``sitemap-jobs-1.xml`` …
@@ -189,6 +189,13 @@ async def _fetch_child_xml(url: str, client: httpx.AsyncClient) -> ET.Element | 
     thousands of URLs. ``transient_403=True`` retries 401/403 through
     the budget and raises ``PaginationFetchError`` on exhaustion —
     same propagation path as the 5xx fix from #2722 / #2974.
+
+    Some AWS WAF-protected sitemap endpoints (notably the IBM and Pfizer
+    DEJobs feeds from #6110) intermittently return HTTP 202 instead of the
+    XML response. A sitemap GET has no useful asynchronous-acceptance
+    contract, so 202 is also transient on this strict path. Retrying it
+    prevents a one-off challenge response from becoming ``cache_miss`` and
+    the misleading terminal error ``No sitemap found``.
     """
     from src.shared.http_retry import fetch_with_retry
 
@@ -197,6 +204,7 @@ async def _fetch_child_xml(url: str, client: httpx.AsyncClient) -> ET.Element | 
         url,
         headers=_SITEMAP_HEADERS,
         transient_403=True,
+        retryable_statuses={202},
         max_chars=_MAX_SITEMAP_CHARS,
     )
     if text is None:
