@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 from src.core.monitors import monitor_needs_browser
-from src.core.monitors.brassring import _board_ids, _parse_job, _parse_page
+from src.core.monitors.brassring import (
+    _board_ids,
+    _parse_job,
+    _parse_page,
+    _SnapshotChanged,
+    discover,
+)
 
 BOARD_URL = "https://sjobs.brassring.com/TGnewUI/Search/Home/Home?partnerid=25416&siteid=5998"
 
@@ -81,11 +89,21 @@ def test_parse_job_accepts_global_description_and_country():
     assert job.locations == ["Evansville, Poland"]
 
 
+def test_parse_job_accepts_missing_optional_description():
+    job = _parse_job(
+        _row(jobdescription="", formtext3=""),
+        "25416",
+        "5998",
+    )
+
+    assert job is not None
+    assert job.description is None
+
+
 @pytest.mark.parametrize(
     "changes",
     [
         {"jobtitle": ""},
-        {"jobdescription": "", "formtext3": ""},
         {"reqid": "not-numeric"},
     ],
 )
@@ -112,3 +130,18 @@ def test_parse_page_accepts_authoritative_empty_board():
 def test_parse_page_rejects_malformed_payload(payload):
     with pytest.raises(ValueError):
         _parse_page(payload)
+
+
+async def test_discover_retries_snapshot_churn_once():
+    expected = [_parse_job(_row(), "25416", "5998")]
+    collect = AsyncMock(side_effect=[_SnapshotChanged("count changed"), expected])
+
+    with (
+        patch("src.core.monitors.brassring._discover_page", collect),
+        patch("src.core.monitors.brassring.asyncio.sleep", new=AsyncMock()) as sleep,
+    ):
+        result = await discover({"board_url": BOARD_URL, "metadata": {}}, pw=object())
+
+    assert result == expected
+    assert collect.await_count == 2
+    sleep.assert_awaited_once()

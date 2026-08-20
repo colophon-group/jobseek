@@ -10,6 +10,7 @@ from a failed later page would make gone detection retire still-live jobs.
 
 from __future__ import annotations
 
+import asyncio
 import math
 import re
 from dataclasses import dataclass, field
@@ -33,6 +34,8 @@ MAX_URLS = 50_000
 _MAX_PAGES = 5_000
 _DEFAULT_PAGE_CHARS = 5_000_000
 _MAX_PAGE_CHARS = 25_000_000
+_SNAPSHOT_ATTEMPTS = 2
+_SNAPSHOT_RETRY_DELAY = 1.0
 _PROVIDER_MARKERS = ("window.talemetry", "talemetry_careersites")
 _RESULT_COUNT_RE = re.compile(
     r"\bShowing\s+([\d,]+)\s*-\s*([\d,]+)\s+of\s+([\d,]+)\s+results\b",
@@ -57,6 +60,10 @@ _VOID_TAGS = frozenset(
         "wbr",
     }
 )
+
+
+class _SnapshotChanged(ValueError):
+    """The board inventory changed while its paginated snapshot was collected."""
 
 
 def _to_int(value: str) -> int:
@@ -204,11 +211,13 @@ def _validate_page(
         count = len(parsed.urls)
         raise ValueError(f"Talemetry page {page} exposed {count} URLs for range {start}-{end}")
     if expected_total is not None and total != expected_total:
-        raise ValueError(f"Talemetry total changed: {expected_total} -> {total}")
+        raise _SnapshotChanged(f"Talemetry total changed: {expected_total} -> {total}")
     if expected_start is not None and start != expected_start:
-        raise ValueError(f"Talemetry page {page} starts at {start}, expected {expected_start}")
+        raise _SnapshotChanged(
+            f"Talemetry page {page} starts at {start}, expected {expected_start}"
+        )
     if expected_end is not None and end != expected_end:
-        raise ValueError(f"Talemetry page {page} ends at {end}, expected {expected_end}")
+        raise _SnapshotChanged(f"Talemetry page {page} ends at {end}, expected {expected_end}")
 
 
 async def can_handle(
@@ -235,13 +244,10 @@ async def can_handle(
     return {"urls": len(parsed.urls), "jobs": total, "pages": pages}
 
 
-async def discover(
+async def _discover_once(
     board: dict,
     client: httpx.AsyncClient,
-    pw=None,
 ) -> set[str]:
-    """Discover the complete authoritative Talemetry result inventory."""
-    _ = pw
     board_url = board["board_url"]
     metadata = board.get("metadata") or {}
     max_chars = _page_max_chars(metadata)
@@ -292,13 +298,39 @@ async def discover(
         )
         overlap = urls & parsed.urls
         if overlap:
-            raise ValueError(f"Talemetry page {page} repeated {len(overlap)} earlier job URLs")
+            raise _SnapshotChanged(
+                f"Talemetry page {page} repeated {len(overlap)} earlier job URLs"
+            )
         urls.update(parsed.urls)
 
     if len(urls) != total:
-        raise ValueError(f"Talemetry discovered {len(urls)} URLs, expected {total}")
+        raise _SnapshotChanged(f"Talemetry discovered {len(urls)} URLs, expected {total}")
     log.info("talemetry.complete", board_url=board_url, urls_found=len(urls), pages=pages)
     return urls
+
+
+async def discover(
+    board: dict,
+    client: httpx.AsyncClient,
+    pw=None,
+) -> set[str]:
+    """Discover a complete inventory, retrying one internally inconsistent snapshot."""
+    _ = pw
+    board_url = board["board_url"]
+    for attempt in range(1, _SNAPSHOT_ATTEMPTS + 1):
+        try:
+            return await _discover_once(board, client)
+        except _SnapshotChanged as exc:
+            if attempt == _SNAPSHOT_ATTEMPTS:
+                raise
+            log.warning(
+                "talemetry.snapshot_changed",
+                board_url=board_url,
+                attempt=attempt,
+                error=str(exc),
+            )
+            await asyncio.sleep(_SNAPSHOT_RETRY_DELAY)
+    raise AssertionError("unreachable")
 
 
 async def save_raw(
