@@ -15,6 +15,11 @@ Config:
     location_pattern
                    Optional regex with a capture group for the location,
                    applied to the raw PDF text.
+    fields_pattern Optional regex with named ``title`` and/or ``location``
+                   capture groups. This is useful for table-like PDFs where
+                   both values must be matched from the same row layout.
+                   Named values take precedence; title_pattern and
+                   location_pattern remain field-specific fallbacks.
     repair_split_initial
                    Opt in to joining a capital initial split from the rest of
                    its word by a PDF extraction newline (M\\nechanical).
@@ -84,6 +89,35 @@ def _extract_pattern(
         match.group(1),
         repair_split_initial=repair_split_initial,
     )
+
+
+def _extract_named_fields(
+    text: str,
+    pattern: str | None,
+    *,
+    repair_split_initial: bool = False,
+) -> dict[str, str]:
+    """Return normalized title/location named groups from *pattern*."""
+    if not pattern:
+        return {}
+    match = re.search(pattern, text)
+    if not match:
+        return {}
+
+    fields: dict[str, str] = {}
+    for field in ("title", "location"):
+        if field not in match.re.groupindex:
+            continue
+        value = match.group(field)
+        if value is None:
+            continue
+        normalized = _normalize_captured_text(
+            value,
+            repair_split_initial=repair_split_initial,
+        )
+        if normalized:
+            fields[field] = normalized
+    return fields
 
 
 def _title_from_url(url: str, pattern: str | None = None) -> str | None:
@@ -242,22 +276,37 @@ async def scrape(
         log.warning("pdf.empty", url=url)
         return JobContent(title=_title_from_url(url, config.get("title_pattern")))
 
+    repair_split_initial = bool(config.get("repair_split_initial"))
+    named_fields = _extract_named_fields(
+        full_text,
+        config.get("fields_pattern"),
+        repair_split_initial=repair_split_initial,
+    )
+
     # Title extraction — configurable via title_source
     title_source = config.get("title_source", "url")
     title_pattern = config.get("title_pattern")
 
-    if title_source == "text":
+    title = named_fields.get("title")
+    if not title and title_source == "text":
         title = _extract_pattern(
             full_text,
             title_pattern,
-            repair_split_initial=bool(config.get("repair_split_initial")),
+            repair_split_initial=repair_split_initial,
         )
         if not title:
             title = _title_from_text(full_text) or _title_from_url(url, title_pattern)
-    else:
+    elif not title:
         title = _title_from_url(url, title_pattern)
 
-    location = _extract_pattern(full_text, config.get("location_pattern"))
+    # Keep the legacy location_pattern normalization unchanged. The split-
+    # initial repair was historically title-only and can corrupt legitimate
+    # locations such as "A Coruna" by turning them into "ACoruna". A named
+    # fields_pattern opts into the shared repair behavior explicitly.
+    location = named_fields.get("location") or _extract_pattern(
+        full_text,
+        config.get("location_pattern"),
+    )
     description = _text_to_html(full_text)
 
     log.debug("pdf.extracted", url=url, title=title, text_length=len(full_text))
