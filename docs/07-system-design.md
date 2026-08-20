@@ -178,6 +178,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `bamboohr`        | Rich     | api_sniffer | BambooHR public careers API + detail enrichment |
 | 10   | `beisen`          | Rich/hybrid | skip/dom | Beisen modern public API + legacy listings |
 | 10   | `brassring`       | Rich     | skip        | BrassRing TGnewUI browser-session search API |
+| 10   | `cnstaff`         | Rich     | skip        | CNStaff paginated public career-board JSON |
 | 60   | `candidatus`      | URL-only | dom         | Candidatus WinDev browser-resolved detail postbacks |
 | 10   | `paycom`          | Rich     | paycom      | Paycom bootstrap + preview API + detail enrichment |
 | 10   | `jazzhr`          | URL-only | jazzhr      | ApplyToJob static listing + JSON-LD/DOM detail parsing |

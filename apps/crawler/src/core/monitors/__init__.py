@@ -856,6 +856,7 @@ from src.core.monitors import (  # noqa: E402
     brassring,  # noqa: F401
     breezy,  # noqa: F401
     candidatus,  # noqa: F401
+    cnstaff,  # noqa: F401
     comeet,  # noqa: F401
     cornerstone,  # noqa: F401
     curately,  # noqa: F401

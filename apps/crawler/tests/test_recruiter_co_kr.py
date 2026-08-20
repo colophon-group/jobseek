@@ -76,6 +76,25 @@ class TestHelpers:
         # Non-string types: defensive fall-through to ``None``.
         assert _dt_date(12345) is None  # type: ignore[arg-type]
 
+    def test_extract_locations_from_adjacent_description_table_cell(self):
+        detail = {
+            "jobDescription": """
+                <table><tr>
+                  <td><b>근무 지역</b></td>
+                  <td><span>서울 본사</span></td>
+                  <td>채용 인원</td><td>1명</td>
+                </tr></table>
+            """
+        }
+        assert _extract_locations(detail, {}) == ["서울 본사"]
+
+    def test_extract_locations_deduplicates_api_and_description_values(self):
+        detail = {
+            "regionName": "서울",
+            "jobDescription": "<table><tr><td>근무지</td><td>서울</td></tr></table>",
+        }
+        assert _extract_locations(detail, {}) == ["서울"]
+
 
 class TestDtDateKstToUtc:
     """``_dt_date`` must localise the naive KST timestamp returned by the

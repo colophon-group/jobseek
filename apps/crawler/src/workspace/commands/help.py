@@ -83,6 +83,7 @@ Monitor Types (cheapest first):
   bite              10      Job URLs          Auto-configured
   brassring         10      Full job data     No (skipped)
   breezy            10      Job URLs          Auto-configured
+  cnstaff           10      Full job data     No (skipped)
   comeet            10      Full job data     No (skipped)
   cornerstone       10      Full job data     No (skipped)
   darwinbox         10      Full job data     No (skipped)
@@ -1132,6 +1133,28 @@ recruiter_co_kr — Recruiter.co.kr ATS (Korean, Public JSON API)
 
   Detection:  ws probe shows "Recruiter.co.kr — slug: X, N jobs"
   Zero jobs?  Check openStatus filters — try include_closed."""
+
+MONITOR_CNSTAFF = """\
+cnstaff — CNStaff public career boards
+
+  Listing:  GET https://{tenant}.cnstaff.com/recruit?n=1&p={page}
+  Returns:  Rich (title, HTML description, location, date_posted,
+            responsibilities, qualifications, language=zh)
+  Scraper:  Not needed (the paginated listing response is complete)
+  Browser:  No — HTTP-only
+  Cost:     10
+  Cap:      50,000 jobs
+
+  CNStaff serves an HTML page for normal navigation and complete JSON job
+  records from the same route when the public pagination parameters are
+  present. The monitor validates totals across every 15-job page and fails
+  closed if the inventory changes during a crawl.
+
+  Config: none. The tenant is derived from the exact unfiltered board URL:
+    https://{tenant}.cnstaff.com/recruit
+
+  Detection: ws probe verifies the first JSON page and reports its total.
+  Zero jobs: a valid board returns total=0 and an empty list."""
 
 MONITOR_NOTION = """\
 notion — Notion Site Job Pages
@@ -2818,6 +2841,7 @@ Extraction Steps — DOM scraper step format
   Step keys:
     tag         Match by HTML tag name (e.g. "h1", "li", "p")
     text        Match by substring in element text (case-insensitive)
+    match_regex Require a regex match against the element text
     attr        Match by attribute: "key=substring" or "key" (presence)
     field       Output field name. Omit for anchor-only steps (move cursor)
     offset      Skip N elements after match before extracting (default: 0)
@@ -2829,6 +2853,7 @@ Extraction Steps — DOM scraper step format
     stop_tag    Stop when element tag matches. Accepts one tag or a list
                 (for example, ["h2", "h3"])
     stop_attr   Stop when an element attribute matches (same format as attr)
+    stop_regex  Stop when element text matches this regex
     stop_count  Max elements to collect
     html        If true, preserve HTML tags in output (groups <li> in <ul>)
 
@@ -2837,7 +2862,7 @@ Extraction Steps — DOM scraper step format
     split       Split result into list on this delimiter
 
   Matching:
-    - All conditions (tag + text + attr) must match (AND logic)
+    - All conditions (tag + text + match_regex + attr) must match (AND logic)
     - Text matching normalizes Unicode punctuation to ASCII
     - Cursor advances forward after each step; use "from": 0 to reset
 
@@ -2856,6 +2881,7 @@ Extraction Steps — DOM scraper step format
     {"text": "About", "field": "description", "stop": "Requirements", "html": true}
     {"tag": "li", "field": "skills", "stop_tag": "h2", "split": ","}
     {"tag": "p", "field": "description", "stop_tag": ["h2", "h3"], "html": true}
+    {"tag": "p", "match_regex": "^\\d+\\.", "field": "title", "regex": "^\\d+\\.\\s*(.+)"}
     {"tag": "span", "attr": "class=salary", "field": "salary", "regex": "\\\\$(\\\\d[\\\\d,]+)"}"""
 
 ACTIONS = """\
@@ -3220,6 +3246,7 @@ MONITOR_CARDS: dict[str, str] = {
     "amazon": MONITOR_AMAZON,
     "bite": MONITOR_BITE,
     "breezy": MONITOR_BREEZY,
+    "cnstaff": MONITOR_CNSTAFF,
     "comeet": MONITOR_COMEET,
     "curately": MONITOR_CURATELY,
     "deel": MONITOR_DEEL,

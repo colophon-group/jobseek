@@ -59,6 +59,49 @@ def test_walk_steps_cursor_advances_through_range():
     assert cursor_b > cursor_a
 
 
+def test_walk_steps_match_and_stop_regex_support_numbered_inline_jobs():
+    html = """
+    <p>Introductory copy</p>
+    <p>1. Medical Manager</p>
+    <p>Location: Hanoi</p>
+    <ul><li>First requirement</li></ul>
+    <p>2. Product Manager</p>
+    <p>Location: Ho Chi Minh City</p>
+    <ul><li>Second requirement</li></ul>
+    <h2>Other articles</h2>
+    """
+    elements = flatten(html)
+    steps = [
+        {
+            "tag": "p",
+            "match_regex": r"^\d+\.\s*.+",
+            "field": "title",
+            "regex": r"^\d+\.\s*(.+)",
+        },
+        {"text": "Location", "field": "location", "regex": r"Location:\s*(.+)"},
+        {
+            "tag": "li",
+            "field": "description",
+            "stop_regex": r"^(?:\d+\.\s*.+|Other articles)$",
+            "html": True,
+        },
+    ]
+
+    first, cursor = walk_steps(elements, steps)
+    second, _cursor = walk_steps(elements, steps, start=cursor)
+
+    assert first == {
+        "title": "Medical Manager",
+        "location": "Hanoi",
+        "description": "<ul><li>First requirement</li></ul>",
+    }
+    assert second == {
+        "title": "Product Manager",
+        "location": "Ho Chi Minh City",
+        "description": "<ul><li>Second requirement</li></ul>",
+    }
+
+
 # ── Repeated extraction ────────────────────────────────────────────────
 
 
