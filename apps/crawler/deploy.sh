@@ -1064,8 +1064,18 @@ ensure_deploy_disk_headroom() {
   if (( free_kb < DEPLOY_PRUNE_FREE_KB )); then
     echo "Low deploy disk headroom (${free_kb} KiB available); pruning Docker builder cache" >&2
     # The crawler host should run pulled images, not depend on local build
-    # cache. Keep containers, images, and volumes intact.
+    # cache.
     docker builder prune -af >/dev/null || true
+    free_kb="$(deploy_disk_free_kb)"
+  fi
+
+  if (( free_kb < DEPLOY_MIN_FREE_KB )); then
+    echo "Deploy disk still low (${free_kb} KiB available); pruning unused Docker images" >&2
+    # This preflight runs before pull/quiesce, so the active crawler and
+    # browser images are still protected by running containers. Remove every
+    # other image; rollback can pull its immutable digest with the fresh GHCR
+    # credentials if it is ever needed after release mutation begins.
+    docker image prune -af >/dev/null || true
     free_kb="$(deploy_disk_free_kb)"
   fi
 
@@ -1442,5 +1452,8 @@ rm -f "$deploy_success_temporary" "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE" 
 publish_legacy_success_marker || {
   echo "WARNING: could not refresh deprecated crawler success-marker path" >&2
 }
+# Preserve the recent digest-pinned releases retained for delayed rollback.
+# The emergency preflight above may prune unused images only when disk is
+# already below the minimum required to deploy safely.
 docker image prune -f || true
 echo "Deploy complete: $(docker compose ps --format '{{.Name}}' | tr '\n' ' ')"
