@@ -1102,6 +1102,7 @@ capital-one,capital-one-workday,https://capitalone.wd12.myworkdayjobs.com/Capita
 capital-technology-group,capital-technology-group-greenhouse,https://job-boards.greenhouse.io/capitaltg,greenhouse,"{""token"": ""capitaltg""}",skip,
 capstone,capstone-greenhouse,https://job-boards.greenhouse.io/capstonedc,greenhouse,"{""token"": ""capstonedc""}",skip,
 capsule,capsule-ashby,https://jobs.ashbyhq.com/capsule,ashby,"{""token"": ""capsule""}",skip,
+caran-dache,caran-dache-careers-ch,https://www.carandache.com/ch/fr/carrieres.cfm,dom,"{""render"": false, ""url_filter"": ""jobup\\.ch""}",json-ld,
 carbon-direct,carbon-direct-greenhouse,https://job-boards.greenhouse.io/carbondirect,greenhouse,"{""token"": ""carbondirect""}",skip,
 carbonchain,carbonchain-greenhouse,https://job-boards.greenhouse.io/carbonchain,greenhouse,"{""token"": ""carbonchain""}",skip,
 carbonfuture,carbonfuture-greenhouse,https://job-boards.greenhouse.io/carbonfuture,greenhouse,"{""token"": ""carbonfuture""}",skip,
