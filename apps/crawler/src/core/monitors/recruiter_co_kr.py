@@ -59,6 +59,12 @@ _HARD_PAGE_CAP = 200  # 200 * 100 = 20,000 jobs
 _TRANSIENT_STATUS = frozenset({429, 500, 502, 503, 504})
 _RETRY_ATTEMPTS = 3
 _RETRY_BASE_DELAY_S = 2.0
+_TENANT_GONE_CODES = frozenset(
+    {
+        "NotFoundCompanyException",
+        "NotFoundPostedDesignException",
+    }
+)
 
 _IGNORE_SLUGS = frozenset({"www", "api", "api-recruiter", "infra1-static", "cdn"})
 
@@ -337,22 +343,63 @@ async def _fetch_list_page(
             code = (resp.json() or {}).get("code")
         except (ValueError, AttributeError):
             code = None
-        if code == "NotFoundCompanyException":
+        if code in _TENANT_GONE_CODES:
             raise BoardGoneError(
-                f"Recruiter.co.kr tenant {slug!r} returned NotFoundCompanyException",
+                f"Recruiter.co.kr tenant {slug!r} returned {code}",
                 url=_board_url(slug),
             )
     resp.raise_for_status()
     return resp.json()
 
 
+async def _get_detail_with_retry(
+    client: httpx.AsyncClient,
+    url: str,
+    *,
+    headers: dict[str, str],
+) -> httpx.Response:
+    """Fetch one detail within a single three-attempt status/transport budget."""
+    for attempt in range(1, _RETRY_ATTEMPTS + 1):
+        status: int | None = None
+        error: httpx.TransportError | None = None
+        try:
+            response = await client.get(url, headers=headers, follow_redirects=True)
+            status = response.status_code
+            if status not in _TRANSIENT_STATUS or attempt == _RETRY_ATTEMPTS:
+                return response
+        except httpx.TransportError as exc:
+            error = exc
+            if attempt == _RETRY_ATTEMPTS:
+                raise
+
+        delay = _RETRY_BASE_DELAY_S * (2 ** (attempt - 1)) * (0.5 + random.random())
+        log.info(
+            "recruiter_co_kr.detail_retry",
+            url=url,
+            attempt=attempt,
+            attempt_limit=_RETRY_ATTEMPTS,
+            status=status,
+            error_type=type(error).__name__ if error is not None else None,
+            delay_s=round(delay, 2),
+        )
+        await asyncio.sleep(delay)
+    raise AssertionError("unreachable")
+
+
 async def _fetch_detail(slug: str, client: httpx.AsyncClient, sn: int | str) -> dict | None:
     """Fetch the v2 detail record for one positionSn. Returns None on 404."""
     url = _API_BASE + _DETAIL_PATH_FMT.format(sn=sn)
     try:
-        resp = await client.get(url, headers=_api_headers(slug))
+        resp = await _get_detail_with_retry(client, url, headers=_api_headers(slug))
     except httpx.HTTPError as exc:
-        log.warning("recruiter_co_kr.detail_error", slug=slug, sn=sn, error=str(exc))
+        log.warning(
+            "recruiter_co_kr.detail_error",
+            slug=slug,
+            sn=sn,
+            error_type=type(exc).__name__,
+            error_repr=repr(exc),
+            stage="transport",
+        )
         return None
     if resp.status_code == 404:
         return None
@@ -361,7 +408,15 @@ async def _fetch_detail(slug: str, client: httpx.AsyncClient, sn: int | str) -> 
         return None
     try:
         return resp.json()
-    except ValueError:
+    except ValueError as exc:
+        log.warning(
+            "recruiter_co_kr.detail_error",
+            slug=slug,
+            sn=sn,
+            error_type=type(exc).__name__,
+            error_repr=repr(exc),
+            stage="json",
+        )
         return None
 
 
@@ -431,7 +486,12 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     jobs: list[DiscoveredJob] = []
     for res in results:
         if isinstance(res, BaseException):
-            log.warning("recruiter_co_kr.detail_exception", slug=slug, error=str(res))
+            log.warning(
+                "recruiter_co_kr.detail_exception",
+                slug=slug,
+                error_type=type(res).__name__,
+                error_repr=repr(res),
+            )
             continue
         if res is not None:
             jobs.append(res)
