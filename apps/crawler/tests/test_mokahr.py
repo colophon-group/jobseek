@@ -129,6 +129,24 @@ class TestDiscover:
 
         assert exc.value.url == "https://app.mokahr.com/social-recruitment/zte/47588"
 
+    async def test_explicit_shutdown_page_is_board_gone(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                text="<html><head><title>当前网页已关停</title></head></html>",
+                request=request,
+            )
+
+        board = {
+            "board_url": "https://app.mokahr.com/campus-recruitment/ixmetals/140496",
+            "metadata": {"org_id": "ixmetals", "site_id": 140496},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(BoardGoneError, match="explicitly shut down") as exc:
+                await discover(board, client)
+
+        assert exc.value.url == board["board_url"]
+
     async def test_flags_truncation_at_max_jobs(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(mokahr, "_PAGE_SIZE", 2)
         monkeypatch.setattr(mokahr, "_MAX_JOBS", 2)

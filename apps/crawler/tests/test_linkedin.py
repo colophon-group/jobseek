@@ -272,6 +272,28 @@ class TestMonitor:
                     client,
                 )
 
+    async def test_accepts_doctype_prefixed_empty_fragment(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                text="<!DOCTYPE html>\n\n<!---->  ",
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover(
+                {
+                    "board_url": BOARD_URL,
+                    "metadata": {
+                        "company_id": COMPANY_ID,
+                        "company_slug": "damora-therapeutics",
+                    },
+                },
+                client,
+            )
+
+        assert result == []
+
     async def test_probe_resolves_company_id_from_exact_slug(self):
         def handler(request: httpx.Request) -> httpx.Response:
             path = request.url.path
