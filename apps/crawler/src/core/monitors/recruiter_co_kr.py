@@ -37,6 +37,7 @@ from zoneinfo import ZoneInfo
 
 import httpx
 import structlog
+from selectolax.lexbor import LexborHTMLParser
 
 from src.core.monitors import BoardGoneError, DiscoveredJob, register
 from src.shared.truncation import truncated_rich_result
@@ -224,6 +225,20 @@ def _extract_locations(detail: dict, summary: dict) -> list[str]:
         # Scalar name fields fall through too.
         for key in ("regionName", "workPlaceName", "siteName", "cityName"):
             _push(source.get(key))
+
+    # Some tenants put the workplace only in an HTML table inside
+    # jobDescription. This is public structured content, not a guessed company
+    # default: pair a Korean workplace label with the adjacent cell value.
+    description = detail.get("jobDescription")
+    if isinstance(description, str) and description.strip():
+        document = LexborHTMLParser(description)
+        labels = {"근무 지역", "근무지역", "근무 장소", "근무장소", "근무지"}
+        for row in document.css("tr"):
+            cells = row.css("th, td")
+            for index, cell in enumerate(cells[:-1]):
+                label = " ".join(cell.text(strip=True).split())
+                if label in labels:
+                    _push(" ".join(cells[index + 1].text(strip=True).split()))
 
     return names
 

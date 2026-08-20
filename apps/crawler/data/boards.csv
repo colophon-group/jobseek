@@ -1546,6 +1546,14 @@ d2x,d2x-bamboohr,https://d2x.bamboohr.com/careers,api_sniffer,"{""api_url"": ""h
 d3,d3-greenhouse,https://job-boards.greenhouse.io/d3,greenhouse,"{""token"": ""d3""}",skip,
 daedalean,daedalean-careers,https://jobs.lever.co/daedalean,lever,"{""token"": ""daedalean""}",skip,
 dagster-labs,dagster-labs-greenhouse,https://job-boards.greenhouse.io/dagsterlabs,greenhouse,"{""token"": ""dagsterlabs""}",skip,
+daiichi-sankyo,daiichi-sankyo-australia,https://employmenthero.com/jobs/organisations/daiichi-sankyo-australia/,dom,"{""url_filter"": ""/jobs/position/daiichi-sankyo-australia-""}",json-ld,
+daiichi-sankyo,daiichi-sankyo-brazil,https://dsbr.gupy.io/,gupy,"{""tenant"": ""dsbr""}",json-ld,
+daiichi-sankyo,daiichi-sankyo-china,https://daiichisankyo.cnstaff.com/recruit,cnstaff,,skip,
+daiichi-sankyo,daiichi-sankyo-global,https://careers.daiichisankyo.com/search/,rss,"{""preset"": ""successfactors""}",skip,
+daiichi-sankyo,daiichi-sankyo-korea,https://onedskr-people.recruiter.co.kr/career/home,recruiter_co_kr,"{""slug"": ""onedskr-people""}",skip,
+daiichi-sankyo,daiichi-sankyo-taiwan,https://www.104.com.tw/company/kmaydug,jobbank104,"{""token"": ""kmaydug"", ""proxy"": true}",json-ld,"{""proxy"": true}"
+daiichi-sankyo,daiichi-sankyo-thailand,https://www.daiichisankyo.co.th/careers,inline,"{""steps"": [{""text"": ""Medical Representative"", ""field"": ""title"", ""regex"": ""(?:\\d+\\.\\s*)?(.*)""}, {""field"": ""description"", ""html"": true, ""stop"": ""Daiichi Sankyo Co., Ltd - Global""}], ""defaults"": {""locations"": [""Thailand""]}}",skip,
+daiichi-sankyo,daiichi-sankyo-vietnam,https://www.daiichisankyo.com.vn/vn/doi-ngu-nhan-su/co-hoi-nghe-nghiep/,inline,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000, ""stealth"": true, ""steps"": [{""tag"": ""p"", ""match_regex"": ""^\\d+\\.\\s*.+"", ""field"": ""title"", ""regex"": ""^\\d+\\.\\s*(.+)""}, {""text"": ""Địa điểm làm việc:"", ""field"": ""location"", ""regex"": ""Địa điểm làm việc:\\s*(.+)""}, {""tag"": ""li"", ""field"": ""description"", ""stop_regex"": ""^(?:\\d+\\.\\s*.+|Bài viết khác)$"", ""html"": true}]}",skip,
 dailymotion,dailymotion-careers,https://careers.smartrecruiters.com/Dailymotion,smartrecruiters,"{""token"": ""Dailymotion""}",smartrecruiters,
 damora-therapeutics,damora-therapeutics-linkedin,https://www.linkedin.com/company/damora-therapeutics/jobs/,linkedin,"{""company_id"": ""109559449"", ""company_slug"": ""damora-therapeutics""}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
 danaher,danaher-careers,https://jobs.danaher.com/global/en/search-results,nextdata,"{""source"": ""phenom_canvas"", ""path"": ""eagerLoadRefineSearch.data.jobs"", ""url_template"": ""https://jobs.danaher.com/global/en/job/{jobId}"", ""pagination"": {""mode"": ""offset"", ""path"": ""eagerLoadRefineSearch"", ""total_records"": ""totalHits"", ""page_size"": 10, ""offset_param"": ""from""}, ""total"": 1365}",json-ld,

@@ -363,8 +363,8 @@ def walk_steps(
     Supported step keys:
         tag        — match by element tag name
         text       — match by substring in element text
-        match_regex — require the element text to match this regular expression
         attr       — match by HTML attribute ("key=substring" or "key")
+        match_regex — require a regex match against the element text
         field      — output field name (omit for anchor-only steps)
         offset     — skip N elements after match before extracting (default 0)
         stop       — stop collecting when element text contains this string
@@ -372,6 +372,7 @@ def walk_steps(
                      or a list of tag names
         stop_attr  — stop collecting when an element attribute matches
                      (same ``key=substring`` format as ``attr``)
+        stop_regex — stop collecting when element text matches a regex
         stop_count — max elements to collect in a range
         optional   — if true, suppress warning when step not found
         regex      — regex with capture group; applied to extracted text
@@ -391,6 +392,7 @@ def walk_steps(
         stop_tag = step.get("stop_tag")
         stop_tags = {stop_tag} if isinstance(stop_tag, str) else set(stop_tag or [])
         stop_attr = step.get("stop_attr")
+        stop_regex = step.get("stop_regex")
         stop_count = step.get("stop_count")
         optional = step.get("optional", False)
         attr = step.get("attr")
@@ -413,7 +415,9 @@ def walk_steps(
             el = elements[i]
             tag_match = tag is None or el["tag"] == tag
             text_match = text is None or _norm(text) in _norm(el["text"])
-            regex_match = match_regex is None or re.search(match_regex, el["text"]) is not None
+            regex_match = (
+                match_regex is None or re.search(match_regex, el["text"], re.DOTALL) is not None
+            )
             attr_match = True
             if attr:
                 if "=" in attr:
@@ -436,7 +440,7 @@ def walk_steps(
         # Apply offset — skip N elements after the match
         match_idx = min(match_idx + offset, len(elements) - 1)
 
-        is_range = stop or stop_tag or stop_attr or stop_count
+        is_range = stop or stop_tag or stop_attr or stop_regex or stop_count
 
         if field and is_range:
             # Collect elements from match, stopping on stop text / stop tag / stop count
@@ -463,6 +467,9 @@ def walk_steps(
                         if attr_matches:
                             stop_idx = i
                             break
+                    if stop_regex and re.search(stop_regex, elements[i]["text"], re.DOTALL):
+                        stop_idx = i
+                        break
                 if stop_count and collected >= stop_count:
                     stop_idx = i
                     break

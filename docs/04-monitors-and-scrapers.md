@@ -44,6 +44,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `beisen` | Rich/hybrid | skip or DOM enrichment | Beisen modern public API + legacy server-rendered listings |
 | `brassring` | Rich | skip | BrassRing/Infinite Talent TGnewUI browser-session search API |
 | `candidatus` | URL-only | dom | Candidatus WinDev listings with browser-resolved detail postbacks |
+| `cnstaff` | Rich | skip | CNStaff paginated public career-board JSON |
 | `paycom` | Rich | paycom | Paycom public preview API plus detail API enrichment |
 | `jazzhr` | URL-only | jazzhr | JazzHR static listing with JSON-LD/DOM detail composition |
 | `jobbank104` | URL-only | json-ld | 104 Job Bank server-rendered company listings, proxy-capable for Cloudflare challenges |
