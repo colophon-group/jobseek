@@ -1721,6 +1721,7 @@ domyn,domyn-careers,https://jobs.deel.com/domyn-spa,deel,"{""slug"": ""domyn-spa
 done-berlin,done-berlin-join,https://join.com/companies/doneberlin,join,"{""slug"": ""doneberlin""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 donhauser-partner-mbb,donhauser-partner-mbb-join,https://join.com/companies/donhauser-stbde,join,"{""slug"": ""donhauser-stbde""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 donorbox,donorbox-greenhouse,https://job-boards.greenhouse.io/donorbox,greenhouse,"{""token"": ""donorbox""}",skip,
+doodle,doodle-careers,https://careers.doodle.com/,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.doodle.com/jobs.rss""}",skip,
 doordash,doordash-careers,https://job-boards.greenhouse.io/doordashusa,greenhouse,"{""token"": ""doordashusa""}",skip,
 doordash,doordash-careers-au,https://job-boards.greenhouse.io/doordashaustralia,greenhouse,"{""token"": ""doordashaustralia""}",skip,
 doordash,doordash-careers-ca,https://job-boards.greenhouse.io/doordashcanada,greenhouse,"{""token"": ""doordashcanada""}",skip,
