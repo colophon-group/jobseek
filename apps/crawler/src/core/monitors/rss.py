@@ -1047,7 +1047,9 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     # after the generic 500 kB probe cap (Liebherr is currently about 1 MB).
     html_text = await fetch_page_text(url, client, max_chars=_DETECTION_MAX_CHARS)
 
-    for embedded_board in _embedded_legacy_boards(html_text or ""):
+    embedded_boards = _embedded_legacy_boards(html_text or "")
+    if len(embedded_boards) == 1:
+        embedded_board = embedded_boards[0]
         result = await _probe_legacy_board(embedded_board, client)
         if result is not None:
             log.info(
@@ -1057,6 +1059,12 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
                 company=embedded_board.company,
             )
             return result
+    elif embedded_boards:
+        log.info(
+            "rss.successfactors_wrapper_ambiguous",
+            url=url,
+            identities=len(embedded_boards),
+        )
 
     advertised_feed = _advertised_rss_feed_url(url, html_text or "")
     if advertised_feed:

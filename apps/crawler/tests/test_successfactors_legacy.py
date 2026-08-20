@@ -544,6 +544,41 @@ class TestDetectionAndWorkspace:
         assert result is None
         assert "career5.successfactors.eu" not in requested_hosts
 
+    @pytest.mark.parametrize(
+        "links",
+        [
+            (
+                "https://career5.successfactors.eu/career?company=Acme",
+                "https://career5.successfactors.eu/career?company=Other",
+            ),
+            (
+                "https://career5.successfactors.eu/career?company=Acme",
+                "https://career6.successfactors.eu/career?company=Acme",
+            ),
+        ],
+        ids=["mixed-companies", "mixed-tenants"],
+    )
+    async def test_wrapper_page_rejects_mixed_legacy_identities(self, links):
+        wrapper = (
+            "<html><body>"
+            + "".join(f'<a href="{link}">Apply</a>' for link in links)
+            + "</body></html>"
+        )
+        requested_hosts: list[str] = []
+
+        def handler(request: httpx.Request):
+            requested_hosts.append(request.url.host)
+            if request.url.host == "jobs.acme.example":
+                return httpx.Response(200, text=wrapper)
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://jobs.acme.example/careers", client)
+
+        assert result is None
+        assert "career5.successfactors.eu" not in requested_hosts
+        assert "career6.successfactors.eu" not in requested_hosts
+
     async def test_legacy_host_redirect_is_resolved_before_configuring(self):
         original = "https://performancemanager4.successfactors.com/career?company=Acme"
 
