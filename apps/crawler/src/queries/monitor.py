@@ -108,10 +108,11 @@ _BLAST_RADIUS_FLOOR_DEFAULT = 0.50
 
 _COUNT_BOARD_ACTIVE_AND_MISSING = """
 SELECT
-    COUNT(*) FILTER (WHERE is_active) AS active,
-    COUNT(*) FILTER (WHERE is_active AND last_seen_at < $2) AS missing
+    COUNT(*) AS active,
+    COUNT(*) FILTER (WHERE last_seen_at < $2) AS missing
 FROM job_posting
 WHERE board_id = $1
+  AND is_active = true
 """
 
 _DELIST_BOARD_POSTINGS = """

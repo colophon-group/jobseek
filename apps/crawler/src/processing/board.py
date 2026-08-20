@@ -480,11 +480,23 @@ async def _mark_gone_with_guards(
     # board (no history yet) is still protected against catastrophic
     # truncation.
     if skip_reason is None:
-        row = await conn.fetchrow(
-            _COUNT_BOARD_ACTIVE_AND_MISSING,
-            board_id,
-            monitor_start_ts,
-        )
+        try:
+            row = await conn.fetchrow(
+                _COUNT_BOARD_ACTIVE_AND_MISSING,
+                board_id,
+                monitor_start_ts,
+            )
+        except asyncpg.QueryCanceledError:
+            # Preserve safe board-cycle context when PostgreSQL cancels this
+            # guard at statement_timeout. The transaction still fails closed;
+            # this event only makes the next daily review attributable.
+            board_log.warning(
+                "batch.monitor.gone_guard_count_timeout",
+                discovered=discovered,
+                history_points=len(history),
+                monitor_started_at=str(monitor_start_ts),
+            )
+            raise
         # Production: asyncpg.Record with int ``active`` / ``missing``
         # columns (COUNT(*)). Tests wire the same shape via the fixture's
         # default ``conn.fetchrow`` side_effect dispatcher.

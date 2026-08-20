@@ -4449,6 +4449,44 @@ class TestMarkGoneGuards:
                 return json.loads(call.args[2])
         raise AssertionError("no _UPDATE_METADATA call recorded")
 
+    def test_count_query_matches_partial_index_predicate(self):
+        """The guard query must imply the partial migration index predicate."""
+        from src.queries.monitor import _COUNT_BOARD_ACTIVE_AND_MISSING
+
+        normalized = " ".join(_COUNT_BOARD_ACTIVE_AND_MISSING.split()).lower()
+        assert "where board_id = $1 and is_active = true" in normalized
+        assert "count(*) as active" in normalized
+        assert "count(*) filter (where last_seen_at < $2) as missing" in normalized
+
+    async def test_count_timeout_logs_safe_cycle_context_and_fails_closed(self):
+        from src.processing.board import _mark_gone_with_guards
+
+        conn = self._conn()
+        conn.fetchrow.side_effect = asyncpg.QueryCanceledError(
+            "canceling statement due to statement timeout"
+        )
+        board_log = MagicMock()
+
+        with pytest.raises(asyncpg.QueryCanceledError):
+            await _mark_gone_with_guards(
+                conn,
+                board_id="b-1",
+                discovered=1234,
+                monitor_start_ts="2026-08-20T12:00:00+00:00",
+                metadata={"recent_discovered_counts": [1200, 1210]},
+                delist_threshold=2,
+                board_log=board_log,
+            )
+
+        board_log.warning.assert_called_once_with(
+            "batch.monitor.gone_guard_count_timeout",
+            discovered=1234,
+            history_points=2,
+            monitor_started_at="2026-08-20T12:00:00+00:00",
+        )
+        conn.fetch.assert_not_awaited()
+        conn.execute.assert_not_awaited()
+
     async def test_drop_guard_fires_on_steep_drop(self):
         """≥30% drop vs. rolling median triggers ``"drop"`` skip and bumps
         ``suspect_streak``; mark-gone SQL is not issued.
