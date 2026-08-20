@@ -1375,6 +1375,8 @@ concentric,concentric-greenhouse,https://job-boards.greenhouse.io/concentric,gre
 conductor,conductor-careers,https://jobs.ashbyhq.com/conductor,ashby,"{""token"": ""conductor""}",skip,
 conductor-ai,conductor-ai-careers,https://jobs.ashbyhq.com/conductorai,ashby,"{""token"": ""conductorai""}",skip,
 conduit,conduit-ashby,https://jobs.ashbyhq.com/conduit,ashby,"{""token"": ""conduit""}",skip,
+conextivity,conextivity-careers,https://conextivity.com/careers/,api_sniffer,"{""api_url"": ""https://conextivity.com/wp-json/wp/v2/custom_career?categories=63&per_page=100"", ""method"": ""GET"", ""url_field"": ""yoast_head_json.og_url"", ""fields"": {""title"": ""title.rendered"", ""description"": ""content.rendered"", ""locations"": ""contains(to_string(categories), '63') && 'Chanteloup-en-Brie (77), France' || 'Amarante, Portugal'""}}",skip,
+conextivity,conextivity-fischer-de,https://fischerconnectors.com/de/uber-uns/join-us/unsere-stellenangebote/,api_sniffer,"{""api_url"": ""https://fischerconnectors.com/de/wp-json/wp/v2/job-opening"", ""url_field"": ""yoast_head_json.canonical"", ""fields"": {""title"": ""title.rendered"", ""description"": ""acf.description_text"", ""locations"": ""acf.location"", ""date_posted"": ""date""}}",skip,
 confluence,confluence-pinpoint,https://confluence.pinpointhq.com,pinpoint,"{""slug"": ""confluence""}",skip,
 confluent,confluent-ashby,https://jobs.ashbyhq.com/confluent,ashby,"{""token"": ""confluent""}",skip,
 conga,conga-greenhouse,https://job-boards.greenhouse.io/conga,greenhouse,"{""token"": ""conga""}",skip,
