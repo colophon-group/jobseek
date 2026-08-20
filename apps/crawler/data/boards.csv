@@ -1615,6 +1615,7 @@ deltacapita,deltacapita-pinpoint,https://deltacapita.pinpointhq.com,pinpoint,"{"
 dema,dema-teamtailor,https://dema.teamtailor.com/,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://dema.teamtailor.com/jobs.rss""}",skip,
 demandbase,demandbase-ashby,https://jobs.ashbyhq.com/demandbase,ashby,"{""token"": ""demandbase""}",skip,
 dental365,dental365-greenhouse,https://job-boards.greenhouse.io/dental365,greenhouse,"{""token"": ""dental365""}",skip,
+dentsply-sirona,dentsply-sirona-global-search,https://careers.dentsplysirona.com/search/,dom,"{""url_filter"": ""/job/"", ""pagination"": {""param_name"": ""startrow"", ""start"": 0, ""increment"": 25, ""max_pages"": 100}}",dom,"{""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""tag"": ""p"", ""attr"": ""id=job-date"", ""field"": ""date_posted"", ""regex"": ""Date:\\s*(.+)""}, {""tag"": ""p"", ""attr"": ""id=job-location"", ""field"": ""location"", ""regex"": ""Location:\\s*(.+)""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop"": ""Apply""}]}"
 dentsu,dentsu-careers-hrmos-jp,https://hrmos.co/pages/dentsudigital/jobs,dom,,json-ld,
 dentsu,dentsu-careers-hrmos-jp-inc,https://hrmos.co/pages/dentsu/jobs,dom,,json-ld,
 dentsu,dentsu-careers-hrmos-jp-intl,https://hrmos.co/pages/daj-group/jobs,dom,,json-ld,
