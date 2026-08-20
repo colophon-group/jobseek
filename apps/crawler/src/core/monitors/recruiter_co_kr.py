@@ -39,6 +39,7 @@ import httpx
 import structlog
 
 from src.core.monitors import BoardGoneError, DiscoveredJob, register
+from src.shared.http_retry import fetch_response_with_status_retries
 from src.shared.truncation import truncated_rich_result
 
 log = structlog.get_logger()
@@ -59,6 +60,13 @@ _HARD_PAGE_CAP = 200  # 200 * 100 = 20,000 jobs
 _TRANSIENT_STATUS = frozenset({429, 500, 502, 503, 504})
 _RETRY_ATTEMPTS = 3
 _RETRY_BASE_DELAY_S = 2.0
+_DETAIL_RETRY_LIMITS = {status: _RETRY_ATTEMPTS - 1 for status in _TRANSIENT_STATUS}
+_TENANT_GONE_CODES = frozenset(
+    {
+        "NotFoundCompanyException",
+        "NotFoundPostedDesignException",
+    }
+)
 
 _IGNORE_SLUGS = frozenset({"www", "api", "api-recruiter", "infra1-static", "cdn"})
 
@@ -337,9 +345,9 @@ async def _fetch_list_page(
             code = (resp.json() or {}).get("code")
         except (ValueError, AttributeError):
             code = None
-        if code == "NotFoundCompanyException":
+        if code in _TENANT_GONE_CODES:
             raise BoardGoneError(
-                f"Recruiter.co.kr tenant {slug!r} returned NotFoundCompanyException",
+                f"Recruiter.co.kr tenant {slug!r} returned {code}",
                 url=_board_url(slug),
             )
     resp.raise_for_status()
@@ -350,9 +358,24 @@ async def _fetch_detail(slug: str, client: httpx.AsyncClient, sn: int | str) -> 
     """Fetch the v2 detail record for one positionSn. Returns None on 404."""
     url = _API_BASE + _DETAIL_PATH_FMT.format(sn=sn)
     try:
-        resp = await client.get(url, headers=_api_headers(slug))
+        resp = await fetch_response_with_status_retries(
+            client,
+            url,
+            headers=_api_headers(slug),
+            retry_limits=_DETAIL_RETRY_LIMITS,
+            base_delay=_RETRY_BASE_DELAY_S,
+            log_event="recruiter_co_kr.detail_retry",
+            sleep=asyncio.sleep,
+        )
     except httpx.HTTPError as exc:
-        log.warning("recruiter_co_kr.detail_error", slug=slug, sn=sn, error=str(exc))
+        log.warning(
+            "recruiter_co_kr.detail_error",
+            slug=slug,
+            sn=sn,
+            error_type=type(exc).__name__,
+            error_repr=repr(exc),
+            stage="transport",
+        )
         return None
     if resp.status_code == 404:
         return None
@@ -361,7 +384,15 @@ async def _fetch_detail(slug: str, client: httpx.AsyncClient, sn: int | str) -> 
         return None
     try:
         return resp.json()
-    except ValueError:
+    except ValueError as exc:
+        log.warning(
+            "recruiter_co_kr.detail_error",
+            slug=slug,
+            sn=sn,
+            error_type=type(exc).__name__,
+            error_repr=repr(exc),
+            stage="json",
+        )
         return None
 
 
@@ -431,7 +462,12 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     jobs: list[DiscoveredJob] = []
     for res in results:
         if isinstance(res, BaseException):
-            log.warning("recruiter_co_kr.detail_exception", slug=slug, error=str(res))
+            log.warning(
+                "recruiter_co_kr.detail_exception",
+                slug=slug,
+                error_type=type(res).__name__,
+                error_repr=repr(res),
+            )
             continue
         if res is not None:
             jobs.append(res)
