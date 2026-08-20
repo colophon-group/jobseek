@@ -83,6 +83,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "inploi",
         "jarvi",
         "jobylon",
+        "jobstreet",
         "keka",
         "kipt",
         "lever",
@@ -123,6 +124,7 @@ _AUTO_SKIP_CRAWLER_TYPES: frozenset[str] = _RICH_MONITORS - {
     "beisen",
     "inploi",
     "headhunter",
+    "jobstreet",
     "linkedin",
     "mokahr",
     "oracle_hcm",
@@ -199,6 +201,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "embedded",
         "headhunter",
         "jazzhr",
+        "jobstreet",
         "json-ld",
         "linkedin",
         "mokahr",
@@ -395,6 +398,21 @@ def detect_ats_from_url(url: str) -> str | None:
         )
     ):
         return "jobbank104"
+    if (
+        host == "my.jobstreet.com"
+        and parsed.scheme == "https"
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
+        and not parsed.query
+        and not parsed.fragment
+        and re.fullmatch(
+            r"/companies/[a-z0-9][a-z0-9._-]*-\d{12,18}(?:/jobs)?/?",
+            parsed.path,
+            re.IGNORECASE,
+        )
+    ):
+        return "jobstreet"
     if (
         host.endswith(".icims.com")
         and host.count(".") == 2
@@ -644,6 +662,20 @@ def auto_scraper_type(
         return (
             "linkedin",
             {"enrich": ["description", "employment_type", "job_location_type"]},
+        )
+    if monitor_type == "jobstreet":
+        return (
+            "jobstreet",
+            {
+                "enrich": [
+                    "title",
+                    "description",
+                    "locations",
+                    "employment_type",
+                    "date_posted",
+                    "base_salary",
+                ]
+            },
         )
     if monitor_type == "headhunter":
         return (

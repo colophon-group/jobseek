@@ -934,6 +934,10 @@ _MONITOR_CONFIG_HINTS = {
     "jobbank104": (
         "Requires: token (auto-filled from a www.104.com.tw/company URL); use proxy when challenged"
     ),
+    "jobstreet": (
+        "Requires: company_id (auto-filled from a canonical my.jobstreet.com/companies URL); "
+        "organisation_id is auto-resolved"
+    ),
     "jobvite": "Requires: tenant + listing_url (auto-filled from a jobs.jobvite.com URL)",
     "pageup": "Requires: instance, source_pointer, locale (auto-filled from a PageUp URL)",
     "icims": "Requires: host (auto-filled from an icims.com URL)",

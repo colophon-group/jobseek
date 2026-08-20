@@ -106,6 +106,7 @@ Monitor Types (cheapest first):
   jarvi             10      Full job data     No (skipped)
   jazzhr            10      Job URLs          Auto-configured
   jobbank104        10      Job URLs          Auto-configured JSON-LD
+  jobstreet         10      Full/partial      Auto-enriched
   pageup            10      Full/partial      Auto-enriched DOM
   keka              10      Full job data     No (skipped)
   lever             10      Full job data     No (skipped)
@@ -2182,6 +2183,29 @@ jobbank104 — 104 Job Bank company listing
   Detection:  ws probe shows "104 Job Bank company listing — token: X, N jobs"
   Zero jobs?  A valid page explicitly advertises 工作機會(0)."""
 
+MONITOR_JOBSTREET = """\
+jobstreet — JobStreet employer profile
+
+  Listing:  GET https://my.jobstreet.com/api/jobsearch/v5/search
+  Detail:   POST https://my.jobstreet.com/graphql
+  Returns:  Rich summaries (title, location, employment/work-arrangement type,
+            posting date, salary when shown)
+  Scraper:  Auto-configured JobStreet scraper hydrates complete HTML descriptions
+            through the public anonymous GraphQL detail query
+  Note:     Use the canonical unfiltered employer URL ending in
+            /companies/{slug}-{company_id}/jobs. Legacy *-jobs search routes
+            are Cloudflare-guarded and are not accepted as board identities.
+
+  Config:
+    {"company_id": "175608148114568", "organisation_id": "744981"}
+
+    company_id       Public company-profile ID. Auto-filled from the URL.
+    organisation_id  Employer search ID. Auto-resolved and verified by probe;
+                     optional in hand-written configuration.
+
+  Detection:  ws probe shows "JobStreet employer profile — company: ID, N jobs"
+  Zero jobs?  The employer-scoped search API must report totalCount=0."""
+
 MONITOR_ICIMS = """\
 icims — iCIMS server-rendered listings
 
@@ -3277,6 +3301,7 @@ MONITOR_CARDS: dict[str, str] = {
     "paycom": MONITOR_PAYCOM,
     "jazzhr": MONITOR_JAZZHR,
     "jobbank104": MONITOR_JOBBANK104,
+    "jobstreet": MONITOR_JOBSTREET,
     "jobvite": MONITOR_JOBVITE,
     "pageup": MONITOR_PAGEUP,
     "icims": MONITOR_ICIMS,
@@ -3422,6 +3447,18 @@ headhunter — HeadHunter vacancy detail API scraper
   Note:     Derives the numeric ID from hh.ru/vacancy/{id}. Runs through the
             configured proxy on the daily scrape schedule so the hourly
             employer monitor remains a single paginated listing pass.
+"""
+
+SCRAPER_JOBSTREET = """\
+jobstreet — JobStreet vacancy detail GraphQL scraper
+
+  API:      POST https://my.jobstreet.com/graphql
+  Returns:  title, complete HTML description, locations, employment type,
+            posting date, base salary, expiration date and employer metadata
+  Config:   Standard enrich list (auto-configured)
+  Note:     Derives the numeric ID from my.jobstreet.com/job/{id}. Runs on the
+            normal scrape schedule so the hourly employer monitor performs
+            only the company-scoped listing pass.
 """
 
 SCRAPER_ONLYFY = """\
@@ -3633,6 +3670,7 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
     "skip": SCRAPER_SKIP,
     "linkedin": SCRAPER_LINKEDIN,
     "headhunter": SCRAPER_HEADHUNTER,
+    "jobstreet": SCRAPER_JOBSTREET,
     "paycom": SCRAPER_PAYCOM,
     "jazzhr": SCRAPER_JAZZHR,
     "paylocity": SCRAPER_PAYLOCITY,

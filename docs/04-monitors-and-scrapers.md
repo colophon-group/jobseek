@@ -48,6 +48,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `paycom` | Rich | paycom | Paycom public preview API plus detail API enrichment |
 | `jazzhr` | URL-only | jazzhr | JazzHR static listing with JSON-LD/DOM detail composition |
 | `jobbank104` | URL-only | json-ld | 104 Job Bank server-rendered company listings, proxy-capable for Cloudflare challenges |
+| `jobstreet` | Rich + enrichment | jobstreet | JobStreet employer-scoped public search plus GraphQL detail enrichment |
 | `jobvite` | URL-only | json-ld | Jobvite static listings, including branded career-site routes |
 | `pageup` | Rich + enrichment | dom | PageUp static listings with streamed total-checked pagination and DOM description enrichment |
 | `adp` | Rich + enrichment | adp | ADP Workforce Now public listing API + native detail/DOCX enrichment |
@@ -115,7 +116,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 
 Rich monitors return complete job data in a single request — no scraper needed. URL-only monitors with auto-scrapers need no manual scraper selection; the scraper is configured automatically. Monitors marked "—" require manual scraper selection. Conditional monitors return rich data only under the condition named in the table; otherwise they need a scraper or runtime coverage check.
 
-`headhunter`, `linkedin`, and `paylocity` are partial-rich exceptions: their
+`headhunter`, `jobstreet`, `linkedin`, and `paylocity` are partial-rich exceptions: their
 listing responses provide clean summary fields while their auto-configured
 scrapers hydrate the remaining detail fields on the daily schedule.
 
@@ -290,6 +291,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `eightfold` | Static | JSON-LD extraction with Eightfold position API fallback |
 | `embedded` | Static | Extracts from embedded JSON/JS data in page source |
 | `headhunter` | Static | Fetches proxy-routed HeadHunter vacancy detail JSON |
+| `jobstreet` | Static | Fetches JobStreet vacancy detail GraphQL data |
 | `json-ld` | Static | Parses `<script type="application/ld+json">` |
 | `linkedin` | Static | Fetches LinkedIn public guest-job detail fragments |
 | `mokahr` | Static | Fetches and decrypts Mokahr detail API records |

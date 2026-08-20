@@ -183,6 +183,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `paycom`          | Rich     | paycom      | Paycom bootstrap + preview API + detail enrichment |
 | 10   | `jazzhr`          | URL-only | jazzhr      | ApplyToJob static listing + JSON-LD/DOM detail parsing |
 | 10   | `jobbank104`      | URL-only | json-ld     | 104 Job Bank company-page links through optional proxy transport |
+| 10   | `jobstreet`       | Rich     | jobstreet   | JobStreet employer search summaries + GraphQL detail enrichment |
 | 10   | `icims`           | URL-only | json-ld     | iCIMS static listings + bounded pagination |
 | 10   | `intervieweb`     | URL-only | json-ld     | Intervieweb HTML + CSRF-protected POST pagination |
 | 10   | `gupy`            | URL-only | json-ld     | Gupy single-page NextData inventory |
@@ -274,6 +275,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `eightfold`    | JSON-LD extraction with Eightfold position API fallback | None              |
 | `embedded`     | Parse embedded JSON/RSC data from page source      | `{pattern/script_id/source, path, fields}` |
 | `headhunter`   | Fetch proxy-routed HeadHunter vacancy detail JSON  | None                   |
+| `jobstreet`    | Fetch JobStreet vacancy detail GraphQL data        | None                   |
 | `json-ld`      | Parse `<script type="application/ld+json">` (JobPosting schema) | None (auto)    |
 | `mokahr`       | Fetch and decrypt Mokahr detail API records        | None                   |
 | `nextdata`     | Extract from `__NEXT_DATA__` JSON                  | `{path, fields}`       |
