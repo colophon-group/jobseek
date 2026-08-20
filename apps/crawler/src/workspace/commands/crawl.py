@@ -984,7 +984,10 @@ _MONITOR_CONFIG_HINTS = {
     "umantis": "Requires: customer_id. Optional: region, listing_path",
     "earcu": "Requires: feed_url (auto-filled from an eArcu careers URL)",
     "sitemap": "Optional: sitemap_url, url_filter (regex to include/exclude URLs)",
-    "talemetry": "Optional: max_pages, page_max_chars, proxy. Uses fail-closed ?page=N pagination.",
+    "talemetry": (
+        "Optional: max_pages, page_max_chars, proxy, transport=jobs_json. "
+        "Uses fail-closed pagination."
+    ),
     "talentbrew": "Optional: max_pages, page_size, proxy. Uses search-results pagination.",
     "njoyn": "Optional: max_pages, page_wait_ms. Uses session-bound form pagination.",
     "nextdata": (

@@ -17,6 +17,7 @@ import structlog
 
 from src.core.enum_normalize import normalize_salary_unit
 from src.core.scrapers import JobContent, register
+from src.shared.api_sniff import clean_headers
 from src.shared.http import is_avature_job_detail_url
 from src.shared.http_retry import fetch_response_with_status_retries
 
@@ -97,6 +98,37 @@ def _repair_talemetry_missing_comma(raw: str) -> str:
     return _TALEMETRY_MISSING_COMMA_RE.sub(r"\1,\2\3", raw)
 
 
+def _repair_talemetry_invalid_dollar_escape(raw: str) -> str:
+    r"""Remove TTC's invalid ``\$`` JSON escape inside string values only."""
+    out: list[str] = []
+    in_string = False
+    index = 0
+    while index < len(raw):
+        char = raw[index]
+        if not in_string:
+            out.append(char)
+            if char == '"':
+                in_string = True
+            index += 1
+            continue
+        if char == '"':
+            out.append(char)
+            in_string = False
+            index += 1
+            continue
+        if char == "\\" and index + 1 < len(raw):
+            escaped = raw[index + 1]
+            if escaped == "$":
+                out.append("$")
+            else:
+                out.extend((char, escaped))
+            index += 2
+            continue
+        out.append(char)
+        index += 1
+    return "".join(out)
+
+
 class _JsonLdExtractor(HTMLParser):
     """Extracts JSON-LD blocks from HTML."""
 
@@ -144,7 +176,16 @@ class _JsonLdExtractor(HTMLParser):
                 # entire JSON document inside the script element.
                 parsed_block = None
                 for candidate in (raw, html_module.unescape(raw)):
-                    for variant in (candidate, _repair_talemetry_missing_comma(candidate)):
+                    repaired_comma = _repair_talemetry_missing_comma(candidate)
+                    variants = dict.fromkeys(
+                        (
+                            candidate,
+                            repaired_comma,
+                            _repair_talemetry_invalid_dollar_escape(candidate),
+                            _repair_talemetry_invalid_dollar_escape(repaired_comma),
+                        )
+                    )
+                    for variant in variants:
                         try:
                             parsed_block = json.loads(variant)
                             break
@@ -506,7 +547,12 @@ def can_handle(htmls: list[str]) -> dict | None:
     return None
 
 
-async def _fetch_html(url: str, http: httpx.AsyncClient) -> str:
+async def _fetch_html(
+    url: str,
+    http: httpx.AsyncClient,
+    *,
+    headers: dict[str, str] | None = None,
+) -> str:
     """GET the page with bounded provider/status-aware retries.
 
     Some hosts (e.g. ``careers.rtx.com``) front their job pages with a soft
@@ -524,6 +570,7 @@ async def _fetch_html(url: str, http: httpx.AsyncClient) -> str:
         http,
         url,
         retry_limits=retry_limits,
+        headers=headers,
         log_event="jsonld.fetch.retry_status",
     )
     response.raise_for_status()
@@ -542,7 +589,9 @@ async def scrape(url: str, config: dict, http: httpx.AsyncClient, pw=None, **kwa
         browser_config = {k: v for k, v in config.items() if k in BROWSER_KEYS}
         html = await browser_render(url, browser_config, pw=pw)
     else:
-        html = await _fetch_html(url, http)
+        request_headers = config.get("request_headers") or {}
+        headers = clean_headers(request_headers)
+        html = await _fetch_html(url, http, headers=headers or None)
 
     content = parse_html(html, config)
     if content.title:

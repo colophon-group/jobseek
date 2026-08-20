@@ -5,6 +5,11 @@ Talemetry career sites render authoritative job links in a
 ``Showing 1-25 of 85 results`` (or TTC Portals' ``Viewing`` variant).
 Pagination uses ``?page=N``.
 
+TTC Portals also exposes the same inventory through a first-party
+``/search/jobs.json?page=N`` endpoint. Boards that opt into the ``jobs_json``
+transport use that endpoint with browser fetch headers and the same strict
+snapshot checks as the HTML path.
+
 The strict count/range checks are intentional.  Returning a partial URL set
 from a failed later page would make gone detection retire still-live jobs.
 """
@@ -17,14 +22,14 @@ import re
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 import structlog
 
 from src.core.monitors import fetch_page_text, register
-from src.core.monitors.raw import save_text_response
-from src.shared.http_retry import fetch_with_retry
+from src.core.monitors.raw import save_json_response, save_text_response
+from src.shared.http_retry import fetch_json_page_with_retry, fetch_with_retry
 
 if TYPE_CHECKING:
     import httpx
@@ -43,6 +48,16 @@ _RESULT_COUNT_RE = re.compile(
     re.IGNORECASE,
 )
 _JOB_PATH_RE = re.compile(r"^/jobs/\d+(?:-[^/?#]+)?/?$", re.IGNORECASE)
+_PERMALINK_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._~-]*$")
+_JOBS_JSON_TRANSPORT = "jobs_json"
+_JOBS_JSON_HEADERS = {
+    "Accept": "application/json",
+    "X-Requested-With": "XMLHttpRequest",
+    "Referer": "https://parkercareers.ttcportals.com/jobs/search",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+}
 _VOID_TAGS = frozenset(
     {
         "area",
@@ -168,6 +183,102 @@ def _page_url(board_url: str, page: int) -> str:
     return urlunparse(parsed._replace(query=urlencode(params), fragment=""))
 
 
+def _jobs_json_page_url(board_url: str, page: int) -> str:
+    parsed = urlparse(board_url)
+    path = parsed.path.rstrip("/")
+    if not path.endswith(".json"):
+        path = f"{path}.json"
+    params = [
+        (key, value)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key != "page"
+    ]
+    params.append(("page", str(page)))
+    return urlunparse(parsed._replace(path=path, query=urlencode(params), fragment=""))
+
+
+def _json_int(payload: dict[str, Any], key: str, *, minimum: int) -> int:
+    value = payload.get(key)
+    if isinstance(value, bool) or not isinstance(value, int) or value < minimum:
+        raise ValueError(f"Talemetry jobs JSON {key} must be an integer >= {minimum}")
+    return value
+
+
+def _json_job_id(entry: dict[str, Any], key: str) -> str:
+    value = entry.get(key)
+    if isinstance(value, bool) or not isinstance(value, (str, int)):
+        raise ValueError(f"Talemetry jobs JSON entry has invalid {key}")
+    normalized = str(value)
+    if not normalized.isdigit() or int(normalized) < 1:
+        raise ValueError(f"Talemetry jobs JSON entry has invalid {key}")
+    return normalized
+
+
+def _parse_jobs_json_page(
+    payload: dict[str, Any],
+    *,
+    board_url: str,
+    page: int,
+    expected_total: int | None = None,
+    expected_page_size: int | None = None,
+) -> tuple[set[str], set[str], int, int]:
+    total = _json_int(payload, "total_entries", minimum=0)
+    page_size = _json_int(payload, "per_page", minimum=1)
+    current_page = _json_int(payload, "current_page", minimum=1)
+    entries = payload.get("entries")
+    if not isinstance(entries, list):
+        raise ValueError("Talemetry jobs JSON entries must be an array")
+
+    if expected_total is not None and total != expected_total:
+        raise _SnapshotChanged(f"Talemetry jobs JSON total changed: {expected_total} -> {total}")
+    if expected_page_size is not None and page_size != expected_page_size:
+        raise _SnapshotChanged(
+            f"Talemetry jobs JSON page size changed: {expected_page_size} -> {page_size}"
+        )
+    if current_page != page:
+        raise _SnapshotChanged(f"Talemetry jobs JSON returned page {current_page}, expected {page}")
+
+    offset = (page - 1) * page_size
+    expected_entries = max(0, min(page_size, total - offset))
+    if len(entries) != expected_entries:
+        raise _SnapshotChanged(
+            f"Talemetry jobs JSON page {page} returned {len(entries)} entries, "
+            f"expected {expected_entries}"
+        )
+
+    base = urlparse(board_url)
+    urls: set[str] = set()
+    ids: set[str] = set()
+    for index, raw_entry in enumerate(entries):
+        if not isinstance(raw_entry, dict):
+            raise ValueError(f"Talemetry jobs JSON entry {index} on page {page} must be an object")
+        job_id = _json_job_id(raw_entry, "id")
+        talemetry_job_id = _json_job_id(raw_entry, "talemetry_job_id")
+        if job_id != talemetry_job_id:
+            raise _SnapshotChanged(
+                f"Talemetry jobs JSON entry {job_id} has conflicting talemetry_job_id"
+            )
+        permalink = raw_entry.get("permalink")
+        if not isinstance(permalink, str) or not _PERMALINK_RE.fullmatch(permalink):
+            raise ValueError(f"Talemetry jobs JSON entry {job_id} has invalid permalink")
+        if job_id in ids:
+            raise _SnapshotChanged(f"Talemetry jobs JSON page {page} repeated job ID {job_id}")
+        ids.add(job_id)
+        urls.add(
+            urlunparse(
+                base._replace(
+                    path=f"/jobs/{job_id}-{permalink}",
+                    query="",
+                    fragment="",
+                )
+            )
+        )
+
+    if len(urls) != len(entries):
+        raise _SnapshotChanged(f"Talemetry jobs JSON page {page} repeated a job URL")
+    return urls, ids, total, page_size
+
+
 def _page_max_chars(metadata: dict) -> int:
     raw = metadata.get("page_max_chars")
     if raw is None:
@@ -251,6 +362,9 @@ async def _discover_once(
 ) -> set[str]:
     board_url = board["board_url"]
     metadata = board.get("metadata") or {}
+    if metadata.get("transport") == _JOBS_JSON_TRANSPORT:
+        return await _discover_jobs_json_once(board_url, metadata, client)
+
     max_chars = _page_max_chars(metadata)
     first_html = await fetch_with_retry(
         client,
@@ -310,6 +424,74 @@ async def _discover_once(
     return urls
 
 
+async def _discover_jobs_json_once(
+    board_url: str,
+    metadata: dict,
+    client: httpx.AsyncClient,
+) -> set[str]:
+    first = await fetch_json_page_with_retry(
+        client,
+        _jobs_json_page_url(board_url, 1),
+        expect_shape=dict,
+        headers=_JOBS_JSON_HEADERS,
+        follow_redirects=True,
+        log_event="talemetry.jobs_json.retry",
+    )
+    urls, ids, total, page_size = _parse_jobs_json_page(
+        first,
+        board_url=board_url,
+        page=1,
+    )
+    if total > MAX_URLS:
+        raise ValueError(f"Talemetry inventory {total} exceeds URL cap {MAX_URLS}")
+
+    pages = max(1, math.ceil(total / page_size))
+    max_pages = _max_pages(metadata)
+    if pages > max_pages:
+        raise ValueError(f"Talemetry inventory needs {pages} pages, above max_pages={max_pages}")
+
+    for page in range(2, pages + 1):
+        payload = await fetch_json_page_with_retry(
+            client,
+            _jobs_json_page_url(board_url, page),
+            expect_shape=dict,
+            headers=_JOBS_JSON_HEADERS,
+            follow_redirects=True,
+            log_event="talemetry.jobs_json.retry",
+        )
+        page_urls, page_ids, _, _ = _parse_jobs_json_page(
+            payload,
+            board_url=board_url,
+            page=page,
+            expected_total=total,
+            expected_page_size=page_size,
+        )
+        repeated_ids = ids & page_ids
+        if repeated_ids:
+            raise _SnapshotChanged(
+                f"Talemetry jobs JSON page {page} repeated {len(repeated_ids)} earlier job IDs"
+            )
+        repeated_urls = urls & page_urls
+        if repeated_urls:
+            raise _SnapshotChanged(
+                f"Talemetry jobs JSON page {page} repeated {len(repeated_urls)} earlier job URLs"
+            )
+        ids.update(page_ids)
+        urls.update(page_urls)
+
+    if len(ids) != total or len(urls) != total:
+        raise _SnapshotChanged(
+            f"Talemetry jobs JSON discovered {len(urls)} URLs/{len(ids)} IDs, expected {total}"
+        )
+    log.info(
+        "talemetry.jobs_json.complete",
+        board_url=board_url,
+        urls_found=len(urls),
+        pages=pages,
+    )
+    return urls
+
+
 async def discover(
     board: dict,
     client: httpx.AsyncClient,
@@ -340,7 +522,16 @@ async def save_raw(
     metadata: dict,
     client: httpx.AsyncClient,
 ) -> None:
-    _ = metadata
+    if metadata.get("transport") == _JOBS_JSON_TRANSPORT:
+        await save_json_response(
+            artifact_dir,
+            client,
+            _jobs_json_page_url(board_url, 1),
+            filename="jobs.json",
+            headers=_JOBS_JSON_HEADERS,
+            follow_redirects=True,
+        )
+        return
     await save_text_response(
         artifact_dir,
         client,
