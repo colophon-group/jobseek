@@ -67,7 +67,13 @@ DEFAULT_TIMEOUT = 30_000
 FALLBACK_WAIT_TIMEOUT = 5_000
 CONTEXT_TIMEOUT = 120_000  # hard cap: no single Playwright operation exceeds 2 minutes
 BROWSER_CLOSE_TIMEOUT_SECONDS = 15.0
+NAVIGATION_NETWORK_RETRY_DELAY_SECONDS = 0.5
 VALID_WAIT_STRATEGIES = frozenset({"load", "domcontentloaded", "networkidle", "commit"})
+_RETRYABLE_NAVIGATION_NETWORK_ERRORS = {
+    "ERR_CONNECTION_RESET": "connection_reset",
+    "ERR_NETWORK_CHANGED": "network_changed",
+    "ERR_SOCKET_NOT_CONNECTED": "socket_not_connected",
+}
 OVERLAY_SELECTORS = (
     '[class*="cookie-banner"]',
     '[class*="cookie-consent"]',
@@ -164,6 +170,17 @@ class BrowserActionUnknownError(RuntimeError):
 def is_target_closed_error(exc: BaseException) -> bool:
     """Return whether *exc* is Playwright's lost-target failure class."""
     return isinstance(exc, PlaywrightError) and _TARGET_CLOSED_MARKER in str(exc)
+
+
+def _retryable_navigation_network_error(exc: BaseException) -> str | None:
+    """Classify transient Chromium transport failures safe for one retry."""
+    if not isinstance(exc, PlaywrightError):
+        return None
+    message = str(exc)
+    for marker, reason in _RETRYABLE_NAVIGATION_NETWORK_ERRORS.items():
+        if marker in message:
+            return reason
+    return None
 
 
 async def _close_browser_resource(resource, resource_name: str) -> None:
@@ -551,8 +568,9 @@ async def navigate(
         ``timeout``        Navigation timeout in ms (default ``30000``).
         ``wait_fallback``  Fallback load state checked on the current document
                            when the primary ``page.goto`` raises Playwright's
-                           ``TimeoutError`` (non-timeout errors propagate
-                           unchanged). Defaults to ``DEFAULT_WAIT_FALLBACK``
+                           ``TimeoutError``. Transient Chromium transport
+                           failures are retried once before they propagate.
+                           Defaults to ``DEFAULT_WAIT_FALLBACK``
                            ("domcontentloaded") so SPA sites that never reach
                            ``networkidle`` still produce usable HTML. Set to
                            ``None`` in config to opt out; set to the same value
@@ -598,26 +616,69 @@ async def navigate(
 
     page.on("response", _capture_main_navigation_response)
     try:
-        try:
-            response = await page.goto(url, wait_until=wait_strategy, timeout=timeout)
-        except PlaywrightTimeoutError:
-            if not fallback_strategy:
-                # Board opted out via wait_fallback=None. Record separately from
-                # the match-primary case so operators can tell why the retry was
-                # skipped.
-                metrics.browser_navigate_fallback_total.labels(
-                    primary=wait_strategy, fallback="none", outcome="disabled"
+        network_retry_reason: str | None = None
+        network_retry_finished = False
+
+        def _finish_network_retry(outcome: str) -> None:
+            """Record exactly one terminal outcome for an initiated retry."""
+            nonlocal network_retry_finished
+            if network_retry_reason is None or network_retry_finished:
+                return
+            metrics.browser_navigation_network_retry_total.labels(
+                reason=network_retry_reason,
+                outcome=outcome,
+            ).inc()
+            network_retry_finished = True
+
+        for attempt in range(2):
+            try:
+                response = await page.goto(url, wait_until=wait_strategy, timeout=timeout)
+            except PlaywrightTimeoutError:
+                if not fallback_strategy:
+                    # Board opted out via wait_fallback=None. Record separately from
+                    # the match-primary case so operators can tell why the retry was
+                    # skipped.
+                    metrics.browser_navigate_fallback_total.labels(
+                        primary=wait_strategy, fallback="none", outcome="disabled"
+                    ).inc()
+                    _finish_network_retry("exhausted")
+                    raise
+                if fallback_strategy == wait_strategy:
+                    # Fallback equals primary — nothing to gain from another attempt.
+                    metrics.browser_navigate_fallback_total.labels(
+                        primary=wait_strategy, fallback=fallback_strategy, outcome="match"
+                    ).inc()
+                    _finish_network_retry("exhausted")
+                    raise
+                break
+            except PlaywrightError as exc:
+                reason = _retryable_navigation_network_error(exc)
+                if reason is None:
+                    _finish_network_retry("exhausted")
+                    raise
+                if attempt == 1:
+                    _finish_network_retry("exhausted")
+                    raise
+                network_retry_reason = reason
+                metrics.browser_navigation_network_retry_total.labels(
+                    reason=reason,
+                    outcome="retry",
                 ).inc()
-                raise
-            if fallback_strategy == wait_strategy:
-                # Fallback equals primary — nothing to gain from a second attempt.
-                metrics.browser_navigate_fallback_total.labels(
-                    primary=wait_strategy, fallback=fallback_strategy, outcome="match"
-                ).inc()
-                raise
-        else:
-            _raise_for_navigation_http_status(response, url, "primary")
-            return
+                log.info(
+                    "browser.navigate.network_retry",
+                    url=url,
+                    reason=reason,
+                    attempt=attempt + 1,
+                )
+                await asyncio.sleep(NAVIGATION_NETWORK_RETRY_DELAY_SECONDS)
+            else:
+                try:
+                    _raise_for_navigation_http_status(response, url, "primary")
+                except BrowserNavigationHTTPStatusError:
+                    _finish_network_retry("exhausted")
+                    raise
+                _finish_network_retry("recovered")
+                return
 
         fallback_timeout = min(timeout, FALLBACK_WAIT_TIMEOUT)
         log.info(
@@ -638,6 +699,7 @@ async def navigate(
             metrics.browser_navigate_fallback_total.labels(
                 primary=wait_strategy, fallback=fallback_strategy, outcome="failed"
             ).inc()
+            _finish_network_retry("exhausted")
             raise
 
         try:
@@ -646,7 +708,9 @@ async def navigate(
             metrics.browser_navigate_fallback_total.labels(
                 primary=wait_strategy, fallback=fallback_strategy, outcome="http_error"
             ).inc()
+            _finish_network_retry("exhausted")
             raise
+        _finish_network_retry("recovered")
         metrics.browser_navigate_fallback_total.labels(
             primary=wait_strategy, fallback=fallback_strategy, outcome="success"
         ).inc()
