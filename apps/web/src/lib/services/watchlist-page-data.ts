@@ -97,16 +97,16 @@ async function buildWatchlistPageDataUnbounded(
 
   const [locMap, occMap, senMap, techMap] = await Promise.all([
     filters.locationSlugs?.length
-      ? resolveLocationSlugs(filters.locationSlugs, locale, { abortSignal })
+      ? resolveLocationSlugs(filters.locationSlugs, locale)
       : Promise.resolve(new Map()),
     filters.occupationSlugs?.length
-      ? resolveOccupationSlugs(filters.occupationSlugs, locale, { abortSignal })
+      ? resolveOccupationSlugs(filters.occupationSlugs, locale)
       : Promise.resolve(new Map()),
     filters.senioritySlugs?.length
-      ? resolveSenioritySlugs(filters.senioritySlugs, locale, { abortSignal })
+      ? resolveSenioritySlugs(filters.senioritySlugs, locale)
       : Promise.resolve(new Map()),
     filters.technologySlugs?.length
-      ? resolveTechnologySlugs(filters.technologySlugs, { abortSignal })
+      ? resolveTechnologySlugs(filters.technologySlugs)
       : Promise.resolve(new Map()),
   ]);
 

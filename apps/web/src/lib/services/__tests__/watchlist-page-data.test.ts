@@ -112,24 +112,10 @@ describe("watchlist page Typesense degradation (#7487)", () => {
     expect(JSON.stringify(result)).not.toContain("Not Ready or Lagging");
   });
 
-  it("returns the degraded page within the explicit search budget", async () => {
+  it("keeps cached taxonomy resolution while enforcing the search budget", async () => {
     vi.useFakeTimers();
-    let observedSignal: AbortSignal | undefined;
     mocks.resolveLocationSlugs.mockImplementationOnce(
-      (
-        _slugs: string[],
-        _locale: string,
-        options: { abortSignal?: AbortSignal },
-      ) => {
-        observedSignal = options.abortSignal;
-        return new Promise((_resolve, reject) => {
-          options.abortSignal?.addEventListener(
-            "abort",
-            () => reject(malformedTypesenseResponseError()),
-            { once: true },
-          );
-        });
-      },
+      () => new Promise(() => {}),
     );
 
     const resultPromise = buildWatchlistPageData(params);
@@ -141,7 +127,7 @@ describe("watchlist page Typesense degradation (#7487)", () => {
       total: 0,
       yearTotal: 0,
     });
-    expect(observedSignal?.aborted).toBe(true);
+    expect(mocks.resolveLocationSlugs).toHaveBeenCalledWith(["zurich"], "en");
     expect(mocks.getPublicWatchlistPostings).not.toHaveBeenCalled();
   });
 });
