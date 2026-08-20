@@ -153,13 +153,21 @@ class BrowserNavigationHTTPStatusError(RuntimeError):
         )
 
 
+class BrowserActionNoMatchError(RuntimeError):
+    """A required click action had no matching element."""
+
+
+class BrowserActionUnknownError(RuntimeError):
+    """A configured browser action type is not supported."""
+
+
 def is_target_closed_error(exc: BaseException) -> bool:
     """Return whether *exc* is Playwright's lost-target failure class."""
     return isinstance(exc, PlaywrightError) and _TARGET_CLOSED_MARKER in str(exc)
 
 
 async def _close_browser_resource(resource, resource_name: str) -> None:
-    """Close a Playwright resource without allowing teardown to hang forever."""
+    """Close a Playwright resource without replacing the completed page task."""
     try:
         await asyncio.wait_for(resource.close(), timeout=BROWSER_CLOSE_TIMEOUT_SECONDS)
     except TimeoutError:
@@ -172,14 +180,12 @@ async def _close_browser_resource(resource, resource_name: str) -> None:
             resource=resource_name,
             timeout_seconds=BROWSER_CLOSE_TIMEOUT_SECONDS,
         )
-        raise
     except Exception:
         metrics.browser_cleanup_failures_total.labels(
             resource=resource_name,
             outcome="error",
         ).inc()
         log.warning("browser.cleanup.error", resource=resource_name, exc_info=True)
-        raise
 
 
 # ---------------------------------------------------------------------------
@@ -658,23 +664,48 @@ async def run_actions(page, actions: list[dict]) -> None:
 
     Each action is wrapped in a timeout (default 10s, configurable per-action
     via a ``"timeout"`` key).  On failure or timeout an individual action logs
-    a warning and execution continues with the next action.
+    a warning and execution continues with the next action unless it opts into
+    fail-closed behavior with ``"required": true``. ``paginate_collect`` is
+    always required because accepting its partial URL set is unsafe.
     """
     for action in actions:
         kind = action.get("action")
+        required = bool(action.get("required")) or kind == "paginate_collect"
         default_timeout = (
             _REPEAT_TIMEOUT if kind in ("repeat", "paginate_collect") else ACTION_TIMEOUT
         )
         timeout = action.get("timeout", default_timeout)
         try:
             await asyncio.wait_for(_execute_action(page, action, kind), timeout=timeout)
+        except BrowserActionNoMatchError:
+            log.warning(
+                "browser.action.click_no_match",
+                selector=action.get("selector"),
+                required=required,
+            )
+            if required:
+                raise
+        except BrowserActionUnknownError:
+            log.warning("browser.action.unknown", action=kind, required=required)
+            if required:
+                raise
         except TimeoutError:
-            log.warning("browser.action.timeout", action=kind, timeout=timeout)
-            if kind == "paginate_collect":
+            log.warning(
+                "browser.action.timeout",
+                action=kind,
+                timeout=timeout,
+                required=required,
+            )
+            if required:
                 raise
         except Exception:
-            log.warning("browser.action.failed", action=kind, exc_info=True)
-            if kind == "paginate_collect":
+            log.warning(
+                "browser.action.failed",
+                action=kind,
+                required=required,
+                exc_info=True,
+            )
+            if required:
                 raise
 
 
@@ -692,7 +723,9 @@ async def _execute_action(page, action: dict, kind: str | None) -> None:
         if await loc.count() > 0:
             await loc.click()
         else:
-            log.warning("browser.action.click_no_match", selector=selector)
+            raise BrowserActionNoMatchError(
+                f"browser click action matched no elements: {selector!r}"
+            )
     elif kind == "wait_for":
         selector = action["selector"]
         state = action.get("state", "visible")
@@ -713,7 +746,7 @@ async def _execute_action(page, action: dict, kind: str | None) -> None:
     elif kind == "paginate_collect":
         await _execute_paginate_collect(page, action)
     else:
-        log.warning("browser.action.unknown", action=kind)
+        raise BrowserActionUnknownError(f"unknown browser action: {kind!r}")
 
 
 def _resolve_frame(page, frame_selector: str | None):

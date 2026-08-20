@@ -2863,7 +2863,8 @@ Browser Action Pipeline — pre-extraction actions for Playwright
 
   Actions run sequentially after page navigation, before extraction.
   Each action has a 10s timeout (configurable per-action). Failures
-  log a warning and continue.
+  log a warning and continue unless the action sets ``"required": true``.
+  Required actions fail the board cycle instead of accepting partial output.
 
   Used in: dom monitor, dom scraper, nextdata monitor/scraper (with render: true)
 
@@ -2934,6 +2935,12 @@ Browser Action Pipeline — pre-extraction actions for Playwright
   Per-action timeout:
     {"action": "click", "selector": ".btn", "timeout": 5}
         Override default 10s timeout (value in seconds)
+
+  Fail-closed action:
+    {"action": "click", "selector": ".page-size-50", "required": true}
+        Propagate missing-selector, timeout, and execution failures. Use this
+        for pagination or enrichment steps whose failure makes the resulting
+        URL/content set incomplete. ``paginate_collect`` is always fail-closed.
 
   Example pipelines:
     "actions": [

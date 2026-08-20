@@ -452,6 +452,18 @@ class TestRunActions:
         await run_actions(page, [{"action": "click", "selector": ".gone"}])
         page.locator.return_value.first.click.assert_not_awaited()
 
+    async def test_required_click_missing_element_raises(self):
+        page = _make_page()
+        page.locator.return_value.first.count = AsyncMock(return_value=0)
+
+        with pytest.raises(RuntimeError, match="matched no elements"):
+            await run_actions(
+                page,
+                [{"action": "click", "selector": ".gone", "required": True}],
+            )
+
+        page.locator.return_value.first.click.assert_not_awaited()
+
     async def test_wait_for_action(self):
         page = _make_page()
         await run_actions(page, [{"action": "wait_for", "selector": "h2"}])
@@ -507,6 +519,16 @@ class TestRunActions:
         )
         assert page.evaluate.await_count == 2
 
+    async def test_required_failed_action_raises(self):
+        page = _make_page()
+        page.evaluate = AsyncMock(side_effect=RuntimeError("page helper unavailable"))
+
+        with pytest.raises(RuntimeError, match="page helper unavailable"):
+            await run_actions(
+                page,
+                [{"action": "evaluate", "script": "broken()", "required": True}],
+            )
+
     async def test_unknown_action_logs_warning(self):
         page = _make_page()
         # Should not raise
@@ -529,6 +551,26 @@ class TestRunActions:
         # Use a very short timeout so the test completes quickly
         await run_actions(page, [{"action": "remove", "selector": ".slow", "timeout": 0.01}])
         # Should not raise — timeout is handled gracefully
+
+    async def test_required_action_timeout_raises(self):
+        page = _make_page()
+
+        async def slow_evaluate(*args, **kwargs):
+            await asyncio.sleep(60)
+
+        page.evaluate = AsyncMock(side_effect=slow_evaluate)
+        with pytest.raises(TimeoutError):
+            await run_actions(
+                page,
+                [
+                    {
+                        "action": "evaluate",
+                        "script": "slow()",
+                        "timeout": 0.01,
+                        "required": True,
+                    }
+                ],
+            )
 
     async def test_action_default_timeout(self):
         assert ACTION_TIMEOUT == 10.0
@@ -628,15 +670,14 @@ class TestOpenPage:
         browser.close.assert_awaited_once()
 
     async def test_closes_browser_even_when_context_close_fails(self):
-        """A killed Chromium transport must not skip the outer browser close."""
+        """Cleanup failure must not fail completed work or skip browser close."""
         pw = _make_pw()
         browser = pw.chromium.launch.return_value
         context = browser.new_context.return_value
         context.close.side_effect = RuntimeError("transport closed")
 
-        with pytest.raises(RuntimeError, match="transport closed"):
-            async with open_page(pw):
-                pass
+        async with open_page(pw):
+            pass
 
         context.close.assert_awaited_once()
         browser.close.assert_awaited_once()
@@ -652,10 +693,23 @@ class TestOpenPage:
         context.close.side_effect = never_closes
         monkeypatch.setattr("src.shared.browser.BROWSER_CLOSE_TIMEOUT_SECONDS", 0.01)
 
-        with pytest.raises(TimeoutError):
-            async with open_page(pw):
-                pass
+        async with open_page(pw):
+            pass
 
+        browser.close.assert_awaited_once()
+
+    async def test_cleanup_failure_does_not_replace_body_exception(self):
+        pw = _make_pw()
+        browser = pw.chromium.launch.return_value
+        context = browser.new_context.return_value
+        context.close.side_effect = RuntimeError("transport closed")
+        browser.close.side_effect = RuntimeError("browser already gone")
+
+        with pytest.raises(ValueError, match="monitor failed"):
+            async with open_page(pw):
+                raise ValueError("monitor failed")
+
+        context.close.assert_awaited_once()
         browser.close.assert_awaited_once()
 
     async def test_closes_context_on_exception(self):
