@@ -143,6 +143,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "avature",
     "bite",
     "breezy",
+    "candidatus",
     "eightfold",
     "gupy",
     "herp",
@@ -252,6 +253,20 @@ def detect_ats_from_url(url: str) -> str | None:
         return "ashby"
     if host == "jobs.gem.com":
         return "gem"
+    if (
+        host == "carrieres.candidatus.com"
+        and parsed.scheme == "https"
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
+        and not parsed.query
+        and not parsed.fragment
+        and re.fullmatch(
+            r"/site-emploi,[A-Za-z0-9_-]+(?:;[A-Za-z0-9_-]+)*/?",
+            parsed.path,
+        )
+    ):
+        return "candidatus"
     if host in {
         "hh.ru",
         "www.hh.ru",
@@ -768,6 +783,28 @@ def auto_scraper_type(
         return ("json-ld", None)
     if monitor_type == "icims":
         return ("json-ld", None)
+    if monitor_type == "candidatus":
+        return (
+            "dom",
+            {
+                "steps": [
+                    {"tag": "td", "attr": "id=tzA3", "field": "title", "from": 0},
+                    {
+                        "tag": "td",
+                        "attr": "id=tzA7",
+                        "field": "locations",
+                        "regex": r"(\d{5}\s+.+)$",
+                        "from": 0,
+                    },
+                    {
+                        "tag": "div",
+                        "field": "description",
+                        "html": True,
+                        "stop": "Hosted by Candidatus.com",
+                    },
+                ]
+            },
+        )
     if monitor_type == "intervieweb":
         return ("json-ld", None)
     if monitor_type == "herp":

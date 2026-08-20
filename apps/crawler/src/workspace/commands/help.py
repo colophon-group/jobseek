@@ -962,6 +962,26 @@ njoyn — Njoyn XWeb browser monitor
   Detection:  *.njoyn.com/.../xweb/XWeb.asp listing URLs
   Pair with:  dom scraper rendered in a warmed Njoyn session"""
 
+MONITOR_CANDIDATUS = """\
+candidatus — Candidatus / WinDev browser monitor
+
+  Returns:  Complete stable detail-URL set (needs scraper)
+  Cost:     Browser navigation; one WinDev postback per advertised job
+
+  Candidatus listings expose job cards as JavaScript postbacks instead of
+  crawlable links. The monitor clicks every validated title control, records
+  its stable /annonce-emploi,... URL, and fails closed if the listing changes,
+  a card is missing, or two cards resolve to the same URL.
+
+  Config:
+    {"max_jobs": 500, "timeout": 30000}
+
+    max_jobs    Per-board safety cap (default 1000, maximum 1000)
+    timeout     Navigation timeout in milliseconds
+
+  Detection:  carrieres.candidatus.com/site-emploi,... WinDev listings
+  Scraper:    auto-configured DOM extraction for title, location, description"""
+
 MONITOR_TALEMETRY = """\
 talemetry — Talemetry / Jobvite Career Sites
 
@@ -3219,6 +3239,7 @@ MONITOR_CARDS: dict[str, str] = {
     "bamboohr": MONITOR_BAMBOOHR,
     "beisen": MONITOR_BEISEN,
     "brassring": MONITOR_BRASSRING,
+    "candidatus": MONITOR_CANDIDATUS,
     "paycom": MONITOR_PAYCOM,
     "jazzhr": MONITOR_JAZZHR,
     "jobbank104": MONITOR_JOBBANK104,
