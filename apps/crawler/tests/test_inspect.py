@@ -820,7 +820,7 @@ class TestReweGroupBoardConfig:
 class TestSafranBoardConfig:
     """Safran's global board and BambooHR subsidiary need pinned transports."""
 
-    def test_global_board_uses_proxy_pagination_and_extracts_details(self):
+    def test_global_board_uses_partitioned_talentsoft_and_extracts_details(self):
         import json
 
         from src.core.scrapers.dom import parse_html
@@ -835,41 +835,31 @@ class TestSafranBoardConfig:
 
         monitor_config = json.loads(row["monitor_config"])
         scraper_config = json.loads(row["scraper_config"])
-        for config in (monitor_config, scraper_config):
-            assert config["render"] is True
-            assert config["proxy"] is True
-            assert config["headless"] is False
-            assert config["persistent_context"] is True
-            assert config["channel"] == "chrome"
-            assert config["stealth"] is True
-        assert monitor_config["rescrape_policy"] == "never"
-        assert monitor_config["pagination"]["start"] == 0
+        assert row["board_url"].startswith("https://careers.safran-group.com/job/")
+        assert monitor_config["render"] is False
+        assert scraper_config["render"] is False
         assert monitor_config["pagination"]["max_pages"] >= 1000
-        assert monitor_config["pagination"]["browser"] is True
+        assert monitor_config["pagination"]["partition_validate_total"] is True
+        assert monitor_config["pagination"]["partition_stateless"] is True
 
         sample_html = """
-        <h1>Conformity Inspector</h1>
-        <div>Published 04.03.2026</div>
-        <div>
-          Company : Northwest Aerospace Technologies Job field : Quality
-          Location : Everett , Washington , United States
-          Contract type : Permanent Contract duration : Full-time
-          Required degree : Bachelor's Degree
+        <h1 class="ts-offer-page__title">Conformity Inspector</h1>
+        <div id="fldjobdescription_contract">Permanent</div>
+        <div id="fldlocation_location_geographicalareacollection">
+          Everett, Washington, United States
         </div>
-        <a>Apply</a>
-        <h2>Job Description</h2>
+        <h2 class="JobDescription">Job Description</h2>
         <p>Inspect aircraft interiors and verify conformity.</p>
-        <h2>Complementary Description</h2>
-        <p>Work with the quality and manufacturing teams.</p>
-        <a>Apply</a>
+        <h2 class="ApplicantCriteria">Applicant criteria</h2>
+        <p>Bachelor's degree and quality inspection experience.</p>
+        <h2>Next section</h2>
         """
         content = parse_html(sample_html, scraper_config)
         assert content.title == "Conformity Inspector"
-        assert content.locations == ["Everett , Washington , United States"]
-        assert content.employment_type == "Full-time"
-        assert content.date_posted == "04.03.2026"
+        assert content.locations == ["Everett, Washington, United States"]
+        assert content.employment_type == "Permanent"
         assert "Inspect aircraft interiors" in content.description
-        assert "Work with the quality" in content.description
+        assert "quality inspection experience" in content.extras["qualifications"][0]
 
     def test_federal_systems_uses_public_bamboohr_detail_api(self):
         import json

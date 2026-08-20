@@ -245,6 +245,35 @@ class TestDomScraper:
             ]
         }
 
+    def test_safran_uses_partitioned_talentsoft_source(self):
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(item for item in rows if item["board_slug"] == "safran-global")
+        monitor_config = json.loads(row["monitor_config"])
+        scraper_config = json.loads(row["scraper_config"])
+
+        assert row["board_url"].startswith("https://careers.safran-group.com/job/")
+        assert monitor_config["render"] is False
+        assert monitor_config["pagination"] == {
+            "param_name": "page",
+            "max_pages": 1_000,
+            "partition_selector": "ul.facette-titre-niv1 a[href*='facet_Contract=']",
+            "partition_fallback_selector": ("ul.facette-titre-niv1 a[href*='facet_JobFamily=']"),
+            "partition_count_regex": r"\((\d+)\s+(?:vacancies|offres)",
+            "partition_result_limit": 1_000,
+            "partition_validate_total": True,
+            "partition_drop_params": ["changefacet"],
+            "partition_stateless": True,
+            "transient_403": True,
+        }
+        assert scraper_config["render"] is False
+        assert any(
+            step.get("attr") == "id=fldlocation_location_geographicalareacollection"
+            for step in scraper_config["steps"]
+        )
+
     def test_parse_html_applies_defaults_only_to_missing_fields(self):
         from src.core.scrapers.dom import parse_html
 
