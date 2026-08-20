@@ -61,7 +61,7 @@ jobs:
             fi
             current_sha="$REQUESTED_SHA"
           fi
-          production="$(pnpm dlx vercel@55.0.0 api \
+          production="$(pnpm dlx vercel@59.3.0 api \
             "/v13/deployments/$PRODUCTION_ALIAS?teamId=$VERCEL_ORG_ID" \
             --raw --token="$VERCEL_TOKEN")"
           production_sha="$(jq -r '.gitSource.sha // .meta.githubCommitSha // ""' <<<"$production")"
@@ -89,7 +89,7 @@ jobs:
       - name: Pull production project settings
         if: steps.paths.outputs.deploy == 'true'
         run: >-
-          pnpm dlx vercel@55.0.0 pull
+          pnpm dlx vercel@59.3.0 pull
           --yes
           --environment=production
           --token="$VERCEL_TOKEN"
@@ -105,7 +105,7 @@ jobs:
         env:
           NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${{ secrets.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY }}
         run: >-
-          pnpm dlx vercel@55.0.0 build
+          pnpm dlx vercel@59.3.0 build
           --prod
           --token="$VERCEL_TOKEN"
 
@@ -116,7 +116,7 @@ jobs:
           COMMIT_SHA: ${{ steps.paths.outputs.current_sha }}
           COMMIT_REF: main
         run: |
-          deployment="$(pnpm dlx vercel@55.0.0 deploy \
+          deployment="$(pnpm dlx vercel@59.3.0 deploy \
             --prebuilt --prod --skip-domain --archive=tgz --format=json \
             --token="$VERCEL_TOKEN" \
             --meta githubCommitSha="$COMMIT_SHA" \
@@ -136,13 +136,13 @@ jobs:
         env:
           DEPLOYMENT_URL: ${{ steps.stage.outputs.url }}
         run: |
-          pnpm dlx vercel@55.0.0 inspect "$DEPLOYMENT_URL" \
+          pnpm dlx vercel@59.3.0 inspect "$DEPLOYMENT_URL" \
             --wait --timeout=5m --token="$VERCEL_TOKEN"
           for path in \
             /en/explore?wm=remote\&q=python \
             /en/company/securitas-ag \
             /en/sign-in; do
-            status="$(pnpm dlx vercel@55.0.0 curl "$path" \
+            status="$(pnpm dlx vercel@59.3.0 curl "$path" \
               --deployment="$DEPLOYMENT_URL" \
               -- --silent --show-error --output /dev/null --write-out '%{http_code}')"
             echo "Smoke $path -> HTTP $status"
@@ -155,7 +155,7 @@ jobs:
           scanner_headers="$(mktemp "$RUNNER_TEMP/vercel-scanner-headers.XXXXXX")"
           chmod 600 "$scanner_headers"
           trap 'rm -f -- "$scanner_headers"' EXIT
-          scanner_status="$(pnpm dlx vercel@55.0.0 curl /wp-admin/setup-config.php \
+          scanner_status="$(pnpm dlx vercel@59.3.0 curl /wp-admin/setup-config.php \
             --deployment="$DEPLOYMENT_URL" \
             -- --location --silent --show-error \
             --dump-header "$scanner_headers" \
@@ -187,7 +187,7 @@ jobs:
             fi
             exit 0
           fi
-          pnpm dlx vercel@55.0.0 promote "$DEPLOYMENT_URL" \
+          pnpm dlx vercel@59.3.0 promote "$DEPLOYMENT_URL" \
             --yes --timeout=3m --token="$VERCEL_TOKEN"
           echo "promoted=true" >> "$GITHUB_OUTPUT"
 

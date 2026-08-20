@@ -154,7 +154,7 @@ async function main() {
           "pnpm",
           [
             "dlx",
-            "vercel@55.0.0",
+            "vercel@59.3.0",
             "api",
             `/v13/deployments/${alias}?teamId=${orgId}`,
             "--raw",
