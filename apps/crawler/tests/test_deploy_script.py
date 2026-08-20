@@ -1717,14 +1717,21 @@ def test_deploy_blocks_named_typesense_maintenance_containers() -> None:
     assert "Wait for the maintenance job to finish" in script
 
 
-def test_deploy_disk_preflight_only_prunes_builder_cache() -> None:
+def test_deploy_disk_preflight_prunes_only_safe_reclaimable_docker_state() -> None:
     script = DEPLOY_SH.read_text()
 
     assert "docker builder prune -af" in script
+    assert "docker image prune -af" in script
     assert "DEPLOY_MIN_FREE_KB" in script
     assert "df -Pk" in script
     assert "docker system prune" not in script
     assert "docker volume prune" not in script
+
+    preflight = script[
+        script.index("ensure_deploy_disk_headroom() {") : script.index("resolve_shim_image_ref() {")
+    ]
+    assert preflight.index("docker builder prune -af") < preflight.index("docker image prune -af")
+    assert script.rstrip().splitlines()[-2] == "docker image prune -f || true"
 
 
 def test_crawler_image_stays_on_python_313_for_fasttext_wheels() -> None:
