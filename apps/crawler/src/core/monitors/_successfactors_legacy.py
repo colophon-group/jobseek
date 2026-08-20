@@ -658,8 +658,27 @@ async def probe_legacy(
 ) -> dict:
     """Validate one legacy board and return canonical RSS monitor config."""
 
-    session = await _bootstrap_session(board, client, terminal=False)
-    total, _prefix, _labels = await _initial_payload(session, client)
+    # Shared SuccessFactors origins occasionally invalidate the DWR session
+    # between the bootstrap GET and the initial POST.  The resulting body is
+    # an HTML/session response rather than a DWR reply.  Retry the complete
+    # handshake once so detection does not fall through to an expensive DOM
+    # monitor because of a single stale security token.  Persistent protocol
+    # drift still fails closed on the second attempt.
+    for attempt in range(2):
+        session = await _bootstrap_session(board, client, terminal=False)
+        try:
+            total, _prefix, _labels = await _initial_payload(session, client)
+            break
+        except SuccessFactorsLegacyRedirect:
+            raise
+        except SuccessFactorsLegacyProtocolError:
+            if attempt:
+                raise
+            log.info(
+                "rss.successfactors_legacy_probe_retry",
+                host=board.host,
+                company=board.company,
+            )
     return {
         "preset": "successfactors",
         "variant": "legacy",
