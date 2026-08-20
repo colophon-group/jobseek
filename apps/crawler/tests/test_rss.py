@@ -598,21 +598,62 @@ class TestDiscover:
                     client,
                 )
 
-    async def test_successfactors_company_enrichment_rejects_invalid_html_page(self):
+    async def test_successfactors_company_enrichment_follows_same_origin_redirect(self):
         feed_xml = _rss_xml("""
             <item>
                 <title>Pilot</title>
                 <link>https://example.com/job/1</link>
             </item>
         """)
+        requested_paths: list[str] = []
 
         def handler(request):
+            requested_paths.append(request.url.path)
             if request.url.path == "/googlefeed.xml":
                 return httpx.Response(200, text=feed_xml)
-            return httpx.Response(200, text="<html><h1>Access denied</h1></html>")
+            if request.url.path == "/job/1":
+                return httpx.Response(302, headers={"location": "/job/1/detail"})
+            return httpx.Response(
+                200,
+                text=(
+                    '<h1 data-careersite-propertyid="title">Pilot</h1>'
+                    '<span data-careersite-propertyid="customfield1">NetJets</span>'
+                ),
+            )
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            with pytest.raises(RuntimeError, match="invalid page"):
+            jobs = await discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": {
+                        "preset": "successfactors",
+                        "feed_url": "https://example.com/googlefeed.xml",
+                        "fetch_company": True,
+                    },
+                },
+                client,
+            )
+
+        assert jobs[0].metadata["company"] == "NetJets"
+        assert requested_paths == ["/googlefeed.xml", "/job/1", "/job/1/detail"]
+
+    async def test_successfactors_company_enrichment_rejects_off_origin_redirect(self):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Pilot</title>
+                <link>https://example.com/job/1</link>
+            </item>
+        """)
+        requested_hosts: list[str] = []
+
+        def handler(request):
+            requested_hosts.append(request.url.host)
+            if request.url.path == "/googlefeed.xml":
+                return httpx.Response(200, text=feed_xml)
+            return httpx.Response(302, headers={"location": "https://other.example/job/1"})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(RuntimeError, match="rejected redirect"):
                 await discover(
                     {
                         "board_url": "https://example.com/careers",
@@ -625,7 +666,92 @@ class TestDiscover:
                     client,
                 )
 
-    async def test_successfactors_company_enrichment_fails_closed(self):
+        assert requested_hosts == ["example.com", "example.com"]
+
+    async def test_successfactors_company_enrichment_rejects_invalid_html_page(self, monkeypatch):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Pilot</title>
+                <link>https://example.com/job/1</link>
+            </item>
+        """)
+
+        detail_requests = 0
+
+        def handler(request):
+            nonlocal detail_requests
+            if request.url.path == "/googlefeed.xml":
+                return httpx.Response(200, text=feed_xml)
+            detail_requests += 1
+            return httpx.Response(200, text="<html><h1>Access denied</h1></html>")
+
+        async def no_sleep(_delay):
+            return None
+
+        monkeypatch.setattr(rss_monitor, "_sleep", no_sleep)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(rss_monitor.SuccessFactorsDetailPageError) as exc_info:
+                await discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": {
+                            "preset": "successfactors",
+                            "feed_url": "https://example.com/googlefeed.xml",
+                            "fetch_company": True,
+                        },
+                    },
+                    client,
+                )
+
+        assert exc_info.value.classification == "missing_job_marker"
+        assert exc_info.value.attempts == 3
+        assert detail_requests == 3
+
+    async def test_successfactors_company_enrichment_retries_transient_status(self, monkeypatch):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Pilot</title>
+                <link>https://example.com/job/1</link>
+            </item>
+        """)
+        detail_requests = 0
+
+        def handler(request):
+            nonlocal detail_requests
+            if request.url.path == "/googlefeed.xml":
+                return httpx.Response(200, text=feed_xml)
+            detail_requests += 1
+            if detail_requests == 1:
+                return httpx.Response(503)
+            return httpx.Response(
+                200,
+                text=(
+                    '<h1 data-careersite-propertyid="title">Pilot</h1>'
+                    '<span data-careersite-propertyid="customfield1">NetJets</span>'
+                ),
+            )
+
+        async def no_sleep(_delay):
+            return None
+
+        monkeypatch.setattr(rss_monitor, "_sleep", no_sleep)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": {
+                        "preset": "successfactors",
+                        "feed_url": "https://example.com/googlefeed.xml",
+                        "fetch_company": True,
+                    },
+                },
+                client,
+            )
+
+        assert jobs[0].metadata["company"] == "NetJets"
+        assert detail_requests == 2
+
+    async def test_successfactors_company_enrichment_fails_closed(self, monkeypatch):
         feed_xml = _rss_xml("""
             <item>
                 <title>Pilot</title>
@@ -634,13 +760,21 @@ class TestDiscover:
             </item>
         """)
 
+        detail_requests = 0
+
         def handler(request):
+            nonlocal detail_requests
             if request.url.path == "/googlefeed.xml":
                 return httpx.Response(200, text=feed_xml)
+            detail_requests += 1
             return httpx.Response(503)
 
+        async def no_sleep(_delay):
+            return None
+
+        monkeypatch.setattr(rss_monitor, "_sleep", no_sleep)
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            with pytest.raises(RuntimeError, match="company enrichment failed"):
+            with pytest.raises(PaginationFetchError) as exc_info:
                 await discover(
                     {
                         "board_url": "https://example.com/careers",
@@ -652,6 +786,82 @@ class TestDiscover:
                     },
                     client,
                 )
+
+        assert exc_info.value.last_status == 503
+        assert exc_info.value.attempts == 3
+        assert detail_requests == 3
+
+    async def test_successfactors_company_enrichment_classifies_challenge(self, monkeypatch):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Pilot</title>
+                <link>https://example.com/job/1</link>
+            </item>
+        """)
+        detail_requests = 0
+
+        def handler(request):
+            nonlocal detail_requests
+            if request.url.path == "/googlefeed.xml":
+                return httpx.Response(200, text=feed_xml)
+            detail_requests += 1
+            return httpx.Response(200, text="<html><title>Just a moment...</title></html>")
+
+        async def no_sleep(_delay):
+            return None
+
+        monkeypatch.setattr(rss_monitor, "_sleep", no_sleep)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(rss_monitor.SuccessFactorsDetailPageError) as exc_info:
+                await discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": {
+                            "preset": "successfactors",
+                            "feed_url": "https://example.com/googlefeed.xml",
+                            "fetch_company": True,
+                        },
+                    },
+                    client,
+                )
+
+        assert exc_info.value.classification == "bot_challenge"
+        assert exc_info.value.attempts == 3
+        assert detail_requests == 3
+
+    async def test_successfactors_company_enrichment_preserves_permanent_status(self):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Pilot</title>
+                <link>https://example.com/job/1</link>
+            </item>
+        """)
+        detail_requests = 0
+
+        def handler(request):
+            nonlocal detail_requests
+            if request.url.path == "/googlefeed.xml":
+                return httpx.Response(200, text=feed_xml)
+            detail_requests += 1
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": {
+                            "preset": "successfactors",
+                            "feed_url": "https://example.com/googlefeed.xml",
+                            "fetch_company": True,
+                        },
+                    },
+                    client,
+                )
+
+        assert exc_info.value.last_status == 404
+        assert exc_info.value.attempts == 1
+        assert detail_requests == 1
 
     async def test_teamtailor_preset_paginated(self):
         page1_xml = _rss_xml("""
