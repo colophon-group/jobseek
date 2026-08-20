@@ -193,8 +193,8 @@ class RequestHostTracker:
 
         Parser/configuration failures after a successful response must not
         open a host-wide circuit. Network transport errors, overload/
-        availability responses, and explicitly promoted provider incidents
-        are safe to coalesce across postings.
+        availability responses, access-denied cohorts, and explicitly
+        promoted provider incidents are safe to coalesce across postings.
         """
 
         if self.last_application_error is not None:
@@ -203,6 +203,14 @@ class RequestHostTracker:
             return self.last_host
         status = self.last_status_code
         if status in (408, 425, 429) or (status is not None and 500 <= status <= 599):
+            return self.last_host
+        # A sustained 403 cohort is normally a host-level WAF/bot block. Let
+        # the shared circuit defer sibling scrapes instead of retrying every
+        # affected posting roughly hourly. Keep Avature JobDetail 403s out:
+        # that provider also uses 403 for individual archived requisitions,
+        # so treating those as host-wide would let a few stale listing URLs
+        # pause otherwise-live jobs on the same tenant (#2708).
+        if status == 403 and not (self.last_url and is_avature_job_detail_url(self.last_url)):
             return self.last_host
         # Avature uses 406 as a temporary overload/throttle response on live
         # JobDetail pages (#5710). Restrict this to the provider route so a

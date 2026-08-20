@@ -158,6 +158,28 @@ class TestRequestHostTracking:
 
         assert tracker.transient_failure_host is None
 
+    async def test_tracker_classifies_generic_403_as_transient(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(403, request=request)
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                await client.get("https://blocked.example/jobs/123")
+
+        assert tracker.transient_failure_host == "blocked.example"
+
+    async def test_tracker_keeps_avature_job_detail_403_non_transient(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(403, request=request)
+
+        transport = RequestHostTrackingTransport(httpx.MockTransport(handler))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with track_request_hosts() as tracker:
+                await client.get("https://jobs.example.com/en_US/careers/JobDetail/Role/123")
+
+        assert tracker.transient_failure_host is None
+
     async def test_new_response_clears_promoted_application_failure(self):
         responses = iter((200, 200))
 
