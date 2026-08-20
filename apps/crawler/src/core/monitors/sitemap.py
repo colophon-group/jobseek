@@ -312,6 +312,14 @@ async def _resolve_sitemap_index(
     """
     children = _extract_child_sitemaps(root)
     if not children:
+        log.warning(
+            "sitemap.index_no_usable_children",
+            total_children=0,
+            selected_children=0,
+            missing_or_invalid=0,
+            nested_empty=0,
+            cycle_skipped=0,
+        )
         return []
     job_children = [u for u in children if _is_job_related(u)]
     targets = job_children if job_children else children
@@ -319,8 +327,12 @@ async def _resolve_sitemap_index(
     if seen is None:
         seen = set()
     results: list[ET.Element] = []
+    missing_or_invalid = 0
+    nested_empty = 0
+    cycle_skipped = 0
     for target in targets:
         if target in seen:
+            cycle_skipped += 1
             log.debug("sitemap.index_cycle_skipped", target=target)
             continue
         seen.add(target)
@@ -331,11 +343,24 @@ async def _resolve_sitemap_index(
         child_root = await _fetch_child_xml(target, client)
         if child_root is None:
             # 404 / non-XML body — genuinely missing shard, skip.
+            missing_or_invalid += 1
             continue
         if _is_sitemap_index(child_root):
-            results.extend(await _resolve_sitemap_index(child_root, client, seen=seen))
+            nested_results = await _resolve_sitemap_index(child_root, client, seen=seen)
+            if not nested_results:
+                nested_empty += 1
+            results.extend(nested_results)
         else:
             results.append(child_root)
+    if not results:
+        log.warning(
+            "sitemap.index_no_usable_children",
+            total_children=len(children),
+            selected_children=len(targets),
+            missing_or_invalid=missing_or_invalid,
+            nested_empty=nested_empty,
+            cycle_skipped=cycle_skipped,
+        )
     return results
 
 
@@ -401,8 +426,23 @@ async def discover(
             if _is_sitemap_index(root):
                 roots = await _resolve_sitemap_index(root, client)
                 if not roots:
-                    raise SitemapParseError(
-                        f"Sitemap index at {cached_sitemap} has no usable children"
+                    log.warning(
+                        "sitemap.cache_index_unusable",
+                        cached=cached_sitemap,
+                        board_url=board["board_url"],
+                    )
+                    try:
+                        sitemap_url, roots = await _discover_sitemap(board["board_url"], client)
+                    except SitemapDiscoveryError as exc:
+                        raise SitemapParseError(
+                            f"Cached sitemap index at {cached_sitemap} has no usable children "
+                            "and rediscovery found no replacement"
+                        ) from exc
+                    new_sitemap_url = sitemap_url
+                    log.info(
+                        "sitemap.cache_recovered",
+                        cached=cached_sitemap,
+                        sitemap_url=sitemap_url,
                     )
             else:
                 roots = [root]
