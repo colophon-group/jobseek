@@ -162,34 +162,66 @@ _STOP_MARKERS = [
 
 _KONTACT_MARKER = "kontactintelligence.com"
 _WORKLOAD_RE = re.compile(r"^\s*\d{1,3}(?:\s*[-–]\s*\d{1,3})?\s*%\s*$")
+_DOCUMENT_TITLE_SEPARATORS = (" | ", " - ", " – ", " — ", " : ", " · ")
+_LOCATION_LABELS = (
+    "job location",
+    "location",
+    "workplace",
+    "lieu de travail",
+    "arbeitsort",
+    "arbeitsplatz",
+    "luogo di lavoro",
+)
+
+
+def _matches_document_title(heading: str, document_title: str) -> bool:
+    """Return whether a heading is a delimited title segment.
+
+    Job sites commonly prefix or suffix the role with their brand or a generic
+    careers label in ``<title>``. Requiring a separator boundary avoids fuzzy
+    substring matches while still distinguishing the real role heading from a
+    repeated page-level ``<h1>`` such as "Jobs".
+    """
+
+    heading = " ".join(heading.split()).casefold()
+    document_title = " ".join(document_title.split()).casefold()
+    if not heading:
+        return False
+    if heading == document_title:
+        return True
+    return any(
+        document_title.startswith(f"{heading}{separator}")
+        or document_title.endswith(f"{separator}{heading}")
+        for separator in _DOCUMENT_TITLE_SEPARATORS
+    )
 
 
 def _title_heading(elements: list[dict]) -> tuple[int, str] | None:
     """Find the page's job-title heading without guessing from site chrome.
 
-    ``h1`` remains the preferred semantic signal. Some CMS job templates use a
-    lower-level heading for the visible title, however. In that case, accept an
-    ``h2``-``h4`` only when its normalized text exactly matches the document
-    title. This keeps the fallback useful without treating an arbitrary section
-    heading as the job title.
+    ``h1`` remains the preferred semantic signal when it agrees with the
+    document title. Some CMS job templates keep a generic careers-page ``h1``
+    above the role, however. In that case, accept an ``h2``-``h4`` only when it
+    is a separator-delimited prefix or suffix of the document title. This keeps
+    the fallback useful without treating an arbitrary section heading as the
+    job title.
     """
-
-    for i, element in enumerate(elements):
-        if element["tag"] == "h1":
-            return i, "h1"
 
     document_title = next(
         (element["text"] for element in elements if element["tag"] == "title"),
         None,
     )
-    if not document_title:
-        return None
-    normalized_title = " ".join(document_title.split()).casefold()
+    if document_title:
+        for tag in ("h1", "h2", "h3", "h4"):
+            for i, element in enumerate(elements):
+                if element["tag"] == tag and _matches_document_title(
+                    element["text"], document_title
+                ):
+                    return i, tag
+
     for i, element in enumerate(elements):
-        if element["tag"] in {"h2", "h3", "h4"} and (
-            " ".join(element["text"].split()).casefold() == normalized_title
-        ):
-            return i, element["tag"]
+        if element["tag"] == "h1":
+            return i, "h1"
     return None
 
 
@@ -443,21 +475,46 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
 
     steps.append(desc_step)
 
-    # Location: look for an element with "location" in its text
+    # Location: support both a standalone label followed by its value and
+    # compact locale-specific ``Label: value`` elements. The latter is common
+    # on otherwise static European job pages and must not advance to the next
+    # metadata row (for example a start date).
     if not workload_location:
         for el in elements:
-            text_lower = el["text"].lower()
-            if "location" in text_lower and len(el["text"]) < 40:
+            text = el["text"]
+            text_lower = text.casefold()
+            label = next(
+                (candidate for candidate in _LOCATION_LABELS if text_lower.startswith(candidate)),
+                None,
+            )
+            if label is None or len(text) >= 120:
+                continue
+
+            inline_value = re.match(
+                rf"(?i)^\s*{re.escape(label)}\s*[:：]\s*(\S.*)\s*$",
+                text,
+            )
+            if inline_value:
                 steps.append(
                     {
-                        "text": "Location",
+                        "text": label,
+                        "field": "location",
+                        "regex": rf"(?i)^\s*{re.escape(label)}\s*[:：]\s*(\S.*)\s*$",
+                        "optional": True,
+                        "from": 0,
+                    }
+                )
+            elif len(text) < 40:
+                steps.append(
+                    {
+                        "text": label,
                         "offset": 1,
                         "field": "location",
                         "optional": True,
                         "from": 0,
                     }
                 )
-                break
+            break
 
     return steps
 
@@ -499,6 +556,26 @@ def can_handle(htmls: list[str]) -> dict | None:
 
     if not best_steps:
         return None
+
+    # Probes intentionally sample several postings. The first usable page can
+    # be a legitimate location-less role even when the board normally exposes
+    # a stable location label. Borrow only that optional step from a later
+    # sample so the generated config reflects the board layout without making
+    # the first posting fail extraction.
+    if not any(step.get("field") in {"location", "locations"} for step in best_steps):
+        for html in htmls[1:]:
+            candidate_steps = _heuristic_steps(flatten(html)) or []
+            location_step = next(
+                (
+                    step
+                    for step in candidate_steps
+                    if step.get("field") in {"location", "locations"}
+                ),
+                None,
+            )
+            if location_step is not None:
+                best_steps.append(location_step)
+                break
 
     # Validate a trustworthy title heading exists on other pages too.
     expected_title_tag = best_steps[0].get("tag")

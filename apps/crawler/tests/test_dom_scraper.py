@@ -89,6 +89,81 @@ FIXTURE_HTML = """
 
 
 class TestDomScraper:
+    def test_tpf_board_config_covers_pagination_and_labeled_details(self):
+        from src.core.scrapers.dom import parse_html
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(
+            item for item in rows if item["board_slug"] == "transports-publics-fribourgeois-emploi"
+        )
+        monitor_config = json.loads(row["monitor_config"])
+        scraper_config = json.loads(row["scraper_config"])
+
+        assert monitor_config["pagination"] == {
+            "param_name": "p",
+            "start": 1,
+            "increment": 1,
+            "max_pages": 100,
+        }
+        assert monitor_config["url_filter"] == r"[?&]page=advertisement_display&id=\d+"
+
+        html = """
+        <html><body>
+          <h1>Nos offres d'emploi</h1>
+          <h2>Gestionnaire foncier (60-100%)</h2>
+          <div>Postuler</div>
+          <p>Gérer les procédures foncières des projets ferroviaires.</p>
+          <h3>Votre profil</h3><ul><li>Expérience en droit réel.</li></ul>
+          <p>Lieu de travail : Givisiez</p>
+          <p>Entrée en fonction : date à convenir</p>
+          <div>Postuler</div><address>TPF Holding, Givisiez</address>
+        </body></html>
+        """
+        result = parse_html(html, scraper_config)
+        assert result.title == "Gestionnaire foncier (60-100%)"
+        assert result.locations == ["Givisiez"]
+        assert "Gérer les procédures foncières" in result.description
+        assert "TPF Holding" not in result.description
+
+        locationless = parse_html(
+            html.replace("<p>Lieu de travail : Givisiez</p>", ""),
+            scraper_config,
+        )
+        assert locationless.locations == ["Canton of Fribourg, Switzerland"]
+
+    def test_probe_handles_branded_title_and_inline_french_location(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head>
+          <title>TPF emploi | Nos offres - Gestionnaire foncier (60-100%)</title>
+        </head><body>
+          <h1>Nos offres d'emploi</h1>
+          <a>Retour</a>
+          <h2>Gestionnaire foncier (60-100%)</h2>
+          <div>Postuler</div>
+          <p>Gérer les procédures foncières des projets ferroviaires.</p>
+          <h3>Votre profil</h3>
+          <ul><li>Expérience en droit réel.</li></ul>
+          <p>Lieu de travail : Givisiez</p>
+          <p>Entrée en fonction : date à convenir</p>
+        </body></html>
+        """
+
+        locationless_html = html.replace(
+            "<p>Lieu de travail : Givisiez</p>",
+            "<p>Entrée en fonction : date à convenir</p>",
+        )
+        config = can_handle([locationless_html, html])
+        assert config is not None
+
+        result = parse_html(html, config)
+        assert result.title == "Gestionnaire foncier (60-100%)"
+        assert result.locations == ["Givisiez"]
+        assert "Gérer les procédures foncières" in result.description
+
     def test_talentsoft_probe_builds_locale_independent_config(self):
         from src.core.scrapers.dom import can_handle, parse_html
 
