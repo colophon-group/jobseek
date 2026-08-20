@@ -1089,7 +1089,6 @@ class TestSygnumBankBoardConfig:
         assert not matcher.search(
             "https://attacker.example/recruit/fRecruit__ApplyJob?vacancyNo=VN192"
         )
-
         scraper_config = json.loads(row["scraper_config"])
         assert scraper_config["fallback"]["type"] == "dom"
         assert scraper_config["fallback"]["fields"] == ["description"]
@@ -1105,6 +1104,35 @@ class TestSygnumBankBoardConfig:
         assert "Build secure digital asset" in content.description
         assert "Write reliable" in content.description
         assert "Permanent" not in content.description
+
+
+class TestSlaughterAndMayBoardConfig:
+    def test_page_size_controls_are_native_and_fail_closed(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(r for r in rows if r["board_slug"] == "slaughter-and-may-careers")
+        config = json.loads(row["monitor_config"])
+
+        actions = config["actions"]
+        assert actions[:2] == [
+            {
+                "action": "click",
+                "selector": "[id$='PageSizeComboBox_Arrow']",
+                "required": True,
+            },
+            {
+                "action": "click",
+                "selector": "[id$='PageSizeComboBox_DropDown'] li.rcbItem:last-child",
+                "required": True,
+            },
+        ]
+        assert "$find" not in json.dumps(actions)
+        assert actions[-1]["action"] == "evaluate"
+        assert actions[-1]["required"] is True
 
 
 class TestHasbroBoardConfig:
