@@ -928,6 +928,7 @@ _MONITOR_CONFIG_HINTS = {
     ),
     "beisen": "Requires: tenant + portal variant (auto-filled from a *.zhiye.com URL)",
     "brassring": "Requires: partner_id and site_id (auto-filled from a TGnewUI URL)",
+    "candidatus": "No config required; resolves WinDev listing postbacks in a browser",
     "paycom": "Requires: token (auto-filled from a Paycom public portal URL)",
     "jazzhr": "Requires: tenant (auto-filled from an applytojob.com URL)",
     "jobbank104": (
