@@ -9,6 +9,7 @@ from src.core.monitor import MonitorResult
 from src.core.monitors import BoardGoneError, DiscoveredJob
 from src.core.monitors.curately import (
     SEARCH_URL,
+    _board_config,
     _parse_job,
     _short_name_from_url,
     can_handle,
@@ -77,11 +78,19 @@ class TestIdentity:
             ("http://careers.curately.ai/jobs/bms", None),
             ("https://careers.curately.ai/companies/bms", None),
             ("https://careers.curately.ai.evil.test/jobs/bms", None),
+            ("https://user@careers.curately.ai/jobs/bms", None),
+            ("https://careers.curately.ai:444/jobs/bms", None),
+            ("https://careers.curately.ai/jobs/bms?tenant=other", None),
+            ("https://careers.curately.ai/jobs/bms#other", None),
             ("https://example.com/jobs/bms", None),
         ],
     )
     def test_short_name_from_url(self, url: str, expected: str | None):
         assert _short_name_from_url(url) == expected
+
+    def test_configured_short_name_must_match_url_tenant(self):
+        with pytest.raises(ValueError, match="does not match"):
+            _board_config(_board(short_name="other"))
 
 
 class TestParseJob:
@@ -140,8 +149,24 @@ class TestParseJob:
         assert job is not None
         assert job.base_salary is None
 
-    def test_inactive_job_is_ignored(self):
-        assert _parse_job(_raw_job(status=0), short_name="bms") is None
+    @pytest.mark.parametrize("status", [0, "0", 2, "2", 3, 4, 5])
+    def test_known_inactive_job_is_ignored(self, status: int | str):
+        assert _parse_job(_raw_job(status=status), short_name="bms") is None
+
+    def test_unknown_status_fails_closed(self):
+        with pytest.raises(ValueError, match="unknown status"):
+            _parse_job(_raw_job(status="active"), short_name="bms")
+
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {"publicJobDescr": "  "},
+            {"workCity": "", "workState": "", "workZipcode": "", "workType": 2},
+        ],
+    )
+    def test_missing_core_rich_fields_fail_closed(self, overrides: dict):
+        with pytest.raises(ValueError, match="description|location"):
+            _parse_job(_raw_job(**overrides), short_name="bms")
 
     def test_missing_identity_fails_closed(self):
         with pytest.raises(ValueError, match="jobId or jobTitle"):
@@ -216,6 +241,28 @@ class TestDiscover:
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(ValueError, match="repeated jobId 1"):
+                await discover(_board(), client)
+
+    async def test_cross_tenant_job_fails_closed(self):
+        transport = httpx.MockTransport(
+            lambda _request: httpx.Response(
+                200,
+                json=_page([_raw_job(clientId=7)], 1),
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="configured client_id 6"):
+                await discover(_board(), client)
+
+    async def test_page_cannot_overshoot_advertised_total(self):
+        transport = httpx.MockTransport(
+            lambda _request: httpx.Response(
+                200,
+                json=_page([_raw_job(1), _raw_job(2)], 1),
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="2 rows for advertised total 1"):
                 await discover(_board(), client)
 
     async def test_resolves_client_id_when_config_omits_it(self):

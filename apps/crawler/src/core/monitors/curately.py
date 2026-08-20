@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlsplit
 
 import httpx
 import structlog
@@ -44,11 +44,25 @@ _JOB_TYPE_MAP = {
 }
 _JOB_HOURS_MAP = {1: "full_time", 2: "part_time"}
 _WORK_TYPE_MAP = {1: "remote", 2: "hybrid", 3: "onsite"}
+_ACTIVE_STATUSES = {None, 1, "1"}
+_INACTIVE_STATUSES = {0, "0", 2, "2", 3, "3", 4, "4", 5, "5"}
 
 
 def _short_name_from_url(board_url: str) -> str | None:
-    parsed = urlparse(board_url)
-    if parsed.scheme.lower() != "https" or (parsed.hostname or "").lower() != "careers.curately.ai":
+    try:
+        parsed = urlsplit(board_url)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme.lower() != "https"
+        or (parsed.hostname or "").lower() != "careers.curately.ai"
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.query
+        or parsed.fragment
+    ):
         return None
     match = _BOARD_PATH_RE.fullmatch(parsed.path.rstrip("/"))
     return match.group(1).lower() if match else None
@@ -126,8 +140,10 @@ def _parse_job(
     language: str | None = None,
 ) -> DiscoveredJob | None:
     status = raw.get("status")
-    if status not in (None, 1, "1"):
+    if status in _INACTIVE_STATUSES:
         return None
+    if status not in _ACTIVE_STATUSES:
+        raise ValueError(f"Curately job has an unknown status value {status!r}")
 
     job_id = _positive_int(raw.get("jobId"))
     title = raw.get("jobTitle")
@@ -135,8 +151,12 @@ def _parse_job(
         raise ValueError("Curately job is missing a valid jobId or jobTitle")
 
     description = raw.get("publicJobDescr")
-    if description is not None and not isinstance(description, str):
-        raise ValueError(f"Curately job {job_id} has a non-string description")
+    if not isinstance(description, str) or not description.strip():
+        raise ValueError(f"Curately job {job_id} is missing a non-empty description")
+
+    locations = _locations(raw)
+    if not locations:
+        raise ValueError(f"Curately job {job_id} is missing a location")
 
     metadata: dict = {"id": job_id}
     for source, target in (
@@ -154,8 +174,8 @@ def _parse_job(
     return DiscoveredJob(
         url=_job_url(short_name, job_id),
         title=title.strip(),
-        description=description or None,
-        locations=_locations(raw),
+        description=description,
+        locations=locations,
         employment_type=_employment_type(raw),
         job_location_type=_WORK_TYPE_MAP.get(work_type) if isinstance(work_type, int) else None,
         date_posted=raw.get("createDate") if isinstance(raw.get("createDate"), str) else None,
@@ -245,9 +265,17 @@ async def _fetch_search_page(
 
 def _board_config(board: dict) -> tuple[str, int | None, int, str | None, str | None, str | None]:
     metadata = board.get("metadata") or {}
-    short_name = metadata.get("short_name") or _short_name_from_url(board["board_url"])
-    if not isinstance(short_name, str) or not _SHORT_NAME_RE.fullmatch(short_name):
+    url_short_name = _short_name_from_url(board["board_url"])
+    if url_short_name is None:
         raise ValueError(f"Cannot derive Curately short_name from {board['board_url']!r}")
+    configured_short_name = metadata.get("short_name")
+    if configured_short_name is not None and configured_short_name != url_short_name:
+        raise ValueError(
+            "Curately short_name does not match the careers.curately.ai board URL tenant"
+        )
+    short_name = configured_short_name or url_short_name
+    if not isinstance(short_name, str) or not _SHORT_NAME_RE.fullmatch(short_name):
+        raise ValueError("Curately short_name must be a lowercase tenant slug")
 
     client_id = metadata.get("client_id")
     if client_id is not None:
@@ -314,6 +342,10 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             job_id = _positive_int(raw.get("jobId"))
             if job_id is None:
                 raise ValueError("Curately List contains a job without a valid jobId")
+            if _positive_int(raw.get("clientId")) != client_id:
+                raise ValueError(
+                    f"Curately job {job_id} does not belong to configured client_id {client_id}"
+                )
             if job_id in seen_ids:
                 raise ValueError(f"Curately pagination repeated jobId {job_id}")
             seen_ids.add(job_id)
@@ -333,6 +365,10 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
 
     if expected_total is None:
         raise ValueError("Curately search returned no pagination metadata")
+    if expected_total <= MAX_JOBS and offset != expected_total:
+        raise ValueError(
+            f"Curately pagination returned {offset} rows for advertised total {expected_total}"
+        )
     if expected_total > MAX_JOBS:
         log.warning(
             "curately.truncated",
