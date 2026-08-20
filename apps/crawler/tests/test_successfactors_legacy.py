@@ -408,6 +408,26 @@ class TestDetectionAndWorkspace:
             "jobs": 1,
         }
 
+    async def test_direct_legacy_probe_retries_invalid_initial_session(self):
+        requests = {"get": 0, "post": 0}
+
+        def handler(request: httpx.Request):
+            method = request.method.casefold()
+            requests[method] += 1
+            if request.method == "GET":
+                return _bootstrap_response()
+            if requests["post"] == 1:
+                return httpx.Response(200, text="<html>session expired</html>")
+            return httpx.Response(200, text=_initial_response(1))
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle(_board()["board_url"], client)
+
+        assert result is not None
+        assert result["variant"] == "legacy"
+        assert result["jobs"] == 1
+        assert requests == {"get": 2, "post": 2}
+
     async def test_scheduled_probe_reuses_legacy_runtime_parser(self):
         def handler(request: httpx.Request):
             if request.method == "GET":
