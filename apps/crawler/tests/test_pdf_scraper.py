@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 from src.core.scrapers.pdf import (
+    _extract_named_fields,
     _extract_pattern,
     _normalize_captured_text,
     _ocr_pdf,
@@ -141,6 +142,17 @@ class TestCapturedText:
         text = "Location\n Sawston,\n Cambridge\nWho we are"
         pattern = r"(?s)Location\s*(.*?)\s*Who we are"
         assert _extract_pattern(text, pattern) == "Sawston, Cambridge"
+
+    def test_extracts_named_fields_from_table_layout(self):
+        text = "Role Location\nProject Manager\nTokyo\nSalary"
+        pattern = (
+            r"(?s)Role\s+Location\s+(?P<title>.+?)\s+"
+            r"(?P<location>Tokyo.*?)\s+Salary"
+        )
+        assert _extract_named_fields(text, pattern) == {
+            "title": "Project Manager",
+            "location": "Tokyo",
+        }
 
 
 class TestTextToHtml:
@@ -390,6 +402,26 @@ class TestScrape:
             )
             assert result.title == "Mechanical Engineer"
             assert result.locations == ["Sawston, Cambridge"]
+
+    async def test_named_fields_pattern_applied_to_table_layout(self):
+        pdf_bytes = _make_pdf("Role Location\nField Service Engineer\nOsaka or Shizuoka\nSalary")
+
+        def handler(request):
+            return httpx.Response(200, content=pdf_bytes)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.com/r06_job01.pdf",
+                {
+                    "fields_pattern": (
+                        r"(?s)Role\s+Location\s+(?P<title>.+?)\s+"
+                        r"(?P<location>Osaka.*?)\s+Salary"
+                    )
+                },
+                client,
+            )
+            assert result.title == "Field Service Engineer"
+            assert result.locations == ["Osaka or Shizuoka"]
 
     async def test_title_pattern_no_match_falls_back(self):
         """When title_pattern doesn't match text, falls back to heading heuristic."""
