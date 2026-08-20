@@ -82,9 +82,7 @@ def parse_payload(payload: dict, *, host: str, job_id: str) -> JobContent:
     location = job.get("location")
     location_label = _clean_text(location.get("label")) if isinstance(location, dict) else None
     work_types = job.get("workTypes")
-    employment_type = (
-        _clean_text(work_types.get("label")) if isinstance(work_types, dict) else None
-    )
+    employment_type = _clean_text(work_types.get("label")) if isinstance(work_types, dict) else None
     salary = job.get("salary")
     salary_label = _clean_text(salary.get("label")) if isinstance(salary, dict) else None
     advertiser = job.get("advertiser")

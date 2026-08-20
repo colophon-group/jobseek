@@ -17,13 +17,15 @@ from src.workspace._compat import auto_scraper_type, detect_ats_from_url
 
 COMPANY_ID = "175608148114568"
 ORGANISATION_ID = "744981"
-BOARD_URL = (
-    "https://my.jobstreet.com/companies/"
-    f"tecan-cdmo-solutions-pn-{COMPANY_ID}/jobs"
-)
+BOARD_URL = f"https://my.jobstreet.com/companies/tecan-cdmo-solutions-pn-{COMPANY_ID}/jobs"
 
 
-def _summary(job_id: str, *, employer_id: str = ORGANISATION_ID) -> dict:
+def _summary(
+    job_id: str,
+    *,
+    employer_id: str = ORGANISATION_ID,
+    company_id: str = COMPANY_ID,
+) -> dict:
     return {
         "id": job_id,
         "title": f"Role {job_id}",
@@ -35,7 +37,7 @@ def _summary(job_id: str, *, employer_id: str = ORGANISATION_ID) -> dict:
         "employer": {
             "id": employer_id,
             "name": "Tecan CDMO Solutions PN Sdn. Bhd.",
-            "companyId": COMPANY_ID,
+            "companyId": company_id,
         },
         "classifications": [
             {
@@ -209,9 +211,7 @@ class TestMonitor:
 
         assert len(result) == 1
 
-    async def test_paginates_and_rejects_cross_employer_rows(
-        self, monkeypatch: pytest.MonkeyPatch
-    ):
+    async def test_paginates_and_rejects_cross_employer_rows(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(jobstreet, "PAGE_SIZE", 2)
 
         def handler(request: httpx.Request) -> httpx.Response:
@@ -251,6 +251,23 @@ class TestMonitor:
         async with httpx.AsyncClient(transport=transport) as client:
             with pytest.raises(ValueError, match="invalid job identity"):
                 await discover(board, client)
+
+    async def test_rejects_company_id_mismatch_even_when_organisation_matches(self):
+        board = {
+            "board_url": BOARD_URL,
+            "metadata": {"organisation_id": ORGANISATION_ID},
+        }
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json=_search_payload([_summary("93872133", company_id="175608148114569")]),
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="invalid job identity"):
+                await discover(board, client)
+
 
 class TestProbe:
     async def test_direct_url_is_detected_without_network(self):

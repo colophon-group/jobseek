@@ -176,6 +176,7 @@ def _parse_page(
     payload: dict,
     *,
     organisation_id: str,
+    company_id: str,
     requested_page: int,
 ) -> tuple[list[dict], int]:
     rows = payload.get("data")
@@ -206,7 +207,14 @@ def _parse_page(
         job_id = str(row.get("id") or "")
         employer = row.get("employer")
         actual_employer_id = str(employer.get("id") or "") if isinstance(employer, dict) else ""
-        if not _NUMERIC_ID_RE.fullmatch(job_id) or actual_employer_id != organisation_id:
+        actual_company_id = (
+            str(employer.get("companyId") or "") if isinstance(employer, dict) else ""
+        )
+        if (
+            not _NUMERIC_ID_RE.fullmatch(job_id)
+            or actual_employer_id != organisation_id
+            or actual_company_id != company_id
+        ):
             raise ValueError("JobStreet search response contains an invalid job identity")
         if job_id in seen:
             raise ValueError(f"JobStreet search page {requested_page} repeated job {job_id}")
@@ -220,6 +228,7 @@ async def _fetch_summaries(
     *,
     host: str,
     organisation_id: str,
+    company_id: str,
 ) -> tuple[list[dict], bool]:
     first_payload = await _fetch_page(
         client,
@@ -230,6 +239,7 @@ async def _fetch_summaries(
     first, total = _parse_page(
         first_payload,
         organisation_id=organisation_id,
+        company_id=company_id,
         requested_page=1,
     )
     target = min(total, MAX_JOBS)
@@ -247,6 +257,7 @@ async def _fetch_summaries(
         rows, page_total = _parse_page(
             payload,
             organisation_id=organisation_id,
+            company_id=company_id,
             requested_page=page_number,
         )
         if page_total != total:
@@ -305,9 +316,7 @@ def _parse_summary(summary: dict, *, host: str, company_id: str) -> DiscoveredJo
         "jobstreet_job_id": job_id,
         "jobstreet_company_id": company_id,
     }
-    if isinstance(employer, dict) and (
-        employer_name := _clean_text(employer.get("name"))
-    ):
+    if isinstance(employer, dict) and (employer_name := _clean_text(employer.get("name"))):
         metadata["employer"] = employer_name
     classifications: list[str] = []
     for item in summary.get("classifications") or []:
@@ -355,6 +364,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
         client,
         host=host,
         organisation_id=organisation_id,
+        company_id=company_id,
     )
     jobs = [_parse_summary(summary, host=host, company_id=company_id) for summary in summaries]
     log.info(
@@ -389,6 +399,7 @@ async def can_handle(
             client,
             host=host,
             organisation_id=organisation_id,
+            company_id=company_id,
         )
     except Exception:
         log.debug("jobstreet.probe_failed", url=url, exc_info=True)
