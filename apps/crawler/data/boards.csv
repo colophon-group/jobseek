@@ -34,7 +34,7 @@ ab-inbev-growth-group,ab-inbev-growth-group-greenhouse,https://job-boards.greenh
 abacum,abacum-ashby,https://jobs.ashbyhq.com/abacum,ashby,"{""token"": ""abacum""}",skip,
 abacus-insights,abacus-insights-greenhouse,https://job-boards.greenhouse.io/abacusinsights,greenhouse,"{""token"": ""abacusinsights""}",skip,
 abb,abb-workday,https://abb.wd3.myworkdayjobs.com/External_Career_Page,workday,,workday,"{""proxy"": true}"
-abbott,abbott-global,https://www.jobs.abbott/us/en/search-results,nextdata,"{""source"": ""phenom_canvas"", ""path"": ""eagerLoadRefineSearch.data.jobs"", ""url_template"": ""https://www.jobs.abbott/us/en/job/{jobId}"", ""pagination"": {""mode"": ""offset"", ""path"": ""eagerLoadRefineSearch"", ""total_records"": ""totalHits"", ""page_size"": 10, ""offset_param"": ""from""}, ""total"": 2498}",json-ld,
+abbott,abbott-global,https://www.jobs.abbott/us/en/search-results,nextdata,"{""source"": ""phenom_canvas"", ""path"": ""eagerLoadRefineSearch.data.jobs"", ""url_template"": ""https://www.jobs.abbott/us/en/job/{jobId}"", ""pagination"": {""mode"": ""offset"", ""path"": ""eagerLoadRefineSearch"", ""total_records"": ""totalHits"", ""page_size"": 10, ""offset_param"": ""from""}}",json-ld,
 abbvie,abbvie-careers,https://careers.abbvie.com/en/jobs,sitemap,"{""url"": ""https://careers.abbvie.com/en/sitemap.xml"", ""url_filter"": ""/job/""}",json-ld,
 abbvie,abbvie-smartrecruiters,https://careers.smartrecruiters.com/AbbVie,smartrecruiters,"{""token"": ""AbbVie""}",smartrecruiters,
 abbyy,abbyy-greenhouse,https://job-boards.greenhouse.io/abbyy,greenhouse,"{""token"": ""abbyy""}",skip,

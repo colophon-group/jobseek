@@ -71,6 +71,8 @@ log = structlog.get_logger()
 
 MAX_URLS = 50_000
 _MAX_CONCURRENT_PAGES = 5
+_PAGE_FETCH_ATTEMPTS = 3
+_PAGE_FETCH_BASE_DELAY = 0.5
 
 # Common paths where Next.js apps store job listings.
 _COMMON_PATHS = [
@@ -528,32 +530,41 @@ async def discover(
             pw,
             browser_config,
         )
-    else:
-        # Fetch the page and extract embedded JSON (source-aware).
-        html = await _fetch_html(
-            board_url,
-            render,
-            client,
-            pw=pw,
-            browser_config=browser_config,
-        )
-        if not html:
-            log.warning("nextdata.fetch_failed", board_url=board_url)
-            return list() if fields_map else set()
-        data = extract_embedded_json(html, source)
-    if not data:
-        if source == "browser":
+        if not data:
             raise RuntimeError("nextdata browser expression returned no data")
-        log.warning("nextdata.no_data", board_url=board_url, source=source)
-        return list() if fields_map else set()
-
-    # Walk path to jobs array
-    items = _resolve_items(data, path, source)
-    if not isinstance(items, list):
-        if source == "browser":
+        items = _resolve_items(data, path, source)
+        if not isinstance(items, list):
             raise RuntimeError(f"nextdata browser path did not resolve to a list: {path}")
-        log.warning("nextdata.path_not_list", board_url=board_url, path=path)
-        return list() if fields_map else set()
+    else:
+        if pagination_cfg:
+            data, items = await _fetch_embedded_page_with_retry(
+                board_url,
+                render=render,
+                client=client,
+                path=path,
+                source=source,
+                pw=pw,
+                browser_config=browser_config,
+            )
+        else:
+            html = await _fetch_html(
+                board_url,
+                render,
+                client,
+                pw=pw,
+                browser_config=browser_config,
+            )
+            if not html:
+                log.warning("nextdata.fetch_failed", board_url=board_url)
+                return list() if fields_map else set()
+            data = extract_embedded_json(html, source)
+            if not data:
+                log.warning("nextdata.no_data", board_url=board_url, source=source)
+                return list() if fields_map else set()
+            items = _resolve_items(data, path, source)
+            if not isinstance(items, list):
+                log.warning("nextdata.path_not_list", board_url=board_url, path=path)
+                return list() if fields_map else set()
 
     # Pagination: fetch remaining pages and merge
     if pagination_cfg and source == "browser":
@@ -581,8 +592,14 @@ async def discover(
         items = items[:MAX_URLS]
 
     if fields_map:
-        return _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
-    return _extract_urls(items, url_template, slug_fields)
+        result = _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
+        urls = {job.url for job in result}
+    else:
+        result = _extract_urls(items, url_template, slug_fields)
+        urls = result
+    if pagination_cfg:
+        _validate_total_records(urls, data, pagination_cfg, board_url=board_url)
+    return result
 
 
 # How many pages to fetch per streaming batch before yielding.
@@ -637,70 +654,82 @@ async def discover_stream(
             pw,
             browser_config,
         )
-    else:
-        html = await _fetch_html(
-            board_url,
-            render,
-            client,
-            pw=pw,
-            browser_config=browser_config,
-        )
-        if not html:
-            return
-        data = extract_embedded_json(html, source)
-    if not data:
-        if source == "browser":
+        if not data:
             raise RuntimeError("nextdata browser expression returned no data")
-        return
-
-    items = _resolve_items(data, path, source)
-    if not isinstance(items, list):
-        if source == "browser":
+        items = _resolve_items(data, path, source)
+        if not isinstance(items, list):
             raise RuntimeError(f"nextdata browser path did not resolve to a list: {path}")
-        return
+    else:
+        if pagination_cfg:
+            data, items = await _fetch_embedded_page_with_retry(
+                board_url,
+                render=render,
+                client=client,
+                path=path,
+                source=source,
+                pw=pw,
+                browser_config=browser_config,
+            )
+        else:
+            html = await _fetch_html(
+                board_url,
+                render,
+                client,
+                pw=pw,
+                browser_config=browser_config,
+            )
+            if not html:
+                return
+            data = extract_embedded_json(html, source)
+            if not data:
+                return
+            items = _resolve_items(data, path, source)
+            if not isinstance(items, list):
+                return
+
+    def _extract_batch(batch_items: list):
+        if fields_map:
+            return _extract_rich(
+                batch_items,
+                url_template,
+                slug_fields,
+                fields_map,
+                base_salary_cfg,
+            )
+        return _extract_urls(batch_items, url_template, slug_fields)
 
     # No pagination — single yield
     if not pagination_cfg:
-        if fields_map:
-            yield _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
-        else:
-            yield _extract_urls(items, url_template, slug_fields)
+        yield _extract_batch(items)
         return
 
     # Determine page count
     page_count = _resolve_page_count(data, pagination_cfg)
-    if page_count is None or page_count <= 1:
-        if fields_map:
-            yield _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
-        else:
-            yield _extract_urls(items, url_template, slug_fields)
-        return
+    if page_count is None:
+        raise ValueError("nextdata pagination metadata did not provide a valid page count")
 
-    # Yield first page immediately
-    if fields_map:
-        yield _extract_rich(items, url_template, slug_fields, fields_map, base_salary_cfg)
-    else:
-        yield _extract_urls(items, url_template, slug_fields)
+    first_result = _extract_batch(items)
+    seen_urls = {job.url for job in first_result} if fields_map else set(first_result)
+    yield first_result
+    if page_count <= 1:
+        _validate_total_records(seen_urls, data, pagination_cfg, board_url=board_url)
+        return
 
     page_urls = _compute_page_urls(board_url, page_count, pagination_cfg)
     sem = asyncio.Semaphore(_MAX_CONCURRENT_PAGES)
 
     async def _fetch_page(page_url: str) -> list:
         async with sem:
-            page_html = await _fetch_html(
+            _page_data, page_items = await _fetch_embedded_page_with_retry(
                 page_url,
-                render,
-                client,
+                render=render,
+                client=client,
+                path=path,
+                source=source,
                 pw=pw,
                 browser_config=browser_config,
             )
-            if not page_html:
-                return []
-            page_data = extract_embedded_json(page_html, source)
-            if not page_data:
-                return []
-            page_items = resolve_path(page_data, path)
-            return page_items if isinstance(page_items, list) else []
+            return page_items
 
     # Fetch remaining pages in batches of _STREAM_BATCH_PAGES
     for i in range(0, len(page_urls), _STREAM_BATCH_PAGES):
@@ -710,12 +739,14 @@ async def discover_stream(
         for page_items in results:
             batch_items.extend(page_items)
         if batch_items:
+            result = _extract_batch(batch_items)
             if fields_map:
-                yield _extract_rich(
-                    batch_items, url_template, slug_fields, fields_map, base_salary_cfg
-                )
+                seen_urls.update(job.url for job in result)
             else:
-                yield _extract_urls(batch_items, url_template, slug_fields)
+                seen_urls.update(result)
+            yield result
+
+    _validate_total_records(seen_urls, data, pagination_cfg, board_url=board_url)
 
 
 def _resolve_page_count(data: dict, pagination_cfg: dict) -> int | None:
@@ -742,16 +773,49 @@ def _resolve_page_count(data: dict, pagination_cfg: dict) -> int | None:
             return int(raw_count)
         except (ValueError, TypeError):
             return None
-    else:
-        raw_total = resolve_path(pagination_data, total_records_field)
-        if raw_total is None:
-            return None
-        try:
-            import math
+    raw_total = resolve_path(pagination_data, total_records_field)
+    if raw_total is None:
+        return None
+    try:
+        import math
 
-            return math.ceil(int(raw_total) / int(page_size))
-        except (ValueError, TypeError):
-            return None
+        return math.ceil(int(raw_total) / int(page_size))
+    except (ValueError, TypeError):
+        return None
+
+
+def _resolve_total_records(data: dict, pagination_cfg: dict) -> int | None:
+    """Return an authoritative first-page total when the config exposes one."""
+    pagination_path = pagination_cfg.get("path")
+    total_records_field = pagination_cfg.get("total_records")
+    if not pagination_path or not total_records_field:
+        return None
+    pagination_data = resolve_path(data, pagination_path)
+    if not isinstance(pagination_data, dict):
+        return None
+    raw_total = resolve_path(pagination_data, total_records_field)
+    try:
+        total = int(raw_total)
+    except (TypeError, ValueError):
+        return None
+    return total if total >= 0 else None
+
+
+def _validate_total_records(
+    urls: set[str],
+    data: dict,
+    pagination_cfg: dict,
+    *,
+    board_url: str,
+) -> None:
+    """Fail the run when paginated extraction omits or duplicates jobs."""
+    expected = _resolve_total_records(data, pagination_cfg)
+    if expected is None or expected > MAX_URLS:
+        return
+    if len(urls) != expected:
+        raise RuntimeError(
+            f"nextdata discovered {len(urls)} unique jobs for {board_url}; expected {expected}"
+        )
 
 
 async def _fetch_html(
@@ -776,6 +840,59 @@ async def _fetch_html(
             log.warning("nextdata.render_failed", url=url, exc_info=True)
             return None
     return await fetch_page_text(url, client)
+
+
+async def _fetch_embedded_page_with_retry(
+    url: str,
+    *,
+    render: bool,
+    client: httpx.AsyncClient,
+    path: str,
+    source: str,
+    pw=None,
+    browser_config: dict | None = None,
+) -> tuple[dict, list]:
+    """Fetch and parse one required embedded-data page or fail the run.
+
+    A missing page in a successful monitor cycle would make timestamp-based
+    gone detection tombstone that page's live jobs. Retry the complete
+    fetch/parse/path operation, then raise instead of returning an empty list.
+    """
+    failure = "unknown failure"
+    for attempt in range(_PAGE_FETCH_ATTEMPTS):
+        html = await _fetch_html(
+            url,
+            render,
+            client,
+            pw=pw,
+            browser_config=browser_config,
+        )
+        if not html:
+            failure = "empty or unavailable HTML"
+        else:
+            data = extract_embedded_json(html, source)
+            if not data:
+                failure = f"missing {source} embedded data"
+            else:
+                items = _resolve_items(data, path, source)
+                if isinstance(items, list):
+                    return data, items
+                failure = f"path did not resolve to a list: {path}"
+
+        if attempt < _PAGE_FETCH_ATTEMPTS - 1:
+            delay = _PAGE_FETCH_BASE_DELAY * (2**attempt)
+            log.info(
+                "nextdata.page_retry",
+                url=url,
+                attempt=attempt + 1,
+                delay_s=delay,
+                failure=failure,
+            )
+            await asyncio.sleep(delay)
+
+    raise RuntimeError(
+        f"nextdata required page failed after {_PAGE_FETCH_ATTEMPTS} attempts: {url} ({failure})"
+    )
 
 
 async def _evaluate_browser_data(
@@ -816,7 +933,9 @@ async def _fetch_remaining_pages(
 ) -> list:
     """Fetch pages 2..N and merge items with the first page."""
     page_count = _resolve_page_count(data, pagination_cfg)
-    if page_count is None or page_count <= 1:
+    if page_count is None:
+        raise ValueError("nextdata pagination metadata did not provide a valid page count")
+    if page_count <= 1:
         return first_page_items
 
     page_urls = _compute_page_urls(board_url, page_count, pagination_cfg)
@@ -835,21 +954,16 @@ async def _fetch_remaining_pages(
 
     async def _fetch_page(page_url: str) -> list:
         async with sem:
-            html = await _fetch_html(
+            _page_data, items = await _fetch_embedded_page_with_retry(
                 page_url,
-                render,
-                client,
+                render=render,
+                client=client,
+                path=path,
+                source=source,
                 pw=pw,
                 browser_config=browser_config,
             )
-            if not html:
-                log.warning("nextdata.page_fetch_failed", url=page_url)
-                return []
-            page_data = extract_embedded_json(html, source)
-            if not page_data:
-                return []
-            items = resolve_path(page_data, path)
-            return items if isinstance(items, list) else []
+            return items
 
     tasks = [_fetch_page(u) for u in page_urls]
     results = await asyncio.gather(*tasks)
