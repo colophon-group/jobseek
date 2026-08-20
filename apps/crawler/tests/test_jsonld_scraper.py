@@ -653,20 +653,15 @@ class TestParsePosting:
         result = _parse_posting(posting)
 
         assert result.description == (
-            "<p>Build medical devices &amp; diagnostics.</p>\n\n\n"
-            "<p>Improve patient outcomes.</p>"
+            "<p>Build medical devices &amp; diagnostics.</p>\n\n\n<p>Improve patient outcomes.</p>"
         )
 
     def test_preserves_double_escaped_non_whitespace_description_entities(self):
-        posting = {
-            "description": "<p>Literal &amp;#60;markup&amp;#62; &amp;amp; text.</p>"
-        }
+        posting = {"description": "<p>Literal &amp;#60;markup&amp;#62; &amp;amp; text.</p>"}
 
         result = _parse_posting(posting)
 
-        assert result.description == (
-            "<p>Literal &amp;#60;markup&amp;#62; &amp;amp; text.</p>"
-        )
+        assert result.description == "<p>Literal &amp;#60;markup&amp;#62; &amp;amp; text.</p>"
 
     def test_falls_back_to_page_title_when_organization_suffix_matches(self):
         html = """
