@@ -279,6 +279,17 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       actionSurface,
     );
     if (rateLimited) return rateLimited;
+    if (actionSurface === "watchlist-detail") {
+      // A stale/replayed action can carry arguments captured while a
+      // watchlist existed, even when its current URL is missing or private.
+      // Resolve that URL through Postgres before the action can touch
+      // Typesense. Database failures still fail open, while a definitive
+      // miss keeps the same hard-404/no-store/noindex contract as documents.
+      const watchlistMatch = request.nextUrl.pathname.match(
+        LOCALIZED_WATCHLIST_PATH,
+      );
+      return resolveLocalizedResourceRequest(request, null, watchlistMatch);
+    }
     return NextResponse.next();
   }
 

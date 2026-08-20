@@ -21,9 +21,9 @@ import { isPlausiblePublicWatchlistPath } from "@/lib/public-watchlist-path";
 import { siteConfig } from "@/content/config";
 import { buildAlternates, buildWatchlistItemListJsonLd, JsonLd } from "@/lib/seo";
 import {
-  fetchPublicWatchlistPageData,
   fetchWatchlistPageData,
 } from "@/lib/actions/watchlist-page-data";
+import { fetchPublicWatchlistPageData } from "@/lib/services/watchlist-page-data";
 import { WatchlistContent } from "./watchlist-content";
 import { WatchlistRuntimeFallback } from "./watchlist-runtime-fallback";
 

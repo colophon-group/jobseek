@@ -3,9 +3,32 @@ import {
   buildFilterCacheKey,
   isTrivialWatchlist,
   isQualifyingWatchlist,
+  mergeWatchlistTaxonomySlugs,
 } from "../watchlist-utils";
 import { buildWatchlistItemListJsonLd } from "../seo";
 import type { WatchlistFilters } from "../services/watchlists";
+
+describe("mergeWatchlistTaxonomySlugs", () => {
+  it("preserves outage-unresolved owner filters during an unrelated edit", () => {
+    expect(
+      mergeWatchlistTaxonomySlugs(
+        ["zurich", "geneva"],
+        [],
+        [{ slug: "basel" }],
+      ),
+    ).toEqual(["basel", "zurich", "geneva"]);
+  });
+
+  it("still permits removing a taxonomy item that resolved at load", () => {
+    expect(
+      mergeWatchlistTaxonomySlugs(
+        ["zurich", "geneva"],
+        [{ slug: "zurich" }, { slug: "geneva" }],
+        [{ slug: "geneva" }],
+      ),
+    ).toEqual(["geneva"]);
+  });
+});
 
 describe("isTrivialWatchlist", () => {
   it("returns true for empty filters and zero companies", () => {

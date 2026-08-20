@@ -26,6 +26,7 @@ import { FilterPillsReadOnly } from "@/components/search/filter-pills-readonly";
 import { AdvancedSearchPanel } from "@/components/search/advanced-search-panel";
 import type { SelectedLocation } from "@/lib/search/types";
 import type { HistogramFilters, WorkMode } from "@/lib/search";
+import { mergeWatchlistTaxonomySlugs } from "@/lib/watchlist-utils";
 
 // Sentinel set used to re-validate the JSONB-stored `workMode` strings
 // before they reach Typesense. The watchlist column accepts arbitrary
@@ -231,10 +232,26 @@ export function WatchlistViewPage({
     const ac = overrides.ac ?? anyCompany;
     return {
       keywords: kw.length > 0 ? kw : undefined,
-      locationSlugs: locs.length > 0 ? locs.map((l) => l.slug) : undefined,
-      occupationSlugs: occs.length > 0 ? occs.map((o) => o.slug) : undefined,
-      senioritySlugs: sens.length > 0 ? sens.map((s) => s.slug) : undefined,
-      technologySlugs: techs.length > 0 ? techs.map((t) => t.slug) : undefined,
+      locationSlugs: mergeWatchlistTaxonomySlugs(
+        detail.filters.locationSlugs,
+        resolvedLocations,
+        locs,
+      ),
+      occupationSlugs: mergeWatchlistTaxonomySlugs(
+        detail.filters.occupationSlugs,
+        resolvedOccupations,
+        occs,
+      ),
+      senioritySlugs: mergeWatchlistTaxonomySlugs(
+        detail.filters.senioritySlugs,
+        resolvedSeniorities,
+        sens,
+      ),
+      technologySlugs: mergeWatchlistTaxonomySlugs(
+        detail.filters.technologySlugs,
+        resolvedTechnologies,
+        techs,
+      ),
       workMode: wm.length > 0 ? wm : undefined,
       employmentType: et.length > 0 ? et : undefined,
       salaryCurrency: overrides.salCur ?? salaryCurrency,

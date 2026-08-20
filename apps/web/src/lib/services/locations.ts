@@ -216,6 +216,7 @@ export interface ResolvedLocation {
 export async function resolveLocationSlugs(
   slugs: string[],
   locale: string,
+  options: { abortSignal?: AbortSignal } = {},
 ): Promise<Map<string, ResolvedLocation>> {
   if (slugs.length === 0) return new Map();
   // `canonicalStringCompare` instead of raw `.sort()` so accented slugs
@@ -223,6 +224,13 @@ export async function resolveLocationSlugs(
   // passing the same logical input in different orders. See #3276
   // (follow-up to #3221).
   const sorted = [...slugs].sort(canonicalStringCompare);
+  if (options.abortSignal) {
+    return new Map(
+      Object.entries(
+        await _resolveLocationSlugs(sorted, locale, options.abortSignal),
+      ),
+    );
+  }
   // Plain `Record` survives the `'use cache'` boundary; Map is not
   // serializable, so the wrapper converts at the edge for caller ergonomics.
   const record = await _resolveLocationSlugsCached(sorted, locale);
@@ -245,9 +253,22 @@ async function _resolveLocationSlugsCached(
   cacheLife("days");
   cacheTag(typeaheadLocationsCacheTag());
 
-  const rows = await fetchLocationDocumentsBySlugs(sortedSlugs);
+  return _resolveLocationSlugs(sortedSlugs, locale);
+}
+
+async function _resolveLocationSlugs(
+  sortedSlugs: string[],
+  locale: string,
+  abortSignal?: AbortSignal,
+): Promise<Record<string, ResolvedLocation>> {
+
+  const rows = abortSignal
+    ? await fetchLocationDocumentsBySlugs(sortedSlugs, abortSignal)
+    : await fetchLocationDocumentsBySlugs(sortedSlugs);
   const parentIds = rows.flatMap((row) => row.parent_id == null ? [] : [row.parent_id]);
-  const parents = await fetchLocationDocumentsByIds(parentIds);
+  const parents = abortSignal
+    ? await fetchLocationDocumentsByIds(parentIds, abortSignal)
+    : await fetchLocationDocumentsByIds(parentIds);
   const parentsById = new Map(parents.map((parent) => [parent.location_id, parent]));
   const result: Record<string, ResolvedLocation> = {};
   for (const row of rows) {

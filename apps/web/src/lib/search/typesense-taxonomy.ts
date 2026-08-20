@@ -1,7 +1,10 @@
 import "server-only";
 
 import { getTypesenseClient, type TypesenseHit } from "@/lib/search/typesense-client";
-import { sanitizeTypesenseBoundaryError } from "@/lib/search/typesense-retry";
+import {
+  assertTypesenseSearchResult,
+  sanitizeTypesenseBoundaryError,
+} from "@/lib/search/typesense-retry";
 
 const PAGE_SIZE = 250;
 const FILTER_BATCH_SIZE = 100;
@@ -66,6 +69,7 @@ function filterLiteral(value: string): string {
 async function searchAll<T>(
   collection: string,
   params: SearchParams,
+  abortSignal?: AbortSignal,
 ): Promise<T[]> {
   const client = getTypesenseClient();
   const documents: T[] = [];
@@ -73,14 +77,19 @@ async function searchAll<T>(
   for (let page = 1; ; page += 1) {
     let response;
     try {
-      response = await client.collections(collection).documents().search({
+      const searchParams = {
         ...params,
         page,
         per_page: PAGE_SIZE,
-      });
+      };
+      const documents = client.collections(collection).documents();
+      response = abortSignal
+        ? await documents.search(searchParams, { abortSignal })
+        : await documents.search(searchParams);
     } catch (err) {
       throw sanitizeTypesenseBoundaryError(err);
     }
+    assertTypesenseSearchResult(response, { expectHits: true });
     const hits = (response.hits ?? []) as unknown as TypesenseHit[];
     documents.push(...hits.map((hit) => hit.document as T));
     if (hits.length < PAGE_SIZE || documents.length >= (response.found ?? 0)) break;
@@ -91,15 +100,20 @@ async function searchAll<T>(
 
 export async function fetchLocationDocumentsByIds(
   ids: number[],
+  abortSignal?: AbortSignal,
 ): Promise<TypesenseLocationDocument[]> {
   const unique = [...new Set(ids)].filter(Number.isInteger);
   const results = await Promise.all(
     chunks(unique, FILTER_BATCH_SIZE).map((batch) =>
-      searchAll<TypesenseLocationDocument>("location", {
-        q: "*",
-        query_by: "name_en",
-        filter_by: `id:[${batch.join(",")}]`,
-      }),
+      searchAll<TypesenseLocationDocument>(
+        "location",
+        {
+          q: "*",
+          query_by: "name_en",
+          filter_by: `id:[${batch.join(",")}]`,
+        },
+        abortSignal,
+      ),
     ),
   );
   return results.flat();
@@ -126,15 +140,20 @@ export async function fetchLocationDocumentsWithAncestors(
 
 export async function fetchLocationDocumentsBySlugs(
   slugs: string[],
+  abortSignal?: AbortSignal,
 ): Promise<TypesenseLocationDocument[]> {
   const unique = [...new Set(slugs)];
   const results = await Promise.all(
     chunks(unique, FILTER_BATCH_SIZE).map((batch) =>
-      searchAll<TypesenseLocationDocument>("location", {
-        q: "*",
-        query_by: "name_en",
-        filter_by: `slug:[${batch.map(filterLiteral).join(",")}]`,
-      }),
+      searchAll<TypesenseLocationDocument>(
+        "location",
+        {
+          q: "*",
+          query_by: "name_en",
+          filter_by: `slug:[${batch.map(filterLiteral).join(",")}]`,
+        },
+        abortSignal,
+      ),
     ),
   );
   return results.flat();
@@ -173,14 +192,19 @@ function safeLocale(locale: string): string {
 async function fetchLocalizedDocuments<T extends { locale: string }>(
   collection: "occupation" | "seniority",
   locale: string,
+  abortSignal?: AbortSignal,
 ): Promise<T[]> {
   const preferred = safeLocale(locale);
   const localeFilter = preferred === "en" ? "locale:=en" : `locale:[${preferred},en]`;
-  return searchAll<T>(collection, {
-    q: "*",
-    query_by: "name",
-    filter_by: localeFilter,
-  });
+  return searchAll<T>(
+    collection,
+    {
+      q: "*",
+      query_by: "name",
+      filter_by: localeFilter,
+    },
+    abortSignal,
+  );
 }
 
 function preferLocale<T extends { locale: string }>(
@@ -201,27 +225,37 @@ function preferLocale<T extends { locale: string }>(
 
 export async function fetchOccupationDocuments(
   locale: string,
+  abortSignal?: AbortSignal,
 ): Promise<TypesenseOccupationDocument[]> {
   const documents = await fetchLocalizedDocuments<TypesenseOccupationDocument>(
     "occupation",
     locale,
+    abortSignal,
   );
   return preferLocale(documents, locale, (document) => document.occupation_id);
 }
 
 export async function fetchSeniorityDocuments(
   locale: string,
+  abortSignal?: AbortSignal,
 ): Promise<TypesenseSeniorityDocument[]> {
   const documents = await fetchLocalizedDocuments<TypesenseSeniorityDocument>(
     "seniority",
     locale,
+    abortSignal,
   );
   return preferLocale(documents, locale, (document) => document.seniority_id);
 }
 
-export function fetchTechnologyDocuments(): Promise<TypesenseTechnologyDocument[]> {
-  return searchAll<TypesenseTechnologyDocument>("technology", {
-    q: "*",
-    query_by: "name",
-  });
+export function fetchTechnologyDocuments(
+  abortSignal?: AbortSignal,
+): Promise<TypesenseTechnologyDocument[]> {
+  return searchAll<TypesenseTechnologyDocument>(
+    "technology",
+    {
+      q: "*",
+      query_by: "name",
+    },
+    abortSignal,
+  );
 }

@@ -1,164 +1,46 @@
 "use server";
 
 import {
+  getPublicWatchlistByUserAndSlug,
   getWatchlistByUserAndSlug,
-  getPublicWatchlistPostings,
-  getWatchlistPostings,
-  getWatchlistPostingYearCount,
-} from "@/lib/actions/watchlists";
-import { getCurrencyRates } from "@/lib/actions/search";
+} from "@/lib/services/watchlists";
 import { getSession } from "@/lib/sessionCache";
 import { getUserPlan, PLAN_LIMITS, canCreateWatchlist } from "@/lib/plans";
-import { resolveLocationSlugs } from "@/lib/actions/locations";
-import { resolveOccupationSlugs, resolveSenioritySlugs, resolveTechnologySlugs } from "@/lib/actions/taxonomy";
 import { getPreferences } from "@/lib/actions/preferences";
 import { readAnonJobLanguagesCookie } from "@/lib/anon-preferences";
-import { resolveJobLanguages } from "@/lib/job-languages";
-import { convertToEur } from "@/lib/salary";
-import type { WatchlistPostingEntry } from "@/lib/actions/watchlists";
+import { buildWatchlistPageData } from "@/lib/services/watchlist-page-data";
+import type { WatchlistPageData } from "@/lib/services/watchlist-page-data";
 
-type WatchlistDetail = NonNullable<
-  Awaited<ReturnType<typeof getWatchlistByUserAndSlug>>
->;
+/**
+ * Compatibility boundary for clients holding the former public-snapshot
+ * action ID. The old action trusted a serialized `detail` object. Keep the
+ * export name, but require slugs and re-resolve them authoritatively so a
+ * replay cannot manufacture a Typesense-backed route.
+ */
+export async function fetchPublicWatchlistPageData(
+  params: unknown,
+): Promise<WatchlistPageData | null> {
+  if (
+    typeof params !== "object" ||
+    params === null ||
+    !("userSlug" in params) ||
+    !("watchlistSlug" in params) ||
+    !("locale" in params) ||
+    typeof params.userSlug !== "string" ||
+    typeof params.watchlistSlug !== "string" ||
+    typeof params.locale !== "string"
+  ) {
+    return null;
+  }
 
-export interface WatchlistPageData {
-  detail: WatchlistDetail;
-  isOwner: boolean;
-  isPaidPlan: boolean;
-  limitReached: boolean;
-  postings: WatchlistPostingEntry[];
-  total: number;
-  /** Count of postings first seen in the last year matching the same filters (active or inactive). */
-  yearTotal: number;
-  resolvedLocations: { id: number; slug: string; name: string; type: "macro" | "country" | "region" | "city"; parentName: string | null }[];
-  resolvedOccupations: { id: number; slug: string; name: string }[];
-  resolvedSeniorities: { id: number; slug: string; name: string }[];
-  resolvedTechnologies: { id: number; slug: string; name: string }[];
-  jobLanguages: string[];
-  languages: string[];
-}
-
-async function buildWatchlistPageData(params: {
-  detail: WatchlistDetail;
-  locale: string;
-  isOwner: boolean;
-  isPaidPlan: boolean;
-  limitReached: boolean;
-  jobLanguages: string[];
-  publicSnapshot: boolean;
-}): Promise<WatchlistPageData> {
-  const {
-    detail,
-    locale,
-    isOwner,
-    isPaidPlan,
-    limitReached,
-    jobLanguages,
-    publicSnapshot,
-  } = params;
-  const languages = resolveJobLanguages(jobLanguages, locale);
-  const filters = detail.filters;
-
-  const [locMap, occMap, senMap, techMap] = await Promise.all([
-    filters.locationSlugs?.length
-      ? resolveLocationSlugs(filters.locationSlugs, locale)
-      : Promise.resolve(new Map()),
-    filters.occupationSlugs?.length
-      ? resolveOccupationSlugs(filters.occupationSlugs, locale)
-      : Promise.resolve(new Map()),
-    filters.senioritySlugs?.length
-      ? resolveSenioritySlugs(filters.senioritySlugs, locale)
-      : Promise.resolve(new Map()),
-    filters.technologySlugs?.length
-      ? resolveTechnologySlugs(filters.technologySlugs)
-      : Promise.resolve(new Map()),
-  ]);
-
-  const resolvedLocations = (filters.locationSlugs ?? [])
-    .map((slug) => locMap.get(slug))
-    .filter((l): l is NonNullable<typeof l> => l != null)
-    .map((l) => ({ id: l.id, slug: l.slug, name: l.name, type: l.type as "macro" | "country" | "region" | "city", parentName: l.parentName ?? null }));
-
-  const resolvedOccupations = (filters.occupationSlugs ?? [])
-    .map((slug) => occMap.get(slug))
-    .filter((o): o is NonNullable<typeof o> => o != null);
-
-  const resolvedSeniorities = (filters.senioritySlugs ?? [])
-    .map((slug) => senMap.get(slug))
-    .filter((s): s is NonNullable<typeof s> => s != null);
-
-  const resolvedTechnologies = (filters.technologySlugs ?? [])
-    .map((slug) => techMap.get(slug))
-    .filter((t): t is NonNullable<typeof t> => t != null);
-
-  // Re-validate workMode strings before letting them flow into the
-  // Typesense filter — JSONB column means we can't trust the shape.
-  // Mirrors the same guard in the client-side editor (issue #3037).
-  const WORK_MODE_VALUES = new Set(["onsite", "hybrid", "remote"] as const);
-  const validatedWorkMode = (filters.workMode ?? []).filter(
-    (m): m is "onsite" | "hybrid" | "remote" => WORK_MODE_VALUES.has(m),
+  const detail = await getPublicWatchlistByUserAndSlug(
+    params.userSlug,
+    params.watchlistSlug,
   );
-  // `getCurrencyRates` is cache-backed (`cacheLife("hours")`), so this is
-  // cheap when the cache is warm. Only fetched when salary filters are set
-  // to avoid unnecessary work on watchlists without salary constraints.
-  // Full rationale in issue #3178 and PR #3298.
-  const salaryCurrency = filters.salaryCurrency ?? "EUR";
-  const rates =
-    filters.salaryMin != null || filters.salaryMax != null
-      ? await getCurrencyRates()
-      : [];
-  const salaryMinEur = convertToEur(filters.salaryMin, salaryCurrency, rates);
-  const salaryMaxEur = convertToEur(filters.salaryMax, salaryCurrency, rates);
+  if (!detail) return null;
 
-  const sharedCountsParams = {
-    companyIds: filters.anyCompany ? [] : detail.companies.map((c) => c.id),
-    anyCompany: filters.anyCompany,
-    keywords: filters.keywords,
-    locationIds: resolvedLocations.map((l) => l.id),
-    occupationIds: resolvedOccupations.map((o) => o.id),
-    seniorityIds: resolvedSeniorities.map((s) => s.id),
-    technologyIds: resolvedTechnologies.map((t) => t.id),
-    workMode: validatedWorkMode.length > 0 ? validatedWorkMode : undefined,
-    employmentType: filters.employmentType?.length ? filters.employmentType : undefined,
-    salaryMin: salaryMinEur,
-    salaryMax: salaryMaxEur,
-    experienceMin: filters.experienceMin,
-    experienceMax: filters.experienceMax,
-    languages,
-  };
-  const [{ postings, total }, yearTotal] = await Promise.all([
-    (publicSnapshot ? getPublicWatchlistPostings : getWatchlistPostings)({
-      ...sharedCountsParams,
-      offset: 0,
-      limit: 20,
-    }),
-    getWatchlistPostingYearCount(sharedCountsParams),
-  ]);
-
-  return {
-    detail,
-    isOwner,
-    isPaidPlan,
-    limitReached,
-    postings,
-    total,
-    yearTotal,
-    resolvedLocations,
-    resolvedOccupations,
-    resolvedSeniorities,
-    resolvedTechnologies,
-    jobLanguages,
-    languages,
-  };
-}
-
-/** Anonymous, cache-safe initial data for a known public watchlist. */
-export async function fetchPublicWatchlistPageData(params: {
-  detail: WatchlistDetail;
-  locale: string;
-}): Promise<WatchlistPageData> {
   return buildWatchlistPageData({
-    detail: params.detail,
+    detail,
     locale: params.locale,
     isOwner: false,
     isPaidPlan: false,
@@ -175,32 +57,30 @@ export async function fetchWatchlistPageData(params: {
 }): Promise<WatchlistPageData | null> {
   const { userSlug, watchlistSlug, locale } = params;
 
+  // Resolve the URL through authoritative Postgres state before any search
+  // call. Missing/private slugs cannot reach Typesense through a stale or
+  // replayed Server Action reference (#7487).
   const detail = await getWatchlistByUserAndSlug(userSlug, watchlistSlug);
   if (!detail) return null;
 
   const session = await getSession();
   const isOwner = session?.user?.id === detail.owner.id;
-
-  // Auth users persist `jobLanguages` in `user_preferences`; anon
-  // users mirror it into a cookie (issue #2850 + `anon-preferences.ts`).
-  // Read whichever applies so the watchlist body filters consistently.
   const [plan, limit, prefs, anonJobLangs] = await Promise.all([
     session ? getUserPlan(session.user.id) : ("free" as const),
     session ? canCreateWatchlist(session.user.id) : { allowed: false, current: 0, max: 0 },
     session ? getPreferences() : Promise.resolve(null),
     session ? Promise.resolve(null) : readAnonJobLanguagesCookie(),
   ]);
-  const isPaidPlan = PLAN_LIMITS[plan].canReceiveAlerts;
-  const limitReached = !limit.allowed;
 
-  const jobLanguages = prefs?.jobLanguages ?? anonJobLangs ?? [];
   return buildWatchlistPageData({
     detail,
     isOwner,
-    isPaidPlan,
-    limitReached,
+    isPaidPlan: PLAN_LIMITS[plan].canReceiveAlerts,
+    limitReached: !limit.allowed,
     locale,
-    jobLanguages,
+    jobLanguages: prefs?.jobLanguages ?? anonJobLangs ?? [],
     publicSnapshot: false,
   });
 }
+
+export type { WatchlistPageData } from "@/lib/services/watchlist-page-data";
