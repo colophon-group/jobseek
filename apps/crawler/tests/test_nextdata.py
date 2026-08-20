@@ -16,6 +16,7 @@ from src.core.monitors.nextdata import (
     _resolve_field,
     can_handle,
     discover,
+    discover_stream,
 )
 from src.shared.nextdata import (
     extract_field as _extract_field,
@@ -994,6 +995,40 @@ class TestPagination:
         assert isinstance(result, set)
         assert len(result) == 2
 
+    async def test_confirmed_empty_first_page_is_valid(self):
+        """A one-page empty inventory must reach confirmed-empty handling."""
+        transport = _paginated_transport(page_count=1, items_per_page=0)
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover(BOARD_PAGINATED, client)
+        assert result == set()
+
+    async def test_stream_confirmed_empty_first_page_is_valid(self):
+        transport = _paginated_transport(page_count=1, items_per_page=0)
+        async with httpx.AsyncClient(transport=transport) as client:
+            batches = [batch async for batch in discover_stream(BOARD_PAGINATED, client)]
+        assert batches == [set()]
+
+    async def test_empty_first_page_requires_configured_zero_total(self):
+        board = {
+            **BOARD_PAGINATED,
+            "metadata": {
+                **BOARD_PAGINATED["metadata"],
+                "pagination": {
+                    **BOARD_PAGINATED["metadata"]["pagination"],
+                    "total_records": "total",
+                },
+            },
+        }
+
+        def handler(request: httpx.Request):
+            data = _paginated_data(page=1, page_count=1, items_per_page=0)
+            del data["props"]["pageProps"]["data"]["pagination"]["total"]
+            return httpx.Response(200, text=_html_with_next_data(data))
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(RuntimeError, match="first page was empty"):
+                await discover(board, client)
+
     async def test_multi_page_merges_items(self):
         """Three pages of 2 items each → 6 total URLs."""
         transport = _paginated_transport(page_count=3)
@@ -1014,7 +1049,7 @@ class TestPagination:
         assert titles == {"Job 0", "Job 1", "Job 2", "Job 3"}
 
     async def test_missing_pagination_config_fields(self):
-        """Incomplete pagination config is silently ignored."""
+        """Incomplete pagination config fails closed."""
         board = {
             "board_url": "https://example.com/jobs",
             "metadata": {
@@ -1026,12 +1061,11 @@ class TestPagination:
         }
         transport = _paginated_transport(page_count=3)
         async with httpx.AsyncClient(transport=transport) as client:
-            result = await discover(board, client)
-        # Falls back to first page only
-        assert len(result) == 2
+            with pytest.raises(ValueError, match="valid page count"):
+                await discover(board, client)
 
-    async def test_page_fetch_failure_skips_page(self):
-        """If a page fetch fails, other pages still work."""
+    async def test_page_fetch_failure_fails_run_after_bounded_retries(self):
+        """A missing page must fail the run instead of tombstoning its jobs."""
         call_count = 0
 
         def handler(request: httpx.Request):
@@ -1050,9 +1084,115 @@ class TestPagination:
 
         transport = httpx.MockTransport(handler)
         async with httpx.AsyncClient(transport=transport) as client:
-            result = await discover(BOARD_PAGINATED, client)
-        # Page 1 (2 items) + page 2 (failed, 0) + page 3 (2 items) = 4
-        assert len(result) == 4
+            with (
+                patch("src.core.monitors.nextdata.asyncio.sleep", new_callable=AsyncMock),
+                pytest.raises(RuntimeError, match="required page failed after 3 attempts"),
+            ):
+                await discover(BOARD_PAGINATED, client)
+        # Page 1 and page 3 succeed once; required page 2 exhausts three attempts.
+        assert call_count == 5
+
+    @pytest.mark.parametrize(
+        "bad_html",
+        [
+            "<html><body>No embedded data</body></html>",
+            _html_with_next_data(
+                {
+                    "props": {
+                        "pageProps": {
+                            "data": {
+                                "jobs": {"unexpected": "object"},
+                                "pagination": {"page": 2, "pageCount": 2, "total": 4},
+                            }
+                        }
+                    }
+                }
+            ),
+        ],
+        ids=["missing-embedded-data", "wrong-path-type"],
+    )
+    async def test_stream_parse_failure_fails_run_after_retries(self, bad_html):
+        page_two_calls = 0
+
+        def handler(request: httpx.Request):
+            nonlocal page_two_calls
+            page = int(request.url.params.get("page", "1"))
+            if page == 2:
+                page_two_calls += 1
+                return httpx.Response(200, text=bad_html)
+            return httpx.Response(
+                200,
+                text=_html_with_next_data(_paginated_data(page, 2)),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with (
+                patch("src.core.monitors.nextdata.asyncio.sleep", new_callable=AsyncMock),
+                pytest.raises(RuntimeError, match="required page failed after 3 attempts"),
+            ):
+                async for _batch in monitor_one_stream(
+                    BOARD_PAGINATED["board_url"],
+                    "nextdata",
+                    BOARD_PAGINATED["metadata"],
+                    client,
+                ):
+                    pass
+
+        assert page_two_calls == 3
+
+    async def test_empty_required_page_fails_run_after_retries(self):
+        """A valid embedded shell with no jobs is still an incomplete page."""
+        page_two_calls = 0
+
+        def handler(request: httpx.Request):
+            nonlocal page_two_calls
+            page = int(request.url.params.get("page", "1"))
+            data = _paginated_data(page, 3)
+            if page == 2:
+                page_two_calls += 1
+                data["props"]["pageProps"]["data"]["jobs"] = []
+            return httpx.Response(200, text=_html_with_next_data(data))
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with (
+                patch("src.core.monitors.nextdata.asyncio.sleep", new_callable=AsyncMock),
+                pytest.raises(
+                    RuntimeError,
+                    match="path resolved to an empty required page",
+                ),
+            ):
+                await discover(BOARD_PAGINATED, client)
+
+        assert page_two_calls == 3
+
+    async def test_stream_validates_unique_count_against_first_page_total(self):
+        board = {
+            **BOARD_PAGINATED,
+            "metadata": {
+                **BOARD_PAGINATED["metadata"],
+                "pagination": {
+                    **BOARD_PAGINATED["metadata"]["pagination"],
+                    "total_records": "total",
+                    "page_size": 2,
+                },
+            },
+        }
+
+        def handler(request: httpx.Request):
+            page = int(request.url.params.get("page", "1"))
+            data = _paginated_data(page, 3)
+            data["props"]["pageProps"]["data"]["pagination"]["total"] = 5
+            return httpx.Response(200, text=_html_with_next_data(data))
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(RuntimeError, match="discovered 6 unique jobs.*expected 5"):
+                async for _batch in monitor_one_stream(
+                    board["board_url"],
+                    "nextdata",
+                    board["metadata"],
+                    client,
+                ):
+                    pass
 
 
 # ---------------------------------------------------------------------------
