@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import json
 from contextlib import asynccontextmanager
 
 import httpx
 import pytest
 
 from src.core.monitor import MonitorResult
-from src.core.monitors import BoardGoneError, all_monitor_types
+from src.core.monitors import BoardGoneError, all_monitor_types, jobbank104
 from src.core.monitors.jobbank104 import (
     _canonical_job_url,
     _token_from_url,
@@ -19,15 +20,36 @@ from src.workspace._compat import auto_scraper_type, detect_ats_from_url
 
 TOKEN = "auzu36g"
 BOARD_URL = f"https://www.104.com.tw/company/{TOKEN}"
+API_URL = f"https://www.104.com.tw/api/companies/{TOKEN}/jobs"
 
 
-def _listing(*job_ids: str, advertised: int | None = None) -> str:
-    count = len(job_ids) if advertised is None else advertised
-    links = "".join(
-        f'<article><a href="/job/{job_id}?jobsource=company_job">Role {job_id}</a></article>'
-        for job_id in job_ids
-    )
-    return f"<html><body><a>工作機會({count})</a>{links}</body></html>"
+def _job(job_id: str, *, url: str | None = None) -> dict:
+    return {
+        "jobNo": job_id,
+        "jobUrl": url or f"https://www.104.com.tw/job/{job_id}",
+        "jobName": f"Role {job_id}",
+    }
+
+
+def _payload(
+    jobs: list[dict],
+    *,
+    total: int | None = None,
+    page: int = 1,
+    page_size: int | None = None,
+) -> dict:
+    size = jobbank104.PAGE_SIZE if page_size is None else page_size
+    count = len(jobs) if total is None else total
+    pages = (count + size - 1) // size if count else 0
+    return {
+        "data": {
+            "totalCount": count,
+            "totalPages": pages,
+            "page": page,
+            "pageSize": size,
+            "list": {"topJobs": [], "normalJobs": jobs},
+        }
+    }
 
 
 class TestIdentity:
@@ -71,22 +93,21 @@ class TestIdentity:
             == "https://www.104.com.tw/job/8jld1"
         )
         assert _canonical_job_url("https://evil.test/job/8jld1") is None
-        assert _canonical_job_url("https://www.104.com.tw/jobs/8jld1") is None
 
 
 class TestMonitor:
-    async def test_discovers_and_canonicalizes_company_jobs(self):
-        page = _listing("8jld1", "92nxg").replace(
-            "</body>",
-            (
-                '<a href="https://www.104.com.tw/job/8JLD1#duplicate">Duplicate</a>'
-                '<a href="https://evil.test/job/aaaaa">Foreign</a></body>'
-            ),
-        )
-        transport = httpx.MockTransport(
-            lambda request: httpx.Response(200, text=page, request=request)
-        )
-        async with httpx.AsyncClient(transport=transport) as client:
+    async def test_discovers_authoritative_normal_jobs(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert str(request.url).startswith(API_URL)
+            assert request.headers["accept"] == "application/json"
+            assert request.headers["referer"] == BOARD_URL
+            return httpx.Response(
+                200,
+                json=_payload([_job("8jld1"), _job("92nxg")]),
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await discover({"board_url": BOARD_URL}, client)
 
         assert result == {
@@ -98,8 +119,8 @@ class TestMonitor:
         seen: list[str] = []
 
         def handler(request: httpx.Request) -> httpx.Response:
-            seen.append(str(request.url))
-            return httpx.Response(200, text=_listing(), request=request)
+            seen.append(str(request.url).split("?")[0])
+            return httpx.Response(200, json=_payload([]), request=request)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await discover(
@@ -111,20 +132,36 @@ class TestMonitor:
             )
 
         assert result == set()
-        assert seen == [BOARD_URL]
+        assert seen == [API_URL]
 
-    async def test_explicit_empty_listing_is_authoritative(self):
-        transport = httpx.MockTransport(
-            lambda request: httpx.Response(200, text=_listing(advertised=0), request=request)
-        )
-        async with httpx.AsyncClient(transport=transport) as client:
-            assert await discover({"board_url": BOARD_URL}, client) == set()
+    async def test_paginates_without_including_promoted_duplicates(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(jobbank104, "PAGE_SIZE", 2)
 
-    async def test_count_mismatch_is_safe_truncation(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            page = int(request.url.params["page"])
+            rows = [_job("8jld1"), _job("92nxg")] if page == 1 else [_job("94xx9")]
+            payload = _payload(rows, total=3, page=page, page_size=2)
+            payload["data"]["list"]["topJobs"] = [_job("8jld1")]
+            return httpx.Response(200, json=payload, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover({"board_url": BOARD_URL}, client)
+
+        assert result == {
+            "https://www.104.com.tw/job/8jld1",
+            "https://www.104.com.tw/job/92nxg",
+            "https://www.104.com.tw/job/94xx9",
+        }
+
+    async def test_inventory_over_cap_is_safe_truncation(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(jobbank104, "PAGE_SIZE", 2)
+        monkeypatch.setattr(jobbank104, "MAX_JOBS", 2)
         transport = httpx.MockTransport(
             lambda request: httpx.Response(
                 200,
-                text=_listing("8jld1", advertised=13),
+                json=_payload([_job("8jld1"), _job("92nxg")], total=3, page_size=2),
                 request=request,
             )
         )
@@ -132,36 +169,31 @@ class TestMonitor:
             result = await discover({"board_url": BOARD_URL}, client)
 
         assert isinstance(result, MonitorResult)
-        assert result.urls == {"https://www.104.com.tw/job/8jld1"}
+        assert len(result.urls) == 2
         assert result.truncated is True
 
-    async def test_missing_count_is_safe_truncation(self):
-        page = '<html><body><a href="/job/8jld1">Role</a></body></html>'
+    async def test_incomplete_page_fails_closed(self):
         transport = httpx.MockTransport(
-            lambda request: httpx.Response(200, text=page, request=request)
+            lambda request: httpx.Response(
+                200,
+                json=_payload([_job("8jld1")], total=2),
+                request=request,
+            )
         )
         async with httpx.AsyncClient(transport=transport) as client:
-            result = await discover({"board_url": BOARD_URL}, client)
-
-        assert isinstance(result, MonitorResult)
-        assert result.urls == {"https://www.104.com.tw/job/8jld1"}
-        assert result.truncated is True
-
-    async def test_json_bootstrap_zero_is_not_authoritative_empty(self):
-        page = '<html><body><script>window.state = {"jobCount": 0}</script></body></html>'
-        transport = httpx.MockTransport(
-            lambda request: httpx.Response(200, text=page, request=request)
-        )
-        async with httpx.AsyncClient(transport=transport) as client:
-            with pytest.raises(ValueError, match="non-listing"):
+            with pytest.raises(ValueError, match="returned 1 rows, expected 2"):
                 await discover({"board_url": BOARD_URL}, client)
 
-    async def test_non_listing_page_fails_not_empty(self):
+    async def test_invalid_job_identity_fails_closed(self):
         transport = httpx.MockTransport(
-            lambda request: httpx.Response(200, text="<html>not a board</html>", request=request)
+            lambda request: httpx.Response(
+                200,
+                json=_payload([_job("8jld1", url="https://evil.test/job/8jld1")]),
+                request=request,
+            )
         )
         async with httpx.AsyncClient(transport=transport) as client:
-            with pytest.raises(ValueError, match="non-listing"):
+            with pytest.raises(ValueError, match="invalid job identity"):
                 await discover({"board_url": BOARD_URL}, client)
 
     @pytest.mark.parametrize("status", [404, 410])
@@ -171,7 +203,7 @@ class TestMonitor:
             with pytest.raises(BoardGoneError) as exc_info:
                 await discover({"board_url": BOARD_URL}, client)
         assert exc_info.value.status_code == status
-        assert exc_info.value.url == BOARD_URL
+        assert exc_info.value.url == API_URL
 
     async def test_challenge_status_is_transient_failure(self):
         transport = httpx.MockTransport(
@@ -185,7 +217,7 @@ class TestMonitor:
     async def test_raw_artifact_uses_proxy_aware_client(self, tmp_path, monkeypatch):
         seen: list[dict] = []
         transport = httpx.MockTransport(
-            lambda request: httpx.Response(200, text=_listing("8jld1"), request=request)
+            lambda request: httpx.Response(200, json=_payload([_job("8jld1")]), request=request)
         )
 
         async with (
@@ -203,25 +235,30 @@ class TestMonitor:
             await save_raw(tmp_path, BOARD_URL, {"token": TOKEN, "proxy": True}, base_client)
 
         assert seen == [{"token": TOKEN, "proxy": True}]
-        assert (tmp_path / "jobbank104-listing.html").read_text() == _listing("8jld1")
+        saved = json.loads((tmp_path / "jobbank104-listing.json").read_text())
+        assert saved["data"]["totalCount"] == 1
 
 
 class TestProbe:
     async def test_direct_url_is_detected_without_network(self):
         assert await can_handle(BOARD_URL) == {"token": TOKEN}
 
-    async def test_reachable_page_adds_verified_count(self):
+    async def test_reachable_api_adds_verified_count(self):
         transport = httpx.MockTransport(
-            lambda request: httpx.Response(200, text=_listing("8jld1", "92nxg"), request=request)
+            lambda request: httpx.Response(
+                200,
+                json=_payload([_job("8jld1"), _job("92nxg")]),
+                request=request,
+            )
         )
         async with httpx.AsyncClient(transport=transport) as client:
             assert await can_handle(BOARD_URL, client) == {"token": TOKEN, "jobs": 2}
 
     async def test_provider_challenge_retains_deterministic_match(self, monkeypatch):
-        async def blocked(_token: str, _client: httpx.AsyncClient) -> str:
-            raise PaginationFetchError("blocked", last_status=403)
+        async def blocked(_token: str, _client: httpx.AsyncClient):
+            raise PaginationFetchError("blocked", attempts=1, last_status=403)
 
-        monkeypatch.setattr("src.core.monitors.jobbank104._fetch_listing", blocked)
+        monkeypatch.setattr(jobbank104, "_discover_urls", blocked)
         async with httpx.AsyncClient() as client:
             assert await can_handle(BOARD_URL, client) == {"token": TOKEN}
 

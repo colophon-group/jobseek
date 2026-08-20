@@ -192,8 +192,15 @@ def _detail_url(job_id: str) -> str:
 
 
 def _is_empty_listing_fragment(html: str) -> bool:
-    """Recognize LinkedIn's comment-only end-of-pagination fragment."""
-    return not re.sub(r"<!--.*?-->", "", html, flags=re.DOTALL).strip()
+    """Recognize LinkedIn's boilerplate-only end-of-pagination fragment.
+
+    The guest endpoint sometimes prefixes its normal ``<!---->`` terminator
+    with ``<!DOCTYPE html>``.  A doctype contains no listing information and
+    must not turn an authoritative empty page into a parser failure.
+    """
+    stripped = re.sub(r"<!--.*?-->", "", html, flags=re.DOTALL)
+    stripped = re.sub(r"<!DOCTYPE\s+html\s*>", "", stripped, flags=re.IGNORECASE)
+    return not stripped.strip()
 
 
 async def _fetch_listing_query(
