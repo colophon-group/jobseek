@@ -35,6 +35,10 @@ _TALEMETRY_MISSING_COMMA_RE = re.compile(
     r'("datePosted"\s*:\s*"(?:\\.|[^"\\])*")(\s*)("hiringOrganization"\s*:)',
     re.DOTALL,
 )
+_DOUBLE_ESCAPED_WHITESPACE_ENTITY_RE = re.compile(
+    r"&amp;#(?:(?:x0*(?:9|a|d))|(?:0*(?:9|10|13)));",
+    re.IGNORECASE,
+)
 
 _CDATA_WRAPPERS = (
     ("//<![CDATA[", "//]]>"),
@@ -394,12 +398,25 @@ def _strip_html(text: str) -> str:
     return re.sub(r"<[^>]+>", "", text).strip()
 
 
+def _normalize_description_entities(value: object) -> str | None:
+    """Decode double-escaped whitespace references without altering HTML.
+
+    Some TalentBrew tenants serialize line breaks in JSON-LD descriptions as
+    ``&amp;#xa;``.  Those references survive JSON parsing and show up as noisy
+    literal text.  Restrict the second decoding pass to tab/newline/carriage
+    return references so ordinary encoded HTML and ampersands remain intact.
+    """
+    if not isinstance(value, str):
+        return None
+    return _DOUBLE_ESCAPED_WHITESPACE_ENTITY_RE.sub(
+        lambda match: html_module.unescape(html_module.unescape(match.group(0))),
+        value,
+    )
+
+
 def _parse_posting(posting: dict) -> JobContent:
     """Convert a schema.org JobPosting dict to JobContent."""
-    description = posting.get("description")
-    if isinstance(description, str) and "<" in description:
-        # Keep HTML description as-is (same as greenhouse/lever)
-        pass
+    description = _normalize_description_entities(posting.get("description"))
 
     extras: dict = {}
     skills = _text_or_list(posting.get("skills"))
