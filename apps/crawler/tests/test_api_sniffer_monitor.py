@@ -727,6 +727,26 @@ class TestExtractRich:
         jobs = _extract_rich(items, fields, "url", None, "https://example.com")
         assert jobs[0].locations == ["NYC", "SF"]
 
+    def test_array_description_fragments_are_joined(self):
+        items = [
+            {
+                "title": "Dev",
+                "url": "/jobs/1",
+                "modularContent": [
+                    {"text": "<p>About the role</p>"},
+                    {"text": "<ul><li>Build things</li></ul>"},
+                ],
+            }
+        ]
+        fields = {
+            "title": "title",
+            "description": "modularContent[].text",
+        }
+
+        jobs = _extract_rich(items, fields, "url", None, "https://example.com")
+
+        assert jobs[0].description == ("<p>About the role</p>\n\n<ul><li>Build things</li></ul>")
+
     def test_no_url_skipped(self):
         items = [{"title": "Dev", "score": 5}]
         fields = {"title": "title"}
@@ -944,6 +964,77 @@ class TestDiscoverReplay:
             "https://jobs.example.com/careers?jobId=616994&itemId=9201870385175_1"
         )
         assert result[0].title == "Underwriter"
+
+    @staticmethod
+    def _datocms_board(total: int) -> tuple[dict, list[int], httpx.MockTransport]:
+        requested_offsets: list[int] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            body = json.loads(request.content)
+            offset = body["variables"]["skip"]
+            requested_offsets.append(offset)
+            count = 100 if offset == 0 else 1
+            jobs = [
+                {
+                    "id": str(offset + index),
+                    "title": f"Job {offset + index}",
+                    "slug": f"job-{offset + index}",
+                    "description": "Complete description",
+                }
+                for index in range(count)
+            ]
+            return httpx.Response(
+                200,
+                json={"data": {"_allCareersMeta": {"count": total}, "allCareers": jobs}},
+                request=request,
+            )
+
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "api_url": "https://graphql.example.com/",
+                "method": "POST",
+                "json_path": "data.allCareers",
+                "total_path": "data._allCareersMeta.count",
+                "post_data": {
+                    "query": "query Careers { allCareers { id } }",
+                    "variables": {"first": 100, "skip": 0},
+                },
+                "pagination": {
+                    "param_name": "variables.skip",
+                    "style": "offset",
+                    "start_value": 0,
+                    "increment": 100,
+                    "location": "body",
+                },
+                "url_template": "https://example.com/career/{slug}/",
+                "fields": {"title": "title", "description": "description"},
+            },
+        }
+        return board, requested_offsets, httpx.MockTransport(handler)
+
+    @pytest.mark.asyncio
+    async def test_http_post_paginates_nested_graphql_offset_past_100(self):
+        board, requested_offsets, transport = self._datocms_board(total=101)
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover(board, client, pw=None)
+
+        assert isinstance(result, list)
+        assert len(result) == 101
+        assert requested_offsets == [0, 100]
+
+    @pytest.mark.asyncio
+    async def test_http_post_marks_short_graphql_pagination_truncated(self):
+        from src.core.monitor import MonitorResult
+
+        board, requested_offsets, transport = self._datocms_board(total=150)
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover(board, client, pw=None)
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert len(result.urls) == 101
+        assert requested_offsets == [0, 100]
 
     @pytest.mark.asyncio
     async def test_replay_url_only_mode(self):

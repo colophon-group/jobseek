@@ -2264,6 +2264,14 @@ def _extract_rich(
                 value = extract_field(item, spec, root=root)
             if value is None:
                 continue
+            # Wildcard paths such as ``modularContent[].text`` naturally
+            # resolve to a list.  Description is a scalar HTML field on
+            # DiscoveredJob, so preserve every fragment in source order
+            # instead of leaking a list into downstream text processing.
+            if target == "description" and isinstance(value, list):
+                value = "\n\n".join(part for part in value if part)
+                if not value:
+                    continue
             if target.startswith("metadata."):
                 metadata_fields[target.removeprefix("metadata.")] = value
             elif target in (
