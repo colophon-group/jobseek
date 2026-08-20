@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import subprocess
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 from playwright.async_api import Error as PlaywrightError
@@ -20,11 +20,13 @@ from src.shared.browser import (
     DEFAULT_WAIT_FALLBACK,
     FALLBACK_WAIT_TIMEOUT,
     NAVIGATE_KEYS,
+    NAVIGATION_NETWORK_RETRY_DELAY_SECONDS,
     OVERLAY_SELECTORS,
     VALID_WAIT_STRATEGIES,
     BrowserNavigationHTTPStatusError,
     _resolve_headless,
     _resolve_placeholders,
+    _retryable_navigation_network_error,
     _x_server_alive,
     dismiss_overlays,
     is_target_closed_error,
@@ -104,6 +106,21 @@ class TestConstants:
         assert is_target_closed_error(PlaywrightError(marker)) is True
         assert is_target_closed_error(RuntimeError(marker)) is False
         assert is_target_closed_error(PlaywrightError("Browser launch failed")) is False
+
+    @pytest.mark.parametrize(
+        ("marker", "reason"),
+        [
+            ("ERR_CONNECTION_RESET", "connection_reset"),
+            ("ERR_NETWORK_CHANGED", "network_changed"),
+            ("ERR_SOCKET_NOT_CONNECTED", "socket_not_connected"),
+        ],
+    )
+    def test_retryable_navigation_network_error(self, marker, reason):
+        assert (
+            _retryable_navigation_network_error(PlaywrightError(f"Page.goto: net::{marker}"))
+            == reason
+        )
+        assert _retryable_navigation_network_error(RuntimeError(marker)) is None
 
     def test_user_agent_contains_chrome(self):
         assert "Chrome/133" in DEFAULT_USER_AGENT
@@ -250,6 +267,107 @@ class TestNavigateFallback:
     fallback checks ``domcontentloaded`` (default) on the current document and
     recovers without issuing a duplicate request.
     """
+
+    @pytest.mark.parametrize(
+        "marker",
+        ["ERR_CONNECTION_RESET", "ERR_NETWORK_CHANGED", "ERR_SOCKET_NOT_CONNECTED"],
+    )
+    async def test_transient_network_error_retries_once_and_recovers(self, marker):
+        page = _make_page()
+        page.goto = AsyncMock(side_effect=[PlaywrightError(f"Page.goto: net::{marker}"), None])
+
+        with patch.object(asyncio, "sleep", new_callable=AsyncMock) as sleep:
+            await navigate(page, "https://example.com")
+
+        assert page.goto.await_count == 2
+        sleep.assert_awaited_once_with(NAVIGATION_NETWORK_RETRY_DELAY_SECONDS)
+        page.wait_for_load_state.assert_not_awaited()
+
+    async def test_transient_network_error_exhaustion_propagates(self):
+        page = _make_page()
+        page.goto = AsyncMock(
+            side_effect=[
+                PlaywrightError("Page.goto: net::ERR_CONNECTION_RESET"),
+                PlaywrightError("Page.goto: net::ERR_NETWORK_CHANGED"),
+            ]
+        )
+        retry_metric = MagicMock()
+
+        with (
+            patch.object(asyncio, "sleep", new_callable=AsyncMock) as sleep,
+            patch(
+                "src.shared.browser.metrics.browser_navigation_network_retry_total",
+                retry_metric,
+            ),
+            pytest.raises(PlaywrightError, match="ERR_NETWORK_CHANGED"),
+        ):
+            await navigate(page, "https://example.com")
+
+        assert page.goto.await_count == 2
+        sleep.assert_awaited_once_with(NAVIGATION_NETWORK_RETRY_DELAY_SECONDS)
+        page.wait_for_load_state.assert_not_awaited()
+        assert retry_metric.labels.call_args_list == [
+            call(reason="connection_reset", outcome="retry"),
+            call(reason="connection_reset", outcome="exhausted"),
+        ]
+
+    async def test_non_transient_playwright_error_does_not_retry(self):
+        page = _make_page()
+        page.goto = AsyncMock(side_effect=PlaywrightError("Page.goto: protocol error"))
+
+        with (
+            patch.object(asyncio, "sleep", new_callable=AsyncMock) as sleep,
+            pytest.raises(PlaywrightError, match="protocol error"),
+        ):
+            await navigate(page, "https://example.com")
+
+        page.goto.assert_awaited_once()
+        sleep.assert_not_awaited()
+        page.wait_for_load_state.assert_not_awaited()
+
+    async def test_timeout_after_network_retry_uses_same_document_fallback(self):
+        page = _make_page()
+        page.goto = AsyncMock(
+            side_effect=[
+                PlaywrightError("Page.goto: net::ERR_SOCKET_NOT_CONNECTED"),
+                PlaywrightTimeoutError("Page.goto: Timeout 30000ms exceeded."),
+            ]
+        )
+
+        with patch.object(asyncio, "sleep", new_callable=AsyncMock):
+            await navigate(page, "https://example.com")
+
+        assert page.goto.await_count == 2
+        page.wait_for_load_state.assert_awaited_once_with(
+            DEFAULT_WAIT_FALLBACK,
+            timeout=FALLBACK_WAIT_TIMEOUT,
+        )
+
+    async def test_failed_fallback_after_network_retry_records_exhaustion(self):
+        page = _make_page()
+        page.goto = AsyncMock(
+            side_effect=[
+                PlaywrightError("Page.goto: net::ERR_SOCKET_NOT_CONNECTED"),
+                PlaywrightTimeoutError("Page.goto: Timeout 30000ms exceeded."),
+            ]
+        )
+        page.wait_for_load_state.side_effect = PlaywrightTimeoutError("fallback timeout")
+        retry_metric = MagicMock()
+
+        with (
+            patch.object(asyncio, "sleep", new_callable=AsyncMock),
+            patch(
+                "src.shared.browser.metrics.browser_navigation_network_retry_total",
+                retry_metric,
+            ),
+            pytest.raises(PlaywrightTimeoutError, match="fallback timeout"),
+        ):
+            await navigate(page, "https://example.com")
+
+        assert retry_metric.labels.call_args_list == [
+            call(reason="socket_not_connected", outcome="retry"),
+            call(reason="socket_not_connected", outcome="exhausted"),
+        ]
 
     async def test_fallback_triggers_on_timeout(self):
         """Primary timeout checks the fallback state without another goto."""

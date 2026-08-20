@@ -464,6 +464,12 @@ browser_navigate_fallback_total = Counter(
     ["primary", "fallback", "outcome"],
 )
 
+browser_navigation_network_retry_total = Counter(
+    "crawler_browser_navigation_network_retry_total",
+    "Retries of transient Chromium main-document network failures",
+    ["reason", "outcome"],
+)
+
 # HTTP retry observability (#3210). The httpx retry path (and per-monitor
 # copies for workday / lever / hirehive / hireology / smartrecruiters / accenture /
 # PCSX / api_sniff) all retry transient failures and emit structured logs,
