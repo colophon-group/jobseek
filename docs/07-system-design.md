@@ -186,6 +186,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `intervieweb`     | URL-only | json-ld     | Intervieweb HTML + CSRF-protected POST pagination |
 | 10   | `gupy`            | URL-only | json-ld     | Gupy single-page NextData inventory |
 | 10   | `cornerstone`     | Rich     | skip        | Cornerstone bootstrap + regional paginated search API |
+| 10   | `curately`        | Rich     | skip        | Curately tenant-scoped public contractor search API |
 | 10   | `darwinbox`       | Rich     | skip        | Darwinbox browser-session public jobs API |
 | 10   | `dayforce`        | Rich     | skip        | Dayforce browser-context public search BFF |
 | 10   | `herp`            | URL-only | json-ld     | HERP Hire single static requisition listing |

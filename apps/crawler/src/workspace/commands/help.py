@@ -644,6 +644,33 @@ hireology — Hireology Careers API
   Detection:  ws probe shows "Hireology API — slug: X, N jobs"
   Zero jobs?  Verify slug — try the API URL directly in a browser"""
 
+MONITOR_CURATELY = """\
+curately — Curately Public Career API
+
+  API:      GET  /QADemoCurately/getByShortName/{short_name}
+            POST /QADemoCurately/sovrenjobsearch
+  Returns:  Full job data (title, HTML description, location, employment_type,
+            job_location_type, date_posted, optional hourly pay range)
+            metadata: id, assignment dates, raw work/job/hour codes
+  Scraper:  Not needed (the list API returns full data)
+  Cap:      50,000 jobs
+
+  Config:
+    {"short_name":"bms","client_id":6,"days_back":180,
+     "currency":"USD","salary_unit":"hour","language":"en"}
+
+    short_name  Tenant path under careers.curately.ai/jobs/. Auto-detected.
+    client_id   Public numeric client id. Auto-resolved from short_name.
+    days_back   Public-search age window (default 180, matching the portal).
+    currency / salary_unit
+                Optional; both are required to emit the numeric pay range.
+    language    Optional ISO language code for single-language tenants.
+
+  Detection:  ws probe verifies the public tenant identity, then reports the
+              unfiltered search total. Pagination uses Curately's next offset
+              and fails closed if the advertised total changes or a page is
+              skipped."""
+
 MONITOR_TURBOHIRE = """\
 turbohire — TurboHire Public Career API
 
@@ -3187,6 +3214,7 @@ MONITOR_CARDS: dict[str, str] = {
     "bite": MONITOR_BITE,
     "breezy": MONITOR_BREEZY,
     "comeet": MONITOR_COMEET,
+    "curately": MONITOR_CURATELY,
     "deel": MONITOR_DEEL,
     "dvinci": MONITOR_DVINCI,
     "eightfold": MONITOR_EIGHTFOLD,
