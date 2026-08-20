@@ -219,6 +219,11 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> set[str]:
     browser_config = {key: value for key, value in metadata.items() if key in BROWSER_KEYS}
     browser_config.setdefault("wait", "domcontentloaded")
     browser_config.setdefault("timeout", 60_000)
+    # The browser image installs system Chrome plus Chromium's headless shell,
+    # but not Playwright's regular Chromium executable. Njoyn needs a headful
+    # persistent context for its session-bound form, so pin the installed
+    # Chrome channel even when an older board config omits it.
+    browser_config.setdefault("channel", "chrome")
 
     async def _run(playwright) -> set[str]:
         async with open_page(
@@ -249,6 +254,7 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
         "wait": "domcontentloaded",
         "timeout": 60_000,
         "persistent_context": True,
+        "channel": "chrome",
         "headless": False,
         "stealth": True,
         "proxy": True,
