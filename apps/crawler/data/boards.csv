@@ -3987,6 +3987,7 @@ novatron-fusion-group,novatron-fusion-group-careers,https://career.novatronfusio
 novel,novel-ashby,https://jobs.ashbyhq.com/novel,ashby,"{""token"": ""novel""}",skip,
 novo,novo-ashby,https://jobs.ashbyhq.com/novo,ashby,"{""token"": ""novo""}",skip,
 novo-nordisk,novo-nordisk-careers,https://careers.novonordisk.com/search/?locale=en_GB,rss,"{""url"": ""https://careers.novonordisk.com/googlefeed.xml"", ""preset"": ""successfactors""}",skip,
+novocure,novocure-global,https://careers.novocure.com/viewalljobs/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.novocure.com/googlefeed.xml""}",skip,
 novogene,novogene-china-hq,https://novogene.zhiye.com/,beisen,"{""tenant"": ""novogene"", ""variant"": ""modern"", ""portal_id"": ""2fc0be1a-e252-4bc7-b22d-a22e9e1a9f98"", ""tenant_id"": 109745}",skip,
 novogene,novogene-japan-global,https://jp.novogene.com/about/careers/,inline,"{""render"": true, ""steps"": [{""tag"": ""h5"", ""field"": ""title""}, {""text"": ""Location:"", ""field"": ""location"", ""regex"": ""Location:\\s*(.+)"", ""optional"": true}, {""tag"": ""p"", ""field"": ""description"", ""html"": true, ""stop_tag"": ""h5""}]}",skip,
 novu,novu-join,https://join.com/companies/novu,join,"{""slug"": ""novu""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
