@@ -1845,7 +1845,7 @@ egc-energie-und-geb-udetechnik-gmbh,egc-energie-und-geb-udetechnik-gmbh-join,htt
 egon-zehnder,egon-zehnder-dach-softgarden,https://egonzehnder.softgarden.io/en/vacancies,softgarden,"{""slug"": ""egonzehnder""}",json-ld,
 egon-zehnder,egon-zehnder-global-workable,https://apply.workable.com/ezrecruiting/,workable,"{""token"": ""ezrecruiting""}",workable,
 egon-zehnder,egon-zehnder-linkedin-global,https://www.linkedin.com/company/egon-zehnder/jobs/,linkedin,"{""company_id"": ""5652"", ""company_slug"": ""egon-zehnder""}",linkedin,"{""enrich"": [""description"", ""employment_type"", ""job_location_type""]}"
-egym,egym-personio,https://egym.jobs.personio.com/,personio,"{""slug"": ""egym""}",skip,
+egym,egym-personio,https://jobs.ashbyhq.com/egym,ashby,"{""token"": ""egym""}",skip,
 eigen-labs,eigen-labs-careers,https://jobs.ashbyhq.com/eigen-labs,ashby,"{""token"": ""eigen-labs""}",skip,
 eight-advisory,eight-advisory-careers,https://8advisory.recruitee.com/l/en/,recruitee,"{""slug"": ""8advisory"", ""api_base"": ""https://8advisory.recruitee.com""}",skip,
 eight-advisory,eight-advisory-careers-it,https://www.newdealadvisors.com/wp-content/uploads/2026/01/JobPost-2026.pdf,dom,"{""include_board_url"": true}",pdf,"{""title_source"": ""text"", ""location_pattern"": ""(?i)\\b(Milano|Milan|Roma|Rome|Torino|Turin)\\b""}"
@@ -4435,7 +4435,6 @@ pinterest,pinterest-careers,https://job-boards.greenhouse.io/pinterestjobadverti
 pipe17,pipe17-greenhouse,https://job-boards.greenhouse.io/pipe17,greenhouse,"{""token"": ""pipe17""}",skip,
 pipedrive,pipedrive-lever,https://jobs.lever.co/pipedrive,lever,"{""token"": ""pipedrive""}",skip,
 pit,pit-teamtailor,https://careers.pit.com/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.pit.com/jobs.rss""}",skip,
-pitch,pitch-personio,https://pitch.jobs.personio.com/?language=en,personio,"{""slug"": ""pitch"", ""language"": ""en""}",skip,
 pitch,pitch-workable,https://apply.workable.com/pitch-software/,workable,"{""token"": ""pitch-software""}",workable,
 pitchbook-data,pitchbook-data-greenhouse,https://job-boards.greenhouse.io/pitchbookdata,greenhouse,"{""token"": ""pitchbookdata""}",skip,
 pivot,pivot-ashby,https://jobs.ashbyhq.com/pivot,ashby,"{""token"": ""pivot""}",skip,
