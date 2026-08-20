@@ -107,6 +107,9 @@ _SEEK_MARKETS = {
     "www.seek.co.nz": ("en-NZ", "anz-1"),
 }
 _SEEK_JOB_PATH_RE = re.compile(r"^/job/(?P<id>\d+)/?$")
+_AJINGA_JOB_PATH_RE = re.compile(
+    r"^/job-description/(?P<id>[A-Za-z0-9_-]{8,64})/?$"
+)
 _SEEK_JOB_DETAILS_QUERY = """\
 query JobDetails($id: ID!) {
   jobDetails(id: $id) {
@@ -201,6 +204,64 @@ def _seek_http_config(urls: list[str]) -> dict | None:
             "metadata.abstract": "abstract",
             "metadata.status": "status",
             "metadata.is_expired": "isExpired",
+        },
+    }
+
+
+def _ajinga_http_config(urls: list[str]) -> dict | None:
+    """Return Ajinga's public detail-API config for short-ID job URLs.
+
+    Ajinga's desktop job pages are client-rendered and may redirect between
+    legacy and company-scoped routes. Its public mobile route keeps the stable
+    ``short_unique_id`` in the URL, which the same first-party SPA sends to the
+    JSON detail endpoint. Restrict this preset to canonical HTTPS Ajinga URLs
+    so unrelated ``job-description`` routes never receive Ajinga requests.
+    """
+
+    if not urls:
+        return None
+
+    for url in urls:
+        try:
+            parsed = urlparse(url)
+            port = parsed.port
+        except ValueError:
+            return None
+        if (
+            parsed.scheme.casefold() != "https"
+            or (parsed.hostname or "").casefold() not in {"ajinga.com", "www.ajinga.com"}
+            or parsed.username is not None
+            or parsed.password is not None
+            or port not in (None, 443)
+            or _AJINGA_JOB_PATH_RE.fullmatch(parsed.path) is None
+        ):
+            return None
+
+    return {
+        "api_url": "https://www.ajinga.com/django_rest/job-detail/info/{id}/",
+        "method": "GET",
+        "url_pattern": _AJINGA_JOB_PATH_RE.pattern,
+        "json_path": "data.data.job",
+        "fields": {
+            "title": "en_title || cn_title",
+            "description": "description || cn_description",
+            "locations": "cities[].name",
+            "employment_type": {
+                "path": "role_type",
+                "map": {
+                    "F": "full_time",
+                    "P": "part_time",
+                    "I": "internship",
+                    "T": "temporary",
+                },
+            },
+            "metadata.ajinga_id": "id",
+            "metadata.short_unique_id": "short_unique_id",
+            "metadata.company": "company.i18n_name",
+            "metadata.experience": "experience",
+            "metadata.compensation": "compensation.en_name || compensation.cn_name",
+            "metadata.work_time": "work_time.en_name || work_time.cn_name",
+            "metadata.updated_at": "updated_time",
         },
     }
 
@@ -426,8 +487,13 @@ def _extract_heuristic(obj: dict) -> JobContent:
     return JobContent(**kwargs)
 
 
-async def _probe_seek_http(urls: list[str], config: dict) -> tuple[dict | None, str]:
-    """Verify the SEEK preset against each sampled job through direct HTTP."""
+async def _probe_http_preset(
+    urls: list[str],
+    config: dict,
+    *,
+    label: str,
+) -> tuple[dict | None, str]:
+    """Verify a provider preset against sampled jobs through direct HTTP."""
 
     from src.shared.http import create_http_client
 
@@ -455,7 +521,7 @@ async def _probe_seek_http(urls: list[str], config: dict) -> tuple[dict | None, 
     detected = len(detected_contents)
     total = len(urls)
     if detected == 0 or detected / total < 0.5:
-        return None, f"SEEK GraphQL not detected ({detected}/{total} complete jobs)"
+        return None, f"{label} not detected ({detected}/{total} complete jobs)"
 
     field_counts = {
         field: sum(bool(getattr(item, field, None)) for item in detected_contents)
@@ -470,12 +536,24 @@ async def _probe_seek_http(urls: list[str], config: dict) -> tuple[dict | None, 
         "fields": {field: count for field, count in field_counts.items() if count > 0},
     }
     comment = (
-        "SEEK GraphQL — "
+        f"{label} — "
         f"{field_counts['title']}/{detected} titles, "
         f"{field_counts['description']}/{detected} desc, "
         f"{field_counts['locations']}/{detected} locations"
     )
     return metadata, comment
+
+
+async def _probe_seek_http(urls: list[str], config: dict) -> tuple[dict | None, str]:
+    """Verify the SEEK preset against each sampled job through direct HTTP."""
+
+    return await _probe_http_preset(urls, config, label="SEEK GraphQL")
+
+
+async def _probe_ajinga_http(urls: list[str], config: dict) -> tuple[dict | None, str]:
+    """Verify the Ajinga preset against each sampled job through direct HTTP."""
+
+    return await _probe_http_preset(urls, config, label="Ajinga detail API")
 
 
 async def probe_pw(
@@ -493,6 +571,13 @@ async def probe_pw(
         # with a 403 verification document even though the public first-party
         # GraphQL detail endpoint remains available.
         return await _probe_seek_http(urls, seek_config)
+
+    ajinga_config = _ajinga_http_config(urls)
+    if ajinga_config is not None:
+        # Ajinga's SPA does not expose useful static HTML and its redirects can
+        # hide the detail XHR from the generic capture path. Probe the public
+        # first-party JSON endpoint directly instead.
+        return await _probe_ajinga_http(urls, ajinga_config)
 
     from src.shared.browser import BrowserNavigationHTTPStatusError, navigate, open_page
 

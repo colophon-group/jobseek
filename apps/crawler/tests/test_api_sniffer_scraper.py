@@ -11,6 +11,7 @@ import structlog
 from structlog.testing import capture_logs
 
 from src.core.scrapers.api_sniffer import (
+    _ajinga_http_config,
     _extract_from_object,
     _extract_heuristic,
     _find_single_job,
@@ -338,6 +339,88 @@ class TestSeekHttpPreset:
         assert metadata["locations"] == 1
         assert metadata["config"]["api_url"] == "https://au.seek.com/graphql"
         assert "SEEK GraphQL" in comment
+
+
+class TestAjingaHttpPreset:
+    def test_recognizes_canonical_short_id_job_urls(self):
+        config = _ajinga_http_config(
+            [
+                "https://www.ajinga.com/job-description/bfS0LMmSO",
+                "https://ajinga.com/job-description/aB_123-cD/",
+            ]
+        )
+
+        assert config is not None
+        assert config["api_url"] == (
+            "https://www.ajinga.com/django_rest/job-detail/info/{id}/"
+        )
+        assert config["method"] == "GET"
+        assert config["json_path"] == "data.data.job"
+        assert config["fields"]["description"] == "description || cn_description"
+        assert config["fields"]["locations"] == "cities[].name"
+
+    @pytest.mark.parametrize(
+        "urls",
+        [
+            ["https://example.com/job-description/bfS0LMmSO"],
+            ["https://www.ajinga.com/job-detail-new/214993/c/"],
+            ["https://www.ajinga.com/job-description/short"],
+            ["http://www.ajinga.com/job-description/bfS0LMmSO"],
+        ],
+    )
+    def test_rejects_noncanonical_urls(self, urls):
+        assert _ajinga_http_config(urls) is None
+
+    @pytest.mark.asyncio
+    async def test_probe_uses_detail_api_without_page_navigation(self):
+        requested_ids: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            job_id = request.url.path.rstrip("/").rsplit("/", 1)[-1]
+            requested_ids.append(job_id)
+            return httpx.Response(
+                200,
+                json={
+                    "message": "",
+                    "code": 200,
+                    "data": {
+                        "data": {
+                            "job": {
+                                "id": 214993,
+                                "short_unique_id": job_id,
+                                "en_title": "Lead Mapping Programmer",
+                                "cn_title": "Lead Mapping Programmer",
+                                "description": "<p>Build and validate clinical data maps.</p>",
+                                "cn_description": None,
+                                "cities": [{"name": "北京市"}],
+                                "role_type": "F",
+                                "company": {"i18n_name": "研发中心"},
+                                "experience": "-1",
+                                "updated_time": "2026-08-20 22:16:24",
+                            }
+                        }
+                    },
+                },
+            )
+
+        def make_client():
+            return httpx.AsyncClient(transport=httpx.MockTransport(handler))
+
+        urls = [
+            "https://www.ajinga.com/job-description/bfS0LMmSO",
+            "https://www.ajinga.com/job-description/aB_123-cD/",
+        ]
+        with patch("src.shared.http.create_http_client", side_effect=make_client):
+            metadata, comment = await probe_pw(urls, MagicMock())
+
+        assert requested_ids == ["bfS0LMmSO", "aB_123-cD"]
+        assert metadata is not None
+        assert metadata["total"] == 2
+        assert metadata["titles"] == 2
+        assert metadata["descriptions"] == 2
+        assert metadata["locations"] == 2
+        assert metadata["config"]["json_path"] == "data.data.job"
+        assert "Ajinga detail API" in comment
 
 
 class TestProbePw:

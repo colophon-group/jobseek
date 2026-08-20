@@ -20,6 +20,21 @@ def test_walk_steps_returns_cursor():
     assert cursor == 1
 
 
+def test_walk_steps_match_regex_filters_similar_headings():
+    elements = [
+        {"tag": "h3", "attrs": {}, "text": "MR職 よくあるご質問"},
+        {"tag": "h3", "attrs": {}, "text": "MR職"},
+    ]
+
+    result, cursor = walk_steps(
+        elements,
+        [{"tag": "h3", "match_regex": r"^MR職$", "field": "title"}],
+    )
+
+    assert result == {"title": "MR職"}
+    assert cursor == 2
+
+
 def test_walk_steps_cursor_advances_through_range():
     elements = [
         {"tag": "h3", "attrs": {}, "text": "Job A"},
@@ -178,6 +193,38 @@ async def test_discover_static():
     assert jobs[1].title == "Product Manager"
     assert "_jid=" in jobs[0].url
     assert jobs[0].url != jobs[1].url
+
+
+@pytest.mark.asyncio
+async def test_discover_can_include_hidden_tab_panels_and_filter_titles():
+    html = """
+    <div aria-hidden="true">
+      <h3>Engineer</h3><p>Build medicines.</p>
+      <h3>Engineer FAQ</h3><p>Answers.</p>
+      <h3>Scientist</h3><p>Run studies.</p>
+    </div>
+    """
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "include_hidden": True,
+            "steps": [
+                {
+                    "tag": "h3",
+                    "match_regex": r"^(Engineer|Scientist)$",
+                    "field": "title",
+                    "optional": True,
+                },
+                {"tag": "p", "field": "description", "stop_tag": "h3"},
+            ],
+        },
+    }
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert [job.title for job in jobs] == ["Engineer", "Scientist"]
+    assert jobs[0].description == "Build medicines."
+    assert jobs[1].description == "Run studies."
 
 
 @pytest.mark.asyncio

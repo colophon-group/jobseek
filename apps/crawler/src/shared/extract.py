@@ -107,8 +107,9 @@ VOID_TAGS = frozenset(
 class FlattenParser(HTMLParser):
     """Parse HTML and emit flat contentful elements."""
 
-    def __init__(self):
+    def __init__(self, *, include_hidden: bool = False):
         super().__init__()
+        self._include_hidden = include_hidden
         self.elements: list[dict] = []
         # Stack of (tag, attrs_dict, is_skipped)
         self._stack: list[tuple[str, dict, bool]] = []
@@ -190,7 +191,9 @@ class FlattenParser(HTMLParser):
             return
 
         # Check for aria-hidden or hidden attribute
-        if attr_dict.get("aria-hidden") == "true" or "hidden" in attr_dict:
+        if not self._include_hidden and (
+            attr_dict.get("aria-hidden") == "true" or "hidden" in attr_dict
+        ):
             if tag not in VOID_TAGS:
                 self._stack.append((tag, attr_dict, True))
                 self._skip_depth = 1
@@ -285,9 +288,9 @@ class FlattenParser(HTMLParser):
                 )
 
 
-def flatten(html: str) -> list[dict]:
+def flatten(html: str, *, include_hidden: bool = False) -> list[dict]:
     """Return flat list of contentful elements from HTML."""
-    parser = FlattenParser()
+    parser = FlattenParser(include_hidden=include_hidden)
     parser.feed(html)
     parser.finish()
     return parser.elements
@@ -360,6 +363,7 @@ def walk_steps(
     Supported step keys:
         tag        — match by element tag name
         text       — match by substring in element text
+        match_regex — require the element text to match this regular expression
         attr       — match by HTML attribute ("key=substring" or "key")
         field      — output field name (omit for anchor-only steps)
         offset     — skip N elements after match before extracting (default 0)
@@ -381,6 +385,7 @@ def walk_steps(
     for step in steps:
         tag = step.get("tag")
         text = step.get("text")
+        match_regex = step.get("match_regex")
         field = step.get("field")
         stop = step.get("stop")
         stop_tag = step.get("stop_tag")
@@ -408,6 +413,7 @@ def walk_steps(
             el = elements[i]
             tag_match = tag is None or el["tag"] == tag
             text_match = text is None or _norm(text) in _norm(el["text"])
+            regex_match = match_regex is None or re.search(match_regex, el["text"]) is not None
             attr_match = True
             if attr:
                 if "=" in attr:
@@ -415,7 +421,7 @@ def walk_steps(
                     attr_match = a_key in el["attrs"] and a_val in el["attrs"][a_key]
                 else:
                     attr_match = attr in el["attrs"]
-            if tag_match and text_match and attr_match:
+            if tag_match and text_match and regex_match and attr_match:
                 match_idx = i
                 break
 
