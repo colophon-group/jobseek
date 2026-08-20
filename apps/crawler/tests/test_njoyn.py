@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import json
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -13,6 +15,7 @@ from src.core.monitors.njoyn import (
     _is_job_detail_url,
     can_handle,
 )
+from src.shared.constants import DATA_DIR
 
 
 def _job(job_id: str, brid: int) -> str:
@@ -131,11 +134,24 @@ async def test_can_handle_returns_hardened_browser_defaults() -> None:
         "wait": "domcontentloaded",
         "timeout": 60_000,
         "persistent_context": True,
+        "channel": "chrome",
         "headless": False,
         "stealth": True,
         "proxy": True,
     }
     assert monitor_needs_browser("njoyn", config)
+
+
+def test_cgi_configs_pin_installed_chrome_channel() -> None:
+    with (DATA_DIR / "boards.csv").open(newline="") as source:
+        row = next(row for row in csv.DictReader(source) if row["board_slug"] == "cgi-global-njoyn")
+
+    monitor_config = json.loads(row["monitor_config"])
+    scraper_config = json.loads(row["scraper_config"])
+    assert monitor_config["persistent_context"] is True
+    assert scraper_config["persistent_context"] is True
+    assert monitor_config["channel"] == "chrome"
+    assert scraper_config["channel"] == "chrome"
 
 
 async def test_can_handle_rejects_job_detail_url() -> None:
