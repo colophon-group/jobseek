@@ -1004,6 +1004,9 @@ talemetry — Talemetry / Jobvite Career Sites
                          max 25,000,000).
     {"proxy": true}      Route listing and pagination requests through the
                          configured proxy provider.
+    {"transport": "jobs_json"}
+                         Use TTC Portals' first-party /search/jobs.json feed
+                         with strict total, page-size, ID, and URL checks.
 
   Detection:  requires Talemetry Career Sites markers, an authoritative
               result range, and matching same-origin job links.

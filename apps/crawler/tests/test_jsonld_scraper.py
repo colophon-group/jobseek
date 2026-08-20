@@ -127,6 +127,17 @@ class TestJsonLdExtractor:
         assert content.date_posted == "2026-08-15"
         assert content.locations == ["Bayonne, NJ, United States"]
 
+    def test_repairs_talemetry_invalid_dollar_escape(self):
+        html = r"""<html><head><script type="application/ld+json">
+        {"@type":"JobPosting","title":"Program Manager",
+         "description":"The salary range is \$106490 to \$177476."}
+        </script></head></html>"""
+
+        content = parse_html(html)
+
+        assert content.title == "Program Manager"
+        assert content.description == "The salary range is $106490 to $177476."
+
     def test_handles_empty_script(self):
         html = """<html><head>
         <script type="application/ld+json">  </script>
@@ -892,6 +903,36 @@ class TestFetchRetry403:
             result = await scrape("https://example.com/job", {}, client)
             assert calls["n"] == 2
             assert result.title == "T"
+
+    async def test_configured_headers_are_cleaned_and_sent_on_every_attempt(self):
+        page_html = """<html><head>
+        <script type="application/ld+json">{"@type": "JobPosting", "title": "T"}</script>
+        </head></html>"""
+        seen: list[httpx.Headers] = []
+
+        def handler(request):
+            seen.append(request.headers)
+            if len(seen) == 1:
+                return httpx.Response(403, text="blocked")
+            return httpx.Response(200, text=page_html)
+
+        config = {
+            "request_headers": {
+                "Accept": "application/json",
+                "X-Requested-With": "XMLHttpRequest",
+                "Host": "untrusted.example",
+                "Connection": "close",
+            }
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape("https://example.com/job", config, client)
+
+        assert result.title == "T"
+        assert len(seen) == 2
+        assert all(headers["accept"] == "application/json" for headers in seen)
+        assert all(headers["x-requested-with"] == "XMLHttpRequest" for headers in seen)
+        assert all(headers["host"] == "example.com" for headers in seen)
+        assert all(headers["connection"] == "keep-alive" for headers in seen)
 
     async def test_does_not_retry_on_200(self):
         page_html = """<html><head>

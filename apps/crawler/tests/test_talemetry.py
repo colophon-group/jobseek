@@ -33,6 +33,29 @@ def _html(
     """
 
 
+def _json_page(
+    *,
+    page: int,
+    total: int,
+    per_page: int,
+    jobs: list[tuple[str, str]],
+) -> dict:
+    return {
+        "total_entries": total,
+        "per_page": per_page,
+        "current_page": page,
+        "entries": [
+            {
+                "id": job_id,
+                "talemetry_job_id": job_id,
+                "permalink": permalink,
+                "title": f"Role {job_id}",
+            }
+            for job_id, permalink in jobs
+        ],
+    }
+
+
 class TestParsePage:
     def test_extracts_only_same_origin_numeric_job_routes_from_result_list(self):
         parsed = _parse_page(
@@ -60,6 +83,21 @@ class TestParsePage:
             "https://careers.example.com/jobs/17192795-sanitation-team-member",
             "https://careers.example.com/jobs/17872728-shipping-clerk",
         }
+
+    def test_accepts_ttc_portals_viewing_result_range(self):
+        parsed = _parse_page(
+            _html(
+                start=1,
+                end=1,
+                total=1,
+                links=["/jobs/18023449-assembly-and-test-a-2nd-shift"],
+            ).replace("Showing 1-1", "Viewing 1-1"),
+            "https://parkercareers.ttcportals.com/search/jobs",
+        )
+
+        assert parsed.range_start == 1
+        assert parsed.range_end == 1
+        assert parsed.total_jobs == 1
 
 
 class TestPageUrl:
@@ -116,6 +154,138 @@ class TestCanHandle:
 
 
 class TestDiscover:
+    async def test_jobs_json_transport_paginates_complete_inventory(self):
+        seen: list[tuple[str, str, str]] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(
+                (
+                    str(request.url),
+                    request.headers["accept"],
+                    request.headers["x-requested-with"],
+                )
+            )
+            if request.url.params["page"] == "2":
+                payload = _json_page(
+                    page=2,
+                    total=3,
+                    per_page=2,
+                    jobs=[("3", "third-role")],
+                )
+            else:
+                payload = _json_page(
+                    page=1,
+                    total=3,
+                    per_page=2,
+                    jobs=[("1", "first-role"), ("2", "second-role")],
+                )
+            return httpx.Response(200, json=payload)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls = await discover(
+                {
+                    "board_url": "https://careers.example.com/search/jobs",
+                    "metadata": {"transport": "jobs_json"},
+                },
+                client,
+            )
+
+        assert urls == {
+            "https://careers.example.com/jobs/1-first-role",
+            "https://careers.example.com/jobs/2-second-role",
+            "https://careers.example.com/jobs/3-third-role",
+        }
+        assert seen == [
+            (
+                "https://careers.example.com/search/jobs.json?page=1",
+                "application/json",
+                "XMLHttpRequest",
+            ),
+            (
+                "https://careers.example.com/search/jobs.json?page=2",
+                "application/json",
+                "XMLHttpRequest",
+            ),
+        ]
+
+    async def test_jobs_json_transport_accepts_authoritative_empty_inventory(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json=_json_page(page=1, total=0, per_page=25, jobs=[]),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls = await discover(
+                {
+                    "board_url": "https://careers.example.com/search/jobs",
+                    "metadata": {"transport": "jobs_json"},
+                },
+                client,
+            )
+
+        assert urls == set()
+
+    async def test_jobs_json_transport_retries_total_drift_then_fails_closed(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.params["page"] == "2":
+                return httpx.Response(
+                    200,
+                    json=_json_page(
+                        page=2,
+                        total=4,
+                        per_page=2,
+                        jobs=[("3", "third-role"), ("4", "fourth-role")],
+                    ),
+                )
+            return httpx.Response(
+                200,
+                json=_json_page(
+                    page=1,
+                    total=3,
+                    per_page=2,
+                    jobs=[("1", "first-role"), ("2", "second-role")],
+                ),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with (
+                patch("src.core.monitors.talemetry.asyncio.sleep", new=AsyncMock()),
+                pytest.raises(ValueError, match="jobs JSON total changed"),
+            ):
+                await discover(
+                    {
+                        "board_url": "https://careers.example.com/search/jobs",
+                        "metadata": {"transport": "jobs_json"},
+                    },
+                    client,
+                )
+
+    async def test_jobs_json_transport_rejects_conflicting_job_ids(self):
+        payload = _json_page(
+            page=1,
+            total=1,
+            per_page=25,
+            jobs=[("1", "first-role")],
+        )
+        payload["entries"][0]["talemetry_job_id"] = "2"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=payload)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with (
+                patch("src.core.monitors.talemetry.asyncio.sleep", new=AsyncMock()),
+                pytest.raises(ValueError, match="conflicting talemetry_job_id"),
+            ):
+                await discover(
+                    {
+                        "board_url": "https://careers.example.com/search/jobs",
+                        "metadata": {"transport": "jobs_json"},
+                    },
+                    client,
+                )
+
     async def test_paginates_complete_inventory(self):
         seen: list[str] = []
 

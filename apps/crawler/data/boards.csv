@@ -4311,6 +4311,7 @@ paratek-pharmaceuticals,paratek-pharmaceuticals-greenhouse,https://job-boards.gr
 pareto-ai,pareto-ai-ashby,https://jobs.ashbyhq.com/pareto-ai,ashby,"{""token"": ""pareto-ai""}",skip,
 parity,parity-ashby,https://jobs.ashbyhq.com/parity,ashby,"{""token"": ""parity""}",skip,
 parker,parker-ashby,https://jobs.ashbyhq.com/parker,ashby,"{""token"": ""parker""}",skip,
+parker-hannifin,parker-hannifin-global,https://parkercareers.ttcportals.com/search/jobs,talemetry,"{""transport"": ""jobs_json"", ""rescrape_policy"": ""never""}",json-ld,"{""request_headers"": {""Accept"": ""application/json"", ""X-Requested-With"": ""XMLHttpRequest"", ""Referer"": ""https://parkercareers.ttcportals.com/jobs/search"", ""Sec-Fetch-Dest"": ""empty"", ""Sec-Fetch-Mode"": ""cors"", ""Sec-Fetch-Site"": ""same-origin""}}"
 parkosecure-gmbh,parkosecure-gmbh-join,https://join.com/companies/parkosecurech,join,"{""slug"": ""parkosecurech""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 parloa,parloa-greenhouse,https://job-boards.greenhouse.io/parloa,greenhouse,"{""token"": ""parloa""}",skip,
 parsley-health,parsley-health-greenhouse,https://job-boards.greenhouse.io/parsleyhealth,greenhouse,"{""token"": ""parsleyhealth""}",skip,
