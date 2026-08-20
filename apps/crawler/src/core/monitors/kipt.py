@@ -23,13 +23,17 @@ from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 import httpx
 import structlog
 
-from src.core.monitors import DiscoveredJob, fetch_page_text, register
+from src.core.monitors import BoardGoneError, DiscoveredJob, register
+from src.shared.http_retry import PaginationFetchError, fetch_text_page_with_retry
 from src.shared.tdm import check_response as check_tdm_response
 
 log = structlog.get_logger()
 
 _DEFAULT_MAX_AGE_DAYS = 30
 _DEFAULT_LOCATION = "Kharkiv, Ukraine"
+_GONE_STATUSES = {404, 410}
+_LISTING_PATHS = ("/ua/vacancy.html", "/vacancy.html")
+_RETRY_BASE_DELAY = 0.5
 _BULLETIN_PATH_RE = re.compile(
     r"/news/\d{4}/vacancy_(\d{1,2})_(\d{1,2})_(\d{4})\.pdf$",
     re.IGNORECASE,
@@ -122,6 +126,58 @@ def _synthetic_url(pdf_url: str, vacancy_text: str) -> str:
     return urlunparse(parsed._replace(query=urlencode(params, doseq=True)))
 
 
+def _alternate_listing_url(url: str) -> str:
+    parsed = urlparse(url)
+    current_path = parsed.path.rstrip("/").lower()
+    if current_path == _LISTING_PATHS[0]:
+        alternate_path = _LISTING_PATHS[1]
+    elif current_path == _LISTING_PATHS[1]:
+        alternate_path = _LISTING_PATHS[0]
+    else:
+        raise ValueError(f"Unsupported KIPT vacancy path: {parsed.path!r}")
+    return urlunparse(parsed._replace(path=alternate_path, params="", query="", fragment=""))
+
+
+async def _fetch_listing_page(
+    url: str,
+    client: httpx.AsyncClient,
+) -> tuple[str, str]:
+    """Fetch a supported listing path without masking upstream failures.
+
+    A terminal 404/410 can mean KIPT moved between its Ukrainian and legacy
+    vacancy pages, so only that explicit signal permits the alternate path.
+    Transient exhaustion and every other status retain the strict shared
+    retry helper's status/transport diagnostics.
+    """
+    candidates = (url, _alternate_listing_url(url))
+    last_gone: PaginationFetchError | None = None
+    for candidate in candidates:
+        try:
+            page = await fetch_text_page_with_retry(
+                client,
+                candidate,
+                require_nonempty=True,
+                end_of_pagination_statuses=(),
+                base_delay=_RETRY_BASE_DELAY,
+                log_event="kipt.listing_backoff",
+            )
+        except PaginationFetchError as exc:
+            if exc.last_status not in _GONE_STATUSES:
+                raise
+            last_gone = exc
+            continue
+        if page is None:  # Strict status handling above makes this unreachable.
+            raise RuntimeError(f"KIPT listing fetch returned no page for {candidate!r}")
+        return candidate, page
+
+    assert last_gone is not None
+    raise BoardGoneError(
+        "KIPT vacancy pages no longer exist",
+        url=url,
+        status_code=last_gone.last_status,
+    ) from last_gone
+
+
 def _parse_bulletin(
     pdf_url: str,
     text: str,
@@ -182,11 +238,14 @@ async def can_handle(
     parsed = urlparse(url)
     if (parsed.hostname or "").lower().removeprefix("www.") != "kipt.kharkov.ua":
         return None
-    if parsed.path.rstrip("/").lower() not in {"/ua/vacancy.html", "/vacancy.html"}:
+    if parsed.path.rstrip("/").lower() not in _LISTING_PATHS:
         return None
 
-    page_html = await fetch_page_text(url, client)
-    if not page_html or not _bulletin_links(url, page_html):
+    try:
+        listing_url, page_html = await _fetch_listing_page(url, client)
+    except BoardGoneError:
+        return None
+    if not _bulletin_links(listing_url, page_html):
         return None
     return {
         "max_age_days": _DEFAULT_MAX_AGE_DAYS,
@@ -206,12 +265,10 @@ async def discover(
         raise ValueError("max_age_days must be non-negative")
     location = str(metadata.get("default_location") or _DEFAULT_LOCATION)
 
-    page_html = await fetch_page_text(board_url, client)
-    if page_html is None:
-        raise RuntimeError(f"KIPT vacancy page unavailable: {board_url}")
+    listing_url, page_html = await _fetch_listing_page(board_url, client)
 
     bulletins = _active_bulletins(
-        board_url,
+        listing_url,
         page_html,
         today=date.today(),
         max_age_days=max_age_days,

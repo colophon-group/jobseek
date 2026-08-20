@@ -7,7 +7,8 @@ from datetime import date
 import httpx
 import pytest
 
-from src.core.monitors import kipt
+from src.core.monitors import BoardGoneError, kipt
+from src.shared.http_retry import PaginationFetchError
 
 SAMPLE_BULLETIN = """\
 Національний науковий центр
@@ -120,3 +121,83 @@ async def test_discover_returns_rich_jobs(monkeypatch):
 
     assert len(jobs) == 2
     assert all(job.description and job.locations and job.date_posted for job in jobs)
+
+
+@pytest.mark.asyncio
+async def test_listing_fetch_retries_transient_status(monkeypatch):
+    board_url = "https://www.kipt.kharkov.ua/ua/vacancy.html"
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            return httpx.Response(503)
+        return httpx.Response(200, text="<html>vacancies</html>")
+
+    monkeypatch.setattr(kipt, "_RETRY_BASE_DELAY", 0)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        listing_url, page = await kipt._fetch_listing_page(board_url, client)
+
+    assert listing_url == board_url
+    assert page == "<html>vacancies</html>"
+    assert calls == 3
+
+
+@pytest.mark.asyncio
+async def test_listing_fetch_propagates_exhausted_transient_status(monkeypatch):
+    board_url = "https://www.kipt.kharkov.ua/ua/vacancy.html"
+    requested: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append(str(request.url))
+        return httpx.Response(503)
+
+    monkeypatch.setattr(kipt, "_RETRY_BASE_DELAY", 0)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(PaginationFetchError) as exc_info:
+            await kipt._fetch_listing_page(board_url, client)
+
+    assert exc_info.value.attempts == 3
+    assert exc_info.value.last_status == 503
+    assert requested == [board_url] * 3
+
+
+@pytest.mark.asyncio
+async def test_listing_fetch_uses_alternate_path_after_gone_response():
+    board_url = "https://www.kipt.kharkov.ua/ua/vacancy.html"
+    alternate_url = "https://www.kipt.kharkov.ua/vacancy.html"
+    requested: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append(str(request.url))
+        if str(request.url) == board_url:
+            return httpx.Response(404)
+        return httpx.Response(200, text="<html>legacy vacancies</html>")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        listing_url, page = await kipt._fetch_listing_page(board_url, client)
+
+    assert listing_url == alternate_url
+    assert page == "<html>legacy vacancies</html>"
+    assert requested == [board_url, alternate_url]
+
+
+@pytest.mark.asyncio
+async def test_listing_fetch_marks_board_gone_only_after_both_paths_are_gone():
+    board_url = "https://www.kipt.kharkov.ua/ua/vacancy.html"
+    alternate_url = "https://www.kipt.kharkov.ua/vacancy.html"
+    requested: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append(str(request.url))
+        status = 404 if str(request.url) == board_url else 410
+        return httpx.Response(status)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(BoardGoneError) as exc_info:
+            await kipt._fetch_listing_page(board_url, client)
+
+    assert exc_info.value.status_code == 410
+    assert exc_info.value.url == board_url
+    assert requested == [board_url, alternate_url]
