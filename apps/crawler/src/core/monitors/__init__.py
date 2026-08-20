@@ -857,6 +857,7 @@ from src.core.monitors import (  # noqa: E402
     breezy,  # noqa: F401
     comeet,  # noqa: F401
     cornerstone,  # noqa: F401
+    curately,  # noqa: F401
     darwinbox,  # noqa: F401
     dayforce,  # noqa: F401
     deel,  # noqa: F401

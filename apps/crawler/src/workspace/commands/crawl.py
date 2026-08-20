@@ -953,6 +953,10 @@ _MONITOR_CONFIG_HINTS = {
     "hirehive": "Requires: slug (auto-filled from probe)",
     "hireology": "Requires: slug (auto-filled from probe)",
     "turbohire": "Requires: org_id (auto-filled from probe)",
+    "curately": (
+        "Requires: short_name + client_id (auto-filled from probe); optional "
+        "days_back, currency, salary_unit, language"
+    ),
     "jarvi": "Requires: public_api_key; optional currency (auto-filled from probe)",
     "lever": "Requires: token (auto-filled from probe)",
     "linkedin": "Requires: company_id (numeric f_C value; auto-filled from probe)",

@@ -65,6 +65,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "brassring",
         "comeet",
         "cornerstone",
+        "curately",
         "darwinbox",
         "dayforce",
         "deel",
@@ -423,6 +424,10 @@ def detect_ats_from_url(url: str) -> str | None:
         return "hirehive"
     if host.endswith(".turbohire.co"):
         return "turbohire"
+    if host == "careers.curately.ai" and re.fullmatch(
+        r"/jobs/[a-z0-9]+(?:-[a-z0-9]+)*(?:/.*)?", parsed.path, re.IGNORECASE
+    ):
+        return "curately"
     if host.endswith(".dvinci-hr.com"):
         return "dvinci"
     if host == "intervieweb.it" or host.endswith(".intervieweb.it"):
