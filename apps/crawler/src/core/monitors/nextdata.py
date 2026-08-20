@@ -917,7 +917,9 @@ def _validate_empty_first_page(
 
     expected = _resolve_total_records(data, pagination_cfg)
     page_count = _resolve_page_count(data, pagination_cfg)
-    if expected == 0 or (expected is None and page_count is not None and page_count <= 1):
+    if expected == 0 or (
+        not pagination_cfg.get("total_records") and page_count is not None and page_count <= 1
+    ):
         return
 
     raise RuntimeError(

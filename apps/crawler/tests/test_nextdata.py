@@ -1008,6 +1008,27 @@ class TestPagination:
             batches = [batch async for batch in discover_stream(BOARD_PAGINATED, client)]
         assert batches == [set()]
 
+    async def test_empty_first_page_requires_configured_zero_total(self):
+        board = {
+            **BOARD_PAGINATED,
+            "metadata": {
+                **BOARD_PAGINATED["metadata"],
+                "pagination": {
+                    **BOARD_PAGINATED["metadata"]["pagination"],
+                    "total_records": "total",
+                },
+            },
+        }
+
+        def handler(request: httpx.Request):
+            data = _paginated_data(page=1, page_count=1, items_per_page=0)
+            del data["props"]["pageProps"]["data"]["pagination"]["total"]
+            return httpx.Response(200, text=_html_with_next_data(data))
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(RuntimeError, match="first page was empty"):
+                await discover(board, client)
+
     async def test_multi_page_merges_items(self):
         """Three pages of 2 items each → 6 total URLs."""
         transport = _paginated_transport(page_count=3)
