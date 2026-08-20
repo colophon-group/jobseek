@@ -631,6 +631,7 @@ b-riley-securities,b-riley-securities-greenhouse,https://job-boards.greenhouse.i
 b12,b12-greenhouse,https://job-boards.greenhouse.io/b12,greenhouse,"{""token"": ""b12""}",skip,
 babylist,babylist-greenhouse,https://job-boards.greenhouse.io/babylist,greenhouse,"{""token"": ""babylist""}",skip,
 bacardi,bacardi-global,https://jobs.bacardilimited.com/,workday,"{""company"": ""bacardi"", ""wd_instance"": ""wd3"", ""site"": ""Jobs_Bacardi""}",workday,
+bachem,bachem-careers,https://careers.bachem.com/search,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.bachem.com/googlefeed.xml""}",skip,
 backbase,backbase-greenhouse,https://job-boards.greenhouse.io/workatbackbase,greenhouse,"{""token"": ""workatbackbase""}",skip,
 backblaze-external-website,backblaze-external-website-greenhouse,https://job-boards.greenhouse.io/backblaze,greenhouse,"{""token"": ""backblaze""}",skip,
 backflip-ai,backflip-ai-careers,https://jobs.ashbyhq.com/backflip,ashby,"{""token"": ""backflip""}",skip,
