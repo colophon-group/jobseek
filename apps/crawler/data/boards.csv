@@ -4114,6 +4114,7 @@ onoshealth,onoshealth-ashby,https://jobs.ashbyhq.com/onoshealth,ashby,"{""token"
 onrobot,onrobot-careers,https://onrobot.com/en/careers,dom,"{""render"": false, ""url_filter"": ""/en/careers/.+""}",dom,"{""render"": false, ""steps"": [{""tag"": ""title"", ""field"": ""title"", ""regex"": ""^(.*?)\\s*\\|\\s*OnRobot$""}, {""tag"": ""h2"", ""field"": ""description"", ""stop_tag"": ""h3"", ""html"": true, ""from"": 0}], ""defaults"": {""locations"": [""Odense, Denmark""]}}"
 ontic,ontic-ashby,https://jobs.ashbyhq.com/ontic,ashby,"{""token"": ""ontic""}",skip,
 ontra,ontra-ashby,https://jobs.ashbyhq.com/ontra,ashby,"{""token"": ""ontra""}",skip,
+onward-medical,onward-medical-hibob,https://onwardmedical.careers.hibob.com/,hibob,,skip,
 onx,onx-greenhouse,https://job-boards.greenhouse.io/onxmaps,greenhouse,"{""token"": ""onxmaps""}",skip,
 ooma,ooma-greenhouse,https://job-boards.greenhouse.io/ooma,greenhouse,"{""token"": ""ooma""}",skip,
 oosto,oosto-hibob,https://oosto.careers.hibob.com/,hibob,,skip,
