@@ -29,7 +29,9 @@ import structlog
 from selectolax.lexbor import LexborHTMLParser
 
 from src.core.monitors import DiscoveredJob, fetch_page_text, register
+from src.core.monitors.dom import BotChallengeError, _raise_if_bot_challenge
 from src.core.monitors.raw import save_text_response
+from src.shared.http_retry import PaginationFetchError, fetch_text_page_with_retry
 from src.shared.successfactors import successfactors_legacy_board_from_url
 from src.shared.truncation import truncated_rich_result
 
@@ -43,6 +45,11 @@ _STREAM_BATCH = 200
 _HTTP_CHUNK_BYTES = 64 * 1024
 _SNIFF_BYTES = 512
 _SF_DETAIL_CONCURRENCY = 16
+_SF_DETAIL_ATTEMPTS = 3
+_SF_DETAIL_MAX_CHARS = 5_000_000
+_SF_DETAIL_MAX_REDIRECTS = 3
+_SF_DETAIL_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+_SF_DETAIL_RETRYABLE_STATUSES = frozenset({401, 403, 429})
 _SF_COMPANY_SELECTOR = '[data-careersite-propertyid="customfield1"]'
 _SF_JOB_SELECTOR = '[data-careersite-propertyid="title"]'
 
@@ -54,6 +61,19 @@ async def _sleep(delay: float) -> None:
 
 class RssFeedNotXml(ValueError):
     """Feed endpoint returned a non-XML body (e.g. publisher disabled the feed)."""
+
+
+class SuccessFactorsDetailPageError(RuntimeError):
+    """A detail endpoint repeatedly returned a non-job HTTP-200 document."""
+
+    def __init__(self, url: str, *, classification: str, attempts: int) -> None:
+        self.url = url
+        self.classification = classification
+        self.attempts = attempts
+        super().__init__(
+            "SuccessFactors company enrichment got invalid page "
+            f"(classification={classification}, attempts={attempts}): {url}"
+        )
 
 
 def _parse_feed(text: str, feed_url: str) -> ET.Element:
@@ -370,6 +390,85 @@ def _same_https_origin(url: str, origin: str) -> bool:
     )
 
 
+def _classify_sf_detail_page(url: str, page: str) -> tuple[LexborHTMLParser, str | None]:
+    document = LexborHTMLParser(page)
+    if document.css_first(_SF_JOB_SELECTOR) is not None:
+        return document, None
+    try:
+        _raise_if_bot_challenge(url, page)
+    except BotChallengeError:
+        return document, "bot_challenge"
+    if not page.lstrip().startswith("<"):
+        return document, "non_html"
+    return document, "missing_job_marker"
+
+
+async def _fetch_sf_detail_document(
+    url: str,
+    client: httpx.AsyncClient,
+) -> LexborHTMLParser:
+    """Fetch and validate a SuccessFactors detail page with bounded retries."""
+    classification = "missing_job_marker"
+    current_url = url
+    redirects = 0
+    visited = {url}
+    for attempt in range(_SF_DETAIL_ATTEMPTS):
+        while True:
+            try:
+                page = await fetch_text_page_with_retry(
+                    client,
+                    current_url,
+                    follow_redirects=False,
+                    retryable_statuses=_SF_DETAIL_RETRYABLE_STATUSES,
+                    end_of_pagination_statuses=(),
+                    require_nonempty=True,
+                    max_chars=_SF_DETAIL_MAX_CHARS + 1,
+                    max_bytes=_SF_DETAIL_MAX_CHARS,
+                    log_event="rss.successfactors_detail_backoff",
+                    sleep=_sleep,
+                )
+            except PaginationFetchError as exc:
+                if exc.last_status not in _SF_DETAIL_REDIRECT_STATUSES or not exc.last_location:
+                    raise
+                redirected = urljoin(current_url, exc.last_location)
+                if not _same_https_origin(redirected, url):
+                    raise RuntimeError(
+                        f"SuccessFactors company enrichment rejected redirect: {redirected}"
+                    ) from exc
+                if redirects >= _SF_DETAIL_MAX_REDIRECTS or redirected in visited:
+                    raise RuntimeError(
+                        f"SuccessFactors company enrichment exceeded redirect cap: {url}"
+                    ) from exc
+                redirects += 1
+                visited.add(redirected)
+                current_url = redirected
+                continue
+            break
+        if page is None:  # Strict terminal status handling makes this unreachable.
+            raise RuntimeError(f"SuccessFactors detail fetch returned no page: {current_url}")
+
+        document, invalid = _classify_sf_detail_page(current_url, page)
+        if invalid is None:
+            return document
+        classification = invalid
+        if attempt < _SF_DETAIL_ATTEMPTS - 1:
+            delay = 0.5 * (2**attempt) * (0.5 + random.random())
+            log.info(
+                "rss.successfactors_detail_invalid_backoff",
+                url=url,
+                attempt=attempt + 1,
+                delay_s=round(delay, 2),
+                classification=classification,
+            )
+            await _sleep(delay)
+
+    raise SuccessFactorsDetailPageError(
+        url,
+        classification=classification,
+        attempts=_SF_DETAIL_ATTEMPTS,
+    )
+
+
 async def _enrich_sf_companies(
     jobs: list[DiscoveredJob],
     client: httpx.AsyncClient,
@@ -392,13 +491,7 @@ async def _enrich_sf_companies(
         if not _same_https_origin(job.url, feed_url):
             raise RuntimeError(f"SuccessFactors company enrichment rejected URL: {job.url}")
         async with semaphore:
-            page = await fetch_page_text(job.url, client)
-        if page is None:
-            raise RuntimeError(f"SuccessFactors company enrichment failed: {job.url}")
-
-        document = LexborHTMLParser(page)
-        if document.css_first(_SF_JOB_SELECTOR) is None:
-            raise RuntimeError(f"SuccessFactors company enrichment got invalid page: {job.url}")
+            document = await _fetch_sf_detail_document(job.url, client)
         node = document.css_first(_SF_COMPANY_SELECTOR)
         company = node.text(strip=True) if node is not None else None
         if company:
