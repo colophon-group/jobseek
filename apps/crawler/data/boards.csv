@@ -697,6 +697,7 @@ bcg,bcg-careers,https://careers.bcg.com,sitemap,"{""sitemap_url"": ""https://car
 bcge,bcge-careers,https://jobs.bcge.ch/en,dom,"{""render"": true, ""url_filter"": ""jobs\\.bcge\\.ch/en/our-offers/""}",nextdata,"{""path"": ""props.pageProps.offer"", ""fields"": {""title"": ""title"", ""description"": ""content"", ""locations"": ""information[2].value"", ""date_posted"": ""dateFrom"", ""employment_type"": {""path"": ""information[3].value"", ""map"": {""Permanent Employee"": ""full_time"", ""Apprenticeship"": ""apprenticeship"", ""Trainee"": ""internship""}}}}"
 bcs,bcs-greenhouse,https://job-boards.greenhouse.io/bcscareers,greenhouse,"{""token"": ""bcscareers""}",skip,
 bcv,bcv-jobs,https://jobs.bcv.ch/search/?q=&searchResultView=LIST,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobs.bcv.ch/googlefeed.xml""}",skip,
+bd,bd-global,https://jobs.bd.com/en/search-jobs,sitemap,"{""sitemap_url"": ""https://jobs.bd.com/en/sitemap.xml"", ""url_filter"": ""/en/job/""}",json-ld,
 bda,bda-greenhouse,https://job-boards.greenhouse.io/bdainc,greenhouse,"{""token"": ""bdainc""}",skip,
 bdo,bdo-australia,https://bdoau.wd105.myworkdayjobs.com/en-GB/BDOEarlyCareers,workday,"{""company"": ""bdoau"", ""wd_instance"": ""wd105"", ""site"": ""BDOEarlyCareers""}",workday,
 bdo,bdo-austria,https://karriere.bdo.at/jobs,dom,"{""url_filter"": ""#JobEntry""}",json-ld,
