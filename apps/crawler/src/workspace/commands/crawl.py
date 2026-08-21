@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import html
 import json
 import math
 import random
@@ -2554,6 +2555,17 @@ def _normalize_compare_url(url: str) -> str:
     return urlunparse((p.scheme.lower(), p.netloc.lower(), path, p.params, p.query, ""))
 
 
+def _normalize_compare_title(title: str) -> str:
+    """Normalize a title for cross-ATS board comparison.
+
+    API-backed boards occasionally return small HTML fragments (for example,
+    ``<b>Engineer</b>``) while an older ATS feed returns plain text.  Treat
+    those as the same title and collapse entity/whitespace differences.
+    """
+    plain = re.sub(r"</?[A-Za-z][^>]*>", " ", html.unescape(title))
+    return " ".join(plain.split()).casefold()
+
+
 def _compare_two_boards(
     slug: str,
     alias_a: str,
@@ -2577,22 +2589,38 @@ def _compare_two_boards(
     only_b = urls_b - urls_a
 
     # Title comparison (for rich data)
-    titles_a = {j.get("title", "").strip().lower() for j in jobs_a if j.get("title")}
-    titles_b = {j.get("title", "").strip().lower() for j in jobs_b if j.get("title")}
+    titles_a = {_normalize_compare_title(j["title"]) for j in jobs_a if j.get("title")}
+    titles_b = {_normalize_compare_title(j["title"]) for j in jobs_b if j.get("title")}
 
     shared_titles = titles_a & titles_b if titles_a and titles_b else set()
 
     # Classify relationship
     url_overlap_pct_a = round(len(shared_urls) / len(urls_a) * 100) if urls_a else 0
     url_overlap_pct_b = round(len(shared_urls) / len(urls_b) * 100) if urls_b else 0
+    title_overlap_pct_a = round(len(shared_titles) / len(titles_a) * 100) if titles_a else 0
+    title_overlap_pct_b = round(len(shared_titles) / len(titles_b) * 100) if titles_b else 0
 
-    if url_overlap_pct_a >= 90 and url_overlap_pct_b >= 90:
+    # Different ATS generations necessarily have different URLs.  Use title
+    # overlap as a secondary signal, but require several matches so generic
+    # one-job boards do not become false mirrors.
+    title_signal = len(shared_titles) >= 3
+
+    if (url_overlap_pct_a >= 90 and url_overlap_pct_b >= 90) or (
+        title_signal and title_overlap_pct_a >= 90 and title_overlap_pct_b >= 90
+    ):
         relationship = "mirror"
-    elif url_overlap_pct_a >= 90:
+    elif url_overlap_pct_a >= 90 or (title_signal and title_overlap_pct_a >= 80):
         relationship = "subset"  # A is subset of B
-    elif url_overlap_pct_b >= 90:
+    elif url_overlap_pct_b >= 90 or (title_signal and title_overlap_pct_b >= 80):
         relationship = "subset"  # B is subset of A
-    elif url_overlap_pct_a >= 30 or url_overlap_pct_b >= 30:
+    elif (
+        url_overlap_pct_a >= 30
+        or url_overlap_pct_b >= 30
+        or (
+            title_signal
+            and (title_overlap_pct_a >= 30 or title_overlap_pct_b >= 30)
+        )
+    ):
         relationship = "overlap"
     else:
         relationship = "independent"
@@ -2610,6 +2638,8 @@ def _compare_two_boards(
         "titles_a": len(titles_a),
         "titles_b": len(titles_b),
         "shared_titles": len(shared_titles),
+        "title_overlap_pct_a": title_overlap_pct_a,
+        "title_overlap_pct_b": title_overlap_pct_b,
         "relationship": relationship,
     }
 
@@ -2689,7 +2719,8 @@ def compare_boards(slug: str | None):
                 "compare",
                 f"     Titles: {c['shared_titles']} shared "
                 f"(of {c['titles_a']} in {c['board_a']}, "
-                f"{c['titles_b']} in {c['board_b']})",
+                f"{c['titles_b']} in {c['board_b']}; "
+                f"{c['title_overlap_pct_a']}% / {c['title_overlap_pct_b']}%)",
             )
 
         if rel == "mirror":
