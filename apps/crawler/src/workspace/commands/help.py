@@ -1339,6 +1339,14 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    Matching links are trusted as jobs, so this is useful when
                    stable job-card markup exists but URLs lack job keywords.
                    Example: "li.job-card a.details-link"
+    require_jsonld_jobposting
+                   Fetch each discovered detail URL and retain it only when
+                   the current page contains schema.org JobPosting JSON-LD.
+                   Detail fetch errors fail the monitor cycle; 404/410 and
+                   pages without JobPosting data are omitted. Limited to 500
+                   discovered URLs. Use for small provider listings that keep
+                   stale profile links after an opening closes. Incompatible
+                   with rich_rows.
     rich_rows      Optional static, single-page listing-row extraction:
                    {"row_selector": ".job", "link_selector": ".job-title a",
                     "location_selectors": [".job-location", ".job-country"]}
