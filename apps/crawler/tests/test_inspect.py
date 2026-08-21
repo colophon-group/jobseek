@@ -2102,9 +2102,8 @@ class TestPilatusBoardConfig:
 class TestBucherIndustriesConfig:
     """Preserve the live provider-quality corrections from PR #7736."""
 
-    def test_rich_provider_fields_and_logo_geometry_are_pinned(self):
+    def test_rich_provider_fields_and_asset_hashes_are_pinned(self):
         import json
-        from xml.etree import ElementTree
 
         from src.shared.constants import get_data_dir
         from src.shared.csv_io import read_csv
@@ -2136,6 +2135,13 @@ class TestBucherIndustriesConfig:
         municipal = json.loads(by_slug["bucher-industries-municipal"]["scraper_config"])
         assert municipal == {"ignore_address_region": True}
 
-        logo = ElementTree.parse(data_dir / "images/bucher-industries/logo.svg").getroot()
-        assert logo.attrib["viewBox"] == "0 0 160.6 30"
-        assert "viewbox" not in logo.attrib
+        _, companies = read_csv(data_dir / "companies.csv")
+        company = next(row for row in companies if row["slug"] == "bucher-industries")
+        assert company["logo_url"] == (
+            "https://jobseek-assets.colophon-group.org/companies/bucher-industries/"
+            "logo-72077144ff385ec47fc3ff19d3109fd6bd244c8033c741a7124c348aa35c0b06.svg"
+        )
+        assert company["icon_url"] == (
+            "https://jobseek-assets.colophon-group.org/companies/bucher-industries/"
+            "icon-6ba9159d5542e9990aa091cedb1a7cdb9bca9a79fd9e3f3e01df6ef0cee65b25.webp"
+        )
