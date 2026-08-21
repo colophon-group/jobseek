@@ -62,6 +62,17 @@ def test_detect_ats_breezy_host():
     assert detect_ats_from_url("https://acme.breezy.hr") == "breezy"
 
 
+def test_detect_dualoo_portal_as_dom():
+    assert detect_ats_from_url("https://jobs.dualoo.com/portal/fyuan4bk?lang=DE") == "dom"
+    assert detect_ats_from_url("https://jobs.dualoo.com/login") is None
+    assert (
+        detect_ats_from_url(
+            "https://jobs.dualoo.com/portal/fyuan4bk/ef8b03a4-9219-4c19-a351-d01c0e07cc4f/detail"
+        )
+        is None
+    )
+
+
 def test_detect_ats_earcu_listing_path():
     assert detect_ats_from_url("https://careers.example.com/jobs/vacancy/find/results/") == "earcu"
 

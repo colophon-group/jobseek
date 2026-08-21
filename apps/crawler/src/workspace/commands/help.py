@@ -1421,6 +1421,12 @@ dom — Link or Static Listing-Row Extraction (fallback)
     with Cloudflare error 1005 before a browser context can be established.
     Pair with ``json-ld`` and ``{"proxy": true}`` for detail enrichment.
 
+  Dualoo portals:
+    ``jobs.dualoo.com/portal/<id>`` pages are auto-configured with the stable
+    ``a.jobElement`` selector, a same-portal UUID detail filter, and
+    ``require_jsonld_jobposting: true``. Their complete detail data is read by
+    the auto-configured ``json-ld`` scraper.
+
   Discovery:   Extracts links matching link_selector when configured. Otherwise
                extracts all <a href> links and filters for URLs containing
                job/career/position/posting/opening/role/vacancy keywords.
@@ -1430,6 +1436,9 @@ dom — Link or Static Listing-Row Extraction (fallback)
                generated preset uses the complete /oportunidades listing,
                ?pagina=N pagination, proxy transport, and an auto-configured
                proxy-backed json-ld scraper.
+
+  Dualoo:      jobs.dualoo.com/portal/{id} is detected from static HTML and
+               paired with json-ld detail extraction.
 
   Detection:   ws probe checks static HTML for job links.
                If detected: shows "✓ N URLs". If not: shows "✗ Not detected".

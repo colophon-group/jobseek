@@ -2145,3 +2145,21 @@ class TestBucherIndustriesConfig:
             "https://jobseek-assets.colophon-group.org/companies/bucher-industries/"
             "icon-6ba9159d5542e9990aa091cedb1a7cdb9bca9a79fd9e3f3e01df6ef0cee65b25.webp"
         )
+
+
+class TestAmmannBoardConfig:
+    """Keep ABG's generic unsolicited application out of the live inventory."""
+
+    def test_abg_dualoo_filter_excludes_generic_application(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(item for item in rows if item["board_slug"] == "ammann-abg")
+        config = json.loads(row["monitor_config"])
+
+        assert config["dualoo_portal"] == "fyuan4bk"
+        assert config["require_jsonld_jobposting"] is True
+        assert config["url_filter"]["exclude"] == ("/502f2f7b-72a8-4ddf-939c-72981563028c/")
