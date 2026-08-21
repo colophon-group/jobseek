@@ -469,6 +469,16 @@ class TestSlugFields:
 
 
 class TestItemFilter:
+    @pytest.mark.asyncio
+    async def test_rejects_auto_discovery_config(self):
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {"item_filter": {"exclude": {"market": ["local"]}}},
+        }
+
+        with pytest.raises(ValueError, match="item_filter requires a configured api_url"):
+            await discover(board, AsyncMock(), pw=AsyncMock())
+
     def test_excludes_partitioned_values_and_deduplicates_stable_ids(self):
         config = {
             "item_filter": {

@@ -788,6 +788,8 @@ async def discover(
     metadata = board.get("metadata") or {}
     board_url = board["board_url"]
     api_url = metadata.get("api_url")
+    if not api_url and metadata.get("item_filter") is not None:
+        raise ValueError("api_sniffer item_filter requires a configured api_url")
 
     # Plain HTTP mode — no Playwright needed (pw passed for api_url_match fallback)
     if api_url and not metadata.get("browser"):

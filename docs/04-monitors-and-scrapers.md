@@ -148,12 +148,13 @@ validation. Set `proxy: true` when the direct API blocks Hetzner egress; the
 per-board HTTP client then uses the configured proxy provider without moving
 the monitor back to the browser queue.
 
-When a central API overlaps authoritative regional boards, `item_filter` can
-partition the completed item list by exact scalar/list field values and
-deduplicate the retained partition by a complete non-empty compound provider
-identity. Items missing any identity part remain distinct. Filtering runs after
-pagination and preserves an incomplete upstream total, so it cannot turn a
-short response into an authoritative complete cycle.
+When a configured `api_url` overlaps authoritative regional boards,
+`item_filter` can partition the completed request/replay item list by exact
+scalar/list field values and deduplicate the retained partition by a complete
+non-empty compound provider identity. Items missing any identity part remain
+distinct. Filtering runs after pagination and preserves an incomplete upstream
+total, so it cannot turn a short response into an authoritative complete cycle.
+Auto-discovery configs reject `item_filter` instead of silently ignoring it.
 
 If browser auto-discovery times out and leaves no usable document body,
 fallback interactions fail the monitor cycle with a stable error. They do not

@@ -2425,13 +2425,15 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                      top-level scalar fields.
     slug_fields      Optional item paths slugified and joined into the {slug}
                      URL-template placeholder.
-    item_filter      Optional post-pagination source partition. ``exclude``
-                     maps item paths to exact string values; matching scalar
-                     or list values are omitted. ``dedupe_by`` is a list of
-                     stable identifier paths and retains the first item for
-                     each complete, non-empty compound identity. Items missing
-                     any identity part remain distinct. A short upstream
-                     response remains truncated after filtering.
+    item_filter      Optional ``api_url`` request/replay source partition,
+                     applied after pagination. ``exclude`` maps item paths to
+                     exact string values; matching scalar or list values are
+                     omitted. ``dedupe_by`` is a list of stable identifier
+                     paths and retains the first item for each complete,
+                     non-empty compound identity. Items missing any identity
+                     part remain distinct. A short upstream response remains
+                     truncated after filtering. Auto-discovery configs reject
+                     this option instead of silently ignoring it.
     params           Query parameters merged into api_url at request time.
                      Auto-filled from the captured URL (empty and pagination
                      params stripped). Edit result_limit / per_page here to
