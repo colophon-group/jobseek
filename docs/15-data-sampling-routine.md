@@ -244,7 +244,7 @@ We store the description as it was publicly posted. No regex scrub. Takedown-on-
   (`--date 2026-04-25 --count 10`).
 - Manual Claude-compatible path: `/jobseek-label-daily`; pass an explicit
   count when using it so it matches the Codex production target.
-- Scheduled Codex path: run the Hetzner local Codex runner through
+- Scheduled Codex path: run the Hetzner Codex runner through
   `jobseek-codex-daily-annotations.timer`. It creates a fresh worktree,
   uses the runner user's existing Codex and HuggingFace login state, and loads
   only the read-only local Postgres DSN from `/etc/jobseek-codex/labeller.env`.

@@ -8,13 +8,12 @@ description: Daily read-only review of Jobseek crawler errors on Hetzner; dedupe
 Use this skill for the daily crawler error review. Operate from the repo
 state and these instructions; do not rely on prior conversation context.
 
-Prefer running this through the Hetzner local Codex runner or a local Codex
-CLI session from the repository root. The Hetzner runner uses an isolated
-worktree and a root-collected redacted evidence bundle, which keeps routine
-output isolated from active development work while avoiding direct Docker or
-deploy-env access from the Codex process. This routine should use
-subscription-backed Codex execution where possible. Do not implement it as a
-GitHub Actions workflow.
+Run recurring reviews through the Hetzner Codex runner. An operator may invoke
+the same skill from the repository root for a bounded manual recovery. The
+Hetzner runner uses an isolated worktree and a root-collected redacted evidence
+bundle, which keeps routine output isolated from active development work while
+avoiding direct Docker or deploy-env access from the Codex process. Do not
+implement it as a GitHub Actions workflow or workstation schedule.
 
 The legacy Claude slash command at
 `.claude/commands/jobseek-error-review.md` remains a compatibility fallback.
