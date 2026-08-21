@@ -122,6 +122,14 @@ class TestFetchWithRetry:
 
         assert out == "x" * 10
 
+    async def test_none_max_chars_returns_full_body(self):
+        client = AsyncMock()
+        client.get = AsyncMock(return_value=_resp(200, "x" * 500_229))
+
+        out = await fetch_with_retry(client, "https://example.com", max_chars=None)
+
+        assert out == "x" * 500_229
+
     async def test_returns_none_on_404(self):
         """404 / 410 are legitimate end-of-pagination — return None, no retry."""
         client = AsyncMock()

@@ -112,7 +112,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `inline` | Rich | skip | Single-page inline job listings |
 | `kipt` | Rich | skip | NSC KIPT active PDF vacancy bulletins |
 | `api_sniffer` | Conditional* | skip/— | XHR/fetch capture; rich when `fields` is configured |
-| `dom` | URL-only | — | Last resort — link extraction from page HTML |
+| `dom` | Conditional* | — | Last resort — link extraction, or partial rich static listing rows with `rich_rows` |
 
 Rich monitors return complete job data in a single request — no scraper needed. URL-only monitors with auto-scrapers need no manual scraper selection; the scraper is configured automatically. Monitors marked "—" require manual scraper selection. Conditional monitors return rich data only under the condition named in the table; otherwise they need a scraper or runtime coverage check.
 
@@ -254,13 +254,17 @@ Extracts job listings from Next.js sites using `__NEXT_DATA__` props.
 
 ### dom
 
-Link extraction from career pages. By default (``render: false``) fetches via static HTTP and parses `<a>` tags. Set `render: true` to render with Playwright for JS-heavy SPAs.
+Link extraction from career pages. By default (``render: false``) fetches via static HTTP and parses `<a>` tags. Set `render: true` to render with Playwright for JS-heavy SPAs. Static, single-page listings can opt into strict partial-rich row extraction when their cards expose stable titles and location components.
 
 **Config**:
 ```json
 {
   "render": false,
-  "actions": []
+  "rich_rows": {
+    "row_selector": ".job",
+    "link_selector": ".job-title a",
+    "location_selectors": [".job-location", ".job-country"]
+  }
 }
 ```
 
@@ -272,13 +276,20 @@ Link extraction from career pages. By default (``render: false``) fetches via st
 | `timeout` | No | Playwright navigation timeout in ms (only when rendering) |
 | `user_agent` | No | Custom User-Agent string (only when rendering) |
 | `headless` | No | Run browser in headless mode, default `true` (only when rendering) |
+| `rich_rows` | No | Strict static row selectors for URL/title and optional joined location components; incompatible with rendering and pagination |
 
 Link discovery filters `<a href>` URLs containing job-related keywords (job, career, position, posting, opening, role, vacancy).
+With `rich_rows`, anchor text is the title and each configured location selector
+must match every row; missing rows or fields fail closed. Because this mode is
+partial-rich and does not extract descriptions, it requires a real detail
+scraper (not `skip`) whose config includes `"enrich": ["description"]`.
+Enrichment fills the detail-only field without overwriting listing values.
 Oleeo/TalentLink vacancy boards use a provider preset that accepts their
 authoritative empty state and limits discovery to same-origin `/opp/` detail
 links, excluding board-switcher, event, and talent-bank navigation.
 
-**Returns**: URL set only. Needs a scraper to extract job details.
+**Returns**: URL set by default, or partial rich jobs with `rich_rows`. Both
+paths need a scraper; `rich_rows` specifically requires description enrichment.
 
 **When to use**: Only when no API monitor, sitemap, or nextdata monitor is available. The agent should exhaust all other options first.
 

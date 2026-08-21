@@ -1290,9 +1290,9 @@ kipt — NSC KIPT PDF vacancy bulletins (rich)
   Fields:      title, description, locations, date_posted, language, metadata."""
 
 MONITOR_DOM = """\
-dom — Link Extraction (fallback)
+dom — Link or Static Listing-Row Extraction (fallback)
 
-  Returns:  URL set only (needs scraper)
+  Returns:  URL set, or partial rich rows when rich_rows is configured
   Cap:      50,000 URLs
   Cost:     Highest — use only as last resort.
 
@@ -1332,6 +1332,17 @@ dom — Link Extraction (fallback)
                    Matching links are trusted as jobs, so this is useful when
                    stable job-card markup exists but URLs lack job keywords.
                    Example: "li.job-card a.details-link"
+    rich_rows      Optional static, single-page listing-row extraction:
+                   {"row_selector": ".job", "link_selector": ".job-title a",
+                    "location_selectors": [".job-location", ".job-country"]}
+                   The anchor text becomes the title; location components are
+                   joined in selector order. Every configured field is strict,
+                   so markup drift fails the cycle instead of publishing a
+                   partial authoritative result. Incompatible with rendering,
+                   pagination, and include_board_url. Requires a real detail
+                   scraper (not skip) with scraper_config
+                   {"enrich": ["description"]}; otherwise the partial-rich
+                   runtime path will not schedule description scraping.
     url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
                    Keep patterns broad enough to include URL variants
     url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)

@@ -40,6 +40,10 @@ def test_is_rich_monitor_consistency():
     assert compat_is_rich("api_sniffer", {}) == core_is_rich("api_sniffer", {})
     assert compat_is_rich("api_sniffer", None) == core_is_rich("api_sniffer", None)
 
+    dom_cfg = {"rich_rows": {"row_selector": ".job", "link_selector": ".job a"}}
+    assert compat_is_rich("dom", dom_cfg) == core_is_rich("dom", dom_cfg) is True
+    assert compat_is_rich("dom", {}) == core_is_rich("dom", {}) is False
+
 
 def test_all_scraper_types_match():
     core_scraper_all = frozenset(scraper_registry.keys())

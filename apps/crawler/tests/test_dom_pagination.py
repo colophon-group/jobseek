@@ -14,9 +14,11 @@ from src.core.monitors.dom import (
     _build_url_matcher,
     _extract_links_rendered,
     _extract_links_static,
+    _extract_rich_rows_static,
     _fetch_via_page,
     _paginate_urls,
     _vagas_probe_config,
+    _validated_rich_rows,
     can_handle,
     dom_discover,
 )
@@ -147,6 +149,146 @@ class TestExtractLinksStatic:
         )
 
         assert urls == {"https://example.com/emploi/active/1"}
+
+
+class TestRichRowsStatic:
+    CONFIG = {
+        "row_selector": ".job",
+        "link_selector": ".job-title a",
+        "location_selectors": [".job-location", ".job-country"],
+    }
+
+    def test_extracts_canonical_rows_with_joined_locations(self):
+        html = """
+        <div class="job">
+          <div class="job-title"><a href="jobs/engineer---123">Engineer</a></div>
+          <div class="job-location">Winterthur</div>
+          <div class="job-country">Switzerland</div>
+        </div>
+        <div class="job">
+          <div class="job-title"><a href="jobs/developer---456">Developer</a></div>
+          <div class="job-location">Süßen</div>
+          <div class="job-country">Germany</div>
+        </div>
+        """
+        config = _validated_rich_rows(self.CONFIG)
+
+        assert config is not None
+        jobs = _extract_rich_rows_static(html, "https://example.com/careers/", config, None)
+
+        assert [(job.url, job.title, job.locations) for job in jobs] == [
+            (
+                "https://example.com/careers/jobs/engineer---123",
+                "Engineer",
+                ["Winterthur, Switzerland"],
+            ),
+            (
+                "https://example.com/careers/jobs/developer---456",
+                "Developer",
+                ["Süßen, Germany"],
+            ),
+        ]
+
+    def test_fails_closed_when_a_configured_location_is_missing(self):
+        html = """
+        <div class="job">
+          <div class="job-title"><a href="jobs/engineer---123">Engineer</a></div>
+          <div class="job-location">Winterthur</div>
+        </div>
+        """
+        config = _validated_rich_rows(self.CONFIG)
+
+        assert config is not None
+        with pytest.raises(ValueError, match="omitted configured location"):
+            _extract_rich_rows_static(html, "https://example.com/careers/", config, None)
+
+    @pytest.mark.parametrize(
+        "config",
+        [
+            {},
+            {"row_selector": ".job", "link_selector": ".job a", "unexpected": True},
+            {"row_selector": ".job", "link_selector": ".job a", "location_selectors": "p"},
+            {
+                "row_selector": ".job",
+                "link_selector": ".job a",
+                "location_selectors": ["p"] * 5,
+            },
+        ],
+    )
+    def test_rejects_invalid_configs(self, config):
+        with pytest.raises(ValueError, match="rich_rows"):
+            _validated_rich_rows(config)
+
+    @pytest.mark.asyncio
+    async def test_static_discovery_returns_rich_jobs(self):
+        html = """
+        <div class="job">
+          <div class="job-title"><a href="jobs/engineer---123">Engineer</a></div>
+          <div class="job-location">Winterthur</div>
+          <div class="job-country">Switzerland</div>
+        </div>
+        """
+        with patch(_FETCH_PATCH, AsyncMock(return_value=html)):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/careers/",
+                    "metadata": {"render": False, "rich_rows": self.CONFIG},
+                },
+                AsyncMock(),
+            )
+
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0].title == "Engineer"
+        assert result[0].locations == ["Winterthur, Switzerland"]
+
+    @pytest.mark.asyncio
+    async def test_static_rich_discovery_disables_shared_body_truncation(self):
+        first = """
+        <div class="job">
+          <div class="job-title"><a href="jobs/first---123">First</a></div>
+          <div class="job-location">Winterthur</div>
+          <div class="job-country">Switzerland</div>
+        </div>
+        """
+        second = """
+        <div class="job">
+          <div class="job-title"><a href="jobs/second---456">Second</a></div>
+          <div class="job-location">Süßen</div>
+          <div class="job-country">Germany</div>
+        </div>
+        """
+        html = first + (" " * 500_000) + second
+
+        async def bounded_fetch(_client, _url, *, max_chars=500_000, **_kwargs):
+            return html[:max_chars] if max_chars is not None else html
+
+        fetch = AsyncMock(side_effect=bounded_fetch)
+
+        with patch(_FETCH_PATCH, fetch):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/careers/",
+                    "metadata": {"render": False, "rich_rows": self.CONFIG},
+                },
+                AsyncMock(),
+            )
+
+        assert isinstance(result, list)
+        assert [job.title for job in result] == ["First", "Second"]
+        assert fetch.await_args.kwargs["max_chars"] is None
+
+    @pytest.mark.asyncio
+    async def test_rejects_rendered_or_paginated_rich_rows(self):
+        for incompatible in ({"render": True}, {"pagination": {"param_name": "page"}}):
+            with pytest.raises(ValueError, match="static, single-page"):
+                await dom_discover(
+                    {
+                        "board_url": "https://example.com/careers/",
+                        "metadata": {**incompatible, "rich_rows": self.CONFIG},
+                    },
+                    AsyncMock(),
+                )
 
 
 class TestBuildUrlMatcher:
