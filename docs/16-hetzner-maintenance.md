@@ -1634,18 +1634,10 @@ Host-surface deployment is CI/CD-owned by
 That workflow updates the checked-out repo and systemd units; it does not run
 `codex exec`, select issues, upload labels, or perform error reviews.
 
-The former desktop scheduler names below must remain absent after Hetzner
-cutover. They are identifiers for duplicate-scheduler detection only, not
-deployable or retained fallback state:
-
-- `jobseek-company-request-resolver`
-- `jobseek-daily-classifications`
-- `jobseek-daily-error-review`
-
-Do not recreate those desktop schedules or add/restore GitHub Actions that
-execute the routines. Manual recovery uses the same committed Codex CLI path
-from a throwaway worktree, with the Hetzner ledger, shared lock, and `ws`
-claims checked first. Keep `CODEX_EXEC_JSONL` set for trace capture.
+Do not add another scheduler for these routines. Manual recovery invokes the
+same committed runner entry point once from a throwaway worktree, with the
+Hetzner ledger, shared lock, and `ws` claims checked first. Keep
+`CODEX_EXEC_JSONL` set for trace capture.
 
 Check the last CI/CD host deploy:
 

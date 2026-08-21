@@ -10,7 +10,7 @@ Prior exemplars (follow their shape): #2622, #2621, #2470, #2431.
 
 ## Invocation
 
-- **Preferred scheduled route:** Hetzner local Codex runner through
+- **Preferred scheduled route:** Hetzner Codex runner through
   `jobseek-codex-daily-error-review.timer`. A root `ExecStartPre` collector
   writes a redacted read-only evidence bundle for the unprivileged
   `codex-runner` account, so the Codex process does not need Docker,
@@ -23,13 +23,12 @@ Prior exemplars (follow their shape): #2622, #2621, #2470, #2431.
   36-hour staleness, or a run stuck over three hours. Production email paging
   is disabled; see
   [production paging is disabled](16-hetzner-maintenance.md#production-paging-is-disabled).
-- **Preferred manual route:** local Codex CLI from the repo root, asking it to
-  use the `jobseek-error-review` skill.
+- **Preferred manual route:** an operator-invoked Codex CLI session from the
+  repo root, asking it to use the `jobseek-error-review` skill.
 - **Manual traceable pilot:** run `codex exec --json` with the skill/runbook as
   the prompt and save the JSONL trace for agent trace collection checks.
-- **Avoid:** GitHub Actions for this routine. Keep execution
-  subscription-backed through the Hetzner runner or local Codex CLI where
-  possible.
+- **Avoid:** GitHub Actions or workstation schedules for this routine. The
+  Hetzner runner owns recurring execution.
 - **Claude fallback:** `/jobseek-error-review` remains available through the
   legacy Claude Code slash command for compatibility.
 

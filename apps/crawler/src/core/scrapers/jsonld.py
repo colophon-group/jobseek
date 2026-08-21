@@ -263,6 +263,12 @@ def _extract_locations(posting: dict) -> list[str] | None:
     locations: list[str] = []
     seen: set[str] = set()
     job_location = posting.get("jobLocation")
+    hiring_organization = posting.get("hiringOrganization")
+    organization_name = (
+        _clean_text(hiring_organization.get("name"))
+        if isinstance(hiring_organization, dict)
+        else None
+    )
 
     if job_location is None:
         return None
@@ -272,22 +278,12 @@ def _extract_locations(posting: dict) -> list[str] | None:
     for loc in items:
         if not isinstance(loc, dict):
             continue
-        # Try name first
         name = _clean_text(loc.get("name"))
-        if name:
-            if name not in seen:
-                seen.add(name)
-                locations.append(name)
-            continue
-        # Build from address
+        address_text = None
         address = loc.get("address")
         if isinstance(address, str):
-            text = _clean_text(address)
-            if text and text not in seen:
-                seen.add(text)
-                locations.append(text)
-            continue
-        if isinstance(address, dict):
+            address_text = _clean_text(address)
+        elif isinstance(address, dict):
             parts = []
             for field in ("addressLocality", "addressRegion", "addressCountry"):
                 val = address.get(field)
@@ -298,10 +294,19 @@ def _extract_locations(posting: dict) -> list[str] | None:
                     if text:
                         parts.append(text)
             if parts:
-                text = ", ".join(parts)
-                if text not in seen:
-                    seen.add(text)
-                    locations.append(text)
+                address_text = ", ".join(parts)
+
+        # Some providers put the employer name in Place.name while publishing
+        # the real location in Place.address. Prefer that structured address
+        # only when the name is demonstrably the hiring organization; retain
+        # the longstanding name-first behavior for legitimate venue names.
+        name_is_organization = bool(
+            name and organization_name and name.casefold() == organization_name.casefold()
+        )
+        location = address_text if address_text and name_is_organization else name or address_text
+        if location and location not in seen:
+            seen.add(location)
+            locations.append(location)
 
     return locations or None
 
@@ -564,6 +569,13 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
             meta_content.locations = None
         return meta_content
     return JobContent()
+
+
+def contains_job_posting(html: str) -> bool:
+    """Return whether *html* contains schema.org ``JobPosting`` JSON-LD."""
+    extractor = _JsonLdExtractor()
+    extractor.feed(html)
+    return any(_find_job_posting(block) for block in extractor.results)
 
 
 def can_handle(htmls: list[str]) -> dict | None:

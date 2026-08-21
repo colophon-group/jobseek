@@ -37,6 +37,8 @@ log = structlog.get_logger()
 
 MAX_URLS = 50_000
 _MAX_PAGINATION_PAGES = 10_000
+_JSONLD_VERIFICATION_CONCURRENCY = 8
+_MAX_JSONLD_VERIFICATION_URLS = 500
 
 # Browser-pagination fetch budget. Playwright fetches are slower than
 # httpx (the JS engine + page context add tens of ms), and the page is
@@ -97,6 +99,56 @@ _PAGINATION_PARTITION_CONCURRENCY = 4
 
 _JPOSTING_HOST_SUFFIX = ".jposting.net"
 _JPOSTING_JOB_FILTER = r"[?&]job_code=[^&#]+"
+
+
+async def _filter_jsonld_job_urls(urls: set[str], client: httpx.AsyncClient) -> set[str]:
+    """Retain URLs whose current detail page contains JobPosting JSON-LD.
+
+    Detail fetch failures propagate so a transient provider outage cannot turn
+    a partial inventory into a successful monitor cycle and tombstone jobs.
+    Legitimate 404/410 responses and pages without JobPosting data are omitted.
+    """
+    if len(urls) > _MAX_JSONLD_VERIFICATION_URLS:
+        raise ValueError(
+            "DOM monitor require_jsonld_jobposting supports at most "
+            f"{_MAX_JSONLD_VERIFICATION_URLS} discovered URLs"
+        )
+
+    from src.core.scrapers.jsonld import contains_job_posting
+    from src.shared.http_retry import fetch_with_retry
+
+    semaphore = asyncio.Semaphore(_JSONLD_VERIFICATION_CONCURRENCY)
+
+    async def verify(url: str) -> tuple[str, bool]:
+        async with semaphore:
+            html = await fetch_with_retry(
+                client,
+                url,
+                transient_403=True,
+                # Verification is authoritative for gone detection. A bounded
+                # prefix can omit valid JSON-LD near the end of a large page
+                # and make a live posting look stale.
+                max_chars=None,
+            )
+        if html is None:
+            return url, False
+        _raise_if_bot_challenge(url, html)
+        return url, contains_job_posting(html)
+
+    tasks = [asyncio.create_task(verify(url)) for url in sorted(urls)]
+    try:
+        results = await asyncio.gather(*tasks)
+    except BaseException:
+        # ``gather`` propagates the first failure without cancelling sibling
+        # tasks. Stop and drain them so a failed monitor cycle cannot leave
+        # hundreds of provider requests running in the worker.
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
+    return {url for url, is_job in results if is_job}
+
 
 _VAGAS_HOST = "trabalheconosco.vagas.com.br"
 _VAGAS_TENANT_RE = re.compile(r"[a-z0-9][a-z0-9_-]*")
@@ -1415,6 +1467,9 @@ async def dom_discover(
     url_transform = metadata.get("url_transform")
     link_selector = _validate_link_selector(metadata.get("link_selector"))
     rich_rows = _validated_rich_rows(metadata.get("rich_rows"))
+    require_jsonld_jobposting = metadata.get("require_jsonld_jobposting", False)
+    if not isinstance(require_jsonld_jobposting, bool):
+        raise ValueError("DOM monitor require_jsonld_jobposting must be a boolean")
     encoding = metadata.get("encoding")
     if encoding is not None:
         if not isinstance(encoding, str) or not encoding:
@@ -1429,7 +1484,9 @@ async def dom_discover(
         )
         render = True
 
-    if rich_rows is not None and (render or pagination or metadata.get("include_board_url")):
+    if rich_rows is not None and (
+        render or pagination or metadata.get("include_board_url") or require_jsonld_jobposting
+    ):
         raise ValueError(
             "DOM monitor rich_rows supports static, single-page listing extraction only"
         )
@@ -1543,6 +1600,9 @@ async def dom_discover(
     urls = {u for u in urls if _without_fragment(u) != normalized_board}
     if metadata.get("include_board_url"):
         urls.add(board_url)
+
+    if require_jsonld_jobposting:
+        urls = await _filter_jsonld_job_urls(urls, client)
 
     if len(urls) > MAX_URLS:
         log.warning("dom.truncated", total=len(urls), cap=MAX_URLS)

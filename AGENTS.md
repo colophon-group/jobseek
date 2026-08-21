@@ -85,12 +85,12 @@ uv run labeller upload --date <date>
 
 ## Ops routines (Codex-first, Claude-compatible)
 
-Scheduled ops routines are documented as repo runbooks and skills. Prefer
-the Hetzner local Codex runner or local Codex CLI so routine execution stays
-subscription-backed; do not add GitHub Actions that execute these
-Hetzner-owned automations. CI/CD may still deploy the Hetzner runner host
-surface. `codex exec --json` is the traceable noninteractive surface for
-manual fallback and agent trace collection. Legacy
+Scheduled ops routines are documented as repo runbooks and skills. The
+Hetzner Codex runner is the only production scheduler; do not add GitHub
+Actions or workstation schedules that execute these Hetzner-owned
+automations. CI/CD may still deploy the Hetzner runner host surface.
+`codex exec --json` is the traceable noninteractive surface for bounded
+manual recovery and agent trace collection. Legacy
 Claude Code slash commands remain compatibility fallbacks where present.
 Deployment and maintenance rules live in
 `docs/18-codex-automation-deployment.md`.
@@ -109,11 +109,10 @@ Deployment and maintenance rules live in
   command path is `.claude/commands/jobseek-label-daily.md`.
 - `docs/17-codex-migration-verification-runbook.md` — central pilot
   verification checklist for Codex migration surfaces, including agent trace
-  collection and local fallback guardrails.
+  collection and bounded recovery guardrails.
 - `docs/18-codex-automation-deployment.md` — production Hetzner runner
   inventory, company resolver plan, harness-invariant contracts, deployment
-  procedure, and maintenance checks. Codex desktop schedules are sunset and
-  must not be recreated.
+  procedure, and maintenance checks.
 
 Web app (from `apps/web/`):
 
