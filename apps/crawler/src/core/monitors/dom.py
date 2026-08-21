@@ -125,14 +125,28 @@ async def _filter_jsonld_job_urls(urls: set[str], client: httpx.AsyncClient) -> 
                 client,
                 url,
                 transient_403=True,
-                max_chars=1_000_000,
+                # Verification is authoritative for gone detection. A bounded
+                # prefix can omit valid JSON-LD near the end of a large page
+                # and make a live posting look stale.
+                max_chars=None,
             )
         if html is None:
             return url, False
         _raise_if_bot_challenge(url, html)
         return url, contains_job_posting(html)
 
-    results = await asyncio.gather(*(verify(url) for url in sorted(urls)))
+    tasks = [asyncio.create_task(verify(url)) for url in sorted(urls)]
+    try:
+        results = await asyncio.gather(*tasks)
+    except BaseException:
+        # ``gather`` propagates the first failure without cancelling sibling
+        # tasks. Stop and drain them so a failed monitor cycle cannot leave
+        # hundreds of provider requests running in the worker.
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
     return {url for url, is_job in results if is_job}
 
 
@@ -1446,7 +1460,9 @@ async def dom_discover(
         )
         render = True
 
-    if rich_rows is not None and (render or pagination or metadata.get("include_board_url")):
+    if rich_rows is not None and (
+        render or pagination or metadata.get("include_board_url") or require_jsonld_jobposting
+    ):
         raise ValueError(
             "DOM monitor rich_rows supports static, single-page listing extraction only"
         )

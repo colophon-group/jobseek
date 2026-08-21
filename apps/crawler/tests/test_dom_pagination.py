@@ -16,6 +16,7 @@ from src.core.monitors.dom import (
     _extract_links_static,
     _extract_rich_rows_static,
     _fetch_via_page,
+    _filter_jsonld_job_urls,
     _paginate_urls,
     _vagas_probe_config,
     _validated_rich_rows,
@@ -280,7 +281,11 @@ class TestRichRowsStatic:
 
     @pytest.mark.asyncio
     async def test_rejects_rendered_or_paginated_rich_rows(self):
-        for incompatible in ({"render": True}, {"pagination": {"param_name": "page"}}):
+        for incompatible in (
+            {"render": True},
+            {"pagination": {"param_name": "page"}},
+            {"require_jsonld_jobposting": True},
+        ):
             with pytest.raises(ValueError, match="static, single-page"):
                 await dom_discover(
                     {
@@ -1013,6 +1018,60 @@ class TestDomDiscoverInitialFetch:
             )
 
         assert result == {active_url}
+
+    async def test_jsonld_verification_reads_jobposting_after_one_megabyte(self):
+        board_url = "https://jobs.example.com/company"
+        active_url = "https://jobs.example.com/profile/1-active"
+        jobposting = (
+            '<script type="application/ld+json">'
+            '{"@context":"https://schema.org","@type":"JobPosting","title":"Engineer"}'
+            "</script>"
+        )
+        pages = {
+            board_url: _html_with_links(active_url),
+            active_url: f"<html><body>{'x' * 1_000_100}{jobposting}</body></html>",
+        }
+
+        with patch(_FETCH_PATCH, new=_make_fetch(pages)):
+            result = await dom_discover(
+                {
+                    "board_url": board_url,
+                    "metadata": {
+                        "link_selector": "a[href*='/profile/']",
+                        "require_jsonld_jobposting": True,
+                    },
+                },
+                MagicMock(),
+            )
+
+        assert result == {active_url}
+
+    async def test_jsonld_verification_cancels_siblings_after_fetch_error(self):
+        urls = {f"https://jobs.example.com/profile/{index:02d}" for index in range(20)}
+        failure_url = min(urls)
+        active_urls: set[str] = set()
+        concurrency_reached = asyncio.Event()
+        blocker = asyncio.Event()
+
+        async def failing_fetch(_client, url, **_kwargs):
+            active_urls.add(url)
+            try:
+                if len(active_urls) == 8:
+                    concurrency_reached.set()
+                await concurrency_reached.wait()
+                if url == failure_url:
+                    raise PaginationFetchError(url, 1, last_error="detail fetch failed")
+                await blocker.wait()
+            finally:
+                active_urls.discard(url)
+
+        with (
+            patch(_FETCH_PATCH, new=failing_fetch),
+            pytest.raises(PaginationFetchError, match="detail fetch failed"),
+        ):
+            await _filter_jsonld_job_urls(urls, MagicMock())
+
+        assert active_urls == set()
 
     async def test_jsonld_verification_fails_closed_on_detail_fetch_error(self, monkeypatch):
         board_url = "https://jobs.example.com/company"

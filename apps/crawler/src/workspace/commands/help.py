@@ -1345,7 +1345,8 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    Detail fetch errors fail the monitor cycle; 404/410 and
                    pages without JobPosting data are omitted. Limited to 500
                    discovered URLs. Use for small provider listings that keep
-                   stale profile links after an opening closes.
+                   stale profile links after an opening closes. Incompatible
+                   with rich_rows.
     rich_rows      Optional static, single-page listing-row extraction:
                    {"row_selector": ".job", "link_selector": ".job-title a",
                     "location_selectors": [".job-location", ".job-country"]}
