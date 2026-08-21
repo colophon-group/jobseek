@@ -310,8 +310,10 @@ class TestCanHandle:
             "urls": 1,
             "url_filter": (
                 r"^https://talent\.example\.com/(?:[^/?#]+/)*"
-                r"(?:[^/?#]+-j\d+\.html|job-offer\.html\?yid=\d+)(?:[&#].*)?$"
+                r"(?:[^/?#]+-j\d+\.html|(?:job-offer|stellenangebot)"
+                r"\.html\?yid=\d+)(?:[&#].*)?$"
             ),
+            "url_transform": {"find": r"&sid=[^&#]*", "replace": ""},
         }
 
     async def test_rexx_empty_board_keeps_provider_preset(self):
@@ -327,6 +329,25 @@ class TestCanHandle:
         assert result is not None
         assert result["urls"] == 0
         assert result["url_filter"].startswith(r"^https://talent\.example\.com/")
+
+    async def test_rexx_portal7_localized_links_strip_expiring_session(self):
+        html = """
+        <html><head><meta name="generator" content="Rexx Recruitment - Portal7"></head>
+        <body>
+          <a href="/portal-vag/stellenangebot.html?yid=867&amp;sid=expired">Role</a>
+          <a href="https://www.rexx-systems.com/en/">Rexx Systems</a>
+        </body></html>
+        """
+        with patch("src.core.monitors.fetch_page_text", new=AsyncMock(return_value=html)):
+            result = await can_handle("https://ds6.rexx-server.com/portal-vag/eng", MagicMock())
+
+        assert result is not None
+        assert result["urls"] == 1
+        assert result["url_transform"] == {"find": r"&sid=[^&#]*", "replace": ""}
+        matcher = re.compile(result["url_filter"])
+        assert matcher.search(
+            "https://ds6.rexx-server.com/portal-vag/stellenangebot.html?yid=867&sid=expired"
+        )
 
     async def test_talentlink_empty_board_returns_provider_preset(self):
         html = """

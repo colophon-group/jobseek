@@ -99,7 +99,11 @@ _VAGAS_HOST = "trabalheconosco.vagas.com.br"
 _VAGAS_TENANT_RE = re.compile(r"[a-z0-9][a-z0-9_-]*")
 
 _REXX_PROVIDER_HOSTS = frozenset({"rexx-systems.com", "www.rexx-systems.com"})
-_REXX_JOB_PATH_FILTER = r"/(?:[^/?#]+/)*(?:[^/?#]+-j\d+\.html|job-offer\.html\?yid=\d+)(?:[&#].*)?$"
+_REXX_JOB_PATH_FILTER = (
+    r"/(?:[^/?#]+/)*(?:[^/?#]+-j\d+\.html|"
+    r"(?:job-offer|stellenangebot)\.html\?yid=\d+)(?:[&#].*)?$"
+)
+_REXX_SESSION_TRANSFORM = {"find": r"&sid=[^&#]*", "replace": ""}
 
 
 def _rexx_url_filter(url: str) -> str | None:
@@ -182,11 +186,14 @@ def _vagas_probe_config(url: str) -> dict | None:
 def _rexx_probe_config(html: str, url: str) -> dict | None:
     """Return a clean DOM preset for Rexx Systems hosted talent portals.
 
-    Rexx boards use human-readable detail URLs ending in ``-j<ID>.html``.
-    Their navigation also contains a prominent ``jobalert-<lang>.html`` link,
-    which the generic job-keyword heuristic mistakes for a posting. Detecting
-    the provider marker and applying its stable detail pattern keeps probes
-    from selecting that alert page while preserving localized job URLs.
+    Modern Rexx boards use human-readable detail URLs ending in
+    ``-j<ID>.html``. Legacy Portal7 tenants use ``job-offer.html?yid=<ID>``
+    or localized equivalents such as ``stellenangebot.html?yid=<ID>`` and
+    append a short-lived ``sid``. Their navigation also contains a prominent
+    ``jobalert-<lang>.html`` link, which the generic job-keyword heuristic
+    mistakes for a posting. Detecting the provider marker, applying its stable
+    detail pattern, and removing the session token keeps probes complete and
+    makes stored URLs independently fetchable by detail scrapers.
     """
 
     parser = _LinkExtractor()
@@ -205,6 +212,7 @@ def _rexx_probe_config(html: str, url: str) -> dict | None:
     return {
         "urls": len(urls),
         "url_filter": url_filter,
+        "url_transform": dict(_REXX_SESSION_TRANSFORM),
     }
 
 

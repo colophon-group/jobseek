@@ -436,6 +436,101 @@ class TestDomScraper:
         )
         assert result.locations == ["Industriestrasse 1 8000 Zurich"]
 
+    def test_rexx_portal7_probe_extracts_stable_detail_fields(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head>
+          <title>Stellenangebot Inside Sales Manager (m/w/d) bei Jobportal</title>
+          <meta name="generator" content="Rexx Recruitment - Portal7">
+          <meta name="description" content="Vertrieb in Mannheim">
+        </head><body>
+          <div id="jobTplContainer" class="ck_content">
+            <p>VAG develops valves for water infrastructure.</p>
+            <h3>Ihre Aufgaben</h3>
+            <ul><li>Advise customers.</li><li>Prepare quotations.</li></ul>
+          </div>
+          <div id="footer_links">Apply</div>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        assert config["scope"] == "#jobTplContainer"
+        assert config["include_document_title"] is True
+        assert config["include_document_description"] is True
+
+        result = parse_html(html, config)
+        assert result.title == "Inside Sales Manager (m/w/d)"
+        assert result.locations == ["Mannheim"]
+        assert result.description == (
+            "<p>VAG develops valves for water infrastructure.</p>"
+            "<h3>Ihre Aufgaben</h3>"
+            "<ul><li>Advise customers.</li><li>Prepare quotations.</li></ul>"
+        )
+
+    def test_rexx_portal7_keeps_full_body_when_location_metadata_is_absent(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        paragraphs = "".join(f"<p>Detail section {index}.</p>" for index in range(225))
+        html = f"""
+        <html><head>
+          <title>Job offer Service Engineer at Jobportal</title>
+          <meta name="generator" content="Rexx Recruitment - Portal7">
+        </head><body>
+          <div id="jobTplContainer" class="ck_content">
+            {paragraphs}
+            <h3>How to apply</h3>
+            <p>Send the complete application.</p>
+          </div>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        result = parse_html(html, config)
+
+        assert result.title == "Service Engineer"
+        assert result.locations is None
+        assert result.description is not None
+        assert "Detail section 224." in result.description
+        assert "Send the complete application." in result.description
+
+    def test_georg_fischer_vag_czechia_config_keeps_complete_scoped_article(self):
+        from src.core.scrapers.dom import parse_html
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(item for item in rows if item["board_slug"] == "georg-fischer-vag-czechia")
+        config = json.loads(row["scraper_config"])
+        middle = "".join(f"<p>Responsibility {index}.</p>" for index in range(30))
+        html = f"""
+        <html><body>
+          <nav><p>Navigation text.</p></nav>
+          <div class="Content article">
+            <h1>Process Engineer</h1>
+            <p>Design reliable water infrastructure.</p>
+            {middle}
+            <h2>Benefits</h2>
+            <p>Flexible working and professional development.</p>
+            <h2>How to apply</h2>
+            <p>Send your complete application to VAG.</p>
+          </div>
+          <footer><p>Unrelated footer content.</p></footer>
+        </body></html>
+        """
+
+        result = parse_html(html, config)
+
+        assert result.title == "Process Engineer"
+        assert result.locations == ["Czechia"]
+        assert result.description is not None
+        assert "Responsibility 29." in result.description
+        assert "Flexible working and professional development." in result.description
+        assert "Send your complete application to VAG." in result.description
+        assert "Unrelated footer content." not in result.description
+
     def test_solique_probe_accepts_class_tokens_and_single_quotes(self):
         from src.core.scrapers.dom import can_handle
 
@@ -507,12 +602,14 @@ class TestDomScraper:
         [
             {"scope": "#job-content", "include_document_title": "yes"},
             {"include_document_title": True},
+            {"scope": "#job-content", "include_document_description": "yes"},
+            {"include_document_description": True},
         ],
     )
-    def test_document_title_option_requires_boolean_and_scope(self, config):
+    def test_document_metadata_options_require_boolean_and_scope(self, config):
         from src.core.scrapers.dom import parse_html
 
-        with pytest.raises(ValueError, match="include_document_title"):
+        with pytest.raises(ValueError, match="document|include_document"):
             parse_html(
                 '<div id="job-content"><h2>Role</h2></div>',
                 {**config, "steps": [{"tag": "h2", "field": "title"}]},

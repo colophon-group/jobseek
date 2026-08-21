@@ -2711,6 +2711,11 @@ dom — Step-based Extraction Engine
     stealth        Use Chromium's less-detectable new headless mode.
     warmup_url     Visit this URL in the same browser context before the job.
     actions        Browser action pipeline (see: ws help actions)
+    scope          Optional CSS selector that limits extraction to the job body
+    include_document_title
+                   With scope, prepend the document <title> for extraction
+    include_document_description
+                   With scope, prepend meta description text for extraction
 
   Target fields: title, description, locations, employment_type,
   job_location_type, date_posted, valid_through, qualifications,
@@ -2882,6 +2887,8 @@ Extraction Steps — DOM scraper step format
     stop_attr   Stop when an element attribute matches (same format as attr)
     stop_regex  Stop when element text matches this regex
     stop_count  Max elements to collect
+    to_end      Collect through the final element. Use with scope when the
+                complete scoped container is the field value.
     html        If true, preserve HTML tags in output (groups <li> in <ul>)
 
   Post-processing:

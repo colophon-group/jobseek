@@ -344,6 +344,22 @@ class TestWalkSteps:
         assert "Two" in result["first_two"]
         assert "Three" not in result["first_two"]
 
+    def test_to_end_collects_the_complete_remaining_range(self):
+        els = self._els(
+            ("p", "One"),
+            ("p", "Two"),
+            ("h3", "How to apply"),
+            ("p", "Send the complete application."),
+        )
+        steps = [{"tag": "p", "field": "complete", "to_end": True, "html": True}]
+
+        result, cursor = walk_steps(els, steps)
+
+        assert result["complete"] == (
+            "<p>One</p><p>Two</p><h3>How to apply</h3><p>Send the complete application.</p>"
+        )
+        assert cursor == len(els)
+
     def test_optional_no_warning(self):
         els = self._els(("p", "Hello"))
         steps = [{"tag": "h1", "field": "missing", "optional": True}]
