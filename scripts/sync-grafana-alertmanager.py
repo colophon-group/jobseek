@@ -18,7 +18,8 @@ BRIDGE_RULE_UID = "jobseek-production-page-bridge"
 DEADMAN_RULE_UID = "jobseek-paging-route-deadman"
 SYNTHETIC_TEST_RULE_UID = "jobseek-paging-e2e-test"
 PAGING_RULE_UIDS = (BRIDGE_RULE_UID, DEADMAN_RULE_UID, SYNTHETIC_TEST_RULE_UID)
-GRAFANA_READ_ATTEMPTS = 5
+GRAFANA_READ_ATTEMPTS = 9
+GRAFANA_READ_RETRY_MAX_SECONDS = 30
 GRAFANA_RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
 
 
@@ -140,16 +141,13 @@ class GrafanaClient:
                 )
             except httpx.HTTPError as exc:
                 if attempt + 1 < max_attempts:
-                    time.sleep(2**attempt)
+                    time.sleep(min(2**attempt, GRAFANA_READ_RETRY_MAX_SECONDS))
                     continue
                 raise AlertmanagerSyncError(
                     f"Grafana {method} {path.split('?', 1)[0]} failed: {type(exc).__name__}"
                 ) from exc
-            if (
-                response.status_code in GRAFANA_RETRYABLE_STATUSES
-                and attempt + 1 < max_attempts
-            ):
-                time.sleep(2**attempt)
+            if response.status_code in GRAFANA_RETRYABLE_STATUSES and attempt + 1 < max_attempts:
+                time.sleep(min(2**attempt, GRAFANA_READ_RETRY_MAX_SECONDS))
                 continue
             break
         assert response is not None
