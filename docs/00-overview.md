@@ -116,4 +116,4 @@ plans, and ADRs, start with [docs/README.md](./README.md).
 - [09 -- Enrichment](./09-enrichment.md): LLM-based enrichment pipeline
 - [16 -- Murmur Codex MCP Transition](./16-murmur-codex-mcp-transition.md): Codex-first Murmur MCP plan
 - [17 -- Codex Migration Verification Runbook](./17-codex-migration-verification-runbook.md): Pilot checklist and rollback criteria
-- [18 -- Hetzner Codex Runner Deployment](./18-codex-automation-deployment.md): Production runner inventory, deployment, maintenance, and desktop-scheduler sunset boundary
+- [18 -- Hetzner Codex Runner Deployment](./18-codex-automation-deployment.md): Production runner inventory, deployment, maintenance, and recovery boundary

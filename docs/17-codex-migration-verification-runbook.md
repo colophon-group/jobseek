@@ -19,16 +19,15 @@ codex exec --json "<pilot prompt>" | tee "$CODEX_EXEC_JSONL"
 If no Codex JSONL file is available, trace export falls back to the internal
 `ws` action log so completion remains best-effort.
 
-For the recurring company resolver, use the Hetzner-hosted local Codex runner
+For the recurring company resolver, use the Hetzner-hosted Codex runner
 documented in [18-codex-automation-deployment.md](18-codex-automation-deployment.md).
 It should set `CODEX_EXEC_JSONL` for every accepted run and store the resulting
 trace outside the repo. Do not trigger recurring company resolver work from
 GitHub Actions.
 
-For emergency resolver recovery, use the same local Codex CLI path from a
-throwaway worktree and set `CODEX_EXEC_JSONL` explicitly. The retired GitHub
-Actions fallback used OpenAI API-key billing and must not be described as
-subscription-backed or reintroduced for the Hetzner-owned routines.
+For emergency resolver recovery, invoke the same committed runner entry point
+once from a throwaway worktree and set `CODEX_EXEC_JSONL` explicitly. Do not
+introduce a GitHub Actions or workstation schedule for Hetzner-owned routines.
 
 ## Common Preflight
 
@@ -125,8 +124,8 @@ cannot resume from workspace state.
   provider-specific code that bypasses the shared estimator.
 - Never put API keys in Codex prompts, JSONL traces, GitHub comments, or PR
   bodies.
-- For subscription-backed local Codex runs, record usage from `codex exec
-  --json` events in the Hetzner governor ledger.
+- For subscription-backed Codex runs, record usage from `codex exec --json`
+  events in the Hetzner governor ledger.
 - The unofficial ChatGPT usage endpoint probe may be used as best-effort
   scheduling telemetry, but rollout must remain safe when it fails or changes
   shape. Fall back to local usage accounting and conservative run budgets.
@@ -139,8 +138,8 @@ workflow names, direct-provider API phrasing, and claims that GitHub Actions
 Codex runs are paid through a ChatGPT subscription.
 
 The recurring company resolver and daily routines run through the Hetzner
-local Codex runner. Docs, AGENTS files, and workflows should not reference
-GitHub Actions fallback paths for those surfaces.
+Codex runner. Docs, AGENTS files, and workflows should not reference alternate
+schedulers for those surfaces.
 
 ## Prompt-Duplication Checks
 

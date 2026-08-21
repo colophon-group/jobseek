@@ -9,32 +9,19 @@ deployment artifacts; do not treat them as source of truth.
 
 | systemd unit | cadence | execution | source of truth | model policy |
 |---|---:|---|---|---|
-| `jobseek-codex-daily-annotations.timer` | daily, 08:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per day | [15-data-sampling-routine.md](15-data-sampling-routine.md), [`.agents/skills/jobseek-label-daily/SKILL.md`](../.agents/skills/jobseek-label-daily/SKILL.md) | Sol/high orchestrator; Luna and Terra labeller subagents |
-| `jobseek-codex-daily-error-review.timer` | daily, 09:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, root-collected redacted evidence bundle | [14-error-review-routine.md](14-error-review-routine.md), [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md) | Sol/high orchestrator; no default subagents |
-| `jobseek-codex-governor.timer` | self-regulated, checked after each governor run | Hetzner crawler host, dedicated `codex-runner` user, local Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | Sol/high orchestrator; Terra and Luna `ws` subagents |
+| `jobseek-codex-daily-annotations.timer` | daily, 08:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, isolated worktree per day | [15-data-sampling-routine.md](15-data-sampling-routine.md), [`.agents/skills/jobseek-label-daily/SKILL.md`](../.agents/skills/jobseek-label-daily/SKILL.md) | Sol/high orchestrator; Luna and Terra labeller subagents |
+| `jobseek-codex-daily-error-review.timer` | daily, 09:00 UTC | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, root-collected redacted evidence bundle | [14-error-review-routine.md](14-error-review-routine.md), [`.agents/skills/jobseek-error-review/SKILL.md`](../.agents/skills/jobseek-error-review/SKILL.md) | Sol/high orchestrator; no default subagents |
+| `jobseek-codex-governor.timer` | self-regulated, checked after each governor run | Hetzner crawler host, dedicated `codex-runner` user, Codex CLI, isolated worktree per issue | [01-agent-workflow.md](01-agent-workflow.md), `apps/crawler/AGENTS.md`, `ws task --issue <N>` | Sol/high orchestrator; Terra and Luna `ws` subagents |
 | `jobseek-codex-docker-lifecycle.service` | continuous | root read-only event watcher producing allowlisted evidence for the isolated runner | this runbook and the committed unit/script | no model invocation |
 
 The recurring company resolver and daily routines must not be triggered by
-GitHub Actions. They run on the Hetzner crawler host through local Codex CLI
-auth so they can use the subscription-backed Codex surface where possible.
+GitHub Actions or workstation schedules. They run on the Hetzner crawler host
+through the runner user's Codex CLI auth so they can use the
+subscription-backed Codex surface where possible.
 GitHub Actions may still deploy the Hetzner runner host surface. The
 [`deploy-codex-runner.yml`](../.github/workflows/deploy-codex-runner.yml)
 workflow updates `/srv/jobseek-codex/repo`, installs/verifies systemd units,
 and leaves actual Codex execution to the Hetzner timers.
-
-## Sunset Desktop Scheduler Names
-
-The former desktop-scheduled routine names are retained here only so duplicate
-schedulers can be recognized during an audit:
-
-- `jobseek-company-request-resolver`
-- `jobseek-daily-classifications`
-- `jobseek-daily-error-review`
-
-They must remain absent from Codex desktop schedules, local scheduler files,
-systemd, and cron. Do not recreate, pause-and-retain, or use them as a recovery
-path. Manual recovery runs the same committed runner entry point once from a
-throwaway worktree after checking the Hetzner ledger and shared lock.
 
 ## GPT-5.6 Model Policy
 
@@ -106,7 +93,7 @@ Hetzner governor/timers, or by a future replacement for those host units.
   to the repo, reports, traces, GitHub comments, or PR bodies.
 - The unofficial ChatGPT usage endpoint probe is best-effort telemetry. The
   governor may use it to make better scheduling decisions, but it must fall
-  back to local Codex JSONL usage accounting and conservative run budgets.
+  back to runner JSONL usage accounting and conservative run budgets.
 
 ## Deployment Procedure
 
@@ -133,13 +120,13 @@ prompt, or routine source:
    [`deploy-codex-runner-host.sh`](../scripts/deploy-codex-runner-host.sh)
    with `JOBSEEK_CODEX_START_TIMERS=0`, so it does not start a Codex run.
 
-Desktop scheduling is not a recovery path. If a host timer is unavailable,
-repair the committed runner/unit configuration or perform one bounded manual
-CLI run using the same ledger, lock, prompt, and verification contracts.
+If a host timer is unavailable, repair the committed runner/unit configuration
+or perform one bounded manual CLI run using the same ledger, lock, prompt, and
+verification contracts. Do not create an alternate recurring schedule.
 
 ## Hetzner Codex Runner Implementation Plan
 
-The company resolver and daily routines run as local Codex jobs on the crawler
+The company resolver and daily routines run as Codex jobs on the crawler
 machine. The current crawler host has enough headroom for one low-priority
 Codex routine at a time, but the runner must be isolated so it cannot consume
 production crawler secrets or Docker capacity.
@@ -331,7 +318,7 @@ usage telemetry, ledger writes, and worktree creation have been verified. The
 systemd service runs
 `/srv/jobseek-codex/repo/apps/crawler/.venv/bin/python /srv/jobseek-codex/repo/scripts/codex-company-resolver-governor.py`
 under `flock -n /srv/jobseek-codex/state/codex-runner.lock`; daily services
-use the same lock with a bounded wait. This keeps all local Codex routines at
+use the same lock with a bounded wait. This keeps all Hetzner Codex routines at
 one active process without firing missed daily jobs immediately after a
 deployment.
 
@@ -488,7 +475,7 @@ For each accepted issue:
 3. Create a fresh worktree under
    `/srv/jobseek-codex/worktrees/company-request-<issue>-<run-id>`.
 4. Export `CODEX_EXEC_JSONL` under `/srv/jobseek-codex/traces/`.
-5. Run local Codex CLI with one self-contained issue prompt. The prompt starts
+5. Run Codex CLI with one self-contained issue prompt. The prompt starts
    by telling Codex to run `uv run ws task --issue <N>` from `apps/crawler`,
    then follow only the instructions printed by `ws`.
 6. Capture `codex exec --json` stdout to the JSONL trace path and stderr to a
@@ -689,8 +676,9 @@ the directory and count toward the admission ceiling.
 - Create PRs only; never push directly to `main`.
 - Leave config-only additions on `add-company/<slug>` branches and code
   changes on `fix-crawler/<description>` branches.
-- Manual recovery uses the same local Codex CLI path from a throwaway worktree
-  and must still respect `ws` claims, the governor ledger, and trace capture.
+- Manual recovery invokes the same committed runner entry point once from a
+  throwaway worktree and must still respect `ws` claims, the governor ledger,
+  and trace capture.
 
 ## Maintenance Checks
 
