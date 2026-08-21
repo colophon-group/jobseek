@@ -203,11 +203,38 @@ class TestRichRowsStatic:
         with pytest.raises(ValueError, match="omitted configured location"):
             _extract_rich_rows_static(html, "https://example.com/careers/", config, None)
 
+    def test_extracts_row_data_href_with_separate_title_selector(self):
+        html = """
+        <table><tbody>
+          <tr data-href="/jobs/engineer">
+            <td class="title">Engineer</td><td class="city">Winterthur</td>
+            <td class="country">Switzerland</td>
+          </tr>
+        </tbody></table>
+        """
+        config = _validated_rich_rows(
+            {
+                "row_selector": "tbody tr[data-href]",
+                "link_attr": "data-href",
+                "title_selector": ".title",
+                "location_selectors": [".city", ".country"],
+            }
+        )
+
+        assert config is not None
+        jobs = _extract_rich_rows_static(html, "https://example.com/careers", config, None)
+
+        assert [(job.url, job.title, job.locations) for job in jobs] == [
+            ("https://example.com/jobs/engineer", "Engineer", ["Winterthur, Switzerland"])
+        ]
+
     @pytest.mark.parametrize(
         "config",
         [
             {},
             {"row_selector": ".job", "link_selector": ".job a", "unexpected": True},
+            {"row_selector": ".job", "link_attr": "href"},
+            {"row_selector": ".job", "link_attr": "not valid!"},
             {"row_selector": ".job", "link_selector": ".job a", "location_selectors": "p"},
             {
                 "row_selector": ".job",

@@ -1350,8 +1350,13 @@ dom — Link or Static Listing-Row Extraction (fallback)
     rich_rows      Optional static, single-page listing-row extraction:
                    {"row_selector": ".job", "link_selector": ".job-title a",
                     "location_selectors": [".job-location", ".job-country"]}
-                   The anchor text becomes the title; location components are
-                   joined in selector order. Every configured field is strict,
+                   Rows whose URL is stored directly on the row can instead use
+                   {"row_selector": "tr[data-href]", "link_attr": "data-href",
+                    "title_selector": "td.title",
+                    "location_selectors": ["td.city", "td.country"]}.
+                   The selected link or title node text becomes the title;
+                   location components are joined in selector order. Every
+                   configured field is strict,
                    so markup drift fails the cycle instead of publishing a
                    partial authoritative result. Incompatible with rendering,
                    pagination, and include_board_url. Requires a real detail
@@ -2596,6 +2601,10 @@ json-ld — Structured JobPosting Extractor
                    Page.goto timeout (Playwright only). Default:
                    "domcontentloaded". Set to null to opt out.
     timeout        Navigation timeout in ms (Playwright only)
+    ignore_address_region
+                   Omit addressRegion while retaining addressLocality and
+                   addressCountry. Use only when a provider demonstrably
+                   publishes incorrect regions across otherwise valid jobs.
 
   Fields extracted (from schema.org properties):
     title          ← title or name

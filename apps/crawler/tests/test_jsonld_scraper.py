@@ -397,6 +397,22 @@ class TestMetaLocationFallback:
         assert result.description == "<p>Learn precision manufacturing.</p>"
         assert result.locations is None
 
+    def test_parse_html_can_ignore_incorrect_address_region(self):
+        html = """<html><head>
+        <script type="application/ld+json">
+        {"@type":"JobPosting","title":"Chassis Application Advisor",
+         "jobLocation":{"address":{"addressLocality":"Dorking",
+         "addressRegion":"Region Zürich / Schaffhausen",
+         "addressCountry":"GB"}}}
+        </script>
+        </head></html>"""
+
+        assert parse_html(html).locations == ["Dorking, Region Zürich / Schaffhausen, GB"]
+
+        result = parse_html(html, {"ignore_address_region": True})
+
+        assert result.locations == ["Dorking, GB"]
+
     def test_ignore_locations_also_covers_meta_only_jobs(self):
         html = """<html><head>
         <meta name="job-title" content="Apprentice">

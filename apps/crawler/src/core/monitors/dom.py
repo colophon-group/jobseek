@@ -672,13 +672,17 @@ def _validate_css_selector(value: object, *, name: str) -> str | None:
     return selector
 
 
-def _validated_rich_rows(value: object) -> tuple[str, str, tuple[str, ...]] | None:
+def _validated_rich_rows(
+    value: object,
+) -> tuple[str, str | None, str, str | None, tuple[str, ...]] | None:
     """Validate optional static listing-row extraction config."""
     if value is None:
         return None
     if not isinstance(value, dict) or set(value) - {
         "row_selector",
         "link_selector",
+        "link_attr",
+        "title_selector",
         "location_selectors",
     }:
         raise ValueError("DOM monitor rich_rows must be a bounded mapping")
@@ -686,8 +690,23 @@ def _validated_rich_rows(value: object) -> tuple[str, str, tuple[str, ...]] | No
     link_selector = _validate_css_selector(
         value.get("link_selector"), name="rich_rows.link_selector"
     )
-    if row_selector is None or link_selector is None:
-        raise ValueError("DOM monitor rich_rows requires row_selector and link_selector")
+    link_attr = value.get("link_attr", "href")
+    if (
+        not isinstance(link_attr, str)
+        or not link_attr.strip()
+        or len(link_attr) > 64
+        or not re.fullmatch(r"[A-Za-z_:][-A-Za-z0-9_:.]*", link_attr.strip())
+    ):
+        raise ValueError("DOM monitor rich_rows.link_attr must be a valid attribute name")
+    link_attr = link_attr.strip()
+    title_selector = _validate_css_selector(
+        value.get("title_selector"), name="rich_rows.title_selector"
+    )
+    if row_selector is None or (link_selector is None and link_attr == "href"):
+        raise ValueError(
+            "DOM monitor rich_rows requires row_selector and either link_selector "
+            "or a non-href link_attr on the row"
+        )
     locations = value.get("location_selectors") or []
     if (
         not isinstance(locations, list)
@@ -699,17 +718,17 @@ def _validated_rich_rows(value: object) -> tuple[str, str, tuple[str, ...]] | No
         _validate_css_selector(selector, name="rich_rows.location_selectors") or ""
         for selector in locations
     )
-    return row_selector, link_selector, location_selectors
+    return row_selector, link_selector, link_attr, title_selector, location_selectors
 
 
 def _extract_rich_rows_static(
     html: str,
     base_url: str,
-    config: tuple[str, str, tuple[str, ...]],
+    config: tuple[str, str | None, str, str | None, tuple[str, ...]],
     url_matcher: re.Pattern | None,
 ) -> list[DiscoveredJob]:
     """Extract stable URLs, titles, and joined locations from listing rows."""
-    row_selector, link_selector, location_selectors = config
+    row_selector, link_selector, link_attr, title_selector, location_selectors = config
     tree = LexborHTMLParser(html)
     rows = tree.css(row_selector)
     if not rows:
@@ -717,9 +736,10 @@ def _extract_rich_rows_static(
 
     jobs_by_url: dict[str, DiscoveredJob] = {}
     for index, row in enumerate(rows):
-        link = row.css_first(link_selector)
-        href = link.attributes.get("href") if link is not None else None
-        title = link.text(separator=" ", strip=True).strip() if link is not None else ""
+        link = row.css_first(link_selector) if link_selector is not None else row
+        href = link.attributes.get(link_attr) if link is not None else None
+        title_node = row.css_first(title_selector) if title_selector is not None else link
+        title = title_node.text(separator=" ", strip=True).strip() if title_node is not None else ""
         if not href or not title:
             raise ValueError(f"DOM monitor rich_rows row {index} omitted its link or title")
         url = urljoin(base_url, href)

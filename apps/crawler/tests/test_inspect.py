@@ -2097,3 +2097,51 @@ class TestPilatusBoardConfig:
         assert scraper_config["json_path"] == "data.jobDetails.job"
         assert scraper_config["fields"]["description"] == "content"
         assert scraper_config["fields"]["locations"] == "location.label"
+
+
+class TestBucherIndustriesConfig:
+    """Preserve the live provider-quality corrections from PR #7736."""
+
+    def test_rich_provider_fields_and_asset_hashes_are_pinned(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        data_dir = get_data_dir()
+        _, rows = read_csv(data_dir / "boards.csv")
+        by_slug = {
+            row["board_slug"]: row for row in rows if row["company_slug"] == "bucher-industries"
+        }
+
+        hydraulics = json.loads(by_slug["bucher-industries-hydraulics"]["scraper_config"])
+        assert hydraulics["enrich"] == ["description"]
+
+        kuhn_fields = json.loads(by_slug["bucher-industries-kuhn"]["monitor_config"])["fields"]
+        assert kuhn_fields["description"] == [
+            "definitions.definition",
+            "definitions.bottomLeftText",
+            "definitions.bottomRightText",
+            "definitions.additionalInfos",
+        ]
+        assert kuhn_fields["employment_type"]["map"] == {
+            "Alternance": "internship",
+            "Emploi (temps plein)": "full_time",
+            "Emploi(temps partiel)": "part_time",
+            "Stage": "internship",
+            "VIE": "internship",
+        }
+
+        municipal = json.loads(by_slug["bucher-industries-municipal"]["scraper_config"])
+        assert municipal == {"ignore_address_region": True}
+
+        _, companies = read_csv(data_dir / "companies.csv")
+        company = next(row for row in companies if row["slug"] == "bucher-industries")
+        assert company["logo_url"] == (
+            "https://jobseek-assets.colophon-group.org/companies/bucher-industries/"
+            "logo-72077144ff385ec47fc3ff19d3109fd6bd244c8033c741a7124c348aa35c0b06.svg"
+        )
+        assert company["icon_url"] == (
+            "https://jobseek-assets.colophon-group.org/companies/bucher-industries/"
+            "icon-6ba9159d5542e9990aa091cedb1a7cdb9bca9a79fd9e3f3e01df6ef0cee65b25.webp"
+        )
