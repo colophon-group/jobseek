@@ -2390,6 +2390,10 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
       "url_template": "https://example.com/jobs/{id}",
       "url_template_fields": {"public_id": "customFields[0].value"},
       "slug_fields": ["title"],
+      "item_filter": {
+        "exclude": {"attributes.country": ["USA"]},
+        "dedupe_by": "provider.apply_id"
+      },
       "pagination": {
         "param_name": "offset",
         "style": "offset",
@@ -2421,6 +2425,11 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                      top-level scalar fields.
     slug_fields      Optional item paths slugified and joined into the {slug}
                      URL-template placeholder.
+    item_filter      Optional post-pagination source partition. ``exclude``
+                     maps item paths to exact string values; matching scalar
+                     or list values are omitted. ``dedupe_by`` retains the
+                     first item for each non-empty stable identifier. A short
+                     upstream response remains truncated after filtering.
     params           Query parameters merged into api_url at request time.
                      Auto-filled from the captured URL (empty and pagination
                      params stripped). Edit result_limit / per_page here to

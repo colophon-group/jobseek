@@ -92,6 +92,8 @@ _MAX_REFRESH_FIELDS = 16
 _MAX_REFRESH_PATTERN_CHARS = 4_096
 _MAX_REFRESH_VALUE_CHARS = 16_384
 _MAX_REFRESH_PAGE_BYTES = 2_000_000
+_MAX_ITEM_FILTER_FIELDS = 16
+_MAX_ITEM_FILTER_VALUES = 100
 
 
 MAX_ITEMS = 10_000
@@ -861,6 +863,7 @@ def _build_item_projector(
     url_template: str | None,
     url_template_fields: dict[str, str],
     slug_fields: list[str] | None = None,
+    preserve_paths: list[str] | None = None,
 ) -> Callable[[dict], dict] | None:
     """Build a conservative projector for explicitly configured rich APIs.
 
@@ -914,6 +917,12 @@ def _build_item_projector(
             return None
         roots.add(root)
 
+    for path in preserve_paths or []:
+        root = _item_path_root(path)
+        if root is None:
+            return None
+        roots.add(root)
+
     required = frozenset(roots)
 
     def _project(item: dict) -> dict:
@@ -937,6 +946,104 @@ def _validated_slug_fields(config: dict) -> list[str]:
     ):
         raise ValueError("api_sniffer slug_fields must be a list of non-empty field paths")
     return [path.strip() for path in value]
+
+
+def _validated_item_filter(
+    config: dict,
+) -> tuple[dict[str, frozenset[str]], str | None]:
+    """Validate an optional post-pagination item scope and stable dedupe key."""
+    value = config.get("item_filter")
+    if value is None:
+        return {}, None
+    if not isinstance(value, dict) or not value:
+        raise ValueError("api_sniffer item_filter must be a non-empty mapping")
+    if set(value) - {"exclude", "dedupe_by"}:
+        raise ValueError("api_sniffer item_filter contains unsupported keys")
+
+    exclude = value.get("exclude") or {}
+    if not isinstance(exclude, dict) or len(exclude) > _MAX_ITEM_FILTER_FIELDS:
+        raise ValueError("api_sniffer item_filter.exclude must be a bounded mapping")
+    normalized: dict[str, frozenset[str]] = {}
+    for path, excluded_values in exclude.items():
+        if not isinstance(path, str) or not path.strip():
+            raise ValueError("api_sniffer item_filter exclude paths must be non-empty strings")
+        if (
+            not isinstance(excluded_values, list)
+            or not excluded_values
+            or len(excluded_values) > _MAX_ITEM_FILTER_VALUES
+            or not all(isinstance(item, str) and item for item in excluded_values)
+        ):
+            raise ValueError(
+                "api_sniffer item_filter exclude values must be bounded non-empty string lists"
+            )
+        normalized_path = path.strip()
+        try:
+            extract_field({}, normalized_path)
+        except Exception as exc:
+            raise ValueError("api_sniffer item_filter exclude paths must be valid") from exc
+        normalized[normalized_path] = frozenset(excluded_values)
+
+    dedupe_by = value.get("dedupe_by")
+    if dedupe_by is not None and (not isinstance(dedupe_by, str) or not dedupe_by.strip()):
+        raise ValueError("api_sniffer item_filter.dedupe_by must be a non-empty field path")
+    dedupe_path = dedupe_by.strip() if isinstance(dedupe_by, str) else None
+    if dedupe_path is not None:
+        try:
+            extract_field({}, dedupe_path)
+        except Exception as exc:
+            raise ValueError("api_sniffer item_filter.dedupe_by path must be valid") from exc
+    if not normalized and dedupe_path is None:
+        raise ValueError("api_sniffer item_filter must exclude or deduplicate items")
+    return normalized, dedupe_path
+
+
+def _apply_item_filter(
+    items: list[dict],
+    item_filter: tuple[dict[str, frozenset[str]], str | None],
+    advertised_total: int | None,
+) -> tuple[list[dict], int | None]:
+    """Apply an intentional source partition without masking upstream truncation."""
+    exclude, dedupe_by = item_filter
+    if not exclude and dedupe_by is None:
+        return items, advertised_total
+
+    original_count = len(items)
+    scoped: list[dict] = []
+    for item in items:
+        for path, rejected in exclude.items():
+            value = extract_field(item, path)
+            values = value if isinstance(value, list) else [value]
+            if any(isinstance(candidate, str) and candidate in rejected for candidate in values):
+                break
+        else:
+            scoped.append(item)
+
+    if dedupe_by is not None:
+        seen: set[str] = set()
+        deduped: list[dict] = []
+        for item in scoped:
+            identity = extract_field(item, dedupe_by)
+            if not isinstance(identity, str) or not identity:
+                deduped.append(item)
+                continue
+            if identity in seen:
+                continue
+            seen.add(identity)
+            deduped.append(item)
+        scoped = deduped
+
+    # An equal upstream count proves every advertised item reached the client,
+    # so the scoped count becomes authoritative. If the page was already
+    # short, retain its larger total and let truncation fail closed.
+    scoped_total = len(scoped) if advertised_total == original_count else advertised_total
+    log.info(
+        "api_sniffer.item_filter_applied",
+        before=original_count,
+        after=len(scoped),
+        advertised_total=advertised_total,
+        scoped_total=scoped_total,
+    )
+    return scoped, scoped_total
 
 
 def score_array(path: str, items: list[dict], api_url: str) -> int:
@@ -1297,6 +1404,8 @@ async def _discover_http(
     url_template = config.get("url_template")
     url_template_fields = config.get("url_template_fields") or {}
     slug_fields = _validated_slug_fields(config)
+    item_filter = _validated_item_filter(config)
+    item_filter_paths = [*item_filter[0], *([item_filter[1]] if item_filter[1] else [])]
     url_regex = config.get("url_regex")
     total_path = config.get("total_path")
     post_data = _configured_post_data(config)
@@ -1489,6 +1598,7 @@ async def _discover_http(
             url_template,
             url_template_fields,
             slug_fields,
+            item_filter_paths,
         )
 
         if pagination_config and items:
@@ -1526,6 +1636,8 @@ async def _discover_http(
             total = job_result.total_count
         elif item_projector:
             items = [item_projector(item) for item in items]
+
+        items, total = _apply_item_filter(items, item_filter, total)
 
         # MAX_ITEMS cap (#3216 / #3267). Don't slice silently: keep every
         # item so the URLs the monitor *did* collect are still inserted,
@@ -1740,6 +1852,8 @@ async def _discover_replay(
     url_template = config.get("url_template")
     url_template_fields = config.get("url_template_fields") or {}
     slug_fields = _validated_slug_fields(config)
+    item_filter = _validated_item_filter(config)
+    item_filter_paths = [*item_filter[0], *([item_filter[1]] if item_filter[1] else [])]
     post_data = _configured_post_data(config)
     request_headers = config.get("request_headers", {})
     fields_map: dict[str, str] = config.get("fields") or {}
@@ -1901,6 +2015,7 @@ async def _discover_replay(
             url_template,
             url_template_fields,
             slug_fields,
+            item_filter_paths,
         )
 
         # Paginate if configured
@@ -1946,6 +2061,8 @@ async def _discover_replay(
             total_count = job_result.total_count
         elif item_projector:
             items = [item_projector(item) for item in items]
+
+        items, total_count = _apply_item_filter(items, item_filter, total_count)
 
         # MAX_ITEMS cap (#3216 / #3267). Don't slice silently: keep every
         # item so the URLs the monitor *did* collect are still inserted,

@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import csv
+import json
+import re
+from pathlib import Path
+
 import httpx
 
 from src.core.scrapers.paycor import can_handle, parse_html, scrape
@@ -81,3 +86,27 @@ async def test_scrape_returns_empty_content_for_failed_detail():
 def test_workspace_surfaces_include_paycor_scraper():
     assert "paycor" in all_scraper_types()
     assert "paycor" in SCRAPER_CARDS
+
+
+def test_stadler_boards_partition_central_feed_and_canonicalize_paycor_urls():
+    with (Path(__file__).parents[1] / "data" / "boards.csv").open(newline="") as handle:
+        boards = {
+            row["board_slug"]: json.loads(row["monitor_config"] or "{}")
+            for row in csv.DictReader(handle)
+            if row["company_slug"] == "stadler-rail"
+        }
+
+    assert boards["stadler-rail-corporate-global"]["item_filter"] == {
+        "exclude": {
+            'attributes."25"': ["Switzerland", "USA", "Netherlands"],
+        },
+        "dedupe_by": "szas.sza_apply_link",
+    }
+    transform = boards["stadler-rail-us-paycor"]["url_transform"]
+    source_url = (
+        "https://recruitingbypaycor.com/career/JobIntroduction.action"
+        "?clientId=client&id=stable&source=Company+Website&lang=en"
+    )
+    assert re.sub(transform["find"], transform["replace"], source_url) == (
+        "https://recruitingbypaycor.com/career/JobIntroduction.action?clientId=client&id=stable"
+    )
