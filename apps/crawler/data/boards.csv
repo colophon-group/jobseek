@@ -751,6 +751,7 @@ behavox,behavox-greenhouse,https://job-boards.greenhouse.io/behavox,greenhouse,"
 beiersdorf,beiersdorf-brazil-vagas,https://trabalheconosco.vagas.com.br/bdfniveaeucerin/oportunidades,dom,"{""proxy"": true, ""url_filter"": ""^https://trabalheconosco\\.vagas\\.com\\.br/[^/?#]+/oportunidade/[^?#]+/\\d+(?:[?#].*)?$"", ""pagination"": {""param_name"": ""pagina"", ""max_pages"": 1000}}",json-ld,"{""proxy"": true}"
 beiersdorf,beiersdorf-central,https://www.beiersdorf.com/career/your-application/job-search,dom,"{""render"": false, ""url_filter"": ""^https://www\\.beiersdorf\\.(?:com|de)/(?:career|karriere)/jobs/[a-f0-9]+$"", ""pagination"": {""param_name"": ""page"", ""start"": 0, ""increment"": 1, ""max_pages"": 100, ""url_template"": ""https://www.beiersdorf.com/career/your-application/job-search?count=100&page={page}""}}",json-ld,
 believe,believe-careers,https://careers.smartrecruiters.com/Believe,smartrecruiters,"{""token"": ""Believe""}",smartrecruiters,
+belimo,belimo-ats,https://jobsredirect.belimo.com/search/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://jobsredirect.belimo.com/googlefeed.xml""}",skip,
 belong,belong-careers,https://jobs.lever.co/belong,lever,"{""token"": ""belong""}",skip,
 belvedere-trading,belvedere-trading-lever,https://jobs.lever.co/belvederetrading,lever,"{""token"": ""belvederetrading""}",skip,
 belvo,belvo-ashby,https://jobs.ashbyhq.com/belvo,ashby,"{""token"": ""belvo""}",skip,
