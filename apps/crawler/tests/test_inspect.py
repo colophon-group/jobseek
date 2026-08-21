@@ -1868,6 +1868,45 @@ class TestOrangeQuantumSystemsSiteGroundConfig:
         assert "Send open applications" not in content.description
 
 
+class TestVatGroupConfig:
+    """VAT's apprenticeship board must replace Yousty's malformed location."""
+
+    def test_yousty_jsonld_location_override(self):
+        import json
+
+        from src.core.scrapers.jsonld import parse_html
+        from src.processing.scrape import _apply_defaults
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(
+            (r for r in rows if r["board_slug"] == "vat-group-apprenticeships-ch"),
+            None,
+        )
+        assert row is not None
+        assert row["monitor_type"] == "dom"
+        assert row["scraper_type"] == "json-ld"
+        assert row["board_url"] == "https://www.yousty.ch/de-CH/lehrstellen/firmen/944-vat-group"
+
+        monitor_config = json.loads(row["monitor_config"])
+        scraper_config = json.loads(row["scraper_config"])
+        assert monitor_config["link_selector"] == "a[href*='/lehrstellen/profile/']"
+        assert scraper_config["ignore_locations"] is True
+        assert scraper_config["defaults"]["locations"] == ["Haag, Switzerland"]
+        assert scraper_config["defaults"]["job_location_type"] == "onsite"
+
+        sample_html = """<script type="application/ld+json">
+        {"@type":"JobPosting","title":"Lehrstelle als Polymechaniker/in EFZ",
+         "description":"<p>Vierjährige Ausbildung bei VAT.</p>",
+         "jobLocation":{"name":"VAT Group"}}
+        </script>"""
+        content = _apply_defaults(parse_html(sample_html, scraper_config), scraper_config)
+        assert content.title == "Lehrstelle als Polymechaniker/in EFZ"
+        assert content.locations == ["Haag, Switzerland"]
+        assert content.job_location_type == "onsite"
+
+
 class TestOverwolfComeetDescriptionCoverage:
     """Overwolf must use Comeet's rich source directly (#5807).
 

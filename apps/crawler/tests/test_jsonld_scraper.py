@@ -351,6 +351,35 @@ class TestMetaLocationFallback:
 
         assert result.locations == ["Bangalore, Karnataka, IN"]
 
+    def test_parse_html_can_ignore_incorrect_provider_locations(self):
+        html = """<html><head>
+        <meta name="job-city" content="Wrong meta fallback">
+        <script type="application/ld+json">
+        {"@type":"JobPosting","title":"Apprentice",
+         "description":"<p>Learn precision manufacturing.</p>",
+         "jobLocation":{"name":"VAT Group"}}
+        </script>
+        </head></html>"""
+
+        result = parse_html(html, {"ignore_locations": True})
+
+        assert result.title == "Apprentice"
+        assert result.description == "<p>Learn precision manufacturing.</p>"
+        assert result.locations is None
+
+    def test_ignore_locations_also_covers_meta_only_jobs(self):
+        html = """<html><head>
+        <meta name="job-title" content="Apprentice">
+        <meta name="job-description" content="&lt;p&gt;Learn precision manufacturing.&lt;/p&gt;">
+        <meta name="job-city" content="Wrong provider city">
+        </head></html>"""
+
+        result = parse_html(html, {"ignore_locations": True})
+
+        assert result.title == "Apprentice"
+        assert result.description == "<p>Learn precision manufacturing.</p>"
+        assert result.locations is None
+
     def test_parse_html_can_ignore_provider_generated_posting_date(self):
         html = """<html><head><script type="application/ld+json">
         {"@type":"JobPosting","title":"Housekeeper",
@@ -637,6 +666,26 @@ class TestParsePosting:
         posting = {"name": "Designer"}
         result = _parse_posting(posting)
         assert result.title == "Designer"
+
+    def test_prefers_specific_employment_nature_from_schema_list(self):
+        from src.core.enum_normalize import normalize_employment_type
+
+        result = _parse_posting(
+            {"title": "Polymechanic apprentice", "employmentType": ["INTERN", "FULL_TIME"]}
+        )
+
+        assert result.employment_type == "INTERN"
+        assert normalize_employment_type(result.employment_type) == "internship"
+
+    def test_preserves_full_or_part_schema_list(self):
+        from src.core.enum_normalize import normalize_employment_type
+
+        result = _parse_posting(
+            {"title": "Flexible role", "employmentType": ["FULL_TIME", "PART_TIME"]}
+        )
+
+        assert result.employment_type == "FULL_TIME, PART_TIME"
+        assert normalize_employment_type(result.employment_type) == "full_or_part"
 
     def test_title_takes_precedence_over_name(self):
         posting = {"title": "Engineer", "name": "Designer"}
