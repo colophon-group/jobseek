@@ -12,6 +12,7 @@ import pytest
 from src.core.monitors.dom import (
     BotChallengeError,
     _build_url_matcher,
+    _dualoo_probe_config,
     _extract_links_rendered,
     _extract_links_static,
     _extract_rich_rows_static,
@@ -341,6 +342,64 @@ class TestBuildUrlMatcher:
 
 
 class TestCanHandle:
+    DUALOO_URL = "https://jobs.dualoo.com/portal/fyuan4bk?lang=DE"
+    DUALOO_HTML = """
+    <html><head><link rel="stylesheet" href="/css/fyuan4bk"></head><body>
+      <div class="JobInfoBox">
+        <a class="row jobElement"
+           href="fyuan4bk/ef8b03a4-9219-4c19-a351-d01c0e07cc4f/detail?lang=DE">Role 1</a>
+        <a class="row jobElement"
+           href="fyuan4bk/ffc75823-9ee1-4edb-9c65-dc6c8e0992af/detail?lang=DE">Role 2</a>
+        <a class="row jobElement" href="https://evil.example/portal/fyuan4bk/ffc75823-9ee1-4edb-9c65-dc6c8e0992af/detail">Injected</a>
+      </div>
+    </body></html>
+    """
+
+    def test_dualoo_portal_uses_scoped_static_preset(self):
+        result = _dualoo_probe_config(self.DUALOO_HTML, self.DUALOO_URL)
+
+        assert result is not None
+        assert result["dualoo_portal"] == "fyuan4bk"
+        assert result["urls"] == 2
+        assert result["link_selector"] == "a.jobElement[href]"
+        assert result["require_jsonld_jobposting"] is True
+        matcher = re.compile(result["url_filter"], re.IGNORECASE)
+        assert matcher.search(
+            "https://jobs.dualoo.com/portal/fyuan4bk/"
+            "ef8b03a4-9219-4c19-a351-d01c0e07cc4f/detail?lang=DE"
+        )
+        assert not matcher.search(
+            "https://jobs.dualoo.com/portal/other/"
+            "ef8b03a4-9219-4c19-a351-d01c0e07cc4f/detail?lang=DE"
+        )
+        assert auto_scraper_type("dom", result) == ("json-ld", None)
+
+    def test_dualoo_empty_portal_keeps_provider_preset(self):
+        html = '<link rel="stylesheet" href="/css/fyuan4bk"><div class="JobInfoBox"></div>'
+
+        result = _dualoo_probe_config(html, self.DUALOO_URL)
+
+        assert result is not None
+        assert result["urls"] == 0
+
+    def test_dualoo_explicit_default_port_matches_detail_urls(self):
+        url = "https://jobs.dualoo.com:443/portal/fyuan4bk?lang=DE"
+
+        result = _dualoo_probe_config(self.DUALOO_HTML, url)
+
+        assert result is not None
+        assert result["urls"] == 2
+        assert result["url_filter"].startswith(r"^https://jobs\.dualoo\.com:443/portal/fyuan4bk/")
+
+    async def test_dualoo_can_handle_returns_provider_preset(self):
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=self.DUALOO_HTML),
+        ):
+            result = await can_handle(self.DUALOO_URL, MagicMock())
+
+        assert result == _dualoo_probe_config(self.DUALOO_HTML, self.DUALOO_URL)
+
     def test_vagas_employer_board_uses_proxy_pagination_preset(self):
         result = _vagas_probe_config(
             "https://trabalheconosco.vagas.com.br/beiersdorf/oportunidades"

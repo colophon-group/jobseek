@@ -153,6 +153,10 @@ async def _filter_jsonld_job_urls(urls: set[str], client: httpx.AsyncClient) -> 
 _VAGAS_HOST = "trabalheconosco.vagas.com.br"
 _VAGAS_TENANT_RE = re.compile(r"[a-z0-9][a-z0-9_-]*")
 
+_DUALOO_HOST = "jobs.dualoo.com"
+_DUALOO_PORTAL_RE = re.compile(r"/portal/([a-z0-9]+)/*$", re.IGNORECASE)
+_DUALOO_JOB_UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+
 _REXX_PROVIDER_HOSTS = frozenset({"rexx-systems.com", "www.rexx-systems.com"})
 _REXX_JOB_PATH_FILTER = (
     r"/(?:[^/?#]+/)*(?:[^/?#]+-j\d+\.html|"
@@ -235,6 +239,62 @@ def _vagas_probe_config(url: str) -> dict | None:
             r"oportunidade/[^/?#]+/\d+/?(?:[?#].*)?$)"
         ),
         "pagination": pagination,
+    }
+
+
+def _dualoo_probe_config(html: str, url: str) -> dict | None:
+    """Return the stable DOM + JSON-LD preset for a Dualoo portal.
+
+    Dualoo listing links are relative UUID routes without a job-related word
+    before ``/detail``. The generic DOM heuristic therefore misses them even
+    though the complete listing is present in static HTML. Scope discovery to
+    Dualoo's job-card anchors and fail closed against stale/non-job links by
+    requiring JobPosting JSON-LD on each detail page.
+    """
+    try:
+        parsed = urlsplit(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname != _DUALOO_HOST
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in (None, 443)
+    ):
+        return None
+
+    match = _DUALOO_PORTAL_RE.fullmatch(parsed.path)
+    if match is None:
+        return None
+    portal = match.group(1)
+    # Provider identity must be present even for a legitimate empty board so
+    # the probe can preserve a verified-empty source configuration.
+    if f'href="/css/{portal}"' not in html and 'class="JobInfoBox"' not in html:
+        return None
+
+    # Preserve an explicitly supplied default port. ``urljoin`` retains it
+    # on relative detail links, so dropping it here would make the generated
+    # filter reject every live URL and report a false verified-empty board.
+    origin = f"https://{parsed.netloc}"
+    url_filter = (
+        rf"^{re.escape(origin)}/portal/{re.escape(portal)}/"
+        rf"{_DUALOO_JOB_UUID}/detail(?:\?[^#]*)?$"
+    )
+    link_selector = "a.jobElement[href]"
+    urls = _extract_links_static(
+        html,
+        url,
+        url_matcher=re.compile(url_filter, re.IGNORECASE),
+        link_selector=link_selector,
+    )
+    return {
+        "dualoo_portal": portal,
+        "urls": len(urls),
+        "link_selector": link_selector,
+        "url_filter": url_filter,
+        "require_jsonld_jobposting": True,
     }
 
 
@@ -1396,6 +1456,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     html = await fetch_page_text(url, client)
     if not html:
         return None
+
+    dualoo = _dualoo_probe_config(html, url)
+    if dualoo is not None:
+        return dualoo
 
     kontact = _kontact_probe_config(html, url)
     if kontact is not None:

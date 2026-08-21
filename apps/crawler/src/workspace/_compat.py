@@ -465,6 +465,10 @@ def detect_ats_from_url(url: str) -> str | None:
         return "curately"
     if host.endswith(".dvinci-hr.com"):
         return "dvinci"
+    if host == "jobs.dualoo.com" and re.fullmatch(
+        r"/portal/[a-z0-9]+/?", parsed.path, re.IGNORECASE
+    ):
+        return "dom"
     if host == "intervieweb.it" or host.endswith(".intervieweb.it"):
         return "intervieweb"
     if host.endswith(".softgarden.io"):
@@ -566,6 +570,8 @@ def auto_scraper_type(
     # on the auto-configured scraper as well as the DOM monitor preset.
     if monitor_type == "dom" and (config or {}).get("vagas_tenant"):
         return ("json-ld", {"proxy": True})
+    if monitor_type == "dom" and (config or {}).get("dualoo_portal"):
+        return ("json-ld", None)
 
     # oracle_hcm is a rich monitor (returns DiscoveredJob with title/location/date)
     # but needs a scraper for descriptions. The ``enrich`` key in scraper_config
