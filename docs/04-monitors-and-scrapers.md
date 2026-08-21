@@ -300,6 +300,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `onlyfy` | Static | Fetches Onlyfy/Prescreen server-rendered candidate pages |
 | `oracle_hcm` | Static | Fetches Oracle HCM detail REST responses |
 | `paycom` | Static | Bootstraps a Paycom portal and fetches its regional detail API |
+| `paycor` | Static | Parses Paycor/Newton server-rendered detail fields |
 | `jazzhr` | Static | Parses JobPosting JSON-LD with a DOM fallback for older JazzHR themes |
 | `paylocity` | Static | Parses Paylocity server-rendered detail pages |
 | `pdf` | Static | Downloads PDFs and extracts text content |

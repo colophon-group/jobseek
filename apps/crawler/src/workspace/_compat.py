@@ -209,6 +209,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "notion",
         "onlyfy",
         "oracle_hcm",
+        "paycor",
         "paycom",
         "paylocity",
         "pdf",

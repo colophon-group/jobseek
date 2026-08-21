@@ -187,6 +187,7 @@ Scraper Types:
   nextdata       Static/PW   Yes (fields)     Next.js sites with __NEXT_DATA__
   embedded       Static/PW   Yes (fields)     JS-embedded JSON (script tags, variables)
   onlyfy         Static      No               Onlyfy/Prescreen job pages
+  paycor         Static      No               Paycor/Newton legacy job pages
   pdf            Static      No               PDF job descriptions
   dom            Static/PW   Yes (steps)      Custom HTML structure
   api_sniffer    HTTP/PW     Optional (fields)  SPA/XHR or direct API
@@ -3438,6 +3439,18 @@ paylocity — Paylocity server-rendered detail scraper
             unsupported-browser warning, so Playwright is not required.
 """
 
+SCRAPER_PAYCOR = """\
+paycor — Paycor/Newton server-rendered detail scraper
+
+  Page:     GET https://recruitingbypaycor.com/career/JobIntroduction.action?...&id={id}
+  Returns:  title, complete HTML description, locations,
+            metadata (job_id, openings)
+  Config:   None needed.
+  Note:     Legacy Newton templates use a generic visible page heading and
+            nested tables. This scraper reads the stable gnewtonJob* fields
+            directly over static HTTP, so Playwright is not required.
+"""
+
 SCRAPER_LINKEDIN = """\
 linkedin — LinkedIn public guest-job detail scraper
 
@@ -3685,6 +3698,7 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
     "jobstreet": SCRAPER_JOBSTREET,
     "paycom": SCRAPER_PAYCOM,
     "jazzhr": SCRAPER_JAZZHR,
+    "paycor": SCRAPER_PAYCOR,
     "paylocity": SCRAPER_PAYLOCITY,
     "bite": SCRAPER_BITE,
     "mokahr": SCRAPER_MOKAHR,
