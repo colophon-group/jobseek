@@ -63,7 +63,7 @@ Status tags:
   surfaces.
 - [18 - Hetzner Codex Runner Deployment](18-codex-automation-deployment.md)
   `[runbook]` - production systemd runner inventory, deployment procedure,
-  maintenance checks, desktop-scheduler sunset boundary, and harness-invariant
+  maintenance checks, recovery boundary, and harness-invariant
   contracts.
 
 ## Operations And Routines

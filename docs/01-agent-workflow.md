@@ -14,8 +14,8 @@ How coding agents resolve company-request issues.
 
 A coding agent picks up the issue and resolves it by creating a PR. The agent can be:
 
-- **Codex** via the Hetzner local runner, `codex exec --json`, or another
-  local subscription-backed Codex session
+- **Codex** via the Hetzner runner, `codex exec --json`, or an
+  operator-invoked Codex session
 - **Claude Code** through the legacy compatible route while migration is in
   progress
 - **Any AGENTS.md-compatible agent** (Copilot, Cursor, etc.)
@@ -139,16 +139,16 @@ The CSV config for the company should be included in the same PR alongside the c
 
 ## Company Resolver Automation
 
-The primary recurring path is the Hetzner-hosted local Codex runner documented
+The primary recurring path is the Hetzner-hosted Codex runner documented
 in [18 - Hetzner Codex Runner Deployment](18-codex-automation-deployment.md). It
 checks the backlog every 15-30 minutes, self-regulates against Codex usage and
 host capacity, selects at most one open `company-request` issue per accepted
 run, claims it with the shared `ws` claim protocol, and runs
 `ws task --issue <N>` from `apps/crawler` in an isolated worktree.
 
-The retired GitHub Actions resolvers must not be reintroduced for this
-automation. Manual recovery uses the same local Codex CLI path from a
-throwaway worktree, with the Hetzner ledger and `ws` claims checked first.
+GitHub Actions and workstation schedules must not be introduced for this
+automation. Manual recovery invokes the same committed runner entry point once
+from a throwaway worktree, with the Hetzner ledger and `ws` claims checked first.
 Safety budget: max 5 issues per 5-hour rolling window in conservative mode
 unless the Hetzner deployment config deliberately raises it.
 
@@ -157,14 +157,14 @@ The recurring resolver:
    `add-company/` PR is resumable; a ready company PR or `fix-crawler/` PR is
    submitted; any other linked PR shape is a manual conflict.
 2. Checks host headroom, active claims, active PRs, and Codex usage telemetry
-3. Runs the local Codex CLI path to resolve the selected issue
+3. Runs Codex CLI on the Hetzner runner to resolve the selected issue
 4. Captures `codex exec --json` trace data and local usage into the governor ledger
 5. The agent follows the AGENTS.md instructions to create a PR
 
-The recurring resolver is not triggered by GitHub Actions. Use
-`codex exec --json` for traceable local runs and keep manual recovery on the
-same local Codex path so billing, auth, trace capture, and the governor ledger
-remain consistent.
+The recurring resolver is not triggered by GitHub Actions or a workstation
+schedule. Use `codex exec --json` for traceable runs and keep manual recovery
+on the same committed runner path so billing, auth, trace capture, and the
+governor ledger remain consistent.
 
 Resolver outcomes are explicit: `submitted`, `rejected`, `escalated`,
 `retryable`, or `interrupted`. A closed issue is not success evidence on its

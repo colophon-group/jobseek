@@ -76,7 +76,7 @@ test("docs README and ADR relative markdown links resolve", () => {
   }
 });
 
-test("production Codex guidance rejects sunset desktop scheduler deployment", () => {
+test("production Codex guidance keeps scheduling on Hetzner", () => {
   const guidancePaths = [
     "AGENTS.md",
     "docs/00-overview.md",
@@ -85,20 +85,30 @@ test("production Codex guidance rejects sunset desktop scheduler deployment", ()
     "docs/18-codex-automation-deployment.md",
     "docs/README.md",
   ];
-  const forbidden = [
-    /automation\.toml/i,
-    /Codex app automation/i,
-    /active automation registry/i,
-    /desktop automation records?[^.\n]*paused/i,
+  const staleWording = [
+    /Codex\s+desktop/i,
+    /desktop[- ]scheduler/i,
+    /Hetzner(?:-hosted)?\s+local\s+Codex/i,
+  ];
+  const retiredRoutineNames = [
+    ["jobseek", "company", "request", "resolver"].join("-"),
+    ["jobseek", "daily", "classifications"].join("-"),
+    ["jobseek", "daily", "error", "review"].join("-"),
   ];
 
   for (const guidancePath of guidancePaths) {
     const source = readFileSync(guidancePath, "utf8");
-    for (const pattern of forbidden) {
+    for (const pattern of staleWording) {
       assert.doesNotMatch(
         source,
         pattern,
-        `${guidancePath} must not contain deployable desktop scheduler guidance`,
+        `${guidancePath} must identify the Hetzner scheduler unambiguously`,
+      );
+    }
+    for (const retiredName of retiredRoutineNames) {
+      assert.ok(
+        !source.includes(retiredName),
+        `${guidancePath} must not reference retired routine ${retiredName}`,
       );
     }
   }
@@ -115,15 +125,6 @@ test("production Codex guidance rejects sunset desktop scheduler deployment", ()
   ]) {
     assert.ok(runbook.includes(`\`${unit}\``), `runner inventory lists ${unit}`);
   }
-  for (const legacyName of [
-    "jobseek-company-request-resolver",
-    "jobseek-daily-classifications",
-    "jobseek-daily-error-review",
-  ]) {
-    assert.ok(
-      runbook.includes(`\`${legacyName}\``),
-      `sunset note lists ${legacyName}`,
-    );
-  }
-  assert.match(runbook, /must remain absent/i);
+  assert.match(runbook, /only\s+production scheduling surface/i);
+  assert.match(runbook, /GitHub Actions or workstation schedules/i);
 });
