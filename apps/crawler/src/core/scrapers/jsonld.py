@@ -434,6 +434,34 @@ def _text_or_list(val) -> list[str] | None:
     return None
 
 
+def _extract_employment_type(value: object) -> str | None:
+    """Collapse schema.org's scalar-or-list employment type deterministically.
+
+    Schedule values such as ``FULL_TIME`` are less specific than job-nature
+    values such as ``INTERN`` or ``CONTRACTOR``. Prefer the latter when a
+    provider publishes both; preserve the supported full/part combination for
+    the central enum normalizer.
+    """
+    if isinstance(value, str):
+        return value.strip() or None
+    if not isinstance(value, list):
+        return None
+
+    values = [item.strip() for item in value if isinstance(item, str) and item.strip()]
+    if not values:
+        return None
+    by_token = {re.sub(r"[\s-]+", "_", item).upper(): item for item in values}
+    for token in ("INTERN", "TEMPORARY", "CONTRACTOR", "VOLUNTEER", "PER_DIEM"):
+        if token in by_token:
+            return by_token[token]
+    if {"FULL_TIME", "PART_TIME"} <= by_token.keys():
+        return "FULL_TIME, PART_TIME"
+    for token in ("PART_TIME", "FULL_TIME", "OTHER"):
+        if token in by_token:
+            return by_token[token]
+    return values[0]
+
+
 def _strip_html(text: str) -> str:
     """Remove HTML tags from text."""
     return re.sub(r"<[^>]+>", "", text).strip()
@@ -475,11 +503,13 @@ def _parse_posting(posting: dict) -> JobContent:
     if valid_through:
         extras["valid_through"] = valid_through
 
+    employment_type = _extract_employment_type(posting.get("employmentType"))
+
     return JobContent(
         title=_clean_text(posting.get("title") or posting.get("name")),
         description=description,
         locations=_extract_locations(posting),
-        employment_type=posting.get("employmentType"),
+        employment_type=employment_type,
         job_location_type=posting.get("jobLocationType"),
         date_posted=posting.get("datePosted"),
         base_salary=_extract_salary(posting),
@@ -491,6 +521,7 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
     """Extract structured job data from pre-fetched HTML."""
     extractor = _JsonLdExtractor()
     extractor.feed(html)
+    ignore_locations = (config or {}).get("ignore_locations") is True
 
     for block in extractor.results:
         posting = _find_job_posting(block)
@@ -508,7 +539,6 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
                 content.extras.pop("valid_through", None)
                 if not content.extras:
                     content.extras = None
-            ignore_locations = (config or {}).get("ignore_locations") is True
             if ignore_locations:
                 content.locations = None
             if not content.title and extractor.page_title:
@@ -530,6 +560,8 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
 
     meta_content = _parse_meta_job(extractor.meta)
     if meta_content:
+        if ignore_locations:
+            meta_content.locations = None
         return meta_content
     return JobContent()
 

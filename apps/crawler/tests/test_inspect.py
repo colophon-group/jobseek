@@ -1887,6 +1887,7 @@ class TestVatGroupConfig:
         assert row is not None
         assert row["monitor_type"] == "dom"
         assert row["scraper_type"] == "json-ld"
+        assert row["board_url"] == "https://www.yousty.ch/de-CH/lehrstellen/firmen/944-vat-group"
 
         monitor_config = json.loads(row["monitor_config"])
         scraper_config = json.loads(row["scraper_config"])
