@@ -473,7 +473,7 @@ class TestItemFilter:
         config = {
             "item_filter": {
                 "exclude": {"attributes.country": ["Switzerland", "USA"]},
-                "dedupe_by": "provider.apply_id",
+                "dedupe_by": ["provider.tenant_id", "provider.apply_id"],
             }
         }
         item_filter = _validated_item_filter(config)
@@ -481,32 +481,38 @@ class TestItemFilter:
             {
                 "url": "https://example.com/1",
                 "attributes": {"country": ["Germany"]},
-                "provider": {"apply_id": "stable-1"},
+                "provider": {"tenant_id": "tenant", "apply_id": "stable-1"},
             },
             {
                 "url": "https://example.com/duplicate",
                 "attributes": {"country": ["Germany"]},
-                "provider": {"apply_id": "stable-1"},
+                "provider": {"tenant_id": "tenant", "apply_id": "stable-1"},
+            },
+            {
+                "url": "https://example.com/other-tenant",
+                "attributes": {"country": ["Germany"]},
+                "provider": {"tenant_id": "other", "apply_id": "stable-1"},
             },
             {
                 "url": "https://example.com/usa",
                 "attributes": {"country": ["USA"]},
-                "provider": {"apply_id": "stable-2"},
+                "provider": {"tenant_id": "tenant", "apply_id": "stable-2"},
             },
             {
                 "url": "https://example.com/no-id",
                 "attributes": {"country": ["Germany"]},
-                "provider": {"apply_id": ""},
+                "provider": {"tenant_id": "tenant", "apply_id": ""},
             },
         ]
 
-        scoped, total = _apply_item_filter(items, item_filter, advertised_total=4)
+        scoped, total = _apply_item_filter(items, item_filter, advertised_total=5)
 
         assert [item["url"] for item in scoped] == [
             "https://example.com/1",
+            "https://example.com/other-tenant",
             "https://example.com/no-id",
         ]
-        assert total == 2
+        assert total == 3
 
     def test_incomplete_upstream_total_remains_truncated_after_filtering(self):
         item_filter = _validated_item_filter({"item_filter": {"exclude": {"market": ["local"]}}})
@@ -529,6 +535,8 @@ class TestItemFilter:
             {"exclude": {"": ["local"]}},
             {"exclude": {"attributes.25": ["USA"]}},
             {"dedupe_by": ""},
+            {"dedupe_by": "stable"},
+            {"dedupe_by": []},
         ],
     )
     def test_rejects_invalid_config(self, value):
@@ -541,7 +549,11 @@ class TestItemFilter:
             "url",
             None,
             {},
-            preserve_paths=["attributes.country", "provider.apply_id"],
+            preserve_paths=[
+                "attributes.country",
+                "provider.tenant_id",
+                "provider.apply_id",
+            ],
         )
 
         assert projector is not None
@@ -550,14 +562,14 @@ class TestItemFilter:
                 "details": {"title": "Engineer"},
                 "url": "https://example.com/1",
                 "attributes": {"country": ["Germany"]},
-                "provider": {"apply_id": "stable-1"},
+                "provider": {"tenant_id": "tenant", "apply_id": "stable-1"},
                 "unused": "large",
             }
         ) == {
             "details": {"title": "Engineer"},
             "url": "https://example.com/1",
             "attributes": {"country": ["Germany"]},
-            "provider": {"apply_id": "stable-1"},
+            "provider": {"tenant_id": "tenant", "apply_id": "stable-1"},
         }
 
     @pytest.mark.asyncio
@@ -585,7 +597,7 @@ class TestItemFilter:
                 "total_path": "total",
                 "item_filter": {
                     "exclude": {"market": ["local"]},
-                    "dedupe_by": "stable",
+                    "dedupe_by": ["stable"],
                 },
             },
         }

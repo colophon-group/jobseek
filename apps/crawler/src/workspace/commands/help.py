@@ -2392,7 +2392,7 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
       "slug_fields": ["title"],
       "item_filter": {
         "exclude": {"attributes.country": ["USA"]},
-        "dedupe_by": "provider.apply_id"
+        "dedupe_by": ["provider.tenant_id", "provider.apply_id"]
       },
       "pagination": {
         "param_name": "offset",
@@ -2427,9 +2427,11 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                      URL-template placeholder.
     item_filter      Optional post-pagination source partition. ``exclude``
                      maps item paths to exact string values; matching scalar
-                     or list values are omitted. ``dedupe_by`` retains the
-                     first item for each non-empty stable identifier. A short
-                     upstream response remains truncated after filtering.
+                     or list values are omitted. ``dedupe_by`` is a list of
+                     stable identifier paths and retains the first item for
+                     each complete, non-empty compound identity. Items missing
+                     any identity part remain distinct. A short upstream
+                     response remains truncated after filtering.
     params           Query parameters merged into api_url at request time.
                      Auto-filled from the captured URL (empty and pagination
                      params stripped). Edit result_limit / per_page here to

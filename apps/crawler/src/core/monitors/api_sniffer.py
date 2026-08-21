@@ -24,7 +24,7 @@ from collections.abc import Callable
 from math import ceil
 from pathlib import Path
 from string import Formatter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse, urlunparse
 
 import httpx
@@ -950,11 +950,11 @@ def _validated_slug_fields(config: dict) -> list[str]:
 
 def _validated_item_filter(
     config: dict,
-) -> tuple[dict[str, frozenset[str]], str | None]:
+) -> tuple[dict[str, frozenset[str]], tuple[str, ...]]:
     """Validate an optional post-pagination item scope and stable dedupe key."""
     value = config.get("item_filter")
     if value is None:
-        return {}, None
+        return {}, ()
     if not isinstance(value, dict) or not value:
         raise ValueError("api_sniffer item_filter must be a non-empty mapping")
     if set(value) - {"exclude", "dedupe_by"}:
@@ -984,27 +984,35 @@ def _validated_item_filter(
         normalized[normalized_path] = frozenset(excluded_values)
 
     dedupe_by = value.get("dedupe_by")
-    if dedupe_by is not None and (not isinstance(dedupe_by, str) or not dedupe_by.strip()):
-        raise ValueError("api_sniffer item_filter.dedupe_by must be a non-empty field path")
-    dedupe_path = dedupe_by.strip() if isinstance(dedupe_by, str) else None
-    if dedupe_path is not None:
+    if dedupe_by is None:
+        dedupe_paths: tuple[str, ...] = ()
+    elif (
+        not isinstance(dedupe_by, list)
+        or not dedupe_by
+        or len(dedupe_by) > _MAX_ITEM_FILTER_FIELDS
+        or not all(isinstance(path, str) and path.strip() for path in dedupe_by)
+    ):
+        raise ValueError("api_sniffer item_filter.dedupe_by must be a bounded non-empty path list")
+    else:
+        dedupe_paths = tuple(path.strip() for path in dedupe_by)
+    for dedupe_path in dedupe_paths:
         try:
             extract_field({}, dedupe_path)
         except Exception as exc:
             raise ValueError("api_sniffer item_filter.dedupe_by path must be valid") from exc
-    if not normalized and dedupe_path is None:
+    if not normalized and not dedupe_paths:
         raise ValueError("api_sniffer item_filter must exclude or deduplicate items")
-    return normalized, dedupe_path
+    return normalized, dedupe_paths
 
 
 def _apply_item_filter(
     items: list[dict],
-    item_filter: tuple[dict[str, frozenset[str]], str | None],
+    item_filter: tuple[dict[str, frozenset[str]], tuple[str, ...]],
     advertised_total: int | None,
 ) -> tuple[list[dict], int | None]:
     """Apply an intentional source partition without masking upstream truncation."""
     exclude, dedupe_by = item_filter
-    if not exclude and dedupe_by is None:
+    if not exclude and not dedupe_by:
         return items, advertised_total
 
     original_count = len(items)
@@ -1018,14 +1026,15 @@ def _apply_item_filter(
         else:
             scoped.append(item)
 
-    if dedupe_by is not None:
-        seen: set[str] = set()
+    if dedupe_by:
+        seen: set[tuple[str, ...]] = set()
         deduped: list[dict] = []
         for item in scoped:
-            identity = extract_field(item, dedupe_by)
-            if not isinstance(identity, str) or not identity:
+            identity_parts = [extract_field(item, path) for path in dedupe_by]
+            if not all(isinstance(part, str) and part for part in identity_parts):
                 deduped.append(item)
                 continue
+            identity = tuple(cast(str, part) for part in identity_parts)
             if identity in seen:
                 continue
             seen.add(identity)
@@ -1405,7 +1414,7 @@ async def _discover_http(
     url_template_fields = config.get("url_template_fields") or {}
     slug_fields = _validated_slug_fields(config)
     item_filter = _validated_item_filter(config)
-    item_filter_paths = [*item_filter[0], *([item_filter[1]] if item_filter[1] else [])]
+    item_filter_paths = [*item_filter[0], *item_filter[1]]
     url_regex = config.get("url_regex")
     total_path = config.get("total_path")
     post_data = _configured_post_data(config)
@@ -1637,6 +1646,7 @@ async def _discover_http(
         elif item_projector:
             items = [item_projector(item) for item in items]
 
+        source_item_count = len(items)
         items, total = _apply_item_filter(items, item_filter, total)
 
         # MAX_ITEMS cap (#3216 / #3267). Don't slice silently: keep every
@@ -1673,7 +1683,7 @@ async def _discover_http(
                 slug_fields=slug_fields,
             )
             truncated = _item_result_is_truncated(
-                item_count=len(items),
+                item_count=source_item_count,
                 discovered_count=len({job.url for job in jobs}),
                 total=total,
                 cap=max_items,
@@ -1688,7 +1698,7 @@ async def _discover_http(
                 slug_fields=slug_fields,
             )
             truncated = _item_result_is_truncated(
-                item_count=len(items),
+                item_count=source_item_count,
                 discovered_count=len(urls_from_tpl),
                 total=total,
                 cap=max_items,
@@ -1702,7 +1712,7 @@ async def _discover_http(
                 if isinstance(raw, str) and raw:
                     urls.add(urljoin(board_url, raw))
             truncated = _item_result_is_truncated(
-                item_count=len(items),
+                item_count=source_item_count,
                 discovered_count=len(urls),
                 total=total,
                 cap=max_items,
@@ -1710,7 +1720,7 @@ async def _discover_http(
             return truncated_url_result(urls) if truncated else urls
         urls = set(extract_urls(items, url_field, board_url))
         truncated = _item_result_is_truncated(
-            item_count=len(items),
+            item_count=source_item_count,
             discovered_count=len(urls),
             total=total,
             cap=max_items,
@@ -1853,7 +1863,7 @@ async def _discover_replay(
     url_template_fields = config.get("url_template_fields") or {}
     slug_fields = _validated_slug_fields(config)
     item_filter = _validated_item_filter(config)
-    item_filter_paths = [*item_filter[0], *([item_filter[1]] if item_filter[1] else [])]
+    item_filter_paths = [*item_filter[0], *item_filter[1]]
     post_data = _configured_post_data(config)
     request_headers = config.get("request_headers", {})
     fields_map: dict[str, str] = config.get("fields") or {}
@@ -2062,6 +2072,7 @@ async def _discover_replay(
         elif item_projector:
             items = [item_projector(item) for item in items]
 
+        source_item_count = len(items)
         items, total_count = _apply_item_filter(items, item_filter, total_count)
 
         # MAX_ITEMS cap (#3216 / #3267). Don't slice silently: keep every
@@ -2103,7 +2114,7 @@ async def _discover_replay(
                 slug_fields=slug_fields,
             )
             truncated = _item_result_is_truncated(
-                item_count=len(items),
+                item_count=source_item_count,
                 discovered_count=len({job.url for job in jobs}),
                 total=total_count,
                 cap=MAX_ITEMS,
@@ -2120,7 +2131,7 @@ async def _discover_replay(
                 slug_fields=slug_fields,
             )
             truncated = _item_result_is_truncated(
-                item_count=len(items),
+                item_count=source_item_count,
                 discovered_count=len(urls_from_tpl),
                 total=total_count,
                 cap=MAX_ITEMS,
@@ -2130,7 +2141,7 @@ async def _discover_replay(
         if not urls and url_map:
             urls_from_map = set(url_map.values())
             truncated = _item_result_is_truncated(
-                item_count=len(items),
+                item_count=source_item_count,
                 discovered_count=len(urls_from_map),
                 total=total_count,
                 cap=MAX_ITEMS,
@@ -2143,7 +2154,7 @@ async def _discover_replay(
                 log.debug("api_sniffer.dom_crossref_degraded", exc_info=True)
         urls_set = set(urls)
         truncated = _item_result_is_truncated(
-            item_count=len(items),
+            item_count=source_item_count,
             discovered_count=len(urls_set),
             total=total_count,
             cap=MAX_ITEMS,

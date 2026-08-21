@@ -98,9 +98,9 @@ def test_stadler_boards_partition_central_feed_and_canonicalize_paycor_urls():
 
     assert boards["stadler-rail-corporate-global"]["item_filter"] == {
         "exclude": {
-            'attributes."25"': ["Switzerland", "USA", "Netherlands"],
+            'attributes."25"': ["Switzerland", "USA"],
         },
-        "dedupe_by": "szas.sza_apply_link",
+        "dedupe_by": ["hk_id", "szas.sza_apply_link"],
     }
     transform = boards["stadler-rail-us-paycor"]["url_transform"]
     source_url = (
