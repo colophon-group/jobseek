@@ -58,6 +58,11 @@ const deployCrawlerWorkflow = readFileSync(
   ".github/workflows/deploy-crawler-browser.yml",
   "utf8",
 );
+const crawlerDeployScript = readFileSync("apps/crawler/deploy.sh", "utf8");
+const crawlerMaintenanceScript = readFileSync(
+  "scripts/jobseek-maintenance.py",
+  "utf8",
+);
 const deployDataBackupsWorkflow = readFileSync(
   ".github/workflows/deploy-data-backups.yml",
   "utf8",
@@ -76,6 +81,10 @@ const crawlerScheduledMaintenanceWorkflow = readFileSync(
 );
 const syncDataWorkflow = readFileSync(
   ".github/workflows/sync-data.yml",
+  "utf8",
+);
+const crawlerCsvSyncHostScript = readFileSync(
+  "scripts/crawler-csv-sync-host.sh",
   "utf8",
 );
 const refreshCurrencyRatesWorkflow = readFileSync(
@@ -505,6 +514,53 @@ test("Codex deploy transport outlives the runner lock wait", () => {
   assert.match(deployCodexRunnerWorkflow, /cancel-in-progress: false/);
 });
 
+test("CSV sync cannot replace a pending full crawler deploy", () => {
+  assert.match(
+    deployCrawlerWorkflow,
+    /^concurrency:\n\s+group: crawler-production-sync\n\s+cancel-in-progress: false/m,
+  );
+  assert.match(
+    syncDataWorkflow,
+    /^concurrency:\n(?:\s+#.*\n)*\s+group: crawler-production-csv-sync\n\s+cancel-in-progress: false/m,
+  );
+  assert.match(
+    crawlerDeployScript,
+    /exec 9>\/run\/lock\/jobseek-crawler-mutation\.lock[\s\S]*uv run --no-sync crawler sync/,
+  );
+  assert.match(
+    syncDataWorkflow,
+    /\/usr\/local\/sbin\/jobseek-maintenance window[\s\S]*--operation csv-data-sync/,
+  );
+  assert.match(
+    crawlerMaintenanceScript,
+    /MUTATION_LOCK = Path\("\/run\/lock\/jobseek-crawler-mutation\.lock"\)/,
+  );
+  assert.match(
+    syncDataWorkflow,
+    /SYNC_REVISION: \$\{\{ inputs\.revision \|\| github\.sha \}\}[\s\S]*envs: SYNC_REVISION[\s\S]*bash \/home\/deploy\/csv-sync-runner\/crawler-csv-sync-host\.sh "\$SYNC_REVISION"/,
+  );
+  assert.match(
+    syncDataWorkflow,
+    /name: Check out trusted CSV sync runner[\s\S]*ref: \$\{\{ github\.sha \}\}[\s\S]*sparse-checkout: scripts\/crawler-csv-sync-host\.sh[\s\S]*sparse-checkout-cone-mode: false/,
+  );
+  assert.match(
+    syncDataWorkflow,
+    /name: Check out revision-pinned CSV data[\s\S]*ref: \$\{\{ inputs\.revision \|\| github\.sha \}\}[\s\S]*path: csv-source/,
+  );
+  assert.match(
+    syncDataWorkflow,
+    /git -C csv-source rev-parse HEAD[\s\S]*git -C csv-source merge-base --is-ancestor/,
+  );
+  assert.doesNotMatch(syncDataWorkflow, /\/home\/deploy\/\.env|CRAWLER_IMAGE_REF/);
+  assert.match(crawlerCsvSyncHostScript, /grep -E "\^\$\{key\}=" \/home\/deploy\/\.env/);
+  assert.match(
+    crawlerCsvSyncHostScript,
+    /sed -n 's\/\^CRAWLER_IMAGE_REF=\/\/p' \/home\/deploy\/\.env/,
+  );
+  assert.match(crawlerCsvSyncHostScript, /trap cleanup EXIT/);
+  assert.match(crawlerCsvSyncHostScript, /docker rm -f "\$NAME"/);
+});
+
 test("Codex deploy reserves the next runner-lock handoff", () => {
   const pauseCall = deployCodexRunnerHostScript.indexOf(
     "  pause_timer_activations\n",
@@ -732,21 +788,36 @@ test("taxonomy verification dispatch is exact-revision and verification-only", (
   );
 });
 
-test("recurring crawler one-offs use the bounded maintenance wrapper", () => {
-  for (const [source, operation, issue, budget] of [
-    [syncDataWorkflow, "csv-data-sync", "2623", "1800"],
-    [refreshCurrencyRatesWorkflow, "refresh-currency-rates", "3576", "600"],
+test("recurring crawler operations use the bounded maintenance wrapper", () => {
+  for (const [source, operation, issue, budget, mode] of [
+    [syncDataWorkflow, "csv-data-sync", "2623", "1800", "window"],
+    [refreshCurrencyRatesWorkflow, "refresh-currency-rates", "3576", "600", "oneoff"],
   ]) {
-    assert.match(source, /\/usr\/local\/sbin\/jobseek-maintenance oneoff/);
+    assert.match(
+      source,
+      new RegExp(`/usr/local/sbin/jobseek-maintenance ${mode}`),
+    );
     assert.ok(source.includes(`--operation ${operation}`));
     assert.ok(source.includes(`--issue ${issue}`));
     assert.ok(source.includes(`--budget-seconds ${budget}`));
     assert.match(source, /--lock-timeout-seconds (900|600)/);
-    assert.ok(source.includes('--revision "$GITHUB_SHA"'));
-    assert.match(source, /envs: GITHUB_SHA/);
-    assert.match(source, /docker run --rm[\s\S]*--name "\$NAME"/);
+    if (operation === "csv-data-sync") {
+      assert.ok(source.includes('--revision "$SYNC_REVISION"'));
+      assert.match(source, /envs: SYNC_REVISION/);
+    } else {
+      assert.ok(source.includes('--revision "$GITHUB_SHA"'));
+      assert.match(source, /envs: GITHUB_SHA/);
+    }
     assert.match(source, /command_timeout: (1h|30m)/);
   }
+  assert.match(
+    crawlerCsvSyncHostScript,
+    /docker run --rm[\s\S]*--name "\$NAME"/,
+  );
+  assert.match(
+    refreshCurrencyRatesWorkflow,
+    /docker run --rm[\s\S]*--name "\$NAME"/,
+  );
 });
 
 test("maybe-auto-merge wakes without manual retries", () => {

@@ -27,6 +27,7 @@ MURMUR_DEPLOY_WORKFLOW = (
     Path(__file__).resolve().parents[3] / ".github/workflows/deploy-murmur-shim.yml"
 )
 SYNC_DATA_WORKFLOW = Path(__file__).resolve().parents[3] / ".github/workflows/sync-data.yml"
+CSV_SYNC_HOST = Path(__file__).resolve().parents[3] / "scripts/crawler-csv-sync-host.sh"
 POSTGRES_PREFLIGHT = (
     Path(__file__).resolve().parent.parent / "scripts/postgresql-operational-preflight.py"
 )
@@ -174,11 +175,13 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
 def test_operational_sync_entrypoints_are_local_and_typesense_only() -> None:
     script = DEPLOY_SH.read_text()
     sync_workflow = SYNC_DATA_WORKFLOW.read_text()
+    sync_host = CSV_SYNC_HOST.read_text()
 
     assert "uv run --no-sync crawler sync\n" in script
-    assert "uv run --no-sync crawler sync\n" in sync_workflow
+    assert "uv run --no-sync crawler sync\n" in sync_host
     assert "--legacy-mirror" not in script
     assert "--legacy-mirror" not in sync_workflow
+    assert "--legacy-mirror" not in sync_host
 
 
 def test_production_env_omits_crawler_mirror_and_scopes_web_database() -> None:
@@ -208,12 +211,14 @@ def test_production_env_omits_crawler_mirror_and_scopes_web_database() -> None:
 
 def test_csv_sync_filters_the_host_environment_to_required_boundaries() -> None:
     workflow = SYNC_DATA_WORKFLOW.read_text()
+    sync_host = CSV_SYNC_HOST.read_text()
 
-    assert "mktemp /run/lock/jobseek-csv-sync-env.XXXXXX" in workflow
-    assert "chmod 0600" in workflow
-    assert '--env-file "$RUNTIME_ENV"' in workflow
+    assert "mktemp /run/lock/jobseek-csv-sync-env.XXXXXX" in sync_host
+    assert "chmod 0600" in sync_host
+    assert '--env-file "$RUNTIME_ENV"' in sync_host
     assert "--env-file /home/deploy/.env" not in workflow
-    assert re.search(r"\bDATABASE_URL\b", workflow) is None
+    assert "--env-file /home/deploy/.env" not in sync_host
+    assert re.search(r"\bDATABASE_URL\b", sync_host) is None
     for key in (
         "LOCAL_DATABASE_URL",
         "WEB_DATABASE_URL",
@@ -222,7 +227,7 @@ def test_csv_sync_filters_the_host_environment_to_required_boundaries() -> None:
         "TYPESENSE_PROTOCOL",
         "TYPESENSE_OPERATIONS_KEY",
     ):
-        assert key in workflow
+        assert key in sync_host
 
 
 def test_deploy_brackets_service_pause_with_validated_maintenance_provenance() -> None:

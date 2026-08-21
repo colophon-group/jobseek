@@ -1734,6 +1734,18 @@ services later happen to be running.
 
 Repository-owned automated operations use the same contract:
 
+Full crawler deploys remain in the `crawler-production-sync` GitHub Actions
+group with protected location repair and destructive web migration. CSV-only
+publication uses the separate `crawler-production-csv-sync` group so a pushed
+or explicitly dispatched sync cannot replace a pending full deploy; GitHub's
+default concurrency queue keeps only one pending run per group. Both crawler
+deploy and CSV sync acquire `/run/lock/jobseek-crawler-mutation.lock`, so the
+separate GitHub queues remain serialized at the Hetzner mutation boundary.
+The CSV sync resolves its runtime credentials and the currently committed
+crawler image only after the maintenance wrapper owns that lock. This prevents
+a queued sync from retaining an environment or image snapshot taken while a
+full deployment was still replacing `/home/deploy/.env`.
+
 - crawler deploys bracket their writer pause, schema migration, Typesense
   setup, and CSV sync under `crawler-deploy`, tracking issue #3409;
 - pushed CSV changes use the bounded wrapper as `csv-data-sync`, tracking

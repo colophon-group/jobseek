@@ -13,7 +13,9 @@ on:
         type: string
 
 concurrency:
-  group: crawler-production-sync
+  # Keep CSV-only publication from replacing a pending full crawler deploy.
+  # The host mutation lock still serializes both workflows on Hetzner.
+  group: crawler-production-csv-sync
   cancel-in-progress: false
 
 permissions:
@@ -24,25 +26,38 @@ jobs:
     name: Sync production CSV data
     runs-on: ubuntu-latest
     environment: production
+    env:
+      SYNC_REVISION: ${{ inputs.revision || github.sha }}
 
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Keep the executable runner bound to the trusted workflow revision.
+      # Historical data revisions may predate this runner entirely.
+      - name: Check out trusted CSV sync runner
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: scripts/crawler-csv-sync-host.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Check out revision-pinned CSV data
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.revision || github.sha }}
           fetch-depth: 0
           persist-credentials: false
           sparse-checkout: apps/crawler/data
+          path: csv-source
 
       - name: Validate explicitly dispatched revision
         if: github.event_name == 'workflow_dispatch' && inputs.revision != ''
-        env:
-          SYNC_REVISION: ${{ inputs.revision }}
         run: |
           set -euo pipefail
           [[ "$SYNC_REVISION" =~ ^[a-f0-9]{40}$ ]]
-          test "$(git rev-parse HEAD)" = "$SYNC_REVISION"
-          git fetch --no-tags origin main
-          git merge-base --is-ancestor "$SYNC_REVISION" origin/main
+          test "$(git -C csv-source rev-parse HEAD)" = "$SYNC_REVISION"
+          git -C csv-source fetch --no-tags origin main
+          git -C csv-source merge-base --is-ancestor "$SYNC_REVISION" origin/main
 
       - name: Copy CSV files to Hetzner
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
@@ -50,9 +65,19 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: apps/crawler/data/
+          source: csv-source/apps/crawler/data/
           target: /home/deploy/csv-overlay/
-          strip_components: 3
+          strip_components: 4
+
+      - name: Copy locked CSV sync runner to Hetzner
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: scripts/crawler-csv-sync-host.sh
+          target: /home/deploy/csv-sync-runner/
+          strip_components: 1
 
       - name: Run sync via SSH
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
@@ -60,51 +85,15 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: GITHUB_SHA
+          envs: SYNC_REVISION
           command_timeout: 1h
           script: |
             set -euo pipefail
-            NAME="crawler-csv-data-sync-$(date -u +%Y%m%dT%H%M%SZ)"
-            RUNTIME_ENV="$(mktemp /run/lock/jobseek-csv-sync-env.XXXXXX)"
-            trap 'rm -f "$RUNTIME_ENV"' EXIT HUP INT TERM
-            chmod 0600 "$RUNTIME_ENV"
-            required_env=(
-              LOCAL_DATABASE_URL
-              WEB_DATABASE_URL
-              TYPESENSE_HOST
-              TYPESENSE_PORT
-              TYPESENSE_PROTOCOL
-              TYPESENSE_OPERATIONS_KEY
-            )
-            for key in "${required_env[@]}"; do
-              mapfile -t matches < <(grep -E "^${key}=" /home/deploy/.env || true)
-              if [[ ${#matches[@]} -ne 1 || -z "${matches[0]#*=}" ]]; then
-                echo "ERROR: required CSV sync variable ${key} is missing or duplicated" >&2
-                exit 1
-              fi
-              printf '%s\n' "${matches[0]}" >>"$RUNTIME_ENV"
-            done
-            printf '%s\n' \
-              'CRAWLER_DB_ROLE=csv-sync' \
-              'CRAWLER_DB_POOL_MIN=0' \
-              'CRAWLER_DB_POOL_MAX=4' \
-              'CRAWLER_DB_POOL_IDLE_SECONDS=60' >>"$RUNTIME_ENV"
-            mapfile -t image_refs < <(sed -n 's/^CRAWLER_IMAGE_REF=//p' /home/deploy/.env 2>/dev/null)
-            [[ ${#image_refs[@]} -eq 1 && "${image_refs[0]}" =~ ^ghcr\.io/colophon-group/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || {
-              echo "ERROR: committed crawler image digest is missing, duplicated, or invalid" >&2
-              exit 1
-            }
-            /usr/local/sbin/jobseek-maintenance oneoff \
+            /usr/local/sbin/jobseek-maintenance window \
               --operation csv-data-sync \
               --issue 2623 \
-              --revision "$GITHUB_SHA" \
+              --revision "$SYNC_REVISION" \
               --budget-seconds 1800 \
               --lock-timeout-seconds 900 \
               -- \
-              docker run --rm \
-              --name "$NAME" \
-              --env-file "$RUNTIME_ENV" \
-              --network host \
-              -v /home/deploy/csv-overlay:/app/data \
-              "${image_refs[0]}" \
-              uv run --no-sync crawler sync
+              bash /home/deploy/csv-sync-runner/crawler-csv-sync-host.sh "$SYNC_REVISION"
