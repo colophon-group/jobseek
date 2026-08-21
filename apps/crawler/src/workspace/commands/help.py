@@ -1065,6 +1065,13 @@ nextdata — Next.js __NEXT_DATA__ Discovery
                    Page.goto timeout (Playwright only). Default:
                    "domcontentloaded". Set to null to opt out.
     timeout        Navigation timeout in ms (Playwright only)
+    ignore_locations
+                   Discard provider JSON-LD and meta locations. Use only when
+                   the published value is demonstrably wrong, together with a
+                   board-scoped defaults.locations replacement.
+    defaults       Default fields applied after extraction. For example:
+                   {"ignore_locations": true,
+                    "defaults": {"locations": ["Zurich, Switzerland"]}}
     url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
     url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)
     source         Embedded source: nextdata (default), reactrouter, rsc,

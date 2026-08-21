@@ -508,6 +508,9 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
                 content.extras.pop("valid_through", None)
                 if not content.extras:
                     content.extras = None
+            ignore_locations = (config or {}).get("ignore_locations") is True
+            if ignore_locations:
+                content.locations = None
             if not content.title and extractor.page_title:
                 organization = posting.get("hiringOrganization")
                 organization_name = (
@@ -521,7 +524,7 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
                         if extractor.page_title.casefold().endswith(suffix.casefold()):
                             content.title = extractor.page_title[: -len(suffix)].strip() or None
                             break
-            if not content.locations:
+            if not content.locations and not ignore_locations:
                 content.locations = _extract_meta_locations(extractor.meta)
             return content
 

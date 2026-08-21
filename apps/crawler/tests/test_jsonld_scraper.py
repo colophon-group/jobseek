@@ -351,6 +351,22 @@ class TestMetaLocationFallback:
 
         assert result.locations == ["Bangalore, Karnataka, IN"]
 
+    def test_parse_html_can_ignore_incorrect_provider_locations(self):
+        html = """<html><head>
+        <meta name="job-city" content="Wrong meta fallback">
+        <script type="application/ld+json">
+        {"@type":"JobPosting","title":"Apprentice",
+         "description":"<p>Learn precision manufacturing.</p>",
+         "jobLocation":{"name":"VAT Group"}}
+        </script>
+        </head></html>"""
+
+        result = parse_html(html, {"ignore_locations": True})
+
+        assert result.title == "Apprentice"
+        assert result.description == "<p>Learn precision manufacturing.</p>"
+        assert result.locations is None
+
     def test_parse_html_can_ignore_provider_generated_posting_date(self):
         html = """<html><head><script type="application/ld+json">
         {"@type":"JobPosting","title":"Housekeeper",
