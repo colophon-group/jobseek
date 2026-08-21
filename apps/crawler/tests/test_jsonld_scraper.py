@@ -241,6 +241,36 @@ class TestExtractLocations:
         result = _extract_locations(posting)
         assert result == ["San Francisco, CA, US"]
 
+    def test_prefers_address_when_place_name_is_hiring_organization(self):
+        posting = {
+            "hiringOrganization": {"name": "dormakaba Schweiz AG"},
+            "jobLocation": {
+                "name": "dormakaba Schweiz AG",
+                "address": {
+                    "addressLocality": "Wetzikon",
+                    "addressRegion": "ZH",
+                    "addressCountry": "CH",
+                },
+            },
+        }
+
+        assert _extract_locations(posting) == ["Wetzikon, ZH, CH"]
+
+    def test_preserves_distinct_place_name_when_address_is_also_present(self):
+        posting = {
+            "hiringOrganization": {"name": "Example Corp"},
+            "jobLocation": {
+                "name": "Downtown Campus",
+                "address": {
+                    "addressLocality": "Austin",
+                    "addressRegion": "TX",
+                    "addressCountry": "US",
+                },
+            },
+        }
+
+        assert _extract_locations(posting) == ["Downtown Campus"]
+
     def test_with_string_address(self):
         posting = {
             "jobLocation": {

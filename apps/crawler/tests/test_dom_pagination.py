@@ -985,6 +985,58 @@ class TestDomDiscoverInitialFetch:
 
         assert result == set()
 
+    async def test_jsonld_verification_omits_stale_profile_links(self):
+        board_url = "https://jobs.example.com/company"
+        active_url = "https://jobs.example.com/profile/1-active"
+        stale_url = "https://jobs.example.com/profile/2-stale"
+        listing = _html_with_links(active_url, stale_url)
+        active = """
+        <script type="application/ld+json">
+        {"@context":"https://schema.org","@type":"JobPosting","title":"Engineer"}
+        </script>
+        """
+
+        def handler(request):
+            pages = {board_url: listing, active_url: active, stale_url: "<html>Closed</html>"}
+            return httpx.Response(200, text=pages[str(request.url)], request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await dom_discover(
+                {
+                    "board_url": board_url,
+                    "metadata": {
+                        "link_selector": "a[href*='/profile/']",
+                        "require_jsonld_jobposting": True,
+                    },
+                },
+                client,
+            )
+
+        assert result == {active_url}
+
+    async def test_jsonld_verification_fails_closed_on_detail_fetch_error(self, monkeypatch):
+        board_url = "https://jobs.example.com/company"
+        detail_url = "https://jobs.example.com/profile/1-active"
+        monkeypatch.setattr("src.shared.http_retry.asyncio.sleep", AsyncMock())
+
+        def handler(request):
+            if str(request.url) == board_url:
+                return httpx.Response(200, text=_html_with_links(detail_url), request=request)
+            return httpx.Response(503, text="Unavailable", request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError):
+                await dom_discover(
+                    {
+                        "board_url": board_url,
+                        "metadata": {
+                            "link_selector": "a[href*='/profile/']",
+                            "require_jsonld_jobposting": True,
+                        },
+                    },
+                    client,
+                )
+
     @pytest.mark.parametrize("selector", ["", "   ", "a[", "a\x00b", "a" * 257, 123])
     async def test_rejects_invalid_or_unbounded_link_selector(self, selector):
         transport = httpx.MockTransport(
