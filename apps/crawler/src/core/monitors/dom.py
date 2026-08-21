@@ -739,11 +739,7 @@ def _extract_rich_rows_static(
         link = row.css_first(link_selector) if link_selector is not None else row
         href = link.attributes.get(link_attr) if link is not None else None
         title_node = row.css_first(title_selector) if title_selector is not None else link
-        title = (
-            title_node.text(separator=" ", strip=True).strip()
-            if title_node is not None
-            else ""
-        )
+        title = title_node.text(separator=" ", strip=True).strip() if title_node is not None else ""
         if not href or not title:
             raise ValueError(f"DOM monitor rich_rows row {index} omitted its link or title")
         url = urljoin(base_url, href)

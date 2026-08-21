@@ -2097,3 +2097,45 @@ class TestPilatusBoardConfig:
         assert scraper_config["json_path"] == "data.jobDetails.job"
         assert scraper_config["fields"]["description"] == "content"
         assert scraper_config["fields"]["locations"] == "location.label"
+
+
+class TestBucherIndustriesConfig:
+    """Preserve the live provider-quality corrections from PR #7736."""
+
+    def test_rich_provider_fields_and_logo_geometry_are_pinned(self):
+        import json
+        from xml.etree import ElementTree
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        data_dir = get_data_dir()
+        _, rows = read_csv(data_dir / "boards.csv")
+        by_slug = {
+            row["board_slug"]: row for row in rows if row["company_slug"] == "bucher-industries"
+        }
+
+        hydraulics = json.loads(by_slug["bucher-industries-hydraulics"]["scraper_config"])
+        assert hydraulics["enrich"] == ["description"]
+
+        kuhn_fields = json.loads(by_slug["bucher-industries-kuhn"]["monitor_config"])["fields"]
+        assert kuhn_fields["description"] == [
+            "definitions.definition",
+            "definitions.bottomLeftText",
+            "definitions.bottomRightText",
+            "definitions.additionalInfos",
+        ]
+        assert kuhn_fields["employment_type"]["map"] == {
+            "Alternance": "internship",
+            "Emploi (temps plein)": "full_time",
+            "Emploi(temps partiel)": "part_time",
+            "Stage": "internship",
+            "VIE": "internship",
+        }
+
+        municipal = json.loads(by_slug["bucher-industries-municipal"]["scraper_config"])
+        assert municipal == {"ignore_address_region": True}
+
+        logo = ElementTree.parse(data_dir / "images/bucher-industries/logo.svg").getroot()
+        assert logo.attrib["viewBox"] == "0 0 160.6 30"
+        assert "viewbox" not in logo.attrib

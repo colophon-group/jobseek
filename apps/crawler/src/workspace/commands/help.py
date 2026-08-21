@@ -2601,6 +2601,10 @@ json-ld — Structured JobPosting Extractor
                    Page.goto timeout (Playwright only). Default:
                    "domcontentloaded". Set to null to opt out.
     timeout        Navigation timeout in ms (Playwright only)
+    ignore_address_region
+                   Omit addressRegion while retaining addressLocality and
+                   addressCountry. Use only when a provider demonstrably
+                   publishes incorrect regions across otherwise valid jobs.
 
   Fields extracted (from schema.org properties):
     title          ← title or name

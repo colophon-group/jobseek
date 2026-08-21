@@ -258,7 +258,11 @@ def _clean_text(value: object) -> str | None:
     return text or None
 
 
-def _extract_locations(posting: dict) -> list[str] | None:
+def _extract_locations(
+    posting: dict,
+    *,
+    ignore_address_region: bool = False,
+) -> list[str] | None:
     """Extract locations from jobLocation field."""
     locations: list[str] = []
     seen: set[str] = set()
@@ -285,7 +289,11 @@ def _extract_locations(posting: dict) -> list[str] | None:
             address_text = _clean_text(address)
         elif isinstance(address, dict):
             parts = []
-            for field in ("addressLocality", "addressRegion", "addressCountry"):
+            address_fields = ["addressLocality"]
+            if not ignore_address_region:
+                address_fields.append("addressRegion")
+            address_fields.append("addressCountry")
+            for field in address_fields:
                 val = address.get(field)
                 if val:
                     if isinstance(val, dict):
@@ -488,7 +496,11 @@ def _normalize_description_entities(value: object) -> str | None:
     )
 
 
-def _parse_posting(posting: dict) -> JobContent:
+def _parse_posting(
+    posting: dict,
+    *,
+    ignore_address_region: bool = False,
+) -> JobContent:
     """Convert a schema.org JobPosting dict to JobContent."""
     description = _normalize_description_entities(posting.get("description"))
 
@@ -513,7 +525,10 @@ def _parse_posting(posting: dict) -> JobContent:
     return JobContent(
         title=_clean_text(posting.get("title") or posting.get("name")),
         description=description,
-        locations=_extract_locations(posting),
+        locations=_extract_locations(
+            posting,
+            ignore_address_region=ignore_address_region,
+        ),
         employment_type=employment_type,
         job_location_type=posting.get("jobLocationType"),
         date_posted=posting.get("datePosted"),
@@ -526,21 +541,26 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
     """Extract structured job data from pre-fetched HTML."""
     extractor = _JsonLdExtractor()
     extractor.feed(html)
-    ignore_locations = (config or {}).get("ignore_locations") is True
+    config = config or {}
+    ignore_locations = config.get("ignore_locations") is True
+    ignore_address_region = config.get("ignore_address_region") is True
 
     for block in extractor.results:
         posting = _find_job_posting(block)
         if posting:
-            content = _parse_posting(posting)
+            content = _parse_posting(
+                posting,
+                ignore_address_region=ignore_address_region,
+            )
             # Some providers synthesize plausible-looking timestamps rather
             # than publishing real posting dates or expiry dates.  iCIMS, for
             # example, can emit the request time minus exactly two years as
             # datePosted and plus one year as validThrough for every job.  Keep
             # these opt-ins board-scoped: valid schema.org dates remain
             # authoritative everywhere else.
-            if (config or {}).get("ignore_date_posted") is True:
+            if config.get("ignore_date_posted") is True:
                 content.date_posted = None
-            if (config or {}).get("ignore_valid_through") is True and content.extras:
+            if config.get("ignore_valid_through") is True and content.extras:
                 content.extras.pop("valid_through", None)
                 if not content.extras:
                     content.extras = None
