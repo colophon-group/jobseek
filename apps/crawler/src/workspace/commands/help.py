@@ -1339,8 +1339,10 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    joined in selector order. Every configured field is strict,
                    so markup drift fails the cycle instead of publishing a
                    partial authoritative result. Incompatible with rendering,
-                   pagination, and include_board_url. Pair with scraper enrich
-                   for fields absent from the listing, such as description.
+                   pagination, and include_board_url. Requires a real detail
+                   scraper (not skip) with scraper_config
+                   {"enrich": ["description"]}; otherwise the partial-rich
+                   runtime path will not schedule description scraping.
     url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
                    Keep patterns broad enough to include URL variants
     url_transform  Regex find/replace to rewrite URLs (see: ws help monitor sitemap)

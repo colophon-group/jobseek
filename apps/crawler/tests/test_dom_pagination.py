@@ -243,6 +243,42 @@ class TestRichRowsStatic:
         assert result[0].locations == ["Winterthur, Switzerland"]
 
     @pytest.mark.asyncio
+    async def test_static_rich_discovery_disables_shared_body_truncation(self):
+        first = """
+        <div class="job">
+          <div class="job-title"><a href="jobs/first---123">First</a></div>
+          <div class="job-location">Winterthur</div>
+          <div class="job-country">Switzerland</div>
+        </div>
+        """
+        second = """
+        <div class="job">
+          <div class="job-title"><a href="jobs/second---456">Second</a></div>
+          <div class="job-location">Süßen</div>
+          <div class="job-country">Germany</div>
+        </div>
+        """
+        html = first + (" " * 500_000) + second
+
+        async def bounded_fetch(_client, _url, *, max_chars=500_000, **_kwargs):
+            return html[:max_chars] if max_chars is not None else html
+
+        fetch = AsyncMock(side_effect=bounded_fetch)
+
+        with patch(_FETCH_PATCH, fetch):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/careers/",
+                    "metadata": {"render": False, "rich_rows": self.CONFIG},
+                },
+                AsyncMock(),
+            )
+
+        assert isinstance(result, list)
+        assert [job.title for job in result] == ["First", "Second"]
+        assert fetch.await_args.kwargs["max_chars"] is None
+
+    @pytest.mark.asyncio
     async def test_rejects_rendered_or_paginated_rich_rows(self):
         for incompatible in ({"render": True}, {"pagination": {"param_name": "page"}}):
             with pytest.raises(ValueError, match="static, single-page"):

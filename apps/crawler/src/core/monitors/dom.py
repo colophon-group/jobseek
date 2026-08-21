@@ -1465,6 +1465,11 @@ async def dom_discover(
             transient_403=True,
             retryable_statuses={202},
             encoding=encoding,
+            # Rich rows are authoritative structured input. The shared
+            # 500k listing-preview limit can cut a complete trailing row and
+            # make the resulting partial inventory look healthy, so retain
+            # the full body for this strict single-page mode.
+            max_chars=None if rich_rows is not None else 500_000,
         )
         if not html:
             log.warning("dom.fetch_failed", board_url=board_url)

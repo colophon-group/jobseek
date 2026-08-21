@@ -152,6 +152,18 @@ def validate_csvs() -> list[ValidationError]:
                 # The dedicated JSON check below reports malformed config.
                 pass
         configured_rich = is_rich_monitor(monitor_type, monitor_config_obj)
+        configured_rich_rows = monitor_type == "dom" and bool(
+            (monitor_config_obj or {}).get("rich_rows")
+        )
+        scraper_config_obj: dict | None = None
+        if scraper_config:
+            try:
+                parsed_scraper_config = json.loads(scraper_config)
+                if isinstance(parsed_scraper_config, dict):
+                    scraper_config_obj = parsed_scraper_config
+            except (json.JSONDecodeError, TypeError):
+                # The dedicated JSON check below reports malformed config.
+                pass
 
         if not company_slug:
             errors.append(ValidationError("boards.csv", i, "Empty company_slug"))
@@ -241,6 +253,7 @@ def validate_csvs() -> list[ValidationError]:
             and not scraper_type
             and (monitor_type not in url_only_monitors or configured_rich)
             and monitor_type != "api_sniffer"
+            and not configured_rich_rows
         ):
             mc_obj: dict | None = None
             if monitor_config:
@@ -270,7 +283,7 @@ def validate_csvs() -> list[ValidationError]:
         # or personio whose XML feed includes descriptions). Pairing skip
         # with a URL-only monitor leaves descriptions empty silently — see
         # issue #2637 ("Broken descriptions from lazy scraper configurers").
-        if scraper_type == "skip":
+        if scraper_type == "skip" and not configured_rich_rows:
             mc_obj_skip: dict | None = None
             if monitor_config:
                 try:
@@ -295,6 +308,33 @@ def validate_csvs() -> list[ValidationError]:
                             f"{monitor_type!r}: this monitor does not return "
                             "rich job data inline. Pick a scraper_type or "
                             "switch to a rich monitor."
+                        ),
+                    )
+                )
+
+        # DOM rich_rows yields URL/title/location but deliberately does not
+        # parse detail-page descriptions. Because it is a partial-rich path,
+        # the runtime only schedules detail scraping when scraper_config
+        # explicitly declares description enrichment. Keep this stricter
+        # than the generic rich-monitor skip rule: accepting an absent/skip
+        # scraper or a config without enrich would silently persist empty
+        # descriptions.
+        if configured_rich_rows:
+            enrich = (scraper_config_obj or {}).get("enrich")
+            if (
+                not scraper_type
+                or scraper_type == "skip"
+                or not isinstance(enrich, list)
+                or "description" not in enrich
+            ):
+                errors.append(
+                    ValidationError(
+                        "boards.csv",
+                        i,
+                        (
+                            "DOM monitor rich_rows requires a real enrichment "
+                            "scraper and scraper_config.enrich containing "
+                            "'description'; scraper_type='skip' is invalid"
                         ),
                     )
                 )

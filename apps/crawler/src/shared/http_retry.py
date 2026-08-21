@@ -509,7 +509,7 @@ async def fetch_with_retry(
     *,
     retries: int = 3,
     base_delay: float = 0.5,
-    max_chars: int = 500_000,
+    max_chars: int | None = 500_000,
     timeout: float | None = None,
     headers: dict | None = None,
     encoding: str | None = None,
@@ -519,8 +519,8 @@ async def fetch_with_retry(
     """Fetch ``url`` and return its text body.
 
     Returns:
-        - ``str`` (truncated to ``max_chars``) on HTTP 200 with a
-          **non-empty** body.
+        - ``str`` (truncated to ``max_chars`` when the limit is not
+          ``None``) on HTTP 200 with a **non-empty** body.
         - ``None`` on HTTP 404 / 410 (legitimate end-of-pagination), or
           any other non-retryable 4xx (caller should treat as "no more
           content here" — same semantic as the prior tolerant
@@ -616,7 +616,7 @@ async def fetch_with_retry(
                     _tdm_check(resp, body_excerpt=text)
                     if retried:
                         http_retry_attempts_total.labels(host=host, outcome="recovered").inc()
-                    return text[:max_chars]
+                    return text[:max_chars] if max_chars is not None else text
                 # Empty-200 (#2739): treat as transient, fall through
                 # to backoff. ``last_exc`` stays None so retry-budget
                 # exhaustion raises with last_status=200 and a

@@ -280,13 +280,16 @@ Link extraction from career pages. By default (``render: false``) fetches via st
 
 Link discovery filters `<a href>` URLs containing job-related keywords (job, career, position, posting, opening, role, vacancy).
 With `rich_rows`, anchor text is the title and each configured location selector
-must match every row; missing rows or fields fail closed. Use scraper `enrich`
-for detail-only fields instead of overwriting the listing values.
+must match every row; missing rows or fields fail closed. Because this mode is
+partial-rich and does not extract descriptions, it requires a real detail
+scraper (not `skip`) whose config includes `"enrich": ["description"]`.
+Enrichment fills the detail-only field without overwriting listing values.
 Oleeo/TalentLink vacancy boards use a provider preset that accepts their
 authoritative empty state and limits discovery to same-origin `/opp/` detail
 links, excluding board-switcher, event, and talent-bank navigation.
 
-**Returns**: URL set only. Needs a scraper to extract job details.
+**Returns**: URL set by default, or partial rich jobs with `rich_rows`. Both
+paths need a scraper; `rich_rows` specifically requires description enrichment.
 
 **When to use**: Only when no API monitor, sitemap, or nextdata monitor is available. The agent should exhaust all other options first.
 
