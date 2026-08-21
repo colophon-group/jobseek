@@ -19,6 +19,7 @@ from src.workspace._compat import (
     all_monitor_types,
     api_monitor_types,
     auto_scraper_type,
+    is_rich_monitor,
 )
 
 _JOBCONTENT_FIELD_NAMES = frozenset(f.name for f in dc_fields(JobContent))
@@ -141,6 +142,16 @@ def validate_csvs() -> list[ValidationError]:
         monitor_config = row.get("monitor_config") or ""
         scraper_type = row.get("scraper_type") or ""
         scraper_config = row.get("scraper_config") or ""
+        monitor_config_obj: dict | None = None
+        if monitor_config:
+            try:
+                parsed_monitor_config = json.loads(monitor_config)
+                if isinstance(parsed_monitor_config, dict):
+                    monitor_config_obj = parsed_monitor_config
+            except (json.JSONDecodeError, TypeError):
+                # The dedicated JSON check below reports malformed config.
+                pass
+        configured_rich = is_rich_monitor(monitor_type, monitor_config_obj)
 
         if not company_slug:
             errors.append(ValidationError("boards.csv", i, "Empty company_slug"))
@@ -191,7 +202,7 @@ def validate_csvs() -> list[ValidationError]:
                 )
             )
 
-        if monitor_type in url_only_monitors and not scraper_type:
+        if monitor_type in url_only_monitors and not configured_rich and not scraper_type:
             errors.append(
                 ValidationError(
                     "boards.csv",
@@ -228,7 +239,7 @@ def validate_csvs() -> list[ValidationError]:
             monitor_type
             and monitor_type in valid_monitor_types
             and not scraper_type
-            and monitor_type not in url_only_monitors
+            and (monitor_type not in url_only_monitors or configured_rich)
             and monitor_type != "api_sniffer"
         ):
             mc_obj: dict | None = None
@@ -376,7 +387,7 @@ def validate_csvs() -> list[ValidationError]:
                                         )
                                     )
                             # Warn if enrich is used with URL-only monitor
-                            if enrich and monitor_type in url_only_monitors:
+                            if enrich and monitor_type in url_only_monitors and not configured_rich:
                                 errors.append(
                                     ValidationError(
                                         "boards.csv",

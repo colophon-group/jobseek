@@ -935,11 +935,14 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
     """Check if a monitor type returns rich data (scraper not needed).
 
     Statically-rich monitors (greenhouse, lever, etc.) always return True.
-    api_sniffer is rich only when ``fields`` is present in config.
+    api_sniffer/nextdata are rich when ``fields`` is present; dom is partial
+    rich when strict static ``rich_rows`` extraction is configured.
 
     Note: this is narrower than ``auto_scraper_type``. Workday has an
     auto-configured scraper but is NOT rich (monitor returns URLs only).
     """
-    return monitor_type in _RICH_MONITORS or (
-        monitor_type in ("api_sniffer", "nextdata") and bool((config or {}).get("fields"))
+    return (
+        monitor_type in _RICH_MONITORS
+        or (monitor_type in ("api_sniffer", "nextdata") and bool((config or {}).get("fields")))
+        or (monitor_type == "dom" and bool((config or {}).get("rich_rows")))
     )

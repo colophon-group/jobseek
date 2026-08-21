@@ -23,12 +23,15 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlsplit, urlu
 import structlog
 from selectolax.lexbor import LexborHTMLParser, SelectolaxError
 
-from src.core.monitors import register
+from src.core.monitors import DiscoveredJob, register
 from src.core.monitors.raw import save_text_response
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
+from src.shared.truncation import truncated_rich_result
 
 if TYPE_CHECKING:
     import httpx
+
+    from src.core.monitor import MonitorResult
 
 log = structlog.get_logger()
 
@@ -600,16 +603,98 @@ def _extract_links_static(
 
 def _validate_link_selector(value: object) -> str | None:
     """Return a bounded valid CSS selector, or ``None`` when unset."""
+    return _validate_css_selector(value, name="link_selector")
+
+
+def _validate_css_selector(value: object, *, name: str) -> str | None:
+    """Return one bounded CSS selector with a field-specific error."""
     if value is None:
         return None
     if not isinstance(value, str) or not value.strip() or len(value) > 256 or "\x00" in value:
-        raise ValueError("DOM monitor link_selector must be a CSS selector up to 256 chars")
+        raise ValueError(f"DOM monitor {name} must be a CSS selector up to 256 chars")
     selector = value.strip()
     try:
         LexborHTMLParser("<a href='/job'>job</a>").css(selector)
     except SelectolaxError as exc:
-        raise ValueError(f"DOM monitor link_selector is invalid: {selector!r}") from exc
+        raise ValueError(f"DOM monitor {name} is invalid: {selector!r}") from exc
     return selector
+
+
+def _validated_rich_rows(value: object) -> tuple[str, str, tuple[str, ...]] | None:
+    """Validate optional static listing-row extraction config."""
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) - {
+        "row_selector",
+        "link_selector",
+        "location_selectors",
+    }:
+        raise ValueError("DOM monitor rich_rows must be a bounded mapping")
+    row_selector = _validate_css_selector(value.get("row_selector"), name="rich_rows.row_selector")
+    link_selector = _validate_css_selector(
+        value.get("link_selector"), name="rich_rows.link_selector"
+    )
+    if row_selector is None or link_selector is None:
+        raise ValueError("DOM monitor rich_rows requires row_selector and link_selector")
+    locations = value.get("location_selectors") or []
+    if (
+        not isinstance(locations, list)
+        or len(locations) > 4
+        or not all(isinstance(selector, str) and selector.strip() for selector in locations)
+    ):
+        raise ValueError("DOM monitor rich_rows.location_selectors must be a bounded list")
+    location_selectors = tuple(
+        _validate_css_selector(selector, name="rich_rows.location_selectors") or ""
+        for selector in locations
+    )
+    return row_selector, link_selector, location_selectors
+
+
+def _extract_rich_rows_static(
+    html: str,
+    base_url: str,
+    config: tuple[str, str, tuple[str, ...]],
+    url_matcher: re.Pattern | None,
+) -> list[DiscoveredJob]:
+    """Extract stable URLs, titles, and joined locations from listing rows."""
+    row_selector, link_selector, location_selectors = config
+    tree = LexborHTMLParser(html)
+    rows = tree.css(row_selector)
+    if not rows:
+        raise ValueError("DOM monitor rich_rows matched no listing rows")
+
+    jobs_by_url: dict[str, DiscoveredJob] = {}
+    for index, row in enumerate(rows):
+        link = row.css_first(link_selector)
+        href = link.attributes.get("href") if link is not None else None
+        title = link.text(separator=" ", strip=True).strip() if link is not None else ""
+        if not href or not title:
+            raise ValueError(f"DOM monitor rich_rows row {index} omitted its link or title")
+        url = urljoin(base_url, href)
+        if not url.startswith("http"):
+            raise ValueError(f"DOM monitor rich_rows row {index} produced an invalid URL")
+        if url_matcher is not None and not url_matcher.search(url):
+            continue
+
+        location_parts: list[str] = []
+        for selector in location_selectors:
+            node = row.css_first(selector)
+            value = node.text(separator=" ", strip=True).strip() if node is not None else ""
+            if not value:
+                raise ValueError(
+                    f"DOM monitor rich_rows row {index} omitted configured location data"
+                )
+            if value not in location_parts:
+                location_parts.append(value)
+        jobs_by_url[url] = DiscoveredJob(
+            url=url,
+            title=title,
+            locations=[", ".join(location_parts)] if location_parts else None,
+        )
+
+    if not jobs_by_url:
+        raise ValueError("DOM monitor rich_rows URL filter excluded every listing row")
+    return list(jobs_by_url.values())
 
 
 # ---------------------------------------------------------------------------
@@ -1286,7 +1371,7 @@ async def dom_discover(
     board: dict,
     client: httpx.AsyncClient | None = None,
     pw=None,
-) -> set[str]:
+) -> set[str] | list[DiscoveredJob] | MonitorResult:
     """Discover job URLs from a career page.
 
     ``include_board_url`` is an explicit escape hatch for boards whose URL
@@ -1305,6 +1390,7 @@ async def dom_discover(
     url_matcher = _build_url_matcher(metadata.get("url_filter"))
     url_transform = metadata.get("url_transform")
     link_selector = _validate_link_selector(metadata.get("link_selector"))
+    rich_rows = _validated_rich_rows(metadata.get("rich_rows"))
     encoding = metadata.get("encoding")
     if encoding is not None:
         if not isinstance(encoding, str) or not encoding:
@@ -1318,6 +1404,11 @@ async def dom_discover(
             detail="actions require render=true; overriding render to true",
         )
         render = True
+
+    if rich_rows is not None and (render or pagination or metadata.get("include_board_url")):
+        raise ValueError(
+            "DOM monitor rich_rows supports static, single-page listing extraction only"
+        )
 
     if render:
         combined = {**metadata, "_board_url": board_url}
@@ -1379,6 +1470,13 @@ async def dom_discover(
             log.warning("dom.fetch_failed", board_url=board_url)
             return set()
         _raise_if_bot_challenge(board_url, html)
+        if rich_rows is not None:
+            jobs = _extract_rich_rows_static(html, board_url, rich_rows, url_matcher)
+            log.info("dom.complete", board_url=board_url, urls_found=len(jobs), render=False)
+            if len(jobs) > MAX_URLS:
+                log.warning("dom.truncated", total=len(jobs), cap=MAX_URLS)
+                return truncated_rich_result(jobs)
+            return jobs
         urls = _extract_links_static(html, board_url, url_matcher, link_selector)
         if pagination:
             if pagination.get("partition_selector"):
