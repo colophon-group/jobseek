@@ -1041,10 +1041,14 @@ def _apply_item_filter(
             deduped.append(item)
         scoped = deduped
 
-    # An equal upstream count proves every advertised item reached the client,
-    # so the scoped count becomes authoritative. If the page was already
-    # short, retain its larger total and let truncation fail closed.
-    scoped_total = len(scoped) if advertised_total == original_count else advertised_total
+    # Remove the intentionally excluded/deduplicated rows from the upstream
+    # total as well. Any pre-existing source gap is preserved, so the normal
+    # small-drift tolerance still applies and a materially short response
+    # continues to fail closed.
+    removed_count = original_count - len(scoped)
+    scoped_total = (
+        max(0, advertised_total - removed_count) if advertised_total is not None else None
+    )
     log.info(
         "api_sniffer.item_filter_applied",
         before=original_count,

@@ -524,7 +524,34 @@ class TestItemFilter:
         )
 
         assert scoped == [{"market": "global"}]
-        assert total == 10
+        assert total == 9
+
+    @pytest.mark.parametrize(
+        ("advertised_total", "scoped_total"),
+        [(4, 2), (6, 4)],
+    )
+    def test_source_total_drift_is_preserved_after_filtering(
+        self,
+        advertised_total,
+        scoped_total,
+    ):
+        item_filter = _validated_item_filter({"item_filter": {"exclude": {"market": ["local"]}}})
+
+        scoped, total = _apply_item_filter(
+            [
+                {"url": "https://example.com/1", "market": "global"},
+                {"url": "https://example.com/2", "market": "local"},
+                {"url": "https://example.com/3", "market": "local"},
+                {"url": "https://example.com/4", "market": "global"},
+                {"url": "https://example.com/5", "market": "global"},
+            ],
+            item_filter,
+            advertised_total=advertised_total,
+        )
+
+        assert len(scoped) == 3
+        assert total == scoped_total
+        assert not _materially_below_advertised_total(len(scoped), total)
 
     @pytest.mark.parametrize(
         "value",
