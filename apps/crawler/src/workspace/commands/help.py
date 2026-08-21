@@ -187,6 +187,7 @@ Scraper Types:
   nextdata       Static/PW   Yes (fields)     Next.js sites with __NEXT_DATA__
   embedded       Static/PW   Yes (fields)     JS-embedded JSON (script tags, variables)
   onlyfy         Static      No               Onlyfy/Prescreen job pages
+  paycor         Static      No               Paycor/Newton legacy job pages
   pdf            Static      No               PDF job descriptions
   dom            Static/PW   Yes (steps)      Custom HTML structure
   api_sniffer    HTTP/PW     Optional (fields)  SPA/XHR or direct API
@@ -2389,6 +2390,10 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
       "url_template": "https://example.com/jobs/{id}",
       "url_template_fields": {"public_id": "customFields[0].value"},
       "slug_fields": ["title"],
+      "item_filter": {
+        "exclude": {"attributes.country": ["USA"]},
+        "dedupe_by": ["provider.tenant_id", "provider.apply_id"]
+      },
       "pagination": {
         "param_name": "offset",
         "style": "offset",
@@ -2420,6 +2425,15 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                      top-level scalar fields.
     slug_fields      Optional item paths slugified and joined into the {slug}
                      URL-template placeholder.
+    item_filter      Optional ``api_url`` request/replay source partition,
+                     applied after pagination. ``exclude`` maps item paths to
+                     exact string values; matching scalar or list values are
+                     omitted. ``dedupe_by`` is a list of stable identifier
+                     paths and retains the first item for each complete,
+                     non-empty compound identity. Items missing any identity
+                     part remain distinct. A short upstream response remains
+                     truncated after filtering. Auto-discovery configs reject
+                     this option instead of silently ignoring it.
     params           Query parameters merged into api_url at request time.
                      Auto-filled from the captured URL (empty and pagination
                      params stripped). Edit result_limit / per_page here to
@@ -3438,6 +3452,18 @@ paylocity — Paylocity server-rendered detail scraper
             unsupported-browser warning, so Playwright is not required.
 """
 
+SCRAPER_PAYCOR = """\
+paycor — Paycor/Newton server-rendered detail scraper
+
+  Page:     GET https://recruitingbypaycor.com/career/JobIntroduction.action?...&id={id}
+  Returns:  title, complete HTML description, locations,
+            metadata (job_id, openings)
+  Config:   None needed.
+  Note:     Legacy Newton templates use a generic visible page heading and
+            nested tables. This scraper reads the stable gnewtonJob* fields
+            directly over static HTTP, so Playwright is not required.
+"""
+
 SCRAPER_LINKEDIN = """\
 linkedin — LinkedIn public guest-job detail scraper
 
@@ -3685,6 +3711,7 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
     "jobstreet": SCRAPER_JOBSTREET,
     "paycom": SCRAPER_PAYCOM,
     "jazzhr": SCRAPER_JAZZHR,
+    "paycor": SCRAPER_PAYCOR,
     "paylocity": SCRAPER_PAYLOCITY,
     "bite": SCRAPER_BITE,
     "mokahr": SCRAPER_MOKAHR,

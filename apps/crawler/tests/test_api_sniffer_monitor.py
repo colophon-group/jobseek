@@ -11,6 +11,7 @@ import pytest
 
 from src.core.monitors.api_sniffer import (
     ApiSnifferFallbackError,
+    _apply_item_filter,
     _build_item_projector,
     _configured_post_data,
     _detect_prospective_config,
@@ -20,6 +21,7 @@ from src.core.monitors.api_sniffer import (
     _materially_below_advertised_total,
     _refresh_post_data,
     _serialize_post_data,
+    _validated_item_filter,
     _validated_slug_fields,
     can_handle,
     discover,
@@ -464,6 +466,185 @@ class TestSlugFields:
 
     def test_accepts_field_path_list(self):
         assert _validated_slug_fields({"slug_fields": [" details.title "]}) == ["details.title"]
+
+
+class TestItemFilter:
+    @pytest.mark.asyncio
+    async def test_rejects_auto_discovery_config(self):
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {"item_filter": {"exclude": {"market": ["local"]}}},
+        }
+
+        with pytest.raises(ValueError, match="item_filter requires a configured api_url"):
+            await discover(board, AsyncMock(), pw=AsyncMock())
+
+    def test_excludes_partitioned_values_and_deduplicates_stable_ids(self):
+        config = {
+            "item_filter": {
+                "exclude": {"attributes.country": ["Switzerland", "USA"]},
+                "dedupe_by": ["provider.tenant_id", "provider.apply_id"],
+            }
+        }
+        item_filter = _validated_item_filter(config)
+        items = [
+            {
+                "url": "https://example.com/1",
+                "attributes": {"country": ["Germany"]},
+                "provider": {"tenant_id": "tenant", "apply_id": "stable-1"},
+            },
+            {
+                "url": "https://example.com/duplicate",
+                "attributes": {"country": ["Germany"]},
+                "provider": {"tenant_id": "tenant", "apply_id": "stable-1"},
+            },
+            {
+                "url": "https://example.com/other-tenant",
+                "attributes": {"country": ["Germany"]},
+                "provider": {"tenant_id": "other", "apply_id": "stable-1"},
+            },
+            {
+                "url": "https://example.com/usa",
+                "attributes": {"country": ["USA"]},
+                "provider": {"tenant_id": "tenant", "apply_id": "stable-2"},
+            },
+            {
+                "url": "https://example.com/no-id",
+                "attributes": {"country": ["Germany"]},
+                "provider": {"tenant_id": "tenant", "apply_id": ""},
+            },
+        ]
+
+        scoped, total = _apply_item_filter(items, item_filter, advertised_total=5)
+
+        assert [item["url"] for item in scoped] == [
+            "https://example.com/1",
+            "https://example.com/other-tenant",
+            "https://example.com/no-id",
+        ]
+        assert total == 3
+
+    def test_incomplete_upstream_total_remains_truncated_after_filtering(self):
+        item_filter = _validated_item_filter({"item_filter": {"exclude": {"market": ["local"]}}})
+
+        scoped, total = _apply_item_filter(
+            [{"market": "global"}, {"market": "local"}],
+            item_filter,
+            advertised_total=10,
+        )
+
+        assert scoped == [{"market": "global"}]
+        assert total == 9
+
+    @pytest.mark.parametrize(
+        ("advertised_total", "scoped_total"),
+        [(4, 2), (6, 4)],
+    )
+    def test_source_total_drift_is_preserved_after_filtering(
+        self,
+        advertised_total,
+        scoped_total,
+    ):
+        item_filter = _validated_item_filter({"item_filter": {"exclude": {"market": ["local"]}}})
+
+        scoped, total = _apply_item_filter(
+            [
+                {"url": "https://example.com/1", "market": "global"},
+                {"url": "https://example.com/2", "market": "local"},
+                {"url": "https://example.com/3", "market": "local"},
+                {"url": "https://example.com/4", "market": "global"},
+                {"url": "https://example.com/5", "market": "global"},
+            ],
+            item_filter,
+            advertised_total=advertised_total,
+        )
+
+        assert len(scoped) == 3
+        assert total == scoped_total
+        assert not _materially_below_advertised_total(len(scoped), total)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            {},
+            {"unexpected": True},
+            {"exclude": {"market": []}},
+            {"exclude": {"": ["local"]}},
+            {"exclude": {"attributes.25": ["USA"]}},
+            {"dedupe_by": ""},
+            {"dedupe_by": "stable"},
+            {"dedupe_by": []},
+        ],
+    )
+    def test_rejects_invalid_config(self, value):
+        with pytest.raises(ValueError, match="item_filter"):
+            _validated_item_filter({"item_filter": value})
+
+    def test_compaction_preserves_filter_and_dedupe_roots(self):
+        projector = _build_item_projector(
+            {"title": "details.title"},
+            "url",
+            None,
+            {},
+            preserve_paths=[
+                "attributes.country",
+                "provider.tenant_id",
+                "provider.apply_id",
+            ],
+        )
+
+        assert projector is not None
+        assert projector(
+            {
+                "details": {"title": "Engineer"},
+                "url": "https://example.com/1",
+                "attributes": {"country": ["Germany"]},
+                "provider": {"tenant_id": "tenant", "apply_id": "stable-1"},
+                "unused": "large",
+            }
+        ) == {
+            "details": {"title": "Engineer"},
+            "url": "https://example.com/1",
+            "attributes": {"country": ["Germany"]},
+            "provider": {"tenant_id": "tenant", "apply_id": "stable-1"},
+        }
+
+    @pytest.mark.asyncio
+    async def test_http_discovery_applies_filter_after_complete_response(self):
+        payload = {
+            "jobs": [
+                {"url": "https://example.com/1", "market": "global", "stable": "one"},
+                {
+                    "url": "https://example.com/duplicate",
+                    "market": "global",
+                    "stable": "one",
+                },
+                {"url": "https://example.com/usa", "market": "local", "stable": "two"},
+                {"url": "https://example.com/2", "market": "global", "stable": "three"},
+            ],
+            "total": 4,
+        }
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "api_url": "https://example.com/api/jobs",
+                "method": "GET",
+                "json_path": "jobs",
+                "url_field": "url",
+                "total_path": "total",
+                "item_filter": {
+                    "exclude": {"market": ["local"]},
+                    "dedupe_by": ["stable"],
+                },
+            },
+        }
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json=payload, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover(board, client)
+
+        assert result == {"https://example.com/1", "https://example.com/2"}
 
 
 def _http_status_error_resp(status: int) -> MagicMock:

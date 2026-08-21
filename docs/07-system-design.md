@@ -283,6 +283,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `onlyfy`       | Fetch Onlyfy/Prescreen server-rendered candidate pages | `language` optional |
 | `oracle_hcm`   | Fetch Oracle HCM detail REST responses             | `{host, site}`         |
 | `paycom`       | Bootstrap Paycom and fetch regional detail API      | None                   |
+| `paycor`       | Parse Paycor/Newton server-rendered detail fields   | None                   |
 | `jazzhr`       | Parse JSON-LD, then JazzHR DOM fallback in-memory    | None                   |
 | `paylocity`    | Parse Paylocity server-rendered detail pages       | None                   |
 | `linkedin`     | Fetch LinkedIn public guest-job detail fragments   | None                   |

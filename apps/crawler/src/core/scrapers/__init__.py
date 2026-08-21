@@ -154,6 +154,7 @@ _PROBE_ORDER = [
     "nextdata",
     "embedded",
     "onlyfy",
+    "paycor",
     "pdf",
     "taleo",
     "dom",
@@ -393,6 +394,7 @@ from src.core.scrapers import (  # noqa: E402
     onlyfy,  # noqa: F401
     oracle_hcm,  # noqa: F401
     paycom,  # noqa: F401
+    paycor,  # noqa: F401
     paylocity,  # noqa: F401
     pdf,  # noqa: F401
     rippling,  # noqa: F401
