@@ -25,6 +25,7 @@ CI_WORKFLOW = ROOT / ".github/workflows/ci.yml"
 DEPLOY = ROOT / "apps/crawler/deploy.sh"
 MAINTENANCE = ROOT / ".github/workflows/crawler-scheduled-maintenance.yml"
 SYNC_DATA = ROOT / ".github/workflows/sync-data.yml"
+CSV_SYNC_HOST = ROOT / "scripts/crawler-csv-sync-host.sh"
 REFRESH_CURRENCY = ROOT / ".github/workflows/refresh-currency-rates.yml"
 
 STATE_SPEC = importlib.util.spec_from_file_location("reconciliation_state", STATE)
@@ -193,9 +194,13 @@ def test_all_crawler_mutation_entrypoints_share_the_host_lock() -> None:
         source = path.read_text(encoding="utf-8")
         assert "/run/lock/jobseek-crawler-mutation.lock" in source
         assert "flock -w 7200" in source
-    for path in (SYNC_DATA, REFRESH_CURRENCY):
-        source = path.read_text(encoding="utf-8")
-        assert "/usr/local/sbin/jobseek-maintenance oneoff" in source
+    assert "/usr/local/sbin/jobseek-maintenance window" in SYNC_DATA.read_text(encoding="utf-8")
+    assert "/run/lock/jobseek-crawler-mutation.lock" not in CSV_SYNC_HOST.read_text(
+        encoding="utf-8"
+    )
+    assert "/usr/local/sbin/jobseek-maintenance oneoff" in REFRESH_CURRENCY.read_text(
+        encoding="utf-8"
+    )
 
 
 def test_scheduled_oneoffs_filter_database_credentials_by_command() -> None:

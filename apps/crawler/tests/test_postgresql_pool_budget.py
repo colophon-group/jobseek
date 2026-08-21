@@ -145,7 +145,7 @@ def test_oneoffs_and_readonly_routine_have_explicit_small_budgets() -> None:
         "deploy/reconciliation/run.sh": ("reconciliation", 4),
         ".github/workflows/crawler-scheduled-maintenance.yml": ("maintenance", 4),
         ".github/workflows/refresh-currency-rates.yml": ("currency-refresh", 4),
-        ".github/workflows/sync-data.yml": ("csv-sync", 4),
+        "scripts/crawler-csv-sync-host.sh": ("csv-sync", 4),
         ".github/workflows/repair-location-taxonomy-source.yml": (
             "location-taxonomy-repair",
             4,
