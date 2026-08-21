@@ -941,7 +941,9 @@ is now a removal-only utility. It first strips only routes owned by the
 deletes the Jobseek bridge, deadman, cancelled-test rule, and contact point.
 Every observability deployment runs it with `--disable` before syncing Mimir
 rules, so a stale production resource is removed rather than reactivated. The
-utility has no supported activation mode.
+utility has no supported activation mode. Read-only Grafana API checks retry
+bounded transient cold-start and rate-limit responses for about two minutes;
+writes remain single-attempt so an ambiguous mutation is never replayed.
 
 Do not add a paging schedule, dispatch workflow, contact, route, or activation
 command without an explicit new operator decision. Continue using Grafana for

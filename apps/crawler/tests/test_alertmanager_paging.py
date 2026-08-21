@@ -231,7 +231,26 @@ def test_grafana_read_retries_are_bounded(monkeypatch) -> None:
 
     assert caught.value.status_code == 503
     assert calls == paging.GRAFANA_READ_ATTEMPTS
-    assert sleeps == [1, 2, 4, 8]
+    assert sleeps == [1, 2, 4, 8, 16, 30, 30, 30]
+
+
+def test_grafana_read_survives_a_long_cold_start(monkeypatch) -> None:
+    request = httpx.Request("GET", "https://grafana.example.com/api/test")
+    responses = iter(
+        [httpx.Response(503, request=request)] * 8
+        + [httpx.Response(200, json={"ready": True}, request=request)]
+    )
+    sleeps: list[int] = []
+    monkeypatch.setattr(paging.httpx, "request", lambda *_args, **_kwargs: next(responses))
+    monkeypatch.setattr(paging.time, "sleep", sleeps.append)
+
+    status, payload = paging.GrafanaClient("https://grafana.example.com", "secret").request(
+        "GET", "/api/test"
+    )
+
+    assert status == 200
+    assert payload == {"ready": True}
+    assert sleeps == [1, 2, 4, 8, 16, 30, 30, 30]
 
 
 def test_grafana_writes_do_not_retry(monkeypatch) -> None:
