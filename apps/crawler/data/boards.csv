@@ -5938,6 +5938,8 @@ ultima-genomics,ultima-genomics-greenhouse,https://job-boards.greenhouse.io/ulti
 ultra,ultra-ashby,https://jobs.ashbyhq.com/ultra,ashby,"{""token"": ""ultra""}",skip,
 ultraviolet-cyber,ultraviolet-cyber-lever,https://jobs.lever.co/uvcyber,lever,"{""token"": ""uvcyber""}",skip,
 uma-education,uma-education-greenhouse,https://job-boards.greenhouse.io/umaeducationinc,greenhouse,"{""token"": ""umaeducationinc""}",skip,
+unaids,unaids-careers,https://www.unaids.org/en/vacanciesandtenders/vacancies,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""^https://erecruit\\.unaids\\.org/(?!.*(?:closed|login))""}",dom,"{""steps"": [{""tag"": ""h3"", ""field"": ""title""}, {""tag"": ""h3"", ""field"": ""locations"", ""from"": 0, ""regex"": "",\\s*([^,(]+)\\s*\\(UNAIDS/""}, {""tag"": ""td"", ""match_regex"": ""^[0-9]{1,2} [A-Za-z]+ [0-9]{4}$"", ""field"": ""date_posted"", ""optional"": true}, {""text"": ""About UNAIDS"", ""field"": ""description"", ""html"": true, ""stop"": ""Submit""}]}"
+unaids,unaids-consulting,https://www.unaids.org/en/vacanciesandtenders/consulting,dom,"{""rich_rows"": {""row_selector"": ""table tbody tr"", ""link_selector"": ""td:nth-child(2) a"", ""location_selectors"": [""td:nth-child(3)""]}, ""url_transform"": {""find"": ""[?]e=[^&]*$"", ""replace"": ""?download=1""}}",pdf,"{""enrich"": [""description""]}"
 unchained-labs,unchained-labs-greenhouse,https://job-boards.greenhouse.io/unchainedlabs,greenhouse,"{""token"": ""unchainedlabs""}",skip,
 uncountable,uncountable-ashby,https://jobs.ashbyhq.com/uncountable,ashby,"{""token"": ""uncountable""}",skip,
 uncountable,uncountable-lever,https://jobs.lever.co/uncountable,lever,"{""token"": ""uncountable""}",skip,
