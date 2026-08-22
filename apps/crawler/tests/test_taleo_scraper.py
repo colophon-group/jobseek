@@ -40,10 +40,10 @@ def _detail_html(*, title: str = "Pilot's Assistant") -> str:
     )
 
 
-def _wipo_detail_html() -> str:
+def _wipo_detail_html(*, title: str = "Roster - Administrative Assistant") -> str:
     values = [""] * 35
     values[0] = "61710"
-    values[9] = "Roster - Administrative Assistant"
+    values[9] = title
     values[10] = "26255-FT_LT_ROS"
     values[11] = "World Intellectual Property Organization (WIPO)"
     values[12] = "G5"
@@ -138,6 +138,14 @@ def test_parse_wipo_taleo_enterprise_fill_list() -> None:
     }
 
 
+def test_parse_wipo_taleo_decodes_percent_encoded_title() -> None:
+    content = parse_html(
+        _wipo_detail_html(title="Chief Financial and Performance Officer %26 Controller")
+    )
+
+    assert content.title == "Chief Financial and Performance Officer & Controller"
+
+
 def test_parse_wipo_internship_taleo_enterprise_fill_list() -> None:
     content = parse_html(_wipo_internship_detail_html())
 
@@ -197,8 +205,7 @@ async def test_scrape_accepts_alphanumeric_taleo_requisition_key() -> None:
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         content = await scrape(
-            "https://wipo.taleo.net/careersection/wp_2/"
-            "jobdetail.ftl?job=26255-FT_LT_ROS&lang=en",
+            "https://wipo.taleo.net/careersection/wp_2/jobdetail.ftl?job=26255-FT_LT_ROS&lang=en",
             {},
             client,
         )

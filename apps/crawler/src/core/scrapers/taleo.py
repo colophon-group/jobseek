@@ -165,17 +165,13 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
     if values is None or len(values) < 29:
         return JobContent()
 
-    title = unescape(values[9]).strip() or None
+    title = unescape(unquote(values[9])).strip() or None
     # Most Enterprise tenants split the description and requirements across
     # slots 11 and 13. WIPO's forms keep those slots for organisation/grade
     # or department/duration and store the complete encoded posting in slot
     # 20 (internships) or 22 (staff).
     wipo_description_index = next(
-        (
-            index
-            for index in (20, 22)
-            if len(values) > index and values[index].startswith("!*!")
-        ),
+        (index for index in (20, 22) if len(values) > index and values[index].startswith("!*!")),
         None,
     )
     wipo_layout = wipo_description_index is not None
@@ -183,9 +179,7 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
         (wipo_description_index,) if wipo_description_index is not None else (11, 13)
     )
     description_parts = [
-        part
-        for index in description_indexes
-        if (part := _decoded_html(values[index])) is not None
+        part for index in description_indexes if (part := _decoded_html(values[index])) is not None
     ]
     description = "\n".join(description_parts) or None
     location_index = wipo_description_index - 5 if wipo_description_index is not None else 17
@@ -194,9 +188,7 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
     date_posted = None
     if wipo_description_index is not None:
         date_posted = unescape(values[wipo_description_index - 4]).strip() or None
-    valid_through_index = (
-        wipo_description_index - 2 if wipo_description_index is not None else 27
-    )
+    valid_through_index = wipo_description_index - 2 if wipo_description_index is not None else 27
     valid_through = unescape(values[valid_through_index]).strip() or None
 
     job_location_type = None
