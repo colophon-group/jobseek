@@ -140,3 +140,58 @@ def test_compare_boards_reports_url_subset_direction(monkeypatch):
     assert result["evidence"] == "urls"
     assert result["subset_board"] == "small"
     assert result["relationship"] == "subset"
+
+
+def test_compare_boards_preserves_requisition_multiplicity(monkeypatch):
+    titles = ["Software Engineer", "Project Manager", "HR Specialist", "Accountant"]
+    jobs = {
+        "large": [
+            {
+                "url": f"https://large.example/{index}",
+                "title": titles[index % len(titles)],
+                "locations": ["Zurich"],
+            }
+            for index in range(100)
+        ],
+        "small": [
+            {
+                "url": f"https://small.example/{index}",
+                "title": title,
+                "locations": ["Zurich"],
+            }
+            for index, title in enumerate(titles)
+        ],
+    }
+    monkeypatch.setattr(crawl, "_latest_jobs_json", lambda _slug, alias: jobs[alias])
+
+    result = crawl._compare_two_boards("company", "large", "small")
+
+    assert result["identities_a"] == 100
+    assert result["identities_b"] == 4
+    assert result["shared_identities"] == 4
+    assert result["identity_overlap_pct_a"] == 4
+    assert result["identity_overlap_pct_b"] == 100
+    assert result["evidence"] == "identities"
+    assert result["subset_board"] == "small"
+    assert result["relationship"] == "subset"
+
+
+def test_compare_boards_requires_distinct_identity_matches(monkeypatch):
+    jobs = {
+        alias: [
+            {
+                "url": f"https://{alias}.example/{index}",
+                "title": "Software Engineer",
+                "locations": ["Zurich"],
+            }
+            for index in range(4)
+        ]
+        for alias in ("one", "two")
+    }
+    monkeypatch.setattr(crawl, "_latest_jobs_json", lambda _slug, alias: jobs[alias])
+
+    result = crawl._compare_two_boards("company", "one", "two")
+
+    assert result["shared_identities"] == 4
+    assert result["evidence"] == "none"
+    assert result["relationship"] == "independent"
