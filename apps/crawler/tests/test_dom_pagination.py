@@ -153,6 +153,124 @@ class TestExtractLinksStatic:
         assert urls == {"https://example.com/emploi/active/1"}
 
 
+class TestExplicitEmptyState:
+    async def test_accepts_zero_links_with_configured_empty_marker(self):
+        html = """
+        <div class="vacancy-list">
+          <div class="view-empty">No results found</div>
+        </div>
+        """
+        with patch(_FETCH_PATCH, AsyncMock(return_value=html)):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "link_selector": ".vacancy-list a.vacancy",
+                        "empty_selector": ".vacancy-list .view-empty",
+                    },
+                },
+                AsyncMock(),
+            )
+
+        assert result == set()
+
+    async def test_rejects_zero_links_without_configured_empty_marker(self):
+        html = '<div class="vacancy-list"></div>'
+        with (
+            patch(_FETCH_PATCH, AsyncMock(return_value=html)),
+            pytest.raises(ValueError, match="did not match the configured explicit empty state"),
+        ):
+            await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "link_selector": ".vacancy-list a.vacancy",
+                        "empty_selector": ".vacancy-list .view-empty",
+                    },
+                },
+                AsyncMock(),
+            )
+
+    async def test_accepts_jobs_without_empty_marker(self):
+        html = """
+        <div class="vacancy-list">
+          <a class="vacancy" href="/vacancies/legal-officer">Legal Officer</a>
+        </div>
+        """
+        with patch(_FETCH_PATCH, AsyncMock(return_value=html)):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "link_selector": ".vacancy-list a.vacancy",
+                        "empty_selector": ".vacancy-list .view-empty",
+                    },
+                },
+                AsyncMock(),
+            )
+
+        assert result == {"https://example.com/vacancies/legal-officer"}
+
+    async def test_empty_text_disambiguates_a_shared_count_element(self):
+        html = '<div class="vacancy-list"><p class="count">2 jobs found</p></div>'
+        with (
+            patch(_FETCH_PATCH, AsyncMock(return_value=html)),
+            pytest.raises(ValueError, match="did not match the configured explicit empty state"),
+        ):
+            await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "link_selector": ".vacancy-list a.vacancy",
+                        "empty_selector": ".vacancy-list .count",
+                        "empty_text": "0 jobs found",
+                    },
+                },
+                AsyncMock(),
+            )
+
+    async def test_accepts_zero_links_with_matching_empty_text(self):
+        html = '<div class="vacancy-list"><p class="count">0 Jobs Found</p></div>'
+        with patch(_FETCH_PATCH, AsyncMock(return_value=html)):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "link_selector": ".vacancy-list a.vacancy",
+                        "empty_selector": ".vacancy-list .count",
+                        "empty_text": "0 jobs found",
+                    },
+                },
+                AsyncMock(),
+            )
+
+        assert result == set()
+
+    @pytest.mark.parametrize(
+        "metadata",
+        [
+            {"empty_selector": ".view-empty"},
+            {"link_selector": "a.vacancy", "empty_text": "0 jobs"},
+            {
+                "link_selector": "a.vacancy",
+                "empty_selector": ".view-empty",
+                "render": True,
+            },
+            {
+                "link_selector": "a.vacancy",
+                "empty_selector": ".view-empty",
+                "pagination": {"param_name": "page"},
+            },
+        ],
+    )
+    async def test_rejects_unsafe_empty_selector_combinations(self, metadata):
+        with pytest.raises(ValueError, match="empty_selector"):
+            await dom_discover(
+                {"board_url": "https://example.com/vacancies", "metadata": metadata},
+                AsyncMock(),
+            )
+
+
 class TestRichRowsStatic:
     CONFIG = {
         "row_selector": ".job",

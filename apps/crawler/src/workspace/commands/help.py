@@ -1341,6 +1341,13 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    Matching links are trusted as jobs, so this is useful when
                    stable job-card markup exists but URLs lack job keywords.
                    Example: "li.job-card a.details-link"
+    empty_selector Optional CSS selector for a stable, explicit empty-state
+                   element. When configured, a zero-link page succeeds only
+                   if this selector matches; otherwise the cycle fails closed.
+                   Requires link_selector and static, single-page extraction.
+    empty_text     Optional case-insensitive text that must occur inside the
+                   matched empty_selector. Use when the element exists for
+                   both empty and non-empty counts (for example, "0 jobs").
     require_jsonld_jobposting
                    Fetch each discovered detail URL and retain it only when
                    the current page contains schema.org JobPosting JSON-LD.

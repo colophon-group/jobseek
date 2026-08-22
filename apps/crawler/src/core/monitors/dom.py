@@ -718,6 +718,26 @@ def _validate_link_selector(value: object) -> str | None:
     return _validate_css_selector(value, name="link_selector")
 
 
+def _validate_explicit_empty_state(
+    html: str,
+    empty_selector: str,
+    empty_text: str | None,
+    urls: set[str],
+) -> None:
+    """Fail closed when a zero-link page lacks its configured empty marker."""
+    if urls:
+        return
+    tree = LexborHTMLParser(html)
+    marker = tree.css_first(empty_selector)
+    marker_text = marker.text(separator=" ", strip=True) if marker is not None else ""
+    if marker is None or (
+        empty_text is not None and empty_text.casefold() not in marker_text.casefold()
+    ):
+        raise ValueError(
+            "DOM monitor found no job links and did not match the configured explicit empty state"
+        )
+
+
 def _validate_css_selector(value: object, *, name: str) -> str | None:
     """Return one bounded CSS selector with a field-specific error."""
     if value is None:
@@ -1523,6 +1543,17 @@ async def dom_discover(
     url_matcher = _build_url_matcher(metadata.get("url_filter"))
     url_transform = metadata.get("url_transform")
     link_selector = _validate_link_selector(metadata.get("link_selector"))
+    empty_selector = _validate_css_selector(metadata.get("empty_selector"), name="empty_selector")
+    empty_text = metadata.get("empty_text")
+    if empty_text is not None and (
+        not isinstance(empty_text, str)
+        or not empty_text.strip()
+        or len(empty_text) > 256
+        or "\x00" in empty_text
+    ):
+        raise ValueError("DOM monitor empty_text must be non-empty text up to 256 chars")
+    if isinstance(empty_text, str):
+        empty_text = empty_text.strip()
     rich_rows = _validated_rich_rows(metadata.get("rich_rows"))
     require_jsonld_jobposting = metadata.get("require_jsonld_jobposting", False)
     if not isinstance(require_jsonld_jobposting, bool):
@@ -1547,6 +1578,16 @@ async def dom_discover(
         raise ValueError(
             "DOM monitor rich_rows supports static, single-page listing extraction only"
         )
+
+    if empty_selector is not None:
+        if link_selector is None:
+            raise ValueError("DOM monitor empty_selector requires link_selector")
+        if render or pagination or metadata.get("include_board_url") or require_jsonld_jobposting:
+            raise ValueError(
+                "DOM monitor empty_selector supports static, single-page link extraction only"
+            )
+    elif empty_text is not None:
+        raise ValueError("DOM monitor empty_text requires empty_selector")
 
     if render:
         combined = {**metadata, "_board_url": board_url}
@@ -1621,6 +1662,8 @@ async def dom_discover(
                 return truncated_rich_result(jobs)
             return jobs
         urls = _extract_links_static(html, board_url, url_matcher, link_selector)
+        if empty_selector is not None:
+            _validate_explicit_empty_state(html, empty_selector, empty_text, urls)
         if pagination:
             if pagination.get("partition_selector"):
                 urls = await _paginate_partitioned_urls(
