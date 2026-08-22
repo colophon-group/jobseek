@@ -498,13 +498,58 @@ class TestRichRowsStatic:
         assert fetch.await_args.kwargs["max_chars"] is None
 
     @pytest.mark.asyncio
-    async def test_rejects_rendered_or_paginated_rich_rows(self):
+    async def test_static_rich_discovery_paginates_and_merges_rows(self):
+        first = """
+        <div class="job">
+          <div class="job-title"><a href="/jobs/first">First</a></div>
+          <div class="job-location">Winterthur</div>
+          <div class="job-country">Switzerland</div>
+        </div>
+        """
+        second = """
+        <div class="job">
+          <div class="job-title"><a href="/jobs/second">Second</a></div>
+          <div class="job-location">Berlin</div>
+          <div class="job-country">Germany</div>
+        </div>
+        """
+        board_url = "https://example.com/careers/"
+        pages = {
+            board_url: first,
+            "https://example.com/results?start=25": second,
+            "https://example.com/results?start=50": "   ",
+        }
+
+        with patch(_FETCH_PATCH, side_effect=_make_fetch(pages)):
+            result = await dom_discover(
+                {
+                    "board_url": board_url,
+                    "metadata": {
+                        "render": False,
+                        "rich_rows": self.CONFIG,
+                        "pagination": {
+                            "url_template": "https://example.com/results?start={page}",
+                            "start": 0,
+                            "increment": 25,
+                        },
+                    },
+                },
+                AsyncMock(),
+            )
+
+        assert isinstance(result, list)
+        assert [(job.title, job.locations) for job in result] == [
+            ("First", ["Winterthur, Switzerland"]),
+            ("Second", ["Berlin, Germany"]),
+        ]
+
+    @pytest.mark.asyncio
+    async def test_rejects_rendered_rich_rows(self):
         for incompatible in (
             {"render": True},
-            {"pagination": {"param_name": "page"}},
             {"require_jsonld_jobposting": True},
         ):
-            with pytest.raises(ValueError, match="static, single-page"):
+            with pytest.raises(ValueError, match="static listing"):
                 await dom_discover(
                     {
                         "board_url": "https://example.com/careers/",
@@ -512,6 +557,29 @@ class TestRichRowsStatic:
                     },
                     AsyncMock(),
                 )
+
+    @pytest.mark.asyncio
+    async def test_rejects_browser_pagination_for_rich_rows(self):
+        with (
+            patch(_FETCH_PATCH, AsyncMock(return_value="""
+                <div class="job">
+                  <div class="job-title"><a href="/jobs/first">First</a></div>
+                  <div class="job-location">Winterthur</div>
+                  <div class="job-country">Switzerland</div>
+                </div>
+            """)),
+            pytest.raises(ValueError, match="static sequential pages"),
+        ):
+            await dom_discover(
+                {
+                    "board_url": "https://example.com/careers/",
+                    "metadata": {
+                        "rich_rows": self.CONFIG,
+                        "pagination": {"param_name": "page", "browser": True},
+                    },
+                },
+                AsyncMock(),
+            )
 
 
 class TestBuildUrlMatcher:
