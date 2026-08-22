@@ -191,6 +191,102 @@ _HTML_LANG_RE = re.compile(r"<html[^>]+\blang=[\"'](?P<lang>[a-z]{2})(?:[-_][A-Z
 _PROSPECTIVE_HOST = "ohws.prospective.ch"
 _PROSPECTIVE_CAREERCENTER_PATH = re.compile(r"^/public/v[12]/careercenter/(?P<medium_id>\d+)/?$")
 _PROSPECTIVE_PAGE_SIZE = 100
+_LUMESSE_API_PATH = "/fo/rest/jobs"
+_LUMESSE_BOARD_PATH_RE = re.compile(r"/lumesse_jobsearch\.html/?$", re.I)
+
+
+def _lumesse_config_overrides(
+    board_url: str,
+    api_url: str,
+    items: list[dict],
+    response: object,
+) -> dict | None:
+    """Return rich-field overrides for Lumesse TalentLink list payloads.
+
+    TalentLink's public list response already contains the complete vacancy
+    description, but it nests the title and location under ``jobFields`` and
+    represents the description as titled ``customFields`` sections. The
+    generic scalar auto-mapper therefore sees only an application URL and
+    incorrectly leaves the monitor in URL-only mode.
+
+    Keep this preset narrowly gated by both canonical endpoint shapes and the
+    provider-specific payload schema. This avoids treating unrelated APIs
+    with a coincidental ``customFields`` key as Lumesse boards.
+    """
+    if not items or not isinstance(response, dict):
+        return None
+
+    try:
+        parsed_board = urlparse(board_url)
+        parsed_api = urlparse(api_url)
+        board_port = parsed_board.port
+        api_port = parsed_api.port
+    except ValueError:
+        return None
+
+    api_host = (parsed_api.hostname or "").casefold()
+    if (
+        parsed_board.scheme.casefold() != "https"
+        or parsed_api.scheme.casefold() != "https"
+        or parsed_board.hostname is None
+        or not api_host.endswith(".recruitmentplatform.com")
+        or parsed_board.username is not None
+        or parsed_board.password is not None
+        or parsed_api.username is not None
+        or parsed_api.password is not None
+        or board_port not in (None, 443)
+        or api_port not in (None, 443)
+        or _LUMESSE_BOARD_PATH_RE.fullmatch(parsed_board.path) is None
+        or parsed_api.path.rstrip("/") != _LUMESSE_API_PATH
+    ):
+        return None
+
+    for item in items[:5]:
+        job_fields = item.get("jobFields")
+        custom_fields = item.get("customFields")
+        if (
+            not isinstance(item.get("id"), (int, str))
+            or not isinstance(job_fields, dict)
+            or not isinstance(job_fields.get("jobTitle") or job_fields.get("SJOBTITLE"), str)
+            or not isinstance(custom_fields, list)
+            or not any(
+                isinstance(section, dict)
+                and isinstance(section.get("title"), str)
+                and isinstance(section.get("content"), str)
+                for section in custom_fields
+            )
+        ):
+            return None
+
+    globals_obj = response.get("globals")
+    total = globals_obj.get("jobsCount") if isinstance(globals_obj, dict) else None
+    detail_url = urljoin(board_url, "lumesse_jobdescription.html?jobId={id}")
+    overrides: dict = {
+        "browser": False,
+        "url_template": detail_url,
+        "total_path": "globals.jobsCount",
+        "fields": {
+            "title": "jobFields.jobTitle || jobFields.SJOBTITLE",
+            "description": {
+                "concat": [
+                    {
+                        "each": "customFields[*]",
+                        "wrap": "<h3>{title}</h3>\n{content}",
+                    }
+                ],
+                "separator": "\n\n",
+            },
+            "locations": "jobFields.FFIELD008_001 || jobFields.SLOVLIST2",
+            "metadata.ats_job_id": "id",
+            "metadata.job_number": "jobFields.jobNumber",
+            "metadata.external_job_number": "jobFields.externalJobNumber",
+            "metadata.scope": "jobFields.SLOVLIST7",
+            "metadata.apply_url": "jobFields.applicationUrl",
+        },
+    }
+    if isinstance(total, (int, float)):
+        overrides["total"] = int(total)
+    return overrides
 
 
 async def _detect_prospective_config(
@@ -733,6 +829,18 @@ async def can_handle(
 
             if fields:
                 meta["fields"] = fields
+
+            lumesse_overrides = _lumesse_config_overrides(
+                url,
+                ex.url,
+                result.candidate.items,
+                ex.body,
+            )
+            if lumesse_overrides is not None:
+                # The canonical detail URL is preferable to TalentLink's
+                # application form URL for stable posting identity.
+                meta.pop("url_field", None)
+                meta.update(lumesse_overrides)
 
             # Collect alternative high-scoring endpoints for user review
             from src.shared.api_sniff import ArrayCandidate as _AC
