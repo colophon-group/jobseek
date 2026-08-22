@@ -762,10 +762,9 @@ def _validated_rich_rows(
     title_selector = _validate_css_selector(
         value.get("title_selector"), name="rich_rows.title_selector"
     )
-    if row_selector is None or (link_selector is None and link_attr == "href"):
+    if row_selector is None:
         raise ValueError(
-            "DOM monitor rich_rows requires row_selector and either link_selector "
-            "or a non-href link_attr on the row"
+            "DOM monitor rich_rows requires row_selector"
         )
     locations = value.get("location_selectors") or []
     if (
