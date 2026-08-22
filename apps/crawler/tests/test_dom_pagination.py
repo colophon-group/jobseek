@@ -263,12 +263,33 @@ class TestRichRowsStatic:
             ("https://example.com/jobs/engineer", "Engineer", ["Winterthur, Switzerland"])
         ]
 
+    def test_extracts_anchor_row_href(self):
+        html = """
+        <a class="job" href="/jobs/engineer">
+          <span class="title">Engineer</span>
+          <span class="location">Winterthur, Switzerland</span>
+        </a>
+        """
+        config = _validated_rich_rows(
+            {
+                "row_selector": "a.job[href]",
+                "title_selector": ".title",
+                "location_selectors": [".location"],
+            }
+        )
+
+        assert config is not None
+        jobs = _extract_rich_rows_static(html, "https://example.com/careers", config, None)
+
+        assert [(job.url, job.title, job.locations) for job in jobs] == [
+            ("https://example.com/jobs/engineer", "Engineer", ["Winterthur, Switzerland"])
+        ]
+
     @pytest.mark.parametrize(
         "config",
         [
             {},
             {"row_selector": ".job", "link_selector": ".job a", "unexpected": True},
-            {"row_selector": ".job", "link_attr": "href"},
             {"row_selector": ".job", "link_attr": "not valid!"},
             {"row_selector": ".job", "link_selector": ".job a", "location_selectors": "p"},
             {
