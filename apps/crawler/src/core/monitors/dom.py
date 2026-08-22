@@ -803,12 +803,16 @@ def _extract_rich_rows_static(
     base_url: str,
     config: tuple[str, str | None, str, str | None, tuple[str, ...]],
     url_matcher: re.Pattern | None,
+    *,
+    allow_empty: bool = False,
 ) -> list[DiscoveredJob]:
     """Extract stable URLs, titles, and joined locations from listing rows."""
     row_selector, link_selector, link_attr, title_selector, location_selectors = config
     tree = LexborHTMLParser(html)
     rows = tree.css(row_selector)
     if not rows:
+        if allow_empty:
+            return []
         raise ValueError("DOM monitor rich_rows matched no listing rows")
 
     jobs_by_url: dict[str, DiscoveredJob] = {}
@@ -843,6 +847,79 @@ def _extract_rich_rows_static(
 
     if not jobs_by_url:
         raise ValueError("DOM monitor rich_rows URL filter excluded every listing row")
+    return list(jobs_by_url.values())
+
+
+async def _paginate_rich_rows_static(
+    board_url: str,
+    pagination: dict,
+    initial_jobs: list[DiscoveredJob],
+    client: httpx.AsyncClient,
+    rich_rows: tuple[str, str | None, str, str | None, tuple[str, ...]],
+    url_matcher: re.Pattern | None,
+    encoding: str | None,
+) -> list[DiscoveredJob]:
+    """Fetch and merge strict rich listing rows across static pages."""
+    from src.shared.api_sniff import set_url_param
+    from src.shared.http_retry import fetch_with_retry
+
+    url_template = pagination.get("url_template")
+    param_name = pagination.get("param_name")
+    start = pagination.get("start", pagination.get("start_value", 1))
+    increment = pagination.get("increment", 1)
+    max_pages = min(pagination.get("max_pages", _MAX_PAGINATION_PAGES), _MAX_PAGINATION_PAGES)
+    transient_403 = pagination.get("transient_403", False)
+    if not isinstance(transient_403, bool):
+        raise ValueError("DOM pagination transient_403 must be a boolean")
+    if pagination.get("browser") or pagination.get("partition_selector"):
+        raise ValueError(
+            "DOM monitor rich_rows pagination supports static sequential pages only"
+        )
+    if not url_template and not isinstance(param_name, str):
+        raise ValueError("DOM pagination requires param_name or url_template")
+
+    jobs_by_url = {job.url: job for job in initial_jobs}
+    value = start + increment
+
+    for page_num in range(2, max_pages + 1):
+        if url_template:
+            page_url = url_template.format(page=value)
+        else:
+            assert isinstance(param_name, str)
+            page_url = set_url_param(board_url, param_name, value)
+
+        html = await fetch_with_retry(
+            client,
+            page_url,
+            encoding=encoding,
+            transient_403=transient_403,
+            max_chars=None,
+        )
+        if not html:
+            log.info("dom.pagination.end", page=page_num, url=page_url)
+            break
+
+        _raise_if_bot_challenge(page_url, html)
+        page_jobs = _extract_rich_rows_static(
+            html,
+            page_url,
+            rich_rows,
+            url_matcher,
+            allow_empty=True,
+        )
+        added = 0
+        for job in page_jobs:
+            if job.url in jobs_by_url:
+                continue
+            jobs_by_url[job.url] = job
+            added += 1
+        if not added:
+            log.info("dom.pagination.no_new_urls", page=page_num)
+            break
+
+        log.debug("dom.pagination.page", page=page_num, new=added, total=len(jobs_by_url))
+        value += increment
+
     return list(jobs_by_url.values())
 
 
@@ -1573,10 +1650,10 @@ async def dom_discover(
         render = True
 
     if rich_rows is not None and (
-        render or pagination or metadata.get("include_board_url") or require_jsonld_jobposting
+        render or metadata.get("include_board_url") or require_jsonld_jobposting
     ):
         raise ValueError(
-            "DOM monitor rich_rows supports static, single-page listing extraction only"
+            "DOM monitor rich_rows supports static listing extraction only"
         )
 
     if empty_selector is not None:
@@ -1661,6 +1738,16 @@ async def dom_discover(
         _raise_if_bot_challenge(board_url, html)
         if rich_rows is not None:
             jobs = _extract_rich_rows_static(html, board_url, rich_rows, url_matcher)
+            if pagination:
+                jobs = await _paginate_rich_rows_static(
+                    board_url,
+                    pagination,
+                    jobs,
+                    client,
+                    rich_rows,
+                    url_matcher,
+                    encoding,
+                )
             log.info("dom.complete", board_url=board_url, urls_found=len(jobs), render=False)
             if len(jobs) > MAX_URLS:
                 log.warning("dom.truncated", total=len(jobs), cap=MAX_URLS)

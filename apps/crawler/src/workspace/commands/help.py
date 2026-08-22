@@ -1356,7 +1356,8 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    discovered URLs. Use for small provider listings that keep
                    stale profile links after an opening closes. Incompatible
                    with rich_rows.
-    rich_rows      Optional static, single-page listing-row extraction:
+    rich_rows      Optional static listing-row extraction. It supports the
+                   ordinary sequential pagination config shown above:
                    {"row_selector": ".job", "link_selector": ".job-title a",
                     "location_selectors": [".job-location", ".job-country"]}
                    When the row itself is the job anchor, omit link_selector:
