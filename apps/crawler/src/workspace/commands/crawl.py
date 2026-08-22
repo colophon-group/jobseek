@@ -1692,36 +1692,31 @@ def _auto_compare_boards(slug: str, current_alias: str) -> None:
         if "error" in cmp:
             continue
         rel = cmp["relationship"]
+        evidence = _format_compare_evidence(cmp, current_alias, other)
         if rel == "mirror":
             print()
             out.warn(
                 "overlap",
                 f"MIRROR: {current_alias} ({cmp['count_a']} jobs) and "
-                f"{other} ({cmp['count_b']} jobs) share "
-                f"{cmp['shared_urls']} URLs "
-                f"({cmp['url_overlap_pct_a']}%/{cmp['url_overlap_pct_b']}%). "
+                f"{other} ({cmp['count_b']} jobs) have {evidence}. "
                 f"These boards are nearly identical — keep only the one with "
                 f"better data or lower cost.",
             )
         elif rel == "subset":
-            smaller = current_alias if cmp["count_a"] <= cmp["count_b"] else other
+            smaller = cmp["subset_board"]
             larger = other if smaller == current_alias else current_alias
             print()
             out.warn(
                 "overlap",
                 f"SUBSET: {smaller} appears to be a subset of {larger} "
-                f"({cmp['shared_urls']} shared URLs). "
+                f"({evidence}). "
                 f"Consider dropping {smaller} unless it has unique data.",
             )
         elif rel == "overlap":
             print()
             out.warn(
                 "overlap",
-                f"OVERLAP: {current_alias} and {other} share "
-                f"{cmp['shared_urls']} URLs "
-                f"({cmp['url_overlap_pct_a']}% of {current_alias}, "
-                f"{cmp['url_overlap_pct_b']}% of {other}). "
-                f"Run: ws compare-boards",
+                f"OVERLAP: {current_alias} and {other} have {evidence}. Run: ws compare-boards",
             )
 
 
@@ -2503,24 +2498,25 @@ def run_quality_gates(
                 if "error" in cmp:
                     continue
                 rel = cmp["relationship"]
+                evidence = _format_compare_evidence(cmp, alias_a, alias_b)
                 if rel == "mirror":
                     warnings.append(
                         f"Boards {alias_a} and {alias_b} are mirrors "
-                        f"({cmp['shared_urls']}/{cmp['count_a']} shared URLs). "
+                        f"({evidence}). "
                         f"Run: ws compare-boards"
                     )
                 elif rel == "subset":
-                    smaller = alias_a if cmp["count_a"] <= cmp["count_b"] else alias_b
+                    smaller = cmp["subset_board"]
                     larger = alias_b if smaller == alias_a else alias_a
                     warnings.append(
                         f"Board {smaller} is a subset of {larger} "
-                        f"({cmp['shared_urls']} shared URLs). "
+                        f"({evidence}). "
                         f"Run: ws compare-boards"
                     )
                 elif rel == "overlap":
                     warnings.append(
                         f"Boards {alias_a} and {alias_b} have significant overlap "
-                        f"({cmp['shared_urls']} shared URLs). "
+                        f"({evidence}). "
                         f"Run: ws compare-boards"
                     )
 
@@ -2566,12 +2562,53 @@ def _normalize_compare_title(title: str) -> str:
     return " ".join(plain.split()).casefold()
 
 
+def _normalize_compare_locations(locations: object) -> tuple[str, ...]:
+    """Normalize locations for cross-ATS identity comparison."""
+    if isinstance(locations, str):
+        values = [locations]
+    elif isinstance(locations, list):
+        values = [value for value in locations if isinstance(value, str)]
+    else:
+        return ()
+
+    normalized = {
+        " ".join(html.unescape(value).split()).casefold() for value in values if value.strip()
+    }
+    return tuple(sorted(normalized))
+
+
+def _compare_identities(jobs: list[dict]) -> set[tuple[str, tuple[str, ...]]]:
+    """Build stable title/location identities from sufficiently rich jobs."""
+    identities = set()
+    for job in jobs:
+        title = job.get("title")
+        locations = _normalize_compare_locations(job.get("locations"))
+        if title and locations:
+            identities.add((_normalize_compare_title(title), locations))
+    return identities
+
+
+def _format_compare_evidence(result: dict, alias_a: str, alias_b: str) -> str:
+    """Describe the evidence that produced a board relationship."""
+    if result["evidence"] == "identities":
+        return (
+            f"{result['shared_identities']} shared title/location identities "
+            f"({result['identity_overlap_pct_a']}% of {alias_a}, "
+            f"{result['identity_overlap_pct_b']}% of {alias_b})"
+        )
+    return (
+        f"{result['shared_urls']} shared URLs "
+        f"({result['url_overlap_pct_a']}% of {alias_a}, "
+        f"{result['url_overlap_pct_b']}% of {alias_b})"
+    )
+
+
 def _compare_two_boards(
     slug: str,
     alias_a: str,
     alias_b: str,
 ) -> dict:
-    """Compare two boards by URL overlap and title similarity."""
+    """Compare boards by URL, then by title/location identity across ATSes."""
     jobs_a = _latest_jobs_json(slug, alias_a)
     jobs_b = _latest_jobs_json(slug, alias_b)
 
@@ -2594,36 +2631,59 @@ def _compare_two_boards(
 
     shared_titles = titles_a & titles_b if titles_a and titles_b else set()
 
+    # Cross-ATS URLs differ by design.  A normalized title alone is too weak:
+    # independent regional boards often share generic titles.  Require both a
+    # title and locations before using a job as cross-ATS evidence.
+    identities_a = _compare_identities(jobs_a)
+    identities_b = _compare_identities(jobs_b)
+    shared_identities = identities_a & identities_b
+
     # Classify relationship
     url_overlap_pct_a = round(len(shared_urls) / len(urls_a) * 100) if urls_a else 0
     url_overlap_pct_b = round(len(shared_urls) / len(urls_b) * 100) if urls_b else 0
     title_overlap_pct_a = round(len(shared_titles) / len(titles_a) * 100) if titles_a else 0
     title_overlap_pct_b = round(len(shared_titles) / len(titles_b) * 100) if titles_b else 0
+    identity_overlap_pct_a = (
+        round(len(shared_identities) / len(identities_a) * 100) if identities_a else 0
+    )
+    identity_overlap_pct_b = (
+        round(len(shared_identities) / len(identities_b) * 100) if identities_b else 0
+    )
 
-    # Different ATS generations necessarily have different URLs.  Use title
-    # overlap as a secondary signal, but require several matches so generic
-    # one-job boards do not become false mirrors.
-    title_signal = len(shared_titles) >= 3
+    relationship = "independent"
+    evidence = "none"
+    subset_board = None
 
-    if (url_overlap_pct_a >= 90 and url_overlap_pct_b >= 90) or (
-        title_signal and title_overlap_pct_a >= 90 and title_overlap_pct_b >= 90
-    ):
+    # Shared URLs are the strongest evidence and take precedence.  Only fall
+    # back to rich identities when at least four title/location pairs match.
+    if url_overlap_pct_a >= 90 and url_overlap_pct_b >= 90:
         relationship = "mirror"
-    elif url_overlap_pct_a >= 90 or (title_signal and title_overlap_pct_a >= 80):
-        relationship = "subset"  # A is subset of B
-    elif url_overlap_pct_b >= 90 or (title_signal and title_overlap_pct_b >= 80):
-        relationship = "subset"  # B is subset of A
-    elif (
-        url_overlap_pct_a >= 30
-        or url_overlap_pct_b >= 30
-        or (
-            title_signal
-            and (title_overlap_pct_a >= 30 or title_overlap_pct_b >= 30)
-        )
-    ):
+        evidence = "urls"
+    elif url_overlap_pct_a >= 90:
+        relationship = "subset"
+        evidence = "urls"
+        subset_board = alias_a
+    elif url_overlap_pct_b >= 90:
+        relationship = "subset"
+        evidence = "urls"
+        subset_board = alias_b
+    elif url_overlap_pct_a >= 30 or url_overlap_pct_b >= 30:
         relationship = "overlap"
-    else:
-        relationship = "independent"
+        evidence = "urls"
+    elif len(shared_identities) >= 4:
+        evidence = "identities"
+        if identity_overlap_pct_a >= 90 and identity_overlap_pct_b >= 90:
+            relationship = "mirror"
+        elif identity_overlap_pct_a >= 80:
+            relationship = "subset"
+            subset_board = alias_a
+        elif identity_overlap_pct_b >= 80:
+            relationship = "subset"
+            subset_board = alias_b
+        elif identity_overlap_pct_a >= 30 or identity_overlap_pct_b >= 30:
+            relationship = "overlap"
+        else:
+            evidence = "none"
 
     return {
         "board_a": alias_a,
@@ -2640,6 +2700,13 @@ def _compare_two_boards(
         "shared_titles": len(shared_titles),
         "title_overlap_pct_a": title_overlap_pct_a,
         "title_overlap_pct_b": title_overlap_pct_b,
+        "identities_a": len(identities_a),
+        "identities_b": len(identities_b),
+        "shared_identities": len(shared_identities),
+        "identity_overlap_pct_a": identity_overlap_pct_a,
+        "identity_overlap_pct_b": identity_overlap_pct_b,
+        "evidence": evidence,
+        "subset_board": subset_board,
         "relationship": relationship,
     }
 
@@ -2722,6 +2789,15 @@ def compare_boards(slug: str | None):
                 f"{c['titles_b']} in {c['board_b']}; "
                 f"{c['title_overlap_pct_a']}% / {c['title_overlap_pct_b']}%)",
             )
+        if c["identities_a"] or c["identities_b"]:
+            out.plain(
+                "compare",
+                f"     Identities: {c['shared_identities']} shared "
+                f"(of {c['identities_a']} in {c['board_a']}, "
+                f"{c['identities_b']} in {c['board_b']}; "
+                f"{c['identity_overlap_pct_a']}% / "
+                f"{c['identity_overlap_pct_b']}%)",
+            )
 
         if rel == "mirror":
             out.warn(
@@ -2730,7 +2806,7 @@ def compare_boards(slug: str | None):
                 "Keep the one with better data quality or lower cost.",
             )
         elif rel == "subset":
-            smaller = c["board_a"] if c["count_a"] <= c["count_b"] else c["board_b"]
+            smaller = c["subset_board"]
             larger = c["board_b"] if smaller == c["board_a"] else c["board_a"]
             out.warn(
                 "compare",
