@@ -33,6 +33,7 @@ _DETAIL_PATH_RE = re.compile(
     r"^/careersection/[a-z0-9_-]{1,64}/jobdetail\.ftl$",
     re.IGNORECASE,
 )
+_JOB_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,127}$", re.IGNORECASE)
 _WORKPLACE_RE = re.compile(r"#LI[-_ ]?(hybrid|remote|on[- ]?site)", re.IGNORECASE)
 
 
@@ -53,7 +54,7 @@ def _detail_url(url: str) -> bool:
         and port in (None, 443)
         and not parsed.fragment
         and _DETAIL_PATH_RE.fullmatch(parsed.path)
-        and job.isdigit()
+        and _JOB_ID_RE.fullmatch(job)
     )
 
 
@@ -165,13 +166,38 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
         return JobContent()
 
     title = unescape(values[9]).strip() or None
+    # Most Enterprise tenants split the description and requirements across
+    # slots 11 and 13. WIPO's forms keep those slots for organisation/grade
+    # or department/duration and store the complete encoded posting in slot
+    # 20 (internships) or 22 (staff).
+    wipo_description_index = next(
+        (
+            index
+            for index in (20, 22)
+            if len(values) > index and values[index].startswith("!*!")
+        ),
+        None,
+    )
+    wipo_layout = wipo_description_index is not None
+    description_indexes = (
+        (wipo_description_index,) if wipo_description_index is not None else (11, 13)
+    )
     description_parts = [
-        part for index in (11, 13) if (part := _decoded_html(values[index])) is not None
+        part
+        for index in description_indexes
+        if (part := _decoded_html(values[index])) is not None
     ]
     description = "\n".join(description_parts) or None
-    location = unescape(values[17]).strip() or None
-    employment_type = unescape(values[23]).strip() or None
-    valid_through = unescape(values[27]).strip() or None
+    location_index = wipo_description_index - 5 if wipo_description_index is not None else 17
+    location = unescape(values[location_index]).strip() or None
+    employment_type = None if wipo_layout else unescape(values[23]).strip() or None
+    date_posted = None
+    if wipo_description_index is not None:
+        date_posted = unescape(values[wipo_description_index - 4]).strip() or None
+    valid_through_index = (
+        wipo_description_index - 2 if wipo_description_index is not None else 27
+    )
+    valid_through = unescape(values[valid_through_index]).strip() or None
 
     job_location_type = None
     if description and (workplace := _WORKPLACE_RE.search(description)):
@@ -179,7 +205,7 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
         job_location_type = "onsite" if value == "onsite" else value
 
     extras: dict[str, object] = {}
-    requirements = _decoded_html(values[13])
+    requirements = None if wipo_layout else _decoded_html(values[13])
     if requirements:
         extras["qualifications"] = requirements
     if valid_through:
@@ -189,12 +215,24 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
         "ats_job_id": values[0],
         "requisition_number": values[10],
     }
-    business_area = unescape(values[15]).strip()
-    organisation = unescape(values[21]).strip()
-    if business_area:
-        metadata["business_area"] = business_area
-    if organisation:
-        metadata["organisation"] = organisation
+    if wipo_layout:
+        organisation = unescape(values[11]).strip()
+        grade = unescape(values[12]).strip() if wipo_description_index == 22 else ""
+        contract_duration_index = 14 if wipo_description_index == 22 else 12
+        contract_duration = unescape(values[contract_duration_index]).strip()
+        if organisation:
+            metadata["organisation"] = organisation
+        if grade:
+            metadata["grade"] = grade
+        if contract_duration:
+            metadata["contract_duration"] = contract_duration
+    else:
+        business_area = unescape(values[15]).strip()
+        organisation = unescape(values[21]).strip()
+        if business_area:
+            metadata["business_area"] = business_area
+        if organisation:
+            metadata["organisation"] = organisation
 
     return JobContent(
         title=title,
@@ -202,6 +240,7 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
         locations=[location] if location else None,
         employment_type=employment_type,
         job_location_type=job_location_type,
+        date_posted=date_posted,
         extras=extras or None,
         metadata=metadata,
     )
