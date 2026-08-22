@@ -5570,6 +5570,7 @@ syndica,syndica-ashby,https://jobs.ashbyhq.com/syndica,ashby,"{""token"": ""synd
 syndigo,syndigo-greenhouse,https://job-boards.greenhouse.io/syndigo,greenhouse,"{""token"": ""syndigo""}",skip,
 syner-g,syner-g-greenhouse,https://job-boards.greenhouse.io/synerg,greenhouse,"{""token"": ""synerg""}",skip,
 syngenta,syngenta-global,https://jobs.syngenta.com/,smartrecruiters,"{""token"": ""SyngentaGroup""}",smartrecruiters,
+synhelion,synhelion-careers,https://synhelion.com/about/careers,dom,"{""render"": false, ""rich_rows"": {""row_selector"": ""li:has(a[href*=\""/jobs/\""])"", ""link_selector"": ""a[href*=\""/jobs/\""]"", ""title_selector"": ""h2"", ""location_selectors"": [""p""]}}",dom,"{""enrich"": [""description""], ""render"": false, ""steps"": [{""tag"": ""h1"", ""field"": ""title""}, {""field"": ""description"", ""html"": true, ""optional"": true, ""stop"": ""Apply"", ""from"": 0}]}"
 synopsys,synopsys-pinpoint,https://synopsys.pinpointhq.com,pinpoint,"{""slug"": ""synopsys""}",skip,
 synthace,synthace-careers,https://www.synthace.com/about/careers,pinpoint,"{""slug"": ""synthace""}",skip,
 synthesia,synthesia-ashby,https://jobs.ashbyhq.com/synthesia,ashby,"{""token"": ""synthesia""}",skip,

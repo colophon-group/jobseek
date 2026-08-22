@@ -427,7 +427,12 @@ def validate_csvs() -> list[ValidationError]:
                                         )
                                     )
                             # Warn if enrich is used with URL-only monitor
-                            if enrich and monitor_type in url_only_monitors and not configured_rich:
+                            if (
+                                enrich
+                                and monitor_type in url_only_monitors
+                                and not configured_rich
+                                and not configured_rich_rows
+                            ):
                                 errors.append(
                                     ValidationError(
                                         "boards.csv",

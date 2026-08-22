@@ -352,7 +352,9 @@ class TestValidateCsvs:
         ]
 
         assert bool(rich_rows_errors) is not is_valid
-        if not is_valid:
+        if is_valid:
+            assert errors == []
+        else:
             assert not any("use 'skip'" in str(error) for error in errors)
 
     def test_invalid_scraper_type(self, tmp_path, monkeypatch):
