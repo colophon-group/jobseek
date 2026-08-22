@@ -483,6 +483,7 @@ class TestItemFilter:
         config = {
             "item_filter": {
                 "exclude": {"attributes.country": ["Switzerland", "USA"]},
+                "exclude_regex": {"provider.name": ["^External(?: Agency)?$"]},
                 "dedupe_by": ["provider.tenant_id", "provider.apply_id"],
             }
         }
@@ -491,31 +492,56 @@ class TestItemFilter:
             {
                 "url": "https://example.com/1",
                 "attributes": {"country": ["Germany"]},
-                "provider": {"tenant_id": "tenant", "apply_id": "stable-1"},
+                "provider": {
+                    "tenant_id": "tenant",
+                    "apply_id": "stable-1",
+                    "name": "Internal",
+                },
             },
             {
                 "url": "https://example.com/duplicate",
                 "attributes": {"country": ["Germany"]},
-                "provider": {"tenant_id": "tenant", "apply_id": "stable-1"},
+                "provider": {
+                    "tenant_id": "tenant",
+                    "apply_id": "stable-1",
+                    "name": "Internal",
+                },
             },
             {
                 "url": "https://example.com/other-tenant",
                 "attributes": {"country": ["Germany"]},
-                "provider": {"tenant_id": "other", "apply_id": "stable-1"},
+                "provider": {
+                    "tenant_id": "other",
+                    "apply_id": "stable-1",
+                    "name": "Internal",
+                },
             },
             {
                 "url": "https://example.com/usa",
                 "attributes": {"country": ["USA"]},
-                "provider": {"tenant_id": "tenant", "apply_id": "stable-2"},
+                "provider": {
+                    "tenant_id": "tenant",
+                    "apply_id": "stable-2",
+                    "name": "Internal",
+                },
+            },
+            {
+                "url": "https://example.com/external",
+                "attributes": {"country": ["Germany"]},
+                "provider": {
+                    "tenant_id": "tenant",
+                    "apply_id": "stable-3",
+                    "name": "External Agency",
+                },
             },
             {
                 "url": "https://example.com/no-id",
                 "attributes": {"country": ["Germany"]},
-                "provider": {"tenant_id": "tenant", "apply_id": ""},
+                "provider": {"tenant_id": "tenant", "apply_id": "", "name": "Internal"},
             },
         ]
 
-        scoped, total = _apply_item_filter(items, item_filter, advertised_total=5)
+        scoped, total = _apply_item_filter(items, item_filter, advertised_total=6)
 
         assert [item["url"] for item in scoped] == [
             "https://example.com/1",
@@ -571,6 +597,9 @@ class TestItemFilter:
             {"exclude": {"market": []}},
             {"exclude": {"": ["local"]}},
             {"exclude": {"attributes.25": ["USA"]}},
+            {"exclude_regex": {"market": []}},
+            {"exclude_regex": {"market": ["("]}},
+            {"exclude_regex": {"": ["local"]}},
             {"dedupe_by": ""},
             {"dedupe_by": "stable"},
             {"dedupe_by": []},
@@ -588,6 +617,7 @@ class TestItemFilter:
             {},
             preserve_paths=[
                 "attributes.country",
+                "provider.name",
                 "provider.tenant_id",
                 "provider.apply_id",
             ],
@@ -599,14 +629,22 @@ class TestItemFilter:
                 "details": {"title": "Engineer"},
                 "url": "https://example.com/1",
                 "attributes": {"country": ["Germany"]},
-                "provider": {"tenant_id": "tenant", "apply_id": "stable-1"},
+                "provider": {
+                    "name": "Internal",
+                    "tenant_id": "tenant",
+                    "apply_id": "stable-1",
+                },
                 "unused": "large",
             }
         ) == {
             "details": {"title": "Engineer"},
             "url": "https://example.com/1",
             "attributes": {"country": ["Germany"]},
-            "provider": {"tenant_id": "tenant", "apply_id": "stable-1"},
+            "provider": {
+                "name": "Internal",
+                "tenant_id": "tenant",
+                "apply_id": "stable-1",
+            },
         }
 
     @pytest.mark.asyncio

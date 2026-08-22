@@ -952,14 +952,18 @@ def _validated_slug_fields(config: dict) -> list[str]:
 
 def _validated_item_filter(
     config: dict,
-) -> tuple[dict[str, frozenset[str]], tuple[str, ...]]:
+) -> tuple[
+    dict[str, frozenset[str]],
+    dict[str, tuple[re.Pattern[str], ...]],
+    tuple[str, ...],
+]:
     """Validate an optional post-pagination item scope and stable dedupe key."""
     value = config.get("item_filter")
     if value is None:
-        return {}, ()
+        return {}, {}, ()
     if not isinstance(value, dict) or not value:
         raise ValueError("api_sniffer item_filter must be a non-empty mapping")
-    if set(value) - {"exclude", "dedupe_by"}:
+    if set(value) - {"exclude", "exclude_regex", "dedupe_by"}:
         raise ValueError("api_sniffer item_filter contains unsupported keys")
 
     exclude = value.get("exclude") or {}
@@ -985,6 +989,42 @@ def _validated_item_filter(
             raise ValueError("api_sniffer item_filter exclude paths must be valid") from exc
         normalized[normalized_path] = frozenset(excluded_values)
 
+    exclude_regex = value.get("exclude_regex") or {}
+    if not isinstance(exclude_regex, dict) or len(exclude_regex) > _MAX_ITEM_FILTER_FIELDS:
+        raise ValueError("api_sniffer item_filter.exclude_regex must be a bounded mapping")
+    normalized_regex: dict[str, tuple[re.Pattern[str], ...]] = {}
+    for path, patterns in exclude_regex.items():
+        if not isinstance(path, str) or not path.strip():
+            raise ValueError(
+                "api_sniffer item_filter exclude_regex paths must be non-empty strings"
+            )
+        if (
+            not isinstance(patterns, list)
+            or not patterns
+            or len(patterns) > _MAX_ITEM_FILTER_VALUES
+            or not all(
+                isinstance(pattern, str) and pattern and len(pattern) <= _MAX_REFRESH_PATTERN_CHARS
+                for pattern in patterns
+            )
+        ):
+            raise ValueError(
+                "api_sniffer item_filter exclude_regex patterns must be bounded "
+                "non-empty string lists"
+            )
+        normalized_path = path.strip()
+        try:
+            extract_field({}, normalized_path)
+        except Exception as exc:
+            raise ValueError(
+                "api_sniffer item_filter exclude_regex paths and patterns must be valid"
+            ) from exc
+        try:
+            normalized_regex[normalized_path] = tuple(re.compile(pattern) for pattern in patterns)
+        except re.error as exc:
+            raise ValueError(
+                "api_sniffer item_filter exclude_regex paths and patterns must be valid"
+            ) from exc
+
     dedupe_by = value.get("dedupe_by")
     if dedupe_by is None:
         dedupe_paths: tuple[str, ...] = ()
@@ -1002,19 +1042,23 @@ def _validated_item_filter(
             extract_field({}, dedupe_path)
         except Exception as exc:
             raise ValueError("api_sniffer item_filter.dedupe_by path must be valid") from exc
-    if not normalized and not dedupe_paths:
+    if not normalized and not normalized_regex and not dedupe_paths:
         raise ValueError("api_sniffer item_filter must exclude or deduplicate items")
-    return normalized, dedupe_paths
+    return normalized, normalized_regex, dedupe_paths
 
 
 def _apply_item_filter(
     items: list[dict],
-    item_filter: tuple[dict[str, frozenset[str]], tuple[str, ...]],
+    item_filter: tuple[
+        dict[str, frozenset[str]],
+        dict[str, tuple[re.Pattern[str], ...]],
+        tuple[str, ...],
+    ],
     advertised_total: int | None,
 ) -> tuple[list[dict], int | None]:
     """Apply an intentional source partition without masking upstream truncation."""
-    exclude, dedupe_by = item_filter
-    if not exclude and not dedupe_by:
+    exclude, exclude_regex, dedupe_by = item_filter
+    if not exclude and not exclude_regex and not dedupe_by:
         return items, advertised_total
 
     original_count = len(items)
@@ -1026,7 +1070,17 @@ def _apply_item_filter(
             if any(isinstance(candidate, str) and candidate in rejected for candidate in values):
                 break
         else:
-            scoped.append(item)
+            for path, patterns in exclude_regex.items():
+                value = extract_field(item, path)
+                values = value if isinstance(value, list) else [value]
+                if any(
+                    isinstance(candidate, str) and pattern.search(candidate)
+                    for candidate in values
+                    for pattern in patterns
+                ):
+                    break
+            else:
+                scoped.append(item)
 
     if dedupe_by:
         seen: set[tuple[str, ...]] = set()
@@ -1420,7 +1474,7 @@ async def _discover_http(
     url_template_fields = config.get("url_template_fields") or {}
     slug_fields = _validated_slug_fields(config)
     item_filter = _validated_item_filter(config)
-    item_filter_paths = [*item_filter[0], *item_filter[1]]
+    item_filter_paths = [*item_filter[0], *item_filter[1], *item_filter[2]]
     url_regex = config.get("url_regex")
     total_path = config.get("total_path")
     post_data = _configured_post_data(config)
@@ -1869,7 +1923,7 @@ async def _discover_replay(
     url_template_fields = config.get("url_template_fields") or {}
     slug_fields = _validated_slug_fields(config)
     item_filter = _validated_item_filter(config)
-    item_filter_paths = [*item_filter[0], *item_filter[1]]
+    item_filter_paths = [*item_filter[0], *item_filter[1], *item_filter[2]]
     post_data = _configured_post_data(config)
     request_headers = config.get("request_headers", {})
     fields_map: dict[str, str] = config.get("fields") or {}
