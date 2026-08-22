@@ -204,6 +204,40 @@ class TestRichRowsStatic:
         with pytest.raises(ValueError, match="omitted configured location"):
             _extract_rich_rows_static(html, "https://example.com/careers/", config, None)
 
+    def test_extracts_synhelion_live_row_shape(self):
+        html = """
+        <li class="uk-card job-card">
+          <div class="name">
+            <h2>Process and Operations Engineer (w/m/d) 100%</h2>
+            <a href="https://synhelion.com/jobs/process-and-operations-engineer-w-m-d-100">
+              Read more
+            </a>
+          </div>
+          <div class="job-meta">
+            <div class="location"><span uk-icon="location"></span> Jülich, Germany</div>
+          </div>
+        </li>
+        """
+        config = _validated_rich_rows(
+            {
+                "row_selector": 'li:has(a[href*="/jobs/"])',
+                "link_selector": 'a[href*="/jobs/"]',
+                "title_selector": "h2",
+                "location_selectors": [".location"],
+            }
+        )
+
+        assert config is not None
+        jobs = _extract_rich_rows_static(html, "https://synhelion.com/about/careers", config, None)
+
+        assert [(job.url, job.title, job.locations) for job in jobs] == [
+            (
+                "https://synhelion.com/jobs/process-and-operations-engineer-w-m-d-100",
+                "Process and Operations Engineer (w/m/d) 100%",
+                ["Jülich, Germany"],
+            )
+        ]
+
     def test_extracts_row_data_href_with_separate_title_selector(self):
         html = """
         <table><tbody>
