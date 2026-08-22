@@ -291,6 +291,12 @@ _ELVIUM_MARKERS = (
     "job-posting-widget",
     "contact-info-widget",
 )
+_STADT_ZUERICH_MARKERS = (
+    "job-detailseite.",
+    "career_job_req_id=",
+    "<stzh-pagetitle",
+)
+_SWISS_CANTON_CODES = "AG|AI|AR|BE|BL|BS|FR|GE|GL|GR|JU|LU|NE|NW|OW|SG|SH|SO|SZ|TG|TI|UR|VD|VS|ZG"
 _CLINCH_CLASS_MARKERS = (
     "job-description-container",
     "job-title",
@@ -313,6 +319,63 @@ def _has_html_class(html: str, class_name: str) -> bool:
             re.IGNORECASE,
         )
     )
+
+
+def _stadt_zuerich_config(htmls: list[str]) -> dict | None:
+    """Build extraction steps for City of Zurich's AEM job template.
+
+    The public detail pages expose stable title, employment type, department,
+    and description elements, but deliberately omit a location field. City
+    roles are based in Zurich by default. The shared inventory also contains a
+    small number of municipal-service roles outside the city; those postings
+    identify their canton or Graubunden region in the title, so preserve that
+    explicit value before applying the board-wide fallback.
+    """
+
+    matches = sum(all(marker in html for marker in _STADT_ZUERICH_MARKERS) for html in htmls)
+    if not matches or matches < len(htmls) / 2:
+        return None
+
+    canton_location = rf"(?i)\bStandort\s+([^,()]+?\s+(?:{_SWISS_CANTON_CODES}))\b"
+    regional_location = r"(?i)\b(Mittelbünden|Graubünden)\b"
+    return {
+        "defaults": {"locations": ["Zurich, Switzerland"]},
+        "steps": [
+            {"tag": "stzh-heading", "field": "title"},
+            {
+                "tag": "stzh-text",
+                "attr": "slot=lead",
+                "field": "employment_type",
+            },
+            {
+                "tag": "stzh-text",
+                "attr": "slot=lead",
+                "field": "metadata.department",
+            },
+            {
+                "tag": "stzh-heading",
+                "match_regex": canton_location,
+                "field": "locations",
+                "regex": canton_location,
+                "from": 0,
+                "optional": True,
+            },
+            {
+                "tag": "stzh-heading",
+                "match_regex": regional_location,
+                "field": "locations",
+                "regex": regional_location,
+                "from": 0,
+                "optional": True,
+            },
+            {
+                "tag": "p",
+                "field": "description",
+                "html": True,
+                "stop": "Arbeiten bei der Stadt",
+            },
+        ],
+    }
 
 
 def _rexx_portal7_config(htmls: list[str]) -> dict | None:
@@ -650,6 +713,10 @@ def can_handle(htmls: list[str]) -> dict | None:
     Uses the first page's structure to generate steps, then validates
     that the title step (h1) matches on other pages too.
     """
+    stadt_zuerich = _stadt_zuerich_config(htmls)
+    if stadt_zuerich is not None:
+        return stadt_zuerich
+
     rexx_portal7 = _rexx_portal7_config(htmls)
     if rexx_portal7 is not None:
         return rexx_portal7
