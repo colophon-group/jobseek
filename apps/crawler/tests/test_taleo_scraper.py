@@ -40,6 +40,63 @@ def _detail_html(*, title: str = "Pilot's Assistant") -> str:
     )
 
 
+def _wipo_detail_html() -> str:
+    values = [""] * 35
+    values[0] = "61710"
+    values[9] = "Roster - Administrative Assistant"
+    values[10] = "26255-FT_LT_ROS"
+    values[11] = "World Intellectual Property Organization (WIPO)"
+    values[12] = "G5"
+    values[13] = "G5"
+    values[14] = "2 years"
+    values[15] = "2 years"
+    values[17] = "CH-Geneva"
+    values[18] = "10-Aug-2026"
+    values[20] = "09-Sep-2026, 9:59:00 PM"
+    values[22] = "!*!" + quote(
+        "<h2>Organizational Context</h2><p>Support WIPO's global IP mission.</p>"
+        "<h2>Duties</h2><ul><li>Coordinate administrative work.</li></ul>",
+        safe="",
+    )
+
+    def js_string(value: str) -> str:
+        escaped = value.replace("\\", "\\\\").replace("'", "\\'")
+        return f"'{escaped}'"
+
+    payload = ",".join(js_string(value) for value in values)
+    return (
+        "<script>api.fillList('requisitionDescriptionInterface', 'descRequisition', "
+        f"[{payload}]);</script>"
+    )
+
+
+def _wipo_internship_detail_html() -> str:
+    values = [""] * 34
+    values[0] = "61490"
+    values[9] = "Internship Roster"
+    values[10] = "26222-INT"
+    values[11] = "various departments"
+    values[12] = "variable - 8 weeks up to 12 months"
+    values[15] = "Switzerland"
+    values[16] = "18-Jul-2026, 5:08:47 PM"
+    values[18] = "03-Jan-2027, 11:59:00 PM"
+    values[20] = "!*!" + quote(
+        "<h2>Internship Program</h2><p>Interns support WIPO teams.</p>"
+        "<h2>Requirements</h2><ul><li>Current students or recent graduates.</li></ul>",
+        safe="",
+    )
+
+    def js_string(value: str) -> str:
+        escaped = value.replace("\\", "\\\\").replace("'", "\\'")
+        return f"'{escaped}'"
+
+    payload = ",".join(js_string(value) for value in values)
+    return (
+        "<script>api.fillList('requisitionDescriptionInterface', 'descRequisition', "
+        f"[{payload}]);</script>"
+    )
+
+
 def test_parse_taleo_enterprise_fill_list() -> None:
     content = parse_html(_detail_html())
 
@@ -59,6 +116,43 @@ def test_parse_taleo_enterprise_fill_list() -> None:
         "requisition_number": "17204",
         "business_area": "Operations",
         "organisation": "Flight Operations",
+    }
+
+
+def test_parse_wipo_taleo_enterprise_fill_list() -> None:
+    content = parse_html(_wipo_detail_html())
+
+    assert content.title == "Roster - Administrative Assistant"
+    assert content.locations == ["CH-Geneva"]
+    assert content.description is not None
+    assert "Organizational Context" in content.description
+    assert "Coordinate administrative work" in content.description
+    assert content.date_posted == "10-Aug-2026"
+    assert content.extras == {"valid_through": "09-Sep-2026, 9:59:00 PM"}
+    assert content.metadata == {
+        "ats_job_id": "61710",
+        "requisition_number": "26255-FT_LT_ROS",
+        "organisation": "World Intellectual Property Organization (WIPO)",
+        "grade": "G5",
+        "contract_duration": "2 years",
+    }
+
+
+def test_parse_wipo_internship_taleo_enterprise_fill_list() -> None:
+    content = parse_html(_wipo_internship_detail_html())
+
+    assert content.title == "Internship Roster"
+    assert content.locations == ["Switzerland"]
+    assert content.description is not None
+    assert "Internship Program" in content.description
+    assert "Current students or recent graduates" in content.description
+    assert content.date_posted == "18-Jul-2026, 5:08:47 PM"
+    assert content.extras == {"valid_through": "03-Jan-2027, 11:59:00 PM"}
+    assert content.metadata == {
+        "ats_job_id": "61490",
+        "requisition_number": "26222-INT",
+        "organisation": "various departments",
+        "contract_duration": "variable - 8 weeks up to 12 months",
     }
 
 
@@ -96,6 +190,24 @@ async def test_scrape_fetches_public_taleo_enterprise_detail() -> None:
 
 
 @pytest.mark.asyncio
+async def test_scrape_accepts_alphanumeric_taleo_requisition_key() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.params["job"] == "26255-FT_LT_ROS"
+        return httpx.Response(200, text=_detail_html(), request=request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        content = await scrape(
+            "https://wipo.taleo.net/careersection/wp_2/"
+            "jobdetail.ftl?job=26255-FT_LT_ROS&lang=en",
+            {},
+            client,
+        )
+
+    assert content.title == "Pilot's Assistant"
+    assert content.description
+
+
+@pytest.mark.asyncio
 async def test_scrape_rejects_taleo_business_edition_url() -> None:
     async with httpx.AsyncClient() as client:
         with pytest.raises(ValueError, match="invalid Taleo Enterprise"):
@@ -115,6 +227,8 @@ async def test_scrape_rejects_taleo_business_edition_url() -> None:
         "https://easyjet.taleo.net:444/careersection/2/jobdetail.ftl?job=17204",
         "https://easyjet.taleo.net/careersection/../../jobdetail.ftl?job=17204",
         "https://easyjet.taleo.net/careersection/2/jobdetail.ftl?job=17204#other",
+        "https://easyjet.taleo.net/careersection/2/jobdetail.ftl?job=../17204",
+        "https://easyjet.taleo.net/careersection/2/jobdetail.ftl?job=17204%2Fother",
     ],
 )
 async def test_scrape_rejects_noncanonical_enterprise_url(url: str) -> None:
