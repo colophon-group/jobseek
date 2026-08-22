@@ -1754,6 +1754,32 @@ class TestDepictInlineCareersConfig:
         assert any(step.get("field") == "description" for step in config.get("steps", []))
 
 
+class TestSophiaGeneticsRateLimitConfig:
+    """SOPHiA detail pages return empty 202 responses under refresh load (#7791)."""
+
+    def test_sophia_keeps_first_scrapes_but_disables_refresh_tail(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(
+            (r for r in rows if r["board_slug"] == "sophia-genetics-careers"),
+            None,
+        )
+        assert row is not None, "sophia-genetics-careers row missing from boards.csv"
+        assert row.get("monitor_type") == "sitemap"
+
+        monitor_config = json.loads(row.get("monitor_config") or "{}")
+        assert monitor_config.get("rescrape_policy") == "never"
+
+        assert row.get("scraper_type") == "dom"
+        scraper_config = json.loads(row.get("scraper_config") or "{}")
+        assert scraper_config.get("render") is True
+        assert scraper_config.get("scope") == ".job-description-container"
+
+
 class TestGrooveQuantumSiteGroundConfig:
     """Groove Quantum must bypass SiteGround's crawler-IP challenge (#4224)."""
 
