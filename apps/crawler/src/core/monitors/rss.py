@@ -157,6 +157,11 @@ _G_NS = "http://base.google.com/ns/1.0"
 
 # Location suffix in title, e.g. " (Tempe, AZ, US, 85288)"
 _TITLE_LOCATION_RE = re.compile(r"\s*\([^)]+,\s*[^)]+\)\s*$")
+_TITLE_LOCATION_VALUE_RE = re.compile(r"\s*\((?P<location>[^()]+,\s*[^()]+)\)\s*$")
+_DESCRIPTION_LOCATION_RE = re.compile(
+    r"<(?:strong|b)\b[^>]*>\s*Location\s*:?\s*</(?:strong|b)>\s*([^<]+)",
+    re.IGNORECASE,
+)
 
 
 # ── Item parsers ────────────────────────────────────────────────────────
@@ -195,6 +200,15 @@ def _tt_all(item: ET.Element, tag: str) -> list[str]:
     return results
 
 
+def _sf_description_location(description: str) -> str | None:
+    """Read a labelled location from a SuccessFactors HTML description."""
+    match = _DESCRIPTION_LOCATION_RE.search(description)
+    if not match:
+        return None
+    location = " ".join(html.unescape(match.group(1)).split())
+    return location or None
+
+
 def _parse_sf_item(item: ET.Element) -> DiscoveredJob | None:
     """Parse a SuccessFactors RSS item (Google Base namespace)."""
     link = _text(item, "link")
@@ -216,14 +230,30 @@ def _parse_sf_item(item: ET.Element) -> DiscoveredJob | None:
             description = None
 
     location = _g(item, "location")
+    strip_title_location = location is not None
+    if not location and description:
+        description_location = _sf_description_location(description)
+        if description_location:
+            location = description_location
+            title_location = _TITLE_LOCATION_VALUE_RE.search(title or "")
+            if title_location:
+                candidate = " ".join(title_location.group("location").split())
+                description_key = description_location.casefold()
+                candidate_key = candidate.casefold()
+                if candidate_key == description_key or candidate_key.startswith(
+                    f"{description_key},"
+                ):
+                    location = candidate
+                    strip_title_location = True
     locations = [location] if location else None
 
-    if title and location:
+    if title and strip_title_location:
         cleaned = _TITLE_LOCATION_RE.sub("", title)
         if cleaned:
             title = cleaned
 
     job_id = _text(item, "guid")
+    date_posted = _text(item, "pubDate")
     expiration_date = _g(item, "expiration_date")
     employer = _g(item, "employer")
     job_function = _g(item, "job_function")
@@ -243,6 +273,7 @@ def _parse_sf_item(item: ET.Element) -> DiscoveredJob | None:
         title=title,
         description=description,
         locations=locations,
+        date_posted=date_posted,
         metadata=metadata or None,
     )
 

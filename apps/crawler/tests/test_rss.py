@@ -136,6 +136,46 @@ class TestParseSfItem:
         result = _parse_sf_item(item)
         assert result.title == "Manager"
 
+    def test_location_falls_back_to_labelled_description(self):
+        xml = """
+        <item>
+            <title>Project Manager P4 (Luanda, AO)</title>
+            <link>https://jobs.example.com/job/1</link>
+            <description><![CDATA[
+                <p><strong>Job ID:</strong> 13784<br>
+                <strong>Location:</strong> Luanda&nbsp;&nbsp;&nbsp;<br>
+                <strong>Contract type:</strong> Short Term</p>
+                <p>Full job description.</p>
+            ]]></description>
+            <pubDate>Tue, 18 Aug 2026 00:00:00 GMT</pubDate>
+        </item>
+        """
+
+        result = _parse_sf_item(ET.fromstring(xml))
+
+        assert result is not None
+        assert result.title == "Project Manager P4"
+        assert result.locations == ["Luanda, AO"]
+        assert result.date_posted == "Tue, 18 Aug 2026 00:00:00 GMT"
+
+    def test_description_location_does_not_strip_unrelated_title_suffix(self):
+        xml = """
+        <item>
+            <title>Specialist (Research, AI)</title>
+            <link>https://jobs.example.com/job/2</link>
+            <description><![CDATA[
+                <p><strong>Location:</strong> Geneva<br>
+                <strong>Contract type:</strong> Fixed Term</p>
+            ]]></description>
+        </item>
+        """
+
+        result = _parse_sf_item(ET.fromstring(xml))
+
+        assert result is not None
+        assert result.title == "Specialist (Research, AI)"
+        assert result.locations == ["Geneva"]
+
     def test_job_function_ats_webform_filtered(self):
         xml = f"""
         <item>
