@@ -18,6 +18,7 @@ from src.core.monitors.api_sniffer import (
     _discover_live_url,
     _extract_rich,
     _extract_urls_from_template,
+    _lumesse_config_overrides,
     _materially_below_advertised_total,
     _refresh_post_data,
     _serialize_post_data,
@@ -26,6 +27,90 @@ from src.core.monitors.api_sniffer import (
     can_handle,
     discover,
 )
+
+
+def _lumesse_items():
+    return [
+        {
+            "id": 160572,
+            "customFields": [
+                {"title": "Job Purpose", "content": "<p>Build data products.</p>"},
+                {"title": "Experience", "content": "<p>Five years required.</p>"},
+            ],
+            "jobFields": {
+                "jobTitle": "Full Stack Developer",
+                "FFIELD008_001": "Morocco, Lebanon, Egypt or Jordan",
+                "SLOVLIST2": "MENA Different Locations",
+                "SLOVLIST7": "National",
+                "jobNumber": "S18240",
+                "externalJobNumber": "0441796",
+                "applicationUrl": "https://emea3.recruitmentplatform.com/apply/160572",
+            },
+        }
+    ]
+
+
+def test_lumesse_config_overrides_build_rich_canonical_config():
+    items = _lumesse_items()
+    config = _lumesse_config_overrides(
+        "https://careers.ifrc.org/lumesse_jobsearch.html",
+        "https://emea3.recruitmentplatform.com/fo/rest/jobs?firstResult=0",
+        items,
+        {"globals": {"jobsCount": 21}, "jobs": items},
+    )
+
+    assert config is not None
+    assert config["browser"] is False
+    assert config["total_path"] == "globals.jobsCount"
+    assert config["total"] == 21
+    assert config["url_template"] == (
+        "https://careers.ifrc.org/lumesse_jobdescription.html?jobId={id}"
+    )
+
+    jobs = _extract_rich(
+        items,
+        config["fields"],
+        None,
+        config["url_template"],
+        "https://careers.ifrc.org/lumesse_jobsearch.html",
+    )
+    assert len(jobs) == 1
+    assert jobs[0].url == "https://careers.ifrc.org/lumesse_jobdescription.html?jobId=160572"
+    assert jobs[0].title == "Full Stack Developer"
+    assert jobs[0].locations == ["Morocco, Lebanon, Egypt or Jordan"]
+    assert jobs[0].description == (
+        "<h3>Job Purpose</h3>\n<p>Build data products.</p>\n\n"
+        "<h3>Experience</h3>\n<p>Five years required.</p>"
+    )
+    assert jobs[0].metadata == {
+        "ats_job_id": "160572",
+        "job_number": "S18240",
+        "external_job_number": "0441796",
+        "scope": "National",
+        "apply_url": "https://emea3.recruitmentplatform.com/apply/160572",
+    }
+
+
+@pytest.mark.parametrize(
+    ("board_url", "api_url"),
+    [
+        (
+            "https://careers.ifrc.org/jobs",
+            "https://emea3.recruitmentplatform.com/fo/rest/jobs",
+        ),
+        (
+            "https://careers.ifrc.org/lumesse_jobsearch.html",
+            "https://example.com/fo/rest/jobs",
+        ),
+        (
+            "http://careers.ifrc.org/lumesse_jobsearch.html",
+            "https://emea3.recruitmentplatform.com/fo/rest/jobs",
+        ),
+    ],
+)
+def test_lumesse_config_overrides_rejects_noncanonical_endpoints(board_url, api_url):
+    items = _lumesse_items()
+    assert _lumesse_config_overrides(board_url, api_url, items, {"jobs": items}) is None
 
 
 def test_serialize_post_data_accepts_json_values_and_existing_strings():
