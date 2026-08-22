@@ -89,6 +89,58 @@ FIXTURE_HTML = """
 
 
 class TestDomScraper:
+    def test_city_of_zurich_preset_defaults_city_and_preserves_regional_roles(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        def page(title: str) -> str:
+            return f"""
+            <html><head>
+              <title>{title} | Stadt Zürich</title>
+              <link rel="canonical" href="/jobs/job-detailseite.61398.html">
+            </head><body>
+              <stzh-pagetitle>
+                <stzh-heading slot="heading">{title}</stzh-heading>
+                <stzh-text slot="lead">Dauerstelle</stzh-text>
+                <stzh-text slot="lead">Elektrizitätswerk</stzh-text>
+              </stzh-pagetitle>
+              <stzh-pagecontent>
+                <stzh-richtext><p>Gestalten Sie die Energieversorgung mit.</p></stzh-richtext>
+                <stzh-richtext>
+                  <h2>Aufgaben</h2><ul><li>Betreiben Sie sichere Netze.</li></ul>
+                </stzh-richtext>
+                <stzh-cta href="https://career2.successfactors.eu/career?career_job_req_id=51398"></stzh-cta>
+                <stzh-text><p>Referenz-Nr.: 51398</p></stzh-text>
+                <stzh-heading level="2" slot="heading">Arbeiten bei der Stadt</stzh-heading>
+              </stzh-pagecontent>
+            </body></html>
+            """
+
+        zurich_html = page("Projektleiter*in Energie, 80–100 %")
+        graubuenden_html = page(
+            "Lehrstelle Polymechaniker*in, Standort Sils im Domleschg GR, 100 %"
+        )
+        region_html = page("Netzelektriker*in Mittelbünden, 80–100 %")
+
+        config = can_handle([zurich_html, graubuenden_html, region_html])
+        assert config is not None
+        assert config["defaults"] == {"locations": ["Zurich, Switzerland"]}
+
+        zurich = parse_html(zurich_html, config)
+        assert zurich.title == "Projektleiter*in Energie, 80–100 %"
+        assert zurich.locations == ["Zurich, Switzerland"]
+        assert zurich.employment_type == "Dauerstelle"
+        assert zurich.metadata == {"department": "Elektrizitätswerk"}
+        assert zurich.description is not None
+        assert "Gestalten Sie die Energieversorgung" in zurich.description
+        assert "Betreiben Sie sichere Netze" in zurich.description
+        assert "Arbeiten bei der Stadt" not in zurich.description
+
+        graubuenden = parse_html(graubuenden_html, config)
+        assert graubuenden.locations == ["Sils im Domleschg GR"]
+
+        region = parse_html(region_html, config)
+        assert region.locations == ["Mittelbünden"]
+
     def test_clinch_probe_uses_job_component_layout(self):
         from src.core.scrapers.dom import can_handle, parse_html
 
