@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 import pytest
 
+import src.core.monitors.inline as inline_monitor
 from src.core.monitors.inline import _generate_url, discover
 from src.shared.extract import flatten, walk_steps
 
@@ -213,6 +216,57 @@ class _FakeClient:
         self.requested_urls.append(str(url))
         self.request_headers.append(kwargs.get("headers"))
         return self._responses.get(str(url), _FakeResponse(self._html))
+
+
+@pytest.mark.asyncio
+async def test_discover_render_runs_actions_before_reading_html(monkeypatch):
+    events: list[str] = []
+    page = object()
+
+    @asynccontextmanager
+    async def fake_open_page(_pw, _config, *, use_proxy=False):
+        assert use_proxy is False
+        events.append("open")
+        yield page
+
+    async def fake_navigate(actual_page, url, config):
+        assert actual_page is page
+        assert url == "https://example.com/jobs"
+        assert config["actions"] == [{"action": "evaluate", "script": "renderJobs()"}]
+        events.append("navigate")
+
+    async def fake_run_actions(actual_page, actions):
+        assert actual_page is page
+        assert actions == [{"action": "evaluate", "script": "renderJobs()"}]
+        events.append("actions")
+
+    async def fake_safe_content(actual_page):
+        assert actual_page is page
+        assert events[-1] == "actions"
+        events.append("content")
+        return "<h3>Rendered Engineer</h3><p>Build the product.</p>"
+
+    monkeypatch.setattr(inline_monitor, "open_page", fake_open_page)
+    monkeypatch.setattr(inline_monitor, "navigate", fake_navigate)
+    monkeypatch.setattr(inline_monitor, "run_actions", fake_run_actions)
+    monkeypatch.setattr(inline_monitor, "safe_content", fake_safe_content)
+
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "render": True,
+            "actions": [{"action": "evaluate", "script": "renderJobs()"}],
+            "steps": [
+                {"tag": "h3", "field": "title"},
+                {"tag": "p", "field": "description"},
+            ],
+        },
+    }
+
+    jobs = await discover(board, _FakeClient(""), pw=object())
+
+    assert events == ["open", "navigate", "actions", "content"]
+    assert [job.title for job in jobs] == ["Rendered Engineer"]
 
 
 @pytest.mark.asyncio

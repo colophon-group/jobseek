@@ -25,7 +25,7 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 import structlog
 
 from src.core.monitors import DiscoveredJob, register
-from src.shared.browser import BROWSER_KEYS, navigate, open_page, safe_content
+from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
 from src.shared.extract import flatten, walk_steps
 from src.shared.slug import slugify
 from src.shared.truncation import truncated_rich_result
@@ -124,6 +124,7 @@ async def _fetch_html(
                     pw, browser_cfg, use_proxy=bool(metadata.get("proxy"))
                 ) as page:
                     await navigate(page, fetch_url, browser_cfg)
+                    await run_actions(page, browser_cfg.get("actions", []))
                     return validate(await safe_content(page), fetch_url)
             except Exception as exc:
                 last_error = exc

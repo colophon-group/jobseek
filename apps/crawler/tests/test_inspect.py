@@ -1729,6 +1729,31 @@ class TestCaterpillarRateLimitConfig:
         assert scraper_needs_browser("json-ld", sc) is True
 
 
+class TestDepictInlineCareersConfig:
+    """Depict replaced its Teamtailor RSS feed with a custom careers app (#7792)."""
+
+    def test_depict_renders_embedded_openings_with_inline_monitor(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        by_slug = {r["board_slug"]: r for r in rows}
+
+        row = by_slug.get("depict-careers")
+        assert row is not None, "depict-careers row missing from boards.csv"
+        assert row.get("monitor_type") == "inline"
+        assert row.get("scraper_type") == "skip"
+
+        config = json.loads(row.get("monitor_config") or "{}")
+        assert config.get("render") is True
+        assert config.get("fetch_contains") == "jobseek-openings"
+        assert config.get("actions", [{}])[0].get("action") == "evaluate"
+        assert config.get("actions", [{}])[0].get("required") is True
+        assert any(step.get("field") == "description" for step in config.get("steps", []))
+
+
 class TestGrooveQuantumSiteGroundConfig:
     """Groove Quantum must bypass SiteGround's crawler-IP challenge (#4224)."""
 
