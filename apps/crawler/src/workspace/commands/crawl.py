@@ -9,6 +9,7 @@ import json
 import math
 import random
 import re
+from collections import Counter
 
 import click
 
@@ -2577,14 +2578,16 @@ def _normalize_compare_locations(locations: object) -> tuple[str, ...]:
     return tuple(sorted(normalized))
 
 
-def _compare_identities(jobs: list[dict]) -> set[tuple[str, tuple[str, ...]]]:
-    """Build stable title/location identities from sufficiently rich jobs."""
-    identities = set()
+def _compare_identities(
+    jobs: list[dict],
+) -> Counter[tuple[str, tuple[str, ...]]]:
+    """Count stable title/location identities from sufficiently rich jobs."""
+    identities = Counter()
     for job in jobs:
         title = job.get("title")
         locations = _normalize_compare_locations(job.get("locations"))
         if title and locations:
-            identities.add((_normalize_compare_title(title), locations))
+            identities[(_normalize_compare_title(title), locations)] += 1
     return identities
 
 
@@ -2637,6 +2640,9 @@ def _compare_two_boards(
     identities_a = _compare_identities(jobs_a)
     identities_b = _compare_identities(jobs_b)
     shared_identities = identities_a & identities_b
+    identity_count_a = sum(identities_a.values())
+    identity_count_b = sum(identities_b.values())
+    shared_identity_count = sum(shared_identities.values())
 
     # Classify relationship
     url_overlap_pct_a = round(len(shared_urls) / len(urls_a) * 100) if urls_a else 0
@@ -2644,10 +2650,10 @@ def _compare_two_boards(
     title_overlap_pct_a = round(len(shared_titles) / len(titles_a) * 100) if titles_a else 0
     title_overlap_pct_b = round(len(shared_titles) / len(titles_b) * 100) if titles_b else 0
     identity_overlap_pct_a = (
-        round(len(shared_identities) / len(identities_a) * 100) if identities_a else 0
+        round(shared_identity_count / identity_count_a * 100) if identity_count_a else 0
     )
     identity_overlap_pct_b = (
-        round(len(shared_identities) / len(identities_b) * 100) if identities_b else 0
+        round(shared_identity_count / identity_count_b * 100) if identity_count_b else 0
     )
 
     relationship = "independent"
@@ -2700,9 +2706,9 @@ def _compare_two_boards(
         "shared_titles": len(shared_titles),
         "title_overlap_pct_a": title_overlap_pct_a,
         "title_overlap_pct_b": title_overlap_pct_b,
-        "identities_a": len(identities_a),
-        "identities_b": len(identities_b),
-        "shared_identities": len(shared_identities),
+        "identities_a": identity_count_a,
+        "identities_b": identity_count_b,
+        "shared_identities": shared_identity_count,
         "identity_overlap_pct_a": identity_overlap_pct_a,
         "identity_overlap_pct_b": identity_overlap_pct_b,
         "evidence": evidence,
