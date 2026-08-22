@@ -296,7 +296,9 @@ _STADT_ZUERICH_MARKERS = (
     "career_job_req_id=",
     "<stzh-pagetitle",
 )
-_SWISS_CANTON_CODES = "AG|AI|AR|BE|BL|BS|FR|GE|GL|GR|JU|LU|NE|NW|OW|SG|SH|SO|SZ|TG|TI|UR|VD|VS|ZG"
+_SWISS_CANTON_CODES = (
+    "AG|AI|AR|BE|BL|BS|FR|GE|GL|GR|JU|LU|NE|NW|OW|SG|SH|SO|SZ|TG|TI|UR|VD|VS|ZG|ZH"
+)
 _CLINCH_CLASS_MARKERS = (
     "job-description-container",
     "job-title",

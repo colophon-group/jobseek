@@ -119,9 +119,10 @@ class TestDomScraper:
         graubuenden_html = page(
             "Lehrstelle Polymechaniker*in, Standort Sils im Domleschg GR, 100 %"
         )
+        winterthur_html = page("Projektleiter*in, Standort Winterthur ZH, 80–100 %")
         region_html = page("Netzelektriker*in Mittelbünden, 80–100 %")
 
-        config = can_handle([zurich_html, graubuenden_html, region_html])
+        config = can_handle([zurich_html, graubuenden_html, winterthur_html, region_html])
         assert config is not None
         assert config["defaults"] == {"locations": ["Zurich, Switzerland"]}
 
@@ -137,6 +138,9 @@ class TestDomScraper:
 
         graubuenden = parse_html(graubuenden_html, config)
         assert graubuenden.locations == ["Sils im Domleschg GR"]
+
+        winterthur = parse_html(winterthur_html, config)
+        assert winterthur.locations == ["Winterthur ZH"]
 
         region = parse_html(region_html, config)
         assert region.locations == ["Mittelbünden"]
