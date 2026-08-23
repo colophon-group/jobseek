@@ -1372,9 +1372,12 @@ dom — Link or Static Listing-Row Extraction (fallback)
                     "location_selectors": ["td.city", "td.country"]}.
                    The selected link or title node text becomes the title;
                    location components are joined in selector order. Every
-                   configured field is strict,
-                   so markup drift fails the cycle instead of publishing a
-                   partial authoritative result. Incompatible with rendering,
+                   configured field is strict. Set
+                   "allow_missing_locations": true only when some listing
+                   rows intentionally omit location and the detail scraper
+                   enriches it; those rows return locations=null. Otherwise
+                   markup drift fails the cycle instead of publishing a partial
+                   authoritative result. Incompatible with rendering,
                    browser or partitioned pagination, and include_board_url.
                    Requires a real detail scraper (not skip) with scraper_config
                    {"enrich": ["description"]}; otherwise the partial-rich
@@ -2830,6 +2833,13 @@ dom — Step-based Extraction Engine
                    With scope, prepend the document <title> for extraction
     include_document_description
                    With scope, prepend meta description text for extraction
+    document_fallback
+                   Static-only per-format configs for detail URLs that may
+                   download PDF or DOCX files instead of returning HTML:
+                   {"pdf": {...}, "docx": {...}}. PDF keys match
+                   `ws help scraper pdf`; DOCX supports title_source: "text",
+                   title_pattern, location_pattern, and defaults. HTML
+                   responses continue through the configured DOM steps.
 
   Target fields: title, description, locations, employment_type,
   job_location_type, date_posted, valid_through, qualifications,

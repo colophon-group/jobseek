@@ -224,7 +224,7 @@ def _table_html(table: Element) -> str | None:
     return f"<table>{''.join(rows)}</table>" if rows else None
 
 
-def _docx_to_html(content: bytes) -> str | None:
+def docx_to_html(content: bytes) -> str | None:
     """Convert the useful text structure in a DOCX document to basic HTML."""
     try:
         with zipfile.ZipFile(io.BytesIO(content)) as archive:
@@ -282,6 +282,11 @@ def _docx_to_html(content: bytes) -> str | None:
 
     flush_list()
     return "\n".join(blocks) or None
+
+
+# Kept for compatibility with existing tests and callers while the shared
+# document fallback uses the public helper name.
+_docx_to_html = docx_to_html
 
 
 def _parse_locations(detail: dict) -> list[str] | None:
@@ -399,7 +404,7 @@ async def _attachment_description(
             limit=exc.limit,
         )
         return None
-    description = _docx_to_html(content)
+    description = docx_to_html(content)
     if not description:
         log.warning("adp_scraper.attachment_invalid", bytes=len(content))
     return description

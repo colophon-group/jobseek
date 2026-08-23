@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import io
 import json
+import zipfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -12,6 +14,48 @@ import pytest
 from src.core.scrapers import JobContent
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
+
+def _make_document_pdf(text: str) -> bytes:
+    import pypdf
+    from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
+
+    writer = pypdf.PdfWriter()
+    writer.add_blank_page(width=612, height=792)
+    page = writer.pages[0]
+    stream = DecodedStreamObject()
+    stream.set_data(f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET".encode())
+    font = DictionaryObject(
+        {
+            NameObject("/Type"): NameObject("/Font"),
+            NameObject("/Subtype"): NameObject("/Type1"),
+            NameObject("/BaseFont"): NameObject("/Helvetica"),
+        }
+    )
+    page[NameObject("/Resources")] = DictionaryObject(
+        {NameObject("/Font"): DictionaryObject({NameObject("/F1"): font})}
+    )
+    page[NameObject("/Contents")] = writer._add_object(stream)
+    output = io.BytesIO()
+    writer.write(output)
+    return output.getvalue()
+
+
+def _make_document_docx() -> bytes:
+    document = b"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:pPr><w:pStyle w:val="Title"/></w:pPr>
+      <w:r><w:t>Strategic Communications Officer</w:t></w:r>
+    </w:p>
+    <w:p><w:r><w:t>Lead conservation communications worldwide.</w:t></w:r></w:p>
+  </w:body>
+</w:document>"""
+    output = io.BytesIO()
+    with zipfile.ZipFile(output, "w") as archive:
+        archive.writestr("word/document.xml", document)
+    return output.getvalue()
+
 
 # ---------------------------------------------------------------------------
 # Helpers (same pattern as test_browser_shared.py)
@@ -611,6 +655,98 @@ class TestDomScraper:
         with _patch_playwright(page):
             result = await scrape("https://example.com/job/1", {}, httpx.AsyncClient())
         assert result == JobContent()
+
+    async def test_static_document_fallback_parses_pdf(self):
+        from src.core.scrapers.dom import scrape
+
+        pdf = _make_document_pdf("Consultant Role")
+
+        def handler(request):
+            return httpx.Response(200, content=pdf)
+
+        config = {
+            "render": False,
+            "steps": [{"tag": "h1", "field": "title"}],
+            "document_fallback": {"pdf": {"title_source": "text"}},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape("https://example.com/download/42", config, client)
+
+        assert result.title == "Consultant Role"
+        assert result.description == "<p>Consultant Role</p>"
+
+    async def test_static_document_fallback_parses_docx_with_format_defaults(self):
+        from src.core.scrapers.dom import scrape
+
+        docx = _make_document_docx()
+
+        def handler(request):
+            return httpx.Response(200, content=docx)
+
+        config = {
+            "render": False,
+            "steps": [{"tag": "h1", "field": "title"}],
+            "document_fallback": {
+                "docx": {
+                    "title_source": "text",
+                    "defaults": {
+                        "locations": ["Remote"],
+                        "job_location_type": "remote",
+                    },
+                }
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape("https://example.com/download/43", config, client)
+
+        assert result.title == "Strategic Communications Officer"
+        assert result.locations == ["Remote"]
+        assert result.job_location_type == "remote"
+        assert result.description is not None
+        assert "Lead conservation communications worldwide." in result.description
+
+    async def test_static_document_fallback_keeps_html_step_extraction(self):
+        from src.core.scrapers.dom import scrape
+
+        def handler(request):
+            return httpx.Response(200, text=FIXTURE_HTML)
+
+        config = {
+            "render": False,
+            "steps": [{"tag": "h1", "field": "title"}],
+            "document_fallback": {"pdf": {}, "docx": {}},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape("https://example.com/job/1", config, client)
+
+        assert result.title == "Software Engineer"
+
+    @pytest.mark.parametrize(
+        "document_fallback",
+        [True, {"zip": {}}, {"pdf": "not-an-object"}],
+    )
+    async def test_document_fallback_rejects_invalid_config(self, document_fallback):
+        from src.core.scrapers.dom import scrape
+
+        config = {
+            "steps": [{"tag": "h1", "field": "title"}],
+            "document_fallback": document_fallback,
+        }
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="document_fallback"):
+                await scrape("https://example.com/job/1", config, client)
+
+    async def test_document_fallback_rejects_rendered_mode(self):
+        from src.core.scrapers.dom import scrape
+
+        config = {
+            "render": True,
+            "steps": [{"tag": "h1", "field": "title"}],
+            "document_fallback": {"pdf": {}},
+        }
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="render=false"):
+                await scrape("https://example.com/job/1", config, client)
 
     async def test_title_extraction(self):
         """Step with tag: h1 extracts the title."""

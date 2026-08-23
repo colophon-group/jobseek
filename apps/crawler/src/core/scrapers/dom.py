@@ -932,6 +932,57 @@ def _apply_defaults(raw: dict, config: dict) -> dict:
     return merged
 
 
+def _document_fallback_config(config: dict) -> dict | None:
+    """Validate the optional per-format static document fallback config."""
+    value = config.get("document_fallback")
+    if value is None or value is False:
+        return None
+    if not isinstance(value, dict) or set(value) - {"pdf", "docx"}:
+        raise ValueError("DOM scraper document_fallback must contain only pdf/docx configs")
+    for kind, kind_config in value.items():
+        if not isinstance(kind_config, dict):
+            raise ValueError(f"DOM scraper document_fallback.{kind} must be an object")
+    return value
+
+
+async def _parse_static_document(
+    content: bytes,
+    url: str,
+    fallback: dict,
+) -> tuple[JobContent, str] | None:
+    """Return parsed PDF/DOCX content, or ``None`` for an HTML response."""
+    if content.lstrip().startswith(b"%PDF-"):
+        from src.core.scrapers.pdf import parse_bytes
+
+        parsed = await parse_bytes(content, url, fallback.get("pdf") or {})
+        return parsed, "pdf"
+
+    if content.startswith(b"PK\x03\x04"):
+        from src.core.scrapers.adp import docx_to_html
+        from src.core.scrapers.pdf import _extract_pattern, _title_from_text
+
+        description = docx_to_html(content)
+        if description is None:
+            raise ValueError("DOM scraper document_fallback received an invalid DOCX archive")
+        docx_config = fallback.get("docx") or {}
+        text = LexborHTMLParser(description).text(separator="\n", strip=True)
+        title = _extract_pattern(text, docx_config.get("title_pattern"))
+        if not title and docx_config.get("title_source") == "text":
+            title = _title_from_text(text)
+        location = _extract_pattern(text, docx_config.get("location_pattern"))
+        raw = _apply_defaults(
+            {
+                "title": title,
+                "description": description,
+                "location": location,
+            },
+            docx_config,
+        )
+        return _map_to_job_content(raw), "docx"
+
+    return None
+
+
 async def scrape(
     url: str,
     config: dict,
@@ -950,6 +1001,10 @@ async def scrape(
         return JobContent()
 
     render = config.get("render", False)
+    document_fallback = _document_fallback_config(config)
+
+    if render and document_fallback is not None:
+        raise ValueError("DOM scraper document_fallback requires render=false")
 
     if not render and config.get("actions"):
         log.warning(
@@ -1021,6 +1076,15 @@ async def scrape(
         # status alone never reveals gone-ness on these hosts.
         _check_gone_redirect(str(resp.url), gone_pattern, url)
         resp.raise_for_status()
+        if document_fallback is not None:
+            document = await _parse_static_document(resp.content, url, document_fallback)
+            if document is not None:
+                content, extension = document
+                if artifact_dir is not None:
+                    with contextlib.suppress(Exception):
+                        (artifact_dir / f"source.{extension}").write_bytes(resp.content)
+                log.debug("dom.document_fallback", url=url, document_type=extension)
+                return content
         encoding = config.get("encoding")
         if encoding is not None:
             if not isinstance(encoding, str) or not encoding:
