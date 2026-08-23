@@ -561,13 +561,18 @@ class TestRichRowsStatic:
     @pytest.mark.asyncio
     async def test_rejects_browser_pagination_for_rich_rows(self):
         with (
-            patch(_FETCH_PATCH, AsyncMock(return_value="""
+            patch(
+                _FETCH_PATCH,
+                AsyncMock(
+                    return_value="""
                 <div class="job">
                   <div class="job-title"><a href="/jobs/first">First</a></div>
                   <div class="job-location">Winterthur</div>
                   <div class="job-country">Switzerland</div>
                 </div>
-            """)),
+            """
+                ),
+            ),
             pytest.raises(ValueError, match="static sequential pages"),
         ):
             await dom_discover(
