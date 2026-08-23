@@ -838,10 +838,7 @@ def auto_scraper_type(
     if monitor_type == "jobvite":
         return ("json-ld", None)
     if monitor_type == "icims":
-        # Some iCIMS tenants return a CloudFront captcha as HTTP 405 for the
-        # shared Chrome-shaped user agent.  Keep detail requests aligned with
-        # the provider-specific listing override in the iCIMS monitor.
-        return ("json-ld", {"request_headers": {"User-Agent": "Mozilla/5.0"}})
+        return ("json-ld", None)
     if monitor_type == "candidatus":
         return (
             "dom",
