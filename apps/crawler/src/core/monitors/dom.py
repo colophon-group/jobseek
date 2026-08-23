@@ -793,7 +793,9 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
     )
     if row_selector is None:
         raise ValueError("DOM monitor rich_rows requires row_selector")
-    locations = value.get("location_selectors") or []
+    locations = value.get("location_selectors")
+    if locations is None:
+        locations = []
     if (
         not isinstance(locations, list)
         or len(locations) > 4
@@ -804,7 +806,9 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         _validate_css_selector(selector, name="rich_rows.location_selectors") or ""
         for selector in locations
     )
-    metadata = value.get("metadata_selectors") or {}
+    metadata = value.get("metadata_selectors")
+    if metadata is None:
+        metadata = {}
     if (
         not isinstance(metadata, dict)
         or len(metadata) > 8

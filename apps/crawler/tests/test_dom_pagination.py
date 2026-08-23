@@ -468,6 +468,9 @@ class TestRichRowsStatic:
             {"row_selector": ".job", "link_selector": ".job a", "unexpected": True},
             {"row_selector": ".job", "link_attr": "not valid!"},
             {"row_selector": ".job", "link_selector": ".job a", "location_selectors": "p"},
+            {"row_selector": ".job", "location_selectors": False},
+            {"row_selector": ".job", "location_selectors": 0},
+            {"row_selector": ".job", "location_selectors": {}},
             {
                 "row_selector": ".job",
                 "link_selector": ".job a",
@@ -483,6 +486,10 @@ class TestRichRowsStatic:
                 "link_selector": ".job a",
                 "metadata_selectors": {"type": "a["},
             },
+            {"row_selector": ".job", "metadata_selectors": []},
+            {"row_selector": ".job", "metadata_selectors": ""},
+            {"row_selector": ".job", "metadata_selectors": 0},
+            {"row_selector": ".job", "metadata_selectors": False},
         ],
     )
     def test_rejects_invalid_configs(self, config):
