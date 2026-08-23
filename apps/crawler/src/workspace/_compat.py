@@ -88,6 +88,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "kipt",
         "lever",
         "linkedin",
+        "manatal",
         "mokahr",
         "oracle_hcm",
         "pageup",
@@ -97,6 +98,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "recruitee",
         "recruiter_co_kr",
         "rss",
+        "seamlesshiring",
         "traffit",
         "typify",
         "ukg",
@@ -354,6 +356,12 @@ def detect_ats_from_url(url: str) -> str | None:
         return "comeet"
     if host == "jobs.deel.com":
         return "deel"
+    if host == "www.careers-page.com" and re.fullmatch(
+        r"/[a-z0-9][a-z0-9-]*/?", parsed.path, re.IGNORECASE
+    ):
+        return "manatal"
+    if host.endswith(".seamlesshiring.com") and host.count(".") == 2:
+        return "seamlesshiring"
     if host == "apply.workable.com":
         return "workable"
     if host == "careers.smartrecruiters.com":

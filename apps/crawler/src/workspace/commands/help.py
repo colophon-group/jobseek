@@ -111,6 +111,7 @@ Monitor Types (cheapest first):
   keka              10      Full job data     No (skipped)
   lever             10      Full job data     No (skipped)
   linkedin          10      Full/partial      Auto-enriched
+  manatal           10      Full job data     No (skipped)
   paycom            10      Full/partial      Auto-enriched
   paylocity         10      Full/partial      Auto-enriched
   pinpoint          10      Full job data     No (skipped)
@@ -118,6 +119,7 @@ Monitor Types (cheapest first):
   recruiterbox      10      Job URLs          Auto-configured
   rippling          10      Job URLs          Auto-configured
   rss               10      Full job data     No (skipped)
+  seamlesshiring    10      Full job data     No (skipped)
   smartrecruiters   10      Job URLs          Auto-configured
   softgarden        10      Job URLs          Auto-configured
   traffit           10      Full job data     No (skipped)
@@ -1565,6 +1567,43 @@ avature — Avature public static listing monitor
   A first-page 404/410 is definitive gone; 202/401/403/406 and transport
   failures remain transient. Configure the normal proxy option for WAF-gated
   portals.
+"""
+
+MONITOR_MANATAL = """\
+manatal — Manatal Careers Page API
+
+  API:      GET https://www.careers-page.com/api/v1.0/c/{slug}/jobs/
+  Returns:  Full job data (title, HTML description, location)
+  Scraper:  Not needed (skipped)
+  Cost:     10
+  Browser:  No
+
+  Config:
+    {"slug": "care-vietnam"}
+
+    slug    careers-page.com path slug. Auto-detected from board URL.
+
+  Detection:  ws probe shows "Manatal API — slug: X, N jobs"
+  Empty boards are authoritative: the public API returns count=0.
+"""
+
+MONITOR_SEAMLESSHIRING = """\
+seamlesshiring — SeamlessHiring Candidate API
+
+  API:      GET https://{tenant}.seamlesshiring.com/v2/jobs/job-list
+  Returns:  Full job data (title, HTML description, location,
+            employment_type, job_location_type, date_posted)
+  Scraper:  Not needed (skipped)
+  Cost:     10
+  Browser:  No
+
+  Config:
+    {"tenant": "carenigeria"}
+
+    tenant    SeamlessHiring subdomain. Auto-detected from board URL.
+
+  Detection:  ws probe shows "SeamlessHiring API — tenant: X, N jobs"
+  Empty boards are authoritative: the candidate API returns total=0.
 """
 
 MONITOR_INTERVIEWEB = """\
@@ -3360,6 +3399,7 @@ MONITOR_CARDS: dict[str, str] = {
     "join": MONITOR_JOIN,
     "lever": MONITOR_LEVER,
     "linkedin": MONITOR_LINKEDIN,
+    "manatal": MONITOR_MANATAL,
     "headhunter": MONITOR_HEADHUNTER,
     "ashby": MONITOR_ASHBY,
     "adp": MONITOR_ADP,
@@ -3401,6 +3441,7 @@ MONITOR_CARDS: dict[str, str] = {
     "practicematch": MONITOR_PRACTICEMATCH,
     "personio": MONITOR_PERSONIO,
     "rss": MONITOR_RSS,
+    "seamlesshiring": MONITOR_SEAMLESSHIRING,
     "sitemap": MONITOR_SITEMAP,
     "talemetry": MONITOR_TALEMETRY,
     "talentbrew": MONITOR_TALENTBREW,

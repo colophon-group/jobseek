@@ -213,6 +213,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `keka`            | Rich     | skip        | Keka public career-portal jobs API      |
 | 10   | `lever`           | Rich     | skip        | Lever Postings API                      |
 | 10   | `linkedin`        | Rich     | linkedin    | LinkedIn guest-job summaries + detail enrich |
+| 10   | `manatal`         | Rich     | skip        | Manatal public Careers Page API         |
 | 10   | `mokahr`          | Rich     | skip        | Mokahr encrypted listing API            |
 | 10   | `paylocity`       | Rich     | paylocity   | Paylocity embedded summaries + detail enrich |
 | 10   | `personio`        | Conditional* | --     | Personio XML feed; HTML fallback needs scraper |
@@ -223,6 +224,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `taleo`           | URL-only | json-ld     | Taleo Business Edition total/cursor listings |
 | 10   | `rippling`        | URL-only | rippling    | Rippling ATS API                        |
 | 10   | `rss`             | Rich     | skip        | RSS 2.0 feed (SuccessFactors, Teamtailor, generic) |
+| 10   | `seamlesshiring`  | Rich     | skip        | SeamlessHiring public candidate API     |
 | 10   | `smartrecruiters` | URL-only | smartrecruiters | SmartRecruiters API                 |
 | 10   | `softgarden`      | URL-only | json-ld     | Softgarden ATS                          |
 | 10   | `traffit`         | Rich     | skip        | Traffit ATS API                         |

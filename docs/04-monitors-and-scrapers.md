@@ -81,6 +81,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `keka` | Rich | skip | Keka career-portal bootstrap and public rich-jobs API |
 | `lever` | Rich | skip | Lever ATS |
 | `linkedin` | Rich | linkedin | LinkedIn guest-job summaries plus detail enrichment |
+| `manatal` | Rich | skip | Manatal public Careers Page API |
 | `mokahr` | Rich | skip | Mokahr ATS |
 | `paylocity` | Rich | paylocity | Paylocity embedded summaries plus detail enrichment |
 | `personio` | Conditional* | — | Personio XML feed; HTML fallback needs scraper |
@@ -91,6 +92,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `taleo` | URL-only | json-ld | Taleo Business Edition total/cursor static listings |
 | `rippling` | URL-only | rippling | Rippling ATS |
 | `rss` | Rich/hybrid | skip or DOM enrichment | RSS feeds plus native legacy SuccessFactors DWR listings |
+| `seamlesshiring` | Rich | skip | SeamlessHiring public candidate API |
 | `smartrecruiters` | URL-only | smartrecruiters | SmartRecruiters ATS |
 | `softgarden` | URL-only | json-ld | Softgarden ATS |
 | `traffit` | Rich | skip | Traffit ATS |
