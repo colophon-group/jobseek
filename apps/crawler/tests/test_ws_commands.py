@@ -2361,7 +2361,9 @@ class TestSelectMonitorNaming:
         assert result.exit_code == 0
         selected = load_board("test", "careers").configs["icims"]
         assert selected["scraper_type"] == "json-ld"
-        assert selected.get("scraper_config") is None
+        assert selected["scraper_config"] == {
+            "request_headers": {"User-Agent": "Mozilla/5.0"}
+        }
 
     def test_herp_scraper_preset_is_persisted(self, tmp_path, monkeypatch):
         """HERP selection carries the existing JSON-LD detail scraper."""
