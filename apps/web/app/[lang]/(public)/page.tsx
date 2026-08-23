@@ -68,7 +68,7 @@ export default async function HomePage({ params }: Props) {
         inLanguage: locale,
         isPartOf: { "@type": "WebSite", url: siteConfig.url },
       }} />
-      <main id="main-content" tabIndex={-1} className="scroll-mt-12">
+      <main id="main-content" tabIndex={-1} className="scroll-mt-12" suppressHydrationWarning>
         <Hero />
         <Features />
         <Pricing />
