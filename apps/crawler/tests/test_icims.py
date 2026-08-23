@@ -5,7 +5,7 @@ import pytest
 
 from src.core.monitor import MonitorResult
 from src.core.monitors import BoardGoneError, all_monitor_types, icims
-from src.core.monitors.icims import ICIMS_USER_AGENT, _host_from_url, can_handle, discover
+from src.core.monitors.icims import _host_from_url, can_handle, discover
 from src.redis_queue import _KNOWN_ATS_DOMAINS
 from src.shared.http_retry import PaginationFetchError
 from src.workspace._compat import auto_scraper_type, detect_ats_from_url
@@ -84,7 +84,6 @@ class TestMonitor:
 
         def handler(request: httpx.Request) -> httpx.Response:
             requests.append(str(request.url))
-            assert request.headers["user-agent"] == ICIMS_USER_AGENT
             page_index = int(request.url.params.get("pr", "0"))
             text = _listing(
                 100 + page_index,
@@ -348,10 +347,7 @@ def test_runtime_and_workspace_integration():
     assert detect_ats_from_url(BOARD_URL) == "icims"
     assert detect_ats_from_url(f"{BOARD_URL}?searchLocation=12781--EMEA") is None
     assert detect_ats_from_url("https://www.icims.com/jobs") is None
-    assert auto_scraper_type("icims") == (
-        "json-ld",
-        {"request_headers": {"User-Agent": ICIMS_USER_AGENT}},
-    )
+    assert auto_scraper_type("icims") == ("json-ld", None)
     assert "icims" in MONITOR_CARDS
     assert "icims" in _MONITOR_CONFIG_HINTS
 
