@@ -1652,6 +1652,11 @@ async def dom_discover(
         )
         if not html:
             log.warning("dom.fetch_failed", board_url=board_url)
+            if empty_selector is not None:
+                raise ValueError(
+                    "DOM monitor found no job links and did not match the configured explicit "
+                    "empty state"
+                )
             return set()
         _raise_if_bot_challenge(board_url, html)
         if rich_rows is not None:
