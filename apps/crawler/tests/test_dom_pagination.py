@@ -154,6 +154,23 @@ class TestExtractLinksStatic:
 
 
 class TestExplicitEmptyState:
+    @pytest.mark.parametrize("html", [None, ""])
+    async def test_rejects_missing_response_with_configured_empty_marker(self, html):
+        with (
+            patch(_FETCH_PATCH, AsyncMock(return_value=html)),
+            pytest.raises(ValueError, match="did not match the configured explicit empty state"),
+        ):
+            await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "link_selector": ".vacancy-list a.vacancy",
+                        "empty_selector": ".vacancy-list .view-empty",
+                    },
+                },
+                AsyncMock(),
+            )
+
     async def test_accepts_zero_links_with_configured_empty_marker(self):
         html = """
         <div class="vacancy-list">
