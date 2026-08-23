@@ -5035,6 +5035,7 @@ saturn,saturn-ashby,https://jobs.ashbyhq.com/saturn,ashby,"{""token"": ""saturn"
 satvu,satvu-satvu,https://apply.workable.com/satellitevu/,workable,"{""token"": ""satellitevu""}",workable,
 sauce-labs-inc,sauce-labs-inc-greenhouse,https://job-boards.greenhouse.io/saucelabs,greenhouse,"{""token"": ""saucelabs""}",skip,
 saudi-aramco,saudi-aramco-careers-eu,https://careers.aramco.eu/search/?createNewAlert=false&q=&locationsearch=&locale=en_US,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://careers.aramco.eu/googlefeed.xml""}",skip,
+save-the-children-international,save-the-children-international-global,https://hcri.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,"{""host"": ""hcri.fa.em2.oraclecloud.com"", ""site"": ""CX_1"", ""total_count_tolerance"": 2}",oracle_hcm,"{""enrich"": [""description""]}"
 saviynt,saviynt-lever,https://jobs.lever.co/saviynt,lever,"{""token"": ""saviynt""}",skip,
 savr,savr-teamtailor,https://career.savr.com/,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.savr.com/jobs.rss""}",skip,
 savvy,savvy-ashby,https://jobs.ashbyhq.com/savvy,ashby,"{""token"": ""savvy""}",skip,
