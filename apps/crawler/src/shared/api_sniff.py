@@ -126,7 +126,7 @@ TITLE_FIELDS = re.compile(
 # Prefer arrays with an unambiguous job-title key when API captures otherwise
 # tie, as PeopleWeek's vacancy and vacancy-location endpoints do.
 EXPLICIT_TITLE_FIELDS = re.compile(
-    r"^(job_?title|position_?title|role|job_?name|job_?opening_?name)$",
+    r"^(job_?title|position_?title|job_?name|job_?opening_?name)$",
     re.IGNORECASE,
 )
 
