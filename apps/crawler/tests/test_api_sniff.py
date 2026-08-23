@@ -361,6 +361,50 @@ class TestDetectJobList:
             "metadata.team": "departmentLabel",
         }
 
+    def test_prefers_peopleweek_vacancies_over_location_inventory(self):
+        locations = [
+            {
+                "id": str(i),
+                "name": f"Location {i}",
+                "country": "ch",
+                "state": "Geneva",
+            }
+            for i in range(45)
+        ]
+        vacancies = [
+            {
+                "id": str(i),
+                "jobTitle": {"title": f"Job {i}"},
+                "jobPurpose": "Purpose",
+                "positionSummary": "Responsibilities",
+                "requirements": "Requirements",
+                "department": {"name": "Operations"},
+                "contractType": {"title": "Permanent"},
+                "locations": {"data": [{"name": "Geneva"}]},
+            }
+            for i in range(14)
+        ]
+        location_exchange = _make_exchange(
+            url="https://example.intranet.digital/api/v1/external/recruitment/vacancy-locations",
+            body={"data": locations},
+        )
+        vacancy_exchange = _make_exchange(
+            url=(
+                "https://example.intranet.digital/api/v1/external/recruitment/"
+                "vacancies/entity-group/tenant"
+            ),
+            body={"data": vacancies},
+        )
+
+        result = detect_job_list(
+            [location_exchange, vacancy_exchange],
+            "https://example.intranet.digital/external/en/companies/tenant/jobs",
+        )
+
+        assert result is not None
+        assert result.candidate.exchange is vacancy_exchange
+        assert result.candidate.items == vacancies
+
     def test_returns_none_no_exchanges(self):
         assert detect_job_list([], "https://example.com") is None
 
