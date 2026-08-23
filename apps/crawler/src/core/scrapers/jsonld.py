@@ -40,6 +40,7 @@ _DOUBLE_ESCAPED_WHITESPACE_ENTITY_RE = re.compile(
     r"&amp;#(?:(?:x0*(?:9|a|d))|(?:0*(?:9|10|13)));",
     re.IGNORECASE,
 )
+_LOCATION_PLACEHOLDERS = frozenset({"unavailable", "not available", "n/a", "none", "null", "-"})
 
 _CDATA_WRAPPERS = (
     ("//<![CDATA[", "//]]>"),
@@ -283,6 +284,8 @@ def _extract_locations(
         if not isinstance(loc, dict):
             continue
         name = _clean_text(loc.get("name"))
+        if name and name.casefold() in _LOCATION_PLACEHOLDERS:
+            name = None
         address_text = None
         address = loc.get("address")
         if isinstance(address, str):
@@ -299,7 +302,7 @@ def _extract_locations(
                     if isinstance(val, dict):
                         val = val.get("name", "")
                     text = _clean_text(val)
-                    if text:
+                    if text and text.casefold() not in _LOCATION_PLACEHOLDERS:
                         parts.append(text)
             if parts:
                 address_text = ", ".join(parts)

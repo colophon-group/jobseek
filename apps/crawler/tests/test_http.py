@@ -45,7 +45,7 @@ class TestCreateHttpClient:
     async def test_user_agent(self):
         client = create_http_client()
         assert client.headers["user-agent"] == DEFAULT_USER_AGENT
-        assert "Chrome/" in client.headers["user-agent"]
+        assert "Chrome/151" in client.headers["user-agent"]
         assert "jobseek" not in client.headers["user-agent"].lower()
         await client.aclose()
 
