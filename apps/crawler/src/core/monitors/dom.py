@@ -872,9 +872,7 @@ async def _paginate_rich_rows_static(
     if not isinstance(transient_403, bool):
         raise ValueError("DOM pagination transient_403 must be a boolean")
     if pagination.get("browser") or pagination.get("partition_selector"):
-        raise ValueError(
-            "DOM monitor rich_rows pagination supports static sequential pages only"
-        )
+        raise ValueError("DOM monitor rich_rows pagination supports static sequential pages only")
     if not url_template and not isinstance(param_name, str):
         raise ValueError("DOM pagination requires param_name or url_template")
 
@@ -1652,9 +1650,7 @@ async def dom_discover(
     if rich_rows is not None and (
         render or metadata.get("include_board_url") or require_jsonld_jobposting
     ):
-        raise ValueError(
-            "DOM monitor rich_rows supports static listing extraction only"
-        )
+        raise ValueError("DOM monitor rich_rows supports static listing extraction only")
 
     if empty_selector is not None:
         if link_selector is None:
