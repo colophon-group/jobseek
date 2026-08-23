@@ -42,7 +42,10 @@ def _make_ssl_context() -> ssl.SSLContext:
     return ctx
 
 
-# Default UA mimics a recent Chrome on Windows. The previous value
+# Default UA mimics a recent Chrome on Windows. Keep the major version current:
+# iCIMS tenants reject obsolete Chrome 131-139 fingerprints with HTTP 405 even
+# though the same public pages remain available to current browsers.
+# The previous value
 # ``jobseek-crawler/0.1`` was a unique fingerprint that WAF vendors
 # trivially match — it produced the anti-bot /Error and /404/ redirects
 # documented in issue #2193 on apply.deloitte.com, digitalcareers.infosys,
@@ -52,7 +55,7 @@ def _make_ssl_context() -> ssl.SSLContext:
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/131.0.0.0 Safari/537.36"
+    "Chrome/151.0.0.0 Safari/537.36"
 )
 
 # Default Accept matches a real Chrome HTML fetch. httpx's own default is

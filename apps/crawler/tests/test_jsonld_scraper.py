@@ -83,6 +83,16 @@ class TestJsonLdExtractor:
         extractor.feed(html)
         assert len(extractor.results) == 2
 
+    def test_ignores_icims_unavailable_location_parts(self):
+        html = """<html><head><script type="application/ld+json">
+        {"@type":"JobPosting","title":"Director","description":"Lead programs.",
+         "jobLocation":{"@type":"Place","address":{"@type":"PostalAddress",
+         "addressLocality":"UNAVAILABLE","addressRegion":"UNAVAILABLE",
+         "addressCountry":"US"}}}
+        </script></head></html>"""
+
+        assert parse_html(html).locations == ["US"]
+
     def test_ignores_non_jsonld_scripts(self):
         html = """<html><head>
         <script type="text/javascript">var x = 1;</script>

@@ -123,7 +123,7 @@ class TestConstants:
         assert _retryable_navigation_network_error(RuntimeError(marker)) is None
 
     def test_user_agent_contains_chrome(self):
-        assert "Chrome/133" in DEFAULT_USER_AGENT
+        assert "Chrome/151" in DEFAULT_USER_AGENT
 
     def test_valid_wait_strategies(self):
         assert (
