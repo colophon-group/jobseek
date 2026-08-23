@@ -121,6 +121,15 @@ TITLE_FIELDS = re.compile(
     re.IGNORECASE,
 )
 
+# Generic ``name``/``label`` keys are useful fallbacks, but reference-data
+# responses (locations, departments, filters) commonly expose those fields too.
+# Prefer arrays with an unambiguous job-title key when API captures otherwise
+# tie, as PeopleWeek's vacancy and vacancy-location endpoints do.
+EXPLICIT_TITLE_FIELDS = re.compile(
+    r"^(job_?title|position_?title|role|job_?name|job_?opening_?name)$",
+    re.IGNORECASE,
+)
+
 URL_FIELDS = re.compile(
     r"(url|link|href|path|slug|uri|canonical|apply|detail)",
     re.IGNORECASE,
@@ -458,6 +467,8 @@ def score_candidate(cand: ArrayCandidate, page_url: str) -> int:
         sample_keys.update(it.keys())
     if any(TITLE_FIELDS.match(k) for k in sample_keys):
         score += 15
+    if any(EXPLICIT_TITLE_FIELDS.match(k) for k in sample_keys):
+        score += 10
 
     # Job keyword in API URL or JSON path
     if JOB_KEYWORDS.search(ex.url) or JOB_KEYWORDS.search(cand.json_path):
