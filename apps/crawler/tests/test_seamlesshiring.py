@@ -128,6 +128,52 @@ class TestDiscover:
                     client,
                 )
 
+    @pytest.mark.parametrize("total", [None, -1, True, "0"])
+    async def test_invalid_advertised_total_raises(self, total):
+        payload = _response([], total=0)
+        payload["data"]["jobs"]["total"] = total
+        transport = httpx.MockTransport(lambda request: httpx.Response(200, json=payload))
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="Unexpected SeamlessHiring"):
+                await discover(
+                    {"board_url": "https://care.seamlesshiring.com/", "metadata": {}},
+                    client,
+                )
+
+    async def test_total_must_remain_stable_across_pages(self):
+        def handler(request: httpx.Request):
+            page = int(request.url.params["page"])
+            return httpx.Response(
+                200,
+                json=_response(
+                    [_posting(id=page)],
+                    page=page,
+                    last_page=2,
+                    total=2 if page == 1 else 3,
+                ),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="count changed"):
+                await discover(
+                    {"board_url": "https://care.seamlesshiring.com/", "metadata": {}},
+                    client,
+                )
+
+    async def test_pagination_must_make_unique_progress(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json=_response([_posting()], page=1, last_page=2, total=2),
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="made no progress"):
+                await discover(
+                    {"board_url": "https://care.seamlesshiring.com/", "metadata": {}},
+                    client,
+                )
+
 
 class TestCanHandle:
     async def test_zero_is_detected(self):
@@ -140,3 +186,10 @@ class TestCanHandle:
 
     async def test_unrelated(self):
         assert await can_handle("https://example.com/jobs") is None
+
+    async def test_missing_total_is_not_detected(self):
+        payload = _response([], total=0)
+        del payload["data"]["jobs"]["total"]
+        transport = httpx.MockTransport(lambda request: httpx.Response(200, json=payload))
+        async with httpx.AsyncClient(transport=transport) as client:
+            assert await can_handle("https://care.seamlesshiring.com/", client) is None
