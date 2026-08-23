@@ -1372,8 +1372,8 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    configured field is strict,
                    so markup drift fails the cycle instead of publishing a
                    partial authoritative result. Incompatible with rendering,
-                   pagination, and include_board_url. Requires a real detail
-                   scraper (not skip) with scraper_config
+                   browser or partitioned pagination, and include_board_url.
+                   Requires a real detail scraper (not skip) with scraper_config
                    {"enrich": ["description"]}; otherwise the partial-rich
                    runtime path will not schedule description scraping.
     url_filter     Regex filter for discovered URLs (see: ws help monitor sitemap)
