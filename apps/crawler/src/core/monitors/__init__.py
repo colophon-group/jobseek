@@ -518,6 +518,18 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Gem API \u2014 slug: {token}, {jobs} jobs"
         return f"Gem API \u2014 slug: {token}"
+    if name == "manatal":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Manatal API \u2014 slug: {slug}, {jobs} jobs"
+        return f"Manatal API \u2014 slug: {slug}"
+    if name == "seamlesshiring":
+        tenant = metadata.get("tenant", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"SeamlessHiring API \u2014 tenant: {tenant}, {jobs} jobs"
+        return f"SeamlessHiring API \u2014 tenant: {tenant}"
     if name == "inploi":
         segment = metadata.get("segment_id", "?")
         jobs = metadata.get("jobs")
@@ -900,6 +912,7 @@ from src.core.monitors import (  # noqa: E402
     kipt,  # noqa: F401
     lever,  # noqa: F401
     linkedin,  # noqa: F401
+    manatal,  # noqa: F401
     mokahr,  # noqa: F401
     nextdata,  # noqa: F401
     njoyn,  # noqa: F401
@@ -917,6 +930,7 @@ from src.core.monitors import (  # noqa: E402
     recruiterbox,  # noqa: F401
     rippling,  # noqa: F401
     rss,  # noqa: F401
+    seamlesshiring,  # noqa: F401
     sitemap,  # noqa: F401
     smartrecruiters,  # noqa: F401
     softgarden,  # noqa: F401
