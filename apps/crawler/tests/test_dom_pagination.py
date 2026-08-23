@@ -420,6 +420,47 @@ class TestRichRowsStatic:
             ("https://example.com/jobs/engineer", "Engineer", ["Winterthur, Switzerland"])
         ]
 
+    def test_extracts_metadata_for_semantic_job_filtering(self):
+        html = """
+        <div class="job">
+          <div class="type">Vacancy</div>
+          <div class="title"><a href="/jobs/engineer">Engineer</a></div>
+        </div>
+        <div class="job">
+          <div class="type">RFP</div>
+          <div class="title"><a href="/jobs/hosting">Website hosting</a></div>
+        </div>
+        """
+        config = _validated_rich_rows(
+            {
+                "row_selector": ".job",
+                "link_selector": ".title a",
+                "metadata_selectors": {"opportunity_type": ".type"},
+            }
+        )
+
+        assert config is not None
+        jobs = _extract_rich_rows_static(html, "https://example.com/careers", config, None)
+
+        assert [job.metadata for job in jobs] == [
+            {"opportunity_type": "Vacancy"},
+            {"opportunity_type": "RFP"},
+        ]
+
+    def test_fails_closed_when_configured_metadata_is_missing(self):
+        html = '<div class="job"><a href="/jobs/engineer">Engineer</a></div>'
+        config = _validated_rich_rows(
+            {
+                "row_selector": ".job",
+                "link_selector": "a",
+                "metadata_selectors": {"opportunity_type": ".type"},
+            }
+        )
+
+        assert config is not None
+        with pytest.raises(ValueError, match="omitted configured metadata 'opportunity_type'"):
+            _extract_rich_rows_static(html, "https://example.com/careers", config, None)
+
     @pytest.mark.parametrize(
         "config",
         [
@@ -431,6 +472,16 @@ class TestRichRowsStatic:
                 "row_selector": ".job",
                 "link_selector": ".job a",
                 "location_selectors": ["p"] * 5,
+            },
+            {
+                "row_selector": ".job",
+                "link_selector": ".job a",
+                "metadata_selectors": {"not valid!": ".type"},
+            },
+            {
+                "row_selector": ".job",
+                "link_selector": ".job a",
+                "metadata_selectors": {"type": "a["},
             },
         ],
     )
