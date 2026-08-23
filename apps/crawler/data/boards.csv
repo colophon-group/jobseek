@@ -6282,6 +6282,7 @@ world-health-organization,world-health-organization-paho,https://paho.wd5.mywork
 world-labs,world-labs-greenhouse,https://job-boards.greenhouse.io/worldlabs,greenhouse,"{""token"": ""worldlabs""}",skip,
 world-meteorological-organization,world-meteorological-organization-careers,https://estm.fa.em2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_5001/jobs,oracle_hcm,"{""host"": ""estm.fa.em2.oraclecloud.com"", ""site"": ""CX_5001"", ""jobs_count"": 6}",oracle_hcm,"{""enrich"": [""description""]}"
 world-trade-organization,world-trade-organization-external,https://wto.wd103.myworkdayjobs.com/External,workday,"{""company"": ""wto"", ""wd_instance"": ""wd103"", ""site"": ""External""}",json-ld,
+world-vision-international,world-vision-international-workday,https://worldvision.wd1.myworkdayjobs.com/WorldVisionInternational,workday,"{""company"": ""worldvision"", ""wd_instance"": ""wd1"", ""site"": ""WorldVisionInternational""}",workday,
 worldcoin,worldcoin-careers,https://jobs.ashbyhq.com/Tools%20for%20Humanity,ashby,"{""token"": ""Tools for Humanity""}",skip,
 worldcoin,worldcoin-world-foundation,https://jobs.ashbyhq.com/world-foundation,ashby,"{""token"": ""world-foundation""}",skip,
 worldly,worldly-ashby,https://jobs.ashbyhq.com/worldly,ashby,"{""token"": ""worldly""}",skip,
