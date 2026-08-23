@@ -369,14 +369,14 @@ def _url_field_priority(key: str) -> int:
         return -1
     if "canonical" in normalized:
         return 100
+    if "apply" in normalized:
+        return 10
     if any(token in normalized for token in ("job", "advert", "posting", "position")) and any(
         token in normalized for token in ("url", "link", "href", "path", "uri")
     ):
         return 95
     if "directlink" in normalized or "detail" in normalized:
         return 90
-    if "apply" in normalized:
-        return 10
     if "url" in normalized or "href" in normalized:
         return 80
     if "link" in normalized:
