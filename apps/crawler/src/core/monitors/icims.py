@@ -30,6 +30,12 @@ MAX_JOBS = 50_000
 MAX_PAGES = 1_000
 MAX_HTML_CHARS = 2_000_000
 
+# iCIMS' CloudFront WAF rejects the crawler's normal Chrome-shaped user agent
+# on some tenants with a captcha response surfaced as HTTP 405.  A deliberately
+# minimal browser-compatible value avoids that stale-version fingerprint while
+# preserving the shared client's normal Accept header and cookie handling.
+ICIMS_USER_AGENT = "Mozilla/5.0"
+
 _HOST_RE = re.compile(
     r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.icims\.com$",
     re.IGNORECASE,
@@ -181,6 +187,7 @@ async def _fetch_listing(host: str, page_index: int, client: httpx.AsyncClient) 
             follow_redirects=False,
             end_of_pagination_statuses=(),
             retryable_statuses={202, 401, 403},
+            headers={"User-Agent": ICIMS_USER_AGENT},
             log_event="icims.list_backoff",
         )
     except PaginationFetchError as exc:

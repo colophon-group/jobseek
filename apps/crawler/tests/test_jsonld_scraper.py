@@ -251,6 +251,28 @@ class TestExtractLocations:
         result = _extract_locations(posting)
         assert result == ["San Francisco, CA, US"]
 
+    def test_discards_unavailable_address_components(self):
+        posting = {
+            "jobLocation": [
+                {
+                    "address": {
+                        "addressLocality": "Geneva",
+                        "addressRegion": "UNAVAILABLE",
+                        "addressCountry": "CH",
+                    }
+                },
+                {
+                    "address": {
+                        "addressLocality": "UNAVAILABLE",
+                        "addressRegion": "UNAVAILABLE",
+                        "addressCountry": "KE",
+                    }
+                },
+            ]
+        }
+
+        assert _extract_locations(posting) == ["Geneva, CH", "KE"]
+
     def test_prefers_address_when_place_name_is_hiring_organization(self):
         posting = {
             "hiringOrganization": {"name": "dormakaba Schweiz AG"},
