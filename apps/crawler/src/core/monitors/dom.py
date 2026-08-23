@@ -759,6 +759,7 @@ _RichRowsConfig = tuple[
     str | None,
     tuple[str, ...],
     tuple[tuple[str, str], ...],
+    bool,
 ]
 
 
@@ -773,6 +774,7 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         "title_selector",
         "location_selectors",
         "metadata_selectors",
+        "allow_missing_locations",
     }:
         raise ValueError("DOM monitor rich_rows must be a bounded mapping")
     row_selector = _validate_css_selector(value.get("row_selector"), name="rich_rows.row_selector")
@@ -828,6 +830,9 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         )
         for field, selector in metadata.items()
     )
+    allow_missing_locations = value.get("allow_missing_locations", False)
+    if not isinstance(allow_missing_locations, bool):
+        raise ValueError("DOM monitor rich_rows.allow_missing_locations must be a boolean")
     return (
         row_selector,
         link_selector,
@@ -835,6 +840,7 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         title_selector,
         location_selectors,
         metadata_selectors,
+        allow_missing_locations,
     )
 
 
@@ -854,6 +860,7 @@ def _extract_rich_rows_static(
         title_selector,
         location_selectors,
         metadata_selectors,
+        allow_missing_locations,
     ) = config
     tree = LexborHTMLParser(html)
     rows = tree.css(row_selector)
@@ -880,11 +887,11 @@ def _extract_rich_rows_static(
         for selector in location_selectors:
             node = row.css_first(selector)
             value = node.text(separator=" ", strip=True).strip() if node is not None else ""
-            if not value:
+            if not value and not allow_missing_locations:
                 raise ValueError(
                     f"DOM monitor rich_rows row {index} omitted configured location data"
                 )
-            if value not in location_parts:
+            if value and value not in location_parts:
                 location_parts.append(value)
 
         metadata: dict[str, str] = {}

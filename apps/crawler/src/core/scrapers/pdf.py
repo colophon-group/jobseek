@@ -63,6 +63,10 @@ def _normalize_captured_text(
     that ambiguous extraction artefact before collapsing the remaining
     whitespace.
     """
+    # A hyphen immediately before a PDF layout newline is an unambiguous
+    # continuation marker (``large-\nscale``), not a word boundary followed by
+    # a space. Repair it for every captured scalar before whitespace collapse.
+    value = re.sub(r"(?<=\w)-[ \t]*\r?\n[ \t]*(?=\w)", "-", value)
     if repair_split_initial:
         value = re.sub(
             r"\b([A-Z])(?:[ \t]+|[ \t]*\r?\n[ \t]*)(?=[^\W\d_])",
@@ -237,15 +241,24 @@ async def scrape(
     Downloads the PDF, extracts text with pypdf, and maps to JobContent.
     Title source is controlled by config (default: URL filename).
     """
-    import pypdf
-
     response = await http.get(url, follow_redirects=True)
     response.raise_for_status()
 
     if artifact_dir:
         (artifact_dir / "source.pdf").write_bytes(response.content)
 
-    reader = pypdf.PdfReader(io.BytesIO(response.content))
+    return await parse_bytes(response.content, url, config)
+
+
+async def parse_bytes(content: bytes, url: str, config: dict) -> JobContent:
+    """Extract job data from already-downloaded PDF bytes.
+
+    Keeping binary parsing separate from transport lets other static scrapers
+    safely delegate PDF responses without downloading the same document twice.
+    """
+    import pypdf
+
+    reader = pypdf.PdfReader(io.BytesIO(content))
     pages_text = []
     for page in reader.pages:
         text = page.extract_text()
@@ -266,7 +279,7 @@ async def scrape(
             raise ValueError("PDF ocr_scale must be an integer from 1 to 4")
         full_text = await asyncio.to_thread(
             _ocr_pdf,
-            response.content,
+            content,
             languages=languages,
             scale=scale,
         )

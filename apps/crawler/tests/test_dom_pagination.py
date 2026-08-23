@@ -339,6 +339,29 @@ class TestRichRowsStatic:
         with pytest.raises(ValueError, match="omitted configured location"):
             _extract_rich_rows_static(html, "https://example.com/careers/", config, None)
 
+    def test_can_opt_in_to_missing_locations_for_detail_enrichment(self):
+        html = """
+        <div class="job">
+          <div class="job-title"><a href="jobs/engineer---123">Engineer</a></div>
+          <div class="job-location">Winterthur</div>
+          <div class="job-country">Switzerland</div>
+        </div>
+        <div class="job">
+          <div class="job-title"><a href="jobs/consultant---456">Consultant</a></div>
+          <div class="job-location"></div>
+          <div class="job-country"></div>
+        </div>
+        """
+        config = _validated_rich_rows({**self.CONFIG, "allow_missing_locations": True})
+
+        assert config is not None
+        jobs = _extract_rich_rows_static(html, "https://example.com/careers/", config, None)
+
+        assert [(job.title, job.locations) for job in jobs] == [
+            ("Engineer", ["Winterthur, Switzerland"]),
+            ("Consultant", None),
+        ]
+
     def test_extracts_synhelion_live_row_shape(self):
         html = """
         <li class="uk-card job-card">
@@ -467,6 +490,11 @@ class TestRichRowsStatic:
             {},
             {"row_selector": ".job", "link_selector": ".job a", "unexpected": True},
             {"row_selector": ".job", "link_attr": "not valid!"},
+            {
+                "row_selector": ".job",
+                "link_selector": ".job a",
+                "allow_missing_locations": "yes",
+            },
             {"row_selector": ".job", "link_selector": ".job a", "location_selectors": "p"},
             {"row_selector": ".job", "location_selectors": False},
             {"row_selector": ".job", "location_selectors": 0},

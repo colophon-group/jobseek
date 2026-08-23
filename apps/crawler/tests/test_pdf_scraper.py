@@ -117,6 +117,9 @@ class TestCapturedText:
         value = " Senior \n Battery Pack \n Manufacturing Engineer "
         assert _normalize_captured_text(value) == "Senior Battery Pack Manufacturing Engineer"
 
+    def test_rejoins_hyphenated_line_break(self):
+        assert _normalize_captured_text("large-\n scale transition") == "large-scale transition"
+
     def test_rejoins_split_capitalized_word(self):
         assert (
             _normalize_captured_text("M\nechanical Engineer", repair_split_initial=True)
