@@ -763,9 +763,7 @@ def _validated_rich_rows(
         value.get("title_selector"), name="rich_rows.title_selector"
     )
     if row_selector is None:
-        raise ValueError(
-            "DOM monitor rich_rows requires row_selector"
-        )
+        raise ValueError("DOM monitor rich_rows requires row_selector")
     locations = value.get("location_selectors") or []
     if (
         not isinstance(locations, list)
