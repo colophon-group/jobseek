@@ -218,10 +218,20 @@ class TestFindUrlField:
 
         assert find_url_field(items) == "OpenAdvertUrl"
 
+    def test_detail_url_wins_over_job_apply_url(self):
+        items = [
+            {
+                "jobApplyUrl": f"https://ats.example.com/apply/{index}",
+                "detailUrl": f"https://example.com/jobs/{index}",
+            }
+            for index in range(3)
+        ]
+
+        assert find_url_field(items) == "detailUrl"
+
     def test_picture_url_is_not_a_job_url(self):
         items = [
-            {"PictureUrl": f"https://cdn.example.com/advert-images/{index}"}
-            for index in range(3)
+            {"PictureUrl": f"https://cdn.example.com/advert-images/{index}"} for index in range(3)
         ]
 
         assert find_url_field(items) is None
