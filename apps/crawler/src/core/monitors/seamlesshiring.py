@@ -21,6 +21,7 @@ log = structlog.get_logger()
 _HOST_RE = re.compile(r"^([a-z0-9-]+)\.seamlesshiring\.com$", re.IGNORECASE)
 _PAGE_SIZE = 100
 MAX_JOBS = 50_000
+MAX_PAGES = 10_000
 
 
 def _tenant_from_url(url: str) -> str | None:
@@ -79,7 +80,13 @@ async def _fetch_page(tenant: str, page: int, client: httpx.AsyncClient) -> dict
     response.raise_for_status()
     payload = response.json()
     jobs = (payload.get("data") or {}).get("jobs") if isinstance(payload, dict) else None
-    if not isinstance(jobs, dict) or not isinstance(jobs.get("data"), list):
+    total = jobs.get("total") if isinstance(jobs, dict) else None
+    if (
+        not isinstance(jobs, dict)
+        or not isinstance(jobs.get("data"), list)
+        or type(total) is not int
+        or total < 0
+    ):
         raise ValueError(f"Unexpected SeamlessHiring jobs response for tenant {tenant!r}")
     return jobs
 
@@ -99,10 +106,25 @@ async def discover(
 
     jobs: list[DiscoveredJob] = []
     seen_ids: set[str] = set()
+    advertised: int | None = None
     page = 1
 
     while len(jobs) < MAX_JOBS:
+        if page > MAX_PAGES:
+            raise ValueError(
+                f"SeamlessHiring pagination exceeded {MAX_PAGES} pages for tenant {tenant!r}"
+            )
         page_data = await _fetch_page(tenant, page, client)
+        page_advertised = page_data["total"]
+        if advertised is None:
+            advertised = page_advertised
+        elif page_advertised != advertised:
+            raise ValueError(
+                f"SeamlessHiring job count changed during pagination for tenant "
+                f"{tenant!r}: {advertised} -> {page_advertised}"
+            )
+
+        jobs_before_page = len(jobs)
         for post in page_data["data"]:
             if not isinstance(post, dict) or post.get("id") is None:
                 continue
@@ -119,10 +141,12 @@ async def discover(
         next_page = page_data.get("next_page_url")
         if not next_page:
             break
+        if len(jobs) == jobs_before_page:
+            raise ValueError(f"SeamlessHiring pagination made no progress for tenant {tenant!r}")
         page += 1
 
-    advertised = page_data.get("total")
-    if isinstance(advertised, int) and advertised > len(jobs):
+    assert advertised is not None
+    if advertised > len(jobs):
         log.warning(
             "seamlesshiring.truncated",
             tenant=tenant,
@@ -130,6 +154,11 @@ async def discover(
             advertised=advertised,
         )
         return truncated_rich_result(jobs)
+    if advertised < len(jobs):
+        raise ValueError(
+            f"SeamlessHiring returned {len(jobs)} unique jobs for advertised total "
+            f"{advertised} for tenant {tenant!r}"
+        )
     if len(jobs) >= MAX_JOBS:
         log.warning("seamlesshiring.truncated", tenant=tenant, total=len(jobs), cap=MAX_JOBS)
         return truncated_rich_result(jobs)
@@ -154,10 +183,7 @@ async def can_handle(
     except (httpx.HTTPError, ValueError, TypeError):
         return None
 
-    count = page_data.get("total")
-    if not isinstance(count, int):
-        count = len(page_data["data"])
-    return {"tenant": tenant, "jobs": count}
+    return {"tenant": tenant, "jobs": page_data["total"]}
 
 
 register("seamlesshiring", discover, cost=10, can_handle=can_handle, rich=True)

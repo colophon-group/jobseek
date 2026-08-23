@@ -24,6 +24,7 @@ _URL_RE = re.compile(r"(?:www\.)?careers-page\.com/([\w-]+)(?:[/#?]|$)", re.IGNO
 _IGNORE_SLUGS = frozenset({"api", "assets", "job", "jobs", "login", "static", "www"})
 _PAGE_SIZE = 50
 MAX_JOBS = 50_000
+MAX_PAGES = 10_000
 
 
 def _slug_from_url(url: str) -> str | None:
@@ -78,7 +79,13 @@ async def _fetch_page(slug: str, page: int, client: httpx.AsyncClient) -> dict:
     )
     response.raise_for_status()
     payload = response.json()
-    if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
+    count = payload.get("count") if isinstance(payload, dict) else None
+    if (
+        not isinstance(payload, dict)
+        or not isinstance(payload.get("results"), list)
+        or type(count) is not int
+        or count < 0
+    ):
         raise ValueError(f"Unexpected Manatal jobs response for slug {slug!r}")
     return payload
 
@@ -98,10 +105,23 @@ async def discover(
 
     jobs: list[DiscoveredJob] = []
     seen_hashes: set[str] = set()
+    advertised: int | None = None
     page = 1
 
     while len(jobs) < MAX_JOBS:
+        if page > MAX_PAGES:
+            raise ValueError(f"Manatal pagination exceeded {MAX_PAGES} pages for slug {slug!r}")
         payload = await _fetch_page(slug, page, client)
+        page_advertised = payload["count"]
+        if advertised is None:
+            advertised = page_advertised
+        elif page_advertised != advertised:
+            raise ValueError(
+                f"Manatal job count changed during pagination for slug {slug!r}: "
+                f"{advertised} -> {page_advertised}"
+            )
+
+        jobs_before_page = len(jobs)
         for post in payload["results"]:
             if not isinstance(post, dict):
                 continue
@@ -115,14 +135,22 @@ async def discover(
                 if len(jobs) >= MAX_JOBS:
                     break
 
-        if not payload.get("next"):
+        next_page = payload.get("next")
+        if not next_page:
             break
+        if len(jobs) == jobs_before_page:
+            raise ValueError(f"Manatal pagination made no progress for slug {slug!r}")
         page += 1
 
-    advertised = payload.get("count")
-    if isinstance(advertised, int) and advertised > len(jobs):
+    assert advertised is not None
+    if advertised > len(jobs):
         log.warning("manatal.truncated", slug=slug, fetched=len(jobs), advertised=advertised)
         return truncated_rich_result(jobs)
+    if advertised < len(jobs):
+        raise ValueError(
+            f"Manatal returned {len(jobs)} unique jobs for advertised count {advertised} "
+            f"for slug {slug!r}"
+        )
     if len(jobs) >= MAX_JOBS:
         log.warning("manatal.truncated", slug=slug, total=len(jobs), cap=MAX_JOBS)
         return truncated_rich_result(jobs)
@@ -147,10 +175,7 @@ async def can_handle(
     except (httpx.HTTPError, ValueError, TypeError):
         return None
 
-    count = payload.get("count")
-    if not isinstance(count, int):
-        count = len(payload["results"])
-    return {"slug": slug, "jobs": count}
+    return {"slug": slug, "jobs": payload["count"]}
 
 
 register("manatal", discover, cost=10, can_handle=can_handle, rich=True)
