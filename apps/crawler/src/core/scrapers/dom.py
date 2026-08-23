@@ -974,7 +974,7 @@ async def _parse_static_document(
             {
                 "title": title,
                 "description": description,
-                "location": location,
+                "locations": [location] if location else None,
             },
             docx_config,
         )

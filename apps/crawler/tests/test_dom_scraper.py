@@ -41,16 +41,20 @@ def _make_document_pdf(text: str) -> bytes:
     return output.getvalue()
 
 
-def _make_document_docx() -> bytes:
-    document = b"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+def _make_document_docx(*, location: str | None = None) -> bytes:
+    location_paragraph = (
+        f"<w:p><w:r><w:t>Location: {location}</w:t></w:r></w:p>" if location else ""
+    )
+    document = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
     <w:p><w:pPr><w:pStyle w:val="Title"/></w:pPr>
       <w:r><w:t>Strategic Communications Officer</w:t></w:r>
     </w:p>
+    {location_paragraph}
     <w:p><w:r><w:t>Lead conservation communications worldwide.</w:t></w:r></w:p>
   </w:body>
-</w:document>"""
+</w:document>""".encode()
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w") as archive:
         archive.writestr("word/document.xml", document)
@@ -704,6 +708,30 @@ class TestDomScraper:
         assert result.job_location_type == "remote"
         assert result.description is not None
         assert "Lead conservation communications worldwide." in result.description
+
+    async def test_static_document_location_pattern_wins_over_format_defaults(self):
+        from src.core.scrapers.dom import scrape
+
+        docx = _make_document_docx(location="Zurich")
+
+        def handler(request):
+            return httpx.Response(200, content=docx)
+
+        config = {
+            "render": False,
+            "steps": [{"tag": "h1", "field": "title"}],
+            "document_fallback": {
+                "docx": {
+                    "title_source": "text",
+                    "location_pattern": r"(?m)^Location:\s*(.+)$",
+                    "defaults": {"locations": ["Remote"]},
+                }
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape("https://example.com/download/44", config, client)
+
+        assert result.locations == ["Zurich"]
 
     async def test_static_document_fallback_keeps_html_step_extraction(self):
         from src.core.scrapers.dom import scrape
