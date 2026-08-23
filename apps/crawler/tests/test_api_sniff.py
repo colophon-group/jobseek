@@ -405,6 +405,43 @@ class TestDetectJobList:
         assert result.candidate.exchange is vacancy_exchange
         assert result.candidate.items == vacancies
 
+    def test_prefers_vacancies_over_role_reference_data(self):
+        roles = [
+            {
+                "id": str(i),
+                "role": f"Role family {i}",
+                "department": "Taxonomy",
+                "code": f"R{i}",
+            }
+            for i in range(12)
+        ]
+        vacancies = [
+            {
+                "id": str(i),
+                "name": f"Engineer {i}",
+                "description": "Build products",
+                "department": "Engineering",
+            }
+            for i in range(12)
+        ]
+        role_exchange = _make_exchange(
+            url="https://example.com/api/roles",
+            body={"data": roles},
+        )
+        vacancy_exchange = _make_exchange(
+            url="https://example.com/api/vacancies",
+            body={"data": vacancies},
+        )
+
+        result = detect_job_list(
+            [role_exchange, vacancy_exchange],
+            "https://example.com/careers",
+        )
+
+        assert result is not None
+        assert result.candidate.exchange is vacancy_exchange
+        assert result.candidate.items == vacancies
+
     def test_returns_none_no_exchanges(self):
         assert detect_job_list([], "https://example.com") is None
 
