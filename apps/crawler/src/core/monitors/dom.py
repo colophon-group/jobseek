@@ -752,9 +752,17 @@ def _validate_css_selector(value: object, *, name: str) -> str | None:
     return selector
 
 
-def _validated_rich_rows(
-    value: object,
-) -> tuple[str, str | None, str, str | None, tuple[str, ...]] | None:
+_RichRowsConfig = tuple[
+    str,
+    str | None,
+    str,
+    str | None,
+    tuple[str, ...],
+    tuple[tuple[str, str], ...],
+]
+
+
+def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
     """Validate optional static listing-row extraction config."""
     if value is None:
         return None
@@ -764,6 +772,7 @@ def _validated_rich_rows(
         "link_attr",
         "title_selector",
         "location_selectors",
+        "metadata_selectors",
     }:
         raise ValueError("DOM monitor rich_rows must be a bounded mapping")
     row_selector = _validate_css_selector(value.get("row_selector"), name="rich_rows.row_selector")
@@ -795,19 +804,53 @@ def _validated_rich_rows(
         _validate_css_selector(selector, name="rich_rows.location_selectors") or ""
         for selector in locations
     )
-    return row_selector, link_selector, link_attr, title_selector, location_selectors
+    metadata = value.get("metadata_selectors") or {}
+    if (
+        not isinstance(metadata, dict)
+        or len(metadata) > 8
+        or not all(
+            isinstance(field, str)
+            and re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]{0,63}", field)
+            and isinstance(selector, str)
+            and selector.strip()
+            for field, selector in metadata.items()
+        )
+    ):
+        raise ValueError("DOM monitor rich_rows.metadata_selectors must be a bounded mapping")
+    metadata_selectors = tuple(
+        (
+            field,
+            _validate_css_selector(selector, name="rich_rows.metadata_selectors") or "",
+        )
+        for field, selector in metadata.items()
+    )
+    return (
+        row_selector,
+        link_selector,
+        link_attr,
+        title_selector,
+        location_selectors,
+        metadata_selectors,
+    )
 
 
 def _extract_rich_rows_static(
     html: str,
     base_url: str,
-    config: tuple[str, str | None, str, str | None, tuple[str, ...]],
+    config: _RichRowsConfig,
     url_matcher: re.Pattern | None,
     *,
     allow_empty: bool = False,
 ) -> list[DiscoveredJob]:
     """Extract stable URLs, titles, and joined locations from listing rows."""
-    row_selector, link_selector, link_attr, title_selector, location_selectors = config
+    (
+        row_selector,
+        link_selector,
+        link_attr,
+        title_selector,
+        location_selectors,
+        metadata_selectors,
+    ) = config
     tree = LexborHTMLParser(html)
     rows = tree.css(row_selector)
     if not rows:
@@ -839,10 +882,21 @@ def _extract_rich_rows_static(
                 )
             if value not in location_parts:
                 location_parts.append(value)
+
+        metadata: dict[str, str] = {}
+        for field, selector in metadata_selectors:
+            node = row.css_first(selector)
+            value = node.text(separator=" ", strip=True).strip() if node is not None else ""
+            if not value:
+                raise ValueError(
+                    f"DOM monitor rich_rows row {index} omitted configured metadata {field!r}"
+                )
+            metadata[field] = value
         jobs_by_url[url] = DiscoveredJob(
             url=url,
             title=title,
             locations=[", ".join(location_parts)] if location_parts else None,
+            metadata=metadata or None,
         )
 
     if not jobs_by_url:
@@ -855,7 +909,7 @@ async def _paginate_rich_rows_static(
     pagination: dict,
     initial_jobs: list[DiscoveredJob],
     client: httpx.AsyncClient,
-    rich_rows: tuple[str, str | None, str, str | None, tuple[str, ...]],
+    rich_rows: _RichRowsConfig,
     url_matcher: re.Pattern | None,
     encoding: str | None,
 ) -> list[DiscoveredJob]:

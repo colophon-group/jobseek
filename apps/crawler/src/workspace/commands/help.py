@@ -1363,6 +1363,9 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    When the row itself is the job anchor, omit link_selector:
                    {"row_selector": "a.job[href]", "title_selector": ".title",
                     "location_selectors": [".location"]}.
+                   Optional metadata_selectors maps stable row labels into
+                   discovered-job metadata for job_filter classification:
+                   {"metadata_selectors": {"opportunity_type": ".type"}}
                    Rows whose URL is stored directly on the row can instead use
                    {"row_selector": "tr[data-href]", "link_attr": "data-href",
                     "title_selector": "td.title",
