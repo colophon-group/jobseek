@@ -361,8 +361,18 @@ def _nested_scalar_paths(item: dict, prefix: str = "") -> list[tuple[str, str, o
 def _url_field_priority(key: str) -> int:
     """Prefer canonical/detail links over application endpoints."""
     normalized = re.sub(r"[^a-z]", "", key.lower())
+    # Listing APIs commonly expose branded artwork alongside the actual job
+    # link (for example Webcruiter's ``PictureUrl`` + ``OpenAdvertUrl``).
+    # Artwork must never become the posting identity merely because it appears
+    # first in the response object.
+    if any(token in normalized for token in ("image", "picture", "logo", "thumbnail", "avatar")):
+        return -1
     if "canonical" in normalized:
         return 100
+    if any(token in normalized for token in ("job", "advert", "posting", "position")) and any(
+        token in normalized for token in ("url", "link", "href", "path", "uri")
+    ):
+        return 95
     if "directlink" in normalized or "detail" in normalized:
         return 90
     if "apply" in normalized:
@@ -393,9 +403,12 @@ def find_url_field(items: list[dict]) -> str | None:
         if path in seen or not URL_FIELDS.search(key):
             continue
         seen.add(path)
+        priority = _url_field_priority(key)
+        if priority < 0:
+            continue
         values = [resolve_path(item, path) for item in sample]
         if values and all(isinstance(value, str) and _looks_like_url(value) for value in values):
-            candidates.append((_url_field_priority(key), -len(candidates), path))
+            candidates.append((priority, -len(candidates), path))
     if candidates:
         return max(candidates)[2]
 
@@ -403,6 +416,8 @@ def find_url_field(items: list[dict]) -> str | None:
     # Keep this at the top level to avoid selecting unrelated nested links.
     for key, value in sample[0].items():
         if isinstance(value, (dict, list, tuple, set)):
+            continue
+        if _url_field_priority(key) < 0:
             continue
         path = _quote_key(key)
         values = [resolve_path(item, path) for item in sample]
