@@ -526,6 +526,13 @@
       "when": 1785760800000,
       "tag": "0086_drop_supabase_job_posting",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1787560116000,
+      "tag": "0087_better_auth_account_issuer",
+      "breakpoints": true
     }
   ]
 }

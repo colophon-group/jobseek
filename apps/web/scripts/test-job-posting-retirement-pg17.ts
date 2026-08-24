@@ -98,6 +98,7 @@ function parseDatabaseUrl(argv: string[]): string {
 async function loadLedgerFixture(): Promise<{
   seed: MigrationMeta[];
   retirement: MigrationMeta;
+  subsequent: MigrationMeta[];
 }> {
   const journal = JSON.parse(
     await readFile(resolve(migrationFolder, "meta/_journal.json"), "utf8"),
@@ -105,13 +106,16 @@ async function loadLedgerFixture(): Promise<{
   const migrations = readMigrationFiles({ migrationsFolder: migrationFolder });
 
   invariant(journal.entries.length === migrations.length, "Journal and SQL migration counts differ");
-  invariant(journal.entries.at(-1)?.tag === retirementTag, `Journal does not end at ${retirementTag}`);
-  invariant(migrations.length === 75, `Expected 75 real journal migrations, found ${migrations.length}`);
+  invariant(migrations.length === 76, `Expected 76 real journal migrations, found ${migrations.length}`);
 
-  const retirement = migrations.at(-1);
+  const retirementIndex = journal.entries.findIndex((entry) => entry.tag === retirementTag);
+  invariant(retirementIndex !== -1, `Journal does not contain ${retirementTag}`);
+  const retirement = migrations[retirementIndex];
   invariant(retirement, "Retirement migration metadata is absent");
-  const through0085 = migrations.slice(0, -1);
+  const through0085 = migrations.slice(0, retirementIndex);
+  const subsequent = migrations.slice(retirementIndex + 1);
   invariant(through0085.length === 74, "Expected 74 journal entries through 0085");
+  invariant(subsequent.length === 1, "Expected exactly one journal entry after 0086");
 
   // The production guard intentionally expects 75 ledger rows at the 0085
   // tip, one more than the current 74 journal entries through 0085. Model that
@@ -122,7 +126,7 @@ async function loadLedgerFixture(): Promise<{
   invariant(seed.every(Boolean), "Ledger fixture contains an absent migration");
   invariant(seed.at(-1)?.folderMillis === 1_785_757_200_000, "Ledger fixture does not end at 0085");
 
-  return { seed, retirement };
+  return { seed, retirement, subsequent };
 }
 
 const baseFixtureSql = String.raw`
@@ -136,6 +140,13 @@ const baseFixtureSql = String.raw`
   CREATE TABLE public."user" (
     id text PRIMARY KEY,
     name text NOT NULL
+  );
+
+  CREATE TABLE public.account (
+    id text PRIMARY KEY,
+    account_id text NOT NULL,
+    provider_id text NOT NULL,
+    user_id text NOT NULL
   );
 
   CREATE TABLE public.company (
@@ -508,9 +519,9 @@ async function captureProof(sql: Sql): Promise<FixtureProof> {
 
 function expectedLedger(
   seed: MigrationMeta[],
-  retirement?: MigrationMeta,
+  applied: MigrationMeta[] = [],
 ): Array<{ hash: string; createdAt: string }> {
-  return [...seed, ...(retirement ? [retirement] : [])].map((migration) => ({
+  return [...seed, ...applied].map((migration) => ({
     hash: migration.hash,
     createdAt: String(migration.folderMillis),
   }));
@@ -519,11 +530,11 @@ function expectedLedger(
 function assertLedger(
   proof: FixtureProof,
   seed: MigrationMeta[],
-  retirement?: MigrationMeta,
+  applied: MigrationMeta[] = [],
 ): void {
   assertEqual(
     proof.ledger.map(({ hash, createdAt }) => ({ hash, createdAt })),
-    expectedLedger(seed, retirement),
+    expectedLedger(seed, applied),
     "Drizzle ledger does not exactly match the real journal/hash fixture",
   );
   assertEqual(
@@ -582,7 +593,7 @@ async function runHarness(databaseUrl: string): Promise<void> {
       "Connected database does not match the explicitly supplied URL",
     );
 
-    const { seed, retirement } = await loadLedgerFixture();
+    const { seed, retirement, subsequent } = await loadLedgerFixture();
 
     await buildFixture(sql, seed, true);
     const beforeSuccess = await captureProof(sql);
@@ -610,7 +621,7 @@ async function runHarness(databaseUrl: string): Promise<void> {
         afterSuccess.linkedRowCount === beforeSuccess.linkedRowCount,
       "0086 changed saved-job user/interview relationships",
     );
-    assertLedger(afterSuccess, seed, retirement);
+    assertLedger(afterSuccess, seed, [retirement, ...subsequent]);
     console.log("PASS attested production drop preserves rows/relationships and exact ledger");
 
     await buildFixture(sql, seed, true);
@@ -697,7 +708,7 @@ async function runHarness(databaseUrl: string): Promise<void> {
         restored.linkedRowCount === restoreShape.linkedRowCount,
       "Restore convergence changed saved-job rows or relationships",
     );
-    assertLedger(restored, seed, retirement);
+    assertLedger(restored, seed, [retirement, ...subsequent]);
     console.log("PASS absent-source fixture converges only in restore-drill mode");
   } finally {
     try {

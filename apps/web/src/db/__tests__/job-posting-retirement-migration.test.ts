@@ -103,7 +103,7 @@ describe("0086 Supabase job_posting retirement", () => {
     expect(verifier).toContain('new URL(databaseUrl).port === "6543"');
     expect(verifier).toContain("relation.oid === null");
     expect(verifier).toContain("Number(database.bytes) < freePlanSafetyBytes");
-    expect(verifier).toContain("ledger.rowCount === 76");
+    expect(verifier).toContain("ledger.rowCount === 77");
     expect(verifier).toContain('status: "failed"');
     expect(verifier).toContain("legacyReferences.compatibilityTriggers === 0");
 
@@ -117,7 +117,7 @@ describe("0086 Supabase job_posting retirement", () => {
     const journal = JSON.parse(
       readWeb("drizzle/meta/_journal.json"),
     ) as { entries: { idx: number; when: number; tag: string }[] };
-    expect(journal.entries.at(-1)).toEqual({
+    expect(journal.entries.find((entry) => entry.tag === "0086_drop_supabase_job_posting")).toEqual({
       idx: 74,
       version: "7",
       when: 1_785_760_800_000,

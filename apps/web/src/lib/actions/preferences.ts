@@ -657,7 +657,7 @@ export async function getAccountPageData() {
   if (!session) return null;
 
   const accounts = await db
-    .select({ providerId: account.providerId, accountId: account.accountId })
+    .select({ providerId: account.providerId, accountId: account.id })
     .from(account)
     .where(eq(account.userId, session.user.id));
 
