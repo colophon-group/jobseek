@@ -999,7 +999,7 @@ _MONITOR_CONFIG_HINTS = {
     ),
     "dom": (
         "Optional: render, actions, wait, timeout, link_selector, empty_selector, "
-        "empty_text, url_filter, encoding"
+        "empty_text, require_pdf_text, url_filter, encoding"
     ),
     "api_sniffer": "Auto-filled from probe: api_url, method, json_path, fields, pagination",
 }

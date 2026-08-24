@@ -13,7 +13,7 @@ from src.core.monitors.dom import dom_discover
 from src.core.scrapers.dom import parse_html
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
-FETCH_PATCH = "src.shared.http_retry.fetch_with_retry"
+FETCH_PATCH = "src.shared.http_retry.fetch_text_page_with_retry"
 BOARD_SLUG = "international-golf-federation-careers"
 COMPANY_SLUG = "international-golf-federation"
 

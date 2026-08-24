@@ -52,6 +52,7 @@ _MAX_PDF_EXPIRATION_VERIFICATION_URLS = 100
 _MAX_PDF_EXPIRATION_BYTES = 20 * 1024 * 1024
 _MAX_PDF_EXPIRATION_PAGES = 200
 _MAX_PDF_EXPIRATION_TEXT_CHARS = 2_000_000
+_MAX_EXPLICIT_EMPTY_BODY_BYTES = 2 * 1024 * 1024
 _RESPONSE_FINGERPRINT_CONCURRENCY = 4
 _MAX_RESPONSE_FINGERPRINT_URLS = 100
 
@@ -258,15 +259,36 @@ def _validated_unexpired_pdf_config(value: object) -> tuple[re.Pattern[str], str
     return compiled, date_format
 
 
+def _validated_pdf_text_config(
+    value: object,
+) -> tuple[re.Pattern[str], re.Pattern[str]] | None:
+    """Validate the opt-in, exhaustive PDF ownership classifier."""
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) != {"include", "exclude"}:
+        raise ValueError("DOM monitor require_pdf_text requires include and exclude regexes")
+
+    compiled: list[re.Pattern[str]] = []
+    for name in ("include", "exclude"):
+        pattern = value.get(name)
+        if not isinstance(pattern, str) or not pattern or len(pattern) > 1_024 or "\x00" in pattern:
+            raise ValueError(
+                f"DOM monitor require_pdf_text.{name} must be a regex up to 1024 characters"
+            )
+        try:
+            compiled.append(re.compile(pattern))
+        except re.error as exc:
+            raise ValueError(f"DOM monitor require_pdf_text.{name} is invalid") from exc
+    return compiled[0], compiled[1]
+
+
 def _extract_bounded_pdf_text(content: bytes) -> str:
     """Extract PDF text without allowing unbounded page or text expansion."""
     import pypdf
 
     reader = pypdf.PdfReader(io.BytesIO(content))
     if len(reader.pages) > _MAX_PDF_EXPIRATION_PAGES:
-        raise ValueError(
-            f"DOM require_unexpired_pdf document exceeds {_MAX_PDF_EXPIRATION_PAGES} pages"
-        )
+        raise ValueError(f"DOM PDF verification document exceeds {_MAX_PDF_EXPIRATION_PAGES} pages")
 
     parts: list[str] = []
     text_chars = 0
@@ -275,11 +297,55 @@ def _extract_bounded_pdf_text(content: bytes) -> str:
         text_chars += len(page_text)
         if text_chars > _MAX_PDF_EXPIRATION_TEXT_CHARS:
             raise ValueError(
-                "DOM require_unexpired_pdf extracted text exceeds "
+                "DOM PDF verification extracted text exceeds "
                 f"{_MAX_PDF_EXPIRATION_TEXT_CHARS} characters"
             )
         parts.append(page_text)
     return "\n\n".join(parts).strip()
+
+
+async def _fetch_bounded_pdf_text(
+    url: str,
+    client: httpx.AsyncClient,
+    *,
+    config_name: str,
+) -> str | None:
+    """Fetch one bounded PDF and return text, or ``None`` when it was removed."""
+    if urlsplit(url).path.lower().endswith(".pdf") is False:
+        raise ValueError(f"DOM {config_name} found a non-PDF URL: {url}")
+    async with client.stream("GET", url, follow_redirects=True) as response:
+        if response.status_code in {404, 410}:
+            return None
+        response.raise_for_status()
+        check_tdm_response(response)
+
+        raw_content_length = response.headers.get("content-length")
+        if raw_content_length is not None:
+            try:
+                content_length = int(raw_content_length)
+            except ValueError as exc:
+                raise ValueError(
+                    f"DOM {config_name} response has invalid Content-Length: {url}"
+                ) from exc
+            if content_length < 0:
+                raise ValueError(f"DOM {config_name} response has invalid Content-Length: {url}")
+            if content_length > _MAX_PDF_EXPIRATION_BYTES:
+                raise ValueError(
+                    f"DOM {config_name} document exceeds {_MAX_PDF_EXPIRATION_BYTES} bytes: {url}"
+                )
+
+        content = bytearray()
+        async for chunk in response.aiter_bytes():
+            if len(content) + len(chunk) > _MAX_PDF_EXPIRATION_BYTES:
+                raise ValueError(
+                    f"DOM {config_name} document exceeds {_MAX_PDF_EXPIRATION_BYTES} bytes: {url}"
+                )
+            content.extend(chunk)
+
+    pdf_content = bytes(content)
+    if not pdf_content.lstrip().startswith(b"%PDF"):
+        raise ValueError(f"DOM {config_name} response is not a PDF: {url}")
+    return await asyncio.to_thread(_extract_bounded_pdf_text, pdf_content)
 
 
 async def _filter_unexpired_pdf_urls(
@@ -313,51 +379,18 @@ async def _filter_unexpired_pdf_urls(
     semaphore = asyncio.Semaphore(_PDF_EXPIRATION_VERIFICATION_CONCURRENCY)
 
     async def verify(url: str) -> tuple[str, bool, str | None]:
-        if urlsplit(url).path.lower().endswith(".pdf") is False:
-            raise ValueError(f"DOM require_unexpired_pdf found a non-PDF URL: {url}")
-        async with semaphore, client.stream("GET", url, follow_redirects=True) as response:
-            if response.status_code in {404, 410}:
-                return url, False, None
-            response.raise_for_status()
-            check_tdm_response(response)
-
-            raw_content_length = response.headers.get("content-length")
-            if raw_content_length is not None:
-                try:
-                    content_length = int(raw_content_length)
-                except ValueError as exc:
-                    raise ValueError(
-                        f"DOM require_unexpired_pdf response has invalid Content-Length: {url}"
-                    ) from exc
-                if content_length < 0:
-                    raise ValueError(
-                        f"DOM require_unexpired_pdf response has invalid Content-Length: {url}"
-                    )
-                if content_length > _MAX_PDF_EXPIRATION_BYTES:
-                    raise ValueError(
-                        "DOM require_unexpired_pdf document exceeds "
-                        f"{_MAX_PDF_EXPIRATION_BYTES} bytes: {url}"
-                    )
-
-            content = bytearray()
-            async for chunk in response.aiter_bytes():
-                if len(content) + len(chunk) > _MAX_PDF_EXPIRATION_BYTES:
-                    raise ValueError(
-                        "DOM require_unexpired_pdf document exceeds "
-                        f"{_MAX_PDF_EXPIRATION_BYTES} bytes: {url}"
-                    )
-                content.extend(chunk)
-
-        pdf_content = bytes(content)
-        if not pdf_content.lstrip().startswith(b"%PDF"):
-            raise ValueError(f"DOM require_unexpired_pdf response is not a PDF: {url}")
-
-        text = await asyncio.to_thread(_extract_bounded_pdf_text, pdf_content)
+        async with semaphore:
+            text = await _fetch_bounded_pdf_text(
+                url,
+                client,
+                config_name="require_unexpired_pdf",
+            )
+        if text is None:
+            return url, False, None
         if required_text_pattern is not None and required_text_pattern.search(text) is None:
             if raise_on_required_text_mismatch:
                 raise ValueError(f"linked PDF did not match the required ownership markers: {url}")
             return url, False, None
-
         match = pattern.search(text)
         if match is None or match.group(1) is None:
             raise ValueError(f"DOM require_unexpired_pdf deadline was not found: {url}")
@@ -390,6 +423,61 @@ async def _filter_unexpired_pdf_urls(
         }
         return active_urls, deadlines
     return active_urls
+
+
+async def _filter_pdf_text_urls(
+    urls: set[str],
+    client: httpx.AsyncClient,
+    config: tuple[re.Pattern[str], re.Pattern[str]],
+) -> set[str]:
+    """Classify every linked PDF as included or explicitly excluded.
+
+    This scopes mixed first-party opportunity directories to the target
+    employer without trusting filenames or sequential document IDs. A document
+    that matches both classes or neither class fails the cycle, preventing an
+    ownership-marker change from silently becoming a healthy zero inventory.
+    Removed documents are omitted; transport, type, size, and parse failures
+    fail the entire cycle closed.
+    """
+    if len(urls) > _MAX_PDF_EXPIRATION_VERIFICATION_URLS:
+        raise ValueError(
+            "DOM monitor require_pdf_text supports at most "
+            f"{_MAX_PDF_EXPIRATION_VERIFICATION_URLS} discovered URLs"
+        )
+
+    include_pattern, exclude_pattern = config
+    semaphore = asyncio.Semaphore(_PDF_EXPIRATION_VERIFICATION_CONCURRENCY)
+
+    async def verify(url: str) -> tuple[str, bool]:
+        async with semaphore:
+            text = await _fetch_bounded_pdf_text(
+                url,
+                client,
+                config_name="require_pdf_text",
+            )
+        if text is None:
+            return url, False
+        included = include_pattern.search(text) is not None
+        excluded = exclude_pattern.search(text) is not None
+        if included == excluded:
+            classification = (
+                "both include and exclude" if included else "neither include nor exclude"
+            )
+            raise ValueError(
+                f"DOM require_pdf_text matched {classification} ownership markers: {url}"
+            )
+        return url, included
+
+    tasks = [asyncio.create_task(verify(url)) for url in sorted(urls)]
+    try:
+        results = await asyncio.gather(*tasks)
+    except BaseException:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
+    return {url for url, matches in results if matches}
 
 
 async def _exclude_urls_matching_detail_selector(
@@ -2077,6 +2165,7 @@ async def dom_discover(
     if not isinstance(require_jsonld_jobposting, bool):
         raise ValueError("DOM monitor require_jsonld_jobposting must be a boolean")
     require_unexpired_pdf = _validated_unexpired_pdf_config(metadata.get("require_unexpired_pdf"))
+    require_pdf_text = _validated_pdf_text_config(metadata.get("require_pdf_text"))
     exclude_detail_selector = _validate_css_selector(
         metadata.get("exclude_detail_selector"),
         name="exclude_detail_selector",
@@ -2103,6 +2192,7 @@ async def dom_discover(
         or metadata.get("include_board_url")
         or require_jsonld_jobposting
         or require_unexpired_pdf is not None
+        or require_pdf_text is not None
         or exclude_detail_selector is not None
         or fingerprint_response is not None
     ):
@@ -2113,6 +2203,8 @@ async def dom_discover(
             raise ValueError("DOM monitor empty_selector requires link_selector")
         if pagination or metadata.get("include_board_url") or require_jsonld_jobposting:
             raise ValueError("DOM monitor empty_selector supports single-page link extraction only")
+        if encoding is not None:
+            raise ValueError("DOM monitor empty_selector does not support an encoding override")
     elif empty_text is not None:
         raise ValueError("DOM monitor empty_text requires empty_selector")
 
@@ -2171,20 +2263,33 @@ async def dom_discover(
                         link_selector,
                     )
     else:
-        from src.shared.http_retry import fetch_with_retry
+        if empty_selector is not None:
+            from src.shared.http_retry import fetch_text_page_with_retry
 
-        html = await fetch_with_retry(
-            client,
-            board_url,
-            transient_403=True,
-            retryable_statuses={202},
-            encoding=encoding,
-            # Rich rows are authoritative structured input. The shared
-            # 500k listing-preview limit can cut a complete trailing row and
-            # make the resulting partial inventory look healthy, so retain
-            # the full body for this strict single-page mode.
-            max_chars=None if rich_rows is not None else 500_000,
-        )
+            # The empty marker is authoritative and may follow large inline
+            # assets, but the body still needs a finite streaming cap before
+            # it is handed to the HTML parser.
+            html = await fetch_text_page_with_retry(
+                client,
+                board_url,
+                retryable_statuses={202, 401, 403},
+                require_nonempty=True,
+                max_bytes=_MAX_EXPLICIT_EMPTY_BODY_BYTES,
+            )
+        else:
+            from src.shared.http_retry import fetch_with_retry
+
+            html = await fetch_with_retry(
+                client,
+                board_url,
+                transient_403=True,
+                retryable_statuses={202},
+                encoding=encoding,
+                # Rich rows are authoritative structured input. The shared
+                # 500k listing-preview limit can cut a complete trailing row
+                # and make a partial inventory look healthy.
+                max_chars=None if rich_rows is not None else 500_000,
+            )
         if not html:
             log.warning("dom.fetch_failed", board_url=board_url)
             if empty_selector is not None:
@@ -2249,6 +2354,8 @@ async def dom_discover(
         urls = await _filter_jsonld_job_urls(urls, client)
     if require_unexpired_pdf is not None:
         urls = await _filter_unexpired_pdf_urls(urls, client, require_unexpired_pdf)
+    if require_pdf_text is not None:
+        urls = await _filter_pdf_text_urls(urls, client, require_pdf_text)
     if fingerprint_response is not None:
         urls = await _fingerprint_response_urls(urls, client, fingerprint_response)
 

@@ -19,11 +19,13 @@ from src.core.monitors.dom import (
     _extract_rich_rows_static,
     _fetch_via_page,
     _filter_jsonld_job_urls,
+    _filter_pdf_text_urls,
     _filter_unexpired_pdf_urls,
     _fingerprint_response_urls,
     _lucca_probe_config,
     _paginate_urls,
     _vagas_probe_config,
+    _validated_pdf_text_config,
     _validated_response_fingerprint_config,
     _validated_rich_rows,
     _validated_unexpired_pdf_config,
@@ -46,6 +48,7 @@ from src.workspace._compat import auto_scraper_type
 # fetch_with_retry`` (#2722). Earlier patches at ``src.core.monitors.
 # fetch_page_text`` no longer apply.
 _FETCH_PATCH = "src.shared.http_retry.fetch_with_retry"
+_EMPTY_FETCH_PATCH = "src.shared.http_retry.fetch_text_page_with_retry"
 
 
 def _html_with_links(*urls: str) -> str:
@@ -183,7 +186,7 @@ class TestExplicitEmptyState:
     @pytest.mark.parametrize("html", [None, ""])
     async def test_rejects_missing_response_with_configured_empty_marker(self, html):
         with (
-            patch(_FETCH_PATCH, AsyncMock(return_value=html)),
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)),
             pytest.raises(ValueError, match="did not match the configured explicit empty state"),
         ):
             await dom_discover(
@@ -203,7 +206,7 @@ class TestExplicitEmptyState:
           <div class="view-empty">No results found</div>
         </div>
         """
-        with patch(_FETCH_PATCH, AsyncMock(return_value=html)):
+        with patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)):
             result = await dom_discover(
                 {
                     "board_url": "https://example.com/vacancies",
@@ -217,10 +220,34 @@ class TestExplicitEmptyState:
 
         assert result == set()
 
+    async def test_uses_finite_streaming_cap_for_trailing_empty_marker(self):
+        html = (" " * 500_000) + '<h4 class="view-empty">No jobs available</h4>'
+
+        async def bounded_fetch(_client, _url, **_kwargs):
+            return html
+
+        fetch = AsyncMock(side_effect=bounded_fetch)
+        with patch(_EMPTY_FETCH_PATCH, fetch):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "link_selector": "a.vacancy",
+                        "empty_selector": "h4.view-empty",
+                        "empty_text": "No jobs available",
+                    },
+                },
+                AsyncMock(),
+            )
+
+        assert result == set()
+        assert fetch.await_args.kwargs["max_bytes"] == 2 * 1024 * 1024
+        assert fetch.await_args.kwargs["require_nonempty"] is True
+
     async def test_rejects_zero_links_without_configured_empty_marker(self):
         html = '<div class="vacancy-list"></div>'
         with (
-            patch(_FETCH_PATCH, AsyncMock(return_value=html)),
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)),
             pytest.raises(ValueError, match="did not match the configured explicit empty state"),
         ):
             await dom_discover(
@@ -240,7 +267,7 @@ class TestExplicitEmptyState:
           <a class="vacancy" href="/vacancies/legal-officer">Legal Officer</a>
         </div>
         """
-        with patch(_FETCH_PATCH, AsyncMock(return_value=html)):
+        with patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)):
             result = await dom_discover(
                 {
                     "board_url": "https://example.com/vacancies",
@@ -263,7 +290,7 @@ class TestExplicitEmptyState:
         </div>
         """
         with (
-            patch(_FETCH_PATCH, AsyncMock(return_value=html)),
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)),
             pytest.raises(ValueError, match="did not match the configured explicit empty state"),
         ):
             await dom_discover(
@@ -280,7 +307,7 @@ class TestExplicitEmptyState:
     async def test_empty_text_disambiguates_a_shared_count_element(self):
         html = '<div class="vacancy-list"><p class="count">2 jobs found</p></div>'
         with (
-            patch(_FETCH_PATCH, AsyncMock(return_value=html)),
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)),
             pytest.raises(ValueError, match="did not match the configured explicit empty state"),
         ):
             await dom_discover(
@@ -297,7 +324,7 @@ class TestExplicitEmptyState:
 
     async def test_accepts_zero_links_with_matching_empty_text(self):
         html = '<div class="vacancy-list"><p class="count">0 Jobs Found</p></div>'
-        with patch(_FETCH_PATCH, AsyncMock(return_value=html)):
+        with patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)):
             result = await dom_discover(
                 {
                     "board_url": "https://example.com/vacancies",
@@ -691,6 +718,121 @@ class TestRequireUnexpiredPdf:
     def test_rejects_invalid_config(self, value):
         with pytest.raises(ValueError, match="require_unexpired_pdf"):
             _validated_unexpired_pdf_config(value)
+
+
+class TestRequirePdfText:
+    CONFIG = _validated_pdf_text_config(
+        {"include": r"World Gymnastics", "exclude": r"Member Federation"}
+    )
+
+    @staticmethod
+    def _fake_reader(stream):
+        from types import SimpleNamespace
+
+        text = stream.read().removeprefix(b"%PDF ").decode()
+        return SimpleNamespace(pages=[SimpleNamespace(extract_text=lambda: text)])
+
+    async def test_keeps_matching_employer_and_omits_other_pdf(self, monkeypatch):
+        own_job = "https://example.com/files/own.pdf"
+        member_job = "https://example.com/files/member.pdf"
+        monkeypatch.setattr("pypdf.PdfReader", self._fake_reader)
+
+        def handler(request):
+            employer = (
+                "Fédération Internationale de Gymnastique"
+                if str(request.url) == own_job
+                else "National Gymnastics Federation"
+            )
+            return httpx.Response(200, content=f"%PDF {employer}".encode(), request=request)
+
+        config = _validated_pdf_text_config(
+            {
+                "include": r"(?i)F[ée]d[ée]ration Internationale de Gymnastique",
+                "exclude": r"National Gymnastics Federation",
+            }
+        )
+        assert config is not None
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await _filter_pdf_text_urls({own_job, member_job}, client, config)
+
+        assert result == {own_job}
+
+    async def test_dom_discover_applies_pdf_text_filter(self, monkeypatch):
+        board_url = "https://example.com/opportunities"
+        own_job = "https://example.com/files/own.pdf"
+        member_job = "https://example.com/files/member.pdf"
+        listing = _html_with_links(own_job, member_job)
+        monkeypatch.setattr("pypdf.PdfReader", self._fake_reader)
+
+        def handler(request):
+            employer = "World Gymnastics" if str(request.url) == own_job else "Member Federation"
+            return httpx.Response(200, content=f"%PDF {employer}".encode(), request=request)
+
+        with patch(_FETCH_PATCH, new=_make_fetch({board_url: listing})):
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+                result = await dom_discover(
+                    {
+                        "board_url": board_url,
+                        "metadata": {
+                            "link_selector": "a[href$='.pdf']",
+                            "require_pdf_text": {
+                                "include": r"World Gymnastics",
+                                "exclude": r"Member Federation",
+                            },
+                        },
+                    },
+                    client,
+                )
+
+        assert result == {own_job}
+
+    async def test_accepts_explicitly_excluded_only_inventory(self, monkeypatch):
+        member_job = "https://example.com/files/member.pdf"
+        monkeypatch.setattr("pypdf.PdfReader", self._fake_reader)
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                content=b"%PDF Member Federation",
+                request=request,
+            )
+        )
+
+        assert self.CONFIG is not None
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await _filter_pdf_text_urls({member_job}, client, self.CONFIG)
+
+        assert result == set()
+
+    @pytest.mark.parametrize(
+        "text", ["Unclassified employer", "World Gymnastics Member Federation"]
+    )
+    async def test_fails_closed_for_unclassified_or_overlapping_markers(self, monkeypatch, text):
+        url = "https://example.com/files/unknown.pdf"
+        monkeypatch.setattr("pypdf.PdfReader", self._fake_reader)
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, content=f"%PDF {text}".encode(), request=request)
+        )
+
+        assert self.CONFIG is not None
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="ownership markers"):
+                await _filter_pdf_text_urls({url}, client, self.CONFIG)
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            True,
+            "World Gymnastics",
+            {},
+            {"include": "World Gymnastics"},
+            {"include": "(", "exclude": "Member"},
+            {"include": "World", "exclude": "x" * 1_025},
+            {"include": "World", "exclude": "Member", "extra": "value"},
+        ],
+    )
+    def test_rejects_invalid_config(self, value):
+        with pytest.raises(ValueError, match="require_pdf_text"):
+            _validated_pdf_text_config(value)
 
 
 class TestFingerprintResponse:
