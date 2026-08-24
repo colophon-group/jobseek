@@ -1186,6 +1186,7 @@ _ExplicitEmptyState = tuple[
     bool,
     str | None,
     re.Pattern[str] | None,
+    str | None,
 ]
 
 
@@ -1199,7 +1200,11 @@ def _validated_empty_state_list(value: object) -> tuple[_ExplicitEmptyState, ...
     states: list[_ExplicitEmptyState] = []
     for item in value:
         required_keys = {"selector", "exact_text"}
-        optional_keys = {"required_link_selector", "required_link_url_pattern"}
+        optional_keys = {
+            "required_link_selector",
+            "required_link_url_pattern",
+            "forbidden_link_selector",
+        }
         if (
             not isinstance(item, dict)
             or not required_keys.issubset(item)
@@ -1207,7 +1212,8 @@ def _validated_empty_state_list(value: object) -> tuple[_ExplicitEmptyState, ...
         ):
             raise ValueError(
                 "DOM monitor empty_states entries require selector and exact_text, with an "
-                "optional required_link_selector and required_link_url_pattern pair"
+                "optional required_link_selector and required_link_url_pattern pair, and an "
+                "optional forbidden_link_selector"
             )
         selector = _validate_css_selector(item.get("selector"), name="empty_states.selector")
         exact_text = item.get("exact_text")
@@ -1251,6 +1257,10 @@ def _validated_empty_state_list(value: object) -> tuple[_ExplicitEmptyState, ...
                 raise ValueError(
                     "DOM monitor empty_states required_link_url_pattern must be a valid regex"
                 ) from exc
+        forbidden_link_selector = _validate_css_selector(
+            item.get("forbidden_link_selector"),
+            name="empty_states.forbidden_link_selector",
+        )
         states.append(
             (
                 selector,
@@ -1258,6 +1268,7 @@ def _validated_empty_state_list(value: object) -> tuple[_ExplicitEmptyState, ...
                 True,
                 required_link_selector,
                 required_link_url_pattern,
+                forbidden_link_selector,
             )
         )
     return tuple(states)
@@ -1279,6 +1290,7 @@ def _validate_explicit_empty_states(
         exact_text,
         required_link_selector,
         required_link_url_pattern,
+        forbidden_link_selector,
     ) in empty_states:
         marker = tree.css_first(empty_selector)
         if marker is None:
@@ -1293,6 +1305,8 @@ def _validate_explicit_empty_states(
             else expected_text.casefold() in marker_text.casefold()
         )
         if not text_matches:
+            continue
+        if forbidden_link_selector is not None and tree.css_first(forbidden_link_selector):
             continue
         if required_link_selector is None:
             return
@@ -1321,7 +1335,7 @@ def _validate_explicit_empty_state(
     """Validate the legacy single-selector empty-state configuration."""
     _validate_explicit_empty_states(
         html,
-        ((empty_selector, empty_text, False, None, None),),
+        ((empty_selector, empty_text, False, None, None, None),),
         urls,
         board_url,
     )
@@ -2305,7 +2319,7 @@ async def dom_discover(
         )
     configured_empty_states = empty_states
     if empty_selector is not None:
-        configured_empty_states = ((empty_selector, empty_text, False, None, None),)
+        configured_empty_states = ((empty_selector, empty_text, False, None, None, None),)
     empty_state_name = "empty_states" if empty_states else "empty_selector"
     rich_rows = _validated_rich_rows(metadata.get("rich_rows"))
     require_jsonld_jobposting = metadata.get("require_jsonld_jobposting", False)

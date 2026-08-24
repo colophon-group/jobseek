@@ -188,6 +188,11 @@ async def test_current_migrated_careers_layout_is_an_explicit_pdf_zero() -> None
         ),
         # The historical heading style alone cannot turn an error into zero.
         '<h2 class="fluid-text-lg3">Vacancies are temporarily unavailable</h2>',
+        # The exact historical marker cannot mask a future vacancy source.
+        (
+            '<h2 class="fluid-text-lg3">No positions available at the moment</h2>'
+            '<a href="https://careers.unknown-ats.example/isu/role-1">Role</a>'
+        ),
     ],
 )
 async def test_partial_or_unknown_careers_layout_fails_closed(listing_html: str) -> None:

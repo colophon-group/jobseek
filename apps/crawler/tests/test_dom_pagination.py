@@ -468,6 +468,34 @@ class TestExplicitEmptyState:
                 AsyncMock(),
             )
 
+    async def test_forbidden_link_selector_rejects_matching_anchor(self):
+        html = """
+        <section class="vacancies">
+          <h2>No positions available</h2>
+          <a href="https://unknown.example/jobs/role-1">Unexpected role</a>
+        </section>
+        """
+        with (
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)),
+            pytest.raises(ValueError, match="did not match the configured explicit empty state"),
+        ):
+            await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "link_selector": ".vacancies a[href$='.pdf']",
+                        "empty_states": [
+                            {
+                                "selector": ".vacancies h2",
+                                "exact_text": "No positions available",
+                                "forbidden_link_selector": ".vacancies a[href]",
+                            }
+                        ],
+                    },
+                },
+                AsyncMock(),
+            )
+
     async def test_selector_specific_empty_text_rejects_styled_error(self):
         html = (
             '<div class="vacancy-list"><h2 class="empty">Error: No positions available</h2></div>'
@@ -637,6 +665,13 @@ class TestExplicitEmptyState:
                     "exact_text": "none",
                     "required_link_selector": "a[href]",
                     "required_link_url_pattern": "(",
+                }
+            ],
+            [
+                {
+                    "selector": ".empty",
+                    "exact_text": "none",
+                    "forbidden_link_selector": "",
                 }
             ],
         ],
