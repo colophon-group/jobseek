@@ -163,6 +163,14 @@ async def test_current_migrated_careers_layout_is_an_explicit_pdf_zero() -> None
             '<div class="blockbox"><h2>Job Vacancies</h2>'
             '<a href="https://careers.unknown-ats.example/isu/role-1">Role</a></div>'
         ),
+        # A recognized Lucca link cannot mask an additional unknown source.
+        (
+            '<div class="blockbox"><h2>Job Vacancies</h2>'
+            f'<a href="{LUCCA_JOB_URL}">Lucca role</a>'
+            '<a href="https://careers.unknown-ats.example/isu/role-1">Other role</a></div>'
+        ),
+        # The historical heading style alone cannot turn an error into zero.
+        '<h2 class="fluid-text-lg3">Vacancies are temporarily unavailable</h2>',
     ],
 )
 async def test_partial_or_unknown_careers_layout_fails_closed(listing_html: str) -> None:

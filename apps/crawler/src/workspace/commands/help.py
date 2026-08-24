@@ -1409,6 +1409,11 @@ dom — Link or Static Listing-Row Extraction (fallback)
     empty_text     Optional case-insensitive text that must occur inside the
                    matched empty_selector. Use when the element exists for
                    both empty and non-empty counts (for example, "0 jobs").
+    empty_states   Optional list of 1-4 selector-specific empty states, each
+                   with selector and exact_text. A zero-link page succeeds
+                   only when one selector matches and its normalized text is
+                   exactly equal to exact_text. Do not combine with the
+                   legacy empty_selector/empty_text pair.
     require_jsonld_jobposting
                    Fetch each discovered detail URL and retain it only when
                    the current page contains schema.org JobPosting JSON-LD.
