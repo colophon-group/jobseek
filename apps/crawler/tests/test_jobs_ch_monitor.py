@@ -21,12 +21,19 @@ def _client(pages: dict[int, dict], requested: list[httpx.Request] | None = None
     return httpx.AsyncClient(transport=httpx.MockTransport(handler))
 
 
-def _payload(page: int, pages: int, total: int, ids: list[str]) -> dict:
+def _payload(
+    page: int,
+    pages: int,
+    total: int,
+    ids: list[str],
+    *,
+    company_id: str = "134466",
+) -> dict:
     return {
         "rows": 100,
         "numPages": pages,
         "currentPage": page,
-        "documents": [{"id": job_id} for job_id in ids],
+        "documents": [{"id": job_id, "company": {"id": company_id}} for job_id in ids],
         "start": (page - 1) * 100,
         "totalHits": total,
     }
@@ -91,12 +98,14 @@ async def test_discover_paginates_and_builds_localized_urls() -> None:
     job_b = "20cf6e2f-366e-452b-9f28-e65a6fefa976"
     job_c = "3e0fe269-1742-4ac4-aad4-f84c34306c57"
     pages = {
-        1: _payload(1, 2, 101, [job_a] * 100),
-        2: _payload(2, 2, 101, [job_c]),
+        1: _payload(1, 2, 101, [job_a] * 100, company_id="10513"),
+        2: _payload(2, 2, 101, [job_c], company_id="10513"),
     }
-    pages[1]["documents"] = [{"id": str(UUID(int=index + 1))} for index in range(100)]
-    pages[1]["documents"][0] = {"id": job_a}
-    pages[1]["documents"][1] = {"id": job_b}
+    pages[1]["documents"] = [
+        {"id": str(UUID(int=index + 1)), "company": {"id": "10513"}} for index in range(100)
+    ]
+    pages[1]["documents"][0] = {"id": job_a, "company": {"id": "10513"}}
+    pages[1]["documents"][1] = {"id": job_b, "company": {"id": "10513"}}
     async with _client(pages, requested) as client:
         jobs = await discover(
             {
@@ -121,7 +130,7 @@ async def test_discover_paginates_and_builds_localized_urls() -> None:
 async def test_discover_uses_jobup_api_and_localized_detail_urls() -> None:
     requested: list[httpx.Request] = []
     job_id = "644c296f-ee65-4fd5-b90d-77541692be5b"
-    async with _client({1: _payload(1, 1, 1, [job_id])}, requested) as client:
+    async with _client({1: _payload(1, 1, 1, [job_id], company_id="6099")}, requested) as client:
         jobs = await discover(
             {
                 "board_url": "https://www.jobup.ch/en/enterprises/6099-leclanche-sa/",
@@ -136,9 +145,37 @@ async def test_discover_uses_jobup_api_and_localized_detail_urls() -> None:
 
 @pytest.mark.asyncio
 async def test_discover_fails_closed_on_incomplete_pagination() -> None:
-    pages = {1: _payload(1, 1, 2, ["644c296f-ee65-4fd5-b90d-77541692be5b"])}
+    pages = {
+        1: _payload(
+            1,
+            1,
+            2,
+            ["644c296f-ee65-4fd5-b90d-77541692be5b"],
+            company_id="42",
+        )
+    }
     async with _client(pages) as client:
         with pytest.raises(ValueError, match="returned 1 documents; expected 2"):
+            await discover(
+                {
+                    "board_url": "https://www.jobs.ch/de/firmen/42-example/",
+                    "metadata": {},
+                },
+                client,
+            )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "document_company",
+    [None, {}, {"id": "invalid"}, {"id": "999"}],
+)
+async def test_discover_rejects_unverifiable_company_result(document_company: object) -> None:
+    job_id = "644c296f-ee65-4fd5-b90d-77541692be5b"
+    payload = _payload(1, 1, 1, [job_id], company_id="42")
+    payload["documents"][0]["company"] = document_company
+    async with _client({1: payload}) as client:
+        with pytest.raises(ValueError, match="outside the configured company"):
             await discover(
                 {
                     "board_url": "https://www.jobs.ch/de/firmen/42-example/",
