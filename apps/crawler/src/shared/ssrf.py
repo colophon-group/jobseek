@@ -265,19 +265,26 @@ def _public_address_from_infos(
     chosen: str | None = None
     unscoped_link_local: str | None = None
     for family, _socktype, _proto, _canonname, sockaddr in infos:
+        has_textual_scope = False
         if family == socket.AF_INET:
             addr = sockaddr[0]
         elif family == socket.AF_INET6:
             addr = sockaddr[0]
             # Strip the zone-id suffix some IPv6 link-local entries
             # carry (``fe80::1%en0``) before classifying.
+            has_textual_scope = "%" in addr
             addr = addr.split("%", 1)[0]
         else:
             continue
         if is_private_ip(addr):
             ip = ipaddress.ip_address(addr)
             scope_id = sockaddr[3] if family == socket.AF_INET6 and len(sockaddr) > 3 else 0
-            if isinstance(ip, ipaddress.IPv6Address) and ip.is_link_local and not scope_id:
+            if (
+                isinstance(ip, ipaddress.IPv6Address)
+                and ip.is_link_local
+                and not scope_id
+                and not has_textual_scope
+            ):
                 # A DNS AAAA record cannot supply the interface scope required
                 # to route an IPv6 link-local destination. Linux rejects a
                 # connect to this sockaddr with EINVAL. Some public sites
