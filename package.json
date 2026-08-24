@@ -10,7 +10,7 @@
     "register-pipeline": "pnpm --filter @jobseek/murmur-pipelines register-pipeline"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.11",
     "turbo": "^2.10.10"
   },
   "packageManager": "pnpm@10.30.0"
