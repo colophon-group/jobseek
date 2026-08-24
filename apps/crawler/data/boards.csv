@@ -2172,6 +2172,7 @@ files-com,files-com-greenhouse,https://job-boards.greenhouse.io/filescom,greenho
 filigran,filigran-careers,https://jobs.ashbyhq.com/filigran,ashby,"{""token"": ""filigran""}",skip,
 filmhub,filmhub-careers,https://jobs.ashbyhq.com/filmhub,ashby,"{""token"": ""filmhub""}",skip,
 filson,filson-greenhouse,https://job-boards.greenhouse.io/filson,greenhouse,"{""token"": ""filson""}",skip,
+fim,fim-careers-jobup,https://www.jobup.ch/en/enterprises/24728-federation-internationale-de-motocyclisme-fim/jobs/,jobs_ch,"{""company_id"": ""24728"", ""locale"": ""en"", ""portal"": ""jobup""}",json-ld,
 fin,fin-ashby,https://jobs.ashbyhq.com/fin,ashby,"{""token"": ""fin""}",skip,
 financial-technology-partners,financial-technology-partners-greenhouse,https://job-boards.greenhouse.io/financialtechnologypartners,greenhouse,"{""token"": ""financialtechnologypartners""}",skip,
 financial-times,financial-times-greenhouse,https://job-boards.greenhouse.io/financialtimes33,greenhouse,"{""token"": ""financialtimes33""}",skip,
