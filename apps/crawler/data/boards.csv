@@ -5265,6 +5265,7 @@ slaughter-and-may,slaughter-and-may-careers,https://careers.slaughterandmay.com/
 sleeper,sleeper-ashby,https://jobs.ashbyhq.com/sleeper,ashby,"{""token"": ""sleeper""}",skip,
 slice,slice-greenhouse,https://job-boards.greenhouse.io/slice,greenhouse,"{""token"": ""slice""}",skip,
 slingshot-aerospace,slingshot-aerospace-greenhouse,https://job-boards.greenhouse.io/slingshotaerospace,greenhouse,"{""token"": ""slingshotaerospace""}",skip,
+small-arms-survey,small-arms-survey-vacancies,https://www.smallarmssurvey.org/who_we_are/vacancies,dom,"{""render"": false, ""link_selector"": ""main a[href^=\""/job-post/\""], main a[href^=\""https://www.smallarmssurvey.org/job-post/\""]"", ""empty_selector"": ""main"", ""empty_text"": ""If none are listed, we encourage you to check back in at a later date.""}",json-ld,"{""render"": true, ""wait"": ""domcontentloaded""}"
 smallpdf,smallpdf-careers,https://smallpdf.com/careers,ashby,"{""token"": ""smallpdf""}",skip,
 smarsh,smarsh-pinpoint,https://smarsh.pinpointhq.com,pinpoint,"{""slug"": ""smarsh""}",skip,
 smart-energy-link-ag,smart-energy-link-ag-join,https://join.com/companies/smartenergylinkch,join,"{""slug"": ""smartenergylinkch""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
