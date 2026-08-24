@@ -19,7 +19,9 @@ def main() -> int:
     parser.add_argument(
         "--apply",
         action="store_true",
-        help="archive eligible dirty state and remove verified terminal worktrees",
+        help=(
+            "archive eligible dirty/unique state and remove verified runner and managed worktrees"
+        ),
     )
     parser.add_argument(
         "--summary-only",

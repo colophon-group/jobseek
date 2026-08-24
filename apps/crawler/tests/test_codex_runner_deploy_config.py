@@ -9,6 +9,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 DEPLOY = ROOT / "scripts" / "deploy-codex-runner-host.sh"
+GOVERNOR_SERVICE = ROOT / "deploy" / "systemd" / "jobseek-codex-governor.service"
 LEAK_MARKER = "not-a-real-password-7f93"
 
 _REQUIRE_CONFIG = r"""
@@ -18,6 +19,16 @@ source "$2"
 as_runner() { "$@"; }
 require_runtime_config
 """
+
+
+def test_governor_lock_and_home_write_scope_cover_managed_worktree_reconciliation() -> None:
+    service = GOVERNOR_SERVICE.read_text()
+    deploy = DEPLOY.read_text()
+
+    assert "ExecStart=/usr/bin/flock -n /srv/jobseek-codex/state/codex-runner.lock" in service
+    assert "ReadWritePaths=/srv/jobseek-codex /home/codex-runner" in service
+    assert 'flock -w "${LOCK_TIMEOUT_S}" 9' in deploy
+    assert '"${REPO_DIR}/scripts/codex-worktree-reconcile.py" --apply' in deploy
 
 
 def _validate(tmp_path: Path, content: str) -> subprocess.CompletedProcess[str]:

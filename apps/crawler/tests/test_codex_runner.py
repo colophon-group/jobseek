@@ -151,6 +151,8 @@ def test_default_codex_args_pin_main_agent_model_policy() -> None:
     assert config.max_quarantine_gib == 2
     assert config.max_terminal_worktrees == 3
     assert config.max_terminal_worktree_gib == 2
+    assert config.managed_repo_dir == Path.home() / ".jobseek" / "repo"
+    assert config.managed_worktrees_dir == Path.home() / ".jobseek" / "worktrees"
     assert build_codex_command(config, "do the task") == [
         "codex",
         "exec",
@@ -162,6 +164,19 @@ def test_default_codex_args_pin_main_agent_model_policy() -> None:
         "model_reasoning_effort=high",
         "do the task",
     ]
+
+
+def test_managed_worktree_roots_can_be_overridden(tmp_path: Path) -> None:
+    config = RunnerConfig.from_env(
+        {
+            "JOBSEEK_CODEX_RUNNER_ROOT": str(tmp_path / "runner"),
+            "JOBSEEK_CODEX_MANAGED_REPO_DIR": str(tmp_path / "managed" / "repo"),
+            "JOBSEEK_CODEX_MANAGED_WORKTREES_DIR": str(tmp_path / "managed" / "worktrees"),
+        }
+    )
+
+    assert config.managed_repo_dir == tmp_path / "managed" / "repo"
+    assert config.managed_worktrees_dir == tmp_path / "managed" / "worktrees"
 
 
 def test_terminal_trace_hook_records_verified_cleanup(monkeypatch, tmp_path: Path) -> None:
@@ -946,6 +961,41 @@ def test_terminal_worktree_limit_blocks_new_admission(monkeypatch, tmp_path: Pat
     assert decision.reason == (
         "terminal worktree retention limit reached: 4 directories, 3221225472 bytes"
     )
+
+
+def test_managed_worktree_context_joins_workspace_to_latest_issue_run(tmp_path: Path) -> None:
+    config = _config(tmp_path, dry_run=True)
+    outer = config.worktrees_dir / "company-request-101-run-new"
+    workspace = outer / "apps" / "crawler" / ".workspace" / "acme"
+    managed = config.managed_worktrees_dir / "acme"
+    workspace.mkdir(parents=True)
+    managed.mkdir(parents=True)
+    (workspace / "workspace.yaml").write_text(
+        f"slug: acme\ngit:\n  issue: 101\n  pr: 7\n  branch: add-company/acme\n"
+        f"  worktree: {managed}\n"
+    )
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+    assert governor.ledger.acquire(
+        run_id="run-old",
+        issue=101,
+        active_slot=config.active_slot,
+    )
+    governor.ledger.update("run-old", worktree_path=str(outer))
+    governor.ledger.finish("run-old", "retryable")
+    assert governor.ledger.acquire(
+        run_id="run-new",
+        issue=101,
+        active_slot=config.active_slot,
+    )
+    governor.ledger.update("run-new", worktree_path=str(outer))
+    with governor.ledger._connect() as conn:
+        conn.execute("UPDATE runs SET updated_at = 1 WHERE run_id = 'run-old'")
+        conn.execute("UPDATE runs SET updated_at = 2 WHERE run_id = 'run-new'")
+
+    contexts = governor._managed_worktree_contexts()
+
+    assert contexts[str(managed.resolve())]["run_id"] == "run-new"
+    assert contexts[str(managed.resolve())]["issue"] == 101
 
 
 def test_safe_env_excludes_unneeded_secrets() -> None:

@@ -518,11 +518,17 @@ For each accepted issue:
     and unresolved exits as `retryable` or `interrupted` with exponential
     backoff (`JOBSEEK_CODEX_RETRY_BACKOFF_S`, default 900 seconds, capped by
     `JOBSEEK_CODEX_MAX_RETRY_BACKOFF_S`, default 21600 seconds).
-14. Reconcile every throwaway worktree against the run ledger after a terminal
-    outcome and on every governor/deploy startup. Never touch an active, live,
-    locked, unregistered, or missing-ledger directory. Verify linked PR and
-    explicit issue outcome state, archive dirty diffs/untracked files/workspace
-    metadata, record the decision in SQLite, then remove the registered
+14. Reconcile both throwaway-worktree roots after a terminal outcome and on
+    every governor/deploy startup: the outer runner root at
+    `/srv/jobseek-codex/worktrees` and the `ws` managed-clone root at
+    `/home/codex-runner/.jobseek/worktrees`. Never touch an active, live,
+    locked, unregistered, or uninspectable directory. Outer worktrees require
+    a terminal ledger row plus verified PR/issue state. Managed worktrees must
+    have a cleanly inspected Git state and prove that their head is in main,
+    patch-equivalent to main, or exactly preserved on its remote branch; a
+    local-only head is bundled and verified before removal. Archive dirty
+    diffs, untracked files, workspace metadata, and unique commit objects,
+    record the decision and root in SQLite, then remove only the registered
     worktree. Retryable/interrupted state is archived before cleanup.
 15. Emit a structured disk warning at
     `JOBSEEK_CODEX_MIN_DISK_FREE_GIB + JOBSEEK_CODEX_DISK_ALERT_MARGIN_GIB`.
@@ -585,13 +591,14 @@ lock so the directory set cannot change during classification:
 
 ```bash
 # Read-only plan: state, bytes, dirtiness count, lock/process status, remote
-# proof, and proposed action for every directory.
+# proof, source root, and proposed action for every directory in both roots.
 sudo -u codex-runner flock -w 30 /srv/jobseek-codex/state/codex-runner.lock \
   /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python \
   /srv/jobseek-codex/repo/scripts/codex-worktree-reconcile.py
 
-# Apply the same plan. Dirty/debug material is archived with a manifest and
-# SHA-256 under state/worktree-quarantine before removal.
+# Apply the same plan. Dirty/debug material and any local-only commit bundle
+# are archived with a manifest and SHA-256 under state/worktree-quarantine
+# before removal.
 sudo -u codex-runner flock -w 30 /srv/jobseek-codex/state/codex-runner.lock \
   /srv/jobseek-codex/repo/apps/crawler/.venv/bin/python \
   /srv/jobseek-codex/repo/scripts/codex-worktree-reconcile.py --apply
@@ -599,7 +606,7 @@ sudo -u codex-runner flock -w 30 /srv/jobseek-codex/state/codex-runner.lock \
 
 Every apply attempt writes append-only `worktree_reconciliation_events` rows.
 Verification, archive, lock, registration, status, and removal failures retain
-the directory and count toward the admission ceiling.
+the directory and count toward one admission ceiling shared by both roots.
 
 ### Phase 5 - rollout
 

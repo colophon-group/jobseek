@@ -74,6 +74,9 @@ class WorktreeItem:
     archive_sha256: str | None = None
     reclaimed_bytes: int = 0
     error: str | None = None
+    source: str = "runner"
+    head_oid: str | None = None
+    unique_commits: bool = False
 
 
 @dataclass
@@ -99,6 +102,37 @@ class WorktreeReport:
         if not include_items:
             result.pop("items", None)
         return result
+
+
+def combine_worktree_reports(
+    reports: list[WorktreeReport],
+    *,
+    max_terminal_directories: int,
+    max_terminal_bytes: int,
+) -> WorktreeReport:
+    """Combine independently reconciled roots under one retention budget."""
+    items = [item for report in reports for item in report.items]
+    remaining = [item for item in items if item.classification not in {"removed", "active"}]
+    remaining_bytes = sum(item.bytes for item in remaining)
+    return WorktreeReport(
+        apply=any(report.apply for report in reports),
+        directories=sum(report.directories for report in reports),
+        bytes_before=sum(report.bytes_before for report in reports),
+        removed=sum(report.removed for report in reports),
+        reclaimed_bytes=sum(report.reclaimed_bytes for report in reports),
+        archived=sum(report.archived for report in reports),
+        active=sum(report.active for report in reports),
+        retained=sum(report.retained for report in reports),
+        removal_failures=sum(report.removal_failures for report in reports),
+        remaining_terminal_directories=len(remaining),
+        remaining_terminal_bytes=remaining_bytes,
+        max_terminal_directories=max_terminal_directories,
+        max_terminal_bytes=max_terminal_bytes,
+        within_bounds=(
+            len(remaining) <= max_terminal_directories and remaining_bytes <= max_terminal_bytes
+        ),
+        items=items,
+    )
 
 
 class GitHubRemoteVerifier:
@@ -459,6 +493,372 @@ def reconcile_worktrees(
     )
 
 
+def reconcile_managed_worktrees(
+    *,
+    repo_dir: Path,
+    worktrees_dir: Path,
+    archive_dir: Path,
+    ledger: Ledger,
+    pid_checker: Callable[[int, str], bool],
+    live_path_checker: Callable[[Path], bool],
+    max_terminal_directories: int,
+    max_terminal_bytes: int,
+    apply: bool,
+    context_by_path: dict[str, dict[str, Any]] | None = None,
+    remove_worktree: Callable[[Path], None] | None = None,
+) -> WorktreeReport:
+    """Reconcile worktrees registered to the separate ``ws`` managed clone.
+
+    Managed worktrees are not direct runner-ledger paths.  They are safe to
+    retire only when they are registered, unlocked, not live or associated
+    with an active run, inspectable, and either preserved remotely/in main or
+    archived with their unique commit objects first.
+    """
+    contexts = context_by_path or {}
+    worktrees_dir.mkdir(parents=True, exist_ok=True)
+    paths = [path for path in sorted(worktrees_dir.iterdir()) if path.is_dir()]
+    if not paths:
+        return _empty_report(
+            apply=apply,
+            max_terminal_directories=max_terminal_directories,
+            max_terminal_bytes=max_terminal_bytes,
+        )
+
+    registration_error = None
+    try:
+        registered = _registered_worktrees(repo_dir)
+    except (OSError, subprocess.CalledProcessError) as exc:
+        registered = {}
+        registration_error = f"managed repository registration lookup failed: {exc}"
+    runs = ledger.worktree_runs()
+    active_runs = [run for run in runs if _run_is_active(run, pid_checker=pid_checker)]
+    active_since = min(
+        (
+            int(run.get("started_at") or run.get("created_at") or 0)
+            for run in active_runs
+            if int(run.get("started_at") or run.get("created_at") or 0) > 0
+        ),
+        default=None,
+    )
+    remote_error = registration_error
+    remote_heads: dict[str, str] = {}
+    if remote_error is None:
+        fetch = subprocess.run(
+            ["git", "fetch", "--prune", "origin", "main"],
+            cwd=repo_dir,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if fetch.returncode != 0:
+            remote_error = (fetch.stderr or fetch.stdout or "managed clone fetch failed").strip()
+        else:
+            heads = subprocess.run(
+                ["git", "ls-remote", "--heads", "origin"],
+                cwd=repo_dir,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if heads.returncode != 0:
+                remote_error = (
+                    heads.stderr or heads.stdout or "managed branch inventory failed"
+                ).strip()
+            else:
+                remote_heads = _parse_remote_heads(heads.stdout)
+
+    items: list[WorktreeItem] = []
+    bytes_before = 0
+    removed = 0
+    reclaimed = 0
+    archived = 0
+    failures = 0
+    remover = remove_worktree or (lambda path: _remove_registered_worktree(repo_dir, path))
+    now = int(time.time())
+
+    for path in paths:
+        resolved = path.resolve()
+        resolved_key = str(resolved)
+        size = _directory_bytes(path)
+        bytes_before += size
+        registration = registered.get(resolved_key, {})
+        context = contexts.get(resolved_key, {})
+        dirty_entries, status_error = _dirty_entry_count(path)
+        run_id = str(context.get("run_id")) if context.get("run_id") else None
+        pid = context.get("pid")
+        context_pid_live = bool(run_id and isinstance(pid, int) and pid_checker(pid, run_id))
+        active_window = False
+        if active_since is not None:
+            try:
+                active_window = path.stat().st_ctime >= active_since
+            except OSError as exc:
+                status_error = status_error or f"could not stat managed worktree: {exc}"
+        path_live = live_path_checker(resolved)
+        state = str(context.get("state") or "managed")
+        branch = registration.get("branch") or context.get("branch")
+        item = WorktreeItem(
+            path=str(path),
+            name=path.name,
+            bytes=size,
+            run_id=run_id,
+            issue=context.get("issue") if isinstance(context.get("issue"), int) else None,
+            state=state,
+            export_status=(
+                str(context.get("export_status"))
+                if isinstance(context.get("export_status"), str)
+                else None
+            ),
+            pr_number=(
+                context.get("pr_number") if isinstance(context.get("pr_number"), int) else None
+            ),
+            branch=str(branch) if isinstance(branch, str) else None,
+            registered=resolved_key in registered,
+            locked=bool(registration.get("locked")),
+            pid_live=context_pid_live or path_live or active_window,
+            dirty_entries=dirty_entries,
+            source="managed",
+            head_oid=(
+                str(registration.get("head")) if isinstance(registration.get("head"), str) else None
+            ),
+        )
+
+        if item.pid_live or state in ACTIVE_STATES:
+            item.classification = "active"
+            if active_window and not (context_pid_live or path_live or state in ACTIVE_STATES):
+                item.reason = "managed worktree was created during an active runner window"
+            else:
+                item.reason = "active runner context or live process protects managed worktree"
+        elif item.locked:
+            item.classification = "locked"
+            item.reason = "git worktree is locked"
+        elif not item.registered:
+            item.classification = "unregistered"
+            item.reason = "directory is not registered in the managed repository"
+        elif status_error:
+            item.classification = "status_failed"
+            item.reason = status_error
+        elif remote_error:
+            item.classification = "remote_unverified"
+            item.reason = f"managed clone remote refresh failed: {remote_error}"
+        else:
+            proof = _managed_head_proof(
+                repo_dir=repo_dir,
+                item=item,
+                remote_heads=remote_heads,
+            )
+            item.remote_proof = asdict(proof)
+            if not proof.ok:
+                item.classification = "remote_unverified"
+                item.reason = proof.error or "managed worktree history could not be verified"
+            else:
+                item.unique_commits = proof.kind == "local_unique_commits"
+                item.classification = "terminal_candidate"
+                item.reason = "managed worktree is inactive and its local state is preservable"
+
+        if item.classification == "terminal_candidate":
+            workspace_artifacts = path / "apps" / "crawler" / ".workspace"
+            must_archive = (
+                item.dirty_entries > 0 or item.unique_commits or workspace_artifacts.is_dir()
+            )
+            item.planned_action = "archive_remove" if must_archive else "remove"
+            if apply:
+                _record_event(ledger, item, action="removal_started", observed_at=now)
+                try:
+                    if must_archive:
+                        archive_id = _managed_archive_id(item)
+                        archive_path, archive_sha = _archive_worktree(
+                            path,
+                            archive_dir=archive_dir,
+                            run_id=archive_id,
+                            item=item,
+                            include_unique_commits=item.unique_commits,
+                        )
+                        item.archive_path = str(archive_path)
+                        item.archive_sha256 = archive_sha
+                        archived += 1
+                    remover(path)
+                    if path.exists():
+                        raise RuntimeError(
+                            "worktree removal returned but the directory still exists"
+                        )
+                    item.classification = "removed"
+                    item.reason = "managed worktree state was verified or durably archived"
+                    item.reclaimed_bytes = size
+                    removed += 1
+                    reclaimed += size
+                    _record_event(
+                        ledger,
+                        item,
+                        action="removed",
+                        observed_at=int(time.time()),
+                    )
+                except Exception as exc:  # noqa: BLE001 - removal must fail closed
+                    item.classification = "removal_failed"
+                    item.reason = "managed worktree cleanup failed"
+                    item.error = str(exc)
+                    item.planned_action = "retain"
+                    failures += 1
+                    _record_event(
+                        ledger,
+                        item,
+                        action="removal_failed",
+                        observed_at=int(time.time()),
+                    )
+        elif apply:
+            _record_event(ledger, item, action="retained", observed_at=now)
+        items.append(item)
+
+    remaining = [item for item in items if item.classification not in {"removed", "active"}]
+    remaining_bytes = sum(item.bytes for item in remaining)
+    return WorktreeReport(
+        apply=apply,
+        directories=len(items),
+        bytes_before=bytes_before,
+        removed=removed,
+        reclaimed_bytes=reclaimed,
+        archived=archived,
+        active=sum(item.classification == "active" for item in items),
+        retained=sum(item.classification != "removed" for item in items),
+        removal_failures=failures,
+        remaining_terminal_directories=len(remaining),
+        remaining_terminal_bytes=remaining_bytes,
+        max_terminal_directories=max_terminal_directories,
+        max_terminal_bytes=max_terminal_bytes,
+        within_bounds=(
+            len(remaining) <= max_terminal_directories and remaining_bytes <= max_terminal_bytes
+        ),
+        items=items,
+    )
+
+
+def _empty_report(
+    *,
+    apply: bool,
+    max_terminal_directories: int,
+    max_terminal_bytes: int,
+) -> WorktreeReport:
+    return WorktreeReport(
+        apply=apply,
+        directories=0,
+        bytes_before=0,
+        removed=0,
+        reclaimed_bytes=0,
+        archived=0,
+        active=0,
+        retained=0,
+        removal_failures=0,
+        remaining_terminal_directories=0,
+        remaining_terminal_bytes=0,
+        max_terminal_directories=max_terminal_directories,
+        max_terminal_bytes=max_terminal_bytes,
+        within_bounds=True,
+        items=[],
+    )
+
+
+def _run_is_active(
+    run: dict[str, Any],
+    *,
+    pid_checker: Callable[[int, str], bool],
+) -> bool:
+    if str(run.get("state") or "") in ACTIVE_STATES:
+        return True
+    pid = run.get("pid")
+    run_id = run.get("run_id")
+    return bool(isinstance(pid, int) and isinstance(run_id, str) and pid_checker(pid, run_id))
+
+
+def _managed_head_proof(
+    *,
+    repo_dir: Path,
+    item: WorktreeItem,
+    remote_heads: dict[str, str],
+) -> RemoteProof:
+    head = item.head_oid
+    if not head:
+        return RemoteProof(
+            ok=False,
+            kind="missing_head",
+            error="registered managed worktree has no HEAD object",
+        )
+    main_result = subprocess.run(
+        ["git", "rev-parse", "origin/main"],
+        cwd=repo_dir,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if main_result.returncode != 0:
+        return RemoteProof(
+            ok=False,
+            kind="missing_main",
+            error=(main_result.stderr or "origin/main is unavailable").strip(),
+        )
+    main_oid = main_result.stdout.strip()
+    detail = {"head_oid": head, "main_oid": main_oid, "branch": item.branch}
+
+    ancestor = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", head, main_oid],
+        cwd=repo_dir,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if ancestor.returncode == 0:
+        return RemoteProof(ok=True, kind="head_ancestor_main", detail=detail)
+    if ancestor.returncode not in {0, 1}:
+        return RemoteProof(
+            ok=False,
+            kind="ancestor_check_failed",
+            detail=detail,
+            error=(ancestor.stderr or "could not compare managed HEAD to main").strip(),
+        )
+
+    if item.branch:
+        remote_oid = remote_heads.get(item.branch)
+        detail["remote_oid"] = remote_oid
+        if remote_oid == head:
+            return RemoteProof(ok=True, kind="exact_remote_branch", detail=detail)
+
+    cherry = subprocess.run(
+        ["git", "cherry", main_oid, head],
+        cwd=repo_dir,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if cherry.returncode != 0:
+        return RemoteProof(
+            ok=False,
+            kind="patch_comparison_failed",
+            detail=detail,
+            error=(cherry.stderr or "could not compare managed commits to main").strip(),
+        )
+    commits = [line for line in cherry.stdout.splitlines() if line.strip()]
+    if commits and all(line.startswith("-") for line in commits):
+        detail["patch_equivalent_commits"] = len(commits)
+        return RemoteProof(ok=True, kind="patch_equivalent_main", detail=detail)
+    detail["unique_commits"] = sum(line.startswith("+") for line in commits)
+    return RemoteProof(ok=True, kind="local_unique_commits", detail=detail)
+
+
+def _parse_remote_heads(output: str) -> dict[str, str]:
+    heads: dict[str, str] = {}
+    prefix = "refs/heads/"
+    for line in output.splitlines():
+        parts = line.split()
+        if len(parts) != 2 or not parts[1].startswith(prefix):
+            continue
+        heads[parts[1].removeprefix(prefix)] = parts[0]
+    return heads
+
+
+def _managed_archive_id(item: WorktreeItem) -> str:
+    head = (item.head_oid or "no-head")[:12]
+    path_hash = hashlib.sha256(item.path.encode()).hexdigest()[:12]
+    return f"managed-{item.name}-{head}-{path_hash}"
+
+
 def _classify(
     item: WorktreeItem,
     *,
@@ -506,7 +906,11 @@ def _registered_worktrees(repo_dir: Path) -> dict[str, dict[str, Any]]:
     for line in result.stdout.splitlines():
         if line.startswith("worktree "):
             current = str(Path(line.removeprefix("worktree ")).resolve())
-            registered[current] = {"locked": False}
+            registered[current] = {"locked": False, "branch": None, "head": None}
+        elif line.startswith("HEAD ") and current:
+            registered[current]["head"] = line.removeprefix("HEAD ")
+        elif line.startswith("branch refs/heads/") and current:
+            registered[current]["branch"] = line.removeprefix("branch refs/heads/")
         elif line.startswith("locked") and current:
             registered[current]["locked"] = True
     return registered
@@ -565,12 +969,16 @@ def _archive_worktree(
     archive_dir: Path,
     run_id: str,
     item: WorktreeItem,
+    include_unique_commits: bool = False,
 ) -> tuple[Path, str]:
     archive_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(archive_dir, 0o700)
     safe_run_id = "".join(char if char.isalnum() or char in "-_." else "_" for char in run_id)
     destination = archive_dir / f"{safe_run_id}.tar.gz"
+    if destination.exists():
+        destination = archive_dir / f"{safe_run_id}.{time.time_ns()}.tar.gz"
     temporary = archive_dir / f".{safe_run_id}.{os.getpid()}.tmp"
+    bundle_path = archive_dir / f".{safe_run_id}.{os.getpid()}.bundle"
 
     patch = subprocess.run(
         ["git", "diff", "--binary", "HEAD"],
@@ -597,10 +1005,51 @@ def _archive_worktree(
                 candidates[source] = f"workspace/{relative.as_posix()}"
 
     inventory = []
+    bundle_manifest: dict[str, Any] | None = None
     try:
+        if include_unique_commits:
+            bundle = subprocess.run(
+                ["git", "bundle", "create", str(bundle_path), "HEAD", "^origin/main"],
+                cwd=worktree,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if bundle.returncode != 0:
+                raise RuntimeError(
+                    (
+                        bundle.stderr or bundle.stdout or "unique commit bundle creation failed"
+                    ).strip()
+                )
+            verification = subprocess.run(
+                ["git", "bundle", "verify", str(bundle_path)],
+                cwd=worktree,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            if verification.returncode != 0:
+                raise RuntimeError(
+                    (
+                        verification.stderr
+                        or verification.stdout
+                        or "unique commit bundle verification failed"
+                    ).strip()
+                )
+            os.chmod(bundle_path, 0o600)
+            bundle_sha, bundle_bytes = _hash_file(bundle_path)
+            bundle_manifest = {
+                "archive_name": "unique-commits.bundle",
+                "bytes": bundle_bytes,
+                "sha256": bundle_sha,
+                "head_oid": item.head_oid,
+                "base_ref": "origin/main",
+            }
         with tarfile.open(temporary, "w:gz") as archive:
             if patch:
                 _tar_add_bytes(archive, "tracked.patch", patch)
+            if bundle_manifest is not None:
+                archive.add(bundle_path, arcname="unique-commits.bundle", recursive=False)
             for source, archive_name in sorted(candidates.items(), key=lambda pair: pair[1]):
                 if source.is_symlink():
                     target = os.readlink(source)
@@ -634,8 +1083,12 @@ def _archive_worktree(
                 "issue": item.issue,
                 "state": item.state,
                 "worktree_path": item.path,
+                "source": item.source,
                 "worktree_bytes": item.bytes,
                 "dirty_entries": item.dirty_entries,
+                "head_oid": item.head_oid,
+                "unique_commits": item.unique_commits,
+                "unique_commit_bundle": bundle_manifest,
                 "remote_proof": item.remote_proof,
                 "tracked_patch_bytes": len(patch),
                 "files": inventory,
@@ -649,6 +1102,7 @@ def _archive_worktree(
         os.replace(temporary, destination)
     finally:
         temporary.unlink(missing_ok=True)
+        bundle_path.unlink(missing_ok=True)
     digest, _ = _hash_file(destination)
     return destination, digest
 
@@ -680,6 +1134,7 @@ def _record_event(
 ) -> None:
     ledger.record_worktree_reconciliation(
         worktree_path=item.path,
+        source=item.source,
         run_id=item.run_id,
         issue=item.issue,
         state=item.state,
