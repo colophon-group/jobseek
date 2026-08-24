@@ -65,7 +65,9 @@ def _reconcile(
     apply: bool,
     verifier=None,
     remove_worktree=None,
+    pre_remove=None,
     max_directories: int = 3,
+    max_bytes: int = 10 * 1024**3,
 ):
     return reconcile_worktrees(
         root=tmp_path / "runner",
@@ -76,8 +78,9 @@ def _reconcile(
         remote_verifier=verifier or (lambda run: RemoteProof(ok=True, kind="test")),
         pid_checker=lambda pid, run_id: False,
         max_terminal_directories=max_directories,
-        max_terminal_bytes=10 * 1024**3,
+        max_terminal_bytes=max_bytes,
         apply=apply,
+        pre_remove=pre_remove,
         remove_worktree=remove_worktree,
     )
 
@@ -137,6 +140,7 @@ def _reconcile_managed(
     apply: bool,
     live_path_checker=None,
     max_directories: int = 3,
+    max_bytes: int = 10 * 1024**3,
 ):
     return reconcile_managed_worktrees(
         repo_dir=managed,
@@ -146,7 +150,7 @@ def _reconcile_managed(
         pid_checker=lambda pid, run_id: False,
         live_path_checker=live_path_checker or (lambda path: False),
         max_terminal_directories=max_directories,
-        max_terminal_bytes=10 * 1024**3,
+        max_terminal_bytes=max_bytes,
         apply=apply,
     )
 
@@ -233,6 +237,54 @@ def test_missing_ledger_and_locked_worktrees_fail_closed_and_count_toward_bounds
     assert not report.within_bounds
     classifications = {item.name: item.classification for item in report.items}
     assert classifications == {"locked": "locked", "missing": "missing_ledger"}
+
+
+def test_runner_root_symlink_to_registered_external_worktree_is_rejected(
+    tmp_path: Path,
+) -> None:
+    repo, original = _repo_with_worktree(tmp_path)
+    _run("git", "worktree", "remove", "--force", str(original), cwd=repo)
+    outside = tmp_path / "outside-runner-worktree"
+    _run("git", "worktree", "add", "--detach", str(outside), "HEAD", cwd=repo)
+    link = tmp_path / "runner" / "worktrees" / "linked"
+    link.symlink_to(outside, target_is_directory=True)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, outside)
+
+    report = _reconcile(tmp_path, repo, ledger, apply=True, max_directories=0)
+
+    assert outside.exists()
+    assert link.is_symlink()
+    assert report.removed == 0
+    assert not report.within_bounds
+    assert report.items[0].classification == "unsafe_path"
+    assert "symlink" in report.items[0].reason
+
+
+def test_runner_target_is_revalidated_after_pre_remove_hook(tmp_path: Path) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree)
+    outside = tmp_path / "swapped-runner-worktree"
+
+    def swap_for_symlink(item) -> None:
+        worktree.rename(outside)
+        worktree.symlink_to(outside, target_is_directory=True)
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        pre_remove=swap_for_symlink,
+    )
+
+    assert outside.exists()
+    assert worktree.is_symlink()
+    assert report.removed == 0
+    assert report.removal_failures == 1
+    assert report.items[0].classification == "removal_failed"
+    assert "symlink" in (report.items[0].error or "")
 
 
 def test_remote_verification_failure_retains_terminal_worktree(tmp_path: Path) -> None:
@@ -355,6 +407,43 @@ def test_managed_live_and_locked_worktrees_fail_closed(tmp_path: Path) -> None:
     }
 
 
+def test_managed_root_symlink_to_registered_external_worktree_is_rejected(
+    tmp_path: Path,
+) -> None:
+    managed, worktrees, original = _managed_repo_with_worktree(tmp_path)
+    _run("git", "worktree", "remove", "--force", str(original), cwd=managed)
+    outside = tmp_path / "outside-managed-worktree"
+    _run(
+        "git",
+        "worktree",
+        "add",
+        "-b",
+        "fix-crawler/outside-managed",
+        str(outside),
+        "origin/main",
+        cwd=managed,
+    )
+    link = worktrees / "linked"
+    link.symlink_to(outside, target_is_directory=True)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+
+    report = _reconcile_managed(
+        tmp_path,
+        managed,
+        worktrees,
+        ledger,
+        apply=True,
+        max_directories=0,
+    )
+
+    assert outside.exists()
+    assert link.is_symlink()
+    assert report.removed == 0
+    assert not report.within_bounds
+    assert report.items[0].classification == "unsafe_path"
+    assert "symlink" in report.items[0].reason
+
+
 def test_managed_unique_commit_is_bundled_before_removal(tmp_path: Path) -> None:
     managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
     (worktree / "tracked.txt").write_text("local unique commit\n")
@@ -397,7 +486,7 @@ def test_managed_exact_remote_branch_is_proof_without_archive(tmp_path: Path) ->
     assert item.planned_action == "remove"
 
 
-def test_managed_patch_equivalent_head_is_proof_without_archive(tmp_path: Path) -> None:
+def test_managed_tree_equal_head_is_proof_without_archive(tmp_path: Path) -> None:
     managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
     (worktree / "tracked.txt").write_text("equivalent change\n")
     _run("git", "add", "tracked.txt", cwd=worktree)
@@ -412,9 +501,93 @@ def test_managed_patch_equivalent_head_is_proof_without_archive(tmp_path: Path) 
 
     item = report.items[0]
     assert item.remote_proof is not None
-    assert item.remote_proof["kind"] == "patch_equivalent_main"
+    assert item.remote_proof["kind"] == "tree_equal_main"
     assert not item.unique_commits
     assert item.planned_action == "remove"
+
+
+def test_patch_id_whitespace_equivalence_still_requires_commit_bundle(tmp_path: Path) -> None:
+    managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
+    (worktree / "tracked.txt").write_text("alpha beta\n")
+    _run("git", "add", "tracked.txt", cwd=worktree)
+    _run("git", "commit", "-m", "local whitespace", cwd=worktree)
+    (managed / "tracked.txt").write_text("alpha  beta\n")
+    _run("git", "add", "tracked.txt", cwd=managed)
+    _run("git", "commit", "-m", "landed whitespace", cwd=managed)
+    _run("git", "push", "origin", "main", cwd=managed)
+    _run("git", "fetch", "origin", "main", cwd=managed)
+    old_patch_proof = subprocess.run(
+        ["git", "cherry", "origin/main", "HEAD"],
+        cwd=worktree,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.splitlines()
+    assert old_patch_proof and all(line.startswith("-") for line in old_patch_proof)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+
+    report = _reconcile_managed(tmp_path, managed, worktrees, ledger, apply=True)
+
+    item = report.items[0]
+    assert item.remote_proof is not None
+    assert item.remote_proof["kind"] == "local_unique_commits"
+    assert item.unique_commits
+    assert item.archive_path
+
+
+def test_merge_resolution_tree_omitted_by_git_cherry_is_bundled(tmp_path: Path) -> None:
+    managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
+    (worktree / "tracked.txt").write_text("same patch\n")
+    _run("git", "add", "tracked.txt", cwd=worktree)
+    _run("git", "commit", "-m", "local shared change", cwd=worktree)
+    _run("git", "checkout", "-b", "test-side", "origin/main", cwd=worktree)
+    (worktree / "side.txt").write_text("same side patch\n")
+    _run("git", "add", "side.txt", cwd=worktree)
+    _run("git", "commit", "-m", "local side change", cwd=worktree)
+    _run("git", "checkout", "fix-crawler/managed-worktree", cwd=worktree)
+    _run("git", "merge", "--no-commit", "test-side", cwd=worktree)
+    (worktree / "resolution-only.txt").write_text("unique merge resolution\n")
+    _run("git", "add", "resolution-only.txt", cwd=worktree)
+    _run("git", "commit", "-m", "merge with unique resolution", cwd=worktree)
+    (managed / "tracked.txt").write_text("same patch\n")
+    _run("git", "add", "tracked.txt", cwd=managed)
+    _run("git", "commit", "-m", "landed shared change", cwd=managed)
+    (managed / "side.txt").write_text("same side patch\n")
+    _run("git", "add", "side.txt", cwd=managed)
+    _run("git", "commit", "-m", "landed side change", cwd=managed)
+    _run("git", "push", "origin", "main", cwd=managed)
+    _run("git", "fetch", "origin", "main", cwd=managed)
+    head_with_parents = subprocess.run(
+        ["git", "rev-list", "--parents", "-n", "1", "HEAD"],
+        cwd=worktree,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.split()
+    assert len(head_with_parents) == 3
+    old_patch_proof = subprocess.run(
+        ["git", "cherry", "origin/main", "HEAD"],
+        cwd=worktree,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.splitlines()
+    assert old_patch_proof and all(line.startswith("-") for line in old_patch_proof)
+    tree_diff = subprocess.run(
+        ["git", "diff", "--quiet", "HEAD", "origin/main", "--"],
+        cwd=worktree,
+        check=False,
+    )
+    assert tree_diff.returncode == 1
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+
+    report = _reconcile_managed(tmp_path, managed, worktrees, ledger, apply=True)
+
+    item = report.items[0]
+    assert item.remote_proof is not None
+    assert item.remote_proof["kind"] == "local_unique_commits"
+    assert item.unique_commits
+    assert item.archive_path
 
 
 def test_managed_broken_worktree_is_retained_and_counts_toward_bounds(tmp_path: Path) -> None:
@@ -466,6 +639,56 @@ def test_combined_report_enforces_one_bound_across_both_roots(tmp_path: Path) ->
 
     assert runner_worktree.exists()
     assert report.remaining_terminal_directories == 2
+    assert not report.within_bounds
+
+
+def test_existing_worktree_quarantine_bytes_block_even_with_no_worktrees(
+    tmp_path: Path,
+) -> None:
+    worktrees = tmp_path / "home" / ".jobseek" / "worktrees"
+    worktrees.mkdir(parents=True)
+    quarantine = tmp_path / "runner" / "state" / "worktree-quarantine"
+    quarantine.mkdir(parents=True)
+    (quarantine / "evidence.tar.gz").write_bytes(b"e" * 128)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+
+    report = _reconcile_managed(
+        tmp_path,
+        tmp_path / "home" / ".jobseek" / "repo",
+        worktrees,
+        ledger,
+        apply=False,
+        max_bytes=64,
+    )
+
+    assert report.directories == 0
+    assert report.retained_worktree_bytes == 0
+    assert report.quarantine_bytes >= 128
+    assert report.remaining_terminal_bytes == report.quarantine_bytes
+    assert not report.within_bounds
+
+
+def test_new_unique_commit_archive_is_charged_to_byte_ceiling(tmp_path: Path) -> None:
+    managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
+    (worktree / "tracked.txt").write_text("unique retained evidence\n")
+    _run("git", "add", "tracked.txt", cwd=worktree)
+    _run("git", "commit", "-m", "unique evidence", cwd=worktree)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+
+    report = _reconcile_managed(
+        tmp_path,
+        managed,
+        worktrees,
+        ledger,
+        apply=True,
+        max_bytes=1,
+    )
+
+    assert report.removed == 1
+    assert report.remaining_terminal_directories == 0
+    assert report.retained_worktree_bytes == 0
+    assert report.quarantine_bytes > 1
+    assert report.remaining_terminal_bytes == report.quarantine_bytes
     assert not report.within_bounds
 
 

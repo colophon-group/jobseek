@@ -13,6 +13,7 @@ import hashlib
 import io
 import json
 import os
+import stat
 import subprocess
 import tarfile
 import time
@@ -96,6 +97,8 @@ class WorktreeReport:
     max_terminal_bytes: int
     within_bounds: bool
     items: list[WorktreeItem]
+    retained_worktree_bytes: int = 0
+    quarantine_bytes: int = 0
 
     def to_dict(self, *, include_items: bool = True) -> dict[str, Any]:
         result = asdict(self)
@@ -109,11 +112,18 @@ def combine_worktree_reports(
     *,
     max_terminal_directories: int,
     max_terminal_bytes: int,
+    quarantine_dir: Path | None = None,
 ) -> WorktreeReport:
     """Combine independently reconciled roots under one retention budget."""
     items = [item for report in reports for item in report.items]
     remaining = [item for item in items if item.classification not in {"removed", "active"}]
-    remaining_bytes = sum(item.bytes for item in remaining)
+    retained_worktree_bytes = sum(item.bytes for item in remaining)
+    quarantine_bytes = (
+        _directory_bytes(quarantine_dir)
+        if quarantine_dir is not None
+        else max((report.quarantine_bytes for report in reports), default=0)
+    )
+    remaining_bytes = retained_worktree_bytes + quarantine_bytes
     return WorktreeReport(
         apply=any(report.apply for report in reports),
         directories=sum(report.directories for report in reports),
@@ -132,6 +142,8 @@ def combine_worktree_reports(
             len(remaining) <= max_terminal_directories and remaining_bytes <= max_terminal_bytes
         ),
         items=items,
+        retained_worktree_bytes=retained_worktree_bytes,
+        quarantine_bytes=quarantine_bytes,
     )
 
 
@@ -301,6 +313,65 @@ class GitHubRemoteVerifier:
         )
 
 
+def _prepare_worktree_root(worktrees_dir: Path) -> Path:
+    worktrees_dir.mkdir(parents=True, exist_ok=True)
+    if worktrees_dir.is_symlink():
+        raise RuntimeError(f"worktree root must not be a symlink: {worktrees_dir}")
+    resolved = worktrees_dir.resolve(strict=True)
+    if not resolved.is_dir():
+        raise RuntimeError(f"worktree root is not a directory: {worktrees_dir}")
+    return resolved
+
+
+def _worktree_entries(worktrees_dir: Path) -> list[Path]:
+    return sorted(worktrees_dir.iterdir())
+
+
+def _absolute_path(path: Path) -> Path:
+    return Path(os.path.abspath(path))
+
+
+def _inspect_worktree_path(path: Path, *, root_resolved: Path) -> tuple[Path | None, str | None]:
+    try:
+        mode = path.lstat().st_mode
+    except OSError as exc:
+        return None, f"could not inspect worktree path: {exc}"
+    if stat.S_ISLNK(mode):
+        return None, "worktree root entry is a symlink"
+    if not stat.S_ISDIR(mode):
+        return None, "worktree root entry is not a directory"
+    try:
+        resolved = path.resolve(strict=True)
+    except OSError as exc:
+        return None, f"could not resolve worktree path: {exc}"
+    if resolved.parent != root_resolved:
+        return None, "resolved worktree path escapes its configured root"
+    return resolved, None
+
+
+def _validate_removal_target(
+    *,
+    repo_dir: Path,
+    worktrees_dir: Path,
+    path: Path,
+    expected_resolved: Path,
+    expected_head: str | None,
+) -> None:
+    root_resolved = _prepare_worktree_root(worktrees_dir)
+    resolved, path_error = _inspect_worktree_path(path, root_resolved=root_resolved)
+    if path_error or resolved is None:
+        raise RuntimeError(path_error or "worktree path validation failed")
+    if resolved != expected_resolved:
+        raise RuntimeError("worktree path changed after classification")
+    registration = _registered_worktrees(repo_dir).get(str(resolved))
+    if registration is None:
+        raise RuntimeError("worktree is no longer registered in the expected repository")
+    if registration.get("locked"):
+        raise RuntimeError("worktree became locked after classification")
+    if expected_head is not None and registration.get("head") != expected_head:
+        raise RuntimeError("worktree HEAD changed after classification")
+
+
 def reconcile_worktrees(
     *,
     root: Path,
@@ -319,28 +390,17 @@ def reconcile_worktrees(
 ) -> WorktreeReport:
     """Classify and optionally retire terminal runner worktrees."""
     del root  # Kept explicit in the API because the caller's policy is root-scoped.
-    worktrees_dir.mkdir(parents=True, exist_ok=True)
-    paths = [path for path in sorted(worktrees_dir.iterdir()) if path.is_dir()]
-    selected = {path.resolve() for path in only_paths} if only_paths else None
+    root_resolved = _prepare_worktree_root(worktrees_dir)
+    paths = _worktree_entries(worktrees_dir)
+    selected = {_absolute_path(path) for path in only_paths} if only_paths else None
     if selected is not None:
-        paths = [path for path in paths if path.resolve() in selected]
+        paths = [path for path in paths if _absolute_path(path) in selected]
     if not paths:
-        return WorktreeReport(
+        return _empty_report(
             apply=apply,
-            directories=0,
-            bytes_before=0,
-            removed=0,
-            reclaimed_bytes=0,
-            archived=0,
-            active=0,
-            retained=0,
-            removal_failures=0,
-            remaining_terminal_directories=0,
-            remaining_terminal_bytes=0,
             max_terminal_directories=max_terminal_directories,
             max_terminal_bytes=max_terminal_bytes,
-            within_bounds=True,
-            items=[],
+            quarantine_bytes=_directory_bytes(archive_dir),
         )
 
     registered = _registered_worktrees(repo_dir)
@@ -360,12 +420,16 @@ def reconcile_worktrees(
     now = int(time.time())
 
     for path in paths:
-        resolved = path.resolve()
+        resolved, path_error = _inspect_worktree_path(path, root_resolved=root_resolved)
+        lookup_path = resolved or _absolute_path(path)
         size = _directory_bytes(path)
         bytes_before += size
-        run = run_by_path.get(str(resolved))
-        registration = registered.get(str(resolved), {})
-        dirty_entries, status_error = _dirty_entry_count(path)
+        run = run_by_path.get(str(lookup_path))
+        registration = registered.get(str(lookup_path), {}) if resolved is not None else {}
+        if path_error:
+            dirty_entries, status_error = -1, None
+        else:
+            dirty_entries, status_error = _dirty_entry_count(path)
         state = str(run.get("state")) if run else "missing-ledger"
         pid = run.get("pid") if run else None
         run_id = str(run.get("run_id")) if run and run.get("run_id") else None
@@ -386,13 +450,16 @@ def reconcile_worktrees(
                 run.get("pr_number") if run and isinstance(run.get("pr_number"), int) else None
             ),
             branch=(str(run.get("branch")) if run and isinstance(run.get("branch"), str) else None),
-            registered=str(resolved) in registered,
+            registered=resolved is not None and str(resolved) in registered,
             locked=bool(registration.get("locked")),
             pid_live=pid_live,
             dirty_entries=dirty_entries,
+            head_oid=(
+                str(registration.get("head")) if isinstance(registration.get("head"), str) else None
+            ),
         )
 
-        _classify(item, run=run, status_error=status_error)
+        _classify(item, run=run, path_error=path_error, status_error=status_error)
         if item.classification == "terminal_candidate" and run is not None:
             proof = remote_verifier(run)
             item.remote_proof = asdict(proof)
@@ -417,6 +484,15 @@ def reconcile_worktrees(
                     observed_at=now,
                 )
                 try:
+                    if resolved is None:
+                        raise RuntimeError("worktree path was not safely resolved")
+                    _validate_removal_target(
+                        repo_dir=repo_dir,
+                        worktrees_dir=worktrees_dir,
+                        path=path,
+                        expected_resolved=resolved,
+                        expected_head=item.head_oid,
+                    )
                     if must_archive:
                         archive_path, archive_sha = _archive_worktree(
                             path,
@@ -429,6 +505,13 @@ def reconcile_worktrees(
                         archived += 1
                     if pre_remove is not None:
                         pre_remove(item)
+                    _validate_removal_target(
+                        repo_dir=repo_dir,
+                        worktrees_dir=worktrees_dir,
+                        path=path,
+                        expected_resolved=resolved,
+                        expected_head=item.head_oid,
+                    )
                     remover(path)
                     if path.exists():
                         raise RuntimeError(
@@ -469,7 +552,9 @@ def reconcile_worktrees(
     remaining_terminal = [
         item for item in items if item.classification not in {"removed", "active"}
     ]
-    remaining_terminal_bytes = sum(item.bytes for item in remaining_terminal)
+    retained_worktree_bytes = sum(item.bytes for item in remaining_terminal)
+    quarantine_bytes = _directory_bytes(archive_dir)
+    remaining_terminal_bytes = retained_worktree_bytes + quarantine_bytes
     within_bounds = (
         len(remaining_terminal) <= max_terminal_directories
         and remaining_terminal_bytes <= max_terminal_bytes
@@ -490,6 +575,8 @@ def reconcile_worktrees(
         max_terminal_bytes=max_terminal_bytes,
         within_bounds=within_bounds,
         items=items,
+        retained_worktree_bytes=retained_worktree_bytes,
+        quarantine_bytes=quarantine_bytes,
     )
 
 
@@ -515,13 +602,14 @@ def reconcile_managed_worktrees(
     archived with their unique commit objects first.
     """
     contexts = context_by_path or {}
-    worktrees_dir.mkdir(parents=True, exist_ok=True)
-    paths = [path for path in sorted(worktrees_dir.iterdir()) if path.is_dir()]
+    root_resolved = _prepare_worktree_root(worktrees_dir)
+    paths = _worktree_entries(worktrees_dir)
     if not paths:
         return _empty_report(
             apply=apply,
             max_terminal_directories=max_terminal_directories,
             max_terminal_bytes=max_terminal_bytes,
+            quarantine_bytes=_directory_bytes(archive_dir),
         )
 
     registration_error = None
@@ -577,23 +665,27 @@ def reconcile_managed_worktrees(
     now = int(time.time())
 
     for path in paths:
-        resolved = path.resolve()
-        resolved_key = str(resolved)
+        resolved, path_error = _inspect_worktree_path(path, root_resolved=root_resolved)
+        lookup_path = resolved or _absolute_path(path)
+        resolved_key = str(lookup_path)
         size = _directory_bytes(path)
         bytes_before += size
-        registration = registered.get(resolved_key, {})
+        registration = registered.get(resolved_key, {}) if resolved is not None else {}
         context = contexts.get(resolved_key, {})
-        dirty_entries, status_error = _dirty_entry_count(path)
+        if path_error:
+            dirty_entries, status_error = -1, None
+        else:
+            dirty_entries, status_error = _dirty_entry_count(path)
         run_id = str(context.get("run_id")) if context.get("run_id") else None
         pid = context.get("pid")
         context_pid_live = bool(run_id and isinstance(pid, int) and pid_checker(pid, run_id))
         active_window = False
-        if active_since is not None:
+        if active_since is not None and path_error is None:
             try:
                 active_window = path.stat().st_ctime >= active_since
             except OSError as exc:
                 status_error = status_error or f"could not stat managed worktree: {exc}"
-        path_live = live_path_checker(resolved)
+        path_live = bool(resolved is not None and live_path_checker(resolved))
         state = str(context.get("state") or "managed")
         branch = registration.get("branch") or context.get("branch")
         item = WorktreeItem(
@@ -612,7 +704,7 @@ def reconcile_managed_worktrees(
                 context.get("pr_number") if isinstance(context.get("pr_number"), int) else None
             ),
             branch=str(branch) if isinstance(branch, str) else None,
-            registered=resolved_key in registered,
+            registered=resolved is not None and resolved_key in registered,
             locked=bool(registration.get("locked")),
             pid_live=context_pid_live or path_live or active_window,
             dirty_entries=dirty_entries,
@@ -622,7 +714,10 @@ def reconcile_managed_worktrees(
             ),
         )
 
-        if item.pid_live or state in ACTIVE_STATES:
+        if path_error:
+            item.classification = "unsafe_path"
+            item.reason = path_error
+        elif item.pid_live or state in ACTIVE_STATES:
             item.classification = "active"
             if active_window and not (context_pid_live or path_live or state in ACTIVE_STATES):
                 item.reason = "managed worktree was created during an active runner window"
@@ -664,6 +759,15 @@ def reconcile_managed_worktrees(
             if apply:
                 _record_event(ledger, item, action="removal_started", observed_at=now)
                 try:
+                    if resolved is None:
+                        raise RuntimeError("worktree path was not safely resolved")
+                    _validate_removal_target(
+                        repo_dir=repo_dir,
+                        worktrees_dir=worktrees_dir,
+                        path=path,
+                        expected_resolved=resolved,
+                        expected_head=item.head_oid,
+                    )
                     if must_archive:
                         archive_id = _managed_archive_id(item)
                         archive_path, archive_sha = _archive_worktree(
@@ -676,6 +780,13 @@ def reconcile_managed_worktrees(
                         item.archive_path = str(archive_path)
                         item.archive_sha256 = archive_sha
                         archived += 1
+                    _validate_removal_target(
+                        repo_dir=repo_dir,
+                        worktrees_dir=worktrees_dir,
+                        path=path,
+                        expected_resolved=resolved,
+                        expected_head=item.head_oid,
+                    )
                     remover(path)
                     if path.exists():
                         raise RuntimeError(
@@ -709,7 +820,9 @@ def reconcile_managed_worktrees(
         items.append(item)
 
     remaining = [item for item in items if item.classification not in {"removed", "active"}]
-    remaining_bytes = sum(item.bytes for item in remaining)
+    retained_worktree_bytes = sum(item.bytes for item in remaining)
+    quarantine_bytes = _directory_bytes(archive_dir)
+    remaining_bytes = retained_worktree_bytes + quarantine_bytes
     return WorktreeReport(
         apply=apply,
         directories=len(items),
@@ -728,6 +841,8 @@ def reconcile_managed_worktrees(
             len(remaining) <= max_terminal_directories and remaining_bytes <= max_terminal_bytes
         ),
         items=items,
+        retained_worktree_bytes=retained_worktree_bytes,
+        quarantine_bytes=quarantine_bytes,
     )
 
 
@@ -736,7 +851,9 @@ def _empty_report(
     apply: bool,
     max_terminal_directories: int,
     max_terminal_bytes: int,
+    quarantine_bytes: int = 0,
 ) -> WorktreeReport:
+    within_bounds = quarantine_bytes <= max_terminal_bytes
     return WorktreeReport(
         apply=apply,
         directories=0,
@@ -748,11 +865,13 @@ def _empty_report(
         retained=0,
         removal_failures=0,
         remaining_terminal_directories=0,
-        remaining_terminal_bytes=0,
+        remaining_terminal_bytes=quarantine_bytes,
         max_terminal_directories=max_terminal_directories,
         max_terminal_bytes=max_terminal_bytes,
-        within_bounds=True,
+        within_bounds=within_bounds,
         items=[],
+        retained_worktree_bytes=0,
+        quarantine_bytes=quarantine_bytes,
     )
 
 
@@ -820,25 +939,22 @@ def _managed_head_proof(
         if remote_oid == head:
             return RemoteProof(ok=True, kind="exact_remote_branch", detail=detail)
 
-    cherry = subprocess.run(
-        ["git", "cherry", main_oid, head],
+    tree_comparison = subprocess.run(
+        ["git", "diff", "--quiet", "--exit-code", head, main_oid, "--"],
         cwd=repo_dir,
         text=True,
         capture_output=True,
         check=False,
     )
-    if cherry.returncode != 0:
+    if tree_comparison.returncode == 0:
+        return RemoteProof(ok=True, kind="tree_equal_main", detail=detail)
+    if tree_comparison.returncode != 1:
         return RemoteProof(
             ok=False,
-            kind="patch_comparison_failed",
+            kind="tree_comparison_failed",
             detail=detail,
-            error=(cherry.stderr or "could not compare managed commits to main").strip(),
+            error=(tree_comparison.stderr or "could not compare managed tree to main").strip(),
         )
-    commits = [line for line in cherry.stdout.splitlines() if line.strip()]
-    if commits and all(line.startswith("-") for line in commits):
-        detail["patch_equivalent_commits"] = len(commits)
-        return RemoteProof(ok=True, kind="patch_equivalent_main", detail=detail)
-    detail["unique_commits"] = sum(line.startswith("+") for line in commits)
     return RemoteProof(ok=True, kind="local_unique_commits", detail=detail)
 
 
@@ -863,8 +979,13 @@ def _classify(
     item: WorktreeItem,
     *,
     run: dict[str, Any] | None,
+    path_error: str | None,
     status_error: str | None,
 ) -> None:
+    if path_error:
+        item.classification = "unsafe_path"
+        item.reason = path_error
+        return
     if item.pid_live or item.state in ACTIVE_STATES:
         item.classification = "active"
         item.reason = "ledger or live process marks the worktree active"
@@ -929,17 +1050,23 @@ def _dirty_entry_count(path: Path) -> tuple[int, str | None]:
 
 
 def _directory_bytes(root: Path) -> int:
-    total = 0
+    try:
+        root_stat = root.lstat()
+    except OSError:
+        return 0
+    if stat.S_ISLNK(root_stat.st_mode) or not stat.S_ISDIR(root_stat.st_mode):
+        return root_stat.st_size
+    total = root_stat.st_size
     for directory, dirnames, filenames in os.walk(root, followlinks=False):
         base = Path(directory)
         kept_dirs = []
         for name in dirnames:
             path = base / name
             try:
-                stat = path.lstat()
+                entry_stat = path.lstat()
             except OSError:
                 continue
-            total += stat.st_size
+            total += entry_stat.st_size
             if not path.is_symlink():
                 kept_dirs.append(name)
         dirnames[:] = kept_dirs

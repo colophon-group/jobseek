@@ -2030,6 +2030,7 @@ class CompanyResolverGovernor:
             [runner_report, managed_report],
             max_terminal_directories=cfg.max_terminal_worktrees,
             max_terminal_bytes=max_terminal_bytes,
+            quarantine_dir=cfg.state_dir / "worktree-quarantine",  # type: ignore[operator]
         )
         print(
             json.dumps(

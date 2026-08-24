@@ -963,6 +963,31 @@ def test_terminal_worktree_limit_blocks_new_admission(monkeypatch, tmp_path: Pat
     )
 
 
+def test_worktree_quarantine_bytes_block_admission_without_leftover_directories(
+    tmp_path: Path,
+) -> None:
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+        min_disk_free_gib=0,
+        min_mem_available_gib=0,
+        max_load_per_cpu=999,
+        max_terminal_worktree_gib=0,
+    ).resolved()
+    assert config.state_dir is not None
+    quarantine = config.state_dir / "worktree-quarantine"
+    quarantine.mkdir(parents=True)
+    (quarantine / "durable-evidence.tar.gz").write_bytes(b"evidence")
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=101))
+
+    decision = governor.should_start()
+
+    assert not decision.should_run
+    assert decision.reason.startswith("terminal worktree retention limit reached: 0 directories, ")
+    assert decision.reason != "terminal worktree retention limit reached: 0 directories, 0 bytes"
+
+
 def test_managed_worktree_context_joins_workspace_to_latest_issue_run(tmp_path: Path) -> None:
     config = _config(tmp_path, dry_run=True)
     outer = config.worktrees_dir / "company-request-101-run-new"
