@@ -1412,8 +1412,11 @@ dom — Link or Static Listing-Row Extraction (fallback)
     empty_states   Optional list of 1-4 selector-specific empty states, each
                    with selector and exact_text. A zero-link page succeeds
                    only when one selector matches and its normalized text is
-                   exactly equal to exact_text. Do not combine with the
-                   legacy empty_selector/empty_text pair.
+                   exactly equal to exact_text. An entry may also pair
+                   required_link_selector with required_link_url_pattern;
+                   that state then requires at least one selected anchor and
+                   every selected href must fully match the regex. Do not
+                   combine with the legacy empty_selector/empty_text pair.
     require_jsonld_jobposting
                    Fetch each discovered detail URL and retain it only when
                    the current page contains schema.org JobPosting JSON-LD.

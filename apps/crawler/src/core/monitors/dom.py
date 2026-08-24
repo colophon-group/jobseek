@@ -1180,7 +1180,13 @@ def _validate_link_selector(value: object) -> str | None:
     return _validate_css_selector(value, name="link_selector")
 
 
-_ExplicitEmptyState = tuple[str, str | None, bool]
+_ExplicitEmptyState = tuple[
+    str,
+    str | None,
+    bool,
+    str | None,
+    re.Pattern[str] | None,
+]
 
 
 def _validated_empty_state_list(value: object) -> tuple[_ExplicitEmptyState, ...]:
@@ -1192,9 +1198,16 @@ def _validated_empty_state_list(value: object) -> tuple[_ExplicitEmptyState, ...
 
     states: list[_ExplicitEmptyState] = []
     for item in value:
-        if not isinstance(item, dict) or set(item) != {"selector", "exact_text"}:
+        required_keys = {"selector", "exact_text"}
+        optional_keys = {"required_link_selector", "required_link_url_pattern"}
+        if (
+            not isinstance(item, dict)
+            or not required_keys.issubset(item)
+            or not set(item).issubset(required_keys | optional_keys)
+        ):
             raise ValueError(
-                "DOM monitor empty_states entries require only selector and exact_text"
+                "DOM monitor empty_states entries require selector and exact_text, with an "
+                "optional required_link_selector and required_link_url_pattern pair"
             )
         selector = _validate_css_selector(item.get("selector"), name="empty_states.selector")
         exact_text = item.get("exact_text")
@@ -1208,7 +1221,45 @@ def _validated_empty_state_list(value: object) -> tuple[_ExplicitEmptyState, ...
             raise ValueError(
                 "DOM monitor empty_states exact_text must be non-empty text up to 256 chars"
             )
-        states.append((selector, exact_text.strip(), True))
+        required_link_selector_raw = item.get("required_link_selector")
+        required_link_url_pattern_raw = item.get("required_link_url_pattern")
+        if (required_link_selector_raw is None) != (required_link_url_pattern_raw is None):
+            raise ValueError(
+                "DOM monitor empty_states required_link_selector and "
+                "required_link_url_pattern must be configured together"
+            )
+        required_link_selector = None
+        required_link_url_pattern = None
+        if required_link_selector_raw is not None:
+            required_link_selector = _validate_css_selector(
+                required_link_selector_raw,
+                name="empty_states.required_link_selector",
+            )
+            if (
+                not isinstance(required_link_url_pattern_raw, str)
+                or not required_link_url_pattern_raw
+                or len(required_link_url_pattern_raw) > 1_024
+                or "\x00" in required_link_url_pattern_raw
+            ):
+                raise ValueError(
+                    "DOM monitor empty_states required_link_url_pattern must be a non-empty "
+                    "regex up to 1024 chars"
+                )
+            try:
+                required_link_url_pattern = re.compile(required_link_url_pattern_raw)
+            except re.error as exc:
+                raise ValueError(
+                    "DOM monitor empty_states required_link_url_pattern must be a valid regex"
+                ) from exc
+        states.append(
+            (
+                selector,
+                exact_text.strip(),
+                True,
+                required_link_selector,
+                required_link_url_pattern,
+            )
+        )
     return tuple(states)
 
 
@@ -1222,7 +1273,13 @@ def _validate_explicit_empty_states(
     if _without_board_self_urls(urls, board_url):
         return
     tree = LexborHTMLParser(html)
-    for empty_selector, empty_text, exact_text in empty_states:
+    for (
+        empty_selector,
+        empty_text,
+        exact_text,
+        required_link_selector,
+        required_link_url_pattern,
+    ) in empty_states:
         marker = tree.css_first(empty_selector)
         if marker is None:
             continue
@@ -1230,9 +1287,24 @@ def _validate_explicit_empty_states(
         expected_text = re.sub(r"\s+", " ", empty_text or "").strip()
         if empty_text is None:
             return
-        if exact_text and marker_text == expected_text:
+        text_matches = (
+            marker_text == expected_text
+            if exact_text
+            else expected_text.casefold() in marker_text.casefold()
+        )
+        if not text_matches:
+            continue
+        if required_link_selector is None:
             return
-        if not exact_text and expected_text.casefold() in marker_text.casefold():
+        assert required_link_url_pattern is not None
+        required_links = tree.css(required_link_selector)
+        if not required_links:
+            continue
+        if all(
+            (href := link.attributes.get("href"))
+            and required_link_url_pattern.fullmatch(urljoin(board_url, href))
+            for link in required_links
+        ):
             return
     raise ValueError(
         "DOM monitor found no job links and did not match the configured explicit empty state"
@@ -1249,7 +1321,7 @@ def _validate_explicit_empty_state(
     """Validate the legacy single-selector empty-state configuration."""
     _validate_explicit_empty_states(
         html,
-        ((empty_selector, empty_text, False),),
+        ((empty_selector, empty_text, False, None, None),),
         urls,
         board_url,
     )
@@ -2233,7 +2305,7 @@ async def dom_discover(
         )
     configured_empty_states = empty_states
     if empty_selector is not None:
-        configured_empty_states = ((empty_selector, empty_text, False),)
+        configured_empty_states = ((empty_selector, empty_text, False, None, None),)
     empty_state_name = "empty_states" if empty_states else "empty_selector"
     rich_rows = _validated_rich_rows(metadata.get("rich_rows"))
     require_jsonld_jobposting = metadata.get("require_jsonld_jobposting", False)

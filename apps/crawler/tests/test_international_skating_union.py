@@ -21,7 +21,7 @@ CAREERS_BOARD_SLUG = "international-skating-union-careers"
 LUCCA_BOARD_SLUG = "international-skating-union-lucca"
 LUCCA_JOB_URL = (
     "https://jobs.world.luccasoftware.com/isu-org-careers/"
-    "event-administration-manager-fe62f90b-0100-43a7-b254-6c1623d3ff66"
+    "head-of-accounting-and-controlling--80--100-61bbad58-d578-463e-9f74-75e7e304ff00"
 )
 PDF_ROOT = (
     "https://isu-d8g8b4b7ece7aphs.a03.azurefd.net/isudamcontainer/"
@@ -157,17 +157,34 @@ async def test_current_migrated_careers_layout_is_an_explicit_pdf_zero() -> None
     "listing_html",
     [
         # A transient or partially rendered empty grid is not authoritative.
-        '<div class="blockbox"><h2>Job Vacancies</h2><div class="grid"></div></div>',
+        (
+            '<div class="blockbox"><h2 class="fluid-text-5xlmain">Job Vacancies</h2>'
+            '<div class="grid"></div></div>'
+        ),
         # A future unclassified ATS migration must be reviewed explicitly.
         (
-            '<div class="blockbox"><h2>Job Vacancies</h2>'
+            '<div class="blockbox"><h2 class="fluid-text-5xlmain">Job Vacancies</h2>'
             '<a href="https://careers.unknown-ats.example/isu/role-1">Role</a></div>'
         ),
         # A recognized Lucca link cannot mask an additional unknown source.
         (
-            '<div class="blockbox"><h2>Job Vacancies</h2>'
+            '<div class="blockbox"><h2 class="fluid-text-5xlmain">Job Vacancies</h2>'
             f'<a href="{LUCCA_JOB_URL}">Lucca role</a>'
             '<a href="https://careers.unknown-ats.example/isu/role-1">Other role</a></div>'
+        ),
+        # A recognized first block cannot mask an unknown vacancy source in
+        # a sibling block within the careers section.
+        (
+            '<div class="blockbox"><h2 class="fluid-text-5xlmain">Job Vacancies</h2>'
+            f'<a href="{LUCCA_JOB_URL}">Lucca role</a></div>'
+            '<div class="blockbox"><h2>Other Vacancies</h2>'
+            '<a href="https://careers.unknown-ats.example/isu/role-1">Other role</a></div>'
+        ),
+        # Tenant ownership alone is insufficient: Lucca job URLs end in a UUID.
+        (
+            '<div class="blockbox"><h2 class="fluid-text-5xlmain">Job Vacancies</h2>'
+            '<a href="https://jobs.world.luccasoftware.com/isu-org-careers/'
+            'temporarily-unavailable">Unavailable</a></div>'
         ),
         # The historical heading style alone cannot turn an error into zero.
         '<h2 class="fluid-text-lg3">Vacancies are temporarily unavailable</h2>',
