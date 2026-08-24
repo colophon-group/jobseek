@@ -27,6 +27,7 @@ PDF_ROOT = (
     "https://isu-d8g8b4b7ece7aphs.a03.azurefd.net/isudamcontainer/"
     "CMS/Corporate-Site/Governance/Transparency/Jobs"
 )
+LEGACY_PDF_ROOT = "https://isu-d8g8b4b7ece7aphs.a03.azurefd.net/isudamcontainer/CMS/jobtenders/pdf"
 STAFF_DOCUMENTS = {
     "Senior-Event-Manager-2026-1773417513-1364.pdf": (
         "Senior Event Manager",
@@ -42,6 +43,16 @@ STAFF_DOCUMENTS = {
     ),
     "ISU-Job-Ad-Junior-Legal-Counsel-v0-2-TVL-approved-JCP-1776949512-5538.pdf": (
         "Junior Legal Counsel",
+        "Lausanne, Switzerland",
+    ),
+}
+LEGACY_STAFF_DOCUMENTS = {
+    "ISUcommercialmanagerjobdescription1731494191.pdf": (
+        "Commercial Manager",
+        "Lausanne",
+    ),
+    "Executiveassistantjob17012025075625300_17371262152691.pdf": (
+        "Executive Assistant to the Director General",
         "Lausanne, Switzerland",
     ),
 }
@@ -80,6 +91,23 @@ About Us
 Founded in 1892, the International Skating Union (ISU) is the oldest
 international winter sports Federation.
 The Role
+"""
+
+
+def _legacy_staff_pdf_text(title: str, location: str) -> str:
+    # Preserves the labelled heading order and ``Type`` field from the real
+    # 2025 jobtenders PDFs. The visual heading before ``Job Title`` exposed
+    # the previous dirty-title fallback.
+    visual_heading = "EXECUTIVE ASSISTANT\n" if title.startswith("Executive Assistant") else ""
+    return f"""
+{visual_heading}
+Job Title: {title}
+Location: {location}
+Reports to: ISU Management
+Type: Full-time
+Job Overview:
+The International Skating Union (ISU) is seeking an experienced candidate.
+Key Responsibilities
 """
 
 
@@ -123,6 +151,29 @@ async def test_current_migrated_careers_layout_is_an_explicit_pdf_zero() -> None
         result = await dom_discover(board, AsyncMock())
 
     assert result == set()
+
+
+@pytest.mark.parametrize(
+    "listing_html",
+    [
+        # A transient or partially rendered empty grid is not authoritative.
+        '<div class="blockbox"><h2>Job Vacancies</h2><div class="grid"></div></div>',
+        # A future unclassified ATS migration must be reviewed explicitly.
+        (
+            '<div class="blockbox"><h2>Job Vacancies</h2>'
+            '<a href="https://careers.unknown-ats.example/isu/role-1">Role</a></div>'
+        ),
+    ],
+)
+async def test_partial_or_unknown_careers_layout_fails_closed(listing_html: str) -> None:
+    board, _ = _board(CAREERS_BOARD_SLUG)
+    html = f'<section class="jobfold"><div class="container">{listing_html}</div></section>'
+
+    with (
+        patch(EMPTY_FETCH_PATCH, AsyncMock(return_value=html)),
+        pytest.raises(ValueError, match="did not match the configured explicit empty state"),
+    ):
+        await dom_discover(board, AsyncMock())
 
 
 async def test_archived_no_positions_layout_is_authoritative() -> None:
@@ -192,6 +243,37 @@ async def test_archived_pdf_only_layout_keeps_staff_and_excludes_committee(
     assert COMMITTEE_URL not in result
 
 
+async def test_archived_2025_jobtenders_staff_layout_is_retained(monkeypatch) -> None:
+    board, _ = _board(CAREERS_BOARD_SLUG)
+    # Exact card and document paths from the 2025-01-30 first-party snapshot.
+    links = "".join(
+        f'<a href="{LEGACY_PDF_ROOT}/{filename}">{title}</a>'
+        for filename, (title, _location) in LEGACY_STAFF_DOCUMENTS.items()
+    )
+    html = f"""
+    <section class="jobfold"><div class="container"><div>
+      <div class="blockbox"><h2>Job Vacancies</h2>
+        <div class="grid">{links}</div>
+      </div>
+    </div></div></section>
+    """
+    text_by_url = {
+        f"{LEGACY_PDF_ROOT}/{filename}": _legacy_staff_pdf_text(title, location)
+        for filename, (title, location) in LEGACY_STAFF_DOCUMENTS.items()
+    }
+    monkeypatch.setattr("pypdf.PdfReader", _fake_reader)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        text = text_by_url[str(request.url)]
+        return httpx.Response(200, content=f"%PDF {text}".encode(), request=request)
+
+    with patch(EMPTY_FETCH_PATCH, AsyncMock(return_value=html)):
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await dom_discover(board, client)
+
+    assert result == {f"{LEGACY_PDF_ROOT}/{filename}" for filename in LEGACY_STAFF_DOCUMENTS}
+
+
 @pytest.mark.parametrize(
     ("title", "location"),
     list(STAFF_DOCUMENTS.values()),
@@ -207,6 +289,28 @@ async def test_archived_staff_pdf_layout_extracts_required_fields(
     result = await parse_bytes(
         f"%PDF {_staff_pdf_text(title, location)}".encode(),
         f"{PDF_ROOT}/fixture.pdf",
+        scraper_config,
+    )
+
+    assert result.title == title
+    assert result.locations == [location]
+
+
+@pytest.mark.parametrize(
+    ("title", "location"),
+    list(LEGACY_STAFF_DOCUMENTS.values()),
+)
+async def test_archived_2025_jobtenders_pdf_extracts_clean_title(
+    monkeypatch,
+    title: str,
+    location: str,
+) -> None:
+    _, scraper_config = _board(CAREERS_BOARD_SLUG)
+    monkeypatch.setattr("pypdf.PdfReader", _fake_reader)
+
+    result = await parse_bytes(
+        f"%PDF {_legacy_staff_pdf_text(title, location)}".encode(),
+        f"{LEGACY_PDF_ROOT}/fixture.pdf",
         scraper_config,
     )
 
