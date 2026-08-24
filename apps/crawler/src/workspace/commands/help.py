@@ -95,6 +95,7 @@ Monitor Types (cheapest first):
   greenhouse        10      Full job data     No (skipped)
   gupy              10      Job URLs          Auto-configured
   headhunter        10      Full/partial      Auto-enriched
+  beehire           10      Full job data     No (skipped)
   hibob             10      Full job data     No (skipped)
   hirehive          10      Full job data     No (skipped)
   hireology         10      Full job data     No (skipped)
@@ -412,6 +413,22 @@ hibob — HiBob public career-site monitor
   Detection:  ws probe verifies the public /api/job-ad payload and reports
               its current job count.
   Zero jobs?  A valid jobAdDetails: [] payload is an active empty board."""
+
+MONITOR_BEEHIRE = """\
+beehire — Beehire public career-page monitor
+
+  Source:   GET https://app.beehire.com/users/getPublicCampaigns/{slug}
+  Returns:  Full job data (title, HTML description, location, contract type,
+            remote policy, posting date, language, and stable invite URL)
+  Scraper:  Not needed (one request returns every public campaign)
+  Cap:      50,000 jobs
+
+  Config:   None required for https://app.beehire.com/career/{slug} boards.
+            Optional override: {"slug": "acme"}
+
+  Detection:  ws probe verifies the public campaigns payload and reports its
+              current job count.
+  Zero jobs?  A valid campaigns: [] payload is an active empty board."""
 
 MONITOR_EIGHTFOLD = """\
 eightfold — Eightfold AI Careers Portal (hybrid sitemap + PCSX)
@@ -3420,6 +3437,7 @@ MONITOR_CARDS: dict[str, str] = {
     "inploi": MONITOR_INPLOI,
     "typify": MONITOR_TYPIFY,
     "greenhouse": MONITOR_GREENHOUSE,
+    "beehire": MONITOR_BEEHIRE,
     "hibob": MONITOR_HIBOB,
     "hirehive": MONITOR_HIREHIVE,
     "hireology": MONITOR_HIREOLOGY,

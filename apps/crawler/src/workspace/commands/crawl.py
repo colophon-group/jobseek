@@ -958,6 +958,7 @@ _MONITOR_CONFIG_HINTS = {
     "inploi": "Requires: api_key, segment_id (auto-filled from an Inploi careers page)",
     "typify": "No config required (API route and live function partitions are auto-detected)",
     "hirehive": "Requires: slug (auto-filled from probe)",
+    "beehire": "Requires: slug (auto-filled from a Beehire career URL)",
     "hireology": "Requires: slug (auto-filled from probe)",
     "turbohire": "Requires: org_id (auto-filled from probe)",
     "curately": (

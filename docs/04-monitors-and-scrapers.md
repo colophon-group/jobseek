@@ -41,6 +41,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `ashby` | Rich | skip | Ashby ATS |
 | `avature` | URL-only | dom | Avature static listings and map data, with streamed pagination |
 | `bamboohr` | Rich | api_sniffer | BambooHR summaries plus detail API enrichment |
+| `beehire` | Rich | skip | Beehire public campaign API |
 | `beisen` | Rich/hybrid | skip or DOM enrichment | Beisen modern public API + legacy server-rendered listings |
 | `brassring` | Rich | skip | BrassRing/Infinite Talent TGnewUI browser-session search API |
 | `candidatus` | URL-only | dom | Candidatus WinDev listings with browser-resolved detail postbacks |
