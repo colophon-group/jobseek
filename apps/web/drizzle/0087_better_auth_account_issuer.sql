@@ -62,5 +62,45 @@ $contract$;--> statement-breakpoint
 
 ALTER TABLE public.account ALTER COLUMN issuer SET NOT NULL;--> statement-breakpoint
 
-CREATE UNIQUE INDEX account_issuer_accountId_uidx
-  ON public.account USING btree (issuer, account_id);
+CREATE UNIQUE INDEX account_issuer_account_id_uidx
+  ON public.account USING btree (issuer, account_id);--> statement-breakpoint
+
+-- Keep Better Auth 1.6 account creation/linking safe while Vercel promotes the
+-- 1.7 runtime, and preserve a working 1.6 rollback path. Better Auth 1.7
+-- supplies issuer itself; the trigger fills it only for an older writer.
+CREATE FUNCTION public.jobseek_better_auth_account_issuer_compat()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $compat$
+DECLARE
+  expected_issuer text;
+BEGIN
+  expected_issuer := CASE NEW.provider_id
+    WHEN 'credential' THEN 'local:credential'
+    WHEN 'github' THEN 'local:oauth:github'
+    WHEN 'google' THEN 'https://accounts.google.com'
+    WHEN 'linkedin' THEN 'local:oauth:linkedin'
+  END;
+
+  IF expected_issuer IS NULL THEN
+    RAISE EXCEPTION
+      'Refusing Better Auth account write: unsupported provider_id %',
+      NEW.provider_id;
+  END IF;
+
+  IF NEW.issuer IS NULL OR NULLIF(btrim(NEW.issuer), '') IS NULL THEN
+    NEW.issuer := expected_issuer;
+  ELSIF NEW.issuer IS DISTINCT FROM expected_issuer THEN
+    RAISE EXCEPTION
+      'Refusing Better Auth account write: issuer does not match provider_id %',
+      NEW.provider_id;
+  END IF;
+
+  RETURN NEW;
+END
+$compat$;--> statement-breakpoint
+
+CREATE TRIGGER account_issuer_compat_before_write
+BEFORE INSERT OR UPDATE OF provider_id, issuer ON public.account
+FOR EACH ROW
+EXECUTE FUNCTION public.jobseek_better_auth_account_issuer_compat();

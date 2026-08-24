@@ -708,6 +708,19 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: jobseek_auth_fixture
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d jobseek_auth_fixture"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -721,6 +734,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm --filter @jobseek/web db:check
+
+      - name: Execute Better Auth issuer migration against PostgreSQL 17
+        env:
+          AUTH_FIXTURE_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/jobseek_auth_fixture
+        run: >-
+          pnpm --filter @jobseek/web exec tsx
+          scripts/test-better-auth-account-issuer-pg17.ts
+          --database-url "$AUTH_FIXTURE_DATABASE_URL"
 
   web-smoke:
     name: Web Build Smoke
