@@ -1288,6 +1288,12 @@ class TestCityCountryName:
         assert len(results) == 1
         assert results[0].location_id == LONDON_CITY_ID
 
+    def test_london_compact_uk_suffix(self, resolver: LocationResolver) -> None:
+        """'London-UK' → London without splitting arbitrary hyphenated names."""
+        results = resolver.resolve(["London-UK"])
+        assert len(results) == 1
+        assert results[0].location_id == LONDON_CITY_ID
+
     def test_london_united_kingdom(self, resolver: LocationResolver) -> None:
         results = resolver.resolve(["London, United Kingdom"])
         assert len(results) == 1

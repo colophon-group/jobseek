@@ -112,6 +112,16 @@ _STANDALONE_TYPE_RE = re.compile(
 # State-prefixed format: "IL-Chicago", "NY-New York", "CA-San Francisco"
 _STATE_PREFIX_RE = re.compile(r"^([A-Z]{2})-(.+)$")
 
+# City-suffixed country code: "London-UK", "Geneva-CH".  This is deliberately
+# restricted to an uppercase 2-3 letter suffix so ordinary hyphenated place
+# names are left intact.
+_COUNTRY_SUFFIX_RE = re.compile(r"^(.+?)-([A-Z]{2,3})$")
+_COUNTRY_SUFFIX_ALIASES = {
+    "UK": "United Kingdom",
+    "USA": "United States",
+    "UAE": "United Arab Emirates",
+}
+
 # Common city/country aliases (lowercase keys)
 _CITY_ALIASES: dict[str, str] = {
     "sf": "San Francisco",
@@ -979,6 +989,23 @@ class LocationResolver:
                 eid = self._exact_match(city_part)
                 if eid is not None:
                     return [eid]
+
+        # Handle compact city-country formats emitted by some European ATSes.
+        # Resolve only known country codes/aliases; never split an arbitrary
+        # hyphenated place name.
+        suffix = _COUNTRY_SUFFIX_RE.match(geo_str)
+        if suffix:
+            city_part = suffix.group(1).strip()
+            code = suffix.group(2)
+            country_name = (
+                _COUNTRY_SUFFIX_ALIASES.get(code)
+                or _ISO2_TO_COUNTRY.get(code)
+                or _ISO3_TO_COUNTRY.get(code)
+            )
+            if city_part and country_name:
+                result = self._match_multi_tokens([city_part, country_name])
+                if result:
+                    return result
 
         # For short strings (2-3 chars), check ISO country codes before name index
         # to avoid e.g. "BRA" → Bra (Italy) instead of Brazil
