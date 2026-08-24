@@ -451,10 +451,13 @@ def _lucca_probe_config(html: str, url: str) -> dict | None:
     )
     rich_rows = dict(_LUCCA_RICH_ROWS)
     try:
+        validated_rich_rows = _validated_rich_rows(rich_rows)
+        if validated_rich_rows is None:
+            return None
         jobs = _extract_rich_rows_static(
             html,
             url,
-            _validated_rich_rows(rich_rows),
+            validated_rich_rows,
             re.compile(url_filter, re.IGNORECASE),
         )
     except ValueError:
