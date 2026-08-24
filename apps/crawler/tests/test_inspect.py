@@ -106,6 +106,49 @@ class TestApiSnifferLegacyUrlMigrations:
         assert config["url_field"] == "applyUrl"
 
 
+class TestSwissFootballAssociationSportjobsConfig:
+    """The Cloudflare-blocked first-party board uses a filtered public feed."""
+
+    def test_feed_keeps_only_exact_multilingual_association_names(self):
+        import json
+
+        from src.shared.constants import get_data_dir
+        from src.shared.csv_io import read_csv
+
+        _, rows = read_csv(get_data_dir() / "boards.csv")
+        row = next(
+            row
+            for row in rows
+            if row["board_slug"] == "swiss-football-association-sportjobs"
+        )
+        config = json.loads(row["monitor_config"])
+
+        assert row["board_url"] == (
+            "https://org.football.ch/ueber-uns/offene-stellen.aspx"
+        )
+        assert row["monitor_type"] == "api_sniffer"
+        assert row["scraper_type"] == "skip"
+        assert config["api_url"] == (
+            "https://www.swissolympic.ch/so-admin-rest-public/api/sj/sportjobs/live"
+        )
+        assert config["total_path"] == "totalElements"
+        assert config["pagination"]["start_value"] == 1
+        assert config["item_filter"] == {
+            "include": {
+                "contactCompany": [
+                    "Schweizerischer Fussballverband",
+                    "Association Suisse de Football",
+                    "Associazione Svizzera di Football",
+                    "Swiss Football Association",
+                ]
+            }
+        }
+        assert config["fields"]["title"] == "title"
+        assert config["fields"]["description"] == "text"
+        assert config["fields"]["locations"] == "workPlace"
+        assert config["fields"]["date_posted"] == "createDate"
+
+
 class TestValidationError:
     def test_str_with_row(self):
         err = ValidationError("file.csv", 5, "bad value")
