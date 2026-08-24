@@ -1253,6 +1253,9 @@ inline — Single-Page Extraction (rich)
         "description": "<p>Evergreen role description.</p>",
         "employment_type": "full_time"
       },
+      "valid_through_regex": "Deadline: (\\d{1,2} \\w+ \\d{4})",
+      "valid_through_format": "%d %B %Y",
+      "exclude_expired": true,
       "defaults_by_title": {
         "Account Manager": {"locations": ["USA, Remote"]}
       }
@@ -1272,7 +1275,7 @@ inline — Single-Page Extraction (rich)
                  condition — when it can't find a match, extraction ends.
     defaults     Default field values applied when extracted value is absent.
                  Supports: description, locations (list), employment_type,
-                 job_location_type, date_posted.
+                 job_location_type, date_posted, valid_through.
     defaults_by_title
                  Exact extracted title -> defaults mapping for pages that omit
                  per-role fields. Supports the same fields as defaults; title
@@ -1283,6 +1286,19 @@ inline — Single-Page Extraction (rich)
                  Bounded regex matching extracted titles to omit. Use this for
                  mixed opportunity pages that publish non-employment entries
                  such as calls for tender alongside jobs.
+    valid_through_regex
+                 Optional regex with a capture group used to read a deadline
+                 from the extracted description when no valid_through step or
+                 default is configured.
+    valid_through_format
+                 Python strptime format for non-ISO deadlines. English ordinal
+                 day suffixes are ignored (for example, 29th -> 29).
+    exclude_expired
+                 When true, omit opportunities after their valid_through date.
+                 The deadline is inclusive and compared in UTC. Missing or
+                 invalid deadlines fail the cycle closed instead of publishing
+                 potentially expired opportunities. Accepted opportunities
+                 preserve the normalized deadline in extras.
     + browser keys (wait, wait_fallback, timeout, user_agent, etc. — see
       `ws help scraper dom` for the full list; wait_fallback defaults to
       "domcontentloaded" and retries once on Page.goto timeout, set to null

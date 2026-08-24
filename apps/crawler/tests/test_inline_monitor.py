@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 
 import pytest
 
@@ -351,6 +352,131 @@ async def test_discover_with_defaults():
     assert len(jobs) == 1
     assert jobs[0].employment_type == "full_time"
     assert jobs[0].job_location_type == "onsite"
+
+
+@pytest.mark.asyncio
+async def test_discover_preserves_valid_through_from_description_regex():
+    html = """
+    <html><body>
+    <h3>Campaign consultant</h3>
+    <p>Location: Ukraine</p>
+    <p>Submit proposals by 29th June 2099.</p>
+    </body></html>
+    """
+    board = {
+        "board_url": "https://example.com/tenders",
+        "metadata": {
+            "steps": [
+                {"tag": "h3", "field": "title"},
+                {"text": "Location", "field": "location", "regex": r"Location:\s*(.+)"},
+                {"tag": "p", "field": "description", "stop_tag": "h3", "html": True},
+            ],
+            "valid_through_regex": r"by\s+(\d{1,2}(?:st|nd|rd|th)?\s+\w+\s+\d{4})",
+            "valid_through_format": "%d %B %Y",
+            "exclude_expired": True,
+        },
+    }
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert len(jobs) == 1
+    assert jobs[0].extras == {"valid_through": "2099-06-29"}
+
+
+@pytest.mark.asyncio
+async def test_discover_excludes_expired_inline_opportunities():
+    html = """
+    <html><body>
+    <h3>Expired consultant</h3><p>Deadline: 22 June 2000</p>
+    <h3>Future consultant</h3><p>Deadline: 22 June 2099</p>
+    </body></html>
+    """
+    board = {
+        "board_url": "https://example.com/tenders",
+        "metadata": {
+            "steps": [
+                {"tag": "h3", "field": "title"},
+                {"tag": "p", "field": "description", "stop_tag": "h3", "html": True},
+            ],
+            "valid_through_regex": r"Deadline:\s*(\d{1,2} \w+ \d{4})",
+            "valid_through_format": "%d %B %Y",
+            "exclude_expired": True,
+        },
+    }
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert [job.title for job in jobs] == ["Future consultant"]
+    assert jobs[0].extras == {"valid_through": "2099-06-22"}
+
+
+@pytest.mark.asyncio
+async def test_discover_keeps_opportunity_on_inclusive_utc_deadline():
+    today = datetime.now(UTC).date().isoformat()
+    board = {
+        "board_url": "https://example.com/tenders",
+        "metadata": {
+            "steps": [
+                {"tag": "h3", "field": "title"},
+                {"tag": "p", "field": "description", "stop_tag": "h3", "html": True},
+            ],
+            "valid_through_regex": r"Deadline:\s*(\d{4}-\d{2}-\d{2})",
+            "exclude_expired": True,
+        },
+    }
+
+    jobs = await discover(
+        board,
+        _FakeClient(f"<h3>Consultant</h3><p>Deadline: {today}</p>"),
+    )
+
+    assert [job.title for job in jobs] == ["Consultant"]
+    assert jobs[0].extras == {"valid_through": today}
+
+
+@pytest.mark.asyncio
+async def test_discover_exclude_expired_fails_closed_without_deadline():
+    html = "<h3>Consultant</h3><p>Submit a proposal.</p>"
+    board = {
+        "board_url": "https://example.com/tenders",
+        "metadata": {
+            "steps": [
+                {"tag": "h3", "field": "title"},
+                {"tag": "p", "field": "description"},
+            ],
+            "valid_through_regex": r"Deadline:\s*(\d{4}-\d{2}-\d{2})",
+            "exclude_expired": True,
+        },
+    }
+
+    with pytest.raises(ValueError, match="requires valid_through"):
+        await discover(board, _FakeClient(html))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("metadata", "message"),
+    [
+        ({"valid_through_regex": ""}, "valid_through_regex"),
+        ({"valid_through_regex": "Deadline"}, "capture group"),
+        ({"valid_through_regex": "("}, "invalid"),
+        ({"valid_through_regex": "x" * 2_049}, "valid_through_regex"),
+        ({"valid_through_format": ""}, "valid_through_format"),
+        ({"valid_through_format": 123}, "valid_through_format"),
+        ({"exclude_expired": "true"}, "exclude_expired"),
+    ],
+)
+async def test_discover_rejects_invalid_valid_through_config(metadata, message):
+    board = {
+        "board_url": "https://example.com/tenders",
+        "metadata": {
+            "steps": [{"tag": "h3", "field": "title"}],
+            **metadata,
+        },
+    }
+
+    with pytest.raises(ValueError, match=message):
+        await discover(board, _FakeClient("<h3>Consultant</h3>"))
 
 
 @pytest.mark.asyncio
