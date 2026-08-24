@@ -525,11 +525,15 @@ For each accepted issue:
     locked, unregistered, or uninspectable directory. Outer worktrees require
     a terminal ledger row plus verified PR/issue state. Managed worktrees must
     have a cleanly inspected Git state and prove that their head is in main,
-    patch-equivalent to main, or exactly preserved on its remote branch; a
-    local-only head is bundled and verified before removal. Archive dirty
+    has a tree exactly equal to main, or is exactly preserved on its remote
+    branch; every other local head is bundled and verified before removal.
+    Archive dirty
     diffs, untracked files, workspace metadata, and unique commit objects,
     record the decision and root in SQLite, then remove only the registered
-    worktree. Retryable/interrupted state is archived before cleanup.
+    worktree. Direct root entries must be real directories: symlinks and
+    resolved paths outside the configured root are retained, and containment,
+    registration, lock, and HEAD are revalidated immediately before removal.
+    Retryable/interrupted state is archived before cleanup.
 15. Emit a structured disk warning at
     `JOBSEEK_CODEX_MIN_DISK_FREE_GIB + JOBSEEK_CODEX_DISK_ALERT_MARGIN_GIB`.
     Stop new admissions at the disk floor or when quarantined trace material
@@ -538,7 +542,9 @@ For each accepted issue:
     gates so a transient failure can reclaim space without admitting new work.
     Also stop admission when terminal worktrees that fail closed exceed
     `JOBSEEK_CODEX_MAX_TERMINAL_WORKTREES` or
-    `JOBSEEK_CODEX_MAX_TERMINAL_WORKTREE_GIB`.
+    `JOBSEEK_CODEX_MAX_TERMINAL_WORKTREE_GIB`. The byte ceiling includes both
+    retained worktrees and durable `state/worktree-quarantine` archives so
+    repeated evidence preservation cannot bypass admission control.
 
 Historical retained sessions can be exported in bounded commits while holding
 the normal runner lock:
