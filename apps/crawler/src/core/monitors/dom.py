@@ -545,6 +545,8 @@ _LUCCA_RICH_ROWS = {
     "link_selector": ".jobBoard-offers-item-link[href]",
     "location_selectors": [".jobBoard-offers-item-tags > .tag:first-child"],
 }
+_LUCCA_EMPTY_SELECTOR = ".jobBoard-offers-empty"
+_LUCCA_EMPTY_TEXT = "There are no job vacancies at the moment."
 
 _REXX_PROVIDER_HOSTS = frozenset({"rexx-systems.com", "www.rexx-systems.com"})
 _REXX_JOB_PATH_FILTER = (
@@ -737,6 +739,14 @@ def _lucca_probe_config(html: str, url: str) -> dict | None:
             url,
             validated_rich_rows,
             re.compile(url_filter, re.IGNORECASE),
+            allow_empty=True,
+        )
+        _validate_explicit_empty_state(
+            html,
+            _LUCCA_EMPTY_SELECTOR,
+            _LUCCA_EMPTY_TEXT,
+            {job.url for job in jobs},
+            url,
         )
     except ValueError:
         return None
@@ -745,6 +755,8 @@ def _lucca_probe_config(html: str, url: str) -> dict | None:
         "urls": len(jobs),
         "url_filter": url_filter,
         "rich_rows": rich_rows,
+        "empty_selector": _LUCCA_EMPTY_SELECTOR,
+        "empty_text": _LUCCA_EMPTY_TEXT,
     }
 
 
@@ -2199,8 +2211,8 @@ async def dom_discover(
         raise ValueError("DOM monitor rich_rows supports static listing extraction only")
 
     if empty_selector is not None:
-        if link_selector is None:
-            raise ValueError("DOM monitor empty_selector requires link_selector")
+        if link_selector is None and rich_rows is None:
+            raise ValueError("DOM monitor empty_selector requires link_selector or rich_rows")
         if pagination or metadata.get("include_board_url") or require_jsonld_jobposting:
             raise ValueError("DOM monitor empty_selector supports single-page link extraction only")
         if encoding is not None:
@@ -2300,7 +2312,21 @@ async def dom_discover(
             return set()
         _raise_if_bot_challenge(board_url, html)
         if rich_rows is not None:
-            jobs = _extract_rich_rows_static(html, board_url, rich_rows, url_matcher)
+            jobs = _extract_rich_rows_static(
+                html,
+                board_url,
+                rich_rows,
+                url_matcher,
+                allow_empty=empty_selector is not None,
+            )
+            if empty_selector is not None:
+                _validate_explicit_empty_state(
+                    html,
+                    empty_selector,
+                    empty_text,
+                    {job.url for job in jobs},
+                    board_url,
+                )
             if pagination:
                 jobs = await _paginate_rich_rows_static(
                     board_url,
