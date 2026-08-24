@@ -220,6 +220,50 @@ class TestExplicitEmptyState:
 
         assert result == set()
 
+    async def test_accepts_zero_rich_rows_with_configured_empty_marker(self):
+        html = """
+        <div class="job-list">
+          <p class="empty">There are no job vacancies at the moment.</p>
+        </div>
+        """
+        with patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "rich_rows": {
+                            "row_selector": ".job-card",
+                            "link_selector": "a[href]",
+                        },
+                        "empty_selector": ".job-list .empty",
+                        "empty_text": "There are no job vacancies at the moment.",
+                    },
+                },
+                AsyncMock(),
+            )
+
+        assert result == []
+
+    async def test_rejects_zero_rich_rows_without_configured_marker(self):
+        html = '<div class="job-list"></div>'
+        with (
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)),
+            pytest.raises(ValueError, match="did not match the configured explicit empty state"),
+        ):
+            await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "rich_rows": {
+                            "row_selector": ".job-card",
+                            "link_selector": "a[href]",
+                        },
+                        "empty_selector": ".job-list .empty",
+                    },
+                },
+                AsyncMock(),
+            )
+
     async def test_uses_finite_streaming_cap_for_trailing_empty_marker(self):
         html = (" " * 500_000) + '<h4 class="view-empty">No jobs available</h4>'
 
@@ -1505,6 +1549,11 @@ class TestCanHandle:
       </ul>
     </div></body></html>
     """
+    LUCCA_EMPTY_HTML = """
+    <html><body class="jobBoard"><div id="jobBoardOffers">
+      <p class="jobBoard-offers-empty">There are no job vacancies at the moment.</p>
+    </div></body></html>
+    """
 
     def test_lucca_board_uses_static_rich_row_preset(self):
         result = _lucca_probe_config(self.LUCCA_HTML, self.LUCCA_URL)
@@ -1533,6 +1582,14 @@ class TestCanHandle:
         assert scraper_config is not None
         assert scraper_config["enrich"] == ["description"]
         assert scraper_config["scope"] == ".jobOffer-article"
+
+    def test_lucca_empty_board_keeps_authoritative_provider_preset(self):
+        result = _lucca_probe_config(self.LUCCA_EMPTY_HTML, self.LUCCA_URL)
+
+        assert result is not None
+        assert result["urls"] == 0
+        assert result["empty_selector"] == ".jobBoard-offers-empty"
+        assert result["empty_text"] == "There are no job vacancies at the moment."
 
     async def test_lucca_can_handle_returns_provider_preset(self):
         with patch(
