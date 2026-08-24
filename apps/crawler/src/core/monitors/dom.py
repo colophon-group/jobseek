@@ -286,13 +286,22 @@ async def _filter_unexpired_pdf_urls(
     urls: set[str],
     client: httpx.AsyncClient,
     config: tuple[re.Pattern[str], str],
-) -> set[str]:
+    *,
+    required_text_pattern: re.Pattern[str] | None = None,
+    raise_on_required_text_mismatch: bool = False,
+    return_deadlines: bool = False,
+) -> set[str] | tuple[set[str], dict[str, str]]:
     """Keep only linked PDFs whose captured application deadline has not passed.
 
     Every linked document must remain parseable and expose the configured date.
     That fail-closed contract prevents a PDF layout change from turning an
-    expired, still-linked advert into a live posting. A removed 404/410 PDF is
-    omitted because the listing can briefly retain stale document links.
+    expired, still-linked advert into a live posting. When
+    ``required_text_pattern`` is supplied, documents that do not match the
+    ownership/content marker are omitted before deadline parsing, or raise when
+    ``raise_on_required_text_mismatch`` requests operator classification.
+    ``return_deadlines`` additionally returns normalized ISO dates for rich
+    monitor metadata. A removed 404/410 PDF is omitted because the listing can
+    briefly retain stale document links.
     """
     if len(urls) > _MAX_PDF_EXPIRATION_VERIFICATION_URLS:
         raise ValueError(
@@ -303,12 +312,12 @@ async def _filter_unexpired_pdf_urls(
     pattern, date_format = config
     semaphore = asyncio.Semaphore(_PDF_EXPIRATION_VERIFICATION_CONCURRENCY)
 
-    async def verify(url: str) -> tuple[str, bool]:
+    async def verify(url: str) -> tuple[str, bool, str | None]:
         if urlsplit(url).path.lower().endswith(".pdf") is False:
             raise ValueError(f"DOM require_unexpired_pdf found a non-PDF URL: {url}")
         async with semaphore, client.stream("GET", url, follow_redirects=True) as response:
             if response.status_code in {404, 410}:
-                return url, False
+                return url, False, None
             response.raise_for_status()
             check_tdm_response(response)
 
@@ -344,6 +353,11 @@ async def _filter_unexpired_pdf_urls(
             raise ValueError(f"DOM require_unexpired_pdf response is not a PDF: {url}")
 
         text = await asyncio.to_thread(_extract_bounded_pdf_text, pdf_content)
+        if required_text_pattern is not None and required_text_pattern.search(text) is None:
+            if raise_on_required_text_mismatch:
+                raise ValueError(f"linked PDF did not match the required ownership markers: {url}")
+            return url, False, None
+
         match = pattern.search(text)
         if match is None or match.group(1) is None:
             raise ValueError(f"DOM require_unexpired_pdf deadline was not found: {url}")
@@ -356,7 +370,7 @@ async def _filter_unexpired_pdf_urls(
                 f"DOM require_unexpired_pdf deadline {raw_deadline!r} did not match "
                 f"date_format {date_format!r}: {url}"
             ) from exc
-        return url, deadline >= datetime.now(UTC).date()
+        return url, deadline >= datetime.now(UTC).date(), deadline.isoformat()
 
     tasks = [asyncio.create_task(verify(url)) for url in sorted(urls)]
     try:
@@ -367,7 +381,15 @@ async def _filter_unexpired_pdf_urls(
                 task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
         raise
-    return {url for url, is_active in results if is_active}
+    active_urls = {url for url, is_active, _deadline in results if is_active}
+    if return_deadlines:
+        deadlines = {
+            url: deadline
+            for url, is_active, deadline in results
+            if is_active and deadline is not None
+        }
+        return active_urls, deadlines
+    return active_urls
 
 
 async def _exclude_urls_matching_detail_selector(

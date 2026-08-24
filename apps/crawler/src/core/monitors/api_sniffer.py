@@ -94,6 +94,7 @@ _MAX_REFRESH_VALUE_CHARS = 16_384
 _MAX_REFRESH_PAGE_BYTES = 2_000_000
 _MAX_ITEM_FILTER_FIELDS = 16
 _MAX_ITEM_FILTER_VALUES = 100
+_MAX_REQUIRED_PDF_PATTERN_CHARS = 1_024
 
 
 MAX_ITEMS = 10_000
@@ -880,6 +881,86 @@ async def can_handle(
 # ---------------------------------------------------------------------------
 
 
+def _validated_required_pdf_pattern(value: object) -> re.Pattern[str] | None:
+    """Compile the opt-in PDF ownership/content gate for linked-document APIs."""
+    if value is None:
+        return None
+    if (
+        not isinstance(value, str)
+        or not value
+        or len(value) > _MAX_REQUIRED_PDF_PATTERN_CHARS
+        or "\x00" in value
+    ):
+        raise ValueError("api_sniffer require_pdf_pattern must contain 1-1024 characters")
+    try:
+        return re.compile(value)
+    except re.error as exc:
+        raise ValueError("api_sniffer require_pdf_pattern is invalid") from exc
+
+
+async def _apply_pdf_document_gate(
+    result: list[DiscoveredJob] | set[str] | MonitorResult,
+    client: httpx.AsyncClient,
+    metadata: dict,
+) -> list[DiscoveredJob] | set[str] | MonitorResult:
+    """Apply bounded ownership and expiry checks to API-linked PDFs."""
+    required_pattern = _validated_required_pdf_pattern(metadata.get("require_pdf_pattern"))
+    unexpired_value = metadata.get("require_unexpired_pdf")
+    if required_pattern is None and unexpired_value is None:
+        return result
+    if required_pattern is None or unexpired_value is None:
+        raise ValueError(
+            "api_sniffer PDF document gate requires both require_pdf_pattern "
+            "and require_unexpired_pdf"
+        )
+    from src.core.monitor import MonitorResult as _MonitorResult
+    from src.core.monitors.dom import (
+        _filter_unexpired_pdf_urls,
+        _validated_unexpired_pdf_config,
+    )
+
+    wrapped = result if isinstance(result, _MonitorResult) else None
+    if wrapped is not None:
+        urls = wrapped.urls
+    elif isinstance(result, set):
+        urls = result
+    elif isinstance(result, list):
+        urls = {job.url for job in result}
+    else:
+        raise ValueError("api_sniffer PDF document gate received an unsupported result type")
+
+    unexpired_config = _validated_unexpired_pdf_config(unexpired_value)
+    if unexpired_config is None:
+        raise ValueError("api_sniffer require_unexpired_pdf must be configured")
+    filtered, deadlines = await _filter_unexpired_pdf_urls(
+        urls,
+        client,
+        unexpired_config,
+        required_text_pattern=required_pattern,
+        raise_on_required_text_mismatch=True,
+        return_deadlines=True,
+    )
+
+    def attach_deadline(job: DiscoveredJob) -> DiscoveredJob:
+        deadline = deadlines.get(job.url)
+        if deadline is not None:
+            job.extras = {**(job.extras or {}), "valid_through": deadline}
+        return job
+
+    if wrapped is not None:
+        wrapped.urls = filtered
+        if wrapped.jobs_by_url is not None:
+            wrapped.jobs_by_url = {
+                url: attach_deadline(job)
+                for url, job in wrapped.jobs_by_url.items()
+                if url in filtered
+            }
+        return wrapped
+    if isinstance(result, list):
+        return [attach_deadline(job) for job in result if job.url in filtered]
+    return filtered
+
+
 async def discover(
     board: dict,
     client: httpx.AsyncClient,
@@ -898,18 +979,25 @@ async def discover(
     api_url = metadata.get("api_url")
     if not api_url and metadata.get("item_filter") is not None:
         raise ValueError("api_sniffer item_filter requires a configured api_url")
+    if not api_url and (
+        metadata.get("require_pdf_pattern") is not None
+        or metadata.get("require_unexpired_pdf") is not None
+    ):
+        raise ValueError("api_sniffer PDF document gate requires a configured api_url")
 
     # Plain HTTP mode — no Playwright needed (pw passed for api_url_match fallback)
     if api_url and not metadata.get("browser"):
-        return await _discover_http(board, client, metadata, pw=pw)
+        result = await _discover_http(board, client, metadata, pw=pw)
+        return await _apply_pdf_document_gate(result, client, metadata)
 
     if api_url:
         # Replay mode — browser preferred, HTTP fallback
         if pw is not None:
-            return await _discover_replay(board_url, metadata, pw, client=client)
+            result = await _discover_replay(board_url, metadata, pw, client=client)
         else:
             log.warning("api_sniffer.no_playwright_fallback_http", board_url=board_url)
-            return await _discover_http(board, client, metadata, pw=pw)
+            result = await _discover_http(board, client, metadata, pw=pw)
+        return await _apply_pdf_document_gate(result, client, metadata)
 
     if pw is None:
         log.error("api_sniffer.no_playwright", board_url=board_url)
@@ -1574,7 +1662,7 @@ async def _refresh_post_data(
     return refreshed
 
 
-def _matches_explicit_empty_response(data: dict, config: object) -> bool:
+def _matches_explicit_empty_response(data: object, config: object) -> bool:
     """Validate provider-specific markers for a successful empty response."""
     if not isinstance(config, dict) or not config:
         raise ValueError("empty_response must be a non-empty path-to-value mapping")
@@ -1741,6 +1829,14 @@ async def _discover_http(
     # -- HTML string mode --------------------------------------------------
     if isinstance(content, str):
         all_urls = _extract_urls_from_html(content, board_url, url_regex)
+        if not all_urls and empty_response is not None:
+            if _matches_explicit_empty_response(data, empty_response):
+                log.info("api_sniffer.explicit_empty_response")
+            else:
+                raise ValueError(
+                    "API response contained no job links and did not match the configured "
+                    "empty response"
+                )
         log.info(
             "api_sniffer.http_html_page",
             page=1,
@@ -1815,6 +1911,15 @@ async def _discover_http(
         from src.shared.api_sniff import ArrayCandidate, Exchange, JobListResult, PaginationInfo
 
         items = [item for item in content if isinstance(item, dict)]
+        if not items and empty_response is not None:
+            if not isinstance(data, dict) or not _matches_explicit_empty_response(
+                data, empty_response
+            ):
+                raise ValueError(
+                    "API returned an empty job list that did not match the configured "
+                    "empty response"
+                )
+            log.info("api_sniffer.explicit_empty_response")
         item_projector = _build_item_projector(
             fields_map,
             url_field,

@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+import csv
 import json
 from inspect import isawaitable
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 
+from src.core.monitors import DiscoveredJob
 from src.core.monitors.api_sniffer import (
     ApiSnifferFallbackError,
     _apply_item_filter,
+    _apply_pdf_document_gate,
     _build_item_projector,
     _configured_post_data,
     _detect_prospective_config,
@@ -23,10 +27,17 @@ from src.core.monitors.api_sniffer import (
     _refresh_post_data,
     _serialize_post_data,
     _validated_item_filter,
+    _validated_required_pdf_pattern,
     _validated_slug_fields,
     can_handle,
     discover,
 )
+
+
+def _board_row(board_slug: str) -> dict[str, str]:
+    boards_path = Path(__file__).resolve().parents[1] / "data" / "boards.csv"
+    with boards_path.open(newline="", encoding="utf-8") as handle:
+        return next(row for row in csv.DictReader(handle) if row["board_slug"] == board_slug)
 
 
 def _lumesse_items():
@@ -294,6 +305,354 @@ class TestPostDataRefresh:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(ValueError, match="neither a job list"):
                 await discover(board, client)
+
+
+class TestHtmlExplicitEmptyResponse:
+    @staticmethod
+    def _board() -> dict:
+        return {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "api_url": "https://example.com/wp-json/wp/v2/pages?slug=jobs",
+                "method": "GET",
+                "json_path": "[0].content.rendered",
+                "url_regex": r'href="(https://example\.com/uploads/[^" ]+\.pdf)',
+                "empty_response": {
+                    "[0].id": 44033,
+                    "[0].content.protected": False,
+                },
+            },
+        }
+
+    @staticmethod
+    async def _discover(payload: object, *, status_code: int = 200):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(status_code, json=payload, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await discover(TestHtmlExplicitEmptyResponse._board(), client)
+
+    @pytest.mark.asyncio
+    async def test_matching_list_root_markers_authorize_zero_links(self):
+        payload = [
+            {
+                "id": 44033,
+                "content": {"protected": False, "rendered": "<div>No links yet</div>"},
+            }
+        ]
+
+        assert await self._discover(payload) == set()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            [
+                {
+                    "id": 99999,
+                    "content": {"protected": False, "rendered": "<div>No links</div>"},
+                }
+            ],
+            [
+                {
+                    "id": 44033,
+                    "content": {"protected": True, "rendered": "<div>No links</div>"},
+                }
+            ],
+        ],
+    )
+    async def test_wrong_empty_markers_fail_closed(self, payload):
+        with pytest.raises(ValueError, match="did not match the configured empty response"):
+            await self._discover(payload)
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            [{"id": 44033, "content": {"protected": False}}],
+            [],
+        ],
+    )
+    async def test_missing_html_content_fails_even_when_identity_markers_match(self, payload):
+        with pytest.raises(ValueError, match="explicit empty-response validation"):
+            await self._discover(payload)
+
+    @pytest.mark.asyncio
+    async def test_http_404_fails_instead_of_becoming_empty(self):
+        with pytest.raises(ValueError, match="did not return the configured explicit empty"):
+            await self._discover({}, status_code=404)
+
+    @pytest.mark.asyncio
+    async def test_nonempty_links_do_not_require_empty_markers(self):
+        payload = [
+            {
+                "id": 99999,
+                "content": {
+                    "protected": True,
+                    "rendered": (
+                        '<a href="https://example.com/uploads/Job-Vacancy-Engineer.pdf">Vacancy</a>'
+                    ),
+                },
+            }
+        ]
+
+        assert await self._discover(payload) == {
+            "https://example.com/uploads/Job-Vacancy-Engineer.pdf"
+        }
+
+
+class TestListExplicitEmptyResponse:
+    @staticmethod
+    async def _discover(payload: object):
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "api_url": "https://example.com/api/jobs",
+                "json_path": "data",
+                "url_field": "url",
+                "fields": {"title": "title"},
+                "empty_response": {"meta.filter_count": 0},
+            },
+        }
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json=payload, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            return await discover(board, client)
+
+    @pytest.mark.asyncio
+    async def test_matching_marker_authorizes_empty_list(self):
+        assert await self._discover({"meta": {"filter_count": 0}, "data": []}) == []
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"meta": {"filter_count": 1}, "data": []},
+            {"data": []},
+        ],
+    )
+    async def test_missing_or_wrong_marker_fails_closed(self, payload):
+        with pytest.raises(ValueError, match="empty job list"):
+            await self._discover(payload)
+
+
+class TestPdfDocumentGate:
+    @staticmethod
+    def _metadata() -> dict:
+        return {
+            "require_pdf_pattern": r"(?i)\bEuropean Athletics\b",
+            "require_unexpired_pdf": {
+                "pattern": r"Deadline: (\d{1,2} [A-Za-z]+ \d{4})",
+                "date_format": "%d %B %Y",
+            },
+        }
+
+    @pytest.mark.asyncio
+    async def test_applies_bounded_pdf_filter_to_url_only_result(self):
+        urls = {"https://example.com/jobs/role.pdf"}
+        expected = set()
+        with patch(
+            "src.core.monitors.dom._filter_unexpired_pdf_urls",
+            AsyncMock(return_value=(expected, {})),
+        ) as filter_pdfs:
+            result = await _apply_pdf_document_gate(urls, AsyncMock(), self._metadata())
+
+        assert result == expected
+        filter_pdfs.assert_awaited_once()
+        args, kwargs = filter_pdfs.await_args
+        assert args[0] == urls
+        assert args[2][1] == "%d %B %Y"
+        assert kwargs["required_text_pattern"].pattern == r"(?i)\bEuropean Athletics\b"
+        assert kwargs["raise_on_required_text_mismatch"] is True
+        assert kwargs["return_deadlines"] is True
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "metadata",
+        [
+            {"require_pdf_pattern": r"European Athletics"},
+            {
+                "require_unexpired_pdf": {
+                    "pattern": r"Deadline: (\d{1,2} [A-Za-z]+ \d{4})",
+                    "date_format": "%d %B %Y",
+                }
+            },
+        ],
+    )
+    async def test_requires_ownership_and_deadline_checks_together(self, metadata):
+        with pytest.raises(ValueError, match="requires both"):
+            await _apply_pdf_document_gate(set(), AsyncMock(), metadata)
+
+    @pytest.mark.parametrize("value", [True, "", "(", "x" * 1_025])
+    def test_rejects_invalid_required_pdf_pattern(self, value):
+        with pytest.raises(ValueError, match="require_pdf_pattern"):
+            _validated_required_pdf_pattern(value)
+
+    @pytest.mark.asyncio
+    async def test_filters_rich_discovery_without_losing_structured_fields(self):
+        active = DiscoveredJob(
+            url="https://example.com/jobs/active.pdf",
+            title="Communications Manager",
+            locations=["Lausanne"],
+        )
+        foreign = DiscoveredJob(
+            url="https://example.com/jobs/member-role.pdf",
+            title="Member Federation Role",
+            locations=["Copenhagen"],
+        )
+        with patch(
+            "src.core.monitors.dom._filter_unexpired_pdf_urls",
+            AsyncMock(return_value=({active.url}, {active.url: "2999-12-31"})),
+        ):
+            result = await _apply_pdf_document_gate(
+                [active, foreign],
+                AsyncMock(),
+                {**self._metadata(), "fields": {"title": "title"}},
+            )
+
+        assert result == [active]
+        assert result[0].title == "Communications Manager"
+        assert result[0].locations == ["Lausanne"]
+        assert result[0].extras == {"valid_through": "2999-12-31"}
+
+
+class TestEuropeanAthleticsDirectusConfig:
+    PDF_URL = (
+        "https://european-athletics.directus.app/assets/"
+        "11111111-2222-3333-4444-555555555555/role.pdf"
+    )
+
+    @staticmethod
+    def _fake_reader(stream):
+        from types import SimpleNamespace
+
+        text = stream.read().removeprefix(b"%PDF ").decode()
+        return SimpleNamespace(pages=[SimpleNamespace(extract_text=lambda: text)])
+
+    @classmethod
+    def _payload(cls) -> dict:
+        return {
+            "meta": {"filter_count": 1, "total_count": 2},
+            "data": [
+                {
+                    "id": 69,
+                    "title": "Communications Manager",
+                    "location": "Lausanne, Switzerland",
+                    "work_location_type": "On site",
+                    "work_hours": "Full Time",
+                    "status": "published",
+                    "date_created": "2999-01-02T03:04:05",
+                    "date_updated": "2999-01-03T04:05:06",
+                    "pdf_job_description": {
+                        "id": "11111111-2222-3333-4444-555555555555",
+                        "composed_url": cls.PDF_URL,
+                        "filename_download": "role.pdf",
+                        "type": "application/pdf",
+                    },
+                }
+            ],
+        }
+
+    @staticmethod
+    def _board() -> dict:
+        row = _board_row("european-athletics-directus-careers")
+        config = json.loads(row["monitor_config"])
+        return {"board_url": row["board_url"], "metadata": config}
+
+    @classmethod
+    async def _discover(cls, payload: dict, pdf_text: str | None, monkeypatch):
+        monkeypatch.setattr("pypdf.PdfReader", cls._fake_reader)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/items/careers_jobs":
+                return httpx.Response(200, json=payload, request=request)
+            assert pdf_text is not None
+            return httpx.Response(200, content=f"%PDF {pdf_text}".encode(), request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await discover(cls._board(), client)
+
+    @pytest.mark.asyncio
+    async def test_reviewed_foreign_item_is_excluded_upstream_and_zero_is_authoritative(
+        self, monkeypatch
+    ):
+        board = self._board()
+        params = board["metadata"]["params"]
+
+        assert params["filter[id][_neq]"] == "68"
+        result = await self._discover(
+            {"meta": {"filter_count": 0, "total_count": 1}, "data": []},
+            None,
+            monkeypatch,
+        )
+
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_owned_future_pdf_keeps_api_fields_and_adds_normalized_deadline(
+        self, monkeypatch
+    ):
+        result = await self._discover(
+            self._payload(),
+            (
+                "European Athletics is seeking a Communications Manager.\n"
+                "Avenue Louis-Ruchonnet 16, Lausanne.\n"
+                "Deadline for receipt of applications: Friday the 31st of December 2999"
+            ),
+            monkeypatch,
+        )
+
+        assert len(result) == 1
+        job = result[0]
+        assert job.url == self.PDF_URL
+        assert job.title == "Communications Manager"
+        assert job.locations == ["Lausanne, Switzerland"]
+        assert job.employment_type == "Full Time"
+        assert job.job_location_type == "On site"
+        assert job.date_posted == "2999-01-02T03:04:05"
+        assert job.metadata == {
+            "ats_job_id": "69",
+            "source_file_id": "11111111-2222-3333-4444-555555555555",
+            "source_filename": "role.pdf",
+            "source_updated_at": "2999-01-03T04:05:06",
+        }
+        assert job.extras == {"valid_through": "2999-12-31"}
+
+    @pytest.mark.asyncio
+    async def test_expired_owned_pdf_is_omitted(self, monkeypatch):
+        result = await self._discover(
+            self._payload(),
+            (
+                "European Athletic Association vacancy.\n"
+                "jobs@european-athletics.org\n"
+                "Deadline for receipt of applications: 1st of January 2000"
+            ),
+            monkeypatch,
+        )
+
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_unclassified_employer_fails_closed(self, monkeypatch):
+        with pytest.raises(ValueError, match="required ownership markers"):
+            await self._discover(
+                self._payload(),
+                (
+                    "Danish Athletics is seeking a manager.\n"
+                    "Deadline for receipt of applications: 31st of December 2999"
+                ),
+                monkeypatch,
+            )
+
+    @pytest.mark.asyncio
+    async def test_owned_pdf_without_deadline_fails_closed(self, monkeypatch):
+        with pytest.raises(ValueError, match="deadline was not found"):
+            await self._discover(
+                self._payload(),
+                "European Athletics vacancy at Avenue Louis-Ruchonnet 16.",
+                monkeypatch,
+            )
 
 
 class TestProspectiveDetection:

@@ -406,6 +406,56 @@ class TestRequireUnexpiredPdf:
 
         assert result == {active}
 
+    async def test_required_text_pattern_excludes_foreign_employer(self, monkeypatch):
+        owned = "https://example.com/jobs/owned.pdf"
+        foreign = "https://example.com/jobs/member.pdf"
+        monkeypatch.setattr("pypdf.PdfReader", self._fake_reader)
+
+        def handler(request):
+            employer = "European Athletics" if str(request.url) == owned else "Danish Athletics"
+            return httpx.Response(
+                200,
+                content=(
+                    f"%PDF {employer} is seeking a manager. "
+                    "Applications must be submitted by 31 December 2999"
+                ).encode(),
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await _filter_unexpired_pdf_urls(
+                {owned, foreign},
+                client,
+                self.CONFIG,
+                required_text_pattern=re.compile(r"\bEuropean Athletics\b"),
+            )
+
+        assert result == {owned}
+
+    async def test_required_text_pattern_can_fail_for_unclassified_employer(self, monkeypatch):
+        url = "https://example.com/jobs/unclassified.pdf"
+        monkeypatch.setattr("pypdf.PdfReader", self._fake_reader)
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                content=(
+                    b"%PDF Danish Athletics is seeking a manager. "
+                    b"Applications must be submitted by 31 December 2999"
+                ),
+                request=request,
+            )
+        )
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="required ownership markers"):
+                await _filter_unexpired_pdf_urls(
+                    {url},
+                    client,
+                    self.CONFIG,
+                    required_text_pattern=re.compile(r"\bEuropean Athletics\b"),
+                    raise_on_required_text_mismatch=True,
+                )
+
     async def test_omits_removed_pdf(self):
         url = "https://example.com/jobs/removed.pdf"
         transport = httpx.MockTransport(lambda request: httpx.Response(410, request=request))

@@ -86,15 +86,15 @@ def _fingerprinted_pdf_url(
     return url, headers
 
 
-def _icj_scraper_config() -> dict:
+def _board_scraper_config(board_slug: str) -> dict:
     boards_path = Path(__file__).resolve().parents[1] / "data" / "boards.csv"
     with boards_path.open(newline="", encoding="utf-8") as handle:
-        row = next(
-            row
-            for row in csv.DictReader(handle)
-            if row["board_slug"] == "international-commission-of-jurists-careers"
-        )
+        row = next(row for row in csv.DictReader(handle) if row["board_slug"] == board_slug)
     return json.loads(row["scraper_config"])
+
+
+def _icj_scraper_config() -> dict:
+    return _board_scraper_config("international-commission-of-jurists-careers")
 
 
 class TestTitleFromUrl:
@@ -133,6 +133,32 @@ class TestTitleFromUrl:
         url = "https://example.com/Engineer.pdf"
         result = _title_from_url(url, pattern=r"NOMATCH_(\w+)")
         assert result == "Engineer"
+
+
+class TestInternationalBoxingAssociationPdfConfig:
+    @pytest.mark.parametrize(
+        ("filename", "expected"),
+        [
+            (
+                "2024-Job-Vacancy-Administrative-Assistant.pdf",
+                "Administrative Assistant",
+            ),
+            (
+                "2024-Job-Vacancy-International-Relations-Director-of-IBA-2.pdf",
+                "International Relations Director of IBA",
+            ),
+        ],
+    )
+    def test_historical_wordpress_filenames_produce_clean_titles(self, filename, expected):
+        config = _board_scraper_config("international-boxing-association-careers")
+
+        assert (
+            _title_from_url(
+                f"https://www.iba.sport/wp-content/uploads/2024/01/{filename}",
+                config["title_pattern"],
+            )
+            == expected
+        )
 
 
 class TestTitleFromText:
@@ -668,6 +694,81 @@ class TestScrape:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(httpx.HTTPStatusError):
                 await scrape("https://example.com/missing.pdf", {}, client)
+
+
+class TestInternationalCanoeFederationPdfConfig:
+    @pytest.mark.parametrize(
+        ("text", "expected_title", "expected_location"),
+        [
+            (
+                "Digital Channel Manager\n"
+                "Reporting to Head of Digital\n"
+                "Location: Budapest Headquarters, with regular collaboration with the "
+                "Hangzhou Office and\n"
+                "occasional international travel\n"
+                "Responsible for:\nDigital operations",
+                "Digital Channel Manager",
+                (
+                    "Budapest Headquarters, with regular collaboration with the Hangzhou "
+                    "Office and occasional international travel"
+                ),
+            ),
+            (
+                "Communications Coordinator\n"
+                "Head of Communication & Public Relations\n"
+                "Location: Budapest Headquarters, with flexibility for occasional travel and "
+                "cross-office coordination\n"
+                "Responsible for:\nMedia relations",
+                "Communications Coordinator",
+                (
+                    "Budapest Headquarters, with flexibility for occasional travel and "
+                    "cross-office coordination"
+                ),
+            ),
+            (
+                "Job Title: Asia and Oceania Continental Manager\n"
+                "Employment Type: Full-Time\n"
+                "Start Date: March 2025\n"
+                "Location: ICF Hangzhou Office, China (refer to website for details).\n"
+                "Working Hours: Full time",
+                "Asia and Oceania Continental Manager",
+                "ICF Hangzhou Office, China (refer to website for details).",
+            ),
+            (
+                "Office Administration Manager\n"
+                "Reporting to Chief Operating Officer\n"
+                "Location: Budapest, Hungary\n\n"
+                "Position Overview:\nSupport the office",
+                "Office Administration Manager",
+                "Budapest, Hungary",
+            ),
+        ],
+    )
+    def test_known_official_templates_extract_bounded_fields(
+        self,
+        text,
+        expected_title,
+        expected_location,
+    ):
+        config = _board_scraper_config("international-canoe-federation-careers")
+
+        assert config["require_title_pattern"] is True
+        assert _extract_pattern(text, config["title_pattern"]) == expected_title
+        assert _extract_pattern(text, config["location_pattern"]) == expected_location
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "International Canoe Federation\nCandidate Brief\nUnstructured body",
+            "A" * 161 + "\nReporting to Chief Operating Officer",
+            "Digital Channel Manager\nUnrecognized next field",
+        ],
+    )
+    def test_unrecognized_title_layouts_fail_closed(self, text):
+        config = _board_scraper_config("international-canoe-federation-careers")
+
+        assert config["require_title_pattern"] is True
+        assert _extract_pattern(text, config["title_pattern"]) is None
 
 
 class TestIcjPdfConfig:
