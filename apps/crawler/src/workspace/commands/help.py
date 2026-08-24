@@ -1381,9 +1381,10 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    The pattern must capture the deadline. Missing, invalid,
                    non-PDF, oversized, or unreadable documents fail the cycle;
                    404/410 documents and expired deadlines are omitted. Limited
-                   to 100 URLs and incompatible with rich_rows. English ordinal
-                   day suffixes (1st, 2nd, 3rd, 4th) are normalized before
-                   parsing.
+                   to 100 URLs; each document is streamed with 20 MB, 200-page,
+                   and 2,000,000-character extraction caps. Incompatible with
+                   rich_rows. English ordinal day suffixes (1st, 2nd, 3rd,
+                   4th) are normalized before parsing.
     rich_rows      Optional static listing-row extraction. It supports the
                    ordinary sequential pagination config shown above:
                    {"row_selector": ".job", "link_selector": ".job-title a",

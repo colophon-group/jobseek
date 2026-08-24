@@ -16,7 +16,7 @@ import codecs
 import io
 import random
 import re
-from datetime import date, datetime
+from datetime import UTC, datetime
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -45,6 +45,8 @@ _MAX_JSONLD_VERIFICATION_URLS = 500
 _PDF_EXPIRATION_VERIFICATION_CONCURRENCY = 4
 _MAX_PDF_EXPIRATION_VERIFICATION_URLS = 100
 _MAX_PDF_EXPIRATION_BYTES = 20 * 1024 * 1024
+_MAX_PDF_EXPIRATION_PAGES = 200
+_MAX_PDF_EXPIRATION_TEXT_CHARS = 2_000_000
 
 # Browser-pagination fetch budget. Playwright fetches are slower than
 # httpx (the JS engine + page context add tens of ms), and the page is
@@ -184,6 +186,30 @@ def _validated_unexpired_pdf_config(value: object) -> tuple[re.Pattern[str], str
     return compiled, date_format
 
 
+def _extract_bounded_pdf_text(content: bytes) -> str:
+    """Extract PDF text without allowing unbounded page or text expansion."""
+    import pypdf
+
+    reader = pypdf.PdfReader(io.BytesIO(content))
+    if len(reader.pages) > _MAX_PDF_EXPIRATION_PAGES:
+        raise ValueError(
+            f"DOM require_unexpired_pdf document exceeds {_MAX_PDF_EXPIRATION_PAGES} pages"
+        )
+
+    parts: list[str] = []
+    text_chars = 0
+    for page in reader.pages:
+        page_text = page.extract_text() or ""
+        text_chars += len(page_text)
+        if text_chars > _MAX_PDF_EXPIRATION_TEXT_CHARS:
+            raise ValueError(
+                "DOM require_unexpired_pdf extracted text exceeds "
+                f"{_MAX_PDF_EXPIRATION_TEXT_CHARS} characters"
+            )
+        parts.append(page_text)
+    return "\n\n".join(parts).strip()
+
+
 async def _filter_unexpired_pdf_urls(
     urls: set[str],
     client: httpx.AsyncClient,
@@ -206,26 +232,46 @@ async def _filter_unexpired_pdf_urls(
     semaphore = asyncio.Semaphore(_PDF_EXPIRATION_VERIFICATION_CONCURRENCY)
 
     async def verify(url: str) -> tuple[str, bool]:
-        import pypdf
-
         if urlsplit(url).path.lower().endswith(".pdf") is False:
             raise ValueError(f"DOM require_unexpired_pdf found a non-PDF URL: {url}")
-        async with semaphore:
-            response = await client.get(url, follow_redirects=True)
-        if response.status_code in {404, 410}:
-            return url, False
-        response.raise_for_status()
-        check_tdm_response(response)
-        if len(response.content) > _MAX_PDF_EXPIRATION_BYTES:
-            raise ValueError(
-                "DOM require_unexpired_pdf document exceeds "
-                f"{_MAX_PDF_EXPIRATION_BYTES} bytes: {url}"
-            )
-        if not response.content.lstrip().startswith(b"%PDF"):
+        async with semaphore, client.stream("GET", url, follow_redirects=True) as response:
+            if response.status_code in {404, 410}:
+                return url, False
+            response.raise_for_status()
+            check_tdm_response(response)
+
+            raw_content_length = response.headers.get("content-length")
+            if raw_content_length is not None:
+                try:
+                    content_length = int(raw_content_length)
+                except ValueError as exc:
+                    raise ValueError(
+                        f"DOM require_unexpired_pdf response has invalid Content-Length: {url}"
+                    ) from exc
+                if content_length < 0:
+                    raise ValueError(
+                        f"DOM require_unexpired_pdf response has invalid Content-Length: {url}"
+                    )
+                if content_length > _MAX_PDF_EXPIRATION_BYTES:
+                    raise ValueError(
+                        "DOM require_unexpired_pdf document exceeds "
+                        f"{_MAX_PDF_EXPIRATION_BYTES} bytes: {url}"
+                    )
+
+            content = bytearray()
+            async for chunk in response.aiter_bytes():
+                if len(content) + len(chunk) > _MAX_PDF_EXPIRATION_BYTES:
+                    raise ValueError(
+                        "DOM require_unexpired_pdf document exceeds "
+                        f"{_MAX_PDF_EXPIRATION_BYTES} bytes: {url}"
+                    )
+                content.extend(chunk)
+
+        pdf_content = bytes(content)
+        if not pdf_content.lstrip().startswith(b"%PDF"):
             raise ValueError(f"DOM require_unexpired_pdf response is not a PDF: {url}")
 
-        reader = pypdf.PdfReader(io.BytesIO(response.content))
-        text = "\n\n".join(page.extract_text() or "" for page in reader.pages).strip()
+        text = await asyncio.to_thread(_extract_bounded_pdf_text, pdf_content)
         match = pattern.search(text)
         if match is None or match.group(1) is None:
             raise ValueError(f"DOM require_unexpired_pdf deadline was not found: {url}")
@@ -238,7 +284,7 @@ async def _filter_unexpired_pdf_urls(
                 f"DOM require_unexpired_pdf deadline {raw_deadline!r} did not match "
                 f"date_format {date_format!r}: {url}"
             ) from exc
-        return url, deadline >= date.today()
+        return url, deadline >= datetime.now(UTC).date()
 
     tasks = [asyncio.create_task(verify(url)) for url in sorted(urls)]
     try:
