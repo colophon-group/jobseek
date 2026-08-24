@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -28,6 +29,7 @@ from src.core.monitors.dom import (
     dom_discover,
 )
 from src.shared.http_retry import PaginationFetchError
+from src.shared.tdm import TDMReservedError
 from src.workspace._compat import auto_scraper_type
 
 # ---------------------------------------------------------------------------
@@ -44,6 +46,21 @@ def _html_with_links(*urls: str) -> str:
     """Build minimal HTML with anchor tags for the given URLs."""
     links = "".join(f'<a href="{url}">link</a>' for url in urls)
     return f"<html><body>{links}</body></html>"
+
+
+class _AsyncChunks(httpx.AsyncByteStream):
+    def __init__(self, *chunks: bytes, fail_on_read: bool = False) -> None:
+        self.chunks = chunks
+        self.fail_on_read = fail_on_read
+
+    async def __aiter__(self):
+        if self.fail_on_read:
+            raise AssertionError("response body must not be read")
+        for chunk in self.chunks:
+            yield chunk
+
+    async def aclose(self) -> None:
+        return None
 
 
 def _make_fetch(pages: dict[str, str | None]):
@@ -293,6 +310,40 @@ class TestExplicitEmptyState:
 
         assert result == set()
 
+    async def test_rendered_card_link_drift_is_not_accepted_as_empty(self):
+        page = MagicMock()
+        context = MagicMock()
+        context.__aenter__ = AsyncMock(return_value=page)
+        context.__aexit__ = AsyncMock(return_value=None)
+        html = """
+        <div class="resource">
+          <div class="card-list">
+            <div class="card-item">
+              <a class="card-link-v2" href="/static-assets/pdf/role.pdf">Role</a>
+            </div>
+          </div>
+        </div>
+        """
+
+        with (
+            patch("src.core.monitors.dom.open_page", return_value=context),
+            patch("src.core.monitors.dom._extract_links_rendered", AsyncMock(return_value=set())),
+            patch("src.core.monitors.dom.safe_content", AsyncMock(return_value=html)),
+            pytest.raises(ValueError, match="did not match the configured explicit empty state"),
+        ):
+            await dom_discover(
+                {
+                    "board_url": "https://www.fih.hockey/about-fih/work-in-hockey",
+                    "metadata": {
+                        "render": True,
+                        "link_selector": ".resource .card-list a.card-link[href$='.pdf']",
+                        "empty_selector": ".resource .card-list:not(:has(.card-item))",
+                    },
+                },
+                AsyncMock(),
+                pw=MagicMock(),
+            )
+
     @pytest.mark.parametrize(
         "metadata",
         [
@@ -356,6 +407,110 @@ class TestRequireUnexpiredPdf:
             result = await _filter_unexpired_pdf_urls({url}, client, self.CONFIG)
 
         assert result == set()
+
+    async def test_rejects_declared_oversize_before_reading_body(self):
+        url = "https://example.com/jobs/oversize.pdf"
+
+        def handler(request):
+            return httpx.Response(
+                200,
+                headers={"content-length": "999999999"},
+                stream=_AsyncChunks(fail_on_read=True),
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="document exceeds"):
+                await _filter_unexpired_pdf_urls({url}, client, self.CONFIG)
+
+    async def test_rejects_chunked_oversize_while_streaming(self, monkeypatch):
+        url = "https://example.com/jobs/oversize.pdf"
+        monkeypatch.setattr("src.core.monitors.dom._MAX_PDF_EXPIRATION_BYTES", 8)
+
+        def handler(request):
+            return httpx.Response(
+                200,
+                headers={"transfer-encoding": "chunked"},
+                stream=_AsyncChunks(b"%PDF", b" 1234", b"5"),
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="document exceeds 8 bytes"):
+                await _filter_unexpired_pdf_urls({url}, client, self.CONFIG)
+
+    async def test_honors_tdm_header_before_reading_body(self):
+        url = "https://example.com/jobs/reserved.pdf"
+
+        def handler(request):
+            return httpx.Response(
+                200,
+                headers={"tdm-reservation": "1"},
+                stream=_AsyncChunks(fail_on_read=True),
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(TDMReservedError, match="tdm-reservation=1"):
+                await _filter_unexpired_pdf_urls({url}, client, self.CONFIG)
+
+    async def test_rejects_pdf_over_page_limit(self, monkeypatch):
+        from types import SimpleNamespace
+
+        url = "https://example.com/jobs/many-pages.pdf"
+        monkeypatch.setattr("src.core.monitors.dom._MAX_PDF_EXPIRATION_PAGES", 1)
+        monkeypatch.setattr(
+            "pypdf.PdfReader",
+            lambda _stream: SimpleNamespace(
+                pages=[
+                    SimpleNamespace(extract_text=lambda: "page one"),
+                    SimpleNamespace(extract_text=lambda: "page two"),
+                ]
+            ),
+        )
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, content=b"%PDF pages", request=request)
+        )
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="exceeds 1 pages"):
+                await _filter_unexpired_pdf_urls({url}, client, self.CONFIG)
+
+    async def test_rejects_extracted_text_over_limit(self, monkeypatch):
+        from types import SimpleNamespace
+
+        url = "https://example.com/jobs/expanded.pdf"
+        monkeypatch.setattr("src.core.monitors.dom._MAX_PDF_EXPIRATION_TEXT_CHARS", 5)
+        monkeypatch.setattr(
+            "pypdf.PdfReader",
+            lambda _stream: SimpleNamespace(
+                pages=[SimpleNamespace(extract_text=lambda: "expanded text")]
+            ),
+        )
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, content=b"%PDF text", request=request)
+        )
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="extracted text exceeds 5 characters"):
+                await _filter_unexpired_pdf_urls({url}, client, self.CONFIG)
+
+    async def test_keeps_deadline_on_current_utc_day(self, monkeypatch):
+        url = "https://example.com/jobs/today.pdf"
+        today = datetime.now(UTC).strftime("%-d %B %Y")
+        monkeypatch.setattr("pypdf.PdfReader", self._fake_reader)
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                content=f"%PDF Applications must be submitted by {today}".encode(),
+                request=request,
+            )
+        )
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await _filter_unexpired_pdf_urls({url}, client, self.CONFIG)
+
+        assert result == {url}
 
     async def test_fails_closed_when_deadline_is_missing(self, monkeypatch):
         url = "https://example.com/jobs/undated.pdf"
