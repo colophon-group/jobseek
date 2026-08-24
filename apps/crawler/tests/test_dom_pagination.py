@@ -20,9 +20,11 @@ from src.core.monitors.dom import (
     _fetch_via_page,
     _filter_jsonld_job_urls,
     _filter_unexpired_pdf_urls,
+    _fingerprint_response_urls,
     _lucca_probe_config,
     _paginate_urls,
     _vagas_probe_config,
+    _validated_response_fingerprint_config,
     _validated_rich_rows,
     _validated_unexpired_pdf_config,
     can_handle,
@@ -574,6 +576,126 @@ class TestRequireUnexpiredPdf:
     def test_rejects_invalid_config(self, value):
         with pytest.raises(ValueError, match="require_unexpired_pdf"):
             _validated_unexpired_pdf_config(value)
+
+
+class TestFingerprintResponse:
+    CONTENT_TYPE = "application/pdf"
+    BASE_HEADERS = {
+        "content-type": CONTENT_TYPE,
+        "etag": '"0123456789abcdef"',
+        "last-modified": "Thu, 23 Jul 2026 14:06:14 GMT",
+        "content-length": "3987062",
+    }
+
+    async def test_stable_validators_do_not_duplicate_or_change_identity(self):
+        url = "https://assets.example.com/job.pdf"
+        requests: list[httpx.Request] = []
+
+        def handler(request):
+            requests.append(request)
+            return httpx.Response(200, headers=self.BASE_HEADERS, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            first = await _fingerprint_response_urls({url, url}, client, self.CONTENT_TYPE)
+            second = await _fingerprint_response_urls({url}, client, self.CONTENT_TYPE)
+
+        assert len(first) == 1
+        assert first == second
+        assert all(request.method == "HEAD" for request in requests)
+        assert next(iter(first)).startswith(f"{url}?_jobseek_fp=")
+
+    async def test_changed_strong_validator_creates_one_new_identity(self):
+        url = "https://assets.example.com/job.pdf"
+        etag = '"0123456789abcdef"'
+
+        def handler(request):
+            return httpx.Response(
+                200,
+                headers={**self.BASE_HEADERS, "etag": etag},
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            first = await _fingerprint_response_urls({url}, client, self.CONTENT_TYPE)
+            etag = '"fedcba9876543210"'
+            second = await _fingerprint_response_urls({url}, client, self.CONTENT_TYPE)
+
+        assert len(first) == len(second) == 1
+        assert first.isdisjoint(second)
+
+    @pytest.mark.parametrize(
+        ("header", "value", "error"),
+        [
+            ("etag", None, "strong ETag"),
+            ("etag", 'W/"0123456789abcdef"', "strong ETag"),
+            ("etag", '"short"', "invalid strong ETag"),
+            ("last-modified", None, "Last-Modified"),
+            ("last-modified", "not a date", "invalid Last-Modified"),
+            ("content-length", None, "invalid Content-Length"),
+            ("content-length", "unknown", "invalid Content-Length"),
+            ("content-type", "text/html", "unexpected Content-Type"),
+        ],
+    )
+    async def test_fails_closed_for_absent_or_weak_validators(self, header, value, error):
+        url = "https://assets.example.com/job.pdf"
+        headers = dict(self.BASE_HEADERS)
+        if value is None:
+            headers.pop(header)
+        else:
+            headers[header] = value
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, headers=headers, request=request)
+        )
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match=error):
+                await _fingerprint_response_urls({url}, client, self.CONTENT_TYPE)
+
+    async def test_request_failure_aborts_instead_of_returning_partial_inventory(self):
+        urls = {
+            "https://assets.example.com/active.pdf",
+            "https://assets.example.com/unavailable.pdf",
+        }
+
+        def handler(request):
+            status = 503 if request.url.path.endswith("unavailable.pdf") else 200
+            return httpx.Response(status, headers=self.BASE_HEADERS, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(httpx.HTTPStatusError):
+                await _fingerprint_response_urls(urls, client, self.CONTENT_TYPE)
+
+    async def test_dom_discover_fingerprints_only_current_listing_urls(self):
+        board_url = "https://example.com/careers"
+        document_url = "https://assets.example.com/job.pdf"
+        listing = _html_with_links(document_url, document_url)
+
+        def handler(request):
+            return httpx.Response(200, headers=self.BASE_HEADERS, request=request)
+
+        with patch(_FETCH_PATCH, new=_make_fetch({board_url: listing})):
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+                result = await dom_discover(
+                    {
+                        "board_url": board_url,
+                        "metadata": {
+                            "link_selector": "a[href$='.pdf']",
+                            "fingerprint_response": {"content_type": self.CONTENT_TYPE},
+                        },
+                    },
+                    client,
+                )
+
+        assert len(result) == 1
+        assert next(iter(result)).startswith(f"{document_url}?_jobseek_fp=")
+
+    @pytest.mark.parametrize(
+        "value",
+        [True, {}, {"content_type": "application/pdf", "extra": True}, {"content_type": "pdf"}],
+    )
+    def test_rejects_invalid_config(self, value):
+        with pytest.raises(ValueError, match="fingerprint_response"):
+            _validated_response_fingerprint_config(value)
 
 
 class TestRichRowsStatic:
