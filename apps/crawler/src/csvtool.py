@@ -16,6 +16,7 @@ from src.shared.csv_io import write_csv as _write_csv
 from src.shared.output import tty_message
 from src.workspace.errors import (
     BoardNotFoundError,
+    CsvToolError,
     InvalidSlugError,
     MissingRequiredFieldError,
     NothingToUpdateError,
@@ -225,24 +226,40 @@ def board_add(
 
     headers, rows = _read_csv(boards_path)
 
-    # Look for existing board to update (by board_url or board_slug)
-    target = None
-    if board_url:
-        for row in rows:
-            if row["company_slug"] == slug and row["board_url"] == board_url:
-                target = row
-                break
-    elif board_slug:
-        for row in rows:
-            if row.get("board_slug") == board_slug:
-                target = row
-                break
+    # Resolve both stable identifiers. A resumed workspace can intentionally
+    # change a board URL while preserving its slug, so preferring board_url
+    # alone would append a duplicate row on submit.
+    url_matches = [
+        row
+        for row in rows
+        if board_url and row["company_slug"] == slug and row["board_url"] == board_url
+    ]
+    slug_matches = [row for row in rows if board_slug and row.get("board_slug") == board_slug]
+    if len(url_matches) > 1:
+        raise CsvToolError(f"Board URL matches multiple rows for {slug!r}: {board_url!r}")
+    if len(slug_matches) > 1:
+        raise CsvToolError(f"Board slug matches multiple rows: {board_slug!r}")
+
+    url_target = url_matches[0] if url_matches else None
+    slug_target = slug_matches[0] if slug_matches else None
+    if slug_target is not None and slug_target["company_slug"] != slug:
+        raise CsvToolError(
+            f"Board slug {board_slug!r} belongs to company "
+            f"{slug_target['company_slug']!r}, not {slug!r}"
+        )
+    if url_target is not None and slug_target is not None and url_target is not slug_target:
+        raise CsvToolError(
+            f"Board identifiers refer to different rows: {board_slug!r}, {board_url!r}"
+        )
+    target = slug_target or url_target
 
     if target is not None:
         # Update existing board
         updates: dict[str, str] = {}
         if board_slug is not None:
             updates["board_slug"] = board_slug
+        if board_url is not None and board_url != target.get("board_url"):
+            updates["board_url"] = board_url
         if monitor_type is not None:
             updates["monitor_type"] = monitor_type
         if monitor_config is not None:

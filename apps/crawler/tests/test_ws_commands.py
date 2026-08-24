@@ -3524,6 +3524,39 @@ class TestSubmitStepRegistry:
             "zeta",
         ]
 
+    def test_csv_write_updates_resumed_board_by_slug_when_url_changes(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(
+            tmp_path,
+            companies="test,Old Test,https://old.example,,,\n",
+            boards="test,test-careers,https://old.example/jobs,greenhouse,,json-ld,\n",
+        )
+        ws_obj = Workspace(slug="test", name="Test", website="https://test.example")
+        board = Board(
+            alias="careers",
+            slug="test-careers",
+            url="https://test.example/jobs",
+        )
+        board.configs["api"] = {
+            "monitor_type": "api_sniffer",
+            "monitor_config": {"api_url": "https://test.example/api/jobs"},
+            "scraper_type": "skip",
+            "status": "tested",
+            "run": {"jobs": 2},
+        }
+        board.active_config = "api"
+
+        from src.shared.csv_io import read_csv
+        from src.workspace.commands.lifecycle import _execute_submit_step
+
+        _execute_submit_step("csv_written", ws_obj, [board], None)
+
+        _, rows = read_csv(tmp_path / "boards.csv")
+        matching = [row for row in rows if row["board_slug"] == "test-careers"]
+        assert len(matching) == 1
+        assert matching[0]["board_url"] == "https://test.example/jobs"
+        assert matching[0]["monitor_type"] == "api_sniffer"
+
 
 class TestSubmitIdempotency:
     """Submit skips already-completed steps on rerun."""
