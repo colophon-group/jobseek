@@ -13,12 +13,10 @@ from __future__ import annotations
 
 import asyncio
 import codecs
-import hashlib
 import io
 import random
 import re
 from datetime import UTC, datetime
-from email.utils import parsedate_to_datetime
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -30,6 +28,11 @@ from selectolax.lexbor import LexborHTMLParser, SelectolaxError
 from src.core.monitors import DiscoveredJob, register
 from src.core.monitors.raw import save_text_response
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
+from src.shared.response_fingerprint import (
+    build_response_fingerprint_url,
+    response_fingerprint_validators,
+    same_origin_response,
+)
 from src.shared.tdm import check_response as check_tdm_response
 from src.shared.truncation import truncated_rich_result
 
@@ -51,8 +54,6 @@ _MAX_PDF_EXPIRATION_PAGES = 200
 _MAX_PDF_EXPIRATION_TEXT_CHARS = 2_000_000
 _RESPONSE_FINGERPRINT_CONCURRENCY = 4
 _MAX_RESPONSE_FINGERPRINT_URLS = 100
-_MAX_RESPONSE_FINGERPRINT_BYTES = 20 * 1024 * 1024
-_RESPONSE_FINGERPRINT_QUERY_PARAM = "_jobseek_fp"
 
 # Browser-pagination fetch budget. Playwright fetches are slower than
 # httpx (the JS engine + page context add tens of ms), and the page is
@@ -186,52 +187,6 @@ def _validated_response_fingerprint_config(value: object) -> str | None:
     return content_type.strip().casefold()
 
 
-def _strong_etag(value: str | None, url: str) -> str:
-    """Return a bounded strong ETag or fail closed.
-
-    Weak validators explicitly permit semantically equivalent but bytewise
-    different responses, so they cannot safely identify mutable documents.
-    """
-    if value is None or value.startswith("W/"):
-        raise ValueError(f"DOM fingerprint_response requires a strong ETag: {url}")
-    if (
-        len(value) < 10
-        or len(value) > 512
-        or not value.startswith('"')
-        or not value.endswith('"')
-        or '"' in value[1:-1]
-        or any(ord(char) < 0x20 or ord(char) == 0x7F for char in value)
-    ):
-        raise ValueError(f"DOM fingerprint_response received an invalid strong ETag: {url}")
-    return value
-
-
-def _response_fingerprint_url(
-    source_url: str,
-    *,
-    etag: str,
-    last_modified: str,
-    content_length: int,
-    content_type: str,
-) -> str:
-    """Append a private, deterministic identity token to a mutable URL."""
-    parts = urlsplit(source_url)
-    if any(
-        key == _RESPONSE_FINGERPRINT_QUERY_PARAM
-        for key, _ in parse_qsl(parts.query, keep_blank_values=True)
-    ):
-        raise ValueError(
-            f"DOM fingerprint_response source URL contains reserved query parameter: {source_url}"
-        )
-    payload = "\n".join(
-        (source_url, etag, last_modified, str(content_length), content_type)
-    ).encode()
-    fingerprint = hashlib.sha256(payload).hexdigest()[:24]
-    query = f"{parts.query}&" if parts.query else ""
-    query += urlencode({_RESPONSE_FINGERPRINT_QUERY_PARAM: fingerprint})
-    return urlunsplit((parts.scheme, parts.netloc, parts.path, query, ""))
-
-
 async def _fingerprint_response_urls(
     urls: set[str],
     client: httpx.AsyncClient,
@@ -252,60 +207,17 @@ async def _fingerprint_response_urls(
     semaphore = asyncio.Semaphore(_RESPONSE_FINGERPRINT_CONCURRENCY)
 
     async def fingerprint(url: str) -> str:
-        parts = urlsplit(url)
-        if parts.scheme not in {"http", "https"} or not parts.netloc:
-            raise ValueError(f"DOM fingerprint_response found an invalid URL: {url}")
         async with semaphore:
-            response = await client.head(url, follow_redirects=True)
-        response.raise_for_status()
-        check_tdm_response(response)
-
-        final_parts = urlsplit(str(response.url))
-        if (final_parts.scheme.casefold(), final_parts.netloc.casefold()) != (
-            parts.scheme.casefold(),
-            parts.netloc.casefold(),
-        ):
-            raise ValueError(f"DOM fingerprint_response crossed origins while resolving: {url}")
-
-        response_content_type = response.headers.get("content-type", "").split(";", 1)[0]
-        response_content_type = response_content_type.strip().casefold()
-        if response_content_type != expected_content_type:
-            raise ValueError(
-                "DOM fingerprint_response received unexpected Content-Type "
-                f"{response_content_type!r}: {url}"
+            response = await same_origin_response(client, "HEAD", url, stream=True)
+        try:
+            validators = response_fingerprint_validators(
+                response,
+                expected_content_type=expected_content_type,
+                source_url=url,
             )
-
-        etag = _strong_etag(response.headers.get("etag"), url)
-        raw_last_modified = response.headers.get("last-modified")
-        if raw_last_modified is None:
-            raise ValueError(f"DOM fingerprint_response requires Last-Modified: {url}")
-        try:
-            parsed_last_modified = parsedate_to_datetime(raw_last_modified)
-        except (TypeError, ValueError, OverflowError) as exc:
-            raise ValueError(
-                f"DOM fingerprint_response received invalid Last-Modified: {url}"
-            ) from exc
-        if parsed_last_modified.tzinfo is None:
-            raise ValueError(f"DOM fingerprint_response received invalid Last-Modified: {url}")
-        last_modified = parsed_last_modified.astimezone(UTC).isoformat()
-
-        raw_content_length = response.headers.get("content-length")
-        try:
-            content_length = int(raw_content_length) if raw_content_length is not None else 0
-        except ValueError as exc:
-            raise ValueError(
-                f"DOM fingerprint_response received invalid Content-Length: {url}"
-            ) from exc
-        if not 0 < content_length <= _MAX_RESPONSE_FINGERPRINT_BYTES:
-            raise ValueError(f"DOM fingerprint_response received invalid Content-Length: {url}")
-
-        return _response_fingerprint_url(
-            url,
-            etag=etag,
-            last_modified=last_modified,
-            content_length=content_length,
-            content_type=response_content_type,
-        )
+        finally:
+            await response.aclose()
+        return build_response_fingerprint_url(url, validators)
 
     tasks = [asyncio.create_task(fingerprint(url)) for url in sorted(urls)]
     try:
