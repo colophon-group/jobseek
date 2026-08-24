@@ -190,6 +190,14 @@ async def discover(
             job_id = document.get("id") if isinstance(document, dict) else None
             if not isinstance(job_id, str):
                 raise ValueError("JobCloud search result is missing a job id")
+            document_company = document.get("company")
+            document_company_id = (
+                _normalize_company_id(document_company.get("id"))
+                if isinstance(document_company, dict)
+                else None
+            )
+            if document_company_id != company_id:
+                raise ValueError("JobCloud returned a vacancy outside the configured company")
             try:
                 canonical_job_id = str(UUID(job_id))
             except (ValueError, AttributeError):
