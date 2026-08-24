@@ -17,9 +17,11 @@ The guard is implemented at the **httpx transport layer**:
      are equally dangerous (unspecified, multicast, CGNAT, link-local
      v6, IPv4-mapped v6, metadata).
   2. :func:`resolve_host_or_raise` — runs ``socket.getaddrinfo`` and rejects
-     when *any* returned address is private. The async transport retries only
-     temporary ``EAI_AGAIN`` resolver failures with a bounded backoff; every
-     successful answer is still validated fail-closed.
+     when *any* returned address is private. The sole exception is an
+     unscoped IPv6 link-local DNS answer alongside a public address: without
+     an interface scope it is not a routable destination. The async transport
+     retries only temporary ``EAI_AGAIN`` resolver failures with a bounded
+     backoff; every successful answer is still validated fail-closed.
   3. :func:`is_internal_host_allowed` — opt-in exemption list, sourced
      from ``INTERNAL_HOSTS_ALLOW`` env (comma-separated host[:port]
      entries) plus the proxy / Typesense / Postgres / Redis hosts the
@@ -261,6 +263,7 @@ def _public_address_from_infos(
 ) -> str:
     """Validate one resolver answer and choose its first public address."""
     chosen: str | None = None
+    unscoped_link_local: str | None = None
     for family, _socktype, _proto, _canonname, sockaddr in infos:
         if family == socket.AF_INET:
             addr = sockaddr[0]
@@ -272,6 +275,18 @@ def _public_address_from_infos(
         else:
             continue
         if is_private_ip(addr):
+            ip = ipaddress.ip_address(addr)
+            scope_id = sockaddr[3] if family == socket.AF_INET6 and len(sockaddr) > 3 else 0
+            if isinstance(ip, ipaddress.IPv6Address) and ip.is_link_local and not scope_id:
+                # A DNS AAAA record cannot supply the interface scope required
+                # to route an IPv6 link-local destination. Linux rejects a
+                # connect to this sockaddr with EINVAL. Some public sites
+                # nevertheless publish such broken AAAA records alongside a
+                # valid A record, so defer this one unreachable answer and use
+                # the public address when available. Scoped link-local answers
+                # remain blocked because they identify a reachable interface.
+                unscoped_link_local = addr
+                continue
             raise SSRFError(
                 url,
                 f"resolves_to_private_ip:{addr}",
@@ -280,6 +295,12 @@ def _public_address_from_infos(
         if chosen is None:
             chosen = addr
 
+    if chosen is None and unscoped_link_local is not None:
+        raise SSRFError(
+            url,
+            f"resolves_to_private_ip:{unscoped_link_local}",
+            host=host,
+        )
     if chosen is None:
         raise SSRFError(url, "no_address_record", host=host)
     return chosen
