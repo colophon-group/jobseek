@@ -22,6 +22,7 @@ import yaml
 
 from src.shared.constants import get_workspace_dir
 from src.workspace.filelock import file_lock
+from src.workspace.safe_cleanup import safe_rmtree_child
 
 # ── Atomic file write ──────────────────────────────────────────────────
 
@@ -552,11 +553,7 @@ def workspace_exists(slug: str) -> bool:
 
 def delete_workspace(slug: str) -> None:
     """Remove an entire workspace directory."""
-    import shutil
-
-    path = ws_dir(slug)
-    if path.exists():
-        shutil.rmtree(path)
+    safe_rmtree_child(get_workspace_dir(), slug, missing_ok=True)
 
 
 # ── Active workspace ──────────────────────────────────────────────────

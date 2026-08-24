@@ -1,4 +1,4 @@
-"""Quality-gated export of Codex resolver root and subagent sessions."""
+"""Quality-gated export of Jobseek Codex automation sessions."""
 
 from __future__ import annotations
 
@@ -10,13 +10,26 @@ import os
 import re
 import shutil
 import sqlite3
+import stat
 import tempfile
+import time
+import uuid
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from contextlib import suppress
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from src.workspace.safe_cleanup import (
+    claim_child_at,
+    directory_open_flags,
+    open_absolute_directory_no_follow,
+    restore_claimed_child_at,
+    safe_rmtree_child,
+    unlink_claimed_child_at,
+    validate_child_name,
+)
 from src.workspace.trace import detect_credentials, redact_credentials
 
 SCHEMA_VERSION = "jobseek-codex-training-bundle/v2"
@@ -26,12 +39,22 @@ _WORKTREE_RE = re.compile(r"/srv/jobseek-codex/worktrees/company-request-[^/\s\"
 _DOCUMENTATION_URL_CREDENTIAL_RE = re.compile(r"(?P<scheme>[a-z][a-z0-9+.-]*)://user:pass@", re.I)
 _FERNET_RE = re.compile(r"^gAAAAA[A-Za-z0-9_-]{40,}={0,2}$")
 _TRACK_RE = re.compile(r"<track-([abc])>\s*(.*?)\s*</track-\1>", re.I | re.S)
-_RUN_ID_FROM_CWD_RE = re.compile(r"company-request-\d+-(issue-\d+-\d+-[A-Za-z0-9]+)(?:/|$)")
+_RUN_ID_FROM_CWD_RE = re.compile(
+    r"(?P<run_id>issue-\d+-\d+-[A-Za-z0-9]+|"
+    r"daily-(?:error-review|annotations)-\d{4}-\d{2}-\d{2}-\d+-[A-Za-z0-9]+)"
+    r"(?:/|$)"
+)
+_AUTOMATION_RUN_SQL = (
+    "(run_id LIKE 'issue-%' OR run_id LIKE 'daily-error-review-%' "
+    "OR run_id LIKE 'daily-annotations-%')"
+)
 _DROP_TOP_LEVEL_TYPES = {"turn_context", "world_state"}
 _DROP_PAYLOAD_TYPES = {"reasoning", "token_count"}
 _DUPLICATE_EVENT_TYPES = {"agent_message", "user_message"}
 _MAX_JSONL_RECOVERY_LINES = 200
 _MAX_JSONL_RECOVERY_BYTES = 2 * 1024 * 1024
+_MAX_SESSION_METADATA_BYTES = 256 * 1024
+_MAX_SESSION_SOURCE_BYTES = 64 * 1024 * 1024
 _EXPORTABLE_STATES = {
     "completed",
     "failed",
@@ -69,6 +92,62 @@ class SessionSource:
             return "main"
         value = self.metadata.get("agent_path")
         return Path(value).name if isinstance(value, str) and value else "subagent"
+
+
+@dataclass(frozen=True)
+class SessionInventory:
+    by_run: dict[str, list[SessionSource]]
+    all_files: tuple[Path, ...]
+    entries: tuple[_RetainedSessionEntry, ...]
+    unlinked: tuple[Path, ...]
+    unparseable: tuple[Path, ...]
+    oversize: tuple[_RetainedSessionEntry, ...]
+    unsafe: tuple[_RetainedSessionEntry, ...]
+
+
+@dataclass(frozen=True)
+class SessionRetentionStatus:
+    files: int
+    bytes: int
+    unlinked_files: int
+    unlinked_bytes: int
+    unparseable_files: int
+    oversize_files: int
+    oversize_bytes: int
+    unsafe_files: int
+    unsafe_bytes: int
+    oldest_unlinked_age_s: int
+    active_files: int
+    over_limit: bool
+    reason: str | None
+
+
+@dataclass(frozen=True)
+class _RetainedSessionEntry:
+    path: Path
+    bytes: int
+    mtime: int
+
+
+@dataclass
+class _VerifiedSourceHandle:
+    path: Path
+    parent_fd: int
+    file_fd: int
+    name: str
+    opened: os.stat_result
+    size: int
+    expected_sha256: str
+    claimed_name: str | None = None
+    already_claimed: bool = False
+
+
+@dataclass(frozen=True)
+class _SourceSnapshot:
+    original_path: Path
+    path: Path
+    sha256: str
+    bytes: int
 
 
 @dataclass
@@ -111,6 +190,8 @@ def _read_jsonl(path: Path) -> tuple[list[dict[str, Any]], int, int]:
     as exactly one JSON object; arbitrary malformed input remains invalid and
     is quarantined by the caller.
     """
+    if path.lstat().st_size > _MAX_SESSION_SOURCE_BYTES:
+        raise RuntimeError(f"session source exceeds {_MAX_SESSION_SOURCE_BYTES} bytes: {path}")
     records: list[dict[str, Any]] = []
     invalid = 0
     recovered = 0
@@ -404,42 +485,303 @@ def project_thread(
     return projection
 
 
-def discover_sessions(codex_home: Path, run_id: str) -> list[SessionSource]:
-    sessions: list[SessionSource] = []
-    for path in (codex_home / "sessions").rglob("*.jsonl"):
+def discover_sessions(
+    codex_home: Path,
+    run_id: str,
+    *,
+    ledger_path: Path | None = None,
+) -> list[SessionSource]:
+    return list(
+        inventory_automation_sessions(codex_home, ledger_path=ledger_path).by_run.get(run_id, [])
+    )
+
+
+def inventory_automation_sessions(
+    codex_home: Path,
+    *,
+    ledger_path: Path | None = None,
+) -> SessionInventory:
+    """Classify every retained session without following a final-file symlink."""
+    indexed: dict[str, list[SessionSource]] = {}
+    unlinked: list[Path] = []
+    unparseable: list[Path] = []
+    entries, unsafe_entries = _walk_session_store_no_follow(codex_home / "sessions")
+    all_files = [entry.path for entry in entries]
+    entry_by_path = {entry.path: entry for entry in entries}
+    oversize_entries: list[_RetainedSessionEntry] = []
+    run_worktrees = _ledger_worktree_paths(ledger_path) if ledger_path is not None else {}
+    known_run_ids = _ledger_run_ids(ledger_path) if ledger_path is not None else None
+    for path in all_files:
+        if entry_by_path[path].bytes > _MAX_SESSION_SOURCE_BYTES:
+            oversize_entries.append(entry_by_path[path])
+            continue
         try:
-            first = json.loads(path.open(errors="replace").readline())
-        except (OSError, json.JSONDecodeError):
+            metadata = _read_session_metadata_no_follow(
+                path,
+                root=codex_home / "sessions",
+            )
+        except json.JSONDecodeError:
+            unparseable.append(path)
             continue
-        metadata = first.get("payload")
-        if not isinstance(metadata, dict):
+        except (OSError, RuntimeError):
+            try:
+                entry = path.lstat()
+                unsafe_entries.append(
+                    _RetainedSessionEntry(
+                        path=path,
+                        bytes=int(entry.st_size),
+                        mtime=int(entry.st_mtime),
+                    )
+                )
+            except OSError:
+                unsafe_entries.append(_RetainedSessionEntry(path=path, bytes=0, mtime=0))
             continue
-        if run_id not in str(metadata.get("cwd") or ""):
+        if metadata is None:
+            unparseable.append(path)
             continue
-        sessions.append(SessionSource(path=path, metadata=metadata))
-    sessions.sort(key=lambda item: (not item.is_root, item.role, item.thread_id))
-    return sessions
+        cwd = str(metadata.get("cwd") or "")
+        run_id = _run_id_for_cwd(cwd, run_worktrees)
+        if run_id is None:
+            match = _RUN_ID_FROM_CWD_RE.search(cwd)
+            run_id = match.group("run_id") if match else None
+            if run_id is not None and known_run_ids is not None and run_id not in known_run_ids:
+                run_id = None
+        if run_id is None:
+            unlinked.append(path)
+            continue
+        indexed.setdefault(run_id, []).append(SessionSource(path=path, metadata=metadata))
+    for sessions in indexed.values():
+        sessions.sort(key=lambda item: (not item.is_root, item.role, item.thread_id))
+    unsafe_by_path = {entry.path: entry for entry in unsafe_entries}
+    entries = [entry for entry in entries if entry.path not in unsafe_by_path]
+    all_files = [entry.path for entry in entries]
+    return SessionInventory(
+        by_run=indexed,
+        all_files=tuple(all_files),
+        entries=tuple(entries),
+        unlinked=tuple(unlinked),
+        unparseable=tuple(unparseable),
+        oversize=tuple(oversize_entries),
+        unsafe=tuple(sorted(unsafe_by_path.values(), key=lambda entry: str(entry.path))),
+    )
+
+
+def index_automation_sessions(
+    codex_home: Path,
+    *,
+    ledger_path: Path | None = None,
+) -> dict[str, list[SessionSource]]:
+    """Index resolver and daily routine session trees for export/backfill."""
+    return inventory_automation_sessions(codex_home, ledger_path=ledger_path).by_run
 
 
 def index_company_resolver_sessions(codex_home: Path) -> dict[str, list[SessionSource]]:
-    """Index retained resolver sessions once for an efficient bulk backfill."""
-    indexed: dict[str, list[SessionSource]] = {}
-    for path in (codex_home / "sessions").rglob("*.jsonl"):
+    """Backward-compatible alias for callers migrating to the complete index."""
+    return index_automation_sessions(codex_home)
+
+
+def session_retention_status(
+    *,
+    runner_root: Path,
+    codex_home: Path,
+    max_files: int,
+    max_bytes: int,
+    max_unlinked_age_s: int,
+    now: int | None = None,
+) -> SessionRetentionStatus:
+    """Return a fail-closed admission view of all retained Codex sessions."""
+    ledger_path = runner_root / "state" / "ledger.sqlite"
+    inventory = inventory_automation_sessions(codex_home, ledger_path=ledger_path)
+    active_run_ids: set[str] = set()
+    if ledger_path.is_file():
+        with sqlite3.connect(ledger_path) as conn:
+            try:
+                active_run_ids = {
+                    str(row[0])
+                    for row in conn.execute(
+                        "SELECT run_id FROM runs WHERE state IN ('claimed', 'running')"
+                    )
+                }
+            except sqlite3.OperationalError:
+                active_run_ids = set()
+    entry_by_path = {entry.path: entry for entry in inventory.entries}
+    total_bytes = sum(entry.bytes for entry in (*inventory.entries, *inventory.unsafe))
+    unaccounted = (*inventory.unlinked, *inventory.unparseable)
+    unlinked_bytes = sum(entry_by_path[path].bytes for path in unaccounted)
+    unlinked_bytes += sum(entry.bytes for entry in inventory.oversize)
+    unlinked_bytes += sum(entry.bytes for entry in inventory.unsafe)
+    observed_at = int(time.time()) if now is None else now
+    ages = [max(0, observed_at - entry_by_path[path].mtime) for path in unaccounted]
+    ages.extend(max(0, observed_at - entry.mtime) for entry in inventory.oversize)
+    ages.extend(max(0, observed_at - entry.mtime) for entry in inventory.unsafe)
+    oldest_age = max(ages, default=0)
+    active_files = sum(
+        len(sessions) for run_id, sessions in inventory.by_run.items() if run_id in active_run_ids
+    )
+    reason = None
+    total_files = len(inventory.entries) + len(inventory.unsafe)
+    if inventory.unsafe:
+        reason = f"unsafe Codex session entries retained: {len(inventory.unsafe)}"
+    elif inventory.oversize:
+        reason = f"oversize Codex session files retained: {len(inventory.oversize)}"
+    elif max_files >= 0 and total_files >= max_files:
+        reason = f"retained Codex session file limit reached: {total_files}"
+    elif max_bytes >= 0 and total_bytes >= max_bytes:
+        reason = f"retained Codex session byte limit reached: {total_bytes}"
+    elif (
+        (unaccounted or inventory.oversize or inventory.unsafe)
+        and max_unlinked_age_s >= 0
+        and oldest_age >= max_unlinked_age_s
+    ):
+        reason = f"unlinked or unparseable Codex session age limit reached: {oldest_age} seconds"
+    return SessionRetentionStatus(
+        files=total_files,
+        bytes=total_bytes,
+        unlinked_files=len(unaccounted) + len(inventory.oversize) + len(inventory.unsafe),
+        unlinked_bytes=unlinked_bytes,
+        unparseable_files=len(inventory.unparseable),
+        oversize_files=len(inventory.oversize),
+        oversize_bytes=sum(entry.bytes for entry in inventory.oversize),
+        unsafe_files=len(inventory.unsafe),
+        unsafe_bytes=sum(entry.bytes for entry in inventory.unsafe),
+        oldest_unlinked_age_s=oldest_age,
+        active_files=active_files,
+        over_limit=reason is not None,
+        reason=reason,
+    )
+
+
+def _read_session_metadata_no_follow(
+    path: Path,
+    *,
+    root: Path | None = None,
+) -> dict[str, Any] | None:
+    descriptor = (
+        _open_retained_file_no_follow(root=root, path=path)
+        if root is not None
+        else os.open(path, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0))
+    )
+    if descriptor is None:
+        raise RuntimeError(f"session source disappeared: {path}")
+    with os.fdopen(descriptor, errors="replace") as handle:
+        opened = os.fstat(handle.fileno())
+        if not stat.S_ISREG(opened.st_mode):
+            raise RuntimeError(f"session source is not a regular file: {path}")
+        first_line = handle.readline(_MAX_SESSION_METADATA_BYTES + 1)
+        if len(first_line.encode(errors="replace")) > _MAX_SESSION_METADATA_BYTES:
+            raise RuntimeError(f"session metadata line is too large: {path}")
+        first = json.loads(first_line)
+    metadata = first.get("payload") if isinstance(first, dict) else None
+    return metadata if isinstance(metadata, dict) else None
+
+
+def _walk_session_store_no_follow(
+    root: Path,
+) -> tuple[list[_RetainedSessionEntry], list[_RetainedSessionEntry]]:
+    """Enumerate the session store through stable directory descriptors."""
+    try:
+        root_fd = open_absolute_directory_no_follow(root)
+    except RuntimeError as exc:
+        if isinstance(exc.__cause__, FileNotFoundError):
+            return [], []
+        return [], [_RetainedSessionEntry(path=root, bytes=0, mtime=0)]
+    regular: list[_RetainedSessionEntry] = []
+    unsafe: list[_RetainedSessionEntry] = []
+
+    def walk(directory_fd: int, directory_path: Path) -> None:
         try:
-            first = json.loads(path.open(errors="replace").readline())
-        except (OSError, json.JSONDecodeError):
-            continue
-        metadata = first.get("payload")
-        if not isinstance(metadata, dict):
-            continue
-        cwd = str(metadata.get("cwd") or "")
-        match = _RUN_ID_FROM_CWD_RE.search(cwd)
-        if not match:
-            continue
-        indexed.setdefault(match.group(1), []).append(SessionSource(path=path, metadata=metadata))
-    for sessions in indexed.values():
-        sessions.sort(key=lambda item: (not item.is_root, item.role, item.thread_id))
-    return indexed
+            names = sorted(os.listdir(directory_fd))
+        except OSError:
+            unsafe.append(_RetainedSessionEntry(path=directory_path, bytes=0, mtime=0))
+            return
+        for name in names:
+            try:
+                validate_child_name(name)
+                entry = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+            except (OSError, RuntimeError):
+                unsafe.append(_RetainedSessionEntry(path=directory_path / name, bytes=0, mtime=0))
+                continue
+            child_path = directory_path / name
+            retained = _RetainedSessionEntry(
+                path=child_path,
+                bytes=int(entry.st_size),
+                mtime=int(entry.st_mtime),
+            )
+            if stat.S_ISREG(entry.st_mode):
+                regular.append(retained)
+                continue
+            if not stat.S_ISDIR(entry.st_mode):
+                unsafe.append(retained)
+                continue
+            try:
+                child_fd = os.open(name, directory_open_flags(), dir_fd=directory_fd)
+                opened = os.fstat(child_fd)
+                if not stat.S_ISDIR(opened.st_mode) or not _same_inode(entry, opened):
+                    os.close(child_fd)
+                    unsafe.append(retained)
+                    continue
+            except OSError:
+                unsafe.append(retained)
+                continue
+            try:
+                walk(child_fd, child_path)
+            finally:
+                os.close(child_fd)
+
+    try:
+        walk(root_fd, root)
+    finally:
+        os.close(root_fd)
+    regular.sort(key=lambda entry: str(entry.path))
+    unsafe.sort(key=lambda entry: str(entry.path))
+    return regular, unsafe
+
+
+def _lstat_regular_size(path: Path) -> int:
+    entry = path.lstat()
+    return entry.st_size if stat.S_ISREG(entry.st_mode) else 0
+
+
+def _ledger_worktree_paths(ledger_path: Path) -> dict[str, Path]:
+    if not ledger_path.is_file():
+        return {}
+    with sqlite3.connect(ledger_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT run_id, worktree_path FROM runs WHERE worktree_path IS NOT NULL"
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return {}
+    return {
+        str(run_id): Path(str(worktree_path))
+        for run_id, worktree_path in rows
+        if run_id and worktree_path
+    }
+
+
+def _ledger_run_ids(ledger_path: Path) -> set[str]:
+    if not ledger_path.is_file():
+        return set()
+    with sqlite3.connect(ledger_path) as conn:
+        try:
+            rows = conn.execute("SELECT run_id FROM runs").fetchall()
+        except sqlite3.OperationalError:
+            return set()
+    return {str(row[0]) for row in rows if row[0]}
+
+
+def _run_id_for_cwd(cwd: str, run_worktrees: dict[str, Path]) -> str | None:
+    if not cwd:
+        return None
+    absolute_cwd = Path(os.path.abspath(cwd))
+    matches = [
+        run_id
+        for run_id, worktree in run_worktrees.items()
+        if absolute_cwd.is_relative_to(Path(os.path.abspath(worktree)))
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    return None
 
 
 def _ledger_run(ledger_path: Path, run_id: str) -> dict[str, Any]:
@@ -551,6 +893,98 @@ def _project_codex_exec(trace_path: Path, output_path: Path) -> dict[str, Any]:
     }
 
 
+def _snapshot_source(
+    *,
+    root: Path,
+    path: Path,
+    destination: Path,
+    max_bytes: int | None = None,
+) -> _SourceSnapshot | None:
+    """Copy one source from a no-follow descriptor and hash those exact bytes."""
+    file_fd = _open_retained_file_no_follow(root=root, path=path)
+    if file_fd is None:
+        return None
+    digest = hashlib.sha256()
+    copied = 0
+    try:
+        opened = os.fstat(file_fd)
+        if max_bytes is not None and opened.st_size > max_bytes:
+            raise RuntimeError(f"retained source exceeds {max_bytes} bytes: {path}")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with destination.open("xb") as target:
+            while True:
+                chunk = os.read(file_fd, 1024 * 1024)
+                if not chunk:
+                    break
+                copied += len(chunk)
+                if max_bytes is not None and copied > max_bytes:
+                    raise RuntimeError(f"retained source exceeds {max_bytes} bytes: {path}")
+                target.write(chunk)
+                digest.update(chunk)
+        final_stat = os.fstat(file_fd)
+        if not _same_inode(opened, final_stat):
+            raise RuntimeError(f"retained source changed while snapshotting: {path}")
+    finally:
+        os.close(file_fd)
+    return _SourceSnapshot(
+        original_path=path,
+        path=destination,
+        sha256=digest.hexdigest(),
+        bytes=copied,
+    )
+
+
+def _open_retained_file_no_follow(*, root: Path, path: Path) -> int | None:
+    try:
+        relative = path.relative_to(root)
+    except ValueError as exc:
+        raise RuntimeError(f"retained source escapes its configured root: {path}") from exc
+    parts = relative.parts
+    if not parts or any(part in {"", ".", ".."} for part in parts):
+        raise RuntimeError(f"invalid retained source path: {path}")
+    try:
+        parent_fd = open_absolute_directory_no_follow(root)
+    except RuntimeError as exc:
+        if isinstance(exc.__cause__, FileNotFoundError):
+            return None
+        raise
+    try:
+        for part in parts[:-1]:
+            validate_child_name(part)
+            try:
+                next_fd = os.open(part, directory_open_flags(), dir_fd=parent_fd)
+            except FileNotFoundError:
+                return None
+            except OSError as exc:
+                raise RuntimeError(f"retained source parent is unsafe: {path}: {exc}") from exc
+            os.close(parent_fd)
+            parent_fd = next_fd
+        name = parts[-1]
+        validate_child_name(name)
+        try:
+            expected = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+            file_fd = os.open(
+                name,
+                os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+                dir_fd=parent_fd,
+            )
+        except FileNotFoundError:
+            return None
+        except OSError as exc:
+            raise RuntimeError(f"retained source is unsafe: {path}: {exc}") from exc
+        opened = os.fstat(file_fd)
+        if (
+            not stat.S_ISREG(expected.st_mode)
+            or not stat.S_ISREG(opened.st_mode)
+            or not _same_inode(expected, opened)
+        ):
+            os.close(file_fd)
+            raise RuntimeError(f"retained source changed while opening: {path}")
+        return file_fd
+    finally:
+        os.close(parent_fd)
+
+
 def build_bundle(
     *,
     run_id: str,
@@ -558,11 +992,78 @@ def build_bundle(
     codex_home: Path,
     output_dir: Path,
     sessions: list[SessionSource] | None = None,
+    traces_dir: Path | None = None,
+    logs_dir: Path | None = None,
+) -> dict[str, Any]:
+    """Build one bundle from immutable, descriptor-opened source snapshots."""
+    created = Path(tempfile.mkdtemp(prefix=f"trace-source-snapshots-{run_id}-"))
+    created_parent = created.parent.resolve(strict=True)
+    snapshot_dir = created.resolve(strict=True)
+    if snapshot_dir.parent != created_parent or not snapshot_dir.is_dir():
+        raise RuntimeError("temporary source snapshot root escaped its canonical parent")
+    try:
+        return _build_bundle_from_snapshots(
+            run_id=run_id,
+            runner_root=runner_root,
+            codex_home=codex_home,
+            output_dir=output_dir,
+            snapshot_dir=snapshot_dir,
+            sessions=sessions,
+            traces_dir=traces_dir,
+            logs_dir=logs_dir,
+        )
+    finally:
+        safe_rmtree_child(snapshot_dir.parent, snapshot_dir.name, missing_ok=True)
+
+
+def _build_bundle_from_snapshots(
+    *,
+    run_id: str,
+    runner_root: Path,
+    codex_home: Path,
+    output_dir: Path,
+    snapshot_dir: Path,
+    sessions: list[SessionSource] | None,
+    traces_dir: Path | None,
+    logs_dir: Path | None,
 ) -> dict[str, Any]:
     ledger_path = runner_root / "state" / "ledger.sqlite"
     run = _ledger_run(ledger_path, run_id)
-    sessions = sessions if sessions is not None else discover_sessions(codex_home, run_id)
-    roots = [session for session in sessions if session.is_root]
+    sessions = (
+        sessions
+        if sessions is not None
+        else discover_sessions(codex_home, run_id, ledger_path=ledger_path)
+    )
+    run_worktrees = _ledger_worktree_paths(ledger_path)
+    session_snapshots: list[tuple[SessionSource, SessionSource, _SourceSnapshot]] = []
+    for index, source in enumerate(sessions):
+        snapshot = _snapshot_source(
+            root=codex_home / "sessions",
+            path=source.path,
+            destination=snapshot_dir / f"session-{index}.jsonl",
+            max_bytes=_MAX_SESSION_SOURCE_BYTES,
+        )
+        if snapshot is None:
+            raise RuntimeError(f"Codex session disappeared before snapshot: {source.path}")
+        metadata = _read_session_metadata_no_follow(snapshot.path)
+        if metadata is None:
+            raise RuntimeError(f"Codex session metadata is invalid: {source.path}")
+        cwd = str(metadata.get("cwd") or "")
+        mapped_run_id = _run_id_for_cwd(cwd, run_worktrees)
+        if mapped_run_id is None:
+            match = _RUN_ID_FROM_CWD_RE.search(cwd)
+            mapped_run_id = match.group("run_id") if match else None
+        if mapped_run_id != run_id:
+            raise RuntimeError(f"Codex session no longer belongs to {run_id}: {source.path}")
+        session_snapshots.append(
+            (
+                source,
+                SessionSource(path=snapshot.path, metadata=metadata),
+                snapshot,
+            )
+        )
+    snapped_sessions = [item[1] for item in session_snapshots]
+    roots = [session for session in snapped_sessions if session.is_root]
     if len(roots) != 1:
         raise RuntimeError(f"expected one root session for {run_id}, found {len(roots)}")
     root = roots[0]
@@ -577,7 +1078,7 @@ def build_bundle(
     merged_events: list[dict[str, Any]] = []
     thread_headers: list[dict[str, Any]] = []
 
-    for source in sessions:
+    for original_source, source, snapshot in session_snapshots:
         task_contract = None if source.is_root else _contract_for_role(source.role, contracts)
         projection = project_thread(source, contracts=contracts, task_contract=task_contract)
         projections.append(projection)
@@ -632,9 +1133,9 @@ def build_bundle(
                 "thread_id": source.thread_id,
                 "parent_thread_id": source.parent_thread_id,
                 "role": source.role,
-                "source_path": str(source.path),
-                "source_sha256": _sha256(source.path),
-                "source_bytes": source.path.stat().st_size,
+                "source_path": str(original_source.path),
+                "source_sha256": snapshot.sha256,
+                "source_bytes": snapshot.bytes,
                 "sha256": _sha256(destination),
                 "bytes": destination.stat().st_size,
                 "records": len(projected_records),
@@ -674,16 +1175,25 @@ def build_bundle(
 
     trace_path = Path(run["trace_path"]) if run.get("trace_path") else None
     trace_summary = None
-    if trace_path and trace_path.is_file():
+    trace_snapshot = (
+        _snapshot_source(
+            root=traces_dir or runner_root / "traces",
+            path=trace_path,
+            destination=snapshot_dir / "codex-exec.jsonl",
+        )
+        if trace_path
+        else None
+    )
+    if trace_snapshot is not None:
         destination = output_dir / "codex-exec.jsonl"
-        trace_summary = _project_codex_exec(trace_path, destination)
+        trace_summary = _project_codex_exec(trace_snapshot.path, destination)
         file_entries.append(
             {
                 "path": destination.name,
                 "role": "codex_exec",
-                "source_path": str(trace_path),
-                "source_sha256": _sha256(trace_path),
-                "source_bytes": trace_path.stat().st_size,
+                "source_path": str(trace_snapshot.original_path),
+                "source_sha256": trace_snapshot.sha256,
+                "source_bytes": trace_snapshot.bytes,
                 "sha256": _sha256(destination),
                 "bytes": destination.stat().st_size,
                 "records": trace_summary["records"],
@@ -692,9 +1202,18 @@ def build_bundle(
 
     stderr_path = Path(run["stderr_path"]) if run.get("stderr_path") else None
     stderr_summary = None
-    if stderr_path and stderr_path.is_file():
+    stderr_snapshot = (
+        _snapshot_source(
+            root=logs_dir or runner_root / "logs",
+            path=stderr_path,
+            destination=snapshot_dir / "runner-stderr.log",
+        )
+        if stderr_path
+        else None
+    )
+    if stderr_snapshot is not None:
         destination = output_dir / "runner-stderr.log"
-        stderr_text = _normalize_string(stderr_path.read_text(errors="replace"))
+        stderr_text = _normalize_string(stderr_snapshot.path.read_text(errors="replace"))
         destination.write_text(stderr_text)
         stderr_summary = {
             "bytes": destination.stat().st_size,
@@ -704,9 +1223,9 @@ def build_bundle(
             {
                 "path": destination.name,
                 "role": "runner_stderr",
-                "source_path": str(stderr_path),
-                "source_sha256": _sha256(stderr_path),
-                "source_bytes": stderr_path.stat().st_size,
+                "source_path": str(stderr_snapshot.original_path),
+                "source_sha256": stderr_snapshot.sha256,
+                "source_bytes": stderr_snapshot.bytes,
                 "sha256": _sha256(destination),
                 "bytes": destination.stat().st_size,
                 "records": stderr_summary["lines"],
@@ -718,14 +1237,16 @@ def build_bundle(
         stderr_summary["bytes"] = (output_dir / "runner-stderr.log").stat().st_size
 
     root_id = root.thread_id
-    structural_errors = _session_tree_errors(sessions, root_id)
+    structural_errors = _session_tree_errors(snapped_sessions, root_id)
     if run.get("state") not in _EXPORTABLE_STATES:
         structural_errors.append(f"run state {run.get('state')!r} is not terminal")
 
     missing_contracts = [
         projection.source.thread_id
         for projection in projections
-        if not projection.source.is_root and not projection.task_contract
+        if run_id.startswith("issue-")
+        and not projection.source.is_root
+        and not projection.task_contract
     ]
     unresolved_calls = sum(item.unresolved_encrypted_calls for item in projections)
     invalid_lines = sum(item.invalid_source_lines for item in projections) + int(
@@ -1078,7 +1599,7 @@ def _backfill_run_ids(ledger_path: Path, *, limit: int | None) -> list[str]:
             "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'trace_bundle_exports'"
         ).fetchone()
         if export_table:
-            query = """
+            query = f"""
                 SELECT r.run_id
                 FROM runs AS r
                 LEFT JOIN trace_bundle_exports AS e ON e.run_id = r.run_id
@@ -1087,19 +1608,19 @@ def _backfill_run_ids(ledger_path: Path, *, limit: int | None) -> list[str]:
                     'submitted', 'rejected', 'escalated',
                     'retryable', 'interrupted'
                 )
-                  AND r.run_id LIKE 'issue-%'
+                  AND {_AUTOMATION_RUN_SQL.replace("run_id", "r.run_id")}
                   AND e.cleaned_at IS NULL
                 ORDER BY r.created_at, r.run_id
             """
         else:
-            query = """
+            query = f"""
                 SELECT run_id FROM runs
                 WHERE state IN (
                     'completed', 'failed', 'timeout',
                     'submitted', 'rejected', 'escalated',
                     'retryable', 'interrupted'
                 )
-                  AND run_id LIKE 'issue-%'
+                  AND {_AUTOMATION_RUN_SQL}
                 ORDER BY created_at, run_id
             """
         rows = conn.execute(query).fetchall()
@@ -1140,10 +1661,14 @@ def trace_export_report(
     disk_alert_margin_gib: float = 2.0,
     max_quarantine_runs: int = 50,
     max_quarantine_gib: float = 2.0,
+    max_retained_session_files: int = 500,
+    max_retained_session_gib: float = 2.0,
+    max_unlinked_session_age_days: float = 7.0,
 ) -> dict[str, Any]:
     """Reconcile durable exports with every local retention category."""
     ledger_path = runner_root / "state" / "ledger.sqlite"
-    sessions = index_company_resolver_sessions(codex_home)
+    inventory = inventory_automation_sessions(codex_home, ledger_path=ledger_path)
+    sessions = inventory.by_run
     pending_ids = set(_backfill_run_ids(ledger_path, limit=None))
 
     terminal_states = (
@@ -1168,8 +1693,11 @@ def trace_export_report(
         )
         terminal_rows = conn.execute(
             f"SELECT run_id, state, {run_select} FROM runs "
-            f"WHERE state IN ({placeholders}) AND run_id LIKE 'issue-%'",
+            f"WHERE state IN ({placeholders}) AND {_AUTOMATION_RUN_SQL}",
             terminal_states,
+        ).fetchall()
+        automation_rows = conn.execute(
+            f"SELECT run_id, state FROM runs WHERE {_AUTOMATION_RUN_SQL}"
         ).fetchall()
         all_worktree_rows = (
             conn.execute(
@@ -1209,7 +1737,7 @@ def trace_export_report(
                     f"{aggregate['subagents']} AS subagents, "
                     "SUM(cleaned_at IS NOT NULL) AS cleaned "
                     "FROM trace_bundle_exports "
-                    "WHERE run_id LIKE 'issue-%' "
+                    f"WHERE {_AUTOMATION_RUN_SQL} "
                     "GROUP BY schema_version, quality_tier"
                 )
             ]
@@ -1222,7 +1750,7 @@ def trace_export_report(
                     else "'{}' AS source_files_json "
                 )
                 + "FROM trace_bundle_exports "
-                "WHERE run_id LIKE 'issue-%'"
+                f"WHERE {_AUTOMATION_RUN_SQL}"
             ).fetchall()
         attempt_rows: list[sqlite3.Row] = []
         if attempt_table:
@@ -1236,7 +1764,7 @@ def trace_export_report(
             attempt_rows = conn.execute(
                 "SELECT run_id, status, quality_tier, error, "
                 f"{retained_select} FROM trace_bundle_export_attempts "
-                "WHERE run_id LIKE 'issue-%'"
+                f"WHERE {_AUTOMATION_RUN_SQL}"
             ).fetchall()
         attempts = (
             {
@@ -1245,7 +1773,9 @@ def trace_export_report(
                     "SELECT a.status, COUNT(*) AS runs "
                     "FROM trace_bundle_export_attempts AS a "
                     "JOIN runs AS r ON r.run_id = a.run_id "
-                    "WHERE r.run_id LIKE 'issue-%' GROUP BY a.status"
+                    "WHERE "
+                    f"{_AUTOMATION_RUN_SQL.replace('run_id', 'r.run_id')} "
+                    "GROUP BY a.status"
                 )
             }
             if attempt_table
@@ -1255,7 +1785,7 @@ def trace_export_report(
             {
                 str(row["run_id"])
                 for row in conn.execute(
-                    "SELECT run_id FROM trace_bundle_exports WHERE run_id LIKE 'issue-%'"
+                    f"SELECT run_id FROM trace_bundle_exports WHERE {_AUTOMATION_RUN_SQL}"
                 )
             }
             if export_table
@@ -1265,7 +1795,7 @@ def trace_export_report(
             {
                 str(row["run_id"])
                 for row in conn.execute(
-                    "SELECT run_id FROM trace_bundle_export_attempts WHERE run_id LIKE 'issue-%'"
+                    f"SELECT run_id FROM trace_bundle_export_attempts WHERE {_AUTOMATION_RUN_SQL}"
                 )
             }
             if attempt_table
@@ -1273,6 +1803,7 @@ def trace_export_report(
         )
 
     terminal_ids = {str(row["run_id"]) for row in terminal_rows}
+    run_states = {str(row["run_id"]): str(row["state"]) for row in automation_rows}
     exports_by_run = {str(row["run_id"]): dict(row) for row in export_rows}
     attempts_by_run = {str(row["run_id"]): dict(row) for row in attempt_rows}
 
@@ -1317,7 +1848,11 @@ def trace_export_report(
             if isinstance(raw, str):
                 add_source(Path(raw), category=category, run_id=run_id)
 
-    all_session_paths = _files_under(codex_home / "sessions")
+    all_session_paths = list(inventory.all_files)
+    oversize_session_paths = {entry.path for entry in inventory.oversize}
+    session_run_by_path = {
+        source.path: run_id for run_id, sources in sessions.items() for source in sources
+    }
     all_trace_paths = _files_under(runner_root / "traces")
     all_log_paths = _files_under(runner_root / "logs")
     for category, paths in (
@@ -1328,14 +1863,34 @@ def trace_export_report(
         for path in paths:
             if path in inventory_by_path:
                 continue
+            linked_run_id = session_run_by_path.get(path) if category == "codex_session" else None
             inventory_by_path[path] = {
                 "path": str(path),
                 "category": category,
-                "run_id": None,
+                "run_id": linked_run_id,
                 "bytes": path.stat().st_size,
-                "reason": "unlinked_or_non_resolver_retained",
+                "reason": (
+                    "active_automation_session_retained"
+                    if linked_run_id and run_states.get(linked_run_id) in {"claimed", "running"}
+                    else "oversize_session_retained"
+                    if path in oversize_session_paths
+                    else "unparseable_session_retained"
+                    if path in inventory.unparseable
+                    else "unlinked_automation_session_retained"
+                    if path in inventory.unlinked
+                    else "unlinked_runner_artifact_retained"
+                ),
                 "cleanup_candidate": False,
             }
+    for entry in inventory.unsafe:
+        inventory_by_path[entry.path] = {
+            "path": str(entry.path),
+            "category": "codex_session",
+            "run_id": None,
+            "bytes": entry.bytes,
+            "reason": "unsafe_session_entry_retained",
+            "cleanup_candidate": False,
+        }
     source_inventory = sorted(inventory_by_path.values(), key=lambda item: item["path"])
     reasons: dict[str, dict[str, int]] = {}
     for item in source_inventory:
@@ -1391,6 +1946,13 @@ def trace_export_report(
     min_disk_free_bytes = int(min_disk_free_gib * 1024**3)
     alert_margin_bytes = int(disk_alert_margin_gib * 1024**3)
     max_quarantine_bytes = int(max_quarantine_gib * 1024**3)
+    session_status = session_retention_status(
+        runner_root=runner_root,
+        codex_home=codex_home,
+        max_files=max_retained_session_files,
+        max_bytes=int(max_retained_session_gib * 1024**3),
+        max_unlinked_age_s=int(max_unlinked_session_age_days * 24 * 60 * 60),
+    )
     alerts: list[dict[str, Any]] = []
     if disk.free < min_disk_free_bytes + alert_margin_bytes:
         alerts.append(
@@ -1417,6 +1979,19 @@ def trace_export_report(
     if unaccounted_runs:
         alerts.append(
             {"kind": "unaccounted_runs", "severity": "critical", "runs": unaccounted_runs}
+        )
+    if session_status.over_limit:
+        alerts.append(
+            {
+                "kind": "session_retention_limit",
+                "severity": "critical",
+                "files": session_status.files,
+                "bytes": session_status.bytes,
+                "unlinked_files": session_status.unlinked_files,
+                "oversize_files": session_status.oversize_files,
+                "oldest_unlinked_age_s": session_status.oldest_unlinked_age_s,
+                "reason": session_status.reason,
+            }
         )
 
     cleaned_source_bytes = sum(
@@ -1456,14 +2031,17 @@ def trace_export_report(
         "terminal_runs": len(terminal_ids),
         "pending_runs": len(pending_ids),
         "unaccounted_runs": unaccounted_runs,
-        "retained_session_files": len(all_session_paths),
-        "retained_session_bytes": sum(path.stat().st_size for path in all_session_paths),
+        "retained_session_files": session_status.files,
+        "retained_session_bytes": session_status.bytes,
         "retained_runner_files": len(all_trace_paths) + len(all_log_paths),
         "retained_runner_bytes": sum(
             path.stat().st_size for path in [*all_trace_paths, *all_log_paths]
         ),
         "storage": {
-            "codex_sessions": _storage_totals(all_session_paths),
+            "codex_sessions": {
+                "files": session_status.files,
+                "bytes": session_status.bytes,
+            },
             "canonical_traces": _storage_totals(all_trace_paths),
             "stderr_logs": _storage_totals(all_log_paths),
             "huggingface_cache": {
@@ -1482,6 +2060,12 @@ def trace_export_report(
             "recorded_bytes": quarantine_recorded_bytes,
             "max_runs": max_quarantine_runs,
             "max_bytes": max_quarantine_bytes,
+        },
+        "session_retention": {
+            **asdict(session_status),
+            "max_files": max_retained_session_files,
+            "max_bytes": int(max_retained_session_gib * 1024**3),
+            "max_unlinked_age_s": int(max_unlinked_session_age_days * 24 * 60 * 60),
         },
         "cleaned_source_bytes": cleaned_source_bytes,
         "deleted_source_files": len(deleted_files),
@@ -1516,11 +2100,11 @@ def backfill_all(
     allow_diagnostic: bool,
     limit: int | None,
 ) -> dict[str, Any]:
-    """Export retained resolver runs in bounded, independently verified batches."""
+    """Export retained Jobseek automation runs in verified bounded batches."""
     if batch_size < 1:
         raise ValueError("batch_size must be positive")
     ledger_path = runner_root / "state" / "ledger.sqlite"
-    session_index = index_company_resolver_sessions(codex_home)
+    session_index = index_automation_sessions(codex_home, ledger_path=ledger_path)
     candidates = _backfill_run_ids(ledger_path, limit=limit)
     eligible = [run_id for run_id in candidates if run_id in session_index]
     summary: dict[str, Any] = {
@@ -1665,6 +2249,8 @@ def backfill_all(
                             ledger_path=ledger_path,
                             run_id=run_id,
                             manifest=manifest,
+                            runner_root=runner_root,
+                            codex_home=codex_home,
                         )
                         reclaimed = int(cleanup_result["reclaimed_bytes"])
                         summary["cleaned"] += 1
@@ -1735,6 +2321,7 @@ def record_verified_export(
                 bundle_content_sha256 TEXT NOT NULL,
                 verified_files_json TEXT NOT NULL,
                 source_files_json TEXT NOT NULL DEFAULT '{}',
+                cleanup_claims_json TEXT NOT NULL DEFAULT '{}',
                 source_bytes INTEGER NOT NULL DEFAULT 0,
                 projected_bytes INTEGER NOT NULL DEFAULT 0,
                 thread_count INTEGER NOT NULL DEFAULT 0,
@@ -1749,6 +2336,10 @@ def record_verified_export(
             "source_files_json": (
                 "ALTER TABLE trace_bundle_exports "
                 "ADD COLUMN source_files_json TEXT NOT NULL DEFAULT '{}'"
+            ),
+            "cleanup_claims_json": (
+                "ALTER TABLE trace_bundle_exports "
+                "ADD COLUMN cleanup_claims_json TEXT NOT NULL DEFAULT '{}'"
             ),
             "source_bytes": (
                 "ALTER TABLE trace_bundle_exports "
@@ -1799,7 +2390,9 @@ def record_verified_export(
                 projected_bytes = excluded.projected_bytes,
                 thread_count = excluded.thread_count,
                 subagent_count = excluded.subagent_count,
-                verified_at = excluded.verified_at
+                verified_at = excluded.verified_at,
+                cleanup_claims_json = '{}',
+                cleaned_at = NULL
             """,
             (
                 run_id,
@@ -1818,12 +2411,95 @@ def record_verified_export(
         )
 
 
+def pending_verified_cleanup(
+    *,
+    ledger_path: Path,
+    run_id: str,
+) -> tuple[dict[str, Any], str, str, int] | None:
+    """Reconstruct a cleanup manifest without requiring deleted source sessions."""
+    with sqlite3.connect(ledger_path) as conn:
+        conn.row_factory = sqlite3.Row
+        try:
+            row = conn.execute(
+                "SELECT * FROM trace_bundle_exports WHERE run_id = ? AND cleaned_at IS NULL",
+                (run_id,),
+            ).fetchone()
+        except sqlite3.OperationalError:
+            return None
+    if row is None:
+        return None
+    verified_files = json.loads(str(row["verified_files_json"]))
+    source_files = json.loads(str(row["source_files_json"]))
+    if not isinstance(verified_files, dict) or not isinstance(source_files, dict):
+        raise RuntimeError("verified cleanup inventory is invalid")
+    if not source_files:
+        raise RuntimeError("verified cleanup source inventory is empty")
+    remote_dir = str(row["remote_dir"])
+    files: list[dict[str, Any]] = []
+    retained_bytes = 0
+    for source_path, details in sorted(source_files.items()):
+        if not isinstance(source_path, str) or not isinstance(details, dict):
+            raise RuntimeError("verified cleanup source inventory is invalid")
+        bundle_path = details.get("bundle_path")
+        source_sha256 = details.get("sha256")
+        source_bytes = details.get("bytes")
+        if (
+            not isinstance(bundle_path, str)
+            or not isinstance(source_sha256, str)
+            or not isinstance(source_bytes, int)
+        ):
+            raise RuntimeError("verified cleanup source entry is invalid")
+        projected_sha256 = verified_files.get(f"{remote_dir.rstrip('/')}/{bundle_path}")
+        if not isinstance(projected_sha256, str):
+            raise RuntimeError("verified cleanup projected object is missing")
+        files.append(
+            {
+                "path": bundle_path,
+                "role": (
+                    "codex_exec"
+                    if bundle_path == "codex-exec.jsonl"
+                    else "runner_stderr"
+                    if bundle_path == "runner-stderr.log"
+                    else "codex_session"
+                ),
+                "sha256": projected_sha256,
+                "source_path": source_path,
+                "source_sha256": source_sha256,
+                "source_bytes": source_bytes,
+            }
+        )
+        retained_bytes += source_bytes
+    quality_tier = str(row["quality_tier"])
+    manifest = {
+        "bundle_content_sha256": str(row["bundle_content_sha256"]),
+        "quality": {"tier": quality_tier},
+        "files": files,
+    }
+    return manifest, quality_tier, remote_dir, retained_bytes
+
+
 def cleanup_verified_sources(
-    *, ledger_path: Path, run_id: str, manifest: dict[str, Any]
+    *,
+    ledger_path: Path,
+    run_id: str,
+    manifest: dict[str, Any],
+    runner_root: Path,
+    codex_home: Path,
+    traces_dir: Path | None = None,
+    logs_dir: Path | None = None,
 ) -> dict[str, Any]:
     conn = sqlite3.connect(ledger_path)
     conn.row_factory = sqlite3.Row
     try:
+        columns = {
+            str(column[1]) for column in conn.execute("PRAGMA table_info(trace_bundle_exports)")
+        }
+        if "cleanup_claims_json" not in columns:
+            conn.execute(
+                "ALTER TABLE trace_bundle_exports "
+                "ADD COLUMN cleanup_claims_json TEXT NOT NULL DEFAULT '{}'"
+            )
+            conn.commit()
         row = conn.execute(
             "SELECT * FROM trace_bundle_exports WHERE run_id = ?", (run_id,)
         ).fetchone()
@@ -1857,25 +2533,141 @@ def cleanup_verified_sources(
         if verified_files.get(remote_path) != entry["sha256"]:
             raise RuntimeError(f"projected object was not checksum-verified: {entry['path']}")
 
-    verified_sources: list[tuple[Path, int]] = []
-    for entry in manifest["files"]:
-        raw = entry.get("source_path")
-        source_hash = entry.get("source_sha256")
-        if not raw or not source_hash:
-            continue
-        path = Path(raw)
-        if not path.is_file():
-            continue
-        if _sha256(path) != source_hash:
-            raise RuntimeError(f"source changed after export; refusing cleanup: {path}")
-        verified_sources.append((path, path.stat().st_size))
+    cleanup_claims = json.loads(row["cleanup_claims_json"])
+    if not isinstance(cleanup_claims, dict):
+        raise RuntimeError("verified cleanup claim inventory is invalid")
+    if any(path not in manifest_sources for path in cleanup_claims):
+        raise RuntimeError("verified cleanup claim inventory contains an unknown source")
+    for source_path in manifest_sources:
+        claim_name = cleanup_claims.get(source_path)
+        if claim_name is None:
+            cleanup_claims[source_path] = f".jobseek-cleanup-{uuid.uuid4().hex}"
+        elif not isinstance(claim_name, str):
+            raise RuntimeError("verified cleanup claim name is invalid")
+        validate_child_name(str(cleanup_claims[source_path]))
+    with sqlite3.connect(ledger_path) as claim_conn:
+        updated = claim_conn.execute(
+            "UPDATE trace_bundle_exports SET cleanup_claims_json = ? "
+            "WHERE run_id = ? AND bundle_content_sha256 = ? AND cleaned_at IS NULL",
+            (
+                json.dumps(cleanup_claims, sort_keys=True),
+                run_id,
+                manifest["bundle_content_sha256"],
+            ),
+        )
+        if updated.rowcount != 1:
+            raise RuntimeError("verified cleanup claim plan could not be persisted")
 
-    removed = []
-    reclaimed = 0
-    for path, size in verified_sources:
-        path.unlink()
-        removed.append(str(path))
-        reclaimed += size
+    source_roots = {
+        "codex_session": codex_home / "sessions",
+        "codex_exec": traces_dir or runner_root / "traces",
+        "runner_stderr": logs_dir or runner_root / "logs",
+    }
+    verified_sources: list[_VerifiedSourceHandle] = []
+    seen_source_paths: set[str] = set()
+    try:
+        for entry in manifest["files"]:
+            raw = entry.get("source_path")
+            source_hash = entry.get("source_sha256")
+            if not raw or not source_hash:
+                continue
+            path = Path(raw)
+            source_key = str(path)
+            if source_key in seen_source_paths:
+                raise RuntimeError(f"duplicate verified source path: {path}")
+            seen_source_paths.add(source_key)
+            source_kind = (
+                "codex_session"
+                if str(entry.get("path") or "").startswith("threads/")
+                else str(entry.get("role") or "")
+            )
+            root = source_roots.get(source_kind)
+            if root is None:
+                raise RuntimeError(f"unrecognized verified source kind: {source_kind}")
+            handle = _open_verified_source(
+                root=root,
+                path=path,
+                expected_sha256=str(source_hash),
+                expected_bytes=int(entry.get("source_bytes", 0)),
+                claimed_name=str(cleanup_claims[source_key]),
+            )
+            if handle is None:
+                continue
+            verified_sources.append(handle)
+    except Exception:
+        for handle in verified_sources:
+            os.close(handle.file_fd)
+            os.close(handle.parent_fd)
+        raise
+
+    claimed: list[_VerifiedSourceHandle] = []
+    claimed_this_attempt: list[_VerifiedSourceHandle] = []
+    try:
+        try:
+            for handle in verified_sources:
+                assert handle.claimed_name is not None
+                if not handle.already_claimed:
+                    handle.claimed_name = claim_child_at(
+                        handle.parent_fd,
+                        handle.name,
+                        expected=handle.opened,
+                        claimed_name=handle.claimed_name,
+                    )
+                    handle.already_claimed = True
+                    claimed_this_attempt.append(handle)
+                claimed.append(handle)
+                if _sha256_fd(handle.file_fd) != handle.expected_sha256:
+                    raise RuntimeError(
+                        f"source changed after export; refusing cleanup: {handle.path}"
+                    )
+                final_stat = os.fstat(handle.file_fd)
+                if not _same_inode(final_stat, handle.opened) or final_stat.st_size != handle.size:
+                    raise RuntimeError(
+                        f"source changed after export; refusing cleanup: {handle.path}"
+                    )
+        except Exception:
+            for handle in reversed(claimed_this_attempt):
+                assert handle.claimed_name is not None
+                with suppress(RuntimeError):
+                    restore_claimed_child_at(
+                        handle.parent_fd,
+                        handle.name,
+                        handle.claimed_name,
+                        expected=handle.opened,
+                    )
+            raise
+
+        removed = []
+        removed_handles: set[str] = set()
+        reclaimed = 0
+        try:
+            for handle in verified_sources:
+                assert handle.claimed_name is not None
+                unlink_claimed_child_at(
+                    handle.parent_fd,
+                    handle.claimed_name,
+                    expected=handle.opened,
+                )
+                removed_handles.add(str(handle.path))
+                removed.append(str(handle.path))
+                reclaimed += handle.size
+        except Exception:
+            for handle in reversed(claimed):
+                if str(handle.path) in removed_handles:
+                    continue
+                assert handle.claimed_name is not None
+                with suppress(RuntimeError):
+                    restore_claimed_child_at(
+                        handle.parent_fd,
+                        handle.name,
+                        handle.claimed_name,
+                        expected=handle.opened,
+                    )
+            raise
+    finally:
+        for handle in verified_sources:
+            os.close(handle.file_fd)
+            os.close(handle.parent_fd)
 
     cleaned_at = int(datetime.now(UTC).timestamp())
     with sqlite3.connect(ledger_path) as update_conn:
@@ -1884,6 +2676,116 @@ def cleanup_verified_sources(
             (cleaned_at, run_id),
         )
     return {"removed_files": removed, "reclaimed_bytes": reclaimed, "cleaned_at": cleaned_at}
+
+
+def _open_verified_source(
+    *,
+    root: Path,
+    path: Path,
+    expected_sha256: str,
+    expected_bytes: int,
+    claimed_name: str,
+) -> _VerifiedSourceHandle | None:
+    try:
+        relative = path.relative_to(root)
+    except ValueError as exc:
+        raise RuntimeError(f"verified source escapes its retention root: {path}") from exc
+    parts = relative.parts
+    if not parts or any(part in {"", ".", ".."} for part in parts):
+        raise RuntimeError(f"invalid verified source path: {path}")
+    try:
+        parent_fd = open_absolute_directory_no_follow(root)
+    except RuntimeError as exc:
+        if isinstance(exc.__cause__, FileNotFoundError):
+            return None
+        raise
+    try:
+        for part in parts[:-1]:
+            validate_child_name(part)
+            try:
+                next_fd = os.open(part, directory_open_flags(), dir_fd=parent_fd)
+            except FileNotFoundError:
+                os.close(parent_fd)
+                return None
+            except OSError as exc:
+                raise RuntimeError(f"verified source parent is unsafe: {path}: {exc}") from exc
+            os.close(parent_fd)
+            parent_fd = next_fd
+        name = parts[-1]
+        validate_child_name(name)
+        validate_child_name(claimed_name)
+        file_fd: int | None = None
+        expected: os.stat_result | None = None
+        already_claimed = False
+        for candidate, is_claim in ((claimed_name, True), (name, False)):
+            try:
+                candidate_stat = os.stat(
+                    candidate,
+                    dir_fd=parent_fd,
+                    follow_symlinks=False,
+                )
+                candidate_fd = os.open(
+                    candidate,
+                    os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+                    dir_fd=parent_fd,
+                )
+            except FileNotFoundError:
+                continue
+            except OSError as exc:
+                raise RuntimeError(f"verified source is unsafe: {path}: {exc}") from exc
+            file_fd = candidate_fd
+            expected = candidate_stat
+            already_claimed = is_claim
+            break
+        if file_fd is None or expected is None:
+            os.close(parent_fd)
+            return None
+        opened = os.fstat(file_fd)
+        if (
+            not stat.S_ISREG(expected.st_mode)
+            or not stat.S_ISREG(opened.st_mode)
+            or not _same_inode(expected, opened)
+        ):
+            os.close(file_fd)
+            raise RuntimeError(f"verified source changed while opening: {path}")
+        digest = _sha256_fd(file_fd)
+        final_stat = os.fstat(file_fd)
+        if (
+            digest != expected_sha256
+            or final_stat.st_size != opened.st_size
+            or final_stat.st_mtime_ns != opened.st_mtime_ns
+            or opened.st_size != expected_bytes
+        ):
+            os.close(file_fd)
+            raise RuntimeError(f"source changed after export; refusing cleanup: {path}")
+        return _VerifiedSourceHandle(
+            path=path,
+            parent_fd=parent_fd,
+            file_fd=file_fd,
+            name=name,
+            opened=opened,
+            size=opened.st_size,
+            expected_sha256=expected_sha256,
+            claimed_name=claimed_name,
+            already_claimed=already_claimed,
+        )
+    except Exception:
+        os.close(parent_fd)
+        raise
+
+
+def _sha256_fd(file_fd: int) -> str:
+    os.lseek(file_fd, 0, os.SEEK_SET)
+    digest = hashlib.sha256()
+    while True:
+        chunk = os.read(file_fd, 1024 * 1024)
+        if not chunk:
+            return digest.hexdigest()
+        digest.update(chunk)
+
+
+def _same_inode(left: os.stat_result, right: os.stat_result) -> bool:
+    return left.st_dev == right.st_dev and left.st_ino == right.st_ino
 
 
 def _result_summary(manifest: dict[str, Any]) -> dict[str, Any]:
@@ -1952,10 +2854,41 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cleanup", action="store_true")
     parser.add_argument("--allow-silver", action="store_true")
     parser.add_argument("--allow-diagnostic", action="store_true")
-    parser.add_argument("--min-disk-free-gib", type=float, default=5.0)
-    parser.add_argument("--disk-alert-margin-gib", type=float, default=2.0)
-    parser.add_argument("--max-quarantine-runs", type=int, default=50)
-    parser.add_argument("--max-quarantine-gib", type=float, default=2.0)
+    parser.add_argument(
+        "--min-disk-free-gib",
+        type=float,
+        default=float(os.environ.get("JOBSEEK_CODEX_MIN_DISK_FREE_GIB", "5")),
+    )
+    parser.add_argument(
+        "--disk-alert-margin-gib",
+        type=float,
+        default=float(os.environ.get("JOBSEEK_CODEX_DISK_ALERT_MARGIN_GIB", "2")),
+    )
+    parser.add_argument(
+        "--max-quarantine-runs",
+        type=int,
+        default=int(os.environ.get("JOBSEEK_CODEX_MAX_QUARANTINE_RUNS", "50")),
+    )
+    parser.add_argument(
+        "--max-quarantine-gib",
+        type=float,
+        default=float(os.environ.get("JOBSEEK_CODEX_MAX_QUARANTINE_GIB", "2")),
+    )
+    parser.add_argument(
+        "--max-retained-session-files",
+        type=int,
+        default=int(os.environ.get("JOBSEEK_CODEX_MAX_RETAINED_SESSION_FILES", "500")),
+    )
+    parser.add_argument(
+        "--max-retained-session-gib",
+        type=float,
+        default=float(os.environ.get("JOBSEEK_CODEX_MAX_RETAINED_SESSION_GIB", "2")),
+    )
+    parser.add_argument(
+        "--max-unlinked-session-age-days",
+        type=float,
+        default=float(os.environ.get("JOBSEEK_CODEX_MAX_UNLINKED_SESSION_AGE_DAYS", "7")),
+    )
     return parser
 
 
@@ -1972,6 +2905,9 @@ def main(argv: list[str] | None = None) -> int:
             disk_alert_margin_gib=args.disk_alert_margin_gib,
             max_quarantine_runs=args.max_quarantine_runs,
             max_quarantine_gib=args.max_quarantine_gib,
+            max_retained_session_files=args.max_retained_session_files,
+            max_retained_session_gib=args.max_retained_session_gib,
+            max_unlinked_session_age_days=args.max_unlinked_session_age_days,
         )
         phase = "cleanup_plan" if args.dry_run_cleanup else "report"
         print(json.dumps({"phase": phase, **report}, sort_keys=True))
@@ -2001,11 +2937,14 @@ def main(argv: list[str] | None = None) -> int:
 
     assert args.run_id is not None
     owned_temp = args.output_dir is None
-    temp_root = (
-        Path(tempfile.mkdtemp(prefix=f"trace-backfill-{args.run_id}-"))
-        if owned_temp
-        else args.output_dir
-    )
+    if owned_temp:
+        created_temp_root = Path(tempfile.mkdtemp(prefix=f"trace-backfill-{args.run_id}-"))
+        created_parent = created_temp_root.parent.resolve(strict=True)
+        temp_root = created_temp_root.resolve(strict=True)
+        if temp_root.parent != created_parent or not temp_root.is_dir():
+            raise RuntimeError("temporary trace root escaped its canonical parent")
+    else:
+        temp_root = args.output_dir
     assert temp_root is not None
     bundle_dir = temp_root / args.run_id if owned_temp else temp_root
     ledger_path = args.runner_root / "state" / "ledger.sqlite"
@@ -2075,7 +3014,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         if args.cleanup:
             cleanup = cleanup_verified_sources(
-                ledger_path=ledger_path, run_id=args.run_id, manifest=manifest
+                ledger_path=ledger_path,
+                run_id=args.run_id,
+                manifest=manifest,
+                runner_root=args.runner_root,
+                codex_home=args.codex_home,
             )
             print(json.dumps({"phase": "cleaned", **cleanup}, sort_keys=True))
             _record_trace_export_attempt(
@@ -2089,7 +3032,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     finally:
         if owned_temp:
-            shutil.rmtree(temp_root, ignore_errors=True)
+            with suppress(RuntimeError):
+                safe_rmtree_child(temp_root.parent, temp_root.name, missing_ok=True)
 
 
 if __name__ == "__main__":

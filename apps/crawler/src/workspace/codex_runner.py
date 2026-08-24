@@ -15,15 +15,23 @@ import os
 import shutil
 import signal
 import sqlite3
+import stat
 import subprocess
 import sys
 import tempfile
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from src.workspace.safe_cleanup import (
+    open_absolute_directory_no_follow,
+    open_child_directory_no_follow,
+    rmtree_child_at,
+    unlink_child_at,
+)
 
 ACTIVE_STATES = ("claimed", "running")
 # The legacy states remain valid because the same ledger is also consumed by
@@ -42,6 +50,10 @@ TERMINAL_STATES = (
 )
 RESOLVED_OUTCOMES = ("submitted", "rejected", "escalated")
 RETRY_OUTCOMES = ("retryable", "interrupted")
+_AUTOMATION_RUN_SQL = (
+    "(r.run_id LIKE 'issue-%' OR r.run_id LIKE 'daily-error-review-%' "
+    "OR r.run_id LIKE 'daily-annotations-%')"
+)
 DEFAULT_ROOT = Path("/srv/jobseek-codex")
 DEFAULT_RUNTIME_S = 90 * 60
 DEFAULT_KILL_GRACE_S = 20
@@ -156,6 +168,9 @@ class RunnerConfig:
     disk_alert_margin_gib: float = 2.0
     max_quarantine_runs: int = 50
     max_quarantine_gib: float = 2.0
+    max_retained_session_files: int = 500
+    max_retained_session_gib: float = 2.0
+    max_unlinked_session_age_days: float = 7.0
     max_terminal_worktrees: int = 3
     max_terminal_worktree_gib: float = 2.0
     min_mem_available_gib: float = 2.0
@@ -175,6 +190,7 @@ class RunnerConfig:
         root = self.root
         repo_dir = self.repo_dir or root / "repo"
         managed_root = Path.home() / ".jobseek" if root == DEFAULT_ROOT else root / "managed"
+        codex_home = Path.home() / ".codex" if root == DEFAULT_ROOT else root / "codex-home"
         return RunnerConfig(
             root=root,
             repo_dir=repo_dir,
@@ -205,6 +221,9 @@ class RunnerConfig:
             disk_alert_margin_gib=self.disk_alert_margin_gib,
             max_quarantine_runs=self.max_quarantine_runs,
             max_quarantine_gib=self.max_quarantine_gib,
+            max_retained_session_files=self.max_retained_session_files,
+            max_retained_session_gib=self.max_retained_session_gib,
+            max_unlinked_session_age_days=self.max_unlinked_session_age_days,
             max_terminal_worktrees=self.max_terminal_worktrees,
             max_terminal_worktree_gib=self.max_terminal_worktree_gib,
             min_mem_available_gib=self.min_mem_available_gib,
@@ -218,7 +237,7 @@ class RunnerConfig:
             trace_hf_repo=self.trace_hf_repo,
             trace_hf_prefix=self.trace_hf_prefix,
             trace_retry_limit=self.trace_retry_limit,
-            codex_home=self.codex_home or Path.home() / ".codex",
+            codex_home=self.codex_home or codex_home,
         )
 
     @classmethod
@@ -241,12 +260,12 @@ class RunnerConfig:
             managed_repo_dir=(
                 Path(env["JOBSEEK_CODEX_MANAGED_REPO_DIR"])
                 if env.get("JOBSEEK_CODEX_MANAGED_REPO_DIR")
-                else Path.home() / ".jobseek" / "repo"
+                else None
             ),
             managed_worktrees_dir=(
                 Path(env["JOBSEEK_CODEX_MANAGED_WORKTREES_DIR"])
                 if env.get("JOBSEEK_CODEX_MANAGED_WORKTREES_DIR")
-                else Path.home() / ".jobseek" / "worktrees"
+                else None
             ),
             codex_model=env.get("JOBSEEK_CODEX_MODEL", DEFAULT_CODEX_MODEL) or None,
             codex_reasoning_effort=(
@@ -279,6 +298,13 @@ class RunnerConfig:
             disk_alert_margin_gib=float(env.get("JOBSEEK_CODEX_DISK_ALERT_MARGIN_GIB", "2")),
             max_quarantine_runs=int(env.get("JOBSEEK_CODEX_MAX_QUARANTINE_RUNS", "50")),
             max_quarantine_gib=float(env.get("JOBSEEK_CODEX_MAX_QUARANTINE_GIB", "2")),
+            max_retained_session_files=int(
+                env.get("JOBSEEK_CODEX_MAX_RETAINED_SESSION_FILES", "500")
+            ),
+            max_retained_session_gib=float(env.get("JOBSEEK_CODEX_MAX_RETAINED_SESSION_GIB", "2")),
+            max_unlinked_session_age_days=float(
+                env.get("JOBSEEK_CODEX_MAX_UNLINKED_SESSION_AGE_DAYS", "7")
+            ),
             max_terminal_worktrees=int(env.get("JOBSEEK_CODEX_MAX_TERMINAL_WORKTREES", "3")),
             max_terminal_worktree_gib=float(
                 env.get("JOBSEEK_CODEX_MAX_TERMINAL_WORKTREE_GIB", "2")
@@ -367,6 +393,19 @@ class RunnerLedger:
                     events_with_usage INTEGER NOT NULL,
                     ingested_at INTEGER NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS codex_session_links (
+                    session_path TEXT PRIMARY KEY,
+                    run_id TEXT NOT NULL,
+                    thread_id TEXT NOT NULL,
+                    parent_thread_id TEXT,
+                    role TEXT NOT NULL,
+                    is_root INTEGER NOT NULL,
+                    source_bytes INTEGER NOT NULL,
+                    linked_at INTEGER NOT NULL,
+                    FOREIGN KEY(run_id) REFERENCES runs(run_id)
+                );
+                CREATE INDEX IF NOT EXISTS codex_session_links_run
+                    ON codex_session_links(run_id);
                 CREATE TABLE IF NOT EXISTS usage_snapshots (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     observed_at INTEGER NOT NULL,
@@ -675,6 +714,54 @@ class RunnerLedger:
         except sqlite3.IntegrityError:
             return False
 
+    def record_codex_session_links(self, run_id: str, sessions: list[Any]) -> int:
+        """Durably link one terminal automation's root and subagent sessions."""
+        now = int(time.time())
+        rows = []
+        for source in sessions:
+            entry = source.path.lstat()
+            if not stat.S_ISREG(entry.st_mode):
+                raise RuntimeError(f"Codex session source is unsafe: {source.path}")
+            rows.append(
+                (
+                    str(source.path),
+                    run_id,
+                    str(source.thread_id),
+                    source.parent_thread_id,
+                    str(source.role),
+                    int(source.is_root),
+                    int(entry.st_size),
+                    now,
+                )
+            )
+        with self._connect() as conn:
+            conn.executemany(
+                """
+                INSERT INTO codex_session_links (
+                    session_path, run_id, thread_id, parent_thread_id,
+                    role, is_root, source_bytes, linked_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(session_path) DO UPDATE SET
+                    run_id = excluded.run_id,
+                    thread_id = excluded.thread_id,
+                    parent_thread_id = excluded.parent_thread_id,
+                    role = excluded.role,
+                    is_root = excluded.is_root,
+                    source_bytes = excluded.source_bytes,
+                    linked_at = excluded.linked_at
+                """,
+                rows,
+            )
+        return len(rows)
+
+    def codex_session_links(self, run_id: str) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM codex_session_links WHERE run_id = ? ORDER BY is_root DESC, role",
+                (run_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     def record_trace_bundle_attempt(
         self,
         run_id: str,
@@ -713,27 +800,66 @@ class RunnerLedger:
             ).fetchone()
         return (int(row["runs"]), int(row["bytes"])) if row else (0, 0)
 
-    def failed_trace_bundle_exports(self, *, limit: int) -> list[dict[str, Any]]:
+    def failed_trace_bundle_exports(
+        self,
+        *,
+        limit: int,
+        include_pending_cleanup: bool,
+    ) -> list[dict[str, Any]]:
         if limit <= 0:
             return []
         with self._connect() as conn:
-            rows = conn.execute(
-                """
-                SELECT r.run_id, r.issue, r.state, r.trace_path,
-                       r.stderr_path, r.worktree_path, r.error
-                FROM trace_bundle_export_attempts AS a
-                JOIN runs AS r ON r.run_id = a.run_id
-                WHERE a.status = 'failed'
-                  AND r.state IN (
-                      'completed', 'failed', 'timeout',
-                      'submitted', 'rejected', 'escalated',
-                      'retryable', 'interrupted'
-                  )
-                ORDER BY a.last_attempt_at, r.created_at
-                LIMIT ?
-                """,
-                (limit,),
-            ).fetchall()
+            export_table = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'trace_bundle_exports'"
+            ).fetchone()
+            if export_table and include_pending_cleanup:
+                rows = conn.execute(
+                    f"""
+                    SELECT r.run_id, r.issue, r.state, r.trace_path,
+                           r.stderr_path, r.worktree_path, r.error
+                    FROM runs AS r
+                    LEFT JOIN trace_bundle_export_attempts AS a ON a.run_id = r.run_id
+                    LEFT JOIN trace_bundle_exports AS e ON e.run_id = r.run_id
+                    WHERE (
+                          (e.run_id IS NOT NULL AND e.cleaned_at IS NULL)
+                          OR (a.status = 'failed' AND e.run_id IS NULL)
+                          OR (
+                              a.run_id IS NULL AND e.run_id IS NULL
+                              AND {_AUTOMATION_RUN_SQL}
+                          )
+                      )
+                      AND (a.run_id IS NOT NULL OR e.run_id IS NOT NULL)
+                      AND r.state IN (
+                          'completed', 'failed', 'timeout',
+                          'submitted', 'rejected', 'escalated',
+                          'retryable', 'interrupted'
+                      )
+                    ORDER BY COALESCE(a.last_attempt_at, e.verified_at), r.created_at
+                    LIMIT ?
+                    """,
+                    (limit,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    f"""
+                    SELECT r.run_id, r.issue, r.state, r.trace_path,
+                           r.stderr_path, r.worktree_path, r.error
+                    FROM runs AS r
+                    LEFT JOIN trace_bundle_export_attempts AS a ON a.run_id = r.run_id
+                    WHERE (
+                          a.status = 'failed'
+                          OR (a.run_id IS NULL AND {_AUTOMATION_RUN_SQL})
+                      )
+                      AND r.state IN (
+                          'completed', 'failed', 'timeout',
+                          'submitted', 'rejected', 'escalated',
+                          'retryable', 'interrupted'
+                      )
+                    ORDER BY COALESCE(a.last_attempt_at, r.completed_at), r.created_at
+                    LIMIT ?
+                    """,
+                    (limit,),
+                ).fetchall()
         return [dict(row) for row in rows]
 
     def record_usage_snapshot(
@@ -1569,175 +1695,10 @@ class CompanyResolverGovernor:
         return self._export_terminal_trace(result)
 
     def _retry_failed_trace_exports(self) -> None:
-        if not self.config.trace_export_enabled:
-            return
-        for run in self.ledger.failed_trace_bundle_exports(limit=self.config.trace_retry_limit):
-            self._export_terminal_trace(
-                RunResult(
-                    run_id=str(run["run_id"]),
-                    issue=run.get("issue") if isinstance(run.get("issue"), int) else None,
-                    state=str(run["state"]),
-                    trace_path=Path(run["trace_path"])
-                    if isinstance(run.get("trace_path"), str)
-                    else None,
-                    stderr_path=Path(run["stderr_path"])
-                    if isinstance(run.get("stderr_path"), str)
-                    else None,
-                    worktree_path=Path(run["worktree_path"])
-                    if isinstance(run.get("worktree_path"), str)
-                    else None,
-                    error=run.get("error") if isinstance(run.get("error"), str) else None,
-                )
-            )
+        retry_failed_trace_exports(config=self.config, ledger=self.ledger)
 
     def _export_terminal_trace(self, result: RunResult) -> RunResult:
-        cfg = self.config
-        if not cfg.trace_export_enabled or not result.run_id:
-            return result
-        run = self.ledger.get_run(result.run_id)
-        trace_value = run.get("trace_path") if run else None
-        trace_path = Path(trace_value) if isinstance(trace_value, str) else None
-        if trace_path is None or not trace_path.is_file():
-            error = "terminal trace file unavailable"
-            self.ledger.record_trace_bundle_attempt(
-                result.run_id,
-                status="unavailable",
-                error=error,
-            )
-            result.trace_export_status = "unavailable"
-            result.trace_export_error = error
-            return result
-
-        from src.workspace.trace_backfill import (
-            build_bundle,
-            cleanup_verified_sources,
-            prune_hf_dataset_cache,
-            quality_gate_reason,
-            record_verified_export,
-            upload_and_verify,
-        )
-
-        tier: str | None = None
-        retained_bytes = 0
-        try:
-            with tempfile.TemporaryDirectory(
-                prefix=f"trace-export-{result.run_id}-",
-                dir=cfg.state_dir,
-            ) as temp_dir:
-                bundle_dir = Path(temp_dir) / result.run_id
-                manifest = build_bundle(
-                    run_id=result.run_id,
-                    runner_root=cfg.root,
-                    codex_home=cfg.codex_home or Path.home() / ".codex",
-                    output_dir=bundle_dir,
-                )
-                tier = str(manifest["quality"]["tier"])
-                retained_bytes = sum(
-                    int(entry.get("source_bytes", 0))
-                    for entry in manifest.get("files", [])
-                    if isinstance(entry, dict)
-                )
-                result.trace_export_tier = tier
-                if tier == "quarantined":
-                    result.trace_export_status = "quarantined"
-                    self.ledger.record_trace_bundle_attempt(
-                        result.run_id,
-                        status="quarantined",
-                        quality_tier=tier,
-                        error=quality_gate_reason(manifest),
-                        retained_bytes=retained_bytes,
-                    )
-                    return result
-
-                remote_dir, verified = upload_and_verify(
-                    bundle_dir=bundle_dir,
-                    run_id=result.run_id,
-                    repo_id=cfg.trace_hf_repo,
-                    prefix=cfg.trace_hf_prefix,
-                    quality_tier=tier,
-                )
-                record_verified_export(
-                    ledger_path=cfg.ledger_path or cfg.root / "state" / "ledger.sqlite",
-                    run_id=result.run_id,
-                    remote_dir=remote_dir,
-                    manifest=manifest,
-                    verified=verified,
-                )
-                status = "verified"
-                if cfg.trace_cleanup_enabled:
-                    cleanup_result = cleanup_verified_sources(
-                        ledger_path=cfg.ledger_path or cfg.root / "state" / "ledger.sqlite",
-                        run_id=result.run_id,
-                        manifest=manifest,
-                    )
-                    status = "cleaned"
-                    retained_bytes = 0
-                    disk = shutil.disk_usage(cfg.root)
-                    print(
-                        json.dumps(
-                            {
-                                "event": "trace_retention_cleanup",
-                                "run_id": result.run_id,
-                                "reclaimed_bytes": int(cleanup_result["reclaimed_bytes"]),
-                                "disk_free_bytes": disk.free,
-                                "disk_total_bytes": disk.total,
-                            },
-                            sort_keys=True,
-                        )
-                    )
-                    try:
-                        cache_result = prune_hf_dataset_cache(repo_id=cfg.trace_hf_repo)
-                        if cache_result["revisions"]:
-                            print(
-                                json.dumps(
-                                    {"event": "trace_hf_cache_cleanup", **cache_result},
-                                    sort_keys=True,
-                                )
-                            )
-                    except Exception as exc:  # noqa: BLE001 - cache is non-canonical
-                        print(
-                            json.dumps(
-                                {
-                                    "event": "trace_hf_cache_cleanup_failed",
-                                    "error": _safe_trace_export_error(exc),
-                                },
-                                sort_keys=True,
-                            ),
-                            file=sys.stderr,
-                        )
-                self.ledger.record_trace_bundle_attempt(
-                    result.run_id,
-                    status=status,
-                    quality_tier=tier,
-                    remote_dir=remote_dir,
-                    retained_bytes=retained_bytes,
-                )
-                result.trace_export_status = status
-                result.trace_export_remote_dir = remote_dir
-        except Exception as exc:  # noqa: BLE001 - trace export must not alter run outcome
-            error = _safe_trace_export_error(exc)
-            self.ledger.record_trace_bundle_attempt(
-                result.run_id,
-                status="failed",
-                quality_tier=tier,
-                error=error,
-                retained_bytes=retained_bytes,
-            )
-            result.trace_export_status = "failed"
-            result.trace_export_error = error
-            print(
-                json.dumps(
-                    {
-                        "event": "trace_bundle_export_failed",
-                        "run_id": result.run_id,
-                        "quality_tier": tier,
-                        "error": error,
-                    },
-                    sort_keys=True,
-                ),
-                file=sys.stderr,
-            )
-        return result
+        return export_terminal_trace(config=self.config, ledger=self.ledger, result=result)
 
     def should_start(self) -> SchedulerDecision:
         self.reconcile_stale_runs()
@@ -1754,6 +1715,51 @@ class CompanyResolverGovernor:
                     recent_limit=0,
                     recent_runs=0,
                 )
+            )
+        from src.workspace.trace_backfill import session_retention_status
+
+        session_limit = session_retention_status(
+            runner_root=self.config.root,
+            codex_home=self.config.codex_home or Path.home() / ".codex",
+            max_files=self.config.max_retained_session_files,
+            max_bytes=int(self.config.max_retained_session_gib * 1024**3),
+            max_unlinked_age_s=int(self.config.max_unlinked_session_age_days * 24 * 60 * 60),
+        )
+        if session_limit.over_limit:
+            return self._record_scheduler_decision(
+                SchedulerDecision(
+                    should_run=False,
+                    reason=session_limit.reason or "Codex session retention limit reached",
+                    recent_limit=0,
+                    recent_runs=0,
+                )
+            )
+        max_session_bytes = int(self.config.max_retained_session_gib * 1024**3)
+        max_unlinked_age_s = int(self.config.max_unlinked_session_age_days * 24 * 60 * 60)
+        if (
+            (
+                self.config.max_retained_session_files > 0
+                and session_limit.files >= int(self.config.max_retained_session_files * 0.8)
+            )
+            or (max_session_bytes > 0 and session_limit.bytes >= int(max_session_bytes * 0.8))
+            or (
+                max_unlinked_age_s > 0
+                and session_limit.oldest_unlinked_age_s >= int(max_unlinked_age_s * 0.8)
+            )
+        ):
+            print(
+                json.dumps(
+                    {
+                        "event": "codex_retention_warning",
+                        "kind": "session_growth",
+                        **asdict(session_limit),
+                        "max_files": self.config.max_retained_session_files,
+                        "max_bytes": max_session_bytes,
+                        "max_unlinked_age_s": max_unlinked_age_s,
+                    },
+                    sort_keys=True,
+                ),
+                file=sys.stderr,
             )
         health = check_host_health(self.config)
         if health.warning:
@@ -2007,6 +2013,7 @@ class CompanyResolverGovernor:
             self._cleanup_ws_artifacts_for_issue(
                 item.issue,
                 workspace_root=workspace_root,
+                workspace_container=worktree,
             )
 
         runner_report = reconcile_worktrees(
@@ -2047,7 +2054,7 @@ class CompanyResolverGovernor:
         """Join workspace YAML paths back to the latest ledger run for an issue."""
         runs = self.ledger.worktree_runs()
         latest_by_issue: dict[int, dict[str, Any]] = {}
-        roots: list[Path] = []
+        roots: list[tuple[Path, Path]] = []
         for run in runs:
             issue = run.get("issue")
             if isinstance(issue, int):
@@ -2058,21 +2065,32 @@ class CompanyResolverGovernor:
                     latest_by_issue[issue] = run
             value = run.get("worktree_path")
             if isinstance(value, str) and value:
-                roots.append(Path(value) / "apps" / "crawler" / ".workspace")
+                worktree = Path(value)
+                roots.append((worktree / "apps" / "crawler" / ".workspace", worktree))
         if self.config.repo_dir is not None:
-            roots.append(self.config.repo_dir / "apps" / "crawler" / ".workspace")
+            roots.append(
+                (
+                    self.config.repo_dir / "apps" / "crawler" / ".workspace",
+                    self.config.repo_dir,
+                )
+            )
         if self.config.managed_repo_dir is not None:
-            roots.append(self.config.managed_repo_dir / "apps" / "crawler" / ".workspace")
+            roots.append(
+                (
+                    self.config.managed_repo_dir / "apps" / "crawler" / ".workspace",
+                    self.config.managed_repo_dir,
+                )
+            )
 
         contexts: dict[str, dict[str, Any]] = {}
         seen: set[Path] = set()
-        for root in roots:
-            resolved_root = root.resolve() if root.exists() else root
-            if resolved_root in seen or not root.exists():
+        for root, container in roots:
+            resolved_root = _validated_workspace_root(root, container=container)
+            if resolved_root is None or resolved_root in seen:
                 continue
             seen.add(resolved_root)
-            for workspace_yaml in root.glob("*/workspace.yaml"):
-                data = _read_yaml_mapping(workspace_yaml)
+            for workspace_dir in _safe_workspace_directories(resolved_root):
+                data = _read_yaml_mapping_no_follow(workspace_dir / "workspace.yaml")
                 managed_path = _workspace_worktree(data)
                 issue = _workspace_issue(data)
                 if managed_path is None:
@@ -2297,40 +2315,66 @@ class CompanyResolverGovernor:
         issue: int,
         *,
         workspace_root: Path | None = None,
+        workspace_container: Path | None = None,
     ) -> None:
-        roots = []
+        roots: list[tuple[Path, Path]] = []
         if workspace_root is not None:
-            roots.append(workspace_root)
+            roots.append((workspace_root, workspace_container or workspace_root.parent))
         if self.config.repo_dir is not None:
-            roots.append(self.config.repo_dir / "apps" / "crawler" / ".workspace")
-        roots.append(Path.home() / ".jobseek" / "repo" / "apps" / "crawler" / ".workspace")
+            roots.append(
+                (
+                    self.config.repo_dir / "apps" / "crawler" / ".workspace",
+                    self.config.repo_dir,
+                )
+            )
+        if self.config.managed_repo_dir is not None:
+            roots.append(
+                (
+                    self.config.managed_repo_dir / "apps" / "crawler" / ".workspace",
+                    self.config.managed_repo_dir,
+                )
+            )
 
         seen: set[Path] = set()
-        for root in roots:
-            root = root.resolve() if root.exists() else root
-            if root in seen or not root.exists():
+        for root, container in roots:
+            safe_root = _validated_workspace_root(root, container=container)
+            if safe_root is None or safe_root in seen:
                 continue
-            seen.add(root)
-            for workspace_dir in _workspace_dirs_for_issue(root, issue):
-                self._cleanup_workspace_dir(workspace_dir, root)
+            seen.add(safe_root)
+            for workspace_dir in _workspace_dirs_for_issue(safe_root, issue):
+                self._cleanup_workspace_dir(workspace_dir, safe_root)
 
     def _cleanup_workspace_dir(self, workspace_dir: Path, workspace_root: Path) -> None:
-        data = _read_yaml_mapping(workspace_dir / "workspace.yaml")
-        if not data:
+        safe_workspace_dir = _validated_workspace_child(workspace_dir, workspace_root)
+        if safe_workspace_dir is None:
             return
-        slug = workspace_dir.name
-        worktree = _workspace_worktree(data)
-        if worktree and worktree.exists():
-            raise RuntimeError(
-                f"managed ws worktree {worktree} was retained; refusing workspace cleanup"
+        workspace_root_fd = open_absolute_directory_no_follow(workspace_root)
+        workspace_fd: int | None = None
+        try:
+            workspace_fd, workspace_stat = open_child_directory_no_follow(
+                workspace_root_fd,
+                safe_workspace_dir.name,
             )
-        shutil.rmtree(workspace_dir, ignore_errors=True)
-        for active in workspace_root.glob("active*"):
-            try:
-                if active.is_file() and active.read_text().strip() == slug:
-                    active.unlink()
-            except OSError:
-                continue
+            data = _read_yaml_mapping_at(workspace_fd, "workspace.yaml")
+            if not data:
+                return
+            slug = safe_workspace_dir.name
+            worktree = _workspace_worktree(data)
+            if worktree and worktree.exists():
+                raise RuntimeError(
+                    f"managed ws worktree {worktree} was retained; refusing workspace cleanup"
+                )
+            rmtree_child_at(
+                workspace_root_fd,
+                slug,
+                child_fd=workspace_fd,
+                expected=workspace_stat,
+            )
+            _cleanup_active_markers_at(workspace_root_fd, slug)
+        finally:
+            if workspace_fd is not None:
+                os.close(workspace_fd)
+            os.close(workspace_root_fd)
 
 
 def _is_stale_runner_claim(claim: ClaimComment, *, older_than_s: int) -> bool:
@@ -2385,11 +2429,139 @@ def _ws_issue_completed(worktree: Path, issue: int) -> bool:
 
 def _workspace_dirs_for_issue(workspace_root: Path, issue: int) -> list[Path]:
     matches: list[Path] = []
-    for workspace_yaml in workspace_root.glob("*/workspace.yaml"):
-        data = _read_yaml_mapping(workspace_yaml)
+    for workspace_dir in _safe_workspace_directories(workspace_root):
+        data = _read_yaml_mapping_no_follow(workspace_dir / "workspace.yaml")
         if _workspace_issue(data) == issue:
-            matches.append(workspace_yaml.parent)
+            matches.append(workspace_dir)
     return matches
+
+
+def _validated_workspace_root(path: Path, *, container: Path) -> Path | None:
+    """Resolve a workspace root only when every child component is a real directory."""
+    try:
+        container_mode = container.lstat().st_mode
+        if stat.S_ISLNK(container_mode) or not stat.S_ISDIR(container_mode):
+            return None
+        relative = path.relative_to(container)
+        if not relative.parts or ".." in relative.parts:
+            return None
+        container_resolved = container.resolve(strict=True)
+        current = container
+        for part in relative.parts:
+            current = current / part
+            mode = current.lstat().st_mode
+            if stat.S_ISLNK(mode) or not stat.S_ISDIR(mode):
+                return None
+        resolved = path.resolve(strict=True)
+    except (OSError, ValueError):
+        return None
+    if not resolved.is_relative_to(container_resolved):
+        return None
+    return resolved
+
+
+def _validated_workspace_child(path: Path, workspace_root: Path) -> Path | None:
+    try:
+        root_mode = workspace_root.lstat().st_mode
+        child_mode = path.lstat().st_mode
+        if stat.S_ISLNK(root_mode) or not stat.S_ISDIR(root_mode):
+            return None
+        if stat.S_ISLNK(child_mode) or not stat.S_ISDIR(child_mode):
+            return None
+        root_resolved = workspace_root.resolve(strict=True)
+        resolved = path.resolve(strict=True)
+    except OSError:
+        return None
+    if resolved.parent != root_resolved:
+        return None
+    return resolved
+
+
+def _safe_workspace_directories(workspace_root: Path) -> list[Path]:
+    try:
+        root_mode = workspace_root.lstat().st_mode
+    except OSError:
+        return []
+    if stat.S_ISLNK(root_mode) or not stat.S_ISDIR(root_mode):
+        return []
+
+    directories: list[Path] = []
+    try:
+        entries = list(workspace_root.iterdir())
+    except OSError:
+        return []
+    for entry in entries:
+        safe_entry = _validated_workspace_child(entry, workspace_root)
+        if safe_entry is None:
+            continue
+        workspace_yaml = safe_entry / "workspace.yaml"
+        try:
+            yaml_mode = workspace_yaml.lstat().st_mode
+            yaml_resolved = workspace_yaml.resolve(strict=True)
+        except OSError:
+            continue
+        if (
+            stat.S_ISLNK(yaml_mode)
+            or not stat.S_ISREG(yaml_mode)
+            or yaml_resolved.parent != safe_entry
+        ):
+            continue
+        directories.append(safe_entry)
+    return directories
+
+
+def _read_text_at_no_follow(parent_fd: int, name: str) -> tuple[str, os.stat_result]:
+    if not name or name in {".", ".."} or "/" in name:
+        raise OSError(f"invalid workspace metadata name: {name!r}")
+    flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+    descriptor = os.open(name, flags, dir_fd=parent_fd)
+    with os.fdopen(descriptor, encoding="utf-8") as handle:
+        opened = os.fstat(handle.fileno())
+        if not stat.S_ISREG(opened.st_mode):
+            raise OSError(f"not a regular workspace metadata file: {name}")
+        return handle.read(), opened
+
+
+def _read_yaml_mapping_at(parent_fd: int, name: str) -> dict[str, Any]:
+    try:
+        import yaml
+
+        data = yaml.safe_load(_read_text_at_no_follow(parent_fd, name)[0])
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _cleanup_active_markers_at(workspace_root_fd: int, slug: str) -> None:
+    for name in os.listdir(workspace_root_fd):
+        if not name.startswith("active"):
+            continue
+        try:
+            value, opened = _read_text_at_no_follow(workspace_root_fd, name)
+            if value.strip() != slug:
+                continue
+            unlink_child_at(workspace_root_fd, name, expected=opened)
+        except (OSError, RuntimeError):
+            continue
+
+
+def _read_text_no_follow(path: Path) -> str:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    descriptor = os.open(path, flags)
+    with os.fdopen(descriptor, encoding="utf-8") as handle:
+        if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+            raise OSError(f"not a regular file: {path}")
+        return handle.read()
+
+
+def _read_yaml_mapping_no_follow(path: Path) -> dict[str, Any]:
+    try:
+        import yaml
+
+        data = yaml.safe_load(_read_text_no_follow(path))
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 def _read_yaml_mapping(path: Path) -> dict[str, Any]:
@@ -2441,6 +2613,246 @@ def _pid_alive(pid: int) -> bool:
     except PermissionError:
         return True
     return True
+
+
+def retry_failed_trace_exports(*, config: RunnerConfig, ledger: RunnerLedger) -> None:
+    """Retry bounded terminal exports for every Jobseek automation kind."""
+    if not config.trace_export_enabled:
+        return
+    for run in ledger.failed_trace_bundle_exports(
+        limit=config.trace_retry_limit,
+        include_pending_cleanup=config.trace_cleanup_enabled,
+    ):
+        export_terminal_trace(
+            config=config,
+            ledger=ledger,
+            result=RunResult(
+                run_id=str(run["run_id"]),
+                issue=run.get("issue") if isinstance(run.get("issue"), int) else None,
+                state=str(run["state"]),
+                trace_path=(
+                    Path(run["trace_path"]) if isinstance(run.get("trace_path"), str) else None
+                ),
+                stderr_path=(
+                    Path(run["stderr_path"]) if isinstance(run.get("stderr_path"), str) else None
+                ),
+                worktree_path=(
+                    Path(run["worktree_path"])
+                    if isinstance(run.get("worktree_path"), str)
+                    else None
+                ),
+                error=run.get("error") if isinstance(run.get("error"), str) else None,
+            ),
+        )
+
+
+def export_terminal_trace(
+    *,
+    config: RunnerConfig,
+    ledger: RunnerLedger,
+    result: RunResult,
+) -> RunResult:
+    """Export, remotely verify, and checksum-clean one terminal run's evidence."""
+    if not config.trace_export_enabled or not result.run_id:
+        return result
+    from src.workspace.trace_backfill import (
+        build_bundle,
+        cleanup_verified_sources,
+        discover_sessions,
+        pending_verified_cleanup,
+        prune_hf_dataset_cache,
+        quality_gate_reason,
+        record_verified_export,
+        upload_and_verify,
+    )
+
+    codex_home = config.codex_home or Path.home() / ".codex"
+    ledger_path = config.ledger_path or config.root / "state" / "ledger.sqlite"
+    tier: str | None = None
+    retained_bytes = 0
+    if config.trace_cleanup_enabled:
+        try:
+            pending_cleanup = pending_verified_cleanup(
+                ledger_path=ledger_path,
+                run_id=result.run_id,
+            )
+            if pending_cleanup is not None:
+                manifest, tier, remote_dir, retained_bytes = pending_cleanup
+                cleanup_verified_sources(
+                    ledger_path=ledger_path,
+                    run_id=result.run_id,
+                    manifest=manifest,
+                    runner_root=config.root,
+                    codex_home=codex_home,
+                    traces_dir=config.traces_dir,
+                    logs_dir=config.logs_dir,
+                )
+                ledger.record_trace_bundle_attempt(
+                    result.run_id,
+                    status="cleaned",
+                    quality_tier=tier,
+                    remote_dir=remote_dir,
+                    retained_bytes=0,
+                )
+                result.trace_export_status = "cleaned"
+                result.trace_export_tier = tier
+                result.trace_export_remote_dir = remote_dir
+                return result
+        except Exception as exc:  # noqa: BLE001 - retain verified evidence for retry
+            error = _safe_trace_export_error(exc)
+            ledger.record_trace_bundle_attempt(
+                result.run_id,
+                status="failed",
+                quality_tier=tier,
+                error=error,
+                retained_bytes=retained_bytes,
+            )
+            result.trace_export_status = "failed"
+            result.trace_export_error = error
+            return result
+
+    run = ledger.get_run(result.run_id)
+    trace_value = run.get("trace_path") if run else None
+    trace_path = Path(trace_value) if isinstance(trace_value, str) else None
+    try:
+        trace_mode = trace_path.lstat().st_mode if trace_path is not None else 0
+    except OSError:
+        trace_mode = 0
+    if trace_path is None or not stat.S_ISREG(trace_mode):
+        error = "terminal trace file unavailable"
+        ledger.record_trace_bundle_attempt(result.run_id, status="unavailable", error=error)
+        result.trace_export_status = "unavailable"
+        result.trace_export_error = error
+        return result
+
+    try:
+        sessions = discover_sessions(codex_home, result.run_id, ledger_path=ledger_path)
+        ledger.record_codex_session_links(result.run_id, sessions)
+        with tempfile.TemporaryDirectory(
+            prefix=f"trace-export-{result.run_id}-",
+            dir=config.state_dir,
+        ) as temp_dir:
+            bundle_dir = Path(temp_dir) / result.run_id
+            manifest = build_bundle(
+                run_id=result.run_id,
+                runner_root=config.root,
+                codex_home=codex_home,
+                output_dir=bundle_dir,
+                sessions=sessions,
+                traces_dir=config.traces_dir,
+                logs_dir=config.logs_dir,
+            )
+            tier = str(manifest["quality"]["tier"])
+            retained_bytes = sum(
+                int(entry.get("source_bytes", 0))
+                for entry in manifest.get("files", [])
+                if isinstance(entry, dict)
+            )
+            result.trace_export_tier = tier
+            if tier == "quarantined":
+                result.trace_export_status = "quarantined"
+                ledger.record_trace_bundle_attempt(
+                    result.run_id,
+                    status="quarantined",
+                    quality_tier=tier,
+                    error=quality_gate_reason(manifest),
+                    retained_bytes=retained_bytes,
+                )
+                return result
+
+            remote_dir, verified = upload_and_verify(
+                bundle_dir=bundle_dir,
+                run_id=result.run_id,
+                repo_id=config.trace_hf_repo,
+                prefix=config.trace_hf_prefix,
+                quality_tier=tier,
+            )
+            record_verified_export(
+                ledger_path=ledger_path,
+                run_id=result.run_id,
+                remote_dir=remote_dir,
+                manifest=manifest,
+                verified=verified,
+            )
+            status = "verified"
+            if config.trace_cleanup_enabled:
+                cleanup_result = cleanup_verified_sources(
+                    ledger_path=ledger_path,
+                    run_id=result.run_id,
+                    manifest=manifest,
+                    runner_root=config.root,
+                    codex_home=codex_home,
+                    traces_dir=config.traces_dir,
+                    logs_dir=config.logs_dir,
+                )
+                status = "cleaned"
+                retained_bytes = 0
+                disk = shutil.disk_usage(config.root)
+                print(
+                    json.dumps(
+                        {
+                            "event": "trace_retention_cleanup",
+                            "run_id": result.run_id,
+                            "reclaimed_bytes": int(cleanup_result["reclaimed_bytes"]),
+                            "disk_free_bytes": disk.free,
+                            "disk_total_bytes": disk.total,
+                        },
+                        sort_keys=True,
+                    )
+                )
+                try:
+                    cache_result = prune_hf_dataset_cache(repo_id=config.trace_hf_repo)
+                    if cache_result["revisions"]:
+                        print(
+                            json.dumps(
+                                {"event": "trace_hf_cache_cleanup", **cache_result},
+                                sort_keys=True,
+                            )
+                        )
+                except Exception as exc:  # noqa: BLE001 - cache is non-canonical
+                    print(
+                        json.dumps(
+                            {
+                                "event": "trace_hf_cache_cleanup_failed",
+                                "error": _safe_trace_export_error(exc),
+                            },
+                            sort_keys=True,
+                        ),
+                        file=sys.stderr,
+                    )
+            ledger.record_trace_bundle_attempt(
+                result.run_id,
+                status=status,
+                quality_tier=tier,
+                remote_dir=remote_dir,
+                retained_bytes=retained_bytes,
+            )
+            result.trace_export_status = status
+            result.trace_export_remote_dir = remote_dir
+    except Exception as exc:  # noqa: BLE001 - export cannot alter the primary run outcome
+        error = _safe_trace_export_error(exc)
+        ledger.record_trace_bundle_attempt(
+            result.run_id,
+            status="failed",
+            quality_tier=tier,
+            error=error,
+            retained_bytes=retained_bytes,
+        )
+        result.trace_export_status = "failed"
+        result.trace_export_error = error
+        print(
+            json.dumps(
+                {
+                    "event": "trace_bundle_export_failed",
+                    "run_id": result.run_id,
+                    "quality_tier": tier,
+                    "error": error,
+                },
+                sort_keys=True,
+            ),
+            file=sys.stderr,
+        )
+    return result
 
 
 def _safe_trace_export_error(exc: Exception) -> str:

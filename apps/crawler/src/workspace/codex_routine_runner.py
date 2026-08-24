@@ -12,11 +12,11 @@ import argparse
 import json
 import os
 import re
-import shutil
 import subprocess
 import time
 import uuid
-from dataclasses import dataclass
+from contextlib import suppress
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -24,12 +24,16 @@ from src.workspace.codex_runner import (
     CompanyResolverGovernor,
     RunnerConfig,
     RunnerLedger,
+    RunResult,
     SchedulerDecision,
     _safe_env,
     _terminate_process_group,
     build_codex_command,
+    export_terminal_trace,
     parse_codex_usage_jsonl,
+    retry_failed_trace_exports,
 )
+from src.workspace.safe_cleanup import safe_rmtree_child
 
 UTC = timezone.utc  # noqa: UP017 - systemd runs this module with Python 3.10.
 
@@ -75,6 +79,10 @@ class DailyRunResult:
     stderr_path: Path | None = None
     worktree_path: Path | None = None
     error: str | None = None
+    trace_export_status: str | None = None
+    trace_export_tier: str | None = None
+    trace_export_remote_dir: str | None = None
+    trace_export_error: str | None = None
 
 
 @dataclass(frozen=True)
@@ -217,40 +225,12 @@ class DailyRoutineRunner:
         self.run_date = run_date
         self.count = count
         self.error_bundle = error_bundle
-        self.config = RunnerConfig(
-            root=config.root,
-            repo_dir=config.repo_dir,
-            worktrees_dir=config.worktrees_dir,
-            traces_dir=config.traces_dir,
-            logs_dir=config.logs_dir,
-            state_dir=config.state_dir,
-            ledger_path=config.ledger_path,
-            codex_args=config.codex_args,
-            codex_model=config.codex_model,
-            codex_reasoning_effort=config.codex_reasoning_effort,
-            max_runtime_s=config.max_runtime_s,
-            kill_grace_s=config.kill_grace_s,
-            dry_run=config.dry_run,
-            cleanup_success_worktree=config.cleanup_success_worktree,
-            label=config.label,
-            active_slot=self.spec.active_slot,
-            max_runs_per_5h=config.max_runs_per_5h,
-            conservative_runs_per_5h=config.conservative_runs_per_5h,
-            fast_weekly_remaining_percent=config.fast_weekly_remaining_percent,
-            fast_min_start_interval_s=config.fast_min_start_interval_s,
-            conservative_min_start_interval_s=config.conservative_min_start_interval_s,
-            min_five_hour_remaining_percent=config.min_five_hour_remaining_percent,
-            min_weekly_remaining_percent=config.min_weekly_remaining_percent,
-            min_disk_free_gib=config.min_disk_free_gib,
-            min_mem_available_gib=config.min_mem_available_gib,
-            max_load_per_cpu=config.max_load_per_cpu,
-            usage_probe_path=config.usage_probe_path,
-            lease_timeout_s=config.lease_timeout_s,
-        ).resolved()
+        self.config = replace(config, active_slot=self.spec.active_slot).resolved()
         ledger_path = self.config.ledger_path or self.config.root / "state/ledger.sqlite"
         self.ledger = ledger or RunnerLedger(ledger_path)
 
     def run_once(self) -> DailyRunResult:
+        retry_failed_trace_exports(config=self.config, ledger=self.ledger)
         if self.ledger.completed_run_with_prefix(
             active_slot=self.config.active_slot,
             run_id_prefix=self._run_prefix(),
@@ -300,20 +280,46 @@ class DailyRoutineRunner:
             )
 
         try:
-            return self._execute(run_id)
+            result = self._execute(run_id)
         except Exception as exc:  # noqa: BLE001 - final guard for leased routines
             self.ledger.finish(run_id, "failed", error=str(exc))
-            return DailyRunResult(
+            result = DailyRunResult(
                 run_id=run_id,
                 routine=self.spec.name,
                 run_date=self.run_date,
                 state="failed",
                 error=str(exc),
             )
+        return self._export_terminal_trace(result)
 
     def should_start(self) -> SchedulerDecision:
         governor = CompanyResolverGovernor(self.config, ledger=self.ledger)
         return governor.should_start()
+
+    def _export_terminal_trace(self, result: DailyRunResult) -> DailyRunResult:
+        if result.state not in {"completed", "failed", "timeout"}:
+            return result
+        exported = export_terminal_trace(
+            config=self.config,
+            ledger=self.ledger,
+            result=RunResult(
+                run_id=result.run_id,
+                issue=None,
+                state=result.state,
+                exit_code=result.exit_code,
+                trace_path=result.trace_path,
+                stderr_path=result.stderr_path,
+                worktree_path=result.worktree_path,
+                error=result.error,
+            ),
+        )
+        return replace(
+            result,
+            trace_export_status=exported.trace_export_status,
+            trace_export_tier=exported.trace_export_tier,
+            trace_export_remote_dir=exported.trace_export_remote_dir,
+            trace_export_error=exported.trace_export_error,
+        )
 
     def _codex_env(self, *, trace_path: Path, run_id: str) -> dict[str, str]:
         """Build the redacted child environment with routine-owned limits."""
@@ -508,7 +514,10 @@ raise SystemExit(0 if rows == {self.count} else 4)
             cwd=self.config.repo_dir,
             check=False,
         )
-        shutil.rmtree(worktree, ignore_errors=True)
+        # The Git command above is authoritative. An unsafe fallback path is
+        # retained for reconciliation instead of risking traversal.
+        with suppress(RuntimeError):
+            safe_rmtree_child(worktree.parent, worktree.name, missing_ok=True)
 
     def _run_prefix(self) -> str:
         return f"{self.spec.active_slot}-{self.run_date}-"
@@ -656,6 +665,10 @@ def main(argv: list[str] | None = None) -> int:
                 "state": result.state,
                 "exit_code": result.exit_code,
                 "trace_path": str(result.trace_path) if result.trace_path else None,
+                "trace_export_status": result.trace_export_status,
+                "trace_export_tier": result.trace_export_tier,
+                "trace_export_remote_dir": result.trace_export_remote_dir,
+                "trace_export_error": result.trace_export_error,
                 "error": result.error,
             },
             sort_keys=True,

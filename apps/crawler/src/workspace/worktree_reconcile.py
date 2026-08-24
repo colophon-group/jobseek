@@ -16,11 +16,18 @@ import os
 import stat
 import subprocess
 import tarfile
+import tempfile
 import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
+
+from src.workspace.safe_cleanup import (
+    directory_open_flags,
+    open_absolute_directory_no_follow,
+    validate_child_name,
+)
 
 ACTIVE_STATES = {"claimed", "running"}
 TERMINAL_STATES = {
@@ -473,7 +480,7 @@ def reconcile_worktrees(
             must_archive = (
                 item.dirty_entries > 0
                 or item.state in DEBUG_OUTCOMES
-                or workspace_artifacts.is_dir()
+                or _path_exists_no_follow(workspace_artifacts)
             )
             item.planned_action = "archive_remove" if must_archive else "remove"
             if apply:
@@ -499,6 +506,7 @@ def reconcile_worktrees(
                             archive_dir=archive_dir,
                             run_id=item.run_id or item.name,
                             item=item,
+                            max_archive_bytes=max_terminal_bytes,
                         )
                         item.archive_path = str(archive_path)
                         item.archive_sha256 = archive_sha
@@ -753,7 +761,9 @@ def reconcile_managed_worktrees(
         if item.classification == "terminal_candidate":
             workspace_artifacts = path / "apps" / "crawler" / ".workspace"
             must_archive = (
-                item.dirty_entries > 0 or item.unique_commits or workspace_artifacts.is_dir()
+                item.dirty_entries > 0
+                or item.unique_commits
+                or _path_exists_no_follow(workspace_artifacts)
             )
             item.planned_action = "archive_remove" if must_archive else "remove"
             if apply:
@@ -776,6 +786,7 @@ def reconcile_managed_worktrees(
                             run_id=archive_id,
                             item=item,
                             include_unique_commits=item.unique_commits,
+                            max_archive_bytes=max_terminal_bytes,
                         )
                         item.archive_path = str(archive_path)
                         item.archive_sha256 = archive_sha
@@ -1052,29 +1063,46 @@ def _dirty_entry_count(path: Path) -> tuple[int, str | None]:
 def _directory_bytes(root: Path) -> int:
     try:
         root_stat = root.lstat()
-    except OSError:
+    except FileNotFoundError:
         return 0
     if stat.S_ISLNK(root_stat.st_mode) or not stat.S_ISDIR(root_stat.st_mode):
         return root_stat.st_size
-    total = root_stat.st_size
-    for directory, dirnames, filenames in os.walk(root, followlinks=False):
-        base = Path(directory)
-        kept_dirs = []
-        for name in dirnames:
-            path = base / name
-            try:
-                entry_stat = path.lstat()
-            except OSError:
-                continue
+    root_fd = open_absolute_directory_no_follow(root)
+    try:
+        opened = os.fstat(root_fd)
+        if not _same_inode(opened, root_stat) or not stat.S_ISDIR(opened.st_mode):
+            raise RuntimeError("directory changed while opening for size accounting")
+        return _directory_bytes_at(root_fd, opened)
+    finally:
+        os.close(root_fd)
+
+
+def _directory_bytes_at(directory_fd: int, directory_stat: os.stat_result) -> int:
+    total = directory_stat.st_size
+    try:
+        names = os.listdir(directory_fd)
+    except OSError as exc:
+        raise RuntimeError(f"could not safely enumerate directory size: {exc}") from exc
+    for name in names:
+        validate_child_name(name)
+        try:
+            entry_stat = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
             total += entry_stat.st_size
-            if not path.is_symlink():
-                kept_dirs.append(name)
-        dirnames[:] = kept_dirs
-        for name in filenames:
-            try:
-                total += (base / name).lstat().st_size
-            except OSError:
+            if not stat.S_ISDIR(entry_stat.st_mode):
                 continue
+            child_fd = os.open(name, directory_open_flags(), dir_fd=directory_fd)
+        except OSError as exc:
+            raise RuntimeError(f"directory changed during size accounting: {exc}") from exc
+        try:
+            opened = os.fstat(child_fd)
+            if not _same_inode(opened, entry_stat) or not stat.S_ISDIR(opened.st_mode):
+                raise RuntimeError("directory changed while opening for size accounting")
+            total += _directory_bytes_at(child_fd, opened) - entry_stat.st_size
+            current = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+            if not _same_inode(current, entry_stat) or not stat.S_ISDIR(current.st_mode):
+                raise RuntimeError("directory changed during size accounting")
+        finally:
+            os.close(child_fd)
     return total
 
 
@@ -1097,13 +1125,23 @@ def _archive_worktree(
     run_id: str,
     item: WorktreeItem,
     include_unique_commits: bool = False,
+    max_archive_bytes: int,
 ) -> tuple[Path, str]:
+    projected_bytes = max(1, item.bytes + 1024 * 1024)
+    if include_unique_commits:
+        projected_bytes += _unique_commit_object_bytes(worktree)
+    current_archive_bytes = _directory_bytes(archive_dir)
+    if current_archive_bytes + projected_bytes > max_archive_bytes:
+        raise RuntimeError(
+            "worktree quarantine capacity gate rejected archive "
+            f"({current_archive_bytes} existing + {projected_bytes} projected > "
+            f"{max_archive_bytes} bytes)"
+        )
+
     archive_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(archive_dir, 0o700)
     safe_run_id = "".join(char if char.isalnum() or char in "-_." else "_" for char in run_id)
     destination = archive_dir / f"{safe_run_id}.tar.gz"
-    if destination.exists():
-        destination = archive_dir / f"{safe_run_id}.{time.time_ns()}.tar.gz"
     temporary = archive_dir / f".{safe_run_id}.{os.getpid()}.tmp"
     bundle_path = archive_dir / f".{safe_run_id}.{os.getpid()}.bundle"
 
@@ -1125,11 +1163,11 @@ def _archive_worktree(
             relative = Path(os.fsdecode(raw))
             candidates[worktree / relative] = f"untracked/{relative.as_posix()}"
     workspace_root = worktree / "apps" / "crawler" / ".workspace"
-    if workspace_root.is_dir():
-        for source in workspace_root.rglob("*"):
-            if source.is_file() or source.is_symlink():
-                relative = source.relative_to(workspace_root)
-                candidates[source] = f"workspace/{relative.as_posix()}"
+    workspace_candidates, workspace_root_metadata = _workspace_archive_candidates(
+        worktree=worktree,
+        workspace_root=workspace_root,
+    )
+    candidates.update(workspace_candidates)
 
     inventory = []
     bundle_manifest: dict[str, Any] | None = None
@@ -1178,31 +1216,14 @@ def _archive_worktree(
             if bundle_manifest is not None:
                 archive.add(bundle_path, arcname="unique-commits.bundle", recursive=False)
             for source, archive_name in sorted(candidates.items(), key=lambda pair: pair[1]):
-                if source.is_symlink():
-                    target = os.readlink(source)
-                    inventory.append(
-                        {
-                            "archive_name": archive_name,
-                            "source": str(source.relative_to(worktree)),
-                            "type": "symlink",
-                            "target_sha256": hashlib.sha256(target.encode()).hexdigest(),
-                        }
-                    )
-                    archive.add(source, arcname=archive_name, recursive=False)
-                    continue
-                if not source.is_file():
-                    continue
-                digest, size = _hash_file(source)
                 inventory.append(
-                    {
-                        "archive_name": archive_name,
-                        "source": str(source.relative_to(worktree)),
-                        "type": "file",
-                        "bytes": size,
-                        "sha256": digest,
-                    }
+                    _tar_add_candidate_no_follow(
+                        archive,
+                        worktree=worktree,
+                        source=source,
+                        archive_name=archive_name,
+                    )
                 )
-                archive.add(source, arcname=archive_name, recursive=False)
             manifest = {
                 "schema_version": 1,
                 "created_at": int(time.time()),
@@ -1218,6 +1239,7 @@ def _archive_worktree(
                 "unique_commit_bundle": bundle_manifest,
                 "remote_proof": item.remote_proof,
                 "tracked_patch_bytes": len(patch),
+                "workspace_root": workspace_root_metadata,
                 "files": inventory,
             }
             _tar_add_bytes(
@@ -1232,6 +1254,254 @@ def _archive_worktree(
         bundle_path.unlink(missing_ok=True)
     digest, _ = _hash_file(destination)
     return destination, digest
+
+
+def _tar_add_candidate_no_follow(
+    archive: tarfile.TarFile,
+    *,
+    worktree: Path,
+    source: Path,
+    archive_name: str,
+) -> dict[str, Any]:
+    """Archive one candidate through descriptor-anchored, no-follow opens."""
+    try:
+        relative = source.relative_to(worktree)
+    except ValueError as exc:
+        raise RuntimeError(f"archive candidate escapes worktree: {source}") from exc
+
+    parent_fd, final_name = _open_parent_directory_no_follow(worktree, relative)
+    try:
+        entry_stat = os.stat(final_name, dir_fd=parent_fd, follow_symlinks=False)
+        if stat.S_ISLNK(entry_stat.st_mode):
+            target = os.readlink(final_name, dir_fd=parent_fd)
+            info = tarfile.TarInfo(archive_name)
+            info.type = tarfile.SYMTYPE
+            info.linkname = target
+            info.mode = entry_stat.st_mode & 0o777
+            info.mtime = int(entry_stat.st_mtime)
+            archive.addfile(info)
+            return {
+                "archive_name": archive_name,
+                "source": relative.as_posix(),
+                "type": "symlink",
+                "target_sha256": hashlib.sha256(target.encode()).hexdigest(),
+            }
+        if not stat.S_ISREG(entry_stat.st_mode):
+            raise RuntimeError(f"archive candidate is not a regular file or symlink: {relative}")
+
+        file_flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+        file_fd = os.open(final_name, file_flags, dir_fd=parent_fd)
+        try:
+            opened_stat = os.fstat(file_fd)
+            if (
+                not stat.S_ISREG(opened_stat.st_mode)
+                or opened_stat.st_dev != entry_stat.st_dev
+                or opened_stat.st_ino != entry_stat.st_ino
+            ):
+                raise RuntimeError(f"archive candidate changed while opening: {relative}")
+            digest = hashlib.sha256()
+            size = 0
+            with tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024, mode="w+b") as snapshot:
+                while True:
+                    chunk = os.read(file_fd, 1024 * 1024)
+                    if not chunk:
+                        break
+                    snapshot.write(chunk)
+                    digest.update(chunk)
+                    size += len(chunk)
+                final_stat = os.fstat(file_fd)
+                if (
+                    final_stat.st_size != opened_stat.st_size
+                    or final_stat.st_mtime_ns != opened_stat.st_mtime_ns
+                    or size != opened_stat.st_size
+                ):
+                    raise RuntimeError(f"archive candidate changed while reading: {relative}")
+                snapshot.seek(0)
+                info = tarfile.TarInfo(archive_name)
+                info.size = size
+                info.mode = opened_stat.st_mode & 0o777
+                info.mtime = int(opened_stat.st_mtime)
+                archive.addfile(info, snapshot)
+        finally:
+            os.close(file_fd)
+    except OSError as exc:
+        raise RuntimeError(f"unsafe archive candidate {relative}: {exc}") from exc
+    finally:
+        os.close(parent_fd)
+
+    return {
+        "archive_name": archive_name,
+        "source": relative.as_posix(),
+        "type": "file",
+        "bytes": size,
+        "sha256": digest.hexdigest(),
+    }
+
+
+def _open_parent_directory_no_follow(worktree: Path, relative: Path) -> tuple[int, str]:
+    parts = relative.parts
+    if not parts or any(part in {"", ".", ".."} for part in parts):
+        raise RuntimeError(f"invalid archive candidate path: {relative}")
+    try:
+        directory_fd = open_absolute_directory_no_follow(worktree)
+    except RuntimeError as exc:
+        raise RuntimeError(f"could not safely open worktree for archive: {exc}") from exc
+    try:
+        for part in parts[:-1]:
+            next_fd = os.open(part, directory_open_flags(), dir_fd=directory_fd)
+            os.close(directory_fd)
+            directory_fd = next_fd
+    except OSError as exc:
+        os.close(directory_fd)
+        raise RuntimeError(f"unsafe archive parent for {relative}: {exc}") from exc
+    return directory_fd, parts[-1]
+
+
+def _path_exists_no_follow(path: Path) -> bool:
+    try:
+        path.lstat()
+    except OSError:
+        return False
+    return True
+
+
+def _workspace_archive_candidates(
+    *,
+    worktree: Path,
+    workspace_root: Path,
+) -> tuple[dict[Path, str], dict[str, Any] | None]:
+    """Inventory workspace evidence without traversing directory symlinks."""
+    try:
+        worktree_stat = worktree.lstat()
+        relative_root = workspace_root.relative_to(worktree)
+    except (OSError, ValueError):
+        return {}, None
+    if stat.S_ISLNK(worktree_stat.st_mode) or not stat.S_ISDIR(worktree_stat.st_mode):
+        return {}, {"source": str(relative_root), "type": "unsafe_container"}
+
+    source_name = str(relative_root)
+    try:
+        directory_fd = open_absolute_directory_no_follow(worktree)
+    except RuntimeError as exc:
+        raise RuntimeError(f"could not safely open worktree evidence root: {exc}") from exc
+    try:
+        opened_worktree = os.fstat(directory_fd)
+        if not _same_inode(opened_worktree, worktree_stat):
+            raise RuntimeError("worktree changed while opening evidence root")
+        for index, part in enumerate(relative_root.parts):
+            try:
+                entry_stat = os.stat(part, dir_fd=directory_fd, follow_symlinks=False)
+            except FileNotFoundError:
+                return {}, None
+            if stat.S_ISLNK(entry_stat.st_mode):
+                target = os.readlink(part, dir_fd=directory_fd)
+                return {}, {
+                    "source": source_name,
+                    "type": (
+                        "symlink"
+                        if index == len(relative_root.parts) - 1
+                        else "unsafe_parent_symlink"
+                    ),
+                    "symlink_component": str(Path(*relative_root.parts[: index + 1])),
+                    "target_sha256": hashlib.sha256(target.encode()).hexdigest(),
+                }
+            if not stat.S_ISDIR(entry_stat.st_mode):
+                return {}, {"source": source_name, "type": "non_directory"}
+            try:
+                child_fd = os.open(part, directory_open_flags(), dir_fd=directory_fd)
+            except OSError as exc:
+                raise RuntimeError(f"workspace evidence parent changed: {exc}") from exc
+            opened = os.fstat(child_fd)
+            if not _same_inode(opened, entry_stat) or not stat.S_ISDIR(opened.st_mode):
+                os.close(child_fd)
+                raise RuntimeError("workspace evidence parent changed while opening")
+            os.close(directory_fd)
+            directory_fd = child_fd
+
+        candidates: dict[Path, str] = {}
+        _collect_workspace_candidates_at(
+            directory_fd,
+            workspace_root=workspace_root,
+            relative=Path(),
+            candidates=candidates,
+        )
+        return candidates, {"source": source_name, "type": "directory"}
+    finally:
+        os.close(directory_fd)
+
+
+def _collect_workspace_candidates_at(
+    directory_fd: int,
+    *,
+    workspace_root: Path,
+    relative: Path,
+    candidates: dict[Path, str],
+) -> None:
+    try:
+        names = sorted(os.listdir(directory_fd))
+    except OSError as exc:
+        raise RuntimeError(f"could not safely enumerate workspace evidence: {exc}") from exc
+    for name in names:
+        validate_child_name(name)
+        entry_relative = relative / name
+        try:
+            entry_stat = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+        except OSError as exc:
+            raise RuntimeError(f"workspace evidence changed during enumeration: {exc}") from exc
+        source = workspace_root / entry_relative
+        if stat.S_ISREG(entry_stat.st_mode) or stat.S_ISLNK(entry_stat.st_mode):
+            candidates[source] = f"workspace/{entry_relative.as_posix()}"
+            continue
+        if not stat.S_ISDIR(entry_stat.st_mode):
+            continue
+        try:
+            child_fd = os.open(name, directory_open_flags(), dir_fd=directory_fd)
+        except OSError as exc:
+            raise RuntimeError(f"workspace evidence directory changed: {exc}") from exc
+        try:
+            opened = os.fstat(child_fd)
+            if not _same_inode(opened, entry_stat) or not stat.S_ISDIR(opened.st_mode):
+                raise RuntimeError("workspace evidence directory changed while opening")
+            _collect_workspace_candidates_at(
+                child_fd,
+                workspace_root=workspace_root,
+                relative=entry_relative,
+                candidates=candidates,
+            )
+            current = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+            if not _same_inode(current, entry_stat) or not stat.S_ISDIR(current.st_mode):
+                raise RuntimeError("workspace evidence directory changed during enumeration")
+        finally:
+            os.close(child_fd)
+
+
+def _same_inode(left: os.stat_result, right: os.stat_result) -> bool:
+    return left.st_dev == right.st_dev and left.st_ino == right.st_ino
+
+
+def _unique_commit_object_bytes(worktree: Path) -> int:
+    objects = subprocess.run(
+        ["git", "rev-list", "--objects", "HEAD", "^origin/main"],
+        cwd=worktree,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout
+    object_ids = [line.split(" ", 1)[0] for line in objects.splitlines() if line]
+    if not object_ids:
+        return 0
+    sizes = subprocess.run(
+        ["git", "cat-file", "--batch-check=%(objectsize)"],
+        cwd=worktree,
+        input="\n".join(object_ids) + "\n",
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout
+    try:
+        return sum(int(line) for line in sizes.splitlines())
+    except ValueError as exc:
+        raise RuntimeError("could not estimate unique commit archive size") from exc
 
 
 def _tar_add_bytes(archive: tarfile.TarFile, name: str, data: bytes) -> None:

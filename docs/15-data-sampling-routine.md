@@ -250,6 +250,9 @@ We store the description as it was publicly posted. No regex scrub. Takedown-on-
   only the read-only local Postgres DSN from `/etc/jobseek-codex/labeller.env`.
   Deployment settings, target count, model policy, and maintenance checks live in
   [18-codex-automation-deployment.md](18-codex-automation-deployment.md).
+  Completed, failed, and timed-out root/subagent sessions use the same
+  quality-gated export, remote checksum verification, local cleanup, and retry
+  lifecycle as company resolver sessions.
 - Do not add a GitHub Actions or Claude-compatible schedule for this routine.
   The scheduled production path is the Hetzner Codex runner; the slash command
   remains a manual compatibility route only.

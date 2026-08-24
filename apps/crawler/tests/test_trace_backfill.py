@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
 from pathlib import Path
 from types import SimpleNamespace
@@ -18,14 +19,17 @@ from src.workspace.trace_backfill import (
     _read_jsonl,
     _safe_thread_filename,
     _session_tree_errors,
+    _snapshot_source,
     _validate_downloaded_bundle_file,
     backfill_all,
     build_bundle,
     cleanup_verified_sources,
+    inventory_automation_sessions,
     project_thread,
     prune_hf_dataset_cache,
     quality_gate_reason,
     record_verified_export,
+    session_retention_status,
     trace_export_report,
     upload_and_verify,
 )
@@ -58,6 +62,65 @@ def _session_meta(
             "base_instructions": {"text": "drop me"},
         },
     }
+
+
+def _verified_sources_fixture(
+    tmp_path: Path,
+    *,
+    source_count: int = 1,
+) -> tuple[Path, str, Path, dict, list[Path]]:
+    runner_root = tmp_path / "runner"
+    codex_home = tmp_path / "codex-home"
+    ledger = RunnerLedger(runner_root / "state" / "ledger.sqlite")
+    run_id = "issue-99-100-race1234"
+    assert ledger.acquire(run_id=run_id, issue=99, active_slot="test-race")
+    sources = [runner_root / "traces" / f"{run_id}.jsonl"]
+    if source_count > 1:
+        sources.append(runner_root / "logs" / f"{run_id}.stderr.log")
+    for index, source in enumerate(sources):
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_text(f"source-{index}\n")
+    ledger.update(
+        run_id,
+        trace_path=str(sources[0]),
+        stderr_path=str(sources[1]) if source_count > 1 else None,
+    )
+    ledger.finish(run_id, "failed")
+    remote_dir = f"training-bundles/v2/gold/{run_id}"
+    files = []
+    verified = {}
+    for index, source in enumerate(sources):
+        role = "codex_exec" if index == 0 else "runner_stderr"
+        bundle_path = "codex-exec.jsonl" if index == 0 else "runner-stderr.log"
+        projected_hash = hashlib.sha256(f"projected-{index}".encode()).hexdigest()
+        files.append(
+            {
+                "path": bundle_path,
+                "role": role,
+                "sha256": projected_hash,
+                "bytes": 10,
+                "source_path": str(source),
+                "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+                "source_bytes": source.stat().st_size,
+            }
+        )
+        verified[f"{remote_dir}/{bundle_path}"] = projected_hash
+    manifest = {
+        "schema_version": "jobseek-codex-training-bundle/v2",
+        "quality": {"tier": "gold"},
+        "bundle_content_sha256": "bundle-race",
+        "thread_count": 1,
+        "subagent_count": 0,
+        "files": files,
+    }
+    record_verified_export(
+        ledger_path=ledger.path,
+        run_id=run_id,
+        remote_dir=remote_dir,
+        manifest=manifest,
+        verified=verified,
+    )
+    return runner_root, run_id, codex_home, manifest, sources
 
 
 def _message(role: str, text: str, *, phase: str | None = None) -> dict:
@@ -120,7 +183,7 @@ def test_read_jsonl_recovers_raw_newlines_but_rejects_corruption(tmp_path: Path)
     assert recovered == 1
 
 
-def test_backfill_selects_only_company_resolver_runs(tmp_path: Path) -> None:
+def test_backfill_selects_all_terminal_automation_runs(tmp_path: Path) -> None:
     ledger = tmp_path / "ledger.sqlite"
     with sqlite3.connect(ledger) as conn:
         conn.execute("CREATE TABLE runs (run_id TEXT PRIMARY KEY, state TEXT, created_at INTEGER)")
@@ -133,7 +196,10 @@ def test_backfill_selects_only_company_resolver_runs(tmp_path: Path) -> None:
             ],
         )
 
-    assert _backfill_run_ids(ledger, limit=None) == ["issue-1-100-aaaa1111"]
+    assert _backfill_run_ids(ledger, limit=None) == [
+        "issue-1-100-aaaa1111",
+        "daily-annotations-2026-07-20-100-bbbb2222",
+    ]
 
 
 def test_quality_gate_reason_reports_only_safe_aggregates() -> None:
@@ -484,7 +550,13 @@ def test_build_and_cleanup_verified_bundle(tmp_path: Path) -> None:
         verified={f"{remote_dir}/{first_entry['path']}": first_entry["sha256"]},
     )
     with pytest.raises(RuntimeError, match="was not checksum-verified"):
-        cleanup_verified_sources(ledger_path=ledger, run_id=run_id, manifest=manifest)
+        cleanup_verified_sources(
+            ledger_path=ledger,
+            run_id=run_id,
+            manifest=manifest,
+            runner_root=runner_root,
+            codex_home=codex_home,
+        )
     assert root_path.exists()
     assert child_path.exists()
     assert trace_path.exists()
@@ -521,7 +593,13 @@ def test_build_and_cleanup_verified_bundle(tmp_path: Path) -> None:
             (run_id,),
         )
     with pytest.raises(RuntimeError, match="source inventory does not match"):
-        cleanup_verified_sources(ledger_path=ledger, run_id=run_id, manifest=manifest)
+        cleanup_verified_sources(
+            ledger_path=ledger,
+            run_id=run_id,
+            manifest=manifest,
+            runner_root=runner_root,
+            codex_home=codex_home,
+        )
     assert root_path.exists()
     with sqlite3.connect(ledger) as conn:
         conn.execute(
@@ -531,18 +609,371 @@ def test_build_and_cleanup_verified_bundle(tmp_path: Path) -> None:
     child_original = child_path.read_text()
     child_path.write_text(child_original + "tampered\n")
     with pytest.raises(RuntimeError, match="source changed after export"):
-        cleanup_verified_sources(ledger_path=ledger, run_id=run_id, manifest=manifest)
+        cleanup_verified_sources(
+            ledger_path=ledger,
+            run_id=run_id,
+            manifest=manifest,
+            runner_root=runner_root,
+            codex_home=codex_home,
+        )
     assert root_path.exists()
     assert child_path.exists()
     assert trace_path.exists()
     assert stderr_path.exists()
     child_path.write_text(child_original)
-    result = cleanup_verified_sources(ledger_path=ledger, run_id=run_id, manifest=manifest)
+    result = cleanup_verified_sources(
+        ledger_path=ledger,
+        run_id=run_id,
+        manifest=manifest,
+        runner_root=runner_root,
+        codex_home=codex_home,
+    )
     assert result["reclaimed_bytes"] > 0
     assert not root_path.exists()
     assert not child_path.exists()
     assert not trace_path.exists()
     assert not stderr_path.exists()
+
+
+def test_source_snapshot_drives_hash_and_bytes_after_path_replacement(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from src.workspace import trace_backfill
+
+    root = tmp_path / "sessions"
+    source = root / "root.jsonl"
+    source.parent.mkdir(parents=True)
+    original = b'{"type":"session_meta","payload":{"id":"original"}}\n'
+    replacement = b'{"type":"session_meta","payload":{"id":"replacement"}}\n'
+    source.write_bytes(original)
+    real_open = trace_backfill._open_retained_file_no_follow
+
+    def replace_after_open(**kwargs):
+        descriptor = real_open(**kwargs)
+        replacement_path = root / "replacement.jsonl"
+        replacement_path.write_bytes(replacement)
+        replacement_path.replace(source)
+        return descriptor
+
+    monkeypatch.setattr(trace_backfill, "_open_retained_file_no_follow", replace_after_open)
+    snapshot = _snapshot_source(
+        root=root,
+        path=source,
+        destination=tmp_path / "snapshot.jsonl",
+    )
+
+    assert snapshot is not None
+    assert snapshot.path.read_bytes() == original
+    assert snapshot.sha256 == hashlib.sha256(original).hexdigest()
+    assert snapshot.bytes == len(original)
+    assert source.read_bytes() == replacement
+
+
+def test_cleanup_rejects_symlink_source_without_touching_target(tmp_path: Path) -> None:
+    runner_root, run_id, codex_home, manifest, sources = _verified_sources_fixture(tmp_path)
+    source = sources[0]
+    external = tmp_path / "external-evidence.jsonl"
+    source.replace(external)
+    source.symlink_to(external)
+
+    with pytest.raises(RuntimeError, match="verified source is unsafe"):
+        cleanup_verified_sources(
+            ledger_path=runner_root / "state" / "ledger.sqlite",
+            run_id=run_id,
+            manifest=manifest,
+            runner_root=runner_root,
+            codex_home=codex_home,
+        )
+
+    assert source.is_symlink()
+    assert external.read_text() == "source-0\n"
+
+
+def test_cleanup_preserves_replacement_at_atomic_claim_boundary(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from src.workspace import trace_backfill
+
+    runner_root, run_id, codex_home, manifest, sources = _verified_sources_fixture(tmp_path)
+    source = sources[0]
+    original_claim = trace_backfill.claim_child_at
+    saved_name = "saved-original.jsonl"
+
+    def replace_before_claim(parent_fd, name, *, expected, claimed_name=None):
+        os.rename(name, saved_name, src_dir_fd=parent_fd, dst_dir_fd=parent_fd)
+        replacement_fd = os.open(
+            name,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL,
+            0o600,
+            dir_fd=parent_fd,
+        )
+        os.write(replacement_fd, b"replacement\n")
+        os.close(replacement_fd)
+        return original_claim(
+            parent_fd,
+            name,
+            expected=expected,
+            claimed_name=claimed_name,
+        )
+
+    monkeypatch.setattr(trace_backfill, "claim_child_at", replace_before_claim)
+    with pytest.raises(RuntimeError, match="changed at mutation boundary"):
+        cleanup_verified_sources(
+            ledger_path=runner_root / "state" / "ledger.sqlite",
+            run_id=run_id,
+            manifest=manifest,
+            runner_root=runner_root,
+            codex_home=codex_home,
+        )
+
+    assert source.read_text() == "replacement\n"
+    assert source.with_name(saved_name).read_text() == "source-0\n"
+
+
+def test_partial_cleanup_failure_restores_remaining_claims_for_retry(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from src.workspace import trace_backfill
+
+    runner_root, run_id, codex_home, manifest, sources = _verified_sources_fixture(
+        tmp_path,
+        source_count=2,
+    )
+    original_unlink = trace_backfill.unlink_claimed_child_at
+    calls = 0
+
+    def fail_second_unlink(parent_fd, claimed_name, *, expected):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise RuntimeError("simulated unlink failure")
+        return original_unlink(parent_fd, claimed_name, expected=expected)
+
+    monkeypatch.setattr(trace_backfill, "unlink_claimed_child_at", fail_second_unlink)
+    with pytest.raises(RuntimeError, match="simulated unlink failure"):
+        cleanup_verified_sources(
+            ledger_path=runner_root / "state" / "ledger.sqlite",
+            run_id=run_id,
+            manifest=manifest,
+            runner_root=runner_root,
+            codex_home=codex_home,
+        )
+
+    assert not sources[0].exists()
+    assert sources[1].exists()
+    monkeypatch.setattr(trace_backfill, "unlink_claimed_child_at", original_unlink)
+    result = cleanup_verified_sources(
+        ledger_path=runner_root / "state" / "ledger.sqlite",
+        run_id=run_id,
+        manifest=manifest,
+        runner_root=runner_root,
+        codex_home=codex_home,
+    )
+    assert result["removed_files"] == [str(sources[1])]
+    assert not sources[1].exists()
+
+
+def test_process_death_after_claim_resumes_from_durable_claim_name(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from src.workspace import trace_backfill
+
+    runner_root, run_id, codex_home, manifest, sources = _verified_sources_fixture(tmp_path)
+    source = sources[0]
+    original_unlink = trace_backfill.unlink_claimed_child_at
+    monkeypatch.setattr(
+        trace_backfill,
+        "unlink_claimed_child_at",
+        lambda *args, **kwargs: (_ for _ in ()).throw(SystemExit("process died")),
+    )
+
+    with pytest.raises(SystemExit, match="process died"):
+        cleanup_verified_sources(
+            ledger_path=runner_root / "state" / "ledger.sqlite",
+            run_id=run_id,
+            manifest=manifest,
+            runner_root=runner_root,
+            codex_home=codex_home,
+        )
+
+    assert not source.exists()
+    with sqlite3.connect(runner_root / "state" / "ledger.sqlite") as conn:
+        row = conn.execute(
+            "SELECT cleanup_claims_json, cleaned_at FROM trace_bundle_exports WHERE run_id = ?",
+            (run_id,),
+        ).fetchone()
+    claims = json.loads(row[0])
+    claimed_path = source.with_name(claims[str(source)])
+    assert claimed_path.read_text() == "source-0\n"
+    assert row[1] is None
+
+    monkeypatch.setattr(trace_backfill, "unlink_claimed_child_at", original_unlink)
+    result = cleanup_verified_sources(
+        ledger_path=runner_root / "state" / "ledger.sqlite",
+        run_id=run_id,
+        manifest=manifest,
+        runner_root=runner_root,
+        codex_home=codex_home,
+    )
+
+    assert result["removed_files"] == [str(source)]
+    assert not claimed_path.exists()
+
+
+def test_session_inventory_accounts_active_orphan_unparseable_and_unsafe(
+    tmp_path: Path,
+) -> None:
+    runner_root = tmp_path / "runner"
+    codex_home = tmp_path / "codex-home"
+    ledger = RunnerLedger(runner_root / "state" / "ledger.sqlite")
+    run_id = "daily-error-review-2026-08-24-100-abcd1234"
+    worktree = runner_root / "worktrees" / run_id
+    assert ledger.acquire(run_id=run_id, issue=None, active_slot="daily-error-review")
+    ledger.update(run_id, worktree_path=str(worktree))
+    session_root = codex_home / "sessions" / "2026" / "08" / "24"
+    active = session_root / "active.jsonl"
+    _write_jsonl(active, [_session_meta(thread_id="active", cwd=str(worktree), source="exec")])
+    orphan = session_root / "orphan.jsonl"
+    _write_jsonl(orphan, [_session_meta(thread_id="orphan", cwd="/tmp/unowned", source="exec")])
+    malformed = session_root / "malformed.jsonl"
+    malformed.write_text("not-json\n")
+    outside = tmp_path / "outside.jsonl"
+    outside.write_text("outside\n")
+    unsafe = session_root / "unsafe.jsonl"
+    unsafe.symlink_to(outside)
+
+    inventory = inventory_automation_sessions(codex_home, ledger_path=ledger.path)
+    status = session_retention_status(
+        runner_root=runner_root,
+        codex_home=codex_home,
+        max_files=100,
+        max_bytes=1024 * 1024,
+        max_unlinked_age_s=86400,
+    )
+
+    assert [source.path for source in inventory.by_run[run_id]] == [active]
+    assert inventory.unlinked == (orphan,)
+    assert inventory.unparseable == (malformed,)
+    assert [entry.path for entry in inventory.unsafe] == [unsafe]
+    assert status.files == 4
+    assert status.active_files == 1
+    assert status.unlinked_files == 3
+    assert status.unparseable_files == 1
+    assert status.unsafe_files == 1
+    assert status.unsafe_bytes == len(str(outside))
+    assert status.over_limit
+    assert status.reason == "unsafe Codex session entries retained: 1"
+
+
+def test_daily_subagents_do_not_require_resolver_track_contracts(tmp_path: Path) -> None:
+    runner_root = tmp_path / "runner"
+    codex_home = tmp_path / "codex-home"
+    ledger = RunnerLedger(runner_root / "state" / "ledger.sqlite")
+    run_id = "daily-annotations-2026-08-24-100-abcd1234"
+    worktree = runner_root / "worktrees" / run_id
+    assert ledger.acquire(run_id=run_id, issue=None, active_slot="daily-annotations")
+    ledger.update(run_id, worktree_path=str(worktree))
+    ledger.finish(run_id, "completed")
+    session_root = codex_home / "sessions" / "2026" / "08" / "24"
+    _write_jsonl(
+        session_root / "root.jsonl",
+        [
+            _session_meta(thread_id="root", cwd=str(worktree), source="exec"),
+            _message("user", "Run the daily annotations routine"),
+            _message("assistant", "Complete", phase="final_answer"),
+        ],
+    )
+    _write_jsonl(
+        session_root / "child.jsonl",
+        [
+            _session_meta(
+                thread_id="child",
+                cwd=str(worktree),
+                source={"subagent": {}},
+                parent="root",
+                role="jobseek-labeller-extractor",
+            ),
+            _message("assistant", "Extracted", phase="final_answer"),
+        ],
+    )
+
+    manifest = build_bundle(
+        run_id=run_id,
+        runner_root=runner_root,
+        codex_home=codex_home,
+        output_dir=tmp_path / "bundle",
+    )
+
+    assert manifest["quality"]["missing_task_contract_thread_ids"] == []
+    assert manifest["quality"]["tier"] == "gold"
+
+
+def test_oversize_session_is_accounted_and_blocks_admission(tmp_path: Path) -> None:
+    runner_root = tmp_path / "runner"
+    codex_home = tmp_path / "codex-home"
+    RunnerLedger(runner_root / "state" / "ledger.sqlite")
+    oversize = codex_home / "sessions" / "2026" / "08" / "24" / "oversize.jsonl"
+    oversize.parent.mkdir(parents=True)
+    with oversize.open("wb") as handle:
+        handle.truncate(64 * 1024 * 1024 + 1)
+
+    inventory = inventory_automation_sessions(
+        codex_home,
+        ledger_path=runner_root / "state" / "ledger.sqlite",
+    )
+    status = session_retention_status(
+        runner_root=runner_root,
+        codex_home=codex_home,
+        max_files=500,
+        max_bytes=2 * 1024**3,
+        max_unlinked_age_s=7 * 24 * 60 * 60,
+    )
+
+    assert [entry.path for entry in inventory.oversize] == [oversize]
+    assert status.oversize_files == 1
+    assert status.oversize_bytes == 64 * 1024 * 1024 + 1
+    assert status.unlinked_files == 1
+    assert status.over_limit
+    assert status.reason == "oversize Codex session files retained: 1"
+
+
+def test_stale_syntactic_run_id_without_ledger_row_is_an_orphan(tmp_path: Path) -> None:
+    runner_root = tmp_path / "runner"
+    codex_home = tmp_path / "codex-home"
+    ledger = RunnerLedger(runner_root / "state" / "ledger.sqlite")
+    stale_run_id = "daily-annotations-2026-07-01-100-forged12"
+    session = codex_home / "sessions" / "2026" / "07" / "01" / "stale.jsonl"
+    _write_jsonl(
+        session,
+        [
+            _session_meta(
+                thread_id="stale",
+                cwd=f"/tmp/{stale_run_id}",
+                source="exec",
+            )
+        ],
+    )
+    now = 2_000_000_000
+    old = now - 30 * 24 * 60 * 60
+    os.utime(session, (old, old))
+
+    inventory = inventory_automation_sessions(codex_home, ledger_path=ledger.path)
+    status = session_retention_status(
+        runner_root=runner_root,
+        codex_home=codex_home,
+        max_files=500,
+        max_bytes=2 * 1024**3,
+        max_unlinked_age_s=7 * 24 * 60 * 60,
+        now=now,
+    )
+
+    assert stale_run_id not in inventory.by_run
+    assert inventory.unlinked == (session,)
+    assert status.oldest_unlinked_age_s == 30 * 24 * 60 * 60
+    assert status.over_limit
+    assert status.reason == (
+        "unlinked or unparseable Codex session age limit reached: 2592000 seconds"
+    )
 
 
 def test_backfill_all_batches_tiers_and_cleans(monkeypatch, tmp_path: Path) -> None:
@@ -776,7 +1207,13 @@ def test_credential_values_are_redacted_before_verified_export(tmp_path: Path) -
         manifest=manifest,
         verified={f"{remote_dir}/{entry['path']}": entry["sha256"] for entry in manifest["files"]},
     )
-    cleanup_verified_sources(ledger_path=ledger, run_id=run_id, manifest=manifest)
+    cleanup_verified_sources(
+        ledger_path=ledger,
+        run_id=run_id,
+        manifest=manifest,
+        runner_root=runner_root,
+        codex_home=codex_home,
+    )
     assert not root_path.exists()
 
 
@@ -830,3 +1267,52 @@ def test_residual_credential_finding_still_quarantines_bundle(
     assert manifest["quality"]["tier"] == "quarantined"
     assert manifest["quality"]["credential_findings"]
     assert root_path.exists()
+
+
+def test_owned_temp_root_is_canonicalized_before_safe_cleanup(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from src.workspace import trace_backfill
+
+    real_parent = tmp_path / "real-temp-parent"
+    real_parent.mkdir()
+    linked_parent = tmp_path / "linked-temp-parent"
+    linked_parent.symlink_to(real_parent, target_is_directory=True)
+    created_via_link = linked_parent / "owned-temp"
+    captured_output: list[Path] = []
+
+    def fake_mkdtemp(*, prefix: str) -> str:
+        assert prefix.startswith("trace-backfill-issue-9-")
+        created_via_link.mkdir()
+        return str(created_via_link)
+
+    def fake_build_bundle(**kwargs):
+        output_dir = kwargs["output_dir"]
+        captured_output.append(output_dir)
+        output_dir.mkdir(parents=True)
+        return {
+            "run": {"run_id": "issue-9", "state": "failed"},
+            "quality": {"tier": "gold"},
+            "thread_count": 1,
+            "subagent_count": 0,
+            "bundle_content_sha256": "a" * 64,
+            "files": [],
+        }
+
+    monkeypatch.setattr(trace_backfill.tempfile, "mkdtemp", fake_mkdtemp)
+    monkeypatch.setattr(trace_backfill, "build_bundle", fake_build_bundle)
+
+    result = trace_backfill.main(
+        [
+            "issue-9",
+            "--runner-root",
+            str(tmp_path / "runner"),
+            "--codex-home",
+            str(tmp_path / "codex-home"),
+        ]
+    )
+
+    assert result == 0
+    assert captured_output == [real_parent / "owned-temp" / "issue-9"]
+    assert not (real_parent / "owned-temp").exists()
