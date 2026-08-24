@@ -1180,6 +1180,65 @@ def _validate_link_selector(value: object) -> str | None:
     return _validate_css_selector(value, name="link_selector")
 
 
+_ExplicitEmptyState = tuple[str, str | None, bool]
+
+
+def _validated_empty_state_list(value: object) -> tuple[_ExplicitEmptyState, ...]:
+    """Validate selector-specific exact empty states."""
+    if value is None:
+        return ()
+    if not isinstance(value, list) or not 1 <= len(value) <= 4:
+        raise ValueError("DOM monitor empty_states must be a list of 1 to 4 mappings")
+
+    states: list[_ExplicitEmptyState] = []
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {"selector", "exact_text"}:
+            raise ValueError(
+                "DOM monitor empty_states entries require only selector and exact_text"
+            )
+        selector = _validate_css_selector(item.get("selector"), name="empty_states.selector")
+        exact_text = item.get("exact_text")
+        if (
+            selector is None
+            or not isinstance(exact_text, str)
+            or not exact_text.strip()
+            or len(exact_text) > 256
+            or "\x00" in exact_text
+        ):
+            raise ValueError(
+                "DOM monitor empty_states exact_text must be non-empty text up to 256 chars"
+            )
+        states.append((selector, exact_text.strip(), True))
+    return tuple(states)
+
+
+def _validate_explicit_empty_states(
+    html: str,
+    empty_states: tuple[_ExplicitEmptyState, ...],
+    urls: set[str],
+    board_url: str,
+) -> None:
+    """Fail closed when a zero-link page lacks every configured empty marker."""
+    if _without_board_self_urls(urls, board_url):
+        return
+    tree = LexborHTMLParser(html)
+    for empty_selector, empty_text, exact_text in empty_states:
+        marker = tree.css_first(empty_selector)
+        if marker is None:
+            continue
+        marker_text = re.sub(r"\s+", " ", marker.text(separator=" ", strip=True)).strip()
+        expected_text = re.sub(r"\s+", " ", empty_text or "").strip()
+        if empty_text is None:
+            return
+        if exact_text and marker_text == expected_text:
+            return
+        if not exact_text and expected_text.casefold() in marker_text.casefold():
+            return
+    raise ValueError(
+        "DOM monitor found no job links and did not match the configured explicit empty state"
+    )
+
+
 def _validate_explicit_empty_state(
     html: str,
     empty_selector: str,
@@ -1187,18 +1246,13 @@ def _validate_explicit_empty_state(
     urls: set[str],
     board_url: str,
 ) -> None:
-    """Fail closed when a zero-link page lacks its configured empty marker."""
-    if _without_board_self_urls(urls, board_url):
-        return
-    tree = LexborHTMLParser(html)
-    marker = tree.css_first(empty_selector)
-    marker_text = marker.text(separator=" ", strip=True) if marker is not None else ""
-    if marker is None or (
-        empty_text is not None and empty_text.casefold() not in marker_text.casefold()
-    ):
-        raise ValueError(
-            "DOM monitor found no job links and did not match the configured explicit empty state"
-        )
+    """Validate the legacy single-selector empty-state configuration."""
+    _validate_explicit_empty_states(
+        html,
+        ((empty_selector, empty_text, False),),
+        urls,
+        board_url,
+    )
 
 
 def _without_board_self_urls(urls: set[str], board_url: str) -> set[str]:
@@ -2162,6 +2216,7 @@ async def dom_discover(
     url_transform = metadata.get("url_transform")
     link_selector = _validate_link_selector(metadata.get("link_selector"))
     empty_selector = _validate_css_selector(metadata.get("empty_selector"), name="empty_selector")
+    empty_states = _validated_empty_state_list(metadata.get("empty_states"))
     empty_text = metadata.get("empty_text")
     if empty_text is not None and (
         not isinstance(empty_text, str)
@@ -2172,6 +2227,14 @@ async def dom_discover(
         raise ValueError("DOM monitor empty_text must be non-empty text up to 256 chars")
     if isinstance(empty_text, str):
         empty_text = empty_text.strip()
+    if empty_states and (empty_selector is not None or empty_text is not None):
+        raise ValueError(
+            "DOM monitor empty_states cannot be combined with empty_selector or empty_text"
+        )
+    configured_empty_states = empty_states
+    if empty_selector is not None:
+        configured_empty_states = ((empty_selector, empty_text, False),)
+    empty_state_name = "empty_states" if empty_states else "empty_selector"
     rich_rows = _validated_rich_rows(metadata.get("rich_rows"))
     require_jsonld_jobposting = metadata.get("require_jsonld_jobposting", False)
     if not isinstance(require_jsonld_jobposting, bool):
@@ -2210,13 +2273,15 @@ async def dom_discover(
     ):
         raise ValueError("DOM monitor rich_rows supports static listing extraction only")
 
-    if empty_selector is not None:
+    if configured_empty_states:
         if link_selector is None and rich_rows is None:
-            raise ValueError("DOM monitor empty_selector requires link_selector or rich_rows")
+            raise ValueError(f"DOM monitor {empty_state_name} requires link_selector or rich_rows")
         if pagination or metadata.get("include_board_url") or require_jsonld_jobposting:
-            raise ValueError("DOM monitor empty_selector supports single-page link extraction only")
+            raise ValueError(f"DOM monitor {empty_state_name} supports single-page extraction only")
         if encoding is not None:
-            raise ValueError("DOM monitor empty_selector does not support an encoding override")
+            raise ValueError(
+                f"DOM monitor {empty_state_name} does not support an encoding override"
+            )
     elif empty_text is not None:
         raise ValueError("DOM monitor empty_text requires empty_selector")
 
@@ -2226,9 +2291,9 @@ async def dom_discover(
         if pw is not None:
             async with open_page(pw, combined, use_proxy=bool(metadata.get("proxy"))) as page:
                 urls = await _extract_links_rendered(page, combined, url_matcher)
-                if empty_selector is not None:
-                    _validate_explicit_empty_state(
-                        await safe_content(page), empty_selector, empty_text, urls, board_url
+                if configured_empty_states:
+                    _validate_explicit_empty_states(
+                        await safe_content(page), configured_empty_states, urls, board_url
                     )
                 if pagination:
                     browser_page = page if pagination.get("browser") else None
@@ -2257,9 +2322,9 @@ async def dom_discover(
                 open_page(p, combined, use_proxy=bool(metadata.get("proxy"))) as page,
             ):
                 urls = await _extract_links_rendered(page, combined, url_matcher)
-                if empty_selector is not None:
-                    _validate_explicit_empty_state(
-                        await safe_content(page), empty_selector, empty_text, urls, board_url
+                if configured_empty_states:
+                    _validate_explicit_empty_states(
+                        await safe_content(page), configured_empty_states, urls, board_url
                     )
                 if pagination:
                     browser_page = page if pagination.get("browser") else None
@@ -2275,7 +2340,7 @@ async def dom_discover(
                         link_selector,
                     )
     else:
-        if empty_selector is not None:
+        if configured_empty_states:
             from src.shared.http_retry import fetch_text_page_with_retry
 
             # The empty marker is authoritative and may follow large inline
@@ -2304,7 +2369,7 @@ async def dom_discover(
             )
         if not html:
             log.warning("dom.fetch_failed", board_url=board_url)
-            if empty_selector is not None:
+            if configured_empty_states:
                 raise ValueError(
                     "DOM monitor found no job links and did not match the configured explicit "
                     "empty state"
@@ -2317,13 +2382,12 @@ async def dom_discover(
                 board_url,
                 rich_rows,
                 url_matcher,
-                allow_empty=empty_selector is not None,
+                allow_empty=bool(configured_empty_states),
             )
-            if empty_selector is not None:
-                _validate_explicit_empty_state(
+            if configured_empty_states:
+                _validate_explicit_empty_states(
                     html,
-                    empty_selector,
-                    empty_text,
+                    configured_empty_states,
                     {job.url for job in jobs},
                     board_url,
                 )
@@ -2343,8 +2407,8 @@ async def dom_discover(
                 return truncated_rich_result(jobs)
             return jobs
         urls = _extract_links_static(html, board_url, url_matcher, link_selector)
-        if empty_selector is not None:
-            _validate_explicit_empty_state(html, empty_selector, empty_text, urls, board_url)
+        if configured_empty_states:
+            _validate_explicit_empty_states(html, configured_empty_states, urls, board_url)
         if pagination:
             if pagination.get("partition_selector"):
                 urls = await _paginate_partitioned_urls(

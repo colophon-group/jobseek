@@ -383,6 +383,52 @@ class TestExplicitEmptyState:
 
         assert result == set()
 
+    async def test_accepts_one_selector_specific_exact_empty_state(self):
+        html = '<div class="vacancy-list"><h2 class="empty">No positions available</h2></div>'
+        with patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "link_selector": ".vacancy-list a.vacancy",
+                        "empty_states": [
+                            {"selector": ".vacancy-list .migrated", "exact_text": "Vacancies"},
+                            {
+                                "selector": ".vacancy-list h2.empty",
+                                "exact_text": "No positions available",
+                            },
+                        ],
+                    },
+                },
+                AsyncMock(),
+            )
+
+        assert result == set()
+
+    async def test_selector_specific_empty_text_rejects_styled_error(self):
+        html = (
+            '<div class="vacancy-list"><h2 class="empty">Error: No positions available</h2></div>'
+        )
+        with (
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)),
+            pytest.raises(ValueError, match="did not match the configured explicit empty state"),
+        ):
+            await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "link_selector": ".vacancy-list a.vacancy",
+                        "empty_states": [
+                            {
+                                "selector": ".vacancy-list h2.empty",
+                                "exact_text": "No positions available",
+                            }
+                        ],
+                    },
+                },
+                AsyncMock(),
+            )
+
     async def test_accepts_rendered_zero_links_with_empty_marker(self):
         page = MagicMock()
         context = MagicMock()
@@ -498,6 +544,42 @@ class TestExplicitEmptyState:
         with pytest.raises(ValueError, match="empty_selector"):
             await dom_discover(
                 {"board_url": "https://example.com/vacancies", "metadata": metadata},
+                AsyncMock(),
+            )
+
+    @pytest.mark.parametrize(
+        "empty_states",
+        [
+            [],
+            [{"selector": ".empty"}],
+            [{"selector": ".empty", "exact_text": ""}],
+            [{"selector": ".empty", "exact_text": "none"}] * 5,
+        ],
+    )
+    async def test_rejects_invalid_selector_specific_empty_states(self, empty_states):
+        with pytest.raises(ValueError, match="empty_states"):
+            await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "link_selector": "a.vacancy",
+                        "empty_states": empty_states,
+                    },
+                },
+                AsyncMock(),
+            )
+
+    async def test_rejects_mixed_legacy_and_selector_specific_empty_states(self):
+        with pytest.raises(ValueError, match="cannot be combined"):
+            await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "link_selector": "a.vacancy",
+                        "empty_selector": ".empty",
+                        "empty_states": [{"selector": ".empty", "exact_text": "No positions"}],
+                    },
+                },
                 AsyncMock(),
             )
 
