@@ -400,6 +400,45 @@ def test_unattempted_terminal_automation_is_retried_after_process_death(
     assert dict(attempt) == {"status": "verified", "attempts": 1}
 
 
+def test_unattempted_terminal_automation_is_selected_with_export_inventory(
+    tmp_path: Path,
+) -> None:
+    from src.workspace.trace_backfill import record_verified_export
+
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    prior_run_id = "daily-error-review-2026-08-23-100-prior123"
+    record_verified_export(
+        ledger_path=ledger.path,
+        run_id=prior_run_id,
+        remote_dir=f"training-bundles/v2/gold/{prior_run_id}",
+        manifest={
+            "schema_version": "jobseek-codex-training-bundle/v2",
+            "quality": {"tier": "gold"},
+            "bundle_content_sha256": "prior",
+            "thread_count": 0,
+            "subagent_count": 0,
+            "files": [],
+        },
+        verified={},
+    )
+    with ledger._connect() as conn:
+        conn.execute(
+            "UPDATE trace_bundle_exports SET cleaned_at = 1 WHERE run_id = ?",
+            (prior_run_id,),
+        )
+
+    run_id = "daily-error-review-2026-08-24-100-dead1234"
+    assert ledger.acquire(run_id=run_id, issue=None, active_slot="daily-error-review")
+    ledger.finish(run_id, "failed", error="process died before export")
+
+    retries = ledger.failed_trace_bundle_exports(
+        limit=10,
+        include_pending_cleanup=True,
+    )
+
+    assert [row["run_id"] for row in retries] == [run_id]
+
+
 def test_pending_cleanup_retry_resumes_verified_inventory_without_rebuild(
     monkeypatch, tmp_path: Path
 ) -> None:

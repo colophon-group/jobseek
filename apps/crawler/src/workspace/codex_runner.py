@@ -828,7 +828,6 @@ class RunnerLedger:
                               AND {_AUTOMATION_RUN_SQL}
                           )
                       )
-                      AND (a.run_id IS NOT NULL OR e.run_id IS NOT NULL)
                       AND r.state IN (
                           'completed', 'failed', 'timeout',
                           'submitted', 'rejected', 'escalated',
