@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 
 from src.core.enum_normalize import (
     normalize_employment_type,
     normalize_job_location_type,
 )
-from src.core.monitors import _REGISTRY
+from src.core.monitor import MonitorResult
+from src.core.monitors import _REGISTRY, beehire
 from src.core.monitors.beehire import (
     _api_url,
     _parse_job,
@@ -147,6 +149,60 @@ async def test_discover_rejects_invalid_payload():
             assert "campaigns" in str(exc)
         else:
             raise AssertionError("invalid Beehire payload should fail")
+
+
+async def test_discover_marks_partial_invalid_and_duplicate_campaigns_truncated():
+    valid = _campaign()
+    payload = {
+        "campaigns": [valid, "not-an-object", _campaign(inviteKey=None), valid.copy()],
+        "employerBranding": {"careerPage": {"slug": SLUG}},
+    }
+    async with httpx.AsyncClient(transport=_transport(payload)) as client:
+        result = await discover({"board_url": BOARD_URL, "metadata": {}}, client)
+
+    assert isinstance(result, MonitorResult)
+    assert result.truncated is True
+    assert result.urls == {"https://app.beehire.com/invite/6L-oDP2wk"}
+    assert result.jobs_by_url is not None
+    assert set(result.jobs_by_url) == result.urls
+
+
+async def test_discover_rejects_nonempty_all_invalid_campaigns():
+    payload = {
+        "campaigns": ["not-an-object", _campaign(inviteKey=None)],
+        "employerBranding": {"careerPage": {"slug": SLUG}},
+    }
+    async with httpx.AsyncClient(transport=_transport(payload)) as client:
+        with pytest.raises(ValueError, match="no valid jobs"):
+            await discover({"board_url": BOARD_URL, "metadata": {}}, client)
+
+
+async def test_discover_marks_raw_campaign_count_above_cap_truncated(monkeypatch):
+    monkeypatch.setattr(beehire, "MAX_JOBS", 1)
+    payload = {
+        "campaigns": [
+            _campaign(),
+            _campaign(inviteKey="LQmcmkvH6", title={"0": "Finance Internship"}),
+        ],
+        "employerBranding": {"careerPage": {"slug": SLUG}},
+    }
+    async with httpx.AsyncClient(transport=_transport(payload)) as client:
+        result = await discover({"board_url": BOARD_URL, "metadata": {}}, client)
+
+    assert isinstance(result, MonitorResult)
+    assert result.truncated is True
+    assert len(result.urls) == 2
+
+
+async def test_discover_accepts_empty_campaign_inventory():
+    payload = {
+        "campaigns": [],
+        "employerBranding": {"careerPage": {"slug": SLUG}},
+    }
+    async with httpx.AsyncClient(transport=_transport(payload)) as client:
+        result = await discover({"board_url": BOARD_URL, "metadata": {}}, client)
+
+    assert result == []
 
 
 async def test_can_handle_verifies_api_and_accepts_empty_board():
