@@ -130,6 +130,8 @@ class RunnerConfig:
     root: Path = DEFAULT_ROOT
     repo_dir: Path | None = None
     worktrees_dir: Path | None = None
+    managed_repo_dir: Path | None = None
+    managed_worktrees_dir: Path | None = None
     traces_dir: Path | None = None
     logs_dir: Path | None = None
     state_dir: Path | None = None
@@ -172,10 +174,13 @@ class RunnerConfig:
     def resolved(self) -> RunnerConfig:
         root = self.root
         repo_dir = self.repo_dir or root / "repo"
+        managed_root = Path.home() / ".jobseek" if root == DEFAULT_ROOT else root / "managed"
         return RunnerConfig(
             root=root,
             repo_dir=repo_dir,
             worktrees_dir=self.worktrees_dir or root / "worktrees",
+            managed_repo_dir=self.managed_repo_dir or managed_root / "repo",
+            managed_worktrees_dir=self.managed_worktrees_dir or managed_root / "worktrees",
             traces_dir=self.traces_dir or root / "traces",
             logs_dir=self.logs_dir or root / "logs",
             state_dir=self.state_dir or root / "state",
@@ -232,6 +237,16 @@ class RunnerConfig:
             root=root,
             repo_dir=(
                 Path(env["JOBSEEK_CODEX_REPO_DIR"]) if env.get("JOBSEEK_CODEX_REPO_DIR") else None
+            ),
+            managed_repo_dir=(
+                Path(env["JOBSEEK_CODEX_MANAGED_REPO_DIR"])
+                if env.get("JOBSEEK_CODEX_MANAGED_REPO_DIR")
+                else Path.home() / ".jobseek" / "repo"
+            ),
+            managed_worktrees_dir=(
+                Path(env["JOBSEEK_CODEX_MANAGED_WORKTREES_DIR"])
+                if env.get("JOBSEEK_CODEX_MANAGED_WORKTREES_DIR")
+                else Path.home() / ".jobseek" / "worktrees"
             ),
             codex_model=env.get("JOBSEEK_CODEX_MODEL", DEFAULT_CODEX_MODEL) or None,
             codex_reasoning_effort=(
@@ -388,6 +403,7 @@ class RunnerLedger:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     observed_at INTEGER NOT NULL,
                     worktree_path TEXT NOT NULL,
+                    source TEXT NOT NULL DEFAULT 'runner',
                     run_id TEXT,
                     issue INTEGER,
                     state TEXT NOT NULL,
@@ -438,6 +454,15 @@ class RunnerLedger:
             conn.execute(
                 "ALTER TABLE trace_bundle_export_attempts "
                 "ADD COLUMN retained_bytes INTEGER NOT NULL DEFAULT 0"
+            )
+        reconciliation_existing = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(worktree_reconciliation_events)").fetchall()
+        }
+        if "source" not in reconciliation_existing:
+            conn.execute(
+                "ALTER TABLE worktree_reconciliation_events "
+                "ADD COLUMN source TEXT NOT NULL DEFAULT 'runner'"
             )
 
     def acquire(
@@ -518,6 +543,7 @@ class RunnerLedger:
         columns = (
             "observed_at",
             "worktree_path",
+            "source",
             "run_id",
             "issue",
             "state",
@@ -1950,23 +1976,40 @@ class CompanyResolverGovernor:
         """Classify and optionally retire terminal runner worktrees."""
         from src.workspace.worktree_reconcile import (
             GitHubRemoteVerifier,
+            combine_worktree_reports,
+            reconcile_managed_worktrees,
             reconcile_worktrees,
         )
 
         cfg = self.config
+        max_terminal_bytes = int(cfg.max_terminal_worktree_gib * 1024**3)
+        contexts = self._managed_worktree_contexts()
+        live_paths = _live_worktree_paths(cfg.managed_worktrees_dir)  # type: ignore[arg-type]
+
+        managed_report = reconcile_managed_worktrees(
+            repo_dir=cfg.managed_repo_dir,  # type: ignore[arg-type]
+            worktrees_dir=cfg.managed_worktrees_dir,  # type: ignore[arg-type]
+            archive_dir=cfg.state_dir / "worktree-quarantine",  # type: ignore[operator]
+            ledger=self.ledger,
+            pid_checker=_pid_matches_run,
+            live_path_checker=lambda path: str(path.resolve()) in live_paths,
+            max_terminal_directories=cfg.max_terminal_worktrees,
+            max_terminal_bytes=max_terminal_bytes,
+            apply=apply,
+            context_by_path=contexts,
+        )
 
         def _pre_remove(item) -> None:
             if item.issue is None:
                 return
             worktree = Path(item.path)
             workspace_root = worktree / "apps" / "crawler" / ".workspace"
-            self._assert_managed_worktrees_clean(item.issue, workspace_root)
             self._cleanup_ws_artifacts_for_issue(
                 item.issue,
                 workspace_root=workspace_root,
             )
 
-        report = reconcile_worktrees(
+        runner_report = reconcile_worktrees(
             root=cfg.root,
             repo_dir=cfg.repo_dir,  # type: ignore[arg-type]
             worktrees_dir=cfg.worktrees_dir,  # type: ignore[arg-type]
@@ -1978,10 +2021,15 @@ class CompanyResolverGovernor:
             ),
             pid_checker=_pid_matches_run,
             max_terminal_directories=cfg.max_terminal_worktrees,
-            max_terminal_bytes=int(cfg.max_terminal_worktree_gib * 1024**3),
+            max_terminal_bytes=max_terminal_bytes,
             apply=apply,
             only_paths=only_paths,
             pre_remove=_pre_remove,
+        )
+        report = combine_worktree_reports(
+            [runner_report, managed_report],
+            max_terminal_directories=cfg.max_terminal_worktrees,
+            max_terminal_bytes=max_terminal_bytes,
         )
         print(
             json.dumps(
@@ -1993,6 +2041,53 @@ class CompanyResolverGovernor:
             )
         )
         return report
+
+    def _managed_worktree_contexts(self) -> dict[str, dict[str, Any]]:
+        """Join workspace YAML paths back to the latest ledger run for an issue."""
+        runs = self.ledger.worktree_runs()
+        latest_by_issue: dict[int, dict[str, Any]] = {}
+        roots: list[Path] = []
+        for run in runs:
+            issue = run.get("issue")
+            if isinstance(issue, int):
+                current = latest_by_issue.get(issue)
+                if current is None or int(run.get("updated_at") or 0) >= int(
+                    current.get("updated_at") or 0
+                ):
+                    latest_by_issue[issue] = run
+            value = run.get("worktree_path")
+            if isinstance(value, str) and value:
+                roots.append(Path(value) / "apps" / "crawler" / ".workspace")
+        if self.config.repo_dir is not None:
+            roots.append(self.config.repo_dir / "apps" / "crawler" / ".workspace")
+        if self.config.managed_repo_dir is not None:
+            roots.append(self.config.managed_repo_dir / "apps" / "crawler" / ".workspace")
+
+        contexts: dict[str, dict[str, Any]] = {}
+        seen: set[Path] = set()
+        for root in roots:
+            resolved_root = root.resolve() if root.exists() else root
+            if resolved_root in seen or not root.exists():
+                continue
+            seen.add(resolved_root)
+            for workspace_yaml in root.glob("*/workspace.yaml"):
+                data = _read_yaml_mapping(workspace_yaml)
+                managed_path = _workspace_worktree(data)
+                issue = _workspace_issue(data)
+                if managed_path is None:
+                    continue
+                context = latest_by_issue.get(issue) if issue is not None else None
+                if context is None:
+                    git_data = data.get("git")
+                    git_mapping = git_data if isinstance(git_data, dict) else {}
+                    context = {
+                        "issue": issue,
+                        "pr_number": _int_from_value(git_mapping.get("pr")),
+                        "branch": git_mapping.get("branch"),
+                        "state": "managed",
+                    }
+                contexts[str(managed_path.resolve())] = dict(context)
+        return contexts
 
     def _execute_admission(self, admission: Admission) -> RunResult:
         cfg = self.config
@@ -2218,41 +2313,16 @@ class CompanyResolverGovernor:
             for workspace_dir in _workspace_dirs_for_issue(root, issue):
                 self._cleanup_workspace_dir(workspace_dir, root)
 
-    def _assert_managed_worktrees_clean(self, issue: int, workspace_root: Path) -> None:
-        """Fail closed before legacy ws cleanup uses force-removal."""
-        if not workspace_root.exists():
-            return
-        for workspace_dir in _workspace_dirs_for_issue(workspace_root, issue):
-            data = _read_yaml_mapping(workspace_dir / "workspace.yaml")
-            worktree = _workspace_worktree(data) if data else None
-            if worktree is None or not worktree.exists():
-                continue
-            status = subprocess.run(
-                ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
-                cwd=worktree,
-                capture_output=True,
-                check=False,
-            )
-            if status.returncode != 0:
-                raise RuntimeError(f"could not inspect managed ws worktree {worktree}")
-            if status.stdout:
-                raise RuntimeError(f"managed ws worktree {worktree} has unarchived changes")
-
     def _cleanup_workspace_dir(self, workspace_dir: Path, workspace_root: Path) -> None:
         data = _read_yaml_mapping(workspace_dir / "workspace.yaml")
         if not data:
             return
         slug = workspace_dir.name
         worktree = _workspace_worktree(data)
-        if worktree:
-            managed_repo = Path.home() / ".jobseek" / "repo"
-            cwd = managed_repo if managed_repo.exists() else self.config.repo_dir
-            subprocess.run(
-                ["git", "worktree", "remove", "--force", worktree],
-                cwd=cwd,
-                check=False,
+        if worktree and worktree.exists():
+            raise RuntimeError(
+                f"managed ws worktree {worktree} was retained; refusing workspace cleanup"
             )
-            shutil.rmtree(worktree, ignore_errors=True)
         shutil.rmtree(workspace_dir, ignore_errors=True)
         for active in workspace_root.glob("active*"):
             try:
@@ -2397,6 +2467,36 @@ def _pid_matches_run(pid: int, run_id: str) -> bool:
     if proc_root.exists():
         return False
     return _pid_alive(pid)
+
+
+def _live_worktree_paths(worktrees_dir: Path) -> set[str]:
+    """Return managed worktree roots containing a live process CWD."""
+    proc_root = Path("/proc")
+    if not proc_root.exists() or not worktrees_dir.exists():
+        return set()
+    try:
+        root = worktrees_dir.resolve()
+    except OSError:
+        return set()
+    live: set[str] = set()
+    try:
+        processes = list(proc_root.iterdir())
+    except OSError:
+        return live
+    for process in processes:
+        if not process.name.isdigit():
+            continue
+        try:
+            cwd = Path(os.readlink(process / "cwd")).resolve()
+            relative = cwd.relative_to(root)
+        except (OSError, ValueError):
+            continue
+        if not relative.parts:
+            continue
+        candidate = root / relative.parts[0]
+        if candidate.is_dir():
+            live.add(str(candidate.resolve()))
+    return live
 
 
 def _terminate_process_group(proc: subprocess.Popen[Any], grace_s: int) -> None:
