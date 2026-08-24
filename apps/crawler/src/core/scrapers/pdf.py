@@ -12,6 +12,11 @@ Config:
                    (after URL-decoding and hash stripping).
                    When title_source is "text", applied to the raw PDF text
                    before falling back to the heading-line heuristic.
+    require_title_pattern
+                   Opt in to fail-closed title extraction. Requires
+                   title_source="text" and a non-empty title_pattern; raises
+                   when that pattern does not match instead of falling back to
+                   a generic heading or the PDF filename.
     location_pattern
                    Optional regex with a capture group for the location,
                    applied to the raw PDF text.
@@ -258,6 +263,18 @@ async def parse_bytes(content: bytes, url: str, config: dict) -> JobContent:
     """
     import pypdf
 
+    title_source = config.get("title_source", "url")
+    title_pattern = config.get("title_pattern")
+    require_title_pattern = config.get("require_title_pattern", False)
+    if not isinstance(require_title_pattern, bool):
+        raise ValueError("PDF require_title_pattern must be a boolean")
+    if require_title_pattern and (
+        title_source != "text" or not isinstance(title_pattern, str) or not title_pattern
+    ):
+        raise ValueError(
+            'PDF require_title_pattern requires title_source="text" and a title_pattern'
+        )
+
     reader = pypdf.PdfReader(io.BytesIO(content))
     pages_text = []
     for page in reader.pages:
@@ -286,8 +303,10 @@ async def parse_bytes(content: bytes, url: str, config: dict) -> JobContent:
         log.info("pdf.ocr", url=url, text_length=len(full_text))
 
     if not full_text:
+        if require_title_pattern:
+            raise ValueError("PDF title_pattern did not match extracted text")
         log.warning("pdf.empty", url=url)
-        return JobContent(title=_title_from_url(url, config.get("title_pattern")))
+        return JobContent(title=_title_from_url(url, title_pattern))
 
     repair_split_initial = bool(config.get("repair_split_initial"))
     named_fields = _extract_named_fields(
@@ -297,10 +316,17 @@ async def parse_bytes(content: bytes, url: str, config: dict) -> JobContent:
     )
 
     # Title extraction — configurable via title_source
-    title_source = config.get("title_source", "url")
-    title_pattern = config.get("title_pattern")
-
     title = named_fields.get("title")
+    if require_title_pattern:
+        required_title = _extract_pattern(
+            full_text,
+            title_pattern,
+            repair_split_initial=repair_split_initial,
+        )
+        if not required_title:
+            raise ValueError("PDF title_pattern did not match extracted text")
+        if not title:
+            title = required_title
     if not title and title_source == "text":
         title = _extract_pattern(
             full_text,
