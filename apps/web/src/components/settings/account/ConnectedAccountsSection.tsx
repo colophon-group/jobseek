@@ -32,8 +32,8 @@ export function ConnectedAccountsSection({
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  function isConnected(providerId: string) {
-    return accounts.some((a) => a.providerId === providerId);
+  function getConnectedAccount(providerId: string) {
+    return accounts.find((a) => a.providerId === providerId);
   }
 
   async function handleConnect(provider: SocialProviderId) {
@@ -49,15 +49,17 @@ export function ConnectedAccountsSection({
     setActionLoading(null);
   }
 
-  async function handleDisconnect(providerId: string) {
-    setActionLoading(providerId);
+  async function handleDisconnect(connectedAccount: ConnectedAccount) {
+    setActionLoading(connectedAccount.providerId);
     setError("");
     try {
-      const result = await authClient.unlinkAccount({ providerId });
+      const result = await authClient.unlinkAccount({
+        accountId: connectedAccount.accountId,
+      });
       if (result.error) {
         setError(result.error.message ?? t({ id: "settings.account.socials.disconnectError", comment: "Error when unlinking social account fails", message: "Failed to disconnect account" }));
       } else {
-        onDisconnect(providerId);
+        onDisconnect(connectedAccount.providerId);
       }
     } catch {
       setError(t({ id: "settings.account.socials.disconnectError", comment: "Error when unlinking social account fails", message: "Failed to disconnect account" }));
@@ -78,7 +80,7 @@ export function ConnectedAccountsSection({
       <ErrorAlert message={error} focusOnRender />
       <div className="space-y-2">
         {socialProviders.map((p) => {
-          const connected = isConnected(p.id);
+          const connectedAccount = getConnectedAccount(p.id);
           return (
             <div key={p.id} className="flex items-center justify-between rounded-md border border-divider px-4 py-3">
               <div className="flex items-center gap-3">
@@ -86,12 +88,16 @@ export function ConnectedAccountsSection({
                 <span className="text-sm font-medium">{p.label}</span>
               </div>
               <Button
-                onClick={() => (connected ? handleDisconnect(p.id) : handleConnect(p.id))}
+                onClick={() =>
+                  connectedAccount
+                    ? handleDisconnect(connectedAccount)
+                    : handleConnect(p.id)
+                }
                 disabled={actionLoading === p.id}
-                variant={connected ? "outline" : "primary"}
+                variant={connectedAccount ? "outline" : "primary"}
                 size="sm"
               >
-                {connected
+                {connectedAccount
                   ? t({ id: "settings.account.socials.disconnect", comment: "Disconnect social account button", message: "Disconnect" })
                   : t({ id: "settings.account.socials.connect", comment: "Connect social account button", message: "Connect" })}
               </Button>

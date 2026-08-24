@@ -32,6 +32,7 @@ if (new URL(databaseUrl).port === "6543") {
 
 const contractCreatedAt = 1_785_757_200_000;
 const retirementCreatedAt = 1_785_760_800_000;
+const accountIssuerCreatedAt = 1_787_560_116_000;
 const freePlanSafetyBytes = 400 * 1024 * 1024;
 const migrationHash = (filename: string) =>
   createHash("sha256")
@@ -39,6 +40,7 @@ const migrationHash = (filename: string) =>
     .digest("hex");
 const contractHash = migrationHash("0085_saved_job_snapshot_contract.sql");
 const retirementHash = migrationHash("0086_drop_supabase_job_posting.sql");
+const accountIssuerHash = migrationHash("0087_better_auth_account_issuer.sql");
 const requiredSnapshotColumns = [
   "company_id",
   "company_name",
@@ -120,7 +122,7 @@ async function main() {
         FROM drizzle.__drizzle_migrations
       `;
       const [migrationRows] = await tx<
-        { contract: number; retirement: number }[]
+        { contract: number; retirement: number; accountIssuer: number }[]
       >`
         SELECT
           count(*) FILTER (
@@ -128,7 +130,10 @@ async function main() {
           )::integer AS contract,
           count(*) FILTER (
             WHERE created_at = ${retirementCreatedAt} AND hash = ${retirementHash}
-          )::integer AS retirement
+          )::integer AS retirement,
+          count(*) FILTER (
+            WHERE created_at = ${accountIssuerCreatedAt} AND hash = ${accountIssuerHash}
+          )::integer AS "accountIssuer"
         FROM drizzle.__drizzle_migrations
       `;
       const [relation] = await tx<
@@ -508,10 +513,11 @@ async function main() {
         );
         if (mode === "postflight") {
           assert(
-            ledger.rowCount === 76 &&
-              Number(ledger.latestCreatedAt) === retirementCreatedAt &&
-              ledger.latestHash === retirementHash,
-            `Unexpected immediate post-0086 ledger: ${JSON.stringify(ledger)}`,
+            ledger.rowCount === 77 &&
+              Number(ledger.latestCreatedAt) === accountIssuerCreatedAt &&
+              ledger.latestHash === accountIssuerHash &&
+              migrationRows.accountIssuer === 1,
+            `Unexpected post-0087 ledger after retirement: ${JSON.stringify({ ledger, migrationRows })}`,
           );
         }
       }

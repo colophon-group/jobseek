@@ -20,11 +20,13 @@ describe("PostgreSQL 17 job_posting retirement execution harness", () => {
 
   it("uses the real journal SQL hashes and the real migration runner", () => {
     expect(harness).toContain("readMigrationFiles({ migrationsFolder: migrationFolder })");
-    expect(harness).toContain("Expected 75 real journal migrations");
+    expect(harness).toContain("Expected 76 real journal migrations");
     expect(harness).toContain("const seed = [through0085[0], ...through0085]");
     expect(harness).toContain('resolve(webRoot, "src/db/migrate.ts")');
     expect(harness).toContain("spawn(process.execPath, [tsxRunner, migrationRunner]");
-    expect(harness).toContain("assertLedger(afterSuccess, seed, retirement)");
+    expect(harness).toContain(
+      "assertLedger(afterSuccess, seed, [retirement, ...subsequent])",
+    );
   });
 
   it("binds both attestation modes to the production runner contract", () => {
@@ -63,6 +65,8 @@ describe("PostgreSQL 17 job_posting retirement execution harness", () => {
 
     expect(harness).toContain("assertEqual(after, before");
     expect(harness).toContain('invokeRealMigration(databaseUrl, "restore-drill")');
-    expect(harness).toContain("assertLedger(restored, seed, retirement)");
+    expect(harness).toContain(
+      "assertLedger(restored, seed, [retirement, ...subsequent])",
+    );
   });
 });

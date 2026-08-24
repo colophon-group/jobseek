@@ -274,6 +274,7 @@ export const companyRequest = pgTable("company_request", {
 
 export const account = pgTable("account", {
 	id: text().primaryKey().notNull(),
+	issuer: text().notNull(),
 	accountId: text("account_id").notNull(),
 	providerId: text("provider_id").notNull(),
 	userId: text("user_id").notNull(),
@@ -287,6 +288,7 @@ export const account = pgTable("account", {
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).notNull(),
 }, (table) => [
+	uniqueIndex("account_issuer_accountId_uidx").using("btree", table.issuer.asc().nullsLast().op("text_ops"), table.accountId.asc().nullsLast().op("text_ops")),
 	index("account_userId_idx").using("btree", table.userId.asc().nullsLast().op("text_ops")),
 	foreignKey({
 			columns: [table.userId],
