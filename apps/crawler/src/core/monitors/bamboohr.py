@@ -72,7 +72,7 @@ def _tenant_from_url(url: str) -> str | None:
     if not match:
         return None
     path = parsed.path.rstrip("/").lower()
-    if path not in {"/careers", "/jobs/embed2.php"}:
+    if path not in {"/careers", "/careers/list", "/jobs/embed2.php"}:
         return None
     return _normalize_tenant(match.group(1))
 

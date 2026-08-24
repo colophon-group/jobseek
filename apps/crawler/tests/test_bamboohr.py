@@ -80,6 +80,7 @@ DETAIL = {
 class TestTenantDetection:
     def test_extracts_direct_tenant(self):
         assert _tenant_from_url(BOARD_URL) == "acme"
+        assert _tenant_from_url("https://acme.bamboohr.com/careers/list") == "acme"
         assert _tenant_from_url("https://acme.bamboohr.com/jobs/embed2.php") == "acme"
 
     @pytest.mark.parametrize(
@@ -99,6 +100,9 @@ class TestTenantDetection:
 
     async def test_direct_url_detects_without_client(self):
         assert await can_handle(BOARD_URL) == {"tenant": "acme"}
+        assert await can_handle("https://acme.bamboohr.com/careers/list") == {
+            "tenant": "acme"
+        }
 
     async def test_empty_direct_board_is_detected(self):
         transport = httpx.MockTransport(
@@ -467,6 +471,7 @@ def test_workspace_and_runtime_integration():
     assert "bamboohr" not in scraper_registry
     assert "bamboohr" in _KNOWN_ATS_DOMAINS
     assert detect_ats_from_url(BOARD_URL) == "bamboohr"
+    assert detect_ats_from_url("https://acme.bamboohr.com/careers/list") == "bamboohr"
     assert detect_ats_from_url("https://www.bamboohr.com/careers") is None
     assert detect_ats_from_url("https://acme.bamboohr.com/login.php") is None
     scraper = auto_scraper_type("bamboohr")
