@@ -374,6 +374,7 @@ def detect_ats_from_url(url: str) -> str | None:
         path = parsed.path.rstrip("/").lower()
         if tenant not in {"api", "app", "help", "static", "www"} and path in {
             "/careers",
+            "/careers/list",
             "/jobs/embed2.php",
         }:
             return "bamboohr"
