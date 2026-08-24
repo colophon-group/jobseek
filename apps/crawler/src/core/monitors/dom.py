@@ -548,6 +548,26 @@ _LUCCA_RICH_ROWS = {
 _LUCCA_EMPTY_SELECTOR = ".jobBoard-offers-empty"
 _LUCCA_EMPTY_TEXT = "There are no job vacancies at the moment."
 
+_PROSPECTIVE_CAREERCENTER_ASSET_RE = re.compile(
+    r"/careercenter/(?P<medium_id>\d+)/assets/",
+    re.IGNORECASE,
+)
+_PROSPECTIVE_JOB_UUID = (
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+)
+_PROSPECTIVE_RICH_ROWS = {
+    "row_selector": "#jobs-list .job",
+    "link_selector": "a.job-title[href]",
+    "location_selectors": [".place-of-work"],
+}
+_PROSPECTIVE_EMPTY_STATES = [
+    {
+        "selector": ".jobs-total .total",
+        "exact_text": "0",
+        "forbidden_link_selector": "#jobs-list a.job-title[href]",
+    }
+]
+
 _REXX_PROVIDER_HOSTS = frozenset({"rexx-systems.com", "www.rexx-systems.com"})
 _REXX_JOB_PATH_FILTER = (
     r"/(?:[^/?#]+/)*(?:[^/?#]+-j\d+\.html|"
@@ -757,6 +777,83 @@ def _lucca_probe_config(html: str, url: str) -> dict | None:
         "rich_rows": rich_rows,
         "empty_selector": _LUCCA_EMPTY_SELECTOR,
         "empty_text": _LUCCA_EMPTY_TEXT,
+    }
+
+
+def _prospective_probe_config(html: str, url: str) -> dict | None:
+    """Return a static rich-row preset for Prospective CareerCenter pages.
+
+    Some branded Prospective boards render their complete inventory on the
+    server while rejecting the provider's historical public ``medium`` JSON
+    endpoint. Their detail links end in UUIDs and therefore evade the generic
+    job-keyword heuristic. Recognize the provider-owned CareerCenter assets,
+    scope extraction to its stable listing rows, and preserve an exact zero-job
+    contract so markup or transport failures cannot delist every posting.
+    """
+
+    try:
+        parsed = urlsplit(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname is None
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+    ):
+        return None
+
+    tree = LexborHTMLParser(html)
+    if (
+        tree.css_first("body.career-center #jobs-list") is None
+        or tree.css_first(".jobs-total .total") is None
+    ):
+        return None
+
+    medium_ids: set[str] = set()
+    for node in tree.css("link[href], script[src], img[src]"):
+        asset_url = node.attributes.get("href") or node.attributes.get("src") or ""
+        match = _PROSPECTIVE_CAREERCENTER_ASSET_RE.search(asset_url)
+        if match is not None:
+            medium_ids.add(match.group("medium_id"))
+    if len(medium_ids) != 1:
+        return None
+
+    origin = f"https://{parsed.netloc}"
+    url_filter = (
+        rf"^{re.escape(origin)}/(?:[^/?#]+/)+{_PROSPECTIVE_JOB_UUID}"
+        r"/?(?:[?#].*)?$"
+    )
+    rich_rows = dict(_PROSPECTIVE_RICH_ROWS)
+    empty_states = [dict(state) for state in _PROSPECTIVE_EMPTY_STATES]
+    try:
+        validated_rich_rows = _validated_rich_rows(rich_rows)
+        if validated_rich_rows is None:
+            return None
+        jobs = _extract_rich_rows_static(
+            html,
+            url,
+            validated_rich_rows,
+            re.compile(url_filter, re.IGNORECASE),
+            allow_empty=True,
+        )
+        _validate_explicit_empty_states(
+            html,
+            _validated_empty_state_list(empty_states),
+            {job.url for job in jobs},
+            url,
+        )
+    except ValueError:
+        return None
+
+    return {
+        "prospective_board": medium_ids.pop(),
+        "urls": len(jobs),
+        "url_filter": url_filter,
+        "rich_rows": rich_rows,
+        "empty_states": empty_states,
     }
 
 
@@ -2264,6 +2361,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     lucca = _lucca_probe_config(html, url)
     if lucca is not None:
         return lucca
+
+    prospective = _prospective_probe_config(html, url)
+    if prospective is not None:
+        return prospective
 
     kontact = _kontact_probe_config(html, url)
     if kontact is not None:

@@ -137,6 +137,39 @@ FIXTURE_HTML = """
 
 
 class TestDomScraper:
+    def test_prospective_detail_preset_extracts_complete_scoped_description(self):
+        from src.core.scrapers.dom import parse_html
+        from src.workspace._compat import auto_scraper_type
+
+        html = """
+        <html><body>
+          <section id="job">
+            <h4>Employer introduction outside the vacancy description.</h4>
+            <h1 id="title">Application Manager (m/w/d)</h1>
+            <span class="pensum">80-100%</span>
+            <div id="place-of-work">Bern oder Zürich</div>
+            <p>Own the lifecycle of our core applications.</p>
+            <h3>Main tasks</h3><ul><li>Operate reliable services.</li></ul>
+            <h3>Profile</h3><ul><li>Experience with distributed systems.</li></ul>
+          </section>
+          <section id="contact"><p>Recruiter phone number</p></section>
+        </body></html>
+        """
+        auto = auto_scraper_type("dom", {"prospective_board": "1000973"})
+        assert auto is not None
+        scraper_type, config = auto
+
+        assert scraper_type == "dom"
+        assert config is not None
+        result = parse_html(html, config)
+        assert result.title == "Application Manager (m/w/d)"
+        assert result.description is not None
+        assert "Own the lifecycle" in result.description
+        assert "Operate reliable services" in result.description
+        assert "Experience with distributed systems" in result.description
+        assert "Employer introduction" not in result.description
+        assert "Recruiter phone number" not in result.description
+
     def test_lucca_detail_preset_extracts_title_and_description(self):
         from src.core.scrapers.dom import can_handle, parse_html
 

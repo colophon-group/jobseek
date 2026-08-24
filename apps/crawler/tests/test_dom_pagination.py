@@ -24,6 +24,7 @@ from src.core.monitors.dom import (
     _fingerprint_response_urls,
     _lucca_probe_config,
     _paginate_urls,
+    _prospective_probe_config,
     _vagas_probe_config,
     _validated_pdf_text_config,
     _validated_response_fingerprint_config,
@@ -1811,6 +1812,29 @@ class TestCanHandle:
       <p class="jobBoard-offers-empty">There are no job vacancies at the moment.</p>
     </div></body></html>
     """
+    PROSPECTIVE_URL = "https://jobs.example.com/?lang=de"
+    PROSPECTIVE_HTML = """
+    <html lang="de"><head>
+      <link href="/careercenter/1000973/assets/css/company.css" rel="stylesheet">
+    </head><body class="career-center">
+      <header><h1 class="jobs-total"><span class="total">2</span> Jobs</h1></header>
+      <div id="jobs-list">
+        <div class="job">
+          <a class="job-title" href="/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4">
+            Platform Engineer
+          </a>
+          <span class="place-of-work">Bern oder Zürich</span>
+        </div>
+        <div class="job">
+          <a class="job-title"
+             href="/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331">
+            Analyste
+          </a>
+          <span class="place-of-work">Bern</span>
+        </div>
+      </div>
+    </body></html>
+    """
 
     def test_lucca_board_uses_static_rich_row_preset(self):
         result = _lucca_probe_config(self.LUCCA_HTML, self.LUCCA_URL)
@@ -1856,6 +1880,66 @@ class TestCanHandle:
             result = await can_handle(self.LUCCA_URL, MagicMock())
 
         assert result == _lucca_probe_config(self.LUCCA_HTML, self.LUCCA_URL)
+
+    def test_prospective_board_uses_static_rich_row_preset(self):
+        result = _prospective_probe_config(self.PROSPECTIVE_HTML, self.PROSPECTIVE_URL)
+
+        assert result is not None
+        assert result["prospective_board"] == "1000973"
+        assert result["urls"] == 2
+        assert result["rich_rows"] == {
+            "row_selector": "#jobs-list .job",
+            "link_selector": "a.job-title[href]",
+            "location_selectors": [".place-of-work"],
+        }
+        jobs = _extract_rich_rows_static(
+            self.PROSPECTIVE_HTML,
+            self.PROSPECTIVE_URL,
+            _validated_rich_rows(result["rich_rows"]),
+            re.compile(result["url_filter"], re.IGNORECASE),
+        )
+        assert [(job.title, job.locations) for job in jobs] == [
+            ("Platform Engineer", ["Bern oder Zürich"]),
+            ("Analyste", ["Bern"]),
+        ]
+
+        scraper_type, scraper_config = auto_scraper_type("dom", result) or (None, None)
+        assert scraper_type == "dom"
+        assert scraper_config is not None
+        assert scraper_config["enrich"] == ["description"]
+        assert scraper_config["scope"] == "#job"
+
+    def test_prospective_empty_board_requires_exact_zero_total(self):
+        empty_html = """
+        <html><head><link href="/careercenter/1000973/assets/css/company.css"></head>
+        <body class="career-center">
+          <header><span class="jobs-total"><span class="total">0</span></span></header>
+          <div id="jobs-list"></div>
+        </body></html>
+        """
+        result = _prospective_probe_config(empty_html, self.PROSPECTIVE_URL)
+
+        assert result is not None
+        assert result["urls"] == 0
+        assert result["empty_states"] == [
+            {
+                "selector": ".jobs-total .total",
+                "exact_text": "0",
+                "forbidden_link_selector": "#jobs-list a.job-title[href]",
+            }
+        ]
+
+        drifted_html = empty_html.replace(">0<", ">10<")
+        assert _prospective_probe_config(drifted_html, self.PROSPECTIVE_URL) is None
+
+    async def test_prospective_can_handle_returns_provider_preset(self):
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=self.PROSPECTIVE_HTML),
+        ):
+            result = await can_handle(self.PROSPECTIVE_URL, MagicMock())
+
+        assert result == _prospective_probe_config(self.PROSPECTIVE_HTML, self.PROSPECTIVE_URL)
 
     def test_dualoo_portal_uses_scoped_static_preset(self):
         result = _dualoo_probe_config(self.DUALOO_HTML, self.DUALOO_URL)

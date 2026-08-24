@@ -634,6 +634,27 @@ def auto_scraper_type(
                 ],
             },
         )
+    if monitor_type == "dom" and (config or {}).get("prospective_board"):
+        return (
+            "dom",
+            {
+                "enrich": ["description"],
+                "scope": "#job",
+                "steps": [
+                    {
+                        "tag": "h1",
+                        "attr": "id=title",
+                        "field": "title",
+                    },
+                    {
+                        "tag": "p",
+                        "field": "description",
+                        "html": True,
+                        "to_end": True,
+                    },
+                ],
+            },
+        )
 
     # oracle_hcm is a rich monitor (returns DiscoveredJob with title/location/date)
     # but needs a scraper for descriptions. The ``enrich`` key in scraper_config
