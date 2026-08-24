@@ -16,6 +16,7 @@ from src.csvtool import (
 )
 from src.workspace.errors import (
     BoardNotFoundError,
+    CsvToolError,
     InvalidSlugError,
     MissingRequiredFieldError,
     NothingToUpdateError,
@@ -213,6 +214,112 @@ class TestBoardAdd:
         assert len(rows) == 1
         assert rows[0]["monitor_type"] == "greenhouse"
         assert rows[0]["scraper_type"] == "json-ld"
+
+    def test_update_existing_board_by_slug_when_url_changes(self, tmp_path, monkeypatch):
+        self._setup(
+            tmp_path,
+            monkeypatch,
+            companies="test-co,Test,,,\n",
+            boards="test-co,test-co-careers,https://test.com/old,greenhouse,,,\n",
+        )
+
+        board_add(
+            "test-co",
+            board_slug="test-co-careers",
+            board_url="https://test.com/new",
+            monitor_type="api_sniffer",
+        )
+
+        _, rows = _read_csv(tmp_path / "boards.csv")
+        assert len(rows) == 1
+        assert rows[0]["board_url"] == "https://test.com/new"
+        assert rows[0]["monitor_type"] == "api_sniffer"
+
+    def test_conflicting_board_identifiers_fail_without_mutation(self, tmp_path, monkeypatch):
+        original = (
+            "test-co,test-co-careers,https://test.com/old,greenhouse,,,\n"
+            "test-co,test-co-internships,https://test.com/internships,lever,,,\n"
+        )
+        self._setup(
+            tmp_path,
+            monkeypatch,
+            companies="test-co,Test,,,\n",
+            boards=original,
+        )
+
+        with pytest.raises(CsvToolError, match="different rows"):
+            board_add(
+                "test-co",
+                board_slug="test-co-careers",
+                board_url="https://test.com/internships",
+                monitor_type="api_sniffer",
+            )
+
+        assert (tmp_path / "boards.csv").read_text() == BOARDS_HEADER + original
+
+    def test_board_slug_owned_by_another_company_fails_without_mutation(
+        self, tmp_path, monkeypatch
+    ):
+        original = "other,other-careers,https://other.test/jobs,greenhouse,,,\n"
+        self._setup(
+            tmp_path,
+            monkeypatch,
+            companies="test-co,Test,,,\nother,Other,,,\n",
+            boards=original,
+        )
+
+        with pytest.raises(CsvToolError, match="belongs to company 'other'"):
+            board_add(
+                "test-co",
+                board_slug="other-careers",
+                board_url="https://test.com/jobs",
+                monitor_type="api_sniffer",
+            )
+
+        assert (tmp_path / "boards.csv").read_text() == BOARDS_HEADER + original
+
+    def test_ambiguous_existing_board_slug_fails_without_mutation(self, tmp_path, monkeypatch):
+        original = (
+            "test-co,test-co-careers,https://test.com/one,greenhouse,,,\n"
+            "test-co,test-co-careers,https://test.com/two,lever,,,\n"
+        )
+        self._setup(
+            tmp_path,
+            monkeypatch,
+            companies="test-co,Test,,,\n",
+            boards=original,
+        )
+
+        with pytest.raises(CsvToolError, match="slug matches multiple rows"):
+            board_add(
+                "test-co",
+                board_slug="test-co-careers",
+                board_url="https://test.com/new",
+                monitor_type="api_sniffer",
+            )
+
+        assert (tmp_path / "boards.csv").read_text() == BOARDS_HEADER + original
+
+    def test_ambiguous_existing_board_url_fails_without_mutation(self, tmp_path, monkeypatch):
+        original = (
+            "test-co,test-co-careers,https://test.com/jobs,greenhouse,,,\n"
+            "test-co,test-co-internships,https://test.com/jobs,lever,,,\n"
+        )
+        self._setup(
+            tmp_path,
+            monkeypatch,
+            companies="test-co,Test,,,\n",
+            boards=original,
+        )
+
+        with pytest.raises(CsvToolError, match="URL matches multiple rows"):
+            board_add(
+                "test-co",
+                board_url="https://test.com/jobs",
+                scraper_type="skip",
+            )
+
+        assert (tmp_path / "boards.csv").read_text() == BOARDS_HEADER + original
 
     def test_company_not_found(self, tmp_path, monkeypatch):
         self._setup(tmp_path, monkeypatch)
