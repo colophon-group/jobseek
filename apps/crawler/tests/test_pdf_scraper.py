@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import csv
 import io
+import json
+from pathlib import Path
 
 import httpx
 import pytest
@@ -14,6 +17,7 @@ from src.core.scrapers.pdf import (
     _title_from_text,
     _title_from_url,
     can_handle,
+    parse_bytes,
     scrape,
 )
 
@@ -51,6 +55,17 @@ def _make_pdf(text: str) -> bytes:
     buf = io.BytesIO()
     writer.write(buf)
     return buf.getvalue()
+
+
+def _icj_scraper_config() -> dict:
+    boards_path = Path(__file__).resolve().parents[1] / "data" / "boards.csv"
+    with boards_path.open(newline="", encoding="utf-8") as handle:
+        row = next(
+            row
+            for row in csv.DictReader(handle)
+            if row["board_slug"] == "international-commission-of-jurists-careers"
+        )
+    return json.loads(row["scraper_config"])
 
 
 class TestTitleFromUrl:
@@ -494,3 +509,61 @@ class TestScrape:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(httpx.HTTPStatusError):
                 await scrape("https://example.com/missing.pdf", {}, client)
+
+
+class TestIcjPdfConfig:
+    @pytest.mark.parametrize(
+        ("text", "expected_title", "expected_location"),
+        [
+            (
+                "TERMS OF REFERENCE\n"
+                "Legal Adviser Consultant, Myanmar project\n"
+                "Type of contract: Individual Consultancy.\n"
+                "Location: Home-based, close to the Bangkok time zone.\n"
+                "Duration of contract: 15 months.\n"
+                "Summary\nRole description",
+                "Legal Adviser Consultant, Myanmar project",
+                "Home-based, close to the Bangkok time zone.",
+            ),
+            (
+                "TERMS OF REFERENCE\n"
+                "Final external evaluation\n"
+                "Project name\n"
+                "Type of contract: Consultancy\n"
+                "Location: Home-based in Geneva\n"
+                "Duration of contract: 35 working days\n"
+                "Summary\n"
+                "The evaluation may lead to recommendations for future work.",
+                "Final external evaluation",
+                "Home-based in Geneva",
+            ),
+        ],
+    )
+    async def test_structural_heading_extracts_official_icj_templates(
+        self,
+        text,
+        expected_title,
+        expected_location,
+    ):
+        result = await parse_bytes(
+            _make_pdf(text),
+            "https://www.icj.org/wp-content/uploads/2026/08/document.pdf",
+            _icj_scraper_config(),
+        )
+
+        assert result.title == expected_title
+        assert result.locations == [expected_location]
+
+    async def test_unmatched_template_fails_before_body_or_filename_fallback(self):
+        text = (
+            "ICJ recruitment document\n"
+            "Summary\n"
+            "This assignment will lead research and produce recommendations."
+        )
+
+        with pytest.raises(ValueError, match="title_pattern did not match"):
+            await parse_bytes(
+                _make_pdf(text),
+                "https://www.icj.org/wp-content/uploads/2026/08/Misleading_Filename.pdf",
+                _icj_scraper_config(),
+            )
