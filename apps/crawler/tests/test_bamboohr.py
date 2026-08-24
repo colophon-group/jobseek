@@ -100,9 +100,7 @@ class TestTenantDetection:
 
     async def test_direct_url_detects_without_client(self):
         assert await can_handle(BOARD_URL) == {"tenant": "acme"}
-        assert await can_handle("https://acme.bamboohr.com/careers/list") == {
-            "tenant": "acme"
-        }
+        assert await can_handle("https://acme.bamboohr.com/careers/list") == {"tenant": "acme"}
 
     async def test_empty_direct_board_is_detected(self):
         transport = httpx.MockTransport(
