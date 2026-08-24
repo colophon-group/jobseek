@@ -1407,6 +1407,15 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    and 2,000,000-character extraction caps. Incompatible with
                    rich_rows. English ordinal day suffixes (1st, 2nd, 3rd,
                    4th) are normalized before parsing.
+    require_pdf_text
+                   Exhaustively classify each discovered PDF by extracted text:
+                   {"include": "employer regex", "exclude": "member regex"}.
+                   Use this to scope a mixed official opportunities directory
+                   to the configured employer. Each document must match exactly
+                   one regex; ambiguous or unknown documents fail the cycle
+                   instead of silently producing a partial or zero inventory.
+                   Non-PDF, oversized, or unreadable documents also fail the
+                   cycle. Limited to 100 URLs and incompatible with rich_rows.
     exclude_detail_selector
                    Fetch each discovered detail URL and omit it when this CSS
                    selector matches. Use when a first-party board mixes unique
