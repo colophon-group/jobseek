@@ -18,10 +18,12 @@ from src.core.monitors.dom import (
     _extract_rich_rows_static,
     _fetch_via_page,
     _filter_jsonld_job_urls,
+    _filter_unexpired_pdf_urls,
     _lucca_probe_config,
     _paginate_urls,
     _vagas_probe_config,
     _validated_rich_rows,
+    _validated_unexpired_pdf_config,
     can_handle,
     dom_discover,
 )
@@ -264,16 +266,38 @@ class TestExplicitEmptyState:
 
         assert result == set()
 
+    async def test_accepts_rendered_zero_links_with_empty_marker(self):
+        page = MagicMock()
+        context = MagicMock()
+        context.__aenter__ = AsyncMock(return_value=page)
+        context.__aexit__ = AsyncMock(return_value=None)
+        html = '<div class="vacancy-list"><p class="view-empty">No jobs</p></div>'
+
+        with (
+            patch("src.core.monitors.dom.open_page", return_value=context),
+            patch("src.core.monitors.dom._extract_links_rendered", AsyncMock(return_value=set())),
+            patch("src.core.monitors.dom.safe_content", AsyncMock(return_value=html)),
+        ):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "render": True,
+                        "link_selector": ".vacancy-list a.vacancy",
+                        "empty_selector": ".vacancy-list .view-empty",
+                    },
+                },
+                AsyncMock(),
+                pw=MagicMock(),
+            )
+
+        assert result == set()
+
     @pytest.mark.parametrize(
         "metadata",
         [
             {"empty_selector": ".view-empty"},
             {"link_selector": "a.vacancy", "empty_text": "0 jobs"},
-            {
-                "link_selector": "a.vacancy",
-                "empty_selector": ".view-empty",
-                "render": True,
-            },
             {
                 "link_selector": "a.vacancy",
                 "empty_selector": ".view-empty",
@@ -287,6 +311,114 @@ class TestExplicitEmptyState:
                 {"board_url": "https://example.com/vacancies", "metadata": metadata},
                 AsyncMock(),
             )
+
+
+class TestRequireUnexpiredPdf:
+    CONFIG = _validated_unexpired_pdf_config(
+        {
+            "pattern": (
+                r"Applications must be submitted by "
+                r"(\d{1,2}(?:st|nd|rd|th)? [A-Za-z]+ \d{4})"
+            ),
+            "date_format": "%d %B %Y",
+        }
+    )
+
+    @staticmethod
+    def _fake_reader(stream):
+        from types import SimpleNamespace
+
+        text = stream.read().removeprefix(b"%PDF ").decode()
+        return SimpleNamespace(pages=[SimpleNamespace(extract_text=lambda: text)])
+
+    async def test_filters_expired_pdf_and_keeps_future_deadline(self, monkeypatch):
+        active = "https://example.com/jobs/active.pdf"
+        expired = "https://example.com/jobs/expired.pdf"
+        monkeypatch.setattr("pypdf.PdfReader", self._fake_reader)
+
+        def handler(request):
+            deadline = "31st December 2999" if str(request.url) == active else "1 January 2000"
+            return httpx.Response(
+                200,
+                content=f"%PDF Applications must be submitted by {deadline}".encode(),
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await _filter_unexpired_pdf_urls({active, expired}, client, self.CONFIG)
+
+        assert result == {active}
+
+    async def test_omits_removed_pdf(self):
+        url = "https://example.com/jobs/removed.pdf"
+        transport = httpx.MockTransport(lambda request: httpx.Response(410, request=request))
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await _filter_unexpired_pdf_urls({url}, client, self.CONFIG)
+
+        assert result == set()
+
+    async def test_fails_closed_when_deadline_is_missing(self, monkeypatch):
+        url = "https://example.com/jobs/undated.pdf"
+        monkeypatch.setattr("pypdf.PdfReader", self._fake_reader)
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                content=b"%PDF No application date",
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="deadline was not found"):
+                await _filter_unexpired_pdf_urls({url}, client, self.CONFIG)
+
+    async def test_dom_discover_applies_pdf_deadline_filter(self, monkeypatch):
+        board_url = "https://example.com/careers"
+        active = "https://example.com/jobs/active.pdf"
+        expired = "https://example.com/jobs/expired.pdf"
+        listing = _html_with_links(active, expired)
+        monkeypatch.setattr("pypdf.PdfReader", self._fake_reader)
+
+        def handler(request):
+            deadline = "31 December 2999" if str(request.url) == active else "1 January 2000"
+            return httpx.Response(
+                200,
+                content=f"%PDF Applications must be submitted by {deadline}".encode(),
+                request=request,
+            )
+
+        with patch(_FETCH_PATCH, new=_make_fetch({board_url: listing})):
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+                result = await dom_discover(
+                    {
+                        "board_url": board_url,
+                        "metadata": {
+                            "link_selector": "a[href$='.pdf']",
+                            "require_unexpired_pdf": {
+                                "pattern": (
+                                    r"Applications must be submitted by "
+                                    r"(\d{1,2} [A-Za-z]+ \d{4})"
+                                ),
+                                "date_format": "%d %B %Y",
+                            },
+                        },
+                    },
+                    client,
+                )
+
+        assert result == {active}
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            True,
+            {},
+            {"pattern": "deadline", "date_format": "%Y-%m-%d"},
+            {"pattern": "(deadline)", "date_format": "%Y", "extra": True},
+        ],
+    )
+    def test_rejects_invalid_config(self, value):
+        with pytest.raises(ValueError, match="require_unexpired_pdf"):
+            _validated_unexpired_pdf_config(value)
 
 
 class TestRichRowsStatic:
