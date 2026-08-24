@@ -294,6 +294,44 @@ async def test_discover_static():
 
 
 @pytest.mark.asyncio
+async def test_discover_can_preserve_one_compound_location_string():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "preserve_single_location": True,
+            "steps": [
+                {"tag": "h2", "field": "title"},
+                {"text": "Location:", "field": "location", "regex": r"Location:\s*(.+)"},
+            ],
+        },
+    }
+
+    jobs = await discover(
+        board,
+        _FakeClient(
+            "<h2>Project Manager</h2>"
+            "<p>Location: European HQ (Nyon, Switzerland) and across Europe</p>"
+        ),
+    )
+
+    assert jobs[0].locations == ["European HQ (Nyon, Switzerland) and across Europe"]
+
+
+@pytest.mark.asyncio
+async def test_discover_rejects_non_boolean_preserve_single_location():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "preserve_single_location": "yes",
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="preserve_single_location"):
+        await discover(board, _FakeClient("<h2>Engineer</h2>"))
+
+
+@pytest.mark.asyncio
 async def test_discover_can_include_hidden_tab_panels_and_filter_titles():
     html = """
     <div aria-hidden="true">
@@ -563,6 +601,7 @@ async def test_discover_empty_text_short_circuits_stale_inline_items():
     board = {
         "board_url": "https://example.com/jobs",
         "metadata": {
+            "empty_selector": ".empty-state:not(.hidden)",
             "empty_text": "No vacancies are currently available",
             "steps": [
                 {"tag": "h2", "field": "title"},
@@ -571,7 +610,7 @@ async def test_discover_empty_text_short_circuits_stale_inline_items():
         },
     }
     html = """
-    <h5>No vacancies are currently available.</h5>
+    <div class="empty-state"><h5>No vacancies are currently available.</h5></div>
     <h2>Retained legacy vacancy</h2>
     <p>This closed role remains in the page source.</p>
     """
@@ -586,8 +625,8 @@ async def test_discover_empty_text_ignores_hidden_inactive_marker():
     board = {
         "board_url": "https://example.com/jobs",
         "metadata": {
+            "empty_selector": ".empty-state:not(.inactive)",
             "empty_text": "No vacancies are currently available",
-            "include_hidden": True,
             "steps": [
                 {"tag": "h2", "field": "title"},
                 {"tag": "p", "field": "description", "stop_tag": "h2"},
@@ -595,7 +634,7 @@ async def test_discover_empty_text_ignores_hidden_inactive_marker():
         },
     }
     html = """
-    <div hidden><p>No vacancies are currently available.</p></div>
+    <div class="empty-state inactive"><p>No vacancies are currently available.</p></div>
     <h2>Open Engineer</h2>
     <p>Build the product.</p>
     """
@@ -603,6 +642,37 @@ async def test_discover_empty_text_ignores_hidden_inactive_marker():
     jobs = await discover(board, _FakeClient(html))
 
     assert [job.title for job in jobs] == ["Open Engineer"]
+
+
+@pytest.mark.asyncio
+async def test_discover_explicit_empty_fails_closed_when_marker_and_items_are_absent():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "empty_selector": ".empty-state:not(.hidden)",
+            "empty_text": "No vacancies are currently available",
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="did not match the configured explicit empty state"):
+        await discover(board, _FakeClient("<main></main>"))
+
+
+@pytest.mark.asyncio
+async def test_discover_explicit_empty_fails_closed_when_all_items_are_excluded():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "empty_selector": ".empty-state:not(.hidden)",
+            "empty_text": "No vacancies are currently available",
+            "exclude_titles": ["Retained legacy vacancy"],
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="did not match the configured explicit empty state"):
+        await discover(board, _FakeClient("<h2>Retained legacy vacancy</h2>"))
 
 
 @pytest.mark.asyncio
@@ -655,6 +725,38 @@ async def test_discover_rejects_invalid_empty_text(value):
     }
 
     with pytest.raises(ValueError, match="empty_text"):
+        await discover(board, _FakeClient("<h2>Engineer</h2>"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", ["", "[", 123, "x" * 257, "bad\x00selector"])
+async def test_discover_rejects_invalid_empty_selector(value):
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "empty_selector": value,
+            "empty_text": "No vacancies are currently available",
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="empty_selector"):
+        await discover(board, _FakeClient("<h2>Engineer</h2>"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        {"empty_text": "No vacancies"},
+        {"empty_selector": ".empty-state"},
+    ],
+)
+async def test_discover_requires_complete_explicit_empty_contract(metadata):
+    metadata["steps"] = [{"tag": "h2", "field": "title"}]
+    board = {"board_url": "https://example.com/jobs", "metadata": metadata}
+
+    with pytest.raises(ValueError, match="requires empty_selector and empty_text"):
         await discover(board, _FakeClient("<h2>Engineer</h2>"))
 
 

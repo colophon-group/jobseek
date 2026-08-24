@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import structlog
+from selectolax.lexbor import LexborHTMLParser, SelectolaxError
 
 from src.core.monitors import DiscoveredJob, register
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
@@ -42,6 +43,7 @@ _MAX_EXCLUDE_TITLE_REGEX_LENGTH = 2_048
 _MAX_VALID_THROUGH_REGEX_LENGTH = 2_048
 _MAX_VALID_THROUGH_FORMAT_LENGTH = 128
 _MAX_EMPTY_TEXT_LENGTH = 512
+_MAX_EMPTY_SELECTOR_LENGTH = 256
 _MAX_ITEM_BOUNDARY_TAG_LENGTH = 32
 _HTML_TAG_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 _ORDINAL_DAY_SUFFIX_RE = re.compile(r"(?<=\d)(?:st|nd|rd|th)\b", re.IGNORECASE)
@@ -75,6 +77,38 @@ def _validated_empty_text(value: object) -> str | None:
     return " ".join(value.split())
 
 
+def _validated_empty_selector(value: object) -> str | None:
+    """Validate the CSS selector that scopes the visible empty-state marker."""
+    if value is None:
+        return None
+    if (
+        not isinstance(value, str)
+        or not value.strip()
+        or len(value) > _MAX_EMPTY_SELECTOR_LENGTH
+        or "\x00" in value
+    ):
+        raise ValueError(
+            f"inline empty_selector must be a CSS selector up to {_MAX_EMPTY_SELECTOR_LENGTH} "
+            "characters"
+        )
+    selector = value.strip()
+    try:
+        LexborHTMLParser("<div></div>").css(selector)
+    except SelectolaxError as exc:
+        raise ValueError(f"inline empty_selector is invalid: {selector!r}") from exc
+    return selector
+
+
+def _matches_explicit_empty(html: str, selector: str, marker: str) -> bool:
+    """Return whether *marker* occurs inside an explicitly selected visible state."""
+    tree = LexborHTMLParser(html)
+    for node in tree.css(selector):
+        text = " ".join(node.text(separator=" ", strip=True).split())
+        if marker.casefold() in text.casefold():
+            return True
+    return False
+
+
 def _validated_item_boundary_tag(value: object) -> str | None:
     """Validate the optional HTML tag that starts each inline posting."""
     if value is None:
@@ -87,12 +121,6 @@ def _validated_item_boundary_tag(value: object) -> str | None:
     ):
         raise ValueError("inline item_boundary_tag must be a valid HTML tag name")
     return value.casefold()
-
-
-def _page_contains_text(elements: list[dict], marker: str) -> bool:
-    """Return whether visible flattened page text contains *marker*."""
-    normalized_page = " ".join(" ".join(element["text"].split()) for element in elements)
-    return marker.casefold() in normalized_page.casefold()
 
 
 def _walk_bounded_item(
@@ -322,8 +350,10 @@ async def discover(
         render     — if true, use Playwright (default: false)
         fetch_urls — ordered alternate read URLs; canonical URLs use board_url
         include_hidden — include HTML hidden by tab/accordion state (default: false)
-        empty_text — authoritative visible text that returns a healthy empty result
+        empty_selector — CSS selector that scopes a visibly active empty-state element
+        empty_text — authoritative text required inside empty_selector
         item_boundary_tag — optional tag that starts and bounds each posting
+        preserve_single_location — keep an extracted location string intact (default: false)
         defaults   — default field values applied to all jobs
         defaults_by_title — per-title defaults applied to missing fields
         exclude_titles — exact titles to skip after extraction
@@ -346,7 +376,13 @@ async def discover(
     exclude_titles = set(metadata.get("exclude_titles") or [])
     exclude_title_regex = _compile_exclude_title_regex(metadata.get("exclude_title_regex"))
     empty_text = _validated_empty_text(metadata.get("empty_text"))
+    empty_selector = _validated_empty_selector(metadata.get("empty_selector"))
+    if (empty_text is None) != (empty_selector is None):
+        raise ValueError("inline explicit empty state requires empty_selector and empty_text")
     item_boundary_tag = _validated_item_boundary_tag(metadata.get("item_boundary_tag"))
+    preserve_single_location = metadata.get("preserve_single_location", False)
+    if not isinstance(preserve_single_location, bool):
+        raise ValueError("inline preserve_single_location must be a boolean")
     valid_through_pattern, valid_through_format, exclude_expired = _validated_valid_through_config(
         metadata
     )
@@ -355,14 +391,17 @@ async def discover(
     include_hidden = bool(metadata.get("include_hidden"))
     elements = flatten(html, include_hidden=include_hidden)
 
+    if empty_text is not None and _matches_explicit_empty(html, empty_selector, empty_text):
+        log.info("inline.explicit_empty", url=board_url)
+        return []
     if not elements:
+        if empty_text is not None:
+            raise ValueError(
+                "inline monitor found no accepted jobs and did not match the configured "
+                "explicit empty state"
+            )
         log.info("inline.empty_page", url=board_url)
         return []
-    if empty_text is not None:
-        visible_elements = flatten(html) if include_hidden else elements
-        if _page_contains_text(visible_elements, empty_text):
-            log.info("inline.explicit_empty", url=board_url)
-            return []
 
     # Extract jobs by running steps repeatedly
     jobs: list[DiscoveredJob] = []
@@ -423,6 +462,8 @@ async def discover(
         if location:
             if isinstance(location, list):
                 locations = location
+            elif preserve_single_location:
+                locations = [location.strip()]
             else:
                 locations = [loc.strip() for loc in location.split(",") if loc.strip()]
 
@@ -438,6 +479,12 @@ async def discover(
             extras={"valid_through": valid_through.isoformat()} if valid_through else None,
         )
         jobs.append(job)
+
+    if empty_text is not None and not jobs:
+        raise ValueError(
+            "inline monitor found no accepted jobs and did not match the configured explicit "
+            "empty state"
+        )
 
     truncated = processed_count >= _MAX_JOBS and cursor < len(elements)
     log.info("inline.discovered", url=board_url, jobs=len(jobs), expired=expired_count)
