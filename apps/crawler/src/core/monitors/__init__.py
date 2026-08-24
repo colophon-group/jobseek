@@ -379,6 +379,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Breezy \u2014 {portal_url}, {jobs} jobs"
         return f"Breezy \u2014 {portal_url}"
+    if name == "beehire":
+        slug = metadata.get("slug", "?")
+        jobs = metadata.get("jobs")
+        if jobs is not None:
+            return f"Beehire public campaigns \u2014 slug: {slug}, {jobs} jobs"
+        return f"Beehire public campaigns \u2014 slug: {slug}"
     if name == "bamboohr":
         tenant = metadata.get("tenant", "?")
         jobs = metadata.get("jobs")
@@ -871,6 +877,7 @@ from src.core.monitors import (  # noqa: E402
     ashby,  # noqa: F401
     avature,  # noqa: F401
     bamboohr,  # noqa: F401
+    beehire,  # noqa: F401
     beisen,  # noqa: F401
     bite,  # noqa: F401
     brassring,  # noqa: F401

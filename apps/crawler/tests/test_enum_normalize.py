@@ -375,6 +375,15 @@ class TestNormalizeEmploymentTypeAtsCodes:
             ("živnosť", "contract"),
             # BITE
             ("mini_job", "part_time"),
+            # Beehire
+            ("contractType_permanent", "full_time"),
+            ("contractType_fixedTerm", "contract"),
+            ("contractType_freelance", "contract"),
+            ("contractType_internship", "internship"),
+            ("contractType_apprenticeship", "internship"),
+            ("contractType_replacement", "temporary"),
+            ("contractDuration_fullTime", "full_time"),
+            ("contractDuration_partTime", "part_time"),
         ],
     )
     def test_ats_code(self, raw, want):
@@ -587,6 +596,10 @@ class TestNormalizeJobLocationTypeAtsCodes:
             ("in_office", "onsite"),  # NEW central key
             ("on_site", "onsite"),
             ("onsite", "onsite"),
+            # ── Beehire remoteWork codes ─────────────────────────────
+            ("remoteWork_none", "onsite"),
+            ("remoteWork_full", "remote"),
+            ("remoteWork_partial", "hybrid"),
         ],
     )
     def test_ats_token(self, raw, want):

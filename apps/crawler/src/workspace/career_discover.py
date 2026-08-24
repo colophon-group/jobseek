@@ -161,6 +161,7 @@ _ATS_URL_RE = re.compile(
     r"|ats(?:\.[\w]+)?\.rippling\.com/[\w-]+"
     r"|careers\.hireology\.com/[\w-]+"
     r"|[\w-]+\.hirehive\.com"
+    r"|app\.beehire\.com/career/[a-z0-9][a-z0-9_-]{0,127}/?"
     r"|[\w-]+\.turbohire\.co/careerpage/[0-9a-f-]{36}"
     r"|careers\.curately\.ai/jobs/[a-z0-9]+(?:-[a-z0-9]+)*"
     r"|[\w-]*recruiting\.paylocity\.com/recruiting/jobs/[\w/-]+"
@@ -199,6 +200,7 @@ _BLIND_PROBE_TEMPLATES: dict[str, str] = {
     "rippling": "https://ats.rippling.com/{slug}/jobs",
     "hireology": "https://careers.hireology.com/{slug}",
     "hirehive": "https://{slug}.hirehive.com",
+    "beehire": "https://app.beehire.com/career/{slug}",
 }
 
 # Maximum career links to follow from homepage

@@ -61,6 +61,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "amazon",
         "ashby",
         "bamboohr",
+        "beehire",
         "beisen",
         "brassring",
         "cnstaff",
@@ -443,6 +444,10 @@ def detect_ats_from_url(url: str) -> str | None:
         return "icims"
     if host.endswith(".careers.hibob.com"):
         return "hibob"
+    if host == "app.beehire.com" and re.fullmatch(
+        r"/career/[a-z0-9][a-z0-9_-]{0,127}/?", parsed.path, re.IGNORECASE
+    ):
+        return "beehire"
     if host.endswith(".eightfold.ai"):
         return "eightfold"
     if re.search(r"/vacancy/find/results(?:/|$)", parsed.path, re.IGNORECASE):

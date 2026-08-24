@@ -105,6 +105,11 @@ def test_detect_ats_hibob_host():
     assert detect_ats_from_url("https://acme.careers.hibob.com/") == "hibob"
 
 
+def test_detect_ats_beehire_career_page():
+    assert detect_ats_from_url("https://app.beehire.com/career/gichd") == "beehire"
+    assert detect_ats_from_url("https://app.beehire.com/invite/6L-oDP2wk") is None
+
+
 def test_detect_ats_hirehive_host():
     assert detect_ats_from_url("https://acme.hirehive.com") == "hirehive"
 

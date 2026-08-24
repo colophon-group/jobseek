@@ -105,6 +105,19 @@ _EMPLOYMENT_TYPE_MAP: dict[str, str] = {
     "coop": "internship",
     "working student": "internship",
     "student intern": "internship",  # onlyfy
+    # Beehire public campaign codes
+    "contracttype_permanent": "full_time",
+    "contracttype_fixedterm": "contract",
+    "contracttype_freelance": "contract",
+    "contracttype_interim": "contract",
+    "contracttype_replacement": "temporary",
+    "contracttype_internship": "internship",
+    "contracttype_apprenticeship": "internship",
+    "contracttype_student": "internship",
+    "contractduration_fulltime": "full_time",
+    "contractduration_parttime": "part_time",
+    "contractduration_10h": "part_time",
+    "contractduration_20h": "part_time",
     "volunteer": "volunteer",
     "voluntary": "volunteer",
     "full time or part time": "full_or_part",
@@ -264,6 +277,10 @@ _JOB_LOCATION_TYPE_MAP: dict[str, str] = {
     "partially remote": "hybrid",
     "partial": "hybrid",  # Welcome to the Jungle remote policy
     "punctual": "hybrid",  # Welcome to the Jungle occasional remote policy
+    # Beehire public campaign codes
+    "remotework_none": "onsite",
+    "remotework_full": "remote",
+    "remotework_partial": "hybrid",
     # German
     "vor ort": "onsite",
     "büro": "onsite",
