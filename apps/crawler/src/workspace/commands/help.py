@@ -2552,6 +2552,7 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
       "url_template_fields": {"public_id": "customFields[0].value"},
       "slug_fields": ["title"],
       "item_filter": {
+        "include": {"provider.owner": ["Internal"]},
         "exclude": {"attributes.country": ["USA"]},
         "exclude_regex": {"provider.name": ["^External(?: Agency)?$"]},
         "dedupe_by": ["provider.tenant_id", "provider.apply_id"]
@@ -2588,11 +2589,14 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
     slug_fields      Optional item paths slugified and joined into the {slug}
                      URL-template placeholder.
     item_filter      Optional ``api_url`` request/replay source partition,
-                     applied after pagination. ``exclude`` maps item paths to
-                     exact string values; matching scalar or list values are
-                     omitted. ``exclude_regex`` maps item paths to bounded
-                     regular-expression lists and omits matching scalar or
-                     list values. ``dedupe_by`` is a list of stable identifier
+                     applied after pagination. ``include`` maps item paths to
+                     accepted exact string values; items with missing, null,
+                     non-string, or non-matching scalar/list values are omitted.
+                     ``exclude`` maps item paths to exact string values;
+                     matching scalar or list values are omitted.
+                     ``exclude_regex`` maps item paths to bounded regular-
+                     expression lists and omits matching scalar or list values.
+                     ``dedupe_by`` is a list of stable identifier
                      paths and retains the first item for each complete,
                      non-empty compound identity. Items missing any identity
                      part remain distinct. A short upstream response remains
