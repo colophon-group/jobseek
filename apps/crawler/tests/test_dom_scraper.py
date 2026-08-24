@@ -137,6 +137,40 @@ FIXTURE_HTML = """
 
 
 class TestDomScraper:
+    def test_lucca_detail_preset_extracts_title_and_description(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><body><article class="jobOffer-article">
+          <header>
+            <h1 data-testid="job-offer-title">Athlete Intern</h1>
+            <span data-testid="job-offer-location">Lausanne</span>
+          </header>
+          <div class="jobOffer-article-content">
+            <h2>Job description</h2>
+            <p>Help deliver international aquatics events.</p>
+            <h2>Profile required</h2>
+            <p>Experience coordinating sports programmes.</p>
+            <h2>Company description</h2>
+            <p>World Aquatics is the global governing body for aquatic sports.</p>
+            <p data-testid="job-offer-publication-date">On 7/22/2026</p>
+          </div>
+        </article></body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        assert config["scope"] == ".jobOffer-article"
+
+        result = parse_html(html, config)
+        assert result.title == "Athlete Intern"
+        # Location is authoritative rich-row data from the paired DOM monitor.
+        assert result.locations is None
+        assert result.description is not None
+        assert "Help deliver international aquatics events." in result.description
+        assert "Profile required" in result.description
+        assert "On 7/22/2026" not in result.description
+
     def test_city_of_zurich_preset_defaults_city_and_preserves_regional_roles(self):
         from src.core.scrapers.dom import can_handle, parse_html
 

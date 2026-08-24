@@ -73,6 +73,19 @@ def test_detect_dualoo_portal_as_dom():
     )
 
 
+def test_detect_lucca_listing_as_dom():
+    assert (
+        detect_ats_from_url("https://jobs.world.luccasoftware.com/world-aquatics") == "dom"
+    )
+    assert (
+        detect_ats_from_url(
+            "https://jobs.world.luccasoftware.com/world-aquatics/"
+            "athlete-intern-050521f8-610b-4d01-b201-6007b42b6a93"
+        )
+        is None
+    )
+
+
 def test_detect_ats_earcu_listing_path():
     assert detect_ats_from_url("https://careers.example.com/jobs/vacancy/find/results/") == "earcu"
 

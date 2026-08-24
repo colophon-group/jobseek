@@ -50,6 +50,25 @@ log = structlog.get_logger()
 
 _RENDER_CHALLENGE_RETRIES = 1
 
+_LUCCA_SCRAPER_CONFIG = {
+    "scope": ".jobOffer-article",
+    "steps": [
+        {
+            "tag": "h1",
+            "attr": "data-testid=job-offer-title",
+            "field": "title",
+        },
+        {
+            "tag": "h2",
+            "text": "Job description",
+            "offset": 1,
+            "field": "description",
+            "html": True,
+            "stop_attr": "data-testid=job-offer-publication-date",
+        },
+    ],
+}
+
 
 def _scope_html(html: str, config: dict) -> str:
     """Limit extraction to one configured container before flattening.
@@ -708,6 +727,27 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
     return steps
 
 
+def _lucca_config(htmls: list[str]) -> dict | None:
+    """Return the stable DOM detail preset for Lucca/Poplee postings."""
+
+    matches = 0
+    for html in htmls:
+        tree = LexborHTMLParser(html)
+        if (
+            tree.css_first("article.jobOffer-article") is not None
+            and tree.css_first('[data-testid="job-offer-title"]') is not None
+            and tree.css_first('[data-testid="job-offer-location"]') is not None
+            and tree.css_first(".jobOffer-article-content") is not None
+        ):
+            matches += 1
+    if not matches or matches < len(htmls) / 2:
+        return None
+    return {
+        "scope": _LUCCA_SCRAPER_CONFIG["scope"],
+        "steps": [dict(step) for step in _LUCCA_SCRAPER_CONFIG["steps"]],
+    }
+
+
 def can_handle(htmls: list[str]) -> dict | None:
     """Generate heuristic extraction steps from multiple page HTMLs.
 
@@ -715,6 +755,10 @@ def can_handle(htmls: list[str]) -> dict | None:
     Uses the first page's structure to generate steps, then validates
     that the title step (h1) matches on other pages too.
     """
+    lucca = _lucca_config(htmls)
+    if lucca is not None:
+        return lucca
+
     stadt_zuerich = _stadt_zuerich_config(htmls)
     if stadt_zuerich is not None:
         return stadt_zuerich
