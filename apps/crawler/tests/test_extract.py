@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import warnings
 
+import pytest
+
 from src.shared.extract import (
     _join_html,
     _norm,
@@ -408,6 +410,33 @@ class TestWalkSteps:
         steps = [{"tag": "p", "field": "val", "regex": r"Missing:\s*(.+)"}]
         result, _ = walk_steps(els, steps)
         assert result["val"] == "Hello World"
+
+    def test_date_input_format_normalizes_to_iso_date(self):
+        els = self._els(("div", "14-08-2026"))
+        steps = [
+            {
+                "tag": "div",
+                "field": "date_posted",
+                "date_input_format": "%d-%m-%Y",
+            }
+        ]
+
+        result, _ = walk_steps(els, steps)
+
+        assert result["date_posted"] == "2026-08-14"
+
+    def test_date_input_format_rejects_drifted_value(self):
+        els = self._els(("div", "August 14, 2026"))
+        steps = [
+            {
+                "tag": "div",
+                "field": "date_posted",
+                "date_input_format": "%d-%m-%Y",
+            }
+        ]
+
+        with pytest.raises(ValueError, match="does not match date_input_format"):
+            walk_steps(els, steps)
 
     def test_split_produces_list(self):
         els = self._els(("p", "Python,Java,Go"))

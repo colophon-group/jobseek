@@ -379,6 +379,75 @@ async def test_discover_excludes_non_job_card_and_continues():
 
 
 @pytest.mark.asyncio
+async def test_discover_excludes_non_job_cards_by_regex_and_continues():
+    html = """
+    <html><body><div id="accordion">
+      <div class="title-job">Call for tender - Driver distraction study</div>
+      <div class="content"><p>Submit a research proposal.</p></div>
+      <div class="title-job">Policy Officer</div>
+      <div class="content"><p>Develop and coordinate mobility policy.</p></div>
+      <div class="title-job">Request for proposals - Event support</div>
+      <div class="content"><p>Provide event services.</p></div>
+      <div class="title-job">Communications Intern</div>
+      <div class="content"><p>Support publications and events.</p></div>
+    </div></body></html>
+    """
+    board = {
+        "board_url": "https://example.com/opportunities",
+        "metadata": {
+            "fetch_contains": 'class="title-job"',
+            "steps": [
+                {"tag": "div", "attr": "class=title-job", "field": "title"},
+                {
+                    "tag": "p",
+                    "field": "description",
+                    "html": True,
+                    "stop_attr": "class=title-job",
+                },
+            ],
+            "exclude_title_regex": (r"(?i)\b(?:call\s+for\s+tender|request\s+for\s+proposals?)\b"),
+            "defaults": {"locations": ["Brussels, Belgium"]},
+        },
+    }
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert [job.title for job in jobs] == ["Policy Officer", "Communications Intern"]
+    assert jobs[0].description == "<p>Develop and coordinate mobility policy.</p>"
+    assert jobs[1].description == "<p>Support publications and events.</p>"
+    assert all(job.locations == ["Brussels, Belgium"] for job in jobs)
+
+
+@pytest.mark.asyncio
+async def test_discover_fetch_contains_fails_closed_when_item_marker_drifts():
+    board = {
+        "board_url": "https://example.com/opportunities",
+        "metadata": {
+            "fetch_contains": 'class="title-job"',
+            "steps": [{"tag": "div", "attr": "class=title-job", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="omitted required text"):
+        await discover(board, _FakeClient('<div id="accordion"></div>'))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", ["", "(", 123, "x" * 2_049])
+async def test_discover_rejects_invalid_exclude_title_regex(value):
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "steps": [{"tag": "h3", "field": "title"}],
+            "exclude_title_regex": value,
+        },
+    }
+
+    with pytest.raises(ValueError, match="exclude_title_regex"):
+        await discover(board, _FakeClient("<h3>Engineer</h3>"))
+
+
+@pytest.mark.asyncio
 async def test_discover_fetch_url_keeps_canonical_job_url_and_description_default():
     client = _FakeClient("<html><head><title>Evergreen Driver</title></head></html>")
     board = {

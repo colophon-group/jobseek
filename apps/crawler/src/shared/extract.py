@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 import warnings
+from datetime import datetime
 from html import escape
 from html.parser import HTMLParser
 
@@ -343,6 +344,22 @@ def _join_html(collected: list[dict]) -> str:
     return "".join(parts)
 
 
+def _normalize_input_date(value: str, date_input_format: object) -> str:
+    """Parse an explicitly configured source date format to ISO 8601."""
+    if (
+        not isinstance(date_input_format, str)
+        or not date_input_format
+        or len(date_input_format) > 64
+    ):
+        raise ValueError("step date_input_format must be a non-empty bounded string")
+    try:
+        return datetime.strptime(value, date_input_format).date().isoformat()
+    except ValueError as exc:
+        raise ValueError(
+            f"step value {value!r} does not match date_input_format {date_input_format!r}"
+        ) from exc
+
+
 def walk_steps(
     elements: list[dict],
     steps: list[dict],
@@ -377,6 +394,7 @@ def walk_steps(
         to_end     — collect through the final flattened element
         optional   — if true, suppress warning when step not found
         regex      — regex with capture group; applied to extracted text
+        date_input_format — explicit strptime format; emits an ISO date
         split      — split extracted text into a list on this delimiter
         html       — if true, preserve tag structure in range output as HTML
         from       — override seek start position (e.g. 0 to search from beginning)
@@ -400,6 +418,7 @@ def walk_steps(
         attr = step.get("attr")
         regex = step.get("regex")
         split = step.get("split")
+        date_input_format = step.get("date_input_format")
         seek_from = step.get("from")
         offset = step.get("offset", 0)
         html = step.get("html", False)
@@ -488,6 +507,9 @@ def walk_steps(
                 if m:
                     value = m.group(1).strip()
 
+            if date_input_format is not None:
+                value = _normalize_input_date(value, date_input_format)
+
             # Post-process: split
             if split:
                 result[field] = [p for p in value.split(split) if p.strip()]
@@ -503,6 +525,9 @@ def walk_steps(
                 m = re.search(regex, value, re.DOTALL)
                 if m:
                     value = m.group(1).strip()
+
+            if date_input_format is not None:
+                value = _normalize_input_date(value, date_input_format)
 
             # Post-process: split
             if split:

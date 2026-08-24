@@ -19,6 +19,7 @@ Requires playwright when ``render`` is true:
 from __future__ import annotations
 
 import hashlib
+import re
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
@@ -36,6 +37,19 @@ if TYPE_CHECKING:
 log = structlog.get_logger()
 
 _MAX_JOBS = 500  # safety cap
+_MAX_EXCLUDE_TITLE_REGEX_LENGTH = 2_048
+
+
+def _compile_exclude_title_regex(value: object) -> re.Pattern[str] | None:
+    """Validate and compile the optional title-exclusion regex."""
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value or len(value) > _MAX_EXCLUDE_TITLE_REGEX_LENGTH:
+        raise ValueError("inline exclude_title_regex must be a non-empty bounded string")
+    try:
+        return re.compile(value)
+    except re.error as exc:
+        raise ValueError(f"inline exclude_title_regex is invalid: {exc}") from exc
 
 
 def _generate_url(board_url: str, title: str, seen: dict[str, int]) -> str:
@@ -163,6 +177,7 @@ async def discover(
         defaults   — default field values applied to all jobs
         defaults_by_title — per-title defaults applied to missing fields
         exclude_titles — exact titles to skip after extraction
+        exclude_title_regex — regex matching titles to skip after extraction
         + browser keys (wait, timeout, actions, etc.)
     """
     board_url = board["board_url"]
@@ -176,6 +191,7 @@ async def discover(
     defaults = metadata.get("defaults") or {}
     defaults_by_title = metadata.get("defaults_by_title") or {}
     exclude_titles = set(metadata.get("exclude_titles") or [])
+    exclude_title_regex = _compile_exclude_title_regex(metadata.get("exclude_title_regex"))
 
     html = await _fetch_html(board_url, metadata, client, pw)
     elements = flatten(html, include_hidden=bool(metadata.get("include_hidden")))
@@ -199,7 +215,9 @@ async def discover(
 
         cursor = new_cursor
 
-        if title in exclude_titles:
+        if title in exclude_titles or (
+            exclude_title_regex is not None and exclude_title_regex.search(title)
+        ):
             continue
 
         url = _generate_url(board_url, title, seen_jids)

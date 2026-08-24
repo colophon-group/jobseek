@@ -1277,6 +1277,12 @@ inline — Single-Page Extraction (rich)
                  Exact extracted title -> defaults mapping for pages that omit
                  per-role fields. Supports the same fields as defaults; title
                  defaults override global defaults, but extracted values win.
+    exclude_titles
+                 Exact extracted titles to omit after parsing.
+    exclude_title_regex
+                 Bounded regex matching extracted titles to omit. Use this for
+                 mixed opportunity pages that publish non-employment entries
+                 such as calls for tender alongside jobs.
     + browser keys (wait, wait_fallback, timeout, user_agent, etc. — see
       `ws help scraper dom` for the full list; wait_fallback defaults to
       "domcontentloaded" and retries once on Page.goto timeout, set to null
@@ -3060,6 +3066,8 @@ Extraction Steps — DOM scraper step format
 
   Post-processing:
     regex       Regex with capture group — extracts group(1)
+    date_input_format
+                Explicit strptime format for a source date; emits YYYY-MM-DD
     split       Split result into list on this delimiter
 
   Matching:
@@ -3083,6 +3091,7 @@ Extraction Steps — DOM scraper step format
     {"tag": "li", "field": "skills", "stop_tag": "h2", "split": ","}
     {"tag": "p", "field": "description", "stop_tag": ["h2", "h3"], "html": true}
     {"tag": "p", "match_regex": "^\\d+\\.", "field": "title", "regex": "^\\d+\\.\\s*(.+)"}
+    {"tag": "time", "field": "date_posted", "date_input_format": "%d-%m-%Y"}
     {"tag": "span", "attr": "class=salary", "field": "salary", "regex": "\\\\$(\\\\d[\\\\d,]+)"}"""
 
 ACTIONS = """\
