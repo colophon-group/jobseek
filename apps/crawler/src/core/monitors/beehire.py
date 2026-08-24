@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -18,6 +19,9 @@ import structlog
 from src.core.monitors import BoardGoneError, DiscoveredJob, register
 from src.core.monitors.raw import save_json_response
 from src.shared.truncation import truncated_rich_result
+
+if TYPE_CHECKING:
+    from src.core.monitor import MonitorResult
 
 log = structlog.get_logger()
 
@@ -102,10 +106,12 @@ def _job_url(raw: dict) -> str | None:
 
 
 def _localizations(raw: dict, locations: list[str] | None) -> dict | None:
-    titles = raw.get("title") if isinstance(raw.get("title"), dict) else {}
-    descriptions = raw.get("fullDescription")
-    if not isinstance(descriptions, dict):
-        descriptions = raw.get("description") if isinstance(raw.get("description"), dict) else {}
+    raw_titles = raw.get("title")
+    titles = raw_titles if isinstance(raw_titles, dict) else {}
+    raw_descriptions = raw.get("fullDescription")
+    if not isinstance(raw_descriptions, dict):
+        raw_descriptions = raw.get("description")
+    descriptions = raw_descriptions if isinstance(raw_descriptions, dict) else {}
 
     result: dict[str, dict] = {}
     for key in titles.keys() | descriptions.keys():
@@ -135,9 +141,12 @@ def _parse_job(raw: dict) -> DiscoveredJob | None:
         description = _localized_value(raw.get("description"), language_key)
     locations = _location(raw)
 
-    details = raw.get("details") if isinstance(raw.get("details"), dict) else {}
-    contract = details.get("contract") if isinstance(details.get("contract"), dict) else {}
-    categories = raw.get("jobCategories") if isinstance(raw.get("jobCategories"), list) else []
+    raw_details = raw.get("details")
+    details = raw_details if isinstance(raw_details, dict) else {}
+    raw_contract = details.get("contract")
+    contract = raw_contract if isinstance(raw_contract, dict) else {}
+    raw_categories = raw.get("jobCategories")
+    categories = raw_categories if isinstance(raw_categories, list) else []
 
     metadata = {
         key: value
@@ -195,7 +204,7 @@ async def discover(
     board: dict,
     client: httpx.AsyncClient,
     pw=None,
-) -> list[DiscoveredJob]:
+) -> list[DiscoveredJob] | MonitorResult:
     """Fetch all currently public campaigns from a Beehire career page."""
     _ = pw
     metadata = board.get("metadata") or {}
@@ -207,11 +216,45 @@ async def discover(
     slug = slug.lower()
 
     payload = await _fetch_payload(slug, client)
-    jobs = [
-        job for raw in payload["campaigns"] if isinstance(raw, dict) and (job := _parse_job(raw))
-    ]
-    if len(jobs) > MAX_JOBS:
-        log.warning("beehire.truncated", slug=slug, total=len(jobs), cap=MAX_JOBS)
+    raw_campaigns = payload["campaigns"]
+    jobs: list[DiscoveredJob] = []
+    seen_urls: set[str] = set()
+    invalid_records = 0
+    duplicate_records = 0
+    for raw in raw_campaigns:
+        if not isinstance(raw, dict):
+            invalid_records += 1
+            continue
+        job = _parse_job(raw)
+        if job is None:
+            invalid_records += 1
+            continue
+        if job.url in seen_urls:
+            duplicate_records += 1
+            continue
+        seen_urls.add(job.url)
+        jobs.append(job)
+
+    if raw_campaigns and not jobs:
+        raise ValueError(f"Beehire public campaign response for {slug!r} has no valid jobs")
+
+    truncated = bool(invalid_records or duplicate_records or len(raw_campaigns) > MAX_JOBS)
+    if invalid_records or duplicate_records:
+        log.warning(
+            "beehire.invalid_records",
+            slug=slug,
+            invalid=invalid_records,
+            duplicates=duplicate_records,
+            rows=len(raw_campaigns),
+        )
+    if truncated:
+        log.warning(
+            "beehire.truncated",
+            slug=slug,
+            total=len(raw_campaigns),
+            returned=len(jobs),
+            cap=MAX_JOBS,
+        )
         return truncated_rich_result(jobs)
 
     log.info("beehire.discovered", slug=slug, jobs=len(jobs))
