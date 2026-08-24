@@ -200,6 +200,34 @@ class TestExplicitEmptyState:
                 AsyncMock(),
             )
 
+    async def test_forbidden_link_selector_rejects_discovered_link(self):
+        html = """
+        <section class="vacancies">
+          <h2>No positions available</h2>
+          <a href="https://example.com/jobs/role-1">Unexpected role</a>
+        </section>
+        """
+        with (
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)),
+            pytest.raises(ValueError, match="forbidden links present"),
+        ):
+            await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "link_selector": ".vacancies a[href]",
+                        "empty_states": [
+                            {
+                                "selector": ".vacancies h2",
+                                "exact_text": "No positions available",
+                                "forbidden_link_selector": ".vacancies a[href]",
+                            }
+                        ],
+                    },
+                },
+                AsyncMock(),
+            )
+
     async def test_accepts_zero_links_with_configured_empty_marker(self):
         html = """
         <div class="vacancy-list">
@@ -477,7 +505,7 @@ class TestExplicitEmptyState:
         """
         with (
             patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)),
-            pytest.raises(ValueError, match="did not match the configured explicit empty state"),
+            pytest.raises(ValueError, match="forbidden links present"),
         ):
             await dom_discover(
                 {

@@ -1280,33 +1280,60 @@ def _validate_explicit_empty_states(
     urls: set[str],
     board_url: str,
 ) -> None:
-    """Fail closed when a zero-link page lacks every configured empty marker."""
+    """Validate explicit zero evidence and reject contradictory linked states."""
+    tree = LexborHTMLParser(html)
+
+    def marker_matches(
+        empty_selector: str,
+        empty_text: str | None,
+        exact_text: bool,
+    ) -> bool:
+        marker = tree.css_first(empty_selector)
+        if marker is None:
+            return False
+        marker_text = re.sub(r"\s+", " ", marker.text(separator=" ", strip=True)).strip()
+        expected_text = re.sub(r"\s+", " ", empty_text or "").strip()
+        if empty_text is None:
+            return True
+        return (
+            marker_text == expected_text
+            if exact_text
+            else expected_text.casefold() in marker_text.casefold()
+        )
+
+    # A selector-specific state may declare links that contradict the marker.
+    # Evaluate that invariant even when normal discovery found URLs; otherwise
+    # the historical empty marker plus a newly linked vacancy bypasses the
+    # empty-state check through the non-empty fast path.
+    for (
+        empty_selector,
+        empty_text,
+        exact_text,
+        _required_link_selector,
+        _required_link_url_pattern,
+        forbidden_link_selector,
+    ) in empty_states:
+        if (
+            forbidden_link_selector is not None
+            and marker_matches(empty_selector, empty_text, exact_text)
+            and tree.css_first(forbidden_link_selector)
+        ):
+            raise ValueError(
+                "DOM monitor matched an explicit empty state with forbidden links present"
+            )
+
     if _without_board_self_urls(urls, board_url):
         return
-    tree = LexborHTMLParser(html)
+
     for (
         empty_selector,
         empty_text,
         exact_text,
         required_link_selector,
         required_link_url_pattern,
-        forbidden_link_selector,
+        _forbidden_link_selector,
     ) in empty_states:
-        marker = tree.css_first(empty_selector)
-        if marker is None:
-            continue
-        marker_text = re.sub(r"\s+", " ", marker.text(separator=" ", strip=True)).strip()
-        expected_text = re.sub(r"\s+", " ", empty_text or "").strip()
-        if empty_text is None:
-            return
-        text_matches = (
-            marker_text == expected_text
-            if exact_text
-            else expected_text.casefold() in marker_text.casefold()
-        )
-        if not text_matches:
-            continue
-        if forbidden_link_selector is not None and tree.css_first(forbidden_link_selector):
+        if not marker_matches(empty_selector, empty_text, exact_text):
             continue
         if required_link_selector is None:
             return

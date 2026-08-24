@@ -193,6 +193,12 @@ async def test_current_migrated_careers_layout_is_an_explicit_pdf_zero() -> None
             '<h2 class="fluid-text-lg3">No positions available at the moment</h2>'
             '<a href="https://careers.unknown-ats.example/isu/role-1">Role</a>'
         ),
+        # Even an otherwise valid staff PDF contradicts the historical zero.
+        (
+            '<h2 class="fluid-text-lg3">No positions available at the moment</h2>'
+            f'<a href="{PDF_ROOT}/Senior-Event-Manager-2026-1773417513-1364.pdf">'
+            "Senior Event Manager</a>"
+        ),
     ],
 )
 async def test_partial_or_unknown_careers_layout_fails_closed(listing_html: str) -> None:
@@ -201,7 +207,7 @@ async def test_partial_or_unknown_careers_layout_fails_closed(listing_html: str)
 
     with (
         patch(EMPTY_FETCH_PATCH, AsyncMock(return_value=html)),
-        pytest.raises(ValueError, match="did not match the configured explicit empty state"),
+        pytest.raises(ValueError, match="configured explicit empty state|forbidden links present"),
     ):
         await dom_discover(board, AsyncMock())
 
