@@ -635,6 +635,31 @@ class TestItemFilter:
         ]
         assert total == 3
 
+    def test_include_fails_closed_for_missing_null_and_non_matching_values(self):
+        item_filter = _validated_item_filter(
+            {"item_filter": {"include": {"employer": ["Swiss Olympic"]}}}
+        )
+        items = [
+            {"url": "https://example.com/exact", "employer": "Swiss Olympic"},
+            {
+                "url": "https://example.com/list",
+                "employer": ["Partner", "Swiss Olympic"],
+            },
+            {"url": "https://example.com/other", "employer": "Swiss-Ski"},
+            {"url": "https://example.com/empty", "employer": ""},
+            {"url": "https://example.com/null", "employer": None},
+            {"url": "https://example.com/empty-list", "employer": []},
+            {"url": "https://example.com/missing"},
+        ]
+
+        scoped, total = _apply_item_filter(items, item_filter, advertised_total=7)
+
+        assert [item["url"] for item in scoped] == [
+            "https://example.com/exact",
+            "https://example.com/list",
+        ]
+        assert total == 2
+
     def test_incomplete_upstream_total_remains_truncated_after_filtering(self):
         item_filter = _validated_item_filter({"item_filter": {"exclude": {"market": ["local"]}}})
 
@@ -679,6 +704,14 @@ class TestItemFilter:
         [
             {},
             {"unexpected": True},
+            {"include": {}, "exclude": {"market": ["local"]}},
+            {"include": [], "exclude": {"market": ["local"]}},
+            {"include": "", "exclude": {"market": ["local"]}},
+            {"include": False, "exclude": {"market": ["local"]}},
+            {"include": None, "exclude": {"market": ["local"]}},
+            {"include": {"market": []}},
+            {"include": {"": ["global"]}},
+            {"include": {"attributes.25": ["global"]}},
             {"exclude": {"market": []}},
             {"exclude": {"": ["local"]}},
             {"exclude": {"attributes.25": ["USA"]}},
@@ -702,6 +735,7 @@ class TestItemFilter:
             {},
             preserve_paths=[
                 "attributes.country",
+                "provider.owner",
                 "provider.name",
                 "provider.tenant_id",
                 "provider.apply_id",
@@ -715,6 +749,7 @@ class TestItemFilter:
                 "url": "https://example.com/1",
                 "attributes": {"country": ["Germany"]},
                 "provider": {
+                    "owner": "Internal",
                     "name": "Internal",
                     "tenant_id": "tenant",
                     "apply_id": "stable-1",
@@ -726,6 +761,7 @@ class TestItemFilter:
             "url": "https://example.com/1",
             "attributes": {"country": ["Germany"]},
             "provider": {
+                "owner": "Internal",
                 "name": "Internal",
                 "tenant_id": "tenant",
                 "apply_id": "stable-1",
@@ -736,16 +772,43 @@ class TestItemFilter:
     async def test_http_discovery_applies_filter_after_complete_response(self):
         payload = {
             "jobs": [
-                {"url": "https://example.com/1", "market": "global", "stable": "one"},
+                {
+                    "url": "https://example.com/1",
+                    "market": "global",
+                    "owner": "Internal",
+                    "stable": "one",
+                },
                 {
                     "url": "https://example.com/duplicate",
                     "market": "global",
+                    "owner": "Internal",
                     "stable": "one",
                 },
-                {"url": "https://example.com/usa", "market": "local", "stable": "two"},
-                {"url": "https://example.com/2", "market": "global", "stable": "three"},
+                {
+                    "url": "https://example.com/usa",
+                    "market": "local",
+                    "owner": "Internal",
+                    "stable": "two",
+                },
+                {
+                    "url": "https://example.com/2",
+                    "market": "global",
+                    "owner": "Internal",
+                    "stable": "three",
+                },
+                {
+                    "url": "https://example.com/external",
+                    "market": "global",
+                    "owner": "External",
+                    "stable": "four",
+                },
+                {
+                    "url": "https://example.com/missing-owner",
+                    "market": "global",
+                    "stable": "five",
+                },
             ],
-            "total": 4,
+            "total": 6,
         }
         board = {
             "board_url": "https://example.com/careers",
@@ -756,6 +819,7 @@ class TestItemFilter:
                 "url_field": "url",
                 "total_path": "total",
                 "item_filter": {
+                    "include": {"owner": ["Internal"]},
                     "exclude": {"market": ["local"]},
                     "dedupe_by": ["stable"],
                 },

@@ -1062,17 +1062,45 @@ def _validated_item_filter(
     config: dict,
 ) -> tuple[
     dict[str, frozenset[str]],
+    dict[str, frozenset[str]],
     dict[str, tuple[re.Pattern[str], ...]],
     tuple[str, ...],
 ]:
     """Validate an optional post-pagination item scope and stable dedupe key."""
     value = config.get("item_filter")
     if value is None:
-        return {}, {}, ()
+        return {}, {}, {}, ()
     if not isinstance(value, dict) or not value:
         raise ValueError("api_sniffer item_filter must be a non-empty mapping")
-    if set(value) - {"exclude", "exclude_regex", "dedupe_by"}:
+    if set(value) - {"include", "exclude", "exclude_regex", "dedupe_by"}:
         raise ValueError("api_sniffer item_filter contains unsupported keys")
+
+    include = value.get("include") if "include" in value else None
+    if "include" in value and (
+        not isinstance(include, dict) or not include or len(include) > _MAX_ITEM_FILTER_FIELDS
+    ):
+        raise ValueError("api_sniffer item_filter.include must be a non-empty bounded mapping")
+    if include is None:
+        include = {}
+    normalized_include: dict[str, frozenset[str]] = {}
+    for path, included_values in include.items():
+        if not isinstance(path, str) or not path.strip():
+            raise ValueError("api_sniffer item_filter include paths must be non-empty strings")
+        if (
+            not isinstance(included_values, list)
+            or not included_values
+            or len(included_values) > _MAX_ITEM_FILTER_VALUES
+            or not all(isinstance(item, str) and item for item in included_values)
+        ):
+            raise ValueError(
+                "api_sniffer item_filter include values must be bounded non-empty string lists"
+            )
+        normalized_path = path.strip()
+        try:
+            extract_field({}, normalized_path)
+        except Exception as exc:
+            raise ValueError("api_sniffer item_filter include paths must be valid") from exc
+        normalized_include[normalized_path] = frozenset(included_values)
 
     exclude = value.get("exclude") or {}
     if not isinstance(exclude, dict) or len(exclude) > _MAX_ITEM_FILTER_FIELDS:
@@ -1150,14 +1178,15 @@ def _validated_item_filter(
             extract_field({}, dedupe_path)
         except Exception as exc:
             raise ValueError("api_sniffer item_filter.dedupe_by path must be valid") from exc
-    if not normalized and not normalized_regex and not dedupe_paths:
-        raise ValueError("api_sniffer item_filter must exclude or deduplicate items")
-    return normalized, normalized_regex, dedupe_paths
+    if not normalized_include and not normalized and not normalized_regex and not dedupe_paths:
+        raise ValueError("api_sniffer item_filter must include, exclude, or deduplicate items")
+    return normalized_include, normalized, normalized_regex, dedupe_paths
 
 
 def _apply_item_filter(
     items: list[dict],
     item_filter: tuple[
+        dict[str, frozenset[str]],
         dict[str, frozenset[str]],
         dict[str, tuple[re.Pattern[str], ...]],
         tuple[str, ...],
@@ -1165,13 +1194,25 @@ def _apply_item_filter(
     advertised_total: int | None,
 ) -> tuple[list[dict], int | None]:
     """Apply an intentional source partition without masking upstream truncation."""
-    exclude, exclude_regex, dedupe_by = item_filter
-    if not exclude and not exclude_regex and not dedupe_by:
+    include, exclude, exclude_regex, dedupe_by = item_filter
+    if not include and not exclude and not exclude_regex and not dedupe_by:
         return items, advertised_total
 
     original_count = len(items)
     scoped: list[dict] = []
     for item in items:
+        included = True
+        for path, accepted in include.items():
+            value = extract_field(item, path)
+            values = value if isinstance(value, list) else [value]
+            if not any(
+                isinstance(candidate, str) and candidate in accepted for candidate in values
+            ):
+                included = False
+                break
+        if not included:
+            continue
+
         for path, rejected in exclude.items():
             value = extract_field(item, path)
             values = value if isinstance(value, list) else [value]
@@ -1582,7 +1623,12 @@ async def _discover_http(
     url_template_fields = config.get("url_template_fields") or {}
     slug_fields = _validated_slug_fields(config)
     item_filter = _validated_item_filter(config)
-    item_filter_paths = [*item_filter[0], *item_filter[1], *item_filter[2]]
+    item_filter_paths = [
+        *item_filter[0],
+        *item_filter[1],
+        *item_filter[2],
+        *item_filter[3],
+    ]
     url_regex = config.get("url_regex")
     total_path = config.get("total_path")
     post_data = _configured_post_data(config)
@@ -2031,7 +2077,12 @@ async def _discover_replay(
     url_template_fields = config.get("url_template_fields") or {}
     slug_fields = _validated_slug_fields(config)
     item_filter = _validated_item_filter(config)
-    item_filter_paths = [*item_filter[0], *item_filter[1], *item_filter[2]]
+    item_filter_paths = [
+        *item_filter[0],
+        *item_filter[1],
+        *item_filter[2],
+        *item_filter[3],
+    ]
     post_data = _configured_post_data(config)
     request_headers = config.get("request_headers", {})
     fields_map: dict[str, str] = config.get("fields") or {}
