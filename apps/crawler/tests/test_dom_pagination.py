@@ -405,6 +405,69 @@ class TestExplicitEmptyState:
 
         assert result == set()
 
+    async def test_accepts_exact_empty_state_with_only_matching_required_links(self):
+        html = """
+        <section class="vacancies">
+          <h2>Jobs moved</h2>
+          <div><a href="https://ats.example/jobs/role-123">Role one</a></div>
+          <div><a href="https://ats.example/jobs/role-456">Role two</a></div>
+        </section>
+        """
+        with patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "link_selector": ".vacancies a[href$='.pdf']",
+                        "empty_states": [
+                            {
+                                "selector": ".vacancies h2",
+                                "exact_text": "Jobs moved",
+                                "required_link_selector": ".vacancies a[href]",
+                                "required_link_url_pattern": (
+                                    r"https://ats\.example/jobs/role-\d+"
+                                ),
+                            }
+                        ],
+                    },
+                },
+                AsyncMock(),
+            )
+
+        assert result == set()
+
+    async def test_required_links_validate_every_matching_anchor(self):
+        html = """
+        <section class="vacancies">
+          <h2>Jobs moved</h2>
+          <div><a href="https://ats.example/jobs/role-123">Known role</a></div>
+          <div><a href="https://unknown.example/jobs/role-456">Unknown role</a></div>
+        </section>
+        """
+        with (
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)),
+            pytest.raises(ValueError, match="did not match the configured explicit empty state"),
+        ):
+            await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "link_selector": ".vacancies a[href$='.pdf']",
+                        "empty_states": [
+                            {
+                                "selector": ".vacancies h2",
+                                "exact_text": "Jobs moved",
+                                "required_link_selector": ".vacancies a[href]",
+                                "required_link_url_pattern": (
+                                    r"https://ats\.example/jobs/role-\d+"
+                                ),
+                            }
+                        ],
+                    },
+                },
+                AsyncMock(),
+            )
+
     async def test_selector_specific_empty_text_rejects_styled_error(self):
         html = (
             '<div class="vacancy-list"><h2 class="empty">Error: No positions available</h2></div>'
@@ -554,6 +617,28 @@ class TestExplicitEmptyState:
             [{"selector": ".empty"}],
             [{"selector": ".empty", "exact_text": ""}],
             [{"selector": ".empty", "exact_text": "none"}] * 5,
+            [
+                {
+                    "selector": ".empty",
+                    "exact_text": "none",
+                    "required_link_selector": "a[href]",
+                }
+            ],
+            [
+                {
+                    "selector": ".empty",
+                    "exact_text": "none",
+                    "required_link_url_pattern": r"https://example\.com/jobs/",
+                }
+            ],
+            [
+                {
+                    "selector": ".empty",
+                    "exact_text": "none",
+                    "required_link_selector": "a[href]",
+                    "required_link_url_pattern": "(",
+                }
+            ],
         ],
     )
     async def test_rejects_invalid_selector_specific_empty_states(self, empty_states):
