@@ -2622,6 +2622,15 @@ api_sniffer — Direct API Replay or XHR/Fetch Capture
                      When configured, a missing job list fails unless all
                      markers match. Example:
                        {"status": 201, "label": "No offer available"}
+    require_pdf_pattern
+                     Require linked PDF text to match this bounded regex.
+                     Non-matching documents fail the cycle for operator
+                     classification. Must be paired with require_unexpired_pdf.
+    require_unexpired_pdf
+                     Bounded PDF deadline gate with ``pattern`` (capture group)
+                     and ``date_format``. Matching documents whose deadline
+                     passed are omitted; missing or malformed deadlines fail
+                     the cycle. Must be paired with require_pdf_pattern.
     pagination       Pagination config (auto-detected from multiple requests)
                      style is "offset" or "page" for ordinary pagination.
                      Use "cumulative_limit" when a load-more API accepts only
