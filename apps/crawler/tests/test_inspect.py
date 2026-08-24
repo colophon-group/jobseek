@@ -117,15 +117,11 @@ class TestSwissFootballAssociationSportjobsConfig:
 
         _, rows = read_csv(get_data_dir() / "boards.csv")
         row = next(
-            row
-            for row in rows
-            if row["board_slug"] == "swiss-football-association-sportjobs"
+            row for row in rows if row["board_slug"] == "swiss-football-association-sportjobs"
         )
         config = json.loads(row["monitor_config"])
 
-        assert row["board_url"] == (
-            "https://org.football.ch/ueber-uns/offene-stellen.aspx"
-        )
+        assert row["board_url"] == ("https://org.football.ch/ueber-uns/offene-stellen.aspx")
         assert row["monitor_type"] == "api_sniffer"
         assert row["scraper_type"] == "skip"
         assert config["api_url"] == (
