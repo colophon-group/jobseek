@@ -37,6 +37,7 @@ Config:
 from __future__ import annotations
 
 import asyncio
+import hmac
 import io
 import math
 import re
@@ -47,6 +48,13 @@ import httpx
 import structlog
 
 from src.core.scrapers import JobContent, register
+from src.shared.response_fingerprint import (
+    MAX_RESPONSE_FINGERPRINT_BYTES,
+    extract_response_fingerprint_url,
+    response_fingerprint_token,
+    response_fingerprint_validators,
+    same_origin_response,
+)
 
 log = structlog.get_logger()
 
@@ -54,6 +62,48 @@ _MAX_OCR_PAGES = 20
 _MAX_OCR_SCALE = 4
 _MAX_OCR_PIXELS = 30_000_000
 _OCR_LANGUAGES_RE = re.compile(r"[A-Za-z0-9_+-]{1,64}")
+
+
+async def _download_verified_fingerprinted_pdf(
+    url: str,
+    http: httpx.AsyncClient,
+) -> bytes | None:
+    """Download a synthetic PDF URL and bind its bytes to the monitor identity.
+
+    Regular PDF URLs return ``None`` and retain the legacy transport path. A
+    URL carrying the private fingerprint parameter is accepted only when its
+    GET response exposes the exact validator set used to derive that token.
+    """
+    extracted = extract_response_fingerprint_url(url)
+    if extracted is None:
+        return None
+    source_url, expected_token = extracted
+
+    response = await same_origin_response(http, "GET", url, stream=True)
+    try:
+        validators = response_fingerprint_validators(
+            response,
+            expected_content_type="application/pdf",
+            source_url=source_url,
+        )
+        actual_token = response_fingerprint_token(source_url, validators)
+        if not hmac.compare_digest(actual_token, expected_token):
+            raise ValueError("PDF response validators no longer match its discovered fingerprint")
+
+        content = bytearray()
+        async for chunk in response.aiter_bytes():
+            if len(content) + len(chunk) > MAX_RESPONSE_FINGERPRINT_BYTES:
+                raise ValueError(
+                    f"PDF fingerprinted response exceeds {MAX_RESPONSE_FINGERPRINT_BYTES} bytes"
+                )
+            content.extend(chunk)
+        if len(content) != validators.content_length:
+            raise ValueError("PDF fingerprinted response body does not match Content-Length")
+        if not content.lstrip().startswith(b"%PDF"):
+            raise ValueError("PDF fingerprinted response is not a PDF document")
+        return bytes(content)
+    finally:
+        await response.aclose()
 
 
 def _normalize_captured_text(
@@ -246,13 +296,16 @@ async def scrape(
     Downloads the PDF, extracts text with pypdf, and maps to JobContent.
     Title source is controlled by config (default: URL filename).
     """
-    response = await http.get(url, follow_redirects=True)
-    response.raise_for_status()
+    content = await _download_verified_fingerprinted_pdf(url, http)
+    if content is None:
+        response = await http.get(url, follow_redirects=True)
+        response.raise_for_status()
+        content = response.content
 
     if artifact_dir:
-        (artifact_dir / "source.pdf").write_bytes(response.content)
+        (artifact_dir / "source.pdf").write_bytes(content)
 
-    return await parse_bytes(response.content, url, config)
+    return await parse_bytes(content, url, config)
 
 
 async def parse_bytes(content: bytes, url: str, config: dict) -> JobContent:

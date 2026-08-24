@@ -31,6 +31,10 @@ from src.core.monitors.dom import (
     dom_discover,
 )
 from src.shared.http_retry import PaginationFetchError
+from src.shared.response_fingerprint import (
+    MAX_RESPONSE_FINGERPRINT_BYTES,
+    MAX_RESPONSE_FINGERPRINT_URL_CHARS,
+)
 from src.shared.tdm import TDMReservedError
 from src.workspace._compat import auto_scraper_type
 
@@ -604,6 +608,73 @@ class TestFingerprintResponse:
         assert all(request.method == "HEAD" for request in requests)
         assert next(iter(first)).startswith(f"{url}?_jobseek_fp=")
 
+    async def test_fragment_is_not_part_of_request_or_identity(self):
+        base = "https://assets.example.com/job.pdf"
+        requests: list[httpx.Request] = []
+
+        def handler(request):
+            requests.append(request)
+            return httpx.Response(200, headers=self.BASE_HEADERS, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            first = await _fingerprint_response_urls({f"{base}#one"}, client, self.CONTENT_TYPE)
+            second = await _fingerprint_response_urls({f"{base}#two"}, client, self.CONTENT_TYPE)
+
+        assert first == second
+        assert all(request.url.fragment == "" for request in requests)
+
+    async def test_preserves_existing_query_and_rejects_reserved_parameter(self):
+        url = "https://assets.example.com/job.pdf?download=1"
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, headers=self.BASE_HEADERS, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await _fingerprint_response_urls({url}, client, self.CONTENT_TYPE)
+            with pytest.raises(ValueError, match="reserved query parameter"):
+                await _fingerprint_response_urls(
+                    {f"{url}&_jobseek_fp=0123456789abcdef01234567"},
+                    client,
+                    self.CONTENT_TYPE,
+                )
+
+        assert next(iter(result)).startswith(f"{url}&_jobseek_fp=")
+
+    async def test_validates_redirect_origin_before_issuing_next_request(self):
+        requests: list[httpx.Request] = []
+
+        def handler(request):
+            requests.append(request)
+            return httpx.Response(
+                302,
+                headers={"location": "https://other.example/job.pdf"},
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="cross-origin redirect"):
+                await _fingerprint_response_urls(
+                    {"https://assets.example.com/job.pdf"}, client, self.CONTENT_TYPE
+                )
+
+        assert [request.url.host for request in requests] == ["assets.example.com"]
+
+    async def test_follows_bounded_same_origin_redirect(self):
+        requests: list[httpx.Request] = []
+
+        def handler(request):
+            requests.append(request)
+            if request.url.path == "/job.pdf":
+                return httpx.Response(302, headers={"location": "/current.pdf"}, request=request)
+            return httpx.Response(200, headers=self.BASE_HEADERS, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await _fingerprint_response_urls(
+                {"https://assets.example.com/job.pdf"}, client, self.CONTENT_TYPE
+            )
+
+        assert [request.url.path for request in requests] == ["/job.pdf", "/current.pdf"]
+        assert next(iter(result)).startswith("https://assets.example.com/job.pdf?_jobseek_fp=")
+
     async def test_changed_strong_validator_creates_one_new_identity(self):
         url = "https://assets.example.com/job.pdf"
         etag = '"0123456789abcdef"'
@@ -633,6 +704,7 @@ class TestFingerprintResponse:
             ("last-modified", "not a date", "invalid Last-Modified"),
             ("content-length", None, "invalid Content-Length"),
             ("content-length", "unknown", "invalid Content-Length"),
+            ("content-length", str(MAX_RESPONSE_FINGERPRINT_BYTES + 1), "invalid Content-Length"),
             ("content-type", "text/html", "unexpected Content-Type"),
         ],
     )
@@ -651,6 +723,22 @@ class TestFingerprintResponse:
             with pytest.raises(ValueError, match=error):
                 await _fingerprint_response_urls({url}, client, self.CONTENT_TYPE)
 
+    async def test_rejects_tdm_reservation_and_oversized_url(self):
+        url = "https://assets.example.com/job.pdf"
+        headers = {**self.BASE_HEADERS, "tdm-reservation": "1"}
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, headers=headers, request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(TDMReservedError):
+                await _fingerprint_response_urls({url}, client, self.CONTENT_TYPE)
+            with pytest.raises(ValueError, match="supported length"):
+                await _fingerprint_response_urls(
+                    {f"https://assets.example.com/{'x' * MAX_RESPONSE_FINGERPRINT_URL_CHARS}.pdf"},
+                    client,
+                    self.CONTENT_TYPE,
+                )
+
     async def test_request_failure_aborts_instead_of_returning_partial_inventory(self):
         urls = {
             "https://assets.example.com/active.pdf",
@@ -664,6 +752,31 @@ class TestFingerprintResponse:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(httpx.HTTPStatusError):
                 await _fingerprint_response_urls(urls, client, self.CONTENT_TYPE)
+
+    async def test_request_failure_cancels_and_drains_sibling_requests(self):
+        slow_started = asyncio.Event()
+        slow_cancelled = asyncio.Event()
+
+        async def handler(request):
+            if request.url.path.endswith("slow.pdf"):
+                slow_started.set()
+                try:
+                    await asyncio.Future()
+                except asyncio.CancelledError:
+                    slow_cancelled.set()
+                    raise
+            await slow_started.wait()
+            return httpx.Response(503, headers=self.BASE_HEADERS, request=request)
+
+        urls = {
+            "https://assets.example.com/a-failure.pdf",
+            "https://assets.example.com/b-slow.pdf",
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(httpx.HTTPStatusError):
+                await _fingerprint_response_urls(urls, client, self.CONTENT_TYPE)
+
+        assert slow_cancelled.is_set()
 
     async def test_dom_discover_fingerprints_only_current_listing_urls(self):
         board_url = "https://example.com/careers"

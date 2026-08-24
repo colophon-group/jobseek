@@ -8,7 +8,9 @@ from pathlib import Path
 import httpx
 import pytest
 
+from src.core.monitors.dom import dom_discover
 from src.core.scrapers.pdf import (
+    _download_verified_fingerprinted_pdf,
     _extract_named_fields,
     _extract_pattern,
     _normalize_captured_text,
@@ -20,6 +22,11 @@ from src.core.scrapers.pdf import (
     parse_bytes,
     scrape,
 )
+from src.shared.response_fingerprint import (
+    ResponseFingerprintValidators,
+    build_response_fingerprint_url,
+)
+from src.shared.tdm import TDMReservedError
 
 
 def _make_pdf(text: str) -> bytes:
@@ -55,6 +62,28 @@ def _make_pdf(text: str) -> bytes:
     buf = io.BytesIO()
     writer.write(buf)
     return buf.getvalue()
+
+
+def _fingerprinted_pdf_url(
+    source_url: str,
+    content: bytes,
+    *,
+    etag: str = '"0123456789abcdef"',
+) -> tuple[str, dict[str, str]]:
+    validators = ResponseFingerprintValidators(
+        etag=etag,
+        last_modified="2026-07-23T14:06:14+00:00",
+        content_length=len(content),
+        content_type="application/pdf",
+    )
+    url = build_response_fingerprint_url(source_url, validators)
+    headers = {
+        "content-type": "application/pdf",
+        "etag": etag,
+        "last-modified": "Thu, 23 Jul 2026 14:06:14 GMT",
+        "content-length": str(len(content)),
+    }
+    return url, headers
 
 
 def _icj_scraper_config() -> dict:
@@ -230,6 +259,136 @@ class TestScrape:
             result = await scrape("https://example.com/job.pdf", {}, client)
             assert result.title is not None
             assert result.description is not None
+
+    async def test_fingerprinted_pdf_binds_get_validators_to_identity(self):
+        pdf_bytes = _make_pdf("Verified Engineer")
+        url, headers = _fingerprinted_pdf_url(
+            "https://assets.example.com/job.pdf?download=1",
+            pdf_bytes,
+        )
+        requests: list[httpx.Request] = []
+
+        def handler(request):
+            requests.append(request)
+            return httpx.Response(200, headers=headers, content=pdf_bytes, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(url, {"title_source": "text"}, client)
+
+        assert result.title == "Verified Engineer"
+        assert len(requests) == 1
+        assert requests[0].method == "GET"
+        assert requests[0].url.params.get("download") == "1"
+        assert requests[0].url.params.get("_jobseek_fp") is not None
+
+    async def test_configured_fiba_monitor_identity_is_verified_by_pdf_scraper(self):
+        with Path("data/boards.csv").open() as file:
+            board = next(
+                row
+                for row in csv.DictReader(file)
+                if row["board_slug"] == "international-basketball-federation-hq"
+            )
+        document_url = "https://assets.fiba.basketball/image/upload/v1/job-description.pdf"
+        listing = (
+            "<article data-testid='rich-text-entries'>"
+            "<h2 id='h-job_openings_at_fiba'>Jobs</h2>"
+            f"<ul><li><a href='{document_url}'>FIBA Engineer</a></li></ul>"
+            "</article>"
+        )
+        pdf_bytes = _make_pdf("FIBA Engineer")
+        _, headers = _fingerprinted_pdf_url(document_url, pdf_bytes)
+
+        def handler(request):
+            if str(request.url) == board["board_url"]:
+                return httpx.Response(200, text=listing, request=request)
+            if request.method == "HEAD":
+                return httpx.Response(200, headers=headers, request=request)
+            return httpx.Response(200, headers=headers, content=pdf_bytes, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            discovered = await dom_discover(
+                {
+                    "board_url": board["board_url"],
+                    "metadata": json.loads(board["monitor_config"]),
+                },
+                client,
+            )
+            assert isinstance(discovered, set)
+            assert len(discovered) == 1
+            result = await scrape(
+                next(iter(discovered)),
+                json.loads(board["scraper_config"]),
+                client,
+            )
+
+        assert result.title == "FIBA Engineer"
+
+    async def test_fingerprinted_pdf_rejects_changed_get_validators(self):
+        pdf_bytes = _make_pdf("Changed Engineer")
+        url, headers = _fingerprinted_pdf_url(
+            "https://assets.example.com/job.pdf",
+            pdf_bytes,
+        )
+        headers["etag"] = '"fedcba9876543210"'
+
+        def handler(request):
+            return httpx.Response(200, headers=headers, content=pdf_bytes, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="no longer match"):
+                await scrape(url, {}, client)
+
+    async def test_fingerprinted_pdf_checks_tdm_on_get(self):
+        pdf_bytes = _make_pdf("Reserved Engineer")
+        url, headers = _fingerprinted_pdf_url(
+            "https://assets.example.com/job.pdf",
+            pdf_bytes,
+        )
+        headers["tdm-reservation"] = "1"
+
+        def handler(request):
+            return httpx.Response(200, headers=headers, content=pdf_bytes, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(TDMReservedError):
+                await scrape(url, {}, client)
+
+    async def test_fingerprinted_pdf_rejects_cross_origin_redirect_before_following(self):
+        pdf_bytes = _make_pdf("Redirected Engineer")
+        url, _ = _fingerprinted_pdf_url(
+            "https://assets.example.com/job.pdf",
+            pdf_bytes,
+        )
+        requests: list[httpx.Request] = []
+
+        def handler(request):
+            requests.append(request)
+            return httpx.Response(
+                302,
+                headers={"location": "https://other.example/job.pdf"},
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="cross-origin redirect"):
+                await scrape(url, {}, client)
+
+        assert [request.url.host for request in requests] == ["assets.example.com"]
+
+    async def test_fingerprinted_pdf_rejects_body_length_mismatch(self):
+        pdf_bytes = _make_pdf("Truncated Engineer")
+        url, headers = _fingerprinted_pdf_url(
+            "https://assets.example.com/job.pdf",
+            pdf_bytes,
+        )
+        truncated = pdf_bytes[:-1]
+
+        def handler(request):
+            return httpx.Response(200, headers=headers, content=truncated, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises((ValueError, httpx.RemoteProtocolError)):
+                await _download_verified_fingerprinted_pdf(url, client)
 
     async def test_default_title_from_url(self):
         """Default title_source='url' uses the filename."""
