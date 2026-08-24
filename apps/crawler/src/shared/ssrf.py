@@ -17,9 +17,11 @@ The guard is implemented at the **httpx transport layer**:
      are equally dangerous (unspecified, multicast, CGNAT, link-local
      v6, IPv4-mapped v6, metadata).
   2. :func:`resolve_host_or_raise` — runs ``socket.getaddrinfo`` and rejects
-     when *any* returned address is private. The async transport retries only
-     temporary ``EAI_AGAIN`` resolver failures with a bounded backoff; every
-     successful answer is still validated fail-closed.
+     when any returned address is private. The sole exception is a scope-less
+     IPv6 link-local record alongside a public address: DNS cannot carry the
+     interface scope required to route it, so it is ignored. The async
+     transport retries only temporary ``EAI_AGAIN`` resolver failures with a
+     bounded backoff; every successful answer is still validated fail-closed.
   3. :func:`is_internal_host_allowed` — opt-in exemption list, sourced
      from ``INTERNAL_HOSTS_ALLOW`` env (comma-separated host[:port]
      entries) plus the proxy / Typesense / Postgres / Redis hosts the
@@ -261,6 +263,7 @@ def _public_address_from_infos(
 ) -> str:
     """Validate one resolver answer and choose its first public address."""
     chosen: str | None = None
+    scope_less_link_local: str | None = None
     for family, _socktype, _proto, _canonname, sockaddr in infos:
         if family == socket.AF_INET:
             addr = sockaddr[0]
@@ -269,6 +272,23 @@ def _public_address_from_infos(
             # Strip the zone-id suffix some IPv6 link-local entries
             # carry (``fe80::1%en0``) before classifying.
             addr = addr.split("%", 1)[0]
+            # A link-local IPv6 destination is routable only with an interface
+            # scope. DNS AAAA records cannot supply one, but misconfigured
+            # public sites sometimes publish such records alongside a usable A
+            # record. Remember the unusable address and allow the answer only
+            # if this same resolver result also contains a public destination.
+            try:
+                ip = ipaddress.ip_address(addr)
+            except ValueError:
+                ip = None
+            scope_id = sockaddr[3] if len(sockaddr) > 3 else 0
+            if (
+                isinstance(ip, ipaddress.IPv6Address)
+                and ip.is_link_local
+                and not scope_id
+            ):
+                scope_less_link_local = addr
+                continue
         else:
             continue
         if is_private_ip(addr):
@@ -281,6 +301,12 @@ def _public_address_from_infos(
             chosen = addr
 
     if chosen is None:
+        if scope_less_link_local is not None:
+            raise SSRFError(
+                url,
+                f"resolves_to_private_ip:{scope_less_link_local}",
+                host=host,
+            )
         raise SSRFError(url, "no_address_record", host=host)
     return chosen
 

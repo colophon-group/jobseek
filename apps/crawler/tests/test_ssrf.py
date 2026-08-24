@@ -237,6 +237,45 @@ class TestResolveHostOrRaise:
         ):
             resolve_host_or_raise("http://attacker.example/", "attacker.example")
 
+    def test_ignores_scope_less_link_local_ipv6_when_public_address_exists(self) -> None:
+        """A DNS AAAA record cannot carry the scope needed to route fe80::/10."""
+
+        def fake_getaddrinfo(host, port, *args, **kwargs):
+            return [
+                (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("93.184.216.34", port or 0)),
+                (socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("fe80::1", port or 0, 0, 0)),
+            ]
+
+        with patch.object(socket, "getaddrinfo", side_effect=fake_getaddrinfo):
+            addr = resolve_host_or_raise("http://example.com/", "example.com")
+        assert addr == "93.184.216.34"
+
+    def test_rejects_scope_less_link_local_ipv6_without_public_address(self) -> None:
+        def fake_getaddrinfo(host, port, *args, **kwargs):
+            return [
+                (socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("fe80::1", port or 0, 0, 0)),
+            ]
+
+        with (
+            patch.object(socket, "getaddrinfo", side_effect=fake_getaddrinfo),
+            pytest.raises(SSRFError) as exc,
+        ):
+            resolve_host_or_raise("http://attacker.example/", "attacker.example")
+        assert exc.value.reason == "resolves_to_private_ip:fe80::1"
+
+    def test_rejects_scoped_link_local_ipv6_even_with_public_address(self) -> None:
+        def fake_getaddrinfo(host, port, *args, **kwargs):
+            return [
+                (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("93.184.216.34", port or 0)),
+                (socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("fe80::1", port or 0, 0, 2)),
+            ]
+
+        with (
+            patch.object(socket, "getaddrinfo", side_effect=fake_getaddrinfo),
+            pytest.raises(SSRFError),
+        ):
+            resolve_host_or_raise("http://attacker.example/", "attacker.example")
+
 
 class TestSSRFGuardedTransport:
     """The transport must reject blocked requests BEFORE delegating to
