@@ -254,6 +254,29 @@ class TestExplicitEmptyState:
 
         assert result == {"https://example.com/vacancies/legal-officer"}
 
+    @pytest.mark.parametrize("href", ["#apply", "https://example.com/vacancies"])
+    async def test_board_self_links_do_not_bypass_empty_validation(self, href):
+        html = f"""
+        <div class="vacancy-list">
+          <a href="{href}">Apply</a>
+          <p id="apply">Email careers@example.com</p>
+        </div>
+        """
+        with (
+            patch(_FETCH_PATCH, AsyncMock(return_value=html)),
+            pytest.raises(ValueError, match="did not match the configured explicit empty state"),
+        ):
+            await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "link_selector": ".vacancy-list a[href]",
+                        "empty_selector": ".vacancy-list:not(:has(a[href]))",
+                    },
+                },
+                AsyncMock(),
+            )
+
     async def test_empty_text_disambiguates_a_shared_count_element(self):
         html = '<div class="vacancy-list"><p class="count">2 jobs found</p></div>'
         with (
@@ -344,6 +367,44 @@ class TestExplicitEmptyState:
                         "render": True,
                         "link_selector": ".resource .card-list a.card-link[href$='.pdf']",
                         "empty_selector": ".resource .card-list:not(:has(.card-item))",
+                    },
+                },
+                AsyncMock(),
+                pw=MagicMock(),
+            )
+
+    @pytest.mark.parametrize(
+        "urls",
+        [
+            {"https://example.com/vacancies#apply"},
+            {"https://example.com/vacancies"},
+        ],
+    )
+    async def test_rendered_board_self_links_do_not_bypass_empty_validation(self, urls):
+        page = MagicMock()
+        context = MagicMock()
+        context.__aenter__ = AsyncMock(return_value=page)
+        context.__aexit__ = AsyncMock(return_value=None)
+        html = """
+        <div class="vacancy-list">
+          <a href="#apply">Apply</a>
+          <p id="apply">Email careers@example.com</p>
+        </div>
+        """
+
+        with (
+            patch("src.core.monitors.dom.open_page", return_value=context),
+            patch("src.core.monitors.dom._extract_links_rendered", AsyncMock(return_value=urls)),
+            patch("src.core.monitors.dom.safe_content", AsyncMock(return_value=html)),
+            pytest.raises(ValueError, match="did not match the configured explicit empty state"),
+        ):
+            await dom_discover(
+                {
+                    "board_url": "https://example.com/vacancies",
+                    "metadata": {
+                        "render": True,
+                        "link_selector": ".vacancy-list a[href]",
+                        "empty_selector": ".vacancy-list:not(:has(a[href]))",
                     },
                 },
                 AsyncMock(),

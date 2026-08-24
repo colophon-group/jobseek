@@ -1085,9 +1085,10 @@ def _validate_explicit_empty_state(
     empty_selector: str,
     empty_text: str | None,
     urls: set[str],
+    board_url: str,
 ) -> None:
     """Fail closed when a zero-link page lacks its configured empty marker."""
-    if urls:
+    if _without_board_self_urls(urls, board_url):
         return
     tree = LexborHTMLParser(html)
     marker = tree.css_first(empty_selector)
@@ -1098,6 +1099,17 @@ def _validate_explicit_empty_state(
         raise ValueError(
             "DOM monitor found no job links and did not match the configured explicit empty state"
         )
+
+
+def _without_board_self_urls(urls: set[str], board_url: str) -> set[str]:
+    """Remove listing-page self links, including fragment-only anchors."""
+    normalized_board = board_url.rstrip("/")
+
+    def without_fragment(url: str) -> str:
+        parts = urlsplit(url)
+        return urlunsplit((parts.scheme, parts.netloc, parts.path, parts.query, "")).rstrip("/")
+
+    return {url for url in urls if without_fragment(url) != normalized_board}
 
 
 def _validate_css_selector(value: object, *, name: str) -> str | None:
@@ -2110,9 +2122,9 @@ async def dom_discover(
         if pw is not None:
             async with open_page(pw, combined, use_proxy=bool(metadata.get("proxy"))) as page:
                 urls = await _extract_links_rendered(page, combined, url_matcher)
-                if empty_selector is not None and not urls:
+                if empty_selector is not None:
                     _validate_explicit_empty_state(
-                        await safe_content(page), empty_selector, empty_text, urls
+                        await safe_content(page), empty_selector, empty_text, urls, board_url
                     )
                 if pagination:
                     browser_page = page if pagination.get("browser") else None
@@ -2141,9 +2153,9 @@ async def dom_discover(
                 open_page(p, combined, use_proxy=bool(metadata.get("proxy"))) as page,
             ):
                 urls = await _extract_links_rendered(page, combined, url_matcher)
-                if empty_selector is not None and not urls:
+                if empty_selector is not None:
                     _validate_explicit_empty_state(
-                        await safe_content(page), empty_selector, empty_text, urls
+                        await safe_content(page), empty_selector, empty_text, urls, board_url
                     )
                 if pagination:
                     browser_page = page if pagination.get("browser") else None
@@ -2201,7 +2213,7 @@ async def dom_discover(
             return jobs
         urls = _extract_links_static(html, board_url, url_matcher, link_selector)
         if empty_selector is not None:
-            _validate_explicit_empty_state(html, empty_selector, empty_text, urls)
+            _validate_explicit_empty_state(html, empty_selector, empty_text, urls, board_url)
         if pagination:
             if pagination.get("partition_selector"):
                 urls = await _paginate_partitioned_urls(
@@ -2229,13 +2241,7 @@ async def dom_discover(
     # Exclude the board URL itself by default — it is normally the listing
     # page, not a job. Direct document boards opt in after the successful
     # fetch above so the source URL is emitted as their one job URL.
-    normalized_board = board_url.rstrip("/")
-
-    def _without_fragment(url: str) -> str:
-        parts = urlsplit(url)
-        return urlunsplit((parts.scheme, parts.netloc, parts.path, parts.query, "")).rstrip("/")
-
-    urls = {u for u in urls if _without_fragment(u) != normalized_board}
+    urls = _without_board_self_urls(urls, board_url)
     if metadata.get("include_board_url"):
         urls.add(board_url)
 
