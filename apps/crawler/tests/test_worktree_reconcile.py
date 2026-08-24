@@ -7,6 +7,9 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
+
+from src.workspace import worktree_reconcile as reconcile_module
 from src.workspace.codex_runner import RunnerLedger
 from src.workspace.worktree_reconcile import (
     GitHubRemoteVerifier,
@@ -220,6 +223,163 @@ def test_dirty_retryable_worktree_is_archived_before_removal(tmp_path: Path) -> 
     assert "workspace/state.json" in names
 
 
+def test_workspace_root_symlink_is_recorded_without_reading_external_content(
+    tmp_path: Path,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="retryable")
+    external = tmp_path / "external-secrets"
+    external.mkdir()
+    secret = b"must-not-enter-worktree-archive"
+    (external / "credential.txt").write_bytes(secret)
+    workspace = worktree / "apps" / "crawler" / ".workspace"
+    workspace.parent.mkdir(parents=True)
+    workspace.symlink_to(external, target_is_directory=True)
+
+    report = _reconcile(tmp_path, repo, ledger, apply=True)
+
+    item = report.items[0]
+    assert report.archived == 1
+    assert report.removed == 1
+    assert item.archive_path
+    assert (external / "credential.txt").read_bytes() == secret
+    with tarfile.open(item.archive_path, "r:gz") as archive:
+        names = set(archive.getnames())
+        assert not any("credential.txt" in name for name in names)
+        assert archive.getmember("untracked/apps/crawler/.workspace").issym()
+        manifest_file = archive.extractfile("manifest.json")
+        assert manifest_file is not None
+        manifest_bytes = manifest_file.read()
+        manifest = json.loads(manifest_bytes)
+        assert secret not in manifest_bytes
+    assert manifest["workspace_root"]["type"] == "symlink"
+    assert "target_sha256" in manifest["workspace_root"]
+
+
+def test_nested_workspace_parent_swap_cannot_archive_or_delete_external_content(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="retryable")
+    nested = worktree / "apps" / "crawler" / ".workspace" / "slug" / "nested"
+    nested.mkdir(parents=True)
+    (nested / "evidence.txt").write_text("local evidence\n")
+    external = tmp_path / "external-evidence"
+    external.mkdir()
+    secret = b"must-never-enter-the-archive"
+    (external / "evidence.txt").write_bytes(secret)
+    original_nested = nested.with_name("nested-original")
+    original_add = reconcile_module._tar_add_candidate_no_follow
+    swapped = False
+
+    def swap_parent_before_archive(*args, **kwargs):
+        nonlocal swapped
+        if kwargs["archive_name"] == "workspace/slug/nested/evidence.txt" and not swapped:
+            nested.rename(original_nested)
+            nested.symlink_to(external, target_is_directory=True)
+            swapped = True
+        return original_add(*args, **kwargs)
+
+    monkeypatch.setattr(
+        reconcile_module,
+        "_tar_add_candidate_no_follow",
+        swap_parent_before_archive,
+    )
+
+    report = _reconcile(tmp_path, repo, ledger, apply=True)
+
+    assert swapped
+    assert report.removed == 0
+    assert report.removal_failures == 1
+    assert report.items[0].classification == "removal_failed"
+    assert worktree.exists()
+    assert nested.is_symlink()
+    assert (external / "evidence.txt").read_bytes() == secret
+    quarantine = tmp_path / "runner" / "state" / "worktree-quarantine"
+    assert list(quarantine.glob("*.tar.gz")) == []
+
+
+def test_workspace_enumeration_stays_on_open_directory_when_nested_path_is_swapped(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="retryable")
+    nested = worktree / "apps" / "crawler" / ".workspace" / "slug" / "nested"
+    nested.mkdir(parents=True)
+    (nested / "local-evidence.txt").write_text("local evidence\n")
+    external = tmp_path / "external-enumeration"
+    external.mkdir()
+    (external / "external-secret-name.txt").write_bytes(b"x" * 2 * 1024 * 1024)
+    original_nested = nested.with_name("nested-original")
+    original_collect = reconcile_module._collect_workspace_candidates_at
+    enumerated_names: set[str] = set()
+    swapped = False
+
+    def swap_before_nested_scandir(directory_fd, **kwargs):
+        nonlocal swapped
+        if kwargs["relative"] == Path("slug/nested") and not swapped:
+            nested.rename(original_nested)
+            nested.symlink_to(external, target_is_directory=True)
+            swapped = True
+        result = original_collect(directory_fd, **kwargs)
+        enumerated_names.update(path.name for path in kwargs["candidates"])
+        return result
+
+    monkeypatch.setattr(
+        reconcile_module,
+        "_collect_workspace_candidates_at",
+        swap_before_nested_scandir,
+    )
+
+    report = _reconcile(tmp_path, repo, ledger, apply=True)
+
+    assert swapped
+    assert "local-evidence.txt" in enumerated_names
+    assert "external-secret-name.txt" not in enumerated_names
+    assert report.removed == 0
+    assert report.removal_failures == 1
+    assert worktree.exists()
+    assert (external / "external-secret-name.txt").stat().st_size == 2 * 1024 * 1024
+
+
+def test_directory_size_stays_on_open_directory_when_nested_path_is_swapped(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "sized-root"
+    nested = root / "nested"
+    nested.mkdir(parents=True)
+    (nested / "small.txt").write_bytes(b"small")
+    nested_inode = nested.stat().st_ino
+    original_nested = root / "nested-original"
+    external = tmp_path / "external-size"
+    external.mkdir()
+    (external / "large-secret.bin").write_bytes(b"x" * 2 * 1024 * 1024)
+    original_size_at = reconcile_module._directory_bytes_at
+    swapped = False
+
+    def swap_before_nested_size(directory_fd, directory_stat):
+        nonlocal swapped
+        if directory_stat.st_ino == nested_inode and not swapped:
+            nested.rename(original_nested)
+            nested.symlink_to(external, target_is_directory=True)
+            swapped = True
+        return original_size_at(directory_fd, directory_stat)
+
+    monkeypatch.setattr(reconcile_module, "_directory_bytes_at", swap_before_nested_size)
+
+    with pytest.raises(RuntimeError, match="changed during size accounting"):
+        reconcile_module._directory_bytes(root)
+
+    assert swapped
+    assert (external / "large-secret.bin").stat().st_size == 2 * 1024 * 1024
+
+
 def test_missing_ledger_and_locked_worktrees_fail_closed_and_count_toward_bounds(
     tmp_path: Path,
 ) -> None:
@@ -330,6 +490,52 @@ def test_removal_failure_is_recorded_and_retained(tmp_path: Path) -> None:
     assert report.items[0].classification == "removal_failed"
     assert report.items[0].error == "simulated removal failure"
     assert ledger.worktree_reconciliation_events()[-1]["action"] == "removal_failed"
+
+
+def test_repeated_removal_failure_replaces_one_deterministic_archive(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="retryable")
+    evidence = worktree / "unique-evidence.txt"
+    evidence.write_text("preserve this evidence\n")
+    monkeypatch.setattr(reconcile_module.time, "time", lambda: 1_800_000_000)
+
+    def fail_remove(path: Path) -> None:
+        raise RuntimeError("simulated persistent removal failure")
+
+    first = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        remove_worktree=fail_remove,
+    )
+    quarantine = tmp_path / "runner" / "state" / "worktree-quarantine"
+    archives = list(quarantine.glob("*.tar.gz"))
+    assert first.archived == 1
+    assert first.removal_failures == 1
+    assert len(archives) == 1
+    first_bytes = archives[0].read_bytes()
+
+    second = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        remove_worktree=fail_remove,
+    )
+    archives = list(quarantine.glob("*.tar.gz"))
+    assert second.archived == 1
+    assert second.removal_failures == 1
+    assert len(archives) == 1
+    assert archives[0].read_bytes() == first_bytes
+    with tarfile.open(archives[0], "r:gz") as archive:
+        archived_evidence = archive.extractfile("untracked/unique-evidence.txt")
+        assert archived_evidence is not None
+        assert archived_evidence.read() == b"preserve this evidence\n"
 
 
 def test_managed_clean_worktree_is_removed_and_recorded_separately(tmp_path: Path) -> None:
@@ -684,11 +890,14 @@ def test_new_unique_commit_archive_is_charged_to_byte_ceiling(tmp_path: Path) ->
         max_bytes=1,
     )
 
-    assert report.removed == 1
-    assert report.remaining_terminal_directories == 0
-    assert report.retained_worktree_bytes == 0
-    assert report.quarantine_bytes > 1
-    assert report.remaining_terminal_bytes == report.quarantine_bytes
+    assert report.removed == 0
+    assert report.archived == 0
+    assert report.removal_failures == 1
+    assert report.remaining_terminal_directories == 1
+    assert report.retained_worktree_bytes > 1
+    assert report.quarantine_bytes == 0
+    assert "capacity gate" in (report.items[0].error or "")
+    assert worktree.exists()
     assert not report.within_bounds
 
 

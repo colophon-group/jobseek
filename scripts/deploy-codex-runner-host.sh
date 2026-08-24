@@ -56,6 +56,25 @@ as_runner() {
   runuser -u codex-runner -- "$@"
 }
 
+governor_number() {
+  local key="$1"
+  local fallback="$2"
+  local line=""
+  local value=""
+  if line="$(grep -E "^${key}=" "${GOVERNOR_ENV_FILE}" | tail -n 1)" && [[ -n "${line}" ]]; then
+    value="${line#*=}"
+    value="${value#\"}"
+    value="${value%\"}"
+    value="${value#\'}"
+    value="${value%\'}"
+  else
+    value="${fallback}"
+  fi
+  [[ "${value}" =~ ^[0-9]+([.][0-9]+)?$ ]] ||
+    fail "${key} must be a non-negative number"
+  printf '%s\n' "${value}"
+}
+
 require_root() {
   if [[ "$(id -u)" -ne 0 ]]; then
     fail "must run as root"
@@ -279,7 +298,17 @@ report_trace_retention() {
   log "Codex trace retention report"
   as_runner env PYTHONPATH="${REPO_DIR}/apps/crawler" \
     "${REPO_DIR}/apps/crawler/.venv/bin/python" \
-    "${REPO_DIR}/scripts/codex-trace-backfill.py" --report
+    "${REPO_DIR}/scripts/codex-trace-backfill.py" --report \
+    --min-disk-free-gib "$(governor_number JOBSEEK_CODEX_MIN_DISK_FREE_GIB 5)" \
+    --disk-alert-margin-gib "$(governor_number JOBSEEK_CODEX_DISK_ALERT_MARGIN_GIB 2)" \
+    --max-quarantine-runs "$(governor_number JOBSEEK_CODEX_MAX_QUARANTINE_RUNS 50)" \
+    --max-quarantine-gib "$(governor_number JOBSEEK_CODEX_MAX_QUARANTINE_GIB 2)" \
+    --max-retained-session-files \
+      "$(governor_number JOBSEEK_CODEX_MAX_RETAINED_SESSION_FILES 500)" \
+    --max-retained-session-gib \
+      "$(governor_number JOBSEEK_CODEX_MAX_RETAINED_SESSION_GIB 2)" \
+    --max-unlinked-session-age-days \
+      "$(governor_number JOBSEEK_CODEX_MAX_UNLINKED_SESSION_AGE_DAYS 7)"
 }
 
 pause_timer_activations() {

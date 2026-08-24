@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import os
+import subprocess
 import tomllib
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from src.workspace import codex_runner as codex_runner_module
 from src.workspace.codex_runner import (
     ClaimComment,
     CompanyResolverGovernor,
@@ -149,6 +153,9 @@ def test_default_codex_args_pin_main_agent_model_policy() -> None:
     assert config.disk_alert_margin_gib == 2
     assert config.max_quarantine_runs == 50
     assert config.max_quarantine_gib == 2
+    assert config.max_retained_session_files == 500
+    assert config.max_retained_session_gib == 2
+    assert config.max_unlinked_session_age_days == 7
     assert config.max_terminal_worktrees == 3
     assert config.max_terminal_worktree_gib == 2
     assert config.managed_repo_dir == Path.home() / ".jobseek" / "repo"
@@ -179,6 +186,15 @@ def test_managed_worktree_roots_can_be_overridden(tmp_path: Path) -> None:
     assert config.managed_worktrees_dir == tmp_path / "managed" / "worktrees"
 
 
+def test_custom_runner_root_derives_managed_roots_when_env_omits_them(tmp_path: Path) -> None:
+    root = tmp_path / "isolated-runner"
+
+    config = RunnerConfig.from_env({"JOBSEEK_CODEX_RUNNER_ROOT": str(root)})
+
+    assert config.managed_repo_dir == root / "managed" / "repo"
+    assert config.managed_worktrees_dir == root / "managed" / "worktrees"
+
+
 def test_terminal_trace_hook_records_verified_cleanup(monkeypatch, tmp_path: Path) -> None:
     config = RunnerConfig(
         root=tmp_path / "runner",
@@ -187,11 +203,47 @@ def test_terminal_trace_hook_records_verified_cleanup(monkeypatch, tmp_path: Pat
         codex_home=tmp_path / ".codex",
     ).resolved()
     governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+    assert config.traces_dir is not None
+    assert config.worktrees_dir is not None
+    assert config.codex_home is not None
     trace_path = config.traces_dir / "run-1.jsonl"
     trace_path.parent.mkdir(parents=True, exist_ok=True)
     trace_path.write_text('{"type":"turn.failed"}\n')
+    worktree = config.worktrees_dir / "run-1"
+    session_dir = config.codex_home / "sessions" / "2026" / "08" / "24"
+    session_dir.mkdir(parents=True)
+    root_session = session_dir / "root.jsonl"
+    child_session = session_dir / "child.jsonl"
+    root_session.write_text(
+        json.dumps(
+            {
+                "type": "session_meta",
+                "payload": {"id": "root", "cwd": str(worktree), "source": "exec"},
+            }
+        )
+        + "\n"
+    )
+    child_session.write_text(
+        json.dumps(
+            {
+                "type": "session_meta",
+                "payload": {
+                    "id": "child",
+                    "cwd": str(worktree),
+                    "source": {"subagent": {}},
+                    "parent_thread_id": "root",
+                    "agent_path": "/root/reviewer",
+                },
+            }
+        )
+        + "\n"
+    )
     assert governor.ledger.acquire(run_id="run-1", issue=1, active_slot=config.active_slot)
-    governor.ledger.update("run-1", trace_path=str(trace_path))
+    governor.ledger.update(
+        "run-1",
+        trace_path=str(trace_path),
+        worktree_path=str(worktree),
+    )
     governor.ledger.finish("run-1", "failed", error="exit 1")
 
     manifest = {
@@ -203,14 +255,18 @@ def test_terminal_trace_hook_records_verified_cleanup(monkeypatch, tmp_path: Pat
         "src.workspace.trace_backfill.upload_and_verify",
         lambda **kwargs: ("training-bundles/v2/silver/run-1", {"manifest.json": "abc"}),
     )
+    events: list[str] = []
     monkeypatch.setattr(
-        "src.workspace.trace_backfill.record_verified_export", lambda **kwargs: None
+        "src.workspace.trace_backfill.record_verified_export",
+        lambda **kwargs: events.append("verified"),
     )
     cleaned: list[str] = []
     monkeypatch.setattr(
         "src.workspace.trace_backfill.cleanup_verified_sources",
         lambda **kwargs: (
-            cleaned.append(kwargs["run_id"]) or {"reclaimed_bytes": trace_path.stat().st_size}
+            events.append("cleanup")
+            or cleaned.append(kwargs["run_id"])
+            or {"reclaimed_bytes": trace_path.stat().st_size}
         ),
     )
     monkeypatch.setattr(
@@ -227,6 +283,14 @@ def test_terminal_trace_hook_records_verified_cleanup(monkeypatch, tmp_path: Pat
     assert result.trace_export_tier == "silver"
     assert result.trace_export_remote_dir == "training-bundles/v2/silver/run-1"
     assert cleaned == ["run-1"]
+    assert events == ["verified", "cleanup"]
+    assert {
+        (link["thread_id"], link["parent_thread_id"], link["role"], link["is_root"])
+        for link in governor.ledger.codex_session_links("run-1")
+    } == {
+        ("root", None, "main", 1),
+        ("child", "root", "reviewer", 0),
+    }
     with governor.ledger._connect() as conn:
         attempt = conn.execute(
             "SELECT status, attempts FROM trace_bundle_export_attempts WHERE run_id = ?",
@@ -282,6 +346,140 @@ def test_failed_terminal_trace_export_is_retried(monkeypatch, tmp_path: Path) ->
             ("run-retry",),
         ).fetchone()
     assert dict(attempt) == {"status": "verified", "attempts": 2}
+
+
+def test_unattempted_terminal_automation_is_retried_after_process_death(
+    monkeypatch, tmp_path: Path
+) -> None:
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        trace_export_enabled=True,
+        trace_cleanup_enabled=False,
+        trace_retry_limit=1,
+        codex_home=tmp_path / ".codex",
+    ).resolved()
+    assert config.traces_dir is not None
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+    run_id = "daily-error-review-2026-08-24-100-dead1234"
+    trace_path = config.traces_dir / f"{run_id}.jsonl"
+    trace_path.parent.mkdir(parents=True)
+    trace_path.write_text('{"type":"turn.failed"}\n')
+    assert governor.ledger.acquire(
+        run_id=run_id,
+        issue=None,
+        active_slot="daily-error-review",
+    )
+    governor.ledger.update(run_id, trace_path=str(trace_path))
+    governor.ledger.finish(run_id, "failed", error="process died before export")
+    manifest = {
+        "quality": {"tier": "gold"},
+        "bundle_content_sha256": "abc",
+    }
+    built: list[str] = []
+    monkeypatch.setattr(
+        "src.workspace.trace_backfill.build_bundle",
+        lambda **kwargs: built.append(kwargs["run_id"]) or manifest,
+    )
+    monkeypatch.setattr(
+        "src.workspace.trace_backfill.upload_and_verify",
+        lambda **kwargs: (f"training-bundles/v2/gold/{run_id}", {}),
+    )
+    monkeypatch.setattr(
+        "src.workspace.trace_backfill.record_verified_export",
+        lambda **kwargs: None,
+    )
+
+    governor._retry_failed_trace_exports()
+
+    assert built == [run_id]
+    with governor.ledger._connect() as conn:
+        attempt = conn.execute(
+            "SELECT status, attempts FROM trace_bundle_export_attempts WHERE run_id = ?",
+            (run_id,),
+        ).fetchone()
+    assert dict(attempt) == {"status": "verified", "attempts": 1}
+
+
+def test_pending_cleanup_retry_resumes_verified_inventory_without_rebuild(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from src.workspace.trace_backfill import record_verified_export
+
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        trace_export_enabled=True,
+        trace_cleanup_enabled=True,
+        trace_retry_limit=1,
+        codex_home=tmp_path / ".codex",
+    ).resolved()
+    assert config.traces_dir is not None
+    assert config.codex_home is not None
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+    run_id = "issue-7-100-retry123"
+    trace_path = config.traces_dir / f"{run_id}.jsonl"
+    trace_path.parent.mkdir(parents=True)
+    trace_path.write_text('{"type":"turn.failed"}\n')
+    root_session = config.codex_home / "sessions" / "2026" / "08" / "24" / "root.jsonl"
+    root_session.parent.mkdir(parents=True)
+    root_session.write_text('{"type":"session_meta"}\n')
+    assert governor.ledger.acquire(run_id=run_id, issue=7, active_slot=config.active_slot)
+    governor.ledger.update(run_id, trace_path=str(trace_path))
+    governor.ledger.finish(run_id, "failed", error="exit 1")
+    remote_dir = f"training-bundles/v2/gold/{run_id}"
+    files = []
+    verified = {}
+    for bundle_path, role, source in (
+        ("threads/main-root.jsonl", "main", root_session),
+        ("codex-exec.jsonl", "codex_exec", trace_path),
+    ):
+        projected_sha = hashlib.sha256(bundle_path.encode()).hexdigest()
+        files.append(
+            {
+                "path": bundle_path,
+                "role": role,
+                "sha256": projected_sha,
+                "bytes": 1,
+                "source_path": str(source),
+                "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+                "source_bytes": source.stat().st_size,
+            }
+        )
+        verified[f"{remote_dir}/{bundle_path}"] = projected_sha
+    manifest = {
+        "schema_version": "jobseek-codex-training-bundle/v2",
+        "quality": {"tier": "gold"},
+        "bundle_content_sha256": "pending-cleanup",
+        "thread_count": 1,
+        "subagent_count": 0,
+        "files": files,
+    }
+    record_verified_export(
+        ledger_path=governor.ledger.path,
+        run_id=run_id,
+        remote_dir=remote_dir,
+        manifest=manifest,
+        verified=verified,
+    )
+    root_session.unlink()
+    monkeypatch.setattr(
+        "src.workspace.trace_backfill.build_bundle",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("must not rebuild")),
+    )
+
+    governor._retry_failed_trace_exports()
+
+    assert not trace_path.exists()
+    with governor.ledger._connect() as conn:
+        export = conn.execute(
+            "SELECT cleaned_at FROM trace_bundle_exports WHERE run_id = ?",
+            (run_id,),
+        ).fetchone()
+        attempt = conn.execute(
+            "SELECT status, attempts FROM trace_bundle_export_attempts WHERE run_id = ?",
+            (run_id,),
+        ).fetchone()
+    assert export["cleaned_at"] is not None
+    assert dict(attempt) == {"status": "cleaned", "attempts": 1}
 
 
 def test_terminal_run_without_trace_is_accounted_for(tmp_path: Path) -> None:
@@ -942,6 +1140,22 @@ def test_quarantine_limit_blocks_new_admission(tmp_path: Path) -> None:
     assert decision.reason == "trace quarantine retention limit reached: 1 runs, 123 bytes"
 
 
+def test_unsafe_session_entry_blocks_new_admission(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    assert config.codex_home is not None
+    session_dir = config.codex_home / "sessions" / "2026" / "08" / "24"
+    session_dir.mkdir(parents=True)
+    outside = tmp_path / "outside.jsonl"
+    outside.write_text("outside\n")
+    (session_dir / "unsafe.jsonl").symlink_to(outside)
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+
+    decision = governor.should_start()
+
+    assert not decision.should_run
+    assert decision.reason == "unsafe Codex session entries retained: 1"
+
+
 def test_terminal_worktree_limit_blocks_new_admission(monkeypatch, tmp_path: Path) -> None:
     config = _config(tmp_path, dry_run=True)
     governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=101))
@@ -1021,6 +1235,222 @@ def test_managed_worktree_context_joins_workspace_to_latest_issue_run(tmp_path: 
 
     assert contexts[str(managed.resolve())]["run_id"] == "run-new"
     assert contexts[str(managed.resolve())]["issue"] == 101
+
+
+def test_cleanup_uses_configured_managed_repo_root(tmp_path: Path) -> None:
+    custom_managed_repo = tmp_path / "custom-managed" / "repo"
+    config = RunnerConfig(
+        root=tmp_path / "runner",
+        managed_repo_dir=custom_managed_repo,
+        managed_worktrees_dir=tmp_path / "custom-managed" / "worktrees",
+        dry_run=True,
+        codex_args=("python3", "-c", "print('{}')"),
+    ).resolved()
+    workspace = custom_managed_repo / "apps" / "crawler" / ".workspace" / "acme"
+    workspace.mkdir(parents=True)
+    (workspace / "workspace.yaml").write_text("slug: acme\ngit:\n  issue: 101\n  worktree: ''\n")
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=None))
+
+    governor._cleanup_ws_artifacts_for_issue(101)
+
+    assert not workspace.exists()
+
+
+def test_reconcile_pre_remove_does_not_follow_workspace_symlink(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path, dry_run=True)
+    assert config.repo_dir is not None
+    assert config.worktrees_dir is not None
+    repo = config.repo_dir
+    repo.mkdir(parents=True)
+    subprocess.run(
+        ["git", "init", "-b", "main"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(["git", "config", "user.name", "Test Runner"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.email", "runner@example.test"], cwd=repo, check=True)
+    (repo / "tracked.txt").write_text("base\n")
+    subprocess.run(["git", "add", "tracked.txt"], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-m", "base"], cwd=repo, check=True)
+    config.worktrees_dir.mkdir(parents=True)
+    worktree = config.worktrees_dir / "terminal"
+    subprocess.run(
+        ["git", "worktree", "add", "--detach", str(worktree), "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    external_root = tmp_path / "external-workspace"
+    victim = external_root / "victim"
+    victim.mkdir(parents=True)
+    (victim / "workspace.yaml").write_text("slug: victim\ngit:\n  issue: 101\n  worktree: ''\n")
+    secret = victim / "credential.txt"
+    secret.write_text("external-secret\n")
+    workspace_root = worktree / "apps" / "crawler" / ".workspace"
+    workspace_root.parent.mkdir(parents=True)
+    workspace_root.symlink_to(external_root, target_is_directory=True)
+    github = FakeGitHub(issue=101, issue_closed=True, issue_outcome="rejected")
+    governor = CompanyResolverGovernor(config, github=github)
+    assert governor.ledger.acquire(
+        run_id="terminal-run",
+        issue=101,
+        active_slot=config.active_slot,
+    )
+    governor.ledger.update("terminal-run", worktree_path=str(worktree))
+    governor.ledger.finish("terminal-run", "rejected")
+
+    report = governor.reconcile_worktrees(apply=True)
+
+    assert report.removed == 1
+    assert not worktree.exists()
+    assert victim.exists()
+    assert secret.read_text() == "external-secret\n"
+
+
+def test_reconcile_cleanup_stays_anchored_when_workspace_root_is_swapped(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from src.workspace import safe_cleanup
+
+    config = _config(tmp_path, dry_run=True)
+    assert config.repo_dir is not None
+    assert config.worktrees_dir is not None
+    repo = config.repo_dir
+    repo.mkdir(parents=True)
+    subprocess.run(
+        ["git", "init", "-b", "main"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(["git", "config", "user.name", "Test Runner"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.email", "runner@example.test"], cwd=repo, check=True)
+    (repo / "tracked.txt").write_text("base\n")
+    subprocess.run(["git", "add", "tracked.txt"], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-m", "base"], cwd=repo, check=True)
+    config.worktrees_dir.mkdir(parents=True)
+    worktree = config.worktrees_dir / "terminal-swap"
+    subprocess.run(
+        ["git", "worktree", "add", "--detach", str(worktree), "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    workspace_root = worktree / "apps" / "crawler" / ".workspace"
+    workspace = workspace_root / "acme"
+    workspace.mkdir(parents=True)
+    (workspace / "workspace.yaml").write_text("slug: acme\ngit:\n  issue: 101\n  worktree: ''\n")
+    (workspace_root / "active").write_text("acme\n")
+    original_workspace = workspace_root / "acme-original"
+    original_open_root = codex_runner_module.open_absolute_directory_no_follow
+    original_open_child = codex_runner_module.open_child_directory_no_follow
+    original_rename = os.rename
+    opened_fds: list[tuple[int, int, int]] = []
+    swapped = False
+
+    def track_root_fd(path: Path) -> int:
+        descriptor = original_open_root(path)
+        opened = os.fstat(descriptor)
+        opened_fds.append((descriptor, opened.st_dev, opened.st_ino))
+        return descriptor
+
+    def track_child_fd(parent_fd: int, name: str):
+        result = original_open_child(parent_fd, name)
+        opened_fds.append((result[0], result[1].st_dev, result[1].st_ino))
+        return result
+
+    def swap_child_before_claim(src, dst, *args, **kwargs):
+        nonlocal swapped
+        if src == "acme" and not swapped:
+            original_rename(workspace, original_workspace)
+            workspace.mkdir()
+            (workspace / "replacement.txt").write_text("preserve replacement\n")
+            swapped = True
+        return original_rename(src, dst, *args, **kwargs)
+
+    monkeypatch.setattr(
+        codex_runner_module,
+        "open_absolute_directory_no_follow",
+        track_root_fd,
+    )
+    monkeypatch.setattr(
+        codex_runner_module,
+        "open_child_directory_no_follow",
+        track_child_fd,
+    )
+    monkeypatch.setattr(safe_cleanup.os, "rename", swap_child_before_claim)
+    github = FakeGitHub(issue=101, issue_closed=True, issue_outcome="rejected")
+    governor = CompanyResolverGovernor(config, github=github)
+    assert governor.ledger.acquire(
+        run_id="terminal-swap-run",
+        issue=101,
+        active_slot=config.active_slot,
+    )
+    governor.ledger.update("terminal-swap-run", worktree_path=str(worktree))
+    governor.ledger.finish("terminal-swap-run", "rejected")
+
+    report = governor.reconcile_worktrees(apply=True)
+
+    assert swapped
+    assert report.removed == 0
+    assert report.removal_failures == 1
+    assert report.remaining_terminal_directories == 1
+    assert report.reclaimed_bytes == 0
+    assert worktree.exists()
+    assert (workspace / "replacement.txt").read_text() == "preserve replacement\n"
+    assert (original_workspace / "workspace.yaml").exists()
+    assert (workspace_root / "active").read_text() == "acme\n"
+    assert opened_fds
+    for descriptor, expected_dev, expected_ino in opened_fds:
+        try:
+            current = os.fstat(descriptor)
+        except OSError:
+            continue
+        assert (current.st_dev, current.st_ino) != (expected_dev, expected_ino), (
+            f"workspace cleanup leaked descriptor {descriptor}"
+        )
+
+
+def test_active_marker_replacement_is_preserved_at_claim(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    from src.workspace import safe_cleanup
+
+    workspace_root = tmp_path / ".workspace"
+    workspace_root.mkdir()
+    marker = workspace_root / "active"
+    marker.write_text("acme\n")
+    original_marker = workspace_root / "active-original"
+    original_rename = os.rename
+    swapped = False
+
+    def swap_marker_before_claim(src, dst, *args, **kwargs):
+        nonlocal swapped
+        if src == "active" and not swapped:
+            original_rename(marker, original_marker)
+            marker.write_text("replacement-marker\n")
+            swapped = True
+        return original_rename(src, dst, *args, **kwargs)
+
+    monkeypatch.setattr(safe_cleanup.os, "rename", swap_marker_before_claim)
+    root_fd = codex_runner_module.open_absolute_directory_no_follow(workspace_root)
+    try:
+        codex_runner_module._cleanup_active_markers_at(root_fd, "acme")
+    finally:
+        os.close(root_fd)
+
+    assert swapped
+    assert marker.read_text() == "replacement-marker\n"
+    assert original_marker.read_text() == "acme\n"
 
 
 def test_safe_env_excludes_unneeded_secrets() -> None:

@@ -501,15 +501,23 @@ For each accepted issue:
     while excluding records marked with an unresolved encrypted-message
     placeholder. Diagnostic bundles are for failure analysis, not model
     training. The manifest exposes every condition needed for these gates.
-11. Download every uploaded object into an ephemeral directory and verify its
+11. Apply this terminal hook to resolver, daily error-review, and daily
+    annotations runs, including failed and timed-out sessions and their nested
+    subagents. Download every uploaded object into an ephemeral directory and verify its
     SHA-256 and JSON/schema representation. Record the verified remote and exact
-    local source path/hash inventory in SQLite, then delete only those source
-    files when their hashes still match. Upload or verification failure keeps
-    local sources for retry. A successful cleanup prunes only cached revisions
+    local source path/hash inventory in SQLite. Projection and source hashes
+    come from one no-follow snapshot. Only after remote verification does the
+    runner atomically claim and delete sources whose descriptors and hashes
+    still match. Claim names are committed to SQLite before mutation so a
+    process death after rename resumes the claimed evidence; ordinary partial
+    deletion restores all remaining claims for retry.
+    Upload or verification failure keeps local sources for retry. A successful cleanup prunes only cached revisions
     of the trace dataset and reports reclaimed bytes plus current disk headroom.
     Before considering a new issue, each governor wake retries up to
     `JOBSEEK_CODEX_TRACE_RETRY_LIMIT` failed exports even when the new-run disk
-    health gate is closed.
+    health gate is closed. The same bounded scan recovers unattempted terminal
+    automation runs and verified exports still awaiting cleanup, including a
+    process death before an attempt row was written.
 12. Record PR URL, branch, usage summary, export status, explicit outcome,
     reason, attempt, and any retry deadline in the ledger and linked issue.
 13. Treat only `submitted`, `rejected`, and `escalated` as resolved. A plain
@@ -545,6 +553,13 @@ For each accepted issue:
     `JOBSEEK_CODEX_MAX_TERMINAL_WORKTREE_GIB`. The byte ceiling includes both
     retained worktrees and durable `state/worktree-quarantine` archives so
     repeated evidence preservation cannot bypass admission control.
+    Every retained Codex session is included in admission accounting, including
+    active, orphaned, malformed, oversize, and unsafe entries. Stop at
+    `JOBSEEK_CODEX_MAX_RETAINED_SESSION_FILES`,
+    `JOBSEEK_CODEX_MAX_RETAINED_SESSION_GIB`, or
+    `JOBSEEK_CODEX_MAX_UNLINKED_SESSION_AGE_DAYS`; unsafe directory or symlink
+    entries and session files above the snapshot ceiling block immediately
+    instead of being followed, repeatedly failing export, or silently omitted.
 
 Historical retained sessions can be exported in bounded commits while holding
 the normal runner lock:
@@ -584,8 +599,8 @@ sudo -u codex-runner \
   /srv/jobseek-codex/repo/scripts/codex-trace-backfill.py --dry-run-cleanup
 ```
 
-Both commands are non-destructive. A `quarantine_limit`, `disk_headroom`, or
-`unaccounted_runs` alert must be resolved before increasing admission limits.
+Both commands are non-destructive. A `quarantine_limit`, `session_retention_limit`,
+`disk_headroom`, or `unaccounted_runs` alert must be resolved before increasing admission limits.
 Quarantined, failed, unavailable, unaccounted, and terminal-debug worktree
 entries are never cleanup candidates.
 Every runner deployment emits the compact report to its GitHub Actions log so

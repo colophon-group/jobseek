@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 import yaml
 
 from src.workspace.state import (
@@ -80,6 +82,63 @@ class TestWorkspace:
         assert workspace_exists("test")
         delete_workspace("test")
         assert not workspace_exists("test")
+
+    def test_delete_workspace_rejects_symlinked_root(self, tmp_path, monkeypatch):
+        external = tmp_path / "external"
+        victim = external / "test"
+        victim.mkdir(parents=True)
+        secret = victim / "secret.txt"
+        secret.write_text("external-secret\n")
+        workspace_root = tmp_path / "workspace-link"
+        workspace_root.symlink_to(external, target_is_directory=True)
+        monkeypatch.setattr(
+            "src.workspace.state.get_workspace_dir",
+            lambda: workspace_root,
+        )
+
+        try:
+            delete_workspace("test")
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("symlinked workspace root was accepted for deletion")
+
+        assert victim.exists()
+        assert secret.read_text() == "external-secret\n"
+
+    def test_delete_workspace_preserves_replacement_swapped_at_claim(self, tmp_path, monkeypatch):
+        from src.workspace import safe_cleanup
+
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+        workspace = tmp_path / "test"
+        workspace.mkdir()
+        (workspace / "workspace.yaml").write_text("slug: test\n")
+        original_workspace = tmp_path / "test-original"
+        original_rename = os.rename
+        swapped = False
+
+        def swap_before_claim(src, dst, *args, **kwargs):
+            nonlocal swapped
+            if src == "test" and not swapped:
+                original_rename(workspace, original_workspace)
+                workspace.mkdir()
+                (workspace / "replacement.txt").write_text("preserve replacement\n")
+                swapped = True
+            return original_rename(src, dst, *args, **kwargs)
+
+        monkeypatch.setattr(safe_cleanup.os, "rename", swap_before_claim)
+
+        try:
+            delete_workspace("test")
+        except RuntimeError as exc:
+            assert "mutation boundary" in str(exc)
+        else:
+            raise AssertionError("replacement workspace was deleted")
+
+        assert swapped
+        assert workspace.exists()
+        assert (workspace / "replacement.txt").read_text() == "preserve replacement\n"
+        assert (original_workspace / "workspace.yaml").exists()
 
     def test_list_workspaces(self, tmp_path, monkeypatch):
         monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)

@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 from src.workspace.errors import GitCommandError, GitHubApiError, WorkspaceError
+from src.workspace.safe_cleanup import safe_rmtree_child
 
 _GIT_RETRIES = 2
 _GH_RETRIES = 2
@@ -46,10 +47,7 @@ def _managed_repo_url() -> str:
 
 def purge_clone() -> None:
     """Remove the managed clone entirely."""
-    import shutil
-
-    if _MANAGED_REPO.exists():
-        shutil.rmtree(_MANAGED_REPO)
+    safe_rmtree_child(_MANAGED_REPO.parent, _MANAGED_REPO.name, missing_ok=True)
 
 
 def _resolve_csv_conflicts(cwd: Path) -> bool:

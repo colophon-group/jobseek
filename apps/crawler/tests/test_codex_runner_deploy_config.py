@@ -10,6 +10,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 DEPLOY = ROOT / "scripts" / "deploy-codex-runner-host.sh"
 GOVERNOR_SERVICE = ROOT / "deploy" / "systemd" / "jobseek-codex-governor.service"
+GOVERNOR_ENV_EXAMPLE = ROOT / "deploy" / "systemd" / "jobseek-codex-governor.env.example"
 LEAK_MARKER = "not-a-real-password-7f93"
 
 _REQUIRE_CONFIG = r"""
@@ -29,6 +30,14 @@ def test_governor_lock_and_home_write_scope_cover_managed_worktree_reconciliatio
     assert "ReadWritePaths=/srv/jobseek-codex /home/codex-runner" in service
     assert 'flock -w "${LOCK_TIMEOUT_S}" 9' in deploy
     assert '"${REPO_DIR}/scripts/codex-worktree-reconcile.py" --apply' in deploy
+
+
+def test_governor_example_bounds_all_retained_codex_sessions() -> None:
+    example = GOVERNOR_ENV_EXAMPLE.read_text()
+
+    assert "JOBSEEK_CODEX_MAX_RETAINED_SESSION_FILES=500" in example
+    assert "JOBSEEK_CODEX_MAX_RETAINED_SESSION_GIB=2" in example
+    assert "JOBSEEK_CODEX_MAX_UNLINKED_SESSION_AGE_DAYS=7" in example
 
 
 def _validate(tmp_path: Path, content: str) -> subprocess.CompletedProcess[str]:

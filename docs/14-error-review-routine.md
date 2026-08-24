@@ -23,6 +23,10 @@ Prior exemplars (follow their shape): #2622, #2621, #2470, #2431.
   36-hour staleness, or a run stuck over three hours. Production email paging
   is disabled; see
   [production paging is disabled](16-hetzner-maintenance.md#production-paging-is-disabled).
+  Every completed, failed, or timed-out Codex session (including subagents) is
+  projected into the shared quality-gated trace dataset. The runner downloads
+  and checksum-verifies every remote object before descriptor-anchored cleanup
+  of matching local sources; failed verification retains them for retry.
 - **Preferred manual route:** an operator-invoked Codex CLI session from the
   repo root, asking it to use the `jobseek-error-review` skill.
 - **Manual traceable pilot:** run `codex exec --json` with the skill/runbook as

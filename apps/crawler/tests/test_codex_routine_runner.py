@@ -5,15 +5,18 @@ import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from src.workspace.codex_routine_runner import (
     LABELLER_POSTGRES_ENV,
     DailyRoutineRunner,
+    DailyRunResult,
     ReportedRoutineOutcome,
     _compose_routine_error,
     _read_reported_routine_outcome,
     build_daily_prompt,
 )
-from src.workspace.codex_runner import RunnerConfig, RunnerLedger
+from src.workspace.codex_runner import RunnerConfig, RunnerLedger, SchedulerDecision
 
 
 def _config(tmp_path: Path, *, dry_run: bool = False) -> RunnerConfig:
@@ -74,6 +77,121 @@ def test_daily_runner_skips_date_after_completed_ledger_row(tmp_path: Path) -> N
 
     assert result.state == "skipped"
     assert result.error == "daily routine already completed for date"
+
+
+def test_daily_runner_retries_failed_exports_before_completed_date_skip(
+    monkeypatch, tmp_path: Path
+) -> None:
+    config = _config(tmp_path, dry_run=True)
+    ledger = RunnerLedger(config.ledger_path)
+    run_id = "daily-error-review-2026-07-09-123"
+    assert ledger.acquire(run_id=run_id, issue=None, active_slot="daily-error-review")
+    ledger.finish(run_id, "completed")
+    calls: list[str] = []
+    monkeypatch.setattr(
+        "src.workspace.codex_routine_runner.retry_failed_trace_exports",
+        lambda **kwargs: calls.append("retry"),
+    )
+    runner = DailyRoutineRunner(
+        config,
+        routine="error-review",
+        run_date="2026-07-09",
+        ledger=ledger,
+    )
+
+    result = runner.run_once()
+
+    assert result.state == "skipped"
+    assert calls == ["retry"]
+
+
+@pytest.mark.parametrize("state", ["completed", "failed", "timeout"])
+def test_daily_terminal_states_use_shared_verified_export(
+    monkeypatch, tmp_path: Path, state: str
+) -> None:
+    config = _config(tmp_path, dry_run=False)
+    runner = DailyRoutineRunner(
+        config,
+        routine="error-review",
+        run_date="2099-02-01",
+    )
+    monkeypatch.setattr(
+        runner,
+        "should_start",
+        lambda: SchedulerDecision(True, "ready", 1, 0),
+    )
+    monkeypatch.setattr(
+        "src.workspace.codex_routine_runner.retry_failed_trace_exports",
+        lambda **kwargs: None,
+    )
+    assert config.traces_dir is not None
+
+    def fake_execute(run_id: str) -> DailyRunResult:
+        runner.ledger.finish(run_id, state, error=None if state == "completed" else state)
+        return DailyRunResult(
+            run_id=run_id,
+            routine="error-review",
+            run_date="2099-02-01",
+            state=state,
+            trace_path=config.traces_dir / f"{run_id}.jsonl",
+        )
+
+    monkeypatch.setattr(runner, "_execute", fake_execute)
+    exported: list[str] = []
+
+    def fake_export(*, config, ledger, result):
+        exported.append(result.state)
+        result.trace_export_status = "cleaned"
+        result.trace_export_tier = "gold"
+        result.trace_export_remote_dir = f"training-bundles/v2/gold/{result.run_id}"
+        return result
+
+    monkeypatch.setattr("src.workspace.codex_routine_runner.export_terminal_trace", fake_export)
+
+    result = runner.run_once()
+
+    assert result.state == state
+    assert result.trace_export_status == "cleaned"
+    assert result.trace_export_tier == "gold"
+    assert exported == [state]
+
+
+def test_daily_final_guard_failure_uses_shared_export(monkeypatch, tmp_path: Path) -> None:
+    config = _config(tmp_path, dry_run=False)
+    runner = DailyRoutineRunner(
+        config,
+        routine="annotations",
+        run_date="2099-02-02",
+    )
+    monkeypatch.setattr(
+        runner,
+        "should_start",
+        lambda: SchedulerDecision(True, "ready", 1, 0),
+    )
+    monkeypatch.setattr(
+        "src.workspace.codex_routine_runner.retry_failed_trace_exports",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        runner,
+        "_execute",
+        lambda run_id: (_ for _ in ()).throw(RuntimeError("final guard")),
+    )
+    exported: list[str] = []
+
+    def fake_export(*, config, ledger, result):
+        exported.append(result.state)
+        result.trace_export_status = "unavailable"
+        return result
+
+    monkeypatch.setattr("src.workspace.codex_routine_runner.export_terminal_trace", fake_export)
+
+    result = runner.run_once()
+
+    assert result.state == "failed"
+    assert result.error == "final guard"
+    assert result.trace_export_status == "unavailable"
+    assert exported == ["failed"]
 
 
 def test_error_review_missing_report_fails_even_when_codex_exits_zero(
