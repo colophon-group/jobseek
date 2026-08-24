@@ -559,6 +559,121 @@ async def test_discover_fetch_contains_fails_closed_when_item_marker_drifts():
 
 
 @pytest.mark.asyncio
+async def test_discover_empty_text_short_circuits_stale_inline_items():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "empty_text": "No vacancies are currently available",
+            "steps": [
+                {"tag": "h2", "field": "title"},
+                {"tag": "p", "field": "description", "stop_tag": "h2"},
+            ],
+        },
+    }
+    html = """
+    <h5>No vacancies are currently available.</h5>
+    <h2>Retained legacy vacancy</h2>
+    <p>This closed role remains in the page source.</p>
+    """
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert jobs == []
+
+
+@pytest.mark.asyncio
+async def test_discover_empty_text_ignores_hidden_inactive_marker():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "empty_text": "No vacancies are currently available",
+            "include_hidden": True,
+            "steps": [
+                {"tag": "h2", "field": "title"},
+                {"tag": "p", "field": "description", "stop_tag": "h2"},
+            ],
+        },
+    }
+    html = """
+    <div hidden><p>No vacancies are currently available.</p></div>
+    <h2>Open Engineer</h2>
+    <p>Build the product.</p>
+    """
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert [job.title for job in jobs] == ["Open Engineer"]
+
+
+@pytest.mark.asyncio
+async def test_discover_item_boundary_prevents_cross_item_field_bleed():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "item_boundary_tag": "h2",
+            "steps": [
+                {"tag": "h2", "field": "title"},
+                {
+                    "text": "Location:",
+                    "field": "location",
+                    "regex": r"Location:\s*(.+)",
+                    "optional": True,
+                },
+                {"tag": "p", "field": "description", "stop_tag": "h2"},
+            ],
+        },
+    }
+    html = """
+    <h2>Role without a location field</h2>
+    <p>Own first-role description.</p>
+    <h2>Role with a location field</h2>
+    <p>Location: Lausanne</p>
+    <p>Own second-role description.</p>
+    """
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert [job.title for job in jobs] == [
+        "Role without a location field",
+        "Role with a location field",
+    ]
+    assert jobs[0].locations is None
+    assert jobs[0].description == "Own first-role description."
+    assert jobs[1].locations == ["Lausanne"]
+    assert jobs[1].description == "Own second-role description."
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", ["", 123, "x" * 513, "bad\x00marker"])
+async def test_discover_rejects_invalid_empty_text(value):
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "empty_text": value,
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="empty_text"):
+        await discover(board, _FakeClient("<h2>Engineer</h2>"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", ["", 123, "h2 > p", "x" * 33])
+async def test_discover_rejects_invalid_item_boundary_tag(value):
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "item_boundary_tag": value,
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="item_boundary_tag"):
+        await discover(board, _FakeClient("<h2>Engineer</h2>"))
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("value", ["", "(", 123, "x" * 2_049])
 async def test_discover_rejects_invalid_exclude_title_regex(value):
     board = {

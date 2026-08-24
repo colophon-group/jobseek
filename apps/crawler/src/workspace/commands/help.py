@@ -1243,6 +1243,8 @@ inline — Single-Page Extraction (rich)
         }
       ],
       "fetch_contains": "Open positions",
+      "empty_text": "No vacancies are currently available",
+      "item_boundary_tag": "h3",
       "render": true,
       "steps": [
         {"tag": "h3", "field": "title"},
@@ -1270,6 +1272,13 @@ inline — Single-Page Extraction (rich)
     fetch_contains
                  Required text that every accepted representation must contain.
                  A response without it falls through to the next fetch URL.
+    empty_text   Optional authoritative visible-text marker. When present in the
+                 accepted representation, the monitor returns a healthy empty
+                 result before extracting retained or hidden legacy postings.
+    item_boundary_tag
+                 Optional HTML tag that starts each posting (for example h2).
+                 Each repeated step run is restricted to one such block, so an
+                 optional field cannot consume content from the next posting.
     steps        Extraction steps run once per job (see: ws help steps).
                  The first step with a field (usually title) is the stop
                  condition — when it can't find a match, extraction ends.
