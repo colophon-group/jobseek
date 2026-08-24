@@ -286,6 +286,42 @@ class TestScrape:
             assert result.title is not None
             assert result.description is not None
 
+    async def test_request_headers_override_client_defaults(self):
+        pdf_bytes = _make_pdf("Junior Science Project Coordinator")
+
+        def handler(request):
+            assert request.headers["user-agent"] == "jobseek-crawler (+https://jseek.co/)"
+            assert request.headers["accept"] == "application/pdf"
+            return httpx.Response(200, content=pdf_bytes, request=request)
+
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+            headers={"User-Agent": "blocked-browser-agent"},
+        ) as client:
+            result = await scrape(
+                "https://example.com/job.pdf",
+                {
+                    "title_source": "text",
+                    "request_headers": {
+                        "User-Agent": "jobseek-crawler (+https://jseek.co/)",
+                        "Accept": "application/pdf",
+                    },
+                },
+                client,
+            )
+
+        assert result.title == "Junior Science Project Coordinator"
+
+    async def test_request_headers_must_map_strings_to_strings(self):
+        transport = httpx.MockTransport(lambda _request: None)
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="request_headers must map strings to strings"):
+                await scrape(
+                    "https://example.com/job.pdf",
+                    {"request_headers": {"Accept": 123}},
+                    client,
+                )
+
     async def test_fingerprinted_pdf_binds_get_validators_to_identity(self):
         pdf_bytes = _make_pdf("Verified Engineer")
         url, headers = _fingerprinted_pdf_url(
