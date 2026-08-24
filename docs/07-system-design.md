@@ -215,6 +215,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `turbohire`       | Rich     | skip        | TurboHire public career API             |
 | 10   | `jarvi`           | Rich     | skip        | Jarvi public careers API                |
 | 10   | `jobylon`         | Rich     | skip        | Jobylon iframe embed data               |
+| 10   | `johdi`           | URL-only | johdi       | Johdi Suite embedded widget API         |
 | 10   | `jobs_ch`         | URL-only | json-ld     | jobs.ch employer profile search API     |
 | 10   | `keka`            | Rich     | skip        | Keka public career-portal jobs API      |
 | 10   | `lever`           | Rich     | skip        | Lever Postings API                      |
@@ -284,6 +285,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `embedded`     | Parse embedded JSON/RSC data from page source      | `{pattern/script_id/source, path, fields}` |
 | `headhunter`   | Fetch proxy-routed HeadHunter vacancy detail JSON  | None                   |
 | `jobstreet`    | Fetch JobStreet vacancy detail GraphQL data        | None                   |
+| `johdi`        | Fetch Johdi Suite public offer-detail JSON         | `{company_key, flow, locale}` |
 | `json-ld`      | Parse `<script type="application/ld+json">` (JobPosting schema) | None (auto)    |
 | `mokahr`       | Fetch and decrypt Mokahr detail API records        | None                   |
 | `nextdata`     | Extract from `__NEXT_DATA__` JSON                  | `{path, fields}`       |

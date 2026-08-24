@@ -159,6 +159,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "intervieweb",
     "jazzhr",
     "jobbank104",
+    "johdi",
     "jobvite",
     "jobs_ch",
     "join",
@@ -205,6 +206,7 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "embedded",
         "headhunter",
         "jazzhr",
+        "johdi",
         "jobstreet",
         "json-ld",
         "linkedin",
@@ -674,6 +676,11 @@ def auto_scraper_type(
         return ("json-ld", {"enrich": ["description"]})
     if monitor_type == "jobs_ch":
         return ("json-ld", None)
+    if monitor_type == "johdi":
+        return (
+            "johdi",
+            {key: (config or {}).get(key) for key in ("company_key", "flow", "locale")},
+        )
     if monitor_type == "bamboohr":
         return (
             "api_sniffer",

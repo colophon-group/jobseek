@@ -837,6 +837,12 @@ def _build_comment(name: str, metadata: dict) -> str:
         if jobs is not None:
             return f"Welcome to the Jungle \u2014 {slug}, {jobs} jobs"
         return f"Welcome to the Jungle \u2014 {slug}"
+    if name == "johdi":
+        jobs = metadata.get("jobs")
+        locale = metadata.get("locale", "?")
+        if jobs is not None:
+            return f"Johdi Suite \u2014 {jobs} jobs, locale: {locale}"
+        return f"Johdi Suite \u2014 locale: {locale}"
     return str(metadata)
 
 
@@ -925,6 +931,7 @@ from src.core.monitors import (  # noqa: E402
     jobstreet,  # noqa: F401
     jobvite,  # noqa: F401
     jobylon,  # noqa: F401
+    johdi,  # noqa: F401
     join,  # noqa: F401
     keka,  # noqa: F401
     kipt,  # noqa: F401
