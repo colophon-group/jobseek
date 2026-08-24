@@ -1293,6 +1293,8 @@ inline — Single-Page Extraction (rich)
     steps        Extraction steps run once per job (see: ws help steps).
                  The first step with a field (usually title) is the stop
                  condition — when it can't find a match, extraction ends.
+                 A non-empty list is mandatory when the explicit empty-state
+                 contract is configured; missing steps fail closed.
     defaults     Default field values applied when extracted value is absent.
                  Supports: description, locations (list), employment_type,
                  job_location_type, date_posted, valid_through.

@@ -366,8 +366,15 @@ async def discover(
     board_url = board["board_url"]
     metadata = board.get("metadata") or {}
 
+    empty_text = _validated_empty_text(metadata.get("empty_text"))
+    empty_selector = _validated_empty_selector(metadata.get("empty_selector"))
+    if (empty_text is None) != (empty_selector is None):
+        raise ValueError("inline explicit empty state requires empty_selector and empty_text")
+
     steps = metadata.get("steps")
     if not steps:
+        if empty_text is not None:
+            raise ValueError("inline explicit empty state requires non-empty steps")
         log.warning("inline.no_steps", url=board_url)
         return []
 
@@ -375,10 +382,6 @@ async def discover(
     defaults_by_title = metadata.get("defaults_by_title") or {}
     exclude_titles = set(metadata.get("exclude_titles") or [])
     exclude_title_regex = _compile_exclude_title_regex(metadata.get("exclude_title_regex"))
-    empty_text = _validated_empty_text(metadata.get("empty_text"))
-    empty_selector = _validated_empty_selector(metadata.get("empty_selector"))
-    if (empty_text is None) != (empty_selector is None):
-        raise ValueError("inline explicit empty state requires empty_selector and empty_text")
     item_boundary_tag = _validated_item_boundary_tag(metadata.get("item_boundary_tag"))
     preserve_single_location = metadata.get("preserve_single_location", False)
     if not isinstance(preserve_single_location, bool):

@@ -761,6 +761,21 @@ async def test_discover_requires_complete_explicit_empty_contract(metadata):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("steps", [None, []])
+async def test_discover_explicit_empty_requires_non_empty_steps(steps):
+    metadata = {
+        "empty_selector": ".empty-state:not(.hidden)",
+        "empty_text": "No vacancies are currently available",
+    }
+    if steps is not None:
+        metadata["steps"] = steps
+    board = {"board_url": "https://example.com/jobs", "metadata": metadata}
+
+    with pytest.raises(ValueError, match="explicit empty state requires non-empty steps"):
+        await discover(board, _FakeClient('<div class="empty-state">No vacancies</div>'))
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("value", ["", 123, "h2 > p", "x" * 33])
 async def test_discover_rejects_invalid_item_boundary_tag(value):
     board = {
