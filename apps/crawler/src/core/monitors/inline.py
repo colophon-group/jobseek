@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
@@ -38,6 +39,9 @@ log = structlog.get_logger()
 
 _MAX_JOBS = 500  # safety cap
 _MAX_EXCLUDE_TITLE_REGEX_LENGTH = 2_048
+_MAX_VALID_THROUGH_REGEX_LENGTH = 2_048
+_MAX_VALID_THROUGH_FORMAT_LENGTH = 128
+_ORDINAL_DAY_SUFFIX_RE = re.compile(r"(?<=\d)(?:st|nd|rd|th)\b", re.IGNORECASE)
 
 
 def _compile_exclude_title_regex(value: object) -> re.Pattern[str] | None:
@@ -74,6 +78,86 @@ def _generate_url(board_url: str, title: str, seen: dict[str, int]) -> str:
     params["_jid"] = [jid]
     new_query = urlencode(params, doseq=True)
     return urlunparse(parsed._replace(query=new_query))
+
+
+def _validated_valid_through_config(
+    metadata: dict,
+) -> tuple[re.Pattern[str] | None, str | None, bool]:
+    """Validate and compile deadline filtering configuration once per cycle."""
+    pattern_value = metadata.get("valid_through_regex")
+    pattern = None
+    if pattern_value is not None:
+        if (
+            not isinstance(pattern_value, str)
+            or not pattern_value
+            or len(pattern_value) > _MAX_VALID_THROUGH_REGEX_LENGTH
+        ):
+            raise ValueError("inline valid_through_regex must be a non-empty bounded string")
+        try:
+            pattern = re.compile(pattern_value, re.IGNORECASE | re.DOTALL)
+        except re.error as exc:
+            raise ValueError(f"inline valid_through_regex is invalid: {exc}") from exc
+        if pattern.groups < 1:
+            raise ValueError("inline valid_through_regex must contain a capture group")
+
+    date_format = metadata.get("valid_through_format")
+    if date_format is not None and (
+        not isinstance(date_format, str)
+        or not date_format
+        or len(date_format) > _MAX_VALID_THROUGH_FORMAT_LENGTH
+    ):
+        raise ValueError(
+            "inline valid_through_format must be a non-empty string up to "
+            f"{_MAX_VALID_THROUGH_FORMAT_LENGTH} characters"
+        )
+
+    exclude_expired = metadata.get("exclude_expired", False)
+    if not isinstance(exclude_expired, bool):
+        raise ValueError("inline exclude_expired must be a boolean")
+    return pattern, date_format, exclude_expired
+
+
+def _parse_valid_through(value: object, date_format: str | None) -> date:
+    """Parse an inline opportunity deadline into a calendar date.
+
+    ISO dates work without configuration. Human-readable deadlines require a
+    ``valid_through_format`` so parsing remains deterministic across hosts and
+    locales. English ordinal suffixes are ignored (``29th June 2026``).
+    """
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("inline valid_through must be a non-empty string")
+    cleaned = _ORDINAL_DAY_SUFFIX_RE.sub("", value.strip())
+    try:
+        if date_format:
+            return datetime.strptime(cleaned, date_format).date()
+        return datetime.fromisoformat(cleaned.replace("Z", "+00:00")).date()
+    except ValueError as exc:
+        hint = f" with format {date_format!r}" if date_format else " as ISO 8601"
+        raise ValueError(f"inline valid_through {value!r} could not be parsed{hint}") from exc
+
+
+def _resolve_valid_through(
+    result: dict,
+    job_defaults: dict,
+    description: object,
+    pattern: re.Pattern[str] | None,
+    date_format: str | None,
+    exclude_expired: bool,
+) -> date | None:
+    """Resolve a deadline from an extracted field, default, or description regex."""
+    raw = result.get("valid_through") or job_defaults.get("valid_through")
+    if raw is None and pattern is not None:
+        if not isinstance(description, str):
+            description = ""
+        match = pattern.search(description)
+        if match is not None:
+            raw = match.group(1).strip()
+
+    if raw is None:
+        if exclude_expired:
+            raise ValueError("inline exclude_expired requires valid_through for every opportunity")
+        return None
+    return _parse_valid_through(raw, date_format)
 
 
 async def _fetch_html(
@@ -178,6 +262,9 @@ async def discover(
         defaults_by_title — per-title defaults applied to missing fields
         exclude_titles — exact titles to skip after extraction
         exclude_title_regex — regex matching titles to skip after extraction
+        valid_through_regex — capture a deadline from the extracted description
+        valid_through_format — strptime format for non-ISO deadlines
+        exclude_expired — omit opportunities after valid_through (UTC, inclusive deadline)
         + browser keys (wait, timeout, actions, etc.)
     """
     board_url = board["board_url"]
@@ -192,6 +279,9 @@ async def discover(
     defaults_by_title = metadata.get("defaults_by_title") or {}
     exclude_titles = set(metadata.get("exclude_titles") or [])
     exclude_title_regex = _compile_exclude_title_regex(metadata.get("exclude_title_regex"))
+    valid_through_pattern, valid_through_format, exclude_expired = _validated_valid_through_config(
+        metadata
+    )
 
     html = await _fetch_html(board_url, metadata, client, pw)
     elements = flatten(html, include_hidden=bool(metadata.get("include_hidden")))
@@ -203,9 +293,12 @@ async def discover(
     # Extract jobs by running steps repeatedly
     jobs: list[DiscoveredJob] = []
     seen_jids: dict[str, int] = {}
+    expired_count = 0
+    processed_count = 0
+    today = datetime.now(UTC).date()
     cursor = 0
 
-    while cursor < len(elements) and len(jobs) < _MAX_JOBS:
+    while cursor < len(elements) and processed_count < _MAX_JOBS:
         result, new_cursor = walk_steps(elements, steps, start=cursor)
 
         # Stop if no title found or cursor didn't advance
@@ -214,6 +307,7 @@ async def discover(
             break
 
         cursor = new_cursor
+        processed_count += 1
 
         if title in exclude_titles or (
             exclude_title_regex is not None and exclude_title_regex.search(title)
@@ -226,6 +320,17 @@ async def discover(
 
         # Build DiscoveredJob with extracted + default fields
         description = result.get("description")
+        valid_through = _resolve_valid_through(
+            result,
+            job_defaults,
+            description,
+            valid_through_pattern,
+            valid_through_format,
+            exclude_expired,
+        )
+        if exclude_expired and valid_through is not None and valid_through < today:
+            expired_count += 1
+            continue
         location = result.get("location")
         locations = None
         if location:
@@ -243,11 +348,12 @@ async def discover(
             job_location_type=result.get("job_location_type")
             or job_defaults.get("job_location_type"),
             date_posted=result.get("date_posted") or job_defaults.get("date_posted"),
+            extras={"valid_through": valid_through.isoformat()} if valid_through else None,
         )
         jobs.append(job)
 
-    truncated = len(jobs) >= _MAX_JOBS and cursor < len(elements)
-    log.info("inline.discovered", url=board_url, jobs=len(jobs))
+    truncated = processed_count >= _MAX_JOBS and cursor < len(elements)
+    log.info("inline.discovered", url=board_url, jobs=len(jobs), expired=expired_count)
     if truncated:
         log.warning("inline.truncated", url=board_url, total=len(jobs), cap=_MAX_JOBS)
         return truncated_rich_result(jobs)
