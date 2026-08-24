@@ -1288,18 +1288,20 @@ def _validate_explicit_empty_states(
         empty_text: str | None,
         exact_text: bool,
     ) -> bool:
-        marker = tree.css_first(empty_selector)
-        if marker is None:
+        markers = tree.css(empty_selector)
+        if not markers:
             return False
-        marker_text = re.sub(r"\s+", " ", marker.text(separator=" ", strip=True)).strip()
         expected_text = re.sub(r"\s+", " ", empty_text or "").strip()
         if empty_text is None:
             return True
-        return (
-            marker_text == expected_text
-            if exact_text
-            else expected_text.casefold() in marker_text.casefold()
-        )
+        marker_texts = [
+            re.sub(r"\s+", " ", marker.text(separator=" ", strip=True)).strip()
+            for marker in markers
+        ]
+        if exact_text:
+            return expected_text in marker_texts
+        # Preserve the legacy single-marker contract for substring matching.
+        return expected_text.casefold() in marker_texts[0].casefold()
 
     # A selector-specific state may declare links that contradict the marker.
     # Evaluate that invariant even when normal discovery found URLs; otherwise

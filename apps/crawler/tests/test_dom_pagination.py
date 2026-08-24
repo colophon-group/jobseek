@@ -548,6 +548,33 @@ class TestExplicitEmptyState:
                 AsyncMock(),
             )
 
+    async def test_accepts_exact_empty_state_when_matching_marker_is_not_first(self):
+        html = """
+        <main>
+          <p>About the organisation.</p>
+          <p>There are currently no vacancies available.</p>
+        </main>
+        """
+        with patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": {
+                        "link_selector": "main a[href]",
+                        "empty_states": [
+                            {
+                                "selector": "main p",
+                                "exact_text": "There are currently no vacancies available.",
+                                "forbidden_link_selector": "main a[href]",
+                            }
+                        ],
+                    },
+                },
+                AsyncMock(),
+            )
+
+        assert result == set()
+
     async def test_accepts_rendered_zero_links_with_empty_marker(self):
         page = MagicMock()
         context = MagicMock()
