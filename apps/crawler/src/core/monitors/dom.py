@@ -13,10 +13,12 @@ from __future__ import annotations
 
 import asyncio
 import codecs
+import hashlib
 import io
 import random
 import re
 from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -47,6 +49,10 @@ _MAX_PDF_EXPIRATION_VERIFICATION_URLS = 100
 _MAX_PDF_EXPIRATION_BYTES = 20 * 1024 * 1024
 _MAX_PDF_EXPIRATION_PAGES = 200
 _MAX_PDF_EXPIRATION_TEXT_CHARS = 2_000_000
+_RESPONSE_FINGERPRINT_CONCURRENCY = 4
+_MAX_RESPONSE_FINGERPRINT_URLS = 100
+_MAX_RESPONSE_FINGERPRINT_BYTES = 20 * 1024 * 1024
+_RESPONSE_FINGERPRINT_QUERY_PARAM = "_jobseek_fp"
 
 # Browser-pagination fetch budget. Playwright fetches are slower than
 # httpx (the JS engine + page context add tens of ms), and the page is
@@ -156,6 +162,160 @@ async def _filter_jsonld_job_urls(urls: set[str], client: httpx.AsyncClient) -> 
         await asyncio.gather(*tasks, return_exceptions=True)
         raise
     return {url for url, is_job in results if is_job}
+
+
+def _validated_response_fingerprint_config(value: object) -> str | None:
+    """Validate opt-in response-validator URL fingerprinting.
+
+    The expected media type is mandatory so a listing cannot silently start
+    pointing at an HTML error page while still producing a plausible ETag.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) != {"content_type"}:
+        raise ValueError("DOM monitor fingerprint_response must contain only content_type")
+    content_type = value.get("content_type")
+    if (
+        not isinstance(content_type, str)
+        or not content_type.strip()
+        or len(content_type) > 128
+        or "\x00" in content_type
+        or "/" not in content_type
+    ):
+        raise ValueError("DOM monitor fingerprint_response.content_type must be a media type")
+    return content_type.strip().casefold()
+
+
+def _strong_etag(value: str | None, url: str) -> str:
+    """Return a bounded strong ETag or fail closed.
+
+    Weak validators explicitly permit semantically equivalent but bytewise
+    different responses, so they cannot safely identify mutable documents.
+    """
+    if value is None or value.startswith("W/"):
+        raise ValueError(f"DOM fingerprint_response requires a strong ETag: {url}")
+    if (
+        len(value) < 10
+        or len(value) > 512
+        or not value.startswith('"')
+        or not value.endswith('"')
+        or '"' in value[1:-1]
+        or any(ord(char) < 0x20 or ord(char) == 0x7F for char in value)
+    ):
+        raise ValueError(f"DOM fingerprint_response received an invalid strong ETag: {url}")
+    return value
+
+
+def _response_fingerprint_url(
+    source_url: str,
+    *,
+    etag: str,
+    last_modified: str,
+    content_length: int,
+    content_type: str,
+) -> str:
+    """Append a private, deterministic identity token to a mutable URL."""
+    parts = urlsplit(source_url)
+    if any(
+        key == _RESPONSE_FINGERPRINT_QUERY_PARAM
+        for key, _ in parse_qsl(parts.query, keep_blank_values=True)
+    ):
+        raise ValueError(
+            f"DOM fingerprint_response source URL contains reserved query parameter: {source_url}"
+        )
+    payload = "\n".join(
+        (source_url, etag, last_modified, str(content_length), content_type)
+    ).encode()
+    fingerprint = hashlib.sha256(payload).hexdigest()[:24]
+    query = f"{parts.query}&" if parts.query else ""
+    query += urlencode({_RESPONSE_FINGERPRINT_QUERY_PARAM: fingerprint})
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, query, ""))
+
+
+async def _fingerprint_response_urls(
+    urls: set[str],
+    client: httpx.AsyncClient,
+    expected_content_type: str,
+) -> set[str]:
+    """Turn mutable URLs into stable identities from strong HTTP validators.
+
+    All validators are required. Any request or validation failure propagates,
+    so a provider outage or header regression fails the whole monitor cycle
+    instead of returning a partial inventory and marking live jobs gone.
+    """
+    if len(urls) > _MAX_RESPONSE_FINGERPRINT_URLS:
+        raise ValueError(
+            "DOM monitor fingerprint_response supports at most "
+            f"{_MAX_RESPONSE_FINGERPRINT_URLS} discovered URLs"
+        )
+
+    semaphore = asyncio.Semaphore(_RESPONSE_FINGERPRINT_CONCURRENCY)
+
+    async def fingerprint(url: str) -> str:
+        parts = urlsplit(url)
+        if parts.scheme not in {"http", "https"} or not parts.netloc:
+            raise ValueError(f"DOM fingerprint_response found an invalid URL: {url}")
+        async with semaphore:
+            response = await client.head(url, follow_redirects=True)
+        response.raise_for_status()
+        check_tdm_response(response)
+
+        final_parts = urlsplit(str(response.url))
+        if (final_parts.scheme.casefold(), final_parts.netloc.casefold()) != (
+            parts.scheme.casefold(),
+            parts.netloc.casefold(),
+        ):
+            raise ValueError(f"DOM fingerprint_response crossed origins while resolving: {url}")
+
+        response_content_type = response.headers.get("content-type", "").split(";", 1)[0]
+        response_content_type = response_content_type.strip().casefold()
+        if response_content_type != expected_content_type:
+            raise ValueError(
+                "DOM fingerprint_response received unexpected Content-Type "
+                f"{response_content_type!r}: {url}"
+            )
+
+        etag = _strong_etag(response.headers.get("etag"), url)
+        raw_last_modified = response.headers.get("last-modified")
+        if raw_last_modified is None:
+            raise ValueError(f"DOM fingerprint_response requires Last-Modified: {url}")
+        try:
+            parsed_last_modified = parsedate_to_datetime(raw_last_modified)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError(
+                f"DOM fingerprint_response received invalid Last-Modified: {url}"
+            ) from exc
+        if parsed_last_modified.tzinfo is None:
+            raise ValueError(f"DOM fingerprint_response received invalid Last-Modified: {url}")
+        last_modified = parsed_last_modified.astimezone(UTC).isoformat()
+
+        raw_content_length = response.headers.get("content-length")
+        try:
+            content_length = int(raw_content_length) if raw_content_length is not None else 0
+        except ValueError as exc:
+            raise ValueError(
+                f"DOM fingerprint_response received invalid Content-Length: {url}"
+            ) from exc
+        if not 0 < content_length <= _MAX_RESPONSE_FINGERPRINT_BYTES:
+            raise ValueError(f"DOM fingerprint_response received invalid Content-Length: {url}")
+
+        return _response_fingerprint_url(
+            url,
+            etag=etag,
+            last_modified=last_modified,
+            content_length=content_length,
+            content_type=response_content_type,
+        )
+
+    tasks = [asyncio.create_task(fingerprint(url)) for url in sorted(urls)]
+    try:
+        return set(await asyncio.gather(*tasks))
+    except BaseException:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
 
 
 def _validated_unexpired_pdf_config(value: object) -> tuple[re.Pattern[str], str] | None:
@@ -1975,6 +2135,9 @@ async def dom_discover(
         metadata.get("exclude_detail_selector"),
         name="exclude_detail_selector",
     )
+    fingerprint_response = _validated_response_fingerprint_config(
+        metadata.get("fingerprint_response")
+    )
     encoding = metadata.get("encoding")
     if encoding is not None:
         if not isinstance(encoding, str) or not encoding:
@@ -1995,6 +2158,7 @@ async def dom_discover(
         or require_jsonld_jobposting
         or require_unexpired_pdf is not None
         or exclude_detail_selector is not None
+        or fingerprint_response is not None
     ):
         raise ValueError("DOM monitor rich_rows supports static listing extraction only")
 
@@ -2145,6 +2309,8 @@ async def dom_discover(
         urls = await _filter_jsonld_job_urls(urls, client)
     if require_unexpired_pdf is not None:
         urls = await _filter_unexpired_pdf_urls(urls, client, require_unexpired_pdf)
+    if fingerprint_response is not None:
+        urls = await _fingerprint_response_urls(urls, client, fingerprint_response)
 
     if exclude_detail_selector is not None:
         urls = await _exclude_urls_matching_detail_selector(

@@ -713,6 +713,27 @@ class TestDomScraper:
         assert result.title == "Consultant Role"
         assert result.description == "<p>Consultant Role</p>"
 
+    async def test_static_document_fallback_fetches_fingerprinted_url_unchanged(self):
+        from src.core.scrapers.dom import scrape
+
+        pdf = _make_document_pdf("Validator Identity Role")
+        url = "https://example.com/download/job.pdf?_jobseek_fp=0123456789abcdef"
+        requested_urls: list[str] = []
+
+        def handler(request):
+            requested_urls.append(str(request.url))
+            return httpx.Response(200, content=pdf, request=request)
+
+        config = {
+            "steps": [{"tag": "h1", "field": "title"}],
+            "document_fallback": {"pdf": {"title_source": "text"}},
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(url, config, client)
+
+        assert requested_urls == [url]
+        assert result.title == "Validator Identity Role"
+
     async def test_static_document_fallback_parses_docx_with_format_defaults(self):
         from src.core.scrapers.dom import scrape
 
