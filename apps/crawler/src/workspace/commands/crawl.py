@@ -941,6 +941,7 @@ _MONITOR_CONFIG_HINTS = {
         "organisation_id is auto-resolved"
     ),
     "jobvite": "Requires: tenant + listing_url (auto-filled from a jobs.jobvite.com URL)",
+    "johdi": "Requires: company_key, flow, locale (auto-filled from an embedded Johdi widget)",
     "pageup": "Requires: instance, source_pointer, locale (auto-filled from a PageUp URL)",
     "icims": "Requires: host (auto-filled from an icims.com URL)",
     "infoniqa": "Requires: employer_name (auto-filled from a live Infoniqa board probe)",

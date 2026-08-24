@@ -79,6 +79,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `turbohire` | Rich | skip | TurboHire token-authenticated public career API |
 | `jarvi` | Rich | skip | Jarvi public careers API embeds |
 | `jobylon` | Rich | skip | Jobylon iframe embeds |
+| `johdi` | URL-only | johdi | Johdi Suite widgets embedded on custom careers pages |
 | `jobs_ch` | URL-only | json-ld | jobs.ch employer profiles and paginated public search API |
 | `keka` | Rich | skip | Keka career-portal bootstrap and public rich-jobs API |
 | `lever` | Rich | skip | Lever ATS |
@@ -323,6 +324,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `embedded` | Static | Extracts from embedded JSON/JS data in page source |
 | `headhunter` | Static | Fetches proxy-routed HeadHunter vacancy detail JSON |
 | `jobstreet` | Static | Fetches JobStreet vacancy detail GraphQL data |
+| `johdi` | Static | Fetches Johdi Suite public offer-detail JSON |
 | `json-ld` | Static | Parses `<script type="application/ld+json">` |
 | `linkedin` | Static | Fetches LinkedIn public guest-job detail fragments |
 | `mokahr` | Static | Fetches and decrypts Mokahr detail API records |

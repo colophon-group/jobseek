@@ -108,6 +108,7 @@ Monitor Types (cheapest first):
   jazzhr            10      Job URLs          Auto-configured
   jobbank104        10      Job URLs          Auto-configured JSON-LD
   jobstreet         10      Full/partial      Auto-enriched
+  johdi             10      Job URLs          Auto-configured
   pageup            10      Full/partial      Auto-enriched DOM
   keka              10      Full job data     No (skipped)
   lever             10      Full job data     No (skipped)
@@ -199,6 +200,7 @@ Scraper Types:
   adp            API         No               ADP Workforce Now detail + DOCX attachments
   workable       API         No               Workable job pages (auto-configured)
   workday        API         No               Workday job pages (auto-configured)
+  johdi          API         No               Johdi Suite offer details (auto-configured)
 
   Many monitors auto-configure the scraper — ws select monitor will tell you
   if the scraper step is skipped. You only reach this step when manual
@@ -431,6 +433,22 @@ beehire — Beehire public career-page monitor
   Detection:  ws probe verifies the public campaigns payload and reports its
               current job count.
   Zero jobs?  A valid campaigns: [] payload is an active empty board."""
+
+MONITOR_JOHDI = """\
+johdi — Johdi Suite embedded careers monitor
+
+  Source:   Public list and per-offer APIs at ats.johdisuite.ch
+  Returns:  Canonical offer URLs from the complete active-offer inventory
+  Scraper:  johdi (auto-configured) fetches structured offer details on the
+            normal scrape schedule
+  Cap:      50,000 jobs
+
+  Config:   company_key, flow, and locale. All are auto-detected from the
+            #ats-offers widget embedded on a custom careers page.
+
+  Detection:  ws probe verifies the public offers payload and reports its
+              current job count.
+  Zero jobs?  A valid [] response is an active empty board."""
 
 MONITOR_EIGHTFOLD = """\
 eightfold — Eightfold AI Careers Portal (hybrid sitemap + PCSX)
@@ -3685,6 +3703,7 @@ MONITOR_CARDS: dict[str, str] = {
     "turbohire": MONITOR_TURBOHIRE,
     "jarvi": MONITOR_JARVI,
     "jobylon": MONITOR_JOBYLON,
+    "johdi": MONITOR_JOHDI,
     "join": MONITOR_JOIN,
     "lever": MONITOR_LEVER,
     "linkedin": MONITOR_LINKEDIN,
@@ -4007,6 +4026,17 @@ rippling — Rippling Detail API scraper
             Runs on the daily scrape schedule (not every monitor cycle).
 """
 
+SCRAPER_JOHDI = """\
+johdi — Johdi Suite offer-detail API scraper
+
+  API:      GET https://ats.johdisuite.ch/api/company/{company_key}/
+            publicationFlows/{flow}/offer/{id}/{locale}
+  Returns:  title, HTML description, locations, employment_type,
+            date_posted, language, activity range, and application metadata
+  Config:   company_key, flow, and locale (auto-filled by the johdi monitor)
+  Note:     Runs on the normal scrape schedule, not every monitor cycle.
+"""
+
 SCRAPER_BITE = """\
 bite — BITE GmbH ATS Detail API scraper
 
@@ -4148,6 +4178,7 @@ oracle_hcm — Oracle Cloud HCM Detail API scraper
     "bite": SCRAPER_BITE,
     "mokahr": SCRAPER_MOKAHR,
     "rippling": SCRAPER_RIPPLING,
+    "johdi": SCRAPER_JOHDI,
     "smartrecruiters": SCRAPER_SMARTRECRUITERS,
     "workable": SCRAPER_WORKABLE,
     "workday": SCRAPER_WORKDAY,
