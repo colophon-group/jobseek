@@ -317,16 +317,18 @@ async def _exclude_urls_matching_detail_selector(
             f"{_MAX_JSONLD_VERIFICATION_URLS} discovered URLs"
         )
 
-    from src.shared.http_retry import fetch_with_retry
+    from src.shared.http_retry import fetch_text_page_with_retry
 
     semaphore = asyncio.Semaphore(_JSONLD_VERIFICATION_CONCURRENCY)
 
     async def inspect(url: str) -> tuple[str, bool]:
         async with semaphore:
-            html = await fetch_with_retry(
+            html = await fetch_text_page_with_retry(
                 client,
                 url,
-                transient_403=True,
+                retryable_statuses={401, 403},
+                end_of_pagination_statuses={404, 410},
+                require_nonempty=True,
                 max_chars=None,
             )
         if html is None:

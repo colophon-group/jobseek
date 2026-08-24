@@ -1892,6 +1892,59 @@ class TestDomDiscoverInitialFetch:
                     client,
                 )
 
+    @pytest.mark.parametrize("status_code", [400, 422])
+    async def test_detail_selector_fails_closed_on_terminal_detail_error(self, status_code):
+        board_url = "https://www.example.com/vacancies"
+
+        def handler(request):
+            if str(request.url) == board_url:
+                return httpx.Response(
+                    200,
+                    text='<a class="vacancy" href="/research-consultant">Role</a>',
+                    request=request,
+                )
+            return httpx.Response(status_code, text="Invalid request", request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError):
+                await dom_discover(
+                    {
+                        "board_url": board_url,
+                        "metadata": {
+                            "link_selector": "a.vacancy",
+                            "exclude_detail_selector": "a.apply",
+                        },
+                    },
+                    client,
+                )
+
+    @pytest.mark.parametrize("status_code", [404, 410])
+    async def test_detail_selector_omits_retired_detail(self, status_code):
+        board_url = "https://www.example.com/vacancies"
+
+        def handler(request):
+            if str(request.url) == board_url:
+                return httpx.Response(
+                    200,
+                    text='<a class="vacancy" href="/retired-role">Role</a>',
+                    request=request,
+                )
+            return httpx.Response(status_code, text="Gone", request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await dom_discover(
+                {
+                    "board_url": board_url,
+                    "metadata": {
+                        "link_selector": "a.vacancy",
+                        "exclude_detail_selector": "a.apply",
+                    },
+                },
+                client,
+            )
+
+        assert result == set()
+
     @pytest.mark.parametrize("selector", ["", "a[", "a\x00b", "a" * 257, 123])
     async def test_rejects_invalid_detail_exclusion_selector(self, selector):
         async with httpx.AsyncClient() as client:
