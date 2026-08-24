@@ -311,11 +311,17 @@ async def _fetch_bounded_pdf_text(
     client: httpx.AsyncClient,
     *,
     config_name: str,
+    request_headers: dict[str, str] | None = None,
 ) -> str | None:
     """Fetch one bounded PDF and return text, or ``None`` when it was removed."""
     if urlsplit(url).path.lower().endswith(".pdf") is False:
         raise ValueError(f"DOM {config_name} found a non-PDF URL: {url}")
-    async with client.stream("GET", url, follow_redirects=True) as response:
+    async with client.stream(
+        "GET",
+        url,
+        follow_redirects=True,
+        headers=request_headers,
+    ) as response:
         if response.status_code in {404, 410}:
             return None
         response.raise_for_status()
@@ -358,6 +364,7 @@ async def _filter_unexpired_pdf_urls(
     required_text_pattern: re.Pattern[str] | None = None,
     raise_on_required_text_mismatch: bool = False,
     return_deadlines: bool = False,
+    request_headers: dict[str, str] | None = None,
 ) -> set[str] | tuple[set[str], dict[str, str]]:
     """Keep only linked PDFs whose captured application deadline has not passed.
 
@@ -386,6 +393,7 @@ async def _filter_unexpired_pdf_urls(
                 url,
                 client,
                 config_name="require_unexpired_pdf",
+                request_headers=request_headers,
             )
         if text is None:
             return url, False, None
@@ -431,6 +439,8 @@ async def _filter_pdf_text_urls(
     urls: set[str],
     client: httpx.AsyncClient,
     config: tuple[re.Pattern[str], re.Pattern[str]],
+    *,
+    request_headers: dict[str, str] | None = None,
 ) -> set[str]:
     """Classify every linked PDF as included or explicitly excluded.
 
@@ -456,6 +466,7 @@ async def _filter_pdf_text_urls(
                 url,
                 client,
                 config_name="require_pdf_text",
+                request_headers=request_headers,
             )
         if text is None:
             return url, False
@@ -2756,6 +2767,16 @@ async def dom_discover(
     if prospective_canonical_path is not None and prospective_board is None:
         raise ValueError("DOM monitor prospective_canonical_path requires prospective_board")
 
+    request_headers_raw = metadata.get("request_headers") or {}
+    if not isinstance(request_headers_raw, dict) or any(
+        not isinstance(key, str) or not isinstance(value, str)
+        for key, value in request_headers_raw.items()
+    ):
+        raise ValueError("DOM monitor request_headers must map strings to strings")
+    from src.shared.api_sniff import clean_headers
+
+    request_headers = clean_headers(request_headers_raw)
+
     render = metadata.get("render", False)
     actions = metadata.get("actions")
     pagination = metadata.get("pagination")
@@ -2911,6 +2932,7 @@ async def dom_discover(
             html = await fetch_text_page_with_retry(
                 client,
                 board_url,
+                headers=request_headers or None,
                 retryable_statuses={202, 401, 403},
                 require_nonempty=True,
                 max_bytes=_MAX_EXPLICIT_EMPTY_BODY_BYTES,
@@ -2921,6 +2943,7 @@ async def dom_discover(
             html = await fetch_with_retry(
                 client,
                 board_url,
+                headers=request_headers or None,
                 transient_403=True,
                 retryable_statuses={202},
                 encoding=encoding,
@@ -3020,6 +3043,7 @@ async def dom_discover(
                     url_transform=url_transform,
                     encoding=encoding,
                     link_selector=link_selector,
+                    request_headers=request_headers or None,
                 )
 
     # Exclude the board URL itself by default — it is normally the listing
@@ -3032,9 +3056,19 @@ async def dom_discover(
     if require_jsonld_jobposting:
         urls = await _filter_jsonld_job_urls(urls, client)
     if require_unexpired_pdf is not None:
-        urls = await _filter_unexpired_pdf_urls(urls, client, require_unexpired_pdf)
+        urls = await _filter_unexpired_pdf_urls(
+            urls,
+            client,
+            require_unexpired_pdf,
+            request_headers=request_headers or None,
+        )
     if require_pdf_text is not None:
-        urls = await _filter_pdf_text_urls(urls, client, require_pdf_text)
+        urls = await _filter_pdf_text_urls(
+            urls,
+            client,
+            require_pdf_text,
+            request_headers=request_headers or None,
+        )
     if fingerprint_response is not None:
         urls = await _fingerprint_response_urls(urls, client, fingerprint_response)
 

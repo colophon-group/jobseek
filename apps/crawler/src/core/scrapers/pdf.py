@@ -36,6 +36,10 @@ Config:
                    board whose PDFs omit a location that is authoritative at
                    board level; extracted values always win. Types, canonical
                    enums, ISO dates, and structured salary shapes are validated.
+    request_headers
+                   Optional request headers for the PDF download. Useful for
+                   origins that reject the shared browser-like User-Agent but
+                   allow an explicit crawler identity.
 """
 
 from __future__ import annotations
@@ -53,6 +57,7 @@ import httpx
 import structlog
 
 from src.core.scrapers import JobContent, register
+from src.shared.api_sniff import clean_headers
 from src.shared.response_fingerprint import (
     MAX_RESPONSE_FINGERPRINT_BYTES,
     extract_response_fingerprint_url,
@@ -392,7 +397,18 @@ async def scrape(
     """
     content = await _download_verified_fingerprinted_pdf(url, http)
     if content is None:
-        response = await http.get(url, follow_redirects=True)
+        request_headers = config.get("request_headers") or {}
+        if not isinstance(request_headers, dict) or any(
+            not isinstance(key, str) or not isinstance(value, str)
+            for key, value in request_headers.items()
+        ):
+            raise ValueError("PDF request_headers must map strings to strings")
+        headers = clean_headers(request_headers)
+        response = await http.get(
+            url,
+            follow_redirects=True,
+            headers=headers or None,
+        )
         response.raise_for_status()
         content = response.content
 

@@ -1008,6 +1008,54 @@ class TestRequireUnexpiredPdf:
 
         assert result == {active}
 
+    async def test_dom_request_headers_cover_listing_and_pdf_deadline_fetch(
+        self,
+        monkeypatch,
+    ):
+        board_url = "https://example.com/careers"
+        active = "https://example.com/jobs/active.pdf"
+        headers = {
+            "User-Agent": "jobseek-crawler (+https://jseek.co/)",
+            "Accept": "application/pdf",
+        }
+        monkeypatch.setattr("pypdf.PdfReader", self._fake_reader)
+
+        async def fetch_listing(_client, url, **kwargs):
+            assert url == board_url
+            assert kwargs["headers"] == headers
+            return _html_with_links(active)
+
+        def handler(request):
+            assert request.headers["user-agent"] == headers["User-Agent"]
+            assert request.headers["accept"] == headers["Accept"]
+            return httpx.Response(
+                200,
+                content=b"%PDF Applications must be submitted by 31 December 2999",
+                request=request,
+            )
+
+        with patch(_FETCH_PATCH, new=fetch_listing):
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+                result = await dom_discover(
+                    {
+                        "board_url": board_url,
+                        "metadata": {
+                            "request_headers": headers,
+                            "link_selector": "a[href$='.pdf']",
+                            "require_unexpired_pdf": {
+                                "pattern": (
+                                    r"Applications must be submitted by "
+                                    r"(\d{1,2} [A-Za-z]+ \d{4})"
+                                ),
+                                "date_format": "%d %B %Y",
+                            },
+                        },
+                    },
+                    client,
+                )
+
+        assert result == {active}
+
     @pytest.mark.parametrize(
         "value",
         [
