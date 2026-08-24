@@ -16,15 +16,25 @@ DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 BOARD_SLUG = "european-aquatics-job-offers"
 COMPANY_SLUG = "european-aquatics"
 
-# Reduced from the live 2026-08-24 representation. Closed postings remain on
-# the page after the official empty-state message is published.
-LIVE_EMPTY_HTML = """
+# Reduced from the live 2026-08-24 representation. The empty-state widget is
+# hidden at every Elementor breakpoint while Sustainability Intern is visible.
+LIVE_ACTIVE_HTML = """
 <html><body>
   <h1>JOB OFFERS</h1>
-  <h5>No vacancies are currently available, but we thank you for your interest.</h5>
-  <h2>Sustainability Intern</h2>
-  <h4>WORK ARRANGEMENT: Office location Belgrade with occasional travel</h4>
-  <p>European Aquatics is opening applications for an internship of 6 months.</p>
+  <div class="elementor-element elementor-hidden-desktop elementor-hidden-tablet
+              elementor-hidden-mobile elementor-widget elementor-widget-heading">
+    <div class="elementor-widget-container">
+      <h5>No vacancies are currently available, but we thank you for your interest.</h5>
+    </div>
+  </div>
+  <div class="elementor-element elementor-widget elementor-widget-heading">
+    <div class="elementor-widget-container"><h2>Sustainability Intern</h2></div>
+  </div>
+  <div class="elementor-widget-text-editor">
+    <p>European Aquatics is opening applications for an internship of 6 months.</p>
+    <p><strong>Location:</strong> Remote or from the office in Nyon, Switzerland</p>
+    <p>The intern will support European Aquatics sustainability initiatives.</p>
+  </div>
 </body></html>
 """
 
@@ -32,9 +42,13 @@ LIVE_EMPTY_HTML = """
 # declared an empty inventory while retaining this closed role in its markup.
 ARCHIVED_EMPTY_HTML = """
 <html><body>
-  <h1>JOB OFFERS</h1>
+  <h1>JOB OFFER</h1>
   <h5>Do you want to be part of a dynamic team?</h5>
-  <h5>No vacancies are currently available, but we thank you for your interest.</h5>
+  <div class="elementor-element elementor-widget elementor-widget-heading">
+    <div class="elementor-widget-container">
+      <h5>No vacancies are currently available, but we thank you for your interest.</h5>
+    </div>
+  </div>
   <h2>Aquatics Social Responsibility Project Manager</h2>
   <h4>REPORTS TO: Executive Director</h4>
   <h4>TYPE OF CONTRACT: Full-time</h4>
@@ -60,11 +74,15 @@ ARCHIVED_MIXED_LAYOUT_HTML = """
   <p>Career Opportunity:</p>
   <p>European Aquatics is looking for a Sport Assistant Water Polo.</p>
 
+  <h2>European Aquatics Service Team</h2>
+  <p>Career Opportunity:</p>
+  <p>European Aquatics is establishing a new Service Team, based in Belgrade.</p>
+
   <h2>European Aquatics Academy Project Manager</h2>
   <h4>REPORTS TO: Executive Director</h4>
   <h4>
-    LOCATION: Possibility for flexible working arrangements with need to travel
-    to the European Aquatics HQ (Nyon, Switzerland) and across Europe
+    LOCATION: Possibility for flexible working arrangements with need to travel on regular
+    basis to the European Aquatics HQ (Nyon, Switzerland) and across Europe
     START DATE: Position to be filled as early as possible
   </h4>
   <p>European Aquatics is developing its Academy strategy and courses.</p>
@@ -95,17 +113,35 @@ async def _discover_fixture(board: dict, html: str):
         return await discover(board, client)
 
 
-@pytest.mark.parametrize("html", [LIVE_EMPTY_HTML, ARCHIVED_EMPTY_HTML])
-async def test_authoritative_empty_marker_wins_over_retained_role(html: str) -> None:
+async def test_visible_archived_empty_marker_wins_over_retained_role() -> None:
     board = _board()
     # Prove the empty-state contract itself, independent of the defensive
     # blacklist used when the page publishes an active role.
     board["metadata"] = deepcopy(board["metadata"])
+    board["metadata"]["fetch_contains"] = "JOB OFFER"
     board["metadata"]["exclude_titles"] = []
 
-    jobs = await _discover_fixture(board, html)
+    jobs = await _discover_fixture(board, ARCHIVED_EMPTY_HTML)
 
     assert jobs == []
+
+
+async def test_live_css_hidden_empty_marker_does_not_suppress_visible_role() -> None:
+    board = _board()
+    board["metadata"] = deepcopy(board["metadata"])
+    board["metadata"]["exclude_titles"] = []
+
+    jobs = await _discover_fixture(board, LIVE_ACTIVE_HTML)
+
+    assert [job.title for job in jobs] == ["Sustainability Intern"]
+    assert jobs[0].locations == ["Remote or from the office in Nyon, Switzerland"]
+
+
+async def test_live_hidden_marker_with_all_roles_excluded_fails_closed() -> None:
+    board = _board()
+
+    with pytest.raises(ValueError, match="did not match the configured explicit empty state"):
+        await _discover_fixture(board, LIVE_ACTIVE_HTML)
 
 
 async def test_archived_roles_are_bounded_before_optional_location_lookup() -> None:
@@ -117,23 +153,34 @@ async def test_archived_roles_are_bounded_before_optional_location_lookup() -> N
 
     assert [job.title for job in jobs] == [
         "Sport Assistant Water Polo",
+        "European Aquatics Service Team",
         "European Aquatics Academy Project Manager",
     ]
     assert jobs[0].locations is None
     assert "Sport Assistant Water Polo" in (jobs[0].description or "")
     assert "Academy" not in (jobs[0].description or "")
-    assert jobs[1].locations is not None
-    assert "Nyon" in jobs[1].locations[0]
-    assert "Academy strategy" in (jobs[1].description or "")
-    assert "Water Polo" not in (jobs[1].description or "")
+    assert jobs[1].locations is None
+    assert "Service Team" in (jobs[1].description or "")
+    assert "Academy" not in (jobs[1].description or "")
+    assert jobs[2].locations == [
+        "Possibility for flexible working arrangements with need to travel on regular basis "
+        "to the European Aquatics HQ (Nyon, Switzerland) and across Europe"
+    ]
+    assert "Academy strategy" in (jobs[2].description or "")
+    assert "Water Polo" not in (jobs[2].description or "")
 
 
 def test_board_uses_explicit_empty_and_item_boundary_contracts() -> None:
     metadata = _board()["metadata"]
 
     assert metadata["fetch_contains"] == "JOB OFFERS"
+    assert metadata["empty_selector"] == (
+        ".elementor-widget-heading:not(.elementor-hidden-desktop)"
+        ":not(.elementor-hidden-tablet):not(.elementor-hidden-mobile) h5"
+    )
     assert metadata["empty_text"] == "No vacancies are currently available"
     assert metadata["item_boundary_tag"] == "h2"
+    assert metadata["preserve_single_location"] is True
     assert "Aquatics Social Responsibility Project Manager" in metadata["exclude_titles"]
 
 

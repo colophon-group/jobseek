@@ -1243,8 +1243,10 @@ inline — Single-Page Extraction (rich)
         }
       ],
       "fetch_contains": "Open positions",
+      "empty_selector": ".empty-state:not(.hidden)",
       "empty_text": "No vacancies are currently available",
       "item_boundary_tag": "h3",
+      "preserve_single_location": true,
       "render": true,
       "steps": [
         {"tag": "h3", "field": "title"},
@@ -1272,13 +1274,22 @@ inline — Single-Page Extraction (rich)
     fetch_contains
                  Required text that every accepted representation must contain.
                  A response without it falls through to the next fetch URL.
-    empty_text   Optional authoritative visible-text marker. When present in the
-                 accepted representation, the monitor returns a healthy empty
-                 result before extracting retained or hidden legacy postings.
+    empty_selector
+                 Bounded CSS selector for the visibly active empty-state
+                 element. Required with empty_text. The selector must exclude
+                 CSS-hidden variants (for example, with :not(.hidden)).
+    empty_text   Authoritative text required inside empty_selector. A matching
+                 selected element returns a healthy empty result before
+                 extraction. If neither this state nor an accepted job is
+                 found, the cycle fails closed, including when every extracted
+                 title was excluded or expired.
     item_boundary_tag
                  Optional HTML tag that starts each posting (for example h2).
                  Each repeated step run is restricted to one such block, so an
                  optional field cannot consume content from the next posting.
+    preserve_single_location
+                 When true, keep an extracted location string as one value
+                 instead of splitting it at commas (default: false).
     steps        Extraction steps run once per job (see: ws help steps).
                  The first step with a field (usually title) is the stop
                  condition — when it can't find a match, extraction ends.
