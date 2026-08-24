@@ -13,8 +13,10 @@ from __future__ import annotations
 
 import asyncio
 import codecs
+import io
 import random
 import re
+from datetime import date, datetime
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -26,6 +28,7 @@ from selectolax.lexbor import LexborHTMLParser, SelectolaxError
 from src.core.monitors import DiscoveredJob, register
 from src.core.monitors.raw import save_text_response
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
+from src.shared.tdm import check_response as check_tdm_response
 from src.shared.truncation import truncated_rich_result
 
 if TYPE_CHECKING:
@@ -39,6 +42,9 @@ MAX_URLS = 50_000
 _MAX_PAGINATION_PAGES = 10_000
 _JSONLD_VERIFICATION_CONCURRENCY = 8
 _MAX_JSONLD_VERIFICATION_URLS = 500
+_PDF_EXPIRATION_VERIFICATION_CONCURRENCY = 4
+_MAX_PDF_EXPIRATION_VERIFICATION_URLS = 100
+_MAX_PDF_EXPIRATION_BYTES = 20 * 1024 * 1024
 
 # Browser-pagination fetch budget. Playwright fetches are slower than
 # httpx (the JS engine + page context add tens of ms), and the page is
@@ -148,6 +154,102 @@ async def _filter_jsonld_job_urls(urls: set[str], client: httpx.AsyncClient) -> 
         await asyncio.gather(*tasks, return_exceptions=True)
         raise
     return {url for url, is_job in results if is_job}
+
+
+def _validated_unexpired_pdf_config(value: object) -> tuple[re.Pattern[str], str] | None:
+    """Validate the opt-in PDF application-deadline filter."""
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) - {"pattern", "date_format"}:
+        raise ValueError(
+            "DOM monitor require_unexpired_pdf must contain only pattern and date_format"
+        )
+    pattern = value.get("pattern")
+    date_format = value.get("date_format")
+    if not isinstance(pattern, str) or not pattern or len(pattern) > 1_024 or "\x00" in pattern:
+        raise ValueError("DOM monitor require_unexpired_pdf.pattern must be 1-1024 characters")
+    if (
+        not isinstance(date_format, str)
+        or not date_format
+        or len(date_format) > 128
+        or "\x00" in date_format
+    ):
+        raise ValueError("DOM monitor require_unexpired_pdf.date_format must be 1-128 characters")
+    try:
+        compiled = re.compile(pattern)
+    except re.error as exc:
+        raise ValueError("DOM monitor require_unexpired_pdf.pattern is invalid") from exc
+    if compiled.groups < 1:
+        raise ValueError("DOM monitor require_unexpired_pdf.pattern requires a capture group")
+    return compiled, date_format
+
+
+async def _filter_unexpired_pdf_urls(
+    urls: set[str],
+    client: httpx.AsyncClient,
+    config: tuple[re.Pattern[str], str],
+) -> set[str]:
+    """Keep only linked PDFs whose captured application deadline has not passed.
+
+    Every linked document must remain parseable and expose the configured date.
+    That fail-closed contract prevents a PDF layout change from turning an
+    expired, still-linked advert into a live posting. A removed 404/410 PDF is
+    omitted because the listing can briefly retain stale document links.
+    """
+    if len(urls) > _MAX_PDF_EXPIRATION_VERIFICATION_URLS:
+        raise ValueError(
+            "DOM monitor require_unexpired_pdf supports at most "
+            f"{_MAX_PDF_EXPIRATION_VERIFICATION_URLS} discovered URLs"
+        )
+
+    pattern, date_format = config
+    semaphore = asyncio.Semaphore(_PDF_EXPIRATION_VERIFICATION_CONCURRENCY)
+
+    async def verify(url: str) -> tuple[str, bool]:
+        import pypdf
+
+        if urlsplit(url).path.lower().endswith(".pdf") is False:
+            raise ValueError(f"DOM require_unexpired_pdf found a non-PDF URL: {url}")
+        async with semaphore:
+            response = await client.get(url, follow_redirects=True)
+        if response.status_code in {404, 410}:
+            return url, False
+        response.raise_for_status()
+        check_tdm_response(response)
+        if len(response.content) > _MAX_PDF_EXPIRATION_BYTES:
+            raise ValueError(
+                "DOM require_unexpired_pdf document exceeds "
+                f"{_MAX_PDF_EXPIRATION_BYTES} bytes: {url}"
+            )
+        if not response.content.lstrip().startswith(b"%PDF"):
+            raise ValueError(f"DOM require_unexpired_pdf response is not a PDF: {url}")
+
+        reader = pypdf.PdfReader(io.BytesIO(response.content))
+        text = "\n\n".join(page.extract_text() or "" for page in reader.pages).strip()
+        match = pattern.search(text)
+        if match is None or match.group(1) is None:
+            raise ValueError(f"DOM require_unexpired_pdf deadline was not found: {url}")
+        raw_deadline = re.sub(r"\s+", " ", match.group(1)).strip()
+        raw_deadline = re.sub(r"(?<=\d)(?:st|nd|rd|th)\b", "", raw_deadline, flags=re.IGNORECASE)
+        try:
+            deadline = datetime.strptime(raw_deadline, date_format).date()
+        except ValueError as exc:
+            raise ValueError(
+                f"DOM require_unexpired_pdf deadline {raw_deadline!r} did not match "
+                f"date_format {date_format!r}: {url}"
+            ) from exc
+        return url, deadline >= date.today()
+
+    tasks = [asyncio.create_task(verify(url)) for url in sorted(urls)]
+    try:
+        results = await asyncio.gather(*tasks)
+    except BaseException:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
+    return {url for url, is_active in results if is_active}
 
 
 _VAGAS_HOST = "trabalheconosco.vagas.com.br"
@@ -1769,6 +1871,7 @@ async def dom_discover(
     require_jsonld_jobposting = metadata.get("require_jsonld_jobposting", False)
     if not isinstance(require_jsonld_jobposting, bool):
         raise ValueError("DOM monitor require_jsonld_jobposting must be a boolean")
+    require_unexpired_pdf = _validated_unexpired_pdf_config(metadata.get("require_unexpired_pdf"))
     encoding = metadata.get("encoding")
     if encoding is not None:
         if not isinstance(encoding, str) or not encoding:
@@ -1784,17 +1887,18 @@ async def dom_discover(
         render = True
 
     if rich_rows is not None and (
-        render or metadata.get("include_board_url") or require_jsonld_jobposting
+        render
+        or metadata.get("include_board_url")
+        or require_jsonld_jobposting
+        or require_unexpired_pdf is not None
     ):
         raise ValueError("DOM monitor rich_rows supports static listing extraction only")
 
     if empty_selector is not None:
         if link_selector is None:
             raise ValueError("DOM monitor empty_selector requires link_selector")
-        if render or pagination or metadata.get("include_board_url") or require_jsonld_jobposting:
-            raise ValueError(
-                "DOM monitor empty_selector supports static, single-page link extraction only"
-            )
+        if pagination or metadata.get("include_board_url") or require_jsonld_jobposting:
+            raise ValueError("DOM monitor empty_selector supports single-page link extraction only")
     elif empty_text is not None:
         raise ValueError("DOM monitor empty_text requires empty_selector")
 
@@ -1804,6 +1908,10 @@ async def dom_discover(
         if pw is not None:
             async with open_page(pw, combined, use_proxy=bool(metadata.get("proxy"))) as page:
                 urls = await _extract_links_rendered(page, combined, url_matcher)
+                if empty_selector is not None and not urls:
+                    _validate_explicit_empty_state(
+                        await safe_content(page), empty_selector, empty_text, urls
+                    )
                 if pagination:
                     browser_page = page if pagination.get("browser") else None
                     urls = await _paginate_urls(
@@ -1831,6 +1939,10 @@ async def dom_discover(
                 open_page(p, combined, use_proxy=bool(metadata.get("proxy"))) as page,
             ):
                 urls = await _extract_links_rendered(page, combined, url_matcher)
+                if empty_selector is not None and not urls:
+                    _validate_explicit_empty_state(
+                        await safe_content(page), empty_selector, empty_text, urls
+                    )
                 if pagination:
                     browser_page = page if pagination.get("browser") else None
                     urls = await _paginate_urls(
@@ -1927,6 +2039,8 @@ async def dom_discover(
 
     if require_jsonld_jobposting:
         urls = await _filter_jsonld_job_urls(urls, client)
+    if require_unexpired_pdf is not None:
+        urls = await _filter_unexpired_pdf_urls(urls, client, require_unexpired_pdf)
 
     if len(urls) > MAX_URLS:
         log.warning("dom.truncated", total=len(urls), cap=MAX_URLS)

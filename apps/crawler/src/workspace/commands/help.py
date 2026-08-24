@@ -1361,7 +1361,7 @@ dom — Link or Static Listing-Row Extraction (fallback)
     empty_selector Optional CSS selector for a stable, explicit empty-state
                    element. When configured, a zero-link page succeeds only
                    if this selector matches; otherwise the cycle fails closed.
-                   Requires link_selector and static, single-page extraction.
+                   Requires link_selector and single-page extraction.
     empty_text     Optional case-insensitive text that must occur inside the
                    matched empty_selector. Use when the element exists for
                    both empty and non-empty counts (for example, "0 jobs").
@@ -1373,6 +1373,17 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    discovered URLs. Use for small provider listings that keep
                    stale profile links after an opening closes. Incompatible
                    with rich_rows.
+    require_unexpired_pdf
+                   Fetch each discovered PDF and retain it only when a
+                   configured application deadline has not passed:
+                   {"pattern": "Applications .* by (\\d{1,2} [A-Za-z]+ \\d{4})",
+                    "date_format": "%d %B %Y"}.
+                   The pattern must capture the deadline. Missing, invalid,
+                   non-PDF, oversized, or unreadable documents fail the cycle;
+                   404/410 documents and expired deadlines are omitted. Limited
+                   to 100 URLs and incompatible with rich_rows. English ordinal
+                   day suffixes (1st, 2nd, 3rd, 4th) are normalized before
+                   parsing.
     rich_rows      Optional static listing-row extraction. It supports the
                    ordinary sequential pagination config shown above:
                    {"row_selector": ".job", "link_selector": ".job-title a",
