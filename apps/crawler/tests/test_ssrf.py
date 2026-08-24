@@ -237,6 +237,67 @@ class TestResolveHostOrRaise:
         ):
             resolve_host_or_raise("http://attacker.example/", "attacker.example")
 
+    def test_ignores_unscoped_link_local_ipv6_when_public_address_exists(self) -> None:
+        """A broken AAAA record without an interface scope is unroutable.
+
+        Keep using the valid public A record instead of rejecting the host.
+        """
+
+        def fake_getaddrinfo(host, port, *args, **kwargs):
+            return [
+                (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("93.184.216.34", port or 0)),
+                (
+                    socket.AF_INET6,
+                    socket.SOCK_STREAM,
+                    0,
+                    "",
+                    ("fe80::ae1f:6bff:fe93:5312", port or 0, 0, 0),
+                ),
+            ]
+
+        with patch.object(socket, "getaddrinfo", side_effect=fake_getaddrinfo):
+            addr = resolve_host_or_raise("https://example.com/", "example.com")
+        assert addr == "93.184.216.34"
+
+    def test_rejects_scoped_link_local_ipv6_with_public_address(self) -> None:
+        """A scope ID makes a link-local address reachable and unsafe."""
+
+        def fake_getaddrinfo(host, port, *args, **kwargs):
+            return [
+                (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("93.184.216.34", port or 0)),
+                (
+                    socket.AF_INET6,
+                    socket.SOCK_STREAM,
+                    0,
+                    "",
+                    ("fe80::1", port or 0, 0, 2),
+                ),
+            ]
+
+        with (
+            patch.object(socket, "getaddrinfo", side_effect=fake_getaddrinfo),
+            pytest.raises(SSRFError),
+        ):
+            resolve_host_or_raise("http://attacker.example/", "attacker.example")
+
+    def test_rejects_unscoped_link_local_ipv6_without_public_address(self) -> None:
+        def fake_getaddrinfo(host, port, *args, **kwargs):
+            return [
+                (
+                    socket.AF_INET6,
+                    socket.SOCK_STREAM,
+                    0,
+                    "",
+                    ("fe80::1", port or 0, 0, 0),
+                )
+            ]
+
+        with (
+            patch.object(socket, "getaddrinfo", side_effect=fake_getaddrinfo),
+            pytest.raises(SSRFError),
+        ):
+            resolve_host_or_raise("http://attacker.example/", "attacker.example")
+
 
 class TestSSRFGuardedTransport:
     """The transport must reject blocked requests BEFORE delegating to
