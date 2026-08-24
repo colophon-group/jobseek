@@ -1446,6 +1446,12 @@ dom — Link or Static Listing-Row Extraction (fallback)
     ``require_jsonld_jobposting: true``. Their complete detail data is read by
     the auto-configured ``json-ld`` scraper.
 
+  Lucca/Poplee boards:
+    Listing roots on ``*.luccasoftware.com/<tenant>`` are auto-configured with
+    strict static rich-row selectors. Titles and locations come from the
+    server-rendered cards, while the auto-configured DOM scraper enriches the
+    complete description from stable detail-page test IDs.
+
   Discovery:   Extracts links matching link_selector when configured. Otherwise
                extracts all <a href> links and filters for URLs containing
                job/career/position/posting/opening/role/vacancy keywords.

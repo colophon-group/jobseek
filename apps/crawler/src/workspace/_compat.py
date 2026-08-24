@@ -477,6 +477,17 @@ def detect_ats_from_url(url: str) -> str | None:
         r"/portal/[a-z0-9]+/?", parsed.path, re.IGNORECASE
     ):
         return "dom"
+    if (
+        host.endswith(".luccasoftware.com")
+        and parsed.scheme == "https"
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
+        and not parsed.query
+        and not parsed.fragment
+        and re.fullmatch(r"/[a-z0-9][a-z0-9-]*/?", parsed.path, re.IGNORECASE)
+    ):
+        return "dom"
     if host == "intervieweb.it" or host.endswith(".intervieweb.it"):
         return "intervieweb"
     if host.endswith(".softgarden.io"):
@@ -580,6 +591,29 @@ def auto_scraper_type(
         return ("json-ld", {"proxy": True})
     if monitor_type == "dom" and (config or {}).get("dualoo_portal"):
         return ("json-ld", None)
+    if monitor_type == "dom" and (config or {}).get("lucca_board"):
+        return (
+            "dom",
+            {
+                "enrich": ["description"],
+                "scope": ".jobOffer-article",
+                "steps": [
+                    {
+                        "tag": "h1",
+                        "attr": "data-testid=job-offer-title",
+                        "field": "title",
+                    },
+                    {
+                        "tag": "h2",
+                        "text": "Job description",
+                        "offset": 1,
+                        "field": "description",
+                        "html": True,
+                        "stop_attr": "data-testid=job-offer-publication-date",
+                    },
+                ],
+            },
+        )
 
     # oracle_hcm is a rich monitor (returns DiscoveredJob with title/location/date)
     # but needs a scraper for descriptions. The ``enrich`` key in scraper_config

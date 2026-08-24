@@ -18,6 +18,7 @@ from src.core.monitors.dom import (
     _extract_rich_rows_static,
     _fetch_via_page,
     _filter_jsonld_job_urls,
+    _lucca_probe_config,
     _paginate_urls,
     _vagas_probe_config,
     _validated_rich_rows,
@@ -703,6 +704,69 @@ class TestCanHandle:
       </div>
     </body></html>
     """
+    LUCCA_URL = "https://jobs.world.luccasoftware.com/world-aquatics"
+    LUCCA_HTML = """
+    <html><body class="jobBoard"><div id="jobBoardOffers">
+      <ul class="jobBoard-offers-list">
+        <li class="jobBoard-offers-item">
+          <a class="jobBoard-offers-item-link"
+             href="/world-aquatics/athlete-intern-050521f8-610b-4d01-b201-6007b42b6a93">
+            Athlete Intern
+          </a>
+          <div class="jobBoard-offers-item-tags">
+            <span class="tag palette-glacier">Lausanne</span>
+            <span class="tag palette-lime">Internship | 6 months</span>
+          </div>
+        </li>
+        <li class="jobBoard-offers-item">
+          <a class="jobBoard-offers-item-link"
+             href="/world-aquatics/development-manager-517a3a34-bf2b-43cc-b15a-db3761bcd3c3">
+            Development Manager
+          </a>
+          <div class="jobBoard-offers-item-tags">
+            <span class="tag palette-glacier">Budapest</span>
+          </div>
+        </li>
+      </ul>
+    </div></body></html>
+    """
+
+    def test_lucca_board_uses_static_rich_row_preset(self):
+        result = _lucca_probe_config(self.LUCCA_HTML, self.LUCCA_URL)
+
+        assert result is not None
+        assert result["lucca_board"] is True
+        assert result["urls"] == 2
+        assert result["rich_rows"] == {
+            "row_selector": ".jobBoard-offers-item",
+            "link_selector": ".jobBoard-offers-item-link[href]",
+            "location_selectors": [".jobBoard-offers-item-tags > .tag:first-child"],
+        }
+        jobs = _extract_rich_rows_static(
+            self.LUCCA_HTML,
+            self.LUCCA_URL,
+            _validated_rich_rows(result["rich_rows"]),
+            re.compile(result["url_filter"], re.IGNORECASE),
+        )
+        assert [(job.title, job.locations) for job in jobs] == [
+            ("Athlete Intern", ["Lausanne"]),
+            ("Development Manager", ["Budapest"]),
+        ]
+
+        scraper_type, scraper_config = auto_scraper_type("dom", result) or (None, None)
+        assert scraper_type == "dom"
+        assert scraper_config is not None
+        assert scraper_config["enrich"] == ["description"]
+        assert scraper_config["scope"] == ".jobOffer-article"
+
+    async def test_lucca_can_handle_returns_provider_preset(self):
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=self.LUCCA_HTML),
+        ):
+            result = await can_handle(self.LUCCA_URL, MagicMock())
+
+        assert result == _lucca_probe_config(self.LUCCA_HTML, self.LUCCA_URL)
 
     def test_dualoo_portal_uses_scoped_static_preset(self):
         result = _dualoo_probe_config(self.DUALOO_HTML, self.DUALOO_URL)

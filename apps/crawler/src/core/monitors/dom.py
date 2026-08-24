@@ -157,6 +157,15 @@ _DUALOO_HOST = "jobs.dualoo.com"
 _DUALOO_PORTAL_RE = re.compile(r"/portal/([a-z0-9]+)/*$", re.IGNORECASE)
 _DUALOO_JOB_UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 
+_LUCCA_HOST_SUFFIX = ".luccasoftware.com"
+_LUCCA_TENANT_RE = re.compile(r"/[a-z0-9][a-z0-9-]*/?", re.IGNORECASE)
+_LUCCA_JOB_UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+_LUCCA_RICH_ROWS = {
+    "row_selector": ".jobBoard-offers-item",
+    "link_selector": ".jobBoard-offers-item-link[href]",
+    "location_selectors": [".jobBoard-offers-item-tags > .tag:first-child"],
+}
+
 _REXX_PROVIDER_HOSTS = frozenset({"rexx-systems.com", "www.rexx-systems.com"})
 _REXX_JOB_PATH_FILTER = (
     r"/(?:[^/?#]+/)*(?:[^/?#]+-j\d+\.html|"
@@ -295,6 +304,64 @@ def _dualoo_probe_config(html: str, url: str) -> dict | None:
         "link_selector": link_selector,
         "url_filter": url_filter,
         "require_jsonld_jobposting": True,
+    }
+
+
+def _lucca_probe_config(html: str, url: str) -> dict | None:
+    """Return strict rich-row extraction for Lucca/Poplee job boards.
+
+    Lucca listing URLs end in a UUID but contain no job keyword, so generic
+    DOM discovery ignores them.  The board is server-rendered and exposes
+    stable provider classes for each card and its ordered metadata tags.  The
+    first tag is the location; later tags contain contract or salary labels.
+    Scoping both the link and location selectors to each card gives the rich
+    monitor authoritative titles and locations without scraping prose from
+    inconsistent detail-page layouts.
+    """
+
+    try:
+        parsed = urlsplit(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    host = (parsed.hostname or "").casefold()
+    if (
+        parsed.scheme != "https"
+        or not host.endswith(_LUCCA_HOST_SUFFIX)
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.query
+        or parsed.fragment
+        or _LUCCA_TENANT_RE.fullmatch(parsed.path) is None
+    ):
+        return None
+
+    tree = LexborHTMLParser(html)
+    if tree.css_first("body.jobBoard #jobBoardOffers") is None:
+        return None
+
+    tenant_path = parsed.path.rstrip("/")
+    origin = f"https://{parsed.netloc}"
+    url_filter = (
+        rf"^{re.escape(origin)}{re.escape(tenant_path)}/"
+        rf"[^/?#]+-{_LUCCA_JOB_UUID}/?(?:[?#].*)?$"
+    )
+    rich_rows = dict(_LUCCA_RICH_ROWS)
+    try:
+        jobs = _extract_rich_rows_static(
+            html,
+            url,
+            _validated_rich_rows(rich_rows),
+            re.compile(url_filter, re.IGNORECASE),
+        )
+    except ValueError:
+        return None
+    return {
+        "lucca_board": True,
+        "urls": len(jobs),
+        "url_filter": url_filter,
+        "rich_rows": rich_rows,
     }
 
 
@@ -1617,6 +1684,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     dualoo = _dualoo_probe_config(html, url)
     if dualoo is not None:
         return dualoo
+
+    lucca = _lucca_probe_config(html, url)
+    if lucca is not None:
+        return lucca
 
     kontact = _kontact_probe_config(html, url)
     if kontact is not None:
