@@ -1385,6 +1385,14 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    and 2,000,000-character extraction caps. Incompatible with
                    rich_rows. English ordinal day suffixes (1st, 2nd, 3rd,
                    4th) are normalized before parsing.
+    exclude_detail_selector
+                   Fetch each discovered detail URL and omit it when this CSS
+                   selector matches. Use when a first-party board mixes unique
+                   email-only roles with postings mirrored by another configured
+                   ATS, for example:
+                   "a[href*=\"apply.workable.com\"][href*=\"/j/\"]".
+                   Detail fetch errors fail the cycle; 404/410 pages are omitted.
+                   Limited to 500 discovered URLs and incompatible with rich_rows.
     rich_rows      Optional static listing-row extraction. It supports the
                    ordinary sequential pagination config shown above:
                    {"row_selector": ".job", "link_selector": ".job-title a",

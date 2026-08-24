@@ -298,6 +298,54 @@ async def _filter_unexpired_pdf_urls(
     return {url for url, is_active in results if is_active}
 
 
+async def _exclude_urls_matching_detail_selector(
+    urls: set[str],
+    selector: str,
+    client: httpx.AsyncClient,
+) -> set[str]:
+    """Omit mirrored postings whose detail page matches *selector*.
+
+    First-party boards sometimes mix email-only opportunities with roles that
+    are mirrored from an ATS. Keeping both boards without filtering creates
+    duplicate postings, while dropping the first-party board misses future
+    email-only roles. Fetch failures propagate so an ATS or origin outage
+    cannot turn a partial inventory into a successful gone-detection cycle.
+    """
+    if len(urls) > _MAX_JSONLD_VERIFICATION_URLS:
+        raise ValueError(
+            "DOM monitor exclude_detail_selector supports at most "
+            f"{_MAX_JSONLD_VERIFICATION_URLS} discovered URLs"
+        )
+
+    from src.shared.http_retry import fetch_with_retry
+
+    semaphore = asyncio.Semaphore(_JSONLD_VERIFICATION_CONCURRENCY)
+
+    async def inspect(url: str) -> tuple[str, bool]:
+        async with semaphore:
+            html = await fetch_with_retry(
+                client,
+                url,
+                transient_403=True,
+                max_chars=None,
+            )
+        if html is None:
+            return url, True
+        _raise_if_bot_challenge(url, html)
+        return url, LexborHTMLParser(html).css_first(selector) is not None
+
+    tasks = [asyncio.create_task(inspect(url)) for url in sorted(urls)]
+    try:
+        results = await asyncio.gather(*tasks)
+    except BaseException:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
+    return {url for url, excluded in results if not excluded}
+
+
 _VAGAS_HOST = "trabalheconosco.vagas.com.br"
 _VAGAS_TENANT_RE = re.compile(r"[a-z0-9][a-z0-9_-]*")
 
@@ -1921,6 +1969,10 @@ async def dom_discover(
     if not isinstance(require_jsonld_jobposting, bool):
         raise ValueError("DOM monitor require_jsonld_jobposting must be a boolean")
     require_unexpired_pdf = _validated_unexpired_pdf_config(metadata.get("require_unexpired_pdf"))
+    exclude_detail_selector = _validate_css_selector(
+        metadata.get("exclude_detail_selector"),
+        name="exclude_detail_selector",
+    )
     encoding = metadata.get("encoding")
     if encoding is not None:
         if not isinstance(encoding, str) or not encoding:
@@ -1940,6 +1992,7 @@ async def dom_discover(
         or metadata.get("include_board_url")
         or require_jsonld_jobposting
         or require_unexpired_pdf is not None
+        or exclude_detail_selector is not None
     ):
         raise ValueError("DOM monitor rich_rows supports static listing extraction only")
 
@@ -2090,6 +2143,13 @@ async def dom_discover(
         urls = await _filter_jsonld_job_urls(urls, client)
     if require_unexpired_pdf is not None:
         urls = await _filter_unexpired_pdf_urls(urls, client, require_unexpired_pdf)
+
+    if exclude_detail_selector is not None:
+        urls = await _exclude_urls_matching_detail_selector(
+            urls,
+            exclude_detail_selector,
+            client,
+        )
 
     if len(urls) > MAX_URLS:
         log.warning("dom.truncated", total=len(urls), cap=MAX_URLS)

@@ -1805,6 +1805,105 @@ class TestDomDiscoverInitialFetch:
 
         assert result == {active_url}
 
+    async def test_detail_selector_excludes_ats_mirrors_and_keeps_email_roles(self):
+        board_url = "https://www.example.com/vacancies"
+        mirrored_url = "https://www.example.com/fundraising-manager"
+        email_url = "https://www.example.com/research-consultant"
+        listing = """
+        <main>
+          <a class="vacancy" href="/fundraising-manager">Fundraising Manager</a>
+          <a class="vacancy" href="/research-consultant">Research Consultant</a>
+        </main>
+        """
+        pages = {
+            board_url: listing,
+            mirrored_url: (
+                "<h1>Fundraising Manager</h1>"
+                '<a href="https://apply.workable.com/example/j/ABC123/">Apply</a>'
+            ),
+            email_url: "<h1>Research Consultant</h1><p>Apply by email.</p>",
+        }
+
+        def handler(request):
+            return httpx.Response(200, text=pages[str(request.url)], request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await dom_discover(
+                {
+                    "board_url": board_url,
+                    "metadata": {
+                        "link_selector": "a.vacancy",
+                        "exclude_detail_selector": ('a[href*="apply.workable.com"][href*="/j/"]'),
+                    },
+                },
+                client,
+            )
+
+        assert result == {email_url}
+
+    async def test_detail_selector_can_exclude_every_mirrored_role(self):
+        board_url = "https://www.example.com/vacancies"
+        mirrored_url = "https://www.example.com/fundraising-manager"
+        pages = {
+            board_url: '<a class="vacancy" href="/fundraising-manager">Role</a>',
+            mirrored_url: '<a class="apply" href="https://ats.example/job/1">Apply</a>',
+        }
+
+        def handler(request):
+            return httpx.Response(200, text=pages[str(request.url)], request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await dom_discover(
+                {
+                    "board_url": board_url,
+                    "metadata": {
+                        "link_selector": "a.vacancy",
+                        "exclude_detail_selector": "a.apply",
+                    },
+                },
+                client,
+            )
+
+        assert result == set()
+
+    async def test_detail_selector_fails_closed_on_detail_fetch_error(self, monkeypatch):
+        board_url = "https://www.example.com/vacancies"
+        monkeypatch.setattr("src.shared.http_retry.asyncio.sleep", AsyncMock())
+
+        def handler(request):
+            if str(request.url) == board_url:
+                return httpx.Response(
+                    200,
+                    text='<a class="vacancy" href="/research-consultant">Role</a>',
+                    request=request,
+                )
+            return httpx.Response(503, text="Unavailable", request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError):
+                await dom_discover(
+                    {
+                        "board_url": board_url,
+                        "metadata": {
+                            "link_selector": "a.vacancy",
+                            "exclude_detail_selector": "a.apply",
+                        },
+                    },
+                    client,
+                )
+
+    @pytest.mark.parametrize("selector", ["", "a[", "a\x00b", "a" * 257, 123])
+    async def test_rejects_invalid_detail_exclusion_selector(self, selector):
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="exclude_detail_selector"):
+                await dom_discover(
+                    {
+                        "board_url": "https://example.com/vacancies",
+                        "metadata": {"exclude_detail_selector": selector},
+                    },
+                    client,
+                )
+
     async def test_jsonld_verification_reads_jobposting_after_one_megabyte(self):
         board_url = "https://jobs.example.com/company"
         active_url = "https://jobs.example.com/profile/1-active"
