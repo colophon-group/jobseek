@@ -266,6 +266,24 @@ class TestCanHandle:
             result = await can_handle("https://careers.smartrecruiters.com/acme", client)
             assert result is None
 
+    async def test_redirect_to_branded_careers_site_keeps_api_validated_token(self):
+        def handler(request):
+            host = (request.url.host or "").lower()
+            if host == "careers.smartrecruiters.com":
+                return httpx.Response(
+                    302,
+                    headers={"Location": "https://careers.example.com/search/"},
+                )
+            if host == "careers.example.com":
+                return httpx.Response(403)
+            if host == "api.smartrecruiters.com":
+                return httpx.Response(200, json={"totalFound": 1_699, "content": []})
+            return httpx.Response(404)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await can_handle("https://careers.smartrecruiters.com/HMGroup", client)
+            assert result == {"token": "HMGroup", "jobs": 1_699}
+
     async def test_no_blind_slug_probe_without_smartrecruiters_signal(self):
         def handler(request):
             host = (request.url.host or "").lower()

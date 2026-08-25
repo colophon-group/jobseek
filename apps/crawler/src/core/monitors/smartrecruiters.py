@@ -288,12 +288,9 @@ async def _resolve_direct_token(
 ) -> tuple[str, None] | None:
     _ = context
     final_url = url
-    html: str | None = None
     try:
         resp = await client.get(url, follow_redirects=True)
         final_url = str(resp.url)
-        if resp.status_code == 200:
-            html = resp.text
     except Exception:
         # Network failures leave only the original URL token to validate below.
         return token, None
@@ -301,8 +298,10 @@ async def _resolve_direct_token(
     final_token = _token_from_url(final_url)
     if final_token:
         return final_token, None
-    if not _has_smartrecruiters_signal(final_url, html):
-        return None
+    # Some active tenants redirect their public SmartRecruiters landing page
+    # to a branded careers site (H&M Group is one example).  Keep the token
+    # parsed from the original SmartRecruiters URL and let the required API
+    # count probe below validate that the tenant is live.
     return token, None
 
 
