@@ -35,6 +35,7 @@ test("runtime contract matches the crawler deploy boundary", () => {
     "apps/crawler/data/technologies.csv",
     ".github/workflows/deploy-crawler-browser.yml",
     "scripts/derive-crawler-runtime-contract.mjs",
+    "scripts/verify-crawler-release-bridge.py",
   ]) {
     assert.equal(isCrawlerRuntimePath(path), true, path);
   }

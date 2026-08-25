@@ -64,6 +64,7 @@ test("runtime taxonomy and contract-boundary changes require a release bump", ()
     "apps/crawler/data/seniority.csv",
     "apps/crawler/data/technologies.csv",
     "scripts/derive-crawler-runtime-contract.mjs",
+    "scripts/verify-crawler-release-bridge.py",
   ]) {
     assert.throws(
       () =>

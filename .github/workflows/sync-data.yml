@@ -41,6 +41,7 @@ jobs:
           sparse-checkout: |
             scripts/crawler-csv-sync-host.sh
             scripts/derive-crawler-runtime-contract.mjs
+            scripts/verify-crawler-release-bridge.py
           sparse-checkout-cone-mode: false
 
       - name: Check out revision-pinned CSV data
@@ -164,14 +165,14 @@ jobs:
           target: /home/deploy/csv-candidates/${{ steps.candidate.outputs.candidate_id }}/
           strip_components: 2
 
-      - name: Copy locked CSV sync runner to Hetzner
+      - name: Copy locked CSV release-evidence helpers to Hetzner
         if: steps.runtime_contract.outputs.run_sync == 'true'
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: scripts/crawler-csv-sync-host.sh
+          source: scripts/crawler-csv-sync-host.sh,scripts/verify-crawler-release-bridge.py
           target: /home/deploy/csv-sync-runner/
           strip_components: 1
 

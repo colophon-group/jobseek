@@ -11,14 +11,17 @@ PUBLICATION_KEEP_GENERATIONS=${JOBSEEK_PUBLICATION_KEEP_GENERATIONS:-5}
 PUBLICATION_GRACE_SECONDS=${JOBSEEK_PUBLICATION_GRACE_SECONDS:-172800}
 OWNER=${JOBSEEK_OWNER:-colophon-group}
 RUNTIME_ENV_ROOT=${JOBSEEK_RUNTIME_ENV_ROOT:-/run/lock}
+BRIDGE_VERIFIER=${JOBSEEK_BRIDGE_VERIFIER:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/verify-crawler-release-bridge.py}
 ACTIVE_RELEASE=""
 ACTIVE_RELEASE_FORMAT=""
 ACTIVE_DATA_DIR=""
 ACTIVE_IMAGE_REF=""
+ACTIVE_IMAGE_OVERRIDE=""
 RUNTIME_ENV=""
 NAME=""
 PUBLICATION_ARMED=0
 PREPARED_GENERATION=""
+BOOTSTRAP_CANDIDATE_CLEANUP=0
 
 read_exact_value() {
   local file="$1" key="$2"
@@ -62,23 +65,6 @@ if not revisions or revisions[0] != expected_previous or len(revisions) != len(s
     raise SystemExit("previous-runtime attestation revision epoch is invalid")
 if compatible_revision and compatible_revision not in revisions:
     raise SystemExit("active legacy revision is outside the attested runtime epoch")
-PY
-}
-
-digest_without_runtime_contract() {
-  local file="$1" runtime_contract="$2"
-  python3 - "$file" "$runtime_contract" <<'PY'
-import hashlib
-import pathlib
-import sys
-
-path = pathlib.Path(sys.argv[1])
-runtime = sys.argv[2]
-content = path.read_bytes()
-needle = f"JOBSEEK_RUNTIME_CONTRACT_SHA256={runtime}\n".encode()
-if content.count(needle) != 1:
-    raise SystemExit("runtime contract cannot be removed canonically")
-print(hashlib.sha256(content.replace(needle, b"", 1)).hexdigest())
 PY
 }
 
@@ -160,7 +146,7 @@ verify_release_generation_evidence() (
   local generation="$1" format compose_digest env_digest success_digest
   local data_manifest_digest data_contract data_revision image_ref has_image_override
   local env_runtime success_runtime
-  local -a image_override_digests=() bridge_versions=()
+  local -a image_override_digests=()
   [[ "$generation" == "$ACTIVE_RELEASE_ROOT/"* && \
     "${generation#"$ACTIVE_RELEASE_ROOT/"}" =~ ^[A-Za-z0-9._-]+$ && \
     -d "$generation" && ! -L "$generation" ]] || return 1
@@ -186,6 +172,31 @@ verify_release_generation_evidence() (
     "$success_digest" == "$(sha256sum "$generation/success.env" | awk '{print $1}')" ]] || return 1
   image_ref="$(read_exact_value "$generation/environment.env" CRAWLER_IMAGE_REF)" || return 1
   [[ "$image_ref" =~ ^ghcr\.io/${OWNER}/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || return 1
+  if [[ "$format" == 1 ]]; then
+    [[ ! -e "$generation/rollback-images.override.yml" && \
+      ! -L "$generation/rollback-images.override.yml" ]] || {
+      echo "ERROR: format-1 crawler release contains unattested image-override residue" >&2
+      return 1
+    }
+  elif [[ "$format" == 2 ]]; then
+    local format2_override_digest bootstrap_legacy
+    format2_override_digest="$(
+      read_exact_value "$generation/release.manifest" IMAGE_OVERRIDE_SHA256
+    )" || return 1
+    bootstrap_legacy="$(
+      read_exact_value "$generation/release.manifest" BOOTSTRAP_LEGACY
+    )" || return 1
+    [[ "$format2_override_digest" =~ ^[0-9a-f]{64}$ && \
+      "$bootstrap_legacy" =~ ^[01]$ && \
+      -f "$generation/rollback-images.override.yml" && \
+      ! -L "$generation/rollback-images.override.yml" && \
+      "$format2_override_digest" == "$(
+        sha256sum "$generation/rollback-images.override.yml" | awk '{print $1}'
+      )" ]] || {
+      echo "ERROR: format-2 crawler release image override failed verification" >&2
+      return 1
+    }
+  fi
   if [[ "$format" == 3 ]]; then
     data_manifest_digest="$(read_exact_value "$generation/release.manifest" DATA_FILES_SHA256)" || return 1
     data_contract="$(read_exact_value "$generation/release.manifest" DATA_CONTRACT_SHA256)" || return 1
@@ -225,83 +236,30 @@ verify_release_generation_evidence() (
       [[ ! -e "$generation/rollback-images.override.yml" && \
         ! -L "$generation/rollback-images.override.yml" ]] || return 1
     fi
-    mapfile -t bridge_versions < <(
-      sed -n 's/^LEGACY_BRIDGE_FORMAT_VERSION=//p' "$generation/release.manifest"
-    )
-    if (( ${#bridge_versions[@]} )); then
-      local attestation_digest source_format source_revision source_image_ref
-      local source_compose_digest source_env_digest source_success_digest
-      (( ${#bridge_versions[@]} == 1 )) && [[ "${bridge_versions[0]}" == 1 ]] || return 1
-      attestation_digest="$(
-        read_exact_value "$generation/release.manifest" LEGACY_RUNTIME_ATTESTATION_SHA256
-      )" || return 1
-      source_format="$(
-        read_exact_value "$generation/release.manifest" LEGACY_SOURCE_RELEASE_FORMAT
-      )" || return 1
-      source_revision="$(
-        read_exact_value "$generation/release.manifest" LEGACY_SOURCE_REVISION
-      )" || return 1
-      source_image_ref="$(
-        read_exact_value "$generation/release.manifest" LEGACY_SOURCE_CRAWLER_IMAGE_REF
-      )" || return 1
-      source_compose_digest="$(
-        read_exact_value "$generation/release.manifest" LEGACY_SOURCE_COMPOSE_SHA256
-      )" || return 1
-      source_env_digest="$(
-        read_exact_value "$generation/release.manifest" LEGACY_SOURCE_ENVIRONMENT_SHA256
-      )" || return 1
-      source_success_digest="$(
-        read_exact_value "$generation/release.manifest" LEGACY_SOURCE_SUCCESS_SHA256
-      )" || return 1
-      [[ "$source_format" == 1 || "$source_format" == 2 ]] || return 1
-      [[ "$attestation_digest" =~ ^[0-9a-f]{64}$ && \
-        "$source_revision" =~ ^[0-9a-f]{40}$ && \
-        "$source_image_ref" =~ ^ghcr\.io/${OWNER}/jobseek-crawler@sha256:[0-9a-f]{64}$ && \
-        "$source_compose_digest" =~ ^[0-9a-f]{64}$ && \
-        "$source_env_digest" =~ ^[0-9a-f]{64}$ && \
-        "$source_success_digest" =~ ^[0-9a-f]{64}$ ]] || return 1
-      [[ -f "$generation/runtime-attestation.env" && \
-        ! -L "$generation/runtime-attestation.env" && \
-        "$attestation_digest" == "$(sha256sum "$generation/runtime-attestation.env" | awk '{print $1}')" && \
-        "$source_compose_digest" == "$compose_digest" && \
-        "$source_image_ref" == "$image_ref" ]] || {
-        echo "ERROR: legacy runtime bridge evidence failed verification" >&2
-        return 1
-      }
-      verify_runtime_attestation_file \
-        "$generation/runtime-attestation.env" "$data_revision" "$env_runtime" \
-        "$source_revision" || return 1
-      [[ "$source_env_digest" == "$(
-        digest_without_runtime_contract "$generation/environment.env" "$env_runtime"
-      )" && "$source_success_digest" == "$(
-        digest_without_runtime_contract "$generation/success.env" "$env_runtime"
-      )" ]] || {
-        echo "ERROR: legacy runtime bridge source snapshots are mismatched" >&2
-        return 1
-      }
-    else
-      if grep -q '^LEGACY_' "$generation/release.manifest"; then
-        echo "ERROR: crawler release contains incomplete legacy bridge metadata" >&2
-        return 1
-      fi
-      [[ ! -e "$generation/runtime-attestation.env" && \
-        ! -L "$generation/runtime-attestation.env" ]] || {
-        echo "ERROR: crawler release contains unattested runtime bridge residue" >&2
-        return 1
-      }
-    fi
+    [[ -f "$BRIDGE_VERIFIER" && ! -L "$BRIDGE_VERIFIER" ]] || return 1
+    python3 "$BRIDGE_VERIFIER" --generation "$generation" --owner "$OWNER" \
+      >/dev/null || return 1
   fi
 )
 
 verify_release_generation() {
-  local generation="$1" format image_ref
+  local generation="$1" format image_ref has_image_override
   verify_release_generation_evidence "$generation" || return 1
   format="$(read_exact_value "$generation/release.manifest" RELEASE_FORMAT_VERSION)" || return 1
   image_ref="$(read_exact_value "$generation/environment.env" CRAWLER_IMAGE_REF)" || return 1
   ACTIVE_RELEASE_FORMAT="$format"
   ACTIVE_DATA_DIR=""
+  ACTIVE_IMAGE_OVERRIDE=""
   if [[ "$format" == 3 ]]; then
     ACTIVE_DATA_DIR="$generation/data"
+    has_image_override="$(
+      read_exact_value "$generation/release.manifest" HAS_IMAGE_OVERRIDE
+    )" || return 1
+    if [[ "$has_image_override" == 1 ]]; then
+      ACTIVE_IMAGE_OVERRIDE="$generation/rollback-images.override.yml"
+    fi
+  elif [[ "$format" == 2 ]]; then
+    ACTIVE_IMAGE_OVERRIDE="$generation/rollback-images.override.yml"
   fi
   ACTIVE_IMAGE_REF="$image_ref"
 }
@@ -934,15 +892,19 @@ verify_legacy_runtime_evidence() {
     )" || return 1
     [[ "$bootstrap_legacy" == 0 || "$bootstrap_legacy" == 1 ]] || return 1
     [[ "$image_override_digest" =~ ^[0-9a-f]{64}$ && \
-      -f "$ACTIVE_RELEASE/rollback-images.override.yml" && \
-      ! -L "$ACTIVE_RELEASE/rollback-images.override.yml" && \
+      "$ACTIVE_IMAGE_OVERRIDE" == "$ACTIVE_RELEASE/rollback-images.override.yml" && \
+      -f "$ACTIVE_IMAGE_OVERRIDE" && ! -L "$ACTIVE_IMAGE_OVERRIDE" && \
       "$image_override_digest" == "$(
-        sha256sum "$ACTIVE_RELEASE/rollback-images.override.yml" | awk '{print $1}'
+        sha256sum "$ACTIVE_IMAGE_OVERRIDE" | awk '{print $1}'
       )" ]] || {
       echo "ERROR: legacy release image override failed verification" >&2
       return 1
     }
-    compose_args+=(-f "$ACTIVE_RELEASE/rollback-images.override.yml")
+    compose_args+=(-f "$ACTIVE_IMAGE_OVERRIDE")
+  else
+    [[ -z "$ACTIVE_IMAGE_OVERRIDE" && \
+      ! -e "$ACTIVE_RELEASE/rollback-images.override.yml" && \
+      ! -L "$ACTIVE_RELEASE/rollback-images.override.yml" ]] || return 1
   fi
   configured_images_output="$(
     env -i \
@@ -1014,11 +976,21 @@ prepare_candidate_generation() {
     "$generation/environment.env" || return 1
   install -m 0644 "$ACTIVE_RELEASE/success.env" \
     "$generation/success.env" || return 1
-  if [[ -f "$ACTIVE_RELEASE/rollback-images.override.yml" ]]; then
-    install -m 0644 "$ACTIVE_RELEASE/rollback-images.override.yml" \
+  if [[ -n "$ACTIVE_IMAGE_OVERRIDE" ]]; then
+    install -m 0644 "$ACTIVE_IMAGE_OVERRIDE" \
       "$generation/rollback-images.override.yml" || return 1
   fi
   if (( bridge_required )); then
+    install -m 0644 "$ACTIVE_RELEASE/docker-compose.yml" \
+      "$generation/legacy-source-compose.yml" || return 1
+    install -m 0600 "$ACTIVE_RELEASE/environment.env" \
+      "$generation/legacy-source-environment.env" || return 1
+    install -m 0644 "$ACTIVE_RELEASE/success.env" \
+      "$generation/legacy-source-success.env" || return 1
+    if [[ "$ACTIVE_RELEASE_FORMAT" == 2 ]]; then
+      install -m 0644 "$ACTIVE_IMAGE_OVERRIDE" \
+        "$generation/legacy-source-images.override.yml" || return 1
+    fi
     [[ "$(tail -c 1 "$generation/environment.env" | od -An -t x1 | tr -d '[:space:]')" == 0a && \
       "$(tail -c 1 "$generation/success.env" | od -An -t x1 | tr -d '[:space:]')" == 0a ]] || {
       echo "ERROR: legacy runtime snapshots are not canonically newline-terminated" >&2
@@ -1109,6 +1081,7 @@ PY
     attestation_digest="$(sha256sum "$generation/runtime-attestation.env" | awk '{print $1}')" || return 1
     printf '%s\n' \
       'LEGACY_BRIDGE_FORMAT_VERSION=1' \
+      'LEGACY_BRIDGE_TRANSITIVE=0' \
       "LEGACY_RUNTIME_ATTESTATION_SHA256=$attestation_digest" \
       "LEGACY_SOURCE_RELEASE_FORMAT=$source_format" \
       "LEGACY_SOURCE_REVISION=$source_revision" \
@@ -1117,6 +1090,11 @@ PY
       "LEGACY_SOURCE_ENVIRONMENT_SHA256=$source_env_digest" \
       "LEGACY_SOURCE_SUCCESS_SHA256=$source_success_digest" \
       >>"$generation/release.manifest" || return 1
+    if [[ "$source_format" == 2 ]]; then
+      printf 'LEGACY_SOURCE_IMAGE_OVERRIDE_SHA256=%s\n' \
+        "$(sha256sum "$generation/legacy-source-images.override.yml" | awk '{print $1}')" \
+        >>"$generation/release.manifest" || return 1
+    fi
   fi
   chmod 0644 "$generation"/*.sha256 "$generation/release.manifest" || return 1
   fsync_generation "$generation" || return 1
@@ -1146,6 +1124,27 @@ finally:
 PY
 }
 
+discard_bootstrap_candidate() {
+  local candidate="$CANDIDATE_ROOT/$CANDIDATE_ID"
+  [[ "$CANDIDATE_ID" =~ ^${REVISION}-[1-9][0-9]*-[1-9][0-9]*$ ]] || return 1
+  if [[ ! -e "$candidate" && ! -L "$candidate" ]]; then
+    return 0
+  fi
+  [[ -d "$CANDIDATE_ROOT" && ! -L "$CANDIDATE_ROOT" && \
+    -d "$candidate" && ! -L "$candidate" ]] || return 1
+  rm -rf -- "$candidate"
+  python3 - "$CANDIDATE_ROOT" <<'PY'
+import os
+import sys
+
+fd = os.open(sys.argv[1], os.O_RDONLY | os.O_DIRECTORY)
+try:
+    os.fsync(fd)
+finally:
+    os.close(fd)
+PY
+}
+
 cleanup() {
   local status="$?"
   trap - EXIT HUP INT TERM
@@ -1155,6 +1154,12 @@ cleanup() {
   if (( PUBLICATION_ARMED )); then
     recover_publication || {
       echo "ERROR: interrupted CSV publication requires recovery before later mutation" >&2
+      status=1
+    }
+  fi
+  if (( BOOTSTRAP_CANDIDATE_CLEANUP )); then
+    discard_bootstrap_candidate || {
+      echo "ERROR: failed to remove rejected bootstrap candidate" >&2
       status=1
     }
   fi
@@ -1200,6 +1205,7 @@ if [[ "${1:-}" == --bootstrap-current ]]; then
     "$DATA_CONTRACT_SHA256" =~ ^[a-f0-9]{64}$ && \
     "$ARCHIVE_SHA256" =~ ^[a-f0-9]{64}$ && \
     "$CANDIDATE_ID" =~ ^${REVISION}-[1-9][0-9]*-[1-9][0-9]*$ ]] || exit 1
+  BOOTSTRAP_CANDIDATE_CLEANUP=1
   recover_publication
   verify_candidate_archive_contract \
     "$REVISION" "$DATA_CONTRACT_SHA256" "$CANDIDATE_ID" "$ARCHIVE_SHA256"
@@ -1209,6 +1215,7 @@ if [[ "${1:-}" == --bootstrap-current ]]; then
     # later main revision may contain different CSVs; replacing this evidence
     # before the new deploy commits would make rollback non-atomic.
     prune_publications "" "$CANDIDATE_ID" "" "$ACTIVE_RELEASE"
+    BOOTSTRAP_CANDIDATE_CLEANUP=0
     exit 0
   fi
   previous_release="$ACTIVE_RELEASE"
@@ -1233,6 +1240,7 @@ if [[ "${1:-}" == --bootstrap-current ]]; then
   clear_journal
   PUBLICATION_ARMED=0
   prune_publications "" "" "" "$previous_release" "$candidate_generation"
+  BOOTSTRAP_CANDIDATE_CLEANUP=0
   exit 0
 fi
 
