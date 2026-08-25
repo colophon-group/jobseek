@@ -51,6 +51,14 @@ class TestBoardRecord:
         rec = _BoardRecord("board-3", {"metadata": "not-json{"})
         assert rec["metadata"] == {}
 
+    @pytest.mark.parametrize("value", ["bad", None])
+    def test_unused_scrape_interval_does_not_block_monitor_record(self, value):
+        rec = _BoardRecord(
+            "board-interval-compat",
+            {"check_interval_minutes": "60", "scrape_interval_hours": value},
+        )
+        assert rec["check_interval_minutes"] == 60
+
     def test_get_with_default(self):
         rec = _BoardRecord("board-4", {})
         assert rec.get("nonexistent", "fallback") == "fallback"
