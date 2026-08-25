@@ -1247,25 +1247,113 @@ def _archive_worktree(
 ) -> tuple[Path, str]:
     safe_run_id = "".join(char if char.isalnum() or char in "-_." else "_" for char in run_id)
     destination = archive_dir / f"{safe_run_id}.tar.gz"
-    patch = subprocess.run(
-        ["git", "diff", "--binary", "HEAD"],
-        cwd=worktree,
-        capture_output=True,
-        check=True,
-    ).stdout
-    projected_bytes = max(1, item.bytes + len(patch) + 1024 * 1024)
+    base_projected_bytes = max(1, item.bytes + 1024 * 1024)
     if include_unique_commits:
-        projected_bytes += _unique_commit_object_bytes(worktree)
+        base_projected_bytes += _unique_commit_object_bytes(worktree)
     _prune_stale_archive_staging(archive_dir)
     current_archive_bytes = _directory_bytes(archive_dir)
     replaced_destination_bytes = _regular_file_bytes_no_follow(destination)
     retained_archive_bytes = max(0, current_archive_bytes - replaced_destination_bytes)
-    if retained_archive_bytes + projected_bytes > max_archive_bytes:
+    if retained_archive_bytes + base_projected_bytes > max_archive_bytes:
         raise RuntimeError(
             "worktree quarantine capacity gate rejected archive "
-            f"({retained_archive_bytes} retained + {projected_bytes} projected > "
+            f"({retained_archive_bytes} retained + {base_projected_bytes} projected > "
             f"{max_archive_bytes} bytes)"
         )
+    patch_budget = max_archive_bytes - retained_archive_bytes - base_projected_bytes
+    with tempfile.TemporaryFile(mode="w+b") as patch_snapshot:
+        patch_bytes = _stream_git_diff_snapshot(
+            worktree,
+            snapshot=patch_snapshot,
+            max_bytes=patch_budget,
+        )
+        projected_bytes = base_projected_bytes + patch_bytes
+        if retained_archive_bytes + projected_bytes > max_archive_bytes:
+            raise RuntimeError(
+                "worktree quarantine capacity gate rejected archive "
+                f"({retained_archive_bytes} retained + {projected_bytes} projected > "
+                f"{max_archive_bytes} bytes)"
+            )
+        return _archive_worktree_from_patch_snapshot(
+            worktree=worktree,
+            archive_dir=archive_dir,
+            safe_run_id=safe_run_id,
+            destination=destination,
+            item=item,
+            include_unique_commits=include_unique_commits,
+            max_archive_bytes=max_archive_bytes,
+            retained_archive_bytes=retained_archive_bytes,
+            patch_snapshot=patch_snapshot,
+            patch_bytes=patch_bytes,
+        )
+
+
+def _stream_git_diff_snapshot(
+    worktree: Path,
+    *,
+    snapshot: Any,
+    max_bytes: int,
+) -> int:
+    """Stream a binary patch into an anonymous bounded file without buffering stdout."""
+    total = 0
+    overflow = False
+    with tempfile.TemporaryFile(mode="w+b") as stderr_snapshot:
+        process = subprocess.Popen(
+            ["git", "diff", "--binary", "HEAD"],
+            cwd=worktree,
+            stdout=subprocess.PIPE,
+            stderr=stderr_snapshot,
+        )
+        if process.stdout is None:
+            process.kill()
+            process.wait()
+            raise RuntimeError("git diff did not expose a readable output stream")
+        try:
+            while True:
+                chunk = process.stdout.read(1024 * 1024)
+                if not chunk:
+                    break
+                if total + len(chunk) > max_bytes:
+                    overflow = True
+                    process.kill()
+                    break
+                snapshot.write(chunk)
+                total += len(chunk)
+            returncode = process.wait()
+        except BaseException:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+            raise
+        finally:
+            process.stdout.close()
+        if overflow:
+            raise RuntimeError(
+                "worktree quarantine capacity gate rejected binary patch "
+                f"(more than {max_bytes} bytes available)"
+            )
+        if returncode != 0:
+            stderr_snapshot.seek(0)
+            error = stderr_snapshot.read(64 * 1024).decode(errors="replace").strip()
+            raise RuntimeError(error or "git diff --binary failed")
+    snapshot.flush()
+    snapshot.seek(0)
+    return total
+
+
+def _archive_worktree_from_patch_snapshot(
+    *,
+    worktree: Path,
+    archive_dir: Path,
+    safe_run_id: str,
+    destination: Path,
+    item: WorktreeItem,
+    include_unique_commits: bool,
+    max_archive_bytes: int,
+    retained_archive_bytes: int,
+    patch_snapshot: Any,
+    patch_bytes: int,
+) -> tuple[Path, str]:
 
     archive_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(archive_dir, 0o700)
@@ -1343,8 +1431,13 @@ def _archive_worktree(
         with temporary.open("xb") as temporary_file:
             bounded_file = _BoundedArchiveWriter(temporary_file, max_bytes=staging_budget)
             with tarfile.open(fileobj=bounded_file, mode="w:gz") as archive:
-                if patch:
-                    _tar_add_bytes(archive, "tracked.patch", patch)
+                if patch_bytes:
+                    _tar_add_snapshot(
+                        archive,
+                        "tracked.patch",
+                        patch_snapshot,
+                        patch_bytes,
+                    )
                 if bundle_manifest is not None:
                     archive.add(bundle_path, arcname="unique-commits.bundle", recursive=False)
                 for source, archive_name in sorted(candidates.items(), key=lambda pair: pair[1]):
@@ -1370,7 +1463,7 @@ def _archive_worktree(
                     "unique_commits": item.unique_commits,
                     "unique_commit_bundle": bundle_manifest,
                     "remote_proof": item.remote_proof,
-                    "tracked_patch_bytes": len(patch),
+                    "tracked_patch_bytes": patch_bytes,
                     "workspace_root": workspace_root_metadata,
                     "files": inventory,
                 }
@@ -1658,6 +1751,20 @@ def _tar_add_bytes(archive: tarfile.TarFile, name: str, data: bytes) -> None:
     info.mode = 0o600
     info.mtime = int(time.time())
     archive.addfile(info, io.BytesIO(data))
+
+
+def _tar_add_snapshot(
+    archive: tarfile.TarFile,
+    name: str,
+    snapshot: Any,
+    size: int,
+) -> None:
+    snapshot.seek(0)
+    info = tarfile.TarInfo(name)
+    info.size = size
+    info.mode = 0o600
+    info.mtime = int(time.time())
+    archive.addfile(info, snapshot)
 
 
 def _hash_file(path: Path) -> tuple[str, int]:

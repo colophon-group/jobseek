@@ -563,7 +563,10 @@ def test_staging_recovery_preserves_files_owned_by_live_process(tmp_path: Path) 
     assert not stale.exists()
 
 
-def test_deleted_large_head_blob_cannot_overshoot_archive_capacity(tmp_path: Path) -> None:
+def test_deleted_large_head_blob_is_streamed_and_cannot_overshoot_archive_capacity(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
     repo = tmp_path / "repo"
     repo.mkdir(parents=True)
     _run("git", "init", "-b", "main", cwd=repo)
@@ -578,6 +581,14 @@ def test_deleted_large_head_blob_cannot_overshoot_archive_capacity(tmp_path: Pat
     (worktree / "large.bin").unlink()
     ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
     _terminal_run(ledger, worktree, state="retryable")
+    original_run = subprocess.run
+
+    def reject_buffered_binary_diff(command, *args, **kwargs):
+        if list(command) == ["git", "diff", "--binary", "HEAD"]:
+            raise AssertionError("binary patch must not be captured by subprocess.run")
+        return original_run(command, *args, **kwargs)
+
+    monkeypatch.setattr(reconcile_module.subprocess, "run", reject_buffered_binary_diff)
 
     report = _reconcile(
         tmp_path,
