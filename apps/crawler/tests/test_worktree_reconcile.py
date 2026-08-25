@@ -34,6 +34,7 @@ def _repo_with_worktree(tmp_path: Path, name: str = "run-worktree") -> tuple[Pat
     (repo / "tracked.txt").write_text("base\n")
     _run("git", "add", "tracked.txt", cwd=repo)
     _run("git", "commit", "-m", "base", cwd=repo)
+    _run("git", "update-ref", "refs/remotes/origin/main", "HEAD", cwd=repo)
     worktrees = tmp_path / "runner" / "worktrees"
     worktrees.mkdir(parents=True)
     worktree = worktrees / name
@@ -196,6 +197,130 @@ def test_clean_terminal_worktree_has_exact_dry_run_then_durable_removal(
     assert [event["action"] for event in events] == ["removal_started", "removed"]
     assert events[-1]["reclaimed_bytes"] == applied.reclaimed_bytes
     assert events[-1]["remote_proof_json"]
+
+
+@pytest.mark.parametrize(
+    ("proof_kind", "detail"),
+    [
+        ("pull_request", "direct"),
+        ("remote_branch", "direct"),
+        ("issue_outcome", "nested"),
+        ("no_remote_artifact", "none"),
+    ],
+)
+def test_clean_unpushed_runner_head_is_bundled_for_every_remote_proof_shape(
+    tmp_path: Path,
+    proof_kind: str,
+    detail: str,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    remote_oid = subprocess.run(
+        ["git", "rev-parse", "origin/main"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    (worktree / "tracked.txt").write_text("clean local-only commit\n")
+    _run("git", "add", "tracked.txt", cwd=worktree)
+    _run("git", "commit", "-m", "local only", cwd=worktree)
+    local_oid = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=worktree,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert local_oid != remote_oid
+    assert (
+        subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=worktree,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+        == ""
+    )
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="submitted")
+    remote_detail: dict[str, object]
+    if detail == "direct":
+        remote_detail = {"headRefOid": remote_oid}
+    elif detail == "nested":
+        remote_detail = {"remote": {"headRefOid": remote_oid}}
+    else:
+        remote_detail = {}
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        verifier=lambda run: RemoteProof(
+            ok=True,
+            kind=proof_kind,
+            detail=remote_detail,
+        ),
+    )
+
+    item = report.items[0]
+    assert report.archived == 1
+    assert report.removed == 1
+    assert item.unique_commits
+    assert item.remote_proof is not None
+    assert item.remote_proof["kind"] == "local_unique_commits"
+    assert item.archive_path
+    assert not worktree.exists()
+    bundle_copy = tmp_path / f"{proof_kind}.bundle"
+    with tarfile.open(item.archive_path, "r:gz") as archive:
+        bundle = archive.extractfile("unique-commits.bundle")
+        assert bundle is not None
+        bundle_copy.write_bytes(bundle.read())
+    listed = subprocess.run(
+        ["git", "bundle", "list-heads", str(bundle_copy)],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert local_oid in listed.stdout
+
+
+def test_clean_runner_head_matching_remote_pr_needs_no_archive(tmp_path: Path) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    (worktree / "tracked.txt").write_text("published clean commit\n")
+    _run("git", "add", "tracked.txt", cwd=worktree)
+    _run("git", "commit", "-m", "published", cwd=worktree)
+    local_oid = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=worktree,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="submitted")
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        verifier=lambda run: RemoteProof(
+            ok=True,
+            kind="pull_request",
+            detail={"headRefOid": local_oid},
+        ),
+    )
+
+    item = report.items[0]
+    assert report.archived == 0
+    assert report.removed == 1
+    assert not item.unique_commits
+    assert item.remote_proof is not None
+    assert item.remote_proof["kind"] == "exact_remote_branch"
+    assert not worktree.exists()
 
 
 def test_dirty_retryable_worktree_is_archived_before_removal(tmp_path: Path) -> None:
@@ -575,6 +700,7 @@ def test_deleted_large_head_blob_is_streamed_and_cannot_overshoot_archive_capaci
     (repo / "large.bin").write_bytes(os.urandom(4 * 1024 * 1024))
     _run("git", "add", "large.bin", cwd=repo)
     _run("git", "commit", "-m", "large base blob", cwd=repo)
+    _run("git", "update-ref", "refs/remotes/origin/main", "HEAD", cwd=repo)
     worktree = tmp_path / "runner" / "worktrees" / "run-worktree"
     worktree.parent.mkdir(parents=True)
     _run("git", "worktree", "add", "--detach", str(worktree), "HEAD", cwd=repo)
