@@ -434,7 +434,12 @@ def resolve_current_step(
     return step, ws, boards, wf, board
 
 
-def advance(slug: str, notes: str) -> tuple[StepDef | None, str]:
+def advance(
+    slug: str,
+    notes: str,
+    *,
+    defer_terminal_publication: bool = False,
+) -> tuple[StepDef | None, str]:
     """Advance the workflow to the next step.
 
     Records the reflection note, checks the gate, and moves forward.
@@ -488,7 +493,8 @@ def advance(slug: str, notes: str) -> tuple[StepDef | None, str]:
     next_step, next_board = _find_next(current, wf, boards, all_steps)
 
     if next_step is None:
-        wf.current_step = "done"
+        if not defer_terminal_publication:
+            wf.current_step = "done"
         wf.current_board = None
         _save_wf_to_disk(slug, wf)
         return None, "Workflow complete!"
