@@ -531,6 +531,56 @@ class TestScrape:
             )
             assert result.title == "Senior Engineer"
 
+    @pytest.mark.parametrize(
+        ("text", "expected_title"),
+        [
+            (
+                "Medizinische Fakultät\nInstitut für Pathologie\n"
+                "Zur Unterstützung unseres Teams suchen wir per sofort oder nach "
+                "Vereinbarung eine:n\n"
+                "Teamleiter:in Administration Management 80 - 100%\n\nIhre Aufgaben\n"
+                "Fachliche Führung",
+                "Teamleiter:in Administration Management 80 - 100%",
+            ),
+            (
+                "Institut für Pathologie\nZur Unterstützung unseres Ärzteteams suchen wir "
+                "per sofort oder nach Vereinbarung eine:n\n"
+                "Oberaerztin/Oberarzt in der Klinischen Pathologie 60-100%\n\n"
+                "Ihre Aufgaben\nDiagnostische Tätigkeit",
+                "Oberaerztin/Oberarzt in der Klinischen Pathologie 60-100%",
+            ),
+            (
+                "Institut für Pathologie\nZur Ergänzung unseres Ärzteteams auf der Abteilung "
+                "Klinische Pathologie suchen wir per sofort oder nach Vereinbarung eine:n\n\n"
+                "Facharzt/-aerztin FMH Pathologie:\nWeiterbildungsstelle zur Erlangung des "
+                "Schwerpunkts\nZytopathologie 80-100%\n\nDiese Position richtet sich an "
+                "Ärztinnen und Ärzte",
+                (
+                    "Facharzt/-aerztin FMH Pathologie: Weiterbildungsstelle zur Erlangung "
+                    "des Schwerpunkts Zytopathologie 80-100%"
+                ),
+            ),
+        ],
+    )
+    async def test_title_source_text_prefers_german_recruiting_lead_in(
+        self,
+        text,
+        expected_title,
+    ):
+        pdf_bytes = _make_pdf(text)
+
+        def handler(request):
+            return httpx.Response(200, content=pdf_bytes)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.com/vacancy.pdf",
+                {"title_source": "text"},
+                client,
+            )
+
+        assert result.title == expected_title
+
     async def test_empty_pdf_falls_back_to_url_title(self):
         """When PDF text extraction yields nothing, title comes from URL."""
         import pypdf
@@ -698,6 +748,45 @@ class TestScrape:
                 client,
             )
             assert result.title == "Research Engineer"
+
+    async def test_title_replace_repairs_source_specific_pdf_spacing(self):
+        pdf_bytes = _make_pdf(
+            "PhD-candidate in Ex perimental Financial Accounting\nJOB QUALIFICATIONS"
+        )
+
+        def handler(request):
+            return httpx.Response(200, content=pdf_bytes)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.com/job.pdf",
+                {
+                    "title_source": "text",
+                    "title_pattern": r"(PhD-candidate in Ex\s+perimental Financial Accounting)",
+                    "title_replace": {"find": r"Ex\s+perimental", "replace": "Experimental"},
+                },
+                client,
+            )
+
+        assert result.title == "PhD-candidate in Experimental Financial Accounting"
+
+    @pytest.mark.parametrize(
+        "value",
+        [True, {}, {"find": "x"}, {"find": "(", "replace": "x"}],
+    )
+    async def test_title_replace_rejects_invalid_config(self, value):
+        pdf_bytes = _make_pdf("Research Engineer")
+
+        def handler(request):
+            return httpx.Response(200, content=pdf_bytes)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="title_replace"):
+                await scrape(
+                    "https://example.com/job.pdf",
+                    {"title_source": "text", "title_replace": value},
+                    client,
+                )
 
     async def test_location_pattern_applied_to_text(self):
         pdf_bytes = _make_pdf(

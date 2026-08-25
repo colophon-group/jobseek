@@ -12,6 +12,10 @@ Config:
                    (after URL-decoding and hash stripping).
                    When title_source is "text", applied to the raw PDF text
                    before falling back to the heading-line heuristic.
+    title_replace  Optional ``{"find": "regex", "replace": "text"}`` applied
+                   after title extraction. Use this for bounded repairs of
+                   source-specific PDF text artefacts inside otherwise clean
+                   titles.
     require_title_pattern
                    Opt in to fail-closed title extraction. Requires
                    title_source="text" and a non-empty title_pattern; raises
@@ -320,10 +324,25 @@ def _location_from_url(url: str, pattern: str | None = None) -> str | None:
 def _title_from_text(text: str) -> str | None:
     """Extract a title from the first heading-like line of PDF text.
 
+    German vacancy PDFs commonly put institutional letterhead first and
+    introduce the actual role with ``suchen wir ... eine:n``. Prefer the
+    bounded title block after that recruiting phrase before falling back to
+    the first heading-like line.
+
     Skips lines that are unlikely to be titles: bullets, very long lines
     (pypdf sometimes merges entire pages), and lines starting lowercase
     (sentence continuations).
     """
+    recruiting_match = re.search(
+        r"(?is)\bsuchen\s+wir\b.{0,300}?\b(?:eine:n|eine|einen)\s+"
+        r"(.+?)(?=\s+(?:Ihre\s+Aufgaben|Diese\s+Position)\b)",
+        text,
+    )
+    if recruiting_match:
+        title = _normalize_captured_text(recruiting_match.group(1))
+        if title and len(title) <= 200:
+            return title
+
     lines_checked = 0
     for line in text.split("\n"):
         line = line.strip()
@@ -338,6 +357,31 @@ def _title_from_text(text: str) -> str | None:
             continue
         return line
     return None
+
+
+def _replace_title(title: str | None, value: object) -> str | None:
+    """Apply one validated, source-specific regex repair to *title*."""
+    if title is None or value is None:
+        return title
+    if not isinstance(value, dict) or set(value) != {"find", "replace"}:
+        raise ValueError("PDF title_replace requires find and replace strings")
+    find = value.get("find")
+    replace = value.get("replace")
+    if (
+        not isinstance(find, str)
+        or not find
+        or len(find) > 256
+        or "\x00" in find
+        or not isinstance(replace, str)
+        or len(replace) > 256
+        or "\x00" in replace
+    ):
+        raise ValueError("PDF title_replace requires bounded find and replace strings")
+    try:
+        repaired = re.sub(find, replace, title)
+    except re.error as exc:
+        raise ValueError("PDF title_replace.find is invalid") from exc
+    return _normalize_captured_text(repaired)
 
 
 def _text_to_html(text: str) -> str:
@@ -526,6 +570,7 @@ async def parse_bytes(content: bytes, url: str, config: dict) -> JobContent:
             title = _title_from_text(full_text) or _title_from_url(url, title_pattern)
     elif not title:
         title = _title_from_url(url, title_pattern)
+    title = _replace_title(title, config.get("title_replace"))
 
     # Keep the legacy location_pattern normalization unchanged. The split-
     # initial repair was historically title-only and can corrupt legitimate
