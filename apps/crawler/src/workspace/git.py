@@ -240,33 +240,53 @@ def worktrees_dir() -> Path:
     return _WORKTREES_DIR
 
 
-def create_worktree(branch: str, path: Path, start_point: str = "origin/main") -> None:
-    """Create a git worktree at *path* on *branch* from *start_point*.
+def create_worktree(
+    branch: str,
+    path: Path,
+    start_point: str = "origin/main",
+) -> dict[str, str | int]:
+    """Create a fresh authenticated managed worktree, failing closed on debris.
 
-    If *branch* already exists (leftover from a previous run), the
-    existing branch is reused and reset to *start_point*.
-    If *path* already exists, the old worktree is removed first.
+    Lifecycle cleanup owns deletion.  Bootstrap must never delete an existing
+    pathname/ref merely because it has the desired deterministic name.
     """
-    # Clean up stale worktree at this path
-    if path.exists():
-        remove_worktree(path)
+    root = _absolute_lexical(worktrees_dir())
+    target = _absolute_lexical(path)
+    if target.parent != root or target.name in {"", ".", ".."}:
+        raise WorkspaceError(f"Worktree {path} is not an exact child of {root}")
+    root.mkdir(parents=True, exist_ok=True)
+    try:
+        mode = root.lstat().st_mode
+    except OSError as exc:
+        raise WorkspaceError(f"Managed worktree root could not be inspected: {root}") from exc
+    if stat.S_ISLNK(mode) or not stat.S_ISDIR(mode):
+        raise WorkspaceError(f"Managed worktree root is unsafe: {root}")
 
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Check if branch already exists
-    result = _run(
-        ["git", "branch", "--list", branch],
+    start = _run(
+        ["git", "rev-parse", "--verify", f"{start_point}^{{commit}}"],
         cwd=_MANAGED_REPO,
-        check=False,
-    )
-    if branch in result.stdout:
-        # Delete the stale branch, then create fresh
-        _run(["git", "branch", "-D", branch], cwd=_MANAGED_REPO, check=False)
+    ).stdout.strip()
+    if not _OID_RE.fullmatch(start):
+        raise WorkspaceError(f"Start point {start_point!r} did not resolve to an exact commit")
+
+    # Repeat every ownership probe immediately before Git mutates anything.
+    if _managed_worktree_identity(target, branch) is not None:
+        raise WorkspaceError(f"Managed worktree already exists: {target}")
+    if local_branch_oid_strict(branch) is not None:
+        raise WorkspaceError(f"Local branch already exists without workspace ownership: {branch}")
+    if os.path.lexists(target):
+        raise WorkspaceError(f"Worktree path already exists without workspace ownership: {target}")
 
     _run(
-        ["git", "worktree", "add", str(path), "-b", branch, start_point],
+        ["git", "worktree", "add", str(target), "-b", branch, start],
         cwd=_MANAGED_REPO,
     )
+    identity = _managed_worktree_identity(target, branch)
+    if identity is None or identity["head"] != start:
+        raise WorkspaceError("Fresh worktree did not authenticate at the requested commit")
+    if local_branch_oid_strict(branch) != start:
+        raise WorkspaceError("Fresh worktree branch ref contradicts its registered commit")
+    return identity
 
 
 def remove_worktree(path: Path) -> None:

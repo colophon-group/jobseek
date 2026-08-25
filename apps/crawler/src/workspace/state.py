@@ -10,8 +10,10 @@ A workspace lives at ``.workspace/<slug>/`` and contains:
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import tempfile
+import uuid
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -267,6 +269,9 @@ class Workspace:
 
     # Worktree path (empty = legacy single-checkout mode)
     worktree: str = ""
+    # Immutable identity captured when the managed worktree is created.  The
+    # current HEAD may advance only through a journaled submit/ready mutation.
+    worktree_identity: dict[str, Any] = field(default_factory=dict)
 
     # Last error from workspace-level commands
     last_error: dict[str, Any] = field(default_factory=dict)
@@ -286,6 +291,8 @@ class Workspace:
         }
         if self.worktree:
             git["worktree"] = self.worktree
+        if self.worktree_identity:
+            git["worktree_identity"] = self.worktree_identity
         if self.pr_provenance:
             git["pr_provenance"] = self.pr_provenance
         return {
@@ -330,6 +337,7 @@ class Workspace:
             pr=git.get("pr"),
             pr_provenance=git.get("pr_provenance") or {},
             worktree=git.get("worktree", ""),
+            worktree_identity=git.get("worktree_identity") or {},
             name=company.get("name", ""),
             website=company.get("website", ""),
             logo_url=company.get("logo_url", ""),
@@ -676,7 +684,8 @@ def get_active_slug() -> str | None:
     for path in paths:
         if not path.exists():
             continue
-        slug = path.read_text().strip()
+        raw = path.read_text().strip()
+        slug = _active_pointer_slug(raw)
         if slug:
             return slug
     return None
@@ -686,7 +695,34 @@ def set_active_slug(slug: str) -> None:
     """Set the active workspace slug."""
     path = _active_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(slug)
+    record = {
+        "version": 1,
+        "slug": slug,
+        "generation": uuid.uuid4().hex,
+    }
+    _atomic_write(path, json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n")
+
+
+def _active_pointer_slug(raw: str) -> str | None:
+    """Read a v1 authenticated pointer or a legacy plaintext slug."""
+    if not raw:
+        return None
+    if not raw.startswith("{"):
+        return raw
+    try:
+        record = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    if (
+        not isinstance(record, dict)
+        or set(record) != {"version", "slug", "generation"}
+        or record.get("version") != 1
+        or not isinstance(record.get("slug"), str)
+        or not isinstance(record.get("generation"), str)
+        or len(record["generation"]) != 32
+    ):
+        return None
+    return record["slug"]
 
 
 def clear_active_slug() -> None:
