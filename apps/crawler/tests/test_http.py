@@ -121,6 +121,69 @@ class TestCreateHttpClient:
 
         assert seen_cookie_headers == ["", "sessionid1=abc123"]
 
+    @pytest.mark.parametrize(
+        "set_cookie",
+        [
+            b"barecookie; Path=/",
+            b"bad name=value; Path=/",
+            b"badvalue=has space; Path=/",
+            b"badvalue=has,comma; Path=/",
+            b"badvalue=has\\backslash; Path=/",
+            b"badvalue=has\x7fcontrol; Path=/",
+            b'badvalue="has space"; Path=/',
+            b'badvalue="unterminated; Path=/',
+        ],
+    )
+    async def test_rejects_non_rfc6265_cookies(self, set_cookie: bytes):
+        seen_cookie_headers: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen_cookie_headers.append(request.headers.get("cookie", ""))
+            if len(seen_cookie_headers) == 1:
+                return httpx.Response(
+                    200,
+                    headers=[
+                        (b"set-cookie", b"sessionid1=abc-._~:/?@[]; Path=/"),
+                        (b"set-cookie", set_cookie),
+                    ],
+                )
+            return httpx.Response(200)
+
+        client = create_http_client()
+        client._transport = httpx.MockTransport(handler)
+        try:
+            await client.get("https://example.com/first")
+            await client.get("https://example.com/second")
+        finally:
+            await client.aclose()
+
+        assert seen_cookie_headers == ["", "sessionid1=abc-._~:/?@[]"]
+
+    async def test_accepts_empty_and_quoted_rfc6265_values(self):
+        seen_cookie_headers: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen_cookie_headers.append(request.headers.get("cookie", ""))
+            if len(seen_cookie_headers) == 1:
+                return httpx.Response(
+                    200,
+                    headers=[
+                        (b"set-cookie", b"empty=; Path=/"),
+                        (b"set-cookie", b'quoted="abc-._~:/?@[]"; Path=/'),
+                    ],
+                )
+            return httpx.Response(200)
+
+        client = create_http_client()
+        client._transport = httpx.MockTransport(handler)
+        try:
+            await client.get("https://example.com/first")
+            await client.get("https://example.com/second")
+        finally:
+            await client.aclose()
+
+        assert seen_cookie_headers == ["", 'empty=; quoted="abc-._~:/?@[]"']
+
 
 class TestRequestHostTracking:
     async def test_transport_records_actual_redirect_hosts_without_network(self):

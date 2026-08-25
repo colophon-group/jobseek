@@ -249,6 +249,81 @@ class TestExplicitEmptyState:
 
         assert result == set()
 
+    async def test_paginated_empty_contract_accepts_zero_without_fetching_a_tail(self):
+        html = '<p class="error"><strong>No matching vacancies.</strong></p>'
+        paginated_fetch = AsyncMock()
+        with (
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)),
+            patch(_FETCH_PATCH, paginated_fetch),
+        ):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/careers?p_start=1",
+                    "metadata": {
+                        "link_selector": "a.job",
+                        "empty_states": [
+                            {
+                                "selector": "p.error strong",
+                                "exact_text": "No matching vacancies.",
+                                "forbidden_link_selector": "a.job",
+                            }
+                        ],
+                        "pagination": {
+                            "param_name": "p_start",
+                            "start": 1,
+                            "increment": 10,
+                            "advertised_ranges": {
+                                "selector": ".results-nav li",
+                                "pattern": r"^(\d+)-(\d+)$",
+                            },
+                        },
+                    },
+                },
+                AsyncMock(),
+            )
+
+        assert result == set()
+        paginated_fetch.assert_not_awaited()
+
+    async def test_paginated_contract_proves_advertised_ranges(self):
+        first_links = "".join(
+            f'<a class="job" href="/jobs/{index}">job</a>' for index in range(1, 11)
+        )
+        first = '<ul class="results-nav"><li>1-10</li><li>11-16</li></ul>' + first_links
+        second = "".join(f'<a class="job" href="/jobs/{index}">job</a>' for index in range(11, 17))
+        with (
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=first)),
+            patch(_FETCH_PATCH, AsyncMock(return_value=second)) as fetch,
+        ):
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/careers?p_start=1",
+                    "metadata": {
+                        "link_selector": "a.job",
+                        "empty_states": [
+                            {
+                                "selector": "p.error strong",
+                                "exact_text": "No matching vacancies.",
+                                "forbidden_link_selector": "a.job",
+                            }
+                        ],
+                        "pagination": {
+                            "param_name": "p_start",
+                            "start": 1,
+                            "increment": 10,
+                            "advertised_ranges": {
+                                "selector": ".results-nav li",
+                                "pattern": r"^(\d+)-(\d+)$",
+                            },
+                        },
+                    },
+                },
+                AsyncMock(),
+            )
+
+        assert len(result) == 16
+        fetch.assert_awaited_once()
+
     async def test_accepts_zero_rich_rows_with_configured_empty_marker(self):
         html = """
         <div class="job-list">
@@ -1887,6 +1962,59 @@ class TestRichRowsStatic:
             {"opportunity_type": "RFP"},
         ]
 
+    def test_filters_mixed_directory_to_owned_rows_and_fails_closed_at_zero(self):
+        config = _validated_rich_rows(
+            {
+                "row_selector": "table.job",
+                "link_selector": "a.detail",
+                "title_selector": "td.title",
+                "row_required_selector": "a.unige-contact",
+                "row_text_pattern": r"(?i)at (?:the )?University of Geneva",
+            }
+        )
+        html = """
+        <table class="job">
+          <tr><td class="title">Geneva role</td></tr>
+          <tr><td>Work at the University of Geneva.</td></tr>
+          <tr><td><a class="unige-contact">contact</a>
+            <a class="detail" href="jobs?id=1">details</a></td></tr>
+        </table>
+        <table class="job">
+          <tr><td class="title">Bern role</td></tr>
+          <tr><td>Work at the University of Bern.</td></tr>
+          <tr><td><a class="detail" href="jobs?id=2">details</a></td></tr>
+        </table>
+        """
+
+        assert config is not None
+        jobs = _extract_rich_rows_static(html, "https://eas.example/", config, None)
+        assert [(job.title, job.url) for job in jobs] == [
+            ("Geneva role", "https://eas.example/jobs?id=1")
+        ]
+
+        foreign_only = html[html.index('<table class="job">', 30) :]
+        with pytest.raises(ValueError, match="excluded every listing row"):
+            _extract_rich_rows_static(
+                foreign_only,
+                "https://eas.example/",
+                config,
+                None,
+            )
+
+    def test_filtered_directory_zero_requires_a_parseable_inventory(self):
+        config = _validated_rich_rows(
+            {
+                "row_selector": "table.job",
+                "link_selector": "a.detail",
+                "title_selector": "td.title",
+                "row_required_selector": "a.unige-contact",
+            }
+        )
+
+        assert config is not None
+        with pytest.raises(ValueError, match="matched no listing rows"):
+            _extract_rich_rows_static("<main></main>", "https://eas.example/", config, None)
+
     def test_fails_closed_when_configured_metadata_is_missing(self):
         html = '<div class="job"><a href="/jobs/engineer">Engineer</a></div>'
         config = _validated_rich_rows(
@@ -1944,6 +2072,12 @@ class TestRichRowsStatic:
                 "row_selector": ".job",
                 "section_start": {"selector": "h2", "unexpected": True},
                 "section_end": {"selector": "footer"},
+            },
+            {"row_selector": ".job", "row_text_pattern": "("},
+            {
+                "row_selector": ".job",
+                "total_selector": ".total",
+                "row_required_selector": ".owner",
             },
         ],
     )
@@ -3852,6 +3986,53 @@ class TestPaginateUrls:
             "https://example.com/jobs/2",
             "https://example.com/jobs/3",
         }
+
+    async def test_advertised_total_stops_at_exact_inventory(self):
+        fetch = AsyncMock(
+            return_value=_html_with_links(
+                *[f"https://example.com/jobs/{index}" for index in range(11, 17)]
+            )
+        )
+        with patch(_FETCH_PATCH, fetch):
+            result = await _paginate_urls(
+                "https://example.com/careers",
+                {"param_name": "p_start", "start": 1, "increment": 10, "max_pages": 100},
+                {f"https://example.com/jobs/{index}" for index in range(1, 11)},
+                MagicMock(),
+                expected_total=16,
+            )
+
+        assert len(result) == 16
+        assert fetch.await_count == 1
+
+    async def test_advertised_total_rejects_truncated_tail(self):
+        pages = {
+            "https://example.com/careers?p_start=11": _html_with_links(
+                *[f"https://example.com/jobs/{index}" for index in range(11, 16)]
+            )
+        }
+        with (
+            patch(_FETCH_PATCH, new=_make_fetch(pages)),
+            pytest.raises(ValueError, match="15 URLs but advertised 16"),
+        ):
+            await _paginate_urls(
+                "https://example.com/careers",
+                {"param_name": "p_start", "start": 1, "increment": 10, "max_pages": 2},
+                {f"https://example.com/jobs/{index}" for index in range(1, 11)},
+                MagicMock(),
+                expected_total=16,
+            )
+
+    @pytest.mark.parametrize("expected_total", [-1, True, "16", 50_001])
+    async def test_advertised_total_must_be_a_bounded_integer(self, expected_total):
+        with pytest.raises(ValueError, match="expected_total must be a bounded integer"):
+            await _paginate_urls(
+                "https://example.com/careers",
+                {"param_name": "page"},
+                {"https://example.com/jobs/1"},
+                MagicMock(),
+                expected_total=expected_total,
+            )
 
     async def test_stops_on_no_new_links(self):
         """Same links on page 2 as initial -> stops."""

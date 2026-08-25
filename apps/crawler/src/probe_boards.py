@@ -45,7 +45,7 @@ from src.shared.dayforce import (
     resolve_dayforce_listing_redirect,
 )
 from src.shared.gupy import normalize_gupy_tenant
-from src.shared.http import DEFAULT_ACCEPT, DEFAULT_USER_AGENT
+from src.shared.http import DEFAULT_ACCEPT, DEFAULT_USER_AGENT, create_http_client
 from src.shared.http_retry import PaginationFetchError
 from src.shared.jazzhr import jazzhr_listing_url, resolve_jazzhr_tenant
 from src.shared.jobvite import (
@@ -1682,12 +1682,10 @@ async def probe_row(row: dict, client: httpx.AsyncClient) -> ProbeResult:
 async def probe_rows(rows: list[dict], *, concurrency: int = 5) -> list[ProbeResult]:
     """Probe many rows with bounded concurrency. Preserves input order."""
     sem = asyncio.Semaphore(concurrency)
+    client = create_http_client()
+    client.headers["User-Agent"] = "jobseek-probe/1.0 (+https://github.com/colophon-group/jobseek)"
 
-    async with httpx.AsyncClient(
-        timeout=_DEFAULT_TIMEOUT,
-        follow_redirects=True,
-        headers={"User-Agent": "jobseek-probe/1.0 (+https://github.com/colophon-group/jobseek)"},
-    ) as client:
+    async with client:
 
         async def _one(row: dict) -> ProbeResult:
             async with sem:

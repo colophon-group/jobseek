@@ -9,6 +9,7 @@ from src.probe_boards import (
     PROBES,
     ProbeResult,
     probe_row,
+    probe_rows,
     rows_added_or_changed,
 )
 
@@ -25,6 +26,60 @@ def _row(**overrides) -> dict:
     }
     base.update(overrides)
     return base
+
+
+@pytest.mark.asyncio
+async def test_probe_rows_uses_cookie_safe_shared_client(monkeypatch):
+    """A malformed pagination cookie must not make CI disagree with runtime."""
+    seen_cookie_headers: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_cookie_headers.append(request.headers.get("cookie", ""))
+        if len(seen_cookie_headers) == 1:
+            return httpx.Response(
+                200,
+                headers=[
+                    (b"set-cookie", b"sessionid1=abc123; Path=/"),
+                    (b"set-cookie", b"lastaccesstime1=25-AO\xdbT-2026; Path=/"),
+                ],
+                text='<a href="https://example.com/job/1">one</a>',
+            )
+        return httpx.Response(
+            200,
+            text='<a href="https://example.com/job/2">two</a>',
+        )
+
+    def factory():
+        from src.shared.http import create_http_client
+
+        client = create_http_client()
+        client._transport = httpx.MockTransport(handler)
+        return client
+
+    monkeypatch.setattr("src.probe_boards.create_http_client", factory)
+    row = _row(
+        board_slug="cookie-safe-dom",
+        board_url="https://example.com/jobs",
+        monitor_type="dom",
+        monitor_config=json.dumps(
+            {
+                "link_selector": "a[href]",
+                "url_filter": r"^https://example\.com/job/\d+$",
+                "pagination": {
+                    "param_name": "p_start",
+                    "start": 1,
+                    "increment": 1,
+                    "max_pages": 2,
+                },
+            }
+        ),
+    )
+
+    results = await probe_rows([row], concurrency=1)
+
+    assert results[0].status == "ok"
+    assert results[0].message == "production extractor: 2 jobs"
+    assert seen_cookie_headers == ["", "sessionid1=abc123"]
 
 
 def _dayforce_page(*, disabled=None, culture="en-US") -> str:
