@@ -72,7 +72,9 @@ fi
 
 DEPLOY_DIR="/home/deploy"
 INCOMING_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BRIDGE_VERIFIER="$INCOMING_DIR/scripts/verify-crawler-release-bridge.py"
+STAGED_BRIDGE_VERIFIER="$INCOMING_DIR/scripts/verify-crawler-release-bridge.py"
+ACTIVE_BRIDGE_VERIFIER="$DEPLOY_DIR/scripts/verify-crawler-release-bridge.py"
+BRIDGE_VERIFIER="$STAGED_BRIDGE_VERIFIER"
 ENV_FILE="$DEPLOY_DIR/.env"
 ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"
 ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"
@@ -103,6 +105,7 @@ GHCR_DOCKER_CONFIG=""
 ENV_FILE_WAS_PRESENT=0
 ROLLBACK_ARMED=0
 ROLLBACK_RUNNING=0
+ROLLBACK_SPEC_PRESENCE_NAME=.jobseek-deploy-spec-presence-v1
 DEPLOY_SPEC_FILES=(
   deploy.sh
   deploy_helpers.sh
@@ -116,8 +119,8 @@ if [[ "$INCOMING_DIR" == "$DEPLOY_DIR" ]]; then
   exit 1
 fi
 for spec in "${DEPLOY_SPEC_FILES[@]}"; do
-  [[ -f "$INCOMING_DIR/$spec" ]] || {
-    echo "ERROR: staged deploy artifact is unavailable: ${spec}" >&2
+  [[ -f "$INCOMING_DIR/$spec" && ! -L "$INCOMING_DIR/$spec" ]] || {
+    echo "ERROR: staged deploy artifact is unavailable or unsafe: ${spec}" >&2
     exit 1
   }
 done
@@ -817,22 +820,58 @@ cleanup_forward_data_snapshot() {
 }
 
 snapshot_active_deploy_specs() {
-  local snapshot_dir spec temporary
-
-  for spec in "${DEPLOY_SPEC_FILES[@]}"; do
-    [[ -f "$DEPLOY_DIR/$spec" ]] || {
-      echo "ERROR: active deploy artifact is unavailable: ${spec}" >&2
-      return 1
-    }
-  done
+  local snapshot_dir spec temporary source_digest snapshot_digest mode
+  local presence_file
+  local -a archive_entries=()
+  local -A presence=()
 
   snapshot_dir="$(mktemp -d "${DEPLOY_DIR}/.deploy-spec.snapshot.XXXXXX")"
   for spec in "${DEPLOY_SPEC_FILES[@]}"; do
-    if ! install -D -p "$DEPLOY_DIR/$spec" "$snapshot_dir/$spec"; then
-      rm -rf "$snapshot_dir"
-      return 1
+    if [[ -e "$DEPLOY_DIR/$spec" || -L "$DEPLOY_DIR/$spec" ]]; then
+      [[ -f "$DEPLOY_DIR/$spec" && ! -L "$DEPLOY_DIR/$spec" ]] || {
+        echo "ERROR: active deploy artifact is unsafe: ${spec}" >&2
+        rm -rf "$snapshot_dir"
+        return 1
+      }
+      source_digest="$(sha256sum "$DEPLOY_DIR/$spec" | awk '{print $1}')" || {
+        rm -rf "$snapshot_dir"
+        return 1
+      }
+      mode="$(stat -c '%a' "$DEPLOY_DIR/$spec")" || {
+        rm -rf "$snapshot_dir"
+        return 1
+      }
+      [[ "$mode" =~ ^[0-7]{3,4}$ ]] || {
+        rm -rf "$snapshot_dir"
+        return 1
+      }
+      if ! install -d "$(dirname "$snapshot_dir/$spec")" || \
+        ! install -m "$mode" "$DEPLOY_DIR/$spec" "$snapshot_dir/$spec" || \
+        ! chmod "$mode" "$snapshot_dir/$spec"
+      then
+        rm -rf "$snapshot_dir"
+        return 1
+      fi
+      snapshot_digest="$(sha256sum "$snapshot_dir/$spec" | awk '{print $1}')" || {
+        rm -rf "$snapshot_dir"
+        return 1
+      }
+      [[ "$source_digest" == "$snapshot_digest" && \
+        "$source_digest" == "$(sha256sum "$DEPLOY_DIR/$spec" | awk '{print $1}')" ]] || {
+        echo "ERROR: active deploy artifact changed during snapshot: ${spec}" >&2
+        rm -rf "$snapshot_dir"
+        return 1
+      }
+      presence["$spec"]=PRESENT
+    else
+      presence["$spec"]=ABSENT
     fi
   done
+  [[ "${presence[docker-compose.yml]}" == PRESENT ]] || {
+    echo "ERROR: active deploy Compose artifact is unavailable" >&2
+    rm -rf "$snapshot_dir"
+    return 1
+  }
 
   # The independently scheduled shim rollout can already have replaced the
   # live Compose file. Only the verified, crawler-confirmed snapshot is valid
@@ -842,15 +881,257 @@ snapshot_active_deploy_specs() {
     return 1
   fi
 
+  presence_file="$snapshot_dir/$ROLLBACK_SPEC_PRESENCE_NAME"
+  printf 'DEPLOY_SPEC_PRESENCE_FORMAT_VERSION=1\n' >"$presence_file" || {
+    rm -rf "$snapshot_dir"
+    return 1
+  }
+  archive_entries+=("$ROLLBACK_SPEC_PRESENCE_NAME")
+  for spec in "${DEPLOY_SPEC_FILES[@]}"; do
+    if [[ "${presence[$spec]}" == PRESENT ]]; then
+      snapshot_digest="$(sha256sum "$snapshot_dir/$spec" | awk '{print $1}')" || {
+        rm -rf "$snapshot_dir"
+        return 1
+      }
+      mode="$(stat -c '%a' "$snapshot_dir/$spec")" || {
+        rm -rf "$snapshot_dir"
+        return 1
+      }
+      [[ "$snapshot_digest" =~ ^[0-9a-f]{64}$ && "$mode" =~ ^[0-7]{3,4}$ ]] || {
+        rm -rf "$snapshot_dir"
+        return 1
+      }
+      printf 'PRESENT %s %s %s\n' "$snapshot_digest" "$mode" "$spec" \
+        >>"$presence_file" || {
+        rm -rf "$snapshot_dir"
+        return 1
+      }
+      archive_entries+=("$spec")
+    else
+      printf 'ABSENT - - %s\n' "$spec" >>"$presence_file" || {
+        rm -rf "$snapshot_dir"
+        return 1
+      }
+    fi
+  done
+  chmod 0600 "$presence_file"
+
   temporary="$(mktemp "${DEPLOY_DIR}/.deploy-spec.rollback.XXXXXX.tar")"
-  if ! tar -C "$snapshot_dir" -cpf "$temporary" "${DEPLOY_SPEC_FILES[@]}"; then
+  if ! python3 - "$snapshot_dir" "$temporary" "${archive_entries[@]}" <<'PY'
+import io
+import os
+import pathlib
+import stat
+import sys
+import tarfile
+
+snapshot_path, archive_path, *entries = sys.argv[1:]
+snapshot = pathlib.Path(snapshot_path)
+with tarfile.open(archive_path, "w", format=tarfile.USTAR_FORMAT) as archive:
+    for relative in entries:
+        path_parts = pathlib.PurePosixPath(relative).parts
+        if not path_parts or relative.startswith("/") or any(
+            part in ("", ".", "..") for part in path_parts
+        ):
+            raise SystemExit("deploy-spec archive member path is unsafe")
+        source = snapshot.joinpath(*path_parts)
+        descriptor = os.open(
+            source, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+        )
+        try:
+            source_stat = os.fstat(descriptor)
+            if not stat.S_ISREG(source_stat.st_mode):
+                raise SystemExit("deploy-spec archive member is not regular")
+            with os.fdopen(descriptor, "rb", closefd=False) as stream:
+                content = stream.read()
+        finally:
+            os.close(descriptor)
+        member = tarfile.TarInfo(relative)
+        member.size = len(content)
+        member.mode = stat.S_IMODE(source_stat.st_mode)
+        member.mtime = 0
+        member.uid = 0
+        member.gid = 0
+        member.uname = ""
+        member.gname = ""
+        archive.addfile(member, io.BytesIO(content))
+PY
+  then
     rm -rf "$snapshot_dir"
     rm -f "$temporary"
     return 1
   fi
   rm -rf "$snapshot_dir"
   chmod 600 "$temporary"
-  mv "$temporary" "$ROLLBACK_SPEC_ARCHIVE"
+  if ! mv "$temporary" "$ROLLBACK_SPEC_ARCHIVE"; then
+    rm -f "$temporary"
+    return 1
+  fi
+}
+
+extract_verified_deploy_spec_snapshot() {
+  local destination="$1"
+  python3 - \
+    "$ROLLBACK_SPEC_ARCHIVE" "$destination" "$ROLLBACK_SPEC_PRESENCE_NAME" \
+    "${DEPLOY_SPEC_FILES[@]}" <<'PY'
+import hashlib
+import os
+import pathlib
+import re
+import stat
+import sys
+import tarfile
+
+archive_path, destination_path, presence_name, *specs = sys.argv[1:]
+destination = pathlib.Path(destination_path)
+with tarfile.open(archive_path, "r") as archive:
+    members = archive.getmembers()
+    names = [member.name for member in members]
+    if len(names) != len(set(names)) or presence_name not in names:
+        raise SystemExit("rollback deploy-spec archive has duplicate or missing members")
+    by_name = {member.name: member for member in members}
+    for member in members:
+        if not member.isfile() or member.issym() or member.islnk():
+            raise SystemExit("rollback deploy-spec archive contains an unsafe member")
+    presence_member = by_name[presence_name]
+    presence_stream = archive.extractfile(presence_member)
+    if presence_stream is None:
+        raise SystemExit("rollback deploy-spec presence manifest is unreadable")
+    presence_content = presence_stream.read()
+    try:
+        presence_text = presence_content.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise SystemExit(f"rollback deploy-spec presence manifest is not UTF-8: {error}")
+    if not presence_text.endswith("\n"):
+        raise SystemExit("rollback deploy-spec presence manifest is not canonical")
+    lines = presence_text.splitlines()
+    if not lines or lines[0] != "DEPLOY_SPEC_PRESENCE_FORMAT_VERSION=1":
+        raise SystemExit("rollback deploy-spec presence format is unsupported")
+    if len(lines[1:]) != len(specs):
+        raise SystemExit("rollback deploy-spec presence manifest is incomplete")
+    expected_members = {presence_name}
+    parsed = []
+    for spec, line in zip(specs, lines[1:], strict=True):
+        parts = line.split(" ", 3)
+        if len(parts) != 4 or parts[3] != spec:
+            raise SystemExit("rollback deploy-spec presence order is mismatched")
+        state, digest, mode_text, _ = parts
+        if state == "PRESENT":
+            if not re.fullmatch(r"[0-9a-f]{64}", digest) or not re.fullmatch(
+                r"[0-7]{3,4}", mode_text
+            ):
+                raise SystemExit("rollback deploy-spec presence identity is malformed")
+            expected_members.add(spec)
+        elif state == "ABSENT":
+            if digest != "-" or mode_text != "-":
+                raise SystemExit("rollback deploy-spec absence identity is malformed")
+        else:
+            raise SystemExit("rollback deploy-spec presence state is unsupported")
+        parsed.append((state, digest, mode_text, spec))
+    if set(names) != expected_members:
+        raise SystemExit("rollback deploy-spec archive member set is mismatched")
+
+    for state, digest, mode_text, spec in parsed:
+        if state != "PRESENT":
+            continue
+        member = by_name[spec]
+        stream = archive.extractfile(member)
+        if stream is None:
+            raise SystemExit(f"rollback deploy artifact is unreadable: {spec}")
+        content = stream.read()
+        if hashlib.sha256(content).hexdigest() != digest:
+            raise SystemExit(f"rollback deploy artifact digest is mismatched: {spec}")
+        mode = int(mode_text, 8)
+        if stat.S_IMODE(member.mode) != mode:
+            raise SystemExit(f"rollback deploy artifact mode is mismatched: {spec}")
+        target = destination / spec
+        target.parent.mkdir(parents=True, exist_ok=True)
+        descriptor = os.open(
+            target,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
+            mode,
+        )
+        try:
+            with os.fdopen(descriptor, "wb", closefd=False) as output:
+                output.write(content)
+                output.flush()
+                os.fsync(output.fileno())
+        finally:
+            os.close(descriptor)
+        os.chmod(target, mode, follow_symlinks=False)
+    (destination / presence_name).write_bytes(presence_content)
+PY
+}
+
+restore_previous_deploy_specs() {
+  local restore_dir spec state digest mode target
+
+  [[ -f "$ROLLBACK_SPEC_ARCHIVE" && ! -L "$ROLLBACK_SPEC_ARCHIVE" ]] || {
+    echo "ERROR: rollback deployment archive is unavailable or unsafe" >&2
+    return 1
+  }
+  restore_dir="$(mktemp -d "${DEPLOY_DIR}/.deploy-spec.restore.XXXXXX")"
+  if ! extract_verified_deploy_spec_snapshot "$restore_dir"; then
+    rm -rf "$restore_dir"
+    return 1
+  fi
+  while read -r state digest mode spec; do
+    [[ "$state" == DEPLOY_SPEC_PRESENCE_FORMAT_VERSION=1 ]] && continue
+    [[ "$state" == PRESENT ]] || continue
+    target="$DEPLOY_DIR/$spec"
+    if ! install -d "$(dirname "$target")" || \
+      ! install -m "$mode" "$restore_dir/$spec" "$target" || \
+      ! chmod "$mode" "$target"
+    then
+      rm -rf "$restore_dir"
+      return 1
+    fi
+    [[ "$(sha256sum "$target" | awk '{print $1}')" == "$digest" && \
+      "$(stat -c '%a' "$target")" == "$mode" ]] || {
+      rm -rf "$restore_dir"
+      return 1
+    }
+  done <"$restore_dir/$ROLLBACK_SPEC_PRESENCE_NAME"
+  rm -rf "$restore_dir"
+}
+
+remove_previously_absent_deploy_specs() {
+  local restore_dir spec state digest mode target
+
+  [[ -f "$ROLLBACK_SPEC_ARCHIVE" && ! -L "$ROLLBACK_SPEC_ARCHIVE" ]] || return 1
+  restore_dir="$(mktemp -d "${DEPLOY_DIR}/.deploy-spec.restore.XXXXXX")"
+  if ! extract_verified_deploy_spec_snapshot "$restore_dir"; then
+    rm -rf "$restore_dir"
+    return 1
+  fi
+  while read -r state digest mode spec; do
+    [[ "$state" == DEPLOY_SPEC_PRESENCE_FORMAT_VERSION=1 ]] && continue
+    target="$DEPLOY_DIR/$spec"
+    if [[ "$state" == ABSENT ]]; then
+      if [[ -e "$target" || -L "$target" ]]; then
+        [[ -f "$target" && ! -L "$target" ]] || {
+          rm -rf "$restore_dir"
+          return 1
+        }
+        rm -f -- "$target" || {
+          rm -rf "$restore_dir"
+          return 1
+        }
+      fi
+      [[ ! -e "$target" && ! -L "$target" ]] || {
+        rm -rf "$restore_dir"
+        return 1
+      }
+    else
+      [[ "$state" == PRESENT && -f "$target" && ! -L "$target" && \
+        "$(sha256sum "$target" | awk '{print $1}')" == "$digest" && \
+        "$(stat -c '%a' "$target")" == "$mode" ]] || {
+        rm -rf "$restore_dir"
+        return 1
+      }
+    fi
+  done <"$restore_dir/$ROLLBACK_SPEC_PRESENCE_NAME"
+  rm -rf "$restore_dir"
 }
 
 activate_staged_deploy_specs() {
@@ -861,17 +1142,10 @@ activate_staged_deploy_specs() {
       deploy.sh | deploy_helpers.sh | scripts/*.py) mode=0755 ;;
       *) mode=0644 ;;
     esac
-    install -D -m "$mode" "$INCOMING_DIR/$spec" "$DEPLOY_DIR/$spec"
+    install -d "$(dirname "$DEPLOY_DIR/$spec")"
+    install -m "$mode" "$INCOMING_DIR/$spec" "$DEPLOY_DIR/$spec"
   done
   install -m 0644 "$ROLLBACK_POOL_OVERRIDE_SOURCE" "$ROLLBACK_POOL_OVERRIDE"
-}
-
-restore_previous_deploy_specs() {
-  [[ -f "$ROLLBACK_SPEC_ARCHIVE" && ! -L "$ROLLBACK_SPEC_ARCHIVE" ]] || {
-    echo "ERROR: rollback deployment archive is unavailable or unsafe" >&2
-    return 1
-  }
-  tar -C "$DEPLOY_DIR" -xpf "$ROLLBACK_SPEC_ARCHIVE"
 }
 
 reconciliation_wrapper_is_compatible() {
@@ -937,7 +1211,7 @@ configure_rollback_compose_contract() {
   compose_file_count="$(grep -Ec '^COMPOSE_FILE=' "$ENV_FILE" || true)"
   compose_file_value="$(grep -E '^COMPOSE_FILE=' "$ENV_FILE" || true)"
   if ((compose_file_count == 0)); then
-    printf '\n%s\n' "$expected" >>"$ENV_FILE" || return 1
+    printf '%s\n' "$expected" >>"$ENV_FILE" || return 1
   elif ((compose_file_count != 1)) || [[ "$compose_file_value" != "$expected" ]]; then
     echo "ERROR: restored rollback environment has an unexpected Compose contract" >&2
     return 1
@@ -1074,6 +1348,7 @@ rollback_deploy() {
   local release_restore_complete=0
   local env_restore_complete=0
   local spec_restore_complete=0
+  local spec_absence_restore_complete=0
   local bounded_contract_persisted=0
   local config_restore_complete=0
   local rollback_stack_started=0
@@ -1219,6 +1494,18 @@ rollback_deploy() {
       rollback_status=$command_status
     fi
   fi
+  # Keep newly introduced artifacts (notably the bridge verifier) available
+  # through release verification and exact CSV rollback. Only then commit the
+  # previous presence set by deleting files that did not exist before rollout.
+  remove_previously_absent_deploy_specs
+  command_status=$?
+  if ((command_status == 0)); then
+    spec_absence_restore_complete=1
+  elif ((rollback_status == 0)); then
+    rollback_status=$command_status
+  fi
+  BRIDGE_VERIFIER="$STAGED_BRIDGE_VERIFIER"
+  export JOBSEEK_BRIDGE_VERIFIER="$STAGED_BRIDGE_VERIFIER"
   if declare -F cleanup_forward_data_snapshot >/dev/null; then
     cleanup_forward_data_snapshot
     command_status=$?
@@ -1233,6 +1520,9 @@ rollback_deploy() {
   fi
   if ((rollback_status != 0)); then
     echo "ERROR: retaining the last verified crawler snapshot after rollback failure" >&2
+  fi
+  if (( ! spec_absence_restore_complete )); then
+    echo "ERROR: rollback could not restore the previous deploy-artifact presence set" >&2
   fi
 
   stop_maintenance_window
@@ -1631,11 +1921,36 @@ ensure_reconciliation_wrapper_compatible
 python3 "$INCOMING_DIR/scripts/postgresql-operational-preflight.py"
 initialize_ghcr_docker_config
 
-# Resolve any interrupted data-only transaction before inspecting or mutating
-# the active generation. On the first v3 rollout, reapply the exact pre-push
-# main CSV snapshot with the committed old runtime and atomically bind it as
-# rollback evidence. Never fall back to the older image's embedded CSVs.
+# Resolve and authenticate the exact pre-deploy release before any active
+# pointer or deploy artifact can change. The presence-aware spec archive is
+# the recovery authority for first rollouts where a newly introduced artifact
+# (such as the bridge verifier) does not yet exist in the active directory.
+verify_active_deploy_snapshot
+ROLLBACK_ACTIVE_RELEASE_TARGET="$ACTIVE_RELEASE_DIR"
+ROLLBACK_ACTIVE_IMAGE_OVERRIDE="$ACTIVE_IMAGE_OVERRIDE"
+rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"
+if ! snapshot_active_deploy_specs; then
+  rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"
+  exit 1
+fi
+ENV_FILE_WAS_PRESENT=1
+if ! install -m 0600 "$ACTIVE_ENV_SNAPSHOT" "$ROLLBACK_ENV_FILE"; then
+  rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"
+  exit 1
+fi
+arm_deploy_rollback
+activate_staged_deploy_specs
+BRIDGE_VERIFIER="$ACTIVE_BRIDGE_VERIFIER"
+export JOBSEEK_BRIDGE_VERIFIER="$ACTIVE_BRIDGE_VERIFIER"
+
+# Resolve any interrupted data-only transaction only after rollback is armed.
+# On the first v3 rollout, reapply the exact pre-push main CSV snapshot with
+# the committed old runtime and atomically bind it as rollback evidence. A
+# failed recovery or bootstrap returns through the armed spec/release restore.
 bash "$INCOMING_DIR/scripts/crawler-csv-sync-host.sh" --recover-only
+verify_active_deploy_snapshot
+ROLLBACK_ACTIVE_RELEASE_TARGET="$ACTIVE_RELEASE_DIR"
+ROLLBACK_ACTIVE_IMAGE_OVERRIDE="$ACTIVE_IMAGE_OVERRIDE"
 bash "$INCOMING_DIR/scripts/crawler-csv-sync-host.sh" \
   --bootstrap-current \
   "$JOBSEEK_PREVIOUS_DATA_REVISION" \
@@ -1643,20 +1958,9 @@ bash "$INCOMING_DIR/scripts/crawler-csv-sync-host.sh" \
   "$JOBSEEK_PREVIOUS_DATA_CONTRACT_SHA256" \
   "$JOBSEEK_PREVIOUS_DATA_CANDIDATE_ID" \
   "$JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256"
-
 verify_active_deploy_snapshot
 ROLLBACK_ACTIVE_RELEASE_TARGET="$ACTIVE_RELEASE_DIR"
 ROLLBACK_ACTIVE_IMAGE_OVERRIDE="$ACTIVE_IMAGE_OVERRIDE"
-
-# Snapshot the complete active deployment contract before replacing any file
-# or credential. Rollback restores the old Compose spec and old env together,
-# so an old image never starts with the new credential semantics.
-rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"
-snapshot_active_deploy_specs
-ENV_FILE_WAS_PRESENT=1
-install -m 0600 "$ACTIVE_ENV_SNAPSHOT" "$ROLLBACK_ENV_FILE"
-arm_deploy_rollback
-activate_staged_deploy_specs
 resolve_shim_image_ref
 
 # ── Stop any manually-started containers that conflict with compose ──
