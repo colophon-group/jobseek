@@ -5,14 +5,19 @@ import json
 from pathlib import Path
 
 import httpx
+import pytest
 
 from src.core.monitor import monitor_one
 from src.core.scrapers.phuketall import can_handle, parse_html, scrape
+from src.shared.http_retry import PaginationFetchError, ResponseBodyTooLargeError
 
 _BOARDS_CSV = Path(__file__).parents[1] / "data" / "boards.csv"
 
 HTML = """
-<html><head><meta property="og:url" content="https://www.phuketall.com/jobs/1" /></head>
+<html><head>
+  <meta property="og:url"
+        content="https://www.phuketall.com/jobs/057289-213282-phuket/213282.html" />
+</head>
 <body>
   <div class="title-feedbox"><h2>ตำแหน่ง : <span>Medical Nurse</span></h2></div>
   <div class="jobs-derails-content">
@@ -45,10 +50,167 @@ def test_can_handle_and_parse_thai_detail_page():
 async def test_scrape_fetches_detail_page():
     transport = httpx.MockTransport(lambda request: httpx.Response(200, text=HTML, request=request))
     async with httpx.AsyncClient(transport=transport) as client:
-        content = await scrape("https://www.phuketall.com/jobs/1", {}, client)
+        content = await scrape(
+            "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+            {},
+            client,
+        )
 
     assert content.title == "Medical Nurse"
     assert content.description
+
+
+@pytest.mark.parametrize(
+    "marker",
+    [
+        "https://attacker.example/?next=https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+        "https://www.phuketall.com.attacker.example/jobs/057289-213282-phuket/213282.html",
+        "https://www.phuketall.com:bad/jobs/057289-213282-phuket/213282.html",
+        "http://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+    ],
+)
+def test_can_handle_rejects_url_substrings_without_exact_provider_origin(marker: str):
+    malicious = HTML.replace(
+        "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+        marker,
+    )
+
+    assert can_handle([malicious]) is None
+
+
+async def test_scrape_streams_with_a_hard_body_cap():
+    oversized = HTML + ("x" * (2 * 1024 * 1024))
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, text=oversized, request=request)
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(ResponseBodyTooLargeError):
+            await scrape(
+                "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+                {},
+                client,
+            )
+
+
+async def test_scrape_fails_whole_cycle_on_empty_detail_response():
+    requests = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(200, text="", request=request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(PaginationFetchError):
+            await scrape(
+                "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+                {},
+                client,
+            )
+
+    assert requests == 3
+
+
+async def test_scrape_follows_only_same_provider_identity_redirects():
+    requested: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append(request.url.path)
+        if request.url.path.endswith("/medical-nurse.html"):
+            return httpx.Response(
+                302,
+                headers={
+                    "location": "/jobs/057289-213282-phuket/213282.html",
+                },
+                request=request,
+            )
+        return httpx.Response(200, text=HTML, request=request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        content = await scrape(
+            "https://www.phuketall.com/jobs/057289-213282-phuket/medical-nurse.html",
+            {},
+            client,
+        )
+
+    assert content.title == "Medical Nurse"
+    assert requested == [
+        "/jobs/057289-213282-phuket/medical-nurse.html",
+        "/jobs/057289-213282-phuket/213282.html",
+    ]
+
+
+@pytest.mark.parametrize(
+    "location",
+    [
+        "https://attacker.example/jobs/057289-213282-phuket/213282.html",
+        "/jobs/057289-999999-phuket/999999.html",
+    ],
+)
+async def test_scrape_rejects_redirects_outside_exact_origin_and_identity(location: str):
+    requests = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(302, headers={"location": location}, request=request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="untrusted redirect"):
+            await scrape(
+                "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+                {},
+                client,
+            )
+
+    assert requests == 1
+
+
+async def test_scrape_rejects_untrusted_input_origin_before_request():
+    requests = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(200, text=HTML, request=request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="untrusted origin"):
+            await scrape(
+                "https://www.phuketall.com.attacker.example/jobs/057289-213282-phuket/213282.html",
+                {},
+                client,
+            )
+
+    assert requests == 0
+
+
+async def test_scrape_fails_whole_cycle_on_http_error():
+    transport = httpx.MockTransport(lambda request: httpx.Response(404, request=request))
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(PaginationFetchError):
+            await scrape(
+                "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+                {},
+                client,
+            )
+
+
+async def test_scrape_rejects_mismatched_embedded_provider_identity():
+    mismatched = HTML.replace("057289-213282", "057289-999999").replace(
+        "/213282.html",
+        "/999999.html",
+    )
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, text=mismatched, request=request)
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(ValueError, match="untrusted provider identity"):
+            await scrape(
+                "https://www.phuketall.com/jobs/057289-213282-phuket/213282.html",
+                {},
+                client,
+            )
 
 
 def _clinique_phuket_config() -> dict:

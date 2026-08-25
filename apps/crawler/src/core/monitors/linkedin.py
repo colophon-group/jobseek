@@ -17,7 +17,7 @@ import asyncio
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import parse_qs, urlencode, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import httpx
 import structlog
@@ -117,11 +117,29 @@ def _clean_text(node: LexborNode | None) -> str | None:
     return value or None
 
 
-def _canonical_job_url(job_id: str, href: str | None) -> str:
-    # The human-readable title and locale host are presentation only. LinkedIn
-    # accepts the numeric provider identity directly, so retaining either in
-    # source_url would churn one vacancy whenever a title or locale changes.
-    _ = href
+def _canonical_job_url(
+    job_id: str,
+    href: str | None,
+    *,
+    numeric_identity: bool = False,
+) -> str:
+    # Numeric identity is deliberately opt-in until existing title-bearing
+    # source URLs have an ID-preserving migration. Default behavior retains
+    # the validated LinkedIn path exactly as before this option was added.
+    if not numeric_identity and href:
+        parsed = urlparse(href)
+        path_id = re.search(r"(?:-|/)(\d+)/?$", parsed.path)
+        if (
+            _is_linkedin_host((parsed.hostname or "").lower())
+            and parsed.scheme.lower() == "https"
+            and not parsed.username
+            and not parsed.password
+            and parsed.port is None
+            and parsed.path.startswith("/jobs/view/")
+            and path_id
+            and path_id.group(1) == job_id
+        ):
+            return urlunparse(("https", "www.linkedin.com", parsed.path, "", "", ""))
     return f"https://www.linkedin.com/jobs/view/{job_id}"
 
 
@@ -195,7 +213,11 @@ def _apply_source_ownership(
     return owned
 
 
-def _parse_listing_cards(html: str) -> list[_ListingJob]:
+def _parse_listing_cards(
+    html: str,
+    *,
+    canonical_numeric_job_urls: bool = False,
+) -> list[_ListingJob]:
     tree = LexborHTMLParser(html)
     jobs: list[_ListingJob] = []
     seen: set[str] = set()
@@ -220,7 +242,11 @@ def _parse_listing_cards(html: str) -> list[_ListingJob]:
         jobs.append(
             _ListingJob(
                 job_id=job_id,
-                url=_canonical_job_url(job_id, href),
+                url=_canonical_job_url(
+                    job_id,
+                    href,
+                    numeric_identity=canonical_numeric_job_urls,
+                ),
                 title=_clean_text(card.css_first(".base-search-card__title")),
                 locations=[location] if location else None,
                 date_posted=date_posted or None,
@@ -274,6 +300,7 @@ async def _fetch_listing_query(
     *,
     company_slug: str | None = None,
     keywords: str | None = None,
+    canonical_numeric_job_urls: bool = False,
 ) -> tuple[list[_ListingJob], bool]:
     jobs: list[_ListingJob] = []
     seen: set[str] = set()
@@ -292,7 +319,10 @@ async def _fetch_listing_query(
         )
         if html is None:
             break
-        page = _parse_listing_cards(html)
+        page = _parse_listing_cards(
+            html,
+            canonical_numeric_job_urls=canonical_numeric_job_urls,
+        )
         if not page:
             if _is_empty_listing_fragment(html):
                 break
@@ -325,12 +355,14 @@ async def _fetch_listings(
     *,
     company_slug: str | None = None,
     keywords: str | None = None,
+    canonical_numeric_job_urls: bool = False,
 ) -> tuple[list[_ListingJob], bool]:
     """Fetch the exact company query plus any keyword recovery query as a union."""
     jobs, truncated = await _fetch_listing_query(
         client,
         company_id,
         company_slug=company_slug,
+        canonical_numeric_job_urls=canonical_numeric_job_urls,
     )
     if truncated or not keywords:
         return jobs, truncated
@@ -344,6 +376,7 @@ async def _fetch_listings(
         company_id,
         company_slug=company_slug,
         keywords=keywords,
+        canonical_numeric_job_urls=canonical_numeric_job_urls,
     )
     by_id = {job.job_id: job for job in jobs}
     for job in recovered:
@@ -397,6 +430,10 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
     if keywords is not None and (not isinstance(keywords, str) or not keywords.strip()):
         raise ValueError("LinkedIn keywords must be a non-empty string when configured")
 
+    canonical_numeric_job_urls = metadata.get("canonical_numeric_job_urls", False)
+    if not isinstance(canonical_numeric_job_urls, bool):
+        raise ValueError("LinkedIn canonical_numeric_job_urls must be a boolean")
+
     excluded_country_codes = _validated_source_ownership_country_codes(
         metadata.get("source_ownership_excluded_country_codes")
     )
@@ -406,6 +443,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
         str(company_id),
         company_slug=company_slug,
         keywords=keywords.strip() if isinstance(keywords, str) else None,
+        canonical_numeric_job_urls=canonical_numeric_job_urls,
     )
     jobs = _apply_source_ownership(jobs, excluded_country_codes)
     discovered = [job.discovered(str(company_id)) for job in jobs]

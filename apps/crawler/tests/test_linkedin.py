@@ -82,12 +82,15 @@ DETAIL_HTML = f"""
 
 
 class TestListingParser:
-    def test_extracts_summary_and_stable_url(self):
+    def test_default_preserves_legacy_title_bearing_identity(self):
         jobs = _parse_listing_cards(_listing_html())
 
         assert len(jobs) == 1
         assert jobs[0].job_id == "4442073767"
-        assert jobs[0].url == "https://www.linkedin.com/jobs/view/4442073767"
+        assert jobs[0].url == (
+            "https://www.linkedin.com/jobs/view/"
+            "manager-regulatory-affairs-at-damora-therapeutics-4442073767"
+        )
         assert jobs[0].title == "Manager/Senior Manager, Regulatory Affairs"
         assert jobs[0].locations == ["Massachusetts, United States"]
         assert jobs[0].date_posted == "2026-07-20"
@@ -112,10 +115,35 @@ class TestListingParser:
             "https://www.linkedin.com/jobs/view/4453689816",
         ],
     )
-    def test_title_and_locale_paths_share_numeric_provider_identity(self, href: str):
-        job = _parse_listing_cards(_listing_html(job_id="4453689816", href=href))[0]
+    def test_opt_in_title_and_locale_paths_share_numeric_provider_identity(self, href: str):
+        job = _parse_listing_cards(
+            _listing_html(job_id="4453689816", href=href),
+            canonical_numeric_job_urls=True,
+        )[0]
 
         assert job.url == "https://www.linkedin.com/jobs/view/4453689816"
+
+    @pytest.mark.parametrize(
+        ("href", "expected_path"),
+        [
+            (
+                "https://www.linkedin.com/jobs/view/human-resources-generalist-4453689816",
+                "/jobs/view/human-resources-generalist-4453689816",
+            ),
+            (
+                "https://ch.linkedin.com/jobs/view/generaliste-rh-4453689816?trk=public_jobs",
+                "/jobs/view/generaliste-rh-4453689816",
+            ),
+        ],
+    )
+    def test_default_off_keeps_existing_validated_path_identity(
+        self,
+        href: str,
+        expected_path: str,
+    ):
+        job = _parse_listing_cards(_listing_html(job_id="4453689816", href=href))[0]
+
+        assert job.url == f"https://www.linkedin.com{expected_path}"
 
     def test_rejects_malformed_listing_card(self):
         html = _listing_html().replace("urn:li:jobPosting:4442073767", "missing-job-urn")
@@ -207,6 +235,7 @@ class TestMonitor:
                     "metadata": {
                         "company_id": COMPANY_ID,
                         "company_slug": "damora-therapeutics",
+                        "canonical_numeric_job_urls": True,
                         "source_ownership_excluded_country_codes": ["THA"],
                     },
                 },
@@ -220,6 +249,29 @@ class TestMonitor:
             "4458171439",
         }
         assert {job.metadata["location_country_code"] for job in result} == {"CHE", "SAU"}
+        assert {job.url for job in result} == {
+            "https://www.linkedin.com/jobs/view/4453689816",
+            "https://www.linkedin.com/jobs/view/4457317622",
+            "https://www.linkedin.com/jobs/view/4458171439",
+        }
+
+    async def test_rejects_non_boolean_numeric_identity_option(self):
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=_listing_html(), request=request)
+        )
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="canonical_numeric_job_urls must be a boolean"):
+                await discover(
+                    {
+                        "board_url": BOARD_URL,
+                        "metadata": {
+                            "company_id": COMPANY_ID,
+                            "company_slug": "damora-therapeutics",
+                            "canonical_numeric_job_urls": "true",
+                        },
+                    },
+                    client,
+                )
 
     @pytest.mark.parametrize("location", [None, "Remote", "Phuket, ประเทศไทย"])
     async def test_source_ownership_fails_closed_without_exact_country(
