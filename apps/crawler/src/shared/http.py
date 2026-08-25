@@ -115,8 +115,27 @@ _CLIENT_DEFAULTS = {
 }
 
 
-class _AsciiCookiePolicy(DefaultCookiePolicy):
-    """Reject upstream cookies that cannot be serialized in HTTP headers.
+_COOKIE_NAME_RE = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
+_COOKIE_OCTET_RE = re.compile(r"^[\x21\x23-\x2b\x2d-\x3a\x3c-\x5b\x5d-\x7e]*$")
+
+
+def _is_rfc6265_cookie(cookie: Cookie) -> bool:
+    """Return whether a parsed cookie can be emitted under RFC 6265."""
+    if not _COOKIE_NAME_RE.fullmatch(cookie.name):
+        return False
+
+    value = cookie.value
+    if value is None:
+        return False
+    if value.startswith('"') or value.endswith('"'):
+        if len(value) < 2 or not (value.startswith('"') and value.endswith('"')):
+            return False
+        value = value[1:-1]
+    return _COOKIE_OCTET_RE.fullmatch(value) is not None
+
+
+class _Rfc6265CookiePolicy(DefaultCookiePolicy):
+    """Reject upstream cookies that cannot be serialized as RFC 6265 cookies.
 
     RFC 6265 cookie octets are ASCII. A few legacy recruiting portals put
     locale-dependent month names in a tracking cookie (for example French
@@ -128,12 +147,7 @@ class _AsciiCookiePolicy(DefaultCookiePolicy):
     """
 
     def set_ok(self, cookie: Cookie, request: Any) -> bool:
-        try:
-            cookie.name.encode("ascii")
-            cookie.value.encode("ascii")
-        except UnicodeEncodeError:
-            return False
-        return super().set_ok(cookie, request)
+        return _is_rfc6265_cookie(cookie) and super().set_ok(cookie, request)
 
 
 @dataclass
@@ -347,7 +361,7 @@ def _build_async_client(kwargs: dict[str, Any], **extra: Any) -> httpx.AsyncClie
     """
     kw = dict(kwargs)
     kw.update(extra)
-    kw.setdefault("cookies", CookieJar(policy=_AsciiCookiePolicy()))
+    kw.setdefault("cookies", CookieJar(policy=_Rfc6265CookiePolicy()))
     proxy = kw.pop("proxy", None)
     inner = kw.pop("transport", None)
     if inner is None:

@@ -938,6 +938,20 @@ async def test_discover_deadline_patterns_override_fallback_default():
 
 
 @pytest.mark.asyncio
+async def test_require_zero_proof_rejects_selector_drift():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "steps": [{"tag": "h3", "field": "title"}],
+            "require_zero_proof": True,
+        },
+    }
+
+    with pytest.raises(ValueError, match="authoritative empty-state proof"):
+        await discover(board, _FakeClient("<main><h2>Open roles</h2></main>"))
+
+
+@pytest.mark.asyncio
 async def test_discover_keeps_opportunity_on_inclusive_utc_deadline():
     today = datetime.now(UTC).date().isoformat()
     board = {
@@ -1000,6 +1014,7 @@ async def test_discover_exclude_expired_fails_closed_without_deadline():
             "cannot be combined",
         ),
         ({"exclude_expired": "true"}, "exclude_expired"),
+        ({"require_zero_proof": "true"}, "require_zero_proof"),
     ],
 )
 async def test_discover_rejects_invalid_valid_through_config(metadata, message):

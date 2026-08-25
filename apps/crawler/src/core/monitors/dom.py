@@ -1809,6 +1809,8 @@ _RichRowsConfig = tuple[
     tuple[str, str | None] | None,
     frozenset[str],
     frozenset[str],
+    str | None,
+    re.Pattern[str] | None,
 ]
 
 
@@ -1880,6 +1882,8 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         "section_end",
         "active_urls",
         "inactive_urls",
+        "row_required_selector",
+        "row_text_pattern",
     }:
         raise ValueError("DOM monitor rich_rows must be a bounded mapping")
     row_selector = _validate_css_selector(value.get("row_selector"), name="rich_rows.row_selector")
@@ -1969,6 +1973,32 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         )
         if active_urls & inactive_urls:
             raise ValueError("DOM monitor rich_rows.active_urls and inactive_urls must be disjoint")
+    row_required_selector = _validate_css_selector(
+        value.get("row_required_selector"),
+        name="rich_rows.row_required_selector",
+    )
+    row_text_pattern_raw = value.get("row_text_pattern")
+    row_text_pattern = None
+    if row_text_pattern_raw is not None:
+        if (
+            not isinstance(row_text_pattern_raw, str)
+            or not row_text_pattern_raw
+            or len(row_text_pattern_raw) > 2_048
+            or "\x00" in row_text_pattern_raw
+        ):
+            raise ValueError(
+                "DOM monitor rich_rows.row_text_pattern must be a non-empty regex up to 2048 chars"
+            )
+        try:
+            row_text_pattern = re.compile(row_text_pattern_raw)
+        except re.error as exc:
+            raise ValueError(
+                "DOM monitor rich_rows.row_text_pattern must be a valid regex"
+            ) from exc
+    if total_selector is not None and (
+        row_required_selector is not None or row_text_pattern is not None
+    ):
+        raise ValueError("DOM monitor rich_rows row filters cannot be combined with total_selector")
     return (
         row_selector,
         link_selector,
@@ -1982,6 +2012,8 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         section_end,
         active_urls,
         inactive_urls,
+        row_required_selector,
+        row_text_pattern,
     )
 
 
@@ -2044,6 +2076,8 @@ def _extract_rich_rows_static(
         section_end,
         active_urls,
         inactive_urls,
+        row_required_selector,
+        row_text_pattern,
     ) = config
     tree = LexborHTMLParser(html)
     advertised_total: int | None = None
@@ -2070,6 +2104,11 @@ def _extract_rich_rows_static(
 
     jobs_by_url: dict[str, DiscoveredJob] = {}
     for index, row in enumerate(rows):
+        row_text = re.sub(r"\s+", " ", row.text(separator=" ", strip=True)).strip()
+        if row_required_selector is not None and row.css_first(row_required_selector) is None:
+            continue
+        if row_text_pattern is not None and row_text_pattern.search(row_text) is None:
+            continue
         link = row.css_first(link_selector) if link_selector is not None else row
         href = link.attributes.get(link_attr) if link is not None else None
         title_node = row.css_first(title_selector) if title_selector is not None else link
@@ -2390,6 +2429,83 @@ async def _fetch_via_page(
     )
 
 
+_PaginationAdvertisedRanges = tuple[str, re.Pattern[str]]
+
+
+def _validated_pagination_advertised_ranges(
+    pagination: object,
+) -> _PaginationAdvertisedRanges | None:
+    """Validate an exact, contiguous advertised-range pagination contract."""
+    if pagination is None:
+        return None
+    if not isinstance(pagination, dict):
+        raise ValueError("DOM pagination must be a mapping")
+    value = pagination.get("advertised_ranges")
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) != {"selector", "pattern"}:
+        raise ValueError("DOM pagination advertised_ranges requires exactly selector and pattern")
+    selector = _validate_css_selector(
+        value.get("selector"),
+        name="pagination.advertised_ranges.selector",
+    )
+    pattern_raw = value.get("pattern")
+    if (
+        selector is None
+        or not isinstance(pattern_raw, str)
+        or not pattern_raw
+        or len(pattern_raw) > 1_024
+        or "\x00" in pattern_raw
+    ):
+        raise ValueError(
+            "DOM pagination advertised_ranges pattern must be a non-empty regex up to 1024 chars"
+        )
+    try:
+        pattern = re.compile(pattern_raw)
+    except re.error as exc:
+        raise ValueError("DOM pagination advertised_ranges pattern must be a valid regex") from exc
+    if pattern.groups != 2:
+        raise ValueError(
+            "DOM pagination advertised_ranges pattern must contain exactly two capture groups"
+        )
+    return selector, pattern
+
+
+def _extract_pagination_advertised_total(
+    html: str,
+    config: _PaginationAdvertisedRanges,
+    initial_url_count: int,
+) -> int:
+    """Return a proven total from contiguous ``start-end`` navigation labels."""
+    selector, pattern = config
+    tree = LexborHTMLParser(html)
+    ranges: set[tuple[int, int]] = set()
+    for node in tree.css(selector):
+        text = re.sub(r"\s+", " ", node.text(separator=" ", strip=True)).strip()
+        match = pattern.fullmatch(text)
+        if match is None:
+            continue
+        start, end = (int(value) for value in match.groups())
+        if start < 1 or end < start or end > MAX_URLS:
+            raise ValueError("DOM pagination advertised an invalid result range")
+        ranges.add((start, end))
+    ordered = sorted(ranges)
+    if not ordered or ordered[0][0] != 1:
+        raise ValueError("DOM pagination omitted an exact advertised range starting at 1")
+    previous_end = 0
+    for start, end in ordered:
+        if start != previous_end + 1:
+            raise ValueError("DOM pagination advertised non-contiguous result ranges")
+        previous_end = end
+    first_page_count = ordered[0][1]
+    if initial_url_count != first_page_count:
+        raise ValueError(
+            "DOM pagination initial page accepted "
+            f"{initial_url_count} URLs but advertised {first_page_count}"
+        )
+    return previous_end
+
+
 async def _paginate_urls(
     board_url: str,
     pagination: dict,
@@ -2403,6 +2519,7 @@ async def _paginate_urls(
     request_headers: dict | None = None,
     public_headers: bool = False,
     request_semaphore: asyncio.Semaphore | None = None,
+    expected_total: int | None = None,
 ) -> set[str]:
     """Fetch paginated pages and merge discovered links with *initial_urls*.
 
@@ -2463,6 +2580,17 @@ async def _paginate_urls(
 
     identity_transform = _build_url_identity_transform(url_transform)
     all_urls, seen_identities = _dedupe_by_identity(initial_urls, identity_transform)
+    if expected_total is not None:
+        if (
+            not isinstance(expected_total, int)
+            or isinstance(expected_total, bool)
+            or not 0 <= expected_total <= MAX_URLS
+        ):
+            raise ValueError("DOM pagination expected_total must be a bounded integer")
+        if len(all_urls) > expected_total:
+            raise ValueError("DOM pagination exceeded its advertised total")
+        if len(all_urls) == expected_total:
+            return all_urls
     value = start + increment
 
     for page_num in range(2, max_pages + 1):
@@ -2528,8 +2656,17 @@ async def _paginate_urls(
         # duplicates.
         all_urls |= added
         log.debug("dom.pagination.page", page=page_num, new=len(added), total=len(all_urls))
+        if expected_total is not None:
+            if len(all_urls) > expected_total:
+                raise ValueError("DOM pagination exceeded its advertised total")
+            if len(all_urls) == expected_total:
+                return all_urls
         value += increment
 
+    if expected_total is not None and len(all_urls) != expected_total:
+        raise ValueError(
+            f"DOM pagination accepted {len(all_urls)} URLs but advertised {expected_total}"
+        )
     return all_urls
 
 
@@ -2944,6 +3081,7 @@ async def dom_discover(
         raise ValueError("DOM monitor request_headers are supported only when render=false")
     actions = metadata.get("actions")
     pagination = metadata.get("pagination")
+    advertised_ranges = _validated_pagination_advertised_ranges(pagination)
     url_matcher = _build_url_matcher(metadata.get("url_filter"))
     url_transform = metadata.get("url_transform")
     link_selector = _validate_link_selector(metadata.get("link_selector"))
@@ -2968,6 +3106,12 @@ async def dom_discover(
         configured_empty_states = ((empty_selector, empty_text, False, None, None, None),)
     empty_state_name = "empty_states" if empty_states else "empty_selector"
     rich_rows = _validated_rich_rows(metadata.get("rich_rows"))
+    if advertised_ranges is not None and (
+        render
+        or rich_rows is not None
+        or (isinstance(pagination, dict) and pagination.get("partition_selector"))
+    ):
+        raise ValueError("DOM pagination advertised_ranges supports static URL pagination only")
     if rich_rows is not None and rich_rows[4] is not None and pagination:
         raise ValueError(
             "DOM monitor rich_rows total_selector supports single-page extraction only"
@@ -3023,7 +3167,11 @@ async def dom_discover(
     if configured_empty_states:
         if link_selector is None and rich_rows is None:
             raise ValueError(f"DOM monitor {empty_state_name} requires link_selector or rich_rows")
-        if pagination or metadata.get("include_board_url") or require_jsonld_jobposting:
+        if (
+            (pagination and advertised_ranges is None)
+            or metadata.get("include_board_url")
+            or require_jsonld_jobposting
+        ):
             raise ValueError(f"DOM monitor {empty_state_name} supports single-page extraction only")
         if encoding is not None:
             raise ValueError(
@@ -3187,7 +3335,14 @@ async def dom_discover(
         urls = _extract_links_static(html, board_url, url_matcher, link_selector)
         if configured_empty_states:
             _validate_explicit_empty_states(html, configured_empty_states, urls, board_url)
-        if pagination:
+        expected_total = None
+        if advertised_ranges is not None and urls:
+            expected_total = _extract_pagination_advertised_total(
+                html,
+                advertised_ranges,
+                len(urls),
+            )
+        if pagination and (urls or not configured_empty_states):
             if pagination.get("partition_selector"):
                 urls = await _paginate_partitioned_urls(
                     board_url,
@@ -3212,6 +3367,7 @@ async def dom_discover(
                     link_selector=link_selector,
                     request_headers=request_headers or None,
                     public_headers=bool(request_headers),
+                    expected_total=expected_total,
                 )
 
     # Exclude the board URL itself by default — it is normally the listing
