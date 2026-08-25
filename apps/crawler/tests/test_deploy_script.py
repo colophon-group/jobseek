@@ -220,7 +220,8 @@ def test_csv_sync_filters_the_host_environment_to_required_boundaries() -> None:
     workflow = SYNC_DATA_WORKFLOW.read_text()
     sync_host = CSV_SYNC_HOST.read_text()
 
-    assert "mktemp /run/lock/jobseek-csv-sync-env.XXXXXX" in sync_host
+    assert "RUNTIME_ENV_ROOT=${JOBSEEK_RUNTIME_ENV_ROOT:-/run/lock}" in sync_host
+    assert 'mktemp "${RUNTIME_ENV_ROOT}/jobseek-csv-sync-env.XXXXXX"' in sync_host
     assert "chmod 0600" in sync_host
     assert '--env-file "$RUNTIME_ENV"' in sync_host
     assert "--env-file /home/deploy/.env" not in workflow
@@ -456,6 +457,115 @@ def _create_full_deploy_v3_release(
     }
 
 
+def _create_legacy_format2_release(
+    release_root: Path,
+    name: str,
+    marker: str,
+    *,
+    newline_terminated: bool = True,
+) -> tuple[Path, dict[str, str]]:
+    release = release_root / name
+    release.mkdir(parents=True)
+    source_revision = marker * 40
+    runtime_contract = marker * 64
+    crawler_ref = "ghcr.io/colophon-group/jobseek-crawler@sha256:" + marker * 64
+    browser_ref = "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:" + marker * 64
+    shim_ref = "ghcr.io/colophon-group/jobseek-murmur-shim@sha256:" + marker * 64
+    compose = release / "docker-compose.yml"
+    compose.write_text(
+        "\n".join(
+            (
+                "services:",
+                f"  worker-1: {{image: {crawler_ref}}}",
+                f"  browser-1: {{image: {browser_ref}}}",
+                f"  murmur-shim: {{image: {shim_ref}}}",
+                "",
+            )
+        ),
+        encoding="utf-8",
+    )
+    identity_lines = (
+        f"CRAWLER_IMAGE_TAG=v0.13.{int(marker, 16)}",
+        f"CRAWLER_IMAGE_REF={crawler_ref}",
+        f"BROWSER_IMAGE_REF={browser_ref}",
+        f"SHIM_IMAGE_REF={shim_ref}",
+        f"JOBSEEK_DEPLOY_REVISION={source_revision}",
+    )
+    ending = "\n" if newline_terminated else ""
+    environment = release / "environment.env"
+    environment.write_text(
+        "\n".join(
+            (
+                *identity_lines,
+                "LOCAL_DATABASE_URL=postgresql://local",
+                "WEB_DATABASE_URL=postgresql://web",
+                "TYPESENSE_HOST=typesense",
+                "TYPESENSE_PORT=8108",
+                "TYPESENSE_PROTOCOL=http",
+                "TYPESENSE_OPERATIONS_KEY=secret",
+            )
+        )
+        + ending,
+        encoding="utf-8",
+    )
+    environment.chmod(0o600)
+    success = release / "success.env"
+    success.write_text("\n".join(identity_lines) + ending, encoding="utf-8")
+    override = release / "rollback-images.override.yml"
+    override.write_text(compose.read_text(encoding="utf-8"), encoding="utf-8")
+    compose_digest = hashlib.sha256(compose.read_bytes()).hexdigest()
+    environment_digest = hashlib.sha256(environment.read_bytes()).hexdigest()
+    success_digest = hashlib.sha256(success.read_bytes()).hexdigest()
+    override_digest = hashlib.sha256(override.read_bytes()).hexdigest()
+    (release / "docker-compose.sha256").write_text(f"{compose_digest}\n", encoding="utf-8")
+    (release / "environment.sha256").write_text(f"{environment_digest}\n", encoding="utf-8")
+    (release / "release.manifest").write_text(
+        "\n".join(
+            (
+                "RELEASE_FORMAT_VERSION=2",
+                f"COMPOSE_SHA256={compose_digest}",
+                f"ENVIRONMENT_SHA256={environment_digest}",
+                f"SUCCESS_SHA256={success_digest}",
+                f"IMAGE_OVERRIDE_SHA256={override_digest}",
+                "BOOTSTRAP_LEGACY=1",
+                "",
+            )
+        ),
+        encoding="utf-8",
+    )
+    return release, {
+        "browser_ref": browser_ref,
+        "crawler_ref": crawler_ref,
+        "runtime_contract": runtime_contract,
+        "shim_ref": shim_ref,
+        "source_revision": source_revision,
+    }
+
+
+def _install_csv_host_docker(binary_dir: Path) -> None:
+    _write_executable(
+        binary_dir / "docker",
+        "#!/usr/bin/env python3\n"
+        "from pathlib import Path\n"
+        "import os, sys\n"
+        "args = sys.argv[1:]\n"
+        "if args[:1] == ['compose'] and 'config' in args and '--images' in args:\n"
+        "    env_file = Path(args[args.index('--env-file') + 1])\n"
+        "    values = {}\n"
+        "    for line in env_file.read_text().splitlines():\n"
+        "        if '=' in line: values.setdefault(*line.split('=', 1))\n"
+        "    for key in ('CRAWLER_IMAGE_REF', 'BROWSER_IMAGE_REF', 'SHIM_IMAGE_REF'):\n"
+        "        if not (Path(__file__).parent / f'omit-{key}').exists(): print(values[key])\n"
+        "elif args[:1] == ['run']:\n"
+        "    log = os.environ.get('TEST_CSV_SYNC_LOG')\n"
+        "    if log:\n"
+        "        volume = next((item for item in args if item.endswith(':/app/data:ro')), '')\n"
+        "        Path(log).write_text(volume.split(':', 1)[0] + '\\n')\n"
+        "else:\n"
+        "    raise AssertionError(args)\n",
+    )
+
+
 def _csv_host_test_environment(
     tmp_path: Path,
     release_root: Path,
@@ -487,6 +597,7 @@ def _csv_host_test_environment(
         "JOBSEEK_ACTIVE_RELEASE_ROOT": str(release_root),
         "JOBSEEK_PUBLICATION_JOURNAL": str(tmp_path / "journal"),
         "JOBSEEK_CANDIDATE_ROOT": str(candidates),
+        "JOBSEEK_RUNTIME_ENV_ROOT": str(tmp_path),
     }
 
 
@@ -496,6 +607,8 @@ def _create_csv_candidate(
     run_id: int,
     attempt: int,
     files: dict[str, bytes],
+    runtime_contract: str | None = None,
+    compatible_revisions: list[str] | None = None,
 ) -> tuple[str, str, str]:
     candidate_id = f"{revision}-{run_id}-{attempt}"
     candidate = candidate_root / candidate_id
@@ -513,14 +626,236 @@ def _create_csv_candidate(
         "".join(f"{digest}  {relative}\n" for relative, digest in rows),
         encoding="utf-8",
     )
+    attestation = None
+    if runtime_contract is not None:
+        revisions = compatible_revisions or [revision]
+        attestation = payload / "runtime-attestation.env"
+        attestation.write_text(
+            "".join(
+                (
+                    "RUNTIME_ATTESTATION_FORMAT_VERSION=1\n",
+                    f"PREVIOUS_REVISION={revision}\n",
+                    f"RUNTIME_CONTRACT_SHA256={runtime_contract}\n",
+                    *(f"COMPATIBLE_REVISION={item}\n" for item in revisions),
+                )
+            ),
+            encoding="utf-8",
+        )
     archive = candidate / "csv-snapshot.tar"
     with tarfile.open(archive, "w") as bundle:
         bundle.add(data, arcname="data")
         bundle.add(manifest, arcname="data-files.sha256")
+        if attestation is not None:
+            bundle.add(attestation, arcname="runtime-attestation.env")
     data_contract = hashlib.sha256(manifest.read_bytes()).hexdigest()
     archive_sha = hashlib.sha256(archive.read_bytes()).hexdigest()
     shutil.rmtree(payload)
     return candidate_id, data_contract, archive_sha
+
+
+def test_legacy_format2_bootstrap_attests_old_runtime_and_is_idempotent(
+    tmp_path: Path,
+) -> None:
+    release_root = tmp_path / "releases"
+    candidates = tmp_path / "candidates"
+    candidates.mkdir()
+    legacy, identity = _create_legacy_format2_release(release_root, "legacy.production", "b")
+    previous_revision = "c" * 40
+    active = tmp_path / ".crawler-active-release"
+    active.symlink_to(legacy)
+    live_env = tmp_path / ".env"
+    shutil.copyfile(legacy / "environment.env", live_env)
+    live_env.chmod(0o600)
+    env = _csv_host_test_environment(tmp_path, release_root, active, live_env, candidates)
+    _install_csv_host_docker(tmp_path / "bin")
+    env["TEST_CSV_SYNC_LOG"] = str(tmp_path / "sync.log")
+    candidate_id, data_contract, archive_sha = _create_csv_candidate(
+        candidates,
+        previous_revision,
+        71,
+        1,
+        {"boards.csv": b"slug\nB\n"},
+        identity["runtime_contract"],
+        [previous_revision, identity["source_revision"]],
+    )
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+    command = [
+        bash,
+        str(CSV_SYNC_HOST),
+        "--bootstrap-current",
+        previous_revision,
+        identity["runtime_contract"],
+        data_contract,
+        candidate_id,
+        archive_sha,
+    ]
+    first = subprocess.run(command, check=False, capture_output=True, text=True, env=env)
+    assert first.returncode == 0, first.stderr
+    bridged = active.resolve()
+    assert bridged != legacy.resolve()
+    assert (
+        (bridged / "release.manifest")
+        .read_text(encoding="utf-8")
+        .startswith("RELEASE_FORMAT_VERSION=3\n")
+    )
+    for evidence in (bridged / "environment.env", bridged / "success.env"):
+        assert (
+            evidence.read_text(encoding="utf-8").count(
+                f"JOBSEEK_RUNTIME_CONTRACT_SHA256={identity['runtime_contract']}\n"
+            )
+            == 1
+        )
+    bridge_manifest = (bridged / "release.manifest").read_text(encoding="utf-8")
+    assert "LEGACY_BRIDGE_FORMAT_VERSION=1\n" in bridge_manifest
+    assert f"LEGACY_SOURCE_REVISION={identity['source_revision']}\n" in bridge_manifest
+    assert f"LEGACY_SOURCE_CRAWLER_IMAGE_REF={identity['crawler_ref']}\n" in bridge_manifest
+    assert (bridged / "data" / "boards.csv").read_bytes() == b"slug\nB\n"
+    assert Path(env["TEST_CSV_SYNC_LOG"]).read_text(encoding="utf-8").strip() == str(
+        bridged / "data"
+    )
+    assert not (candidates / candidate_id).exists()
+
+    # A workflow retry re-copies the same immutable archive. Once the bridge
+    # is active, bootstrap is an exact no-op and consumes the duplicate.
+    repeated_id, repeated_contract, repeated_archive = _create_csv_candidate(
+        candidates,
+        previous_revision,
+        71,
+        1,
+        {"boards.csv": b"slug\nB\n"},
+        identity["runtime_contract"],
+        [previous_revision, identity["source_revision"]],
+    )
+    assert (repeated_id, repeated_contract) == (candidate_id, data_contract)
+    command[7] = repeated_archive
+    retry = subprocess.run(command, check=False, capture_output=True, text=True, env=env)
+    assert retry.returncode == 0, retry.stderr
+    assert active.resolve() == bridged
+    assert not (candidates / candidate_id).exists()
+
+
+def test_legacy_runtime_bridge_rejects_unbound_evidence_and_cleans_failed_generation(
+    tmp_path: Path,
+) -> None:
+    def setup_case(name: str, *, newline_terminated: bool = True):
+        root = tmp_path / name
+        release_root = root / "releases"
+        candidates = root / "candidates"
+        candidates.mkdir(parents=True)
+        legacy, identity = _create_legacy_format2_release(
+            release_root,
+            "legacy.production",
+            "b",
+            newline_terminated=newline_terminated,
+        )
+        active = root / ".crawler-active-release"
+        active.symlink_to(legacy)
+        live_env = root / ".env"
+        shutil.copyfile(legacy / "environment.env", live_env)
+        live_env.chmod(0o600)
+        env = _csv_host_test_environment(root, release_root, active, live_env, candidates)
+        _install_csv_host_docker(root / "bin")
+        previous_revision = "c" * 40
+        candidate_id, data_contract, archive_sha = _create_csv_candidate(
+            candidates,
+            previous_revision,
+            72,
+            1,
+            {"boards.csv": b"slug\nB\n"},
+            identity["runtime_contract"],
+            [previous_revision, identity["source_revision"]],
+        )
+        bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+        command = [
+            bash,
+            str(CSV_SYNC_HOST),
+            "--bootstrap-current",
+            previous_revision,
+            identity["runtime_contract"],
+            data_contract,
+            candidate_id,
+            archive_sha,
+        ]
+        return release_root, candidates, legacy, active, live_env, env, identity, command
+
+    release_root, _, legacy, active, _, env, identity, command = setup_case("contract")
+    wrong_contract = command.copy()
+    wrong_contract[4] = "f" * 64
+    result = subprocess.run(wrong_contract, check=False, capture_output=True, text=True, env=env)
+    assert result.returncode != 0
+    assert "attestation identity is mismatched" in result.stderr
+    assert active.resolve() == legacy.resolve()
+    assert list(release_root.glob("data-*")) == []
+
+    release_root, _, legacy, active, _, env, _, command = setup_case("revision")
+    # The archive remains bound to the exact before revision, but no longer
+    # attests the older active deploy revision.
+    candidate = Path(env["JOBSEEK_CANDIDATE_ROOT"]) / command[6] / "csv-snapshot.tar"
+    extract = tmp_path / "revision-payload"
+    with tarfile.open(candidate) as bundle:
+        bundle.extractall(extract, filter="data")
+    (extract / "runtime-attestation.env").write_text(
+        "\n".join(
+            (
+                "RUNTIME_ATTESTATION_FORMAT_VERSION=1",
+                f"PREVIOUS_REVISION={command[3]}",
+                f"RUNTIME_CONTRACT_SHA256={command[4]}",
+                f"COMPATIBLE_REVISION={command[3]}",
+                "",
+            )
+        ),
+        encoding="utf-8",
+    )
+    with tarfile.open(candidate, "w") as bundle:
+        bundle.add(extract / "data", arcname="data")
+        bundle.add(extract / "data-files.sha256", arcname="data-files.sha256")
+        bundle.add(extract / "runtime-attestation.env", arcname="runtime-attestation.env")
+    command[7] = hashlib.sha256(candidate.read_bytes()).hexdigest()
+    result = subprocess.run(command, check=False, capture_output=True, text=True, env=env)
+    assert result.returncode != 0
+    assert "outside the attested runtime epoch" in result.stderr
+    assert active.resolve() == legacy.resolve()
+    assert list(release_root.glob("data-*")) == []
+
+    release_root, _, legacy, active, _, env, _, command = setup_case("image")
+    (Path(env["PATH"].split(":", 1)[0]) / "omit-CRAWLER_IMAGE_REF").touch()
+    result = subprocess.run(command, check=False, capture_output=True, text=True, env=env)
+    assert result.returncode != 0
+    assert "does not bind CRAWLER_IMAGE_REF" in result.stderr
+    assert active.resolve() == legacy.resolve()
+    assert list(release_root.glob("data-*")) == []
+
+    release_root, _, legacy, active, _, env, _, command = setup_case("missing")
+    (legacy / "rollback-images.override.yml").unlink()
+    result = subprocess.run(command, check=False, capture_output=True, text=True, env=env)
+    assert result.returncode != 0
+    assert "image override failed verification" in result.stderr
+    assert active.resolve() == legacy.resolve()
+    assert list(release_root.glob("data-*")) == []
+
+    (
+        release_root,
+        _,
+        legacy,
+        active,
+        live_env,
+        env,
+        _,
+        command,
+    ) = setup_case("cleanup", newline_terminated=False)
+    result = subprocess.run(command, check=False, capture_output=True, text=True, env=env)
+    assert result.returncode != 0
+    assert "not canonically newline-terminated" in result.stderr
+    assert active.resolve() == legacy.resolve()
+    assert list(release_root.glob("data-*")) == []
+    for path in (legacy / "environment.env", legacy / "success.env"):
+        path.write_bytes(path.read_bytes() + b"\n")
+    _refresh_release_snapshot_digests(legacy)
+    shutil.copyfile(legacy / "environment.env", live_env)
+    live_env.chmod(0o600)
+    retry = subprocess.run(command, check=False, capture_output=True, text=True, env=env)
+    assert retry.returncode == 0, retry.stderr
+    assert active.resolve() != legacy.resolve()
 
 
 def test_csv_publication_timeline_does_not_deadlock_across_later_runtime_deploy(
@@ -557,6 +892,7 @@ def test_csv_publication_timeline_does_not_deadlock_across_later_runtime_deploy(
             str(CSV_SYNC_HOST),
             "--bootstrap-current",
             revision_b,
+            runtime_r0,
             data_b,
             candidate_b,
             archive_b,
@@ -621,6 +957,7 @@ def test_csv_publication_timeline_does_not_deadlock_across_later_runtime_deploy(
             str(CSV_SYNC_HOST),
             "--bootstrap-current",
             revision_c,
+            runtime_r1,
             data_c,
             candidate_c,
             archive_c,
@@ -1151,8 +1488,12 @@ def test_full_deploy_bootstraps_exact_prior_data_before_arming_rollback() -> Non
     assert bootstrap < verify < snapshot < arm
     assert "Build exact pre-deploy CSV rollback candidate" in workflow
     assert "${{ github.event.before }}" in workflow
+    assert "JOBSEEK_PREVIOUS_RUNTIME_CONTRACT_SHA256" in workflow
     assert "JOBSEEK_PREVIOUS_DATA_CONTRACT_SHA256" in workflow
     assert "JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256" in workflow
+    assert "--runtime-attestation-out" in workflow
+    assert "data data-files.sha256 runtime-attestation.env" in workflow
+    assert "LEGACY_BRIDGE_FORMAT_VERSION=1" in CSV_SYNC_HOST.read_text()
     assert "promote-target" in CSV_SYNC_HOST.read_text()
 
 
@@ -1848,11 +2189,68 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
     deploy_dir = tmp_path / "deploy"
     release_root = deploy_dir / "releases"
     release_root.mkdir(parents=True)
-    old_release, old_identity = _create_full_deploy_v3_release(release_root, "release-old", "b")
-    new_release, new_identity = _create_full_deploy_v3_release(release_root, "release-new", "d")
+    binary_dir = deploy_dir / "bin"
+    binary_dir.mkdir()
+    _install_release_verifier_tools(binary_dir)
+    _install_csv_host_docker(binary_dir)
+    legacy_release, legacy_identity = _create_legacy_format2_release(
+        release_root, "legacy.production", "b"
+    )
     active_pointer = deploy_dir / ".crawler-active-release"
-    active_pointer.symlink_to(new_release)
+    active_pointer.symlink_to(legacy_release)
     live_env = deploy_dir / ".env"
+    shutil.copyfile(legacy_release / "environment.env", live_env)
+    live_env.chmod(0o600)
+    candidates = deploy_dir / "candidates"
+    candidates.mkdir()
+    previous_data_revision = "c" * 40
+    candidate_id, old_data_contract, archive_sha = _create_csv_candidate(
+        candidates,
+        previous_data_revision,
+        73,
+        1,
+        {"boards.csv": b"slug\nB\n"},
+        legacy_identity["runtime_contract"],
+        [previous_data_revision, legacy_identity["source_revision"]],
+    )
+    bootstrap_env = _csv_host_test_environment(
+        deploy_dir, release_root, active_pointer, live_env, candidates
+    )
+    bootstrap_env["PATH"] = f"{binary_dir}:{os.environ['PATH']}"
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+    bootstrap = subprocess.run(
+        [
+            bash,
+            str(CSV_SYNC_HOST),
+            "--bootstrap-current",
+            previous_data_revision,
+            legacy_identity["runtime_contract"],
+            old_data_contract,
+            candidate_id,
+            archive_sha,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=bootstrap_env,
+    )
+    assert bootstrap.returncode == 0, bootstrap.stderr
+    old_release = active_pointer.resolve()
+    assert old_release != legacy_release.resolve()
+    old_identity = {
+        **legacy_identity,
+        "data_contract": old_data_contract,
+        "revision": previous_data_revision,
+    }
+    assert "LEGACY_BRIDGE_FORMAT_VERSION=1\n" in (old_release / "release.manifest").read_text(
+        encoding="utf-8"
+    )
+
+    # Model the new full release committing its pointer before a later deploy
+    # gate fails. Rollback must select and rehydrate the bridged old release.
+    new_release, new_identity = _create_full_deploy_v3_release(release_root, "release-new", "d")
+    active_pointer.unlink()
+    active_pointer.symlink_to(new_release)
     shutil.copyfile(new_release / "environment.env", live_env)
     live_env.chmod(0o600)
     rollback_env = deploy_dir / ".env.rollback"
@@ -1867,8 +2265,6 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
     pool_override.write_text("services: {}\n", encoding="utf-8")
     log = deploy_dir / "rollback.log"
 
-    binary_dir = deploy_dir / "bin"
-    binary_dir.mkdir()
     _install_release_verifier_tools(binary_dir)
     _write_executable(
         binary_dir / "docker",
@@ -1953,7 +2349,6 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
             "rollback_deploy 23",
         )
     )
-    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
     result = subprocess.run(
         [bash, "-c", harness],
         check=False,

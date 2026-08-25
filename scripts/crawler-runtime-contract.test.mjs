@@ -9,6 +9,7 @@ import test from "node:test";
 import {
   deriveCrawlerDataContract,
   deriveCrawlerRuntimeContract,
+  deriveCrawlerRuntimeAttestation,
   isCrawlerRuntimePath,
   isPublishableCrawlerDataPath,
   readGitEntries,
@@ -206,6 +207,56 @@ test("git data entries hash CSV blobs larger than Node's default buffer", () => 
     assert.equal(
       entries[0].contentSha256,
       createHash("sha256").update(content).digest("hex"),
+    );
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+});
+
+test("runtime attestation lists only the immutable first-parent runtime epoch", () => {
+  const repo = mkdtempSync(join(tmpdir(), "crawler-runtime-attestation-"));
+  try {
+    execFileSync("git", ["-C", repo, "init", "--quiet"]);
+    execFileSync("git", ["-C", repo, "config", "user.email", "test@example.com"]);
+    execFileSync("git", ["-C", repo, "config", "user.name", "Test"]);
+    mkdirSync(join(repo, "apps/crawler/src"), { recursive: true });
+    mkdirSync(join(repo, "apps/crawler/data"), { recursive: true });
+    writeFileSync(join(repo, "apps/crawler/src/cli.py"), "print('old')\n");
+    writeFileSync(join(repo, "apps/crawler/data/boards.csv"), "slug\na\n");
+    execFileSync("git", ["-C", repo, "add", "."]);
+    execFileSync("git", ["-C", repo, "commit", "--quiet", "-m", "runtime"]);
+    const initial = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
+
+    writeFileSync(join(repo, "apps/crawler/data/boards.csv"), "slug\nb\n");
+    execFileSync("git", ["-C", repo, "add", "."]);
+    execFileSync("git", ["-C", repo, "commit", "--quiet", "-m", "data"]);
+    const dataOnly = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
+    const attestation = deriveCrawlerRuntimeAttestation(repo, dataOnly);
+    assert.deepEqual(attestation.compatibleRevisions, [dataOnly, initial]);
+    assert.match(
+      attestation.text,
+      new RegExp(
+        `^RUNTIME_ATTESTATION_FORMAT_VERSION=1\\n` +
+          `PREVIOUS_REVISION=${dataOnly}\\n` +
+          `RUNTIME_CONTRACT_SHA256=${attestation.contract}\\n` +
+          `COMPATIBLE_REVISION=${dataOnly}\\n` +
+          `COMPATIBLE_REVISION=${initial}\\n$`,
+      ),
+    );
+
+    writeFileSync(join(repo, "apps/crawler/src/cli.py"), "print('new')\n");
+    execFileSync("git", ["-C", repo, "add", "."]);
+    execFileSync("git", ["-C", repo, "commit", "--quiet", "-m", "new runtime"]);
+    const changed = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
+    assert.deepEqual(
+      deriveCrawlerRuntimeAttestation(repo, changed).compatibleRevisions,
+      [changed],
     );
   } finally {
     rmSync(repo, { recursive: true, force: true });

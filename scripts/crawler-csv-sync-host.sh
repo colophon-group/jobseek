@@ -10,6 +10,7 @@ CANDIDATE_ROOT=${JOBSEEK_CANDIDATE_ROOT:-$DEPLOY_DIR/csv-candidates}
 PUBLICATION_KEEP_GENERATIONS=${JOBSEEK_PUBLICATION_KEEP_GENERATIONS:-5}
 PUBLICATION_GRACE_SECONDS=${JOBSEEK_PUBLICATION_GRACE_SECONDS:-172800}
 OWNER=${JOBSEEK_OWNER:-colophon-group}
+RUNTIME_ENV_ROOT=${JOBSEEK_RUNTIME_ENV_ROOT:-/run/lock}
 ACTIVE_RELEASE=""
 ACTIVE_RELEASE_FORMAT=""
 ACTIVE_DATA_DIR=""
@@ -17,6 +18,7 @@ ACTIVE_IMAGE_REF=""
 RUNTIME_ENV=""
 NAME=""
 PUBLICATION_ARMED=0
+PREPARED_GENERATION=""
 
 read_exact_value() {
   local file="$1" key="$2"
@@ -25,6 +27,59 @@ read_exact_value() {
   mapfile -t values < <(sed -n "s/^${key}=//p" "$file")
   (( ${#values[@]} == 1 )) || return 1
   printf '%s\n' "${values[0]}"
+}
+
+verify_runtime_attestation_file() {
+  local attestation="$1" previous_revision="$2" runtime_contract="$3"
+  local compatible_revision="${4:-}"
+  [[ -f "$attestation" && ! -L "$attestation" ]] || {
+    echo "ERROR: previous-runtime attestation is unavailable or unsafe" >&2
+    return 1
+  }
+  python3 - \
+    "$attestation" "$previous_revision" "$runtime_contract" "$compatible_revision" <<'PY'
+import pathlib
+import re
+import sys
+
+path = pathlib.Path(sys.argv[1])
+expected_previous, expected_contract, compatible_revision = sys.argv[2:]
+lines = path.read_text(encoding="utf-8").splitlines()
+if len(lines) < 4:
+    raise SystemExit("previous-runtime attestation is incomplete")
+if lines[0] != "RUNTIME_ATTESTATION_FORMAT_VERSION=1":
+    raise SystemExit("previous-runtime attestation format is unsupported")
+if lines[1] != f"PREVIOUS_REVISION={expected_previous}":
+    raise SystemExit("previous-runtime attestation revision is mismatched")
+if lines[2] != f"RUNTIME_CONTRACT_SHA256={expected_contract}":
+    raise SystemExit("previous-runtime attestation contract is mismatched")
+revisions = []
+for line in lines[3:]:
+    if not re.fullmatch(r"COMPATIBLE_REVISION=[0-9a-f]{40}", line):
+        raise SystemExit("previous-runtime attestation contains an unexpected field")
+    revisions.append(line.removeprefix("COMPATIBLE_REVISION="))
+if not revisions or revisions[0] != expected_previous or len(revisions) != len(set(revisions)):
+    raise SystemExit("previous-runtime attestation revision epoch is invalid")
+if compatible_revision and compatible_revision not in revisions:
+    raise SystemExit("active legacy revision is outside the attested runtime epoch")
+PY
+}
+
+digest_without_runtime_contract() {
+  local file="$1" runtime_contract="$2"
+  python3 - "$file" "$runtime_contract" <<'PY'
+import hashlib
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+runtime = sys.argv[2]
+content = path.read_bytes()
+needle = f"JOBSEEK_RUNTIME_CONTRACT_SHA256={runtime}\n".encode()
+if content.count(needle) != 1:
+    raise SystemExit("runtime contract cannot be removed canonically")
+print(hashlib.sha256(content.replace(needle, b"", 1)).hexdigest())
+PY
 }
 
 verify_snapshot_file() {
@@ -105,7 +160,7 @@ verify_release_generation_evidence() (
   local generation="$1" format compose_digest env_digest success_digest
   local data_manifest_digest data_contract data_revision image_ref has_image_override
   local env_runtime success_runtime
-  local -a image_override_digests=()
+  local -a image_override_digests=() bridge_versions=()
   [[ "$generation" == "$ACTIVE_RELEASE_ROOT/"* && \
     "${generation#"$ACTIVE_RELEASE_ROOT/"}" =~ ^[A-Za-z0-9._-]+$ && \
     -d "$generation" && ! -L "$generation" ]] || return 1
@@ -170,6 +225,71 @@ verify_release_generation_evidence() (
       [[ ! -e "$generation/rollback-images.override.yml" && \
         ! -L "$generation/rollback-images.override.yml" ]] || return 1
     fi
+    mapfile -t bridge_versions < <(
+      sed -n 's/^LEGACY_BRIDGE_FORMAT_VERSION=//p' "$generation/release.manifest"
+    )
+    if (( ${#bridge_versions[@]} )); then
+      local attestation_digest source_format source_revision source_image_ref
+      local source_compose_digest source_env_digest source_success_digest
+      (( ${#bridge_versions[@]} == 1 )) && [[ "${bridge_versions[0]}" == 1 ]] || return 1
+      attestation_digest="$(
+        read_exact_value "$generation/release.manifest" LEGACY_RUNTIME_ATTESTATION_SHA256
+      )" || return 1
+      source_format="$(
+        read_exact_value "$generation/release.manifest" LEGACY_SOURCE_RELEASE_FORMAT
+      )" || return 1
+      source_revision="$(
+        read_exact_value "$generation/release.manifest" LEGACY_SOURCE_REVISION
+      )" || return 1
+      source_image_ref="$(
+        read_exact_value "$generation/release.manifest" LEGACY_SOURCE_CRAWLER_IMAGE_REF
+      )" || return 1
+      source_compose_digest="$(
+        read_exact_value "$generation/release.manifest" LEGACY_SOURCE_COMPOSE_SHA256
+      )" || return 1
+      source_env_digest="$(
+        read_exact_value "$generation/release.manifest" LEGACY_SOURCE_ENVIRONMENT_SHA256
+      )" || return 1
+      source_success_digest="$(
+        read_exact_value "$generation/release.manifest" LEGACY_SOURCE_SUCCESS_SHA256
+      )" || return 1
+      [[ "$source_format" == 1 || "$source_format" == 2 ]] || return 1
+      [[ "$attestation_digest" =~ ^[0-9a-f]{64}$ && \
+        "$source_revision" =~ ^[0-9a-f]{40}$ && \
+        "$source_image_ref" =~ ^ghcr\.io/${OWNER}/jobseek-crawler@sha256:[0-9a-f]{64}$ && \
+        "$source_compose_digest" =~ ^[0-9a-f]{64}$ && \
+        "$source_env_digest" =~ ^[0-9a-f]{64}$ && \
+        "$source_success_digest" =~ ^[0-9a-f]{64}$ ]] || return 1
+      [[ -f "$generation/runtime-attestation.env" && \
+        ! -L "$generation/runtime-attestation.env" && \
+        "$attestation_digest" == "$(sha256sum "$generation/runtime-attestation.env" | awk '{print $1}')" && \
+        "$source_compose_digest" == "$compose_digest" && \
+        "$source_image_ref" == "$image_ref" ]] || {
+        echo "ERROR: legacy runtime bridge evidence failed verification" >&2
+        return 1
+      }
+      verify_runtime_attestation_file \
+        "$generation/runtime-attestation.env" "$data_revision" "$env_runtime" \
+        "$source_revision" || return 1
+      [[ "$source_env_digest" == "$(
+        digest_without_runtime_contract "$generation/environment.env" "$env_runtime"
+      )" && "$source_success_digest" == "$(
+        digest_without_runtime_contract "$generation/success.env" "$env_runtime"
+      )" ]] || {
+        echo "ERROR: legacy runtime bridge source snapshots are mismatched" >&2
+        return 1
+      }
+    else
+      if grep -q '^LEGACY_' "$generation/release.manifest"; then
+        echo "ERROR: crawler release contains incomplete legacy bridge metadata" >&2
+        return 1
+      fi
+      [[ ! -e "$generation/runtime-attestation.env" && \
+        ! -L "$generation/runtime-attestation.env" ]] || {
+        echo "ERROR: crawler release contains unattested runtime bridge residue" >&2
+        return 1
+      }
+    fi
   fi
 )
 
@@ -187,15 +307,34 @@ verify_release_generation() {
 }
 
 load_committed_release() {
+  local bridge_format
   resolve_active_release
   verify_release_generation "$ACTIVE_RELEASE"
   [[ -f "$DEPLOY_ENV" && ! -L "$DEPLOY_ENV" ]] || return 1
-  cmp -s \
+  if cmp -s \
     <(sed '/^COMPOSE_FILE=/d' "$DEPLOY_ENV") \
-    <(sed '/^COMPOSE_FILE=/d' "$ACTIVE_RELEASE/environment.env") || {
-    echo "ERROR: live crawler environment drifted from committed release" >&2
-    return 1
-  }
+    <(sed '/^COMPOSE_FILE=/d' "$ACTIVE_RELEASE/environment.env")
+  then
+    return 0
+  fi
+  bridge_format="$(
+    read_exact_value "$ACTIVE_RELEASE/release.manifest" LEGACY_BRIDGE_FORMAT_VERSION \
+      2>/dev/null || true
+  )"
+  if [[ "$ACTIVE_RELEASE_FORMAT" == 3 && "$bridge_format" == 1 ]] && cmp -s \
+    <(sed '/^COMPOSE_FILE=/d' "$DEPLOY_ENV") \
+    <(sed -e '/^COMPOSE_FILE=/d' \
+      -e '/^JOBSEEK_RUNTIME_CONTRACT_SHA256=/d' \
+      "$ACTIVE_RELEASE/environment.env")
+  then
+    # A first-v3 bootstrap cannot rewrite the live env while the old stack is
+    # running. The bridge manifest proves that the sole difference is the
+    # attested runtime line; the enclosing full deploy immediately replaces or
+    # rolls back the complete environment under the shared mutation lock.
+    return 0
+  fi
+  echo "ERROR: live crawler environment drifted from committed release" >&2
+  return 1
 }
 
 verify_runtime_contract() {
@@ -528,7 +667,7 @@ build_runtime_env() {
     LOCAL_DATABASE_URL WEB_DATABASE_URL TYPESENSE_HOST TYPESENSE_PORT
     TYPESENSE_PROTOCOL TYPESENSE_OPERATIONS_KEY
   ) matches=()
-  RUNTIME_ENV="$(mktemp /run/lock/jobseek-csv-sync-env.XXXXXX)"
+  RUNTIME_ENV="$(mktemp "${RUNTIME_ENV_ROOT}/jobseek-csv-sync-env.XXXXXX")"
   chmod 0600 "$RUNTIME_ENV"
   for key in "${required_env[@]}"; do
     mapfile -t matches < <(grep -E "^${key}=" "$release/environment.env" || true)
@@ -641,6 +780,7 @@ recover_publication() (
 
 verify_candidate_archive_contract() {
   local revision="$1" data_contract="$2" candidate_id="$3" archive_sha="$4"
+  local runtime_contract="${5:-}"
   local candidate archive
   candidate="$CANDIDATE_ROOT/$candidate_id"
   archive="$candidate/csv-snapshot.tar"
@@ -653,7 +793,7 @@ verify_candidate_archive_contract() {
     echo "ERROR: CSV candidate archive digest mismatch" >&2
     return 1
   }
-  python3 - "$archive" "$data_contract" <<'PY'
+  python3 - "$archive" "$data_contract" "$revision" "$runtime_contract" <<'PY'
 import hashlib
 import pathlib
 import re
@@ -662,8 +802,11 @@ import sys
 
 archive = pathlib.Path(sys.argv[1])
 expected_contract = sys.argv[2]
+expected_revision = sys.argv[3]
+expected_runtime = sys.argv[4]
 rows = []
 provided_manifest = None
+runtime_attestation = None
 seen_files = set()
 with tarfile.open(archive, "r:") as bundle:
     members = bundle.getmembers()
@@ -689,6 +832,9 @@ with tarfile.open(archive, "r:") as bundle:
         if path == pathlib.PurePosixPath("data-files.sha256"):
             provided_manifest = content
             continue
+        if path == pathlib.PurePosixPath("runtime-attestation.env"):
+            runtime_attestation = content
+            continue
         if not path.parts or path.parts[0] != "data":
             raise SystemExit("unexpected CSV candidate file")
         relative = pathlib.PurePosixPath(*path.parts[1:]).as_posix()
@@ -705,25 +851,185 @@ if provided_manifest != actual_manifest:
 actual_contract = hashlib.sha256(actual_manifest).hexdigest()
 if actual_contract != expected_contract:
     raise SystemExit("CSV candidate data contract does not match its exact tree")
+if expected_runtime:
+    if runtime_attestation is None:
+        raise SystemExit("previous-runtime attestation is missing from CSV candidate")
+    try:
+        lines = runtime_attestation.decode("utf-8").splitlines()
+    except UnicodeDecodeError as error:
+        raise SystemExit("previous-runtime attestation is not UTF-8") from error
+    if len(lines) < 4 or lines[:3] != [
+        "RUNTIME_ATTESTATION_FORMAT_VERSION=1",
+        f"PREVIOUS_REVISION={expected_revision}",
+        f"RUNTIME_CONTRACT_SHA256={expected_runtime}",
+    ]:
+        raise SystemExit("previous-runtime attestation identity is mismatched")
+    revisions = []
+    for line in lines[3:]:
+        if not re.fullmatch(r"COMPATIBLE_REVISION=[0-9a-f]{40}", line):
+            raise SystemExit("previous-runtime attestation contains an unexpected field")
+        revisions.append(line.removeprefix("COMPATIBLE_REVISION="))
+    if not revisions or revisions[0] != expected_revision or len(revisions) != len(set(revisions)):
+        raise SystemExit("previous-runtime attestation revision epoch is invalid")
 PY
+}
+
+verify_legacy_runtime_evidence() {
+  local previous_revision="$1" runtime_contract="$2" attestation="$3"
+  local source_revision source_format bootstrap_legacy image_override_digest
+  local configured_images_output configured_image key env_value success_value expected_ref
+  local -a compose_args=() configured_images=() runtime_env_values=() runtime_success_values=()
+  [[ "$ACTIVE_RELEASE_FORMAT" == 1 || "$ACTIVE_RELEASE_FORMAT" == 2 ]] || return 1
+  source_format="$ACTIVE_RELEASE_FORMAT"
+  source_revision="$(
+    read_exact_value "$ACTIVE_RELEASE/environment.env" JOBSEEK_DEPLOY_REVISION
+  )" || return 1
+  [[ "$source_revision" =~ ^[0-9a-f]{40}$ ]] || return 1
+  verify_runtime_attestation_file \
+    "$attestation" "$previous_revision" "$runtime_contract" "$source_revision" || return 1
+
+  for key in \
+    CRAWLER_IMAGE_TAG CRAWLER_IMAGE_REF BROWSER_IMAGE_REF SHIM_IMAGE_REF \
+    JOBSEEK_DEPLOY_REVISION
+  do
+    env_value="$(read_exact_value "$ACTIVE_RELEASE/environment.env" "$key")" || return 1
+    success_value="$(read_exact_value "$ACTIVE_RELEASE/success.env" "$key")" || return 1
+    [[ -n "$env_value" && "$env_value" == "$success_value" ]] || {
+      echo "ERROR: legacy release marker and environment disagree on ${key}" >&2
+      return 1
+    }
+  done
+  [[ "$(read_exact_value "$ACTIVE_RELEASE/environment.env" CRAWLER_IMAGE_REF)" \
+      =~ ^ghcr\.io/${OWNER}/jobseek-crawler@sha256:[0-9a-f]{64}$ && \
+    "$(read_exact_value "$ACTIVE_RELEASE/environment.env" BROWSER_IMAGE_REF)" \
+      =~ ^ghcr\.io/${OWNER}/jobseek-crawler-browser@sha256:[0-9a-f]{64}$ && \
+    "$(read_exact_value "$ACTIVE_RELEASE/environment.env" SHIM_IMAGE_REF)" \
+      =~ ^ghcr\.io/${OWNER}/jobseek-murmur-shim@sha256:[0-9a-f]{64}$ ]] || {
+    echo "ERROR: legacy release image identity is not immutable" >&2
+    return 1
+  }
+
+  mapfile -t runtime_env_values < <(
+    sed -n 's/^JOBSEEK_RUNTIME_CONTRACT_SHA256=//p' "$ACTIVE_RELEASE/environment.env"
+  )
+  mapfile -t runtime_success_values < <(
+    sed -n 's/^JOBSEEK_RUNTIME_CONTRACT_SHA256=//p' "$ACTIVE_RELEASE/success.env"
+  )
+  if (( ${#runtime_env_values[@]} || ${#runtime_success_values[@]} )); then
+    (( ${#runtime_env_values[@]} == 1 && ${#runtime_success_values[@]} == 1 )) && \
+      [[ "${runtime_env_values[0]}" == "$runtime_contract" && \
+        "${runtime_success_values[0]}" == "$runtime_contract" ]] || {
+      echo "ERROR: legacy release runtime evidence is partial or mismatched" >&2
+      return 1
+    }
+  fi
+
+  compose_args=(-f "$ACTIVE_RELEASE/docker-compose.yml")
+  if [[ "$source_format" == 2 ]]; then
+    bootstrap_legacy="$(
+      read_exact_value "$ACTIVE_RELEASE/release.manifest" BOOTSTRAP_LEGACY
+    )" || return 1
+    image_override_digest="$(
+      read_exact_value "$ACTIVE_RELEASE/release.manifest" IMAGE_OVERRIDE_SHA256
+    )" || return 1
+    [[ "$bootstrap_legacy" == 0 || "$bootstrap_legacy" == 1 ]] || return 1
+    [[ "$image_override_digest" =~ ^[0-9a-f]{64}$ && \
+      -f "$ACTIVE_RELEASE/rollback-images.override.yml" && \
+      ! -L "$ACTIVE_RELEASE/rollback-images.override.yml" && \
+      "$image_override_digest" == "$(
+        sha256sum "$ACTIVE_RELEASE/rollback-images.override.yml" | awk '{print $1}'
+      )" ]] || {
+      echo "ERROR: legacy release image override failed verification" >&2
+      return 1
+    }
+    compose_args+=(-f "$ACTIVE_RELEASE/rollback-images.override.yml")
+  fi
+  configured_images_output="$(
+    env -i \
+      "PATH=${PATH:-/usr/local/bin:/usr/bin:/bin}" \
+      "HOME=${HOME:-$DEPLOY_DIR}" \
+      COMPOSE_PROJECT_NAME=deploy \
+      docker compose --env-file "$ACTIVE_RELEASE/environment.env" \
+        "${compose_args[@]}" config --images
+  )" || return 1
+  [[ -n "$configured_images_output" ]] || return 1
+  mapfile -t configured_images <<<"$configured_images_output"
+  for configured_image in "${configured_images[@]}"; do
+    [[ "$configured_image" =~ @sha256:[0-9a-f]{64}$ ]] || {
+      echo "ERROR: legacy release Compose resolves a mutable image" >&2
+      return 1
+    }
+  done
+  for key in CRAWLER_IMAGE_REF BROWSER_IMAGE_REF SHIM_IMAGE_REF; do
+    expected_ref="$(read_exact_value "$ACTIVE_RELEASE/environment.env" "$key")" || return 1
+    printf '%s\n' "${configured_images[@]}" | grep -Fqx -- "$expected_ref" || {
+      echo "ERROR: legacy release Compose does not bind ${key}" >&2
+      return 1
+    }
+  done
 }
 
 prepare_candidate_generation() {
   local revision="$1" data_contract="$2" candidate_id="$3" archive_sha="$4"
-  local candidate archive generation compose_digest env_digest success_digest files_digest
+  local runtime_contract="${5:-}"
+  local candidate archive generation="" compose_digest env_digest success_digest files_digest
+  local attestation_temp="" verification_status=0 extraction_status=0
+  local source_format source_revision source_image_ref source_compose_digest
+  local source_env_digest source_success_digest attestation_digest bridge_required=0
+  local -a runtime_env_values=() runtime_success_values=()
   verify_candidate_archive_contract \
-    "$revision" "$data_contract" "$candidate_id" "$archive_sha" || return 1
+    "$revision" "$data_contract" "$candidate_id" "$archive_sha" "$runtime_contract" || return 1
   candidate="$CANDIDATE_ROOT/$candidate_id"
   archive="$candidate/csv-snapshot.tar"
-  generation="$(mktemp -d "${ACTIVE_RELEASE_ROOT}/data-${revision}.XXXXXX")"
-  install -m 0644 "$ACTIVE_RELEASE/docker-compose.yml" "$generation/docker-compose.yml"
-  install -m 0600 "$ACTIVE_RELEASE/environment.env" "$generation/environment.env"
-  install -m 0644 "$ACTIVE_RELEASE/success.env" "$generation/success.env"
+  if [[ -n "$runtime_contract" && "$ACTIVE_RELEASE_FORMAT" != 3 ]]; then
+    attestation_temp="$(mktemp "${candidate}/runtime-attestation.XXXXXX")" || return 1
+    if ! tar -xOf "$archive" runtime-attestation.env >"$attestation_temp"; then
+      rm -f -- "$attestation_temp"
+      return 1
+    fi
+    chmod 0644 "$attestation_temp" || {
+      rm -f -- "$attestation_temp"
+      return 1
+    }
+    verify_legacy_runtime_evidence \
+      "$revision" "$runtime_contract" "$attestation_temp" || verification_status=$?
+    rm -f -- "$attestation_temp"
+    (( verification_status == 0 )) || return "$verification_status"
+    mapfile -t runtime_env_values < <(
+      sed -n 's/^JOBSEEK_RUNTIME_CONTRACT_SHA256=//p' "$ACTIVE_RELEASE/environment.env"
+    )
+    mapfile -t runtime_success_values < <(
+      sed -n 's/^JOBSEEK_RUNTIME_CONTRACT_SHA256=//p' "$ACTIVE_RELEASE/success.env"
+    )
+    if (( ${#runtime_env_values[@]} == 0 && ${#runtime_success_values[@]} == 0 )); then
+      bridge_required=1
+    fi
+  fi
+  generation="$(mktemp -d "${ACTIVE_RELEASE_ROOT}/data-${revision}.XXXXXX")" || return 1
+  PREPARED_GENERATION="$generation"
+  trap 'status=$?; if (( status != 0 )) && [[ -n "$PREPARED_GENERATION" && -d "$PREPARED_GENERATION" ]]; then discard_candidate_generation "$PREPARED_GENERATION" || status=1; fi; exit "$status"' EXIT
+  install -m 0644 "$ACTIVE_RELEASE/docker-compose.yml" \
+    "$generation/docker-compose.yml" || return 1
+  install -m 0600 "$ACTIVE_RELEASE/environment.env" \
+    "$generation/environment.env" || return 1
+  install -m 0644 "$ACTIVE_RELEASE/success.env" \
+    "$generation/success.env" || return 1
   if [[ -f "$ACTIVE_RELEASE/rollback-images.override.yml" ]]; then
     install -m 0644 "$ACTIVE_RELEASE/rollback-images.override.yml" \
-      "$generation/rollback-images.override.yml"
+      "$generation/rollback-images.override.yml" || return 1
   fi
-  python3 - "$archive" "$generation" <<'PY'
+  if (( bridge_required )); then
+    [[ "$(tail -c 1 "$generation/environment.env" | od -An -t x1 | tr -d '[:space:]')" == 0a && \
+      "$(tail -c 1 "$generation/success.env" | od -An -t x1 | tr -d '[:space:]')" == 0a ]] || {
+      echo "ERROR: legacy runtime snapshots are not canonically newline-terminated" >&2
+      return 1
+    }
+    printf 'JOBSEEK_RUNTIME_CONTRACT_SHA256=%s\n' "$runtime_contract" \
+      >>"$generation/environment.env" || return 1
+    printf 'JOBSEEK_RUNTIME_CONTRACT_SHA256=%s\n' "$runtime_contract" \
+      >>"$generation/success.env" || return 1
+  fi
+  python3 - "$archive" "$generation" <<'PY' || extraction_status=$?
 import pathlib
 import tarfile
 import sys
@@ -742,7 +1048,10 @@ with tarfile.open(archive, "r:") as bundle:
             if path != pathlib.PurePosixPath("data") and path.parts[0] != "data":
                 raise SystemExit("unexpected CSV candidate directory")
         elif member.isfile():
-            if path == pathlib.PurePosixPath("data-files.sha256"):
+            if path in (
+                pathlib.PurePosixPath("data-files.sha256"),
+                pathlib.PurePosixPath("runtime-attestation.env"),
+            ):
                 continue
             if path.parts[0] != "data" or path.suffix != ".csv":
                 raise SystemExit("unexpected CSV candidate file")
@@ -750,21 +1059,25 @@ with tarfile.open(archive, "r:") as bundle:
             raise SystemExit("unsafe CSV candidate archive entry")
     bundle.extractall(destination, filter="data")
 PY
+  (( extraction_status == 0 )) || return "$extraction_status"
+  if (( ! bridge_required )); then
+    rm -f -- "$generation/runtime-attestation.env" || return 1
+  fi
   [[ "$(sha256sum "$archive" | awk '{print $1}')" == "$archive_sha" ]] || {
     echo "ERROR: CSV candidate archive changed during preparation" >&2
     return 1
   }
   verify_exact_csv_tree "$generation/data" "$generation/data-files.sha256" || return 1
-  compose_digest="$(sha256sum "$generation/docker-compose.yml" | awk '{print $1}')"
-  env_digest="$(sha256sum "$generation/environment.env" | awk '{print $1}')"
-  success_digest="$(sha256sum "$generation/success.env" | awk '{print $1}')"
-  files_digest="$(sha256sum "$generation/data-files.sha256" | awk '{print $1}')"
+  compose_digest="$(sha256sum "$generation/docker-compose.yml" | awk '{print $1}')" || return 1
+  env_digest="$(sha256sum "$generation/environment.env" | awk '{print $1}')" || return 1
+  success_digest="$(sha256sum "$generation/success.env" | awk '{print $1}')" || return 1
+  files_digest="$(sha256sum "$generation/data-files.sha256" | awk '{print $1}')" || return 1
   [[ "$files_digest" == "$data_contract" ]] || {
     echo "ERROR: CSV candidate data contract changed during preparation" >&2
     return 1
   }
-  printf '%s\n' "$compose_digest" >"$generation/docker-compose.sha256"
-  printf '%s\n' "$env_digest" >"$generation/environment.sha256"
+  printf '%s\n' "$compose_digest" >"$generation/docker-compose.sha256" || return 1
+  printf '%s\n' "$env_digest" >"$generation/environment.sha256" || return 1
   printf '%s\n' \
     'RELEASE_FORMAT_VERSION=3' \
     "COMPOSE_SHA256=$compose_digest" \
@@ -773,18 +1086,43 @@ PY
     "DATA_FILES_SHA256=$files_digest" \
     "DATA_CONTRACT_SHA256=$data_contract" \
     "DATA_REVISION=$revision" \
-    >"$generation/release.manifest"
+    >"$generation/release.manifest" || return 1
   if [[ -f "$generation/rollback-images.override.yml" ]]; then
     printf '%s\n' \
       'HAS_IMAGE_OVERRIDE=1' \
       "IMAGE_OVERRIDE_SHA256=$(sha256sum "$generation/rollback-images.override.yml" | awk '{print $1}')" \
-      'BOOTSTRAP_LEGACY=0' >>"$generation/release.manifest"
+      'BOOTSTRAP_LEGACY=0' >>"$generation/release.manifest" || return 1
   else
-    printf '%s\n' 'HAS_IMAGE_OVERRIDE=0' >>"$generation/release.manifest"
+    printf '%s\n' 'HAS_IMAGE_OVERRIDE=0' >>"$generation/release.manifest" || return 1
   fi
-  chmod 0644 "$generation"/*.sha256 "$generation/release.manifest"
+  if (( bridge_required )); then
+    source_format="$ACTIVE_RELEASE_FORMAT"
+    source_revision="$(
+      read_exact_value "$ACTIVE_RELEASE/environment.env" JOBSEEK_DEPLOY_REVISION
+    )" || return 1
+    source_image_ref="$(
+      read_exact_value "$ACTIVE_RELEASE/environment.env" CRAWLER_IMAGE_REF
+    )" || return 1
+    source_compose_digest="$(tr -d '[:space:]' <"$ACTIVE_RELEASE/docker-compose.sha256")" || return 1
+    source_env_digest="$(tr -d '[:space:]' <"$ACTIVE_RELEASE/environment.sha256")" || return 1
+    source_success_digest="$(sha256sum "$ACTIVE_RELEASE/success.env" | awk '{print $1}')" || return 1
+    attestation_digest="$(sha256sum "$generation/runtime-attestation.env" | awk '{print $1}')" || return 1
+    printf '%s\n' \
+      'LEGACY_BRIDGE_FORMAT_VERSION=1' \
+      "LEGACY_RUNTIME_ATTESTATION_SHA256=$attestation_digest" \
+      "LEGACY_SOURCE_RELEASE_FORMAT=$source_format" \
+      "LEGACY_SOURCE_REVISION=$source_revision" \
+      "LEGACY_SOURCE_CRAWLER_IMAGE_REF=$source_image_ref" \
+      "LEGACY_SOURCE_COMPOSE_SHA256=$source_compose_digest" \
+      "LEGACY_SOURCE_ENVIRONMENT_SHA256=$source_env_digest" \
+      "LEGACY_SOURCE_SUCCESS_SHA256=$source_success_digest" \
+      >>"$generation/release.manifest" || return 1
+  fi
+  chmod 0644 "$generation"/*.sha256 "$generation/release.manifest" || return 1
   fsync_generation "$generation" || return 1
   verify_release_generation "$generation" || return 1
+  PREPARED_GENERATION=""
+  trap - EXIT
   printf '%s\n' "$generation"
 }
 
@@ -849,10 +1187,17 @@ fi
 
 if [[ "${1:-}" == --bootstrap-current ]]; then
   REVISION="${2:?bootstrap revision is required}"
-  DATA_CONTRACT_SHA256="${3:?bootstrap data contract is required}"
-  CANDIDATE_ID="${4:?bootstrap candidate ID is required}"
-  ARCHIVE_SHA256="${5:?bootstrap archive digest is required}"
-  [[ "$REVISION" =~ ^[a-f0-9]{40}$ && "$DATA_CONTRACT_SHA256" =~ ^[a-f0-9]{64}$ && \
+  PREVIOUS_RUNTIME_CONTRACT_SHA256="${3:?bootstrap previous runtime contract is required}"
+  DATA_CONTRACT_SHA256="${4:?bootstrap data contract is required}"
+  CANDIDATE_ID="${5:?bootstrap candidate ID is required}"
+  ARCHIVE_SHA256="${6:?bootstrap archive digest is required}"
+  [[ -z "${7:-}" ]] || {
+    echo "ERROR: usage: crawler-csv-sync-host.sh --bootstrap-current <revision> <previous-runtime-contract> <data-contract> <candidate-id> <archive-sha256>" >&2
+    exit 1
+  }
+  [[ "$REVISION" =~ ^[a-f0-9]{40}$ && \
+    "$PREVIOUS_RUNTIME_CONTRACT_SHA256" =~ ^[a-f0-9]{64}$ && \
+    "$DATA_CONTRACT_SHA256" =~ ^[a-f0-9]{64}$ && \
     "$ARCHIVE_SHA256" =~ ^[a-f0-9]{64}$ && \
     "$CANDIDATE_ID" =~ ^${REVISION}-[1-9][0-9]*-[1-9][0-9]*$ ]] || exit 1
   recover_publication
@@ -867,9 +1212,13 @@ if [[ "${1:-}" == --bootstrap-current ]]; then
     exit 0
   fi
   previous_release="$ACTIVE_RELEASE"
+  verify_candidate_archive_contract \
+    "$REVISION" "$DATA_CONTRACT_SHA256" "$CANDIDATE_ID" "$ARCHIVE_SHA256" \
+    "$PREVIOUS_RUNTIME_CONTRACT_SHA256"
   candidate_generation="$(
     prepare_candidate_generation \
-      "$REVISION" "$DATA_CONTRACT_SHA256" "$CANDIDATE_ID" "$ARCHIVE_SHA256"
+      "$REVISION" "$DATA_CONTRACT_SHA256" "$CANDIDATE_ID" "$ARCHIVE_SHA256" \
+      "$PREVIOUS_RUNTIME_CONTRACT_SHA256"
   )"
   write_journal 0 "$previous_release" "$candidate_generation" promote-target
   PUBLICATION_ARMED=1
