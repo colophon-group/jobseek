@@ -588,11 +588,12 @@ test("CSV sync cannot publish configuration ahead of its crawler runtime", () =>
   );
   assert.match(
     syncDataWorkflow,
-    /name: Revalidate publishable CSV snapshot[\s\S]*--kind data[\s\S]*current main CSV snapshot advanced before publication[\s\S]*current_runtime_contract/,
+    /name: Revalidate publishable CSV snapshot[\s\S]*--kind data[\s\S]*current main CSV snapshot advanced before publication/,
   );
+  assert.doesNotMatch(syncDataWorkflow, /current_runtime_contract/);
   assert.match(
     syncDataWorkflow,
-    /SYNC_RUNTIME_CONTRACT_SHA256: \$\{\{ steps\.publication_contract\.outputs\.runtime_contract_sha256 \}\}/,
+    /SYNC_RUNTIME_CONTRACT_SHA256: \$\{\{ steps\.runtime_contract\.outputs\.runtime_contract_sha256 \}\}/,
   );
   assert.doesNotMatch(syncDataWorkflow, /\/home\/deploy\/\.env|CRAWLER_IMAGE_REF/);
   assert.match(syncDataWorkflow, /if \[\[ "\$before_contract" != "\$target_contract" \]\]/);

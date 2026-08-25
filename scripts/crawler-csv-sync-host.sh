@@ -7,6 +7,8 @@ ACTIVE_RELEASE_POINTER=${JOBSEEK_ACTIVE_RELEASE_POINTER:-$DEPLOY_DIR/.crawler-ac
 ACTIVE_RELEASE_ROOT=${JOBSEEK_ACTIVE_RELEASE_ROOT:-$DEPLOY_DIR/.crawler-release-generations}
 PUBLICATION_JOURNAL=${JOBSEEK_PUBLICATION_JOURNAL:-$DEPLOY_DIR/.crawler-data-publication.env}
 CANDIDATE_ROOT=${JOBSEEK_CANDIDATE_ROOT:-$DEPLOY_DIR/csv-candidates}
+PUBLICATION_KEEP_GENERATIONS=${JOBSEEK_PUBLICATION_KEEP_GENERATIONS:-5}
+PUBLICATION_GRACE_SECONDS=${JOBSEEK_PUBLICATION_GRACE_SECONDS:-172800}
 OWNER=${JOBSEEK_OWNER:-colophon-group}
 ACTIVE_RELEASE=""
 ACTIVE_RELEASE_FORMAT=""
@@ -154,9 +156,7 @@ verify_release_generation() {
   ACTIVE_IMAGE_REF="$image_ref"
 }
 
-verify_runtime_contract() {
-  local expected="$1" file mismatch=0
-  local -a values=()
+load_committed_release() {
   resolve_active_release
   verify_release_generation "$ACTIVE_RELEASE"
   [[ -f "$DEPLOY_ENV" && ! -L "$DEPLOY_ENV" ]] || return 1
@@ -166,6 +166,12 @@ verify_runtime_contract() {
     echo "ERROR: live crawler environment drifted from committed release" >&2
     return 1
   }
+}
+
+verify_runtime_contract() {
+  local expected="$1" file mismatch=0
+  local -a values=()
+  load_committed_release
   for file in "$ACTIVE_RELEASE/environment.env" "$ACTIVE_RELEASE/success.env"; do
     mapfile -t values < <(sed -n 's/^JOBSEEK_RUNTIME_CONTRACT_SHA256=//p' "$file")
     if (( ${#values[@]} == 0 )); then
@@ -185,6 +191,246 @@ verify_runtime_contract() {
     echo "WAIT: exact committed CSV rollback evidence is not available yet" >&2
     return 75
   fi
+}
+
+active_data_contract_matches() {
+  local expected="$1" committed
+  [[ "$ACTIVE_RELEASE_FORMAT" == 3 ]] || return 1
+  committed="$(read_exact_value "$ACTIVE_RELEASE/release.manifest" DATA_CONTRACT_SHA256)"
+  [[ "$committed" == "$expected" ]]
+}
+
+prune_publications() {
+  local protected_candidate="${1:-}" consumed_candidate="${2:-}"
+  shift 2 || true
+  python3 - \
+    "$ACTIVE_RELEASE_ROOT" "$ACTIVE_RELEASE_POINTER" "$PUBLICATION_JOURNAL" \
+    "$CANDIDATE_ROOT" "$PUBLICATION_KEEP_GENERATIONS" \
+    "$PUBLICATION_GRACE_SECONDS" "$protected_candidate" "$consumed_candidate" \
+    "$@" <<'PY'
+import os
+import pathlib
+import re
+import shutil
+import stat
+import sys
+import time
+
+(
+    release_root_text,
+    active_pointer_text,
+    journal_text,
+    candidate_root_text,
+    keep_text,
+    grace_text,
+    protected_candidate,
+    consumed_candidate,
+    *explicit_releases,
+) = sys.argv[1:]
+
+release_root = pathlib.Path(release_root_text)
+active_pointer = pathlib.Path(active_pointer_text)
+journal = pathlib.Path(journal_text)
+candidate_root = pathlib.Path(candidate_root_text)
+generation_name = re.compile(r"(?:release-|data-)[A-Za-z0-9._-]+|(?:murmur|legacy)\.[A-Za-z0-9._-]+")
+candidate_name = re.compile(r"[0-9a-f]{40}-[1-9][0-9]*-[1-9][0-9]*")
+
+try:
+    keep = int(keep_text)
+    grace = int(grace_text)
+except ValueError as error:
+    raise SystemExit("invalid publication retention configuration") from error
+if not 1 <= keep <= 20 or not 0 <= grace <= 604800:
+    raise SystemExit("publication retention configuration is outside safe bounds")
+
+
+def require_directory(path: pathlib.Path, label: str) -> None:
+    try:
+        mode = path.lstat().st_mode
+    except FileNotFoundError as error:
+        raise SystemExit(f"{label} is unavailable") from error
+    if not stat.S_ISDIR(mode) or stat.S_ISLNK(mode):
+        raise SystemExit(f"{label} is unsafe")
+
+
+def validate_generation(path_text: str, label: str) -> pathlib.Path:
+    path = pathlib.Path(path_text)
+    if path.parent != release_root or not generation_name.fullmatch(path.name):
+        raise SystemExit(f"{label} is outside the release-generation root")
+    require_directory(path, label)
+    return path
+
+
+def read_exact_values(path: pathlib.Path) -> dict[str, str]:
+    try:
+        mode = path.lstat().st_mode
+    except FileNotFoundError:
+        return {}
+    if not stat.S_ISREG(mode) or stat.S_ISLNK(mode):
+        raise SystemExit("publication journal is unsafe")
+    if stat.S_IMODE(mode) != 0o600:
+        raise SystemExit("publication journal permissions are unsafe")
+    values: dict[str, list[str]] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        key, separator, value = line.partition("=")
+        if not separator:
+            raise SystemExit("publication journal is malformed")
+        values.setdefault(key, []).append(value)
+    if any(len(items) != 1 for items in values.values()):
+        raise SystemExit("publication journal contains duplicate keys")
+    return {key: items[0] for key, items in values.items()}
+
+
+def fsync_directory(path: pathlib.Path) -> None:
+    fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+
+
+def is_regular_file(path: pathlib.Path) -> bool:
+    try:
+        mode = path.lstat().st_mode
+    except FileNotFoundError:
+        return False
+    return stat.S_ISREG(mode) and not stat.S_ISLNK(mode)
+
+
+def is_completed_generation(path: pathlib.Path) -> bool:
+    required_files = (
+        "docker-compose.yml",
+        "docker-compose.sha256",
+        "environment.env",
+        "environment.sha256",
+        "success.env",
+        "release.manifest",
+    )
+    if not all(is_regular_file(path / name) for name in required_files):
+        return False
+    manifest = path / "release.manifest"
+    try:
+        if manifest.stat().st_size > 64 * 1024:
+            return False
+        manifest_lines = manifest.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError):
+        return False
+    formats = [
+        line.removeprefix("RELEASE_FORMAT_VERSION=")
+        for line in manifest_lines
+        if line.startswith("RELEASE_FORMAT_VERSION=")
+    ]
+    if len(formats) != 1 or formats[0] not in {"1", "2", "3"}:
+        return False
+    if formats[0] != "3":
+        return True
+    try:
+        data_mode = (path / "data").lstat().st_mode
+    except FileNotFoundError:
+        return False
+    return (
+        stat.S_ISDIR(data_mode)
+        and not stat.S_ISLNK(data_mode)
+        and is_regular_file(path / "data-files.sha256")
+    )
+
+
+require_directory(release_root, "release-generation root")
+try:
+    active_mode = active_pointer.lstat().st_mode
+except FileNotFoundError as error:
+    raise SystemExit("active release pointer is unavailable") from error
+if not stat.S_ISLNK(active_mode):
+    raise SystemExit("active release pointer is unsafe")
+active = validate_generation(os.readlink(active_pointer), "active release")
+
+protected_releases = {active}
+journal_values = read_exact_values(journal)
+if journal_values:
+    required = {
+        "PUBLICATION_FORMAT_VERSION",
+        "SYNC_SUCCEEDED",
+        "RECOVERY_ACTION",
+        "PREVIOUS_RELEASE",
+        "TARGET_RELEASE",
+    }
+    if set(journal_values) != required or journal_values["PUBLICATION_FORMAT_VERSION"] != "1":
+        raise SystemExit("publication journal has an unsupported contract")
+    if journal_values["SYNC_SUCCEEDED"] not in {"0", "1"}:
+        raise SystemExit("publication journal has an invalid sync state")
+    if journal_values["RECOVERY_ACTION"] not in {"restore-previous", "promote-target"}:
+        raise SystemExit("publication journal has an invalid recovery action")
+    protected_releases.add(
+        validate_generation(journal_values["PREVIOUS_RELEASE"], "journal previous release")
+    )
+    protected_releases.add(
+        validate_generation(journal_values["TARGET_RELEASE"], "journal target release")
+    )
+for release in explicit_releases:
+    if release:
+        protected_releases.add(validate_generation(release, "explicitly protected release"))
+
+if protected_candidate and not candidate_name.fullmatch(protected_candidate):
+    raise SystemExit("protected CSV candidate identity is invalid")
+if consumed_candidate and not candidate_name.fullmatch(consumed_candidate):
+    raise SystemExit("consumed CSV candidate identity is invalid")
+if candidate_root.exists():
+    require_directory(candidate_root, "CSV candidate root")
+elif protected_candidate or consumed_candidate:
+    raise SystemExit("CSV candidate root is unavailable")
+
+now = time.time()
+deleted_generation = False
+generation_entries: list[tuple[int, pathlib.Path]] = []
+for entry in os.scandir(release_root):
+    if not generation_name.fullmatch(entry.name) or entry.is_symlink():
+        continue
+    if not entry.is_dir(follow_symlinks=False):
+        continue
+    generation_entries.append((entry.stat(follow_symlinks=False).st_mtime_ns, pathlib.Path(entry.path)))
+newest = {
+    path
+    for _, path in sorted(
+        (item for item in generation_entries if is_completed_generation(item[1])),
+        key=lambda item: (item[0], item[1].name),
+        reverse=True,
+    )[:keep]
+}
+for mtime_ns, path in generation_entries:
+    age = now - (mtime_ns / 1_000_000_000)
+    if path in protected_releases or path in newest or age < grace:
+        continue
+    shutil.rmtree(path)
+    deleted_generation = True
+if deleted_generation:
+    fsync_directory(release_root)
+
+if candidate_root.exists():
+    deleted_candidate = False
+    if consumed_candidate:
+        consumed_path = candidate_root / consumed_candidate
+        try:
+            consumed_mode = consumed_path.lstat().st_mode
+        except FileNotFoundError:
+            consumed_mode = None
+        if consumed_mode is not None:
+            if not stat.S_ISDIR(consumed_mode) or stat.S_ISLNK(consumed_mode):
+                raise SystemExit("consumed CSV candidate is unsafe")
+            shutil.rmtree(consumed_path)
+            deleted_candidate = True
+    for entry in os.scandir(candidate_root):
+        if not candidate_name.fullmatch(entry.name) or entry.is_symlink():
+            continue
+        if entry.name == protected_candidate or not entry.is_dir(follow_symlinks=False):
+            continue
+        age = now - entry.stat(follow_symlinks=False).st_mtime
+        if age < grace:
+            continue
+        shutil.rmtree(entry.path)
+        deleted_candidate = True
+    if deleted_candidate:
+        fsync_directory(candidate_root)
+PY
 }
 
 activate_release_generation() {
@@ -453,6 +699,18 @@ trap 'exit 143' TERM
 
 if [[ "${1:-}" == --recover-only ]]; then
   recover_publication
+  prune_publications "" ""
+  exit 0
+fi
+
+if [[ "${1:-}" == --prune-only ]]; then
+  protected_release="${2:-}"
+  protected_candidate="${3:-}"
+  [[ -z "${4:-}" ]] || {
+    echo "ERROR: usage: crawler-csv-sync-host.sh --prune-only [release] [candidate]" >&2
+    exit 1
+  }
+  prune_publications "$protected_candidate" "" "$protected_release"
   exit 0
 fi
 
@@ -462,23 +720,15 @@ if [[ "${1:-}" == --bootstrap-current ]]; then
   CANDIDATE_ID="${4:?bootstrap candidate ID is required}"
   ARCHIVE_SHA256="${5:?bootstrap archive digest is required}"
   [[ "$REVISION" =~ ^[a-f0-9]{40}$ && "$DATA_CONTRACT_SHA256" =~ ^[a-f0-9]{64}$ && \
-    "$ARCHIVE_SHA256" =~ ^[a-f0-9]{64}$ ]] || exit 1
+    "$ARCHIVE_SHA256" =~ ^[a-f0-9]{64}$ && \
+    "$CANDIDATE_ID" =~ ^${REVISION}-[1-9][0-9]*-[1-9][0-9]*$ ]] || exit 1
   recover_publication
-  resolve_active_release
-  verify_release_generation "$ACTIVE_RELEASE"
-  [[ -f "$DEPLOY_ENV" && ! -L "$DEPLOY_ENV" ]] || exit 1
-  cmp -s \
-    <(sed '/^COMPOSE_FILE=/d' "$DEPLOY_ENV") \
-    <(sed '/^COMPOSE_FILE=/d' "$ACTIVE_RELEASE/environment.env") || {
-    echo "ERROR: live crawler environment drifted from committed release" >&2
-    exit 1
-  }
+  load_committed_release
   if [[ "$ACTIVE_RELEASE_FORMAT" == 3 ]]; then
-    [[ "$(read_exact_value "$ACTIVE_RELEASE/release.manifest" DATA_CONTRACT_SHA256)" == \
-      "$DATA_CONTRACT_SHA256" ]] || {
-      echo "ERROR: committed live CSV contract differs from pre-deploy main" >&2
-      exit 1
-    }
+    # A verified v3 generation is the exact live rollback source of truth. A
+    # later main revision may contain different CSVs; replacing this evidence
+    # before the new deploy commits would make rollback non-atomic.
+    prune_publications "" "$CANDIDATE_ID" "$ACTIVE_RELEASE"
     exit 0
   fi
   previous_release="$ACTIVE_RELEASE"
@@ -488,6 +738,7 @@ if [[ "${1:-}" == --bootstrap-current ]]; then
   )"
   write_journal 0 "$previous_release" "$candidate_generation" promote-target
   PUBLICATION_ARMED=1
+  prune_publications "" "$CANDIDATE_ID" "$previous_release" "$candidate_generation"
   sync_release_data "$candidate_generation" bootstrap-sync
   write_journal 1 "$previous_release" "$candidate_generation" promote-target
   activate_release_generation "$candidate_generation"
@@ -496,6 +747,7 @@ if [[ "${1:-}" == --bootstrap-current ]]; then
   verify_release_generation "$ACTIVE_RELEASE"
   clear_journal
   PUBLICATION_ARMED=0
+  prune_publications "" "" "$previous_release" "$candidate_generation"
   exit 0
 fi
 
@@ -523,11 +775,20 @@ if [[ -e "$PUBLICATION_JOURNAL" ]]; then
   fi
   recover_publication
 fi
+load_committed_release
+if active_data_contract_matches "$DATA_CONTRACT_SHA256"; then
+  echo "CSV data contract is already committed by the active crawler generation" >&2
+  if [[ "$MODE" != --check-runtime ]]; then
+    prune_publications "" "$CANDIDATE_ID" "$ACTIVE_RELEASE"
+  fi
+  exit 0
+fi
 verify_runtime_contract "$RUNTIME_CONTRACT_SHA256"
 if [[ "$MODE" == --check-runtime ]]; then
   exit 0
 fi
 
+prune_publications "$CANDIDATE_ID" "" "$ACTIVE_RELEASE"
 previous_release="$ACTIVE_RELEASE"
 candidate_generation="$(
   prepare_candidate_generation \
@@ -535,6 +796,7 @@ candidate_generation="$(
 )"
 write_journal 0 "$previous_release" "$candidate_generation" restore-previous
 PUBLICATION_ARMED=1
+prune_publications "" "$CANDIDATE_ID" "$previous_release" "$candidate_generation"
 sync_release_data "$candidate_generation" csv-sync
 write_journal 1 "$previous_release" "$candidate_generation" restore-previous
 activate_release_generation "$candidate_generation"
@@ -543,3 +805,4 @@ resolve_active_release
 verify_release_generation "$ACTIVE_RELEASE"
 clear_journal
 PUBLICATION_ARMED=0
+prune_publications "" "" "$previous_release" "$candidate_generation"

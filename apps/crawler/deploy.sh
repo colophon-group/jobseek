@@ -1783,6 +1783,12 @@ publish_active_deploy_release \
 # generation; a process crash before the pointer swap leaves the prior release
 # selected, while a crash after it leaves the complete new release selected.
 verify_shim_deploy_contract "$DEPLOY_SUCCESS_FILE"
+# Keep the active generation, the immediate rollback target, any durable
+# publication-journal references, and a bounded recent rollback window. This
+# runs while the global mutation lock is still held, so no candidate generation
+# can be pruned while another publisher is preparing it.
+bash "$INCOMING_DIR/scripts/crawler-csv-sync-host.sh" \
+  --prune-only "$ROLLBACK_ACTIVE_RELEASE_TARGET"
 disarm_deploy_rollback
 cleanup_forward_data_snapshot
 rm -f "$deploy_success_temporary" "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE" || true
