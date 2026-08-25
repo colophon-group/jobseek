@@ -18,6 +18,7 @@ from src.workspace._compat import auto_scraper_type, detect_ats_from_url
 COMPANY_ID = "175608148114568"
 ORGANISATION_ID = "744981"
 BOARD_URL = f"https://my.jobstreet.com/companies/tecan-cdmo-solutions-pn-{COMPANY_ID}/jobs"
+SG_BOARD_URL = f"https://sg.jobstreet.com/companies/ehl-educational-group-{COMPANY_ID}/jobs"
 
 
 def _summary(
@@ -126,16 +127,18 @@ class TestIdentity:
             BOARD_URL,
             BOARD_URL.removesuffix("/jobs"),
             BOARD_URL + "/",
+            SG_BOARD_URL,
         ],
     )
     def test_extracts_company_identity(self, url: str):
-        assert _identity_from_url(url) == ("my.jobstreet.com", COMPANY_ID)
+        expected_host = "sg.jobstreet.com" if url == SG_BOARD_URL else "my.jobstreet.com"
+        assert _identity_from_url(url) == (expected_host, COMPANY_ID)
 
     @pytest.mark.parametrize(
         "url",
         [
             "http://my.jobstreet.com/companies/tecan-175608148114568/jobs",
-            "https://sg.jobstreet.com/companies/tecan-175608148114568/jobs",
+            "https://id.jobstreet.com/companies/tecan-175608148114568/jobs",
             "https://user@my.jobstreet.com/companies/tecan-175608148114568/jobs",
             "https://my.jobstreet.com:444/companies/tecan-175608148114568/jobs",
             BOARD_URL + "?page=2",
@@ -276,6 +279,22 @@ class TestProbe:
             "company_id": COMPANY_ID,
         }
 
+    async def test_singapore_url_uses_singapore_market_config(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/graphql":
+                return httpx.Response(200, json=_company_payload(), request=request)
+            assert request.url.params["siteKey"] == "sg"
+            assert request.url.params["locale"] == "en-SG"
+            return httpx.Response(200, json=_search_payload([]), request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            assert await can_handle(SG_BOARD_URL, client) == {
+                "host": "sg.jobstreet.com",
+                "company_id": COMPANY_ID,
+                "organisation_id": ORGANISATION_ID,
+                "jobs": 0,
+            }
+
     async def test_reachable_apis_add_verified_identity_and_count(self):
         def handler(request: httpx.Request) -> httpx.Response:
             if request.url.path == "/graphql":
@@ -301,16 +320,18 @@ class TestScraper:
         [
             "https://my.jobstreet.com/job/93872133",
             "https://my.jobstreet.com/job/93872133/",
+            "https://sg.jobstreet.com/job/93872133",
         ],
     )
     def test_extracts_job_identity(self, url: str):
-        assert _job_identity_from_url(url) == ("my.jobstreet.com", "93872133")
+        expected_host = "sg.jobstreet.com" if url.startswith("https://sg.") else "my.jobstreet.com"
+        assert _job_identity_from_url(url) == (expected_host, "93872133")
 
     @pytest.mark.parametrize(
         "url",
         [
             "http://my.jobstreet.com/job/93872133",
-            "https://sg.jobstreet.com/job/93872133",
+            "https://id.jobstreet.com/job/93872133",
             "https://my.jobstreet.com/job/not-a-number",
             "https://my.jobstreet.com/job/93872133?tracking=x",
         ],

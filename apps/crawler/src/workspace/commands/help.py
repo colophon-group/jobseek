@@ -2390,8 +2390,8 @@ jobbank104 — 104 Job Bank company listing
 MONITOR_JOBSTREET = """\
 jobstreet — JobStreet employer profile
 
-  Listing:  GET https://my.jobstreet.com/api/jobsearch/v5/search
-  Detail:   POST https://my.jobstreet.com/graphql
+  Listing:  GET https://{market}.jobstreet.com/api/jobsearch/v5/search
+  Detail:   POST https://{market}.jobstreet.com/graphql
   Returns:  Rich summaries (title, location, employment/work-arrangement type,
             posting date, salary when shown)
   Scraper:  Auto-configured JobStreet scraper hydrates complete HTML descriptions
@@ -2399,6 +2399,7 @@ jobstreet — JobStreet employer profile
   Note:     Use the canonical unfiltered employer URL ending in
             /companies/{slug}-{company_id}/jobs. Legacy *-jobs search routes
             are Cloudflare-guarded and are not accepted as board identities.
+            Malaysia (my) and Singapore (sg) employer profiles are supported.
 
   Config:
     {"company_id": "175608148114568", "organisation_id": "744981"}
