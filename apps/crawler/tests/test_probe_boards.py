@@ -114,8 +114,14 @@ def _prospective_row(**overrides) -> dict:
                 },
                 "empty_states": [
                     {
-                        "selector": ".jobs-total .total",
+                        "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
                         "exact_text": "0",
+                        "required_link_selector": "link[href*='careercenter/1000973/assets/']",
+                        "required_link_url_pattern": (
+                            r"^(?:https://jobs\.example\.com|"
+                            r"https://ohws\.prospective\.ch)/(?:public/v[12]/)?"
+                            r"careercenter/1000973/assets/[^?#]+(?:[?#].*)?$"
+                        ),
                         "forbidden_link_selector": "#jobs-list a.job-title[href]",
                     }
                 ],

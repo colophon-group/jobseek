@@ -1925,14 +1925,57 @@ class TestCanHandle:
         assert result["urls"] == 0
         assert result["empty_states"] == [
             {
-                "selector": ".jobs-total .total",
+                "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
                 "exact_text": "0",
+                "required_link_selector": "link[href*='careercenter/1000973/assets/']",
+                "required_link_url_pattern": (
+                    r"^(?:https://jobs\.example\.com|https://ohws\.prospective\.ch)/"
+                    r"(?:public/v[12]/)?careercenter/1000973/assets/[^?#]+(?:[?#].*)?$"
+                ),
                 "forbidden_link_selector": "#jobs-list a.job-title[href]",
             }
         ]
 
         drifted_html = empty_html.replace(">0<", ">10<")
         assert _prospective_probe_config(drifted_html, self.PROSPECTIVE_URL) is None
+
+    @pytest.mark.parametrize(
+        "partial_html",
+        [
+            """
+            <html><head><link href="/careercenter/1000973/assets/css/company.css"></head>
+            <body class="career-center">
+              <span class="jobs-total"><span class="total">0</span></span>
+            </body></html>
+            """,
+            """
+            <html><head></head><body class="career-center">
+              <span class="jobs-total"><span class="total">0</span></span>
+              <div id="jobs-list"></div>
+            </body></html>
+            """,
+        ],
+        ids=["missing-list-container", "missing-provider-asset"],
+    )
+    async def test_prospective_runtime_rejects_partial_zero_shell(self, partial_html: str):
+        valid_empty_html = """
+        <html><head><link href="/careercenter/1000973/assets/css/company.css"></head>
+        <body class="career-center">
+          <span class="jobs-total"><span class="total">0</span></span>
+          <div id="jobs-list"></div>
+        </body></html>
+        """
+        config = _prospective_probe_config(valid_empty_html, self.PROSPECTIVE_URL)
+        assert config is not None
+
+        with (
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=partial_html)),
+            pytest.raises(ValueError, match="did not match the configured explicit empty state"),
+        ):
+            await dom_discover(
+                {"board_url": self.PROSPECTIVE_URL, "metadata": config},
+                AsyncMock(),
+            )
 
     def test_prospective_rejects_partial_advertised_inventory(self):
         partial_html = self.PROSPECTIVE_HTML.replace(
