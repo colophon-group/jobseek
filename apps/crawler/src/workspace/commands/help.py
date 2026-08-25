@@ -1457,7 +1457,8 @@ dom — Link or Static Listing-Row Extraction (fallback)
     rich_rows      Optional static listing-row extraction. It supports the
                    ordinary sequential pagination config shown above:
                    {"row_selector": ".job", "link_selector": ".job-title a",
-                    "location_selectors": [".job-location", ".job-country"]}
+                    "location_selectors": [".job-location", ".job-country"],
+                    "total_selector": ".jobs-total .total"}
                    When the row itself is the job anchor, omit link_selector:
                    {"row_selector": "a.job[href]", "title_selector": ".title",
                     "location_selectors": [".location"]}.
@@ -1477,6 +1478,9 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    markup drift fails the cycle instead of publishing a partial
                    authoritative result. Incompatible with rendering,
                    browser or partitioned pagination, and include_board_url.
+                   total_selector additionally requires an exact non-negative
+                   count equal to the accepted unique rows and is limited to
+                   single-page extraction.
                    Requires a real detail scraper (not skip) with scraper_config
                    {"enrich": ["description"]}; otherwise the partial-rich
                    runtime path will not schedule description scraping.

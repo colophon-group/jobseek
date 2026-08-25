@@ -74,6 +74,58 @@ def _paycom_bootstrap_page() -> str:
     return f"<script>var configsFromHost = {json.dumps(config)};</script>"
 
 
+def _prospective_page(*, total: int = 1) -> str:
+    return f"""
+    <html><head>
+      <link href="/careercenter/1000973/assets/css/company.css" rel="stylesheet">
+    </head><body class="career-center">
+      <header><span class="jobs-total"><span class="total">{total}</span></span></header>
+      <div id="jobs-list">
+        <div class="job">
+          <a class="job-title"
+             href="/offene-stellen/engineer/268CEACB-05C3-4A11-A8A0-80B078A3F4E4">
+            Platform Engineer
+          </a>
+          <span class="place-of-work">Bern oder Zürich</span>
+        </div>
+      </div>
+    </body></html>
+    """
+
+
+def _prospective_row(**overrides) -> dict:
+    row = _row(
+        board_slug="finma-careers",
+        board_url="https://jobs.example.com/",
+        monitor_type="dom",
+        monitor_config=json.dumps(
+            {
+                "prospective_board": "1000973",
+                "url_filter": (
+                    r"^https://jobs\.example\.com/(?:[^/?#]+/)+"
+                    r"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-"
+                    r"[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}/?(?:[?#].*)?$"
+                ),
+                "rich_rows": {
+                    "row_selector": "#jobs-list .job",
+                    "link_selector": "a.job-title[href]",
+                    "total_selector": ".jobs-total .total",
+                    "location_selectors": [".place-of-work"],
+                },
+                "empty_states": [
+                    {
+                        "selector": ".jobs-total .total",
+                        "exact_text": "0",
+                        "forbidden_link_selector": "#jobs-list a.job-title[href]",
+                    }
+                ],
+            }
+        ),
+    )
+    row.update(overrides)
+    return row
+
+
 class TestRowsAddedOrChanged:
     def test_new_row_is_included(self):
         base = [_row()]
@@ -975,7 +1027,39 @@ class TestProbeRow:
         async with httpx.AsyncClient(transport=transport) as client:
             result = await probe_row(row, client)
         assert result.status == "skipped"
-        assert "dom" in result.message
+        assert "dom" in result.message.lower()
+
+    async def test_prospective_dom_probe_validates_provider_and_inventory(self):
+        result = await self._run(
+            _prospective_row(),
+            lambda _request: httpx.Response(200, text=_prospective_page()),
+        )
+
+        assert result.status == "ok"
+        assert result.message == "valid Prospective listing: 1 jobs"
+
+    async def test_prospective_dom_probe_fails_partial_advertised_inventory(self):
+        result = await self._run(
+            _prospective_row(),
+            lambda _request: httpx.Response(200, text=_prospective_page(total=2)),
+        )
+
+        assert result.status == "fail"
+        assert "inventory contract failed" in result.message
+
+    async def test_prospective_dom_probe_fails_stale_runtime_config(self):
+        row = _prospective_row()
+        config = json.loads(row["monitor_config"])
+        config["rich_rows"].pop("total_selector")
+        row["monitor_config"] = json.dumps(config)
+
+        result = await self._run(
+            row,
+            lambda _request: httpx.Response(200, text=_prospective_page()),
+        )
+
+        assert result.status == "fail"
+        assert "rich_rows" in result.message
 
     async def test_network_error_is_warn(self):
         def handler(request):
@@ -1002,6 +1086,7 @@ def test_probe_registry_covers_expected_types():
         "cornerstone",
         "darwinbox",
         "dayforce",
+        "dom",
         "herp",
         "hrmos",
         "recruitee",
