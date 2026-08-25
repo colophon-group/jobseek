@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from copy import deepcopy
 from unittest.mock import AsyncMock
 
@@ -9,14 +10,18 @@ import httpx
 import pytest
 
 from src.core.monitors.smartrecruiters import (
+    _DETAIL_RESPONSE_MAX_BYTES,
+    _LIST_RESPONSE_MAX_BYTES,
     CANONICAL_IDENTITY_JOB_LOCATION_V1,
     _canonical_identity_components,
     _canonical_source_url,
     _canonicalize_details,
+    _fetch_canonical_details,
     _normalize_coordinate,
     discover,
 )
 from src.core.scrapers import JobContent
+from src.shared.http_retry import ResponseBodyTooLargeError
 
 _TOKEN = "SwissMedicalNetwork1"
 _BILINGUAL_JOB_ID = "095623dd-81c4-41fc-8c8c-e2612fa22ca0"
@@ -42,14 +47,23 @@ def _detail(
         location.update({"latitude": latitude, "longitude": longitude})
     return {
         "id": publication_id,
+        "name": f"{language.upper()} title",
+        "uuid": f"00000000-0000-4000-8000-{publication_id[-12:]}",
         "jobId": job_id,
+        "jobAdId": f"10000000-0000-4000-8000-{publication_id[-12:]}",
         "active": True,
         "visibility": "PUBLIC",
         "defaultJobAd": default,
+        "refNumber": "REF-123",
+        "releasedDate": "2026-08-25T12:00:00.000Z",
         "language": {"code": language},
-        "company": {"identifier": _TOKEN},
+        "company": {"identifier": _TOKEN, "name": "Swiss Medical Network"},
         "location": location,
         "department": {"id": 10114871},
+        "industry": {"id": "hospital_and_health_care"},
+        "function": {"id": "health_care_provider"},
+        "typeOfEmployment": {"id": "full-time"},
+        "experienceLevel": {"id": "not_applicable"},
         "customField": [
             {
                 "fieldId": "642d47ae571c9c5746eeeec4",
@@ -61,6 +75,35 @@ def _detail(
             },
         ],
     }
+
+
+def _listed(detail: dict) -> dict:
+    """Build the stable fields the live list API overlaps with detail."""
+    listed = {
+        key: deepcopy(detail[key])
+        for key in (
+            "id",
+            "name",
+            "uuid",
+            "jobAdId",
+            "defaultJobAd",
+            "refNumber",
+            "company",
+            "releasedDate",
+            "location",
+            "industry",
+            "department",
+            "function",
+            "typeOfEmployment",
+            "experienceLevel",
+            "customField",
+            "visibility",
+            "language",
+        )
+    }
+    listed["department"]["id"] = str(listed["department"]["id"])
+    listed["ref"] = f"https://api.smartrecruiters.com/v1/companies/{_TOKEN}/postings/{detail['id']}"
+    return listed
 
 
 @pytest.fixture(autouse=True)
@@ -201,13 +244,12 @@ async def test_canonical_discovery_requires_every_exact_detail(monkeypatch):
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/postings"):
+            de = _detail("744000144497156", language="de")
+            fr = _detail("744000144497769", language="fr", default=True)
             return httpx.Response(
                 200,
                 json={
-                    "content": [
-                        {"id": "744000144497156"},
-                        {"id": "744000144497769"},
-                    ],
+                    "content": [_listed(de), _listed(fr)],
                     "totalFound": 2,
                 },
             )
@@ -232,13 +274,12 @@ async def test_canonical_discovery_requires_every_exact_detail(monkeypatch):
 async def test_canonical_discovery_returns_one_complete_rich_result():
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/postings"):
+            de = _detail("744000144497156", language="de")
+            fr = _detail("744000144497769", language="fr", default=True)
             return httpx.Response(
                 200,
                 json={
-                    "content": [
-                        {"id": "744000144497156"},
-                        {"id": "744000144497769"},
-                    ],
+                    "content": [_listed(de), _listed(fr)],
                     "totalFound": 2,
                 },
             )
@@ -305,3 +346,218 @@ async def test_canonical_discovery_rejects_list_total_drift():
             )
 
     assert calls == 2
+
+
+@pytest.mark.parametrize(
+    ("field", "mutate", "fallback"),
+    [
+        (
+            "uuid",
+            lambda detail: detail.__setitem__("uuid", "f2671ebd-86c2-4db7-8542-2296b78981f1"),
+            False,
+        ),
+        ("uuid", lambda detail: detail.pop("uuid"), False),
+        (
+            "jobAdId",
+            lambda detail: detail.__setitem__("jobAdId", "35a6e3e2-5fc7-4e5a-a690-70f85268eb47"),
+            False,
+        ),
+        (
+            "refNumber",
+            lambda detail: detail.__setitem__("refNumber", "REF-CHANGED"),
+            False,
+        ),
+        (
+            "releasedDate",
+            lambda detail: detail.__setitem__("releasedDate", "2026-08-26T00:00:00.000Z"),
+            False,
+        ),
+        (
+            "defaultJobAd",
+            lambda detail: detail.__setitem__("defaultJobAd", True),
+            False,
+        ),
+        (
+            "company",
+            lambda detail: detail.__setitem__(
+                "company", {"identifier": _TOKEN, "name": "Other Company"}
+            ),
+            False,
+        ),
+        ("visibility", lambda detail: detail.__setitem__("visibility", "PRIVATE"), False),
+        ("language", lambda detail: detail.__setitem__("language", {"code": "fr"}), False),
+        ("location", lambda detail: detail["location"].__setitem__("country", "de"), False),
+        ("location", lambda detail: detail["location"].pop("latitude"), False),
+        ("department", lambda detail: detail.__setitem__("department", {"id": 999}), True),
+        (
+            "customField",
+            lambda detail: detail["customField"][0].__setitem__("valueId", "changed"),
+            True,
+        ),
+    ],
+)
+async def test_canonical_discovery_rejects_same_id_snapshot_drift(field, mutate, fallback):
+    listed_detail = _detail("744000144497156")
+    if fallback:
+        listed_detail["location"].pop("latitude")
+        listed_detail["location"].pop("longitude")
+    fetched_detail = deepcopy(listed_detail)
+    mutate(fetched_detail)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/postings"):
+            return httpx.Response(
+                200,
+                json={"content": [_listed(listed_detail)], "totalFound": 1},
+            )
+        return httpx.Response(200, json=fetched_detail)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match=field):
+            await discover(
+                {
+                    "board_url": f"https://careers.smartrecruiters.com/{_TOKEN}",
+                    "metadata": {
+                        "token": _TOKEN,
+                        "canonical_identity": CANONICAL_IDENTITY_JOB_LOCATION_V1,
+                    },
+                },
+                client,
+            )
+
+
+async def test_canonical_list_response_is_streamed_with_a_hard_body_cap():
+    body = b"{" + b" " * _LIST_RESPONSE_MAX_BYTES + b"}"
+
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda _request: httpx.Response(200, content=body))
+    ) as client:
+        with pytest.raises(ResponseBodyTooLargeError):
+            await discover(
+                {
+                    "board_url": f"https://careers.smartrecruiters.com/{_TOKEN}",
+                    "metadata": {
+                        "token": _TOKEN,
+                        "canonical_identity": CANONICAL_IDENTITY_JOB_LOCATION_V1,
+                    },
+                },
+                client,
+            )
+
+
+async def test_canonical_detail_response_is_streamed_with_a_hard_body_cap():
+    detail = _detail("744000144497156")
+    oversized = b"{" + b" " * _DETAIL_RESPONSE_MAX_BYTES + b"}"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/postings"):
+            return httpx.Response(
+                200,
+                json={"content": [_listed(detail)], "totalFound": 1},
+            )
+        return httpx.Response(200, content=oversized)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ResponseBodyTooLargeError):
+            await discover(
+                {
+                    "board_url": f"https://careers.smartrecruiters.com/{_TOKEN}",
+                    "metadata": {
+                        "token": _TOKEN,
+                        "canonical_identity": CANONICAL_IDENTITY_JOB_LOCATION_V1,
+                    },
+                },
+                client,
+            )
+
+
+async def test_detail_failure_cancels_other_in_flight_responses(monkeypatch):
+    sibling_started = asyncio.Event()
+    sibling_cancelled = asyncio.Event()
+
+    async def fake_detail(_client, _token, posting_id):
+        if posting_id == "1":
+            await sibling_started.wait()
+            raise ResponseBodyTooLargeError("https://api.smartrecruiters.com/detail/1", 1)
+        sibling_started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            sibling_cancelled.set()
+            raise
+
+    monkeypatch.setattr("src.core.monitors.smartrecruiters._get_detail_with_retry", fake_detail)
+
+    with pytest.raises(ResponseBodyTooLargeError):
+        await _fetch_canonical_details(AsyncMock(), _TOKEN, [{"id": "1"}, {"id": "2"}])
+
+    assert sibling_cancelled.is_set()
+
+
+async def test_duplicate_detail_publication_ids_fail_closed(monkeypatch):
+    async def fake_detail(_client, _token, _posting_id):
+        return {"id": "same"}
+
+    monkeypatch.setattr("src.core.monitors.smartrecruiters._get_detail_with_retry", fake_detail)
+    monkeypatch.setattr(
+        "src.core.monitors.smartrecruiters._validate_detail_identity",
+        lambda *_args: None,
+    )
+
+    with pytest.raises(ValueError, match="repeated one publication id"):
+        await _fetch_canonical_details(AsyncMock(), _TOKEN, [{"id": "1"}, {"id": "2"}])
+
+
+async def test_unsafe_token_is_rejected_before_any_request():
+    requests = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(500)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="bounded provider identifier"):
+            await discover(
+                {
+                    "board_url": "https://careers.smartrecruiters.com/SwissMedicalNetwork1",
+                    "metadata": {
+                        "token": "../other?redirect=https://evil.example",
+                        "canonical_identity": CANONICAL_IDENTITY_JOB_LOCATION_V1,
+                    },
+                },
+                client,
+            )
+
+    assert requests == 0
+
+
+async def test_coordinate_identity_tolerates_provider_classification_cache_lag():
+    """Live list data is stale for mutable classifications on a few geo ads."""
+    listed_detail = _detail("744000144497156")
+    fetched_detail = deepcopy(listed_detail)
+    fetched_detail["department"] = {"id": 999, "label": "Changed department"}
+    fetched_detail["typeOfEmployment"] = {"id": "part-time", "label": "Part-time"}
+    fetched_detail["customField"][0]["valueId"] = "changed-brand"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/postings"):
+            return httpx.Response(
+                200,
+                json={"content": [_listed(listed_detail)], "totalFound": 1},
+            )
+        return httpx.Response(200, json=fetched_detail)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await discover(
+            {
+                "board_url": f"https://careers.smartrecruiters.com/{_TOKEN}",
+                "metadata": {
+                    "token": _TOKEN,
+                    "canonical_identity": CANONICAL_IDENTITY_JOB_LOCATION_V1,
+                },
+            },
+            client,
+        )
+
+    assert len(result.urls) == 1

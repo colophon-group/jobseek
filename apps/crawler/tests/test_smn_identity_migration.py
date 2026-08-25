@@ -119,6 +119,7 @@ def test_sql_contract_binds_every_write_to_exact_company_and_board():
     assert "company_id <> $2 or board_id <> $3" in collision_sql
     assert "board_id = $4" in survivor_sql and "company_id = $5" in survivor_sql
     assert "board_id = $2" in aliases_sql and "company_id = $3" in aliases_sql
+    assert "source_url = any($4::text[])" in aliases_sql
     assert "company.slug = 'swiss-medical-network'" in receipt_sql
     assert "board.metadata -> '_identity_migration_receipt' is null" in receipt_sql
 
@@ -154,6 +155,13 @@ async def test_migration_preserves_one_existing_id_per_canonical_and_retires_ali
         if call.args[0] == _DEACTIVATE_SMARTRECRUITERS_IDENTITY_ALIASES
     )
     assert deactivate_call.args[1] == ["00000000-0000-0000-0000-000000000002"]
+    assert set(deactivate_call.args[4]) == {
+        _CANONICAL_A,
+        _CANONICAL_B,
+        _ALIAS_A_DE,
+        _ALIAS_A_FR,
+        _ALIAS_B,
+    }
     receipt_call = next(
         call
         for call in conn.execute.await_args_list
@@ -162,7 +170,7 @@ async def test_migration_preserves_one_existing_id_per_canonical_and_retires_ali
     receipt = json.loads(receipt_call.args[3])
     assert receipt | {"completed_at": "ignored"} == _receipt(completed_at="ignored")
     log.info.assert_called_once_with(
-        "batch.monitor.smartrecruiters_identity_migration_completed",
+        "batch.monitor.smartrecruiters_identity_migration_staged",
         canonical=2,
         preserved=2,
         deactivated=1,
@@ -188,6 +196,53 @@ async def test_existing_canonical_row_is_preferred_over_legacy_alias():
         if call.args[0] == _UPDATE_SMARTRECRUITERS_IDENTITY_SURVIVOR
     )
     assert survivor.args[1] == "00000000-0000-0000-0000-000000000010"
+
+
+async def test_unclaimed_active_legacy_row_is_not_immediately_retired():
+    conn = AsyncMock()
+    conn.fetchrow.side_effect = [{"existing_receipt": None}, None]
+    stale_unclaimed = "https://jobs.smartrecruiters.com/SwissMedicalNetwork1/744000100000099"
+    conn.fetch.return_value = [
+        _row("00000000-0000-0000-0000-000000000001", _ALIAS_A_DE),
+        _row("00000000-0000-0000-0000-000000000002", _ALIAS_A_FR),
+        _row("00000000-0000-0000-0000-000000000099", stale_unclaimed),
+    ]
+    conn.execute.side_effect = ["UPDATE 1", "UPDATE 1", "UPDATE 1"]
+
+    one_job = {_CANONICAL_A: _jobs()[_CANONICAL_A]}
+    deactivated, _ = await _run(conn, jobs_by_url=one_job)
+
+    assert deactivated == 1
+    deactivate_call = next(
+        call
+        for call in conn.execute.await_args_list
+        if call.args[0] == _DEACTIVATE_SMARTRECRUITERS_IDENTITY_ALIASES
+    )
+    assert deactivate_call.args[1] == ["00000000-0000-0000-0000-000000000002"]
+    assert stale_unclaimed not in deactivate_call.args[4]
+
+
+async def test_identity_without_existing_survivor_is_left_for_canonical_diff_insert():
+    conn = AsyncMock()
+    conn.fetchrow.side_effect = [{"existing_receipt": None}, None]
+    conn.fetch.return_value = []
+    conn.execute.return_value = "UPDATE 1"
+
+    one_job = {_CANONICAL_A: _jobs()[_CANONICAL_A]}
+    deactivated, _ = await _run(conn, jobs_by_url=one_job)
+
+    assert deactivated == 0
+    assert not any(
+        call.args[0] == _UPDATE_SMARTRECRUITERS_IDENTITY_SURVIVOR
+        for call in conn.execute.await_args_list
+    )
+    receipt_call = next(
+        call
+        for call in conn.execute.await_args_list
+        if call.args[0] == _WRITE_SMARTRECRUITERS_IDENTITY_MIGRATION_RECEIPT
+    )
+    receipt = json.loads(receipt_call.args[3])
+    assert receipt["preserved_count"] == 0
 
 
 @pytest.mark.parametrize(
@@ -258,6 +313,17 @@ async def test_exact_receipt_is_a_permanent_noop():
 
     assert result == 0
     conn.fetchrow.assert_not_awaited()
+
+
+async def test_exact_database_receipt_is_an_idempotent_noop_under_board_lock():
+    conn = AsyncMock()
+    conn.fetchrow.return_value = {"existing_receipt": _receipt()}
+
+    result, _ = await _run(conn)
+
+    assert result == 0
+    conn.fetch.assert_not_awaited()
+    conn.execute.assert_not_awaited()
 
 
 async def test_mismatched_receipt_and_over_cap_alias_map_fail_closed():

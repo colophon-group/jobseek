@@ -15,6 +15,7 @@ from src.shared.http_retry import (
     _RETRYABLE_STATUSES,
     END_OF_PAGINATION_STATUSES,
     PaginationFetchError,
+    ResponseBodyTooLargeError,
     UnsafeRedirectError,
     fetch_json_page_with_retry,
     fetch_response_with_status_retries,
@@ -533,6 +534,40 @@ class TestFetchWithRetry:
 
 
 class TestFetchJsonPageWithRetry:
+    async def test_streams_json_under_caller_byte_cap(self):
+        seen: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(request)
+            return httpx.Response(200, json={"items": []})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            out = await fetch_json_page_with_retry(
+                client,
+                "https://api.example.com/jobs",
+                params={"limit": 100},
+                expect_shape=dict,
+                max_bytes=1024,
+            )
+
+        assert out == {"items": []}
+        assert seen[0].url.params["limit"] == "100"
+
+    async def test_streamed_json_aborts_immediately_over_byte_cap(self):
+        body = b"{" + b" " * 64 + b"}"
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda _request: httpx.Response(200, content=body))
+        ) as client:
+            with pytest.raises(ResponseBodyTooLargeError) as exc_info:
+                await fetch_json_page_with_retry(
+                    client,
+                    "https://api.example.com/jobs",
+                    expect_shape=dict,
+                    max_bytes=32,
+                )
+
+        assert exc_info.value.max_bytes == 32
+
     async def test_get_returns_expected_dict_shape(self):
         client = AsyncMock()
         client.get = AsyncMock(return_value=_json_resp(200, {"items": []}))
