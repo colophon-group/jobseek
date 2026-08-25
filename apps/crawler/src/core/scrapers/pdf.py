@@ -20,6 +20,10 @@ Config:
     location_pattern
                    Optional regex with a capture group for the location,
                    applied to the raw PDF text.
+    location_url_pattern
+                   Optional fallback regex with a capture group for the
+                   location, applied to the URL-decoded PDF filename when the
+                   PDF text does not yield a location.
     fields_pattern Optional regex with named ``title`` and/or ``location``
                    capture groups. This is useful for table-like PDFs where
                    both values must be matched from the same row layout.
@@ -305,6 +309,15 @@ def _title_from_url(url: str, pattern: str | None = None) -> str | None:
     return name if name else None
 
 
+def _location_from_url(url: str, pattern: str | None = None) -> str | None:
+    """Extract a location from the URL-decoded PDF filename."""
+    if not pattern:
+        return None
+    path = unquote(url).split("?", 1)[0].split("#", 1)[0]
+    filename = path.rsplit("/", 1)[-1]
+    return _extract_pattern(filename, pattern)
+
+
 def _title_from_text(text: str) -> str | None:
     """Extract a title from the first heading-like line of PDF text.
 
@@ -516,6 +529,8 @@ async def parse_bytes(content: bytes, url: str, config: dict) -> JobContent:
         full_text,
         config.get("location_pattern"),
     )
+    if not location:
+        location = _location_from_url(url, config.get("location_url_pattern"))
     description = _text_to_html(full_text)
 
     log.debug("pdf.extracted", url=url, title=title, text_length=len(full_text))

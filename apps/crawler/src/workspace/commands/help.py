@@ -4086,6 +4086,7 @@ pdf — PDF document scraper
   Returns:  title, HTML description, locations (when configured)
   Config:   title_source ("url" or "text"), title_pattern (regex),
             location_pattern (regex applied to PDF text),
+            location_url_pattern (fallback regex applied to the decoded filename),
             fields_pattern (regex with named title/location groups for
             table-like PDF layouts; named values take precedence and the
             field-specific patterns remain fallbacks),

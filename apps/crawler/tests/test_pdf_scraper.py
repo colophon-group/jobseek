@@ -773,6 +773,43 @@ class TestScrape:
         assert result.extras == {"source": "board default"}
         assert result.metadata == {"team": "Research"}
 
+    async def test_location_url_pattern_falls_back_to_decoded_filename(self):
+        pdf_bytes = _make_pdf("Professor of Family Business\nFull job description")
+
+        def handler(request):
+            return httpx.Response(200, content=pdf_bytes)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.com/Faculty%20Vacancy-Family-Business-Singapore.pdf",
+                {
+                    "title_source": "text",
+                    "location_pattern": r"Location:\s*([^\n]+)",
+                    "location_url_pattern": r"-(Lausanne|Singapore)\.pdf$",
+                },
+                client,
+            )
+
+        assert result.locations == ["Singapore"]
+
+    async def test_location_pattern_takes_precedence_over_url_fallback(self):
+        pdf_bytes = _make_pdf("Engineer\nLocation: Zurich")
+
+        def handler(request):
+            return httpx.Response(200, content=pdf_bytes)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.com/Engineer-Singapore.pdf",
+                {
+                    "location_pattern": r"Location:\s*([^\n]+)",
+                    "location_url_pattern": r"-(Lausanne|Singapore)\.pdf$",
+                },
+                client,
+            )
+
+        assert result.locations == ["Zurich"]
+
     async def test_named_fields_pattern_applied_to_table_layout(self):
         pdf_bytes = _make_pdf("Role Location\nField Service Engineer\nOsaka or Shizuoka\nSalary")
 
@@ -930,6 +967,28 @@ class TestInternationalCanoeFederationPdfConfig:
 
         assert config["require_title_pattern"] is True
         assert _extract_pattern(text, config["title_pattern"]) is None
+
+
+class TestImdPdfConfig:
+    async def test_family_business_uses_filename_location_fallback(self):
+        config = _board_scraper_config("imd-faculty")
+        pdf_bytes = _make_pdf(
+            "Professor of Family Business v 20/05/2026\n"
+            "Faculty Recruiting: Professor of Family Business\n"
+            "Full job description"
+        )
+
+        result = await parse_bytes(
+            pdf_bytes,
+            (
+                "https://www.imd.org/wp-content/uploads/2026/06/"
+                "20260520-Faculty-Vacancy-Family-Business-Singapore.pdf"
+            ),
+            config,
+        )
+
+        assert result.title == "Professor of Family Business"
+        assert result.locations == ["Singapore"]
 
 
 class TestIcjPdfConfig:
