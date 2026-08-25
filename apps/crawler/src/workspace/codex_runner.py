@@ -2004,12 +2004,22 @@ class CompanyResolverGovernor:
             github=self.github,
             repository=TRUSTED_GITHUB_REPOSITORY,
         )
+        managed_remote_verifier = GitHubRemoteVerifier(
+            repo_dir=cfg.managed_repo_dir,  # type: ignore[arg-type]
+            github=self.github,
+            repository=TRUSTED_GITHUB_REPOSITORY,
+        )
 
         managed_report = reconcile_managed_worktrees(
             repo_dir=cfg.managed_repo_dir,  # type: ignore[arg-type]
             worktrees_dir=cfg.managed_worktrees_dir,  # type: ignore[arg-type]
             archive_dir=cfg.state_dir / "worktree-quarantine",  # type: ignore[operator]
             ledger=self.ledger,
+            authoritative_main_verifier=managed_remote_verifier.verify_main,
+            branch_verifier=lambda branch: managed_remote_verifier.verify_branch(
+                branch,
+                allow_absent=True,
+            ),
             pid_checker=_pid_matches_run,
             live_path_checker=lambda path: str(path.resolve()) in live_paths,
             max_terminal_directories=cfg.max_terminal_worktrees,

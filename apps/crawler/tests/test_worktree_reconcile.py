@@ -161,14 +161,55 @@ def _reconcile_managed(
     *,
     apply: bool,
     live_path_checker=None,
+    authoritative_main_verifier=None,
+    branch_verifier=None,
     max_directories: int = 3,
     max_bytes: int = 10 * 1024**3,
 ):
+    def local_main_verifier() -> RemoteProof:
+        result = subprocess.run(
+            ["git", "rev-parse", "refs/remotes/origin/main"],
+            cwd=managed,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        return RemoteProof(
+            ok=result.returncode == 0,
+            kind="test_main" if result.returncode == 0 else "main_lookup_failed",
+            detail={"headRefOid": result.stdout.strip()} if result.returncode == 0 else {},
+            error=result.stderr.strip() or None,
+        )
+
+    def local_branch_verifier(branch: str) -> RemoteProof:
+        result = subprocess.run(
+            ["git", "ls-remote", "--exit-code", "origin", f"refs/heads/{branch}"],
+            cwd=managed,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 2:
+            return RemoteProof(
+                ok=True,
+                kind="remote_branch_absent",
+                detail={"branch": branch, "headRefOid": None},
+            )
+        oid = result.stdout.split()[0] if result.returncode == 0 and result.stdout.split() else None
+        return RemoteProof(
+            ok=result.returncode == 0 and oid is not None,
+            kind="remote_branch" if oid is not None else "branch_lookup_failed",
+            detail={"branch": branch, "headRefOid": oid},
+            error=result.stderr.strip() or None,
+        )
+
     return reconcile_managed_worktrees(
         repo_dir=managed,
         worktrees_dir=worktrees,
         archive_dir=tmp_path / "runner" / "state" / "worktree-quarantine",
         ledger=ledger,
+        authoritative_main_verifier=(authoritative_main_verifier or local_main_verifier),
+        branch_verifier=branch_verifier or local_branch_verifier,
         pid_checker=lambda pid, run_id: False,
         live_path_checker=live_path_checker or (lambda path: False),
         max_terminal_directories=max_directories,
@@ -1182,6 +1223,242 @@ def test_managed_unique_commit_is_bundled_before_removal(tmp_path: Path) -> None
     assert manifest["unique_commit_bundle"]["sha256"]
 
 
+def test_managed_poisoned_origin_main_cannot_forge_ancestor_proof(tmp_path: Path) -> None:
+    managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
+    authoritative_main_oid = subprocess.run(
+        ["git", "rev-parse", "refs/remotes/origin/main"],
+        cwd=managed,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    (worktree / "tracked.txt").write_text("local-only managed commit\n")
+    _run("git", "add", "tracked.txt", cwd=worktree)
+    _run("git", "commit", "-m", "local only", cwd=worktree)
+    local_oid = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=worktree,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    poison = tmp_path / "attacker-origin.git"
+    subprocess.run(
+        ["git", "clone", "--bare", str(managed), str(poison)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    _run("git", "--git-dir", str(poison), "update-ref", "refs/heads/main", local_oid, cwd=tmp_path)
+    _run("git", "remote", "set-url", "origin", str(poison), cwd=managed)
+    _run("git", "update-ref", "refs/remotes/origin/main", local_oid, cwd=managed)
+    assert (
+        subprocess.run(
+            ["git", "ls-remote", "origin", "refs/heads/main"],
+            cwd=managed,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.split()[0]
+        == local_oid
+    )
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+
+    report = _reconcile_managed(
+        tmp_path,
+        managed,
+        worktrees,
+        ledger,
+        apply=True,
+        authoritative_main_verifier=lambda: RemoteProof(
+            ok=True,
+            kind="authoritative_main",
+            detail={"headRefOid": authoritative_main_oid},
+        ),
+        branch_verifier=lambda branch: RemoteProof(
+            ok=True,
+            kind="remote_branch_absent",
+            detail={"branch": branch, "headRefOid": None},
+        ),
+    )
+
+    item = report.items[0]
+    assert report.archived == 1
+    assert report.removed == 1
+    assert item.unique_commits
+    assert item.main_oid == authoritative_main_oid
+    assert item.remote_proof is not None
+    assert item.remote_proof["kind"] == "local_unique_commits"
+    assert item.archive_path
+    bundle_copy = tmp_path / "managed-poisoned-main.bundle"
+    with tarfile.open(item.archive_path, "r:gz") as archive:
+        bundle = archive.extractfile("unique-commits.bundle")
+        assert bundle is not None
+        bundle_copy.write_bytes(bundle.read())
+    listed = subprocess.run(
+        ["git", "bundle", "list-heads", str(bundle_copy)],
+        cwd=managed,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert local_oid in listed.stdout
+
+
+def test_managed_poisoned_origin_branch_cannot_forge_exact_remote_proof(
+    tmp_path: Path,
+) -> None:
+    managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
+    authoritative_main_oid = subprocess.run(
+        ["git", "rev-parse", "refs/remotes/origin/main"],
+        cwd=managed,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    branch = subprocess.run(
+        ["git", "branch", "--show-current"],
+        cwd=worktree,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    (worktree / "tracked.txt").write_text("fake remote branch commit\n")
+    _run("git", "add", "tracked.txt", cwd=worktree)
+    _run("git", "commit", "-m", "fake published commit", cwd=worktree)
+    local_oid = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=worktree,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    poison = tmp_path / "attacker-branch-origin.git"
+    subprocess.run(
+        ["git", "clone", "--bare", str(managed), str(poison)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    _run("git", "remote", "set-url", "origin", str(poison), cwd=managed)
+    assert (
+        subprocess.run(
+            ["git", "ls-remote", "origin", f"refs/heads/{branch}"],
+            cwd=managed,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.split()[0]
+        == local_oid
+    )
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+
+    report = _reconcile_managed(
+        tmp_path,
+        managed,
+        worktrees,
+        ledger,
+        apply=True,
+        authoritative_main_verifier=lambda: RemoteProof(
+            ok=True,
+            kind="authoritative_main",
+            detail={"headRefOid": authoritative_main_oid},
+        ),
+        branch_verifier=lambda observed_branch: RemoteProof(
+            ok=True,
+            kind="remote_branch_absent",
+            detail={"branch": observed_branch, "headRefOid": None},
+        ),
+    )
+
+    item = report.items[0]
+    assert report.archived == 1
+    assert report.removed == 1
+    assert item.unique_commits
+    assert item.remote_proof is not None
+    assert item.remote_proof["kind"] == "local_unique_commits"
+    assert item.remote_proof["detail"]["remote_oid"] is None
+
+
+def test_managed_authoritative_lookup_failure_retains_worktree(tmp_path: Path) -> None:
+    managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
+    _run(
+        "git",
+        "remote",
+        "set-url",
+        "origin",
+        str(tmp_path / "child-controlled-missing.git"),
+        cwd=managed,
+    )
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+
+    report = _reconcile_managed(
+        tmp_path,
+        managed,
+        worktrees,
+        ledger,
+        apply=True,
+        authoritative_main_verifier=lambda: RemoteProof(
+            ok=False,
+            kind="main_lookup_failed",
+            detail={"repository": "colophon-group/jobseek"},
+            error="trusted GitHub lookup failed",
+        ),
+        branch_verifier=lambda branch: (_ for _ in ()).throw(
+            AssertionError("branch proof must not run without authoritative main")
+        ),
+    )
+
+    item = report.items[0]
+    assert report.archived == 0
+    assert report.removed == 0
+    assert worktree.exists()
+    assert item.classification == "remote_unverified"
+    assert item.remote_proof is not None
+    assert item.remote_proof["kind"] == "main_lookup_failed"
+    assert item.reason == "trusted GitHub lookup failed"
+
+
+def test_managed_authoritative_branch_failure_retains_worktree(tmp_path: Path) -> None:
+    managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
+    authoritative_main_oid = subprocess.run(
+        ["git", "rev-parse", "refs/remotes/origin/main"],
+        cwd=managed,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+
+    report = _reconcile_managed(
+        tmp_path,
+        managed,
+        worktrees,
+        ledger,
+        apply=True,
+        authoritative_main_verifier=lambda: RemoteProof(
+            ok=True,
+            kind="authoritative_main",
+            detail={"headRefOid": authoritative_main_oid},
+        ),
+        branch_verifier=lambda branch: RemoteProof(
+            ok=False,
+            kind="branch_refresh_mismatch",
+            detail={"branch": branch},
+            error="trusted branch moved during refresh",
+        ),
+    )
+
+    item = report.items[0]
+    assert report.archived == 0
+    assert report.removed == 0
+    assert worktree.exists()
+    assert item.classification == "remote_unverified"
+    assert item.remote_proof is not None
+    assert item.remote_proof["kind"] == "branch_refresh_mismatch"
+    assert item.reason == "trusted branch moved during refresh"
+
+
 def test_managed_exact_remote_branch_is_proof_without_archive(tmp_path: Path) -> None:
     managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
     (worktree / "tracked.txt").write_text("published commit\n")
@@ -1487,6 +1764,43 @@ def test_authoritative_main_lookup_failure_fails_closed(tmp_path: Path) -> None:
     assert run.call_count == 1
 
 
+def test_authoritative_branch_refresh_mismatch_fails_closed(tmp_path: Path) -> None:
+    verifier = GitHubRemoteVerifier(
+        repo_dir=tmp_path,
+        github=SimpleNamespace(),
+        repository="colophon-group/jobseek",
+    )
+    branch = "fix-crawler/safe"
+    expected_oid = "a" * 40
+    responses = [
+        SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps(
+                [
+                    {
+                        "ref": f"refs/heads/{branch}",
+                        "object": {"sha": expected_oid},
+                    }
+                ]
+            ),
+            stderr="",
+        ),
+        SimpleNamespace(returncode=0, stdout="", stderr=""),
+        SimpleNamespace(returncode=0, stdout=f"{'b' * 40}\n", stderr=""),
+    ]
+
+    with patch(
+        "src.workspace.worktree_reconcile.subprocess.run",
+        side_effect=responses,
+    ):
+        proof = verifier.verify_branch(branch, allow_absent=True)
+
+    assert not proof.ok
+    assert proof.kind == "branch_refresh_mismatch"
+    assert proof.detail["headRefOid"] == expected_oid
+    assert proof.detail["refreshed_oid"] == "b" * 40
+
+
 @pytest.mark.parametrize("proof_source", ["pull_request", "branch"])
 def test_remote_proof_ignores_poisoned_origin_repository(
     tmp_path: Path,
@@ -1515,21 +1829,23 @@ def test_remote_proof_ignores_poisoned_origin_repository(
         repository="colophon-group/jobseek",
     )
     if proof_source == "pull_request":
-        response = SimpleNamespace(
-            returncode=0,
-            stdout=json.dumps(
-                {
-                    "number": 7,
-                    "state": "OPEN",
-                    "isDraft": False,
-                    "headRefName": "fix-crawler/safe",
-                    "headRefOid": oid,
-                    "mergedAt": None,
-                    "url": "https://github.com/colophon-group/jobseek/pull/7",
-                }
-            ),
-            stderr="",
-        )
+        responses = [
+            SimpleNamespace(
+                returncode=0,
+                stdout=json.dumps(
+                    {
+                        "number": 7,
+                        "state": "OPEN",
+                        "isDraft": False,
+                        "headRefName": "fix-crawler/safe",
+                        "headRefOid": oid,
+                        "mergedAt": None,
+                        "url": "https://github.com/colophon-group/jobseek/pull/7",
+                    }
+                ),
+                stderr="",
+            )
+        ]
         run = {
             "state": "submitted",
             "issue": 101,
@@ -1537,7 +1853,22 @@ def test_remote_proof_ignores_poisoned_origin_repository(
             "branch": "fix-crawler/safe",
         }
     else:
-        response = SimpleNamespace(returncode=0, stdout=f"{oid}\n", stderr="")
+        responses = [
+            SimpleNamespace(
+                returncode=0,
+                stdout=json.dumps(
+                    [
+                        {
+                            "ref": "refs/heads/fix-crawler/safe",
+                            "object": {"sha": oid},
+                        }
+                    ]
+                ),
+                stderr="",
+            ),
+            SimpleNamespace(returncode=0, stdout="", stderr=""),
+            SimpleNamespace(returncode=0, stdout=f"{oid}\n", stderr=""),
+        ]
         run = {
             "state": "failed",
             "issue": 101,
@@ -1547,11 +1878,11 @@ def test_remote_proof_ignores_poisoned_origin_repository(
 
     with patch(
         "src.workspace.worktree_reconcile.subprocess.run",
-        return_value=response,
+        side_effect=responses,
     ) as subprocess_run:
         proof = verifier(run)
 
-    command = subprocess_run.call_args.args[0]
+    command = subprocess_run.call_args_list[0].args[0]
     assert proof.ok
     assert proof.detail["headRefOid"] == oid
     assert "attacker/fake-jobseek" not in " ".join(command)
