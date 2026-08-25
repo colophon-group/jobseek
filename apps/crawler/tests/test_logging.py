@@ -1,6 +1,21 @@
 from __future__ import annotations
 
+import pytest
+import structlog
+
 from src.shared.logging import setup_logging
+
+
+@pytest.fixture(autouse=True)
+def restore_structlog_config():
+    """Keep setup_logging's process-global configuration inside each test."""
+    previous_config = structlog.get_config()
+    previous_config = {
+        **previous_config,
+        "processors": list(previous_config["processors"]),
+    }
+    yield
+    structlog.configure(**previous_config)
 
 
 class TestSetupLogging:
