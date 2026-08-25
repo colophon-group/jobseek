@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from threading import Event
 from types import SimpleNamespace
@@ -142,6 +142,57 @@ def _patch_all(monkeypatch, tmp_path):
             warnings=[],
         ),
     )
+
+
+@contextmanager
+def _mock_terminal_issue(*, claimed: bool = False):
+    state = {"comment": False, "closed": False, "claimed": claimed, "labels": set()}
+    events: list[str] = []
+
+    def comment(*_args):
+        state["comment"] = True
+        events.append("comment")
+
+    def close(*_args):
+        state["closed"] = True
+        events.append("close-issue")
+
+    def unclaim(*_args):
+        state["claimed"] = False
+        events.append("unclaim")
+
+    def add_label(_issue, label):
+        state["labels"].add(label)
+        events.append(f"label:{label}")
+
+    with (
+        patch("src.workspace.git.comment_on_issue_once", side_effect=comment) as comment_mock,
+        patch("src.workspace.git.close_issue_if_open", side_effect=close) as close_mock,
+        patch("src.workspace.git.unclaim_issue_strict", side_effect=unclaim) as unclaim_mock,
+        patch(
+            "src.workspace.git.issue_has_comment_marker_strict",
+            side_effect=lambda *_args: state["comment"],
+        ),
+        patch(
+            "src.workspace.git.issue_state_and_labels_strict",
+            side_effect=lambda *_args: (
+                "CLOSED" if state["closed"] else "OPEN",
+                set(state["labels"]),
+            ),
+        ),
+        patch(
+            "src.workspace.git.is_issue_claimed_strict",
+            side_effect=lambda *_args: state["claimed"],
+        ),
+        patch("src.workspace.git.add_label_to_issue", side_effect=add_label),
+    ):
+        yield SimpleNamespace(
+            comment=comment_mock,
+            close=close_mock,
+            unclaim=unclaim_mock,
+            events=events,
+            state=state,
+        )
 
 
 class TestValidate:
@@ -756,9 +807,7 @@ class TestReject:
 
         with (
             patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
-            patch("src.workspace.git.comment_on_issue_once") as mock_comment,
-            patch("src.workspace.git.unclaim_issue_strict"),
-            patch("src.workspace.git.close_issue_if_open") as mock_close,
+            _mock_terminal_issue() as issue_state,
         ):
             result = runner.invoke(
                 ws,
@@ -773,8 +822,8 @@ class TestReject:
                 ],
             )
             assert result.exit_code == 0
-            mock_comment.assert_called_once()
-            mock_close.assert_called_once_with(42)
+            issue_state.comment.assert_called_once()
+            issue_state.close.assert_called_once_with(42)
 
     def test_reject_from_workspace(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
@@ -783,9 +832,7 @@ class TestReject:
 
         with (
             patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
-            patch("src.workspace.git.comment_on_issue_once"),
-            patch("src.workspace.git.unclaim_issue_strict"),
-            patch("src.workspace.git.close_issue_if_open") as mock_close,
+            _mock_terminal_issue() as issue_state,
         ):
             result = runner.invoke(
                 ws,
@@ -799,7 +846,7 @@ class TestReject:
                 ],
             )
             assert result.exit_code == 0
-            mock_close.assert_called_once_with(42)
+            issue_state.close.assert_called_once_with(42)
 
     def test_reject_from_active_workspace(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
@@ -809,9 +856,7 @@ class TestReject:
 
         with (
             patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
-            patch("src.workspace.git.comment_on_issue_once"),
-            patch("src.workspace.git.unclaim_issue_strict"),
-            patch("src.workspace.git.close_issue_if_open") as mock_close,
+            _mock_terminal_issue() as issue_state,
         ):
             result = runner.invoke(
                 ws,
@@ -824,7 +869,7 @@ class TestReject:
                 ],
             )
             assert result.exit_code == 0
-            mock_close.assert_called_once_with(42)
+            issue_state.close.assert_called_once_with(42)
 
     def test_reject_explicit_issue_not_overridden_by_active_workspace(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
@@ -834,9 +879,7 @@ class TestReject:
 
         with (
             patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
-            patch("src.workspace.git.comment_on_issue_once"),
-            patch("src.workspace.git.unclaim_issue_strict"),
-            patch("src.workspace.git.close_issue_if_open") as mock_close,
+            _mock_terminal_issue() as issue_state,
         ):
             result = runner.invoke(
                 ws,
@@ -851,7 +894,7 @@ class TestReject:
                 ],
             )
             assert result.exit_code == 0
-            mock_close.assert_called_once_with(39)
+            issue_state.close.assert_called_once_with(39)
 
     def test_reject_slug_issue_mismatch_fails_fast(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
@@ -897,6 +940,25 @@ class TestReject:
             )
         )
         events: list[str] = []
+        refs = {"remote": TEST_HEAD_OID, "local": TEST_HEAD_OID}
+        pr_details = _test_pr_details(7, slug="acme", issue=42)
+        worktree_present = {"value": True}
+
+        def delete_remote(*_args, **_kwargs):
+            events.append("delete-remote")
+            refs["remote"] = None
+
+        def close_pr(_number):
+            events.append("close-pr")
+            pr_details["state"] = "CLOSED"
+
+        def remove_worktree(*_args, **_kwargs):
+            events.append("remove-worktree")
+            worktree_present["value"] = False
+
+        def delete_local(*_args, **_kwargs):
+            events.append("delete-local")
+            refs["local"] = None
 
         with (
             patch(
@@ -910,37 +972,42 @@ class TestReject:
                 ],
             ),
             patch("src.workspace.git.worktrees_dir", return_value=tmp_path / "worktrees"),
-            patch("src.workspace.git.managed_worktree_head_strict", return_value=TEST_HEAD_OID),
-            patch("src.workspace.git.authenticate_managed_worktree"),
             patch(
-                "src.workspace.git.close_pr_if_open",
-                side_effect=lambda number: events.append("close-pr"),
+                "src.workspace.git.managed_worktree_identity_strict",
+                side_effect=lambda *_args: (
+                    {"head": TEST_HEAD_OID, "dev": 1, "ino": 2}
+                    if worktree_present["value"]
+                    else None
+                ),
             ),
+            patch("src.workspace.git.authenticate_managed_worktree"),
+            patch("src.workspace.git.close_pr_if_open", side_effect=close_pr),
             patch("src.workspace.git.verify_recorded_pr"),
             patch(
+                "src.workspace.git.verify_recorded_pr_object",
+                side_effect=lambda *_args, **_kwargs: dict(pr_details),
+            ),
+            patch(
                 "src.workspace.git.remove_authenticated_worktree",
-                side_effect=lambda *args, **kwargs: events.append("remove-worktree"),
+                side_effect=remove_worktree,
             ),
             patch(
                 "src.workspace.git.delete_remote_branch_at_expected_oid",
-                side_effect=lambda *args, **kwargs: events.append("delete-remote"),
+                side_effect=delete_remote,
             ),
             patch(
-                "src.workspace.git.delete_local_branch_strict",
-                side_effect=lambda branch: events.append("delete-local"),
+                "src.workspace.git.remote_branch_oid_strict",
+                side_effect=lambda *_args: refs["remote"],
             ),
             patch(
-                "src.workspace.git.comment_on_issue_once",
-                side_effect=lambda *args: events.append("comment"),
+                "src.workspace.git.local_branch_oid_strict",
+                side_effect=lambda *_args: refs["local"],
             ),
             patch(
-                "src.workspace.git.unclaim_issue_strict",
-                side_effect=lambda issue: events.append("unclaim"),
+                "src.workspace.git.delete_local_branch_at_expected_oid",
+                side_effect=delete_local,
             ),
-            patch(
-                "src.workspace.git.close_issue_if_open",
-                side_effect=lambda issue: events.append("close-issue"),
-            ),
+            _mock_terminal_issue(claimed=True) as issue_state,
         ):
             result = CliRunner().invoke(
                 ws,
@@ -961,10 +1028,11 @@ class TestReject:
             "close-pr",
             "remove-worktree",
             "delete-local",
-            "unclaim",
+        ]
+        assert issue_state.events == [
             "comment",
-            "unclaim",
             "close-issue",
+            "unclaim",
         ]
         assert not workspace_exists("acme")
 
@@ -1158,14 +1226,9 @@ class TestTaskOutcomes:
     def test_task_escalate_cleans_and_records_terminal_follow_up(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         save_workspace(Workspace(slug="acme", issue=42))
-        comment = MagicMock()
-        close_issue = MagicMock()
-
         with (
             patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
-            patch("src.workspace.git.comment_on_issue_once", comment),
-            patch("src.workspace.git.unclaim_issue_strict"),
-            patch("src.workspace.git.close_issue_if_open", close_issue),
+            _mock_terminal_issue() as issue_state,
         ):
             result = CliRunner().invoke(
                 ws,
@@ -1183,16 +1246,21 @@ class TestTaskOutcomes:
 
         assert result.exit_code == 0, result.output
         assert not workspace_exists("acme")
-        marker, body = comment.call_args.args[1:]
+        marker, body = issue_state.comment.call_args.args[1:]
         assert marker == "<!-- resolver-outcome: escalated -->"
         assert "Needs authenticated browser support" in body
         assert "Add a credentialed monitor before retrying" in body
-        close_issue.assert_called_once_with(42)
+        issue_state.close.assert_called_once_with(42)
 
 
 class TestTaskComplete:
-    def test_task_complete_commits_kb_updates_after_submit(self, tmp_path, monkeypatch):
+    def test_task_complete_recovers_push_before_provenance_save(self, tmp_path, monkeypatch):
+        from src.workspace.commands import lifecycle
+        from src.workspace.commands.task import _finalize_workflow
+        from src.workspace.workflow import WorkflowState, _load_wf_from_disk, _save_wf_to_disk
+
         _patch_all(monkeypatch, tmp_path)
+        published_oid = "b" * 40
         ws_obj = Workspace(
             slug="test",
             issue=42,
@@ -1200,65 +1268,90 @@ class TestTaskComplete:
             branch="add-company/test",
             pr_provenance=_test_pr_provenance(10, issue=42),
         )
-        ws_obj.submit_state = {
-            "csv_written": True,
-            "validated": True,
-            "committed": True,
-            "pushed": True,
-            "pr_ready": True,
-        }
+        ws_obj.submit_state = {"pushed": True}
         save_workspace(ws_obj)
-        set_active_slug("test")
-
-        from src.workspace.workflow import WorkflowState, _load_wf_from_disk, _save_wf_to_disk
-
         _save_wf_to_disk("test", WorkflowState(current_step="reflect"))
+        state = {
+            "local": TEST_HEAD_OID,
+            "remote": TEST_HEAD_OID,
+            "dirty": True,
+            "draft": True,
+            "claimed": True,
+        }
 
-        with ExitStack() as stack:
-            stack.enter_context(
-                patch(
-                    "src.workspace.commands.lifecycle.is_local_mode",
-                    return_value=False,
-                )
-            )
-            stack.enter_context(
-                patch(
-                    "src.workspace.git.has_uncommitted_changes",
-                    return_value=True,
-                )
-            )
-            add_files = stack.enter_context(patch("src.workspace.git.add_files"))
-            commit = stack.enter_context(patch("src.workspace.git.commit"))
-            stack.enter_context(
-                patch(
-                    "src.workspace.git.is_ahead_of_remote",
-                    return_value=True,
-                )
-            )
-            push = stack.enter_context(patch("src.workspace.git.push_branch_at_expected_oid"))
-            stack.enter_context(
-                patch("src.workspace.commands.lifecycle._verify_workspace_pr_before_mutation")
-            )
-            stack.enter_context(
-                patch("src.workspace.commands.lifecycle._record_current_pr_provenance")
-            )
-            stack.enter_context(patch("src.workspace.git.mark_pr_ready"))
-            stack.enter_context(patch("src.workspace.git.verify_pr_ready"))
-            unclaim = stack.enter_context(patch("src.workspace.git.unclaim_issue_strict"))
+        def details(_number):
+            value = _test_pr_details(10, slug="test", issue=42)
+            value["headRefOid"] = state["remote"]
+            value["isDraft"] = state["draft"]
+            return value
 
-            runner = CliRunner()
-            result = runner.invoke(ws, ["task", "complete"])
+        def commit(_message):
+            state["local"] = published_oid
+            state["dirty"] = False
 
-        assert result.exit_code == 0
-        assert "Committed and pushed KB updates." in result.output
-        add_files.assert_called_once_with(["apps/crawler/src/workspace/kb/"])
-        assert "Add KB reflections for test" in commit.call_args[0][0]
-        assert "Refs #42" in commit.call_args[0][0]
-        push.assert_called_once_with("add-company/test", TEST_HEAD_OID, TEST_HEAD_OID)
-        unclaim.assert_called_once_with(42)
+        def push(*_args):
+            state["remote"] = published_oid
 
-        wf = _load_wf_from_disk("test")
-        assert wf.current_step == "done"
+        def ready(_number):
+            state["draft"] = False
+
+        def unclaim(_issue):
+            state["claimed"] = False
+
+        real_record = lifecycle._record_current_pr_provenance
+        record_calls = {"count": 0}
+
+        def record(*args, **kwargs):
+            record_calls["count"] += 1
+            if record_calls["count"] == 1:
+                raise RuntimeError("crash-after-kb-push")
+            return real_record(*args, **kwargs)
+
+        with (
+            patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
+            patch("src.workspace.commands.lifecycle._verify_workspace_pr_before_mutation"),
+            patch(
+                "src.workspace.commands.lifecycle._record_current_pr_provenance", side_effect=record
+            ),
+            patch(
+                "src.workspace.git.changed_paths_strict",
+                side_effect=lambda: (
+                    {"apps/crawler/src/workspace/kb/new.md"} if state["dirty"] else set()
+                ),
+            ),
+            patch(
+                "src.workspace.git.current_head_oid_strict",
+                side_effect=lambda **_kwargs: state["local"],
+            ),
+            patch("src.workspace.git.commit", side_effect=commit),
+            patch("src.workspace.git.add_files"),
+            patch("src.workspace.git.verify_single_commit_strict"),
+            patch(
+                "src.workspace.git.remote_branch_oid_strict",
+                side_effect=lambda *_args: state["remote"],
+            ),
+            patch("src.workspace.git.push_branch_at_expected_oid", side_effect=push) as push_mock,
+            patch("src.workspace.git.get_pr_details_strict", side_effect=details),
+            patch("src.workspace.git.mark_pr_ready", side_effect=ready),
+            patch(
+                "src.workspace.git.is_issue_claimed_strict", side_effect=lambda *_: state["claimed"]
+            ),
+            patch("src.workspace.git.unclaim_issue_strict", side_effect=unclaim),
+            patch("src.workspace.trace.upload_trace_to_hf", return_value=None),
+        ):
+            with pytest.raises(RuntimeError, match="crash-after-kb-push"):
+                _finalize_workflow("test")
+            journal = load_workspace("test").ready_state
+            assert journal["kb_publish_oid"] == published_oid
+            assert journal["attempts"]["kb_push"] is True
+            assert _load_wf_from_disk("test").current_step == "reflect"
+
+            _finalize_workflow("test")
+
+        push_mock.assert_called_once_with("add-company/test", published_oid, TEST_HEAD_OID)
+        assert _load_wf_from_disk("test").current_step == "done"
+        assert state["draft"] is False
+        assert state["claimed"] is False
 
 
 class TestDel:
@@ -1277,22 +1370,9 @@ class TestDel:
         )
         runner = CliRunner()
 
-        with (
-            patch("src.workspace.git.worktrees_dir", return_value=tmp_path / "worktrees"),
-            patch("src.workspace.git.managed_worktree_head_strict", return_value=TEST_HEAD_OID),
-            patch("src.workspace.git.authenticate_managed_worktree"),
-            patch("src.workspace.git.remove_authenticated_worktree"),
-            patch("src.workspace.git.verify_recorded_pr"),
-            patch("src.workspace.git.close_pr_if_open") as mock_close_pr,
-            patch("src.workspace.git.delete_remote_branch_at_expected_oid") as mock_del_branch,
-            patch("src.workspace.git.delete_local_branch_strict"),
-        ):
+        with patch("src.workspace.commands.lifecycle.is_local_mode", return_value=True):
             result = runner.invoke(ws, ["del", "test"])
             assert result.exit_code == 0
-            mock_close_pr.assert_called_once_with(10)
-            mock_del_branch.assert_called_once_with(
-                "add-company/test", TEST_HEAD_OID, absent_is_success=True
-            )
 
         assert not workspace_exists("test")
 
@@ -1311,16 +1391,7 @@ class TestDel:
         set_active_slug("test")
         runner = CliRunner()
 
-        with (
-            patch("src.workspace.git.worktrees_dir", return_value=tmp_path / "worktrees"),
-            patch("src.workspace.git.managed_worktree_head_strict", return_value=TEST_HEAD_OID),
-            patch("src.workspace.git.authenticate_managed_worktree"),
-            patch("src.workspace.git.remove_authenticated_worktree"),
-            patch("src.workspace.git.verify_recorded_pr"),
-            patch("src.workspace.git.close_pr_if_open"),
-            patch("src.workspace.git.delete_remote_branch_at_expected_oid"),
-            patch("src.workspace.git.delete_local_branch_strict"),
-        ):
+        with patch("src.workspace.commands.lifecycle.is_local_mode", return_value=True):
             result = runner.invoke(ws, ["del", "test"])
             assert result.exit_code == 0
 
@@ -1339,84 +1410,277 @@ class TestTerminalCleanupRecovery:
             worktree=str(tmp_path / "worktrees" / "acme"),
         )
 
-    @staticmethod
-    def _common(stack: ExitStack, tmp_path, failing: str):
-        operations = {
-            "remote": "src.workspace.git.delete_remote_branch_at_expected_oid",
-            "pr": "src.workspace.git.close_pr_if_open",
-            "worktree": "src.workspace.git.remove_authenticated_worktree",
-            "local": "src.workspace.git.delete_local_branch_strict",
-            "claim": "src.workspace.git.unclaim_issue_strict",
-        }
-        calls: dict[str, MagicMock] = {}
-        stack.enter_context(patch("src.workspace.git.verify_recorded_pr"))
-        stack.enter_context(
-            patch("src.workspace.git.worktrees_dir", return_value=tmp_path / "worktrees")
-        )
-        stack.enter_context(
-            patch("src.workspace.git.managed_worktree_head_strict", return_value=TEST_HEAD_OID)
-        )
-        stack.enter_context(patch("src.workspace.git.authenticate_managed_worktree"))
-        for name, target in operations.items():
-            side_effect = [RuntimeError(f"crash-{name}"), None] if name == failing else None
-            calls[name] = stack.enter_context(patch(target, side_effect=side_effect))
-        return calls
-
-    @pytest.mark.parametrize("failing", ["remote", "pr", "worktree", "local", "claim"])
+    @pytest.mark.parametrize(
+        "failing",
+        ["remote", "pr", "issue_close", "local", "data", "workspace", "claim"],
+    )
     def test_crash_at_every_transition_resumes_without_losing_journal(
         self, tmp_path, monkeypatch, failing
     ):
+        from src.csvtool import company_del as real_company_del
+        from src.workspace.commands import lifecycle
         from src.workspace.commands.lifecycle import _run_terminal_cleanup
 
         _patch_all(monkeypatch, tmp_path)
         _setup_csvs(tmp_path, companies="acme,Acme,,,,\n")
         workspace = self._workspace(tmp_path)
+        workspace.worktree = ""
         save_workspace(workspace)
+        outcome = {
+            "marker": "<!-- terminal-test -->",
+            "body": "<!-- terminal-test -->\nclosed",
+            "labels": [],
+            "close_issue": True,
+        }
+        state = {
+            "remote": TEST_HEAD_OID,
+            "local": TEST_HEAD_OID,
+            "pr": "OPEN",
+            "comment": False,
+            "issue": "OPEN",
+            "claim": True,
+        }
+        crashed: set[str] = set()
+        events: list[str] = []
 
-        with ExitStack() as stack:
-            calls = self._common(stack, tmp_path, failing)
+        def mutate(name, action):
+            events.append(name)
+            action()
+            if failing == name and name not in crashed:
+                crashed.add(name)
+                raise RuntimeError(f"crash-{name}")
+
+        def pr_details(*_args, **_kwargs):
+            details = _test_pr_details(7, slug="acme", issue=42)
+            details["state"] = state["pr"]
+            return details
+
+        real_delete_workspace = lifecycle.delete_workspace
+
+        with (
+            patch("src.workspace.git.verify_recorded_pr"),
+            patch("src.workspace.git.managed_worktree_identity_strict", return_value=None),
+            patch(
+                "src.workspace.git.remote_branch_oid_strict",
+                side_effect=lambda *_: state["remote"],
+            ),
+            patch(
+                "src.workspace.git.delete_remote_branch_at_expected_oid",
+                side_effect=lambda *_args, **_kwargs: mutate(
+                    "remote", lambda: state.__setitem__("remote", None)
+                ),
+            ),
+            patch(
+                "src.workspace.git.verify_recorded_pr_object",
+                side_effect=pr_details,
+            ),
+            patch(
+                "src.workspace.git.close_pr_if_open",
+                side_effect=lambda *_: mutate("pr", lambda: state.__setitem__("pr", "CLOSED")),
+            ),
+            patch(
+                "src.workspace.git.local_branch_oid_strict",
+                side_effect=lambda *_: state["local"],
+            ),
+            patch(
+                "src.workspace.git.delete_local_branch_at_expected_oid",
+                side_effect=lambda *_args, **_kwargs: mutate(
+                    "local", lambda: state.__setitem__("local", None)
+                ),
+            ),
+            patch(
+                "src.workspace.git.issue_has_comment_marker_strict",
+                side_effect=lambda *_: state["comment"],
+            ),
+            patch(
+                "src.workspace.git.comment_on_issue_once",
+                side_effect=lambda *_: mutate(
+                    "comment", lambda: state.__setitem__("comment", True)
+                ),
+            ),
+            patch(
+                "src.workspace.git.issue_state_and_labels_strict",
+                side_effect=lambda *_: (state["issue"], set()),
+            ),
+            patch(
+                "src.workspace.git.close_issue_if_open",
+                side_effect=lambda *_: mutate(
+                    "issue_close", lambda: state.__setitem__("issue", "CLOSED")
+                ),
+            ),
+            patch(
+                "src.workspace.git.is_issue_claimed_strict",
+                side_effect=lambda *_: state["claim"],
+            ),
+            patch(
+                "src.workspace.git.unclaim_issue_strict",
+                side_effect=lambda *_: mutate("claim", lambda: state.__setitem__("claim", False)),
+            ),
+            patch(
+                "src.csvtool.company_del",
+                side_effect=lambda slug: mutate("data", lambda: real_company_del(slug)),
+            ),
+            patch(
+                "src.workspace.commands.lifecycle.delete_workspace",
+                side_effect=lambda slug: mutate("workspace", lambda: real_delete_workspace(slug)),
+            ),
+        ):
             with pytest.raises(RuntimeError, match=f"crash-{failing}"):
-                _run_terminal_cleanup(load_workspace("acme"), local=False)
-            journal = load_workspace("acme").terminal_state
-            assert journal
-            attempt_key = {
-                "remote": "remote_delete_attempted",
-                "pr": "pr_close_attempted",
-                "worktree": "worktree_remove_attempted",
-                "local": "local_branch_remove_attempted",
-                "claim": "claim_release_attempted",
-            }[failing]
-            assert journal[attempt_key] is True
+                _run_terminal_cleanup(load_workspace("acme"), local=False, outcome=outcome)
+            journal, completed = lifecycle._load_terminal_journal("acme", issue=42)
+            assert journal is not None
+            if failing == "claim":
+                assert completed is True
 
-            _run_terminal_cleanup(load_workspace("acme"), local=False)
+            retry_ws = (
+                load_workspace("acme")
+                if workspace_exists("acme")
+                else Workspace(slug="acme", branch="add-company/acme", issue=42)
+            )
+            _run_terminal_cleanup(retry_ws, local=False, outcome=outcome)
 
         assert not workspace_exists("acme")
-        assert calls[failing].call_count == 2
+        assert state == {
+            "remote": None,
+            "local": None,
+            "pr": "CLOSED",
+            "comment": True,
+            "issue": "CLOSED",
+            "claim": False,
+        }
+        assert events[-1] == "claim"
 
-    def test_changed_remote_oid_remains_retryable_and_blocks_all_later_cleanup(
-        self, tmp_path, monkeypatch
-    ):
-        from src.workspace.commands.lifecycle import _run_terminal_cleanup
+    def test_changed_local_ref_blocks_exact_deletion(self, tmp_path, monkeypatch):
+        from src.workspace.commands import lifecycle
+
+        _patch_all(monkeypatch, tmp_path)
+        workspace = self._workspace(tmp_path)
+        workspace.worktree = ""
+        workspace.pr = None
+        workspace.pr_provenance = {}
+        workspace.issue = None
+        save_workspace(workspace)
+        local = {"oid": TEST_HEAD_OID}
+        with (
+            patch("src.workspace.git.remote_branch_oid_strict", return_value=None),
+            patch("src.workspace.git.managed_worktree_identity_strict", return_value=None),
+            patch("src.workspace.git.local_branch_oid_strict", side_effect=lambda *_: local["oid"]),
+        ):
+            lifecycle._initialize_terminal_journal(workspace, local=False, outcome=None)
+            local["oid"] = "b" * 40
+            with pytest.raises(WorkspaceError, match="Local branch changed"):
+                lifecycle._run_terminal_cleanup(workspace, local=False)
+
+    def test_repointed_local_ref_blocks_remote_mutation(self, tmp_path, monkeypatch):
+        from src.workspace.commands import lifecycle
 
         _patch_all(monkeypatch, tmp_path)
         workspace = self._workspace(tmp_path)
         workspace.worktree = ""
         save_workspace(workspace)
+        local = {"oid": TEST_HEAD_OID}
         with (
             patch("src.workspace.git.verify_recorded_pr"),
-            patch(
-                "src.workspace.git.delete_remote_branch_at_expected_oid",
-                side_effect=WorkspaceError("changed remote OID"),
-            ),
-            patch("src.workspace.git.close_pr_if_open") as close_pr,
-            patch("src.workspace.git.delete_local_branch_strict") as delete_local,
-            pytest.raises(WorkspaceError, match="changed remote OID"),
+            patch("src.workspace.git.remote_branch_oid_strict", return_value=TEST_HEAD_OID),
+            patch("src.workspace.git.managed_worktree_identity_strict", return_value=None),
+            patch("src.workspace.git.local_branch_oid_strict", side_effect=lambda *_: local["oid"]),
+            patch("src.workspace.git.is_issue_claimed_strict", return_value=True),
         ):
-            _run_terminal_cleanup(load_workspace("acme"), local=False)
+            lifecycle._initialize_terminal_journal(workspace, local=False, outcome=None)
 
-        assert load_workspace("acme").terminal_state["remote_delete_attempted"] is True
-        close_pr.assert_not_called()
-        delete_local.assert_not_called()
+        local["oid"] = "b" * 40
+        with (
+            patch(
+                "src.workspace.git.verify_recorded_pr_object",
+                return_value=_test_pr_details(7, slug="acme", issue=42),
+            ),
+            patch("src.workspace.git.local_branch_oid_strict", side_effect=lambda *_: local["oid"]),
+            patch("src.workspace.git.delete_remote_branch_at_expected_oid") as delete_remote,
+            pytest.raises(WorkspaceError, match="Local branch changed"),
+        ):
+            lifecycle._run_terminal_cleanup(workspace, local=False)
+        delete_remote.assert_not_called()
+
+    def test_tampered_terminal_schema_is_rejected_before_mutation(self, tmp_path, monkeypatch):
+        from src.workspace.commands import lifecycle
+
+        _patch_all(monkeypatch, tmp_path)
+        ws_obj = Workspace(slug="acme", branch="add-company/acme")
+        save_workspace(ws_obj)
+        with (
+            patch("src.workspace.git.remote_branch_oid_strict", return_value=None),
+            patch("src.workspace.git.managed_worktree_identity_strict", return_value=None),
+            patch("src.workspace.git.local_branch_oid_strict", return_value=None),
+        ):
+            lifecycle._initialize_terminal_journal(ws_obj, local=False, outcome=None)
+        pending = lifecycle._terminal_pending_path("acme")
+        data = pending.read_text() + "attacker_completion: true\n"
+        pending.write_text(data)
+        with pytest.raises(WorkspaceError, match="invalid exact schema"):
+            lifecycle._load_terminal_journal("acme")
+
+    def test_completed_receipt_does_not_block_later_issue_for_same_slug(
+        self, tmp_path, monkeypatch
+    ):
+        from src.workspace.commands import lifecycle
+
+        _patch_all(monkeypatch, tmp_path)
+        first = Workspace(slug="acme", issue=41)
+        save_workspace(first)
+        lifecycle._run_terminal_cleanup(first, local=True)
+        old, completed = lifecycle._load_terminal_journal("acme", issue=41)
+        assert old is not None and completed is True
+
+        second = Workspace(slug="acme", issue=42)
+        save_workspace(second)
+        new = lifecycle._initialize_terminal_journal(second, local=True, outcome=None)
+        assert new["journal_id"] != old["journal_id"]
+        pending, completed = lifecycle._load_terminal_journal("acme", issue=42)
+        assert pending == new
+        assert completed is False
+
+    def test_replaced_active_pointer_is_preserved(self, tmp_path, monkeypatch):
+        from src.workspace.commands import lifecycle
+
+        _patch_all(monkeypatch, tmp_path)
+        ws_obj = Workspace(slug="acme")
+        save_workspace(ws_obj)
+        set_active_slug("acme")
+        lifecycle._initialize_terminal_journal(ws_obj, local=True, outcome=None)
+        active = next((tmp_path / ".ws").glob("active*"))
+        active.unlink()
+        active.write_text("acme")
+
+        with pytest.raises(WorkspaceError, match="active pointer was replaced"):
+            lifecycle._run_terminal_cleanup(ws_obj, local=True)
+        assert active.read_text() == "acme"
+        assert workspace_exists("acme")
+
+    def test_active_pointer_unlink_crash_resumes(self, tmp_path, monkeypatch):
+        from src.workspace.commands import lifecycle
+        from src.workspace.safe_cleanup import unlink_child_at as real_unlink
+
+        _patch_all(monkeypatch, tmp_path)
+        ws_obj = Workspace(slug="acme")
+        save_workspace(ws_obj)
+        set_active_slug("acme")
+        crashed = {"value": False}
+
+        def unlink(*args, **kwargs):
+            real_unlink(*args, **kwargs)
+            if not crashed["value"]:
+                crashed["value"] = True
+                raise RuntimeError("crash-active-unlink")
+
+        with (
+            patch("src.workspace.safe_cleanup.unlink_child_at", side_effect=unlink),
+            pytest.raises(WorkspaceError, match="safely remove active pointer"),
+        ):
+            lifecycle._run_terminal_cleanup(ws_obj, local=True)
+
+        lifecycle._run_terminal_cleanup(load_workspace("acme"), local=True)
+        assert not workspace_exists("acme")
+        assert get_active_slug() is None
 
 
 class TestReadyRecovery:
@@ -1436,31 +1700,51 @@ class TestReadyRecovery:
             )
         )
         _save_wf_to_disk("test", WorkflowState(current_step="reflect"))
+        remote = {"oid": TEST_HEAD_OID}
+        draft = {"value": True}
+        claimed = {"value": True}
+
+        def details(_number):
+            value = _test_pr_details(10, slug="test", issue=42)
+            value["isDraft"] = draft["value"]
+            return value
+
+        ready_calls = {"count": 0}
+
+        def ready(_number):
+            ready_calls["count"] += 1
+            draft["value"] = False
+            if ready_calls["count"] == 1:
+                raise RuntimeError("offline")
+
         with (
             patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
-            patch("src.workspace.git.has_uncommitted_changes", return_value=False),
             patch("src.workspace.commands.lifecycle._verify_workspace_pr_before_mutation"),
+            patch("src.workspace.git.changed_paths_strict", return_value=set()),
             patch(
-                "src.workspace.git.mark_pr_ready",
-                side_effect=[RuntimeError("offline"), None],
-            ) as ready,
-            patch(
-                "src.workspace.git.verify_pr_ready",
-                side_effect=[WorkspaceError("still draft"), None],
+                "src.workspace.git.remote_branch_oid_strict", side_effect=lambda *_: remote["oid"]
             ),
-            patch("src.workspace.git.unclaim_issue_strict") as unclaim,
+            patch("src.workspace.git.get_pr_details_strict", side_effect=details),
+            patch("src.workspace.git.mark_pr_ready", side_effect=ready),
+            patch(
+                "src.workspace.git.is_issue_claimed_strict", side_effect=lambda *_: claimed["value"]
+            ),
+            patch(
+                "src.workspace.git.unclaim_issue_strict",
+                side_effect=lambda *_: claimed.__setitem__("value", False),
+            ) as unclaim,
+            patch("src.workspace.trace.upload_trace_to_hf", return_value=None),
         ):
             with pytest.raises(RuntimeError, match="offline"):
                 _finalize_workflow("test")
             assert _load_wf_from_disk("test").current_step == "reflect"
-            assert load_workspace("test").ready_state["ready_attempted"] is True
+            assert load_workspace("test").ready_state["attempts"]["ready"] is True
             unclaim.assert_not_called()
 
             _finalize_workflow("test")
 
-        assert ready.call_count == 2
+        assert ready_calls["count"] == 1
         assert _load_wf_from_disk("test").current_step == "done"
-        assert load_workspace("test").ready_state["claim_released"] is True
         unclaim.assert_called_once_with(42)
 
     def test_ambiguous_ready_response_is_reconciled_without_second_mutation(
@@ -1475,20 +1759,30 @@ class TestReadyRecovery:
                 slug="test",
                 pr=10,
                 branch="add-company/test",
-                pr_provenance=_test_pr_provenance(10),
+                pr_provenance=_test_pr_provenance(10, issue=None),
                 submit_state={"pushed": True},
             )
         )
         _save_wf_to_disk("test", WorkflowState(current_step="reflect"))
+        draft = {"value": True}
+
+        def details(_number):
+            value = _test_pr_details(10, slug="test", issue=None)
+            value["isDraft"] = draft["value"]
+            return value
+
+        def ready_side_effect(_number):
+            draft["value"] = False
+            raise RuntimeError("lost response")
+
         with (
             patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
-            patch("src.workspace.git.has_uncommitted_changes", return_value=False),
             patch("src.workspace.commands.lifecycle._verify_workspace_pr_before_mutation"),
-            patch(
-                "src.workspace.git.mark_pr_ready",
-                side_effect=RuntimeError("lost response"),
-            ) as ready,
-            patch("src.workspace.git.verify_pr_ready"),
+            patch("src.workspace.git.changed_paths_strict", return_value=set()),
+            patch("src.workspace.git.remote_branch_oid_strict", return_value=TEST_HEAD_OID),
+            patch("src.workspace.git.get_pr_details_strict", side_effect=details),
+            patch("src.workspace.git.mark_pr_ready", side_effect=ready_side_effect) as ready,
+            patch("src.workspace.trace.upload_trace_to_hf", return_value=None),
         ):
             with pytest.raises(RuntimeError, match="lost response"):
                 _finalize_workflow("test")
@@ -1496,6 +1790,46 @@ class TestReadyRecovery:
 
         ready.assert_called_once_with(10)
         assert _load_wf_from_disk("test").current_step == "done"
+
+    def test_tampered_ready_schema_blocks_all_mutations(self, tmp_path, monkeypatch):
+        from src.workspace.commands.task import _finalize_workflow
+        from src.workspace.workflow import WorkflowState, _save_wf_to_disk
+
+        _patch_all(monkeypatch, tmp_path)
+        ws_obj = Workspace(
+            slug="test",
+            pr=10,
+            branch="add-company/test",
+            pr_provenance=_test_pr_provenance(10),
+        )
+        ws_obj.ready_state = {
+            "version": 2,
+            "slug": "test",
+            "issue": None,
+            "pr": 10,
+            "branch": "add-company/test",
+            "initial_provenance": _test_pr_provenance(10),
+            "initial_head_oid": TEST_HEAD_OID,
+            "kb_required": False,
+            "kb_publish_oid": None,
+            "claim_initially_present": False,
+            "attempts": {
+                "kb_push": False,
+                "ready": False,
+                "workflow_done": False,
+                "claim_release": False,
+            },
+            "ready_confirmed": True,
+        }
+        save_workspace(ws_obj)
+        _save_wf_to_disk("test", WorkflowState(current_step="reflect"))
+        with (
+            patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
+            patch("src.workspace.git.mark_pr_ready") as ready,
+            pytest.raises(WorkspaceError, match="invalid exact schema"),
+        ):
+            _finalize_workflow("test")
+        ready.assert_not_called()
 
     def test_del_rejects_unrelated_recorded_pr_before_mutation(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)

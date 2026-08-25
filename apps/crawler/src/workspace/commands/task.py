@@ -27,12 +27,15 @@ instruction stream unless explicitly copied into the sources above.
 
 from __future__ import annotations
 
+import copy
 import os
+import re
 
 import click
 
 from src.workspace import log as action_log
 from src.workspace import output as out
+from src.workspace.errors import WorkspaceError
 from src.workspace.state import (
     get_active_slug,
     list_boards,
@@ -273,11 +276,7 @@ def task_next(notes: str):
         out.die("Workflow is in failed state. Use 'ws task fail' info or start over.")
 
     if wf.current_step == "done":
-        ws = load_workspace(slug)
-        if not ws.ready_state.get("claim_released"):
-            _finalize_workflow(slug)
-            return
-        out.info("task", "Workflow already complete.")
+        _finalize_workflow(slug)
         return
 
     if not notes or not notes.strip():
@@ -448,102 +447,302 @@ def _finalize_workflow(slug: str) -> None:
         _finalize_workflow_locked(slug)
 
 
-def _finalize_workflow_locked(slug: str) -> None:
-    from src.workspace.commands.lifecycle import (
-        _verify_workspace_pr_before_mutation,
-        is_local_mode,
-    )
+_READY_KEYS = {
+    "version",
+    "slug",
+    "issue",
+    "pr",
+    "branch",
+    "initial_provenance",
+    "initial_head_oid",
+    "kb_required",
+    "kb_publish_oid",
+    "claim_initially_present",
+    "attempts",
+}
+_READY_ATTEMPT_KEYS = {"kb_push", "ready", "workflow_done", "claim_release"}
+_PROVENANCE_KEYS = {
+    "number",
+    "head_ref_name",
+    "head_ref_oid",
+    "head_repository",
+    "base_repository",
+    "base_ref_name",
+    "author_login",
+    "is_draft",
+    "closing_issues",
+    "issue",
+    "slug",
+}
+_OID_RE = re.compile(r"[0-9a-f]{40}")
+_KB_PATH = "apps/crawler/src/workspace/kb/"
 
-    local = is_local_mode()
-    _persist_kb_updates_if_needed(slug)
-    ws = load_workspace(slug)
-    wf = _load_wf_from_disk(slug)
-    state = ws.ready_state
 
-    if not state:
+def _validate_ready_state(state: object, ws) -> dict:
+    if not isinstance(state, dict) or set(state) != _READY_KEYS:
+        raise WorkspaceError("Ready journal has an invalid exact schema")
+    if state.get("version") != 2 or state.get("slug") != ws.slug:
+        raise WorkspaceError("Ready journal version/slug is invalid")
+    if (state.get("issue"), state.get("pr"), state.get("branch")) != (
+        ws.issue,
+        ws.pr,
+        ws.branch,
+    ):
+        raise WorkspaceError("Ready journal no longer matches workspace ownership")
+    provenance = state.get("initial_provenance")
+    if state["pr"] is None:
+        if provenance != {} or state.get("initial_head_oid") is not None:
+            raise WorkspaceError("Ready journal has provenance without a PR")
+    elif not isinstance(provenance, dict) or set(provenance) != _PROVENANCE_KEYS:
+        raise WorkspaceError("Ready journal PR provenance schema is invalid")
+    if not isinstance(provenance, dict):
+        raise WorkspaceError("Ready journal provenance is invalid")
+    for key in ("initial_head_oid", "kb_publish_oid"):
+        value = state.get(key)
+        if value is not None and (not isinstance(value, str) or not _OID_RE.fullmatch(value)):
+            raise WorkspaceError(f"Ready journal {key} is invalid")
+    if state["pr"] is not None and state["initial_head_oid"] != provenance["head_ref_oid"]:
+        raise WorkspaceError("Ready journal head contradicts PR provenance")
+    if not isinstance(state.get("kb_required"), bool) or not isinstance(
+        state.get("claim_initially_present"), bool
+    ):
+        raise WorkspaceError("Ready journal boolean fields are invalid")
+    if not state["kb_required"] and state["kb_publish_oid"] is not None:
+        raise WorkspaceError("Ready journal records an unnecessary KB publication")
+    attempts = state.get("attempts")
+    if not isinstance(attempts, dict) or set(attempts) != _READY_ATTEMPT_KEYS:
+        raise WorkspaceError("Ready journal attempts schema is invalid")
+    if not all(isinstance(value, bool) for value in attempts.values()):
+        raise WorkspaceError("Ready journal attempts must be boolean")
+    expected_current = copy.deepcopy(provenance)
+    if state["kb_publish_oid"] is not None:
+        expected_current["head_ref_oid"] = state["kb_publish_oid"]
+    if ws.pr is not None and ws.pr_provenance not in (provenance, expected_current):
+        raise WorkspaceError("Workspace PR provenance contradicts ready journal")
+    return state
+
+
+def _save_ready_attempt(ws, state: dict, key: str) -> None:
+    if key not in _READY_ATTEMPT_KEYS:
+        raise WorkspaceError(f"Unknown ready attempt {key!r}")
+    if not state["attempts"][key]:
+        state["attempts"][key] = True
+        ws.ready_state = _validate_ready_state(state, ws)
+        save_workspace(ws)
+
+
+def _kb_commit_message(ws) -> str:
+    message = f"Add KB reflections for {ws.slug}"
+    if ws.issue:
+        message += f"\n\nRefs #{ws.issue}"
+    return message
+
+
+def _initialize_ready_state(ws, *, local: bool) -> dict:
+    if local:
+        provenance = copy.deepcopy(ws.pr_provenance) if ws.pr is not None else {}
         state = {
-            "version": 1,
+            "version": 2,
+            "slug": ws.slug,
+            "issue": ws.issue,
             "pr": ws.pr,
             "branch": ws.branch,
-            "head_ref_oid": ws.pr_provenance.get("head_ref_oid"),
-            "ready_attempted": False,
-            "ready_confirmed": local or ws.pr is None,
-            "workflow_done": False,
-            "claim_release_attempted": False,
-            "claim_released": local or ws.issue is None,
+            "initial_provenance": provenance,
+            "initial_head_oid": provenance.get("head_ref_oid"),
+            "kb_required": False,
+            "kb_publish_oid": None,
+            "claim_initially_present": False,
+            "attempts": {key: False for key in _READY_ATTEMPT_KEYS},
         }
-        ws.ready_state = state
-        save_workspace(ws)
-    elif (
-        state.get("pr") != ws.pr
-        or state.get("branch") != ws.branch
-        or state.get("head_ref_oid") != ws.pr_provenance.get("head_ref_oid")
-    ):
-        raise RuntimeError("Ready journal no longer matches workspace PR provenance")
+    else:
+        from src.workspace import git
+        from src.workspace.commands.lifecycle import _verify_workspace_pr_before_mutation
 
-    if ws.pr and not local and not state.get("ready_confirmed"):
+        if ws.pr is None:
+            raise WorkspaceError("Submitted workspace has no PR for ready publication")
+        _verify_workspace_pr_before_mutation(ws)
+        initial_head = git.current_head_oid_strict()
+        if initial_head != ws.pr_provenance.get("head_ref_oid"):
+            raise WorkspaceError("Local HEAD contradicts the reviewed PR head")
+        changed = git.changed_paths_strict()
+        if any(path != _KB_PATH.rstrip("/") and not path.startswith(_KB_PATH) for path in changed):
+            raise WorkspaceError("Ready publication found changes outside the KB directory")
+        state = {
+            "version": 2,
+            "slug": ws.slug,
+            "issue": ws.issue,
+            "pr": ws.pr,
+            "branch": ws.branch,
+            "initial_provenance": copy.deepcopy(ws.pr_provenance),
+            "initial_head_oid": initial_head,
+            "kb_required": bool(changed),
+            "kb_publish_oid": None,
+            "claim_initially_present": bool(ws.issue and git.is_issue_claimed_strict(ws.issue)),
+            "attempts": {key: False for key in _READY_ATTEMPT_KEYS},
+        }
+    ws.ready_state = _validate_ready_state(state, ws)
+    save_workspace(ws)
+    return state
+
+
+def _publish_journaled_kb(ws, state: dict) -> None:
+    from src.workspace import git
+    from src.workspace.commands.lifecycle import _record_current_pr_provenance
+
+    initial = state["initial_head_oid"]
+    publish = state["kb_publish_oid"]
+    message = _kb_commit_message(ws)
+    current = git.current_head_oid_strict()
+    changed = git.changed_paths_strict()
+    if publish is None:
+        if current == initial:
+            if not changed or any(
+                path != _KB_PATH.rstrip("/") and not path.startswith(_KB_PATH) for path in changed
+            ):
+                raise WorkspaceError("Journaled KB changes disappeared or changed scope")
+            git.add_files([_KB_PATH])
+            git.commit(message)
+            current = git.current_head_oid_strict()
+        elif changed:
+            raise WorkspaceError("KB commit recovery found additional working-tree changes")
+        git.verify_single_commit_strict(
+            current,
+            parent_oid=initial,
+            allowed_prefix=_KB_PATH,
+            message=message,
+        )
+        state["kb_publish_oid"] = current
+        ws.ready_state = _validate_ready_state(state, ws)
+        save_workspace(ws)
+        publish = current
+    else:
+        if current != publish or changed:
+            raise WorkspaceError("Local KB publication state contradicts ready journal")
+        git.verify_single_commit_strict(
+            publish,
+            parent_oid=initial,
+            allowed_prefix=_KB_PATH,
+            message=message,
+        )
+
+    remote = git.remote_branch_oid_strict(ws.branch)
+    if remote == initial:
+        _save_ready_attempt(ws, state, "kb_push")
+        git.push_branch_at_expected_oid(ws.branch, publish, initial)
+    elif remote == publish:
+        if not state["attempts"]["kb_push"]:
+            raise WorkspaceError("KB commit appeared remotely without a journaled push")
+    else:
+        raise WorkspaceError("Remote branch contradicts ready KB publication")
+    if git.remote_branch_oid_strict(ws.branch) != publish:
+        raise WorkspaceError("KB commit was not published at the exact journaled OID")
+
+    if ws.pr_provenance == state["initial_provenance"]:
+        _record_current_pr_provenance(
+            ws,
+            require_current_actor=False,
+            expected_head_oid=publish,
+        )
+    expected = copy.deepcopy(state["initial_provenance"])
+    expected["head_ref_oid"] = publish
+    if ws.pr_provenance != expected:
+        raise WorkspaceError("PR provenance did not reconcile to the KB publication")
+    out.info("kb", "Committed and pushed KB updates.")
+
+
+def _finalize_workflow_locked(slug: str) -> None:
+    from src.workspace.commands.lifecycle import is_local_mode
+
+    local = is_local_mode()
+    ws = load_workspace(slug)
+    wf = _load_wf_from_disk(slug)
+    state = (
+        _initialize_ready_state(ws, local=local)
+        if not ws.ready_state
+        else _validate_ready_state(ws.ready_state, ws)
+    )
+
+    if not local:
         from src.workspace import git
 
-        if state.get("ready_attempted"):
-            try:
-                git.verify_pr_ready(
-                    ws.pr_provenance,
-                    pr_number=ws.pr,
-                    branch=ws.branch,
-                    issue=ws.issue,
-                    slug=ws.slug,
-                )
-            except Exception:
-                # A retry is authorized only if the exact original draft is
-                # still present. Any changed head/provenance remains fatal.
-                _verify_workspace_pr_before_mutation(ws)
-                git.mark_pr_ready(ws.pr)
+        if ws.pr is None:
+            raise WorkspaceError("Ready journal workspace lost its PR number")
+        if state["kb_required"]:
+            _publish_journaled_kb(ws, state)
         else:
-            _verify_workspace_pr_before_mutation(ws)
-            state["ready_attempted"] = True
-            save_workspace(ws)
-            git.mark_pr_ready(ws.pr)
-        git.verify_pr_ready(
-            ws.pr_provenance,
-            pr_number=ws.pr,
-            branch=ws.branch,
-            issue=ws.issue,
-            slug=ws.slug,
-        )
-        state["ready_confirmed"] = True
-        save_workspace(ws)
-        out.info("github", f"PR #{ws.pr} marked ready for review")
+            if git.changed_paths_strict():
+                raise WorkspaceError("Working tree changed after ready journaling")
+            if git.current_head_oid_strict() != state["initial_head_oid"]:
+                raise WorkspaceError("Local HEAD changed after ready journaling")
+            if git.remote_branch_oid_strict(ws.branch) != state["initial_head_oid"]:
+                raise WorkspaceError("Remote branch changed after ready journaling")
 
-    if not state.get("workflow_done"):
+        effective = copy.deepcopy(state["initial_provenance"])
+        if state["kb_publish_oid"] is not None:
+            effective["head_ref_oid"] = state["kb_publish_oid"]
+        if ws.pr_provenance != effective:
+            raise WorkspaceError("Workspace provenance does not match ready publication")
+        details = git.get_pr_details_strict(ws.pr)
+        if details.get("state") != "OPEN":
+            raise WorkspaceError("Ready journal PR is no longer open")
+        current_provenance = git.pr_provenance(details, issue=ws.issue, slug=ws.slug)
+        if details.get("isDraft") is True:
+            if current_provenance != effective:
+                raise WorkspaceError("Draft PR identity changed during ready publication")
+            _save_ready_attempt(ws, state, "ready")
+            git.mark_pr_ready(ws.pr)
+            git.verify_pr_ready(
+                effective,
+                pr_number=ws.pr,
+                branch=ws.branch,
+                issue=ws.issue,
+                slug=ws.slug,
+            )
+            out.info("github", f"PR #{ws.pr} marked ready for review")
+        elif details.get("isDraft") is False:
+            if not state["attempts"]["ready"]:
+                raise WorkspaceError("PR became ready without a journaled attempt")
+            git.verify_pr_ready(
+                effective,
+                pr_number=ws.pr,
+                branch=ws.branch,
+                issue=ws.issue,
+                slug=ws.slug,
+            )
+        else:
+            raise WorkspaceError("PR draft state is invalid")
+
+    if wf.current_step == "reflect":
+        _save_ready_attempt(ws, state, "workflow_done")
         wf.current_step = "done"
         _save_wf_to_disk(slug, wf)
-        state["workflow_done"] = True
-        save_workspace(ws)
+        wf = _load_wf_from_disk(slug)
+    elif wf.current_step == "done":
+        if not state["attempts"]["workflow_done"]:
+            raise WorkspaceError("Workflow became done without a journaled transition")
+    else:
+        raise WorkspaceError(f"Cannot finalize workflow from {wf.current_step!r}")
+    if wf.current_step != "done":
+        raise WorkspaceError("Workflow completion did not persist")
 
-    if ws.issue and not local and not state.get("claim_released"):
-        from src.workspace.git import unclaim_issue_strict
+    claim_before_bookkeeping = False
+    if ws.issue and not local:
+        from src.workspace import git
 
-        if not state.get("claim_release_attempted"):
-            state["claim_release_attempted"] = True
-            save_workspace(ws)
-        unclaim_issue_strict(ws.issue)
-        state["claim_released"] = True
-        save_workspace(ws)
+        claim_before_bookkeeping = git.is_issue_claimed_strict(ws.issue)
+        if state["claim_initially_present"]:
+            if not claim_before_bookkeeping:
+                if not state["attempts"]["claim_release"]:
+                    raise WorkspaceError("Issue claim disappeared without a journaled release")
+                out.info("task", "Workflow already complete.")
+                return
+        elif claim_before_bookkeeping:
+            raise WorkspaceError("A new issue claim appeared during ready finalization")
 
-    # Log completion (timestamp used for transcript discovery)
+    # Publish local/trace bookkeeping before claim release, which is the last
+    # lifecycle mutation.
     action_log.append(ws_log_path(slug), "complete", True, "Workflow complete")
-
-    out.info("task", "Workflow complete! Nice work. Do not pick another issue — stop here.")
-
-    # Print summary of reflections
     non_none = [r for r in wf.reflections if r.get("notes", "none") != "none"]
-    if non_none:
-        print()
-        out.plain("summary", f"{len(non_none)} reflection(s) recorded during this run.")
-
-    # The Hetzner runner exports the complete root + subagent session tree from
-    # its terminal path, after any completion/rejection/failure outcome. Keep
-    # the legacy inline exporter only for ws sessions outside that runner.
     if not os.environ.get("JOBSEEK_CODEX_RUN_ID"):
         try:
             from src.workspace.trace import upload_trace_to_hf
@@ -556,6 +755,21 @@ def _finalize_workflow_locked(slug: str) -> None:
         except Exception as exc:
             out.warn("trace", f"Could not upload trace: {exc}")
 
+    if ws.issue and not local and claim_before_bookkeeping:
+        from src.workspace import git
+
+        _save_ready_attempt(ws, state, "claim_release")
+        claimed = git.is_issue_claimed_strict(ws.issue)
+        if claimed:
+            git.unclaim_issue_strict(ws.issue)
+            if git.is_issue_claimed_strict(ws.issue):
+                raise WorkspaceError("Issue claim survived ready finalization")
+
+    out.info("task", "Workflow complete! Nice work. Do not pick another issue — stop here.")
+    if non_none:
+        print()
+        out.plain("summary", f"{len(non_none)} reflection(s) recorded during this run.")
+
 
 @task.command(name="complete")
 def task_complete():
@@ -564,10 +778,6 @@ def task_complete():
     wf = _load_wf_from_disk(slug)
 
     if wf.current_step == "done":
-        ws = load_workspace(slug)
-        if ws.ready_state.get("claim_released"):
-            out.info("task", "Workflow already complete.")
-            return
         _finalize_workflow(slug)
         return
 
@@ -622,6 +832,7 @@ def task_escalate(issue: int | None, reason: str, follow_up: str):
     slug, ws, issue = _resolve_outcome_workspace(slug=None, issue=issue)
     if not issue:
         out.die("Provide --issue or run from a workspace with a linked issue")
+    assert issue is not None
 
     marker = "<!-- resolver-outcome: escalated -->"
     body = (
@@ -631,15 +842,22 @@ def task_escalate(issue: int | None, reason: str, follow_up: str):
         f"Follow-up: {follow_up}"
     )
     local = is_local_mode()
-    _cleanup_resolver_artifacts(issue=issue, slug=slug, ws=ws, local=local)
+    outcome = {
+        "marker": marker,
+        "body": body,
+        "labels": [],
+        "close_issue": True,
+    }
+    _cleanup_resolver_artifacts(
+        issue=issue,
+        slug=slug,
+        ws=ws,
+        local=local,
+        outcome=outcome,
+    )
     if local:
         out.warn("github", "Local mode — skipping escalation comment and issue close")
     else:
-        from src.workspace import git
-
-        git.comment_on_issue_once(issue, marker, body)
-        git.unclaim_issue_strict(issue)
-        git.close_issue_if_open(issue)
         out.info("github", f"Escalated and closed issue #{issue}")
     out.info("task", "Done. Do not pick another issue — stop here.")
 
@@ -756,48 +974,6 @@ def _read_raw_template(name: str) -> str:
 
 
 # ── Display helpers ──────────────────────────────────────────────────
-
-
-def _persist_kb_updates_if_needed(slug: str) -> None:
-    """Commit/push KB updates created during reflection after submit."""
-    from src.workspace.commands.lifecycle import is_local_mode
-
-    if is_local_mode():
-        return
-
-    ws = load_workspace(slug)
-    if not ws.submit_state.get("pushed"):
-        return
-
-    from src.workspace import git
-    from src.workspace.commands.lifecycle import (
-        _record_current_pr_provenance,
-        _verify_workspace_pr_before_mutation,
-    )
-
-    kb_path = "apps/crawler/src/workspace/kb/"
-    if not git.has_uncommitted_changes([kb_path]):
-        return
-
-    if ws.pr is None:
-        raise RuntimeError("Submitted workspace has no PR for KB publication")
-    _verify_workspace_pr_before_mutation(ws)
-    expected_remote_oid = str(ws.pr_provenance["head_ref_oid"])
-
-    git.add_files([kb_path])
-    commit_msg = f"Add KB reflections for {ws.slug}"
-    if ws.issue:
-        commit_msg += f"\n\nRefs #{ws.issue}"
-    git.commit(commit_msg)
-    if git.is_ahead_of_remote():
-        local_oid = git.current_head_oid_strict()
-        git.push_branch_at_expected_oid(ws.branch, local_oid, expected_remote_oid)
-        _record_current_pr_provenance(
-            ws,
-            require_current_actor=False,
-            expected_head_oid=local_oid,
-        )
-    out.info("kb", "Committed and pushed KB updates.")
 
 
 def _print_step_header(step, wf: WorkflowState, boards: list) -> None:

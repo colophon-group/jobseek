@@ -19,11 +19,13 @@ from src.workspace.git import (
     create_draft_pr,
     current_branch,
     delete_branch_at_expected_oid,
+    delete_local_branch_at_expected_oid,
     delete_remote_branch_at_expected_oid,
     ensure_clone,
     find_open_pr_for_branch,
     pr_provenance,
     push_branch_at_expected_oid,
+    remove_authenticated_worktree,
     sync_branch_with_main,
     validate_pr_attachment,
     verify_recorded_pr,
@@ -440,6 +442,160 @@ class TestAuthenticatedWorktreeRemoval:
             pytest.raises(WorkspaceError, match="unexpected branch"),
         ):
             authenticate_managed_worktree(target, "add-company/acme", TEST_OID)
+
+    def test_quarantines_exact_inode_and_prunes_registration(self, tmp_path, monkeypatch):
+        root = tmp_path / "worktrees"
+        target = root / "acme"
+        target.mkdir(parents=True)
+        (target / "owned.txt").write_text("delete me")
+        identity = target.stat()
+        registration = {
+            target: {
+                "head": TEST_OID,
+                "branch": "refs/heads/add-company/acme",
+                "locked": False,
+            }
+        }
+        monkeypatch.setattr("src.workspace.git.worktrees_dir", lambda: root)
+        with (
+            patch(
+                "src.workspace.git._registered_worktrees_strict",
+                side_effect=[registration, {}],
+            ),
+            patch("src.workspace.git._remove_worktree_admin_strict"),
+            patch("src.workspace.git._run"),
+        ):
+            remove_authenticated_worktree(
+                target,
+                "add-company/acme",
+                TEST_OID,
+                expected_dev=identity.st_dev,
+                expected_ino=identity.st_ino,
+            )
+        assert not target.exists()
+        assert list(root.iterdir()) == []
+
+    def test_retry_preserves_replacement_after_quarantine_crash(self, tmp_path, monkeypatch):
+        root = tmp_path / "worktrees"
+        target = root / "acme"
+        target.mkdir(parents=True)
+        (target / "owned.txt").write_text("original")
+        identity = target.stat()
+        registration = {
+            target: {
+                "head": TEST_OID,
+                "branch": "refs/heads/add-company/acme",
+                "locked": False,
+            }
+        }
+        monkeypatch.setattr("src.workspace.git.worktrees_dir", lambda: root)
+        with (
+            patch("src.workspace.git._registered_worktrees_strict", return_value=registration),
+            patch(
+                "src.workspace.safe_cleanup.safe_rmtree_child",
+                side_effect=RuntimeError("crash-after-quarantine"),
+            ),
+            pytest.raises(RuntimeError, match="crash-after-quarantine"),
+        ):
+            remove_authenticated_worktree(
+                target,
+                "add-company/acme",
+                TEST_OID,
+                expected_dev=identity.st_dev,
+                expected_ino=identity.st_ino,
+            )
+
+        target.mkdir()
+        (target / "keep.txt").write_text("replacement")
+        with (
+            patch("src.workspace.git._registered_worktrees_strict", return_value=registration),
+            pytest.raises(WorkspaceError, match="both exist"),
+        ):
+            remove_authenticated_worktree(
+                target,
+                "add-company/acme",
+                TEST_OID,
+                expected_dev=identity.st_dev,
+                expected_ino=identity.st_ino,
+                absent_is_success=True,
+            )
+        assert (target / "keep.txt").read_text() == "replacement"
+
+    def test_removes_only_matching_git_admin_directory(self, tmp_path, monkeypatch):
+        from src.workspace.git import _remove_worktree_admin_strict
+
+        repo = tmp_path / "repo"
+        target = tmp_path / "worktrees" / "acme"
+        quarantine = tmp_path / "worktrees" / ".quarantine"
+        repo.mkdir()
+        target.mkdir(parents=True)
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        admin_root = repo / ".git" / "worktrees"
+        owned = admin_root / "acme"
+        unrelated = admin_root / "other"
+        owned.mkdir(parents=True)
+        unrelated.mkdir()
+        (owned / "gitdir").write_text(f"{target / '.git'}\n")
+        (owned / "HEAD").write_text("ref: refs/heads/add-company/acme\n")
+        (unrelated / "gitdir").write_text(f"{tmp_path / 'worktrees' / 'other' / '.git'}\n")
+        (unrelated / "HEAD").write_text("ref: refs/heads/add-company/other\n")
+        (unrelated / "keep.txt").write_text("preserve")
+        monkeypatch.setattr("src.workspace.git._MANAGED_REPO", repo)
+
+        _remove_worktree_admin_strict(
+            target,
+            quarantine,
+            branch="add-company/acme",
+            missing_ok=False,
+        )
+        assert not owned.exists()
+        assert (unrelated / "keep.txt").read_text() == "preserve"
+
+
+class TestExactLocalBranchDeletion:
+    def test_repointed_branch_is_preserved(self, tmp_path, monkeypatch):
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
+        subprocess.run(
+            ["git", "-C", str(repo), "config", "user.email", "test@example.com"],
+            check=True,
+        )
+        (repo / "one.txt").write_text("one")
+        subprocess.run(["git", "-C", str(repo), "add", "one.txt"], check=True)
+        subprocess.run(["git", "-C", str(repo), "commit", "-qm", "one"], check=True)
+        first = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        subprocess.run(["git", "-C", str(repo), "branch", "add-company/acme"], check=True)
+        (repo / "two.txt").write_text("two")
+        subprocess.run(["git", "-C", str(repo), "add", "two.txt"], check=True)
+        subprocess.run(["git", "-C", str(repo), "commit", "-qm", "two"], check=True)
+        second = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        subprocess.run(
+            ["git", "-C", str(repo), "branch", "-f", "add-company/acme", second],
+            check=True,
+        )
+        monkeypatch.setattr("src.workspace.git._MANAGED_REPO", repo)
+
+        with pytest.raises(WorkspaceError, match="changed"):
+            delete_local_branch_at_expected_oid("add-company/acme", first)
+        current = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", "add-company/acme"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        assert current == second
 
 
 class TestCompanyLifecycleLock:

@@ -5,11 +5,16 @@ from __future__ import annotations
 import copy
 import json
 import os
+import re
 import shutil
+import stat
+import uuid
 from datetime import UTC, datetime
 from functools import wraps
+from pathlib import Path
 
 import click
+import yaml
 
 from src.shared.constants import SLUG_RE, get_data_dir
 from src.shared.csv_io import read_csv
@@ -19,7 +24,6 @@ from src.workspace.errors import CsvToolError, WorkspaceError
 from src.workspace.state import (
     Board,
     Workspace,
-    clear_active_slug,
     delete_workspace,
     get_active_slug,
     list_boards,
@@ -642,6 +646,7 @@ def reject(slug: str | None, issue: int | None, reason: str, message: str):
     slug, ws, issue = _resolve_outcome_workspace(slug=slug, issue=issue)
     if not issue:
         out.die("Provide --issue or a workspace slug with a linked issue")
+    assert issue is not None
 
     body = (
         f"<!-- validation-failed: {reason} -->\n"
@@ -655,22 +660,25 @@ def reject(slug: str | None, issue: int | None, reason: str, message: str):
         if reason in ("duplicate", "subsidiary"):
             out.plain("github", f"Would add {reason!r} label to issue #{issue}")
         out.plain("github", f"Would close issue #{issue}")
-    else:
-        from src.workspace import git
-
-        _cleanup_resolver_artifacts(issue=issue, slug=slug, ws=ws, local=False)
-        git.comment_on_issue_once(issue, f"<!-- validation-failed: {reason} -->", body)
-        if reason in ("duplicate", "subsidiary"):
-            git.add_label_to_issue(issue, reason)
-        git.unclaim_issue_strict(issue)
-        git.close_issue_if_open(issue)
+    labels = [reason] if reason in ("duplicate", "subsidiary") else []
+    outcome = {
+        "marker": f"<!-- validation-failed: {reason} -->",
+        "body": body,
+        "labels": labels,
+        "close_issue": True,
+    }
+    _cleanup_resolver_artifacts(
+        issue=issue,
+        slug=slug,
+        ws=ws,
+        local=local,
+        outcome=outcome,
+    )
+    if not local:
         out.info("github", f"Commented on issue #{issue} (validation-failed: {reason})")
         out.info("github", f"Closed issue #{issue}")
 
     out.info("task", "Done. Do not pick another issue — stop here.")
-
-    if local:
-        _cleanup_resolver_artifacts(issue=issue, slug=slug, ws=ws, local=True)
 
 
 def _resolve_outcome_workspace(
@@ -696,6 +704,9 @@ def _resolve_outcome_workspace(
             out.die(f"Multiple workspaces match issue #{issue}: {choices}")
         if matches:
             return matches[0].slug, matches[0], issue
+        journal_slug = _find_terminal_slug_for_issue(issue)
+        if journal_slug is not None:
+            return journal_slug, None, issue
         return None, None, issue
 
     active = get_active_slug()
@@ -705,12 +716,299 @@ def _resolve_outcome_workspace(
     return None, None, None
 
 
+_TERMINAL_ATTEMPT_KEYS = {
+    "remote_delete",
+    "pr_close",
+    "issue_comment",
+    "issue_labels",
+    "issue_close",
+    "worktree_remove",
+    "local_branch_remove",
+    "data_remove",
+    "active_clear",
+    "workspace_remove",
+}
+_TERMINAL_JOURNAL_KEYS = {
+    "version",
+    "journal_id",
+    "slug",
+    "branch",
+    "issue",
+    "pr",
+    "pr_provenance",
+    "expected_remote_oid",
+    "worktree",
+    "worktree_head",
+    "worktree_dev",
+    "worktree_ino",
+    "local_branch_oid",
+    "data_cleanup_required",
+    "data_initially_present",
+    "workspace_was_present",
+    "active_entries",
+    "claim_initially_present",
+    "outcome",
+    "attempts",
+}
+_OUTCOME_KEYS = {"marker", "body", "labels", "close_issue"}
+
+
+def _terminal_journal_dir() -> Path:
+    from src.shared.constants import get_workspace_dir
+
+    path = get_workspace_dir() / ".terminal-lifecycle"
+    path.mkdir(parents=True, exist_ok=True)
+    mode = path.lstat().st_mode
+    if stat.S_ISLNK(mode) or not stat.S_ISDIR(mode):
+        raise WorkspaceError(f"Terminal journal root is unsafe: {path}")
+    return path
+
+
+def _terminal_pending_path(slug: str) -> Path:
+    if not SLUG_RE.fullmatch(slug):
+        raise WorkspaceError(f"Invalid terminal journal slug: {slug!r}")
+    return _terminal_journal_dir() / f"{slug}.pending.yaml"
+
+
+def _terminal_completed_path(journal: dict) -> Path:
+    return _terminal_journal_dir() / f"{journal['slug']}.{journal['journal_id']}.completed.yaml"
+
+
+def _validate_terminal_journal(data: object) -> dict:
+    from src.workspace.git import _OID_RE
+
+    if not isinstance(data, dict) or set(data) != _TERMINAL_JOURNAL_KEYS:
+        raise WorkspaceError("Terminal journal has an invalid exact schema")
+    if data.get("version") != 1 or not isinstance(data.get("slug"), str):
+        raise WorkspaceError("Terminal journal version/slug is invalid")
+    if not isinstance(data.get("journal_id"), str) or not re.fullmatch(
+        r"[0-9a-f]{32}", data["journal_id"]
+    ):
+        raise WorkspaceError("Terminal journal ID is invalid")
+    if not SLUG_RE.fullmatch(data["slug"]):
+        raise WorkspaceError("Terminal journal slug is invalid")
+    branch = data.get("branch")
+    if not isinstance(branch, str) or branch not in {
+        f"add-company/{data['slug']}",
+        f"fix-crawler/{data['slug']}",
+        "",
+    }:
+        raise WorkspaceError("Terminal journal branch is invalid")
+    if data.get("issue") is not None and not isinstance(data["issue"], int):
+        raise WorkspaceError("Terminal journal issue is invalid")
+    if data.get("pr") is not None and not isinstance(data["pr"], int):
+        raise WorkspaceError("Terminal journal PR is invalid")
+    for key in ("expected_remote_oid", "worktree_head", "local_branch_oid"):
+        value = data.get(key)
+        if value is not None and (not isinstance(value, str) or not _OID_RE.fullmatch(value)):
+            raise WorkspaceError(f"Terminal journal {key} is invalid")
+    worktree_fields = (
+        data.get("worktree"),
+        data.get("worktree_head"),
+        data.get("worktree_dev"),
+        data.get("worktree_ino"),
+    )
+    if any(value is not None for value in worktree_fields) and not (
+        isinstance(worktree_fields[0], str)
+        and isinstance(worktree_fields[1], str)
+        and isinstance(worktree_fields[2], int)
+        and isinstance(worktree_fields[3], int)
+        and worktree_fields[2] >= 0
+        and worktree_fields[3] > 0
+    ):
+        raise WorkspaceError("Terminal journal worktree identity is incomplete")
+    for key in (
+        "data_cleanup_required",
+        "data_initially_present",
+        "workspace_was_present",
+        "claim_initially_present",
+    ):
+        if not isinstance(data.get(key), bool):
+            raise WorkspaceError(f"Terminal journal {key} must be boolean")
+    active_entries = data.get("active_entries")
+    if not isinstance(active_entries, list):
+        raise WorkspaceError("Terminal journal active_entries is invalid")
+    for entry in active_entries:
+        if (
+            not isinstance(entry, dict)
+            or set(entry) != {"path", "dev", "ino"}
+            or not isinstance(entry["path"], str)
+            or not isinstance(entry["dev"], int)
+            or not isinstance(entry["ino"], int)
+            or entry["dev"] < 0
+            or entry["ino"] <= 0
+        ):
+            raise WorkspaceError("Terminal journal active entry is invalid")
+    active_paths = [entry["path"] for entry in active_entries]
+    if len(active_paths) != len(set(active_paths)):
+        raise WorkspaceError("Terminal journal active entries contain duplicate paths")
+    outcome = data.get("outcome")
+    if outcome is not None:
+        if not isinstance(data["issue"], int):
+            raise WorkspaceError("Terminal journal outcome has no issue")
+        if not isinstance(outcome, dict) or set(outcome) != _OUTCOME_KEYS:
+            raise WorkspaceError("Terminal journal outcome schema is invalid")
+        if not all(isinstance(outcome.get(key), str) for key in ("marker", "body")):
+            raise WorkspaceError("Terminal journal outcome text is invalid")
+        if not isinstance(outcome.get("labels"), list) or not all(
+            isinstance(label, str) for label in outcome["labels"]
+        ):
+            raise WorkspaceError("Terminal journal outcome labels are invalid")
+        if len(outcome["labels"]) != len(set(outcome["labels"])):
+            raise WorkspaceError("Terminal journal outcome labels contain duplicates")
+        if not isinstance(outcome.get("close_issue"), bool):
+            raise WorkspaceError("Terminal journal outcome close flag is invalid")
+    attempts = data.get("attempts")
+    if not isinstance(attempts, dict) or set(attempts) != _TERMINAL_ATTEMPT_KEYS:
+        raise WorkspaceError("Terminal journal attempts schema is invalid")
+    if not all(isinstance(value, bool) for value in attempts.values()):
+        raise WorkspaceError("Terminal journal attempts must be boolean")
+    provenance = data.get("pr_provenance")
+    if data["pr"] is None:
+        if provenance != {} or data["expected_remote_oid"] is not None:
+            raise WorkspaceError("Terminal journal has remote provenance without a PR")
+    elif not isinstance(provenance, dict) or not provenance:
+        raise WorkspaceError("Terminal journal is missing PR provenance")
+    return data
+
+
+def _read_terminal_journal(path: Path) -> dict:
+    try:
+        mode = path.lstat().st_mode
+    except FileNotFoundError:
+        raise
+    if stat.S_ISLNK(mode) or not stat.S_ISREG(mode):
+        raise WorkspaceError(f"Terminal journal path is unsafe: {path}")
+    try:
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        try:
+            opened = os.fstat(fd)
+            expected = path.lstat()
+            if not stat.S_ISREG(opened.st_mode) or (opened.st_dev, opened.st_ino) != (
+                expected.st_dev,
+                expected.st_ino,
+            ):
+                raise WorkspaceError(f"Terminal journal changed while opening: {path}")
+            with os.fdopen(fd) as handle:
+                fd = -1
+                raw = handle.read()
+        finally:
+            if fd >= 0:
+                os.close(fd)
+    except OSError as exc:
+        raise WorkspaceError(f"Terminal journal could not be opened safely: {path}") from exc
+    try:
+        data = yaml.safe_load(raw)
+    except yaml.YAMLError as exc:
+        raise WorkspaceError(f"Terminal journal YAML is corrupt: {path}") from exc
+    return _validate_terminal_journal(data)
+
+
+def _lexists(path: Path) -> bool:
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return False
+    return True
+
+
+def _load_terminal_journal(
+    slug: str,
+    *,
+    issue: int | None = None,
+) -> tuple[dict | None, bool]:
+    pending = _terminal_pending_path(slug)
+    if _lexists(pending):
+        journal = _read_terminal_journal(pending)
+        if journal["slug"] != slug:
+            raise WorkspaceError("Pending terminal journal filename contradicts its contents")
+        if issue is not None and journal["issue"] != issue:
+            raise WorkspaceError("Pending terminal journal belongs to a different issue")
+        if _lexists(_terminal_completed_path(journal)):
+            raise WorkspaceError("Both pending and completed terminal journals exist")
+        return journal, False
+    if issue is None:
+        return None, False
+    matches: list[dict] = []
+    for name in sorted(os.listdir(_terminal_journal_dir())):
+        if not name.startswith(f"{slug}.") or not name.endswith(".completed.yaml"):
+            continue
+        journal = _read_terminal_journal(_terminal_journal_dir() / name)
+        if journal["slug"] != slug or _terminal_completed_path(journal).name != name:
+            raise WorkspaceError("Completed terminal journal filename is invalid")
+        if journal["issue"] == issue:
+            matches.append(journal)
+    if len(matches) > 1:
+        raise WorkspaceError("Multiple completed terminal journals match this issue")
+    if matches:
+        return matches[0], True
+    return None, False
+
+
+def _save_terminal_journal(journal: dict) -> None:
+    from src.workspace.state import _atomic_write
+
+    journal = _validate_terminal_journal(journal)
+    pending = _terminal_pending_path(journal["slug"])
+    completed = _terminal_completed_path(journal)
+    if _lexists(completed):
+        raise WorkspaceError("Cannot mutate a completed terminal journal")
+    if _lexists(pending):
+        existing = _read_terminal_journal(pending)
+        if any(existing[key] != journal[key] for key in _TERMINAL_JOURNAL_KEYS - {"attempts"}):
+            raise WorkspaceError("Terminal journal immutable fields changed before save")
+        if any(
+            existing["attempts"][key] and not journal["attempts"][key]
+            for key in _TERMINAL_ATTEMPT_KEYS
+        ):
+            raise WorkspaceError("Terminal journal attempt history moved backward")
+    _atomic_write(pending, yaml.dump(journal, default_flow_style=False, sort_keys=False))
+
+
+def _finalize_terminal_journal(journal: dict) -> None:
+    pending = _terminal_pending_path(journal["slug"])
+    completed = _terminal_completed_path(journal)
+    if _lexists(completed):
+        if _lexists(pending) or _read_terminal_journal(completed) != journal:
+            raise WorkspaceError("Completed terminal journal contradicts pending state")
+        return
+    if not _lexists(pending):
+        raise WorkspaceError("Pending terminal journal disappeared before finalization")
+    if _read_terminal_journal(pending) != journal:
+        raise WorkspaceError("Pending terminal journal changed before finalization")
+    os.replace(pending, completed)
+    if _read_terminal_journal(completed) != journal:
+        raise WorkspaceError("Completed terminal journal changed during finalization")
+
+
+def _find_terminal_slug_for_issue(issue: int) -> str | None:
+    matches: list[str] = []
+    root = _terminal_journal_dir()
+    for name in sorted(os.listdir(root)):
+        if not name.endswith(".yaml"):
+            continue
+        path = root / name
+        journal = _read_terminal_journal(path)
+        expected_paths = {
+            _terminal_pending_path(journal["slug"]),
+            _terminal_completed_path(journal),
+        }
+        if path not in expected_paths:
+            raise WorkspaceError(f"Terminal journal filename is invalid: {path}")
+        if journal["issue"] == issue:
+            matches.append(journal["slug"])
+    if len(set(matches)) > 1:
+        raise WorkspaceError(f"Multiple terminal journals match issue #{issue}")
+    return matches[0] if matches else None
+
+
 def _cleanup_resolver_artifacts(
     *,
     issue: int,
     slug: str | None,
     ws: Workspace | None,
     local: bool,
+    outcome: dict | None = None,
 ) -> None:
     """Remove one resolver attempt before its issue is terminally closed.
 
@@ -720,6 +1018,8 @@ def _cleanup_resolver_artifacts(
     from src.workspace.filelock import company_lifecycle_lock
 
     lock_slug = slug or (ws.slug if ws is not None else None)
+    if lock_slug is None:
+        lock_slug = _find_terminal_slug_for_issue(issue)
     if lock_slug is None and not local:
         # Discover a possible slug only to select the lock. The complete query
         # and all validation are repeated after acquiring it.
@@ -732,10 +1032,17 @@ def _cleanup_resolver_artifacts(
                 lock_slug = branch.removeprefix("add-company/")
 
     if lock_slug is None:
-        _cleanup_resolver_artifacts_locked(issue=issue, slug=slug, ws=ws, local=local)
-        return
+        # Issue-only rejection/escalation still needs one stable lock and
+        # journal identity so claim release can be the final mutation.
+        lock_slug = f"issue-{issue}"
     with company_lifecycle_lock(lock_slug):
-        _cleanup_resolver_artifacts_locked(issue=issue, slug=lock_slug, ws=ws, local=local)
+        _cleanup_resolver_artifacts_locked(
+            issue=issue,
+            slug=lock_slug,
+            ws=ws,
+            local=local,
+            outcome=outcome,
+        )
 
 
 def _cleanup_resolver_artifacts_locked(
@@ -744,14 +1051,16 @@ def _cleanup_resolver_artifacts_locked(
     slug: str | None,
     ws: Workspace | None,
     local: bool,
+    outcome: dict | None,
 ) -> None:
     """Locked implementation for terminal resolver cleanup."""
     if slug and workspace_exists(slug):
         ws = load_workspace(slug)
+    journal, _ = _load_terminal_journal(slug, issue=issue) if slug else (None, False)
     branch = ws.branch if ws and ws.branch else ""
     pr_number = ws.pr if ws else None
 
-    if not local and (ws is None or not ws.terminal_state):
+    if not local and journal is None:
         from src.workspace import git
 
         linked_prs = git.check_existing_prs_strict(issue)
@@ -809,6 +1118,12 @@ def _cleanup_resolver_artifacts_locked(
             if git.remote_branch_oid_strict(branch) != expected_remote_oid:
                 raise WorkspaceError(f"PR #{number} remote ref changed during terminal cleanup")
             assert slug is not None
+            candidate_worktree = git.worktrees_dir() / slug
+            worktree = (
+                str(candidate_worktree)
+                if git.managed_worktree_identity_strict(candidate_worktree, branch) is not None
+                else ""
+            )
             ws = Workspace(
                 slug=slug,
                 created_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -816,15 +1131,14 @@ def _cleanup_resolver_artifacts_locked(
                 issue=issue,
                 pr=pr_number,
                 pr_provenance=git.pr_provenance(details, issue=issue, slug=slug),
-                worktree=str(git.worktrees_dir() / slug),
+                worktree=worktree,
             )
-            save_workspace(ws)
         elif branch and git.remote_branch_oid_strict(branch) is not None:
             raise WorkspaceError(
                 f"Remote branch {branch!r} exists without exact PR provenance; refusing cleanup"
             )
 
-    if ws is not None:
+    if ws is not None and workspace_exists(ws.slug):
         action_log.append(
             ws_log_path(ws.slug),
             "cleanup",
@@ -832,84 +1146,145 @@ def _cleanup_resolver_artifacts_locked(
             f"Cleaning terminal resolver artifacts for issue #{issue}",
         )
 
-    if ws is not None:
-        _run_terminal_cleanup(ws, local=local)
+    if slug is None:
+        raise WorkspaceError("Could not establish a terminal cleanup identity")
+    if ws is None:
+        ws = Workspace(
+            slug=slug,
+            created_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            issue=issue,
+        )
+    _run_terminal_cleanup(ws, local=local, outcome=outcome)
 
 
-def _run_terminal_cleanup(ws: Workspace, *, local: bool) -> None:
-    """Resume one journaled terminal transition to completion."""
-    from pathlib import Path
+def _company_registry_presence(slug: str) -> tuple[bool, bool]:
+    companies = _load_existing_company(slug)
+    boards = _load_existing_boards(slug)
+    return bool(companies), bool(boards)
 
-    from src.csvtool import company_del
+
+def _active_pointer_entries(slug: str) -> list[dict[str, str | int]]:
+    from src.shared.constants import get_workspace_dir
+    from src.workspace.safe_cleanup import open_absolute_directory_no_follow
+
+    root = get_workspace_dir()
+    root.mkdir(parents=True, exist_ok=True)
+    try:
+        root_fd = open_absolute_directory_no_follow(root)
+    except RuntimeError as exc:
+        raise WorkspaceError(f"Workspace root is unsafe: {root}") from exc
+    matches: list[dict[str, str | int]] = []
+    try:
+        for name in sorted(os.listdir(root_fd)):
+            if name != "active" and not name.startswith("active."):
+                continue
+            try:
+                item = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+            except FileNotFoundError:
+                continue
+            if stat.S_ISLNK(item.st_mode) or not stat.S_ISREG(item.st_mode):
+                raise WorkspaceError(f"Active pointer is unsafe: {root / name}")
+            flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+            fd = os.open(name, flags, dir_fd=root_fd)
+            try:
+                opened = os.fstat(fd)
+                if (opened.st_dev, opened.st_ino) != (item.st_dev, item.st_ino):
+                    raise WorkspaceError(f"Active pointer changed while opening: {root / name}")
+                value = os.read(fd, 4096).decode().strip()
+            finally:
+                os.close(fd)
+            if value == slug:
+                matches.append(
+                    {
+                        "path": str(root / name),
+                        "dev": int(opened.st_dev),
+                        "ino": int(opened.st_ino),
+                    }
+                )
+    finally:
+        os.close(root_fd)
+    return matches
+
+
+def _remove_active_pointers(journal: dict) -> None:
+    from src.shared.constants import get_workspace_dir
+    from src.workspace.safe_cleanup import (
+        open_absolute_directory_no_follow,
+        unlink_child_at,
+    )
+
+    root = get_workspace_dir()
+    expected = {Path(entry["path"]): entry for entry in journal["active_entries"]}
+    actual = {Path(entry["path"]): entry for entry in _active_pointer_entries(journal["slug"])}
+    if not set(actual).issubset(expected):
+        raise WorkspaceError("A new active pointer appeared after terminal journaling")
+    for path, entry in actual.items():
+        captured = expected[path]
+        if (entry["dev"], entry["ino"]) != (captured["dev"], captured["ino"]):
+            raise WorkspaceError("An active pointer was replaced after terminal journaling")
+    if not journal["attempts"]["active_clear"] and actual != expected:
+        raise WorkspaceError("Active pointers changed before their cleanup attempt")
+    if not actual:
+        if expected and not journal["attempts"]["active_clear"]:
+            raise WorkspaceError("Active pointers disappeared without a recorded attempt")
+        return
+    _set_terminal_attempt(journal, "active_clear")
+    root_fd = open_absolute_directory_no_follow(root)
+    try:
+        for path in sorted(actual):
+            if path.parent != root:
+                raise WorkspaceError("Terminal journal active pointer is outside workspace root")
+            item = os.stat(path.name, dir_fd=root_fd, follow_symlinks=False)
+            if stat.S_ISLNK(item.st_mode) or not stat.S_ISREG(item.st_mode):
+                raise WorkspaceError(f"Active pointer became unsafe: {path}")
+            captured = expected[path]
+            if (item.st_dev, item.st_ino) != (captured["dev"], captured["ino"]):
+                raise WorkspaceError(f"Active pointer was replaced: {path}")
+            flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+            fd = os.open(path.name, flags, dir_fd=root_fd)
+            try:
+                opened = os.fstat(fd)
+                value = os.read(fd, 4096).decode().strip()
+            finally:
+                os.close(fd)
+            if (opened.st_dev, opened.st_ino) != (item.st_dev, item.st_ino):
+                raise WorkspaceError(f"Active pointer changed while opening: {path}")
+            if value != journal["slug"]:
+                raise WorkspaceError(f"Active pointer content changed: {path}")
+            try:
+                unlink_child_at(root_fd, path.name, expected=item)
+            except RuntimeError as exc:
+                raise WorkspaceError(f"Could not safely remove active pointer: {path}") from exc
+    finally:
+        os.close(root_fd)
+    if _active_pointer_entries(journal["slug"]):
+        raise WorkspaceError("Active pointer survived terminal cleanup")
+
+
+def _set_terminal_attempt(journal: dict, key: str) -> None:
+    if key not in _TERMINAL_ATTEMPT_KEYS:
+        raise WorkspaceError(f"Unknown terminal attempt {key!r}")
+    if not journal["attempts"][key]:
+        journal["attempts"][key] = True
+        _save_terminal_journal(journal)
+
+
+def _initialize_terminal_journal(ws: Workspace, *, local: bool, outcome: dict | None) -> dict:
     from src.workspace import git
 
     branch = ws.branch
     if branch and branch not in {f"add-company/{ws.slug}", f"fix-crawler/{ws.slug}"}:
         raise WorkspaceError(f"Workspace branch {branch!r} is not bound to slug {ws.slug!r}")
     if not branch and (ws.pr is not None or ws.worktree):
-        raise WorkspaceError("Workspace has remote/local artifacts without a recorded branch")
+        raise WorkspaceError("Workspace has artifacts without a recorded branch")
 
-    state = ws.terminal_state
-    if not state:
-        expected_remote_oid: str | None = None
-        if not local:
-            if ws.pr is not None:
-                git.verify_recorded_pr(
-                    ws.pr_provenance,
-                    pr_number=ws.pr,
-                    branch=branch,
-                    issue=ws.issue,
-                    slug=ws.slug,
-                    allow_closed=True,
-                )
-                expected_remote_oid = str(ws.pr_provenance["head_ref_oid"])
-            elif branch and git.remote_branch_oid_strict(branch) is not None:
-                raise WorkspaceError(f"Remote branch {branch!r} exists without exact PR provenance")
-
-        expected_worktree = Path(os.path.abspath(str(git.worktrees_dir() / ws.slug)))
-        recorded_worktree = (
-            Path(os.path.abspath(os.path.expanduser(ws.worktree))) if ws.worktree else None
-        )
-        if not local and ws.worktree and recorded_worktree != expected_worktree:
-            raise WorkspaceError(
-                f"Workspace {ws.slug!r} records unexpected worktree {ws.worktree!r}"
-            )
-        worktree_head = (
-            git.managed_worktree_head_strict(expected_worktree, branch)
-            if not local and ws.worktree
-            else None
-        )
-        state = {
-            "version": 1,
-            "slug": ws.slug,
-            "branch": branch,
-            "issue": ws.issue,
-            "pr": ws.pr,
-            "expected_remote_oid": expected_remote_oid,
-            "worktree": str(expected_worktree) if not local else None,
-            "worktree_head": worktree_head,
-            "remote_delete_attempted": False,
-            "remote_deleted": expected_remote_oid is None,
-            "pr_close_attempted": False,
-            "pr_closed": ws.pr is None,
-            "worktree_remove_attempted": False,
-            "worktree_removed": worktree_head is None,
-            "local_branch_remove_attempted": False,
-            "local_branch_removed": local or not branch,
-            "claim_release_attempted": False,
-            "claim_released": local or ws.issue is None,
-            "data_removed": False,
-        }
-        ws.terminal_state = state
-        save_workspace(ws)
-    else:
-        immutable = {"slug": ws.slug, "branch": branch, "issue": ws.issue, "pr": ws.pr}
-        if any(state.get(key) != value for key, value in immutable.items()):
-            raise WorkspaceError("Terminal journal no longer matches workspace ownership")
-
-    expected_remote_oid = state.get("expected_remote_oid")
-    if not local and expected_remote_oid is not None and not state.get("remote_deleted"):
-        if not state.get("remote_delete_attempted"):
+    provenance: dict = {}
+    remote_oid: str | None = None
+    identity: dict[str, str | int] | None = None
+    local_oid: str | None = None
+    worktree_path: Path | None = None
+    if not local:
+        if ws.pr is not None:
             git.verify_recorded_pr(
                 ws.pr_provenance,
                 pr_number=ws.pr,
@@ -918,69 +1293,319 @@ def _run_terminal_cleanup(ws: Workspace, *, local: bool) -> None:
                 slug=ws.slug,
                 allow_closed=True,
             )
-            state["remote_delete_attempted"] = True
-            save_workspace(ws)
-        git.delete_remote_branch_at_expected_oid(
-            branch,
-            str(expected_remote_oid),
-            absent_is_success=True,
+            provenance = copy.deepcopy(ws.pr_provenance)
+            remote_oid = str(provenance["head_ref_oid"])
+        elif branch and git.remote_branch_oid_strict(branch) is not None:
+            raise WorkspaceError(f"Remote branch {branch!r} lacks exact PR provenance")
+        if branch:
+            canonical = Path(os.path.abspath(str(git.worktrees_dir() / ws.slug)))
+            recorded = (
+                Path(os.path.abspath(os.path.expanduser(ws.worktree))) if ws.worktree else None
+            )
+            if recorded is not None and recorded != canonical:
+                raise WorkspaceError("Workspace records a non-canonical worktree path")
+            identity = git.managed_worktree_identity_strict(canonical, branch)
+            if bool(recorded) != bool(identity):
+                raise WorkspaceError("Workspace worktree record contradicts managed Git state")
+            worktree_path = canonical if identity is not None else None
+            local_oid = git.local_branch_oid_strict(branch)
+            if identity is not None and local_oid != identity["head"]:
+                raise WorkspaceError("Local branch and worktree commits contradict each other")
+
+    company_present, board_present = _company_registry_presence(ws.slug)
+    data_required = branch.startswith("add-company/")
+    claim_present = bool(ws.issue and not local and git.is_issue_claimed_strict(ws.issue))
+    journal = {
+        "version": 1,
+        "journal_id": uuid.uuid4().hex,
+        "slug": ws.slug,
+        "branch": branch,
+        "issue": ws.issue,
+        "pr": ws.pr if not local else None,
+        "pr_provenance": provenance,
+        "expected_remote_oid": remote_oid,
+        "worktree": str(worktree_path) if worktree_path else None,
+        "worktree_head": str(identity["head"]) if identity else None,
+        "worktree_dev": int(identity["dev"]) if identity else None,
+        "worktree_ino": int(identity["ino"]) if identity else None,
+        "local_branch_oid": local_oid,
+        "data_cleanup_required": data_required,
+        "data_initially_present": bool(company_present or board_present),
+        "workspace_was_present": workspace_exists(ws.slug),
+        "active_entries": _active_pointer_entries(ws.slug),
+        "claim_initially_present": claim_present,
+        "outcome": copy.deepcopy(outcome),
+        "attempts": {key: False for key in _TERMINAL_ATTEMPT_KEYS},
+    }
+    _save_terminal_journal(journal)
+    return journal
+
+
+def _cross_validate_terminal_journal(
+    journal: dict,
+    ws: Workspace,
+    *,
+    local: bool,
+    outcome: dict | None,
+) -> None:
+    from src.shared.constants import get_workspace_dir
+    from src.workspace import git
+
+    if journal["outcome"] != outcome:
+        raise WorkspaceError("Terminal outcome contradicts the existing journal")
+    if journal["issue"] != ws.issue:
+        raise WorkspaceError("Terminal journal issue contradicts requested cleanup")
+    if journal["pr"] is not None:
+        if journal["expected_remote_oid"] != journal["pr_provenance"].get("head_ref_oid"):
+            raise WorkspaceError("Terminal remote OID contradicts PR provenance")
+        if journal["pr_provenance"].get("head_ref_name") != journal["branch"]:
+            raise WorkspaceError("Terminal branch contradicts PR provenance")
+    canonical = Path(os.path.abspath(str(git.worktrees_dir() / journal["slug"])))
+    if journal["worktree"] is not None and Path(journal["worktree"]) != canonical:
+        raise WorkspaceError("Terminal journal worktree path is non-canonical")
+    root = get_workspace_dir()
+    for entry in journal["active_entries"]:
+        path = Path(entry["path"])
+        if path.parent != root or (path.name != "active" and not path.name.startswith("active.")):
+            raise WorkspaceError("Terminal journal active pointer path is invalid")
+    if workspace_exists(ws.slug):
+        if (ws.slug, ws.branch, ws.issue, ws.pr if not local else None) != (
+            journal["slug"],
+            journal["branch"],
+            journal["issue"],
+            journal["pr"],
+        ):
+            raise WorkspaceError("Workspace ownership contradicts terminal journal")
+        if not local and ws.pr_provenance != journal["pr_provenance"]:
+            raise WorkspaceError("Workspace PR provenance contradicts terminal journal")
+
+
+def _run_terminal_cleanup(
+    ws: Workspace,
+    *,
+    local: bool,
+    outcome: dict | None = None,
+) -> None:
+    """Re-observe and resume one strict write-ahead terminal transition."""
+    from src.csvtool import board_del, company_del
+    from src.workspace import git
+
+    journal, completed = _load_terminal_journal(ws.slug, issue=ws.issue)
+    if journal is None:
+        journal = _initialize_terminal_journal(ws, local=local, outcome=outcome)
+    else:
+        _cross_validate_terminal_journal(journal, ws, local=local, outcome=outcome)
+
+    branch = journal["branch"]
+    expected_remote = journal["expected_remote_oid"]
+    if not local:
+        if journal["pr"] is not None:
+            git.verify_recorded_pr_object(
+                journal["pr_provenance"],
+                pr_number=journal["pr"],
+                branch=branch,
+                issue=journal["issue"],
+                slug=journal["slug"],
+            )
+        if journal["worktree"] is not None and not journal["attempts"]["worktree_remove"]:
+            git.authenticate_managed_worktree(
+                Path(journal["worktree"]),
+                branch,
+                journal["worktree_head"],
+                expected_dev=journal["worktree_dev"],
+                expected_ino=journal["worktree_ino"],
+            )
+        if branch:
+            observed_local = git.local_branch_oid_strict(branch)
+            expected_local = journal["local_branch_oid"]
+            if expected_local is None and observed_local is not None:
+                raise WorkspaceError("A new local branch appeared after terminal journaling")
+            if expected_local is not None and observed_local not in {expected_local, None}:
+                raise WorkspaceError("Local branch changed after terminal journaling")
+            if (
+                expected_local is not None
+                and observed_local is None
+                and not journal["attempts"]["local_branch_remove"]
+            ):
+                raise WorkspaceError("Local branch disappeared without an exact deletion attempt")
+
+    if not local and expected_remote is not None:
+        current_remote = git.remote_branch_oid_strict(branch)
+        if current_remote == expected_remote:
+            if completed:
+                raise WorkspaceError("Remote branch reappeared after completed cleanup")
+            _set_terminal_attempt(journal, "remote_delete")
+            git.delete_remote_branch_at_expected_oid(branch, expected_remote)
+        elif current_remote is None:
+            if not journal["attempts"]["remote_delete"]:
+                raise WorkspaceError("Remote branch disappeared without a recorded attempt")
+        else:
+            raise WorkspaceError("Remote branch changed after terminal journaling")
+        if git.remote_branch_oid_strict(branch) is not None:
+            raise WorkspaceError("Remote branch survived terminal cleanup")
+
+    if not local and journal["pr"] is not None:
+        details = git.verify_recorded_pr_object(
+            journal["pr_provenance"],
+            pr_number=journal["pr"],
+            branch=branch,
+            issue=journal["issue"],
+            slug=journal["slug"],
         )
-        state["remote_deleted"] = True
-        save_workspace(ws)
+        if details.get("state") == "OPEN":
+            if completed:
+                raise WorkspaceError("PR reopened after completed cleanup")
+            _set_terminal_attempt(journal, "pr_close")
+            git.close_pr_if_open(journal["pr"])
+            details = git.verify_recorded_pr_object(
+                journal["pr_provenance"],
+                pr_number=journal["pr"],
+                branch=branch,
+                issue=journal["issue"],
+                slug=journal["slug"],
+            )
+        if details.get("state") != "CLOSED":
+            raise WorkspaceError("PR was not closed by terminal cleanup")
+        if not journal["attempts"]["pr_close"] and not journal["attempts"]["remote_delete"]:
+            raise WorkspaceError("PR closed without a recorded terminal attempt")
 
-    if not local and ws.pr is not None and not state.get("pr_closed"):
-        if not state.get("pr_close_attempted"):
-            state["pr_close_attempted"] = True
-            save_workspace(ws)
-        git.close_pr_if_open(ws.pr)
-        state["pr_closed"] = True
-        save_workspace(ws)
+    worktree = journal["worktree"]
+    if not local and worktree is not None:
+        if completed:
+            if git.managed_worktree_identity_strict(Path(worktree), branch) is not None:
+                raise WorkspaceError("Worktree reappeared after completed cleanup")
+        else:
+            attempted = journal["attempts"]["worktree_remove"]
+            if not attempted:
+                git.authenticate_managed_worktree(
+                    Path(worktree),
+                    branch,
+                    journal["worktree_head"],
+                    expected_dev=journal["worktree_dev"],
+                    expected_ino=journal["worktree_ino"],
+                )
+            _set_terminal_attempt(journal, "worktree_remove")
+            git.remove_authenticated_worktree(
+                Path(worktree),
+                branch,
+                journal["worktree_head"],
+                expected_dev=journal["worktree_dev"],
+                expected_ino=journal["worktree_ino"],
+                absent_is_success=attempted,
+            )
+            from src.shared.constants import set_repo_root
 
-    worktree = state.get("worktree")
-    worktree_head = state.get("worktree_head")
-    if not local and worktree and worktree_head and not state.get("worktree_removed"):
-        if not state.get("worktree_remove_attempted"):
-            git.authenticate_managed_worktree(Path(worktree), branch, worktree_head)
-            state["worktree_remove_attempted"] = True
-            save_workspace(ws)
-        git.remove_authenticated_worktree(
-            Path(worktree), branch, worktree_head, absent_is_success=True
-        )
-        state["worktree_removed"] = True
-        save_workspace(ws)
-        from src.shared.constants import set_repo_root
+            set_repo_root(git.managed_repo())
 
-        set_repo_root(git.managed_repo())
+    expected_local = journal["local_branch_oid"]
+    if not local and branch:
+        current_local = git.local_branch_oid_strict(branch)
+        if expected_local is None:
+            if current_local is not None:
+                raise WorkspaceError("A new local branch appeared after terminal journaling")
+        elif current_local == expected_local:
+            if completed:
+                raise WorkspaceError("Local branch reappeared after completed cleanup")
+            _set_terminal_attempt(journal, "local_branch_remove")
+            git.delete_local_branch_at_expected_oid(branch, expected_local)
+        elif current_local is None:
+            if not journal["attempts"]["local_branch_remove"]:
+                raise WorkspaceError("Local branch disappeared without an exact deletion attempt")
+        else:
+            raise WorkspaceError("Local branch changed after terminal journaling")
 
-    if not local and not state.get("local_branch_removed"):
-        if not state.get("local_branch_remove_attempted"):
-            state["local_branch_remove_attempted"] = True
-            save_workspace(ws)
-        git.delete_local_branch_strict(branch)
-        state["local_branch_removed"] = True
-        save_workspace(ws)
+    company_present, board_present = _company_registry_presence(journal["slug"])
+    if journal["data_cleanup_required"]:
+        if company_present or board_present:
+            if completed or not journal["data_initially_present"]:
+                raise WorkspaceError("Company registry rows appeared after terminal journaling")
+            _set_terminal_attempt(journal, "data_remove")
+            if company_present:
+                company_del(journal["slug"])
+            elif board_present:
+                board_del(journal["slug"])
+            company_present, board_present = _company_registry_presence(journal["slug"])
+        elif journal["data_initially_present"] and not journal["attempts"]["data_remove"]:
+            raise WorkspaceError("Company registry rows disappeared without a recorded attempt")
+        if company_present or board_present:
+            raise WorkspaceError("Company registry rows survived terminal cleanup")
 
-    if not local and ws.issue and not state.get("claim_released"):
-        if not state.get("claim_release_attempted"):
-            state["claim_release_attempted"] = True
-            save_workspace(ws)
-        git.unclaim_issue_strict(ws.issue)
-        state["claim_released"] = True
-        save_workspace(ws)
+    if completed:
+        if _active_pointer_entries(journal["slug"]):
+            raise WorkspaceError("Active pointer reappeared after completed cleanup")
+    else:
+        _remove_active_pointers(journal)
 
-    if not state.get("data_removed") and not branch.startswith("fix-crawler/"):
-        try:
-            company_del(ws.slug)
-            out.info("csv", f"Removed {ws.slug!r} from companies.csv (+ boards)")
-        except (CsvToolError, FileNotFoundError):
-            pass
-        state["data_removed"] = True
-        save_workspace(ws)
+    workspace_now = workspace_exists(journal["slug"])
+    if workspace_now:
+        if completed or not journal["workspace_was_present"]:
+            raise WorkspaceError("Workspace appeared after terminal journaling")
+        _set_terminal_attempt(journal, "workspace_remove")
+        delete_workspace(journal["slug"])
+    elif journal["workspace_was_present"] and not journal["attempts"]["workspace_remove"]:
+        raise WorkspaceError("Workspace disappeared without a recorded removal attempt")
+    if workspace_exists(journal["slug"]):
+        raise WorkspaceError("Workspace survived terminal cleanup")
 
-    delete_workspace(ws.slug)
-    if get_active_slug() == ws.slug:
-        clear_active_slug()
-    out.info("workspace", f"Removed workspace {ws.slug!r}")
+    if not local and journal["outcome"] is not None:
+        if completed:
+            state, labels = git.issue_state_and_labels_strict(journal["issue"])
+            if (
+                not git.issue_has_comment_marker_strict(
+                    journal["issue"], journal["outcome"]["marker"]
+                )
+                or not set(journal["outcome"]["labels"]).issubset(labels)
+                or (journal["outcome"]["close_issue"] and state != "CLOSED")
+            ):
+                raise WorkspaceError("Completed terminal issue outcome was altered")
+        else:
+            if not git.issue_has_comment_marker_strict(
+                journal["issue"], journal["outcome"]["marker"]
+            ):
+                _set_terminal_attempt(journal, "issue_comment")
+                git.comment_on_issue_once(
+                    journal["issue"],
+                    journal["outcome"]["marker"],
+                    journal["outcome"]["body"],
+                )
+            if not git.issue_has_comment_marker_strict(
+                journal["issue"], journal["outcome"]["marker"]
+            ):
+                raise WorkspaceError("Terminal issue comment was not published")
+            issue_state, labels = git.issue_state_and_labels_strict(journal["issue"])
+            missing = set(journal["outcome"]["labels"]) - labels
+            if missing:
+                _set_terminal_attempt(journal, "issue_labels")
+                for label in sorted(missing):
+                    git.add_label_to_issue(journal["issue"], label)
+                issue_state, labels = git.issue_state_and_labels_strict(journal["issue"])
+            if not set(journal["outcome"]["labels"]).issubset(labels):
+                raise WorkspaceError("Terminal issue labels were not applied")
+            if journal["outcome"]["close_issue"] and issue_state == "OPEN":
+                _set_terminal_attempt(journal, "issue_close")
+                git.close_issue_if_open(journal["issue"])
+                issue_state, _ = git.issue_state_and_labels_strict(journal["issue"])
+            if journal["outcome"]["close_issue"] and issue_state != "CLOSED":
+                raise WorkspaceError("Terminal issue was not closed")
+
+    if not completed:
+        _finalize_terminal_journal(journal)
+        completed = True
+
+    # Claim release is deliberately last: the completed journal is the
+    # durable receipt and there are no local or GitHub mutations afterward.
+    if not local and journal["issue"] is not None:
+        claimed = git.is_issue_claimed_strict(journal["issue"])
+        if journal["claim_initially_present"]:
+            if claimed:
+                git.unclaim_issue_strict(journal["issue"])
+                if git.is_issue_claimed_strict(journal["issue"]):
+                    raise WorkspaceError("Issue claim survived terminal cleanup")
+            elif not completed:
+                raise WorkspaceError("Issue claim disappeared before terminal completion")
+        elif claimed:
+            raise WorkspaceError("A new issue claim appeared during terminal cleanup")
+    out.info("workspace", f"Removed workspace {journal['slug']!r}")
 
 
 @click.command(name="del")
@@ -996,18 +1621,23 @@ def del_(slug: str | None):
 
     with company_lifecycle_lock(slug):
         if not workspace_exists(slug):
-            out.die(
-                f"Workspace {slug!r} has no recorded ownership state; "
-                "refusing best-effort PR or branch deletion"
-            )
-        ws = load_workspace(slug)
-        branch = ws.branch
-        if branch not in {f"add-company/{slug}", f"fix-crawler/{slug}"}:
-            out.die(
-                f"Workspace branch {branch!r} is not bound to slug {slug!r}; "
-                "refusing destructive cleanup"
-            )
-        _run_terminal_cleanup(ws, local=local)
+            journal, _ = _load_terminal_journal(slug)
+            if journal is None:
+                out.die(
+                    f"Workspace {slug!r} has no recorded ownership state; "
+                    "refusing best-effort PR or branch deletion"
+                )
+            assert journal is not None
+            ws = Workspace(slug=slug, branch=journal["branch"], issue=journal["issue"])
+        else:
+            ws = load_workspace(slug)
+            branch = ws.branch
+            if branch not in {f"add-company/{slug}", f"fix-crawler/{slug}"}:
+                out.die(
+                    f"Workspace branch {branch!r} is not bound to slug {slug!r}; "
+                    "refusing destructive cleanup"
+                )
+        _run_terminal_cleanup(ws, local=local, outcome=None)
 
 
 @click.command()
