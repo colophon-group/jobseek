@@ -21,7 +21,8 @@ from __future__ import annotations
 import hashlib
 import re
 from datetime import UTC, date, datetime
-from typing import TYPE_CHECKING
+from html import escape
+from typing import TYPE_CHECKING, cast
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 import structlog
@@ -36,6 +37,8 @@ from src.shared.truncation import truncated_rich_result
 if TYPE_CHECKING:
     import httpx
 
+    from src.core.monitor import MonitorResult
+
 log = structlog.get_logger()
 
 _MAX_JOBS = 500  # safety cap
@@ -46,6 +49,9 @@ _MAX_VALID_THROUGH_PATTERNS = 8
 _MAX_EMPTY_TEXT_LENGTH = 512
 _MAX_EMPTY_SELECTOR_LENGTH = 256
 _MAX_DETAIL_SELECTOR_LENGTH = 512
+_MAX_DETAIL_IDENTITY_ATTRIBUTE_LENGTH = 128
+_MAX_DETAIL_IDENTITY_REGEX_LENGTH = 2_048
+_MAX_DETAIL_IDENTITY_LENGTH = 512
 _MAX_ITEM_BOUNDARY_TAG_LENGTH = 32
 _MAX_SECTION_REGEX_LENGTH = 2_048
 _MAX_POSITIONS_PER_LISTING = 20
@@ -118,6 +124,98 @@ def _validated_detail_selector(value: object, *, name: str) -> str | None:
             f"{_MAX_DETAIL_SELECTOR_LENGTH} characters"
         )
     return value.strip()
+
+
+def _validated_detail_identity_config(
+    metadata: dict,
+    *,
+    enabled: bool,
+) -> tuple[str | None, str | None, re.Pattern[str] | None]:
+    """Validate the provider identity contract for click-only detail cards."""
+    keys = (
+        "detail_identity_selector",
+        "detail_identity_attribute",
+        "detail_identity_regex",
+    )
+    configured = [metadata.get(key) is not None for key in keys]
+    if not enabled:
+        if any(configured):
+            raise ValueError("inline detail identity configuration requires detail-card expansion")
+        return None, None, None
+    if not all(configured):
+        raise ValueError(
+            "inline detail-card expansion requires detail_identity_selector, "
+            "detail_identity_attribute, and detail_identity_regex"
+        )
+
+    selector = _validated_detail_selector(
+        metadata.get("detail_identity_selector"), name="detail_identity_selector"
+    )
+    attribute = metadata.get("detail_identity_attribute")
+    if (
+        not isinstance(attribute, str)
+        or not attribute
+        or len(attribute) > _MAX_DETAIL_IDENTITY_ATTRIBUTE_LENGTH
+        or re.fullmatch(r"[A-Za-z_:][A-Za-z0-9:._-]*", attribute) is None
+    ):
+        raise ValueError("inline detail_identity_attribute must be a valid bounded attribute name")
+    raw_regex = metadata.get("detail_identity_regex")
+    if (
+        not isinstance(raw_regex, str)
+        or not raw_regex
+        or len(raw_regex) > _MAX_DETAIL_IDENTITY_REGEX_LENGTH
+    ):
+        raise ValueError("inline detail_identity_regex must be a non-empty bounded string")
+    try:
+        pattern = re.compile(raw_regex)
+    except re.error as exc:
+        raise ValueError(f"inline detail_identity_regex is invalid: {exc}") from exc
+    if pattern.groups != 1:
+        raise ValueError("inline detail_identity_regex must contain exactly one capture group")
+    return selector, attribute, pattern
+
+
+async def _read_detail_identities(
+    page,
+    *,
+    selector: str,
+    attribute: str,
+    pattern: re.Pattern[str],
+    expected_count: int,
+) -> tuple[str, ...]:
+    """Read and validate one stable provider identity per click control."""
+    identity_nodes = page.locator(selector)
+    identity_count = await identity_nodes.count()
+    if identity_count != expected_count:
+        raise ValueError(
+            "inline detail identity/control count mismatch "
+            f"({identity_count} identities for {expected_count} controls)"
+        )
+
+    identities: list[str] = []
+    for index in range(identity_count):
+        raw_identity = await identity_nodes.nth(index).get_attribute(attribute)
+        if raw_identity is None:
+            raise ValueError(
+                f"inline detail identity {index + 1} is missing attribute {attribute!r}"
+            )
+        match = pattern.fullmatch(raw_identity)
+        if match is None:
+            raise ValueError(
+                f"inline detail identity {index + 1} did not match detail_identity_regex"
+            )
+        identity = match.group(1)
+        if (
+            not identity
+            or len(identity) > _MAX_DETAIL_IDENTITY_LENGTH
+            or any(ord(character) < 0x20 for character in identity)
+        ):
+            raise ValueError(f"inline detail identity {index + 1} is invalid")
+        identities.append(identity)
+
+    if len(set(identities)) != len(identities):
+        raise ValueError("inline detail identities must be unique")
+    return tuple(identities)
 
 
 def _matches_explicit_empty(html: str, selector: str, marker: str) -> bool:
@@ -221,6 +319,7 @@ def _scope_to_section(
         raise ValueError("inline section_start and section_end must be configured together")
     if start_boundary is None:
         return elements
+    assert end_boundary is not None
 
     starts = [
         index
@@ -250,14 +349,14 @@ def _walk_bounded_item(
     steps: list[dict],
     cursor: int,
     boundary_tag: str,
-) -> tuple[dict[str, str | list[str] | None], int]:
+) -> tuple[dict[str, str | list[str] | None], int, str | None]:
     """Run extraction inside one tag-delimited posting block."""
     item_start = next(
         (index for index in range(cursor, len(elements)) if elements[index]["tag"] == boundary_tag),
         len(elements),
     )
     if item_start >= len(elements):
-        return {}, len(elements)
+        return {}, len(elements), None
     item_end = next(
         (
             index
@@ -267,7 +366,8 @@ def _walk_bounded_item(
         len(elements),
     )
     result, _block_cursor = walk_steps(elements[item_start:item_end], steps)
-    return result, item_end
+    identity = elements[item_start]["attrs"].get("data-inline-detail-identity")
+    return result, item_end, identity
 
 
 def _generate_url(board_url: str, title: str, seen: dict[str, int]) -> str:
@@ -286,10 +386,14 @@ def _generate_url(board_url: str, title: str, seen: dict[str, int]) -> str:
     if count > 0:
         jid = f"{jid}-{count + 1}"
 
-    # Append _jid to the board URL, preserving existing query params
+    return _generate_identity_url(board_url, jid)
+
+
+def _generate_identity_url(board_url: str, identity: str) -> str:
+    """Append a provider-stable inline identity to the canonical board URL."""
     parsed = urlparse(board_url)
     params = parse_qs(parsed.query, keep_blank_values=True)
-    params["_jid"] = [jid]
+    params["_jid"] = [identity]
     new_query = urlencode(params, doseq=True)
     return urlunparse(parsed._replace(query=new_query))
 
@@ -435,7 +539,7 @@ def _resolve_valid_through(
 async def _fetch_html(
     board_url: str,
     metadata: dict,
-    http: httpx.AsyncClient,
+    http: httpx.AsyncClient | None,
     pw=None,
 ) -> str:
     """Fetch page HTML, using Playwright when render is configured.
@@ -491,6 +595,10 @@ async def _fetch_html(
         )
     if detail_click_selector is not None and not metadata.get("render"):
         raise ValueError("inline detail-card expansion requires render=true")
+    identity_selector, identity_attribute, identity_pattern = _validated_detail_identity_config(
+        metadata,
+        enabled=detail_click_selector is not None,
+    )
 
     def validate(html: str, fetch_url: str) -> str:
         if required_text and required_text not in html:
@@ -510,14 +618,27 @@ async def _fetch_html(
                     if detail_click_selector is not None:
                         detail_links = page.locator(detail_click_selector)
                         detail_timeout = browser_cfg.get("timeout", 30_000)
-                        await detail_links.first.wait_for(
-                            state="visible", timeout=detail_timeout
-                        )
+                        await detail_links.first.wait_for(state="visible", timeout=detail_timeout)
                         detail_count = await detail_links.count()
                         if detail_count == 0:
                             raise ValueError(
                                 "inline detail_click_selector did not match any elements"
                             )
+                        if detail_count > _MAX_JOBS:
+                            raise ValueError(
+                                "inline detail_click_selector exceeded the "
+                                f"{_MAX_JOBS}-job safety cap"
+                            )
+                        assert identity_selector is not None
+                        assert identity_attribute is not None
+                        assert identity_pattern is not None
+                        identities = await _read_detail_identities(
+                            page,
+                            selector=identity_selector,
+                            attribute=identity_attribute,
+                            pattern=identity_pattern,
+                            expected_count=detail_count,
+                        )
 
                         details: list[str] = []
                         for index in range(detail_count):
@@ -534,12 +655,21 @@ async def _fetch_html(
                                         "inline detail_click_selector match count changed during "
                                         f"expansion ({detail_count} -> {current_count})"
                                     )
+                                current_identities = await _read_detail_identities(
+                                    page,
+                                    selector=identity_selector,
+                                    attribute=identity_attribute,
+                                    pattern=identity_pattern,
+                                    expected_count=detail_count,
+                                )
+                                if current_identities != identities:
+                                    raise ValueError(
+                                        "inline detail identity sequence changed during expansion"
+                                    )
 
                             await detail_links.nth(index).click()
                             detail_content = page.locator(detail_content_selector)
-                            await detail_content.wait_for(
-                                state="visible", timeout=detail_timeout
-                            )
+                            await detail_content.wait_for(state="visible", timeout=detail_timeout)
                             content_count = await detail_content.count()
                             if content_count != 1:
                                 raise ValueError(
@@ -547,7 +677,9 @@ async def _fetch_html(
                                     f"after each click (matched {content_count})"
                                 )
                             details.append(
-                                "<article data-inline-detail-boundary>"
+                                "<article data-inline-detail-boundary "
+                                'data-inline-detail-identity="'
+                                f'{escape(identities[index], quote=True)}">'
                                 "__inline_detail_boundary__"
                                 f"{await detail_content.inner_html()}</article>"
                             )
@@ -557,6 +689,8 @@ async def _fetch_html(
                 last_error = exc
                 log.warning("inline.fetch_fallback", url=fetch_url, error=str(exc))
     else:
+        if http is None:
+            raise ValueError("inline static fetch requires an HTTP client")
         for fetch_url, fetch_headers in fetch_candidates:
             try:
                 resp = await http.get(
@@ -577,9 +711,9 @@ async def _fetch_html(
 
 async def discover(
     board: dict,
-    client: httpx.AsyncClient = None,
+    client: httpx.AsyncClient | None = None,
     pw=None,
-) -> list[DiscoveredJob]:
+) -> list[DiscoveredJob] | MonitorResult:
     """Extract inline jobs from a single page.
 
     Config keys:
@@ -587,6 +721,9 @@ async def discover(
         render     — if true, use Playwright (default: false)
         detail_click_selector — click each matching card control in turn (render only)
         detail_content_selector — exactly one expanded detail container after each click
+        detail_identity_selector — one provider-identity element per click control
+        detail_identity_attribute — attribute containing the raw provider identity
+        detail_identity_regex — full-match regex with one stable-identity capture group
         fetch_urls — ordered alternate read URLs; canonical URLs use board_url
         include_hidden — include HTML hidden by tab/accordion state (default: false)
         empty_selector — CSS selector that scopes a visibly active empty-state element
@@ -634,11 +771,10 @@ async def discover(
     exclude_titles = set(metadata.get("exclude_titles") or [])
     exclude_title_regex = _compile_exclude_title_regex(metadata.get("exclude_title_regex"))
     item_boundary_tag = _validated_item_boundary_tag(metadata.get("item_boundary_tag"))
-    if metadata.get("detail_click_selector") is not None:
+    uses_detail_expansion = metadata.get("detail_click_selector") is not None
+    if uses_detail_expansion:
         if item_boundary_tag not in (None, "article"):
-            raise ValueError(
-                "inline detail-card expansion reserves item_boundary_tag=article"
-            )
+            raise ValueError("inline detail-card expansion reserves item_boundary_tag=article")
         item_boundary_tag = "article"
     section_start = _validated_section_boundary(metadata.get("section_start"), name="section_start")
     section_end = _validated_section_boundary(metadata.get("section_end"), name="section_end")
@@ -667,9 +803,11 @@ async def discover(
     elements = flatten(html, include_hidden=include_hidden)
 
     elements = _scope_to_section(elements, section_start, section_end)
-    if empty_text is not None and _matches_explicit_empty(html, empty_selector, empty_text):
-        log.info("inline.explicit_empty", url=board_url)
-        return []
+    if empty_text is not None:
+        assert empty_selector is not None
+        if _matches_explicit_empty(html, empty_selector, empty_text):
+            log.info("inline.explicit_empty", url=board_url)
+            return []
     if not elements:
         if empty_text is not None:
             raise ValueError(
@@ -695,8 +833,9 @@ async def discover(
     while cursor < len(elements) and processed_count < _MAX_JOBS:
         if item_boundary_tag is None:
             result, new_cursor = walk_steps(elements, steps, start=cursor)
+            provider_identity = None
         else:
-            result, new_cursor = _walk_bounded_item(
+            result, new_cursor, provider_identity = _walk_bounded_item(
                 elements,
                 steps,
                 cursor,
@@ -704,7 +843,7 @@ async def discover(
             )
 
         # Stop if no title found or cursor didn't advance
-        title = result.get("title")
+        title = cast(str | None, result.get("title"))
         if new_cursor <= cursor:
             break
         if not title:
@@ -721,12 +860,19 @@ async def discover(
         ):
             continue
 
-        url = _generate_url(board_url, title, seen_jids)
+        if uses_detail_expansion:
+            if provider_identity is None:
+                raise ValueError("inline expanded detail omitted its provider identity")
+            url = _generate_identity_url(board_url, provider_identity)
+        else:
+            url = _generate_url(board_url, title, seen_jids)
 
         job_defaults = {**defaults, **(defaults_by_title.get(title) or {})}
 
         # Build DiscoveredJob with extracted + default fields
-        description = result.get("description") or (title if description_from_title else None)
+        description = cast(str | None, result.get("description")) or (
+            title if description_from_title else None
+        )
         valid_through = _resolve_valid_through(
             result,
             job_defaults,
@@ -753,18 +899,24 @@ async def discover(
                 expansion_truncated = True
                 break
             if position_index > 0:
-                url = _generate_url(board_url, title, seen_jids)
+                if provider_identity is not None:
+                    url = _generate_identity_url(
+                        board_url, f"{provider_identity}-{position_index + 1}"
+                    )
+                else:
+                    url = _generate_url(board_url, title, seen_jids)
             jobs.append(
                 DiscoveredJob(
                     url=url,
                     title=title,
                     description=description or job_defaults.get("description"),
                     locations=locations or job_defaults.get("locations"),
-                    employment_type=result.get("employment_type")
+                    employment_type=cast(str | None, result.get("employment_type"))
                     or job_defaults.get("employment_type"),
-                    job_location_type=result.get("job_location_type")
+                    job_location_type=cast(str | None, result.get("job_location_type"))
                     or job_defaults.get("job_location_type"),
-                    date_posted=result.get("date_posted") or job_defaults.get("date_posted"),
+                    date_posted=cast(str | None, result.get("date_posted"))
+                    or job_defaults.get("date_posted"),
                     extras={"valid_through": valid_through.isoformat()} if valid_through else None,
                 )
             )

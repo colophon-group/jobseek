@@ -1289,6 +1289,9 @@ inline — Single-Page Extraction (rich)
       "render": true,
       "detail_click_selector": ".job-card .more",
       "detail_content_selector": ".expanded-job:has-text(\"Location:\")",
+      "detail_identity_selector": ".job-card [data-job-id]",
+      "detail_identity_attribute": "data-job-id",
+      "detail_identity_regex": "^job-(\\d+)$",
       "steps": [
         {"tag": "h3", "field": "title"},
         {"text": "Location", "field": "location"},
@@ -1309,6 +1312,17 @@ inline — Single-Page Extraction (rich)
                  detail container after each click. Only that container is
                  passed to the extraction steps, which keeps navigation and
                  application-flow text out of job descriptions.
+    detail_identity_selector
+                 Playwright selector that must match one provider-identity
+                 element per click control, in the same order. The complete
+                 identity sequence is checked again after every page reload.
+    detail_identity_attribute
+                 Attribute read from every identity element before clicks.
+    detail_identity_regex
+                 Full-match regex with exactly one capture group containing
+                 the stable provider ID. Missing, duplicate, changed, or
+                 non-matching identities fail the cycle closed. Stable IDs,
+                 not titles or card positions, become synthetic _jid values.
     fetch_urls   Optional ordered URLs used only to read the page. Each entry is
                  a URL string or {"url": ..., "headers": {...}} object. Headers
                  are scoped to that exact candidate and are never forwarded to
