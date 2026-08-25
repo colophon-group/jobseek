@@ -489,7 +489,14 @@ async def parse_bytes(content: bytes, url: str, config: dict) -> JobContent:
         if require_title_pattern:
             raise ValueError("PDF title_pattern did not match extracted text")
         log.warning("pdf.empty", url=url)
-        return _apply_defaults(JobContent(title=_title_from_url(url, title_pattern)), config)
+        location = _location_from_url(url, config.get("location_url_pattern"))
+        return _apply_defaults(
+            JobContent(
+                title=_title_from_url(url, title_pattern),
+                locations=[location] if location else None,
+            ),
+            config,
+        )
 
     repair_split_initial = bool(config.get("repair_split_initial"))
     named_fields = _extract_named_fields(
