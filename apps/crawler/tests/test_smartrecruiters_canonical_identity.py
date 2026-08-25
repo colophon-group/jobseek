@@ -380,14 +380,16 @@ async def test_canonical_discovery_rejects_list_total_drift():
         (
             "company",
             lambda detail: detail.__setitem__(
-                "company", {"identifier": _TOKEN, "name": "Other Company"}
+                "company", {"identifier": "OtherTenant", "name": "Swiss Medical Network"}
             ),
             False,
         ),
         ("visibility", lambda detail: detail.__setitem__("visibility", "PRIVATE"), False),
         ("language", lambda detail: detail.__setitem__("language", {"code": "fr"}), False),
         ("location", lambda detail: detail["location"].__setitem__("country", "de"), False),
-        ("location", lambda detail: detail["location"].pop("latitude"), False),
+        ("location", lambda detail: detail["location"].__setitem__("postalCode", "9999"), False),
+        ("location", lambda detail: detail["location"].__setitem__("latitude", "47.2"), False),
+        ("latitude", lambda detail: detail["location"].pop("latitude"), False),
         ("department", lambda detail: detail.__setitem__("department", {"id": 999}), True),
         (
             "customField",
@@ -532,10 +534,30 @@ async def test_unsafe_token_is_rejected_before_any_request():
     assert requests == 0
 
 
-async def test_coordinate_identity_tolerates_provider_classification_cache_lag():
-    """Live list data is stale for mutable classifications on a few geo ads."""
+async def test_stable_identity_tolerates_localized_labels_and_classification_cache_lag():
+    """Localized text and mutable classifications never define geo identity."""
     listed_detail = _detail("744000144497156")
+    listed_detail["language"].update({"label": "German", "labelNative": "Deutsch"})
+    listed_detail["location"].update(
+        {
+            "city": "Biel",
+            "region": "BE",
+            "address": "Unionsgasse 1",
+            "fullLocation": "Biel, BE, Switzerland",
+        }
+    )
     fetched_detail = deepcopy(listed_detail)
+    fetched_detail["name"] = "Titre localisé"
+    fetched_detail["company"]["name"] = "Réseau médical suisse"
+    fetched_detail["language"].update({"label": "Allemand", "labelNative": "Deutsch (CH)"})
+    fetched_detail["location"].update(
+        {
+            "city": "Bienne",
+            "region": "Berne",
+            "address": "Rue de l'Union 1",
+            "fullLocation": "Bienne, BE, Suisse",
+        }
+    )
     fetched_detail["department"] = {"id": 999, "label": "Changed department"}
     fetched_detail["typeOfEmployment"] = {"id": "part-time", "label": "Part-time"}
     fetched_detail["customField"][0]["valueId"] = "changed-brand"

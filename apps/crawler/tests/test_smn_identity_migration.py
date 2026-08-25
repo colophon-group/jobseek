@@ -116,7 +116,9 @@ def test_sql_contract_binds_every_write_to_exact_company_and_board():
     assert "jb.company_id = $2" in board_sql
     assert "board_id = $1" in postings_sql and "company_id = $2" in postings_sql
     assert "limit $4" in postings_sql and "for update" in postings_sql
-    assert "company_id <> $2 or board_id <> $3" in collision_sql
+    assert "source_url = any($1::text[])" in collision_sql
+    assert "is_active = true and source_url = any($2::text[])" in collision_sql
+    assert "company_id <> $3 or board_id <> $4" in collision_sql
     assert "board_id = $4" in survivor_sql and "company_id = $5" in survivor_sql
     assert "board_id = $2" in aliases_sql and "company_id = $3" in aliases_sql
     assert "source_url = any($4::text[])" in aliases_sql
@@ -301,6 +303,57 @@ async def test_cross_company_canonical_collision_fails_before_any_write():
         await _run(conn)
 
     conn.execute.assert_not_awaited()
+    collision_call = conn.fetchrow.await_args_list[1]
+    assert set(collision_call.args[1]) == {_CANONICAL_A, _CANONICAL_B}
+    assert set(collision_call.args[2]) == {_ALIAS_A_DE, _ALIAS_A_FR, _ALIAS_B}
+
+
+@pytest.mark.parametrize(
+    ("foreign_company", "foreign_board"),
+    [("other-company", "board-id"), ("company-id", "other-board")],
+)
+async def test_active_cross_owner_alias_collision_fails_before_any_write(
+    foreign_company,
+    foreign_board,
+):
+    conn = AsyncMock()
+    conn.fetchrow.side_effect = [
+        {"existing_receipt": None},
+        {
+            "id": "foreign",
+            "company_id": foreign_company,
+            "board_id": foreign_board,
+            "source_url": _ALIAS_A_DE,
+            "is_active": True,
+        },
+    ]
+    conn.fetch.return_value = []
+
+    with pytest.raises(ValueError, match="active alias URL is owned outside"):
+        await _run(conn)
+
+    conn.execute.assert_not_awaited()
+    collision_call = conn.fetchrow.await_args_list[1]
+    assert _ALIAS_A_DE in collision_call.args[2]
+
+
+async def test_inactive_cross_owner_alias_is_not_an_active_collision():
+    """The SQL filters inactive aliases; canonical targets remain unconditional."""
+    conn = AsyncMock()
+    conn.fetchrow.side_effect = [{"existing_receipt": None}, None]
+    conn.fetch.return_value = []
+    conn.execute.return_value = "UPDATE 1"
+
+    deactivated, _ = await _run(conn)
+
+    assert deactivated == 0
+    collision_call = conn.fetchrow.await_args_list[1]
+    assert set(collision_call.args[1]) == {_CANONICAL_A, _CANONICAL_B}
+    assert set(collision_call.args[2]) == {_ALIAS_A_DE, _ALIAS_A_FR, _ALIAS_B}
+    assert any(
+        call.args[0] == _WRITE_SMARTRECRUITERS_IDENTITY_MIGRATION_RECEIPT
+        for call in conn.execute.await_args_list
+    )
 
 
 async def test_exact_receipt_is_a_permanent_noop():

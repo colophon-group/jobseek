@@ -346,25 +346,55 @@ async def _list_posting_items(
     return items
 
 
-def _stable_mapping_subset(
+def _stable_mapping_id(
     listed: object,
     detail: object,
     *,
     name: str,
-    normalize_id: bool = False,
 ) -> None:
-    """Require every list-snapshot field to agree with the detail snapshot."""
+    """Compare one provider mapping by ID while ignoring localized labels."""
     if not isinstance(listed, dict) or not isinstance(detail, dict) or not listed:
         raise ValueError(f"SmartRecruiters {name} overlap must be nonempty mappings")
-    for key, listed_value in listed.items():
-        if key not in detail:
-            raise ValueError(f"SmartRecruiters detail omitted listed {name}.{key}")
-        detail_value = detail[key]
-        if normalize_id and key == "id":
-            listed_value = str(listed_value)
-            detail_value = str(detail_value)
-        if listed_value != detail_value:
-            raise ValueError(f"SmartRecruiters list/detail drifted at {name}.{key}")
+    listed_id = listed.get("id")
+    detail_id = detail.get("id")
+    if listed_id is None or detail_id is None or str(listed_id) != str(detail_id):
+        raise ValueError(f"SmartRecruiters list/detail drifted at {name}.id")
+
+
+def _validate_stable_location_overlap(listed: object, detail: object) -> None:
+    """Compare only identity-bearing codes, flags, and provider coordinates."""
+    if not isinstance(listed, dict) or not isinstance(detail, dict):
+        raise ValueError("SmartRecruiters location overlap must be mappings")
+
+    for key in ("country", "postalCode", "remote", "hybrid"):
+        if (key in listed) != (key in detail) or listed.get(key) != detail.get(key):
+            raise ValueError(f"SmartRecruiters list/detail drifted at location.{key}")
+    country = listed.get("country")
+    if not isinstance(country, str) or re.fullmatch(r"[A-Za-z]{2}", country) is None:
+        raise ValueError("SmartRecruiters listed location.country must be a country code")
+    postal_code = listed.get("postalCode")
+    if postal_code is not None and (
+        not isinstance(postal_code, str)
+        or not postal_code.strip()
+        or len(postal_code) > 32
+        or "\x00" in postal_code
+    ):
+        raise ValueError("SmartRecruiters listed location.postalCode must be bounded")
+    for key in ("remote", "hybrid"):
+        if not isinstance(listed.get(key), bool):
+            raise ValueError(f"SmartRecruiters listed location.{key} must be boolean")
+
+    listed_has_coordinates = "latitude" in listed or "longitude" in listed
+    detail_has_coordinates = "latitude" in detail or "longitude" in detail
+    if listed_has_coordinates != detail_has_coordinates:
+        raise ValueError("SmartRecruiters list/detail drifted at location coordinate presence")
+    if listed_has_coordinates:
+        listed_lat = _normalize_coordinate(listed.get("latitude"), latitude=True)
+        listed_lon = _normalize_coordinate(listed.get("longitude"), latitude=False)
+        detail_lat = _normalize_coordinate(detail.get("latitude"), latitude=True)
+        detail_lon = _normalize_coordinate(detail.get("longitude"), latitude=False)
+        if (listed_lat, listed_lon) != (detail_lat, detail_lon):
+            raise ValueError("SmartRecruiters list/detail drifted at location coordinates")
 
 
 def _stable_custom_field_ids(value: object, *, source: str) -> tuple[tuple[str, str], ...]:
@@ -428,9 +458,14 @@ def _validate_detail_identity(token: str, listed: dict, detail: dict) -> None:
     if listed_ref != _detail_url(token, posting_id):
         raise ValueError("SmartRecruiters listed ref did not match its publication endpoint")
 
-    _stable_mapping_subset(listed.get("company"), company, name="company")
-    _stable_mapping_subset(listed.get("language"), detail.get("language"), name="language")
-    _stable_mapping_subset(listed.get("location"), detail.get("location"), name="location")
+    listed_company = listed.get("company")
+    if not isinstance(listed_company, dict) or listed_company.get("identifier") != token:
+        raise ValueError("SmartRecruiters listed company did not match its tenant")
+    listed_language = _detail_language(listed)
+    detail_language = _detail_language(detail)
+    if listed_language is None or listed_language != detail_language:
+        raise ValueError("SmartRecruiters list/detail drifted at language.code")
+    _validate_stable_location_overlap(listed.get("location"), detail.get("location"))
     # Department/custom-field values are identity-bearing only for the
     # coordinate-free fallback. SmartRecruiters' list API is observably stale
     # for these mutable classification fields on some coordinate-backed ads,
@@ -438,18 +473,11 @@ def _validate_detail_identity(token: str, listed: dict, detail: dict) -> None:
     # classifications there would turn known provider cache lag into a
     # permanent board failure without adding identity proof.
     listed_location = listed["location"]
-    detail_location = detail["location"]
-    for coordinate in ("latitude", "longitude"):
-        if (coordinate in listed_location) != (coordinate in detail_location):
-            raise ValueError(
-                f"SmartRecruiters list/detail drifted at location.{coordinate} presence"
-            )
     if listed_location.get("latitude") is None:
-        _stable_mapping_subset(
+        _stable_mapping_id(
             listed.get("department"),
             detail.get("department"),
             name="department",
-            normalize_id=True,
         )
         listed_fields = dict(_stable_custom_field_ids(listed.get("customField"), source="list"))
         detail_fields = dict(_stable_custom_field_ids(detail.get("customField"), source="detail"))
