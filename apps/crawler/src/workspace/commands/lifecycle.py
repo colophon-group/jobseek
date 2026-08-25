@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 from datetime import UTC, datetime
+from functools import wraps
 
 import click
 
@@ -14,7 +15,7 @@ from src.shared.constants import SLUG_RE, get_data_dir
 from src.shared.csv_io import read_csv
 from src.workspace import log as action_log
 from src.workspace import output as out
-from src.workspace.errors import CsvToolError, GitError, GitHubApiError, WorkspaceError
+from src.workspace.errors import CsvToolError, WorkspaceError
 from src.workspace.state import (
     Board,
     Workspace,
@@ -41,6 +42,24 @@ def is_local_mode() -> bool:
     without creating branches, PRs, or pushing to GitHub.
     """
     return os.environ.get("WS_LOCAL", "").strip() in ("1", "true", "yes")
+
+
+def _serialize_company_lifecycle(func):
+    """Hold the reentrant per-company lock for a complete lifecycle command."""
+
+    @wraps(func)
+    def locked(*args, **kwargs):
+        slug = kwargs.get("slug") if "slug" in kwargs else (args[0] if args else None)
+        if slug is None:
+            slug = resolve_slug(None)
+        if not isinstance(slug, str):
+            raise WorkspaceError("Could not determine company slug for lifecycle lock")
+        from src.workspace.filelock import company_lifecycle_lock
+
+        with company_lifecycle_lock(slug):
+            return func(*args, **kwargs)
+
+    return locked
 
 
 def _load_existing_company(slug: str) -> dict[str, str]:
@@ -106,6 +125,7 @@ def search(query: str):
 @click.option("--reconfig", is_flag=True, help="Reconfigure an existing company")
 @click.option("--reset", is_flag=True, help="Purge managed clone and re-clone from scratch")
 @click.option("--start-at", default=None, help="Start workflow at this step (reconfig only)")
+@_serialize_company_lifecycle
 def new(
     slug: str,
     issue: int | None,
@@ -142,19 +162,24 @@ def new(
     if not SLUG_RE.match(slug):
         out.die(f"Invalid slug format: {slug!r}")
 
-    # Clean up leftover workspace from a previous failed attempt
+    # A second same-slug process may have waited on the lifecycle lock while
+    # the first process published this state.  Never interpret that valid
+    # state as stale and delete it; make retries an idempotent resume instead.
     if workspace_exists(slug):
-        import contextlib
-
-        out.warn("workspace", f"Cleaning up leftover workspace {slug!r}")
-        if not reconfig:
-            from src.csvtool import company_del
-
-            with contextlib.suppress(CsvToolError):
-                company_del(slug)
-        delete_workspace(slug)
-        if get_active_slug() == slug:
-            clear_active_slug()
+        existing_ws = load_workspace(slug)
+        if issue is not None and existing_ws.issue != issue:
+            out.die(
+                f"Workspace {slug!r} belongs to issue #{existing_ws.issue}, not issue #{issue}; "
+                "refusing to replace it"
+            )
+        if pr_opt is not None and existing_ws.pr != pr_opt:
+            out.die(
+                f"Workspace {slug!r} belongs to PR #{existing_ws.pr}, not PR #{pr_opt}; "
+                "refusing to replace it"
+            )
+        set_active_slug(slug)
+        out.info("workspace", f"Workspace {slug!r} already exists; resumed without mutation")
+        return
 
     # Check companies.csv
     companies_path = get_data_dir() / "companies.csv"
@@ -182,6 +207,8 @@ def new(
 
     branch = f"fix-crawler/{slug}" if reconfig else f"add-company/{slug}"
     pr_number: int | None = None
+    pr_details: dict | None = None
+    automatic_resume = False
 
     if local:
         out.warn("workspace", "Local mode — skipping git/GitHub operations")
@@ -220,12 +247,23 @@ def new(
                     f"Could not load ATS inventory seed ({exc}); using normal discovery",
                 )
 
-        # Attach to explicit PR or reuse one from a previous attempt
+        base_ref = git.get_main_branch()
+
+        # Attach to explicit PR or reuse one from a previous attempt. Automatic
+        # reuse is stricter than explicit operator attachment: it also binds the
+        # PR author and structured issue relationship.
         if pr_opt:
             pr_number = pr_opt
-            pr_branch = git.get_pr_branch(pr_number)
-            if pr_branch:
-                branch = pr_branch
+            pr_details = git.get_pr_details_strict(pr_number)
+            git.validate_pr_attachment(
+                pr_details,
+                pr_number=pr_number,
+                branch=branch,
+                base_ref=base_ref,
+                issue=issue,
+                slug=slug,
+                authorized_actor=None,
+            )
             out.info("github", f"Attaching to existing PR #{pr_number} (branch {branch})")
         elif issue:
             existing = git.check_existing_prs_strict(issue)
@@ -237,9 +275,31 @@ def new(
                         "refusing to attach automatically"
                     )
                 pr_number = existing[0]["number"]
-                pr_branch = git.get_pr_branch(pr_number)
-                if pr_branch:
-                    branch = pr_branch
+                if not isinstance(pr_number, int):
+                    out.die(f"Issue #{issue} linked PR has no valid number")
+                issue_data = git.fetch_issue(issue)
+                labels = {
+                    label.get("name")
+                    for label in issue_data.get("labels", [])
+                    if isinstance(label, dict)
+                }
+                if "company-request" not in labels:
+                    out.die(
+                        f"Issue #{issue} is not labelled company-request; "
+                        "refusing automatic PR attachment"
+                    )
+                pr_details = git.get_pr_details_strict(pr_number)
+                actor = git.get_authenticated_login_strict()
+                git.validate_pr_attachment(
+                    pr_details,
+                    pr_number=pr_number,
+                    branch=branch,
+                    base_ref=base_ref,
+                    issue=issue,
+                    slug=slug,
+                    authorized_actor=actor,
+                )
+                automatic_resume = True
                 out.info(
                     "github",
                     f"Reusing existing PR #{pr_number} for issue #{issue} (branch {branch})",
@@ -273,7 +333,14 @@ def new(
             # managed company worktree is where all subsequent work happens;
             # leaving it at the historical draft tip reintroduces stale code
             # and unrelated diffs.
-            git.create_worktree(branch, worktree_path, start_point=f"origin/{branch}")
+            assert pr_details is not None
+            expected_head = str(pr_details["headRefOid"])
+            remote_head = git.remote_branch_oid_strict(branch)
+            if remote_head != expected_head:
+                raise WorkspaceError(
+                    f"PR #{pr_number} branch changed during attachment; refusing to continue"
+                )
+            git.create_worktree(branch, worktree_path, start_point=expected_head)
         else:
             main = git.get_main_branch()
             # Clean up stale remote branch (previous push that wasn't merged)
@@ -292,6 +359,7 @@ def new(
                 raise
         out.plain("git", f"Created worktree at {worktree_path} (branch {branch})")
 
+    resume_existing_pr = False
     if not reconfig:
         # Add stub CSV row for new companies
         from src.csvtool import company_add
@@ -303,6 +371,12 @@ def new(
         except NothingToUpdateError:
             # Slug already present in worktree CSV from a previous attempt
             out.warn("csv", f"Slug {slug!r} already in worktree CSV — continuing")
+            if pr_number is not None:
+                # Preserve existing aliases and metadata from the authenticated
+                # resumed branch instead of creating a second alias that only
+                # collides when ws submit writes the CSVs.
+                resume_existing_pr = True
+                out.info("workspace", "Loading existing configuration from resumed PR")
         except Exception:
             # Clean up worktree before re-raising unexpected errors
             if not local:
@@ -319,11 +393,18 @@ def new(
         branch=branch,
         issue=issue,
         pr=pr_number,
+        pr_provenance=(
+            git.pr_provenance(pr_details, issue=issue, slug=slug)
+            if not local and pr_details is not None
+            else {}
+        ),
         worktree=worktree_str,
     )
 
-    # Pre-populate from existing CSV data when reconfiguring
-    if reconfig:
+    # Pre-populate from existing CSV data when reconfiguring or resuming a PR
+    # that already contains this company.
+    load_existing_config = reconfig or resume_existing_pr
+    if load_existing_config:
         company_data = _load_existing_company(slug)
         if company_data:
             ws.name = company_data.get("name", "")
@@ -355,7 +436,7 @@ def new(
                         out.info("reconfig", f"Loaded descriptions: {', '.join(ws.descriptions)}")
                     break
 
-    existing_boards = _load_existing_boards(slug) if reconfig else []
+    existing_boards = _load_existing_boards(slug) if load_existing_config else []
     seeded_board = None
     if inventory_seed is not None:
         from src.workspace.ats_seed import (
@@ -394,6 +475,30 @@ def new(
                 board_alias=available_inventory_board_alias(existing_aliases),
             )
 
+    if automatic_resume:
+        # Reauthenticate the exact ref immediately before publishing local
+        # ownership state. The earlier check cannot authorize a later ref.
+        refreshed = git.get_pr_details_strict(pr_number)
+        git.validate_pr_attachment(
+            refreshed,
+            pr_number=pr_number,
+            branch=branch,
+            base_ref=base_ref,
+            issue=issue,
+            slug=slug,
+            authorized_actor=git.get_authenticated_login_strict(),
+        )
+        expected_head = str(pr_details["headRefOid"])
+        if (
+            refreshed.get("headRefOid") != expected_head
+            or git.remote_branch_oid_strict(branch) != expected_head
+        ):
+            raise WorkspaceError(
+                f"PR #{pr_number} branch changed before workspace publication; refusing resume"
+            )
+        pr_details = refreshed
+        ws.pr_provenance = git.pr_provenance(refreshed, issue=issue, slug=slug)
+
     save_workspace(ws)
 
     if seeded_board is not None:
@@ -408,7 +513,7 @@ def new(
         )
 
     # Pre-populate boards when reconfiguring
-    if reconfig:
+    if load_existing_config:
         for brow in existing_boards:
             board_slug = brow.get("board_slug", "")
             alias = (
@@ -429,7 +534,7 @@ def new(
         save_workspace(ws)
 
     # For reconfig, advance workflow past setup/add_boards (already satisfied)
-    if reconfig and (existing_boards or seeded_board is not None):
+    if load_existing_config and (existing_boards or seeded_board is not None):
         from src.workspace.workflow import WorkflowState, _all_step_defs, _save_wf_to_disk
 
         step_id = start_at or "select_monitor"
@@ -612,12 +717,41 @@ def _cleanup_resolver_artifacts(
     GitHub and branch failures intentionally propagate.  The issue remains
     open, so rerunning the terminal command safely resumes cleanup.
     """
-    from src.csvtool import company_del
+    from src.workspace.filelock import company_lifecycle_lock
 
-    branches = {ws.branch} if ws and ws.branch else set()
-    pr_numbers = {ws.pr} if ws and ws.pr else set()
+    lock_slug = slug or (ws.slug if ws is not None else None)
+    if lock_slug is None and not local:
+        # Discover a possible slug only to select the lock. The complete query
+        # and all validation are repeated after acquiring it.
+        from src.workspace import git
 
-    if not local:
+        candidates = git.check_existing_prs_strict(issue)
+        if len(candidates) == 1:
+            branch = candidates[0].get("headRefName")
+            if isinstance(branch, str) and branch.startswith("add-company/"):
+                lock_slug = branch.removeprefix("add-company/")
+
+    if lock_slug is None:
+        _cleanup_resolver_artifacts_locked(issue=issue, slug=slug, ws=ws, local=local)
+        return
+    with company_lifecycle_lock(lock_slug):
+        _cleanup_resolver_artifacts_locked(issue=issue, slug=lock_slug, ws=ws, local=local)
+
+
+def _cleanup_resolver_artifacts_locked(
+    *,
+    issue: int,
+    slug: str | None,
+    ws: Workspace | None,
+    local: bool,
+) -> None:
+    """Locked implementation for terminal resolver cleanup."""
+    if slug and workspace_exists(slug):
+        ws = load_workspace(slug)
+    branch = ws.branch if ws and ws.branch else ""
+    pr_number = ws.pr if ws else None
+
+    if not local and (ws is None or not ws.terminal_state):
         from src.workspace import git
 
         linked_prs = git.check_existing_prs_strict(issue)
@@ -626,17 +760,69 @@ def _cleanup_resolver_artifacts(
             raise WorkspaceError(
                 f"Issue #{issue} has {classification} linked PR state; refusing automatic cleanup"
             )
-        for pr in linked_prs:
-            number = pr.get("number")
-            branch = pr.get("headRefName")
-            if isinstance(number, int):
-                pr_numbers.add(number)
-            if isinstance(branch, str):
-                branches.add(branch)
-                if slug is None and branch.startswith("add-company/"):
-                    slug = branch.removeprefix("add-company/")
-        for pr_number in sorted(number for number in pr_numbers if number is not None):
-            git.close_pr_if_open(pr_number)
+        linked_numbers = {pr.get("number") for pr in linked_prs}
+        if pr_number is not None:
+            if linked_numbers != {pr_number}:
+                raise WorkspaceError(
+                    f"Workspace PR #{pr_number} is not the sole structured PR for issue #{issue}"
+                )
+            assert ws is not None
+            git.verify_recorded_pr(
+                ws.pr_provenance,
+                pr_number=pr_number,
+                branch=branch,
+                issue=issue,
+                slug=ws.slug,
+                allow_closed=True,
+            )
+        elif linked_prs:
+            linked = linked_prs[0]
+            number = linked.get("number")
+            linked_branch = linked.get("headRefName")
+            if not isinstance(number, int) or not isinstance(linked_branch, str):
+                raise WorkspaceError(f"Issue #{issue} linked PR metadata is incomplete")
+            if slug is None:
+                if not linked_branch.startswith("add-company/"):
+                    raise WorkspaceError(f"Issue #{issue} linked branch has no company slug")
+                slug = linked_branch.removeprefix("add-company/")
+            branch = f"add-company/{slug}"
+            details = git.get_pr_details_strict(number)
+            issue_data = git.fetch_issue(issue)
+            labels = {
+                label.get("name")
+                for label in issue_data.get("labels", [])
+                if isinstance(label, dict)
+            }
+            if "company-request" not in labels:
+                raise WorkspaceError(f"Issue #{issue} is not labelled company-request")
+            git.validate_pr_attachment(
+                details,
+                pr_number=number,
+                branch=branch,
+                base_ref=git.get_main_branch(),
+                issue=issue,
+                slug=slug,
+                authorized_actor=git.get_authenticated_login_strict(),
+            )
+            pr_number = number
+            expected_remote_oid = str(details["headRefOid"])
+            if git.remote_branch_oid_strict(branch) != expected_remote_oid:
+                raise WorkspaceError(f"PR #{number} remote ref changed during terminal cleanup")
+            assert slug is not None
+            ws = Workspace(
+                slug=slug,
+                created_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                branch=branch,
+                issue=issue,
+                pr=pr_number,
+                pr_provenance=git.pr_provenance(details, issue=issue, slug=slug),
+                worktree=str(git.worktrees_dir() / slug),
+            )
+            save_workspace(ws)
+        elif branch and git.remote_branch_oid_strict(branch) is not None:
+            raise WorkspaceError(
+                f"Remote branch {branch!r} exists without exact PR provenance; refusing cleanup"
+            )
 
     if ws is not None:
         action_log.append(
@@ -646,109 +832,182 @@ def _cleanup_resolver_artifacts(
             f"Cleaning terminal resolver artifacts for issue #{issue}",
         )
 
-    if slug and any(branch.startswith("add-company/") for branch in branches):
+    if ws is not None:
+        _run_terminal_cleanup(ws, local=local)
+
+
+def _run_terminal_cleanup(ws: Workspace, *, local: bool) -> None:
+    """Resume one journaled terminal transition to completion."""
+    from pathlib import Path
+
+    from src.csvtool import company_del
+    from src.workspace import git
+
+    branch = ws.branch
+    if branch and branch not in {f"add-company/{ws.slug}", f"fix-crawler/{ws.slug}"}:
+        raise WorkspaceError(f"Workspace branch {branch!r} is not bound to slug {ws.slug!r}")
+    if not branch and (ws.pr is not None or ws.worktree):
+        raise WorkspaceError("Workspace has remote/local artifacts without a recorded branch")
+
+    state = ws.terminal_state
+    if not state:
+        expected_remote_oid: str | None = None
+        if not local:
+            if ws.pr is not None:
+                git.verify_recorded_pr(
+                    ws.pr_provenance,
+                    pr_number=ws.pr,
+                    branch=branch,
+                    issue=ws.issue,
+                    slug=ws.slug,
+                    allow_closed=True,
+                )
+                expected_remote_oid = str(ws.pr_provenance["head_ref_oid"])
+            elif branch and git.remote_branch_oid_strict(branch) is not None:
+                raise WorkspaceError(f"Remote branch {branch!r} exists without exact PR provenance")
+
+        expected_worktree = Path(os.path.abspath(str(git.worktrees_dir() / ws.slug)))
+        recorded_worktree = (
+            Path(os.path.abspath(os.path.expanduser(ws.worktree))) if ws.worktree else None
+        )
+        if not local and ws.worktree and recorded_worktree != expected_worktree:
+            raise WorkspaceError(
+                f"Workspace {ws.slug!r} records unexpected worktree {ws.worktree!r}"
+            )
+        worktree_head = (
+            git.managed_worktree_head_strict(expected_worktree, branch)
+            if not local and ws.worktree
+            else None
+        )
+        state = {
+            "version": 1,
+            "slug": ws.slug,
+            "branch": branch,
+            "issue": ws.issue,
+            "pr": ws.pr,
+            "expected_remote_oid": expected_remote_oid,
+            "worktree": str(expected_worktree) if not local else None,
+            "worktree_head": worktree_head,
+            "remote_delete_attempted": False,
+            "remote_deleted": expected_remote_oid is None,
+            "pr_close_attempted": False,
+            "pr_closed": ws.pr is None,
+            "worktree_remove_attempted": False,
+            "worktree_removed": worktree_head is None,
+            "local_branch_remove_attempted": False,
+            "local_branch_removed": local or not branch,
+            "claim_release_attempted": False,
+            "claim_released": local or ws.issue is None,
+            "data_removed": False,
+        }
+        ws.terminal_state = state
+        save_workspace(ws)
+    else:
+        immutable = {"slug": ws.slug, "branch": branch, "issue": ws.issue, "pr": ws.pr}
+        if any(state.get(key) != value for key, value in immutable.items()):
+            raise WorkspaceError("Terminal journal no longer matches workspace ownership")
+
+    expected_remote_oid = state.get("expected_remote_oid")
+    if not local and expected_remote_oid is not None and not state.get("remote_deleted"):
+        if not state.get("remote_delete_attempted"):
+            git.verify_recorded_pr(
+                ws.pr_provenance,
+                pr_number=ws.pr,
+                branch=branch,
+                issue=ws.issue,
+                slug=ws.slug,
+                allow_closed=True,
+            )
+            state["remote_delete_attempted"] = True
+            save_workspace(ws)
+        git.delete_remote_branch_at_expected_oid(
+            branch,
+            str(expected_remote_oid),
+            absent_is_success=True,
+        )
+        state["remote_deleted"] = True
+        save_workspace(ws)
+
+    if not local and ws.pr is not None and not state.get("pr_closed"):
+        if not state.get("pr_close_attempted"):
+            state["pr_close_attempted"] = True
+            save_workspace(ws)
+        git.close_pr_if_open(ws.pr)
+        state["pr_closed"] = True
+        save_workspace(ws)
+
+    worktree = state.get("worktree")
+    worktree_head = state.get("worktree_head")
+    if not local and worktree and worktree_head and not state.get("worktree_removed"):
+        if not state.get("worktree_remove_attempted"):
+            git.authenticate_managed_worktree(Path(worktree), branch, worktree_head)
+            state["worktree_remove_attempted"] = True
+            save_workspace(ws)
+        git.remove_authenticated_worktree(
+            Path(worktree), branch, worktree_head, absent_is_success=True
+        )
+        state["worktree_removed"] = True
+        save_workspace(ws)
+        from src.shared.constants import set_repo_root
+
+        set_repo_root(git.managed_repo())
+
+    if not local and not state.get("local_branch_removed"):
+        if not state.get("local_branch_remove_attempted"):
+            state["local_branch_remove_attempted"] = True
+            save_workspace(ws)
+        git.delete_local_branch_strict(branch)
+        state["local_branch_removed"] = True
+        save_workspace(ws)
+
+    if not local and ws.issue and not state.get("claim_released"):
+        if not state.get("claim_release_attempted"):
+            state["claim_release_attempted"] = True
+            save_workspace(ws)
+        git.unclaim_issue_strict(ws.issue)
+        state["claim_released"] = True
+        save_workspace(ws)
+
+    if not state.get("data_removed") and not branch.startswith("fix-crawler/"):
         try:
-            company_del(slug)
-            out.info("csv", f"Removed {slug!r} from companies.csv (+ boards)")
+            company_del(ws.slug)
+            out.info("csv", f"Removed {ws.slug!r} from companies.csv (+ boards)")
         except (CsvToolError, FileNotFoundError):
             pass
+        state["data_removed"] = True
+        save_workspace(ws)
 
-    if not local:
-        from pathlib import Path
-
-        from src.workspace import git
-
-        worktree = Path(ws.worktree) if ws and ws.worktree else None
-        if worktree is None and slug:
-            worktree = git.worktrees_dir() / slug
-        if worktree is not None:
-            git.remove_worktree_strict(worktree)
-        for branch in sorted(branch for branch in branches if branch):
-            git.delete_branch_strict(branch)
-
-    if slug and workspace_exists(slug):
-        delete_workspace(slug)
-        if get_active_slug() == slug:
-            clear_active_slug()
-        out.info("workspace", f"Removed workspace {slug!r}")
+    delete_workspace(ws.slug)
+    if get_active_slug() == ws.slug:
+        clear_active_slug()
+    out.info("workspace", f"Removed workspace {ws.slug!r}")
 
 
 @click.command(name="del")
 @click.argument("slug", required=False)
 def del_(slug: str | None):
     """Remove workspace + CSV rows + close PR + delete branch."""
-    from src.csvtool import company_del
+    from src.workspace.filelock import company_lifecycle_lock
 
     local = is_local_mode()
     slug = resolve_slug(slug)
+    if not SLUG_RE.fullmatch(slug):
+        out.die(f"Invalid slug format: {slug!r}")
 
-    ws: Workspace | None = None
-    if workspace_exists(slug):
+    with company_lifecycle_lock(slug):
+        if not workspace_exists(slug):
+            out.die(
+                f"Workspace {slug!r} has no recorded ownership state; "
+                "refusing best-effort PR or branch deletion"
+            )
         ws = load_workspace(slug)
-    else:
-        out.warn(
-            "workspace", f"Workspace YAML for {slug!r} not found — attempting best-effort cleanup"
-        )
-
-    # Remove claim comment if issue is linked
-    if ws and ws.issue and not local:
-        from src.workspace import git as _git
-
-        _git.unclaim_issue(ws.issue)
-
-    # Close PR if it exists
-    if ws and ws.pr:
-        if local:
-            out.warn("github", f"Local mode — skipping PR #{ws.pr} close")
-        else:
-            from src.workspace import git
-
-            try:
-                git.close_pr(ws.pr)
-                out.info("github", f"Closed PR #{ws.pr}")
-            except GitHubApiError:
-                out.warn("github", f"Could not close PR #{ws.pr}")
-
-    # Delete CSV rows
-    try:
-        company_del(slug)
-        out.info("csv", f"Removed {slug!r} from companies.csv (+ boards)")
-    except CsvToolError:
-        out.warn("csv", f"Company {slug!r} not found in CSV (may not have been added)")
-
-    # Remove worktree and delete branch
-    branch = ws.branch if ws else f"add-company/{slug}"
-    if not local:
-        from pathlib import Path
-
-        from src.workspace import git
-
-        worktree_path = Path(ws.worktree) if (ws and ws.worktree) else git.worktrees_dir() / slug
-        if worktree_path.exists():
-            try:
-                git.remove_worktree(worktree_path)
-                # Pivot back to managed clone so git commands work
-                from src.shared.constants import set_repo_root
-
-                set_repo_root(git.managed_repo())
-                out.info("git", f"Removed worktree {worktree_path}")
-            except (GitError, OSError) as exc:
-                out.warn("git", f"Could not remove worktree {worktree_path}: {exc}")
-        try:
-            git.delete_branch(branch, remote=True)
-            out.info("git", f"Deleted branch {branch}")
-        except GitError:
-            out.warn("git", f"Could not delete branch {branch}")
-    else:
-        out.warn("git", f"Local mode — skipping branch {branch} deletion")
-
-    # Delete workspace directory
-    delete_workspace(slug)
-    out.info("workspace", f"Removed workspace {slug!r}")
-
-    # Clear active if this was the active workspace
-    if get_active_slug() == slug:
-        clear_active_slug()
+        branch = ws.branch
+        if branch not in {f"add-company/{slug}", f"fix-crawler/{slug}"}:
+            out.die(
+                f"Workspace branch {branch!r} is not bound to slug {slug!r}; "
+                "refusing destructive cleanup"
+            )
+        _run_terminal_cleanup(ws, local=local)
 
 
 @click.command()
@@ -1145,6 +1404,69 @@ SUBMIT_STEPS: list[tuple[str, str, bool]] = [
 ]
 
 
+def _record_current_pr_provenance(
+    ws: Workspace,
+    *,
+    require_current_actor: bool,
+    expected_head_oid: str | None = None,
+) -> None:
+    """Validate and persist the current exact PR head after publication."""
+    from src.workspace import git
+
+    if ws.pr is None:
+        raise WorkspaceError("Cannot record provenance without a PR number")
+    details = git.get_pr_details_strict(ws.pr)
+    actor = git.get_authenticated_login_strict() if require_current_actor else None
+    git.validate_pr_attachment(
+        details,
+        pr_number=ws.pr,
+        branch=ws.branch,
+        base_ref=git.get_main_branch(),
+        issue=ws.issue,
+        slug=ws.slug,
+        authorized_actor=actor,
+    )
+    if expected_head_oid is not None and details.get("headRefOid") != expected_head_oid:
+        raise WorkspaceError(
+            f"PR #{ws.pr} head changed after publication; expected {expected_head_oid}"
+        )
+    if (
+        expected_head_oid is not None
+        and git.remote_branch_oid_strict(ws.branch) != expected_head_oid
+    ):
+        raise WorkspaceError(
+            f"PR #{ws.pr} remote ref changed after publication; expected {expected_head_oid}"
+        )
+    if ws.pr_provenance:
+        recorded_author = ws.pr_provenance.get("author_login")
+        current_author = git.pr_provenance(details, issue=ws.issue, slug=ws.slug).get(
+            "author_login"
+        )
+        if current_author != recorded_author:
+            raise WorkspaceError(f"PR #{ws.pr} author changed; refusing to update provenance")
+    recorded = git.pr_provenance(details, issue=ws.issue, slug=ws.slug)
+    if expected_head_oid is not None:
+        # Never bless a later head merely because it was observed after our push.
+        recorded["head_ref_oid"] = expected_head_oid
+    ws.pr_provenance = recorded
+    save_workspace(ws)
+
+
+def _verify_workspace_pr_before_mutation(ws: Workspace) -> None:
+    """Authenticate a recorded PR immediately before a non-create mutation."""
+    from src.workspace import git
+
+    if ws.pr is None:
+        raise WorkspaceError("Workspace has no PR to mutate")
+    git.verify_recorded_pr(
+        ws.pr_provenance,
+        pr_number=ws.pr,
+        branch=ws.branch,
+        issue=ws.issue,
+        slug=ws.slug,
+    )
+
+
 def _execute_submit_step(
     step_key: str,
     ws: Workspace,
@@ -1281,7 +1603,50 @@ def _execute_submit_step(
             return  # Local mode — skip push
         from src.workspace import git
 
-        git.push(ws.branch, set_upstream=True)
+        current_local_oid = git.current_head_oid_strict()
+        local_oid = ws.submit_state.get("publish_oid")
+        if local_oid is None:
+            local_oid = current_local_oid
+            ws.submit_state["publish_oid"] = local_oid
+            ws.submit_state["publish_expected_remote_oid"] = (
+                ws.pr_provenance.get("head_ref_oid") if ws.pr is not None else None
+            )
+            ws.submit_state["publish_attempted"] = False
+            save_workspace(ws)
+        elif local_oid != current_local_oid:
+            raise WorkspaceError(
+                "Local HEAD changed after submit publication was journaled; refusing to bless it"
+            )
+
+        expected_remote_oid = ws.submit_state.get("publish_expected_remote_oid")
+        remote_oid = git.remote_branch_oid_strict(ws.branch)
+        attempted = bool(ws.submit_state.get("publish_attempted"))
+        if remote_oid == local_oid and not attempted and ws.pr is None:
+            raise WorkspaceError(
+                "Remote branch already exists at the local commit before publication was attempted"
+            )
+        if ws.pr is not None and remote_oid != local_oid:
+            _verify_workspace_pr_before_mutation(ws)
+            if expected_remote_oid != ws.pr_provenance.get("head_ref_oid"):
+                raise WorkspaceError("Submit journal does not match recorded PR provenance")
+
+        if remote_oid != local_oid:
+            if remote_oid != expected_remote_oid:
+                raise WorkspaceError(
+                    f"Remote branch changed from {expected_remote_oid!r} to {remote_oid!r}"
+                )
+            if not attempted:
+                ws.submit_state["publish_attempted"] = True
+                save_workspace(ws)
+            git.push_branch_at_expected_oid(ws.branch, local_oid, expected_remote_oid)
+
+        if ws.pr is not None:
+            _record_current_pr_provenance(
+                ws,
+                require_current_actor=False,
+                expected_head_oid=local_oid,
+            )
+            return
 
         # Create the PR only after the complete configuration is committed and
         # pushed. Recover by branch first so a process interruption after
@@ -1290,7 +1655,11 @@ def _execute_submit_step(
             existing_pr = git.find_open_pr_for_branch(ws.branch)
             if existing_pr:
                 ws.pr = existing_pr
-                save_workspace(ws)
+                _record_current_pr_provenance(
+                    ws,
+                    require_current_actor=True,
+                    expected_head_oid=local_oid,
+                )
                 out.info("github", f"Recovered existing draft PR #{ws.pr}")
                 return
 
@@ -1308,7 +1677,11 @@ def _execute_submit_step(
                             f"on {branch_detail}; refusing to create a duplicate"
                         )
                     ws.pr = issue_pr
-                    save_workspace(ws)
+                    _record_current_pr_provenance(
+                        ws,
+                        require_current_actor=True,
+                        expected_head_oid=local_oid,
+                    )
                     out.info("github", f"Recovered existing draft PR #{ws.pr}")
                     return
 
@@ -1319,7 +1692,11 @@ def _execute_submit_step(
             )
             pr_body = f"Closes #{ws.issue}" if ws.issue else ""
             ws.pr = git.create_draft_pr(title=pr_title, body=pr_body)
-            save_workspace(ws)
+            _record_current_pr_provenance(
+                ws,
+                require_current_actor=True,
+                expected_head_oid=local_oid,
+            )
             out.info("github", f"Created draft PR #{ws.pr}")
 
     elif step_key == "pr_body_updated":
@@ -1328,6 +1705,7 @@ def _execute_submit_step(
         from src.workspace import git
 
         if ws.pr and boards:
+            _verify_workspace_pr_before_mutation(ws)
             pr_body = _build_pr_body(ws, boards)
             git.edit_pr_body(ws.pr, pr_body)
 
@@ -1337,6 +1715,7 @@ def _execute_submit_step(
         from src.workspace import git
 
         if ws.pr and boards:
+            _verify_workspace_pr_before_mutation(ws)
             board_data = {b.alias: b.to_dict() for b in boards}
             stats_comment = action_log.format_crawl_stats(board_data)
             git.comment_on_pr(ws.pr, stats_comment)
@@ -1347,6 +1726,7 @@ def _execute_submit_step(
         from src.workspace import git
 
         if ws.pr:
+            _verify_workspace_pr_before_mutation(ws)
             ws_log = action_log.read(ws_log_path(ws.slug))
             board_logs = {b.alias: b.log for b in boards}
             transcript_body = action_log.format_transcript(ws_log, board_logs)
@@ -1377,6 +1757,7 @@ def _execute_submit_step(
 @click.argument("slug", required=False)
 @click.option("--summary", help="One-line summary for the transcript")
 @click.option("--force", is_flag=True, help="Force submit despite poor quality verdict")
+@_serialize_company_lifecycle
 def submit(slug: str | None, summary: str | None, force: bool):
     """Finalize: write CSV, validate, commit, push, post stats, mark PR ready."""
     from src.workspace.commands.crawl import run_quality_gates

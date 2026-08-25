@@ -235,6 +235,7 @@ class Workspace:
     branch: str = ""
     issue: int | None = None
     pr: int | None = None
+    pr_provenance: dict[str, Any] = field(default_factory=dict)
 
     # Company details (staged — written to CSV on submit)
     name: str = ""
@@ -260,6 +261,10 @@ class Workspace:
     # Submit checkpoint for idempotent retry
     submit_state: dict[str, Any] = field(default_factory=dict)
 
+    # Crash-recoverable lifecycle transition journals.
+    terminal_state: dict[str, Any] = field(default_factory=dict)
+    ready_state: dict[str, Any] = field(default_factory=dict)
+
     # Worktree path (empty = legacy single-checkout mode)
     worktree: str = ""
 
@@ -281,6 +286,8 @@ class Workspace:
         }
         if self.worktree:
             git["worktree"] = self.worktree
+        if self.pr_provenance:
+            git["pr_provenance"] = self.pr_provenance
         return {
             "version": 2,
             "slug": self.slug,
@@ -301,6 +308,8 @@ class Workspace:
             "active_board": self.active_board,
             "ats_inventory": self.ats_inventory or None,
             "submit_state": self.submit_state,
+            "terminal_state": self.terminal_state or None,
+            "ready_state": self.ready_state or None,
             "last_error": self.last_error or None,
         }
 
@@ -319,6 +328,7 @@ class Workspace:
             branch=git.get("branch", ""),
             issue=git.get("issue"),
             pr=git.get("pr"),
+            pr_provenance=git.get("pr_provenance") or {},
             worktree=git.get("worktree", ""),
             name=company.get("name", ""),
             website=company.get("website", ""),
@@ -333,6 +343,8 @@ class Workspace:
             active_board=data.get("active_board", ""),
             ats_inventory=data.get("ats_inventory") or {},
             submit_state=data.get("submit_state") or {},
+            terminal_state=data.get("terminal_state") or {},
+            ready_state=data.get("ready_state") or {},
             last_error=data.get("last_error") or {},
         )
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 from unittest.mock import patch
 
 import pytest
@@ -11,14 +13,49 @@ import pytest
 from src.workspace.errors import GitHubApiError, WorkspaceError
 from src.workspace.git import (
     _run,
+    authenticate_managed_worktree,
     check_existing_prs,
     check_gh_auth,
     create_draft_pr,
     current_branch,
+    delete_branch_at_expected_oid,
+    delete_remote_branch_at_expected_oid,
     ensure_clone,
     find_open_pr_for_branch,
+    pr_provenance,
+    push_branch_at_expected_oid,
     sync_branch_with_main,
+    validate_pr_attachment,
+    verify_recorded_pr,
 )
+
+TEST_OID = "a" * 40
+
+
+def _pr_details(**overrides) -> dict:
+    details = {
+        "number": 42,
+        "state": "OPEN",
+        "isDraft": True,
+        "headRefName": "add-company/acme",
+        "headRefOid": TEST_OID,
+        "headRepository": {"name": "jobseek"},
+        "headRepositoryOwner": {"login": "colophon-group"},
+        "baseRefName": "main",
+        "author": {"login": "resolver"},
+        "closingIssuesReferences": [
+            {
+                "number": 7,
+                "repository": {
+                    "name": "jobseek",
+                    "owner": {"login": "colophon-group"},
+                },
+            }
+        ],
+        "isCrossRepository": False,
+    }
+    details.update(overrides)
+    return details
 
 
 class TestEnsureCloneInstalledMode:
@@ -211,3 +248,249 @@ class TestGitWrappers:
             sync_branch_with_main("add-company/acme")
 
         run.assert_called_with(["git", "merge", "--abort"], cwd=tmp_path, check=False)
+
+
+class TestPullRequestProvenance:
+    def _validate(self, details: dict) -> None:
+        validate_pr_attachment(
+            details,
+            pr_number=42,
+            branch="add-company/acme",
+            base_ref="main",
+            issue=7,
+            slug="acme",
+            authorized_actor="resolver",
+        )
+
+    def test_accepts_exact_same_repo_draft(self):
+        self._validate(_pr_details())
+
+    @pytest.mark.parametrize(
+        ("details", "message"),
+        [
+            (
+                _pr_details(
+                    isCrossRepository=True,
+                    headRepository={"name": "jobseek-fork"},
+                    headRepositoryOwner={"login": "attacker"},
+                ),
+                "not owned",
+            ),
+            (_pr_details(headRefName="add-company/acme-lookalike"), "expected"),
+            (_pr_details(baseRefName="release"), "targets"),
+            (
+                _pr_details(
+                    closingIssuesReferences=[
+                        {
+                            "number": 8,
+                            "repository": {
+                                "name": "jobseek",
+                                "owner": {"login": "colophon-group"},
+                            },
+                        }
+                    ]
+                ),
+                "issue #7",
+            ),
+            (_pr_details(author={"login": "someone-else"}), "authenticated resolver actor"),
+        ],
+        ids=["fork", "lookalike-branch", "wrong-base", "wrong-issue", "wrong-author"],
+    )
+    def test_rejects_untrusted_resume_shapes(self, details, message):
+        with pytest.raises(WorkspaceError, match=message):
+            self._validate(details)
+
+    @pytest.mark.parametrize("remote_oid", ["b" * 40, None], ids=["changed", "deleted"])
+    def test_recorded_pr_rejects_changed_or_deleted_remote_ref(self, remote_oid):
+        details = _pr_details()
+        recorded = pr_provenance(details, issue=7, slug="acme")
+        with (
+            patch("src.workspace.git.get_pr_details_strict", return_value=details),
+            patch("src.workspace.git.remote_branch_oid_strict", return_value=remote_oid),
+            pytest.raises(WorkspaceError, match="changed or disappeared"),
+        ):
+            verify_recorded_pr(
+                recorded,
+                pr_number=42,
+                branch="add-company/acme",
+                issue=7,
+                slug="acme",
+            )
+
+    @pytest.mark.parametrize("remote_oid", ["b" * 40, None], ids=["changed", "deleted"])
+    def test_conditional_branch_delete_rejects_changed_or_deleted_ref(self, remote_oid):
+        with (
+            patch("src.workspace.git.remote_branch_oid_strict", return_value=remote_oid),
+            patch("src.workspace.git._run") as run,
+            pytest.raises(WorkspaceError, match="changed|disappeared"),
+        ):
+            delete_branch_at_expected_oid("add-company/acme", TEST_OID)
+        run.assert_not_called()
+
+    def test_conditional_branch_delete_uses_exact_force_with_lease(self):
+        empty = subprocess.CompletedProcess([], 0, "", "")
+        calls = [TEST_OID, None]
+        with (
+            patch("src.workspace.git.remote_branch_oid_strict", side_effect=calls),
+            patch("src.workspace.git._run", return_value=empty) as run,
+        ):
+            delete_branch_at_expected_oid("add-company/acme", TEST_OID)
+
+        assert any(
+            call.args[0]
+            == [
+                "git",
+                "push",
+                f"--force-with-lease=refs/heads/add-company/acme:{TEST_OID}",
+                "origin",
+                ":refs/heads/add-company/acme",
+            ]
+            for call in run.call_args_list
+        )
+
+    def test_ambiguous_delete_retry_accepts_absence_only_after_journaled_attempt(self):
+        with (
+            patch("src.workspace.git.remote_branch_oid_strict", return_value=None),
+            patch("src.workspace.git._run") as run,
+        ):
+            delete_remote_branch_at_expected_oid(
+                "add-company/acme",
+                TEST_OID,
+                absent_is_success=True,
+            )
+        run.assert_not_called()
+
+    def test_exact_push_leases_old_ref_and_publishes_captured_oid(self):
+        old_oid = "b" * 40
+        empty = subprocess.CompletedProcess([], 0, "", "")
+        with (
+            patch(
+                "src.workspace.git.remote_branch_oid_strict",
+                side_effect=[old_oid, TEST_OID],
+            ),
+            patch("src.workspace.git._run", return_value=empty) as run,
+        ):
+            push_branch_at_expected_oid("add-company/acme", TEST_OID, old_oid)
+
+        run.assert_called_once_with(
+            [
+                "git",
+                "push",
+                "-u",
+                f"--force-with-lease=refs/heads/add-company/acme:{old_oid}",
+                "origin",
+                f"{TEST_OID}:refs/heads/add-company/acme",
+            ],
+            retries=2,
+        )
+
+    def test_exact_push_rejects_pre_push_ref_swap(self):
+        with (
+            patch("src.workspace.git.remote_branch_oid_strict", return_value="c" * 40),
+            patch("src.workspace.git._run") as run,
+            pytest.raises(WorkspaceError, match="changed"),
+        ):
+            push_branch_at_expected_oid("add-company/acme", TEST_OID, "b" * 40)
+        run.assert_not_called()
+
+
+class TestAuthenticatedWorktreeRemoval:
+    def test_rejects_symlink_victim_without_following_it(self, tmp_path, monkeypatch):
+        root = tmp_path / "worktrees"
+        victim = tmp_path / "victim"
+        root.mkdir()
+        victim.mkdir()
+        (victim / "keep.txt").write_text("owned elsewhere")
+        target = root / "acme"
+        target.symlink_to(victim, target_is_directory=True)
+        monkeypatch.setattr("src.workspace.git.worktrees_dir", lambda: root)
+
+        with (
+            patch(
+                "src.workspace.git._registered_worktrees_strict",
+                return_value={
+                    target: {
+                        "head": TEST_OID,
+                        "branch": "refs/heads/add-company/acme",
+                        "locked": False,
+                    }
+                },
+            ),
+            pytest.raises(WorkspaceError, match="not a real directory"),
+        ):
+            authenticate_managed_worktree(target, "add-company/acme", TEST_OID)
+        assert (victim / "keep.txt").read_text() == "owned elsewhere"
+
+    def test_rejects_unrelated_registered_branch_and_commit(self, tmp_path, monkeypatch):
+        root = tmp_path / "worktrees"
+        target = root / "acme"
+        target.mkdir(parents=True)
+        monkeypatch.setattr("src.workspace.git.worktrees_dir", lambda: root)
+        with (
+            patch(
+                "src.workspace.git._registered_worktrees_strict",
+                return_value={
+                    target: {
+                        "head": "c" * 40,
+                        "branch": "refs/heads/add-company/other",
+                        "locked": False,
+                    }
+                },
+            ),
+            pytest.raises(WorkspaceError, match="unexpected branch"),
+        ):
+            authenticate_managed_worktree(target, "add-company/acme", TEST_OID)
+
+
+class TestCompanyLifecycleLock:
+    def test_same_thread_lock_is_explicitly_reentrant(self, tmp_path, monkeypatch):
+        from src.workspace.filelock import company_lifecycle_lock
+
+        monkeypatch.setattr("src.workspace.filelock._LIFECYCLE_LOCKS_DIR", tmp_path)
+        with company_lifecycle_lock("acme"), company_lifecycle_lock("acme"):
+            pass
+
+    def test_same_slug_attempts_are_serialized(self, tmp_path, monkeypatch):
+        from src.workspace.filelock import company_lifecycle_lock
+
+        monkeypatch.setattr("src.workspace.filelock._LIFECYCLE_LOCKS_DIR", tmp_path)
+        first_acquired = Event()
+        release_first = Event()
+        second_attempting = Event()
+        second_acquired = Event()
+
+        def first():
+            with company_lifecycle_lock("acme"):
+                first_acquired.set()
+                assert release_first.wait(timeout=2)
+
+        def second():
+            assert first_acquired.wait(timeout=2)
+            second_attempting.set()
+            with company_lifecycle_lock("acme"):
+                second_acquired.set()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first_future = pool.submit(first)
+            second_future = pool.submit(second)
+            assert second_attempting.wait(timeout=2)
+            assert not second_acquired.wait(timeout=0.1)
+            release_first.set()
+            first_future.result(timeout=2)
+            second_future.result(timeout=2)
+
+        assert second_acquired.is_set()
+
+    def test_stale_sidecar_does_not_block_recovery(self, tmp_path, monkeypatch):
+        import hashlib
+
+        from src.workspace.filelock import company_lifecycle_lock
+
+        monkeypatch.setattr("src.workspace.filelock._LIFECYCLE_LOCKS_DIR", tmp_path)
+        digest = hashlib.sha256(b"acme").hexdigest()
+        stale = tmp_path / f"company-{digest}.lock"
+        stale.parent.mkdir(parents=True, exist_ok=True)
+        stale.write_text("stale-owner\n")
+
+        with company_lifecycle_lock("acme"):
+            assert stale.exists()

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import re
+import stat
 import subprocess
 import time
 from pathlib import Path
@@ -15,6 +17,7 @@ _GH_RETRIES = 2
 _RETRY_DELAY = 2.0
 
 _DEFAULT_REPO = "colophon-group/jobseek"
+_OID_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
 def _repo_cwd() -> Path | None:
@@ -288,6 +291,128 @@ def remove_worktree_strict(path: Path) -> None:
         raise WorkspaceError(f"Worktree still exists after removal: {path}")
 
 
+def _absolute_lexical(path: Path) -> Path:
+    """Return an absolute path without resolving symlinks."""
+    return Path(os.path.abspath(os.path.expanduser(str(path))))
+
+
+def _registered_worktrees_strict() -> dict[Path, dict[str, str | bool | None]]:
+    """Return exact managed-repository worktree registrations without resolving paths."""
+    result = _run(["git", "worktree", "list", "--porcelain"], cwd=_MANAGED_REPO)
+    registrations: dict[Path, dict[str, str | bool | None]] = {}
+    current: Path | None = None
+    for line in result.stdout.splitlines():
+        if line.startswith("worktree "):
+            current = _absolute_lexical(Path(line.removeprefix("worktree ")))
+            if current in registrations:
+                raise WorkspaceError(f"Duplicate git worktree registration for {current}")
+            registrations[current] = {"head": None, "branch": None, "locked": False}
+        elif current is not None and line.startswith("HEAD "):
+            registrations[current]["head"] = line.removeprefix("HEAD ")
+        elif current is not None and line.startswith("branch "):
+            registrations[current]["branch"] = line.removeprefix("branch ")
+        elif current is not None and line.startswith("locked"):
+            registrations[current]["locked"] = True
+    return registrations
+
+
+def authenticate_managed_worktree(path: Path, branch: str, expected_head: str) -> bool:
+    """Authenticate an exact direct-child worktree using lstat and git registration data.
+
+    Returns ``False`` only when both the path and its registration are absent.
+    Symlinks, unexpected paths, branches, commits, or stale registrations fail closed.
+    """
+    if not _OID_RE.fullmatch(expected_head):
+        raise WorkspaceError("Invalid expected worktree commit OID")
+    head = _managed_worktree_head(path, branch)
+    if head is None:
+        return False
+    if head != expected_head:
+        raise WorkspaceError(f"Worktree {path} is registered at an unexpected commit")
+    return True
+
+
+def _managed_worktree_head(path: Path, branch: str) -> str | None:
+    """Inspect one direct child through descriptor-anchored, no-follow opens."""
+    from src.workspace.safe_cleanup import (
+        directory_open_flags,
+        open_absolute_directory_no_follow,
+    )
+
+    root = _absolute_lexical(worktrees_dir())
+    target = _absolute_lexical(path)
+    if target.parent != root or target.name in {"", ".", ".."}:
+        raise WorkspaceError(f"Worktree {path} is not an exact child of {root}")
+    try:
+        root_fd = open_absolute_directory_no_follow(root)
+    except RuntimeError as exc:
+        raise WorkspaceError(f"Managed worktree root is unsafe: {root}") from exc
+    child_fd: int | None = None
+    try:
+        registrations = _registered_worktrees_strict()
+        registration = registrations.get(target)
+        try:
+            expected = os.stat(target.name, dir_fd=root_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            if registration is not None:
+                raise WorkspaceError(
+                    f"Worktree {target} is missing but remains registered"
+                ) from None
+            return None
+        if stat.S_ISLNK(expected.st_mode) or not stat.S_ISDIR(expected.st_mode):
+            raise WorkspaceError(f"Worktree target is not a real directory: {target}")
+        try:
+            child_fd = os.open(target.name, directory_open_flags(), dir_fd=root_fd)
+        except OSError as exc:
+            raise WorkspaceError(f"Worktree target could not be opened safely: {target}") from exc
+        opened = os.fstat(child_fd)
+        current = os.stat(target.name, dir_fd=root_fd, follow_symlinks=False)
+        expected_identity = (expected.st_dev, expected.st_ino)
+        if (opened.st_dev, opened.st_ino) != expected_identity or (
+            current.st_dev,
+            current.st_ino,
+        ) != expected_identity:
+            raise WorkspaceError(f"Worktree {target} changed during authentication")
+        if registration is None:
+            raise WorkspaceError(f"Worktree {target} is not registered in the managed repository")
+        if registration.get("locked"):
+            raise WorkspaceError(f"Worktree {target} is locked")
+        if registration.get("branch") != f"refs/heads/{branch}":
+            raise WorkspaceError(f"Worktree {target} is registered to an unexpected branch")
+        head = registration.get("head")
+        if not isinstance(head, str) or not _OID_RE.fullmatch(head):
+            raise WorkspaceError(f"Worktree {target} has no valid registered commit")
+        return head
+    finally:
+        if child_fd is not None:
+            os.close(child_fd)
+        os.close(root_fd)
+
+
+def managed_worktree_head_strict(path: Path, branch: str) -> str | None:
+    """Return the authenticated registered head for one exact managed worktree."""
+    return _managed_worktree_head(path, branch)
+
+
+def remove_authenticated_worktree(
+    path: Path,
+    branch: str,
+    expected_head: str,
+    *,
+    absent_is_success: bool = False,
+) -> None:
+    """Remove only the exact authenticated managed worktree."""
+    present = authenticate_managed_worktree(path, branch, expected_head)
+    if not present:
+        if absent_is_success:
+            return
+        raise WorkspaceError(f"Worktree {path} disappeared before removal was attempted")
+    target = _absolute_lexical(path)
+    _run(["git", "worktree", "remove", str(target), "--force"], cwd=_MANAGED_REPO)
+    if authenticate_managed_worktree(target, branch, expected_head):
+        raise WorkspaceError(f"Worktree still exists after removal: {target}")
+
+
 def _is_retryable(e: GitCommandError | GitHubApiError) -> bool:
     """Return True if the error looks like a transient network issue."""
     stderr = e.stderr.lower()
@@ -439,6 +564,52 @@ def push(branch: str | None = None, set_upstream: bool = False) -> None:
     _run(args, retries=_GIT_RETRIES)
 
 
+def current_head_oid_strict(*, cwd: Path | None = None) -> str:
+    """Return the exact local HEAD commit OID."""
+    oid = _run(
+        ["git", "--no-replace-objects", "rev-parse", "--verify", "HEAD^{commit}"],
+        cwd=cwd,
+    ).stdout.strip()
+    if not _OID_RE.fullmatch(oid):
+        raise WorkspaceError("Local HEAD lookup returned an invalid commit OID")
+    return oid
+
+
+def push_branch_at_expected_oid(
+    name: str,
+    local_oid: str,
+    expected_remote_oid: str | None,
+) -> None:
+    """Publish exactly *local_oid* while leasing the prior remote value."""
+    if not _OID_RE.fullmatch(local_oid):
+        raise WorkspaceError(f"Invalid local head OID for branch {name!r}")
+    if expected_remote_oid is not None and not _OID_RE.fullmatch(expected_remote_oid):
+        raise WorkspaceError(f"Invalid expected remote OID for branch {name!r}")
+    current = remote_branch_oid_strict(name)
+    if current != expected_remote_oid:
+        raise WorkspaceError(
+            f"Remote branch {name!r} changed from {expected_remote_oid!r} to {current!r}; "
+            "refusing publication"
+        )
+    lease = f"--force-with-lease=refs/heads/{name}:{expected_remote_oid or ''}"
+    _run(
+        [
+            "git",
+            "push",
+            "-u",
+            lease,
+            "origin",
+            f"{local_oid}:refs/heads/{name}",
+        ],
+        retries=_GIT_RETRIES,
+    )
+    published = remote_branch_oid_strict(name)
+    if published != local_oid:
+        raise WorkspaceError(
+            f"Remote branch {name!r} is {published!r} after push, expected {local_oid}"
+        )
+
+
 def delete_branch(name: str, remote: bool = True) -> None:
     """Delete a local branch and optionally the remote."""
     # Delete local (force)
@@ -478,6 +649,74 @@ def delete_branch_strict(name: str) -> None:
             raise WorkspaceError(f"Remote branch still exists after deletion: {name}")
 
 
+def remote_branch_oid_strict(name: str) -> str | None:
+    """Return the exact remote branch OID, failing on malformed output."""
+    result = _run(
+        ["git", "ls-remote", "--heads", "origin", f"refs/heads/{name}"],
+        cwd=_MANAGED_REPO,
+        retries=_GIT_RETRIES,
+    )
+    lines = [line for line in result.stdout.splitlines() if line.strip()]
+    if not lines:
+        return None
+    if len(lines) != 1:
+        raise WorkspaceError(f"Remote branch lookup for {name!r} was ambiguous")
+    fields = lines[0].split()
+    expected_ref = f"refs/heads/{name}"
+    if len(fields) != 2 or fields[1] != expected_ref or not _OID_RE.fullmatch(fields[0]):
+        raise WorkspaceError(f"Remote branch lookup for {name!r} returned malformed data")
+    return fields[0]
+
+
+def delete_remote_branch_at_expected_oid(
+    name: str,
+    expected_oid: str,
+    *,
+    absent_is_success: bool = False,
+) -> None:
+    """Delete one remote branch with an exact lease and retry reconciliation."""
+    if not _OID_RE.fullmatch(expected_oid):
+        raise WorkspaceError(f"Invalid recorded head OID for branch {name!r}")
+    current_oid = remote_branch_oid_strict(name)
+    if current_oid is None:
+        if absent_is_success:
+            return
+        raise WorkspaceError(f"Remote branch {name!r} disappeared; refusing destructive cleanup")
+    if current_oid != expected_oid:
+        raise WorkspaceError(
+            f"Remote branch {name!r} changed from {expected_oid} to {current_oid}; "
+            "refusing destructive cleanup"
+        )
+
+    _run(
+        [
+            "git",
+            "push",
+            f"--force-with-lease=refs/heads/{name}:{expected_oid}",
+            "origin",
+            f":refs/heads/{name}",
+        ],
+        cwd=_MANAGED_REPO,
+        retries=_GIT_RETRIES,
+    )
+    if remote_branch_oid_strict(name) is not None:
+        raise WorkspaceError(f"Remote branch still exists after deletion: {name}")
+
+
+def delete_branch_at_expected_oid(name: str, expected_oid: str) -> None:
+    """Delete one local/remote branch only while the remote is unchanged."""
+    delete_remote_branch_at_expected_oid(name, expected_oid)
+    delete_local_branch_strict(name)
+
+
+def delete_local_branch_strict(name: str) -> None:
+    """Delete only a local branch, without ever mutating a remote ref."""
+    _run(["git", "branch", "-D", name], cwd=_MANAGED_REPO, check=False)
+    local = _run(["git", "branch", "--list", name], cwd=_MANAGED_REPO)
+    if local.stdout.strip():
+        raise WorkspaceError(f"Local branch still exists after deletion: {name}")
+
+
 # ── GitHub CLI operations ───────────────────────────────────────────────
 
 
@@ -515,6 +754,213 @@ def check_existing_prs_strict(issue_number: int) -> list[dict]:
     if not isinstance(prs, list) or not all(isinstance(pr, dict) for pr in prs):
         raise GitHubApiError(args, 1, "Unexpected linked-PR lookup response")
     return prs
+
+
+def get_authenticated_login_strict() -> str:
+    """Return the login owning the current GitHub credentials."""
+    args = ["gh", "api", "user", "--jq", ".login"]
+    login = _run(args, retries=_GH_RETRIES).stdout.strip()
+    if not login:
+        raise GitHubApiError(args, 1, "Authenticated GitHub login was empty")
+    return login
+
+
+_PR_PROVENANCE_FIELDS = (
+    "number,state,isDraft,headRefName,headRefOid,headRepository,"
+    "headRepositoryOwner,baseRefName,author,closingIssuesReferences,"
+    "isCrossRepository,url"
+)
+
+
+def get_pr_details_strict(pr_number: int) -> dict:
+    """Fetch security-sensitive PR metadata from the configured base repo."""
+    import json
+
+    args = [
+        "gh",
+        "pr",
+        "view",
+        str(pr_number),
+        "--repo",
+        _resolve_repo(),
+        "--json",
+        _PR_PROVENANCE_FIELDS,
+    ]
+    result = _run(args, retries=_GH_RETRIES)
+    try:
+        details = json.loads(result.stdout)
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise GitHubApiError(args, 1, "Could not parse PR provenance response") from exc
+    if not isinstance(details, dict):
+        raise GitHubApiError(args, 1, "Unexpected PR provenance response")
+    return details
+
+
+def _head_repo(details: dict) -> str:
+    owner = details.get("headRepositoryOwner")
+    repository = details.get("headRepository")
+    owner_login = owner.get("login") if isinstance(owner, dict) else None
+    repo_name = repository.get("name") if isinstance(repository, dict) else None
+    if not isinstance(owner_login, str) or not isinstance(repo_name, str):
+        return ""
+    return f"{owner_login}/{repo_name}".lower()
+
+
+def _closing_issue_keys(details: dict) -> set[tuple[str, int]]:
+    keys: set[tuple[str, int]] = set()
+    references = details.get("closingIssuesReferences")
+    if not isinstance(references, list):
+        return keys
+    for reference in references:
+        if not isinstance(reference, dict) or not isinstance(reference.get("number"), int):
+            continue
+        repository = reference.get("repository")
+        if not isinstance(repository, dict):
+            continue
+        owner = repository.get("owner")
+        owner_login = owner.get("login") if isinstance(owner, dict) else None
+        repo_name = repository.get("name")
+        if isinstance(owner_login, str) and isinstance(repo_name, str):
+            keys.add((f"{owner_login}/{repo_name}".lower(), reference["number"]))
+    return keys
+
+
+def validate_pr_attachment(
+    details: dict,
+    *,
+    pr_number: int,
+    branch: str,
+    base_ref: str,
+    issue: int | None,
+    slug: str,
+    authorized_actor: str | None,
+) -> None:
+    """Validate that a PR is the exact resolver object we intend to mutate."""
+    from src.shared.constants import SLUG_RE
+
+    expected_repo = _resolve_repo().lower()
+    if not SLUG_RE.fullmatch(slug):
+        raise WorkspaceError(f"Invalid company slug in PR provenance: {slug!r}")
+    if details.get("number") != pr_number:
+        raise WorkspaceError(f"PR lookup did not return exact PR #{pr_number}")
+    if details.get("state") != "OPEN" or details.get("isDraft") is not True:
+        raise WorkspaceError(f"PR #{pr_number} is not an open draft")
+    if details.get("headRefName") != branch:
+        raise WorkspaceError(
+            f"PR #{pr_number} uses branch {details.get('headRefName')!r}, expected {branch!r}"
+        )
+    head_oid = details.get("headRefOid")
+    if not isinstance(head_oid, str) or not _OID_RE.fullmatch(head_oid):
+        raise WorkspaceError(f"PR #{pr_number} has no valid exact head OID")
+    if details.get("isCrossRepository") is not False or _head_repo(details) != expected_repo:
+        raise WorkspaceError(f"PR #{pr_number} is not owned by {expected_repo}")
+    if details.get("baseRefName") != base_ref:
+        raise WorkspaceError(
+            f"PR #{pr_number} targets {details.get('baseRefName')!r}, expected {base_ref!r}"
+        )
+    author = details.get("author")
+    author_login = author.get("login") if isinstance(author, dict) else None
+    if authorized_actor is not None and author_login != authorized_actor:
+        raise WorkspaceError(
+            f"PR #{pr_number} author {author_login!r} is not the authenticated resolver actor"
+        )
+    if issue is not None:
+        expected_issue = {(expected_repo, issue)}
+        if _closing_issue_keys(details) != expected_issue:
+            raise WorkspaceError(
+                f"PR #{pr_number} is not structured as the sole resolver for issue #{issue}"
+            )
+    if branch not in {f"add-company/{slug}", f"fix-crawler/{slug}"}:
+        raise WorkspaceError(f"PR #{pr_number} branch is not bound to company slug {slug!r}")
+
+
+def pr_provenance(details: dict, *, issue: int | None, slug: str) -> dict:
+    """Return the immutable PR fields recorded in workspace state."""
+    author = details.get("author")
+    return {
+        "number": details.get("number"),
+        "head_ref_name": details.get("headRefName"),
+        "head_ref_oid": details.get("headRefOid"),
+        "head_repository": _head_repo(details),
+        "base_repository": _resolve_repo().lower(),
+        "base_ref_name": details.get("baseRefName"),
+        "author_login": author.get("login") if isinstance(author, dict) else None,
+        "is_draft": details.get("isDraft"),
+        "closing_issues": [
+            {"repository": repository, "number": number}
+            for repository, number in sorted(_closing_issue_keys(details))
+        ],
+        "issue": issue,
+        "slug": slug,
+    }
+
+
+def verify_recorded_pr(
+    provenance: dict,
+    *,
+    pr_number: int,
+    branch: str,
+    issue: int | None,
+    slug: str,
+    allow_closed: bool = False,
+) -> dict:
+    """Fail closed unless GitHub still exposes the exact recorded PR/ref."""
+    required = {
+        "number",
+        "head_ref_name",
+        "head_ref_oid",
+        "head_repository",
+        "base_repository",
+        "base_ref_name",
+        "author_login",
+        "is_draft",
+        "closing_issues",
+        "issue",
+        "slug",
+    }
+    if not isinstance(provenance, dict) or not required.issubset(provenance):
+        raise WorkspaceError(
+            "Workspace has no complete PR provenance; refusing destructive mutation"
+        )
+    if provenance["number"] != pr_number or provenance["head_ref_name"] != branch:
+        raise WorkspaceError("Recorded PR number/branch does not match workspace state")
+    if provenance["issue"] != issue or provenance["slug"] != slug:
+        raise WorkspaceError("Recorded PR issue/slug does not match workspace state")
+
+    details = get_pr_details_strict(pr_number)
+    current = pr_provenance(details, issue=issue, slug=slug)
+    state = details.get("state")
+    if state != "OPEN" and not (allow_closed and state == "CLOSED"):
+        raise WorkspaceError(f"PR #{pr_number} is {state!r}; refusing destructive mutation")
+    if current != provenance:
+        raise WorkspaceError(f"PR #{pr_number} provenance or head changed; refusing mutation")
+    if remote_branch_oid_strict(branch) != provenance["head_ref_oid"]:
+        raise WorkspaceError(
+            f"PR #{pr_number} remote ref changed or disappeared; refusing mutation"
+        )
+    return details
+
+
+def verify_pr_ready(
+    provenance: dict,
+    *,
+    pr_number: int,
+    branch: str,
+    issue: int | None,
+    slug: str,
+) -> dict:
+    """Verify that the exact recorded draft became ready without any other change."""
+    details = get_pr_details_strict(pr_number)
+    if details.get("state") != "OPEN" or details.get("isDraft") is not False:
+        raise WorkspaceError(f"PR #{pr_number} is not an open ready PR")
+    current = pr_provenance(details, issue=issue, slug=slug)
+    expected = dict(provenance)
+    expected["is_draft"] = False
+    if current != expected:
+        raise WorkspaceError(f"PR #{pr_number} changed while transitioning to ready")
+    if remote_branch_oid_strict(branch) != provenance.get("head_ref_oid"):
+        raise WorkspaceError(f"PR #{pr_number} remote ref changed while transitioning to ready")
+    return details
 
 
 def check_existing_prs(issue_number: int) -> list[dict]:
@@ -643,12 +1089,27 @@ def create_draft_pr(title: str, body: str) -> int:
 
 def mark_pr_ready(pr_number: int) -> None:
     """Mark a draft PR as ready for review."""
-    _run(["gh", "pr", "ready", str(pr_number)], retries=_GH_RETRIES)
+    _run(
+        ["gh", "pr", "ready", str(pr_number), "--repo", _resolve_repo()],
+        retries=_GH_RETRIES,
+    )
 
 
 def comment_on_pr(pr_number: int, body: str) -> None:
     """Add a comment to a PR."""
-    _run(["gh", "pr", "comment", str(pr_number), "--body", body], retries=_GH_RETRIES)
+    _run(
+        [
+            "gh",
+            "pr",
+            "comment",
+            str(pr_number),
+            "--repo",
+            _resolve_repo(),
+            "--body",
+            body,
+        ],
+        retries=_GH_RETRIES,
+    )
 
 
 def comment_on_issue(issue_number: int, body: str) -> None:
@@ -955,20 +1416,34 @@ def close_issue_if_open(issue_number: int) -> None:
 def edit_pr_body(pr_number: int, body: str) -> None:
     """Update a PR's body text."""
     _run(
-        ["gh", "pr", "edit", str(pr_number), "--body", body],
+        ["gh", "pr", "edit", str(pr_number), "--repo", _resolve_repo(), "--body", body],
         retries=_GH_RETRIES,
     )
 
 
 def close_pr(pr_number: int) -> None:
     """Close a GitHub PR."""
-    _run(["gh", "pr", "close", str(pr_number)], retries=_GH_RETRIES)
+    _run(
+        ["gh", "pr", "close", str(pr_number), "--repo", _resolve_repo()],
+        retries=_GH_RETRIES,
+    )
 
 
 def close_pr_if_open(pr_number: int) -> None:
     """Idempotently close a PR and verify that it is no longer open."""
     state = _run(
-        ["gh", "pr", "view", str(pr_number), *_gh_repo_flag(), "--json", "state", "--jq", ".state"],
+        [
+            "gh",
+            "pr",
+            "view",
+            str(pr_number),
+            "--repo",
+            _resolve_repo(),
+            "--json",
+            "state",
+            "--jq",
+            ".state",
+        ],
         retries=_GH_RETRIES,
     ).stdout.strip()
     if state.upper() == "OPEN":
@@ -979,7 +1454,8 @@ def close_pr_if_open(pr_number: int) -> None:
                 "pr",
                 "view",
                 str(pr_number),
-                *_gh_repo_flag(),
+                "--repo",
+                _resolve_repo(),
                 "--json",
                 "state",
                 "--jq",

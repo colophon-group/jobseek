@@ -33,13 +33,13 @@ import click
 
 from src.workspace import log as action_log
 from src.workspace import output as out
-from src.workspace.errors import GitError
 from src.workspace.state import (
     get_active_slug,
     list_boards,
     list_workspaces,
     load_workspace,
     resolve_slug,
+    save_workspace,
     set_active_slug,
     ws_log_path,
 )
@@ -273,13 +273,21 @@ def task_next(notes: str):
         out.die("Workflow is in failed state. Use 'ws task fail' info or start over.")
 
     if wf.current_step == "done":
+        ws = load_workspace(slug)
+        if not ws.ready_state.get("claim_released"):
+            _finalize_workflow(slug)
+            return
         out.info("task", "Workflow already complete.")
         return
 
     if not notes or not notes.strip():
         out.die("--notes is required. Use --notes 'none' if nothing to report.")
 
-    next_step, message = advance(slug, notes.strip())
+    next_step, message = advance(
+        slug,
+        notes.strip(),
+        defer_terminal_publication=prev_step_id == "reflect",
+    )
 
     if message and next_step and message.startswith("Cannot advance"):
         out.error("gate", message)
@@ -433,28 +441,94 @@ def task_status():
 
 
 def _finalize_workflow(slug: str) -> None:
-    """Run completion side-effects: KB push, unclaim issue, and mark PR ready.
+    """Durably transition the exact draft PR before publishing completion."""
+    from src.workspace.filelock import company_lifecycle_lock
 
-    Called from both ``task complete`` and ``task next`` (when advancing past reflect).
-    """
-    try:
-        _persist_kb_updates_if_needed(slug)
-    except GitError:
-        out.warn("kb", "Could not push KB updates — completing workflow anyway.")
+    with company_lifecycle_lock(slug):
+        _finalize_workflow_locked(slug)
 
-    from src.workspace.commands.lifecycle import is_local_mode
 
+def _finalize_workflow_locked(slug: str) -> None:
+    from src.workspace.commands.lifecycle import (
+        _verify_workspace_pr_before_mutation,
+        is_local_mode,
+    )
+
+    local = is_local_mode()
+    _persist_kb_updates_if_needed(slug)
     ws = load_workspace(slug)
     wf = _load_wf_from_disk(slug)
+    state = ws.ready_state
 
-    if wf.current_step != "done":
+    if not state:
+        state = {
+            "version": 1,
+            "pr": ws.pr,
+            "branch": ws.branch,
+            "head_ref_oid": ws.pr_provenance.get("head_ref_oid"),
+            "ready_attempted": False,
+            "ready_confirmed": local or ws.pr is None,
+            "workflow_done": False,
+            "claim_release_attempted": False,
+            "claim_released": local or ws.issue is None,
+        }
+        ws.ready_state = state
+        save_workspace(ws)
+    elif (
+        state.get("pr") != ws.pr
+        or state.get("branch") != ws.branch
+        or state.get("head_ref_oid") != ws.pr_provenance.get("head_ref_oid")
+    ):
+        raise RuntimeError("Ready journal no longer matches workspace PR provenance")
+
+    if ws.pr and not local and not state.get("ready_confirmed"):
+        from src.workspace import git
+
+        if state.get("ready_attempted"):
+            try:
+                git.verify_pr_ready(
+                    ws.pr_provenance,
+                    pr_number=ws.pr,
+                    branch=ws.branch,
+                    issue=ws.issue,
+                    slug=ws.slug,
+                )
+            except Exception:
+                # A retry is authorized only if the exact original draft is
+                # still present. Any changed head/provenance remains fatal.
+                _verify_workspace_pr_before_mutation(ws)
+                git.mark_pr_ready(ws.pr)
+        else:
+            _verify_workspace_pr_before_mutation(ws)
+            state["ready_attempted"] = True
+            save_workspace(ws)
+            git.mark_pr_ready(ws.pr)
+        git.verify_pr_ready(
+            ws.pr_provenance,
+            pr_number=ws.pr,
+            branch=ws.branch,
+            issue=ws.issue,
+            slug=ws.slug,
+        )
+        state["ready_confirmed"] = True
+        save_workspace(ws)
+        out.info("github", f"PR #{ws.pr} marked ready for review")
+
+    if not state.get("workflow_done"):
         wf.current_step = "done"
         _save_wf_to_disk(slug, wf)
+        state["workflow_done"] = True
+        save_workspace(ws)
 
-    if ws.issue:
-        from src.workspace.git import unclaim_issue
+    if ws.issue and not local and not state.get("claim_released"):
+        from src.workspace.git import unclaim_issue_strict
 
-        unclaim_issue(ws.issue)
+        if not state.get("claim_release_attempted"):
+            state["claim_release_attempted"] = True
+            save_workspace(ws)
+        unclaim_issue_strict(ws.issue)
+        state["claim_released"] = True
+        save_workspace(ws)
 
     # Log completion (timestamp used for transcript discovery)
     action_log.append(ws_log_path(slug), "complete", True, "Workflow complete")
@@ -482,16 +556,6 @@ def _finalize_workflow(slug: str) -> None:
         except Exception as exc:
             out.warn("trace", f"Could not upload trace: {exc}")
 
-    # Mark the company PR ready after workflow state and reflections are final.
-    if ws.pr and not is_local_mode():
-        from src.workspace.git import mark_pr_ready
-
-        try:
-            mark_pr_ready(ws.pr)
-            out.info("github", f"PR #{ws.pr} marked ready for review")
-        except Exception:
-            out.warn("github", f"Could not mark PR #{ws.pr} ready — do it manually")
-
 
 @task.command(name="complete")
 def task_complete():
@@ -500,7 +564,11 @@ def task_complete():
     wf = _load_wf_from_disk(slug)
 
     if wf.current_step == "done":
-        out.info("task", "Workflow already complete.")
+        ws = load_workspace(slug)
+        if ws.ready_state.get("claim_released"):
+            out.info("task", "Workflow already complete.")
+            return
+        _finalize_workflow(slug)
         return
 
     if wf.current_step != "reflect":
@@ -702,10 +770,19 @@ def _persist_kb_updates_if_needed(slug: str) -> None:
         return
 
     from src.workspace import git
+    from src.workspace.commands.lifecycle import (
+        _record_current_pr_provenance,
+        _verify_workspace_pr_before_mutation,
+    )
 
     kb_path = "apps/crawler/src/workspace/kb/"
     if not git.has_uncommitted_changes([kb_path]):
         return
+
+    if ws.pr is None:
+        raise RuntimeError("Submitted workspace has no PR for KB publication")
+    _verify_workspace_pr_before_mutation(ws)
+    expected_remote_oid = str(ws.pr_provenance["head_ref_oid"])
 
     git.add_files([kb_path])
     commit_msg = f"Add KB reflections for {ws.slug}"
@@ -713,12 +790,13 @@ def _persist_kb_updates_if_needed(slug: str) -> None:
         commit_msg += f"\n\nRefs #{ws.issue}"
     git.commit(commit_msg)
     if git.is_ahead_of_remote():
-        try:
-            git.fetch()
-            git.push()
-        except GitError:
-            out.warn("kb", "Could not push KB updates (remote branch changed). Committed locally.")
-            return
+        local_oid = git.current_head_oid_strict()
+        git.push_branch_at_expected_oid(ws.branch, local_oid, expected_remote_oid)
+        _record_current_pr_provenance(
+            ws,
+            require_current_actor=False,
+            expected_head_oid=local_oid,
+        )
     out.info("kb", "Committed and pushed KB updates.")
 
 
