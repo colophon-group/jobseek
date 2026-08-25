@@ -8,8 +8,9 @@ Runs inside ``_resolve_board()`` to catch obvious environment issues
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
+
+from src.workspace.errors import WorkspaceError
 
 if TYPE_CHECKING:
     from src.workspace.state import Workspace
@@ -31,39 +32,16 @@ def pivot_to_workspace_worktree(ws: Workspace) -> PreflightIssue | None:
     without an active pointer.  Use the workspace record itself as the
     authoritative fallback before running git checks or board commands.
     """
-    if not ws.worktree:
-        return None
+    from src.workspace.worktree_auth import pivot_to_authenticated_worktree
 
-    from src.shared.constants import get_repo_root, set_repo_root
-    from src.workspace import git
-
-    configured = Path(ws.worktree).expanduser()
     try:
-        worktree = configured.resolve(strict=True)
-        expected = (git.worktrees_dir() / ws.slug).resolve(strict=True)
-    except OSError:
+        pivot_to_authenticated_worktree(ws)
+    except WorkspaceError as exc:
         return PreflightIssue(
-            "worktree_missing",
-            f"Managed worktree for {ws.slug!r} is missing: {configured}",
+            "worktree_auth",
+            str(exc),
             "critical",
         )
-
-    if worktree != expected:
-        return PreflightIssue(
-            "worktree_mismatch",
-            f"Workspace {ws.slug!r} records an unexpected worktree path: {configured}",
-            "critical",
-        )
-
-    if not (worktree / ".git").exists() or not (worktree / "apps" / "crawler" / "data").is_dir():
-        return PreflightIssue(
-            "worktree_invalid",
-            f"Managed worktree for {ws.slug!r} is not a valid Jobseek checkout: {worktree}",
-            "critical",
-        )
-
-    if get_repo_root() != worktree:
-        set_repo_root(worktree)
     return None
 
 
@@ -89,10 +67,9 @@ def run_preflight(
 
     issues: list[PreflightIssue] = []
 
-    if ws.worktree:
-        worktree_issue = pivot_to_workspace_worktree(ws)
-        if worktree_issue:
-            return [worktree_issue]
+    worktree_issue = pivot_to_workspace_worktree(ws)
+    if worktree_issue:
+        return [worktree_issue]
 
     if check_branch and ws.branch:
         from src.workspace import git

@@ -11,6 +11,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
+from pathlib import Path
 from threading import Event
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -108,7 +109,7 @@ def _inventory_issue_body() -> str:
     return render_candidate_issue(CandidatePlan(candidate, (), ()))[1]
 
 
-def _patch_all(monkeypatch, tmp_path):
+def _patch_all(monkeypatch, tmp_path, *, strict_worktree: bool = False):
     """Patch path getters for testing."""
     ws_dir = tmp_path / ".ws"
     _data = lambda: tmp_path  # noqa: E731
@@ -125,6 +126,12 @@ def _patch_all(monkeypatch, tmp_path):
         "src.workspace.git.current_head_oid_strict",
         lambda **_kwargs: TEST_HEAD_OID,
     )
+    if not strict_worktree:
+        # Most command tests exercise behavior after the worktree ownership
+        # gate. Dedicated hostile-path tests below keep the real gate enabled.
+        monkeypatch.setattr(
+            "src.workspace.preflight.pivot_to_workspace_worktree", lambda _workspace: None
+        )
 
     # Keep CLI tests deterministic/offline: board link analysis is exercised
     # in dedicated tests via targeted monkeypatching.
@@ -1444,6 +1451,25 @@ class TestTerminalCleanupRecovery:
             },
         )
 
+    @staticmethod
+    def _materialize_identity(workspace, monkeypatch):
+        path = Path(workspace.worktree)
+        path.mkdir(parents=True)
+        item = path.stat()
+        workspace.worktree_identity["dev"] = int(item.st_dev)
+        workspace.worktree_identity["ino"] = int(item.st_ino)
+        monkeypatch.setattr("src.workspace.git._WORKTREES_DIR", path.parent)
+        monkeypatch.setattr(
+            "src.workspace.git._registered_worktrees_strict",
+            lambda: {
+                path: {
+                    "head": TEST_HEAD_OID,
+                    "branch": f"refs/heads/{workspace.branch}",
+                    "locked": False,
+                }
+            },
+        )
+
     @pytest.mark.parametrize(
         "failing",
         ["remote", "pr", "issue_close", "local", "data", "workspace", "claim"],
@@ -1604,12 +1630,14 @@ class TestTerminalCleanupRecovery:
         workspace.pr = None
         workspace.pr_provenance = {}
         workspace.issue = None
+        workspace.worktree_identity["pr"] = None
+        workspace.worktree_identity["pr_provenance"] = {}
+        workspace.worktree_identity["issue"] = None
+        self._materialize_identity(workspace, monkeypatch)
         save_workspace(workspace)
         local = {"oid": TEST_HEAD_OID}
         with (
-            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
             patch("src.workspace.git.remote_branch_oid_strict", return_value=None),
-            patch("src.workspace.git.authenticate_managed_worktree", return_value=True),
             patch("src.workspace.git.local_branch_oid_strict", side_effect=lambda *_: local["oid"]),
         ):
             lifecycle._initialize_terminal_journal(workspace, local=False, outcome=None)
@@ -1622,13 +1650,12 @@ class TestTerminalCleanupRecovery:
 
         _patch_all(monkeypatch, tmp_path)
         workspace = self._workspace(tmp_path)
+        self._materialize_identity(workspace, monkeypatch)
         save_workspace(workspace)
         local = {"oid": TEST_HEAD_OID}
         with (
-            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
             patch("src.workspace.git.verify_recorded_pr"),
             patch("src.workspace.git.remote_branch_oid_strict", return_value=TEST_HEAD_OID),
-            patch("src.workspace.git.authenticate_managed_worktree", return_value=True),
             patch("src.workspace.git.local_branch_oid_strict", side_effect=lambda *_: local["oid"]),
             patch("src.workspace.git.is_issue_claimed_strict", return_value=True),
         ):
@@ -4194,6 +4221,10 @@ def _setup_submittable_workspace(tmp_path, monkeypatch):
         "src.workspace.commands.lifecycle._authenticate_workspace_worktree",
         lambda _workspace: None,
     )
+    monkeypatch.setattr(
+        "src.workspace.worktree_auth.pivot_to_authenticated_worktree",
+        lambda _workspace: tmp_path / "worktrees" / "test",
+    )
 
     return ws_obj, board
 
@@ -4850,6 +4881,10 @@ class TestSubmitForce:
             "src.workspace.commands.lifecycle._authenticate_workspace_worktree",
             lambda _workspace: None,
         )
+        monkeypatch.setattr(
+            "src.workspace.worktree_auth.pivot_to_authenticated_worktree",
+            lambda _workspace: tmp_path / "worktrees" / "test",
+        )
         _setup_csvs(tmp_path, companies="test,,,,\n")
 
         ws_obj = Workspace(slug="test", name="Test", website="https://test.com", issue=1, pr=10)
@@ -4878,6 +4913,10 @@ class TestSubmitForce:
         monkeypatch.setattr(
             "src.workspace.commands.lifecycle._authenticate_workspace_worktree",
             lambda _workspace: None,
+        )
+        monkeypatch.setattr(
+            "src.workspace.worktree_auth.pivot_to_authenticated_worktree",
+            lambda _workspace: tmp_path / "worktrees" / "test",
         )
         _setup_csvs(tmp_path, companies="test,,,,\n")
 
@@ -5258,8 +5297,85 @@ class TestGitStateHelpers:
 # ── Phase 7: Work continuation ──────────────────────────────────────────
 
 
+class TestCliStartupWorktreeAuthentication:
+    def test_startup_missing_identity_cannot_pivot_or_mutate(self, tmp_path, monkeypatch):
+        from src.workspace.cli import _pivot_to_worktree
+
+        _patch_all(monkeypatch, tmp_path)
+        managed_worktrees = tmp_path / "managed-worktrees"
+        managed_worktree = managed_worktrees / "test"
+        save_workspace(
+            Workspace(
+                slug="test",
+                branch="add-company/test",
+                worktree=str(managed_worktree),
+            )
+        )
+        set_active_slug("test")
+        pivot = MagicMock()
+        mutate = MagicMock()
+        authenticate = MagicMock()
+        monkeypatch.setattr("src.workspace.git.worktrees_dir", lambda: managed_worktrees)
+        monkeypatch.setattr("src.shared.constants.get_repo_root", lambda: tmp_path / "outer")
+        monkeypatch.setattr("src.shared.constants.set_repo_root", pivot)
+        monkeypatch.setattr("src.workspace.git.authenticate_managed_worktree", authenticate)
+        monkeypatch.setattr("src.workspace.git._run", mutate)
+
+        with pytest.raises(WorkspaceError, match="authenticated worktree identity"):
+            _pivot_to_worktree()
+
+        pivot.assert_not_called()
+        authenticate.assert_not_called()
+        mutate.assert_not_called()
+
+    def test_startup_replaced_identity_cannot_pivot_or_mutate(self, tmp_path, monkeypatch):
+        from src.workspace.cli import _pivot_to_worktree
+
+        _patch_all(monkeypatch, tmp_path)
+        managed_worktrees = tmp_path / "managed-worktrees"
+        managed_worktree = managed_worktrees / "test"
+        save_workspace(TestPreflight._owned_workspace(managed_worktree))
+        set_active_slug("test")
+        pivot = MagicMock()
+        mutate = MagicMock()
+        monkeypatch.setattr("src.workspace.git.worktrees_dir", lambda: managed_worktrees)
+        monkeypatch.setattr("src.shared.constants.get_repo_root", lambda: tmp_path / "outer")
+        monkeypatch.setattr("src.shared.constants.set_repo_root", pivot)
+        monkeypatch.setattr(
+            "src.workspace.git.authenticate_managed_worktree",
+            MagicMock(side_effect=WorkspaceError("replacement filesystem entry")),
+        )
+        monkeypatch.setattr("src.workspace.git._run", mutate)
+
+        with pytest.raises(WorkspaceError, match="replacement filesystem entry"):
+            _pivot_to_worktree()
+
+        pivot.assert_not_called()
+        mutate.assert_not_called()
+
+
 class TestPreflight:
     """Test preflight checks."""
+
+    @staticmethod
+    def _owned_workspace(path, *, slug="test", branch="add-company/test"):
+        return Workspace(
+            slug=slug,
+            branch=branch,
+            worktree=str(path),
+            worktree_identity={
+                "version": 1,
+                "path": str(path),
+                "slug": slug,
+                "branch": branch,
+                "head": TEST_HEAD_OID,
+                "dev": 1,
+                "ino": 2,
+                "issue": None,
+                "pr": None,
+                "pr_provenance": {},
+            },
+        )
 
     def test_preflight_detects_wrong_branch(self, tmp_path, monkeypatch):
         from src.workspace.preflight import run_preflight
@@ -5279,6 +5395,9 @@ class TestPreflight:
             return result
 
         monkeypatch.setattr("src.workspace.git._run", mock_run)
+        monkeypatch.setattr(
+            "src.workspace.preflight.pivot_to_workspace_worktree", lambda _workspace: None
+        )
 
         ws_obj = Workspace(slug="test", branch="add-company/test")
         issues = run_preflight(ws_obj)
@@ -5301,15 +5420,20 @@ class TestPreflight:
             return result
 
         monkeypatch.setattr("src.workspace.git._run", mock_run)
+        monkeypatch.setattr(
+            "src.workspace.preflight.pivot_to_workspace_worktree", lambda _workspace: None
+        )
 
         ws_obj = Workspace(slug="test", branch="add-company/test")
         issues = run_preflight(ws_obj)
         assert not issues
 
-    def test_preflight_pivots_for_explicit_workspace_in_different_tty(self, tmp_path, monkeypatch):
+    def test_preflight_pivots_only_after_exact_persisted_identity_authentication(
+        self, tmp_path, monkeypatch
+    ):
         from src.workspace.preflight import run_preflight
 
-        _patch_all(monkeypatch, tmp_path)
+        _patch_all(monkeypatch, tmp_path, strict_worktree=True)
 
         outer_root = tmp_path / "resolver-worktree"
         managed_worktrees = tmp_path / "managed-worktrees"
@@ -5319,6 +5443,12 @@ class TestPreflight:
         repo_root = {"path": outer_root}
 
         monkeypatch.setattr("src.workspace.git.worktrees_dir", lambda: managed_worktrees)
+        monkeypatch.setattr(
+            "src.workspace.git.authenticate_managed_worktree", lambda *_args, **_kwargs: True
+        )
+        monkeypatch.setattr(
+            "src.workspace.git.local_branch_oid_strict", lambda _branch: TEST_HEAD_OID
+        )
         monkeypatch.setattr("src.shared.constants.get_repo_root", lambda: repo_root["path"])
         monkeypatch.setattr(
             "src.shared.constants.set_repo_root",
@@ -5339,11 +5469,7 @@ class TestPreflight:
 
         monkeypatch.setattr("src.workspace.git._run", mock_run)
 
-        ws_obj = Workspace(
-            slug="test",
-            branch="add-company/test",
-            worktree=str(managed_worktree),
-        )
+        ws_obj = self._owned_workspace(managed_worktree)
         issues = run_preflight(ws_obj)
 
         assert repo_root["path"] == managed_worktree
@@ -5352,7 +5478,7 @@ class TestPreflight:
     def test_preflight_rejects_noncanonical_workspace_worktree(self, tmp_path, monkeypatch):
         from src.workspace.preflight import run_preflight
 
-        _patch_all(monkeypatch, tmp_path)
+        _patch_all(monkeypatch, tmp_path, strict_worktree=True)
 
         managed_worktrees = tmp_path / "managed-worktrees"
         unexpected = tmp_path / "other-checkout"
@@ -5369,6 +5495,10 @@ class TestPreflight:
             "src.shared.constants.set_repo_root",
             lambda path: repo_root.__setitem__("path", path),
         )
+        authenticate = MagicMock()
+        mutate = MagicMock()
+        monkeypatch.setattr("src.workspace.git.authenticate_managed_worktree", authenticate)
+        monkeypatch.setattr("src.workspace.git._run", mutate)
 
         issues = run_preflight(
             Workspace(
@@ -5379,36 +5509,80 @@ class TestPreflight:
         )
 
         assert repo_root["path"] == outer_root
-        assert [(issue.code, issue.severity) for issue in issues] == [
-            ("worktree_mismatch", "critical")
-        ]
+        assert [(issue.code, issue.severity) for issue in issues] == [("worktree_auth", "critical")]
+        authenticate.assert_not_called()
+        mutate.assert_not_called()
 
-    def test_preflight_rejects_non_git_workspace_worktree(self, tmp_path, monkeypatch):
+    def test_preflight_rejects_missing_identity_before_board_mutation(self, tmp_path, monkeypatch):
         from src.workspace.preflight import run_preflight
 
-        _patch_all(monkeypatch, tmp_path)
+        _patch_all(monkeypatch, tmp_path, strict_worktree=True)
 
         managed_worktrees = tmp_path / "managed-worktrees"
         managed_worktree = managed_worktrees / "test"
         (managed_worktree / "apps" / "crawler" / "data").mkdir(parents=True)
+        repo_root = {"path": tmp_path / "resolver-worktree"}
+        pivot = MagicMock(side_effect=lambda path: repo_root.__setitem__("path", path))
+        authenticate = MagicMock()
+        mutate = MagicMock()
         monkeypatch.setattr("src.workspace.git.worktrees_dir", lambda: managed_worktrees)
+        monkeypatch.setattr("src.shared.constants.get_repo_root", lambda: repo_root["path"])
+        monkeypatch.setattr("src.shared.constants.set_repo_root", pivot)
+        monkeypatch.setattr("src.workspace.git.authenticate_managed_worktree", authenticate)
+        monkeypatch.setattr("src.workspace.git._run", mutate)
 
         issues = run_preflight(
             Workspace(
                 slug="test",
                 branch="add-company/test",
                 worktree=str(managed_worktree),
-            )
+            ),
+            check_branch=False,
         )
 
-        assert [(issue.code, issue.severity) for issue in issues] == [
-            ("worktree_invalid", "critical")
-        ]
+        assert [(issue.code, issue.severity) for issue in issues] == [("worktree_auth", "critical")]
+        assert repo_root["path"] == tmp_path / "resolver-worktree"
+        pivot.assert_not_called()
+        authenticate.assert_not_called()
+        mutate.assert_not_called()
+
+    def test_preflight_rejects_replaced_identity_before_board_mutation(self, tmp_path, monkeypatch):
+        from src.workspace.preflight import run_preflight
+
+        _patch_all(monkeypatch, tmp_path, strict_worktree=True)
+        managed_worktrees = tmp_path / "managed-worktrees"
+        managed_worktree = managed_worktrees / "test"
+        outer_root = tmp_path / "resolver-worktree"
+        repo_root = {"path": outer_root}
+        pivot = MagicMock(side_effect=lambda path: repo_root.__setitem__("path", path))
+        mutate = MagicMock()
+        monkeypatch.setattr("src.workspace.git.worktrees_dir", lambda: managed_worktrees)
+        monkeypatch.setattr("src.shared.constants.get_repo_root", lambda: repo_root["path"])
+        monkeypatch.setattr("src.shared.constants.set_repo_root", pivot)
+        monkeypatch.setattr(
+            "src.workspace.git.authenticate_managed_worktree",
+            MagicMock(side_effect=WorkspaceError("replacement filesystem entry")),
+        )
+        monkeypatch.setattr("src.workspace.git._run", mutate)
+
+        issues = run_preflight(
+            self._owned_workspace(managed_worktree),
+            check_branch=False,
+        )
+
+        assert [(issue.code, issue.severity) for issue in issues] == [("worktree_auth", "critical")]
+        assert "replacement filesystem entry" in issues[0].message
+        assert repo_root["path"] == outer_root
+        pivot.assert_not_called()
+        mutate.assert_not_called()
 
     def test_preflight_no_branch_check_when_disabled(self, tmp_path, monkeypatch):
         from src.workspace.preflight import run_preflight
 
         _patch_all(monkeypatch, tmp_path)
+        monkeypatch.setattr(
+            "src.workspace.preflight.pivot_to_workspace_worktree", lambda _workspace: None
+        )
 
         ws_obj = Workspace(slug="test", branch="add-company/test")
         issues = run_preflight(ws_obj, check_branch=False)
