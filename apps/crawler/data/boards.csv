@@ -2786,6 +2786,8 @@ hive-financial-systems,hive-financial-systems-greenhouse,https://job-boards.gree
 hivemq,hivemq-ashby,https://jobs.ashbyhq.com/hivemq,ashby,"{""token"": ""hivemq""}",skip,
 hivestack,hivestack-greenhouse,https://job-boards.greenhouse.io/hivestack,greenhouse,"{""token"": ""hivestack""}",skip,
 hiya,hiya-ashby,https://jobs.ashbyhq.com/hiya,ashby,"{""token"": ""hiya""}",skip,
+hm-group,hm-group-careers-group,https://careers.smartrecruiters.com/HMGroup,smartrecruiters,"{""token"": ""HMGroup""}",smartrecruiters,
+hm-group,hm-group-careers-sellpy,https://career.sellpy.se/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://career.sellpy.se/jobs.rss""}",skip,
 hmg-systems-engineering-gmbh,hmg-systems-engineering-gmbh-join,https://join.com/companies/hmg-systems-engineering,join,"{""slug"": ""hmg-systems-engineering""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 hmnc-brain-health,hmnc-brain-health-careers,https://www.hmnc-brainhealth.com/careers,dom,"{""render"": false, ""url_filter"": ""^https?://(?:www\\.)?hmnc-brainhealth\\.com/pdf/job-offers/[^?#]+\\.pdf(?:\\?.*)?$""}",pdf,"{""title_source"": ""url"", ""title_pattern"": ""Clinical Pharmacologist""}"
 hoist-finance,hoist-finance-france-hellowork,https://www.hellowork.com/fr-fr/entreprises/hoist-finance-21326.html,dom,"{""render"": true, ""wait"": ""domcontentloaded"", ""timeout"": 30000, ""actions"": [{""action"": ""dismiss_overlays""}, {""action"": ""wait"", ""ms"": 2000}], ""url_filter"": ""/fr-fr/emplois/""}",json-ld,
