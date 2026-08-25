@@ -824,6 +824,107 @@ async def test_discover_explicit_empty_fails_closed_when_all_items_are_excluded(
 
 
 @pytest.mark.asyncio
+async def test_discover_require_zero_proof_accepts_positive_extraction():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "require_zero_proof": True,
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    jobs = await discover(board, _FakeClient("<h2>Open Engineer</h2>"))
+
+    assert [job.title for job in jobs] == ["Open Engineer"]
+
+
+@pytest.mark.asyncio
+async def test_discover_can_reuse_title_as_description():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "description_from_title": True,
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    jobs = await discover(board, _FakeClient("<h2>Open Engineer</h2>"))
+
+    assert [(job.title, job.description) for job in jobs] == [("Open Engineer", "Open Engineer")]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", [None, 0, 1, "true", [], {}])
+async def test_discover_rejects_invalid_description_from_title(value):
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "description_from_title": value,
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="description_from_title must be a boolean"):
+        await discover(board, _FakeClient("<h2>Open Engineer</h2>"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "html",
+    [
+        "<main></main>",
+        "<main><p>Open Engineer</p><p>Build the product.</p></main>",
+    ],
+)
+async def test_discover_require_zero_proof_fails_closed_when_extraction_returns_zero(html):
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "require_zero_proof": True,
+            "steps": [{"tag": "h2", "field": "title", "optional": True}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="without authoritative empty-state proof"):
+        await discover(board, _FakeClient(html))
+
+
+@pytest.mark.asyncio
+async def test_discover_require_zero_proof_accepts_authoritative_empty_marker():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "require_zero_proof": True,
+            "empty_selector": ".empty-state:not(.hidden)",
+            "empty_text": "No vacancies are currently available",
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    jobs = await discover(
+        board,
+        _FakeClient('<div class="empty-state">No vacancies are currently available.</div>'),
+    )
+
+    assert jobs == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", [None, 0, 1, "true", [], {}])
+async def test_discover_rejects_invalid_require_zero_proof(value):
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "require_zero_proof": value,
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="require_zero_proof must be a boolean"):
+        await discover(board, _FakeClient("<h2>Open Engineer</h2>"))
+
+
+@pytest.mark.asyncio
 async def test_discover_item_boundary_prevents_cross_item_field_bleed():
     board = {
         "board_url": "https://example.com/jobs",

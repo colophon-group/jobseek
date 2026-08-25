@@ -1286,6 +1286,14 @@ inline — Single-Page Extraction (rich)
                  this state nor an accepted job is found, the cycle fails
                  closed, including when every extracted title was excluded or
                  expired.
+    require_zero_proof
+                 true = require an accepted job or an authoritative
+                 empty_selector/empty_text match. Use for boards where a silent
+                 zero would otherwise retire valid jobs after page-shape drift.
+                 Default: false.
+    description_from_title
+                 true = reuse each extracted title as its description when the
+                 source exposes one project/position text field. Default: false.
     item_boundary_tag
                  Optional HTML tag that starts each posting (for example h2).
                  Each repeated step run is restricted to one such block, so an

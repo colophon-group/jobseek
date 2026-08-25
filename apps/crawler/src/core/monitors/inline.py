@@ -513,10 +513,13 @@ async def discover(
         include_hidden — include HTML hidden by tab/accordion state (default: false)
         empty_selector — CSS selector that scopes a visibly active empty-state element
         empty_text — authoritative text required inside empty_selector
+        require_zero_proof — fail when extraction returns no jobs without an explicit
+                             empty_selector/empty_text match (default: false)
         item_boundary_tag — optional tag that starts and bounds each posting
         section_start — first page-section boundary (exclusive; requires section_end)
         section_end — last page-section boundary (exclusive; requires section_start)
         preserve_single_location — keep an extracted location string intact (default: false)
+        description_from_title — reuse the extracted title as description (default: false)
         defaults   — default field values applied to all jobs
         defaults_by_title — per-title defaults applied to missing fields
         exclude_titles — exact titles to skip after extraction
@@ -534,11 +537,16 @@ async def discover(
     empty_selector = _validated_empty_selector(metadata.get("empty_selector"))
     if (empty_text is None) != (empty_selector is None):
         raise ValueError("inline explicit empty state requires empty_selector and empty_text")
+    require_zero_proof = metadata.get("require_zero_proof", False)
+    if not isinstance(require_zero_proof, bool):
+        raise ValueError("inline require_zero_proof must be a boolean")
 
     steps = metadata.get("steps")
     if not steps:
         if empty_text is not None:
             raise ValueError("inline explicit empty state requires non-empty steps")
+        if require_zero_proof:
+            raise ValueError("inline require_zero_proof requires non-empty steps")
         log.warning("inline.no_steps", url=board_url)
         return []
 
@@ -552,6 +560,9 @@ async def discover(
     preserve_single_location = metadata.get("preserve_single_location", False)
     if not isinstance(preserve_single_location, bool):
         raise ValueError("inline preserve_single_location must be a boolean")
+    description_from_title = metadata.get("description_from_title", False)
+    if not isinstance(description_from_title, bool):
+        raise ValueError("inline description_from_title must be a boolean")
     valid_through_patterns, valid_through_format, exclude_expired = _validated_valid_through_config(
         metadata
     )
@@ -569,6 +580,10 @@ async def discover(
             raise ValueError(
                 "inline monitor found no accepted jobs and did not match the configured "
                 "explicit empty state"
+            )
+        if require_zero_proof:
+            raise ValueError(
+                "inline monitor found no accepted jobs without authoritative empty-state proof"
             )
         log.info("inline.empty_page", url=board_url)
         return []
@@ -615,7 +630,7 @@ async def discover(
         job_defaults = {**defaults, **(defaults_by_title.get(title) or {})}
 
         # Build DiscoveredJob with extracted + default fields
-        description = result.get("description")
+        description = result.get("description") or (title if description_from_title else None)
         valid_through = _resolve_valid_through(
             result,
             job_defaults,
@@ -654,6 +669,10 @@ async def discover(
         raise ValueError(
             "inline monitor found no accepted jobs and did not match the configured explicit "
             "empty state"
+        )
+    if require_zero_proof and not jobs:
+        raise ValueError(
+            "inline monitor found no accepted jobs without authoritative empty-state proof"
         )
 
     truncated = processed_count >= _MAX_JOBS and cursor < len(elements)
