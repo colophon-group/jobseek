@@ -45,6 +45,7 @@ _MAX_VALID_THROUGH_FORMAT_LENGTH = 128
 _MAX_VALID_THROUGH_PATTERNS = 8
 _MAX_EMPTY_TEXT_LENGTH = 512
 _MAX_EMPTY_SELECTOR_LENGTH = 256
+_MAX_DETAIL_SELECTOR_LENGTH = 512
 _MAX_ITEM_BOUNDARY_TAG_LENGTH = 32
 _MAX_SECTION_REGEX_LENGTH = 2_048
 _MAX_POSITIONS_PER_LISTING = 20
@@ -100,6 +101,23 @@ def _validated_empty_selector(value: object) -> str | None:
     except SelectolaxError as exc:
         raise ValueError(f"inline empty_selector is invalid: {selector!r}") from exc
     return selector
+
+
+def _validated_detail_selector(value: object, *, name: str) -> str | None:
+    """Validate a bounded Playwright selector used by detail-card expansion."""
+    if value is None:
+        return None
+    if (
+        not isinstance(value, str)
+        or not value.strip()
+        or len(value) > _MAX_DETAIL_SELECTOR_LENGTH
+        or "\x00" in value
+    ):
+        raise ValueError(
+            f"inline {name} must be a non-empty selector up to "
+            f"{_MAX_DETAIL_SELECTOR_LENGTH} characters"
+        )
+    return value.strip()
 
 
 def _matches_explicit_empty(html: str, selector: str, marker: str) -> bool:
@@ -461,6 +479,18 @@ async def _fetch_html(
                 raise ValueError(f"inline fetch_urls[{index}].url must be a non-empty string")
             fetch_candidates.append((fetch_url, fetch_headers))
     required_text = metadata.get("fetch_contains")
+    detail_click_selector = _validated_detail_selector(
+        metadata.get("detail_click_selector"), name="detail_click_selector"
+    )
+    detail_content_selector = _validated_detail_selector(
+        metadata.get("detail_content_selector"), name="detail_content_selector"
+    )
+    if (detail_click_selector is None) != (detail_content_selector is None):
+        raise ValueError(
+            "inline detail_click_selector and detail_content_selector must be configured together"
+        )
+    if detail_click_selector is not None and not metadata.get("render"):
+        raise ValueError("inline detail-card expansion requires render=true")
 
     def validate(html: str, fetch_url: str) -> str:
         if required_text and required_text not in html:
@@ -477,6 +507,51 @@ async def _fetch_html(
                 ) as page:
                     await navigate(page, fetch_url, browser_cfg)
                     await run_actions(page, browser_cfg.get("actions", []))
+                    if detail_click_selector is not None:
+                        detail_links = page.locator(detail_click_selector)
+                        detail_timeout = browser_cfg.get("timeout", 30_000)
+                        await detail_links.first.wait_for(
+                            state="visible", timeout=detail_timeout
+                        )
+                        detail_count = await detail_links.count()
+                        if detail_count == 0:
+                            raise ValueError(
+                                "inline detail_click_selector did not match any elements"
+                            )
+
+                        details: list[str] = []
+                        for index in range(detail_count):
+                            if index:
+                                await navigate(page, fetch_url, browser_cfg)
+                                await run_actions(page, browser_cfg.get("actions", []))
+                                detail_links = page.locator(detail_click_selector)
+                                await detail_links.first.wait_for(
+                                    state="visible", timeout=detail_timeout
+                                )
+                                current_count = await detail_links.count()
+                                if current_count != detail_count:
+                                    raise ValueError(
+                                        "inline detail_click_selector match count changed during "
+                                        f"expansion ({detail_count} -> {current_count})"
+                                    )
+
+                            await detail_links.nth(index).click()
+                            detail_content = page.locator(detail_content_selector)
+                            await detail_content.wait_for(
+                                state="visible", timeout=detail_timeout
+                            )
+                            content_count = await detail_content.count()
+                            if content_count != 1:
+                                raise ValueError(
+                                    "inline detail_content_selector must match exactly one element "
+                                    f"after each click (matched {content_count})"
+                                )
+                            details.append(
+                                "<article data-inline-detail-boundary>"
+                                "__inline_detail_boundary__"
+                                f"{await detail_content.inner_html()}</article>"
+                            )
+                        return validate("".join(details), fetch_url)
                     return validate(await safe_content(page), fetch_url)
             except Exception as exc:
                 last_error = exc
@@ -510,6 +585,8 @@ async def discover(
     Config keys:
         steps      — extraction steps (same format as DOM scraper)
         render     — if true, use Playwright (default: false)
+        detail_click_selector — click each matching card control in turn (render only)
+        detail_content_selector — exactly one expanded detail container after each click
         fetch_urls — ordered alternate read URLs; canonical URLs use board_url
         include_hidden — include HTML hidden by tab/accordion state (default: false)
         empty_selector — CSS selector that scopes a visibly active empty-state element
@@ -557,6 +634,12 @@ async def discover(
     exclude_titles = set(metadata.get("exclude_titles") or [])
     exclude_title_regex = _compile_exclude_title_regex(metadata.get("exclude_title_regex"))
     item_boundary_tag = _validated_item_boundary_tag(metadata.get("item_boundary_tag"))
+    if metadata.get("detail_click_selector") is not None:
+        if item_boundary_tag not in (None, "article"):
+            raise ValueError(
+                "inline detail-card expansion reserves item_boundary_tag=article"
+            )
+        item_boundary_tag = "article"
     section_start = _validated_section_boundary(metadata.get("section_start"), name="section_start")
     section_end = _validated_section_boundary(metadata.get("section_end"), name="section_end")
     preserve_single_location = metadata.get("preserve_single_location", False)
