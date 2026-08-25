@@ -1007,6 +1007,7 @@ from src.core.monitors import (  # noqa: E402
     phenom,  # noqa: F401
     pinpoint,  # noqa: F401
     practicematch,  # noqa: F401
+    prospective,  # noqa: F401
     recruitee,  # noqa: F401
     recruiter_co_kr,  # noqa: F401
     recruiterbox,  # noqa: F401

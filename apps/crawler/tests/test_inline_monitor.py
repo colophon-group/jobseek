@@ -1212,6 +1212,55 @@ async def test_discover_explicit_empty_fails_closed_when_marker_and_items_are_ab
 
 
 @pytest.mark.asyncio
+async def test_discover_nonempty_selector_overrides_shared_heading_empty_marker():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "empty_selector": ".listing-heading",
+            "empty_text": "Currently open positions",
+            "nonempty_selector": ".application h4",
+            "item_boundary_tag": "h4",
+            "steps": [
+                {"tag": "h4", "field": "title"},
+                {"tag": "div", "attr": "class=description", "field": "description"},
+            ],
+            "defaults": {"locations": ["Basel, Switzerland"]},
+        },
+    }
+    html = """
+    <h2 class="listing-heading">Currently open positions</h2>
+    <div class="application">
+      <h4>Researcher</h4>
+      <div class="description">Study molecular systems.</div>
+    </div>
+    """
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert [job.title for job in jobs] == ["Researcher"]
+
+
+@pytest.mark.asyncio
+async def test_discover_nonempty_selector_accepts_shared_heading_when_items_absent():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "empty_selector": ".listing-heading",
+            "empty_text": "Currently open positions",
+            "nonempty_selector": ".application h4",
+            "steps": [{"tag": "h4", "field": "title"}],
+        },
+    }
+
+    jobs = await discover(
+        board,
+        _FakeClient('<h2 class="listing-heading">Currently open positions</h2>'),
+    )
+
+    assert jobs == []
+
+
+@pytest.mark.asyncio
 async def test_discover_explicit_empty_fails_closed_when_all_items_are_excluded():
     board = {
         "board_url": "https://example.com/jobs",

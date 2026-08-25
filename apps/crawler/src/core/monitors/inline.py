@@ -889,6 +889,7 @@ async def discover(
         include_hidden — include HTML hidden by tab/accordion state (default: false)
         empty_selector — CSS selector that scopes a visibly active empty-state element
         empty_text — authoritative text required inside empty_selector
+        nonempty_selector — optional selector whose presence overrides the empty marker
         require_zero_proof — fail when extraction returns no jobs without an explicit
                              empty_selector/empty_text match (default: false)
         item_boundary_tag — optional tag that starts and bounds each posting
@@ -913,8 +914,11 @@ async def discover(
 
     empty_text = _validated_empty_text(metadata.get("empty_text"))
     empty_selector = _validated_empty_selector(metadata.get("empty_selector"))
+    nonempty_selector = _validated_empty_selector(metadata.get("nonempty_selector"))
     if (empty_text is None) != (empty_selector is None):
         raise ValueError("inline explicit empty state requires empty_selector and empty_text")
+    if nonempty_selector is not None and empty_text is None:
+        raise ValueError("inline nonempty_selector requires empty_selector and empty_text")
     require_zero_proof = metadata.get("require_zero_proof", False)
     if not isinstance(require_zero_proof, bool):
         raise ValueError("inline require_zero_proof must be a boolean")
@@ -998,8 +1002,12 @@ async def discover(
     if empty_text is not None:
         assert empty_selector is not None
         if _matches_explicit_empty(html, empty_selector, empty_text):
-            log.info("inline.explicit_empty", url=board_url)
-            return []
+            has_nonempty_items = nonempty_selector is not None and bool(
+                LexborHTMLParser(html).css_first(nonempty_selector)
+            )
+            if not has_nonempty_items:
+                log.info("inline.explicit_empty", url=board_url)
+                return []
     if not elements:
         if empty_text is not None:
             raise ValueError(

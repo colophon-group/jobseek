@@ -133,6 +133,7 @@ Monitor Types (cheapest first):
   workday           10      Job URLs          Auto-configured
   personio          10      Full/partial      If descriptions missing (fallback)
   practicematch     10      Job URLs          Auto-configured
+  prospective       10      Job URLs          Auto-configured JSON-LD
   notion            15      Job URLs          Auto-configured
   recruiter_co_kr   15      Full job data     No (skipped)
   umantis           15      Full/partial      Description enrichment
@@ -1043,6 +1044,30 @@ njoyn — Njoyn XWeb browser monitor
 
   Detection:  *.njoyn.com/.../xweb/XWeb.asp listing URLs
   Pair with:  dom scraper rendered in a warmed Njoyn session"""
+
+MONITOR_PROSPECTIVE = """\
+prospective — Prospective CareerCenter HTML form monitor
+
+  Returns:  Complete job-detail URL set (needs scraper)
+  Cost:     10; server-rendered GET + POST pagination, no browser
+
+  Prospective CareerCenter pages submit offset pagination through a standard
+  HTML form. This monitor is the fallback for tenants whose public JSON medium
+  endpoint is unavailable. It validates the provider medium, form contract,
+  pagination progress, same-origin detail links, and configured filter values.
+
+  Config:
+    {"medium_id": "1000613"}
+    {"medium_id": "1000613",
+     "filters": {"filter_10": ["1082961", "1082964"]}}
+
+    medium_id   Optional numeric provider identity; fails if the page changes.
+    filters     Optional exact allowlist of repeated CareerCenter form values.
+                Every configured value must still exist in the live select;
+                missing values fail the cycle rather than broadening scope.
+
+  Detection:  form#careercenter-form plus /careercenter/<id>/assets/ marker
+  Pair with:  json-ld (auto-configured)"""
 
 MONITOR_CANDIDATUS = """\
 candidatus — Candidatus / WinDev browser monitor
@@ -3919,6 +3944,7 @@ infoniqa — Infoniqa jobexchange form-pagination monitor
     "talemetry": MONITOR_TALEMETRY,
     "talentbrew": MONITOR_TALENTBREW,
     "njoyn": MONITOR_NJOYN,
+    "prospective": MONITOR_PROSPECTIVE,
     "phenom": MONITOR_PHENOM,
     "nextdata": MONITOR_NEXTDATA,
     "notion": MONITOR_NOTION,
