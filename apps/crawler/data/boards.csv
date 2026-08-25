@@ -3665,6 +3665,8 @@ mammoth-brands,mammoth-brands-greenhouse,https://job-boards.greenhouse.io/mammot
 man-group,man-group-greenhouse,https://job-boards.greenhouse.io/mangroup,greenhouse,"{""token"": ""mangroup""}",skip,
 manna-drone-delivery,manna-drone-delivery-main,https://apply.workable.com/manna-1/,workable,"{""token"": ""manna-1""}",workable,
 manomano,manomano-careers,https://careers.manomano.jobs/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.manomano.jobs/jobs.rss""}",skip,
+manor,manor-careers,https://live.solique.ch/manor/de/,sitemap,"{""sitemap_url"": ""https://live.solique.ch/sitemap.xml"", ""url_filter"": ""/manor/job/details/[0-9]+/?$""}",json-ld,
+manor,manor-positions,https://positions.manor.ch/,rss,"{""preset"": ""successfactors"", ""feed_url"": ""https://positions.manor.ch/googlefeed.xml"", ""variant"": ""feed""}",skip,
 manscaped,manscaped-greenhouse,https://job-boards.greenhouse.io/manscaped,greenhouse,"{""token"": ""manscaped""}",skip,
 mantra-health,mantra-health-greenhouse,https://job-boards.greenhouse.io/mantrahealth,greenhouse,"{""token"": ""mantrahealth""}",skip,
 manufact,manufact-careers,https://www.ycombinator.com/companies/mcp-use/jobs,ycombinator,"{""slug"": ""manufact""}",json-ld,
