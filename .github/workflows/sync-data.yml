@@ -115,16 +115,54 @@ jobs:
           printf 'runtime_contract_sha256=%s\n' "$target_contract" >>"$GITHUB_OUTPUT"
           printf 'run_sync=%s\n' "$run_sync" >>"$GITHUB_OUTPUT"
 
-      - name: Copy CSV files to Hetzner
+      - name: Build immutable CSV candidate
+        if: steps.runtime_contract.outputs.run_sync == 'true'
+        id: candidate
+        run: |
+          set -euo pipefail
+          candidate_id="${SYNC_REVISION}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          candidate_dir="csv-publication/${candidate_id}"
+          mkdir -p "$candidate_dir/data"
+          (
+            cd csv-source/apps/crawler/data
+            find . -type f -name '*.csv' -print0 | LC_ALL=C sort -z |
+              tar --null -T - -cf -
+          ) | tar -C "$candidate_dir/data" -xf -
+          python3 - "$candidate_dir/data" "$candidate_dir/data-files.sha256" <<'PY'
+          import hashlib
+          import pathlib
+          import sys
+
+          root = pathlib.Path(sys.argv[1])
+          output = pathlib.Path(sys.argv[2])
+          rows = sorted(
+              (path.relative_to(root).as_posix(), hashlib.sha256(path.read_bytes()).hexdigest())
+              for path in root.rglob("*.csv")
+              if path.is_file() and not path.is_symlink()
+          )
+          if not rows:
+              raise SystemExit("CSV snapshot is empty")
+          output.write_text(
+              "".join(f"{digest}  {relative}\n" for relative, digest in rows),
+              encoding="utf-8",
+          )
+          PY
+          tar -C "$candidate_dir" -cf "$candidate_dir/csv-snapshot.tar" \
+            data data-files.sha256
+          archive_sha256="$(sha256sum "$candidate_dir/csv-snapshot.tar" | awk '{print $1}')"
+          printf 'candidate_id=%s\n' "$candidate_id" >>"$GITHUB_OUTPUT"
+          printf 'archive_sha256=%s\n' "$archive_sha256" >>"$GITHUB_OUTPUT"
+
+      - name: Copy immutable CSV candidate to Hetzner
         if: steps.runtime_contract.outputs.run_sync == 'true'
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: csv-source/apps/crawler/data/
-          target: /home/deploy/csv-overlay/
-          strip_components: 4
+          source: csv-publication/${{ steps.candidate.outputs.candidate_id }}/csv-snapshot.tar
+          target: /home/deploy/csv-candidates/${{ steps.candidate.outputs.candidate_id }}/
+          strip_components: 2
 
       - name: Copy locked CSV sync runner to Hetzner
         if: steps.runtime_contract.outputs.run_sync == 'true'
@@ -172,7 +210,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: SYNC_REVISION,SYNC_RUNTIME_CONTRACT_SHA256
+          envs: SYNC_REVISION,SYNC_RUNTIME_CONTRACT_SHA256,SYNC_DATA_CONTRACT_SHA256,SYNC_CANDIDATE_ID,SYNC_ARCHIVE_SHA256
           # 50 minutes waiting for the compatible release, then up to 25
           # minutes for the mutation lock and 30 minutes for the sync itself.
           command_timeout: 2h
@@ -185,6 +223,8 @@ jobs:
               set +e
               bash /home/deploy/csv-sync-runner/crawler-csv-sync-host.sh \
                 "$SYNC_REVISION" "$SYNC_RUNTIME_CONTRACT_SHA256" \
+                "$SYNC_DATA_CONTRACT_SHA256" "$SYNC_CANDIDATE_ID" \
+                "$SYNC_ARCHIVE_SHA256" \
                 --check-runtime
               status=$?
               set -e
@@ -204,7 +244,9 @@ jobs:
                 --lock-timeout-seconds 1500 \
                 -- \
                 bash /home/deploy/csv-sync-runner/crawler-csv-sync-host.sh \
-                  "$SYNC_REVISION" "$SYNC_RUNTIME_CONTRACT_SHA256"
+                  "$SYNC_REVISION" "$SYNC_RUNTIME_CONTRACT_SHA256" \
+                  "$SYNC_DATA_CONTRACT_SHA256" "$SYNC_CANDIDATE_ID" \
+                  "$SYNC_ARCHIVE_SHA256"
               status=$?
               set -e
               if [[ "$status" -eq 0 ]]; then
@@ -219,4 +261,7 @@ jobs:
             echo "ERROR: compatible crawler deployment did not commit before timeout" >&2
             exit 1
         env:
+          SYNC_DATA_CONTRACT_SHA256: ${{ steps.data_snapshot.outputs.data_contract_sha256 }}
+          SYNC_CANDIDATE_ID: ${{ steps.candidate.outputs.candidate_id }}
+          SYNC_ARCHIVE_SHA256: ${{ steps.candidate.outputs.archive_sha256 }}
           SYNC_RUNTIME_CONTRACT_SHA256: ${{ steps.publication_contract.outputs.runtime_contract_sha256 }}

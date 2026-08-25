@@ -24,6 +24,11 @@ required_vars=(
   BROWSER_IMAGE_REF
   JOBSEEK_DEPLOY_REVISION
   JOBSEEK_RUNTIME_CONTRACT_SHA256
+  JOBSEEK_DATA_CONTRACT_SHA256
+  JOBSEEK_PREVIOUS_DATA_REVISION
+  JOBSEEK_PREVIOUS_DATA_CONTRACT_SHA256
+  JOBSEEK_PREVIOUS_DATA_CANDIDATE_ID
+  JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256
   JOBSEEK_RECONCILIATION_WRAPPER_SHA256
   WEB_DATABASE_URL
   LOCAL_DATABASE_URL
@@ -83,10 +88,14 @@ DEPLOY_SUCCESS_FILE=""
 ACTIVE_RELEASE_MANIFEST=""
 ACTIVE_RELEASE_FORMAT=""
 ACTIVE_IMAGE_OVERRIDE=""
+ACTIVE_DATA_SNAPSHOT=""
+ACTIVE_DATA_FILES_MANIFEST=""
 ROLLBACK_ACTIVE_RELEASE_TARGET=""
 ROLLBACK_ACTIVE_IMAGE_OVERRIDE=""
 ROLLBACK_SYNC_WEB_DATABASE_URL=""
 FORWARD_SYNC_STARTED=0
+FORWARD_DATA_SNAPSHOT=""
+FORWARD_DATA_FILES_MANIFEST=""
 GHCR_DOCKER_CONFIG=""
 ENV_FILE_WAS_PRESENT=0
 ROLLBACK_ARMED=0
@@ -108,6 +117,11 @@ for spec in "${DEPLOY_SPEC_FILES[@]}"; do
     exit 1
   }
 done
+[[ -f "$INCOMING_DIR/scripts/crawler-csv-sync-host.sh" && \
+  ! -L "$INCOMING_DIR/scripts/crawler-csv-sync-host.sh" ]] || {
+  echo "ERROR: staged CSV publication helper is unavailable or unsafe" >&2
+  exit 1
+}
 [[ -f "$ROLLBACK_POOL_OVERRIDE_SOURCE" && ! -L "$ROLLBACK_POOL_OVERRIDE_SOURCE" ]] || {
   echo "ERROR: staged rollback pool-budget override is unavailable or unsafe" >&2
   exit 1
@@ -132,6 +146,15 @@ if [[ ! "$JOBSEEK_DEPLOY_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
 fi
 if [[ ! "$JOBSEEK_RUNTIME_CONTRACT_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
   echo "ERROR: JOBSEEK_RUNTIME_CONTRACT_SHA256 must be a lowercase SHA-256" >&2
+  exit 1
+fi
+if [[ ! "$JOBSEEK_DATA_CONTRACT_SHA256" =~ ^[0-9a-f]{64}$ ||
+  ! "$JOBSEEK_PREVIOUS_DATA_CONTRACT_SHA256" =~ ^[0-9a-f]{64}$ ||
+  ! "$JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256" =~ ^[0-9a-f]{64}$ ||
+  ! "$JOBSEEK_PREVIOUS_DATA_REVISION" =~ ^[0-9a-f]{40}$ ||
+  ! "$JOBSEEK_PREVIOUS_DATA_CANDIDATE_ID" =~ ^${JOBSEEK_PREVIOUS_DATA_REVISION}-[1-9][0-9]*-[1-9][0-9]*$
+]]; then
+  echo "ERROR: crawler data publication identity is invalid" >&2
   exit 1
 fi
 if [[ ! "$OWNER" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
@@ -279,6 +302,85 @@ verify_active_snapshot_file() {
   }
 }
 
+verify_exact_csv_tree() {
+  local data_dir="$1" files_manifest="$2"
+  [[ -d "$data_dir" && ! -L "$data_dir" && \
+    -f "$files_manifest" && ! -L "$files_manifest" ]] || {
+    echo "ERROR: crawler active CSV snapshot is unavailable or unsafe" >&2
+    return 1
+  }
+  python3 - "$data_dir" "$files_manifest" <<'PY'
+import hashlib
+import os
+import pathlib
+import re
+import stat
+import sys
+
+root = pathlib.Path(sys.argv[1])
+manifest = pathlib.Path(sys.argv[2])
+rows = []
+for directory, dirnames, filenames in os.walk(root, followlinks=False):
+    directory_path = pathlib.Path(directory)
+    for name in list(dirnames):
+        path = directory_path / name
+        if path.is_symlink():
+            raise SystemExit(f"unsafe symlink in CSV snapshot: {path}")
+    for name in filenames:
+        path = directory_path / name
+        mode = path.lstat().st_mode
+        if not stat.S_ISREG(mode) or path.is_symlink():
+            raise SystemExit(f"unsafe file in CSV snapshot: {path}")
+        relative = path.relative_to(root).as_posix()
+        if not re.fullmatch(r"[A-Za-z0-9._/-]+\.csv", relative):
+            raise SystemExit(f"unexpected file in CSV snapshot: {relative}")
+        rows.append((relative, hashlib.sha256(path.read_bytes()).hexdigest()))
+if not rows:
+    raise SystemExit("CSV snapshot is empty")
+actual = "".join(f"{digest}  {relative}\n" for relative, digest in sorted(rows))
+if manifest.read_text(encoding="utf-8") != actual:
+    raise SystemExit("CSV snapshot file manifest does not match exact tree")
+PY
+}
+
+write_exact_csv_manifest() {
+  local data_dir="$1" files_manifest="$2"
+  python3 - "$data_dir" "$files_manifest" <<'PY'
+import hashlib
+import os
+import pathlib
+import re
+import stat
+import sys
+
+root = pathlib.Path(sys.argv[1])
+output = pathlib.Path(sys.argv[2])
+rows = []
+for directory, dirnames, filenames in os.walk(root, followlinks=False):
+    directory_path = pathlib.Path(directory)
+    for name in list(dirnames):
+        path = directory_path / name
+        if path.is_symlink():
+            raise SystemExit(f"unsafe symlink in CSV candidate: {path}")
+    for name in filenames:
+        path = directory_path / name
+        mode = path.lstat().st_mode
+        if not stat.S_ISREG(mode) or path.is_symlink():
+            raise SystemExit(f"unsafe file in CSV candidate: {path}")
+        relative = path.relative_to(root).as_posix()
+        if not re.fullmatch(r"[A-Za-z0-9._/-]+\.csv", relative):
+            raise SystemExit(f"unexpected file in CSV candidate: {relative}")
+        rows.append((relative, hashlib.sha256(path.read_bytes()).hexdigest()))
+if not rows:
+    raise SystemExit("CSV candidate is empty")
+output.write_text(
+    "".join(f"{digest}  {relative}\n" for relative, digest in sorted(rows)),
+    encoding="utf-8",
+)
+PY
+  chmod 0644 "$files_manifest"
+}
+
 read_exact_release_value() {
   local file="$1"
   local key="$2"
@@ -347,6 +449,8 @@ load_active_release() {
   ACTIVE_RELEASE_MANIFEST="$target/release.manifest"
   ACTIVE_RELEASE_FORMAT=""
   ACTIVE_IMAGE_OVERRIDE=""
+  ACTIVE_DATA_SNAPSHOT=""
+  ACTIVE_DATA_FILES_MANIFEST=""
 }
 
 verify_active_deploy_snapshot() {
@@ -371,7 +475,7 @@ verify_active_deploy_snapshot() {
     return 1
   }
   format_version="$(read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" RELEASE_FORMAT_VERSION)"
-  [[ "$format_version" == 1 || "$format_version" == 2 ]] || {
+  [[ "$format_version" == 1 || "$format_version" == 2 || "$format_version" == 3 ]] || {
     echo "ERROR: crawler active-release format is unsupported" >&2
     return 1
   }
@@ -424,6 +528,48 @@ verify_active_deploy_snapshot() {
     }
   fi
 
+  if [[ "$format_version" == 3 ]]; then
+    local data_files_digest data_contract data_revision
+    ACTIVE_DATA_SNAPSHOT="$ACTIVE_RELEASE_DIR/data"
+    ACTIVE_DATA_FILES_MANIFEST="$ACTIVE_RELEASE_DIR/data-files.sha256"
+    data_files_digest="$(
+      read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" DATA_FILES_SHA256
+    )"
+    data_contract="$(
+      read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" DATA_CONTRACT_SHA256
+    )"
+    data_revision="$(
+      read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" DATA_REVISION
+    )"
+    [[ "$data_files_digest" =~ ^[0-9a-f]{64}$ && \
+      "$data_contract" =~ ^[0-9a-f]{64}$ && "$data_revision" =~ ^[0-9a-f]{40}$ ]] || {
+      echo "ERROR: crawler active CSV identity is invalid" >&2
+      return 1
+    }
+    [[ -f "$ACTIVE_DATA_FILES_MANIFEST" && ! -L "$ACTIVE_DATA_FILES_MANIFEST" && \
+      "$data_files_digest" == "$(sha256sum "$ACTIVE_DATA_FILES_MANIFEST" | awk '{print $1}')" ]] || {
+      echo "ERROR: crawler active CSV manifest failed verification" >&2
+      return 1
+    }
+    verify_exact_csv_tree "$ACTIVE_DATA_SNAPSHOT" "$ACTIVE_DATA_FILES_MANIFEST"
+    local has_image_override
+    has_image_override="$(
+      read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" HAS_IMAGE_OVERRIDE
+    )"
+    [[ "$has_image_override" == 0 || "$has_image_override" == 1 ]] || return 1
+    if [[ "$has_image_override" == 1 ]]; then
+      local image_override_digest actual_image_override_digest
+      ACTIVE_IMAGE_OVERRIDE="$ACTIVE_RELEASE_DIR/rollback-images.override.yml"
+      image_override_digest="$(
+        read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" IMAGE_OVERRIDE_SHA256
+      )"
+      [[ "$image_override_digest" =~ ^[0-9a-f]{64}$ && \
+        -f "$ACTIVE_IMAGE_OVERRIDE" && ! -L "$ACTIVE_IMAGE_OVERRIDE" ]] || return 1
+      actual_image_override_digest="$(sha256sum "$ACTIVE_IMAGE_OVERRIDE" | awk '{print $1}')"
+      [[ "$image_override_digest" == "$actual_image_override_digest" ]] || return 1
+    fi
+  fi
+
   local -a release_compose_args configured_images
   local configured_image configured_images_output
   release_compose_args=(-f "$ACTIVE_COMPOSE_SNAPSHOT")
@@ -455,7 +601,7 @@ verify_active_deploy_snapshot() {
   done
 
   local -a identity_keys=(CRAWLER_IMAGE_TAG JOBSEEK_DEPLOY_REVISION)
-  if [[ "$format_version" == 1 ||
+  if [[ "$format_version" == 1 || "$format_version" == 3 ||
     ( "$format_version" == 2 && "$bootstrap_legacy" == 0 ) ]]
   then
     identity_keys=(
@@ -510,7 +656,9 @@ publish_legacy_success_marker() {
 
 publish_active_deploy_release() {
   local success_file="$1"
-  local generation compose_digest env_digest success_digest
+  local data_dir="$2"
+  local data_files_manifest="$3"
+  local generation compose_digest env_digest success_digest data_files_digest
 
   [[ ! -e "$ACTIVE_RELEASE_ROOT" ||
     ( -d "$ACTIVE_RELEASE_ROOT" && ! -L "$ACTIVE_RELEASE_ROOT" ) ]] || {
@@ -522,16 +670,25 @@ publish_active_deploy_release() {
   install -m 0644 "$DEPLOY_DIR/docker-compose.yml" "$generation/docker-compose.yml"
   install -m 0600 "$ENV_FILE" "$generation/environment.env"
   install -m 0644 "$success_file" "$generation/success.env"
+  install -d -m 0755 "$generation/data"
+  cp -a "$data_dir/." "$generation/data/"
+  install -m 0644 "$data_files_manifest" "$generation/data-files.sha256"
+  verify_exact_csv_tree "$generation/data" "$generation/data-files.sha256"
   compose_digest="$(sha256sum "$generation/docker-compose.yml" | awk '{print $1}')"
   env_digest="$(sha256sum "$generation/environment.env" | awk '{print $1}')"
   success_digest="$(sha256sum "$generation/success.env" | awk '{print $1}')"
+  data_files_digest="$(sha256sum "$generation/data-files.sha256" | awk '{print $1}')"
   printf '%s\n' "$compose_digest" >"$generation/docker-compose.sha256"
   printf '%s\n' "$env_digest" >"$generation/environment.sha256"
   printf '%s\n' \
-    'RELEASE_FORMAT_VERSION=1' \
+    'RELEASE_FORMAT_VERSION=3' \
     "COMPOSE_SHA256=$compose_digest" \
     "ENVIRONMENT_SHA256=$env_digest" \
     "SUCCESS_SHA256=$success_digest" \
+    "DATA_FILES_SHA256=$data_files_digest" \
+    "DATA_CONTRACT_SHA256=$JOBSEEK_DATA_CONTRACT_SHA256" \
+    "DATA_REVISION=$JOBSEEK_DEPLOY_REVISION" \
+    'HAS_IMAGE_OVERRIDE=0' \
     >"$generation/release.manifest"
   chmod 0644 \
     "$generation/docker-compose.sha256" \
@@ -543,19 +700,19 @@ import os
 import sys
 
 generation = sys.argv[1]
-for name in os.listdir(generation):
-    path = os.path.join(generation, name)
-    if os.path.isfile(path) and not os.path.islink(path):
+for directory, dirnames, filenames in os.walk(generation, topdown=False):
+    for name in filenames:
+        path = os.path.join(directory, name)
         fd = os.open(path, os.O_RDONLY)
         try:
             os.fsync(fd)
         finally:
             os.close(fd)
-directory_fd = os.open(generation, os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(directory_fd)
-finally:
-    os.close(directory_fd)
+    directory_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
 release_root = os.path.dirname(generation)
 release_root_fd = os.open(release_root, os.O_RDONLY | os.O_DIRECTORY)
 try:
@@ -567,6 +724,37 @@ PY
   activate_release_generation "$generation"
   load_active_release
   verify_active_deploy_snapshot
+}
+
+prepare_forward_data_snapshot() {
+  local staging_root container_id status=0
+  staging_root="$(mktemp -d "${DEPLOY_DIR}/.crawler-forward-data-${JOBSEEK_DEPLOY_REVISION}.XXXXXX")"
+  FORWARD_DATA_SNAPSHOT="$staging_root/data"
+  FORWARD_DATA_FILES_MANIFEST="$staging_root/data-files.sha256"
+  install -d -m 0755 "$FORWARD_DATA_SNAPSHOT"
+  container_id="$(docker create "$CRAWLER_IMAGE_REF")"
+  if docker cp "$container_id:/app/data/." "$FORWARD_DATA_SNAPSHOT"; then
+    :
+  else
+    status=$?
+  fi
+  docker rm "$container_id" >/dev/null || status=$?
+  (( status == 0 )) || return "$status"
+  find "$FORWARD_DATA_SNAPSHOT" -type f ! -name '*.csv' -delete
+  find "$FORWARD_DATA_SNAPSHOT" -depth -type d -empty -delete
+  write_exact_csv_manifest "$FORWARD_DATA_SNAPSHOT" "$FORWARD_DATA_FILES_MANIFEST"
+  verify_exact_csv_tree "$FORWARD_DATA_SNAPSHOT" "$FORWARD_DATA_FILES_MANIFEST"
+}
+
+cleanup_forward_data_snapshot() {
+  local staging_root
+  [[ -n "$FORWARD_DATA_SNAPSHOT" ]] || return 0
+  staging_root="${FORWARD_DATA_SNAPSHOT%/data}"
+  [[ "$staging_root" == "$DEPLOY_DIR"/.crawler-forward-data-"$JOBSEEK_DEPLOY_REVISION".* && \
+    -d "$staging_root" && ! -L "$staging_root" ]] || return 1
+  rm -rf -- "$staging_root"
+  FORWARD_DATA_SNAPSHOT=""
+  FORWARD_DATA_FILES_MANIFEST=""
 }
 
 snapshot_active_deploy_specs() {
@@ -729,6 +917,7 @@ rollback_compose() {
 
 rollback_sync_previous_config() {
   local crawler_ref restored_web_database_url status
+  local -a data_args=()
 
   crawler_ref="$(read_exact_release_value "$ENV_FILE" CRAWLER_IMAGE_REF)" || {
     echo "ERROR: restored crawler image identity is unavailable for config rollback" >&2
@@ -750,7 +939,15 @@ rollback_sync_previous_config() {
   }
 
   ROLLBACK_SYNC_WEB_DATABASE_URL="$restored_web_database_url"
+  if [[ "${ACTIVE_RELEASE_FORMAT:-}" == 3 ]]; then
+    verify_exact_csv_tree "${ACTIVE_DATA_SNAPSHOT:-}" "${ACTIVE_DATA_FILES_MANIFEST:-}"
+    data_args=(-v "${ACTIVE_DATA_SNAPSHOT}:/app/data:ro")
+  else
+    echo "ERROR: exact previous CSV rollback evidence is unavailable" >&2
+    return 1
+  fi
   if rollback_compose run --rm --no-deps \
+    "${data_args[@]}" \
     -e WEB_DATABASE_URL \
     -e CRAWLER_DB_ROLE=rollback-sync \
     -e CRAWLER_DB_POOL_MIN=0 \
@@ -963,6 +1160,13 @@ rollback_deploy() {
     command_status=$?
     if ((command_status != 0)); then
       echo "ERROR: crawler rollback release generation failed final verification" >&2
+      rollback_status=$command_status
+    fi
+  fi
+  if declare -F cleanup_forward_data_snapshot >/dev/null; then
+    cleanup_forward_data_snapshot
+    command_status=$?
+    if ((command_status != 0 && rollback_status == 0)); then
       rollback_status=$command_status
     fi
   fi
@@ -1371,6 +1575,18 @@ ensure_reconciliation_wrapper_compatible
 python3 "$INCOMING_DIR/scripts/postgresql-operational-preflight.py"
 initialize_ghcr_docker_config
 
+# Resolve any interrupted data-only transaction before inspecting or mutating
+# the active generation. On the first v3 rollout, reapply the exact pre-push
+# main CSV snapshot with the committed old runtime and atomically bind it as
+# rollback evidence. Never fall back to the older image's embedded CSVs.
+bash "$INCOMING_DIR/scripts/crawler-csv-sync-host.sh" --recover-only
+bash "$INCOMING_DIR/scripts/crawler-csv-sync-host.sh" \
+  --bootstrap-current \
+  "$JOBSEEK_PREVIOUS_DATA_REVISION" \
+  "$JOBSEEK_PREVIOUS_DATA_CONTRACT_SHA256" \
+  "$JOBSEEK_PREVIOUS_DATA_CANDIDATE_ID" \
+  "$JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256"
+
 verify_active_deploy_snapshot
 ROLLBACK_ACTIVE_RELEASE_TARGET="$ACTIVE_RELEASE_DIR"
 ROLLBACK_ACTIVE_IMAGE_OVERRIDE="$ACTIVE_IMAGE_OVERRIDE"
@@ -1449,6 +1665,7 @@ fi
 ensure_deploy_disk_headroom
 
 pull_deploy_images
+prepare_forward_data_snapshot
 
 docker compose up -d redis
 
@@ -1498,6 +1715,7 @@ docker run --rm \
   -e TYPESENSE_PROTOCOL \
   -e TYPESENSE_OPERATIONS_KEY \
   --network host \
+  -v "$FORWARD_DATA_SNAPSHOT:/app/data:ro" \
   "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
   --label com.docker.compose.service=deploy-sync \
   "$CRAWLER_IMAGE_REF" \
@@ -1556,13 +1774,17 @@ printf '%s\n' \
   >"$deploy_success_temporary"
 chmod 0644 "$deploy_success_temporary"
 verify_shim_deploy_contract "$deploy_success_temporary"
-publish_active_deploy_release "$deploy_success_temporary"
+publish_active_deploy_release \
+  "$deploy_success_temporary" \
+  "$FORWARD_DATA_SNAPSHOT" \
+  "$FORWARD_DATA_FILES_MANIFEST"
 # The active generation pointer is the one atomic commit for Compose, env, and
 # success-marker state. Keep rollback armed through validation of that exact
 # generation; a process crash before the pointer swap leaves the prior release
 # selected, while a crash after it leaves the complete new release selected.
 verify_shim_deploy_contract "$DEPLOY_SUCCESS_FILE"
 disarm_deploy_rollback
+cleanup_forward_data_snapshot
 rm -f "$deploy_success_temporary" "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE" || true
 publish_legacy_success_marker || {
   echo "WARNING: could not refresh deprecated crawler success-marker path" >&2

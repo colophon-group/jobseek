@@ -123,10 +123,10 @@ function main() {
       ? deriveCrawlerDataContract(entries)
       : deriveCrawlerRuntimeContract(entries);
   if (githubOutput) {
-    if (kind !== "runtime") {
-      throw new Error("GitHub output is only supported for the runtime contract");
-    }
-    appendFileSync(githubOutput, `runtime_contract_sha256=${contract}\n`);
+    appendFileSync(
+      githubOutput,
+      `${kind}_contract_sha256=${contract}\n`,
+    );
   }
   console.log(contract);
 }

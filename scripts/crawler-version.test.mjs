@@ -57,6 +57,28 @@ test("human-authored crawler changes still require a release bump", () => {
   );
 });
 
+test("runtime taxonomy and contract-boundary changes require a release bump", () => {
+  for (const file of [
+    "apps/crawler/data/industries.csv",
+    "apps/crawler/data/occupations.csv",
+    "apps/crawler/data/seniority.csv",
+    "apps/crawler/data/technologies.csv",
+    "scripts/derive-crawler-runtime-contract.mjs",
+  ]) {
+    assert.throws(
+      () =>
+        evaluateCrawlerVersion({
+          baseVersion: "0.13.152",
+          prVersion: "0.13.152",
+          author: "developer",
+          files: [file],
+        }),
+      /must be bumped/,
+      file,
+    );
+  }
+});
+
 test("Dependabot cannot bypass the gate for crawler source changes", () => {
   assert.throws(
     () =>

@@ -31,6 +31,9 @@ The deploy script must:
   migrations, Typesense schema patching, or `crawler sync`;
 - record a deterministic runtime-contract digest in the committed release, and
   require standalone CSV syncs to match that digest before publishing config;
+- commit one release generation that binds the verified runtime environment and
+  immutable image identities to the exact applied CSV tree, its canonical
+  per-file SHA-256 manifest, Git data contract, and source revision;
 - reject an explicitly requested CSV revision unless its complete publishable
   CSV tree matches current `main`, while allowing runtime-only commits to have
   advanced since that revision;
@@ -41,10 +44,23 @@ The deploy script must:
   runtime contract and crawler data;
 - let a data-only publisher wait for a compatible deploy without holding the
   host mutation lock, then recheck the contract after acquiring the lock;
+- transfer data-only candidates into run- and revision-specific host paths,
+  verify the transferred archive and exact CSV tree on the host, run sync with
+  that tree mounted read-only, and atomically select the complete generation
+  only after sync succeeds;
+- journal the sync-to-pointer-publication seam durably. An interrupted failed
+  candidate restores the prior committed tree; an interrupted first-rollout
+  bootstrap keeps retrying the exact pre-deploy tree rather than falling back
+  to stale CSVs embedded in the legacy image;
+- before the first format-v3 deploy, reapply the exact pre-push `main` CSV tree
+  with the verified committed runtime and promote it as rollback evidence;
 - start the full stack after sync;
 - wait for core services to be running or healthy;
-- restore the previous env on failure and, if the forward sync began, resync
-  the previous image's embedded CSV snapshot before restarting old services.
+- restore the previous env on failure and, if the forward sync began, mount and
+  resync the previous generation's exact committed CSV tree read-only in the
+  previous image before restarting old services. Pre-v3 generations are
+  accepted only long enough to bootstrap an exact staged tree; deploy rollback
+  never falls back to CSVs embedded in a legacy image.
 
 ## Consequences
 
@@ -59,8 +75,8 @@ The deploy script must:
 - Future zero-downtime deploy work should preserve the Redis reseed invariant or
   explicitly replace it with an equivalent safe handoff.
 - The standalone CSV workflow can publish data-only revisions without an image
-  build. It fails closed for stale data snapshots, and waits for a pending
-  compatible runtime deployment instead of publishing against the old image.
+  build. It fails closed for stale, missing, extra, deleted, or tampered data
+  evidence, mutable live-environment drift, and incompatible runtimes.
 - A rollback after sync has begun keeps processors quiesced until the previous
   image has restored its own configuration; a failed restore leaves the old
   workers stopped rather than running against the newer configuration.
