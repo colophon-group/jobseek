@@ -85,6 +85,10 @@ def test_deploy_refreshes_short_lived_ghcr_auth_before_release_mutation() -> Non
     disarm_start = script.index("disarm_deploy_rollback() {")
     disarm = script[disarm_start : script.index("compose_service_ready() {", disarm_start)]
     assert 'clean_environment+=("DOCKER_CONFIG=$DOCKER_CONFIG")' in rollback_compose
+    assert (
+        'clean_environment+=("WEB_DATABASE_URL=$ROLLBACK_SYNC_WEB_DATABASE_URL")'
+        in rollback_compose
+    )
     assert "trap 'cleanup_ghcr_docker_config_on_exit $?' EXIT" in rollback
     assert disarm.index("cleanup_ghcr_docker_config") < disarm.index("trap - ERR EXIT")
 
@@ -167,9 +171,11 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
     quiesce = script.index("docker compose stop --timeout 60")
     migrate = script.index("alembic -c src/migrations/alembic.ini upgrade head")
     typesense_schema = script.index("uv run --no-sync crawler setup-typesense")
-    sync = script.index("uv run --no-sync crawler sync")
+    sync = script.index("uv run --no-sync crawler sync", typesense_schema)
+    nw_cutover = script.index("uv run --no-sync crawler repair-nw-provider-cutover")
+    restart = script.index("docker compose up -d --remove-orphans", nw_cutover)
 
-    assert quiesce < migrate < typesense_schema < sync
+    assert quiesce < migrate < typesense_schema < sync < nw_cutover < restart
 
 
 def test_operational_sync_entrypoints_are_local_and_typesense_only() -> None:
@@ -230,6 +236,103 @@ def test_csv_sync_filters_the_host_environment_to_required_boundaries() -> None:
         assert key in sync_host
 
 
+def test_csv_sync_requires_the_committed_runtime_contract_before_publication() -> None:
+    deploy = DEPLOY_SH.read_text()
+    workflow = SYNC_DATA_WORKFLOW.read_text()
+    sync_host = CSV_SYNC_HOST.read_text()
+
+    assert "scripts/derive-crawler-runtime-contract.mjs" in workflow
+    assert "--kind data" in workflow
+    assert "target_data_contract" in workflow
+    assert "current_data_contract" in workflow
+    assert "requested CSV snapshot is stale relative to current main" in workflow
+    assert "current main CSV snapshot advanced before publication" in workflow
+    assert "before_contract" in workflow
+    assert "run_sync=false" in workflow
+    assert "SYNC_RUNTIME_CONTRACT_SHA256" in workflow
+    assert "--check-runtime" in workflow
+    assert 'if [[ "$status" -eq 75 ]]' in workflow
+    assert workflow.index("--check-runtime") < workflow.index(
+        "/usr/local/sbin/jobseek-maintenance window"
+    )
+    assert "JOBSEEK_RUNTIME_CONTRACT_SHA256" in deploy
+    assert "JOBSEEK_RUNTIME_CONTRACT_SHA256" in sync_host
+    assert "/home/deploy/.crawler-active-release" in sync_host
+    contract_gate = sync_host.index("contract_files=(")
+    credentials = sync_host.index("required_env=(")
+    image = sync_host.index("mapfile -t image_refs")
+    publication = sync_host.index("uv run --no-sync crawler sync")
+    assert contract_gate < credentials < image < publication
+    assert sync_host.count('"$active_release/environment.env"') == 1
+    assert sync_host.count('"$active_release/success.env"') == 1
+    assert "return 75" in sync_host
+    assert sync_host.index("verify_runtime_contract") < sync_host.index('RUNTIME_ENV="$(mktemp')
+
+
+def test_csv_sync_runtime_contract_mismatch_is_retryable_but_corruption_is_fatal(
+    tmp_path: Path,
+) -> None:
+    sync_host = CSV_SYNC_HOST.read_text()
+    verifier = sync_host[
+        sync_host.index("verify_runtime_contract() {") : sync_host.index(
+            "\nverify_runtime_contract\n"
+        )
+    ]
+    expected = "a" * 64
+    different = "b" * 64
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+    harness = "\n".join(
+        (
+            "set -u",
+            'DEPLOY_ENV="$TEST_DEPLOY_ENV"',
+            'ACTIVE_RELEASE_POINTER="$TEST_ACTIVE_RELEASE_POINTER"',
+            'ACTIVE_RELEASE_ROOT="$TEST_ACTIVE_RELEASE_ROOT"',
+            f'RUNTIME_CONTRACT_SHA256="{expected}"',
+            verifier,
+            "verify_runtime_contract",
+            "status=$?",
+            "printf '%s\\n' \"$status\"",
+        )
+    )
+
+    for name, values, expected_status in (
+        ("match", (expected, expected, expected), 0),
+        ("different", (expected, expected, different), 75),
+        ("missing", (expected, expected, None), 75),
+        ("invalid", (expected, expected, "not-a-digest"), 1),
+    ):
+        case_dir = tmp_path / name
+        release_root = case_dir / "releases"
+        release = release_root / "release-1"
+        release.mkdir(parents=True)
+        deploy_env = case_dir / ".env"
+        pointer = case_dir / ".crawler-active-release"
+        pointer.symlink_to(release)
+        files = (deploy_env, release / "environment.env", release / "success.env")
+        for path, value in zip(files, values, strict=True):
+            path.write_text(
+                "" if value is None else f"JOBSEEK_RUNTIME_CONTRACT_SHA256={value}\n",
+                encoding="utf-8",
+            )
+
+        result = subprocess.run(
+            [bash, "-c", harness],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "TEST_ACTIVE_RELEASE_POINTER": str(pointer),
+                "TEST_ACTIVE_RELEASE_ROOT": str(release_root),
+                "TEST_DEPLOY_ENV": str(deploy_env),
+            },
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip() == str(expected_status)
+        assert ("WAIT:" in result.stderr) == (expected_status == 75)
+        assert ("ERROR:" in result.stderr) == (expected_status == 1)
+
+
 def test_deploy_brackets_service_pause_with_validated_maintenance_provenance() -> None:
     script = DEPLOY_SH.read_text()
     workflow = DEPLOY_WORKFLOW.read_text()
@@ -257,6 +360,7 @@ def test_deploy_brackets_service_pause_with_validated_maintenance_provenance() -
         "deploy-migrate",
         "deploy-setup-typesense",
         "deploy-sync",
+        "deploy-nw-provider-cutover",
     ):
         assert f"com.docker.compose.service={service}" in script
 
@@ -311,18 +415,40 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     env_restore = rollback.index('mv "$ROLLBACK_ENV_FILE" "$ENV_FILE"')
     spec_restore = rollback.index("restore_previous_deploy_specs")
     contract = rollback.index("configure_rollback_compose_contract")
+    config_sync = rollback.index("rollback_sync_previous_config")
     old_stack_start = rollback.index("rollback_compose up -d --remove-orphans")
     health = rollback.index("wait_for_rollback_core_services")
     assert (
-        quiesce < release_restore < env_restore < spec_restore < contract < old_stack_start < health
+        quiesce
+        < release_restore
+        < env_restore
+        < spec_restore
+        < contract
+        < config_sync
+        < old_stack_start
+        < health
     )
     assert "|| true" not in rollback
     assert "rollback failed with status" in rollback
     assert "if ((env_restore_complete && spec_restore_complete)); then" in rollback
     assert (
         "if ((quiesce_complete && release_restore_complete && env_restore_complete && "
-        "spec_restore_complete && "
-        "bounded_contract_persisted)); then" in rollback
+        "spec_restore_complete && bounded_contract_persisted)); then" in rollback
+    )
+    assert (
+        "spec_restore_complete && bounded_contract_persisted && "
+        "config_restore_complete)); then" in rollback
+    )
+    rollback_sync = script[
+        script.index("rollback_sync_previous_config() {") : script.index(
+            "rollback_compose_service_ready() {"
+        )
+    ]
+    assert 'read_exact_release_value "$ENV_FILE" CRAWLER_IMAGE_REF' in rollback_sync
+    assert "uv run --no-sync crawler sync" in rollback_sync
+    assert "-e CRAWLER_DB_ROLE=rollback-sync" in rollback_sync
+    assert script.index("FORWARD_SYNC_STARTED=1") < script.index(
+        "uv run --no-sync crawler sync", script.index("FORWARD_SYNC_STARTED=1")
     )
     assert "local services=(redis worker-1 worker-2 worker-3 browser-1 exporter drain alloy)" in (
         script
@@ -337,8 +463,80 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert "target: /home/deploy/\n" not in workflow
 
 
+def test_previous_config_restore_uses_the_restored_image_and_scopes_web_secret(
+    tmp_path: Path,
+) -> None:
+    script = DEPLOY_SH.read_text()
+    read_exact = script[
+        script.index("read_exact_release_value() {") : script.index(
+            "verify_optional_runtime_contract_pair() {"
+        )
+    ]
+    rollback_sync = script[
+        script.index("rollback_sync_previous_config() {") : script.index(
+            "rollback_compose_service_ready() {"
+        )
+    ]
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "CRAWLER_IMAGE_REF="
+        f"ghcr.io/colophon-group/jobseek-crawler@sha256:{'a' * 64}\n"
+        "WEB_DATABASE_URL=postgresql://rollback-only\n",
+        encoding="utf-8",
+    )
+    log = tmp_path / "calls.log"
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+    harness = "\n".join(
+        (
+            "set -u",
+            'OWNER="colophon-group"',
+            'ENV_FILE="$TEST_ENV_FILE"',
+            'ROLLBACK_SYNC_WEB_DATABASE_URL=""',
+            read_exact,
+            rollback_sync,
+            "rollback_compose() {",
+            '  test "$ROLLBACK_SYNC_WEB_DATABASE_URL" = "postgresql://rollback-only"',
+            '  printf \'%s\\n\' "$*" >>"$TEST_LOG"',
+            '  return "$COMPOSE_STATUS"',
+            "}",
+            "rollback_sync_previous_config",
+            "status=$?",
+            'test -z "$ROLLBACK_SYNC_WEB_DATABASE_URL"',
+            'printf \'status=%s\\n\' "$status" >>"$TEST_LOG"',
+            "exit 0",
+        )
+    )
+
+    for compose_status in (0, 9):
+        log.write_text("", encoding="utf-8")
+        result = subprocess.run(
+            [bash, "-c", harness],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "COMPOSE_STATUS": str(compose_status),
+                "TEST_ENV_FILE": str(env_file),
+                "TEST_LOG": str(log),
+            },
+        )
+        assert result.returncode == 0, result.stderr
+        calls = log.read_text(encoding="utf-8").splitlines()
+        assert calls[0] == (
+            "run --rm --no-deps -e WEB_DATABASE_URL "
+            "-e CRAWLER_DB_ROLE=rollback-sync -e CRAWLER_DB_POOL_MIN=0 "
+            "-e CRAWLER_DB_POOL_MAX=4 worker-1 uv run --no-sync crawler sync"
+        )
+        assert calls[1] == f"status={compose_status}"
+        assert "postgresql://rollback-only" not in result.stdout
+        assert "postgresql://rollback-only" not in result.stderr
+
+
 def test_deploy_publishes_exact_success_marker_only_after_commit() -> None:
     script = DEPLOY_SH.read_text()
+    workflow = DEPLOY_WORKFLOW.read_text()
+    murmur_workflow = MURMUR_DEPLOY_WORKFLOW.read_text()
     prepare = script.index('"CRAWLER_IMAGE_TAG=$IMAGE_TAG"')
     health = script.index("\nwait_for_core_services\n")
     disarm = script.index("\ndisarm_deploy_rollback\n")
@@ -350,6 +548,14 @@ def test_deploy_publishes_exact_success_marker_only_after_commit() -> None:
     assert '"CRAWLER_IMAGE_REF=$CRAWLER_IMAGE_REF"' in script
     assert '"BROWSER_IMAGE_REF=$BROWSER_IMAGE_REF"' in script
     assert '"SHIM_IMAGE_REF=$SHIM_IMAGE_REF"' in script
+    assert '"JOBSEEK_RUNTIME_CONTRACT_SHA256=$JOBSEEK_RUNTIME_CONTRACT_SHA256"' in script
+    assert "verify_optional_runtime_contract_pair" in script
+    assert (
+        "JOBSEEK_RUNTIME_CONTRACT_SHA256: ${{ needs.build.outputs.runtime_contract_sha256 }}"
+        in (workflow)
+    )
+    assert "JOBSEEK_RUNTIME_CONTRACT_SHA256=//p" in murmur_workflow
+    assert "${runtime_contracts[0]}" in murmur_workflow
     assert 'ACTIVE_RELEASE_POINTER="$DEPLOY_DIR/.crawler-active-release"' in script
     assert "RELEASE_FORMAT_VERSION=1" in script
     assert '[[ -d "$ACTIVE_RELEASE_ROOT" && ! -L "$ACTIVE_RELEASE_ROOT" ]]' in script
@@ -660,6 +866,113 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
             f"restored\n\nCOMPOSE_FILE={compose}:{rollback_override}\n"
         )
         assert log.read_text(encoding="utf-8").splitlines() == expected_events
+
+
+def test_rollback_restores_previous_csv_config_before_restarting_workers(
+    tmp_path: Path,
+) -> None:
+    script = DEPLOY_SH.read_text()
+    configure = script[
+        script.index("configure_rollback_compose_contract() {") : script.index(
+            "rollback_compose() {"
+        )
+    ]
+    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    harness = "\n".join(
+        (
+            "set -u",
+            'DEPLOY_DIR="$TEST_DEPLOY_DIR"',
+            'ENV_FILE="$DEPLOY_DIR/.env"',
+            'ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"',
+            'ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"',
+            'ROLLBACK_POOL_OVERRIDE="$DEPLOY_DIR/.crawler-rollback-pool-budget.override.yml"',
+            'ROLLBACK_ACTIVE_RELEASE_TARGET="$DEPLOY_DIR/old-release"',
+            'ROLLBACK_ACTIVE_IMAGE_OVERRIDE=""',
+            "ENV_FILE_WAS_PRESENT=1",
+            "ROLLBACK_ARMED=1",
+            "ROLLBACK_RUNNING=0",
+            "FORWARD_SYNC_STARTED=1",
+            'COMPOSE_PROJECT_NAME="deploy"',
+            "docker() {",
+            "  printf 'quiesce\\n' >>\"$TEST_LOG\"",
+            "}",
+            "restore_previous_deploy_specs() {",
+            "  printf 'restore-specs\\n' >>\"$TEST_LOG\"",
+            "}",
+            "activate_release_generation() {",
+            "  printf 'release-restore\\n' >>\"$TEST_LOG\"",
+            "}",
+            "verify_active_deploy_snapshot() {",
+            "  printf 'release-verify\\n' >>\"$TEST_LOG\"",
+            "}",
+            "publish_legacy_success_marker() {",
+            "  printf 'legacy-publish\\n' >>\"$TEST_LOG\"",
+            "}",
+            configure,
+            "rollback_compose() {",
+            "  printf 'compose-start\\n' >>\"$TEST_LOG\"",
+            "}",
+            "wait_for_rollback_core_services() {",
+            "  printf 'health-gate\\n' >>\"$TEST_LOG\"",
+            "}",
+            "stop_maintenance_window() {",
+            "  printf 'maintenance-stop\\n' >>\"$TEST_LOG\"",
+            "}",
+            rollback,
+            "rollback_sync_previous_config() {",
+            "  printf 'config-sync\\n' >>\"$TEST_LOG\"",
+            '  return "$SYNC_STATUS"',
+            "}",
+            "rollback_deploy 23",
+        )
+    )
+
+    for sync_status in (0, 8):
+        case_dir = tmp_path / str(sync_status)
+        case_dir.mkdir()
+        (case_dir / ".env").write_text("failed\n", encoding="utf-8")
+        (case_dir / ".env.rollback").write_text("restored\n", encoding="utf-8")
+        compose = case_dir / "docker-compose.yml"
+        compose.write_text("old-compose\n", encoding="utf-8")
+        rollback_override = case_dir / ".crawler-rollback-pool-budget.override.yml"
+        rollback_override.write_text("bounded-override\n", encoding="utf-8")
+        (case_dir / ".deploy-spec.rollback.tar").touch()
+        log = case_dir / "events.log"
+
+        result = subprocess.run(
+            ["bash", "-c", harness],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={
+                **os.environ,
+                "TEST_DEPLOY_DIR": str(case_dir),
+                "TEST_LOG": str(log),
+                "SYNC_STATUS": str(sync_status),
+            },
+        )
+
+        expected_status = 23 if sync_status == 0 else sync_status
+        assert result.returncode == expected_status, result.stderr
+        events = log.read_text(encoding="utf-8").splitlines()
+        assert events[:5] == [
+            "quiesce",
+            "release-restore",
+            "release-verify",
+            "restore-specs",
+            "config-sync",
+        ]
+        if sync_status == 0:
+            assert events[5:] == [
+                "compose-start",
+                "health-gate",
+                "release-verify",
+                "legacy-publish",
+                "maintenance-stop",
+            ]
+        else:
+            assert events[5:] == ["maintenance-stop"]
+            assert "old stack restart skipped" in result.stderr
 
 
 def test_first_rollout_fails_closed_without_digest_pinned_compose_preseed() -> None:

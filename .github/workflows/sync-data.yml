@@ -13,8 +13,8 @@ on:
         type: string
 
 concurrency:
-  # Keep CSV-only publication from replacing a pending full crawler deploy.
-  # The host mutation lock still serializes both workflows on Hetzner.
+  # Keep only one data publisher active. Runtime compatibility is coordinated
+  # with the full deploy independently through the committed host contract.
   group: crawler-production-csv-sync
   cancel-in-progress: false
 
@@ -38,7 +38,9 @@ jobs:
           ref: ${{ github.sha }}
           fetch-depth: 1
           persist-credentials: false
-          sparse-checkout: scripts/crawler-csv-sync-host.sh
+          sparse-checkout: |
+            scripts/crawler-csv-sync-host.sh
+            scripts/derive-crawler-runtime-contract.mjs
           sparse-checkout-cone-mode: false
 
       - name: Check out revision-pinned CSV data
@@ -50,16 +52,71 @@ jobs:
           sparse-checkout: apps/crawler/data
           path: csv-source
 
-      - name: Validate explicitly dispatched revision
-        if: github.event_name == 'workflow_dispatch' && inputs.revision != ''
+      - name: Validate requested data snapshot
+        id: data_snapshot
         run: |
           set -euo pipefail
           [[ "$SYNC_REVISION" =~ ^[a-f0-9]{40}$ ]]
           test "$(git -C csv-source rev-parse HEAD)" = "$SYNC_REVISION"
-          git -C csv-source fetch --no-tags origin main
+          git -C csv-source fetch --no-tags origin \
+            +refs/heads/main:refs/remotes/origin/main
           git -C csv-source merge-base --is-ancestor "$SYNC_REVISION" origin/main
+          target_data_contract="$(
+            node scripts/derive-crawler-runtime-contract.mjs \
+              --kind data \
+              --repo csv-source \
+              --revision "$SYNC_REVISION"
+          )"
+          current_main="$(git -C csv-source rev-parse origin/main)"
+          current_data_contract="$(
+            node scripts/derive-crawler-runtime-contract.mjs \
+              --kind data \
+              --repo csv-source \
+              --revision "$current_main"
+          )"
+          if [[ "$target_data_contract" != "$current_data_contract" ]]; then
+            echo "ERROR: requested CSV snapshot is stale relative to current main" >&2
+            exit 1
+          fi
+          printf 'data_contract_sha256=%s\n' "$target_data_contract" >>"$GITHUB_OUTPUT"
+
+      - name: Resolve crawler runtime contract
+        id: runtime_contract
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_REVISION: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          target_contract="$(
+            node scripts/derive-crawler-runtime-contract.mjs \
+              --repo csv-source \
+              --revision "$SYNC_REVISION"
+          )"
+          run_sync=true
+          if [[ "$EVENT_NAME" == push ]]; then
+            if [[ ! "$BEFORE_REVISION" =~ ^[a-f0-9]{40}$ ]] || \
+              [[ "$BEFORE_REVISION" == 0000000000000000000000000000000000000000 ]]
+            then
+              run_sync=false
+            else
+              before_contract="$(
+                node scripts/derive-crawler-runtime-contract.mjs \
+                  --repo csv-source \
+                  --revision "$BEFORE_REVISION"
+              )"
+              if [[ "$before_contract" != "$target_contract" ]]; then
+                run_sync=false
+              fi
+            fi
+          fi
+          if [[ "$run_sync" == false ]]; then
+            echo "Full crawler deploy owns CSV publication for this runtime-changing push" >&2
+          fi
+          printf 'runtime_contract_sha256=%s\n' "$target_contract" >>"$GITHUB_OUTPUT"
+          printf 'run_sync=%s\n' "$run_sync" >>"$GITHUB_OUTPUT"
 
       - name: Copy CSV files to Hetzner
+        if: steps.runtime_contract.outputs.run_sync == 'true'
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.HETZNER_HOST }}
@@ -70,6 +127,7 @@ jobs:
           strip_components: 4
 
       - name: Copy locked CSV sync runner to Hetzner
+        if: steps.runtime_contract.outputs.run_sync == 'true'
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.HETZNER_HOST }}
@@ -79,21 +137,86 @@ jobs:
           target: /home/deploy/csv-sync-runner/
           strip_components: 1
 
+      - name: Revalidate publishable CSV snapshot
+        if: steps.runtime_contract.outputs.run_sync == 'true'
+        id: publication_contract
+        env:
+          TARGET_DATA_CONTRACT_SHA256: ${{ steps.data_snapshot.outputs.data_contract_sha256 }}
+        run: |
+          set -euo pipefail
+          git -C csv-source fetch --no-tags origin \
+            +refs/heads/main:refs/remotes/origin/main
+          current_main="$(git -C csv-source rev-parse origin/main)"
+          current_data_contract="$(
+            node scripts/derive-crawler-runtime-contract.mjs \
+              --kind data \
+              --repo csv-source \
+              --revision "$current_main"
+          )"
+          if [[ "$current_data_contract" != "$TARGET_DATA_CONTRACT_SHA256" ]]; then
+            echo "ERROR: current main CSV snapshot advanced before publication" >&2
+            exit 1
+          fi
+          current_runtime_contract="$(
+            node scripts/derive-crawler-runtime-contract.mjs \
+              --repo csv-source \
+              --revision "$current_main"
+          )"
+          printf 'runtime_contract_sha256=%s\n' \
+            "$current_runtime_contract" >>"$GITHUB_OUTPUT"
+
       - name: Run sync via SSH
+        if: steps.runtime_contract.outputs.run_sync == 'true'
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: SYNC_REVISION
-          command_timeout: 1h
+          envs: SYNC_REVISION,SYNC_RUNTIME_CONTRACT_SHA256
+          # 50 minutes waiting for the compatible release, then up to 25
+          # minutes for the mutation lock and 30 minutes for the sync itself.
+          command_timeout: 2h
           script: |
             set -euo pipefail
-            /usr/local/sbin/jobseek-maintenance window \
-              --operation csv-data-sync \
-              --issue 2623 \
-              --revision "$SYNC_REVISION" \
-              --budget-seconds 1800 \
-              --lock-timeout-seconds 900 \
-              -- \
-              bash /home/deploy/csv-sync-runner/crawler-csv-sync-host.sh "$SYNC_REVISION"
+            deadline=$((SECONDS + 3000))
+            attempt=0
+            while (( SECONDS < deadline )); do
+              attempt=$((attempt + 1))
+              set +e
+              bash /home/deploy/csv-sync-runner/crawler-csv-sync-host.sh \
+                "$SYNC_REVISION" "$SYNC_RUNTIME_CONTRACT_SHA256" \
+                --check-runtime
+              status=$?
+              set -e
+              if [[ "$status" -eq 75 ]]; then
+                echo "Waiting for compatible crawler deployment (attempt ${attempt})" >&2
+                sleep 15
+                continue
+              fi
+              [[ "$status" -eq 0 ]] || exit "$status"
+
+              set +e
+              /usr/local/sbin/jobseek-maintenance window \
+                --operation csv-data-sync \
+                --issue 2623 \
+                --revision "$SYNC_REVISION" \
+                --budget-seconds 1800 \
+                --lock-timeout-seconds 1500 \
+                -- \
+                bash /home/deploy/csv-sync-runner/crawler-csv-sync-host.sh \
+                  "$SYNC_REVISION" "$SYNC_RUNTIME_CONTRACT_SHA256"
+              status=$?
+              set -e
+              if [[ "$status" -eq 0 ]]; then
+                exit 0
+              fi
+              if [[ "$status" -ne 75 ]]; then
+                exit "$status"
+              fi
+              echo "Crawler generation changed before sync lock; retrying" >&2
+              sleep 15
+            done
+            echo "ERROR: compatible crawler deployment did not commit before timeout" >&2
+            exit 1
+        env:
+          SYNC_RUNTIME_CONTRACT_SHA256: ${{ steps.publication_contract.outputs.runtime_contract_sha256 }}

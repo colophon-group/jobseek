@@ -23,6 +23,7 @@ required_vars=(
   CRAWLER_IMAGE_REF
   BROWSER_IMAGE_REF
   JOBSEEK_DEPLOY_REVISION
+  JOBSEEK_RUNTIME_CONTRACT_SHA256
   JOBSEEK_RECONCILIATION_WRAPPER_SHA256
   WEB_DATABASE_URL
   LOCAL_DATABASE_URL
@@ -84,6 +85,8 @@ ACTIVE_RELEASE_FORMAT=""
 ACTIVE_IMAGE_OVERRIDE=""
 ROLLBACK_ACTIVE_RELEASE_TARGET=""
 ROLLBACK_ACTIVE_IMAGE_OVERRIDE=""
+ROLLBACK_SYNC_WEB_DATABASE_URL=""
+FORWARD_SYNC_STARTED=0
 GHCR_DOCKER_CONFIG=""
 ENV_FILE_WAS_PRESENT=0
 ROLLBACK_ARMED=0
@@ -125,6 +128,10 @@ MAINTENANCE_BUDGET_SECONDS=1800
 MAINTENANCE_MARKER_NAME=""
 if [[ ! "$JOBSEEK_DEPLOY_REVISION" =~ ^[0-9a-f]{40}$ ]]; then
   echo "ERROR: JOBSEEK_DEPLOY_REVISION must be a full lowercase Git commit SHA" >&2
+  exit 1
+fi
+if [[ ! "$JOBSEEK_RUNTIME_CONTRACT_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
+  echo "ERROR: JOBSEEK_RUNTIME_CONTRACT_SHA256 must be a lowercase SHA-256" >&2
   exit 1
 fi
 if [[ ! "$OWNER" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
@@ -283,6 +290,32 @@ read_exact_release_value() {
   printf '%s\n' "${values[0]}"
 }
 
+verify_optional_runtime_contract_pair() {
+  local environment_file="$1"
+  local success_file="$2"
+  local -a environment_values=() success_values=()
+
+  mapfile -t environment_values < <(
+    sed -n 's/^JOBSEEK_RUNTIME_CONTRACT_SHA256=//p' "$environment_file"
+  )
+  mapfile -t success_values < <(
+    sed -n 's/^JOBSEEK_RUNTIME_CONTRACT_SHA256=//p' "$success_file"
+  )
+  if (( ${#environment_values[@]} == 0 && ${#success_values[@]} == 0 )); then
+    # Compatibility with release generations committed before issue #7996.
+    return 0
+  fi
+  (( ${#environment_values[@]} == 1 && ${#success_values[@]} == 1 )) || {
+    echo "ERROR: crawler runtime contract is missing or duplicated" >&2
+    return 1
+  }
+  [[ "${environment_values[0]}" =~ ^[0-9a-f]{64}$ &&
+    "${environment_values[0]}" == "${success_values[0]}" ]] || {
+    echo "ERROR: crawler runtime contract evidence disagrees" >&2
+    return 1
+  }
+}
+
 load_active_release() {
   local target
 
@@ -439,6 +472,7 @@ verify_active_deploy_snapshot() {
       return 1
     }
   done
+  verify_optional_runtime_contract_pair "$ACTIVE_ENV_SNAPSHOT" "$DEPLOY_SUCCESS_FILE"
 }
 
 activate_release_generation() {
@@ -683,11 +717,56 @@ rollback_compose() {
   if [[ -n "${DOCKER_CONFIG:-}" ]]; then
     clean_environment+=("DOCKER_CONFIG=$DOCKER_CONFIG")
   fi
+  if [[ -n "${ROLLBACK_SYNC_WEB_DATABASE_URL:-}" ]]; then
+    clean_environment+=("WEB_DATABASE_URL=$ROLLBACK_SYNC_WEB_DATABASE_URL")
+  fi
   env -i "${clean_environment[@]}" \
     docker compose \
     --env-file "$ENV_FILE" \
     "${compose_args[@]}" \
     "$@"
+}
+
+rollback_sync_previous_config() {
+  local crawler_ref restored_web_database_url status
+
+  crawler_ref="$(read_exact_release_value "$ENV_FILE" CRAWLER_IMAGE_REF)" || {
+    echo "ERROR: restored crawler image identity is unavailable for config rollback" >&2
+    return 1
+  }
+  [[ "$crawler_ref" =~ ^ghcr\.io/${OWNER}/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || {
+    echo "ERROR: restored crawler image identity is invalid for config rollback" >&2
+    return 1
+  }
+  restored_web_database_url="$(
+    read_exact_release_value "$ENV_FILE" WEB_DATABASE_URL
+  )" || {
+    echo "ERROR: restored web database credential is unavailable for config rollback" >&2
+    return 1
+  }
+  [[ -n "$restored_web_database_url" ]] || {
+    echo "ERROR: restored web database credential is empty for config rollback" >&2
+    return 1
+  }
+
+  ROLLBACK_SYNC_WEB_DATABASE_URL="$restored_web_database_url"
+  if rollback_compose run --rm --no-deps \
+    -e WEB_DATABASE_URL \
+    -e CRAWLER_DB_ROLE=rollback-sync \
+    -e CRAWLER_DB_POOL_MIN=0 \
+    -e CRAWLER_DB_POOL_MAX=4 \
+    worker-1 \
+    uv run --no-sync crawler sync
+  then
+    status=0
+  else
+    status=$?
+  fi
+  ROLLBACK_SYNC_WEB_DATABASE_URL=""
+  if (( status != 0 )); then
+    echo "ERROR: previous crawler configuration could not be restored" >&2
+    return "$status"
+  fi
 }
 
 rollback_compose_service_ready() {
@@ -740,6 +819,7 @@ rollback_deploy() {
   local env_restore_complete=0
   local spec_restore_complete=0
   local bounded_contract_persisted=0
+  local config_restore_complete=0
   local rollback_stack_started=0
 
   trap - ERR EXIT HUP INT TERM
@@ -846,6 +926,22 @@ rollback_deploy() {
     echo "ERROR: rollback quiesce was incomplete; bounded old-stack contract persisted but restart skipped" >&2
   fi
   if ((quiesce_complete && release_restore_complete && env_restore_complete && spec_restore_complete && bounded_contract_persisted)); then
+    if (( ${FORWARD_SYNC_STARTED:-0} )); then
+      rollback_sync_previous_config
+      command_status=$?
+      if ((command_status != 0 && rollback_status == 0)); then
+        rollback_status=$command_status
+      elif ((command_status == 0)); then
+        config_restore_complete=1
+      fi
+    else
+      config_restore_complete=1
+    fi
+  fi
+  if (( ! config_restore_complete && ${FORWARD_SYNC_STARTED:-0} )); then
+    echo "ERROR: rollback config restore was incomplete; old stack restart skipped" >&2
+  fi
+  if ((quiesce_complete && release_restore_complete && env_restore_complete && spec_restore_complete && bounded_contract_persisted && config_restore_complete)); then
     rollback_compose up -d --remove-orphans
     command_status=$?
     if ((command_status == 0)); then
@@ -1309,6 +1405,7 @@ CRAWLER_IMAGE_REF=${CRAWLER_IMAGE_REF}
 BROWSER_IMAGE_REF=${BROWSER_IMAGE_REF}
 SHIM_IMAGE_REF=${SHIM_IMAGE_REF}
 JOBSEEK_DEPLOY_REVISION=${JOBSEEK_DEPLOY_REVISION}
+JOBSEEK_RUNTIME_CONTRACT_SHA256=${JOBSEEK_RUNTIME_CONTRACT_SHA256}
 WEB_DATABASE_URL=${WEB_DATABASE_URL}
 LOCAL_DATABASE_URL=${LOCAL_DATABASE_URL}
 R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
@@ -1389,6 +1486,7 @@ docker run --rm \
   uv run --no-sync crawler setup-typesense
 
 # ── Sync board config from CSV → local Postgres + Redis + Typesense ──
+FORWARD_SYNC_STARTED=1
 docker run --rm \
   -e LOCAL_DATABASE_URL \
   -e WEB_DATABASE_URL \
@@ -1404,6 +1502,22 @@ docker run --rm \
   --label com.docker.compose.service=deploy-sync \
   "$CRAWLER_IMAGE_REF" \
   uv run --no-sync crawler sync
+
+# Revision 0021 is idempotent, but Alembic records it only once. If an earlier
+# forward attempt reached the migration and then rolled back, the restored
+# Teamtailor runtime could have re-admitted NW's legacy URLs. Reapply that exact
+# bounded repair after the current WTTJ config is synced and before any worker
+# can claim the board.
+docker run --rm \
+  -e LOCAL_DATABASE_URL \
+  -e CRAWLER_DB_ROLE=deploy-nw-provider-cutover \
+  -e CRAWLER_DB_POOL_MIN=0 \
+  -e CRAWLER_DB_POOL_MAX=4 \
+  --network host \
+  "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+  --label com.docker.compose.service=deploy-nw-provider-cutover \
+  "$CRAWLER_IMAGE_REF" \
+  uv run --no-sync crawler repair-nw-provider-cutover
 
 # ── Start the full stack on the freshly seeded Redis state ───────────
 # Coupled rollout marker (2026-08-04): this comment-only deploy contract
@@ -1438,6 +1552,7 @@ printf '%s\n' \
   "SHIM_IMAGE_REF=$SHIM_IMAGE_REF" \
   "ALLOY_IMAGE_REF=$ALLOY_IMAGE" \
   "JOBSEEK_DEPLOY_REVISION=$JOBSEEK_DEPLOY_REVISION" \
+  "JOBSEEK_RUNTIME_CONTRACT_SHA256=$JOBSEEK_RUNTIME_CONTRACT_SHA256" \
   >"$deploy_success_temporary"
 chmod 0644 "$deploy_success_temporary"
 verify_shim_deploy_contract "$deploy_success_temporary"

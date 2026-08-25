@@ -396,6 +396,23 @@ jobs:
                 test -n "${environment_values[0]}"
                 test "${environment_values[0]}" = "${success_values[0]}"
               done
+              mapfile -t runtime_environment_values < <(
+                sed -n 's/^JOBSEEK_RUNTIME_CONTRACT_SHA256=//p' \
+                  "$generation/environment.env"
+              )
+              mapfile -t runtime_success_values < <(
+                sed -n 's/^JOBSEEK_RUNTIME_CONTRACT_SHA256=//p' \
+                  "$generation/success.env"
+              )
+              if [[ "${#runtime_environment_values[@]}" -ne 0 || \
+                "${#runtime_success_values[@]}" -ne 0 ]]
+              then
+                test "${#runtime_environment_values[@]}" -eq 1
+                test "${#runtime_success_values[@]}" -eq 1
+                [[ "${runtime_environment_values[0]}" =~ ^[0-9a-f]{64}$ ]]
+                test "${runtime_environment_values[0]}" = \
+                  "${runtime_success_values[0]}"
+              fi
             }
 
             previous_redis_ref="$(
@@ -701,10 +718,18 @@ jobs:
               sed -n 's/^JOBSEEK_DEPLOY_REVISION=//p' \
                 "$previous_active_generation/environment.env"
             )
+            mapfile -t runtime_contracts < <(
+              sed -n 's/^JOBSEEK_RUNTIME_CONTRACT_SHA256=//p' \
+                "$previous_active_generation/environment.env"
+            )
             test "${#crawler_image_tags[@]}" -eq 1
             test -n "${crawler_image_tags[0]}"
             test "${#deploy_revisions[@]}" -eq 1
             [[ "${deploy_revisions[0]}" =~ ^[0-9a-f]{40}$ ]]
+            test "${#runtime_contracts[@]}" -le 1
+            if [[ "${#runtime_contracts[@]}" -eq 1 ]]; then
+              [[ "${runtime_contracts[0]}" =~ ^[0-9a-f]{64}$ ]]
+            fi
             murmur_generation="$(mktemp -d "$release_root/murmur.XXXXXX")"
             # The shim workflow applies only the shim service. Preserve the
             # prior full-stack Compose contract as rollback evidence and layer
@@ -737,6 +762,10 @@ jobs:
               "ALLOY_IMAGE_REF=$previous_alloy_ref" \
               "JOBSEEK_DEPLOY_REVISION=${deploy_revisions[0]}" \
               >"$murmur_success_file"
+            if [[ "${#runtime_contracts[@]}" -eq 1 ]]; then
+              printf 'JOBSEEK_RUNTIME_CONTRACT_SHA256=%s\n' \
+                "${runtime_contracts[0]}" >>"$murmur_success_file"
+            fi
             chmod 0644 "$murmur_success_file"
             write_exact_image_override \
               "$murmur_generation/rollback-images.override.yml" \

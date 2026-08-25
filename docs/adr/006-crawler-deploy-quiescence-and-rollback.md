@@ -29,9 +29,22 @@ The deploy script must:
 - pull images and run non-mutating preflights before quiescing processors;
 - stop workers, browser worker, exporter, and drain before local Postgres
   migrations, Typesense schema patching, or `crawler sync`;
+- record a deterministic runtime-contract digest in the committed release, and
+  require standalone CSV syncs to match that digest before publishing config;
+- reject an explicitly requested CSV revision unless its complete publishable
+  CSV tree matches current `main`, while allowing runtime-only commits to have
+  advanced since that revision;
+- treat process-cached industry, occupation, seniority, and technology
+  taxonomies as part of the runtime contract, so changing any of them requires
+  a full image rollout;
+- let the full deploy own CSV publication when one push changes both the
+  runtime contract and crawler data;
+- let a data-only publisher wait for a compatible deploy without holding the
+  host mutation lock, then recheck the contract after acquiring the lock;
 - start the full stack after sync;
 - wait for core services to be running or healthy;
-- restore the previous env and start compose services on failure.
+- restore the previous env on failure and, if the forward sync began, resync
+  the previous image's embedded CSV snapshot before restarting old services.
 
 ## Consequences
 
@@ -45,6 +58,12 @@ The deploy script must:
   state, Redis, exporter freshness, and logs before retrying.
 - Future zero-downtime deploy work should preserve the Redis reseed invariant or
   explicitly replace it with an equivalent safe handoff.
+- The standalone CSV workflow can publish data-only revisions without an image
+  build. It fails closed for stale data snapshots, and waits for a pending
+  compatible runtime deployment instead of publishing against the old image.
+- A rollback after sync has begun keeps processors quiesced until the previous
+  image has restored its own configuration; a failed restore leaves the old
+  workers stopped rather than running against the newer configuration.
 
 ## References
 
