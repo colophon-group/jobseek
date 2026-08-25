@@ -270,8 +270,10 @@ def _validate_detail(detail: dict, *, token: str, publication_id: str) -> str:
         raise ValueError(
             f"SmartRecruiters detail tenant mismatch for {publication_id!r}: {identifier!r}"
         )
-    if detail.get("active") is False:
-        raise ValueError(f"SmartRecruiters listed inactive publication {publication_id!r}")
+    if detail.get("active") is not True:
+        raise ValueError(
+            f"SmartRecruiters detail is not affirmatively active for {publication_id!r}"
+        )
     raw_job_id = detail.get("jobId")
     if not isinstance(raw_job_id, str) or _JOB_ID_RE.fullmatch(raw_job_id) is None:
         raise ValueError(

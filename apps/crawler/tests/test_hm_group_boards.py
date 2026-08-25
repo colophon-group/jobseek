@@ -11,8 +11,16 @@ import pytest
 
 from src.core.monitor import MonitorResult, _apply_url_allowlist, _apply_url_transform
 from src.core.monitors import DiscoveredJob
+from src.core.monitors import is_rich_monitor as core_is_rich_monitor
 from src.core.monitors import smartrecruiters as smartrecruiters_module
-from src.core.monitors.smartrecruiters import discover
+from src.core.monitors.smartrecruiters import (
+    _canonical_template,
+    _validate_detail,
+    _validate_list_page,
+    discover,
+)
+from src.workspace._compat import auto_scraper_type
+from src.workspace._compat import is_rich_monitor as compat_is_rich_monitor
 
 _BOARDS_PATH = Path(__file__).parents[1] / "data" / "boards.csv"
 _HM_BOARD = "hm-group-careers-group"
@@ -20,6 +28,7 @@ _SELLPY_BOARD = "hm-group-careers-sellpy"
 _CANONICAL_TEMPLATE = "https://career.hm.com/job/{job_id}/"
 _JOB_A = "11111111-1111-4111-8111-111111111111"
 _JOB_B = "22222222-2222-4222-8222-222222222222"
+_MISSING = object()
 
 
 def _board_rows() -> dict[str, dict[str, str]]:
@@ -104,6 +113,16 @@ def test_only_hm_group_opts_into_exact_smartrecruiters_job_id_identity():
         "canonical_job_id_url_template": _CANONICAL_TEMPLATE,
         "language_preference": ["en", "de", "fr", "it"],
     }
+    assert rows[_HM_BOARD]["scraper_type"] == "skip"
+    assert core_is_rich_monitor("smartrecruiters", hm_config) is True
+    assert compat_is_rich_monitor("smartrecruiters", hm_config) is True
+    assert auto_scraper_type("smartrecruiters", hm_config) == ("skip", None)
+    assert core_is_rich_monitor("smartrecruiters", {"token": "ordinary"}) is False
+    assert compat_is_rich_monitor("smartrecruiters", {"token": "ordinary"}) is False
+    assert auto_scraper_type("smartrecruiters", {"token": "ordinary"}) == (
+        "smartrecruiters",
+        None,
+    )
 
     with _BOARDS_PATH.open(newline="", encoding="utf-8") as handle:
         opted_in = {
@@ -247,6 +266,75 @@ async def test_incomplete_page_fails_instead_of_tombstoning_unseen_jobs(monkeypa
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         with pytest.raises(ValueError, match="ended before totalFound"):
             await discover(board, client)
+
+
+@pytest.mark.parametrize(
+    "active",
+    [
+        pytest.param(_MISSING, id="missing"),
+        pytest.param(None, id="null"),
+        pytest.param("false", id="string"),
+        pytest.param(0, id="numeric-zero"),
+        pytest.param(1, id="numeric-one"),
+        pytest.param(False, id="false"),
+    ],
+)
+async def test_non_boolean_or_non_live_detail_aborts_entire_localized_cycle(active):
+    valid = _detail("701", _JOB_A, "Valid", "en")
+    invalid = _detail("702", _JOB_B, "Unproven live state", "en")
+    if active is _MISSING:
+        invalid.pop("active")
+    else:
+        invalid["active"] = active
+
+    with pytest.raises(ValueError, match="not affirmatively active"):
+        await _discover_details([valid, invalid])
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected_total", "message"),
+    [
+        ({"content": None, "totalFound": 0}, None, "content must be a list"),
+        ({"content": [], "totalFound": None}, None, "non-negative integer"),
+        ({"content": [], "totalFound": -1}, None, "non-negative integer"),
+        ({"content": [], "totalFound": True}, None, "non-negative integer"),
+        ({"content": [], "totalFound": 2}, 1, "changed during pagination"),
+        ({"content": [None], "totalFound": 1}, None, "non-object posting"),
+    ],
+)
+def test_list_page_contract_rejects_malformed_or_drifting_totals(payload, expected_total, message):
+    with pytest.raises(ValueError, match=message):
+        _validate_list_page(payload, expected_total)
+
+
+@pytest.mark.parametrize(
+    ("template", "message"),
+    [
+        (42, "exactly one"),
+        ("https://career.hm.com/job/static/", "exactly one"),
+        ("https://career.hm.com/{job_id}/{other}/", "unsupported placeholder"),
+        ("http://career.hm.com/job/{job_id}/", "absolute HTTPS"),
+        ("https://career.hm.com/job/{job_id}/?source=x", "absolute HTTPS"),
+    ],
+)
+def test_canonical_job_id_template_rejects_ambiguous_or_unsafe_urls(template, message):
+    with pytest.raises(ValueError, match=message):
+        _canonical_template({"canonical_job_id_url_template": template})
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        ({"id": "wrong"}, "detail id mismatch"),
+        ({"company": {"identifier": "OtherTenant"}}, "tenant mismatch"),
+        ({"jobId": "not-a-uuid"}, "invalid jobId"),
+    ],
+)
+def test_detail_contract_rejects_wrong_identity_or_tenant(mutation, message):
+    detail = _detail("801", _JOB_A, "Role", "en")
+    detail.update(mutation)
+    with pytest.raises(ValueError, match=message):
+        _validate_detail(detail, token="HMGroup", publication_id="801")
 
 
 def test_sellpy_title_slugs_collapse_to_numeric_teamtailor_identity():

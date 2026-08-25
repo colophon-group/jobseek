@@ -163,6 +163,18 @@ class TestIsSkipNoScrape:
         metadata = {"fields": {"title": "props.title"}}
         assert _is_skip_no_scrape(metadata, crawler_type="nextdata") is True
 
+    def test_implicit_smartrecruiters_job_id_mode_is_skip(self):
+        """Exact-jobId locale collapse is rich and canonical URLs need no scraper."""
+        metadata = {
+            "token": "HMGroup",
+            "canonical_job_id_url_template": "https://career.hm.com/job/{job_id}/",
+        }
+        assert _is_skip_no_scrape(metadata, crawler_type="smartrecruiters") is True
+
+    def test_ordinary_smartrecruiters_still_requires_scraper(self):
+        metadata = {"token": "ordinary"}
+        assert _is_skip_no_scrape(metadata, crawler_type="smartrecruiters") is False
+
     def test_implicit_api_sniffer_with_fields_and_enrich_is_NOT_skip(self):
         """Enrich override still wins for conditionally-rich monitors."""
         metadata = {
@@ -663,6 +675,8 @@ class TestFetchDuePostingsFilter:
 
         assert "JOIN job_board" in _FETCH_DUE_JOB_POSTINGS
         assert "jb.metadata->>'scraper_type' = 'skip'" in _FETCH_DUE_JOB_POSTINGS
+        assert "jb.crawler_type = 'smartrecruiters'" in _FETCH_DUE_JOB_POSTINGS
+        assert "jb.metadata ? 'canonical_job_id_url_template'" in _FETCH_DUE_JOB_POSTINGS
         # COALESCE handles NULL scraper_config (jsonb ? returns NULL, not false).
         assert (
             "COALESCE(jb.metadata->'scraper_config' ? 'enrich', false)" in _FETCH_DUE_JOB_POSTINGS
