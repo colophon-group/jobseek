@@ -50,6 +50,15 @@ DEBUG_OUTCOMES = {"retryable", "interrupted"}
 TRUSTED_GITHUB_REPOSITORY = "colophon-group/jobseek"
 
 
+def _git_proof_env() -> dict[str, str]:
+    """Disable child-controlled history substitution for destructive Git proof."""
+    return {
+        **os.environ,
+        "GIT_GRAFT_FILE": os.devnull,
+        "GIT_NO_REPLACE_OBJECTS": "1",
+    }
+
+
 class Ledger(Protocol):
     def worktree_runs(self) -> list[dict[str, Any]]: ...
 
@@ -268,10 +277,9 @@ class GitHubRemoteVerifier:
             ],
             cwd=self.repo_dir,
             env={
-                **os.environ,
+                **_git_proof_env(),
                 "GIT_CONFIG_GLOBAL": os.devnull,
                 "GIT_CONFIG_NOSYSTEM": "1",
-                "GIT_NO_REPLACE_OBJECTS": "1",
                 "GIT_TERMINAL_PROMPT": "0",
             },
             text=True,
@@ -296,6 +304,7 @@ class GitHubRemoteVerifier:
                 f"{trusted_ref}^{{commit}}",
             ],
             cwd=self.repo_dir,
+            env=_git_proof_env(),
             text=True,
             capture_output=True,
             check=False,
@@ -1201,6 +1210,7 @@ def _managed_head_proof(
     ancestor = subprocess.run(
         ["git", "--no-replace-objects", "merge-base", "--is-ancestor", head, main_oid],
         cwd=repo_dir,
+        env=_git_proof_env(),
         text=True,
         capture_output=True,
         check=False,
@@ -1236,6 +1246,7 @@ def _managed_head_proof(
             "--",
         ],
         cwd=repo_dir,
+        env=_git_proof_env(),
         text=True,
         capture_output=True,
         check=False,
@@ -1563,6 +1574,7 @@ def _stream_git_diff_snapshot(
                 "HEAD",
             ],
             cwd=worktree,
+            env=_git_proof_env(),
             stdout=subprocess.PIPE,
             stderr=stderr_snapshot,
         )
@@ -1659,6 +1671,7 @@ def _archive_worktree_from_patch_snapshot(
                     f"^{unique_commit_base_oid}",
                 ],
                 cwd=worktree,
+                env=_git_proof_env(),
                 text=True,
                 capture_output=True,
                 check=False,
@@ -1672,6 +1685,7 @@ def _archive_worktree_from_patch_snapshot(
             verification = subprocess.run(
                 ["git", "--no-replace-objects", "bundle", "verify", str(bundle_path)],
                 cwd=worktree,
+                env=_git_proof_env(),
                 text=True,
                 capture_output=True,
                 check=False,
@@ -2004,6 +2018,7 @@ def _unique_commit_object_bytes(worktree: Path, *, base_oid: str) -> int:
             f"^{base_oid}",
         ],
         cwd=worktree,
+        env=_git_proof_env(),
         text=True,
         capture_output=True,
         check=True,
@@ -2014,6 +2029,7 @@ def _unique_commit_object_bytes(worktree: Path, *, base_oid: str) -> int:
     sizes = subprocess.run(
         ["git", "--no-replace-objects", "cat-file", "--batch-check=%(objectsize)"],
         cwd=worktree,
+        env=_git_proof_env(),
         input="\n".join(object_ids) + "\n",
         text=True,
         capture_output=True,

@@ -446,6 +446,156 @@ def test_poisoned_local_main_cannot_hide_unpushed_runner_commit(tmp_path: Path) 
     assert local_oid in listed.stdout
 
 
+def test_forged_graft_cannot_hide_clean_runner_commit_from_bundle(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    (repo / "main-only.txt").write_text("authoritative main change\n")
+    _run("git", "add", "main-only.txt", cwd=repo)
+    _run("git", "commit", "-m", "authoritative main", cwd=repo)
+    authoritative_main_oid = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    (worktree / "tracked.txt").write_text("clean local-only commit\n")
+    _run("git", "add", "tracked.txt", cwd=worktree)
+    _run("git", "commit", "-m", "local only", cwd=worktree)
+    local_oid = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=worktree,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    _run("git", "update-ref", "refs/remotes/origin/main", local_oid, cwd=worktree)
+    common_dir = Path(
+        subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            cwd=worktree,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    )
+    graft_file = common_dir / "info" / "grafts"
+    graft_file.parent.mkdir(parents=True, exist_ok=True)
+    graft_file.write_text(f"{authoritative_main_oid} {local_oid}\n")
+    assert (
+        subprocess.run(
+            [
+                "git",
+                "--no-replace-objects",
+                "merge-base",
+                "--is-ancestor",
+                local_oid,
+                authoritative_main_oid,
+            ],
+            cwd=repo,
+            check=False,
+            capture_output=True,
+        ).returncode
+        == 0
+    )
+    assert (
+        subprocess.run(
+            [
+                "git",
+                "--no-replace-objects",
+                "merge-base",
+                "--is-ancestor",
+                local_oid,
+                authoritative_main_oid,
+            ],
+            cwd=repo,
+            env={**os.environ, "GIT_GRAFT_FILE": os.devnull},
+            check=False,
+            capture_output=True,
+        ).returncode
+        == 1
+    )
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="submitted")
+    original_run = subprocess.run
+    observed_proofs: set[str] = set()
+
+    def require_neutral_graft(command, *args, **kwargs):
+        command_parts = list(command)
+        proof_kind: str | None = None
+        if command_parts[:4] == ["git", "--no-replace-objects", "merge-base", "--is-ancestor"]:
+            proof_kind = "merge-base"
+        elif command_parts[:3] == ["git", "--no-replace-objects", "diff"]:
+            proof_kind = "tree-diff"
+        elif command_parts[:4] == ["git", "--no-replace-objects", "rev-list", "--objects"]:
+            proof_kind = "object-sizing"
+        elif command_parts[:3] == ["git", "--no-replace-objects", "cat-file"]:
+            proof_kind = "object-sizes"
+        elif command_parts[:4] == ["git", "--no-replace-objects", "bundle", "create"]:
+            proof_kind = "bundle-create"
+        elif command_parts[:4] == ["git", "--no-replace-objects", "bundle", "verify"]:
+            proof_kind = "bundle-verify"
+        if proof_kind is not None:
+            proof_env = kwargs.get("env")
+            assert proof_env is not None
+            assert proof_env["GIT_GRAFT_FILE"] == os.devnull
+            assert proof_env["GIT_NO_REPLACE_OBJECTS"] == "1"
+            observed_proofs.add(proof_kind)
+        return original_run(command, *args, **kwargs)
+
+    monkeypatch.setattr(reconcile_module.subprocess, "run", require_neutral_graft)
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        verifier=lambda run: RemoteProof(
+            ok=True,
+            kind="pull_request",
+            detail={"headRefOid": authoritative_main_oid},
+        ),
+        authoritative_main_verifier=lambda: RemoteProof(
+            ok=True,
+            kind="authoritative_main",
+            detail={
+                "repository": "colophon-group/jobseek",
+                "headRefOid": authoritative_main_oid,
+            },
+        ),
+    )
+
+    item = report.items[0]
+    assert report.archived == 1
+    assert report.removed == 1
+    assert item.unique_commits
+    assert item.archive_path
+    assert not worktree.exists()
+    assert observed_proofs == {
+        "merge-base",
+        "tree-diff",
+        "object-sizing",
+        "object-sizes",
+        "bundle-create",
+        "bundle-verify",
+    }
+    bundle_copy = tmp_path / "forged-graft.bundle"
+    with tarfile.open(item.archive_path, "r:gz") as archive:
+        bundle = archive.extractfile("unique-commits.bundle")
+        assert bundle is not None
+        bundle_copy.write_bytes(bundle.read())
+    listed = original_run(
+        ["git", "bundle", "list-heads", str(bundle_copy)],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert local_oid in listed.stdout
+
+
 def test_authoritative_main_lookup_failure_retains_runner_worktree(tmp_path: Path) -> None:
     repo, worktree = _repo_with_worktree(tmp_path)
     ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
