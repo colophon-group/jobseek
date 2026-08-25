@@ -270,60 +270,111 @@ async def test_discover_render_runs_actions_before_reading_html(monkeypatch):
     assert [job.title for job in jobs] == ["Rendered Engineer"]
 
 
-@pytest.mark.asyncio
-async def test_discover_render_expands_click_only_detail_cards(monkeypatch):
-    class DetailLinks:
-        def __init__(self, page):
-            self.page = page
-            self.index = 0
+class _ClickControls:
+    def __init__(self, page):
+        self.page = page
+        self.index = 0
 
-        @property
-        def first(self):
-            return self
+    @property
+    def first(self):
+        return self
 
-        async def wait_for(self, *, state, timeout):
-            assert state == "visible"
-            assert timeout == 30_000
+    async def wait_for(self, *, state, timeout):
+        assert state == "visible"
+        assert timeout == 30_000
 
-        async def count(self):
-            return 2
+    async def count(self):
+        return self.page.control_counts[self.page.load_index]
 
-        def nth(self, index):
-            self.index = index
-            return self
+    def nth(self, index):
+        self.index = index
+        return self
 
-        async def click(self):
-            self.page.active = self.index
+    async def click(self):
+        self.page.active = self.index
+        self.page.clicks += 1
 
-    class DetailContent:
-        def __init__(self, page):
-            self.page = page
 
-        async def wait_for(self, *, state, timeout):
-            assert state == "visible"
-            assert timeout == 30_000
+class _ClickIdentities:
+    def __init__(self, page):
+        self.page = page
+        self.index = 0
 
-        async def count(self):
-            return 1 if self.page.active is not None else 0
+    async def count(self):
+        return len(self.page.identity_sequences[self.page.load_index])
 
-        async def inner_html(self):
-            index = self.page.active
-            return (
-                f"<h3>Role {index}</h3>"
-                f"<p>Location: City {index}</p>"
-                f"<p>Description {index}</p>"
-            )
+    def nth(self, index):
+        self.index = index
+        return self
 
-    class Page:
-        active = None
+    async def get_attribute(self, attribute):
+        assert attribute == "data-job-id"
+        return self.page.identity_sequences[self.page.load_index][self.index]
 
-        def locator(self, selector):
-            if selector == ".job-card .more":
-                return DetailLinks(self)
-            assert selector == ".expanded-job"
-            return DetailContent(self)
 
-    page = Page()
+class _ClickContent:
+    def __init__(self, page):
+        self.page = page
+
+    async def wait_for(self, *, state, timeout):
+        assert state == "visible"
+        assert timeout == 30_000
+
+    async def count(self):
+        return 1 if self.page.active is not None else 0
+
+    async def inner_html(self):
+        index = self.page.active
+        title = self.page.titles[index]
+        return f"<h3>{title}</h3><p>Location: City {index}</p><p>Description {index}</p>"
+
+
+class _ClickPage:
+    def __init__(
+        self,
+        identity_sequences,
+        *,
+        titles=None,
+        control_counts=None,
+    ):
+        self.identity_sequences = identity_sequences
+        self.titles = titles or [f"Role {index}" for index in range(len(identity_sequences[0]))]
+        self.control_counts = control_counts or [
+            len(identities) for identities in identity_sequences
+        ]
+        self.load_index = -1
+        self.active = None
+        self.clicks = 0
+
+    def locator(self, selector):
+        if selector == ".job-card .more":
+            return _ClickControls(self)
+        if selector == ".job-card [data-job-id]":
+            return _ClickIdentities(self)
+        assert selector == ".expanded-job"
+        return _ClickContent(self)
+
+
+def _click_board(**overrides):
+    metadata = {
+        "render": True,
+        "detail_click_selector": ".job-card .more",
+        "detail_content_selector": ".expanded-job",
+        "detail_identity_selector": ".job-card [data-job-id]",
+        "detail_identity_attribute": "data-job-id",
+        "detail_identity_regex": r"^job-(\d+)$",
+        "item_boundary_tag": "article",
+        "steps": [
+            {"tag": "h3", "field": "title"},
+            {"text": "Location", "field": "location", "regex": "Location: (.+)"},
+            {"tag": "p", "field": "description"},
+        ],
+    }
+    metadata.update(overrides)
+    return {"board_url": "https://example.com/jobs", "metadata": metadata}
+
+
+def _install_click_page(monkeypatch, page):
     navigations: list[str] = []
 
     @asynccontextmanager
@@ -333,6 +384,7 @@ async def test_discover_render_expands_click_only_detail_cards(monkeypatch):
 
     async def fake_navigate(actual_page, url, _config):
         assert actual_page is page
+        actual_page.load_index += 1
         actual_page.active = None
         navigations.append(url)
 
@@ -343,29 +395,148 @@ async def test_discover_render_expands_click_only_detail_cards(monkeypatch):
     monkeypatch.setattr(inline_monitor, "open_page", fake_open_page)
     monkeypatch.setattr(inline_monitor, "navigate", fake_navigate)
     monkeypatch.setattr(inline_monitor, "run_actions", fake_run_actions)
+    return navigations
 
-    board = {
-        "board_url": "https://example.com/jobs",
-        "metadata": {
-            "render": True,
-            "detail_click_selector": ".job-card .more",
-            "detail_content_selector": ".expanded-job",
-            "item_boundary_tag": "article",
-            "steps": [
-                {"tag": "h3", "field": "title"},
-                {"text": "Location", "field": "location", "regex": "Location: (.+)"},
-                {"tag": "p", "field": "description"},
-            ],
-        },
-    }
 
-    jobs = await discover(board, _FakeClient(""), pw=object())
+@pytest.mark.asyncio
+async def test_discover_render_expands_click_only_detail_cards_with_stable_ids(monkeypatch):
+    page = _ClickPage([["job-101", "job-202"], ["job-101", "job-202"]])
+    navigations = _install_click_page(monkeypatch, page)
+
+    jobs = await discover(_click_board(), _FakeClient(""), pw=object())
 
     assert navigations == ["https://example.com/jobs", "https://example.com/jobs"]
-    assert [(job.title, job.locations, job.description) for job in jobs] == [
-        ("Role 0", ["City 0"], "Description 0"),
-        ("Role 1", ["City 1"], "Description 1"),
+    assert [(job.title, job.url, job.locations, job.description) for job in jobs] == [
+        (
+            "Role 0",
+            "https://example.com/jobs?_jid=101",
+            ["City 0"],
+            "Description 0",
+        ),
+        (
+            "Role 1",
+            "https://example.com/jobs?_jid=202",
+            ["City 1"],
+            "Description 1",
+        ),
     ]
+
+
+@pytest.mark.asyncio
+async def test_click_only_ids_survive_title_changes_and_card_reordering(monkeypatch):
+    first_page = _ClickPage(
+        [["job-101", "job-202"], ["job-101", "job-202"]],
+        titles=["Original Alpha", "Original Beta"],
+    )
+    _install_click_page(monkeypatch, first_page)
+    first = await discover(_click_board(), _FakeClient(""), pw=object())
+
+    second_page = _ClickPage(
+        [["job-202", "job-101"], ["job-202", "job-101"]],
+        titles=["Edited Beta", "Edited Alpha"],
+    )
+    _install_click_page(monkeypatch, second_page)
+    second = await discover(_click_board(), _FakeClient(""), pw=object())
+
+    assert {job.url for job in first} == {job.url for job in second}
+    assert {job.url: job.title for job in second} == {
+        "https://example.com/jobs?_jid=202": "Edited Beta",
+        "https://example.com/jobs?_jid=101": "Edited Alpha",
+    }
+
+
+@pytest.mark.asyncio
+async def test_click_only_fails_when_identity_sequence_changes_after_reload(monkeypatch):
+    page = _ClickPage([["job-101", "job-202"], ["job-202", "job-101"]])
+    _install_click_page(monkeypatch, page)
+
+    with pytest.raises(ValueError, match="identity sequence changed"):
+        await discover(_click_board(), _FakeClient(""), pw=object())
+
+    assert page.clicks == 1
+
+
+@pytest.mark.asyncio
+async def test_click_only_fails_when_control_count_changes_after_reload(monkeypatch):
+    page = _ClickPage(
+        [["job-101", "job-202"], ["job-101"]],
+        control_counts=[2, 1],
+    )
+    _install_click_page(monkeypatch, page)
+
+    with pytest.raises(ValueError, match="match count changed"):
+        await discover(_click_board(), _FakeClient(""), pw=object())
+
+    assert page.clicks == 1
+
+
+@pytest.mark.asyncio
+async def test_click_only_fails_when_identity_count_does_not_match_controls(monkeypatch):
+    page = _ClickPage([["job-101"]], control_counts=[2])
+    _install_click_page(monkeypatch, page)
+
+    with pytest.raises(ValueError, match="identity/control count mismatch"):
+        await discover(_click_board(), _FakeClient(""), pw=object())
+
+    assert page.clicks == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("identities", "message"),
+    [
+        (["job-101", "job-101"], "identities must be unique"),
+        (["job-101", None], "missing attribute"),
+        (["job-101", "not-a-provider-id"], "did not match"),
+    ],
+)
+async def test_click_only_fails_on_invalid_provider_identities(monkeypatch, identities, message):
+    page = _ClickPage([identities])
+    _install_click_page(monkeypatch, page)
+
+    with pytest.raises(ValueError, match=message):
+        await discover(_click_board(), _FakeClient(""), pw=object())
+
+    assert page.clicks == 0
+
+
+@pytest.mark.asyncio
+async def test_click_only_validates_complete_identity_configuration(monkeypatch):
+    page = _ClickPage([["job-101"]])
+    _install_click_page(monkeypatch, page)
+
+    with pytest.raises(ValueError, match="requires detail_identity_selector"):
+        await discover(
+            _click_board(detail_identity_selector=None),
+            _FakeClient(""),
+            pw=object(),
+        )
+    with pytest.raises(ValueError, match="exactly one capture group"):
+        await discover(
+            _click_board(detail_identity_regex=r"^job-\d+$"),
+            _FakeClient(""),
+            pw=object(),
+        )
+    with pytest.raises(ValueError, match="valid bounded attribute"):
+        await discover(
+            _click_board(detail_identity_attribute="not an attribute"),
+            _FakeClient(""),
+            pw=object(),
+        )
+
+    assert page.clicks == 0
+
+
+@pytest.mark.asyncio
+async def test_click_only_enforces_cap_before_clicking_cards(monkeypatch):
+    identities = [f"job-{index}" for index in range(inline_monitor._MAX_JOBS + 1)]
+    page = _ClickPage([identities])
+    _install_click_page(monkeypatch, page)
+
+    with pytest.raises(ValueError, match="500-job safety cap"):
+        await discover(_click_board(), _FakeClient(""), pw=object())
+
+    assert page.clicks == 0
 
 
 @pytest.mark.asyncio
