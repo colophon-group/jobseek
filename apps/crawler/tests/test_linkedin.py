@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
+from src.core.monitor import MonitorResult
 from src.core.monitors import slugs_from_url
 from src.core.monitors.linkedin import (
     _company_id_from_url,
@@ -24,19 +25,26 @@ def _listing_html(
     *,
     company_slug: str = "damora-therapeutics",
     job_id: str = "4442073767",
+    title: str = "Manager/Senior Manager, Regulatory Affairs",
+    location: str = "Massachusetts, United States",
+    href: str | None = None,
 ) -> str:
+    href = href or (
+        "https://www.linkedin.com/jobs/view/"
+        f"manager-regulatory-affairs-at-damora-therapeutics-{job_id}?position=1"
+    )
     return f"""
     <li>
       <div class="base-search-card" data-entity-urn="urn:li:jobPosting:{job_id}">
         <a class="base-card__full-link"
-           href="https://www.linkedin.com/jobs/view/manager-regulatory-affairs-at-damora-therapeutics-{job_id}?position=1">
-          Manager/Senior Manager, Regulatory Affairs
+           href="{href}">
+          {title}
         </a>
-        <h3 class="base-search-card__title">Manager/Senior Manager, Regulatory Affairs</h3>
+        <h3 class="base-search-card__title">{title}</h3>
         <h4 class="base-search-card__subtitle">
           <a href="https://www.linkedin.com/company/{company_slug}?trk=jobs">Damora</a>
         </h4>
-        <span class="job-search-card__location">Massachusetts, United States</span>
+        <span class="job-search-card__location">{location}</span>
         <time datetime="2026-07-20">1 day ago</time>
       </div>
     </li>
@@ -79,10 +87,7 @@ class TestListingParser:
 
         assert len(jobs) == 1
         assert jobs[0].job_id == "4442073767"
-        assert jobs[0].url == (
-            "https://www.linkedin.com/jobs/view/"
-            "manager-regulatory-affairs-at-damora-therapeutics-4442073767"
-        )
+        assert jobs[0].url == "https://www.linkedin.com/jobs/view/4442073767"
         assert jobs[0].title == "Manager/Senior Manager, Regulatory Affairs"
         assert jobs[0].locations == ["Massachusetts, United States"]
         assert jobs[0].date_posted == "2026-07-20"
@@ -97,6 +102,20 @@ class TestListingParser:
         jobs = _parse_listing_cards(html)
 
         assert jobs[0].url == "https://www.linkedin.com/jobs/view/4442073767"
+
+    @pytest.mark.parametrize(
+        "href",
+        [
+            "https://www.linkedin.com/jobs/view/human-resources-generalist-4453689816",
+            "https://ch.linkedin.com/jobs/view/generaliste-rh-4453689816?trk=public_jobs",
+            "https://fr.linkedin.com/jobs/view/arbitrary-renamed-title-4453689816?position=3",
+            "https://www.linkedin.com/jobs/view/4453689816",
+        ],
+    )
+    def test_title_and_locale_paths_share_numeric_provider_identity(self, href: str):
+        job = _parse_listing_cards(_listing_html(job_id="4453689816", href=href))[0]
+
+        assert job.url == "https://www.linkedin.com/jobs/view/4453689816"
 
     def test_rejects_malformed_listing_card(self):
         html = _listing_html().replace("urn:li:jobPosting:4442073767", "missing-job-urn")
@@ -121,6 +140,7 @@ class TestMonitor:
             assert request.url.params.get("f_C") == COMPANY_ID
             assert request.url.params.get("location") == "Worldwide"
             assert request.url.params.get("sortBy") == "DD"
+            assert request.headers["accept-language"] == "en-US,en;q=0.9"
             return httpx.Response(200, text=_listing_html(), request=request)
 
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -135,6 +155,7 @@ class TestMonitor:
                 client,
             )
 
+        assert isinstance(result, list)
         assert len(result) == 1
         job = result[0]
         assert job.title == "Manager/Senior Manager, Regulatory Affairs"
@@ -146,6 +167,88 @@ class TestMonitor:
             "linkedin_company_id": COMPANY_ID,
             "linkedin_company_slug": "damora-therapeutics",
         }
+
+    async def test_source_ownership_routes_exact_country_codes_without_title_matching(self):
+        # Live overlap fixtures audited 2026-08-25:
+        # - LinkedIn 4453689816 == jobs.ch 8da62f2b-... (LinkedIn owns Switzerland)
+        # - LinkedIn 4457321546 == PhuketAll 057289-213283 (PhuketAll owns Thailand)
+        html = "".join(
+            [
+                _listing_html(
+                    job_id="4453689816",
+                    title="Human Resources Generalist",
+                    location="Montreux, Vaud, Switzerland",
+                ),
+                _listing_html(
+                    job_id="4457317622",
+                    title="AI Transformation Intern",
+                    location="Montreux, Vaud, Switzerland",
+                ),
+                _listing_html(
+                    job_id="4457321546",
+                    title="Marketing Director Phuket",
+                    location="Phuket, Thailand",
+                ),
+                _listing_html(
+                    job_id="4458171439",
+                    title="Paymaster",
+                    location="Umluj, Tabuk, Saudi Arabia",
+                ),
+            ]
+        )
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=html, request=request)
+        )
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            result = await discover(
+                {
+                    "board_url": BOARD_URL,
+                    "metadata": {
+                        "company_id": COMPANY_ID,
+                        "company_slug": "damora-therapeutics",
+                        "source_ownership_excluded_country_codes": ["THA"],
+                    },
+                },
+                client,
+            )
+
+        assert isinstance(result, list)
+        assert {job.metadata["job_id"] for job in result} == {
+            "4453689816",
+            "4457317622",
+            "4458171439",
+        }
+        assert {job.metadata["location_country_code"] for job in result} == {"CHE", "SAU"}
+
+    @pytest.mark.parametrize("location", [None, "Remote", "Phuket, ประเทศไทย"])
+    async def test_source_ownership_fails_closed_without_exact_country(
+        self,
+        location: str | None,
+    ):
+        html = _listing_html(location=location or "Massachusetts, United States")
+        if location is None:
+            html = html.replace(
+                '<span class="job-search-card__location">Massachusetts, United States</span>',
+                "",
+            )
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, text=html, request=request)
+        )
+
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="source ownership"):
+                await discover(
+                    {
+                        "board_url": BOARD_URL,
+                        "metadata": {
+                            "company_id": COMPANY_ID,
+                            "company_slug": "damora-therapeutics",
+                            "source_ownership_excluded_country_codes": ["THA"],
+                        },
+                    },
+                    client,
+                )
 
     async def test_paginates_provider_ten_card_pages_without_skipping_offsets(self):
         requested_starts: list[int] = []
@@ -172,6 +275,7 @@ class TestMonitor:
                     client,
                 )
 
+        assert isinstance(result, list)
         assert len(result) == 11
         assert requested_starts == [0, 10]
         sleep.assert_awaited_once_with(1.0)
@@ -199,7 +303,9 @@ class TestMonitor:
                     client,
                 )
 
+        assert isinstance(result, MonitorResult)
         assert result.truncated is True
+        assert result.jobs_by_url is not None
         assert {job.metadata["job_id"] for job in result.jobs_by_url.values()} == {
             "4442073767",
             "4442073768",

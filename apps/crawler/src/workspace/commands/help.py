@@ -753,7 +753,8 @@ linkedin — LinkedIn public guest-jobs endpoints
 
   Config:
     {"company_id": "109559449", "company_slug": "damora-therapeutics",
-     "keywords": "Damora Therapeutics"}
+     "keywords": "Damora Therapeutics",
+     "source_ownership_excluded_country_codes": ["THA"]}
 
     company_id    Numeric LinkedIn company ID (the f_C search-filter value).
                   Auto-resolved for active company jobs pages during probing.
@@ -762,6 +763,13 @@ linkedin — LinkedIn public guest-jobs endpoints
                   company filter returns only a ranked subset without it. The
                   monitor unions both queries and marks the cycle partial so
                   varying guest-search subsets cannot tombstone valid jobs.
+    source_ownership_excluded_country_codes
+                  Optional ISO-3166 alpha-3 countries owned by another configured
+                  provider. Country resolution uses LinkedIn's exact English
+                  country field and fails closed when missing or ambiguous.
+
+  Identity: Job URLs always use /jobs/view/{numeric_id}; locale and title paths
+            are presentation aliases and cannot churn a posting identity.
 
   Detection:  ws probe shows "LinkedIn guest jobs — company: X, N jobs"
   Zero jobs?  Verify the f_C value; an empty company board is valid."""
@@ -3788,11 +3796,12 @@ SCRAPER_VERYEAST = """\
 veryeast — VeryEast (最佳东方) employer-board detail scraper
 
   Page:     GET https://job.veryeast.cn/{employer}/{job}
-  Returns:  title, structured HTML description, location, employment_type,
-            posting/expiry dates and job metadata
+  Returns:  title, complete multi-section HTML description, location,
+            employment_type, posting/expiry dates and job metadata
   Config:   None needed.
   Note:     Pair with a strict DOM monitor for the employer listing page.
-            Server-rendered Chinese detail pages require no browser.
+            The complete server-rendered detail is fetched under a 2 MiB cap;
+            oversized pages fail instead of being silently truncated.
 """
 
 SCRAPER_LINKEDIN = """\

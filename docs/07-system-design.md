@@ -301,7 +301,7 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `skip`         | No-scrape marker for rich monitor output           | None                   |
 | `smartrecruiters` | Fetch SmartRecruiters detail API records        | None                   |
 | `taleo`       | Parse Taleo Enterprise embedded detail payload      | None                   |
-| `veryeast`    | Parse VeryEast employer job pages                   | None                   |
+| `veryeast`    | Parse complete, bounded VeryEast employer job pages | None                   |
 | `workable`     | Fetch Workable detail API records                  | None                   |
 | `workday`      | Fetch Workday detail API records                   | None                   |
 
