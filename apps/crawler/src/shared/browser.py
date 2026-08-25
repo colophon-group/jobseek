@@ -17,6 +17,7 @@ import tempfile
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 from urllib.parse import urlsplit
 
 import structlog
@@ -165,6 +166,106 @@ class BrowserActionNoMatchError(RuntimeError):
 
 class BrowserActionUnknownError(RuntimeError):
     """A configured browser action type is not supported."""
+
+
+class BrowserBackend:
+    """Python-only lifecycle and page-allocation boundary.
+
+    This seam keeps local browser allocation out of worker orchestration while
+    the Python crawler still exists. It deliberately exposes Playwright
+    ``Page`` behavior and is therefore not the Go/Lightpanda wire boundary.
+    Go uses the typed browser plan/result contract tracked by #7937 and #7961.
+    """
+
+    implementation = "unknown"
+
+    async def start(self) -> BrowserBackend:
+        raise NotImplementedError
+
+    @asynccontextmanager
+    async def open_page(
+        self,
+        config: dict | None = None,
+        *,
+        use_proxy: bool = False,
+    ) -> AsyncIterator[Any]:
+        raise NotImplementedError
+        yield  # pragma: no cover - makes this an async context manager
+
+    async def stop(self) -> None:
+        raise NotImplementedError
+
+
+class ChromiumBrowserBackend(BrowserBackend):
+    """Existing local Playwright/Chromium implementation of BrowserBackend."""
+
+    implementation = "chromium"
+
+    def __init__(self) -> None:
+        self._owner: object | None = None
+        self._playwright: Any | None = None
+
+    async def start(self) -> ChromiumBrowserBackend:
+        from playwright.async_api import async_playwright
+
+        if self._playwright is not None:
+            return self
+        owner = async_playwright()
+        try:
+            playwright = await owner.start()
+        except BaseException:
+            metrics.browser_backend_lifecycle_total.labels(
+                backend=self.implementation,
+                event="start",
+                outcome="error",
+            ).inc()
+            raise
+        self._owner = owner
+        self._playwright = playwright
+        metrics.browser_backend_lifecycle_total.labels(
+            backend=self.implementation,
+            event="start",
+            outcome="success",
+        ).inc()
+        return self
+
+    @asynccontextmanager
+    async def open_page(
+        self,
+        config: dict | None = None,
+        *,
+        use_proxy: bool = False,
+    ) -> AsyncIterator[Any]:
+        if self._playwright is None:
+            raise RuntimeError("browser backend has not been started")
+        async with _open_page_playwright(
+            self._playwright,
+            config,
+            use_proxy=use_proxy,
+        ) as page:
+            yield page
+
+    async def stop(self) -> None:
+        playwright = self._playwright
+        if playwright is None:
+            return
+        try:
+            await playwright.stop()
+        except BaseException:
+            metrics.browser_backend_lifecycle_total.labels(
+                backend=self.implementation,
+                event="stop",
+                outcome="error",
+            ).inc()
+            raise
+        finally:
+            self._playwright = None
+            self._owner = None
+        metrics.browser_backend_lifecycle_total.labels(
+            backend=self.implementation,
+            event="stop",
+            outcome="success",
+        ).inc()
 
 
 def is_target_closed_error(exc: BaseException) -> bool:
@@ -326,7 +427,31 @@ def _resolve_headless(requested_headless: bool) -> tuple[bool, bool]:
 
 @asynccontextmanager
 async def open_page(
-    pw,  # AsyncPlaywright
+    pw,  # BrowserBackend or legacy AsyncPlaywright
+    config: dict | None = None,
+    *,
+    use_proxy: bool = False,
+) -> AsyncIterator:
+    """Allocate a page through the configured browser backend.
+
+    The legacy ``AsyncPlaywright`` input remains accepted for workspace and
+    focused test callers. Production Python workers pass a
+    :class:`BrowserBackend`; Go/Lightpanda uses the separate typed
+    BrowserExecutor contract.
+    """
+
+    if isinstance(pw, BrowserBackend):
+        async with pw.open_page(config, use_proxy=use_proxy) as page:
+            yield page
+        return
+
+    async with _open_page_playwright(pw, config, use_proxy=use_proxy) as page:
+        yield page
+
+
+@asynccontextmanager
+async def _open_page_playwright(
+    pw,
     config: dict | None = None,
     *,
     use_proxy: bool = False,

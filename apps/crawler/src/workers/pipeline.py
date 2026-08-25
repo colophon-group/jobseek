@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import json
 import time
 import uuid
 from typing import cast
@@ -69,6 +68,7 @@ from src.redis_queue import (
     reschedule_task,
     update_board_metadata_cache,
 )
+from src.runtime.config import BoardRuntimeConfig
 from src.shared.http import WORKDAY_LIST_303_INCIDENT, RequestHostTracker, track_request_hosts
 from src.workers.monitor_memory import (
     cgroup_memory_bytes,
@@ -106,33 +106,28 @@ def _configured_egress_host(config: dict) -> str:
     without maintaining a brittle crawler-type-to-host allowlist.
     """
 
-    explicit = normalize_egress_host(str(config.get("egress_host") or ""))
+    snapshot = BoardRuntimeConfig.from_mapping(config)
+    explicit = normalize_egress_host(snapshot.egress_host)
     if explicit:
         return explicit
 
-    metadata_raw = config.get("metadata", "{}")
-    try:
-        metadata = (
-            json.loads(metadata_raw) if isinstance(metadata_raw, str) else (metadata_raw or {})
-        )
-    except (json.JSONDecodeError, TypeError):
-        metadata = {}
+    metadata = snapshot.metadata
 
-    if config.get("crawler_type") == "avature" and isinstance(metadata, dict):
+    if snapshot.crawler_type == "avature":
         from src.shared.avature import avature_request_host
 
-        resolved_host = avature_request_host(str(config.get("board_url") or ""), metadata)
+        resolved_host = avature_request_host(snapshot.board_url, metadata)
         if resolved_host:
             return normalize_egress_host(resolved_host)
 
-    if config.get("crawler_type") == "taleo" and isinstance(metadata, dict):
+    if snapshot.crawler_type == "taleo":
         from src.shared.taleo import taleo_request_host
 
-        resolved_host = taleo_request_host(str(config.get("board_url") or ""), metadata)
+        resolved_host = taleo_request_host(snapshot.board_url, metadata)
         if resolved_host:
             return normalize_egress_host(resolved_host)
 
-    if config.get("crawler_type") == "pageup" and isinstance(metadata, dict):
+    if snapshot.crawler_type == "pageup":
         from src.shared.pageup import pageup_board_from_metadata
 
         resolved = pageup_board_from_metadata(metadata)
@@ -148,8 +143,7 @@ def _configured_egress_host(config: dict) -> str:
                 if host:
                     return normalize_egress_host(host)
 
-    board_url = str(config.get("board_url") or "")
-    return normalize_egress_host(urlparse(board_url).hostname or "")
+    return normalize_egress_host(urlparse(snapshot.board_url).hostname or "")
 
 
 async def _failure_next_due(
@@ -771,23 +765,15 @@ class _BoardRecord:
     """
 
     def __init__(self, board_id: str, config: dict) -> None:
-        metadata_raw = config.get("metadata", "{}")
-        try:
-            metadata = json.loads(metadata_raw) if isinstance(metadata_raw, str) else metadata_raw
-        except (json.JSONDecodeError, TypeError):
-            metadata = {}
-
-        self._data = {
-            "id": board_id,
-            "company_id": config.get("company_id", ""),
-            "board_url": config.get("board_url", ""),
-            "crawler_type": config.get("crawler_type", ""),
-            "metadata": metadata,
-            "check_interval_minutes": int(config.get("check_interval_minutes", "60")),
-            "scraper_type": config.get("scraper_type"),
-            "scraper_config": config.get("scraper_config"),
-            "throttle_key": config.get("throttle_key", ""),
-        }
+        self._data = BoardRuntimeConfig.from_mapping(
+            config,
+            strict_intervals=True,
+        ).as_board_record(board_id)
+        # Preserve the historical asyncpg.Record compatibility fields exactly.
+        # Runtime Redis hashes currently keep scraper settings inside metadata,
+        # but focused callers may still provide these top-level values.
+        self._data["scraper_type"] = config.get("scraper_type")
+        self._data["scraper_config"] = config.get("scraper_config")
 
     def __getitem__(self, key: str):
         return self._data[key]
@@ -847,13 +833,12 @@ def _scrape_item_from_redis(work: ScrapeWork):
 
 
 async def _ensure_playwright(worker_log):
-    """Start a Playwright server process. Returns ``(pw, pw_ctx)``."""
-    from playwright.async_api import async_playwright
+    """Start the configured browser backend. Returns ``(backend, owner)``."""
+    from src.shared.browser import ChromiumBrowserBackend
 
-    pw_ctx = async_playwright()
-    pw = await pw_ctx.start()
+    backend = await ChromiumBrowserBackend().start()
     worker_log.info("pipeline.worker.playwright_started")
-    return pw, pw_ctx
+    return backend, backend
 
 
 async def _stop_playwright(pw, worker_log) -> bool:
@@ -1123,16 +1108,9 @@ async def _process_monitor_work(
         if not browser:
             from src.core.monitors import monitor_needs_browser
 
-            crawler_type = config.get("crawler_type") or ""
-            try:
-                metadata_raw = config.get("metadata", "{}")
-                metadata = (
-                    json.loads(metadata_raw)
-                    if isinstance(metadata_raw, str)
-                    else (metadata_raw or {})
-                )
-            except (json.JSONDecodeError, TypeError):
-                metadata = {}
+            runtime_config = BoardRuntimeConfig.from_mapping(config)
+            crawler_type = runtime_config.crawler_type
+            metadata = runtime_config.metadata
             if monitor_needs_browser(crawler_type, metadata):
                 try:
                     reroute_payload = dict(config)
@@ -1501,23 +1479,10 @@ async def _process_scrape_work(
         board_config = await r.hgetall(f"board:{scrape_work.board_id}")
 
         if board_config:
-            metadata_raw = board_config.get("metadata", "{}")
-            try:
-                metadata = (
-                    json.loads(metadata_raw) if isinstance(metadata_raw, str) else metadata_raw
-                )
-            except (json.JSONDecodeError, TypeError):
-                metadata = {}
-
-            crawler_type = board_config.get("crawler_type") or None
-            scraper_config = metadata.get("scraper_config")
-            if isinstance(scraper_config, str):
-                try:
-                    scraper_config = json.loads(scraper_config)
-                except (json.JSONDecodeError, TypeError):
-                    scraper_config = None
-            if not isinstance(scraper_config, dict):
-                scraper_config = None
+            runtime_config = BoardRuntimeConfig.from_mapping(board_config)
+            metadata = runtime_config.metadata
+            crawler_type = runtime_config.crawler_type or None
+            scraper_config = runtime_config.scraper_config
             scraper_type, scraper_config = _resolve_scraper(metadata, crawler_type, scraper_config)
         else:
             metadata = {}
@@ -1638,7 +1603,7 @@ async def _process_scrape_work(
             return
 
         fallback_host = normalize_egress_host(urlparse(scrape_work.source_url).hostname or domain)
-        learned_host = normalize_egress_host(board_config.get("scrape_egress_host", ""))
+        learned_host = normalize_egress_host(runtime_config.scrape_egress_host)
         circuit_host = learned_host or fallback_host
         if await _defer_scrape_for_host_circuit(
             domain,

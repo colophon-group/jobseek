@@ -92,6 +92,7 @@ from src.queries.scrape import (
     _FETCH_BOARD_SCRAPE_ITEMS,
 )
 from src.redis_queue import enqueue_scrape as _enqueue_scrape
+from src.runtime.extraction import MonitorRuntime, PythonMonitorRuntime
 from src.shared.html_normalize import normalize_description_html
 from src.shared.langdetect import detect_all_languages, detect_language
 from src.shared.tdm import TDMReservedError
@@ -822,6 +823,7 @@ async def _process_one_board_streaming(
     http: httpx.AsyncClient,
     extender: object,
     pw=None,
+    monitor_runtime: MonitorRuntime | None = None,
 ) -> BoardMonitorResult:
     """Run a streaming monitor cycle and return its scheduler-facing result.
 
@@ -844,6 +846,7 @@ async def _process_one_board_streaming(
 
     pw_owned = False  # True when we created pw ourselves and must stop it
     effective_http = http
+    monitor_stream = None
 
     try:
         metadata = board["metadata"] if board["metadata"] else {}
@@ -865,10 +868,9 @@ async def _process_one_board_streaming(
         # Start Playwright if this monitor needs a browser and none was provided
         if pw is None and _batch.monitor_needs_browser(crawler_type, metadata):
             try:
-                from playwright.async_api import async_playwright
+                from src.shared.browser import ChromiumBrowserBackend
 
-                pw_ctx = async_playwright()
-                pw = await pw_ctx.start()
+                pw = await ChromiumBrowserBackend().start()
                 pw_owned = True
                 board_log.info("batch.monitor.playwright_started")
             except Exception:
@@ -898,9 +900,15 @@ async def _process_one_board_streaming(
         # until a valid empty run records its empty-check transition.
         pending_metadata_patch: dict = {}
 
-        async for result in _batch.monitor_one_stream(
-            board_url, crawler_type, metadata, effective_http, pw=pw
-        ):
+        runtime = monitor_runtime or PythonMonitorRuntime(_batch.monitor_one_stream)
+        monitor_stream = runtime.stream(
+            board_url,
+            crawler_type,
+            metadata,
+            effective_http,
+            pw=pw,
+        )
+        async for result in monitor_stream:
             batch_count += 1
             total_discovered += len(result.urls)
             is_rich = result.jobs_by_url is not None
@@ -1647,6 +1655,11 @@ async def _process_one_board_streaming(
                 )
         return BoardMonitorResult(False, elapsed, "failed")
     finally:
+        if monitor_stream is not None:
+            close_stream = getattr(monitor_stream, "aclose", None)
+            if close_stream is not None:
+                with contextlib.suppress(Exception):
+                    await close_stream()
         if pw and pw_owned:
             await pw.stop()
         if effective_http is not http:
