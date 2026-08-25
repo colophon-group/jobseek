@@ -65,6 +65,10 @@ packages = ["src"]
 # ModuleNotFoundError: No module named 'src.processing'.
 "../src/processing/" = "src/processing/"
 "../src/queries/" = "src/queries/"
+# src.processing.scrape delegates extraction through these lightweight runtime
+# ports. Keep the whole package so ws uses the same seam as production instead
+# of carrying a private compatibility copy.
+"../src/runtime/" = "src/runtime/"
 "../src/metrics.py" = "src/metrics.py"
 "../src/csvtool.py" = "src/csvtool.py"
 "../src/inspect.py" = "src/inspect.py"
