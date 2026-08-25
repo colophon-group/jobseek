@@ -9,9 +9,23 @@ from pathlib import Path
 import httpx
 import pytest
 
+from src.core.monitor import monitor_one
 from src.core.monitors.inline import discover
 
 _BOARDS_PATH = Path(__file__).parents[1] / "data" / "boards.csv"
+_FAIL_CLOSED_INLINE_BOARDS = {
+    "epfl-csea",
+    "epfl-hqc",
+    "epfl-hylab",
+    "epfl-lanes",
+    "epfl-lfim",
+    "epfl-mesobio",
+    "epfl-phd-edbb",
+    "epfl-phd-edma",
+    "epfl-phd-edms",
+    "epfl-phd-edne",
+    "epfl-spc-phd",
+}
 
 
 def _epfl_boards() -> dict[str, dict]:
@@ -44,6 +58,10 @@ def test_epfl_inventory_uses_verified_current_sources():
         "epfl-mesobio",
     } <= boards.keys()
     assert {"epfl-math", "epfl-phd-edpy", "epfl-quantum"}.isdisjoint(boards)
+    assert all(
+        boards[slug]["metadata"].get("require_zero_proof") is True
+        for slug in _FAIL_CLOSED_INLINE_BOARDS
+    )
 
 
 @pytest.mark.asyncio
@@ -75,13 +93,44 @@ async def test_edms_live_config_extracts_unseen_table_rows_without_name_allowlis
 
     jobs = await _discover_fixture(
         board,
-        "<h3>Institute</h3><table><tr><td>Future Director</td>"
-        "<td>A newly posted molecular-science project.</td></tr></table>",
+        '<h3>Institute</h3><table><tr><td><a href="/future-lab">Future Director</a></td>'
+        '<td><a href="/future-project.pdf">A newly posted molecular-science project.</a> '
+        "(1 position).</td></tr></table>",
     )
 
     assert [(job.title, job.description) for job in jobs] == [
-        ("Future Director", "A newly posted molecular-science project.")
+        (
+            "A newly posted molecular-science project.",
+            "A newly posted molecular-science project.",
+        )
     ]
+    assert all(job.title != "Future Director" for job in jobs)
+
+
+@pytest.mark.asyncio
+async def test_isic_live_config_excludes_lfim_aggregate_link():
+    board = _epfl_boards()["epfl-isic"]
+    html = """
+    <h3>Postdoctoral Positions</h3>
+    <table>
+      <tr><td><a href="https://www.epfl.ch/labs/lfim/openings/">LFIM openings</a></td></tr>
+      <tr><td>
+        <a href="https://www.epfl.ch/labs/example/open-positions/">Other lab role</a>
+      </td></tr>
+    </table>
+    <h3 id="Masterprojects">Master projects</h3>
+    """
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, text=html, request=request))
+    async with httpx.AsyncClient(transport=transport) as client:
+        result = await monitor_one(
+            board["board_url"],
+            "dom",
+            board["metadata"],
+            client,
+        )
+
+    assert result.urls == {"https://www.epfl.ch/labs/example/open-positions/"}
+    assert result.filtered_count == 1
 
 
 @pytest.mark.asyncio
