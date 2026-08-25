@@ -2441,56 +2441,11 @@ def _record_current_pr_provenance(
     save_workspace(ws)
 
 
-_WORKTREE_IDENTITY_KEYS = {
-    "version",
-    "path",
-    "slug",
-    "branch",
-    "head",
-    "dev",
-    "ino",
-    "issue",
-    "pr",
-    "pr_provenance",
-}
-
-
 def _authenticate_workspace_worktree(ws: Workspace) -> None:
     """Authenticate the exact persisted checkout before a Git/PR mutation."""
-    from src.workspace import git
+    from src.workspace.worktree_auth import authenticate_workspace_worktree
 
-    identity = ws.worktree_identity
-    canonical = Path(os.path.abspath(str(git.worktrees_dir() / ws.slug)))
-    if not ws.worktree:
-        raise WorkspaceError("Workspace is missing its authenticated worktree path")
-    recorded = Path(os.path.abspath(os.path.expanduser(ws.worktree)))
-    if recorded != canonical:
-        raise WorkspaceError("Workspace records a non-canonical managed worktree path")
-    if not isinstance(identity, dict) or set(identity) != _WORKTREE_IDENTITY_KEYS:
-        raise WorkspaceError("Workspace is missing its authenticated worktree identity")
-    if (
-        identity.get("version") != 1
-        or identity.get("path") != str(canonical)
-        or identity.get("slug") != ws.slug
-        or identity.get("branch") != ws.branch
-        or identity.get("issue") != ws.issue
-        or identity.get("pr") != ws.pr
-        or identity.get("pr_provenance") != ws.pr_provenance
-        or not isinstance(identity.get("head"), str)
-        or not isinstance(identity.get("dev"), int)
-        or not isinstance(identity.get("ino"), int)
-    ):
-        raise WorkspaceError("Workspace worktree identity contradicts ownership provenance")
-    if not git.authenticate_managed_worktree(
-        canonical,
-        ws.branch,
-        identity["head"],
-        expected_dev=identity["dev"],
-        expected_ino=identity["ino"],
-    ):
-        raise WorkspaceError("Authenticated workspace worktree disappeared")
-    if git.local_branch_oid_strict(ws.branch) != identity["head"]:
-        raise WorkspaceError("Workspace local ref contradicts authenticated worktree")
+    authenticate_workspace_worktree(ws)
 
 
 def _advance_workspace_worktree_head(ws: Workspace, previous: str, current: str) -> None:
@@ -2864,14 +2819,9 @@ def submit(slug: str | None, summary: str | None, force: bool):
     # Authenticate before trusting the persisted path, then pivot and repeat
     # immediately. A marker directory is not ownership proof.
     if not is_local_mode():
-        from src.shared.constants import get_repo_root, set_repo_root
+        from src.workspace.worktree_auth import pivot_to_authenticated_worktree
 
-        _authenticate_workspace_worktree(ws)
-        wt = Path(os.path.abspath(ws.worktree))
-        current_root = get_repo_root()
-        if current_root != wt:
-            set_repo_root(wt)
-        _authenticate_workspace_worktree(ws)
+        pivot_to_authenticated_worktree(ws)
 
     boards = list_boards(slug)
 

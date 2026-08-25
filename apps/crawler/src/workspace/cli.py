@@ -261,20 +261,21 @@ def _detect_repo_root() -> Path | None:
 
 
 def _pivot_to_worktree() -> None:
-    """If the active workspace has a worktree, pivot repo_root to it.
+    """Authenticate and pivot to the active workspace's exact worktree.
 
     Called after initial repo root detection so that .workspace/ state
     is findable, then re-points repo_root to the worktree for CSV/git
     operations.  This lets multiple agents work concurrently on
     different workspaces without clashing.
 
-    If the worktree directory is missing (deleted externally), prints a
-    warning but does not abort — read-only commands (status, resume)
-    can still work from the managed clone.  Write commands will fail
-    at the git/CSV layer with a clear error.
+    Local mode never pivots. Non-local workspace metadata fails closed when
+    the persisted path/identity is absent, stale, or replaced.
     """
-    from src.shared.constants import set_repo_root
     from src.workspace.state import get_active_slug, load_workspace
+    from src.workspace.worktree_auth import pivot_to_authenticated_worktree
+
+    if os.environ.get("WS_LOCAL", "").strip() in ("1", "true", "yes"):
+        return
 
     slug = get_active_slug()
     if not slug:
@@ -283,16 +284,7 @@ def _pivot_to_worktree() -> None:
         ws_obj = load_workspace(slug)
     except FileNotFoundError:
         return
-    if ws_obj.worktree:
-        wt = Path(ws_obj.worktree)
-        if (wt / "apps" / "crawler" / "data").exists():
-            set_repo_root(wt)
-        else:
-            print(
-                f"Warning: worktree for {slug!r} not found at {wt}. "
-                f"Run 'ws del {slug}' and recreate, or 'ws new {slug} --issue N' to retry.",
-                file=sys.stderr,
-            )
+    pivot_to_authenticated_worktree(ws_obj)
 
 
 def main():
