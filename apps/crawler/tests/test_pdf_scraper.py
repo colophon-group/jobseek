@@ -641,6 +641,65 @@ class TestScrape:
                 {"defaults": {"locatons": ["Lausanne, Switzerland"]}},
             )
 
+    @pytest.mark.parametrize(
+        ("field", "value", "message"),
+        [
+            ("locations", "Lausanne, Switzerland", "non-empty list"),
+            ("locations", [""], "non-empty list"),
+            ("employment_type", "permanent", "canonical value"),
+            ("job_location_type", "office", "onsite, remote, or hybrid"),
+            ("date_posted", "August 1, 2026", "ISO date"),
+            ("language", "english", "ISO 639-1"),
+            ("base_salary", {"currency": "CHF"}, "must contain min or max"),
+            ("base_salary", {"min": 100, "max": 50}, "min cannot exceed max"),
+            ("extras", [], "must be an object"),
+        ],
+    )
+    async def test_pdf_defaults_reject_invalid_typed_values(self, field, value, message):
+        with pytest.raises(ValueError, match=message):
+            await parse_bytes(
+                _make_pdf("Research engineer role"),
+                "https://example.com/research-engineer.pdf",
+                {"defaults": {field: value}},
+            )
+
+    async def test_pdf_defaults_accept_canonical_typed_values(self):
+        result = await parse_bytes(
+            _make_pdf("Research engineer role"),
+            "https://example.com/research-engineer.pdf",
+            {
+                "defaults": {
+                    "locations": ["Lausanne, Switzerland"],
+                    "employment_type": "full_time",
+                    "job_location_type": "onsite",
+                    "date_posted": "2026-08-01",
+                    "language": "en",
+                    "base_salary": {
+                        "currency": "CHF",
+                        "min": 80_000,
+                        "max": 100_000,
+                        "unit": "year",
+                    },
+                    "extras": {"source": "board default"},
+                    "metadata": {"team": "Research"},
+                }
+            },
+        )
+
+        assert result.locations == ["Lausanne, Switzerland"]
+        assert result.employment_type == "full_time"
+        assert result.job_location_type == "onsite"
+        assert result.date_posted == "2026-08-01"
+        assert result.language == "en"
+        assert result.base_salary == {
+            "currency": "CHF",
+            "min": 80_000,
+            "max": 100_000,
+            "unit": "year",
+        }
+        assert result.extras == {"source": "board default"}
+        assert result.metadata == {"team": "Research"}
+
     async def test_named_fields_pattern_applied_to_table_layout(self):
         pdf_bytes = _make_pdf("Role Location\nField Service Engineer\nOsaka or Shizuoka\nSalary")
 

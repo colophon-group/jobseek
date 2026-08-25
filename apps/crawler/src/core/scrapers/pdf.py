@@ -34,7 +34,8 @@ Config:
                    OCR is limited to 20 pages and 30 million pixels per page.
     defaults       Missing-only defaults for JobContent fields. Useful for a
                    board whose PDFs omit a location that is authoritative at
-                   board level; extracted values always win.
+                   board level; extracted values always win. Types, canonical
+                   enums, ISO dates, and structured salary shapes are validated.
 """
 
 from __future__ import annotations
@@ -44,6 +45,7 @@ import hmac
 import io
 import math
 import re
+from datetime import date
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -66,6 +68,72 @@ _MAX_OCR_SCALE = 4
 _MAX_OCR_PIXELS = 30_000_000
 _OCR_LANGUAGES_RE = re.compile(r"[A-Za-z0-9_+-]{1,64}")
 _DEFAULT_FIELDS = frozenset(JobContent.__slots__)
+_DEFAULT_STRING_FIELDS = frozenset({"title", "description", "date_posted", "language"})
+_EMPLOYMENT_TYPES = frozenset(
+    {"full_time", "part_time", "contract", "internship", "temporary", "volunteer", "full_or_part"}
+)
+_JOB_LOCATION_TYPES = frozenset({"onsite", "remote", "hybrid"})
+_SALARY_UNITS = frozenset({"year", "month", "week", "day", "hour"})
+_SALARY_FIELDS = frozenset({"currency", "min", "max", "unit"})
+
+
+def _validate_salary_default(value: object) -> None:
+    """Validate the canonical salary shape accepted by the processing pipeline."""
+    if not isinstance(value, dict) or not value or set(value) - _SALARY_FIELDS:
+        raise ValueError("PDF defaults.base_salary must use currency, min, max, and unit fields")
+    currency = value.get("currency")
+    if currency is not None and (not isinstance(currency, str) or not currency.strip()):
+        raise ValueError("PDF defaults.base_salary.currency must be non-empty text")
+    unit = value.get("unit")
+    if unit is not None and unit not in _SALARY_UNITS:
+        raise ValueError("PDF defaults.base_salary.unit must be a canonical salary unit")
+    amounts = [value.get("min"), value.get("max")]
+    if all(amount is None for amount in amounts):
+        raise ValueError("PDF defaults.base_salary must contain min or max")
+    if any(
+        amount is not None and (not isinstance(amount, (int, float)) or isinstance(amount, bool))
+        for amount in amounts
+    ):
+        raise ValueError("PDF defaults.base_salary min and max must be numbers")
+    minimum, maximum = amounts
+    if minimum is not None and maximum is not None and minimum > maximum:
+        raise ValueError("PDF defaults.base_salary min cannot exceed max")
+
+
+def _validate_default(field: str, value: object) -> None:
+    """Reject defaults that cannot inhabit the corresponding JobContent field."""
+    if field in _DEFAULT_STRING_FIELDS:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"PDF defaults.{field} must be non-empty text")
+        if field == "date_posted":
+            try:
+                date.fromisoformat(value)
+            except ValueError as exc:
+                raise ValueError("PDF defaults.date_posted must be an ISO date") from exc
+        if field == "language" and re.fullmatch(r"[a-z]{2}", value) is None:
+            raise ValueError("PDF defaults.language must be a lowercase ISO 639-1 code")
+        return
+    if field == "locations":
+        if (
+            not isinstance(value, list)
+            or not value
+            or any(not isinstance(location, str) or not location.strip() for location in value)
+        ):
+            raise ValueError("PDF defaults.locations must be a non-empty list of strings")
+        return
+    if field == "employment_type":
+        if value not in _EMPLOYMENT_TYPES:
+            raise ValueError("PDF defaults.employment_type must be a canonical value")
+        return
+    if field == "job_location_type":
+        if value not in _JOB_LOCATION_TYPES:
+            raise ValueError("PDF defaults.job_location_type must be onsite, remote, or hybrid")
+        return
+    if field == "base_salary":
+        _validate_salary_default(value)
+        return
+    if field in {"extras", "metadata"} and not isinstance(value, dict):
+        raise ValueError(f"PDF defaults.{field} must be an object")
 
 
 def _apply_defaults(content: JobContent, config: dict) -> JobContent:
@@ -76,6 +144,7 @@ def _apply_defaults(content: JobContent, config: dict) -> JobContent:
     if not isinstance(defaults, dict) or any(field not in _DEFAULT_FIELDS for field in defaults):
         raise ValueError("PDF defaults must contain only JobContent fields")
     for field, value in defaults.items():
+        _validate_default(field, value)
         if getattr(content, field) in (None, "", []):
             setattr(content, field, value)
     return content

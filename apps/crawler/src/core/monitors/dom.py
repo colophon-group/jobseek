@@ -1738,9 +1738,7 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
     allow_missing_locations = value.get("allow_missing_locations", False)
     if not isinstance(allow_missing_locations, bool):
         raise ValueError("DOM monitor rich_rows.allow_missing_locations must be a boolean")
-    section_start = _validated_rich_rows_boundary(
-        value.get("section_start"), name="section_start"
-    )
+    section_start = _validated_rich_rows_boundary(value.get("section_start"), name="section_start")
     section_end = _validated_rich_rows_boundary(value.get("section_end"), name="section_end")
     if (section_start is None) != (section_end is None):
         raise ValueError(
@@ -1767,28 +1765,33 @@ def _rows_between_boundaries(tree, rows: list, start, end) -> list:
     ordered = list(tree.root.traverse())
     positions = {node.mem_id: index for index, node in enumerate(ordered)}
 
-    def boundary_position(boundary, *, after: int = -1) -> int | None:
+    def boundary_positions(boundary, *, after: int = -1) -> list[int]:
         selector, expected_text = boundary
+        matches: list[int] = []
         for node in tree.css(selector):
             position = positions.get(node.mem_id)
             if position is None or position <= after:
                 continue
             text = " ".join(node.text(separator=" ", strip=True).split())
             if expected_text is None or expected_text.casefold() in text.casefold():
-                return position
-        return None
+                matches.append(position)
+        return matches
 
-    start_position = boundary_position(start)
-    if start_position is None:
+    start_positions = boundary_positions(start)
+    if not start_positions:
         raise ValueError("DOM monitor rich_rows.section_start did not match the page")
-    end_position = boundary_position(end, after=start_position)
-    if end_position is None:
+    if len(start_positions) != 1:
+        raise ValueError("DOM monitor rich_rows.section_start matched multiple page elements")
+    start_position = start_positions[0]
+    end_positions = boundary_positions(end, after=start_position)
+    if not end_positions:
         raise ValueError("DOM monitor rich_rows.section_end did not match after section_start")
-    return [
-        row
-        for row in rows
-        if start_position < positions.get(row.mem_id, -1) < end_position
-    ]
+    if len(end_positions) != 1:
+        raise ValueError(
+            "DOM monitor rich_rows.section_end matched multiple elements after section_start"
+        )
+    end_position = end_positions[0]
+    return [row for row in rows if start_position < positions.get(row.mem_id, -1) < end_position]
 
 
 def _extract_rich_rows_static(

@@ -385,7 +385,7 @@ async def test_probe_marks_unsupported_monitor_without_network() -> None:
         lambda request: (_ for _ in ()).throw(AssertionError("must not request"))
     )
     result = await probe_registry_rows(
-        [_registry_row(monitor_type="dom", monitor_config="{}")],
+        [_registry_row(monitor_type="unsupported", monitor_config="{}")],
         1,
         transport=transport,
     )

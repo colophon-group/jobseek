@@ -1257,8 +1257,10 @@ inline — Single-Page Extraction (rich)
         "description": "<p>Evergreen role description.</p>",
         "employment_type": "full_time"
       },
-      "valid_through_regex": "Deadline: (\\d{1,2} \\w+ \\d{4})",
-      "valid_through_format": "%d %B %Y",
+      "valid_through_patterns": [
+        {"regex": "Deadline: (\\d{2}\\.\\d{2}\\.\\d{4})", "format": "%d.%m.%Y"},
+        {"regex": "Deadline: ([A-Za-z]+ \\d{1,2}, \\d{4})", "format": "%B %d, %Y"}
+      ],
       "exclude_expired": true,
       "defaults_by_title": {
         "Account Manager": {"locations": ["USA, Remote"]}
@@ -1279,10 +1281,11 @@ inline — Single-Page Extraction (rich)
                  element. Required with empty_text. The selector must exclude
                  CSS-hidden variants (for example, with :not(.hidden)).
     empty_text   Authoritative text required inside empty_selector. A matching
-                 selected element returns a healthy empty result before
-                 extraction. If neither this state nor an accepted job is
-                 found, the cycle fails closed, including when every extracted
-                 title was excluded or expired.
+                 selected element returns a healthy empty result after any
+                 configured section boundaries have been validated. If neither
+                 this state nor an accepted job is found, the cycle fails
+                 closed, including when every extracted title was excluded or
+                 expired.
     item_boundary_tag
                  Optional HTML tag that starts each posting (for example h2).
                  Each repeated step run is restricted to one such block, so an
@@ -1293,7 +1296,8 @@ inline — Single-Page Extraction (rich)
                  Configure together with section_end; both are exclusive.
                  Each accepts the step match keys tag, text, attr, and
                  match_regex, for example {"text":
-                 "Deadline, 1st November"}.
+                 "Deadline, 1st November"}. Each marker must match exactly
+                 once; ambiguous duplicate markers fail closed.
     section_end  Required partner to section_start. Extraction fails when
                  either marker disappears or the end does not follow the
                  start, preventing stale or unrelated sections from leaking.
@@ -1320,8 +1324,13 @@ inline — Single-Page Extraction (rich)
                  such as calls for tender alongside jobs.
     valid_through_regex
                  Optional regex with a capture group used to read a deadline
-                 from the extracted description when no valid_through step or
-                 default is configured.
+                 from the extracted description. A description deadline takes
+                 precedence over a board default.
+    valid_through_patterns
+                 Ordered list of {"regex": ..., "format": ...} objects for
+                 pages that publish deadlines in multiple formats. Cannot be
+                 combined with valid_through_regex. Extracted fields take
+                 precedence, then these patterns, then the board default.
     valid_through_format
                  Python strptime format for non-ISO deadlines. English ordinal
                  day suffixes are ignored (for example, 29th -> 29).
@@ -3890,7 +3899,8 @@ pdf — PDF document scraper
             ocr_scale (integer PDF render scale 1-4, default 2; OCR is
             limited to 20 pages and 30 million rendered pixels per page),
             defaults (missing-only JobContent fields; extracted values win,
-            e.g. {"locations": ["Lausanne, Switzerland"]})
+            e.g. {"locations": ["Lausanne, Switzerland"]}; field types,
+            canonical enums, ISO dates, and salary shapes are validated)
   Note:     Typically paired with a dom monitor using url_filter to
             discover PDF links on the careers page.
 """
