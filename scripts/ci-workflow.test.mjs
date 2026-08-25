@@ -403,6 +403,7 @@ test("runtime taxonomies and contract derivation require crawler version gates",
     "apps/crawler/data/seniority.csv",
     "apps/crawler/data/technologies.csv",
     "scripts/derive-crawler-runtime-contract.mjs",
+    "scripts/verify-crawler-release-bridge.py",
   ]) {
     const result = runClassifyPrPaths({ files: [file], baseRef: "main" });
     assert.equal(result.status, 0, result.stderr);
@@ -411,7 +412,7 @@ test("runtime taxonomies and contract derivation require crawler version gates",
   }
   assert.match(
     workflow,
-    /crawler_runtime_boundary:\n\s+- '\{apps\/crawler\/data\/\{industries,occupations,seniority,technologies\}\.csv,scripts\/derive-crawler-runtime-contract\.mjs\}'/,
+    /crawler_runtime_boundary:\n\s+- '\{apps\/crawler\/data\/\{industries,occupations,seniority,technologies\}\.csv,scripts\/\{derive-crawler-runtime-contract\.mjs,verify-crawler-release-bridge\.py\}\}'/,
   );
   assert.match(workflow, /id: filter-combined[\s\S]*CRAWLER_RUNTIME_BOUNDARY/);
 });

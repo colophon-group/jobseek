@@ -177,7 +177,7 @@ jobs:
               - '!apps/crawler/traces/**'
               - '!apps/crawler/VERSION'
             crawler_runtime_boundary:
-              - '{apps/crawler/data/{industries,occupations,seniority,technologies}.csv,scripts/derive-crawler-runtime-contract.mjs}'
+              - '{apps/crawler/data/{industries,occupations,seniority,technologies}.csv,scripts/{derive-crawler-runtime-contract.mjs,verify-crawler-release-bridge.py}}'
             boards_csv:
               - 'apps/crawler/data/boards.csv'
 

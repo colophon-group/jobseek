@@ -72,6 +72,7 @@ fi
 
 DEPLOY_DIR="/home/deploy"
 INCOMING_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BRIDGE_VERIFIER="$INCOMING_DIR/scripts/verify-crawler-release-bridge.py"
 ENV_FILE="$DEPLOY_DIR/.env"
 ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"
 ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"
@@ -108,6 +109,7 @@ DEPLOY_SPEC_FILES=(
   docker-compose.yml
   alloy.river
   scripts/postgresql-operational-preflight.py
+  scripts/verify-crawler-release-bridge.py
 )
 if [[ "$INCOMING_DIR" == "$DEPLOY_DIR" ]]; then
   echo "ERROR: deploy artifacts must be staged outside the active deploy directory" >&2
@@ -661,6 +663,10 @@ verify_active_deploy_snapshot() {
   fi
   verify_runtime_contract_pair \
     "$ACTIVE_ENV_SNAPSHOT" "$DEPLOY_SUCCESS_FILE" "$runtime_contract_required" || return 1
+  if [[ "$format_version" == 3 ]]; then
+    python3 "$BRIDGE_VERIFIER" \
+      --generation "$ACTIVE_RELEASE_DIR" --owner "$OWNER" >/dev/null || return 1
+  fi
 }
 
 activate_release_generation() {

@@ -62,6 +62,7 @@ on:
       - apps/murmur-shim/**
       - apps/crawler/docker-compose.yml
       - apps/crawler/deploy.sh
+      - scripts/verify-crawler-release-bridge.py
       - .github/workflows/deploy-murmur-shim.yml
   workflow_dispatch:
 
@@ -145,6 +146,16 @@ jobs:
           target: /home/deploy/incoming-shim/
           strip_components: 2
 
+      - name: Copy release bridge verifier to box
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          source: scripts/verify-crawler-release-bridge.py
+          target: /home/deploy/incoming-shim/
+          strip_components: 1
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         with:
@@ -190,6 +201,7 @@ jobs:
             live_compose=/home/deploy/docker-compose.yml
             live_env=/home/deploy/.env
             staged_compose=/home/deploy/incoming-shim/docker-compose.yml
+            bridge_verifier=/home/deploy/incoming-shim/verify-crawler-release-bridge.py
             legacy_active_compose=/home/deploy/.crawler-active-docker-compose.yml
             legacy_active_compose_sha256=/home/deploy/.crawler-active-docker-compose.sha256
             release_root=/home/deploy/.crawler-release-generations
@@ -203,6 +215,8 @@ jobs:
             test ! -L "$live_compose"
             test -f "$staged_compose"
             test ! -L "$staged_compose"
+            test -f "$bridge_verifier"
+            test ! -L "$bridge_verifier"
             test -f "$live_env"
             test ! -L "$live_env"
 
@@ -494,6 +508,46 @@ jobs:
                 test "${runtime_environment_values[0]}" = \
                   "${runtime_success_values[0]}"
               fi
+              if [[ "$format_version" == 3 ]]; then
+                python3 "$bridge_verifier" \
+                  --generation "$generation" --owner "$OWNER" >/dev/null
+              fi
+            }
+
+            carry_bridge_provenance() {
+              previous_generation="$1"
+              target_generation="$2"
+              target_manifest="$3"
+              mapfile -t bridge_versions < <(
+                sed -n 's/^LEGACY_BRIDGE_FORMAT_VERSION=//p' \
+                  "$previous_generation/release.manifest"
+              )
+              if [[ "${#bridge_versions[@]}" -eq 0 ]]; then
+                return 0
+              fi
+              test "${#bridge_versions[@]}" -eq 1
+              test "${bridge_versions[0]}" = 1
+              source_format="$(
+                sed -n 's/^LEGACY_SOURCE_RELEASE_FORMAT=//p' \
+                  "$previous_generation/release.manifest"
+              )"
+              [[ "$source_format" == 1 || "$source_format" == 2 ]]
+              install -m 0644 "$previous_generation/runtime-attestation.env" \
+                "$target_generation/runtime-attestation.env"
+              install -m 0644 "$previous_generation/legacy-source-compose.yml" \
+                "$target_generation/legacy-source-compose.yml"
+              install -m 0600 "$previous_generation/legacy-source-environment.env" \
+                "$target_generation/legacy-source-environment.env"
+              install -m 0644 "$previous_generation/legacy-source-success.env" \
+                "$target_generation/legacy-source-success.env"
+              if [[ "$source_format" == 2 ]]; then
+                install -m 0644 \
+                  "$previous_generation/legacy-source-images.override.yml" \
+                  "$target_generation/legacy-source-images.override.yml"
+              fi
+              sed '/^LEGACY_BRIDGE_TRANSITIVE=/d; /^LEGACY_/!d' \
+                "$previous_generation/release.manifest" >>"$target_manifest"
+              printf 'LEGACY_BRIDGE_TRANSITIVE=1\n' >>"$target_manifest"
             }
 
             previous_redis_ref="$(
@@ -894,6 +948,11 @@ jobs:
                 "IMAGE_OVERRIDE_SHA256=$image_override_digest" \
                 'BOOTSTRAP_LEGACY=0' \
                 >"$murmur_generation/release.manifest"
+            fi
+            if [[ "$previous_release_format" == 3 ]]; then
+              carry_bridge_provenance \
+                "$previous_active_generation" "$murmur_generation" \
+                "$murmur_generation/release.manifest"
             fi
             chmod 0644 "$murmur_generation"/*.sha256 "$murmur_generation/release.manifest"
             fsync_release_generation "$murmur_generation"

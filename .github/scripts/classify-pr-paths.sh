@@ -14,7 +14,8 @@ is_non_code_path() {
       apps/crawler/data/occupations.csv | \
       apps/crawler/data/seniority.csv | \
       apps/crawler/data/technologies.csv | \
-      scripts/derive-crawler-runtime-contract.mjs)
+      scripts/derive-crawler-runtime-contract.mjs | \
+      scripts/verify-crawler-release-bridge.py)
       return 1
       ;;
   esac
@@ -44,7 +45,8 @@ is_crawler_code_path() {
       apps/crawler/data/occupations.csv | \
       apps/crawler/data/seniority.csv | \
       apps/crawler/data/technologies.csv | \
-      scripts/derive-crawler-runtime-contract.mjs)
+      scripts/derive-crawler-runtime-contract.mjs | \
+      scripts/verify-crawler-release-bridge.py)
       return 0
       ;;
   esac

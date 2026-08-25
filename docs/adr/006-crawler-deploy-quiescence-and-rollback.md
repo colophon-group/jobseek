@@ -66,9 +66,15 @@ The deploy script must:
   promoted only when its marker revision belongs to that epoch, its env and
   success marker agree on the deploy and digest-pinned crawler/browser/shim
   identities, and Compose resolves those exact immutable images. The resulting
-  v3 generation records the source Compose/env/success/image digests and the
+  v3 generation records immutable copies of the source Compose/env/success
+  evidence (and the format-v2 image override), their digests, and the
   attestation, so its newly added runtime-contract pair remains tied to the
-  actual legacy evidence rather than the incoming runtime;
+  actual legacy evidence rather than the incoming runtime. A single shared
+  verifier reconstructs this binding for the CSV host, full deploy, and Murmur
+  deploy paths. Murmur generations preserve the complete verified bridge
+  transitively while changing only their own shim-bound evidence, so a later
+  failed crawler deploy can still rehydrate the exact pre-transition runtime
+  and data;
   promote that verified generation as rollback evidence.
   After that transition, preserve the verified active format-v3 generation as
   the actual live rollback evidence even when later `main` CSVs differ;

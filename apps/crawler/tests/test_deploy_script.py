@@ -29,6 +29,7 @@ MURMUR_DEPLOY_WORKFLOW = (
 )
 SYNC_DATA_WORKFLOW = Path(__file__).resolve().parents[3] / ".github/workflows/sync-data.yml"
 CSV_SYNC_HOST = Path(__file__).resolve().parents[3] / "scripts/crawler-csv-sync-host.sh"
+BRIDGE_VERIFIER = Path(__file__).resolve().parents[3] / "scripts/verify-crawler-release-bridge.py"
 POSTGRES_PREFLIGHT = (
     Path(__file__).resolve().parent.parent / "scripts/postgresql-operational-preflight.py"
 )
@@ -244,6 +245,11 @@ def test_csv_sync_requires_the_committed_runtime_contract_before_publication() -
     sync_host = CSV_SYNC_HOST.read_text()
 
     assert "scripts/derive-crawler-runtime-contract.mjs" in workflow
+    assert "scripts/verify-crawler-release-bridge.py" in workflow
+    assert (
+        "source: scripts/crawler-csv-sync-host.sh,"
+        "scripts/verify-crawler-release-bridge.py" in workflow
+    )
     assert "--kind data" in workflow
     assert "target_data_contract" in workflow
     assert "current_data_contract" in workflow
@@ -542,6 +548,124 @@ def _create_legacy_format2_release(
     }
 
 
+def _create_legacy_format1_release(
+    release_root: Path,
+    name: str,
+    marker: str,
+) -> tuple[Path, dict[str, str]]:
+    release, identity = _create_legacy_format2_release(release_root, name, marker)
+    (release / "rollback-images.override.yml").unlink()
+    manifest = release / "release.manifest"
+    lines = [
+        line
+        for line in manifest.read_text(encoding="utf-8").splitlines()
+        if not line.startswith(("IMAGE_OVERRIDE_SHA256=", "BOOTSTRAP_LEGACY="))
+    ]
+    lines[0] = "RELEASE_FORMAT_VERSION=1"
+    manifest.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return release, identity
+
+
+def _create_murmur_carried_bridge(
+    previous: Path,
+    release_root: Path,
+    name: str,
+    shim_marker: str,
+) -> Path:
+    target = release_root / name
+    target.mkdir()
+    shutil.copyfile(previous / "docker-compose.yml", target / "docker-compose.yml")
+    shutil.copytree(previous / "data", target / "data")
+    shutil.copyfile(previous / "data-files.sha256", target / "data-files.sha256")
+    old_shim = next(
+        line.split("=", 1)[1]
+        for line in (previous / "environment.env").read_text(encoding="utf-8").splitlines()
+        if line.startswith("SHIM_IMAGE_REF=")
+    )
+    new_shim = "ghcr.io/colophon-group/jobseek-murmur-shim@sha256:" + shim_marker * 64
+    for evidence_name, mode in (("environment.env", 0o600), ("success.env", 0o644)):
+        content = (
+            (previous / evidence_name)
+            .read_text(encoding="utf-8")
+            .replace(f"SHIM_IMAGE_REF={old_shim}", f"SHIM_IMAGE_REF={new_shim}")
+        )
+        (target / evidence_name).write_text(content, encoding="utf-8")
+        (target / evidence_name).chmod(mode)
+    override = target / "rollback-images.override.yml"
+    override.write_text(f"services:\n  murmur-shim:\n    image: {new_shim}\n", encoding="utf-8")
+    compose_digest = hashlib.sha256((target / "docker-compose.yml").read_bytes()).hexdigest()
+    env_digest = hashlib.sha256((target / "environment.env").read_bytes()).hexdigest()
+    success_digest = hashlib.sha256((target / "success.env").read_bytes()).hexdigest()
+    data_digest = hashlib.sha256((target / "data-files.sha256").read_bytes()).hexdigest()
+    override_digest = hashlib.sha256(override.read_bytes()).hexdigest()
+    data_revision = next(
+        line.split("=", 1)[1]
+        for line in (previous / "release.manifest").read_text(encoding="utf-8").splitlines()
+        if line.startswith("DATA_REVISION=")
+    )
+    (target / "docker-compose.sha256").write_text(f"{compose_digest}\n", encoding="utf-8")
+    (target / "environment.sha256").write_text(f"{env_digest}\n", encoding="utf-8")
+    (target / "release.manifest").write_text(
+        "\n".join(
+            (
+                "RELEASE_FORMAT_VERSION=3",
+                f"COMPOSE_SHA256={compose_digest}",
+                f"ENVIRONMENT_SHA256={env_digest}",
+                f"SUCCESS_SHA256={success_digest}",
+                f"DATA_FILES_SHA256={data_digest}",
+                f"DATA_CONTRACT_SHA256={data_digest}",
+                f"DATA_REVISION={data_revision}",
+                "HAS_IMAGE_OVERRIDE=1",
+                f"IMAGE_OVERRIDE_SHA256={override_digest}",
+                "BOOTSTRAP_LEGACY=0",
+                "",
+            )
+        ),
+        encoding="utf-8",
+    )
+    workflow = yaml.safe_load(MURMUR_DEPLOY_WORKFLOW.read_text())
+    remote_script = next(
+        step["with"]["script"]
+        for step in workflow["jobs"]["deploy"]["steps"]
+        if step.get("name") == "Deploy via SSH"
+    )
+    start = remote_script.index("carry_bridge_provenance() {")
+    carry = remote_script[start : remote_script.index("\n\nprevious_redis_ref=", start)]
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+    result = subprocess.run(
+        [
+            bash,
+            "-c",
+            "set -euo pipefail\n"
+            + carry
+            + '\ncarry_bridge_provenance "$1" "$2" "$2/release.manifest"',
+            "carry-bridge",
+            str(previous),
+            str(target),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    verified = subprocess.run(
+        [
+            "python3",
+            str(BRIDGE_VERIFIER),
+            "--generation",
+            str(target),
+            "--owner",
+            "colophon-group",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert verified.returncode == 0, verified.stderr
+    assert verified.stdout.strip() == "bridge"
+    return target
+
+
 def _install_csv_host_docker(binary_dir: Path) -> None:
     _write_executable(
         binary_dir / "docker",
@@ -734,6 +858,70 @@ def test_legacy_format2_bootstrap_attests_old_runtime_and_is_idempotent(
     assert not (candidates / candidate_id).exists()
 
 
+def test_legacy_format1_bootstrap_rejects_any_unattested_override_without_mutation(
+    tmp_path: Path,
+) -> None:
+    for kind in ("regular", "dangling"):
+        root = tmp_path / kind
+        release_root = root / "releases"
+        candidates = root / "candidates"
+        candidates.mkdir(parents=True)
+        legacy, identity = _create_legacy_format1_release(release_root, "legacy.production", "b")
+        override = legacy / "rollback-images.override.yml"
+        if kind == "regular":
+            wrong_ref = "ghcr.io/colophon-group/jobseek-crawler@sha256:" + "f" * 64
+            override.write_text(
+                f"services:\n  worker-1:\n    image: {wrong_ref}\n", encoding="utf-8"
+            )
+        else:
+            override.symlink_to(root / "missing-override.yml")
+        active = root / ".crawler-active-release"
+        active.symlink_to(legacy)
+        live_env = root / ".env"
+        shutil.copyfile(legacy / "environment.env", live_env)
+        live_env.chmod(0o600)
+        env = _csv_host_test_environment(root, release_root, active, live_env, candidates)
+        _install_csv_host_docker(root / "bin")
+        sync_log = root / "sync.log"
+        env["TEST_CSV_SYNC_LOG"] = str(sync_log)
+        previous_revision = "c" * 40
+        candidate_id, data_contract, archive_sha = _create_csv_candidate(
+            candidates,
+            previous_revision,
+            74,
+            1,
+            {"boards.csv": b"slug\nB\n"},
+            identity["runtime_contract"],
+            [previous_revision, identity["source_revision"]],
+        )
+        bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+        result = subprocess.run(
+            [
+                bash,
+                str(CSV_SYNC_HOST),
+                "--bootstrap-current",
+                previous_revision,
+                identity["runtime_contract"],
+                data_contract,
+                candidate_id,
+                archive_sha,
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        assert result.returncode != 0
+        assert (
+            "format-1 crawler release contains unattested image-override residue" in result.stderr
+        )
+        assert active.resolve() == legacy.resolve()
+        assert not (candidates / candidate_id).exists()
+        assert list(release_root.glob("data-*")) == []
+        assert not sync_log.exists()
+        assert not (root / "journal").exists()
+
+
 def test_legacy_runtime_bridge_rejects_unbound_evidence_and_cleans_failed_generation(
     tmp_path: Path,
 ) -> None:
@@ -835,12 +1023,12 @@ def test_legacy_runtime_bridge_rejects_unbound_evidence_and_cleans_failed_genera
 
     (
         release_root,
-        _,
+        candidates,
         legacy,
         active,
         live_env,
         env,
-        _,
+        identity,
         command,
     ) = setup_case("cleanup", newline_terminated=False)
     result = subprocess.run(command, check=False, capture_output=True, text=True, env=env)
@@ -853,6 +1041,17 @@ def test_legacy_runtime_bridge_rejects_unbound_evidence_and_cleans_failed_genera
     _refresh_release_snapshot_digests(legacy)
     shutil.copyfile(legacy / "environment.env", live_env)
     live_env.chmod(0o600)
+    repeated_id, repeated_contract, repeated_archive = _create_csv_candidate(
+        candidates,
+        command[3],
+        72,
+        1,
+        {"boards.csv": b"slug\nB\n"},
+        identity["runtime_contract"],
+        [command[3], identity["source_revision"]],
+    )
+    assert (repeated_id, repeated_contract) == (command[6], command[5])
+    command[7] = repeated_archive
     retry = subprocess.run(command, check=False, capture_output=True, text=True, env=env)
     assert retry.returncode == 0, retry.stderr
     assert active.resolve() != legacy.resolve()
@@ -1493,6 +1692,8 @@ def test_full_deploy_bootstraps_exact_prior_data_before_arming_rollback() -> Non
     assert "JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256" in workflow
     assert "--runtime-attestation-out" in workflow
     assert "data data-files.sha256 runtime-attestation.env" in workflow
+    assert "scripts/verify-crawler-release-bridge.py" in workflow
+    assert "scripts/verify-crawler-release-bridge.py" in deploy
     assert "LEGACY_BRIDGE_FORMAT_VERSION=1" in CSV_SYNC_HOST.read_text()
     assert "promote-target" in CSV_SYNC_HOST.read_text()
 
@@ -2237,14 +2438,17 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
     assert bootstrap.returncode == 0, bootstrap.stderr
     old_release = active_pointer.resolve()
     assert old_release != legacy_release.resolve()
+    old_release = _create_murmur_carried_bridge(old_release, release_root, "murmur-carried", "e")
+    active_pointer.unlink()
+    active_pointer.symlink_to(old_release)
     old_identity = {
         **legacy_identity,
         "data_contract": old_data_contract,
         "revision": previous_data_revision,
     }
-    assert "LEGACY_BRIDGE_FORMAT_VERSION=1\n" in (old_release / "release.manifest").read_text(
-        encoding="utf-8"
-    )
+    old_manifest = (old_release / "release.manifest").read_text(encoding="utf-8")
+    assert "LEGACY_BRIDGE_FORMAT_VERSION=1\n" in old_manifest
+    assert "LEGACY_BRIDGE_TRANSITIVE=1\n" in old_manifest
 
     # Model the new full release committing its pointer before a later deploy
     # gate fails. Rollback must select and rehydrate the bridged old release.
@@ -2309,6 +2513,7 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
         (
             "set -Eeuo pipefail",
             'OWNER="colophon-group"',
+            f'BRIDGE_VERIFIER="{BRIDGE_VERIFIER}"',
             f'DEPLOY_DIR="{deploy_dir}"',
             f'ENV_FILE="{live_env}"',
             f'ACTIVE_RELEASE_ROOT="{release_root}"',
@@ -2426,6 +2631,7 @@ def test_murmur_v3_verifier_rejects_unsafe_or_unattested_evidence(
         for step in workflow["jobs"]["deploy"]["steps"]
         if step.get("name") == "Deploy via SSH"
     )
+    assert "source: scripts/verify-crawler-release-bridge.py" in MURMUR_DEPLOY_WORKFLOW.read_text()
     verifier = remote_script[
         remote_script.index("verify_snapshot() {") : remote_script.index("\nprevious_redis_ref=")
     ]
@@ -2451,7 +2657,10 @@ def test_murmur_v3_verifier_rejects_unsafe_or_unattested_evidence(
             [
                 bash,
                 "-c",
-                "set -euo pipefail\n" + verifier + '\nverify_release_generation "$1"',
+                "set -euo pipefail\n"
+                + f'bridge_verifier="{BRIDGE_VERIFIER}"\nOWNER="colophon-group"\n'
+                + verifier
+                + '\nverify_release_generation "$1"',
                 "verify",
                 str(release),
             ],
@@ -2553,6 +2762,203 @@ def test_murmur_v3_verifier_rejects_unsafe_or_unattested_evidence(
     assert 'if [[ -f "$active_generation/rollback-images.override.yml" ]]' not in remote_script
     assert 'test ! -L "$generation/data-files.sha256"' in verification
     assert 'test "${#runtime_environment_values[@]}" -eq 1' in verification
+
+
+def test_bridge_corruption_is_rejected_by_host_deploy_and_murmur(
+    tmp_path: Path,
+) -> None:
+    release_root = tmp_path / "releases"
+    candidates = tmp_path / "candidates"
+    candidates.mkdir()
+    legacy, identity = _create_legacy_format2_release(release_root, "legacy.production", "b")
+    active = tmp_path / ".crawler-active-release"
+    active.symlink_to(legacy)
+    live_env = tmp_path / ".env"
+    shutil.copyfile(legacy / "environment.env", live_env)
+    live_env.chmod(0o600)
+    host_env = _csv_host_test_environment(tmp_path, release_root, active, live_env, candidates)
+    binary_dir = tmp_path / "bin"
+    _install_csv_host_docker(binary_dir)
+    previous_revision = "c" * 40
+    candidate_id, data_contract, archive_sha = _create_csv_candidate(
+        candidates,
+        previous_revision,
+        81,
+        1,
+        {"boards.csv": b"slug\nB\n"},
+        identity["runtime_contract"],
+        [previous_revision, identity["source_revision"]],
+    )
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+    bootstrap = subprocess.run(
+        [
+            bash,
+            str(CSV_SYNC_HOST),
+            "--bootstrap-current",
+            previous_revision,
+            identity["runtime_contract"],
+            data_contract,
+            candidate_id,
+            archive_sha,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=host_env,
+    )
+    assert bootstrap.returncode == 0, bootstrap.stderr
+    valid_bridge = active.resolve()
+
+    deploy_script = DEPLOY_SH.read_text()
+    deploy_verification_helpers = deploy_script[
+        deploy_script.index("verify_active_snapshot_file() {") : deploy_script.index(
+            "\nwrite_exact_csv_manifest() {"
+        )
+    ]
+    deploy_release_helpers = deploy_script[
+        deploy_script.index("read_exact_release_value() {") : deploy_script.index(
+            "\npublish_legacy_success_marker() {"
+        )
+    ]
+    murmur_workflow = yaml.safe_load(MURMUR_DEPLOY_WORKFLOW.read_text())
+    murmur_remote = next(
+        step["with"]["script"]
+        for step in murmur_workflow["jobs"]["deploy"]["steps"]
+        if step.get("name") == "Deploy via SSH"
+    )
+    murmur_verifier = murmur_remote[
+        murmur_remote.index("verify_snapshot() {") : murmur_remote.index("\nprevious_redis_ref=")
+    ]
+
+    def verify_with_deploy(release: Path) -> subprocess.CompletedProcess[str]:
+        harness = "\n".join(
+            (
+                "set -euo pipefail",
+                'OWNER="colophon-group"',
+                f'BRIDGE_VERIFIER="{BRIDGE_VERIFIER}"',
+                f'DEPLOY_DIR="{tmp_path}"',
+                f'ACTIVE_RELEASE_ROOT="{release_root}"',
+                f'ACTIVE_RELEASE_POINTER="{active}"',
+                'ACTIVE_RELEASE_DIR=""',
+                'ACTIVE_COMPOSE_SNAPSHOT=""',
+                'ACTIVE_COMPOSE_SNAPSHOT_SHA256=""',
+                'ACTIVE_ENV_SNAPSHOT=""',
+                'ACTIVE_ENV_SNAPSHOT_SHA256=""',
+                'DEPLOY_SUCCESS_FILE=""',
+                'ACTIVE_RELEASE_MANIFEST=""',
+                'ACTIVE_RELEASE_FORMAT=""',
+                'ACTIVE_IMAGE_OVERRIDE=""',
+                'ACTIVE_DATA_SNAPSHOT=""',
+                'ACTIVE_DATA_FILES_MANIFEST=""',
+                'COMPOSE_PROJECT_NAME="deploy"',
+                deploy_verification_helpers,
+                deploy_release_helpers,
+                "verify_active_deploy_snapshot",
+            )
+        )
+        return subprocess.run(
+            [bash, "-c", harness],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "PATH": f"{binary_dir}:{os.environ['PATH']}"},
+        )
+
+    def verify_with_murmur(release: Path) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                bash,
+                "-c",
+                "set -euo pipefail\n"
+                + f'bridge_verifier="{BRIDGE_VERIFIER}"\nOWNER="colophon-group"\n'
+                + murmur_verifier
+                + '\nverify_release_generation "$1"',
+                "verify",
+                str(release),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "PATH": f"{binary_dir}:{os.environ['PATH']}"},
+        )
+
+    for index, corruption in enumerate(
+        ("attestation-epoch", "legacy-field", "source-evidence"), start=1
+    ):
+        corrupted = release_root / f"corrupted-{corruption}"
+        shutil.copytree(valid_bridge, corrupted)
+        if corruption == "attestation-epoch":
+            attestation = corrupted / "runtime-attestation.env"
+            attestation.write_text(
+                "\n".join(
+                    line
+                    for line in attestation.read_text(encoding="utf-8").splitlines()
+                    if line != f"COMPATIBLE_REVISION={identity['source_revision']}"
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            _replace_release_manifest_value(
+                corrupted,
+                "LEGACY_RUNTIME_ATTESTATION_SHA256",
+                hashlib.sha256(attestation.read_bytes()).hexdigest(),
+            )
+        elif corruption == "legacy-field":
+            _replace_release_manifest_value(
+                corrupted,
+                "LEGACY_SOURCE_CRAWLER_IMAGE_REF",
+                "ghcr.io/colophon-group/jobseek-crawler@sha256:" + "f" * 64,
+            )
+        else:
+            source_environment = corrupted / "legacy-source-environment.env"
+            source_content = source_environment.read_text(encoding="utf-8")
+            changed_source = source_content.replace(
+                f"JOBSEEK_DEPLOY_REVISION={identity['source_revision']}",
+                "JOBSEEK_DEPLOY_REVISION=" + "f" * 40,
+            )
+            assert changed_source != source_content
+            source_environment.write_text(changed_source, encoding="utf-8")
+            _replace_release_manifest_value(
+                corrupted,
+                "LEGACY_SOURCE_ENVIRONMENT_SHA256",
+                hashlib.sha256(source_environment.read_bytes()).hexdigest(),
+            )
+
+        active.unlink()
+        active.symlink_to(corrupted)
+        shutil.copyfile(corrupted / "environment.env", live_env)
+        live_env.chmod(0o600)
+        next_revision = chr(ord("d") + index - 1) * 40
+        next_candidate, next_contract, next_archive = _create_csv_candidate(
+            candidates,
+            next_revision,
+            81 + index,
+            1,
+            {"boards.csv": f"slug\n{corruption}\n".encode()},
+        )
+        host = subprocess.run(
+            [
+                bash,
+                str(CSV_SYNC_HOST),
+                "--bootstrap-current",
+                next_revision,
+                identity["runtime_contract"],
+                next_contract,
+                next_candidate,
+                next_archive,
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            env=host_env,
+        )
+        deploy = verify_with_deploy(corrupted)
+        murmur = verify_with_murmur(corrupted)
+        for consumer, result in (("host", host), ("deploy", deploy), ("murmur", murmur)):
+            assert result.returncode != 0, f"{consumer} accepted {corruption}"
+            assert "legacy bridge verification failed" in result.stderr
+        assert active.resolve() == corrupted.resolve()
+        assert not (candidates / next_candidate).exists()
 
 
 def test_murmur_bootstrap_digest_resolver_fails_without_exact_identity(

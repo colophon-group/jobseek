@@ -8,6 +8,7 @@ import { pathToFileURL } from "node:url";
 const EXTRA_RUNTIME_PATHS = new Set([
   ".github/workflows/deploy-crawler-browser.yml",
   "scripts/derive-crawler-runtime-contract.mjs",
+  "scripts/verify-crawler-release-bridge.py",
 ]);
 const RUNTIME_DATA_PATHS = new Set([
   "apps/crawler/data/industries.csv",

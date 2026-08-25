@@ -20,6 +20,7 @@ on:
       # immutable-version and production rollout path they control (#5873).
       - '.github/workflows/deploy-crawler-browser.yml'
       - 'scripts/derive-crawler-runtime-contract.mjs'
+      - 'scripts/verify-crawler-release-bridge.py'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -519,13 +520,13 @@ jobs:
           target: /home/deploy/incoming/
           strip_components: 2
 
-      - name: Copy locked CSV publication helper
+      - name: Copy locked release-evidence helpers
         uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1.0.0
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          source: scripts/crawler-csv-sync-host.sh
+          source: scripts/crawler-csv-sync-host.sh,scripts/verify-crawler-release-bridge.py
           target: /home/deploy/incoming/scripts/
           strip_components: 1
 
