@@ -5508,6 +5508,7 @@ spycloud,spycloud-greenhouse,https://job-boards.greenhouse.io/spycloud,greenhous
 squarepoint-capital,squarepoint-capital-greenhouse,https://job-boards.greenhouse.io/squarepointcapital,greenhouse,"{""token"": ""squarepointcapital""}",skip,
 squarespace,squarespace-greenhouse,https://job-boards.greenhouse.io/squarespace,greenhouse,"{""token"": ""squarespace""}",skip,
 squint-ai,squint-ai-ashby,https://jobs.ashbyhq.com/squint.ai,ashby,"{""token"": ""squint.ai""}",skip,
+srg-ssr,srg-ssr-central,https://jobs.srgssr.ch/,dom,"{""render"": true, ""wait"": ""networkidle"", ""timeout"": 30000, ""url_filter"": ""/offene-stellen/""}",json-ld,"{""ignore_address_region"": true}"
 srs-acquiom,srs-acquiom-greenhouse,https://job-boards.greenhouse.io/srsacquiom,greenhouse,"{""token"": ""srsacquiom""}",skip,
 stability-ai,stability-ai-greenhouse,https://job-boards.greenhouse.io/stabilityai,greenhouse,"{""token"": ""stabilityai""}",skip,
 stable,stable-ashby,https://jobs.ashbyhq.com/stable,ashby,"{""token"": ""stable""}",skip,
