@@ -10,6 +10,8 @@ The governor is intentionally small and stateful:
 
 from __future__ import annotations
 
+import fcntl
+import hashlib
 import json
 import os
 import shutil
@@ -21,6 +23,8 @@ import sys
 import tempfile
 import time
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -385,6 +389,17 @@ class RunnerLedger:
                 CREATE UNIQUE INDEX IF NOT EXISTS runs_one_active_issue
                     ON runs(issue)
                     WHERE state IN ('claimed', 'running') AND issue IS NOT NULL;
+                CREATE TABLE IF NOT EXISTS run_worktree_cleanup_fences (
+                    run_id TEXT NOT NULL,
+                    worktree_path TEXT NOT NULL,
+                    token TEXT NOT NULL UNIQUE,
+                    claimed_at INTEGER NOT NULL,
+                    removed_at INTEGER,
+                    PRIMARY KEY(run_id, worktree_path),
+                    FOREIGN KEY(run_id) REFERENCES runs(run_id)
+                );
+                CREATE INDEX IF NOT EXISTS run_worktree_cleanup_fences_run
+                    ON run_worktree_cleanup_fences(run_id);
                 CREATE TABLE IF NOT EXISTS trace_ingestions (
                     trace_path TEXT PRIMARY KEY,
                     run_id TEXT NOT NULL,
@@ -538,7 +553,28 @@ class RunnerLedger:
         assignments = ", ".join(f"{name} = ?" for name in fields)
         values = [*fields.values(), run_id]
         with self._connect() as conn:
-            conn.execute(f"UPDATE runs SET {assignments} WHERE run_id = ?", values)
+            updated = conn.execute(
+                f"""
+                UPDATE runs
+                SET {assignments}
+                WHERE run_id = ?
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM run_worktree_cleanup_fences AS fence
+                      WHERE fence.run_id = runs.run_id
+                  )
+                """,
+                values,
+            )
+            if updated.rowcount == 0:
+                fence = conn.execute(
+                    "SELECT 1 FROM run_worktree_cleanup_fences WHERE run_id = ? LIMIT 1",
+                    (run_id,),
+                ).fetchone()
+                if fence is not None:
+                    raise RuntimeError(
+                        f"run {run_id} is cleanup-fenced; refusing a late ledger update"
+                    )
 
     def finish(
         self,
@@ -578,6 +614,114 @@ class RunnerLedger:
                 """
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def _worktree_execution_lock_path(self) -> Path:
+        lock_dir = self.path.parent / "worktree-execution-leases"
+        lock_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        lock_dir_stat = lock_dir.lstat()
+        if (
+            stat.S_ISLNK(lock_dir_stat.st_mode)
+            or not stat.S_ISDIR(lock_dir_stat.st_mode)
+            or lock_dir_stat.st_uid != os.geteuid()
+        ):
+            raise RuntimeError(f"unsafe worktree execution lease directory: {lock_dir}")
+        os.chmod(lock_dir, 0o700)
+        return lock_dir / "supported-writers.lock"
+
+    @contextmanager
+    def worktree_execution_lease(
+        self,
+        run_id: str,
+        *,
+        exclusive: bool = False,
+        blocking: bool = True,
+    ) -> Iterator[None]:
+        """Fence the supported runner lifecycle outside the removable worktree."""
+        lock_path = self._worktree_execution_lock_path()
+        flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_CLOEXEC", 0)
+        flags |= getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(lock_path, flags, 0o600)
+        try:
+            opened = os.fstat(fd)
+            if not stat.S_ISREG(opened.st_mode) or opened.st_uid != os.geteuid():
+                raise RuntimeError(f"unsafe worktree execution lease file: {lock_path}")
+            os.fchmod(fd, 0o600)
+            operation = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+            if not blocking:
+                operation |= fcntl.LOCK_NB
+            try:
+                fcntl.flock(fd, operation)
+            except BlockingIOError as exc:
+                raise RuntimeError(f"run {run_id} still holds its execution lease") from exc
+            try:
+                yield
+            finally:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+        finally:
+            os.close(fd)
+
+    @contextmanager
+    def worktree_removal_lease(
+        self,
+        *,
+        run_id: str | None,
+        worktree_path: Path,
+    ) -> Iterator[None]:
+        """Durably fence late run transitions before an atomic cleanup claim."""
+        execution_lease = self.worktree_execution_lease(
+            run_id or f"managed:{hashlib.sha256(os.fsencode(worktree_path)).hexdigest()}",
+            exclusive=True,
+            blocking=False,
+        )
+        with execution_lease:
+            token: str | None = None
+            if run_id is not None:
+                with self._connect() as conn:
+                    conn.execute("BEGIN IMMEDIATE")
+                    run = conn.execute(
+                        "SELECT state FROM runs WHERE run_id = ?",
+                        (run_id,),
+                    ).fetchone()
+                    if run is None:
+                        raise RuntimeError("cleanup fence run disappeared")
+                    if str(run["state"]) not in TERMINAL_STATES:
+                        raise RuntimeError("cleanup fence run became active")
+                    existing = conn.execute(
+                        """
+                        SELECT token, removed_at
+                        FROM run_worktree_cleanup_fences
+                        WHERE run_id = ? AND worktree_path = ?
+                        """,
+                        (run_id, str(worktree_path)),
+                    ).fetchone()
+                    if existing is not None:
+                        if existing["removed_at"] is not None:
+                            raise RuntimeError("worktree cleanup was already completed")
+                        token = str(existing["token"])
+                    else:
+                        token = uuid.uuid4().hex
+                        conn.execute(
+                            """
+                            INSERT INTO run_worktree_cleanup_fences (
+                                run_id, worktree_path, token, claimed_at
+                            ) VALUES (?, ?, ?, ?)
+                            """,
+                            (run_id, str(worktree_path), token, int(time.time())),
+                        )
+            yield
+            if run_id is not None and token is not None:
+                with self._connect() as conn:
+                    completed = conn.execute(
+                        """
+                        UPDATE run_worktree_cleanup_fences
+                        SET removed_at = ?
+                        WHERE run_id = ? AND worktree_path = ? AND token = ?
+                          AND removed_at IS NULL
+                        """,
+                        (int(time.time()), run_id, str(worktree_path), token),
+                    )
+                    if completed.rowcount != 1:
+                        raise RuntimeError("could not complete durable worktree cleanup fence")
 
     def record_worktree_reconciliation(self, **fields: Any) -> None:
         columns = (
@@ -1997,8 +2141,9 @@ class CompanyResolverGovernor:
 
         cfg = self.config
         max_terminal_bytes = int(cfg.max_terminal_worktree_gib * 1024**3)
+        managed_worktrees_dir = cfg.managed_worktrees_dir
+        assert managed_worktrees_dir is not None
         contexts = self._managed_worktree_contexts()
-        live_paths = _live_worktree_paths(cfg.managed_worktrees_dir)  # type: ignore[arg-type]
         remote_verifier = GitHubRemoteVerifier(
             repo_dir=cfg.repo_dir,  # type: ignore[arg-type]
             github=self.github,
@@ -2012,7 +2157,7 @@ class CompanyResolverGovernor:
 
         managed_report = reconcile_managed_worktrees(
             repo_dir=cfg.managed_repo_dir,  # type: ignore[arg-type]
-            worktrees_dir=cfg.managed_worktrees_dir,  # type: ignore[arg-type]
+            worktrees_dir=managed_worktrees_dir,
             archive_dir=cfg.state_dir / "worktree-quarantine",  # type: ignore[operator]
             ledger=self.ledger,
             authoritative_main_verifier=managed_remote_verifier.verify_main,
@@ -2021,7 +2166,9 @@ class CompanyResolverGovernor:
                 allow_absent=True,
             ),
             pid_checker=_pid_matches_run,
-            live_path_checker=lambda path: str(path.resolve()) in live_paths,
+            live_path_checker=lambda path: (
+                str(path.resolve()) in _live_worktree_paths(managed_worktrees_dir)
+            ),
             max_terminal_directories=cfg.max_terminal_worktrees,
             max_terminal_bytes=max_terminal_bytes,
             apply=apply,
@@ -2146,7 +2293,12 @@ class CompanyResolverGovernor:
         env["WS_ACTIVE_SCOPE"] = admission.run_id
 
         cmd = build_codex_command(cfg, build_codex_prompt(admission.issue))
-        with trace_path.open("w") as stdout, stderr_path.open("w") as stderr:
+        timed_out = False
+        with (
+            self.ledger.worktree_execution_lease(admission.run_id),
+            trace_path.open("w") as stdout,
+            stderr_path.open("w") as stderr,
+        ):
             proc = subprocess.Popen(
                 cmd,
                 cwd=cwd,
@@ -2171,23 +2323,26 @@ class CompanyResolverGovernor:
                 exit_code = proc.wait(timeout=cfg.max_runtime_s)
             except subprocess.TimeoutExpired:
                 _terminate_process_group(proc, cfg.kill_grace_s)
-                summary = parse_codex_usage_jsonl(trace_path)
-                self.ledger.ingest_trace_once(admission.run_id, trace_path, summary)
-                self._record_pr_if_present(admission)
-                self._release_claim_if_unresolved(admission, worktree=worktree)
-                reason = "codex runtime exceeded"
-                self._finish_outcome(admission, "interrupted", reason)
-                if cfg.cleanup_success_worktree:
-                    self.reconcile_worktrees(apply=True, only_paths={worktree})
-                return RunResult(
-                    run_id=admission.run_id,
-                    issue=admission.issue,
-                    state="interrupted",
-                    trace_path=trace_path,
-                    stderr_path=stderr_path,
-                    worktree_path=worktree,
-                    error="codex runtime exceeded",
-                )
+                timed_out = True
+
+        if timed_out:
+            summary = parse_codex_usage_jsonl(trace_path)
+            self.ledger.ingest_trace_once(admission.run_id, trace_path, summary)
+            self._record_pr_if_present(admission)
+            self._release_claim_if_unresolved(admission, worktree=worktree)
+            reason = "codex runtime exceeded"
+            self._finish_outcome(admission, "interrupted", reason)
+            if cfg.cleanup_success_worktree:
+                self.reconcile_worktrees(apply=True, only_paths={worktree})
+            return RunResult(
+                run_id=admission.run_id,
+                issue=admission.issue,
+                state="interrupted",
+                trace_path=trace_path,
+                stderr_path=stderr_path,
+                worktree_path=worktree,
+                error="codex runtime exceeded",
+            )
 
         summary = parse_codex_usage_jsonl(trace_path)
         self.ledger.ingest_trace_once(admission.run_id, trace_path, summary)

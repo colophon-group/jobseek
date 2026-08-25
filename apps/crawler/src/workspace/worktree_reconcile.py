@@ -14,12 +14,14 @@ import io
 import json
 import os
 import re
+import secrets
 import stat
 import subprocess
 import tarfile
 import tempfile
 import time
 from collections.abc import Callable
+from contextlib import AbstractContextManager
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
@@ -64,6 +66,13 @@ class Ledger(Protocol):
 
     def record_worktree_reconciliation(self, **fields: Any) -> None: ...
 
+    def worktree_removal_lease(
+        self,
+        *,
+        run_id: str | None,
+        worktree_path: Path,
+    ) -> AbstractContextManager[None]: ...
+
 
 @dataclass(frozen=True)
 class RemoteProof:
@@ -100,6 +109,34 @@ class WorktreeItem:
     head_oid: str | None = None
     main_oid: str | None = None
     unique_commits: bool = False
+
+
+@dataclass(frozen=True)
+class _ArchiveCandidateFingerprint:
+    source: str
+    archive_name: str
+    kind: str
+    mode: int
+    bytes: int | None = None
+    sha256: str | None = None
+
+
+@dataclass(frozen=True)
+class _WorktreeStateSnapshot:
+    head_oid: str
+    dirty_entries: int
+    status_sha256: str
+    tracked_patch_sha256: str
+    workspace_root_json: str
+    candidates: tuple[_ArchiveCandidateFingerprint, ...]
+
+
+class _WorktreeBecameActive(RuntimeError):
+    """Raised when fresh runner evidence protects a removal candidate."""
+
+
+_RemovalGuard = Callable[[], None]
+_WorktreeRemover = Callable[[Path, _RemovalGuard], None]
 
 
 class _BoundedArchiveWriter:
@@ -656,6 +693,232 @@ def _validate_removal_target(
         raise RuntimeError("worktree HEAD changed after classification")
 
 
+def _validated_worktree_snapshot(
+    *,
+    repo_dir: Path,
+    worktrees_dir: Path,
+    path: Path,
+    expected_resolved: Path,
+    expected_head: str | None,
+    activity_checker: Callable[[Path], None],
+) -> _WorktreeStateSnapshot:
+    """Revalidate identity/activity and fingerprint the current removable state."""
+    _validate_removal_target(
+        repo_dir=repo_dir,
+        worktrees_dir=worktrees_dir,
+        path=path,
+        expected_resolved=expected_resolved,
+        expected_head=expected_head,
+    )
+    activity_checker(expected_resolved)
+    snapshot = _worktree_state_snapshot(path, expected_head=expected_head)
+    _validate_removal_target(
+        repo_dir=repo_dir,
+        worktrees_dir=worktrees_dir,
+        path=path,
+        expected_resolved=expected_resolved,
+        expected_head=expected_head,
+    )
+    activity_checker(expected_resolved)
+    return snapshot
+
+
+def _require_same_worktree_state(
+    expected: _WorktreeStateSnapshot,
+    observed: _WorktreeStateSnapshot,
+    *,
+    stage: str,
+) -> None:
+    if observed != expected:
+        raise RuntimeError(f"worktree changed {stage}; refusing stale removal")
+
+
+def _pre_remove_transition_is_safe(
+    before: _WorktreeStateSnapshot,
+    after: _WorktreeStateSnapshot,
+) -> bool:
+    """Allow the runner hook to delete only already-archived workspace evidence."""
+    if before.head_oid != after.head_oid:
+        return False
+    if before.tracked_patch_sha256 != after.tracked_patch_sha256:
+        return False
+
+    before_regular = {
+        candidate
+        for candidate in before.candidates
+        if not candidate.archive_name.startswith("workspace/")
+    }
+    after_regular = {
+        candidate
+        for candidate in after.candidates
+        if not candidate.archive_name.startswith("workspace/")
+    }
+    if before_regular != after_regular:
+        return False
+
+    before_workspace = {
+        candidate
+        for candidate in before.candidates
+        if candidate.archive_name.startswith("workspace/")
+    }
+    after_workspace = {
+        candidate
+        for candidate in after.candidates
+        if candidate.archive_name.startswith("workspace/")
+    }
+    if not after_workspace.issubset(before_workspace):
+        return False
+    return (
+        after.workspace_root_json == before.workspace_root_json
+        or after.workspace_root_json == "null"
+    )
+
+
+def _guarded_retire_worktree(
+    *,
+    repo_dir: Path,
+    worktrees_dir: Path,
+    archive_dir: Path,
+    path: Path,
+    expected_resolved: Path,
+    item: WorktreeItem,
+    activity_checker: Callable[[Path], None],
+    archive_id: str,
+    archive_required: bool,
+    max_archive_bytes: int,
+    remover: _WorktreeRemover,
+    removal_lease: Callable[[], AbstractContextManager[None]],
+    pre_remove: Callable[[WorktreeItem], None] | None = None,
+) -> bool:
+    """Archive and remove only while identity, activity, and content stay stable."""
+    expected = _validated_worktree_snapshot(
+        repo_dir=repo_dir,
+        worktrees_dir=worktrees_dir,
+        path=path,
+        expected_resolved=expected_resolved,
+        expected_head=item.head_oid,
+        activity_checker=activity_checker,
+    )
+    item.dirty_entries = expected.dirty_entries
+    must_archive = (
+        archive_required or expected.dirty_entries > 0 or expected.workspace_root_json != "null"
+    )
+    item.planned_action = "archive_remove" if must_archive else "remove"
+    archived = False
+
+    if must_archive:
+
+        def verify_before_publish() -> None:
+            current = _validated_worktree_snapshot(
+                repo_dir=repo_dir,
+                worktrees_dir=worktrees_dir,
+                path=path,
+                expected_resolved=expected_resolved,
+                expected_head=item.head_oid,
+                activity_checker=activity_checker,
+            )
+            _require_same_worktree_state(
+                expected,
+                current,
+                stage="while its archive was being created",
+            )
+
+        archive_path, archive_sha = _archive_worktree(
+            path,
+            archive_dir=archive_dir,
+            run_id=archive_id,
+            item=item,
+            include_unique_commits=item.unique_commits,
+            unique_commit_base_oid=item.main_oid,
+            max_archive_bytes=max_archive_bytes,
+            expected_snapshot=expected,
+            pre_publish_check=verify_before_publish,
+        )
+        item.archive_path = str(archive_path)
+        item.archive_sha256 = archive_sha
+        archived = True
+        current = _validated_worktree_snapshot(
+            repo_dir=repo_dir,
+            worktrees_dir=worktrees_dir,
+            path=path,
+            expected_resolved=expected_resolved,
+            expected_head=item.head_oid,
+            activity_checker=activity_checker,
+        )
+        _require_same_worktree_state(expected, current, stage="after it was archived")
+
+    if pre_remove is not None:
+        pre_remove(item)
+        current = _validated_worktree_snapshot(
+            repo_dir=repo_dir,
+            worktrees_dir=worktrees_dir,
+            path=path,
+            expected_resolved=expected_resolved,
+            expected_head=item.head_oid,
+            activity_checker=activity_checker,
+        )
+        if current != expected:
+            if not archived or not _pre_remove_transition_is_safe(expected, current):
+                raise RuntimeError("worktree changed during pre-remove cleanup; retaining it")
+            expected = current
+
+    def validate_original_before_claim() -> None:
+        current = _validated_worktree_snapshot(
+            repo_dir=repo_dir,
+            worktrees_dir=worktrees_dir,
+            path=path,
+            expected_resolved=expected_resolved,
+            expected_head=item.head_oid,
+            activity_checker=activity_checker,
+        )
+        _require_same_worktree_state(expected, current, stage="immediately before removal claim")
+
+    with removal_lease():
+        validate_original_before_claim()
+        claimed_path = _claim_registered_worktree(
+            repo_dir=repo_dir,
+            worktrees_dir=worktrees_dir,
+            path=path,
+            expected_resolved=expected_resolved,
+            expected_head=item.head_oid,
+        )
+        claimed_resolved = claimed_path.resolve(strict=True)
+
+        def validate_claim_at_remover_entry() -> None:
+            if _path_exists_no_follow(path):
+                raise RuntimeError("original worktree path was recreated after removal claim")
+            current = _validated_worktree_snapshot(
+                repo_dir=repo_dir,
+                worktrees_dir=worktrees_dir,
+                path=claimed_path,
+                expected_resolved=claimed_resolved,
+                expected_head=item.head_oid,
+                activity_checker=activity_checker,
+            )
+            _require_same_worktree_state(expected, current, stage="after atomic removal claim")
+
+        try:
+            validate_claim_at_remover_entry()
+            remover(claimed_path, validate_claim_at_remover_entry)
+            if _path_exists_no_follow(claimed_path):
+                raise RuntimeError("worktree remover returned but its atomic claim still exists")
+            if str(claimed_resolved) in _registered_worktrees(repo_dir):
+                raise RuntimeError(
+                    "worktree remover returned but its atomic claim is still registered"
+                )
+            if _path_exists_no_follow(path):
+                raise RuntimeError("original worktree path was recreated during claimed removal")
+        except BaseException:
+            if _path_exists_no_follow(claimed_path):
+                _restore_claimed_worktree(
+                    repo_dir=repo_dir,
+                    claimed_path=claimed_path,
+                    original_path=path,
+                )
+            raise
+    return archived
+
+
 def reconcile_worktrees(
     *,
     root: Path,
@@ -671,7 +934,7 @@ def reconcile_worktrees(
     apply: bool,
     only_paths: set[Path] | None = None,
     pre_remove: Callable[[WorktreeItem], None] | None = None,
-    remove_worktree: Callable[[Path], None] | None = None,
+    remove_worktree: _WorktreeRemover | None = None,
 ) -> WorktreeReport:
     """Classify and optionally retire terminal runner worktrees."""
     del root  # Kept explicit in the API because the caller's policy is root-scoped.
@@ -703,7 +966,13 @@ def reconcile_worktrees(
     reclaimed = 0
     archived = 0
     failures = 0
-    remover = remove_worktree or (lambda path: _remove_registered_worktree(repo_dir, path))
+    remover = remove_worktree or (
+        lambda path, final_guard: _remove_registered_worktree(
+            repo_dir,
+            path,
+            final_guard=final_guard,
+        )
+    )
     now = int(time.time())
     authoritative_main: RemoteProof | None = None
 
@@ -802,39 +1071,48 @@ def reconcile_worktrees(
                     action="removal_started",
                     observed_at=now,
                 )
+                was_archived = False
                 try:
                     if resolved is None:
                         raise RuntimeError("worktree path was not safely resolved")
-                    _validate_removal_target(
-                        repo_dir=repo_dir,
-                        worktrees_dir=worktrees_dir,
-                        path=path,
-                        expected_resolved=resolved,
-                        expected_head=item.head_oid,
-                    )
-                    if must_archive:
-                        archive_path, archive_sha = _archive_worktree(
-                            path,
-                            archive_dir=archive_dir,
-                            run_id=item.run_id or item.name,
-                            item=item,
-                            include_unique_commits=item.unique_commits,
-                            unique_commit_base_oid=item.main_oid,
-                            max_archive_bytes=max_terminal_bytes,
+                    if run is None:
+                        raise RuntimeError("runner ledger entry disappeared before removal")
+
+                    def runner_activity_check(
+                        current_resolved: Path,
+                        expected_run: dict[str, Any] = run,
+                        expected_resolved: Path = resolved,
+                    ) -> None:
+                        del current_resolved
+                        _runner_activity_check(
+                            ledger=ledger,
+                            expected_run=expected_run,
+                            expected_resolved=expected_resolved,
+                            pid_checker=pid_checker,
                         )
-                        item.archive_path = str(archive_path)
-                        item.archive_sha256 = archive_sha
-                        archived += 1
-                    if pre_remove is not None:
-                        pre_remove(item)
-                    _validate_removal_target(
+
+                    was_archived = _guarded_retire_worktree(
                         repo_dir=repo_dir,
                         worktrees_dir=worktrees_dir,
+                        archive_dir=archive_dir,
                         path=path,
                         expected_resolved=resolved,
-                        expected_head=item.head_oid,
+                        item=item,
+                        activity_checker=runner_activity_check,
+                        archive_id=item.run_id or item.name,
+                        archive_required=(item.unique_commits or item.state in DEBUG_OUTCOMES),
+                        max_archive_bytes=max_terminal_bytes,
+                        remover=remover,
+                        removal_lease=lambda run_id=item.run_id, worktree_path=path: (
+                            ledger.worktree_removal_lease(
+                                run_id=run_id,
+                                worktree_path=worktree_path,
+                            )
+                        ),
+                        pre_remove=pre_remove,
                     )
-                    remover(path)
+                    if was_archived:
+                        archived += 1
                     if path.exists():
                         raise RuntimeError(
                             "worktree removal returned but the directory still exists"
@@ -850,6 +1128,18 @@ def reconcile_worktrees(
                         action="removed",
                         observed_at=int(time.time()),
                     )
+                except _WorktreeBecameActive as exc:
+                    item.classification = "active"
+                    item.reason = str(exc)
+                    item.error = None
+                    item.pid_live = True
+                    item.planned_action = "retain"
+                    _record_event(
+                        ledger,
+                        item,
+                        action="retained",
+                        observed_at=int(time.time()),
+                    )
                 except Exception as exc:  # noqa: BLE001 - removal must fail closed
                     item.classification = "removal_failed"
                     item.reason = "terminal worktree cleanup failed"
@@ -862,6 +1152,9 @@ def reconcile_worktrees(
                         action="removal_failed",
                         observed_at=int(time.time()),
                     )
+                finally:
+                    if item.archive_path is not None and not was_archived:
+                        archived += 1
         elif apply:
             _record_event(
                 ledger,
@@ -916,7 +1209,7 @@ def reconcile_managed_worktrees(
     max_terminal_bytes: int,
     apply: bool,
     context_by_path: dict[str, dict[str, Any]] | None = None,
-    remove_worktree: Callable[[Path], None] | None = None,
+    remove_worktree: _WorktreeRemover | None = None,
 ) -> WorktreeReport:
     """Reconcile worktrees registered to the separate ``ws`` managed clone.
 
@@ -960,7 +1253,13 @@ def reconcile_managed_worktrees(
     reclaimed = 0
     archived = 0
     failures = 0
-    remover = remove_worktree or (lambda path: _remove_registered_worktree(repo_dir, path))
+    remover = remove_worktree or (
+        lambda path, final_guard: _remove_registered_worktree(
+            repo_dir,
+            path,
+            final_guard=final_guard,
+        )
+    )
     now = int(time.time())
     authoritative_main: RemoteProof | None = None
 
@@ -1097,38 +1396,50 @@ def reconcile_managed_worktrees(
             item.planned_action = "archive_remove" if must_archive else "remove"
             if apply:
                 _record_event(ledger, item, action="removal_started", observed_at=now)
+                was_archived = False
                 try:
                     if resolved is None:
                         raise RuntimeError("worktree path was not safely resolved")
-                    _validate_removal_target(
-                        repo_dir=repo_dir,
-                        worktrees_dir=worktrees_dir,
-                        path=path,
-                        expected_resolved=resolved,
-                        expected_head=item.head_oid,
-                    )
-                    if must_archive:
-                        archive_id = _managed_archive_id(item)
-                        archive_path, archive_sha = _archive_worktree(
-                            path,
-                            archive_dir=archive_dir,
-                            run_id=archive_id,
-                            item=item,
-                            include_unique_commits=item.unique_commits,
-                            unique_commit_base_oid=item.main_oid,
-                            max_archive_bytes=max_terminal_bytes,
+
+                    def managed_activity_check(
+                        current_resolved: Path,
+                        expected_item: WorktreeItem = item,
+                        expected_context: dict[str, Any] = context,
+                        original_resolved: Path = resolved,
+                    ) -> None:
+                        _managed_activity_check(
+                            ledger=ledger,
+                            item=expected_item,
+                            expected_context=expected_context,
+                            expected_resolved=original_resolved,
+                            additional_resolved=(
+                                current_resolved if current_resolved != original_resolved else None
+                            ),
+                            pid_checker=pid_checker,
+                            live_path_checker=live_path_checker,
                         )
-                        item.archive_path = str(archive_path)
-                        item.archive_sha256 = archive_sha
-                        archived += 1
-                    _validate_removal_target(
+
+                    was_archived = _guarded_retire_worktree(
                         repo_dir=repo_dir,
                         worktrees_dir=worktrees_dir,
+                        archive_dir=archive_dir,
                         path=path,
                         expected_resolved=resolved,
-                        expected_head=item.head_oid,
+                        item=item,
+                        activity_checker=managed_activity_check,
+                        archive_id=_managed_archive_id(item),
+                        archive_required=item.unique_commits,
+                        max_archive_bytes=max_terminal_bytes,
+                        remover=remover,
+                        removal_lease=lambda run_id=item.run_id, worktree_path=path: (
+                            ledger.worktree_removal_lease(
+                                run_id=run_id,
+                                worktree_path=worktree_path,
+                            )
+                        ),
                     )
-                    remover(path)
+                    if was_archived:
+                        archived += 1
                     if path.exists():
                         raise RuntimeError(
                             "worktree removal returned but the directory still exists"
@@ -1144,6 +1455,18 @@ def reconcile_managed_worktrees(
                         action="removed",
                         observed_at=int(time.time()),
                     )
+                except _WorktreeBecameActive as exc:
+                    item.classification = "active"
+                    item.reason = str(exc)
+                    item.error = None
+                    item.pid_live = True
+                    item.planned_action = "retain"
+                    _record_event(
+                        ledger,
+                        item,
+                        action="retained",
+                        observed_at=int(time.time()),
+                    )
                 except Exception as exc:  # noqa: BLE001 - removal must fail closed
                     item.classification = "removal_failed"
                     item.reason = "managed worktree cleanup failed"
@@ -1156,6 +1479,9 @@ def reconcile_managed_worktrees(
                         action="removal_failed",
                         observed_at=int(time.time()),
                     )
+                finally:
+                    if item.archive_path is not None and not was_archived:
+                        archived += 1
         elif apply:
             _record_event(ledger, item, action="retained", observed_at=now)
         items.append(item)
@@ -1226,6 +1552,83 @@ def _run_is_active(
     pid = run.get("pid")
     run_id = run.get("run_id")
     return bool(isinstance(pid, int) and isinstance(run_id, str) and pid_checker(pid, run_id))
+
+
+def _runner_activity_check(
+    *,
+    ledger: Ledger,
+    expected_run: dict[str, Any],
+    expected_resolved: Path,
+    pid_checker: Callable[[int, str], bool],
+) -> None:
+    matches: list[dict[str, Any]] = []
+    for run in ledger.worktree_runs():
+        raw_path = run.get("worktree_path")
+        if not isinstance(raw_path, str) or not raw_path:
+            continue
+        try:
+            current_path = Path(raw_path).resolve()
+        except OSError as exc:
+            raise RuntimeError(f"could not revalidate runner ledger path: {exc}") from exc
+        if current_path == expected_resolved:
+            matches.append(run)
+
+    if any(_run_is_active(run, pid_checker=pid_checker) for run in matches):
+        raise _WorktreeBecameActive("runner ledger or live process became active")
+    expected_run_id = expected_run.get("run_id")
+    if not matches or matches[-1].get("run_id") != expected_run_id:
+        raise RuntimeError("runner ledger association changed during reconciliation")
+    current_run = matches[-1]
+    stable_fields = (
+        "run_id",
+        "issue",
+        "state",
+        "pid",
+        "worktree_path",
+        "pr_number",
+        "branch",
+        "updated_at",
+        "heartbeat_at",
+    )
+    if any(current_run.get(field) != expected_run.get(field) for field in stable_fields):
+        raise RuntimeError("runner ledger changed during reconciliation")
+
+
+def _managed_activity_check(
+    *,
+    ledger: Ledger,
+    item: WorktreeItem,
+    expected_context: dict[str, Any],
+    expected_resolved: Path,
+    additional_resolved: Path | None,
+    pid_checker: Callable[[int, str], bool],
+    live_path_checker: Callable[[Path], bool],
+) -> None:
+    runs = ledger.worktree_runs()
+    if any(_run_is_active(run, pid_checker=pid_checker) for run in runs):
+        raise _WorktreeBecameActive("runner activity now protects managed worktrees")
+    if live_path_checker(expected_resolved):
+        raise _WorktreeBecameActive("managed worktree now has a live workspace reference")
+    if additional_resolved is not None and live_path_checker(additional_resolved):
+        raise _WorktreeBecameActive("claimed worktree now has a live workspace reference")
+
+    if item.run_id is None:
+        return
+    current = [run for run in runs if run.get("run_id") == item.run_id]
+    if len(current) != 1:
+        raise RuntimeError("managed worktree ledger context changed during reconciliation")
+    stable_fields = (
+        "run_id",
+        "issue",
+        "state",
+        "pid",
+        "pr_number",
+        "branch",
+        "updated_at",
+        "heartbeat_at",
+    )
+    if any(current[0].get(field) != expected_context.get(field) for field in stable_fields):
+        raise RuntimeError("managed worktree ledger context changed during reconciliation")
 
 
 def _runner_head_proof(
@@ -1416,6 +1819,112 @@ def _dirty_entry_count(path: Path) -> tuple[int, str | None]:
     return len([entry for entry in result.stdout.split(b"\0") if entry]), None
 
 
+def _worktree_state_snapshot(
+    worktree: Path,
+    *,
+    expected_head: str | None,
+) -> _WorktreeStateSnapshot:
+    head = subprocess.run(
+        ["git", "--no-replace-objects", "rev-parse", "--verify", "HEAD^{commit}"],
+        cwd=worktree,
+        env=_git_proof_env(),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if head.returncode != 0:
+        raise RuntimeError((head.stderr or head.stdout or "could not read worktree HEAD").strip())
+    head_oid = head.stdout.strip()
+    if expected_head is not None and head_oid != expected_head:
+        raise RuntimeError("worktree HEAD changed while its state was fingerprinted")
+
+    status = subprocess.run(
+        [
+            "git",
+            "--no-replace-objects",
+            "-c",
+            "core.fsmonitor=false",
+            "status",
+            "--porcelain=v1",
+            "-z",
+            "--untracked-files=all",
+        ],
+        cwd=worktree,
+        env=_git_proof_env(),
+        capture_output=True,
+        check=False,
+    )
+    if status.returncode != 0:
+        error = (status.stderr or b"git status failed").decode(errors="replace").strip()
+        raise RuntimeError(error)
+
+    candidates, workspace_root_metadata = _archive_candidates(worktree)
+    candidate_fingerprints = tuple(
+        _candidate_fingerprint_no_follow(
+            worktree=worktree,
+            source=source,
+            archive_name=archive_name,
+        )
+        for source, archive_name in sorted(candidates.items(), key=lambda pair: pair[1])
+    )
+    return _WorktreeStateSnapshot(
+        head_oid=head_oid,
+        dirty_entries=len([entry for entry in status.stdout.split(b"\0") if entry]),
+        status_sha256=hashlib.sha256(status.stdout).hexdigest(),
+        tracked_patch_sha256=_git_diff_sha256(worktree),
+        workspace_root_json=json.dumps(
+            workspace_root_metadata,
+            sort_keys=True,
+            separators=(",", ":"),
+        ),
+        candidates=candidate_fingerprints,
+    )
+
+
+def _git_diff_sha256(worktree: Path) -> str:
+    """Hash the binary tracked-state patch without buffering it in memory."""
+    digest = hashlib.sha256()
+    with tempfile.TemporaryFile(mode="w+b") as stderr_snapshot:
+        process = subprocess.Popen(
+            [
+                "git",
+                "--no-replace-objects",
+                "diff",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--binary",
+                "HEAD",
+            ],
+            cwd=worktree,
+            env=_git_proof_env(),
+            stdout=subprocess.PIPE,
+            stderr=stderr_snapshot,
+        )
+        if process.stdout is None:
+            process.kill()
+            process.wait()
+            raise RuntimeError("git diff did not expose a readable output stream")
+        try:
+            while True:
+                chunk = process.stdout.read(1024 * 1024)
+                if not chunk:
+                    break
+                digest.update(chunk)
+            returncode = process.wait()
+        except BaseException:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+            raise
+        finally:
+            process.stdout.close()
+        if returncode != 0:
+            stderr_snapshot.seek(0)
+            error = stderr_snapshot.read(64 * 1024).decode(errors="replace").strip()
+            raise RuntimeError(error or "git diff --binary failed")
+    return digest.hexdigest()
+
+
 def _directory_bytes(root: Path) -> int:
     try:
         root_stat = root.lstat()
@@ -1471,6 +1980,13 @@ def _archive_staging_pid(name: str) -> int | None:
         prefix, raw_pid, suffix = name.rsplit(".", 2)
     except ValueError:
         return None
+    if not raw_pid.isdigit():
+        try:
+            prefix, raw_pid, token, suffix = name.rsplit(".", 3)
+        except ValueError:
+            return None
+        if re.fullmatch(r"[0-9a-f]{24}", token) is None:
+            return None
     if not prefix.startswith(".") or suffix not in {"tmp", "bundle"} or not raw_pid.isdigit():
         return None
     pid = int(raw_pid)
@@ -1544,7 +2060,78 @@ def _directory_bytes_at(directory_fd: int, directory_stat: os.stat_result) -> in
     return total
 
 
-def _remove_registered_worktree(repo_dir: Path, path: Path) -> None:
+def _repair_registered_worktree(repo_dir: Path, path: Path) -> None:
+    repair = subprocess.run(
+        ["git", "worktree", "repair", str(path)],
+        cwd=repo_dir,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if repair.returncode != 0:
+        raise RuntimeError((repair.stderr or repair.stdout or "git worktree repair failed").strip())
+
+
+def _claim_registered_worktree(
+    *,
+    repo_dir: Path,
+    worktrees_dir: Path,
+    path: Path,
+    expected_resolved: Path,
+    expected_head: str | None,
+) -> Path:
+    """Atomically hide a removal target behind an unpredictable same-root claim."""
+    _validate_removal_target(
+        repo_dir=repo_dir,
+        worktrees_dir=worktrees_dir,
+        path=path,
+        expected_resolved=expected_resolved,
+        expected_head=expected_head,
+    )
+    expected_stat = path.lstat()
+    path_hash = hashlib.sha256(os.fsencode(path.name)).hexdigest()[:16]
+    claim_name = f".jobseek-remove-{path_hash}-{secrets.token_hex(16)}"
+    validate_child_name(claim_name)
+    claimed_path = path.parent / claim_name
+    if _path_exists_no_follow(claimed_path):
+        raise RuntimeError("unpredictable worktree removal claim already exists")
+    os.rename(path, claimed_path)
+    claimed_stat = claimed_path.lstat()
+    if not _same_inode(expected_stat, claimed_stat) or not stat.S_ISDIR(claimed_stat.st_mode):
+        raise RuntimeError("worktree changed while its removal claim was created")
+    try:
+        _repair_registered_worktree(repo_dir, claimed_path)
+    except BaseException:
+        if not _path_exists_no_follow(path):
+            os.rename(claimed_path, path)
+            _repair_registered_worktree(repo_dir, path)
+        raise
+    return claimed_path
+
+
+def _restore_claimed_worktree(
+    *,
+    repo_dir: Path,
+    claimed_path: Path,
+    original_path: Path,
+) -> None:
+    """Restore a failed claim only when the original name is still unoccupied."""
+    if _path_exists_no_follow(original_path):
+        raise RuntimeError(
+            f"original worktree path was recreated; retained claimed worktree at {claimed_path}"
+        )
+    os.rename(claimed_path, original_path)
+    _repair_registered_worktree(repo_dir, original_path)
+
+
+def _remove_registered_worktree(
+    repo_dir: Path,
+    path: Path,
+    *,
+    final_guard: _RemovalGuard,
+) -> None:
+    """Remove after the caller exclusively fences every supported runner writer."""
+    final_guard()
     result = subprocess.run(
         ["git", "worktree", "remove", "--force", str(path)],
         cwd=repo_dir,
@@ -1556,6 +2143,78 @@ def _remove_registered_worktree(repo_dir: Path, path: Path) -> None:
         raise RuntimeError((result.stderr or result.stdout or "git worktree remove failed").strip())
 
 
+def _publish_archive(
+    temporary: Path,
+    destination: Path,
+    *,
+    final_guard: _RemovalGuard,
+) -> None:
+    """Publish immutably, then retract the new link if source proof changed."""
+    temporary_stat = temporary.lstat()
+    try:
+        os.link(temporary, destination, follow_symlinks=False)
+    except FileExistsError as exc:
+        raise RuntimeError(f"immutable worktree archive already exists: {destination}") from exc
+    try:
+        published_stat = destination.lstat()
+        if not _same_inode(temporary_stat, published_stat):
+            raise RuntimeError("published worktree archive does not match its staging inode")
+        final_guard()
+    except BaseException:
+        archive_fd = open_absolute_directory_no_follow(destination.parent)
+        try:
+            current = os.stat(destination.name, dir_fd=archive_fd, follow_symlinks=False)
+            if not _same_inode(current, temporary_stat):
+                raise RuntimeError("published worktree archive changed before retraction")
+            unlink_child_at(archive_fd, destination.name, expected=current)
+        finally:
+            os.close(archive_fd)
+        raise
+
+
+def _worktree_snapshot_sha256(snapshot: _WorktreeStateSnapshot) -> str:
+    payload = json.dumps(
+        asdict(snapshot),
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _archive_candidates(worktree: Path) -> tuple[dict[Path, str], dict[str, Any] | None]:
+    untracked = subprocess.run(
+        [
+            "git",
+            "--no-replace-objects",
+            "-c",
+            "core.fsmonitor=false",
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+            "-z",
+        ],
+        cwd=worktree,
+        env=_git_proof_env(),
+        capture_output=True,
+        check=False,
+    )
+    if untracked.returncode != 0:
+        error = (untracked.stderr or b"git ls-files failed").decode(errors="replace").strip()
+        raise RuntimeError(error)
+    candidates: dict[Path, str] = {}
+    for raw in untracked.stdout.split(b"\0"):
+        if raw:
+            relative = Path(os.fsdecode(raw))
+            candidates[worktree / relative] = f"untracked/{relative.as_posix()}"
+    workspace_root = worktree / "apps" / "crawler" / ".workspace"
+    workspace_candidates, workspace_root_metadata = _workspace_archive_candidates(
+        worktree=worktree,
+        workspace_root=workspace_root,
+    )
+    candidates.update(workspace_candidates)
+    return candidates, workspace_root_metadata
+
+
 def _archive_worktree(
     worktree: Path,
     *,
@@ -1565,9 +2224,16 @@ def _archive_worktree(
     include_unique_commits: bool = False,
     unique_commit_base_oid: str | None = None,
     max_archive_bytes: int,
+    expected_snapshot: _WorktreeStateSnapshot,
+    pre_publish_check: Callable[[], None],
 ) -> tuple[Path, str]:
     safe_run_id = "".join(char if char.isalnum() or char in "-_." else "_" for char in run_id)
-    destination = archive_dir / f"{safe_run_id}.tar.gz"
+    source_snapshot_sha256 = _worktree_snapshot_sha256(expected_snapshot)
+    archive_token = secrets.token_hex(12)
+    destination = (
+        archive_dir / f"{safe_run_id}-{source_snapshot_sha256[:24]}-{archive_token}.tar.gz"
+    )
+    _prune_stale_archive_staging(archive_dir)
     base_projected_bytes = max(1, item.bytes + 1024 * 1024)
     if include_unique_commits:
         if unique_commit_base_oid is None:
@@ -1576,7 +2242,6 @@ def _archive_worktree(
             worktree,
             base_oid=unique_commit_base_oid,
         )
-    _prune_stale_archive_staging(archive_dir)
     current_archive_bytes = _directory_bytes(archive_dir)
     replaced_destination_bytes = _regular_file_bytes_no_follow(destination)
     retained_archive_bytes = max(0, current_archive_bytes - replaced_destination_bytes)
@@ -1593,6 +2258,16 @@ def _archive_worktree(
             snapshot=patch_snapshot,
             max_bytes=patch_budget,
         )
+        patch_snapshot.seek(0)
+        patch_sha256 = hashlib.sha256()
+        while True:
+            chunk = patch_snapshot.read(1024 * 1024)
+            if not chunk:
+                break
+            patch_sha256.update(chunk)
+        if patch_sha256.hexdigest() != expected_snapshot.tracked_patch_sha256:
+            raise RuntimeError("tracked worktree state changed while creating its archive")
+        patch_snapshot.seek(0)
         projected_bytes = base_projected_bytes + patch_bytes
         if retained_archive_bytes + projected_bytes > max_archive_bytes:
             raise RuntimeError(
@@ -1612,6 +2287,9 @@ def _archive_worktree(
             retained_archive_bytes=retained_archive_bytes,
             patch_snapshot=patch_snapshot,
             patch_bytes=patch_bytes,
+            expected_snapshot=expected_snapshot,
+            pre_publish_check=pre_publish_check,
+            source_snapshot_sha256=source_snapshot_sha256,
         )
 
 
@@ -1690,30 +2368,18 @@ def _archive_worktree_from_patch_snapshot(
     retained_archive_bytes: int,
     patch_snapshot: Any,
     patch_bytes: int,
+    expected_snapshot: _WorktreeStateSnapshot,
+    pre_publish_check: Callable[[], None],
+    source_snapshot_sha256: str,
 ) -> tuple[Path, str]:
 
     archive_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(archive_dir, 0o700)
-    temporary = archive_dir / f".{safe_run_id}.{os.getpid()}.tmp"
-    bundle_path = archive_dir / f".{safe_run_id}.{os.getpid()}.bundle"
+    staging_token = secrets.token_hex(12)
+    temporary = archive_dir / f".{safe_run_id}.{os.getpid()}.{staging_token}.tmp"
+    bundle_path = archive_dir / f".{safe_run_id}.{os.getpid()}.{staging_token}.bundle"
 
-    untracked = subprocess.run(
-        ["git", "ls-files", "--others", "--exclude-standard", "-z"],
-        cwd=worktree,
-        capture_output=True,
-        check=True,
-    ).stdout
-    candidates: dict[Path, str] = {}
-    for raw in untracked.split(b"\0"):
-        if raw:
-            relative = Path(os.fsdecode(raw))
-            candidates[worktree / relative] = f"untracked/{relative.as_posix()}"
-    workspace_root = worktree / "apps" / "crawler" / ".workspace"
-    workspace_candidates, workspace_root_metadata = _workspace_archive_candidates(
-        worktree=worktree,
-        workspace_root=workspace_root,
-    )
-    candidates.update(workspace_candidates)
+    candidates, workspace_root_metadata = _archive_candidates(worktree)
 
     inventory = []
     bundle_manifest: dict[str, Any] | None = None
@@ -1798,6 +2464,20 @@ def _archive_worktree_from_patch_snapshot(
                             archive_name=archive_name,
                         )
                     )
+                archived_candidates = tuple(
+                    _inventory_fingerprint(candidate) for candidate in inventory
+                )
+                if archived_candidates != expected_snapshot.candidates:
+                    raise RuntimeError(
+                        "untracked or workspace evidence changed while creating its archive"
+                    )
+                workspace_root_json = json.dumps(
+                    workspace_root_metadata,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                if workspace_root_json != expected_snapshot.workspace_root_json:
+                    raise RuntimeError("workspace evidence root changed while creating its archive")
                 manifest = {
                     "schema_version": 1,
                     "created_at": int(time.time()),
@@ -1813,6 +2493,7 @@ def _archive_worktree_from_patch_snapshot(
                     "unique_commit_bundle": bundle_manifest,
                     "remote_proof": item.remote_proof,
                     "tracked_patch_bytes": patch_bytes,
+                    "source_snapshot_sha256": source_snapshot_sha256,
                     "workspace_root": workspace_root_metadata,
                     "files": inventory,
                 }
@@ -1838,12 +2519,105 @@ def _archive_worktree_from_patch_snapshot(
                 f"({retained_archive_bytes} retained + {temporary_bytes} actual > "
                 f"{max_archive_bytes} bytes)"
             )
-        os.replace(temporary, destination)
+        _publish_archive(
+            temporary,
+            destination,
+            final_guard=pre_publish_check,
+        )
     finally:
         temporary.unlink(missing_ok=True)
         bundle_path.unlink(missing_ok=True)
     digest, _ = _hash_file(destination)
     return destination, digest
+
+
+def _inventory_fingerprint(candidate: dict[str, Any]) -> _ArchiveCandidateFingerprint:
+    kind = str(candidate.get("type") or "")
+    sha256 = candidate.get("sha256")
+    if kind == "symlink":
+        sha256 = candidate.get("target_sha256")
+    return _ArchiveCandidateFingerprint(
+        source=str(candidate.get("source") or ""),
+        archive_name=str(candidate.get("archive_name") or ""),
+        kind=kind,
+        mode=int(candidate.get("mode") or 0),
+        bytes=(int(candidate["bytes"]) if isinstance(candidate.get("bytes"), int) else None),
+        sha256=str(sha256) if isinstance(sha256, str) else None,
+    )
+
+
+def _candidate_fingerprint_no_follow(
+    *,
+    worktree: Path,
+    source: Path,
+    archive_name: str,
+) -> _ArchiveCandidateFingerprint:
+    """Hash one archive candidate through a descriptor-anchored, no-follow read."""
+    try:
+        relative = source.relative_to(worktree)
+    except ValueError as exc:
+        raise RuntimeError(f"archive candidate escapes worktree: {source}") from exc
+
+    parent_fd, final_name = _open_parent_directory_no_follow(worktree, relative)
+    try:
+        entry_stat = os.stat(final_name, dir_fd=parent_fd, follow_symlinks=False)
+        mode = entry_stat.st_mode & 0o777
+        if stat.S_ISLNK(entry_stat.st_mode):
+            target = os.readlink(final_name, dir_fd=parent_fd)
+            current = os.stat(final_name, dir_fd=parent_fd, follow_symlinks=False)
+            if (
+                not _same_inode(current, entry_stat)
+                or current.st_mtime_ns != entry_stat.st_mtime_ns
+            ):
+                raise RuntimeError(f"archive candidate changed while reading: {relative}")
+            return _ArchiveCandidateFingerprint(
+                source=relative.as_posix(),
+                archive_name=archive_name,
+                kind="symlink",
+                mode=mode,
+                sha256=hashlib.sha256(os.fsencode(target)).hexdigest(),
+            )
+        if not stat.S_ISREG(entry_stat.st_mode):
+            raise RuntimeError(f"archive candidate is not a regular file or symlink: {relative}")
+
+        file_flags = os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+        file_fd = os.open(final_name, file_flags, dir_fd=parent_fd)
+        try:
+            opened_stat = os.fstat(file_fd)
+            if not stat.S_ISREG(opened_stat.st_mode) or not _same_inode(opened_stat, entry_stat):
+                raise RuntimeError(f"archive candidate changed while opening: {relative}")
+            digest = hashlib.sha256()
+            size = 0
+            while True:
+                chunk = os.read(file_fd, 1024 * 1024)
+                if not chunk:
+                    break
+                digest.update(chunk)
+                size += len(chunk)
+            final_stat = os.fstat(file_fd)
+            current = os.stat(final_name, dir_fd=parent_fd, follow_symlinks=False)
+            if (
+                not _same_inode(current, entry_stat)
+                or final_stat.st_size != opened_stat.st_size
+                or final_stat.st_mtime_ns != opened_stat.st_mtime_ns
+                or size != opened_stat.st_size
+            ):
+                raise RuntimeError(f"archive candidate changed while reading: {relative}")
+        finally:
+            os.close(file_fd)
+    except OSError as exc:
+        raise RuntimeError(f"unsafe archive candidate {relative}: {exc}") from exc
+    finally:
+        os.close(parent_fd)
+
+    return _ArchiveCandidateFingerprint(
+        source=relative.as_posix(),
+        archive_name=archive_name,
+        kind="file",
+        mode=mode,
+        bytes=size,
+        sha256=digest.hexdigest(),
+    )
 
 
 def _tar_add_candidate_no_follow(
@@ -1874,7 +2648,8 @@ def _tar_add_candidate_no_follow(
                 "archive_name": archive_name,
                 "source": relative.as_posix(),
                 "type": "symlink",
-                "target_sha256": hashlib.sha256(target.encode()).hexdigest(),
+                "mode": entry_stat.st_mode & 0o777,
+                "target_sha256": hashlib.sha256(os.fsencode(target)).hexdigest(),
             }
         if not stat.S_ISREG(entry_stat.st_mode):
             raise RuntimeError(f"archive candidate is not a regular file or symlink: {relative}")
@@ -1923,6 +2698,7 @@ def _tar_add_candidate_no_follow(
         "archive_name": archive_name,
         "source": relative.as_posix(),
         "type": "file",
+        "mode": opened_stat.st_mode & 0o777,
         "bytes": size,
         "sha256": digest.hexdigest(),
     }

@@ -1718,6 +1718,40 @@ def test_failed_run_is_retryable_and_releases_own_claim(monkeypatch, tmp_path: P
     assert github.deleted == [10]
 
 
+def test_codex_process_runs_under_shared_worktree_execution_lease(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path, dry_run=False)
+    repo = tmp_path / "repo"
+    (repo / "apps" / "crawler").mkdir(parents=True)
+    lock_glob = config.ledger_path.parent / "worktree-execution-leases" / "*.lock"
+    script = (
+        "import fcntl, glob; "
+        f"path = glob.glob({str(lock_glob)!r})[0]; "
+        "handle = open(path, 'rb'); "
+        "\ntry:\n"
+        " fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)\n"
+        "except BlockingIOError:\n print('shared-lease-held')\n"
+        "else:\n print('exclusive-lease-acquired')\n"
+    )
+    config = RunnerConfig(
+        root=config.root,
+        repo_dir=repo,
+        max_runtime_s=5,
+        dry_run=False,
+        codex_args=("python3", "-c", script),
+    ).resolved()
+    governor = CompanyResolverGovernor(config, github=FakeGitHub(issue=101))
+    monkeypatch.setattr(governor, "_prepare_worktree", lambda admission: repo)
+
+    result = governor.run_once()
+
+    assert result.trace_path is not None
+    assert "shared-lease-held" in result.trace_path.read_text()
+    assert "exclusive-lease-acquired" not in result.trace_path.read_text()
+
+
 def test_zero_exit_without_terminal_outcome_is_retryable(monkeypatch, tmp_path: Path) -> None:
     config = _config(tmp_path, dry_run=False)
     repo = tmp_path / "repo"
