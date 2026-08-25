@@ -29,6 +29,7 @@ from typing import Any
 from src.workspace.safe_cleanup import (
     open_absolute_directory_no_follow,
     open_child_directory_no_follow,
+    recover_pending_rmtree_claims,
     rmtree_child_at,
     unlink_child_at,
 )
@@ -2340,6 +2341,7 @@ class CompanyResolverGovernor:
             if safe_root is None or safe_root in seen:
                 continue
             seen.add(safe_root)
+            recover_pending_rmtree_claims(safe_root)
             for workspace_dir in _workspace_dirs_for_issue(safe_root, issue):
                 self._cleanup_workspace_dir(workspace_dir, safe_root)
 

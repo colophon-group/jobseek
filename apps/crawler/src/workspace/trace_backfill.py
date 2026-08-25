@@ -25,6 +25,7 @@ from src.workspace.safe_cleanup import (
     claim_child_at,
     directory_open_flags,
     open_absolute_directory_no_follow,
+    recover_pending_rmtree_claims,
     restore_claimed_child_at,
     safe_rmtree_child,
     unlink_claimed_child_at,
@@ -540,12 +541,11 @@ def inventory_automation_sessions(
             unparseable.append(path)
             continue
         cwd = str(metadata.get("cwd") or "")
-        run_id = _run_id_for_cwd(cwd, run_worktrees)
-        if run_id is None:
-            match = _RUN_ID_FROM_CWD_RE.search(cwd)
-            run_id = match.group("run_id") if match else None
-            if run_id is not None and known_run_ids is not None and run_id not in known_run_ids:
-                run_id = None
+        run_id = _run_id_for_session_cwd(
+            cwd,
+            run_worktrees=run_worktrees,
+            known_run_ids=known_run_ids,
+        )
         if run_id is None:
             unlinked.append(path)
             continue
@@ -784,6 +784,42 @@ def _run_id_for_cwd(cwd: str, run_worktrees: dict[str, Path]) -> str | None:
     return None
 
 
+def _run_id_for_session_cwd(
+    cwd: str,
+    *,
+    run_worktrees: dict[str, Path],
+    known_run_ids: set[str] | None,
+) -> str | None:
+    """Resolve a session to a run without overriding an authoritative ledger path."""
+    mapped = _run_id_for_cwd(cwd, run_worktrees)
+    if mapped is not None:
+        return mapped
+    match = _RUN_ID_FROM_CWD_RE.search(cwd)
+    candidate = match.group("run_id") if match else None
+    if candidate is None or not _cwd_has_supported_run_segment(cwd, candidate):
+        return None
+    if known_run_ids is None:
+        return candidate
+    if candidate not in known_run_ids:
+        return None
+    # A ledger worktree is authoritative. A syntactic occurrence of the same
+    # run ID elsewhere must not relink unrelated retained evidence.
+    if candidate in run_worktrees:
+        return None
+    return candidate
+
+
+def _cwd_has_supported_run_segment(cwd: str, run_id: str) -> bool:
+    for segment in Path(os.path.abspath(cwd)).parts:
+        if segment == run_id:
+            return True
+        if run_id.startswith("issue-") and segment.endswith(f"-{run_id}"):
+            prefix = segment.removesuffix(f"-{run_id}")
+            if re.fullmatch(r"company-request-\d+", prefix):
+                return True
+    return False
+
+
 def _ledger_run(ledger_path: Path, run_id: str) -> dict[str, Any]:
     conn = sqlite3.connect(ledger_path)
     conn.row_factory = sqlite3.Row
@@ -1001,6 +1037,7 @@ def build_bundle(
     snapshot_dir = created.resolve(strict=True)
     if snapshot_dir.parent != created_parent or not snapshot_dir.is_dir():
         raise RuntimeError("temporary source snapshot root escaped its canonical parent")
+    recover_pending_rmtree_claims(created_parent)
     try:
         return _build_bundle_from_snapshots(
             run_id=run_id,
@@ -1035,6 +1072,7 @@ def _build_bundle_from_snapshots(
         else discover_sessions(codex_home, run_id, ledger_path=ledger_path)
     )
     run_worktrees = _ledger_worktree_paths(ledger_path)
+    known_run_ids = _ledger_run_ids(ledger_path)
     session_snapshots: list[tuple[SessionSource, SessionSource, _SourceSnapshot]] = []
     for index, source in enumerate(sessions):
         snapshot = _snapshot_source(
@@ -1049,10 +1087,11 @@ def _build_bundle_from_snapshots(
         if metadata is None:
             raise RuntimeError(f"Codex session metadata is invalid: {source.path}")
         cwd = str(metadata.get("cwd") or "")
-        mapped_run_id = _run_id_for_cwd(cwd, run_worktrees)
-        if mapped_run_id is None:
-            match = _RUN_ID_FROM_CWD_RE.search(cwd)
-            mapped_run_id = match.group("run_id") if match else None
+        mapped_run_id = _run_id_for_session_cwd(
+            cwd,
+            run_worktrees=run_worktrees,
+            known_run_ids=known_run_ids,
+        )
         if mapped_run_id != run_id:
             raise RuntimeError(f"Codex session no longer belongs to {run_id}: {source.path}")
         session_snapshots.append(

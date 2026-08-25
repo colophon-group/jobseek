@@ -976,6 +976,42 @@ def test_stale_syntactic_run_id_without_ledger_row_is_an_orphan(tmp_path: Path) 
     )
 
 
+def test_known_run_id_outside_authoritative_worktree_remains_unlinked(
+    tmp_path: Path,
+) -> None:
+    runner_root = tmp_path / "runner"
+    codex_home = tmp_path / "codex-home"
+    ledger = RunnerLedger(runner_root / "state" / "ledger.sqlite")
+    run_id = "daily-error-review-2026-08-24-100-abcd1234"
+    worktree = runner_root / "worktrees" / run_id
+    assert ledger.acquire(run_id=run_id, issue=None, active_slot="daily-error-review")
+    ledger.update(run_id, worktree_path=str(worktree))
+    ledger.finish(run_id, "failed")
+    unrelated_cwd = tmp_path / "unrelated" / run_id / "work"
+    session = codex_home / "sessions" / "2026" / "08" / "24" / "unrelated.jsonl"
+    records = [
+        _session_meta(thread_id="unrelated", cwd=str(unrelated_cwd), source="exec"),
+        _message("user", "unrelated evidence"),
+        _message("assistant", "done", phase="final_answer"),
+    ]
+    _write_jsonl(session, records)
+
+    inventory = inventory_automation_sessions(codex_home, ledger_path=ledger.path)
+
+    assert run_id not in inventory.by_run
+    assert inventory.unlinked == (session,)
+    with pytest.raises(RuntimeError, match="no longer belongs"):
+        build_bundle(
+            run_id=run_id,
+            runner_root=runner_root,
+            codex_home=codex_home,
+            output_dir=tmp_path / "bundle",
+            sessions=[SessionSource(path=session, metadata=records[0]["payload"])],
+        )
+    assert session.exists()
+    assert "unrelated evidence" in session.read_text()
+
+
 def test_backfill_all_batches_tiers_and_cleans(monkeypatch, tmp_path: Path) -> None:
     runner_root = tmp_path / "runner"
     codex_home = tmp_path / "home" / ".codex"
