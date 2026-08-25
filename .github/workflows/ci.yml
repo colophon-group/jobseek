@@ -691,6 +691,7 @@ jobs:
           tests/test_recruitee.py
           tests/test_smartrecruiters.py
           tests/test_hm_group_boards.py
+          tests/test_smartrecruiters_canonical_identity.py
           tests/test_talentbrew.py
           --cov=src.core.monitors.recruitee
           --cov=src.core.monitors.smartrecruiters
