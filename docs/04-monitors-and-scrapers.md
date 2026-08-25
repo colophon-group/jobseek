@@ -6,7 +6,7 @@ Monitors discover which jobs exist on a board. Scrapers extract details from ind
 
 Monitors fall into two categories:
 
-- **Rich monitors** return complete `DiscoveredJob` data (title, description, locations, etc.) in a single request. The batch processor inserts this directly — no scraper step is needed.
+- **Rich monitors** return complete `DiscoveredJob` data (title, description, locations, etc.), normally from a single provider response. The batch processor inserts this directly — no scraper step is needed.
 - **URL-only monitors** return a set of job page URLs. Each URL is then scraped individually to extract job details. Most URL-only monitors auto-configure their scraper (see `auto_scraper_type()` in `_compat.py`).
 
 Cost implications:
@@ -22,7 +22,20 @@ An earlier design had monitors that listed jobs (1 call) then fetched each detai
 3. **Slow cycles**: A board with 500 jobs takes minutes to poll instead of seconds.
 4. **Fragile coupling**: Monitor failures (e.g. one detail page 404) could break the entire discovery cycle.
 
-The fix: monitors return URLs only (1 cheap call), scrapers fetch details on a daily schedule (N calls, amortized). This is enforced by design — `register()` accepts `rich=True` (single-call full data) or `rich=False` (URL set). There is no mechanism for a monitor to make per-job detail requests. If a new ATS needs per-job detail fetching, implement it as a scraper, not inside the monitor.
+The default fix is for monitors to return URLs only (1 cheap call), while
+scrapers fetch details on a daily schedule (N calls, amortized). New ATS
+integrations that need per-job detail fetching belong in a scraper. A narrowly
+bounded company-specific monitor may be an explicit exception only when the
+official listing cannot establish stable provider identity or active lifecycle
+without detail pages and treating detail failure as a failed discovery cycle is
+safer than accepting a partial inventory. Unisanté is such an exception: its
+listing omits provider references and deadlines, while its detail JSON-LD is
+not a usable description source. Its mutable detail aliases are retained only
+as read targets; stored identities use the live official listing URL keyed by
+the displayed reference (`/index.php/offres?reference=<id>`). A bounded,
+receipt-backed pre-diff migration rewrites legacy aliases in place when no
+canonical row exists, retires aliases when one does, and retires legacy rows
+whose detail deadline is no longer in the active official inventory.
 
 ## Monitors
 
@@ -105,6 +118,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `traffit` | Rich | skip | Traffit ATS |
 | `typify` | Rich + enrichment | json-ld | Typify function-partitioned vacancy API plus JSON-LD description enrichment |
 | `ukg` | Rich | embedded | UKG Pro public paginated search API plus embedded detail enrichment |
+| `unisante` | Rich | skip | Unisanté dual-alias official inventory with bounded visible-detail validation |
 | `welcometothejungle` | Rich | skip | Welcome to the Jungle public jobs APIs |
 | `workable` | URL-only | workable | Workable ATS |
 | `workday` | URL-only | workday | Workday ATS |
@@ -123,7 +137,13 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `api_sniffer` | Conditional* | skip/— | XHR/fetch capture; rich when `fields` is configured |
 | `dom` | Conditional* | — | Last resort — link extraction, or partial rich static listing rows with `rich_rows` |
 
-Rich monitors return complete job data in a single request — no scraper needed. URL-only monitors with auto-scrapers need no manual scraper selection; the scraper is configured automatically. Monitors marked "—" require manual scraper selection. Conditional monitors return rich data only under the condition named in the table; otherwise they need a scraper or runtime coverage check.
+Rich monitors return complete job data during discovery — no scraper needed.
+Except for the documented, bounded Unisanté lifecycle/identity case, they do so
+without per-job detail requests. URL-only monitors with auto-scrapers need no
+manual scraper selection; the scraper is configured automatically. Monitors
+marked "—" require manual scraper selection. Conditional monitors return rich
+data only under the condition named in the table; otherwise they need a scraper
+or runtime coverage check.
 
 `headhunter`, `jobstreet`, `linkedin`, and `paylocity` are partial-rich exceptions: their
 listing responses provide clean summary fields while their auto-configured

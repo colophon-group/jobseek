@@ -75,6 +75,7 @@ _AUTO_SKIP_CRAWLER_TYPES: tuple[str, ...] = (
     "traffit",
     "turbohire",
     "unifr",
+    "unisante",
     "welcometothejungle",
 )
 

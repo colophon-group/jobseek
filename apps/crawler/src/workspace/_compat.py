@@ -106,6 +106,7 @@ _RICH_MONITORS: frozenset[str] = frozenset(
         "typify",
         "ukg",
         "unifr",
+        "unisante",
         "welcometothejungle",
     }
 )

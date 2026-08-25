@@ -88,6 +88,7 @@ from src.queries.monitor import (
     _INSERT_URL_ONLY_JOBS,
     _INSERT_URL_ONLY_JOBS_DURABLE,
     _MARK_GONE_BY_TIMESTAMP,
+    _MIGRATE_UNISANTE_PROVIDER_IDENTITIES,
     _RECORD_BOARD_GONE,
     _RECORD_EMPTY_CHECK,
     _RECORD_FAILURE,
@@ -130,6 +131,17 @@ _batch = _BatchLookups()
 _MERCK_IDENTITY_MIGRATION = "merck-phenom-stable-id-v1"
 _MERCK_IDENTITY_MIGRATION_VERSION = 1
 _IDENTITY_MIGRATION_RECEIPT_KEY = "_identity_migration_receipt"
+_UNISANTE_IDENTITY_MIGRATION = "unisante-provider-reference-v1"
+_UNISANTE_IDENTITY_MIGRATION_VERSION = 1
+_UNISANTE_IDENTITY_MIGRATION_MAX_ROWS = 50
+_UNISANTE_CANONICAL_URL_PATTERN = (
+    r"^https://emploi[.]unisante[.]ch/index[.]php/offres[?]"
+    r"reference=([1-9][0-9]{0,8})$"
+)
+_UNISANTE_DETAIL_URL_PATTERN = (
+    r"^https://emploi[.]unisante[.]ch/index[.]php/offre/"
+    r"[a-z0-9]+(?:-[a-z0-9]+)*/?$"
+)
 _MERCK_IDENTITY_MIGRATION_CONTRACTS = {
     "merck-br-pt": (
         "https://careers.merckgroup.com/br/pt/search-results",
@@ -559,6 +571,157 @@ def _setting(md: dict, key: str, default: float) -> float:
     """
     val = md.get(key)
     return default if val is None else float(val)
+
+
+def _unisante_receipt_matches(receipt: object) -> bool:
+    if not isinstance(receipt, dict) or set(receipt) != {
+        "id",
+        "version",
+        "completed_at",
+        "updated_count",
+        "retired_count",
+    }:
+        return False
+    updated = receipt.get("updated_count")
+    retired = receipt.get("retired_count")
+    return (
+        receipt.get("id") == _UNISANTE_IDENTITY_MIGRATION
+        and receipt.get("version") == _UNISANTE_IDENTITY_MIGRATION_VERSION
+        and isinstance(receipt.get("completed_at"), str)
+        and bool(receipt.get("completed_at"))
+        and isinstance(updated, int)
+        and not isinstance(updated, bool)
+        and 0 <= updated <= _UNISANTE_IDENTITY_MIGRATION_MAX_ROWS
+        and isinstance(retired, int)
+        and not isinstance(retired, bool)
+        and 0 <= retired <= _UNISANTE_IDENTITY_MIGRATION_MAX_ROWS
+    )
+
+
+async def _migrate_unisante_provider_identities(
+    conn: asyncpg.Connection,
+    *,
+    board_id: str,
+    company_id: str,
+    board_slug: str | None,
+    board_url: str,
+    crawler_type: str,
+    metadata: dict | None,
+    jobs_by_url: dict | None,
+    truncated: bool,
+    extraction_filtered: int,
+    security_filtered: int,
+    board_log: structlog.stdlib.BoundLogger,
+) -> int:
+    """Migrate mutable Unisanté detail aliases before ordinary diff writes.
+
+    When no stable reference URL exists yet, SQL rewrites the oldest matching
+    alias in place, preserving its posting ID. If a canonical row already
+    exists, it remains authoritative and aliases are retired without risking a
+    global ``source_url`` unique conflict. The current rich batch subsequently
+    refreshes whichever row owns the canonical identity.
+    """
+    md = metadata or {}
+    if md.get("identity_migration") != _UNISANTE_IDENTITY_MIGRATION:
+        return 0
+    if (
+        board_slug != "unisante-emploi"
+        or board_url != "https://emploi.unisante.ch/index.php/offres"
+        or crawler_type != "unisante"
+    ):
+        raise RuntimeError("Unisanté identity migration contract mismatch")
+
+    configured_receipt = md.get(_IDENTITY_MIGRATION_RECEIPT_KEY)
+    if configured_receipt is not None:
+        if _unisante_receipt_matches(configured_receipt):
+            return 0
+        raise RuntimeError("Unisanté identity migration receipt mismatch")
+    if truncated or extraction_filtered or security_filtered:
+        raise RuntimeError("Unisanté identity migration requires an unfiltered complete batch")
+    if not jobs_by_url or len(jobs_by_url) > _UNISANTE_IDENTITY_MIGRATION_MAX_ROWS:
+        raise RuntimeError("Unisanté identity migration requires a bounded nonempty rich batch")
+
+    canonical_urls: list[str] = []
+    detail_urls: list[str] = []
+    for canonical_url in sorted(jobs_by_url):
+        canonical = re.fullmatch(_UNISANTE_CANONICAL_URL_PATTERN, canonical_url)
+        job = jobs_by_url[canonical_url]
+        job_metadata = job.metadata if isinstance(job.metadata, dict) else {}
+        reference = job_metadata.get("provider_reference")
+        detail_url = job_metadata.get("detail_url")
+        if canonical is None or reference != canonical.group(1):
+            raise RuntimeError("Unisanté rich job has an invalid canonical reference identity")
+        if (
+            not isinstance(detail_url, str)
+            or re.fullmatch(_UNISANTE_DETAIL_URL_PATTERN, detail_url) is None
+        ):
+            raise RuntimeError("Unisanté rich job has an invalid official detail alias")
+        canonical_urls.append(canonical_url)
+        detail_urls.append(detail_url)
+    if len(set(detail_urls)) != len(detail_urls):
+        raise RuntimeError("Unisanté rich jobs repeat an official detail alias")
+
+    base_receipt = {
+        "id": _UNISANTE_IDENTITY_MIGRATION,
+        "version": _UNISANTE_IDENTITY_MIGRATION_VERSION,
+    }
+    row = await conn.fetchrow(
+        _MIGRATE_UNISANTE_PROVIDER_IDENTITIES,
+        board_id,
+        company_id,
+        canonical_urls,
+        detail_urls,
+        _UNISANTE_IDENTITY_MIGRATION_MAX_ROWS,
+        json.dumps(base_receipt),
+    )
+    if row is None:
+        raise RuntimeError("Unisanté identity migration returned no result")
+    existing_receipt = row["existing_receipt"]
+    if isinstance(existing_receipt, str):
+        existing_receipt = json.loads(existing_receipt)
+    if existing_receipt is not None:
+        if _unisante_receipt_matches(existing_receipt):
+            return 0
+        raise RuntimeError("Unisanté database identity migration receipt mismatch")
+
+    discovered = int(row["discovered"])
+    valid = int(row["valid"])
+    conflicts = int(row["conflicts"])
+    unknown = int(row["unknown"])
+    candidates = int(row["candidates"])
+    legacy = int(row["legacy"])
+    updated = int(row["updated"])
+    retired = int(row["retired"])
+    if (
+        not bool(row["may_migrate"])
+        or not bool(row["receipt_written"])
+        or discovered != len(canonical_urls)
+        or valid != discovered
+        or conflicts
+        or unknown
+        or updated + retired != legacy
+    ):
+        board_log.error(
+            "batch.monitor.unisante_identity_migration_blocked",
+            active=int(row["active"]),
+            legacy=legacy,
+            canonical=int(row["canonical"]),
+            unknown=unknown,
+            discovered=discovered,
+            valid=valid,
+            conflicts=conflicts,
+            candidates=candidates,
+            existing_canonicals=int(row["existing_canonicals"]),
+            updated=updated,
+            retired=retired,
+        )
+        raise RuntimeError("Unisanté identity migration safety gate blocked")
+    board_log.info(
+        "batch.monitor.unisante_identity_migration_completed",
+        updated=updated,
+        retired=retired,
+    )
+    return retired
 
 
 async def _retire_canonicalized_provider_identities(
@@ -1594,6 +1757,8 @@ async def _process_one_board_streaming(
         processing_filtered = 0
         all_canonical = True
         canonical_urls: set[str] = set()
+        identity_migration_retired = 0
+        unisante_identity_migration_attempted = False
         identity_migration_spec = _identity_migration_spec(
             metadata.get("identity_migration"),
             board_slug,
@@ -1638,6 +1803,26 @@ async def _process_one_board_streaming(
                     rejected=rejected_provider_urls,
                     accepted=len(result.urls),
                 )
+            if (
+                metadata.get("identity_migration") == _UNISANTE_IDENTITY_MIGRATION
+                and not unisante_identity_migration_attempted
+            ):
+                async with pool.acquire() as conn, conn.transaction():
+                    identity_migration_retired += await _migrate_unisante_provider_identities(
+                        conn,
+                        board_id=board_id,
+                        company_id=company_id,
+                        board_slug=board_slug,
+                        board_url=board_url,
+                        crawler_type=crawler_type,
+                        metadata=metadata,
+                        jobs_by_url=result.jobs_by_url,
+                        truncated=bool(getattr(result, "truncated", False)),
+                        extraction_filtered=extraction_filtered,
+                        security_filtered=security_filtered,
+                        board_log=board_log,
+                    )
+                unisante_identity_migration_attempted = True
             if collect_migration_canonicals:
                 for url in result.urls:
                     assert identity_migration_spec is not None
@@ -2163,7 +2348,9 @@ async def _process_one_board_streaming(
                     delist_threshold,
                     board_log,
                 )
-                gone_count = identity_migration_gone + guarded_gone_count
+                gone_count = (
+                    identity_migration_retired + identity_migration_gone + guarded_gone_count
+                )
                 recovered_from = await conn.fetchval(_RECORD_SUCCESS_NONEMPTY, board_id)
 
             _emit_board_recovery(recovered_from, board_log, discovered=total_discovered)
