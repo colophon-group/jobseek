@@ -340,6 +340,51 @@ async def test_discover_section_markers_fail_closed_when_page_drifts():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("html", "message"),
+    [
+        (
+            "<h2>Open roles</h2><h3>Old</h3><h2>Open roles</h2><h3>Current</h3><h2>Past roles</h2>",
+            "section_start matched multiple",
+        ),
+        (
+            "<h2>Open roles</h2><h3>Current</h3><h2>Past roles</h2><h2>Past roles</h2>",
+            "section_end matched multiple",
+        ),
+    ],
+)
+async def test_discover_rejects_ambiguous_section_markers(html, message):
+    board = {
+        "board_url": "https://example.com/open-positions",
+        "metadata": {
+            "section_start": {"tag": "h2", "text": "Open roles"},
+            "section_end": {"tag": "h2", "text": "Past roles"},
+            "steps": [{"tag": "h3", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match=message):
+        await discover(board, _FakeClient(html))
+
+
+@pytest.mark.asyncio
+async def test_discover_validates_section_before_accepting_explicit_empty():
+    board = {
+        "board_url": "https://example.com/open-positions",
+        "metadata": {
+            "empty_selector": ".empty",
+            "empty_text": "No current roles",
+            "section_start": {"tag": "h2", "text": "Open roles"},
+            "section_end": {"tag": "h2", "text": "Past roles"},
+            "steps": [{"tag": "h3", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="section_start did not match"):
+        await discover(board, _FakeClient('<p class="empty">No current roles</p>'))
+
+
+@pytest.mark.asyncio
 async def test_discover_rejects_one_sided_section_scope():
     board = {
         "board_url": "https://example.com/open-positions",
@@ -509,6 +554,40 @@ async def test_discover_excludes_expired_inline_opportunities():
 
 
 @pytest.mark.asyncio
+async def test_discover_deadline_patterns_override_fallback_default():
+    html = """
+    <h3>Expired consultant</h3><p>Application deadline: 27.02.2000</p>
+    <h3>Dated consultant</h3><p>Application deadline: April 15, 2099</p>
+    <h3>Rolling consultant</h3><p>Applications are reviewed continuously.</p>
+    """
+    board = {
+        "board_url": "https://example.com/tenders",
+        "metadata": {
+            "steps": [
+                {"tag": "h3", "field": "title"},
+                {"tag": "p", "field": "description", "stop_tag": "h3", "html": True},
+            ],
+            "valid_through_patterns": [
+                {"regex": r"Application deadline:\s*(\d{2}\.\d{2}\.\d{4})", "format": "%d.%m.%Y"},
+                {
+                    "regex": r"Application deadline:\s*([A-Za-z]+ \d{1,2}, \d{4})",
+                    "format": "%B %d, %Y",
+                },
+            ],
+            "defaults": {"valid_through": "2099-11-01"},
+            "exclude_expired": True,
+        },
+    }
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert [(job.title, job.extras) for job in jobs] == [
+        ("Dated consultant", {"valid_through": "2099-04-15"}),
+        ("Rolling consultant", {"valid_through": "2099-11-01"}),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_discover_keeps_opportunity_on_inclusive_utc_deadline():
     today = datetime.now(UTC).date().isoformat()
     board = {
@@ -561,6 +640,15 @@ async def test_discover_exclude_expired_fails_closed_without_deadline():
         ({"valid_through_regex": "x" * 2_049}, "valid_through_regex"),
         ({"valid_through_format": ""}, "valid_through_format"),
         ({"valid_through_format": 123}, "valid_through_format"),
+        ({"valid_through_patterns": []}, "valid_through_patterns"),
+        ({"valid_through_patterns": [{"regex": "Deadline"}]}, "capture group"),
+        (
+            {
+                "valid_through_regex": r"(\d{4}-\d{2}-\d{2})",
+                "valid_through_patterns": [{"regex": r"(\d{4})"}],
+            },
+            "cannot be combined",
+        ),
         ({"exclude_expired": "true"}, "exclude_expired"),
     ],
 )

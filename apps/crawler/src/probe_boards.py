@@ -1417,13 +1417,7 @@ async def _probe_dom(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     cfg = decoded if isinstance(decoded, dict) else {}
     configured_medium = cfg.get("prospective_board")
     if configured_medium is None:
-        return ProbeResult(
-            row["board_slug"],
-            "unsupported",
-            row["board_url"],
-            "skipped",
-            "no targeted probe for this DOM configuration",
-        )
+        return await _probe_static_page(row, client)
     if (
         not isinstance(configured_medium, str)
         or re.fullmatch(r"[1-9]\d{0,11}", configured_medium) is None
@@ -1504,6 +1498,100 @@ async def _probe_dom(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     )
 
 
+def _discovery_count(result: object) -> int:
+    """Return the number of URLs/jobs in any supported monitor result shape."""
+    urls = getattr(result, "urls", None)
+    if isinstance(urls, set):
+        return len(urls)
+    if isinstance(result, tuple):
+        return len(result[0])
+    return len(result)  # type: ignore[arg-type]
+
+
+async def _probe_static_page(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    """Run the production DOM/inline extractor for configurations safe over HTTP."""
+    monitor_type = row["monitor_type"]
+    try:
+        decoded = json.loads(row["monitor_config"] or "{}")
+    except (json.JSONDecodeError, TypeError) as exc:
+        return ProbeResult(
+            row["board_slug"],
+            monitor_type,
+            row["board_url"],
+            "fail",
+            f"invalid monitor_config JSON: {exc}",
+        )
+    if not isinstance(decoded, dict):
+        return ProbeResult(
+            row["board_slug"],
+            monitor_type,
+            row["board_url"],
+            "fail",
+            "monitor_config must be an object",
+        )
+    if decoded.get("render"):
+        return ProbeResult(
+            row["board_slug"],
+            monitor_type,
+            row["board_url"],
+            "skipped",
+            "rendered page requires a browser probe",
+        )
+
+    from src.core.monitors import get_discoverer
+
+    try:
+        discovered = await get_discoverer(monitor_type)(
+            {"board_url": row["board_url"], "metadata": decoded},
+            client,
+        )
+    except httpx.HTTPStatusError as exc:
+        status = exc.response.status_code
+        return ProbeResult(
+            row["board_slug"],
+            monitor_type,
+            row["board_url"],
+            "fail" if status == 404 else "warn",
+            f"upstream returned HTTP {status}",
+        )
+    except httpx.HTTPError as exc:
+        return ProbeResult(
+            row["board_slug"],
+            monitor_type,
+            row["board_url"],
+            "warn",
+            f"network error: {type(exc).__name__}: {exc}",
+        )
+    except Exception as exc:  # noqa: BLE001 - config/extraction drift must fail CI
+        return ProbeResult(
+            row["board_slug"],
+            monitor_type,
+            row["board_url"],
+            "fail",
+            f"static extraction failed: {exc}",
+        )
+
+    count = _discovery_count(discovered)
+    has_empty_contract = bool(
+        decoded.get("empty_states") or (decoded.get("empty_selector") and decoded.get("empty_text"))
+    )
+    if count == 0 and not has_empty_contract:
+        return ProbeResult(
+            row["board_slug"],
+            monitor_type,
+            row["board_url"],
+            "fail",
+            "static extraction returned no jobs without an explicit empty-state contract",
+        )
+    return ProbeResult(
+        row["board_slug"],
+        monitor_type,
+        row["board_url"],
+        "ok",
+        f"production extractor: {count} jobs",
+    )
+
+
 def _classify(
     row: dict,
     monitor_type: str,
@@ -1563,6 +1651,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "smartrecruiters": _probe_smartrecruiters,
     "workday": _probe_workday,
     "rss": _probe_rss,
+    "inline": _probe_static_page,
 }
 
 

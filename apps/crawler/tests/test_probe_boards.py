@@ -193,6 +193,86 @@ class TestProbeRow:
         assert result.status == "ok"
         assert result.monitor_type == "greenhouse"
 
+    async def test_inline_static_probe_runs_production_extractor(self):
+        row = _row(
+            board_slug="acme-inline",
+            board_url="https://example.com/openings",
+            monitor_type="inline",
+            monitor_config=json.dumps(
+                {
+                    "item_boundary_tag": "h2",
+                    "steps": [
+                        {"tag": "h2", "field": "title"},
+                        {"tag": "p", "field": "description"},
+                    ],
+                }
+            ),
+        )
+
+        result = await self._run(
+            row,
+            lambda _request: httpx.Response(
+                200,
+                text="<h2>Research Engineer</h2><p>Build new systems.</p>",
+            ),
+        )
+
+        assert result.status == "ok"
+        assert result.message == "production extractor: 1 jobs"
+
+    async def test_dom_static_probe_fails_when_contract_extracts_nothing(self):
+        row = _row(
+            board_slug="acme-dom",
+            board_url="https://example.com/openings",
+            monitor_type="dom",
+            monitor_config=json.dumps(
+                {"render": False, "url_filter": r"^https://example\.com/jobs/"}
+            ),
+        )
+
+        result = await self._run(
+            row,
+            lambda _request: httpx.Response(200, text="<h1>Open roles</h1>"),
+        )
+
+        assert result.status == "fail"
+        assert "no jobs" in result.message
+
+    async def test_static_probe_reports_extraction_contract_drift(self):
+        row = _row(
+            board_slug="acme-inline",
+            board_url="https://example.com/openings",
+            monitor_type="inline",
+            monitor_config=json.dumps(
+                {
+                    "section_start": {"tag": "h2", "text": "Current roles"},
+                    "section_end": {"tag": "h2", "text": "Past roles"},
+                    "steps": [{"tag": "h3", "field": "title"}],
+                }
+            ),
+        )
+
+        result = await self._run(
+            row,
+            lambda _request: httpx.Response(200, text="<h1>Open roles</h1>"),
+        )
+
+        assert result.status == "fail"
+        assert "section_start did not match" in result.message
+
+    async def test_static_probe_skips_rendered_pages(self):
+        row = _row(
+            board_slug="acme-inline",
+            board_url="https://example.com/openings",
+            monitor_type="inline",
+            monitor_config=json.dumps({"render": True, "steps": [{"tag": "h2", "field": "title"}]}),
+        )
+
+        result = await self._run(row, lambda _request: httpx.Response(500))
+
+        assert result.status == "skipped"
+        assert "browser probe" in result.message
+
     async def test_greenhouse_404_is_fail(self):
         def handler(request):
             return httpx.Response(404, json={"error": "not found"})
@@ -1037,7 +1117,7 @@ class TestProbeRow:
         assert captured["url"] == ("https://acme.wd5.myworkdayjobs.com/wday/cxs/acme/External/jobs")
 
     async def test_unsupported_monitor_is_skipped(self):
-        row = _row(monitor_type="dom", monitor_config="")
+        row = _row(monitor_type="unsupported", monitor_config="")
         # No HTTP call should be made, so use a handler that raises.
         transport = httpx.MockTransport(
             lambda r: (_ for _ in ()).throw(AssertionError("should not be called"))
@@ -1045,7 +1125,7 @@ class TestProbeRow:
         async with httpx.AsyncClient(transport=transport) as client:
             result = await probe_row(row, client)
         assert result.status == "skipped"
-        assert "dom" in result.message.lower()
+        assert "unsupported" in result.message
 
     async def test_prospective_dom_probe_validates_provider_and_inventory(self):
         result = await self._run(

@@ -1563,6 +1563,40 @@ class TestRichRowsStatic:
                 None,
             )
 
+    @pytest.mark.parametrize(
+        ("html", "message"),
+        [
+            (
+                '<h2>Current roles</h2><a class="job" href="/jobs/old">Old</a>'
+                '<h2>Current roles</h2><a class="job" href="/jobs/current">Current</a>'
+                "<h2>Student projects</h2>",
+                "section_start matched multiple",
+            ),
+            (
+                '<h2>Current roles</h2><a class="job" href="/jobs/current">Current</a>'
+                "<h2>Student projects</h2><h2>Student projects</h2>",
+                "section_end matched multiple",
+            ),
+        ],
+    )
+    def test_section_boundaries_reject_ambiguous_markers(self, html, message):
+        config = _validated_rich_rows(
+            {
+                "row_selector": "a.job[href]",
+                "section_start": {"selector": "h2", "text": "Current roles"},
+                "section_end": {"selector": "h2", "text": "Student projects"},
+            }
+        )
+
+        assert config is not None
+        with pytest.raises(ValueError, match=message):
+            _extract_rich_rows_static(
+                html,
+                "https://example.com/careers",
+                config,
+                None,
+            )
+
     def test_extracts_metadata_for_semantic_job_filtering(self):
         html = """
         <div class="job">

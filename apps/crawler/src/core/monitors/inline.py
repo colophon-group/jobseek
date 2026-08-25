@@ -42,6 +42,7 @@ _MAX_JOBS = 500  # safety cap
 _MAX_EXCLUDE_TITLE_REGEX_LENGTH = 2_048
 _MAX_VALID_THROUGH_REGEX_LENGTH = 2_048
 _MAX_VALID_THROUGH_FORMAT_LENGTH = 128
+_MAX_VALID_THROUGH_PATTERNS = 8
 _MAX_EMPTY_TEXT_LENGTH = 512
 _MAX_EMPTY_SELECTOR_LENGTH = 256
 _MAX_ITEM_BOUNDARY_TAG_LENGTH = 32
@@ -128,15 +129,18 @@ def _validated_section_boundary(value: object, *, name: str) -> dict | None:
     """Validate one fail-closed boundary for a section of an inline page."""
     if value is None:
         return None
-    if not isinstance(value, dict) or not value or set(value) - {
-        "tag",
-        "text",
-        "attr",
-        "match_regex",
-    }:
-        raise ValueError(
-            f"inline {name} must contain only tag, text, attr, or match_regex"
-        )
+    if (
+        not isinstance(value, dict)
+        or not value
+        or set(value)
+        - {
+            "tag",
+            "text",
+            "attr",
+            "match_regex",
+        }
+    ):
+        raise ValueError(f"inline {name} must contain only tag, text, attr, or match_regex")
     if not any(value.get(key) is not None for key in ("tag", "text", "attr", "match_regex")):
         raise ValueError(f"inline {name} must configure at least one matcher")
     tag = value.get("tag")
@@ -199,26 +203,26 @@ def _scope_to_section(
     if start_boundary is None:
         return elements
 
-    start = next(
-        (
-            index
-            for index, element in enumerate(elements)
-            if _boundary_matches(element, start_boundary)
-        ),
-        None,
-    )
-    if start is None:
+    starts = [
+        index
+        for index, element in enumerate(elements)
+        if _boundary_matches(element, start_boundary)
+    ]
+    if not starts:
         raise ValueError("inline section_start did not match the page")
-    end = next(
-        (
-            index
-            for index, element in enumerate(elements[start + 1 :], start + 1)
-            if _boundary_matches(element, end_boundary)
-        ),
-        None,
-    )
-    if end is None:
+    if len(starts) != 1:
+        raise ValueError("inline section_start matched multiple page elements")
+    start = starts[0]
+    ends = [
+        index
+        for index, element in enumerate(elements[start + 1 :], start + 1)
+        if _boundary_matches(element, end_boundary)
+    ]
+    if not ends:
         raise ValueError("inline section_end did not match after section_start")
+    if len(ends) != 1:
+        raise ValueError("inline section_end matched multiple elements after section_start")
+    end = ends[0]
     return elements[start + 1 : end]
 
 
@@ -273,10 +277,11 @@ def _generate_url(board_url: str, title: str, seen: dict[str, int]) -> str:
 
 def _validated_valid_through_config(
     metadata: dict,
-) -> tuple[re.Pattern[str] | None, str | None, bool]:
+) -> tuple[tuple[tuple[re.Pattern[str], str | None], ...], str | None, bool]:
     """Validate and compile deadline filtering configuration once per cycle."""
     pattern_value = metadata.get("valid_through_regex")
-    pattern = None
+    patterns: list[tuple[re.Pattern[str], str | None]] = []
+    legacy_pattern: re.Pattern[str] | None = None
     if pattern_value is not None:
         if (
             not isinstance(pattern_value, str)
@@ -285,10 +290,10 @@ def _validated_valid_through_config(
         ):
             raise ValueError("inline valid_through_regex must be a non-empty bounded string")
         try:
-            pattern = re.compile(pattern_value, re.IGNORECASE | re.DOTALL)
+            legacy_pattern = re.compile(pattern_value, re.IGNORECASE | re.DOTALL)
         except re.error as exc:
             raise ValueError(f"inline valid_through_regex is invalid: {exc}") from exc
-        if pattern.groups < 1:
+        if legacy_pattern.groups < 1:
             raise ValueError("inline valid_through_regex must contain a capture group")
 
     date_format = metadata.get("valid_through_format")
@@ -302,10 +307,62 @@ def _validated_valid_through_config(
             f"{_MAX_VALID_THROUGH_FORMAT_LENGTH} characters"
         )
 
+    pattern_values = metadata.get("valid_through_patterns")
+    if pattern_values is not None:
+        if pattern_value is not None:
+            raise ValueError(
+                "inline valid_through_patterns cannot be combined with valid_through_regex"
+            )
+        if (
+            not isinstance(pattern_values, list)
+            or not pattern_values
+            or len(pattern_values) > _MAX_VALID_THROUGH_PATTERNS
+        ):
+            raise ValueError("inline valid_through_patterns must be a non-empty bounded list")
+        for index, item in enumerate(pattern_values):
+            if not isinstance(item, dict) or set(item) - {"regex", "format"}:
+                raise ValueError(
+                    f"inline valid_through_patterns[{index}] must contain only regex and format"
+                )
+            configured_regex = item.get("regex")
+            configured_format = item.get("format")
+            if (
+                not isinstance(configured_regex, str)
+                or not configured_regex
+                or len(configured_regex) > _MAX_VALID_THROUGH_REGEX_LENGTH
+            ):
+                raise ValueError(
+                    f"inline valid_through_patterns[{index}].regex must be a non-empty "
+                    "bounded string"
+                )
+            if configured_format is not None and (
+                not isinstance(configured_format, str)
+                or not configured_format
+                or len(configured_format) > _MAX_VALID_THROUGH_FORMAT_LENGTH
+            ):
+                raise ValueError(
+                    f"inline valid_through_patterns[{index}].format must be a non-empty "
+                    "bounded string"
+                )
+            try:
+                compiled = re.compile(configured_regex, re.IGNORECASE | re.DOTALL)
+            except re.error as exc:
+                raise ValueError(
+                    f"inline valid_through_patterns[{index}].regex is invalid: {exc}"
+                ) from exc
+            if compiled.groups < 1:
+                raise ValueError(
+                    f"inline valid_through_patterns[{index}].regex must contain a capture group"
+                )
+            patterns.append((compiled, configured_format))
+    elif pattern_value is not None:
+        assert legacy_pattern is not None
+        patterns.append((legacy_pattern, date_format))
+
     exclude_expired = metadata.get("exclude_expired", False)
     if not isinstance(exclude_expired, bool):
         raise ValueError("inline exclude_expired must be a boolean")
-    return pattern, date_format, exclude_expired
+    return tuple(patterns), date_format, exclude_expired
 
 
 def _parse_valid_through(value: object, date_format: str | None) -> date:
@@ -331,18 +388,23 @@ def _resolve_valid_through(
     result: dict,
     job_defaults: dict,
     description: object,
-    pattern: re.Pattern[str] | None,
+    patterns: tuple[tuple[re.Pattern[str], str | None], ...],
     date_format: str | None,
     exclude_expired: bool,
 ) -> date | None:
-    """Resolve a deadline from an extracted field, default, or description regex."""
-    raw = result.get("valid_through") or job_defaults.get("valid_through")
-    if raw is None and pattern is not None:
-        if not isinstance(description, str):
-            description = ""
+    """Resolve a deadline from an extracted field, description, or default."""
+    raw = result.get("valid_through")
+    if raw is not None:
+        return _parse_valid_through(raw, date_format)
+
+    if not isinstance(description, str):
+        description = ""
+    for pattern, pattern_format in patterns:
         match = pattern.search(description)
         if match is not None:
-            raw = match.group(1).strip()
+            return _parse_valid_through(match.group(1).strip(), pattern_format)
+
+    raw = job_defaults.get("valid_through")
 
     if raw is None:
         if exclude_expired:
@@ -459,7 +521,8 @@ async def discover(
         defaults_by_title — per-title defaults applied to missing fields
         exclude_titles — exact titles to skip after extraction
         exclude_title_regex — regex matching titles to skip after extraction
-        valid_through_regex — capture a deadline from the extracted description
+        valid_through_regex — capture one deadline format from the description
+        valid_through_patterns — ordered regex/format pairs for multiple deadline formats
         valid_through_format — strptime format for non-ISO deadlines
         exclude_expired — omit opportunities after valid_through (UTC, inclusive deadline)
         + browser keys (wait, timeout, actions, etc.)
@@ -489,7 +552,7 @@ async def discover(
     preserve_single_location = metadata.get("preserve_single_location", False)
     if not isinstance(preserve_single_location, bool):
         raise ValueError("inline preserve_single_location must be a boolean")
-    valid_through_pattern, valid_through_format, exclude_expired = _validated_valid_through_config(
+    valid_through_patterns, valid_through_format, exclude_expired = _validated_valid_through_config(
         metadata
     )
 
@@ -497,10 +560,10 @@ async def discover(
     include_hidden = bool(metadata.get("include_hidden"))
     elements = flatten(html, include_hidden=include_hidden)
 
+    elements = _scope_to_section(elements, section_start, section_end)
     if empty_text is not None and _matches_explicit_empty(html, empty_selector, empty_text):
         log.info("inline.explicit_empty", url=board_url)
         return []
-    elements = _scope_to_section(elements, section_start, section_end)
     if not elements:
         if empty_text is not None:
             raise ValueError(
@@ -557,7 +620,7 @@ async def discover(
             result,
             job_defaults,
             description,
-            valid_through_pattern,
+            valid_through_patterns,
             valid_through_format,
             exclude_expired,
         )
