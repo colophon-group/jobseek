@@ -6,6 +6,7 @@ Mocks git/gh operations since these tests run without a real repo.
 
 from __future__ import annotations
 
+import copy
 import json
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack, contextmanager
@@ -1332,6 +1333,7 @@ class TestTaskComplete:
             ),
             patch("src.workspace.git.push_branch_at_expected_oid", side_effect=push) as push_mock,
             patch("src.workspace.git.get_pr_details_strict", side_effect=details),
+            patch("src.workspace.git.get_main_branch", return_value="main"),
             patch("src.workspace.git.mark_pr_ready", side_effect=ready),
             patch(
                 "src.workspace.git.is_issue_claimed_strict", side_effect=lambda *_: state["claimed"]
@@ -1639,6 +1641,85 @@ class TestTerminalCleanupRecovery:
         assert pending == new
         assert completed is False
 
+    def test_del_retries_from_completed_slug_receipt_without_workspace(self, tmp_path, monkeypatch):
+        from src.workspace.commands import lifecycle
+
+        _patch_all(monkeypatch, tmp_path)
+        ws_obj = Workspace(slug="acme", issue=42)
+        save_workspace(ws_obj)
+        lifecycle._run_terminal_cleanup(ws_obj, local=True)
+        assert not workspace_exists("acme")
+
+        with patch("src.workspace.commands.lifecycle.is_local_mode", return_value=True):
+            result = CliRunner().invoke(ws, ["del", "acme"])
+
+        assert result.exit_code == 0, result.output
+        receipt, completed = lifecycle._load_terminal_journal("acme")
+        assert receipt is not None and receipt["issue"] == 42 and completed is True
+
+    def test_real_del_cli_recovers_claim_release_crash_from_slug_receipt(
+        self, tmp_path, monkeypatch
+    ):
+        from src.workspace.commands import lifecycle
+
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="acme", issue=42, branch="add-company/acme"))
+        state = {"claimed": True, "crashed": False}
+
+        def unclaim(_issue):
+            state["claimed"] = False
+            if not state["crashed"]:
+                state["crashed"] = True
+                raise RuntimeError("crash-after-claim-release")
+
+        with (
+            patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
+            patch("src.workspace.git.remote_branch_oid_strict", return_value=None),
+            patch("src.workspace.git.managed_worktree_identity_strict", return_value=None),
+            patch("src.workspace.git.local_branch_oid_strict", return_value=None),
+            patch(
+                "src.workspace.git.is_issue_claimed_strict",
+                side_effect=lambda *_: state["claimed"],
+            ),
+            patch("src.workspace.git.unclaim_issue_strict", side_effect=unclaim),
+        ):
+            first = CliRunner().invoke(ws, ["del", "acme"])
+            assert first.exit_code != 0
+            assert "crash-after-claim-release" in str(first.exception)
+            assert not workspace_exists("acme")
+            receipt, completed = lifecycle._load_terminal_journal("acme")
+            assert receipt is not None and completed is True
+
+            retry = CliRunner().invoke(ws, ["del", "acme"])
+
+        assert retry.exit_code == 0, retry.output
+        assert state["claimed"] is False
+
+    def test_issue_only_namespace_never_loads_same_named_company(self, tmp_path, monkeypatch):
+        from src.workspace.commands import lifecycle
+
+        _patch_all(monkeypatch, tmp_path)
+        collision = Workspace(slug="issue-42", issue=99, branch="add-company/issue-42")
+        save_workspace(collision)
+        outcome = {
+            "marker": "<!-- issue-only-test -->",
+            "body": "<!-- issue-only-test -->\nclosed",
+            "labels": [],
+            "close_issue": True,
+        }
+
+        lifecycle._cleanup_resolver_artifacts(
+            issue=42,
+            slug=None,
+            ws=None,
+            local=True,
+            outcome=outcome,
+        )
+
+        assert load_workspace("issue-42").issue == 99
+        receipt, completed = lifecycle._load_issue_terminal_journal(42)
+        assert receipt is not None and receipt["namespace"] == "issue" and completed is True
+
     def test_replaced_active_pointer_is_preserved(self, tmp_path, monkeypatch):
         from src.workspace.commands import lifecycle
 
@@ -1654,6 +1735,28 @@ class TestTerminalCleanupRecovery:
         with pytest.raises(WorkspaceError, match="active pointer was replaced"):
             lifecycle._run_terminal_cleanup(ws_obj, local=True)
         assert active.read_text() == "acme"
+        assert workspace_exists("acme")
+
+    def test_recreated_active_pointer_token_is_preserved_even_if_inode_is_reused(
+        self, tmp_path, monkeypatch
+    ):
+        from src.workspace.commands import lifecycle
+
+        _patch_all(monkeypatch, tmp_path)
+        ws_obj = Workspace(slug="acme")
+        save_workspace(ws_obj)
+        set_active_slug("acme")
+        lifecycle._initialize_terminal_journal(ws_obj, local=True, outcome=None)
+        active = next((tmp_path / ".ws").glob("active*"))
+        old_record = active.read_text()
+        active.unlink()
+        set_active_slug("acme")
+        replacement = active.read_text()
+        assert replacement != old_record
+
+        with pytest.raises(WorkspaceError, match="active pointer was replaced"):
+            lifecycle._run_terminal_cleanup(ws_obj, local=True)
+        assert active.read_text() == replacement
         assert workspace_exists("acme")
 
     def test_active_pointer_unlink_crash_resumes(self, tmp_path, monkeypatch):
@@ -4003,6 +4106,84 @@ def _setup_submittable_workspace(tmp_path, monkeypatch):
     return ws_obj, board
 
 
+class TestSubmitWorktreeAuthentication:
+    def test_mutable_noncanonical_worktree_path_is_rejected_before_pivot(
+        self, tmp_path, monkeypatch
+    ):
+        from src.workspace.commands.lifecycle import _authenticate_workspace_worktree
+
+        _patch_all(monkeypatch, tmp_path)
+        canonical = tmp_path / "worktrees" / "acme"
+        attacker = tmp_path / "attacker-checkout"
+        attacker.mkdir()
+        identity = {
+            "version": 1,
+            "path": str(canonical),
+            "slug": "acme",
+            "branch": "add-company/acme",
+            "head": TEST_HEAD_OID,
+            "dev": 1,
+            "ino": 2,
+            "issue": 42,
+            "pr": 7,
+            "pr_provenance": _test_pr_provenance(7, slug="acme", issue=42),
+        }
+        ws_obj = Workspace(
+            slug="acme",
+            issue=42,
+            pr=7,
+            branch="add-company/acme",
+            pr_provenance=copy.deepcopy(identity["pr_provenance"]),
+            worktree=str(attacker),
+            worktree_identity=identity,
+        )
+
+        with (
+            patch("src.workspace.git.worktrees_dir", return_value=tmp_path / "worktrees"),
+            patch("src.workspace.git.authenticate_managed_worktree") as authenticate,
+            pytest.raises(WorkspaceError, match="non-canonical"),
+        ):
+            _authenticate_workspace_worktree(ws_obj)
+        authenticate.assert_not_called()
+
+    def test_replaced_canonical_checkout_is_rejected_before_mutation(self, tmp_path, monkeypatch):
+        from src.workspace.commands.lifecycle import _authenticate_workspace_worktree
+
+        _patch_all(monkeypatch, tmp_path)
+        canonical = tmp_path / "worktrees" / "acme"
+        provenance = _test_pr_provenance(7, slug="acme", issue=42)
+        ws_obj = Workspace(
+            slug="acme",
+            issue=42,
+            pr=7,
+            branch="add-company/acme",
+            pr_provenance=provenance,
+            worktree=str(canonical),
+            worktree_identity={
+                "version": 1,
+                "path": str(canonical),
+                "slug": "acme",
+                "branch": "add-company/acme",
+                "head": TEST_HEAD_OID,
+                "dev": 1,
+                "ino": 2,
+                "issue": 42,
+                "pr": 7,
+                "pr_provenance": copy.deepcopy(provenance),
+            },
+        )
+
+        with (
+            patch("src.workspace.git.worktrees_dir", return_value=tmp_path / "worktrees"),
+            patch(
+                "src.workspace.git.authenticate_managed_worktree",
+                side_effect=WorkspaceError("replacement filesystem entry"),
+            ),
+            pytest.raises(WorkspaceError, match="replacement filesystem entry"),
+        ):
+            _authenticate_workspace_worktree(ws_obj)
+
+
 class TestSubmitStepRegistry:
     """Test the submit step registry and checkpoint logic."""
 
@@ -5900,13 +6081,24 @@ class TestNewIdempotent:
             patch("src.workspace.git.get_authenticated_login_strict", return_value="resolver")
         )
         stack.enter_context(
-            patch("src.workspace.git.remote_branch_oid_strict", return_value=TEST_HEAD_OID)
+            patch(
+                "src.workspace.git.remote_branch_oid_strict",
+                return_value=(TEST_HEAD_OID if pr_branch or existing_prs else None),
+            )
         )
         stack.enter_context(
             patch("src.workspace.git.find_open_pr_for_branch", return_value=branch_pr)
         )
         delete_remote = stack.enter_context(patch("src.workspace.git.delete_remote_branch"))
-        create_worktree = stack.enter_context(patch("src.workspace.git.create_worktree"))
+        identity = {"head": TEST_HEAD_OID, "dev": 1, "ino": 2}
+        create_worktree = stack.enter_context(
+            patch("src.workspace.git.create_worktree", return_value=identity)
+        )
+        stack.enter_context(
+            patch("src.workspace.git.managed_worktree_identity_strict", return_value=identity)
+        )
+        stack.enter_context(patch("src.workspace.git.remove_authenticated_worktree"))
+        stack.enter_context(patch("src.workspace.git.delete_local_branch_at_expected_oid"))
         sync_branch = stack.enter_context(patch("src.workspace.git.sync_branch_with_main"))
         stack.enter_context(patch("src.shared.constants.set_repo_root"))
         stack.enter_context(patch("src.shared.constants.get_repo_root", return_value=tmp_path))
@@ -6280,11 +6472,19 @@ class TestNewIdempotent:
                 issue_labels=("company-request",),
             )
             sync_branch.side_effect = WorkspaceError("code conflict")
-            remove_worktree = stack.enter_context(patch("src.workspace.git.remove_worktree"))
+            remove_worktree = stack.enter_context(
+                patch("src.workspace.git.remove_authenticated_worktree")
+            )
 
             runner = CliRunner()
             result = runner.invoke(ws, ["new", "acme", "--issue", "1"])
 
         assert result.exit_code != 0
-        remove_worktree.assert_called_once_with(tmp_path / "worktrees" / "acme")
+        remove_worktree.assert_called_once_with(
+            tmp_path / "worktrees" / "acme",
+            "add-company/acme",
+            TEST_HEAD_OID,
+            expected_dev=1,
+            expected_ino=2,
+        )
         assert not workspace_exists("acme")

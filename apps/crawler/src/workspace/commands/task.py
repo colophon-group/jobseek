@@ -556,10 +556,14 @@ def _initialize_ready_state(ws, *, local: bool) -> dict:
         }
     else:
         from src.workspace import git
-        from src.workspace.commands.lifecycle import _verify_workspace_pr_before_mutation
+        from src.workspace.commands.lifecycle import (
+            _authenticate_workspace_worktree,
+            _verify_workspace_pr_before_mutation,
+        )
 
         if ws.pr is None:
             raise WorkspaceError("Submitted workspace has no PR for ready publication")
+        _authenticate_workspace_worktree(ws)
         _verify_workspace_pr_before_mutation(ws)
         initial_head = git.current_head_oid_strict()
         if initial_head != ws.pr_provenance.get("head_ref_oid"):
@@ -587,13 +591,18 @@ def _initialize_ready_state(ws, *, local: bool) -> dict:
 
 def _publish_journaled_kb(ws, state: dict) -> None:
     from src.workspace import git
-    from src.workspace.commands.lifecycle import _record_current_pr_provenance
+    from src.workspace.commands.lifecycle import (
+        _advance_workspace_worktree_head,
+        _authenticate_workspace_worktree,
+        _record_current_pr_provenance,
+    )
 
     initial = state["initial_head_oid"]
     publish = state["kb_publish_oid"]
     message = _kb_commit_message(ws)
     current = git.current_head_oid_strict()
     changed = git.changed_paths_strict()
+    _authenticate_workspace_worktree(ws)
     if publish is None:
         if current == initial:
             if not changed or any(
@@ -601,8 +610,10 @@ def _publish_journaled_kb(ws, state: dict) -> None:
             ):
                 raise WorkspaceError("Journaled KB changes disappeared or changed scope")
             git.add_files([_KB_PATH])
+            _authenticate_workspace_worktree(ws)
             git.commit(message)
             current = git.current_head_oid_strict()
+            _advance_workspace_worktree_head(ws, initial, current)
         elif changed:
             raise WorkspaceError("KB commit recovery found additional working-tree changes")
         git.verify_single_commit_strict(
@@ -628,6 +639,7 @@ def _publish_journaled_kb(ws, state: dict) -> None:
     remote = git.remote_branch_oid_strict(ws.branch)
     if remote == initial:
         _save_ready_attempt(ws, state, "kb_push")
+        _authenticate_workspace_worktree(ws)
         git.push_branch_at_expected_oid(ws.branch, publish, initial)
     elif remote == publish:
         if not state["attempts"]["kb_push"]:
@@ -664,9 +676,11 @@ def _finalize_workflow_locked(slug: str) -> None:
 
     if not local:
         from src.workspace import git
+        from src.workspace.commands.lifecycle import _authenticate_workspace_worktree
 
         if ws.pr is None:
             raise WorkspaceError("Ready journal workspace lost its PR number")
+        _authenticate_workspace_worktree(ws)
         if state["kb_required"]:
             _publish_journaled_kb(ws, state)
         else:
@@ -690,6 +704,7 @@ def _finalize_workflow_locked(slug: str) -> None:
             if current_provenance != effective:
                 raise WorkspaceError("Draft PR identity changed during ready publication")
             _save_ready_attempt(ws, state, "ready")
+            _authenticate_workspace_worktree(ws)
             git.mark_pr_ready(ws.pr)
             git.verify_pr_ready(
                 effective,

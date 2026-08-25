@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import json
 import os
@@ -198,16 +199,10 @@ def new(
                 f"Slug {slug!r} not found in companies.csv (--reconfig requires existing company)"
             )
     elif slug_in_csv:
-        # Orphaned CSV row from a previous failed attempt (workspace YAML
-        # was already cleaned up above but CSV row survived).  Clean it up
-        # and continue instead of dying.
-        import contextlib
-
-        from src.csvtool import company_del
-
-        out.warn("csv", f"Slug {slug!r} found in CSV without workspace — cleaning up orphaned row")
-        with contextlib.suppress(CsvToolError):
-            company_del(slug)
+        out.die(
+            f"Slug {slug!r} exists in CSV without authenticated workspace ownership; "
+            "refusing bootstrap cleanup"
+        )
 
     branch = f"fix-crawler/{slug}" if reconfig else f"add-company/{slug}"
     pr_number: int | None = None
@@ -325,9 +320,8 @@ def new(
                     "leave this issue pending and retry after that PR is resolved."
                 )
 
-        # Create a worktree for this workspace so multiple agents
-        # can work on different companies concurrently.
-        # create_worktree handles stale worktrees and local branches.
+        # Create only from an entirely fresh path/ref. Lifecycle journals own
+        # cleanup; bootstrap must never guess that pre-existing state is stale.
         git.fetch()
         worktree_path = git.worktrees_dir() / slug
 
@@ -344,12 +338,16 @@ def new(
                 raise WorkspaceError(
                     f"PR #{pr_number} branch changed during attachment; refusing to continue"
                 )
-            git.create_worktree(branch, worktree_path, start_point=expected_head)
+            created_identity = git.create_worktree(branch, worktree_path, start_point=expected_head)
         else:
             main = git.get_main_branch()
-            # Clean up stale remote branch (previous push that wasn't merged)
-            git.delete_remote_branch(branch)
-            git.create_worktree(branch, worktree_path, start_point=f"origin/{main}")
+            if git.remote_branch_oid_strict(branch) is not None:
+                raise WorkspaceError(
+                    f"Remote branch {branch!r} exists without authenticated workspace ownership"
+                )
+            created_identity = git.create_worktree(
+                branch, worktree_path, start_point=f"origin/{main}"
+            )
         set_repo_root(worktree_path)
         if pr_number:
             try:
@@ -358,9 +356,20 @@ def new(
                 # Do not leave a half-merged worktree registered as active.
                 # Restore the managed-clone root before propagating the error
                 # so the runner can safely retry or escalate.
-                git.remove_worktree(worktree_path)
+                git.remove_authenticated_worktree(
+                    worktree_path,
+                    branch,
+                    str(created_identity["head"]),
+                    expected_dev=int(created_identity["dev"]),
+                    expected_ino=int(created_identity["ino"]),
+                )
+                git.delete_local_branch_at_expected_oid(branch, str(created_identity["head"]))
                 set_repo_root(repo_root)
                 raise
+            refreshed_identity = git.managed_worktree_identity_strict(worktree_path, branch)
+            if refreshed_identity is None:
+                raise WorkspaceError("Managed worktree disappeared after synchronization")
+            created_identity = refreshed_identity
         out.plain("git", f"Created worktree at {worktree_path} (branch {branch})")
 
     resume_existing_pr = False
@@ -386,7 +395,14 @@ def new(
             if not local:
                 from src.workspace import git as _git
 
-                _git.remove_worktree(worktree_path)
+                _git.remove_authenticated_worktree(
+                    worktree_path,
+                    branch,
+                    str(created_identity["head"]),
+                    expected_dev=int(created_identity["dev"]),
+                    expected_ino=int(created_identity["ino"]),
+                )
+                _git.delete_local_branch_at_expected_oid(branch, str(created_identity["head"]))
             raise
 
     # Create workspace
@@ -502,6 +518,20 @@ def new(
             )
         pr_details = refreshed
         ws.pr_provenance = git.pr_provenance(refreshed, issue=issue, slug=slug)
+
+    if not local:
+        ws.worktree_identity = {
+            "version": 1,
+            "path": worktree_str,
+            "slug": slug,
+            "branch": branch,
+            "head": str(created_identity["head"]),
+            "dev": int(created_identity["dev"]),
+            "ino": int(created_identity["ino"]),
+            "issue": issue,
+            "pr": pr_number,
+            "pr_provenance": copy.deepcopy(ws.pr_provenance),
+        }
 
     save_workspace(ws)
 
@@ -764,6 +794,191 @@ def _terminal_journal_dir() -> Path:
     return path
 
 
+def _issue_terminal_journal_dir() -> Path:
+    """Collision-free namespace for outcomes with no company identity."""
+    path = _terminal_journal_dir() / "issues"
+    path.mkdir(parents=True, exist_ok=True)
+    mode = path.lstat().st_mode
+    if stat.S_ISLNK(mode) or not stat.S_ISDIR(mode):
+        raise WorkspaceError(f"Issue terminal journal root is unsafe: {path}")
+    return path
+
+
+_ISSUE_TERMINAL_KEYS = {
+    "version",
+    "namespace",
+    "issue",
+    "outcome",
+    "claim_initially_present",
+    "attempts",
+}
+_ISSUE_TERMINAL_ATTEMPTS = {"issue_comment", "issue_labels", "issue_close"}
+
+
+def _issue_terminal_paths(issue: int) -> tuple[Path, Path]:
+    if not isinstance(issue, int) or issue <= 0:
+        raise WorkspaceError("Issue terminal identity is invalid")
+    root = _issue_terminal_journal_dir()
+    return root / f"{issue}.pending.yaml", root / f"{issue}.completed.yaml"
+
+
+def _validate_issue_terminal_journal(data: object, issue: int) -> dict:
+    if (
+        not isinstance(data, dict)
+        or set(data) != _ISSUE_TERMINAL_KEYS
+        or data.get("version") != 1
+        or data.get("namespace") != "issue"
+        or data.get("issue") != issue
+        or not isinstance(data.get("claim_initially_present"), bool)
+        or not isinstance(data.get("attempts"), dict)
+        or set(data["attempts"]) != _ISSUE_TERMINAL_ATTEMPTS
+        or not all(isinstance(value, bool) for value in data["attempts"].values())
+    ):
+        raise WorkspaceError("Issue terminal journal has an invalid exact schema")
+    outcome = data.get("outcome")
+    if (
+        not isinstance(outcome, dict)
+        or set(outcome) != _OUTCOME_KEYS
+        or not all(isinstance(outcome.get(key), str) for key in ("marker", "body"))
+        or not isinstance(outcome.get("labels"), list)
+        or not all(isinstance(label, str) for label in outcome["labels"])
+        or len(outcome["labels"]) != len(set(outcome["labels"]))
+        or not isinstance(outcome.get("close_issue"), bool)
+    ):
+        raise WorkspaceError("Issue terminal outcome has an invalid exact schema")
+    return data
+
+
+def _load_issue_terminal_journal(issue: int) -> tuple[dict | None, bool]:
+    pending, completed = _issue_terminal_paths(issue)
+    matches = [path for path in (pending, completed) if _lexists(path)]
+    if len(matches) > 1:
+        raise WorkspaceError("Both pending and completed issue terminal journals exist")
+    if not matches:
+        return None, False
+    path = matches[0]
+    # Reuse the no-follow journal reader mechanics without accepting the
+    # company schema.
+    mode = path.lstat().st_mode
+    if stat.S_ISLNK(mode) or not stat.S_ISREG(mode):
+        raise WorkspaceError(f"Issue terminal journal path is unsafe: {path}")
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        opened = os.fstat(fd)
+        expected = path.lstat()
+        if (opened.st_dev, opened.st_ino) != (expected.st_dev, expected.st_ino):
+            raise WorkspaceError("Issue terminal journal changed while opening")
+        raw = os.read(fd, 65536).decode()
+        if os.read(fd, 1):
+            raise WorkspaceError("Issue terminal journal is unexpectedly large")
+    finally:
+        os.close(fd)
+    try:
+        data = yaml.safe_load(raw)
+    except yaml.YAMLError as exc:
+        raise WorkspaceError("Issue terminal journal YAML is corrupt") from exc
+    return _validate_issue_terminal_journal(data, issue), path == completed
+
+
+def _save_issue_terminal_journal(journal: dict) -> None:
+    from src.workspace.state import _atomic_write
+
+    issue = journal.get("issue")
+    if not isinstance(issue, int):
+        raise WorkspaceError("Issue terminal journal has no valid issue")
+    journal = _validate_issue_terminal_journal(journal, issue)
+    pending, completed = _issue_terminal_paths(issue)
+    if _lexists(completed):
+        raise WorkspaceError("Cannot mutate a completed issue terminal journal")
+    if _lexists(pending):
+        existing, _ = _load_issue_terminal_journal(issue)
+        assert existing is not None
+        for key in _ISSUE_TERMINAL_KEYS - {"attempts"}:
+            if existing[key] != journal[key]:
+                raise WorkspaceError("Issue terminal journal immutable fields changed")
+        if any(
+            existing["attempts"][key] and not journal["attempts"][key]
+            for key in _ISSUE_TERMINAL_ATTEMPTS
+        ):
+            raise WorkspaceError("Issue terminal attempt history moved backward")
+    _atomic_write(pending, yaml.dump(journal, default_flow_style=False, sort_keys=False))
+
+
+def _run_issue_only_terminal_cleanup(
+    issue: int,
+    *,
+    local: bool,
+    outcome: dict | None,
+) -> None:
+    """Run a durable outcome transition that can never name company artifacts."""
+    if outcome is None:
+        raise WorkspaceError("Issue-only terminal cleanup requires an explicit outcome")
+    from src.workspace import git
+
+    journal, completed = _load_issue_terminal_journal(issue)
+    if journal is None:
+        journal = {
+            "version": 1,
+            "namespace": "issue",
+            "issue": issue,
+            "outcome": copy.deepcopy(outcome),
+            "claim_initially_present": bool(not local and git.is_issue_claimed_strict(issue)),
+            "attempts": {key: False for key in _ISSUE_TERMINAL_ATTEMPTS},
+        }
+        _save_issue_terminal_journal(journal)
+    elif journal["outcome"] != outcome:
+        raise WorkspaceError("Issue-only terminal outcome contradicts its receipt")
+
+    def attempt(key: str) -> None:
+        if not journal["attempts"][key]:
+            journal["attempts"][key] = True
+            _save_issue_terminal_journal(journal)
+
+    if not local:
+        if completed:
+            state, labels = git.issue_state_and_labels_strict(issue)
+            if (
+                not git.issue_has_comment_marker_strict(issue, outcome["marker"])
+                or not set(outcome["labels"]).issubset(labels)
+                or (outcome["close_issue"] and state != "CLOSED")
+            ):
+                raise WorkspaceError("Completed issue-only outcome was altered")
+        else:
+            if not git.issue_has_comment_marker_strict(issue, outcome["marker"]):
+                attempt("issue_comment")
+                git.comment_on_issue_once(issue, outcome["marker"], outcome["body"])
+            state, labels = git.issue_state_and_labels_strict(issue)
+            missing = set(outcome["labels"]) - labels
+            if missing:
+                attempt("issue_labels")
+                for label in sorted(missing):
+                    git.add_label_to_issue(issue, label)
+                state, labels = git.issue_state_and_labels_strict(issue)
+            if outcome["close_issue"] and state == "OPEN":
+                attempt("issue_close")
+                git.close_issue_if_open(issue)
+                state, _ = git.issue_state_and_labels_strict(issue)
+            if outcome["close_issue"] and state != "CLOSED":
+                raise WorkspaceError("Issue-only outcome did not close the issue")
+        if not completed:
+            pending, completed_path = _issue_terminal_paths(issue)
+            if _load_issue_terminal_journal(issue)[0] != journal:
+                raise WorkspaceError("Issue terminal journal changed before finalization")
+            os.replace(pending, completed_path)
+            completed = True
+        claimed = git.is_issue_claimed_strict(issue)
+        if journal["claim_initially_present"]:
+            if claimed:
+                git.unclaim_issue_strict(issue)
+                if git.is_issue_claimed_strict(issue):
+                    raise WorkspaceError("Issue claim survived issue-only terminal cleanup")
+        elif claimed:
+            raise WorkspaceError("A new issue claim appeared during issue-only cleanup")
+    elif not completed:
+        pending, completed_path = _issue_terminal_paths(issue)
+        os.replace(pending, completed_path)
+
+
 def _terminal_pending_path(slug: str) -> Path:
     if not SLUG_RE.fullmatch(slug):
         raise WorkspaceError(f"Invalid terminal journal slug: {slug!r}")
@@ -772,6 +987,43 @@ def _terminal_pending_path(slug: str) -> Path:
 
 def _terminal_completed_path(journal: dict) -> Path:
     return _terminal_journal_dir() / f"{journal['slug']}.{journal['journal_id']}.completed.yaml"
+
+
+def _terminal_locator_path(slug: str) -> Path:
+    if not SLUG_RE.fullmatch(slug):
+        raise WorkspaceError(f"Invalid terminal locator slug: {slug!r}")
+    return _terminal_journal_dir() / f"{slug}.latest-receipt"
+
+
+def _read_terminal_locator(slug: str) -> dict | None:
+    path = _terminal_locator_path(slug)
+    if not _lexists(path):
+        return None
+    mode = path.lstat().st_mode
+    if stat.S_ISLNK(mode) or not stat.S_ISREG(mode):
+        raise WorkspaceError("Terminal receipt locator is unsafe")
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        raw = os.read(fd, 16384).decode()
+        if os.read(fd, 1):
+            raise WorkspaceError("Terminal receipt locator is unexpectedly large")
+    finally:
+        os.close(fd)
+    try:
+        data = yaml.safe_load(raw)
+    except yaml.YAMLError as exc:
+        raise WorkspaceError("Terminal receipt locator is corrupt") from exc
+    if (
+        not isinstance(data, dict)
+        or set(data) != {"version", "slug", "journal_id", "issue"}
+        or data.get("version") != 1
+        or data.get("slug") != slug
+        or not isinstance(data.get("journal_id"), str)
+        or not re.fullmatch(r"[0-9a-f]{32}", data["journal_id"])
+        or (data.get("issue") is not None and not isinstance(data["issue"], int))
+    ):
+        raise WorkspaceError("Terminal receipt locator has an invalid exact schema")
+    return data
 
 
 def _validate_terminal_journal(data: object) -> dict:
@@ -831,12 +1083,11 @@ def _validate_terminal_journal(data: object) -> dict:
     for entry in active_entries:
         if (
             not isinstance(entry, dict)
-            or set(entry) != {"path", "dev", "ino"}
+            or set(entry) != {"path", "record", "generation"}
             or not isinstance(entry["path"], str)
-            or not isinstance(entry["dev"], int)
-            or not isinstance(entry["ino"], int)
-            or entry["dev"] < 0
-            or entry["ino"] <= 0
+            or not isinstance(entry["record"], str)
+            or not isinstance(entry["generation"], str)
+            or not re.fullmatch(r"[0-9a-f]{32}", entry["generation"])
         ):
             raise WorkspaceError("Terminal journal active entry is invalid")
     active_paths = [entry["path"] for entry in active_entries]
@@ -927,8 +1178,6 @@ def _load_terminal_journal(
         if _lexists(_terminal_completed_path(journal)):
             raise WorkspaceError("Both pending and completed terminal journals exist")
         return journal, False
-    if issue is None:
-        return None, False
     matches: list[dict] = []
     for name in sorted(os.listdir(_terminal_journal_dir())):
         if not name.startswith(f"{slug}.") or not name.endswith(".completed.yaml"):
@@ -936,8 +1185,18 @@ def _load_terminal_journal(
         journal = _read_terminal_journal(_terminal_journal_dir() / name)
         if journal["slug"] != slug or _terminal_completed_path(journal).name != name:
             raise WorkspaceError("Completed terminal journal filename is invalid")
-        if journal["issue"] == issue:
+        if issue is None or journal["issue"] == issue:
             matches.append(journal)
+    if issue is None and len(matches) > 1:
+        locator = _read_terminal_locator(slug)
+        if locator is None:
+            raise WorkspaceError("Multiple completed terminal receipts have no exact locator")
+        matches = [
+            journal
+            for journal in matches
+            if journal["journal_id"] == locator["journal_id"]
+            and journal["issue"] == locator["issue"]
+        ]
     if len(matches) > 1:
         raise WorkspaceError("Multiple completed terminal journals match this issue")
     if matches:
@@ -966,6 +1225,8 @@ def _save_terminal_journal(journal: dict) -> None:
 
 
 def _finalize_terminal_journal(journal: dict) -> None:
+    from src.workspace.state import _atomic_write
+
     pending = _terminal_pending_path(journal["slug"])
     completed = _terminal_completed_path(journal)
     if _lexists(completed):
@@ -976,6 +1237,16 @@ def _finalize_terminal_journal(journal: dict) -> None:
         raise WorkspaceError("Pending terminal journal disappeared before finalization")
     if _read_terminal_journal(pending) != journal:
         raise WorkspaceError("Pending terminal journal changed before finalization")
+    locator = {
+        "version": 1,
+        "slug": journal["slug"],
+        "journal_id": journal["journal_id"],
+        "issue": journal["issue"],
+    }
+    _atomic_write(
+        _terminal_locator_path(journal["slug"]),
+        yaml.dump(locator, default_flow_style=False, sort_keys=False),
+    )
     os.replace(pending, completed)
     if _read_terminal_journal(completed) != journal:
         raise WorkspaceError("Completed terminal journal changed during finalization")
@@ -1031,17 +1302,15 @@ def _cleanup_resolver_artifacts(
             if isinstance(branch, str) and branch.startswith("add-company/"):
                 lock_slug = branch.removeprefix("add-company/")
 
-    if lock_slug is None:
-        # Issue-only rejection/escalation still needs one stable lock and
-        # journal identity so claim release can be the final mutation.
-        lock_slug = f"issue-{issue}"
-    with company_lifecycle_lock(lock_slug):
+    lock_identity = lock_slug if lock_slug is not None else f"@issue:{issue}"
+    with company_lifecycle_lock(lock_identity):
         _cleanup_resolver_artifacts_locked(
             issue=issue,
             slug=lock_slug,
             ws=ws,
             local=local,
             outcome=outcome,
+            issue_only_lock=lock_slug is None,
         )
 
 
@@ -1052,10 +1321,16 @@ def _cleanup_resolver_artifacts_locked(
     ws: Workspace | None,
     local: bool,
     outcome: dict | None,
+    issue_only_lock: bool = False,
 ) -> None:
     """Locked implementation for terminal resolver cleanup."""
     if slug and workspace_exists(slug):
-        ws = load_workspace(slug)
+        candidate = load_workspace(slug)
+        if candidate.issue != issue:
+            raise WorkspaceError(
+                f"Workspace {slug!r} belongs to issue #{candidate.issue}, not issue #{issue}"
+            )
+        ws = candidate
     journal, _ = _load_terminal_journal(slug, issue=issue) if slug else (None, False)
     branch = ws.branch if ws and ws.branch else ""
     pr_number = ws.pr if ws else None
@@ -1064,6 +1339,11 @@ def _cleanup_resolver_artifacts_locked(
         from src.workspace import git
 
         linked_prs = git.check_existing_prs_strict(issue)
+        if issue_only_lock and linked_prs:
+            raise WorkspaceError(
+                f"Issue #{issue} gained a linked PR during issue-only cleanup; "
+                "retry under company ownership"
+            )
         classification = git.classify_issue_prs(linked_prs)
         if classification in {"submitted", "conflicting"}:
             raise WorkspaceError(
@@ -1147,7 +1427,8 @@ def _cleanup_resolver_artifacts_locked(
         )
 
     if slug is None:
-        raise WorkspaceError("Could not establish a terminal cleanup identity")
+        _run_issue_only_terminal_cleanup(issue, local=local, outcome=outcome)
+        return
     if ws is None:
         ws = Workspace(
             slug=slug,
@@ -1163,7 +1444,75 @@ def _company_registry_presence(slug: str) -> tuple[bool, bool]:
     return bool(companies), bool(boards)
 
 
-def _active_pointer_entries(slug: str) -> list[dict[str, str | int]]:
+def _decode_active_pointer(raw: str) -> tuple[str, str] | None:
+    """Return ``(slug, generation)`` for the exact authenticated v1 record."""
+    try:
+        record = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    if (
+        not isinstance(record, dict)
+        or set(record) != {"version", "slug", "generation"}
+        or record.get("version") != 1
+        or not isinstance(record.get("slug"), str)
+        or not isinstance(record.get("generation"), str)
+        or not re.fullmatch(r"[0-9a-f]{32}", record["generation"])
+    ):
+        return None
+    canonical = json.dumps(record, sort_keys=True, separators=(",", ":"))
+    if raw != canonical:
+        return None
+    return record["slug"], record["generation"]
+
+
+def _upgrade_legacy_active_pointer(
+    root_fd: int,
+    name: str,
+    *,
+    expected: os.stat_result,
+    slug: str,
+) -> tuple[os.stat_result, str, str]:
+    """CAS-upgrade one plaintext pointer before terminal state is journaled."""
+    from src.workspace.safe_cleanup import (
+        claim_child_at,
+        restore_claimed_child_at,
+        unlink_child_at,
+    )
+
+    generation = uuid.uuid4().hex
+    raw = json.dumps(
+        {"version": 1, "slug": slug, "generation": generation},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    claimed = f".jobseek-active-upgrade-v1-{uuid.uuid4().hex}"
+    try:
+        claim_child_at(root_fd, name, expected=expected, claimed_name=claimed)
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(name, flags, 0o600, dir_fd=root_fd)
+        try:
+            os.write(fd, (raw + "\n").encode())
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        claimed_stat = os.stat(claimed, dir_fd=root_fd, follow_symlinks=False)
+        unlink_child_at(root_fd, claimed, expected=claimed_stat)
+    except Exception as exc:
+        try:
+            os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            with contextlib.suppress(RuntimeError):
+                restore_claimed_child_at(root_fd, name, claimed, expected=expected)
+        raise WorkspaceError("Could not safely upgrade legacy active pointer") from exc
+    item = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+    return item, raw, generation
+
+
+def _active_pointer_entries(
+    slug: str,
+    *,
+    upgrade_legacy: bool = False,
+) -> list[dict[str, str]]:
     from src.shared.constants import get_workspace_dir
     from src.workspace.safe_cleanup import open_absolute_directory_no_follow
 
@@ -1173,7 +1522,7 @@ def _active_pointer_entries(slug: str) -> list[dict[str, str | int]]:
         root_fd = open_absolute_directory_no_follow(root)
     except RuntimeError as exc:
         raise WorkspaceError(f"Workspace root is unsafe: {root}") from exc
-    matches: list[dict[str, str | int]] = []
+    matches: list[dict[str, str]] = []
     try:
         for name in sorted(os.listdir(root_fd)):
             if name != "active" and not name.startswith("active."):
@@ -1193,14 +1542,22 @@ def _active_pointer_entries(slug: str) -> list[dict[str, str | int]]:
                 value = os.read(fd, 4096).decode().strip()
             finally:
                 os.close(fd)
-            if value == slug:
+            decoded = _decode_active_pointer(value)
+            if decoded is None and value == slug and upgrade_legacy:
+                item, value, generation = _upgrade_legacy_active_pointer(
+                    root_fd, name, expected=item, slug=slug
+                )
+                decoded = (slug, generation)
+            if decoded is not None and decoded[0] == slug:
                 matches.append(
                     {
                         "path": str(root / name),
-                        "dev": int(opened.st_dev),
-                        "ino": int(opened.st_ino),
+                        "record": value,
+                        "generation": decoded[1],
                     }
                 )
+            elif value == slug:
+                raise WorkspaceError("An active pointer was replaced after terminal journaling")
     finally:
         os.close(root_fd)
     return matches
@@ -1220,7 +1577,7 @@ def _remove_active_pointers(journal: dict) -> None:
         raise WorkspaceError("A new active pointer appeared after terminal journaling")
     for path, entry in actual.items():
         captured = expected[path]
-        if (entry["dev"], entry["ino"]) != (captured["dev"], captured["ino"]):
+        if entry != captured:
             raise WorkspaceError("An active pointer was replaced after terminal journaling")
     if not journal["attempts"]["active_clear"] and actual != expected:
         raise WorkspaceError("Active pointers changed before their cleanup attempt")
@@ -1238,8 +1595,6 @@ def _remove_active_pointers(journal: dict) -> None:
             if stat.S_ISLNK(item.st_mode) or not stat.S_ISREG(item.st_mode):
                 raise WorkspaceError(f"Active pointer became unsafe: {path}")
             captured = expected[path]
-            if (item.st_dev, item.st_ino) != (captured["dev"], captured["ino"]):
-                raise WorkspaceError(f"Active pointer was replaced: {path}")
             flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
             fd = os.open(path.name, flags, dir_fd=root_fd)
             try:
@@ -1249,7 +1604,8 @@ def _remove_active_pointers(journal: dict) -> None:
                 os.close(fd)
             if (opened.st_dev, opened.st_ino) != (item.st_dev, item.st_ino):
                 raise WorkspaceError(f"Active pointer changed while opening: {path}")
-            if value != journal["slug"]:
+            decoded = _decode_active_pointer(value)
+            if decoded != (journal["slug"], captured["generation"]) or value != captured["record"]:
                 raise WorkspaceError(f"Active pointer content changed: {path}")
             try:
                 unlink_child_at(root_fd, path.name, expected=item)
@@ -1332,7 +1688,7 @@ def _initialize_terminal_journal(ws: Workspace, *, local: bool, outcome: dict | 
         "data_cleanup_required": data_required,
         "data_initially_present": bool(company_present or board_present),
         "workspace_was_present": workspace_exists(ws.slug),
-        "active_entries": _active_pointer_entries(ws.slug),
+        "active_entries": _active_pointer_entries(ws.slug, upgrade_legacy=True),
         "claim_initially_present": claim_present,
         "outcome": copy.deepcopy(outcome),
         "attempts": {key: False for key in _TERMINAL_ATTEMPT_KEYS},
@@ -2079,13 +2435,108 @@ def _record_current_pr_provenance(
         # Never bless a later head merely because it was observed after our push.
         recorded["head_ref_oid"] = expected_head_oid
     ws.pr_provenance = recorded
+    _rebind_workspace_worktree_identity(ws)
     save_workspace(ws)
+
+
+_WORKTREE_IDENTITY_KEYS = {
+    "version",
+    "path",
+    "slug",
+    "branch",
+    "head",
+    "dev",
+    "ino",
+    "issue",
+    "pr",
+    "pr_provenance",
+}
+
+
+def _authenticate_workspace_worktree(ws: Workspace) -> None:
+    """Authenticate the exact persisted checkout before a Git/PR mutation."""
+    if not ws.worktree:
+        return  # Backward-compatible single-checkout workspaces.
+    from src.workspace import git
+
+    identity = ws.worktree_identity
+    canonical = Path(os.path.abspath(str(git.worktrees_dir() / ws.slug)))
+    recorded = Path(os.path.abspath(os.path.expanduser(ws.worktree)))
+    if recorded != canonical:
+        raise WorkspaceError("Workspace records a non-canonical managed worktree path")
+    if not isinstance(identity, dict) or set(identity) != _WORKTREE_IDENTITY_KEYS:
+        raise WorkspaceError("Workspace is missing its authenticated worktree identity")
+    if (
+        identity.get("version") != 1
+        or identity.get("path") != str(canonical)
+        or identity.get("slug") != ws.slug
+        or identity.get("branch") != ws.branch
+        or identity.get("issue") != ws.issue
+        or identity.get("pr") != ws.pr
+        or identity.get("pr_provenance") != ws.pr_provenance
+        or not isinstance(identity.get("head"), str)
+        or not isinstance(identity.get("dev"), int)
+        or not isinstance(identity.get("ino"), int)
+    ):
+        raise WorkspaceError("Workspace worktree identity contradicts ownership provenance")
+    if not git.authenticate_managed_worktree(
+        canonical,
+        ws.branch,
+        identity["head"],
+        expected_dev=identity["dev"],
+        expected_ino=identity["ino"],
+    ):
+        raise WorkspaceError("Authenticated workspace worktree disappeared")
+    if git.local_branch_oid_strict(ws.branch) != identity["head"]:
+        raise WorkspaceError("Workspace local ref contradicts authenticated worktree")
+
+
+def _advance_workspace_worktree_head(ws: Workspace, previous: str, current: str) -> None:
+    """Persist an exact same-checkout HEAD advance after a journaled commit."""
+    if not ws.worktree:
+        return
+    from src.workspace import git
+
+    identity = ws.worktree_identity
+    if identity.get("head") != previous:
+        raise WorkspaceError("Workspace head changed before its journaled advance")
+    canonical = Path(os.path.abspath(str(git.worktrees_dir() / ws.slug)))
+    actual = git.managed_worktree_identity_strict(canonical, ws.branch)
+    if (
+        actual is None
+        or actual["head"] != current
+        or actual["dev"] != identity.get("dev")
+        or actual["ino"] != identity.get("ino")
+        or git.local_branch_oid_strict(ws.branch) != current
+    ):
+        raise WorkspaceError("Worktree identity changed during journaled HEAD advance")
+    identity["head"] = current
+    save_workspace(ws)
+
+
+def _rebind_workspace_worktree_identity(ws: Workspace) -> None:
+    """Bind the existing checkout to newly authenticated PR provenance."""
+    if not ws.worktree:
+        return
+    identity = ws.worktree_identity
+    # The checkout itself must still authenticate under the old provenance.
+    old_pr = identity.get("pr")
+    old_provenance = identity.get("pr_provenance")
+    identity["pr"] = ws.pr
+    identity["pr_provenance"] = copy.deepcopy(ws.pr_provenance)
+    try:
+        _authenticate_workspace_worktree(ws)
+    except Exception:
+        identity["pr"] = old_pr
+        identity["pr_provenance"] = old_provenance
+        raise
 
 
 def _verify_workspace_pr_before_mutation(ws: Workspace) -> None:
     """Authenticate a recorded PR immediately before a non-create mutation."""
     from src.workspace import git
 
+    _authenticate_workspace_worktree(ws)
     if ws.pr is None:
         raise WorkspaceError("Workspace has no PR to mutate")
     git.verify_recorded_pr(
@@ -2207,6 +2658,8 @@ def _execute_submit_step(
             return  # Local mode — skip git commit
         from src.workspace import git
 
+        _authenticate_workspace_worktree(ws)
+
         # Stage only this company's files to avoid committing leftover
         # data from a previously submitted company branch
         img_path = f"apps/crawler/data/images/{ws.slug}/"
@@ -2226,12 +2679,17 @@ def _execute_submit_step(
         commit_msg = f"Configure {ws.name or ws.slug}"
         if ws.issue:
             commit_msg += f"\n\nCloses #{ws.issue}"
+        previous_head = git.current_head_oid_strict()
+        _authenticate_workspace_worktree(ws)
         git.commit(commit_msg)
+        _advance_workspace_worktree_head(ws, previous_head, git.current_head_oid_strict())
 
     elif step_key == "pushed":
         if local:
             return  # Local mode — skip push
         from src.workspace import git
+
+        _authenticate_workspace_worktree(ws)
 
         current_local_oid = git.current_head_oid_strict()
         local_oid = ws.submit_state.get("publish_oid")
@@ -2268,6 +2726,7 @@ def _execute_submit_step(
             if not attempted:
                 ws.submit_state["publish_attempted"] = True
                 save_workspace(ws)
+            _authenticate_workspace_worktree(ws)
             git.push_branch_at_expected_oid(ws.branch, local_oid, expected_remote_oid)
 
         if ws.pr is not None:
@@ -2321,6 +2780,7 @@ def _execute_submit_step(
                 else f"Add {ws.name or ws.slug}"
             )
             pr_body = f"Closes #{ws.issue}" if ws.issue else ""
+            _authenticate_workspace_worktree(ws)
             ws.pr = git.create_draft_pr(title=pr_title, body=pr_body)
             _record_current_pr_provenance(
                 ws,
@@ -2399,18 +2859,17 @@ def submit(slug: str | None, summary: str | None, force: bool):
 
     ws = load_workspace(slug)
 
-    # Ensure we're operating in the correct worktree. _pivot_to_worktree()
-    # in main() may have failed if the active-slug file couldn't be found
-    # (e.g. ppid changed between CLI invocations under Claude Code).
+    # Authenticate before trusting the persisted path, then pivot and repeat
+    # immediately. A marker directory is not ownership proof.
     if ws.worktree and not is_local_mode():
-        from pathlib import Path
-
         from src.shared.constants import get_repo_root, set_repo_root
 
-        wt = Path(ws.worktree)
+        _authenticate_workspace_worktree(ws)
+        wt = Path(os.path.abspath(ws.worktree))
         current_root = get_repo_root()
-        if current_root and current_root != wt and (wt / "apps" / "crawler" / "data").exists():
+        if current_root != wt:
             set_repo_root(wt)
+        _authenticate_workspace_worktree(ws)
 
     boards = list_boards(slug)
 

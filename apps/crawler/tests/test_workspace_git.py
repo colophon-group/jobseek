@@ -17,6 +17,7 @@ from src.workspace.git import (
     check_existing_prs,
     check_gh_auth,
     create_draft_pr,
+    create_worktree,
     current_branch,
     delete_branch_at_expected_oid,
     delete_local_branch_at_expected_oid,
@@ -58,6 +59,72 @@ def _pr_details(**overrides) -> dict:
     }
     details.update(overrides)
     return details
+
+
+def _managed_repo_fixture(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    worktrees = tmp_path / "worktrees"
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "Test"], check=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.email", "test@example.com"],
+        check=True,
+    )
+    (repo / "tracked.txt").write_text("base\n")
+    subprocess.run(["git", "-C", str(repo), "add", "tracked.txt"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-qm", "base"], check=True)
+    monkeypatch.setattr("src.workspace.git._MANAGED_REPO", repo)
+    monkeypatch.setattr("src.workspace.git._WORKTREES_DIR", worktrees)
+    return repo, worktrees
+
+
+class TestFreshWorktreeCreation:
+    def test_preexisting_unregistered_directory_is_preserved(self, tmp_path, monkeypatch):
+        _, worktrees = _managed_repo_fixture(tmp_path, monkeypatch)
+        target = worktrees / "acme"
+        target.mkdir(parents=True)
+        marker = target / "owned.txt"
+        marker.write_text("outside ownership\n")
+
+        with pytest.raises(WorkspaceError, match="not registered|already exists"):
+            create_worktree("add-company/acme", target, "HEAD")
+
+        assert marker.read_text() == "outside ownership\n"
+
+    def test_preexisting_local_ref_is_preserved(self, tmp_path, monkeypatch):
+        repo, worktrees = _managed_repo_fixture(tmp_path, monkeypatch)
+        branch = "add-company/acme"
+        subprocess.run(["git", "-C", str(repo), "branch", branch], check=True)
+        before = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", branch],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+        with pytest.raises(WorkspaceError, match="Local branch already exists"):
+            create_worktree(branch, worktrees / "acme", "HEAD")
+
+        after = subprocess.run(
+            ["git", "-C", str(repo), "rev-parse", branch],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        assert after == before
+
+    def test_symlink_at_target_is_preserved(self, tmp_path, monkeypatch):
+        _, worktrees = _managed_repo_fixture(tmp_path, monkeypatch)
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        target = worktrees / "acme"
+        worktrees.mkdir()
+        target.symlink_to(outside, target_is_directory=True)
+
+        with pytest.raises(WorkspaceError, match="not a real directory"):
+            create_worktree("add-company/acme", target, "HEAD")
+
+        assert target.is_symlink()
 
 
 class TestEnsureCloneInstalledMode:
