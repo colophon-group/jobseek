@@ -16,6 +16,7 @@ import codecs
 import io
 import random
 import re
+from collections.abc import Callable
 from datetime import UTC, datetime
 from html.parser import HTMLParser
 from pathlib import Path
@@ -556,6 +557,10 @@ _PROSPECTIVE_CANONICAL_ASSET_HOSTS = frozenset({"ohws.prospective.ch"})
 _PROSPECTIVE_JOB_UUID = (
     r"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}"
 )
+_PROSPECTIVE_JOB_PATH_RE = re.compile(
+    rf"/(?:[^/?#]+/)+(?P<uuid>{_PROSPECTIVE_JOB_UUID})/?$",
+    re.IGNORECASE,
+)
 _PROSPECTIVE_RICH_ROWS = {
     "row_selector": "#jobs-list .job",
     "link_selector": "a.job-title[href]",
@@ -774,17 +779,8 @@ def _lucca_probe_config(html: str, url: str) -> dict | None:
     }
 
 
-def _prospective_probe_config(html: str, url: str) -> dict | None:
-    """Return a static rich-row preset for Prospective CareerCenter pages.
-
-    Some branded Prospective boards render their complete inventory on the
-    server while rejecting the provider's historical public ``medium`` JSON
-    endpoint. Their detail links end in UUIDs and therefore evade the generic
-    job-keyword heuristic. Recognize the provider-owned CareerCenter assets,
-    scope extraction to its stable listing rows, and preserve an exact zero-job
-    contract so markup or transport failures cannot delist every posting.
-    """
-
+def _prospective_provider_medium(html: str, url: str) -> str | None:
+    """Return the one trusted CareerCenter medium proved by a complete shell."""
     try:
         parsed = urlsplit(url)
         port = parsed.port
@@ -830,15 +826,115 @@ def _prospective_probe_config(html: str, url: str) -> dict | None:
         match = _PROSPECTIVE_CAREERCENTER_ASSET_RE.search(asset.path)
         if match is not None:
             medium_ids.add(match.group("medium_id"))
-    if len(medium_ids) != 1:
+    return medium_ids.pop() if len(medium_ids) == 1 else None
+
+
+def _prospective_canonical_path_from_html(html: str, url: str) -> str | None:
+    """Derive a stable locale route whose cosmetic slug is fixed to ``job``."""
+    parsed_board = urlsplit(url)
+    board_origin = (parsed_board.scheme, parsed_board.hostname, parsed_board.port or 443)
+    tree = LexborHTMLParser(html)
+    for link in tree.css("#jobs-list .job a.job-title[href]"):
+        href = link.attributes.get("href") or ""
+        try:
+            parsed_job = urlsplit(urljoin(url, href))
+            job_origin = (parsed_job.scheme, parsed_job.hostname, parsed_job.port or 443)
+        except ValueError:
+            continue
+        match = _PROSPECTIVE_JOB_PATH_RE.fullmatch(parsed_job.path)
+        if job_origin != board_origin or match is None:
+            continue
+        segments = [segment for segment in parsed_job.path.split("/") if segment]
+        # Prospective routes are /<locale route>/<cosmetic slug>/<uuid>. A
+        # shorter path does not prove a fetchable slug-independent route.
+        if len(segments) < 3:
+            continue
+        return "/" + "/".join([*segments[:-2], "job"]) + "/"
+    return None
+
+
+def _validated_prospective_canonical_path(value: object) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or len(value) > 512 or "\x00" in value:
+        raise ValueError("DOM monitor prospective_canonical_path must be a bounded path")
+    parsed = urlsplit(value)
+    segments = [segment for segment in parsed.path.split("/") if segment]
+    if (
+        parsed.scheme
+        or parsed.netloc
+        or parsed.query
+        or parsed.fragment
+        or parsed.path != value
+        or not value.startswith("/")
+        or not value.endswith("/")
+        or not segments
+        or segments[-1] != "job"
+        or any(segment in {".", ".."} for segment in segments)
+    ):
+        raise ValueError(
+            "DOM monitor prospective_canonical_path must end in a relative /job/ route"
+        )
+    return value
+
+
+def _canonicalize_prospective_job_url(
+    url: str,
+    board_url: str,
+    canonical_path: str,
+) -> str:
+    """Map localized/cosmetic Prospective links onto one UUID identity URL."""
+    try:
+        parsed_board = urlsplit(board_url)
+        parsed_job = urlsplit(url)
+        board_origin = (
+            parsed_board.scheme,
+            (parsed_board.hostname or "").casefold(),
+            parsed_board.port or 443,
+        )
+        job_origin = (
+            parsed_job.scheme,
+            (parsed_job.hostname or "").casefold(),
+            parsed_job.port or 443,
+        )
+    except ValueError as exc:
+        raise ValueError("DOM monitor Prospective row produced an invalid URL") from exc
+    match = _PROSPECTIVE_JOB_PATH_RE.fullmatch(parsed_job.path)
+    if job_origin != board_origin or match is None:
+        raise ValueError("DOM monitor Prospective row violated its UUID URL identity contract")
+    return urlunsplit(
+        (
+            parsed_board.scheme,
+            parsed_board.netloc,
+            f"{canonical_path}{match.group('uuid').lower()}",
+            "",
+            "",
+        )
+    )
+
+
+def _prospective_probe_config(html: str, url: str) -> dict | None:
+    """Return a static rich-row preset for Prospective CareerCenter pages.
+
+    Some branded Prospective boards render their complete inventory on the
+    server while rejecting the provider's historical public ``medium`` JSON
+    endpoint. Their detail links end in UUIDs and therefore evade the generic
+    job-keyword heuristic. Recognize the provider-owned CareerCenter assets,
+    scope extraction to its stable listing rows, and preserve an exact zero-job
+    contract so markup or transport failures cannot delist every posting.
+    """
+
+    medium_id = _prospective_provider_medium(html, url)
+    if medium_id is None:
         return None
 
+    parsed = urlsplit(url)
     origin = f"https://{parsed.netloc}"
-    medium_id = medium_ids.pop()
     url_filter = (
         rf"^{re.escape(origin)}/(?:[^/?#]+/)+{_PROSPECTIVE_JOB_UUID}"
         r"/?(?:[?#].*)?$"
     )
+    canonical_path = _prospective_canonical_path_from_html(html, url)
     rich_rows = dict(_PROSPECTIVE_RICH_ROWS)
     asset_origins = {origin} | {f"https://{host}" for host in _PROSPECTIVE_CANONICAL_ASSET_HOSTS}
     asset_origin_pattern = "|".join(re.escape(candidate) for candidate in sorted(asset_origins))
@@ -864,7 +960,18 @@ def _prospective_probe_config(html: str, url: str) -> dict | None:
             validated_rich_rows,
             re.compile(url_filter),
             allow_empty=True,
+            url_canonicalizer=(
+                None
+                if canonical_path is None
+                else lambda job_url: _canonicalize_prospective_job_url(
+                    job_url,
+                    url,
+                    canonical_path,
+                )
+            ),
         )
+        if jobs and canonical_path is None:
+            return None
         _validate_explicit_empty_states(
             html,
             _validated_empty_state_list(empty_states),
@@ -874,13 +981,16 @@ def _prospective_probe_config(html: str, url: str) -> dict | None:
     except ValueError:
         return None
 
-    return {
+    config = {
         "prospective_board": medium_id,
         "urls": len(jobs),
         "url_filter": url_filter,
         "rich_rows": rich_rows,
         "empty_states": empty_states,
     }
+    if canonical_path is not None:
+        config["prospective_canonical_path"] = canonical_path
+    return config
 
 
 def _rexx_probe_config(html: str, url: str) -> dict | None:
@@ -1623,6 +1733,7 @@ def _extract_rich_rows_static(
     url_matcher: re.Pattern | None,
     *,
     allow_empty: bool = False,
+    url_canonicalizer: Callable[[str], str] | None = None,
 ) -> list[DiscoveredJob]:
     """Extract stable URLs, titles, and joined locations from listing rows."""
     (
@@ -1670,6 +1781,7 @@ def _extract_rich_rows_static(
             raise ValueError(f"DOM monitor rich_rows row {index} produced an invalid URL")
         if url_matcher is not None and not url_matcher.search(url):
             continue
+        canonical_url = url_canonicalizer(url) if url_canonicalizer is not None else url
 
         location_parts: list[str] = []
         for selector in location_selectors:
@@ -1691,8 +1803,8 @@ def _extract_rich_rows_static(
                     f"DOM monitor rich_rows row {index} omitted configured metadata {field!r}"
                 )
             metadata[field] = value
-        jobs_by_url[url] = DiscoveredJob(
-            url=url,
+        jobs_by_url[canonical_url] = DiscoveredJob(
+            url=canonical_url,
             title=title,
             locations=[", ".join(location_parts)] if location_parts else None,
             metadata=metadata or None,
@@ -1705,6 +1817,8 @@ def _extract_rich_rows_static(
         )
     if not jobs_by_url:
         raise ValueError("DOM monitor rich_rows URL filter excluded every listing row")
+    if url_canonicalizer is not None:
+        return [jobs_by_url[url] for url in sorted(jobs_by_url)]
     return list(jobs_by_url.values())
 
 
@@ -2478,6 +2592,18 @@ async def dom_discover(
     metadata = board.get("metadata") or {}
     board_url = board["board_url"]
 
+    prospective_board = metadata.get("prospective_board")
+    if prospective_board is not None and (
+        not isinstance(prospective_board, str)
+        or re.fullmatch(r"[1-9]\d{0,11}", prospective_board) is None
+    ):
+        raise ValueError("DOM monitor prospective_board must be a valid medium identity")
+    prospective_canonical_path = _validated_prospective_canonical_path(
+        metadata.get("prospective_canonical_path")
+    )
+    if prospective_canonical_path is not None and prospective_board is None:
+        raise ValueError("DOM monitor prospective_canonical_path requires prospective_board")
+
     render = metadata.get("render", False)
     actions = metadata.get("actions")
     pagination = metadata.get("pagination")
@@ -2508,6 +2634,17 @@ async def dom_discover(
     if rich_rows is not None and rich_rows[4] is not None and pagination:
         raise ValueError(
             "DOM monitor rich_rows total_selector supports single-page extraction only"
+        )
+    if prospective_board is not None and (
+        render
+        or rich_rows is None
+        or rich_rows[4] is None
+        or not configured_empty_states
+        or pagination
+    ):
+        raise ValueError(
+            "DOM monitor Prospective preset requires static single-page rich rows with "
+            "an exact total and explicit zero proof"
         )
     require_jsonld_jobposting = metadata.get("require_jsonld_jobposting", False)
     if not isinstance(require_jsonld_jobposting, bool):
@@ -2649,6 +2786,24 @@ async def dom_discover(
                 )
             return set()
         _raise_if_bot_challenge(board_url, html)
+        if prospective_board is not None:
+            detected_medium = _prospective_provider_medium(html, board_url)
+            if detected_medium is None:
+                raise ValueError(
+                    "DOM monitor Prospective provider identity proof is missing or ambiguous"
+                )
+            if detected_medium != prospective_board:
+                raise ValueError(
+                    "DOM monitor configured Prospective medium does not match listing assets"
+                )
+            if (
+                prospective_canonical_path is None
+                and LexborHTMLParser(html).css_first("#jobs-list .job a.job-title[href]")
+                is not None
+            ):
+                raise ValueError(
+                    "DOM monitor Prospective positive inventory requires prospective_canonical_path"
+                )
         if rich_rows is not None:
             jobs = _extract_rich_rows_static(
                 html,
@@ -2656,6 +2811,15 @@ async def dom_discover(
                 rich_rows,
                 url_matcher,
                 allow_empty=bool(configured_empty_states),
+                url_canonicalizer=(
+                    None
+                    if prospective_board is None or prospective_canonical_path is None
+                    else lambda job_url: _canonicalize_prospective_job_url(
+                        job_url,
+                        board_url,
+                        prospective_canonical_path,
+                    )
+                ),
             )
             if configured_empty_states:
                 _validate_explicit_empty_states(
