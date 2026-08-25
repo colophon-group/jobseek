@@ -69,11 +69,27 @@ def _reconcile(
     *,
     apply: bool,
     verifier=None,
+    authoritative_main_verifier=None,
     remove_worktree=None,
     pre_remove=None,
     max_directories: int = 3,
     max_bytes: int = 10 * 1024**3,
 ):
+    def local_main_verifier() -> RemoteProof:
+        result = subprocess.run(
+            ["git", "rev-parse", "origin/main"],
+            cwd=repo,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        return RemoteProof(
+            ok=result.returncode == 0,
+            kind="test_main" if result.returncode == 0 else "main_lookup_failed",
+            detail={"headRefOid": result.stdout.strip()} if result.returncode == 0 else {},
+            error=result.stderr.strip() or None,
+        )
+
     return reconcile_worktrees(
         root=tmp_path / "runner",
         repo_dir=repo,
@@ -81,6 +97,7 @@ def _reconcile(
         archive_dir=tmp_path / "runner" / "state" / "worktree-quarantine",
         ledger=ledger,
         remote_verifier=verifier or (lambda run: RemoteProof(ok=True, kind="test")),
+        authoritative_main_verifier=authoritative_main_verifier or local_main_verifier,
         pid_checker=lambda pid, run_id: False,
         max_terminal_directories=max_directories,
         max_terminal_bytes=max_bytes,
@@ -321,6 +338,143 @@ def test_clean_runner_head_matching_remote_pr_needs_no_archive(tmp_path: Path) -
     assert item.remote_proof is not None
     assert item.remote_proof["kind"] == "exact_remote_branch"
     assert not worktree.exists()
+
+
+def test_poisoned_local_main_cannot_hide_unpushed_runner_commit(tmp_path: Path) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    authoritative_main_oid = subprocess.run(
+        ["git", "rev-parse", "origin/main"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    (worktree / "tracked.txt").write_text("local-only commit\n")
+    _run("git", "add", "tracked.txt", cwd=worktree)
+    _run("git", "commit", "-m", "local only", cwd=worktree)
+    local_oid = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=worktree,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    _run("git", "update-ref", "refs/remotes/origin/main", local_oid, cwd=worktree)
+    _run("git", "replace", local_oid, authoritative_main_oid, cwd=worktree)
+    assert (
+        subprocess.run(
+            ["git", "rev-parse", "origin/main"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        == local_oid
+    )
+    assert (
+        subprocess.run(
+            ["git", "diff", "--quiet", local_oid, authoritative_main_oid, "--"],
+            cwd=repo,
+            check=False,
+        ).returncode
+        == 0
+    )
+    assert (
+        subprocess.run(
+            [
+                "git",
+                "--no-replace-objects",
+                "diff",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--quiet",
+                local_oid,
+                authoritative_main_oid,
+                "--",
+            ],
+            cwd=repo,
+            check=False,
+        ).returncode
+        == 1
+    )
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="submitted")
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        verifier=lambda run: RemoteProof(
+            ok=True,
+            kind="pull_request",
+            detail={"headRefOid": authoritative_main_oid},
+        ),
+        authoritative_main_verifier=lambda: RemoteProof(
+            ok=True,
+            kind="authoritative_main",
+            detail={
+                "repository": "colophon-group/jobseek",
+                "headRefOid": authoritative_main_oid,
+            },
+        ),
+    )
+
+    item = report.items[0]
+    assert report.archived == 1
+    assert report.removed == 1
+    assert item.unique_commits
+    assert item.main_oid == authoritative_main_oid
+    assert item.archive_path
+    assert not worktree.exists()
+    bundle_copy = tmp_path / "poisoned-main.bundle"
+    with tarfile.open(item.archive_path, "r:gz") as archive:
+        bundle = archive.extractfile("unique-commits.bundle")
+        assert bundle is not None
+        bundle_copy.write_bytes(bundle.read())
+        manifest_file = archive.extractfile("manifest.json")
+        assert manifest_file is not None
+        manifest = json.load(manifest_file)
+    assert manifest["unique_commit_bundle"]["base_oid"] == authoritative_main_oid
+    listed = subprocess.run(
+        ["git", "bundle", "list-heads", str(bundle_copy)],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert local_oid in listed.stdout
+
+
+def test_authoritative_main_lookup_failure_retains_runner_worktree(tmp_path: Path) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="submitted")
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        verifier=lambda run: (_ for _ in ()).throw(
+            AssertionError("remote artifact must not be trusted without main")
+        ),
+        authoritative_main_verifier=lambda: RemoteProof(
+            ok=False,
+            kind="main_lookup_failed",
+            detail={"repository": "colophon-group/jobseek"},
+            error="GitHub unavailable",
+        ),
+    )
+
+    item = report.items[0]
+    assert report.removed == 0
+    assert report.archived == 0
+    assert worktree.exists()
+    assert item.classification == "remote_unverified"
+    assert item.remote_proof is not None
+    assert item.remote_proof["kind"] == "main_lookup_failed"
+    assert item.reason == "GitHub unavailable"
 
 
 def test_dirty_retryable_worktree_is_archived_before_removal(tmp_path: Path) -> None:
@@ -710,7 +864,15 @@ def test_deleted_large_head_blob_is_streamed_and_cannot_overshoot_archive_capaci
     original_run = subprocess.run
 
     def reject_buffered_binary_diff(command, *args, **kwargs):
-        if list(command) == ["git", "diff", "--binary", "HEAD"]:
+        if list(command) == [
+            "git",
+            "--no-replace-objects",
+            "diff",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--binary",
+            "HEAD",
+        ]:
             raise AssertionError("binary patch must not be captured by subprocess.run")
         return original_run(command, *args, **kwargs)
 
@@ -1096,12 +1258,166 @@ def test_new_unique_commit_archive_is_charged_to_byte_ceiling(tmp_path: Path) ->
     assert not report.within_bounds
 
 
+def test_authoritative_main_uses_explicit_repository_and_matching_refresh(
+    tmp_path: Path,
+) -> None:
+    oid = "a" * 40
+    verifier = GitHubRemoteVerifier(
+        repo_dir=tmp_path,
+        github=SimpleNamespace(),
+        repository="colophon-group/jobseek",
+    )
+    responses = [
+        SimpleNamespace(returncode=0, stdout=f"{oid}\n", stderr=""),
+        SimpleNamespace(returncode=0, stdout="", stderr=""),
+        SimpleNamespace(returncode=0, stdout=f"{oid}\n", stderr=""),
+    ]
+
+    with patch(
+        "src.workspace.worktree_reconcile.subprocess.run",
+        side_effect=responses,
+    ) as run:
+        proof = verifier.verify_main()
+
+    assert proof.ok
+    assert proof.kind == "authoritative_main"
+    assert proof.detail["headRefOid"] == oid
+    assert run.call_args_list[0].args[0] == [
+        "gh",
+        "api",
+        "--method",
+        "GET",
+        "repos/colophon-group/jobseek/commits/main",
+        "--jq",
+        ".sha",
+    ]
+    assert "https://github.com/colophon-group/jobseek.git" in run.call_args_list[1].args[0]
+
+
+def test_authoritative_main_refresh_mismatch_fails_closed(tmp_path: Path) -> None:
+    verifier = GitHubRemoteVerifier(
+        repo_dir=tmp_path,
+        github=SimpleNamespace(),
+        repository="colophon-group/jobseek",
+    )
+    responses = [
+        SimpleNamespace(returncode=0, stdout=f"{'a' * 40}\n", stderr=""),
+        SimpleNamespace(returncode=0, stdout="", stderr=""),
+        SimpleNamespace(returncode=0, stdout=f"{'b' * 40}\n", stderr=""),
+    ]
+
+    with patch(
+        "src.workspace.worktree_reconcile.subprocess.run",
+        side_effect=responses,
+    ):
+        proof = verifier.verify_main()
+
+    assert not proof.ok
+    assert proof.kind == "main_refresh_mismatch"
+    assert proof.detail["headRefOid"] == "a" * 40
+    assert proof.detail["refreshed_oid"] == "b" * 40
+
+
+def test_authoritative_main_lookup_failure_fails_closed(tmp_path: Path) -> None:
+    verifier = GitHubRemoteVerifier(
+        repo_dir=tmp_path,
+        github=SimpleNamespace(),
+        repository="colophon-group/jobseek",
+    )
+
+    with patch(
+        "src.workspace.worktree_reconcile.subprocess.run",
+        return_value=SimpleNamespace(returncode=1, stdout="", stderr="GitHub unavailable"),
+    ) as run:
+        proof = verifier.verify_main()
+
+    assert not proof.ok
+    assert proof.kind == "main_lookup_failed"
+    assert proof.error == "GitHub unavailable"
+    assert run.call_count == 1
+
+
+@pytest.mark.parametrize("proof_source", ["pull_request", "branch"])
+def test_remote_proof_ignores_poisoned_origin_repository(
+    tmp_path: Path,
+    proof_source: str,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _run("git", "init", "-b", "main", cwd=repo)
+    _run(
+        "git",
+        "remote",
+        "add",
+        "origin",
+        "https://github.com/attacker/fake-jobseek.git",
+        cwd=repo,
+    )
+    oid = "a" * 40
+
+    class GitHub:
+        def issue_resolution(self, issue: int, *, repository: str):
+            raise AssertionError("submitted PR proof must not require issue lookup")
+
+    verifier = GitHubRemoteVerifier(
+        repo_dir=repo,
+        github=GitHub(),
+        repository="colophon-group/jobseek",
+    )
+    if proof_source == "pull_request":
+        response = SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "number": 7,
+                    "state": "OPEN",
+                    "isDraft": False,
+                    "headRefName": "fix-crawler/safe",
+                    "headRefOid": oid,
+                    "mergedAt": None,
+                    "url": "https://github.com/colophon-group/jobseek/pull/7",
+                }
+            ),
+            stderr="",
+        )
+        run = {
+            "state": "submitted",
+            "issue": 101,
+            "pr_number": 7,
+            "branch": "fix-crawler/safe",
+        }
+    else:
+        response = SimpleNamespace(returncode=0, stdout=f"{oid}\n", stderr="")
+        run = {
+            "state": "failed",
+            "issue": 101,
+            "pr_number": None,
+            "branch": "fix-crawler/safe",
+        }
+
+    with patch(
+        "src.workspace.worktree_reconcile.subprocess.run",
+        return_value=response,
+    ) as subprocess_run:
+        proof = verifier(run)
+
+    command = subprocess_run.call_args.args[0]
+    assert proof.ok
+    assert proof.detail["headRefOid"] == oid
+    assert "attacker/fake-jobseek" not in " ".join(command)
+    assert "colophon-group/jobseek" in " ".join(command)
+
+
 def test_submitted_outcome_uses_linked_pr_as_remote_proof(tmp_path: Path) -> None:
     class GitHub:
-        def issue_resolution(self, issue: int):
+        def issue_resolution(self, issue: int, *, repository: str):
             raise AssertionError("an open submitted PR must not require issue closure")
 
-    verifier = GitHubRemoteVerifier(repo_dir=tmp_path, github=GitHub())
+    verifier = GitHubRemoteVerifier(
+        repo_dir=tmp_path,
+        github=GitHub(),
+        repository="colophon-group/jobseek",
+    )
     payload = {
         "number": 7,
         "state": "OPEN",
@@ -1135,10 +1451,15 @@ def test_submitted_outcome_uses_linked_pr_as_remote_proof(tmp_path: Path) -> Non
 
 def test_rejected_outcome_requires_matching_issue_marker(tmp_path: Path) -> None:
     class GitHub:
-        def issue_resolution(self, issue: int):
+        def issue_resolution(self, issue: int, *, repository: str):
+            assert repository == "colophon-group/jobseek"
             return SimpleNamespace(state="CLOSED", outcome="rejected")
 
-    verifier = GitHubRemoteVerifier(repo_dir=tmp_path, github=GitHub())
+    verifier = GitHubRemoteVerifier(
+        repo_dir=tmp_path,
+        github=GitHub(),
+        repository="colophon-group/jobseek",
+    )
     proof = verifier(
         {
             "state": "rejected",

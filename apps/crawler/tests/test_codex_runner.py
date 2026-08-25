@@ -29,6 +29,7 @@ from src.workspace.codex_runner import (
     parse_codex_usage_jsonl,
     run_usage_probe,
 )
+from src.workspace.worktree_reconcile import GitHubRemoteVerifier, RemoteProof
 
 
 class FakeGitHub:
@@ -80,7 +81,14 @@ class FakeGitHub:
             raise GitHubStateError("PR lookup failed")
         return self.existing_prs
 
-    def issue_resolution(self, issue: int) -> IssueResolution:
+    def issue_resolution(
+        self,
+        issue: int,
+        *,
+        repository: str | None = None,
+    ) -> IssueResolution:
+        if repository is not None:
+            assert repository == "colophon-group/jobseek"
         return IssueResolution(
             state="CLOSED" if self.issue_closed else "OPEN",
             outcome=self.issue_outcome,
@@ -866,6 +874,7 @@ def test_github_prunes_only_old_runner_owned_claims(monkeypatch) -> None:
 def test_issue_closure_requires_terminal_evidence(monkeypatch) -> None:
     from src.workspace import git
 
+    commands: list[list[str]] = []
     payloads = iter(
         [
             {"state": "CLOSED", "comments": [], "closedByPullRequestsReferences": []},
@@ -888,6 +897,7 @@ def test_issue_closure_requires_terminal_evidence(monkeypatch) -> None:
     )
 
     def fake_run(cmd, **kwargs):
+        commands.append(cmd)
         return SimpleNamespace(returncode=0, stderr="", stdout=json.dumps(next(payloads)))
 
     monkeypatch.setattr(git, "_run", fake_run)
@@ -895,7 +905,14 @@ def test_issue_closure_requires_terminal_evidence(monkeypatch) -> None:
 
     assert coordinator.issue_resolution(101).outcome is None
     assert coordinator.issue_resolution(101).outcome == "rejected"
-    assert coordinator.issue_resolution(101).outcome == "submitted"
+    assert (
+        coordinator.issue_resolution(
+            101,
+            repository="colophon-group/jobseek",
+        ).outcome
+        == "submitted"
+    )
+    assert commands[-1][4:6] == ["--repo", "colophon-group/jobseek"]
 
 
 def test_dry_run_claims_then_releases_without_codex(tmp_path: Path) -> None:
@@ -1296,6 +1313,7 @@ def test_cleanup_uses_configured_managed_repo_root(tmp_path: Path) -> None:
 
 
 def test_reconcile_pre_remove_does_not_follow_workspace_symlink(
+    monkeypatch,
     tmp_path: Path,
 ) -> None:
     config = _config(tmp_path, dry_run=True)
@@ -1319,6 +1337,22 @@ def test_reconcile_pre_remove_does_not_follow_workspace_symlink(
         ["git", "update-ref", "refs/remotes/origin/main", "HEAD"],
         cwd=repo,
         check=True,
+    )
+    main_oid = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    monkeypatch.setattr(
+        GitHubRemoteVerifier,
+        "verify_main",
+        lambda self: RemoteProof(
+            ok=True,
+            kind="authoritative_main",
+            detail={"headRefOid": main_oid},
+        ),
     )
     config.worktrees_dir.mkdir(parents=True)
     worktree = config.worktrees_dir / "terminal"
@@ -1383,6 +1417,22 @@ def test_reconcile_cleanup_stays_anchored_when_workspace_root_is_swapped(
         ["git", "update-ref", "refs/remotes/origin/main", "HEAD"],
         cwd=repo,
         check=True,
+    )
+    main_oid = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    monkeypatch.setattr(
+        GitHubRemoteVerifier,
+        "verify_main",
+        lambda self: RemoteProof(
+            ok=True,
+            kind="authoritative_main",
+            detail={"headRefOid": main_oid},
+        ),
     )
     config.worktrees_dir.mkdir(parents=True)
     worktree = config.worktrees_dir / "terminal-swap"
