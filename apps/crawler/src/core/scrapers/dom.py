@@ -208,6 +208,7 @@ _LOCATION_LABELS = (
     "location",
     "workplace",
     "lieu de travail",
+    "lieu",
     "arbeitsort",
     "arbeitsplatz",
     "luogo di lavoro",

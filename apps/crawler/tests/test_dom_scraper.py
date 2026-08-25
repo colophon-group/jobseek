@@ -413,6 +413,35 @@ class TestDomScraper:
         assert result.locations == ["Givisiez"]
         assert "Gérer les procédures foncières" in result.description
 
+    def test_probe_handles_short_french_location_label(self):
+        """Oleeo/Hireserve pages label their location with bare ``Lieu``."""
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head><title>Infirmier-ère - CHUV</title></head><body>
+          <div class="job_description">
+            <h1>Infirmier-ère</h1>
+            <div class="job_classifications">
+              <div class="classification">
+                <div class="class_type">Lieu</div>
+                <div class="class_value">Lausanne</div>
+              </div>
+            </div>
+            <h2>Mission</h2>
+            <p>Assurer des soins spécialisés aux patientes et patients.</p>
+          </div>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+
+        result = parse_html(html, config)
+        assert result.title == "Infirmier-ère"
+        assert result.locations == ["Lausanne"]
+        assert result.description is not None
+        assert "soins spécialisés" in result.description
+
     def test_talentsoft_probe_builds_locale_independent_config(self):
         from src.core.scrapers.dom import can_handle, parse_html
 
