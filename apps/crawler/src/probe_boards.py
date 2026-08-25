@@ -1483,8 +1483,11 @@ async def _probe_dom(row: dict, client: httpx.AsyncClient) -> ProbeResult:
             "fail",
             "configured Prospective medium does not match listing assets",
         )
-    for key in ("url_filter", "rich_rows", "empty_states"):
-        if cfg.get(key) != detected[key]:
+    preset_keys = ["url_filter", "rich_rows", "empty_states"]
+    if detected["urls"]:
+        preset_keys.append("prospective_canonical_path")
+    for key in preset_keys:
+        if cfg.get(key) != detected.get(key):
             return ProbeResult(
                 row["board_slug"],
                 "dom",

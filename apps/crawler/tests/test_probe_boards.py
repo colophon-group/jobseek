@@ -93,6 +93,17 @@ def _prospective_page(*, total: int = 1) -> str:
     """
 
 
+def _prospective_empty_page() -> str:
+    return """
+    <html><head>
+      <link href="/careercenter/1000973/assets/css/company.css" rel="stylesheet">
+    </head><body class="career-center">
+      <header><span class="jobs-total"><span class="total">0</span></span></header>
+      <div id="jobs-list"></div>
+    </body></html>
+    """
+
+
 def _prospective_row(**overrides) -> dict:
     row = _row(
         board_slug="finma-careers",
@@ -101,6 +112,7 @@ def _prospective_row(**overrides) -> dict:
         monitor_config=json.dumps(
             {
                 "prospective_board": "1000973",
+                "prospective_canonical_path": "/offene-stellen/job/",
                 "url_filter": (
                     r"^https://jobs\.example\.com/(?:[^/?#]+/)+"
                     r"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-"
@@ -1043,6 +1055,15 @@ class TestProbeRow:
 
         assert result.status == "ok"
         assert result.message == "valid Prospective listing: 1 jobs"
+
+    async def test_prospective_dom_probe_keeps_configured_canonical_route_at_zero(self):
+        result = await self._run(
+            _prospective_row(),
+            lambda _request: httpx.Response(200, text=_prospective_empty_page()),
+        )
+
+        assert result.status == "ok"
+        assert result.message == "valid Prospective listing: 0 jobs"
 
     async def test_prospective_dom_probe_fails_partial_advertised_inventory(self):
         result = await self._run(

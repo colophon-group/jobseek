@@ -1887,6 +1887,7 @@ class TestCanHandle:
 
         assert result is not None
         assert result["prospective_board"] == "1000973"
+        assert result["prospective_canonical_path"] == "/offene-stellen/job/"
         assert result["urls"] == 2
         assert result["rich_rows"] == {
             "row_selector": "#jobs-list .job",
@@ -1970,7 +1971,7 @@ class TestCanHandle:
 
         with (
             patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=partial_html)),
-            pytest.raises(ValueError, match="did not match the configured explicit empty state"),
+            pytest.raises(ValueError, match="provider identity proof is missing or ambiguous"),
         ):
             await dom_discover(
                 {"board_url": self.PROSPECTIVE_URL, "metadata": config},
@@ -2036,7 +2037,128 @@ class TestCanHandle:
 
         assert isinstance(jobs, list)
         assert len(jobs) == 2
-        assert any("5F1E0316" in job.url for job in jobs)
+        assert {job.url for job in jobs} == {
+            "https://jobs.example.com/offene-stellen/job/268ceacb-05c3-4a11-a8a0-80b078a3f4e4",
+            "https://jobs.example.com/offene-stellen/job/5f1e0316-6225-4e57-b40c-cb605e046331",
+        }
+
+    @pytest.mark.parametrize("inventory", ["positive", "zero"])
+    async def test_prospective_runtime_rejects_wrong_tenant_identity(self, inventory: str):
+        config = _prospective_probe_config(self.PROSPECTIVE_HTML, self.PROSPECTIVE_URL)
+        assert config is not None
+        html = self.PROSPECTIVE_HTML
+        if inventory == "zero":
+            html = """
+            <html><head><link href="/careercenter/999999/assets/css/company.css"></head>
+            <body class="career-center">
+              <span class="jobs-total"><span class="total">0</span></span>
+              <div id="jobs-list"></div>
+            </body></html>
+            """
+        else:
+            html = html.replace("careercenter/1000973/", "careercenter/999999/")
+
+        with (
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)),
+            pytest.raises(ValueError, match="medium does not match listing assets"),
+        ):
+            await dom_discover(
+                {"board_url": self.PROSPECTIVE_URL, "metadata": config},
+                AsyncMock(),
+            )
+
+    async def test_prospective_runtime_rejects_missing_positive_identity_proof(self):
+        config = _prospective_probe_config(self.PROSPECTIVE_HTML, self.PROSPECTIVE_URL)
+        assert config is not None
+        html = self.PROSPECTIVE_HTML.replace(
+            '<link href="/careercenter/1000973/assets/css/company.css" rel="stylesheet">',
+            "",
+        )
+
+        with (
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)),
+            pytest.raises(ValueError, match="provider identity proof is missing or ambiguous"),
+        ):
+            await dom_discover(
+                {"board_url": self.PROSPECTIVE_URL, "metadata": config},
+                AsyncMock(),
+            )
+
+    async def test_prospective_runtime_dedupes_localized_query_and_fragment_variants(self):
+        config = _prospective_probe_config(self.PROSPECTIVE_HTML, self.PROSPECTIVE_URL)
+        assert config is not None
+        duplicate_html = (
+            self.PROSPECTIVE_HTML.replace(">2<", ">1<")
+            .replace(
+                "/offene-stellen/engineer/268ceacb-05c3-4a11-a8a0-80b078a3f4e4",
+                "/offene-stellen/engineer/268CEACB-05C3-4A11-A8A0-80B078A3F4E4?lang=de#top",
+            )
+            .replace(
+                "/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331",
+                "/emplois-vacantes/analyste/268ceacb-05c3-4a11-a8a0-80b078a3f4e4?lang=fr#details",
+            )
+        )
+
+        with patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=duplicate_html)):
+            jobs = await dom_discover(
+                {"board_url": self.PROSPECTIVE_URL, "metadata": config},
+                AsyncMock(),
+            )
+
+        assert isinstance(jobs, list)
+        assert [job.url for job in jobs] == [
+            "https://jobs.example.com/offene-stellen/job/268ceacb-05c3-4a11-a8a0-80b078a3f4e4"
+        ]
+
+    async def test_prospective_runtime_counts_unique_uuid_identities(self):
+        config = _prospective_probe_config(self.PROSPECTIVE_HTML, self.PROSPECTIVE_URL)
+        assert config is not None
+        duplicate_html = self.PROSPECTIVE_HTML.replace(
+            "5f1e0316-6225-4e57-b40c-cb605e046331",
+            "268ceacb-05c3-4a11-a8a0-80b078a3f4e4",
+        )
+
+        with (
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=duplicate_html)),
+            pytest.raises(ValueError, match="accepted 1 rows but the page advertised 2"),
+        ):
+            await dom_discover(
+                {"board_url": self.PROSPECTIVE_URL, "metadata": config},
+                AsyncMock(),
+            )
+
+    async def test_prospective_runtime_requires_canonical_path_for_positive_inventory(self):
+        config = _prospective_probe_config(self.PROSPECTIVE_HTML, self.PROSPECTIVE_URL)
+        assert config is not None
+        config.pop("prospective_canonical_path")
+
+        with (
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=self.PROSPECTIVE_HTML)),
+            pytest.raises(ValueError, match="positive inventory requires"),
+        ):
+            await dom_discover(
+                {"board_url": self.PROSPECTIVE_URL, "metadata": config},
+                AsyncMock(),
+            )
+
+    async def test_prospective_runtime_accepts_authoritative_zero_with_identity(self):
+        config = _prospective_probe_config(self.PROSPECTIVE_HTML, self.PROSPECTIVE_URL)
+        assert config is not None
+        html = """
+        <html><head><link href="/careercenter/1000973/assets/css/company.css"></head>
+        <body class="career-center">
+          <span class="jobs-total"><span class="total">0</span></span>
+          <div id="jobs-list"></div>
+        </body></html>
+        """
+
+        with patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=html)):
+            jobs = await dom_discover(
+                {"board_url": self.PROSPECTIVE_URL, "metadata": config},
+                AsyncMock(),
+            )
+
+        assert jobs == []
 
     async def test_prospective_runtime_rejects_partial_advertised_inventory(self):
         config = _prospective_probe_config(self.PROSPECTIVE_HTML, self.PROSPECTIVE_URL)
