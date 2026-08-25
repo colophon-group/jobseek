@@ -181,19 +181,91 @@ _ECOM_IDENTITY_MIGRATION_CONTRACT = (
     "ecom-agroindustrial-global",
     "https://ecomtradinggroup.teamtailor.com/jobs",
     "rss",
-    "f48a13a3ab31582e825441be395c03a13da8426f72e310f6e0e98765dd99af86",
+    "f8b18c8f6ec72fe6fd48e29e6aaca9666f3742d5baec41b191dc07c961adeb52",
+)
+_ECOM_CURRENT_HOST_PATTERN = (
+    r"(careerslatam[.]ecomtrading[.]com|"
+    r"careerswestafrica[.]ecomtrading[.]com|"
+    r"careersasiapacific[.]ecomtrading[.]com|"
+    r"careersbrazil[.]ecomtrading[.]com|"
+    r"careersmexico[.]ecomtrading[.]com|"
+    r"ecomeurope[.]teamtailor[.]com)"
+)
+_ECOM_OLD_EUROPE_HOST_PATTERN = r"careerseurope[.]ecomtrading[.]com"
+_ECOM_ALL_SOURCE_HOST_PATTERN = (
+    _ECOM_CURRENT_HOST_PATTERN[:-1] + "|" + _ECOM_OLD_EUROPE_HOST_PATTERN + ")"
 )
 _ECOM_LEGACY_URL_PATTERN = (
-    r"^https://(careers[.]ecomtrading[.]com|"
-    r"ecomtradinggroup[.]teamtailor[.]com)/jobs/[0-9]+-[^/?#]+$|"
-    r"^https://careers[.]ecomtrading[.]com/jobs/[0-9]+$"
+    rf"^https://{_ECOM_ALL_SOURCE_HOST_PATTERN}/((de|fr|it|en)/)?"
+    r"jobs/[0-9]+-[^/?#]+$|"
+    rf"^https://{_ECOM_ALL_SOURCE_HOST_PATTERN}/(de|fr|it|en)/jobs/[0-9]+$|"
+    rf"^https://{_ECOM_OLD_EUROPE_HOST_PATTERN}/jobs/[0-9]+$"
 )
-_ECOM_CANONICAL_URL_PATTERN = r"^https://ecomtradinggroup[.]teamtailor[.]com/jobs/[0-9]+$"
+_ECOM_CANONICAL_URL_PATTERN = rf"^https://{_ECOM_CURRENT_HOST_PATTERN}/jobs/[0-9]+$"
 _MERCK_IDENTITY_MIGRATION_MAX_ROWS = 2_000
 _ECOM_IDENTITY_MIGRATION_MAX_ROWS = 100
 # Kept as the public hard-cap alias used by the Merck safety tests.
 _IDENTITY_MIGRATION_MAX_ROWS = _MERCK_IDENTITY_MIGRATION_MAX_ROWS
 _SUPPORTED_IDENTITY_MIGRATIONS = frozenset({_MERCK_IDENTITY_MIGRATION, _ECOM_IDENTITY_MIGRATION})
+
+
+def _identity_migration_canonical_url_pattern(migration: object) -> str | None:
+    if migration == _MERCK_IDENTITY_MIGRATION:
+        return _MERCK_CANONICAL_URL_PATTERN
+    if migration == _ECOM_IDENTITY_MIGRATION:
+        return _ECOM_CANONICAL_URL_PATTERN
+    return None
+
+
+def _identity_migration_receipt_matches(
+    receipt: object,
+    *,
+    migration: str,
+    migration_version: int,
+    expected_fingerprint: str,
+    max_rows: int,
+) -> bool:
+    expected_keys = {
+        "id",
+        "version",
+        "config_fingerprint",
+        "completed_at",
+        "retired_count",
+    }
+    if migration == _ECOM_IDENTITY_MIGRATION:
+        expected_keys.add("rollback_rows")
+    if not isinstance(receipt, dict) or set(receipt) != expected_keys:
+        return False
+    retired_count = receipt.get("retired_count")
+    base_matches = (
+        receipt.get("id") == migration
+        and receipt.get("version") == migration_version
+        and receipt.get("config_fingerprint") == expected_fingerprint
+        and isinstance(receipt.get("completed_at"), str)
+        and bool(receipt.get("completed_at"))
+        and isinstance(retired_count, int)
+        and not isinstance(retired_count, bool)
+        and 0 <= retired_count <= max_rows
+    )
+    if not base_matches or migration != _ECOM_IDENTITY_MIGRATION:
+        return base_matches
+    rollback_rows = receipt.get("rollback_rows")
+    if not isinstance(rollback_rows, list) or len(rollback_rows) > max_rows:
+        return False
+    return all(
+        isinstance(row, dict)
+        and set(row) == {"id", "source_url", "is_active", "missing_count", "next_scrape_at"}
+        and isinstance(row.get("id"), str)
+        and bool(row.get("id"))
+        and isinstance(row.get("source_url"), str)
+        and bool(row.get("source_url"))
+        and isinstance(row.get("is_active"), bool)
+        and isinstance(row.get("missing_count"), int)
+        and not isinstance(row.get("missing_count"), bool)
+        and (row.get("next_scrape_at") is None or isinstance(row.get("next_scrape_at"), str))
+        for row in rollback_rows
+    )
+
 
 # API monitor types share a single API host per type (throttle-domain keys).
 _API_MONITOR_TYPES = api_monitor_types()
@@ -566,57 +638,28 @@ async def _retire_canonicalized_provider_identities(
 
     expected_fingerprint = contract[2]
 
-    def receipt_matches(receipt: object) -> bool:
-        expected_keys = {
-            "id",
-            "version",
-            "config_fingerprint",
-            "completed_at",
-            "retired_count",
-        }
-        if migration == _ECOM_IDENTITY_MIGRATION:
-            expected_keys.add("rollback_rows")
-        if not isinstance(receipt, dict) or set(receipt) != expected_keys:
-            return False
-        retired_count = receipt.get("retired_count")
-        base_matches = (
-            receipt.get("id") == migration
-            and receipt.get("version") == migration_version
-            and receipt.get("config_fingerprint") == expected_fingerprint
-            and isinstance(receipt.get("completed_at"), str)
-            and bool(receipt.get("completed_at"))
-            and isinstance(retired_count, int)
-            and not isinstance(retired_count, bool)
-            and 0 <= retired_count <= max_rows
-        )
-        if not base_matches or migration != _ECOM_IDENTITY_MIGRATION:
-            return base_matches
-        rollback_rows = receipt.get("rollback_rows")
-        if not isinstance(rollback_rows, list) or len(rollback_rows) > max_rows:
-            return False
-        return all(
-            isinstance(row, dict)
-            and set(row) == {"id", "source_url", "is_active", "missing_count", "next_scrape_at"}
-            and isinstance(row.get("id"), str)
-            and bool(row.get("id"))
-            and isinstance(row.get("source_url"), str)
-            and bool(row.get("source_url"))
-            and isinstance(row.get("is_active"), bool)
-            and isinstance(row.get("missing_count"), int)
-            and not isinstance(row.get("missing_count"), bool)
-            and (row.get("next_scrape_at") is None or isinstance(row.get("next_scrape_at"), str))
-            for row in rollback_rows
-        )
-
     configured_receipt = md.get(_IDENTITY_MIGRATION_RECEIPT_KEY)
     if configured_receipt is not None:
-        if receipt_matches(configured_receipt):
+        if _identity_migration_receipt_matches(
+            configured_receipt,
+            migration=migration,
+            migration_version=migration_version,
+            expected_fingerprint=expected_fingerprint,
+            max_rows=max_rows,
+        ):
             return 0
         board_log.warning(
             "batch.monitor.identity_migration_receipt_mismatch",
             migration=migration,
             source="board_metadata",
         )
+        return 0
+    if migration == _ECOM_IDENTITY_MIGRATION:
+        # ECOM rollback must restore aliases that existed before canonical
+        # rows were inserted. Its recovery lane therefore runs revision 0022
+        # before discovery; the post-discovery Merck retirement query cannot
+        # safely manufacture an equivalent receipt.
+        board_log.warning("batch.monitor.ecom_identity_receipt_missing_before_discovery")
         return 0
 
     history = list(md.get("recent_discovered_counts") or [])
@@ -684,7 +727,13 @@ async def _retire_canonicalized_provider_identities(
     if isinstance(existing_receipt, str):
         existing_receipt = json.loads(existing_receipt)
     if existing_receipt is not None:
-        if receipt_matches(existing_receipt):
+        if _identity_migration_receipt_matches(
+            existing_receipt,
+            migration=migration,
+            migration_version=migration_version,
+            expected_fingerprint=expected_fingerprint,
+            max_rows=max_rows,
+        ):
             return 0
         board_log.warning(
             "batch.monitor.identity_migration_receipt_mismatch",
@@ -729,6 +778,76 @@ async def _retire_canonicalized_provider_identities(
         retired=retired,
     )
     return retired
+
+
+async def _ensure_ecom_identity_cutover_receipt(
+    pool: asyncpg.Pool,
+    *,
+    board_id: str,
+    company_id: str,
+    board_slug: str | None,
+    board_url: str,
+    crawler_type: str,
+    metadata: dict,
+    board_log: structlog.stdlib.BoundLogger,
+) -> dict:
+    """Create ECOM's reversible receipt before canonical URLs can be inserted.
+
+    Deploy normally runs revision 0022 while writers are quiesced and reapplies
+    it after config sync. This is the worker-side recovery lane for a board that
+    becomes due between those steps or after a repaired database restore. It
+    reuses the exact bounded revision SQL before discovery, then requires the
+    full rollback receipt before allowing the monitor to continue.
+    """
+    if metadata.get("identity_migration") != _ECOM_IDENTITY_MIGRATION:
+        return metadata
+
+    expected_slug, expected_url, expected_type, expected_fingerprint = (
+        _ECOM_IDENTITY_MIGRATION_CONTRACT
+    )
+    if (
+        board_slug,
+        board_url,
+        crawler_type,
+        metadata.get("_monitor_config_fingerprint"),
+    ) != (expected_slug, expected_url, expected_type, expected_fingerprint):
+        board_log.warning("batch.monitor.ecom_identity_recovery_contract_mismatch")
+        raise RuntimeError("ECOM identity recovery found a mismatched board contract")
+
+    receipt = metadata.get(_IDENTITY_MIGRATION_RECEIPT_KEY)
+    if receipt is not None:
+        if _identity_migration_receipt_matches(
+            receipt,
+            migration=_ECOM_IDENTITY_MIGRATION,
+            migration_version=_ECOM_IDENTITY_MIGRATION_VERSION,
+            expected_fingerprint=expected_fingerprint,
+            max_rows=_ECOM_IDENTITY_MIGRATION_MAX_ROWS,
+        ):
+            return metadata
+        raise RuntimeError("ECOM identity recovery found a mismatched rollback receipt")
+
+    from src.ecom_teamtailor_cutover import apply_ecom_teamtailor_cutover
+
+    async with pool.acquire() as conn, conn.transaction():
+        await apply_ecom_teamtailor_cutover(conn)
+        refreshed = await conn.fetchval(
+            "SELECT metadata FROM job_board WHERE id = $1 AND company_id = $2",
+            board_id,
+            company_id,
+        )
+    if isinstance(refreshed, str):
+        refreshed = json.loads(refreshed)
+    if not isinstance(refreshed, dict) or not _identity_migration_receipt_matches(
+        refreshed.get(_IDENTITY_MIGRATION_RECEIPT_KEY),
+        migration=_ECOM_IDENTITY_MIGRATION,
+        migration_version=_ECOM_IDENTITY_MIGRATION_VERSION,
+        expected_fingerprint=expected_fingerprint,
+        max_rows=_ECOM_IDENTITY_MIGRATION_MAX_ROWS,
+    ):
+        raise RuntimeError("ECOM identity recovery did not produce an exact rollback receipt")
+
+    board_log.info("batch.monitor.ecom_identity_recovery_completed")
+    return refreshed
 
 
 async def _mark_gone_with_guards(
@@ -1169,6 +1288,16 @@ async def _process_one_board_streaming(
         metadata = board["metadata"] if board["metadata"] else {}
         if isinstance(metadata, str):
             metadata = json.loads(metadata)
+        metadata = await _ensure_ecom_identity_cutover_receipt(
+            pool,
+            board_id=board_id,
+            company_id=company_id,
+            board_slug=board_slug,
+            board_url=board_url,
+            crawler_type=crawler_type,
+            metadata=metadata,
+            board_log=board_log,
+        )
 
         enrich_fields = _effective_board_enrich(metadata, crawler_type)
 
@@ -1217,8 +1346,8 @@ async def _process_one_board_streaming(
         processing_filtered = 0
         all_canonical = True
         canonical_urls: set[str] = set()
-        collect_migration_canonicals = (
-            metadata.get("identity_migration") in _SUPPORTED_IDENTITY_MIGRATIONS
+        migration_canonical_pattern = _identity_migration_canonical_url_pattern(
+            metadata.get("identity_migration")
         )
         # A streamed monitor may emit state on an empty batch before it emits
         # any URLs. Hold that patch until the first posting batch commits, or
@@ -1254,9 +1383,9 @@ async def _process_one_board_streaming(
                     rejected=rejected_provider_urls,
                     accepted=len(result.urls),
                 )
-            if collect_migration_canonicals:
+            if migration_canonical_pattern is not None:
                 for url in result.urls:
-                    if re.fullmatch(_MERCK_CANONICAL_URL_PATTERN, url) is None:
+                    if re.fullmatch(migration_canonical_pattern, url) is None:
                         all_canonical = False
                     else:
                         canonical_urls.add(url)

@@ -22,7 +22,47 @@ WHERE company.slug = 'ecom-agroindustrial'
 """
 _MIGRATION_ID = "ecom-teamtailor-stable-id-v1"
 _MIGRATION_VERSION = 1
-_CONFIG_FINGERPRINT = "f48a13a3ab31582e825441be395c03a13da8426f72e310f6e0e98765dd99af86"
+_CONFIG_FINGERPRINT = "f8b18c8f6ec72fe6fd48e29e6aaca9666f3742d5baec41b191dc07c961adeb52"
+_MAX_ROWS = 100
+
+
+def _receipt_matches(receipt: object) -> bool:
+    if not isinstance(receipt, dict) or set(receipt) != {
+        "id",
+        "version",
+        "config_fingerprint",
+        "completed_at",
+        "retired_count",
+        "rollback_rows",
+    }:
+        return False
+    retired_count = receipt.get("retired_count")
+    rollback_rows = receipt.get("rollback_rows")
+    return (
+        receipt.get("id") == _MIGRATION_ID
+        and receipt.get("version") == _MIGRATION_VERSION
+        and receipt.get("config_fingerprint") == _CONFIG_FINGERPRINT
+        and isinstance(receipt.get("completed_at"), str)
+        and bool(receipt.get("completed_at"))
+        and isinstance(retired_count, int)
+        and not isinstance(retired_count, bool)
+        and 0 <= retired_count <= _MAX_ROWS
+        and isinstance(rollback_rows, list)
+        and len(rollback_rows) <= _MAX_ROWS
+        and all(
+            isinstance(row, dict)
+            and set(row) == {"id", "source_url", "is_active", "missing_count", "next_scrape_at"}
+            and isinstance(row.get("id"), str)
+            and bool(row.get("id"))
+            and isinstance(row.get("source_url"), str)
+            and bool(row.get("source_url"))
+            and isinstance(row.get("is_active"), bool)
+            and isinstance(row.get("missing_count"), int)
+            and not isinstance(row.get("missing_count"), bool)
+            and (row.get("next_scrape_at") is None or isinstance(row.get("next_scrape_at"), str))
+            for row in rollback_rows
+        )
+    )
 
 
 def _migration_sql(*, rollback: bool = False) -> str:
@@ -63,11 +103,6 @@ async def ecom_teamtailor_cutover_state(connection: asyncpg.Connection) -> str:
         receipt = json.loads(receipt)
     if not isinstance(receipt, dict):
         raise RuntimeError("ECOM identity cutover found a malformed receipt")
-    if (
-        receipt.get("id") == _MIGRATION_ID
-        and receipt.get("version") == _MIGRATION_VERSION
-        and receipt.get("config_fingerprint") == _CONFIG_FINGERPRINT
-        and isinstance(receipt.get("rollback_rows"), list)
-    ):
+    if _receipt_matches(receipt):
         return "complete"
     raise RuntimeError("ECOM identity cutover found a mismatched receipt")

@@ -210,10 +210,24 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
         "uv run --no-sync crawler repair-ecom-teamtailor-cutover",
         sync,
     )
+    ecom_receipt_verify = script.index(
+        "uv run --no-sync crawler ecom-teamtailor-cutover-state",
+        ecom_cutover,
+    )
     nw_cutover = script.index("uv run --no-sync crawler repair-nw-provider-cutover")
     restart = script.index("docker compose up -d --remove-orphans", nw_cutover)
 
-    assert quiesce < migrate < typesense_schema < sync < ecom_cutover < nw_cutover < restart
+    assert (
+        quiesce
+        < migrate
+        < typesense_schema
+        < sync
+        < ecom_cutover
+        < ecom_receipt_verify
+        < nw_cutover
+        < restart
+    )
+    assert "grep -Ex 'complete'" in script[ecom_cutover:nw_cutover]
 
 
 def test_deploy_rollback_restores_ecom_aliases_before_old_runtime_restart() -> None:

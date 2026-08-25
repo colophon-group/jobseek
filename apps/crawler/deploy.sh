@@ -2146,6 +2146,23 @@ docker run --rm \
   --label com.docker.compose.service=deploy-ecom-teamtailor-cutover \
   "$CRAWLER_IMAGE_REF" \
   uv run --no-sync crawler repair-ecom-teamtailor-cutover
+ecom_cutover_state="$(
+  docker run --rm \
+    -e LOCAL_DATABASE_URL \
+    -e CRAWLER_DB_ROLE=deploy-ecom-teamtailor-cutover-verify \
+    -e CRAWLER_DB_POOL_MIN=0 \
+    -e CRAWLER_DB_POOL_MAX=2 \
+    --network host \
+    "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+    --label com.docker.compose.service=deploy-ecom-teamtailor-cutover-verify \
+    "$CRAWLER_IMAGE_REF" \
+    uv run --no-sync crawler ecom-teamtailor-cutover-state \
+    | grep -Ex 'complete'
+)"
+if [[ "$ecom_cutover_state" != "complete" ]]; then
+  echo "ERROR: ECOM identity cutover did not write an exact rollback receipt" >&2
+  exit 1
+fi
 
 # Revision 0021 is idempotent, but Alembic records it only once. If an earlier
 # forward attempt reached the migration and then rolled back, the restored

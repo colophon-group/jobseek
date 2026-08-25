@@ -10,10 +10,16 @@ import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
+import httpx
 import pytest
 
 from src.cli import parse_args
-from src.core.monitor import MonitorResult, _apply_url_allowlist, _apply_url_transform
+from src.core.monitor import (
+    MonitorResult,
+    _apply_url_allowlist,
+    _apply_url_transform,
+    monitor_one,
+)
 from src.ecom_teamtailor_cutover import (
     _migration_sql,
     apply_ecom_teamtailor_cutover,
@@ -27,13 +33,22 @@ from src.processing.board import (
     _ECOM_IDENTITY_MIGRATION_MAX_ROWS,
     _ECOM_IDENTITY_MIGRATION_VERSION,
     _ECOM_LEGACY_URL_PATTERN,
+    _ensure_ecom_identity_cutover_receipt,
+    _identity_migration_canonical_url_pattern,
     _retire_canonicalized_provider_identities,
 )
-from src.queries.monitor import _RETIRE_CANONICALIZED_PROVIDER_IDENTITIES
 from src.sync import _monitor_config_fingerprint
 
 _BOARDS = Path(__file__).parents[1] / "data" / "boards.csv"
 _BOARD_SLUG, _BOARD_URL, _CRAWLER_TYPE, _FINGERPRINT = _ECOM_IDENTITY_MIGRATION_CONTRACT
+_CURRENT_HOST_COUNTS = {
+    "careerslatam.ecomtrading.com": 10,
+    "careerswestafrica.ecomtrading.com": 17,
+    "careersasiapacific.ecomtrading.com": 3,
+    "careersbrazil.ecomtrading.com": 4,
+    "careersmexico.ecomtrading.com": 1,
+    "ecomeurope.teamtailor.com": 9,
+}
 
 
 def _board() -> tuple[dict[str, str], dict]:
@@ -53,8 +68,13 @@ def _metadata(**overrides) -> dict:
 
 
 def _canonical_urls(count: int = 44) -> set[str]:
-    ids = [7_769_137, *(8_000_000 + index for index in range(count - 1))]
-    return {f"https://ecomtradinggroup.teamtailor.com/jobs/{job_id}" for job_id in ids}
+    urls: list[str] = []
+    job_id = 8_000_000
+    for host, host_count in _CURRENT_HOST_COUNTS.items():
+        for _ in range(host_count):
+            urls.append(f"https://{host}/jobs/{job_id}")
+            job_id += 1
+    return set(urls[:count])
 
 
 def _row(**overrides) -> dict:
@@ -95,7 +115,9 @@ async def _run(conn: AsyncMock, **overrides) -> tuple[int, MagicMock]:
     return await _retire_canonicalized_provider_identities(conn, **kwargs), kwargs["board_log"]
 
 
-def test_ecom_board_uses_exact_stable_provider_identity_and_migration_contract() -> None:
+async def test_ecom_board_dispatcher_accepts_all_44_regional_jobs_and_keeps_fetchable_hosts() -> (
+    None
+):
     row, metadata = _board()
 
     assert row["company_slug"] == "ecom-agroindustrial"
@@ -105,24 +127,69 @@ def test_ecom_board_uses_exact_stable_provider_identity_and_migration_contract()
         _monitor_config_fingerprint(row["board_url"], row["monitor_type"], metadata) == _FINGERPRINT
     )
 
-    old_title = "https://careers.ecomtrading.com/jobs/7769137-accounts-and-finance-executive"
-    current_title = "https://ecomtradinggroup.teamtailor.com/jobs/7769137-assistant-finance-manager"
-    expected = {"https://ecomtradinggroup.teamtailor.com/jobs/7769137"}
-    for source in (old_title, current_title):
-        filtered = _apply_url_allowlist(
-            MonitorResult(urls={source}),
-            {"url_allowlist": metadata["url_allowlist"]},
-        )
-        transformed = _apply_url_transform(filtered, metadata)
-        assert transformed.urls == expected
+    items: list[str] = []
+    expected: set[str] = set()
+    job_id = 8_000_000
+    for host, count in _CURRENT_HOST_COUNTS.items():
+        for _ in range(count):
+            source = f"https://{host}/jobs/{job_id}-regional-title"
+            expected.add(f"https://{host}/jobs/{job_id}")
+            items.append(f"<item><title>Job {job_id}</title><link>{source}</link></item>")
+            job_id += 1
+    feed = "<?xml version='1.0'?><rss><channel>" + "".join(items) + "</channel></rss>"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/jobs.rss"
+        return httpx.Response(200, text=feed)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await monitor_one(_BOARD_URL, _CRAWLER_TYPE, metadata, client)
+
+    assert len(result.urls) == 44
+    assert result.urls == expected
+    assert result.security_filtered_count == 0
+    assert all("ecomtradinggroup.teamtailor.com" not in url for url in result.urls)
+
+
+def test_ecom_locale_and_title_variants_collapse_without_changing_regional_host() -> None:
+    _, metadata = _board()
+    variants = {
+        "https://ecomeurope.teamtailor.com/de/jobs/7769137-accounts-executive",
+        "https://ecomeurope.teamtailor.com/fr/jobs/7769137-responsable-comptes",
+        "https://ecomeurope.teamtailor.com/it/jobs/7769137-account-executive",
+        "https://ecomeurope.teamtailor.com/en/jobs/7769137-assistant-finance-manager",
+        "https://careerseurope.ecomtrading.com/jobs/7769137-old-title",
+    }
+    filtered = _apply_url_allowlist(
+        MonitorResult(urls=variants),
+        {"url_allowlist": metadata["url_allowlist"]},
+    )
+    transformed = _apply_url_transform(filtered, metadata)
+
+    assert transformed.urls == {"https://ecomeurope.teamtailor.com/jobs/7769137"}
+    assert transformed.security_filtered_count == 0
+
+
+def test_ecom_global_host_is_rejected_instead_of_creating_404_identities() -> None:
+    _, metadata = _board()
+    source = "https://ecomtradinggroup.teamtailor.com/jobs/7769137-current-title"
+
+    filtered = _apply_url_allowlist(
+        MonitorResult(urls={source}),
+        {"url_allowlist": metadata["url_allowlist"]},
+    )
+
+    assert filtered.urls == set()
+    assert filtered.security_filtered_count == 1
 
 
 @pytest.mark.parametrize(
     "url",
     [
-        "https://careers.ecomtrading.com/jobs/7769137-accounts-and-finance-executive",
-        "https://ecomtradinggroup.teamtailor.com/jobs/7769137-assistant-finance-manager",
-        "https://careers.ecomtrading.com/jobs/7769137",
+        "https://careerswestafrica.ecomtrading.com/jobs/7769137-accounts-executive",
+        "https://ecomeurope.teamtailor.com/de/jobs/7769137-finanzmanager",
+        "https://careerseurope.ecomtrading.com/jobs/7769137-old-title",
+        "https://careerseurope.ecomtrading.com/jobs/7769137",
     ],
 )
 def test_legacy_contract_covers_only_ecom_title_alias_namespace(url: str) -> None:
@@ -132,48 +199,142 @@ def test_legacy_contract_covers_only_ecom_title_alias_namespace(url: str) -> Non
 def test_ecom_canonical_contract_is_title_free_numeric_provider_identity() -> None:
     assert re.fullmatch(
         _ECOM_CANONICAL_URL_PATTERN,
-        "https://ecomtradinggroup.teamtailor.com/jobs/7769137",
+        "https://careerswestafrica.ecomtrading.com/jobs/7769137",
     )
     for invalid in (
-        "https://ecomtradinggroup.teamtailor.com/jobs/7769137-title",
-        "https://careers.ecomtrading.com/jobs/7769137",
+        "https://careerswestafrica.ecomtrading.com/jobs/7769137-title",
+        "https://careerseurope.ecomtrading.com/jobs/7769137",
+        "https://ecomtradinggroup.teamtailor.com/jobs/7769137",
         "https://evil.example/jobs/7769137",
-        "https://ecomtradinggroup.teamtailor.com/jobs/not-numeric",
-        "https://ecomtradinggroup.teamtailor.com/jobs/7769137?source=bad",
+        "https://ecomeurope.teamtailor.com/jobs/not-numeric",
+        "https://ecomeurope.teamtailor.com/jobs/7769137?source=bad",
     ):
         assert re.fullmatch(_ECOM_CANONICAL_URL_PATTERN, invalid) is None
 
+    assert (
+        _identity_migration_canonical_url_pattern(_ECOM_IDENTITY_MIGRATION)
+        == _ECOM_CANONICAL_URL_PATTERN
+    )
 
-async def test_healthy_cycle_retires_known_aliases_after_canonical_collision_resolves() -> None:
+
+async def test_post_discovery_ecom_lane_requires_pre_discovery_rollback_receipt() -> None:
     conn = AsyncMock()
     conn.fetchrow.return_value = _row()
 
     retired, board_log = await _run(conn)
 
-    assert retired == 45
-    args = conn.fetchrow.await_args.args
-    assert args[:5] == (
-        _RETIRE_CANONICALIZED_PROVIDER_IDENTITIES,
-        "ecom-board-id",
-        "ecom-company-id",
-        "2026-08-26T12:00:00+00:00",
-        _ECOM_IDENTITY_MIGRATION_MAX_ROWS,
+    assert retired == 0
+    conn.fetchrow.assert_not_awaited()
+    board_log.warning.assert_called_once_with(
+        "batch.monitor.ecom_identity_receipt_missing_before_discovery"
     )
-    assert set(args[5]) == _canonical_urls()
-    assert args[6:8] == (
-        _ECOM_LEGACY_URL_PATTERN,
-        _ECOM_CANONICAL_URL_PATTERN,
-    )
-    assert json.loads(args[8]) == {
+
+
+def _rollback_receipt() -> dict:
+    return {
         "id": _ECOM_IDENTITY_MIGRATION,
         "version": _ECOM_IDENTITY_MIGRATION_VERSION,
         "config_fingerprint": _FINGERPRINT,
+        "completed_at": "2026-08-26T12:00:00+00:00",
+        "retired_count": 1,
+        "rollback_rows": [
+            {
+                "id": "00000000-0000-0000-0000-000000000001",
+                "source_url": ("https://careerswestafrica.ecomtrading.com/jobs/7769137-old-title"),
+                "is_active": False,
+                "missing_count": 4,
+                "next_scrape_at": None,
+            }
+        ],
     }
-    assert args[9] == "ecom-agroindustrial"
-    board_log.info.assert_called_once_with(
-        "batch.monitor.identity_migration_completed",
-        migration=_ECOM_IDENTITY_MIGRATION,
-        retired=45,
+
+
+async def test_runtime_recovery_runs_exact_ecom_revision_before_discovery(monkeypatch) -> None:
+    connection = AsyncMock()
+    connection.fetchval.return_value = {
+        **_metadata(),
+        "_identity_migration_receipt": _rollback_receipt(),
+    }
+    transaction = AsyncMock()
+    transaction.__aenter__ = AsyncMock(return_value=None)
+    transaction.__aexit__ = AsyncMock(return_value=False)
+    connection.transaction = MagicMock(return_value=transaction)
+    acquire = AsyncMock()
+    acquire.__aenter__ = AsyncMock(return_value=connection)
+    acquire.__aexit__ = AsyncMock(return_value=False)
+    pool = MagicMock()
+    pool.acquire.return_value = acquire
+    apply = AsyncMock(return_value="DO")
+    monkeypatch.setattr("src.ecom_teamtailor_cutover.apply_ecom_teamtailor_cutover", apply)
+    board_log = MagicMock()
+
+    refreshed = await _ensure_ecom_identity_cutover_receipt(
+        pool,
+        board_id="ecom-board-id",
+        company_id="ecom-company-id",
+        board_slug=_BOARD_SLUG,
+        board_url=_BOARD_URL,
+        crawler_type=_CRAWLER_TYPE,
+        metadata=_metadata(),
+        board_log=board_log,
+    )
+
+    assert refreshed["_identity_migration_receipt"] == _rollback_receipt()
+    apply.assert_awaited_once_with(connection)
+    connection.fetchval.assert_awaited_once()
+    board_log.info.assert_called_once_with("batch.monitor.ecom_identity_recovery_completed")
+
+
+async def test_runtime_recovery_fails_closed_without_exact_ecom_rollback_receipt(
+    monkeypatch,
+) -> None:
+    connection = AsyncMock()
+    connection.fetchval.return_value = _metadata()
+    transaction = AsyncMock()
+    transaction.__aenter__ = AsyncMock(return_value=None)
+    transaction.__aexit__ = AsyncMock(return_value=False)
+    connection.transaction = MagicMock(return_value=transaction)
+    acquire = AsyncMock()
+    acquire.__aenter__ = AsyncMock(return_value=connection)
+    acquire.__aexit__ = AsyncMock(return_value=False)
+    pool = MagicMock()
+    pool.acquire.return_value = acquire
+    monkeypatch.setattr(
+        "src.ecom_teamtailor_cutover.apply_ecom_teamtailor_cutover", AsyncMock(return_value="DO")
+    )
+
+    with pytest.raises(RuntimeError, match="did not produce an exact rollback receipt"):
+        await _ensure_ecom_identity_cutover_receipt(
+            pool,
+            board_id="ecom-board-id",
+            company_id="ecom-company-id",
+            board_slug=_BOARD_SLUG,
+            board_url=_BOARD_URL,
+            crawler_type=_CRAWLER_TYPE,
+            metadata=_metadata(),
+            board_log=MagicMock(),
+        )
+
+
+async def test_runtime_recovery_fails_before_discovery_on_copied_or_stale_contract() -> None:
+    pool = MagicMock()
+    board_log = MagicMock()
+
+    with pytest.raises(RuntimeError, match="mismatched board contract"):
+        await _ensure_ecom_identity_cutover_receipt(
+            pool,
+            board_id="ecom-board-id",
+            company_id="ecom-company-id",
+            board_slug=_BOARD_SLUG,
+            board_url=_BOARD_URL,
+            crawler_type=_CRAWLER_TYPE,
+            metadata=_metadata(_monitor_config_fingerprint="stale"),
+            board_log=board_log,
+        )
+
+    pool.acquire.assert_not_called()
+    board_log.warning.assert_called_once_with(
+        "batch.monitor.ecom_identity_recovery_contract_mismatch"
     )
 
 
@@ -215,22 +376,6 @@ async def test_ecom_receipt_is_bounded_and_makes_replay_a_permanent_noop() -> No
     conn.fetchrow.assert_not_awaited()
 
 
-async def test_ecom_unknown_active_source_or_over_cap_alias_set_fails_closed() -> None:
-    conn = AsyncMock()
-    conn.fetchrow.return_value = _row(
-        active=90,
-        unknown=1,
-        retired=0,
-        receipt_written=False,
-    )
-
-    retired, board_log = await _run(conn)
-
-    assert retired == 0
-    assert board_log.warning.call_args.args[0] == "batch.monitor.identity_migration_blocked"
-    assert board_log.warning.call_args.kwargs["cap"] == _ECOM_IDENTITY_MIGRATION_MAX_ROWS
-
-
 def test_revision_0022_is_exact_bounded_receipt_backed_and_reversible() -> None:
     migration = importlib.import_module(
         "src.migrations.versions.0022_migrate_ecom_teamtailor_identities"
@@ -255,7 +400,9 @@ def test_revision_0022_is_exact_bounded_receipt_backed_and_reversible() -> None:
     assert "canonical/legacy row collisions" in forward
     assert "candidate_count > 100" in forward
     assert "row_number() OVER" in forward
-    assert "SET source_url = 'https://ecomtradinggroup.teamtailor.com/jobs/'" in forward
+    assert "SET source_url = candidates.canonical_url" in forward
+    assert "THEN 'ecomeurope.teamtailor.com'" in forward
+    assert "_monitor_config_fingerprint" in forward
     assert "metadata - '_identity_migration_receipt'" in rollback
     assert "occupied legacy identities" in rollback
 
@@ -312,16 +459,7 @@ async def test_ecom_cutover_hooks_reuse_exact_revision_sql() -> None:
         ([], "absent"),
         ([{"receipt": None}], "pending"),
         (
-            [
-                {
-                    "receipt": {
-                        "id": _ECOM_IDENTITY_MIGRATION,
-                        "version": _ECOM_IDENTITY_MIGRATION_VERSION,
-                        "config_fingerprint": _FINGERPRINT,
-                        "rollback_rows": [],
-                    }
-                }
-            ],
+            [{"receipt": _rollback_receipt()}],
             "complete",
         ),
     ],

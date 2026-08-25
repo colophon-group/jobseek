@@ -369,26 +369,35 @@ def _apply_url_allowlist(result: MonitorResult, config: dict) -> MonitorResult:
 
 
 def _apply_url_transform(result: MonitorResult, config: dict) -> MonitorResult:
-    """Rewrite URLs using url_transform {find, replace} from config."""
-    transform = config.get("url_transform")
-    if not transform:
-        return result
-    find = transform.get("find", "")
-    replace = transform.get("replace", "")
-    if not find:
+    """Rewrite URLs with one transform or an ordered transform pipeline."""
+    raw_transform = config.get("url_transform")
+    if not raw_transform:
         return result
 
+    transforms = raw_transform if isinstance(raw_transform, list) else [raw_transform]
+    compiled: list[tuple[re.Pattern[str], str]] = []
     try:
-        pattern = re.compile(find)
-    except re.error as e:
-        structlog.get_logger().warning("monitor.url_transform_invalid", error=str(e))
+        for transform in transforms:
+            if not isinstance(transform, dict):
+                raise ValueError("url_transform entries must be objects")
+            find = transform.get("find", "")
+            replace = transform.get("replace", "")
+            if not isinstance(find, str) or not find:
+                raise ValueError("url_transform find must be a non-empty regex string")
+            if not isinstance(replace, str):
+                raise ValueError("url_transform replace must be a string")
+            compiled.append((re.compile(find), replace))
+    except (ValueError, re.error) as exc:
+        structlog.get_logger().warning("monitor.url_transform_invalid", error=str(exc))
         return result
     collision = _url_transform_collision_config(config)
 
     new_urls: set[str] = set()
     url_map: dict[str, str] = {}  # old -> new
     for url in sorted(result.urls):
-        new_url = pattern.sub(replace, url)
+        new_url = url
+        for pattern, replace in compiled:
+            new_url = pattern.sub(replace, new_url)
         new_urls.add(new_url)
         url_map[url] = new_url
 

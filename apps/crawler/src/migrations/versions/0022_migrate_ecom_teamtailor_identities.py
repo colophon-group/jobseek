@@ -2,10 +2,12 @@
 
 The crawler deployment quiesces every PostgreSQL writer before Alembic.  This
 revision therefore converts the exact ECOM board before the new RSS runtime can
-recrawl it.  All title-derived aliases are grouped by Teamtailor's numeric job
-ID; one existing row retains its UUID and the rest are retired.  A bounded
-receipt captures the original rows so the deploy transaction can restore them
-before starting the previous image if rollout fails.
+recrawl it.  All locale/title aliases are grouped by their fetchable regional
+Teamtailor host plus numeric job ID; the retired Europe hostname is explicitly
+mapped to its current tenant. One existing row retains its UUID and the rest
+are retired. A bounded receipt captures the original rows so the deploy
+transaction can restore them before starting the previous image if rollout
+fails.
 
 Revision ID: 0022
 Revises: 0021
@@ -23,21 +25,29 @@ depends_on = None
 
 _MIGRATION_ID = "ecom-teamtailor-stable-id-v1"
 _MIGRATION_VERSION = 1
-_CONFIG_FINGERPRINT = "f48a13a3ab31582e825441be395c03a13da8426f72e310f6e0e98765dd99af86"
+_CONFIG_FINGERPRINT = "f8b18c8f6ec72fe6fd48e29e6aaca9666f3742d5baec41b191dc07c961adeb52"
 _COMPANY_SLUG = "ecom-agroindustrial"
 _BOARD_SLUG = "ecom-agroindustrial-global"
 _OLD_BOARD_URL = "https://careers.ecomtrading.com/jobs"
 _BOARD_URL = "https://ecomtradinggroup.teamtailor.com/jobs"
-_CANONICAL_PREFIX = "https://ecomtradinggroup.teamtailor.com/jobs/"
-_LEGACY_PATTERN = (
-    # Keep this as a capturing group. Alembic passes the string through
-    # SQLAlchemy, where the ``:careers`` prefix in a non-capturing ``(?:...)``
-    # group would be parsed as a bind parameter before PostgreSQL sees it.
-    r"^https://(careers[.]ecomtrading[.]com|"
-    r"ecomtradinggroup[.]teamtailor[.]com)/jobs/[0-9]+-[^/?#]+$|"
-    r"^https://careers[.]ecomtrading[.]com/jobs/[0-9]+$"
+_CURRENT_HOST_PATTERN = (
+    r"(careerslatam[.]ecomtrading[.]com|"
+    r"careerswestafrica[.]ecomtrading[.]com|"
+    r"careersasiapacific[.]ecomtrading[.]com|"
+    r"careersbrazil[.]ecomtrading[.]com|"
+    r"careersmexico[.]ecomtrading[.]com|"
+    r"ecomeurope[.]teamtailor[.]com)"
 )
-_CANONICAL_PATTERN = r"^https://ecomtradinggroup[.]teamtailor[.]com/jobs/[0-9]+$"
+_OLD_EUROPE_HOST_PATTERN = r"careerseurope[.]ecomtrading[.]com"
+_ALL_SOURCE_HOST_PATTERN = _CURRENT_HOST_PATTERN[:-1] + "|" + _OLD_EUROPE_HOST_PATTERN + ")"
+_LEGACY_PATTERN = (
+    # Keep every group capturing. SQLAlchemy would parse ``:...`` inside a
+    # non-capturing regex group as a bind parameter before PostgreSQL sees it.
+    rf"^https://{_ALL_SOURCE_HOST_PATTERN}/((de|fr|it|en)/)?jobs/[0-9]+-[^/?#]+$|"
+    rf"^https://{_ALL_SOURCE_HOST_PATTERN}/(de|fr|it|en)/jobs/[0-9]+$|"
+    rf"^https://{_OLD_EUROPE_HOST_PATTERN}/jobs/[0-9]+$"
+)
+_CANONICAL_PATTERN = rf"^https://{_CURRENT_HOST_PATTERN}/jobs/[0-9]+$"
 _MAX_ROWS = 100
 
 _MIGRATE_ECOM_TEAMTAILOR_IDENTITIES = f"""
@@ -61,7 +71,8 @@ BEGIN
     WHERE company.slug = '{_COMPANY_SLUG}'
       AND board.board_slug = '{_BOARD_SLUG}'
       AND board.board_url IN ('{_OLD_BOARD_URL}', '{_BOARD_URL}')
-      AND board.crawler_type = 'rss';
+      AND board.crawler_type = 'rss'
+      AND board.metadata ->> '_monitor_config_fingerprint' = '{_CONFIG_FINGERPRINT}';
 
     IF target_board_count = 0 THEN
         RETURN;
@@ -76,6 +87,7 @@ BEGIN
       AND board.board_slug = '{_BOARD_SLUG}'
       AND board.board_url IN ('{_OLD_BOARD_URL}', '{_BOARD_URL}')
       AND board.crawler_type = 'rss'
+      AND board.metadata ->> '_monitor_config_fingerprint' = '{_CONFIG_FINGERPRINT}'
     FOR UPDATE OF board;
 
     IF existing_receipt IS NOT NULL THEN
@@ -134,32 +146,72 @@ BEGIN
         RAISE EXCEPTION 'ECOM identity migration found foreign canonical URL ownership';
     END IF;
 
-    SELECT count(*)
-    INTO collision_count
-    FROM (
-        SELECT substring(posting.source_url FROM '/jobs/([0-9]+)') AS provider_id
+    WITH candidate_sources AS MATERIALIZED (
+        SELECT posting.id,
+               posting.source_url,
+               posting.source_url ~ '{_CANONICAL_PATTERN}' AS is_canonical,
+               'https://' ||
+               CASE
+                   WHEN substring(posting.source_url FROM '^https://([^/]+)') =
+                        'careerseurope.ecomtrading.com'
+                   THEN 'ecomeurope.teamtailor.com'
+                   ELSE substring(posting.source_url FROM '^https://([^/]+)')
+               END || '/jobs/' ||
+               substring(posting.source_url FROM '/jobs/([0-9]+)') AS canonical_url
         FROM job_posting AS posting
         WHERE posting.board_id = target_board_id
           AND (posting.source_url ~ '{_LEGACY_PATTERN}'
                OR posting.source_url ~ '{_CANONICAL_PATTERN}')
-        GROUP BY provider_id
-        HAVING count(*) FILTER (WHERE posting.source_url ~ '{_CANONICAL_PATTERN}') > 0
-           AND count(*) FILTER (WHERE posting.source_url ~ '{_LEGACY_PATTERN}') > 0
+    )
+    SELECT count(*)
+    INTO collision_count
+    FROM (
+        SELECT canonical_url
+        FROM candidate_sources
+        GROUP BY canonical_url
+        HAVING count(*) FILTER (WHERE is_canonical) > 0
+           AND count(*) FILTER (WHERE NOT is_canonical) > 0
     ) AS collisions;
     IF collision_count <> 0 THEN
         RAISE EXCEPTION 'ECOM identity migration found canonical/legacy row collisions';
     END IF;
 
-    SELECT count(DISTINCT substring(posting.source_url FROM '/jobs/([0-9]+)'))
+    WITH legacy_sources AS MATERIALIZED (
+        SELECT 'https://' ||
+               CASE
+                   WHEN substring(posting.source_url FROM '^https://([^/]+)') =
+                        'careerseurope.ecomtrading.com'
+                   THEN 'ecomeurope.teamtailor.com'
+                   ELSE substring(posting.source_url FROM '^https://([^/]+)')
+               END || '/jobs/' ||
+               substring(posting.source_url FROM '/jobs/([0-9]+)') AS canonical_url
+        FROM job_posting AS posting
+        WHERE posting.board_id = target_board_id
+          AND posting.source_url ~ '{_LEGACY_PATTERN}'
+    )
+    SELECT count(DISTINCT canonical_url)
     INTO legacy_group_count
-    FROM job_posting AS posting
-    WHERE posting.board_id = target_board_id
-      AND posting.source_url ~ '{_LEGACY_PATTERN}';
+    FROM legacy_sources;
 
     WITH candidates AS MATERIALIZED (
         SELECT posting.id,
+               'https://' ||
+               CASE
+                   WHEN substring(posting.source_url FROM '^https://([^/]+)') =
+                        'careerseurope.ecomtrading.com'
+                   THEN 'ecomeurope.teamtailor.com'
+                   ELSE substring(posting.source_url FROM '^https://([^/]+)')
+               END || '/jobs/' ||
+               substring(posting.source_url FROM '/jobs/([0-9]+)') AS canonical_url,
                row_number() OVER (
-                   PARTITION BY substring(posting.source_url FROM '/jobs/([0-9]+)')
+                   PARTITION BY
+                       CASE
+                           WHEN substring(posting.source_url FROM '^https://([^/]+)') =
+                                'careerseurope.ecomtrading.com'
+                           THEN 'ecomeurope.teamtailor.com'
+                           ELSE substring(posting.source_url FROM '^https://([^/]+)')
+                       END,
+                       substring(posting.source_url FROM '/jobs/([0-9]+)')
                    ORDER BY posting.is_active DESC,
                             posting.last_seen_at DESC NULLS LAST,
                             posting.id
@@ -181,9 +233,23 @@ BEGIN
 
     WITH candidates AS MATERIALIZED (
         SELECT posting.id,
-               substring(posting.source_url FROM '/jobs/([0-9]+)') AS provider_id,
+               'https://' ||
+               CASE
+                   WHEN substring(posting.source_url FROM '^https://([^/]+)') =
+                        'careerseurope.ecomtrading.com'
+                   THEN 'ecomeurope.teamtailor.com'
+                   ELSE substring(posting.source_url FROM '^https://([^/]+)')
+               END || '/jobs/' ||
+               substring(posting.source_url FROM '/jobs/([0-9]+)') AS canonical_url,
                row_number() OVER (
-                   PARTITION BY substring(posting.source_url FROM '/jobs/([0-9]+)')
+                   PARTITION BY
+                       CASE
+                           WHEN substring(posting.source_url FROM '^https://([^/]+)') =
+                                'careerseurope.ecomtrading.com'
+                           THEN 'ecomeurope.teamtailor.com'
+                           ELSE substring(posting.source_url FROM '^https://([^/]+)')
+                       END,
+                       substring(posting.source_url FROM '/jobs/([0-9]+)')
                    ORDER BY posting.is_active DESC,
                             posting.last_seen_at DESC NULLS LAST,
                             posting.id
@@ -193,7 +259,7 @@ BEGIN
           AND posting.source_url ~ '{_LEGACY_PATTERN}'
     ), canonicalized AS (
         UPDATE job_posting AS posting
-        SET source_url = '{_CANONICAL_PREFIX}' || candidates.provider_id,
+        SET source_url = candidates.canonical_url,
             updated_at = now()
         FROM candidates
         WHERE posting.id = candidates.id
@@ -241,7 +307,8 @@ BEGIN
     WHERE company.slug = '{_COMPANY_SLUG}'
       AND board.board_slug = '{_BOARD_SLUG}'
       AND board.board_url IN ('{_OLD_BOARD_URL}', '{_BOARD_URL}')
-      AND board.crawler_type = 'rss';
+      AND board.crawler_type = 'rss'
+      AND board.metadata ->> '_monitor_config_fingerprint' = '{_CONFIG_FINGERPRINT}';
 
     IF target_board_count = 0 THEN
         RETURN;
@@ -256,6 +323,7 @@ BEGIN
       AND board.board_slug = '{_BOARD_SLUG}'
       AND board.board_url IN ('{_OLD_BOARD_URL}', '{_BOARD_URL}')
       AND board.crawler_type = 'rss'
+      AND board.metadata ->> '_monitor_config_fingerprint' = '{_CONFIG_FINGERPRINT}'
     FOR UPDATE OF board;
     IF existing_receipt IS NULL THEN
         RETURN;
