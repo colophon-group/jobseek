@@ -100,54 +100,77 @@ resolve_active_release() {
   ACTIVE_RELEASE="$target"
 }
 
-verify_release_generation() {
+verify_release_generation_evidence() (
+  set -euo pipefail
   local generation="$1" format compose_digest env_digest success_digest
   local data_manifest_digest data_contract data_revision image_ref has_image_override
+  local env_runtime success_runtime
   [[ "$generation" == "$ACTIVE_RELEASE_ROOT/"* && \
     "${generation#"$ACTIVE_RELEASE_ROOT/"}" =~ ^[A-Za-z0-9._-]+$ && \
     -d "$generation" && ! -L "$generation" ]] || return 1
-  verify_snapshot_file "$generation/docker-compose.yml" "$generation/docker-compose.sha256" Compose
-  verify_snapshot_file "$generation/environment.env" "$generation/environment.sha256" environment
+  verify_snapshot_file \
+    "$generation/docker-compose.yml" "$generation/docker-compose.sha256" Compose || return 1
+  verify_snapshot_file \
+    "$generation/environment.env" "$generation/environment.sha256" environment || return 1
   [[ "$(stat -c '%a' "$generation/environment.env")" == 600 ]] || {
     echo "ERROR: committed crawler environment permissions are unsafe" >&2
     return 1
   }
   [[ -f "$generation/success.env" && ! -L "$generation/success.env" && \
     -f "$generation/release.manifest" && ! -L "$generation/release.manifest" ]] || return 1
-  format="$(read_exact_value "$generation/release.manifest" RELEASE_FORMAT_VERSION)"
+  format="$(read_exact_value "$generation/release.manifest" RELEASE_FORMAT_VERSION)" || return 1
   [[ "$format" == 1 || "$format" == 2 || "$format" == 3 ]] || return 1
-  compose_digest="$(read_exact_value "$generation/release.manifest" COMPOSE_SHA256)"
-  env_digest="$(read_exact_value "$generation/release.manifest" ENVIRONMENT_SHA256)"
-  success_digest="$(read_exact_value "$generation/release.manifest" SUCCESS_SHA256)"
+  compose_digest="$(read_exact_value "$generation/release.manifest" COMPOSE_SHA256)" || return 1
+  env_digest="$(read_exact_value "$generation/release.manifest" ENVIRONMENT_SHA256)" || return 1
+  success_digest="$(read_exact_value "$generation/release.manifest" SUCCESS_SHA256)" || return 1
   [[ "$compose_digest" =~ ^[0-9a-f]{64}$ && "$env_digest" =~ ^[0-9a-f]{64}$ && \
     "$success_digest" =~ ^[0-9a-f]{64}$ ]] || return 1
   [[ "$compose_digest" == "$(tr -d '[:space:]' <"$generation/docker-compose.sha256")" && \
     "$env_digest" == "$(tr -d '[:space:]' <"$generation/environment.sha256")" && \
     "$success_digest" == "$(sha256sum "$generation/success.env" | awk '{print $1}')" ]] || return 1
-  image_ref="$(read_exact_value "$generation/environment.env" CRAWLER_IMAGE_REF)"
+  image_ref="$(read_exact_value "$generation/environment.env" CRAWLER_IMAGE_REF)" || return 1
   [[ "$image_ref" =~ ^ghcr\.io/${OWNER}/jobseek-crawler@sha256:[0-9a-f]{64}$ ]] || return 1
   if [[ "$format" == 3 ]]; then
-    data_manifest_digest="$(read_exact_value "$generation/release.manifest" DATA_FILES_SHA256)"
-    data_contract="$(read_exact_value "$generation/release.manifest" DATA_CONTRACT_SHA256)"
-    data_revision="$(read_exact_value "$generation/release.manifest" DATA_REVISION)"
+    data_manifest_digest="$(read_exact_value "$generation/release.manifest" DATA_FILES_SHA256)" || return 1
+    data_contract="$(read_exact_value "$generation/release.manifest" DATA_CONTRACT_SHA256)" || return 1
+    data_revision="$(read_exact_value "$generation/release.manifest" DATA_REVISION)" || return 1
     [[ "$data_manifest_digest" =~ ^[0-9a-f]{64}$ && \
       "$data_contract" =~ ^[0-9a-f]{64}$ && "$data_revision" =~ ^[0-9a-f]{40}$ ]] || return 1
     [[ "$data_manifest_digest" == "$(sha256sum "$generation/data-files.sha256" | awk '{print $1}')" ]] || {
       echo "ERROR: committed crawler CSV manifest failed verification" >&2
       return 1
     }
-    verify_exact_csv_tree "$generation/data" "$generation/data-files.sha256"
-    has_image_override="$(read_exact_value "$generation/release.manifest" HAS_IMAGE_OVERRIDE)"
+    [[ "$data_contract" == "$data_manifest_digest" ]] || {
+      echo "ERROR: committed crawler data contract does not match its exact tree" >&2
+      return 1
+    }
+    verify_exact_csv_tree "$generation/data" "$generation/data-files.sha256" || return 1
+    env_runtime="$(read_exact_value "$generation/environment.env" JOBSEEK_RUNTIME_CONTRACT_SHA256)" || return 1
+    success_runtime="$(read_exact_value "$generation/success.env" JOBSEEK_RUNTIME_CONTRACT_SHA256)" || return 1
+    [[ "$env_runtime" =~ ^[0-9a-f]{64}$ && "$env_runtime" == "$success_runtime" ]] || {
+      echo "ERROR: committed crawler runtime contract evidence is inconsistent" >&2
+      return 1
+    }
+    has_image_override="$(read_exact_value "$generation/release.manifest" HAS_IMAGE_OVERRIDE)" || return 1
     [[ "$has_image_override" == 0 || "$has_image_override" == 1 ]] || return 1
     if [[ "$has_image_override" == 1 ]]; then
       local override_digest
-      override_digest="$(read_exact_value "$generation/release.manifest" IMAGE_OVERRIDE_SHA256)"
+      override_digest="$(read_exact_value "$generation/release.manifest" IMAGE_OVERRIDE_SHA256)" || return 1
       [[ "$override_digest" =~ ^[0-9a-f]{64}$ && \
         -f "$generation/rollback-images.override.yml" && \
         ! -L "$generation/rollback-images.override.yml" && \
         "$override_digest" == "$(sha256sum "$generation/rollback-images.override.yml" | awk '{print $1}')" ]] || return 1
+    else
+      [[ ! -e "$generation/rollback-images.override.yml" ]] || return 1
     fi
   fi
+)
+
+verify_release_generation() {
+  local generation="$1" format image_ref
+  verify_release_generation_evidence "$generation" || return 1
+  format="$(read_exact_value "$generation/release.manifest" RELEASE_FORMAT_VERSION)" || return 1
+  image_ref="$(read_exact_value "$generation/environment.env" CRAWLER_IMAGE_REF)" || return 1
   ACTIVE_RELEASE_FORMAT="$format"
   ACTIVE_DATA_DIR=""
   if [[ "$format" == 3 ]]; then
@@ -202,12 +225,30 @@ active_data_contract_matches() {
 
 prune_publications() {
   local protected_candidate="${1:-}" consumed_candidate="${2:-}"
-  shift 2 || true
-  python3 - \
+  local protected_forward_staging="${3:-}" generation generation_basename format explicit_count
+  local -a verified_v3_generations=() python_args=()
+  shift 3 || true
+  explicit_count="$#"
+  for generation in "$ACTIVE_RELEASE_ROOT"/*; do
+    generation_basename="${generation#"$ACTIVE_RELEASE_ROOT/"}"
+    [[ -d "$generation" && ! -L "$generation" && \
+      "$generation_basename" =~ ^((release-|data-)[A-Za-z0-9._-]+|(murmur|legacy)\.[A-Za-z0-9._-]+)$ ]] || continue
+    format="$(read_exact_value "$generation/release.manifest" RELEASE_FORMAT_VERSION 2>/dev/null || true)"
+    [[ "$format" == 3 ]] || continue
+    if verify_release_generation_evidence "$generation" >/dev/null 2>&1; then
+      verified_v3_generations+=("$generation")
+    fi
+  done
+  python_args=(
     "$ACTIVE_RELEASE_ROOT" "$ACTIVE_RELEASE_POINTER" "$PUBLICATION_JOURNAL" \
-    "$CANDIDATE_ROOT" "$PUBLICATION_KEEP_GENERATIONS" \
+    "$CANDIDATE_ROOT" "$DEPLOY_DIR" "$PUBLICATION_KEEP_GENERATIONS" \
     "$PUBLICATION_GRACE_SECONDS" "$protected_candidate" "$consumed_candidate" \
-    "$@" <<'PY'
+    "$protected_forward_staging" "$explicit_count" "$@"
+  )
+  if (( ${#verified_v3_generations[@]} )); then
+    python_args+=("${verified_v3_generations[@]}")
+  fi
+  python3 - "${python_args[@]}" <<'PY'
 import os
 import pathlib
 import re
@@ -221,27 +262,37 @@ import time
     active_pointer_text,
     journal_text,
     candidate_root_text,
+    deploy_dir_text,
     keep_text,
     grace_text,
     protected_candidate,
     consumed_candidate,
-    *explicit_releases,
+    protected_forward_staging_text,
+    explicit_count_text,
+    *generation_paths,
 ) = sys.argv[1:]
 
 release_root = pathlib.Path(release_root_text)
 active_pointer = pathlib.Path(active_pointer_text)
 journal = pathlib.Path(journal_text)
 candidate_root = pathlib.Path(candidate_root_text)
+deploy_dir = pathlib.Path(deploy_dir_text)
 generation_name = re.compile(r"(?:release-|data-)[A-Za-z0-9._-]+|(?:murmur|legacy)\.[A-Za-z0-9._-]+")
 candidate_name = re.compile(r"[0-9a-f]{40}-[1-9][0-9]*-[1-9][0-9]*")
+forward_staging_name = re.compile(r"\.crawler-forward-data-[0-9a-f]{40}\.[A-Za-z0-9]+")
 
 try:
     keep = int(keep_text)
     grace = int(grace_text)
+    explicit_count = int(explicit_count_text)
 except ValueError as error:
     raise SystemExit("invalid publication retention configuration") from error
 if not 1 <= keep <= 20 or not 0 <= grace <= 604800:
     raise SystemExit("publication retention configuration is outside safe bounds")
+if not 0 <= explicit_count <= len(generation_paths):
+    raise SystemExit("invalid publication retention path counts")
+explicit_releases = generation_paths[:explicit_count]
+verified_release_paths = generation_paths[explicit_count:]
 
 
 def require_directory(path: pathlib.Path, label: str) -> None:
@@ -289,53 +340,8 @@ def fsync_directory(path: pathlib.Path) -> None:
         os.close(fd)
 
 
-def is_regular_file(path: pathlib.Path) -> bool:
-    try:
-        mode = path.lstat().st_mode
-    except FileNotFoundError:
-        return False
-    return stat.S_ISREG(mode) and not stat.S_ISLNK(mode)
-
-
-def is_completed_generation(path: pathlib.Path) -> bool:
-    required_files = (
-        "docker-compose.yml",
-        "docker-compose.sha256",
-        "environment.env",
-        "environment.sha256",
-        "success.env",
-        "release.manifest",
-    )
-    if not all(is_regular_file(path / name) for name in required_files):
-        return False
-    manifest = path / "release.manifest"
-    try:
-        if manifest.stat().st_size > 64 * 1024:
-            return False
-        manifest_lines = manifest.read_text(encoding="utf-8").splitlines()
-    except (OSError, UnicodeError):
-        return False
-    formats = [
-        line.removeprefix("RELEASE_FORMAT_VERSION=")
-        for line in manifest_lines
-        if line.startswith("RELEASE_FORMAT_VERSION=")
-    ]
-    if len(formats) != 1 or formats[0] not in {"1", "2", "3"}:
-        return False
-    if formats[0] != "3":
-        return True
-    try:
-        data_mode = (path / "data").lstat().st_mode
-    except FileNotFoundError:
-        return False
-    return (
-        stat.S_ISDIR(data_mode)
-        and not stat.S_ISLNK(data_mode)
-        and is_regular_file(path / "data-files.sha256")
-    )
-
-
 require_directory(release_root, "release-generation root")
+require_directory(deploy_dir, "deploy root")
 try:
     active_mode = active_pointer.lstat().st_mode
 except FileNotFoundError as error:
@@ -369,6 +375,10 @@ if journal_values:
 for release in explicit_releases:
     if release:
         protected_releases.add(validate_generation(release, "explicitly protected release"))
+verified_releases = {
+    validate_generation(release, "verified v3 release")
+    for release in verified_release_paths
+}
 
 if protected_candidate and not candidate_name.fullmatch(protected_candidate):
     raise SystemExit("protected CSV candidate identity is invalid")
@@ -378,6 +388,15 @@ if candidate_root.exists():
     require_directory(candidate_root, "CSV candidate root")
 elif protected_candidate or consumed_candidate:
     raise SystemExit("CSV candidate root is unavailable")
+protected_forward_staging = None
+if protected_forward_staging_text:
+    protected_forward_staging = pathlib.Path(protected_forward_staging_text)
+    if (
+        protected_forward_staging.parent != deploy_dir
+        or not forward_staging_name.fullmatch(protected_forward_staging.name)
+    ):
+        raise SystemExit("protected forward-data staging path is unsafe")
+    require_directory(protected_forward_staging, "protected forward-data staging")
 
 now = time.time()
 deleted_generation = False
@@ -391,7 +410,7 @@ for entry in os.scandir(release_root):
 newest = {
     path
     for _, path in sorted(
-        (item for item in generation_entries if is_completed_generation(item[1])),
+        (item for item in generation_entries if item[1] in verified_releases),
         key=lambda item: (item[0], item[1].name),
         reverse=True,
     )[:keep]
@@ -430,6 +449,21 @@ if candidate_root.exists():
         deleted_candidate = True
     if deleted_candidate:
         fsync_directory(candidate_root)
+
+deleted_forward_staging = False
+for entry in os.scandir(deploy_dir):
+    if not forward_staging_name.fullmatch(entry.name) or entry.is_symlink():
+        continue
+    path = pathlib.Path(entry.path)
+    if path == protected_forward_staging or not entry.is_dir(follow_symlinks=False):
+        continue
+    age = now - entry.stat(follow_symlinks=False).st_mtime
+    if age < grace:
+        continue
+    shutil.rmtree(path)
+    deleted_forward_staging = True
+if deleted_forward_staging:
+    fsync_directory(deploy_dir)
 PY
 }
 
@@ -598,9 +632,9 @@ recover_publication() (
   clear_journal
 )
 
-prepare_candidate_generation() {
+verify_candidate_archive_contract() {
   local revision="$1" data_contract="$2" candidate_id="$3" archive_sha="$4"
-  local candidate archive generation compose_digest env_digest success_digest files_digest
+  local candidate archive
   candidate="$CANDIDATE_ROOT/$candidate_id"
   archive="$candidate/csv-snapshot.tar"
   [[ "$candidate_id" =~ ^${revision}-[1-9][0-9]*-[1-9][0-9]*$ && \
@@ -612,6 +646,68 @@ prepare_candidate_generation() {
     echo "ERROR: CSV candidate archive digest mismatch" >&2
     return 1
   }
+  python3 - "$archive" "$data_contract" <<'PY'
+import hashlib
+import pathlib
+import re
+import tarfile
+import sys
+
+archive = pathlib.Path(sys.argv[1])
+expected_contract = sys.argv[2]
+rows = []
+provided_manifest = None
+seen_files = set()
+with tarfile.open(archive, "r:") as bundle:
+    members = bundle.getmembers()
+    if not members:
+        raise SystemExit("empty CSV candidate archive")
+    for member in members:
+        path = pathlib.PurePosixPath(member.name)
+        if path.is_absolute() or ".." in path.parts:
+            raise SystemExit("unsafe CSV candidate archive path")
+        if member.isdir():
+            if path != pathlib.PurePosixPath("data") and (
+                not path.parts or path.parts[0] != "data"
+            ):
+                raise SystemExit("unexpected CSV candidate directory")
+            continue
+        if not member.isfile() or member.name in seen_files:
+            raise SystemExit("unsafe or duplicate CSV candidate archive entry")
+        seen_files.add(member.name)
+        extracted = bundle.extractfile(member)
+        if extracted is None:
+            raise SystemExit("CSV candidate archive entry is unreadable")
+        content = extracted.read()
+        if path == pathlib.PurePosixPath("data-files.sha256"):
+            provided_manifest = content
+            continue
+        if not path.parts or path.parts[0] != "data":
+            raise SystemExit("unexpected CSV candidate file")
+        relative = pathlib.PurePosixPath(*path.parts[1:]).as_posix()
+        if not re.fullmatch(r"[A-Za-z0-9._/-]+\.csv", relative):
+            raise SystemExit("unexpected CSV candidate file")
+        rows.append((relative, hashlib.sha256(content).hexdigest()))
+if not rows or provided_manifest is None:
+    raise SystemExit("CSV candidate archive is incomplete")
+actual_manifest = "".join(
+    f"{digest}  {relative}\n" for relative, digest in sorted(rows)
+).encode()
+if provided_manifest != actual_manifest:
+    raise SystemExit("CSV candidate manifest does not match its exact tree")
+actual_contract = hashlib.sha256(actual_manifest).hexdigest()
+if actual_contract != expected_contract:
+    raise SystemExit("CSV candidate data contract does not match its exact tree")
+PY
+}
+
+prepare_candidate_generation() {
+  local revision="$1" data_contract="$2" candidate_id="$3" archive_sha="$4"
+  local candidate archive generation compose_digest env_digest success_digest files_digest
+  verify_candidate_archive_contract \
+    "$revision" "$data_contract" "$candidate_id" "$archive_sha" || return 1
+  candidate="$CANDIDATE_ROOT/$candidate_id"
+  archive="$candidate/csv-snapshot.tar"
   generation="$(mktemp -d "${ACTIVE_RELEASE_ROOT}/data-${revision}.XXXXXX")"
   install -m 0644 "$ACTIVE_RELEASE/docker-compose.yml" "$generation/docker-compose.yml"
   install -m 0600 "$ACTIVE_RELEASE/environment.env" "$generation/environment.env"
@@ -647,11 +743,19 @@ with tarfile.open(archive, "r:") as bundle:
             raise SystemExit("unsafe CSV candidate archive entry")
     bundle.extractall(destination, filter="data")
 PY
-  verify_exact_csv_tree "$generation/data" "$generation/data-files.sha256"
+  [[ "$(sha256sum "$archive" | awk '{print $1}')" == "$archive_sha" ]] || {
+    echo "ERROR: CSV candidate archive changed during preparation" >&2
+    return 1
+  }
+  verify_exact_csv_tree "$generation/data" "$generation/data-files.sha256" || return 1
   compose_digest="$(sha256sum "$generation/docker-compose.yml" | awk '{print $1}')"
   env_digest="$(sha256sum "$generation/environment.env" | awk '{print $1}')"
   success_digest="$(sha256sum "$generation/success.env" | awk '{print $1}')"
   files_digest="$(sha256sum "$generation/data-files.sha256" | awk '{print $1}')"
+  [[ "$files_digest" == "$data_contract" ]] || {
+    echo "ERROR: CSV candidate data contract changed during preparation" >&2
+    return 1
+  }
   printf '%s\n' "$compose_digest" >"$generation/docker-compose.sha256"
   printf '%s\n' "$env_digest" >"$generation/environment.sha256"
   printf '%s\n' \
@@ -672,9 +776,29 @@ PY
     printf '%s\n' 'HAS_IMAGE_OVERRIDE=0' >>"$generation/release.manifest"
   fi
   chmod 0644 "$generation"/*.sha256 "$generation/release.manifest"
-  fsync_generation "$generation"
-  verify_release_generation "$generation"
+  fsync_generation "$generation" || return 1
+  verify_release_generation "$generation" || return 1
   printf '%s\n' "$generation"
+}
+
+discard_candidate_generation() {
+  local generation="$1"
+  [[ "$generation" == "$ACTIVE_RELEASE_ROOT/data-${REVISION}."* && \
+    "${generation#"$ACTIVE_RELEASE_ROOT/"}" =~ ^data-${REVISION}\.[A-Za-z0-9]+$ && \
+    -d "$generation" && ! -L "$generation" ]] || return 1
+  resolve_active_release
+  [[ "$generation" != "$ACTIVE_RELEASE" ]] || return 1
+  rm -rf -- "$generation"
+  python3 - "$ACTIVE_RELEASE_ROOT" <<'PY'
+import os
+import sys
+
+fd = os.open(sys.argv[1], os.O_RDONLY | os.O_DIRECTORY)
+try:
+    os.fsync(fd)
+finally:
+    os.close(fd)
+PY
 }
 
 cleanup() {
@@ -699,18 +823,20 @@ trap 'exit 143' TERM
 
 if [[ "${1:-}" == --recover-only ]]; then
   recover_publication
-  prune_publications "" ""
+  prune_publications "" "" ""
   exit 0
 fi
 
 if [[ "${1:-}" == --prune-only ]]; then
   protected_release="${2:-}"
   protected_candidate="${3:-}"
-  [[ -z "${4:-}" ]] || {
-    echo "ERROR: usage: crawler-csv-sync-host.sh --prune-only [release] [candidate]" >&2
+  protected_forward_staging="${4:-}"
+  [[ -z "${5:-}" ]] || {
+    echo "ERROR: usage: crawler-csv-sync-host.sh --prune-only [release] [candidate] [forward-staging]" >&2
     exit 1
   }
-  prune_publications "$protected_candidate" "" "$protected_release"
+  prune_publications \
+    "$protected_candidate" "" "$protected_forward_staging" "$protected_release"
   exit 0
 fi
 
@@ -723,12 +849,14 @@ if [[ "${1:-}" == --bootstrap-current ]]; then
     "$ARCHIVE_SHA256" =~ ^[a-f0-9]{64}$ && \
     "$CANDIDATE_ID" =~ ^${REVISION}-[1-9][0-9]*-[1-9][0-9]*$ ]] || exit 1
   recover_publication
+  verify_candidate_archive_contract \
+    "$REVISION" "$DATA_CONTRACT_SHA256" "$CANDIDATE_ID" "$ARCHIVE_SHA256"
   load_committed_release
   if [[ "$ACTIVE_RELEASE_FORMAT" == 3 ]]; then
     # A verified v3 generation is the exact live rollback source of truth. A
     # later main revision may contain different CSVs; replacing this evidence
     # before the new deploy commits would make rollback non-atomic.
-    prune_publications "" "$CANDIDATE_ID" "$ACTIVE_RELEASE"
+    prune_publications "" "$CANDIDATE_ID" "" "$ACTIVE_RELEASE"
     exit 0
   fi
   previous_release="$ACTIVE_RELEASE"
@@ -738,7 +866,8 @@ if [[ "${1:-}" == --bootstrap-current ]]; then
   )"
   write_journal 0 "$previous_release" "$candidate_generation" promote-target
   PUBLICATION_ARMED=1
-  prune_publications "" "$CANDIDATE_ID" "$previous_release" "$candidate_generation"
+  prune_publications \
+    "" "$CANDIDATE_ID" "" "$previous_release" "$candidate_generation"
   sync_release_data "$candidate_generation" bootstrap-sync
   write_journal 1 "$previous_release" "$candidate_generation" promote-target
   activate_release_generation "$candidate_generation"
@@ -747,7 +876,7 @@ if [[ "${1:-}" == --bootstrap-current ]]; then
   verify_release_generation "$ACTIVE_RELEASE"
   clear_journal
   PUBLICATION_ARMED=0
-  prune_publications "" "" "$previous_release" "$candidate_generation"
+  prune_publications "" "" "" "$previous_release" "$candidate_generation"
   exit 0
 fi
 
@@ -775,28 +904,36 @@ if [[ -e "$PUBLICATION_JOURNAL" ]]; then
   fi
   recover_publication
 fi
-load_committed_release
-if active_data_contract_matches "$DATA_CONTRACT_SHA256"; then
-  echo "CSV data contract is already committed by the active crawler generation" >&2
-  if [[ "$MODE" != --check-runtime ]]; then
-    prune_publications "" "$CANDIDATE_ID" "$ACTIVE_RELEASE"
-  fi
-  exit 0
-fi
-verify_runtime_contract "$RUNTIME_CONTRACT_SHA256"
 if [[ "$MODE" == --check-runtime ]]; then
+  verify_candidate_archive_contract \
+    "$REVISION" "$DATA_CONTRACT_SHA256" "$CANDIDATE_ID" "$ARCHIVE_SHA256"
+  load_committed_release
+  if active_data_contract_matches "$DATA_CONTRACT_SHA256"; then
+    echo "CSV data contract is already committed by the active crawler generation" >&2
+    exit 0
+  fi
+  verify_runtime_contract "$RUNTIME_CONTRACT_SHA256"
   exit 0
 fi
 
-prune_publications "$CANDIDATE_ID" "" "$ACTIVE_RELEASE"
-previous_release="$ACTIVE_RELEASE"
+load_committed_release
+prune_publications "$CANDIDATE_ID" "" "" "$ACTIVE_RELEASE"
 candidate_generation="$(
   prepare_candidate_generation \
     "$REVISION" "$DATA_CONTRACT_SHA256" "$CANDIDATE_ID" "$ARCHIVE_SHA256"
 )"
+if active_data_contract_matches "$DATA_CONTRACT_SHA256"; then
+  echo "CSV data contract is already committed by the active crawler generation" >&2
+  discard_candidate_generation "$candidate_generation"
+  prune_publications "" "$CANDIDATE_ID" "" "$ACTIVE_RELEASE"
+  exit 0
+fi
+verify_runtime_contract "$RUNTIME_CONTRACT_SHA256"
+previous_release="$ACTIVE_RELEASE"
 write_journal 0 "$previous_release" "$candidate_generation" restore-previous
 PUBLICATION_ARMED=1
-prune_publications "" "$CANDIDATE_ID" "$previous_release" "$candidate_generation"
+prune_publications \
+  "" "$CANDIDATE_ID" "" "$previous_release" "$candidate_generation"
 sync_release_data "$candidate_generation" csv-sync
 write_journal 1 "$previous_release" "$candidate_generation" restore-previous
 activate_release_generation "$candidate_generation"
@@ -805,4 +942,4 @@ resolve_active_release
 verify_release_generation "$ACTIVE_RELEASE"
 clear_journal
 PUBLICATION_ARMED=0
-prune_publications "" "" "$previous_release" "$candidate_generation"
+prune_publications "" "" "" "$previous_release" "$candidate_generation"

@@ -1,4 +1,9 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -6,9 +11,16 @@ import {
   deriveCrawlerRuntimeContract,
   isCrawlerRuntimePath,
   isPublishableCrawlerDataPath,
+  readGitEntries,
 } from "./derive-crawler-runtime-contract.mjs";
 
-const entry = (path, oid) => ({ mode: "100644", type: "blob", oid, path });
+const entry = (path, oid) => ({
+  mode: "100644",
+  type: "blob",
+  oid,
+  path,
+  contentSha256: createHash("sha256").update(oid).digest("hex"),
+});
 
 test("runtime contract matches the crawler deploy boundary", () => {
   for (const path of [
@@ -160,4 +172,42 @@ test("data contract changes for CSV content but ignores runtime-only advances", 
       companies,
     ]),
   );
+});
+
+test("data contract equals the host-recomputable canonical manifest digest", () => {
+  const boards = entry("apps/crawler/data/boards.csv", "a".repeat(40));
+  const companies = entry("apps/crawler/data/companies.csv", "b".repeat(40));
+  const manifest =
+    `${boards.contentSha256}  boards.csv\n` +
+    `${companies.contentSha256}  companies.csv\n`;
+  assert.equal(
+    deriveCrawlerDataContract([companies, boards]),
+    createHash("sha256").update(manifest).digest("hex"),
+  );
+});
+
+test("git data entries hash CSV blobs larger than Node's default buffer", () => {
+  const repo = mkdtempSync(join(tmpdir(), "crawler-contract-"));
+  try {
+    execFileSync("git", ["-C", repo, "init", "--quiet"]);
+    execFileSync("git", ["-C", repo, "config", "user.email", "test@example.com"]);
+    execFileSync("git", ["-C", repo, "config", "user.name", "Test"]);
+    mkdirSync(join(repo, "apps/crawler/data"), { recursive: true });
+    const content = Buffer.alloc(2 * 1024 * 1024, "a");
+    writeFileSync(join(repo, "apps/crawler/data/companies.csv"), content);
+    execFileSync("git", ["-C", repo, "add", "."]);
+    execFileSync("git", ["-C", repo, "commit", "--quiet", "-m", "fixture"]);
+    const revision = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
+
+    const entries = readGitEntries(repo, revision, true);
+    assert.equal(entries.length, 1);
+    assert.equal(
+      entries[0].contentSha256,
+      createHash("sha256").update(content).digest("hex"),
+    );
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
 });

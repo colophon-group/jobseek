@@ -33,7 +33,10 @@ The deploy script must:
   require standalone CSV syncs to match that digest before publishing config;
 - commit one release generation that binds the verified runtime environment and
   immutable image identities to the exact applied CSV tree, its canonical
-  per-file SHA-256 manifest, Git data contract, and source revision;
+  per-file SHA-256 manifest, host-recomputable data contract, and source
+  revision. The data contract is the SHA-256 of that canonical manifest: CI
+  derives it from Git blob bytes and every host publication path recomputes it
+  from the verified archive or image tree before sync, no-op, or promotion;
 - reject an explicitly requested CSV revision unless its complete publishable
   CSV tree matches current `main`, while allowing runtime-only commits to have
   advanced since that revision;
@@ -61,8 +64,11 @@ The deploy script must:
   the actual live rollback evidence even when later `main` CSVs differ;
 - remove consumed candidate archives and prune stale candidate/generation
   residue under the mutation lock. Preserve the active generation, durable
-  journal references, explicit rollback target, five newest generations, and
-  a 48-hour grace window for staged or crash-interrupted work;
+  journal references, explicit rollback target, five newest fully verified v3
+  generations, and a 48-hour grace window for staged or crash-interrupted
+  work. Corrupt/partial generations do not consume the rollback window, and
+  abandoned `.crawler-forward-data-*` image-extraction staging is pruned by the
+  same locked routine;
 - start the full stack after sync;
 - wait for core services to be running or healthy;
 - restore the previous env on failure and, if the forward sync began, mount and

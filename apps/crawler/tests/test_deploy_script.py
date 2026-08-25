@@ -272,8 +272,16 @@ def test_csv_sync_requires_the_committed_runtime_contract_before_publication() -
     assert '"$ACTIVE_RELEASE/environment.env"' in sync_host
     assert '"$ACTIVE_RELEASE/success.env"' in sync_host
     assert "return 75" in sync_host
-    runtime_gate = sync_host.index('verify_runtime_contract "$RUNTIME_CONTRACT_SHA256"')
-    assert runtime_gate < sync_host.index('candidate_generation="$(', runtime_gate)
+    main = sync_host[sync_host.index('USAGE="crawler-csv-sync-host.sh') :]
+    actual_prepare = main.index('candidate_generation="$(')
+    actual_noop = main.index(
+        'if active_data_contract_matches "$DATA_CONTRACT_SHA256"', actual_prepare
+    )
+    runtime_gate = main.index('verify_runtime_contract "$RUNTIME_CONTRACT_SHA256"', actual_noop)
+    assert actual_prepare < actual_noop < runtime_gate
+    check_verification = main.index("verify_candidate_archive_contract")
+    check_noop = main.index('if active_data_contract_matches "$DATA_CONTRACT_SHA256"')
+    assert check_verification < check_noop
     assert "SYNC_DATA_CONTRACT_SHA256" in workflow
     assert "SYNC_ARCHIVE_SHA256" in workflow
     assert "/home/deploy/csv-candidates/" in workflow
@@ -300,10 +308,9 @@ def _create_v3_release(
     release_root: Path,
     name: str,
     runtime_contract: str,
-    data_contract: str,
     revision: str,
     board_value: str,
-) -> Path:
+) -> tuple[Path, str]:
     release = release_root / name
     release.mkdir(parents=True)
     compose = release / "docker-compose.yml"
@@ -335,6 +342,7 @@ def _create_v3_release(
     board_digest = hashlib.sha256(board.read_bytes()).hexdigest()
     data_manifest = release / "data-files.sha256"
     data_manifest.write_text(f"{board_digest}  boards.csv\n", encoding="utf-8")
+    data_contract = hashlib.sha256(data_manifest.read_bytes()).hexdigest()
     compose_digest = hashlib.sha256(compose.read_bytes()).hexdigest()
     environment_digest = hashlib.sha256(environment.read_bytes()).hexdigest()
     success_digest = hashlib.sha256(success.read_bytes()).hexdigest()
@@ -356,7 +364,7 @@ def _create_v3_release(
         ),
         encoding="utf-8",
     )
-    return release
+    return release, data_contract
 
 
 def _csv_host_test_environment(
@@ -393,6 +401,39 @@ def _csv_host_test_environment(
     }
 
 
+def _create_csv_candidate(
+    candidate_root: Path,
+    revision: str,
+    run_id: int,
+    attempt: int,
+    files: dict[str, bytes],
+) -> tuple[str, str, str]:
+    candidate_id = f"{revision}-{run_id}-{attempt}"
+    candidate = candidate_root / candidate_id
+    payload = candidate / "payload"
+    data = payload / "data"
+    data.mkdir(parents=True)
+    rows = []
+    for relative, content in sorted(files.items()):
+        path = data / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        rows.append((relative, hashlib.sha256(content).hexdigest()))
+    manifest = payload / "data-files.sha256"
+    manifest.write_text(
+        "".join(f"{digest}  {relative}\n" for relative, digest in rows),
+        encoding="utf-8",
+    )
+    archive = candidate / "csv-snapshot.tar"
+    with tarfile.open(archive, "w") as bundle:
+        bundle.add(data, arcname="data")
+        bundle.add(manifest, arcname="data-files.sha256")
+    data_contract = hashlib.sha256(manifest.read_bytes()).hexdigest()
+    archive_sha = hashlib.sha256(archive.read_bytes()).hexdigest()
+    shutil.rmtree(payload)
+    return candidate_id, data_contract, archive_sha
+
+
 def test_csv_publication_timeline_does_not_deadlock_across_later_runtime_deploy(
     tmp_path: Path,
 ) -> None:
@@ -401,14 +442,11 @@ def test_csv_publication_timeline_does_not_deadlock_across_later_runtime_deploy(
     candidates.mkdir()
     runtime_r0 = "1" * 64
     runtime_r1 = "2" * 64
-    data_a = "a" * 64
-    data_b = "b" * 64
-    data_c = "c" * 64
     revision_a = "a" * 40
     revision_b = "b" * 40
     revision_c = "c" * 40
-    release_a = _create_v3_release(
-        release_root, "release-a.timeline", runtime_r0, data_a, revision_a, "a"
+    release_a, data_a = _create_v3_release(
+        release_root, "release-a.timeline", runtime_r0, revision_a, "a"
     )
     active = tmp_path / ".crawler-active-release"
     active.symlink_to(release_a)
@@ -421,8 +459,9 @@ def test_csv_publication_timeline_does_not_deadlock_across_later_runtime_deploy(
     # R0/A is live. A delayed D(B) exists when a later runtime-only R1 deploy
     # starts. Bootstrap must retain A as the real rollback state, even though
     # pre-push main now contains B.
-    candidate_b = f"{revision_b}-10-1"
-    (candidates / candidate_b).mkdir()
+    candidate_b, data_b, archive_b = _create_csv_candidate(
+        candidates, revision_b, 10, 1, {"boards.csv": b"slug\nb\n"}
+    )
     bootstrap_b = subprocess.run(
         [
             bash,
@@ -431,7 +470,7 @@ def test_csv_publication_timeline_does_not_deadlock_across_later_runtime_deploy(
             revision_b,
             data_b,
             candidate_b,
-            "0" * 64,
+            archive_b,
         ],
         check=False,
         capture_output=True,
@@ -445,14 +484,18 @@ def test_csv_publication_timeline_does_not_deadlock_across_later_runtime_deploy(
     # Model the successful R1 full deploy: its immutable image contains B.
     # The delayed D(B) job remains bound to R0, but can now finish as an exact
     # data-contract no-op instead of waiting forever for runtime R0.
-    release_b = _create_v3_release(
-        release_root, "release-b.timeline", runtime_r1, data_b, revision_b, "b"
+    release_b, release_b_contract = _create_v3_release(
+        release_root, "release-b.timeline", runtime_r1, revision_b, "b"
     )
+    assert release_b_contract == data_b
     active.unlink()
     active.symlink_to(release_b)
     shutil.copyfile(release_b / "environment.env", live_env)
     live_env.chmod(0o600)
-    (candidates / candidate_b).mkdir()
+    candidate_b, repeated_data_b, archive_b = _create_csv_candidate(
+        candidates, revision_b, 10, 1, {"boards.csv": b"slug\nb\n"}
+    )
+    assert repeated_data_b == data_b
     delayed_command = [
         bash,
         str(CSV_SYNC_HOST),
@@ -460,7 +503,7 @@ def test_csv_publication_timeline_does_not_deadlock_across_later_runtime_deploy(
         runtime_r0,
         data_b,
         candidate_b,
-        "0" * 64,
+        archive_b,
     ]
     delayed_check = subprocess.run(
         [*delayed_command, "--check-runtime"],
@@ -480,8 +523,9 @@ def test_csv_publication_timeline_does_not_deadlock_across_later_runtime_deploy(
     # A failed later C candidate correctly leaves B active. A subsequent full
     # deploy with yet another pre-push snapshot must still retain B as rollback
     # evidence instead of demanding equality with mutable main.
-    candidate_c = f"{revision_c}-11-1"
-    (candidates / candidate_c).mkdir()
+    candidate_c, data_c, archive_c = _create_csv_candidate(
+        candidates, revision_c, 11, 1, {"boards.csv": b"slug\nc\n"}
+    )
     bootstrap_c = subprocess.run(
         [
             bash,
@@ -490,7 +534,7 @@ def test_csv_publication_timeline_does_not_deadlock_across_later_runtime_deploy(
             revision_c,
             data_c,
             candidate_c,
-            "f" * 64,
+            archive_c,
         ],
         check=False,
         capture_output=True,
@@ -502,36 +546,180 @@ def test_csv_publication_timeline_does_not_deadlock_across_later_runtime_deploy(
     assert not (candidates / candidate_c).exists()
 
 
+def test_csv_publication_rejects_tree_a_claiming_active_contract_b_before_noop(
+    tmp_path: Path,
+) -> None:
+    release_root = tmp_path / "releases"
+    candidates = tmp_path / "candidates"
+    candidates.mkdir()
+    runtime = "1" * 64
+    revision_b = "b" * 40
+    release_b, data_b = _create_v3_release(
+        release_root, "release-b.contract", runtime, revision_b, "b"
+    )
+    active = tmp_path / ".crawler-active-release"
+    active.symlink_to(release_b)
+    live_env = tmp_path / ".env"
+    shutil.copyfile(release_b / "environment.env", live_env)
+    live_env.chmod(0o600)
+    revision_a = "a" * 40
+    candidate_a, data_a, archive_a = _create_csv_candidate(
+        candidates, revision_a, 20, 1, {"boards.csv": b"slug\na\n"}
+    )
+    assert data_a != data_b
+    env = _csv_host_test_environment(tmp_path, release_root, active, live_env, candidates)
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+    command = [
+        bash,
+        str(CSV_SYNC_HOST),
+        revision_a,
+        runtime,
+        data_b,
+        candidate_a,
+        archive_a,
+    ]
+    for args in ([*command, "--check-runtime"], command):
+        result = subprocess.run(args, check=False, capture_output=True, text=True, env=env)
+        assert result.returncode != 0
+        assert "data contract does not match its exact tree" in result.stderr
+        assert "already committed" not in result.stderr
+    assert active.resolve() == release_b.resolve()
+    assert (candidates / candidate_a).exists()
+    assert list(release_root.glob(f"data-{revision_a}.*")) == []
+
+
+def test_full_deploy_rejects_image_tree_a_claiming_git_contract_b(tmp_path: Path) -> None:
+    script = DEPLOY_SH.read_text()
+    csv_helpers = script[
+        script.index("verify_exact_csv_tree() {") : script.index("\nread_exact_release_value() {")
+    ]
+    forward_helpers = script[
+        script.index("prepare_forward_data_snapshot() {") : script.index(
+            "\nsnapshot_active_deploy_specs() {"
+        )
+    ]
+    image_data = tmp_path / "image-data"
+    image_data.mkdir()
+    (image_data / "boards.csv").write_bytes(b"slug\na\n")
+    b_digest = hashlib.sha256(b"slug\nb\n").hexdigest()
+    b_manifest = f"{b_digest}  boards.csv\n".encode()
+    expected_contract_b = hashlib.sha256(b_manifest).hexdigest()
+    binaries = tmp_path / "bin"
+    binaries.mkdir()
+    _write_executable(
+        binaries / "docker",
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'case "$1" in\n'
+        "  create) printf 'candidate-container\\n' ;;\n"
+        '  cp) cp -R "$TEST_IMAGE_DATA/." "$3" ;;\n'
+        "  rm) : ;;\n"
+        "  *) exit 91 ;;\n"
+        "esac\n",
+    )
+    _write_executable(
+        binaries / "sha256sum",
+        "#!/usr/bin/env python3\n"
+        "import hashlib, pathlib, sys\n"
+        "path = pathlib.Path(sys.argv[-1])\n"
+        "print(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path}')\n",
+    )
+    harness = "\n".join(
+        (
+            "set -euo pipefail",
+            'DEPLOY_DIR="$TEST_DEPLOY_DIR"',
+            'JOBSEEK_DEPLOY_REVISION="' + "a" * 40 + '"',
+            'CRAWLER_IMAGE_REF="ghcr.io/example/crawler@sha256:' + "1" * 64 + '"',
+            'JOBSEEK_DATA_CONTRACT_SHA256="$TEST_EXPECTED_CONTRACT"',
+            'FORWARD_DATA_STAGING_ROOT=""',
+            'FORWARD_DATA_SNAPSHOT=""',
+            'FORWARD_DATA_FILES_MANIFEST=""',
+            csv_helpers,
+            forward_helpers,
+            "set +e",
+            "prepare_forward_data_snapshot",
+            "prepare_status=$?",
+            "set -e",
+            'test "$prepare_status" -ne 0',
+            'test -n "$FORWARD_DATA_STAGING_ROOT"',
+            'test -d "$FORWARD_DATA_STAGING_ROOT"',
+            "cleanup_forward_data_snapshot",
+            'test ! -e "$FORWARD_DATA_STAGING_ROOT"',
+        )
+    )
+    result = subprocess.run(
+        ["bash", "-c", harness],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "PATH": f"{binaries}:{os.environ['PATH']}",
+            "TEST_DEPLOY_DIR": str(tmp_path),
+            "TEST_IMAGE_DATA": str(image_data),
+            "TEST_EXPECTED_CONTRACT": expected_contract_b,
+        },
+    )
+    assert result.returncode == 0, result.stderr
+    assert "does not match the expected data contract" in result.stderr
+    assert list(tmp_path.glob(".crawler-forward-data-*")) == []
+
+
 def test_publication_retention_preserves_live_journal_rollback_and_inflight_state(
     tmp_path: Path,
 ) -> None:
     release_root = tmp_path / "releases"
     candidate_root = tmp_path / "candidates"
-    release_root.mkdir()
     candidate_root.mkdir()
-    generations = []
     old = 1_700_000_000
-    for index in range(8):
-        generation = release_root / f"release-{'a' * 40}.{index:06d}"
+    runtime = "1" * 64
+    active_release, _ = _create_v3_release(
+        release_root, f"release-{'a' * 40}.active", runtime, "a" * 40, "active"
+    )
+    valid_rollback, _ = _create_v3_release(
+        release_root, f"release-{'b' * 40}.rollback", runtime, "b" * 40, "rollback"
+    )
+    valid_newest, _ = _create_v3_release(
+        release_root, f"release-{'c' * 40}.newest", runtime, "c" * 40, "newest"
+    )
+    journal_previous = release_root / f"data-{'d' * 40}.journal-previous"
+    journal_target = release_root / f"data-{'e' * 40}.journal-target"
+    explicit_rollback = release_root / f"data-{'f' * 40}.explicit"
+    for generation in (journal_previous, journal_target, explicit_rollback):
         generation.mkdir()
-        (generation / "residue.bin").write_bytes(b"")
-        os.truncate(generation / "residue.bin", 7_400_000)
-        if index >= 6:
-            for filename in (
-                "docker-compose.yml",
-                "docker-compose.sha256",
-                "environment.env",
-                "environment.sha256",
-                "success.env",
-            ):
-                (generation / filename).write_text("complete\n", encoding="utf-8")
-            (generation / "release.manifest").write_text(
-                "RELEASE_FORMAT_VERSION=1\n", encoding="utf-8"
-            )
+        (generation / "partial-residue.bin").touch()
+        os.truncate(generation / "partial-residue.bin", 7_400_000)
+    corrupt_newest = []
+    for index in range(5):
+        generation, _ = _create_v3_release(
+            release_root,
+            f"release-{'1' * 40}.corrupt-{index}",
+            runtime,
+            f"{index + 1:040x}",
+            f"corrupt-{index}",
+        )
+        # These look complete but fail the same digest/tree verifier used for
+        # active generations, so they must not consume the safe keep window.
+        (generation / "data" / "boards.csv").write_text(
+            f"slug\ntampered-{index}\n", encoding="utf-8"
+        )
+        corrupt_newest.append(generation)
+    ordered = [
+        active_release,
+        journal_previous,
+        journal_target,
+        explicit_rollback,
+        valid_rollback,
+        *corrupt_newest,
+        valid_newest,
+    ]
+    for index, generation in enumerate(ordered):
         os.utime(generation, (old + index, old + index))
-        generations.append(generation)
     active = tmp_path / ".crawler-active-release"
-    active.symlink_to(generations[0])
+    active.symlink_to(active_release)
+    live_env = tmp_path / ".env"
+    shutil.copyfile(active_release / "environment.env", live_env)
+    live_env.chmod(0o600)
     journal = tmp_path / "journal"
     journal.write_text(
         "\n".join(
@@ -539,8 +727,8 @@ def test_publication_retention_preserves_live_journal_rollback_and_inflight_stat
                 "PUBLICATION_FORMAT_VERSION=1",
                 "SYNC_SUCCEEDED=0",
                 "RECOVERY_ACTION=restore-previous",
-                f"PREVIOUS_RELEASE={generations[1]}",
-                f"TARGET_RELEASE={generations[2]}",
+                f"PREVIOUS_RELEASE={journal_previous}",
+                f"TARGET_RELEASE={journal_target}",
                 "",
             )
         ),
@@ -564,44 +752,57 @@ def test_publication_retention_preserves_live_journal_rollback_and_inflight_stat
     (external / "sentinel").write_text("safe", encoding="utf-8")
     (candidate_root / f"{'e' * 40}-4-1").symlink_to(external)
     (release_root / "legacy.unsafe-link").symlink_to(external)
+    protected_forward = tmp_path / f".crawler-forward-data-{'a' * 40}.inflight"
+    stale_forward = tmp_path / f".crawler-forward-data-{'b' * 40}.stale"
+    young_forward = tmp_path / f".crawler-forward-data-{'c' * 40}.young"
+    for staging in (protected_forward, stale_forward, young_forward):
+        staging.mkdir()
+        (staging / "data-residue.bin").touch()
+        os.truncate(staging / "data-residue.bin", 7_400_000)
+    os.utime(protected_forward, (old, old))
+    os.utime(stale_forward, (old, old))
+    (tmp_path / f".crawler-forward-data-{'d' * 40}.unsafe").symlink_to(external)
+
+    env = _csv_host_test_environment(tmp_path, release_root, active, live_env, candidate_root)
+    env.update(
+        {
+            "JOBSEEK_PUBLICATION_KEEP_GENERATIONS": "2",
+            "JOBSEEK_PUBLICATION_GRACE_SECONDS": "3600",
+        }
+    )
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
 
     result = subprocess.run(
         [
-            "bash",
+            bash,
             str(CSV_SYNC_HOST),
             "--prune-only",
-            str(generations[3]),
+            str(explicit_rollback),
             protected_candidate,
+            str(protected_forward),
         ],
         check=False,
         capture_output=True,
         text=True,
-        env={
-            **os.environ,
-            "JOBSEEK_DEPLOY_DIR": str(tmp_path),
-            "JOBSEEK_ACTIVE_RELEASE_POINTER": str(active),
-            "JOBSEEK_ACTIVE_RELEASE_ROOT": str(release_root),
-            "JOBSEEK_PUBLICATION_JOURNAL": str(journal),
-            "JOBSEEK_CANDIDATE_ROOT": str(candidate_root),
-            "JOBSEEK_PUBLICATION_KEEP_GENERATIONS": "2",
-            "JOBSEEK_PUBLICATION_GRACE_SECONDS": "3600",
-        },
+        env=env,
     )
     assert result.returncode == 0, result.stderr
     for preserved in (
-        generations[0],
-        generations[1],
-        generations[2],
-        generations[3],
-        generations[6],
-        generations[7],
+        active_release,
+        journal_previous,
+        journal_target,
+        explicit_rollback,
+        valid_rollback,
+        valid_newest,
     ):
         assert preserved.exists()
-    assert not generations[4].exists()
-    assert not generations[5].exists()
+    assert all(not generation.exists() for generation in corrupt_newest)
     assert (candidate_root / protected_candidate).exists()
     assert not (candidate_root / stale_candidate).exists()
     assert (candidate_root / young_candidate).exists()
+    assert protected_forward.exists()
+    assert not stale_forward.exists()
+    assert young_forward.exists()
     assert (external / "sentinel").read_text(encoding="utf-8") == "safe"
 
 
@@ -621,8 +822,9 @@ def test_publication_retention_fails_closed_on_malformed_journal(tmp_path: Path)
         encoding="utf-8",
     )
     journal.chmod(0o600)
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
     result = subprocess.run(
-        ["bash", str(CSV_SYNC_HOST), "--prune-only"],
+        [bash, str(CSV_SYNC_HOST), "--prune-only"],
         check=False,
         capture_output=True,
         text=True,
@@ -744,7 +946,7 @@ def test_csv_host_rejects_archive_digest_mismatch_and_live_env_drift(
                 f"ENVIRONMENT_SHA256={env_digest}",
                 f"SUCCESS_SHA256={success_digest}",
                 f"DATA_FILES_SHA256={hashlib.sha256(data_manifest.read_bytes()).hexdigest()}",
-                f"DATA_CONTRACT_SHA256={'d' * 64}",
+                f"DATA_CONTRACT_SHA256={hashlib.sha256(data_manifest.read_bytes()).hexdigest()}",
                 f"DATA_REVISION={'e' * 40}",
                 "HAS_IMAGE_OVERRIDE=0",
                 "",
@@ -803,9 +1005,22 @@ def test_csv_host_rejects_archive_digest_mismatch_and_live_env_drift(
     assert "CSV candidate archive digest mismatch" in mismatch.stderr
     assert active.resolve() == release.resolve()
 
+    shutil.rmtree(candidate)
+    candidate_id, valid_contract, valid_archive = _create_csv_candidate(
+        candidates, revision, 1, 1, {"boards.csv": b"slug\ncommitted\n"}
+    )
+    drift_command = [
+        bash,
+        str(CSV_SYNC_HOST),
+        revision,
+        runtime_contract,
+        valid_contract,
+        candidate_id,
+        valid_archive,
+    ]
     live_env.write_text(environment.read_text() + "UNCOMMITTED=value\n", encoding="utf-8")
     drift = subprocess.run(
-        [*command, "--check-runtime"],
+        [*drift_command, "--check-runtime"],
         check=False,
         capture_output=True,
         text=True,
@@ -1087,7 +1302,8 @@ def test_deploy_publishes_exact_success_marker_only_after_commit() -> None:
     assert 'ACTIVE_RELEASE_POINTER="$DEPLOY_DIR/.crawler-active-release"' in script
     assert "RELEASE_FORMAT_VERSION=3" in script
     assert '"DATA_FILES_SHA256=$data_files_digest"' in script
-    assert '"DATA_CONTRACT_SHA256=$JOBSEEK_DATA_CONTRACT_SHA256"' in script
+    assert '"DATA_CONTRACT_SHA256=$data_files_digest"' in script
+    assert '"$data_files_digest" == "$JOBSEEK_DATA_CONTRACT_SHA256"' in script
     assert '"DATA_REVISION=$JOBSEEK_DEPLOY_REVISION"' in script
     assert '-v "$FORWARD_DATA_SNAPSHOT:/app/data:ro"' in script
     assert (

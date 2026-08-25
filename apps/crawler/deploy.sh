@@ -94,6 +94,7 @@ ROLLBACK_ACTIVE_RELEASE_TARGET=""
 ROLLBACK_ACTIVE_IMAGE_OVERRIDE=""
 ROLLBACK_SYNC_WEB_DATABASE_URL=""
 FORWARD_SYNC_STARTED=0
+FORWARD_DATA_STAGING_ROOT=""
 FORWARD_DATA_SNAPSHOT=""
 FORWARD_DATA_FILES_MANIFEST=""
 GHCR_DOCKER_CONFIG=""
@@ -546,6 +547,10 @@ verify_active_deploy_snapshot() {
       echo "ERROR: crawler active CSV identity is invalid" >&2
       return 1
     }
+    [[ "$data_contract" == "$data_files_digest" ]] || {
+      echo "ERROR: crawler active data contract does not match its exact tree" >&2
+      return 1
+    }
     [[ -f "$ACTIVE_DATA_FILES_MANIFEST" && ! -L "$ACTIVE_DATA_FILES_MANIFEST" && \
       "$data_files_digest" == "$(sha256sum "$ACTIVE_DATA_FILES_MANIFEST" | awk '{print $1}')" ]] || {
       echo "ERROR: crawler active CSV manifest failed verification" >&2
@@ -678,6 +683,10 @@ publish_active_deploy_release() {
   env_digest="$(sha256sum "$generation/environment.env" | awk '{print $1}')"
   success_digest="$(sha256sum "$generation/success.env" | awk '{print $1}')"
   data_files_digest="$(sha256sum "$generation/data-files.sha256" | awk '{print $1}')"
+  [[ "$data_files_digest" == "$JOBSEEK_DATA_CONTRACT_SHA256" ]] || {
+    echo "ERROR: crawler image data contract changed before release publication" >&2
+    return 1
+  }
   printf '%s\n' "$compose_digest" >"$generation/docker-compose.sha256"
   printf '%s\n' "$env_digest" >"$generation/environment.sha256"
   printf '%s\n' \
@@ -686,7 +695,7 @@ publish_active_deploy_release() {
     "ENVIRONMENT_SHA256=$env_digest" \
     "SUCCESS_SHA256=$success_digest" \
     "DATA_FILES_SHA256=$data_files_digest" \
-    "DATA_CONTRACT_SHA256=$JOBSEEK_DATA_CONTRACT_SHA256" \
+    "DATA_CONTRACT_SHA256=$data_files_digest" \
     "DATA_REVISION=$JOBSEEK_DEPLOY_REVISION" \
     'HAS_IMAGE_OVERRIDE=0' \
     >"$generation/release.manifest"
@@ -727,8 +736,9 @@ PY
 }
 
 prepare_forward_data_snapshot() {
-  local staging_root container_id status=0
+  local staging_root container_id forward_contract status=0
   staging_root="$(mktemp -d "${DEPLOY_DIR}/.crawler-forward-data-${JOBSEEK_DEPLOY_REVISION}.XXXXXX")"
+  FORWARD_DATA_STAGING_ROOT="$staging_root"
   FORWARD_DATA_SNAPSHOT="$staging_root/data"
   FORWARD_DATA_FILES_MANIFEST="$staging_root/data-files.sha256"
   install -d -m 0755 "$FORWARD_DATA_SNAPSHOT"
@@ -744,15 +754,21 @@ prepare_forward_data_snapshot() {
   find "$FORWARD_DATA_SNAPSHOT" -depth -type d -empty -delete
   write_exact_csv_manifest "$FORWARD_DATA_SNAPSHOT" "$FORWARD_DATA_FILES_MANIFEST"
   verify_exact_csv_tree "$FORWARD_DATA_SNAPSHOT" "$FORWARD_DATA_FILES_MANIFEST"
+  forward_contract="$(sha256sum "$FORWARD_DATA_FILES_MANIFEST" | awk '{print $1}')"
+  [[ "$forward_contract" == "$JOBSEEK_DATA_CONTRACT_SHA256" ]] || {
+    echo "ERROR: crawler image CSV tree does not match the expected data contract" >&2
+    return 1
+  }
 }
 
 cleanup_forward_data_snapshot() {
   local staging_root
-  [[ -n "$FORWARD_DATA_SNAPSHOT" ]] || return 0
-  staging_root="${FORWARD_DATA_SNAPSHOT%/data}"
+  [[ -n "$FORWARD_DATA_STAGING_ROOT" ]] || return 0
+  staging_root="$FORWARD_DATA_STAGING_ROOT"
   [[ "$staging_root" == "$DEPLOY_DIR"/.crawler-forward-data-"$JOBSEEK_DEPLOY_REVISION".* && \
     -d "$staging_root" && ! -L "$staging_root" ]] || return 1
   rm -rf -- "$staging_root"
+  FORWARD_DATA_STAGING_ROOT=""
   FORWARD_DATA_SNAPSHOT=""
   FORWARD_DATA_FILES_MANIFEST=""
 }
@@ -1788,7 +1804,7 @@ verify_shim_deploy_contract "$DEPLOY_SUCCESS_FILE"
 # runs while the global mutation lock is still held, so no candidate generation
 # can be pruned while another publisher is preparing it.
 bash "$INCOMING_DIR/scripts/crawler-csv-sync-host.sh" \
-  --prune-only "$ROLLBACK_ACTIVE_RELEASE_TARGET"
+  --prune-only "$ROLLBACK_ACTIVE_RELEASE_TARGET" "" "$FORWARD_DATA_STAGING_ROOT"
 disarm_deploy_rollback
 cleanup_forward_data_snapshot
 rm -f "$deploy_success_temporary" "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE" || true
