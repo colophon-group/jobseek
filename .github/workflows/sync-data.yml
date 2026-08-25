@@ -177,7 +177,6 @@ jobs:
 
       - name: Revalidate publishable CSV snapshot
         if: steps.runtime_contract.outputs.run_sync == 'true'
-        id: publication_contract
         env:
           TARGET_DATA_CONTRACT_SHA256: ${{ steps.data_snapshot.outputs.data_contract_sha256 }}
         run: |
@@ -195,13 +194,6 @@ jobs:
             echo "ERROR: current main CSV snapshot advanced before publication" >&2
             exit 1
           fi
-          current_runtime_contract="$(
-            node scripts/derive-crawler-runtime-contract.mjs \
-              --repo csv-source \
-              --revision "$current_main"
-          )"
-          printf 'runtime_contract_sha256=%s\n' \
-            "$current_runtime_contract" >>"$GITHUB_OUTPUT"
 
       - name: Run sync via SSH
         if: steps.runtime_contract.outputs.run_sync == 'true'
@@ -264,4 +256,7 @@ jobs:
           SYNC_DATA_CONTRACT_SHA256: ${{ steps.data_snapshot.outputs.data_contract_sha256 }}
           SYNC_CANDIDATE_ID: ${{ steps.candidate.outputs.candidate_id }}
           SYNC_ARCHIVE_SHA256: ${{ steps.candidate.outputs.archive_sha256 }}
-          SYNC_RUNTIME_CONTRACT_SHA256: ${{ steps.publication_contract.outputs.runtime_contract_sha256 }}
+          # Keep the execution contract tied to the immutable triggering
+          # revision. If a later full deploy already committed these exact
+          # CSVs, the host helper recognizes the data contract and no-ops.
+          SYNC_RUNTIME_CONTRACT_SHA256: ${{ steps.runtime_contract.outputs.runtime_contract_sha256 }}

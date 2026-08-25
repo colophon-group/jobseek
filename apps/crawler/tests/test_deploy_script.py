@@ -251,6 +251,11 @@ def test_csv_sync_requires_the_committed_runtime_contract_before_publication() -
     assert "before_contract" in workflow
     assert "run_sync=false" in workflow
     assert "SYNC_RUNTIME_CONTRACT_SHA256" in workflow
+    assert (
+        "SYNC_RUNTIME_CONTRACT_SHA256: "
+        "${{ steps.runtime_contract.outputs.runtime_contract_sha256 }}" in workflow
+    )
+    assert "current_runtime_contract" not in workflow
     assert "--check-runtime" in workflow
     assert 'if [[ "$status" -eq 75 ]]' in workflow
     assert workflow.index("--check-runtime") < workflow.index(
@@ -274,12 +279,13 @@ def test_csv_sync_requires_the_committed_runtime_contract_before_publication() -
     assert "/home/deploy/csv-candidates/" in workflow
     assert "/home/deploy/csv-overlay" not in workflow
     assert '"$ACTIVE_DATA_DIR:/app/data:ro"' in sync_host
+    assert 'active_data_contract_matches "$DATA_CONTRACT_SHA256"' in sync_host
 
 
 def test_csv_sync_runtime_contract_mismatch_is_retryable_but_corruption_is_fatal() -> None:
     sync_host = CSV_SYNC_HOST.read_text()
     verifier = sync_host[
-        sync_host.index("verify_runtime_contract() {") : sync_host.index(
+        sync_host.index("load_committed_release() {") : sync_host.index(
             "\nactivate_release_generation() {"
         )
     ]
@@ -288,6 +294,351 @@ def test_csv_sync_runtime_contract_mismatch_is_retryable_but_corruption_is_fatal
     assert "committed crawler runtime contract is duplicated or invalid" in verifier
     assert "WAIT: CSV config requires a crawler runtime" in verifier
     assert "return 75" in verifier
+
+
+def _create_v3_release(
+    release_root: Path,
+    name: str,
+    runtime_contract: str,
+    data_contract: str,
+    revision: str,
+    board_value: str,
+) -> Path:
+    release = release_root / name
+    release.mkdir(parents=True)
+    compose = release / "docker-compose.yml"
+    environment = release / "environment.env"
+    success = release / "success.env"
+    compose.write_text("services: {}\n", encoding="utf-8")
+    environment.write_text(
+        "\n".join(
+            (
+                "CRAWLER_IMAGE_REF=ghcr.io/colophon-group/jobseek-crawler@sha256:" + "b" * 64,
+                f"JOBSEEK_RUNTIME_CONTRACT_SHA256={runtime_contract}",
+                "LOCAL_DATABASE_URL=postgresql://local",
+                "WEB_DATABASE_URL=postgresql://web",
+                "TYPESENSE_HOST=typesense",
+                "TYPESENSE_PORT=8108",
+                "TYPESENSE_PROTOCOL=http",
+                "TYPESENSE_OPERATIONS_KEY=secret",
+                "",
+            )
+        ),
+        encoding="utf-8",
+    )
+    environment.chmod(0o600)
+    success.write_text(f"JOBSEEK_RUNTIME_CONTRACT_SHA256={runtime_contract}\n", encoding="utf-8")
+    data = release / "data"
+    data.mkdir()
+    board = data / "boards.csv"
+    board.write_text(f"slug\n{board_value}\n", encoding="utf-8")
+    board_digest = hashlib.sha256(board.read_bytes()).hexdigest()
+    data_manifest = release / "data-files.sha256"
+    data_manifest.write_text(f"{board_digest}  boards.csv\n", encoding="utf-8")
+    compose_digest = hashlib.sha256(compose.read_bytes()).hexdigest()
+    environment_digest = hashlib.sha256(environment.read_bytes()).hexdigest()
+    success_digest = hashlib.sha256(success.read_bytes()).hexdigest()
+    (release / "docker-compose.sha256").write_text(f"{compose_digest}\n", encoding="utf-8")
+    (release / "environment.sha256").write_text(f"{environment_digest}\n", encoding="utf-8")
+    (release / "release.manifest").write_text(
+        "\n".join(
+            (
+                "RELEASE_FORMAT_VERSION=3",
+                f"COMPOSE_SHA256={compose_digest}",
+                f"ENVIRONMENT_SHA256={environment_digest}",
+                f"SUCCESS_SHA256={success_digest}",
+                f"DATA_FILES_SHA256={hashlib.sha256(data_manifest.read_bytes()).hexdigest()}",
+                f"DATA_CONTRACT_SHA256={data_contract}",
+                f"DATA_REVISION={revision}",
+                "HAS_IMAGE_OVERRIDE=0",
+                "",
+            )
+        ),
+        encoding="utf-8",
+    )
+    return release
+
+
+def _csv_host_test_environment(
+    tmp_path: Path,
+    release_root: Path,
+    active: Path,
+    live_env: Path,
+    candidates: Path,
+) -> dict[str, str]:
+    binaries = tmp_path / "bin"
+    binaries.mkdir(exist_ok=True)
+    _write_executable(
+        binaries / "stat",
+        "#!/usr/bin/env python3\n"
+        "import os, sys\n"
+        "print(oct(os.stat(sys.argv[-1]).st_mode & 0o777)[2:])\n",
+    )
+    _write_executable(
+        binaries / "sha256sum",
+        "#!/usr/bin/env python3\n"
+        "import hashlib, pathlib, sys\n"
+        "path = pathlib.Path(sys.argv[-1])\n"
+        "print(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path}')\n",
+    )
+    return {
+        **os.environ,
+        "PATH": f"{binaries}:{os.environ['PATH']}",
+        "JOBSEEK_DEPLOY_DIR": str(tmp_path),
+        "JOBSEEK_DEPLOY_ENV": str(live_env),
+        "JOBSEEK_ACTIVE_RELEASE_POINTER": str(active),
+        "JOBSEEK_ACTIVE_RELEASE_ROOT": str(release_root),
+        "JOBSEEK_PUBLICATION_JOURNAL": str(tmp_path / "journal"),
+        "JOBSEEK_CANDIDATE_ROOT": str(candidates),
+    }
+
+
+def test_csv_publication_timeline_does_not_deadlock_across_later_runtime_deploy(
+    tmp_path: Path,
+) -> None:
+    release_root = tmp_path / "releases"
+    candidates = tmp_path / "candidates"
+    candidates.mkdir()
+    runtime_r0 = "1" * 64
+    runtime_r1 = "2" * 64
+    data_a = "a" * 64
+    data_b = "b" * 64
+    data_c = "c" * 64
+    revision_a = "a" * 40
+    revision_b = "b" * 40
+    revision_c = "c" * 40
+    release_a = _create_v3_release(
+        release_root, "release-a.timeline", runtime_r0, data_a, revision_a, "a"
+    )
+    active = tmp_path / ".crawler-active-release"
+    active.symlink_to(release_a)
+    live_env = tmp_path / ".env"
+    shutil.copyfile(release_a / "environment.env", live_env)
+    live_env.chmod(0o600)
+    env = _csv_host_test_environment(tmp_path, release_root, active, live_env, candidates)
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+
+    # R0/A is live. A delayed D(B) exists when a later runtime-only R1 deploy
+    # starts. Bootstrap must retain A as the real rollback state, even though
+    # pre-push main now contains B.
+    candidate_b = f"{revision_b}-10-1"
+    (candidates / candidate_b).mkdir()
+    bootstrap_b = subprocess.run(
+        [
+            bash,
+            str(CSV_SYNC_HOST),
+            "--bootstrap-current",
+            revision_b,
+            data_b,
+            candidate_b,
+            "0" * 64,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert bootstrap_b.returncode == 0, bootstrap_b.stderr
+    assert active.resolve() == release_a.resolve()
+    assert not (candidates / candidate_b).exists()
+
+    # Model the successful R1 full deploy: its immutable image contains B.
+    # The delayed D(B) job remains bound to R0, but can now finish as an exact
+    # data-contract no-op instead of waiting forever for runtime R0.
+    release_b = _create_v3_release(
+        release_root, "release-b.timeline", runtime_r1, data_b, revision_b, "b"
+    )
+    active.unlink()
+    active.symlink_to(release_b)
+    shutil.copyfile(release_b / "environment.env", live_env)
+    live_env.chmod(0o600)
+    (candidates / candidate_b).mkdir()
+    delayed_command = [
+        bash,
+        str(CSV_SYNC_HOST),
+        revision_b,
+        runtime_r0,
+        data_b,
+        candidate_b,
+        "0" * 64,
+    ]
+    delayed_check = subprocess.run(
+        [*delayed_command, "--check-runtime"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert delayed_check.returncode == 0, delayed_check.stderr
+    delayed_publish = subprocess.run(
+        delayed_command, check=False, capture_output=True, text=True, env=env
+    )
+    assert delayed_publish.returncode == 0, delayed_publish.stderr
+    assert active.resolve() == release_b.resolve()
+    assert not (candidates / candidate_b).exists()
+
+    # A failed later C candidate correctly leaves B active. A subsequent full
+    # deploy with yet another pre-push snapshot must still retain B as rollback
+    # evidence instead of demanding equality with mutable main.
+    candidate_c = f"{revision_c}-11-1"
+    (candidates / candidate_c).mkdir()
+    bootstrap_c = subprocess.run(
+        [
+            bash,
+            str(CSV_SYNC_HOST),
+            "--bootstrap-current",
+            revision_c,
+            data_c,
+            candidate_c,
+            "f" * 64,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert bootstrap_c.returncode == 0, bootstrap_c.stderr
+    assert active.resolve() == release_b.resolve()
+    assert not (candidates / candidate_c).exists()
+
+
+def test_publication_retention_preserves_live_journal_rollback_and_inflight_state(
+    tmp_path: Path,
+) -> None:
+    release_root = tmp_path / "releases"
+    candidate_root = tmp_path / "candidates"
+    release_root.mkdir()
+    candidate_root.mkdir()
+    generations = []
+    old = 1_700_000_000
+    for index in range(8):
+        generation = release_root / f"release-{'a' * 40}.{index:06d}"
+        generation.mkdir()
+        (generation / "residue.bin").write_bytes(b"")
+        os.truncate(generation / "residue.bin", 7_400_000)
+        if index >= 6:
+            for filename in (
+                "docker-compose.yml",
+                "docker-compose.sha256",
+                "environment.env",
+                "environment.sha256",
+                "success.env",
+            ):
+                (generation / filename).write_text("complete\n", encoding="utf-8")
+            (generation / "release.manifest").write_text(
+                "RELEASE_FORMAT_VERSION=1\n", encoding="utf-8"
+            )
+        os.utime(generation, (old + index, old + index))
+        generations.append(generation)
+    active = tmp_path / ".crawler-active-release"
+    active.symlink_to(generations[0])
+    journal = tmp_path / "journal"
+    journal.write_text(
+        "\n".join(
+            (
+                "PUBLICATION_FORMAT_VERSION=1",
+                "SYNC_SUCCEEDED=0",
+                "RECOVERY_ACTION=restore-previous",
+                f"PREVIOUS_RELEASE={generations[1]}",
+                f"TARGET_RELEASE={generations[2]}",
+                "",
+            )
+        ),
+        encoding="utf-8",
+    )
+    journal.chmod(0o600)
+
+    revision = "d" * 40
+    protected_candidate = f"{revision}-1-1"
+    stale_candidate = f"{revision}-2-1"
+    young_candidate = f"{revision}-3-1"
+    for candidate in (protected_candidate, stale_candidate, young_candidate):
+        path = candidate_root / candidate
+        path.mkdir()
+        (path / "csv-snapshot.tar").touch()
+        os.truncate(path / "csv-snapshot.tar", 7_400_000)
+    os.utime(candidate_root / protected_candidate, (old, old))
+    os.utime(candidate_root / stale_candidate, (old, old))
+    external = tmp_path / "must-not-delete"
+    external.mkdir()
+    (external / "sentinel").write_text("safe", encoding="utf-8")
+    (candidate_root / f"{'e' * 40}-4-1").symlink_to(external)
+    (release_root / "legacy.unsafe-link").symlink_to(external)
+
+    result = subprocess.run(
+        [
+            "bash",
+            str(CSV_SYNC_HOST),
+            "--prune-only",
+            str(generations[3]),
+            protected_candidate,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "JOBSEEK_DEPLOY_DIR": str(tmp_path),
+            "JOBSEEK_ACTIVE_RELEASE_POINTER": str(active),
+            "JOBSEEK_ACTIVE_RELEASE_ROOT": str(release_root),
+            "JOBSEEK_PUBLICATION_JOURNAL": str(journal),
+            "JOBSEEK_CANDIDATE_ROOT": str(candidate_root),
+            "JOBSEEK_PUBLICATION_KEEP_GENERATIONS": "2",
+            "JOBSEEK_PUBLICATION_GRACE_SECONDS": "3600",
+        },
+    )
+    assert result.returncode == 0, result.stderr
+    for preserved in (
+        generations[0],
+        generations[1],
+        generations[2],
+        generations[3],
+        generations[6],
+        generations[7],
+    ):
+        assert preserved.exists()
+    assert not generations[4].exists()
+    assert not generations[5].exists()
+    assert (candidate_root / protected_candidate).exists()
+    assert not (candidate_root / stale_candidate).exists()
+    assert (candidate_root / young_candidate).exists()
+    assert (external / "sentinel").read_text(encoding="utf-8") == "safe"
+
+
+def test_publication_retention_fails_closed_on_malformed_journal(tmp_path: Path) -> None:
+    release_root = tmp_path / "releases"
+    candidate_root = tmp_path / "candidates"
+    release = release_root / f"release-{'a' * 40}.active"
+    stale = release_root / f"data-{'b' * 40}.stale"
+    release.mkdir(parents=True)
+    stale.mkdir()
+    candidate_root.mkdir()
+    active = tmp_path / ".crawler-active-release"
+    active.symlink_to(release)
+    journal = tmp_path / "journal"
+    journal.write_text(
+        "PUBLICATION_FORMAT_VERSION=1\nPUBLICATION_FORMAT_VERSION=1\n",
+        encoding="utf-8",
+    )
+    journal.chmod(0o600)
+    result = subprocess.run(
+        ["bash", str(CSV_SYNC_HOST), "--prune-only"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "JOBSEEK_DEPLOY_DIR": str(tmp_path),
+            "JOBSEEK_ACTIVE_RELEASE_POINTER": str(active),
+            "JOBSEEK_ACTIVE_RELEASE_ROOT": str(release_root),
+            "JOBSEEK_PUBLICATION_JOURNAL": str(journal),
+            "JOBSEEK_CANDIDATE_ROOT": str(candidate_root),
+            "JOBSEEK_PUBLICATION_KEEP_GENERATIONS": "1",
+            "JOBSEEK_PUBLICATION_GRACE_SECONDS": "0",
+        },
+    )
+    assert result.returncode != 0
+    assert stale.exists()
 
 
 def test_csv_snapshot_verifier_rejects_tamper_residue_and_deleted_files(
@@ -433,7 +784,7 @@ def test_csv_host_rejects_archive_digest_mismatch_and_live_env_drift(
         str(CSV_SYNC_HOST),
         revision,
         runtime_contract,
-        "d" * 64,
+        "f" * 64,
         candidate_id,
         "0" * 64,
     ]

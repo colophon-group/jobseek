@@ -43,7 +43,10 @@ The deploy script must:
 - let the full deploy own CSV publication when one push changes both the
   runtime contract and crawler data;
 - let a data-only publisher wait for a compatible deploy without holding the
-  host mutation lock, then recheck the contract after acquiring the lock;
+  host mutation lock, then recheck the triggering revision's immutable runtime
+  contract after acquiring the lock. If a later full deploy has already
+  committed the candidate's exact data contract, finish as a no-op rather than
+  waiting for the older runtime to return;
 - transfer data-only candidates into run- and revision-specific host paths,
   verify the transferred archive and exact CSV tree on the host, run sync with
   that tree mounted read-only, and atomically select the complete generation
@@ -53,7 +56,13 @@ The deploy script must:
   bootstrap keeps retrying the exact pre-deploy tree rather than falling back
   to stale CSVs embedded in the legacy image;
 - before the first format-v3 deploy, reapply the exact pre-push `main` CSV tree
-  with the verified committed runtime and promote it as rollback evidence;
+  with the verified committed runtime and promote it as rollback evidence.
+  After that transition, preserve the verified active format-v3 generation as
+  the actual live rollback evidence even when later `main` CSVs differ;
+- remove consumed candidate archives and prune stale candidate/generation
+  residue under the mutation lock. Preserve the active generation, durable
+  journal references, explicit rollback target, five newest generations, and
+  a 48-hour grace window for staged or crash-interrupted work;
 - start the full stack after sync;
 - wait for core services to be running or healthy;
 - restore the previous env on failure and, if the forward sync began, mount and
