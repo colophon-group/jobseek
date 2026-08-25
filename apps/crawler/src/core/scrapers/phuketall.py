@@ -10,11 +10,23 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from selectolax.lexbor import LexborHTMLParser, LexborNode
 
 from src.core.scrapers import JobContent, register
+from src.shared.http_retry import PaginationFetchError, fetch_text_page_with_retry
+
+_PROVIDER_HOST = "www.phuketall.com"
+_DETAIL_PATH_RE = re.compile(
+    r"^/(?:en/)?jobs/(?P<employer>[0-9]{6})-(?P<job>[0-9]+)-phuket/[^/?#]+[.]html$",
+    re.IGNORECASE,
+)
+_MAX_DETAIL_BYTES = 2 * 1024 * 1024
+_DETAIL_TIMEOUT_S = 30.0
+_MAX_REDIRECTS = 2
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 
 _THAI_MONTHS = {
     "ม.ค.": 1,
@@ -90,6 +102,77 @@ def _description_node(tree: LexborHTMLParser) -> LexborNode | None:
     )
 
 
+def _trusted_detail_identity(url: str) -> tuple[str, str] | None:
+    """Return the exact provider identity for a trusted PhuketAll detail URL."""
+    try:
+        parsed = urlparse(url)
+        trusted_origin = (
+            parsed.scheme == "https"
+            and (parsed.hostname or "").lower() == _PROVIDER_HOST
+            and parsed.username is None
+            and parsed.password is None
+            and parsed.port is None
+        )
+    except ValueError:
+        return None
+    if not trusted_origin or parsed.query or parsed.fragment:
+        return None
+    match = _DETAIL_PATH_RE.fullmatch(parsed.path)
+    if match is None:
+        return None
+    return match.group("employer"), match.group("job")
+
+
+def _document_detail_identity(html: str) -> tuple[str, str] | None:
+    """Read the exact provider-owned ``og:url`` identity from a detail page."""
+    tree = LexborHTMLParser(html)
+    markers = [node.attributes.get("content") for node in tree.css('meta[property="og:url"]')]
+    if not markers or any(not isinstance(marker, str) for marker in markers):
+        return None
+    identities = {_trusted_detail_identity(marker) for marker in markers if marker is not None}
+    if None in identities or len(identities) != 1:
+        return None
+    return next(iter(identities))
+
+
+async def _fetch_detail(url: str, http: httpx.AsyncClient) -> str:
+    expected_identity = _trusted_detail_identity(url)
+    if expected_identity is None:
+        raise ValueError("PhuketAll detail URL has an untrusted origin or identity")
+
+    current_url = url
+    for redirect_count in range(_MAX_REDIRECTS + 1):
+        try:
+            html = await fetch_text_page_with_retry(
+                http,
+                current_url,
+                follow_redirects=False,
+                end_of_pagination_statuses=(),
+                require_nonempty=True,
+                max_bytes=_MAX_DETAIL_BYTES,
+                timeout=_DETAIL_TIMEOUT_S,
+            )
+        except PaginationFetchError as exc:
+            if exc.last_status not in _REDIRECT_STATUSES:
+                raise
+            if not exc.last_location:
+                raise ValueError("PhuketAll detail redirect omitted Location") from exc
+            redirected = urljoin(current_url, exc.last_location)
+            if _trusted_detail_identity(redirected) != expected_identity:
+                raise ValueError("PhuketAll detail returned an untrusted redirect") from exc
+            if redirect_count == _MAX_REDIRECTS:
+                raise ValueError("PhuketAll detail exceeded the trusted redirect cap") from exc
+            current_url = redirected
+            continue
+
+        if html is None:  # pragma: no cover - strict status handling above raises
+            raise ValueError("PhuketAll detail response is empty")
+        if _document_detail_identity(html) != expected_identity:
+            raise ValueError("PhuketAll detail response has an untrusted provider identity")
+        return html
+    raise RuntimeError("unreachable PhuketAll redirect loop")
+
+
 def parse_html(html: str, config: dict | None = None) -> JobContent:
     """Parse one PhuketAll job detail page in either Thai or English."""
     _ = config
@@ -137,7 +220,9 @@ def parse_html(html: str, config: dict | None = None) -> JobContent:
 def can_handle(htmls: list[str]) -> dict | None:
     """Detect PhuketAll's stable employer job-detail markup."""
     if htmls and all(
-        "phuketall.com" in html and "jobs-derails-content" in html and "title-feedbox" in html
+        _document_detail_identity(html) is not None
+        and LexborHTMLParser(html).css_first(".jobs-derails-content") is not None
+        and LexborHTMLParser(html).css_first(".title-feedbox") is not None
         for html in htmls
     ):
         return {}
@@ -145,11 +230,9 @@ def can_handle(htmls: list[str]) -> dict | None:
 
 
 async def scrape(url: str, config: dict, http: httpx.AsyncClient, **kwargs) -> JobContent:
-    """Fetch and parse one PhuketAll detail page."""
+    """Fetch a complete trusted detail document under a finite response cap."""
     _ = kwargs
-    response = await http.get(url, follow_redirects=True)
-    response.raise_for_status()
-    return parse_html(response.text, config)
+    return parse_html(await _fetch_detail(url, http), config)
 
 
 register("phuketall", scrape, can_handle=can_handle, parse_html=parse_html)

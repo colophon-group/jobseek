@@ -124,11 +124,13 @@ Rich monitors return complete job data in a single request — no scraper needed
 listing responses provide clean summary fields while their auto-configured
 scrapers hydrate the remaining detail fields on the daily schedule.
 
-LinkedIn identities are always the numeric `/jobs/view/{id}` route; localized
-hosts and title slugs are presentation aliases. When a regional provider owns
-one country, `source_ownership_excluded_country_codes` accepts exact ISO-3166
-alpha-3 codes. The monitor resolves LinkedIn's English country field exactly
-and fails closed if the field is missing, unknown, or ambiguous.
+LinkedIn preserves validated title-bearing paths by default for compatibility
+with persisted source URLs. New boards may opt into stable numeric
+`/jobs/view/{id}` identities with `canonical_numeric_job_urls: true`; existing
+boards require an ID-preserving migration before enabling it. When a regional
+provider owns one country, `source_ownership_excluded_country_codes` accepts
+exact ISO-3166 alpha-3 codes. The monitor resolves LinkedIn's English country
+field exactly and fails closed if the field is missing, unknown, or ambiguous.
 
 ### rss / SuccessFactors
 
@@ -333,7 +335,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `jazzhr` | Static | Parses JobPosting JSON-LD with a DOM fallback for older JazzHR themes |
 | `paylocity` | Static | Parses Paylocity server-rendered detail pages |
 | `pdf` | Static | Downloads PDFs and extracts text content |
-| `phuketall` | Static | Parses PhuketAll employer job pages, including canonical Thai field labels |
+| `phuketall` | Static | Parses PhuketAll employer job pages from an exact HTTPS provider identity under a 2 MiB response cap, including canonical Thai field labels |
 | `rippling` | Static | Fetches Rippling detail API records |
 | `skip` | No fetch | Explicit no-scrape marker for rich monitors that already returned complete job data |
 | `smartrecruiters` | Static | Fetches SmartRecruiters detail API records |

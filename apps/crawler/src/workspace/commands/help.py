@@ -754,6 +754,7 @@ linkedin — LinkedIn public guest-jobs endpoints
   Config:
     {"company_id": "109559449", "company_slug": "damora-therapeutics",
      "keywords": "Damora Therapeutics",
+     "canonical_numeric_job_urls": false,
      "source_ownership_excluded_country_codes": ["THA"]}
 
     company_id    Numeric LinkedIn company ID (the f_C search-filter value).
@@ -763,13 +764,19 @@ linkedin — LinkedIn public guest-jobs endpoints
                   company filter returns only a ranked subset without it. The
                   monitor unions both queries and marks the cycle partial so
                   varying guest-search subsets cannot tombstone valid jobs.
+    canonical_numeric_job_urls
+                  Optional boolean, default false. Emits stable numeric-ID URLs
+                  only for a new board or after an ID-preserving migration.
+                  Never enable on an existing board without migrating its
+                  persisted title-bearing source URLs first.
     source_ownership_excluded_country_codes
                   Optional ISO-3166 alpha-3 countries owned by another configured
                   provider. Country resolution uses LinkedIn's exact English
                   country field and fails closed when missing or ambiguous.
 
-  Identity: Job URLs always use /jobs/view/{numeric_id}; locale and title paths
-            are presentation aliases and cannot churn a posting identity.
+  Identity: By default, validated title-bearing paths retain legacy identity.
+            The opt-in numeric mode uses /jobs/view/{numeric_id}; locale and
+            title paths then become presentation aliases only.
 
   Detection:  ws probe shows "LinkedIn guest jobs — company: X, N jobs"
   Zero jobs?  Verify the f_C value; an empty company board is valid."""
@@ -3790,6 +3797,9 @@ phuketall — PhuketAll employer-board detail scraper
   Config:   None needed.
   Note:     Reads PhuketAll's stable structural classes and supports canonical
             Thai field labels, so no browser or translated page is required.
+            Detail requests accept only the exact HTTPS provider origin and
+            provider job identity, follow at most two identity-preserving
+            redirects, and stream the complete response under a 2 MiB cap.
 """
 
 SCRAPER_VERYEAST = """\
