@@ -56,6 +56,11 @@ ready:browser:1   -- Tier 1: browser monitors
 ready:browser:2   -- Tier 2: browser scrapes
 ```
 
+Recurring domains advertise monitor and scrape deadlines independently, so a
+domain with both kinds of work can appear in tiers 1 and 2 at the same time.
+This lets due scrapes drain while a future monitor retains its own automatic
+tier-1 promotion time. First-time work remains exclusive to tier 0.
+
 **Lua scripts** (`src/lua/`):
 - `claim_work.lua` -- atomically pop from the highest-priority queue with a due item
 - `enqueue_task.lua` -- add a task to the correct tier with a scheduled time

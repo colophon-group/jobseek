@@ -5,6 +5,11 @@ Ready queues (6 global ZSETs, 3 tiers × 2 worker types):
     ready:{wtype}:1  — domains with due monitors
     ready:{wtype}:2  — domains with due scrapes
 
+A recurring domain with both monitor and scrape work has independent entries
+in tiers 1 and 2. Their scores carry each task class's own next deadline, so a
+due monitor cannot remain hidden behind an older scrape backlog. First-time
+work is exclusive to tier 0 until it drains.
+
 Per-domain task queues:
     ft_monitors_{wtype}:{domain}  — first-time monitors
     ft_scrapes_{wtype}:{domain}   — first-time scrapes

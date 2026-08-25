@@ -96,6 +96,10 @@ ready:browser:1    ZSET  score = next_check_at  (tier 1: browser monitors)
 ready:browser:2    ZSET  score = next_check_at  (tier 2: browser scrapes)
 ```
 
+A recurring mixed-work domain has one tier-1 score for its earliest monitor
+and one tier-2 score for its earliest scrape. First-time work suppresses those
+recurring representations and stays exclusively in tier 0 until drained.
+
 Workers claim via `claim_work.lua` which atomically pops the highest-priority due item. Tasks are enqueued via `enqueue_task.lua` and rescheduled after processing via `reschedule_task.lua`.
 
 ### Domain Rate Limiting
