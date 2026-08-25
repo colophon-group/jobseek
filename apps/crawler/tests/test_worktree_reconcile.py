@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import io
 import json
 import os
+import sqlite3
 import subprocess
 import tarfile
+import threading
+import time
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -72,6 +76,7 @@ def _reconcile(
     authoritative_main_verifier=None,
     remove_worktree=None,
     pre_remove=None,
+    pid_checker=None,
     max_directories: int = 3,
     max_bytes: int = 10 * 1024**3,
 ):
@@ -98,7 +103,7 @@ def _reconcile(
         ledger=ledger,
         remote_verifier=verifier or (lambda run: RemoteProof(ok=True, kind="test")),
         authoritative_main_verifier=authoritative_main_verifier or local_main_verifier,
-        pid_checker=lambda pid, run_id: False,
+        pid_checker=pid_checker or (lambda pid, run_id: False),
         max_terminal_directories=max_directories,
         max_terminal_bytes=max_bytes,
         apply=apply,
@@ -163,6 +168,7 @@ def _reconcile_managed(
     live_path_checker=None,
     authoritative_main_verifier=None,
     branch_verifier=None,
+    remove_worktree=None,
     max_directories: int = 3,
     max_bytes: int = 10 * 1024**3,
 ):
@@ -215,6 +221,7 @@ def _reconcile_managed(
         max_terminal_directories=max_directories,
         max_terminal_bytes=max_bytes,
         apply=apply,
+        remove_worktree=remove_worktree,
     )
 
 
@@ -918,6 +925,366 @@ def test_runner_target_is_revalidated_after_pre_remove_hook(tmp_path: Path) -> N
     assert "symlink" in (report.items[0].error or "")
 
 
+def test_runner_late_untracked_file_is_archived_before_removal(tmp_path: Path) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree)
+    main_oid = subprocess.run(
+        ["git", "rev-parse", "origin/main"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    def add_late_file() -> RemoteProof:
+        (worktree / "late-untracked.txt").write_text("created during remote proof\n")
+        return RemoteProof(ok=True, kind="test_main", detail={"headRefOid": main_oid})
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        authoritative_main_verifier=add_late_file,
+    )
+
+    item = report.items[0]
+    assert report.archived == 1
+    assert report.removed == 1
+    assert item.dirty_entries > 0
+    assert item.planned_action == "archive_remove"
+    assert item.archive_path
+    with tarfile.open(item.archive_path, "r:gz") as archive:
+        archived = archive.extractfile("untracked/late-untracked.txt")
+        assert archived is not None
+        assert archived.read() == b"created during remote proof\n"
+
+
+def test_runner_becoming_active_during_remote_proof_is_retained(tmp_path: Path) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    run_id = "issue-101-1-aaaaaaaa"
+    _terminal_run(ledger, worktree, run_id=run_id)
+    main_oid = subprocess.run(
+        ["git", "rev-parse", "origin/main"],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    def reactivate_run() -> RemoteProof:
+        ledger.update(run_id, state="running", pid=12345)
+        return RemoteProof(ok=True, kind="test_main", detail={"headRefOid": main_oid})
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        authoritative_main_verifier=reactivate_run,
+    )
+
+    assert worktree.exists()
+    assert report.active == 1
+    assert report.removed == 0
+    assert report.removal_failures == 0
+    assert report.items[0].classification == "active"
+    assert [event["action"] for event in ledger.worktree_reconciliation_events()] == [
+        "removal_started",
+        "retained",
+    ]
+
+
+def test_runner_file_created_at_atomic_claim_entry_is_retained(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree)
+
+    original_rename = os.rename
+
+    def mutate_at_claim(source, destination, *args, **kwargs):
+        if Path(source) == worktree and Path(destination).name.startswith(".jobseek-remove-"):
+            (worktree / "claim-entry.txt").write_text("too late for stale removal\n")
+        return original_rename(source, destination, *args, **kwargs)
+
+    monkeypatch.setattr(reconcile_module.os, "rename", mutate_at_claim)
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+    )
+
+    assert worktree.exists()
+    assert (worktree / "claim-entry.txt").read_text() == "too late for stale removal\n"
+    assert report.removed == 0
+    assert report.archived == 0
+    assert report.removal_failures == 1
+    assert report.items[0].classification == "removal_failed"
+    assert "atomic removal claim" in (report.items[0].error or "")
+    registered = reconcile_module._registered_worktrees(repo)
+    assert str(worktree.resolve()) in registered
+    assert not any(".jobseek-remove-" in path for path in registered)
+
+
+def test_runner_activity_at_atomic_claim_entry_is_retained(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    run_id = "issue-101-1-aaaaaaaa"
+    _terminal_run(ledger, worktree, run_id=run_id)
+    ledger.update(run_id, pid=98765)
+    process_live = False
+
+    original_rename = os.rename
+
+    def reactivate_at_claim(source, destination, *args, **kwargs):
+        nonlocal process_live
+        if Path(source) == worktree and Path(destination).name.startswith(".jobseek-remove-"):
+            process_live = True
+        return original_rename(source, destination, *args, **kwargs)
+
+    monkeypatch.setattr(reconcile_module.os, "rename", reactivate_at_claim)
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        pid_checker=lambda pid, observed_run_id: (
+            process_live and pid == 98765 and observed_run_id == run_id
+        ),
+    )
+
+    assert worktree.exists()
+    assert report.active == 1
+    assert report.removed == 0
+    assert report.removal_failures == 0
+    assert report.items[0].classification == "active"
+    registered = reconcile_module._registered_worktrees(repo)
+    assert str(worktree.resolve()) in registered
+    assert not any(".jobseek-remove-" in path for path in registered)
+
+
+def test_runner_original_path_recreated_at_git_remove_is_preserved(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree)
+    original_run = subprocess.run
+    recreated = False
+
+    def recreate_at_git_remove(command, *args, **kwargs):
+        nonlocal recreated
+        if list(command[:4]) == ["git", "worktree", "remove", "--force"] and Path(
+            command[4]
+        ).name.startswith(".jobseek-remove-"):
+            worktree.mkdir()
+            (worktree / "late-original-path.txt").write_text("preserved replacement\n")
+            recreated = True
+        return original_run(command, *args, **kwargs)
+
+    monkeypatch.setattr(reconcile_module.subprocess, "run", recreate_at_git_remove)
+
+    report = _reconcile(tmp_path, repo, ledger, apply=True)
+
+    assert recreated
+    assert worktree.exists()
+    assert (worktree / "late-original-path.txt").read_text() == "preserved replacement\n"
+    assert report.removed == 0
+    assert report.removal_failures == 1
+    assert "recreated" in (report.items[0].error or "")
+
+
+def test_runner_delayed_production_update_is_fenced_at_git_remove_entry(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    run_id = "issue-101-1-aaaaaaaa"
+    _terminal_run(ledger, worktree, run_id=run_id)
+    original_run = subprocess.run
+    update_started = threading.Event()
+    update_finished = threading.Event()
+    update_errors: list[BaseException] = []
+
+    def late_production_update() -> None:
+        update_started.set()
+        try:
+            ledger.update(run_id, state="running", pid=424242)
+        except BaseException as exc:
+            update_errors.append(exc)
+        finally:
+            update_finished.set()
+
+    def probe_lease_at_git_remove(command, *args, **kwargs):
+        if list(command[:4]) == ["git", "worktree", "remove", "--force"] and Path(
+            command[4]
+        ).name.startswith(".jobseek-remove-"):
+            with sqlite3.connect(ledger.path) as blocker:
+                blocker.execute("BEGIN IMMEDIATE")
+                contender = threading.Thread(target=late_production_update)
+                contender.start()
+                assert update_started.wait(timeout=1)
+                time.sleep(0.05)
+                assert not update_finished.is_set()
+                result = original_run(command, *args, **kwargs)
+                blocker.commit()
+                contender.join(timeout=2)
+                assert not contender.is_alive()
+                return result
+        return original_run(command, *args, **kwargs)
+
+    monkeypatch.setattr(reconcile_module.subprocess, "run", probe_lease_at_git_remove)
+
+    report = _reconcile(tmp_path, repo, ledger, apply=True)
+
+    assert len(update_errors) == 1
+    assert isinstance(update_errors[0], RuntimeError)
+    assert "cleanup-fenced" in str(update_errors[0])
+    assert not worktree.exists()
+    assert report.removed == 1
+    assert report.removal_failures == 0
+    final_run = ledger.get_run(run_id)
+    assert final_run is not None
+    assert final_run["state"] == "failed"
+    assert final_run["pid"] is None
+
+
+def test_runner_execution_lease_blocks_cleanup_before_atomic_claim(tmp_path: Path) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    run_id = "issue-101-1-aaaaaaaa"
+    _terminal_run(ledger, worktree, run_id=run_id)
+
+    with ledger.worktree_execution_lease(run_id):
+        report = _reconcile(tmp_path, repo, ledger, apply=True)
+
+    assert worktree.exists()
+    assert report.removed == 0
+    assert report.removal_failures == 1
+    assert "execution lease" in (report.items[0].error or "")
+    registered = reconcile_module._registered_worktrees(repo)
+    assert str(worktree.resolve()) in registered
+
+
+def test_runner_noop_remover_restores_claim_and_fails_closed(tmp_path: Path) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree)
+
+    def noop_remover(path: Path, final_guard) -> None:
+        final_guard()
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        remove_worktree=noop_remover,
+    )
+
+    assert worktree.exists()
+    assert report.removed == 0
+    assert report.removal_failures == 1
+    assert "atomic claim still exists" in (report.items[0].error or "")
+    registered = reconcile_module._registered_worktrees(repo)
+    assert str(worktree.resolve()) in registered
+    assert not any(".jobseek-remove-" in path for path in registered)
+
+
+def test_supported_runner_execution_lease_blocks_managed_cleanup(tmp_path: Path) -> None:
+    managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+
+    with ledger.worktree_execution_lease("active-supported-runner"):
+        report = _reconcile_managed(tmp_path, managed, worktrees, ledger, apply=True)
+
+    assert worktree.exists()
+    assert report.removed == 0
+    assert report.removal_failures == 1
+    assert "execution lease" in (report.items[0].error or "")
+
+
+def test_runner_mutation_during_pre_remove_retains_archived_worktree(
+    tmp_path: Path,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree)
+    workspace = worktree / "apps" / "crawler" / ".workspace"
+    workspace.mkdir(parents=True)
+    evidence = workspace / "evidence.txt"
+    evidence.write_text("archived first\n")
+
+    def mutate_after_archive(item) -> None:
+        evidence.unlink()
+        workspace.rmdir()
+        (worktree / "late-after-archive.txt").write_text("must retain\n")
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        pre_remove=mutate_after_archive,
+    )
+
+    item = report.items[0]
+    assert worktree.exists()
+    assert (worktree / "late-after-archive.txt").read_text() == "must retain\n"
+    assert report.archived == 1
+    assert report.removed == 0
+    assert report.removal_failures == 1
+    assert item.archive_path
+    assert item.classification == "removal_failed"
+    assert "pre-remove" in (item.error or "")
+
+
+def test_runner_pre_remove_may_delete_only_archived_workspace_evidence(
+    tmp_path: Path,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree)
+    workspace = worktree / "apps" / "crawler" / ".workspace"
+    workspace.mkdir(parents=True)
+    evidence = workspace / "evidence.txt"
+    evidence.write_text("archive before cleanup\n")
+
+    def remove_archived_workspace(_item) -> None:
+        evidence.unlink()
+        workspace.rmdir()
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        pre_remove=remove_archived_workspace,
+    )
+
+    item = report.items[0]
+    assert report.archived == 1
+    assert report.removed == 1
+    assert item.archive_path
+    with tarfile.open(item.archive_path, "r:gz") as archive:
+        archived = archive.extractfile("workspace/evidence.txt")
+        assert archived is not None
+        assert archived.read() == b"archive before cleanup\n"
+
+
 def test_remote_verification_failure_retains_terminal_worktree(tmp_path: Path) -> None:
     repo, worktree = _repo_with_worktree(tmp_path)
     ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
@@ -945,7 +1312,7 @@ def test_removal_failure_is_recorded_and_retained(tmp_path: Path) -> None:
     ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
     _terminal_run(ledger, worktree)
 
-    def fail_remove(path: Path) -> None:
+    def fail_remove(path: Path, final_guard) -> None:
         raise RuntimeError("simulated removal failure")
 
     report = _reconcile(
@@ -961,9 +1328,11 @@ def test_removal_failure_is_recorded_and_retained(tmp_path: Path) -> None:
     assert report.items[0].classification == "removal_failed"
     assert report.items[0].error == "simulated removal failure"
     assert ledger.worktree_reconciliation_events()[-1]["action"] == "removal_failed"
+    with pytest.raises(RuntimeError, match="cleanup-fenced"):
+        ledger.update("issue-101-1-aaaaaaaa", state="running", pid=12345)
 
 
-def test_repeated_removal_failure_replaces_one_deterministic_archive(
+def test_repeated_removal_failure_publishes_fresh_archives_without_reuse(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -974,7 +1343,7 @@ def test_repeated_removal_failure_replaces_one_deterministic_archive(
     evidence.write_text("preserve this evidence\n")
     monkeypatch.setattr(reconcile_module.time, "time", lambda: 1_800_000_000)
 
-    def fail_remove(path: Path) -> None:
+    def fail_remove(path: Path, final_guard) -> None:
         raise RuntimeError("simulated persistent removal failure")
 
     first = _reconcile(
@@ -989,9 +1358,8 @@ def test_repeated_removal_failure_replaces_one_deterministic_archive(
     assert first.archived == 1
     assert first.removal_failures == 1
     assert len(archives) == 1
-    first_bytes = archives[0].read_bytes()
-    projected_bytes = first.items[0].bytes + 1024 * 1024
-    replacement_aware_limit = quarantine.stat().st_size + projected_bytes
+    first_archive = archives[0]
+    first_bytes = first_archive.read_bytes()
     stale_temp = quarantine / ".orphaned-run.99999999.tmp"
     stale_bundle = quarantine / ".orphaned-run.99999999.bundle"
     stale_temp.write_bytes(b"t" * 4096)
@@ -1003,34 +1371,95 @@ def test_repeated_removal_failure_replaces_one_deterministic_archive(
         ledger,
         apply=True,
         remove_worktree=fail_remove,
-        max_bytes=replacement_aware_limit,
     )
     archives = list(quarantine.glob("*.tar.gz"))
     assert second.archived == 1
     assert second.removal_failures == 1
-    assert len(archives) == 1
-    assert archives[0].read_bytes() == first_bytes
+    assert len(archives) == 2
+    assert first_archive.read_bytes() == first_bytes
     assert not stale_temp.exists()
     assert not stale_bundle.exists()
-    with tarfile.open(archives[0], "r:gz") as archive:
-        archived_evidence = archive.extractfile("untracked/unique-evidence.txt")
+    for archive_path in archives:
+        with tarfile.open(archive_path, "r:gz") as archive:
+            archived_evidence = archive.extractfile("untracked/unique-evidence.txt")
+            assert archived_evidence is not None
+            assert archived_evidence.read() == b"preserve this evidence\n"
+
+
+@pytest.mark.parametrize("old_archive_damage", ["invalid", "missing", "replaced"])
+def test_damaged_prior_archive_is_never_reused_for_removal(
+    old_archive_damage: str,
+    tmp_path: Path,
+) -> None:
+    repo, worktree = _repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="retryable")
+    evidence = worktree / "evidence.txt"
+    evidence.write_text("irreplaceable evidence\n")
+
+    def fail_remove(path: Path, final_guard) -> None:
+        raise RuntimeError("retain first archive")
+
+    first = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        remove_worktree=fail_remove,
+    )
+    prior_archive = Path(first.items[0].archive_path or "")
+    assert prior_archive.is_file()
+    with tarfile.open(prior_archive, "r:gz") as archive:
+        manifest_file = archive.extractfile("manifest.json")
+        assert manifest_file is not None
+        manifest_bytes = manifest_file.read()
+
+    if old_archive_damage == "invalid":
+        prior_archive.write_bytes(b"not a tar archive")
+    else:
+        with tarfile.open(prior_archive, "w:gz") as archive:
+            manifest_info = tarfile.TarInfo("manifest.json")
+            manifest_info.size = len(manifest_bytes)
+            archive.addfile(manifest_info, io.BytesIO(manifest_bytes))
+            if old_archive_damage == "replaced":
+                replacement = b"forged replacement\n"
+                evidence_info = tarfile.TarInfo("untracked/evidence.txt")
+                evidence_info.size = len(replacement)
+                archive.addfile(evidence_info, io.BytesIO(replacement))
+
+    second = _reconcile(tmp_path, repo, ledger, apply=True)
+
+    assert second.removed == 1
+    assert second.archived == 1
+    fresh_archive = Path(second.items[0].archive_path or "")
+    assert fresh_archive.is_file()
+    assert fresh_archive != prior_archive
+    assert prior_archive.is_file()
+    with tarfile.open(fresh_archive, "r:gz") as archive:
+        archived_evidence = archive.extractfile("untracked/evidence.txt")
         assert archived_evidence is not None
-        assert archived_evidence.read() == b"preserve this evidence\n"
+        assert archived_evidence.read() == b"irreplaceable evidence\n"
 
 
 def test_staging_recovery_preserves_files_owned_by_live_process(tmp_path: Path) -> None:
     quarantine = tmp_path / "worktree-quarantine"
     quarantine.mkdir()
     active = quarantine / f".active-run.{os.getpid()}.tmp"
+    active_tokenized = quarantine / f".active-run.{os.getpid()}.{'a' * 24}.bundle"
     stale = quarantine / ".stale-run.99999999.bundle"
+    stale_tokenized = quarantine / f".stale-run.99999999.{'b' * 24}.tmp"
     active.write_bytes(b"active")
+    active_tokenized.write_bytes(b"active-tokenized")
     stale.write_bytes(b"stale")
+    stale_tokenized.write_bytes(b"stale-tokenized")
 
     reclaimed = reconcile_module._prune_stale_archive_staging(quarantine)
 
-    assert reclaimed == len(b"stale")
+    assert reclaimed == len(b"stale") + len(b"stale-tokenized")
     assert active.read_bytes() == b"active"
+    assert active_tokenized.read_bytes() == b"active-tokenized"
     assert not stale.exists()
+    assert not stale_tokenized.exists()
 
 
 def test_deleted_large_head_blob_is_streamed_and_cannot_overshoot_archive_capacity(
@@ -1105,6 +1534,298 @@ def test_managed_clean_worktree_is_removed_and_recorded_separately(tmp_path: Pat
     events = ledger.worktree_reconciliation_events()
     assert [event["source"] for event in events] == ["managed", "managed"]
     assert [event["action"] for event in events] == ["removal_started", "removed"]
+
+
+def test_managed_late_untracked_file_is_archived_before_removal(tmp_path: Path) -> None:
+    managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    main_oid = subprocess.run(
+        ["git", "rev-parse", "refs/remotes/origin/main"],
+        cwd=managed,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    def add_late_file() -> RemoteProof:
+        (worktree / "late-managed.txt").write_text("created during managed proof\n")
+        return RemoteProof(ok=True, kind="test_main", detail={"headRefOid": main_oid})
+
+    report = _reconcile_managed(
+        tmp_path,
+        managed,
+        worktrees,
+        ledger,
+        apply=True,
+        authoritative_main_verifier=add_late_file,
+    )
+
+    item = report.items[0]
+    assert report.archived == 1
+    assert report.removed == 1
+    assert item.dirty_entries > 0
+    assert item.archive_path
+    with tarfile.open(item.archive_path, "r:gz") as archive:
+        archived = archive.extractfile("untracked/late-managed.txt")
+        assert archived is not None
+        assert archived.read() == b"created during managed proof\n"
+
+
+def test_managed_becoming_live_during_remote_proof_is_retained(tmp_path: Path) -> None:
+    managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    main_oid = subprocess.run(
+        ["git", "rev-parse", "refs/remotes/origin/main"],
+        cwd=managed,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    is_live = False
+
+    def mark_live() -> RemoteProof:
+        nonlocal is_live
+        is_live = True
+        return RemoteProof(ok=True, kind="test_main", detail={"headRefOid": main_oid})
+
+    report = _reconcile_managed(
+        tmp_path,
+        managed,
+        worktrees,
+        ledger,
+        apply=True,
+        live_path_checker=lambda path: is_live,
+        authoritative_main_verifier=mark_live,
+    )
+
+    assert worktree.exists()
+    assert report.active == 1
+    assert report.removed == 0
+    assert report.removal_failures == 0
+    assert report.items[0].classification == "active"
+    assert [event["action"] for event in ledger.worktree_reconciliation_events()] == [
+        "removal_started",
+        "retained",
+    ]
+
+
+def test_managed_file_created_at_atomic_claim_entry_is_retained(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+
+    original_rename = os.rename
+
+    def mutate_at_claim(source, destination, *args, **kwargs):
+        if Path(source) == worktree and Path(destination).name.startswith(".jobseek-remove-"):
+            (worktree / "managed-claim-entry.txt").write_text("retain managed evidence\n")
+        return original_rename(source, destination, *args, **kwargs)
+
+    monkeypatch.setattr(reconcile_module.os, "rename", mutate_at_claim)
+
+    report = _reconcile_managed(
+        tmp_path,
+        managed,
+        worktrees,
+        ledger,
+        apply=True,
+    )
+
+    assert worktree.exists()
+    assert (worktree / "managed-claim-entry.txt").read_text() == "retain managed evidence\n"
+    assert report.removed == 0
+    assert report.archived == 0
+    assert report.removal_failures == 1
+    assert report.items[0].classification == "removal_failed"
+    assert "atomic removal claim" in (report.items[0].error or "")
+    registered = reconcile_module._registered_worktrees(managed)
+    assert str(worktree.resolve()) in registered
+    assert not any(".jobseek-remove-" in path for path in registered)
+
+
+@pytest.mark.parametrize("live_reference", ["original", "claim"])
+def test_managed_live_path_at_atomic_claim_entry_is_retained(
+    monkeypatch,
+    tmp_path: Path,
+    live_reference: str,
+) -> None:
+    managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    is_live = False
+    original_resolved = worktree.resolve()
+
+    original_rename = os.rename
+
+    def mark_live_at_claim(source, destination, *args, **kwargs):
+        nonlocal is_live
+        if Path(source) == worktree and Path(destination).name.startswith(".jobseek-remove-"):
+            is_live = True
+        return original_rename(source, destination, *args, **kwargs)
+
+    monkeypatch.setattr(reconcile_module.os, "rename", mark_live_at_claim)
+
+    def exact_live_path(path: Path) -> bool:
+        if not is_live:
+            return False
+        if live_reference == "original":
+            return path == original_resolved
+        return path.name.startswith(".jobseek-remove-")
+
+    report = _reconcile_managed(
+        tmp_path,
+        managed,
+        worktrees,
+        ledger,
+        apply=True,
+        live_path_checker=exact_live_path,
+    )
+
+    assert worktree.exists()
+    assert report.active == 1
+    assert report.removed == 0
+    assert report.removal_failures == 0
+    assert report.items[0].classification == "active"
+    registered = reconcile_module._registered_worktrees(managed)
+    assert str(worktree.resolve()) in registered
+    assert not any(".jobseek-remove-" in path for path in registered)
+
+
+def test_managed_original_path_recreated_at_git_remove_is_preserved(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    original_run = subprocess.run
+    recreated = False
+
+    def recreate_at_git_remove(command, *args, **kwargs):
+        nonlocal recreated
+        if list(command[:4]) == ["git", "worktree", "remove", "--force"] and Path(
+            command[4]
+        ).name.startswith(".jobseek-remove-"):
+            worktree.mkdir()
+            (worktree / "late-managed-original.txt").write_text("preserved managed path\n")
+            recreated = True
+        return original_run(command, *args, **kwargs)
+
+    monkeypatch.setattr(reconcile_module.subprocess, "run", recreate_at_git_remove)
+
+    report = _reconcile_managed(tmp_path, managed, worktrees, ledger, apply=True)
+
+    assert recreated
+    assert worktree.exists()
+    assert (worktree / "late-managed-original.txt").read_text() == "preserved managed path\n"
+    assert report.removed == 0
+    assert report.removal_failures == 1
+    assert "recreated" in (report.items[0].error or "")
+
+
+def test_managed_archive_mutation_does_not_replace_prior_archive(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    (worktree / "evidence.txt").write_text("stable evidence\n")
+
+    def fail_remove(path: Path, final_guard) -> None:
+        raise RuntimeError("retain after first archive")
+
+    first = _reconcile_managed(
+        tmp_path,
+        managed,
+        worktrees,
+        ledger,
+        apply=True,
+        remove_worktree=fail_remove,
+    )
+    first_archive = Path(first.items[0].archive_path or "")
+    assert first.archived == 1
+    assert first_archive.is_file()
+    original_archive = first_archive.read_bytes()
+    (worktree / "evidence.txt").write_text("second stable evidence\n")
+
+    original_add = reconcile_module._tar_add_candidate_no_follow
+    mutated = False
+
+    def mutate_during_archive(*args, **kwargs):
+        nonlocal mutated
+        result = original_add(*args, **kwargs)
+        if not mutated:
+            (worktree / "evidence.txt").write_text("mutated during archive\n")
+            mutated = True
+        return result
+
+    monkeypatch.setattr(
+        reconcile_module,
+        "_tar_add_candidate_no_follow",
+        mutate_during_archive,
+    )
+
+    second = _reconcile_managed(tmp_path, managed, worktrees, ledger, apply=True)
+
+    assert mutated
+    assert worktree.exists()
+    assert (worktree / "evidence.txt").read_text() == "mutated during archive\n"
+    assert second.removed == 0
+    assert second.archived == 0
+    assert second.removal_failures == 1
+    assert second.items[0].classification == "removal_failed"
+    assert "changed" in (second.items[0].error or "")
+    assert first_archive.read_bytes() == original_archive
+
+
+def test_managed_link_entry_mutation_retracts_new_archive_and_preserves_prior(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    managed, worktrees, worktree = _managed_repo_with_worktree(tmp_path)
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    evidence = worktree / "evidence.txt"
+    evidence.write_text("first archive candidate\n")
+
+    def fail_remove(path: Path, final_guard) -> None:
+        raise RuntimeError("retain after first archive")
+
+    first = _reconcile_managed(
+        tmp_path,
+        managed,
+        worktrees,
+        ledger,
+        apply=True,
+        remove_worktree=fail_remove,
+    )
+    first_archive = Path(first.items[0].archive_path or "")
+    assert first_archive.is_file()
+    original_archive = first_archive.read_bytes()
+    evidence.write_text("second archive candidate\n")
+
+    original_link = os.link
+    mutated = False
+
+    def mutate_at_link(source, destination, *args, **kwargs):
+        nonlocal mutated
+        evidence.write_text("third live state\n")
+        mutated = True
+        return original_link(source, destination, *args, **kwargs)
+
+    monkeypatch.setattr(reconcile_module.os, "link", mutate_at_link)
+
+    second = _reconcile_managed(tmp_path, managed, worktrees, ledger, apply=True)
+
+    assert mutated
+    assert worktree.exists()
+    assert evidence.read_text() == "third live state\n"
+    assert second.removed == 0
+    assert second.archived == 0
+    assert second.removal_failures == 1
+    assert "changed" in (second.items[0].error or "")
+    assert first_archive.read_bytes() == original_archive
+    quarantine = tmp_path / "runner" / "state" / "worktree-quarantine"
+    assert list(quarantine.glob("*.tar.gz")) == [first_archive]
 
 
 def test_managed_worktree_created_during_active_run_is_never_removed(tmp_path: Path) -> None:

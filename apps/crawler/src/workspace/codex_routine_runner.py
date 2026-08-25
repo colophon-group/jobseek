@@ -361,7 +361,11 @@ class DailyRoutineRunner:
         )
         cmd = build_codex_command(cfg, prompt)
         started_at = time.time()
-        with trace_path.open("w") as stdout, stderr_path.open("w") as stderr:
+        with (
+            self.ledger.worktree_execution_lease(run_id),
+            trace_path.open("w") as stdout,
+            stderr_path.open("w") as stderr,
+        ):
             proc = subprocess.Popen(
                 cmd,
                 cwd=worktree,
