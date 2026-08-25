@@ -1738,8 +1738,131 @@ def _cross_validate_terminal_journal(
             raise WorkspaceError("Workspace PR provenance contradicts terminal journal")
 
 
-def authenticated_terminal_recovery_root(ws: Workspace) -> Path | None:
-    """Return the only safe startup root for an interrupted ``ws del``.
+def _parse_terminal_options(
+    args: list[str],
+    *,
+    allowed: set[str],
+) -> tuple[list[str], dict[str, str]] | None:
+    """Parse the narrow long-option forms accepted before Click dispatch."""
+    positionals: list[str] = []
+    options: dict[str, str] = {}
+    index = 0
+    while index < len(args):
+        token = args[index]
+        if not token.startswith("--") or token == "--":
+            positionals.append(token)
+            index += 1
+            continue
+        name, separator, inline = token.partition("=")
+        if name not in allowed or name in options:
+            return None
+        if separator:
+            options[name] = inline
+            index += 1
+            continue
+        if index + 1 >= len(args) or args[index + 1].startswith("--"):
+            return None
+        options[name] = args[index + 1]
+        index += 2
+    return positionals, options
+
+
+def _terminal_recovery_outcome(
+    ws: Workspace,
+    command_args: list[str],
+) -> tuple[bool, dict | None]:
+    """Bind one exact terminal argv shape to the outcome it will publish."""
+    if command_args == ["del"] or command_args == ["del", ws.slug]:
+        return True, None
+
+    if command_args and command_args[0] == "reject":
+        parsed = _parse_terminal_options(
+            command_args[1:],
+            allowed={"--issue", "--reason", "--message"},
+        )
+        if parsed is None:
+            return False, None
+        positionals, options = parsed
+        if len(positionals) > 1 or (positionals and positionals[0] != ws.slug):
+            return False, None
+        if set(options) not in (
+            {"--reason", "--message"},
+            {"--issue", "--reason", "--message"},
+        ):
+            return False, None
+        if options.get("--reason") not in {
+            "not-a-company",
+            "company-not-found",
+            "no-job-board",
+            "no-open-positions",
+            "duplicate",
+        }:
+            return False, None
+        if "--issue" in options:
+            try:
+                requested_issue = int(options["--issue"])
+            except ValueError:
+                return False, None
+            if requested_issue != ws.issue:
+                return False, None
+        if not isinstance(ws.issue, int):
+            return False, None
+        reason = options["--reason"]
+        message = options["--message"]
+        marker = f"<!-- validation-failed: {reason} -->"
+        return True, {
+            "marker": marker,
+            "body": (
+                f"{marker}\n"
+                f"**This request could not be processed:** {message}\n\n"
+                "If this was closed in error, reopen the issue with additional context."
+            ),
+            "labels": [reason] if reason == "duplicate" else [],
+            "close_issue": True,
+        }
+
+    if command_args[:2] == ["task", "escalate"]:
+        parsed = _parse_terminal_options(
+            command_args[2:],
+            allowed={"--issue", "--reason", "--follow-up"},
+        )
+        if parsed is None:
+            return False, None
+        positionals, options = parsed
+        if positionals or set(options) not in (
+            {"--reason", "--follow-up"},
+            {"--issue", "--reason", "--follow-up"},
+        ):
+            return False, None
+        if "--issue" in options:
+            try:
+                requested_issue = int(options["--issue"])
+            except ValueError:
+                return False, None
+            if requested_issue != ws.issue:
+                return False, None
+        if not isinstance(ws.issue, int):
+            return False, None
+        marker = "<!-- resolver-outcome: escalated -->"
+        return True, {
+            "marker": marker,
+            "body": (
+                f"{marker}\n"
+                "**Resolver escalated this request for human follow-up.**\n\n"
+                f"Reason: {options['--reason']}\n"
+                f"Follow-up: {options['--follow-up']}"
+            ),
+            "labels": [],
+            "close_issue": True,
+        }
+    return False, None
+
+
+def authenticated_terminal_recovery_root(
+    ws: Workspace,
+    command_args: list[str],
+) -> Path | None:
+    """Return the only safe startup root for an interrupted terminal command.
 
     Normal startup must authenticate the live persisted worktree.  The one
     legitimate exception is a pending terminal receipt that recorded the
@@ -1752,16 +1875,14 @@ def authenticated_terminal_recovery_root(ws: Workspace) -> Path | None:
     from src.workspace import git
     from src.workspace.worktree_auth import validate_persisted_worktree_identity
 
+    requested, outcome = _terminal_recovery_outcome(ws, command_args)
+    if not requested:
+        return None
     journal, completed = _load_terminal_journal(ws.slug, issue=ws.issue)
-    if (
-        journal is None
-        or completed
-        or journal["outcome"] is not None
-        or not journal["attempts"]["worktree_remove"]
-    ):
+    if journal is None or completed or not journal["attempts"]["worktree_remove"]:
         return None
 
-    _cross_validate_terminal_journal(journal, ws, local=False, outcome=None)
+    _cross_validate_terminal_journal(journal, ws, local=False, outcome=outcome)
     if _active_pointer_entries(ws.slug) != journal["active_entries"]:
         raise WorkspaceError("Terminal recovery active pointer contradicts its journal")
     canonical = validate_persisted_worktree_identity(ws)
@@ -1780,14 +1901,14 @@ def authenticated_terminal_recovery_root(ws: Workspace) -> Path | None:
     ):
         raise WorkspaceError("Terminal recovery worktree removal preceded data cleanup")
 
-    present = git.authenticate_managed_worktree(
+    removal_state = git.authenticate_terminal_worktree_removal_state(
         canonical,
         journal["branch"],
         journal["worktree_head"],
         expected_dev=journal["worktree_dev"],
         expected_ino=journal["worktree_ino"],
     )
-    if present:
+    if removal_state == "canonical":
         if git.local_branch_oid_strict(journal["branch"]) != journal["local_branch_oid"]:
             raise WorkspaceError("Terminal recovery local branch contradicts live worktree")
         return canonical

@@ -9,6 +9,7 @@ import stat
 import subprocess
 import time
 from pathlib import Path
+from typing import Literal
 
 from src.workspace.errors import GitCommandError, GitHubApiError, WorkspaceError
 from src.workspace.safe_cleanup import safe_rmtree_child
@@ -432,6 +433,130 @@ def managed_worktree_identity_strict(path: Path, branch: str) -> dict[str, str |
     return _managed_worktree_identity(path, branch)
 
 
+def terminal_worktree_quarantine_path(path: Path, branch: str, expected_head: str) -> Path:
+    """Return the deterministic quarantine path for one journal-owned worktree."""
+    if not _OID_RE.fullmatch(expected_head):
+        raise WorkspaceError("Invalid expected worktree commit OID")
+    root = _absolute_lexical(worktrees_dir())
+    target = _absolute_lexical(path)
+    if target.parent != root:
+        raise WorkspaceError(f"Worktree {target} is outside the managed root")
+    quarantine_name = (
+        ".jobseek-terminal-"
+        + hashlib.sha256(f"{target.name}\0{branch}\0{expected_head}".encode()).hexdigest()[:32]
+    )
+    return root / quarantine_name
+
+
+def authenticate_terminal_worktree_removal_state(
+    path: Path,
+    branch: str,
+    expected_head: str,
+    *,
+    expected_dev: int,
+    expected_ino: int,
+) -> Literal["canonical", "quarantine", "stale-registration", "absent"]:
+    """Read-only authenticate every legal state of the terminal remover."""
+    from src.workspace.safe_cleanup import (
+        directory_open_flags,
+        open_absolute_directory_no_follow,
+    )
+
+    root = _absolute_lexical(worktrees_dir())
+    target = _absolute_lexical(path)
+    quarantine = terminal_worktree_quarantine_path(target, branch, expected_head)
+    try:
+        root_fd = open_absolute_directory_no_follow(root)
+    except RuntimeError as exc:
+        raise WorkspaceError(f"Managed worktree root is unsafe: {root}") from exc
+    try:
+        registrations = _registered_worktrees_strict()
+        original_registration = registrations.get(target)
+        quarantine_registration = registrations.get(quarantine)
+        expected_branch = f"refs/heads/{branch}"
+        foreign_branch_owners = [
+            registered_path
+            for registered_path, registration in registrations.items()
+            if registered_path not in {target, quarantine}
+            and registration.get("branch") == expected_branch
+        ]
+        if foreign_branch_owners:
+            raise WorkspaceError("Terminal worktree branch is registered at an unrelated path")
+        registration_entries = [
+            (name, registration)
+            for name, registration in (
+                (target, original_registration),
+                (quarantine, quarantine_registration),
+            )
+            if registration is not None
+        ]
+        matching_registrations = [
+            name
+            for name, registration in registration_entries
+            if _registration_matches(registration, branch=branch, head=expected_head)
+        ]
+        if len(registration_entries) != len(matching_registrations):
+            raise WorkspaceError("Terminal worktree registration contradicts its journal")
+        if len(matching_registrations) > 1:
+            raise WorkspaceError("Multiple terminal worktree registrations match the journal")
+
+        def entry(name: str) -> os.stat_result | None:
+            try:
+                return os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+            except FileNotFoundError:
+                return None
+
+        original_stat = entry(target.name)
+        quarantine_stat = entry(quarantine.name)
+        if original_stat is not None and quarantine_stat is not None:
+            raise WorkspaceError("Original and quarantined worktree paths both exist")
+
+        def authenticate_entry(name: str, item: os.stat_result) -> None:
+            if stat.S_ISLNK(item.st_mode) or not stat.S_ISDIR(item.st_mode):
+                raise WorkspaceError("Terminal worktree path is not a real directory")
+            child_fd = os.open(name, directory_open_flags(), dir_fd=root_fd)
+            try:
+                opened = os.fstat(child_fd)
+                current = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+                exact = (expected_dev, expected_ino)
+                if (opened.st_dev, opened.st_ino) != exact or (
+                    current.st_dev,
+                    current.st_ino,
+                ) != exact:
+                    raise WorkspaceError("Terminal worktree is a replacement filesystem entry")
+            finally:
+                os.close(child_fd)
+
+        if original_stat is not None:
+            authenticate_entry(target.name, original_stat)
+            if matching_registrations != [target]:
+                raise WorkspaceError("Live terminal worktree registration is not exact")
+            state: Literal["canonical", "quarantine", "stale-registration", "absent"] = "canonical"
+        elif quarantine_stat is not None:
+            authenticate_entry(quarantine.name, quarantine_stat)
+            if len(matching_registrations) != 1:
+                raise WorkspaceError("Quarantined terminal worktree registration is not exact")
+            state = "quarantine"
+        elif matching_registrations:
+            state = "stale-registration"
+        else:
+            state = "absent"
+    finally:
+        os.close(root_fd)
+
+    admin_identity = _worktree_admin_identity_strict(
+        target,
+        quarantine,
+        branch=branch,
+    )
+    if state == "absent":
+        if admin_identity is not None:
+            raise WorkspaceError("Unregistered terminal worktree admin state survived")
+    elif admin_identity is None:
+        raise WorkspaceError("Terminal worktree registration has no exact admin identity")
+    return state
+
+
 def remove_authenticated_worktree(
     path: Path,
     branch: str,
@@ -455,18 +580,11 @@ def remove_authenticated_worktree(
         validate_child_name,
     )
 
-    if not _OID_RE.fullmatch(expected_head):
-        raise WorkspaceError("Invalid expected worktree commit OID")
     root = _absolute_lexical(worktrees_dir())
     target = _absolute_lexical(path)
-    if target.parent != root:
-        raise WorkspaceError(f"Worktree {target} is outside the managed root")
-    quarantine_name = (
-        ".jobseek-terminal-"
-        + hashlib.sha256(f"{target.name}\0{branch}\0{expected_head}".encode()).hexdigest()[:32]
-    )
+    quarantine = terminal_worktree_quarantine_path(target, branch, expected_head)
+    quarantine_name = quarantine.name
     validate_child_name(quarantine_name)
-    quarantine = root / quarantine_name
 
     try:
         root_fd = open_absolute_directory_no_follow(root)

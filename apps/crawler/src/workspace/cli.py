@@ -285,16 +285,13 @@ def _pivot_to_worktree(command_args: list[str] | None = None) -> None:
     except FileNotFoundError:
         return
 
-    args = command_args or []
-    terminal_delete = args == ["del"] or args == ["del", slug]
-    if terminal_delete:
-        from src.shared.constants import set_repo_root
-        from src.workspace.commands.lifecycle import authenticated_terminal_recovery_root
+    from src.shared.constants import set_repo_root
+    from src.workspace.commands.lifecycle import authenticated_terminal_recovery_root
 
-        recovery_root = authenticated_terminal_recovery_root(ws_obj)
-        if recovery_root is not None:
-            set_repo_root(recovery_root)
-            return
+    recovery_root = authenticated_terminal_recovery_root(ws_obj, command_args or [])
+    if recovery_root is not None:
+        set_repo_root(recovery_root)
+        return
     pivot_to_authenticated_worktree(ws_obj)
 
 
