@@ -1027,7 +1027,12 @@ class GitHubCoordinator:
             raise GitHubStateError(f"unexpected PR list shape for issue #{issue}")
         return [pr for pr in prs if isinstance(pr, dict)]
 
-    def issue_resolution(self, issue: int) -> IssueResolution:
+    def issue_resolution(
+        self,
+        issue: int,
+        *,
+        repository: str | None = None,
+    ) -> IssueResolution:
         import json
 
         from src.workspace import git
@@ -1038,7 +1043,9 @@ class GitHubCoordinator:
                 "issue",
                 "view",
                 str(issue),
-                *git._gh_repo_flag(),  # noqa: SLF001
+                *(
+                    ["--repo", repository] if repository is not None else git._gh_repo_flag()  # noqa: SLF001
+                ),
                 "--json",
                 "state,comments,closedByPullRequestsReferences",
             ],
@@ -1981,6 +1988,7 @@ class CompanyResolverGovernor:
     ):
         """Classify and optionally retire terminal runner worktrees."""
         from src.workspace.worktree_reconcile import (
+            TRUSTED_GITHUB_REPOSITORY,
             GitHubRemoteVerifier,
             combine_worktree_reports,
             reconcile_managed_worktrees,
@@ -1991,6 +1999,11 @@ class CompanyResolverGovernor:
         max_terminal_bytes = int(cfg.max_terminal_worktree_gib * 1024**3)
         contexts = self._managed_worktree_contexts()
         live_paths = _live_worktree_paths(cfg.managed_worktrees_dir)  # type: ignore[arg-type]
+        remote_verifier = GitHubRemoteVerifier(
+            repo_dir=cfg.repo_dir,  # type: ignore[arg-type]
+            github=self.github,
+            repository=TRUSTED_GITHUB_REPOSITORY,
+        )
 
         managed_report = reconcile_managed_worktrees(
             repo_dir=cfg.managed_repo_dir,  # type: ignore[arg-type]
@@ -2022,10 +2035,8 @@ class CompanyResolverGovernor:
             worktrees_dir=cfg.worktrees_dir,  # type: ignore[arg-type]
             archive_dir=cfg.state_dir / "worktree-quarantine",  # type: ignore[operator]
             ledger=self.ledger,
-            remote_verifier=GitHubRemoteVerifier(
-                repo_dir=cfg.repo_dir,  # type: ignore[arg-type]
-                github=self.github,
-            ),
+            remote_verifier=remote_verifier,
+            authoritative_main_verifier=remote_verifier.verify_main,
             pid_checker=_pid_matches_run,
             max_terminal_directories=cfg.max_terminal_worktrees,
             max_terminal_bytes=max_terminal_bytes,

@@ -13,6 +13,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import stat
 import subprocess
 import tarfile
@@ -22,6 +23,7 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
+from urllib.parse import quote
 
 from src.workspace.safe_cleanup import (
     directory_open_flags,
@@ -45,6 +47,7 @@ TERMINAL_STATES = {
 }
 RESOLVED_OUTCOMES = {"submitted", "rejected", "escalated"}
 DEBUG_OUTCOMES = {"retryable", "interrupted"}
+TRUSTED_GITHUB_REPOSITORY = "colophon-group/jobseek"
 
 
 class Ledger(Protocol):
@@ -86,6 +89,7 @@ class WorktreeItem:
     error: str | None = None
     source: str = "runner"
     head_oid: str | None = None
+    main_oid: str | None = None
     unique_commits: bool = False
 
 
@@ -189,11 +193,137 @@ def combine_worktree_reports(
 class GitHubRemoteVerifier:
     """Fail-closed verifier for linked PRs and explicit issue outcomes."""
 
-    def __init__(self, *, repo_dir: Path, github: Any):
+    def __init__(self, *, repo_dir: Path, github: Any, repository: str):
         self.repo_dir = repo_dir
         self.github = github
+        self.repository = repository
         self._pr_cache: dict[int, RemoteProof] = {}
         self._issue_cache: dict[int, Any] = {}
+
+    def verify_main(self) -> RemoteProof:
+        """Resolve and refresh main through an explicit GitHub repository identity."""
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", self.repository):
+            return RemoteProof(
+                ok=False,
+                kind="main_repository_invalid",
+                detail={"repository": self.repository},
+                error="trusted GitHub repository identity is invalid",
+            )
+        lookup = subprocess.run(
+            [
+                "gh",
+                "api",
+                "--method",
+                "GET",
+                f"repos/{self.repository}/commits/main",
+                "--jq",
+                ".sha",
+            ],
+            cwd=self.repo_dir,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if lookup.returncode != 0:
+            return RemoteProof(
+                ok=False,
+                kind="main_lookup_failed",
+                detail={"repository": self.repository},
+                error=(lookup.stderr or lookup.stdout or "GitHub main lookup failed").strip(),
+            )
+        main_oid = lookup.stdout.strip().lower()
+        if not re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", main_oid):
+            return RemoteProof(
+                ok=False,
+                kind="main_lookup_invalid",
+                detail={"repository": self.repository},
+                error="GitHub main lookup returned an invalid commit OID",
+            )
+
+        trusted_ref = "refs/jobseek-reconcile/authoritative-main"
+        trusted_url = f"https://github.com/{self.repository}.git"
+        refresh = subprocess.run(
+            [
+                "git",
+                "--no-replace-objects",
+                "-c",
+                "core.hooksPath=/dev/null",
+                "-c",
+                "protocol.ext.allow=never",
+                "-c",
+                "protocol.file.allow=never",
+                "-c",
+                "protocol.git.allow=never",
+                "-c",
+                "protocol.ssh.allow=never",
+                "-c",
+                "credential.helper=",
+                "fetch",
+                "--force",
+                "--no-tags",
+                "--no-recurse-submodules",
+                "--no-write-fetch-head",
+                trusted_url,
+                f"+refs/heads/main:{trusted_ref}",
+            ],
+            cwd=self.repo_dir,
+            env={
+                **os.environ,
+                "GIT_CONFIG_GLOBAL": os.devnull,
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_NO_REPLACE_OBJECTS": "1",
+                "GIT_TERMINAL_PROMPT": "0",
+            },
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if refresh.returncode != 0:
+            return RemoteProof(
+                ok=False,
+                kind="main_refresh_failed",
+                detail={"repository": self.repository, "headRefOid": main_oid},
+                error=(
+                    refresh.stderr or refresh.stdout or "trusted GitHub main refresh failed"
+                ).strip(),
+            )
+        refreshed = subprocess.run(
+            [
+                "git",
+                "--no-replace-objects",
+                "rev-parse",
+                "--verify",
+                f"{trusted_ref}^{{commit}}",
+            ],
+            cwd=self.repo_dir,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        refreshed_oid = refreshed.stdout.strip().lower()
+        detail = {
+            "repository": self.repository,
+            "headRefOid": main_oid,
+            "refreshed_oid": refreshed_oid or None,
+            "trusted_ref": trusted_ref,
+        }
+        if refreshed.returncode != 0:
+            return RemoteProof(
+                ok=False,
+                kind="main_refresh_failed",
+                detail=detail,
+                error=(
+                    refreshed.stderr or refreshed.stdout or "refreshed main is not a commit"
+                ).strip(),
+            )
+        if refreshed_oid != main_oid:
+            return RemoteProof(
+                ok=False,
+                kind="main_refresh_mismatch",
+                detail=detail,
+                error="GitHub main moved or refresh did not match the authoritative lookup",
+            )
+        return RemoteProof(ok=True, kind="authoritative_main", detail=detail)
 
     def __call__(self, run: dict[str, Any]) -> RemoteProof:
         state = str(run.get("state") or "")
@@ -229,7 +359,10 @@ class GitHubRemoteVerifier:
             resolution = self._issue_cache.get(issue)
             if resolution is None:
                 try:
-                    resolution = self.github.issue_resolution(issue)
+                    resolution = self.github.issue_resolution(
+                        issue,
+                        repository=self.repository,
+                    )
                 except Exception as exc:  # noqa: BLE001 - remote proof must fail closed
                     return RemoteProof(
                         ok=False,
@@ -273,6 +406,8 @@ class GitHubRemoteVerifier:
                 str(number),
                 "--json",
                 "number,state,isDraft,headRefName,headRefOid,mergedAt,url",
+                "--repo",
+                self.repository,
             ],
             cwd=self.repo_dir,
             text=True,
@@ -331,7 +466,15 @@ class GitHubRemoteVerifier:
 
     def _verify_branch(self, branch: str) -> RemoteProof:
         result = subprocess.run(
-            ["git", "ls-remote", "--exit-code", "origin", f"refs/heads/{branch}"],
+            [
+                "gh",
+                "api",
+                "--method",
+                "GET",
+                f"repos/{self.repository}/git/ref/heads/{quote(branch, safe='/')}",
+                "--jq",
+                ".object.sha",
+            ],
             cwd=self.repo_dir,
             text=True,
             capture_output=True,
@@ -344,11 +487,22 @@ class GitHubRemoteVerifier:
                 detail={"branch": branch},
                 error="ledger branch has no verifiable remote ref or PR",
             )
-        oid = result.stdout.split()[0] if result.stdout.split() else None
+        oid = result.stdout.strip().lower()
+        if not re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", oid):
+            return RemoteProof(
+                ok=False,
+                kind="branch_lookup_invalid",
+                detail={"branch": branch, "repository": self.repository},
+                error="GitHub branch lookup returned an invalid commit OID",
+            )
         return RemoteProof(
             ok=True,
             kind="remote_branch",
-            detail={"branch": branch, "headRefOid": oid},
+            detail={
+                "branch": branch,
+                "headRefOid": oid,
+                "repository": self.repository,
+            },
         )
 
 
@@ -419,6 +573,7 @@ def reconcile_worktrees(
     archive_dir: Path,
     ledger: Ledger,
     remote_verifier: Callable[[dict[str, Any]], RemoteProof],
+    authoritative_main_verifier: Callable[[], RemoteProof],
     pid_checker: Callable[[int, str], bool],
     max_terminal_directories: int,
     max_terminal_bytes: int,
@@ -459,6 +614,7 @@ def reconcile_worktrees(
     failures = 0
     remover = remove_worktree or (lambda path: _remove_registered_worktree(repo_dir, path))
     now = int(time.time())
+    authoritative_main: RemoteProof | None = None
 
     for path in paths:
         resolved, path_error = _inspect_worktree_path(path, root_resolved=root_resolved)
@@ -502,13 +658,35 @@ def reconcile_worktrees(
 
         _classify(item, run=run, path_error=path_error, status_error=status_error)
         if item.classification == "terminal_candidate" and run is not None:
-            proof = remote_verifier(run)
-            if proof.ok:
-                proof = _runner_head_proof(
-                    repo_dir=repo_dir,
-                    item=item,
-                    remote_proof=proof,
+            if authoritative_main is None:
+                try:
+                    authoritative_main = authoritative_main_verifier()
+                except Exception as exc:  # noqa: BLE001 - destructive proof must fail closed
+                    authoritative_main = RemoteProof(
+                        ok=False,
+                        kind="main_lookup_failed",
+                        error=f"authoritative main lookup failed: {exc}",
+                    )
+            proof = authoritative_main
+            main_oid = _remote_head_oid(authoritative_main.detail) if proof.ok else None
+            if proof.ok and main_oid is None:
+                proof = RemoteProof(
+                    ok=False,
+                    kind="main_lookup_invalid",
+                    detail={"authoritative_main": asdict(authoritative_main)},
+                    error="authoritative main proof contained no commit OID",
                 )
+            elif proof.ok and main_oid is not None:
+                item.main_oid = main_oid
+                proof = remote_verifier(run)
+                if proof.ok:
+                    proof = _runner_head_proof(
+                        repo_dir=repo_dir,
+                        item=item,
+                        remote_proof=proof,
+                        main_oid=main_oid,
+                        main_proof=authoritative_main,
+                    )
             item.remote_proof = asdict(proof)
             if not proof.ok:
                 item.classification = "remote_unverified"
@@ -550,6 +728,7 @@ def reconcile_worktrees(
                             run_id=item.run_id or item.name,
                             item=item,
                             include_unique_commits=item.unique_commits,
+                            unique_commit_base_oid=item.main_oid,
                             max_archive_bytes=max_terminal_bytes,
                         )
                         item.archive_path = str(archive_path)
@@ -800,6 +979,8 @@ def reconcile_managed_worktrees(
                 item.classification = "remote_unverified"
                 item.reason = proof.error or "managed worktree history could not be verified"
             else:
+                proof_main_oid = proof.detail.get("main_oid")
+                item.main_oid = str(proof_main_oid) if isinstance(proof_main_oid, str) else None
                 item.unique_commits = proof.kind == "local_unique_commits"
                 item.classification = "terminal_candidate"
                 item.reason = "managed worktree is inactive and its local state is preservable"
@@ -832,6 +1013,7 @@ def reconcile_managed_worktrees(
                             run_id=archive_id,
                             item=item,
                             include_unique_commits=item.unique_commits,
+                            unique_commit_base_oid=item.main_oid,
                             max_archive_bytes=max_terminal_bytes,
                         )
                         item.archive_path = str(archive_path)
@@ -949,6 +1131,8 @@ def _runner_head_proof(
     repo_dir: Path,
     item: WorktreeItem,
     remote_proof: RemoteProof,
+    main_oid: str,
+    main_proof: RemoteProof,
 ) -> RemoteProof:
     """Require the local runner HEAD to be durable remotely or archiveable."""
     remote_oid = _remote_head_oid(remote_proof.detail)
@@ -957,9 +1141,11 @@ def _runner_head_proof(
         item=item,
         remote_heads={},
         exact_remote_oid=remote_oid,
+        main_oid=main_oid,
     )
     detail = dict(head_proof.detail)
     detail["remote_verification"] = asdict(remote_proof)
+    detail["authoritative_main"] = asdict(main_proof)
     return RemoteProof(
         ok=head_proof.ok,
         kind=head_proof.kind,
@@ -986,6 +1172,7 @@ def _managed_head_proof(
     item: WorktreeItem,
     remote_heads: dict[str, str],
     exact_remote_oid: str | None = None,
+    main_oid: str | None = None,
 ) -> RemoteProof:
     head = item.head_oid
     if not head:
@@ -994,24 +1181,25 @@ def _managed_head_proof(
             kind="missing_head",
             error="registered managed worktree has no HEAD object",
         )
-    main_result = subprocess.run(
-        ["git", "rev-parse", "origin/main"],
-        cwd=repo_dir,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    if main_result.returncode != 0:
-        return RemoteProof(
-            ok=False,
-            kind="missing_main",
-            error=(main_result.stderr or "origin/main is unavailable").strip(),
+    if main_oid is None:
+        main_result = subprocess.run(
+            ["git", "rev-parse", "origin/main"],
+            cwd=repo_dir,
+            text=True,
+            capture_output=True,
+            check=False,
         )
-    main_oid = main_result.stdout.strip()
+        if main_result.returncode != 0:
+            return RemoteProof(
+                ok=False,
+                kind="missing_main",
+                error=(main_result.stderr or "origin/main is unavailable").strip(),
+            )
+        main_oid = main_result.stdout.strip()
     detail = {"head_oid": head, "main_oid": main_oid, "branch": item.branch}
 
     ancestor = subprocess.run(
-        ["git", "merge-base", "--is-ancestor", head, main_oid],
+        ["git", "--no-replace-objects", "merge-base", "--is-ancestor", head, main_oid],
         cwd=repo_dir,
         text=True,
         capture_output=True,
@@ -1035,7 +1223,18 @@ def _managed_head_proof(
         return RemoteProof(ok=True, kind="exact_remote_branch", detail=detail)
 
     tree_comparison = subprocess.run(
-        ["git", "diff", "--quiet", "--exit-code", head, main_oid, "--"],
+        [
+            "git",
+            "--no-replace-objects",
+            "diff",
+            "--no-ext-diff",
+            "--no-textconv",
+            "--quiet",
+            "--exit-code",
+            head,
+            main_oid,
+            "--",
+        ],
         cwd=repo_dir,
         text=True,
         capture_output=True,
@@ -1291,13 +1490,19 @@ def _archive_worktree(
     run_id: str,
     item: WorktreeItem,
     include_unique_commits: bool = False,
+    unique_commit_base_oid: str | None = None,
     max_archive_bytes: int,
 ) -> tuple[Path, str]:
     safe_run_id = "".join(char if char.isalnum() or char in "-_." else "_" for char in run_id)
     destination = archive_dir / f"{safe_run_id}.tar.gz"
     base_projected_bytes = max(1, item.bytes + 1024 * 1024)
     if include_unique_commits:
-        base_projected_bytes += _unique_commit_object_bytes(worktree)
+        if unique_commit_base_oid is None:
+            raise RuntimeError("unique commit archive has no verified base OID")
+        base_projected_bytes += _unique_commit_object_bytes(
+            worktree,
+            base_oid=unique_commit_base_oid,
+        )
     _prune_stale_archive_staging(archive_dir)
     current_archive_bytes = _directory_bytes(archive_dir)
     replaced_destination_bytes = _regular_file_bytes_no_follow(destination)
@@ -1329,6 +1534,7 @@ def _archive_worktree(
             destination=destination,
             item=item,
             include_unique_commits=include_unique_commits,
+            unique_commit_base_oid=unique_commit_base_oid,
             max_archive_bytes=max_archive_bytes,
             retained_archive_bytes=retained_archive_bytes,
             patch_snapshot=patch_snapshot,
@@ -1347,7 +1553,15 @@ def _stream_git_diff_snapshot(
     overflow = False
     with tempfile.TemporaryFile(mode="w+b") as stderr_snapshot:
         process = subprocess.Popen(
-            ["git", "diff", "--binary", "HEAD"],
+            [
+                "git",
+                "--no-replace-objects",
+                "diff",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--binary",
+                "HEAD",
+            ],
             cwd=worktree,
             stdout=subprocess.PIPE,
             stderr=stderr_snapshot,
@@ -1397,6 +1611,7 @@ def _archive_worktree_from_patch_snapshot(
     destination: Path,
     item: WorktreeItem,
     include_unique_commits: bool,
+    unique_commit_base_oid: str | None,
     max_archive_bytes: int,
     retained_archive_bytes: int,
     patch_snapshot: Any,
@@ -1431,8 +1646,18 @@ def _archive_worktree_from_patch_snapshot(
     bundle_staging_bytes = 0
     try:
         if include_unique_commits:
+            if unique_commit_base_oid is None:
+                raise RuntimeError("unique commit archive has no verified base OID")
             bundle = subprocess.run(
-                ["git", "bundle", "create", str(bundle_path), "HEAD", "^origin/main"],
+                [
+                    "git",
+                    "--no-replace-objects",
+                    "bundle",
+                    "create",
+                    str(bundle_path),
+                    "HEAD",
+                    f"^{unique_commit_base_oid}",
+                ],
                 cwd=worktree,
                 text=True,
                 capture_output=True,
@@ -1445,7 +1670,7 @@ def _archive_worktree_from_patch_snapshot(
                     ).strip()
                 )
             verification = subprocess.run(
-                ["git", "bundle", "verify", str(bundle_path)],
+                ["git", "--no-replace-objects", "bundle", "verify", str(bundle_path)],
                 cwd=worktree,
                 text=True,
                 capture_output=True,
@@ -1467,7 +1692,7 @@ def _archive_worktree_from_patch_snapshot(
                 "bytes": bundle_bytes,
                 "sha256": bundle_sha,
                 "head_oid": item.head_oid,
-                "base_ref": "origin/main",
+                "base_oid": unique_commit_base_oid,
             }
         staging_budget = max_archive_bytes - retained_archive_bytes - bundle_staging_bytes
         if staging_budget <= 0:
@@ -1768,9 +1993,16 @@ def _same_inode(left: os.stat_result, right: os.stat_result) -> bool:
     return left.st_dev == right.st_dev and left.st_ino == right.st_ino
 
 
-def _unique_commit_object_bytes(worktree: Path) -> int:
+def _unique_commit_object_bytes(worktree: Path, *, base_oid: str) -> int:
     objects = subprocess.run(
-        ["git", "rev-list", "--objects", "HEAD", "^origin/main"],
+        [
+            "git",
+            "--no-replace-objects",
+            "rev-list",
+            "--objects",
+            "HEAD",
+            f"^{base_oid}",
+        ],
         cwd=worktree,
         text=True,
         capture_output=True,
@@ -1780,7 +2012,7 @@ def _unique_commit_object_bytes(worktree: Path) -> int:
     if not object_ids:
         return 0
     sizes = subprocess.run(
-        ["git", "cat-file", "--batch-check=%(objectsize)"],
+        ["git", "--no-replace-objects", "cat-file", "--batch-check=%(objectsize)"],
         cwd=worktree,
         input="\n".join(object_ids) + "\n",
         text=True,
