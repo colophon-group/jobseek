@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+import csv
+import json
+from pathlib import Path
+
 import httpx
 
+from src.core.monitor import monitor_one
 from src.core.scrapers.phuketall import can_handle, parse_html, scrape
+
+_BOARDS_CSV = Path(__file__).parents[1] / "data" / "boards.csv"
 
 HTML = """
 <html><head><meta property="og:url" content="https://www.phuketall.com/jobs/1" /></head>
@@ -42,3 +49,41 @@ async def test_scrape_fetches_detail_page():
 
     assert content.title == "Medical Nurse"
     assert content.description
+
+
+def _clinique_phuket_config() -> dict:
+    with _BOARDS_CSV.open(newline="") as handle:
+        row = next(
+            row
+            for row in csv.DictReader(handle)
+            if row["board_slug"] == "clinique-la-prairie-phuket-phuketall"
+        )
+    return json.loads(row["monitor_config"])
+
+
+async def test_monitor_canonicalizes_thai_english_and_title_churn_by_provider_id():
+    # 213283 is the live marketing vacancy also syndicated as LinkedIn
+    # 4457321546. Multiple locale/title routes must remain one PhuketAll job.
+    profile = """
+    <a href="/jobs/057289-213283-phuket/director-of-marketing.html">Marketing Director</a>
+    <a href="/en/jobs/057289-213283-phuket/marketing-director-renamed.html">Renamed EN</a>
+    <a href="/jobs/057289-213283-phuket/ชื่ออะไรก็ได้.html">Thai title</a>
+    <a href="/jobs/057289-211035-phuket/sales-manager.html">Sales Manager</a>
+    <a href="https://attacker.example/jobs/057289-999999-phuket/fake.html">Fake</a>
+    """
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, text=profile, request=request)
+    )
+
+    async with httpx.AsyncClient(transport=transport) as client:
+        result = await monitor_one(
+            "https://www.phuketall.com/member/057289/profile.html",
+            "dom",
+            _clinique_phuket_config(),
+            client,
+        )
+
+    assert result.urls == {
+        "https://www.phuketall.com/jobs/057289-213283-phuket/213283.html",
+        "https://www.phuketall.com/jobs/057289-211035-phuket/211035.html",
+    }

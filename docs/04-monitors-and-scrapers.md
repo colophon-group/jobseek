@@ -124,6 +124,12 @@ Rich monitors return complete job data in a single request — no scraper needed
 listing responses provide clean summary fields while their auto-configured
 scrapers hydrate the remaining detail fields on the daily schedule.
 
+LinkedIn identities are always the numeric `/jobs/view/{id}` route; localized
+hosts and title slugs are presentation aliases. When a regional provider owns
+one country, `source_ownership_excluded_country_codes` accepts exact ISO-3166
+alpha-3 codes. The monitor resolves LinkedIn's English country field exactly
+and fails closed if the field is missing, unknown, or ambiguous.
+
 ### rss / SuccessFactors
 
 Modern SuccessFactors Career Site Builder boards keep the existing
@@ -332,7 +338,7 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `skip` | No fetch | Explicit no-scrape marker for rich monitors that already returned complete job data |
 | `smartrecruiters` | Static | Fetches SmartRecruiters detail API records |
 | `taleo` | Static | Parses the bounded `api.fillList` payload embedded in Taleo Enterprise detail pages |
-| `veryeast` | Static | Parses VeryEast employer detail pages and their Chinese structured fields |
+| `veryeast` | Static | Parses every VeryEast description section and Chinese structured field from detail pages under a 2 MiB response cap |
 | `workable` | Static | Fetches Workable detail API records |
 | `workday` | Static | Fetches Workday detail API records |
 

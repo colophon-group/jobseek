@@ -10,7 +10,7 @@ from referencing import Registry, Resource
 
 from src.core.monitor import MonitorResult
 from src.core.monitors import DiscoveredJob
-from src.core.scrapers import JobContent
+from src.core.scrapers import JobContent, get_scraper_type
 from src.runtime.config import BoardRuntimeConfig
 from src.runtime.extraction import (
     PythonMonitorRuntime,
@@ -70,6 +70,20 @@ def test_board_runtime_config_preserves_worker_fail_open_decoding() -> None:
 
     assert config.metadata == {}
     assert config.check_interval_minutes == 60
+
+
+@pytest.mark.parametrize("scraper_type", ["phuketall", "veryeast"])
+def test_provider_scrapers_are_registered_for_runtime_dispatch(scraper_type: str) -> None:
+    config = BoardRuntimeConfig.from_mapping(
+        {
+            "board_url": "https://example.com/jobs/1",
+            "crawler_type": "dom",
+            "metadata": json.dumps({"scraper_type": scraper_type, "scraper_config": {}}),
+        }
+    )
+
+    assert get_scraper_type(scraper_type) is not None
+    _validate("board-runtime-config.schema.json", config.as_contract_payload())
 
 
 def test_board_runtime_config_strict_interval_decoding_preserves_board_record_errors() -> None:
