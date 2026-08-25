@@ -3642,6 +3642,12 @@ jobs_ch — JobCloud Employer Profiles (jobs.ch / jobup.ch)
   Optional config:
     {"company_id": "134466", "locale": "fr"}
     {"company_id": "6099", "locale": "en", "portal": "jobup"}
+    {"document_company_id": "852"}
+
+  Some migrated employer profiles use one UUID as the search filter while
+  result documents retain a legacy numeric employer ID. The probe reports
+  document_company_id when it detects this alias. Discovery still requires
+  every returned document to match that exact configured identity.
 """,
     "kipt": MONITOR_KIPT,
     "api_sniffer": MONITOR_API_SNIFFER,

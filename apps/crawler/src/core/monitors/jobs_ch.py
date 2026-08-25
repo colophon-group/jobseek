@@ -6,6 +6,10 @@ detail paths, but exposes the same pagination contract.  The API is explicitly
 scoped by the company ID and returns an authoritative ``totalHits`` value,
 including a valid zero for an empty board.  Detail pages provide ``JobPosting``
 JSON-LD and are handled by the existing JSON-LD scraper.
+
+Migrated profiles occasionally require a UUID as the search filter while each
+document retains a legacy numeric company ID. Those boards explicitly pin both
+identities; every non-empty response still has to match the document identity.
 """
 
 from __future__ import annotations
@@ -103,10 +107,27 @@ def _ids_from_url(url: str) -> tuple[str | None, str | None]:
     return company_id, locale
 
 
-def _board_metadata(board: dict) -> tuple[str, str, str]:
+def _validate_document_company_alias(company_id: str, document_company_id: str) -> None:
+    """Allow only the provider's observed UUID-to-legacy-numeric migration shape."""
+    if document_company_id == company_id:
+        return
+    if company_id.isdigit() or not document_company_id.isdigit():
+        raise ValueError(
+            "jobs_ch document_company_id aliases require a UUID profile ID "
+            "and a numeric legacy document ID"
+        )
+
+
+def _board_metadata(board: dict) -> tuple[str, str, str, str]:
     metadata = board.get("metadata") or {}
     url_company_id, url_locale, url_portal = _profile_from_url(board["board_url"])
     company_id = _normalize_company_id(metadata.get("company_id") or url_company_id)
+    if "document_company_id" in metadata:
+        document_company_id = _normalize_company_id(metadata.get("document_company_id"))
+        if document_company_id is None:
+            raise ValueError("jobs_ch document_company_id must be a numeric or UUID company ID")
+    else:
+        document_company_id = company_id
     locale = str(metadata.get("locale") or url_locale or "de").lower()
     portal = str(metadata.get("portal") or url_portal or "jobs_ch").lower()
     if company_id is None:
@@ -115,7 +136,36 @@ def _board_metadata(board: dict) -> tuple[str, str, str]:
         raise ValueError("jobs_ch portal must be one of: jobs_ch, jobup")
     if locale not in _PORTALS[portal]["detail_paths"]:
         raise ValueError(f"jobs_ch locale is not supported by the {portal} portal")
-    return company_id, locale, portal
+    assert document_company_id is not None
+    _validate_document_company_alias(company_id, document_company_id)
+    return company_id, document_company_id, locale, portal
+
+
+def _page_document_company_id(payload: dict, expected_documents: int) -> str | None:
+    """Return the single employer identity carried by a complete API page."""
+    documents = payload["documents"]
+    if len(documents) != expected_documents:
+        raise ValueError(
+            f"JobCloud page {payload['currentPage']} returned {len(documents)} documents; "
+            f"expected {expected_documents}"
+        )
+    if not documents:
+        return None
+
+    company_ids: set[str] = set()
+    for document in documents:
+        document_company = document.get("company") if isinstance(document, dict) else None
+        document_company_id = (
+            _normalize_company_id(document_company.get("id"))
+            if isinstance(document_company, dict)
+            else None
+        )
+        if document_company_id is None:
+            raise ValueError("JobCloud returned a vacancy without a valid company identity")
+        company_ids.add(document_company_id)
+    if len(company_ids) != 1:
+        raise ValueError("JobCloud returned vacancies for multiple companies")
+    return company_ids.pop()
 
 
 async def _fetch_page(
@@ -162,7 +212,7 @@ async def discover(
 ) -> set[str]:
     """Return every active detail URL for one JobCloud employer profile."""
     _ = pw
-    company_id, locale, portal = _board_metadata(board)
+    company_id, document_company_id, locale, portal = _board_metadata(board)
     first = await _fetch_page(client, company_id, 1, portal)
     pages = first["numPages"]
     total_hits = first["totalHits"]
@@ -181,23 +231,13 @@ async def discover(
     urls: set[str] = set()
     for index, payload in enumerate(payloads, start=1):
         expected_documents = min(ROWS, max(0, total_hits - (index - 1) * ROWS))
-        if len(payload["documents"]) != expected_documents:
-            raise ValueError(
-                f"JobCloud page {index} returned {len(payload['documents'])} documents; "
-                f"expected {expected_documents}"
-            )
+        actual_company_id = _page_document_company_id(payload, expected_documents)
+        if actual_company_id is not None and actual_company_id != document_company_id:
+            raise ValueError("JobCloud returned a vacancy outside the configured company")
         for document in payload["documents"]:
             job_id = document.get("id") if isinstance(document, dict) else None
             if not isinstance(job_id, str):
                 raise ValueError("JobCloud search result is missing a job id")
-            document_company = document.get("company")
-            document_company_id = (
-                _normalize_company_id(document_company.get("id"))
-                if isinstance(document_company, dict)
-                else None
-            )
-            if document_company_id != company_id:
-                raise ValueError("JobCloud returned a vacancy outside the configured company")
             try:
                 canonical_job_id = str(UUID(job_id))
             except (ValueError, AttributeError):
@@ -216,6 +256,7 @@ async def discover(
     log.info(
         "jobs_ch.discovered",
         company_id=company_id,
+        document_company_id=document_company_id,
         portal=portal,
         jobs=len(urls),
         pages=pages,
@@ -235,6 +276,10 @@ async def can_handle(
         return None
     try:
         payload = await _fetch_page(client, company_id, 1, portal)
+        expected_documents = min(ROWS, payload["totalHits"])
+        document_company_id = _page_document_company_id(payload, expected_documents)
+        if document_company_id is not None:
+            _validate_document_company_alias(company_id, document_company_id)
     except TDMReservedError:
         raise
     except Exception:
@@ -247,6 +292,8 @@ async def can_handle(
     }
     if portal != "jobs_ch":
         result["portal"] = portal
+    if document_company_id is not None and document_company_id != company_id:
+        result["document_company_id"] = document_company_id
     return result
 
 

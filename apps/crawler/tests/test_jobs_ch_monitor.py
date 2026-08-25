@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import csv
+import json
+from pathlib import Path
 from uuid import UUID
 
 import httpx
@@ -9,6 +12,13 @@ import pytest
 
 from src.core.monitors.jobs_ch import _ids_from_url, can_handle, discover
 from src.workspace._compat import detect_ats_from_url
+
+DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+EHL_PROFILE_ID = "58f5774f-5f16-4be0-bdf7-68bd52671990"
+EHL_DOCUMENT_COMPANY_ID = "852"
+EHL_BOARD_URL = (
+    f"https://www.jobup.ch/en/enterprises/{EHL_PROFILE_ID}-ehl-hospitality-business-school-sa/"
+)
 
 
 def _client(pages: dict[int, dict], requested: list[httpx.Request] | None = None):
@@ -144,6 +154,98 @@ async def test_discover_uses_jobup_api_and_localized_detail_urls() -> None:
 
 
 @pytest.mark.asyncio
+async def test_discover_supports_identity_checked_migrated_profile_alias() -> None:
+    requested: list[httpx.Request] = []
+    job_id = "644c296f-ee65-4fd5-b90d-77541692be5b"
+    async with _client(
+        {1: _payload(1, 1, 1, [job_id], company_id=EHL_DOCUMENT_COMPANY_ID)},
+        requested,
+    ) as client:
+        jobs = await discover(
+            {
+                "board_url": EHL_BOARD_URL,
+                "metadata": {"document_company_id": EHL_DOCUMENT_COMPANY_ID},
+            },
+            client,
+        )
+
+    assert jobs == {f"https://www.jobup.ch/en/jobs/detail/{job_id}/"}
+    assert requested[0].url.params["companyIds"] == EHL_PROFILE_ID
+
+
+@pytest.mark.asyncio
+async def test_discover_accepts_authoritative_empty_migrated_profile() -> None:
+    requested: list[httpx.Request] = []
+    async with _client({1: _payload(1, 0, 0, [])}, requested) as client:
+        jobs = await discover(
+            {
+                "board_url": EHL_BOARD_URL,
+                "metadata": {"document_company_id": EHL_DOCUMENT_COMPANY_ID},
+            },
+            client,
+        )
+
+    assert jobs == set()
+    assert requested[0].url.params["companyIds"] == EHL_PROFILE_ID
+
+
+@pytest.mark.asyncio
+async def test_discover_migrated_profile_rejects_wrong_document_company() -> None:
+    job_id = "644c296f-ee65-4fd5-b90d-77541692be5b"
+    async with _client({1: _payload(1, 1, 1, [job_id], company_id="999")}) as client:
+        with pytest.raises(ValueError, match="outside the configured company"):
+            await discover(
+                {
+                    "board_url": EHL_BOARD_URL,
+                    "metadata": {"document_company_id": EHL_DOCUMENT_COMPANY_ID},
+                },
+                client,
+            )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("document_company_id", ["", "not-an-id", -1, True])
+async def test_discover_rejects_invalid_document_company_alias(
+    document_company_id: object,
+) -> None:
+    async with _client({}) as client:
+        with pytest.raises(ValueError, match="document_company_id"):
+            await discover(
+                {
+                    "board_url": EHL_BOARD_URL,
+                    "metadata": {"document_company_id": document_company_id},
+                },
+                client,
+            )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("company_id", "document_company_id"),
+    [
+        ("42", "852"),
+        (EHL_PROFILE_ID, "0fb7f075-a3f1-40b3-b3dd-6e6304f550f5"),
+    ],
+)
+async def test_discover_rejects_unsupported_company_alias_shapes(
+    company_id: str,
+    document_company_id: str,
+) -> None:
+    async with _client({}) as client:
+        with pytest.raises(ValueError, match="UUID profile ID and a numeric legacy"):
+            await discover(
+                {
+                    "board_url": EHL_BOARD_URL,
+                    "metadata": {
+                        "company_id": company_id,
+                        "document_company_id": document_company_id,
+                    },
+                },
+                client,
+            )
+
+
+@pytest.mark.asyncio
 async def test_discover_fails_closed_on_incomplete_pagination() -> None:
     pages = {
         1: _payload(
@@ -175,7 +277,7 @@ async def test_discover_rejects_unverifiable_company_result(document_company: ob
     payload = _payload(1, 1, 1, [job_id], company_id="42")
     payload["documents"][0]["company"] = document_company
     async with _client({1: payload}) as client:
-        with pytest.raises(ValueError, match="outside the configured company"):
+        with pytest.raises(ValueError, match="company"):
             await discover(
                 {
                     "board_url": "https://www.jobs.ch/de/firmen/42-example/",
@@ -208,6 +310,63 @@ async def test_can_handle_returns_jobup_portal() -> None:
         "jobs": 0,
         "portal": "jobup",
     }
+
+
+@pytest.mark.asyncio
+async def test_can_handle_reports_migrated_profile_document_company_alias() -> None:
+    job_id = "644c296f-ee65-4fd5-b90d-77541692be5b"
+    async with _client(
+        {1: _payload(1, 1, 1, [job_id], company_id=EHL_DOCUMENT_COMPANY_ID)}
+    ) as client:
+        result = await can_handle(EHL_BOARD_URL, client)
+
+    assert result == {
+        "company_id": EHL_PROFILE_ID,
+        "locale": "en",
+        "jobs": 1,
+        "portal": "jobup",
+        "document_company_id": EHL_DOCUMENT_COMPANY_ID,
+    }
+
+
+@pytest.mark.asyncio
+async def test_can_handle_rejects_mixed_document_company_identities() -> None:
+    first = "644c296f-ee65-4fd5-b90d-77541692be5b"
+    second = "20cf6e2f-366e-452b-9f28-e65a6fefa976"
+    payload = _payload(1, 1, 2, [first, second], company_id=EHL_DOCUMENT_COMPANY_ID)
+    payload["documents"][1]["company"]["id"] = "999"
+    async with _client({1: payload}) as client:
+        assert await can_handle(EHL_BOARD_URL, client) is None
+
+
+@pytest.mark.asyncio
+async def test_can_handle_does_not_infer_numeric_to_numeric_alias() -> None:
+    job_id = "644c296f-ee65-4fd5-b90d-77541692be5b"
+    async with _client({1: _payload(1, 1, 1, [job_id], company_id="852")}) as client:
+        assert (
+            await can_handle(
+                "https://www.jobup.ch/en/enterprises/6099-leclanche-sa/",
+                client,
+            )
+            is None
+        )
+
+
+def test_ehl_jobup_board_commits_the_verified_profile_alias() -> None:
+    with (DATA_DIR / "boards.csv").open(newline="", encoding="utf-8") as handle:
+        row = next(
+            row for row in csv.DictReader(handle) if row["board_slug"] == "ehl-group-lausanne-jobup"
+        )
+
+    assert row["board_url"] == EHL_BOARD_URL
+    assert row["monitor_type"] == "jobs_ch"
+    assert json.loads(row["monitor_config"]) == {
+        "company_id": EHL_PROFILE_ID,
+        "document_company_id": EHL_DOCUMENT_COMPANY_ID,
+        "locale": "en",
+        "portal": "jobup",
+    }
+    assert row["scraper_type"] == "json-ld"
 
 
 @pytest.mark.asyncio
