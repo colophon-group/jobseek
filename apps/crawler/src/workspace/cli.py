@@ -260,7 +260,7 @@ def _detect_repo_root() -> Path | None:
     return None
 
 
-def _pivot_to_worktree() -> None:
+def _pivot_to_worktree(command_args: list[str] | None = None) -> None:
     """Authenticate and pivot to the active workspace's exact worktree.
 
     Called after initial repo root detection so that .workspace/ state
@@ -284,6 +284,17 @@ def _pivot_to_worktree() -> None:
         ws_obj = load_workspace(slug)
     except FileNotFoundError:
         return
+
+    args = command_args or []
+    terminal_delete = args == ["del"] or args == ["del", slug]
+    if terminal_delete:
+        from src.shared.constants import set_repo_root
+        from src.workspace.commands.lifecycle import authenticated_terminal_recovery_root
+
+        recovery_root = authenticated_terminal_recovery_root(ws_obj)
+        if recovery_root is not None:
+            set_repo_root(recovery_root)
+            return
     pivot_to_authenticated_worktree(ws_obj)
 
 
@@ -295,7 +306,7 @@ def main():
         set_repo_root(repo_root)
 
     # Late-init: pivot to the active workspace's worktree (if any)
-    _pivot_to_worktree()
+    _pivot_to_worktree(sys.argv[1:])
 
     try:
         ws(standalone_mode=False)

@@ -26,8 +26,8 @@ WORKTREE_IDENTITY_KEYS = {
 }
 
 
-def authenticate_workspace_worktree(ws: Workspace) -> Path:
-    """Authenticate and return the exact canonical managed worktree path."""
+def validate_persisted_worktree_identity(ws: Workspace) -> Path:
+    """Validate persisted ownership fields without trusting the filesystem."""
     from src.workspace import git
 
     canonical = Path(os.path.abspath(str(git.worktrees_dir() / ws.slug)))
@@ -53,6 +53,15 @@ def authenticate_workspace_worktree(ws: Workspace) -> Path:
         or not isinstance(identity.get("ino"), int)
     ):
         raise WorkspaceError("Workspace worktree identity contradicts ownership provenance")
+    return canonical
+
+
+def authenticate_workspace_worktree(ws: Workspace) -> Path:
+    """Authenticate and return the exact canonical managed worktree path."""
+    from src.workspace import git
+
+    canonical = validate_persisted_worktree_identity(ws)
+    identity = ws.worktree_identity
     if not git.authenticate_managed_worktree(
         canonical,
         ws.branch,
