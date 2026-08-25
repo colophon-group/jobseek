@@ -6,6 +6,7 @@ import pytest
 from src.core.monitor import (
     MonitorResult,
     _apply_job_filter,
+    _apply_url_allowlist,
     _apply_url_filter,
     _normalize_discovered,
     monitor_one,
@@ -245,6 +246,58 @@ class TestApplyJobFilter:
             "https://example.com/jobs/1",
             "https://example.com/jobs/url-only",
         }
+
+
+class TestApplyUrlAllowlist:
+    def test_fullmatch_rejects_foreign_and_partial_matches_and_preserves_state(self):
+        allowed = "https://careers.example.com/job/123"
+        foreign = "https://evil.example/job/123"
+        partial = f"{allowed}/unexpected"
+        jobs = {url: DiscoveredJob(url=url, title=url) for url in (allowed, foreign, partial)}
+        result = MonitorResult(
+            urls=set(jobs),
+            jobs_by_url=jobs,
+            new_sitemap_url="https://careers.example.com/sitemap.xml",
+            filtered_count=7,
+            security_filtered_count=2,
+            metadata_updates={"cursor": 123},
+            hybrid=True,
+            truncated=True,
+        )
+
+        filtered = _apply_url_allowlist(
+            result,
+            {"url_allowlist": r"https://careers[.]example[.]com/job/[0-9]+"},
+        )
+
+        assert filtered.urls == {allowed}
+        assert filtered.jobs_by_url is not None
+        assert set(filtered.jobs_by_url) == {allowed}
+        assert filtered.filtered_count == 7
+        assert filtered.security_filtered_count == 4
+        assert filtered.new_sitemap_url == result.new_sitemap_url
+        assert filtered.metadata_updates == {"cursor": 123}
+        assert filtered.hybrid is True
+        assert filtered.truncated is True
+
+    @pytest.mark.parametrize("invalid", ["", None, 42, "("])
+    def test_configured_invalid_allowlist_fails_closed(self, invalid):
+        result = MonitorResult(
+            urls={"https://careers.example.com/job/123"},
+            jobs_by_url={
+                "https://careers.example.com/job/123": DiscoveredJob(
+                    url="https://careers.example.com/job/123",
+                    title="Engineer",
+                )
+            },
+        )
+
+        filtered = _apply_url_allowlist(result, {"url_allowlist": invalid})
+
+        assert filtered.urls == set()
+        assert filtered.jobs_by_url == {}
+        assert filtered.filtered_count == 0
+        assert filtered.security_filtered_count == 1
 
 
 class TestMonitorOne:

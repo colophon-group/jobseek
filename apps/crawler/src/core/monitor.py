@@ -28,6 +28,10 @@ class MonitorResult:
     jobs_by_url: dict[str, DiscoveredJob] | None = None
     new_sitemap_url: str | None = None
     filtered_count: int = 0
+    # URLs rejected by an explicit provider-boundary allowlist. Unlike the
+    # ordinary extraction filter (which commonly removes non-job sitemap
+    # pages), any non-zero value is a security signal for one-shot migrations.
+    security_filtered_count: int = 0
     #: JSONB patch to merge into ``job_board.metadata`` after a successful
     #: batch (e.g. incremental monitors use this to persist a high-water mark).
     metadata_updates: dict | None = None
@@ -105,6 +109,7 @@ def _apply_url_filter(result: MonitorResult, config: dict) -> MonitorResult:
         jobs_by_url=filtered_jobs,
         new_sitemap_url=result.new_sitemap_url,
         filtered_count=result.filtered_count + removed,
+        security_filtered_count=result.security_filtered_count,
         metadata_updates=result.metadata_updates,
         hybrid=result.hybrid,
         truncated=result.truncated,
@@ -170,6 +175,58 @@ def _apply_job_filter(result: MonitorResult, config: dict) -> MonitorResult:
         jobs_by_url=filtered_jobs,
         new_sitemap_url=result.new_sitemap_url,
         filtered_count=result.filtered_count + removed,
+        security_filtered_count=result.security_filtered_count,
+        metadata_updates=result.metadata_updates,
+        hybrid=result.hybrid,
+        truncated=result.truncated,
+    )
+
+
+def _apply_url_allowlist(result: MonitorResult, config: dict) -> MonitorResult:
+    """Apply an exact, fail-closed provider-boundary URL allowlist.
+
+    ``url_filter`` remains the broad extraction mechanism and intentionally
+    fails open on malformed operator regexes for backward compatibility.
+    ``url_allowlist`` is for security-sensitive identity transforms: it is a
+    single regex evaluated with ``fullmatch`` and rejects every URL when the
+    configured contract is empty, non-string, or invalid.
+    """
+    if "url_allowlist" not in config:
+        return result
+
+    raw_allowlist = config.get("url_allowlist")
+    try:
+        if not isinstance(raw_allowlist, str) or not raw_allowlist:
+            raise ValueError("url_allowlist must be a non-empty regex string")
+        pattern = re.compile(raw_allowlist)
+    except (ValueError, re.error) as exc:
+        structlog.get_logger().warning("monitor.url_allowlist_invalid", error=str(exc))
+        return MonitorResult(
+            urls=set(),
+            jobs_by_url={} if result.jobs_by_url is not None else None,
+            new_sitemap_url=result.new_sitemap_url,
+            filtered_count=result.filtered_count,
+            security_filtered_count=result.security_filtered_count + len(result.urls),
+            metadata_updates=result.metadata_updates,
+            hybrid=result.hybrid,
+            truncated=result.truncated,
+        )
+
+    filtered_urls = {url for url in result.urls if pattern.fullmatch(url)}
+    filtered_jobs = None
+    if result.jobs_by_url is not None:
+        filtered_jobs = {
+            url: job for url, job in result.jobs_by_url.items() if url in filtered_urls
+        }
+
+    return MonitorResult(
+        urls=filtered_urls,
+        jobs_by_url=filtered_jobs,
+        new_sitemap_url=result.new_sitemap_url,
+        filtered_count=result.filtered_count,
+        security_filtered_count=(
+            result.security_filtered_count + len(result.urls) - len(filtered_urls)
+        ),
         metadata_updates=result.metadata_updates,
         hybrid=result.hybrid,
         truncated=result.truncated,
@@ -212,6 +269,7 @@ def _apply_url_transform(result: MonitorResult, config: dict) -> MonitorResult:
         jobs_by_url=new_jobs,
         new_sitemap_url=result.new_sitemap_url,
         filtered_count=result.filtered_count,
+        security_filtered_count=result.security_filtered_count,
         metadata_updates=result.metadata_updates,
         hybrid=result.hybrid,
         truncated=result.truncated,
@@ -295,6 +353,15 @@ async def monitor_one(
             kept=len(result.urls),
             removed=job_removed,
         )
+    before_allowlist = len(result.urls)
+    result = _apply_url_allowlist(result, config)
+    allowlist_removed = before_allowlist - len(result.urls)
+    if allowlist_removed:
+        structlog.get_logger().warning(
+            "monitor.url_allowlist_rejected",
+            kept=len(result.urls),
+            removed=allowlist_removed,
+        )
     result = _apply_url_transform(result, config)
 
     if artifact_dir is not None:
@@ -328,5 +395,6 @@ async def monitor_one_stream(
             result = _normalize_discovered(batch)
             result = _apply_url_filter(result, config)
             result = _apply_job_filter(result, config)
+            result = _apply_url_allowlist(result, config)
             result = _apply_url_transform(result, config)
             yield result

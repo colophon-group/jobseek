@@ -23,6 +23,7 @@ from src.batch import (
     _RECORD_FAILURE,
     _RECORD_SCRAPE_SUCCESS,
     _RECORD_SCRAPE_TRANSIENT,
+    _RECORD_SUCCESS_NONEMPTY,
     _UPDATE_ENRICH_CONTENT,
     _UPDATE_JOB_CONTENT,
     _UPDATE_METADATA,
@@ -50,7 +51,7 @@ from src.batch import (
     process_scrape_batch,
 )
 from src.core.location_resolve import LocationResolver, ResolvedLocation
-from src.core.monitor import MonitorResult
+from src.core.monitor import MonitorResult, _apply_url_allowlist
 from src.core.monitors import DiscoveredJob, api_monitor_types
 from src.core.scrapers import JobContent
 from src.processing.board import BoardMonitorResult, _fetch_diff_batch
@@ -200,6 +201,7 @@ def _mock_board(**overrides):
     defaults = {
         "id": "board-1",
         "company_id": "company-1",
+        "board_slug": "example-board",
         "board_url": "https://example.com/jobs",
         "crawler_type": "greenhouse",
         "metadata": None,
@@ -352,6 +354,182 @@ def _counter_value(metric, **labels):
 
 
 class TestProcessOneBoard:
+    @pytest.mark.parametrize(
+        ("allowlist", "raw_url"),
+        [
+            pytest.param("(", "https://careers.example.com/job/1", id="invalid-regex"),
+            pytest.param(
+                r"https://careers[.]example[.]com/job/[0-9]+",
+                "https://evil.example/job/1",
+                id="foreign-provider-shape",
+            ),
+        ],
+    )
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_all_provider_boundary_rejections_fail_without_empty_or_delist(
+        self,
+        mock_monitor,
+        mock_get_redis,
+        allowlist,
+        raw_url,
+        mock_pool,
+        mock_http,
+    ):
+        """An all-rejected allowlist batch is a failure, never an empty inventory."""
+        from src.processing.board import monitor_url_filtered_total
+
+        pool, conn = mock_pool
+        filtered = _apply_url_allowlist(
+            MonitorResult(urls={raw_url}),
+            {"url_allowlist": allowlist},
+        )
+        assert filtered.urls == set()
+        assert filtered.security_filtered_count == 1
+        mock_monitor.side_effect = _mock_stream(filtered)
+        conn.fetchrow.return_value = {
+            "board_status": "active",
+            "entered_quarantine": False,
+        }
+        board = _mock_board(metadata={"url_allowlist": allowlist})
+        before = _counter_value(
+            monitor_url_filtered_total,
+            reason="provider_boundary",
+            board_id="board-1",
+        )
+        bound_log = MagicMock()
+
+        with (
+            patch("src.processing.board.log") as base_log,
+            patch(
+                "src.processing.board._retire_canonicalized_provider_identities",
+                new_callable=AsyncMock,
+            ) as migration,
+            patch(
+                "src.processing.board._mark_gone_with_guards",
+                new_callable=AsyncMock,
+            ) as gone_guards,
+        ):
+            base_log.bind.return_value = bound_log
+            outcome = await _process_one_board(board, pool, mock_http)
+
+        assert outcome.status == "failed"
+        failure_calls = [
+            call for call in conn.fetchrow.await_args_list if call.args[0] == _RECORD_FAILURE
+        ]
+        assert len(failure_calls) == 1
+        assert "provider boundary allowlist rejected 1 URL" in failure_calls[0].args[2]
+        fetch_sqls = [call.args[0] for call in conn.fetch.await_args_list]
+        assert _RECORD_EMPTY_CHECK not in fetch_sqls
+        assert _DELIST_BOARD_POSTINGS not in fetch_sqls
+        migration.assert_not_awaited()
+        gone_guards.assert_not_awaited()
+        bound_log.error.assert_called_once_with(
+            "batch.monitor.provider_boundary_rejected",
+            batch=1,
+            rejected=1,
+            accepted=0,
+        )
+        assert (
+            _counter_value(
+                monitor_url_filtered_total,
+                reason="provider_boundary",
+                board_id="board-1",
+            )
+            - before
+            == 1
+        )
+        mock_get_redis.assert_not_called()
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_partial_provider_rejection_keeps_accepted_write_then_fails_us_cycle(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """US/receipt cycles keep accepted writes but suppress every gone path."""
+        from src.processing.board import monitor_url_filtered_total
+
+        pool, conn = mock_pool
+        accepted_url = "https://careers.emdgroup.com/us/en/job/300535"
+        allowlist = r"https://careers[.]emdgroup[.]com/us/en/job/[0-9]+"
+        filtered = _apply_url_allowlist(
+            MonitorResult(urls={accepted_url, "https://evil.example/us/en/job/300535"}),
+            {"url_allowlist": allowlist},
+        )
+        assert filtered.urls == {accepted_url}
+        assert filtered.security_filtered_count == 1
+        mock_monitor.side_effect = _mock_stream(filtered)
+        conn.fetch.side_effect = [
+            [_diff_row("new", url=accepted_url)],
+            [_inserted_row("jp-accepted", accepted_url)],
+        ]
+        conn.fetchrow.return_value = {
+            "board_status": "active",
+            "entered_quarantine": False,
+        }
+        board = _mock_board(
+            board_slug="merck-us-en",
+            board_url="https://careers.emdgroup.com/us/en/search-results",
+            crawler_type="nextdata",
+            metadata={
+                "url_allowlist": allowlist,
+                "_identity_migration_receipt": {"id": "already-completed"},
+            },
+        )
+        before = _counter_value(
+            monitor_url_filtered_total,
+            reason="provider_boundary",
+            board_id="board-1",
+        )
+        bound_log = MagicMock()
+
+        with (
+            patch("src.processing.board.log") as base_log,
+            patch(
+                "src.processing.board._retire_canonicalized_provider_identities",
+                new_callable=AsyncMock,
+            ) as migration,
+            patch(
+                "src.processing.board._mark_gone_with_guards",
+                new_callable=AsyncMock,
+            ) as gone_guards,
+        ):
+            base_log.bind.return_value = bound_log
+            outcome = await _process_one_board(board, pool, mock_http)
+
+        assert outcome.status == "failed"
+        fetch_sqls = [call.args[0] for call in conn.fetch.await_args_list]
+        assert _DIFF_BATCH in fetch_sqls
+        assert _INSERT_URL_ONLY_JOBS in fetch_sqls
+        assert _RECORD_EMPTY_CHECK not in fetch_sqls
+        assert _DELIST_BOARD_POSTINGS not in fetch_sqls
+        assert not any(
+            call.args and call.args[0] == _RECORD_SUCCESS_NONEMPTY
+            for call in conn.fetchval.await_args_list
+        )
+        failure_calls = [
+            call for call in conn.fetchrow.await_args_list if call.args[0] == _RECORD_FAILURE
+        ]
+        assert len(failure_calls) == 1
+        migration.assert_not_awaited()
+        gone_guards.assert_not_awaited()
+        bound_log.error.assert_called_once_with(
+            "batch.monitor.provider_boundary_rejected",
+            batch=1,
+            rejected=1,
+            accepted=1,
+        )
+        assert (
+            _counter_value(
+                monitor_url_filtered_total,
+                reason="provider_boundary",
+                board_id="board-1",
+            )
+            - before
+            == 1
+        )
+        mock_get_redis.assert_not_called()
+
     @patch("src.batch.get_redis")
     @patch("src.batch.monitor_one_stream")
     async def test_empty_result_records_empty_check(
@@ -4418,6 +4596,47 @@ class TestResolveDelistThreshold:
         # Threshold is the 3rd positional arg to _MARK_GONE_BY_TIMESTAMP
         # (after board_id and monitor_start_ts).
         assert mark_gone[0].args[3] == 6
+
+    @patch("src.batch.get_redis")
+    @patch("src.batch.monitor_one_stream")
+    async def test_identity_migration_runs_before_ordinary_gone_guards(
+        self, mock_monitor, mock_get_redis, mock_pool, mock_http
+    ):
+        """The one-shot lane retires legacy identities before unchanged guards."""
+        pool, conn = mock_pool
+        canonical_url = "https://careers.emdgroup.com/us/en/job/300535"
+        mock_monitor.side_effect = _mock_stream(
+            MonitorResult(urls={canonical_url}, jobs_by_url=None)
+        )
+        conn.fetch.return_value = [_diff_row("touched", row_id="jp-canonical", url=canonical_url)]
+        board = _mock_board(
+            board_slug="merck-de-de",
+            board_url="https://careers.merckgroup.com/de/de/search-results",
+            crawler_type="sitemap",
+            metadata={"identity_migration": "merck-phenom-stable-id-v1"},
+        )
+        events: list[str] = []
+
+        async def migrate(*_args, **kwargs):
+            events.append("migration")
+            assert kwargs["canonical_urls"] == {canonical_url}
+            return 5
+
+        async def guard(*_args, **_kwargs):
+            events.append("ordinary_guard")
+            return 2, None
+
+        with (
+            patch(
+                "src.processing.board._retire_canonicalized_provider_identities",
+                side_effect=migrate,
+            ),
+            patch("src.processing.board._mark_gone_with_guards", side_effect=guard),
+        ):
+            result = await _process_one_board(board, pool, mock_http)
+
+        assert result.success is True
+        assert events == ["migration", "ordinary_guard"]
 
 
 # ── TestMarkGoneGuards ─────────────────────────────────────────────

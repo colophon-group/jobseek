@@ -30,6 +30,7 @@ class TestBoardRecord:
     def test_basic_fields(self):
         config = {
             "company_id": "comp-1",
+            "board_slug": "example-board",
             "board_url": "https://example.com/jobs",
             "crawler_type": "greenhouse",
             "check_interval_minutes": "30",
@@ -38,6 +39,7 @@ class TestBoardRecord:
         rec = _BoardRecord("board-1", config)
         assert rec["id"] == "board-1"
         assert rec["company_id"] == "comp-1"
+        assert rec["board_slug"] == "example-board"
         assert rec["board_url"] == "https://example.com/jobs"
         assert rec["crawler_type"] == "greenhouse"
         assert rec["check_interval_minutes"] == 30
@@ -46,6 +48,7 @@ class TestBoardRecord:
     def test_missing_metadata(self):
         rec = _BoardRecord("board-2", {"board_url": "https://x.com"})
         assert rec["metadata"] == {}
+        assert rec["board_slug"] is None
 
     def test_invalid_metadata_json(self):
         rec = _BoardRecord("board-3", {"metadata": "not-json{"})

@@ -80,6 +80,7 @@ def _mock_board(**overrides):
     defaults = {
         "id": "board-1",
         "company_id": "company-1",
+        "board_slug": "example-board",
         "board_url": "https://example.com/jobs",
         "crawler_type": "greenhouse",
         "metadata": None,

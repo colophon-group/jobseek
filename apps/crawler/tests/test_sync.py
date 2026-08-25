@@ -82,6 +82,16 @@ class TestBoardSourceChangeReset:
                 "scraper_config": {"enrich": ["description"]},
             },
         )
+        assert base == _monitor_config_fingerprint(
+            "https://example.test/jobs",
+            "dom",
+            {
+                "selector": "a.job",
+                "scraper_type": "dom",
+                "identity_migration": "one-shot-v1",
+                "_identity_migration_receipt": {"id": "one-shot-v1"},
+            },
+        )
 
     def test_local_upsert_batches_all_boards_in_one_statement(self):
         sql = " ".join(_UPSERT_BOARD_LOCAL.split())
@@ -97,7 +107,8 @@ class TestBoardSourceChangeReset:
         sql = " ".join(_REALIGN_RENAMED_BOARD_URLS_LOCAL.split())
 
         assert "SET board_url = b.board_url, company_id = c.id" in sql
-        assert "metadata = '{}'::jsonb" in sql
+        assert "metadata = jsonb_strip_nulls(jsonb_build_object(" in sql
+        assert "jb.metadata -> '_identity_migration_receipt'" in sql
         assert "board_status = 'active'" in sql
         assert "consecutive_failures = 0" in sql
         assert "next_check_at = now()" in sql
@@ -128,6 +139,23 @@ class TestBoardSourceChangeReset:
         assert "WHEN job_board.board_status = 'disabled' THEN false" in sql
         assert "ELSE job_board.consecutive_failures" in sql
         assert "ELSE job_board.last_error" in sql
+
+    def test_sync_preserves_runtime_identity_receipt_in_both_metadata_branches(self):
+        sql = " ".join(_UPSERT_BOARD_LOCAL.split())
+
+        source_changed = (
+            "THEN COALESCE(EXCLUDED.metadata, '{}'::jsonb) || "
+            "jsonb_strip_nulls(jsonb_build_object( "
+            "'_identity_migration_receipt', "
+            "job_board.metadata -> '_identity_migration_receipt' ))"
+        )
+        unchanged = "ELSE EXCLUDED.metadata || jsonb_strip_nulls(jsonb_build_object( 'sitemap_url'"
+        assert source_changed in sql
+        assert unchanged in sql
+        assert sql.count("job_board.metadata -> '_identity_migration_receipt'") == 2
+        # Existing runtime state is on the right-hand side of jsonb `||`, so
+        # it wins over any stale receipt accidentally supplied by CSV input.
+        assert sql.index(source_changed) < sql.index("ELSE EXCLUDED.metadata ||")
 
 
 class TestLoadCompanies:
@@ -883,6 +911,13 @@ class TestSyncBoards:
                 "enabled": True,
                 "extra": {"host": "mercadolibre.eightfold.ai", "domain": "mercadolibre.com"},
             },
+            "_identity_migration_receipt": {
+                "id": "one-shot-v1",
+                "version": 1,
+                "config_fingerprint": "stable",
+                "completed_at": "2026-08-25T12:00:00+00:00",
+                "retired_count": 5,
+            },
         }
         mock_local_conn = MagicMock()
         mock_local_conn.execute = AsyncMock()
@@ -908,6 +943,7 @@ class TestSyncBoards:
         schedules = mock_enqueue.await_args.args[0]
         assert len(schedules) == 1
         config = schedules[0].config
+        assert config["board_slug"] == "mercado-libre-eightfold"
         assert json.loads(config["metadata"]) == merged_metadata
         assert config["crawler_type"] == "eightfold"
         mock_remove.assert_not_awaited()
