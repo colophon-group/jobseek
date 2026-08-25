@@ -47,6 +47,7 @@ _MAX_EMPTY_TEXT_LENGTH = 512
 _MAX_EMPTY_SELECTOR_LENGTH = 256
 _MAX_ITEM_BOUNDARY_TAG_LENGTH = 32
 _MAX_SECTION_REGEX_LENGTH = 2_048
+_MAX_POSITIONS_PER_LISTING = 20
 _HTML_TAG_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 _ORDINAL_DAY_SUFFIX_RE = re.compile(r"(?<=\d)(?:st|nd|rd|th)\b", re.IGNORECASE)
 
@@ -520,6 +521,7 @@ async def discover(
         section_end — last page-section boundary (exclusive; requires section_start)
         preserve_single_location — keep an extracted location string intact (default: false)
         description_from_title — reuse the extracted title as description (default: false)
+        positions_per_listing — expand one aggregate source row into this many stable jobs
         defaults   — default field values applied to all jobs
         defaults_by_title — per-title defaults applied to missing fields
         exclude_titles — exact titles to skip after extraction
@@ -563,6 +565,16 @@ async def discover(
     description_from_title = metadata.get("description_from_title", False)
     if not isinstance(description_from_title, bool):
         raise ValueError("inline description_from_title must be a boolean")
+    positions_per_listing = metadata.get("positions_per_listing", 1)
+    if (
+        not isinstance(positions_per_listing, int)
+        or isinstance(positions_per_listing, bool)
+        or not 1 <= positions_per_listing <= _MAX_POSITIONS_PER_LISTING
+    ):
+        raise ValueError(
+            "inline positions_per_listing must be an integer from 1 to "
+            f"{_MAX_POSITIONS_PER_LISTING}"
+        )
     valid_through_patterns, valid_through_format, exclude_expired = _validated_valid_through_config(
         metadata
     )
@@ -593,6 +605,7 @@ async def discover(
     seen_jids: dict[str, int] = {}
     expired_count = 0
     processed_count = 0
+    expansion_truncated = False
     today = datetime.now(UTC).date()
     cursor = 0
 
@@ -640,7 +653,7 @@ async def discover(
             exclude_expired,
         )
         if exclude_expired and valid_through is not None and valid_through < today:
-            expired_count += 1
+            expired_count += positions_per_listing
             continue
         location = result.get("location")
         locations = None
@@ -652,18 +665,28 @@ async def discover(
             else:
                 locations = [loc.strip() for loc in location.split(",") if loc.strip()]
 
-        job = DiscoveredJob(
-            url=url,
-            title=title,
-            description=description or job_defaults.get("description"),
-            locations=locations or job_defaults.get("locations"),
-            employment_type=result.get("employment_type") or job_defaults.get("employment_type"),
-            job_location_type=result.get("job_location_type")
-            or job_defaults.get("job_location_type"),
-            date_posted=result.get("date_posted") or job_defaults.get("date_posted"),
-            extras={"valid_through": valid_through.isoformat()} if valid_through else None,
-        )
-        jobs.append(job)
+        for position_index in range(positions_per_listing):
+            if len(jobs) >= _MAX_JOBS:
+                expansion_truncated = True
+                break
+            if position_index > 0:
+                url = _generate_url(board_url, title, seen_jids)
+            jobs.append(
+                DiscoveredJob(
+                    url=url,
+                    title=title,
+                    description=description or job_defaults.get("description"),
+                    locations=locations or job_defaults.get("locations"),
+                    employment_type=result.get("employment_type")
+                    or job_defaults.get("employment_type"),
+                    job_location_type=result.get("job_location_type")
+                    or job_defaults.get("job_location_type"),
+                    date_posted=result.get("date_posted") or job_defaults.get("date_posted"),
+                    extras={"valid_through": valid_through.isoformat()} if valid_through else None,
+                )
+            )
+        if expansion_truncated:
+            break
 
     if empty_text is not None and not jobs:
         raise ValueError(
@@ -675,7 +698,7 @@ async def discover(
             "inline monitor found no accepted jobs without authoritative empty-state proof"
         )
 
-    truncated = processed_count >= _MAX_JOBS and cursor < len(elements)
+    truncated = expansion_truncated or (processed_count >= _MAX_JOBS and cursor < len(elements))
     log.info("inline.discovered", url=board_url, jobs=len(jobs), expired=expired_count)
     if truncated:
         log.warning("inline.truncated", url=board_url, total=len(jobs), cap=_MAX_JOBS)

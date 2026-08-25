@@ -1534,6 +1534,72 @@ class TestRichRowsStatic:
         with pytest.raises(ValueError, match="conflicting rows for one canonical URL"):
             _extract_rich_rows_static(html, "https://example.com/careers", config, None)
 
+    def test_lifecycle_partition_accepts_current_and_ignores_known_inactive_rows(self):
+        html = """
+        <a class="job" href="/jobs/current.pdf">Current role</a>
+        <a class="job" href="/jobs/expired.pdf">Expired role</a>
+        """
+        config = _validated_rich_rows(
+            {
+                "row_selector": "a.job[href]",
+                "allow_missing_locations": True,
+                "active_urls": ["https://example.com/jobs/current.pdf"],
+                "inactive_urls": ["https://example.com/jobs/expired.pdf"],
+            }
+        )
+
+        assert config is not None
+        jobs = _extract_rich_rows_static(html, "https://example.com/careers", config, None)
+
+        assert [(job.url, job.title) for job in jobs] == [
+            ("https://example.com/jobs/current.pdf", "Current role")
+        ]
+
+    def test_lifecycle_partition_fails_closed_on_an_unclassified_row(self):
+        html = """
+        <a class="job" href="/jobs/current.pdf">Current role</a>
+        <a class="job" href="/jobs/new.pdf">New unreviewed role</a>
+        """
+        config = _validated_rich_rows(
+            {
+                "row_selector": "a.job[href]",
+                "allow_missing_locations": True,
+                "active_urls": ["https://example.com/jobs/current.pdf"],
+                "inactive_urls": [],
+            }
+        )
+
+        assert config is not None
+        with pytest.raises(ValueError, match="unclassified lifecycle URL"):
+            _extract_rich_rows_static(html, "https://example.com/careers", config, None)
+
+    @pytest.mark.parametrize(
+        "active_urls,inactive_urls,error",
+        [
+            ([], [], "active_urls must be a bounded URL list"),
+            (["/relative"], [], "active_urls must contain absolute HTTP URLs"),
+            (
+                ["https://example.com/jobs/shared"],
+                ["https://example.com/jobs/shared"],
+                "active_urls and inactive_urls must be disjoint",
+            ),
+        ],
+    )
+    def test_lifecycle_partition_rejects_invalid_configuration(
+        self,
+        active_urls,
+        inactive_urls,
+        error,
+    ):
+        with pytest.raises(ValueError, match=error):
+            _validated_rich_rows(
+                {
+                    "row_selector": "a.job[href]",
+                    "active_urls": active_urls,
+                    "inactive_urls": inactive_urls,
+                }
+            )
+
     def test_extracts_only_rows_between_named_section_markers(self):
         html = """
         <h2>Past roles</h2>

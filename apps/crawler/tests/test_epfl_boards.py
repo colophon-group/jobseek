@@ -16,9 +16,12 @@ from src.core.monitors.rss import discover as rss_discover
 _BOARDS_PATH = Path(__file__).parents[1] / "data" / "boards.csv"
 _FAIL_CLOSED_INLINE_BOARDS = {
     "epfl-csea",
+    "epfl-gr-ost",
     "epfl-hqc",
+    "epfl-imos",
     "epfl-lanes",
     "epfl-las",
+    "epfl-lemaitre",
     "epfl-lfim",
     "epfl-lpdc",
     "epfl-lrm",
@@ -58,9 +61,12 @@ def test_epfl_inventory_uses_verified_current_sources():
 
     assert {
         "epfl-csea",
+        "epfl-gr-ost",
         "epfl-hqc",
+        "epfl-imos",
         "epfl-lanes",
         "epfl-las",
+        "epfl-lemaitre",
         "epfl-lfim",
         "epfl-lpdc",
         "epfl-lrm",
@@ -68,6 +74,7 @@ def test_epfl_inventory_uses_verified_current_sources():
         "epfl-mesobio",
         "epfl-phd-edpy",
     } <= boards.keys()
+    assert len(boards) == 21
     assert {"epfl-bion", "epfl-hylab", "epfl-math", "epfl-quantum"}.isdisjoint(boards)
     assert boards["epfl-careers"]["metadata"] == {
         "preset": "successfactors",
@@ -125,16 +132,24 @@ async def test_edms_live_config_extracts_unseen_table_rows_without_name_allowlis
 
 
 @pytest.mark.asyncio
-async def test_isic_live_config_keeps_only_stable_direct_pdf_identities():
+async def test_isic_live_config_partitions_current_and_inactive_pdf_identities():
     board = _epfl_boards()["epfl-isic"]
-    html = """
+    active_url = (
+        "https://www.epfl.ch/schools/sb/research/isic/wp-content/uploads/2026/03/LPMT_Phd_2026.pdf"
+    )
+    inactive_url = (
+        "https://www.epfl.ch/schools/sb/research/isic/"
+        "wp-content/uploads/2025/02/LIFMET_Annonce_2025.pdf"
+    )
+    html = f"""
     <h3>Postdoctoral Positions</h3>
     <table>
       <tr><td><a href="https://www.epfl.ch/labs/lfim/openings/">LFIM openings</a></td></tr>
       <tr><td><a href="https://www.epfl.ch/labs/lrm/job-openings/">NMR role</a></td></tr>
       <tr><td><a href="https://www.epfl.ch/labs/luxs/openings/">First LUXS role</a></td></tr>
       <tr><td><a href="https://www.epfl.ch/labs/luxs/openings/">Second LUXS role</a></td></tr>
-      <tr><td><a href="https://www.epfl.ch/jobs/current-role.pdf">Direct PDF role</a></td></tr>
+      <tr><td><a href="{active_url}">Current PDF role</a></td></tr>
+      <tr><td><a href="{inactive_url}">Expired PDF role</a></td></tr>
     </table>
     <h3 id="Masterprojects">Master projects</h3>
     """
@@ -147,7 +162,21 @@ async def test_isic_live_config_keeps_only_stable_direct_pdf_identities():
             client,
         )
 
-    assert result.urls == {"https://www.epfl.ch/jobs/current-role.pdf"}
+    assert result.urls == {active_url}
+
+
+@pytest.mark.asyncio
+async def test_isic_lifecycle_partition_fails_closed_on_unreviewed_pdf():
+    board = _epfl_boards()["epfl-isic"]
+    html = """
+    <h3>Postdoctoral Positions</h3>
+    <table><tr><td><a href="https://www.epfl.ch/jobs/new-role.pdf">New role</a></td></tr></table>
+    <h3 id="Masterprojects">Master projects</h3>
+    """
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, text=html, request=request))
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(ValueError, match="unclassified lifecycle URL"):
+            await monitor_one(board["board_url"], "dom", board["metadata"], client)
 
 
 @pytest.mark.asyncio
@@ -235,13 +264,59 @@ async def test_source_owned_isic_labs_extract_each_distinct_current_role():
 
 
 @pytest.mark.asyncio
-async def test_edpy_uses_visible_titled_pdf_links_and_rejects_hidden_stale_anchors():
+async def test_missing_source_owned_labs_have_stable_complete_position_identities():
+    boards = _epfl_boards()
+    imos = await _discover_fixture(
+        boards["epfl-imos"],
+        """
+        <h1>Open positions</h1>
+        <div class="entry-content container-grid pb-5">PhD Position in Urban Energy Systems</div>
+        <p>Develop hierarchical graph neural networks.</p>
+        <div class="entry-content container-grid pb-5">
+          Summer Internship in Computer Vision and Machine Learning
+        </div>
+        <p>A paid, on-site internship at EPFL.</p>
+        <div>Back to top</div>
+        """,
+    )
+    lemaitre = await _discover_fixture(
+        boards["epfl-lemaitre"],
+        """
+        <h1>Open Positions</h1><h3>Innate immunity in Drosophila</h3><h3>PhD student</h3>
+        <p>One PhD position is now available in these areas.</p><div>Back to top</div>
+        """,
+    )
+    gr_ost = await _discover_fixture(
+        boards["epfl-gr-ost"],
+        """
+        <h1>Open Positions</h1><p>There are three open PhD positions in our group.</p>
+        <p>Study liquid-liquid interface dynamics.</p><div>Back to top</div>
+        """,
+    )
+
+    assert [(job.title, job.employment_type) for job in imos] == [
+        ("PhD Position in Urban Energy Systems", "full_time"),
+        ("Summer Internship in Computer Vision and Machine Learning", "internship"),
+    ]
+    assert [job.title for job in lemaitre] == ["PhD student"]
+    assert [job.title for job in gr_ost] == ["PhD position"] * 3
+    all_jobs = [*imos, *lemaitre, *gr_ost]
+    assert len(all_jobs) == 6
+    assert len({job.url for job in all_jobs}) == 6
+
+
+@pytest.mark.asyncio
+async def test_edpy_partitions_current_expired_and_hidden_stale_pdf_anchors():
     board = _epfl_boards()["epfl-phd-edpy"]
     uploads = "https://www.epfl.ch/education/phd/edpy-physics/wp-content/uploads"
+    active_url = (
+        f"{uploads}/2026/05/PhD-position-in-Mechanics-of-Soft-and-Biological-Matter-Laboratory.pdf"
+    )
+    inactive_url = f"{uploads}/2026/04/PhD-position-in-experimental-particle-physics-LHCb.pdf"
     html = (
         '<div class="entry-content"><ul>'
-        f'<li><a href="{uploads}/2026/04/current-a.pdf">Current A</a></li>'
-        f'<li><a href="{uploads}/2026/05/current-b.pdf">Current B</a></li>'
+        f'<li><a href="{active_url}">Current role</a></li>'
+        f'<li><a href="{inactive_url}">Expired role</a></li>'
         f'<li><a href="{uploads}/2025/06/'
         'PhD-in-Mechanics-of-Soft-and-Biological-Matter-Laboratory.pdf">&nbsp;</a></li>'
         f'<li><a href="{uploads}/2023/12/'
@@ -252,10 +327,7 @@ async def test_edpy_uses_visible_titled_pdf_links_and_rejects_hidden_stale_ancho
     async with httpx.AsyncClient(transport=transport) as client:
         result = await monitor_one(board["board_url"], "dom", board["metadata"], client)
 
-    assert result.urls == {
-        "https://www.epfl.ch/education/phd/edpy-physics/wp-content/uploads/2026/04/current-a.pdf",
-        "https://www.epfl.ch/education/phd/edpy-physics/wp-content/uploads/2026/05/current-b.pdf",
-    }
+    assert result.urls == {active_url}
 
 
 @pytest.mark.asyncio

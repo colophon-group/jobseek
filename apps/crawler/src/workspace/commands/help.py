@@ -1294,6 +1294,11 @@ inline — Single-Page Extraction (rich)
     description_from_title
                  true = reuse each extracted title as its description when the
                  source exposes one project/position text field. Default: false.
+    positions_per_listing
+                 Integer from 1 to 20. Expands one authoritative aggregate row
+                 into that many jobs with deterministic numbered identity
+                 suffixes. Use only when the source explicitly states a count.
+                 Default: 1.
     item_boundary_tag
                  Optional HTML tag that starts each posting (for example h2).
                  Each repeated step run is restricted to one such block, so an
@@ -1497,6 +1502,12 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    exclusive and fail closed if page structure drifts:
                    {"section_start": {"selector": "h3", "text": "Jobs"},
                     "section_end": {"selector": "h3#student-projects"}}.
+                   Optional active_urls and inactive_urls form an exact,
+                   bounded lifecycle partition. Both lists are required
+                   together. Active URLs are published, known inactive URLs
+                   are ignored, and any selected URL in neither list fails the
+                   cycle closed for review. This is intended for authoritative
+                   pages that retain expired document links.
                    Rows whose URL is stored directly on the row can instead use
                    {"row_selector": "tr[data-href]", "link_attr": "data-href",
                     "title_selector": "td.title",
