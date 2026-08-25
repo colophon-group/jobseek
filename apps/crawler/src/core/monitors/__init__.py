@@ -422,6 +422,11 @@ def _build_comment(name: str, metadata: dict) -> str:
         jobs = metadata.get("jobs")
         label = f"JobStreet employer profile \u2014 company: {company_id}"
         return f"{label}, {jobs} jobs" if jobs is not None else label
+    if name == "infoniqa":
+        employer = metadata.get("employer_name", "?")
+        jobs = metadata.get("jobs")
+        label = f"Infoniqa jobexchange \u2014 employer: {employer}"
+        return f"{label}, {jobs} jobs" if jobs is not None else label
     if name == "jobvite":
         tenant = metadata.get("tenant", "?")
         jobs = metadata.get("jobs")
@@ -904,6 +909,7 @@ from src.core.monitors import (  # noqa: E402
     hireology,  # noqa: F401
     hrmos,  # noqa: F401
     icims,  # noqa: F401
+    infoniqa,  # noqa: F401
     inline,  # noqa: F401
     inploi,  # noqa: F401
     intervieweb,  # noqa: F401

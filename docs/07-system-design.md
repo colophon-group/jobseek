@@ -186,6 +186,7 @@ async def monitor_one(board_url, monitor_type, monitor_config, http, artifact_di
 | 10   | `jobbank104`      | URL-only | json-ld     | 104 Job Bank company-page links through optional proxy transport |
 | 10   | `jobstreet`       | Rich     | jobstreet   | JobStreet employer search summaries + GraphQL detail enrichment |
 | 10   | `icims`           | URL-only | json-ld     | iCIMS static listings + bounded pagination |
+| 10   | `infoniqa`        | URL-only | --          | Infoniqa employer-bound session POST pagination |
 | 10   | `intervieweb`     | URL-only | json-ld     | Intervieweb HTML + CSRF-protected POST pagination |
 | 10   | `gupy`            | URL-only | json-ld     | Gupy single-page NextData inventory |
 | 10   | `cornerstone`     | Rich     | skip        | Cornerstone bootstrap + regional paginated search API |

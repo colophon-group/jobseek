@@ -943,6 +943,7 @@ _MONITOR_CONFIG_HINTS = {
     "jobvite": "Requires: tenant + listing_url (auto-filled from a jobs.jobvite.com URL)",
     "pageup": "Requires: instance, source_pointer, locale (auto-filled from a PageUp URL)",
     "icims": "Requires: host (auto-filled from an icims.com URL)",
+    "infoniqa": "Requires: employer_name (auto-filled from a live Infoniqa board probe)",
     "intervieweb": "No config required (POST endpoint and CSRF token are resolved per run)",
     "gupy": "Requires: tenant (auto-filled from a *.gupy.io URL)",
     "cornerstone": "Requires: tenant, site_id, corp (auto-filled from a *.csod.com URL)",

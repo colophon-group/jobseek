@@ -155,6 +155,7 @@ _ALL_MONITOR_TYPES: frozenset[str] = _RICH_MONITORS | {
     "herp",
     "hrmos",
     "icims",
+    "infoniqa",
     "intervieweb",
     "jazzhr",
     "jobbank104",
@@ -332,6 +333,19 @@ def detect_ats_from_url(url: str) -> str | None:
         return "jobvite"
     if pageup_board_from_url(url) is not None:
         return "pageup"
+    if (
+        parsed.scheme == "https"
+        and parsed.username is None
+        and parsed.password is None
+        and port in (None, 443)
+        and host.endswith(".infoniqa.io")
+        and parsed.path == "/hcm/jobexchange/showJobOfferList.do"
+        and not parsed.fragment
+        and len(parse_qsl(parsed.query, keep_blank_values=True)) == 2
+        and dict(parse_qsl(parsed.query, keep_blank_values=True))
+        == {"init": "true", "j": "jobexchange"}
+    ):
+        return "infoniqa"
     if (
         host == "herp.careers"
         and not parsed.query

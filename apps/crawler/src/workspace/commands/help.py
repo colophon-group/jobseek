@@ -3562,6 +3562,24 @@ MONITOR_CARDS: dict[str, str] = {
     "jobvite": MONITOR_JOBVITE,
     "pageup": MONITOR_PAGEUP,
     "icims": MONITOR_ICIMS,
+    "infoniqa": """\
+infoniqa — Infoniqa jobexchange form-pagination monitor
+
+  Returns:  Canonical detail URLs from the CSRF/session-bound POST workflow
+  Scraper:  Select a detail-page scraper explicitly
+  Cost:     10
+  Browser:  No
+
+  Config:
+    {"employer_name": "EHL Hotelfachschule Passugg"}
+
+  The initial HTML is only a pre-hydration shell and never proves zero. The
+  monitor validates the configured employer heading and logo, starts the real
+  search POST, drains hasNextJobOffers/showNextJobOffers pagination, and checks
+  the exact unique URL count against two independent provider count markers.
+  A zero result is accepted only when both counts are zero and hasNextJobOffers
+  explicitly returns false. Detail URLs must remain on the configured origin.
+""",
     "intervieweb": MONITOR_INTERVIEWEB,
     "gupy": MONITOR_GUPY,
     "cornerstone": MONITOR_CORNERSTONE,
