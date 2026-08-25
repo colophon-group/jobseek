@@ -212,6 +212,8 @@ _HTML_LANG_RE = re.compile(r"<html[^>]+\blang=[\"'](?P<lang>[a-z]{2})(?:[-_][A-Z
 _PROSPECTIVE_HOST = "ohws.prospective.ch"
 _PROSPECTIVE_CAREERCENTER_PATH = re.compile(r"^/public/v[12]/careercenter/(?P<medium_id>\d+)/?$")
 _PROSPECTIVE_PAGE_SIZE = 100
+_PROSPECTIVE_DETECTION_RETRIES = 5
+_PROSPECTIVE_DETECTION_BASE_DELAY = 0.5
 _LUMESSE_API_PATH = "/fo/rest/jobs"
 _LUMESSE_BOARD_PATH_RE = re.compile(r"/lumesse_jobsearch\.html/?$", re.I)
 
@@ -327,8 +329,13 @@ async def _detect_prospective_config(
         html = await fetch_text_page_with_retry(
             client,
             url,
-            retries=3,
-            base_delay=0.25,
+            # Branded CareerCenter hosts can emit short 403/503 bursts while
+            # their public medium API remains healthy. Detection is a bounded
+            # setup-time request, so give those bursts enough time to recover
+            # before falling through to the browser-based generic sniffer.
+            retries=_PROSPECTIVE_DETECTION_RETRIES,
+            base_delay=_PROSPECTIVE_DETECTION_BASE_DELAY,
+            retryable_statuses={403},
             require_nonempty=True,
             max_chars=250_000,
             log_event="api_sniffer.prospective_page_backoff",

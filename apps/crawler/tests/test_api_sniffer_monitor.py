@@ -694,12 +694,13 @@ class TestProspectiveDetection:
                 }
             ],
         }
+        client = AsyncMock()
 
         with (
             patch(
                 "src.core.monitors.api_sniffer.fetch_text_page_with_retry",
                 AsyncMock(return_value=html),
-            ),
+            ) as fetch_page,
             patch(
                 "src.core.monitors.api_sniffer.http_fetch_with_retry",
                 AsyncMock(return_value=payload),
@@ -707,7 +708,7 @@ class TestProspectiveDetection:
         ):
             config = await _detect_prospective_config(
                 "https://jobs.example.com/",
-                AsyncMock(),
+                client,
             )
 
         assert config is not None
@@ -725,6 +726,16 @@ class TestProspectiveDetection:
         ]
         assert config["items"] == 1
         assert config["total"] == 38
+        fetch_page.assert_awaited_once_with(
+            client,
+            "https://jobs.example.com/",
+            retries=5,
+            base_delay=0.5,
+            retryable_statuses={403},
+            require_nonempty=True,
+            max_chars=250_000,
+            log_event="api_sniffer.prospective_page_backoff",
+        )
         api_url = fetch_api.await_args.args[2]
         assert api_url.startswith("https://ohws.prospective.ch/public/v1/medium/1002787/jobs?")
         assert "lang=fr" in api_url
