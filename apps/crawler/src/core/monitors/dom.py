@@ -1874,12 +1874,19 @@ def _extract_rich_rows_static(
                     f"DOM monitor rich_rows row {index} omitted configured metadata {field!r}"
                 )
             metadata[field] = value
-        jobs_by_url[canonical_url] = DiscoveredJob(
+        job = DiscoveredJob(
             url=canonical_url,
             title=title,
             locations=[", ".join(location_parts)] if location_parts else None,
             metadata=metadata or None,
         )
+        existing = jobs_by_url.get(canonical_url)
+        if existing is not None and existing != job and url_canonicalizer is None:
+            raise ValueError(
+                "DOM monitor rich_rows produced conflicting rows for one canonical URL: "
+                f"{canonical_url}"
+            )
+        jobs_by_url[canonical_url] = job
 
     if advertised_total is not None and len(jobs_by_url) != advertised_total:
         raise ValueError(

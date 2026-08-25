@@ -1521,6 +1521,19 @@ class TestRichRowsStatic:
             ("https://example.com/jobs/engineer", "Engineer", ["Winterthur, Switzerland"])
         ]
 
+    def test_rejects_conflicting_rows_that_share_one_canonical_url(self):
+        html = """
+        <a class="job" href="/openings/">First distinct opportunity</a>
+        <a class="job" href="/openings/">Second distinct opportunity</a>
+        """
+        config = _validated_rich_rows(
+            {"row_selector": "a.job[href]", "allow_missing_locations": True}
+        )
+
+        assert config is not None
+        with pytest.raises(ValueError, match="conflicting rows for one canonical URL"):
+            _extract_rich_rows_static(html, "https://example.com/careers", config, None)
+
     def test_extracts_only_rows_between_named_section_markers(self):
         html = """
         <h2>Past roles</h2>
