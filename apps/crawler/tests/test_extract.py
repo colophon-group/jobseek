@@ -399,6 +399,46 @@ class TestWalkSteps:
         result, _ = walk_steps(els, steps)
         assert result["val"] == "With attr"
 
+    def test_value_attr_extracts_attribute_instead_of_visible_text(self):
+        els = [
+            {
+                "tag": "div",
+                "attrs": {"id": "open1911", "class": "detail"},
+                "text": "Loading...",
+            }
+        ]
+
+        result, _ = walk_steps(
+            els,
+            [
+                {
+                    "tag": "div",
+                    "attr": "id=open",
+                    "field": "detail_id",
+                    "value_attr": "id",
+                    "regex": r"^open(\d+)$",
+                }
+            ],
+        )
+
+        assert result["detail_id"] == "1911"
+
+    @pytest.mark.parametrize("value_attr", ["", 123, "x" * 129])
+    def test_value_attr_rejects_invalid_names(self, value_attr):
+        els = [{"tag": "div", "attrs": {"id": "1"}, "text": "Job"}]
+
+        with pytest.raises(ValueError, match="value_attr"):
+            walk_steps(els, [{"tag": "div", "field": "id", "value_attr": value_attr}])
+
+    def test_value_attr_rejects_range_extraction(self):
+        els = [{"tag": "div", "attrs": {"id": "1"}, "text": "Job"}]
+
+        with pytest.raises(ValueError, match="range extraction"):
+            walk_steps(
+                els,
+                [{"tag": "div", "field": "id", "value_attr": "id", "stop_tag": "h2"}],
+            )
+
     def test_regex_capture(self):
         els = self._els(("p", "Location: Berlin, Germany"))
         steps = [{"tag": "p", "field": "city", "regex": r"Location:\s*(.+)"}]

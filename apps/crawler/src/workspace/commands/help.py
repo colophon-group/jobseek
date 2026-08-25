@@ -1327,9 +1327,21 @@ inline — Single-Page Extraction (rich)
       "render": true,
       "steps": [
         {"tag": "h3", "field": "title"},
+        {"tag": "div", "field": "detail_id", "value_attr": "data-job-id"},
         {"text": "Location", "offset": 1, "field": "location", "optional": true},
         {"tag": "p", "field": "description", "html": true, "stop_tag": "h3"}
       ],
+      "detail_api": {
+        "url_template": "https://company.example/api/jobs/{id}",
+        "id_field": "detail_id",
+        "fields": {
+          "url": "canonical_url",
+          "description": "content",
+          "date_posted": "published_at",
+          "valid_through": "expires_at"
+        },
+        "required_fields": ["description"]
+      },
       "defaults": {
         "description": "<p>Evergreen role description.</p>",
         "employment_type": "full_time"
@@ -1449,6 +1461,14 @@ inline — Single-Page Extraction (rich)
                  condition — when it can't find a match, extraction ends.
                  A non-empty list is mandatory when the explicit empty-state
                  contract is configured; missing steps fail closed.
+                 A step may set value_attr to read an HTML attribute (for
+                 example a data-id) instead of visible text.
+    detail_api   Optional per-item JSON enrichment. url_template must be HTTPS
+                 and contain one {id}; id_field names a value extracted by the
+                 steps. fields uses the normal structured field mapping syntax
+                 and supports url, title, description, location(s), employment
+                 type, workplace type, date_posted, and valid_through. The cycle
+                 fails closed when an ID, response, or required field is absent.
     defaults     Default field values applied when extracted value is absent.
                  Supports: description, locations (list), employment_type,
                  job_location_type, date_posted, valid_through.

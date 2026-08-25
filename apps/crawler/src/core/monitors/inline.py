@@ -19,12 +19,13 @@ Requires playwright when ``render`` is true:
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from html import unescape
 from typing import TYPE_CHECKING, cast
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qs, quote, urlencode, urlparse, urlunparse
 
 import structlog
 from selectolax.lexbor import LexborHTMLParser, SelectolaxError
@@ -32,6 +33,7 @@ from selectolax.lexbor import LexborHTMLParser, SelectolaxError
 from src.core.monitors import DiscoveredJob, register
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
 from src.shared.extract import flatten, walk_steps
+from src.shared.nextdata import extract_field
 from src.shared.slug import slugify
 from src.shared.truncation import truncated_rich_result
 
@@ -61,6 +63,143 @@ _DETAIL_BOUNDARY_TAG = "jobseek-inline-detail"
 _DETAIL_RESERVED_ATTRIBUTE_PREFIX = "data-inline-detail-"
 _HTML_TAG_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 _ORDINAL_DAY_SUFFIX_RE = re.compile(r"(?<=\d)(?:st|nd|rd|th)\b", re.IGNORECASE)
+_DETAIL_FIELDS = frozenset(
+    {
+        "title",
+        "description",
+        "location",
+        "locations",
+        "employment_type",
+        "job_location_type",
+        "date_posted",
+        "valid_through",
+    }
+)
+_MAX_DETAIL_RESPONSE_BYTES = 2_000_000
+_MAX_DETAIL_API_FIELDS = 16
+_MAX_DETAIL_API_SPEC_BYTES = 16_384
+_DETAIL_API_KEYS = frozenset({"url_template", "id_field", "fields", "required_fields"})
+
+
+def _validated_detail_api(metadata: dict) -> dict | None:
+    """Validate optional per-item JSON enrichment configuration."""
+    config = metadata.get("detail_api")
+    if config is None:
+        return None
+    if not isinstance(config, dict) or set(config) - _DETAIL_API_KEYS:
+        raise ValueError("inline detail_api must be an object")
+
+    url_template = config.get("url_template")
+    if (
+        not isinstance(url_template, str)
+        or not url_template
+        or len(url_template) > 2_048
+        or url_template.count("{id}") != 1
+    ):
+        raise ValueError("inline detail_api.url_template must contain one {id} placeholder")
+    parsed = urlparse(url_template.replace("{id}", "probe"))
+    if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
+        raise ValueError("inline detail_api.url_template must be an HTTPS URL without credentials")
+
+    id_field = config.get("id_field", "detail_id")
+    if (
+        not isinstance(id_field, str)
+        or re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]{0,127}", id_field) is None
+    ):
+        raise ValueError("inline detail_api.id_field must be a non-empty bounded string")
+
+    fields = config.get("fields")
+    if not isinstance(fields, dict) or not fields or len(fields) > _MAX_DETAIL_API_FIELDS:
+        raise ValueError("inline detail_api.fields must be a non-empty object")
+    unknown_fields = set(fields) - _DETAIL_FIELDS
+    if unknown_fields:
+        raise ValueError(
+            "inline detail_api.fields contains unsupported fields: "
+            + ", ".join(sorted(unknown_fields))
+        )
+    try:
+        encoded_fields = json.dumps(fields, ensure_ascii=False).encode()
+    except (TypeError, ValueError) as exc:
+        raise ValueError("inline detail_api.fields must contain JSON field specifications") from exc
+    if len(encoded_fields) > _MAX_DETAIL_API_SPEC_BYTES:
+        raise ValueError("inline detail_api.fields exceeded the bounded specification size")
+
+    required_fields = config.get("required_fields", [])
+    if (
+        not isinstance(required_fields, list)
+        or len(required_fields) > _MAX_DETAIL_API_FIELDS
+        or any(not isinstance(field, str) for field in required_fields)
+        or len(required_fields) != len(set(required_fields))
+        or not set(required_fields).issubset(fields)
+    ):
+        raise ValueError("inline detail_api.required_fields must name configured fields")
+
+    return {
+        "url_template": url_template,
+        "id_field": id_field,
+        "fields": fields,
+        "required_fields": required_fields,
+    }
+
+
+async def _enrich_from_detail_api(
+    result: dict,
+    config: dict,
+    http: httpx.AsyncClient,
+) -> str:
+    """Merge bounded JSON detail fields and return the stable provider ID."""
+    identifier = result.get(config["id_field"])
+    if (
+        not isinstance(identifier, str)
+        or not identifier.strip()
+        or len(identifier.strip()) > _MAX_DETAIL_IDENTITY_LENGTH
+        or any(ord(character) < 0x20 for character in identifier)
+    ):
+        raise ValueError(f"inline detail_api id field {config['id_field']!r} was not extracted")
+    identifier = identifier.strip()
+    detail_url = config["url_template"].replace("{id}", quote(identifier, safe=""))
+    from src.shared.http_retry import fetch_text_page_with_retry
+
+    response_headers: dict[str, str] = {}
+    text = await fetch_text_page_with_retry(
+        http,
+        detail_url,
+        follow_redirects=False,
+        end_of_pagination_statuses=set(),
+        require_nonempty=True,
+        max_bytes=_MAX_DETAIL_RESPONSE_BYTES,
+        response_headers=response_headers,
+    )
+    if text is None:
+        raise ValueError("inline detail_api returned no response")
+    content_type = response_headers.get("content-type", "").partition(";")[0].strip().casefold()
+    if content_type != "application/json" and not content_type.endswith("+json"):
+        raise ValueError("inline detail_api response was not JSON content")
+    try:
+        payload = json.loads(text)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise ValueError("inline detail_api response was not valid JSON") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("inline detail_api response must be a JSON object")
+
+    for field, spec in config["fields"].items():
+        value = extract_field(payload, spec, root=payload)
+        if value is None:
+            continue
+        if field == "locations":
+            if not isinstance(value, (str, list)) or (
+                isinstance(value, list) and not all(isinstance(item, str) for item in value)
+            ):
+                raise ValueError("inline detail_api returned invalid locations")
+        elif not isinstance(value, str):
+            raise ValueError(f"inline detail_api returned invalid {field}")
+        result[field] = value
+    missing = [field for field in config["required_fields"] if not result.get(field)]
+    if missing:
+        raise ValueError(
+            "inline detail_api response omitted required fields: " + ", ".join(missing)
+        )
+    return identifier
 
 
 @dataclass(frozen=True, slots=True)
@@ -906,6 +1045,7 @@ async def discover(
         valid_through_patterns — ordered regex/format pairs for multiple deadline formats
         valid_through_format — strptime format for non-ISO deadlines
         exclude_expired — omit opportunities after valid_through (UTC, inclusive deadline)
+        detail_api — enrich each inline item from a JSON endpoint keyed by an extracted ID
         + browser keys (wait, timeout, actions, etc.)
     """
     board_url = board["board_url"]
@@ -968,6 +1108,11 @@ async def discover(
     valid_through_patterns, valid_through_format, exclude_expired = _validated_valid_through_config(
         metadata
     )
+    detail_api = _validated_detail_api(metadata)
+    if detail_api is not None and uses_detail_expansion:
+        raise ValueError("inline detail_api cannot be combined with detail-card expansion")
+    if detail_api is not None and positions_per_listing != 1:
+        raise ValueError("inline detail_api requires positions_per_listing=1")
 
     fetched = await _fetch_html(board_url, metadata, client, pw)
     html = fetched.html
@@ -1061,6 +1206,7 @@ async def discover(
         cursor = new_cursor
         processed_count += 1
 
+        detail_identity: str | None = None
         if source_identity_selector is not None:
             if source_identity_index >= len(source_identities):
                 raise ValueError("inline extracted more jobs than source identities")
@@ -1069,6 +1215,14 @@ async def discover(
                 source_identities[source_identity_index], source_identity_pattern
             )
             source_identity_index += 1
+        if detail_api is not None:
+            detail_identity = await _enrich_from_detail_api(result, detail_api, client)
+            enriched_title = result.get("title")
+            if enriched_title is not None:
+                if not isinstance(enriched_title, str) or not enriched_title.strip():
+                    raise ValueError("inline detail_api returned an invalid title")
+                title = enriched_title.strip()
+                result["title"] = title
 
         if title in exclude_titles or (
             exclude_title_regex is not None and exclude_title_regex.search(title)
@@ -1087,6 +1241,8 @@ async def discover(
 
         if provider_identity is not None:
             url = _generate_identity_url(board_url, provider_identity)
+        elif detail_identity is not None:
+            url = _generate_identity_url(board_url, detail_identity)
         else:
             url = _generate_url(board_url, title, seen_jids)
 
@@ -1104,7 +1260,7 @@ async def discover(
         if exclude_expired and valid_through is not None and valid_through < today:
             expired_count += positions_per_listing
             continue
-        location = result.get("location")
+        location = result.get("locations") or result.get("location")
         locations = None
         if location:
             if isinstance(location, list):

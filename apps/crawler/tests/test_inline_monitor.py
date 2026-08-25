@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
+import httpx
 import pytest
 
 import src.core.monitors.inline as inline_monitor
@@ -690,6 +691,97 @@ async def test_discover_section_markers_fail_closed_when_page_drifts():
 
 
 @pytest.mark.asyncio
+async def test_discover_enriches_inline_items_from_json_detail_api():
+    listing_url = "https://www.example.edu/jobs"
+    detail_url = "https://api.example.edu/jobs/1911"
+    html = """
+    <h4 class="name">Researcher</h4>
+    <p>80% at the Physics Department</p>
+    <div id="open1911">Loading...</div>
+    """
+    detail = {
+        "link": f"{listing_url}#1911",
+        "fonction": "  PhD Researcher  ",
+        "content": "<p>Advance X-ray metrology.</p>",
+        "startpublish": "2026-08-25T00:00:00+02:00",
+        "endpublish": "2099-10-02T00:00:00+02:00",
+    }
+    requested_urls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested_urls.append(str(request.url))
+        if str(request.url) == listing_url:
+            return httpx.Response(200, text=html)
+        if str(request.url) == detail_url:
+            return httpx.Response(
+                200,
+                json=detail,
+                headers={"content-type": "application/json"},
+            )
+        raise AssertionError(f"unexpected URL: {request.url}")
+
+    board = {
+        "board_url": listing_url,
+        "metadata": {
+            "include_hidden": True,
+            "steps": [
+                {"tag": "h4", "attr": "class=name", "field": "title"},
+                {
+                    "tag": "div",
+                    "attr": "id=open",
+                    "field": "detail_id",
+                    "value_attr": "id",
+                    "regex": r"^open(\d+)$",
+                },
+            ],
+            "detail_api": {
+                "url_template": "https://api.example.edu/jobs/{id}",
+                "id_field": "detail_id",
+                "fields": {
+                    "title": "fonction",
+                    "description": "content",
+                    "date_posted": "startpublish",
+                    "valid_through": "endpublish",
+                },
+                "required_fields": ["title", "description", "valid_through"],
+            },
+            "exclude_expired": True,
+            "defaults": {"locations": ["Fribourg, Switzerland"]},
+        },
+    }
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        jobs = await discover(board, client)
+
+    assert len(jobs) == 1
+    assert jobs[0].url == f"{listing_url}?_jid=1911"
+    assert jobs[0].title == "PhD Researcher"
+    assert jobs[0].description == "<p>Advance X-ray metrology.</p>"
+    assert jobs[0].locations == ["Fribourg, Switzerland"]
+    assert jobs[0].date_posted == "2026-08-25T00:00:00+02:00"
+    assert jobs[0].extras == {"valid_through": "2099-10-02"}
+    assert requested_urls == [listing_url, detail_url]
+
+
+@pytest.mark.asyncio
+async def test_discover_detail_api_fails_closed_when_id_is_missing():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "steps": [{"tag": "h3", "field": "title"}],
+            "detail_api": {
+                "url_template": "https://api.example.com/jobs/{id}",
+                "fields": {"description": "content"},
+                "required_fields": ["description"],
+            },
+        },
+    }
+
+    with pytest.raises(ValueError, match="id field"):
+        await discover(board, _FakeClient("<h3>Researcher</h3>"))
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("html", "message"),
     [
@@ -715,6 +807,43 @@ async def test_discover_rejects_ambiguous_section_markers(html, message):
 
     with pytest.raises(ValueError, match=message):
         await discover(board, _FakeClient(html))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("detail_api", "message"),
+    [
+        ("bad", "must be an object"),
+        ({"url_template": "http://api.example.com/{id}", "fields": {"title": "name"}}, "HTTPS"),
+        (
+            {"url_template": "https://api.example.com/jobs", "fields": {"title": "name"}},
+            "placeholder",
+        ),
+        (
+            {"url_template": "https://api.example.com/{id}", "fields": {"unknown": "x"}},
+            "unsupported",
+        ),
+        (
+            {
+                "url_template": "https://api.example.com/{id}",
+                "fields": {"title": "name"},
+                "required_fields": ["description"],
+            },
+            "required_fields",
+        ),
+    ],
+)
+async def test_discover_rejects_invalid_detail_api_config(detail_api, message):
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "steps": [{"tag": "h3", "field": "title"}],
+            "detail_api": detail_api,
+        },
+    }
+
+    with pytest.raises(ValueError, match=message):
+        await discover(board, _FakeClient("<h3>Researcher</h3>"))
 
 
 @pytest.mark.asyncio

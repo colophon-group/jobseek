@@ -383,6 +383,7 @@ def walk_steps(
         attr       — match by HTML attribute ("key=substring" or "key")
         match_regex — require a regex match against the element text
         field      — output field name (omit for anchor-only steps)
+        value_attr — extract this HTML attribute instead of element text
         offset     — skip N elements after match before extracting (default 0)
         stop       — stop collecting when element text contains this string
         stop_tag   — stop collecting when element tag matches; accepts a string
@@ -422,6 +423,17 @@ def walk_steps(
         seek_from = step.get("from")
         offset = step.get("offset", 0)
         html = step.get("html", False)
+        value_attr = step.get("value_attr")
+
+        if value_attr is not None and (
+            not isinstance(value_attr, str)
+            or re.fullmatch(r"[A-Za-z_:][A-Za-z0-9:._-]{0,127}", value_attr) is None
+        ):
+            raise ValueError("step value_attr must be a non-empty bounded string")
+        if value_attr is not None and (
+            stop or stop_tag or stop_attr or stop_regex or stop_count or to_end
+        ):
+            raise ValueError("step value_attr cannot be combined with range extraction")
 
         # Ensure every field appears in the result
         if field and field not in result:
@@ -518,7 +530,15 @@ def walk_steps(
 
             cursor = stop_idx if stop_idx is not None else match_idx + len(collected_els)
         elif field:
-            value = elements[match_idx]["text"]
+            value = (
+                elements[match_idx]["attrs"].get(value_attr)
+                if value_attr is not None
+                else elements[match_idx]["text"]
+            )
+
+            if value is None:
+                cursor = match_idx + 1
+                continue
 
             # Post-process: regex
             if regex:
