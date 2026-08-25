@@ -70,8 +70,10 @@ class BoardRuntimeConfig:
         Most callers do not consume interval fields, so they keep fail-open
         defaults rather than gaining a new failure mode.  ``_BoardRecord`` uses
         ``strict_intervals=True`` to preserve its historical ``int(...)``
-        failure for malformed values.  Positive-range validation belongs at
-        the future CatalogPublisher/BoardManifest boundary, not this decoder.
+        failure for malformed ``check_interval_minutes``. It never consumed
+        ``scrape_interval_hours``, so that field remains fail-open here.
+        Positive-range validation belongs at the future
+        CatalogPublisher/BoardManifest boundary, not this decoder.
         """
 
         return cls(
@@ -88,7 +90,6 @@ class BoardRuntimeConfig:
             scrape_interval_hours=_integer(
                 raw.get("scrape_interval_hours", "24"),
                 24,
-                strict=strict_intervals,
             ),
             monitor_needs_browser=_boolean(raw.get("monitor_needs_browser")),
             scraper_needs_browser=_boolean(raw.get("scraper_needs_browser")),

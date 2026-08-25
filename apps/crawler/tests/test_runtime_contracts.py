@@ -79,6 +79,12 @@ def test_board_runtime_config_strict_interval_decoding_preserves_board_record_er
             strict_intervals=True,
         )
 
+    config = BoardRuntimeConfig.from_mapping(
+        {"check_interval_minutes": "60", "scrape_interval_hours": "bad"},
+        strict_intervals=True,
+    )
+    assert config.scrape_interval_hours == 24
+
 
 def test_board_runtime_config_rejects_nonpositive_contract_intervals() -> None:
     config = BoardRuntimeConfig.from_mapping({"check_interval_minutes": "0"})
