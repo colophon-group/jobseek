@@ -1284,7 +1284,31 @@ inline — Single-Page Extraction (rich)
       }
     }
 
+    Click-only detail cards use an automatically bounded item per click:
+    {
+      "render": true,
+      "detail_click_selector": ".job-card .more",
+      "detail_content_selector": ".expanded-job:has-text(\"Location:\")",
+      "steps": [
+        {"tag": "h3", "field": "title"},
+        {"text": "Location", "field": "location"},
+        {"tag": "p", "field": "description", "html": true, "to_end": true}
+      ]
+    }
+
     render       true = Playwright, false = static HTTP (default: false)
+    detail_click_selector
+                 Playwright selector for click-only job-card controls. The
+                 inline monitor reloads the listing, clicks each match in
+                 order, and extracts one expanded job per control. Requires
+                 render=true and detail_content_selector. Each expanded detail
+                 is automatically bounded; omit item_boundary_tag (or set it
+                 to article).
+    detail_content_selector
+                 Playwright selector that must match exactly one expanded
+                 detail container after each click. Only that container is
+                 passed to the extraction steps, which keeps navigation and
+                 application-flow text out of job descriptions.
     fetch_urls   Optional ordered URLs used only to read the page. Each entry is
                  a URL string or {"url": ..., "headers": {...}} object. Headers
                  are scoped to that exact candidate and are never forwarded to

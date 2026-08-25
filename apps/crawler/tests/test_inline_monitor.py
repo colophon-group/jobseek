@@ -271,6 +271,104 @@ async def test_discover_render_runs_actions_before_reading_html(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_discover_render_expands_click_only_detail_cards(monkeypatch):
+    class DetailLinks:
+        def __init__(self, page):
+            self.page = page
+            self.index = 0
+
+        @property
+        def first(self):
+            return self
+
+        async def wait_for(self, *, state, timeout):
+            assert state == "visible"
+            assert timeout == 30_000
+
+        async def count(self):
+            return 2
+
+        def nth(self, index):
+            self.index = index
+            return self
+
+        async def click(self):
+            self.page.active = self.index
+
+    class DetailContent:
+        def __init__(self, page):
+            self.page = page
+
+        async def wait_for(self, *, state, timeout):
+            assert state == "visible"
+            assert timeout == 30_000
+
+        async def count(self):
+            return 1 if self.page.active is not None else 0
+
+        async def inner_html(self):
+            index = self.page.active
+            return (
+                f"<h3>Role {index}</h3>"
+                f"<p>Location: City {index}</p>"
+                f"<p>Description {index}</p>"
+            )
+
+    class Page:
+        active = None
+
+        def locator(self, selector):
+            if selector == ".job-card .more":
+                return DetailLinks(self)
+            assert selector == ".expanded-job"
+            return DetailContent(self)
+
+    page = Page()
+    navigations: list[str] = []
+
+    @asynccontextmanager
+    async def fake_open_page(_pw, _config, *, use_proxy=False):
+        assert use_proxy is False
+        yield page
+
+    async def fake_navigate(actual_page, url, _config):
+        assert actual_page is page
+        actual_page.active = None
+        navigations.append(url)
+
+    async def fake_run_actions(actual_page, actions):
+        assert actual_page is page
+        assert actions == []
+
+    monkeypatch.setattr(inline_monitor, "open_page", fake_open_page)
+    monkeypatch.setattr(inline_monitor, "navigate", fake_navigate)
+    monkeypatch.setattr(inline_monitor, "run_actions", fake_run_actions)
+
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "render": True,
+            "detail_click_selector": ".job-card .more",
+            "detail_content_selector": ".expanded-job",
+            "item_boundary_tag": "article",
+            "steps": [
+                {"tag": "h3", "field": "title"},
+                {"text": "Location", "field": "location", "regex": "Location: (.+)"},
+                {"tag": "p", "field": "description"},
+            ],
+        },
+    }
+
+    jobs = await discover(board, _FakeClient(""), pw=object())
+
+    assert navigations == ["https://example.com/jobs", "https://example.com/jobs"]
+    assert [(job.title, job.locations, job.description) for job in jobs] == [
+        ("Role 0", ["City 0"], "Description 0"),
+        ("Role 1", ["City 1"], "Description 1"),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_discover_static():
     client = _FakeClient(SAMPLE_HTML)
     board = {
