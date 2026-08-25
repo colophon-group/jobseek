@@ -36,6 +36,10 @@ the displayed reference (`/index.php/offres?reference=<id>`). A bounded,
 receipt-backed pre-diff migration rewrites legacy aliases in place when no
 canonical row exists, retires aliases when one does, and retires legacy rows
 whose detail deadline is no longer in the active official inventory.
+The dual-alias zero contract additionally requires the provider to render its
+exact empty-state marker visibly on both pages. The same marker is permanently
+present but hidden on ordinary non-empty pages, so its text alone is never
+treated as authoritative zero evidence.
 
 ## Monitors
 

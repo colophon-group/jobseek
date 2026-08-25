@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import date
+from pathlib import Path
 
 import httpx
 import pytest
@@ -16,7 +17,10 @@ def _listing(
     alias: bool = False,
     pagination: bool = False,
     broken_classes: bool = False,
+    empty_visible: bool | None = None,
 ) -> str:
+    if empty_visible is None:
+        empty_visible = not jobs
     prefix = "/offre/" if alias else "/index.php/offre/"
     cards = "".join(
         (
@@ -33,7 +37,7 @@ def _listing(
       <h1>Nos offres d'emploi</h1>
       <select id="offres-filter"><option value="0">Toutes</option></select>
       <div class="row offres-items">{cards}</div>
-      <div id="no-ads" style="display: none;">
+      <div id="no-ads" {"" if empty_visible else 'style="display: none;"'}>
         Aucune offre n'est disponible pour le moment.
       </div>
       {next_link}
@@ -177,6 +181,37 @@ async def test_accepts_zero_only_when_both_aliases_prove_empty() -> None:
 
 
 @pytest.mark.asyncio
+async def test_rejects_matching_blank_shells_with_normal_hidden_marker() -> None:
+    """Two matching pre-render shells cannot silently delist the board."""
+    async with _client(
+        [],
+        primary_options={"empty_visible": False},
+        alias_options={"empty_visible": False},
+    ) as client:
+        with pytest.raises(ValueError, match="without authoritative zero evidence"):
+            await unisante.discover(
+                {"board_url": "https://emploi.unisante.ch/index.php/offres"}, client
+            )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("incomplete_alias", ["primary", "alias"])
+async def test_rejects_one_incomplete_alias_shell(incomplete_alias: str) -> None:
+    """Either listing alias independently has to prove its empty state."""
+    primary_options = {"empty_visible": incomplete_alias != "primary"}
+    alias_options = {"empty_visible": incomplete_alias != "alias"}
+    async with _client(
+        [],
+        primary_options=primary_options,
+        alias_options=alias_options,
+    ) as client:
+        with pytest.raises(ValueError, match="without authoritative zero evidence"):
+            await unisante.discover(
+                {"board_url": "https://emploi.unisante.ch/index.php/offres"}, client
+            )
+
+
+@pytest.mark.asyncio
 async def test_rejects_alias_inventory_mismatch() -> None:
     jobs = [("1405-role", "Role")]
     async with _client(jobs, alias_jobs=[]) as client:
@@ -270,6 +305,11 @@ def test_monitor_is_registered_as_rich_company_specific_type() -> None:
     assert "unisante" in all_monitor_types()
 
 
+def test_company_pr_label_allowlist_supports_unisante() -> None:
+    script = Path(__file__).parents[3] / ".github" / "scripts" / "label-pr.sh"
+    assert "|unisante|" in script.read_text()
+
+
 @pytest.mark.parametrize(
     ("raw", "expected"),
     [
@@ -285,6 +325,12 @@ def test_deadline_formats(raw: str, expected: date) -> None:
 def test_listing_rejects_missing_empty_marker() -> None:
     html = _listing([]).replace('id="no-ads"', 'id="changed-empty-marker"')
     with pytest.raises(ValueError, match="omitted its scoped empty marker"):
+        unisante._parse_listing(html, "https://emploi.unisante.ch/index.php/offres")
+
+
+def test_listing_rejects_visible_empty_state_with_jobs() -> None:
+    html = _listing([("1405-role", "Role")], empty_visible=True)
+    with pytest.raises(ValueError, match="jobs with a visible empty state"):
         unisante._parse_listing(html, "https://emploi.unisante.ch/index.php/offres")
 
 

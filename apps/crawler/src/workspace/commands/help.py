@@ -3891,7 +3891,8 @@ unisante — Unisanté first-party careers monitor
   visible application deadline has expired. JSON-LD descriptions are ignored
   because the provider emits mojibake/incomplete content; only validated safe
   structured fields are used. Zero is accepted only after both aliases prove
-  the exact empty inventory contract."""
+  the exact server-visible empty inventory contract; the `#no-ads` marker that
+  is normally hidden on non-empty pages is not zero evidence by itself."""
 
 MONITOR_CARDS: dict[str, str] = {
     "accenture": MONITOR_ACCENTURE,

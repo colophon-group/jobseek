@@ -175,6 +175,27 @@ def _normalized_text(node: Any) -> str:
     return " ".join(node.text(separator=" ", strip=True).split())
 
 
+def _is_explicitly_hidden(node: Any) -> bool:
+    """Return whether the provider explicitly hides an empty-state node.
+
+    ``#no-ads`` is permanently present on ordinary non-empty pages and the
+    category-filter JavaScript reveals it only when a selected category has no
+    matching cards.  Its text therefore proves nothing by itself.  A zero
+    inventory is authoritative only when the server renders that exact marker
+    visible instead of returning the normal hidden template shell.
+    """
+    attributes = {key.lower(): value for key, value in node.attributes.items()}
+    classes = set((attributes.get("class") or "").split())
+    style = re.sub(r"\s+", "", (attributes.get("style") or "").casefold())
+    aria_hidden = (attributes.get("aria-hidden") or "").strip().casefold()
+    return (
+        "hidden" in attributes
+        or "d-none" in classes
+        or aria_hidden == "true"
+        or re.search(r"(?:^|;)display:none(?:!important)?(?:;|$)", style) is not None
+    )
+
+
 def _parse_listing(html: str, listing_url: str) -> dict[str, _ListingJob]:
     _raise_if_bot_challenge(listing_url, html)
     document = LexborHTMLParser(html)
@@ -228,6 +249,14 @@ def _parse_listing(html: str, listing_url: str) -> dict[str, _ListingJob]:
         raise ValueError("Unisanté listing contains jobs outside the authoritative inventory")
     if not jobs and cards:
         raise ValueError("Unisanté listing exposed empty malformed offer cards")
+    empty_is_hidden = _is_explicitly_hidden(empty)
+    if jobs and not empty_is_hidden:
+        raise ValueError("Unisanté listing exposed jobs with a visible empty state")
+    if not jobs and empty_is_hidden:
+        raise ValueError(
+            "Unisanté listing returned the normal hidden empty marker without "
+            "authoritative zero evidence"
+        )
     return jobs
 
 
@@ -412,8 +441,10 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None) -> list[Disc
     if expected != alias:
         raise ValueError("Unisanté listing aliases exposed different inventories")
     if not inventories[0]:
-        # Each parser independently proved the exact provider shell, empty
-        # inventory, scoped marker, and absence of recognizable hidden jobs.
+        # Each parser independently proved the exact provider shell, a
+        # server-visible empty state, and absence of recognizable hidden jobs.
+        # The permanent hidden marker on ordinary pages is deliberately not
+        # sufficient evidence for this path.
         return []
 
     semaphore = asyncio.Semaphore(_DETAIL_CONCURRENCY)
