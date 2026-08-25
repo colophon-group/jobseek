@@ -1681,8 +1681,15 @@ def _validated_rich_rows_urls(
         if not isinstance(item, str) or len(item) > 2_048 or "\x00" in item:
             raise ValueError(f"DOM monitor rich_rows.{name} must contain absolute HTTP URLs")
         parsed = urlparse(item)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.fragment:
-            raise ValueError(f"DOM monitor rich_rows.{name} must contain absolute HTTP URLs")
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.netloc
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError(
+                f"DOM monitor rich_rows.{name} must contain undecorated absolute HTTP URLs"
+            )
         urls.append(item)
     if len(urls) != len(set(urls)):
         raise ValueError(f"DOM monitor rich_rows.{name} must not contain duplicate URLs")
@@ -1909,6 +1916,10 @@ def _extract_rich_rows_static(
             continue
         canonical_url = url_canonicalizer(url) if url_canonicalizer is not None else url
         if active_urls:
+            parsed_url = urlsplit(canonical_url)
+            canonical_url = urlunsplit(
+                (parsed_url.scheme, parsed_url.netloc, parsed_url.path, "", "")
+            )
             if canonical_url in inactive_urls:
                 continue
             if canonical_url not in active_urls:

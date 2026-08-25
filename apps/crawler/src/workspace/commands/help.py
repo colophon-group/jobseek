@@ -1506,8 +1506,10 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    bounded lifecycle partition. Both lists are required
                    together. Active URLs are published, known inactive URLs
                    are ignored, and any selected URL in neither list fails the
-                   cycle closed for review. This is intended for authoritative
-                   pages that retain expired document links.
+                   cycle closed for review. Query strings and fragments are
+                   stripped before classification and identity generation;
+                   configure undecorated URLs. This is intended for
+                   authoritative pages that retain expired document links.
                    Rows whose URL is stored directly on the row can instead use
                    {"row_selector": "tr[data-href]", "link_attr": "data-href",
                     "title_selector": "td.title",

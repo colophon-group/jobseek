@@ -1536,14 +1536,18 @@ class TestRichRowsStatic:
 
     def test_lifecycle_partition_accepts_current_and_ignores_known_inactive_rows(self):
         html = """
-        <a class="job" href="/jobs/current.pdf">Current role</a>
-        <a class="job" href="/jobs/expired.pdf">Expired role</a>
+        <a class="job" href="/jobs/current.pdf?download=1">Current role</a>
+        <a class="job" href="/jobs/another.pdf#preview">Another current role</a>
+        <a class="job" href="/jobs/expired.pdf?legacy=1#top">Expired role</a>
         """
         config = _validated_rich_rows(
             {
                 "row_selector": "a.job[href]",
                 "allow_missing_locations": True,
-                "active_urls": ["https://example.com/jobs/current.pdf"],
+                "active_urls": [
+                    "https://example.com/jobs/current.pdf",
+                    "https://example.com/jobs/another.pdf",
+                ],
                 "inactive_urls": ["https://example.com/jobs/expired.pdf"],
             }
         )
@@ -1552,13 +1556,14 @@ class TestRichRowsStatic:
         jobs = _extract_rich_rows_static(html, "https://example.com/careers", config, None)
 
         assert [(job.url, job.title) for job in jobs] == [
-            ("https://example.com/jobs/current.pdf", "Current role")
+            ("https://example.com/jobs/current.pdf", "Current role"),
+            ("https://example.com/jobs/another.pdf", "Another current role"),
         ]
 
     def test_lifecycle_partition_fails_closed_on_an_unclassified_row(self):
         html = """
         <a class="job" href="/jobs/current.pdf">Current role</a>
-        <a class="job" href="/jobs/new.pdf">New unreviewed role</a>
+        <a class="job" href="/jobs/new.pdf?download=1#preview">New unreviewed role</a>
         """
         config = _validated_rich_rows(
             {
@@ -1577,7 +1582,12 @@ class TestRichRowsStatic:
         "active_urls,inactive_urls,error",
         [
             ([], [], "active_urls must be a bounded URL list"),
-            (["/relative"], [], "active_urls must contain absolute HTTP URLs"),
+            (["/relative"], [], "active_urls must contain undecorated absolute HTTP URLs"),
+            (
+                ["https://example.com/jobs/current.pdf?download=1"],
+                [],
+                "active_urls must contain undecorated absolute HTTP URLs",
+            ),
             (
                 ["https://example.com/jobs/shared"],
                 ["https://example.com/jobs/shared"],
