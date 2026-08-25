@@ -2,7 +2,7 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 const EXTRA_RUNTIME_PATHS = new Set([
@@ -152,11 +152,54 @@ export function readGitEntries(repo, revision, includeDataContents) {
   });
 }
 
+export function deriveCrawlerRuntimeAttestation(repo, previousRevision) {
+  if (!/^[0-9a-f]{40}$/.test(previousRevision)) {
+    throw new Error("Previous revision must be a full lowercase Git commit SHA");
+  }
+  const expectedContract = deriveCrawlerRuntimeContract(
+    readGitEntries(repo, previousRevision, false),
+  );
+  const revisions = execFileSync(
+    "git",
+    ["-C", repo, "rev-list", "--first-parent", previousRevision],
+    { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+  )
+    .trim()
+    .split("\n")
+    .filter(Boolean);
+  const compatibleRevisions = [];
+  for (const revision of revisions) {
+    if (!/^[0-9a-f]{40}$/.test(revision)) {
+      throw new Error(`Invalid first-parent revision ${revision}`);
+    }
+    const contract = deriveCrawlerRuntimeContract(
+      readGitEntries(repo, revision, false),
+    );
+    if (contract !== expectedContract) break;
+    compatibleRevisions.push(revision);
+  }
+  if (compatibleRevisions[0] !== previousRevision) {
+    throw new Error("Runtime attestation does not start at the previous revision");
+  }
+  return {
+    contract: expectedContract,
+    compatibleRevisions,
+    text:
+      "RUNTIME_ATTESTATION_FORMAT_VERSION=1\n" +
+      `PREVIOUS_REVISION=${previousRevision}\n` +
+      `RUNTIME_CONTRACT_SHA256=${expectedContract}\n` +
+      compatibleRevisions
+        .map((revision) => `COMPATIBLE_REVISION=${revision}\n`)
+        .join(""),
+  };
+}
+
 function main() {
   const revision = requiredArgument("--revision");
   const repo = optionalArgument("--repo") ?? ".";
   const kind = optionalArgument("--kind") ?? "runtime";
   const githubOutput = optionalArgument("--github-output");
+  const runtimeAttestationOut = optionalArgument("--runtime-attestation-out");
   if (!new Set(["data", "runtime"]).has(kind)) {
     throw new Error("Contract kind must be data or runtime");
   }
@@ -165,6 +208,19 @@ function main() {
     kind === "data"
       ? deriveCrawlerDataContract(entries)
       : deriveCrawlerRuntimeContract(entries);
+  if (runtimeAttestationOut) {
+    if (kind !== "runtime") {
+      throw new Error("Runtime attestation output is only valid for a runtime contract");
+    }
+    const attestation = deriveCrawlerRuntimeAttestation(repo, revision);
+    if (attestation.contract !== contract) {
+      throw new Error("Runtime attestation disagrees with the derived contract");
+    }
+    writeFileSync(runtimeAttestationOut, attestation.text, {
+      encoding: "utf8",
+      mode: 0o644,
+    });
+  }
   if (githubOutput) {
     appendFileSync(
       githubOutput,

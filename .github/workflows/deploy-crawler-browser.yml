@@ -137,6 +137,7 @@ jobs:
       reconciliation_wrapper_sha256: ${{ steps.reconciliation.outputs.wrapper_sha256 }}
       runtime_contract_sha256: ${{ steps.runtime-contract.outputs.runtime_contract_sha256 }}
       data_contract_sha256: ${{ steps.runtime-contract.outputs.data_contract_sha256 }}
+      previous_runtime_contract_sha256: ${{ steps.runtime-contract.outputs.previous_runtime_contract_sha256 }}
       previous_data_contract_sha256: ${{ steps.runtime-contract.outputs.previous_data_contract_sha256 }}
 
     steps:
@@ -175,11 +176,17 @@ jobs:
             --kind data \
             --revision "$GITHUB_SHA" \
             --github-output "$GITHUB_OUTPUT"
+          previous_runtime_contract_sha256="$(
+            node scripts/derive-crawler-runtime-contract.mjs \
+              --revision "$PREVIOUS_REVISION"
+          )"
           previous_data_contract_sha256="$(
             node scripts/derive-crawler-runtime-contract.mjs \
               --kind data \
               --revision "$PREVIOUS_REVISION"
           )"
+          printf 'previous_runtime_contract_sha256=%s\n' \
+            "$previous_runtime_contract_sha256" >>"$GITHUB_OUTPUT"
           printf 'previous_data_contract_sha256=%s\n' \
             "$previous_data_contract_sha256" >>"$GITHUB_OUTPUT"
 
@@ -441,6 +448,7 @@ jobs:
         id: previous-data
         env:
           PREVIOUS_REVISION: ${{ github.event.before }}
+          EXPECTED_PREVIOUS_RUNTIME_CONTRACT_SHA256: ${{ needs.build.outputs.previous_runtime_contract_sha256 }}
         run: |
           set -euo pipefail
           [[ "$PREVIOUS_REVISION" =~ ^[0-9a-f]{40}$ ]]
@@ -451,6 +459,13 @@ jobs:
           candidate_id="${PREVIOUS_REVISION}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           candidate_dir="csv-publication/${candidate_id}"
           mkdir -p "$candidate_dir"
+          previous_runtime_contract_sha256="$(
+            node scripts/derive-crawler-runtime-contract.mjs \
+              --revision "$PREVIOUS_REVISION" \
+              --runtime-attestation-out "$candidate_dir/runtime-attestation.env"
+          )"
+          test "$previous_runtime_contract_sha256" = \
+            "$EXPECTED_PREVIOUS_RUNTIME_CONTRACT_SHA256"
           git archive "$PREVIOUS_REVISION" apps/crawler/data |
             tar -C "$candidate_dir" -xf -
           mv "$candidate_dir/apps/crawler/data" "$candidate_dir/data-source"
@@ -478,7 +493,7 @@ jobs:
           )
           PY
           tar -C "$candidate_dir" -cf "$candidate_dir/csv-snapshot.tar" \
-            data data-files.sha256
+            data data-files.sha256 runtime-attestation.env
           printf 'candidate_id=%s\n' "$candidate_id" >>"$GITHUB_OUTPUT"
           printf 'archive_sha256=%s\n' \
             "$(sha256sum "$candidate_dir/csv-snapshot.tar" | awk '{print $1}')" \
@@ -520,7 +535,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: OWNER,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,CRAWLER_IMAGE_TAG,CRAWLER_IMAGE_REF,BROWSER_IMAGE_REF,SHIM_IMAGE_REF,JOBSEEK_DEPLOY_REVISION,JOBSEEK_RUNTIME_CONTRACT_SHA256,JOBSEEK_DATA_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_REVISION,JOBSEEK_PREVIOUS_DATA_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_CANDIDATE_ID,JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256,JOBSEEK_RECONCILIATION_WRAPPER_SHA256,WEB_DATABASE_URL,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_OPERATIONS_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URL,DECODO_PROXY_URL,MURMUR_TOKEN
+          envs: OWNER,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,CRAWLER_IMAGE_TAG,CRAWLER_IMAGE_REF,BROWSER_IMAGE_REF,SHIM_IMAGE_REF,JOBSEEK_DEPLOY_REVISION,JOBSEEK_RUNTIME_CONTRACT_SHA256,JOBSEEK_DATA_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_REVISION,JOBSEEK_PREVIOUS_RUNTIME_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_CONTRACT_SHA256,JOBSEEK_PREVIOUS_DATA_CANDIDATE_ID,JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256,JOBSEEK_RECONCILIATION_WRAPPER_SHA256,WEB_DATABASE_URL,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_OPERATIONS_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URL,DECODO_PROXY_URL,MURMUR_TOKEN
           script: bash /home/deploy/incoming/deploy.sh
         env:
           OWNER: ${{ github.repository_owner }}
@@ -541,6 +556,7 @@ jobs:
           JOBSEEK_RUNTIME_CONTRACT_SHA256: ${{ needs.build.outputs.runtime_contract_sha256 }}
           JOBSEEK_DATA_CONTRACT_SHA256: ${{ needs.build.outputs.data_contract_sha256 }}
           JOBSEEK_PREVIOUS_DATA_REVISION: ${{ github.event.before }}
+          JOBSEEK_PREVIOUS_RUNTIME_CONTRACT_SHA256: ${{ needs.build.outputs.previous_runtime_contract_sha256 }}
           JOBSEEK_PREVIOUS_DATA_CONTRACT_SHA256: ${{ needs.build.outputs.previous_data_contract_sha256 }}
           JOBSEEK_PREVIOUS_DATA_CANDIDATE_ID: ${{ steps.previous-data.outputs.candidate_id }}
           JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256: ${{ steps.previous-data.outputs.archive_sha256 }}
