@@ -1408,6 +1408,99 @@ async def _probe_rss(row: dict, client: httpx.AsyncClient) -> ProbeResult:
     )
 
 
+async def _probe_dom(row: dict, client: httpx.AsyncClient) -> ProbeResult:
+    """Probe bounded provider-specific static DOM configurations."""
+    try:
+        decoded = json.loads(row["monitor_config"] or "{}")
+    except (json.JSONDecodeError, TypeError):
+        decoded = {}
+    cfg = decoded if isinstance(decoded, dict) else {}
+    configured_medium = cfg.get("prospective_board")
+    if configured_medium is None:
+        return ProbeResult(
+            row["board_slug"],
+            "unsupported",
+            row["board_url"],
+            "skipped",
+            "no targeted probe for this DOM configuration",
+        )
+    if (
+        not isinstance(configured_medium, str)
+        or re.fullmatch(r"[1-9]\d{0,11}", configured_medium) is None
+    ):
+        return ProbeResult(
+            row["board_slug"],
+            "dom",
+            row["board_url"],
+            "fail",
+            "invalid Prospective medium identity",
+        )
+
+    from src.core.monitors.dom import _prospective_probe_config
+    from src.shared.http_retry import ResponseBodyTooLargeError, fetch_text_page_with_retry
+
+    try:
+        html = await fetch_text_page_with_retry(
+            client,
+            row["board_url"],
+            retryable_statuses={202, 401, 403},
+            end_of_pagination_statuses=set(),
+            require_nonempty=True,
+            max_bytes=2 * 1024 * 1024,
+        )
+    except PaginationFetchError as exc:
+        status = "fail" if exc.last_status in {404, 410} else "warn"
+        return ProbeResult(
+            row["board_slug"],
+            "dom",
+            row["board_url"],
+            status,
+            f"Prospective listing fetch failed ({exc.last_status or exc.last_error})",
+        )
+    except ResponseBodyTooLargeError:
+        return ProbeResult(
+            row["board_slug"],
+            "dom",
+            row["board_url"],
+            "fail",
+            "Prospective listing exceeded the bounded response size",
+        )
+
+    detected = _prospective_probe_config(html or "", row["board_url"])
+    if detected is None:
+        return ProbeResult(
+            row["board_slug"],
+            "dom",
+            row["board_url"],
+            "fail",
+            "Prospective provider identity or inventory contract failed",
+        )
+    if detected["prospective_board"] != configured_medium:
+        return ProbeResult(
+            row["board_slug"],
+            "dom",
+            row["board_url"],
+            "fail",
+            "configured Prospective medium does not match listing assets",
+        )
+    for key in ("url_filter", "rich_rows", "empty_states"):
+        if cfg.get(key) != detected[key]:
+            return ProbeResult(
+                row["board_slug"],
+                "dom",
+                row["board_url"],
+                "fail",
+                f"configured Prospective {key} does not match the provider preset",
+            )
+    return ProbeResult(
+        row["board_slug"],
+        "dom",
+        row["board_url"],
+        "ok",
+        f"valid Prospective listing: {detected['urls']} jobs",
+    )
+
+
 def _classify(
     row: dict,
     monitor_type: str,
@@ -1456,6 +1549,7 @@ PROBES: dict[str, Callable[[dict, httpx.AsyncClient], Awaitable[ProbeResult]]] =
     "cornerstone": _probe_cornerstone,
     "darwinbox": _probe_darwinbox,
     "dayforce": _probe_dayforce,
+    "dom": _probe_dom,
     "herp": _probe_herp,
     "hrmos": _probe_hrmos,
     "recruitee": _probe_recruitee,

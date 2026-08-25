@@ -1574,6 +1574,7 @@ class TestRichRowsStatic:
                 "allow_missing_locations": "yes",
             },
             {"row_selector": ".job", "link_selector": ".job a", "location_selectors": "p"},
+            {"row_selector": ".job", "link_selector": ".job a", "total_selector": "a["},
             {"row_selector": ".job", "location_selectors": False},
             {"row_selector": ".job", "location_selectors": 0},
             {"row_selector": ".job", "location_selectors": {}},
@@ -1890,6 +1891,7 @@ class TestCanHandle:
         assert result["rich_rows"] == {
             "row_selector": "#jobs-list .job",
             "link_selector": "a.job-title[href]",
+            "total_selector": ".jobs-total .total",
             "location_selectors": [".place-of-work"],
         }
         jobs = _extract_rich_rows_static(
@@ -1931,6 +1933,92 @@ class TestCanHandle:
 
         drifted_html = empty_html.replace(">0<", ">10<")
         assert _prospective_probe_config(drifted_html, self.PROSPECTIVE_URL) is None
+
+    def test_prospective_rejects_partial_advertised_inventory(self):
+        partial_html = self.PROSPECTIVE_HTML.replace(
+            """
+        <div class="job">
+          <a class="job-title"
+             href="/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331">
+            Analyste
+          </a>
+          <span class="place-of-work">Bern</span>
+        </div>
+""",
+            "",
+        )
+
+        assert _prospective_probe_config(partial_html, self.PROSPECTIVE_URL) is None
+
+    def test_prospective_rejects_a_listing_row_outside_the_url_contract(self):
+        rejected_html = self.PROSPECTIVE_HTML.replace(
+            "/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331",
+            "https://evil.example/jobs/5f1e0316-6225-4e57-b40c-cb605e046331",
+        )
+
+        assert _prospective_probe_config(rejected_html, self.PROSPECTIVE_URL) is None
+
+    def test_prospective_rejects_cross_origin_asset_identity(self):
+        spoofed_html = self.PROSPECTIVE_HTML.replace(
+            "/careercenter/1000973/assets/css/company.css",
+            "https://attacker.example/careercenter/1000973/assets/css/company.css",
+        )
+
+        assert _prospective_probe_config(spoofed_html, self.PROSPECTIVE_URL) is None
+
+    def test_prospective_accepts_canonical_provider_asset_identity(self):
+        canonical_html = self.PROSPECTIVE_HTML.replace(
+            "/careercenter/1000973/assets/css/company.css",
+            "https://ohws.prospective.ch/public/v1/careercenter/1000973/assets/css/company.css",
+        )
+
+        result = _prospective_probe_config(canonical_html, self.PROSPECTIVE_URL)
+
+        assert result is not None
+        assert result["prospective_board"] == "1000973"
+
+    async def test_prospective_runtime_accepts_uppercase_uuid_hex(self):
+        uppercase_html = self.PROSPECTIVE_HTML.replace(
+            "5f1e0316-6225-4e57-b40c-cb605e046331",
+            "5F1E0316-6225-4E57-B40C-CB605E046331",
+        )
+        config = _prospective_probe_config(uppercase_html, self.PROSPECTIVE_URL)
+        assert config is not None
+
+        with patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=uppercase_html)):
+            jobs = await dom_discover(
+                {"board_url": self.PROSPECTIVE_URL, "metadata": config},
+                AsyncMock(),
+            )
+
+        assert isinstance(jobs, list)
+        assert len(jobs) == 2
+        assert any("5F1E0316" in job.url for job in jobs)
+
+    async def test_prospective_runtime_rejects_partial_advertised_inventory(self):
+        config = _prospective_probe_config(self.PROSPECTIVE_HTML, self.PROSPECTIVE_URL)
+        assert config is not None
+        partial_html = self.PROSPECTIVE_HTML.replace(
+            """
+        <div class="job">
+          <a class="job-title"
+             href="/emplois-vacantes/analyste/5f1e0316-6225-4e57-b40c-cb605e046331">
+            Analyste
+          </a>
+          <span class="place-of-work">Bern</span>
+        </div>
+""",
+            "",
+        )
+
+        with (
+            patch(_EMPTY_FETCH_PATCH, AsyncMock(return_value=partial_html)),
+            pytest.raises(ValueError, match="accepted 1 rows but the page advertised 2"),
+        ):
+            await dom_discover(
+                {"board_url": self.PROSPECTIVE_URL, "metadata": config},
+                AsyncMock(),
+            )
 
     async def test_prospective_can_handle_returns_provider_preset(self):
         with patch(

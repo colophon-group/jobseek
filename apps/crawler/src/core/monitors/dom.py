@@ -552,12 +552,14 @@ _PROSPECTIVE_CAREERCENTER_ASSET_RE = re.compile(
     r"/careercenter/(?P<medium_id>\d+)/assets/",
     re.IGNORECASE,
 )
+_PROSPECTIVE_CANONICAL_ASSET_HOSTS = frozenset({"ohws.prospective.ch"})
 _PROSPECTIVE_JOB_UUID = (
-    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+    r"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}"
 )
 _PROSPECTIVE_RICH_ROWS = {
     "row_selector": "#jobs-list .job",
     "link_selector": "a.job-title[href]",
+    "total_selector": ".jobs-total .total",
     "location_selectors": [".place-of-work"],
 }
 _PROSPECTIVE_EMPTY_STATES = [
@@ -812,10 +814,28 @@ def _prospective_probe_config(html: str, url: str) -> dict | None:
     ):
         return None
 
+    board_origin = (parsed.scheme, parsed.hostname.casefold(), port or 443)
     medium_ids: set[str] = set()
     for node in tree.css("link[href], script[src], img[src]"):
         asset_url = node.attributes.get("href") or node.attributes.get("src") or ""
-        match = _PROSPECTIVE_CAREERCENTER_ASSET_RE.search(asset_url)
+        try:
+            asset = urlsplit(urljoin(url, asset_url))
+            asset_port = asset.port
+        except ValueError:
+            continue
+        if asset.username is not None or asset.password is not None:
+            continue
+        asset_host = (asset.hostname or "").casefold()
+        asset_origin = (asset.scheme, asset_host, asset_port or 443)
+        is_same_origin = asset_origin == board_origin
+        is_canonical_origin = (
+            asset.scheme == "https"
+            and asset_host in _PROSPECTIVE_CANONICAL_ASSET_HOSTS
+            and asset_port in {None, 443}
+        )
+        if not is_same_origin and not is_canonical_origin:
+            continue
+        match = _PROSPECTIVE_CAREERCENTER_ASSET_RE.search(asset.path)
         if match is not None:
             medium_ids.add(match.group("medium_id"))
     if len(medium_ids) != 1:
@@ -836,7 +856,7 @@ def _prospective_probe_config(html: str, url: str) -> dict | None:
             html,
             url,
             validated_rich_rows,
-            re.compile(url_filter, re.IGNORECASE),
+            re.compile(url_filter),
             allow_empty=True,
         )
         _validate_explicit_empty_states(
@@ -1497,6 +1517,7 @@ _RichRowsConfig = tuple[
     str | None,
     str,
     str | None,
+    str | None,
     tuple[str, ...],
     tuple[tuple[str, str], ...],
     bool,
@@ -1512,6 +1533,7 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         "link_selector",
         "link_attr",
         "title_selector",
+        "total_selector",
         "location_selectors",
         "metadata_selectors",
         "allow_missing_locations",
@@ -1532,6 +1554,9 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
     link_attr = link_attr.strip()
     title_selector = _validate_css_selector(
         value.get("title_selector"), name="rich_rows.title_selector"
+    )
+    total_selector = _validate_css_selector(
+        value.get("total_selector"), name="rich_rows.total_selector"
     )
     if row_selector is None:
         raise ValueError("DOM monitor rich_rows requires row_selector")
@@ -1578,6 +1603,7 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         link_selector,
         link_attr,
         title_selector,
+        total_selector,
         location_selectors,
         metadata_selectors,
         allow_missing_locations,
@@ -1598,14 +1624,30 @@ def _extract_rich_rows_static(
         link_selector,
         link_attr,
         title_selector,
+        total_selector,
         location_selectors,
         metadata_selectors,
         allow_missing_locations,
     ) = config
     tree = LexborHTMLParser(html)
+    advertised_total: int | None = None
+    if total_selector is not None:
+        total_node = tree.css_first(total_selector)
+        total_text = (
+            re.sub(r"\s+", " ", total_node.text(separator=" ", strip=True)).strip()
+            if total_node is not None
+            else ""
+        )
+        if re.fullmatch(r"(?:0|[1-9]\d{0,5})", total_text) is None:
+            raise ValueError("DOM monitor rich_rows total_selector omitted an exact job count")
+        advertised_total = int(total_text)
+        if advertised_total > MAX_URLS:
+            raise ValueError(
+                f"DOM monitor rich_rows advertised total exceeds the {MAX_URLS} URL cap"
+            )
     rows = tree.css(row_selector)
     if not rows:
-        if allow_empty:
+        if allow_empty and advertised_total in {None, 0}:
             return []
         raise ValueError("DOM monitor rich_rows matched no listing rows")
 
@@ -1650,6 +1692,11 @@ def _extract_rich_rows_static(
             metadata=metadata or None,
         )
 
+    if advertised_total is not None and len(jobs_by_url) != advertised_total:
+        raise ValueError(
+            "DOM monitor rich_rows accepted "
+            f"{len(jobs_by_url)} rows but the page advertised {advertised_total}"
+        )
     if not jobs_by_url:
         raise ValueError("DOM monitor rich_rows URL filter excluded every listing row")
     return list(jobs_by_url.values())
@@ -2452,6 +2499,10 @@ async def dom_discover(
         configured_empty_states = ((empty_selector, empty_text, False, None, None, None),)
     empty_state_name = "empty_states" if empty_states else "empty_selector"
     rich_rows = _validated_rich_rows(metadata.get("rich_rows"))
+    if rich_rows is not None and rich_rows[4] is not None and pagination:
+        raise ValueError(
+            "DOM monitor rich_rows total_selector supports single-page extraction only"
+        )
     require_jsonld_jobposting = metadata.get("require_jsonld_jobposting", False)
     if not isinstance(require_jsonld_jobposting, bool):
         raise ValueError("DOM monitor require_jsonld_jobposting must be a boolean")
