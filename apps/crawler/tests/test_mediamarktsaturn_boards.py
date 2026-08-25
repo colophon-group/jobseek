@@ -4,11 +4,23 @@ from __future__ import annotations
 
 import csv
 import json
+import os
+import subprocess
+import sys
+import textwrap
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from src.core.monitor import MonitorResult, _apply_url_allowlist, _apply_url_transform
-from src.core.monitors import DiscoveredJob
+import httpx
+import pytest
+
+from src.core.monitor import (
+    MonitorResult,
+    _apply_url_allowlist,
+    _apply_url_transform,
+    monitor_one_stream,
+)
+from src.core.monitors import _REGISTRY, DiscoveredJob, MonitorType
 
 _BOARDS_PATH = Path(__file__).parents[1] / "data" / "boards.csv"
 _GLOBAL_BOARD = "mediamarktsaturn-careers-global"
@@ -26,6 +38,17 @@ _STABLE_TRANSFORM = {
         r"[A-Za-z][A-Za-z0-9]*/job/[^/?#]+/(\d+)/$"
     ),
     "replace": r"https://careers.mediamarktsaturn.com/job/_/\1/",
+    "collision_policy": "prefer_source_pattern",
+    "collision_preferred_source_patterns": [
+        r"^https://careers\.mediamarktsaturn\.com/MediaMarktSaturn/",
+        r"^https://careers\.mediamarktsaturn\.com/MediaMarktCH/",
+        r"^https://careers\.mediamarktsaturn\.com/",
+    ],
+    "collision_canonical_identity_regex": (
+        r"^https://careers\.mediamarktsaturn\.com/job/_/(\d+)/$"
+    ),
+    "collision_identity_metadata_key": "id",
+    "collision_stream_buffer_limit": 5_000,
 }
 
 
@@ -44,7 +67,12 @@ def _config(row: dict[str, str]) -> dict:
 
 def _canonicalize(source_urls: set[str]) -> MonitorResult:
     jobs = {
-        url: DiscoveredJob(url=url, title=f"Job {index}") for index, url in enumerate(source_urls)
+        url: DiscoveredJob(
+            url=url,
+            title=("German" if "/MediaMarktSaturn/" in url else "Localized"),
+            metadata={"id": urlparse(url).path.rstrip("/").rsplit("/", 1)[-1]},
+        )
+        for url in source_urls
     }
     result = MonitorResult(urls=source_urls, jobs_by_url=jobs)
     result = _apply_url_allowlist(result, {"url_allowlist": _SOURCE_ALLOWLIST})
@@ -76,6 +104,9 @@ def test_global_successfactors_locale_and_title_variants_converge():
     assert result.jobs_by_url is not None
     assert set(result.jobs_by_url) == result.urls
     assert all(job.url == url for url, job in result.jobs_by_url.items())
+    assert (
+        result.jobs_by_url["https://careers.mediamarktsaturn.com/job/_/123456/"].title == "German"
+    )
 
 
 def test_global_successfactors_contract_rejects_unstable_or_foreign_shapes():
@@ -91,6 +122,199 @@ def test_global_successfactors_contract_rejects_unstable_or_foreign_shapes():
     assert result.urls == set()
     assert result.jobs_by_url == {}
     assert result.security_filtered_count == len(invalid_urls)
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_global_successfactors_de_en_alias_selection_is_order_independent(reverse):
+    de_url = (
+        "https://careers.mediamarktsaturn.com/MediaMarktSaturn/job/"
+        "Berlin-Verkaufsberater-DE/123456/"
+    )
+    en_url = "https://careers.mediamarktsaturn.com/MediaMarktCH/job/Zurich-Sales-Advisor-EN/123456/"
+    ordered = [de_url, en_url]
+    if reverse:
+        ordered.reverse()
+    jobs = {
+        url: DiscoveredJob(
+            url=url,
+            title="German title" if url == de_url else "English title",
+            metadata={"id": "123456"},
+        )
+        for url in ordered
+    }
+
+    result = _apply_url_transform(
+        MonitorResult(urls=set(ordered), jobs_by_url=jobs),
+        {"url_transform": _STABLE_TRANSFORM},
+    )
+
+    assert result.jobs_by_url is not None
+    selected = result.jobs_by_url["https://careers.mediamarktsaturn.com/job/_/123456/"]
+    assert selected.title == "German title"
+
+
+def test_global_successfactors_alias_selection_is_hash_seed_independent():
+    script = textwrap.dedent(
+        f"""
+        from src.core.monitor import MonitorResult, _apply_url_transform
+        from src.core.monitors import DiscoveredJob
+        de = "https://careers.mediamarktsaturn.com/MediaMarktSaturn/job/Stelle-DE/123456/"
+        en = "https://careers.mediamarktsaturn.com/MediaMarktCH/job/Role-EN/123456/"
+        urls = set([de, en])
+        jobs = {{
+            url: DiscoveredJob(
+                url=url,
+                title="de" if url == de else "en",
+                metadata={{"id": "123456"}},
+            )
+            for url in urls
+        }}
+        result = _apply_url_transform(
+            MonitorResult(urls=urls, jobs_by_url=jobs),
+            {{"url_transform": {json.dumps(_STABLE_TRANSFORM)}}},
+        )
+        print(result.jobs_by_url["https://careers.mediamarktsaturn.com/job/_/123456/"].title)
+        """
+    )
+    outputs = []
+    for seed in ("1", "2", "3", "4", "5", "6", "7", "8"):
+        env = {**os.environ, "PYTHONHASHSEED": seed}
+        outputs.append(
+            subprocess.check_output(
+                [sys.executable, "-c", script],
+                cwd=Path(__file__).parents[1],
+                env=env,
+                text=True,
+            ).strip()
+        )
+
+    assert outputs == ["de"] * len(outputs)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reverse_batches", [False, True])
+async def test_global_successfactors_aliases_resolve_across_stream_batches(
+    reverse_batches,
+):
+    de_url = (
+        "https://careers.mediamarktsaturn.com/MediaMarktSaturn/job/"
+        "Berlin-Verkaufsberater-DE/123456/"
+    )
+    en_url = "https://careers.mediamarktsaturn.com/MediaMarktCH/job/Zurich-Sales-Advisor-EN/123456/"
+    batches = [
+        [DiscoveredJob(url=de_url, title="German title", metadata={"id": "123456"})],
+        [DiscoveredJob(url=en_url, title="English title", metadata={"id": "123456"})],
+    ]
+    if reverse_batches:
+        batches.reverse()
+
+    async def stub_discover(_board, _client, pw=None):
+        return []
+
+    async def stub_stream(_board, _client, pw=None):
+        for batch in batches:
+            yield batch
+
+    monitor_type = MonitorType(
+        name="__mediamarktsaturn_collision_test__",
+        cost=1,
+        discover=stub_discover,
+        stream=stub_stream,
+        rich=True,
+    )
+    _REGISTRY.append(monitor_type)
+    try:
+        async with httpx.AsyncClient() as client:
+            results = [
+                result
+                async for result in monitor_one_stream(
+                    "https://careers.mediamarktsaturn.com/search/",
+                    monitor_type.name,
+                    {
+                        "url_allowlist": _SOURCE_ALLOWLIST,
+                        "url_transform": _STABLE_TRANSFORM,
+                    },
+                    client,
+                )
+            ]
+    finally:
+        _REGISTRY.remove(monitor_type)
+
+    assert len(results) == 1
+    assert results[0].jobs_by_url is not None
+    selected = results[0].jobs_by_url["https://careers.mediamarktsaturn.com/job/_/123456/"]
+    assert selected.title == "German title"
+
+
+@pytest.mark.asyncio
+async def test_global_successfactors_conflicting_same_source_content_fails_stream():
+    source_url = (
+        "https://careers.mediamarktsaturn.com/MediaMarktSaturn/job/"
+        "Berlin-Verkaufsberater-DE/123456/"
+    )
+
+    async def stub_discover(_board, _client, pw=None):
+        return []
+
+    async def stub_stream(_board, _client, pw=None):
+        yield [
+            DiscoveredJob(
+                url=source_url,
+                title="First title",
+                metadata={"id": "123456"},
+            )
+        ]
+        yield [
+            DiscoveredJob(
+                url=source_url,
+                title="Conflicting title",
+                metadata={"id": "123456"},
+            )
+        ]
+
+    monitor_type = MonitorType(
+        name="__mediamarktsaturn_conflict_test__",
+        cost=1,
+        discover=stub_discover,
+        stream=stub_stream,
+        rich=True,
+    )
+    _REGISTRY.append(monitor_type)
+    try:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="conflicting content"):
+                async for _result in monitor_one_stream(
+                    "https://careers.mediamarktsaturn.com/search/",
+                    monitor_type.name,
+                    {
+                        "url_allowlist": _SOURCE_ALLOWLIST,
+                        "url_transform": _STABLE_TRANSFORM,
+                    },
+                    client,
+                ):
+                    pass
+    finally:
+        _REGISTRY.remove(monitor_type)
+
+
+def test_global_successfactors_conflicting_provider_identity_fails_closed():
+    source_url = (
+        "https://careers.mediamarktsaturn.com/MediaMarktSaturn/job/"
+        "Berlin-Verkaufsberater-DE/123456/"
+    )
+    result = MonitorResult(
+        urls={source_url},
+        jobs_by_url={
+            source_url: DiscoveredJob(
+                url=source_url,
+                title="Mismatched identity",
+                metadata={"id": "999999"},
+            )
+        },
+    )
+
+    with pytest.raises(ValueError, match="identity does not match canonical"):
+        _apply_url_transform(result, {"url_transform": _STABLE_TRANSFORM})
 
 
 def test_dtb_boards_use_salesforce_record_ids_for_inline_identity():

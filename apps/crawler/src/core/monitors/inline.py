@@ -20,8 +20,8 @@ from __future__ import annotations
 
 import hashlib
 import re
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
-from html import escape
 from typing import TYPE_CHECKING, cast
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
@@ -55,8 +55,26 @@ _MAX_DETAIL_IDENTITY_LENGTH = 512
 _MAX_ITEM_BOUNDARY_TAG_LENGTH = 32
 _MAX_SECTION_REGEX_LENGTH = 2_048
 _MAX_POSITIONS_PER_LISTING = 20
+_DETAIL_BOUNDARY_TAG = "jobseek-inline-detail"
+_DETAIL_RESERVED_ATTRIBUTE_PREFIX = "data-inline-detail-"
 _HTML_TAG_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 _ORDINAL_DAY_SUFFIX_RE = re.compile(r"(?<=\d)(?:st|nd|rd|th)\b", re.IGNORECASE)
+
+
+@dataclass(frozen=True, slots=True)
+class _DetailIdentity:
+    """Raw authenticated identity plus the stable provider capture."""
+
+    raw: str
+    stable: str
+
+
+@dataclass(frozen=True, slots=True)
+class _FetchedInlineHtml:
+    """Fetched markup and trusted click identities kept outside provider HTML."""
+
+    html: str
+    detail_identities: tuple[_DetailIdentity, ...] = ()
 
 
 def _compile_exclude_title_regex(value: object) -> re.Pattern[str] | None:
@@ -182,7 +200,7 @@ async def _read_detail_identities(
     attribute: str,
     pattern: re.Pattern[str],
     expected_count: int,
-) -> tuple[str, ...]:
+) -> tuple[_DetailIdentity, ...]:
     """Read and validate one stable provider identity per click control."""
     identity_nodes = page.locator(selector)
     identity_count = await identity_nodes.count()
@@ -192,7 +210,7 @@ async def _read_detail_identities(
             f"({identity_count} identities for {expected_count} controls)"
         )
 
-    identities: list[str] = []
+    identities: list[_DetailIdentity] = []
     for index in range(identity_count):
         raw_identity = await identity_nodes.nth(index).get_attribute(attribute)
         if raw_identity is None:
@@ -211,11 +229,38 @@ async def _read_detail_identities(
             or any(ord(character) < 0x20 for character in identity)
         ):
             raise ValueError(f"inline detail identity {index + 1} is invalid")
-        identities.append(identity)
+        identities.append(_DetailIdentity(raw=raw_identity, stable=identity))
 
-    if len(set(identities)) != len(identities):
+    if len({identity.stable for identity in identities}) != len(identities):
         raise ValueError("inline detail identities must be unique")
     return tuple(identities)
+
+
+def _validated_expanded_detail_html(value: str) -> str:
+    """Reject provider markup that could counterfeit a synthetic item boundary."""
+    tree = LexborHTMLParser(value)
+    for node in tree.css("*"):
+        if node.tag == _DETAIL_BOUNDARY_TAG or node.tag == "article":
+            raise ValueError(
+                "inline expanded detail may not contain nested article or reserved boundary tags"
+            )
+        if any(
+            name.casefold().startswith(_DETAIL_RESERVED_ATTRIBUTE_PREFIX)
+            for name in node.attributes
+        ):
+            raise ValueError("inline expanded detail may not contain reserved boundary attributes")
+    return value
+
+
+def _consume_detail_identity(
+    identity: _DetailIdentity,
+    pattern: re.Pattern[str],
+) -> str:
+    """Re-authenticate an out-of-band identity at its point of use."""
+    match = pattern.fullmatch(identity.raw)
+    if match is None or match.group(1) != identity.stable:
+        raise ValueError("inline trusted detail identity failed consumption validation")
+    return identity.stable
 
 
 def _matches_explicit_empty(html: str, selector: str, marker: str) -> bool:
@@ -349,14 +394,14 @@ def _walk_bounded_item(
     steps: list[dict],
     cursor: int,
     boundary_tag: str,
-) -> tuple[dict[str, str | list[str] | None], int, str | None]:
+) -> tuple[dict[str, str | list[str] | None], int]:
     """Run extraction inside one tag-delimited posting block."""
     item_start = next(
         (index for index in range(cursor, len(elements)) if elements[index]["tag"] == boundary_tag),
         len(elements),
     )
     if item_start >= len(elements):
-        return {}, len(elements), None
+        return {}, len(elements)
     item_end = next(
         (
             index
@@ -366,8 +411,7 @@ def _walk_bounded_item(
         len(elements),
     )
     result, _block_cursor = walk_steps(elements[item_start:item_end], steps)
-    identity = elements[item_start]["attrs"].get("data-inline-detail-identity")
-    return result, item_end, identity
+    return result, item_end
 
 
 def _generate_url(board_url: str, title: str, seen: dict[str, int]) -> str:
@@ -541,7 +585,7 @@ async def _fetch_html(
     metadata: dict,
     http: httpx.AsyncClient | None,
     pw=None,
-) -> str:
+) -> _FetchedInlineHtml:
     """Fetch page HTML, using Playwright when render is configured.
 
     ``fetch_urls`` lets a board keep its public URL as the canonical posting
@@ -676,15 +720,19 @@ async def _fetch_html(
                                     "inline detail_content_selector must match exactly one element "
                                     f"after each click (matched {content_count})"
                                 )
-                            details.append(
-                                "<article data-inline-detail-boundary "
-                                'data-inline-detail-identity="'
-                                f'{escape(identities[index], quote=True)}">'
-                                "__inline_detail_boundary__"
-                                f"{await detail_content.inner_html()}</article>"
+                            detail_html = _validated_expanded_detail_html(
+                                await detail_content.inner_html()
                             )
-                        return validate("".join(details), fetch_url)
-                    return validate(await safe_content(page), fetch_url)
+                            details.append(
+                                f"<{_DETAIL_BOUNDARY_TAG}>"
+                                "__inline_detail_boundary__"
+                                f"{detail_html}</{_DETAIL_BOUNDARY_TAG}>"
+                            )
+                        return _FetchedInlineHtml(
+                            html=validate("".join(details), fetch_url),
+                            detail_identities=identities,
+                        )
+                    return _FetchedInlineHtml(html=validate(await safe_content(page), fetch_url))
             except Exception as exc:
                 last_error = exc
                 log.warning("inline.fetch_fallback", url=fetch_url, error=str(exc))
@@ -699,14 +747,14 @@ async def _fetch_html(
                     headers=fetch_headers,
                 )
                 resp.raise_for_status()
-                return validate(resp.text, fetch_url)
+                return _FetchedInlineHtml(html=validate(resp.text, fetch_url))
             except Exception as exc:
                 last_error = exc
                 log.warning("inline.fetch_fallback", url=fetch_url, error=str(exc))
 
     if last_error is not None:
         raise last_error
-    return ""
+    return _FetchedInlineHtml(html="")
 
 
 async def discover(
@@ -773,9 +821,9 @@ async def discover(
     item_boundary_tag = _validated_item_boundary_tag(metadata.get("item_boundary_tag"))
     uses_detail_expansion = metadata.get("detail_click_selector") is not None
     if uses_detail_expansion:
-        if item_boundary_tag not in (None, "article"):
-            raise ValueError("inline detail-card expansion reserves item_boundary_tag=article")
-        item_boundary_tag = "article"
+        if item_boundary_tag is not None:
+            raise ValueError("inline detail-card expansion sets its item boundary automatically")
+        item_boundary_tag = _DETAIL_BOUNDARY_TAG
     section_start = _validated_section_boundary(metadata.get("section_start"), name="section_start")
     section_end = _validated_section_boundary(metadata.get("section_end"), name="section_end")
     preserve_single_location = metadata.get("preserve_single_location", False)
@@ -798,7 +846,18 @@ async def discover(
         metadata
     )
 
-    html = await _fetch_html(board_url, metadata, client, pw)
+    fetched = await _fetch_html(board_url, metadata, client, pw)
+    html = fetched.html
+    detail_identities = fetched.detail_identities
+    _identity_selector, _identity_attribute, detail_identity_pattern = (
+        _validated_detail_identity_config(metadata, enabled=uses_detail_expansion)
+    )
+    if uses_detail_expansion:
+        assert detail_identity_pattern is not None
+        if not detail_identities:
+            raise ValueError("inline detail-card expansion returned no trusted identities")
+    elif detail_identities:
+        raise ValueError("inline ordinary mode received unexpected detail identities")
     include_hidden = bool(metadata.get("include_hidden"))
     elements = flatten(html, include_hidden=include_hidden)
 
@@ -829,24 +888,37 @@ async def discover(
     expansion_truncated = False
     today = datetime.now(UTC).date()
     cursor = 0
+    detail_item_index = 0
 
     while cursor < len(elements) and processed_count < _MAX_JOBS:
         if item_boundary_tag is None:
             result, new_cursor = walk_steps(elements, steps, start=cursor)
             provider_identity = None
         else:
-            result, new_cursor, provider_identity = _walk_bounded_item(
+            result, new_cursor = _walk_bounded_item(
                 elements,
                 steps,
                 cursor,
                 item_boundary_tag,
             )
+            provider_identity = None
+            if uses_detail_expansion and new_cursor > cursor:
+                if detail_item_index >= len(detail_identities):
+                    raise ValueError("inline expanded detail boundary count exceeded identities")
+                assert detail_identity_pattern is not None
+                provider_identity = _consume_detail_identity(
+                    detail_identities[detail_item_index],
+                    detail_identity_pattern,
+                )
+                detail_item_index += 1
 
         # Stop if no title found or cursor didn't advance
         title = cast(str | None, result.get("title"))
         if new_cursor <= cursor:
             break
         if not title:
+            if uses_detail_expansion:
+                raise ValueError("inline expanded detail omitted its title")
             if item_boundary_tag is None:
                 break
             cursor = new_cursor
@@ -922,6 +994,12 @@ async def discover(
             )
         if expansion_truncated:
             break
+
+    if uses_detail_expansion and detail_item_index != len(detail_identities):
+        raise ValueError(
+            "inline expanded detail boundary/identity count mismatch "
+            f"({detail_item_index} boundaries for {len(detail_identities)} identities)"
+        )
 
     if empty_text is not None and not jobs:
         raise ValueError(

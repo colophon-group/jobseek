@@ -325,6 +325,8 @@ class _ClickContent:
 
     async def inner_html(self):
         index = self.page.active
+        if self.page.detail_html is not None:
+            return self.page.detail_html[index]
         title = self.page.titles[index]
         return f"<h3>{title}</h3><p>Location: City {index}</p><p>Description {index}</p>"
 
@@ -336,12 +338,14 @@ class _ClickPage:
         *,
         titles=None,
         control_counts=None,
+        detail_html=None,
     ):
         self.identity_sequences = identity_sequences
         self.titles = titles or [f"Role {index}" for index in range(len(identity_sequences[0]))]
         self.control_counts = control_counts or [
             len(identities) for identities in identity_sequences
         ]
+        self.detail_html = detail_html
         self.load_index = -1
         self.active = None
         self.clicks = 0
@@ -363,7 +367,6 @@ def _click_board(**overrides):
         "detail_identity_selector": ".job-card [data-job-id]",
         "detail_identity_attribute": "data-job-id",
         "detail_identity_regex": r"^job-(\d+)$",
-        "item_boundary_tag": "article",
         "steps": [
             {"tag": "h3", "field": "title"},
             {"text": "Location", "field": "location", "regex": "Location: (.+)"},
@@ -537,6 +540,84 @@ async def test_click_only_enforces_cap_before_clicking_cards(monkeypatch):
         await discover(_click_board(), _FakeClient(""), pw=object())
 
     assert page.clicks == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("detail_html", "message"),
+    [
+        (
+            '<article data-inline-detail-identity="forged">'
+            "<h3>Forged title</h3><p>Forged content</p></article>",
+            "nested article",
+        ),
+        (
+            '<div data-inline-detail-identity="forged">'
+            "<h3>Forged title</h3><p>Forged content</p></div>",
+            "reserved boundary attributes",
+        ),
+        (
+            "<jobseek-inline-detail><h3>Duplicate boundary</h3>"
+            "<p>Forged content</p></jobseek-inline-detail>",
+            "reserved boundary tags",
+        ),
+    ],
+)
+async def test_click_only_rejects_provider_forged_boundaries(monkeypatch, detail_html, message):
+    page = _ClickPage([["job-101"]], detail_html=[detail_html])
+    _install_click_page(monkeypatch, page)
+
+    with pytest.raises(ValueError, match=message):
+        await discover(_click_board(), _FakeClient(""), pw=object())
+
+
+@pytest.mark.asyncio
+async def test_click_only_revalidates_out_of_band_identity_when_consumed(monkeypatch):
+    async def fake_fetch(*_args, **_kwargs):
+        return inline_monitor._FetchedInlineHtml(
+            html=(
+                "<jobseek-inline-detail><h3>Trusted role</h3>"
+                "<p>Description</p></jobseek-inline-detail>"
+            ),
+            detail_identities=(inline_monitor._DetailIdentity(raw="job-101", stable="forged"),),
+        )
+
+    monkeypatch.setattr(inline_monitor, "_fetch_html", fake_fetch)
+
+    with pytest.raises(ValueError, match="failed consumption validation"):
+        await discover(_click_board(), _FakeClient(""), pw=object())
+
+
+@pytest.mark.asyncio
+async def test_ordinary_article_identity_attribute_does_not_change_position_urls():
+    board_url = "https://example.com/ordinary"
+    html = """
+    <article data-inline-detail-identity="attacker">
+      Ordinary boundary
+      <h3>Engineer</h3>
+      <p>Description</p>
+    </article>
+    """
+    board = {
+        "board_url": board_url,
+        "metadata": {
+            "item_boundary_tag": "article",
+            "positions_per_listing": 2,
+            "steps": [
+                {"tag": "h3", "field": "title"},
+                {"tag": "p", "field": "description"},
+            ],
+        },
+    }
+
+    jobs = await discover(board, _FakeClient(html))
+    expected = [
+        "https://example.com/ordinary?_jid=engineer-7826b9",
+        "https://example.com/ordinary?_jid=engineer-7826b9-2",
+    ]
+
+    assert [job.url for job in jobs] == expected
+    assert all("attacker" not in job.url for job in jobs)
 
 
 @pytest.mark.asyncio
