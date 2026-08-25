@@ -88,6 +88,39 @@ class TestCreateHttpClient:
 
         assert captured["accept"] == "application/json"
 
+    async def test_rejects_non_ascii_cookie_without_dropping_valid_session_cookie(self):
+        """A malformed locale cookie must not poison the shared client.
+
+        Hireserve portals can emit a French month name in ``Set-Cookie``.
+        Python's cookie jar accepts it, while httpx cannot serialize it into
+        the next ASCII HTTP header. The valid session cookie beside it must
+        still survive because some legacy boards require that state.
+        """
+        seen_cookie_headers: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen_cookie_headers.append(request.headers.get("cookie", ""))
+            if len(seen_cookie_headers) == 1:
+                return httpx.Response(
+                    200,
+                    headers=[
+                        (b"set-cookie", b"sessionid1=abc123; Path=/"),
+                        (b"set-cookie", b"lastaccesstime1=25-AO\xdbT-2026; Path=/"),
+                    ],
+                    text="first",
+                )
+            return httpx.Response(200, text="second")
+
+        client = create_http_client()
+        client._transport = httpx.MockTransport(handler)
+        try:
+            await client.get("https://example.com/first")
+            await client.get("https://example.com/second")
+        finally:
+            await client.aclose()
+
+        assert seen_cookie_headers == ["", "sessionid1=abc123"]
+
 
 class TestRequestHostTracking:
     async def test_transport_records_actual_redirect_hosts_without_network(self):
