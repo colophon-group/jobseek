@@ -217,10 +217,12 @@ _ALL_SCRAPER_TYPES: frozenset[str] = frozenset(
         "paycom",
         "paylocity",
         "pdf",
+        "phuketall",
         "rippling",
         "skip",
         "smartrecruiters",
         "taleo",
+        "veryeast",
         "workable",
         "workday",
     }
