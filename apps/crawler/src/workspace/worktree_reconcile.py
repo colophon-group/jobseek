@@ -208,6 +208,7 @@ class GitHubRemoteVerifier:
         self.repository = repository
         self._pr_cache: dict[int, RemoteProof] = {}
         self._issue_cache: dict[int, Any] = {}
+        self._branch_cache: dict[str, RemoteProof] = {}
 
     def verify_main(self) -> RemoteProof:
         """Resolve and refresh main through an explicit GitHub repository identity."""
@@ -249,7 +250,26 @@ class GitHubRemoteVerifier:
                 error="GitHub main lookup returned an invalid commit OID",
             )
 
-        trusted_ref = "refs/jobseek-reconcile/authoritative-main"
+        return self._refresh_trusted_ref(
+            source_ref="refs/heads/main",
+            trusted_ref="refs/jobseek-reconcile/authoritative-main",
+            expected_oid=main_oid,
+            proof_kind="authoritative_main",
+            failure_prefix="main",
+            detail={"repository": self.repository, "headRefOid": main_oid},
+        )
+
+    def _refresh_trusted_ref(
+        self,
+        *,
+        source_ref: str,
+        trusted_ref: str,
+        expected_oid: str,
+        proof_kind: str,
+        failure_prefix: str,
+        detail: dict[str, Any],
+    ) -> RemoteProof:
+        """Fetch one explicit trusted-repository ref and pin its immutable OID."""
         trusted_url = f"https://github.com/{self.repository}.git"
         refresh = subprocess.run(
             [
@@ -273,7 +293,7 @@ class GitHubRemoteVerifier:
                 "--no-recurse-submodules",
                 "--no-write-fetch-head",
                 trusted_url,
-                f"+refs/heads/main:{trusted_ref}",
+                f"+{source_ref}:{trusted_ref}",
             ],
             cwd=self.repo_dir,
             env={
@@ -289,10 +309,12 @@ class GitHubRemoteVerifier:
         if refresh.returncode != 0:
             return RemoteProof(
                 ok=False,
-                kind="main_refresh_failed",
-                detail={"repository": self.repository, "headRefOid": main_oid},
+                kind=f"{failure_prefix}_refresh_failed",
+                detail=detail,
                 error=(
-                    refresh.stderr or refresh.stdout or "trusted GitHub main refresh failed"
+                    refresh.stderr
+                    or refresh.stdout
+                    or f"trusted GitHub {failure_prefix} refresh failed"
                 ).strip(),
             )
         refreshed = subprocess.run(
@@ -310,29 +332,33 @@ class GitHubRemoteVerifier:
             check=False,
         )
         refreshed_oid = refreshed.stdout.strip().lower()
-        detail = {
-            "repository": self.repository,
-            "headRefOid": main_oid,
+        refreshed_detail = {
+            **detail,
             "refreshed_oid": refreshed_oid or None,
             "trusted_ref": trusted_ref,
         }
         if refreshed.returncode != 0:
             return RemoteProof(
                 ok=False,
-                kind="main_refresh_failed",
-                detail=detail,
+                kind=f"{failure_prefix}_refresh_failed",
+                detail=refreshed_detail,
                 error=(
-                    refreshed.stderr or refreshed.stdout or "refreshed main is not a commit"
+                    refreshed.stderr
+                    or refreshed.stdout
+                    or f"refreshed {failure_prefix} is not a commit"
                 ).strip(),
             )
-        if refreshed_oid != main_oid:
+        if refreshed_oid != expected_oid:
             return RemoteProof(
                 ok=False,
-                kind="main_refresh_mismatch",
-                detail=detail,
-                error="GitHub main moved or refresh did not match the authoritative lookup",
+                kind=f"{failure_prefix}_refresh_mismatch",
+                detail=refreshed_detail,
+                error=(
+                    f"GitHub {failure_prefix} moved or refresh did not match "
+                    "the authoritative lookup"
+                ),
             )
-        return RemoteProof(ok=True, kind="authoritative_main", detail=detail)
+        return RemoteProof(ok=True, kind=proof_kind, detail=refreshed_detail)
 
     def __call__(self, run: dict[str, Any]) -> RemoteProof:
         state = str(run.get("state") or "")
@@ -345,7 +371,7 @@ class GitHubRemoteVerifier:
             if not proof.ok:
                 return proof
         elif isinstance(branch, str) and branch:
-            proof = self._verify_branch(branch)
+            proof = self.verify_branch(branch)
             if not proof.ok:
                 return proof
         else:
@@ -473,16 +499,28 @@ class GitHubRemoteVerifier:
         self._pr_cache[number] = proof
         return proof
 
-    def _verify_branch(self, branch: str) -> RemoteProof:
+    def verify_branch(self, branch: str, *, allow_absent: bool = False) -> RemoteProof:
+        cached = self._branch_cache.get(branch)
+        if cached is None:
+            cached = self._lookup_branch(branch)
+            self._branch_cache[branch] = cached
+        if cached.kind == "remote_branch_absent" and not allow_absent:
+            return RemoteProof(
+                ok=False,
+                kind="branch_lookup_failed",
+                detail=cached.detail,
+                error="ledger branch has no verifiable remote ref or PR",
+            )
+        return cached
+
+    def _lookup_branch(self, branch: str) -> RemoteProof:
         result = subprocess.run(
             [
                 "gh",
                 "api",
                 "--method",
                 "GET",
-                f"repos/{self.repository}/git/ref/heads/{quote(branch, safe='/')}",
-                "--jq",
-                ".object.sha",
+                f"repos/{self.repository}/git/matching-refs/heads/{quote(branch, safe='/')}",
             ],
             cwd=self.repo_dir,
             text=True,
@@ -496,7 +534,47 @@ class GitHubRemoteVerifier:
                 detail={"branch": branch},
                 error="ledger branch has no verifiable remote ref or PR",
             )
-        oid = result.stdout.strip().lower()
+        try:
+            candidates = json.loads(result.stdout)
+        except json.JSONDecodeError as exc:
+            return RemoteProof(
+                ok=False,
+                kind="branch_lookup_invalid",
+                detail={"branch": branch, "repository": self.repository},
+                error=str(exc),
+            )
+        if not isinstance(candidates, list):
+            return RemoteProof(
+                ok=False,
+                kind="branch_lookup_invalid",
+                detail={"branch": branch, "repository": self.repository},
+                error="GitHub branch lookup returned an invalid response",
+            )
+        exact_ref = f"refs/heads/{branch}"
+        exact = [
+            candidate
+            for candidate in candidates
+            if isinstance(candidate, dict) and candidate.get("ref") == exact_ref
+        ]
+        if not exact:
+            return RemoteProof(
+                ok=True,
+                kind="remote_branch_absent",
+                detail={
+                    "branch": branch,
+                    "headRefOid": None,
+                    "repository": self.repository,
+                },
+            )
+        if len(exact) != 1 or not isinstance(exact[0].get("object"), dict):
+            return RemoteProof(
+                ok=False,
+                kind="branch_lookup_invalid",
+                detail={"branch": branch, "repository": self.repository},
+                error="GitHub branch lookup returned ambiguous exact refs",
+            )
+        oid = exact[0]["object"].get("sha")
+        oid = oid.strip().lower() if isinstance(oid, str) else ""
         if not re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", oid):
             return RemoteProof(
                 ok=False,
@@ -504,9 +582,13 @@ class GitHubRemoteVerifier:
                 detail={"branch": branch, "repository": self.repository},
                 error="GitHub branch lookup returned an invalid commit OID",
             )
-        return RemoteProof(
-            ok=True,
-            kind="remote_branch",
+        branch_hash = hashlib.sha256(branch.encode()).hexdigest()[:24]
+        return self._refresh_trusted_ref(
+            source_ref=exact_ref,
+            trusted_ref=f"refs/jobseek-reconcile/branch-{branch_hash}",
+            expected_oid=oid,
+            proof_kind="remote_branch",
+            failure_prefix="branch",
             detail={
                 "branch": branch,
                 "headRefOid": oid,
@@ -826,6 +908,8 @@ def reconcile_managed_worktrees(
     worktrees_dir: Path,
     archive_dir: Path,
     ledger: Ledger,
+    authoritative_main_verifier: Callable[[], RemoteProof],
+    branch_verifier: Callable[[str], RemoteProof],
     pid_checker: Callable[[int, str], bool],
     live_path_checker: Callable[[Path], bool],
     max_terminal_directories: int,
@@ -870,33 +954,6 @@ def reconcile_managed_worktrees(
         ),
         default=None,
     )
-    remote_error = registration_error
-    remote_heads: dict[str, str] = {}
-    if remote_error is None:
-        fetch = subprocess.run(
-            ["git", "fetch", "--prune", "origin", "main"],
-            cwd=repo_dir,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        if fetch.returncode != 0:
-            remote_error = (fetch.stderr or fetch.stdout or "managed clone fetch failed").strip()
-        else:
-            heads = subprocess.run(
-                ["git", "ls-remote", "--heads", "origin"],
-                cwd=repo_dir,
-                text=True,
-                capture_output=True,
-                check=False,
-            )
-            if heads.returncode != 0:
-                remote_error = (
-                    heads.stderr or heads.stdout or "managed branch inventory failed"
-                ).strip()
-            else:
-                remote_heads = _parse_remote_heads(heads.stdout)
-
     items: list[WorktreeItem] = []
     bytes_before = 0
     removed = 0
@@ -905,6 +962,7 @@ def reconcile_managed_worktrees(
     failures = 0
     remover = remove_worktree or (lambda path: _remove_registered_worktree(repo_dir, path))
     now = int(time.time())
+    authoritative_main: RemoteProof | None = None
 
     for path in paths:
         resolved, path_error = _inspect_worktree_path(path, root_resolved=root_resolved)
@@ -974,22 +1032,57 @@ def reconcile_managed_worktrees(
         elif status_error:
             item.classification = "status_failed"
             item.reason = status_error
-        elif remote_error:
+        elif registration_error:
             item.classification = "remote_unverified"
-            item.reason = f"managed clone remote refresh failed: {remote_error}"
+            item.reason = registration_error
         else:
-            proof = _managed_head_proof(
-                repo_dir=repo_dir,
-                item=item,
-                remote_heads=remote_heads,
-            )
+            if authoritative_main is None:
+                try:
+                    authoritative_main = authoritative_main_verifier()
+                except Exception as exc:  # noqa: BLE001 - destructive proof must fail closed
+                    authoritative_main = RemoteProof(
+                        ok=False,
+                        kind="main_lookup_failed",
+                        error=f"authoritative managed main lookup failed: {exc}",
+                    )
+            proof = authoritative_main
+            main_oid = _remote_head_oid(authoritative_main.detail) if proof.ok else None
+            if proof.ok and main_oid is None:
+                proof = RemoteProof(
+                    ok=False,
+                    kind="main_lookup_invalid",
+                    detail={"authoritative_main": asdict(authoritative_main)},
+                    error="authoritative managed main proof contained no commit OID",
+                )
+            elif proof.ok and main_oid is not None:
+                item.main_oid = main_oid
+                if item.branch:
+                    try:
+                        branch_proof = branch_verifier(item.branch)
+                    except Exception as exc:  # noqa: BLE001 - destructive proof must fail closed
+                        branch_proof = RemoteProof(
+                            ok=False,
+                            kind="branch_lookup_failed",
+                            detail={"branch": item.branch},
+                            error=f"authoritative managed branch lookup failed: {exc}",
+                        )
+                else:
+                    branch_proof = RemoteProof(ok=True, kind="no_remote_branch")
+                if branch_proof.ok:
+                    proof = _runner_head_proof(
+                        repo_dir=repo_dir,
+                        item=item,
+                        remote_proof=branch_proof,
+                        main_oid=main_oid,
+                        main_proof=authoritative_main,
+                    )
+                else:
+                    proof = branch_proof
             item.remote_proof = asdict(proof)
             if not proof.ok:
                 item.classification = "remote_unverified"
                 item.reason = proof.error or "managed worktree history could not be verified"
             else:
-                proof_main_oid = proof.detail.get("main_oid")
-                item.main_oid = str(proof_main_oid) if isinstance(proof_main_oid, str) else None
                 item.unique_commits = proof.kind == "local_unique_commits"
                 item.classification = "terminal_candidate"
                 item.reason = "managed worktree is inactive and its local state is preservable"
@@ -1148,7 +1241,6 @@ def _runner_head_proof(
     head_proof = _managed_head_proof(
         repo_dir=repo_dir,
         item=item,
-        remote_heads={},
         exact_remote_oid=remote_oid,
         main_oid=main_oid,
     )
@@ -1179,9 +1271,8 @@ def _managed_head_proof(
     *,
     repo_dir: Path,
     item: WorktreeItem,
-    remote_heads: dict[str, str],
+    main_oid: str,
     exact_remote_oid: str | None = None,
-    main_oid: str | None = None,
 ) -> RemoteProof:
     head = item.head_oid
     if not head:
@@ -1190,21 +1281,6 @@ def _managed_head_proof(
             kind="missing_head",
             error="registered managed worktree has no HEAD object",
         )
-    if main_oid is None:
-        main_result = subprocess.run(
-            ["git", "rev-parse", "origin/main"],
-            cwd=repo_dir,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        if main_result.returncode != 0:
-            return RemoteProof(
-                ok=False,
-                kind="missing_main",
-                error=(main_result.stderr or "origin/main is unavailable").strip(),
-            )
-        main_oid = main_result.stdout.strip()
     detail = {"head_oid": head, "main_oid": main_oid, "branch": item.branch}
 
     ancestor = subprocess.run(
@@ -1225,11 +1301,8 @@ def _managed_head_proof(
             error=(ancestor.stderr or "could not compare managed HEAD to main").strip(),
         )
 
-    remote_oid = exact_remote_oid
-    if remote_oid is None and item.branch:
-        remote_oid = remote_heads.get(item.branch)
-    detail["remote_oid"] = remote_oid
-    if remote_oid == head:
+    detail["remote_oid"] = exact_remote_oid
+    if exact_remote_oid == head:
         return RemoteProof(ok=True, kind="exact_remote_branch", detail=detail)
 
     tree_comparison = subprocess.run(
@@ -1261,17 +1334,6 @@ def _managed_head_proof(
             error=(tree_comparison.stderr or "could not compare managed tree to main").strip(),
         )
     return RemoteProof(ok=True, kind="local_unique_commits", detail=detail)
-
-
-def _parse_remote_heads(output: str) -> dict[str, str]:
-    heads: dict[str, str] = {}
-    prefix = "refs/heads/"
-    for line in output.splitlines():
-        parts = line.split()
-        if len(parts) != 2 or not parts[1].startswith(prefix):
-            continue
-        heads[parts[1].removeprefix(prefix)] = parts[0]
-    return heads
 
 
 def _managed_archive_id(item: WorktreeItem) -> str:
