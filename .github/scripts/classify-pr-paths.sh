@@ -10,6 +10,16 @@ is_non_code_path() {
   local file="$1"
 
   case "$file" in
+    apps/crawler/data/industries.csv | \
+      apps/crawler/data/occupations.csv | \
+      apps/crawler/data/seniority.csv | \
+      apps/crawler/data/technologies.csv | \
+      scripts/derive-crawler-runtime-contract.mjs)
+      return 1
+      ;;
+  esac
+
+  case "$file" in
     *.md | \
       docs/* | \
       .github/dependabot.yml | \
@@ -28,6 +38,16 @@ is_non_code_path() {
 
 is_crawler_code_path() {
   local file="$1"
+
+  case "$file" in
+    apps/crawler/data/industries.csv | \
+      apps/crawler/data/occupations.csv | \
+      apps/crawler/data/seniority.csv | \
+      apps/crawler/data/technologies.csv | \
+      scripts/derive-crawler-runtime-contract.mjs)
+      return 0
+      ;;
+  esac
 
   [[ "$file" == apps/crawler/* ]] || return 1
 

@@ -396,6 +396,26 @@ test("manual PR classification exports the validated PR base context", () => {
   assert.match(result.outputs, /^base_ref=main$/m);
 });
 
+test("runtime taxonomies and contract derivation require crawler version gates", () => {
+  for (const file of [
+    "apps/crawler/data/industries.csv",
+    "apps/crawler/data/occupations.csv",
+    "apps/crawler/data/seniority.csv",
+    "apps/crawler/data/technologies.csv",
+    "scripts/derive-crawler-runtime-contract.mjs",
+  ]) {
+    const result = runClassifyPrPaths({ files: [file], baseRef: "main" });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.outputs, /^code=true$/m, file);
+    assert.match(result.outputs, /^crawler_code=true$/m, file);
+  }
+  assert.match(
+    workflow,
+    /crawler_runtime_boundary:\n\s+- '\{apps\/crawler\/data\/\{industries,occupations,seniority,technologies\}\.csv,scripts\/derive-crawler-runtime-contract\.mjs\}'/,
+  );
+  assert.match(workflow, /id: filter-combined[\s\S]*CRAWLER_RUNTIME_BOUNDARY/);
+});
+
 test("PR-only CI gates cover pull requests and dispatched PRs", () => {
   const changesJob = jobBlock("changes");
   const crawlerImageJob = jobBlock("crawler-image");
@@ -538,7 +558,7 @@ test("CSV sync cannot publish configuration ahead of its crawler runtime", () =>
   );
   assert.match(
     syncDataWorkflow,
-    /SYNC_REVISION: \$\{\{ inputs\.revision \|\| github\.sha \}\}[\s\S]*id: runtime_contract[\s\S]*--revision "\$SYNC_REVISION"[\s\S]*envs: SYNC_REVISION,SYNC_RUNTIME_CONTRACT_SHA256[\s\S]*"\$SYNC_REVISION" "\$SYNC_RUNTIME_CONTRACT_SHA256"/,
+    /SYNC_REVISION: \$\{\{ inputs\.revision \|\| github\.sha \}\}[\s\S]*id: runtime_contract[\s\S]*--revision "\$SYNC_REVISION"[\s\S]*envs: SYNC_REVISION,SYNC_RUNTIME_CONTRACT_SHA256,SYNC_DATA_CONTRACT_SHA256,SYNC_CANDIDATE_ID,SYNC_ARCHIVE_SHA256[\s\S]*"\$SYNC_REVISION" "\$SYNC_RUNTIME_CONTRACT_SHA256"/,
   );
   assert.match(
     syncDataWorkflow,
@@ -590,17 +610,21 @@ test("CSV sync cannot publish configuration ahead of its crawler runtime", () =>
     deployCrawlerWorkflow,
     /'!apps\/crawler\/data\/\*\*'[\s\S]*'apps\/crawler\/data\/industries\.csv'[\s\S]*'apps\/crawler\/data\/occupations\.csv'[\s\S]*'apps\/crawler\/data\/seniority\.csv'[\s\S]*'apps\/crawler\/data\/technologies\.csv'/,
   );
-  assert.match(
-    crawlerCsvSyncHostScript,
-    /ACTIVE_RELEASE_POINTER=\/home\/deploy\/\.crawler-active-release/,
-  );
+  assert.match(crawlerCsvSyncHostScript, /\.crawler-active-release/);
   assert.match(crawlerCsvSyncHostScript, /JOBSEEK_RUNTIME_CONTRACT_SHA256/);
   assert.match(crawlerCsvSyncHostScript, /WAIT: CSV config requires[\s\S]*return 75/);
-  assert.match(crawlerCsvSyncHostScript, /grep -E "\^\$\{key\}=" "\$DEPLOY_ENV"/);
+  assert.match(crawlerCsvSyncHostScript, /grep -E "\^\$\{key\}=" "\$release\/environment.env"/);
   assert.match(
     crawlerCsvSyncHostScript,
-    /sed -n 's\/\^CRAWLER_IMAGE_REF=\/\/p' "\$DEPLOY_ENV"/,
+    /read_exact_value "\$generation\/environment.env" CRAWLER_IMAGE_REF/,
   );
+  assert.match(syncDataWorkflow, /\/home\/deploy\/csv-candidates\/\$\{\{ steps\.candidate\.outputs\.candidate_id \}\}/);
+  assert.doesNotMatch(syncDataWorkflow, /\/home\/deploy\/csv-overlay/);
+  assert.match(crawlerCsvSyncHostScript, /DATA_CONTRACT_SHA256/);
+  assert.match(crawlerCsvSyncHostScript, /CSV candidate archive digest mismatch/);
+  assert.match(crawlerCsvSyncHostScript, /"\$ACTIVE_DATA_DIR:\/app\/data:ro"/);
+  assert.match(crawlerCsvSyncHostScript, /live crawler environment drifted from committed release/);
+  assert.match(crawlerCsvSyncHostScript, /RECOVERY_ACTION/);
   assert.match(crawlerCsvSyncHostScript, /trap cleanup EXIT/);
   assert.match(crawlerCsvSyncHostScript, /docker rm -f "\$NAME"/);
 });

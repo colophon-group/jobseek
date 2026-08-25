@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -257,80 +258,247 @@ def test_csv_sync_requires_the_committed_runtime_contract_before_publication() -
     )
     assert "JOBSEEK_RUNTIME_CONTRACT_SHA256" in deploy
     assert "JOBSEEK_RUNTIME_CONTRACT_SHA256" in sync_host
-    assert "/home/deploy/.crawler-active-release" in sync_host
-    contract_gate = sync_host.index("contract_files=(")
-    credentials = sync_host.index("required_env=(")
-    image = sync_host.index("mapfile -t image_refs")
+    assert ".crawler-active-release" in sync_host
+    contract_gate = sync_host.index("verify_runtime_contract() {")
+    credentials = sync_host.index("build_runtime_env() {")
+    image = sync_host.index("CRAWLER_IMAGE_REF)")
     publication = sync_host.index("uv run --no-sync crawler sync")
-    assert contract_gate < credentials < image < publication
-    assert sync_host.count('"$active_release/environment.env"') == 1
-    assert sync_host.count('"$active_release/success.env"') == 1
+    assert image < contract_gate < credentials < publication
+    assert '"$ACTIVE_RELEASE/environment.env"' in sync_host
+    assert '"$ACTIVE_RELEASE/success.env"' in sync_host
     assert "return 75" in sync_host
-    assert sync_host.index("verify_runtime_contract") < sync_host.index('RUNTIME_ENV="$(mktemp')
+    runtime_gate = sync_host.index('verify_runtime_contract "$RUNTIME_CONTRACT_SHA256"')
+    assert runtime_gate < sync_host.index('candidate_generation="$(', runtime_gate)
+    assert "SYNC_DATA_CONTRACT_SHA256" in workflow
+    assert "SYNC_ARCHIVE_SHA256" in workflow
+    assert "/home/deploy/csv-candidates/" in workflow
+    assert "/home/deploy/csv-overlay" not in workflow
+    assert '"$ACTIVE_DATA_DIR:/app/data:ro"' in sync_host
 
 
-def test_csv_sync_runtime_contract_mismatch_is_retryable_but_corruption_is_fatal(
+def test_csv_sync_runtime_contract_mismatch_is_retryable_but_corruption_is_fatal() -> None:
+    sync_host = CSV_SYNC_HOST.read_text()
+    verifier = sync_host[
+        sync_host.index("verify_runtime_contract() {") : sync_host.index(
+            "\nactivate_release_generation() {"
+        )
+    ]
+    assert "cmp -s \\\n    <(sed '/^COMPOSE_FILE=/d' \"$DEPLOY_ENV\")" in verifier
+    assert '"$ACTIVE_RELEASE/environment.env" "$ACTIVE_RELEASE/success.env"' in verifier
+    assert "committed crawler runtime contract is duplicated or invalid" in verifier
+    assert "WAIT: CSV config requires a crawler runtime" in verifier
+    assert "return 75" in verifier
+
+
+def test_csv_snapshot_verifier_rejects_tamper_residue_and_deleted_files(
     tmp_path: Path,
 ) -> None:
     sync_host = CSV_SYNC_HOST.read_text()
     verifier = sync_host[
-        sync_host.index("verify_runtime_contract() {") : sync_host.index(
-            "\nverify_runtime_contract\n"
+        sync_host.index("verify_exact_csv_tree() {") : sync_host.index(
+            "\nresolve_active_release() {"
         )
     ]
-    expected = "a" * 64
-    different = "b" * 64
-    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
-    harness = "\n".join(
-        (
-            "set -u",
-            'DEPLOY_ENV="$TEST_DEPLOY_ENV"',
-            'ACTIVE_RELEASE_POINTER="$TEST_ACTIVE_RELEASE_POINTER"',
-            'ACTIVE_RELEASE_ROOT="$TEST_ACTIVE_RELEASE_ROOT"',
-            f'RUNTIME_CONTRACT_SHA256="{expected}"',
-            verifier,
-            "verify_runtime_contract",
-            "status=$?",
-            "printf '%s\\n' \"$status\"",
+    data = tmp_path / "data"
+    data.mkdir()
+    boards = data / "boards.csv"
+    companies = data / "companies.csv"
+    boards.write_text("slug\nb\n", encoding="utf-8")
+    companies.write_text("slug\nc\n", encoding="utf-8")
+    manifest = tmp_path / "data-files.sha256"
+
+    def rewrite_manifest() -> None:
+        rows = sorted(
+            (path.name, hashlib.sha256(path.read_bytes()).hexdigest())
+            for path in data.iterdir()
+            if path.suffix == ".csv"
         )
-    )
+        manifest.write_text(
+            "".join(f"{digest}  {name}\n" for name, digest in rows),
+            encoding="utf-8",
+        )
 
-    for name, values, expected_status in (
-        ("match", (expected, expected, expected), 0),
-        ("different", (expected, expected, different), 75),
-        ("missing", (expected, expected, None), 75),
-        ("invalid", (expected, expected, "not-a-digest"), 1),
-    ):
-        case_dir = tmp_path / name
-        release_root = case_dir / "releases"
-        release = release_root / "release-1"
-        release.mkdir(parents=True)
-        deploy_env = case_dir / ".env"
-        pointer = case_dir / ".crawler-active-release"
-        pointer.symlink_to(release)
-        files = (deploy_env, release / "environment.env", release / "success.env")
-        for path, value in zip(files, values, strict=True):
-            path.write_text(
-                "" if value is None else f"JOBSEEK_RUNTIME_CONTRACT_SHA256={value}\n",
-                encoding="utf-8",
-            )
-
-        result = subprocess.run(
-            [bash, "-c", harness],
+    def verify() -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                "bash",
+                "-c",
+                f'{verifier}\nverify_exact_csv_tree "$1" "$2"',
+                "_",
+                str(data),
+                str(manifest),
+            ],
             check=False,
             capture_output=True,
             text=True,
-            env={
-                **os.environ,
-                "TEST_ACTIVE_RELEASE_POINTER": str(pointer),
-                "TEST_ACTIVE_RELEASE_ROOT": str(release_root),
-                "TEST_DEPLOY_ENV": str(deploy_env),
-            },
         )
-        assert result.returncode == 0, result.stderr
-        assert result.stdout.strip() == str(expected_status)
-        assert ("WAIT:" in result.stderr) == (expected_status == 75)
-        assert ("ERROR:" in result.stderr) == (expected_status == 1)
+
+    rewrite_manifest()
+    assert verify().returncode == 0
+    boards.write_text("slug\ntampered\n", encoding="utf-8")
+    assert verify().returncode != 0
+    boards.write_text("slug\nb\n", encoding="utf-8")
+    (data / "failed-candidate.csv").write_text("slug\nresidue\n", encoding="utf-8")
+    assert verify().returncode != 0
+    (data / "failed-candidate.csv").unlink()
+    companies.unlink()
+    assert verify().returncode != 0
+
+
+def test_csv_host_rejects_archive_digest_mismatch_and_live_env_drift(
+    tmp_path: Path,
+) -> None:
+    release_root = tmp_path / "releases"
+    release = release_root / "release-a"
+    release.mkdir(parents=True)
+    compose = release / "docker-compose.yml"
+    environment = release / "environment.env"
+    success = release / "success.env"
+    compose.write_text("services: {}\n", encoding="utf-8")
+    runtime_contract = "a" * 64
+    environment.write_text(
+        "\n".join(
+            (
+                "CRAWLER_IMAGE_REF=ghcr.io/colophon-group/jobseek-crawler@sha256:" + "b" * 64,
+                f"JOBSEEK_RUNTIME_CONTRACT_SHA256={runtime_contract}",
+                "LOCAL_DATABASE_URL=postgresql://local",
+                "WEB_DATABASE_URL=postgresql://web",
+                "TYPESENSE_HOST=typesense",
+                "TYPESENSE_PORT=8108",
+                "TYPESENSE_PROTOCOL=http",
+                "TYPESENSE_OPERATIONS_KEY=secret",
+                "",
+            )
+        ),
+        encoding="utf-8",
+    )
+    environment.chmod(0o600)
+    success.write_text(f"JOBSEEK_RUNTIME_CONTRACT_SHA256={runtime_contract}\n", encoding="utf-8")
+    data = release / "data"
+    data.mkdir()
+    (data / "boards.csv").write_text("slug\ncommitted\n", encoding="utf-8")
+    data_file_digest = hashlib.sha256((data / "boards.csv").read_bytes()).hexdigest()
+    data_manifest = release / "data-files.sha256"
+    data_manifest.write_text(f"{data_file_digest}  boards.csv\n", encoding="utf-8")
+    compose_digest = hashlib.sha256(compose.read_bytes()).hexdigest()
+    env_digest = hashlib.sha256(environment.read_bytes()).hexdigest()
+    success_digest = hashlib.sha256(success.read_bytes()).hexdigest()
+    (release / "docker-compose.sha256").write_text(f"{compose_digest}\n", encoding="utf-8")
+    (release / "environment.sha256").write_text(f"{env_digest}\n", encoding="utf-8")
+    (release / "release.manifest").write_text(
+        "\n".join(
+            (
+                "RELEASE_FORMAT_VERSION=3",
+                f"COMPOSE_SHA256={compose_digest}",
+                f"ENVIRONMENT_SHA256={env_digest}",
+                f"SUCCESS_SHA256={success_digest}",
+                f"DATA_FILES_SHA256={hashlib.sha256(data_manifest.read_bytes()).hexdigest()}",
+                f"DATA_CONTRACT_SHA256={'d' * 64}",
+                f"DATA_REVISION={'e' * 40}",
+                "HAS_IMAGE_OVERRIDE=0",
+                "",
+            )
+        ),
+        encoding="utf-8",
+    )
+    active = tmp_path / ".crawler-active-release"
+    active.symlink_to(release)
+    live_env = tmp_path / ".env"
+    shutil.copyfile(environment, live_env)
+    live_env.chmod(0o600)
+    candidates = tmp_path / "candidates"
+    revision = "c" * 40
+    candidate_id = f"{revision}-1-1"
+    candidate = candidates / candidate_id
+    candidate.mkdir(parents=True)
+    (candidate / "csv-snapshot.tar").write_bytes(b"tampered archive")
+    binaries = tmp_path / "bin"
+    binaries.mkdir()
+    _write_executable(
+        binaries / "stat",
+        "#!/usr/bin/env python3\n"
+        "import os, sys\n"
+        "print(oct(os.stat(sys.argv[-1]).st_mode & 0o777)[2:])\n",
+    )
+    _write_executable(
+        binaries / "sha256sum",
+        "#!/usr/bin/env python3\n"
+        "import hashlib, pathlib, sys\n"
+        "path = pathlib.Path(sys.argv[-1])\n"
+        "print(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path}')\n",
+    )
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+    command = [
+        bash,
+        str(CSV_SYNC_HOST),
+        revision,
+        runtime_contract,
+        "d" * 64,
+        candidate_id,
+        "0" * 64,
+    ]
+    env = {
+        **os.environ,
+        "PATH": f"{binaries}:{os.environ['PATH']}",
+        "JOBSEEK_DEPLOY_DIR": str(tmp_path),
+        "JOBSEEK_DEPLOY_ENV": str(live_env),
+        "JOBSEEK_ACTIVE_RELEASE_POINTER": str(active),
+        "JOBSEEK_ACTIVE_RELEASE_ROOT": str(release_root),
+        "JOBSEEK_PUBLICATION_JOURNAL": str(tmp_path / "journal"),
+        "JOBSEEK_CANDIDATE_ROOT": str(candidates),
+    }
+    mismatch = subprocess.run(command, check=False, capture_output=True, text=True, env=env)
+    assert mismatch.returncode != 0
+    assert "CSV candidate archive digest mismatch" in mismatch.stderr
+    assert active.resolve() == release.resolve()
+
+    live_env.write_text(environment.read_text() + "UNCOMMITTED=value\n", encoding="utf-8")
+    drift = subprocess.run(
+        [*command, "--check-runtime"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert drift.returncode != 0
+    assert "live crawler environment drifted from committed release" in drift.stderr
+
+
+def test_data_publication_journals_sync_before_atomic_promotion() -> None:
+    sync_host = CSV_SYNC_HOST.read_text()
+    publication = sync_host[sync_host.rindex("previous_release=") :]
+    prepared = publication.index(
+        'write_journal 0 "$previous_release" "$candidate_generation" restore-previous'
+    )
+    sync = publication.index('sync_release_data "$candidate_generation" csv-sync')
+    succeeded = publication.index(
+        'write_journal 1 "$previous_release" "$candidate_generation" restore-previous'
+    )
+    promote = publication.index('activate_release_generation "$candidate_generation"')
+    assert prepared < sync < succeeded < promote
+    assert "recover_publication" in sync_host.partition("cleanup() {")[2].partition("}")[0]
+    recovery = sync_host[
+        sync_host.index("recover_publication() (") : sync_host.index(
+            "\nprepare_candidate_generation() {"
+        )
+    ]
+    assert 'sync_release_data "$previous" recovery-sync' in recovery
+    assert 'sync_release_data "$target" recovery-sync' in recovery
+
+
+def test_full_deploy_bootstraps_exact_prior_data_before_arming_rollback() -> None:
+    deploy = DEPLOY_SH.read_text()
+    workflow = DEPLOY_WORKFLOW.read_text()
+    bootstrap = deploy.index("--bootstrap-current")
+    verify = deploy.index("\nverify_active_deploy_snapshot\n", bootstrap)
+    snapshot = deploy.index("\nsnapshot_active_deploy_specs\n", verify)
+    arm = deploy.index("\narm_deploy_rollback\n", snapshot)
+    assert bootstrap < verify < snapshot < arm
+    assert "Build exact pre-deploy CSV rollback candidate" in workflow
+    assert "${{ github.event.before }}" in workflow
+    assert "JOBSEEK_PREVIOUS_DATA_CONTRACT_SHA256" in workflow
+    assert "JOBSEEK_PREVIOUS_DATA_ARCHIVE_SHA256" in workflow
+    assert "promote-target" in CSV_SYNC_HOST.read_text()
 
 
 def test_deploy_brackets_service_pause_with_validated_maintenance_provenance() -> None:
@@ -485,6 +653,9 @@ def test_previous_config_restore_uses_the_restored_image_and_scopes_web_secret(
         encoding="utf-8",
     )
     log = tmp_path / "calls.log"
+    data_snapshot = tmp_path / "committed-b"
+    data_snapshot.mkdir()
+    (data_snapshot / "boards.csv").write_text("slug\nB\n", encoding="utf-8")
     bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
     harness = "\n".join(
         (
@@ -492,6 +663,10 @@ def test_previous_config_restore_uses_the_restored_image_and_scopes_web_secret(
             'OWNER="colophon-group"',
             'ENV_FILE="$TEST_ENV_FILE"',
             'ROLLBACK_SYNC_WEB_DATABASE_URL=""',
+            'ACTIVE_RELEASE_FORMAT="3"',
+            'ACTIVE_DATA_SNAPSHOT="$TEST_DATA_SNAPSHOT"',
+            'ACTIVE_DATA_FILES_MANIFEST="$TEST_DATA_MANIFEST"',
+            "verify_exact_csv_tree() { return 0; }",
             read_exact,
             rollback_sync,
             "rollback_compose() {",
@@ -519,12 +694,14 @@ def test_previous_config_restore_uses_the_restored_image_and_scopes_web_secret(
                 "COMPOSE_STATUS": str(compose_status),
                 "TEST_ENV_FILE": str(env_file),
                 "TEST_LOG": str(log),
+                "TEST_DATA_SNAPSHOT": str(data_snapshot),
+                "TEST_DATA_MANIFEST": str(tmp_path / "data-files.sha256"),
             },
         )
         assert result.returncode == 0, result.stderr
         calls = log.read_text(encoding="utf-8").splitlines()
         assert calls[0] == (
-            "run --rm --no-deps -e WEB_DATABASE_URL "
+            f"run --rm --no-deps -v {data_snapshot}:/app/data:ro -e WEB_DATABASE_URL "
             "-e CRAWLER_DB_ROLE=rollback-sync -e CRAWLER_DB_POOL_MIN=0 "
             "-e CRAWLER_DB_POOL_MAX=4 worker-1 uv run --no-sync crawler sync"
         )
@@ -540,7 +717,7 @@ def test_deploy_publishes_exact_success_marker_only_after_commit() -> None:
     prepare = script.index('"CRAWLER_IMAGE_TAG=$IMAGE_TAG"')
     health = script.index("\nwait_for_core_services\n")
     disarm = script.index("\ndisarm_deploy_rollback\n")
-    publish = script.index('publish_active_deploy_release "$deploy_success_temporary"')
+    publish = script.index('publish_active_deploy_release \\\n  "$deploy_success_temporary"')
     staged_identity = script.index('verify_shim_deploy_contract "$deploy_success_temporary"')
     committed_identity = script.index('verify_shim_deploy_contract "$DEPLOY_SUCCESS_FILE"')
 
@@ -557,7 +734,16 @@ def test_deploy_publishes_exact_success_marker_only_after_commit() -> None:
     assert "JOBSEEK_RUNTIME_CONTRACT_SHA256=//p" in murmur_workflow
     assert "${runtime_contracts[0]}" in murmur_workflow
     assert 'ACTIVE_RELEASE_POINTER="$DEPLOY_DIR/.crawler-active-release"' in script
-    assert "RELEASE_FORMAT_VERSION=1" in script
+    assert "RELEASE_FORMAT_VERSION=3" in script
+    assert '"DATA_FILES_SHA256=$data_files_digest"' in script
+    assert '"DATA_CONTRACT_SHA256=$JOBSEEK_DATA_CONTRACT_SHA256"' in script
+    assert '"DATA_REVISION=$JOBSEEK_DEPLOY_REVISION"' in script
+    assert '-v "$FORWARD_DATA_SNAPSHOT:/app/data:ro"' in script
+    assert (
+        "JOBSEEK_DATA_CONTRACT_SHA256: ${{ needs.build.outputs.data_contract_sha256 }}" in workflow
+    )
+    assert 'cp -a "$previous_active_generation/data" "$murmur_generation/data"' in (murmur_workflow)
+    assert "DATA_CONTRACT_SHA256=$data_contract" in murmur_workflow
     assert '[[ -d "$ACTIVE_RELEASE_ROOT" && ! -L "$ACTIVE_RELEASE_ROOT" ]]' in script
     assert "os.replace(temporary, active)" in script
 

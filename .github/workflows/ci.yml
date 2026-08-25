@@ -110,8 +110,8 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      code: ${{ steps.manual-default.outputs.code || steps.manual-pr.outputs.code || steps.filter.outputs.code }}
-      crawler_code: ${{ steps.manual-default.outputs.crawler_code || steps.manual-pr.outputs.crawler_code || steps.filter.outputs.crawler_code }}
+      code: ${{ steps.manual-default.outputs.code || steps.manual-pr.outputs.code || steps.filter-combined.outputs.code }}
+      crawler_code: ${{ steps.manual-default.outputs.crawler_code || steps.manual-pr.outputs.crawler_code || steps.filter-combined.outputs.crawler_code }}
       boards_csv: ${{ steps.manual-default.outputs.boards_csv || steps.manual-pr.outputs.boards_csv || steps.filter.outputs.boards_csv }}
       is_pr: ${{ steps.manual-default.outputs.is_pr || steps.manual-pr.outputs.is_pr || steps.pull-request.outputs.is_pr }}
       base_ref: ${{ steps.manual-default.outputs.base_ref || steps.manual-pr.outputs.base_ref || steps.pull-request.outputs.base_ref }}
@@ -176,8 +176,30 @@ jobs:
               - '!apps/crawler/data/**'
               - '!apps/crawler/traces/**'
               - '!apps/crawler/VERSION'
+            crawler_runtime_boundary:
+              - '{apps/crawler/data/{industries,occupations,seniority,technologies}.csv,scripts/derive-crawler-runtime-contract.mjs}'
             boards_csv:
               - 'apps/crawler/data/boards.csv'
+
+      - name: Combine crawler runtime-boundary classification
+        id: filter-combined
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          CODE: ${{ steps.filter.outputs.code }}
+          CRAWLER_CODE: ${{ steps.filter.outputs.crawler_code }}
+          CRAWLER_RUNTIME_BOUNDARY: ${{ steps.filter.outputs.crawler_runtime_boundary }}
+        run: |
+          set -euo pipefail
+          if [[ "$CODE" == true || "$CRAWLER_RUNTIME_BOUNDARY" == true ]]; then
+            echo 'code=true' >>"$GITHUB_OUTPUT"
+          else
+            echo 'code=false' >>"$GITHUB_OUTPUT"
+          fi
+          if [[ "$CRAWLER_CODE" == true || "$CRAWLER_RUNTIME_BOUNDARY" == true ]]; then
+            echo 'crawler_code=true' >>"$GITHUB_OUTPUT"
+          else
+            echo 'crawler_code=false' >>"$GITHUB_OUTPUT"
+          fi
 
   crawler-image:
     name: Build Crawler Browser Image

@@ -194,6 +194,11 @@ jobs:
             legacy_active_compose_sha256=/home/deploy/.crawler-active-docker-compose.sha256
             release_root=/home/deploy/.crawler-release-generations
             active_release=/home/deploy/.crawler-active-release
+            data_publication_journal=/home/deploy/.crawler-data-publication.env
+            if [[ -e "$data_publication_journal" ]]; then
+              echo "Interrupted crawler data publication must be recovered before Murmur mutation" >&2
+              exit 1
+            fi
             test -f "$live_compose"
             test ! -L "$live_compose"
             test -f "$staged_compose"
@@ -216,6 +221,41 @@ jobs:
                 echo "Crawler-confirmed ${label} snapshot failed verification" >&2
                 return 1
               fi
+            }
+
+            verify_exact_csv_tree() {
+              data_dir="$1"
+              files_manifest="$2"
+              python3 - "$data_dir" "$files_manifest" <<'PY'
+            import hashlib
+            import os
+            import pathlib
+            import re
+            import stat
+            import sys
+
+            root = pathlib.Path(sys.argv[1])
+            manifest = pathlib.Path(sys.argv[2])
+            rows = []
+            for directory, dirnames, filenames in os.walk(root, followlinks=False):
+                directory_path = pathlib.Path(directory)
+                for name in list(dirnames):
+                    if (directory_path / name).is_symlink():
+                        raise SystemExit("unsafe CSV snapshot symlink")
+                for name in filenames:
+                    path = directory_path / name
+                    if not stat.S_ISREG(path.lstat().st_mode) or path.is_symlink():
+                        raise SystemExit("unsafe CSV snapshot file")
+                    relative = path.relative_to(root).as_posix()
+                    if not re.fullmatch(r"[A-Za-z0-9._/-]+\.csv", relative):
+                        raise SystemExit("unexpected CSV snapshot file")
+                    rows.append((relative, hashlib.sha256(path.read_bytes()).hexdigest()))
+            if not rows:
+                raise SystemExit("empty CSV snapshot")
+            actual = "".join(f"{digest}  {relative}\n" for relative, digest in sorted(rows))
+            if manifest.read_text(encoding="utf-8") != actual:
+                raise SystemExit("CSV snapshot manifest mismatch")
+            PY
             }
 
             resolve_running_digest() {
@@ -280,19 +320,19 @@ jobs:
             import sys
 
             generation = sys.argv[1]
-            for name in os.listdir(generation):
-                path = os.path.join(generation, name)
-                if os.path.isfile(path) and not os.path.islink(path):
+            for directory, dirnames, filenames in os.walk(generation, topdown=False):
+                for name in filenames:
+                    path = os.path.join(directory, name)
                     fd = os.open(path, os.O_RDONLY)
                     try:
                         os.fsync(fd)
                     finally:
                         os.close(fd)
-            generation_fd = os.open(generation, os.O_RDONLY | os.O_DIRECTORY)
-            try:
-                os.fsync(generation_fd)
-            finally:
-                os.close(generation_fd)
+                generation_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+                try:
+                    os.fsync(generation_fd)
+                finally:
+                    os.close(generation_fd)
             release_root = os.path.dirname(generation)
             release_root_fd = os.open(release_root, os.O_RDONLY | os.O_DIRECTORY)
             try:
@@ -340,7 +380,7 @@ jobs:
               compose_digest="$(sed -n 's/^COMPOSE_SHA256=//p' "$generation/release.manifest")"
               env_digest="$(sed -n 's/^ENVIRONMENT_SHA256=//p' "$generation/release.manifest")"
               success_digest="$(sed -n 's/^SUCCESS_SHA256=//p' "$generation/release.manifest")"
-              [[ "$format_version" == 1 || "$format_version" == 2 ]]
+              [[ "$format_version" == 1 || "$format_version" == 2 || "$format_version" == 3 ]]
               [[ "$compose_digest" =~ ^[0-9a-f]{64}$ ]]
               [[ "$env_digest" =~ ^[0-9a-f]{64}$ ]]
               [[ "$success_digest" =~ ^[0-9a-f]{64}$ ]]
@@ -356,6 +396,26 @@ jobs:
                 test -f "$image_override"
                 test ! -L "$image_override"
                 test "$image_override_digest" = "$(sha256sum "$image_override" | awk '{print $1}')"
+              fi
+              if [[ "$format_version" == 3 ]]; then
+                data_files_digest="$(sed -n 's/^DATA_FILES_SHA256=//p' "$generation/release.manifest")"
+                data_contract="$(sed -n 's/^DATA_CONTRACT_SHA256=//p' "$generation/release.manifest")"
+                data_revision="$(sed -n 's/^DATA_REVISION=//p' "$generation/release.manifest")"
+                has_image_override="$(sed -n 's/^HAS_IMAGE_OVERRIDE=//p' "$generation/release.manifest")"
+                [[ "$data_files_digest" =~ ^[0-9a-f]{64}$ ]]
+                [[ "$data_contract" =~ ^[0-9a-f]{64}$ ]]
+                [[ "$data_revision" =~ ^[0-9a-f]{40}$ ]]
+                [[ "$has_image_override" == 0 || "$has_image_override" == 1 ]]
+                test "$data_files_digest" = "$(sha256sum "$generation/data-files.sha256" | awk '{print $1}')"
+                verify_exact_csv_tree "$generation/data" "$generation/data-files.sha256"
+                if [[ "$has_image_override" == 1 ]]; then
+                  image_override="$generation/rollback-images.override.yml"
+                  image_override_digest="$(sed -n 's/^IMAGE_OVERRIDE_SHA256=//p' "$generation/release.manifest")"
+                  [[ "$image_override_digest" =~ ^[0-9a-f]{64}$ ]]
+                  test -f "$image_override"
+                  test ! -L "$image_override"
+                  test "$image_override_digest" = "$(sha256sum "$image_override" | awk '{print $1}')"
+                fi
               fi
               compose_args=(-f "$generation/docker-compose.yml")
               if [[ -n "$image_override" ]]; then
@@ -376,7 +436,7 @@ jobs:
                 [[ "$configured_image" =~ @sha256:[0-9a-f]{64}$ ]]
               done
               identity_keys=(CRAWLER_IMAGE_TAG JOBSEEK_DEPLOY_REVISION)
-              if [[ "$format_version" == 1 ||
+              if [[ "$format_version" == 1 || "$format_version" == 3 ||
                 ( "$format_version" == 2 && "$bootstrap_legacy" == 0 ) ]]
               then
                 identity_keys=(
@@ -500,6 +560,7 @@ jobs:
             [[ "${active_generation#"$release_root/"}" != */* ]]
             verify_release_generation "$active_generation"
             previous_active_generation="$active_generation"
+            previous_release_format="$format_version"
             active_image_override=""
             if [[ -f "$active_generation/rollback-images.override.yml" ]]; then
               active_image_override="$active_generation/rollback-images.override.yml"
@@ -770,20 +831,46 @@ jobs:
             write_exact_image_override \
               "$murmur_generation/rollback-images.override.yml" \
               "$SHIM_IMAGE_REF"
+            if [[ "$previous_release_format" == 3 ]]; then
+              cp -a "$previous_active_generation/data" "$murmur_generation/data"
+              install -m 0644 "$previous_active_generation/data-files.sha256" \
+                "$murmur_generation/data-files.sha256"
+              data_files_digest="$(sha256sum "$murmur_generation/data-files.sha256" | awk '{print $1}')"
+              data_contract="$(sed -n 's/^DATA_CONTRACT_SHA256=//p' "$previous_active_generation/release.manifest")"
+              data_revision="$(sed -n 's/^DATA_REVISION=//p' "$previous_active_generation/release.manifest")"
+              [[ "$data_contract" =~ ^[0-9a-f]{64}$ ]]
+              [[ "$data_revision" =~ ^[0-9a-f]{40}$ ]]
+              verify_exact_csv_tree "$murmur_generation/data" "$murmur_generation/data-files.sha256"
+            fi
             compose_digest="$(sha256sum "$murmur_generation/docker-compose.yml" | awk '{print $1}')"
             env_digest="$(sha256sum "$murmur_generation/environment.env" | awk '{print $1}')"
             success_digest="$(sha256sum "$murmur_success_file" | awk '{print $1}')"
             image_override_digest="$(sha256sum "$murmur_generation/rollback-images.override.yml" | awk '{print $1}')"
             printf '%s\n' "$compose_digest" >"$murmur_generation/docker-compose.sha256"
             printf '%s\n' "$env_digest" >"$murmur_generation/environment.sha256"
-            printf '%s\n' \
-              'RELEASE_FORMAT_VERSION=2' \
-              "COMPOSE_SHA256=$compose_digest" \
-              "ENVIRONMENT_SHA256=$env_digest" \
-              "SUCCESS_SHA256=$success_digest" \
-              "IMAGE_OVERRIDE_SHA256=$image_override_digest" \
-              'BOOTSTRAP_LEGACY=0' \
-              >"$murmur_generation/release.manifest"
+            if [[ "$previous_release_format" == 3 ]]; then
+              printf '%s\n' \
+                'RELEASE_FORMAT_VERSION=3' \
+                "COMPOSE_SHA256=$compose_digest" \
+                "ENVIRONMENT_SHA256=$env_digest" \
+                "SUCCESS_SHA256=$success_digest" \
+                "DATA_FILES_SHA256=$data_files_digest" \
+                "DATA_CONTRACT_SHA256=$data_contract" \
+                "DATA_REVISION=$data_revision" \
+                'HAS_IMAGE_OVERRIDE=1' \
+                "IMAGE_OVERRIDE_SHA256=$image_override_digest" \
+                'BOOTSTRAP_LEGACY=0' \
+                >"$murmur_generation/release.manifest"
+            else
+              printf '%s\n' \
+                'RELEASE_FORMAT_VERSION=2' \
+                "COMPOSE_SHA256=$compose_digest" \
+                "ENVIRONMENT_SHA256=$env_digest" \
+                "SUCCESS_SHA256=$success_digest" \
+                "IMAGE_OVERRIDE_SHA256=$image_override_digest" \
+                'BOOTSTRAP_LEGACY=0' \
+                >"$murmur_generation/release.manifest"
+            fi
             chmod 0644 "$murmur_generation"/*.sha256 "$murmur_generation/release.manifest"
             fsync_release_generation "$murmur_generation"
             release_activated=1
