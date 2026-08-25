@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
+from dataclasses import replace as dataclass_replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -47,6 +48,131 @@ class MonitorResult:
     #: the cap is not falsely tombstoned. Any single truncated batch in a
     #: streamed monitor run is sufficient to flip this for the cycle.
     truncated: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class _UrlTransformCollisionConfig:
+    """Validated deterministic policy for intentional many-to-one URL transforms."""
+
+    preferred_source_patterns: tuple[re.Pattern[str], ...]
+    canonical_identity_pattern: re.Pattern[str]
+    identity_metadata_key: str
+    stream_buffer_limit: int
+
+
+def _url_transform_collision_config(
+    config: dict,
+) -> _UrlTransformCollisionConfig | None:
+    """Validate the opt-in cross-batch collision policy."""
+    transform = config.get("url_transform")
+    if not isinstance(transform, dict):
+        return None
+    policy = transform.get("collision_policy")
+    if policy is None:
+        return None
+    if policy != "prefer_source_pattern":
+        raise ValueError("url_transform.collision_policy must be 'prefer_source_pattern'")
+
+    raw_patterns = transform.get("collision_preferred_source_patterns")
+    if (
+        not isinstance(raw_patterns, list)
+        or not raw_patterns
+        or len(raw_patterns) > 32
+        or any(
+            not isinstance(pattern, str) or not pattern or len(pattern) > 2_048
+            for pattern in raw_patterns
+        )
+    ):
+        raise ValueError(
+            "url_transform.collision_preferred_source_patterns must be a "
+            "non-empty bounded regex list"
+        )
+    try:
+        preferred_patterns = tuple(re.compile(pattern) for pattern in raw_patterns)
+    except re.error as exc:
+        raise ValueError(f"url_transform collision source pattern is invalid: {exc}") from exc
+
+    raw_identity_pattern = transform.get("collision_canonical_identity_regex")
+    if (
+        not isinstance(raw_identity_pattern, str)
+        or not raw_identity_pattern
+        or len(raw_identity_pattern) > 2_048
+    ):
+        raise ValueError(
+            "url_transform.collision_canonical_identity_regex must be a non-empty bounded regex"
+        )
+    try:
+        identity_pattern = re.compile(raw_identity_pattern)
+    except re.error as exc:
+        raise ValueError(
+            f"url_transform collision canonical identity regex is invalid: {exc}"
+        ) from exc
+    if identity_pattern.groups != 1:
+        raise ValueError(
+            "url_transform.collision_canonical_identity_regex must contain "
+            "exactly one capture group"
+        )
+
+    identity_metadata_key = transform.get("collision_identity_metadata_key")
+    if (
+        not isinstance(identity_metadata_key, str)
+        or not identity_metadata_key
+        or len(identity_metadata_key) > 128
+    ):
+        raise ValueError(
+            "url_transform.collision_identity_metadata_key must be non-empty bounded text"
+        )
+    stream_buffer_limit = transform.get("collision_stream_buffer_limit")
+    if (
+        not isinstance(stream_buffer_limit, int)
+        or isinstance(stream_buffer_limit, bool)
+        or not 1 <= stream_buffer_limit <= 50_000
+    ):
+        raise ValueError(
+            "url_transform.collision_stream_buffer_limit must be an integer from 1 to 50000"
+        )
+    return _UrlTransformCollisionConfig(
+        preferred_source_patterns=preferred_patterns,
+        canonical_identity_pattern=identity_pattern,
+        identity_metadata_key=identity_metadata_key,
+        stream_buffer_limit=stream_buffer_limit,
+    )
+
+
+def _collision_source_rank(
+    source_url: str,
+    collision: _UrlTransformCollisionConfig,
+) -> tuple[int, str]:
+    """Rank aliases by configured source preference, then by the full source URL."""
+    preference = next(
+        (
+            index
+            for index, pattern in enumerate(collision.preferred_source_patterns)
+            if pattern.search(source_url)
+        ),
+        len(collision.preferred_source_patterns),
+    )
+    return preference, source_url
+
+
+def _validate_collision_identity(
+    job: DiscoveredJob,
+    canonical_url: str,
+    collision: _UrlTransformCollisionConfig,
+) -> None:
+    """Require rich provider metadata to authenticate the transformed identity."""
+    match = collision.canonical_identity_pattern.fullmatch(canonical_url)
+    metadata_identity = (
+        job.metadata.get(collision.identity_metadata_key)
+        if isinstance(job.metadata, dict)
+        else None
+    )
+    if (
+        match is None
+        or not isinstance(metadata_identity, str)
+        or metadata_identity != match.group(1)
+    ):
+        raise ValueError("url_transform collision provider identity does not match canonical URL")
 
 
 def _normalize_discovered(
@@ -248,21 +374,40 @@ def _apply_url_transform(result: MonitorResult, config: dict) -> MonitorResult:
     except re.error as e:
         structlog.get_logger().warning("monitor.url_transform_invalid", error=str(e))
         return result
+    collision = _url_transform_collision_config(config)
 
     new_urls: set[str] = set()
     url_map: dict[str, str] = {}  # old -> new
-    for url in result.urls:
+    for url in sorted(result.urls):
         new_url = pattern.sub(replace, url)
         new_urls.add(new_url)
         url_map[url] = new_url
 
     new_jobs = None
     if result.jobs_by_url is not None:
-        new_jobs = {}
-        for old_url, job in result.jobs_by_url.items():
-            new_url = url_map.get(old_url, old_url)
-            job.url = new_url
-            new_jobs[new_url] = job
+        if collision is None:
+            new_jobs = {}
+            for old_url, job in result.jobs_by_url.items():
+                new_url = url_map.get(old_url, old_url)
+                job.url = new_url
+                new_jobs[new_url] = job
+        else:
+            selected: dict[
+                str,
+                tuple[tuple[int, str], DiscoveredJob],
+            ] = {}
+            for old_url in sorted(result.jobs_by_url):
+                job = result.jobs_by_url[old_url]
+                new_url = url_map.get(old_url, old_url)
+                _validate_collision_identity(job, new_url, collision)
+                rank = _collision_source_rank(old_url, collision)
+                existing = selected.get(new_url)
+                if existing is None or rank < existing[0]:
+                    selected[new_url] = (rank, job)
+            new_jobs = {
+                new_url: dataclass_replace(selected_job, url=new_url)
+                for new_url, (_rank, selected_job) in selected.items()
+            }
 
     return MonitorResult(
         urls=new_urls,
@@ -274,6 +419,61 @@ def _apply_url_transform(result: MonitorResult, config: dict) -> MonitorResult:
         hybrid=result.hybrid,
         truncated=result.truncated,
     )
+
+
+def _merge_collision_stream_result(
+    buffered: MonitorResult | None,
+    result: MonitorResult,
+    collision: _UrlTransformCollisionConfig,
+) -> MonitorResult:
+    """Accumulate an intentional many-to-one transform across stream batches."""
+    if buffered is None:
+        buffered = MonitorResult(
+            jobs_by_url={} if result.jobs_by_url is not None else None,
+        )
+    elif (buffered.jobs_by_url is None) != (result.jobs_by_url is None):
+        raise ValueError("url_transform collision buffering cannot mix rich and URL-only batches")
+
+    combined_urls = buffered.urls | result.urls
+    if len(combined_urls) > collision.stream_buffer_limit:
+        raise ValueError(
+            "url_transform collision stream exceeded configured buffer limit "
+            f"({len(combined_urls)} > {collision.stream_buffer_limit})"
+        )
+    buffered.urls = combined_urls
+
+    if buffered.jobs_by_url is not None and result.jobs_by_url is not None:
+        for source_url, job in result.jobs_by_url.items():
+            existing = buffered.jobs_by_url.get(source_url)
+            if existing is not None and existing != job:
+                raise ValueError(
+                    "url_transform collision stream emitted conflicting content "
+                    f"for source URL {source_url}"
+                )
+            buffered.jobs_by_url[source_url] = job
+
+    if result.new_sitemap_url is not None:
+        if (
+            buffered.new_sitemap_url is not None
+            and buffered.new_sitemap_url != result.new_sitemap_url
+        ):
+            raise ValueError("url_transform collision stream emitted conflicting sitemap URLs")
+        buffered.new_sitemap_url = result.new_sitemap_url
+    if result.metadata_updates:
+        metadata_updates = dict(buffered.metadata_updates or {})
+        for key, value in result.metadata_updates.items():
+            if key in metadata_updates and metadata_updates[key] != value:
+                raise ValueError(
+                    f"url_transform collision stream emitted conflicting metadata for key {key}"
+                )
+            metadata_updates[key] = value
+        buffered.metadata_updates = metadata_updates
+
+    buffered.filtered_count += result.filtered_count
+    buffered.security_filtered_count += result.security_filtered_count
+    buffered.hybrid = buffered.hybrid or result.hybrid
+    buffered.truncated = buffered.truncated or result.truncated
+    return buffered
 
 
 async def _save_raw(
@@ -382,6 +582,7 @@ async def monitor_one_stream(
     """Async generator yielding MonitorResult per batch."""
     stream_fn = get_stream_fn(monitor_type)
     config = monitor_config or {}
+    collision = _url_transform_collision_config(config)
 
     if stream_fn is None:
         yield await monitor_one(board_url, monitor_type, monitor_config, http, pw=pw)
@@ -390,11 +591,21 @@ async def monitor_one_stream(
     board = {"board_url": board_url, "metadata": config}
     from src.shared.http import client_for
 
+    buffered: MonitorResult | None = None
     async with client_for(http, config) as client:
         async for batch in stream_fn(board, client, pw=pw):
             result = _normalize_discovered(batch)
             result = _apply_url_filter(result, config)
             result = _apply_job_filter(result, config)
             result = _apply_url_allowlist(result, config)
-            result = _apply_url_transform(result, config)
-            yield result
+            if collision is not None:
+                buffered = _merge_collision_stream_result(
+                    buffered,
+                    result,
+                    collision,
+                )
+            else:
+                result = _apply_url_transform(result, config)
+                yield result
+    if buffered is not None:
+        yield _apply_url_transform(buffered, config)

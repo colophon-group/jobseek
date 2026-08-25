@@ -1305,13 +1305,13 @@ inline — Single-Page Extraction (rich)
                  inline monitor reloads the listing, clicks each match in
                  order, and extracts one expanded job per control. Requires
                  render=true and detail_content_selector. Each expanded detail
-                 is automatically bounded; omit item_boundary_tag (or set it
-                 to article).
+                 is automatically bounded; omit item_boundary_tag.
     detail_content_selector
                  Playwright selector that must match exactly one expanded
                  detail container after each click. Only that container is
                  passed to the extraction steps, which keeps navigation and
-                 application-flow text out of job descriptions.
+                 application-flow text out of job descriptions. Nested article
+                 or reserved synthetic-boundary markup fails closed.
     detail_identity_selector
                  Playwright selector that must match one provider-identity
                  element per click control, in the same order. The complete
@@ -1323,6 +1323,8 @@ inline — Single-Page Extraction (rich)
                  the stable provider ID. Missing, duplicate, changed, or
                  non-matching identities fail the cycle closed. Stable IDs,
                  not titles or card positions, become synthetic _jid values.
+                 Identities remain out-of-band from provider detail HTML and
+                 are revalidated when consumed.
     fetch_urls   Optional ordered URLs used only to read the page. Each entry is
                  a URL string or {"url": ..., "headers": {...}} object. Headers
                  are scoped to that exact candidate and are never forwarded to
