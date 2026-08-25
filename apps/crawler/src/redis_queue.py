@@ -232,12 +232,13 @@ _RESCHEDULE_SHA: str | None = None
 _COMPLETE_SHA: str | None = None
 _HEARTBEAT_SHA: str | None = None
 _REAP_SHA: str | None = None
+_REMOVE_MONITOR_SHA: str | None = None
 
 
 async def _load_scripts() -> None:
     """Load Lua scripts into Redis and cache their SHAs."""
     global _CLAIM_SHA, _ENQUEUE_SHA, _RESCHEDULE_SHA
-    global _COMPLETE_SHA, _HEARTBEAT_SHA, _REAP_SHA
+    global _COMPLETE_SHA, _HEARTBEAT_SHA, _REAP_SHA, _REMOVE_MONITOR_SHA
     if _CLAIM_SHA is not None:
         return
     r = get_redis()
@@ -247,6 +248,7 @@ async def _load_scripts() -> None:
     _COMPLETE_SHA = await r.script_load((_LUA_DIR / "complete_task.lua").read_text())
     _HEARTBEAT_SHA = await r.script_load((_LUA_DIR / "heartbeat_task.lua").read_text())
     _REAP_SHA = await r.script_load((_LUA_DIR / "reap_expired.lua").read_text())
+    _REMOVE_MONITOR_SHA = await r.script_load((_LUA_DIR / "remove_monitor.lua").read_text())
 
 
 # ---------------------------------------------------------------------------
@@ -756,30 +758,29 @@ async def remove_monitor(domain: str, board_id: str) -> None:
     this, the per-domain queue keeps the stale board_id and workers keep
     probing the dead URL every cycle.
 
-    The ready-queue entry for the domain self-heals on the next ``claim_work``:
-    when the per-domain queue is empty, the Lua script removes the domain
-    from ``ready:{wtype}:{tier}``.
+    Queue membership, config deletion, and both worker types' ready markers
+    are updated atomically so a removed monitor cannot leave a stale tier-1
+    marker that jumps pending scrape work ahead of another domain's monitor.
     """
+    await _load_scripts()
+    assert _REMOVE_MONITOR_SHA is not None
     r = get_redis()
-    pipe = r.pipeline()
-    for wtype in ("simple", "browser"):
-        pipe.zrem(f"ft_monitors_{wtype}:{domain}", board_id)
-        pipe.zrem(f"monitors_{wtype}:{domain}", board_id)
-    pipe.delete(f"board:{board_id}")
-    await pipe.execute()
+    await r.evalsha(_REMOVE_MONITOR_SHA, 0, domain, board_id)
 
 
 async def remove_monitors(monitors: Sequence[tuple[str, str]]) -> None:
     """Pipeline deploy-time removal of disabled monitor schedules."""
+    if not monitors:
+        return
+
+    await _load_scripts()
+    assert _REMOVE_MONITOR_SHA is not None
     batch_size = 1000
     r = get_redis()
     for start in range(0, len(monitors), batch_size):
         pipe = r.pipeline(transaction=False)
         for domain, board_id in monitors[start : start + batch_size]:
-            for wtype in ("simple", "browser"):
-                pipe.zrem(f"ft_monitors_{wtype}:{domain}", board_id)
-                pipe.zrem(f"monitors_{wtype}:{domain}", board_id)
-            pipe.delete(f"board:{board_id}")
+            pipe.evalsha(_REMOVE_MONITOR_SHA, 0, domain, board_id)
         await pipe.execute()
 
 
