@@ -5180,14 +5180,32 @@ class TestNewIdempotent:
 
     def test_new_skips_commit_when_slug_already_in_csv(self, tmp_path, monkeypatch):
         """When company_add raises NothingToUpdateError (e.g. --pr reattach to
-        a branch that already has the slug), bootstrap remains local and
-        preserves the attached PR."""
+        a branch that already has the slug), bootstrap resets stale company
+        rows locally and preserves the attached PR."""
         _patch_all(monkeypatch, tmp_path)
         # Empty CSV in the "original" repo — slug only exists in the worktree
         # CSV (simulated by mocking company_add to raise NothingToUpdateError).
         _setup_csvs(tmp_path)
 
+        from src.csvtool import board_add, company_add as real_company_add
         from src.workspace.errors import NothingToUpdateError
+
+        company_add_calls = 0
+
+        def company_add_after_worktree_attach(slug, **kwargs):
+            nonlocal company_add_calls
+            company_add_calls += 1
+            if company_add_calls == 1:
+                real_company_add(slug, name="Stale Acme")
+                board_add(
+                    slug,
+                    board_slug="acme-stale",
+                    board_url="https://stale.example/jobs",
+                    monitor_type="smartrecruiters",
+                    scraper_type="skip",
+                )
+                raise NothingToUpdateError("already exists")
+            return real_company_add(slug, **kwargs)
 
         with ExitStack() as stack:
             (
@@ -5204,7 +5222,7 @@ class TestNewIdempotent:
             stack.enter_context(
                 patch(
                     "src.csvtool.company_add",
-                    side_effect=NothingToUpdateError("already exists"),
+                    side_effect=company_add_after_worktree_attach,
                 )
             )
 
@@ -5212,7 +5230,12 @@ class TestNewIdempotent:
             result = runner.invoke(ws, ["new", "acme", "--issue", "1", "--pr", "42"])
 
         assert result.exit_code == 0, result.output
-        # company_add raised NothingToUpdateError, so commit must NOT be called
+        assert "Reset stale CSV state" in result.output
+        assert company_add_calls == 2
+        assert "Stale Acme" not in (tmp_path / "companies.csv").read_text()
+        assert "acme-stale" not in (tmp_path / "boards.csv").read_text()
+        assert "acme" in (tmp_path / "companies.csv").read_text()
+        # Bootstrap remains local, so commit must NOT be called.
         add_files.assert_not_called()
         commit.assert_not_called()
         push.assert_not_called()

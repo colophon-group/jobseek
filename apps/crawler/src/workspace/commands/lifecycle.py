@@ -294,15 +294,22 @@ def new(
 
     if not reconfig:
         # Add stub CSV row for new companies
-        from src.csvtool import company_add
+        from src.csvtool import company_add, company_del
         from src.workspace.errors import NothingToUpdateError
 
         try:
             company_add(slug)
             out.plain("csv", "Added stub row to companies.csv")
         except NothingToUpdateError:
-            # Slug already present in worktree CSV from a previous attempt
-            out.warn("csv", f"Slug {slug!r} already in worktree CSV — continuing")
+            # The managed clone was checked before the company worktree was
+            # attached, so a resumable PR can reveal stale CSV state only at
+            # this point. A non-reconfig workspace starts from empty state and
+            # cannot safely preserve boards it did not load into workspace
+            # YAML. Reset the old company rows before creating the fresh stub
+            # so submit validation sees only the newly verified board set.
+            company_del(slug)
+            company_add(slug)
+            out.warn("csv", f"Reset stale CSV state for {slug!r} in reused worktree")
         except Exception:
             # Clean up worktree before re-raising unexpected errors
             if not local:
