@@ -2873,6 +2873,7 @@ hook,hook-ashby,https://jobs.ashbyhq.com/hook,ashby,"{""token"": ""hook""}",skip
 hook,hook-greenhouse,https://job-boards.greenhouse.io/hook,greenhouse,"{""token"": ""hook""}",skip,
 hookmusic,hookmusic-ashby,https://jobs.ashbyhq.com/hookmusic,ashby,"{""token"": ""hookmusic""}",skip,
 hootsuite,hootsuite-greenhouse,https://job-boards.greenhouse.io/hootsuite,greenhouse,"{""token"": ""hootsuite""}",skip,
+hopital-riviera-chablais,hopital-riviera-chablais-main,https://emploi.hopitalrivierachablais.ch/fr,dom,"{""render"": false, ""url_filter"": ""/fr/nos-offres/"", ""require_jsonld_jobposting"": {""hiring_organization"": ""(?i)^Hôpital Riviera-Chablais$""}}",json-ld,
 hopper,hopper-ashby,https://jobs.ashbyhq.com/hopper,ashby,"{""token"": ""hopper""}",skip,
 hoppr,hoppr-greenhouse,https://job-boards.greenhouse.io/hoppr,greenhouse,"{""token"": ""hoppr""}",skip,
 hopskipdrive,hopskipdrive-greenhouse,https://job-boards.greenhouse.io/hopskipdrive,greenhouse,"{""token"": ""hopskipdrive""}",skip,

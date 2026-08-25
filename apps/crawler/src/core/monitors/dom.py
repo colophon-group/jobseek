@@ -142,7 +142,43 @@ _YOUSTY_COMPANY_PATH_RE = re.compile(
 _YOUSTY_LINK_SELECTOR = "a[href*='/de-CH/lehrstellen/profile/']"
 
 
-async def _filter_jsonld_job_urls(urls: set[str], client: httpx.AsyncClient) -> set[str]:
+def _validated_jsonld_jobposting_config(
+    value: object,
+) -> tuple[bool, re.Pattern[str] | None]:
+    """Validate JSON-LD detail verification and its optional employer boundary."""
+    if value is None or value is False:
+        return False, None
+    if value is True:
+        return True, None
+    if not isinstance(value, dict) or set(value) != {"hiring_organization"}:
+        raise ValueError(
+            "DOM monitor require_jsonld_jobposting must be a boolean or contain only "
+            "hiring_organization"
+        )
+    pattern = value.get("hiring_organization")
+    if (
+        not isinstance(pattern, str)
+        or not pattern.strip()
+        or len(pattern) > 512
+        or "\x00" in pattern
+    ):
+        raise ValueError(
+            "DOM monitor require_jsonld_jobposting.hiring_organization must be a "
+            "non-empty regex up to 512 chars"
+        )
+    try:
+        return True, re.compile(pattern)
+    except re.error as exc:
+        raise ValueError(
+            "DOM monitor require_jsonld_jobposting.hiring_organization must be a valid regex"
+        ) from exc
+
+
+async def _filter_jsonld_job_urls(
+    urls: set[str],
+    client: httpx.AsyncClient,
+    hiring_organization_pattern: re.Pattern[str] | None = None,
+) -> set[str]:
     """Retain URLs whose current detail page contains JobPosting JSON-LD.
 
     Detail fetch failures propagate so a transient provider outage cannot turn
@@ -174,7 +210,10 @@ async def _filter_jsonld_job_urls(urls: set[str], client: httpx.AsyncClient) -> 
         if html is None:
             return url, False
         _raise_if_bot_challenge(url, html)
-        return url, contains_job_posting(html)
+        return url, contains_job_posting(
+            html,
+            hiring_organization_pattern=hiring_organization_pattern,
+        )
 
     tasks = [asyncio.create_task(verify(url)) for url in sorted(urls)]
     try:
@@ -3342,9 +3381,9 @@ async def dom_discover(
             "DOM monitor Prospective preset requires static single-page rich rows with "
             "an exact total and explicit zero proof"
         )
-    require_jsonld_jobposting = metadata.get("require_jsonld_jobposting", False)
-    if not isinstance(require_jsonld_jobposting, bool):
-        raise ValueError("DOM monitor require_jsonld_jobposting must be a boolean")
+    require_jsonld_jobposting, hiring_organization_pattern = _validated_jsonld_jobposting_config(
+        metadata.get("require_jsonld_jobposting")
+    )
     require_unexpired_pdf = _validated_unexpired_pdf_config(metadata.get("require_unexpired_pdf"))
     require_pdf_text = _validated_pdf_text_config(metadata.get("require_pdf_text"))
     exclude_detail_selector = _validate_css_selector(
@@ -3632,7 +3671,11 @@ async def dom_discover(
         urls.add(board_url)
 
     if require_jsonld_jobposting:
-        urls = await _filter_jsonld_job_urls(urls, client)
+        urls = await _filter_jsonld_job_urls(
+            urls,
+            client,
+            hiring_organization_pattern,
+        )
     if require_unexpired_pdf is not None:
         currentness_candidates = set(urls)
         filtered_urls, classified_currentness = cast(

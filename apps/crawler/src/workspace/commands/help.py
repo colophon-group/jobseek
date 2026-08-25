@@ -1653,6 +1653,11 @@ dom — Link or Static Listing-Row Extraction (fallback)
     require_jsonld_jobposting
                    Fetch each discovered detail URL and retain it only when
                    the current page contains schema.org JobPosting JSON-LD.
+                   A shared portal can additionally enforce the canonical
+                   employer with a full-match regex over
+                   hiringOrganization.name:
+                   {"hiring_organization": "(?i)^Example Hospital$"}.
+                   Missing or malformed organization data is omitted.
                    Detail fetch errors fail the monitor cycle; 404/410 and
                    pages without JobPosting data are omitted. Limited to 500
                    discovered URLs. Use for small provider listings that keep
