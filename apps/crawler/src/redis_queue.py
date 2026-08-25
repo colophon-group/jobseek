@@ -311,6 +311,7 @@ _KNOWN_ATS_DOMAIN_SUFFIXES = (
     ".darwinbox.in",
     ".darwinbox.com",
     ".gupy.io",
+    ".infoniqa.io",
     ".zhiye.com",
     ".recruiterbox.com",
     ".hire.trakstar.com",
