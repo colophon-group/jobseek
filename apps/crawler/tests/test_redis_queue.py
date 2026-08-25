@@ -458,9 +458,8 @@ async def test_remove_monitors_pipelines_all_queue_variants():
             assert await r.zcard(f"monitors_{wtype}:{domain}") == 0
 
 
-async def test_remove_monitor_after_claim_clears_domain_on_next_claim():
-    """After remove_monitor, the next claim_work on the emptied domain returns
-    None and the domain is dropped from the ready queue by the claim Lua."""
+async def test_remove_monitor_clears_empty_domain_ready_immediately():
+    """Removal atomically clears ready markers for an emptied domain."""
     config = {"monitor": "lever"}
     await rq.enqueue_monitor(
         "lever", "board-x", time.time() - 10, config, browser=False, first_time=True
@@ -468,13 +467,57 @@ async def test_remove_monitor_after_claim_clears_domain_on_next_claim():
 
     await rq.remove_monitor("lever", "board-x")
     r = rq.get_redis()
-    # Domain still present in ready queue until the next claim attempt
-    assert await r.zcard("ready:simple:0") == 1
+    assert await r.zcard("ready:simple:0") == 0
+    assert await r.zcard("ready:simple:1") == 0
+    assert await r.zcard("ready:simple:2") == 0
+
+
+@pytest.mark.parametrize("bulk", [False, True], ids=["single", "bulk"])
+async def test_remove_monitor_rebuild_prevents_scrape_priority_jump(mock_redis, bulk):
+    """A removed tier-1 marker cannot pull its domain's scrape ahead.
+
+    Regression for deploy-time removal after active boards were enqueued: the
+    removed monitor was still advertised in tier 1, so claim_work entered its
+    mixed domain and popped a due scrape before an unrelated tier-1 monitor.
+    Exercise both public removal paths against the exact ordering.
+    """
+    r = mock_redis
+    domain = "removed-monitor.example.com"
+    competitor = "surviving-monitor.example.com"
+    now = time.time()
+
+    await rq.enqueue_monitor(
+        domain,
+        "removed-monitor",
+        now - 100,
+        {"monitor": "dom"},
+    )
+    await rq.enqueue_scrape(
+        domain,
+        "surviving-scrape",
+        now - 1000,
+        {"source_url": f"https://{domain}/jobs/1", "board_id": "other-board"},
+    )
+    await rq.enqueue_monitor(
+        competitor,
+        "competitor-monitor",
+        now - 50,
+        {"monitor": "greenhouse"},
+    )
+
+    if bulk:
+        await rq.remove_monitors([(domain, "removed-monitor")])
+    else:
+        await rq.remove_monitor(domain, "removed-monitor")
+
+    assert await r.zscore("ready:simple:1", domain) is None
+    assert await r.zscore("ready:simple:2", domain) == pytest.approx(now - 1000)
 
     work = await rq.claim_work(browser=False)
-    assert work is None
-    # Claim script removed the empty domain from the ready queue
-    assert await r.zcard("ready:simple:0") == 0
+    assert work is not None
+    assert work.kind == "monitor"
+    assert work.board_work is not None
+    assert work.board_work.board_id == "competitor-monitor"
 
 
 # ---------------------------------------------------------------------------
