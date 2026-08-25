@@ -10,9 +10,16 @@ on:
       - '!apps/crawler/ws-package/**'
       - '!apps/crawler/*.md'
       - '!apps/crawler/**/*.md'
+      # These taxonomies are read and process-cached by live workers, so they
+      # require an image rollout even though the remaining CSVs are sync-only.
+      - 'apps/crawler/data/industries.csv'
+      - 'apps/crawler/data/occupations.csv'
+      - 'apps/crawler/data/seniority.csv'
+      - 'apps/crawler/data/technologies.csv'
       # Keep the deploy workflow self-triggered so policy changes exercise the
       # immutable-version and production rollout path they control (#5873).
       - '.github/workflows/deploy-crawler-browser.yml'
+      - 'scripts/derive-crawler-runtime-contract.mjs'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -128,6 +135,7 @@ jobs:
       slim_digest: ${{ steps.build-slim.outputs.digest }}
       browser_digest: ${{ steps.build-browser.outputs.digest }}
       reconciliation_wrapper_sha256: ${{ steps.reconciliation.outputs.wrapper_sha256 }}
+      runtime_contract_sha256: ${{ steps.runtime-contract.outputs.runtime_contract_sha256 }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -151,6 +159,13 @@ jobs:
           printf 'wrapper_sha256=%s\n' \
             "$(sha256sum deploy/reconciliation/run.sh | awk '{print $1}')" \
             >> "$GITHUB_OUTPUT"
+
+      - name: Derive crawler runtime contract
+        id: runtime-contract
+        run: >-
+          node scripts/derive-crawler-runtime-contract.mjs
+          --revision "$GITHUB_SHA"
+          --github-output "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
@@ -420,7 +435,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: deploy
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: OWNER,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,CRAWLER_IMAGE_TAG,CRAWLER_IMAGE_REF,BROWSER_IMAGE_REF,SHIM_IMAGE_REF,JOBSEEK_DEPLOY_REVISION,JOBSEEK_RECONCILIATION_WRAPPER_SHA256,WEB_DATABASE_URL,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_OPERATIONS_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URL,DECODO_PROXY_URL,MURMUR_TOKEN
+          envs: OWNER,GHCR_PULL_USERNAME,GHCR_PULL_TOKEN,CRAWLER_IMAGE_TAG,CRAWLER_IMAGE_REF,BROWSER_IMAGE_REF,SHIM_IMAGE_REF,JOBSEEK_DEPLOY_REVISION,JOBSEEK_RUNTIME_CONTRACT_SHA256,JOBSEEK_RECONCILIATION_WRAPPER_SHA256,WEB_DATABASE_URL,LOCAL_DATABASE_URL,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY,R2_ENDPOINT_URL,R2_DOMAIN_URL,R2_BUCKET,GRAFANA_PROM_URL,GRAFANA_PROM_USERNAME,GRAFANA_PROM_PASSWORD,GRAFANA_LOKI_URL,GRAFANA_LOKI_USERNAME,GRAFANA_LOKI_PASSWORD,TYPESENSE_HOST,TYPESENSE_PORT,TYPESENSE_PROTOCOL,TYPESENSE_OPERATIONS_KEY,PROXY_PROVIDER,WEBSHARE_PROXY_URL,DECODO_PROXY_URL,MURMUR_TOKEN
           script: bash /home/deploy/incoming/deploy.sh
         env:
           OWNER: ${{ github.repository_owner }}
@@ -438,6 +453,7 @@ jobs:
           # including on a crawler workflow retry after rollback.
           SHIM_IMAGE_REF: ${{ steps.murmur.outputs.image_ref }}
           JOBSEEK_DEPLOY_REVISION: ${{ github.sha }}
+          JOBSEEK_RUNTIME_CONTRACT_SHA256: ${{ needs.build.outputs.runtime_contract_sha256 }}
           JOBSEEK_RECONCILIATION_WRAPPER_SHA256: ${{ needs.build.outputs.reconciliation_wrapper_sha256 }}
           # Keep the retained web-owned watchlist boundary separately named
           # inside crawler operations. Reuse the existing provider-neutral

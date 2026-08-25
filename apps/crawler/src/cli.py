@@ -98,6 +98,11 @@ def parse_args() -> argparse.Namespace:
     sub.add_parser("sync", help="CSV -> local Postgres + Redis + Typesense")
 
     sub.add_parser(
+        "repair-nw-provider-cutover",
+        help="Reapply the bounded NW Teamtailor-to-WTTJ identity repair",
+    )
+
+    sub.add_parser(
         "repair-location-taxonomy-source",
         help="One-shot retained web DB -> local location slug/coordinate repair",
     )
@@ -703,6 +708,14 @@ async def run() -> None:
             from src.sync import run_sync
 
             await run_sync()
+
+        elif args.command == "repair-nw-provider-cutover":
+            local_pool = await create_local_pool()
+            from src.nw_provider_cutover import reapply_nw_provider_cutover
+
+            async with local_pool.acquire() as acquired_connection:
+                connection = cast(asyncpg.Connection, acquired_connection)
+                await reapply_nw_provider_cutover(connection)
 
         elif args.command == "repair-location-taxonomy-source":
             local_pool = await create_local_pool()

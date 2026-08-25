@@ -76,6 +76,7 @@ jobs:
           scripts/ci-workflow.test.mjs
           scripts/dependabot-health.test.mjs
           scripts/crawler-version.test.mjs
+          scripts/crawler-runtime-contract.test.mjs
           scripts/crawler-host-hygiene.test.mjs
           scripts/docs-index.test.mjs
           scripts/dealroom-company-requests.test.mjs
@@ -613,6 +614,7 @@ jobs:
           tests/e2e/test_location_taxonomy_repair.py
           tests/e2e/test_postgres_pool_session_guards.py
           tests/e2e/test_merck_identity_migration.py
+          tests/e2e/test_nw_provider_migration.py
           -v
         working-directory: apps/crawler
 
