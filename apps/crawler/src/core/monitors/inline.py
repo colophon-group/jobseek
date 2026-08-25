@@ -776,6 +776,7 @@ async def discover(
         include_hidden — include HTML hidden by tab/accordion state (default: false)
         empty_selector — CSS selector that scopes a visibly active empty-state element
         empty_text — authoritative text required inside empty_selector
+        empty_requires_no_jobs — accept the marker only after all extracted rows are filtered
         require_zero_proof — fail when extraction returns no jobs without an explicit
                              empty_selector/empty_text match (default: false)
         item_boundary_tag — optional tag that starts and bounds each posting
@@ -801,6 +802,11 @@ async def discover(
     empty_selector = _validated_empty_selector(metadata.get("empty_selector"))
     if (empty_text is None) != (empty_selector is None):
         raise ValueError("inline explicit empty state requires empty_selector and empty_text")
+    empty_requires_no_jobs = metadata.get("empty_requires_no_jobs", False)
+    if not isinstance(empty_requires_no_jobs, bool):
+        raise ValueError("inline empty_requires_no_jobs must be a boolean")
+    if empty_requires_no_jobs and empty_text is None:
+        raise ValueError("inline empty_requires_no_jobs requires an explicit empty state")
     require_zero_proof = metadata.get("require_zero_proof", False)
     if not isinstance(require_zero_proof, bool):
         raise ValueError("inline require_zero_proof must be a boolean")
@@ -862,11 +868,14 @@ async def discover(
     elements = flatten(html, include_hidden=include_hidden)
 
     elements = _scope_to_section(elements, section_start, section_end)
-    if empty_text is not None:
-        assert empty_selector is not None
-        if _matches_explicit_empty(html, empty_selector, empty_text):
-            log.info("inline.explicit_empty", url=board_url)
-            return []
+    explicit_empty = (
+        empty_text is not None
+        and empty_selector is not None
+        and _matches_explicit_empty(html, empty_selector, empty_text)
+    )
+    if explicit_empty and not empty_requires_no_jobs:
+        log.info("inline.explicit_empty", url=board_url)
+        return []
     if not elements:
         if empty_text is not None:
             raise ValueError(
@@ -1001,6 +1010,9 @@ async def discover(
             f"({detail_item_index} boundaries for {len(detail_identities)} identities)"
         )
 
+    if explicit_empty and not jobs:
+        log.info("inline.explicit_empty_after_filtering", url=board_url)
+        return []
     if empty_text is not None and not jobs:
         raise ValueError(
             "inline monitor found no accepted jobs and did not match the configured explicit "

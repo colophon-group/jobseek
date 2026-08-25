@@ -206,10 +206,31 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
     migrate = script.index("alembic -c src/migrations/alembic.ini upgrade head")
     typesense_schema = script.index("uv run --no-sync crawler setup-typesense")
     sync = script.index("uv run --no-sync crawler sync", typesense_schema)
+    ecom_cutover = script.index(
+        "uv run --no-sync crawler repair-ecom-teamtailor-cutover",
+        sync,
+    )
     nw_cutover = script.index("uv run --no-sync crawler repair-nw-provider-cutover")
     restart = script.index("docker compose up -d --remove-orphans", nw_cutover)
 
-    assert quiesce < migrate < typesense_schema < sync < nw_cutover < restart
+    assert quiesce < migrate < typesense_schema < sync < ecom_cutover < nw_cutover < restart
+
+
+def test_deploy_rollback_restores_ecom_aliases_before_old_runtime_restart() -> None:
+    script = DEPLOY_SH.read_text()
+    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+
+    quiesce = rollback.index("stop --timeout 60")
+    identity_restore = rollback.index("rollback_ecom_teamtailor_identity")
+    old_config = rollback.index("rollback_sync_previous_config")
+    old_restart = rollback.index("rollback_compose up -d --remove-orphans")
+    assert quiesce < identity_restore < old_config < old_restart
+    assert "identity_restore_complete" in rollback
+    pre_migration = script[: script.index("alembic -c src/migrations/alembic.ini upgrade head")]
+    assert "crawler ecom-teamtailor-cutover-state" in pre_migration
+    assert "grep -Ex 'absent|pending|complete'" in pre_migration
+    assert "pending) ECOM_IDENTITY_ROLLBACK_REQUIRED=1" in pre_migration
+    assert "absent | complete) ECOM_IDENTITY_ROLLBACK_REQUIRED=0" in pre_migration
 
 
 def test_operational_sync_entrypoints_are_local_and_typesense_only() -> None:
@@ -2131,8 +2152,9 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert "rollback failed with status" in rollback
     assert "if ((env_restore_complete && spec_restore_complete)); then" in rollback
     assert (
-        "if ((quiesce_complete && release_restore_complete && env_restore_complete && "
-        "spec_restore_complete && bounded_contract_persisted)); then" in rollback
+        "if ((quiesce_complete && identity_restore_complete && release_restore_complete "
+        "&& env_restore_complete && spec_restore_complete && "
+        "bounded_contract_persisted)); then" in rollback
     )
     assert (
         "spec_restore_complete && bounded_contract_persisted && "

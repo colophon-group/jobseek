@@ -136,7 +136,7 @@ def test_canonical_contract_is_exact_origin_path_and_numeric_id():
 def test_atomic_sql_binds_company_board_current_cycle_classification_cap_and_receipt():
     sql = " ".join(_RETIRE_CANONICALIZED_PROVIDER_IDENTITIES.split()).lower()
 
-    assert "from company where id = $2 and slug = 'merck'" in sql
+    assert "from company where id = $2 and slug = $9" in sql
     assert "posting.board_id = $1" in sql
     assert "posting.company_id = $2" in sql
     assert "from unnest($5::text[])" in sql
@@ -175,6 +175,7 @@ async def test_healthy_exact_transition_retires_before_writing_receipt():
         "version": _MERCK_IDENTITY_MIGRATION_VERSION,
         "config_fingerprint": _FINGERPRINT,
     }
+    assert args[9] == "merck"
     log.info.assert_called_once_with(
         "batch.monitor.identity_migration_completed",
         migration=_MERCK_IDENTITY_MIGRATION,

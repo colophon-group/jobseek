@@ -95,8 +95,7 @@ function freshnessGroupedResponse() {
 
 function companyResponse() {
   return {
-    // Deliberately return company docs in active-count order. Providers must
-    // preserve the freshness order from grouped postings.
+    found: 2,
     hits: [
       companyHit("stale-bigco", "Stale BigCo", 50_000, 50_000),
       companyHit("fresh-co", "Fresh Co", 1, 1),
@@ -123,8 +122,32 @@ function outOfOrderPostingsResponse() {
 
 function mixedCompanyResponse() {
   return {
+    found: 1,
     hits: [companyHit("mixed-co", "Mixed Co", 2, 2)],
   };
+}
+
+function rankedCompanyHits(ids: string[]) {
+  return ids.map((id, index) =>
+    companyHit(id, `Company ${id}`, ids.length - index, ids.length - index),
+  );
+}
+
+function groupedPostingsFor(ids: string[], missing = new Set<string>()) {
+  return {
+    grouped_hits: ids
+      .filter((id) => !missing.has(id))
+      .map((id, index) => ({
+        group_key: [id],
+        found: 1,
+        hits: [postingHit(id, `Company ${id}`, NOW - index)],
+      })),
+  };
+}
+
+function companyIdsFromFilter(filter: unknown): string[] {
+  const match = String(filter).match(/company_id:\[([^\]]+)\]/);
+  return match?.[1]?.split(",") ?? [];
 }
 
 function blankCompanyPostingHit(companyId: string, title: string) {
@@ -186,7 +209,7 @@ afterEach(() => {
 });
 
 describe("TypesenseSearchProvider.listTopCompanies", () => {
-  it("ranks the anonymous default surface by freshest active posting, not company size", async () => {
+  it("ranks the anonymous default surface by active company size", async () => {
     const provider = new TypesenseSearchProvider();
 
     mocks.search.mockImplementation(async (collection: string) => {
@@ -203,31 +226,101 @@ describe("TypesenseSearchProvider.listTopCompanies", () => {
     });
 
     expect(result.companies.map((c) => c.company.id)).toEqual([
-      "fresh-co",
       "stale-bigco",
+      "fresh-co",
     ]);
-    expect(result.companies.map((c) => c.activeMatches)).toEqual([1, 50_000]);
+    expect(result.companies.map((c) => c.activeMatches)).toEqual([50_000, 1]);
     expect(result.totalCompanies).toBe(2);
     expect(mocks.calls[0]).toMatchObject({
+      collection: "company",
+      params: {
+        q: "*",
+        filter_by: "active_posting_count:>0",
+        sort_by: "active_posting_count:desc,year_posting_count:desc",
+        offset: 0,
+        limit: 2,
+      },
+    });
+    expect(mocks.calls[1]).toMatchObject({
       collection: "job_posting",
       params: {
         q: "*",
-        filter_by: POSTING_BASE_FILTER,
+        filter_by: `company_id:[stale-bigco,fresh-co] && ${POSTING_BASE_FILTER}`,
         group_by: "company_id",
         group_limit: 10,
         sort_by: "first_seen_at:desc",
         per_page: 2,
-        page: 1,
       },
     });
-    expect(mocks.calls[1]).toMatchObject({
+  });
+
+  it("honors a non-page-aligned offset in the deterministic company ranking", async () => {
+    const ids = Array.from({ length: 15 }, (_, index) => `company-${index + 1}`);
+    const hits = rankedCompanyHits(ids);
+    mocks.search.mockImplementation(
+      async (collection: string, params: Record<string, unknown>) => {
+        if (collection === "company") {
+          const offset = Number(params.offset);
+          const limit = Number(params.limit);
+          return { found: ids.length, hits: hits.slice(offset, offset + limit) };
+        }
+        return groupedPostingsFor(companyIdsFromFilter(params.filter_by));
+      },
+    );
+
+    const result = await new TypesenseSearchProvider().listTopCompanies({
+      languages: [],
+      locale: "en",
+      offset: 5,
+      limit: 4,
+    });
+
+    expect(result.companies.map((entry) => entry.company.id)).toEqual(
+      ids.slice(5, 9),
+    );
+    expect(mocks.calls[0]).toMatchObject({
       collection: "company",
-      params: {
-        q: "*",
-        filter_by: "id:[fresh-co,stale-bigco]",
-        per_page: 2,
-      },
+      params: { offset: 0, limit: 9 },
     });
+  });
+
+  it("continues ranked hydration when stale company counts underfill a batch", async () => {
+    const ids = ["stale", "company-b", "company-c", "company-d"];
+    const hits = rankedCompanyHits(ids);
+    const missing = new Set(["stale"]);
+    mocks.search.mockImplementation(
+      async (collection: string, params: Record<string, unknown>) => {
+        if (collection === "company") {
+          const offset = Number(params.offset);
+          const limit = Number(params.limit);
+          return { found: ids.length, hits: hits.slice(offset, offset + limit) };
+        }
+        return groupedPostingsFor(
+          companyIdsFromFilter(params.filter_by),
+          missing,
+        );
+      },
+    );
+
+    const result = await new TypesenseSearchProvider().listTopCompanies({
+      languages: [],
+      locale: "en",
+      offset: 1,
+      limit: 2,
+    });
+
+    expect(result.companies.map((entry) => entry.company.id)).toEqual([
+      "company-c",
+      "company-d",
+    ]);
+    expect(
+      mocks.calls
+        .filter((call) => call.collection === "company")
+        .map((call) => call.params),
+    ).toEqual([
+      expect.objectContaining({ offset: 0, limit: 3 }),
+      expect.objectContaining({ offset: 3, limit: 2 }),
+    ]);
   });
 
   it("orders postings inside anonymous default company cards by freshness", async () => {
@@ -291,7 +384,7 @@ describe("TypesenseSearchProvider.listTopCompanies", () => {
 });
 
 describe("TypesenseBrowserProvider.listTopCompanies", () => {
-  it("uses the same freshness ranking as the server provider", async () => {
+  it("uses the same active-company ranking as the server provider", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: string | URL | Request) => {
@@ -328,30 +421,142 @@ describe("TypesenseBrowserProvider.listTopCompanies", () => {
     });
 
     expect(result.companies.map((c) => c.company.id)).toEqual([
-      "fresh-co",
       "stale-bigco",
+      "fresh-co",
     ]);
     expect(result.totalCompanies).toBe(2);
     expect(mocks.browserCalls[0]).toMatchObject({
+      collection: "company",
+      params: {
+        q: "*",
+        filter_by: "active_posting_count:>0",
+        sort_by: "active_posting_count:desc,year_posting_count:desc",
+        offset: "0",
+        limit: "2",
+      },
+    });
+    expect(mocks.browserCalls[1]).toMatchObject({
       collection: "job_posting",
       params: {
         q: "*",
-        filter_by: POSTING_BASE_FILTER,
+        filter_by: `company_id:[stale-bigco,fresh-co] && ${POSTING_BASE_FILTER}`,
         group_by: "company_id",
         group_limit: "10",
         sort_by: "first_seen_at:desc",
         per_page: "2",
-        page: "1",
       },
     });
-    expect(mocks.browserCalls[1]).toMatchObject({
+  });
+
+  it("honors a non-page-aligned browser offset", async () => {
+    const ids = Array.from({ length: 15 }, (_, index) => `company-${index + 1}`);
+    const hits = rankedCompanyHits(ids);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url === "/api/typesense-key") {
+          return Response.json({
+            apiKey: "browser-key",
+            host: "typesense.example",
+            port: 443,
+            protocol: "https",
+            expiresAt: Date.now() + 60_000,
+          });
+        }
+        const parsed = new URL(url);
+        const collection = parsed.pathname.match(/\/collections\/([^/]+)/)?.[1];
+        const params = Object.fromEntries(parsed.searchParams.entries());
+        if (!collection) throw new Error(`unexpected URL: ${url}`);
+        mocks.browserCalls.push({ collection, params });
+        if (collection === "company") {
+          const offset = Number(params.offset);
+          const limit = Number(params.limit);
+          return Response.json({
+            found: ids.length,
+            hits: hits.slice(offset, offset + limit),
+          });
+        }
+        return Response.json(
+          groupedPostingsFor(companyIdsFromFilter(params.filter_by)),
+        );
+      }),
+    );
+
+    const result = await new TypesenseBrowserProvider().listTopCompanies({
+      languages: [],
+      locale: "en",
+      offset: 5,
+      limit: 4,
+    });
+
+    expect(result.companies.map((entry) => entry.company.id)).toEqual(
+      ids.slice(5, 9),
+    );
+    expect(mocks.browserCalls[0]).toMatchObject({
       collection: "company",
-      params: {
-        q: "*",
-        filter_by: "id:[fresh-co,stale-bigco]",
-        per_page: "2",
-      },
+      params: { offset: "0", limit: "9" },
     });
+  });
+
+  it("continues browser hydration past an underfilled ranked batch", async () => {
+    const ids = ["stale", "company-b", "company-c", "company-d"];
+    const hits = rankedCompanyHits(ids);
+    const missing = new Set(["stale"]);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url === "/api/typesense-key") {
+          return Response.json({
+            apiKey: "browser-key",
+            host: "typesense.example",
+            port: 443,
+            protocol: "https",
+            expiresAt: Date.now() + 60_000,
+          });
+        }
+        const parsed = new URL(url);
+        const collection = parsed.pathname.match(/\/collections\/([^/]+)/)?.[1];
+        const params = Object.fromEntries(parsed.searchParams.entries());
+        if (!collection) throw new Error(`unexpected URL: ${url}`);
+        mocks.browserCalls.push({ collection, params });
+        if (collection === "company") {
+          const offset = Number(params.offset);
+          const limit = Number(params.limit);
+          return Response.json({
+            found: ids.length,
+            hits: hits.slice(offset, offset + limit),
+          });
+        }
+        return Response.json(
+          groupedPostingsFor(
+            companyIdsFromFilter(params.filter_by),
+            missing,
+          ),
+        );
+      }),
+    );
+
+    const result = await new TypesenseBrowserProvider().listTopCompanies({
+      languages: [],
+      locale: "en",
+      offset: 1,
+      limit: 2,
+    });
+
+    expect(result.companies.map((entry) => entry.company.id)).toEqual([
+      "company-c",
+      "company-d",
+    ]);
+    expect(
+      mocks.browserCalls
+        .filter((call) => call.collection === "company")
+        .map((call) => call.params),
+    ).toEqual([
+      expect.objectContaining({ offset: "0", limit: "3" }),
+      expect.objectContaining({ offset: "3", limit: "2" }),
+    ]);
   });
 
   it("orders browser-fetched anonymous card postings by freshness", async () => {

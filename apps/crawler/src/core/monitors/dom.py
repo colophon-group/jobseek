@@ -114,9 +114,15 @@ _TALENTSOFT_PARTITION_FALLBACK_SELECTOR = "ul.facette-titre-niv1 a[href*='facet_
 _TALENTSOFT_PARTITION_COUNT_REGEX = r"\((\d+)\s+(?:vacancies|offres)"
 _MAX_PAGINATION_PARTITIONS = 500
 _PAGINATION_PARTITION_CONCURRENCY = 4
+_PARTITION_SNAPSHOT_ATTEMPTS = 2
+_PARTITION_SNAPSHOT_RETRY_DELAY = 1.0
 
 _JPOSTING_HOST_SUFFIX = ".jposting.net"
 _JPOSTING_JOB_FILTER = r"[?&]job_code=[^&#]+"
+
+
+class _PartitionSnapshotChanged(ValueError):
+    """A counted facet changed while its paginated URLs were collected."""
 
 
 async def _filter_jsonld_job_urls(urls: set[str], client: httpx.AsyncClient) -> set[str]:
@@ -2360,7 +2366,7 @@ async def _paginate_urls(
     return all_urls
 
 
-async def _paginate_partitioned_urls(
+async def _paginate_partitioned_urls_once(
     board_url: str,
     initial_html: str,
     pagination: dict,
@@ -2530,7 +2536,7 @@ async def _paginate_partitioned_urls(
         expected_total = extract_count(initial_html, board_url)
         primary_total = sum(count or 0 for _, _, count in primary_results)
         if primary_total != expected_total:
-            raise ValueError(
+            raise _PartitionSnapshotChanged(
                 "DOM primary partition counts do not match listing total "
                 f"({primary_total} != {expected_total})"
             )
@@ -2580,7 +2586,7 @@ async def _paginate_partitioned_urls(
         child_results = await gather_cancel_on_error(child_tasks)
         child_total = sum(child_count or 0 for _, _, child_count in child_results)
         if child_total != count:
-            raise ValueError(
+            raise _PartitionSnapshotChanged(
                 "DOM fallback partition counts do not match parent total "
                 f"({child_total} != {count}): {partition_url}"
             )
@@ -2629,7 +2635,7 @@ async def _paginate_partitioned_urls(
     ):
         partition_url, _, _, partition_count = expanded_partition
         if partition_count is not None and len(partition_urls_found) != partition_count:
-            raise ValueError(
+            raise _PartitionSnapshotChanged(
                 "DOM partition URL count does not match advertised count "
                 f"({len(partition_urls_found)} != {partition_count}): {partition_url}"
             )
@@ -2651,6 +2657,65 @@ async def _paginate_partitioned_urls(
         )
 
     return all_urls
+
+
+async def _paginate_partitioned_urls(
+    board_url: str,
+    pagination: dict,
+    client: httpx.AsyncClient,
+    url_matcher: re.Pattern | None,
+    url_transform: dict | None,
+    encoding: str | None,
+    link_selector: str | None,
+) -> set[str]:
+    """Collect a counted facet snapshot with one bounded convergence retry.
+
+    The listing is part of the counted snapshot: it owns both the advertised
+    total and the primary facet links.  Refetch it on *every* attempt rather
+    than carrying the caller's earlier discovery fetch across attempts.  A
+    vacancy can otherwise cross a facet or page boundary between requests and
+    make a healthy second partition pass compare itself with a stale total.
+    """
+    from src.shared.http_retry import PaginationFetchError, fetch_with_retry
+
+    for attempt in range(1, _PARTITION_SNAPSHOT_ATTEMPTS + 1):
+        try:
+            listing_html = await fetch_with_retry(
+                client,
+                board_url,
+                transient_403=True,
+                retryable_statuses={202},
+                encoding=encoding,
+                max_chars=500_000,
+            )
+            if not listing_html:
+                raise PaginationFetchError(
+                    board_url,
+                    attempts=1,
+                    last_error="empty partition listing",
+                )
+            _raise_if_bot_challenge(board_url, listing_html)
+            return await _paginate_partitioned_urls_once(
+                board_url,
+                listing_html,
+                pagination,
+                client,
+                url_matcher,
+                url_transform,
+                encoding,
+                link_selector,
+            )
+        except _PartitionSnapshotChanged as exc:
+            if attempt == _PARTITION_SNAPSHOT_ATTEMPTS:
+                raise
+            log.warning(
+                "dom.pagination.partition_snapshot_changed",
+                board_url=board_url,
+                attempt=attempt,
+                error=str(exc),
+            )
+            await asyncio.sleep(_PARTITION_SNAPSHOT_RETRY_DELAY)
+    raise AssertionError("unreachable")
 
 
 # ---------------------------------------------------------------------------
@@ -3002,7 +3067,6 @@ async def dom_discover(
             if pagination.get("partition_selector"):
                 urls = await _paginate_partitioned_urls(
                     board_url,
-                    html,
                     pagination,
                     client,
                     url_matcher,

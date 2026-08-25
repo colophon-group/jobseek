@@ -103,6 +103,19 @@ def parse_args() -> argparse.Namespace:
     )
 
     sub.add_parser(
+        "repair-ecom-teamtailor-cutover",
+        help="Reapply the bounded ECOM Teamtailor stable-identity repair",
+    )
+    sub.add_parser(
+        "rollback-ecom-teamtailor-cutover",
+        help="Restore ECOM aliases recorded by the current deploy transaction",
+    )
+    sub.add_parser(
+        "ecom-teamtailor-cutover-state",
+        help="Report whether this deploy owns an ECOM identity rollback",
+    )
+
+    sub.add_parser(
         "repair-location-taxonomy-source",
         help="One-shot retained web DB -> local location slug/coordinate repair",
     )
@@ -716,6 +729,34 @@ async def run() -> None:
             async with local_pool.acquire() as acquired_connection:
                 connection = cast(asyncpg.Connection, acquired_connection)
                 await reapply_nw_provider_cutover(connection)
+
+        elif args.command in {
+            "repair-ecom-teamtailor-cutover",
+            "rollback-ecom-teamtailor-cutover",
+            "ecom-teamtailor-cutover-state",
+        }:
+            local_pool = await create_local_pool()
+            from src.ecom_teamtailor_cutover import (
+                apply_ecom_teamtailor_cutover,
+                ecom_teamtailor_cutover_state,
+                rollback_ecom_teamtailor_cutover,
+            )
+
+            if args.command == "ecom-teamtailor-cutover-state":
+                async with local_pool.acquire() as acquired_connection:
+                    connection = cast(asyncpg.Connection, acquired_connection)
+                    state = await ecom_teamtailor_cutover_state(connection)
+                sys.stdout.write(state + "\n")
+                sys.stdout.flush()
+                return
+            operation = (
+                rollback_ecom_teamtailor_cutover
+                if args.command == "rollback-ecom-teamtailor-cutover"
+                else apply_ecom_teamtailor_cutover
+            )
+            async with local_pool.acquire() as acquired_connection:
+                connection = cast(asyncpg.Connection, acquired_connection)
+                await operation(connection)
 
         elif args.command == "repair-location-taxonomy-source":
             local_pool = await create_local_pool()

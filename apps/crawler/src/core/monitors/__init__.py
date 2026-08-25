@@ -327,8 +327,13 @@ async def fetch_page_text(
     url: str,
     client: httpx.AsyncClient,
     max_chars: int = 500_000,
+    *,
+    board_gone_statuses: frozenset[int] = frozenset(),
 ) -> str | None:
     """Fetch a page and return its text content (capped), or None on error.
+
+    ``board_gone_statuses`` lets a provider wrapper turn an explicit first-page
+    retirement response into the crawler's recoverable board-gone workflow.
 
     TDM-Reservation respect (#2842). Lenient wrapper but still honors the
     W3C opt-out signal — :class:`TDMReservedError` is **not** swallowed by
@@ -342,12 +347,20 @@ async def fetch_page_text(
 
     try:
         resp = await client.get(url, follow_redirects=True)
+        if resp.status_code in board_gone_statuses:
+            raise BoardGoneError(
+                f"Board page returned HTTP {resp.status_code}",
+                url=str(resp.url),
+                status_code=resp.status_code,
+            )
         if resp.status_code != 200:
             return None
         text = resp.text[:max_chars]
         _tdm_check(resp, body_excerpt=text)
         return text
     except TDMReservedError:
+        raise
+    except BoardGoneError:
         raise
     except Exception:
         log.debug("monitors.fetch_page_text_failed", url=url, exc_info=True)

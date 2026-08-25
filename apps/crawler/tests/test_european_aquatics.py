@@ -8,7 +8,6 @@ from copy import deepcopy
 from pathlib import Path
 
 import httpx
-import pytest
 
 from src.core.monitors.inline import discover
 
@@ -105,8 +104,7 @@ def _board() -> dict:
 
 async def _discover_fixture(board: dict, html: str):
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.host == "r.jina.ai"
-        assert request.headers["X-Return-Format"] == "html"
+        assert request.url.host in {"europeanaquatics.org", "r.jina.ai"}
         return httpx.Response(200, text=html, request=request)
 
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -115,11 +113,8 @@ async def _discover_fixture(board: dict, html: str):
 
 async def test_visible_archived_empty_marker_wins_over_retained_role() -> None:
     board = _board()
-    # Prove the empty-state contract itself, independent of the defensive
-    # blacklist used when the page publishes an active role.
     board["metadata"] = deepcopy(board["metadata"])
     board["metadata"]["fetch_contains"] = "JOB OFFER"
-    board["metadata"]["exclude_titles"] = []
 
     jobs = await _discover_fixture(board, ARCHIVED_EMPTY_HTML)
 
@@ -137,11 +132,12 @@ async def test_live_css_hidden_empty_marker_does_not_suppress_visible_role() -> 
     assert jobs[0].locations == ["Remote or from the office in Nyon, Switzerland"]
 
 
-async def test_live_hidden_marker_with_all_roles_excluded_fails_closed() -> None:
+async def test_live_hidden_marker_proves_empty_after_archived_roles_are_excluded() -> None:
     board = _board()
 
-    with pytest.raises(ValueError, match="did not match the configured explicit empty state"):
-        await _discover_fixture(board, LIVE_ACTIVE_HTML)
+    jobs = await _discover_fixture(board, LIVE_ACTIVE_HTML)
+
+    assert jobs == []
 
 
 async def test_archived_roles_are_bounded_before_optional_location_lookup() -> None:
@@ -174,11 +170,10 @@ def test_board_uses_explicit_empty_and_item_boundary_contracts() -> None:
     metadata = _board()["metadata"]
 
     assert metadata["fetch_contains"] == "JOB OFFERS"
-    assert metadata["empty_selector"] == (
-        ".elementor-widget-heading:not(.elementor-hidden-desktop)"
-        ":not(.elementor-hidden-tablet):not(.elementor-hidden-mobile) h5"
-    )
+    assert metadata["fetch_urls"][0] == _board()["board_url"]
+    assert metadata["empty_selector"] == ".elementor-widget-heading h5"
     assert metadata["empty_text"] == "No vacancies are currently available"
+    assert metadata["empty_requires_no_jobs"] is True
     assert metadata["item_boundary_tag"] == "h2"
     assert metadata["preserve_single_location"] is True
     assert "Aquatics Social Responsibility Project Manager" in metadata["exclude_titles"]

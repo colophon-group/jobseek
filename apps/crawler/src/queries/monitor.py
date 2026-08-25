@@ -137,7 +137,7 @@ WITH board_state AS MATERIALIZED (
   SELECT id
   FROM company
   WHERE id = $2
-    AND slug = 'merck'
+    AND slug = $9
 ), discovered_input AS MATERIALIZED (
   SELECT source_url
   FROM unnest($5::text[]) AS input(source_url)

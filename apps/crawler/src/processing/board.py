@@ -116,6 +116,8 @@ _batch = _BatchLookups()
 
 _MERCK_IDENTITY_MIGRATION = "merck-phenom-stable-id-v1"
 _MERCK_IDENTITY_MIGRATION_VERSION = 1
+_ECOM_IDENTITY_MIGRATION = "ecom-teamtailor-stable-id-v1"
+_ECOM_IDENTITY_MIGRATION_VERSION = 1
 _IDENTITY_MIGRATION_RECEIPT_KEY = "_identity_migration_receipt"
 _MERCK_IDENTITY_MIGRATION_CONTRACTS = {
     "merck-br-pt": (
@@ -175,7 +177,23 @@ _MERCK_LEGACY_URL_PATTERN = (
     r"job/([0-9]+)(/[^/?#]*)?$"
 )
 _MERCK_CANONICAL_URL_PATTERN = r"^https://careers[.]emdgroup[.]com/us/en/job/[0-9]+$"
-_IDENTITY_MIGRATION_MAX_ROWS = 2_000
+_ECOM_IDENTITY_MIGRATION_CONTRACT = (
+    "ecom-agroindustrial-global",
+    "https://ecomtradinggroup.teamtailor.com/jobs",
+    "rss",
+    "f48a13a3ab31582e825441be395c03a13da8426f72e310f6e0e98765dd99af86",
+)
+_ECOM_LEGACY_URL_PATTERN = (
+    r"^https://(careers[.]ecomtrading[.]com|"
+    r"ecomtradinggroup[.]teamtailor[.]com)/jobs/[0-9]+-[^/?#]+$|"
+    r"^https://careers[.]ecomtrading[.]com/jobs/[0-9]+$"
+)
+_ECOM_CANONICAL_URL_PATTERN = r"^https://ecomtradinggroup[.]teamtailor[.]com/jobs/[0-9]+$"
+_MERCK_IDENTITY_MIGRATION_MAX_ROWS = 2_000
+_ECOM_IDENTITY_MIGRATION_MAX_ROWS = 100
+# Kept as the public hard-cap alias used by the Merck safety tests.
+_IDENTITY_MIGRATION_MAX_ROWS = _MERCK_IDENTITY_MIGRATION_MAX_ROWS
+_SUPPORTED_IDENTITY_MIGRATIONS = frozenset({_MERCK_IDENTITY_MIGRATION, _ECOM_IDENTITY_MIGRATION})
 
 # API monitor types share a single API host per type (throttle-domain keys).
 _API_MONITOR_TYPES = api_monitor_types()
@@ -498,11 +516,12 @@ async def _retire_canonicalized_provider_identities(
     all_canonical: bool,
     board_log: structlog.stdlib.BoundLogger,
 ) -> int:
-    """Run the receipt-backed, one-shot Merck identity migration.
+    """Run a code-owned, receipt-backed provider identity migration.
 
     Eligibility is bound to a code-owned board URL/type/config fingerprint,
     healthy complete discovery, and an ordinary rolling-count drop check. The
-    SQL additionally binds the owning company to ``merck``, classifies every
+    SQL additionally binds the owning company to the code-owned company slug,
+    classifies every
     active board-owned source URL, and independently requires every canonical
     URL discovered this cycle to exist as an active same-company row touched
     during this cycle. It then retires all strict legacy rows, including stale
@@ -516,15 +535,31 @@ async def _retire_canonicalized_provider_identities(
     permanent no-op; any mismatched receipt fails closed.
     """
     md = metadata or {}
-    if md.get("identity_migration") != _MERCK_IDENTITY_MIGRATION:
+    migration = md.get("identity_migration")
+    if migration not in _SUPPORTED_IDENTITY_MIGRATIONS:
         return 0
 
-    contract = _MERCK_IDENTITY_MIGRATION_CONTRACTS.get(board_slug or "")
+    if migration == _MERCK_IDENTITY_MIGRATION:
+        contract = _MERCK_IDENTITY_MIGRATION_CONTRACTS.get(board_slug or "")
+        migration_version = _MERCK_IDENTITY_MIGRATION_VERSION
+        company_slug = "merck"
+        legacy_url_pattern = _MERCK_LEGACY_URL_PATTERN
+        canonical_url_pattern = _MERCK_CANONICAL_URL_PATTERN
+        max_rows = _MERCK_IDENTITY_MIGRATION_MAX_ROWS
+    else:
+        ecom_slug, ecom_url, ecom_type, ecom_fingerprint = _ECOM_IDENTITY_MIGRATION_CONTRACT
+        contract = (ecom_url, ecom_type, ecom_fingerprint) if board_slug == ecom_slug else None
+        migration_version = _ECOM_IDENTITY_MIGRATION_VERSION
+        company_slug = "ecom-agroindustrial"
+        legacy_url_pattern = _ECOM_LEGACY_URL_PATTERN
+        canonical_url_pattern = _ECOM_CANONICAL_URL_PATTERN
+        max_rows = _ECOM_IDENTITY_MIGRATION_MAX_ROWS
+
     fingerprint = md.get("_monitor_config_fingerprint")
     if contract is None or (board_url, crawler_type, fingerprint) != contract:
         board_log.warning(
             "batch.monitor.identity_migration_contract_mismatch",
-            migration=_MERCK_IDENTITY_MIGRATION,
+            migration=migration,
             board_slug=board_slug,
         )
         return 0
@@ -532,24 +567,45 @@ async def _retire_canonicalized_provider_identities(
     expected_fingerprint = contract[2]
 
     def receipt_matches(receipt: object) -> bool:
-        if not isinstance(receipt, dict) or set(receipt) != {
+        expected_keys = {
             "id",
             "version",
             "config_fingerprint",
             "completed_at",
             "retired_count",
-        }:
+        }
+        if migration == _ECOM_IDENTITY_MIGRATION:
+            expected_keys.add("rollback_rows")
+        if not isinstance(receipt, dict) or set(receipt) != expected_keys:
             return False
         retired_count = receipt.get("retired_count")
-        return (
-            receipt.get("id") == _MERCK_IDENTITY_MIGRATION
-            and receipt.get("version") == _MERCK_IDENTITY_MIGRATION_VERSION
+        base_matches = (
+            receipt.get("id") == migration
+            and receipt.get("version") == migration_version
             and receipt.get("config_fingerprint") == expected_fingerprint
             and isinstance(receipt.get("completed_at"), str)
             and bool(receipt.get("completed_at"))
             and isinstance(retired_count, int)
             and not isinstance(retired_count, bool)
-            and 0 <= retired_count <= _IDENTITY_MIGRATION_MAX_ROWS
+            and 0 <= retired_count <= max_rows
+        )
+        if not base_matches or migration != _ECOM_IDENTITY_MIGRATION:
+            return base_matches
+        rollback_rows = receipt.get("rollback_rows")
+        if not isinstance(rollback_rows, list) or len(rollback_rows) > max_rows:
+            return False
+        return all(
+            isinstance(row, dict)
+            and set(row) == {"id", "source_url", "is_active", "missing_count", "next_scrape_at"}
+            and isinstance(row.get("id"), str)
+            and bool(row.get("id"))
+            and isinstance(row.get("source_url"), str)
+            and bool(row.get("source_url"))
+            and isinstance(row.get("is_active"), bool)
+            and isinstance(row.get("missing_count"), int)
+            and not isinstance(row.get("missing_count"), bool)
+            and (row.get("next_scrape_at") is None or isinstance(row.get("next_scrape_at"), str))
+            for row in rollback_rows
         )
 
     configured_receipt = md.get(_IDENTITY_MIGRATION_RECEIPT_KEY)
@@ -558,7 +614,7 @@ async def _retire_canonicalized_provider_identities(
             return 0
         board_log.warning(
             "batch.monitor.identity_migration_receipt_mismatch",
-            migration=_MERCK_IDENTITY_MIGRATION,
+            migration=migration,
             source="board_metadata",
         )
         return 0
@@ -580,7 +636,7 @@ async def _retire_canonicalized_provider_identities(
         precondition_reason = "empty_canonical_set"
     elif discovered != len(exact_canonical_urls):
         precondition_reason = "nonunique_canonical_output"
-    elif len(exact_canonical_urls) > _IDENTITY_MIGRATION_MAX_ROWS:
+    elif len(exact_canonical_urls) > max_rows:
         precondition_reason = "canonical_set_over_cap"
     elif len(history) < _DROP_GUARD_MIN_HISTORY:
         precondition_reason = "insufficient_history"
@@ -595,7 +651,7 @@ async def _retire_canonicalized_provider_identities(
     if precondition_reason is not None:
         board_log.warning(
             "batch.monitor.identity_migration_precondition_failed",
-            migration=_MERCK_IDENTITY_MIGRATION,
+            migration=migration,
             reason=precondition_reason,
             discovered=discovered,
             history=history,
@@ -603,8 +659,8 @@ async def _retire_canonicalized_provider_identities(
         return 0
 
     base_receipt = {
-        "id": _MERCK_IDENTITY_MIGRATION,
-        "version": _MERCK_IDENTITY_MIGRATION_VERSION,
+        "id": migration,
+        "version": migration_version,
         "config_fingerprint": expected_fingerprint,
     }
 
@@ -613,11 +669,12 @@ async def _retire_canonicalized_provider_identities(
         board_id,
         company_id,
         monitor_start_ts,
-        _IDENTITY_MIGRATION_MAX_ROWS,
+        max_rows,
         exact_canonical_urls,
-        _MERCK_LEGACY_URL_PATTERN,
-        _MERCK_CANONICAL_URL_PATTERN,
+        legacy_url_pattern,
+        canonical_url_pattern,
         json.dumps(base_receipt),
+        company_slug,
     )
     if row is None:
         board_log.warning("batch.monitor.identity_migration_no_result")
@@ -631,7 +688,7 @@ async def _retire_canonicalized_provider_identities(
             return 0
         board_log.warning(
             "batch.monitor.identity_migration_receipt_mismatch",
-            migration=_MERCK_IDENTITY_MIGRATION,
+            migration=migration,
             source="database",
         )
         return 0
@@ -645,14 +702,14 @@ async def _retire_canonicalized_provider_identities(
     if not receipt_written:
         board_log.warning(
             "batch.monitor.identity_migration_blocked",
-            migration=_MERCK_IDENTITY_MIGRATION,
+            migration=migration,
             active=int(row["active"]),
             legacy=legacy,
             canonical=int(row["canonical"]),
             unknown=unknown,
             discovered=discovered_count,
             validated=validated_count,
-            cap=_IDENTITY_MIGRATION_MAX_ROWS,
+            cap=max_rows,
         )
         return 0
     if (
@@ -668,7 +725,7 @@ async def _retire_canonicalized_provider_identities(
         )
     board_log.info(
         "batch.monitor.identity_migration_completed",
-        migration=_MERCK_IDENTITY_MIGRATION,
+        migration=migration,
         retired=retired,
     )
     return retired
@@ -1161,7 +1218,7 @@ async def _process_one_board_streaming(
         all_canonical = True
         canonical_urls: set[str] = set()
         collect_migration_canonicals = (
-            metadata.get("identity_migration") == _MERCK_IDENTITY_MIGRATION
+            metadata.get("identity_migration") in _SUPPORTED_IDENTITY_MIGRATIONS
         )
         # A streamed monitor may emit state on an empty batch before it emits
         # any URLs. Hold that patch until the first posting batch commits, or

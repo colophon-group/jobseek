@@ -922,7 +922,10 @@ class TestDiscover:
             jobs = await discover(board, client)
             assert len(jobs) == 1
 
-    async def test_teamtailor_transient_400_retries_same_page(self, monkeypatch):
+    @pytest.mark.parametrize("status", [400, 409])
+    async def test_teamtailor_transient_provider_status_retries_same_page(
+        self, monkeypatch, status
+    ):
         feed_xml = _rss_xml("""
             <item>
                 <title>Recovered job</title>
@@ -935,7 +938,7 @@ class TestDiscover:
             nonlocal attempts
             attempts += 1
             if attempts == 1:
-                return httpx.Response(400, text="temporary provider error")
+                return httpx.Response(status, text="temporary provider error")
             return httpx.Response(200, text=feed_xml)
 
         async def no_sleep(_delay):

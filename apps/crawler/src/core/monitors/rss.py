@@ -143,10 +143,11 @@ _PRESETS: dict[str, _Preset] = {
         feed_ns={"tt": "https://teamtailor.com/locations"},
         paginated=True,
         page_size=100,
-        # Teamtailor occasionally emits a transient 400 from an otherwise
-        # healthy feed. Keep this provider-specific: a generic HTTP 400 is a
-        # permanent request error and must still fail fast.
-        retryable_statuses=frozenset({400}),
+        # Teamtailor occasionally emits transient 400 responses and its
+        # custom-domain CDN can return 409 while tenant ingress is being
+        # reconfigured. Keep both provider-specific: generic 4xx responses
+        # remain permanent request errors and still fail fast.
+        retryable_statuses=frozenset({400, 409}),
     ),
 }
 

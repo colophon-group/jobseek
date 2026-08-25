@@ -98,6 +98,7 @@ ROLLBACK_ACTIVE_RELEASE_TARGET=""
 ROLLBACK_ACTIVE_IMAGE_OVERRIDE=""
 ROLLBACK_SYNC_WEB_DATABASE_URL=""
 FORWARD_SYNC_STARTED=0
+ECOM_IDENTITY_ROLLBACK_REQUIRED=0
 FORWARD_DATA_STAGING_ROOT=""
 FORWARD_DATA_SNAPSHOT=""
 FORWARD_DATA_FILES_MANIFEST=""
@@ -1299,6 +1300,19 @@ rollback_sync_previous_config() {
   fi
 }
 
+rollback_ecom_teamtailor_identity() {
+  docker run --rm \
+    -e LOCAL_DATABASE_URL \
+    -e CRAWLER_DB_ROLE=rollback-ecom-teamtailor-cutover \
+    -e CRAWLER_DB_POOL_MIN=0 \
+    -e CRAWLER_DB_POOL_MAX=2 \
+    --network host \
+    "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+    --label com.docker.compose.service=rollback-ecom-teamtailor-cutover \
+    "$CRAWLER_IMAGE_REF" \
+    uv run --no-sync crawler rollback-ecom-teamtailor-cutover
+}
+
 rollback_compose_service_ready() {
   local service="$1"
   local container_id state health
@@ -1351,6 +1365,7 @@ rollback_deploy() {
   local spec_absence_restore_complete=0
   local bounded_contract_persisted=0
   local config_restore_complete=0
+  local identity_restore_complete=0
   local rollback_stack_started=0
 
   trap - ERR EXIT HUP INT TERM
@@ -1386,6 +1401,20 @@ rollback_deploy() {
   fi
   if ((command_status != 0 && rollback_status == 0)); then
     rollback_status=$command_status
+  fi
+
+  if ((quiesce_complete)); then
+    if (( ${ECOM_IDENTITY_ROLLBACK_REQUIRED:-0} )); then
+      rollback_ecom_teamtailor_identity
+      command_status=$?
+      if ((command_status == 0)); then
+        identity_restore_complete=1
+      elif ((rollback_status == 0)); then
+        rollback_status=$command_status
+      fi
+    else
+      identity_restore_complete=1
+    fi
   fi
 
   if [[ -n "$ROLLBACK_ACTIVE_RELEASE_TARGET" ]]; then
@@ -1453,7 +1482,7 @@ rollback_deploy() {
   if (( ! quiesce_complete && bounded_contract_persisted )); then
     echo "ERROR: rollback quiesce was incomplete; bounded old-stack contract persisted but restart skipped" >&2
   fi
-  if ((quiesce_complete && release_restore_complete && env_restore_complete && spec_restore_complete && bounded_contract_persisted)); then
+  if ((quiesce_complete && identity_restore_complete && release_restore_complete && env_restore_complete && spec_restore_complete && bounded_contract_persisted)); then
     if (( ${FORWARD_SYNC_STARTED:-0} )); then
       rollback_sync_previous_config
       command_status=$?
@@ -1469,7 +1498,7 @@ rollback_deploy() {
   if (( ! config_restore_complete && ${FORWARD_SYNC_STARTED:-0} )); then
     echo "ERROR: rollback config restore was incomplete; old stack restart skipped" >&2
   fi
-  if ((quiesce_complete && release_restore_complete && env_restore_complete && spec_restore_complete && bounded_contract_persisted && config_restore_complete)); then
+  if ((quiesce_complete && identity_restore_complete && release_restore_complete && env_restore_complete && spec_restore_complete && bounded_contract_persisted && config_restore_complete)); then
     rollback_compose up -d --remove-orphans
     command_status=$?
     if ((command_status == 0)); then
@@ -2040,6 +2069,27 @@ docker compose up -d redis
 docker compose stop --timeout 60 worker-1 worker-2 worker-3 browser-1 exporter drain
 
 # ── Run Alembic migrations on local Postgres ─────────────────────────
+ecom_cutover_state="$(
+  docker run --rm \
+    -e LOCAL_DATABASE_URL \
+    -e CRAWLER_DB_ROLE=deploy-ecom-teamtailor-cutover-state \
+    -e CRAWLER_DB_POOL_MIN=0 \
+    -e CRAWLER_DB_POOL_MAX=2 \
+    --network host \
+    "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+    --label com.docker.compose.service=deploy-ecom-teamtailor-cutover-state \
+    "$CRAWLER_IMAGE_REF" \
+    uv run --no-sync crawler ecom-teamtailor-cutover-state \
+    | grep -Ex 'absent|pending|complete'
+)"
+case "$ecom_cutover_state" in
+  pending) ECOM_IDENTITY_ROLLBACK_REQUIRED=1 ;;
+  absent | complete) ECOM_IDENTITY_ROLLBACK_REQUIRED=0 ;;
+  *)
+    echo "ERROR: unexpected ECOM identity cutover state: $ecom_cutover_state" >&2
+    exit 1
+    ;;
+esac
 docker run --rm \
   -e LOCAL_DATABASE_URL \
   -e CRAWLER_DB_ROLE=deploy-migrate \
@@ -2081,6 +2131,21 @@ docker run --rm \
   --label com.docker.compose.service=deploy-sync \
   "$CRAWLER_IMAGE_REF" \
   uv run --no-sync crawler sync
+
+# Revision 0022 writes a bounded receipt containing the original ECOM source
+# identities. Reapply it after config sync (Alembic itself is one-shot) and
+# before workers can recrawl the title-derived Teamtailor URLs. The armed
+# rollback consumes the same receipt before an old image is allowed to start.
+docker run --rm \
+  -e LOCAL_DATABASE_URL \
+  -e CRAWLER_DB_ROLE=deploy-ecom-teamtailor-cutover \
+  -e CRAWLER_DB_POOL_MIN=0 \
+  -e CRAWLER_DB_POOL_MAX=2 \
+  --network host \
+  "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+  --label com.docker.compose.service=deploy-ecom-teamtailor-cutover \
+  "$CRAWLER_IMAGE_REF" \
+  uv run --no-sync crawler repair-ecom-teamtailor-cutover
 
 # Revision 0021 is idempotent, but Alembic records it only once. If an earlier
 # forward attempt reached the migration and then rolled back, the restored
