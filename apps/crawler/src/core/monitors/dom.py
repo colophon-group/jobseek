@@ -736,6 +736,13 @@ _PROSPECTIVE_RICH_ROWS = {
     "total_selector": ".jobs-total .total",
     "location_selectors": [".place-of-work"],
 }
+_PROSPECTIVE_OWN_REP_RICH_ROWS = {
+    "row_selector": ".jobsList li",
+    "link_selector": "a.job[href]",
+    "title_selector": "a.job h2 > span:first-child",
+    "total_selector": ".chips a.reset.active > span:last-child",
+    "allow_missing_locations": True,
+}
 _REXX_PROVIDER_HOSTS = frozenset({"rexx-systems.com", "www.rexx-systems.com"})
 _REXX_JOB_PATH_FILTER = (
     r"/(?:[^/?#]+/)*(?:[^/?#]+-j\d+\.html|"
@@ -965,10 +972,18 @@ def _prospective_provider_medium(html: str, url: str) -> str | None:
         return None
 
     tree = LexborHTMLParser(html)
-    if (
-        tree.css_first("body.career-center #jobs-list") is None
-        or tree.css_first(".jobs-total .total") is None
-    ):
+    standard_shell = (
+        tree.css_first("body.career-center #jobs-list") is not None
+        and tree.css_first(".jobs-total .total") is not None
+    )
+    own_rep_shell = (
+        tree.css_first("body.ownRep form#careercenter-form") is not None
+        and tree.css_first("body.ownRep .jobsList") is not None
+        and tree.css_first("#careercenter-form input#offset[value='0']") is not None
+        and tree.css_first("#careercenter-form input#limit[value]") is not None
+        and tree.css_first(".chips a.reset.active > span:last-child") is not None
+    )
+    if not standard_shell and not own_rep_shell:
         return None
 
     board_origin = (parsed.scheme, parsed.hostname.casefold(), port or 443)
@@ -1003,7 +1018,7 @@ def _prospective_canonical_path_from_html(html: str, url: str) -> str | None:
     parsed_board = urlsplit(url)
     board_origin = (parsed_board.scheme, parsed_board.hostname, parsed_board.port or 443)
     tree = LexborHTMLParser(html)
-    for link in tree.css("#jobs-list .job a.job-title[href]"):
+    for link in tree.css("#jobs-list .job a.job-title[href], .jobsList li a.job[href]"):
         href = link.attributes.get("href") or ""
         try:
             parsed_job = urlsplit(urljoin(url, href))
@@ -1104,19 +1119,28 @@ def _prospective_probe_config(html: str, url: str) -> dict | None:
         r"/?(?:[?#].*)?$"
     )
     canonical_path = _prospective_canonical_path_from_html(html, url)
-    rich_rows = dict(_PROSPECTIVE_RICH_ROWS)
+    tree = LexborHTMLParser(html)
+    own_rep_shell = tree.css_first("body.ownRep form#careercenter-form") is not None
+    rich_rows = dict(_PROSPECTIVE_OWN_REP_RICH_ROWS if own_rep_shell else _PROSPECTIVE_RICH_ROWS)
     asset_origins = {origin} | {f"https://{host}" for host in _PROSPECTIVE_CANONICAL_ASSET_HOSTS}
     asset_origin_pattern = "|".join(re.escape(candidate) for candidate in sorted(asset_origins))
     empty_states = [
         {
-            "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
+            "selector": (
+                "body.ownRep:has(form#careercenter-form):has(.jobsList) "
+                ".chips a.reset.active > span:last-child"
+                if own_rep_shell
+                else "body.career-center:has(#jobs-list) .jobs-total .total"
+            ),
             "exact_text": "0",
             "required_link_selector": f"link[href*='careercenter/{medium_id}/assets/']",
             "required_link_url_pattern": (
                 rf"^(?:{asset_origin_pattern})/(?:public/v[12]/)?careercenter/"
                 rf"{re.escape(medium_id)}/assets/[^?#]+(?:[?#].*)?$"
             ),
-            "forbidden_link_selector": "#jobs-list a.job-title[href]",
+            "forbidden_link_selector": (
+                ".jobsList a.job[href]" if own_rep_shell else "#jobs-list a.job-title[href]"
+            ),
         }
     ]
     try:
@@ -3393,7 +3417,9 @@ async def dom_discover(
                 )
             if (
                 prospective_canonical_path is None
-                and LexborHTMLParser(html).css_first("#jobs-list .job a.job-title[href]")
+                and LexborHTMLParser(html).css_first(
+                    "#jobs-list .job a.job-title[href], .jobsList li a.job[href]"
+                )
                 is not None
             ):
                 raise ValueError(
