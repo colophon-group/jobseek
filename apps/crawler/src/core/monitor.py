@@ -177,6 +177,8 @@ def _validate_collision_identity(
 
 def _normalize_discovered(
     discovered,
+    *,
+    reject_conflicting_duplicate_urls: bool = False,
 ) -> MonitorResult:
     """Normalize discover results into a MonitorResult.
 
@@ -193,9 +195,16 @@ def _normalize_discovered(
     if isinstance(discovered, set):
         return MonitorResult(urls=discovered)
     # list[DiscoveredJob]
-    urls = {j.url for j in discovered}
-    jobs_by_url = {j.url: j for j in discovered}
-    return MonitorResult(urls=urls, jobs_by_url=jobs_by_url)
+    jobs_by_url: dict[str, DiscoveredJob] = {}
+    for job in discovered:
+        existing = jobs_by_url.get(job.url)
+        if reject_conflicting_duplicate_urls and existing is not None and existing != job:
+            raise ValueError(
+                "url_transform collision batch emitted conflicting content "
+                f"for source URL {job.url}"
+            )
+        jobs_by_url[job.url] = job
+    return MonitorResult(urls=set(jobs_by_url), jobs_by_url=jobs_by_url)
 
 
 def _apply_url_filter(result: MonitorResult, config: dict) -> MonitorResult:
@@ -523,6 +532,7 @@ async def monitor_one(
     """
     discoverer = get_discoverer(monitor_type)
     config = monitor_config or {}
+    collision = _url_transform_collision_config(config)
 
     # Build the board dict expected by discover functions
     board = {
@@ -534,7 +544,10 @@ async def monitor_one(
 
     async with client_for(http, config) as client:
         discovered = await discoverer(board, client, pw=pw)
-    result = _normalize_discovered(discovered)
+    result = _normalize_discovered(
+        discovered,
+        reject_conflicting_duplicate_urls=collision is not None,
+    )
     before_filter = len(result.urls)
     result = _apply_url_filter(result, config)
     url_removed = before_filter - len(result.urls)
@@ -594,7 +607,10 @@ async def monitor_one_stream(
     buffered: MonitorResult | None = None
     async with client_for(http, config) as client:
         async for batch in stream_fn(board, client, pw=pw):
-            result = _normalize_discovered(batch)
+            result = _normalize_discovered(
+                batch,
+                reject_conflicting_duplicate_urls=collision is not None,
+            )
             result = _apply_url_filter(result, config)
             result = _apply_job_filter(result, config)
             result = _apply_url_allowlist(result, config)

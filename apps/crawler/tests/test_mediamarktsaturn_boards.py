@@ -297,6 +297,120 @@ async def test_global_successfactors_conflicting_same_source_content_fails_strea
         _REGISTRY.remove(monitor_type)
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reverse", [False, True])
+async def test_global_successfactors_conflicting_same_source_content_fails_same_batch(
+    reverse,
+):
+    source_url = (
+        "https://careers.mediamarktsaturn.com/MediaMarktSaturn/job/"
+        "Berlin-Verkaufsberater-DE/123456/"
+    )
+    batch = [
+        DiscoveredJob(
+            url=source_url,
+            title="First title",
+            metadata={"id": "123456"},
+        ),
+        DiscoveredJob(
+            url=source_url,
+            title="Conflicting title",
+            metadata={"id": "123456"},
+        ),
+    ]
+    if reverse:
+        batch.reverse()
+
+    async def stub_discover(_board, _client, pw=None):
+        return []
+
+    async def stub_stream(_board, _client, pw=None):
+        yield batch
+
+    monitor_type = MonitorType(
+        name="__mediamarktsaturn_same_batch_conflict_test__",
+        cost=1,
+        discover=stub_discover,
+        stream=stub_stream,
+        rich=True,
+    )
+    _REGISTRY.append(monitor_type)
+    try:
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="collision batch emitted conflicting content"):
+                async for _result in monitor_one_stream(
+                    "https://careers.mediamarktsaturn.com/search/",
+                    monitor_type.name,
+                    {
+                        "url_allowlist": _SOURCE_ALLOWLIST,
+                        "url_transform": _STABLE_TRANSFORM,
+                    },
+                    client,
+                ):
+                    pass
+    finally:
+        _REGISTRY.remove(monitor_type)
+
+
+@pytest.mark.asyncio
+async def test_global_successfactors_identical_same_source_content_coalesces_same_batch():
+    source_url = (
+        "https://careers.mediamarktsaturn.com/MediaMarktSaturn/job/"
+        "Berlin-Verkaufsberater-DE/123456/"
+    )
+    batch = [
+        DiscoveredJob(
+            url=source_url,
+            title="Identical title",
+            metadata={"id": "123456"},
+        ),
+        DiscoveredJob(
+            url=source_url,
+            title="Identical title",
+            metadata={"id": "123456"},
+        ),
+    ]
+
+    async def stub_discover(_board, _client, pw=None):
+        return []
+
+    async def stub_stream(_board, _client, pw=None):
+        yield batch
+
+    monitor_type = MonitorType(
+        name="__mediamarktsaturn_same_batch_identical_test__",
+        cost=1,
+        discover=stub_discover,
+        stream=stub_stream,
+        rich=True,
+    )
+    _REGISTRY.append(monitor_type)
+    try:
+        async with httpx.AsyncClient() as client:
+            results = [
+                result
+                async for result in monitor_one_stream(
+                    "https://careers.mediamarktsaturn.com/search/",
+                    monitor_type.name,
+                    {
+                        "url_allowlist": _SOURCE_ALLOWLIST,
+                        "url_transform": _STABLE_TRANSFORM,
+                    },
+                    client,
+                )
+            ]
+    finally:
+        _REGISTRY.remove(monitor_type)
+
+    assert len(results) == 1
+    assert results[0].jobs_by_url is not None
+    assert list(results[0].jobs_by_url) == ["https://careers.mediamarktsaturn.com/job/_/123456/"]
+    assert (
+        results[0].jobs_by_url["https://careers.mediamarktsaturn.com/job/_/123456/"].title
+        == "Identical title"
+    )
+
+
 def test_global_successfactors_conflicting_provider_identity_fails_closed():
     source_url = (
         "https://careers.mediamarktsaturn.com/MediaMarktSaturn/job/"
