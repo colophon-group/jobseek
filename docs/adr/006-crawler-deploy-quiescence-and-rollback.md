@@ -59,9 +59,14 @@ The deploy script must:
   bootstrap keeps retrying the exact pre-deploy tree rather than falling back
   to stale CSVs embedded in the legacy image;
 - before the first format-v3 deploy, reapply the exact pre-push `main` CSV tree
-  with the verified committed runtime and promote it as rollback evidence.
+  from a checkout that contains and ancestry-validates the push event's exact
+  `before` commit, with the verified committed runtime, and promote it as
+  rollback evidence.
   After that transition, preserve the verified active format-v3 generation as
   the actual live rollback evidence even when later `main` CSVs differ;
+- require every format-v3 consumer, including the Murmur carry-forward path,
+  to verify regular non-symlink data/runtime evidence and an exact override
+  presence/digest contract before using it;
 - remove consumed candidate archives and prune stale candidate/generation
   residue under the mutation lock. Preserve the active generation, durable
   journal references, explicit rollback target, five newest fully verified v3
@@ -72,7 +77,8 @@ The deploy script must:
 - start the full stack after sync;
 - wait for core services to be running or healthy;
 - restore the previous env on failure and, if the forward sync began, mount and
-  resync the previous generation's exact committed CSV tree read-only in the
+  rehydrate the parent rollback process from the reselected prior generation,
+  then resync that generation's exact committed CSV tree read-only in the
   previous image before restarting old services. Pre-v3 generations are
   accepted only long enough to bootstrap an exact staged tree; deploy rollback
   never falls back to CSVs embedded in a legacy image.

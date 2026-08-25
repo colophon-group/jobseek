@@ -226,6 +226,10 @@ jobs:
             verify_exact_csv_tree() {
               data_dir="$1"
               files_manifest="$2"
+              test -d "$data_dir"
+              test ! -L "$data_dir"
+              test -f "$files_manifest"
+              test ! -L "$files_manifest"
               python3 - "$data_dir" "$files_manifest" <<'PY'
             import hashlib
             import os
@@ -402,20 +406,30 @@ jobs:
                 data_contract="$(sed -n 's/^DATA_CONTRACT_SHA256=//p' "$generation/release.manifest")"
                 data_revision="$(sed -n 's/^DATA_REVISION=//p' "$generation/release.manifest")"
                 has_image_override="$(sed -n 's/^HAS_IMAGE_OVERRIDE=//p' "$generation/release.manifest")"
+                mapfile -t image_override_digests < <(
+                  sed -n 's/^IMAGE_OVERRIDE_SHA256=//p' "$generation/release.manifest"
+                )
                 [[ "$data_files_digest" =~ ^[0-9a-f]{64}$ ]]
                 [[ "$data_contract" =~ ^[0-9a-f]{64}$ ]]
                 [[ "$data_revision" =~ ^[0-9a-f]{40}$ ]]
                 [[ "$has_image_override" == 0 || "$has_image_override" == 1 ]]
+                test -f "$generation/data-files.sha256"
+                test ! -L "$generation/data-files.sha256"
                 test "$data_files_digest" = "$(sha256sum "$generation/data-files.sha256" | awk '{print $1}')"
                 test "$data_contract" = "$data_files_digest"
                 verify_exact_csv_tree "$generation/data" "$generation/data-files.sha256"
                 if [[ "$has_image_override" == 1 ]]; then
                   image_override="$generation/rollback-images.override.yml"
-                  image_override_digest="$(sed -n 's/^IMAGE_OVERRIDE_SHA256=//p' "$generation/release.manifest")"
+                  test "${#image_override_digests[@]}" -eq 1
+                  image_override_digest="${image_override_digests[0]}"
                   [[ "$image_override_digest" =~ ^[0-9a-f]{64}$ ]]
                   test -f "$image_override"
                   test ! -L "$image_override"
                   test "$image_override_digest" = "$(sha256sum "$image_override" | awk '{print $1}')"
+                else
+                  test "${#image_override_digests[@]}" -eq 0
+                  test ! -e "$generation/rollback-images.override.yml"
+                  test ! -L "$generation/rollback-images.override.yml"
                 fi
               fi
               compose_args=(-f "$generation/docker-compose.yml")
@@ -465,7 +479,13 @@ jobs:
                 sed -n 's/^JOBSEEK_RUNTIME_CONTRACT_SHA256=//p' \
                   "$generation/success.env"
               )
-              if [[ "${#runtime_environment_values[@]}" -ne 0 || \
+              if [[ "$format_version" == 3 ]]; then
+                test "${#runtime_environment_values[@]}" -eq 1
+                test "${#runtime_success_values[@]}" -eq 1
+                [[ "${runtime_environment_values[0]}" =~ ^[0-9a-f]{64}$ ]]
+                test "${runtime_environment_values[0]}" = \
+                  "${runtime_success_values[0]}"
+              elif [[ "${#runtime_environment_values[@]}" -ne 0 || \
                 "${#runtime_success_values[@]}" -ne 0 ]]
               then
                 test "${#runtime_environment_values[@]}" -eq 1
@@ -562,10 +582,7 @@ jobs:
             verify_release_generation "$active_generation"
             previous_active_generation="$active_generation"
             previous_release_format="$format_version"
-            active_image_override=""
-            if [[ -f "$active_generation/rollback-images.override.yml" ]]; then
-              active_image_override="$active_generation/rollback-images.override.yml"
-            fi
+            active_image_override="$image_override"
 
             previous_compose="$(mktemp /home/deploy/.docker-compose.shim.rollback.XXXXXX)"
             previous_env="$(mktemp /home/deploy/.env.shim.rollback.XXXXXX)"
@@ -788,9 +805,14 @@ jobs:
             test -n "${crawler_image_tags[0]}"
             test "${#deploy_revisions[@]}" -eq 1
             [[ "${deploy_revisions[0]}" =~ ^[0-9a-f]{40}$ ]]
-            test "${#runtime_contracts[@]}" -le 1
-            if [[ "${#runtime_contracts[@]}" -eq 1 ]]; then
+            if [[ "$previous_release_format" == 3 ]]; then
+              test "${#runtime_contracts[@]}" -eq 1
               [[ "${runtime_contracts[0]}" =~ ^[0-9a-f]{64}$ ]]
+            else
+              test "${#runtime_contracts[@]}" -le 1
+              if [[ "${#runtime_contracts[@]}" -eq 1 ]]; then
+                [[ "${runtime_contracts[0]}" =~ ^[0-9a-f]{64}$ ]]
+              fi
             fi
             murmur_generation="$(mktemp -d "$release_root/murmur.XXXXXX")"
             # The shim workflow applies only the shim service. Preserve the

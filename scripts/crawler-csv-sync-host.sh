@@ -105,6 +105,7 @@ verify_release_generation_evidence() (
   local generation="$1" format compose_digest env_digest success_digest
   local data_manifest_digest data_contract data_revision image_ref has_image_override
   local env_runtime success_runtime
+  local -a image_override_digests=()
   [[ "$generation" == "$ACTIVE_RELEASE_ROOT/"* && \
     "${generation#"$ACTIVE_RELEASE_ROOT/"}" =~ ^[A-Za-z0-9._-]+$ && \
     -d "$generation" && ! -L "$generation" ]] || return 1
@@ -152,16 +153,22 @@ verify_release_generation_evidence() (
       return 1
     }
     has_image_override="$(read_exact_value "$generation/release.manifest" HAS_IMAGE_OVERRIDE)" || return 1
+    mapfile -t image_override_digests < <(
+      sed -n 's/^IMAGE_OVERRIDE_SHA256=//p' "$generation/release.manifest"
+    )
     [[ "$has_image_override" == 0 || "$has_image_override" == 1 ]] || return 1
     if [[ "$has_image_override" == 1 ]]; then
       local override_digest
-      override_digest="$(read_exact_value "$generation/release.manifest" IMAGE_OVERRIDE_SHA256)" || return 1
+      (( ${#image_override_digests[@]} == 1 )) || return 1
+      override_digest="${image_override_digests[0]}"
       [[ "$override_digest" =~ ^[0-9a-f]{64}$ && \
         -f "$generation/rollback-images.override.yml" && \
         ! -L "$generation/rollback-images.override.yml" && \
         "$override_digest" == "$(sha256sum "$generation/rollback-images.override.yml" | awk '{print $1}')" ]] || return 1
     else
-      [[ ! -e "$generation/rollback-images.override.yml" ]] || return 1
+      (( ${#image_override_digests[@]} == 0 )) || return 1
+      [[ ! -e "$generation/rollback-images.override.yml" && \
+        ! -L "$generation/rollback-images.override.yml" ]] || return 1
     fi
   fi
 )
