@@ -3,8 +3,10 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 
 import httpx
+import structlog
 from structlog.testing import capture_logs
 
+from src.core.monitors import sitemap as sitemap_module
 from src.core.monitors.sitemap import (
     _common_nonstandard_candidates,
     _detect_ns,
@@ -608,7 +610,7 @@ class TestDiscover:
             assert len(urls) == 1
             assert new_sitemap is not None  # rediscovered
 
-    async def test_cached_index_without_usable_children_rediscovers(self):
+    async def test_cached_index_without_usable_children_rediscovers(self, monkeypatch):
         stale_index = """<?xml version="1.0"?>
         <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
             <sitemap><loc>https://example.com/old-jobs.xml</loc></sitemap>
@@ -644,6 +646,9 @@ class TestDiscover:
                 "metadata": {"sitemap_url": "https://example.com/old-index.xml"},
             }
             with capture_logs() as logs:
+                # capture_logs cannot replace a BoundLoggerLazyProxy that an
+                # earlier test cached under the production logger factory.
+                monkeypatch.setattr(sitemap_module, "log", structlog.get_logger())
                 urls, new_sitemap = await discover(board, client)
 
         assert urls == {"https://example.com/jobs/1"}
