@@ -393,9 +393,10 @@ read_exact_release_value() {
   printf '%s\n' "${values[0]}"
 }
 
-verify_optional_runtime_contract_pair() {
+verify_runtime_contract_pair() {
   local environment_file="$1"
   local success_file="$2"
+  local required="${3:-0}"
   local -a environment_values=() success_values=()
 
   mapfile -t environment_values < <(
@@ -405,8 +406,12 @@ verify_optional_runtime_contract_pair() {
     sed -n 's/^JOBSEEK_RUNTIME_CONTRACT_SHA256=//p' "$success_file"
   )
   if (( ${#environment_values[@]} == 0 && ${#success_values[@]} == 0 )); then
-    # Compatibility with release generations committed before issue #7996.
-    return 0
+    if [[ "$required" == 0 ]]; then
+      # Compatibility with pre-v3 release generations committed before issue #7996.
+      return 0
+    fi
+    echo "ERROR: crawler runtime contract is required for v3 release evidence" >&2
+    return 1
   fi
   (( ${#environment_values[@]} == 1 && ${#success_values[@]} == 1 )) || {
     echo "ERROR: crawler runtime contract is missing or duplicated" >&2
@@ -458,11 +463,11 @@ verify_active_deploy_snapshot() {
   local format_version compose_digest env_digest success_digest actual_success_digest
   local bootstrap_legacy=""
 
-  load_active_release
+  load_active_release || return 1
   verify_active_snapshot_file \
-    "$ACTIVE_COMPOSE_SNAPSHOT" "$ACTIVE_COMPOSE_SNAPSHOT_SHA256" Compose
+    "$ACTIVE_COMPOSE_SNAPSHOT" "$ACTIVE_COMPOSE_SNAPSHOT_SHA256" Compose || return 1
   verify_active_snapshot_file \
-    "$ACTIVE_ENV_SNAPSHOT" "$ACTIVE_ENV_SNAPSHOT_SHA256" environment
+    "$ACTIVE_ENV_SNAPSHOT" "$ACTIVE_ENV_SNAPSHOT_SHA256" environment || return 1
   [[ "$(stat -c '%a' "$ACTIVE_ENV_SNAPSHOT")" == 600 ]] || {
     echo "ERROR: crawler-confirmed active environment snapshot permissions are unsafe" >&2
     return 1
@@ -475,14 +480,22 @@ verify_active_deploy_snapshot() {
     echo "ERROR: crawler active-release manifest is unavailable or unsafe" >&2
     return 1
   }
-  format_version="$(read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" RELEASE_FORMAT_VERSION)"
+  format_version="$(
+    read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" RELEASE_FORMAT_VERSION
+  )" || return 1
   [[ "$format_version" == 1 || "$format_version" == 2 || "$format_version" == 3 ]] || {
     echo "ERROR: crawler active-release format is unsupported" >&2
     return 1
   }
-  compose_digest="$(read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" COMPOSE_SHA256)"
-  env_digest="$(read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" ENVIRONMENT_SHA256)"
-  success_digest="$(read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" SUCCESS_SHA256)"
+  compose_digest="$(
+    read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" COMPOSE_SHA256
+  )" || return 1
+  env_digest="$(
+    read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" ENVIRONMENT_SHA256
+  )" || return 1
+  success_digest="$(
+    read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" SUCCESS_SHA256
+  )" || return 1
   [[ "$compose_digest" =~ ^[0-9a-f]{64}$ &&
     "$env_digest" =~ ^[0-9a-f]{64}$ &&
     "$success_digest" =~ ^[0-9a-f]{64}$ ]] || {
@@ -494,7 +507,9 @@ verify_active_deploy_snapshot() {
     echo "ERROR: crawler active-release manifest disagrees with its snapshots" >&2
     return 1
   }
-  actual_success_digest="$(sha256sum "$DEPLOY_SUCCESS_FILE" | awk '{print $1}')"
+  actual_success_digest="$(
+    sha256sum "$DEPLOY_SUCCESS_FILE" | awk '{print $1}'
+  )" || return 1
   [[ "$success_digest" == "$actual_success_digest" ]] || {
     echo "ERROR: crawler active-release marker failed verification" >&2
     return 1
@@ -506,10 +521,10 @@ verify_active_deploy_snapshot() {
     ACTIVE_IMAGE_OVERRIDE="$ACTIVE_RELEASE_DIR/rollback-images.override.yml"
     image_override_digest="$(
       read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" IMAGE_OVERRIDE_SHA256
-    )"
+    )" || return 1
     bootstrap_legacy="$(
       read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" BOOTSTRAP_LEGACY
-    )"
+    )" || return 1
     [[ "$image_override_digest" =~ ^[0-9a-f]{64}$ ]] || {
       echo "ERROR: crawler bootstrap image-override digest is invalid" >&2
       return 1
@@ -535,13 +550,13 @@ verify_active_deploy_snapshot() {
     ACTIVE_DATA_FILES_MANIFEST="$ACTIVE_RELEASE_DIR/data-files.sha256"
     data_files_digest="$(
       read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" DATA_FILES_SHA256
-    )"
+    )" || return 1
     data_contract="$(
       read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" DATA_CONTRACT_SHA256
-    )"
+    )" || return 1
     data_revision="$(
       read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" DATA_REVISION
-    )"
+    )" || return 1
     [[ "$data_files_digest" =~ ^[0-9a-f]{64}$ && \
       "$data_contract" =~ ^[0-9a-f]{64}$ && "$data_revision" =~ ^[0-9a-f]{40}$ ]] || {
       echo "ERROR: crawler active CSV identity is invalid" >&2
@@ -556,22 +571,33 @@ verify_active_deploy_snapshot() {
       echo "ERROR: crawler active CSV manifest failed verification" >&2
       return 1
     }
-    verify_exact_csv_tree "$ACTIVE_DATA_SNAPSHOT" "$ACTIVE_DATA_FILES_MANIFEST"
+    verify_exact_csv_tree \
+      "$ACTIVE_DATA_SNAPSHOT" "$ACTIVE_DATA_FILES_MANIFEST" || return 1
     local has_image_override
+    local -a image_override_digests=()
     has_image_override="$(
       read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" HAS_IMAGE_OVERRIDE
-    )"
+    )" || return 1
+    mapfile -t image_override_digests < <(
+      sed -n 's/^IMAGE_OVERRIDE_SHA256=//p' "$ACTIVE_RELEASE_MANIFEST"
+    )
     [[ "$has_image_override" == 0 || "$has_image_override" == 1 ]] || return 1
     if [[ "$has_image_override" == 1 ]]; then
       local image_override_digest actual_image_override_digest
       ACTIVE_IMAGE_OVERRIDE="$ACTIVE_RELEASE_DIR/rollback-images.override.yml"
-      image_override_digest="$(
-        read_exact_release_value "$ACTIVE_RELEASE_MANIFEST" IMAGE_OVERRIDE_SHA256
-      )"
+      (( ${#image_override_digests[@]} == 1 )) || return 1
+      image_override_digest="${image_override_digests[0]}"
       [[ "$image_override_digest" =~ ^[0-9a-f]{64}$ && \
         -f "$ACTIVE_IMAGE_OVERRIDE" && ! -L "$ACTIVE_IMAGE_OVERRIDE" ]] || return 1
       actual_image_override_digest="$(sha256sum "$ACTIVE_IMAGE_OVERRIDE" | awk '{print $1}')"
       [[ "$image_override_digest" == "$actual_image_override_digest" ]] || return 1
+    else
+      (( ${#image_override_digests[@]} == 0 )) || return 1
+      [[ ! -e "$ACTIVE_RELEASE_DIR/rollback-images.override.yml" && \
+        ! -L "$ACTIVE_RELEASE_DIR/rollback-images.override.yml" ]] || {
+        echo "ERROR: crawler active release contains unattested image-override residue" >&2
+        return 1
+      }
     fi
   fi
 
@@ -588,7 +614,7 @@ verify_active_deploy_snapshot() {
       "COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME" \
       docker compose --env-file "$ACTIVE_ENV_SNAPSHOT" \
         "${release_compose_args[@]}" config --images
-  )"
+  )" || return 1
   [[ -n "$configured_images_output" ]] || {
     echo "ERROR: crawler active release declares no service images" >&2
     return 1
@@ -616,14 +642,23 @@ verify_active_deploy_snapshot() {
   fi
   local key env_value success_value
   for key in "${identity_keys[@]}"; do
-    env_value="$(read_exact_release_value "$ACTIVE_ENV_SNAPSHOT" "$key")"
-    success_value="$(read_exact_release_value "$DEPLOY_SUCCESS_FILE" "$key")"
+    env_value="$(
+      read_exact_release_value "$ACTIVE_ENV_SNAPSHOT" "$key"
+    )" || return 1
+    success_value="$(
+      read_exact_release_value "$DEPLOY_SUCCESS_FILE" "$key"
+    )" || return 1
     [[ -n "$env_value" && "$env_value" == "$success_value" ]] || {
       echo "ERROR: crawler active-release marker and environment disagree on ${key}" >&2
       return 1
     }
   done
-  verify_optional_runtime_contract_pair "$ACTIVE_ENV_SNAPSHOT" "$DEPLOY_SUCCESS_FILE"
+  local runtime_contract_required=0
+  if [[ "$format_version" == 3 ]]; then
+    runtime_contract_required=1
+  fi
+  verify_runtime_contract_pair \
+    "$ACTIVE_ENV_SNAPSHOT" "$DEPLOY_SUCCESS_FILE" "$runtime_contract_required" || return 1
 }
 
 activate_release_generation() {
@@ -1074,10 +1109,7 @@ rollback_deploy() {
     activate_release_generation "$ROLLBACK_ACTIVE_RELEASE_TARGET"
     command_status=$?
     if ((command_status == 0)); then
-      (
-        set -e
-        verify_active_deploy_snapshot
-      )
+      verify_active_deploy_snapshot
       command_status=$?
     fi
   else

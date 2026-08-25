@@ -631,6 +631,18 @@ test("CSV sync cannot publish configuration ahead of its crawler runtime", () =>
 });
 
 test("CSV sync history and main refresh survive a shallow push checkout", () => {
+  const deployJob = deployCrawlerWorkflow.slice(
+    deployCrawlerWorkflow.indexOf("\n  deploy:"),
+    deployCrawlerWorkflow.indexOf("\n  promote:"),
+  );
+  assert.match(
+    deployJob,
+    /actions\/checkout@[0-9a-f]+[^\n]*\n\s+with:\n\s+fetch-depth: 0/,
+  );
+  assert.match(
+    deployJob,
+    /git rev-parse "\$\{PREVIOUS_REVISION\}\^\{commit\}"[\s\S]*git merge-base --is-ancestor "\$PREVIOUS_REVISION" "\$GITHUB_SHA"[\s\S]*git archive "\$PREVIOUS_REVISION"/,
+  );
   const dir = mkdtempSync(join(tmpdir(), "csv-sync-history-"));
   const source = join(dir, "source");
   const checkout = join(dir, "checkout");
@@ -670,11 +682,16 @@ test("CSV sync history and main refresh survive a shallow push checkout", () => 
       checkout,
     ]);
     git(checkout, ["cat-file", "-e", `${before}^{commit}`], 128);
+    git(checkout, ["archive", "--format=tar", before, "apps/crawler/data"], 128);
 
-    // actions/checkout fetch-depth:0 must make github.event.before available.
+    // The deploy checkout's fetch-depth:0 must make github.event.before
+    // available to both ancestry validation and the rollback archive build.
     git(checkout, ["fetch", "--unshallow", "origin"]);
     git(checkout, ["cat-file", "-e", `${before}^{commit}`]);
     assert.equal(git(checkout, ["rev-parse", "HEAD"]), target);
+    assert.equal(git(checkout, ["rev-parse", `${before}^{commit}`]), before);
+    git(checkout, ["merge-base", "--is-ancestor", before, target]);
+    git(checkout, ["archive", "--format=tar", before, "apps/crawler/data"]);
 
     writeFileSync(
       join(source, "apps/crawler/data/boards.csv"),

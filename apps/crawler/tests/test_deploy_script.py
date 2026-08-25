@@ -367,6 +367,95 @@ def _create_v3_release(
     return release, data_contract
 
 
+def _replace_release_manifest_value(release: Path, key: str, value: str | None) -> None:
+    manifest = release / "release.manifest"
+    lines = [
+        line
+        for line in manifest.read_text(encoding="utf-8").splitlines()
+        if not line.startswith(f"{key}=")
+    ]
+    if value is not None:
+        lines.append(f"{key}={value}")
+    manifest.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _refresh_release_snapshot_digests(release: Path) -> None:
+    environment_digest = hashlib.sha256((release / "environment.env").read_bytes()).hexdigest()
+    success_digest = hashlib.sha256((release / "success.env").read_bytes()).hexdigest()
+    (release / "environment.sha256").write_text(f"{environment_digest}\n", encoding="utf-8")
+    _replace_release_manifest_value(release, "ENVIRONMENT_SHA256", environment_digest)
+    _replace_release_manifest_value(release, "SUCCESS_SHA256", success_digest)
+
+
+def _create_full_deploy_v3_release(
+    release_root: Path,
+    name: str,
+    marker: str,
+) -> tuple[Path, dict[str, str]]:
+    release = release_root / name
+    release.mkdir(parents=True)
+    revision = marker * 40
+    runtime_contract = marker * 64
+    crawler_ref = "ghcr.io/colophon-group/jobseek-crawler@sha256:" + marker * 64
+    browser_ref = "ghcr.io/colophon-group/jobseek-crawler-browser@sha256:" + marker * 64
+    shim_ref = "ghcr.io/colophon-group/jobseek-murmur-shim@sha256:" + marker * 64
+    compose = release / "docker-compose.yml"
+    compose.write_text(f"services:\n  worker-1:\n    image: {crawler_ref}\n", encoding="utf-8")
+    identity_lines = (
+        f"CRAWLER_IMAGE_TAG=v0.13.{int(marker, 16)}",
+        f"CRAWLER_IMAGE_REF={crawler_ref}",
+        f"BROWSER_IMAGE_REF={browser_ref}",
+        f"SHIM_IMAGE_REF={shim_ref}",
+        f"JOBSEEK_DEPLOY_REVISION={revision}",
+        f"JOBSEEK_RUNTIME_CONTRACT_SHA256={runtime_contract}",
+    )
+    environment = release / "environment.env"
+    environment.write_text(
+        "\n".join((*identity_lines, f"WEB_DATABASE_URL=postgresql://web-{marker}", "")),
+        encoding="utf-8",
+    )
+    environment.chmod(0o600)
+    success = release / "success.env"
+    success.write_text("\n".join((*identity_lines, "")), encoding="utf-8")
+    data = release / "data"
+    data.mkdir()
+    board = data / "boards.csv"
+    board.write_text(f"slug\n{marker.upper()}\n", encoding="utf-8")
+    board_digest = hashlib.sha256(board.read_bytes()).hexdigest()
+    data_manifest = release / "data-files.sha256"
+    data_manifest.write_text(f"{board_digest}  boards.csv\n", encoding="utf-8")
+    data_contract = hashlib.sha256(data_manifest.read_bytes()).hexdigest()
+    compose_digest = hashlib.sha256(compose.read_bytes()).hexdigest()
+    environment_digest = hashlib.sha256(environment.read_bytes()).hexdigest()
+    success_digest = hashlib.sha256(success.read_bytes()).hexdigest()
+    (release / "docker-compose.sha256").write_text(f"{compose_digest}\n", encoding="utf-8")
+    (release / "environment.sha256").write_text(f"{environment_digest}\n", encoding="utf-8")
+    (release / "release.manifest").write_text(
+        "\n".join(
+            (
+                "RELEASE_FORMAT_VERSION=3",
+                f"COMPOSE_SHA256={compose_digest}",
+                f"ENVIRONMENT_SHA256={environment_digest}",
+                f"SUCCESS_SHA256={success_digest}",
+                f"DATA_FILES_SHA256={data_contract}",
+                f"DATA_CONTRACT_SHA256={data_contract}",
+                f"DATA_REVISION={revision}",
+                "HAS_IMAGE_OVERRIDE=0",
+                "",
+            )
+        ),
+        encoding="utf-8",
+    )
+    return release, {
+        "browser_ref": browser_ref,
+        "crawler_ref": crawler_ref,
+        "data_contract": data_contract,
+        "revision": revision,
+        "runtime_contract": runtime_contract,
+        "shim_ref": shim_ref,
+    }
+
+
 def _csv_host_test_environment(
     tmp_path: Path,
     release_root: Path,
@@ -1146,6 +1235,7 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     release_restore = rollback.index(
         'activate_release_generation "$ROLLBACK_ACTIVE_RELEASE_TARGET"'
     )
+    release_rehydrate = rollback.index("verify_active_deploy_snapshot", release_restore)
     env_restore = rollback.index('mv "$ROLLBACK_ENV_FILE" "$ENV_FILE"')
     spec_restore = rollback.index("restore_previous_deploy_specs")
     contract = rollback.index("configure_rollback_compose_contract")
@@ -1155,6 +1245,7 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     assert (
         quiesce
         < release_restore
+        < release_rehydrate
         < env_restore
         < spec_restore
         < contract
@@ -1203,7 +1294,7 @@ def test_previous_config_restore_uses_the_restored_image_and_scopes_web_secret(
     script = DEPLOY_SH.read_text()
     read_exact = script[
         script.index("read_exact_release_value() {") : script.index(
-            "verify_optional_runtime_contract_pair() {"
+            "verify_runtime_contract_pair() {"
         )
     ]
     rollback_sync = script[
@@ -1292,7 +1383,7 @@ def test_deploy_publishes_exact_success_marker_only_after_commit() -> None:
     assert '"BROWSER_IMAGE_REF=$BROWSER_IMAGE_REF"' in script
     assert '"SHIM_IMAGE_REF=$SHIM_IMAGE_REF"' in script
     assert '"JOBSEEK_RUNTIME_CONTRACT_SHA256=$JOBSEEK_RUNTIME_CONTRACT_SHA256"' in script
-    assert "verify_optional_runtime_contract_pair" in script
+    assert "verify_runtime_contract_pair" in script
     assert (
         "JOBSEEK_RUNTIME_CONTRACT_SHA256: ${{ needs.build.outputs.runtime_contract_sha256 }}"
         in (workflow)
@@ -1728,6 +1819,175 @@ def test_rollback_restores_previous_csv_config_before_restarting_workers(
             assert "old stack restart skipped" in result.stderr
 
 
+def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
+    tmp_path: Path,
+) -> None:
+    script = DEPLOY_SH.read_text()
+    verification_helpers = script[
+        script.index("verify_active_snapshot_file() {") : script.index(
+            "\nwrite_exact_csv_manifest() {"
+        )
+    ]
+    release_helpers = script[
+        script.index("read_exact_release_value() {") : script.index(
+            "\npublish_legacy_success_marker() {"
+        )
+    ]
+    restore = script[
+        script.index("restore_previous_deploy_specs() {") : script.index(
+            "\nreconciliation_wrapper_is_compatible() {"
+        )
+    ]
+    rollback_support = script[
+        script.index("configure_rollback_compose_contract() {") : script.index(
+            "rollback_deploy() {"
+        )
+    ]
+    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+
+    deploy_dir = tmp_path / "deploy"
+    release_root = deploy_dir / "releases"
+    release_root.mkdir(parents=True)
+    old_release, old_identity = _create_full_deploy_v3_release(release_root, "release-old", "b")
+    new_release, new_identity = _create_full_deploy_v3_release(release_root, "release-new", "d")
+    active_pointer = deploy_dir / ".crawler-active-release"
+    active_pointer.symlink_to(new_release)
+    live_env = deploy_dir / ".env"
+    shutil.copyfile(new_release / "environment.env", live_env)
+    live_env.chmod(0o600)
+    rollback_env = deploy_dir / ".env.rollback"
+    shutil.copyfile(old_release / "environment.env", rollback_env)
+    rollback_env.chmod(0o600)
+    live_compose = deploy_dir / "docker-compose.yml"
+    shutil.copyfile(new_release / "docker-compose.yml", live_compose)
+    rollback_archive = deploy_dir / ".deploy-spec.rollback.tar"
+    with tarfile.open(rollback_archive, "w") as archive:
+        archive.add(old_release / "docker-compose.yml", arcname="docker-compose.yml")
+    pool_override = deploy_dir / ".crawler-rollback-pool-budget.override.yml"
+    pool_override.write_text("services: {}\n", encoding="utf-8")
+    log = deploy_dir / "rollback.log"
+
+    binary_dir = deploy_dir / "bin"
+    binary_dir.mkdir()
+    _install_release_verifier_tools(binary_dir)
+    _write_executable(
+        binary_dir / "docker",
+        "#!/usr/bin/env python3\n"
+        "from pathlib import Path\n"
+        "import sys\n"
+        f"log = Path({str(log)!r})\n"
+        f"old_data = Path({str(old_release / 'data')!r})\n"
+        f"new_data = Path({str(new_release / 'data')!r})\n"
+        "args = sys.argv[1:]\n"
+        "def env_value(key):\n"
+        "    env_file = Path(args[args.index('--env-file') + 1])\n"
+        "    values = [line.split('=', 1)[1] for line in env_file.read_text().splitlines() "
+        "if line.startswith(f'{key}=')]\n"
+        "    assert len(values) == 1, (key, values, args)\n"
+        "    return values[0]\n"
+        "revision = env_value('JOBSEEK_DEPLOY_REVISION')\n"
+        "crawler_ref = env_value('CRAWLER_IMAGE_REF')\n"
+        "runtime = env_value('JOBSEEK_RUNTIME_CONTRACT_SHA256')\n"
+        "marker = revision[0]\n"
+        "assert crawler_ref.endswith(marker * 64), (crawler_ref, revision)\n"
+        "assert runtime == marker * 64, (runtime, revision)\n"
+        "if 'config' in args and '--images' in args:\n"
+        "    with log.open('a') as output: output.write(f'verify:{marker}\\n')\n"
+        "    print(crawler_ref)\n"
+        "elif 'stop' in args:\n"
+        "    with log.open('a') as output: output.write('stop\\n')\n"
+        "elif 'run' in args:\n"
+        "    volume = args[args.index('-v') + 1].split(':', 1)[0]\n"
+        "    assert Path(volume) == old_data, (volume, old_data, new_data)\n"
+        "    assert Path(volume) != new_data\n"
+        "    board = (Path(volume) / 'boards.csv').read_text().splitlines()[-1]\n"
+        "    assert board == 'B', board\n"
+        "    with log.open('a') as output: output.write(f'sync:{marker}:{board}\\n')\n"
+        "elif 'up' in args:\n"
+        "    with log.open('a') as output: output.write(f'up:{marker}\\n')\n"
+        "else:\n"
+        "    raise AssertionError(args)\n",
+    )
+
+    harness = "\n".join(
+        (
+            "set -Eeuo pipefail",
+            'OWNER="colophon-group"',
+            f'DEPLOY_DIR="{deploy_dir}"',
+            f'ENV_FILE="{live_env}"',
+            f'ACTIVE_RELEASE_ROOT="{release_root}"',
+            f'ACTIVE_RELEASE_POINTER="{active_pointer}"',
+            'ACTIVE_RELEASE_DIR=""',
+            'ACTIVE_COMPOSE_SNAPSHOT=""',
+            'ACTIVE_COMPOSE_SNAPSHOT_SHA256=""',
+            'ACTIVE_ENV_SNAPSHOT=""',
+            'ACTIVE_ENV_SNAPSHOT_SHA256=""',
+            'ACTIVE_RELEASE_MANIFEST=""',
+            'ACTIVE_RELEASE_FORMAT=""',
+            'ACTIVE_IMAGE_OVERRIDE=""',
+            'ACTIVE_DATA_SNAPSHOT=""',
+            'ACTIVE_DATA_FILES_MANIFEST=""',
+            'DEPLOY_SUCCESS_FILE=""',
+            f'ROLLBACK_ENV_FILE="{rollback_env}"',
+            f'ROLLBACK_SPEC_ARCHIVE="{rollback_archive}"',
+            f'ROLLBACK_POOL_OVERRIDE="{pool_override}"',
+            f'ROLLBACK_ACTIVE_RELEASE_TARGET="{old_release}"',
+            'ROLLBACK_ACTIVE_IMAGE_OVERRIDE=""',
+            'ROLLBACK_SYNC_WEB_DATABASE_URL=""',
+            "ENV_FILE_WAS_PRESENT=1",
+            "ROLLBACK_ARMED=1",
+            "ROLLBACK_RUNNING=0",
+            "FORWARD_SYNC_STARTED=1",
+            'COMPOSE_PROJECT_NAME="deploy"',
+            verification_helpers,
+            release_helpers,
+            restore,
+            rollback_support,
+            rollback,
+            "wait_for_rollback_core_services() { :; }",
+            "publish_legacy_success_marker() { :; }",
+            "stop_maintenance_window() { :; }",
+            "verify_active_deploy_snapshot",
+            f'test "$ACTIVE_RELEASE_DIR" = "{new_release}"',
+            f'test "$ACTIVE_DATA_SNAPSHOT" = "{new_release / "data"}"',
+            "rollback_deploy 23",
+        )
+    )
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+    result = subprocess.run(
+        [bash, "-c", harness],
+        check=False,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PATH": f"{binary_dir}:{os.environ['PATH']}"},
+    )
+
+    assert result.returncode == 23, result.stderr
+    assert active_pointer.resolve() == old_release.resolve()
+    assert old_identity["data_contract"] != new_identity["data_contract"]
+    active_manifest = (active_pointer.resolve() / "release.manifest").read_text(encoding="utf-8")
+    assert f"DATA_CONTRACT_SHA256={old_identity['data_contract']}\n" in active_manifest
+    assert f"DATA_REVISION={old_identity['revision']}\n" in active_manifest
+    assert (
+        (active_pointer.resolve() / "data" / "boards.csv")
+        .read_text(encoding="utf-8")
+        .endswith("B\n")
+    )
+    assert old_identity["crawler_ref"] in live_compose.read_text(encoding="utf-8")
+    restored_env = live_env.read_text(encoding="utf-8")
+    assert f"CRAWLER_IMAGE_REF={old_identity['crawler_ref']}\n" in restored_env
+    assert f"JOBSEEK_RUNTIME_CONTRACT_SHA256={old_identity['runtime_contract']}\n" in (restored_env)
+    assert new_identity["crawler_ref"] not in restored_env
+    assert log.read_text(encoding="utf-8").splitlines() == [
+        "verify:d",
+        "stop",
+        "verify:b",
+        "sync:b:B",
+        "up:b",
+        "verify:b",
+    ]
+
+
 def test_first_rollout_fails_closed_without_digest_pinned_compose_preseed() -> None:
     murmur = MURMUR_DEPLOY_WORKFLOW.read_text()
     first_rollout = murmur[murmur.index('if [[ ! -e "$active_release" ]]') :]
@@ -1760,6 +2020,144 @@ def test_first_rollout_fails_closed_without_digest_pinned_compose_preseed() -> N
     assert "BOOTSTRAP_LEGACY=0" in first_rollout
     assert "RELEASE_FORMAT_VERSION=0" not in first_rollout
     assert 'activate_release_generation "$legacy_generation"' in first_rollout
+
+
+def test_murmur_v3_verifier_rejects_unsafe_or_unattested_evidence(
+    tmp_path: Path,
+) -> None:
+    workflow = yaml.safe_load(MURMUR_DEPLOY_WORKFLOW.read_text())
+    remote_script = next(
+        step["with"]["script"]
+        for step in workflow["jobs"]["deploy"]["steps"]
+        if step.get("name") == "Deploy via SSH"
+    )
+    verifier = remote_script[
+        remote_script.index("verify_snapshot() {") : remote_script.index("\nprevious_redis_ref=")
+    ]
+    binary_dir = tmp_path / "bin"
+    binary_dir.mkdir()
+    _install_release_verifier_tools(binary_dir)
+    docker_log = tmp_path / "docker.log"
+    _write_executable(
+        binary_dir / "docker",
+        "#!/usr/bin/env python3\n"
+        "from pathlib import Path\n"
+        "import sys\n"
+        f"log = Path({str(docker_log)!r})\n"
+        "args = sys.argv[1:]\n"
+        "assert 'config' in args and '--images' in args, args\n"
+        "with log.open('a') as output: output.write(' '.join(args) + '\\n')\n"
+        "print('ghcr.io/colophon-group/jobseek-crawler@sha256:' + 'a' * 64)\n",
+    )
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+
+    def verify(release: Path) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                bash,
+                "-c",
+                "set -euo pipefail\n" + verifier + '\nverify_release_generation "$1"',
+                "verify",
+                str(release),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "PATH": f"{binary_dir}:{os.environ['PATH']}"},
+        )
+
+    valid_root = tmp_path / "valid"
+    valid_root.mkdir()
+    valid_release, _ = _create_full_deploy_v3_release(valid_root, "release-valid", "a")
+    valid = verify(valid_release)
+    assert valid.returncode == 0, valid.stderr
+
+    override_root = tmp_path / "valid-override"
+    override_root.mkdir()
+    override_release, _ = _create_full_deploy_v3_release(
+        override_root, "release-valid-override", "a"
+    )
+    override = override_release / "rollback-images.override.yml"
+    override.write_text("services: {}\n", encoding="utf-8")
+    _replace_release_manifest_value(override_release, "HAS_IMAGE_OVERRIDE", "1")
+    _replace_release_manifest_value(
+        override_release,
+        "IMAGE_OVERRIDE_SHA256",
+        hashlib.sha256(override.read_bytes()).hexdigest(),
+    )
+    valid_override = verify(override_release)
+    assert valid_override.returncode == 0, valid_override.stderr
+    assert f"-f {override}" in docker_log.read_text(encoding="utf-8").splitlines()[-1]
+
+    cases = (
+        "data-symlink",
+        "manifest-symlink",
+        "stray-override",
+        "dangling-override",
+        "missing-runtime",
+        "flag-one-missing-digest",
+        "flag-one-wrong-digest",
+        "flag-zero-with-digest",
+        "flag-one-symlink",
+    )
+    for case in cases:
+        case_root = tmp_path / case
+        case_root.mkdir()
+        release, _ = _create_full_deploy_v3_release(case_root, f"release-{case}", "a")
+        override = release / "rollback-images.override.yml"
+        if case == "data-symlink":
+            external_data = case_root / "external-data"
+            shutil.move(release / "data", external_data)
+            (release / "data").symlink_to(external_data, target_is_directory=True)
+        elif case == "manifest-symlink":
+            external_manifest = case_root / "external-manifest.sha256"
+            shutil.move(release / "data-files.sha256", external_manifest)
+            (release / "data-files.sha256").symlink_to(external_manifest)
+        elif case == "stray-override":
+            override.write_text("services: {}\n", encoding="utf-8")
+        elif case == "dangling-override":
+            override.symlink_to(case_root / "missing-override.yml")
+        elif case == "missing-runtime":
+            for evidence_name in ("environment.env", "success.env"):
+                evidence = release / evidence_name
+                lines = [
+                    line
+                    for line in evidence.read_text(encoding="utf-8").splitlines()
+                    if not line.startswith("JOBSEEK_RUNTIME_CONTRACT_SHA256=")
+                ]
+                evidence.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            _refresh_release_snapshot_digests(release)
+        elif case == "flag-one-missing-digest":
+            override.write_text("services: {}\n", encoding="utf-8")
+            _replace_release_manifest_value(release, "HAS_IMAGE_OVERRIDE", "1")
+        elif case == "flag-one-wrong-digest":
+            override.write_text("services: {}\n", encoding="utf-8")
+            _replace_release_manifest_value(release, "HAS_IMAGE_OVERRIDE", "1")
+            _replace_release_manifest_value(release, "IMAGE_OVERRIDE_SHA256", "0" * 64)
+        elif case == "flag-zero-with-digest":
+            _replace_release_manifest_value(release, "IMAGE_OVERRIDE_SHA256", "0" * 64)
+        elif case == "flag-one-symlink":
+            external_override = case_root / "external-override.yml"
+            external_override.write_text("services: {}\n", encoding="utf-8")
+            override.symlink_to(external_override)
+            _replace_release_manifest_value(release, "HAS_IMAGE_OVERRIDE", "1")
+            _replace_release_manifest_value(
+                release,
+                "IMAGE_OVERRIDE_SHA256",
+                hashlib.sha256(external_override.read_bytes()).hexdigest(),
+            )
+        result = verify(release)
+        assert result.returncode != 0, f"{case} unexpectedly verified"
+
+    verification = remote_script[
+        remote_script.index("verify_release_generation() {") : remote_script.index(
+            "\nprevious_redis_ref="
+        )
+    ]
+    assert 'active_image_override="$image_override"' in remote_script
+    assert 'if [[ -f "$active_generation/rollback-images.override.yml" ]]' not in remote_script
+    assert 'test ! -L "$generation/data-files.sha256"' in verification
+    assert 'test "${#runtime_environment_values[@]}" -eq 1' in verification
 
 
 def test_murmur_bootstrap_digest_resolver_fails_without_exact_identity(
@@ -2824,6 +3222,27 @@ def test_crawler_image_stays_on_python_313_for_fasttext_wheels() -> None:
 def _write_executable(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
     path.chmod(path.stat().st_mode | stat.S_IXUSR)
+
+
+def _install_release_verifier_tools(binary_dir: Path) -> None:
+    _write_executable(
+        binary_dir / "sha256sum",
+        "#!/usr/bin/env python3\n"
+        "from pathlib import Path\n"
+        "import hashlib\n"
+        "import sys\n"
+        "path = Path(sys.argv[-1])\n"
+        "print(f'{hashlib.sha256(path.read_bytes()).hexdigest()}  {path}')\n",
+    )
+    _write_executable(
+        binary_dir / "stat",
+        "#!/usr/bin/env python3\n"
+        "import os\n"
+        "import stat\n"
+        "import sys\n"
+        "assert sys.argv[1:3] == ['-c', '%a'], sys.argv\n"
+        "print(f'{stat.S_IMODE(os.lstat(sys.argv[3]).st_mode):o}')\n",
+    )
 
 
 def test_xvfb_entrypoint_cleans_stale_display_artifacts_on_restart(tmp_path: Path) -> None:
