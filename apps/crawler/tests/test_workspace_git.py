@@ -14,6 +14,7 @@ from src.workspace.errors import GitHubApiError, WorkspaceError
 from src.workspace.git import (
     _run,
     authenticate_managed_worktree,
+    authenticate_terminal_worktree_removal_state,
     check_existing_prs,
     check_gh_auth,
     create_draft_pr,
@@ -28,6 +29,7 @@ from src.workspace.git import (
     push_branch_at_expected_oid,
     remove_authenticated_worktree,
     sync_branch_with_main,
+    terminal_worktree_quarantine_path,
     validate_pr_attachment,
     verify_recorded_pr,
 )
@@ -464,6 +466,92 @@ class TestPullRequestProvenance:
 
 
 class TestAuthenticatedWorktreeRemoval:
+    @pytest.mark.parametrize(
+        ("expected_state", "path_state", "registered"),
+        [
+            ("canonical", "canonical", True),
+            ("quarantine", "quarantine", True),
+            ("stale-registration", "absent", True),
+            ("absent", "absent", False),
+        ],
+    )
+    def test_authenticates_each_terminal_remover_state(
+        self, tmp_path, monkeypatch, expected_state, path_state, registered
+    ):
+        root = tmp_path / "worktrees"
+        target = root / "acme"
+        target.mkdir(parents=True)
+        identity = target.stat()
+        monkeypatch.setattr("src.workspace.git.worktrees_dir", lambda: root)
+        quarantine = terminal_worktree_quarantine_path(
+            target,
+            "add-company/acme",
+            TEST_OID,
+        )
+        if path_state == "quarantine":
+            target.rename(quarantine)
+        elif path_state == "absent":
+            target.rmdir()
+        registration = {
+            target: {
+                "head": TEST_OID,
+                "branch": "refs/heads/add-company/acme",
+                "locked": False,
+            }
+        }
+        admin_identity = (tmp_path / "repo" / ".git" / "worktrees", "acme", 1, 2)
+        with (
+            patch(
+                "src.workspace.git._registered_worktrees_strict",
+                return_value=registration if registered else {},
+            ),
+            patch(
+                "src.workspace.git._worktree_admin_identity_strict",
+                return_value=admin_identity if registered else None,
+            ),
+        ):
+            assert (
+                authenticate_terminal_worktree_removal_state(
+                    target,
+                    "add-company/acme",
+                    TEST_OID,
+                    expected_dev=identity.st_dev,
+                    expected_ino=identity.st_ino,
+                )
+                == expected_state
+            )
+
+    def test_terminal_remover_rejects_branch_registered_at_foreign_path(
+        self, tmp_path, monkeypatch
+    ):
+        root = tmp_path / "worktrees"
+        root.mkdir()
+        target = root / "acme"
+        foreign = root / "replacement"
+        monkeypatch.setattr("src.workspace.git.worktrees_dir", lambda: root)
+        with (
+            patch(
+                "src.workspace.git._registered_worktrees_strict",
+                return_value={
+                    foreign: {
+                        "head": TEST_OID,
+                        "branch": "refs/heads/add-company/acme",
+                        "locked": False,
+                    }
+                },
+            ),
+            patch("src.workspace.git._worktree_admin_identity_strict") as inspect_admin,
+            pytest.raises(WorkspaceError, match="unrelated path"),
+        ):
+            authenticate_terminal_worktree_removal_state(
+                target,
+                "add-company/acme",
+                TEST_OID,
+                expected_dev=1,
+                expected_ino=2,
+            )
+        inspect_admin.assert_not_called()
+
     def test_rejects_symlink_victim_without_following_it(self, tmp_path, monkeypatch):
         root = tmp_path / "worktrees"
         victim = tmp_path / "victim"

@@ -1470,7 +1470,7 @@ class TestTerminalCleanupRecovery:
             },
         )
 
-    def _root_aware_workspace(self, tmp_path, monkeypatch):
+    def _root_aware_workspace(self, tmp_path, monkeypatch, *, issue=None):
         from src import csvtool
         from src.shared import constants
 
@@ -1497,6 +1497,7 @@ class TestTerminalCleanupRecovery:
         item = worktree.stat()
         workspace = Workspace(
             slug="acme",
+            issue=issue,
             branch="add-company/acme",
             worktree=str(worktree),
             worktree_identity={
@@ -1507,7 +1508,7 @@ class TestTerminalCleanupRecovery:
                 "head": TEST_HEAD_OID,
                 "dev": int(item.st_dev),
                 "ino": int(item.st_ino),
-                "issue": None,
+                "issue": issue,
                 "pr": None,
                 "pr_provenance": {},
             },
@@ -1541,12 +1542,21 @@ class TestTerminalCleanupRecovery:
             ),
         )
         monkeypatch.setattr("src.workspace.git.remote_branch_oid_strict", lambda *_: None)
+        monkeypatch.setattr("src.workspace.git.check_existing_prs_strict", lambda *_: [])
         monkeypatch.setattr(
             "src.workspace.git.local_branch_oid_strict", lambda *_: setup.local["oid"]
         )
         monkeypatch.setattr(
             "src.workspace.git.delete_local_branch_at_expected_oid",
             lambda *_args, **_kwargs: setup.local.__setitem__("oid", None),
+        )
+        monkeypatch.setattr(
+            "src.workspace.git._worktree_admin_identity_strict",
+            lambda *_args, **_kwargs: (
+                (setup.managed / ".git" / "worktrees", "acme", 1, 2)
+                if setup.registration["present"]
+                else None
+            ),
         )
 
     def test_add_company_data_is_removed_from_worktree_before_root_pivot(
@@ -1593,52 +1603,173 @@ class TestTerminalCleanupRecovery:
         assert receipt["attempts"]["data_remove"] is True
         assert receipt["attempts"]["worktree_remove"] is True
 
-    def test_real_main_recovers_only_del_after_worktree_removal_crash(self, tmp_path, monkeypatch):
+    @pytest.mark.parametrize(
+        "boundary",
+        ["before-rename", "rename", "quarantine-delete", "admin-prune"],
+    )
+    @pytest.mark.parametrize(
+        ("command", "args"),
+        [
+            ("del", ["del", "acme"]),
+            (
+                "reject",
+                [
+                    "reject",
+                    "acme",
+                    "--reason",
+                    "no-job-board",
+                    "--message",
+                    "No supported board found",
+                ],
+            ),
+            (
+                "escalate",
+                [
+                    "task",
+                    "escalate",
+                    "--reason",
+                    "Ownership is ambiguous",
+                    "--follow-up",
+                    "Inspect the exact board manually",
+                ],
+            ),
+        ],
+    )
+    def test_real_main_recovers_terminal_remover_intermediate_state(
+        self, tmp_path, monkeypatch, boundary, command, args
+    ):
         import shutil
 
         from src.workspace import cli
         from src.workspace.commands import lifecycle
+        from src.workspace.git import terminal_worktree_quarantine_path
 
-        setup = self._root_aware_workspace(tmp_path, monkeypatch)
+        setup = self._root_aware_workspace(
+            tmp_path,
+            monkeypatch,
+            issue=42 if command != "del" else None,
+        )
         self._patch_root_aware_git(monkeypatch, setup)
         monkeypatch.setattr(cli, "_detect_repo_root", lambda: setup.managed)
         removal_calls = {"count": 0}
+        quarantine = terminal_worktree_quarantine_path(
+            setup.worktree,
+            setup.workspace.branch,
+            TEST_HEAD_OID,
+        )
 
         def remove(path, *_args, absent_is_success=False, **_kwargs):
             removal_calls["count"] += 1
-            if setup.registration["present"]:
+            if removal_calls["count"] == 1:
+                assert absent_is_success is False
+                if boundary == "before-rename":
+                    raise RuntimeError("crash-before-worktree-rename")
+                path.rename(quarantine)
+                if boundary == "rename":
+                    raise RuntimeError("crash-after-worktree-rename")
+                shutil.rmtree(quarantine)
+                if boundary == "quarantine-delete":
+                    raise RuntimeError("crash-after-quarantine-delete")
                 setup.registration["present"] = False
-                shutil.rmtree(path)
-                raise RuntimeError("crash-after-worktree-remove")
+                raise RuntimeError("crash-after-admin-prune")
             assert absent_is_success is True
+            if path.exists():
+                shutil.rmtree(path)
+            if quarantine.exists():
+                shutil.rmtree(quarantine)
+            setup.registration["present"] = False
 
         monkeypatch.setattr("src.workspace.git.remove_authenticated_worktree", remove)
-        monkeypatch.setattr("sys.argv", ["ws", "del", "acme"])
+        monkeypatch.setattr("sys.argv", ["ws", *args])
 
-        with pytest.raises(RuntimeError, match="crash-after-worktree-remove"):
+        with _mock_terminal_issue(claimed=False) as issue_state:
+            with pytest.raises(RuntimeError, match="crash-(?:before|after)"):
+                cli.main()
+
+            journal, completed = lifecycle._load_terminal_journal("acme")
+            assert journal is not None and completed is False
+            assert journal["attempts"]["data_remove"] is True
+            assert journal["attempts"]["worktree_remove"] is True
+            assert setup.worktree.exists() is (boundary == "before-rename")
+            assert quarantine.exists() is (boundary == "rename")
+            assert setup.registration["present"] is (boundary != "admin-prune")
+            assert workspace_exists("acme")
+            assert get_active_slug() == "acme"
+
+            if boundary != "before-rename":
+                monkeypatch.setattr("sys.argv", ["ws", "status"])
+                with pytest.raises(
+                    WorkspaceError,
+                    match="missing but remains registered|worktree disappeared",
+                ):
+                    cli.main()
+                assert workspace_exists("acme")
+
+            if command in {"reject", "escalate"}:
+                mismatched = list(args)
+                mismatched[-1] = "A different terminal outcome"
+                monkeypatch.setattr("sys.argv", ["ws", *mismatched])
+                with pytest.raises(WorkspaceError, match="outcome contradicts"):
+                    cli.main()
+                assert workspace_exists("acme")
+                assert issue_state.comment.call_count == 0
+
+            monkeypatch.setattr("sys.argv", ["ws", *args])
             cli.main()
-
-        journal, completed = lifecycle._load_terminal_journal("acme")
-        assert journal is not None and completed is False
-        assert journal["attempts"]["data_remove"] is True
-        assert journal["attempts"]["worktree_remove"] is True
-        assert not setup.worktree.exists()
-        assert workspace_exists("acme")
-        assert get_active_slug() == "acme"
-
-        monkeypatch.setattr("sys.argv", ["ws", "status"])
-        with pytest.raises(WorkspaceError, match="worktree disappeared"):
-            cli.main()
-        assert workspace_exists("acme")
-
-        monkeypatch.setattr("sys.argv", ["ws", "del", "acme"])
-        cli.main()
 
         assert removal_calls["count"] == 2
         assert not workspace_exists("acme")
         assert get_active_slug() is None
         receipt, completed = lifecycle._load_terminal_journal("acme")
         assert receipt is not None and completed is True
+        if command == "del":
+            assert issue_state.comment.call_count == 0
+            assert issue_state.close.call_count == 0
+        else:
+            assert issue_state.comment.call_count == 1
+            assert issue_state.close.call_count == 1
+
+    def test_terminal_startup_preserves_replaced_quarantine(self, tmp_path, monkeypatch):
+        from src.csvtool import company_del
+        from src.shared.constants import set_repo_root
+        from src.workspace import cli
+        from src.workspace.commands import lifecycle
+        from src.workspace.git import terminal_worktree_quarantine_path
+
+        setup = self._root_aware_workspace(tmp_path, monkeypatch)
+        self._patch_root_aware_git(monkeypatch, setup)
+        set_repo_root(setup.worktree)
+        journal = lifecycle._initialize_terminal_journal(
+            setup.workspace,
+            local=False,
+            outcome=None,
+        )
+        lifecycle._set_terminal_attempt(journal, "data_remove")
+        company_del("acme")
+        lifecycle._set_terminal_attempt(journal, "worktree_remove")
+
+        quarantine = terminal_worktree_quarantine_path(
+            setup.worktree,
+            setup.workspace.branch,
+            TEST_HEAD_OID,
+        )
+        held = quarantine.with_name(f"{quarantine.name}.held")
+        setup.worktree.rename(quarantine)
+        quarantine.rename(held)
+        quarantine.mkdir()
+        pivot = MagicMock()
+        mutate = MagicMock()
+        monkeypatch.setattr("src.shared.constants.set_repo_root", pivot)
+        monkeypatch.setattr("src.workspace.git._run", mutate)
+
+        with pytest.raises(WorkspaceError, match="replacement filesystem entry"):
+            cli._pivot_to_worktree(["del", "acme"])
+
+        pivot.assert_not_called()
+        mutate.assert_not_called()
+        assert quarantine.is_dir()
+        assert held.is_dir()
+        assert workspace_exists("acme")
 
     @pytest.mark.parametrize(
         "failing",
@@ -5567,7 +5698,7 @@ class TestCliStartupWorktreeAuthentication:
         monkeypatch.setattr("src.shared.constants.get_repo_root", lambda: tmp_path / "outer")
         monkeypatch.setattr("src.shared.constants.set_repo_root", pivot)
         monkeypatch.setattr(
-            "src.workspace.git.authenticate_managed_worktree",
+            "src.workspace.git.authenticate_terminal_worktree_removal_state",
             MagicMock(side_effect=WorkspaceError("replacement filesystem entry")),
         )
         monkeypatch.setattr("src.workspace.git._run", mutate)
