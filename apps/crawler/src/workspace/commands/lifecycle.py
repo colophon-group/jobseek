@@ -1640,6 +1640,10 @@ def _initialize_terminal_journal(ws: Workspace, *, local: bool, outcome: dict | 
     local_oid: str | None = None
     worktree_path: Path | None = None
     if not local:
+        # The journal may only capture an identity that was persisted when the
+        # workspace was created and is still exact now.  Re-observing the
+        # canonical pathname alone would bless a pre-journal replacement.
+        _authenticate_workspace_worktree(ws)
         if ws.pr is not None:
             git.verify_recorded_pr(
                 ws.pr_provenance,
@@ -1655,17 +1659,15 @@ def _initialize_terminal_journal(ws: Workspace, *, local: bool, outcome: dict | 
             raise WorkspaceError(f"Remote branch {branch!r} lacks exact PR provenance")
         if branch:
             canonical = Path(os.path.abspath(str(git.worktrees_dir() / ws.slug)))
-            recorded = (
-                Path(os.path.abspath(os.path.expanduser(ws.worktree))) if ws.worktree else None
-            )
-            if recorded is not None and recorded != canonical:
-                raise WorkspaceError("Workspace records a non-canonical worktree path")
-            identity = git.managed_worktree_identity_strict(canonical, branch)
-            if bool(recorded) != bool(identity):
-                raise WorkspaceError("Workspace worktree record contradicts managed Git state")
-            worktree_path = canonical if identity is not None else None
+            persisted = ws.worktree_identity
+            identity = {
+                "head": str(persisted["head"]),
+                "dev": int(persisted["dev"]),
+                "ino": int(persisted["ino"]),
+            }
+            worktree_path = canonical
             local_oid = git.local_branch_oid_strict(branch)
-            if identity is not None and local_oid != identity["head"]:
+            if local_oid != identity["head"]:
                 raise WorkspaceError("Local branch and worktree commits contradict each other")
 
     company_present, board_present = _company_registry_presence(ws.slug)
@@ -2455,12 +2457,12 @@ _WORKTREE_IDENTITY_KEYS = {
 
 def _authenticate_workspace_worktree(ws: Workspace) -> None:
     """Authenticate the exact persisted checkout before a Git/PR mutation."""
-    if not ws.worktree:
-        return  # Backward-compatible single-checkout workspaces.
     from src.workspace import git
 
     identity = ws.worktree_identity
     canonical = Path(os.path.abspath(str(git.worktrees_dir() / ws.slug)))
+    if not ws.worktree:
+        raise WorkspaceError("Workspace is missing its authenticated worktree path")
     recorded = Path(os.path.abspath(os.path.expanduser(ws.worktree)))
     if recorded != canonical:
         raise WorkspaceError("Workspace records a non-canonical managed worktree path")
@@ -2861,7 +2863,7 @@ def submit(slug: str | None, summary: str | None, force: bool):
 
     # Authenticate before trusting the persisted path, then pivot and repeat
     # immediately. A marker directory is not ownership proof.
-    if ws.worktree and not is_local_mode():
+    if not is_local_mode():
         from src.shared.constants import get_repo_root, set_repo_root
 
         _authenticate_workspace_worktree(ws)

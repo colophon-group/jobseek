@@ -808,6 +808,7 @@ class TestReject:
 
         with (
             patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
             _mock_terminal_issue() as issue_state,
         ):
             result = runner.invoke(
@@ -833,6 +834,7 @@ class TestReject:
 
         with (
             patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
             _mock_terminal_issue() as issue_state,
         ):
             result = runner.invoke(
@@ -857,6 +859,7 @@ class TestReject:
 
         with (
             patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
             _mock_terminal_issue() as issue_state,
         ):
             result = runner.invoke(
@@ -880,6 +883,7 @@ class TestReject:
 
         with (
             patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
             _mock_terminal_issue() as issue_state,
         ):
             result = runner.invoke(
@@ -938,6 +942,18 @@ class TestReject:
                 branch="add-company/acme",
                 pr_provenance=_test_pr_provenance(7, slug="acme", issue=42),
                 worktree=str(worktree),
+                worktree_identity={
+                    "version": 1,
+                    "path": str(worktree),
+                    "slug": "acme",
+                    "branch": "add-company/acme",
+                    "head": TEST_HEAD_OID,
+                    "dev": 1,
+                    "ino": 2,
+                    "issue": 42,
+                    "pr": 7,
+                    "pr_provenance": _test_pr_provenance(7, slug="acme", issue=42),
+                },
             )
         )
         events: list[str] = []
@@ -1229,6 +1245,7 @@ class TestTaskOutcomes:
         save_workspace(Workspace(slug="acme", issue=42))
         with (
             patch("src.workspace.git.check_existing_prs_strict", return_value=[]),
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
             _mock_terminal_issue() as issue_state,
         ):
             result = CliRunner().invoke(
@@ -1310,6 +1327,7 @@ class TestTaskComplete:
 
         with (
             patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
             patch("src.workspace.commands.lifecycle._verify_workspace_pr_before_mutation"),
             patch(
                 "src.workspace.commands.lifecycle._record_current_pr_provenance", side_effect=record
@@ -1403,13 +1421,27 @@ class TestDel:
 class TestTerminalCleanupRecovery:
     @staticmethod
     def _workspace(tmp_path) -> Workspace:
+        path = tmp_path / "worktrees" / "acme"
+        provenance = _test_pr_provenance(7, slug="acme", issue=42)
         return Workspace(
             slug="acme",
             issue=42,
             pr=7,
             branch="add-company/acme",
-            pr_provenance=_test_pr_provenance(7, slug="acme", issue=42),
-            worktree=str(tmp_path / "worktrees" / "acme"),
+            pr_provenance=provenance,
+            worktree=str(path),
+            worktree_identity={
+                "version": 1,
+                "path": str(path),
+                "slug": "acme",
+                "branch": "add-company/acme",
+                "head": TEST_HEAD_OID,
+                "dev": 1,
+                "ino": 2,
+                "issue": 42,
+                "pr": 7,
+                "pr_provenance": copy.deepcopy(provenance),
+            },
         )
 
     @pytest.mark.parametrize(
@@ -1426,7 +1458,6 @@ class TestTerminalCleanupRecovery:
         _patch_all(monkeypatch, tmp_path)
         _setup_csvs(tmp_path, companies="acme,Acme,,,,\n")
         workspace = self._workspace(tmp_path)
-        workspace.worktree = ""
         save_workspace(workspace)
         outcome = {
             "marker": "<!-- terminal-test -->",
@@ -1441,6 +1472,7 @@ class TestTerminalCleanupRecovery:
             "comment": False,
             "issue": "OPEN",
             "claim": True,
+            "worktree": True,
         }
         crashed: set[str] = set()
         events: list[str] = []
@@ -1461,7 +1493,18 @@ class TestTerminalCleanupRecovery:
 
         with (
             patch("src.workspace.git.verify_recorded_pr"),
-            patch("src.workspace.git.managed_worktree_identity_strict", return_value=None),
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
+            patch(
+                "src.workspace.git.managed_worktree_identity_strict",
+                side_effect=lambda *_: (
+                    {"head": TEST_HEAD_OID, "dev": 1, "ino": 2} if state["worktree"] else None
+                ),
+            ),
+            patch("src.workspace.git.authenticate_managed_worktree", return_value=True),
+            patch(
+                "src.workspace.git.remove_authenticated_worktree",
+                side_effect=lambda *_args, **_kwargs: state.__setitem__("worktree", False),
+            ),
             patch(
                 "src.workspace.git.remote_branch_oid_strict",
                 side_effect=lambda *_: state["remote"],
@@ -1549,6 +1592,7 @@ class TestTerminalCleanupRecovery:
             "comment": True,
             "issue": "CLOSED",
             "claim": False,
+            "worktree": False,
         }
         assert events[-1] == "claim"
 
@@ -1557,15 +1601,15 @@ class TestTerminalCleanupRecovery:
 
         _patch_all(monkeypatch, tmp_path)
         workspace = self._workspace(tmp_path)
-        workspace.worktree = ""
         workspace.pr = None
         workspace.pr_provenance = {}
         workspace.issue = None
         save_workspace(workspace)
         local = {"oid": TEST_HEAD_OID}
         with (
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
             patch("src.workspace.git.remote_branch_oid_strict", return_value=None),
-            patch("src.workspace.git.managed_worktree_identity_strict", return_value=None),
+            patch("src.workspace.git.authenticate_managed_worktree", return_value=True),
             patch("src.workspace.git.local_branch_oid_strict", side_effect=lambda *_: local["oid"]),
         ):
             lifecycle._initialize_terminal_journal(workspace, local=False, outcome=None)
@@ -1578,13 +1622,13 @@ class TestTerminalCleanupRecovery:
 
         _patch_all(monkeypatch, tmp_path)
         workspace = self._workspace(tmp_path)
-        workspace.worktree = ""
         save_workspace(workspace)
         local = {"oid": TEST_HEAD_OID}
         with (
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
             patch("src.workspace.git.verify_recorded_pr"),
             patch("src.workspace.git.remote_branch_oid_strict", return_value=TEST_HEAD_OID),
-            patch("src.workspace.git.managed_worktree_identity_strict", return_value=None),
+            patch("src.workspace.git.authenticate_managed_worktree", return_value=True),
             patch("src.workspace.git.local_branch_oid_strict", side_effect=lambda *_: local["oid"]),
             patch("src.workspace.git.is_issue_claimed_strict", return_value=True),
         ):
@@ -1607,12 +1651,15 @@ class TestTerminalCleanupRecovery:
         from src.workspace.commands import lifecycle
 
         _patch_all(monkeypatch, tmp_path)
-        ws_obj = Workspace(slug="acme", branch="add-company/acme")
+        ws_obj = self._workspace(tmp_path)
+        ws_obj.pr = None
+        ws_obj.pr_provenance = {}
+        ws_obj.issue = None
         save_workspace(ws_obj)
         with (
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
             patch("src.workspace.git.remote_branch_oid_strict", return_value=None),
-            patch("src.workspace.git.managed_worktree_identity_strict", return_value=None),
-            patch("src.workspace.git.local_branch_oid_strict", return_value=None),
+            patch("src.workspace.git.local_branch_oid_strict", return_value=TEST_HEAD_OID),
         ):
             lifecycle._initialize_terminal_journal(ws_obj, local=False, outcome=None)
         pending = lifecycle._terminal_pending_path("acme")
@@ -1663,8 +1710,16 @@ class TestTerminalCleanupRecovery:
         from src.workspace.commands import lifecycle
 
         _patch_all(monkeypatch, tmp_path)
-        save_workspace(Workspace(slug="acme", issue=42, branch="add-company/acme"))
-        state = {"claimed": True, "crashed": False}
+        ws_obj = self._workspace(tmp_path)
+        ws_obj.pr = None
+        ws_obj.pr_provenance = {}
+        save_workspace(ws_obj)
+        state = {
+            "claimed": True,
+            "crashed": False,
+            "worktree": True,
+            "local": TEST_HEAD_OID,
+        }
 
         def unclaim(_issue):
             state["claimed"] = False
@@ -1674,9 +1729,27 @@ class TestTerminalCleanupRecovery:
 
         with (
             patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
             patch("src.workspace.git.remote_branch_oid_strict", return_value=None),
-            patch("src.workspace.git.managed_worktree_identity_strict", return_value=None),
-            patch("src.workspace.git.local_branch_oid_strict", return_value=None),
+            patch("src.workspace.git.authenticate_managed_worktree", return_value=True),
+            patch(
+                "src.workspace.git.managed_worktree_identity_strict",
+                side_effect=lambda *_: (
+                    {"head": TEST_HEAD_OID, "dev": 1, "ino": 2} if state["worktree"] else None
+                ),
+            ),
+            patch(
+                "src.workspace.git.remove_authenticated_worktree",
+                side_effect=lambda *_args, **_kwargs: state.__setitem__("worktree", False),
+            ),
+            patch(
+                "src.workspace.git.local_branch_oid_strict",
+                side_effect=lambda *_: state["local"],
+            ),
+            patch(
+                "src.workspace.git.delete_local_branch_at_expected_oid",
+                side_effect=lambda *_args, **_kwargs: state.__setitem__("local", None),
+            ),
             patch(
                 "src.workspace.git.is_issue_claimed_strict",
                 side_effect=lambda *_: state["claimed"],
@@ -1822,6 +1895,7 @@ class TestReadyRecovery:
 
         with (
             patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
             patch("src.workspace.commands.lifecycle._verify_workspace_pr_before_mutation"),
             patch("src.workspace.git.changed_paths_strict", return_value=set()),
             patch(
@@ -1880,6 +1954,7 @@ class TestReadyRecovery:
 
         with (
             patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
             patch("src.workspace.commands.lifecycle._verify_workspace_pr_before_mutation"),
             patch("src.workspace.git.changed_paths_strict", return_value=set()),
             patch("src.workspace.git.remote_branch_oid_strict", return_value=TEST_HEAD_OID),
@@ -1945,10 +2020,23 @@ class TestReadyRecovery:
                 pr=10,
                 pr_provenance=provenance,
                 worktree=str(tmp_path / "worktrees" / "test"),
+                worktree_identity={
+                    "version": 1,
+                    "path": str(tmp_path / "worktrees" / "test"),
+                    "slug": "test",
+                    "branch": "add-company/test",
+                    "head": TEST_HEAD_OID,
+                    "dev": 1,
+                    "ino": 2,
+                    "issue": None,
+                    "pr": 10,
+                    "pr_provenance": copy.deepcopy(provenance),
+                },
             )
         )
 
         with (
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
             patch("src.workspace.git.worktrees_dir", return_value=tmp_path / "worktrees"),
             patch("src.workspace.git.close_pr_if_open") as close_pr,
             patch("src.workspace.git.delete_branch_at_expected_oid") as delete_branch,
@@ -4102,11 +4190,131 @@ def _setup_submittable_workspace(tmp_path, monkeypatch):
     monkeypatch.setattr("src.workspace.git.get_main_branch", lambda: "main")
     monkeypatch.setattr("src.workspace.git.get_authenticated_login_strict", lambda: "resolver")
     monkeypatch.setattr("src.workspace.git.remote_branch_oid_strict", lambda _branch: TEST_HEAD_OID)
+    monkeypatch.setattr(
+        "src.workspace.commands.lifecycle._authenticate_workspace_worktree",
+        lambda _workspace: None,
+    )
 
     return ws_obj, board
 
 
 class TestSubmitWorktreeAuthentication:
+    @pytest.mark.parametrize("clear_path", [True, False])
+    def test_submit_missing_persisted_identity_fails_before_unrelated_mutation(
+        self, tmp_path, monkeypatch, clear_path
+    ):
+        _patch_all(monkeypatch, tmp_path)
+        unrelated = tmp_path / "unrelated-checkout"
+        unrelated.mkdir()
+        marker = unrelated / "owned.txt"
+        marker.write_text("untouched\n")
+        canonical = tmp_path / "worktrees" / "acme"
+        ws_obj = Workspace(
+            slug="acme",
+            issue=42,
+            pr=7,
+            branch="add-company/acme",
+            pr_provenance=_test_pr_provenance(7, slug="acme", issue=42),
+            worktree="" if clear_path else str(canonical),
+            worktree_identity={},
+        )
+        save_workspace(ws_obj)
+
+        with (
+            patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
+            patch("src.workspace.git.worktrees_dir", return_value=tmp_path / "worktrees"),
+            patch("src.shared.constants.get_repo_root", return_value=unrelated),
+            patch("src.shared.constants.set_repo_root") as pivot,
+            patch("src.workspace.git.commit") as commit,
+            patch("src.workspace.git.push_branch_at_expected_oid") as push,
+        ):
+            result = CliRunner().invoke(ws, ["submit", "acme"])
+
+        assert result.exit_code != 0
+        assert "authenticated worktree" in str(result.exception)
+        assert marker.read_text() == "untouched\n"
+        pivot.assert_not_called()
+        commit.assert_not_called()
+        push.assert_not_called()
+
+    def test_ready_missing_identity_cannot_push_or_mark_pr_ready(self, tmp_path, monkeypatch):
+        from src.workspace.commands.task import _finalize_workflow
+        from src.workspace.workflow import WorkflowState, _save_wf_to_disk
+
+        _patch_all(monkeypatch, tmp_path)
+        ws_obj = Workspace(
+            slug="acme",
+            issue=42,
+            pr=7,
+            branch="add-company/acme",
+            pr_provenance=_test_pr_provenance(7, slug="acme", issue=42),
+            worktree="",
+            worktree_identity={},
+        )
+        ws_obj.submit_state = {"pushed": True}
+        save_workspace(ws_obj)
+        _save_wf_to_disk("acme", WorkflowState(current_step="reflect"))
+
+        with (
+            patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
+            patch("src.workspace.git.worktrees_dir", return_value=tmp_path / "worktrees"),
+            patch("src.workspace.git.push_branch_at_expected_oid") as push,
+            patch("src.workspace.git.mark_pr_ready") as ready,
+            pytest.raises(WorkspaceError, match="authenticated worktree path"),
+        ):
+            _finalize_workflow("acme")
+        push.assert_not_called()
+        ready.assert_not_called()
+
+    def test_terminal_rejects_prejournal_worktree_replacement_without_mutation(
+        self, tmp_path, monkeypatch
+    ):
+        from src.workspace.commands import lifecycle
+
+        _patch_all(monkeypatch, tmp_path)
+        canonical = tmp_path / "worktrees" / "acme"
+        provenance = _test_pr_provenance(7, slug="acme", issue=42)
+        ws_obj = Workspace(
+            slug="acme",
+            issue=42,
+            pr=7,
+            branch="add-company/acme",
+            pr_provenance=provenance,
+            worktree=str(canonical),
+            worktree_identity={
+                "version": 1,
+                "path": str(canonical),
+                "slug": "acme",
+                "branch": "add-company/acme",
+                "head": TEST_HEAD_OID,
+                "dev": 1,
+                "ino": 2,
+                "issue": 42,
+                "pr": 7,
+                "pr_provenance": copy.deepcopy(provenance),
+            },
+        )
+        save_workspace(ws_obj)
+
+        with (
+            patch("src.workspace.git.worktrees_dir", return_value=tmp_path / "worktrees"),
+            patch(
+                "src.workspace.git.authenticate_managed_worktree",
+                side_effect=WorkspaceError("replacement filesystem entry"),
+            ),
+            patch("src.workspace.git.verify_recorded_pr") as verify_pr,
+            patch("src.workspace.git.delete_remote_branch_at_expected_oid") as delete_remote,
+            patch("src.workspace.git.remove_authenticated_worktree") as remove_worktree,
+            pytest.raises(WorkspaceError, match="replacement filesystem entry"),
+        ):
+            lifecycle._run_terminal_cleanup(ws_obj, local=False)
+
+        verify_pr.assert_not_called()
+        delete_remote.assert_not_called()
+        remove_worktree.assert_not_called()
+        assert not lifecycle._lexists(lifecycle._terminal_pending_path("acme"))
+        assert workspace_exists("acme")
+
     def test_mutable_noncanonical_worktree_path_is_rejected_before_pivot(
         self, tmp_path, monkeypatch
     ):
@@ -4638,6 +4846,10 @@ class TestSubmitForce:
 
     def test_poor_verdict_blocks_without_force(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
+        monkeypatch.setattr(
+            "src.workspace.commands.lifecycle._authenticate_workspace_worktree",
+            lambda _workspace: None,
+        )
         _setup_csvs(tmp_path, companies="test,,,,\n")
 
         ws_obj = Workspace(slug="test", name="Test", website="https://test.com", issue=1, pr=10)
@@ -4663,6 +4875,10 @@ class TestSubmitForce:
 
     def test_poor_verdict_passes_with_force(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
+        monkeypatch.setattr(
+            "src.workspace.commands.lifecycle._authenticate_workspace_worktree",
+            lambda _workspace: None,
+        )
         _setup_csvs(tmp_path, companies="test,,,,\n")
 
         ws_obj = Workspace(
