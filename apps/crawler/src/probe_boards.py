@@ -1538,11 +1538,13 @@ async def _probe_static_page(row: dict, client: httpx.AsyncClient) -> ProbeResul
             "rendered page requires a browser probe",
         )
 
-    from src.core.monitors import get_discoverer
+    from src.core.monitor import monitor_one
 
     try:
-        discovered = await get_discoverer(monitor_type)(
-            {"board_url": row["board_url"], "metadata": decoded},
+        discovered = await monitor_one(
+            row["board_url"],
+            monitor_type,
+            decoded,
             client,
         )
     except httpx.HTTPStatusError as exc:

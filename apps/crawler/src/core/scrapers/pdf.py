@@ -82,8 +82,10 @@ def _validate_salary_default(value: object) -> None:
     if not isinstance(value, dict) or not value or set(value) - _SALARY_FIELDS:
         raise ValueError("PDF defaults.base_salary must use currency, min, max, and unit fields")
     currency = value.get("currency")
-    if currency is not None and (not isinstance(currency, str) or not currency.strip()):
-        raise ValueError("PDF defaults.base_salary.currency must be non-empty text")
+    if currency is not None and (
+        not isinstance(currency, str) or re.fullmatch(r"[A-Z]{3}", currency) is None
+    ):
+        raise ValueError("PDF defaults.base_salary.currency must be an ISO 4217 code")
     unit = value.get("unit")
     if unit is not None and unit not in _SALARY_UNITS:
         raise ValueError("PDF defaults.base_salary.unit must be a canonical salary unit")
@@ -91,10 +93,16 @@ def _validate_salary_default(value: object) -> None:
     if all(amount is None for amount in amounts):
         raise ValueError("PDF defaults.base_salary must contain min or max")
     if any(
-        amount is not None and (not isinstance(amount, (int, float)) or isinstance(amount, bool))
+        amount is not None
+        and (
+            not isinstance(amount, (int, float))
+            or isinstance(amount, bool)
+            or not math.isfinite(amount)
+            or amount < 0
+        )
         for amount in amounts
     ):
-        raise ValueError("PDF defaults.base_salary min and max must be numbers")
+        raise ValueError("PDF defaults.base_salary min and max must be finite non-negative numbers")
     minimum, maximum = amounts
     if minimum is not None and maximum is not None and minimum > maximum:
         raise ValueError("PDF defaults.base_salary min cannot exceed max")
