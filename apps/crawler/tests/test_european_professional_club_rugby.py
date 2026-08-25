@@ -164,6 +164,8 @@ async def test_empty_marker_with_a_linked_vacancy_fails_closed() -> None:
             "17154321/EPCR-Marketing-and-Commercial-Director-Job-description.pdf",
             "Marketing and Commercial Director | EPCR\n"
             "The Role\n"
+            "The role will be based at EPCR headquarters in Lausanne, Switzerland, "
+            "and will involve extensive travel across Europe.\n"
             "Job Title: Marketing and Commercial Director\n"
             "Reporting into: CEO\n"
             "Location: Lausanne, Switzerland",
