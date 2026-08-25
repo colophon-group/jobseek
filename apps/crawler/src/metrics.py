@@ -24,6 +24,28 @@ task_duration_seconds = Histogram(
     buckets=[1, 2, 5, 10, 15, 30, 60, 120, 300],
 )
 
+# Stable replacement-boundary metrics.  Go runtimes must export the same
+# names and bounded labels so a cutover can be compared to, and if necessary
+# reversed from, the preceding Python deployment without dashboard rewrites.
+runtime_executions_total = Counter(
+    "crawler_runtime_executions_total",
+    "Extraction runtime executions by stage, implementation, and outcome",
+    ["stage", "implementation", "outcome"],
+)
+
+runtime_execution_duration_seconds = Histogram(
+    "crawler_runtime_execution_duration_seconds",
+    "Active extraction runtime duration, excluding downstream persistence",
+    ["stage", "implementation"],
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30, 60, 120, 300],
+)
+
+runtime_output_items_total = Counter(
+    "crawler_runtime_output_items_total",
+    "URLs or content records emitted by an extraction runtime",
+    ["stage", "implementation"],
+)
+
 monitor_processed_total = Counter(
     "crawler_monitor_processed_total",
     "Boards processed by monitor workers",
@@ -538,6 +560,12 @@ browser_playwright_recycles_total = Counter(
     "crawler_browser_playwright_recycles_total",
     "Long-lived Playwright driver recycle attempts between browser jobs",
     ["outcome"],
+)
+
+browser_backend_lifecycle_total = Counter(
+    "crawler_browser_backend_lifecycle_total",
+    "Browser backend lifecycle events during Chromium/Lightpanda migration",
+    ["backend", "event", "outcome"],
 )
 
 browser_cleanup_failures_total = Counter(

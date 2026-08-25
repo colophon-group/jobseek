@@ -40,6 +40,9 @@ Status tags:
 - [21 - ATS Inventory Candidate Runner](21-ats-inventory-runner.md) `[reference]`
   - data-only upstream boundary, compatibility coverage, validated cache, and
   unsupported-family quarantine contract.
+- [23 - Go and Lightpanda Crawler Migration](23-go-lightpanda-migration.md)
+  `[reference]` - global-scale runtime replacement boundaries, capacity floor,
+  cutover safety, replay, metrics, Murmur coordination, and retirement plan.
 
 ## Search, SEO, And Web Read Paths
 

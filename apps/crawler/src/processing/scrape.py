@@ -50,6 +50,7 @@ from src.queries.scrape import (
     _RECORD_SCRAPE_TRANSIENT,
     _UPDATE_ENRICH_CONTENT,
 )
+from src.runtime.extraction import PythonScrapeRuntime, ScrapeRuntime
 from src.shared.browser import BrowserNavigationHTTPStatusError, is_target_closed_error
 from src.shared.html_normalize import normalize_description_html
 from src.shared.http import is_avature_job_detail_url
@@ -512,6 +513,7 @@ async def _scrape_with_browser_target_recovery(
     http: httpx.AsyncClient,
     *,
     pw=None,
+    scrape_runtime: ScrapeRuntime | None = None,
 ) -> JobContent:
     """Retry one lost Playwright target with a newly launched context.
 
@@ -522,8 +524,9 @@ async def _scrape_with_browser_target_recovery(
     failures propagate unchanged, and a second target loss exhausts the
     bounded retry so the normal transient queue backoff still applies.
     """
+    runtime = scrape_runtime or PythonScrapeRuntime(_batch.scrape_one)
     try:
-        return await _batch.scrape_one(url, scraper_type, scraper_config, http, pw=pw)
+        return await runtime.scrape(url, scraper_type, scraper_config, http, pw=pw)
     except Exception as exc:
         if not scraper_needs_browser(scraper_type, scraper_config) or not is_target_closed_error(
             exc
@@ -537,7 +540,7 @@ async def _scrape_with_browser_target_recovery(
         attempt=1,
     )
     try:
-        content = await _batch.scrape_one(url, scraper_type, scraper_config, http, pw=pw)
+        content = await runtime.scrape(url, scraper_type, scraper_config, http, pw=pw)
     except Exception:
         browser_target_closed_retries_total.labels(outcome="failed").inc()
         raise
@@ -560,6 +563,7 @@ async def _process_one_enrich_scrape(
     scraper_config: dict | None,
     enrich_fields: list[str],
     pw=None,
+    scrape_runtime: ScrapeRuntime | None = None,
 ) -> tuple[bool, float]:
     """Run a scrape that only enriches specific fields. Returns (success, duration_s).
 
@@ -585,6 +589,7 @@ async def _process_one_enrich_scrape(
             scraper_config,
             http,
             pw=pw,
+            scrape_runtime=scrape_runtime,
         )
         content = _apply_defaults(content, cfg)
 
@@ -812,6 +817,7 @@ async def _process_one_scrape(
     pw=None,
     scrape_step: int = 0,
     scrape_interval: int = 24,
+    scrape_runtime: ScrapeRuntime | None = None,
 ) -> tuple[bool, float]:
     """Run a single scrape step for a job posting. Returns (success, duration_s).
 
@@ -831,7 +837,14 @@ async def _process_one_scrape(
             enrich_fields = board_cfg.get("enrich")
             if isinstance(enrich_fields, list) and enrich_fields:
                 return await _process_one_enrich_scrape(
-                    item, pool, http, scraper_type, scraper_config, enrich_fields, pw=pw
+                    item,
+                    pool,
+                    http,
+                    scraper_type,
+                    scraper_config,
+                    enrich_fields,
+                    pw=pw,
+                    scrape_runtime=scrape_runtime,
                 )
 
         # Resolve which scraper to run at this step
@@ -843,6 +856,7 @@ async def _process_one_scrape(
             step_cfg or None,
             http,
             pw=pw,
+            scrape_runtime=scrape_runtime,
         )
         content = _apply_defaults(content, step_cfg)
 
