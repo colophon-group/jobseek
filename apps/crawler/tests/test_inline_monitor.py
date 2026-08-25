@@ -854,6 +854,50 @@ async def test_discover_can_reuse_title_as_description():
 
 
 @pytest.mark.asyncio
+async def test_discover_expands_aggregate_listing_into_stable_position_identities():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "positions_per_listing": 3,
+            "steps": [
+                {
+                    "tag": "p",
+                    "field": "title",
+                    "regex": r"^There are three open (PhD position)s\.$",
+                },
+                {"tag": "p", "field": "description"},
+            ],
+        },
+    }
+
+    jobs = await discover(
+        board,
+        _FakeClient("<p>There are three open PhD positions.</p><p>Research interfaces.</p>"),
+    )
+
+    assert [job.title for job in jobs] == ["PhD position"] * 3
+    assert len({job.url for job in jobs}) == 3
+    assert jobs[1].url.endswith("-2")
+    assert jobs[2].url.endswith("-3")
+    assert all(job.description == "Research interfaces." for job in jobs)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", [None, False, 0, 21, 1.5, "3", [], {}])
+async def test_discover_rejects_invalid_positions_per_listing(value):
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "positions_per_listing": value,
+            "steps": [{"tag": "h2", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="positions_per_listing must be an integer from 1 to 20"):
+        await discover(board, _FakeClient("<h2>Open Engineer</h2>"))
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("value", [None, 0, 1, "true", [], {}])
 async def test_discover_rejects_invalid_description_from_title(value):
     board = {

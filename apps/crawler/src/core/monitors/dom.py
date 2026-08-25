@@ -56,6 +56,7 @@ _MAX_PDF_EXPIRATION_TEXT_CHARS = 2_000_000
 _MAX_EXPLICIT_EMPTY_BODY_BYTES = 2 * 1024 * 1024
 _RESPONSE_FINGERPRINT_CONCURRENCY = 4
 _MAX_RESPONSE_FINGERPRINT_URLS = 100
+_MAX_RICH_ROWS_LIFECYCLE_URLS = 500
 
 # Browser-pagination fetch budget. Playwright fetches are slower than
 # httpx (the JS engine + page context add tens of ms), and the page is
@@ -1639,6 +1640,8 @@ _RichRowsConfig = tuple[
     bool,
     tuple[str, str | None] | None,
     tuple[str, str | None] | None,
+    frozenset[str],
+    frozenset[str],
 ]
 
 
@@ -1662,6 +1665,30 @@ def _validated_rich_rows_boundary(value: object, *, name: str) -> tuple[str, str
     return selector, " ".join(marker_text.split()) if marker_text is not None else None
 
 
+def _validated_rich_rows_urls(
+    value: object,
+    *,
+    name: str,
+    allow_empty: bool,
+) -> frozenset[str]:
+    """Validate one bounded exact-URL side of a rich-row lifecycle partition."""
+    if not isinstance(value, list) or (not value and not allow_empty):
+        raise ValueError(f"DOM monitor rich_rows.{name} must be a bounded URL list")
+    if len(value) > _MAX_RICH_ROWS_LIFECYCLE_URLS:
+        raise ValueError(f"DOM monitor rich_rows.{name} must be a bounded URL list")
+    urls: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or len(item) > 2_048 or "\x00" in item:
+            raise ValueError(f"DOM monitor rich_rows.{name} must contain absolute HTTP URLs")
+        parsed = urlparse(item)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.fragment:
+            raise ValueError(f"DOM monitor rich_rows.{name} must contain absolute HTTP URLs")
+        urls.append(item)
+    if len(urls) != len(set(urls)):
+        raise ValueError(f"DOM monitor rich_rows.{name} must not contain duplicate URLs")
+    return frozenset(urls)
+
+
 def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
     """Validate optional static listing-row extraction config."""
     if value is None:
@@ -1677,6 +1704,8 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         "allow_missing_locations",
         "section_start",
         "section_end",
+        "active_urls",
+        "inactive_urls",
     }:
         raise ValueError("DOM monitor rich_rows must be a bounded mapping")
     row_selector = _validate_css_selector(value.get("row_selector"), name="rich_rows.row_selector")
@@ -1744,6 +1773,28 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         raise ValueError(
             "DOM monitor rich_rows.section_start and section_end must be configured together"
         )
+    active_value = value.get("active_urls")
+    inactive_value = value.get("inactive_urls")
+    if (active_value is None) != (inactive_value is None):
+        raise ValueError(
+            "DOM monitor rich_rows.active_urls and inactive_urls must be configured together"
+        )
+    if active_value is None:
+        active_urls = frozenset()
+        inactive_urls = frozenset()
+    else:
+        active_urls = _validated_rich_rows_urls(
+            active_value,
+            name="active_urls",
+            allow_empty=False,
+        )
+        inactive_urls = _validated_rich_rows_urls(
+            inactive_value,
+            name="inactive_urls",
+            allow_empty=True,
+        )
+        if active_urls & inactive_urls:
+            raise ValueError("DOM monitor rich_rows.active_urls and inactive_urls must be disjoint")
     return (
         row_selector,
         link_selector,
@@ -1755,6 +1806,8 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         allow_missing_locations,
         section_start,
         section_end,
+        active_urls,
+        inactive_urls,
     )
 
 
@@ -1815,6 +1868,8 @@ def _extract_rich_rows_static(
         allow_missing_locations,
         section_start,
         section_end,
+        active_urls,
+        inactive_urls,
     ) = config
     tree = LexborHTMLParser(html)
     advertised_total: int | None = None
@@ -1853,6 +1908,14 @@ def _extract_rich_rows_static(
         if url_matcher is not None and not url_matcher.search(url):
             continue
         canonical_url = url_canonicalizer(url) if url_canonicalizer is not None else url
+        if active_urls:
+            if canonical_url in inactive_urls:
+                continue
+            if canonical_url not in active_urls:
+                raise ValueError(
+                    "DOM monitor rich_rows encountered an unclassified lifecycle URL: "
+                    f"{canonical_url}"
+                )
 
         location_parts: list[str] = []
         for selector in location_selectors:
