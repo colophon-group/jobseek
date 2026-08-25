@@ -296,10 +296,12 @@ src/core/scrape.py               # scrape_one() dispatcher
 | `paylocity`    | Parse Paylocity server-rendered detail pages       | None                   |
 | `linkedin`     | Fetch LinkedIn public guest-job detail fragments   | None                   |
 | `pdf`          | Download PDF files and extract text content        | Title extraction optional |
+| `phuketall`    | Parse PhuketAll employer job pages                 | None                   |
 | `rippling`     | Fetch Rippling detail API records                  | None                   |
 | `skip`         | No-scrape marker for rich monitor output           | None                   |
 | `smartrecruiters` | Fetch SmartRecruiters detail API records        | None                   |
 | `taleo`       | Parse Taleo Enterprise embedded detail payload      | None                   |
+| `veryeast`    | Parse VeryEast employer job pages                   | None                   |
 | `workable`     | Fetch Workable detail API records                  | None                   |
 | `workday`      | Fetch Workday detail API records                   | None                   |
 

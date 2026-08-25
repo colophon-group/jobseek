@@ -153,6 +153,8 @@ _PROBE_ORDER = [
     "json-ld",
     "nextdata",
     "embedded",
+    "phuketall",
+    "veryeast",
     "onlyfy",
     "paycor",
     "pdf",
@@ -397,10 +399,12 @@ from src.core.scrapers import (  # noqa: E402
     paycor,  # noqa: F401
     paylocity,  # noqa: F401
     pdf,  # noqa: F401
+    phuketall,  # noqa: F401
     rippling,  # noqa: F401
     skip,  # noqa: F401
     smartrecruiters,  # noqa: F401
     taleo,  # noqa: F401
+    veryeast,  # noqa: F401
     workable,  # noqa: F401
     workday,  # noqa: F401
 )

@@ -327,10 +327,12 @@ A scraper takes a job page URL and returns structured job data. Only needed when
 | `jazzhr` | Static | Parses JobPosting JSON-LD with a DOM fallback for older JazzHR themes |
 | `paylocity` | Static | Parses Paylocity server-rendered detail pages |
 | `pdf` | Static | Downloads PDFs and extracts text content |
+| `phuketall` | Static | Parses PhuketAll employer job pages, including canonical Thai field labels |
 | `rippling` | Static | Fetches Rippling detail API records |
 | `skip` | No fetch | Explicit no-scrape marker for rich monitors that already returned complete job data |
 | `smartrecruiters` | Static | Fetches SmartRecruiters detail API records |
 | `taleo` | Static | Parses the bounded `api.fillList` payload embedded in Taleo Enterprise detail pages |
+| `veryeast` | Static | Parses VeryEast employer detail pages and their Chinese structured fields |
 | `workable` | Static | Fetches Workable detail API records |
 | `workday` | Static | Fetches Workday detail API records |
 

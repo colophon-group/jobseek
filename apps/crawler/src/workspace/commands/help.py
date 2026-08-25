@@ -189,6 +189,8 @@ Scraper Types:
   json-ld        Static/PW   No (optional render)  Sites with schema.org/JobPosting
   nextdata       Static/PW   Yes (fields)     Next.js sites with __NEXT_DATA__
   embedded       Static/PW   Yes (fields)     JS-embedded JSON (script tags, variables)
+  phuketall      Static      No               PhuketAll employer job pages
+  veryeast       Static      No               VeryEast employer job pages
   onlyfy         Static      No               Onlyfy/Prescreen job pages
   paycor         Static      No               Paycor/Newton legacy job pages
   pdf            Static      No               PDF job descriptions
@@ -3771,6 +3773,28 @@ paycor — Paycor/Newton server-rendered detail scraper
             directly over static HTTP, so Playwright is not required.
 """
 
+SCRAPER_PHUKETALL = """\
+phuketall — PhuketAll employer-board detail scraper
+
+  Page:     GET https://www.phuketall.com/(en/)jobs/{employer}-{job}-phuket/{slug}.html
+  Returns:  title, complete HTML description, location, employment_type,
+            date_posted and department metadata
+  Config:   None needed.
+  Note:     Reads PhuketAll's stable structural classes and supports canonical
+            Thai field labels, so no browser or translated page is required.
+"""
+
+SCRAPER_VERYEAST = """\
+veryeast — VeryEast (最佳东方) employer-board detail scraper
+
+  Page:     GET https://job.veryeast.cn/{employer}/{job}
+  Returns:  title, structured HTML description, location, employment_type,
+            posting/expiry dates and job metadata
+  Config:   None needed.
+  Note:     Pair with a strict DOM monitor for the employer listing page.
+            Server-rendered Chinese detail pages require no browser.
+"""
+
 SCRAPER_LINKEDIN = """\
 linkedin — LinkedIn public guest-job detail scraper
 
@@ -3968,6 +3992,8 @@ SCRAPER_CARDS: dict[str, str] = {
     "json-ld": SCRAPER_JSONLD,
     "nextdata": SCRAPER_NEXTDATA,
     "embedded": SCRAPER_EMBEDDED,
+    "phuketall": SCRAPER_PHUKETALL,
+    "veryeast": SCRAPER_VERYEAST,
     "onlyfy": SCRAPER_ONLYFY,
     "dom": SCRAPER_DOM,
     "api_sniffer": SCRAPER_API_SNIFFER,
