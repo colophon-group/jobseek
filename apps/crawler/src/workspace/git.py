@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import stat
@@ -316,7 +317,14 @@ def _registered_worktrees_strict() -> dict[Path, dict[str, str | bool | None]]:
     return registrations
 
 
-def authenticate_managed_worktree(path: Path, branch: str, expected_head: str) -> bool:
+def authenticate_managed_worktree(
+    path: Path,
+    branch: str,
+    expected_head: str,
+    *,
+    expected_dev: int | None = None,
+    expected_ino: int | None = None,
+) -> bool:
     """Authenticate an exact direct-child worktree using lstat and git registration data.
 
     Returns ``False`` only when both the path and its registration are absent.
@@ -324,15 +332,19 @@ def authenticate_managed_worktree(path: Path, branch: str, expected_head: str) -
     """
     if not _OID_RE.fullmatch(expected_head):
         raise WorkspaceError("Invalid expected worktree commit OID")
-    head = _managed_worktree_head(path, branch)
-    if head is None:
+    identity = _managed_worktree_identity(path, branch)
+    if identity is None:
         return False
-    if head != expected_head:
+    if identity["head"] != expected_head:
         raise WorkspaceError(f"Worktree {path} is registered at an unexpected commit")
+    if expected_dev is not None and identity["dev"] != expected_dev:
+        raise WorkspaceError(f"Worktree {path} is a replacement filesystem entry")
+    if expected_ino is not None and identity["ino"] != expected_ino:
+        raise WorkspaceError(f"Worktree {path} is a replacement filesystem entry")
     return True
 
 
-def _managed_worktree_head(path: Path, branch: str) -> str | None:
+def _managed_worktree_identity(path: Path, branch: str) -> dict[str, str | int] | None:
     """Inspect one direct child through descriptor-anchored, no-follow opens."""
     from src.workspace.safe_cleanup import (
         directory_open_flags,
@@ -382,7 +394,7 @@ def _managed_worktree_head(path: Path, branch: str) -> str | None:
         head = registration.get("head")
         if not isinstance(head, str) or not _OID_RE.fullmatch(head):
             raise WorkspaceError(f"Worktree {target} has no valid registered commit")
-        return head
+        return {"head": head, "dev": int(opened.st_dev), "ino": int(opened.st_ino)}
     finally:
         if child_fd is not None:
             os.close(child_fd)
@@ -391,7 +403,13 @@ def _managed_worktree_head(path: Path, branch: str) -> str | None:
 
 def managed_worktree_head_strict(path: Path, branch: str) -> str | None:
     """Return the authenticated registered head for one exact managed worktree."""
-    return _managed_worktree_head(path, branch)
+    identity = _managed_worktree_identity(path, branch)
+    return str(identity["head"]) if identity is not None else None
+
+
+def managed_worktree_identity_strict(path: Path, branch: str) -> dict[str, str | int] | None:
+    """Return exact commit and filesystem identity for one managed worktree."""
+    return _managed_worktree_identity(path, branch)
 
 
 def remove_authenticated_worktree(
@@ -399,18 +417,279 @@ def remove_authenticated_worktree(
     branch: str,
     expected_head: str,
     *,
+    expected_dev: int | None = None,
+    expected_ino: int | None = None,
     absent_is_success: bool = False,
 ) -> None:
-    """Remove only the exact authenticated managed worktree."""
-    present = authenticate_managed_worktree(path, branch, expected_head)
-    if not present:
-        if absent_is_success:
-            return
-        raise WorkspaceError(f"Worktree {path} disappeared before removal was attempted")
+    """Atomically quarantine then descriptor-delete one authenticated worktree.
+
+    The original pathname is never recursively removed. It is first renamed
+    inside its no-follow-opened parent; descriptor-anchored cleanup then claims
+    that exact quarantined inode, so a replacement at either public pathname is
+    preserved and rejected rather than followed.
+    """
+    from src.workspace.safe_cleanup import (
+        directory_open_flags,
+        open_absolute_directory_no_follow,
+        safe_rmtree_child,
+        validate_child_name,
+    )
+
+    if not _OID_RE.fullmatch(expected_head):
+        raise WorkspaceError("Invalid expected worktree commit OID")
+    root = _absolute_lexical(worktrees_dir())
     target = _absolute_lexical(path)
-    _run(["git", "worktree", "remove", str(target), "--force"], cwd=_MANAGED_REPO)
-    if authenticate_managed_worktree(target, branch, expected_head):
-        raise WorkspaceError(f"Worktree still exists after removal: {target}")
+    if target.parent != root:
+        raise WorkspaceError(f"Worktree {target} is outside the managed root")
+    quarantine_name = (
+        ".jobseek-terminal-"
+        + hashlib.sha256(f"{target.name}\0{branch}\0{expected_head}".encode()).hexdigest()[:32]
+    )
+    validate_child_name(quarantine_name)
+    quarantine = root / quarantine_name
+
+    try:
+        root_fd = open_absolute_directory_no_follow(root)
+    except RuntimeError as exc:
+        raise WorkspaceError(f"Managed worktree root is unsafe: {root}") from exc
+    try:
+        registrations = _registered_worktrees_strict()
+        original_registration = registrations.get(target)
+        quarantine_registration = registrations.get(quarantine)
+
+        def entry(name: str) -> os.stat_result | None:
+            try:
+                return os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+            except FileNotFoundError:
+                return None
+
+        original_stat = entry(target.name)
+        quarantine_stat = entry(quarantine_name)
+        if original_stat is not None and quarantine_stat is not None:
+            raise WorkspaceError("Original and quarantined worktree paths both exist")
+
+        if original_stat is not None:
+            if not stat.S_ISDIR(original_stat.st_mode) or stat.S_ISLNK(original_stat.st_mode):
+                raise WorkspaceError("Original worktree path is not a real directory")
+            child_fd = os.open(target.name, directory_open_flags(), dir_fd=root_fd)
+            try:
+                opened = os.fstat(child_fd)
+                if (opened.st_dev, opened.st_ino) != (
+                    original_stat.st_dev,
+                    original_stat.st_ino,
+                ):
+                    raise WorkspaceError("Original worktree changed while opening")
+                if expected_dev is not None and opened.st_dev != expected_dev:
+                    raise WorkspaceError("Original worktree device contradicts journal")
+                if expected_ino is not None and opened.st_ino != expected_ino:
+                    raise WorkspaceError("Original worktree inode contradicts journal")
+                if not _registration_matches(
+                    original_registration, branch=branch, head=expected_head
+                ):
+                    raise WorkspaceError("Original worktree registration contradicts journal")
+                os.rename(
+                    target.name,
+                    quarantine_name,
+                    src_dir_fd=root_fd,
+                    dst_dir_fd=root_fd,
+                )
+                claimed = os.stat(quarantine_name, dir_fd=root_fd, follow_symlinks=False)
+                if (claimed.st_dev, claimed.st_ino) != (opened.st_dev, opened.st_ino):
+                    raise WorkspaceError("Worktree changed during atomic quarantine")
+            finally:
+                os.close(child_fd)
+            quarantine_stat = entry(quarantine_name)
+        elif quarantine_stat is not None:
+            if not stat.S_ISDIR(quarantine_stat.st_mode) or stat.S_ISLNK(quarantine_stat.st_mode):
+                raise WorkspaceError("Quarantined worktree is not a real directory")
+            if expected_dev is not None and quarantine_stat.st_dev != expected_dev:
+                raise WorkspaceError("Quarantined worktree device contradicts journal")
+            if expected_ino is not None and quarantine_stat.st_ino != expected_ino:
+                raise WorkspaceError("Quarantined worktree inode contradicts journal")
+            if not (
+                _registration_matches(original_registration, branch=branch, head=expected_head)
+                or _registration_matches(quarantine_registration, branch=branch, head=expected_head)
+            ):
+                raise WorkspaceError("Quarantined worktree registration contradicts journal")
+        else:
+            matching_registration = _registration_matches(
+                original_registration, branch=branch, head=expected_head
+            ) or _registration_matches(quarantine_registration, branch=branch, head=expected_head)
+            if matching_registration:
+                safe_rmtree_child(
+                    root,
+                    quarantine_name,
+                    missing_ok=True,
+                    expected_dev=expected_dev,
+                    expected_ino=expected_ino,
+                )
+                _remove_worktree_admin_strict(
+                    target,
+                    quarantine,
+                    branch=branch,
+                    missing_ok=False,
+                )
+                registrations = _registered_worktrees_strict()
+                if target in registrations or quarantine in registrations:
+                    raise WorkspaceError("Stale worktree registration survived pruning")
+            elif not absent_is_success:
+                raise WorkspaceError("Worktree disappeared before removal was attempted")
+            return
+    finally:
+        os.close(root_fd)
+
+    safe_rmtree_child(
+        root,
+        quarantine_name,
+        missing_ok=True,
+        expected_dev=expected_dev,
+        expected_ino=expected_ino,
+    )
+    _remove_worktree_admin_strict(
+        target,
+        quarantine,
+        branch=branch,
+        missing_ok=False,
+    )
+    registrations = _registered_worktrees_strict()
+    if target in registrations or quarantine in registrations:
+        raise WorkspaceError("Worktree registration survived authenticated cleanup")
+    try:
+        target_mode = os.lstat(target).st_mode
+    except FileNotFoundError:
+        target_mode = None
+    if target_mode is not None:
+        raise WorkspaceError("A replacement appeared at the original worktree path; preserved it")
+    if os.path.lexists(quarantine):
+        raise WorkspaceError("Quarantined worktree path survived cleanup")
+
+
+def _registration_matches(
+    registration: dict[str, str | bool | None] | None,
+    *,
+    branch: str,
+    head: str,
+) -> bool:
+    return bool(
+        registration
+        and registration.get("locked") is False
+        and registration.get("branch") == f"refs/heads/{branch}"
+        and registration.get("head") == head
+    )
+
+
+def _read_admin_file_at(parent_fd: int, name: str) -> str:
+    try:
+        expected = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        if stat.S_ISLNK(expected.st_mode) or not stat.S_ISREG(expected.st_mode):
+            raise WorkspaceError(f"Git worktree admin file {name!r} is unsafe")
+        fd = os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=parent_fd)
+        try:
+            opened = os.fstat(fd)
+            if (opened.st_dev, opened.st_ino) != (expected.st_dev, expected.st_ino):
+                raise WorkspaceError(f"Git worktree admin file {name!r} changed while opening")
+            data = os.read(fd, 16384)
+            if os.read(fd, 1):
+                raise WorkspaceError(f"Git worktree admin file {name!r} is unexpectedly large")
+        finally:
+            os.close(fd)
+    except OSError as exc:
+        raise WorkspaceError(f"Could not safely read Git worktree admin file {name!r}") from exc
+    try:
+        return data.decode().strip()
+    except UnicodeDecodeError as exc:
+        raise WorkspaceError(f"Git worktree admin file {name!r} is not UTF-8") from exc
+
+
+def _worktree_admin_identity_strict(
+    target: Path,
+    quarantine: Path,
+    *,
+    branch: str,
+) -> tuple[Path, str, int, int] | None:
+    """Locate the unique exact Git admin directory for one managed worktree."""
+    from src.workspace.safe_cleanup import (
+        directory_open_flags,
+        open_absolute_directory_no_follow,
+        validate_child_name,
+    )
+
+    raw_common = _run(
+        ["git", "rev-parse", "--git-common-dir"],
+        cwd=_MANAGED_REPO,
+    ).stdout.strip()
+    if not raw_common:
+        raise WorkspaceError("Managed repository returned no Git common directory")
+    common = Path(raw_common)
+    if not common.is_absolute():
+        common = _MANAGED_REPO / common
+    admin_root = _absolute_lexical(common) / "worktrees"
+    try:
+        root_fd = open_absolute_directory_no_follow(admin_root)
+    except RuntimeError as exc:
+        if isinstance(exc.__cause__, FileNotFoundError):
+            return None
+        raise WorkspaceError(f"Git worktree admin root is unsafe: {admin_root}") from exc
+    candidates = {_absolute_lexical(target), _absolute_lexical(quarantine)}
+    matches: list[tuple[Path, str, int, int]] = []
+    try:
+        for name in sorted(os.listdir(root_fd)):
+            try:
+                validate_child_name(name)
+                child_fd = os.open(name, directory_open_flags(), dir_fd=root_fd)
+            except (OSError, RuntimeError):
+                continue
+            try:
+                opened = os.fstat(child_fd)
+                gitdir = _read_admin_file_at(child_fd, "gitdir")
+                head = _read_admin_file_at(child_fd, "HEAD")
+            finally:
+                os.close(child_fd)
+            gitdir_path = Path(gitdir)
+            if not gitdir_path.is_absolute():
+                raise WorkspaceError("Git worktree admin gitdir path is not absolute")
+            if _absolute_lexical(gitdir_path).name != ".git":
+                raise WorkspaceError("Git worktree admin gitdir path is malformed")
+            if _absolute_lexical(gitdir_path).parent not in candidates:
+                continue
+            if head != f"ref: refs/heads/{branch}":
+                raise WorkspaceError("Git worktree admin HEAD contradicts the journal branch")
+            matches.append((admin_root, name, int(opened.st_dev), int(opened.st_ino)))
+    finally:
+        os.close(root_fd)
+    if len(matches) > 1:
+        raise WorkspaceError("Multiple Git admin directories match the managed worktree")
+    return matches[0] if matches else None
+
+
+def _remove_worktree_admin_strict(
+    target: Path,
+    quarantine: Path,
+    *,
+    branch: str,
+    missing_ok: bool,
+) -> None:
+    from src.workspace.safe_cleanup import safe_rmtree_child
+
+    identity = _worktree_admin_identity_strict(
+        target,
+        quarantine,
+        branch=branch,
+    )
+    if identity is None:
+        if missing_ok:
+            return
+        raise WorkspaceError("Managed worktree registration has no exact Git admin directory")
+    root, name, dev, ino = identity
+    try:
+        safe_rmtree_child(
+            root,
+            name,
+            expected_dev=dev,
+            expected_ino=ino,
+        )
+    except RuntimeError as exc:
+        raise WorkspaceError("Could not remove exact Git worktree admin directory") from exc
 
 
 def _is_retryable(e: GitCommandError | GitHubApiError) -> bool:
@@ -507,6 +786,29 @@ def has_uncommitted_changes(paths: list[str] | None = None) -> bool:
     return bool(result.stdout.strip())
 
 
+def changed_paths_strict() -> set[str]:
+    """Return every staged, unstaged, and untracked path in the current checkout."""
+    result = _run(["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"])
+    fields = result.stdout.split("\0")
+    paths: set[str] = set()
+    index = 0
+    while index < len(fields):
+        field = fields[index]
+        index += 1
+        if not field:
+            continue
+        if len(field) < 4 or field[2] != " ":
+            raise WorkspaceError("Could not parse changed-path status")
+        status_code = field[:2]
+        paths.add(field[3:])
+        if "R" in status_code or "C" in status_code:
+            if index >= len(fields) or not fields[index]:
+                raise WorkspaceError("Could not parse renamed changed path")
+            paths.add(fields[index])
+            index += 1
+    return paths
+
+
 def is_ahead_of_remote(branch: str | None = None) -> bool:
     """Check if local branch has unpushed commits.
 
@@ -573,6 +875,48 @@ def current_head_oid_strict(*, cwd: Path | None = None) -> str:
     if not _OID_RE.fullmatch(oid):
         raise WorkspaceError("Local HEAD lookup returned an invalid commit OID")
     return oid
+
+
+def verify_single_commit_strict(
+    oid: str,
+    *,
+    parent_oid: str,
+    allowed_prefix: str,
+    message: str,
+) -> None:
+    """Authenticate one exact locally-created commit before publication."""
+    if not _OID_RE.fullmatch(oid) or not _OID_RE.fullmatch(parent_oid):
+        raise WorkspaceError("Invalid commit OID in ready journal")
+    actual_parent = _run(
+        ["git", "--no-replace-objects", "rev-parse", "--verify", f"{oid}^{{commit}}^"],
+    ).stdout.strip()
+    if actual_parent != parent_oid:
+        raise WorkspaceError("KB publication commit has an unexpected parent")
+    actual_message = _run(
+        ["git", "--no-replace-objects", "show", "-s", "--format=%B", oid],
+    ).stdout.rstrip("\n")
+    if actual_message != message:
+        raise WorkspaceError("KB publication commit has an unexpected message")
+    changed = {
+        path
+        for path in _run(
+            [
+                "git",
+                "--no-replace-objects",
+                "diff-tree",
+                "--no-commit-id",
+                "--name-only",
+                "-r",
+                oid,
+            ]
+        ).stdout.splitlines()
+        if path
+    }
+    if not changed or any(
+        path != allowed_prefix.rstrip("/") and not path.startswith(allowed_prefix)
+        for path in changed
+    ):
+        raise WorkspaceError("KB publication commit changed an unauthorized path")
 
 
 def push_branch_at_expected_oid(
@@ -715,6 +1059,49 @@ def delete_local_branch_strict(name: str) -> None:
     local = _run(["git", "branch", "--list", name], cwd=_MANAGED_REPO)
     if local.stdout.strip():
         raise WorkspaceError(f"Local branch still exists after deletion: {name}")
+
+
+def local_branch_oid_strict(name: str) -> str | None:
+    """Return the exact local branch OID from the managed clone."""
+    result = _run(
+        ["git", "show-ref", "--verify", "--hash", f"refs/heads/{name}"],
+        cwd=_MANAGED_REPO,
+        check=False,
+    )
+    if result.returncode == 1 and not result.stdout.strip():
+        return None
+    if result.returncode != 0:
+        raise WorkspaceError(f"Could not inspect local branch {name!r}")
+    oid = result.stdout.strip()
+    if not _OID_RE.fullmatch(oid):
+        raise WorkspaceError(f"Local branch {name!r} returned an invalid OID")
+    return oid
+
+
+def delete_local_branch_at_expected_oid(
+    name: str,
+    expected_oid: str,
+    *,
+    absent_is_success: bool = False,
+) -> None:
+    """Atomically delete a local ref only if it still names the captured commit."""
+    if not _OID_RE.fullmatch(expected_oid):
+        raise WorkspaceError(f"Invalid expected local OID for branch {name!r}")
+    current = local_branch_oid_strict(name)
+    if current is None:
+        if absent_is_success:
+            return
+        raise WorkspaceError(f"Local branch {name!r} disappeared before deletion was attempted")
+    if current != expected_oid:
+        raise WorkspaceError(
+            f"Local branch {name!r} changed from {expected_oid} to {current}; refusing deletion"
+        )
+    _run(
+        ["git", "update-ref", "-d", f"refs/heads/{name}", expected_oid],
+        cwd=_MANAGED_REPO,
+    )
+    if local_branch_oid_strict(name) is not None:
+        raise WorkspaceError(f"Local branch still exists after exact deletion: {name}")
 
 
 # ── GitHub CLI operations ───────────────────────────────────────────────
@@ -963,6 +1350,26 @@ def verify_pr_ready(
     return details
 
 
+def verify_recorded_pr_object(
+    provenance: dict,
+    *,
+    pr_number: int,
+    branch: str,
+    issue: int | None,
+    slug: str,
+) -> dict:
+    """Verify immutable PR identity without requiring its branch ref to exist."""
+    details = get_pr_details_strict(pr_number)
+    if details.get("state") not in {"OPEN", "CLOSED"}:
+        raise WorkspaceError(f"PR #{pr_number} has unsafe state {details.get('state')!r}")
+    current = pr_provenance(details, issue=issue, slug=slug)
+    if current != provenance:
+        raise WorkspaceError(f"PR #{pr_number} immutable provenance contradicts journal")
+    if provenance.get("head_ref_name") != branch:
+        raise WorkspaceError("Recorded PR branch contradicts terminal journal")
+    return details
+
+
 def check_existing_prs(issue_number: int) -> list[dict]:
     """Best-effort compatibility wrapper for non-coordination call sites."""
     try:
@@ -1148,6 +1555,35 @@ def comment_on_issue_once(issue_number: int, marker: str, body: str) -> None:
     comment_on_issue(issue_number, body)
 
 
+def issue_has_comment_marker_strict(issue_number: int, marker: str) -> bool:
+    """Return whether an issue has a marker-owned comment, failing closed."""
+    import json
+
+    args = [
+        "gh",
+        "issue",
+        "view",
+        str(issue_number),
+        *_gh_repo_flag(),
+        "--json",
+        "comments",
+    ]
+    result = _run(args, retries=_GH_RETRIES)
+    try:
+        data = json.loads(result.stdout or "{}")
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise GitHubApiError(args, 1, "Could not parse issue comments") from exc
+    comments = data.get("comments") if isinstance(data, dict) else None
+    if not isinstance(comments, list):
+        raise GitHubApiError(args, 1, "Unexpected issue comments response")
+    return any(
+        isinstance(comment, dict)
+        and isinstance(comment.get("body"), str)
+        and comment["body"].startswith(marker)
+        for comment in comments
+    )
+
+
 _CLAIM_MARKER = "<!-- ws-claim -->"
 _CLAIM_BODY = f"{_CLAIM_MARKER}\nWorking on it"
 
@@ -1239,6 +1675,11 @@ def unclaim_issue_strict(issue_number: int) -> None:
         )
     if _get_claim_comment_ids_strict(issue_number):
         raise WorkspaceError(f"Issue #{issue_number} still has resolver claim comments")
+
+
+def is_issue_claimed_strict(issue_number: int) -> bool:
+    """Return exact claim state, propagating lookup failures."""
+    return bool(_get_claim_comment_ids_strict(issue_number))
 
 
 def _resolve_repo() -> str:
@@ -1370,6 +1811,36 @@ def add_label_to_issue(issue_number: int, label: str) -> None:
         ["gh", "issue", "edit", str(issue_number), "--add-label", label, *_gh_repo_flag()],
         retries=_GH_RETRIES,
     )
+
+
+def issue_state_and_labels_strict(issue_number: int) -> tuple[str, set[str]]:
+    """Return exact issue state and labels."""
+    import json
+
+    args = [
+        "gh",
+        "issue",
+        "view",
+        str(issue_number),
+        *_gh_repo_flag(),
+        "--json",
+        "state,labels",
+    ]
+    result = _run(args, retries=_GH_RETRIES)
+    try:
+        data = json.loads(result.stdout)
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise GitHubApiError(args, 1, "Could not parse issue state") from exc
+    state = data.get("state") if isinstance(data, dict) else None
+    labels = data.get("labels") if isinstance(data, dict) else None
+    if state not in {"OPEN", "CLOSED"} or not isinstance(labels, list):
+        raise GitHubApiError(args, 1, "Unexpected issue state response")
+    names = {
+        label["name"]
+        for label in labels
+        if isinstance(label, dict) and isinstance(label.get("name"), str)
+    }
+    return state, names
 
 
 def close_issue(issue_number: int) -> None:

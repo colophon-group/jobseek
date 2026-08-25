@@ -116,7 +116,14 @@ def unlink_child_at(
         raise RuntimeError(f"descriptor-anchored cleanup failed: {exc}") from exc
 
 
-def safe_rmtree_child(parent: Path, name: str, *, missing_ok: bool = False) -> bool:
+def safe_rmtree_child(
+    parent: Path,
+    name: str,
+    *,
+    missing_ok: bool = False,
+    expected_dev: int | None = None,
+    expected_ino: int | None = None,
+) -> bool:
     """Safely remove one direct child of ``parent`` without pathname re-resolution."""
     try:
         parent_fd = open_absolute_directory_no_follow(parent)
@@ -131,6 +138,11 @@ def safe_rmtree_child(parent: Path, name: str, *, missing_ok: bool = False) -> b
             raise RuntimeError(f"multiple recursive cleanup claims exist for {name!r}")
         if pending_claims:
             claimed_name = pending_claims[0]
+            claimed = os.stat(claimed_name, dir_fd=parent_fd, follow_symlinks=False)
+            if expected_dev is not None and claimed.st_dev != expected_dev:
+                raise RuntimeError("recursive cleanup claim has an unexpected device")
+            if expected_ino is not None and claimed.st_ino != expected_ino:
+                raise RuntimeError("recursive cleanup claim has an unexpected inode")
             try:
                 os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
             except FileNotFoundError:
@@ -157,6 +169,10 @@ def safe_rmtree_child(parent: Path, name: str, *, missing_ok: bool = False) -> b
             if missing_ok and isinstance(exc.__cause__, FileNotFoundError):
                 return False
             raise
+        if expected_dev is not None and opened.st_dev != expected_dev:
+            raise RuntimeError("cleanup directory has an unexpected device")
+        if expected_ino is not None and opened.st_ino != expected_ino:
+            raise RuntimeError("cleanup directory has an unexpected inode")
         try:
             rmtree_child_at(parent_fd, name, child_fd=child_fd, expected=opened)
         except RuntimeError as exc:
