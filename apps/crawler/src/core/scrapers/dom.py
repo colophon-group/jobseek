@@ -114,7 +114,13 @@ def _scope_html(html: str, config: dict) -> str:
         # injected document metadata and scoped content. Consumers match its
         # attribute and use offset=1, so it never enters extracted output.
         prefixes.append('<p data-document-scope-start="true">scope</p>')
-    return "".join(prefixes) + node.html
+    # HTML parsers intentionally treat noscript descendants as raw text when
+    # scripting is enabled.  Re-wrapping a scoped noscript node therefore
+    # makes its semantic fallback markup inert on the second parse below.
+    # Return the inner markup for that element so job pages which publish an
+    # accessible no-JavaScript fallback remain extractable.
+    scoped_html = node.inner_html if node.tag == "noscript" else node.html
+    return "".join(prefixes) + scoped_html
 
 
 def _check_gone_redirect(final_url: str, pattern: str | None, source_url: str) -> None:

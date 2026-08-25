@@ -862,6 +862,48 @@ class TestDomScraper:
         assert result.title == "Scoped role"
         assert result.description == "<p>Scoped description.</p>"
 
+    def test_scope_extracts_semantic_noscript_fallback(self):
+        from src.core.scrapers.dom import parse_html
+
+        html = """
+        <div class="job-page">
+          <div id="javascript-widget"></div>
+          <noscript>
+            <h1>Apprentice Chef</h1>
+            <h2>Job description</h2>
+            <p>Learn professional kitchen operations.</p>
+            <h2>Work location</h2>
+            <p>Passugg, Switzerland</p>
+          </noscript>
+        </div>
+        """
+        result = parse_html(
+            html,
+            {
+                "scope": ".job-page noscript",
+                "steps": [
+                    {"tag": "h1", "field": "title"},
+                    {
+                        "tag": "h2",
+                        "text": "Job description",
+                        "field": "description",
+                        "html": True,
+                        "stop": "Work location",
+                    },
+                    {
+                        "tag": "h2",
+                        "text": "Work location",
+                        "offset": 1,
+                        "field": "locations",
+                    },
+                ],
+            },
+        )
+
+        assert result.title == "Apprentice Chef"
+        assert "Learn professional kitchen operations" in (result.description or "")
+        assert result.locations == ["Passugg, Switzerland"]
+
     @pytest.mark.parametrize("scope", ["", 123, "#missing"])
     def test_invalid_or_missing_scope_fails_closed(self, scope):
         from src.core.scrapers.dom import parse_html

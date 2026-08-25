@@ -39,6 +39,11 @@ _HOST_CONFIG = {
         "locale": "en-MY",
         "language": "en",
     },
+    "sg.jobstreet.com": {
+        "site_key": "sg",
+        "locale": "en-SG",
+        "language": "en",
+    },
 }
 _COMPANY_PATH_RE = re.compile(
     r"^/companies/[a-z0-9][a-z0-9._-]*-(\d{12,18})(?:/jobs)?/?$",
