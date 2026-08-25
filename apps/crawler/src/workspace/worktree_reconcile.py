@@ -503,16 +503,25 @@ def reconcile_worktrees(
         _classify(item, run=run, path_error=path_error, status_error=status_error)
         if item.classification == "terminal_candidate" and run is not None:
             proof = remote_verifier(run)
+            if proof.ok:
+                proof = _runner_head_proof(
+                    repo_dir=repo_dir,
+                    item=item,
+                    remote_proof=proof,
+                )
             item.remote_proof = asdict(proof)
             if not proof.ok:
                 item.classification = "remote_unverified"
                 item.reason = proof.error or "remote state could not be verified"
                 item.planned_action = "retain"
+            else:
+                item.unique_commits = proof.kind == "local_unique_commits"
 
         if item.classification == "terminal_candidate":
             workspace_artifacts = Path(item.path) / "apps" / "crawler" / ".workspace"
             must_archive = (
                 item.dirty_entries > 0
+                or item.unique_commits
                 or item.state in DEBUG_OUTCOMES
                 or _path_exists_no_follow(workspace_artifacts)
             )
@@ -540,6 +549,7 @@ def reconcile_worktrees(
                             archive_dir=archive_dir,
                             run_id=item.run_id or item.name,
                             item=item,
+                            include_unique_commits=item.unique_commits,
                             max_archive_bytes=max_terminal_bytes,
                         )
                         item.archive_path = str(archive_path)
@@ -934,11 +944,48 @@ def _run_is_active(
     return bool(isinstance(pid, int) and isinstance(run_id, str) and pid_checker(pid, run_id))
 
 
+def _runner_head_proof(
+    *,
+    repo_dir: Path,
+    item: WorktreeItem,
+    remote_proof: RemoteProof,
+) -> RemoteProof:
+    """Require the local runner HEAD to be durable remotely or archiveable."""
+    remote_oid = _remote_head_oid(remote_proof.detail)
+    head_proof = _managed_head_proof(
+        repo_dir=repo_dir,
+        item=item,
+        remote_heads={},
+        exact_remote_oid=remote_oid,
+    )
+    detail = dict(head_proof.detail)
+    detail["remote_verification"] = asdict(remote_proof)
+    return RemoteProof(
+        ok=head_proof.ok,
+        kind=head_proof.kind,
+        detail=detail,
+        error=head_proof.error,
+    )
+
+
+def _remote_head_oid(detail: dict[str, Any]) -> str | None:
+    current: Any = detail
+    for _ in range(3):
+        if not isinstance(current, dict):
+            return None
+        oid = current.get("headRefOid")
+        if isinstance(oid, str) and oid:
+            return oid
+        current = current.get("remote")
+    return None
+
+
 def _managed_head_proof(
     *,
     repo_dir: Path,
     item: WorktreeItem,
     remote_heads: dict[str, str],
+    exact_remote_oid: str | None = None,
 ) -> RemoteProof:
     head = item.head_oid
     if not head:
@@ -980,11 +1027,12 @@ def _managed_head_proof(
             error=(ancestor.stderr or "could not compare managed HEAD to main").strip(),
         )
 
-    if item.branch:
+    remote_oid = exact_remote_oid
+    if remote_oid is None and item.branch:
         remote_oid = remote_heads.get(item.branch)
-        detail["remote_oid"] = remote_oid
-        if remote_oid == head:
-            return RemoteProof(ok=True, kind="exact_remote_branch", detail=detail)
+    detail["remote_oid"] = remote_oid
+    if remote_oid == head:
+        return RemoteProof(ok=True, kind="exact_remote_branch", detail=detail)
 
     tree_comparison = subprocess.run(
         ["git", "diff", "--quiet", "--exit-code", head, main_oid, "--"],

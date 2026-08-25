@@ -1315,6 +1315,11 @@ def test_reconcile_pre_remove_does_not_follow_workspace_symlink(
     (repo / "tracked.txt").write_text("base\n")
     subprocess.run(["git", "add", "tracked.txt"], cwd=repo, check=True)
     subprocess.run(["git", "commit", "-m", "base"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "update-ref", "refs/remotes/origin/main", "HEAD"],
+        cwd=repo,
+        check=True,
+    )
     config.worktrees_dir.mkdir(parents=True)
     worktree = config.worktrees_dir / "terminal"
     subprocess.run(
@@ -1374,6 +1379,11 @@ def test_reconcile_cleanup_stays_anchored_when_workspace_root_is_swapped(
     (repo / "tracked.txt").write_text("base\n")
     subprocess.run(["git", "add", "tracked.txt"], cwd=repo, check=True)
     subprocess.run(["git", "commit", "-m", "base"], cwd=repo, check=True)
+    subprocess.run(
+        ["git", "update-ref", "refs/remotes/origin/main", "HEAD"],
+        cwd=repo,
+        check=True,
+    )
     config.worktrees_dir.mkdir(parents=True)
     worktree = config.worktrees_dir / "terminal-swap"
     subprocess.run(
