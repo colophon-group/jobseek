@@ -1470,6 +1470,176 @@ class TestTerminalCleanupRecovery:
             },
         )
 
+    def _root_aware_workspace(self, tmp_path, monkeypatch):
+        from src import csvtool
+        from src.shared import constants
+
+        managed = tmp_path / "managed-repo"
+        worktree = tmp_path / "managed-worktrees" / "acme"
+        managed_data = managed / "apps" / "crawler" / "data"
+        worktree_data = worktree / "apps" / "crawler" / "data"
+        managed_data.mkdir(parents=True)
+        worktree_data.mkdir(parents=True)
+        _setup_csvs(managed_data)
+        _setup_csvs(
+            worktree_data,
+            companies="acme,Acme,,,,\n",
+            boards="acme,acme-careers,https://acme.test/jobs,greenhouse,,,\n",
+        )
+
+        monkeypatch.setattr(constants, "_repo_root", managed)
+        monkeypatch.setattr(constants, "_workspace_root", managed)
+        monkeypatch.setattr(csvtool, "get_data_dir", constants.get_data_dir)
+        monkeypatch.setattr("src.workspace.git._MANAGED_REPO", managed)
+        monkeypatch.setattr("src.workspace.git._WORKTREES_DIR", worktree.parent)
+        monkeypatch.setattr("src.workspace.filelock._LIFECYCLE_LOCKS_DIR", tmp_path / ".locks")
+
+        item = worktree.stat()
+        workspace = Workspace(
+            slug="acme",
+            branch="add-company/acme",
+            worktree=str(worktree),
+            worktree_identity={
+                "version": 1,
+                "path": str(worktree),
+                "slug": "acme",
+                "branch": "add-company/acme",
+                "head": TEST_HEAD_OID,
+                "dev": int(item.st_dev),
+                "ino": int(item.st_ino),
+                "issue": None,
+                "pr": None,
+                "pr_provenance": {},
+            },
+        )
+        save_workspace(workspace)
+        set_active_slug("acme")
+        return SimpleNamespace(
+            managed=managed,
+            managed_data=managed_data,
+            worktree=worktree,
+            worktree_data=worktree_data,
+            workspace=workspace,
+            registration={"present": True},
+            local={"oid": TEST_HEAD_OID},
+        )
+
+    @staticmethod
+    def _patch_root_aware_git(monkeypatch, setup):
+        monkeypatch.setattr(
+            "src.workspace.git._registered_worktrees_strict",
+            lambda: (
+                {
+                    setup.worktree: {
+                        "head": TEST_HEAD_OID,
+                        "branch": "refs/heads/add-company/acme",
+                        "locked": False,
+                    }
+                }
+                if setup.registration["present"]
+                else {}
+            ),
+        )
+        monkeypatch.setattr("src.workspace.git.remote_branch_oid_strict", lambda *_: None)
+        monkeypatch.setattr(
+            "src.workspace.git.local_branch_oid_strict", lambda *_: setup.local["oid"]
+        )
+        monkeypatch.setattr(
+            "src.workspace.git.delete_local_branch_at_expected_oid",
+            lambda *_args, **_kwargs: setup.local.__setitem__("oid", None),
+        )
+
+    def test_add_company_data_is_removed_from_worktree_before_root_pivot(
+        self, tmp_path, monkeypatch
+    ):
+        import shutil
+
+        from src.shared.constants import get_repo_root, set_repo_root
+        from src.workspace.commands import lifecycle
+
+        setup = self._root_aware_workspace(tmp_path, monkeypatch)
+        self._patch_root_aware_git(monkeypatch, setup)
+        set_repo_root(setup.worktree)
+        from src import csvtool
+
+        assert get_repo_root() == setup.worktree
+        assert lifecycle.get_data_dir() == setup.worktree_data
+        assert csvtool.get_data_dir() == setup.worktree_data
+        removal_observation = {}
+
+        def remove(path, *_args, **_kwargs):
+            removal_observation["repo_root"] = get_repo_root()
+            removal_observation["company_present"] = (
+                "acme,Acme" in (setup.worktree_data / "companies.csv").read_text()
+            )
+            journal, _ = lifecycle._load_terminal_journal("acme")
+            removal_observation["data_attempt"] = journal["attempts"]["data_remove"]
+            setup.registration["present"] = False
+            shutil.rmtree(path)
+
+        monkeypatch.setattr("src.workspace.git.remove_authenticated_worktree", remove)
+
+        lifecycle._run_terminal_cleanup(setup.workspace, local=False)
+
+        assert removal_observation == {
+            "repo_root": setup.worktree,
+            "company_present": False,
+            "data_attempt": True,
+        }
+        assert "acme" not in (setup.managed_data / "companies.csv").read_text()
+        receipt, completed = lifecycle._load_terminal_journal("acme")
+        assert receipt is not None and completed is True
+        assert receipt["data_initially_present"] is True
+        assert receipt["attempts"]["data_remove"] is True
+        assert receipt["attempts"]["worktree_remove"] is True
+
+    def test_real_main_recovers_only_del_after_worktree_removal_crash(self, tmp_path, monkeypatch):
+        import shutil
+
+        from src.workspace import cli
+        from src.workspace.commands import lifecycle
+
+        setup = self._root_aware_workspace(tmp_path, monkeypatch)
+        self._patch_root_aware_git(monkeypatch, setup)
+        monkeypatch.setattr(cli, "_detect_repo_root", lambda: setup.managed)
+        removal_calls = {"count": 0}
+
+        def remove(path, *_args, absent_is_success=False, **_kwargs):
+            removal_calls["count"] += 1
+            if setup.registration["present"]:
+                setup.registration["present"] = False
+                shutil.rmtree(path)
+                raise RuntimeError("crash-after-worktree-remove")
+            assert absent_is_success is True
+
+        monkeypatch.setattr("src.workspace.git.remove_authenticated_worktree", remove)
+        monkeypatch.setattr("sys.argv", ["ws", "del", "acme"])
+
+        with pytest.raises(RuntimeError, match="crash-after-worktree-remove"):
+            cli.main()
+
+        journal, completed = lifecycle._load_terminal_journal("acme")
+        assert journal is not None and completed is False
+        assert journal["attempts"]["data_remove"] is True
+        assert journal["attempts"]["worktree_remove"] is True
+        assert not setup.worktree.exists()
+        assert workspace_exists("acme")
+        assert get_active_slug() == "acme"
+
+        monkeypatch.setattr("sys.argv", ["ws", "status"])
+        with pytest.raises(WorkspaceError, match="worktree disappeared"):
+            cli.main()
+        assert workspace_exists("acme")
+
+        monkeypatch.setattr("sys.argv", ["ws", "del", "acme"])
+        cli.main()
+
+        assert removal_calls["count"] == 2
+        assert not workspace_exists("acme")
+        assert get_active_slug() is None
+        receipt, completed = lifecycle._load_terminal_journal("acme")
+        assert receipt is not None and completed is True
+
     @pytest.mark.parametrize(
         "failing",
         ["remote", "pr", "issue_close", "local", "data", "workspace", "claim"],
@@ -5349,6 +5519,61 @@ class TestCliStartupWorktreeAuthentication:
 
         with pytest.raises(WorkspaceError, match="replacement filesystem entry"):
             _pivot_to_worktree()
+
+        pivot.assert_not_called()
+        mutate.assert_not_called()
+
+    def test_terminal_delete_recovery_rejects_replaced_identity_before_pivot(
+        self, tmp_path, monkeypatch
+    ):
+        from src.workspace import cli
+        from src.workspace.commands import lifecycle
+
+        _patch_all(monkeypatch, tmp_path)
+        managed_worktrees = tmp_path / "managed-worktrees"
+        managed_worktree = managed_worktrees / "test"
+        managed_worktree.mkdir(parents=True)
+        item = managed_worktree.stat()
+        ws_obj = Workspace(
+            slug="test",
+            branch="add-company/test",
+            worktree=str(managed_worktree),
+            worktree_identity={
+                "version": 1,
+                "path": str(managed_worktree),
+                "slug": "test",
+                "branch": "add-company/test",
+                "head": TEST_HEAD_OID,
+                "dev": int(item.st_dev),
+                "ino": int(item.st_ino),
+                "issue": None,
+                "pr": None,
+                "pr_provenance": {},
+            },
+        )
+        save_workspace(ws_obj)
+        set_active_slug("test")
+        monkeypatch.setattr("src.workspace.git.worktrees_dir", lambda: managed_worktrees)
+        monkeypatch.setattr("src.workspace.git.remote_branch_oid_strict", lambda *_: None)
+        monkeypatch.setattr("src.workspace.git.local_branch_oid_strict", lambda *_: TEST_HEAD_OID)
+        monkeypatch.setattr(
+            "src.workspace.git.authenticate_managed_worktree", lambda *_args, **_kwargs: True
+        )
+        journal = lifecycle._initialize_terminal_journal(ws_obj, local=False, outcome=None)
+        lifecycle._set_terminal_attempt(journal, "worktree_remove")
+
+        pivot = MagicMock()
+        mutate = MagicMock()
+        monkeypatch.setattr("src.shared.constants.get_repo_root", lambda: tmp_path / "outer")
+        monkeypatch.setattr("src.shared.constants.set_repo_root", pivot)
+        monkeypatch.setattr(
+            "src.workspace.git.authenticate_managed_worktree",
+            MagicMock(side_effect=WorkspaceError("replacement filesystem entry")),
+        )
+        monkeypatch.setattr("src.workspace.git._run", mutate)
+
+        with pytest.raises(WorkspaceError, match="replacement filesystem entry"):
+            cli._pivot_to_worktree(["del", "test"])
 
         pivot.assert_not_called()
         mutate.assert_not_called()

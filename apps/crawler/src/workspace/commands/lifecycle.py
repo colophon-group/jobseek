@@ -1738,6 +1738,67 @@ def _cross_validate_terminal_journal(
             raise WorkspaceError("Workspace PR provenance contradicts terminal journal")
 
 
+def authenticated_terminal_recovery_root(ws: Workspace) -> Path | None:
+    """Return the only safe startup root for an interrupted ``ws del``.
+
+    Normal startup must authenticate the live persisted worktree.  The one
+    legitimate exception is a pending terminal receipt that recorded the
+    removal attempt while the exact persisted checkout still authenticated.
+    In that state the checkout may either still be present (the mutation did
+    not complete) or be exactly absent (the mutation completed before the
+    process died).  Replacements and contradictory receipts still fail
+    closed.
+    """
+    from src.workspace import git
+    from src.workspace.worktree_auth import validate_persisted_worktree_identity
+
+    journal, completed = _load_terminal_journal(ws.slug, issue=ws.issue)
+    if (
+        journal is None
+        or completed
+        or journal["outcome"] is not None
+        or not journal["attempts"]["worktree_remove"]
+    ):
+        return None
+
+    _cross_validate_terminal_journal(journal, ws, local=False, outcome=None)
+    if _active_pointer_entries(ws.slug) != journal["active_entries"]:
+        raise WorkspaceError("Terminal recovery active pointer contradicts its journal")
+    canonical = validate_persisted_worktree_identity(ws)
+    identity = ws.worktree_identity
+    if (
+        journal["worktree"] != str(canonical)
+        or journal["worktree_head"] != identity["head"]
+        or journal["worktree_dev"] != identity["dev"]
+        or journal["worktree_ino"] != identity["ino"]
+    ):
+        raise WorkspaceError("Terminal recovery contradicts persisted worktree identity")
+    if (
+        journal["data_cleanup_required"]
+        and journal["data_initially_present"]
+        and not journal["attempts"]["data_remove"]
+    ):
+        raise WorkspaceError("Terminal recovery worktree removal preceded data cleanup")
+
+    present = git.authenticate_managed_worktree(
+        canonical,
+        journal["branch"],
+        journal["worktree_head"],
+        expected_dev=journal["worktree_dev"],
+        expected_ino=journal["worktree_ino"],
+    )
+    if present:
+        if git.local_branch_oid_strict(journal["branch"]) != journal["local_branch_oid"]:
+            raise WorkspaceError("Terminal recovery local branch contradicts live worktree")
+        return canonical
+    observed_local = git.local_branch_oid_strict(journal["branch"])
+    if observed_local not in {journal["local_branch_oid"], None}:
+        raise WorkspaceError("Terminal recovery local branch changed after journaling")
+    if observed_local is None and not journal["attempts"]["local_branch_remove"]:
+        raise WorkspaceError("Terminal recovery local branch disappeared without an attempt")
+    return Path(os.path.abspath(str(git.managed_repo())))
+
+
 def _run_terminal_cleanup(
     ws: Workspace,
     *,
@@ -1827,6 +1888,26 @@ def _run_terminal_cleanup(
         if not journal["attempts"]["pr_close"] and not journal["attempts"]["remote_delete"]:
             raise WorkspaceError("PR closed without a recorded terminal attempt")
 
+    # The authenticated feature worktree is the authority for unmerged
+    # add-company CSV rows.  Journal and complete their removal before the
+    # worktree itself can disappear; a restart from managed main can then
+    # interpret absence only through the durable data_remove attempt.
+    company_present, board_present = _company_registry_presence(journal["slug"])
+    if journal["data_cleanup_required"]:
+        if company_present or board_present:
+            if completed or not journal["data_initially_present"]:
+                raise WorkspaceError("Company registry rows appeared after terminal journaling")
+            _set_terminal_attempt(journal, "data_remove")
+            if company_present:
+                company_del(journal["slug"])
+            elif board_present:
+                board_del(journal["slug"])
+            company_present, board_present = _company_registry_presence(journal["slug"])
+        elif journal["data_initially_present"] and not journal["attempts"]["data_remove"]:
+            raise WorkspaceError("Company registry rows disappeared without a recorded attempt")
+        if company_present or board_present:
+            raise WorkspaceError("Company registry rows survived terminal cleanup")
+
     worktree = journal["worktree"]
     if not local and worktree is not None:
         if completed:
@@ -1871,22 +1952,6 @@ def _run_terminal_cleanup(
                 raise WorkspaceError("Local branch disappeared without an exact deletion attempt")
         else:
             raise WorkspaceError("Local branch changed after terminal journaling")
-
-    company_present, board_present = _company_registry_presence(journal["slug"])
-    if journal["data_cleanup_required"]:
-        if company_present or board_present:
-            if completed or not journal["data_initially_present"]:
-                raise WorkspaceError("Company registry rows appeared after terminal journaling")
-            _set_terminal_attempt(journal, "data_remove")
-            if company_present:
-                company_del(journal["slug"])
-            elif board_present:
-                board_del(journal["slug"])
-            company_present, board_present = _company_registry_presence(journal["slug"])
-        elif journal["data_initially_present"] and not journal["attempts"]["data_remove"]:
-            raise WorkspaceError("Company registry rows disappeared without a recorded attempt")
-        if company_present or board_present:
-            raise WorkspaceError("Company registry rows survived terminal cleanup")
 
     if completed:
         if _active_pointer_entries(journal["slug"]):
