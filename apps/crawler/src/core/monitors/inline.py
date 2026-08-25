@@ -45,6 +45,7 @@ _MAX_VALID_THROUGH_FORMAT_LENGTH = 128
 _MAX_EMPTY_TEXT_LENGTH = 512
 _MAX_EMPTY_SELECTOR_LENGTH = 256
 _MAX_ITEM_BOUNDARY_TAG_LENGTH = 32
+_MAX_SECTION_REGEX_LENGTH = 2_048
 _HTML_TAG_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 _ORDINAL_DAY_SUFFIX_RE = re.compile(r"(?<=\d)(?:st|nd|rd|th)\b", re.IGNORECASE)
 
@@ -121,6 +122,104 @@ def _validated_item_boundary_tag(value: object) -> str | None:
     ):
         raise ValueError("inline item_boundary_tag must be a valid HTML tag name")
     return value.casefold()
+
+
+def _validated_section_boundary(value: object, *, name: str) -> dict | None:
+    """Validate one fail-closed boundary for a section of an inline page."""
+    if value is None:
+        return None
+    if not isinstance(value, dict) or not value or set(value) - {
+        "tag",
+        "text",
+        "attr",
+        "match_regex",
+    }:
+        raise ValueError(
+            f"inline {name} must contain only tag, text, attr, or match_regex"
+        )
+    if not any(value.get(key) is not None for key in ("tag", "text", "attr", "match_regex")):
+        raise ValueError(f"inline {name} must configure at least one matcher")
+    tag = value.get("tag")
+    if tag is not None and (
+        not isinstance(tag, str)
+        or len(tag) > _MAX_ITEM_BOUNDARY_TAG_LENGTH
+        or _HTML_TAG_RE.fullmatch(tag.casefold()) is None
+    ):
+        raise ValueError(f"inline {name}.tag must be a valid HTML tag name")
+    for key in ("text", "attr"):
+        configured = value.get(key)
+        if configured is not None and (
+            not isinstance(configured, str)
+            or not configured.strip()
+            or len(configured) > 512
+            or "\x00" in configured
+        ):
+            raise ValueError(f"inline {name}.{key} must be non-empty bounded text")
+    pattern = value.get("match_regex")
+    if pattern is not None:
+        if not isinstance(pattern, str) or not pattern or len(pattern) > _MAX_SECTION_REGEX_LENGTH:
+            raise ValueError(f"inline {name}.match_regex must be a non-empty bounded string")
+        try:
+            re.compile(pattern)
+        except re.error as exc:
+            raise ValueError(f"inline {name}.match_regex is invalid: {exc}") from exc
+    return dict(value)
+
+
+def _boundary_matches(element: dict, boundary: dict) -> bool:
+    """Return whether a flattened element matches a configured section boundary."""
+    tag = boundary.get("tag")
+    if tag is not None and element["tag"] != tag.casefold():
+        return False
+    text = boundary.get("text")
+    if text is not None and text.casefold() not in element["text"].casefold():
+        return False
+    pattern = boundary.get("match_regex")
+    if pattern is not None and re.search(pattern, element["text"], re.DOTALL) is None:
+        return False
+    attr = boundary.get("attr")
+    if attr is not None:
+        if "=" in attr:
+            key, expected = attr.split("=", 1)
+            if key not in element["attrs"] or expected not in element["attrs"][key]:
+                return False
+        elif attr not in element["attrs"]:
+            return False
+    return True
+
+
+def _scope_to_section(
+    elements: list[dict],
+    start_boundary: dict | None,
+    end_boundary: dict | None,
+) -> list[dict]:
+    """Return elements strictly between two authoritative page markers."""
+    if (start_boundary is None) != (end_boundary is None):
+        raise ValueError("inline section_start and section_end must be configured together")
+    if start_boundary is None:
+        return elements
+
+    start = next(
+        (
+            index
+            for index, element in enumerate(elements)
+            if _boundary_matches(element, start_boundary)
+        ),
+        None,
+    )
+    if start is None:
+        raise ValueError("inline section_start did not match the page")
+    end = next(
+        (
+            index
+            for index, element in enumerate(elements[start + 1 :], start + 1)
+            if _boundary_matches(element, end_boundary)
+        ),
+        None,
+    )
+    if end is None:
+        raise ValueError("inline section_end did not match after section_start")
+    return elements[start + 1 : end]
 
 
 def _walk_bounded_item(
@@ -353,6 +452,8 @@ async def discover(
         empty_selector — CSS selector that scopes a visibly active empty-state element
         empty_text — authoritative text required inside empty_selector
         item_boundary_tag — optional tag that starts and bounds each posting
+        section_start — first page-section boundary (exclusive; requires section_end)
+        section_end — last page-section boundary (exclusive; requires section_start)
         preserve_single_location — keep an extracted location string intact (default: false)
         defaults   — default field values applied to all jobs
         defaults_by_title — per-title defaults applied to missing fields
@@ -383,6 +484,8 @@ async def discover(
     exclude_titles = set(metadata.get("exclude_titles") or [])
     exclude_title_regex = _compile_exclude_title_regex(metadata.get("exclude_title_regex"))
     item_boundary_tag = _validated_item_boundary_tag(metadata.get("item_boundary_tag"))
+    section_start = _validated_section_boundary(metadata.get("section_start"), name="section_start")
+    section_end = _validated_section_boundary(metadata.get("section_end"), name="section_end")
     preserve_single_location = metadata.get("preserve_single_location", False)
     if not isinstance(preserve_single_location, bool):
         raise ValueError("inline preserve_single_location must be a boolean")
@@ -397,6 +500,7 @@ async def discover(
     if empty_text is not None and _matches_explicit_empty(html, empty_selector, empty_text):
         log.info("inline.explicit_empty", url=board_url)
         return []
+    elements = _scope_to_section(elements, section_start, section_end)
     if not elements:
         if empty_text is not None:
             raise ValueError(

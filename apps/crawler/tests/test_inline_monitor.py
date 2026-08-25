@@ -294,6 +294,66 @@ async def test_discover_static():
 
 
 @pytest.mark.asyncio
+async def test_discover_scopes_jobs_between_authoritative_section_markers():
+    html = """
+    <button>Deadline, 30 April</button>
+    <h3>Old role</h3><p>Old description.</p>
+    <button data-cycle="november">Deadline, 1st November</button>
+    <h3>Current role</h3><p>Current description.</p>
+    <p><strong>More positions may still be posted!</strong></p>
+    <h3>Unrelated role</h3><p>Unrelated description.</p>
+    """
+    board = {
+        "board_url": "https://example.com/open-positions",
+        "metadata": {
+            "section_start": {
+                "text": "Deadline, 1st November",
+            },
+            "section_end": {"tag": "p", "match_regex": r"^More positions"},
+            "steps": [
+                {"tag": "h3", "field": "title"},
+                {"tag": "p", "field": "description", "stop_tag": "h3"},
+            ],
+        },
+    }
+
+    jobs = await discover(board, _FakeClient(html))
+
+    assert [(job.title, job.description) for job in jobs] == [
+        ("Current role", "Current description.")
+    ]
+
+
+@pytest.mark.asyncio
+async def test_discover_section_markers_fail_closed_when_page_drifts():
+    board = {
+        "board_url": "https://example.com/open-positions",
+        "metadata": {
+            "section_start": {"tag": "h2", "text": "Open roles"},
+            "section_end": {"tag": "h2", "text": "Past roles"},
+            "steps": [{"tag": "h3", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="section_end did not match"):
+        await discover(board, _FakeClient("<h2>Open roles</h2><h3>Engineer</h3>"))
+
+
+@pytest.mark.asyncio
+async def test_discover_rejects_one_sided_section_scope():
+    board = {
+        "board_url": "https://example.com/open-positions",
+        "metadata": {
+            "section_start": {"tag": "h2", "text": "Open roles"},
+            "steps": [{"tag": "h3", "field": "title"}],
+        },
+    }
+
+    with pytest.raises(ValueError, match="must be configured together"):
+        await discover(board, _FakeClient("<h2>Open roles</h2><h3>Engineer</h3>"))
+
+
+@pytest.mark.asyncio
 async def test_discover_can_preserve_one_compound_location_string():
     board = {
         "board_url": "https://example.com/jobs",

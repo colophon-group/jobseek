@@ -1637,7 +1637,29 @@ _RichRowsConfig = tuple[
     tuple[str, ...],
     tuple[tuple[str, str], ...],
     bool,
+    tuple[str, str | None] | None,
+    tuple[str, str | None] | None,
 ]
+
+
+def _validated_rich_rows_boundary(value: object, *, name: str) -> tuple[str, str | None] | None:
+    """Validate one authoritative DOM boundary for static rich rows."""
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) - {"selector", "text"}:
+        raise ValueError(f"DOM monitor rich_rows.{name} must contain selector and optional text")
+    selector = _validate_css_selector(value.get("selector"), name=f"rich_rows.{name}.selector")
+    if selector is None:
+        raise ValueError(f"DOM monitor rich_rows.{name} requires selector")
+    marker_text = value.get("text")
+    if marker_text is not None and (
+        not isinstance(marker_text, str)
+        or not marker_text.strip()
+        or len(marker_text) > 512
+        or "\x00" in marker_text
+    ):
+        raise ValueError(f"DOM monitor rich_rows.{name}.text must be non-empty bounded text")
+    return selector, " ".join(marker_text.split()) if marker_text is not None else None
 
 
 def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
@@ -1653,6 +1675,8 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         "location_selectors",
         "metadata_selectors",
         "allow_missing_locations",
+        "section_start",
+        "section_end",
     }:
         raise ValueError("DOM monitor rich_rows must be a bounded mapping")
     row_selector = _validate_css_selector(value.get("row_selector"), name="rich_rows.row_selector")
@@ -1714,6 +1738,14 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
     allow_missing_locations = value.get("allow_missing_locations", False)
     if not isinstance(allow_missing_locations, bool):
         raise ValueError("DOM monitor rich_rows.allow_missing_locations must be a boolean")
+    section_start = _validated_rich_rows_boundary(
+        value.get("section_start"), name="section_start"
+    )
+    section_end = _validated_rich_rows_boundary(value.get("section_end"), name="section_end")
+    if (section_start is None) != (section_end is None):
+        raise ValueError(
+            "DOM monitor rich_rows.section_start and section_end must be configured together"
+        )
     return (
         row_selector,
         link_selector,
@@ -1723,7 +1755,40 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         location_selectors,
         metadata_selectors,
         allow_missing_locations,
+        section_start,
+        section_end,
     )
+
+
+def _rows_between_boundaries(tree, rows: list, start, end) -> list:
+    """Limit selected rows to nodes strictly between two document markers."""
+    if start is None:
+        return rows
+    ordered = list(tree.root.traverse())
+    positions = {node.mem_id: index for index, node in enumerate(ordered)}
+
+    def boundary_position(boundary, *, after: int = -1) -> int | None:
+        selector, expected_text = boundary
+        for node in tree.css(selector):
+            position = positions.get(node.mem_id)
+            if position is None or position <= after:
+                continue
+            text = " ".join(node.text(separator=" ", strip=True).split())
+            if expected_text is None or expected_text.casefold() in text.casefold():
+                return position
+        return None
+
+    start_position = boundary_position(start)
+    if start_position is None:
+        raise ValueError("DOM monitor rich_rows.section_start did not match the page")
+    end_position = boundary_position(end, after=start_position)
+    if end_position is None:
+        raise ValueError("DOM monitor rich_rows.section_end did not match after section_start")
+    return [
+        row
+        for row in rows
+        if start_position < positions.get(row.mem_id, -1) < end_position
+    ]
 
 
 def _extract_rich_rows_static(
@@ -1745,6 +1810,8 @@ def _extract_rich_rows_static(
         location_selectors,
         metadata_selectors,
         allow_missing_locations,
+        section_start,
+        section_end,
     ) = config
     tree = LexborHTMLParser(html)
     advertised_total: int | None = None
@@ -1763,6 +1830,7 @@ def _extract_rich_rows_static(
                 f"DOM monitor rich_rows advertised total exceeds the {MAX_URLS} URL cap"
             )
     rows = tree.css(row_selector)
+    rows = _rows_between_boundaries(tree, rows, section_start, section_end)
     if not rows:
         if allow_empty and advertised_total in {None, 0}:
             return []

@@ -1521,6 +1521,48 @@ class TestRichRowsStatic:
             ("https://example.com/jobs/engineer", "Engineer", ["Winterthur, Switzerland"])
         ]
 
+    def test_extracts_only_rows_between_named_section_markers(self):
+        html = """
+        <h2>Past roles</h2>
+        <a class="job" href="/jobs/old">Old role</a>
+        <h2>Current roles</h2>
+        <a class="job" href="/jobs/current">Current role</a>
+        <h2 id="students">Student projects</h2>
+        <a class="job" href="/jobs/thesis">Thesis project</a>
+        """
+        config = _validated_rich_rows(
+            {
+                "row_selector": "a.job[href]",
+                "section_start": {"selector": "h2", "text": "Current roles"},
+                "section_end": {"selector": "h2#students"},
+            }
+        )
+
+        assert config is not None
+        jobs = _extract_rich_rows_static(html, "https://example.com/careers", config, None)
+
+        assert [(job.url, job.title) for job in jobs] == [
+            ("https://example.com/jobs/current", "Current role")
+        ]
+
+    def test_section_boundaries_fail_closed_when_markup_drifts(self):
+        config = _validated_rich_rows(
+            {
+                "row_selector": "a.job[href]",
+                "section_start": {"selector": "h2", "text": "Current roles"},
+                "section_end": {"selector": "h2", "text": "Student projects"},
+            }
+        )
+
+        assert config is not None
+        with pytest.raises(ValueError, match="section_end did not match"):
+            _extract_rich_rows_static(
+                '<h2>Current roles</h2><a class="job" href="/jobs/current">Current</a>',
+                "https://example.com/careers",
+                config,
+                None,
+            )
+
     def test_extracts_metadata_for_semantic_job_filtering(self):
         html = """
         <div class="job">
@@ -1597,6 +1639,15 @@ class TestRichRowsStatic:
             {"row_selector": ".job", "metadata_selectors": ""},
             {"row_selector": ".job", "metadata_selectors": 0},
             {"row_selector": ".job", "metadata_selectors": False},
+            {
+                "row_selector": ".job",
+                "section_start": {"selector": "h2"},
+            },
+            {
+                "row_selector": ".job",
+                "section_start": {"selector": "h2", "unexpected": True},
+                "section_end": {"selector": "footer"},
+            },
         ],
     )
     def test_rejects_invalid_configs(self, config):
