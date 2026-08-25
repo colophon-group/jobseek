@@ -26,6 +26,8 @@ from typing import Any, Protocol
 from src.workspace.safe_cleanup import (
     directory_open_flags,
     open_absolute_directory_no_follow,
+    recover_pending_rmtree_claims,
+    unlink_child_at,
     validate_child_name,
 )
 
@@ -85,6 +87,36 @@ class WorktreeItem:
     source: str = "runner"
     head_oid: str | None = None
     unique_commits: bool = False
+
+
+class _BoundedArchiveWriter:
+    """File proxy that prevents a staging archive from exceeding its durable budget."""
+
+    def __init__(self, fileobj: Any, *, max_bytes: int) -> None:
+        self._fileobj = fileobj
+        self._max_bytes = max_bytes
+
+    def write(self, data: bytes) -> int:
+        if self._fileobj.tell() + len(data) > self._max_bytes:
+            raise RuntimeError(
+                f"worktree quarantine archive exceeded {self._max_bytes} byte staging budget"
+            )
+        return int(self._fileobj.write(data))
+
+    def read(self, size: int = -1) -> bytes:
+        return bytes(self._fileobj.read(size))
+
+    def seek(self, offset: int, whence: int = os.SEEK_SET) -> int:
+        return int(self._fileobj.seek(offset, whence))
+
+    def tell(self) -> int:
+        return int(self._fileobj.tell())
+
+    def flush(self) -> None:
+        self._fileobj.flush()
+
+    def close(self) -> None:
+        self.flush()
 
 
 @dataclass
@@ -398,6 +430,8 @@ def reconcile_worktrees(
     """Classify and optionally retire terminal runner worktrees."""
     del root  # Kept explicit in the API because the caller's policy is root-scoped.
     root_resolved = _prepare_worktree_root(worktrees_dir)
+    if apply:
+        recover_pending_rmtree_claims(worktrees_dir)
     paths = _worktree_entries(worktrees_dir)
     selected = {_absolute_path(path) for path in only_paths} if only_paths else None
     if selected is not None:
@@ -611,6 +645,8 @@ def reconcile_managed_worktrees(
     """
     contexts = context_by_path or {}
     root_resolved = _prepare_worktree_root(worktrees_dir)
+    if apply:
+        recover_pending_rmtree_claims(worktrees_dir)
     paths = _worktree_entries(worktrees_dir)
     if not paths:
         return _empty_report(
@@ -1077,6 +1113,88 @@ def _directory_bytes(root: Path) -> int:
         os.close(root_fd)
 
 
+def _regular_file_bytes_no_follow(path: Path) -> int:
+    try:
+        parent_fd = open_absolute_directory_no_follow(path.parent)
+    except RuntimeError as exc:
+        if isinstance(exc.__cause__, FileNotFoundError):
+            return 0
+        raise
+    file_fd: int | None = None
+    try:
+        try:
+            expected = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            return 0
+        if not stat.S_ISREG(expected.st_mode):
+            raise RuntimeError("worktree quarantine destination is not a regular file")
+        file_fd = os.open(
+            path.name,
+            os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+            dir_fd=parent_fd,
+        )
+        opened = os.fstat(file_fd)
+        current = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+        if not _same_inode(opened, expected) or not _same_inode(current, expected):
+            raise RuntimeError("worktree quarantine destination changed during accounting")
+        return int(opened.st_size)
+    except OSError as exc:
+        raise RuntimeError(f"could not safely account quarantine destination: {exc}") from exc
+    finally:
+        if file_fd is not None:
+            os.close(file_fd)
+        os.close(parent_fd)
+
+
+def _archive_staging_pid(name: str) -> int | None:
+    try:
+        prefix, raw_pid, suffix = name.rsplit(".", 2)
+    except ValueError:
+        return None
+    if not prefix.startswith(".") or suffix not in {"tmp", "bundle"} or not raw_pid.isdigit():
+        return None
+    pid = int(raw_pid)
+    return pid if pid > 0 else None
+
+
+def _pid_is_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _prune_stale_archive_staging(archive_dir: Path) -> int:
+    """Remove only owned staging files whose creating process no longer exists."""
+    try:
+        archive_fd = open_absolute_directory_no_follow(archive_dir)
+    except RuntimeError as exc:
+        if isinstance(exc.__cause__, FileNotFoundError):
+            return 0
+        raise
+    reclaimed = 0
+    try:
+        for name in os.listdir(archive_fd):
+            pid = _archive_staging_pid(name)
+            if pid is None or pid == os.getpid() or _pid_is_alive(pid):
+                continue
+            validate_child_name(name)
+            try:
+                expected = os.stat(name, dir_fd=archive_fd, follow_symlinks=False)
+            except OSError as exc:
+                raise RuntimeError(f"archive staging changed before cleanup: {exc}") from exc
+            if not stat.S_ISREG(expected.st_mode):
+                raise RuntimeError(f"archive staging entry is not a regular file: {name}")
+            unlink_child_at(archive_fd, name, expected=expected)
+            reclaimed += int(expected.st_size)
+    finally:
+        os.close(archive_fd)
+    return reclaimed
+
+
 def _directory_bytes_at(directory_fd: int, directory_stat: os.stat_result) -> int:
     total = directory_stat.st_size
     try:
@@ -1127,30 +1245,33 @@ def _archive_worktree(
     include_unique_commits: bool = False,
     max_archive_bytes: int,
 ) -> tuple[Path, str]:
-    projected_bytes = max(1, item.bytes + 1024 * 1024)
-    if include_unique_commits:
-        projected_bytes += _unique_commit_object_bytes(worktree)
-    current_archive_bytes = _directory_bytes(archive_dir)
-    if current_archive_bytes + projected_bytes > max_archive_bytes:
-        raise RuntimeError(
-            "worktree quarantine capacity gate rejected archive "
-            f"({current_archive_bytes} existing + {projected_bytes} projected > "
-            f"{max_archive_bytes} bytes)"
-        )
-
-    archive_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
-    os.chmod(archive_dir, 0o700)
     safe_run_id = "".join(char if char.isalnum() or char in "-_." else "_" for char in run_id)
     destination = archive_dir / f"{safe_run_id}.tar.gz"
-    temporary = archive_dir / f".{safe_run_id}.{os.getpid()}.tmp"
-    bundle_path = archive_dir / f".{safe_run_id}.{os.getpid()}.bundle"
-
     patch = subprocess.run(
         ["git", "diff", "--binary", "HEAD"],
         cwd=worktree,
         capture_output=True,
         check=True,
     ).stdout
+    projected_bytes = max(1, item.bytes + len(patch) + 1024 * 1024)
+    if include_unique_commits:
+        projected_bytes += _unique_commit_object_bytes(worktree)
+    _prune_stale_archive_staging(archive_dir)
+    current_archive_bytes = _directory_bytes(archive_dir)
+    replaced_destination_bytes = _regular_file_bytes_no_follow(destination)
+    retained_archive_bytes = max(0, current_archive_bytes - replaced_destination_bytes)
+    if retained_archive_bytes + projected_bytes > max_archive_bytes:
+        raise RuntimeError(
+            "worktree quarantine capacity gate rejected archive "
+            f"({retained_archive_bytes} retained + {projected_bytes} projected > "
+            f"{max_archive_bytes} bytes)"
+        )
+
+    archive_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    os.chmod(archive_dir, 0o700)
+    temporary = archive_dir / f".{safe_run_id}.{os.getpid()}.tmp"
+    bundle_path = archive_dir / f".{safe_run_id}.{os.getpid()}.bundle"
+
     untracked = subprocess.run(
         ["git", "ls-files", "--others", "--exclude-standard", "-z"],
         cwd=worktree,
@@ -1171,6 +1292,7 @@ def _archive_worktree(
 
     inventory = []
     bundle_manifest: dict[str, Any] | None = None
+    bundle_staging_bytes = 0
     try:
         if include_unique_commits:
             bundle = subprocess.run(
@@ -1203,6 +1325,7 @@ def _archive_worktree(
                 )
             os.chmod(bundle_path, 0o600)
             bundle_sha, bundle_bytes = _hash_file(bundle_path)
+            bundle_staging_bytes = bundle_bytes
             bundle_manifest = {
                 "archive_name": "unique-commits.bundle",
                 "bytes": bundle_bytes,
@@ -1210,44 +1333,69 @@ def _archive_worktree(
                 "head_oid": item.head_oid,
                 "base_ref": "origin/main",
             }
-        with tarfile.open(temporary, "w:gz") as archive:
-            if patch:
-                _tar_add_bytes(archive, "tracked.patch", patch)
-            if bundle_manifest is not None:
-                archive.add(bundle_path, arcname="unique-commits.bundle", recursive=False)
-            for source, archive_name in sorted(candidates.items(), key=lambda pair: pair[1]):
-                inventory.append(
-                    _tar_add_candidate_no_follow(
-                        archive,
-                        worktree=worktree,
-                        source=source,
-                        archive_name=archive_name,
-                    )
-                )
-            manifest = {
-                "schema_version": 1,
-                "created_at": int(time.time()),
-                "run_id": item.run_id,
-                "issue": item.issue,
-                "state": item.state,
-                "worktree_path": item.path,
-                "source": item.source,
-                "worktree_bytes": item.bytes,
-                "dirty_entries": item.dirty_entries,
-                "head_oid": item.head_oid,
-                "unique_commits": item.unique_commits,
-                "unique_commit_bundle": bundle_manifest,
-                "remote_proof": item.remote_proof,
-                "tracked_patch_bytes": len(patch),
-                "workspace_root": workspace_root_metadata,
-                "files": inventory,
-            }
-            _tar_add_bytes(
-                archive,
-                "manifest.json",
-                json.dumps(manifest, indent=2, sort_keys=True).encode() + b"\n",
+        staging_budget = max_archive_bytes - retained_archive_bytes - bundle_staging_bytes
+        if staging_budget <= 0:
+            raise RuntimeError(
+                "worktree quarantine staging capacity gate rejected archive "
+                f"({retained_archive_bytes} retained + {bundle_staging_bytes} bundle >= "
+                f"{max_archive_bytes} bytes)"
             )
+        with temporary.open("xb") as temporary_file:
+            bounded_file = _BoundedArchiveWriter(temporary_file, max_bytes=staging_budget)
+            with tarfile.open(fileobj=bounded_file, mode="w:gz") as archive:
+                if patch:
+                    _tar_add_bytes(archive, "tracked.patch", patch)
+                if bundle_manifest is not None:
+                    archive.add(bundle_path, arcname="unique-commits.bundle", recursive=False)
+                for source, archive_name in sorted(candidates.items(), key=lambda pair: pair[1]):
+                    inventory.append(
+                        _tar_add_candidate_no_follow(
+                            archive,
+                            worktree=worktree,
+                            source=source,
+                            archive_name=archive_name,
+                        )
+                    )
+                manifest = {
+                    "schema_version": 1,
+                    "created_at": int(time.time()),
+                    "run_id": item.run_id,
+                    "issue": item.issue,
+                    "state": item.state,
+                    "worktree_path": item.path,
+                    "source": item.source,
+                    "worktree_bytes": item.bytes,
+                    "dirty_entries": item.dirty_entries,
+                    "head_oid": item.head_oid,
+                    "unique_commits": item.unique_commits,
+                    "unique_commit_bundle": bundle_manifest,
+                    "remote_proof": item.remote_proof,
+                    "tracked_patch_bytes": len(patch),
+                    "workspace_root": workspace_root_metadata,
+                    "files": inventory,
+                }
+                _tar_add_bytes(
+                    archive,
+                    "manifest.json",
+                    json.dumps(manifest, indent=2, sort_keys=True).encode() + b"\n",
+                )
+            bounded_file.flush()
+            os.fsync(temporary_file.fileno())
         os.chmod(temporary, 0o600)
+        latest_archive_bytes = _directory_bytes(archive_dir)
+        latest_destination_bytes = _regular_file_bytes_no_follow(destination)
+        temporary_bytes = _regular_file_bytes_no_follow(temporary)
+        latest_bundle_bytes = _regular_file_bytes_no_follow(bundle_path)
+        retained_archive_bytes = max(
+            0,
+            latest_archive_bytes - latest_destination_bytes - temporary_bytes - latest_bundle_bytes,
+        )
+        if retained_archive_bytes + temporary_bytes > max_archive_bytes:
+            raise RuntimeError(
+                "worktree quarantine hard capacity gate rejected archive "
+                f"({retained_archive_bytes} retained + {temporary_bytes} actual > "
+                f"{max_archive_bytes} bytes)"
+            )
         os.replace(temporary, destination)
     finally:
         temporary.unlink(missing_ok=True)

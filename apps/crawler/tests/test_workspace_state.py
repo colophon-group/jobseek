@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 
+import pytest
 import yaml
 
 from src.workspace.state import (
@@ -139,6 +140,108 @@ class TestWorkspace:
         assert workspace.exists()
         assert (workspace / "replacement.txt").read_text() == "preserve replacement\n"
         assert (original_workspace / "workspace.yaml").exists()
+
+    def test_delete_workspace_keeps_original_name_on_recursive_cleanup_error(
+        self, tmp_path, monkeypatch
+    ):
+        from src.workspace import safe_cleanup
+
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+        workspace = tmp_path / "test"
+        workspace.mkdir()
+        evidence = workspace / "evidence.txt"
+        evidence.write_text("retain on ordinary failure\n")
+        monkeypatch.setattr(
+            safe_cleanup,
+            "_empty_directory_at",
+            lambda directory_fd: (_ for _ in ()).throw(RuntimeError("injected failure")),
+        )
+
+        with pytest.raises(RuntimeError, match="injected failure"):
+            delete_workspace("test")
+
+        assert workspace.exists()
+        assert evidence.read_text() == "retain on ordinary failure\n"
+        assert not list(tmp_path.glob(".jobseek-cleanup-dir-v1-*"))
+
+    def test_delete_workspace_recovers_claim_after_process_death_during_emptying(
+        self, tmp_path, monkeypatch
+    ):
+        from src.workspace import safe_cleanup
+
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+        workspace = tmp_path / "test"
+        workspace.mkdir()
+        (workspace / "evidence.txt").write_text("visible after process death\n")
+        original_empty = safe_cleanup._empty_directory_at
+        monkeypatch.setattr(
+            safe_cleanup,
+            "_empty_directory_at",
+            lambda directory_fd: (_ for _ in ()).throw(SystemExit("process died")),
+        )
+
+        with pytest.raises(SystemExit, match="process died"):
+            delete_workspace("test")
+
+        claims = list(tmp_path.glob(".jobseek-cleanup-dir-v1-*"))
+        assert not workspace.exists()
+        assert len(claims) == 1
+        assert (claims[0] / "evidence.txt").exists()
+        monkeypatch.setattr(safe_cleanup, "_empty_directory_at", original_empty)
+        delete_workspace("test")
+        assert not workspace.exists()
+        assert not list(tmp_path.glob(".jobseek-cleanup-dir-v1-*"))
+
+    def test_dead_process_cleanup_claim_is_discovered(self, tmp_path, monkeypatch):
+        from src.workspace import safe_cleanup
+
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+        workspace = tmp_path / "test"
+        workspace.mkdir()
+        (workspace / "evidence.txt").write_text("resume dead owner\n")
+        monkeypatch.setattr(
+            safe_cleanup,
+            "_empty_directory_at",
+            lambda directory_fd: (_ for _ in ()).throw(SystemExit("process died")),
+        )
+        with pytest.raises(SystemExit, match="process died"):
+            delete_workspace("test")
+        live_claim = next(tmp_path.glob(".jobseek-cleanup-dir-v1-*"))
+        dead_claim = tmp_path / safe_cleanup._rmtree_claim_name("test", pid=99_999_999)
+        live_claim.rename(dead_claim)
+        monkeypatch.undo()
+
+        assert safe_cleanup.recover_pending_rmtree_claims(tmp_path) == 1
+        assert not dead_claim.exists()
+
+    def test_delete_workspace_resumes_empty_claim_after_process_death(self, tmp_path, monkeypatch):
+        from src.workspace import safe_cleanup
+
+        monkeypatch.setattr("src.workspace.state.get_workspace_dir", lambda: tmp_path)
+        workspace = tmp_path / "test"
+        workspace.mkdir()
+        (workspace / "evidence.txt").write_text("emptied before claim\n")
+        original_rmdir = safe_cleanup.os.rmdir
+        died = False
+
+        def die_before_claim_removal(path, *args, **kwargs):
+            nonlocal died
+            if str(path).startswith(".jobseek-cleanup-dir-v1-") and not died:
+                died = True
+                raise SystemExit("process died after claim")
+            return original_rmdir(path, *args, **kwargs)
+
+        monkeypatch.setattr(safe_cleanup.os, "rmdir", die_before_claim_removal)
+        with pytest.raises(SystemExit, match="process died after claim"):
+            delete_workspace("test")
+
+        claims = list(tmp_path.glob(".jobseek-cleanup-dir-v1-*"))
+        assert not workspace.exists()
+        assert len(claims) == 1
+        assert list(claims[0].iterdir()) == []
+        monkeypatch.setattr(safe_cleanup.os, "rmdir", original_rmdir)
+        delete_workspace("test")
+        assert not list(tmp_path.glob(".jobseek-cleanup-dir-v1-*"))
 
     def test_list_workspaces(self, tmp_path, monkeypatch):
         monkeypatch.setattr("src.shared.constants.get_workspace_dir", lambda: tmp_path)

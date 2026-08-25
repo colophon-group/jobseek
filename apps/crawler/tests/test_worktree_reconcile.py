@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import tarfile
 from pathlib import Path
@@ -519,6 +520,12 @@ def test_repeated_removal_failure_replaces_one_deterministic_archive(
     assert first.removal_failures == 1
     assert len(archives) == 1
     first_bytes = archives[0].read_bytes()
+    projected_bytes = first.items[0].bytes + 1024 * 1024
+    replacement_aware_limit = quarantine.stat().st_size + projected_bytes
+    stale_temp = quarantine / ".orphaned-run.99999999.tmp"
+    stale_bundle = quarantine / ".orphaned-run.99999999.bundle"
+    stale_temp.write_bytes(b"t" * 4096)
+    stale_bundle.write_bytes(b"b" * 4096)
 
     second = _reconcile(
         tmp_path,
@@ -526,16 +533,67 @@ def test_repeated_removal_failure_replaces_one_deterministic_archive(
         ledger,
         apply=True,
         remove_worktree=fail_remove,
+        max_bytes=replacement_aware_limit,
     )
     archives = list(quarantine.glob("*.tar.gz"))
     assert second.archived == 1
     assert second.removal_failures == 1
     assert len(archives) == 1
     assert archives[0].read_bytes() == first_bytes
+    assert not stale_temp.exists()
+    assert not stale_bundle.exists()
     with tarfile.open(archives[0], "r:gz") as archive:
         archived_evidence = archive.extractfile("untracked/unique-evidence.txt")
         assert archived_evidence is not None
         assert archived_evidence.read() == b"preserve this evidence\n"
+
+
+def test_staging_recovery_preserves_files_owned_by_live_process(tmp_path: Path) -> None:
+    quarantine = tmp_path / "worktree-quarantine"
+    quarantine.mkdir()
+    active = quarantine / f".active-run.{os.getpid()}.tmp"
+    stale = quarantine / ".stale-run.99999999.bundle"
+    active.write_bytes(b"active")
+    stale.write_bytes(b"stale")
+
+    reclaimed = reconcile_module._prune_stale_archive_staging(quarantine)
+
+    assert reclaimed == len(b"stale")
+    assert active.read_bytes() == b"active"
+    assert not stale.exists()
+
+
+def test_deleted_large_head_blob_cannot_overshoot_archive_capacity(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir(parents=True)
+    _run("git", "init", "-b", "main", cwd=repo)
+    _run("git", "config", "user.name", "Test Runner", cwd=repo)
+    _run("git", "config", "user.email", "runner@example.test", cwd=repo)
+    (repo / "large.bin").write_bytes(os.urandom(4 * 1024 * 1024))
+    _run("git", "add", "large.bin", cwd=repo)
+    _run("git", "commit", "-m", "large base blob", cwd=repo)
+    worktree = tmp_path / "runner" / "worktrees" / "run-worktree"
+    worktree.parent.mkdir(parents=True)
+    _run("git", "worktree", "add", "--detach", str(worktree), "HEAD", cwd=repo)
+    (worktree / "large.bin").unlink()
+    ledger = RunnerLedger(tmp_path / "runner" / "state" / "ledger.sqlite")
+    _terminal_run(ledger, worktree, state="retryable")
+
+    report = _reconcile(
+        tmp_path,
+        repo,
+        ledger,
+        apply=True,
+        max_bytes=2 * 1024 * 1024,
+    )
+
+    assert report.archived == 0
+    assert report.removed == 0
+    assert report.removal_failures == 1
+    assert worktree.exists()
+    assert "capacity gate" in (report.items[0].error or "")
+    quarantine = tmp_path / "runner" / "state" / "worktree-quarantine"
+    assert not quarantine.exists() or list(quarantine.glob("*.tar.gz")) == []
 
 
 def test_managed_clean_worktree_is_removed_and_recorded_separately(tmp_path: Path) -> None:
