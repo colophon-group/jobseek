@@ -529,6 +529,27 @@ class TestScrape:
             result = await scrape("https://example.com/Marketing_Intern.pdf", {}, client)
             assert result.title == "Marketing Intern"
 
+    async def test_empty_pdf_can_fall_back_to_url_location(self):
+        """Filename location fallback also applies when the PDF has no text."""
+        import pypdf
+
+        writer = pypdf.PdfWriter()
+        writer.add_blank_page(width=612, height=792)
+        buf = io.BytesIO()
+        writer.write(buf)
+
+        def handler(request):
+            return httpx.Response(200, content=buf.getvalue())
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(
+                "https://example.com/Faculty-Vacancy-Finance-Lausanne.pdf",
+                {"location_url_pattern": r"-(Lausanne|Singapore)\.pdf$"},
+                client,
+            )
+
+        assert result.locations == ["Lausanne"]
+
     async def test_empty_pdf_can_use_opt_in_ocr(self, monkeypatch):
         import pypdf
 
