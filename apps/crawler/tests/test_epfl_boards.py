@@ -14,6 +14,9 @@ from src.core.monitors.inline import discover
 from src.core.monitors.rss import discover as rss_discover
 
 _BOARDS_PATH = Path(__file__).parents[1] / "data" / "boards.csv"
+_IMOS_UNAVAILABLE_PHD = (
+    "PhD Position in Hierarchical Graph Neural Networks for Multi-Scale Urban Energy Systems"
+)
 _FAIL_CLOSED_INLINE_BOARDS = {
     "epfl-csea",
     "epfl-gr-ost",
@@ -82,6 +85,7 @@ def test_epfl_inventory_uses_verified_current_sources():
     }
     assert boards["epfl-phd-edpy"]["scraper_type"] == "dom"
     assert boards["epfl-phd-edpy"]["scraper_config"]["enrich"] == ["description"]
+    assert boards["epfl-imos"]["metadata"]["exclude_titles"] == [_IMOS_UNAVAILABLE_PHD]
     assert all(
         boards[slug]["metadata"].get("require_zero_proof") is True
         for slug in _FAIL_CLOSED_INLINE_BOARDS
@@ -141,6 +145,9 @@ async def test_isic_live_config_partitions_current_and_inactive_pdf_identities()
         "https://www.epfl.ch/schools/sb/research/isic/"
         "wp-content/uploads/2025/02/LIFMET_Annonce_2025.pdf"
     )
+    another_active_url = (
+        "https://www.epfl.ch/schools/sb/research/isic/wp-content/uploads/2025/12/PhD-LESM.pdf"
+    )
     html = f"""
     <h3>Postdoctoral Positions</h3>
     <table>
@@ -148,8 +155,9 @@ async def test_isic_live_config_partitions_current_and_inactive_pdf_identities()
       <tr><td><a href="https://www.epfl.ch/labs/lrm/job-openings/">NMR role</a></td></tr>
       <tr><td><a href="https://www.epfl.ch/labs/luxs/openings/">First LUXS role</a></td></tr>
       <tr><td><a href="https://www.epfl.ch/labs/luxs/openings/">Second LUXS role</a></td></tr>
-      <tr><td><a href="{active_url}">Current PDF role</a></td></tr>
-      <tr><td><a href="{inactive_url}">Expired PDF role</a></td></tr>
+      <tr><td><a href="{active_url}?download=1">Current PDF role</a></td></tr>
+      <tr><td><a href="{another_active_url}#preview">Another current PDF role</a></td></tr>
+      <tr><td><a href="{inactive_url}?legacy=1#top">Expired PDF role</a></td></tr>
     </table>
     <h3 id="Masterprojects">Master projects</h3>
     """
@@ -162,15 +170,18 @@ async def test_isic_live_config_partitions_current_and_inactive_pdf_identities()
             client,
         )
 
-    assert result.urls == {active_url}
+    assert result.urls == {active_url, another_active_url}
 
 
 @pytest.mark.asyncio
 async def test_isic_lifecycle_partition_fails_closed_on_unreviewed_pdf():
     board = _epfl_boards()["epfl-isic"]
-    html = """
+    unknown_url = "https://www.epfl.ch/jobs/new-role.pdf?download=1#preview"
+    html = f"""
     <h3>Postdoctoral Positions</h3>
-    <table><tr><td><a href="https://www.epfl.ch/jobs/new-role.pdf">New role</a></td></tr></table>
+    <table>
+      <tr><td><a href="{unknown_url}">New role</a></td></tr>
+    </table>
     <h3 id="Masterprojects">Master projects</h3>
     """
     transport = httpx.MockTransport(lambda request: httpx.Response(200, text=html, request=request))
@@ -268,9 +279,9 @@ async def test_missing_source_owned_labs_have_stable_complete_position_identitie
     boards = _epfl_boards()
     imos = await _discover_fixture(
         boards["epfl-imos"],
-        """
+        f"""
         <h1>Open positions</h1>
-        <div class="entry-content container-grid pb-5">PhD Position in Urban Energy Systems</div>
+        <div class="entry-content container-grid pb-5">{_IMOS_UNAVAILABLE_PHD}</div>
         <p>Develop hierarchical graph neural networks.</p>
         <div class="entry-content container-grid pb-5">
           Summer Internship in Computer Vision and Machine Learning
@@ -295,14 +306,13 @@ async def test_missing_source_owned_labs_have_stable_complete_position_identitie
     )
 
     assert [(job.title, job.employment_type) for job in imos] == [
-        ("PhD Position in Urban Energy Systems", "full_time"),
-        ("Summer Internship in Computer Vision and Machine Learning", "internship"),
+        ("Summer Internship in Computer Vision and Machine Learning", "internship")
     ]
     assert [job.title for job in lemaitre] == ["PhD student"]
     assert [job.title for job in gr_ost] == ["PhD position"] * 3
     all_jobs = [*imos, *lemaitre, *gr_ost]
-    assert len(all_jobs) == 6
-    assert len({job.url for job in all_jobs}) == 6
+    assert len(all_jobs) == 5
+    assert len({job.url for job in all_jobs}) == 5
 
 
 @pytest.mark.asyncio
@@ -312,11 +322,15 @@ async def test_edpy_partitions_current_expired_and_hidden_stale_pdf_anchors():
     active_url = (
         f"{uploads}/2026/05/PhD-position-in-Mechanics-of-Soft-and-Biological-Matter-Laboratory.pdf"
     )
+    another_active_url = (
+        f"{uploads}/2025/10/PhD-position-on-Intelligent-Proteins-and-High-Performance-Cells.pdf"
+    )
     inactive_url = f"{uploads}/2026/04/PhD-position-in-experimental-particle-physics-LHCb.pdf"
     html = (
         '<div class="entry-content"><ul>'
-        f'<li><a href="{active_url}">Current role</a></li>'
-        f'<li><a href="{inactive_url}">Expired role</a></li>'
+        f'<li><a href="{active_url}?download=1">Current role</a></li>'
+        f'<li><a href="{another_active_url}#preview">Another current role</a></li>'
+        f'<li><a href="{inactive_url}?legacy=1#top">Expired role</a></li>'
         f'<li><a href="{uploads}/2025/06/'
         'PhD-in-Mechanics-of-Soft-and-Biological-Matter-Laboratory.pdf">&nbsp;</a></li>'
         f'<li><a href="{uploads}/2023/12/'
@@ -327,7 +341,7 @@ async def test_edpy_partitions_current_expired_and_hidden_stale_pdf_anchors():
     async with httpx.AsyncClient(transport=transport) as client:
         result = await monitor_one(board["board_url"], "dom", board["metadata"], client)
 
-    assert result.urls == {active_url}
+    assert result.urls == {active_url, another_active_url}
 
 
 @pytest.mark.asyncio
