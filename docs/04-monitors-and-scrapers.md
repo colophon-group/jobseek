@@ -95,7 +95,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 | `rippling` | URL-only | rippling | Rippling ATS |
 | `rss` | Rich/hybrid | skip or DOM enrichment | RSS feeds plus native legacy SuccessFactors DWR listings |
 | `seamlesshiring` | Rich | skip | SeamlessHiring public candidate API |
-| `smartrecruiters` | URL-only | smartrecruiters | SmartRecruiters ATS |
+| `smartrecruiters` | Conditional* | smartrecruiters/skip | URL-only by default; exact `jobId` locale collapse returns rich data when configured |
 | `softgarden` | URL-only | json-ld | Softgarden ATS |
 | `traffit` | Rich | skip | Traffit ATS |
 | `typify` | Rich + enrichment | json-ld | Typify function-partitioned vacancy API plus JSON-LD description enrichment |
