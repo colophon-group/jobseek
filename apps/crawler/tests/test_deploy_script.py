@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import os
 import re
@@ -10,6 +11,7 @@ import subprocess
 import tarfile
 from pathlib import Path
 
+import pytest
 import yaml
 
 DEPLOY_SH = Path(__file__).resolve().parent.parent / "deploy.sh"
@@ -35,6 +37,34 @@ POSTGRES_PREFLIGHT = (
 )
 REPO_ROOT = Path(__file__).resolve().parents[3]
 AGENTS_MD = Path(__file__).resolve().parent.parent / "AGENTS.md"
+DEPLOY_SPEC_PRESENCE_NAME = ".jobseek-deploy-spec-presence-v1"
+
+
+def _create_deploy_spec_rollback_archive(
+    archive_path: Path,
+    entries: dict[str, tuple[bytes, int] | None],
+) -> None:
+    manifest_lines = ["DEPLOY_SPEC_PRESENCE_FORMAT_VERSION=1"]
+    for name, entry in entries.items():
+        if entry is None:
+            manifest_lines.append(f"ABSENT - - {name}")
+        else:
+            content, mode = entry
+            manifest_lines.append(f"PRESENT {hashlib.sha256(content).hexdigest()} {mode:o} {name}")
+    manifest = ("\n".join(manifest_lines) + "\n").encode()
+    with tarfile.open(archive_path, "w") as archive:
+        manifest_info = tarfile.TarInfo(DEPLOY_SPEC_PRESENCE_NAME)
+        manifest_info.size = len(manifest)
+        manifest_info.mode = 0o600
+        archive.addfile(manifest_info, io.BytesIO(manifest))
+        for name, entry in entries.items():
+            if entry is None:
+                continue
+            content, mode = entry
+            info = tarfile.TarInfo(name)
+            info.size = len(content)
+            info.mode = mode
+            archive.addfile(info, io.BytesIO(content))
 
 
 def test_deploy_preflights_disk_before_pull_and_quiesce() -> None:
@@ -76,9 +106,11 @@ def test_deploy_refreshes_short_lived_ghcr_auth_before_release_mutation() -> Non
     assert "trap 'cleanup_ghcr_docker_config_on_exit $?' EXIT" in credential_setup
 
     initialize = script.index("\ninitialize_ghcr_docker_config\n")
-    snapshot = script.index("\nsnapshot_active_deploy_specs\n")
+    snapshot = script.index("\nif ! snapshot_active_deploy_specs; then\n")
+    activation = script.index("\nactivate_staged_deploy_specs\n", snapshot)
+    bootstrap = script.index("\n  --bootstrap-current \\", activation)
     pull = script.index("\npull_deploy_images\n")
-    assert initialize < snapshot < pull
+    assert initialize < snapshot < activation < bootstrap < pull
 
     rollback_compose = script[
         script.index("rollback_compose() {") : script.index("rollback_compose_service_ready() {")
@@ -1680,11 +1712,12 @@ def test_data_publication_journals_sync_before_atomic_promotion() -> None:
 def test_full_deploy_bootstraps_exact_prior_data_before_arming_rollback() -> None:
     deploy = DEPLOY_SH.read_text()
     workflow = DEPLOY_WORKFLOW.read_text()
+    snapshot = deploy.index("\nif ! snapshot_active_deploy_specs; then\n")
+    arm = deploy.index("\narm_deploy_rollback\n", snapshot)
+    activation = deploy.index("\nactivate_staged_deploy_specs\n", arm)
     bootstrap = deploy.index("--bootstrap-current")
     verify = deploy.index("\nverify_active_deploy_snapshot\n", bootstrap)
-    snapshot = deploy.index("\nsnapshot_active_deploy_specs\n", verify)
-    arm = deploy.index("\narm_deploy_rollback\n", snapshot)
-    assert bootstrap < verify < snapshot < arm
+    assert snapshot < arm < activation < bootstrap < verify
     assert "Build exact pre-deploy CSV rollback candidate" in workflow
     assert "${{ github.event.before }}" in workflow
     assert "JOBSEEK_PREVIOUS_RUNTIME_CONTRACT_SHA256" in workflow
@@ -1696,6 +1729,302 @@ def test_full_deploy_bootstraps_exact_prior_data_before_arming_rollback() -> Non
     assert "scripts/verify-crawler-release-bridge.py" in deploy
     assert "LEGACY_BRIDGE_FORMAT_VERSION=1" in CSV_SYNC_HOST.read_text()
     assert "promote-target" in CSV_SYNC_HOST.read_text()
+
+
+@pytest.mark.timeout(90)
+def test_first_bridge_rollout_restores_absent_specs_and_retries_without_a_loop(
+    tmp_path: Path,
+) -> None:
+    script = DEPLOY_SH.read_text()
+    verification_helpers = script[
+        script.index("verify_active_snapshot_file() {") : script.index(
+            "\nwrite_exact_csv_manifest() {"
+        )
+    ]
+    release_helpers = script[
+        script.index("read_exact_release_value() {") : script.index(
+            "\npublish_legacy_success_marker() {"
+        )
+    ]
+    spec_transaction = script[
+        script.index("snapshot_active_deploy_specs() {") : script.index(
+            "\nreconciliation_wrapper_is_compatible() {"
+        )
+    ]
+    rollback_support = script[
+        script.index("configure_rollback_compose_contract() {") : script.index(
+            "rollback_deploy() {"
+        )
+    ]
+    rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
+    arm = script[
+        script.index("arm_deploy_rollback() {") : script.index("disarm_deploy_rollback() {")
+    ]
+
+    deploy_dir = tmp_path / "deploy"
+    incoming = tmp_path / "incoming"
+    release_root = deploy_dir / "releases"
+    candidates = deploy_dir / "candidates"
+    binary_dir = deploy_dir / "bin"
+    for directory in (deploy_dir, incoming, release_root, candidates, binary_dir):
+        directory.mkdir(parents=True, exist_ok=True)
+    legacy, identity = _create_legacy_format2_release(release_root, "legacy.production", "b")
+    active = deploy_dir / ".crawler-active-release"
+    active.symlink_to(legacy)
+    live_env = deploy_dir / ".env"
+    shutil.copyfile(legacy / "environment.env", live_env)
+    live_env.chmod(0o600)
+
+    spec_files = (
+        "deploy.sh",
+        "deploy_helpers.sh",
+        "docker-compose.yml",
+        "alloy.river",
+        "scripts/postgresql-operational-preflight.py",
+        "scripts/verify-crawler-release-bridge.py",
+    )
+    base_specs = {
+        "deploy.sh": (b"#!/bin/sh\n# old deploy\n", 0o755),
+        "deploy_helpers.sh": (b"#!/bin/sh\n# old helpers\n", 0o755),
+        "docker-compose.yml": ((legacy / "docker-compose.yml").read_bytes(), 0o644),
+        "alloy.river": (b"// old alloy\n", 0o644),
+        "scripts/postgresql-operational-preflight.py": (
+            b"#!/usr/bin/env python3\n# old preflight\n",
+            0o755,
+        ),
+    }
+    for relative, (content, mode) in base_specs.items():
+        target = deploy_dir / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(content)
+        target.chmod(mode)
+    for relative in spec_files:
+        target = incoming / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if relative == "scripts/verify-crawler-release-bridge.py":
+            target.write_bytes(BRIDGE_VERIFIER.read_bytes())
+        elif relative == "docker-compose.yml":
+            target.write_bytes((legacy / "docker-compose.yml").read_bytes())
+        else:
+            target.write_text(f"new:{relative}\n", encoding="utf-8")
+        target.chmod(0o755 if relative.endswith((".sh", ".py")) else 0o644)
+    pool_source = incoming / "rollback-pool-budget.override.yml"
+    pool_source.write_text("services: {}\n", encoding="utf-8")
+    pool_override = deploy_dir / ".crawler-rollback-pool-budget.override.yml"
+    pool_override.write_text("services: {}\n", encoding="utf-8")
+    rollback_env = deploy_dir / ".env.rollback"
+    rollback_archive = deploy_dir / ".deploy-spec.rollback.tar"
+    sync_log = deploy_dir / "sync.log"
+    events = deploy_dir / "events.log"
+    test_home = tmp_path / "home"
+    test_tmp = tmp_path / "tmp"
+    test_home.mkdir()
+    test_tmp.mkdir()
+
+    _install_release_verifier_tools(binary_dir)
+    _write_executable(
+        binary_dir / "docker",
+        "#!/usr/bin/env python3\n"
+        "from pathlib import Path\n"
+        "import os, sys\n"
+        f"events = Path({str(events)!r})\n"
+        "args = sys.argv[1:]\n"
+        "if args[:1] == ['compose'] and 'config' in args and '--images' in args:\n"
+        "    env_file = Path(args[args.index('--env-file') + 1])\n"
+        "    values = {}\n"
+        "    for line in env_file.read_text().splitlines():\n"
+        "        if '=' in line: values.setdefault(*line.split('=', 1))\n"
+        "    for key in ('CRAWLER_IMAGE_REF', 'BROWSER_IMAGE_REF', 'SHIM_IMAGE_REF'):\n"
+        "        print(values[key])\n"
+        "elif args[:1] == ['run']:\n"
+        "    volume = next(item for item in args if item.endswith(':/app/data:ro'))\n"
+        "    log = os.environ.get('TEST_CSV_SYNC_LOG')\n"
+        "    if log: Path(log).write_text(volume.split(':', 1)[0] + '\\n')\n"
+        "elif args[:1] == ['compose'] and 'stop' in args:\n"
+        "    with events.open('a') as output: output.write('stop\\n')\n"
+        "elif args[:1] == ['compose'] and 'up' in args:\n"
+        "    with events.open('a') as output: output.write('up\\n')\n"
+        "else:\n"
+        "    raise AssertionError(args)\n",
+    )
+
+    previous_revision = "c" * 40
+
+    def create_candidate() -> tuple[str, str, str]:
+        return _create_csv_candidate(
+            candidates,
+            previous_revision,
+            91,
+            1,
+            {"boards.csv": b"slug\nB\n"},
+            identity["runtime_contract"],
+            [previous_revision, identity["source_revision"]],
+        )
+
+    candidate_id, data_contract, archive_sha = create_candidate()
+    bash = "/opt/homebrew/bin/bash" if Path("/opt/homebrew/bin/bash").exists() else "bash"
+    staged_verifier = incoming / "scripts/verify-crawler-release-bridge.py"
+    active_verifier = deploy_dir / "scripts/verify-crawler-release-bridge.py"
+
+    def run_rollout(fail_at: str, supplied_archive_sha: str) -> subprocess.CompletedProcess[str]:
+        harness = "\n".join(
+            (
+                "set -Eeuo pipefail",
+                'OWNER="colophon-group"',
+                f'DEPLOY_DIR="{deploy_dir}"',
+                f'INCOMING_DIR="{incoming}"',
+                f'STAGED_BRIDGE_VERIFIER="{staged_verifier}"',
+                f'ACTIVE_BRIDGE_VERIFIER="{active_verifier}"',
+                'BRIDGE_VERIFIER="$STAGED_BRIDGE_VERIFIER"',
+                f'ENV_FILE="{live_env}"',
+                f'ACTIVE_RELEASE_ROOT="{release_root}"',
+                f'ACTIVE_RELEASE_POINTER="{active}"',
+                'ACTIVE_RELEASE_DIR=""',
+                'ACTIVE_COMPOSE_SNAPSHOT=""',
+                'ACTIVE_COMPOSE_SNAPSHOT_SHA256=""',
+                'ACTIVE_ENV_SNAPSHOT=""',
+                'ACTIVE_ENV_SNAPSHOT_SHA256=""',
+                'ACTIVE_RELEASE_MANIFEST=""',
+                'ACTIVE_RELEASE_FORMAT=""',
+                'ACTIVE_IMAGE_OVERRIDE=""',
+                'ACTIVE_DATA_SNAPSHOT=""',
+                'ACTIVE_DATA_FILES_MANIFEST=""',
+                'DEPLOY_SUCCESS_FILE=""',
+                f'ROLLBACK_ENV_FILE="{rollback_env}"',
+                f'ROLLBACK_SPEC_ARCHIVE="{rollback_archive}"',
+                f'ROLLBACK_SPEC_PRESENCE_NAME="{DEPLOY_SPEC_PRESENCE_NAME}"',
+                "DEPLOY_SPEC_FILES=(" + " ".join(f'"{item}"' for item in spec_files) + ")",
+                f'ROLLBACK_POOL_OVERRIDE_SOURCE="{pool_source}"',
+                f'ROLLBACK_POOL_OVERRIDE="{pool_override}"',
+                'ROLLBACK_ACTIVE_RELEASE_TARGET=""',
+                'ROLLBACK_ACTIVE_IMAGE_OVERRIDE=""',
+                'ROLLBACK_SYNC_WEB_DATABASE_URL=""',
+                "FORWARD_SYNC_STARTED=0",
+                "ENV_FILE_WAS_PRESENT=0",
+                "ROLLBACK_ARMED=0",
+                "ROLLBACK_RUNNING=0",
+                'COMPOSE_PROJECT_NAME="deploy"',
+                'MAINTENANCE_MARKER_NAME=""',
+                verification_helpers,
+                release_helpers,
+                spec_transaction,
+                rollback_support,
+                rollback,
+                arm,
+                "wait_for_rollback_core_services() { :; }",
+                "publish_legacy_success_marker() { :; }",
+                "stop_maintenance_window() { :; }",
+                "verify_active_deploy_snapshot",
+                'ROLLBACK_ACTIVE_RELEASE_TARGET="$ACTIVE_RELEASE_DIR"',
+                'ROLLBACK_ACTIVE_IMAGE_OVERRIDE="$ACTIVE_IMAGE_OVERRIDE"',
+                'rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"',
+                'if [[ "$FAIL_AT" == snapshot ]]; then',
+                '  ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/missing/rollback.tar"',
+                "fi",
+                "if ! snapshot_active_deploy_specs; then",
+                '  rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"',
+                "  exit 91",
+                "fi",
+                "ENV_FILE_WAS_PRESENT=1",
+                'install -m 0600 "$ACTIVE_ENV_SNAPSHOT" "$ROLLBACK_ENV_FILE"',
+                "arm_deploy_rollback",
+                "activate_staged_deploy_specs",
+                '[[ "$FAIL_AT" != activation ]] || false',
+                'BRIDGE_VERIFIER="$ACTIVE_BRIDGE_VERIFIER"',
+                'export JOBSEEK_BRIDGE_VERIFIER="$ACTIVE_BRIDGE_VERIFIER"',
+                f'bootstrap_sha="{supplied_archive_sha}"',
+                f'"{bash}" "{CSV_SYNC_HOST}" --bootstrap-current "{previous_revision}" '
+                f'"{identity["runtime_contract"]}" "{data_contract}" "{candidate_id}" '
+                '"$bootstrap_sha"',
+                "verify_active_deploy_snapshot",
+                'ROLLBACK_ACTIVE_RELEASE_TARGET="$ACTIVE_RELEASE_DIR"',
+                'ROLLBACK_ACTIVE_IMAGE_OVERRIDE="$ACTIVE_IMAGE_OVERRIDE"',
+                '[[ "$FAIL_AT" != later ]] || false',
+                "ROLLBACK_ARMED=0",
+                "trap - ERR EXIT HUP INT TERM",
+                'rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"',
+            )
+        )
+        rollout_env = _csv_host_test_environment(
+            deploy_dir, release_root, active, live_env, candidates
+        )
+        rollout_env.update(
+            {
+                "HOME": str(test_home),
+                "TMPDIR": str(test_tmp),
+                "PATH": f"{binary_dir}:{os.environ['PATH']}",
+                "FAIL_AT": fail_at,
+                "TEST_CSV_SYNC_LOG": str(sync_log),
+            }
+        )
+        for inherited_shell_key in ("BASH_ENV", "CDPATH", "ENV", "SHELLOPTS"):
+            rollout_env.pop(inherited_shell_key, None)
+        return subprocess.run(
+            [bash, "-c", harness],
+            check=False,
+            capture_output=True,
+            text=True,
+            env=rollout_env,
+        )
+
+    def assert_base_specs(error: str = "") -> None:
+        for relative, (content, mode) in base_specs.items():
+            target = deploy_dir / relative
+            assert target.read_bytes() == content, error
+            assert stat.S_IMODE(target.stat().st_mode) == mode, error
+        verifier = deploy_dir / "scripts/verify-crawler-release-bridge.py"
+        assert not verifier.exists() and not verifier.is_symlink(), error
+
+    def assert_no_spec_transaction_residue(error: str = "") -> None:
+        assert not rollback_env.exists(), error
+        assert not rollback_archive.exists()
+        assert list(deploy_dir.glob(".deploy-spec.snapshot.*")) == []
+        assert list(deploy_dir.glob(".deploy-spec.restore.*")) == []
+        assert list(deploy_dir.glob(".deploy-spec.rollback.*.tar")) == []
+
+    snapshot_failure = run_rollout("snapshot", archive_sha)
+    assert snapshot_failure.returncode == 91, snapshot_failure.stderr
+    assert active.resolve() == legacy.resolve()
+    assert_base_specs()
+    assert_no_spec_transaction_residue(snapshot_failure.stderr)
+
+    activation_failure = run_rollout("activation", archive_sha)
+    assert activation_failure.returncode != 0
+    assert active.resolve() == legacy.resolve()
+    assert_base_specs(activation_failure.stderr)
+    assert_no_spec_transaction_residue(activation_failure.stderr)
+
+    bootstrap_failure = run_rollout("bootstrap", "0" * 64)
+    assert bootstrap_failure.returncode != 0
+    assert active.resolve() == legacy.resolve()
+    assert not (candidates / candidate_id).exists()
+    assert list(release_root.glob("data-*")) == []
+    assert_base_specs()
+    assert_no_spec_transaction_residue()
+
+    repeated_id, repeated_contract, repeated_archive = create_candidate()
+    assert (repeated_id, repeated_contract) == (candidate_id, data_contract)
+    later_failure = run_rollout("later", repeated_archive)
+    assert later_failure.returncode != 0
+    bridged = active.resolve()
+    assert bridged != legacy.resolve(), later_failure.stderr
+    assert (bridged / "data" / "boards.csv").read_bytes() == b"slug\nB\n"
+    bridged_env = (bridged / "environment.env").read_text(encoding="utf-8")
+    assert f"CRAWLER_IMAGE_REF={identity['crawler_ref']}\n" in bridged_env
+    assert f"JOBSEEK_RUNTIME_CONTRACT_SHA256={identity['runtime_contract']}\n" in bridged_env
+    assert_base_specs()
+    assert_no_spec_transaction_residue()
+
+    repeated_id, repeated_contract, repeated_archive = create_candidate()
+    assert (repeated_id, repeated_contract) == (candidate_id, data_contract)
+    retry = run_rollout("none", repeated_archive)
+    assert retry.returncode == 0, retry.stderr
+    assert active.resolve() == bridged
+    assert not (candidates / candidate_id).exists()
+    assert (deploy_dir / "scripts/verify-crawler-release-bridge.py").read_bytes() == (
+        BRIDGE_VERIFIER.read_bytes()
+    )
+    assert_no_spec_transaction_residue()
 
 
 def test_deploy_brackets_service_pause_with_validated_maintenance_provenance() -> None:
@@ -1764,8 +2093,11 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     rollback = script[script.index("rollback_deploy() {") : script.index("arm_deploy_rollback() {")]
 
     assert "docker-compose.yml" in script.partition("DEPLOY_SPEC_FILES=(")[2].partition(")")[0]
-    assert 'tar -C "$snapshot_dir" -cpf' in script
-    assert 'tar -C "$DEPLOY_DIR" -xpf "$ROLLBACK_SPEC_ARCHIVE"' in script
+    assert 'tarfile.open(archive_path, "w", format=tarfile.USTAR_FORMAT)' in script
+    assert "archive.addfile(member, io.BytesIO(content))" in script
+    assert "DEPLOY_SPEC_PRESENCE_FORMAT_VERSION=1" in script
+    assert "extract_verified_deploy_spec_snapshot" in script
+    assert "remove_previously_absent_deploy_specs" in rollback
     assert 'install -m 0644 "$ACTIVE_COMPOSE_SNAPSHOT"' in script
     assert "ACTIVE_RELEASE_POINTER" in script
     assert "ACTIVE_RELEASE_MANIFEST" in script
@@ -1973,7 +2305,7 @@ def test_release_generation_root_is_durable_before_pointer_publication() -> None
 def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) -> None:
     script = DEPLOY_SH.read_text()
     restore = script[
-        script.index("restore_previous_deploy_specs() {") : script.index(
+        script.index("extract_verified_deploy_spec_snapshot() {") : script.index(
             "reconciliation_wrapper_is_compatible() {"
         )
     ]
@@ -1993,6 +2325,8 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             'ENV_FILE="$DEPLOY_DIR/.env"',
             'ROLLBACK_ENV_FILE="$DEPLOY_DIR/.env.rollback"',
             'ROLLBACK_SPEC_ARCHIVE="$DEPLOY_DIR/.deploy-spec.rollback.tar"',
+            f'ROLLBACK_SPEC_PRESENCE_NAME="{DEPLOY_SPEC_PRESENCE_NAME}"',
+            "DEPLOY_SPEC_FILES=(docker-compose.yml)",
             'ROLLBACK_POOL_OVERRIDE="$DEPLOY_DIR/.crawler-rollback-pool-budget.override.yml"',
             'ACTIVE_RELEASE_POINTER="$DEPLOY_DIR/.crawler-active-release"',
             'ROLLBACK_ACTIVE_RELEASE_TARGET="$DEPLOY_DIR/old-release"',
@@ -2001,6 +2335,7 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
             "ROLLBACK_ARMED=0",
             "ROLLBACK_RUNNING=0",
             'COMPOSE_PROJECT_NAME="deploy"',
+            'STAGED_BRIDGE_VERIFIER=""',
             'MAINTENANCE_MARKER_NAME="test-marker"',
             "stop_maintenance_window() {",
             "  printf 'maintenance-stop\\n' >>\"$TEST_LOG\"",
@@ -2055,10 +2390,13 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
         rollback_override.write_text("bounded-override\n", encoding="utf-8")
         previous_compose = deploy_dir / "previous-compose.yml"
         previous_compose.write_text("old-compose\n", encoding="utf-8")
-        with tarfile.open(archive, "w") as rollback_archive:
-            rollback_archive.add(previous_compose, arcname="docker-compose.yml")
+        _create_deploy_spec_rollback_archive(
+            archive,
+            {"docker-compose.yml": (previous_compose.read_bytes(), 0o644)},
+        )
         binary_dir = deploy_dir / "bin"
         binary_dir.mkdir()
+        _install_release_verifier_tools(binary_dir)
         _write_executable(
             binary_dir / "docker",
             "#!/usr/bin/env bash\n"
@@ -2101,7 +2439,7 @@ def test_deploy_signal_and_error_restore_previous_contract_once(tmp_path: Path) 
 
         assert result.returncode == expected_status, result.stderr
         assert env_file.read_text(encoding="utf-8") == (
-            f"CRAWLER_IMAGE_TAG=old-tag\n\nCOMPOSE_FILE={compose}:{rollback_override}\n"
+            f"CRAWLER_IMAGE_TAG=old-tag\nCOMPOSE_FILE={compose}:{rollback_override}\n"
         )
         assert compose.read_text(encoding="utf-8") == "old-compose\n"
         events = log.read_text(encoding="utf-8").splitlines()
@@ -2143,6 +2481,7 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
             "ROLLBACK_ARMED=1",
             "ROLLBACK_RUNNING=0",
             'COMPOSE_PROJECT_NAME="deploy"',
+            'STAGED_BRIDGE_VERIFIER=""',
             "docker() {",
             "  printf 'quiesce\\n' >>\"$TEST_LOG\"",
             '  return "$STOP_STATUS"',
@@ -2150,6 +2489,7 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
             "restore_previous_deploy_specs() {",
             "  printf 'restore-specs\\n' >>\"$TEST_LOG\"",
             "}",
+            "remove_previously_absent_deploy_specs() { :; }",
             "activate_release_generation() {",
             "  printf 'release-restore\\n' >>\"$TEST_LOG\"",
             "}",
@@ -2249,7 +2589,7 @@ def test_rollback_propagates_quiesce_start_and_health_failures(tmp_path: Path) -
             stop_status != 0
         )
         assert (case_dir / ".env").read_text(encoding="utf-8") == (
-            f"restored\n\nCOMPOSE_FILE={compose}:{rollback_override}\n"
+            f"restored\nCOMPOSE_FILE={compose}:{rollback_override}\n"
         )
         assert log.read_text(encoding="utf-8").splitlines() == expected_events
 
@@ -2279,12 +2619,14 @@ def test_rollback_restores_previous_csv_config_before_restarting_workers(
             "ROLLBACK_RUNNING=0",
             "FORWARD_SYNC_STARTED=1",
             'COMPOSE_PROJECT_NAME="deploy"',
+            'STAGED_BRIDGE_VERIFIER=""',
             "docker() {",
             "  printf 'quiesce\\n' >>\"$TEST_LOG\"",
             "}",
             "restore_previous_deploy_specs() {",
             "  printf 'restore-specs\\n' >>\"$TEST_LOG\"",
             "}",
+            "remove_previously_absent_deploy_specs() { :; }",
             "activate_release_generation() {",
             "  printf 'release-restore\\n' >>\"$TEST_LOG\"",
             "}",
@@ -2376,7 +2718,7 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
         )
     ]
     restore = script[
-        script.index("restore_previous_deploy_specs() {") : script.index(
+        script.index("extract_verified_deploy_spec_snapshot() {") : script.index(
             "\nreconciliation_wrapper_is_compatible() {"
         )
     ]
@@ -2463,8 +2805,10 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
     live_compose = deploy_dir / "docker-compose.yml"
     shutil.copyfile(new_release / "docker-compose.yml", live_compose)
     rollback_archive = deploy_dir / ".deploy-spec.rollback.tar"
-    with tarfile.open(rollback_archive, "w") as archive:
-        archive.add(old_release / "docker-compose.yml", arcname="docker-compose.yml")
+    _create_deploy_spec_rollback_archive(
+        rollback_archive,
+        {"docker-compose.yml": ((old_release / "docker-compose.yml").read_bytes(), 0o644)},
+    )
     pool_override = deploy_dir / ".crawler-rollback-pool-budget.override.yml"
     pool_override.write_text("services: {}\n", encoding="utf-8")
     log = deploy_dir / "rollback.log"
@@ -2531,6 +2875,8 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
             'DEPLOY_SUCCESS_FILE=""',
             f'ROLLBACK_ENV_FILE="{rollback_env}"',
             f'ROLLBACK_SPEC_ARCHIVE="{rollback_archive}"',
+            f'ROLLBACK_SPEC_PRESENCE_NAME="{DEPLOY_SPEC_PRESENCE_NAME}"',
+            "DEPLOY_SPEC_FILES=(docker-compose.yml)",
             f'ROLLBACK_POOL_OVERRIDE="{pool_override}"',
             f'ROLLBACK_ACTIVE_RELEASE_TARGET="{old_release}"',
             'ROLLBACK_ACTIVE_IMAGE_OVERRIDE=""',
@@ -2540,6 +2886,7 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
             "ROLLBACK_RUNNING=0",
             "FORWARD_SYNC_STARTED=1",
             'COMPOSE_PROJECT_NAME="deploy"',
+            f'STAGED_BRIDGE_VERIFIER="{BRIDGE_VERIFIER}"',
             verification_helpers,
             release_helpers,
             restore,
@@ -3055,7 +3402,7 @@ def test_coupled_failure_after_murmur_promotion_restores_digest_generation(
 ) -> None:
     script = DEPLOY_SH.read_text()
     restore = script[
-        script.index("restore_previous_deploy_specs() {") : script.index(
+        script.index("extract_verified_deploy_spec_snapshot() {") : script.index(
             "reconciliation_wrapper_is_compatible() {"
         )
     ]
@@ -3108,8 +3455,10 @@ def test_coupled_failure_after_murmur_promotion_restores_digest_generation(
         "    image: ghcr.io/colophon-group/jobseek-murmur-shim:latest\n",
         encoding="utf-8",
     )
-    with tarfile.open(rollback_archive, "w") as archive:
-        archive.add(legacy_compose, arcname="docker-compose.yml")
+    _create_deploy_spec_rollback_archive(
+        rollback_archive,
+        {"docker-compose.yml": (legacy_compose.read_bytes(), 0o644)},
+    )
     image_override.write_text(
         "services:\n"
         f"  redis:\n    image: {redis_ref}\n"
@@ -3128,6 +3477,7 @@ def test_coupled_failure_after_murmur_promotion_restores_digest_generation(
 
     binary_dir = deploy_dir / "bin"
     binary_dir.mkdir()
+    _install_release_verifier_tools(binary_dir)
     _write_executable(
         binary_dir / "docker",
         "#!/usr/bin/env python3\n"
@@ -3168,6 +3518,8 @@ def test_coupled_failure_after_murmur_promotion_restores_digest_generation(
             f'ENV_FILE="{live_env}"',
             f'ROLLBACK_ENV_FILE="{rollback_env}"',
             f'ROLLBACK_SPEC_ARCHIVE="{rollback_archive}"',
+            f'ROLLBACK_SPEC_PRESENCE_NAME="{DEPLOY_SPEC_PRESENCE_NAME}"',
+            "DEPLOY_SPEC_FILES=(docker-compose.yml)",
             f'ROLLBACK_POOL_OVERRIDE="{pool_override}"',
             f'ROLLBACK_ACTIVE_RELEASE_TARGET="{image_override.parent}"',
             f'ROLLBACK_ACTIVE_IMAGE_OVERRIDE="{image_override}"',
@@ -3175,6 +3527,7 @@ def test_coupled_failure_after_murmur_promotion_restores_digest_generation(
             "ROLLBACK_ARMED=1",
             "ROLLBACK_RUNNING=0",
             'COMPOSE_PROJECT_NAME="deploy"',
+            f'STAGED_BRIDGE_VERIFIER="{BRIDGE_VERIFIER}"',
             'MAINTENANCE_MARKER_NAME=""',
             "stop_maintenance_window() { :; }",
             "activate_release_generation() { :; }",
@@ -3251,10 +3604,21 @@ def test_deploy_requires_exact_reconciliation_wrapper_before_activation() -> Non
     rollback_cleanup = script.index(
         'rm -f "$ROLLBACK_ENV_FILE" "$ROLLBACK_SPEC_ARCHIVE"', compose_preseed
     )
-    snapshot = script.index("\nsnapshot_active_deploy_specs\n")
+    snapshot = script.index("\nif ! snapshot_active_deploy_specs; then\n")
+    arm = script.index("\narm_deploy_rollback\n", snapshot)
     activation = script.index("\nactivate_staged_deploy_specs\n")
+    bootstrap = script.index("\n  --bootstrap-current \\", activation)
     env_write = script.index('cat > "$ENV_FILE"')
-    assert guard < compose_preseed < rollback_cleanup < snapshot < activation < env_write
+    assert (
+        guard
+        < compose_preseed
+        < rollback_cleanup
+        < snapshot
+        < arm
+        < activation
+        < bootstrap
+        < env_write
+    )
     assert "sha256sum /usr/local/sbin/jobseek-crawler-reconciliation" in script
     assert '--expected-wrapper-sha256 "$JOBSEEK_RECONCILIATION_WRAPPER_SHA256"' in script
     assert "systemctl is-enabled --quiet jobseek-crawler-reconciliation.timer" in script

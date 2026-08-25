@@ -81,6 +81,15 @@ The deploy script must:
 - require every format-v3 consumer, including the Murmur carry-forward path,
   to verify regular non-symlink data/runtime evidence and an exact override
   presence/digest contract before using it;
+- before bootstrapping a legacy release or changing the active release pointer,
+  authenticate and archive the exact active deploy-spec set with an explicit
+  present/absent manifest, arm rollback, and only then activate the incoming
+  specs. On failure, restore the previous present specs before using the old
+  Compose contract, retain a newly introduced bridge verifier until bridged
+  data rollback and final release verification finish, and finally delete every
+  spec recorded as previously absent. This makes the first verifier rollout
+  and its retry recoverable without assuming that old production already has
+  files introduced by the incoming release;
 - remove consumed candidate archives and prune stale candidate/generation
   residue under the mutation lock. Preserve the active generation, durable
   journal references, explicit rollback target, five newest fully verified v3
