@@ -7,6 +7,7 @@ import time
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
+from http.cookiejar import Cookie, CookieJar, DefaultCookiePolicy
 from typing import Any
 from urllib.parse import urlparse
 
@@ -112,6 +113,27 @@ _CLIENT_DEFAULTS = {
     "headers": {"User-Agent": DEFAULT_USER_AGENT, "Accept": DEFAULT_ACCEPT},
     "verify": _make_ssl_context(),
 }
+
+
+class _AsciiCookiePolicy(DefaultCookiePolicy):
+    """Reject upstream cookies that cannot be serialized in HTTP headers.
+
+    RFC 6265 cookie octets are ASCII. A few legacy recruiting portals put
+    locale-dependent month names in a tracking cookie (for example French
+    ``AOÛT``). ``http.cookiejar`` accepts that response value, but httpx then
+    raises ``UnicodeEncodeError`` while constructing the next request and the
+    otherwise-public board becomes impossible to paginate or scrape. Ignore
+    only the malformed cookie; valid session cookies from the same response
+    remain available to subsequent requests.
+    """
+
+    def set_ok(self, cookie: Cookie, request: Any) -> bool:
+        try:
+            cookie.name.encode("ascii")
+            cookie.value.encode("ascii")
+        except UnicodeEncodeError:
+            return False
+        return super().set_ok(cookie, request)
 
 
 @dataclass
@@ -325,6 +347,7 @@ def _build_async_client(kwargs: dict[str, Any], **extra: Any) -> httpx.AsyncClie
     """
     kw = dict(kwargs)
     kw.update(extra)
+    kw.setdefault("cookies", CookieJar(policy=_AsciiCookiePolicy()))
     proxy = kw.pop("proxy", None)
     inner = kw.pop("transport", None)
     if inner is None:
