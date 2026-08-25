@@ -37,7 +37,7 @@ local inflight_member = task_type .. "|" .. domain .. "|" .. task_id
 redis.call("ZREM", "inflight:" .. wtype, inflight_member)
 redis.call("HDEL", "inflight_strikes:" .. wtype, inflight_member)
 
--- Remove from all tiers
+-- Remove stale representations from all tiers before rebuilding them.
 for t = 0, 2 do
     redis.call("ZREM", "ready:" .. wtype .. ":" .. t, domain)
 end
@@ -49,14 +49,13 @@ if rl_val then
     rl_at = tonumber(rl_val)
 end
 
--- Recompute domain's tier.
+-- Recompute the domain's ready representations.
 --
 -- First-time tasks are strict inter-domain priority: if any ft_* queue has
 -- work, the domain must stay in tier 0 even when a recurring task has an
--- older due timestamp (#3019). Only after ft is empty do recurring monitors
--- and scrapes compete by next-due score, preserving the #3016 fix that keeps
--- due-now scrapes from parking behind far-future recurring monitors.
--- Monitor wins exact recurring ties.
+-- older due timestamp (#3019). Once first-time work drains, recurring monitor
+-- and scrape deadlines are advertised independently. Keeping only the current
+-- minimum cannot promote a later monitor while an older scrape stays overdue.
 local ft_mon_count = redis.call("ZCARD", "ft_monitors_" .. wtype .. ":" .. domain)
 local ft_scr_count = redis.call("ZCARD", "ft_scrapes_" .. wtype .. ":" .. domain)
 
@@ -87,21 +86,15 @@ if has_scrapes > 0 then
     if #r4 >= 2 then scr_score = tonumber(r4[2]) end
 end
 
-local next_score = nil
-local next_tier = nil
 if ft_score ~= nil then
-    next_score = math.max(rl_at, ft_score)
-    next_tier = 0
-elseif mon_score ~= nil and (scr_score == nil or mon_score <= scr_score) then
-    next_score = math.max(rl_at, mon_score)
-    next_tier = 1
-elseif scr_score ~= nil then
-    next_score = math.max(rl_at, scr_score)
-    next_tier = 2
-end
-
-if next_score ~= nil then
-    redis.call("ZADD", "ready:" .. wtype .. ":" .. next_tier, next_score, domain)
+    redis.call("ZADD", "ready:" .. wtype .. ":0", math.max(rl_at, ft_score), domain)
+else
+    if mon_score ~= nil then
+        redis.call("ZADD", "ready:" .. wtype .. ":1", math.max(rl_at, mon_score), domain)
+    end
+    if scr_score ~= nil then
+        redis.call("ZADD", "ready:" .. wtype .. ":2", math.max(rl_at, scr_score), domain)
+    end
 end
 
 return 1

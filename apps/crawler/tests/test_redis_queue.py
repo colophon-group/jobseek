@@ -891,9 +891,60 @@ async def test_claim_work_monitors_still_fire_when_due(mock_redis):
     assert score_t2 > now  # future
 
 
-async def test_enqueue_scrape_does_not_park_in_monitor_tier(mock_redis):
+async def test_due_monitor_is_not_hidden_by_older_scrape_backlog(mock_redis):
+    """A due monitor keeps a tier-1 deadline beside an older tier-2 backlog.
+
+    Regression for the Merck production failure: thousands of overdue scrapes
+    made the domain's one ready marker tier 2. Once a monitor became due, a
+    steady stream of unrelated tier-1 domains prevented claim_work from ever
+    entering Merck's domain, so the monitor could not run.
+    """
+    r = mock_redis
+    domain = "mixed-deadlines.example.com"
+    competitor = "tier-one-competitor.example.com"
+    now = time.time()
+
+    await rq.enqueue_monitor(
+        domain,
+        "target-monitor",
+        now - 100,
+        {"monitor": "greenhouse"},
+        browser=False,
+    )
+    await rq.enqueue_scrape(
+        domain,
+        "overdue-scrape",
+        now - 1000,
+        {"source_url": f"https://{domain}/jobs/1", "board_id": "board-1"},
+        browser=False,
+    )
+    await rq.enqueue_monitor(
+        competitor,
+        "competitor-monitor",
+        now - 10,
+        {"monitor": "greenhouse"},
+        browser=False,
+    )
+
+    assert await r.zscore("ready:simple:1", domain) == pytest.approx(now - 100)
+    assert await r.zscore("ready:simple:2", domain) == pytest.approx(now - 1000)
+
+    # The target monitor's own tier-1 deadline is older than the unrelated
+    # competitor, so it is claimed first. With the former single MIN marker,
+    # this returned competitor-monitor while the target remained in tier 2.
+    work = await rq.claim_work(browser=False)
+    assert work is not None
+    assert work.kind == "monitor"
+    assert work.board_work is not None
+    assert work.board_work.board_id == "target-monitor"
+    assert await r.zscore("ready:simple:1", domain) is None
+    assert await r.zscore("ready:simple:2", domain) is not None
+
+
+async def test_enqueue_scrape_preserves_future_monitor_deadline(mock_redis):
     """Enqueueing a due-now scrape on a domain with a far-future monitor
-    must place the domain in tier 2 (scrapes), not tier 1 (monitors).
+    advertises both deadlines so scrapes drain now and the monitor promotes
+    automatically when its own timestamp becomes due.
 
     Symmetric guard for the priority-inversion bug in enqueue_task.lua.
     """
@@ -909,11 +960,40 @@ async def test_enqueue_scrape_does_not_park_in_monitor_tier(mock_redis):
     added = await rq.enqueue_scrape(domain, "p1", now - 10, config, browser=True)
     assert added is True
 
-    # Domain should be in ready:browser:2 (scrapes), NOT tier 1.
+    # The scrape is available now, while tier 1 already carries the future
+    # monitor promotion deadline.
     score_t2 = await r.zscore("ready:browser:2", domain)
     score_t1 = await r.zscore("ready:browser:1", domain)
     assert score_t2 is not None, "domain should land in tier 2 because scrape is due-now"
-    assert score_t1 is None, "domain must not be in tier 1 — that's the priority-inversion bug"
+    assert score_t1 == pytest.approx(now + 1000)
+
+    work = await rq.claim_work(browser=True)
+    assert work is not None
+    assert work.kind == "scrape"
+
+
+async def test_no_claim_rebuilds_future_ready_deadline_after_earliest_removal(mock_redis):
+    """A stale due marker must not erase later work after a board removal."""
+    r = mock_redis
+    domain = "removed-earliest.example.com"
+    now = time.time()
+
+    await rq.enqueue_monitor(
+        domain,
+        "due-then-removed",
+        now - 10,
+        {"monitor": "greenhouse"},
+    )
+    await rq.enqueue_monitor(
+        domain,
+        "future-survivor",
+        now + 3600,
+        {"monitor": "greenhouse"},
+    )
+    await rq.remove_monitor(domain, "due-then-removed")
+
+    assert await rq.claim_work(browser=False) is None
+    assert await r.zscore("ready:simple:1", domain) == pytest.approx(now + 3600)
 
 
 # ---------------------------------------------------------------------------
@@ -1005,6 +1085,30 @@ async def test_reschedule_keeps_first_time_scrape_ahead_of_overdue_monitor(mock_
 
     assert await r.zscore("ready:simple:0", domain) is not None
     assert await r.zscore("ready:simple:1", domain) is None
+
+
+async def test_reschedule_advertises_monitor_and_scrape_deadlines(mock_redis):
+    """reschedule_task.lua must preserve both recurring ready tiers."""
+    r = mock_redis
+    domain = "mixed-reschedule.example"
+    now = time.time()
+
+    await r.zadd(f"scrapes_simple:{domain}", {"overdue-scrape": now - 1000})
+    await r.hset(
+        "scrape:overdue-scrape",
+        mapping={"source_url": f"https://{domain}/jobs/1", "board_id": "board-1"},
+    )
+
+    await rq.reschedule_task(
+        domain,
+        "due-monitor",
+        "monitor",
+        now - 100,
+        browser=False,
+    )
+
+    assert await r.zscore("ready:simple:1", domain) == pytest.approx(now - 100)
+    assert await r.zscore("ready:simple:2", domain) == pytest.approx(now - 1000)
 
 
 # ---------------------------------------------------------------------------
@@ -1260,6 +1364,28 @@ async def test_reaper_reenqueues_expired_scrape_lease(mock_redis):
     assert await r.zcard("scrapes_simple:example.com") == 1
     assert await r.zscore("ready:simple:2", domain) is not None
     assert await r.zcard("inflight:simple") == 0
+
+
+async def test_reaper_preserves_both_recurring_ready_deadlines(mock_redis):
+    """A reaped monitor must not hide or be hidden by an overdue scrape."""
+    r = mock_redis
+    domain = "mixed-reaper.example"
+    now = time.time()
+    member = f"monitor|{domain}|reaped-monitor"
+
+    await r.hset("board:reaped-monitor", mapping={"monitor": "greenhouse"})
+    await r.hset(
+        "scrape:overdue-scrape",
+        mapping={"source_url": f"https://{domain}/jobs/1", "board_id": "board-1"},
+    )
+    await r.zadd(f"scrapes_simple:{domain}", {"overdue-scrape": now - 1000})
+    await r.zadd("inflight:simple", {member: now - 60})
+
+    result = await rq.reap_expired(browser=False)
+
+    assert result["reenqueued"] == 1
+    assert await r.zscore("ready:simple:1", domain) is not None
+    assert await r.zscore("ready:simple:2", domain) == pytest.approx(now - 1000)
 
 
 async def test_reaper_dead_letters_after_max_strikes(mock_redis):

@@ -100,10 +100,10 @@ for _, member in ipairs(expired) do
                     end
                     redis.call("ZADD", queue_key, "NX", retry_score, task_id)
 
-                    -- Re-park the domain in its ready tier so a worker
-                    -- will see it. Pick the lowest-score tier across
-                    -- ft / monitor / scrape buckets — same MIN-score
-                    -- rule as the rest of the scheduler (#3016).
+                    -- Re-park every ready representation for the domain. A
+                    -- monitor and scrape deadline must coexist: otherwise an
+                    -- older scrape backlog can leave a later due monitor
+                    -- advertised only in globally lower-priority tier 2.
                     local ft_mon_count = redis.call("ZCARD", "ft_monitors_" .. wtype .. ":" .. domain)
                     local ft_scr_count = redis.call("ZCARD", "ft_scrapes_" .. wtype .. ":" .. domain)
 
@@ -136,32 +136,18 @@ for _, member in ipairs(expired) do
                     local rl_at = 0
                     if rl_val then rl_at = tonumber(rl_val) end
 
-                    local next_score = nil
-                    local next_tier = nil
+                    for tier = 0, 2 do
+                        redis.call("ZREM", "ready:" .. wtype .. ":" .. tier, domain)
+                    end
                     if ft_score ~= nil then
-                        next_score = ft_score
-                        next_tier = 0
-                    end
-                    if mon_score ~= nil and (next_score == nil or mon_score < next_score) then
-                        next_score = mon_score
-                        next_tier = 1
-                    end
-                    if scr_score ~= nil and (next_score == nil or scr_score < next_score) then
-                        next_score = scr_score
-                        next_tier = 2
-                    end
-
-                    if next_tier ~= nil then
-                        -- Remove from other tiers, add to chosen one.
-                        for t = 0, 2 do
-                            if t ~= next_tier then
-                                redis.call("ZREM", "ready:" .. wtype .. ":" .. t, domain)
-                            end
+                        redis.call("ZADD", "ready:" .. wtype .. ":0", math.max(rl_at, ft_score), domain)
+                    else
+                        if mon_score ~= nil then
+                            redis.call("ZADD", "ready:" .. wtype .. ":1", math.max(rl_at, mon_score), domain)
                         end
-                        redis.call("ZADD",
-                                   "ready:" .. wtype .. ":" .. next_tier,
-                                   math.max(rl_at, next_score),
-                                   domain)
+                        if scr_score ~= nil then
+                            redis.call("ZADD", "ready:" .. wtype .. ":2", math.max(rl_at, scr_score), domain)
+                        end
                     end
 
                     -- Remove the in-flight entry — the task is back

@@ -72,15 +72,10 @@ end
 -- this repairs a missing/stale ready-domain entry when sync only rewrites the
 -- board hash and the logical task already exists elsewhere.
 do
-    -- Determine the correct ready queue tier and score.
-    --
-    -- First-time tasks always win (tier 0, ready_score=now to claim ASAP).
-    -- For recurring tasks, the tier is chosen by MIN next-due score
-    -- across the monitor and scrape buckets — this avoids the priority-
-    -- inversion bug (#3016) where a domain with a far-future recurring
-    -- monitor and a due-now scrape backlog gets parked in tier 1 at the
-    -- monitor's future score and never claims its scrapes.
-    -- Monitor wins ties vs scrape (strict-less-than).
+    -- First-time tasks always win and suppress recurring representations.
+    -- Otherwise advertise monitor and scrape deadlines independently. A
+    -- single MIN-score representation cannot promote a later monitor deadline
+    -- after an older scrape backlog becomes due.
     local has_ft = (
         redis.call("ZCARD", "ft_monitors_" .. wtype .. ":" .. domain) +
         redis.call("ZCARD", "ft_scrapes_" .. wtype .. ":" .. domain)
@@ -92,12 +87,12 @@ do
         rl_at = tonumber(rl_val)
     end
 
-    local next_tier = nil
-    local ready_score = nil
+    for tier = 0, 2 do
+        redis.call("ZREM", "ready:" .. wtype .. ":" .. tier, domain)
+    end
 
     if has_ft > 0 then
-        next_tier = 0
-        ready_score = math.max(rl_at, now)
+        redis.call("ZADD", "ready:" .. wtype .. ":0", math.max(rl_at, now), domain)
     else
         local mon_score = nil
         if redis.call("ZCARD", "monitors_" .. wtype .. ":" .. domain) > 0 then
@@ -112,25 +107,11 @@ do
         end
 
         if mon_score ~= nil then
-            next_tier = 1
-            ready_score = math.max(rl_at, mon_score)
+            redis.call("ZADD", "ready:" .. wtype .. ":1", math.max(rl_at, mon_score), domain)
         end
-        if scr_score ~= nil and (mon_score == nil or scr_score < mon_score) then
-            next_tier = 2
-            ready_score = math.max(rl_at, scr_score)
+        if scr_score ~= nil then
+            redis.call("ZADD", "ready:" .. wtype .. ":2", math.max(rl_at, scr_score), domain)
         end
-    end
-
-    if next_tier ~= nil then
-        -- Remove from other tiers, add to correct one
-        for t = 0, 2 do
-            if t ~= next_tier then
-                redis.call("ZREM", "ready:" .. wtype .. ":" .. t, domain)
-            end
-        end
-
-        -- Use plain ZADD (not NX) — upgrade tier if domain was in a lower tier
-        redis.call("ZADD", "ready:" .. wtype .. ":" .. next_tier, ready_score, domain)
     end
 end
 
