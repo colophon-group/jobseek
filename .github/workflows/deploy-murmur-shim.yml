@@ -407,6 +407,7 @@ jobs:
                 [[ "$data_revision" =~ ^[0-9a-f]{40}$ ]]
                 [[ "$has_image_override" == 0 || "$has_image_override" == 1 ]]
                 test "$data_files_digest" = "$(sha256sum "$generation/data-files.sha256" | awk '{print $1}')"
+                test "$data_contract" = "$data_files_digest"
                 verify_exact_csv_tree "$generation/data" "$generation/data-files.sha256"
                 if [[ "$has_image_override" == 1 ]]; then
                   image_override="$generation/rollback-images.override.yml"
@@ -839,6 +840,7 @@ jobs:
               data_contract="$(sed -n 's/^DATA_CONTRACT_SHA256=//p' "$previous_active_generation/release.manifest")"
               data_revision="$(sed -n 's/^DATA_REVISION=//p' "$previous_active_generation/release.manifest")"
               [[ "$data_contract" =~ ^[0-9a-f]{64}$ ]]
+              test "$data_contract" = "$data_files_digest"
               [[ "$data_revision" =~ ^[0-9a-f]{40}$ ]]
               verify_exact_csv_tree "$murmur_generation/data" "$murmur_generation/data-files.sha256"
             fi

@@ -15,6 +15,7 @@ const RUNTIME_DATA_PATHS = new Set([
   "apps/crawler/data/seniority.csv",
   "apps/crawler/data/technologies.csv",
 ]);
+const MAX_CRAWLER_DATA_BLOB_BYTES = 64 * 1024 * 1024;
 
 export function isCrawlerRuntimePath(path) {
   if (EXTRA_RUNTIME_PATHS.has(path)) return true;
@@ -58,7 +59,30 @@ export function deriveCrawlerRuntimeContract(entries) {
 }
 
 export function deriveCrawlerDataContract(entries) {
-  return deriveContract(entries, isPublishableCrawlerDataPath, "Crawler data");
+  const dataEntries = entries
+    .filter(({ path }) => isPublishableCrawlerDataPath(path))
+    .sort((left, right) =>
+      left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+    );
+  if (dataEntries.length === 0) {
+    throw new Error("Crawler data contract contains no files");
+  }
+  const manifest = dataEntries
+    .map(({ contentSha256, path }) => {
+      const relative = path.slice("apps/crawler/data/".length);
+      if (
+        !/^[A-Za-z0-9._/-]+\.csv$/.test(relative) ||
+        relative.split("/").includes("..")
+      ) {
+        throw new Error(`Invalid publishable crawler data path ${path}`);
+      }
+      if (!/^[0-9a-f]{64}$/.test(contentSha256 ?? "")) {
+        throw new Error(`Missing canonical content digest for ${path}`);
+      }
+      return `${contentSha256}  ${relative}\n`;
+    })
+    .join("");
+  return createHash("sha256").update(manifest).digest("hex");
 }
 
 function requiredArgument(name) {
@@ -74,7 +98,7 @@ function optionalArgument(name) {
   return index === -1 ? null : process.argv[index + 1];
 }
 
-function readGitEntries(repo, revision) {
+export function readGitEntries(repo, revision, includeDataContents) {
   if (!/^[0-9a-f]{40}$/.test(revision)) {
     throw new Error("Revision must be a full lowercase Git commit SHA");
   }
@@ -93,7 +117,7 @@ function readGitEntries(repo, revision) {
     ],
     { encoding: "buffer" },
   );
-  return output
+  const entries = output
     .toString("utf8")
     .split("\0")
     .filter(Boolean)
@@ -107,6 +131,25 @@ function readGitEntries(repo, revision) {
       const [, mode, type, oid, path] = match;
       return { mode, type, oid, path };
     });
+  if (!includeDataContents) return entries;
+  return entries.map((entry) => {
+    if (!isPublishableCrawlerDataPath(entry.path)) return entry;
+    if (entry.type !== "blob") {
+      throw new Error(`Publishable crawler data is not a blob: ${entry.path}`);
+    }
+    const content = execFileSync(
+      "git",
+      ["-C", repo, "cat-file", "blob", entry.oid],
+      {
+        encoding: "buffer",
+        maxBuffer: MAX_CRAWLER_DATA_BLOB_BYTES,
+      },
+    );
+    return {
+      ...entry,
+      contentSha256: createHash("sha256").update(content).digest("hex"),
+    };
+  });
 }
 
 function main() {
@@ -117,7 +160,7 @@ function main() {
   if (!new Set(["data", "runtime"]).has(kind)) {
     throw new Error("Contract kind must be data or runtime");
   }
-  const entries = readGitEntries(repo, revision);
+  const entries = readGitEntries(repo, revision, kind === "data");
   const contract =
     kind === "data"
       ? deriveCrawlerDataContract(entries)
