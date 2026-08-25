@@ -89,6 +89,8 @@ def _monitor_config_fingerprint(
         not in {
             "scraper_type",
             "scraper_config",
+            "identity_migration",
+            "_identity_migration_receipt",
             _MONITOR_CONFIG_FINGERPRINT,
         }
     }
@@ -279,7 +281,14 @@ _REALIGN_RENAMED_BOARD_URLS_LOCAL = """
 UPDATE job_board jb
 SET board_url = b.board_url,
     company_id = c.id,
-    metadata = '{}'::jsonb,
+    -- Identity-migration receipts are durable one-shot records, not source
+    -- runtime state. Preserve them even when slug-stable URL realignment
+    -- clears every other metadata key, so a renamed source cannot re-arm a
+    -- completed migration.
+    metadata = jsonb_strip_nulls(jsonb_build_object(
+        '_identity_migration_receipt',
+        jb.metadata -> '_identity_migration_receipt'
+    )),
     is_enabled = true,
     board_status = 'active',
     consecutive_failures = 0,
@@ -362,6 +371,10 @@ ON CONFLICT (board_url) DO UPDATE SET
         WHEN job_board.board_url IS DISTINCT FROM EXCLUDED.board_url
           OR job_board.crawler_type IS DISTINCT FROM EXCLUDED.crawler_type
         THEN COALESCE(EXCLUDED.metadata, '{}'::jsonb)
+             || jsonb_strip_nulls(jsonb_build_object(
+                 '_identity_migration_receipt',
+                 job_board.metadata -> '_identity_migration_receipt'
+             ))
         ELSE EXCLUDED.metadata || jsonb_strip_nulls(jsonb_build_object(
             'sitemap_url', job_board.metadata -> 'sitemap_url',
             'recent_discovered_counts', job_board.metadata -> 'recent_discovered_counts',
@@ -378,6 +391,11 @@ ON CONFLICT (board_url) DO UPDATE SET
                 EXCLUDED.metadata -> 'blast_radius_floor',
                 job_board.metadata -> 'blast_radius_floor'
             ),
+            -- Runtime receipt wins over CSV metadata. Once a one-shot
+            -- identity migration completes, sync must never erase or re-arm
+            -- it, even if a stale CSV copy contains a different value.
+            '_identity_migration_receipt',
+                job_board.metadata -> '_identity_migration_receipt',
             'pcsx_watermark', CASE
                 WHEN job_board.metadata -> 'pcsx_watermark' IS NULL THEN NULL
                 ELSE COALESCE(EXCLUDED.metadata -> 'pcsx_watermark', '{}'::jsonb)
@@ -1385,6 +1403,7 @@ async def sync_boards(
             if isinstance(due, datetime):
                 next_check_at = max(schedule_time, due.timestamp())
         config = {
+            "board_slug": board_slugs[i] or "",
             "board_url": board_url,
             "crawler_type": crawler_types[i],
             "company_id": str(local_row["company_id"]),

@@ -769,6 +769,10 @@ class _BoardRecord:
             config,
             strict_intervals=True,
         ).as_board_record(board_id)
+        # ``board_slug`` is a catalog identity, not part of the language-
+        # neutral runtime extraction contract. Keep it on the compatibility
+        # record for narrow board-bound operational transitions.
+        self._data["board_slug"] = config.get("board_slug")
         # Preserve the historical asyncpg.Record compatibility fields exactly.
         # Runtime Redis hashes currently keep scraper settings inside metadata,
         # but focused callers may still provide these top-level values.

@@ -612,6 +612,7 @@ jobs:
           tests/e2e/test_labeller_sampling_plan.py
           tests/e2e/test_location_taxonomy_repair.py
           tests/e2e/test_postgres_pool_session_guards.py
+          tests/e2e/test_merck_identity_migration.py
           -v
         working-directory: apps/crawler
 

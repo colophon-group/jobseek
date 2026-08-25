@@ -84,6 +84,7 @@ from src.queries.monitor import (
     _RECORD_EMPTY_CHECK,
     _RECORD_FAILURE,
     _RECORD_SUCCESS_NONEMPTY,
+    _RETIRE_CANONICALIZED_PROVIDER_IDENTITIES,
     _UPDATE_METADATA,
 )
 from src.queries.scrape import (
@@ -112,6 +113,69 @@ class _BatchLookups:
 _batch = _BatchLookups()
 
 # ── Constants ────────────────────────────────────────────────────────
+
+_MERCK_IDENTITY_MIGRATION = "merck-phenom-stable-id-v1"
+_MERCK_IDENTITY_MIGRATION_VERSION = 1
+_IDENTITY_MIGRATION_RECEIPT_KEY = "_identity_migration_receipt"
+_MERCK_IDENTITY_MIGRATION_CONTRACTS = {
+    "merck-br-pt": (
+        "https://careers.merckgroup.com/br/pt/search-results",
+        "sitemap",
+        "f51f3576f00babffbae97b9f4f05789c4ecfd805f98c292f942726618e238ed5",
+    ),
+    "merck-cn-zh": (
+        "https://careers.merckgroup.com/cn/zh/search-results",
+        "sitemap",
+        "ac58ba6af909b1b5a114fb9b8cd851c7be692c53c7aff5a7c5f979564a22293a",
+    ),
+    "merck-de-de": (
+        "https://careers.merckgroup.com/de/de/search-results",
+        "sitemap",
+        "deb59407fc098e145c3b40c401fcfe52c7b1af62ac76133c61bc9d0476bdafcf",
+    ),
+    "merck-es-es": (
+        "https://careers.merckgroup.com/es/es/search-results",
+        "sitemap",
+        "f12e78673e9e63cbd29b8597bd06fcda2bb9e08fdbb6c20f7dad637df9fb6cd0",
+    ),
+    "merck-fr-fr": (
+        "https://careers.merckgroup.com/fr/fr/search-results",
+        "sitemap",
+        "e303762dc3bd34383d43012183e23f54448a7383604e39ca90514299b30595a1",
+    ),
+    "merck-global-en": (
+        "https://careers.merckgroup.com/global/en/search-results",
+        "sitemap",
+        "ecdc9747101db5d3b9fe53a3fa86ae3793d43ab6d664f48b4c84e73771c69e13",
+    ),
+    "merck-it-it": (
+        "https://careers.merckgroup.com/it/it/search-results",
+        "sitemap",
+        "aadff6acd244a07bd21c5ad7437002f94d8f6d2fe5a37572b8f89bd044395c20",
+    ),
+    "merck-jp-ja": (
+        "https://careers.merckgroup.com/jp/ja/search-results",
+        "sitemap",
+        "81ff3b5be322c5ef7aa943fc9d46b6767004bed4a220bf09f77c0ee5c6fccd02",
+    ),
+    "merck-kr-ko": (
+        "https://careers.merckgroup.com/kr/ko/search-results",
+        "sitemap",
+        "49238743ffd8f50743921e4ee0ae72fe3c99c640cecff13ab9108341e818fa00",
+    ),
+    "merck-tw-zh": (
+        "https://careers.merckgroup.com/tw/zh/search-results",
+        "sitemap",
+        "e0c8c6cf184dc1a4d653321b0cec671db6adb202999666ae2cc88bc3bff3d4f6",
+    ),
+}
+_MERCK_LEGACY_URL_PATTERN = (
+    r"^https://careers[.]merckgroup[.]com/"
+    r"(br/pt|cn/zh|de/de|es/es|fr/fr|global/en|it/it|jp/ja|kr/ko|tw/zh)/"
+    r"job/([0-9]+)(/[^/?#]*)?$"
+)
+_MERCK_CANONICAL_URL_PATTERN = r"^https://careers[.]emdgroup[.]com/us/en/job/[0-9]+$"
+_IDENTITY_MIGRATION_MAX_ROWS = 2_000
 
 # API monitor types share a single API host per type (throttle-domain keys).
 _API_MONITOR_TYPES = api_monitor_types()
@@ -413,6 +477,201 @@ def _setting(md: dict, key: str, default: float) -> float:
     """
     val = md.get(key)
     return default if val is None else float(val)
+
+
+async def _retire_canonicalized_provider_identities(
+    conn: asyncpg.Connection,
+    *,
+    board_id: str,
+    company_id: str,
+    board_slug: str | None,
+    board_url: str,
+    crawler_type: str,
+    monitor_start_ts,
+    metadata: dict | None,
+    discovered: int,
+    canonical_urls: set[str],
+    truncated: bool,
+    extraction_filtered: int,
+    security_filtered: int,
+    processing_filtered: int,
+    all_canonical: bool,
+    board_log: structlog.stdlib.BoundLogger,
+) -> int:
+    """Run the receipt-backed, one-shot Merck identity migration.
+
+    Eligibility is bound to a code-owned board URL/type/config fingerprint,
+    healthy complete discovery, and an ordinary rolling-count drop check. The
+    SQL additionally binds the owning company to ``merck``, classifies every
+    active board-owned source URL, and independently requires every canonical
+    URL discovered this cycle to exist as an active same-company row touched
+    during this cycle. It then retires all strict legacy rows, including stale
+    rows whose jobs are no longer in the current discovery.
+
+    The caller runs this inside the ordinary board-success transaction before
+    :func:`_mark_gone_with_guards`. Retired duplicates no longer inflate that
+    guard's active/missing ratio, while every unrelated active row remains
+    protected by the unchanged global guard logic. Retirement and its durable
+    receipt are one transaction. An exact receipt makes every replay a
+    permanent no-op; any mismatched receipt fails closed.
+    """
+    md = metadata or {}
+    if md.get("identity_migration") != _MERCK_IDENTITY_MIGRATION:
+        return 0
+
+    contract = _MERCK_IDENTITY_MIGRATION_CONTRACTS.get(board_slug or "")
+    fingerprint = md.get("_monitor_config_fingerprint")
+    if contract is None or (board_url, crawler_type, fingerprint) != contract:
+        board_log.warning(
+            "batch.monitor.identity_migration_contract_mismatch",
+            migration=_MERCK_IDENTITY_MIGRATION,
+            board_slug=board_slug,
+        )
+        return 0
+
+    expected_fingerprint = contract[2]
+
+    def receipt_matches(receipt: object) -> bool:
+        if not isinstance(receipt, dict) or set(receipt) != {
+            "id",
+            "version",
+            "config_fingerprint",
+            "completed_at",
+            "retired_count",
+        }:
+            return False
+        retired_count = receipt.get("retired_count")
+        return (
+            receipt.get("id") == _MERCK_IDENTITY_MIGRATION
+            and receipt.get("version") == _MERCK_IDENTITY_MIGRATION_VERSION
+            and receipt.get("config_fingerprint") == expected_fingerprint
+            and isinstance(receipt.get("completed_at"), str)
+            and bool(receipt.get("completed_at"))
+            and isinstance(retired_count, int)
+            and not isinstance(retired_count, bool)
+            and 0 <= retired_count <= _IDENTITY_MIGRATION_MAX_ROWS
+        )
+
+    configured_receipt = md.get(_IDENTITY_MIGRATION_RECEIPT_KEY)
+    if configured_receipt is not None:
+        if receipt_matches(configured_receipt):
+            return 0
+        board_log.warning(
+            "batch.monitor.identity_migration_receipt_mismatch",
+            migration=_MERCK_IDENTITY_MIGRATION,
+            source="board_metadata",
+        )
+        return 0
+
+    history = list(md.get("recent_discovered_counts") or [])
+    exact_canonical_urls = sorted(set(canonical_urls))
+    precondition_reason: str | None = None
+    if discovered <= 0:
+        precondition_reason = "empty"
+    elif truncated:
+        precondition_reason = "truncated"
+    elif security_filtered:
+        precondition_reason = "security_filtered"
+    elif processing_filtered:
+        precondition_reason = "processing_filtered"
+    elif not all_canonical:
+        precondition_reason = "noncanonical_output"
+    elif not exact_canonical_urls:
+        precondition_reason = "empty_canonical_set"
+    elif discovered != len(exact_canonical_urls):
+        precondition_reason = "nonunique_canonical_output"
+    elif len(exact_canonical_urls) > _IDENTITY_MIGRATION_MAX_ROWS:
+        precondition_reason = "canonical_set_over_cap"
+    elif len(history) < _DROP_GUARD_MIN_HISTORY:
+        precondition_reason = "insufficient_history"
+    else:
+        from statistics import median
+
+        expected = median(history)
+        drop_threshold = _setting(md, "drop_threshold", _DROP_GUARD_THRESHOLD_DEFAULT)
+        if expected <= 0 or discovered < expected * (1.0 - drop_threshold):
+            precondition_reason = "drop"
+
+    if precondition_reason is not None:
+        board_log.warning(
+            "batch.monitor.identity_migration_precondition_failed",
+            migration=_MERCK_IDENTITY_MIGRATION,
+            reason=precondition_reason,
+            discovered=discovered,
+            history=history,
+        )
+        return 0
+
+    base_receipt = {
+        "id": _MERCK_IDENTITY_MIGRATION,
+        "version": _MERCK_IDENTITY_MIGRATION_VERSION,
+        "config_fingerprint": expected_fingerprint,
+    }
+
+    row = await conn.fetchrow(
+        _RETIRE_CANONICALIZED_PROVIDER_IDENTITIES,
+        board_id,
+        company_id,
+        monitor_start_ts,
+        _IDENTITY_MIGRATION_MAX_ROWS,
+        exact_canonical_urls,
+        _MERCK_LEGACY_URL_PATTERN,
+        _MERCK_CANONICAL_URL_PATTERN,
+        json.dumps(base_receipt),
+    )
+    if row is None:
+        board_log.warning("batch.monitor.identity_migration_no_result")
+        return 0
+
+    existing_receipt = row["existing_receipt"]
+    if isinstance(existing_receipt, str):
+        existing_receipt = json.loads(existing_receipt)
+    if existing_receipt is not None:
+        if receipt_matches(existing_receipt):
+            return 0
+        board_log.warning(
+            "batch.monitor.identity_migration_receipt_mismatch",
+            migration=_MERCK_IDENTITY_MIGRATION,
+            source="database",
+        )
+        return 0
+
+    legacy = int(row["legacy"])
+    unknown = int(row["unknown"])
+    discovered_count = int(row["discovered"])
+    validated_count = int(row["validated"])
+    retired = int(row["retired"])
+    receipt_written = bool(row["receipt_written"])
+    if not receipt_written:
+        board_log.warning(
+            "batch.monitor.identity_migration_blocked",
+            migration=_MERCK_IDENTITY_MIGRATION,
+            active=int(row["active"]),
+            legacy=legacy,
+            canonical=int(row["canonical"]),
+            unknown=unknown,
+            discovered=discovered_count,
+            validated=validated_count,
+            cap=_IDENTITY_MIGRATION_MAX_ROWS,
+        )
+        return 0
+    if (
+        unknown
+        or discovered_count != len(exact_canonical_urls)
+        or validated_count != discovered_count
+        or retired != legacy
+    ):
+        raise RuntimeError(
+            "identity migration receipt was written without exact retirement "
+            f"(legacy={legacy}, unknown={unknown}, discovered={discovered_count}, "
+            f"validated={validated_count}, retired={retired})"
+        )
+    board_log.info(
+        "batch.monitor.identity_migration_completed",
+        migration=_MERCK_IDENTITY_MIGRATION,
+        retired=retired,
+    )
+    return retired
 
 
 async def _mark_gone_with_guards(
@@ -838,6 +1097,7 @@ async def _process_one_board_streaming(
     """
     board_id = str(board["id"])
     company_id = str(board["company_id"])
+    board_slug = board["board_slug"]
     board_url = board["board_url"]
     crawler_type = board["crawler_type"]
 
@@ -895,6 +1155,14 @@ async def _process_one_board_streaming(
         # gone-detection (#3216). The MAX_JOBS cap means the unseen tail
         # would otherwise be tombstoned by _MARK_GONE_BY_TIMESTAMP.
         any_truncated = False
+        extraction_filtered = 0
+        security_filtered = 0
+        processing_filtered = 0
+        all_canonical = True
+        canonical_urls: set[str] = set()
+        collect_migration_canonicals = (
+            metadata.get("identity_migration") == _MERCK_IDENTITY_MIGRATION
+        )
         # A streamed monitor may emit state on an empty batch before it emits
         # any URLs. Hold that patch until the first posting batch commits, or
         # until a valid empty run records its empty-check transition.
@@ -911,6 +1179,30 @@ async def _process_one_board_streaming(
         async for result in monitor_stream:
             batch_count += 1
             total_discovered += len(result.urls)
+            extraction_filtered += result.filtered_count
+            rejected_provider_urls = result.security_filtered_count
+            security_filtered += rejected_provider_urls
+            if rejected_provider_urls:
+                # ``url_allowlist`` is an opt-in provider-boundary contract,
+                # not an extraction hint. Attribute every violation to its
+                # board immediately; after accepted URLs from the stream have
+                # committed, the cycle fails before empty/gone processing.
+                monitor_url_filtered_total.labels(
+                    reason="provider_boundary",
+                    board_id=board_id,
+                ).inc(rejected_provider_urls)
+                board_log.error(
+                    "batch.monitor.provider_boundary_rejected",
+                    batch=batch_count,
+                    rejected=rejected_provider_urls,
+                    accepted=len(result.urls),
+                )
+            if collect_migration_canonicals:
+                for url in result.urls:
+                    if re.fullmatch(_MERCK_CANONICAL_URL_PATTERN, url) is None:
+                        all_canonical = False
+                    else:
+                        canonical_urls.add(url)
             is_rich = result.jobs_by_url is not None
             if getattr(result, "truncated", False):
                 any_truncated = True
@@ -953,6 +1245,7 @@ async def _process_one_board_streaming(
                 seen.add(u)
                 filtered_urls.append(u)
             for reason, count in drop_reasons.items():
+                processing_filtered += count
                 # ``board_id`` label added in #2704 so a noisy board is
                 # attributable without grepping logs. ``board_id`` is the
                 # primary key UUID, in scope from the enclosing function.
@@ -1385,6 +1678,17 @@ async def _process_one_board_streaming(
                 new=len(all_new_urls),
             )
 
+        if security_filtered:
+            # Accepted discovery writes above are deliberately retained, but
+            # a provider-boundary violation must never be interpreted as an
+            # authoritative empty/partial inventory. Raising here enters the
+            # ordinary board failure accounting and suppresses empty checks,
+            # identity migration, gone guards, and terminal delisting.
+            raise RuntimeError(
+                "provider boundary allowlist rejected "
+                f"{security_filtered} URL(s); empty and gone detection suppressed"
+            )
+
         # After all batches: mark gone postings
         if total_processed == 0:
             # Nothing reached _DIFF_BATCH — either the monitor yielded 0 URLs
@@ -1470,7 +1774,25 @@ async def _process_one_board_streaming(
             monitor_truncated_total.labels(board_id=board_id).inc()
         else:
             async with pool.acquire() as conn, conn.transaction():
-                gone_count, gone_skipped_reason = await _mark_gone_with_guards(
+                identity_migration_gone = await _retire_canonicalized_provider_identities(
+                    conn,
+                    board_id=board_id,
+                    company_id=company_id,
+                    board_slug=board_slug,
+                    board_url=board_url,
+                    crawler_type=crawler_type,
+                    monitor_start_ts=monitor_start_ts,
+                    metadata=metadata,
+                    discovered=total_discovered,
+                    canonical_urls=canonical_urls,
+                    truncated=any_truncated,
+                    extraction_filtered=extraction_filtered,
+                    security_filtered=security_filtered,
+                    processing_filtered=processing_filtered,
+                    all_canonical=all_canonical,
+                    board_log=board_log,
+                )
+                guarded_gone_count, gone_skipped_reason = await _mark_gone_with_guards(
                     conn,
                     board_id,
                     total_discovered,
@@ -1479,6 +1801,7 @@ async def _process_one_board_streaming(
                     delist_threshold,
                     board_log,
                 )
+                gone_count = identity_migration_gone + guarded_gone_count
                 recovered_from = await conn.fetchval(_RECORD_SUCCESS_NONEMPTY, board_id)
 
             _emit_board_recovery(recovered_from, board_log, discovered=total_discovered)
