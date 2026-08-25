@@ -1287,6 +1287,16 @@ inline — Single-Page Extraction (rich)
                  Optional HTML tag that starts each posting (for example h2).
                  Each repeated step run is restricted to one such block, so an
                  optional field cannot consume content from the next posting.
+    section_start
+                 Optional fail-closed start marker for pages that retain
+                 multiple application rounds or opportunity categories.
+                 Configure together with section_end; both are exclusive.
+                 Each accepts the step match keys tag, text, attr, and
+                 match_regex, for example {"text":
+                 "Deadline, 1st November"}.
+    section_end  Required partner to section_start. Extraction fails when
+                 either marker disappears or the end does not follow the
+                 start, preventing stale or unrelated sections from leaking.
     preserve_single_location
                  When true, keep an extracted location string as one value
                  instead of splitting it at commas (default: false).
@@ -1465,6 +1475,11 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    Optional metadata_selectors maps stable row labels into
                    discovered-job metadata for job_filter classification:
                    {"metadata_selectors": {"opportunity_type": ".type"}}
+                   Optional section_start and section_end limit rows to the
+                   authoritative category between two markers. Both are
+                   exclusive and fail closed if page structure drifts:
+                   {"section_start": {"selector": "h3", "text": "Jobs"},
+                    "section_end": {"selector": "h3#student-projects"}}.
                    Rows whose URL is stored directly on the row can instead use
                    {"row_selector": "tr[data-href]", "link_attr": "data-href",
                     "title_selector": "td.title",
@@ -3873,7 +3888,9 @@ pdf — PDF document scraper
             ocr (opt-in fallback for image-only PDFs),
             ocr_languages (Tesseract languages, default "eng"),
             ocr_scale (integer PDF render scale 1-4, default 2; OCR is
-            limited to 20 pages and 30 million rendered pixels per page)
+            limited to 20 pages and 30 million rendered pixels per page),
+            defaults (missing-only JobContent fields; extracted values win,
+            e.g. {"locations": ["Lausanne, Switzerland"]})
   Note:     Typically paired with a dom monitor using url_filter to
             discover PDF links on the careers page.
 """

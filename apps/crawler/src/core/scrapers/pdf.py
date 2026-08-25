@@ -32,6 +32,9 @@ Config:
     ocr_languages  Tesseract language expression (default: "eng").
     ocr_scale      Integer PDF render scale from 1 to 4 (default: 2).
                    OCR is limited to 20 pages and 30 million pixels per page.
+    defaults       Missing-only defaults for JobContent fields. Useful for a
+                   board whose PDFs omit a location that is authoritative at
+                   board level; extracted values always win.
 """
 
 from __future__ import annotations
@@ -62,6 +65,20 @@ _MAX_OCR_PAGES = 20
 _MAX_OCR_SCALE = 4
 _MAX_OCR_PIXELS = 30_000_000
 _OCR_LANGUAGES_RE = re.compile(r"[A-Za-z0-9_+-]{1,64}")
+_DEFAULT_FIELDS = frozenset(JobContent.__slots__)
+
+
+def _apply_defaults(content: JobContent, config: dict) -> JobContent:
+    """Fill missing PDF fields from explicit board-scoped defaults."""
+    defaults = config.get("defaults")
+    if defaults is None:
+        return content
+    if not isinstance(defaults, dict) or any(field not in _DEFAULT_FIELDS for field in defaults):
+        raise ValueError("PDF defaults must contain only JobContent fields")
+    for field, value in defaults.items():
+        if getattr(content, field) in (None, "", []):
+            setattr(content, field, value)
+    return content
 
 
 async def _download_verified_fingerprinted_pdf(
@@ -359,7 +376,7 @@ async def parse_bytes(content: bytes, url: str, config: dict) -> JobContent:
         if require_title_pattern:
             raise ValueError("PDF title_pattern did not match extracted text")
         log.warning("pdf.empty", url=url)
-        return JobContent(title=_title_from_url(url, title_pattern))
+        return _apply_defaults(JobContent(title=_title_from_url(url, title_pattern)), config)
 
     repair_split_initial = bool(config.get("repair_split_initial"))
     named_fields = _extract_named_fields(
@@ -402,10 +419,13 @@ async def parse_bytes(content: bytes, url: str, config: dict) -> JobContent:
     description = _text_to_html(full_text)
 
     log.debug("pdf.extracted", url=url, title=title, text_length=len(full_text))
-    return JobContent(
-        title=title,
-        description=description,
-        locations=[location] if location else None,
+    return _apply_defaults(
+        JobContent(
+            title=title,
+            description=description,
+            locations=[location] if location else None,
+        ),
+        config,
     )
 
 

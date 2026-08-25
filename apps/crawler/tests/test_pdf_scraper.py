@@ -612,6 +612,35 @@ class TestScrape:
             assert result.title == "Mechanical Engineer"
             assert result.locations == ["Sawston, Cambridge"]
 
+    async def test_missing_location_uses_board_default(self):
+        result = await parse_bytes(
+            _make_pdf("Research engineer role"),
+            "https://example.com/research-engineer.pdf",
+            {"defaults": {"locations": ["Lausanne, Switzerland"]}},
+        )
+
+        assert result.locations == ["Lausanne, Switzerland"]
+
+    async def test_extracted_location_wins_over_board_default(self):
+        result = await parse_bytes(
+            _make_pdf("Research role Location: Sion, Switzerland"),
+            "https://example.com/research-role.pdf",
+            {
+                "location_pattern": r"Location:\s*(Sion, Switzerland)",
+                "defaults": {"locations": ["Lausanne, Switzerland"]},
+            },
+        )
+
+        assert result.locations == ["Sion, Switzerland"]
+
+    async def test_pdf_defaults_reject_unknown_fields(self):
+        with pytest.raises(ValueError, match="JobContent fields"):
+            await parse_bytes(
+                _make_pdf("Research engineer role"),
+                "https://example.com/research-engineer.pdf",
+                {"defaults": {"locatons": ["Lausanne, Switzerland"]}},
+            )
+
     async def test_named_fields_pattern_applied_to_table_layout(self):
         pdf_bytes = _make_pdf("Role Location\nField Service Engineer\nOsaka or Shizuoka\nSalary")
 
