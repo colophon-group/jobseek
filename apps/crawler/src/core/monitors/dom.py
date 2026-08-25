@@ -562,14 +562,6 @@ _PROSPECTIVE_RICH_ROWS = {
     "total_selector": ".jobs-total .total",
     "location_selectors": [".place-of-work"],
 }
-_PROSPECTIVE_EMPTY_STATES = [
-    {
-        "selector": ".jobs-total .total",
-        "exact_text": "0",
-        "forbidden_link_selector": "#jobs-list a.job-title[href]",
-    }
-]
-
 _REXX_PROVIDER_HOSTS = frozenset({"rexx-systems.com", "www.rexx-systems.com"})
 _REXX_JOB_PATH_FILTER = (
     r"/(?:[^/?#]+/)*(?:[^/?#]+-j\d+\.html|"
@@ -842,12 +834,26 @@ def _prospective_probe_config(html: str, url: str) -> dict | None:
         return None
 
     origin = f"https://{parsed.netloc}"
+    medium_id = medium_ids.pop()
     url_filter = (
         rf"^{re.escape(origin)}/(?:[^/?#]+/)+{_PROSPECTIVE_JOB_UUID}"
         r"/?(?:[?#].*)?$"
     )
     rich_rows = dict(_PROSPECTIVE_RICH_ROWS)
-    empty_states = [dict(state) for state in _PROSPECTIVE_EMPTY_STATES]
+    asset_origins = {origin} | {f"https://{host}" for host in _PROSPECTIVE_CANONICAL_ASSET_HOSTS}
+    asset_origin_pattern = "|".join(re.escape(candidate) for candidate in sorted(asset_origins))
+    empty_states = [
+        {
+            "selector": "body.career-center:has(#jobs-list) .jobs-total .total",
+            "exact_text": "0",
+            "required_link_selector": f"link[href*='careercenter/{medium_id}/assets/']",
+            "required_link_url_pattern": (
+                rf"^(?:{asset_origin_pattern})/(?:public/v[12]/)?careercenter/"
+                rf"{re.escape(medium_id)}/assets/[^?#]+(?:[?#].*)?$"
+            ),
+            "forbidden_link_selector": "#jobs-list a.job-title[href]",
+        }
+    ]
     try:
         validated_rich_rows = _validated_rich_rows(rich_rows)
         if validated_rich_rows is None:
@@ -869,7 +875,7 @@ def _prospective_probe_config(html: str, url: str) -> dict | None:
         return None
 
     return {
-        "prospective_board": medium_ids.pop(),
+        "prospective_board": medium_id,
         "urls": len(jobs),
         "url_filter": url_filter,
         "rich_rows": rich_rows,
