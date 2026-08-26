@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from dataclasses import replace as dataclass_replace
 from pathlib import Path
 from typing import TYPE_CHECKING
+from urllib.parse import quote
 
 import structlog
 
@@ -261,8 +262,10 @@ def _apply_job_filter(result: MonitorResult, config: dict) -> MonitorResult:
 
     ``job_filter`` accepts the same string or ``{include, exclude}`` shape as
     ``url_filter``.  The searchable text contains the title, description,
-    locations, and metadata.  URL-only monitors cannot apply this filter and
-    are left unchanged with a warning.
+    locations, and metadata.  A mapping may select one rich field via
+    ``field``.  ``require_classification`` fails closed unless each job
+    matches exactly one of the include/exclude expressions.  URL-only
+    monitors cannot apply this filter and are left unchanged with a warning.
     """
     raw_filter = config.get("job_filter")
     if not raw_filter:
@@ -274,35 +277,90 @@ def _apply_job_filter(result: MonitorResult, config: dict) -> MonitorResult:
 
     if isinstance(raw_filter, str):
         include, exclude = raw_filter, None
+        filter_field = None
+        require_classification = False
     else:
         include = raw_filter.get("include")
         exclude = raw_filter.get("exclude")
+        filter_field = raw_filter.get("field")
+        require_classification = raw_filter.get("require_classification", False)
+
+    if not isinstance(require_classification, bool):
+        raise ValueError("monitor job_filter require_classification must be a boolean")
+    if require_classification and (not include or not exclude):
+        raise ValueError(
+            "monitor job_filter require_classification needs include and exclude regexes"
+        )
+
+    valid_fields = {None, "title", "description", "locations", "metadata"}
+    if filter_field not in valid_fields and not (
+        isinstance(filter_field, str) and filter_field.startswith("metadata.")
+    ):
+        if require_classification:
+            raise ValueError(
+                f"monitor job_filter has invalid classification field: {filter_field!r}"
+            )
+        structlog.get_logger().warning("monitor.job_filter_invalid_field", field=filter_field)
+        return result
 
     try:
         include_re = re.compile(include) if include else None
         exclude_re = re.compile(exclude) if exclude else None
     except re.error as e:
+        if require_classification:
+            raise ValueError(f"monitor job_filter classification regex is invalid: {e}") from e
         structlog.get_logger().warning("monitor.job_filter_invalid", error=str(e))
         return result
 
     filtered_jobs: dict[str, DiscoveredJob] = {}
     for url, job in result.jobs_by_url.items():
-        content = "\n".join(
-            part
-            for part in (
-                job.title,
-                job.description,
-                "\n".join(job.locations or []),
-                json.dumps(job.metadata, ensure_ascii=False, sort_keys=True)
-                if job.metadata
-                else None,
+        metadata = job.metadata or {}
+        if filter_field == "title":
+            content = job.title or ""
+        elif filter_field == "description":
+            content = job.description or ""
+        elif filter_field == "locations":
+            content = "\n".join(job.locations or [])
+        elif filter_field == "metadata":
+            content = json.dumps(metadata, ensure_ascii=False, sort_keys=True)
+        elif isinstance(filter_field, str):
+            value = metadata.get(filter_field.removeprefix("metadata."))
+            content = (
+                value
+                if isinstance(value, str)
+                else json.dumps(value, ensure_ascii=False, sort_keys=True)
+                if value is not None
+                else ""
             )
-            if part
-        )
-        if include_re and not include_re.search(content):
-            continue
-        if exclude_re and exclude_re.search(content):
-            continue
+        else:
+            content = "\n".join(
+                part
+                for part in (
+                    job.title,
+                    job.description,
+                    "\n".join(job.locations or []),
+                    json.dumps(metadata, ensure_ascii=False, sort_keys=True) if metadata else None,
+                )
+                if part
+            )
+
+        include_match = bool(include_re and include_re.search(content))
+        exclude_match = bool(exclude_re and exclude_re.search(content))
+        if require_classification:
+            if include_match == exclude_match:
+                classification = (
+                    "both include and exclude" if include_match else "neither include nor exclude"
+                )
+                raise ValueError(
+                    f"monitor job_filter require_classification matched {classification} for {url}"
+                )
+            if exclude_match:
+                continue
+        else:
+            if include_re and not include_match:
+                continue
+            if exclude_match:
+                continue
         filtered_jobs[url] = job
 
     # Hybrid monitors may carry URL-only entries alongside their rich subset.
@@ -377,7 +435,13 @@ def _apply_url_allowlist(result: MonitorResult, config: dict) -> MonitorResult:
 
 
 def _apply_url_transform(result: MonitorResult, config: dict) -> MonitorResult:
-    """Rewrite URLs using url_transform {find, replace} from config."""
+    """Rewrite URLs using ``url_transform`` from config.
+
+    Collision transforms may put ``{identity}`` in ``replace``.  The marker
+    is filled from the already validated collision identity metadata field,
+    allowing localized provider URLs to collapse onto one stable provider-ID
+    URL even when that identity is not present in the source URL.
+    """
     transform = config.get("url_transform")
     if not transform:
         return result
@@ -392,11 +456,32 @@ def _apply_url_transform(result: MonitorResult, config: dict) -> MonitorResult:
         structlog.get_logger().warning("monitor.url_transform_invalid", error=str(e))
         return result
     collision = _url_transform_collision_config(config)
+    identity_replacement = "{identity}" in replace
+    if identity_replacement:
+        if replace.count("{identity}") != 1:
+            raise ValueError("url_transform.replace must contain at most one {identity} marker")
+        if collision is None:
+            raise ValueError(
+                "url_transform.replace {identity} requires an intentional collision policy"
+            )
+        if result.jobs_by_url is None:
+            raise ValueError("url_transform.replace {identity} requires rich discovered jobs")
 
     new_urls: set[str] = set()
     url_map: dict[str, str] = {}  # old -> new
     for url in sorted(result.urls):
-        new_url = pattern.sub(replace, url)
+        replacement = replace
+        if identity_replacement:
+            job = result.jobs_by_url.get(url) if result.jobs_by_url is not None else None
+            identity = (
+                job.metadata.get(collision.identity_metadata_key)
+                if job is not None and isinstance(job.metadata, dict) and collision is not None
+                else None
+            )
+            if not isinstance(identity, str) or not identity:
+                raise ValueError("url_transform.replace {identity} metadata is missing or invalid")
+            replacement = replace.replace("{identity}", quote(identity, safe=""))
+        new_url = pattern.sub(replacement, url)
         new_urls.add(new_url)
         url_map[url] = new_url
 

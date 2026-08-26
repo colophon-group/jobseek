@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlsplit, urlunsplit
 
+import httpx
 import structlog
 from selectolax.lexbor import LexborHTMLParser, SelectolaxError
 
@@ -31,7 +32,6 @@ from src.core.monitors import DiscoveredJob, register
 from src.core.monitors.raw import save_text_response
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
 from src.shared.public_request_headers import (
-    public_get,
     same_origin,
     validated_public_request_headers,
 )
@@ -44,8 +44,6 @@ from src.shared.tdm import check_response as check_tdm_response
 from src.shared.truncation import truncated_rich_result
 
 if TYPE_CHECKING:
-    import httpx
-
     from src.core.monitor import MonitorResult
 
 log = structlog.get_logger()
@@ -63,6 +61,17 @@ _MAX_EXPLICIT_EMPTY_BODY_BYTES = 2 * 1024 * 1024
 _RESPONSE_FINGERPRINT_CONCURRENCY = 4
 _MAX_RESPONSE_FINGERPRINT_URLS = 100
 _MAX_RICH_ROWS_LIFECYCLE_URLS = 500
+
+_DEADLINE_MONTH_ALIASES = {
+    "januar": "January",
+    "februar": "February",
+    "märz": "March",
+    "mai": "May",
+    "juni": "June",
+    "juli": "July",
+    "oktober": "October",
+    "dezember": "December",
+}
 
 # Browser-pagination fetch budget. Playwright fetches are slower than
 # httpx (the JS engine + page context add tens of ms), and the page is
@@ -382,20 +391,34 @@ async def _fetch_bounded_pdf_text(
     allowed_origin_url: str | None = None,
 ) -> str | None:
     """Fetch one bounded PDF and return text, or ``None`` when it was removed."""
-    if urlsplit(url).path.lower().endswith(".pdf") is False:
-        raise ValueError(f"DOM {config_name} found a non-PDF URL: {url}")
+    source_is_pdf = urlsplit(url).path.lower().endswith(".pdf")
     if request_headers and allowed_origin_url and not same_origin(url, allowed_origin_url):
         raise ValueError(f"DOM {config_name} refused a cross-origin PDF URL: {url}")
-    if request_headers:
-        response = await public_get(client, url, headers=request_headers, stream=True)
-    else:
-        request = client.build_request("GET", url)
-        response = await client.send(request, stream=True, follow_redirects=True)
     try:
-        if response.status_code in {404, 410}:
+        response = await same_origin_response(
+            client,
+            "GET",
+            url,
+            stream=True,
+            headers=request_headers,
+        )
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code in {404, 410}:
             return None
-        response.raise_for_status()
+        raise
+
+    try:
         check_tdm_response(response)
+
+        # Extensionless first-party document routes are accepted only after a
+        # same-origin redirect resolves to a real PDF response.
+        if not source_is_pdf:
+            final_is_pdf = urlsplit(str(response.url)).path.lower().endswith(".pdf")
+            content_type = response.headers.get("content-type", "").split(";", 1)[0]
+            if not final_is_pdf or content_type.strip().casefold() != "application/pdf":
+                raise ValueError(
+                    f"DOM {config_name} extensionless URL did not resolve to a PDF: {url}"
+                )
 
         raw_content_length = response.headers.get("content-length")
         if raw_content_length is not None:
@@ -426,6 +449,15 @@ async def _fetch_bounded_pdf_text(
     if not pdf_content.lstrip().startswith(b"%PDF"):
         raise ValueError(f"DOM {config_name} response is not a PDF: {url}")
     return await asyncio.to_thread(_extract_bounded_pdf_text, pdf_content)
+
+
+def _normalize_deadline_text(value: str) -> str:
+    """Normalize common ordinal and German date spellings for ``strptime``."""
+    value = re.sub(r"(?<=\d)(?:st|nd|rd|th)\b", "", value, flags=re.IGNORECASE)
+    value = re.sub(r"(?<=\d)\.(?=\s)", "", value)
+    for source, target in _DEADLINE_MONTH_ALIASES.items():
+        value = re.sub(rf"\b{re.escape(source)}\b", target, value, flags=re.IGNORECASE)
+    return value
 
 
 async def _filter_unexpired_pdf_urls(
@@ -466,7 +498,7 @@ async def _filter_unexpired_pdf_urls(
 
     def parse_date(raw: str, date_format: str, url: str) -> date:
         raw = re.sub(r"\s+", " ", raw).strip()
-        raw = re.sub(r"(?<=\d)(?:st|nd|rd|th)\b", "", raw, flags=re.IGNORECASE)
+        raw = _normalize_deadline_text(raw)
         try:
             return datetime.strptime(raw, date_format).date()
         except ValueError as exc:

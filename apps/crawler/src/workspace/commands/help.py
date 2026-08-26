@@ -2358,9 +2358,12 @@ rss — RSS 2.0 Feed Monitor + legacy SuccessFactors (presets: successfactors, t
     variant    SuccessFactors only: "feed" or "legacy". Legacy identity and
                listing_url are auto-filled from strict SAP board URLs.
     fetch_company  SuccessFactors feed only: fetch each public detail page and
-               store its legal-employer custom field in metadata.company.
-               Use with job_filter for mixed-tenant career sites. Enrichment
-               fails closed when a detail page cannot be read.
+               store tenant customfield1 in metadata.company. Use job_filter
+               with field=metadata.company for mixed-tenant career sites.
+               Enrichment fails closed when a detail page cannot be read.
+    detail_fields  SuccessFactors feed only: map metadata keys to tenant
+               data-careersite-propertyid values (for example service=dept).
+               Configured properties are required and fail closed when absent.
 
   Detection:  ws probe shows labels like:
               "SuccessFactors RSS — <feed_url>, N jobs"
