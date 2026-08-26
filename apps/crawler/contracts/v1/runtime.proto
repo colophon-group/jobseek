@@ -1,0 +1,791 @@
+syntax = "proto3";
+
+package jobseek.crawler.runtime.v1;
+
+option go_package = "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go;runtimev1";
+
+// runtime.proto is the sole wire-authoritative crawler runtime v1 IDL.
+// Candidate transport and handshake rules are documented in framing.md and
+// execution-protocol.md; compatibility.md governs this descriptor's evolution.
+
+enum Implementation {
+  IMPLEMENTATION_UNSPECIFIED = 0;
+  IMPLEMENTATION_PYTHON = 1;
+  IMPLEMENTATION_GO = 2;
+}
+
+enum EngineOwner {
+  ENGINE_OWNER_UNSPECIFIED = 0;
+  ENGINE_OWNER_PYTHON = 1;
+  ENGINE_OWNER_GO = 2;
+}
+
+enum ExecutionKind {
+  EXECUTION_KIND_UNSPECIFIED = 0;
+  EXECUTION_KIND_MONITOR = 1;
+  EXECUTION_KIND_SCRAPE = 2;
+  EXECUTION_KIND_BROWSER = 3;
+}
+
+enum TerminalStatus {
+  TERMINAL_STATUS_UNSPECIFIED = 0;
+  TERMINAL_STATUS_SUCCESS = 1;
+  TERMINAL_STATUS_ERROR = 2;
+  TERMINAL_STATUS_CANCELLED = 3;
+}
+
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_TDM_RESERVED = 1;
+  ERROR_CODE_PROVIDER_GONE = 2;
+  ERROR_CODE_PERMANENT_GONE = 3;
+  ERROR_CODE_HTTP_STATUS = 4;
+  ERROR_CODE_TIMEOUT = 5;
+  ERROR_CODE_TRANSPORT = 6;
+  ERROR_CODE_ANTI_BOT = 7;
+  ERROR_CODE_INVALID_CONFIG = 8;
+  ERROR_CODE_EMPTY_RESULT = 9;
+  ERROR_CODE_UNSUPPORTED_CAPABILITY = 10;
+  ERROR_CODE_INTERNAL = 11;
+  ERROR_CODE_TARGET_LOST = 12;
+  ERROR_CODE_SESSION_LOST = 13;
+  ERROR_CODE_RESOURCE_LIMIT = 14;
+  ERROR_CODE_CANCELLED = 15;
+  ERROR_CODE_AMBIGUOUS_ORIGIN = 16;
+  ERROR_CODE_NAVIGATION = 17;
+}
+
+enum ErrorDisposition {
+  ERROR_DISPOSITION_UNSPECIFIED = 0;
+  ERROR_DISPOSITION_RETRY_POLICY = 1;
+  ERROR_DISPOSITION_DEFER_POLICY = 2;
+  ERROR_DISPOSITION_PROVIDER_GONE_POLICY = 3;
+  ERROR_DISPOSITION_PERMANENT_GONE_POLICY = 4;
+  ERROR_DISPOSITION_INVALID_CONFIG_POLICY = 5;
+  ERROR_DISPOSITION_CANCELLED_POLICY = 6;
+  ERROR_DISPOSITION_FAIL_CLOSED_POLICY = 7;
+}
+
+enum BrowserBackend {
+  BROWSER_BACKEND_UNSPECIFIED = 0;
+  BROWSER_BACKEND_CHROMIUM = 1;
+  BROWSER_BACKEND_LIGHTPANDA = 2;
+}
+
+enum BrowserCapability {
+  BROWSER_CAPABILITY_UNSPECIFIED = 0;
+  BROWSER_CAPABILITY_RENDER = 1;
+  BROWSER_CAPABILITY_EVALUATE = 2;
+  BROWSER_CAPABILITY_ACTIONS = 3;
+  BROWSER_CAPABILITY_PAGINATION = 4;
+  BROWSER_CAPABILITY_RESPONSE_CAPTURE = 5;
+  BROWSER_CAPABILITY_REQUEST_INTERCEPTION = 6;
+  BROWSER_CAPABILITY_FRAMES = 7;
+  BROWSER_CAPABILITY_PERSISTENT_SESSION = 8;
+  BROWSER_CAPABILITY_HEADFUL_IDENTITY = 9;
+  BROWSER_CAPABILITY_PROXY = 10;
+  BROWSER_CAPABILITY_TRANSPORT_OVERRIDES = 11;
+}
+
+enum WaitCondition {
+  WAIT_CONDITION_UNSPECIFIED = 0;
+  WAIT_CONDITION_COMMIT = 1;
+  WAIT_CONDITION_DOM_CONTENT_LOADED = 2;
+  WAIT_CONDITION_LOAD = 3;
+  WAIT_CONDITION_NETWORK_IDLE = 4;
+}
+
+// Declares whether executing a browser action is permitted to contact the
+// origin. Executors MUST reject UNSPECIFIED before executing the action.
+enum BrowserNetworkEffect {
+  BROWSER_NETWORK_EFFECT_UNSPECIFIED = 0;
+  BROWSER_NETWORK_EFFECT_NONE = 1;
+  BROWSER_NETWORK_EFFECT_ORIGIN_CONTACT = 2;
+}
+
+enum ExtensionEncoding {
+  EXTENSION_ENCODING_UNSPECIFIED = 0;
+  EXTENSION_ENCODING_PROTOBUF = 1;
+  EXTENSION_ENCODING_CANONICAL_JSON = 2;
+}
+
+enum SelectorKind {
+  SELECTOR_KIND_UNSPECIFIED = 0;
+  SELECTOR_KIND_CSS = 1;
+  SELECTOR_KIND_XPATH = 2;
+  SELECTOR_KIND_TEXT = 3;
+}
+
+enum ScrollDirection {
+  SCROLL_DIRECTION_UNSPECIFIED = 0;
+  SCROLL_DIRECTION_DOWN = 1;
+  SCROLL_DIRECTION_UP = 2;
+}
+
+enum CaptureKind {
+  CAPTURE_KIND_UNSPECIFIED = 0;
+  CAPTURE_KIND_RESPONSE_BODY = 1;
+  CAPTURE_KIND_RENDERED_HTML = 2;
+  CAPTURE_KIND_SCREENSHOT = 3;
+}
+
+enum OriginContactDisposition {
+  ORIGIN_CONTACT_DISPOSITION_UNSPECIFIED = 0;
+  ORIGIN_CONTACT_DISPOSITION_DISPATCHED = 1;
+  ORIGIN_CONTACT_DISPOSITION_DEDUPLICATED = 2;
+}
+
+enum ReplayAdapter {
+  REPLAY_ADAPTER_UNSPECIFIED = 0;
+  REPLAY_ADAPTER_NORMALIZED_MONITOR_JSON = 1;
+  REPLAY_ADAPTER_NORMALIZED_SCRAPE_JSON = 2;
+}
+
+// Closed identifiers for the canonical byte shape and digest construction.
+// Lane 5 implements these rules; v1 messages carry them now so changing either
+// rule never relies on an unversioned free-form string.
+enum CanonicalizationRule {
+  CANONICALIZATION_RULE_UNSPECIFIED = 0;
+  CANONICALIZATION_RULE_RUNTIME_V1 = 1;
+}
+
+enum HashRule {
+  HASH_RULE_UNSPECIFIED = 0;
+  HASH_RULE_CONTENT_SHA256_V1 = 1;
+  HASH_RULE_SEMANTIC_SHA256_V1 = 2;
+}
+
+enum EventDirection {
+  EVENT_DIRECTION_UNSPECIFIED = 0;
+  EVENT_DIRECTION_CLIENT = 1;
+  EVENT_DIRECTION_SERVER = 2;
+  EVENT_DIRECTION_FAULT = 3;
+}
+
+enum DisconnectPoint {
+  DISCONNECT_POINT_UNSPECIFIED = 0;
+  DISCONNECT_POINT_AFTER_DISPATCH = 1;
+  DISCONNECT_POINT_BEFORE_FRAME = 2;
+  DISCONNECT_POINT_AFTER_FRAME = 3;
+  DISCONNECT_POINT_RESULT_BEFORE_TERMINAL = 4;
+}
+
+message Limits {
+  uint64 max_frame_bytes = 1;
+  // Maximum bytes held inline in process memory. ExecutionFrame's lower
+  // max_frame_bytes remains the effective inline ceiling on the wire.
+  uint64 max_inline_body_bytes = 2;
+  // Maximum size of one out-of-band artifact chunk.
+  uint64 max_artifact_chunk_bytes = 3;
+  uint32 max_monitor_batches = 4;
+  uint64 max_output_items = 5;
+  uint32 max_in_flight_frames = 6;
+  uint64 max_active_duration_ms = 7;
+  uint32 max_browser_actions = 8;
+  uint32 max_browser_captures = 9;
+  uint32 max_browser_evaluations = 10;
+  uint64 max_http_transfer_bytes = 11;
+  uint64 max_browser_transfer_bytes = 12;
+  uint32 max_execution_frames = 13;
+  uint32 max_artifact_count = 14;
+  uint64 max_artifact_total_bytes = 15;
+  // Scheduling hint ceiling, independent from executor active duration.
+  uint64 max_retry_after_ms = 16;
+}
+
+message StringList {
+  // A present StringList with no values means explicit empty; an absent
+  // StringList means the upstream field was missing.
+  repeated string values = 1;
+}
+
+message Header {
+  string name = 1;
+  string value = 2;
+  bool redacted = 3;
+}
+
+message ArtifactHandle {
+  string handle = 1;
+  string media_type = 2;
+  uint64 size_bytes = 3;
+  string sha256 = 4;
+  bool redacted = 5;
+}
+
+// Ordered bounded transfer representation. Inline chunks travel in their
+// containing length-delimited message and are therefore also bounded by that
+// message's max_frame_bytes when carried by ExecutionFrame. Artifact chunks
+// are opaque out-of-band handles and allow larger transfers without one large
+// resident buffer.
+message DataChunk {
+  uint32 sequence = 1;
+  uint64 size_bytes = 2;
+  string sha256 = 3;
+  oneof storage {
+    bytes inline_body = 10;
+    ArtifactHandle artifact = 11;
+  }
+}
+
+message ChunkManifest {
+  repeated DataChunk chunks = 1;
+  uint64 total_size_bytes = 2;
+  string total_sha256 = 3;
+  bool complete = 4;
+}
+
+// Provider-specific semantics are fail-closed extensions. schema_id,
+// schema_version, and encoding must exist in the v1 conformance registry.
+message ExtensionEnvelope {
+  string schema_id = 1;
+  uint32 schema_version = 2;
+  ExtensionEncoding encoding = 3;
+  bytes payload = 4;
+  string payload_sha256 = 5;
+}
+
+message DiagnosticDetail {
+  string key = 1;
+  string value = 2;
+}
+
+message RuntimeError {
+  ErrorCode code = 1;
+  ErrorDisposition disposition = 2;
+  string message = 3;
+  optional uint32 http_status = 4;
+  optional uint64 retry_after_ms = 5;
+  // Diagnostic-only bounded strings. They MUST NOT drive retry or policy.
+  repeated DiagnosticDetail diagnostic_details = 6;
+}
+
+message BoardManifest {
+  string contract_version = 1;
+  string manifest_id = 2;
+  string board_id = 3;
+  string company_id = 4;
+  string config_revision = 5;
+  string config_fingerprint = 6;
+  string board_url = 7;
+  string provider_family = 8;
+  string monitor_type = 9;
+  optional string scraper_type = 10;
+  uint64 check_interval_ms = 11;
+  uint64 scrape_interval_ms = 12;
+  string throttle_key = 13;
+  optional string egress_policy_ref = 14;
+  bool monitor_needs_browser = 15;
+  bool scraper_needs_browser = 16;
+  repeated ExtensionEnvelope config_extensions = 17;
+}
+
+message Salary {
+  optional int64 minimum_minor = 1;
+  optional int64 maximum_minor = 2;
+  string currency = 3;
+  string period = 4;
+}
+
+message LocalizedJobContent {
+  string locale = 1;
+  optional string title = 2;
+  optional string description_html = 3;
+}
+
+message JobContent {
+  optional string title = 1;
+  optional string description_html = 2;
+  optional StringList locations = 3;
+  optional string employment_type = 4;
+  optional string job_location_type = 5;
+  optional string date_posted = 6;
+  optional Salary base_salary = 7;
+  optional string language = 8;
+  repeated LocalizedJobContent localizations = 9;
+  repeated string skills = 10;
+  repeated ExtensionEnvelope extensions = 11;
+}
+
+message DiscoveredJob {
+  string url = 1;
+  JobContent content = 2;
+}
+
+message MonitorMetadataUpdates {
+  optional string cursor = 1;
+  optional string etag = 2;
+  optional string last_modified = 3;
+  repeated ExtensionEnvelope extensions = 4;
+}
+
+message MonitorResult {
+  repeated string urls = 1;
+  repeated DiscoveredJob jobs = 2;
+  optional string new_sitemap_url = 3;
+  uint64 filtered_count = 4;
+  uint64 security_filtered_count = 5;
+  optional MonitorMetadataUpdates metadata_updates = 6;
+  bool hybrid = 7;
+  bool truncated = 8;
+}
+
+message ScrapeResult {
+  JobContent content = 1;
+}
+
+message MonitorInput {
+  string monitor_type = 1;
+}
+
+message ScrapeInput {
+  string source_url = 1;
+  string scraper_type = 2;
+  uint32 scrape_step = 3;
+}
+
+message ExecutionRequest {
+  string contract_version = 1;
+  string request_id = 2;
+  // The first semantic operation ID. Retrying a transport attempt MUST retain
+  // this and all origin_operations IDs.
+  string origin_request_id = 3;
+  string attempt_id = 4;
+  ExecutionKind kind = 5;
+  string deadline_rfc3339 = 6;
+  optional string traceparent = 7;
+  optional string tracestate = 8;
+  BoardManifest board_manifest = 9;
+  oneof input {
+    MonitorInput monitor = 10;
+    ScrapeInput scrape = 11;
+    BrowserExecutionInput browser = 13;
+  }
+  // Ordered semantic origin operations known when the execution is planned.
+  // A bounded dynamic pagination operation is durably allocated with the next
+  // operation_sequence before dispatch and reported by OriginOperationDeclared.
+  // The first entry's ID equals origin_request_id.
+  repeated OriginOperationRef origin_operations = 12;
+  FencingContext fencing_context = 14;
+}
+
+message FencingContext {
+  string shard_id = 1;
+  uint64 routing_epoch = 2;
+  EngineOwner engine_owner = 3;
+  string claim_token = 4;
+  string lease_id = 5;
+  string config_revision = 6;
+  bytes fence_digest = 7;
+}
+
+message OriginOperationRef {
+  string origin_request_id = 1;
+  uint32 operation_sequence = 2;
+  string role = 3;
+  optional string parent_origin_request_id = 4;
+  // SHA-256 of the canonical method, URL, headers, and body that will be
+  // dispatched. This is part of the durable operation identity and must be
+  // persisted before origin contact.
+  string request_fingerprint = 5;
+}
+
+message ResumeRequest {
+  string contract_version = 1;
+  string request_id = 2;
+  string origin_request_id = 3;
+  string attempt_id = 4;
+  optional uint64 after_sequence = 5;
+  FencingContext fencing_context = 6;
+}
+
+message WindowUpdate {
+  string request_id = 1;
+  uint32 additional_frames = 2;
+  string attempt_id = 3;
+  bytes fence_digest = 4;
+}
+
+message CancelRequest {
+  string request_id = 1;
+  string attempt_id = 2;
+  string reason = 3;
+  FencingContext fencing_context = 4;
+}
+
+message ClientHello {
+  repeated string supported_contract_versions = 1;
+  Implementation implementation = 2;
+  Limits requested_limits = 3;
+}
+
+message ServerHello {
+  string selected_contract_version = 1;
+  Implementation implementation = 2;
+  Limits accepted_limits = 3;
+  uint32 initial_window_frames = 4;
+  bool resume_by_origin_request_id = 5;
+  // Server acceptance time used as the sole basis for validating the request
+  // deadline. Strict RFC3339 UTC; not the client's wall clock.
+  string accepted_at_rfc3339 = 6;
+}
+
+message OriginContact {
+  OriginOperationRef operation = 1;
+  OriginContactDisposition disposition = 2;
+  // Must equal operation.request_fingerprint exactly.
+  string request_fingerprint = 3;
+  optional ArtifactHandle exchange_artifact = 4;
+}
+
+// A durable pre-dispatch ledger entry for a bounded dynamic pagination
+// operation. It MUST precede dispatch or any disconnect reference.
+message OriginOperationDeclared {
+  OriginOperationRef operation = 1;
+}
+
+message ArtifactFrame {
+  ArtifactHandle artifact = 1;
+  bool diagnostic_only = 2;
+}
+
+message Terminal {
+  TerminalStatus status = 1;
+  uint64 frame_count = 2;
+  uint64 output_items = 3;
+  uint32 monitor_batches = 4;
+  uint32 artifact_count = 5;
+  uint32 origin_operation_count = 6;
+  uint64 active_duration_ms = 7;
+  // Protocol-level completeness only. The queue/DB owner MUST revalidate the
+  // current claim token and routing epoch before every persistence mutation.
+  bool eligible_for_commit = 8;
+}
+
+message ExecutionFrame {
+  string contract_version = 1;
+  string request_id = 2;
+  uint64 sequence = 3;
+  string attempt_id = 4;
+  bytes fence_digest = 5;
+  oneof payload {
+    OriginContact origin_contact = 10;
+    MonitorResult monitor_batch = 11;
+    ScrapeResult scrape_result = 12;
+    ArtifactFrame artifact = 13;
+    RuntimeError error = 14;
+    Terminal terminal = 15;
+    BrowserResult browser_result = 16;
+    OriginOperationDeclared origin_operation_declared = 17;
+  }
+}
+
+message ResumeRejected {
+  string request_id = 1;
+  string origin_request_id = 2;
+  RuntimeError error = 3;
+  string attempt_id = 4;
+  bytes fence_digest = 5;
+}
+
+message ClientMessage {
+  oneof payload {
+    ClientHello hello = 1;
+    ExecutionRequest start = 2;
+    ResumeRequest resume = 3;
+    WindowUpdate window_update = 4;
+    CancelRequest cancel = 5;
+  }
+}
+
+message ServerMessage {
+  oneof payload {
+    ServerHello hello = 1;
+    ExecutionFrame frame = 2;
+    ResumeRejected resume_rejected = 3;
+  }
+}
+
+message Selector {
+  SelectorKind kind = 1;
+  string value = 2;
+  optional string frame_name = 3;
+}
+
+message ClickAction {
+  Selector selector = 1;
+  uint64 timeout_ms = 2;
+}
+
+message FillAction {
+  Selector selector = 1;
+  string value = 2;
+  uint64 timeout_ms = 3;
+}
+
+message WaitAction {
+  optional Selector selector = 1;
+  uint64 duration_ms = 2;
+  uint64 timeout_ms = 3;
+}
+
+message ScrollAction {
+  ScrollDirection direction = 1;
+  uint32 pixels = 2;
+}
+
+message PaginationAction {
+  Selector next_selector = 1;
+  uint32 max_pages = 2;
+  uint64 page_timeout_ms = 3;
+  // When true, each later page is declared durably before dispatch and this
+  // action MUST omit additional_page_origin_request_ids. When false, exactly
+  // max_pages-1 IDs are predeclared. The action-level ID owns page one.
+  bool dynamic_origin_per_additional_page = 4;
+  repeated string additional_page_origin_request_ids = 5;
+}
+
+message EvaluateAction {
+  string expression = 1;
+  uint64 timeout_ms = 2;
+  uint64 max_result_bytes = 3;
+  optional string frame_name = 4;
+}
+
+message BrowserAction {
+  string action_id = 1;
+  oneof action {
+    ClickAction click = 2;
+    FillAction fill = 3;
+    WaitAction wait = 4;
+    ScrollAction scroll = 5;
+    PaginationAction paginate = 6;
+    EvaluateAction evaluate = 9;
+  }
+  // Required exactly when network_effect is ORIGIN_CONTACT. It identifies the
+  // semantic effect, so reconnecting the protocol transport cannot repeat it.
+  optional string origin_request_id = 7;
+  BrowserNetworkEffect network_effect = 8;
+}
+
+message NavigationPlan {
+  WaitCondition wait_until = 1;
+  uint64 timeout_ms = 2;
+  repeated Header headers = 3;
+  bool ignore_tls_errors = 4;
+  string origin_request_id = 5;
+}
+
+message SessionPlan {
+  optional string session_key = 1;
+  bool persistent = 2;
+  bool headful_identity = 3;
+  optional string proxy_policy_ref = 4;
+}
+
+message CapturePlan {
+  string capture_id = 1;
+  CaptureKind kind = 2;
+  optional string url_pattern = 3;
+  uint64 max_bytes = 4;
+  bool artifact_only = 5;
+}
+
+message EvaluationPlan {
+  string evaluation_id = 1;
+  string expression = 2;
+  uint64 max_result_bytes = 3;
+  optional string frame_name = 4;
+  BrowserNetworkEffect network_effect = 5;
+  optional string origin_request_id = 6;
+}
+
+message InterceptionRule {
+  string url_pattern = 1;
+  bool block = 2;
+  repeated Header replace_headers = 3;
+}
+
+message BrowserPlan {
+  string contract_version = 1;
+  string target_url = 2;
+  repeated BrowserCapability required_capabilities = 3;
+  NavigationPlan navigation = 4;
+  SessionPlan session = 5;
+  repeated BrowserAction actions = 6;
+  repeated CapturePlan captures = 7;
+  repeated EvaluationPlan evaluations = 8;
+  repeated InterceptionRule interceptions = 9;
+  // Includes navigation plus any action/session operations that can contact
+  // the origin. Each ID is stable across transport attempts.
+  repeated OriginOperationRef origin_operations = 10;
+}
+
+// Browser execution is correlated through its enclosing ExecutionRequest.
+// It therefore inherits request/attempt IDs, deadline, cancellation, limits,
+// resume semantics, and the length-delimited protocol transport.
+message BrowserExecutionInput {
+  BrowserPlan plan = 1;
+}
+
+message ActionOutcome {
+  string action_id = 1;
+  bool completed = 2;
+  uint64 duration_ms = 3;
+}
+
+message CapturedValue {
+  string capture_id = 1;
+  ChunkManifest body = 2;
+}
+
+message EvaluationValue {
+  string evaluation_id = 1;
+  ExtensionEnvelope value = 2;
+}
+
+message BrowserSuccess {
+  string final_url = 1;
+  optional uint32 status = 2;
+  optional ChunkManifest html = 3;
+  repeated ActionOutcome action_outcomes = 4;
+  repeated CapturedValue captures = 5;
+  repeated EvaluationValue evaluations = 6;
+  repeated ArtifactHandle artifacts = 7;
+}
+
+message BrowserFailure {
+  RuntimeError error = 1;
+  repeated ArtifactHandle diagnostic_artifacts = 2;
+}
+
+message BrowserUnsupported {
+  repeated BrowserCapability capabilities = 1;
+  repeated ArtifactHandle diagnostic_artifacts = 2;
+}
+
+message BrowserResult {
+  string contract_version = 1;
+  BrowserBackend backend = 2;
+  oneof outcome {
+    BrowserSuccess success = 10;
+    BrowserFailure error = 11;
+    BrowserUnsupported unsupported = 12;
+  }
+}
+
+message DisconnectFault {
+  DisconnectPoint point = 1;
+  optional uint64 sequence = 2;
+  // True when the extractor durably recorded dispatch before the transport
+  // disappeared. Resume must deduplicate this operation.
+  bool origin_was_dispatched = 3;
+  string origin_request_id = 4;
+  // The durable request binding observed at dispatch time.
+  string request_fingerprint = 5;
+}
+
+message ProtocolEvent {
+  EventDirection direction = 1;
+  oneof event {
+    ClientMessage client = 2;
+    ServerMessage server = 3;
+    DisconnectFault fault = 4;
+  }
+}
+
+message ProtocolTranscript {
+  string contract_version = 1;
+  string name = 2;
+  repeated ProtocolEvent events = 3;
+}
+
+message CapturedRequest {
+  string method = 1;
+  string url = 2;
+  repeated Header headers = 3;
+  ChunkManifest body = 4;
+}
+
+message CapturedResponse {
+  uint32 status = 1;
+  repeated Header headers = 2;
+  ChunkManifest body = 3;
+}
+
+message CapturedExchange {
+  OriginOperationRef operation = 1;
+  CapturedRequest request = 2;
+  CapturedResponse response = 3;
+  bool deterministically_redacted = 4;
+  // Foundation normalized adapters decode this response into the result frame
+  // at this sequence. Omit for exchanges that contribute input but do not map
+  // one-to-one to a normalized result.
+  optional uint64 normalized_result_frame_sequence = 5;
+}
+
+message JobEffect {
+  string source_url = 1;
+  string content_sha256 = 2;
+}
+
+enum ProjectedAction {
+  PROJECTED_ACTION_UNSPECIFIED = 0;
+  PROJECTED_ACTION_UPSERT = 1;
+  PROJECTED_ACTION_BROWSER_RESULT = 2;
+}
+
+message ProjectedTarget {
+  string url = 1;
+  ProjectedAction action = 2;
+  optional string content_sha256 = 3;
+}
+
+message ProjectedEffects {
+  repeated string urls_to_upsert = 1;
+  repeated string content_hashes = 2;
+  bool gone_detection_allowed = 3;
+  bool hybrid = 4;
+  bool truncated = 5;
+  uint64 filtered_count = 6;
+  uint64 security_filtered_count = 7;
+  optional string new_sitemap_url = 8;
+  optional string metadata_updates_sha256 = 9;
+  // Typed URL-to-content binding. Monitor jobs use DiscoveredJob.url; scrape
+  // output uses ExecutionRequest.scrape.source_url.
+  repeated JobEffect job_effects = 10;
+  // Projection identity is bound to the semantic request and primary target,
+  // not merely to a transport attempt.
+  string request_id = 11;
+  string origin_request_id = 12;
+  ExecutionKind execution_kind = 13;
+  string target_url = 14;
+  repeated ProjectedTarget targets = 15;
+  CanonicalizationRule canonicalization_rule = 16;
+  HashRule content_hash_rule = 17;
+}
+
+message ReplayCase {
+  string contract_version = 1;
+  string name = 2;
+  string provider_family = 3;
+  ReplayAdapter adapter = 4;
+  ExecutionRequest execution_request = 5;
+  repeated CapturedExchange exchanges = 6;
+  repeated ExecutionFrame expected_frames = 7;
+  ProjectedEffects expected_projection = 8;
+  string expected_semantic_sha256 = 9;
+  HashRule semantic_hash_rule = 10;
+}
+
+message ConformanceCase {
+  string name = 1;
+  bool expected_valid = 2;
+  string expected_error = 3;
+  oneof subject {
+    ProtocolTranscript transcript = 10;
+    BrowserPlan browser_plan = 11;
+    BrowserResult browser_result = 12;
+    ReplayCase replay = 13;
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "breaking": [
+    {"id": "field_name", "expected": "field name changed"},
+    {"id": "field_number", "expected": "field number changed"},
+    {"id": "field_type", "expected": "field type changed"},
+    {"id": "field_cardinality", "expected": "field cardinality changed"},
+    {"id": "field_presence", "expected": "field presence changed"},
+    {"id": "field_json_name", "expected": "field json_name changed"},
+    {"id": "field_oneof_membership", "expected": "field oneof membership changed"},
+    {"id": "oneof_declaration_name", "expected": "oneof declaration changed"},
+    {"id": "enum_name", "expected": "enum name changed"},
+    {"id": "enum_number", "expected": "enum number changed"},
+    {"id": "enum_removal_unreserved", "expected": "removed enum value must reserve both name and number"},
+    {"id": "enum_removal_reserved", "expected": "enum removal requires v2"},
+    {"id": "message_name", "expected": "baseline message was removed or renamed"},
+    {"id": "package", "expected": "protobuf package changed"},
+    {"id": "syntax", "expected": "protobuf syntax changed"},
+    {"id": "field_removal_unreserved", "expected": "removed field must reserve both name and number"},
+    {"id": "field_removal_reserved", "expected": "field removal requires v2"}
+  ],
+  "compatible": [
+    {"id": "combined_additions"}
+  ]
+}

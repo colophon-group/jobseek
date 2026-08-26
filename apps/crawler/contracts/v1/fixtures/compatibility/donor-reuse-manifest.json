@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "rederived_against_main": "47b108c5e974f9bdb50aac69519755c2bfc2584a",
+  "integration": {
+    "merge": false,
+    "cherry_pick": false,
+    "donor_commit_base": false,
+    "generated_bindings_reused": false
+  },
+  "donors": [
+    {
+      "sha": "48cbd87d00659af5a2b47dc7b9b119629fb6d44a",
+      "retained_facts": [
+        "request, attempt, origin-operation, deadline, trace, and board-manifest identity",
+        "typed fencing context, request fingerprints, resume, cancellation, and deduplication",
+        "typed limits, artifact chunks, terminal completeness, and window backpressure",
+        "browser capabilities, plans, results, capture values, and origin-contact ownership",
+        "offline transcripts, disconnect faults, captured exchanges, replay cases, and projected effects"
+      ]
+    },
+    {
+      "sha": "3ffbc07f75cfc15057fd909f10389d90aa714edc",
+      "retained_facts": [
+        "pagination supports mutually exclusive bounded dynamic and predeclared additional-page origins",
+        "OriginOperationDeclared is an active durable pre-dispatch frame",
+        "projected effects bind request identity, execution kind, primary target, typed actions, and typed targets"
+      ]
+    }
+  ],
+  "lane_specific_additions": [
+    "closed CanonicalizationRule and HashRule identifiers",
+    "immutable FileDescriptorSet baseline and prior-main enforcement",
+    "field, enum, oneof, json_name, presence, package, syntax, and reservation mutation matrix",
+    "executed Python and Go adjacent-version roundtrip and lossy converter gate"
+  ]
+}

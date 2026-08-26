@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "base_sha": "47b108c5e974f9bdb50aac69519755c2bfc2584a",
+  "roots": [
+    "apps/crawler/src",
+    "apps/web",
+    "scripts"
+  ],
+  "patterns": [
+    "contracts/v1",
+    "runtime.proto",
+    "runtime_pb2",
+    "runtimev1",
+    ".schema.json"
+  ],
+  "matches": []
+}
