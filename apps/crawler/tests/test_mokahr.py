@@ -535,6 +535,11 @@ class TestDiscover:
             with pytest.raises(ValueError, match="route identity"):
                 await discover(bad_route, client)
 
+            non_text_url = json.loads(json.dumps(base))
+            non_text_url["metadata"]["partitions"] = [{"board_url": None, "site_id": 1000}]
+            with pytest.raises(ValueError, match="board_url must be text"):
+                await discover(non_text_url, client)
+
             too_many = json.loads(json.dumps(base))
             too_many["metadata"]["partitions"] = [
                 {
