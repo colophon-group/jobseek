@@ -170,11 +170,20 @@ def _make_chunked_stream(discover_fn: DiscoverFunc):
         result = await discover_fn(board, client, pw=pw)
         # Local import to avoid the circular dep with src.core.monitor.
         from src.core.monitor import MonitorResult as _MR
+        from src.core.monitor import _collapse_source_identity_publications
 
         if isinstance(result, _MR):
             yield result
             return
         if isinstance(result, list):
+            # Provider-localized publications must be considered as one
+            # complete result before the generic heartbeat chunks are cut.
+            # Otherwise matching publications at positions 200/201 become
+            # separate jobs and make identity handling depend on API order.
+            # URL-only and legacy rich results keep their existing streaming
+            # path unchanged.
+            if any(job.source_identity is not None for job in result):
+                result = _collapse_source_identity_publications(result)
             for i in range(0, len(result), _STREAM_BATCH):
                 yield result[i : i + _STREAM_BATCH]
         else:

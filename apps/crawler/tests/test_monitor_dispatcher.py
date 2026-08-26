@@ -10,6 +10,7 @@ from src.core.monitor import (
     _apply_url_filter,
     _normalize_discovered,
     monitor_one,
+    monitor_one_stream,
 )
 from src.core.monitors import DiscoveredJob
 
@@ -397,6 +398,70 @@ class TestApplyUrlAllowlist:
 
 
 class TestMonitorOne:
+    @pytest.mark.parametrize("reverse_publications", [False, True])
+    async def test_explicit_identity_collapses_before_generic_stream_boundary(
+        self, reverse_publications
+    ):
+        from src.core.monitors import _REGISTRY, MonitorType, _make_chunked_stream
+
+        identity = "provider:tenant:boundary-job"
+        publications = [
+            DiscoveredJob(
+                url=f"https://jobs.example/{locale}/boundary-job",
+                source_identity=identity,
+                title=title,
+                description=f"<p>{locale} description</p>",
+                language=locale,
+                metadata={"source_identity_fingerprint": "exact-boundary-job"},
+            )
+            for locale, title in (("de", "Ingenieur"), ("en", "Engineer"))
+        ]
+        if reverse_publications:
+            publications.reverse()
+        discovered = [
+            DiscoveredJob(url=f"https://jobs.example/filler-{index}") for index in range(199)
+        ]
+        discovered.extend(publications)
+        discovered.append(DiscoveredJob(url="https://jobs.example/filler-after"))
+
+        async def stub_discover(board, http, *, pw=None):
+            return discovered
+
+        probe = MonitorType(
+            name="__source_identity_stream_boundary_probe__",
+            cost=1,
+            discover=stub_discover,
+            rich=True,
+            stream=_make_chunked_stream(stub_discover),
+        )
+        _REGISTRY.append(probe)
+        try:
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(lambda request: httpx.Response(200))
+            ) as client:
+                batches = [
+                    batch
+                    async for batch in monitor_one_stream(
+                        "https://jobs.example",
+                        probe.name,
+                        {},
+                        client,
+                    )
+                ]
+        finally:
+            _REGISTRY.remove(probe)
+
+        assert [len(batch.urls) for batch in batches] == [200, 1]
+        jobs = [
+            job
+            for batch in batches
+            for job in (batch.jobs_by_url or {}).values()
+            if job.source_identity == identity
+        ]
+        assert len(jobs) == 1
+        assert jobs[0].url == "https://jobs.example/en/boundary-job"
+        assert set(jobs[0].localizations or {}) == {"de", "en"}
+
     async def test_greenhouse_integration(self):
         def handler(request):
             return httpx.Response(
