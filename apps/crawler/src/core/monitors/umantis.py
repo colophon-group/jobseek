@@ -239,12 +239,13 @@ class _JobLinkParser(HTMLParser):
         self._current_location: str | None = None
         self._current_employment_type: str | None = None
         self._current_field: str | None = None
-        self._capture_label_depth = 0
+        self._capture_label_tags: list[str] = []
         self._current_label = ""
-        self._capture_value_depth = 0
+        self._capture_value_tags: list[str] = []
         self._current_value = ""
-        self._capture_employer_value_depth = 0
+        self._capture_employer_value_tags: list[str] = []
         self._current_employer_value = ""
+        self._invalid_capture_structure = False
 
     def _reset_job(self) -> None:
         self._current_url = None
@@ -255,17 +256,23 @@ class _JobLinkParser(HTMLParser):
         self._current_location = None
         self._current_employment_type = None
         self._current_field = None
-        self._capture_label_depth = 0
+        self._capture_label_tags = []
         self._current_label = ""
-        self._capture_value_depth = 0
+        self._capture_value_tags = []
         self._current_value = ""
-        self._capture_employer_value_depth = 0
+        self._capture_employer_value_tags = []
         self._current_employer_value = ""
+        self._invalid_capture_structure = False
 
     def _append_job(self) -> None:
         title = self._current_title.strip()
         if self._current_url and self._current_vacancy_id and self._current_language_id and title:
             if self._expected_employer is not None:
+                if self._invalid_capture_structure or self._capture_employer_value_tags:
+                    raise ValueError(
+                        "Umantis listing row had an invalid configured employer field: "
+                        f"{self._current_vacancy_id}"
+                    )
                 employer_values = [
                     _normalized_identity(value) for value in self._current_employer_values
                 ]
@@ -354,12 +361,12 @@ class _JobLinkParser(HTMLParser):
         # and formatting tags. A boolean stopped at the first nested closing
         # tag and could validate only a forged prefix of the owner field.
         if tag not in _VOID_HTML_TAGS:
-            if self._capture_label_depth:
-                self._capture_label_depth += 1
-            if self._capture_value_depth:
-                self._capture_value_depth += 1
-            if self._capture_employer_value_depth:
-                self._capture_employer_value_depth += 1
+            if self._capture_label_tags:
+                self._capture_label_tags.append(tag)
+            if self._capture_value_tags:
+                self._capture_value_tags.append(tag)
+            if self._capture_employer_value_tags:
+                self._capture_employer_value_tags.append(tag)
 
         if tag == "tr":
             if self._in_row:
@@ -381,17 +388,17 @@ class _JobLinkParser(HTMLParser):
             return
 
         if tag == "span" and self._in_row:
-            if "visually-hidden" in cls and not self._capture_label_depth:
-                self._capture_label_depth = 1
+            if "visually-hidden" in cls and not self._capture_label_tags:
+                self._capture_label_tags = [tag]
                 self._current_label = ""
-            elif "column-value" in cls and not self._capture_value_depth:
-                self._capture_value_depth = 1
+            elif "column-value" in cls and not self._capture_value_tags:
+                self._capture_value_tags = [tag]
                 self._current_value = ""
                 if (
                     self._employer_field_id is not None
                     and attrs_dict.get("id") == self._employer_field_id
                 ):
-                    self._capture_employer_value_depth = 1
+                    self._capture_employer_value_tags = [tag]
                     self._current_employer_value = ""
 
         if tag != "a" or "HSTableLinkSubTitle" not in cls:
@@ -409,14 +416,40 @@ class _JobLinkParser(HTMLParser):
     def handle_data(self, data: str) -> None:
         if self._in_link:
             self._current_title += data
-        if self._capture_label_depth:
+        if self._capture_label_tags:
             self._current_label += data
-        if self._capture_value_depth:
+        if self._capture_value_tags:
             self._current_value += data
-        if self._capture_employer_value_depth:
+        if self._capture_employer_value_tags:
             self._current_employer_value += data
 
     def handle_endtag(self, tag: str) -> None:
+        if self._capture_label_tags:
+            if tag == self._capture_label_tags[-1]:
+                self._capture_label_tags.pop()
+                if not self._capture_label_tags:
+                    self._current_field = self._field_from_label(self._current_label)
+            elif tag in self._capture_label_tags:
+                self._invalid_capture_structure = True
+
+        if self._capture_value_tags:
+            if tag == self._capture_value_tags[-1]:
+                self._capture_value_tags.pop()
+                if not self._capture_value_tags:
+                    self._store_value(self._current_value)
+                    self._current_value = ""
+            elif tag in self._capture_value_tags:
+                self._invalid_capture_structure = True
+
+        if self._capture_employer_value_tags:
+            if tag == self._capture_employer_value_tags[-1]:
+                self._capture_employer_value_tags.pop()
+                if not self._capture_employer_value_tags:
+                    self._current_employer_values.append(self._current_employer_value)
+                    self._current_employer_value = ""
+            elif tag in self._capture_employer_value_tags:
+                self._invalid_capture_structure = True
+
         if tag == "a" and self._in_link:
             self._in_link = False
             # Some custom CNAME templates expose bare links without table
@@ -424,23 +457,6 @@ class _JobLinkParser(HTMLParser):
             if not self._in_row:
                 self._append_job()
             return
-
-        if self._capture_label_depth:
-            self._capture_label_depth -= 1
-            if not self._capture_label_depth:
-                self._current_field = self._field_from_label(self._current_label)
-
-        if self._capture_value_depth:
-            self._capture_value_depth -= 1
-            if not self._capture_value_depth:
-                self._store_value(self._current_value)
-                self._current_value = ""
-
-        if self._capture_employer_value_depth:
-            self._capture_employer_value_depth -= 1
-            if not self._capture_employer_value_depth:
-                self._current_employer_values.append(self._current_employer_value)
-                self._current_employer_value = ""
 
         if tag == "li" and self._in_row:
             self._current_field = None
@@ -509,14 +525,20 @@ class _VisibleTextParser(HTMLParser):
         self.parts: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        hidden = tag in {
-            "head",
-            "title",
-            "script",
-            "style",
-            "template",
-            "noscript",
-        } or _element_is_hidden(attrs)
+        attrs_dict = {name.casefold(): value for name, value in attrs}
+        hidden = (
+            tag
+            in {
+                "head",
+                "title",
+                "script",
+                "style",
+                "template",
+                "noscript",
+            }
+            or (tag == "details" and "open" not in attrs_dict)
+            or _element_is_hidden(attrs)
+        )
         if tag not in _VOID_HTML_TAGS:
             if hidden:
                 self._hidden_depth += 1
@@ -547,14 +569,26 @@ class _DetailOwnerParser(HTMLParser):
         self.invalid_head_structure = False
         self._head_depth = 0
         self._body_depth = 0
+        self._head_closed = False
+        self._body_seen = False
+        self._body_closed = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag == "head":
             self.head_count += 1
-            if self._head_depth or self._body_depth:
+            if self._head_depth or self._head_closed or self._body_seen or self._body_depth:
                 self.invalid_head_structure = True
             self._head_depth += 1
         elif tag == "body":
+            if (
+                self.head_count != 1
+                or not self._head_closed
+                or self._head_depth
+                or self._body_seen
+                or self._body_depth
+            ):
+                self.invalid_head_structure = True
+            self._body_seen = True
             self._body_depth += 1
 
         if tag != "meta":
@@ -570,19 +604,29 @@ class _DetailOwnerParser(HTMLParser):
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "head":
-            if not self._head_depth:
+            if self._head_depth != 1 or self._body_depth or self._body_seen:
                 self.invalid_head_structure = True
-            else:
+            if self._head_depth:
                 self._head_depth -= 1
+                if not self._head_depth:
+                    self._head_closed = True
         elif tag == "body":
-            if not self._body_depth:
+            if self._body_depth != 1 or not self._body_seen or not self._head_closed:
                 self.invalid_head_structure = True
-            else:
+            if self._body_depth:
                 self._body_depth -= 1
+                if not self._body_depth:
+                    self._body_closed = True
 
     @property
     def structurally_complete(self) -> bool:
-        return not self.invalid_head_structure and not self._head_depth and not self._body_depth
+        return (
+            not self.invalid_head_structure
+            and self._head_closed
+            and not self._head_depth
+            and not self._body_depth
+            and (not self._body_seen or self._body_closed)
+        )
 
 
 def _bounded_int(value: object, *, name: str, minimum: int, maximum: int) -> int:

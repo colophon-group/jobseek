@@ -184,12 +184,18 @@ async def test_umantis_migration_rejects_legacy_replay_after_receipt() -> None:
         board_id, company_id = boards["bobst-global"]
         legacy_url = "https://recruitingapp-2882.umantis.com/Vacancies/9039/Description/2"
         await connection.execute(
+            "ALTER TABLE job_posting DISABLE TRIGGER jobseek_canonicalize_umantis_source_url_v1"
+        )
+        await connection.execute(
             "INSERT INTO job_posting (id, company_id, board_id, source_url) "
             "VALUES ($1, $2, $3, $4)",
             uuid.uuid4(),
             company_id,
             board_id,
             legacy_url,
+        )
+        await connection.execute(
+            "ALTER TABLE job_posting ENABLE TRIGGER jobseek_canonicalize_umantis_source_url_v1"
         )
 
         attempt = connection.transaction()
@@ -205,6 +211,161 @@ async def test_umantis_migration_rejects_legacy_replay_after_receipt() -> None:
             )
             == legacy_url
         )
+    finally:
+        await transaction.rollback()
+        await connection.close()
+
+
+async def test_umantis_migration_rejects_canonical_prestate_without_exact_receipt() -> None:
+    migration = importlib.import_module(
+        "src.migrations.versions.0022_migrate_umantis_provider_identities"
+    )
+    connection = await asyncpg.connect(os.environ["LOCAL_DATABASE_URL"])
+    transaction = connection.transaction()
+    await transaction.start()
+    try:
+        boards = await _insert_contract_boards(connection, migration)
+        board_id, company_id = boards["bobst-global"]
+        canonical_url = "https://recruitingapp-2882.umantis.com/Vacancies/9039/Description"
+        await connection.execute(
+            "INSERT INTO job_posting (id, company_id, board_id, source_url) "
+            "VALUES ($1, $2, $3, $4)",
+            uuid.uuid4(),
+            company_id,
+            board_id,
+            canonical_url,
+        )
+
+        attempt = connection.transaction()
+        await attempt.start()
+        with pytest.raises(asyncpg.RaiseError, match="canonical URLs without an exact receipt"):
+            await connection.execute(migration._MIGRATE_UMANTIS_PROVIDER_IDENTITIES)
+        await attempt.rollback()
+
+        assert (
+            await connection.fetchval(
+                "SELECT count(*) FROM job_board WHERE metadata ? $1",
+                migration._RECEIPT_KEY,
+            )
+            == 0
+        )
+        assert (
+            await connection.fetchval(
+                f"SELECT count(*) FROM {migration._LEDGER_TABLE} WHERE migration_id = $1",
+                migration._MIGRATION_ID,
+            )
+            == 0
+        )
+    finally:
+        await transaction.rollback()
+        await connection.close()
+
+
+async def test_umantis_migration_rejects_deleted_zero_receipt() -> None:
+    migration = importlib.import_module(
+        "src.migrations.versions.0022_migrate_umantis_provider_identities"
+    )
+    connection = await asyncpg.connect(os.environ["LOCAL_DATABASE_URL"])
+    transaction = connection.transaction()
+    await transaction.start()
+    try:
+        boards = await _insert_contract_boards(connection, migration)
+        await connection.execute(migration._MIGRATE_UMANTIS_PROVIDER_IDENTITIES)
+        board_id, _company_id = boards["bobst-global"]
+        await connection.execute(
+            "UPDATE job_board SET metadata = metadata - $1 WHERE id = $2",
+            migration._RECEIPT_KEY,
+            board_id,
+        )
+
+        attempt = connection.transaction()
+        await attempt.start()
+        with pytest.raises(asyncpg.RaiseError, match="receipt mismatch"):
+            await connection.execute(migration._MIGRATE_UMANTIS_PROVIDER_IDENTITIES)
+        await attempt.rollback()
+
+        assert (
+            await connection.fetchval(
+                f"SELECT total_count FROM {migration._LEDGER_TABLE} "
+                "WHERE migration_id = $1 AND board_id = $2",
+                migration._MIGRATION_ID,
+                board_id,
+            )
+            == 0
+        )
+    finally:
+        await transaction.rollback()
+        await connection.close()
+
+
+async def test_umantis_migration_rejects_zero_count_tampering() -> None:
+    migration = importlib.import_module(
+        "src.migrations.versions.0022_migrate_umantis_provider_identities"
+    )
+    connection = await asyncpg.connect(os.environ["LOCAL_DATABASE_URL"])
+    transaction = connection.transaction()
+    await transaction.start()
+    try:
+        boards = await _insert_contract_boards(connection, migration)
+        board_id, company_id = boards["bobst-global"]
+        await connection.execute(
+            "INSERT INTO job_posting (id, company_id, board_id, source_url) "
+            "VALUES ($1, $2, $3, $4)",
+            uuid.uuid4(),
+            company_id,
+            board_id,
+            "https://recruitingapp-2882.umantis.com/Vacancies/9039/Description/2",
+        )
+        await connection.execute(migration._MIGRATE_UMANTIS_PROVIDER_IDENTITIES)
+        await connection.execute(
+            "UPDATE job_board SET metadata = "
+            "jsonb_set(jsonb_set(metadata, $1::text[], '0'::jsonb), $2::text[], '0'::jsonb) "
+            "WHERE id = $3",
+            [migration._RECEIPT_KEY, "migrated_count"],
+            [migration._RECEIPT_KEY, "total_count"],
+            board_id,
+        )
+
+        attempt = connection.transaction()
+        await attempt.start()
+        with pytest.raises(asyncpg.RaiseError, match="receipt mismatch"):
+            await connection.execute(migration._MIGRATE_UMANTIS_PROVIDER_IDENTITIES)
+        await attempt.rollback()
+
+        ledger = await connection.fetchrow(
+            f"SELECT migrated_count, total_count FROM {migration._LEDGER_TABLE} "
+            "WHERE migration_id = $1 AND board_id = $2",
+            migration._MIGRATION_ID,
+            board_id,
+        )
+        assert ledger is not None
+        assert dict(ledger) == {"migrated_count": 1, "total_count": 1}
+    finally:
+        await transaction.rollback()
+        await connection.close()
+
+
+async def test_umantis_trigger_canonicalizes_writes_from_a_rolled_back_runtime() -> None:
+    migration = importlib.import_module(
+        "src.migrations.versions.0022_migrate_umantis_provider_identities"
+    )
+    connection = await asyncpg.connect(os.environ["LOCAL_DATABASE_URL"])
+    transaction = connection.transaction()
+    await transaction.start()
+    try:
+        boards = await _insert_contract_boards(connection, migration)
+        await connection.execute(migration._MIGRATE_UMANTIS_PROVIDER_IDENTITIES)
+        board_id, company_id = boards["bobst-global"]
+        source_url = await connection.fetchval(
+            "INSERT INTO job_posting (id, company_id, board_id, source_url) "
+            "VALUES ($1, $2, $3, $4) RETURNING source_url",
+            uuid.uuid4(),
+            company_id,
+            board_id,
+            "https://recruitingapp-2882.umantis.com/Vacancies/9040/Description/3",
+        )
+
+        assert source_url == ("https://recruitingapp-2882.umantis.com/Vacancies/9040/Description")
     finally:
         await transaction.rollback()
         await connection.close()

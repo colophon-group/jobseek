@@ -6,7 +6,7 @@ import csv
 import importlib
 import json
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from sqlalchemy import create_mock_engine, text
@@ -66,8 +66,11 @@ def test_umantis_identity_migration_is_in_place_fail_closed_and_receipted(monkey
     assert "duplicate provider identities" in sql
     assert "foreign canonical URL ownership" in sql
     assert "legacy URLs after its receipt" in sql
+    assert "canonical URLs without an exact receipt" in sql
     assert "receipt mismatch" in sql
-    assert "to_jsonb(current_state.total_count)" in sql
+    assert migration._LEDGER_TABLE in sql
+    assert "ledger.migrated_count IS DISTINCT FROM ledger.total_count" in sql
+    assert "ledger.total_count > current_state.total_count" in sql
     assert "posting.board_id = owned_board.id" in sql
     assert "SET source_url = regexp_replace" in sql
     assert "SET is_active = false" not in sql
@@ -84,7 +87,11 @@ def test_umantis_identity_migration_is_in_place_fail_closed_and_receipted(monkey
     migration.upgrade()
     with pytest.raises(RuntimeError, match="cannot be downgraded safely"):
         migration.downgrade()
-    execute.assert_called_once_with(sql)
+    migration.op.create_table.assert_called_once()
+    assert execute.call_args_list == [
+        call(migration._INSTALL_CANONICALIZATION_GUARD),
+        call(sql),
+    ]
 
 
 def test_umantis_migration_sql_has_no_sqlalchemy_bind_tokens() -> None:
@@ -92,6 +99,7 @@ def test_umantis_migration_sql_has_no_sqlalchemy_bind_tokens() -> None:
         "src.migrations.versions.0022_migrate_umantis_provider_identities"
     )
     statement = text(migration._MIGRATE_UMANTIS_PROVIDER_IDENTITIES)
+    guard = text(migration._INSTALL_CANONICALIZATION_GUARD)
     executed = []
     engine = create_mock_engine(
         "postgresql+psycopg2://",
@@ -99,6 +107,8 @@ def test_umantis_migration_sql_has_no_sqlalchemy_bind_tokens() -> None:
     )
 
     engine.connect().execute(statement)
+    engine.connect().execute(guard)
 
     assert statement.compile(dialect=postgresql.dialect()).params == {}
-    assert executed == [statement]
+    assert guard.compile(dialect=postgresql.dialect()).params == {}
+    assert executed == [statement, guard]
