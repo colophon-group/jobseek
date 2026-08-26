@@ -202,6 +202,7 @@ func TestControlResumeCancelAndFixtureHistoryInvariants(t *testing.T) {
 		t.Fatal(err)
 	}
 	checks := map[string]string{
+		"reject_old_attempt_terminal_after_fault":   "transport_invalidated",
 		"reject_resume_checkpoint_rewind":           "sequence_rewind",
 		"reject_resume_without_reconnect_handshake": "resume_handshake_missing",
 		"reject_cancelled_terminal_without_cancel":  "terminal_count_mismatch",

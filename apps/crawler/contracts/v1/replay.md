@@ -50,7 +50,7 @@ duplicate dispatch/deduplication, false fault metadata, divergent replay,
 sequence rewind/gap, physical-credit exhaustion, actual observable limits,
 local non-wire origin/error safety caps, artifact-handle identity, ACK
 high-water rewind, initial origin ordering/parents, durable cut/phase mismatch,
-cancel-bound terminal status, and every
+stale old-attempt traffic after disconnect, cancel-bound terminal status, and every
 actual terminal counter/eligibility/status condition.
 
 Sequences in fixtures are zero-based. `after_sequence` is the sole ACK. Logical

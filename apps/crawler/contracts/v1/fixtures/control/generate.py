@@ -863,7 +863,7 @@ def corpus() -> dict[str, Any]:
         rejecting(
             "reject_request_binding_changed",
             "binding_changed",
-            [fault("before_frame", 1), start(changed_request, observed=21)],
+            [start(changed_request, observed=21)],
         )
     )
     changed_request = request()
@@ -873,7 +873,7 @@ def corpus() -> dict[str, Any]:
         rejecting(
             "reject_manifest_revision_changed",
             "manifest_revision_changed",
-            [fault("before_frame", 1), start(changed_request, observed=21)],
+            [start(changed_request, observed=21)],
         )
     )
     changed_limits = limits()
@@ -897,7 +897,7 @@ def corpus() -> dict[str, Any]:
         rejecting(
             "reject_deadline_regression",
             "deadline_regression",
-            [fault("before_frame", 1), start(changed_request, observed=21)],
+            [start(changed_request, observed=21)],
         )
     )
     changed_request = request()
@@ -907,7 +907,7 @@ def corpus() -> dict[str, Any]:
         rejecting(
             "reject_trace_binding_changed",
             "trace_binding_changed",
-            [fault("before_frame", 1), start(changed_request, observed=21)],
+            [start(changed_request, observed=21)],
         )
     )
 
@@ -934,6 +934,26 @@ def corpus() -> dict[str, Any]:
             [
                 fault("before_frame", 1),
                 resume(0, reconnect=False),
+            ],
+        )
+    )
+    cases.append(
+        rejecting(
+            "reject_old_attempt_terminal_after_fault",
+            "transport_invalidated",
+            [
+                frame(1, monitor()),
+                fault("after_frame", 1),
+                frame(
+                    2,
+                    terminal(
+                        frames=2,
+                        outputs=1,
+                        batches=1,
+                        artifacts=0,
+                        origins=1,
+                    ),
+                ),
             ],
         )
     )

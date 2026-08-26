@@ -153,6 +153,11 @@ frame, which may be a replay, rather than only the last logical frame. An
 omitted fault sequence is legal when surrounding physical history still proves
 the point.
 
+Accepting any disconnect fault invalidates the active transport attempt. No
+old-attempt frame, window update, cancellation, second fault, or start is legal
+afterward. Only a fresh `ClientHello`, `ServerHello`, then valid `ResumeRequest`
+installs a new attempt and permits result traffic again.
+
 Case metadata supplies only the deterministic durable cut index, injection
 phase, and logical time and is not encoded as wire data. Cut and phase must
 match the transcript. Durable prefix events through the cut are restored before

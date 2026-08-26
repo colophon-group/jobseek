@@ -93,6 +93,7 @@ ERROR_CODES = frozenset(
         "terminal_duplicate",
         "terminal_missing",
         "trace_binding_changed",
+        "transport_invalidated",
         "unknown_checkpoint",
         "unknown_origin_contact",
         "wrong_frame_kind",
@@ -505,6 +506,7 @@ class Validator:
     highest_acknowledged: int = -1
     terminal: dict[str, Any] | None = None
     cancelled: bool = False
+    transport_invalidated: bool = False
     resumed: bool = False
     last_payload_type: str | None = None
     last_result_sequence: int | None = None
@@ -740,6 +742,7 @@ class Validator:
         self.replay_to = self.last_sequence
         self.credit = self.pending_window
         self.resumed = True
+        self.transport_invalidated = False
         self.highest_acknowledged = after_sequence
         self.requested_limits = None
         self.pending_limits = None
@@ -787,6 +790,8 @@ class Validator:
         if len(present) != 1:
             _fail("invalid_corpus")
         kind = present[0]
+        if self.transport_invalidated and kind not in {"client_hello", "resume"}:
+            _fail("transport_invalidated")
         if kind == "client_hello":
             self._handle_client_hello(event[kind])
         elif kind == "start":
@@ -817,6 +822,8 @@ class Validator:
         return entry
 
     def _handle_fault(self, event: dict[str, Any]) -> None:
+        if self.transport_invalidated:
+            _fail("transport_invalidated")
         fault = _object(
             event["fault"],
             allowed={
@@ -869,6 +876,7 @@ class Validator:
                 _fail("fault_metadata_mismatch")
         if entry is not None:
             entry.state = "ambiguous"
+        self.transport_invalidated = True
 
     def _frame_signature(
         self, frame: dict[str, Any], measurements: dict[str, int]
@@ -1126,6 +1134,8 @@ class Validator:
                 _fail("invalid_corpus")
             self._handle_server_hello(event["server_hello"])
             return
+        if self.transport_invalidated:
+            _fail("transport_invalidated")
         if not self.request:
             _fail("invalid_corpus")
         if set(event) != {"direction", "frame", "measurements"}:
