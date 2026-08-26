@@ -4717,7 +4717,7 @@ pluralfinance,pluralfinance-ashby,https://jobs.ashbyhq.com/pluralfinance,ashby,"
 plus-power,plus-power-greenhouse,https://job-boards.greenhouse.io/pluspower,greenhouse,"{""token"": ""pluspower""}",skip,
 pmaconsultants,pmaconsultants-pinpoint,https://pmaconsultants.pinpointhq.com,pinpoint,"{""slug"": ""pmaconsultants""}",skip,
 pmg,pmg-greenhouse,https://job-boards.greenhouse.io/pmg,greenhouse,"{""token"": ""pmg""}",skip,
-pnc,pnc-workday,https://pnc.wd5.myworkdayjobs.com/External,workday,"{""company"": ""pnc"", ""wd_instance"": ""wd5"", ""site"": ""External""}",workday,
+pnc,pnc-workday,https://pnc.wd5.myworkdayjobs.com/External,workday,"{""company"": ""pnc"", ""wd_instance"": ""wd5"", ""site"": ""External"", ""split_facet"": ""jobFamilyGroup""}",workday,
 pocus,pocus-ashby,https://jobs.ashbyhq.com/pocus,ashby,"{""token"": ""pocus""}",skip,
 pod-network,pod-network-ashby,https://jobs.ashbyhq.com/pod-network,ashby,"{""token"": ""pod-network""}",skip,
 podium,podium-greenhouse,https://job-boards.greenhouse.io/podium81,greenhouse,"{""token"": ""podium81""}",skip,
