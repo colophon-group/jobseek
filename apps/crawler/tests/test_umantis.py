@@ -524,6 +524,37 @@ class TestStrictDiscover:
             with pytest.raises(ValueError, match="exact configured employer field"):
                 await discover(_strict_board(), client)
 
+    @pytest.mark.parametrize(
+        "malformed_owner",
+        [
+            (
+                '<span class="column-value" id="column_value_1184173">'
+                "Université de Neuchâtel</em> Research Partner</span>"
+            ),
+            (
+                '<span class="column-value" id="column_value_1184173">'
+                "<strong>Université de Neuchâtel</span> Research Partner</strong>"
+            ),
+        ],
+    )
+    async def test_unmatched_or_misnested_end_tags_cannot_truncate_owner_capture(
+        self, malformed_owner
+    ):
+        listing = (
+            '<tr><td><a href="/Vacancies/6500/Description/3" '
+            'class="HSTableLinkSubTitle">Role</a>'
+            + malformed_owner
+            + "</td></tr>"
+            + _navigation(total=1, first=1, last=1, page=1)
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, text=listing, request=request)
+            )
+        ) as client:
+            with pytest.raises(ValueError, match="configured employer field"):
+                await discover(_strict_board(), client)
+
     async def test_rejects_conflicting_rows_for_same_vacancy_locale(self):
         listing = (
             _owned_row(6500, 3, "First title")
@@ -632,6 +663,14 @@ class TestStrictDiscover:
                 'content="Université de Neuchâtel - duplicate."></head>'
             ),
             ('<head><meta name="description" content="Université de Neuchâtel - Suisse.">'),
+            (
+                '<body></body><head><meta name="description" '
+                'content="Université de Neuchâtel - Suisse."></head>'
+            ),
+            (
+                '<head><body><meta name="description" '
+                'content="Université de Neuchâtel - Suisse."></body></head>'
+            ),
         ],
     )
     async def test_rejects_ambiguous_or_unclosed_description_head(self, detail):
@@ -785,6 +824,7 @@ class TestStrictDiscover:
             '<p aria-hidden="  TRUE  ">Aucune entrée n’a été trouvée.</p>',
             '<p style="display: none">Aucune entrée n’a été trouvée.</p>',
             '<p class="visually-hidden">Aucune entrée n’a été trouvée.</p>',
+            "<details>Aucune entrée n’a été trouvée.</details>",
             "<head>Aucune entrée n’a été trouvée.</head>",
             "<title>Aucune entrée n’a été trouvée.</title>",
         ],
@@ -798,6 +838,17 @@ class TestStrictDiscover:
         ) as client:
             with pytest.raises(ValueError, match="explicit visible empty state"):
                 await discover(_strict_board(), client)
+
+    async def test_open_details_can_prove_the_visible_zero_state(self):
+        listing = "<details open>Aucune entrée n’a été trouvée.</details>" + _navigation(
+            total=0, first=0, last=0, page=1
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, text=listing, request=request)
+            )
+        ) as client:
+            assert await discover(_strict_board(), client) == set()
 
     async def test_follows_exact_tokenized_pagination_and_proves_ranges(self):
         requested: list[str] = []

@@ -1248,6 +1248,27 @@ rollback_compose() {
     "$@"
 }
 
+repair_umantis_identity_cutover() {
+  local operation_label="$1"
+  local park_monitors="${2:-0}"
+  local -a command_args=(repair-umantis-identity-cutover)
+
+  if [[ "$park_monitors" == 1 ]]; then
+    command_args+=(--park-monitors)
+  fi
+
+  docker run --rm \
+    -e LOCAL_DATABASE_URL \
+    -e CRAWLER_DB_ROLE="$operation_label" \
+    -e CRAWLER_DB_POOL_MIN=0 \
+    -e CRAWLER_DB_POOL_MAX=4 \
+    --network host \
+    "${MAINTENANCE_PROVENANCE_LABELS[@]}" \
+    --label "com.docker.compose.service=${operation_label}" \
+    "$CRAWLER_IMAGE_REF" \
+    uv run --no-sync crawler "${command_args[@]}"
+}
+
 rollback_sync_previous_config() {
   local crawler_ref restored_web_database_url status
   local -a data_args=()
@@ -1286,7 +1307,8 @@ rollback_sync_previous_config() {
     -e CRAWLER_DB_POOL_MIN=0 \
     -e CRAWLER_DB_POOL_MAX=4 \
     worker-1 \
-    uv run --no-sync crawler sync
+    uv run --no-sync crawler sync && \
+    repair_umantis_identity_cutover rollback-umantis-identity-cutover 1
   then
     status=0
   else
@@ -2099,6 +2121,13 @@ docker run --rm \
   --label com.docker.compose.service=deploy-nw-provider-cutover \
   "$CRAWLER_IMAGE_REF" \
   uv run --no-sync crawler repair-nw-provider-cutover
+
+# Revision 0022 canonicalizes durable PostgreSQL identities. Existing Redis
+# scrape hashes predate that transaction, so repair and verify them while all
+# workers are still quiesced. The same current-image command also runs after a
+# previous-config rollback and parks only the incompatible old Umantis monitor
+# schedules before that runtime may restart.
+repair_umantis_identity_cutover deploy-umantis-identity-cutover
 
 # ── Start the full stack on the freshly seeded Redis state ───────────
 # Coupled rollout marker (2026-08-04): this comment-only deploy contract

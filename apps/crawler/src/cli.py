@@ -102,6 +102,16 @@ def parse_args() -> argparse.Namespace:
         help="Reapply the bounded NW Teamtailor-to-WTTJ identity repair",
     )
 
+    umantis_cutover_p = sub.add_parser(
+        "repair-umantis-identity-cutover",
+        help="Complete the bounded Umantis PostgreSQL-to-Redis identity cutover",
+    )
+    umantis_cutover_p.add_argument(
+        "--park-monitors",
+        action="store_true",
+        help="Park pre-cutover Umantis monitor schedules during runtime rollback",
+    )
+
     sub.add_parser(
         "repair-location-taxonomy-source",
         help="One-shot retained web DB -> local location slug/coordinate repair",
@@ -716,6 +726,24 @@ async def run() -> None:
             async with local_pool.acquire() as acquired_connection:
                 connection = cast(asyncpg.Connection, acquired_connection)
                 await reapply_nw_provider_cutover(connection)
+
+        elif args.command == "repair-umantis-identity-cutover":
+            local_pool = await create_local_pool()
+            from src.redis_queue import close_redis, get_redis
+            from src.umantis_identity_cutover import repair_umantis_identity_cutover
+
+            try:
+                async with local_pool.acquire() as acquired_connection:
+                    connection = cast(asyncpg.Connection, acquired_connection)
+                    summary = await repair_umantis_identity_cutover(
+                        connection,
+                        get_redis(),
+                        park_monitors=args.park_monitors,
+                    )
+                sys.stdout.write(json.dumps(summary, sort_keys=True) + "\n")
+                sys.stdout.flush()
+            finally:
+                await close_redis()
 
         elif args.command == "repair-location-taxonomy-source":
             local_pool = await create_local_pool()

@@ -216,9 +216,13 @@ def test_deploy_quiesces_writers_before_migrations_and_schema_sync() -> None:
     typesense_schema = script.index("uv run --no-sync crawler setup-typesense")
     sync = script.index("uv run --no-sync crawler sync", typesense_schema)
     nw_cutover = script.index("uv run --no-sync crawler repair-nw-provider-cutover")
-    restart = script.index("docker compose up -d --remove-orphans", nw_cutover)
+    umantis_cutover = script.index(
+        "repair_umantis_identity_cutover deploy-umantis-identity-cutover",
+        nw_cutover,
+    )
+    restart = script.index("docker compose up -d --remove-orphans", umantis_cutover)
 
-    assert quiesce < migrate < typesense_schema < sync < nw_cutover < restart
+    assert quiesce < migrate < typesense_schema < sync < nw_cutover < umantis_cutover < restart
 
 
 def test_operational_sync_entrypoints_are_local_and_typesense_only() -> None:
@@ -2066,6 +2070,7 @@ def test_deploy_brackets_service_pause_with_validated_maintenance_provenance() -
         "deploy-nw-provider-cutover",
     ):
         assert f"com.docker.compose.service={service}" in script
+    assert '--label "com.docker.compose.service=${operation_label}"' in script
 
 
 def test_deploy_blocks_compose_oneoffs_before_touching_services() -> None:
@@ -2154,6 +2159,7 @@ def test_deploy_rolls_back_env_and_compose_as_one_contract() -> None:
     ]
     assert 'read_exact_release_value "$ENV_FILE" CRAWLER_IMAGE_REF' in rollback_sync
     assert "uv run --no-sync crawler sync" in rollback_sync
+    assert "repair_umantis_identity_cutover rollback-umantis-identity-cutover 1" in rollback_sync
     assert "-e CRAWLER_DB_ROLE=rollback-sync" in rollback_sync
     assert script.index("FORWARD_SYNC_STARTED=1") < script.index(
         "uv run --no-sync crawler sync", script.index("FORWARD_SYNC_STARTED=1")
@@ -2214,6 +2220,10 @@ def test_previous_config_restore_uses_the_restored_image_and_scopes_web_secret(
             '  printf \'%s\\n\' "$*" >>"$TEST_LOG"',
             '  return "$COMPOSE_STATUS"',
             "}",
+            "repair_umantis_identity_cutover() {",
+            '  printf \'%s\\n\' "$1" >>"$TEST_LOG"',
+            '  return "$REPAIR_STATUS"',
+            "}",
             "rollback_sync_previous_config",
             "status=$?",
             'test -z "$ROLLBACK_SYNC_WEB_DATABASE_URL"',
@@ -2222,7 +2232,7 @@ def test_previous_config_restore_uses_the_restored_image_and_scopes_web_secret(
         )
     )
 
-    for compose_status in (0, 9):
+    for compose_status, repair_status, expected_status in ((0, 0, 0), (9, 0, 9), (0, 7, 7)):
         log.write_text("", encoding="utf-8")
         result = subprocess.run(
             [bash, "-c", harness],
@@ -2232,6 +2242,7 @@ def test_previous_config_restore_uses_the_restored_image_and_scopes_web_secret(
             env={
                 **os.environ,
                 "COMPOSE_STATUS": str(compose_status),
+                "REPAIR_STATUS": str(repair_status),
                 "TEST_ENV_FILE": str(env_file),
                 "TEST_LOG": str(log),
                 "TEST_DATA_SNAPSHOT": str(data_snapshot),
@@ -2245,7 +2256,11 @@ def test_previous_config_restore_uses_the_restored_image_and_scopes_web_secret(
             "-e CRAWLER_DB_ROLE=rollback-sync -e CRAWLER_DB_POOL_MIN=0 "
             "-e CRAWLER_DB_POOL_MAX=4 worker-1 uv run --no-sync crawler sync"
         )
-        assert calls[1] == f"status={compose_status}"
+        if compose_status == 0:
+            assert calls[1] == "rollback-umantis-identity-cutover"
+            assert calls[2] == f"status={expected_status}"
+        else:
+            assert calls[1] == f"status={compose_status}"
         assert "postgresql://rollback-only" not in result.stdout
         assert "postgresql://rollback-only" not in result.stderr
 
@@ -2901,6 +2916,7 @@ def test_post_pointer_failure_rehydrates_old_release_before_config_rollback(
             restore,
             rollback_support,
             rollback,
+            "repair_umantis_identity_cutover() { :; }",
             "wait_for_rollback_core_services() { :; }",
             "publish_legacy_success_marker() { :; }",
             "stop_maintenance_window() { :; }",
