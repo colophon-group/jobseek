@@ -1823,6 +1823,14 @@ test("broad CI test jobs exclude service-backed Typesense E2E suites", () => {
   );
 });
 
+test("crawler compatibility checks out authenticated prior-main history", () => {
+  const crawlerJob = jobBlock("test-crawler");
+  assert.match(
+    crawlerJob,
+    /actions\/checkout@[0-9a-f]+[^\n]*\n\s+with:\n\s+fetch-depth: 0/,
+  );
+});
+
 test("Required CI gates Typesense E2E jobs", () => {
   assert.match(workflow, /needs:[\s\S]*- test-web-typesense-e2e/);
   assert.match(workflow, /needs:[\s\S]*- test-crawler-typesense-e2e/);
