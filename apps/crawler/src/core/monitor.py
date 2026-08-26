@@ -367,8 +367,9 @@ def _validate_collision_identity(
         )
     if (
         match is None
-        or not isinstance(provider_identity, str)
-        or provider_identity != match.group(1)
+        or isinstance(provider_identity, bool)
+        or not isinstance(provider_identity, (str, int))
+        or str(provider_identity) != match.group(1)
     ):
         raise ValueError("url_transform collision provider identity does not match canonical URL")
 
