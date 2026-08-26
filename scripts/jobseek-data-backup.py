@@ -81,6 +81,12 @@ _REDACTIONS = (
     (re.compile(r"(?i)(authorization:\s*(?:bearer|basic)\s+)[^\s]+"), r"\1<redacted>"),
     (re.compile(r"(?i)postgres(?:ql)?://[^\s'\"]+"), "postgresql://<redacted>"),
 )
+TYPESENSE_REVIEWED_MEMORY_POLICIES = frozenset(
+    {
+        (3 * 1024**3, 2560 * 1024**2, 3 * 1024**3),
+        (6 * 1024**3, 5 * 1024**3, 6 * 1024**3),
+    }
+)
 
 
 class BackupError(RuntimeError):
@@ -698,8 +704,11 @@ def _validate_typesense_snapshot_staging(
     memory_policy_phase = os.environ.get("TYPESENSE_MEMORY_POLICY_PHASE", "enforced")
     if memory_policy_phase != "enforced":
         raise BackupError("Typesense memory policy phase is not recognized")
-    expected_memory_policy = (3 * 1024**3, 2560 * 1024**2, 3 * 1024**3)
-    if (memory, reservation, memory_swap) != expected_memory_policy:
+    # The legacy tuple remains accepted only across the staged CX33 migration:
+    # the old backup runner must remain valid until the expanded host contract
+    # disables its timer, and the new runner must smoke the expanded container.
+    # A follow-up removes the legacy tuple after the promotion is proven.
+    if (memory, reservation, memory_swap) not in TYPESENSE_REVIEWED_MEMORY_POLICIES:
         raise BackupError("Typesense container does not enforce the reviewed memory policy")
     return {
         "staging_capacity_bytes": usage.total,

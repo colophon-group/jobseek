@@ -36,12 +36,13 @@ TYPESENSE_SNAPSHOT_IN_CONTAINER=/jobseek-snapshots
 TYPESENSE_NOFILE_LIMIT=65536
 TYPESENSE_LOG_MAX_SIZE=50m
 TYPESENSE_LOG_MAX_FILES=3
-TYPESENSE_MEMORY_LIMIT=6g
-TYPESENSE_MEMORY_RESERVATION=5g
-TYPESENSE_MEMORY_SWAP=6g
-TYPESENSE_MEMORY_LIMIT_BYTES=6442450944
-TYPESENSE_MEMORY_RESERVATION_BYTES=5368709120
-TYPESENSE_MEMORY_SWAP_BYTES=6442450944
+TYPESENSE_MEMORY_POLICY=${JOBSEEK_TYPESENSE_MEMORY_POLICY:-expanded}
+TYPESENSE_MEMORY_LIMIT=""
+TYPESENSE_MEMORY_RESERVATION=""
+TYPESENSE_MEMORY_SWAP=""
+TYPESENSE_MEMORY_LIMIT_BYTES=""
+TYPESENSE_MEMORY_RESERVATION_BYTES=""
+TYPESENSE_MEMORY_SWAP_BYTES=""
 TYPESENSE_SNAPSHOT_CONTRACT=direct-mount-v1
 TYPESENSE_SNAPSHOT_MIN_CAPACITY_BYTES=21474836480
 TYPESENSE_SNAPSHOT_MIN_FREE_BYTES=8589934592
@@ -62,9 +63,39 @@ typesense_tx_previous_pending_exists=0
 typesense_tx_previous_deployed=""
 typesense_tx_previous_deployed_exists=0
 
+configure_typesense_memory_policy() {
+  case "$TYPESENSE_MEMORY_POLICY" in
+    expanded)
+      TYPESENSE_MEMORY_LIMIT=6g
+      TYPESENSE_MEMORY_RESERVATION=5g
+      TYPESENSE_MEMORY_SWAP=6g
+      TYPESENSE_MEMORY_LIMIT_BYTES=6442450944
+      TYPESENSE_MEMORY_RESERVATION_BYTES=5368709120
+      TYPESENSE_MEMORY_SWAP_BYTES=6442450944
+      ;;
+    legacy)
+      # Transitional rollback support only. The protected workflow always
+      # selects expanded; remove this branch after the CX33 cutover is proven.
+      TYPESENSE_MEMORY_LIMIT=3g
+      TYPESENSE_MEMORY_RESERVATION=2560m
+      TYPESENSE_MEMORY_SWAP=3g
+      TYPESENSE_MEMORY_LIMIT_BYTES=3221225472
+      TYPESENSE_MEMORY_RESERVATION_BYTES=2684354560
+      TYPESENSE_MEMORY_SWAP_BYTES=3221225472
+      ;;
+    *)
+      echo "ERROR: unknown Typesense memory policy: $TYPESENSE_MEMORY_POLICY" >&2
+      exit 1
+      ;;
+  esac
+}
+
 prepare_host_deployment() {
   if [[ "$COMPONENT" == all || "$COMPONENT" == typesense ]]; then
-    "$REPO_ROOT/deploy/typesense-host/check-memory-capacity.sh"
+    configure_typesense_memory_policy
+    if [[ "$TYPESENSE_MEMORY_POLICY" == expanded ]]; then
+      "$REPO_ROOT/deploy/typesense-host/check-memory-capacity.sh"
+    fi
   fi
   install -d -o root -g root -m 0700 "$STATE_DIR" "$CREDENTIAL_DIR"
   exec 9>"$STATE_DIR/deploy.lock"

@@ -53,6 +53,13 @@ jobs:
             deploy/typesense-host/install-host.sh \
             deploy/typesense-host/check-memory-capacity.sh
           deploy/typesense-host/check-memory-capacity.sh --self-test
+          python3 -m py_compile deploy/typesense-host/verify-memory-contract.py
+          python3 deploy/typesense-host/verify-memory-contract.py
+          # Keep the legacy tuple explicit during the staged migration. The
+          # expanded smoke below is the only policy promoted by this revision.
+          legacy_memory_policy=(--memory 3g --memory-reservation 2560m --memory-swap 3g)
+          test "${legacy_memory_policy[*]}" = \
+            '--memory 3g --memory-reservation 2560m --memory-swap 3g'
           python3 -m py_compile scripts/verify-typesense-snapshot-mount.py
           python3 -m py_compile scripts/verify-typesense-host-credentials.py
           python3 scripts/verify-typesense-host-credentials.py --self-test
@@ -246,12 +253,13 @@ jobs:
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         env:
           JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA: ${{ github.sha }}
+          JOBSEEK_TYPESENSE_MEMORY_POLICY: expanded
           TYPESENSE_BOOTSTRAP_KEY: ${{ secrets.TYPESENSE_BOOTSTRAP_KEY }}
         with:
           host: ${{ secrets.HETZNER_TYPESENSE_HOST }}
           username: root
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          envs: JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA,TYPESENSE_BOOTSTRAP_KEY
+          envs: JOBSEEK_TYPESENSE_HOST_DEPLOY_SHA,JOBSEEK_TYPESENSE_MEMORY_POLICY,TYPESENSE_BOOTSTRAP_KEY
           command_timeout: 40m
           script: |
             set -euo pipefail

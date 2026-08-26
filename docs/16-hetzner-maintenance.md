@@ -128,6 +128,17 @@ state and refuses this policy below 7 GiB total memory. Durable current, peak,
 event, Docker, Cloudflare tunnel, and OS headroom measurements still gate the
 seven-day acceptance window.
 
+The CX33 transition temporarily recognizes the exact legacy 3 GiB / 2.5 GiB /
+3 GiB tuple in the host verifier and backup runner so the pre-cutover service
+remains inspectable and the post-cutover runner can be installed without a
+dead zone. The protected host workflow explicitly selects `expanded`, while
+the host installer retains an explicit `legacy` rollback mode and the backup
+installer requires 6 GiB / 5 GiB / 6 GiB for the new contract. Remove legacy
+recognition in [#8059](https://github.com/colophon-group/jobseek/issues/8059)
+immediately after the expanded host, fresh backup smoke, and capacity
+acceptance checks pass; it is a migration bridge, not a second steady-state
+policy.
+
 Provision the snapshot filesystem before promoting the container contract.
 Create and attach a dedicated Hetzner Volume of at least 20 GiB in the
 Typesense server's location. Resolve the exact new device through
