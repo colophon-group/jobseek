@@ -438,17 +438,22 @@ MONITOR_JOHDI = """\
 johdi — Johdi Suite embedded careers monitor
 
   Source:   Public list and per-offer APIs at ats.johdisuite.ch
-  Returns:  Canonical offer URLs from the complete active-offer inventory
+  Returns:  Stable provider-ID offer URLs from the complete active inventory.
+            A constant route slug keeps the official deep link functional;
+            title/locale slug changes cannot churn job identity.
   Scraper:  johdi (auto-configured) fetches structured offer details on the
             normal scrape schedule
   Cap:      50,000 jobs
 
   Config:   company_key, flow, and locale. All are auto-detected from the
-            #ats-offers widget embedded on a custom careers page.
+            #ats-offers widget embedded on a custom careers page. Configured
+            identity must keep matching that exact live widget on every run.
 
   Detection:  ws probe verifies the public offers payload and reports its
               current job count.
-  Zero jobs?  A valid [] response is an active empty board."""
+  Safety:    Listing/detail JSON is bounded, non-redirecting, and content-type
+             checked. Duplicate/invalid IDs and mismatched detail IDs fail.
+  Zero jobs?  A valid [] response from the matched widget is an active empty board."""
 
 MONITOR_EIGHTFOLD = """\
 eightfold — Eightfold AI Careers Portal (hybrid sitemap + PCSX)
@@ -4034,6 +4039,7 @@ johdi — Johdi Suite offer-detail API scraper
   Returns:  title, HTML description, locations, employment_type,
             date_posted, language, activity range, and application metadata
   Config:   company_key, flow, and locale (auto-filled by the johdi monitor)
+  Safety:   The bounded JSON detail ID must exactly match the stable URL ID.
   Note:     Runs on the normal scrape schedule, not every monitor cycle.
 """
 

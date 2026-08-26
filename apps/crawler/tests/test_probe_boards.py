@@ -220,6 +220,31 @@ class TestProbeRow:
         assert result.status == "ok"
         assert result.message == "production extractor: 1 jobs"
 
+    async def test_johdi_probe_accepts_authoritative_empty_json_inventory(self):
+        company_key = "opaque-company-key-1234567890"
+        row = _row(
+            board_slug="acme-johdi",
+            board_url="https://example.com/openings",
+            monitor_type="johdi",
+            monitor_config=json.dumps({"company_key": company_key, "flow": "web", "locale": "fr"}),
+        )
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url == row["board_url"]:
+                return httpx.Response(
+                    200,
+                    text=(
+                        '<div id="ats-offers" data-company-hash-key="'
+                        f'{company_key}" data-flow="web" data-locale="fr"></div>'
+                    ),
+                )
+            return httpx.Response(200, json=[])
+
+        result = await self._run(row, handler)
+
+        assert result.status == "ok"
+        assert result.message == "production extractor: 0 jobs"
+
     async def test_dom_static_probe_fails_when_contract_extracts_nothing(self):
         row = _row(
             board_slug="acme-dom",
