@@ -34,6 +34,7 @@ from src.shared.api_sniff import (
     set_url_param,
     trigger_interactions,
 )
+from src.shared.nextdata import extract_field
 
 
 def _make_exchange(
@@ -626,6 +627,37 @@ class TestAutoMapFields:
         mapping = auto_map_fields(items)
 
         assert mapping["locations"] == "requisitionLocations[].nameCode.longName"
+
+    def test_adp_myjobs_prefers_geography_and_schedule(self):
+        items = [
+            {
+                "jobTitle": "Room Attendant",
+                "type": "Normal",
+                "workLevelCode": "Full-time",
+                "requisitionLocations": [
+                    {
+                        "address": {
+                            "cityName": "Salt Lake City",
+                            "countrySubdivisionLevel1": {"codeValue": "UT"},
+                            "country": {"longName": "United States"},
+                        },
+                        "nameCode": {"longName": "4121-Hotel Monaco SLC - Bambara"},
+                    }
+                ],
+            }
+        ]
+
+        mapping = auto_map_fields(items)
+
+        assert mapping["employment_type"] == "workLevelCode"
+        assert mapping["locations"] == (
+            "requisitionLocations[].join(', ', "
+            "[address.cityName, address.countrySubdivisionLevel1.codeValue, "
+            "address.country.longName][?@])"
+        )
+        assert extract_field(items[0], mapping["locations"]) == [
+            "Salt Lake City, UT, United States"
+        ]
 
     def test_location_array_of_strings(self):
         items = [
