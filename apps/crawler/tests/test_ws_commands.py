@@ -83,6 +83,34 @@ def _test_pr_provenance(number: int, *, slug: str = "test", issue: int | None = 
     return pr_provenance(_test_pr_details(number, slug=slug, issue=issue), issue=issue, slug=slug)
 
 
+def _pr_safety_race_details(kind: str, *, issue: int | None = 42) -> dict:
+    details = _test_pr_details(10, slug="test", issue=issue)
+    if kind == "review":
+        details["reviews"] = [
+            {
+                "state": "APPROVED",
+                "author": {"login": "reviewer"},
+                "commit": {"oid": TEST_HEAD_OID},
+                "submittedAt": "2026-08-26T12:00:00Z",
+            }
+        ]
+    elif kind == "comment":
+        details["comments"] = [
+            {
+                "author": {"login": "reviewer"},
+                "createdAt": "2026-08-26T12:00:00Z",
+                "body": "Do not merge until the independent audit is complete.",
+            }
+        ]
+    elif kind == "hold":
+        details["labels"] = [{"name": "merge-hold"}]
+    elif kind == "ready":
+        details["isDraft"] = False
+    else:
+        raise AssertionError(f"unknown PR race kind: {kind}")
+    return details
+
+
 def _setup_csvs(tmp_path, companies="", boards=""):
     (tmp_path / "companies.csv").write_text(COMPANIES_HEADER + companies)
     (tmp_path / "boards.csv").write_text(BOARDS_HEADER + boards)
@@ -1378,6 +1406,75 @@ class TestTaskComplete:
         assert state["claimed"] is False
         ready.assert_not_called()
 
+    @pytest.mark.parametrize("phase", ["before_commit", "before_push"])
+    @pytest.mark.parametrize("kind", ["review", "comment", "hold", "ready"])
+    def test_kb_publication_rechecks_exact_pr_lease_before_mutation(
+        self, tmp_path, monkeypatch, phase, kind
+    ):
+        from src.workspace.commands.task import _finalize_workflow
+        from src.workspace.workflow import WorkflowState, _save_wf_to_disk
+
+        _patch_all(monkeypatch, tmp_path)
+        published_oid = "b" * 40
+        save_workspace(
+            Workspace(
+                slug="test",
+                issue=42,
+                pr=10,
+                branch="add-company/test",
+                pr_provenance=_test_pr_provenance(10, issue=42),
+                submit_state={"pushed": True},
+            )
+        )
+        _save_wf_to_disk("test", WorkflowState(current_step="reflect"))
+        state = {"local": TEST_HEAD_OID, "remote": TEST_HEAD_OID, "dirty": True}
+        pristine = _test_pr_details(10, slug="test", issue=42)
+        raced = _pr_safety_race_details(kind)
+        detail_calls = {"count": 0}
+
+        def details(_number):
+            detail_calls["count"] += 1
+            if phase == "before_commit" or detail_calls["count"] >= 2:
+                return copy.deepcopy(raced)
+            return copy.deepcopy(pristine)
+
+        def commit(_message):
+            state["local"] = published_oid
+            state["dirty"] = False
+
+        with (
+            patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
+            patch("src.workspace.commands.lifecycle._verify_workspace_pr_before_mutation"),
+            patch(
+                "src.workspace.git.changed_paths_strict",
+                side_effect=lambda: (
+                    {"apps/crawler/src/workspace/kb/new.md"} if state["dirty"] else set()
+                ),
+            ),
+            patch(
+                "src.workspace.git.current_head_oid_strict",
+                side_effect=lambda **_kwargs: state["local"],
+            ),
+            patch("src.workspace.git.add_files"),
+            patch("src.workspace.git.commit", side_effect=commit) as commit_mock,
+            patch("src.workspace.git.verify_single_commit_strict"),
+            patch(
+                "src.workspace.git.remote_branch_oid_strict",
+                side_effect=lambda *_args: state["remote"],
+            ),
+            patch("src.workspace.git.get_pr_details_strict", side_effect=details),
+            patch("src.workspace.git.push_branch_at_expected_oid") as push,
+            patch("src.workspace.git.mark_pr_draft") as mark_draft,
+            pytest.raises(WorkspaceError, match="provenance or head changed"),
+        ):
+            _finalize_workflow("test")
+
+        assert commit_mock.call_count == (1 if phase == "before_push" else 0)
+        assert state["remote"] == TEST_HEAD_OID
+        push.assert_not_called()
+        mark_draft.assert_not_called()
+
 
 class TestDel:
     def test_del_workspace(self, tmp_path, monkeypatch):
@@ -2284,6 +2381,54 @@ class TestReadyRecovery:
         mark_ready.assert_not_called()
         assert draft["value"] is True
         assert _load_wf_from_disk("test").current_step == "done"
+
+    def test_readiness_recovery_rechecks_exact_ready_pr_before_draft_mutation(
+        self, tmp_path, monkeypatch
+    ):
+        from src.workspace.commands.task import _finalize_workflow
+        from src.workspace.workflow import WorkflowState, _save_wf_to_disk
+
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(
+            Workspace(
+                slug="test",
+                pr=10,
+                branch="add-company/test",
+                pr_provenance=_test_pr_provenance(10, issue=None),
+                submit_state={"pushed": True},
+            )
+        )
+        _save_wf_to_disk("test", WorkflowState(current_step="reflect"))
+        ready = _test_pr_details(10, slug="test", issue=None)
+        ready["isDraft"] = False
+        raced = copy.deepcopy(ready)
+        raced["headRefOid"] = "b" * 40
+        raced["comments"] = [
+            {
+                "author": {"login": "reviewer"},
+                "createdAt": "2026-08-26T12:00:00Z",
+                "body": "Approved at the replacement head.",
+            }
+        ]
+
+        with (
+            patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
+            patch("src.workspace.commands.lifecycle._verify_workspace_pr_before_mutation"),
+            patch("src.workspace.git.changed_paths_strict", return_value=set()),
+            patch("src.workspace.git.remote_branch_oid_strict", return_value=TEST_HEAD_OID),
+            patch(
+                "src.workspace.git.get_pr_details_strict",
+                side_effect=[ready, raced],
+            ),
+            patch("src.workspace.git.mark_pr_draft") as mark_draft,
+            patch("src.workspace.git.mark_pr_ready") as mark_ready,
+            pytest.raises(WorkspaceError, match="changed while transitioning to ready"),
+        ):
+            _finalize_workflow("test")
+
+        mark_draft.assert_not_called()
+        mark_ready.assert_not_called()
 
     def test_readiness_race_recovery_posts_issue_audit(self, tmp_path, monkeypatch):
         from src.workspace.commands.task import _finalize_workflow
