@@ -13,6 +13,7 @@ import test from "node:test";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
+import "./runtime-review-attestation.test.mjs";
 
 const workflow = readFileSync(".github/workflows/ci.yml", "utf8");
 const webBuildEnvAction = readFileSync(
@@ -47,6 +48,14 @@ const dispatchPrChecksScript = readFileSync(
 );
 const crawlerDeployGateWorkflow = readFileSync(
   ".github/workflows/crawler-deploy-gate.yml",
+  "utf8",
+);
+const runtimeReviewAttestationWorkflow = readFileSync(
+  ".github/workflows/runtime-review-attestation.yml",
+  "utf8",
+);
+const runtimeReviewAttestationScript = readFileSync(
+  ".github/scripts/runtime-review-attestation.mjs",
   "utf8",
 );
 const crawlerDeployGateScript = readFileSync(
@@ -1546,7 +1555,7 @@ test("dependency review scopes the sharp libvips license exception", () => {
   assert.doesNotMatch(dependencyReviewJob, /allow-licenses:/);
 });
 
-test("main branch ruleset requires CI and the crawler deployment gate", () => {
+test("main branch ruleset requires CI and both crawler governance gates", () => {
   assert.equal(mainStrictGateRuleset.name, "main-strict-gate");
   assert.equal(
     mainStrictGateRuleset.rules.some((rule) => rule.type === "code_scanning"),
@@ -1562,10 +1571,42 @@ test("main branch ruleset requires CI and the crawler deployment gate", () => {
     (check) => check.context,
   );
 
-  assert.deepEqual(contexts, ["Required CI", "Crawler Deploy Gate"]);
+  assert.deepEqual(contexts, [
+    "Required CI",
+    "Crawler Deploy Gate",
+    "Runtime Review Attestation",
+  ]);
   for (const check of statusRule.parameters.required_status_checks) {
     assert.equal(Object.hasOwn(check, "integration_id"), false);
   }
+});
+
+test("runtime review gate uses trusted code and exact live-head status", () => {
+  assert.match(runtimeReviewAttestationWorkflow, /pull_request_target:/);
+  assert.match(runtimeReviewAttestationWorkflow, /issue_comment:/);
+  assert.match(
+    runtimeReviewAttestationWorkflow,
+    /pull_request_target:[\s\S]*opened,[\s\S]*synchronize,[\s\S]*reopened,[\s\S]*ready_for_review/,
+  );
+  assert.match(
+    runtimeReviewAttestationWorkflow,
+    /types: \[created, edited, deleted\]/,
+  );
+  assert.match(
+    runtimeReviewAttestationWorkflow,
+    /ref: \$\{\{ github\.event\.repository\.default_branch \}\}/,
+  );
+  assert.match(runtimeReviewAttestationWorkflow, /persist-credentials: false/);
+  assert.match(runtimeReviewAttestationWorkflow, /statuses: write/);
+  assert.match(runtimeReviewAttestationWorkflow, /cancel-in-progress: false/);
+  assert.match(runtimeReviewAttestationWorkflow, /runtime-review-attestation-\$\{\{/);
+  assert.match(
+    runtimeReviewAttestationScript,
+    /const STATUS_CONTEXT = "Runtime Review Attestation"/,
+  );
+  assert.match(runtimeReviewAttestationScript, /const final = await pullState/);
+  assert.match(runtimeReviewAttestationScript, /final\.head\.sha !== headAtStart/);
+  assert.doesNotMatch(runtimeReviewAttestationWorkflow, /pull_request:\n/);
 });
 
 test("crawler deploy gate runs trusted and path-aware on PR state changes", () => {

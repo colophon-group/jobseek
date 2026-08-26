@@ -43,6 +43,9 @@ Status tags:
 - [23 - Go and Lightpanda Crawler Migration](23-go-lightpanda-migration.md)
   `[reference]` - global-scale runtime replacement boundaries, capacity floor,
   cutover safety, replay, metrics, Murmur coordination, and retirement plan.
+- [22 - Runtime Migration Exact-Head Approval](22-runtime-review-attestation.md)
+  `[reference]` - required accidental-drift guard, append-only record lifecycle,
+  threat-model limits, and activation procedure for migration PRs.
 
 ## Search, SEO, And Web Read Paths
 

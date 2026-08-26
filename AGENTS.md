@@ -237,3 +237,8 @@ See [docs/13-seo-and-indexnow.md](docs/13-seo-and-indexnow.md).
   issue labelled `deployment-hold:crawler` intentionally blocks that check.
   Do not remove the label or bypass/weaken the check unless the operator has
   explicitly cleared the underlying production condition.
+- Runtime-migration PRs must have a green `Runtime Review Attestation` on the
+  exact live head. Ready state and an approval/status on an older head grant no
+  merge authority. Publish or renew the machine record through the trusted
+  default-branch workflow documented in
+  `docs/22-runtime-review-attestation.md`; do not hand-edit machine comments.
