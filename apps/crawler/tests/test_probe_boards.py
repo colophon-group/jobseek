@@ -318,6 +318,31 @@ class TestProbeRow:
         assert result.status == "fail"
         assert "no jobs" in result.message
 
+    async def test_dom_static_probe_accepts_authenticated_advertised_zero(self):
+        row = _row(
+            board_slug="acme-dom",
+            board_url="https://example.com/openings",
+            monitor_type="dom",
+            monitor_config=json.dumps(
+                {
+                    "render": False,
+                    "link_selector": "a.job[href]",
+                    "advertised_total": {
+                        "selector": "h2.total",
+                        "regex": r"^(\d+) jobs$",
+                    },
+                }
+            ),
+        )
+
+        result = await self._run(
+            row,
+            lambda _request: httpx.Response(200, text='<h2 class="total">0 jobs</h2>'),
+        )
+
+        assert result.status == "ok"
+        assert result.message == "production extractor: 0 jobs"
+
     async def test_static_probe_reports_extraction_contract_drift(self):
         row = _row(
             board_slug="acme-inline",
@@ -352,6 +377,28 @@ class TestProbeRow:
 
         assert result.status == "skipped"
         assert "browser probe" in result.message
+
+    async def test_static_probe_skips_proxy_configurations(self):
+        row = _row(
+            board_slug="acme-dom",
+            board_url="https://example.com/openings",
+            monitor_type="dom",
+            monitor_config=json.dumps(
+                {
+                    "render": False,
+                    "proxy": True,
+                    "link_selector": "a.job[href]",
+                }
+            ),
+        )
+
+        result = await self._run(
+            row,
+            lambda _request: (_ for _ in ()).throw(AssertionError("should not fetch")),
+        )
+
+        assert result.status == "skipped"
+        assert "credentialed deployment probe" in result.message
 
     async def test_greenhouse_404_is_fail(self):
         def handler(request):

@@ -336,6 +336,45 @@ class TestPickSplitFacet:
 
         assert _pick_split_facet(facets) == ("locations", ["loc1", "loc2"])
 
+    def test_preferred_facet_overrides_automatic_value_count_choice(self):
+        facets = [
+            {
+                "facetParameter": "state",
+                "values": [
+                    {"id": "state-1", "count": 300},
+                    {"id": "state-2", "count": 200},
+                    {"id": "state-3", "count": 100},
+                ],
+            },
+            {
+                "facetParameter": "country",
+                "values": [
+                    {"id": "country-1", "count": 500},
+                    {"id": "country-2", "count": 100},
+                ],
+            },
+        ]
+
+        assert _pick_split_facet(facets, preferred="country") == (
+            "country",
+            ["country-1", "country-2"],
+        )
+
+    def test_preferred_facet_must_remain_advertised(self):
+        with pytest.raises(ValueError, match="split_facet 'country'.*not advertised"):
+            _pick_split_facet([], preferred="country")
+
+    def test_preferred_facet_rejects_a_capped_value(self):
+        facets = [
+            {
+                "facetParameter": "country",
+                "values": [{"id": "country-1", "count": 2000}],
+            }
+        ]
+
+        with pytest.raises(ValueError, match="unsafe capped value"):
+            _pick_split_facet(facets, preferred="country")
+
 
 class TestFetchJobCount:
     async def test_derives_capped_total_from_nested_facet(self):
@@ -863,6 +902,92 @@ class TestDiscover:
             }
             with pytest.raises(ValueError, match="must be a non-empty string"):
                 await discover(board, client)
+
+    async def test_split_facet_is_preserved_for_multi_site_discovery(self, monkeypatch):
+        from src.core.monitors import workday as wd_module
+
+        monkeypatch.setattr(wd_module, "_API_RESULT_CAP", 3)
+        facet_queries: list[dict] = []
+
+        def handler(request):
+            if request.method == "GET":
+                return httpx.Response(
+                    200,
+                    text="Sitemap: https://co.wd1.myworkdayjobs.com/Site/siteMap.xml\n",
+                )
+            payload = json.loads(request.read())
+            if "appliedFacets" not in payload:
+                return httpx.Response(
+                    200,
+                    json={
+                        "total": 3,
+                        "jobPostings": [{"externalPath": "/first"}],
+                        "facets": [
+                            {
+                                "facetParameter": "state",
+                                "values": [
+                                    {"id": "s1", "count": 1},
+                                    {"id": "s2", "count": 1},
+                                    {"id": "s3", "count": 1},
+                                ],
+                            },
+                            {
+                                "facetParameter": "country",
+                                "values": [
+                                    {"id": "c1", "count": 1},
+                                    {"id": "c2", "count": 2},
+                                ],
+                            },
+                        ],
+                    },
+                )
+            facet_queries.append(payload["appliedFacets"])
+            country = payload["appliedFacets"]["country"][0]
+            total = 1 if country == "c1" else 2
+            return httpx.Response(
+                200,
+                json={
+                    "total": total,
+                    "jobPostings": [
+                        {"externalPath": f"/{country}/{index}"} for index in range(total)
+                    ],
+                    "facets": [],
+                },
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            urls = await discover(
+                {
+                    "board_url": "https://co.wd1.myworkdayjobs.com/Site",
+                    "metadata": {
+                        "company": "co",
+                        "wd_instance": "wd1",
+                        "site": "Site",
+                        "split_facet": "country",
+                    },
+                },
+                client,
+            )
+
+        assert len(urls) == 3
+        assert sorted(query["country"][0] for query in facet_queries) == ["c1", "c2"]
+
+    @pytest.mark.parametrize("split_facet", ["", "bad facet", 42])
+    async def test_split_facet_must_be_a_provider_facet_name(self, split_facet):
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="provider facet name"):
+                await discover(
+                    {
+                        "board_url": "https://co.wd1.myworkdayjobs.com/Site",
+                        "metadata": {
+                            "company": "co",
+                            "wd_instance": "wd1",
+                            "site": "Site",
+                            "split_facet": split_facet,
+                        },
+                    },
+                    client,
+                )
 
 
 class TestCanHandle:
