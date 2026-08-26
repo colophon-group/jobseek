@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+from unittest.mock import AsyncMock
 
 from src.core.monitor import MonitorResult
+from src.core.monitors import DiscoveredJob
 from src.core.scrapers import JobContent
 from src.processing.board import dry_run_single_board
 
@@ -109,3 +111,40 @@ async def test_dry_run_scraper_uses_proxy_client(monkeypatch):
     assert scrape_clients == [owned_client]
     assert owned_client.closed is True
     assert default_http.closed is False
+
+
+async def test_dry_run_skips_scraper_for_smartrecruiters_job_id_mode(monkeypatch):
+    """Canonical H&M URLs come from rich details and never reach the legacy scraper."""
+    default_http = FakeHttpClient()
+    canonical_url = "https://career.hm.com/job/11111111-1111-4111-8111-111111111111/"
+
+    async def monitor_one(board_url, crawler_type, metadata, http, pw=None):
+        job = DiscoveredJob(
+            url=canonical_url,
+            title="Sales Advisor",
+            description="<p>Help our customers.</p>",
+        )
+        return MonitorResult(urls={canonical_url}, jobs_by_url={canonical_url: job})
+
+    scrape_one = AsyncMock()
+    monkeypatch.setattr("src.batch.monitor_one", monitor_one)
+    monkeypatch.setattr("src.batch.scrape_one", scrape_one)
+
+    await dry_run_single_board(
+        FakePool(
+            {
+                "board_url": "https://careers.smartrecruiters.com/HMGroup",
+                "crawler_type": "smartrecruiters",
+                "metadata": json.dumps(
+                    {
+                        "token": "HMGroup",
+                        "canonical_job_id_url_template": "https://career.hm.com/job/{job_id}/",
+                    }
+                ),
+            }
+        ),
+        default_http,
+        "hm-group-careers-group",
+    )
+
+    scrape_one.assert_not_awaited()

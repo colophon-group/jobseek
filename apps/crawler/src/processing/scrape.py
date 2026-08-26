@@ -351,14 +351,14 @@ def _is_skip_no_scrape(metadata: dict, crawler_type: str | None = None) -> bool:
         # while legacy SuccessFactors DWR listings require DOM enrichment.
         if ct == "rss" and metadata.get("variant") != "legacy":
             return True
-        # api_sniffer / nextdata are conditionally rich: they auto-resolve to
-        # ("skip", None) only when ``fields`` is set in their monitor
-        # metadata. Mirrors ``auto_scraper_type()`` and ``is_rich_monitor()``.
-        # Without this branch a stub URL insert from a partial-rich monitor
-        # cycle (e.g. McKinsey api_sniffer) leaks into the scrape pipeline,
-        # where the worker tries to run the api_sniffer scraper with empty
-        # config and crashes on browser launch from a slim worker.
-        if ct in ("api_sniffer", "nextdata") and bool(metadata.get("fields")):
+        # Conditionally-rich monitors auto-resolve to skip only for the
+        # relevant config (api_sniffer/nextdata fields, SmartRecruiters exact
+        # jobId locale collapse). Ask the canonical resolver so this scheduling
+        # guard cannot drift from dry-run/runtime scraper selection.
+        from src.workspace._compat import auto_scraper_type
+
+        auto = auto_scraper_type(ct, metadata)
+        if auto and auto[0] == "skip":
             return True
     return False
 

@@ -37,8 +37,10 @@ def _build_skip_no_scrape_predicate(board_alias: str = "jb") -> str:
     4. ``metadata.scraper_type`` is unset AND ``crawler_type`` is
        ``api_sniffer`` / ``nextdata`` AND ``metadata.fields`` is set
        (conditionally rich monitors).
+    5. ``metadata.scraper_type`` is unset AND ``crawler_type`` is
+       ``smartrecruiters`` AND exact ``jobId`` locale collapse is configured.
 
-    All three cases additionally require no enrichment to be configured.
+    All five cases additionally require no enrichment to be configured.
     ``COALESCE`` wraps the ``? 'enrich'`` check because the JSONB ``?``
     operator returns NULL when ``scraper_config`` itself is NULL, and
     ``NOT NULL`` is NULL (not TRUE).
@@ -62,6 +64,10 @@ def _build_skip_no_scrape_predicate(board_alias: str = "jb") -> str:
                     OR (
                          {board_alias}.crawler_type IN ('api_sniffer', 'nextdata')
                          AND {board_alias}.metadata ? 'fields'
+                     )
+                    OR (
+                         {board_alias}.crawler_type = 'smartrecruiters'
+                         AND {board_alias}.metadata ? 'canonical_job_id_url_template'
                      )
                  )
              )
