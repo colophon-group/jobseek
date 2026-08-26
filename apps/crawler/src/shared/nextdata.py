@@ -89,6 +89,11 @@ def extract_field(
 
       Transforms are applied after mapping.
 
+      ``key_pattern`` selects values from an object whose provider-defined
+      keys have a stable prefix but dynamic suffixes::
+
+          {"path": "attributes", "key_pattern": "^department_"}
+
     **Dict with "lookup_from" + "key_from"** — sibling-table lookup.
       Resolves ``item[key_from]`` (jmespath), stringifies it, and uses
       the result as a key into ``root.<lookup_from>`` (also jmespath).
@@ -112,6 +117,8 @@ def extract_field(
         return _extract_lookup(item, spec, root)
 
     if isinstance(spec, dict) and "path" in spec:
+        if "key_pattern" in spec:
+            return _extract_object_values_by_key(item, spec)
         if "map" in spec:
             value = _extract_mapped(item, spec)
         else:
@@ -127,6 +134,9 @@ def extract_field(
     if isinstance(spec, str) and spec.startswith("="):
         return spec[1:]
 
+    if not isinstance(spec, str):
+        raise ValueError("field spec must be a string, list, or supported object")
+
     result = jmespath.search(spec, item)
     if result is None:
         return None
@@ -134,6 +144,40 @@ def extract_field(
         values = [str(v) for v in result if v is not None]
         return values or None
     return str(result)
+
+
+def _extract_object_values_by_key(item: dict, spec: dict) -> str | list[str] | None:
+    """Extract flattened values from object keys matching a bounded regex."""
+    if set(spec) != {"path", "key_pattern"}:
+        raise ValueError("key_pattern field specs must contain only path and key_pattern")
+    path = spec.get("path")
+    pattern = spec.get("key_pattern")
+    if not isinstance(path, str) or not path:
+        raise ValueError("key_pattern field spec path must be a non-empty string")
+    if not isinstance(pattern, str) or not pattern or len(pattern) > 256 or "\x00" in pattern:
+        raise ValueError("key_pattern field spec must be 1-256 characters")
+    try:
+        compiled = re.compile(pattern)
+    except re.error as exc:
+        raise ValueError("key_pattern field spec is invalid") from exc
+
+    source = jmespath.search(path, item)
+    if source is None:
+        return None
+    if not isinstance(source, dict):
+        raise ValueError("key_pattern field spec path must resolve to an object")
+    values: list[str] = []
+    for key in sorted(source):
+        if compiled.search(str(key)) is None:
+            continue
+        value = source[key]
+        if isinstance(value, list):
+            values.extend(str(part) for part in value if part is not None)
+        elif value is not None:
+            values.append(str(value))
+    if not values:
+        return None
+    return values[0] if len(values) == 1 else values
 
 
 def _extract_lookup(item: dict, spec: dict, root: dict | None) -> str | None:

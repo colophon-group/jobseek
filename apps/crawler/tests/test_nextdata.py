@@ -2168,3 +2168,29 @@ class TestCanvasAutoDetect:
         assert cfg["path"] == "jobDetail.data.job"
         assert "title" in cfg["fields"]
         assert "description" in cfg["fields"]
+
+
+def test_extract_field_selects_dynamic_object_keys_by_pattern():
+    item = {
+        "attributes": {
+            "verwaltungseinheit": ["Federal Department"],
+            "verwaltungseinheit_1083359": ["Federal Office"],
+            "unrelated": ["Ignore me"],
+        }
+    }
+
+    assert (
+        _extract_field(
+            item,
+            {"path": "attributes", "key_pattern": r"^verwaltungseinheit_"},
+        )
+        == "Federal Office"
+    )
+
+
+def test_extract_field_dynamic_key_pattern_fails_closed_on_wrong_shape():
+    with pytest.raises(ValueError, match="resolve to an object"):
+        _extract_field(
+            {"attributes": []},
+            {"path": "attributes", "key_pattern": r"^verwaltungseinheit_"},
+        )

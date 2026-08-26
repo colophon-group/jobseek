@@ -441,6 +441,7 @@ async def fetch_text_page_with_retry(
     timeout: float | None = None,
     headers: dict[str, str] | None = None,
     follow_redirects: bool = True,
+    public_headers: bool = False,
     retryable_statuses: Collection[int] = (),
     end_of_pagination_statuses: Collection[int] = END_OF_PAGINATION_STATUSES,
     require_nonempty: bool = False,
@@ -479,6 +480,8 @@ async def fetch_text_page_with_retry(
         raise ValueError("GET text-page requests cannot include content")
     if max_bytes is not None and max_bytes < 1:
         raise ValueError("max_bytes must be positive")
+    if public_headers and (not headers or not follow_redirects):
+        raise ValueError("public_headers requires configured headers and redirect handling")
 
     host = http_retry_host(url)
     last_exc: BaseException | None = None
@@ -489,14 +492,33 @@ async def fetch_text_page_with_retry(
         try:
             text: str | None = None
             if max_bytes is not None:
-                request_kwargs: dict[str, Any] = {
-                    "follow_redirects": follow_redirects,
-                    "timeout": timeout,
-                    "headers": headers,
-                }
-                if method == "POST":
-                    request_kwargs["content"] = content
-                async with client.stream(method, url, **request_kwargs) as resp:
+                if public_headers:
+                    if method != "GET":
+                        raise ValueError("public_headers supports GET requests only")
+                    from src.shared.public_request_headers import public_get
+
+                    assert headers is not None
+                    resp = await public_get(
+                        client,
+                        url,
+                        headers=headers,
+                        timeout=timeout,
+                        stream=True,
+                    )
+                else:
+                    request_kwargs: dict[str, Any] = {
+                        "timeout": timeout,
+                        "headers": headers,
+                    }
+                    if method == "POST":
+                        request_kwargs["content"] = content
+                    request = client.build_request(method, url, **request_kwargs)
+                    resp = await client.send(
+                        request,
+                        stream=True,
+                        follow_redirects=follow_redirects,
+                    )
+                try:
                     last_status = resp.status_code
                     if resp.status_code == 200:
                         # Check the authoritative HTTP header before reading a
@@ -512,13 +534,21 @@ async def fetch_text_page_with_retry(
                                 raise ResponseBodyTooLargeError(url, max_bytes)
                         text = bytes(body).decode(resp.encoding or "utf-8", errors="replace")
                         _tdm_check(resp, body_excerpt=text)
+                finally:
+                    await resp.aclose()
             elif method == "GET":
-                resp = await client.get(
-                    url,
-                    follow_redirects=follow_redirects,
-                    timeout=timeout,
-                    headers=headers,
-                )
+                if public_headers:
+                    from src.shared.public_request_headers import public_get
+
+                    assert headers is not None
+                    resp = await public_get(client, url, headers=headers, timeout=timeout)
+                else:
+                    resp = await client.get(
+                        url,
+                        follow_redirects=follow_redirects,
+                        timeout=timeout,
+                        headers=headers,
+                    )
             else:
                 resp = await client.post(
                     url,
@@ -594,6 +624,7 @@ async def fetch_with_retry(
     max_chars: int | None = 500_000,
     timeout: float | None = None,
     headers: dict | None = None,
+    public_headers: bool = False,
     encoding: str | None = None,
     transient_403: bool = False,
     retryable_statuses: Collection[int] = (),
@@ -671,18 +702,27 @@ async def fetch_with_retry(
 
     host = http_retry_host(url)
 
+    if public_headers and not headers:
+        raise ValueError("public_headers requires configured headers")
+
     last_exc: BaseException | None = None
     last_status: int | None = None
     retried = False  # observability: did we burn at least one retry?
 
     for attempt in range(retries):
         try:
-            resp = await client.get(
-                url,
-                follow_redirects=True,
-                timeout=timeout,
-                headers=headers,
-            )
+            if public_headers:
+                from src.shared.public_request_headers import public_get
+
+                assert headers is not None
+                resp = await public_get(client, url, headers=headers, timeout=timeout)
+            else:
+                resp = await client.get(
+                    url,
+                    follow_redirects=True,
+                    timeout=timeout,
+                    headers=headers,
+                )
             last_status = resp.status_code
             if resp.status_code == 200:
                 if encoding is not None:

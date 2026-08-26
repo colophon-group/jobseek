@@ -17,7 +17,8 @@ import io
 import random
 import re
 from collections.abc import Callable
-from datetime import UTC, datetime
+from dataclasses import dataclass
+from datetime import UTC, date, datetime
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -29,6 +30,11 @@ from selectolax.lexbor import LexborHTMLParser, SelectolaxError
 from src.core.monitors import DiscoveredJob, register
 from src.core.monitors.raw import save_text_response
 from src.shared.browser import BROWSER_KEYS, navigate, open_page, run_actions, safe_content
+from src.shared.public_request_headers import (
+    public_get,
+    same_origin,
+    validated_public_request_headers,
+)
 from src.shared.response_fingerprint import (
     build_response_fingerprint_url,
     response_fingerprint_validators,
@@ -194,6 +200,9 @@ async def _fingerprint_response_urls(
     urls: set[str],
     client: httpx.AsyncClient,
     expected_content_type: str,
+    *,
+    request_headers: dict[str, str] | None = None,
+    allowed_origin_url: str | None = None,
 ) -> set[str]:
     """Turn mutable URLs into stable identities from strong HTTP validators.
 
@@ -210,8 +219,16 @@ async def _fingerprint_response_urls(
     semaphore = asyncio.Semaphore(_RESPONSE_FINGERPRINT_CONCURRENCY)
 
     async def fingerprint(url: str) -> str:
+        if request_headers and allowed_origin_url and not same_origin(url, allowed_origin_url):
+            raise ValueError(f"DOM fingerprint_response refused a cross-origin URL: {url}")
         async with semaphore:
-            response = await same_origin_response(client, "HEAD", url, stream=True)
+            response = await same_origin_response(
+                client,
+                "HEAD",
+                url,
+                stream=True,
+                headers=request_headers,
+            )
         try:
             validators = response_fingerprint_validators(
                 response,
@@ -233,32 +250,82 @@ async def _fingerprint_response_urls(
         raise
 
 
-def _validated_unexpired_pdf_config(value: object) -> tuple[re.Pattern[str], str] | None:
-    """Validate the opt-in PDF application-deadline filter."""
-    if value is None:
-        return None
-    if not isinstance(value, dict) or set(value) - {"pattern", "date_format"}:
-        raise ValueError(
-            "DOM monitor require_unexpired_pdf must contain only pattern and date_format"
-        )
+@dataclass(frozen=True)
+class _PdfDateRule:
+    pattern: re.Pattern[str]
+    date_format: str
+
+
+@dataclass(frozen=True)
+class _PdfDeadlineConfig:
+    deadlines: tuple[_PdfDateRule, ...]
+    active_window: _PdfDateRule | None = None
+
+
+def _validated_pdf_date_rule(value: object, *, path: str) -> _PdfDateRule:
+    if not isinstance(value, dict) or set(value) != {"pattern", "date_format"}:
+        raise ValueError(f"{path} must contain only pattern and date_format")
     pattern = value.get("pattern")
     date_format = value.get("date_format")
     if not isinstance(pattern, str) or not pattern or len(pattern) > 1_024 or "\x00" in pattern:
-        raise ValueError("DOM monitor require_unexpired_pdf.pattern must be 1-1024 characters")
+        raise ValueError(f"{path}.pattern must be 1-1024 characters")
     if (
         not isinstance(date_format, str)
         or not date_format
         or len(date_format) > 128
         or "\x00" in date_format
     ):
-        raise ValueError("DOM monitor require_unexpired_pdf.date_format must be 1-128 characters")
+        raise ValueError(f"{path}.date_format must be 1-128 characters")
     try:
         compiled = re.compile(pattern)
     except re.error as exc:
-        raise ValueError("DOM monitor require_unexpired_pdf.pattern is invalid") from exc
+        raise ValueError(f"{path}.pattern is invalid") from exc
     if compiled.groups < 1:
-        raise ValueError("DOM monitor require_unexpired_pdf.pattern requires a capture group")
-    return compiled, date_format
+        raise ValueError(f"{path}.pattern requires a capture group")
+    return _PdfDateRule(compiled, date_format)
+
+
+def _validated_unexpired_pdf_config(value: object) -> _PdfDeadlineConfig | None:
+    """Validate one deadline rule or a bounded heterogeneous PDF rule set."""
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise ValueError("DOM monitor require_unexpired_pdf must be an object")
+    if set(value) <= {"pattern", "date_format"}:
+        rule = _validated_pdf_date_rule(value, path="DOM monitor require_unexpired_pdf")
+        return _PdfDeadlineConfig((rule,))
+    if set(value) - {"rules", "active_window"}:
+        raise ValueError(
+            "DOM monitor require_unexpired_pdf must contain pattern/date_format or "
+            "rules/active_window"
+        )
+
+    raw_rules = value.get("rules", [])
+    if not isinstance(raw_rules, list) or len(raw_rules) > 16:
+        raise ValueError("DOM monitor require_unexpired_pdf.rules must contain at most 16 rules")
+    rules = tuple(
+        _validated_pdf_date_rule(
+            rule,
+            path=f"DOM monitor require_unexpired_pdf.rules[{index}]",
+        )
+        for index, rule in enumerate(raw_rules)
+    )
+
+    active_window = None
+    if (raw_window := value.get("active_window")) is not None:
+        active_window = _validated_pdf_date_rule(
+            raw_window,
+            path="DOM monitor require_unexpired_pdf.active_window",
+        )
+        required_groups = {"month", "opens", "closes", "year"}
+        if not required_groups <= set(active_window.pattern.groupindex):
+            raise ValueError(
+                "DOM monitor require_unexpired_pdf.active_window.pattern requires named "
+                "month, opens, closes, and year groups"
+            )
+    if not rules and active_window is None:
+        raise ValueError("DOM monitor require_unexpired_pdf requires rules or active_window")
+    return _PdfDeadlineConfig(rules, active_window)
 
 
 def _validated_pdf_text_config(
@@ -312,16 +379,19 @@ async def _fetch_bounded_pdf_text(
     *,
     config_name: str,
     request_headers: dict[str, str] | None = None,
+    allowed_origin_url: str | None = None,
 ) -> str | None:
     """Fetch one bounded PDF and return text, or ``None`` when it was removed."""
     if urlsplit(url).path.lower().endswith(".pdf") is False:
         raise ValueError(f"DOM {config_name} found a non-PDF URL: {url}")
-    async with client.stream(
-        "GET",
-        url,
-        follow_redirects=True,
-        headers=request_headers,
-    ) as response:
+    if request_headers and allowed_origin_url and not same_origin(url, allowed_origin_url):
+        raise ValueError(f"DOM {config_name} refused a cross-origin PDF URL: {url}")
+    if request_headers:
+        response = await public_get(client, url, headers=request_headers, stream=True)
+    else:
+        request = client.build_request("GET", url)
+        response = await client.send(request, stream=True, follow_redirects=True)
+    try:
         if response.status_code in {404, 410}:
             return None
         response.raise_for_status()
@@ -349,6 +419,8 @@ async def _fetch_bounded_pdf_text(
                     f"DOM {config_name} document exceeds {_MAX_PDF_EXPIRATION_BYTES} bytes: {url}"
                 )
             content.extend(chunk)
+    finally:
+        await response.aclose()
 
     pdf_content = bytes(content)
     if not pdf_content.lstrip().startswith(b"%PDF"):
@@ -359,12 +431,13 @@ async def _fetch_bounded_pdf_text(
 async def _filter_unexpired_pdf_urls(
     urls: set[str],
     client: httpx.AsyncClient,
-    config: tuple[re.Pattern[str], str],
+    config: _PdfDeadlineConfig,
     *,
     required_text_pattern: re.Pattern[str] | None = None,
     raise_on_required_text_mismatch: bool = False,
     return_deadlines: bool = False,
     request_headers: dict[str, str] | None = None,
+    allowed_origin_url: str | None = None,
 ) -> set[str] | tuple[set[str], dict[str, str]]:
     """Keep only linked PDFs whose captured application deadline has not passed.
 
@@ -384,8 +457,18 @@ async def _filter_unexpired_pdf_urls(
             f"{_MAX_PDF_EXPIRATION_VERIFICATION_URLS} discovered URLs"
         )
 
-    pattern, date_format = config
     semaphore = asyncio.Semaphore(_PDF_EXPIRATION_VERIFICATION_CONCURRENCY)
+
+    def parse_date(raw: str, date_format: str, url: str) -> date:
+        raw = re.sub(r"\s+", " ", raw).strip()
+        raw = re.sub(r"(?<=\d)(?:st|nd|rd|th)\b", "", raw, flags=re.IGNORECASE)
+        try:
+            return datetime.strptime(raw, date_format).date()
+        except ValueError as exc:
+            raise ValueError(
+                f"DOM require_unexpired_pdf deadline {raw!r} did not match "
+                f"date_format {date_format!r}: {url}"
+            ) from exc
 
     async def verify(url: str) -> tuple[str, bool, str | None]:
         async with semaphore:
@@ -394,6 +477,7 @@ async def _filter_unexpired_pdf_urls(
                 client,
                 config_name="require_unexpired_pdf",
                 request_headers=request_headers,
+                allowed_origin_url=allowed_origin_url,
             )
         if text is None:
             return url, False, None
@@ -401,19 +485,46 @@ async def _filter_unexpired_pdf_urls(
             if raise_on_required_text_mismatch:
                 raise ValueError(f"linked PDF did not match the required ownership markers: {url}")
             return url, False, None
-        match = pattern.search(text)
-        if match is None or match.group(1) is None:
+        today = datetime.now(UTC).date()
+        if config.active_window is not None:
+            windows = list(config.active_window.pattern.finditer(text))
+            if windows:
+                active_deadlines: list[date] = []
+                for match in windows:
+                    month = match.group("month")
+                    year = match.group("year")
+                    opens = parse_date(
+                        f"{month} {match.group('opens')} {year}",
+                        config.active_window.date_format,
+                        url,
+                    )
+                    closes = parse_date(
+                        f"{month} {match.group('closes')} {year}",
+                        config.active_window.date_format,
+                        url,
+                    )
+                    if closes < opens:
+                        raise ValueError(
+                            f"DOM require_unexpired_pdf found an invalid window: {url}"
+                        )
+                    if opens <= today <= closes:
+                        active_deadlines.append(closes)
+                deadline = max(active_deadlines) if active_deadlines else None
+                return url, deadline is not None, deadline.isoformat() if deadline else None
+
+        matches: list[tuple[_PdfDateRule, re.Match[str]]] = []
+        for rule in config.deadlines:
+            matches.extend((rule, match) for match in rule.pattern.finditer(text))
+        if not matches:
             raise ValueError(f"DOM require_unexpired_pdf deadline was not found: {url}")
-        raw_deadline = re.sub(r"\s+", " ", match.group(1)).strip()
-        raw_deadline = re.sub(r"(?<=\d)(?:st|nd|rd|th)\b", "", raw_deadline, flags=re.IGNORECASE)
-        try:
-            deadline = datetime.strptime(raw_deadline, date_format).date()
-        except ValueError as exc:
-            raise ValueError(
-                f"DOM require_unexpired_pdf deadline {raw_deadline!r} did not match "
-                f"date_format {date_format!r}: {url}"
-            ) from exc
-        return url, deadline >= datetime.now(UTC).date(), deadline.isoformat()
+        if len(matches) != 1:
+            raise ValueError(f"DOM require_unexpired_pdf deadline was ambiguous: {url}")
+        rule, match = matches[0]
+        raw_deadline = match.group(1)
+        if raw_deadline is None:
+            raise ValueError(f"DOM require_unexpired_pdf deadline was not found: {url}")
+        deadline = parse_date(raw_deadline, rule.date_format, url)
+        return url, deadline >= today, deadline.isoformat()
 
     tasks = [asyncio.create_task(verify(url)) for url in sorted(urls)]
     try:
@@ -441,6 +552,7 @@ async def _filter_pdf_text_urls(
     config: tuple[re.Pattern[str], re.Pattern[str]],
     *,
     request_headers: dict[str, str] | None = None,
+    allowed_origin_url: str | None = None,
 ) -> set[str]:
     """Classify every linked PDF as included or explicitly excluded.
 
@@ -467,6 +579,7 @@ async def _filter_pdf_text_urls(
                 client,
                 config_name="require_pdf_text",
                 request_headers=request_headers,
+                allowed_origin_url=allowed_origin_url,
             )
         if text is None:
             return url, False
@@ -2245,6 +2358,7 @@ async def _paginate_urls(
     encoding: str | None = None,
     link_selector: str | None = None,
     request_headers: dict | None = None,
+    public_headers: bool = False,
     request_semaphore: asyncio.Semaphore | None = None,
 ) -> set[str]:
     """Fetch paginated pages and merge discovered links with *initial_urls*.
@@ -2315,6 +2429,9 @@ async def _paginate_urls(
             assert isinstance(param_name, str)
             page_url = set_url_param(board_url, param_name, value)
 
+        if public_headers and not same_origin(page_url, board_url):
+            raise ValueError(f"DOM pagination refused a cross-origin page URL: {page_url}")
+
         if use_browser:
             html = await _fetch_via_page(
                 page,
@@ -2329,6 +2446,7 @@ async def _paginate_urls(
                     encoding=encoding,
                     transient_403=transient_403,
                     headers=request_headers,
+                    public_headers=public_headers,
                 )
             else:
                 async with request_semaphore:
@@ -2338,6 +2456,7 @@ async def _paginate_urls(
                         encoding=encoding,
                         transient_403=transient_403,
                         headers=request_headers,
+                        public_headers=public_headers,
                     )
 
         if not html:
@@ -2380,6 +2499,7 @@ async def _paginate_partitioned_urls(
     url_transform: dict | None,
     encoding: str | None,
     link_selector: str | None,
+    public_request_headers: dict[str, str] | None = None,
 ) -> set[str]:
     """Paginate every bounded facet partition advertised by a listing.
 
@@ -2486,7 +2606,10 @@ async def _paginate_partitioned_urls(
     if validate_total and count_regex is None:
         raise ValueError("DOM partition_validate_total requires partition_count_regex")
 
-    request_headers = {"Cookie": ""} if partition_stateless else None
+    request_headers = dict(public_request_headers or {})
+    if partition_stateless:
+        request_headers["Cookie"] = ""
+    request_headers = request_headers or None
     semaphore = asyncio.Semaphore(_PAGINATION_PARTITION_CONCURRENCY)
 
     def extract_count(html: str, url: str) -> int:
@@ -2506,6 +2629,7 @@ async def _paginate_partitioned_urls(
                 encoding=encoding,
                 transient_403=transient_403,
                 headers=request_headers,
+                public_headers=bool(public_request_headers),
             )
         if not html:
             raise PaginationFetchError(
@@ -2625,6 +2749,7 @@ async def _paginate_partitioned_urls(
             encoding=encoding,
             link_selector=link_selector,
             request_headers=request_headers,
+            public_headers=bool(public_request_headers),
             request_semaphore=semaphore,
         )
 
@@ -2767,17 +2892,13 @@ async def dom_discover(
     if prospective_canonical_path is not None and prospective_board is None:
         raise ValueError("DOM monitor prospective_canonical_path requires prospective_board")
 
-    request_headers_raw = metadata.get("request_headers") or {}
-    if not isinstance(request_headers_raw, dict) or any(
-        not isinstance(key, str) or not isinstance(value, str)
-        for key, value in request_headers_raw.items()
-    ):
-        raise ValueError("DOM monitor request_headers must map strings to strings")
-    from src.shared.api_sniff import clean_headers
-
-    request_headers = clean_headers(request_headers_raw)
+    request_headers = validated_public_request_headers(
+        metadata.get("request_headers"), owner="DOM monitor"
+    )
 
     render = metadata.get("render", False)
+    if render and request_headers:
+        raise ValueError("DOM monitor request_headers are supported only when render=false")
     actions = metadata.get("actions")
     pagination = metadata.get("pagination")
     url_matcher = _build_url_matcher(metadata.get("url_filter"))
@@ -2933,6 +3054,7 @@ async def dom_discover(
                 client,
                 board_url,
                 headers=request_headers or None,
+                public_headers=bool(request_headers),
                 retryable_statuses={202, 401, 403},
                 require_nonempty=True,
                 max_bytes=_MAX_EXPLICIT_EMPTY_BODY_BYTES,
@@ -2944,6 +3066,7 @@ async def dom_discover(
                 client,
                 board_url,
                 headers=request_headers or None,
+                public_headers=bool(request_headers),
                 transient_403=True,
                 retryable_statuses={202},
                 encoding=encoding,
@@ -3032,6 +3155,7 @@ async def dom_discover(
                     url_transform,
                     encoding,
                     link_selector,
+                    request_headers or None,
                 )
             else:
                 urls = await _paginate_urls(
@@ -3044,6 +3168,7 @@ async def dom_discover(
                     encoding=encoding,
                     link_selector=link_selector,
                     request_headers=request_headers or None,
+                    public_headers=bool(request_headers),
                 )
 
     # Exclude the board URL itself by default — it is normally the listing
@@ -3056,21 +3181,31 @@ async def dom_discover(
     if require_jsonld_jobposting:
         urls = await _filter_jsonld_job_urls(urls, client)
     if require_unexpired_pdf is not None:
-        urls = await _filter_unexpired_pdf_urls(
+        filtered_urls = await _filter_unexpired_pdf_urls(
             urls,
             client,
             require_unexpired_pdf,
             request_headers=request_headers or None,
+            allowed_origin_url=board_url,
         )
+        assert isinstance(filtered_urls, set)
+        urls = filtered_urls
     if require_pdf_text is not None:
         urls = await _filter_pdf_text_urls(
             urls,
             client,
             require_pdf_text,
             request_headers=request_headers or None,
+            allowed_origin_url=board_url,
         )
     if fingerprint_response is not None:
-        urls = await _fingerprint_response_urls(urls, client, fingerprint_response)
+        urls = await _fingerprint_response_urls(
+            urls,
+            client,
+            fingerprint_response,
+            request_headers=request_headers or None,
+            allowed_origin_url=board_url,
+        )
 
     if exclude_detail_selector is not None:
         urls = await _exclude_urls_matching_detail_selector(

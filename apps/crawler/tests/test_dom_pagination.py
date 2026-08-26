@@ -1056,6 +1056,70 @@ class TestRequireUnexpiredPdf:
 
         assert result == {active}
 
+    async def test_public_headers_cover_static_pagination(self):
+        board_url = "https://example.com/careers?page=1"
+        seen: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(request)
+            assert request.headers["user-agent"] == "jobseek-crawler"
+            page = request.url.params.get("page")
+            if page == "1":
+                return httpx.Response(200, text=_html_with_links("/jobs/one"), request=request)
+            if page == "2":
+                return httpx.Response(200, text=_html_with_links("/jobs/two"), request=request)
+            return httpx.Response(404, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await dom_discover(
+                {
+                    "board_url": board_url,
+                    "metadata": {
+                        "request_headers": {"User-Agent": "jobseek-crawler"},
+                        "url_filter": r"^https://example\.com/jobs/",
+                        "pagination": {
+                            "param_name": "page",
+                            "start": 1,
+                            "increment": 1,
+                        },
+                    },
+                },
+                client,
+            )
+
+        assert result == {"https://example.com/jobs/one", "https://example.com/jobs/two"}
+        assert [request.url.params.get("page") for request in seen] == ["1", "2", "3"]
+
+    async def test_public_headers_reject_cross_origin_linked_pdf_before_fetch(self):
+        board_url = "https://example.com/careers"
+        foreign_pdf = "https://attacker.example/job.pdf"
+        requests: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            if request.url.host != "example.com":
+                raise AssertionError("linked cross-origin PDF must not be requested")
+            return httpx.Response(200, text=_html_with_links(foreign_pdf), request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="cross-origin PDF URL"):
+                await dom_discover(
+                    {
+                        "board_url": board_url,
+                        "metadata": {
+                            "request_headers": {"User-Agent": "jobseek-crawler"},
+                            "link_selector": "a[href$='.pdf']",
+                            "require_unexpired_pdf": {
+                                "pattern": r"deadline (\d{4}-\d{2}-\d{2})",
+                                "date_format": "%Y-%m-%d",
+                            },
+                        },
+                    },
+                    client,
+                )
+
+        assert [str(request.url) for request in requests] == [board_url]
+
     @pytest.mark.parametrize(
         "value",
         [

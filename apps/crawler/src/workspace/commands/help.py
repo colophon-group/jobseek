@@ -1498,11 +1498,11 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    declared charset is unsupported or incorrect (for example,
                    "euc_jp"). Ignored when render=true.
     request_headers
-                   Optional static HTTP request headers, for example an
-                   explicit crawler User-Agent required by an origin. Applied
-                   to the listing, ordinary pagination, and linked-PDF
-                   ownership/deadline checks. Unsafe transport headers are
-                   stripped. Ignored when render=true.
+                   Optional public static HTTP headers: Accept,
+                   Accept-Language, Cache-Control, Pragma, and User-Agent.
+                   Applied to the listing, pagination, and linked-PDF checks.
+                   Secret, cookie, and transport headers are rejected, and
+                   redirects must remain same-origin. Requires render=false.
     retry_statuses Static HTTP status-to-retry-count map, for provider-specific
                    transient responses only (HTTP 400-599, maximum 5 retries).
     persistent_context
@@ -4084,8 +4084,8 @@ pdf — PDF document scraper
             defaults (missing-only JobContent fields; extracted values win,
             e.g. {"locations": ["Lausanne, Switzerland"]}; field types,
             canonical enums, ISO dates, and salary shapes are validated),
-            request_headers (optional sanitized download headers, useful for
-            origins that require an explicit crawler User-Agent)
+            request_headers (optional allowlisted public download headers;
+            redirects must remain same-origin)
   Note:     Typically paired with a dom monitor using url_filter to
             discover PDF links on the careers page.
 """
