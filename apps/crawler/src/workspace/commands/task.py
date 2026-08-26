@@ -460,7 +460,7 @@ _READY_KEYS = {
     "claim_initially_present",
     "attempts",
 }
-_READY_ATTEMPT_KEYS = {"kb_push", "ready", "workflow_done", "claim_release"}
+_READY_ATTEMPT_KEYS = {"kb_push", "draft_recovery", "workflow_done", "claim_release"}
 _PROVENANCE_KEYS = {
     "number",
     "head_ref_name",
@@ -471,6 +471,8 @@ _PROVENANCE_KEYS = {
     "author_login",
     "is_draft",
     "closing_issues",
+    "review_evidence",
+    "hold_labels",
     "issue",
     "slug",
 }
@@ -481,7 +483,7 @@ _KB_PATH = "apps/crawler/src/workspace/kb/"
 def _validate_ready_state(state: object, ws) -> dict:
     if not isinstance(state, dict) or set(state) != _READY_KEYS:
         raise WorkspaceError("Ready journal has an invalid exact schema")
-    if state.get("version") != 2 or state.get("slug") != ws.slug:
+    if state.get("version") != 3 or state.get("slug") != ws.slug:
         raise WorkspaceError("Ready journal version/slug is invalid")
     if (state.get("issue"), state.get("pr"), state.get("branch")) != (
         ws.issue,
@@ -542,7 +544,7 @@ def _initialize_ready_state(ws, *, local: bool) -> dict:
     if local:
         provenance = copy.deepcopy(ws.pr_provenance) if ws.pr is not None else {}
         state = {
-            "version": 2,
+            "version": 3,
             "slug": ws.slug,
             "issue": ws.issue,
             "pr": ws.pr,
@@ -572,7 +574,7 @@ def _initialize_ready_state(ws, *, local: bool) -> dict:
         if any(path != _KB_PATH.rstrip("/") and not path.startswith(_KB_PATH) for path in changed):
             raise WorkspaceError("Ready publication found changes outside the KB directory")
         state = {
-            "version": 2,
+            "version": 3,
             "slug": ws.slug,
             "issue": ws.issue,
             "pr": ws.pr,
@@ -703,29 +705,50 @@ def _finalize_workflow_locked(slug: str) -> None:
         if details.get("isDraft") is True:
             if current_provenance != effective:
                 raise WorkspaceError("Draft PR identity changed during ready publication")
-            _save_ready_attempt(ws, state, "ready")
-            _authenticate_workspace_worktree(ws)
-            git.mark_pr_ready(ws.pr)
-            git.verify_pr_ready(
+            git.verify_recorded_pr(
                 effective,
                 pr_number=ws.pr,
                 branch=ws.branch,
                 issue=ws.issue,
                 slug=ws.slug,
             )
-            out.info("github", f"PR #{ws.pr} marked ready for review")
         elif details.get("isDraft") is False:
-            if not state["attempts"]["ready"]:
-                raise WorkspaceError("PR became ready without a journaled attempt")
-            git.verify_pr_ready(
+            expected_ready = copy.deepcopy(effective)
+            expected_ready["is_draft"] = False
+            if current_provenance != expected_ready:
+                raise WorkspaceError(
+                    "PR readiness changed with review/head/ownership evidence; refusing mutation"
+                )
+            _save_ready_attempt(ws, state, "draft_recovery")
+            _authenticate_workspace_worktree(ws)
+            git.mark_pr_draft(ws.pr)
+            git.verify_recorded_pr(
                 effective,
                 pr_number=ws.pr,
                 branch=ws.branch,
                 issue=ws.issue,
                 slug=ws.slug,
             )
+            out.warn("github", f"PR #{ws.pr} became ready during automation; returned to draft")
         else:
             raise WorkspaceError("PR draft state is invalid")
+
+        if state["attempts"]["draft_recovery"] and ws.issue:
+            marker = f"<!-- resolver-ready-race:{ws.pr}:{effective['head_ref_oid']} -->"
+            git.comment_on_issue_once(
+                ws.issue,
+                marker,
+                (
+                    f"{marker}\nResolver safety audit: PR #{ws.pr} became ready while "
+                    f"the exact-head lease `{effective['head_ref_oid']}` was active. "
+                    "It was returned to draft; no branch content was overwritten."
+                ),
+            )
+
+        out.info(
+            "github",
+            f"PR #{ws.pr} remains draft pending independent exact-head review and required CI",
+        )
 
     if wf.current_step == "reflect":
         _save_ready_attempt(ws, state, "workflow_done")

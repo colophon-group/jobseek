@@ -1317,9 +1317,6 @@ class TestTaskComplete:
         def push(*_args):
             state["remote"] = published_oid
 
-        def ready(_number):
-            state["draft"] = False
-
         def unclaim(_issue):
             state["claimed"] = False
 
@@ -1359,7 +1356,7 @@ class TestTaskComplete:
             patch("src.workspace.git.push_branch_at_expected_oid", side_effect=push) as push_mock,
             patch("src.workspace.git.get_pr_details_strict", side_effect=details),
             patch("src.workspace.git.get_main_branch", return_value="main"),
-            patch("src.workspace.git.mark_pr_ready", side_effect=ready),
+            patch("src.workspace.git.mark_pr_ready") as ready,
             patch(
                 "src.workspace.git.is_issue_claimed_strict", side_effect=lambda *_: state["claimed"]
             ),
@@ -1377,8 +1374,9 @@ class TestTaskComplete:
 
         push_mock.assert_called_once_with("add-company/test", published_oid, TEST_HEAD_OID)
         assert _load_wf_from_disk("test").current_step == "done"
-        assert state["draft"] is False
+        assert state["draft"] is True
         assert state["claimed"] is False
+        ready.assert_not_called()
 
 
 class TestDel:
@@ -2188,7 +2186,7 @@ class TestTerminalCleanupRecovery:
 
 
 class TestReadyRecovery:
-    def test_ready_failure_keeps_workflow_and_claim_retryable(self, tmp_path, monkeypatch):
+    def test_completion_leaves_pr_draft_and_releases_claim(self, tmp_path, monkeypatch):
         from src.workspace.commands.task import _finalize_workflow
         from src.workspace.workflow import WorkflowState, _load_wf_from_disk, _save_wf_to_disk
 
@@ -2213,14 +2211,6 @@ class TestReadyRecovery:
             value["isDraft"] = draft["value"]
             return value
 
-        ready_calls = {"count": 0}
-
-        def ready(_number):
-            ready_calls["count"] += 1
-            draft["value"] = False
-            if ready_calls["count"] == 1:
-                raise RuntimeError("offline")
-
         with (
             patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
             patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
@@ -2230,7 +2220,7 @@ class TestReadyRecovery:
                 "src.workspace.git.remote_branch_oid_strict", side_effect=lambda *_: remote["oid"]
             ),
             patch("src.workspace.git.get_pr_details_strict", side_effect=details),
-            patch("src.workspace.git.mark_pr_ready", side_effect=ready),
+            patch("src.workspace.git.mark_pr_ready") as ready,
             patch(
                 "src.workspace.git.is_issue_claimed_strict", side_effect=lambda *_: claimed["value"]
             ),
@@ -2240,19 +2230,14 @@ class TestReadyRecovery:
             ) as unclaim,
             patch("src.workspace.trace.upload_trace_to_hf", return_value=None),
         ):
-            with pytest.raises(RuntimeError, match="offline"):
-                _finalize_workflow("test")
-            assert _load_wf_from_disk("test").current_step == "reflect"
-            assert load_workspace("test").ready_state["attempts"]["ready"] is True
-            unclaim.assert_not_called()
-
             _finalize_workflow("test")
 
-        assert ready_calls["count"] == 1
+        assert draft["value"] is True
+        ready.assert_not_called()
         assert _load_wf_from_disk("test").current_step == "done"
         unclaim.assert_called_once_with(42)
 
-    def test_ambiguous_ready_response_is_reconciled_without_second_mutation(
+    def test_readiness_race_is_returned_to_draft_and_ambiguous_response_reconciles(
         self, tmp_path, monkeypatch
     ):
         from src.workspace.commands.task import _finalize_workflow
@@ -2269,15 +2254,15 @@ class TestReadyRecovery:
             )
         )
         _save_wf_to_disk("test", WorkflowState(current_step="reflect"))
-        draft = {"value": True}
+        draft = {"value": False}
 
         def details(_number):
             value = _test_pr_details(10, slug="test", issue=None)
             value["isDraft"] = draft["value"]
             return value
 
-        def ready_side_effect(_number):
-            draft["value"] = False
+        def draft_side_effect(_number):
+            draft["value"] = True
             raise RuntimeError("lost response")
 
         with (
@@ -2287,15 +2272,62 @@ class TestReadyRecovery:
             patch("src.workspace.git.changed_paths_strict", return_value=set()),
             patch("src.workspace.git.remote_branch_oid_strict", return_value=TEST_HEAD_OID),
             patch("src.workspace.git.get_pr_details_strict", side_effect=details),
-            patch("src.workspace.git.mark_pr_ready", side_effect=ready_side_effect) as ready,
+            patch("src.workspace.git.mark_pr_draft", side_effect=draft_side_effect) as mark_draft,
+            patch("src.workspace.git.mark_pr_ready") as mark_ready,
             patch("src.workspace.trace.upload_trace_to_hf", return_value=None),
         ):
             with pytest.raises(RuntimeError, match="lost response"):
                 _finalize_workflow("test")
             _finalize_workflow("test")
 
-        ready.assert_called_once_with(10)
+        mark_draft.assert_called_once_with(10)
+        mark_ready.assert_not_called()
+        assert draft["value"] is True
         assert _load_wf_from_disk("test").current_step == "done"
+
+    def test_readiness_race_recovery_posts_issue_audit(self, tmp_path, monkeypatch):
+        from src.workspace.commands.task import _finalize_workflow
+        from src.workspace.workflow import WorkflowState, _save_wf_to_disk
+
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(
+            Workspace(
+                slug="test",
+                issue=42,
+                pr=10,
+                branch="add-company/test",
+                pr_provenance=_test_pr_provenance(10, issue=42),
+                submit_state={"pushed": True},
+            )
+        )
+        _save_wf_to_disk("test", WorkflowState(current_step="reflect"))
+        draft = {"value": False}
+
+        def details(_number):
+            value = _test_pr_details(10, slug="test", issue=42)
+            value["isDraft"] = draft["value"]
+            return value
+
+        with (
+            patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
+            patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
+            patch("src.workspace.commands.lifecycle._verify_workspace_pr_before_mutation"),
+            patch("src.workspace.git.changed_paths_strict", return_value=set()),
+            patch("src.workspace.git.remote_branch_oid_strict", return_value=TEST_HEAD_OID),
+            patch("src.workspace.git.get_pr_details_strict", side_effect=details),
+            patch(
+                "src.workspace.git.mark_pr_draft",
+                side_effect=lambda _number: draft.__setitem__("value", True),
+            ),
+            patch("src.workspace.git.comment_on_issue_once") as comment,
+            patch("src.workspace.git.is_issue_claimed_strict", return_value=False),
+            patch("src.workspace.trace.upload_trace_to_hf", return_value=None),
+        ):
+            _finalize_workflow("test")
+
+        marker, body = comment.call_args.args[1:]
+        assert marker == f"<!-- resolver-ready-race:10:{TEST_HEAD_OID} -->"
+        assert "returned to draft" in body
 
     def test_tampered_ready_schema_blocks_all_mutations(self, tmp_path, monkeypatch):
         from src.workspace.commands.task import _finalize_workflow
@@ -2309,7 +2341,7 @@ class TestReadyRecovery:
             pr_provenance=_test_pr_provenance(10),
         )
         ws_obj.ready_state = {
-            "version": 2,
+            "version": 3,
             "slug": "test",
             "issue": None,
             "pr": 10,
@@ -2321,7 +2353,7 @@ class TestReadyRecovery:
             "claim_initially_present": False,
             "attempts": {
                 "kb_push": False,
-                "ready": False,
+                "draft_recovery": False,
                 "workflow_done": False,
                 "claim_release": False,
             },
@@ -6893,6 +6925,7 @@ class TestNewIdempotent:
                     companies="acme,Acme,https://acme.example,,,\n",
                     boards=("acme,acme-careers,https://acme.example/jobs,greenhouse,{},skip,\n"),
                 )
+                return {"head": TEST_HEAD_OID, "dev": 1, "ino": 2}
 
             create_worktree.side_effect = populate_attached_pr
 
@@ -6911,7 +6944,7 @@ class TestNewIdempotent:
             tmp_path / "worktrees" / "acme",
             start_point=TEST_HEAD_OID,
         )
-        sync_branch.assert_called_once_with("add-company/acme")
+        sync_branch.assert_not_called()
         # Workspace should be registered
         assert workspace_exists("acme")
         resumed = load_workspace("acme")
@@ -7077,7 +7110,7 @@ class TestNewIdempotent:
         assert "existing_ats_tenant" in workspace.ats_inventory["reason"]
         assert list_boards("acme") == []
 
-    def test_new_reuses_pr_discovered_from_issue(self, tmp_path, monkeypatch):
+    def test_new_leaves_linked_draft_byte_for_byte_unchanged(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         _setup_csvs(tmp_path)
 
@@ -7107,23 +7140,18 @@ class TestNewIdempotent:
             runner = CliRunner()
             result = runner.invoke(ws, ["new", "acme", "--issue", "1"])
 
-        assert result.exit_code == 0, result.output
+        assert result.exit_code != 0
+        assert "refusing cross-run branch takeover" in result.output
         add_files.assert_not_called()
         commit.assert_not_called()
         push.assert_not_called()
         create_pr.assert_not_called()
         delete_remote.assert_not_called()
-        create_worktree.assert_called_once_with(
-            "add-company/acme",
-            tmp_path / "worktrees" / "acme",
-            start_point=TEST_HEAD_OID,
-        )
-        sync_branch.assert_called_once_with("add-company/acme")
-        recovered = load_workspace("acme")
-        assert recovered.pr == 77
-        assert recovered.branch == "add-company/acme"
+        create_worktree.assert_not_called()
+        sync_branch.assert_not_called()
+        assert not workspace_exists("acme")
 
-    def test_automatic_resume_rechecks_exact_ref_before_workspace_publication(
+    def test_approved_draft_with_newer_main_is_never_attached_or_merged(
         self, tmp_path, monkeypatch
     ):
         _patch_all(monkeypatch, tmp_path)
@@ -7142,18 +7170,49 @@ class TestNewIdempotent:
                 ],
                 issue_labels=("company-request",),
             )
-            remote_values = iter([TEST_HEAD_OID, "b" * 40])
-            stack.enter_context(
-                patch(
-                    "src.workspace.git.remote_branch_oid_strict",
-                    side_effect=lambda _branch: next(remote_values),
-                )
+            details = _test_pr_details(77, slug="acme", issue=1)
+            details["comments"] = [
+                {
+                    "author": {"login": "reviewer"},
+                    "createdAt": "2026-08-26T07:13:07Z",
+                    "body": (
+                        f"Independent exact-head review APPROVED `{TEST_HEAD_OID}`. "
+                        "Required CI and CodeQL are green; remains draft behind capacity gate."
+                    ),
+                }
+            ]
+            get_details = stack.enter_context(
+                patch("src.workspace.git.get_pr_details_strict", return_value=details)
             )
+            create_worktree = stack.enter_context(patch("src.workspace.git.create_worktree"))
+            merge = stack.enter_context(patch("src.workspace.git.sync_branch_with_main"))
             result = CliRunner().invoke(ws, ["new", "acme", "--issue", "1"])
 
         assert result.exit_code != 0
-        assert "changed before workspace publication" in str(result.exception)
+        assert "refusing cross-run branch takeover" in result.output
+        get_details.assert_not_called()
+        create_worktree.assert_not_called()
+        merge.assert_not_called()
         assert not workspace_exists("acme")
+
+    def test_scheduled_resolver_cannot_use_explicit_pr_escape_hatch(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        _setup_csvs(tmp_path)
+        monkeypatch.setenv("JOBSEEK_CODEX_RUN_ID", "issue-1-test")
+
+        with ExitStack() as stack:
+            self._git_mocks(stack, tmp_path, pr_branch="add-company/acme")
+            get_details = stack.enter_context(patch("src.workspace.git.get_pr_details_strict"))
+            create_worktree = stack.enter_context(patch("src.workspace.git.create_worktree"))
+            result = CliRunner().invoke(
+                ws,
+                ["new", "acme", "--issue", "1", "--pr", "42"],
+            )
+
+        assert result.exit_code != 0
+        assert "Scheduled company resolvers cannot attach" in result.output
+        get_details.assert_not_called()
+        create_worktree.assert_not_called()
 
     def test_reconfig_defers_pr_until_submit(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
@@ -7197,7 +7256,7 @@ class TestNewIdempotent:
         create_worktree.assert_not_called()
         assert not workspace_exists("acme")
 
-    def test_new_removes_resumed_worktree_when_main_sync_fails(self, tmp_path, monkeypatch):
+    def test_new_never_reaches_retired_main_sync_for_linked_draft(self, tmp_path, monkeypatch):
         _patch_all(monkeypatch, tmp_path)
         _setup_csvs(tmp_path)
 
@@ -7217,7 +7276,7 @@ class TestNewIdempotent:
                 ],
                 issue_labels=("company-request",),
             )
-            sync_branch.side_effect = WorkspaceError("code conflict")
+            sync_branch.side_effect = WorkspaceError("must not run")
             remove_worktree = stack.enter_context(
                 patch("src.workspace.git.remove_authenticated_worktree")
             )
@@ -7226,11 +7285,7 @@ class TestNewIdempotent:
             result = runner.invoke(ws, ["new", "acme", "--issue", "1"])
 
         assert result.exit_code != 0
-        remove_worktree.assert_called_once_with(
-            tmp_path / "worktrees" / "acme",
-            "add-company/acme",
-            TEST_HEAD_OID,
-            expected_dev=1,
-            expected_ino=2,
-        )
+        assert "refusing cross-run branch takeover" in result.output
+        sync_branch.assert_not_called()
+        remove_worktree.assert_not_called()
         assert not workspace_exists("acme")

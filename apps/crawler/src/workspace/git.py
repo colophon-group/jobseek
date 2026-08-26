@@ -189,45 +189,16 @@ def ensure_clone(*, reset: bool = False) -> Path:
 
 
 def sync_branch_with_main(branch: str) -> None:
-    """Merge latest main into *branch*, auto-resolving CSV conflicts.
+    """Reject the retired merge-main reconciliation path.
 
-    Called after ``ensure_clone()`` when the workspace already has a
-    feature branch.  Fetches, merges, and if CSV conflicts appear they
-    are resolved the same way the submit workflow does it (union-merge +
-    sort).  A merge keeps the resumed remote branch pushable without a
-    history rewrite; non-CSV conflicts abort without changing the branch.
+    Company PR branches may contain reviewed or human-repaired commits.  A
+    resolver must rebuild from an exact ``origin/main`` worktree and replay
+    only changes covered by its own lease; it must never merge main into an
+    existing company branch.
     """
-    from src.workspace.errors import WorkspaceError
-
-    cwd = _repo_cwd()
-    if cwd is None:
-        raise WorkspaceError("sync_branch_with_main must run inside a git repository")
-
-    main = get_main_branch_remote(cwd=cwd)
-
-    _run(["git", "fetch", "origin"], cwd=cwd)
-    _run(["git", "checkout", branch], cwd=cwd)
-
-    result = _run(
-        ["git", "merge", "--no-edit", f"origin/{main}"],
-        cwd=cwd,
-        check=False,
-    )
-    if result.returncode == 0:
-        return
-
-    # Merge paused on conflicts — only the append-only registry CSVs can be
-    # resolved automatically.  Code conflicts require operator judgment.
-    if _resolve_csv_conflicts(cwd):
-        commit = _run(["git", "commit", "--no-edit"], cwd=cwd, check=False)
-        if commit.returncode == 0:
-            return
-
-    # Could not resolve — abort and error out
-    _run(["git", "merge", "--abort"], cwd=cwd, check=False)
     raise WorkspaceError(
-        "Could not synchronize the resumed branch with latest main; "
-        "non-CSV conflicts require manual resolution."
+        f"Refusing to merge main into reviewed company branch {branch!r}; "
+        "rebuild from exact origin/main and replay only explicitly owned changes"
     )
 
 
@@ -1254,8 +1225,8 @@ def check_gh_auth() -> bool:
 def check_existing_prs_strict(issue_number: int) -> list[dict]:
     """Check for open PRs that close a given issue.
 
-    Returns enough metadata to distinguish a resumable resolver draft from a
-    ready resolver submission or an unrelated/manual PR.
+    Returns enough metadata to distinguish a submitted company PR from an
+    unrelated/manual PR. Drafts are submitted/external across resolver runs.
     """
     import json
 
@@ -1293,8 +1264,16 @@ def get_authenticated_login_strict() -> str:
 _PR_PROVENANCE_FIELDS = (
     "number,state,isDraft,headRefName,headRefOid,headRepository,"
     "headRepositoryOwner,baseRefName,author,closingIssuesReferences,"
-    "isCrossRepository,url"
+    "isCrossRepository,url,reviewDecision,reviews,comments,labels"
 )
+
+_REVIEW_OR_HOLD_RE = re.compile(
+    r"\b(?:approved|request(?:ed)?\s+changes?|do\s+not\s+merge|must\s+not\s+merge|"
+    r"merge\s+hold|capacity\s+gate|keep(?:ing)?\s+(?:this\s+)?pr\s+draft|"
+    r"remain(?:s|ing)?\s+draft)\b",
+    re.IGNORECASE,
+)
+_HOLD_LABEL_RE = re.compile(r"(?:do[- ]?not[- ]?merge|blocked|merge[- ]?hold|hold)", re.I)
 
 
 def get_pr_details_strict(pr_number: int) -> dict:
@@ -1350,6 +1329,66 @@ def _closing_issue_keys(details: dict) -> set[tuple[str, int]]:
     return keys
 
 
+def _review_and_hold_evidence(details: dict) -> tuple[list[dict[str, str]], list[str]]:
+    """Return stable safety evidence that invalidates a resolver head lease."""
+    evidence: list[dict[str, str]] = []
+    decision = details.get("reviewDecision")
+    if isinstance(decision, str) and decision:
+        evidence.append({"kind": "decision", "value": decision})
+
+    reviews = details.get("reviews")
+    if isinstance(reviews, list):
+        for review in reviews:
+            if not isinstance(review, dict):
+                continue
+            state = review.get("state")
+            if state not in {"APPROVED", "CHANGES_REQUESTED"}:
+                continue
+            author = review.get("author")
+            author_login = author.get("login") if isinstance(author, dict) else ""
+            commit = review.get("commit")
+            commit_oid = commit.get("oid") if isinstance(commit, dict) else ""
+            submitted_at = review.get("submittedAt")
+            evidence.append(
+                {
+                    "kind": "review",
+                    "state": str(state),
+                    "author": author_login if isinstance(author_login, str) else "",
+                    "commit_oid": commit_oid if isinstance(commit_oid, str) else "",
+                    "submitted_at": submitted_at if isinstance(submitted_at, str) else "",
+                }
+            )
+
+    comments = details.get("comments")
+    if isinstance(comments, list):
+        for comment in comments:
+            if not isinstance(comment, dict):
+                continue
+            body = comment.get("body")
+            if not isinstance(body, str) or not _REVIEW_OR_HOLD_RE.search(body):
+                continue
+            author = comment.get("author")
+            author_login = author.get("login") if isinstance(author, dict) else ""
+            created_at = comment.get("createdAt")
+            evidence.append(
+                {
+                    "kind": "comment",
+                    "author": author_login if isinstance(author_login, str) else "",
+                    "created_at": created_at if isinstance(created_at, str) else "",
+                    "body_sha256": hashlib.sha256(body.encode()).hexdigest(),
+                }
+            )
+
+    holds: list[str] = []
+    labels = details.get("labels")
+    if isinstance(labels, list):
+        for label in labels:
+            name = label.get("name") if isinstance(label, dict) else None
+            if isinstance(name, str) and _HOLD_LABEL_RE.search(name):
+                holds.append(name)
+    return evidence, sorted(set(holds))
+
+
 def validate_pr_attachment(
     details: dict,
     *,
@@ -1398,10 +1437,17 @@ def validate_pr_attachment(
     if branch not in {f"add-company/{slug}", f"fix-crawler/{slug}"}:
         raise WorkspaceError(f"PR #{pr_number} branch is not bound to company slug {slug!r}")
 
+    review_evidence, hold_labels = _review_and_hold_evidence(details)
+    if review_evidence or hold_labels:
+        raise WorkspaceError(
+            f"PR #{pr_number} has review or merge-hold evidence; refusing resolver attachment"
+        )
+
 
 def pr_provenance(details: dict, *, issue: int | None, slug: str) -> dict:
     """Return the immutable PR fields recorded in workspace state."""
     author = details.get("author")
+    review_evidence, hold_labels = _review_and_hold_evidence(details)
     return {
         "number": details.get("number"),
         "head_ref_name": details.get("headRefName"),
@@ -1415,6 +1461,8 @@ def pr_provenance(details: dict, *, issue: int | None, slug: str) -> dict:
             {"repository": repository, "number": number}
             for repository, number in sorted(_closing_issue_keys(details))
         ],
+        "review_evidence": review_evidence,
+        "hold_labels": hold_labels,
         "issue": issue,
         "slug": slug,
     }
@@ -1440,6 +1488,8 @@ def verify_recorded_pr(
         "author_login",
         "is_draft",
         "closing_issues",
+        "review_evidence",
+        "hold_labels",
         "issue",
         "slug",
     }
@@ -1519,11 +1569,11 @@ def check_existing_prs(issue_number: int) -> list[dict]:
 def classify_issue_prs(prs: list[dict]) -> str:
     """Classify PRs linked to one company-request issue.
 
-    A single draft on an ``add-company/`` branch is owned by the resolver and
-    can be resumed.  Once that PR is ready it represents a submitted outcome.
-    A ``fix-crawler/`` PR is also submitted: it is the expected result after
-    ``ws task fail`` enters coding mode, but must never be resumed as a company
-    workspace.  Any other shape is treated as a manual conflict.
+    Any existing company PR is a submitted outcome for scheduling purposes.
+    Cross-run draft takeover is unsafe: draft state, a deterministic branch,
+    and a linked issue do not prove that the new resolver run owns the head.
+    A still-running resolver uses its persisted workspace/head lease instead
+    of entering through this issue-level classifier.
     """
     if not prs:
         return "none"
@@ -1538,9 +1588,7 @@ def classify_issue_prs(prs: list[dict]) -> str:
         return "submitted"
     if not branch.startswith("add-company/"):
         return "conflicting"
-    if is_draft is True:
-        return "resumable"
-    if is_draft is False:
+    if is_draft in {True, False}:
         return "submitted"
     return "conflicting"
 
@@ -1633,9 +1681,14 @@ def create_draft_pr(title: str, body: str) -> int:
 
 
 def mark_pr_ready(pr_number: int) -> None:
-    """Mark a draft PR as ready for review."""
+    """Retired resolver mutation: company automation must leave PRs draft."""
+    raise WorkspaceError(f"Refusing to mark company PR #{pr_number} ready from resolver automation")
+
+
+def mark_pr_draft(pr_number: int) -> None:
+    """Return a PR to draft after a readiness-only race."""
     _run(
-        ["gh", "pr", "ready", str(pr_number), "--repo", _resolve_repo()],
+        ["gh", "pr", "ready", str(pr_number), "--undo", "--repo", _resolve_repo()],
         retries=_GH_RETRIES,
     )
 

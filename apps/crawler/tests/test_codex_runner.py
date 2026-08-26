@@ -671,7 +671,7 @@ def test_pr_appearing_after_claim_releases_own_claim(tmp_path: Path) -> None:
     assert run["error"] == "linked PR became submitted before launch"
 
 
-def test_resumable_draft_is_admitted(tmp_path: Path) -> None:
+def test_existing_draft_is_not_admitted_for_cross_run_takeover(tmp_path: Path) -> None:
     config = _config(tmp_path)
     github = FakeGitHub(
         issue=101,
@@ -688,8 +688,8 @@ def test_resumable_draft_is_admitted(tmp_path: Path) -> None:
 
     admission = governor.admit_one()
 
-    assert admission is not None
-    assert admission.issue == 101
+    assert admission is None
+    assert github.claimed == []
 
 
 def test_submitted_pr_does_not_block_later_candidate(tmp_path: Path) -> None:
