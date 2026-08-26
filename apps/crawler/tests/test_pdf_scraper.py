@@ -13,6 +13,7 @@ from src.core.scrapers.pdf import (
     _download_verified_fingerprinted_pdf,
     _extract_named_fields,
     _extract_pattern,
+    _location_from_url,
     _normalize_captured_text,
     _ocr_pdf,
     _text_to_html,
@@ -133,6 +134,24 @@ class TestTitleFromUrl:
         url = "https://example.com/Engineer.pdf"
         result = _title_from_url(url, pattern=r"NOMATCH_(\w+)")
         assert result == "Engineer"
+
+
+class TestLocationFromUrl:
+    @pytest.mark.parametrize(
+        ("url", "expected"),
+        [
+            (
+                "https://example.com/Faculty%3F-Vacancy-Singapore.pdf?download=1#current",
+                "Singapore",
+            ),
+            (
+                "https://example.com/Faculty%23-Vacancy-Lausanne.pdf?download=1#current",
+                "Lausanne",
+            ),
+        ],
+    )
+    def test_decodes_reserved_filename_characters_after_parsing_url(self, url, expected):
+        assert _location_from_url(url, r"-(Lausanne|Singapore)\.pdf$") == expected
 
 
 class TestInternationalBoxingAssociationPdfConfig:

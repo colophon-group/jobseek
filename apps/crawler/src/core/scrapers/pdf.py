@@ -55,7 +55,7 @@ import math
 import re
 from datetime import date
 from pathlib import Path
-from urllib.parse import unquote
+from urllib.parse import unquote, urlsplit
 
 import httpx
 import structlog
@@ -313,8 +313,7 @@ def _location_from_url(url: str, pattern: str | None = None) -> str | None:
     """Extract a location from the URL-decoded PDF filename."""
     if not pattern:
         return None
-    path = unquote(url).split("?", 1)[0].split("#", 1)[0]
-    filename = path.rsplit("/", 1)[-1]
+    filename = unquote(urlsplit(url).path).rsplit("/", 1)[-1]
     return _extract_pattern(filename, pattern)
 
 
