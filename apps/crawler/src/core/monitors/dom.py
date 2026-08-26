@@ -1590,6 +1590,73 @@ _ExplicitEmptyState = tuple[
     str | None,
 ]
 
+_AdvertisedTotalConfig = tuple[str, re.Pattern[str]]
+
+
+def _validated_advertised_total_config(value: object) -> _AdvertisedTotalConfig | None:
+    """Validate an exact listing-total proof for static DOM discovery."""
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) != {"selector", "regex"}:
+        raise ValueError("DOM monitor advertised_total requires selector and regex")
+    selector = _validate_css_selector(
+        value.get("selector"),
+        name="advertised_total.selector",
+    )
+    raw_regex = value.get("regex")
+    if (
+        selector is None
+        or not isinstance(raw_regex, str)
+        or not raw_regex
+        or len(raw_regex) > 1_024
+        or "\x00" in raw_regex
+    ):
+        raise ValueError(
+            "DOM monitor advertised_total.regex must be a non-empty regex up to 1024 chars"
+        )
+    try:
+        pattern = re.compile(raw_regex)
+    except re.error as exc:
+        raise ValueError("DOM monitor advertised_total.regex must be valid") from exc
+    if pattern.groups != 1:
+        raise ValueError(
+            "DOM monitor advertised_total.regex must contain exactly one capture group"
+        )
+    return selector, pattern
+
+
+def _validate_advertised_total(
+    html: str,
+    config: _AdvertisedTotalConfig,
+    urls: set[str],
+    board_url: str,
+) -> int:
+    """Require one consistent advertised total and exact discovered coverage."""
+    selector, pattern = config
+    totals: list[int] = []
+    for node in LexborHTMLParser(html).css(selector):
+        text = re.sub(r"\s+", " ", node.text(separator=" ", strip=True)).strip()
+        match = pattern.fullmatch(text)
+        if match is None:
+            continue
+        raw_total = match.group(1)
+        if not raw_total.isdecimal():
+            raise ValueError("DOM monitor advertised_total captured a non-decimal total")
+        totals.append(int(raw_total))
+
+    if not totals:
+        raise ValueError("DOM monitor did not find its configured advertised total")
+    if len(set(totals)) != 1:
+        raise ValueError("DOM monitor found conflicting advertised totals")
+
+    advertised = totals[0]
+    discovered = len(_without_board_self_urls(urls, board_url))
+    if discovered != advertised:
+        raise ValueError(
+            f"DOM monitor discovered {discovered} jobs but the listing advertised {advertised}"
+        )
+    return advertised
+
 
 def _validated_empty_state_list(value: object) -> tuple[_ExplicitEmptyState, ...]:
     """Validate selector-specific exact empty states."""
@@ -3105,6 +3172,7 @@ async def dom_discover(
     if empty_selector is not None:
         configured_empty_states = ((empty_selector, empty_text, False, None, None, None),)
     empty_state_name = "empty_states" if empty_states else "empty_selector"
+    advertised_total = _validated_advertised_total_config(metadata.get("advertised_total"))
     rich_rows = _validated_rich_rows(metadata.get("rich_rows"))
     if advertised_ranges is not None and (
         render
@@ -3164,6 +3232,14 @@ async def dom_discover(
     ):
         raise ValueError("DOM monitor rich_rows supports static listing extraction only")
 
+    if advertised_total is not None and (
+        render
+        or rich_rows is not None
+        or metadata.get("include_board_url")
+        or link_selector is None
+    ):
+        raise ValueError("DOM monitor advertised_total requires static link-selector discovery")
+
     if configured_empty_states:
         if link_selector is None and rich_rows is None:
             raise ValueError(f"DOM monitor {empty_state_name} requires link_selector or rich_rows")
@@ -3180,6 +3256,7 @@ async def dom_discover(
     elif empty_text is not None:
         raise ValueError("DOM monitor empty_text requires empty_selector")
 
+    contract_html: str | None = None
     if render:
         combined = {**metadata, "_board_url": board_url}
 
@@ -3274,6 +3351,7 @@ async def dom_discover(
                     "empty state"
                 )
             return set()
+        contract_html = html
         _raise_if_bot_challenge(board_url, html)
         if prospective_board is not None:
             detected_medium = _prospective_provider_medium(html, board_url)
@@ -3369,6 +3447,15 @@ async def dom_discover(
                     public_headers=bool(request_headers),
                     expected_total=expected_total,
                 )
+
+    if advertised_total is not None:
+        assert contract_html is not None
+        _validate_advertised_total(
+            contract_html,
+            advertised_total,
+            urls,
+            board_url,
+        )
 
     # Exclude the board URL itself by default — it is normally the listing
     # page, not a job. Direct document boards opt in after the successful

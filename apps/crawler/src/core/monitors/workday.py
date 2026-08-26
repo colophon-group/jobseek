@@ -139,6 +139,19 @@ def _configured_search_text(metadata: dict, *, all_sites: bool) -> str | None:
     return search_text
 
 
+def _configured_split_facet(metadata: dict) -> str | None:
+    """Return an optional tenant-proven exhaustive Workday facet."""
+    split_facet = metadata.get("split_facet")
+    if split_facet is None:
+        return None
+    if (
+        not isinstance(split_facet, str)
+        or re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", split_facet) is None
+    ):
+        raise ValueError("Workday split_facet must be a provider facet name up to 128 characters")
+    return split_facet
+
+
 # ── List pagination ──────────────────────────────────────────────────
 
 
@@ -251,12 +264,40 @@ def _iter_facets(facets: list[dict]):
         yield from _iter_facets(nested)
 
 
-def _pick_split_facet(facets: list[dict]) -> tuple[str, list[str]] | None:
+def _pick_split_facet(
+    facets: list[dict],
+    preferred: str | None = None,
+) -> tuple[str, list[str]] | None:
     """Choose a facet to split on when results hit the 2000 cap.
 
     Picks the facet with the most values where no single value >= cap,
-    so each sub-query stays under the limit.
+    so each sub-query stays under the limit. A configured *preferred* facet
+    is an operator assertion that the named dimension is exhaustive for this
+    tenant. Fail closed when Workday stops exposing that facet or one of its
+    values is itself capped.
     """
+    if preferred is not None:
+        facet = next(
+            (
+                candidate
+                for candidate in _iter_facets(facets)
+                if candidate.get("facetParameter") == preferred
+            ),
+            None,
+        )
+        if facet is None:
+            raise ValueError(f"Workday split_facet {preferred!r} was not advertised")
+        values = facet.get("values", [])
+        ids = [value["id"] for value in values if isinstance(value, dict) and "id" in value]
+        if not ids:
+            raise ValueError(f"Workday split_facet {preferred!r} advertised no values")
+        if any(
+            not isinstance(value, dict) or value.get("count", 0) >= _API_RESULT_CAP
+            for value in values
+        ):
+            raise ValueError(f"Workday split_facet {preferred!r} contains an unsafe capped value")
+        return preferred, ids
+
     best: tuple[str, list[str]] | None = None
     best_count = 0
 
@@ -400,6 +441,7 @@ async def _api_list(
     *,
     query_sem: asyncio.Semaphore | None = None,
     search_text: str | None = None,
+    split_facet: str | None = None,
 ) -> tuple[list[str], bool]:
     """Collect all externalPaths, splitting by facet if the 2000 cap is hit.
 
@@ -418,6 +460,7 @@ async def _api_list(
         client,
         query_sem=query_sem,
         search_text=search_text,
+        split_facet=split_facet,
     ):
         for p in batch:
             if p == _TRUNCATED_PATH:
@@ -435,6 +478,7 @@ async def _api_list_stream(
     *,
     query_sem: asyncio.Semaphore | None = None,
     search_text: str | None = None,
+    split_facet: str | None = None,
 ):
     """Yield batches of externalPaths, splitting by facet if the 2000 cap is hit."""
     list_url = _api_list_url(company, wd_instance, site)
@@ -497,7 +541,7 @@ async def _api_list_stream(
         return
 
     # Hit the cap — split by facet to get all jobs
-    split = _pick_split_facet(facets)
+    split = _pick_split_facet(facets, preferred=split_facet)
     if not split:
         # The 2,000-result cap is tenant-specific. Some tenants expose no
         # safe facet but accept offsets beyond 2,000. Verify direct pagination
@@ -540,6 +584,18 @@ async def _api_list_stream(
         }
         async with query_sem:
             sub_paths, sub_total, _ = await _paginate_query(list_url, body, client)
+        if sub_total >= _API_RESULT_CAP:
+            raise RuntimeError(
+                "Workday split facet group remained capped at "
+                f"{sub_total} jobs for {company}/{site}"
+            )
+        _assert_complete_inventory(
+            discovered=len(sub_paths),
+            advertised=sub_total,
+            company=company,
+            site=site,
+            strategy=f"{facet_param} facet group",
+        )
         return sub_paths, sub_total, len(facet_group)
 
     seen: set[str] = set()
@@ -661,6 +717,8 @@ async def _list_all_sites(
     wd_instance: str,
     sites: list[str],
     client: httpx.AsyncClient,
+    *,
+    split_facet: str | None = None,
 ) -> tuple[list[tuple[str, str]], bool]:
     """List jobs from all sites concurrently. Returns ``(site_paths, truncated)``.
 
@@ -673,13 +731,23 @@ async def _list_all_sites(
 
     async def _list_one(site: str) -> tuple[list[tuple[str, str]], bool]:
         async with sem:
-            paths, was_truncated = await _api_list(
-                company,
-                wd_instance,
-                site,
-                client,
-                query_sem=query_sem,
-            )
+            if split_facet is None:
+                paths, was_truncated = await _api_list(
+                    company,
+                    wd_instance,
+                    site,
+                    client,
+                    query_sem=query_sem,
+                )
+            else:
+                paths, was_truncated = await _api_list(
+                    company,
+                    wd_instance,
+                    site,
+                    client,
+                    query_sem=query_sem,
+                    split_facet=split_facet,
+                )
             return [(site, p) for p in paths], was_truncated
 
     results = await asyncio.gather(*[_list_one(s) for s in sites], return_exceptions=True)
@@ -711,6 +779,8 @@ async def _list_all_sites_stream(
     wd_instance: str,
     sites: list[str],
     client: httpx.AsyncClient,
+    *,
+    split_facet: str | None = None,
 ):
     """Yield (site, path) batches per site for heartbeat-aware streaming.
 
@@ -725,13 +795,24 @@ async def _list_all_sites_stream(
     seen_paths: set[str] = set()
 
     for site in sites:
-        async for batch in _api_list_stream(
-            company,
-            wd_instance,
-            site,
-            client,
-            query_sem=query_sem,
-        ):
+        if split_facet is None:
+            batches = _api_list_stream(
+                company,
+                wd_instance,
+                site,
+                client,
+                query_sem=query_sem,
+            )
+        else:
+            batches = _api_list_stream(
+                company,
+                wd_instance,
+                site,
+                client,
+                query_sem=query_sem,
+                split_facet=split_facet,
+            )
+        async for batch in batches:
             pairs: list[tuple[str, str]] = []
             for path in batch:
                 if path == _TRUNCATED_PATH:
@@ -780,6 +861,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
 
     all_sites = metadata.get("all_sites", True)
     search_text = _configured_search_text(metadata, all_sites=all_sites)
+    split_facet = _configured_split_facet(metadata)
     truncated = False
 
     if all_sites:
@@ -788,7 +870,13 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             log.warning("workday.no_sites_discovered", company=company, fallback=site)
             sites = [site]
 
-        site_paths, truncated = await _list_all_sites(company, wd_instance, sites, client)
+        site_paths, truncated = await _list_all_sites(
+            company,
+            wd_instance,
+            sites,
+            client,
+            split_facet=split_facet,
+        )
         log.info(
             "workday.listed_all",
             company=company,
@@ -803,6 +891,7 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
             site,
             client,
             search_text=search_text,
+            split_facet=split_facet,
         )
         site_paths = [(site, p) for p in paths]
         log.info("workday.listed", company=company, site=site, postings=len(site_paths))
@@ -843,6 +932,7 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
 
     all_sites = metadata.get("all_sites", True)
     search_text = _configured_search_text(metadata, all_sites=all_sites)
+    split_facet = _configured_split_facet(metadata)
     truncated = False
 
     if all_sites:
@@ -852,7 +942,13 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
             sites = [site]
 
         total_urls = 0
-        async for batch in _list_all_sites_stream(company, wd_instance, sites, client):
+        async for batch in _list_all_sites_stream(
+            company,
+            wd_instance,
+            sites,
+            client,
+            split_facet=split_facet,
+        ):
             clean: list[tuple[str, str]] = []
             for s, p in batch:
                 if p == _TRUNCATED_PATH:
@@ -874,6 +970,7 @@ async def discover_stream(board: dict, client: httpx.AsyncClient, pw=None):
             site,
             client,
             search_text=search_text,
+            split_facet=split_facet,
         ):
             clean_paths = [p for p in batch if p != _TRUNCATED_PATH]
             if any(p == _TRUNCATED_PATH for p in batch):
