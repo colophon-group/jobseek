@@ -77,6 +77,15 @@ def test_deploy_preflights_disk_before_pull_and_quiesce() -> None:
     assert preflight < pull < quiesce
 
 
+def test_deploy_transport_allows_full_collection_schema_alters() -> None:
+    workflow = yaml.safe_load(DEPLOY_WORKFLOW.read_text())
+    deploy_step = next(
+        step for step in workflow["jobs"]["deploy"]["steps"] if step.get("name") == "Deploy via SSH"
+    )
+
+    assert deploy_step["with"]["command_timeout"] == "3h"
+
+
 def test_deploy_refreshes_short_lived_ghcr_auth_before_release_mutation() -> None:
     script = DEPLOY_SH.read_text()
     workflow = yaml.safe_load(DEPLOY_WORKFLOW.read_text())

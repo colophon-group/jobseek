@@ -24,7 +24,7 @@ from typesense.exceptions import ObjectNotFound
 
 from src.reconciliation import TypesenseReconciliationClient
 from src.sync import refresh_typesense_counts
-from src.typesense_schema import COLLECTIONS
+from src.typesense_schema import COLLECTIONS, _patch_missing_fields
 
 # ---------------------------------------------------------------------------
 # Typesense connectivity check
@@ -447,6 +447,7 @@ def _make_postings() -> list[dict]:
             "location_geo_types": [loc["type"]],
             "occupation_id": occ["occupation_id"],
             "occupation_name": occ["name"],
+            "occupation_ids": [occ["occupation_id"]],
             "seniority_id": sen["seniority_id"],
             "seniority_name": sen["name"],
             "technology_ids": [t["technology_id"] for t in techs],
@@ -620,9 +621,71 @@ class TestSchemas:
         assert fields_by_name["reconciliation_bucket"]["type"] == "string"
         assert fields_by_name["reconciliation_bucket"].get("facet") is True
         assert fields_by_name["reconciliation_bucket"].get("optional") is True
+        assert fields_by_name["occupation_ids"]["type"] == "int32[]"
+        assert fields_by_name["occupation_ids"].get("facet") is True
+        for stored_only_field in ("occupation_id", "occupation_name", "last_seen_at"):
+            assert fields_by_name[stored_only_field].get("index") is False
         assert "coordinates" not in fields_by_name, (
             "coordinates should only be on location collection, not job_posting"
         )
+
+    def test_unindexing_preserves_stored_response_fields(
+        self, ts_client: typesense.Client, alias_map: dict
+    ):
+        """The production in-place alter keeps document payloads available."""
+        collection_name = alias_map["job_posting"]
+        collection = ts_client.collections[collection_name]
+        posting_id = POSTINGS[0]["id"]
+        expected_values = {
+            name: POSTINGS[0][name] for name in ("occupation_id", "occupation_name", "last_seen_at")
+        }
+        legacy_shapes = {
+            "occupation_id": {
+                "name": "occupation_id",
+                "type": "int32",
+                "facet": True,
+                "optional": True,
+            },
+            "occupation_name": {
+                "name": "occupation_name",
+                "type": "string",
+                "facet": True,
+                "optional": True,
+            },
+            "last_seen_at": {
+                "name": "last_seen_at",
+                "type": "int64",
+                "optional": True,
+            },
+        }
+
+        try:
+            # Recreate the pre-migration shape, then exercise the same
+            # index:true -> index:false repair that production setup performs.
+            collection.update(
+                {
+                    "fields": [
+                        change
+                        for name, shape in legacy_shapes.items()
+                        for change in ({"name": name, "drop": True}, shape)
+                    ]
+                }
+            )
+            fields = {field["name"]: field for field in collection.retrieve()["fields"]}
+            assert all(fields[name].get("index") is True for name in legacy_shapes)
+            document = collection.documents[posting_id].retrieve()
+            assert {name: document[name] for name in expected_values} == expected_values
+        finally:
+            _patch_missing_fields(
+                ts_client,
+                collection_name,
+                SCHEMA_BY_NAME["job_posting"]["fields"],
+            )
+
+        fields = {field["name"]: field for field in collection.retrieve()["fields"]}
+        assert all(fields[name].get("index") is False for name in legacy_shapes)
+        document = collection.documents[posting_id].retrieve()
+        assert {name: document[name] for name in expected_values} == expected_values
 
     def test_job_posting_field_count(self, ts_client: typesense.Client, alias_map: dict):
         """job_posting has the expected schema fields."""
@@ -1126,7 +1189,7 @@ class TestSearch:
                 "filter_by": (
                     f"is_active:true && "
                     f"location_ids:=[{target_loc_id}] && "
-                    f"occupation_id:={target_occ_id} && "
+                    f"occupation_ids:=[{target_occ_id}] && "
                     f"{self._company_filter()}"
                 ),
             }
@@ -1136,7 +1199,7 @@ class TestSearch:
             doc = hit["document"]
             assert doc["is_active"] is True
             assert target_loc_id in doc["location_ids"]
-            assert doc["occupation_id"] == target_occ_id
+            assert target_occ_id in doc["occupation_ids"]
 
     def test_facet_by_company_name(self, ts_client: typesense.Client, alias_map: dict):
         """Faceting by company_name returns human-readable names."""

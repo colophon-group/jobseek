@@ -25,6 +25,7 @@ from src.typesense_schema import (
     _SETUP_CONNECTION_TIMEOUT_SECONDS,
     COLLECTIONS,
     _index_drift,
+    _memory_metrics_snapshot,
     _patch_missing_fields,
     _warn_field_drift,
     run_setup,
@@ -39,6 +40,15 @@ def test_job_posting_schema_carries_original_salary_for_detail_views() -> None:
     for name in ("salary_min", "salary_max", "salary_currency", "salary_period"):
         assert fields[name]["optional"] is True
         assert fields[name]["index"] is False
+
+
+def test_job_posting_schema_keeps_unused_compatibility_fields_stored_only() -> None:
+    job_posting = next(c for c in COLLECTIONS if c["name"] == "job_posting")
+    fields = {field["name"]: field for field in job_posting["fields"]}
+
+    for name in ("occupation_id", "occupation_name", "last_seen_at"):
+        assert fields[name]["index"] is False
+        assert fields[name]["optional"] is True
 
 
 def test_taxonomy_schema_carries_web_hierarchy_contract() -> None:
@@ -429,6 +439,55 @@ def test_patch_combines_index_rebuild_and_field_addition_in_one_payload() -> Non
     ]
 
 
+def test_patch_rebuilds_multiple_existing_fields_one_at_a_time() -> None:
+    """Large production collections must not rebuild several indexes in one
+    synchronous schema alter. Each successful PATCH is reflected by the next
+    live-schema read before setup advances to the following field."""
+    client = MagicMock()
+    collection = client.collections.__getitem__.return_value
+    collection.retrieve.side_effect = [
+        {
+            "fields": [
+                {"name": "occupation_id", "type": "int32", "index": True},
+                {"name": "occupation_name", "type": "string", "index": True},
+                {"name": "last_seen_at", "type": "int64", "index": True},
+            ]
+        },
+        {
+            "fields": [
+                {"name": "occupation_id", "type": "int32", "index": False},
+                {"name": "occupation_name", "type": "string", "index": True},
+                {"name": "last_seen_at", "type": "int64", "index": True},
+            ]
+        },
+        {
+            "fields": [
+                {"name": "occupation_id", "type": "int32", "index": False},
+                {"name": "occupation_name", "type": "string", "index": False},
+                {"name": "last_seen_at", "type": "int64", "index": True},
+            ]
+        },
+    ]
+    desired = [
+        {"name": "occupation_id", "type": "int32", "index": False},
+        {"name": "occupation_name", "type": "string", "index": False},
+        {"name": "last_seen_at", "type": "int64", "index": False},
+    ]
+
+    _patch_missing_fields(client, "job_posting_v1", desired)
+
+    assert collection.update.call_count == 3
+    rebuilt = [
+        [field["name"] for field in call.args[0]["fields"]]
+        for call in collection.update.call_args_list
+    ]
+    assert rebuilt == [
+        ["occupation_id", "occupation_id"],
+        ["occupation_name", "occupation_name"],
+        ["last_seen_at", "last_seen_at"],
+    ]
+
+
 def test_patch_skips_id_field_even_when_index_would_drift() -> None:
     """`id` is special-cased to never appear in PATCH payloads. Even if a
     future spec adds an explicit `index` to the `id` declaration, the
@@ -623,7 +682,24 @@ def test_run_setup_uses_long_timeout_for_schema_alters(
     run_setup()
 
     assert created_config["connection_timeout_seconds"] == _SETUP_CONNECTION_TIMEOUT_SECONDS
+    assert created_config["num_retries"] == 0
     setup_collections.assert_called_once()
+
+
+def test_memory_metrics_snapshot_normalizes_allocator_strings() -> None:
+    client = MagicMock()
+    client.metrics.retrieve.return_value = {
+        "typesense_memory_allocated_bytes": "2400000000",
+        "typesense_memory_active_bytes": "2600000000",
+        "typesense_memory_resident_bytes": "2700000000",
+        "unrelated": "ignored",
+    }
+
+    assert _memory_metrics_snapshot(client) == {
+        "typesense_memory_allocated_bytes": 2_400_000_000,
+        "typesense_memory_active_bytes": 2_600_000_000,
+        "typesense_memory_resident_bytes": 2_700_000_000,
+    }
 
 
 def test_setup_collections_alias_create_error_logs_structured_event(
