@@ -1,0 +1,8 @@
+{
+  "format": "google.protobuf.FileDescriptorSet/base64",
+  "source": "runtime.proto",
+  "descriptor_sha256": "4c868612152349cdbc8c548158e21005d90c0ba6c2ec736203a58105d30b6775",
+  "introduction_proto_sha256": "93ce3c4d700d461c86e442db7218531f3e6318204e1742cf23bb579f3a3a3690",
+  "introduction_base_sha": "7c8556642b32ac78871cd015931b95d968e83e7d",
+  "generator": "libprotoc 36.0"
+}
