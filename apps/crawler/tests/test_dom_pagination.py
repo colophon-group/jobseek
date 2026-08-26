@@ -13,7 +13,6 @@ import pytest
 from src.core.monitors.dom import (
     BotChallengeError,
     _build_url_matcher,
-    _cambridge_consultants_probe_config,
     _dualoo_probe_config,
     _extract_links_rendered,
     _extract_links_static,
@@ -2342,28 +2341,6 @@ class TestCanHandle:
       <p class="jobBoard-offers-empty">There are no job vacancies at the moment.</p>
     </div></body></html>
     """
-    CAMBRIDGE_CONSULTANTS_URL = "https://www.cambridgeconsultants.com/careers/"
-    CAMBRIDGE_CONSULTANTS_HTML = """
-    <html><body>
-      <div class="irongforce-job-listings cambridgeconsultantslimited">
-        <div class="irongforce-job-listing col">
-          <div class="irongforce-job-title">
-            <a href="/jobs/cambridgeconsultantslimited/platform-engineer/?gh_jid=123">
-              Platform Engineer
-            </a>
-          </div>
-          <div class="irongforce-job-info">
-            <span class="irongforce-info-item">
-              <span class="irongforce-info-label">Location: </span>United Kingdom
-            </span>
-            <span class="irongforce-info-item">
-              <span class="irongforce-info-label">Job Function: </span>Software
-            </span>
-          </div>
-        </div>
-      </div>
-    </body></html>
-    """
     PROSPECTIVE_URL = "https://jobs.example.com/?lang=de"
     PROSPECTIVE_HTML = """
     <html lang="de"><head>
@@ -2432,43 +2409,6 @@ class TestCanHandle:
             result = await can_handle(self.LUCCA_URL, MagicMock())
 
         assert result == _lucca_probe_config(self.LUCCA_HTML, self.LUCCA_URL)
-
-    def test_cambridge_consultants_uses_clean_static_rich_rows(self):
-        result = _cambridge_consultants_probe_config(
-            self.CAMBRIDGE_CONSULTANTS_HTML,
-            self.CAMBRIDGE_CONSULTANTS_URL,
-        )
-
-        assert result is not None
-        assert result["cambridge_consultants_board"] is True
-        assert result["urls"] == 1
-        jobs = _extract_rich_rows_static(
-            self.CAMBRIDGE_CONSULTANTS_HTML,
-            self.CAMBRIDGE_CONSULTANTS_URL,
-            _validated_rich_rows(result["rich_rows"]),
-            re.compile(result["url_filter"], re.IGNORECASE),
-        )
-        assert [(job.title, job.locations) for job in jobs] == [
-            ("Platform Engineer", ["United Kingdom"]),
-        ]
-
-        scraper_type, scraper_config = auto_scraper_type("dom", result) or (None, None)
-        assert scraper_type == "dom"
-        assert scraper_config is not None
-        assert scraper_config["enrich"] == ["description"]
-        assert scraper_config["scope"] == ".job-container"
-
-    async def test_cambridge_consultants_can_handle_returns_provider_preset(self):
-        with patch(
-            "src.core.monitors.fetch_page_text",
-            new=AsyncMock(return_value=self.CAMBRIDGE_CONSULTANTS_HTML),
-        ):
-            result = await can_handle(self.CAMBRIDGE_CONSULTANTS_URL, MagicMock())
-
-        assert result == _cambridge_consultants_probe_config(
-            self.CAMBRIDGE_CONSULTANTS_HTML,
-            self.CAMBRIDGE_CONSULTANTS_URL,
-        )
 
     def test_prospective_board_uses_static_rich_row_preset(self):
         result = _prospective_probe_config(self.PROSPECTIVE_HTML, self.PROSPECTIVE_URL)
