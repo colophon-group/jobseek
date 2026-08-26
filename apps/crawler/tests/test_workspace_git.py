@@ -25,6 +25,7 @@ from src.workspace.git import (
     delete_remote_branch_at_expected_oid,
     ensure_clone,
     find_open_pr_for_branch,
+    local_branch_oid_strict,
     pr_provenance,
     push_branch_at_expected_oid,
     remove_authenticated_worktree,
@@ -35,6 +36,25 @@ from src.workspace.git import (
 )
 
 TEST_OID = "a" * 40
+
+
+@pytest.mark.parametrize("returncode", [1, 128])
+def test_local_branch_lookup_accepts_known_absence_return_codes(returncode):
+    stderr = "fatal: 'refs/heads/add-company/acme' - not a valid ref" if returncode == 128 else ""
+    result = subprocess.CompletedProcess([], returncode, "", stderr)
+
+    with patch("src.workspace.git._run", return_value=result):
+        assert local_branch_oid_strict("add-company/acme") is None
+
+
+def test_local_branch_lookup_rejects_unexpected_128_error():
+    result = subprocess.CompletedProcess([], 128, "", "fatal: unable to read repository")
+
+    with (
+        patch("src.workspace.git._run", return_value=result),
+        pytest.raises(WorkspaceError, match="Could not inspect local branch"),
+    ):
+        local_branch_oid_strict("add-company/acme")
 
 
 def _pr_details(**overrides) -> dict:

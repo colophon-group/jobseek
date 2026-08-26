@@ -1177,7 +1177,12 @@ def local_branch_oid_strict(name: str) -> str | None:
         cwd=_MANAGED_REPO,
         check=False,
     )
-    if result.returncode == 1 and not result.stdout.strip():
+    # Git versions differ here: an absent exact ref may return either 1 or
+    # 128 (with "not a valid ref"). Treat only those known absence shapes as
+    # missing, while continuing to fail closed for every other lookup error.
+    if result.returncode in {1, 128} and not result.stdout.strip() and (
+        result.returncode == 1 or "not a valid ref" in result.stderr
+    ):
         return None
     if result.returncode != 0:
         raise WorkspaceError(f"Could not inspect local branch {name!r}")
