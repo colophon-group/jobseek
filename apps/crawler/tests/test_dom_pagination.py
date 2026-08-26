@@ -3945,6 +3945,137 @@ class TestDomDiscoverInitialFetch:
 # ---------------------------------------------------------------------------
 
 
+class TestAdvertisedTotalContract:
+    @staticmethod
+    def _metadata(**overrides):
+        return {
+            "render": False,
+            "link_selector": "a.job[href]",
+            "url_filter": r"/job/",
+            "advertised_total": {
+                "selector": "h2.total",
+                "regex": r"^(\d+) jobs$",
+            },
+            **overrides,
+        }
+
+    async def test_accepts_exact_paginated_inventory(self):
+        def handler(request):
+            if request.url.params.get("page") == "2":
+                return httpx.Response(
+                    200,
+                    text='<a class="job" href="/job/2">two</a>',
+                )
+            return httpx.Response(
+                200,
+                text='<h2 class="total">2 jobs</h2><a class="job" href="/job/1">one</a>',
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": self._metadata(pagination={"param_name": "page", "max_pages": 2}),
+                },
+                client,
+            )
+
+        assert result == {
+            "https://example.com/job/1",
+            "https://example.com/job/2",
+        }
+
+    async def test_rejects_partial_tail_even_when_pagination_stops_leniently(self):
+        def handler(request):
+            if request.url.params.get("page") == "2":
+                return httpx.Response(403, text="Forbidden")
+            return httpx.Response(
+                200,
+                text='<h2 class="total">2 jobs</h2><a class="job" href="/job/1">one</a>',
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="discovered 1 jobs.*advertised 2"):
+                await dom_discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": self._metadata(
+                            pagination={"param_name": "page", "max_pages": 2}
+                        ),
+                    },
+                    client,
+                )
+
+    async def test_accepts_only_authenticated_zero(self):
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, text='<h2 class="total">0 jobs</h2>')
+            )
+        ) as client:
+            result = await dom_discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": self._metadata(),
+                },
+                client,
+            )
+
+        assert result == set()
+
+    async def test_rejects_zero_without_total_proof(self):
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, text="<main>Careers</main>")
+            )
+        ) as client:
+            with pytest.raises(ValueError, match="did not find.*advertised total"):
+                await dom_discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": self._metadata(),
+                    },
+                    client,
+                )
+
+    async def test_rejects_conflicting_duplicate_total_markers(self):
+        html = '<h2 class="total">2 jobs</h2><h2 class="total">3 jobs</h2>'
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, text=html))
+        ) as client:
+            with pytest.raises(ValueError, match="conflicting advertised totals"):
+                await dom_discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": self._metadata(),
+                    },
+                    client,
+                )
+
+    @pytest.mark.parametrize(
+        ("config", "message"),
+        [
+            ({"selector": "h2.total"}, "requires selector and regex"),
+            (
+                {"selector": "h2.total", "regex": r"^\d+ jobs$"},
+                "exactly one capture group",
+            ),
+        ],
+    )
+    async def test_rejects_invalid_contract(self, config, message):
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match=message):
+                await dom_discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": {
+                            "link_selector": "a.job[href]",
+                            "advertised_total": config,
+                        },
+                    },
+                    client,
+                )
+
+
 class TestPaginateUrls:
     async def test_explicit_one_based_start_fetches_page_two_first(self):
         """``start`` names the already-fetched listing page."""

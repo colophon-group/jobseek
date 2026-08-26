@@ -1537,6 +1537,14 @@ async def _probe_static_page(row: dict, client: httpx.AsyncClient) -> ProbeResul
             "skipped",
             "rendered page requires a browser probe",
         )
+    if decoded.get("proxy"):
+        return ProbeResult(
+            row["board_slug"],
+            monitor_type,
+            row["board_url"],
+            "skipped",
+            "proxy-configured page requires a credentialed deployment probe",
+        )
 
     from src.core.monitor import monitor_one
 
@@ -1576,6 +1584,7 @@ async def _probe_static_page(row: dict, client: httpx.AsyncClient) -> ProbeResul
     count = _discovery_count(discovered)
     has_empty_contract = bool(
         monitor_type == "johdi"
+        or decoded.get("advertised_total")
         or decoded.get("empty_states")
         or (decoded.get("empty_selector") and decoded.get("empty_text"))
     )

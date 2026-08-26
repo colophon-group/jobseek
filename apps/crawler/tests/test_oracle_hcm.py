@@ -892,6 +892,8 @@ def _oracle_hcm_payload(
     title: str,
     *,
     description: str = "<p>Role description</p>",
+    organization_description: str = "",
+    corporate_description: str = "",
     location: str = "United States",
 ) -> dict:
     """Mimic the shape of the Oracle HCM `recruitingCEJobRequisitionDetails` REST response."""
@@ -902,6 +904,8 @@ def _oracle_hcm_payload(
                 "Title": title,
                 "PrimaryLocation": location,
                 "ExternalDescriptionStr": description,
+                "OrganizationDescriptionStr": organization_description,
+                "CorporateDescriptionStr": corporate_description,
                 "ExternalQualificationsStr": "",
                 "ExternalResponsibilitiesStr": "",
                 "ExternalPostedStartDate": "2026-05-01",
@@ -963,6 +967,28 @@ class TestVanityDomainConfigPath:
         assert content.title == "Machine Learning Test Capability Eng."
         assert content.locations == ["United States"]
         assert content.description
+
+    async def test_falls_back_to_organization_description(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json=_oracle_hcm_payload(
+                    "108622",
+                    "Executive Club Agent",
+                    description="",
+                    organization_description="<p>Join our hotel team in Xi'an.</p>",
+                    corporate_description="<p>Corporate boilerplate.</p>",
+                ),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            content = await scrape(
+                "https://jobs.nokia.com/en/job/108622",
+                {"host": "fa-evmr-saasfaprod1.fa.ocs.oraclecloud.com", "site": "CX_1"},
+                client,
+            )
+
+        assert content.description == "<p>Join our hotel team in Xi'an.</p>"
 
     async def test_ti_vanity_url_with_explicit_config(self):
         """TI URL on careers.ti.com routes to its own canonical tenant via config."""

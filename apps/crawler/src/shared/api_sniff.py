@@ -967,8 +967,39 @@ def auto_map_fields(items: list[dict]) -> dict[str, str]:
                 mapping[field_name] = key
                 break
 
+    # ADP MyJobs exposes a generic requisition ``type`` (usually ``Normal``)
+    # alongside the useful schedule in ``workLevelCode``. Prefer the latter
+    # when present so auto-discovery does not label every job with an opaque
+    # provider-internal value.
+    if any(isinstance(item.get("workLevelCode"), str) and item["workLevelCode"] for item in sample):
+        mapping["employment_type"] = "workLevelCode"
+
+    # ADP MyJobs also labels requisitionLocations with property codes such as
+    # ``4121-Hotel Monaco SLC`` while the nested address contains the actual
+    # candidate-facing geography. Handle that shape before the generic
+    # location-name heuristic. The filter projection drops missing address
+    # parts, so countries without a state/province remain clean.
+    requisition_locations = next(
+        (
+            item.get("requisitionLocations")
+            for item in sample
+            if isinstance(item.get("requisitionLocations"), list) and item["requisitionLocations"]
+        ),
+        None,
+    )
+    if isinstance(requisition_locations, list) and isinstance(requisition_locations[0], dict):
+        address = requisition_locations[0].get("address")
+        if isinstance(address, dict) and isinstance(address.get("cityName"), str):
+            mapping["locations"] = (
+                "requisitionLocations[].join(', ', "
+                "[address.cityName, address.countrySubdivisionLevel1.codeValue, "
+                "address.country.longName][?@])"
+            )
+
     # Location matching — handles both simple strings and array-of-objects
     for key in all_keys:
+        if "locations" in mapping:
+            break
         if _LOCATION_KEY_PATTERNS.match(key):
             # Check the type of value in sample items
             sample_vals = [item.get(key) for item in sample if key in item]

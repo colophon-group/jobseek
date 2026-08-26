@@ -1563,6 +1563,14 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    that state then requires at least one selected anchor and
                    every selected href must fully match the regex. Do not
                    combine with the legacy empty_selector/empty_text pair.
+    advertised_total
+                   Exact total contract for static link-selector discovery:
+                   {"selector": "h2.total", "regex": "^(\\d+) jobs$"}.
+                   The regex must contain one decimal capture group. Every
+                   matching marker must agree, and the discovered URL count
+                   after pagination must equal it exactly. This authenticates
+                   zero-job pages and fails closed on a truncated tail before
+                   currentness filters such as require_jsonld_jobposting run.
     require_jsonld_jobposting
                    Fetch each discovered detail URL and retain it only when
                    the current page contains schema.org JobPosting JSON-LD.
@@ -2441,6 +2449,11 @@ workday — Workday Job Board API
     site          Career site identifier. Auto-filled from URL path.
     all_sites     Discover all tenant sites via robots.txt (default: true).
                   Set false to monitor only the configured site.
+    split_facet   Optional provider facetParameter proven exhaustive for this
+                  tenant (for example, "Location_Country"). Use only when the
+                  automatic largest-value facet omits unclassified jobs. The
+                  monitor fails closed if this facet disappears, contains a
+                  capped value, or any resulting group is incomplete.
 
   URL format:   https://{company}.wd{N}.myworkdayjobs.com/{site}
                 May include locale prefix: /en-US/{site} (stripped automatically)

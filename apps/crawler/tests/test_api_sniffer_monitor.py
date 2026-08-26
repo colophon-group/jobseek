@@ -7,6 +7,7 @@ import json
 from inspect import isawaitable
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 import pytest
@@ -24,9 +25,11 @@ from src.core.monitors.api_sniffer import (
     _extract_urls_from_template,
     _lumesse_config_overrides,
     _materially_below_advertised_total,
+    _paginate_until_converged,
     _refresh_post_data,
     _serialize_post_data,
     _validated_item_filter,
+    _validated_pagination_convergence,
     _validated_required_pdf_pattern,
     _validated_slug_fields,
     can_handle,
@@ -1191,6 +1194,456 @@ class TestItemFilter:
             result = await discover(board, client)
 
         assert result == {"https://example.com/1", "https://example.com/2"}
+
+
+class TestPaginationConvergence:
+    def test_requires_bounded_offset_config_and_stable_identity(self):
+        with pytest.raises(ValueError, match="requires item_filter.dedupe_by"):
+            _validated_pagination_convergence(
+                {
+                    "pagination": {"style": "offset"},
+                    "pagination_convergence": {
+                        "max_passes": 4,
+                        "required_no_growth_passes": 2,
+                    },
+                },
+                (),
+            )
+
+    @staticmethod
+    def _pages_fetcher(passes):
+        current_pass = 0
+
+        async def fetch(_method, url, _headers, _body):
+            nonlocal current_pass
+            raw_skip = parse_qs(urlparse(url).query).get("skip", ["0"])[0]
+            skip = int(raw_skip)
+            if skip == 0:
+                current_pass += 1
+            return {"count": 4, "jobs": passes[current_pass][skip]}
+
+        return fetch
+
+    @pytest.mark.asyncio
+    async def test_accumulates_until_two_complete_passes_add_no_identity(self):
+        a = {"id": "a", "url": "https://example.com/a"}
+        b = {"id": "b", "url": "https://example.com/b"}
+        c = {"id": "c", "url": "https://example.com/c"}
+        d = {"id": "d", "url": "https://example.com/d"}
+        passes = [
+            {0: [a, b], 2: [a, c]},
+            {0: [a, b], 2: [b, d]},
+            {0: [a, c], 2: [b, d]},
+            {0: [a, d], 2: [b, c]},
+        ]
+
+        items, converged = await _paginate_until_converged(
+            fetch_fn=self._pages_fetcher(passes),
+            method="GET",
+            api_url="https://example.com/jobs?skip=0",
+            request_headers={},
+            post_data=None,
+            initial_data={"count": 4, "jobs": passes[0][0]},
+            initial_items=passes[0][0],
+            json_path="jobs",
+            total_path="count",
+            total_count=4,
+            pagination_config={
+                "param_name": "skip",
+                "style": "offset",
+                "start_value": 0,
+                "increment": 2,
+                "location": "query",
+            },
+            max_pages=2,
+            identity_paths=("id",),
+            max_passes=4,
+            required_no_growth_passes=2,
+            item_projector=None,
+        )
+
+        assert converged is True
+        assert {item["id"] for item in items} == {"a", "b", "c", "d"}
+
+    @pytest.mark.asyncio
+    async def test_total_change_invalidates_convergence_proof(self):
+        a = {"id": "a"}
+        b = {"id": "b"}
+
+        async def fetch(_method, _url, _headers, _body):
+            return {"count": 3, "jobs": [a, b]}
+
+        items, converged = await _paginate_until_converged(
+            fetch_fn=fetch,
+            method="GET",
+            api_url="https://example.com/jobs?skip=0",
+            request_headers={},
+            post_data=None,
+            initial_data={"count": 4, "jobs": [a, b]},
+            initial_items=[a, b],
+            json_path="jobs",
+            total_path="count",
+            total_count=4,
+            pagination_config={
+                "param_name": "skip",
+                "style": "offset",
+                "start_value": 0,
+                "increment": 2,
+                "location": "query",
+            },
+            max_pages=2,
+            identity_paths=("id",),
+            max_passes=3,
+            required_no_growth_passes=2,
+            item_projector=None,
+        )
+
+        assert converged is False
+        assert {item["id"] for item in items} == {"a", "b"}
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "page_payload",
+        [
+            None,
+            {"count": 2},
+            {"count": 2, "jobs": [None]},
+        ],
+        ids=["missing-response", "missing-list", "item-schema-drift"],
+    )
+    async def test_every_paginated_response_requires_the_configured_list_schema(self, page_payload):
+        first = {"id": "a"}
+
+        async def fetch(_method, _url, _headers, _body):
+            return page_payload
+
+        items, converged = await _paginate_until_converged(
+            fetch_fn=fetch,
+            method="GET",
+            api_url="https://example.com/jobs?skip=0",
+            request_headers={},
+            post_data=None,
+            initial_data={"count": 2, "jobs": [first]},
+            initial_items=[first],
+            json_path="jobs",
+            total_path="count",
+            total_count=2,
+            pagination_config={
+                "param_name": "skip",
+                "style": "offset",
+                "start_value": 0,
+                "increment": 1,
+                "location": "query",
+            },
+            max_pages=2,
+            identity_paths=("id",),
+            max_passes=3,
+            required_no_growth_passes=2,
+            item_projector=None,
+        )
+
+        assert converged is False
+        assert items == [first]
+
+    @pytest.mark.asyncio
+    async def test_cross_pass_record_conflict_invalidates_proof_and_preserves_first(self):
+        passes = [
+            {
+                0: [{"id": "a", "title": "version one"}],
+                1: [{"id": "b", "title": "stable"}],
+            },
+            {
+                0: [{"id": "a", "title": "version two"}],
+                1: [{"id": "b", "title": "stable"}],
+            },
+        ]
+        current_pass = 0
+
+        async def fetch(_method, url, _headers, _body):
+            nonlocal current_pass
+            skip = int(parse_qs(urlparse(url).query)["skip"][0])
+            if skip == 0:
+                current_pass += 1
+            return {"count": 2, "jobs": passes[current_pass][skip]}
+
+        items, converged = await _paginate_until_converged(
+            fetch_fn=fetch,
+            method="GET",
+            api_url="https://example.com/jobs?skip=0",
+            request_headers={},
+            post_data=None,
+            initial_data={"count": 2, "jobs": passes[0][0]},
+            initial_items=passes[0][0],
+            json_path="jobs",
+            total_path="count",
+            total_count=2,
+            pagination_config={
+                "param_name": "skip",
+                "style": "offset",
+                "start_value": 0,
+                "increment": 1,
+                "location": "query",
+            },
+            max_pages=2,
+            identity_paths=("id",),
+            max_passes=3,
+            required_no_growth_passes=2,
+            item_projector=None,
+        )
+
+        assert converged is False
+        assert {item["id"]: item["title"] for item in items} == {
+            "a": "version one",
+            "b": "stable",
+        }
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("rows", "expected_ids"),
+        [
+            (
+                [{"id": "a", "title": "same"}, {"id": "a", "title": "same"}],
+                {"a"},
+            ),
+            (
+                [{"id": "a", "title": "first"}, {"id": "a", "title": "second"}],
+                {"a"},
+            ),
+        ],
+    )
+    async def test_duplicate_rows_cannot_prove_a_short_unique_inventory(self, rows, expected_ids):
+        calls = 0
+
+        async def fetch(_method, _url, _headers, _body):
+            nonlocal calls
+            calls += 1
+            return {"count": 2, "jobs": rows}
+
+        items, converged = await _paginate_until_converged(
+            fetch_fn=fetch,
+            method="GET",
+            api_url="https://example.com/jobs?skip=0",
+            request_headers={},
+            post_data=None,
+            initial_data={"count": 2, "jobs": rows},
+            initial_items=rows,
+            json_path="jobs",
+            total_path="count",
+            total_count=2,
+            pagination_config={
+                "param_name": "skip",
+                "style": "offset",
+                "start_value": 0,
+                "increment": 2,
+                "location": "query",
+            },
+            max_pages=1,
+            identity_paths=("id",),
+            max_passes=3,
+            required_no_growth_passes=2,
+            item_projector=None,
+        )
+
+        assert {item["id"] for item in items} == expected_ids
+        assert converged is False
+        if rows[0] == rows[1]:
+            assert calls == 2
+        else:
+            assert items == [rows[0]]
+            assert calls == 0
+
+    @pytest.mark.asyncio
+    async def test_no_growth_cannot_rescue_a_short_pass(self):
+        rows = [{"id": "a"}, {"id": "b"}]
+
+        async def fetch(_method, _url, _headers, _body):
+            return {"count": 3, "jobs": rows}
+
+        items, converged = await _paginate_until_converged(
+            fetch_fn=fetch,
+            method="GET",
+            api_url="https://example.com/jobs?skip=0",
+            request_headers={},
+            post_data=None,
+            initial_data={"count": 3, "jobs": rows},
+            initial_items=rows,
+            json_path="jobs",
+            total_path="count",
+            total_count=3,
+            pagination_config={
+                "param_name": "skip",
+                "style": "offset",
+                "start_value": 0,
+                "increment": 2,
+                "location": "query",
+            },
+            max_pages=1,
+            identity_paths=("id",),
+            max_passes=3,
+            required_no_growth_passes=2,
+            item_projector=None,
+        )
+
+        assert converged is False
+        assert {item["id"] for item in items} == {"a", "b"}
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("browser", [False, True], ids=["http", "browser"])
+    @pytest.mark.parametrize(
+        ("payloads", "expected_truncated", "expected_urls"),
+        [
+            ([{"count": 0, "jobs": []}] * 3, False, set()),
+            (
+                [
+                    {"count": 1, "jobs": [{"id": "a", "url": "/a"}]},
+                ]
+                * 3,
+                False,
+                {"https://example.com/a"},
+            ),
+            ([{"count": 1, "jobs": []}], True, set()),
+            ([{"jobs": []}], True, set()),
+            ([{"count": 0}], True, set()),
+            ([{"count": 0, "jobs": []}, {"count": 1, "jobs": []}], True, set()),
+            ([{"count": 0, "jobs": []}, {"count": 0}], True, set()),
+            ([{"count": 0, "jobs": []}, {"count": 0, "jobs": [None]}], True, set()),
+        ],
+        ids=[
+            "stable-zero",
+            "stable-nonzero",
+            "nonzero-empty",
+            "missing-total-empty",
+            "missing-list-zero",
+            "changing-total-empty",
+            "later-missing-list-zero",
+            "later-item-schema-drift-zero",
+        ],
+    )
+    async def test_replay_paths_require_bounded_empty_and_nonempty_proof(
+        self,
+        browser,
+        payloads,
+        expected_truncated,
+        expected_urls,
+    ):
+        from src.core.monitor import MonitorResult
+
+        config = {
+            "api_url": "https://example.com/jobs?skip=0",
+            "json_path": "jobs",
+            "total_path": "count",
+            "url_field": "url",
+            "pagination": {
+                "param_name": "skip",
+                "style": "offset",
+                "start_value": 0,
+                "increment": 1,
+                "location": "query",
+                "max_pages": 1,
+            },
+            "pagination_convergence": {
+                "max_passes": 3,
+                "required_no_growth_passes": 2,
+            },
+            "item_filter": {"dedupe_by": ["id"]},
+            "browser": browser,
+        }
+        board = {"board_url": "https://example.com/careers", "metadata": config}
+        call_count = 0
+
+        def next_payload():
+            nonlocal call_count
+            payload = payloads[min(call_count, len(payloads) - 1)]
+            call_count += 1
+            return payload
+
+        if browser:
+
+            def browser_fetch(_script, _args):
+                return {"headers": {}, "text": json.dumps(next_payload())}
+
+            mock_page = AsyncMock()
+            mock_page.evaluate = AsyncMock(side_effect=browser_fetch)
+            result = await discover(board, AsyncMock(), pw=_make_mock_pw(mock_page))
+        else:
+
+            def handler(request):
+                return httpx.Response(200, json=next_payload(), request=request)
+
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+                result = await discover(board, client)
+
+        if expected_truncated:
+            assert isinstance(result, MonitorResult)
+            assert result.truncated is True
+            assert result.urls == expected_urls
+        else:
+            assert not isinstance(result, MonitorResult)
+            assert result == expected_urls
+        assert call_count == len(payloads)
+
+    @pytest.mark.asyncio
+    async def test_unstable_offset_pages_cannot_return_healthy_partial_inventory(self):
+        from src.core.monitor import MonitorResult
+
+        items = {key: {"id": key, "url": f"https://example.com/{key}"} for key in "abcdef"}
+        passes = [
+            {0: [items["a"], items["b"]], 2: [items["a"], items["c"]]},
+            {0: [items["a"], items["b"]], 2: [items["b"], items["d"]]},
+            {0: [items["a"], items["c"]], 2: [items["c"], items["e"]]},
+            {0: [items["a"], items["d"]], 2: [items["d"], items["f"]]},
+        ]
+        current_pass = 0
+        initial_returned = False
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal current_pass, initial_returned
+            raw_skip = parse_qs(request.url.query.decode()).get("skip", ["0"])[0]
+            skip = int(raw_skip)
+            if skip == 0:
+                if initial_returned:
+                    current_pass += 1
+                initial_returned = True
+            return httpx.Response(
+                200,
+                json={"count": 4, "jobs": passes[current_pass][skip]},
+                request=request,
+            )
+
+        board = {
+            "board_url": "https://example.com/careers",
+            "metadata": {
+                "api_url": "https://example.com/jobs?skip=0",
+                "json_path": "jobs",
+                "total_path": "count",
+                "url_field": "url",
+                "pagination": {
+                    "param_name": "skip",
+                    "style": "offset",
+                    "start_value": 0,
+                    "increment": 2,
+                    "location": "query",
+                    "max_pages": 2,
+                },
+                "pagination_convergence": {
+                    "max_passes": 4,
+                    "required_no_growth_passes": 2,
+                },
+                "item_filter": {"dedupe_by": ["id"]},
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(board, client)
+
+        assert isinstance(result, MonitorResult)
+        assert result.truncated is True
+        assert result.urls == {
+            "https://example.com/a",
+            "https://example.com/b",
+            "https://example.com/c",
+            "https://example.com/d",
+            "https://example.com/e",
+        }
 
 
 def _http_status_error_resp(status: int) -> MagicMock:
