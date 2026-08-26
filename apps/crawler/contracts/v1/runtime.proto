@@ -700,6 +700,18 @@ message CapturedExchange {
   optional uint64 normalized_result_frame_sequence = 5;
 }
 
+enum ProjectedAction {
+  PROJECTED_ACTION_UNSPECIFIED = 0;
+  PROJECTED_ACTION_UPSERT = 1;
+  PROJECTED_ACTION_BROWSER_RESULT = 2;
+}
+
+message ProjectedTarget {
+  string url = 1;
+  ProjectedAction action = 2;
+  optional string content_sha256 = 3;
+}
+
 message ProjectedEffects {
   repeated string urls_to_upsert = 1;
   repeated string content_hashes = 2;
@@ -710,6 +722,11 @@ message ProjectedEffects {
   uint64 security_filtered_count = 7;
   optional string new_sitemap_url = 8;
   optional string metadata_updates_sha256 = 9;
+  string request_id = 10;
+  string origin_request_id = 11;
+  ExecutionKind execution_kind = 12;
+  string target_url = 13;
+  repeated ProjectedTarget targets = 14;
 }
 
 message ReplayCase {

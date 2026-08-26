@@ -119,7 +119,8 @@
             ],
             "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
             "requestId": "request-monitor-1",
-            "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+            "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+            "tracestate": "vendor=value,tenant@system=opaque value"
           }
         },
         "direction": "EVENT_DIRECTION_CLIENT"

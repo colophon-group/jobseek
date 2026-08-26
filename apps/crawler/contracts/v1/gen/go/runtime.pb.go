@@ -1019,6 +1019,55 @@ func (DisconnectPoint) EnumDescriptor() ([]byte, []int) {
 	return file_runtime_proto_rawDescGZIP(), []int{17}
 }
 
+type ProjectedAction int32
+
+const (
+	ProjectedAction_PROJECTED_ACTION_UNSPECIFIED    ProjectedAction = 0
+	ProjectedAction_PROJECTED_ACTION_UPSERT         ProjectedAction = 1
+	ProjectedAction_PROJECTED_ACTION_BROWSER_RESULT ProjectedAction = 2
+)
+
+// Enum value maps for ProjectedAction.
+var (
+	ProjectedAction_name = map[int32]string{
+		0: "PROJECTED_ACTION_UNSPECIFIED",
+		1: "PROJECTED_ACTION_UPSERT",
+		2: "PROJECTED_ACTION_BROWSER_RESULT",
+	}
+	ProjectedAction_value = map[string]int32{
+		"PROJECTED_ACTION_UNSPECIFIED":    0,
+		"PROJECTED_ACTION_UPSERT":         1,
+		"PROJECTED_ACTION_BROWSER_RESULT": 2,
+	}
+)
+
+func (x ProjectedAction) Enum() *ProjectedAction {
+	p := new(ProjectedAction)
+	*p = x
+	return p
+}
+
+func (x ProjectedAction) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ProjectedAction) Descriptor() protoreflect.EnumDescriptor {
+	return file_runtime_proto_enumTypes[18].Descriptor()
+}
+
+func (ProjectedAction) Type() protoreflect.EnumType {
+	return &file_runtime_proto_enumTypes[18]
+}
+
+func (x ProjectedAction) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ProjectedAction.Descriptor instead.
+func (ProjectedAction) EnumDescriptor() ([]byte, []int) {
+	return file_runtime_proto_rawDescGZIP(), []int{18}
+}
+
 type Limits struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	MaxFrameBytes uint64                 `protobuf:"varint,1,opt,name=max_frame_bytes,json=maxFrameBytes,proto3" json:"max_frame_bytes,omitempty"`
@@ -6096,6 +6145,66 @@ func (x *CapturedExchange) GetNormalizedResultFrameSequence() uint64 {
 	return 0
 }
 
+type ProjectedTarget struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Url           string                 `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	Action        ProjectedAction        `protobuf:"varint,2,opt,name=action,proto3,enum=jobseek.crawler.runtime.v1.ProjectedAction" json:"action,omitempty"`
+	ContentSha256 *string                `protobuf:"bytes,3,opt,name=content_sha256,json=contentSha256,proto3,oneof" json:"content_sha256,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProjectedTarget) Reset() {
+	*x = ProjectedTarget{}
+	mi := &file_runtime_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProjectedTarget) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProjectedTarget) ProtoMessage() {}
+
+func (x *ProjectedTarget) ProtoReflect() protoreflect.Message {
+	mi := &file_runtime_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProjectedTarget.ProtoReflect.Descriptor instead.
+func (*ProjectedTarget) Descriptor() ([]byte, []int) {
+	return file_runtime_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *ProjectedTarget) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *ProjectedTarget) GetAction() ProjectedAction {
+	if x != nil {
+		return x.Action
+	}
+	return ProjectedAction_PROJECTED_ACTION_UNSPECIFIED
+}
+
+func (x *ProjectedTarget) GetContentSha256() string {
+	if x != nil && x.ContentSha256 != nil {
+		return *x.ContentSha256
+	}
+	return ""
+}
+
 type ProjectedEffects struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
 	UrlsToUpsert          []string               `protobuf:"bytes,1,rep,name=urls_to_upsert,json=urlsToUpsert,proto3" json:"urls_to_upsert,omitempty"`
@@ -6107,13 +6216,18 @@ type ProjectedEffects struct {
 	SecurityFilteredCount uint64                 `protobuf:"varint,7,opt,name=security_filtered_count,json=securityFilteredCount,proto3" json:"security_filtered_count,omitempty"`
 	NewSitemapUrl         *string                `protobuf:"bytes,8,opt,name=new_sitemap_url,json=newSitemapUrl,proto3,oneof" json:"new_sitemap_url,omitempty"`
 	MetadataUpdatesSha256 *string                `protobuf:"bytes,9,opt,name=metadata_updates_sha256,json=metadataUpdatesSha256,proto3,oneof" json:"metadata_updates_sha256,omitempty"`
+	RequestId             string                 `protobuf:"bytes,10,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	OriginRequestId       string                 `protobuf:"bytes,11,opt,name=origin_request_id,json=originRequestId,proto3" json:"origin_request_id,omitempty"`
+	ExecutionKind         ExecutionKind          `protobuf:"varint,12,opt,name=execution_kind,json=executionKind,proto3,enum=jobseek.crawler.runtime.v1.ExecutionKind" json:"execution_kind,omitempty"`
+	TargetUrl             string                 `protobuf:"bytes,13,opt,name=target_url,json=targetUrl,proto3" json:"target_url,omitempty"`
+	Targets               []*ProjectedTarget     `protobuf:"bytes,14,rep,name=targets,proto3" json:"targets,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ProjectedEffects) Reset() {
 	*x = ProjectedEffects{}
-	mi := &file_runtime_proto_msgTypes[63]
+	mi := &file_runtime_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6125,7 +6239,7 @@ func (x *ProjectedEffects) String() string {
 func (*ProjectedEffects) ProtoMessage() {}
 
 func (x *ProjectedEffects) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[63]
+	mi := &file_runtime_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6138,7 +6252,7 @@ func (x *ProjectedEffects) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectedEffects.ProtoReflect.Descriptor instead.
 func (*ProjectedEffects) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{63}
+	return file_runtime_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *ProjectedEffects) GetUrlsToUpsert() []string {
@@ -6204,6 +6318,41 @@ func (x *ProjectedEffects) GetMetadataUpdatesSha256() string {
 	return ""
 }
 
+func (x *ProjectedEffects) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *ProjectedEffects) GetOriginRequestId() string {
+	if x != nil {
+		return x.OriginRequestId
+	}
+	return ""
+}
+
+func (x *ProjectedEffects) GetExecutionKind() ExecutionKind {
+	if x != nil {
+		return x.ExecutionKind
+	}
+	return ExecutionKind_EXECUTION_KIND_UNSPECIFIED
+}
+
+func (x *ProjectedEffects) GetTargetUrl() string {
+	if x != nil {
+		return x.TargetUrl
+	}
+	return ""
+}
+
+func (x *ProjectedEffects) GetTargets() []*ProjectedTarget {
+	if x != nil {
+		return x.Targets
+	}
+	return nil
+}
+
 type ReplayCase struct {
 	state                  protoimpl.MessageState `protogen:"open.v1"`
 	ContractVersion        string                 `protobuf:"bytes,1,opt,name=contract_version,json=contractVersion,proto3" json:"contract_version,omitempty"`
@@ -6221,7 +6370,7 @@ type ReplayCase struct {
 
 func (x *ReplayCase) Reset() {
 	*x = ReplayCase{}
-	mi := &file_runtime_proto_msgTypes[64]
+	mi := &file_runtime_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6233,7 +6382,7 @@ func (x *ReplayCase) String() string {
 func (*ReplayCase) ProtoMessage() {}
 
 func (x *ReplayCase) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[64]
+	mi := &file_runtime_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6246,7 +6395,7 @@ func (x *ReplayCase) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplayCase.ProtoReflect.Descriptor instead.
 func (*ReplayCase) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{64}
+	return file_runtime_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *ReplayCase) GetContractVersion() string {
@@ -6330,7 +6479,7 @@ type ConformanceCase struct {
 
 func (x *ConformanceCase) Reset() {
 	*x = ConformanceCase{}
-	mi := &file_runtime_proto_msgTypes[65]
+	mi := &file_runtime_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6342,7 +6491,7 @@ func (x *ConformanceCase) String() string {
 func (*ConformanceCase) ProtoMessage() {}
 
 func (x *ConformanceCase) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[65]
+	mi := &file_runtime_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6355,7 +6504,7 @@ func (x *ConformanceCase) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConformanceCase.ProtoReflect.Descriptor instead.
 func (*ConformanceCase) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{65}
+	return file_runtime_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *ConformanceCase) GetName() string {
@@ -6932,7 +7081,12 @@ const file_runtime_proto_rawDesc = "" +
 	"\bresponse\x18\x03 \x01(\v2,.jobseek.crawler.runtime.v1.CapturedResponseR\bresponse\x12=\n" +
 	"\x1adeterministically_redacted\x18\x04 \x01(\bR\x19deterministicallyRedacted\x12L\n" +
 	" normalized_result_frame_sequence\x18\x05 \x01(\x04H\x00R\x1dnormalizedResultFrameSequence\x88\x01\x01B#\n" +
-	"!_normalized_result_frame_sequence\"\xc4\x03\n" +
+	"!_normalized_result_frame_sequence\"\xa7\x01\n" +
+	"\x0fProjectedTarget\x12\x10\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\x12C\n" +
+	"\x06action\x18\x02 \x01(\x0e2+.jobseek.crawler.runtime.v1.ProjectedActionR\x06action\x12*\n" +
+	"\x0econtent_sha256\x18\x03 \x01(\tH\x00R\rcontentSha256\x88\x01\x01B\x11\n" +
+	"\x0f_content_sha256\"\xc7\x05\n" +
 	"\x10ProjectedEffects\x12$\n" +
 	"\x0eurls_to_upsert\x18\x01 \x03(\tR\furlsToUpsert\x12%\n" +
 	"\x0econtent_hashes\x18\x02 \x03(\tR\rcontentHashes\x124\n" +
@@ -6942,7 +7096,15 @@ const file_runtime_proto_rawDesc = "" +
 	"\x0efiltered_count\x18\x06 \x01(\x04R\rfilteredCount\x126\n" +
 	"\x17security_filtered_count\x18\a \x01(\x04R\x15securityFilteredCount\x12+\n" +
 	"\x0fnew_sitemap_url\x18\b \x01(\tH\x00R\rnewSitemapUrl\x88\x01\x01\x12;\n" +
-	"\x17metadata_updates_sha256\x18\t \x01(\tH\x01R\x15metadataUpdatesSha256\x88\x01\x01B\x12\n" +
+	"\x17metadata_updates_sha256\x18\t \x01(\tH\x01R\x15metadataUpdatesSha256\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\n" +
+	" \x01(\tR\trequestId\x12*\n" +
+	"\x11origin_request_id\x18\v \x01(\tR\x0foriginRequestId\x12P\n" +
+	"\x0eexecution_kind\x18\f \x01(\x0e2).jobseek.crawler.runtime.v1.ExecutionKindR\rexecutionKind\x12\x1d\n" +
+	"\n" +
+	"target_url\x18\r \x01(\tR\ttargetUrl\x12E\n" +
+	"\atargets\x18\x0e \x03(\v2+.jobseek.crawler.runtime.v1.ProjectedTargetR\atargetsB\x12\n" +
 	"\x10_new_sitemap_urlB\x1a\n" +
 	"\x18_metadata_updates_sha256\"\xce\x04\n" +
 	"\n" +
@@ -7079,7 +7241,11 @@ const file_runtime_proto_rawDesc = "" +
 	"\x1fDISCONNECT_POINT_AFTER_DISPATCH\x10\x01\x12!\n" +
 	"\x1dDISCONNECT_POINT_BEFORE_FRAME\x10\x02\x12 \n" +
 	"\x1cDISCONNECT_POINT_AFTER_FRAME\x10\x03\x12+\n" +
-	"'DISCONNECT_POINT_RESULT_BEFORE_TERMINAL\x10\x04BNZLgithub.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go;runtimev1b\x06proto3"
+	"'DISCONNECT_POINT_RESULT_BEFORE_TERMINAL\x10\x04*u\n" +
+	"\x0fProjectedAction\x12 \n" +
+	"\x1cPROJECTED_ACTION_UNSPECIFIED\x10\x00\x12\x1b\n" +
+	"\x17PROJECTED_ACTION_UPSERT\x10\x01\x12#\n" +
+	"\x1fPROJECTED_ACTION_BROWSER_RESULT\x10\x02BNZLgithub.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go;runtimev1b\x06proto3"
 
 var (
 	file_runtime_proto_rawDescOnce sync.Once
@@ -7093,8 +7259,8 @@ func file_runtime_proto_rawDescGZIP() []byte {
 	return file_runtime_proto_rawDescData
 }
 
-var file_runtime_proto_enumTypes = make([]protoimpl.EnumInfo, 18)
-var file_runtime_proto_msgTypes = make([]protoimpl.MessageInfo, 66)
+var file_runtime_proto_enumTypes = make([]protoimpl.EnumInfo, 19)
+var file_runtime_proto_msgTypes = make([]protoimpl.MessageInfo, 67)
 var file_runtime_proto_goTypes = []any{
 	(Implementation)(0),             // 0: jobseek.crawler.runtime.v1.Implementation
 	(EngineOwner)(0),                // 1: jobseek.crawler.runtime.v1.EngineOwner
@@ -7114,196 +7280,201 @@ var file_runtime_proto_goTypes = []any{
 	(ReplayAdapter)(0),              // 15: jobseek.crawler.runtime.v1.ReplayAdapter
 	(EventDirection)(0),             // 16: jobseek.crawler.runtime.v1.EventDirection
 	(DisconnectPoint)(0),            // 17: jobseek.crawler.runtime.v1.DisconnectPoint
-	(*Limits)(nil),                  // 18: jobseek.crawler.runtime.v1.Limits
-	(*StringList)(nil),              // 19: jobseek.crawler.runtime.v1.StringList
-	(*Header)(nil),                  // 20: jobseek.crawler.runtime.v1.Header
-	(*ArtifactHandle)(nil),          // 21: jobseek.crawler.runtime.v1.ArtifactHandle
-	(*DataChunk)(nil),               // 22: jobseek.crawler.runtime.v1.DataChunk
-	(*ChunkManifest)(nil),           // 23: jobseek.crawler.runtime.v1.ChunkManifest
-	(*ExtensionEnvelope)(nil),       // 24: jobseek.crawler.runtime.v1.ExtensionEnvelope
-	(*DiagnosticDetail)(nil),        // 25: jobseek.crawler.runtime.v1.DiagnosticDetail
-	(*RuntimeError)(nil),            // 26: jobseek.crawler.runtime.v1.RuntimeError
-	(*BoardManifest)(nil),           // 27: jobseek.crawler.runtime.v1.BoardManifest
-	(*Salary)(nil),                  // 28: jobseek.crawler.runtime.v1.Salary
-	(*LocalizedJobContent)(nil),     // 29: jobseek.crawler.runtime.v1.LocalizedJobContent
-	(*JobContent)(nil),              // 30: jobseek.crawler.runtime.v1.JobContent
-	(*DiscoveredJob)(nil),           // 31: jobseek.crawler.runtime.v1.DiscoveredJob
-	(*MonitorMetadataUpdates)(nil),  // 32: jobseek.crawler.runtime.v1.MonitorMetadataUpdates
-	(*MonitorResult)(nil),           // 33: jobseek.crawler.runtime.v1.MonitorResult
-	(*ScrapeResult)(nil),            // 34: jobseek.crawler.runtime.v1.ScrapeResult
-	(*MonitorInput)(nil),            // 35: jobseek.crawler.runtime.v1.MonitorInput
-	(*ScrapeInput)(nil),             // 36: jobseek.crawler.runtime.v1.ScrapeInput
-	(*ExecutionRequest)(nil),        // 37: jobseek.crawler.runtime.v1.ExecutionRequest
-	(*FencingContext)(nil),          // 38: jobseek.crawler.runtime.v1.FencingContext
-	(*OriginOperationRef)(nil),      // 39: jobseek.crawler.runtime.v1.OriginOperationRef
-	(*ResumeRequest)(nil),           // 40: jobseek.crawler.runtime.v1.ResumeRequest
-	(*WindowUpdate)(nil),            // 41: jobseek.crawler.runtime.v1.WindowUpdate
-	(*CancelRequest)(nil),           // 42: jobseek.crawler.runtime.v1.CancelRequest
-	(*ClientHello)(nil),             // 43: jobseek.crawler.runtime.v1.ClientHello
-	(*ServerHello)(nil),             // 44: jobseek.crawler.runtime.v1.ServerHello
-	(*OriginContact)(nil),           // 45: jobseek.crawler.runtime.v1.OriginContact
-	(*OriginOperationDeclared)(nil), // 46: jobseek.crawler.runtime.v1.OriginOperationDeclared
-	(*ArtifactFrame)(nil),           // 47: jobseek.crawler.runtime.v1.ArtifactFrame
-	(*Terminal)(nil),                // 48: jobseek.crawler.runtime.v1.Terminal
-	(*ExecutionFrame)(nil),          // 49: jobseek.crawler.runtime.v1.ExecutionFrame
-	(*ResumeRejected)(nil),          // 50: jobseek.crawler.runtime.v1.ResumeRejected
-	(*ClientMessage)(nil),           // 51: jobseek.crawler.runtime.v1.ClientMessage
-	(*ServerMessage)(nil),           // 52: jobseek.crawler.runtime.v1.ServerMessage
-	(*Selector)(nil),                // 53: jobseek.crawler.runtime.v1.Selector
-	(*ClickAction)(nil),             // 54: jobseek.crawler.runtime.v1.ClickAction
-	(*FillAction)(nil),              // 55: jobseek.crawler.runtime.v1.FillAction
-	(*WaitAction)(nil),              // 56: jobseek.crawler.runtime.v1.WaitAction
-	(*ScrollAction)(nil),            // 57: jobseek.crawler.runtime.v1.ScrollAction
-	(*PaginationAction)(nil),        // 58: jobseek.crawler.runtime.v1.PaginationAction
-	(*EvaluateAction)(nil),          // 59: jobseek.crawler.runtime.v1.EvaluateAction
-	(*BrowserAction)(nil),           // 60: jobseek.crawler.runtime.v1.BrowserAction
-	(*NavigationPlan)(nil),          // 61: jobseek.crawler.runtime.v1.NavigationPlan
-	(*SessionPlan)(nil),             // 62: jobseek.crawler.runtime.v1.SessionPlan
-	(*CapturePlan)(nil),             // 63: jobseek.crawler.runtime.v1.CapturePlan
-	(*EvaluationPlan)(nil),          // 64: jobseek.crawler.runtime.v1.EvaluationPlan
-	(*InterceptionRule)(nil),        // 65: jobseek.crawler.runtime.v1.InterceptionRule
-	(*BrowserPlan)(nil),             // 66: jobseek.crawler.runtime.v1.BrowserPlan
-	(*BrowserExecutionInput)(nil),   // 67: jobseek.crawler.runtime.v1.BrowserExecutionInput
-	(*ActionOutcome)(nil),           // 68: jobseek.crawler.runtime.v1.ActionOutcome
-	(*CapturedValue)(nil),           // 69: jobseek.crawler.runtime.v1.CapturedValue
-	(*EvaluationValue)(nil),         // 70: jobseek.crawler.runtime.v1.EvaluationValue
-	(*BrowserSuccess)(nil),          // 71: jobseek.crawler.runtime.v1.BrowserSuccess
-	(*BrowserFailure)(nil),          // 72: jobseek.crawler.runtime.v1.BrowserFailure
-	(*BrowserUnsupported)(nil),      // 73: jobseek.crawler.runtime.v1.BrowserUnsupported
-	(*BrowserResult)(nil),           // 74: jobseek.crawler.runtime.v1.BrowserResult
-	(*DisconnectFault)(nil),         // 75: jobseek.crawler.runtime.v1.DisconnectFault
-	(*ProtocolEvent)(nil),           // 76: jobseek.crawler.runtime.v1.ProtocolEvent
-	(*ProtocolTranscript)(nil),      // 77: jobseek.crawler.runtime.v1.ProtocolTranscript
-	(*CapturedRequest)(nil),         // 78: jobseek.crawler.runtime.v1.CapturedRequest
-	(*CapturedResponse)(nil),        // 79: jobseek.crawler.runtime.v1.CapturedResponse
-	(*CapturedExchange)(nil),        // 80: jobseek.crawler.runtime.v1.CapturedExchange
-	(*ProjectedEffects)(nil),        // 81: jobseek.crawler.runtime.v1.ProjectedEffects
-	(*ReplayCase)(nil),              // 82: jobseek.crawler.runtime.v1.ReplayCase
-	(*ConformanceCase)(nil),         // 83: jobseek.crawler.runtime.v1.ConformanceCase
+	(ProjectedAction)(0),            // 18: jobseek.crawler.runtime.v1.ProjectedAction
+	(*Limits)(nil),                  // 19: jobseek.crawler.runtime.v1.Limits
+	(*StringList)(nil),              // 20: jobseek.crawler.runtime.v1.StringList
+	(*Header)(nil),                  // 21: jobseek.crawler.runtime.v1.Header
+	(*ArtifactHandle)(nil),          // 22: jobseek.crawler.runtime.v1.ArtifactHandle
+	(*DataChunk)(nil),               // 23: jobseek.crawler.runtime.v1.DataChunk
+	(*ChunkManifest)(nil),           // 24: jobseek.crawler.runtime.v1.ChunkManifest
+	(*ExtensionEnvelope)(nil),       // 25: jobseek.crawler.runtime.v1.ExtensionEnvelope
+	(*DiagnosticDetail)(nil),        // 26: jobseek.crawler.runtime.v1.DiagnosticDetail
+	(*RuntimeError)(nil),            // 27: jobseek.crawler.runtime.v1.RuntimeError
+	(*BoardManifest)(nil),           // 28: jobseek.crawler.runtime.v1.BoardManifest
+	(*Salary)(nil),                  // 29: jobseek.crawler.runtime.v1.Salary
+	(*LocalizedJobContent)(nil),     // 30: jobseek.crawler.runtime.v1.LocalizedJobContent
+	(*JobContent)(nil),              // 31: jobseek.crawler.runtime.v1.JobContent
+	(*DiscoveredJob)(nil),           // 32: jobseek.crawler.runtime.v1.DiscoveredJob
+	(*MonitorMetadataUpdates)(nil),  // 33: jobseek.crawler.runtime.v1.MonitorMetadataUpdates
+	(*MonitorResult)(nil),           // 34: jobseek.crawler.runtime.v1.MonitorResult
+	(*ScrapeResult)(nil),            // 35: jobseek.crawler.runtime.v1.ScrapeResult
+	(*MonitorInput)(nil),            // 36: jobseek.crawler.runtime.v1.MonitorInput
+	(*ScrapeInput)(nil),             // 37: jobseek.crawler.runtime.v1.ScrapeInput
+	(*ExecutionRequest)(nil),        // 38: jobseek.crawler.runtime.v1.ExecutionRequest
+	(*FencingContext)(nil),          // 39: jobseek.crawler.runtime.v1.FencingContext
+	(*OriginOperationRef)(nil),      // 40: jobseek.crawler.runtime.v1.OriginOperationRef
+	(*ResumeRequest)(nil),           // 41: jobseek.crawler.runtime.v1.ResumeRequest
+	(*WindowUpdate)(nil),            // 42: jobseek.crawler.runtime.v1.WindowUpdate
+	(*CancelRequest)(nil),           // 43: jobseek.crawler.runtime.v1.CancelRequest
+	(*ClientHello)(nil),             // 44: jobseek.crawler.runtime.v1.ClientHello
+	(*ServerHello)(nil),             // 45: jobseek.crawler.runtime.v1.ServerHello
+	(*OriginContact)(nil),           // 46: jobseek.crawler.runtime.v1.OriginContact
+	(*OriginOperationDeclared)(nil), // 47: jobseek.crawler.runtime.v1.OriginOperationDeclared
+	(*ArtifactFrame)(nil),           // 48: jobseek.crawler.runtime.v1.ArtifactFrame
+	(*Terminal)(nil),                // 49: jobseek.crawler.runtime.v1.Terminal
+	(*ExecutionFrame)(nil),          // 50: jobseek.crawler.runtime.v1.ExecutionFrame
+	(*ResumeRejected)(nil),          // 51: jobseek.crawler.runtime.v1.ResumeRejected
+	(*ClientMessage)(nil),           // 52: jobseek.crawler.runtime.v1.ClientMessage
+	(*ServerMessage)(nil),           // 53: jobseek.crawler.runtime.v1.ServerMessage
+	(*Selector)(nil),                // 54: jobseek.crawler.runtime.v1.Selector
+	(*ClickAction)(nil),             // 55: jobseek.crawler.runtime.v1.ClickAction
+	(*FillAction)(nil),              // 56: jobseek.crawler.runtime.v1.FillAction
+	(*WaitAction)(nil),              // 57: jobseek.crawler.runtime.v1.WaitAction
+	(*ScrollAction)(nil),            // 58: jobseek.crawler.runtime.v1.ScrollAction
+	(*PaginationAction)(nil),        // 59: jobseek.crawler.runtime.v1.PaginationAction
+	(*EvaluateAction)(nil),          // 60: jobseek.crawler.runtime.v1.EvaluateAction
+	(*BrowserAction)(nil),           // 61: jobseek.crawler.runtime.v1.BrowserAction
+	(*NavigationPlan)(nil),          // 62: jobseek.crawler.runtime.v1.NavigationPlan
+	(*SessionPlan)(nil),             // 63: jobseek.crawler.runtime.v1.SessionPlan
+	(*CapturePlan)(nil),             // 64: jobseek.crawler.runtime.v1.CapturePlan
+	(*EvaluationPlan)(nil),          // 65: jobseek.crawler.runtime.v1.EvaluationPlan
+	(*InterceptionRule)(nil),        // 66: jobseek.crawler.runtime.v1.InterceptionRule
+	(*BrowserPlan)(nil),             // 67: jobseek.crawler.runtime.v1.BrowserPlan
+	(*BrowserExecutionInput)(nil),   // 68: jobseek.crawler.runtime.v1.BrowserExecutionInput
+	(*ActionOutcome)(nil),           // 69: jobseek.crawler.runtime.v1.ActionOutcome
+	(*CapturedValue)(nil),           // 70: jobseek.crawler.runtime.v1.CapturedValue
+	(*EvaluationValue)(nil),         // 71: jobseek.crawler.runtime.v1.EvaluationValue
+	(*BrowserSuccess)(nil),          // 72: jobseek.crawler.runtime.v1.BrowserSuccess
+	(*BrowserFailure)(nil),          // 73: jobseek.crawler.runtime.v1.BrowserFailure
+	(*BrowserUnsupported)(nil),      // 74: jobseek.crawler.runtime.v1.BrowserUnsupported
+	(*BrowserResult)(nil),           // 75: jobseek.crawler.runtime.v1.BrowserResult
+	(*DisconnectFault)(nil),         // 76: jobseek.crawler.runtime.v1.DisconnectFault
+	(*ProtocolEvent)(nil),           // 77: jobseek.crawler.runtime.v1.ProtocolEvent
+	(*ProtocolTranscript)(nil),      // 78: jobseek.crawler.runtime.v1.ProtocolTranscript
+	(*CapturedRequest)(nil),         // 79: jobseek.crawler.runtime.v1.CapturedRequest
+	(*CapturedResponse)(nil),        // 80: jobseek.crawler.runtime.v1.CapturedResponse
+	(*CapturedExchange)(nil),        // 81: jobseek.crawler.runtime.v1.CapturedExchange
+	(*ProjectedTarget)(nil),         // 82: jobseek.crawler.runtime.v1.ProjectedTarget
+	(*ProjectedEffects)(nil),        // 83: jobseek.crawler.runtime.v1.ProjectedEffects
+	(*ReplayCase)(nil),              // 84: jobseek.crawler.runtime.v1.ReplayCase
+	(*ConformanceCase)(nil),         // 85: jobseek.crawler.runtime.v1.ConformanceCase
 }
 var file_runtime_proto_depIdxs = []int32{
-	21,  // 0: jobseek.crawler.runtime.v1.DataChunk.artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
-	22,  // 1: jobseek.crawler.runtime.v1.ChunkManifest.chunks:type_name -> jobseek.crawler.runtime.v1.DataChunk
+	22,  // 0: jobseek.crawler.runtime.v1.DataChunk.artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
+	23,  // 1: jobseek.crawler.runtime.v1.ChunkManifest.chunks:type_name -> jobseek.crawler.runtime.v1.DataChunk
 	10,  // 2: jobseek.crawler.runtime.v1.ExtensionEnvelope.encoding:type_name -> jobseek.crawler.runtime.v1.ExtensionEncoding
 	4,   // 3: jobseek.crawler.runtime.v1.RuntimeError.code:type_name -> jobseek.crawler.runtime.v1.ErrorCode
 	5,   // 4: jobseek.crawler.runtime.v1.RuntimeError.disposition:type_name -> jobseek.crawler.runtime.v1.ErrorDisposition
-	25,  // 5: jobseek.crawler.runtime.v1.RuntimeError.diagnostic_details:type_name -> jobseek.crawler.runtime.v1.DiagnosticDetail
-	24,  // 6: jobseek.crawler.runtime.v1.BoardManifest.config_extensions:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
-	19,  // 7: jobseek.crawler.runtime.v1.JobContent.locations:type_name -> jobseek.crawler.runtime.v1.StringList
-	28,  // 8: jobseek.crawler.runtime.v1.JobContent.base_salary:type_name -> jobseek.crawler.runtime.v1.Salary
-	29,  // 9: jobseek.crawler.runtime.v1.JobContent.localizations:type_name -> jobseek.crawler.runtime.v1.LocalizedJobContent
-	24,  // 10: jobseek.crawler.runtime.v1.JobContent.extensions:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
-	30,  // 11: jobseek.crawler.runtime.v1.DiscoveredJob.content:type_name -> jobseek.crawler.runtime.v1.JobContent
-	24,  // 12: jobseek.crawler.runtime.v1.MonitorMetadataUpdates.extensions:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
-	31,  // 13: jobseek.crawler.runtime.v1.MonitorResult.jobs:type_name -> jobseek.crawler.runtime.v1.DiscoveredJob
-	32,  // 14: jobseek.crawler.runtime.v1.MonitorResult.metadata_updates:type_name -> jobseek.crawler.runtime.v1.MonitorMetadataUpdates
-	30,  // 15: jobseek.crawler.runtime.v1.ScrapeResult.content:type_name -> jobseek.crawler.runtime.v1.JobContent
+	26,  // 5: jobseek.crawler.runtime.v1.RuntimeError.diagnostic_details:type_name -> jobseek.crawler.runtime.v1.DiagnosticDetail
+	25,  // 6: jobseek.crawler.runtime.v1.BoardManifest.config_extensions:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
+	20,  // 7: jobseek.crawler.runtime.v1.JobContent.locations:type_name -> jobseek.crawler.runtime.v1.StringList
+	29,  // 8: jobseek.crawler.runtime.v1.JobContent.base_salary:type_name -> jobseek.crawler.runtime.v1.Salary
+	30,  // 9: jobseek.crawler.runtime.v1.JobContent.localizations:type_name -> jobseek.crawler.runtime.v1.LocalizedJobContent
+	25,  // 10: jobseek.crawler.runtime.v1.JobContent.extensions:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
+	31,  // 11: jobseek.crawler.runtime.v1.DiscoveredJob.content:type_name -> jobseek.crawler.runtime.v1.JobContent
+	25,  // 12: jobseek.crawler.runtime.v1.MonitorMetadataUpdates.extensions:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
+	32,  // 13: jobseek.crawler.runtime.v1.MonitorResult.jobs:type_name -> jobseek.crawler.runtime.v1.DiscoveredJob
+	33,  // 14: jobseek.crawler.runtime.v1.MonitorResult.metadata_updates:type_name -> jobseek.crawler.runtime.v1.MonitorMetadataUpdates
+	31,  // 15: jobseek.crawler.runtime.v1.ScrapeResult.content:type_name -> jobseek.crawler.runtime.v1.JobContent
 	2,   // 16: jobseek.crawler.runtime.v1.ExecutionRequest.kind:type_name -> jobseek.crawler.runtime.v1.ExecutionKind
-	27,  // 17: jobseek.crawler.runtime.v1.ExecutionRequest.board_manifest:type_name -> jobseek.crawler.runtime.v1.BoardManifest
-	35,  // 18: jobseek.crawler.runtime.v1.ExecutionRequest.monitor:type_name -> jobseek.crawler.runtime.v1.MonitorInput
-	36,  // 19: jobseek.crawler.runtime.v1.ExecutionRequest.scrape:type_name -> jobseek.crawler.runtime.v1.ScrapeInput
-	67,  // 20: jobseek.crawler.runtime.v1.ExecutionRequest.browser:type_name -> jobseek.crawler.runtime.v1.BrowserExecutionInput
-	39,  // 21: jobseek.crawler.runtime.v1.ExecutionRequest.origin_operations:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
-	38,  // 22: jobseek.crawler.runtime.v1.ExecutionRequest.fencing_context:type_name -> jobseek.crawler.runtime.v1.FencingContext
+	28,  // 17: jobseek.crawler.runtime.v1.ExecutionRequest.board_manifest:type_name -> jobseek.crawler.runtime.v1.BoardManifest
+	36,  // 18: jobseek.crawler.runtime.v1.ExecutionRequest.monitor:type_name -> jobseek.crawler.runtime.v1.MonitorInput
+	37,  // 19: jobseek.crawler.runtime.v1.ExecutionRequest.scrape:type_name -> jobseek.crawler.runtime.v1.ScrapeInput
+	68,  // 20: jobseek.crawler.runtime.v1.ExecutionRequest.browser:type_name -> jobseek.crawler.runtime.v1.BrowserExecutionInput
+	40,  // 21: jobseek.crawler.runtime.v1.ExecutionRequest.origin_operations:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
+	39,  // 22: jobseek.crawler.runtime.v1.ExecutionRequest.fencing_context:type_name -> jobseek.crawler.runtime.v1.FencingContext
 	1,   // 23: jobseek.crawler.runtime.v1.FencingContext.engine_owner:type_name -> jobseek.crawler.runtime.v1.EngineOwner
-	38,  // 24: jobseek.crawler.runtime.v1.ResumeRequest.fencing_context:type_name -> jobseek.crawler.runtime.v1.FencingContext
-	38,  // 25: jobseek.crawler.runtime.v1.CancelRequest.fencing_context:type_name -> jobseek.crawler.runtime.v1.FencingContext
+	39,  // 24: jobseek.crawler.runtime.v1.ResumeRequest.fencing_context:type_name -> jobseek.crawler.runtime.v1.FencingContext
+	39,  // 25: jobseek.crawler.runtime.v1.CancelRequest.fencing_context:type_name -> jobseek.crawler.runtime.v1.FencingContext
 	0,   // 26: jobseek.crawler.runtime.v1.ClientHello.implementation:type_name -> jobseek.crawler.runtime.v1.Implementation
-	18,  // 27: jobseek.crawler.runtime.v1.ClientHello.requested_limits:type_name -> jobseek.crawler.runtime.v1.Limits
+	19,  // 27: jobseek.crawler.runtime.v1.ClientHello.requested_limits:type_name -> jobseek.crawler.runtime.v1.Limits
 	0,   // 28: jobseek.crawler.runtime.v1.ServerHello.implementation:type_name -> jobseek.crawler.runtime.v1.Implementation
-	18,  // 29: jobseek.crawler.runtime.v1.ServerHello.accepted_limits:type_name -> jobseek.crawler.runtime.v1.Limits
-	39,  // 30: jobseek.crawler.runtime.v1.OriginContact.operation:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
+	19,  // 29: jobseek.crawler.runtime.v1.ServerHello.accepted_limits:type_name -> jobseek.crawler.runtime.v1.Limits
+	40,  // 30: jobseek.crawler.runtime.v1.OriginContact.operation:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
 	14,  // 31: jobseek.crawler.runtime.v1.OriginContact.disposition:type_name -> jobseek.crawler.runtime.v1.OriginContactDisposition
-	21,  // 32: jobseek.crawler.runtime.v1.OriginContact.exchange_artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
-	39,  // 33: jobseek.crawler.runtime.v1.OriginOperationDeclared.operation:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
-	21,  // 34: jobseek.crawler.runtime.v1.ArtifactFrame.artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
+	22,  // 32: jobseek.crawler.runtime.v1.OriginContact.exchange_artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
+	40,  // 33: jobseek.crawler.runtime.v1.OriginOperationDeclared.operation:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
+	22,  // 34: jobseek.crawler.runtime.v1.ArtifactFrame.artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
 	3,   // 35: jobseek.crawler.runtime.v1.Terminal.status:type_name -> jobseek.crawler.runtime.v1.TerminalStatus
-	45,  // 36: jobseek.crawler.runtime.v1.ExecutionFrame.origin_contact:type_name -> jobseek.crawler.runtime.v1.OriginContact
-	33,  // 37: jobseek.crawler.runtime.v1.ExecutionFrame.monitor_batch:type_name -> jobseek.crawler.runtime.v1.MonitorResult
-	34,  // 38: jobseek.crawler.runtime.v1.ExecutionFrame.scrape_result:type_name -> jobseek.crawler.runtime.v1.ScrapeResult
-	47,  // 39: jobseek.crawler.runtime.v1.ExecutionFrame.artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactFrame
-	26,  // 40: jobseek.crawler.runtime.v1.ExecutionFrame.error:type_name -> jobseek.crawler.runtime.v1.RuntimeError
-	48,  // 41: jobseek.crawler.runtime.v1.ExecutionFrame.terminal:type_name -> jobseek.crawler.runtime.v1.Terminal
-	74,  // 42: jobseek.crawler.runtime.v1.ExecutionFrame.browser_result:type_name -> jobseek.crawler.runtime.v1.BrowserResult
-	46,  // 43: jobseek.crawler.runtime.v1.ExecutionFrame.origin_operation_declared:type_name -> jobseek.crawler.runtime.v1.OriginOperationDeclared
-	26,  // 44: jobseek.crawler.runtime.v1.ResumeRejected.error:type_name -> jobseek.crawler.runtime.v1.RuntimeError
-	43,  // 45: jobseek.crawler.runtime.v1.ClientMessage.hello:type_name -> jobseek.crawler.runtime.v1.ClientHello
-	37,  // 46: jobseek.crawler.runtime.v1.ClientMessage.start:type_name -> jobseek.crawler.runtime.v1.ExecutionRequest
-	40,  // 47: jobseek.crawler.runtime.v1.ClientMessage.resume:type_name -> jobseek.crawler.runtime.v1.ResumeRequest
-	41,  // 48: jobseek.crawler.runtime.v1.ClientMessage.window_update:type_name -> jobseek.crawler.runtime.v1.WindowUpdate
-	42,  // 49: jobseek.crawler.runtime.v1.ClientMessage.cancel:type_name -> jobseek.crawler.runtime.v1.CancelRequest
-	44,  // 50: jobseek.crawler.runtime.v1.ServerMessage.hello:type_name -> jobseek.crawler.runtime.v1.ServerHello
-	49,  // 51: jobseek.crawler.runtime.v1.ServerMessage.frame:type_name -> jobseek.crawler.runtime.v1.ExecutionFrame
-	50,  // 52: jobseek.crawler.runtime.v1.ServerMessage.resume_rejected:type_name -> jobseek.crawler.runtime.v1.ResumeRejected
+	46,  // 36: jobseek.crawler.runtime.v1.ExecutionFrame.origin_contact:type_name -> jobseek.crawler.runtime.v1.OriginContact
+	34,  // 37: jobseek.crawler.runtime.v1.ExecutionFrame.monitor_batch:type_name -> jobseek.crawler.runtime.v1.MonitorResult
+	35,  // 38: jobseek.crawler.runtime.v1.ExecutionFrame.scrape_result:type_name -> jobseek.crawler.runtime.v1.ScrapeResult
+	48,  // 39: jobseek.crawler.runtime.v1.ExecutionFrame.artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactFrame
+	27,  // 40: jobseek.crawler.runtime.v1.ExecutionFrame.error:type_name -> jobseek.crawler.runtime.v1.RuntimeError
+	49,  // 41: jobseek.crawler.runtime.v1.ExecutionFrame.terminal:type_name -> jobseek.crawler.runtime.v1.Terminal
+	75,  // 42: jobseek.crawler.runtime.v1.ExecutionFrame.browser_result:type_name -> jobseek.crawler.runtime.v1.BrowserResult
+	47,  // 43: jobseek.crawler.runtime.v1.ExecutionFrame.origin_operation_declared:type_name -> jobseek.crawler.runtime.v1.OriginOperationDeclared
+	27,  // 44: jobseek.crawler.runtime.v1.ResumeRejected.error:type_name -> jobseek.crawler.runtime.v1.RuntimeError
+	44,  // 45: jobseek.crawler.runtime.v1.ClientMessage.hello:type_name -> jobseek.crawler.runtime.v1.ClientHello
+	38,  // 46: jobseek.crawler.runtime.v1.ClientMessage.start:type_name -> jobseek.crawler.runtime.v1.ExecutionRequest
+	41,  // 47: jobseek.crawler.runtime.v1.ClientMessage.resume:type_name -> jobseek.crawler.runtime.v1.ResumeRequest
+	42,  // 48: jobseek.crawler.runtime.v1.ClientMessage.window_update:type_name -> jobseek.crawler.runtime.v1.WindowUpdate
+	43,  // 49: jobseek.crawler.runtime.v1.ClientMessage.cancel:type_name -> jobseek.crawler.runtime.v1.CancelRequest
+	45,  // 50: jobseek.crawler.runtime.v1.ServerMessage.hello:type_name -> jobseek.crawler.runtime.v1.ServerHello
+	50,  // 51: jobseek.crawler.runtime.v1.ServerMessage.frame:type_name -> jobseek.crawler.runtime.v1.ExecutionFrame
+	51,  // 52: jobseek.crawler.runtime.v1.ServerMessage.resume_rejected:type_name -> jobseek.crawler.runtime.v1.ResumeRejected
 	11,  // 53: jobseek.crawler.runtime.v1.Selector.kind:type_name -> jobseek.crawler.runtime.v1.SelectorKind
-	53,  // 54: jobseek.crawler.runtime.v1.ClickAction.selector:type_name -> jobseek.crawler.runtime.v1.Selector
-	53,  // 55: jobseek.crawler.runtime.v1.FillAction.selector:type_name -> jobseek.crawler.runtime.v1.Selector
-	53,  // 56: jobseek.crawler.runtime.v1.WaitAction.selector:type_name -> jobseek.crawler.runtime.v1.Selector
+	54,  // 54: jobseek.crawler.runtime.v1.ClickAction.selector:type_name -> jobseek.crawler.runtime.v1.Selector
+	54,  // 55: jobseek.crawler.runtime.v1.FillAction.selector:type_name -> jobseek.crawler.runtime.v1.Selector
+	54,  // 56: jobseek.crawler.runtime.v1.WaitAction.selector:type_name -> jobseek.crawler.runtime.v1.Selector
 	12,  // 57: jobseek.crawler.runtime.v1.ScrollAction.direction:type_name -> jobseek.crawler.runtime.v1.ScrollDirection
-	53,  // 58: jobseek.crawler.runtime.v1.PaginationAction.next_selector:type_name -> jobseek.crawler.runtime.v1.Selector
-	54,  // 59: jobseek.crawler.runtime.v1.BrowserAction.click:type_name -> jobseek.crawler.runtime.v1.ClickAction
-	55,  // 60: jobseek.crawler.runtime.v1.BrowserAction.fill:type_name -> jobseek.crawler.runtime.v1.FillAction
-	56,  // 61: jobseek.crawler.runtime.v1.BrowserAction.wait:type_name -> jobseek.crawler.runtime.v1.WaitAction
-	57,  // 62: jobseek.crawler.runtime.v1.BrowserAction.scroll:type_name -> jobseek.crawler.runtime.v1.ScrollAction
-	58,  // 63: jobseek.crawler.runtime.v1.BrowserAction.paginate:type_name -> jobseek.crawler.runtime.v1.PaginationAction
-	59,  // 64: jobseek.crawler.runtime.v1.BrowserAction.evaluate:type_name -> jobseek.crawler.runtime.v1.EvaluateAction
+	54,  // 58: jobseek.crawler.runtime.v1.PaginationAction.next_selector:type_name -> jobseek.crawler.runtime.v1.Selector
+	55,  // 59: jobseek.crawler.runtime.v1.BrowserAction.click:type_name -> jobseek.crawler.runtime.v1.ClickAction
+	56,  // 60: jobseek.crawler.runtime.v1.BrowserAction.fill:type_name -> jobseek.crawler.runtime.v1.FillAction
+	57,  // 61: jobseek.crawler.runtime.v1.BrowserAction.wait:type_name -> jobseek.crawler.runtime.v1.WaitAction
+	58,  // 62: jobseek.crawler.runtime.v1.BrowserAction.scroll:type_name -> jobseek.crawler.runtime.v1.ScrollAction
+	59,  // 63: jobseek.crawler.runtime.v1.BrowserAction.paginate:type_name -> jobseek.crawler.runtime.v1.PaginationAction
+	60,  // 64: jobseek.crawler.runtime.v1.BrowserAction.evaluate:type_name -> jobseek.crawler.runtime.v1.EvaluateAction
 	9,   // 65: jobseek.crawler.runtime.v1.BrowserAction.network_effect:type_name -> jobseek.crawler.runtime.v1.BrowserNetworkEffect
 	8,   // 66: jobseek.crawler.runtime.v1.NavigationPlan.wait_until:type_name -> jobseek.crawler.runtime.v1.WaitCondition
-	20,  // 67: jobseek.crawler.runtime.v1.NavigationPlan.headers:type_name -> jobseek.crawler.runtime.v1.Header
+	21,  // 67: jobseek.crawler.runtime.v1.NavigationPlan.headers:type_name -> jobseek.crawler.runtime.v1.Header
 	13,  // 68: jobseek.crawler.runtime.v1.CapturePlan.kind:type_name -> jobseek.crawler.runtime.v1.CaptureKind
 	9,   // 69: jobseek.crawler.runtime.v1.EvaluationPlan.network_effect:type_name -> jobseek.crawler.runtime.v1.BrowserNetworkEffect
-	20,  // 70: jobseek.crawler.runtime.v1.InterceptionRule.replace_headers:type_name -> jobseek.crawler.runtime.v1.Header
+	21,  // 70: jobseek.crawler.runtime.v1.InterceptionRule.replace_headers:type_name -> jobseek.crawler.runtime.v1.Header
 	7,   // 71: jobseek.crawler.runtime.v1.BrowserPlan.required_capabilities:type_name -> jobseek.crawler.runtime.v1.BrowserCapability
-	61,  // 72: jobseek.crawler.runtime.v1.BrowserPlan.navigation:type_name -> jobseek.crawler.runtime.v1.NavigationPlan
-	62,  // 73: jobseek.crawler.runtime.v1.BrowserPlan.session:type_name -> jobseek.crawler.runtime.v1.SessionPlan
-	60,  // 74: jobseek.crawler.runtime.v1.BrowserPlan.actions:type_name -> jobseek.crawler.runtime.v1.BrowserAction
-	63,  // 75: jobseek.crawler.runtime.v1.BrowserPlan.captures:type_name -> jobseek.crawler.runtime.v1.CapturePlan
-	64,  // 76: jobseek.crawler.runtime.v1.BrowserPlan.evaluations:type_name -> jobseek.crawler.runtime.v1.EvaluationPlan
-	65,  // 77: jobseek.crawler.runtime.v1.BrowserPlan.interceptions:type_name -> jobseek.crawler.runtime.v1.InterceptionRule
-	39,  // 78: jobseek.crawler.runtime.v1.BrowserPlan.origin_operations:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
-	66,  // 79: jobseek.crawler.runtime.v1.BrowserExecutionInput.plan:type_name -> jobseek.crawler.runtime.v1.BrowserPlan
-	23,  // 80: jobseek.crawler.runtime.v1.CapturedValue.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
-	24,  // 81: jobseek.crawler.runtime.v1.EvaluationValue.value:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
-	23,  // 82: jobseek.crawler.runtime.v1.BrowserSuccess.html:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
-	68,  // 83: jobseek.crawler.runtime.v1.BrowserSuccess.action_outcomes:type_name -> jobseek.crawler.runtime.v1.ActionOutcome
-	69,  // 84: jobseek.crawler.runtime.v1.BrowserSuccess.captures:type_name -> jobseek.crawler.runtime.v1.CapturedValue
-	70,  // 85: jobseek.crawler.runtime.v1.BrowserSuccess.evaluations:type_name -> jobseek.crawler.runtime.v1.EvaluationValue
-	21,  // 86: jobseek.crawler.runtime.v1.BrowserSuccess.artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
-	26,  // 87: jobseek.crawler.runtime.v1.BrowserFailure.error:type_name -> jobseek.crawler.runtime.v1.RuntimeError
-	21,  // 88: jobseek.crawler.runtime.v1.BrowserFailure.diagnostic_artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
+	62,  // 72: jobseek.crawler.runtime.v1.BrowserPlan.navigation:type_name -> jobseek.crawler.runtime.v1.NavigationPlan
+	63,  // 73: jobseek.crawler.runtime.v1.BrowserPlan.session:type_name -> jobseek.crawler.runtime.v1.SessionPlan
+	61,  // 74: jobseek.crawler.runtime.v1.BrowserPlan.actions:type_name -> jobseek.crawler.runtime.v1.BrowserAction
+	64,  // 75: jobseek.crawler.runtime.v1.BrowserPlan.captures:type_name -> jobseek.crawler.runtime.v1.CapturePlan
+	65,  // 76: jobseek.crawler.runtime.v1.BrowserPlan.evaluations:type_name -> jobseek.crawler.runtime.v1.EvaluationPlan
+	66,  // 77: jobseek.crawler.runtime.v1.BrowserPlan.interceptions:type_name -> jobseek.crawler.runtime.v1.InterceptionRule
+	40,  // 78: jobseek.crawler.runtime.v1.BrowserPlan.origin_operations:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
+	67,  // 79: jobseek.crawler.runtime.v1.BrowserExecutionInput.plan:type_name -> jobseek.crawler.runtime.v1.BrowserPlan
+	24,  // 80: jobseek.crawler.runtime.v1.CapturedValue.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
+	25,  // 81: jobseek.crawler.runtime.v1.EvaluationValue.value:type_name -> jobseek.crawler.runtime.v1.ExtensionEnvelope
+	24,  // 82: jobseek.crawler.runtime.v1.BrowserSuccess.html:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
+	69,  // 83: jobseek.crawler.runtime.v1.BrowserSuccess.action_outcomes:type_name -> jobseek.crawler.runtime.v1.ActionOutcome
+	70,  // 84: jobseek.crawler.runtime.v1.BrowserSuccess.captures:type_name -> jobseek.crawler.runtime.v1.CapturedValue
+	71,  // 85: jobseek.crawler.runtime.v1.BrowserSuccess.evaluations:type_name -> jobseek.crawler.runtime.v1.EvaluationValue
+	22,  // 86: jobseek.crawler.runtime.v1.BrowserSuccess.artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
+	27,  // 87: jobseek.crawler.runtime.v1.BrowserFailure.error:type_name -> jobseek.crawler.runtime.v1.RuntimeError
+	22,  // 88: jobseek.crawler.runtime.v1.BrowserFailure.diagnostic_artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
 	7,   // 89: jobseek.crawler.runtime.v1.BrowserUnsupported.capabilities:type_name -> jobseek.crawler.runtime.v1.BrowserCapability
-	21,  // 90: jobseek.crawler.runtime.v1.BrowserUnsupported.diagnostic_artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
+	22,  // 90: jobseek.crawler.runtime.v1.BrowserUnsupported.diagnostic_artifacts:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
 	6,   // 91: jobseek.crawler.runtime.v1.BrowserResult.backend:type_name -> jobseek.crawler.runtime.v1.BrowserBackend
-	71,  // 92: jobseek.crawler.runtime.v1.BrowserResult.success:type_name -> jobseek.crawler.runtime.v1.BrowserSuccess
-	72,  // 93: jobseek.crawler.runtime.v1.BrowserResult.error:type_name -> jobseek.crawler.runtime.v1.BrowserFailure
-	73,  // 94: jobseek.crawler.runtime.v1.BrowserResult.unsupported:type_name -> jobseek.crawler.runtime.v1.BrowserUnsupported
+	72,  // 92: jobseek.crawler.runtime.v1.BrowserResult.success:type_name -> jobseek.crawler.runtime.v1.BrowserSuccess
+	73,  // 93: jobseek.crawler.runtime.v1.BrowserResult.error:type_name -> jobseek.crawler.runtime.v1.BrowserFailure
+	74,  // 94: jobseek.crawler.runtime.v1.BrowserResult.unsupported:type_name -> jobseek.crawler.runtime.v1.BrowserUnsupported
 	17,  // 95: jobseek.crawler.runtime.v1.DisconnectFault.point:type_name -> jobseek.crawler.runtime.v1.DisconnectPoint
 	16,  // 96: jobseek.crawler.runtime.v1.ProtocolEvent.direction:type_name -> jobseek.crawler.runtime.v1.EventDirection
-	51,  // 97: jobseek.crawler.runtime.v1.ProtocolEvent.client:type_name -> jobseek.crawler.runtime.v1.ClientMessage
-	52,  // 98: jobseek.crawler.runtime.v1.ProtocolEvent.server:type_name -> jobseek.crawler.runtime.v1.ServerMessage
-	75,  // 99: jobseek.crawler.runtime.v1.ProtocolEvent.fault:type_name -> jobseek.crawler.runtime.v1.DisconnectFault
-	76,  // 100: jobseek.crawler.runtime.v1.ProtocolTranscript.events:type_name -> jobseek.crawler.runtime.v1.ProtocolEvent
-	20,  // 101: jobseek.crawler.runtime.v1.CapturedRequest.headers:type_name -> jobseek.crawler.runtime.v1.Header
-	23,  // 102: jobseek.crawler.runtime.v1.CapturedRequest.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
-	20,  // 103: jobseek.crawler.runtime.v1.CapturedResponse.headers:type_name -> jobseek.crawler.runtime.v1.Header
-	23,  // 104: jobseek.crawler.runtime.v1.CapturedResponse.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
-	39,  // 105: jobseek.crawler.runtime.v1.CapturedExchange.operation:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
-	78,  // 106: jobseek.crawler.runtime.v1.CapturedExchange.request:type_name -> jobseek.crawler.runtime.v1.CapturedRequest
-	79,  // 107: jobseek.crawler.runtime.v1.CapturedExchange.response:type_name -> jobseek.crawler.runtime.v1.CapturedResponse
-	15,  // 108: jobseek.crawler.runtime.v1.ReplayCase.adapter:type_name -> jobseek.crawler.runtime.v1.ReplayAdapter
-	37,  // 109: jobseek.crawler.runtime.v1.ReplayCase.execution_request:type_name -> jobseek.crawler.runtime.v1.ExecutionRequest
-	80,  // 110: jobseek.crawler.runtime.v1.ReplayCase.exchanges:type_name -> jobseek.crawler.runtime.v1.CapturedExchange
-	49,  // 111: jobseek.crawler.runtime.v1.ReplayCase.expected_frames:type_name -> jobseek.crawler.runtime.v1.ExecutionFrame
-	81,  // 112: jobseek.crawler.runtime.v1.ReplayCase.expected_projection:type_name -> jobseek.crawler.runtime.v1.ProjectedEffects
-	77,  // 113: jobseek.crawler.runtime.v1.ConformanceCase.transcript:type_name -> jobseek.crawler.runtime.v1.ProtocolTranscript
-	66,  // 114: jobseek.crawler.runtime.v1.ConformanceCase.browser_plan:type_name -> jobseek.crawler.runtime.v1.BrowserPlan
-	74,  // 115: jobseek.crawler.runtime.v1.ConformanceCase.browser_result:type_name -> jobseek.crawler.runtime.v1.BrowserResult
-	82,  // 116: jobseek.crawler.runtime.v1.ConformanceCase.replay:type_name -> jobseek.crawler.runtime.v1.ReplayCase
-	117, // [117:117] is the sub-list for method output_type
-	117, // [117:117] is the sub-list for method input_type
-	117, // [117:117] is the sub-list for extension type_name
-	117, // [117:117] is the sub-list for extension extendee
-	0,   // [0:117] is the sub-list for field type_name
+	52,  // 97: jobseek.crawler.runtime.v1.ProtocolEvent.client:type_name -> jobseek.crawler.runtime.v1.ClientMessage
+	53,  // 98: jobseek.crawler.runtime.v1.ProtocolEvent.server:type_name -> jobseek.crawler.runtime.v1.ServerMessage
+	76,  // 99: jobseek.crawler.runtime.v1.ProtocolEvent.fault:type_name -> jobseek.crawler.runtime.v1.DisconnectFault
+	77,  // 100: jobseek.crawler.runtime.v1.ProtocolTranscript.events:type_name -> jobseek.crawler.runtime.v1.ProtocolEvent
+	21,  // 101: jobseek.crawler.runtime.v1.CapturedRequest.headers:type_name -> jobseek.crawler.runtime.v1.Header
+	24,  // 102: jobseek.crawler.runtime.v1.CapturedRequest.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
+	21,  // 103: jobseek.crawler.runtime.v1.CapturedResponse.headers:type_name -> jobseek.crawler.runtime.v1.Header
+	24,  // 104: jobseek.crawler.runtime.v1.CapturedResponse.body:type_name -> jobseek.crawler.runtime.v1.ChunkManifest
+	40,  // 105: jobseek.crawler.runtime.v1.CapturedExchange.operation:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
+	79,  // 106: jobseek.crawler.runtime.v1.CapturedExchange.request:type_name -> jobseek.crawler.runtime.v1.CapturedRequest
+	80,  // 107: jobseek.crawler.runtime.v1.CapturedExchange.response:type_name -> jobseek.crawler.runtime.v1.CapturedResponse
+	18,  // 108: jobseek.crawler.runtime.v1.ProjectedTarget.action:type_name -> jobseek.crawler.runtime.v1.ProjectedAction
+	2,   // 109: jobseek.crawler.runtime.v1.ProjectedEffects.execution_kind:type_name -> jobseek.crawler.runtime.v1.ExecutionKind
+	82,  // 110: jobseek.crawler.runtime.v1.ProjectedEffects.targets:type_name -> jobseek.crawler.runtime.v1.ProjectedTarget
+	15,  // 111: jobseek.crawler.runtime.v1.ReplayCase.adapter:type_name -> jobseek.crawler.runtime.v1.ReplayAdapter
+	38,  // 112: jobseek.crawler.runtime.v1.ReplayCase.execution_request:type_name -> jobseek.crawler.runtime.v1.ExecutionRequest
+	81,  // 113: jobseek.crawler.runtime.v1.ReplayCase.exchanges:type_name -> jobseek.crawler.runtime.v1.CapturedExchange
+	50,  // 114: jobseek.crawler.runtime.v1.ReplayCase.expected_frames:type_name -> jobseek.crawler.runtime.v1.ExecutionFrame
+	83,  // 115: jobseek.crawler.runtime.v1.ReplayCase.expected_projection:type_name -> jobseek.crawler.runtime.v1.ProjectedEffects
+	78,  // 116: jobseek.crawler.runtime.v1.ConformanceCase.transcript:type_name -> jobseek.crawler.runtime.v1.ProtocolTranscript
+	67,  // 117: jobseek.crawler.runtime.v1.ConformanceCase.browser_plan:type_name -> jobseek.crawler.runtime.v1.BrowserPlan
+	75,  // 118: jobseek.crawler.runtime.v1.ConformanceCase.browser_result:type_name -> jobseek.crawler.runtime.v1.BrowserResult
+	84,  // 119: jobseek.crawler.runtime.v1.ConformanceCase.replay:type_name -> jobseek.crawler.runtime.v1.ReplayCase
+	120, // [120:120] is the sub-list for method output_type
+	120, // [120:120] is the sub-list for method input_type
+	120, // [120:120] is the sub-list for extension type_name
+	120, // [120:120] is the sub-list for extension extendee
+	0,   // [0:120] is the sub-list for field type_name
 }
 
 func init() { file_runtime_proto_init() }
@@ -7380,7 +7551,8 @@ func file_runtime_proto_init() {
 	}
 	file_runtime_proto_msgTypes[62].OneofWrappers = []any{}
 	file_runtime_proto_msgTypes[63].OneofWrappers = []any{}
-	file_runtime_proto_msgTypes[65].OneofWrappers = []any{
+	file_runtime_proto_msgTypes[64].OneofWrappers = []any{}
+	file_runtime_proto_msgTypes[66].OneofWrappers = []any{
 		(*ConformanceCase_Transcript)(nil),
 		(*ConformanceCase_BrowserPlan)(nil),
 		(*ConformanceCase_BrowserResult)(nil),
@@ -7391,8 +7563,8 @@ func file_runtime_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_runtime_proto_rawDesc), len(file_runtime_proto_rawDesc)),
-			NumEnums:      18,
-			NumMessages:   66,
+			NumEnums:      19,
+			NumMessages:   67,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

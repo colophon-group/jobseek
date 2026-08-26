@@ -18,9 +18,11 @@ RUN uv sync --frozen --no-dev --no-install-project
 # Copy source and data
 COPY src/ src/
 COPY data/ data/
+COPY contracts/v1/python/crawler_runtime_contracts/ contracts/v1/python/crawler_runtime_contracts/
 
 # Install the project itself
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev \
+    && uv run --no-sync python -c "from crawler_runtime_contracts.v1 import framing, runtime_pb2; assert runtime_pb2.DESCRIPTOR.package == 'jobseek.crawler.runtime.v1'; assert callable(framing.decode_delimited)"
 
 # ── Target: slim (worker, exporter, drain — no Playwright) ───────────
 FROM base AS slim

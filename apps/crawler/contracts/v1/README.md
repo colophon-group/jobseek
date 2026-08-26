@@ -14,9 +14,13 @@ wire representations of this contract. They must be normalized into
 ## Layout
 
 - `runtime.proto` — authoritative messages, enums, and tagged unions.
-- `gen/{python,go}` — committed generated bindings.
+- `gen/{python,go}` — committed generated reference bindings.
+- `python/crawler_runtime_contracts` and `framing/` — installable Python and Go
+  package boundaries, including the reference length-delimited codecs.
 - `conformance/{python,go}` — independent semantic validators using the same
   fixtures.
+- `limits.json` and `extension_registry.json` — single sources for generated
+  hard limits and extension schema/context registries in both languages.
 - `fixtures/conformance` — positive and negative state-machine cases.
 - `fixtures/replay` — bounded, deterministically redacted offline captures.
 - `protocol.md` — framing, state, origin identity, and authority rules.
@@ -36,14 +40,16 @@ go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
 ./generate.sh
 ./generate.sh --check
 
-PYTHONPATH=. uv run --project ../.. pytest -q conformance/python/test_contract.py
+PYTHONPATH=python:. uv run --project ../.. pytest -q conformance/python/test_contract.py
 go test ./...
-PYTHONPATH=. uv run --project ../.. python tools/check_contract.py
+PYTHONPATH=python:. uv run --project ../.. python tools/check_contract.py
 ```
 
 The Python binding is generated for protobuf 6.31.1 and is runtime-tested
 against the crawler's `protobuf>=6.33,<7` dependency. Local system `protoc`
-versions are deliberately ignored.
+versions are deliberately ignored. The crawler wheel and runtime image expose
+`crawler_runtime_contracts.v1`; importing from the repository-only `gen`
+directory is unsupported.
 
 This foundation owns core messages and representative safety fixtures.
 Exhaustive provider-family extraction and Lightpanda capability corpora remain
@@ -53,4 +59,4 @@ provider implementation suite.
 No free-form protobuf `Struct` or `Value` exists in the request, output, or
 policy surface. Common fields are typed. Provider-specific semantics use a
 bounded `ExtensionEnvelope` whose schema ID/version/encoding must be present in
-the fail-closed Python/Go registry.
+the fail-closed Python/Go registry generated from `extension_registry.json`.

@@ -1,0 +1,82 @@
+[
+  {
+    "name": "canonical-root",
+    "url": "https://example.invalid/",
+    "valid": true
+  },
+  {
+    "name": "canonical-idna-a-label",
+    "url": "https://xn--zrich-kva.example/jobs",
+    "valid": true
+  },
+  {
+    "name": "canonical-query",
+    "url": "https://example.invalid/jobs?locale=en",
+    "valid": true
+  },
+  {
+    "name": "canonical-reserved-escape",
+    "url": "https://example.invalid/jobs%2Fengineering",
+    "valid": true
+  },
+  {
+    "name": "percent-encoded-host-letter",
+    "url": "https://%65xample.invalid/jobs",
+    "valid": false
+  },
+  {
+    "name": "percent-encoded-host-dot",
+    "url": "https://example%2Einvalid/jobs",
+    "valid": false
+  },
+  {
+    "name": "unicode-host-not-idna",
+    "url": "https://zürich.example/jobs",
+    "valid": false
+  },
+  {
+    "name": "default-http-port",
+    "url": "http://example.invalid:80/jobs",
+    "valid": false
+  },
+  {
+    "name": "default-https-port",
+    "url": "https://example.invalid:443/jobs",
+    "valid": false
+  },
+  {
+    "name": "literal-dot-segment",
+    "url": "https://example.invalid/jobs/../admin",
+    "valid": false
+  },
+  {
+    "name": "literal-current-segment",
+    "url": "https://example.invalid/./jobs",
+    "valid": false
+  },
+  {
+    "name": "unreserved-tilde-escape",
+    "url": "https://example.invalid/jobs/%7Eteam",
+    "valid": false
+  },
+  {
+    "name": "unreserved-dot-escape",
+    "url": "https://example.invalid/jobs/%2E%2E/admin",
+    "valid": false
+  },
+  {
+    "name": "lowercase-percent-escape",
+    "url": "https://example.invalid/jobs%2fengineering",
+    "valid": false
+  },
+  {
+    "name": "empty-path",
+    "url": "https://example.invalid",
+    "valid": false
+  },
+  {
+    "name": "empty-query",
+    "url": "https://example.invalid/jobs?",
+    "valid": false
+  }
+]

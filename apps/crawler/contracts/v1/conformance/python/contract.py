@@ -5,9 +5,10 @@ import json
 import re
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlsplit
 
-from gen.python import runtime_pb2 as pb
+from crawler_runtime_contracts.v1 import runtime_pb2 as pb
+from crawler_runtime_contracts.v1.extension_rules import EXTENSION_RULES
 from google.protobuf import json_format
 from google.protobuf.message import Message
 
@@ -15,46 +16,57 @@ CONTRACT_VERSION = "crawler.runtime/v1"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 REDACTED_RE = re.compile(r"^redacted-sha256:[0-9a-f]{64}$")
 TRACEPARENT_RE = re.compile(r"^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$")
+TRACESTATE_KEY_RE = re.compile(
+    r"^(?:[a-z][a-z0-9_\-*/]{0,255}|[a-z0-9][a-z0-9_\-*/]{0,240}@[a-z][a-z0-9_\-*/]{0,13})$"
+)
+TRACESTATE_VALUE_RE = re.compile(
+    r"^[\x21-\x2B\x2D-\x3C\x3E-\x7E](?:[\x20-\x2B\x2D-\x3C\x3E-\x7E]{0,254}[\x21-\x2B\x2D-\x3C\x3E-\x7E])?$"
+)
 DEADLINE_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$"
 )
-SENSITIVE_HEADERS = frozenset({"authorization", "cookie", "proxy-authorization", "x-api-key"})
+SENSITIVE_HEADERS = frozenset(
+    {
+        "authorization",
+        "cookie",
+        "proxy-authorization",
+        "set-cookie",
+        "x-api-key",
+        "x-auth-token",
+    }
+)
+SENSITIVE_PARAMETER_NAMES = frozenset(
+    {
+        "api-key",
+        "api_key",
+        "apikey",
+        "access-token",
+        "access_token",
+        "authorization",
+        "cookie",
+        "password",
+        "secret",
+        "token",
+    }
+)
+EMAIL_PARAMETER_NAMES = frozenset({"email", "e-mail", "mail"})
+EMAIL_BYTES_RE = re.compile(rb"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
+JWT_BYTES_RE = re.compile(rb"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b")
+PRIVATE_KEY_BYTES_RE = re.compile(rb"-----BEGIN [A-Z ]*PRIVATE KEY-----")
+URL_CREDENTIAL_BYTES_RE = re.compile(rb"https?://[^/@\s:]+:[^/@\s]+@")
+SECRET_ASSIGNMENT_BYTES_RE = re.compile(
+    rb"(?i)(?:api[_-]?key|access[_-]?token|token|password|secret|authorization|cookie)"
+    rb"[\"']?[ \t]*[:=][ \t]*[\"']?([^\"'&;,\s}]+)"
+)
+REDACTED_EMAIL_RE = re.compile(r"^person-[0-9a-f]{64}@redacted\.invalid$")
+DNS_LABEL_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
+UNRESERVED_URL_BYTES = frozenset(
+    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+)
 
 HARD_LIMITS = pb.Limits(**json.loads((Path(__file__).parents[2] / "limits.json").read_text()))
 MAX_TRANSFER_CHUNKS = 64
 MAX_EXTENSION_BYTES = 65_536
-EXTENSION_REGISTRY = frozenset(
-    {
-        (
-            "jobseek.runtime.v1/representative-json/monitor-config",
-            1,
-            pb.EXTENSION_ENCODING_CANONICAL_JSON,
-        ),
-        (
-            "jobseek.runtime.v1/representative-json/scraper-config",
-            1,
-            pb.EXTENSION_ENCODING_CANONICAL_JSON,
-        ),
-        (
-            "jobseek.runtime.v1/representative-json/runtime-metadata",
-            1,
-            pb.EXTENSION_ENCODING_CANONICAL_JSON,
-        ),
-        (
-            "jobseek.runtime.v1/browser/evaluation-json",
-            1,
-            pb.EXTENSION_ENCODING_CANONICAL_JSON,
-        ),
-    }
-)
-EXTENSION_CONTEXTS = {
-    "jobseek.runtime.v1/representative-json/monitor-config": frozenset({"manifest"}),
-    "jobseek.runtime.v1/representative-json/scraper-config": frozenset({"manifest"}),
-    "jobseek.runtime.v1/representative-json/runtime-metadata": frozenset(
-        {"job_content", "monitor_metadata"}
-    ),
-    "jobseek.runtime.v1/browser/evaluation-json": frozenset({"browser_evaluation"}),
-}
 SCRAPER_EXTENSION_FIELDS = frozenset(
     {
         "title",
@@ -113,6 +125,18 @@ def _url(value: str, field: str) -> None:
         fail("url", f"{field} contains an ASCII control character")
     if re.search(r"%(?![0-9A-Fa-f]{2})", value):
         fail("url", f"{field} contains an invalid percent escape")
+    scheme_separator = value.find("://")
+    authority = (
+        re.split(r"[/?#]", value[scheme_separator + 3 :], maxsplit=1)[0]
+        if scheme_separator >= 0
+        else ""
+    )
+    if "%" in authority:
+        fail("url", f"{field} authority/host must not contain percent escapes")
+    try:
+        authority.encode("ascii")
+    except UnicodeEncodeError:
+        fail("url", f"{field} authority must use an ASCII IDNA A-label")
     try:
         parsed = urlsplit(value)
     except ValueError as exc:
@@ -134,6 +158,52 @@ def _url(value: str, field: str) -> None:
         raw_host = host_port.rsplit(":", 1)[0] if ":" in host_port else host_port
     if parsed.scheme != parsed.scheme.lower() or raw_host != raw_host.lower():
         fail("url", f"{field} must use canonical lowercase scheme and host")
+    if port == (80 if parsed.scheme == "http" else 443):
+        fail("url", f"{field} must omit the default port")
+    if ":" not in raw_host:
+        labels = raw_host.split(".")
+        if any(not DNS_LABEL_RE.fullmatch(label) for label in labels):
+            fail("url", f"{field} host must use canonical ASCII DNS labels")
+    if not parsed.path:
+        fail("url", f"{field} must use '/' instead of an empty path")
+    if any(segment in {".", ".."} for segment in parsed.path.split("/")):
+        fail("url", f"{field} path must not contain dot segments")
+    for escape in re.finditer(r"%([0-9A-Fa-f]{2})", value):
+        hexadecimal = escape.group(1)
+        if hexadecimal != hexadecimal.upper():
+            fail("url", f"{field} percent escapes must use uppercase hexadecimal")
+        if int(hexadecimal, 16) in UNRESERVED_URL_BYTES:
+            fail("url", f"{field} must not percent-encode an unreserved character")
+    without_fragment = value.split("#", 1)[0]
+    if "?" in without_fragment and not parsed.query:
+        fail("url", f"{field} must omit an empty query delimiter")
+
+
+def _validate_trace_context(request: pb.ExecutionRequest) -> None:
+    if _present(request, "traceparent"):
+        if not TRACEPARENT_RE.fullmatch(request.traceparent):
+            fail("trace", "traceparent is not W3C version 00 syntax")
+        parts = request.traceparent.split("-")
+        if parts[1] == "0" * 32 or parts[2] == "0" * 16:
+            fail("trace", "traceparent trace-id and parent-id must be nonzero")
+    if not _present(request, "tracestate"):
+        return
+    if len(request.tracestate.encode()) > 512:
+        fail("trace", "tracestate exceeds the W3C 512-byte limit")
+    members = request.tracestate.split(",")
+    if not 1 <= len(members) <= 32:
+        fail("trace", "tracestate requires 1..32 list-members")
+    seen: set[str] = set()
+    for raw_member in members:
+        member = raw_member.strip(" \t")
+        if member.count("=") != 1:
+            fail("trace", "tracestate list-member must contain exactly one equals sign")
+        key, value = member.split("=", 1)
+        if not TRACESTATE_KEY_RE.fullmatch(key) or not TRACESTATE_VALUE_RE.fullmatch(value):
+            fail("trace", "tracestate contains an invalid key or value")
+        if key in seen:
+            fail("trace", "tracestate keys must be unique")
+        seen.add(key)
 
 
 def _sha256(value: str, field: str) -> None:
@@ -284,13 +354,71 @@ def validate_chunk_manifest(
     return None
 
 
+def captured_request_fingerprint(request: pb.CapturedRequest) -> str:
+    return hashlib.sha256(request.SerializeToString(deterministic=True)).hexdigest()
+
+
+def _scan_capture_bytes(payload: bytes, field: str) -> None:
+    if JWT_BYTES_RE.search(payload) or PRIVATE_KEY_BYTES_RE.search(payload):
+        fail("redaction", f"{field} contains secret-shaped material")
+    if URL_CREDENTIAL_BYTES_RE.search(payload):
+        fail("redaction", f"{field} contains URL credentials")
+    for email in EMAIL_BYTES_RE.findall(payload):
+        if not email.lower().endswith(b"@redacted.invalid"):
+            fail("redaction", f"{field} contains a plaintext email address")
+    for match in SECRET_ASSIGNMENT_BYTES_RE.finditer(payload):
+        try:
+            value = match.group(1).decode()
+        except UnicodeDecodeError:
+            fail("redaction", f"{field} contains a non-UTF-8 secret value")
+        if not REDACTED_RE.fullmatch(value):
+            fail("redaction", f"{field} contains an unredacted secret field")
+
+
+def _validate_capture_privacy(
+    request: pb.CapturedRequest,
+    response: pb.CapturedResponse,
+    request_body: bytes,
+    response_body: bytes,
+) -> None:
+    for owner, headers in (
+        ("captured request", request.headers),
+        ("captured response", response.headers),
+    ):
+        for header in headers:
+            _scan_capture_bytes(header.value.encode(), f"{owner} header {header.name}")
+    query = urlsplit(request.url).query
+    try:
+        parameters = parse_qsl(query, keep_blank_values=True, strict_parsing=False)
+    except ValueError:
+        fail("redaction", "captured request query cannot be safely decoded")
+    for name, value in parameters:
+        normalized = name.lower()
+        if normalized in SENSITIVE_PARAMETER_NAMES and not REDACTED_RE.fullmatch(value):
+            fail("redaction", f"sensitive query parameter {name} is not redacted")
+        if normalized in EMAIL_PARAMETER_NAMES and not REDACTED_EMAIL_RE.fullmatch(value):
+            fail("redaction", f"email query parameter {name} is not redacted")
+    _scan_capture_bytes(query.encode(), "captured request query")
+    for prefix, manifest, body in (
+        ("captured request body", request.body, request_body),
+        ("captured response body", response.body, response_body),
+    ):
+        for index, chunk in enumerate(manifest.chunks):
+            if chunk.WhichOneof("storage") == "inline_body":
+                _scan_capture_bytes(chunk.inline_body, f"{prefix} chunk {index}")
+        # Scan the joined transfer too so a secret split across chunks cannot evade checks.
+        _scan_capture_bytes(body, prefix)
+
+
 def validate_extension(extension: pb.ExtensionEnvelope, *, context: str) -> None:
     _text(extension.schema_id, "extension.schema_id", maximum=256)
     _enum(extension.encoding, pb.ExtensionEncoding, "extension.encoding")
-    key = (extension.schema_id, extension.schema_version, extension.encoding)
-    if key not in EXTENSION_REGISTRY:
+    rule = EXTENSION_RULES.get(extension.schema_id)
+    if rule is None or (
+        extension.schema_version != rule["version"] or extension.encoding != rule["encoding"]
+    ):
         fail("extension", "extension schema/version/encoding is not registered for v1")
-    if context not in EXTENSION_CONTEXTS[extension.schema_id]:
+    if context not in rule["contexts"]:
         fail("extension_context", f"{extension.schema_id} is forbidden in {context}")
     if len(extension.payload) > MAX_EXTENSION_BYTES:
         fail("extension_limit", "extension payload exceeds 65536 bytes")
@@ -307,7 +435,7 @@ def validate_extension(extension: pb.ExtensionEnvelope, *, context: str) -> None
         ).encode()
         if canonical != extension.payload:
             fail("extension", "JSON extension payload is not canonical")
-        if extension.schema_id.endswith("/monitor-config"):
+        if rule["validator"] == "monitor_config":
             if (
                 type(value) is not dict
                 or set(value) != {"pages"}
@@ -315,7 +443,7 @@ def validate_extension(extension: pb.ExtensionEnvelope, *, context: str) -> None
                 or not 1 <= value["pages"] <= 1_000
             ):
                 fail("extension_schema", "monitor-config requires pages integer 1..1000")
-        elif extension.schema_id.endswith("/scraper-config"):
+        elif rule["validator"] == "scraper_config":
             if type(value) is not dict or set(value) != {"fields"}:
                 fail("extension_schema", "scraper-config requires exactly fields")
             fields = value["fields"]
@@ -330,14 +458,14 @@ def validate_extension(extension: pb.ExtensionEnvelope, *, context: str) -> None
                 or len(fields) != len(set(fields))
             ):
                 fail("extension_schema", "scraper-config fields are invalid")
-        elif extension.schema_id.endswith("/runtime-metadata"):
+        elif rule["validator"] == "runtime_metadata":
             if (
                 type(value) is not dict
                 or set(value) != {"source"}
                 or value["source"] not in {"captured-provider", "offline-fixture"}
             ):
                 fail("extension_schema", "runtime-metadata source is invalid")
-        elif extension.schema_id.endswith("/evaluation-json") and (
+        elif rule["validator"] == "evaluation_json" and (
             type(value) is not dict
             or set(value) != {"value"}
             or type(value["value"]) is not int
@@ -455,8 +583,7 @@ def validate_request(request: pb.ExecutionRequest) -> None:
         fail("deadline", "deadline_rfc3339 is not RFC3339")
     if deadline.tzinfo is None:
         fail("deadline", "deadline_rfc3339 must include an offset")
-    if _present(request, "traceparent") and not TRACEPARENT_RE.fullmatch(request.traceparent):
-        fail("trace", "traceparent is not W3C version 00 syntax")
+    _validate_trace_context(request)
     validate_manifest(request.board_manifest)
     validate_fencing(
         request.fencing_context,
@@ -526,6 +653,8 @@ def validate_monitor_result(result: pb.MonitorResult, limits: pb.Limits) -> None
         _url(url, "monitor.urls")
     job_urls: set[str] = set()
     for job in result.jobs:
+        if not _present(job, "content"):
+            fail("body", "DiscoveredJob.content is required")
         _url(job.url, "monitor.jobs.url")
         if job.url in job_urls:
             fail("duplicate", "job URLs must be unique")
@@ -544,8 +673,9 @@ def validate_monitor_result(result: pb.MonitorResult, limits: pb.Limits) -> None
 
 
 def _validate_frame_size(frame: pb.ExecutionFrame, limits: pb.Limits) -> None:
-    # Ten bytes is the maximum unsigned-varint length prefix.
-    if len(frame.SerializeToString()) + 10 > limits.max_frame_bytes:
+    size = len(frame.SerializeToString())
+    prefix_size = max(1, (size.bit_length() + 6) // 7)
+    if size + prefix_size > limits.max_frame_bytes:
         fail("frame_limit", "length-delimited frame exceeds max_frame_bytes")
 
 
@@ -936,6 +1066,7 @@ def validate_transcript(
     output_items = 0
     monitor_urls_seen: set[str] = set()
     monitor_job_urls_seen: set[str] = set()
+    pagination_dynamic_remaining: dict[str, int] = {}
 
     for index, event in enumerate(transcript.events):
         _enum(event.direction, pb.EventDirection, f"events[{index}].direction")
@@ -952,7 +1083,9 @@ def validate_transcript(
             frame_ceiling = (
                 limits.max_frame_bytes if limits is not None else HARD_LIMITS.max_frame_bytes
             )
-            if len(message.SerializeToString()) + 10 > frame_ceiling:
+            size = len(message.SerializeToString())
+            prefix_size = max(1, (size.bit_length() + 6) // 7)
+            if size + prefix_size > frame_ceiling:
                 fail("frame_limit", "length-delimited protocol record exceeds max_frame_bytes")
         if terminal_seen or resume_rejected:
             fail("terminal", "no events are legal after terminal/rejected resume")
@@ -1021,6 +1154,12 @@ def validate_transcript(
                     list(request.origin_operations), request.origin_request_id
                 )
                 operation_list = list(request.origin_operations)
+                if request.kind == pb.EXECUTION_KIND_BROWSER:
+                    pagination_dynamic_remaining = {
+                        action.origin_request_id: action.paginate.max_pages - 1
+                        for action in request.browser.plan.actions
+                        if action.WhichOneof("action") == "paginate"
+                    }
                 next_sequence = 0
             elif payload == "resume":
                 if phase != "ready" or request is None or not needs_resume:
@@ -1168,6 +1307,15 @@ def validate_transcript(
                 fail("duplicate", "origin operation was declared more than once")
             if operation.operation_sequence != len(operations):
                 fail("origin_sequence", "dynamic origin operation is not the next sequence")
+            if request.kind == pb.EXECUTION_KIND_BROWSER:
+                parent = (
+                    operation.parent_origin_request_id
+                    if _present(operation, "parent_origin_request_id")
+                    else ""
+                )
+                if pagination_dynamic_remaining.get(parent, 0) <= 0:
+                    fail("origin_limit", "dynamic browser origin exceeds pagination max_pages")
+                pagination_dynamic_remaining[parent] -= 1
             validate_origin_operations([*operation_list, operation], request.origin_request_id)
             operations[operation.origin_request_id] = operation
             operation_list.append(operation)
@@ -1216,6 +1364,8 @@ def validate_transcript(
         elif frame_kind == "scrape_result":
             if request.kind != pb.EXECUTION_KIND_SCRAPE or scrape_count:
                 fail("kind", "scrape execution requires exactly one scrape result")
+            if not _present(frame.scrape_result, "content"):
+                fail("body", "ScrapeResult.content is required")
             validate_job_content(frame.scrape_result.content, limits)
             scrape_count += 1
             output_items += 1
@@ -1328,10 +1478,24 @@ def content_hash(content: pb.JobContent) -> str:
     return hashlib.sha256(content.SerializeToString(deterministic=True)).hexdigest()
 
 
-def project_frames(frames: list[pb.ExecutionFrame]) -> pb.ProjectedEffects:
-    projection = pb.ProjectedEffects(gone_detection_allowed=True)
+def project_frames(
+    frames: list[pb.ExecutionFrame], request: pb.ExecutionRequest
+) -> pb.ProjectedEffects:
+    target_url = {
+        pb.EXECUTION_KIND_MONITOR: request.board_manifest.board_url,
+        pb.EXECUTION_KIND_SCRAPE: request.scrape.source_url,
+        pb.EXECUTION_KIND_BROWSER: request.browser.plan.target_url,
+    }[request.kind]
+    projection = pb.ProjectedEffects(
+        gone_detection_allowed=True,
+        request_id=request.request_id,
+        origin_request_id=request.origin_request_id,
+        execution_kind=request.kind,
+        target_url=target_url,
+    )
     urls: set[str] = set()
     hashes: list[str] = []
+    targets: dict[str, tuple[int, str | None]] = {}
     metadata_digest = hashlib.sha256()
     metadata_seen = False
     for frame in frames:
@@ -1339,8 +1503,15 @@ def project_frames(frames: list[pb.ExecutionFrame]) -> pb.ProjectedEffects:
         if kind == "monitor_batch":
             result = frame.monitor_batch
             urls.update(result.urls)
-            hashes.extend(content_hash(job.content) for job in result.jobs)
-            projection.gone_detection_allowed &= not result.truncated
+            for url in result.urls:
+                targets[url] = (pb.PROJECTED_ACTION_UPSERT, None)
+            for job in result.jobs:
+                digest = content_hash(job.content)
+                hashes.append(digest)
+                targets[job.url] = (pb.PROJECTED_ACTION_UPSERT, digest)
+            projection.gone_detection_allowed &= (
+                not result.truncated and result.security_filtered_count == 0
+            )
             projection.hybrid |= result.hybrid
             projection.truncated |= result.truncated
             projection.filtered_count += result.filtered_count
@@ -1353,9 +1524,21 @@ def project_frames(frames: list[pb.ExecutionFrame]) -> pb.ProjectedEffects:
                 metadata_digest.update(raw)
                 metadata_seen = True
         elif kind == "scrape_result":
-            hashes.append(content_hash(frame.scrape_result.content))
+            digest = content_hash(frame.scrape_result.content)
+            hashes.append(digest)
+            targets[request.scrape.source_url] = (pb.PROJECTED_ACTION_UPSERT, digest)
+        elif kind == "browser_result" and frame.browser_result.WhichOneof("outcome") == "success":
+            targets[request.browser.plan.target_url] = (
+                pb.PROJECTED_ACTION_BROWSER_RESULT,
+                None,
+            )
     projection.urls_to_upsert.extend(sorted(urls))
     projection.content_hashes.extend(sorted(hashes))
+    for url in sorted(targets):
+        action, digest = targets[url]
+        target = projection.targets.add(url=url, action=action)
+        if digest is not None:
+            target.content_sha256 = digest
     if metadata_seen:
         projection.metadata_updates_sha256 = metadata_digest.hexdigest()
     return projection
@@ -1400,7 +1583,7 @@ def validate_replay(replay: pb.ReplayCase, limits: pb.Limits = HARD_LIMITS) -> N
         _headers(list(exchange.response.headers), "replay.response.headers")
         if not 100 <= exchange.response.status <= 599:
             fail("http_status", "captured response status must be in 100..599")
-        validate_chunk_manifest(
+        request_body = validate_chunk_manifest(
             exchange.request.body,
             limits,
             maximum_total=limits.max_http_transfer_bytes,
@@ -1412,7 +1595,13 @@ def validate_replay(replay: pb.ReplayCase, limits: pb.Limits = HARD_LIMITS) -> N
             maximum_total=limits.max_http_transfer_bytes,
             require_inline=True,
         )
-        assert response_body is not None
+        assert request_body is not None and response_body is not None
+        _validate_capture_privacy(
+            exchange.request,
+            exchange.response,
+            request_body,
+            response_body,
+        )
         if _present(exchange, "normalized_result_frame_sequence"):
             target_sequence = exchange.normalized_result_frame_sequence
             if target_sequence in decoded:
@@ -1489,17 +1678,20 @@ def validate_replay(replay: pb.ReplayCase, limits: pb.Limits = HARD_LIMITS) -> N
             events=events,
         )
     )
-    contact_operations = [
-        frame.origin_contact.operation
+    contacts = [
+        frame.origin_contact
         for frame in replay.expected_frames
         if frame.WhichOneof("payload") == "origin_contact"
     ]
-    if len(contact_operations) != len(replay.exchanges) or any(
-        left.SerializeToString(deterministic=True)
+    if len(contacts) != len(replay.exchanges) or any(
+        left.operation.SerializeToString(deterministic=True)
         != right.operation.SerializeToString(deterministic=True)
-        for left, right in zip(contact_operations, replay.exchanges, strict=True)
+        for left, right in zip(contacts, replay.exchanges, strict=True)
     ):
         fail("origin", "expected origin-contact frames must exactly match captured exchanges")
+    for contact, exchange in zip(contacts, replay.exchanges, strict=True):
+        if contact.request_fingerprint != captured_request_fingerprint(exchange.request):
+            fail("fingerprint", "origin request fingerprint differs from CapturedRequest")
     result_frames = {
         frame.sequence: frame
         for frame in replay.expected_frames
@@ -1520,7 +1712,7 @@ def validate_replay(replay: pb.ReplayCase, limits: pb.Limits = HARD_LIMITS) -> N
             fail("replay", "replay adapter result kind differs from mapped frame")
         if _canonical_json(message) != _canonical_json(expected):
             fail("replay", "offline decoded result differs from expected frame")
-    projection = project_frames(list(replay.expected_frames))
+    projection = project_frames(list(replay.expected_frames), replay.execution_request)
     if _canonical_json(projection) != _canonical_json(replay.expected_projection):
         fail("projection", "projected DB effects differ from golden expectation")
     actual_hash = semantic_hash(list(replay.expected_frames), projection)

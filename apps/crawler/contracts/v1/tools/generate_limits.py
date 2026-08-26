@@ -30,6 +30,10 @@ def render_go() -> str:
     if set(values) != set(GO_FIELDS):
         raise ValueError("limits.json fields differ from the generated Go mapping")
     fields = "\n".join(f"\t\t{go_name}: {values[name]}," for name, go_name in GO_FIELDS.items())
+    validations = "\n".join(
+        f'\t\t{{"{name}", uint64(l.Get{go_name}()), uint64(hardLimits.Get{go_name}())}},'
+        for name, go_name in GO_FIELDS.items()
+    )
     return f"""// Code generated from ../../limits.json by tools/generate_limits.py. DO NOT EDIT.
 
 package conformance
@@ -39,6 +43,17 @@ import runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/ge
 func generatedHardLimits() *runtimev1.Limits {{
 \treturn &runtimev1.Limits{{
 {fields}
+\t}}
+}}
+
+type limitValue struct {{
+\tname           string
+\tvalue, ceiling uint64
+}}
+
+func limitValues(l *runtimev1.Limits) []limitValue {{
+\treturn []limitValue{{
+{validations}
 \t}}
 }}
 """

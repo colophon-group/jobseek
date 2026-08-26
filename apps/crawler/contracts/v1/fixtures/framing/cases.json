@@ -1,0 +1,50 @@
+[
+  {
+    "error": "malformed",
+    "hex": "00",
+    "max_frame_bytes": 1,
+    "name": "zero-length-message",
+    "valid": false
+  },
+  {
+    "hex": "020a00",
+    "max_frame_bytes": 3,
+    "name": "nonempty-message",
+    "valid": true
+  },
+  {
+    "error": "ambiguous_eof",
+    "hex": "030801",
+    "max_frame_bytes": 64,
+    "name": "truncated-payload",
+    "valid": false
+  },
+  {
+    "error": "ambiguous_eof",
+    "hex": "80",
+    "max_frame_bytes": 64,
+    "name": "truncated-varint",
+    "valid": false
+  },
+  {
+    "error": "malformed",
+    "hex": "ffffffffffffffffffff02",
+    "max_frame_bytes": 64,
+    "name": "overflow-varint",
+    "valid": false
+  },
+  {
+    "error": "malformed",
+    "hex": "8000",
+    "max_frame_bytes": 64,
+    "name": "non-minimal-varint",
+    "valid": false
+  },
+  {
+    "error": "oversize",
+    "hex": "8108",
+    "max_frame_bytes": 1024,
+    "name": "oversize-before-allocation",
+    "valid": false
+  }
+]

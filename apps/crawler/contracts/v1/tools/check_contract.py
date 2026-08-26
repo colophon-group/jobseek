@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -12,7 +13,7 @@ from conformance.python.contract import (
     validate_case,
     validate_replay,
 )
-from gen.python import runtime_pb2 as pb
+from crawler_runtime_contracts.v1 import runtime_pb2 as pb
 from google.protobuf import __version__ as protobuf_version
 from redaction import redact, redact_email
 
@@ -40,6 +41,16 @@ def check_versions() -> None:
     proto = (ROOT / "runtime.proto").read_text()
     if "google.protobuf.Struct" in proto or "google.protobuf.Value" in proto:
         raise AssertionError("free-form Struct/Value is forbidden in runtime v1")
+    baseline = json.loads((ROOT / "compatibility_baseline.json").read_text())
+    descriptor_sha256 = hashlib.sha256(pb.DESCRIPTOR.serialized_pb).hexdigest()
+    if baseline != {
+        "contract_version": "crawler.runtime/v1",
+        "file_descriptor_sha256": descriptor_sha256,
+    }:
+        raise AssertionError(
+            "runtime.proto changed after the frozen v1 descriptor baseline; "
+            "create v2 and converters"
+        )
 
     limits = json.loads((ROOT / "limits.json").read_text())
     fields = {field.name for field in pb.Limits.DESCRIPTOR.fields}
@@ -59,8 +70,42 @@ def check_versions() -> None:
     )
     for previous, current in zip(versions, versions[1:], strict=False):
         converter = CONTRACTS / f"v{previous}" / "converters" / f"v{previous}_to_v{current}"
-        if not converter.is_dir():
-            raise AssertionError(f"v{current} requires converter directory {converter}")
+        required = {
+            converter / "converter.json",
+            converter / "python.py",
+            converter / "converter.go",
+            converter / "fixtures/roundtrip.json",
+            converter / "fixtures/lossy.json",
+        }
+        missing = sorted(
+            str(path) for path in required if not path.is_file() or path.stat().st_size == 0
+        )
+        if missing:
+            raise AssertionError(
+                f"v{current} requires nonempty Python/Go converters and fixtures: {missing}"
+            )
+        manifest = json.loads((converter / "converter.json").read_text())
+        if manifest != {
+            "source_contract": f"crawler.runtime/v{previous}",
+            "target_contract": f"crawler.runtime/v{current}",
+            "supports": ["upgrade", "downgrade"],
+        }:
+            raise AssertionError(
+                f"v{current} converter manifest is not the required bidirectional shape"
+            )
+        for name in ("roundtrip.json", "lossy.json"):
+            vectors = json.loads((converter / "fixtures" / name).read_text())
+            if not isinstance(vectors, list) or not vectors:
+                raise AssertionError(f"v{current} converter fixture {name} must be a nonempty list")
+        compile(
+            (converter / "python.py").read_text(),
+            str(converter / "python.py"),
+            "exec",
+        )
+        if not re.search(
+            r"(?m)^package [a-z][a-z0-9_]*$", (converter / "converter.go").read_text()
+        ):
+            raise AssertionError(f"v{current} converter.go must declare a Go package")
 
 
 def check_fixtures() -> None:

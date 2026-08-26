@@ -5,9 +5,14 @@
 Peers exchange protobuf `ClientMessage` and `ServerMessage` records using an
 unsigned-varint byte length followed by exactly that many protobuf bytes. The
 length prefix and payload together may not exceed negotiated
-`max_frame_bytes`. EOF within either is an ambiguous disconnect, never a
-terminal result. Unix sockets, pipes, and authenticated TCP may carry the same
-framing; v1 does not require gRPC or expose raw CDP.
+`max_frame_bytes`. The prefix is the minimal unsigned 64-bit varint (at most 10
+bytes); zero-length, overlong, and overflowing prefixes are malformed. The
+declared size is checked against the limit before allocating or decoding the
+payload. EOF within either prefix or payload is an ambiguous disconnect, never
+a malformed terminal result. The installable Python
+`crawler_runtime_contracts.v1.framing` package and Go `framing` package are the
+reference codecs. Unix sockets, pipes, and authenticated TCP may carry the
+same framing; v1 does not require gRPC or expose raw CDP.
 
 The first records are `ClientHello`, then `ServerHello`. The server selects
 `crawler.runtime/v1`, sets each accepted limit no higher than the client's
@@ -80,9 +85,14 @@ because execution is already complete.
 ## Normalized results
 
 - URLs are absolute canonical HTTP(S), lowercase in scheme/host, without URL
-  credentials, fragments, or literal ASCII control characters. Ordering is
-  semantically ignored; duplicates are invalid, including duplicates repeated
-  in later monitor batches.
+  credentials, fragments, literal ASCII control characters, an empty path, an
+  empty query delimiter, default ports, or literal dot segments. Authorities
+  are ASCII only: internationalized names use their lowercase IDNA A-label
+  form, and percent escapes are forbidden in the authority. DNS labels are
+  canonical, percent escapes elsewhere use uppercase hex and never encode an
+  unreserved character. Ordering is semantically ignored; duplicates are
+  invalid, including duplicates repeated in later monitor batches. The shared
+  URL vector corpus is normative for both validators.
 - Every rich job URL is in `MonitorResult.urls`. Non-hybrid rich output has a
   job for every URL; hybrid output may have a subset.
 - Optional scalar/message presence is semantic. `locations` absent means the
@@ -91,7 +101,8 @@ because execution is already complete.
   needed.
 - `truncated`, `hybrid`, `filtered_count`, `security_filtered_count`, sitemap
   replacement, and metadata updates participate in comparison and projected
-  effects. Counts alone are never parity evidence.
+  effects. Gone detection is suppressed when any batch is truncated or has a
+  nonzero `security_filtered_count`. Counts alone are never parity evidence.
 - Deterministic protobuf hashes preserve optional-field presence. URL lists
   and content hashes are sorted before projection hashing.
 - Metadata updates remain ordered and lossless: each deterministic protobuf
@@ -120,7 +131,9 @@ plan byte limits, and artifact-only captures cannot return inline chunks.
 Every navigation/action/evaluation owner ID is injective and exactly exhausts
 the plan's initial operation list. Multi-page pagination reserves its first
 page in that list and uses a pre-dispatch `OriginOperationDeclared` frame for
-each bounded additional page.
+each bounded additional page. `max_pages` is 1..1,000 and is also an execution
+quota: at most `max_pages - 1` dynamic operations may name the pagination
+action as parent, including declarations/contacts after a resume.
 
 ## Fencing and commit ownership
 
@@ -165,6 +178,9 @@ gone, watermark, or persistence behavior.
 Deadlines use strict RFC3339 with an explicit offset. `CancelRequest` propagates
 request, attempt, full fencing context, and caller cancellation. A late
 response remains stale.
+Optional trace context is fail-closed W3C version-00 syntax: trace and parent
+IDs are nonzero, and `tracestate` is at most 512 bytes and 32 unique,
+syntactically valid list-members. Newlines and duplicate keys reject.
 Operation deadlines are capped independently at 15 minutes; a typed
 `retry_after_ms` scheduling hint may be at most 7 days and grants no scheduling
 authority.

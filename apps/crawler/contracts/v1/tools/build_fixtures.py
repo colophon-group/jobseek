@@ -4,10 +4,15 @@ import hashlib
 import json
 from pathlib import Path
 
-from conformance.python.contract import HARD_LIMITS, project_frames, semantic_hash
-from gen.python import runtime_pb2 as pb
+from conformance.python.contract import (
+    HARD_LIMITS,
+    captured_request_fingerprint,
+    project_frames,
+    semantic_hash,
+)
+from crawler_runtime_contracts.v1 import runtime_pb2 as pb
 from google.protobuf import json_format
-from redaction import redact
+from redaction import redact, redact_email
 
 ROOT = Path(__file__).parents[1]
 FIXTURES = ROOT / "fixtures"
@@ -161,6 +166,7 @@ def request(
         kind=pb.EXECUTION_KIND_SCRAPE if scrape else pb.EXECUTION_KIND_MONITOR,
         deadline_rfc3339="2026-08-26T12:00:00Z",
         traceparent="00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+        tracestate="vendor=value,tenant@system=opaque value",
         board_manifest=manifest(scrape=scrape),
         fencing_context=fencing_context(),
         origin_operations=operations,
@@ -1528,6 +1534,72 @@ def build_negative() -> None:
         ),
     )
 
+    pagination_op0 = operation(0, "navigation")
+    pagination_op1 = operation(1, "pagination", parent=pagination_op0.origin_request_id)
+    pagination_plan = pb.BrowserPlan(
+        contract_version=VERSION,
+        target_url="https://careers.example.invalid/jobs",
+        required_capabilities=[
+            pb.BROWSER_CAPABILITY_RENDER,
+            pb.BROWSER_CAPABILITY_ACTIONS,
+            pb.BROWSER_CAPABILITY_PAGINATION,
+        ],
+        navigation=pb.NavigationPlan(
+            wait_until=pb.WAIT_CONDITION_LOAD,
+            timeout_ms=30_000,
+            origin_request_id=pagination_op0.origin_request_id,
+        ),
+        session=pb.SessionPlan(),
+        actions=[
+            pb.BrowserAction(
+                action_id="next-page",
+                paginate=pb.PaginationAction(
+                    next_selector=pb.Selector(kind=pb.SELECTOR_KIND_CSS, value="button.next"),
+                    max_pages=2,
+                    page_timeout_ms=10_000,
+                    dynamic_origin_per_additional_page=True,
+                ),
+                origin_request_id=pagination_op1.origin_request_id,
+                network_effect=pb.BROWSER_NETWORK_EFFECT_ORIGIN_CONTACT,
+            )
+        ],
+        origin_operations=[pagination_op0, pagination_op1],
+    )
+    pagination_req = browser_request(pagination_plan)
+    dynamic_page_2 = operation(2, "pagination-page-2", parent=pagination_op1.origin_request_id)
+    dynamic_page_3 = operation(3, "pagination-page-3", parent=pagination_op1.origin_request_id)
+    pagination_events = hello_events() + [
+        start_event(pagination_req),
+        server_frame(origin_frame(pagination_req, pagination_op0, 0)),
+        server_frame(origin_frame(pagination_req, pagination_op1, 1)),
+        server_frame(origin_declaration_frame(pagination_req, dynamic_page_2, 2)),
+        server_frame(origin_frame(pagination_req, dynamic_page_2, 3)),
+        pb.ProtocolEvent(
+            direction=pb.EVENT_DIRECTION_CLIENT,
+            client=pb.ClientMessage(
+                window_update=pb.WindowUpdate(
+                    request_id=pagination_req.request_id,
+                    additional_frames=1,
+                    attempt_id=pagination_req.attempt_id,
+                    fence_digest=pagination_req.fencing_context.fence_digest,
+                )
+            ),
+        ),
+        server_frame(origin_declaration_frame(pagination_req, dynamic_page_3, 4)),
+    ]
+    write_invalid(
+        "browser-pagination-exceeds-max-pages",
+        "origin_limit",
+        case(
+            "browser-pagination-exceeds-max-pages",
+            pb.ProtocolTranscript(
+                contract_version=VERSION,
+                name="browser-pagination-exceeds-max-pages",
+                events=pagination_events,
+            ),
+        ),
+    )
+
     value = base_scrape_case("unknown-terminal-status")
     value.transcript.events[-1].server.frame.terminal.status = 999
     write_invalid("unknown-terminal-status", "enum", value)
@@ -1545,6 +1617,8 @@ def build_negative() -> None:
     for name, url in (
         ("url-port-out-of-range", "https://careers.example.invalid:99999/jobs"),
         ("url-invalid-percent-escape", "https://careers.example.invalid/jobs/%zz"),
+        ("url-percent-encoded-host-letter", "https://%63areers.example.invalid/jobs"),
+        ("url-percent-encoded-host-dot", "https://careers%2Eexample.invalid/jobs"),
         ("url-ascii-newline", "https://careers.example.invalid/jobs\nnext"),
         ("url-ascii-tab", "https://careers.example.invalid/jobs\tnext"),
         ("url-ascii-nul", "https://careers.example.invalid/jobs\x00next"),
@@ -1558,9 +1632,87 @@ def build_negative() -> None:
     value.transcript.events[1].server.hello.accepted_limits.max_execution_frames = 2
     write_invalid("execution-frame-count-limit", "limit", value)
 
+    value = base_scrape_case("retry-after-hard-limit-negotiation")
+    value.transcript.events[0].client.hello.requested_limits.max_retry_after_ms = (
+        HARD_LIMITS.max_retry_after_ms + 1
+    )
+    value.transcript.events[1].server.hello.accepted_limits.max_retry_after_ms = (
+        HARD_LIMITS.max_retry_after_ms + 1
+    )
+    write_invalid("retry-after-hard-limit-negotiation", "limit", value)
+
+    value = base_scrape_case("retry-after-accepted-over-request")
+    value.transcript.events[0].client.hello.requested_limits.max_retry_after_ms = 86_400_000
+    write_invalid("retry-after-accepted-over-request", "negotiation", value)
+
+    value = base_scrape_case("missing-scrape-result-content")
+    value.transcript.events[-2].server.frame.scrape_result.ClearField("content")
+    write_invalid("missing-scrape-result-content", "body", value)
+
+    missing_job_req = request()
+    missing_job_frame = monitor_frame(missing_job_req, 1, 1)
+    missing_job_frame.monitor_batch.jobs[0].ClearField("content")
+    missing_job_events = hello_events() + [
+        start_event(missing_job_req),
+        server_frame(origin_frame(missing_job_req, missing_job_req.origin_operations[0], 0)),
+        server_frame(missing_job_frame),
+        server_frame(terminal_frame(missing_job_req, 2, output=1, batches=1, origins=1)),
+    ]
+    write_invalid(
+        "missing-discovered-job-content",
+        "body",
+        case(
+            "missing-discovered-job-content",
+            pb.ProtocolTranscript(
+                contract_version=VERSION,
+                name="missing-discovered-job-content",
+                events=missing_job_events,
+            ),
+        ),
+    )
+
+    for name, mutate in (
+        (
+            "traceparent-zero-trace-id",
+            lambda active: setattr(
+                active,
+                "traceparent",
+                "00-00000000000000000000000000000000-00f067aa0ba902b7-01",
+            ),
+        ),
+        (
+            "traceparent-zero-parent-id",
+            lambda active: setattr(
+                active,
+                "traceparent",
+                "00-4bf92f3577b34da6a3ce929d0e0e4736-0000000000000000-01",
+            ),
+        ),
+        (
+            "tracestate-duplicate-key",
+            lambda active: setattr(active, "tracestate", "vendor=one,vendor=two"),
+        ),
+        (
+            "tracestate-newline",
+            lambda active: setattr(active, "tracestate", "vendor=one\nnext"),
+        ),
+        (
+            "tracestate-over-512-bytes",
+            lambda active: setattr(
+                active,
+                "tracestate",
+                ",".join(f"k{index}={'x' * 20}" for index in range(24)),
+            ),
+        ),
+    ):
+        value = base_scrape_case(name)
+        mutate(value.transcript.events[2].client.start)
+        write_invalid(name, "trace", value)
+
     value = base_scrape_case("oversize-start-record")
     start_message = value.transcript.events[2].client
-    start_size = len(start_message.SerializeToString()) + 10
+    payload_size = len(start_message.SerializeToString())
+    start_size = payload_size + max(1, (payload_size.bit_length() + 6) // 7)
     value.transcript.events[0].client.hello.requested_limits.max_frame_bytes = start_size - 1
     value.transcript.events[1].server.hello.accepted_limits.max_frame_bytes = start_size - 1
     write_invalid("oversize-start-record", "frame_limit", value)
@@ -2357,6 +2509,37 @@ def build_negative() -> None:
         value.replay.expected_semantic_sha256 = "not-a-sha256"
         write_invalid("replay-invalid-semantic-hash", "hash", value)
 
+        value = replay_case("replay-request-fingerprint-mismatch")
+        value.replay.expected_frames[0].origin_contact.request_fingerprint = ZERO_HASH
+        write_invalid("replay-request-fingerprint-mismatch", "fingerprint", value)
+
+        value = replay_case("replay-request-target-semantic-mutation")
+        value.replay.execution_request.board_manifest.board_url = (
+            "https://careers.example.invalid/other-board"
+        )
+        value.replay.expected_projection.CopyFrom(
+            project_frames(list(value.replay.expected_frames), value.replay.execution_request)
+        )
+        write_invalid("replay-request-target-semantic-mutation", "hash", value)
+
+        value = replay_case("replay-plaintext-api-key-body")
+        value.replay.exchanges[0].request.body.CopyFrom(chunk_manifest(b"api_key=fixture-secret"))
+        write_invalid("replay-plaintext-api-key-body", "redaction", value)
+
+        value = replay_case("replay-plaintext-email-split-across-body-chunks")
+        value.replay.exchanges[0].response.body.CopyFrom(
+            chunk_manifest(b'{"contact":"person@', b'example.test"}')
+        )
+        write_invalid("replay-plaintext-email-split-across-body-chunks", "redaction", value)
+
+        value = replay_case("replay-plaintext-secret-query")
+        value.replay.exchanges[0].request.url += "&api_key=fixture-secret"
+        write_invalid("replay-plaintext-secret-query", "redaction", value)
+
+        value = replay_case("replay-plaintext-secret-header")
+        value.replay.exchanges[0].request.headers[0].value = "api_key=fixture-secret"
+        write_invalid("replay-plaintext-secret-header", "redaction", value)
+
     # This raw fixture deliberately violates the protobuf oneof. Both bindings
     # must reject it during strict protobuf-JSON decoding.
     raw = json.loads(
@@ -2387,7 +2570,14 @@ def captured_exchange(
     *,
     normalized_result_frame_sequence: int | None = None,
 ) -> pb.CapturedExchange:
-    request_body = b""
+    request_body = json.dumps(
+        {
+            "api_key": redact("body:request:/api_key", "fixture-token"),
+            "email": redact_email("body:request:/email", "person@example.test"),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
     response_body = (
         json_format.MessageToJson(response_message, sort_keys=True).encode()
         if response_message is not None
@@ -2397,7 +2587,12 @@ def captured_exchange(
         operation=op,
         request=pb.CapturedRequest(
             method="GET",
-            url=f"https://careers.example.invalid/api/jobs?page={op.operation_sequence + 1}",
+            url=(
+                "https://careers.example.invalid/api/jobs"
+                f"?page={op.operation_sequence + 1}"
+                f"&api_key={redact('query:api_key', 'fixture-token')}"
+                f"&email={redact_email('query:email', 'person@example.test')}"
+            ),
             headers=[
                 pb.Header(name="accept", value="application/json"),
                 pb.Header(
@@ -2423,6 +2618,18 @@ def captured_exchange(
     return result
 
 
+def bind_replay_fingerprints(
+    frames: list[pb.ExecutionFrame], exchanges: list[pb.CapturedExchange]
+) -> None:
+    contacts = [
+        frame.origin_contact for frame in frames if frame.WhichOneof("payload") == "origin_contact"
+    ]
+    if len(contacts) != len(exchanges):
+        raise AssertionError("replay contacts and captured exchanges differ")
+    for contact, exchange in zip(contacts, exchanges, strict=True):
+        contact.request_fingerprint = captured_request_fingerprint(exchange.request)
+
+
 def build_replay() -> None:
     op0 = operation(0, "page-1")
     op1 = operation(1, "page-2", parent=op0.origin_request_id)
@@ -2434,17 +2641,19 @@ def build_replay() -> None:
         monitor_frame(req, 3, 2, hybrid=True, truncated=True),
         terminal_frame(req, 4, output=2, batches=2, origins=2),
     ]
-    projection = project_frames(frames)
+    projection = project_frames(frames, req)
+    exchanges = [
+        captured_exchange(op0, frames[1].monitor_batch, normalized_result_frame_sequence=1),
+        captured_exchange(op1, frames[3].monitor_batch, normalized_result_frame_sequence=3),
+    ]
+    bind_replay_fingerprints(frames, exchanges)
     replay = pb.ReplayCase(
         contract_version=VERSION,
         name="representative-paginated-monitor",
         provider_family="representative-json",
         adapter=pb.REPLAY_ADAPTER_NORMALIZED_MONITOR_JSON,
         execution_request=req,
-        exchanges=[
-            captured_exchange(op0, frames[1].monitor_batch, normalized_result_frame_sequence=1),
-            captured_exchange(op1, frames[3].monitor_batch, normalized_result_frame_sequence=3),
-        ],
+        exchanges=exchanges,
         expected_frames=frames,
         expected_projection=projection,
     )
@@ -2458,20 +2667,22 @@ def build_replay() -> None:
         scrape_frame(scrape_req, 1),
         terminal_frame(scrape_req, 2, output=1, batches=0, origins=1),
     ]
-    scrape_projection = project_frames(scrape_frames)
+    scrape_projection = project_frames(scrape_frames, scrape_req)
+    scrape_exchanges = [
+        captured_exchange(
+            scrape_op,
+            scrape_frames[1].scrape_result,
+            normalized_result_frame_sequence=1,
+        )
+    ]
+    bind_replay_fingerprints(scrape_frames, scrape_exchanges)
     scrape_replay = pb.ReplayCase(
         contract_version=VERSION,
         name="representative-scrape",
         provider_family="representative-json",
         adapter=pb.REPLAY_ADAPTER_NORMALIZED_SCRAPE_JSON,
         execution_request=scrape_req,
-        exchanges=[
-            captured_exchange(
-                scrape_op,
-                scrape_frames[1].scrape_result,
-                normalized_result_frame_sequence=1,
-            )
-        ],
+        exchanges=scrape_exchanges,
         expected_frames=scrape_frames,
         expected_projection=scrape_projection,
     )
@@ -2495,22 +2706,24 @@ def build_replay() -> None:
         scrape_frame(dynamic_req, 4),
         terminal_frame(dynamic_req, 5, output=1, batches=0, origins=3),
     ]
-    dynamic_projection = project_frames(dynamic_frames)
+    dynamic_projection = project_frames(dynamic_frames, dynamic_req)
+    dynamic_exchanges = [
+        captured_exchange(declared0),
+        captured_exchange(declared1),
+        captured_exchange(
+            dynamic2,
+            dynamic_frames[4].scrape_result,
+            normalized_result_frame_sequence=4,
+        ),
+    ]
+    bind_replay_fingerprints(dynamic_frames, dynamic_exchanges)
     dynamic_replay = pb.ReplayCase(
         contract_version=VERSION,
         name="representative-multi-origin-dynamic-scrape",
         provider_family="representative-json",
         adapter=pb.REPLAY_ADAPTER_NORMALIZED_SCRAPE_JSON,
         execution_request=dynamic_req,
-        exchanges=[
-            captured_exchange(declared0),
-            captured_exchange(declared1),
-            captured_exchange(
-                dynamic2,
-                dynamic_frames[4].scrape_result,
-                normalized_result_frame_sequence=4,
-            ),
-        ],
+        exchanges=dynamic_exchanges,
         expected_frames=dynamic_frames,
         expected_projection=dynamic_projection,
     )

@@ -18,7 +18,7 @@
               "maxBrowserEvaluations": 64,
               "maxBrowserTransferBytes": "67108864",
               "maxExecutionFrames": 4096,
-              "maxFrameBytes": "1091",
+              "maxFrameBytes": "1132",
               "maxHttpTransferBytes": "16777216",
               "maxInFlightFrames": 64,
               "maxInlineBodyBytes": "8388608",
@@ -47,7 +47,7 @@
               "maxBrowserEvaluations": 64,
               "maxBrowserTransferBytes": "67108864",
               "maxExecutionFrames": 4096,
-              "maxFrameBytes": "1091",
+              "maxFrameBytes": "1132",
               "maxHttpTransferBytes": "16777216",
               "maxInFlightFrames": 4,
               "maxInlineBodyBytes": "8388608",
@@ -121,7 +121,8 @@
               "scraperType": "fixture-json",
               "sourceUrl": "https://careers.example.invalid/jobs/42"
             },
-            "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+            "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+            "tracestate": "vendor=value,tenant@system=opaque value"
           }
         },
         "direction": "EVENT_DIRECTION_CLIENT"

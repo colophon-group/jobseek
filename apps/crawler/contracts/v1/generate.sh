@@ -38,16 +38,29 @@ uv run --project "$root/../.." python -m grpc_tools.protoc \
 
 PYTHONPATH="$root" uv run --project "$root/../.." python \
   "$root/tools/generate_limits.py" --go-out "$tmp/limits_gen.go"
+PYTHONPATH="$root" uv run --project "$root/../.." python \
+  "$root/tools/generate_extensions.py" \
+  --python-out "$tmp/python/extension_rules.py" \
+  --go-out "$tmp/extensions_gen.go"
 gofmt -w "$tmp/limits_gen.go"
+gofmt -w "$tmp/extensions_gen.go"
 
 if [[ "$mode" == "--check" ]]; then
   diff -u "$root/gen/python/runtime_pb2.py" "$tmp/python/runtime_pb2.py"
+  diff -u "$root/python/crawler_runtime_contracts/v1/runtime_pb2.py" "$tmp/python/runtime_pb2.py"
   diff -u "$root/gen/go/runtime.pb.go" "$tmp/go/runtime.pb.go"
+  diff -u "$root/gen/python/extension_rules.py" "$tmp/python/extension_rules.py"
+  diff -u "$root/python/crawler_runtime_contracts/v1/extension_rules.py" "$tmp/python/extension_rules.py"
   diff -u "$root/conformance/go/limits_gen.go" "$tmp/limits_gen.go"
+  diff -u "$root/conformance/go/extensions_gen.go" "$tmp/extensions_gen.go"
   exit 0
 fi
 
 mkdir -p "$root/gen/python" "$root/gen/go"
 cp "$tmp/python/runtime_pb2.py" "$root/gen/python/runtime_pb2.py"
+cp "$tmp/python/runtime_pb2.py" "$root/python/crawler_runtime_contracts/v1/runtime_pb2.py"
+cp "$tmp/python/extension_rules.py" "$root/gen/python/extension_rules.py"
+cp "$tmp/python/extension_rules.py" "$root/python/crawler_runtime_contracts/v1/extension_rules.py"
 cp "$tmp/go/runtime.pb.go" "$root/gen/go/runtime.pb.go"
 cp "$tmp/limits_gen.go" "$root/conformance/go/limits_gen.go"
+cp "$tmp/extensions_gen.go" "$root/conformance/go/extensions_gen.go"

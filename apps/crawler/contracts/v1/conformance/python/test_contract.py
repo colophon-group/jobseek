@@ -1,24 +1,80 @@
 from __future__ import annotations
 
+import json
 import socket
 from pathlib import Path
 
 import pytest
 from conformance.python.contract import (
     ContractViolation,
+    _url,
     fencing_digest,
     load_case,
     load_replay,
     project_frames,
     semantic_hash,
     validate_case,
+    validate_error,
     validate_replay,
     validate_transcript,
 )
-from gen.python import runtime_pb2 as pb
+from crawler_runtime_contracts.v1 import runtime_pb2 as pb
+from crawler_runtime_contracts.v1.framing import (
+    FramingError,
+    decode_delimited,
+    encode_delimited,
+)
 from google.protobuf.json_format import ParseError
 
 FIXTURES = Path(__file__).parents[2] / "fixtures"
+
+
+def test_shared_framing_vectors() -> None:
+    cases = json.loads((FIXTURES / "framing/cases.json").read_text())
+    for value in cases:
+        wire = bytes.fromhex(value["hex"])
+        if value["valid"]:
+            message, remaining = decode_delimited(wire, pb.ClientMessage, value["max_frame_bytes"])
+            assert isinstance(message, pb.ClientMessage)
+            assert remaining == b""
+        else:
+            with pytest.raises(FramingError) as caught:
+                decode_delimited(wire, pb.ClientMessage, value["max_frame_bytes"])
+            assert caught.value.kind == value["error"]
+
+
+def test_framing_round_trip_and_oversize_encode() -> None:
+    message = pb.ClientMessage(hello=pb.ClientHello())
+    wire = encode_delimited(message, 3)
+    _, remaining = decode_delimited(wire, pb.ClientMessage, 3)
+    assert remaining == b""
+    with pytest.raises(FramingError):
+        encode_delimited(message, 0)
+
+
+def test_shared_canonical_url_vectors() -> None:
+    cases = json.loads((FIXTURES / "url/cases.json").read_text())
+    for value in cases:
+        if value["valid"]:
+            _url(value["url"], value["name"])
+        else:
+            with pytest.raises(ContractViolation) as caught:
+                _url(value["url"], value["name"])
+            assert caught.value.code == "url"
+
+
+def test_every_error_code_has_a_shared_policy_vector() -> None:
+    cases = json.loads((FIXTURES / "errors/cases.json").read_text())
+    assert len(cases) == len(pb.ErrorCode.values()) - 1
+    for value in cases:
+        error = pb.RuntimeError(
+            code=pb.ErrorCode.Value(value["code"]),
+            disposition=pb.ErrorDisposition.Value(value["disposition"]),
+            message="shared typed error vector",
+        )
+        if "http_status" in value:
+            error.http_status = value["http_status"]
+        validate_error(error)
 
 
 @pytest.mark.parametrize("path", sorted((FIXTURES / "conformance/positive").glob("*.json")))
@@ -53,9 +109,10 @@ def test_shared_replay_is_offline(monkeypatch: pytest.MonkeyPatch, path: Path) -
 
 def test_nonzero_projection_and_semantic_hash_are_exact() -> None:
     replay = load_replay(FIXTURES / "replay/representative-paginated-monitor.json")
-    projection = project_frames(list(replay.expected_frames))
+    projection = project_frames(list(replay.expected_frames), replay.execution_request)
     assert projection.filtered_count == 2
     assert projection.security_filtered_count == 1
+    assert not projection.gone_detection_allowed
     assert projection == replay.expected_projection
     assert semantic_hash(list(replay.expected_frames), projection) == (
         replay.expected_semantic_sha256

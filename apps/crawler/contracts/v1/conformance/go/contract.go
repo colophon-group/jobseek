@@ -22,34 +22,37 @@ import (
 const ContractVersion = "crawler.runtime/v1"
 
 var (
-	sha256RE         = regexp.MustCompile(`^[0-9a-f]{64}$`)
-	redactedRE       = regexp.MustCompile(`^redacted-sha256:[0-9a-f]{64}$`)
-	traceparentRE    = regexp.MustCompile(`^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$`)
-	deadlineRE       = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$`)
-	httpMethodRE     = regexp.MustCompile(`^[A-Z]+$`)
-	sensitiveHeaders = map[string]bool{
-		"authorization": true, "cookie": true, "proxy-authorization": true, "x-api-key": true,
+	sha256RE          = regexp.MustCompile(`^[0-9a-f]{64}$`)
+	redactedRE        = regexp.MustCompile(`^redacted-sha256:[0-9a-f]{64}$`)
+	redactedEmailRE   = regexp.MustCompile(`^person-[0-9a-f]{64}@redacted\.invalid$`)
+	traceparentRE     = regexp.MustCompile(`^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$`)
+	tracestateKeyRE   = regexp.MustCompile(`^(?:[a-z][a-z0-9_\-*/]{0,255}|[a-z0-9][a-z0-9_\-*/]{0,240}@[a-z][a-z0-9_\-*/]{0,13})$`)
+	tracestateValueRE = regexp.MustCompile(`^[\x21-\x2B\x2D-\x3C\x3E-\x7E](?:[\x20-\x2B\x2D-\x3C\x3E-\x7E]{0,254}[\x21-\x2B\x2D-\x3C\x3E-\x7E])?$`)
+	deadlineRE        = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$`)
+	httpMethodRE      = regexp.MustCompile(`^[A-Z]+$`)
+	sensitiveHeaders  = map[string]bool{
+		"authorization": true, "cookie": true, "proxy-authorization": true,
+		"set-cookie": true, "x-api-key": true, "x-auth-token": true,
 	}
-	hardLimits = generatedHardLimits()
+	sensitiveParameterNames = map[string]bool{
+		"api-key": true, "api_key": true, "apikey": true, "access-token": true,
+		"access_token": true, "authorization": true, "cookie": true,
+		"password": true, "secret": true, "token": true,
+	}
+	emailParameterNames     = map[string]bool{"email": true, "e-mail": true, "mail": true}
+	emailBytesRE            = regexp.MustCompile(`(?i)\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b`)
+	jwtBytesRE              = regexp.MustCompile(`\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\b`)
+	privateKeyBytesRE       = regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`)
+	urlCredentialBytesRE    = regexp.MustCompile(`https?://[^/@\s:]+:[^/@\s]+@`)
+	secretAssignmentBytesRE = regexp.MustCompile(`(?i)(?:api[_-]?key|access[_-]?token|token|password|secret|authorization|cookie)["']?[ \t]*[:=][ \t]*["']?([^"'&;,\s}]+)`)
+	dnsLabelRE              = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
+	percentEscapeRE         = regexp.MustCompile(`%([0-9A-Fa-f]{2})`)
+	hardLimits              = generatedHardLimits()
 )
 
 const maxTransferChunks = 64
 
 const maxExtensionBytes = 65_536
-
-var extensionRegistry = map[string]bool{
-	"jobseek.runtime.v1/representative-json/monitor-config|1|2":   true,
-	"jobseek.runtime.v1/representative-json/scraper-config|1|2":   true,
-	"jobseek.runtime.v1/representative-json/runtime-metadata|1|2": true,
-	"jobseek.runtime.v1/browser/evaluation-json|1|2":              true,
-}
-
-var extensionContexts = map[string]map[string]bool{
-	"jobseek.runtime.v1/representative-json/monitor-config":   {"manifest": true},
-	"jobseek.runtime.v1/representative-json/scraper-config":   {"manifest": true},
-	"jobseek.runtime.v1/representative-json/runtime-metadata": {"job_content": true, "monitor_metadata": true},
-	"jobseek.runtime.v1/browser/evaluation-json":              {"browser_evaluation": true},
-}
 
 var scraperExtensionFields = map[string]bool{
 	"title": true, "description": true, "locations": true, "employment_type": true,
@@ -100,6 +103,22 @@ func validURL(value, field string) error {
 			return fail("url", field+" contains an ASCII control character")
 		}
 	}
+	schemeSeparator := strings.Index(value, "://")
+	authority := ""
+	if schemeSeparator >= 0 {
+		authority = value[schemeSeparator+3:]
+		if end := strings.IndexAny(authority, "/?#"); end >= 0 {
+			authority = authority[:end]
+		}
+	}
+	if strings.Contains(authority, "%") {
+		return fail("url", field+" authority/host must not contain percent escapes")
+	}
+	for _, character := range []byte(authority) {
+		if character >= 0x80 {
+			return fail("url", field+" authority must use an ASCII IDNA A-label")
+		}
+	}
 	parsed, err := url.Parse(value)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Hostname() == "" {
 		return fail("url", field+" must be an absolute HTTP(S) URL")
@@ -108,10 +127,83 @@ func validURL(value, field string) error {
 		return fail("url", field+" must use canonical scheme/host and omit credentials/fragments")
 	}
 	if port := parsed.Port(); port != "" {
-		value, err := strconv.ParseUint(port, 10, 16)
-		if err != nil || value == 0 {
+		portValue, err := strconv.ParseUint(port, 10, 16)
+		if err != nil || portValue == 0 {
 			return fail("url", field+" port must be numeric within 1..65535")
 		}
+		if parsed.Scheme == "http" && portValue == 80 || parsed.Scheme == "https" && portValue == 443 {
+			return fail("url", field+" must omit the default port")
+		}
+	}
+	rawHost := parsed.Hostname()
+	if !strings.Contains(rawHost, ":") {
+		for _, label := range strings.Split(rawHost, ".") {
+			if !dnsLabelRE.MatchString(label) {
+				return fail("url", field+" host must use canonical ASCII DNS labels")
+			}
+		}
+	}
+	escapedPath := parsed.EscapedPath()
+	if escapedPath == "" {
+		return fail("url", field+" must use '/' instead of an empty path")
+	}
+	for _, segment := range strings.Split(escapedPath, "/") {
+		if segment == "." || segment == ".." {
+			return fail("url", field+" path must not contain dot segments")
+		}
+	}
+	unreserved := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+	for _, match := range percentEscapeRE.FindAllStringSubmatch(value, -1) {
+		if match[1] != strings.ToUpper(match[1]) {
+			return fail("url", field+" percent escapes must use uppercase hexadecimal")
+		}
+		decoded, _ := strconv.ParseUint(match[1], 16, 8)
+		if strings.ContainsRune(unreserved, rune(decoded)) {
+			return fail("url", field+" must not percent-encode an unreserved character")
+		}
+	}
+	if parsed.ForceQuery && parsed.RawQuery == "" {
+		return fail("url", field+" must omit an empty query delimiter")
+	}
+	return nil
+}
+
+func validateTraceContext(r *runtimev1.ExecutionRequest) error {
+	if r.Traceparent != nil {
+		value := r.GetTraceparent()
+		if !traceparentRE.MatchString(value) {
+			return fail("trace", "traceparent is not W3C version 00 syntax")
+		}
+		parts := strings.Split(value, "-")
+		if parts[1] == strings.Repeat("0", 32) || parts[2] == strings.Repeat("0", 16) {
+			return fail("trace", "traceparent trace-id and parent-id must be nonzero")
+		}
+	}
+	if r.Tracestate == nil {
+		return nil
+	}
+	value := r.GetTracestate()
+	if len([]byte(value)) > 512 {
+		return fail("trace", "tracestate exceeds the W3C 512-byte limit")
+	}
+	members := strings.Split(value, ",")
+	if len(members) == 0 || len(members) > 32 {
+		return fail("trace", "tracestate requires 1..32 list-members")
+	}
+	seen := map[string]bool{}
+	for _, rawMember := range members {
+		member := strings.Trim(rawMember, " \t")
+		if strings.Count(member, "=") != 1 {
+			return fail("trace", "tracestate list-member must contain exactly one equals sign")
+		}
+		parts := strings.SplitN(member, "=", 2)
+		if !tracestateKeyRE.MatchString(parts[0]) || !tracestateValueRE.MatchString(parts[1]) {
+			return fail("trace", "tracestate contains an invalid key or value")
+		}
+		if seen[parts[0]] {
+			return fail("trace", "tracestate keys must be unique")
+		}
+		seen[parts[0]] = true
 	}
 	return nil
 }
@@ -207,35 +299,23 @@ func headers(values []*runtimev1.Header, field string) error {
 	return nil
 }
 
-func limitValues(l *runtimev1.Limits) []struct {
-	name           string
-	value, ceiling uint64
-} {
-	return []struct {
-		name           string
-		value, ceiling uint64
-	}{
-		{"max_frame_bytes", l.GetMaxFrameBytes(), hardLimits.GetMaxFrameBytes()},
-		{"max_inline_body_bytes", l.GetMaxInlineBodyBytes(), hardLimits.GetMaxInlineBodyBytes()},
-		{"max_artifact_chunk_bytes", l.GetMaxArtifactChunkBytes(), hardLimits.GetMaxArtifactChunkBytes()},
-		{"max_monitor_batches", uint64(l.GetMaxMonitorBatches()), uint64(hardLimits.GetMaxMonitorBatches())},
-		{"max_output_items", l.GetMaxOutputItems(), hardLimits.GetMaxOutputItems()},
-		{"max_in_flight_frames", uint64(l.GetMaxInFlightFrames()), uint64(hardLimits.GetMaxInFlightFrames())},
-		{"max_active_duration_ms", l.GetMaxActiveDurationMs(), hardLimits.GetMaxActiveDurationMs()},
-		{"max_browser_actions", uint64(l.GetMaxBrowserActions()), uint64(hardLimits.GetMaxBrowserActions())},
-		{"max_browser_captures", uint64(l.GetMaxBrowserCaptures()), uint64(hardLimits.GetMaxBrowserCaptures())},
-		{"max_browser_evaluations", uint64(l.GetMaxBrowserEvaluations()), uint64(hardLimits.GetMaxBrowserEvaluations())},
-		{"max_http_transfer_bytes", l.GetMaxHttpTransferBytes(), hardLimits.GetMaxHttpTransferBytes()},
-		{"max_browser_transfer_bytes", l.GetMaxBrowserTransferBytes(), hardLimits.GetMaxBrowserTransferBytes()},
-		{"max_execution_frames", uint64(l.GetMaxExecutionFrames()), uint64(hardLimits.GetMaxExecutionFrames())},
-		{"max_artifact_count", uint64(l.GetMaxArtifactCount()), uint64(hardLimits.GetMaxArtifactCount())},
-		{"max_artifact_total_bytes", l.GetMaxArtifactTotalBytes(), hardLimits.GetMaxArtifactTotalBytes()},
-	}
-}
-
 func ValidateLimits(l, requested *runtimev1.Limits) error {
 	if l == nil {
 		return fail("limit", "limits are required")
+	}
+	values := limitValues(l)
+	fields := l.ProtoReflect().Descriptor().Fields()
+	if len(values) != fields.Len() {
+		return fail("limit_coverage", "generated Go limit validation omits an IDL field")
+	}
+	covered := map[string]bool{}
+	for _, item := range values {
+		covered[item.name] = true
+	}
+	for index := 0; index < fields.Len(); index++ {
+		if !covered[string(fields.Get(index).Name())] {
+			return fail("limit_coverage", "generated Go limit validation omits an IDL field")
+		}
 	}
 	requestedMap := map[string]uint64{}
 	if requested != nil {
@@ -243,7 +323,7 @@ func ValidateLimits(l, requested *runtimev1.Limits) error {
 			requestedMap[item.name] = item.value
 		}
 	}
-	for _, item := range limitValues(l) {
+	for _, item := range values {
 		if item.value == 0 || item.value > item.ceiling {
 			return fail("limit", fmt.Sprintf("%s must be within 1..%d", item.name, item.ceiling))
 		}
@@ -358,6 +438,90 @@ func ValidateChunkManifest(manifest *runtimev1.ChunkManifest, limits *runtimev1.
 	return nil, nil
 }
 
+func CapturedRequestFingerprint(request *runtimev1.CapturedRequest) string {
+	sum := sha256.Sum256(deterministicBytes(request))
+	return hex.EncodeToString(sum[:])
+}
+
+func scanCaptureBytes(payload []byte, field string) error {
+	if jwtBytesRE.Match(payload) || privateKeyBytesRE.Match(payload) {
+		return fail("redaction", field+" contains secret-shaped material")
+	}
+	if urlCredentialBytesRE.Match(payload) {
+		return fail("redaction", field+" contains URL credentials")
+	}
+	for _, email := range emailBytesRE.FindAll(payload, -1) {
+		if !bytes.HasSuffix(bytes.ToLower(email), []byte("@redacted.invalid")) {
+			return fail("redaction", field+" contains a plaintext email address")
+		}
+	}
+	for _, match := range secretAssignmentBytesRE.FindAllSubmatch(payload, -1) {
+		if len(match) < 2 || !redactedRE.Match(match[1]) {
+			return fail("redaction", field+" contains an unredacted secret field")
+		}
+	}
+	return nil
+}
+
+func validateCapturePrivacy(request *runtimev1.CapturedRequest, response *runtimev1.CapturedResponse, requestBody, responseBody []byte) error {
+	for _, owner := range []struct {
+		name    string
+		headers []*runtimev1.Header
+	}{
+		{"captured request", request.GetHeaders()},
+		{"captured response", response.GetHeaders()},
+	} {
+		for _, header := range owner.headers {
+			if err := scanCaptureBytes([]byte(header.GetValue()), owner.name+" header "+header.GetName()); err != nil {
+				return err
+			}
+		}
+	}
+	parsed, err := url.Parse(request.GetUrl())
+	if err != nil {
+		return fail("redaction", "captured request query cannot be safely decoded")
+	}
+	parameters, err := url.ParseQuery(parsed.RawQuery)
+	if err != nil {
+		return fail("redaction", "captured request query cannot be safely decoded")
+	}
+	for name, values := range parameters {
+		normalized := strings.ToLower(name)
+		for _, value := range values {
+			if sensitiveParameterNames[normalized] && !redactedRE.MatchString(value) {
+				return fail("redaction", "sensitive query parameter "+name+" is not redacted")
+			}
+			if emailParameterNames[normalized] && !redactedEmailRE.MatchString(value) {
+				return fail("redaction", "email query parameter "+name+" is not redacted")
+			}
+		}
+	}
+	if err := scanCaptureBytes([]byte(parsed.RawQuery), "captured request query"); err != nil {
+		return err
+	}
+	transfers := []struct {
+		prefix   string
+		manifest *runtimev1.ChunkManifest
+		body     []byte
+	}{
+		{"captured request body", request.GetBody(), requestBody},
+		{"captured response body", response.GetBody(), responseBody},
+	}
+	for _, transfer := range transfers {
+		for index, chunk := range transfer.manifest.GetChunks() {
+			if storage, ok := chunk.GetStorage().(*runtimev1.DataChunk_InlineBody); ok {
+				if err := scanCaptureBytes(storage.InlineBody, fmt.Sprintf("%s chunk %d", transfer.prefix, index)); err != nil {
+					return err
+				}
+			}
+		}
+		if err := scanCaptureBytes(transfer.body, transfer.prefix); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func ValidateExtension(extension *runtimev1.ExtensionEnvelope, context string) error {
 	if extension == nil {
 		return fail("extension", "extension is required")
@@ -368,11 +532,11 @@ func ValidateExtension(extension *runtimev1.ExtensionEnvelope, context string) e
 	if extension.GetEncoding() == 0 || runtimev1.ExtensionEncoding_name[int32(extension.GetEncoding())] == "" {
 		return fail("enum", "extension encoding is unspecified or unknown")
 	}
-	key := fmt.Sprintf("%s|%d|%d", extension.GetSchemaId(), extension.GetSchemaVersion(), extension.GetEncoding())
-	if !extensionRegistry[key] {
+	rule, registered := extensionRules[extension.GetSchemaId()]
+	if !registered || extension.GetSchemaVersion() != rule.version || extension.GetEncoding() != rule.encoding {
 		return fail("extension", "extension schema/version/encoding is not registered for v1")
 	}
-	if !extensionContexts[extension.GetSchemaId()][context] {
+	if !rule.contexts[context] {
 		return fail("extension_context", extension.GetSchemaId()+" is forbidden in "+context)
 	}
 	if len(extension.GetPayload()) > maxExtensionBytes {
@@ -394,20 +558,20 @@ func ValidateExtension(extension *runtimev1.ExtensionEnvelope, context string) e
 		if !bytes.Equal(canonical, extension.GetPayload()) {
 			return fail("extension", "JSON extension payload is not canonical")
 		}
-		if err := validateExtensionSchema(extension.GetSchemaId(), extension.GetPayload()); err != nil {
+		if err := validateExtensionSchema(rule.validator, extension.GetPayload()); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func validateExtensionSchema(schemaID string, payload []byte) error {
+func validateExtensionSchema(validator string, payload []byte) error {
 	object := map[string]json.RawMessage{}
 	if err := json.Unmarshal(payload, &object); err != nil || object == nil {
 		return fail("extension_schema", "extension payload must be a typed JSON object")
 	}
-	switch schemaID {
-	case "jobseek.runtime.v1/representative-json/monitor-config":
+	switch validator {
+	case "monitor_config":
 		raw, ok := object["pages"]
 		if !ok || len(object) != 1 {
 			return fail("extension_schema", "monitor-config requires exactly pages")
@@ -416,7 +580,7 @@ func validateExtensionSchema(schemaID string, payload []byte) error {
 		if json.Unmarshal(raw, &pages) != nil || pages == 0 || pages > 1_000 {
 			return fail("extension_schema", "monitor-config pages must be integer 1..1000")
 		}
-	case "jobseek.runtime.v1/representative-json/scraper-config":
+	case "scraper_config":
 		raw, ok := object["fields"]
 		if !ok || len(object) != 1 {
 			return fail("extension_schema", "scraper-config requires exactly fields")
@@ -432,7 +596,7 @@ func validateExtensionSchema(schemaID string, payload []byte) error {
 			}
 			seen[field] = true
 		}
-	case "jobseek.runtime.v1/representative-json/runtime-metadata":
+	case "runtime_metadata":
 		raw, ok := object["source"]
 		if !ok || len(object) != 1 {
 			return fail("extension_schema", "runtime-metadata requires exactly source")
@@ -441,7 +605,7 @@ func validateExtensionSchema(schemaID string, payload []byte) error {
 		if json.Unmarshal(raw, &source) != nil || (source != "captured-provider" && source != "offline-fixture") {
 			return fail("extension_schema", "runtime-metadata source is invalid")
 		}
-	case "jobseek.runtime.v1/browser/evaluation-json":
+	case "evaluation_json":
 		raw, ok := object["value"]
 		if !ok || len(object) != 1 {
 			return fail("extension_schema", "evaluation-json requires exactly value")
@@ -623,8 +787,8 @@ func ValidateRequest(r *runtimev1.ExecutionRequest) error {
 	if _, err := time.Parse(time.RFC3339Nano, r.GetDeadlineRfc3339()); err != nil {
 		return fail("deadline", "deadline is not RFC3339 with offset")
 	}
-	if r.Traceparent != nil && !traceparentRE.MatchString(r.GetTraceparent()) {
-		return fail("trace", "invalid traceparent")
+	if err := validateTraceContext(r); err != nil {
+		return err
 	}
 	if err := ValidateManifest(r.GetBoardManifest()); err != nil {
 		return err
@@ -1315,6 +1479,7 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 	outputItems := uint64(0)
 	monitorURLsSeen := map[string]bool{}
 	monitorJobURLsSeen := map[string]bool{}
+	paginationDynamicRemaining := map[string]uint32{}
 	for i, event := range t.GetEvents() {
 		if event.GetDirection() == runtimev1.EventDirection_EVENT_DIRECTION_UNSPECIFIED || runtimev1.EventDirection_name[int32(event.GetDirection())] == "" {
 			return fail("enum", fmt.Sprintf("events[%d] direction unspecified or unknown", i))
@@ -1334,7 +1499,9 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 				ceiling = limits.GetMaxFrameBytes()
 			}
 			raw, _ := proto.Marshal(wireMessage)
-			if uint64(len(raw)+10) > ceiling {
+			var prefix [binary.MaxVarintLen64]byte
+			prefixSize := binary.PutUvarint(prefix[:], uint64(len(raw)))
+			if uint64(len(raw)+prefixSize) > ceiling {
 				return fail("frame_limit", "length-delimited protocol record exceeds max_frame_bytes")
 			}
 		}
@@ -1422,6 +1589,13 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 					return err
 				}
 				operationList = append([]*runtimev1.OriginOperationRef{}, request.GetOriginOperations()...)
+				if request.GetKind() == runtimev1.ExecutionKind_EXECUTION_KIND_BROWSER {
+					for _, action := range request.GetBrowser().GetPlan().GetActions() {
+						if paginate := action.GetPaginate(); paginate != nil {
+							paginationDynamicRemaining[action.GetOriginRequestId()] = paginate.GetMaxPages() - 1
+						}
+					}
+				}
 				nextSequence = 0
 			case *runtimev1.ClientMessage_Resume:
 				if phase != "ready" || request == nil || !needsResume {
@@ -1534,7 +1708,9 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 					return fail("fence", "frame echoed stale/mismatched attempt or fencing digest")
 				}
 				raw, _ := proto.Marshal(frame)
-				if uint64(len(raw)+10) > limits.GetMaxFrameBytes() {
+				var prefix [binary.MaxVarintLen64]byte
+				prefixSize := binary.PutUvarint(prefix[:], uint64(len(raw)))
+				if uint64(len(raw)+prefixSize) > limits.GetMaxFrameBytes() {
 					return fail("frame_limit", "frame exceeds max_frame_bytes")
 				}
 				prior := frames[frame.GetSequence()]
@@ -1577,6 +1753,13 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 					}
 					if op.GetOperationSequence() != uint32(len(operations)) {
 						return fail("origin_sequence", "dynamic origin sequence invalid")
+					}
+					if request.GetKind() == runtimev1.ExecutionKind_EXECUTION_KIND_BROWSER {
+						parent := op.GetParentOriginRequestId()
+						if paginationDynamicRemaining[parent] == 0 {
+							return fail("origin_limit", "dynamic browser origin exceeds pagination max_pages")
+						}
+						paginationDynamicRemaining[parent]--
 					}
 					candidate := append(append([]*runtimev1.OriginOperationRef{}, operationList...), op)
 					if _, err := ValidateOriginOperations(candidate, request.GetOriginRequestId()); err != nil {
@@ -1776,10 +1959,30 @@ func ContentHash(content *runtimev1.JobContent) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func ProjectFrames(frames []*runtimev1.ExecutionFrame) *runtimev1.ProjectedEffects {
-	result := &runtimev1.ProjectedEffects{GoneDetectionAllowed: true}
+func ProjectFrames(frames []*runtimev1.ExecutionFrame, request *runtimev1.ExecutionRequest) *runtimev1.ProjectedEffects {
+	targetURL := ""
+	switch request.GetKind() {
+	case runtimev1.ExecutionKind_EXECUTION_KIND_MONITOR:
+		targetURL = request.GetBoardManifest().GetBoardUrl()
+	case runtimev1.ExecutionKind_EXECUTION_KIND_SCRAPE:
+		targetURL = request.GetScrape().GetSourceUrl()
+	case runtimev1.ExecutionKind_EXECUTION_KIND_BROWSER:
+		targetURL = request.GetBrowser().GetPlan().GetTargetUrl()
+	}
+	result := &runtimev1.ProjectedEffects{
+		GoneDetectionAllowed: true,
+		RequestId:            request.GetRequestId(),
+		OriginRequestId:      request.GetOriginRequestId(),
+		ExecutionKind:        request.GetKind(),
+		TargetUrl:            targetURL,
+	}
 	urls := map[string]bool{}
 	hashes := []string{}
+	type targetEffect struct {
+		action runtimev1.ProjectedAction
+		hash   string
+	}
+	targets := map[string]targetEffect{}
 	metadataDigest := sha256.New()
 	metadataSeen := false
 	var metadataSize [8]byte
@@ -1789,11 +1992,14 @@ func ProjectFrames(frames []*runtimev1.ExecutionFrame) *runtimev1.ProjectedEffec
 			m := payload.MonitorBatch
 			for _, u := range m.GetUrls() {
 				urls[u] = true
+				targets[u] = targetEffect{action: runtimev1.ProjectedAction_PROJECTED_ACTION_UPSERT}
 			}
 			for _, job := range m.GetJobs() {
-				hashes = append(hashes, ContentHash(job.GetContent()))
+				digest := ContentHash(job.GetContent())
+				hashes = append(hashes, digest)
+				targets[job.GetUrl()] = targetEffect{action: runtimev1.ProjectedAction_PROJECTED_ACTION_UPSERT, hash: digest}
 			}
-			result.GoneDetectionAllowed = result.GetGoneDetectionAllowed() && !m.GetTruncated()
+			result.GoneDetectionAllowed = result.GetGoneDetectionAllowed() && !m.GetTruncated() && m.GetSecurityFilteredCount() == 0
 			result.Hybrid = result.GetHybrid() || m.GetHybrid()
 			result.Truncated = result.GetTruncated() || m.GetTruncated()
 			result.FilteredCount += m.GetFilteredCount()
@@ -1810,7 +2016,13 @@ func ProjectFrames(frames []*runtimev1.ExecutionFrame) *runtimev1.ProjectedEffec
 				metadataSeen = true
 			}
 		case *runtimev1.ExecutionFrame_ScrapeResult:
-			hashes = append(hashes, ContentHash(payload.ScrapeResult.GetContent()))
+			digest := ContentHash(payload.ScrapeResult.GetContent())
+			hashes = append(hashes, digest)
+			targets[request.GetScrape().GetSourceUrl()] = targetEffect{action: runtimev1.ProjectedAction_PROJECTED_ACTION_UPSERT, hash: digest}
+		case *runtimev1.ExecutionFrame_BrowserResult:
+			if payload.BrowserResult.GetSuccess() != nil {
+				targets[request.GetBrowser().GetPlan().GetTargetUrl()] = targetEffect{action: runtimev1.ProjectedAction_PROJECTED_ACTION_BROWSER_RESULT}
+			}
 		}
 	}
 	for u := range urls {
@@ -1819,6 +2031,19 @@ func ProjectFrames(frames []*runtimev1.ExecutionFrame) *runtimev1.ProjectedEffec
 	sort.Strings(result.UrlsToUpsert)
 	sort.Strings(hashes)
 	result.ContentHashes = hashes
+	targetURLs := make([]string, 0, len(targets))
+	for url := range targets {
+		targetURLs = append(targetURLs, url)
+	}
+	sort.Strings(targetURLs)
+	for _, url := range targetURLs {
+		effect := targets[url]
+		target := &runtimev1.ProjectedTarget{Url: url, Action: effect.action}
+		if effect.hash != "" {
+			target.ContentSha256 = &effect.hash
+		}
+		result.Targets = append(result.Targets, target)
+	}
 	if metadataSeen {
 		v := hex.EncodeToString(metadataDigest.Sum(nil))
 		result.MetadataUpdatesSha256 = &v
@@ -1915,11 +2140,15 @@ func ValidateReplay(replay *runtimev1.ReplayCase, limits *runtimev1.Limits) erro
 		if exchange.GetResponse().GetStatus() < 100 || exchange.GetResponse().GetStatus() > 599 {
 			return fail("http_status", "captured response status must be in 100..599")
 		}
-		if _, err := ValidateChunkManifest(exchange.GetRequest().GetBody(), limits, limits.GetMaxHttpTransferBytes(), true); err != nil {
+		requestBody, err := ValidateChunkManifest(exchange.GetRequest().GetBody(), limits, limits.GetMaxHttpTransferBytes(), true)
+		if err != nil {
 			return err
 		}
 		responseBody, err := ValidateChunkManifest(exchange.GetResponse().GetBody(), limits, limits.GetMaxHttpTransferBytes(), true)
 		if err != nil {
+			return err
+		}
+		if err := validateCapturePrivacy(exchange.GetRequest(), exchange.GetResponse(), requestBody, responseBody); err != nil {
 			return err
 		}
 		if exchange.NormalizedResultFrameSequence != nil {
@@ -1987,18 +2216,21 @@ func ValidateReplay(replay *runtimev1.ReplayCase, limits *runtimev1.Limits) erro
 	if err := ValidateTranscript(&runtimev1.ProtocolTranscript{ContractVersion: ContractVersion, Name: "replay:" + replay.GetName(), Events: events}); err != nil {
 		return err
 	}
-	contactOperations := []*runtimev1.OriginOperationRef{}
+	contacts := []*runtimev1.OriginContact{}
 	for _, frame := range replay.GetExpectedFrames() {
 		if frame.GetOriginContact() != nil {
-			contactOperations = append(contactOperations, frame.GetOriginContact().GetOperation())
+			contacts = append(contacts, frame.GetOriginContact())
 		}
 	}
-	if len(contactOperations) != len(replay.GetExchanges()) {
+	if len(contacts) != len(replay.GetExchanges()) {
 		return fail("origin", "expected origin-contact frames must exactly match captured exchanges")
 	}
-	for i, op := range contactOperations {
-		if !bytes.Equal(deterministicBytes(op), deterministicBytes(replay.GetExchanges()[i].GetOperation())) {
+	for i, contact := range contacts {
+		if !bytes.Equal(deterministicBytes(contact.GetOperation()), deterministicBytes(replay.GetExchanges()[i].GetOperation())) {
 			return fail("origin", "expected origin-contact frames must exactly match captured exchanges")
+		}
+		if contact.GetRequestFingerprint() != CapturedRequestFingerprint(replay.GetExchanges()[i].GetRequest()) {
+			return fail("fingerprint", "origin request fingerprint differs from CapturedRequest")
 		}
 	}
 	resultFrames := map[uint64]*runtimev1.ExecutionFrame{}
@@ -2034,7 +2266,7 @@ func ValidateReplay(replay *runtimev1.ReplayCase, limits *runtimev1.Limits) erro
 			return fail("replay", "decoded result differs")
 		}
 	}
-	projection := ProjectFrames(replay.GetExpectedFrames())
+	projection := ProjectFrames(replay.GetExpectedFrames(), replay.GetExecutionRequest())
 	left, _ := canonicalJSON(projection)
 	right, _ := canonicalJSON(replay.GetExpectedProjection())
 	if !bytes.Equal(left, right) {

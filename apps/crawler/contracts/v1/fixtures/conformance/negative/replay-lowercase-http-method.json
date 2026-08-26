@@ -14,8 +14,16 @@
         },
         "request": {
           "body": {
+            "chunks": [
+              {
+                "inlineBody": "eyJhcGlfa2V5IjoicmVkYWN0ZWQtc2hhMjU2OmY5YTJjY2NkMjk1ZTA0YWQ0ODc2MDc5Y2RkMjg5ZGQyNmRjNTAyMTFkMGQxZjFjZmI2NjA2NDAwMzI2MmNiNTkiLCJlbWFpbCI6InBlcnNvbi01ZjcyNzczMTA2ZTZkZjFhMTlhODk2NGY4YzcwYmNmYzdjOGI4NmUyZjdhMjUwNTZjOGNiNjNmYzhhNmQxOGNiQHJlZGFjdGVkLmludmFsaWQifQ==",
+                "sha256": "4432683f17d8356941202e44b11c1ab93f529fbd538a44fde3a25a0e823c8aeb",
+                "sizeBytes": "193"
+              }
+            ],
             "complete": true,
-            "totalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            "totalSha256": "4432683f17d8356941202e44b11c1ab93f529fbd538a44fde3a25a0e823c8aeb",
+            "totalSizeBytes": "193"
           },
           "headers": [
             {
@@ -29,7 +37,7 @@
             }
           ],
           "method": "get",
-          "url": "https://careers.example.invalid/api/jobs?page=1"
+          "url": "https://careers.example.invalid/api/jobs?page=1&api_key=redacted-sha256:6a8a16b0393c715aa8374b4629e46597943d984efe78f9a885e5a1e897fecd4e&email=person-3e71576e69c876c4d725a5c044d1c008379e562611a1cebe3eb7eb4c1b831d6b@redacted.invalid"
         },
         "response": {
           "body": {
@@ -70,8 +78,16 @@
         },
         "request": {
           "body": {
+            "chunks": [
+              {
+                "inlineBody": "eyJhcGlfa2V5IjoicmVkYWN0ZWQtc2hhMjU2OmY5YTJjY2NkMjk1ZTA0YWQ0ODc2MDc5Y2RkMjg5ZGQyNmRjNTAyMTFkMGQxZjFjZmI2NjA2NDAwMzI2MmNiNTkiLCJlbWFpbCI6InBlcnNvbi01ZjcyNzczMTA2ZTZkZjFhMTlhODk2NGY4YzcwYmNmYzdjOGI4NmUyZjdhMjUwNTZjOGNiNjNmYzhhNmQxOGNiQHJlZGFjdGVkLmludmFsaWQifQ==",
+                "sha256": "4432683f17d8356941202e44b11c1ab93f529fbd538a44fde3a25a0e823c8aeb",
+                "sizeBytes": "193"
+              }
+            ],
             "complete": true,
-            "totalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            "totalSha256": "4432683f17d8356941202e44b11c1ab93f529fbd538a44fde3a25a0e823c8aeb",
+            "totalSizeBytes": "193"
           },
           "headers": [
             {
@@ -85,7 +101,7 @@
             }
           ],
           "method": "GET",
-          "url": "https://careers.example.invalid/api/jobs?page=2"
+          "url": "https://careers.example.invalid/api/jobs?page=2&api_key=redacted-sha256:6a8a16b0393c715aa8374b4629e46597943d984efe78f9a885e5a1e897fecd4e&email=person-3e71576e69c876c4d725a5c044d1c008379e562611a1cebe3eb7eb4c1b831d6b@redacted.invalid"
         },
         "response": {
           "body": {
@@ -177,7 +193,8 @@
       ],
       "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
       "requestId": "request-monitor-1",
-      "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+      "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+      "tracestate": "vendor=value,tenant@system=opaque value"
     },
     "expectedFrames": [
       {
@@ -190,7 +207,7 @@
             "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
             "role": "page-1"
           },
-          "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a"
+          "requestFingerprint": "d4f265a4570685972f51d4a2ca3343f53eb79ed2eac2387691cc2b0eaa822f85"
         },
         "requestId": "request-monitor-1"
       },
@@ -244,7 +261,7 @@
             "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
             "role": "page-2"
           },
-          "requestFingerprint": "98e5b0940917732600ba7a8a503f86573181fc25c05ba49bea271cc8c9d2a4e0"
+          "requestFingerprint": "c15095274483d3c17839c1d87ee36ad98dba7d928e8c4d4bdb66ef2f57a28d7f"
         },
         "requestId": "request-monitor-1",
         "sequence": "2"
@@ -306,18 +323,34 @@
         "5d017ba5d4aecc5ffd02bee4456fa697749b076dd9bdefbdc071f593680cdb28",
         "cb6a6a2ac345b7983956f780bded2f27f73f4c8624cea9e561ba1d1ad551f7ec"
       ],
+      "executionKind": "EXECUTION_KIND_MONITOR",
       "filteredCount": "2",
       "hybrid": true,
       "metadataUpdatesSha256": "79c03aaf171f326978743d69d52d562999b7d0cecf9df829134a9ac35d315b27",
       "newSitemapUrl": "https://careers.example.invalid/sitemap-current.xml",
+      "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+      "requestId": "request-monitor-1",
       "securityFilteredCount": "1",
+      "targetUrl": "https://careers.example.invalid/jobs",
+      "targets": [
+        {
+          "action": "PROJECTED_ACTION_UPSERT",
+          "contentSha256": "5d017ba5d4aecc5ffd02bee4456fa697749b076dd9bdefbdc071f593680cdb28",
+          "url": "https://careers.example.invalid/jobs/1"
+        },
+        {
+          "action": "PROJECTED_ACTION_UPSERT",
+          "contentSha256": "cb6a6a2ac345b7983956f780bded2f27f73f4c8624cea9e561ba1d1ad551f7ec",
+          "url": "https://careers.example.invalid/jobs/2"
+        }
+      ],
       "truncated": true,
       "urlsToUpsert": [
         "https://careers.example.invalid/jobs/1",
         "https://careers.example.invalid/jobs/2"
       ]
     },
-    "expectedSemanticSha256": "7688b7e2c8a547c7d20d98dfca5d41cf8c8a1706556a31063b68870cac5d2875",
+    "expectedSemanticSha256": "97cb70d166c71c49bb9cdf6b3d0219920afd207327584dbc6551a7d671eb070b",
     "name": "representative-paginated-monitor",
     "providerFamily": "representative-json"
   }

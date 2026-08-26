@@ -2,6 +2,7 @@ package conformance
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"os"
@@ -51,6 +52,59 @@ func TestSharedPositiveConformance(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestSharedCanonicalURLVectors(t *testing.T) {
+	var cases []struct {
+		Name  string `json:"name"`
+		URL   string `json:"url"`
+		Valid bool   `json:"valid"`
+	}
+	raw, err := os.ReadFile(filepath.Join("..", "..", "fixtures", "url", "cases.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &cases); err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range cases {
+		err := validURL(value.URL, value.Name)
+		if value.Valid && err != nil {
+			t.Errorf("%s: valid URL rejected: %v", value.Name, err)
+		}
+		if !value.Valid && err == nil {
+			t.Errorf("%s: invalid URL accepted", value.Name)
+		}
+	}
+}
+
+func TestEveryErrorCodeHasASharedPolicyVector(t *testing.T) {
+	var cases []struct {
+		Code        string  `json:"code"`
+		Disposition string  `json:"disposition"`
+		HTTPStatus  *uint32 `json:"http_status"`
+	}
+	raw, err := os.ReadFile(filepath.Join("..", "..", "fixtures", "errors", "cases.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &cases); err != nil {
+		t.Fatal(err)
+	}
+	if len(cases) != len(runtimev1.ErrorCode_name)-1 {
+		t.Fatalf("got %d error vectors, want %d", len(cases), len(runtimev1.ErrorCode_name)-1)
+	}
+	for _, value := range cases {
+		errorValue := &runtimev1.RuntimeError{
+			Code:        runtimev1.ErrorCode(runtimev1.ErrorCode_value[value.Code]),
+			Disposition: runtimev1.ErrorDisposition(runtimev1.ErrorDisposition_value[value.Disposition]),
+			Message:     "shared typed error vector",
+			HttpStatus:  value.HTTPStatus,
+		}
+		if err := ValidateError(errorValue); err != nil {
+			t.Errorf("%s: %v", value.Code, err)
+		}
 	}
 }
 
@@ -126,9 +180,12 @@ func TestNonzeroProjectionAndSemanticHashAreExact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	projection := ProjectFrames(replay.GetExpectedFrames())
+	projection := ProjectFrames(replay.GetExpectedFrames(), replay.GetExecutionRequest())
 	if projection.GetFilteredCount() != 2 || projection.GetSecurityFilteredCount() != 1 {
 		t.Fatalf("projection drift: filtered=%d security_filtered=%d", projection.GetFilteredCount(), projection.GetSecurityFilteredCount())
+	}
+	if projection.GetGoneDetectionAllowed() {
+		t.Fatal("security-filtered output must suppress gone detection")
 	}
 	left, _ := canonicalJSON(projection)
 	right, _ := canonicalJSON(replay.GetExpectedProjection())

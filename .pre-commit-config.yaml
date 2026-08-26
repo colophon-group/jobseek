@@ -4,10 +4,10 @@ repos:
     hooks:
       - id: ruff
         files: ^apps/crawler/
-        exclude: ^apps/crawler/contracts/v1/gen/
+        exclude: ^apps/crawler/contracts/v1/(gen/|python/crawler_runtime_contracts/v1/(runtime_pb2|extension_rules)\.py$)
       - id: ruff-format
         files: ^apps/crawler/
-        exclude: ^apps/crawler/contracts/v1/gen/
+        exclude: ^apps/crawler/contracts/v1/(gen/|python/crawler_runtime_contracts/v1/(runtime_pb2|extension_rules)\.py$)
   - repo: local
     hooks:
       - id: web-lint
