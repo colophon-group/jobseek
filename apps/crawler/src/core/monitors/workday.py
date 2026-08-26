@@ -50,6 +50,7 @@ PAGE_SIZE = 20
 _LIST_CONCURRENCY = 5  # Parallel site listing during multi-site discovery
 _QUERY_CONCURRENCY = 5  # Shared bound across sites and facet/direct queries
 _API_RESULT_CAP = 2000  # Workday caps list results at 2000 per query
+_MAX_FACET_ID_LENGTH = 512
 # Large appliedFacets arrays fail with tenant-dependent 4xx/5xx responses.
 # O'Reilly accepts 100 location IDs; larger arrays fail on some tenants.
 _MAX_FACET_VALUES_PER_QUERY = 100
@@ -288,14 +289,37 @@ def _pick_split_facet(
         if facet is None:
             raise ValueError(f"Workday split_facet {preferred!r} was not advertised")
         values = facet.get("values", [])
-        ids = [value["id"] for value in values if isinstance(value, dict) and "id" in value]
-        if not ids:
+        if not isinstance(values, list) or not values:
             raise ValueError(f"Workday split_facet {preferred!r} advertised no values")
-        if any(
-            not isinstance(value, dict) or value.get("count", 0) >= _API_RESULT_CAP
-            for value in values
-        ):
-            raise ValueError(f"Workday split_facet {preferred!r} contains an unsafe capped value")
+
+        ids: list[str] = []
+        seen_ids: set[str] = set()
+        for value in values:
+            if not isinstance(value, dict):
+                raise ValueError(f"Workday split_facet {preferred!r} contains a malformed value")
+            facet_id = value.get("id")
+            if (
+                not isinstance(facet_id, str)
+                or not facet_id
+                or len(facet_id) > _MAX_FACET_ID_LENGTH
+                or facet_id.strip() != facet_id
+                or "\x00" in facet_id
+            ):
+                raise ValueError(f"Workday split_facet {preferred!r} contains an invalid value id")
+            count = value.get("count")
+            if (
+                not isinstance(count, int)
+                or isinstance(count, bool)
+                or count < 0
+                or count >= _API_RESULT_CAP
+            ):
+                raise ValueError(
+                    f"Workday split_facet {preferred!r} contains an unsafe value count"
+                )
+            if facet_id in seen_ids:
+                raise ValueError(f"Workday split_facet {preferred!r} contains a duplicate value id")
+            seen_ids.add(facet_id)
+            ids.append(facet_id)
         return preferred, ids
 
     best: tuple[str, list[str]] | None = None
