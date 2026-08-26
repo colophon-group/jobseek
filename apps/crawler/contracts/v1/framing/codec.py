@@ -36,8 +36,8 @@ def _validate_maximum(maximum: int) -> None:
 def _view(value: bytes | bytearray | memoryview, field: str) -> memoryview:
     try:
         view = memoryview(value)
-    except TypeError:
-        _fail("invalid_buffer", f"{field} must support the buffer protocol")
+    except (TypeError, ValueError) as error:
+        raise FramingError("invalid_buffer", f"{field} must be an accessible buffer") from error
     if view.ndim != 1 or not view.contiguous:
         _fail("invalid_buffer", f"{field} must be a contiguous one-dimensional buffer")
     try:

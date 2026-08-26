@@ -164,6 +164,35 @@ def test_decode_next_many_records_keeps_one_backing_buffer() -> None:
         assert len(remainder) == remaining_count
 
 
+def _released_view() -> memoryview:
+    view = memoryview(b"\x00")
+    view.release()
+    return view
+
+
+def _assert_released_view_failure(caught: pytest.ExceptionInfo[Any]) -> None:
+    _assert_code(caught, "invalid_buffer")
+    assert isinstance(caught.value.__cause__, ValueError)
+
+
+def test_encode_record_normalizes_released_memoryview() -> None:
+    with pytest.raises(codec.FramingError) as caught:
+        codec.encode_record(_released_view(), 1)
+    _assert_released_view_failure(caught)
+
+
+def test_decode_record_normalizes_released_memoryview() -> None:
+    with pytest.raises(codec.FramingError) as caught:
+        codec.decode_record(_released_view(), 1)
+    _assert_released_view_failure(caught)
+
+
+def test_decode_next_normalizes_released_memoryview() -> None:
+    with pytest.raises(codec.FramingError) as caught:
+        codec.decode_next(_released_view(), 1)
+    _assert_released_view_failure(caught)
+
+
 def test_prefix_inclusive_cap_property() -> None:
     rng = random.Random(7937)
     lengths = list(VECTORS["property_lengths"]) + [rng.randrange(0, 100_000) for _ in range(200)]
