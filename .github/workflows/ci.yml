@@ -70,6 +70,13 @@ jobs:
             deploy/observability/test_prune_rollbacks.py
           python3 deploy/observability/test_prune_rollbacks.py
 
+      - name: Test global crawler capacity envelope
+        run: |
+          python3 -m py_compile \
+            scripts/capacity_envelope.py \
+            scripts/test_capacity_envelope.py
+          python3 scripts/test_capacity_envelope.py
+
       - name: Test repository scripts
         run: >
           node --test

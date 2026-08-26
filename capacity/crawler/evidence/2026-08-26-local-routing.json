@@ -1,0 +1,95 @@
+{
+  "base_commit": "bb892b6350cfcbbc2779e8fde318231a1a24926a",
+  "classification": "measured_synthetic_weighted_routing_only",
+  "command": "python scripts/capacity_envelope.py --check --benchmark-routing 10000000",
+  "conservation": {
+    "duplicate_boards": 0,
+    "growth_duplicate_partitions": 0,
+    "growth_existing_to_existing_moves": 0,
+    "growth_input_partitions": 8192,
+    "growth_lost_partitions": 0,
+    "growth_moved_partitions": 967,
+    "growth_output_partitions": 8192,
+    "input_boards": 10000000,
+    "lost_boards": 0,
+    "moved_boards": 156375,
+    "moved_partitions": 128,
+    "primary_boards": 10000000,
+    "recovered_active_postings": 100000000,
+    "recovered_boards": 10000000,
+    "recovered_cycles_per_hour": 6000000,
+    "unaffected_partitions_moved": 0
+  },
+  "distribution": {
+    "growth_new_cell_partition_share": 0.118042,
+    "partition_max_boards": 1354,
+    "partition_min_boards": 1087,
+    "primary_shard_max_boards": 156972,
+    "primary_shard_min_boards": 155443,
+    "provider_task_cycles_per_hour": {
+      "custom_api": 584007,
+      "greenhouse": 892112,
+      "lever": 589851,
+      "long_tail": 488301,
+      "oracle": 603222,
+      "personio": 605740,
+      "successfactors": 724110,
+      "workday": 1512656
+    },
+    "recovered_max_board_load_factor": 1.21417,
+    "recovered_max_browser_rate_factor": 1.30358,
+    "recovered_max_posting_factor": 1.211869,
+    "recovered_max_provider_rate_factor": 1.227083,
+    "recovered_max_task_rate_factor": 1.212252,
+    "recovered_shard_max_boards": 189714,
+    "recovered_shard_min_boards_excluding_failed": 155443
+  },
+  "environment": {
+    "logical_cpus": 8,
+    "machine": "arm64",
+    "physical_memory_bytes": 17179869184,
+    "platform": "macOS-14.4-arm64-arm-64bit-Mach-O",
+    "processor": "arm",
+    "python": "3.13.5"
+  },
+  "evidence_sha256": "239210e4def63d7f004769a05e9f87374ba2e30f768bad5c1ef926e18db4ec9e",
+  "explicitly_not_measured": [
+    "go_runtime",
+    "redis",
+    "postgres",
+    "lightpanda",
+    "origin_network",
+    "typesense",
+    "telemetry_backend"
+  ],
+  "input": {
+    "active_postings": 100000000,
+    "boards": 10000000,
+    "detail_cycles_per_hour": 5000000,
+    "failed_slot": 0,
+    "logical_partitions": 8192,
+    "monitor_cycles_per_hour": 1000000,
+    "queue_shards": 64,
+    "weighting": {
+      "browser": "deterministic per-class shares from the capacity spec",
+      "postings": "deterministic heavy tail: 0.1% weight 1000, next 0.9% weight 100, remainder weight 1",
+      "providers": "25/15/12/10/10/10/10/8 percent synthetic family mix"
+    }
+  },
+  "measurement": {
+    "boards_per_wall_second": 257523.22,
+    "cpu_seconds": 34.184801,
+    "peak_rss_bytes": 27017216,
+    "wall_seconds": 38.83145
+  },
+  "measurement_date": "2026-08-26",
+  "schema_version": 1,
+  "spec_sha256": "ef66e5d27bc4dc36f35a805af8964292ae59b992482ab6c4688a286cbbb3c49f",
+  "units": {
+    "cpu_seconds": "process CPU seconds",
+    "peak_rss_bytes": "bytes",
+    "task_rate": "successful cycles per hour",
+    "throughput": "weighted board routing decisions per wall-clock second",
+    "wall_seconds": "seconds"
+  }
+}

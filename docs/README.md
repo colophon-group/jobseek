@@ -43,6 +43,10 @@ Status tags:
 - [23 - Go and Lightpanda Crawler Migration](23-go-lightpanda-migration.md)
   `[reference]` - global-scale runtime replacement boundaries, capacity floor,
   cutover safety, replay, metrics, Murmur coordination, and retirement plan.
+- [24 - Global Crawler Capacity Envelope](24-global-crawler-capacity-envelope.md)
+  `[reference]` - versioned global-v1 workload, sharded topology, simultaneous
+  failure matrix, storage and cost budgets, synthetic routing evidence, and
+  production-equivalent execution gate.
 
 ## Search, SEO, And Web Read Paths
 

@@ -1,0 +1,379 @@
+{
+  "schema_version": 1,
+  "revision": "global-v1",
+  "effective_date": "2026-08-26",
+  "owner_issue": "https://github.com/colophon-group/jobseek/issues/7936",
+  "consumer_issue": "https://github.com/colophon-group/jobseek/issues/7966",
+  "base_commit": "bb892b6350cfcbbc2779e8fde318231a1a24926a",
+  "evidence_status": {
+    "capacity_arithmetic": "analytical",
+    "routing_and_conservation": "measured_by_checked_in_synthetic_harness",
+    "go_runtime": "future_execution_gate",
+    "redis_postgres_lightpanda": "future_execution_gate",
+    "typesense_telemetry_and_service_tiers": "future_execution_gate",
+    "production_equivalent_2x_loss_drill": "future_execution_gate"
+  },
+  "units": {
+    "data": "bytes unless a field is suffixed _gib or _tib; GiB and TiB are IEC powers of 1024",
+    "money": "EUR excluding VAT per 30-day month unless a field says USD",
+    "rates": "successful cycles per wall-clock second or hour; retries are additional origin attempts",
+    "time": "seconds unless a field is suffixed _ms or _hours",
+    "cpu": "percentage of allocatable logical CPU after the declared lost shard",
+    "rss": "resident bytes divided by the shard memory limit",
+    "queue_depth": "policy-ready plus inflight task records; future policy deferrals are reported separately"
+  },
+  "provenance": {
+    "workload_floor": "https://github.com/colophon-group/jobseek/issues/7935",
+    "typesense_ha_semantics": "https://typesense.org/docs/guide/high-availability.html",
+    "hetzner_price_snapshot": "https://docs.hetzner.com/general/infrastructure-and-availability/price-adjustment/",
+    "r2_price_snapshot": "https://developers.cloudflare.com/r2/pricing/",
+    "grafana_price_snapshot": "https://grafana.com/pricing/",
+    "prices_as_of": "2026-08-26",
+    "database_size_observation_as_of": "2026-08-26",
+    "database_size_observation": "review-gate production observation: approximately 7.3 KiB total relation bytes per posting; remeasure with the documented pg_total_relation_size query before hardware purchase",
+    "planning_exchange_rate_usd_to_eur": 0.9,
+    "note": "Prices are reproducible planning inputs, not vendor commitments. Refresh the catalog and spec digest before a purchase or retirement gate."
+  },
+  "workload": {
+    "configured_boards": 10000000,
+    "active_postings": 100000000,
+    "retained_postings": 400000000,
+    "posting_retention_days": 400,
+    "monitor_cycles_per_hour": 1000000,
+    "detail_cycles_per_hour": 5000000,
+    "retry_attempts_per_success_max": 0.05,
+    "monitor_browser_share": 0.1,
+    "detail_browser_share": 0.05,
+    "monitor_proxy_share": 0.02,
+    "detail_proxy_share": 0.01,
+    "description_change_share_of_detail": 0.05,
+    "monitor_http_response_mean_bytes": 262144,
+    "monitor_http_response_p50_bytes": 65536,
+    "monitor_http_response_p95_bytes": 524288,
+    "monitor_http_response_p99_bytes": 4194304,
+    "monitor_http_response_max_bytes": 16777216,
+    "detail_http_response_mean_bytes": 196608,
+    "detail_http_response_p50_bytes": 98304,
+    "detail_http_response_p95_bytes": 786432,
+    "detail_http_response_p99_bytes": 4194304,
+    "detail_http_response_max_bytes": 16777216,
+    "browser_transfer_mean_bytes": 3145728,
+    "browser_transfer_p50_bytes": 1572864,
+    "browser_transfer_p95_bytes": 8388608,
+    "browser_transfer_p99_bytes": 25165824,
+    "browser_transfer_max_bytes": 67108864,
+    "max_inline_body_bytes": 8388608,
+    "max_artifact_chunk_bytes": 8388608,
+    "max_http_transfer_bytes": 16777216,
+    "max_browser_transfer_bytes": 67108864,
+    "resident_payload_semantics": "response maxima are bounded streamed totals; ordered chunks are hashed incrementally; at most one artifact chunk per active task or one normalized replay payload up to 8 MiB is resident",
+    "browser_session_seconds_mean": 3.0,
+    "monitor_worker_cpu_ms": 30.0,
+    "detail_worker_cpu_ms": 20.0,
+    "browser_orchestration_cpu_ms": 5.0,
+    "browser_cpu_ms": 1000.0,
+    "monitor_db_commits_per_cycle": 2.0,
+    "detail_db_commits_per_cycle": 2.5,
+    "db_cpu_ms_per_commit": 10.0,
+    "retry_db_commits_per_failed_attempt": 1.0,
+    "description_object_mean_bytes": 32768,
+    "database_bytes_per_retained_posting": 7475,
+    "database_bytes_per_board": 2048,
+    "typesense_bytes_per_active_posting": 12288,
+    "queue_bytes_per_task": 512,
+    "queue_allocator_multiplier": 1.5,
+    "queue_operations_per_cycle": 5.0,
+    "queue_cpu_us_per_operation": 80.0,
+    "catalog_bytes_per_board": 4096,
+    "policy_keys": 10000000,
+    "policy_bytes_per_key": 1024,
+    "posting_ownership_bytes_per_active_posting": 128,
+    "detail_schedule_and_downstream_cursor_bytes_per_active_posting": 256,
+    "control_metadata_copies": 3,
+    "typesense_upserts_per_successful_cycle": 1.0,
+    "typesense_search_qps_global": 4000,
+    "typesense_search_fanout_semantics": "every global user search sends one shard-level search to every Typesense index shard; each shard receives the full global search QPS and routing distributes those shard searches across its HA replica groups",
+    "typesense_write_replication_semantics": "every successful shard upsert is sent to every HA replica group for that index shard; each group leader serializes the full shard write rate and every node applies it",
+    "typesense_upsert_cpu_ms": 2.0,
+    "typesense_search_cpu_ms": 5.0
+  },
+  "topology": {
+    "data_cells": 8,
+    "maximum_data_cells_without_repartitioning": 32,
+    "logical_partitions": 8192,
+    "queue_shards_per_cell": 8,
+    "queue_replicas_per_primary": 2,
+    "worker_shards_per_cell": 7,
+    "browser_shards_per_cell": 16,
+    "postgres_writer_shards_per_cell": 3,
+    "postgres_sync_standbys_per_writer": 1,
+    "telemetry_collectors_per_cell": 3,
+    "telemetry_backends": 2,
+    "cell_service_shards_per_cell": 3,
+    "routing_shards_per_cell": 3,
+    "load_balancers_per_cell": 2,
+    "routing_hash": "sha256-board-v1-first-u64-mod-8192",
+    "manifest_assignment": "partition-slot-v1 seed; the epoch-fenced owner manifest is authoritative",
+    "posting_ownership_key": "sha256 of the normalized canonical posting URL modulo 8192; the epoch-fenced owner ledger is authoritative",
+    "policy_partition_key": "sha256 of canonical origin or provider-account key modulo 4096; the epoch-fenced owner counter is authoritative",
+    "recovery_assignment": "capacity-weighted deterministic recovery-v1 using board, task-rate, provider, browser, and posting weights",
+    "growth_assignment": "capacity-weighted rendezvous owner manifest; never runtime modulo remapping",
+    "failed_partition_recovery_max_load_factor": 1.1875,
+    "failed_board_recovery_max_load_factor": 1.32,
+    "policy_partitions": 4096,
+    "posting_ownership_partitions": 8192,
+    "typesense_index_shards": 24,
+    "critical_telemetry_series_dual_written": 5000,
+    "recovery_phases_seconds": {
+      "failure_detection_and_freeze": 120,
+      "replica_watermark_and_conservation": 120,
+      "epoch_fence_and_rebuild": 300,
+      "resume_safety_margin": 60
+    }
+  },
+  "profiles": {
+    "queue": {
+      "cpu_cores_per_primary": 2,
+      "memory_gib_per_node": 8,
+      "baseline_rss_gib": 0.5,
+      "modeled_cycles_per_second_per_primary": 320,
+      "storage_gib_per_node": 80
+    },
+    "worker": {
+      "cpu_cores_per_shard": 8,
+      "memory_gib_per_shard": 32,
+      "concurrent_resident_payloads_per_shard_max": 32,
+      "steady_rss_gib_per_shard_max": 14,
+      "overload_rss_gib_per_shard_max": 20
+    },
+    "browser": {
+      "cpu_cores_per_shard": 8,
+      "memory_gib_per_shard": 32,
+      "session_slots_per_shard": 24,
+      "concurrent_resident_artifact_chunks_per_shard_max": 24,
+      "baseline_rss_gib": 4,
+      "rss_mib_per_session": 256
+    },
+    "postgres": {
+      "cpu_cores_per_writer": 32,
+      "memory_gib_per_writer": 128,
+      "steady_rss_gib_per_writer_max": 64,
+      "overload_rss_gib_per_writer_max": 80,
+      "modeled_commits_per_second_per_writer": 3000,
+      "usable_storage_tib_per_writer": 4
+    },
+    "telemetry": {
+      "cpu_cores_per_collector": 4,
+      "memory_gib_per_collector": 8,
+      "steady_cpu_cores_per_cell": 2,
+      "overload_cpu_cores_per_cell": 4.8,
+      "steady_working_set_gib_per_cell": 8,
+      "overload_working_set_gib_per_cell": 10
+    },
+    "typesense": {
+      "cpu_cores_per_node": 8,
+      "memory_gib_per_node": 64,
+      "ha_replica_groups_per_index_shard": 5,
+      "nodes_per_ha_replica_group": 3,
+      "modeled_upserts_per_second_per_leader": 2000,
+      "modeled_search_qps_per_node": 800,
+      "working_set_gib_global": 640
+    },
+    "cell_service": {
+      "cpu_cores_per_shard": 8,
+      "memory_gib_per_shard": 32,
+      "steady_cpu_cores_per_cell": 4,
+      "overload_cpu_cores_per_cell": 8,
+      "steady_working_set_gib_per_cell": 16,
+      "overload_working_set_gib_per_cell": 32
+    },
+    "routing": {
+      "cpu_cores_per_shard": 4,
+      "memory_gib_per_shard": 16,
+      "steady_cpu_cores_per_cell": 1,
+      "overload_cpu_cores_per_cell": 2,
+      "steady_working_set_gib_per_cell": 4,
+      "overload_working_set_gib_per_cell": 8
+    },
+    "load_balancer": {
+      "modeled_requests_per_second_per_instance": 3000
+    },
+    "telemetry_backend": {
+      "modeled_active_series_per_backend": 80000,
+      "modeled_signal_gib_per_month_per_backend": 800
+    }
+  },
+  "scenarios": {
+    "steady": {
+      "load_multiplier": 1.0,
+      "failure_domain": "none",
+      "failed_shards_by_tier": {},
+      "required_processing_cycles_per_second": 1666.6666666667,
+      "catch_up_service_cycles_per_second": 9600,
+      "due_burst_seconds": 600,
+      "max_cpu_pct": 35,
+      "max_rss_pct": 55,
+      "max_policy_ready_queue_depth": 1000000,
+      "max_total_queue_entries": 11000000,
+      "max_oldest_policy_ready_due_seconds": 600,
+      "max_network_gbps": 8,
+      "max_monthly_cost_eur": 55500,
+      "max_board_cost_per_million_eur": 16,
+      "max_detail_cost_per_million_eur": 13,
+      "max_blended_cost_per_million_eur": 13
+    },
+    "overload_shard_loss": {
+      "load_multiplier": 2.0,
+      "failure_domain": "simultaneous_one_shard_loss_in_every_sharded_runtime_tier_in_one_cell_plus_one_telemetry_backend",
+      "failed_shards_by_tier": {
+        "queue": 1,
+        "worker": 1,
+        "browser": 1,
+        "postgres": 1,
+        "telemetry": 1,
+        "telemetry_backend": 1,
+        "typesense": 1,
+        "cell_service": 1,
+        "routing": 1,
+        "load_balancer": 1
+      },
+      "required_processing_cycles_per_second": 9600,
+      "catch_up_service_cycles_per_second": 9600,
+      "due_burst_seconds": 3600,
+      "max_cpu_pct": 70,
+      "max_rss_pct": 70,
+      "max_policy_ready_queue_depth": 12000000,
+      "max_total_queue_entries": 22000000,
+      "max_oldest_policy_ready_due_seconds": 2700,
+      "max_shard_recovery_seconds": 600,
+      "max_catch_up_seconds": 2700,
+      "max_network_gbps": 40,
+      "max_board_cost_per_million_eur": 8,
+      "max_detail_cost_per_million_eur": 6.5,
+      "max_blended_cost_per_million_eur": 7
+    },
+    "regional_cell_loss": {
+      "load_multiplier": 1.0,
+      "failure_domain": "one_complete_data_cell",
+      "failed_cells": 1,
+      "max_freeze_and_restore_seconds": 10800,
+      "max_authoritative_rpo_seconds": 60,
+      "max_oldest_policy_ready_due_seconds": 18000,
+      "note": "Disaster envelope only; it is not the 2x scheduler-shard rollout gate. A cell never live-fails over until its fenced Postgres/WAL and manifest epoch are verified."
+    }
+  },
+  "storage_budgets": {
+    "database_primary_global_tib": 16,
+    "database_wal_and_scratch_global_tib": 4,
+    "typesense_index_replicated_global_tib": 18,
+    "catalog_policy_and_cursor_global_gib": 256,
+    "r2_description_global_tib": 16,
+    "backup_copies": 2,
+    "backup_storage_global_tib": 16,
+    "backup_fulls_per_month": 4,
+    "backup_incrementals_per_month": 30,
+    "backup_restore_drills_per_month": 1,
+    "queue_aof_and_snapshot_global_tib": 1,
+    "telemetry_active_series_global": 50000,
+    "telemetry_active_series_per_backend": 80000,
+    "telemetry_samples_per_minute_per_series": 1,
+    "telemetry_logs_gib_per_month": 200,
+    "telemetry_traces_gib_per_month": 50,
+    "telemetry_profiles_gib_per_month": 50,
+    "critical_telemetry_signal_gib_dual_written": 10,
+    "telemetry_local_spool_hours": 6,
+    "sampled_success_log_ratio": 0.001,
+    "sampled_trace_ratio": 0.0001
+  },
+  "prices": {
+    "days_per_month": 30,
+    "hours_per_month": 720,
+    "nodes": {
+      "queue_node": {
+        "count": 192,
+        "eur_per_month": 10.49,
+        "basis": "64 primaries times primary plus two replicas; CAX21 planning price"
+      },
+      "worker_node": {
+        "count": 56,
+        "eur_per_month": 138.49,
+        "basis": "seven 8-vCPU worker shards in each of eight cells; CCX33 planning price"
+      },
+      "browser_node": {
+        "count": 128,
+        "eur_per_month": 138.49,
+        "basis": "sixteen 8-vCPU Lightpanda shards in each of eight cells; CCX33 planning price"
+      },
+      "postgres_node": {
+        "count": 48,
+        "eur_per_month": 257.3,
+        "basis": "three writer shards, each with a synchronous standby, in every cell; AX102-1 planning price"
+      },
+      "telemetry_collector_node": {
+        "count": 24,
+        "eur_per_month": 10.49,
+        "basis": "three collectors per cell; CAX21 planning price"
+      },
+      "cell_service_node": {
+        "count": 24,
+        "eur_per_month": 85.99,
+        "basis": "three independent catalog, R2-drain, CDC, and repair service shards per cell; CCX23 planning price"
+      },
+      "routing_node": {
+        "count": 24,
+        "eur_per_month": 85.99,
+        "basis": "three stateless manifest/policy routing shards per cell; CCX23 planning price"
+      },
+      "typesense_node": {
+        "count": 360,
+        "eur_per_month": 97.3,
+        "basis": "24 index shards (three per data cell), each with five independent three-node HA replica groups so fan-out search stays below 35% steady and 70% after one-node loss"
+      },
+      "load_balancer": {
+        "count": 16,
+        "eur_per_month": 5.99,
+        "basis": "two independent regional private load balancer instances per cell planning allowance"
+      }
+    },
+    "proxy_static_ips": 64,
+    "proxy_eur_per_ip_month": 10,
+    "backup_eur_per_gb_month": 0.005,
+    "backup_operations_eur_per_month": 500,
+    "r2_usd_per_gb_month": 0.015,
+    "r2_class_a_usd_per_million": 4.5,
+    "r2_class_b_usd_per_million": 0.36,
+    "r2_reads_per_detail_cycle": 0.01,
+    "metrics_usd_per_thousand_series": 6.5,
+    "metrics_included_series_per_backend": 10000,
+    "telemetry_usd_per_gib": 0.5,
+    "telemetry_included_gib_per_signal": 50,
+    "origin_transfer_eur_per_tib": 0,
+    "monthly_miscellaneous_eur": 1500
+  },
+  "cost_sensitivity": {
+    "price_multiplier": 1.25,
+    "sustained_volume_multiplier": 0.75,
+    "browser_share_multiplier": 2.0,
+    "proxy_cost_multiplier": 5.0,
+    "paid_origin_transfer_eur_per_tib": 8,
+    "telemetry_cost_multiplier": 2.0,
+    "backup_copy_multiplier": 1.5,
+    "max_board_cost_per_million_eur": 44,
+    "max_detail_cost_per_million_eur": 32,
+    "max_blended_cost_per_million_eur": 34
+  },
+  "retirement_execution_gate": {
+    "minimum_drill_hours": 2,
+    "minimum_steady_hours": 24,
+    "minimum_cycles_at_overload": 24000000,
+    "repeat_count": 3,
+    "allowed_queue_loss": 0,
+    "allowed_duplicate_authoritative_completion": 0,
+    "allowed_origin_policy_violations": 0,
+    "allowed_unbounded_memory_windows": 0,
+    "request_amplification_max": 1.05,
+    "require_same_spec_sha256": true,
+    "require_production_equivalent_hardware": true,
+    "require_measured_all_tiers": true
+  }
+}

@@ -1,0 +1,604 @@
+{
+  "classification": {
+    "analytical": [
+      "workload",
+      "resource_utilization",
+      "storage",
+      "cost"
+    ],
+    "future_execution_gate": [
+      "go_runtime",
+      "redis",
+      "postgres",
+      "lightpanda",
+      "typesense",
+      "network",
+      "cell_services",
+      "routing",
+      "load_balancer",
+      "telemetry_backends"
+    ],
+    "measured_elsewhere": [
+      "routing_distribution",
+      "routing_recovery_conservation"
+    ]
+  },
+  "cost": {
+    "overload_shard_loss": {
+      "cost_per_million_eur": {
+        "blended": 9.723,
+        "board": 7.0825,
+        "detail": 10.2511
+      },
+      "mode": "overload_shard_loss",
+      "monthly_cost_eur": 84006.71,
+      "monthly_cycles": {
+        "board": 1440000000,
+        "detail": 7200000000
+      },
+      "origin_transfer_tib_per_month": 3122.74,
+      "planning_exchange_rate_usd_to_eur": 0.9,
+      "pool_costs_eur": {
+        "backup": 581.92,
+        "browser": 17726.72,
+        "cell_services": 2159.6,
+        "miscellaneous": 1500.0,
+        "origin_transfer": 0.0,
+        "postgres": 12350.4,
+        "proxy": 640.0,
+        "queue": 2014.08,
+        "r2": 1658.28,
+        "routing": 2063.76,
+        "telemetry": 528.51,
+        "typesense": 35028.0,
+        "worker": 7755.44
+      },
+      "r2_class_a_operations_millions": 360.0
+    },
+    "sensitivity": {
+      "cost_per_million_eur": {
+        "blended": 44.2959,
+        "board": 43.6338,
+        "detail": 44.4283
+      },
+      "mode": "sensitivity",
+      "monthly_cost_eur": 143518.57,
+      "monthly_cycles": {
+        "board": 540000000,
+        "detail": 2700000000
+      },
+      "origin_transfer_tib_per_month": 1699.93,
+      "planning_exchange_rate_usd_to_eur": 0.9,
+      "pool_costs_eur": {
+        "backup": 1091.1,
+        "browser": 44316.8,
+        "cell_services": 2699.5,
+        "miscellaneous": 1875.0,
+        "origin_transfer": 13599.44,
+        "postgres": 15438.0,
+        "proxy": 4000.0,
+        "queue": 2517.6,
+        "r2": 915.56,
+        "routing": 2579.7,
+        "telemetry": 1006.58,
+        "typesense": 43785.0,
+        "worker": 9694.3
+      },
+      "r2_class_a_operations_millions": 135.0
+    },
+    "steady": {
+      "cost_per_million_eur": {
+        "blended": 19.2745,
+        "board": 14.165,
+        "detail": 20.2965
+      },
+      "mode": "steady",
+      "monthly_cost_eur": 83266.04,
+      "monthly_cycles": {
+        "board": 720000000,
+        "detail": 3600000000
+      },
+      "origin_transfer_tib_per_month": 1561.37,
+      "planning_exchange_rate_usd_to_eur": 0.9,
+      "pool_costs_eur": {
+        "backup": 581.92,
+        "browser": 17726.72,
+        "cell_services": 2159.6,
+        "miscellaneous": 1500.0,
+        "origin_transfer": 0.0,
+        "postgres": 12350.4,
+        "proxy": 640.0,
+        "queue": 2014.08,
+        "r2": 917.61,
+        "routing": 2063.76,
+        "telemetry": 528.51,
+        "typesense": 35028.0,
+        "worker": 7755.44
+      },
+      "r2_class_a_operations_millions": 180.0
+    }
+  },
+  "effective_date": "2026-08-26",
+  "revision": "global-v1",
+  "scenarios": {
+    "overload_shard_loss": {
+      "arrival_cycles_per_hour": 12000000,
+      "attempted_processing_cycles_per_second": 10080.0,
+      "computed_backlog_drain_seconds": 1914.8936,
+      "computed_oldest_policy_ready_due_seconds": 2514.8936,
+      "computed_policy_ready_queue_depth": 12000000,
+      "computed_shard_recovery_seconds": 600.0,
+      "computed_total_queue_entries": 22000000,
+      "continuing_arrival_cycles_per_second": 3333.3333,
+      "network_gbps": 30.5199,
+      "required_processing_cycles_per_second": 9600.0,
+      "tiers": {
+        "browser": {
+          "lost_shards": 1,
+          "peak_cpu_pct": 61.25,
+          "peak_rss_pct": 23.9844,
+          "provisioned_shards_in_affected_cell": 16,
+          "resident_artifact_chunk_gib_max": 0.1875,
+          "session_slot_pct": 61.25,
+          "sessions_global": 1764.0,
+          "sessions_peak_survivor": 14.7,
+          "surviving_shards_in_affected_cell": 15
+        },
+        "cell_service": {
+          "lost_shards": 1,
+          "peak_cpu_pct": 50.0,
+          "peak_rss_pct": 50.0,
+          "provisioned_shards_in_affected_cell": 3,
+          "surviving_shards_in_affected_cell": 2
+        },
+        "load_balancer": {
+          "lost_shards": 1,
+          "modeled_throughput_pct": 42.0,
+          "provisioned_shards_in_affected_cell": 2,
+          "surviving_shards_in_affected_cell": 1
+        },
+        "postgres": {
+          "commits_per_second_per_writer": 1480.0,
+          "lost_shards": 1,
+          "modeled_commit_throughput_pct": 49.3333,
+          "peak_cpu_pct": 46.25,
+          "peak_rss_pct": 62.5,
+          "provisioned_shards_in_affected_cell": 3,
+          "surviving_shards_in_affected_cell": 2
+        },
+        "queue": {
+          "cycles_per_second_peak_survivor": 207.9,
+          "entries_peak_survivor": 453750,
+          "lost_shards": 1,
+          "modeled_throughput_pct": 64.9688,
+          "peak_cpu_pct": 4.158,
+          "peak_rss_pct": 10.3068,
+          "provisioned_shards_in_affected_cell": 8,
+          "surviving_shards_in_affected_cell": 7
+        },
+        "routing": {
+          "lost_shards": 1,
+          "peak_cpu_pct": 25.0,
+          "peak_rss_pct": 25.0,
+          "provisioned_shards_in_affected_cell": 3,
+          "surviving_shards_in_affected_cell": 2
+        },
+        "telemetry": {
+          "lost_shards": 1,
+          "peak_cpu_pct": 60.0,
+          "peak_rss_pct": 62.5,
+          "provisioned_shards_in_affected_cell": 3,
+          "surviving_shards_in_affected_cell": 2
+        },
+        "telemetry_backend": {
+          "lost_shards": 1,
+          "modeled_series_throughput_pct": 62.5,
+          "modeled_signal_throughput_pct": 37.5,
+          "modeled_throughput_pct": 62.5,
+          "provisioned_shards_global": 2,
+          "surviving_shards_global": 1
+        },
+        "typesense": {
+          "lost_shards": 1,
+          "modeled_throughput_pct": 35.7143,
+          "peak_cpu_pct": 27.8571,
+          "peak_rss_pct": 41.6667,
+          "provisioned_shards_in_affected_index_shard": 15,
+          "replicated_write_cpu_cores_per_node": 0.8,
+          "search_cpu_cores_per_surviving_node": 1.4286,
+          "search_qps_per_index_shard": 4000.0,
+          "search_replica_utilization_pct": 35.7143,
+          "surviving_shards_in_affected_index_shard": 14,
+          "upserts_per_second_per_ha_group": 400.0,
+          "working_set_gib_per_replica": 26.6667,
+          "write_leader_utilization_pct_per_ha_group": 20.0
+        },
+        "worker": {
+          "lost_shards": 1,
+          "peak_cpu_pct": 57.6406,
+          "peak_rss_pct": 62.5,
+          "provisioned_shards_in_affected_cell": 7,
+          "resident_artifact_chunk_gib_max": 0.25,
+          "surviving_shards_in_affected_cell": 6
+        }
+      }
+    },
+    "regional_cell_loss": {
+      "authoritative_rpo_seconds_max": 60,
+      "backlog_drain_seconds": 2872.3404,
+      "computed_oldest_policy_ready_due_seconds": 13672.3404,
+      "failed_cells": 1,
+      "frozen_policy_ready_tasks": 2250000,
+      "paired_cell_modeled_utilization_pct": {
+        "browser_cpu": 19.9382,
+        "postgres_commit_per_promoted_writer": 5.7099,
+        "queue_throughput": 17.0898,
+        "typesense_cpu": 36.8056,
+        "worker_cpu": 17.155
+      },
+      "restore_seconds": 10800.0
+    },
+    "steady": {
+      "arrival_cycles_per_hour": 6000000,
+      "attempted_processing_cycles_per_second": 1750.0,
+      "computed_backlog_drain_seconds": 126.0504,
+      "computed_oldest_policy_ready_due_seconds": 126.0504,
+      "computed_policy_ready_queue_depth": 1000000,
+      "computed_shard_recovery_seconds": 0.0,
+      "computed_total_queue_entries": 11000000,
+      "continuing_arrival_cycles_per_second": 1666.6667,
+      "network_gbps": 5.2986,
+      "required_processing_cycles_per_second": 1666.6667,
+      "tiers": {
+        "browser": {
+          "lost_shards": 0,
+          "peak_cpu_pct": 9.9691,
+          "peak_rss_pct": 14.3692,
+          "provisioned_shards_in_affected_cell": 16,
+          "resident_artifact_chunk_gib_max": 0.1875,
+          "session_slot_pct": 9.9691,
+          "sessions_global": 306.25,
+          "sessions_peak_survivor": 2.3926,
+          "surviving_shards_in_affected_cell": 16
+        },
+        "cell_service": {
+          "lost_shards": 0,
+          "peak_cpu_pct": 16.6667,
+          "peak_rss_pct": 16.6667,
+          "provisioned_shards_in_affected_cell": 3,
+          "surviving_shards_in_affected_cell": 3
+        },
+        "load_balancer": {
+          "lost_shards": 0,
+          "modeled_throughput_pct": 3.6458,
+          "provisioned_shards_in_affected_cell": 2,
+          "surviving_shards_in_affected_cell": 2
+        },
+        "postgres": {
+          "commits_per_second_per_writer": 171.2963,
+          "lost_shards": 0,
+          "modeled_commit_throughput_pct": 5.7099,
+          "peak_cpu_pct": 5.353,
+          "peak_rss_pct": 50.0,
+          "provisioned_shards_in_affected_cell": 3,
+          "surviving_shards_in_affected_cell": 3
+        },
+        "queue": {
+          "cycles_per_second_peak_survivor": 27.3438,
+          "entries_peak_survivor": 171875,
+          "lost_shards": 0,
+          "modeled_throughput_pct": 8.5449,
+          "peak_cpu_pct": 0.5469,
+          "peak_rss_pct": 7.7867,
+          "provisioned_shards_in_affected_cell": 8,
+          "surviving_shards_in_affected_cell": 8
+        },
+        "routing": {
+          "lost_shards": 0,
+          "peak_cpu_pct": 8.3333,
+          "peak_rss_pct": 8.3333,
+          "provisioned_shards_in_affected_cell": 3,
+          "surviving_shards_in_affected_cell": 3
+        },
+        "telemetry": {
+          "lost_shards": 0,
+          "peak_cpu_pct": 16.6667,
+          "peak_rss_pct": 33.3333,
+          "provisioned_shards_in_affected_cell": 3,
+          "surviving_shards_in_affected_cell": 3
+        },
+        "telemetry_backend": {
+          "lost_shards": 0,
+          "modeled_series_throughput_pct": 34.375,
+          "modeled_signal_throughput_pct": 19.375,
+          "modeled_throughput_pct": 34.375,
+          "provisioned_shards_global": 2,
+          "surviving_shards_global": 2
+        },
+        "typesense": {
+          "lost_shards": 0,
+          "modeled_throughput_pct": 33.3333,
+          "peak_cpu_pct": 18.4028,
+          "peak_rss_pct": 41.6667,
+          "provisioned_shards_in_affected_index_shard": 15,
+          "replicated_write_cpu_cores_per_node": 0.1389,
+          "search_cpu_cores_per_surviving_node": 1.3333,
+          "search_qps_per_index_shard": 4000.0,
+          "search_replica_utilization_pct": 33.3333,
+          "surviving_shards_in_affected_index_shard": 15,
+          "upserts_per_second_per_ha_group": 69.4444,
+          "working_set_gib_per_replica": 26.6667,
+          "write_leader_utilization_pct_per_ha_group": 3.4722
+        },
+        "worker": {
+          "lost_shards": 0,
+          "peak_cpu_pct": 8.5775,
+          "peak_rss_pct": 43.75,
+          "provisioned_shards_in_affected_cell": 7,
+          "resident_artifact_chunk_gib_max": 0.25,
+          "surviving_shards_in_affected_cell": 7
+        }
+      }
+    }
+  },
+  "schema_version": 1,
+  "spec_sha256": "ef66e5d27bc4dc36f35a805af8964292ae59b992482ab6c4688a286cbbb3c49f",
+  "storage": {
+    "active_postings_peak_ownership_partition": 16114,
+    "backup_copies": 2,
+    "backup_storage_budget_tib": 16.0,
+    "control_metadata_budget_gib": 256.0,
+    "control_metadata_logical_gib": 83.4465,
+    "control_metadata_replicated_gib": 250.3395,
+    "database_payload_tib": 2.738,
+    "database_primary_budget_tib": 16.0,
+    "database_wal_and_scratch_budget_tib": 4.0,
+    "policy_keys_peak_partition": 3223,
+    "queue_aof_and_snapshot_budget_tib": 1.0,
+    "queue_primary_peak_gib": 15.7356,
+    "queue_replicated_peak_gib": 47.2069,
+    "r2_description_budget_tib": 16.0,
+    "r2_description_payload_tib": 11.9209,
+    "telemetry_active_series_global": 50000,
+    "telemetry_logs_traces_profiles_gib_per_month": 300,
+    "typesense_index_payload_tib": 1.1176,
+    "typesense_index_replicated_budget_tib": 18.0,
+    "typesense_index_replicated_tib": 16.7638
+  },
+  "thresholds": {
+    "overload_shard_loss": {
+      "catch_up_service_cycles_per_second": 9600,
+      "due_burst_seconds": 3600,
+      "failed_shards_by_tier": {
+        "browser": 1,
+        "cell_service": 1,
+        "load_balancer": 1,
+        "postgres": 1,
+        "queue": 1,
+        "routing": 1,
+        "telemetry": 1,
+        "telemetry_backend": 1,
+        "typesense": 1,
+        "worker": 1
+      },
+      "failure_domain": "simultaneous_one_shard_loss_in_every_sharded_runtime_tier_in_one_cell_plus_one_telemetry_backend",
+      "load_multiplier": 2.0,
+      "max_blended_cost_per_million_eur": 7,
+      "max_board_cost_per_million_eur": 8,
+      "max_catch_up_seconds": 2700,
+      "max_cpu_pct": 70,
+      "max_detail_cost_per_million_eur": 6.5,
+      "max_network_gbps": 40,
+      "max_oldest_policy_ready_due_seconds": 2700,
+      "max_policy_ready_queue_depth": 12000000,
+      "max_rss_pct": 70,
+      "max_shard_recovery_seconds": 600,
+      "max_total_queue_entries": 22000000,
+      "required_processing_cycles_per_second": 9600
+    },
+    "regional_cell_loss": {
+      "failed_cells": 1,
+      "failure_domain": "one_complete_data_cell",
+      "load_multiplier": 1.0,
+      "max_authoritative_rpo_seconds": 60,
+      "max_freeze_and_restore_seconds": 10800,
+      "max_oldest_policy_ready_due_seconds": 18000,
+      "note": "Disaster envelope only; it is not the 2x scheduler-shard rollout gate. A cell never live-fails over until its fenced Postgres/WAL and manifest epoch are verified."
+    },
+    "retirement_execution_gate": {
+      "allowed_duplicate_authoritative_completion": 0,
+      "allowed_origin_policy_violations": 0,
+      "allowed_queue_loss": 0,
+      "allowed_unbounded_memory_windows": 0,
+      "minimum_cycles_at_overload": 24000000,
+      "minimum_drill_hours": 2,
+      "minimum_steady_hours": 24,
+      "repeat_count": 3,
+      "request_amplification_max": 1.05,
+      "require_measured_all_tiers": true,
+      "require_production_equivalent_hardware": true,
+      "require_same_spec_sha256": true
+    },
+    "steady": {
+      "catch_up_service_cycles_per_second": 9600,
+      "due_burst_seconds": 600,
+      "failed_shards_by_tier": {},
+      "failure_domain": "none",
+      "load_multiplier": 1.0,
+      "max_blended_cost_per_million_eur": 13,
+      "max_board_cost_per_million_eur": 16,
+      "max_cpu_pct": 35,
+      "max_detail_cost_per_million_eur": 13,
+      "max_monthly_cost_eur": 55500,
+      "max_network_gbps": 8,
+      "max_oldest_policy_ready_due_seconds": 600,
+      "max_policy_ready_queue_depth": 1000000,
+      "max_rss_pct": 55,
+      "max_total_queue_entries": 11000000,
+      "required_processing_cycles_per_second": 1666.6666666667
+    }
+  },
+  "topology": {
+    "data_cells": 8,
+    "logical_partitions": 8192,
+    "queue_shards": 64,
+    "simultaneous_loss_matrix": {
+      "browser": {
+        "lost_shards": 1,
+        "max_modeled_capacity_pct_after_loss": 61.25,
+        "provisioned_shards": 16,
+        "scope": "affected_cell",
+        "surviving_shards": 15
+      },
+      "cell_service": {
+        "lost_shards": 1,
+        "max_modeled_capacity_pct_after_loss": 50.0,
+        "provisioned_shards": 3,
+        "scope": "affected_cell",
+        "surviving_shards": 2
+      },
+      "load_balancer": {
+        "lost_shards": 1,
+        "max_modeled_capacity_pct_after_loss": 42.0,
+        "provisioned_shards": 2,
+        "scope": "affected_cell",
+        "surviving_shards": 1
+      },
+      "postgres": {
+        "lost_shards": 1,
+        "max_modeled_capacity_pct_after_loss": 62.5,
+        "provisioned_shards": 3,
+        "scope": "affected_cell",
+        "surviving_shards": 2
+      },
+      "queue": {
+        "lost_shards": 1,
+        "max_modeled_capacity_pct_after_loss": 64.9688,
+        "provisioned_shards": 8,
+        "scope": "affected_cell",
+        "surviving_shards": 7
+      },
+      "routing": {
+        "lost_shards": 1,
+        "max_modeled_capacity_pct_after_loss": 25.0,
+        "provisioned_shards": 3,
+        "scope": "affected_cell",
+        "surviving_shards": 2
+      },
+      "telemetry": {
+        "lost_shards": 1,
+        "max_modeled_capacity_pct_after_loss": 62.5,
+        "provisioned_shards": 3,
+        "scope": "affected_cell",
+        "surviving_shards": 2
+      },
+      "telemetry_backend": {
+        "lost_shards": 1,
+        "max_modeled_capacity_pct_after_loss": 62.5,
+        "provisioned_shards": 2,
+        "scope": "global",
+        "surviving_shards": 1
+      },
+      "typesense": {
+        "lost_shards": 1,
+        "max_modeled_capacity_pct_after_loss": 41.6667,
+        "provisioned_shards": 15,
+        "scope": "affected_index_shard",
+        "surviving_shards": 14
+      },
+      "worker": {
+        "lost_shards": 1,
+        "max_modeled_capacity_pct_after_loss": 62.5,
+        "provisioned_shards": 7,
+        "scope": "affected_cell",
+        "surviving_shards": 6
+      }
+    },
+    "typesense_full_replicas_per_index_shard": 15,
+    "typesense_ha_replica_groups_per_index_shard": 5,
+    "typesense_index_shards": 24,
+    "typesense_index_shards_per_data_cell": 3,
+    "typesense_nodes_per_ha_replica_group": 3,
+    "unweighted_reference_recovery_max_load_factor": 1.1875,
+    "unweighted_reference_recovery_partition_counts": [
+      0,
+      148,
+      147,
+      138,
+      145,
+      149,
+      152,
+      145,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128
+    ]
+  },
+  "workload": {
+    "active_postings": 100000000,
+    "configured_boards": 10000000,
+    "origin_attempts_per_success_max": 1.05,
+    "overload_cycles_per_hour": 12000000,
+    "payload_contract": {
+      "max_artifact_chunk_bytes": 8388608,
+      "max_browser_transfer_bytes": 67108864,
+      "max_http_transfer_bytes": 16777216,
+      "max_inline_body_bytes": 8388608,
+      "resident_semantics": "response maxima are bounded streamed totals; ordered chunks are hashed incrementally; at most one artifact chunk per active task or one normalized replay payload up to 8 MiB is resident"
+    },
+    "steady_cycles_per_hour": 6000000
+  }
+}

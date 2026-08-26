@@ -13,19 +13,26 @@ Offline replay may compare both implementations from one captured upstream
 response. We do not run permanent duplicate fleets, issue duplicate origin
 requests, or silently fall back per task.
 
-## Provisional capacity floor
+## Frozen capacity envelope
 
-The capacity-design issue must replace these floors with a measured model
-before global rollout. They prevent decisions that only fit today's volume:
+The versioned [global crawler capacity envelope](24-global-crawler-capacity-envelope.md)
+replaces the former provisional floor with the global-v1 analytical model,
+generated report, synthetic routing evidence, and residual production-equivalent
+execution gate. It prevents decisions that only fit today's volume:
 
 - 10 million configured boards and 100 million active postings.
 - At least 1 million boards due in one hour (16,667 monitor requests/minute).
 - At least 5 million detail fetches due in one hour during catch-up (83,333
   scrape requests/minute), subject to origin policy.
-- A 2x synthetic overload and one-shard-loss catch-up test without queue loss,
-  origin-policy violation, or unbounded memory growth.
-- Horizontal partitions that remain below 70% steady-state memory and CPU so
-  a shard can absorb recovery traffic.
+- A 2x overload while one shard is simultaneously lost from every sharded
+  runtime tier, without queue loss, origin-policy violation, or unbounded
+  memory growth.
+- Surviving runtime capacity at or below 70% CPU, RSS, sessions, transactions,
+  or modeled throughput after those losses.
+
+The model is not production-equivalent evidence. Global rollout and old-runtime
+retirement remain blocked until its repeated Go/Redis/Postgres/Lightpanda/
+Typesense/telemetry execution gate passes with the same spec digest.
 
 Throughput is subordinate to publisher policy. Provider-, tenant-, and
 egress-scoped rate/concurrency limits, `Retry-After`, TDM reservations, and
