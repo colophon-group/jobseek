@@ -297,6 +297,63 @@ async def test_discover_rejects_untrusted_application_identity() -> None:
 
 
 @pytest.mark.asyncio
+async def test_discover_rejects_untrusted_application_redirect_before_request() -> None:
+    job_id = "11111111-1111-4111-8111-111111111111"
+    final_id = "22222222-2222-4222-8222-222222222222"
+    requested_hosts: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested_hosts.append(request.url.host)
+        if request.url.host == "apply.example.com":
+            if request.url.path.endswith(final_id):
+                return httpx.Response(200, text="<html>Application</html>", request=request)
+            return httpx.Response(
+                302,
+                headers={"Location": "https://evil.example/bounce"},
+                request=request,
+            )
+        if request.url.host == "evil.example":
+            return httpx.Response(
+                302,
+                headers={"Location": f"https://apply.example.com/jobs/{final_id}"},
+                request=request,
+            )
+        if request.url.path.startswith("/offene-stellen/job/"):
+            return httpx.Response(200, text=_detail(job_id), request=request)
+        return httpx.Response(200, text=_page(jobs=(job_id,)), request=request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="redirect left its URL allowlists"):
+            await discover(_board(), client)
+
+    assert "evil.example" not in requested_hosts
+
+
+@pytest.mark.asyncio
+async def test_discover_accepts_trusted_application_redirect() -> None:
+    job_id = "11111111-1111-4111-8111-111111111111"
+    final_id = "22222222-2222-4222-8222-222222222222"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "apply.example.com":
+            if request.url.path.endswith(final_id):
+                return httpx.Response(200, text="<html>Application</html>", request=request)
+            return httpx.Response(
+                302,
+                headers={"Location": f"https://apply.example.com/jobs/{final_id}"},
+                request=request,
+            )
+        if request.url.path.startswith("/offene-stellen/job/"):
+            return httpx.Response(200, text=_detail(job_id), request=request)
+        return httpx.Response(200, text=_page(jobs=(job_id,)), request=request)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        jobs = await discover(_board(), client)
+
+    assert [job.url for job in jobs] == [f"https://apply.example.com/jobs/{final_id}"]
+
+
+@pytest.mark.asyncio
 async def test_discover_rejects_duplicate_locale_for_one_application_identity() -> None:
     first_id = "11111111-1111-4111-8111-111111111111"
     second_id = "22222222-2222-4222-8222-222222222222"

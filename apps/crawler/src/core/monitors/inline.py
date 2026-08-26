@@ -554,7 +554,10 @@ def _generate_url(
     """
     identity = stable_identity if stable_identity is not None else title
     slug = slugify(identity)[:50]
-    identity_hash = hashlib.sha256(identity.strip().casefold().encode()).hexdigest()[:6]
+    normalized_identity = (
+        identity.strip().casefold() if stable_identity is not None else title.strip().lower()
+    )
+    identity_hash = hashlib.sha256(normalized_identity.encode()).hexdigest()[:6]
     jid = f"{slug}-{identity_hash}" if slug else identity_hash
 
     # Handle collisions (identical titles on same page)

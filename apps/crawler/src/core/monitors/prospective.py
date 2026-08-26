@@ -37,6 +37,8 @@ _MAX_HTML_BYTES = 2 * 1024 * 1024
 _MAX_IDENTITY_REGEX_LENGTH = 4_096
 _MAX_APPLICATION_LINK_TEXTS = 8
 _MAX_LOCALE_PRIORITY = 8
+_MAX_APPLICATION_REDIRECTS = 5
+_APPLICATION_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 
 
 @dataclass(frozen=True, slots=True)
@@ -344,6 +346,65 @@ def _application_url(
     return candidate
 
 
+def _trusted_application_url(
+    url: str,
+    identity: _ApplicationIdentityConfig,
+) -> bool:
+    return (
+        identity.source_pattern.fullmatch(url) is not None
+        or identity.canonical_pattern.fullmatch(url) is not None
+    )
+
+
+async def _resolve_application_url(
+    application_url: str,
+    client: httpx.AsyncClient,
+    identity: _ApplicationIdentityConfig,
+) -> str:
+    """Resolve an application URL without contacting an unauthenticated redirect hop."""
+    current_url = application_url
+    visited: set[str] = set()
+    for redirect_count in range(_MAX_APPLICATION_REDIRECTS + 1):
+        if current_url in visited:
+            raise ValueError("Prospective application redirect looped")
+        visited.add(current_url)
+        if not _trusted_application_url(current_url, identity):
+            raise ValueError(
+                f"Prospective application redirect left its URL allowlists: {current_url}"
+            )
+
+        async with client.stream(
+            "GET",
+            current_url,
+            headers={"Accept": "text/html,application/xhtml+xml"},
+            follow_redirects=False,
+        ) as response:
+            if response.status_code in _APPLICATION_REDIRECT_STATUSES:
+                location = response.headers.get("location")
+                if not location:
+                    raise ValueError("Prospective application redirect omitted its location")
+                if redirect_count >= _MAX_APPLICATION_REDIRECTS:
+                    raise ValueError("Prospective application exceeded its redirect limit")
+                current_url = urljoin(str(response.url), location)
+                continue
+            if 300 <= response.status_code < 400:
+                raise ValueError(
+                    "Prospective application returned an unsupported redirect status: "
+                    f"{response.status_code}"
+                )
+            response.raise_for_status()
+            canonical_url = str(response.url)
+
+        if identity.canonical_pattern.fullmatch(canonical_url) is None:
+            raise ValueError(
+                "Prospective application link resolved outside its canonical allowlist: "
+                f"{canonical_url}"
+            )
+        return canonical_url
+
+    raise ValueError("Prospective application exceeded its redirect limit")
+
+
 async def _fetch_rich_job(
     source_url: str,
     client: httpx.AsyncClient,
@@ -369,19 +430,7 @@ async def _fetch_rich_job(
         locale = _detail_locale(tree, identity)
         application_url = _application_url(tree, source_url, identity)
 
-        async with client.stream(
-            "GET",
-            application_url,
-            headers={"Accept": "text/html,application/xhtml+xml"},
-            follow_redirects=True,
-        ) as response:
-            response.raise_for_status()
-            canonical_url = str(response.url)
-        if identity.canonical_pattern.fullmatch(canonical_url) is None:
-            raise ValueError(
-                "Prospective application link resolved outside its canonical allowlist: "
-                f"{canonical_url}"
-            )
+        canonical_url = await _resolve_application_url(application_url, client, identity)
 
         from src.core.scrapers.jsonld import parse_html
 

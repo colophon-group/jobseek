@@ -178,6 +178,12 @@ def test_generate_url_collision():
     assert "-2" in url2
 
 
+def test_generate_url_preserves_legacy_unicode_title_hash():
+    url = _generate_url("https://example.com/careers", "Straße Engineer", {})
+
+    assert url == "https://example.com/careers?_jid=strae-engineer-a92a13"
+
+
 def test_generate_url_uses_stable_identity_instead_of_title():
     first = _generate_url(
         "https://example.com/careers",

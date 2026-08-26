@@ -1083,6 +1083,13 @@ def select_monitor(
             config = {k: v for k, v in probe_data[type_].items()}
             out.info("monitor", f"Auto-filled config from probe: {json.dumps(config)}")
 
+    if type_ == "prospective" and "application_identity" not in config:
+        out.die(
+            "Prospective selection requires an explicit application_identity contract; "
+            "probe results cannot safely infer application URL allowlists. Pass the complete "
+            "monitor config with --config. See: ws help monitor prospective"
+        )
+
     # Validate pagination config schema if present
     if "pagination" in config:
         if type_ == "nextdata":

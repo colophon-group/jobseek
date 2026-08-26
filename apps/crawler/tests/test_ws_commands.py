@@ -2597,6 +2597,64 @@ class TestSelectMonitorValidation:
         assert result.exit_code == 0
         assert "render" in result.output  # DOM config hint mentions render
 
+    def test_prospective_probe_requires_explicit_application_identity(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        board = Board(
+            alias="careers",
+            slug="test-careers",
+            url="https://jobs.example.com/?lang=en",
+        )
+        board.detections["prospective"] = {
+            "medium_id": "1000613",
+            "page_size": 10,
+            "urls": 2,
+        }
+        save_board("test", board)
+        ws_obj = load_workspace("test")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+
+        result = CliRunner().invoke(ws, ["select", "monitor", "test", "prospective"])
+
+        assert result.exit_code != 0
+        assert "requires an explicit application_identity contract" in result.output
+        assert load_board("test", "careers").configs == {}
+
+    def test_prospective_selection_accepts_explicit_identity_contract(self, tmp_path, monkeypatch):
+        _patch_all(monkeypatch, tmp_path)
+        save_workspace(Workspace(slug="test"))
+        save_board(
+            "test",
+            Board(
+                alias="careers",
+                slug="test-careers",
+                url="https://jobs.example.com/?lang=en",
+            ),
+        )
+        ws_obj = load_workspace("test")
+        ws_obj.active_board = "careers"
+        save_workspace(ws_obj)
+        config = {
+            "medium_id": "1000613",
+            "application_identity": {
+                "link_texts": ["Apply"],
+                "source_url_allowlist": r"^https://apply\.example/jobs/[1-9]\d*$",
+                "canonical_url_allowlist": r"^https://apply\.example/jobs/[1-9]\d*$",
+                "locale_priority": ["en"],
+            },
+        }
+
+        result = CliRunner().invoke(
+            ws,
+            ["select", "monitor", "test", "prospective", "--config", json.dumps(config)],
+        )
+
+        assert result.exit_code == 0
+        selected = load_board("test", "careers").configs["prospective"]
+        assert selected["monitor_config"] == config
+        assert selected["scraper_type"] == "skip"
+
 
 class TestSelectScraperValidation:
     def test_invalid_scraper_type(self, tmp_path, monkeypatch):
