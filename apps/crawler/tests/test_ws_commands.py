@@ -5368,6 +5368,7 @@ class TestSubmitIdempotency:
         with (
             patch("src.workspace.git.get_pr_details_strict", return_value=pending),
             patch("src.workspace.git.get_authenticated_login_strict", return_value="resolver"),
+            patch("src.workspace.git.get_main_branch", return_value="main"),
             patch("src.workspace.commands.lifecycle.time.sleep"),
             pytest.raises(WorkspaceError, match="sole resolver"),
         ):
