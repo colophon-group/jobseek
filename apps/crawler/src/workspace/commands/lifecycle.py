@@ -9,6 +9,7 @@ import os
 import re
 import shutil
 import stat
+import time
 import uuid
 from datetime import UTC, datetime
 from functools import wraps
@@ -21,7 +22,7 @@ from src.shared.constants import SLUG_RE, get_data_dir
 from src.shared.csv_io import read_csv
 from src.workspace import log as action_log
 from src.workspace import output as out
-from src.workspace.errors import CsvToolError, WorkspaceError
+from src.workspace.errors import CsvToolError, PrIssueLinkError, WorkspaceError
 from src.workspace.state import (
     Board,
     Workspace,
@@ -2529,6 +2530,9 @@ SUBMIT_STEPS: list[tuple[str, str, bool]] = [
     ("issue_completed", "Post completion on issue", False),
 ]
 
+_NEW_PR_ATTACHMENT_RETRIES = 5
+_NEW_PR_ATTACHMENT_RETRY_DELAY = 2.0
+
 
 def _record_current_pr_provenance(
     ws: Workspace,
@@ -2577,6 +2581,41 @@ def _record_current_pr_provenance(
     ws.pr_provenance = recorded
     _rebind_workspace_worktree_identity(ws)
     save_workspace(ws)
+
+
+def _attach_workspace_pr(
+    ws: Workspace,
+    pr_number: int,
+    *,
+    require_current_actor: bool,
+    expected_head_oid: str,
+    retry_issue_link: bool = False,
+) -> None:
+    """Atomically attach a PR, tolerating fresh-link eventual consistency."""
+    old_pr = ws.pr
+    old_provenance = copy.deepcopy(ws.pr_provenance)
+    old_identity = copy.deepcopy(ws.worktree_identity)
+    retries = _NEW_PR_ATTACHMENT_RETRIES if retry_issue_link else 0
+
+    for attempt in range(retries + 1):
+        ws.pr = pr_number
+        try:
+            _record_current_pr_provenance(
+                ws,
+                require_current_actor=require_current_actor,
+                expected_head_oid=expected_head_oid,
+            )
+            return
+        except Exception as exc:
+            # A failed validation must not leave persisted workspace ownership
+            # contradicting the checkout identity. The remote PR is recovered
+            # by branch on the next submit attempt.
+            ws.pr = old_pr
+            ws.pr_provenance = copy.deepcopy(old_provenance)
+            ws.worktree_identity = copy.deepcopy(old_identity)
+            if not isinstance(exc, PrIssueLinkError) or attempt >= retries:
+                raise
+            time.sleep(_NEW_PR_ATTACHMENT_RETRY_DELAY)
 
 
 def _authenticate_workspace_worktree(ws: Workspace) -> None:
@@ -2840,9 +2879,9 @@ def _execute_submit_step(
         if not ws.pr:
             existing_pr = git.find_open_pr_for_branch(ws.branch)
             if existing_pr:
-                ws.pr = existing_pr
-                _record_current_pr_provenance(
+                _attach_workspace_pr(
                     ws,
+                    existing_pr,
                     require_current_actor=True,
                     expected_head_oid=local_oid,
                 )
@@ -2862,9 +2901,9 @@ def _execute_submit_step(
                             f"Issue #{ws.issue} already has open PR #{issue_pr} "
                             f"on {branch_detail}; refusing to create a duplicate"
                         )
-                    ws.pr = issue_pr
-                    _record_current_pr_provenance(
+                    _attach_workspace_pr(
                         ws,
+                        issue_pr,
                         require_current_actor=True,
                         expected_head_oid=local_oid,
                     )
@@ -2878,11 +2917,13 @@ def _execute_submit_step(
             )
             pr_body = f"Closes #{ws.issue}" if ws.issue else ""
             _authenticate_workspace_worktree(ws)
-            ws.pr = git.create_draft_pr(title=pr_title, body=pr_body)
-            _record_current_pr_provenance(
+            pr_number = git.create_draft_pr(title=pr_title, body=pr_body)
+            _attach_workspace_pr(
                 ws,
+                pr_number,
                 require_current_actor=True,
                 expected_head_oid=local_oid,
+                retry_issue_link=True,
             )
             out.info("github", f"Created draft PR #{ws.pr}")
 

@@ -5284,6 +5284,105 @@ class TestSubmitIdempotency:
         create_pr.assert_called_once()
         assert load_workspace("test").pr == 99
 
+    def test_fresh_pr_issue_link_lag_retries_without_corrupting_ownership(
+        self, tmp_path, monkeypatch
+    ):
+        ws_obj, _ = _setup_submittable_workspace(tmp_path, monkeypatch)
+        ws_obj.pr = None
+        ws_obj.pr_provenance = {}
+        ws_obj.worktree = str(tmp_path / "worktrees" / "test")
+        ws_obj.worktree_identity = {
+            "version": 1,
+            "path": ws_obj.worktree,
+            "slug": "test",
+            "branch": ws_obj.branch,
+            "head": TEST_HEAD_OID,
+            "dev": 1,
+            "ino": 2,
+            "issue": ws_obj.issue,
+            "pr": None,
+            "pr_provenance": {},
+        }
+        save_workspace(ws_obj)
+
+        pending = _test_pr_details(99)
+        pending["closingIssuesReferences"] = []
+        linked = _test_pr_details(99)
+        detail_calls = 0
+
+        def pr_details(_number):
+            nonlocal detail_calls
+            detail_calls += 1
+            return pending if detail_calls <= 2 else linked
+
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch("src.workspace.git.has_uncommitted_changes", return_value=False)
+            )
+            stack.enter_context(patch("src.workspace.git.push_branch_at_expected_oid"))
+            remote_values = iter([None, TEST_HEAD_OID])
+            stack.enter_context(
+                patch(
+                    "src.workspace.git.remote_branch_oid_strict",
+                    side_effect=lambda _branch: next(remote_values, TEST_HEAD_OID),
+                )
+            )
+            stack.enter_context(
+                patch("src.workspace.git.find_open_pr_for_branch", return_value=None)
+            )
+            stack.enter_context(patch("src.workspace.git.check_existing_prs", return_value=[]))
+            stack.enter_context(patch("src.workspace.git.create_draft_pr", return_value=99))
+            stack.enter_context(patch("src.workspace.git._run"))
+            stack.enter_context(
+                patch(
+                    "src.workspace.git.get_pr_details_strict",
+                    side_effect=pr_details,
+                )
+            )
+            sleep = stack.enter_context(patch("src.workspace.commands.lifecycle.time.sleep"))
+
+            result = CliRunner().invoke(ws, ["submit", "test"])
+
+        assert result.exit_code == 0, result.output
+        saved = load_workspace("test")
+        assert saved.pr == 99
+        assert saved.pr_provenance == _test_pr_provenance(99)
+        assert saved.worktree_identity["pr"] == 99
+        assert saved.worktree_identity["pr_provenance"] == saved.pr_provenance
+        assert sleep.call_count == 2
+
+    def test_failed_pr_attachment_restores_authentic_workspace_state(self, tmp_path, monkeypatch):
+        from src.workspace.commands.lifecycle import _attach_workspace_pr
+
+        ws_obj = Workspace(
+            slug="test",
+            issue=1,
+            branch="add-company/test",
+            worktree=str(tmp_path / "worktrees" / "test"),
+            worktree_identity={"pr": None, "pr_provenance": {}},
+        )
+        original_identity = copy.deepcopy(ws_obj.worktree_identity)
+        pending = _test_pr_details(99)
+        pending["closingIssuesReferences"] = []
+
+        with (
+            patch("src.workspace.git.get_pr_details_strict", return_value=pending),
+            patch("src.workspace.git.get_authenticated_login_strict", return_value="resolver"),
+            patch("src.workspace.commands.lifecycle.time.sleep"),
+            pytest.raises(WorkspaceError, match="sole resolver"),
+        ):
+            _attach_workspace_pr(
+                ws_obj,
+                99,
+                require_current_actor=True,
+                expected_head_oid=TEST_HEAD_OID,
+                retry_issue_link=True,
+            )
+
+        assert ws_obj.pr is None
+        assert ws_obj.pr_provenance == {}
+        assert ws_obj.worktree_identity == original_identity
+
     def test_interrupted_submit_recovers_pr_by_branch(self, tmp_path, monkeypatch):
         ws_obj, _ = _setup_submittable_workspace(tmp_path, monkeypatch)
         ws_obj.pr = None

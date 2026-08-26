@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import Literal
 
-from src.workspace.errors import GitCommandError, GitHubApiError, WorkspaceError
+from src.workspace.errors import GitCommandError, GitHubApiError, PrIssueLinkError, WorkspaceError
 from src.workspace.safe_cleanup import safe_rmtree_child
 
 _GIT_RETRIES = 2
@@ -1438,7 +1438,7 @@ def validate_pr_attachment(
     if issue is not None:
         expected_issue = {(expected_repo, issue)}
         if _closing_issue_keys(details) != expected_issue:
-            raise WorkspaceError(
+            raise PrIssueLinkError(
                 f"PR #{pr_number} is not structured as the sole resolver for issue #{issue}"
             )
     if branch not in {f"add-company/{slug}", f"fix-crawler/{slug}"}:
