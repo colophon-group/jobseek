@@ -2785,6 +2785,18 @@ class TestCanHandle:
         assert result["urls"] == 1
         assert result["link_selector"] == "a[href*='/de-CH/lehrstellen/profile/']"
         assert result["require_jsonld_jobposting"] is True
+        assert result["url_allowlist"] == result["url_filter"]
+        assert (
+            re.sub(
+                result["url_transform"]["find"],
+                result["url_transform"]["replace"],
+                (
+                    "https://www.yousty.ch/de-CH/lehrstellen/profile/"
+                    "12641425-geaenderter-titel-basel-bs-implenia-schweiz-ag"
+                ),
+            )
+            == "https://www.yousty.ch/de-CH/lehrstellen/profile/12641425"
+        )
         assert result["pagination"] == {
             "url_template": (
                 "https://www.yousty.ch/de-CH/lehrstellen/?locale=de-CH&"

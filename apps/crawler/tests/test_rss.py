@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 import src.core.monitors.rss as rss_monitor
+from src.core.monitor import monitor_one
 from src.core.monitors import DiscoveredJob
 from src.core.monitors.rss import (
     RssFeedNotXml,
@@ -484,6 +485,124 @@ def _rss_xml(items_xml: str) -> str:
 
 
 class TestDiscover:
+    async def test_successfactors_job_identity_collapses_locale_and_title_aliases(self):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Deutscher Titel</title>
+                <link>https://jobs.example.com/job/alter-deutscher-titel/1001/</link>
+                <guid>1001</guid>
+            </item>
+            <item>
+                <title>Titre français</title>
+                <link>https://jobs.example.com/job/ancien-titre-francais/1002/</link>
+                <guid>1002</guid>
+            </item>
+        """)
+
+        def handler(request):
+            if request.url.path == "/googlefeed.xml":
+                return httpx.Response(200, text=feed_xml)
+            locations = {
+                "/job/alter-deutscher-titel/1001/": "/job/Neuer-Titel/9580-de_DE/",
+                "/job/ancien-titre-francais/1002/": "/job/Nouveau-Titre/9580-fr_FR/",
+            }
+            return httpx.Response(302, headers={"location": locations[request.url.path]})
+
+        config = {
+            "preset": "successfactors",
+            "feed_url": "https://jobs.example.com/googlefeed.xml",
+            "resolve_job_invite_identity": True,
+            "url_allowlist": (
+                r"^https://jobs\.example\.com/job/[^/?#]+/"
+                r"[1-9]\d{0,11}-[a-z]{2}_[A-Z]{2}/$"
+            ),
+            "url_transform": {
+                "find": (
+                    r"^https://jobs\.example\.com/job/[^/?#]+/"
+                    r"([1-9]\d{0,11})-[a-z]{2}_[A-Z]{2}/$"
+                ),
+                "replace": r"https://jobs.example.com/job-invite/\1/",
+                "collision_policy": "prefer_source_pattern",
+                "collision_preferred_source_patterns": ["-de_DE/$", "-fr_FR/$"],
+                "collision_canonical_identity_regex": (
+                    r"^https://jobs\.example\.com/job-invite/([1-9]\d{0,11})/$"
+                ),
+                "collision_identity_metadata_key": "job_invite_id",
+                "collision_stream_buffer_limit": 10,
+            },
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await monitor_one(
+                "https://jobs.example.com/search/",
+                "rss",
+                config,
+                client,
+            )
+
+        assert result.urls == {"https://jobs.example.com/job-invite/9580/"}
+        job = result.jobs_by_url["https://jobs.example.com/job-invite/9580/"]
+        assert job.title == "Deutscher Titel"
+        assert job.metadata == {
+            "id": "1001",
+            "feed_id": "1001",
+            "job_invite_id": "9580",
+            "job_locale": "de_DE",
+        }
+
+    async def test_successfactors_job_identity_rejects_cross_origin_redirect(self):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Pilot</title>
+                <link>https://jobs.example.com/job/pilot/1001/</link>
+            </item>
+        """)
+
+        def handler(request):
+            if request.url.path == "/googlefeed.xml":
+                return httpx.Response(200, text=feed_xml)
+            return httpx.Response(
+                302,
+                headers={"location": "https://evil.example/job/Pilot/9580-de_DE/"},
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(rss_monitor.SuccessFactorsJobIdentityError):
+                await discover(
+                    {
+                        "board_url": "https://jobs.example.com/search/",
+                        "metadata": {
+                            "preset": "successfactors",
+                            "feed_url": "https://jobs.example.com/googlefeed.xml",
+                            "resolve_job_invite_identity": True,
+                        },
+                    },
+                    client,
+                )
+
+    async def test_successfactors_job_identity_enforces_bounded_feed_cap(self, monkeypatch):
+        feed_xml = _rss_xml("""
+            <item><link>https://jobs.example.com/job/one/1001/</link></item>
+            <item><link>https://jobs.example.com/job/two/1002/</link></item>
+        """)
+        monkeypatch.setattr(rss_monitor, "_SF_JOB_IDENTITY_MAX_JOBS", 1)
+
+        def handler(request):
+            return httpx.Response(200, text=feed_xml)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(rss_monitor.SuccessFactorsJobIdentityError, match="bounded"):
+                await discover(
+                    {
+                        "board_url": "https://jobs.example.com/search/",
+                        "metadata": {
+                            "preset": "successfactors",
+                            "feed_url": "https://jobs.example.com/googlefeed.xml",
+                            "resolve_job_invite_identity": True,
+                        },
+                    },
+                    client,
+                )
+
     async def test_successfactors_preset(self):
         feed_xml = _rss_xml(f"""
             <item>

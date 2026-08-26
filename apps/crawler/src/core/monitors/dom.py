@@ -944,6 +944,14 @@ def _yousty_probe_config(html: str, url: str) -> dict | None:
         rf"^{re.escape(origin)}/de-CH/lehrstellen/profile/"
         rf"[1-9]\d{{0,11}}-[^/?#]+-{re.escape(employer_slug)}/?(?:[?#].*)?$"
     )
+    url_transform = {
+        "find": (
+            rf"^{re.escape(origin)}/de-CH/lehrstellen/profile/"
+            rf"([1-9]\d{{0,11}})-[^/?#]+-{re.escape(employer_slug)}/?"
+            r"(?:[?#].*)?$"
+        ),
+        "replace": rf"{origin}/de-CH/lehrstellen/profile/\1",
+    }
     urls = _extract_links_static(
         html,
         url,
@@ -957,6 +965,8 @@ def _yousty_probe_config(html: str, url: str) -> dict | None:
         "urls": len(urls),
         "link_selector": _YOUSTY_LINK_SELECTOR,
         "url_filter": url_filter,
+        "url_allowlist": url_filter,
+        "url_transform": url_transform,
         "require_jsonld_jobposting": True,
     }
     if filtered_search:
