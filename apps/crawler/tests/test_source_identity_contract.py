@@ -60,6 +60,8 @@ def test_migration_is_bounded_receipt_backed_and_rollback_guarded() -> None:
     assert "LIMIT 50000" in upgrade
     assert "source_identity = posting.source_url" in upgrade
     assert "ALTER COLUMN source_identity SET NOT NULL" in upgrade
+    assert "BEFORE INSERT OR UPDATE OF source_url" in upgrade
+    assert "OLD.source_identity IS NOT DISTINCT FROM OLD.source_url" in upgrade
     assert "source_identity IS DISTINCT FROM source_url" in downgrade
     assert "EXISTS (SELECT 1 FROM job_posting_source_alias)" in downgrade
     assert "rollback refused" in downgrade

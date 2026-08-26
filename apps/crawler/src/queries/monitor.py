@@ -682,7 +682,7 @@ WITH discovered AS (
   FROM discovered d
   WHERE d.explicit_identity
     AND d.source_identity !~
-        '^[a-z][a-z0-9_-]{1,31}:[a-z0-9][a-z0-9._-]{0,63}:[A-Za-z0-9][A-Za-z0-9._~:/-]{0,383}$'
+        '^[a-z][a-z0-9_-]{1,31}:[a-z0-9][a-z0-9._-]{0,63}:[A-Za-z0-9][A-Za-z0-9._~:/-]{0,255}[A-Za-z0-9._~:/-]{0,128}$'
 
   UNION ALL
 

@@ -272,6 +272,10 @@ async def test_bidirectional_supabase_drift_is_repaired_from_locked_local_truth(
         await control.execute(
             f'CREATE TABLE "{schema}".job_posting (LIKE public.job_posting INCLUDING ALL)'
         )
+        # Durable identity is authoritative-local matching state. The remote
+        # projection intentionally receives mutable source_url through
+        # PostingSchema without storing the private identity key.
+        await control.execute(f'ALTER TABLE "{schema}".job_posting DROP COLUMN source_identity')
         remote_pool = await asyncpg.create_pool(
             dsn,
             min_size=1,

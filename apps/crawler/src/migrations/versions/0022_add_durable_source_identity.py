@@ -2,8 +2,9 @@
 
 The existing globally-unique URL is copied into ``source_identity`` under an
 exclusive writer lock, so every pre-existing posting keeps its UUID and full
-history. New URL-only writers are kept compatible by a BEFORE INSERT trigger;
-explicit provider-aware writers set the new column themselves.
+history. New URL-only writers are kept compatible by a trigger that derives
+identity on insert and follows legacy source-URL rewrites; explicit
+provider-aware writers set the new column themselves.
 
 The migration is bounded and receipt-backed. Downgrade is permitted only while
 all identities still equal their original URL and no URL aliases have been
@@ -130,12 +131,20 @@ AS $$
 BEGIN
     IF NEW.source_identity IS NULL THEN
         NEW.source_identity := NEW.source_url;
+    ELSIF TG_OP = 'UPDATE'
+          AND NEW.source_identity IS NOT DISTINCT FROM OLD.source_identity
+          AND OLD.source_identity IS NOT DISTINCT FROM OLD.source_url
+    THEN
+        -- Preserve URL-as-identity semantics for old runtimes and bounded
+        -- canonicalization migrations. Explicit provider identities differ
+        -- from OLD.source_url and are therefore never rewritten here.
+        NEW.source_identity := NEW.source_url;
     END IF;
     RETURN NEW;
 END;
 $$;
 CREATE TRIGGER job_posting_default_source_identity
-BEFORE INSERT ON job_posting
+BEFORE INSERT OR UPDATE OF source_url ON job_posting
 FOR EACH ROW
 EXECUTE FUNCTION jobseek_job_posting_default_source_identity();
 """
