@@ -6,6 +6,7 @@
       "deterministicallyRedacted": true,
       "operation": {
         "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+        "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43",
         "role": "session-bootstrap"
       },
       "request": {
@@ -61,6 +62,7 @@
         "operationSequence": 1,
         "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
         "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+        "requestFingerprint": "6961208c19ad9eafb3ad52e3e1a00dbc95f7cc547cf5df62fab2d70549291801",
         "role": "search"
       },
       "request": {
@@ -112,11 +114,12 @@
     },
     {
       "deterministicallyRedacted": true,
-      "normalizedResultFrameSequence": "4",
+      "normalizedResultFrameSequence": "3",
       "operation": {
         "operationSequence": 2,
-        "originRequestId": "origin:dynamic:detail",
+        "originRequestId": "monitor:board-1:revision-7:due-42/op/002",
         "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/001",
+        "requestFingerprint": "48a392b4c2bd76cc7802464c2e6f48176df50c75330b0adebd075e0296a630eb",
         "role": "detail"
       },
       "request": {
@@ -215,13 +218,22 @@
     "originOperations": [
       {
         "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+        "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43",
         "role": "session-bootstrap"
       },
       {
         "operationSequence": 1,
         "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
         "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+        "requestFingerprint": "6961208c19ad9eafb3ad52e3e1a00dbc95f7cc547cf5df62fab2d70549291801",
         "role": "search"
+      },
+      {
+        "operationSequence": 2,
+        "originRequestId": "monitor:board-1:revision-7:due-42/op/002",
+        "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/001",
+        "requestFingerprint": "48a392b4c2bd76cc7802464c2e6f48176df50c75330b0adebd075e0296a630eb",
+        "role": "detail"
       }
     ],
     "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
@@ -241,9 +253,10 @@
         "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
         "operation": {
           "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+          "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43",
           "role": "session-bootstrap"
         },
-        "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a"
+        "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43"
       },
       "requestId": "request-scrape-1"
     },
@@ -257,27 +270,13 @@
           "operationSequence": 1,
           "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
           "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+          "requestFingerprint": "6961208c19ad9eafb3ad52e3e1a00dbc95f7cc547cf5df62fab2d70549291801",
           "role": "search"
         },
-        "requestFingerprint": "98e5b0940917732600ba7a8a503f86573181fc25c05ba49bea271cc8c9d2a4e0"
+        "requestFingerprint": "6961208c19ad9eafb3ad52e3e1a00dbc95f7cc547cf5df62fab2d70549291801"
       },
       "requestId": "request-scrape-1",
       "sequence": "1"
-    },
-    {
-      "attemptId": "attempt-1",
-      "contractVersion": "crawler.runtime/v1",
-      "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
-      "originOperationDeclared": {
-        "operation": {
-          "operationSequence": 2,
-          "originRequestId": "origin:dynamic:detail",
-          "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/001",
-          "role": "detail"
-        }
-      },
-      "requestId": "request-scrape-1",
-      "sequence": "2"
     },
     {
       "attemptId": "attempt-1",
@@ -287,14 +286,15 @@
         "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
         "operation": {
           "operationSequence": 2,
-          "originRequestId": "origin:dynamic:detail",
+          "originRequestId": "monitor:board-1:revision-7:due-42/op/002",
           "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/001",
+          "requestFingerprint": "48a392b4c2bd76cc7802464c2e6f48176df50c75330b0adebd075e0296a630eb",
           "role": "detail"
         },
-        "requestFingerprint": "441a90223b71f21cfb4062b12d152cf1e3602a7e4bec001a0fb327736ad35c86"
+        "requestFingerprint": "48a392b4c2bd76cc7802464c2e6f48176df50c75330b0adebd075e0296a630eb"
       },
       "requestId": "request-scrape-1",
-      "sequence": "3"
+      "sequence": "2"
     },
     {
       "attemptId": "attempt-1",
@@ -313,18 +313,18 @@
           "title": "Systems Engineer"
         }
       },
-      "sequence": "4"
+      "sequence": "3"
     },
     {
       "attemptId": "attempt-1",
       "contractVersion": "crawler.runtime/v1",
       "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
       "requestId": "request-scrape-1",
-      "sequence": "5",
+      "sequence": "4",
       "terminal": {
         "activeDurationMs": "25",
         "eligibleForCommit": true,
-        "frameCount": "5",
+        "frameCount": "4",
         "originOperationCount": 3,
         "outputItems": "1",
         "status": "TERMINAL_STATUS_SUCCESS"
@@ -335,9 +335,15 @@
     "contentHashes": [
       "6a3f5c9bf1aae2fa7639250da7fd79340146234e5ce3b1b8b64f288d9c1aaad3"
     ],
-    "goneDetectionAllowed": true
+    "goneDetectionAllowed": true,
+    "jobEffects": [
+      {
+        "contentSha256": "6a3f5c9bf1aae2fa7639250da7fd79340146234e5ce3b1b8b64f288d9c1aaad3",
+        "sourceUrl": "https://careers.example.invalid/jobs/42"
+      }
+    ]
   },
-  "expectedSemanticSha256": "69ab10819c0ad66ab1a6f97c6b11903fd7a3cab595da1e7fa4e1fae2e83c3197",
-  "name": "representative-multi-origin-dynamic-scrape",
+  "expectedSemanticSha256": "30e424de0a56c92af52b9c2188bb5aa9147554ee203a7275871f9e33876cc7ed",
+  "name": "representative-multi-origin-scrape",
   "providerFamily": "representative-json"
 }

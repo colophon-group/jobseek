@@ -11,6 +11,13 @@ optional diagnostic enum may be ignored only where this document explicitly
 allows it; error, outcome, capability, kind, terminal, and origin enums never
 default into behavior.
 
+The introduction descriptor is frozen at
+`baseline/runtime-v1.descriptor.b64`. `generate.sh --check` runs the structural
+compatibility gate against it. Removing a field or enum value requires
+reserving both its name and number; renumbering, retyping, changing optional
+presence, or changing oneof membership fails. The baseline file itself is
+immutable after the initial v1 merge.
+
 Any removed/renamed field, changed meaning, tightened previously-valid
 behavior, changed hash/canonicalization rule, or new required semantic creates
 `contracts/v2`. The same PR must add deterministic converters in both Python

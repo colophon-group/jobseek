@@ -346,10 +346,9 @@ message ExecutionRequest {
     ScrapeInput scrape = 11;
     BrowserExecutionInput browser = 13;
   }
-  // Ordered semantic origin operations known when the execution is planned.
-  // Dynamic operations (for example a discovered next page) are durably
-  // allocated with the next operation_sequence before dispatch and reported
-  // in an OriginOperationDeclared frame. The first entry's ID equals
+  // Complete ordered semantic origin operations. v1 does not permit dynamic
+  // operations: every operation and its request fingerprint is durably bound
+  // before the ExecutionRequest is accepted. The first entry's ID equals
   // origin_request_id.
   repeated OriginOperationRef origin_operations = 12;
   FencingContext fencing_context = 14;
@@ -370,6 +369,10 @@ message OriginOperationRef {
   uint32 operation_sequence = 2;
   string role = 3;
   optional string parent_origin_request_id = 4;
+  // SHA-256 of the canonical method, URL, headers, and body that will be
+  // dispatched. This is part of the durable operation identity and must be
+  // persisted before origin contact.
+  string request_fingerprint = 5;
 }
 
 message ResumeRequest {
@@ -407,18 +410,21 @@ message ServerHello {
   Limits accepted_limits = 3;
   uint32 initial_window_frames = 4;
   bool resume_by_origin_request_id = 5;
+  // Server acceptance time used as the sole basis for validating the request
+  // deadline. Strict RFC3339 UTC; not the client's wall clock.
+  string accepted_at_rfc3339 = 6;
 }
 
 message OriginContact {
   OriginOperationRef operation = 1;
   OriginContactDisposition disposition = 2;
+  // Must equal operation.request_fingerprint exactly.
   string request_fingerprint = 3;
   optional ArtifactHandle exchange_artifact = 4;
 }
 
-// A durable pre-dispatch ledger entry for an operation that was not known when
-// ExecutionRequest was emitted. This frame MUST be observed before the origin
-// operation can be dispatched or referenced by a disconnect fault.
+// Reserved in v1 for forward decoding only. A v1 producer MUST NOT emit this
+// frame because all origin operations are bound on ExecutionRequest.
 message OriginOperationDeclared {
   OriginOperationRef operation = 1;
 }
@@ -517,10 +523,11 @@ message PaginationAction {
   Selector next_selector = 1;
   uint32 max_pages = 2;
   uint64 page_timeout_ms = 3;
-  // Required when max_pages > 1. The action-level origin_request_id owns the
-  // first page; each later page allocates the next dynamic operation ID before
-  // dispatch and reports it through OriginOperationDeclared.
-  bool dynamic_origin_per_additional_page = 4;
+  // Must remain false in v1. Dynamic origin allocation is fail-closed.
+  bool dynamic_origin_per_additional_page = 4 [deprecated = true];
+  // Exactly max_pages-1 predeclared operation IDs, in dispatch order. The
+  // action-level origin_request_id owns page one.
+  repeated string additional_page_origin_request_ids = 5;
 }
 
 message EvaluateAction {
@@ -659,6 +666,8 @@ message DisconnectFault {
   // disappeared. Resume must deduplicate this operation.
   bool origin_was_dispatched = 3;
   string origin_request_id = 4;
+  // The durable request binding observed at dispatch time.
+  string request_fingerprint = 5;
 }
 
 message ProtocolEvent {
@@ -700,6 +709,11 @@ message CapturedExchange {
   optional uint64 normalized_result_frame_sequence = 5;
 }
 
+message JobEffect {
+  string source_url = 1;
+  string content_sha256 = 2;
+}
+
 message ProjectedEffects {
   repeated string urls_to_upsert = 1;
   repeated string content_hashes = 2;
@@ -710,6 +724,9 @@ message ProjectedEffects {
   uint64 security_filtered_count = 7;
   optional string new_sitemap_url = 8;
   optional string metadata_updates_sha256 = 9;
+  // Typed URL-to-content binding. Monitor jobs use DiscoveredJob.url; scrape
+  // output uses ExecutionRequest.scrape.source_url.
+  repeated JobEffect job_effects = 10;
 }
 
 message ReplayCase {

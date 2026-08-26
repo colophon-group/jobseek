@@ -1,6 +1,6 @@
 {
-  "expectedValid": true,
-  "name": "browser-pagination-dynamic-origin",
+  "expectedError": "url",
+  "name": "url-alias-empty-query",
   "transcript": {
     "contractVersion": "crawler.runtime/v1",
     "events": [
@@ -37,6 +37,7 @@
         "direction": "EVENT_DIRECTION_SERVER",
         "server": {
           "hello": {
+            "acceptedAtRfc3339": "2026-08-26T11:50:00Z",
             "acceptedLimits": {
               "maxActiveDurationMs": "900000",
               "maxArtifactChunkBytes": "8388608",
@@ -68,7 +69,7 @@
             "attemptId": "attempt-1",
             "boardManifest": {
               "boardId": "board-1",
-              "boardUrl": "https://careers.example.invalid/jobs",
+              "boardUrl": "https://careers.example.invalid/jobs?",
               "checkIntervalMs": "3600000",
               "companyId": "company-1",
               "configExtensions": [
@@ -94,52 +95,8 @@
               "monitorType": "fixture-json",
               "providerFamily": "representative-json",
               "scrapeIntervalMs": "86400000",
+              "scraperType": "fixture-json",
               "throttleKey": "example.invalid"
-            },
-            "browser": {
-              "plan": {
-                "actions": [
-                  {
-                    "actionId": "next-page",
-                    "networkEffect": "BROWSER_NETWORK_EFFECT_ORIGIN_CONTACT",
-                    "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
-                    "paginate": {
-                      "dynamicOriginPerAdditionalPage": true,
-                      "maxPages": 2,
-                      "nextSelector": {
-                        "kind": "SELECTOR_KIND_CSS",
-                        "value": "button.next"
-                      },
-                      "pageTimeoutMs": "10000"
-                    }
-                  }
-                ],
-                "contractVersion": "crawler.runtime/v1",
-                "navigation": {
-                  "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
-                  "timeoutMs": "30000",
-                  "waitUntil": "WAIT_CONDITION_LOAD"
-                },
-                "originOperations": [
-                  {
-                    "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
-                    "role": "navigation"
-                  },
-                  {
-                    "operationSequence": 1,
-                    "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
-                    "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
-                    "role": "pagination"
-                  }
-                ],
-                "requiredCapabilities": [
-                  "BROWSER_CAPABILITY_RENDER",
-                  "BROWSER_CAPABILITY_ACTIONS",
-                  "BROWSER_CAPABILITY_PAGINATION"
-                ],
-                "session": {},
-                "targetUrl": "https://careers.example.invalid/jobs"
-              }
             },
             "contractVersion": "crawler.runtime/v1",
             "deadlineRfc3339": "2026-08-26T12:00:00Z",
@@ -152,21 +109,21 @@
               "routingEpoch": "7",
               "shardId": "crawler-http-00"
             },
-            "kind": "EXECUTION_KIND_BROWSER",
+            "kind": "EXECUTION_KIND_SCRAPE",
             "originOperations": [
               {
                 "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
-                "role": "navigation"
-              },
-              {
-                "operationSequence": 1,
-                "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
-                "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
-                "role": "pagination"
+                "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a",
+                "role": "initial"
               }
             ],
             "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
-            "requestId": "request-browser-1"
+            "requestId": "request-scrape-1",
+            "scrape": {
+              "scraperType": "fixture-json",
+              "sourceUrl": "https://careers.example.invalid/jobs/42"
+            },
+            "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
           }
         },
         "direction": "EVENT_DIRECTION_CLIENT"
@@ -182,11 +139,12 @@
               "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
               "operation": {
                 "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
-                "role": "navigation"
+                "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a",
+                "role": "initial"
               },
               "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a"
             },
-            "requestId": "request-browser-1"
+            "requestId": "request-scrape-1"
           }
         }
       },
@@ -197,17 +155,19 @@
             "attemptId": "attempt-1",
             "contractVersion": "crawler.runtime/v1",
             "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
-            "originContact": {
-              "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
-              "operation": {
-                "operationSequence": 1,
-                "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
-                "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
-                "role": "pagination"
-              },
-              "requestFingerprint": "98e5b0940917732600ba7a8a503f86573181fc25c05ba49bea271cc8c9d2a4e0"
+            "requestId": "request-scrape-1",
+            "scrapeResult": {
+              "content": {
+                "descriptionHtml": "<p>Deterministic offline content</p>",
+                "language": "en",
+                "locations": {},
+                "skills": [
+                  "Go",
+                  "Python"
+                ],
+                "title": "Systems Engineer"
+              }
             },
-            "requestId": "request-browser-1",
             "sequence": "1"
           }
         }
@@ -219,93 +179,13 @@
             "attemptId": "attempt-1",
             "contractVersion": "crawler.runtime/v1",
             "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
-            "originOperationDeclared": {
-              "operation": {
-                "operationSequence": 2,
-                "originRequestId": "origin:browser-pagination:page-2",
-                "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/001",
-                "role": "pagination-page-2"
-              }
-            },
-            "requestId": "request-browser-1",
-            "sequence": "2"
-          }
-        }
-      },
-      {
-        "direction": "EVENT_DIRECTION_SERVER",
-        "server": {
-          "frame": {
-            "attemptId": "attempt-1",
-            "contractVersion": "crawler.runtime/v1",
-            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
-            "originContact": {
-              "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
-              "operation": {
-                "operationSequence": 2,
-                "originRequestId": "origin:browser-pagination:page-2",
-                "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/001",
-                "role": "pagination-page-2"
-              },
-              "requestFingerprint": "201355011a0116359a58d955b113011239b2301a42a7bd239011f9ad21433cf6"
-            },
-            "requestId": "request-browser-1",
-            "sequence": "3"
-          }
-        }
-      },
-      {
-        "client": {
-          "windowUpdate": {
-            "additionalFrames": 2,
-            "attemptId": "attempt-1",
-            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
-            "requestId": "request-browser-1"
-          }
-        },
-        "direction": "EVENT_DIRECTION_CLIENT"
-      },
-      {
-        "direction": "EVENT_DIRECTION_SERVER",
-        "server": {
-          "frame": {
-            "attemptId": "attempt-1",
-            "browserResult": {
-              "backend": "BROWSER_BACKEND_LIGHTPANDA",
-              "contractVersion": "crawler.runtime/v1",
-              "success": {
-                "actionOutcomes": [
-                  {
-                    "actionId": "next-page",
-                    "completed": true,
-                    "durationMs": "10"
-                  }
-                ],
-                "finalUrl": "https://careers.example.invalid/jobs",
-                "status": 200
-              }
-            },
-            "contractVersion": "crawler.runtime/v1",
-            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
-            "requestId": "request-browser-1",
-            "sequence": "4"
-          }
-        }
-      },
-      {
-        "direction": "EVENT_DIRECTION_SERVER",
-        "server": {
-          "frame": {
-            "attemptId": "attempt-1",
-            "contractVersion": "crawler.runtime/v1",
-            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
-            "requestId": "request-browser-1",
-            "sequence": "5",
+            "requestId": "request-scrape-1",
+            "sequence": "2",
             "terminal": {
               "activeDurationMs": "25",
               "eligibleForCommit": true,
-              "frameCount": "5",
-              "originOperationCount": 3,
+              "frameCount": "2",
+              "originOperationCount": 1,
               "outputItems": "1",
               "status": "TERMINAL_STATUS_SUCCESS"
             }
@@ -313,6 +193,6 @@
         }
       }
     ],
-    "name": "browser-pagination-dynamic-origin"
+    "name": "url-alias-empty-query"
   }
 }

@@ -26,6 +26,8 @@ jobs:
         working-directory: apps/crawler/contracts/v1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
@@ -41,7 +43,10 @@ jobs:
           uv sync --project ../..
           go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
       - name: Verify generated bindings and fixtures
+        env:
+          BASELINE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
+          PYTHONPATH=. uv run --project ../.. python tools/check_baseline_immutable.py
           ./generate.sh --check
           PYTHONPATH=. uv run --project ../.. python tools/build_fixtures.py
           git diff --exit-code -- gen fixtures
@@ -51,6 +56,7 @@ jobs:
           PYTHONPATH=. uv run --project ../.. python tools/check_contract.py
           uv run --project ../.. ruff check conformance/python tools
           uv run --project ../.. ruff format --check conformance/python tools
+          PYTHONPATH=. uv run --project ../.. python tools/wheel_smoke.py
       - name: Go conformance
         run: |
           go test -race ./...

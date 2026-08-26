@@ -7,6 +7,7 @@
       "normalizedResultFrameSequence": "1",
       "operation": {
         "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+        "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43",
         "role": "initial"
       },
       "request": {
@@ -105,6 +106,7 @@
     "originOperations": [
       {
         "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+        "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43",
         "role": "initial"
       }
     ],
@@ -125,9 +127,10 @@
         "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
         "operation": {
           "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+          "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43",
           "role": "initial"
         },
-        "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a"
+        "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43"
       },
       "requestId": "request-scrape-1"
     },
@@ -170,9 +173,15 @@
     "contentHashes": [
       "6a3f5c9bf1aae2fa7639250da7fd79340146234e5ce3b1b8b64f288d9c1aaad3"
     ],
-    "goneDetectionAllowed": true
+    "goneDetectionAllowed": true,
+    "jobEffects": [
+      {
+        "contentSha256": "6a3f5c9bf1aae2fa7639250da7fd79340146234e5ce3b1b8b64f288d9c1aaad3",
+        "sourceUrl": "https://careers.example.invalid/jobs/42"
+      }
+    ]
   },
-  "expectedSemanticSha256": "f6a0a94ab026d514fb5ca75b69f2649a3d5c16644efe98a6c5af08816eb4280b",
+  "expectedSemanticSha256": "736ba35f7067641115e63e08ce635764ce93a83d68e44d99a409cb0cb003a9d7",
   "name": "representative-scrape",
   "providerFamily": "representative-json"
 }

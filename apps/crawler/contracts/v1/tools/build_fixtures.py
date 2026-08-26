@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 from pathlib import Path
 
-from conformance.python.contract import HARD_LIMITS, project_frames, semantic_hash
+from conformance.python.contract import (
+    HARD_LIMITS,
+    project_frames,
+    request_fingerprint,
+    semantic_hash,
+    uvarint_size,
+)
 from gen.python import runtime_pb2 as pb
 from google.protobuf import json_format
 from redaction import redact
@@ -90,6 +97,9 @@ def operation(sequence: int, role: str, *, parent: str | None = None) -> pb.Orig
         origin_request_id=f"monitor:board-1:revision-7:due-42/op/{sequence:03d}",
         operation_sequence=sequence,
         role=role,
+        request_fingerprint=hashlib.sha256(
+            f"monitor:board-1:revision-7:due-42/op/{sequence:03d}".encode()
+        ).hexdigest(),
     )
     if parent is not None:
         op.parent_origin_request_id = parent
@@ -290,6 +300,7 @@ def hello_events() -> list[pb.ProtocolEvent]:
         accepted_limits=accepted,
         initial_window_frames=4,
         resume_by_origin_request_id=True,
+        accepted_at_rfc3339="2026-08-26T11:50:00Z",
     )
     return [
         pb.ProtocolEvent(
@@ -340,7 +351,7 @@ def origin_frame(
                 if dedup
                 else pb.ORIGIN_CONTACT_DISPOSITION_DISPATCHED
             ),
-            request_fingerprint=hashlib.sha256(op.origin_request_id.encode()).hexdigest(),
+            request_fingerprint=op.request_fingerprint,
         ),
     )
 
@@ -503,6 +514,7 @@ def fault_event(
         point=point,
         origin_was_dispatched=dispatched,
         origin_request_id=origin_id,
+        request_fingerprint=hashlib.sha256(origin_id.encode()).hexdigest(),
     )
     if sequence is not None:
         fault.sequence = sequence
@@ -734,6 +746,7 @@ def build_positive() -> None:
 
     browser_op0 = operation(0, "navigation")
     browser_op1 = operation(1, "pagination", parent=browser_op0.origin_request_id)
+    browser_op2 = operation(2, "pagination-page-2", parent=browser_op1.origin_request_id)
     plan = pb.BrowserPlan(
         contract_version=VERSION,
         target_url="https://careers.example.invalid/jobs",
@@ -755,13 +768,13 @@ def build_positive() -> None:
                     next_selector=pb.Selector(kind=pb.SELECTOR_KIND_CSS, value="button.next"),
                     max_pages=2,
                     page_timeout_ms=10_000,
-                    dynamic_origin_per_additional_page=True,
+                    additional_page_origin_request_ids=[browser_op2.origin_request_id],
                 ),
                 origin_request_id=browser_op1.origin_request_id,
                 network_effect=pb.BROWSER_NETWORK_EFFECT_ORIGIN_CONTACT,
             )
         ],
-        origin_operations=[browser_op0, browser_op1],
+        origin_operations=[browser_op0, browser_op1, browser_op2],
     )
     write_message(
         FIXTURES / "conformance/positive/browser-plan-multi-origin.json",
@@ -770,12 +783,6 @@ def build_positive() -> None:
         ),
     )
     pagination_req = browser_request(plan)
-    dynamic_page = pb.OriginOperationRef(
-        origin_request_id="origin:browser-pagination:page-2",
-        operation_sequence=2,
-        role="pagination-page-2",
-        parent_origin_request_id=browser_op1.origin_request_id,
-    )
     pagination_result = pb.BrowserResult(
         contract_version=VERSION,
         backend=pb.BROWSER_BACKEND_LIGHTPANDA,
@@ -790,10 +797,9 @@ def build_positive() -> None:
     pagination_frames = [
         origin_frame(pagination_req, browser_op0, 0),
         origin_frame(pagination_req, browser_op1, 1),
-        origin_declaration_frame(pagination_req, dynamic_page, 2),
-        origin_frame(pagination_req, dynamic_page, 3),
-        browser_frame(pagination_req, pagination_result, 4),
-        terminal_frame(pagination_req, 5, output=1, batches=0, origins=3),
+        origin_frame(pagination_req, browser_op2, 2),
+        browser_frame(pagination_req, pagination_result, 3),
+        terminal_frame(pagination_req, 4, output=1, batches=0, origins=3),
     ]
     pagination_events = (
         hello_events()
@@ -815,12 +821,12 @@ def build_positive() -> None:
     )
     pagination_events.extend(server_frame(frame) for frame in pagination_frames[4:])
     write_message(
-        FIXTURES / "conformance/positive/browser-pagination-dynamic-origin.json",
+        FIXTURES / "conformance/positive/browser-pagination-predeclared-origins.json",
         case(
-            "browser-pagination-dynamic-origin",
+            "browser-pagination-predeclared-origins",
             pb.ProtocolTranscript(
                 contract_version=VERSION,
-                name="browser-pagination-dynamic-origin",
+                name="browser-pagination-predeclared-origins",
                 events=pagination_events,
             ),
         ),
@@ -1113,44 +1119,42 @@ def build_positive() -> None:
         ),
     ]
     dynamic_base = operation(0, "initial")
-    dynamic_req = request(operations=[dynamic_base])
     dynamic_op = operation(1, "dynamic-detail", parent=dynamic_base.origin_request_id)
+    dynamic_req = request(operations=[dynamic_base, dynamic_op])
     dynamic_frames = [
         origin_frame(dynamic_req, dynamic_base, 0),
-        origin_declaration_frame(dynamic_req, dynamic_op, 1),
-        origin_frame(dynamic_req, dynamic_op, 2),
-        monitor_frame(dynamic_req, 3, 1),
-        terminal_frame(dynamic_req, 4, output=1, batches=1, origins=2),
+        origin_frame(dynamic_req, dynamic_op, 1),
+        monitor_frame(dynamic_req, 2, 1),
+        terminal_frame(dynamic_req, 3, output=1, batches=1, origins=2),
     ]
 
     dynamic_resume_events = hello_events() + [
         start_event(dynamic_req),
         server_frame(dynamic_frames[0]),
-        server_frame(dynamic_frames[1]),
         fault_event(
             pb.DISCONNECT_POINT_AFTER_DISPATCH,
             dynamic_op.origin_request_id,
             dispatched=True,
         ),
     ]
-    dynamic_resume_events += reconnect_events(dynamic_req, 1)
+    dynamic_resume_events += reconnect_events(dynamic_req, 0)
     dynamic_resume_events += [
         server_frame(
             frame_for_attempt(
-                origin_frame(dynamic_req, dynamic_op, 2, dedup=True),
-                "attempt-resume-2",
+                origin_frame(dynamic_req, dynamic_op, 1, dedup=True),
+                "attempt-resume-1",
             )
         ),
-        server_frame(frame_for_attempt(dynamic_frames[3], "attempt-resume-2")),
-        server_frame(frame_for_attempt(dynamic_frames[4], "attempt-resume-2")),
+        server_frame(frame_for_attempt(dynamic_frames[2], "attempt-resume-1")),
+        server_frame(frame_for_attempt(dynamic_frames[3], "attempt-resume-1")),
     ]
     write_message(
-        FIXTURES / "conformance/positive/disconnect-after-dynamic-dispatch-before-contact.json",
+        FIXTURES / "conformance/positive/disconnect-after-predeclared-dispatch.json",
         case(
-            "disconnect-after-dynamic-dispatch-before-contact",
+            "disconnect-after-predeclared-dispatch",
             pb.ProtocolTranscript(
                 contract_version=VERSION,
-                name="disconnect-after-dynamic-dispatch-before-contact",
+                name="disconnect-after-predeclared-dispatch",
                 events=dynamic_resume_events,
             ),
         ),
@@ -1221,7 +1225,7 @@ def build_positive() -> None:
         ("monitor-batch", monitor_req, monitor_frames, 1),
         ("artifact", artifact_req, artifact_frames, 1),
         ("runtime-error", error_req, error_frames, 1),
-        ("dynamic-origin", dynamic_req, dynamic_frames, 2),
+        ("predeclared-multi-origin-result", dynamic_req, dynamic_frames, 2),
         ("browser-success", browser_success_req, browser_success_frames, 2),
         *browser_failure_specs,
     ]
@@ -1545,6 +1549,14 @@ def build_negative() -> None:
     for name, url in (
         ("url-port-out-of-range", "https://careers.example.invalid:99999/jobs"),
         ("url-invalid-percent-escape", "https://careers.example.invalid/jobs/%zz"),
+        ("url-alias-default-port", "https://careers.example.invalid:443/jobs"),
+        ("url-alias-empty-path", "https://careers.example.invalid"),
+        ("url-alias-dot-segment", "https://careers.example.invalid/a/../jobs"),
+        ("url-alias-double-slash", "https://careers.example.invalid//jobs"),
+        ("url-alias-query-order", "https://careers.example.invalid/jobs?z=1&a=2"),
+        ("url-alias-query-duplicate", "https://careers.example.invalid/jobs?a=1&a=1"),
+        ("url-alias-empty-query", "https://careers.example.invalid/jobs?"),
+        ("url-alias-empty-fragment", "https://careers.example.invalid/jobs#"),
         ("url-ascii-newline", "https://careers.example.invalid/jobs\nnext"),
         ("url-ascii-tab", "https://careers.example.invalid/jobs\tnext"),
         ("url-ascii-nul", "https://careers.example.invalid/jobs\x00next"),
@@ -1553,6 +1565,55 @@ def build_negative() -> None:
         value.transcript.events[2].client.start.board_manifest.board_url = url
         write_invalid(name, "url", value)
 
+    value = base_scrape_case("url-sensitive-query")
+    value.transcript.events[
+        2
+    ].client.start.board_manifest.board_url = (
+        "https://careers.example.invalid/jobs?access_token=raw"
+    )
+    write_invalid("url-sensitive-query", "redaction", value)
+
+    for name, deadline in (
+        ("deadline-expired-at-acceptance", "2026-08-26T11:49:59Z"),
+        ("deadline-over-fifteen-minutes", "2026-08-26T12:05:01Z"),
+    ):
+        value = base_scrape_case(name)
+        value.transcript.events[2].client.start.deadline_rfc3339 = deadline
+        write_invalid(name, "deadline", value)
+
+    for name, traceparent, tracestate in (
+        (
+            "traceparent-zero-trace-id",
+            "00-00000000000000000000000000000000-00f067aa0ba902b7-01",
+            None,
+        ),
+        (
+            "traceparent-zero-parent-id",
+            "00-4bf92f3577b34da6a3ce929d0e0e4736-0000000000000000-01",
+            None,
+        ),
+        (
+            "traceparent-v00-extension",
+            "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01-aa",
+            None,
+        ),
+        ("tracestate-without-traceparent", None, "vendor=value"),
+        (
+            "tracestate-duplicate-key",
+            "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+            "vendor=one,vendor=two",
+        ),
+    ):
+        value = base_scrape_case(name)
+        start = value.transcript.events[2].client.start
+        if traceparent is None:
+            start.ClearField("traceparent")
+        else:
+            start.traceparent = traceparent
+        if tracestate is not None:
+            start.tracestate = tracestate
+        write_invalid(name, "trace", value)
+
     value = base_scrape_case("execution-frame-count-limit")
     value.transcript.events[0].client.hello.requested_limits.max_execution_frames = 2
     value.transcript.events[1].server.hello.accepted_limits.max_execution_frames = 2
@@ -1560,7 +1621,8 @@ def build_negative() -> None:
 
     value = base_scrape_case("oversize-start-record")
     start_message = value.transcript.events[2].client
-    start_size = len(start_message.SerializeToString()) + 10
+    payload_size = len(start_message.SerializeToString())
+    start_size = payload_size + uvarint_size(payload_size)
     value.transcript.events[0].client.hello.requested_limits.max_frame_bytes = start_size - 1
     value.transcript.events[1].server.hello.accepted_limits.max_frame_bytes = start_size - 1
     write_invalid("oversize-start-record", "frame_limit", value)
@@ -1727,6 +1789,95 @@ def build_negative() -> None:
             pb.ProtocolTranscript(
                 contract_version=VERSION,
                 name="after-dispatch-resume-missing-dedup",
+                events=events,
+            ),
+        ),
+    )
+
+    value = base_scrape_case("origin-missing-pre-dispatch-fingerprint")
+    value.transcript.events[2].client.start.origin_operations[0].request_fingerprint = ""
+    write_invalid("origin-missing-pre-dispatch-fingerprint", "hash", value)
+
+    value = base_scrape_case("origin-contact-fingerprint-changed")
+    value.transcript.events[3].server.frame.origin_contact.request_fingerprint = "0" * 64
+    write_invalid("origin-contact-fingerprint-changed", "fingerprint", value)
+
+    value = base_scrape_case("disconnect-fingerprint-changed")
+    active = value.transcript.events[2].client.start
+    events = hello_events() + [
+        start_event(active),
+        fault_event(
+            pb.DISCONNECT_POINT_AFTER_DISPATCH,
+            active.origin_request_id,
+            dispatched=True,
+        ),
+    ]
+    events[-1].fault.request_fingerprint = "0" * 64
+    write_invalid(
+        "disconnect-fingerprint-changed",
+        "fingerprint",
+        case(
+            "disconnect-fingerprint-changed",
+            pb.ProtocolTranscript(
+                contract_version=VERSION,
+                name="disconnect-fingerprint-changed",
+                events=events,
+            ),
+        ),
+    )
+
+    value = base_scrape_case("dedup-without-resume")
+    value.transcript.events[
+        3
+    ].server.frame.origin_contact.disposition = pb.ORIGIN_CONTACT_DISPOSITION_DEDUPLICATED
+    write_invalid("dedup-without-resume", "dedupe", value)
+
+    req = request(scrape=True)
+    op = req.origin_operations[0]
+    events = hello_events() + [
+        start_event(req),
+        fault_event(pb.DISCONNECT_POINT_AFTER_DISPATCH, op.origin_request_id, dispatched=True),
+    ]
+    events += reconnect_events(req, None)
+    first = frame_for_attempt(origin_frame(req, op, 0, dedup=True), "attempt-resume-0")
+    second = frame_for_attempt(origin_frame(req, op, 1, dedup=True), "attempt-resume-0")
+    events += [server_frame(first), server_frame(second)]
+    write_invalid(
+        "dedup-more-than-once-after-resume",
+        "dedupe",
+        case(
+            "dedup-more-than-once-after-resume",
+            pb.ProtocolTranscript(
+                contract_version=VERSION,
+                name="dedup-more-than-once-after-resume",
+                events=events,
+            ),
+        ),
+    )
+
+    req = request(scrape=True)
+    op = req.origin_operations[0]
+    events = hello_events() + [
+        start_event(req),
+        server_frame(origin_frame(req, op, 0)),
+        fault_event(
+            pb.DISCONNECT_POINT_AFTER_FRAME,
+            op.origin_request_id,
+            dispatched=True,
+            sequence=0,
+        ),
+    ]
+    resumed = reconnect_events(req, 0)
+    resumed[1].server.hello.accepted_at_rfc3339 = req.deadline_rfc3339
+    events += resumed
+    write_invalid(
+        "deadline-expired-before-resume",
+        "deadline",
+        case(
+            "deadline-expired-before-resume",
+            pb.ProtocolTranscript(
+                contract_version=VERSION,
+                name="deadline-expired-before-resume",
                 events=events,
             ),
         ),
@@ -1934,7 +2085,7 @@ def build_negative() -> None:
                 operation_sequence=1,
                 role="",
             ),
-            "text",
+            "origin",
         ),
         (
             "dynamic-origin-unknown-parent",
@@ -1944,7 +2095,7 @@ def build_negative() -> None:
                 role="detail",
                 parent_origin_request_id="origin:unknown",
             ),
-            "origin_parent",
+            "origin",
         ),
     ):
         value = base_scrape_case(name)
@@ -2307,6 +2458,48 @@ def build_negative() -> None:
     )
     write_invalid("terminal-nested-artifact-count", "count", value)
 
+    for name, mutate, expected in (
+        (
+            "job-title-whitespace",
+            lambda content: setattr(content, "title", "   "),
+            "job_content",
+        ),
+        (
+            "job-description-sentinel",
+            lambda content: setattr(content, "description_html", "<p>N/A</p>"),
+            "job_content",
+        ),
+        (
+            "job-language-alias",
+            lambda content: setattr(content, "language", "iw"),
+            "locale",
+        ),
+        (
+            "job-language-noncanonical",
+            lambda content: setattr(content, "language", "en-us"),
+            "locale",
+        ),
+    ):
+        value = base_scrape_case(name)
+        mutate(value.transcript.events[-2].server.frame.scrape_result.content)
+        write_invalid(name, expected, value)
+
+    value = base_scrape_case("job-empty-localization")
+    value.transcript.events[-2].server.frame.scrape_result.content.localizations.append(
+        pb.LocalizedJobContent(locale="de")
+    )
+    write_invalid("job-empty-localization", "job_content", value)
+
+    value = base_scrape_case("job-empty-content")
+    value.transcript.events[-2].server.frame.scrape_result.content.Clear()
+    write_invalid("job-empty-content", "job_content", value)
+
+    value = base_scrape_case("job-localization-alias")
+    value.transcript.events[-2].server.frame.scrape_result.content.localizations.append(
+        pb.LocalizedJobContent(locale="iw", title="Engineer")
+    )
+    write_invalid("job-localization-alias", "locale", value)
+
     replay_path = FIXTURES / "replay/representative-paginated-monitor.json"
     if replay_path.exists():
 
@@ -2322,6 +2515,10 @@ def build_negative() -> None:
         value = replay_case("replay-operation-mismatch")
         value.replay.exchanges[0].operation.role = "changed-role"
         write_invalid("replay-operation-mismatch", "origin", value)
+
+        value = replay_case("replay-request-fingerprint-mismatch")
+        value.replay.exchanges[0].request.headers[0].value = "text/plain"
+        write_invalid("replay-request-fingerprint-mismatch", "fingerprint", value)
 
         value = replay_case("replay-frame-sequence-gap")
         value.replay.expected_frames[1].sequence = 9
@@ -2356,6 +2553,51 @@ def build_negative() -> None:
         value = replay_case("replay-invalid-semantic-hash")
         value.replay.expected_semantic_sha256 = "not-a-sha256"
         write_invalid("replay-invalid-semantic-hash", "hash", value)
+
+        value = replay_case("replay-sensitive-header-suffix")
+        value.replay.exchanges[0].request.headers.append(
+            pb.Header(name="x-client-secret", value="raw-secret")
+        )
+        write_invalid("replay-sensitive-header-suffix", "redaction", value)
+
+        value = replay_case("replay-sensitive-query")
+        value.replay.exchanges[
+            0
+        ].request.url = "https://careers.example.invalid/api/jobs?access_token=raw"
+        write_invalid("replay-sensitive-query", "redaction", value)
+
+        value = replay_case("replay-body-secret")
+        value.replay.exchanges[0].request.body.CopyFrom(
+            chunk_manifest(b'{"client_secret":"raw-secret"}')
+        )
+        write_invalid("replay-body-secret", "redaction", value)
+
+        value = replay_case("replay-body-email")
+        encoded_email = base64.b64encode(b"person@example.test").decode()
+        value.replay.exchanges[0].request.body.CopyFrom(
+            chunk_manifest(json.dumps({"payload": encoded_email}).encode())
+        )
+        write_invalid("replay-body-email", "redaction", value)
+
+        value = replay_case("replay-body-base64-secret")
+        encoded = base64.b64encode(b'{"token":"raw-token"}').decode()
+        value.replay.exchanges[0].request.body.CopyFrom(
+            chunk_manifest(json.dumps({"payload": encoded}).encode())
+        )
+        write_invalid("replay-body-base64-secret", "redaction", value)
+
+        value = replay_case("replay-body-base64-phone")
+        encoded_phone = base64.b64encode(b"+41 79 123 45 67").decode()
+        value.replay.exchanges[0].request.body.CopyFrom(
+            chunk_manifest(json.dumps({"payload": encoded_phone}).encode())
+        )
+        write_invalid("replay-body-base64-phone", "redaction", value)
+
+        value = replay_case("replay-url-content-effect-mismatch")
+        value.replay.expected_projection.job_effects[
+            0
+        ].source_url = "https://careers.example.invalid/jobs/wrong"
+        write_invalid("replay-url-content-effect-mismatch", "projection", value)
 
     # This raw fixture deliberately violates the protobuf oneof. Both bindings
     # must reject it during strict protobuf-JSON decoding.
@@ -2393,21 +2635,22 @@ def captured_exchange(
         if response_message is not None
         else b"{}"
     )
+    captured_request = pb.CapturedRequest(
+        method="GET",
+        url=f"https://careers.example.invalid/api/jobs?page={op.operation_sequence + 1}",
+        headers=[
+            pb.Header(name="accept", value="application/json"),
+            pb.Header(
+                name="authorization",
+                value=redact("header:authorization", "fixture-token"),
+                redacted=True,
+            ),
+        ],
+        body=chunk_manifest(request_body),
+    )
     result = pb.CapturedExchange(
         operation=op,
-        request=pb.CapturedRequest(
-            method="GET",
-            url=f"https://careers.example.invalid/api/jobs?page={op.operation_sequence + 1}",
-            headers=[
-                pb.Header(name="accept", value="application/json"),
-                pb.Header(
-                    name="authorization",
-                    value=redact("header:authorization", "fixture-token"),
-                    redacted=True,
-                ),
-            ],
-            body=chunk_manifest(request_body),
-        ),
+        request=captured_request,
         response=pb.CapturedResponse(
             status=200,
             headers=[pb.Header(name="content-type", value="application/json")],
@@ -2426,6 +2669,8 @@ def captured_exchange(
 def build_replay() -> None:
     op0 = operation(0, "page-1")
     op1 = operation(1, "page-2", parent=op0.origin_request_id)
+    for op in (op0, op1):
+        op.request_fingerprint = request_fingerprint(captured_exchange(op).request)
     req = request(operations=[op0, op1])
     frames = [
         origin_frame(req, op0, 0),
@@ -2434,7 +2679,7 @@ def build_replay() -> None:
         monitor_frame(req, 3, 2, hybrid=True, truncated=True),
         terminal_frame(req, 4, output=2, batches=2, origins=2),
     ]
-    projection = project_frames(frames)
+    projection = project_frames(frames, req)
     replay = pb.ReplayCase(
         contract_version=VERSION,
         name="representative-paginated-monitor",
@@ -2453,12 +2698,14 @@ def build_replay() -> None:
 
     scrape_req = request(scrape=True)
     scrape_op = scrape_req.origin_operations[0]
+    scrape_op.request_fingerprint = request_fingerprint(captured_exchange(scrape_op).request)
+    scrape_req.origin_operations[0].request_fingerprint = scrape_op.request_fingerprint
     scrape_frames = [
         origin_frame(scrape_req, scrape_op, 0),
         scrape_frame(scrape_req, 1),
         terminal_frame(scrape_req, 2, output=1, batches=0, origins=1),
     ]
-    scrape_projection = project_frames(scrape_frames)
+    scrape_projection = project_frames(scrape_frames, scrape_req)
     scrape_replay = pb.ReplayCase(
         contract_version=VERSION,
         name="representative-scrape",
@@ -2480,25 +2727,21 @@ def build_replay() -> None:
 
     declared0 = operation(0, "session-bootstrap")
     declared1 = operation(1, "search", parent=declared0.origin_request_id)
-    dynamic2 = pb.OriginOperationRef(
-        origin_request_id="origin:dynamic:detail",
-        operation_sequence=2,
-        role="detail",
-        parent_origin_request_id=declared1.origin_request_id,
-    )
-    dynamic_req = request(scrape=True, operations=[declared0, declared1])
+    dynamic2 = operation(2, "detail", parent=declared1.origin_request_id)
+    for op in (declared0, declared1, dynamic2):
+        op.request_fingerprint = request_fingerprint(captured_exchange(op).request)
+    dynamic_req = request(scrape=True, operations=[declared0, declared1, dynamic2])
     dynamic_frames = [
         origin_frame(dynamic_req, declared0, 0),
         origin_frame(dynamic_req, declared1, 1),
-        origin_declaration_frame(dynamic_req, dynamic2, 2),
-        origin_frame(dynamic_req, dynamic2, 3),
-        scrape_frame(dynamic_req, 4),
-        terminal_frame(dynamic_req, 5, output=1, batches=0, origins=3),
+        origin_frame(dynamic_req, dynamic2, 2),
+        scrape_frame(dynamic_req, 3),
+        terminal_frame(dynamic_req, 4, output=1, batches=0, origins=3),
     ]
-    dynamic_projection = project_frames(dynamic_frames)
+    dynamic_projection = project_frames(dynamic_frames, dynamic_req)
     dynamic_replay = pb.ReplayCase(
         contract_version=VERSION,
-        name="representative-multi-origin-dynamic-scrape",
+        name="representative-multi-origin-scrape",
         provider_family="representative-json",
         adapter=pb.REPLAY_ADAPTER_NORMALIZED_SCRAPE_JSON,
         execution_request=dynamic_req,
@@ -2507,8 +2750,8 @@ def build_replay() -> None:
             captured_exchange(declared1),
             captured_exchange(
                 dynamic2,
-                dynamic_frames[4].scrape_result,
-                normalized_result_frame_sequence=4,
+                dynamic_frames[3].scrape_result,
+                normalized_result_frame_sequence=3,
             ),
         ],
         expected_frames=dynamic_frames,
@@ -2516,7 +2759,7 @@ def build_replay() -> None:
     )
     dynamic_replay.expected_semantic_sha256 = semantic_hash(dynamic_frames, dynamic_projection)
     write_message(
-        FIXTURES / "replay/representative-multi-origin-dynamic-scrape.json",
+        FIXTURES / "replay/representative-multi-origin-scrape.json",
         dynamic_replay,
     )
 

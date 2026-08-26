@@ -14,7 +14,7 @@ from conformance.python.contract import (
 )
 from gen.python import runtime_pb2 as pb
 from google.protobuf import __version__ as protobuf_version
-from redaction import redact, redact_email
+from redaction import redact, redact_email, redact_phone
 
 ROOT = Path(__file__).parents[1]
 CONTRACTS = ROOT.parent
@@ -113,6 +113,9 @@ def check_redaction_vectors() -> None:
     email = redact_email("person:email", "person@example.test")
     if not email.endswith("@redacted.invalid"):
         raise AssertionError("email redaction escaped the reserved invalid domain")
+    phone = redact_phone("person:phone", "+41 79 123 45 67")
+    if not re.fullmatch(r"\+999-[0-9a-f]{24}", phone):
+        raise AssertionError("phone redaction escaped the reserved pseudonym range")
 
 
 def main() -> None:

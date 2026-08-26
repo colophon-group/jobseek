@@ -47,12 +47,14 @@
     "originOperations": [
       {
         "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+        "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a",
         "role": "browser-navigation"
       },
       {
         "operationSequence": 1,
         "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
         "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+        "requestFingerprint": "98e5b0940917732600ba7a8a503f86573181fc25c05ba49bea271cc8c9d2a4e0",
         "role": "browser-action-click"
       }
     ],

@@ -8,6 +8,7 @@ from src.core.monitor import MonitorResult
 from src.core.scrapers import get_scraper_type
 from src.runtime.config import BoardRuntimeConfig
 from src.runtime.extraction import PythonMonitorRuntime
+from src.runtime_contract.v1 import runtime_pb2
 from src.shared.browser import BrowserBackend, open_page
 
 
@@ -107,3 +108,9 @@ async def test_python_monitor_runtime_closes_nested_stream_when_abandoned() -> N
     assert first.urls == {"https://example.com/jobs/1"}
     await stream.aclose()
     assert closed is True
+
+
+def test_packaged_runtime_v1_binding_imports_from_crawler_package_root() -> None:
+    assert runtime_pb2.DESCRIPTOR.package == "jobseek.crawler.runtime.v1"
+    request = runtime_pb2.ExecutionRequest(contract_version="crawler.runtime/v1")
+    assert request.contract_version == "crawler.runtime/v1"

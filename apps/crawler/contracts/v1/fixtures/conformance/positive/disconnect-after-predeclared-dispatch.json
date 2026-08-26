@@ -1,6 +1,6 @@
 {
   "expectedValid": true,
-  "name": "disconnect-after-dynamic-dispatch-before-contact",
+  "name": "disconnect-after-predeclared-dispatch",
   "transcript": {
     "contractVersion": "crawler.runtime/v1",
     "events": [
@@ -37,6 +37,7 @@
         "direction": "EVENT_DIRECTION_SERVER",
         "server": {
           "hello": {
+            "acceptedAtRfc3339": "2026-08-26T11:50:00Z",
             "acceptedLimits": {
               "maxActiveDurationMs": "900000",
               "maxArtifactChunkBytes": "8388608",
@@ -114,7 +115,15 @@
             "originOperations": [
               {
                 "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a",
                 "role": "initial"
+              },
+              {
+                "operationSequence": 1,
+                "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+                "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "requestFingerprint": "98e5b0940917732600ba7a8a503f86573181fc25c05ba49bea271cc8c9d2a4e0",
+                "role": "dynamic-detail"
               }
             ],
             "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
@@ -135,6 +144,7 @@
               "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
               "operation": {
                 "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a",
                 "role": "initial"
               },
               "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a"
@@ -144,31 +154,12 @@
         }
       },
       {
-        "direction": "EVENT_DIRECTION_SERVER",
-        "server": {
-          "frame": {
-            "attemptId": "attempt-1",
-            "contractVersion": "crawler.runtime/v1",
-            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
-            "originOperationDeclared": {
-              "operation": {
-                "operationSequence": 1,
-                "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
-                "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
-                "role": "dynamic-detail"
-              }
-            },
-            "requestId": "request-monitor-1",
-            "sequence": "1"
-          }
-        }
-      },
-      {
         "direction": "EVENT_DIRECTION_FAULT",
         "fault": {
           "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
           "originWasDispatched": true,
-          "point": "DISCONNECT_POINT_AFTER_DISPATCH"
+          "point": "DISCONNECT_POINT_AFTER_DISPATCH",
+          "requestFingerprint": "98e5b0940917732600ba7a8a503f86573181fc25c05ba49bea271cc8c9d2a4e0"
         }
       },
       {
@@ -204,6 +195,7 @@
         "direction": "EVENT_DIRECTION_SERVER",
         "server": {
           "hello": {
+            "acceptedAtRfc3339": "2026-08-26T11:50:00Z",
             "acceptedLimits": {
               "maxActiveDurationMs": "900000",
               "maxArtifactChunkBytes": "8388608",
@@ -232,8 +224,8 @@
       {
         "client": {
           "resume": {
-            "afterSequence": "1",
-            "attemptId": "attempt-resume-2",
+            "afterSequence": "0",
+            "attemptId": "attempt-resume-1",
             "contractVersion": "crawler.runtime/v1",
             "fencingContext": {
               "claimToken": "claim:board-1:due-42",
@@ -254,7 +246,7 @@
         "direction": "EVENT_DIRECTION_SERVER",
         "server": {
           "frame": {
-            "attemptId": "attempt-resume-2",
+            "attemptId": "attempt-resume-1",
             "contractVersion": "crawler.runtime/v1",
             "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
             "originContact": {
@@ -263,12 +255,13 @@
                 "operationSequence": 1,
                 "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
                 "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "requestFingerprint": "98e5b0940917732600ba7a8a503f86573181fc25c05ba49bea271cc8c9d2a4e0",
                 "role": "dynamic-detail"
               },
               "requestFingerprint": "98e5b0940917732600ba7a8a503f86573181fc25c05ba49bea271cc8c9d2a4e0"
             },
             "requestId": "request-monitor-1",
-            "sequence": "2"
+            "sequence": "1"
           }
         }
       },
@@ -276,7 +269,7 @@
         "direction": "EVENT_DIRECTION_SERVER",
         "server": {
           "frame": {
-            "attemptId": "attempt-resume-2",
+            "attemptId": "attempt-resume-1",
             "contractVersion": "crawler.runtime/v1",
             "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
             "monitorBatch": {
@@ -310,7 +303,7 @@
               ]
             },
             "requestId": "request-monitor-1",
-            "sequence": "3"
+            "sequence": "2"
           }
         }
       },
@@ -318,15 +311,15 @@
         "direction": "EVENT_DIRECTION_SERVER",
         "server": {
           "frame": {
-            "attemptId": "attempt-resume-2",
+            "attemptId": "attempt-resume-1",
             "contractVersion": "crawler.runtime/v1",
             "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
             "requestId": "request-monitor-1",
-            "sequence": "4",
+            "sequence": "3",
             "terminal": {
               "activeDurationMs": "25",
               "eligibleForCommit": true,
-              "frameCount": "4",
+              "frameCount": "3",
               "monitorBatches": 1,
               "originOperationCount": 2,
               "outputItems": "1",
@@ -336,6 +329,6 @@
         }
       }
     ],
-    "name": "disconnect-after-dynamic-dispatch-before-contact"
+    "name": "disconnect-after-predeclared-dispatch"
   }
 }

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
 import json
 import re
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -14,11 +16,58 @@ from google.protobuf.message import Message
 CONTRACT_VERSION = "crawler.runtime/v1"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 REDACTED_RE = re.compile(r"^redacted-sha256:[0-9a-f]{64}$")
-TRACEPARENT_RE = re.compile(r"^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$")
+TRACEPARENT_RE = re.compile(
+    r"^(?P<version>[0-9a-f]{2})-(?P<trace>[0-9a-f]{32})-"
+    r"(?P<parent>[0-9a-f]{16})-(?P<flags>[0-9a-f]{2})"
+    r"(?P<extra>(?:-[0-9a-f]+)*)$"
+)
 DEADLINE_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$"
 )
-SENSITIVE_HEADERS = frozenset({"authorization", "cookie", "proxy-authorization", "x-api-key"})
+LOCALE_RE = re.compile(r"^[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?$")
+LOCALE_ALIASES = frozenset({"iw", "in", "ji", "jw", "mo", "sh", "en-UK"})
+SENTINEL_TEXT = frozenset({"-", "n/a", "na", "none", "null", "tbd", "unknown"})
+EMAIL_RE = re.compile(r"(?i)(?<![A-Z0-9._%+-])[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}(?![A-Z0-9.-])")
+REDACTED_EMAIL_RE = re.compile(r"^person-[0-9a-f]{64}@redacted\.invalid$")
+PHONE_RE = re.compile(r"(?<![0-9])\+?[0-9][0-9() .-]{7,}[0-9](?![0-9])")
+REDACTED_PHONE_RE = re.compile(r"^\+999-[0-9a-f]{24}$")
+TRACESTATE_KEY_RE = re.compile(
+    r"(?:[a-z0-9][_0-9a-z*/-]{0,255}|"
+    r"[a-z0-9][_0-9a-z*/-]{0,240}@[a-z0-9][a-z0-9*/_-]{0,13})"
+)
+TRACESTATE_VALUE_RE = re.compile(r"[\x21-\x2B\x2D-\x3C\x3E-\x7E]+")
+CREDENTIAL_SUFFIXES = ("_token", "-token", "_secret", "-secret", "_password", "-password")
+SENSITIVE_KEYS = frozenset(
+    {
+        "access-token",
+        "access_token",
+        "accesstoken",
+        "api-key",
+        "api_key",
+        "apikey",
+        "auth",
+        "authorization",
+        "client_secret",
+        "clientsecret",
+        "cookie",
+        "credential",
+        "key",
+        "password",
+        "passwd",
+        "proxy-authorization",
+        "refresh_token",
+        "refreshtoken",
+        "secret",
+        "session",
+        "sessionid",
+        "set-cookie",
+        "sig",
+        "signature",
+        "token",
+        "x-api-key",
+    }
+)
+MAX_DEADLINE = timedelta(minutes=15)
 
 HARD_LIMITS = pb.Limits(**json.loads((Path(__file__).parents[2] / "limits.json").read_text()))
 MAX_TRANSFER_CHUNKS = 64
@@ -109,17 +158,18 @@ def _text(value: str, field: str, *, maximum: int = 4_096) -> None:
 
 
 def _url(value: str, field: str) -> None:
-    if any(ord(character) < 0x20 or ord(character) == 0x7F for character in value):
-        fail("url", f"{field} contains an ASCII control character")
-    if re.search(r"%(?![0-9A-Fa-f]{2})", value):
-        fail("url", f"{field} contains an invalid percent escape")
+    has_nonvisible = any(ord(character) <= 0x20 or ord(character) == 0x7F for character in value)
+    if not value.isascii() or has_nonvisible:
+        fail("url", f"{field} must contain visible ASCII only")
+    if "%" in value or "\\" in value:
+        fail("url", f"{field} must not contain percent escapes or backslashes")
     try:
         parsed = urlsplit(value)
     except ValueError as exc:
         fail("url", f"{field}: {exc}")
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         fail("url", f"{field} must be an absolute HTTP(S) URL")
-    if parsed.username is not None or parsed.password is not None or parsed.fragment:
+    if parsed.username is not None or parsed.password is not None or "#" in value:
         fail("url", f"{field} must not contain credentials or a fragment")
     try:
         port = parsed.port
@@ -127,6 +177,8 @@ def _url(value: str, field: str) -> None:
         fail("url", f"{field}: {exc}")
     if port == 0:
         fail("url", f"{field} port must be within 1..65535")
+    if (parsed.scheme == "http" and port == 80) or (parsed.scheme == "https" and port == 443):
+        fail("url", f"{field} must omit the default port")
     host_port = parsed.netloc
     if host_port.startswith("["):
         raw_host = host_port[1 : host_port.index("]")]
@@ -134,6 +186,126 @@ def _url(value: str, field: str) -> None:
         raw_host = host_port.rsplit(":", 1)[0] if ":" in host_port else host_port
     if parsed.scheme != parsed.scheme.lower() or raw_host != raw_host.lower():
         fail("url", f"{field} must use canonical lowercase scheme and host")
+    if raw_host.endswith(".") or "_" in raw_host or not re.fullmatch(r"[a-z0-9.-]+", raw_host):
+        fail("url", f"{field} host is not canonical ASCII")
+    if ".." in raw_host or any(not part for part in raw_host.split(".")):
+        fail("url", f"{field} host contains an empty label")
+    if not parsed.path.startswith("/") or "//" in parsed.path:
+        fail("url", f"{field} path must be nonempty and contain no empty segment")
+    if any(part in {".", ".."} for part in parsed.path.split("/")):
+        fail("url", f"{field} path must not contain dot segments")
+    if "?" in value and not parsed.query:
+        fail("url", f"{field} must not contain an empty query delimiter")
+    if parsed.query:
+        pairs: list[tuple[str, str]] = []
+        for item in parsed.query.split("&"):
+            if item.count("=") != 1:
+                fail("url", f"{field} query entries require exactly one equals sign")
+            key, value_part = item.split("=", 1)
+            if not key or not re.fullmatch(r"[A-Za-z0-9._~-]+", key):
+                fail("url", f"{field} query key is not canonical")
+            if value_part and not re.fullmatch(r"[A-Za-z0-9._~:-]+", value_part):
+                fail("url", f"{field} query value is not canonical")
+            if _sensitive_name(key) and not REDACTED_RE.fullmatch(value_part):
+                fail("redaction", f"sensitive query key {key} is not deterministically redacted")
+            pairs.append((key, value_part))
+        if len(pairs) != len(set(pairs)) or pairs != sorted(pairs):
+            fail("url", f"{field} query pairs must be unique and sorted")
+
+
+def _sensitive_name(value: str) -> bool:
+    name = value.strip().lower()
+    return name in SENSITIVE_KEYS or any(name.endswith(suffix) for suffix in CREDENTIAL_SUFFIXES)
+
+
+def _validate_trace_context(traceparent: str | None, tracestate: str | None) -> None:
+    if traceparent is None:
+        if tracestate is not None:
+            fail("trace", "tracestate requires traceparent")
+        return
+    match = TRACEPARENT_RE.fullmatch(traceparent)
+    if match is None or match["version"] == "ff":
+        fail("trace", "traceparent is not valid W3C Trace Context syntax")
+    if match["trace"] == "0" * 32 or match["parent"] == "0" * 16:
+        fail("trace", "traceparent IDs must be nonzero")
+    if match["version"] == "00" and match["extra"]:
+        fail("trace", "traceparent version 00 cannot contain extension fields")
+    if tracestate is None:
+        return
+    if not tracestate or len(tracestate) > 512 or " " in tracestate:
+        fail("trace", "tracestate is empty, oversized, or contains optional whitespace")
+    members = tracestate.split(",")
+    if len(members) > 32:
+        fail("trace", "tracestate has more than 32 list-members")
+    keys: set[str] = set()
+    for member in members:
+        if member.count("=") != 1:
+            fail("trace", "tracestate member must contain one equals sign")
+        key, member_value = member.split("=", 1)
+        if not TRACESTATE_KEY_RE.fullmatch(key):
+            fail("trace", "tracestate key is not canonical")
+        if key in keys:
+            fail("trace", "tracestate keys must be unique")
+        keys.add(key)
+        if (
+            not member_value
+            or len(member_value) > 256
+            or not TRACESTATE_VALUE_RE.fullmatch(member_value)
+            or member_value.endswith(" ")
+        ):
+            fail("trace", "tracestate value is invalid")
+
+
+def _canonical_locale(value: str) -> bool:
+    return (
+        bool(LOCALE_RE.fullmatch(value))
+        and value not in LOCALE_ALIASES
+        and (value.split("-", 1)[0] not in LOCALE_ALIASES)
+    )
+
+
+def _validate_redacted_body(body: bytes, field: str, *, depth: int = 0) -> None:
+    if not body or depth > 2:
+        return
+    try:
+        text_value = body.decode("utf-8")
+    except UnicodeDecodeError:
+        return
+    for match in EMAIL_RE.finditer(text_value):
+        if not REDACTED_EMAIL_RE.fullmatch(match.group(0)):
+            fail("redaction", f"{field} contains an unredacted email address")
+    for match in PHONE_RE.finditer(text_value):
+        if not REDACTED_PHONE_RE.fullmatch(match.group(0)):
+            fail("redaction", f"{field} contains an unredacted phone number")
+    if re.search(r"(?i)\bbearer\s+(?!redacted-sha256:)[A-Za-z0-9._~+/-]+", text_value):
+        fail("redaction", f"{field} contains an unredacted bearer credential")
+    if "-----BEGIN " in text_value and "PRIVATE KEY-----" in text_value:
+        fail("redaction", f"{field} contains private key material")
+    try:
+        parsed = json.loads(text_value)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        parsed = None
+
+    def walk(value: object, path: str) -> None:
+        if isinstance(value, dict):
+            for key, child in value.items():
+                if _sensitive_name(str(key)) and (
+                    not isinstance(child, str) or REDACTED_RE.fullmatch(child) is None
+                ):
+                    fail("redaction", f"{path}.{key} is not deterministically redacted")
+                walk(child, f"{path}.{key}")
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                walk(child, f"{path}[{index}]")
+        elif isinstance(value, str) and len(value) >= 16 and len(value) % 4 == 0:
+            try:
+                decoded = base64.b64decode(value, validate=True)
+            except (binascii.Error, ValueError):
+                return
+            _validate_redacted_body(decoded, path, depth=depth + 1)
+
+    if parsed is not None:
+        walk(parsed, field)
 
 
 def _sha256(value: str, field: str) -> None:
@@ -191,10 +363,20 @@ def _headers(headers: list[pb.Header], field: str) -> None:
             fail("limit", f"{field}.{name} exceeds 8192 UTF-8 bytes")
         if "\n" in header.value or "\r" in header.value:
             fail("header", f"{name} contains a line break")
-        if name in SENSITIVE_HEADERS and (
+        if _sensitive_name(name) and (
             not header.redacted or not REDACTED_RE.fullmatch(header.value)
         ):
             fail("redaction", f"sensitive header {name} is not deterministically redacted")
+
+
+def request_fingerprint(request: pb.CapturedRequest) -> str:
+    canonical = pb.CapturedRequest()
+    canonical.CopyFrom(request)
+    ordered_headers = sorted(canonical.headers, key=lambda value: value.name)
+    del canonical.headers[:]
+    canonical.headers.extend(ordered_headers)
+    raw = b"crawler.runtime/v1/request\0" + canonical.SerializeToString(deterministic=True)
+    return hashlib.sha256(raw).hexdigest()
 
 
 def validate_limits(limits: pb.Limits, *, requested: pb.Limits | None = None) -> None:
@@ -403,6 +585,7 @@ def validate_origin_operations(
     for expected, operation in enumerate(operations):
         _text(operation.origin_request_id, "origin_request_id", maximum=512)
         _text(operation.role, "origin.role", maximum=128)
+        _sha256(operation.request_fingerprint, "origin.request_fingerprint")
         if operation.operation_sequence != expected:
             fail("origin_sequence", "origin operation sequences must be contiguous from zero")
         if operation.origin_request_id in by_id:
@@ -455,8 +638,10 @@ def validate_request(request: pb.ExecutionRequest) -> None:
         fail("deadline", "deadline_rfc3339 is not RFC3339")
     if deadline.tzinfo is None:
         fail("deadline", "deadline_rfc3339 must include an offset")
-    if _present(request, "traceparent") and not TRACEPARENT_RE.fullmatch(request.traceparent):
-        fail("trace", "traceparent is not W3C version 00 syntax")
+    _validate_trace_context(
+        request.traceparent if _present(request, "traceparent") else None,
+        request.tracestate if _present(request, "tracestate") else None,
+    )
     validate_manifest(request.board_manifest)
     validate_fencing(
         request.fencing_context,
@@ -496,6 +681,23 @@ def validate_request(request: pb.ExecutionRequest) -> None:
 
 
 def validate_job_content(content: pb.JobContent, limits: pb.Limits) -> None:
+    def meaningful(value: str | None, field: str) -> bool:
+        if value is None:
+            return False
+        normalized = value.strip()
+        visible = re.sub(r"<[^>]*>", "", normalized).strip()
+        if not visible or visible.casefold() in SENTINEL_TEXT:
+            fail("job_content", f"{field} must not be empty, whitespace, or a sentinel")
+        return True
+
+    title_present = meaningful(content.title, "job.title") if _present(content, "title") else False
+    description_present = (
+        meaningful(content.description_html, "job.description_html")
+        if _present(content, "description_html")
+        else False
+    )
+    if _present(content, "language") and not _canonical_locale(content.language):
+        fail("locale", "job.language must be a canonical, non-alias locale")
     if _present(content, "base_salary"):
         salary = content.base_salary
         _text(salary.currency, "salary.currency", maximum=3)
@@ -509,9 +711,39 @@ def validate_job_content(content: pb.JobContent, limits: pb.Limits) -> None:
     locales: set[str] = set()
     for localized in content.localizations:
         _text(localized.locale, "localization.locale", maximum=35)
+        if not _canonical_locale(localized.locale):
+            fail("locale", "localization.locale must be canonical and non-alias")
         if localized.locale in locales:
             fail("duplicate", "localized content locales must be unique")
         locales.add(localized.locale)
+        localized_title = (
+            meaningful(localized.title, "localization.title")
+            if _present(localized, "title")
+            else False
+        )
+        localized_description = (
+            meaningful(localized.description_html, "localization.description_html")
+            if _present(localized, "description_html")
+            else False
+        )
+        if not localized_title and not localized_description:
+            fail("job_content", "localization must contain title or description")
+        title_present |= localized_title
+        description_present |= localized_description
+    if not title_present or not description_present:
+        fail("job_content", "commit-eligible rich job requires meaningful title and description")
+    if len(content.skills) != len(set(content.skills)) or any(
+        not skill.strip() or skill != skill.strip() for skill in content.skills
+    ):
+        fail("job_content", "skills must be unique, nonempty, and trimmed")
+    if _present(content, "locations") and (
+        len(content.locations.values) != len(set(content.locations.values))
+        or any(
+            not location.strip() or location != location.strip()
+            for location in content.locations.values
+        )
+    ):
+        fail("job_content", "locations must be unique, nonempty, and trimmed")
     validate_extensions(list(content.extensions), context="job_content")
     total = len(content.SerializeToString())
     if total > limits.max_inline_body_bytes:
@@ -544,9 +776,53 @@ def validate_monitor_result(result: pb.MonitorResult, limits: pb.Limits) -> None
 
 
 def _validate_frame_size(frame: pb.ExecutionFrame, limits: pb.Limits) -> None:
-    # Ten bytes is the maximum unsigned-varint length prefix.
-    if len(frame.SerializeToString()) + 10 > limits.max_frame_bytes:
+    payload_size = len(frame.SerializeToString())
+    if payload_size + uvarint_size(payload_size) > limits.max_frame_bytes:
         fail("frame_limit", "length-delimited frame exceeds max_frame_bytes")
+
+
+def uvarint_size(value: int) -> int:
+    if value < 0 or value > 2**64 - 1:
+        fail("framing", "unsigned varint value is outside uint64")
+    return max(1, (value.bit_length() + 6) // 7)
+
+
+def encode_record(payload: bytes, maximum: int) -> bytes:
+    size = len(payload)
+    prefix = bytearray()
+    remaining = size
+    while remaining >= 0x80:
+        prefix.append((remaining & 0x7F) | 0x80)
+        remaining >>= 7
+    prefix.append(remaining)
+    if len(prefix) + size > maximum:
+        fail("frame_limit", "length-delimited protocol record exceeds max_frame_bytes")
+    return bytes(prefix) + payload
+
+
+def decode_record(data: bytes, maximum: int) -> bytes:
+    value = 0
+    shift = 0
+    prefix_size = 0
+    for byte in data[:10]:
+        prefix_size += 1
+        if prefix_size == 10 and byte > 1:
+            fail("framing", "unsigned varint overflows uint64")
+        value |= (byte & 0x7F) << shift
+        if byte < 0x80:
+            break
+        shift += 7
+    else:
+        fail("framing", "truncated or overlong unsigned varint")
+    if prefix_size != uvarint_size(value):
+        fail("framing", "unsigned varint uses a non-minimal encoding")
+    if prefix_size + value > maximum:
+        fail("frame_limit", "length-delimited protocol record exceeds max_frame_bytes")
+    if len(data) < prefix_size + value:
+        fail("framing", "truncated length-delimited payload")
+    if len(data) != prefix_size + value:
+        fail("framing", "trailing bytes after one length-delimited record")
+    return data[prefix_size:]
 
 
 def _semantic_frame_bytes(frame: pb.ExecutionFrame) -> bytes:
@@ -644,19 +920,24 @@ def validate_browser_plan(plan: pb.BrowserPlan, limits: pb.Limits = HARD_LIMITS)
             if not 1 <= action.scroll.pixels <= 1_000_000:
                 fail("limit", "browser scroll pixels are out of bounds")
         elif action_kind == "paginate":
+            if action.network_effect != pb.BROWSER_NETWORK_EFFECT_ORIGIN_CONTACT:
+                fail("origin", "pagination is origin-contact work and requires a bound operation")
             validate_selector(
                 action.paginate.next_selector, "browser.action.paginate.next_selector"
             )
             if not 1 <= action.paginate.max_pages <= 1_000:
                 fail("limit", "browser pagination page count is out of bounds")
-            if (
-                action.paginate.max_pages > 1
-                and not action.paginate.dynamic_origin_per_additional_page
-            ):
-                fail(
-                    "origin",
-                    "multi-page pagination requires dynamic origin allocation per later page",
-                )
+            if action.paginate.dynamic_origin_per_additional_page:
+                fail("origin", "v1 disallows dynamic pagination origin allocation")
+            page_origins = list(action.paginate.additional_page_origin_request_ids)
+            if len(page_origins) != action.paginate.max_pages - 1:
+                fail("origin", "pagination requires exactly max_pages-1 predeclared page origins")
+            if len(page_origins) != len(set(page_origins)):
+                fail("duplicate", "pagination page origin IDs must be unique")
+            for origin_id in page_origins:
+                if origin_id not in operations:
+                    fail("origin", "pagination page references an undeclared origin operation")
+                origin_owners.append(origin_id)
             validate_timeout(
                 action.paginate.page_timeout_ms,
                 "browser.action.paginate.page_timeout_ms",
@@ -912,13 +1193,13 @@ def validate_transcript(
     phase = "client_hello"
     requested: pb.Limits | None = None
     limits: pb.Limits | None = None
+    accepted_at: datetime | None = None
     credits = 0
     request: pb.ExecutionRequest | None = None
     attempt_ids: set[str] = set()
     next_sequence = 0
     frames: dict[int, pb.ExecutionFrame] = {}
     operations: dict[str, pb.OriginOperationRef] = {}
-    operation_list: list[pb.OriginOperationRef] = []
     dispatched: set[str] = set()
     dedupe_required: set[str] = set()
     terminal_seen = False
@@ -952,7 +1233,8 @@ def validate_transcript(
             frame_ceiling = (
                 limits.max_frame_bytes if limits is not None else HARD_LIMITS.max_frame_bytes
             )
-            if len(message.SerializeToString()) + 10 > frame_ceiling:
+            message_size = len(message.SerializeToString())
+            if message_size + uvarint_size(message_size) > frame_ceiling:
                 fail("frame_limit", "length-delimited protocol record exceeds max_frame_bytes")
         if terminal_seen or resume_rejected:
             fail("terminal", "no events are legal after terminal/rejected resume")
@@ -965,6 +1247,9 @@ def validate_transcript(
                 fail("origin", "disconnect must identify the affected semantic operation")
             if event.fault.origin_request_id not in operations:
                 fail("origin", "disconnect references an undeclared origin operation")
+            fault_operation = operations[event.fault.origin_request_id]
+            if event.fault.request_fingerprint != fault_operation.request_fingerprint:
+                fail("fingerprint", "disconnect changed the durable request fingerprint")
             if (
                 event.fault.point == pb.DISCONNECT_POINT_AFTER_DISPATCH
                 and not event.fault.origin_was_dispatched
@@ -1002,6 +1287,12 @@ def validate_transcript(
                     fail("start", "execution start is out of order or duplicated")
                 validate_request(event.client.start)
                 assert limits is not None
+                assert accepted_at is not None
+                deadline = datetime.fromisoformat(
+                    event.client.start.deadline_rfc3339.replace("Z", "+00:00")
+                ).astimezone(UTC)
+                if deadline <= accepted_at or deadline - accepted_at > MAX_DEADLINE:
+                    fail("deadline", "deadline must be after accepted_at and at most 15 minutes")
                 if event.client.start.kind == pb.EXECUTION_KIND_BROWSER:
                     validate_browser_plan(event.client.start.browser.plan, limits)
                 request = pb.ExecutionRequest()
@@ -1020,12 +1311,17 @@ def validate_transcript(
                 operations = validate_origin_operations(
                     list(request.origin_operations), request.origin_request_id
                 )
-                operation_list = list(request.origin_operations)
                 next_sequence = 0
             elif payload == "resume":
                 if phase != "ready" or request is None or not needs_resume:
                     fail("resume", "resume requires a disconnected prior execution")
                 resume = event.client.resume
+                assert accepted_at is not None
+                original_deadline = datetime.fromisoformat(
+                    request.deadline_rfc3339.replace("Z", "+00:00")
+                ).astimezone(UTC)
+                if original_deadline <= accepted_at:
+                    fail("deadline", "execution deadline expired before resume acceptance")
                 _contract(resume.contract_version)
                 if (
                     resume.request_id != request.request_id
@@ -1092,6 +1388,16 @@ def validate_transcript(
                 fail("handshake", "server must select v1 and support origin-ID resume")
             _enum(hello.implementation, pb.Implementation, "server.implementation")
             validate_limits(hello.accepted_limits, requested=requested)
+            if not DEADLINE_RE.fullmatch(
+                hello.accepted_at_rfc3339
+            ) or not hello.accepted_at_rfc3339.endswith("Z"):
+                fail("deadline", "server accepted_at is not strict RFC3339")
+            try:
+                accepted_at = datetime.fromisoformat(
+                    hello.accepted_at_rfc3339.replace("Z", "+00:00")
+                ).astimezone(UTC)
+            except ValueError:
+                fail("deadline", "server accepted_at is invalid")
             if not 1 <= hello.initial_window_frames <= hello.accepted_limits.max_in_flight_frames:
                 fail("backpressure", "initial frame window is outside negotiated limits")
             limits = pb.Limits()
@@ -1163,14 +1469,7 @@ def validate_transcript(
         if error_count and frame_kind != "terminal":
             fail("error_terminal", "only terminal may follow an error frame")
         if frame_kind == "origin_operation_declared":
-            operation = frame.origin_operation_declared.operation
-            if operation.origin_request_id in operations:
-                fail("duplicate", "origin operation was declared more than once")
-            if operation.operation_sequence != len(operations):
-                fail("origin_sequence", "dynamic origin operation is not the next sequence")
-            validate_origin_operations([*operation_list, operation], request.origin_request_id)
-            operations[operation.origin_request_id] = operation
-            operation_list.append(operation)
+            fail("origin", "v1 disallows dynamic origin operation declarations")
         elif frame_kind == "origin_contact":
             operation = frame.origin_contact.operation
             known = operations.get(operation.origin_request_id)
@@ -1180,17 +1479,18 @@ def validate_transcript(
                 deterministic=True
             ):
                 fail("origin", "origin operation identity changed")
+            if frame.origin_contact.request_fingerprint != known.request_fingerprint:
+                fail("fingerprint", "origin contact changed its pre-dispatch request fingerprint")
             disposition = frame.origin_contact.disposition
             _enum(disposition, pb.OriginContactDisposition, "origin.disposition")
             if disposition == pb.ORIGIN_CONTACT_DISPOSITION_DISPATCHED:
                 if operation.origin_request_id in dispatched:
                     fail("at_most_once", "origin operation was dispatched more than once")
                 dispatched.add(operation.origin_request_id)
-            elif operation.origin_request_id not in dispatched:
-                fail("dedupe", "deduplicated origin operation has no durable dispatch record")
+            elif operation.origin_request_id not in dedupe_required:
+                fail("dedupe", "deduplication is legal exactly once after an ambiguous resume")
             else:
                 dedupe_required.discard(operation.origin_request_id)
-            _sha256(frame.origin_contact.request_fingerprint, "origin.request_fingerprint")
             if _present(frame.origin_contact, "exchange_artifact"):
                 validate_artifact(frame.origin_contact.exchange_artifact, limits)
                 artifact = frame.origin_contact.exchange_artifact
@@ -1323,23 +1623,47 @@ def semantic_hash(frames: list[pb.ExecutionFrame], projection: pb.ProjectedEffec
 
 
 def content_hash(content: pb.JobContent) -> str:
-    # Deterministic protobuf preserves optional-field presence, including the
-    # missing-vs-explicit-empty StringList distinction, identically in Go.
-    return hashlib.sha256(content.SerializeToString(deterministic=True)).hexdigest()
+    # Canonicalize semantically unordered repeated fields before deterministic
+    # protobuf serialization. Optional presence remains intact.
+    canonical = pb.JobContent()
+    canonical.CopyFrom(content)
+    ordered_localizations = sorted(
+        canonical.localizations,
+        key=lambda value: (value.locale, value.title, value.description_html),
+    )
+    del canonical.localizations[:]
+    canonical.localizations.extend(ordered_localizations)
+    ordered_skills = sorted(canonical.skills)
+    del canonical.skills[:]
+    canonical.skills.extend(ordered_skills)
+    ordered_extensions = sorted(canonical.extensions, key=lambda value: value.schema_id)
+    del canonical.extensions[:]
+    canonical.extensions.extend(ordered_extensions)
+    if _present(canonical, "locations"):
+        locations = sorted(canonical.locations.values)
+        del canonical.locations.values[:]
+        canonical.locations.values.extend(locations)
+    return hashlib.sha256(canonical.SerializeToString(deterministic=True)).hexdigest()
 
 
-def project_frames(frames: list[pb.ExecutionFrame]) -> pb.ProjectedEffects:
+def project_frames(
+    frames: list[pb.ExecutionFrame], request: pb.ExecutionRequest | None = None
+) -> pb.ProjectedEffects:
     projection = pb.ProjectedEffects(gone_detection_allowed=True)
     urls: set[str] = set()
     hashes: list[str] = []
     metadata_digest = hashlib.sha256()
     metadata_seen = False
+    job_effects: list[tuple[str, str]] = []
     for frame in frames:
         kind = frame.WhichOneof("payload")
         if kind == "monitor_batch":
             result = frame.monitor_batch
             urls.update(result.urls)
-            hashes.extend(content_hash(job.content) for job in result.jobs)
+            for job in result.jobs:
+                digest = content_hash(job.content)
+                hashes.append(digest)
+                job_effects.append((job.url, digest))
             projection.gone_detection_allowed &= not result.truncated
             projection.hybrid |= result.hybrid
             projection.truncated |= result.truncated
@@ -1353,9 +1677,16 @@ def project_frames(frames: list[pb.ExecutionFrame]) -> pb.ProjectedEffects:
                 metadata_digest.update(raw)
                 metadata_seen = True
         elif kind == "scrape_result":
-            hashes.append(content_hash(frame.scrape_result.content))
+            digest = content_hash(frame.scrape_result.content)
+            hashes.append(digest)
+            if request is None or request.kind != pb.EXECUTION_KIND_SCRAPE:
+                fail("projection", "scrape projection requires its typed ExecutionRequest")
+            job_effects.append((request.scrape.source_url, digest))
     projection.urls_to_upsert.extend(sorted(urls))
     projection.content_hashes.extend(sorted(hashes))
+    projection.job_effects.extend(
+        pb.JobEffect(source_url=url, content_sha256=digest) for url, digest in sorted(job_effects)
+    )
     if metadata_seen:
         projection.metadata_updates_sha256 = metadata_digest.hexdigest()
     return projection
@@ -1400,7 +1731,7 @@ def validate_replay(replay: pb.ReplayCase, limits: pb.Limits = HARD_LIMITS) -> N
         _headers(list(exchange.response.headers), "replay.response.headers")
         if not 100 <= exchange.response.status <= 599:
             fail("http_status", "captured response status must be in 100..599")
-        validate_chunk_manifest(
+        request_body = validate_chunk_manifest(
             exchange.request.body,
             limits,
             maximum_total=limits.max_http_transfer_bytes,
@@ -1412,7 +1743,12 @@ def validate_replay(replay: pb.ReplayCase, limits: pb.Limits = HARD_LIMITS) -> N
             maximum_total=limits.max_http_transfer_bytes,
             require_inline=True,
         )
+        assert request_body is not None
         assert response_body is not None
+        _validate_redacted_body(request_body, "replay.request.body")
+        _validate_redacted_body(response_body, "replay.response.body")
+        if request_fingerprint(exchange.request) != operation.request_fingerprint:
+            fail("fingerprint", "captured request differs from its durable operation fingerprint")
         if _present(exchange, "normalized_result_frame_sequence"):
             target_sequence = exchange.normalized_result_frame_sequence
             if target_sequence in decoded:
@@ -1450,6 +1786,7 @@ def validate_replay(replay: pb.ReplayCase, limits: pb.Limits = HARD_LIMITS) -> N
                     accepted_limits=accepted,
                     initial_window_frames=accepted.max_in_flight_frames,
                     resume_by_origin_request_id=True,
+                    accepted_at_rfc3339="2026-08-26T11:50:00Z",
                 )
             ),
         ),
@@ -1520,7 +1857,7 @@ def validate_replay(replay: pb.ReplayCase, limits: pb.Limits = HARD_LIMITS) -> N
             fail("replay", "replay adapter result kind differs from mapped frame")
         if _canonical_json(message) != _canonical_json(expected):
             fail("replay", "offline decoded result differs from expected frame")
-    projection = project_frames(list(replay.expected_frames))
+    projection = project_frames(list(replay.expected_frames), replay.execution_request)
     if _canonical_json(projection) != _canonical_json(replay.expected_projection):
         fail("projection", "projected DB effects differ from golden expectation")
     actual_hash = semantic_hash(list(replay.expected_frames), projection)

@@ -42,12 +42,15 @@ gofmt -w "$tmp/limits_gen.go"
 
 if [[ "$mode" == "--check" ]]; then
   diff -u "$root/gen/python/runtime_pb2.py" "$tmp/python/runtime_pb2.py"
+  diff -u "$root/../../src/runtime_contract/v1/runtime_pb2.py" "$tmp/python/runtime_pb2.py"
   diff -u "$root/gen/go/runtime.pb.go" "$tmp/go/runtime.pb.go"
   diff -u "$root/conformance/go/limits_gen.go" "$tmp/limits_gen.go"
+  PYTHONPATH="$root" uv run --project "$root/../.." python "$root/tools/check_proto_compat.py"
   exit 0
 fi
 
 mkdir -p "$root/gen/python" "$root/gen/go"
 cp "$tmp/python/runtime_pb2.py" "$root/gen/python/runtime_pb2.py"
+cp "$tmp/python/runtime_pb2.py" "$root/../../src/runtime_contract/v1/runtime_pb2.py"
 cp "$tmp/go/runtime.pb.go" "$root/gen/go/runtime.pb.go"
 cp "$tmp/limits_gen.go" "$root/conformance/go/limits_gen.go"

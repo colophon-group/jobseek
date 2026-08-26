@@ -12,3 +12,8 @@ def redact(scope: str, value: str) -> str:
 
 def redact_email(scope: str, value: str) -> str:
     return f"person-{redact(scope, value).removeprefix('redacted-sha256:')}@redacted.invalid"
+
+
+def redact_phone(scope: str, value: str) -> str:
+    digest = redact(scope, value).removeprefix("redacted-sha256:")
+    return f"+999-{digest[:24]}"

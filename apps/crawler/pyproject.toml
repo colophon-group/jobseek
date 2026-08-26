@@ -72,6 +72,7 @@ filterwarnings = [
 [tool.ruff]
 target-version = "py313"
 line-length = 100
+extend-exclude = ["src/runtime_contract/v1/runtime_pb2.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]

@@ -2574,10 +2574,9 @@ type ExecutionRequest struct {
 	//	*ExecutionRequest_Scrape
 	//	*ExecutionRequest_Browser
 	Input isExecutionRequest_Input `protobuf_oneof:"input"`
-	// Ordered semantic origin operations known when the execution is planned.
-	// Dynamic operations (for example a discovered next page) are durably
-	// allocated with the next operation_sequence before dispatch and reported
-	// in an OriginOperationDeclared frame. The first entry's ID equals
+	// Complete ordered semantic origin operations. v1 does not permit dynamic
+	// operations: every operation and its request fingerprint is durably bound
+	// before the ExecutionRequest is accepted. The first entry's ID equals
 	// origin_request_id.
 	OriginOperations []*OriginOperationRef `protobuf:"bytes,12,rep,name=origin_operations,json=originOperations,proto3" json:"origin_operations,omitempty"`
 	FencingContext   *FencingContext       `protobuf:"bytes,14,opt,name=fencing_context,json=fencingContext,proto3" json:"fencing_context,omitempty"`
@@ -2846,8 +2845,12 @@ type OriginOperationRef struct {
 	OperationSequence     uint32                 `protobuf:"varint,2,opt,name=operation_sequence,json=operationSequence,proto3" json:"operation_sequence,omitempty"`
 	Role                  string                 `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
 	ParentOriginRequestId *string                `protobuf:"bytes,4,opt,name=parent_origin_request_id,json=parentOriginRequestId,proto3,oneof" json:"parent_origin_request_id,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// SHA-256 of the canonical method, URL, headers, and body that will be
+	// dispatched. This is part of the durable operation identity and must be
+	// persisted before origin contact.
+	RequestFingerprint string `protobuf:"bytes,5,opt,name=request_fingerprint,json=requestFingerprint,proto3" json:"request_fingerprint,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *OriginOperationRef) Reset() {
@@ -2904,6 +2907,13 @@ func (x *OriginOperationRef) GetRole() string {
 func (x *OriginOperationRef) GetParentOriginRequestId() string {
 	if x != nil && x.ParentOriginRequestId != nil {
 		return *x.ParentOriginRequestId
+	}
+	return ""
+}
+
+func (x *OriginOperationRef) GetRequestFingerprint() string {
+	if x != nil {
+		return x.RequestFingerprint
 	}
 	return ""
 }
@@ -3195,8 +3205,11 @@ type ServerHello struct {
 	AcceptedLimits          *Limits                `protobuf:"bytes,3,opt,name=accepted_limits,json=acceptedLimits,proto3" json:"accepted_limits,omitempty"`
 	InitialWindowFrames     uint32                 `protobuf:"varint,4,opt,name=initial_window_frames,json=initialWindowFrames,proto3" json:"initial_window_frames,omitempty"`
 	ResumeByOriginRequestId bool                   `protobuf:"varint,5,opt,name=resume_by_origin_request_id,json=resumeByOriginRequestId,proto3" json:"resume_by_origin_request_id,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// Server acceptance time used as the sole basis for validating the request
+	// deadline. Strict RFC3339 UTC; not the client's wall clock.
+	AcceptedAtRfc3339 string `protobuf:"bytes,6,opt,name=accepted_at_rfc3339,json=acceptedAtRfc3339,proto3" json:"accepted_at_rfc3339,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ServerHello) Reset() {
@@ -3264,12 +3277,20 @@ func (x *ServerHello) GetResumeByOriginRequestId() bool {
 	return false
 }
 
+func (x *ServerHello) GetAcceptedAtRfc3339() string {
+	if x != nil {
+		return x.AcceptedAtRfc3339
+	}
+	return ""
+}
+
 type OriginContact struct {
-	state              protoimpl.MessageState   `protogen:"open.v1"`
-	Operation          *OriginOperationRef      `protobuf:"bytes,1,opt,name=operation,proto3" json:"operation,omitempty"`
-	Disposition        OriginContactDisposition `protobuf:"varint,2,opt,name=disposition,proto3,enum=jobseek.crawler.runtime.v1.OriginContactDisposition" json:"disposition,omitempty"`
-	RequestFingerprint string                   `protobuf:"bytes,3,opt,name=request_fingerprint,json=requestFingerprint,proto3" json:"request_fingerprint,omitempty"`
-	ExchangeArtifact   *ArtifactHandle          `protobuf:"bytes,4,opt,name=exchange_artifact,json=exchangeArtifact,proto3,oneof" json:"exchange_artifact,omitempty"`
+	state       protoimpl.MessageState   `protogen:"open.v1"`
+	Operation   *OriginOperationRef      `protobuf:"bytes,1,opt,name=operation,proto3" json:"operation,omitempty"`
+	Disposition OriginContactDisposition `protobuf:"varint,2,opt,name=disposition,proto3,enum=jobseek.crawler.runtime.v1.OriginContactDisposition" json:"disposition,omitempty"`
+	// Must equal operation.request_fingerprint exactly.
+	RequestFingerprint string          `protobuf:"bytes,3,opt,name=request_fingerprint,json=requestFingerprint,proto3" json:"request_fingerprint,omitempty"`
+	ExchangeArtifact   *ArtifactHandle `protobuf:"bytes,4,opt,name=exchange_artifact,json=exchangeArtifact,proto3,oneof" json:"exchange_artifact,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -3332,9 +3353,8 @@ func (x *OriginContact) GetExchangeArtifact() *ArtifactHandle {
 	return nil
 }
 
-// A durable pre-dispatch ledger entry for an operation that was not known when
-// ExecutionRequest was emitted. This frame MUST be observed before the origin
-// operation can be dispatched or referenced by a disconnect fault.
+// Reserved in v1 for forward decoding only. A v1 producer MUST NOT emit this
+// frame because all origin operations are bound on ExecutionRequest.
 type OriginOperationDeclared struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Operation     *OriginOperationRef    `protobuf:"bytes,1,opt,name=operation,proto3" json:"operation,omitempty"`
@@ -4344,10 +4364,13 @@ type PaginationAction struct {
 	NextSelector  *Selector              `protobuf:"bytes,1,opt,name=next_selector,json=nextSelector,proto3" json:"next_selector,omitempty"`
 	MaxPages      uint32                 `protobuf:"varint,2,opt,name=max_pages,json=maxPages,proto3" json:"max_pages,omitempty"`
 	PageTimeoutMs uint64                 `protobuf:"varint,3,opt,name=page_timeout_ms,json=pageTimeoutMs,proto3" json:"page_timeout_ms,omitempty"`
-	// Required when max_pages > 1. The action-level origin_request_id owns the
-	// first page; each later page allocates the next dynamic operation ID before
-	// dispatch and reports it through OriginOperationDeclared.
+	// Must remain false in v1. Dynamic origin allocation is fail-closed.
+	//
+	// Deprecated: Marked as deprecated in runtime.proto.
 	DynamicOriginPerAdditionalPage bool `protobuf:"varint,4,opt,name=dynamic_origin_per_additional_page,json=dynamicOriginPerAdditionalPage,proto3" json:"dynamic_origin_per_additional_page,omitempty"`
+	// Exactly max_pages-1 predeclared operation IDs, in dispatch order. The
+	// action-level origin_request_id owns page one.
+	AdditionalPageOriginRequestIds []string `protobuf:"bytes,5,rep,name=additional_page_origin_request_ids,json=additionalPageOriginRequestIds,proto3" json:"additional_page_origin_request_ids,omitempty"`
 	unknownFields                  protoimpl.UnknownFields
 	sizeCache                      protoimpl.SizeCache
 }
@@ -4403,11 +4426,19 @@ func (x *PaginationAction) GetPageTimeoutMs() uint64 {
 	return 0
 }
 
+// Deprecated: Marked as deprecated in runtime.proto.
 func (x *PaginationAction) GetDynamicOriginPerAdditionalPage() bool {
 	if x != nil {
 		return x.DynamicOriginPerAdditionalPage
 	}
 	return false
+}
+
+func (x *PaginationAction) GetAdditionalPageOriginRequestIds() []string {
+	if x != nil {
+		return x.AdditionalPageOriginRequestIds
+	}
+	return nil
 }
 
 type EvaluateAction struct {
@@ -5661,8 +5692,10 @@ type DisconnectFault struct {
 	// disappeared. Resume must deduplicate this operation.
 	OriginWasDispatched bool   `protobuf:"varint,3,opt,name=origin_was_dispatched,json=originWasDispatched,proto3" json:"origin_was_dispatched,omitempty"`
 	OriginRequestId     string `protobuf:"bytes,4,opt,name=origin_request_id,json=originRequestId,proto3" json:"origin_request_id,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// The durable request binding observed at dispatch time.
+	RequestFingerprint string `protobuf:"bytes,5,opt,name=request_fingerprint,json=requestFingerprint,proto3" json:"request_fingerprint,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *DisconnectFault) Reset() {
@@ -5719,6 +5752,13 @@ func (x *DisconnectFault) GetOriginWasDispatched() bool {
 func (x *DisconnectFault) GetOriginRequestId() string {
 	if x != nil {
 		return x.OriginRequestId
+	}
+	return ""
+}
+
+func (x *DisconnectFault) GetRequestFingerprint() string {
+	if x != nil {
+		return x.RequestFingerprint
 	}
 	return ""
 }
@@ -6096,6 +6136,58 @@ func (x *CapturedExchange) GetNormalizedResultFrameSequence() uint64 {
 	return 0
 }
 
+type JobEffect struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SourceUrl     string                 `protobuf:"bytes,1,opt,name=source_url,json=sourceUrl,proto3" json:"source_url,omitempty"`
+	ContentSha256 string                 `protobuf:"bytes,2,opt,name=content_sha256,json=contentSha256,proto3" json:"content_sha256,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *JobEffect) Reset() {
+	*x = JobEffect{}
+	mi := &file_runtime_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *JobEffect) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*JobEffect) ProtoMessage() {}
+
+func (x *JobEffect) ProtoReflect() protoreflect.Message {
+	mi := &file_runtime_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use JobEffect.ProtoReflect.Descriptor instead.
+func (*JobEffect) Descriptor() ([]byte, []int) {
+	return file_runtime_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *JobEffect) GetSourceUrl() string {
+	if x != nil {
+		return x.SourceUrl
+	}
+	return ""
+}
+
+func (x *JobEffect) GetContentSha256() string {
+	if x != nil {
+		return x.ContentSha256
+	}
+	return ""
+}
+
 type ProjectedEffects struct {
 	state                 protoimpl.MessageState `protogen:"open.v1"`
 	UrlsToUpsert          []string               `protobuf:"bytes,1,rep,name=urls_to_upsert,json=urlsToUpsert,proto3" json:"urls_to_upsert,omitempty"`
@@ -6107,13 +6199,16 @@ type ProjectedEffects struct {
 	SecurityFilteredCount uint64                 `protobuf:"varint,7,opt,name=security_filtered_count,json=securityFilteredCount,proto3" json:"security_filtered_count,omitempty"`
 	NewSitemapUrl         *string                `protobuf:"bytes,8,opt,name=new_sitemap_url,json=newSitemapUrl,proto3,oneof" json:"new_sitemap_url,omitempty"`
 	MetadataUpdatesSha256 *string                `protobuf:"bytes,9,opt,name=metadata_updates_sha256,json=metadataUpdatesSha256,proto3,oneof" json:"metadata_updates_sha256,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// Typed URL-to-content binding. Monitor jobs use DiscoveredJob.url; scrape
+	// output uses ExecutionRequest.scrape.source_url.
+	JobEffects    []*JobEffect `protobuf:"bytes,10,rep,name=job_effects,json=jobEffects,proto3" json:"job_effects,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProjectedEffects) Reset() {
 	*x = ProjectedEffects{}
-	mi := &file_runtime_proto_msgTypes[63]
+	mi := &file_runtime_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6125,7 +6220,7 @@ func (x *ProjectedEffects) String() string {
 func (*ProjectedEffects) ProtoMessage() {}
 
 func (x *ProjectedEffects) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[63]
+	mi := &file_runtime_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6138,7 +6233,7 @@ func (x *ProjectedEffects) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProjectedEffects.ProtoReflect.Descriptor instead.
 func (*ProjectedEffects) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{63}
+	return file_runtime_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *ProjectedEffects) GetUrlsToUpsert() []string {
@@ -6204,6 +6299,13 @@ func (x *ProjectedEffects) GetMetadataUpdatesSha256() string {
 	return ""
 }
 
+func (x *ProjectedEffects) GetJobEffects() []*JobEffect {
+	if x != nil {
+		return x.JobEffects
+	}
+	return nil
+}
+
 type ReplayCase struct {
 	state                  protoimpl.MessageState `protogen:"open.v1"`
 	ContractVersion        string                 `protobuf:"bytes,1,opt,name=contract_version,json=contractVersion,proto3" json:"contract_version,omitempty"`
@@ -6221,7 +6323,7 @@ type ReplayCase struct {
 
 func (x *ReplayCase) Reset() {
 	*x = ReplayCase{}
-	mi := &file_runtime_proto_msgTypes[64]
+	mi := &file_runtime_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6233,7 +6335,7 @@ func (x *ReplayCase) String() string {
 func (*ReplayCase) ProtoMessage() {}
 
 func (x *ReplayCase) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[64]
+	mi := &file_runtime_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6246,7 +6348,7 @@ func (x *ReplayCase) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReplayCase.ProtoReflect.Descriptor instead.
 func (*ReplayCase) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{64}
+	return file_runtime_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *ReplayCase) GetContractVersion() string {
@@ -6330,7 +6432,7 @@ type ConformanceCase struct {
 
 func (x *ConformanceCase) Reset() {
 	*x = ConformanceCase{}
-	mi := &file_runtime_proto_msgTypes[65]
+	mi := &file_runtime_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -6342,7 +6444,7 @@ func (x *ConformanceCase) String() string {
 func (*ConformanceCase) ProtoMessage() {}
 
 func (x *ConformanceCase) ProtoReflect() protoreflect.Message {
-	mi := &file_runtime_proto_msgTypes[65]
+	mi := &file_runtime_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6355,7 +6457,7 @@ func (x *ConformanceCase) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConformanceCase.ProtoReflect.Descriptor instead.
 func (*ConformanceCase) Descriptor() ([]byte, []int) {
-	return file_runtime_proto_rawDescGZIP(), []int{65}
+	return file_runtime_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *ConformanceCase) GetName() string {
@@ -6650,12 +6752,13 @@ const file_runtime_proto_rawDesc = "" +
 	"claimToken\x12\x19\n" +
 	"\blease_id\x18\x05 \x01(\tR\aleaseId\x12'\n" +
 	"\x0fconfig_revision\x18\x06 \x01(\tR\x0econfigRevision\x12!\n" +
-	"\ffence_digest\x18\a \x01(\fR\vfenceDigest\"\xde\x01\n" +
+	"\ffence_digest\x18\a \x01(\fR\vfenceDigest\"\x8f\x02\n" +
 	"\x12OriginOperationRef\x12*\n" +
 	"\x11origin_request_id\x18\x01 \x01(\tR\x0foriginRequestId\x12-\n" +
 	"\x12operation_sequence\x18\x02 \x01(\rR\x11operationSequence\x12\x12\n" +
 	"\x04role\x18\x03 \x01(\tR\x04role\x12<\n" +
-	"\x18parent_origin_request_id\x18\x04 \x01(\tH\x00R\x15parentOriginRequestId\x88\x01\x01B\x1b\n" +
+	"\x18parent_origin_request_id\x18\x04 \x01(\tH\x00R\x15parentOriginRequestId\x88\x01\x01\x12/\n" +
+	"\x13request_fingerprint\x18\x05 \x01(\tR\x12requestFingerprintB\x1b\n" +
 	"\x19_parent_origin_request_id\"\xb8\x02\n" +
 	"\rResumeRequest\x12)\n" +
 	"\x10contract_version\x18\x01 \x01(\tR\x0fcontractVersion\x12\x1d\n" +
@@ -6684,13 +6787,14 @@ const file_runtime_proto_rawDesc = "" +
 	"\vClientHello\x12>\n" +
 	"\x1bsupported_contract_versions\x18\x01 \x03(\tR\x19supportedContractVersions\x12R\n" +
 	"\x0eimplementation\x18\x02 \x01(\x0e2*.jobseek.crawler.runtime.v1.ImplementationR\x0eimplementation\x12M\n" +
-	"\x10requested_limits\x18\x03 \x01(\v2\".jobseek.crawler.runtime.v1.LimitsR\x0frequestedLimits\"\xdc\x02\n" +
+	"\x10requested_limits\x18\x03 \x01(\v2\".jobseek.crawler.runtime.v1.LimitsR\x0frequestedLimits\"\x8c\x03\n" +
 	"\vServerHello\x12:\n" +
 	"\x19selected_contract_version\x18\x01 \x01(\tR\x17selectedContractVersion\x12R\n" +
 	"\x0eimplementation\x18\x02 \x01(\x0e2*.jobseek.crawler.runtime.v1.ImplementationR\x0eimplementation\x12K\n" +
 	"\x0faccepted_limits\x18\x03 \x01(\v2\".jobseek.crawler.runtime.v1.LimitsR\x0eacceptedLimits\x122\n" +
 	"\x15initial_window_frames\x18\x04 \x01(\rR\x13initialWindowFrames\x12<\n" +
-	"\x1bresume_by_origin_request_id\x18\x05 \x01(\bR\x17resumeByOriginRequestId\"\xda\x02\n" +
+	"\x1bresume_by_origin_request_id\x18\x05 \x01(\bR\x17resumeByOriginRequestId\x12.\n" +
+	"\x13accepted_at_rfc3339\x18\x06 \x01(\tR\x11acceptedAtRfc3339\"\xda\x02\n" +
 	"\rOriginContact\x12L\n" +
 	"\toperation\x18\x01 \x01(\v2..jobseek.crawler.runtime.v1.OriginOperationRefR\toperation\x12V\n" +
 	"\vdisposition\x18\x02 \x01(\x0e24.jobseek.crawler.runtime.v1.OriginContactDispositionR\vdisposition\x12/\n" +
@@ -6776,12 +6880,13 @@ const file_runtime_proto_rawDesc = "" +
 	"\t_selector\"q\n" +
 	"\fScrollAction\x12I\n" +
 	"\tdirection\x18\x01 \x01(\x0e2+.jobseek.crawler.runtime.v1.ScrollDirectionR\tdirection\x12\x16\n" +
-	"\x06pixels\x18\x02 \x01(\rR\x06pixels\"\xee\x01\n" +
+	"\x06pixels\x18\x02 \x01(\rR\x06pixels\"\xbe\x02\n" +
 	"\x10PaginationAction\x12I\n" +
 	"\rnext_selector\x18\x01 \x01(\v2$.jobseek.crawler.runtime.v1.SelectorR\fnextSelector\x12\x1b\n" +
 	"\tmax_pages\x18\x02 \x01(\rR\bmaxPages\x12&\n" +
-	"\x0fpage_timeout_ms\x18\x03 \x01(\x04R\rpageTimeoutMs\x12J\n" +
-	"\"dynamic_origin_per_additional_page\x18\x04 \x01(\bR\x1edynamicOriginPerAdditionalPage\"\xac\x01\n" +
+	"\x0fpage_timeout_ms\x18\x03 \x01(\x04R\rpageTimeoutMs\x12N\n" +
+	"\"dynamic_origin_per_additional_page\x18\x04 \x01(\bB\x02\x18\x01R\x1edynamicOriginPerAdditionalPage\x12J\n" +
+	"\"additional_page_origin_request_ids\x18\x05 \x03(\tR\x1eadditionalPageOriginRequestIds\"\xac\x01\n" +
 	"\x0eEvaluateAction\x12\x1e\n" +
 	"\n" +
 	"expression\x18\x01 \x01(\tR\n" +
@@ -6900,12 +7005,13 @@ const file_runtime_proto_rawDesc = "" +
 	" \x01(\v2*.jobseek.crawler.runtime.v1.BrowserSuccessH\x00R\asuccess\x12B\n" +
 	"\x05error\x18\v \x01(\v2*.jobseek.crawler.runtime.v1.BrowserFailureH\x00R\x05error\x12R\n" +
 	"\vunsupported\x18\f \x01(\v2..jobseek.crawler.runtime.v1.BrowserUnsupportedH\x00R\vunsupportedB\t\n" +
-	"\aoutcome\"\xe2\x01\n" +
+	"\aoutcome\"\x93\x02\n" +
 	"\x0fDisconnectFault\x12A\n" +
 	"\x05point\x18\x01 \x01(\x0e2+.jobseek.crawler.runtime.v1.DisconnectPointR\x05point\x12\x1f\n" +
 	"\bsequence\x18\x02 \x01(\x04H\x00R\bsequence\x88\x01\x01\x122\n" +
 	"\x15origin_was_dispatched\x18\x03 \x01(\bR\x13originWasDispatched\x12*\n" +
-	"\x11origin_request_id\x18\x04 \x01(\tR\x0foriginRequestIdB\v\n" +
+	"\x11origin_request_id\x18\x04 \x01(\tR\x0foriginRequestId\x12/\n" +
+	"\x13request_fingerprint\x18\x05 \x01(\tR\x12requestFingerprintB\v\n" +
 	"\t_sequence\"\xb1\x02\n" +
 	"\rProtocolEvent\x12H\n" +
 	"\tdirection\x18\x01 \x01(\x0e2*.jobseek.crawler.runtime.v1.EventDirectionR\tdirection\x12C\n" +
@@ -6932,7 +7038,11 @@ const file_runtime_proto_rawDesc = "" +
 	"\bresponse\x18\x03 \x01(\v2,.jobseek.crawler.runtime.v1.CapturedResponseR\bresponse\x12=\n" +
 	"\x1adeterministically_redacted\x18\x04 \x01(\bR\x19deterministicallyRedacted\x12L\n" +
 	" normalized_result_frame_sequence\x18\x05 \x01(\x04H\x00R\x1dnormalizedResultFrameSequence\x88\x01\x01B#\n" +
-	"!_normalized_result_frame_sequence\"\xc4\x03\n" +
+	"!_normalized_result_frame_sequence\"Q\n" +
+	"\tJobEffect\x12\x1d\n" +
+	"\n" +
+	"source_url\x18\x01 \x01(\tR\tsourceUrl\x12%\n" +
+	"\x0econtent_sha256\x18\x02 \x01(\tR\rcontentSha256\"\x8c\x04\n" +
 	"\x10ProjectedEffects\x12$\n" +
 	"\x0eurls_to_upsert\x18\x01 \x03(\tR\furlsToUpsert\x12%\n" +
 	"\x0econtent_hashes\x18\x02 \x03(\tR\rcontentHashes\x124\n" +
@@ -6942,7 +7052,10 @@ const file_runtime_proto_rawDesc = "" +
 	"\x0efiltered_count\x18\x06 \x01(\x04R\rfilteredCount\x126\n" +
 	"\x17security_filtered_count\x18\a \x01(\x04R\x15securityFilteredCount\x12+\n" +
 	"\x0fnew_sitemap_url\x18\b \x01(\tH\x00R\rnewSitemapUrl\x88\x01\x01\x12;\n" +
-	"\x17metadata_updates_sha256\x18\t \x01(\tH\x01R\x15metadataUpdatesSha256\x88\x01\x01B\x12\n" +
+	"\x17metadata_updates_sha256\x18\t \x01(\tH\x01R\x15metadataUpdatesSha256\x88\x01\x01\x12F\n" +
+	"\vjob_effects\x18\n" +
+	" \x03(\v2%.jobseek.crawler.runtime.v1.JobEffectR\n" +
+	"jobEffectsB\x12\n" +
 	"\x10_new_sitemap_urlB\x1a\n" +
 	"\x18_metadata_updates_sha256\"\xce\x04\n" +
 	"\n" +
@@ -7094,7 +7207,7 @@ func file_runtime_proto_rawDescGZIP() []byte {
 }
 
 var file_runtime_proto_enumTypes = make([]protoimpl.EnumInfo, 18)
-var file_runtime_proto_msgTypes = make([]protoimpl.MessageInfo, 66)
+var file_runtime_proto_msgTypes = make([]protoimpl.MessageInfo, 67)
 var file_runtime_proto_goTypes = []any{
 	(Implementation)(0),             // 0: jobseek.crawler.runtime.v1.Implementation
 	(EngineOwner)(0),                // 1: jobseek.crawler.runtime.v1.EngineOwner
@@ -7177,9 +7290,10 @@ var file_runtime_proto_goTypes = []any{
 	(*CapturedRequest)(nil),         // 78: jobseek.crawler.runtime.v1.CapturedRequest
 	(*CapturedResponse)(nil),        // 79: jobseek.crawler.runtime.v1.CapturedResponse
 	(*CapturedExchange)(nil),        // 80: jobseek.crawler.runtime.v1.CapturedExchange
-	(*ProjectedEffects)(nil),        // 81: jobseek.crawler.runtime.v1.ProjectedEffects
-	(*ReplayCase)(nil),              // 82: jobseek.crawler.runtime.v1.ReplayCase
-	(*ConformanceCase)(nil),         // 83: jobseek.crawler.runtime.v1.ConformanceCase
+	(*JobEffect)(nil),               // 81: jobseek.crawler.runtime.v1.JobEffect
+	(*ProjectedEffects)(nil),        // 82: jobseek.crawler.runtime.v1.ProjectedEffects
+	(*ReplayCase)(nil),              // 83: jobseek.crawler.runtime.v1.ReplayCase
+	(*ConformanceCase)(nil),         // 84: jobseek.crawler.runtime.v1.ConformanceCase
 }
 var file_runtime_proto_depIdxs = []int32{
 	21,  // 0: jobseek.crawler.runtime.v1.DataChunk.artifact:type_name -> jobseek.crawler.runtime.v1.ArtifactHandle
@@ -7290,20 +7404,21 @@ var file_runtime_proto_depIdxs = []int32{
 	39,  // 105: jobseek.crawler.runtime.v1.CapturedExchange.operation:type_name -> jobseek.crawler.runtime.v1.OriginOperationRef
 	78,  // 106: jobseek.crawler.runtime.v1.CapturedExchange.request:type_name -> jobseek.crawler.runtime.v1.CapturedRequest
 	79,  // 107: jobseek.crawler.runtime.v1.CapturedExchange.response:type_name -> jobseek.crawler.runtime.v1.CapturedResponse
-	15,  // 108: jobseek.crawler.runtime.v1.ReplayCase.adapter:type_name -> jobseek.crawler.runtime.v1.ReplayAdapter
-	37,  // 109: jobseek.crawler.runtime.v1.ReplayCase.execution_request:type_name -> jobseek.crawler.runtime.v1.ExecutionRequest
-	80,  // 110: jobseek.crawler.runtime.v1.ReplayCase.exchanges:type_name -> jobseek.crawler.runtime.v1.CapturedExchange
-	49,  // 111: jobseek.crawler.runtime.v1.ReplayCase.expected_frames:type_name -> jobseek.crawler.runtime.v1.ExecutionFrame
-	81,  // 112: jobseek.crawler.runtime.v1.ReplayCase.expected_projection:type_name -> jobseek.crawler.runtime.v1.ProjectedEffects
-	77,  // 113: jobseek.crawler.runtime.v1.ConformanceCase.transcript:type_name -> jobseek.crawler.runtime.v1.ProtocolTranscript
-	66,  // 114: jobseek.crawler.runtime.v1.ConformanceCase.browser_plan:type_name -> jobseek.crawler.runtime.v1.BrowserPlan
-	74,  // 115: jobseek.crawler.runtime.v1.ConformanceCase.browser_result:type_name -> jobseek.crawler.runtime.v1.BrowserResult
-	82,  // 116: jobseek.crawler.runtime.v1.ConformanceCase.replay:type_name -> jobseek.crawler.runtime.v1.ReplayCase
-	117, // [117:117] is the sub-list for method output_type
-	117, // [117:117] is the sub-list for method input_type
-	117, // [117:117] is the sub-list for extension type_name
-	117, // [117:117] is the sub-list for extension extendee
-	0,   // [0:117] is the sub-list for field type_name
+	81,  // 108: jobseek.crawler.runtime.v1.ProjectedEffects.job_effects:type_name -> jobseek.crawler.runtime.v1.JobEffect
+	15,  // 109: jobseek.crawler.runtime.v1.ReplayCase.adapter:type_name -> jobseek.crawler.runtime.v1.ReplayAdapter
+	37,  // 110: jobseek.crawler.runtime.v1.ReplayCase.execution_request:type_name -> jobseek.crawler.runtime.v1.ExecutionRequest
+	80,  // 111: jobseek.crawler.runtime.v1.ReplayCase.exchanges:type_name -> jobseek.crawler.runtime.v1.CapturedExchange
+	49,  // 112: jobseek.crawler.runtime.v1.ReplayCase.expected_frames:type_name -> jobseek.crawler.runtime.v1.ExecutionFrame
+	82,  // 113: jobseek.crawler.runtime.v1.ReplayCase.expected_projection:type_name -> jobseek.crawler.runtime.v1.ProjectedEffects
+	77,  // 114: jobseek.crawler.runtime.v1.ConformanceCase.transcript:type_name -> jobseek.crawler.runtime.v1.ProtocolTranscript
+	66,  // 115: jobseek.crawler.runtime.v1.ConformanceCase.browser_plan:type_name -> jobseek.crawler.runtime.v1.BrowserPlan
+	74,  // 116: jobseek.crawler.runtime.v1.ConformanceCase.browser_result:type_name -> jobseek.crawler.runtime.v1.BrowserResult
+	83,  // 117: jobseek.crawler.runtime.v1.ConformanceCase.replay:type_name -> jobseek.crawler.runtime.v1.ReplayCase
+	118, // [118:118] is the sub-list for method output_type
+	118, // [118:118] is the sub-list for method input_type
+	118, // [118:118] is the sub-list for extension type_name
+	118, // [118:118] is the sub-list for extension extendee
+	0,   // [0:118] is the sub-list for field type_name
 }
 
 func init() { file_runtime_proto_init() }
@@ -7379,8 +7494,8 @@ func file_runtime_proto_init() {
 		(*ProtocolEvent_Fault)(nil),
 	}
 	file_runtime_proto_msgTypes[62].OneofWrappers = []any{}
-	file_runtime_proto_msgTypes[63].OneofWrappers = []any{}
-	file_runtime_proto_msgTypes[65].OneofWrappers = []any{
+	file_runtime_proto_msgTypes[64].OneofWrappers = []any{}
+	file_runtime_proto_msgTypes[66].OneofWrappers = []any{
 		(*ConformanceCase_Transcript)(nil),
 		(*ConformanceCase_BrowserPlan)(nil),
 		(*ConformanceCase_BrowserResult)(nil),
@@ -7392,7 +7507,7 @@ func file_runtime_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_runtime_proto_rawDesc), len(file_runtime_proto_rawDesc)),
 			NumEnums:      18,
-			NumMessages:   66,
+			NumMessages:   67,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -7,8 +7,7 @@ forbidden.
 
 Each contacted semantic origin operation has one stable ID and exactly one
 matching exchange. Exchanges begin with the operations declared on
-`ExecutionRequest`; later contiguous entries are dynamic operations whose full
-refs also appear in pre-dispatch `OriginOperationDeclared` frames. Ordered
+`ExecutionRequest`; dynamic operations are forbidden in v1. Ordered
 request/response chunk sizes, per-chunk digests, total sizes/digests,
 completeness, and request operation refs are verified before decoding. Request
 methods are bounded uppercase HTTP tokens, response statuses are 100–599,
@@ -26,15 +25,15 @@ Exchange count is independent of normalized result count. An exchange may
 have no normalized result, while every normalized monitor/scrape result frame
 must be referenced exactly once by
 `CapturedExchange.normalized_result_frame_sequence`. The representative
-dynamic replay proves two initial operations plus a later dynamic operation
-can produce one normalized scrape result.
+multi-origin replay proves three predeclared operations can produce one
+normalized scrape result.
 
 Parity compares:
 
 - all normalized frames and optional-field presence;
 - exact URL/job membership after ordering canonicalization;
-- content hashes, `hybrid`, `truncated`, both filtered counts, sitemap
-  replacement, and metadata-update hash;
+- typed source-URL/content-hash `JobEffect` pairs, `hybrid`, `truncated`, both
+  filtered counts, sitemap replacement, and metadata-update hash;
 - projected database effects, including whether gone detection is allowed;
 - the deterministic semantic hash over length-prefixed deterministic protobuf
   frames and projection.
@@ -47,9 +46,13 @@ extensions and per-batch presence instead of applying a lossy map overwrite.
 `tools/redaction.py` defines deterministic pseudonyms as
 `SHA256(scope || NUL || UTF8(value))`. Sensitive headers must be marked
 redacted and contain only `redacted-sha256:<64 lowercase hex>`. Personal email
-pseudonyms use the reserved `@redacted.invalid` domain. Raw cookies,
+pseudonyms use the reserved `@redacted.invalid` domain; phone pseudonyms use
+the reserved `+999-<24 hex>` shape. Sensitive header/query keys are recognized
+by closed names and credential suffixes. Replay bodies are inspected as UTF-8,
+JSON, and recursively decoded base64 (bounded depth); raw email/phone PII,
+bearer tokens, secret-valued keys, and private keys fail closed. Raw cookies,
 authorization values, API keys, JWTs, private keys, URL credentials, and real
-email addresses fail `tools/check_contract.py`.
+email addresses also fail `tools/check_contract.py`.
 
 The hard v1 ceilings are 1 MiB framed records, 8 MiB inline bodies/artifact
 chunks, 16 MiB HTTP transfers, and 64 MiB browser transfers. The representative

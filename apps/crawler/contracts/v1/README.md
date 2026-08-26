@@ -14,7 +14,10 @@ wire representations of this contract. They must be normalized into
 ## Layout
 
 - `runtime.proto` — authoritative messages, enums, and tagged unions.
-- `gen/{python,go}` — committed generated bindings.
+- `gen/{python,go}` — committed generated bindings. The identical Python
+  binding is also generated into `src/runtime_contract/v1` so the normal
+  crawler wheel exposes it.
+- `baseline/` — immutable introduction descriptor and compatibility policy.
 - `conformance/{python,go}` — independent semantic validators using the same
   fixtures.
 - `fixtures/conformance` — positive and negative state-machine cases.
@@ -39,6 +42,7 @@ go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
 PYTHONPATH=. uv run --project ../.. pytest -q conformance/python/test_contract.py
 go test ./...
 PYTHONPATH=. uv run --project ../.. python tools/check_contract.py
+PYTHONPATH=. uv run --project ../.. python tools/wheel_smoke.py
 ```
 
 The Python binding is generated for protobuf 6.31.1 and is runtime-tested

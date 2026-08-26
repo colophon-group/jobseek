@@ -18,7 +18,7 @@
               "maxBrowserEvaluations": 64,
               "maxBrowserTransferBytes": "67108864",
               "maxExecutionFrames": 4096,
-              "maxFrameBytes": "1091",
+              "maxFrameBytes": "1157",
               "maxHttpTransferBytes": "16777216",
               "maxInFlightFrames": 64,
               "maxInlineBodyBytes": "8388608",
@@ -37,6 +37,7 @@
         "direction": "EVENT_DIRECTION_SERVER",
         "server": {
           "hello": {
+            "acceptedAtRfc3339": "2026-08-26T11:50:00Z",
             "acceptedLimits": {
               "maxActiveDurationMs": "900000",
               "maxArtifactChunkBytes": "8388608",
@@ -47,7 +48,7 @@
               "maxBrowserEvaluations": 64,
               "maxBrowserTransferBytes": "67108864",
               "maxExecutionFrames": 4096,
-              "maxFrameBytes": "1091",
+              "maxFrameBytes": "1157",
               "maxHttpTransferBytes": "16777216",
               "maxInFlightFrames": 4,
               "maxInlineBodyBytes": "8388608",
@@ -112,6 +113,7 @@
             "originOperations": [
               {
                 "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a",
                 "role": "initial"
               }
             ],

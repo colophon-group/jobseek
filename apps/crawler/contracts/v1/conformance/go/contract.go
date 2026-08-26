@@ -3,6 +3,7 @@ package conformance
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -22,15 +23,28 @@ import (
 const ContractVersion = "crawler.runtime/v1"
 
 var (
-	sha256RE         = regexp.MustCompile(`^[0-9a-f]{64}$`)
-	redactedRE       = regexp.MustCompile(`^redacted-sha256:[0-9a-f]{64}$`)
-	traceparentRE    = regexp.MustCompile(`^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$`)
-	deadlineRE       = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$`)
-	httpMethodRE     = regexp.MustCompile(`^[A-Z]+$`)
-	sensitiveHeaders = map[string]bool{
-		"authorization": true, "cookie": true, "proxy-authorization": true, "x-api-key": true,
+	sha256RE        = regexp.MustCompile(`^[0-9a-f]{64}$`)
+	redactedRE      = regexp.MustCompile(`^redacted-sha256:[0-9a-f]{64}$`)
+	traceparentRE   = regexp.MustCompile(`^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}(?:-[0-9a-f]+)*$`)
+	deadlineRE      = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$`)
+	httpMethodRE    = regexp.MustCompile(`^[A-Z]+$`)
+	localeRE        = regexp.MustCompile(`^[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?$`)
+	emailRE         = regexp.MustCompile(`(?i)[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}`)
+	redactedEmailRE = regexp.MustCompile(`^person-[0-9a-f]{64}@redacted\.invalid$`)
+	phoneRE         = regexp.MustCompile(`\+?[0-9][0-9() .-]{7,}[0-9]`)
+	redactedPhoneRE = regexp.MustCompile(`^\+999-[0-9a-f]{24}$`)
+	sensitiveKeys   = map[string]bool{
+		"access-token": true, "access_token": true, "accesstoken": true,
+		"api-key": true, "api_key": true, "apikey": true, "authorization": true,
+		"auth": true, "client_secret": true, "clientsecret": true, "cookie": true,
+		"credential": true, "key": true, "password": true, "passwd": true,
+		"proxy-authorization": true, "refresh_token": true, "refreshtoken": true,
+		"secret": true, "session": true, "sessionid": true, "set-cookie": true,
+		"sig": true, "signature": true, "token": true, "x-api-key": true,
 	}
-	hardLimits = generatedHardLimits()
+	localeAliases = map[string]bool{"iw": true, "in": true, "ji": true, "jw": true, "mo": true, "sh": true, "en-UK": true}
+	sentinelText  = map[string]bool{"-": true, "n/a": true, "na": true, "none": true, "null": true, "tbd": true, "unknown": true}
+	hardLimits    = generatedHardLimits()
 )
 
 const maxTransferChunks = 64
@@ -96,24 +110,217 @@ func text(value, field string, maximum int) error {
 
 func validURL(value, field string) error {
 	for i := 0; i < len(value); i++ {
-		if value[i] < 0x20 || value[i] == 0x7f {
-			return fail("url", field+" contains an ASCII control character")
+		if value[i] <= 0x20 || value[i] >= 0x7f {
+			return fail("url", field+" must contain visible ASCII only")
 		}
+	}
+	if strings.ContainsAny(value, "%\\") {
+		return fail("url", field+" must not contain percent escapes or backslashes")
 	}
 	parsed, err := url.Parse(value)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Hostname() == "" {
 		return fail("url", field+" must be an absolute HTTP(S) URL")
 	}
-	if parsed.User != nil || parsed.Fragment != "" || parsed.Scheme != strings.ToLower(parsed.Scheme) || parsed.Hostname() != strings.ToLower(parsed.Hostname()) {
+	if parsed.User != nil || strings.Contains(value, "#") || parsed.Scheme != strings.ToLower(parsed.Scheme) || parsed.Hostname() != strings.ToLower(parsed.Hostname()) {
 		return fail("url", field+" must use canonical scheme/host and omit credentials/fragments")
 	}
 	if port := parsed.Port(); port != "" {
-		value, err := strconv.ParseUint(port, 10, 16)
-		if err != nil || value == 0 {
+		portValue, err := strconv.ParseUint(port, 10, 16)
+		if err != nil || portValue == 0 {
 			return fail("url", field+" port must be numeric within 1..65535")
+		}
+		if (parsed.Scheme == "http" && portValue == 80) || (parsed.Scheme == "https" && portValue == 443) {
+			return fail("url", field+" must omit the default port")
+		}
+	}
+	host := parsed.Hostname()
+	if strings.HasPrefix(host, ".") || strings.HasSuffix(host, ".") || strings.Contains(host, "_") || !regexp.MustCompile(`^[a-z0-9.-]+$`).MatchString(host) || strings.Contains(host, "..") {
+		return fail("url", field+" host is not canonical ASCII")
+	}
+	if parsed.Path == "" || !strings.HasPrefix(parsed.Path, "/") || strings.Contains(parsed.Path, "//") {
+		return fail("url", field+" path must be nonempty and contain no empty segment")
+	}
+	for _, part := range strings.Split(parsed.Path, "/") {
+		if part == "." || part == ".." {
+			return fail("url", field+" path must not contain dot segments")
+		}
+	}
+	if strings.Contains(value, "?") && parsed.RawQuery == "" {
+		return fail("url", field+" must not contain an empty query delimiter")
+	}
+	if parsed.RawQuery != "" {
+		items := strings.Split(parsed.RawQuery, "&")
+		pairs := make([]string, 0, len(items))
+		seen := map[string]bool{}
+		queryKeyRE := regexp.MustCompile(`^[A-Za-z0-9._~-]+$`)
+		queryValueRE := regexp.MustCompile(`^[A-Za-z0-9._~:-]*$`)
+		for _, item := range items {
+			if strings.Count(item, "=") != 1 {
+				return fail("url", field+" query entries require exactly one equals sign")
+			}
+			pieces := strings.SplitN(item, "=", 2)
+			if !queryKeyRE.MatchString(pieces[0]) || !queryValueRE.MatchString(pieces[1]) {
+				return fail("url", field+" query pair is not canonical")
+			}
+			if sensitiveName(pieces[0]) && !redactedRE.MatchString(pieces[1]) {
+				return fail("redaction", "sensitive query key is not deterministically redacted")
+			}
+			if seen[item] {
+				return fail("url", field+" query pairs must be unique and sorted")
+			}
+			seen[item] = true
+			pairs = append(pairs, item)
+		}
+		sorted := append([]string{}, pairs...)
+		sort.Strings(sorted)
+		if !slicesEqual(pairs, sorted) {
+			return fail("url", field+" query pairs must be unique and sorted")
 		}
 	}
 	return nil
+}
+
+func slicesEqual(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func sensitiveName(value string) bool {
+	name := strings.ToLower(strings.TrimSpace(value))
+	if sensitiveKeys[name] {
+		return true
+	}
+	for _, suffix := range []string{"_token", "-token", "_secret", "-secret", "_password", "-password"} {
+		if strings.HasSuffix(name, suffix) {
+			return true
+		}
+	}
+	return false
+}
+
+func canonicalLocale(value string) bool {
+	primary := strings.SplitN(value, "-", 2)[0]
+	return localeRE.MatchString(value) && !localeAliases[value] && !localeAliases[primary]
+}
+
+func validateTraceContext(traceparent *string, tracestate *string) error {
+	if traceparent == nil {
+		if tracestate != nil {
+			return fail("trace", "tracestate requires traceparent")
+		}
+		return nil
+	}
+	value := *traceparent
+	if !traceparentRE.MatchString(value) {
+		return fail("trace", "invalid W3C traceparent")
+	}
+	parts := strings.Split(value, "-")
+	if len(parts) < 4 || parts[0] == "ff" || parts[1] == strings.Repeat("0", 32) || parts[2] == strings.Repeat("0", 16) {
+		return fail("trace", "traceparent version and IDs are invalid")
+	}
+	if parts[0] == "00" && len(parts) != 4 {
+		return fail("trace", "traceparent v00 cannot have extensions")
+	}
+	if tracestate == nil {
+		return nil
+	}
+	state := *tracestate
+	if state == "" || len(state) > 512 || strings.Contains(state, " ") {
+		return fail("trace", "invalid tracestate whitespace/size")
+	}
+	members := strings.Split(state, ",")
+	if len(members) > 32 {
+		return fail("trace", "too many tracestate members")
+	}
+	keys := map[string]bool{}
+	simpleKey := regexp.MustCompile(`^[a-z0-9][_0-9a-z*/-]{0,255}$`)
+	multiKey := regexp.MustCompile(`^[a-z0-9][_0-9a-z*/-]{0,240}@[a-z0-9][a-z0-9*/_-]{0,13}$`)
+	valueRE := regexp.MustCompile(`^[\x21-\x2B\x2D-\x3C\x3E-\x7E]+$`)
+	for _, member := range members {
+		if strings.Count(member, "=") != 1 {
+			return fail("trace", "invalid tracestate member")
+		}
+		pieces := strings.SplitN(member, "=", 2)
+		if (!simpleKey.MatchString(pieces[0]) && !multiKey.MatchString(pieces[0])) || keys[pieces[0]] {
+			return fail("trace", "invalid or duplicate tracestate key")
+		}
+		keys[pieces[0]] = true
+		if len(pieces[1]) > 256 || !valueRE.MatchString(pieces[1]) {
+			return fail("trace", "invalid tracestate value")
+		}
+	}
+	return nil
+}
+
+func validateRedactedBody(body []byte, field string, depth int) error {
+	if len(body) == 0 || depth > 2 || !json.Valid(body) {
+		textValue := string(body)
+		for _, email := range emailRE.FindAllString(textValue, -1) {
+			if !redactedEmailRE.MatchString(email) {
+				return fail("redaction", field+" contains an unredacted email")
+			}
+		}
+		for _, phone := range phoneRE.FindAllString(textValue, -1) {
+			if !redactedPhoneRE.MatchString(phone) {
+				return fail("redaction", field+" contains an unredacted phone")
+			}
+		}
+		lower := strings.ToLower(textValue)
+		if strings.Contains(lower, "bearer ") && !strings.Contains(lower, "bearer redacted-sha256:") {
+			return fail("redaction", field+" contains an unredacted bearer credential")
+		}
+		if strings.Contains(textValue, "-----BEGIN ") && strings.Contains(textValue, "PRIVATE KEY-----") {
+			return fail("redaction", field+" contains private key material")
+		}
+		return nil
+	}
+	var value any
+	if err := json.Unmarshal(body, &value); err != nil {
+		return nil
+	}
+	var walk func(any, string) error
+	walk = func(current any, path string) error {
+		switch typed := current.(type) {
+		case map[string]any:
+			for key, child := range typed {
+				if sensitiveName(key) {
+					textValue, ok := child.(string)
+					if !ok || !redactedRE.MatchString(textValue) {
+						return fail("redaction", path+"."+key+" is not deterministically redacted")
+					}
+				}
+				if err := walk(child, path+"."+key); err != nil {
+					return err
+				}
+			}
+		case []any:
+			for index, child := range typed {
+				if err := walk(child, fmt.Sprintf("%s[%d]", path, index)); err != nil {
+					return err
+				}
+			}
+		case string:
+			if err := validateRedactedBody([]byte(typed), path, depth+1); err != nil {
+				return err
+			}
+			if len(typed) >= 16 && len(typed)%4 == 0 {
+				if decoded, err := base64.StdEncoding.DecodeString(typed); err == nil {
+					if err := validateRedactedBody(decoded, path, depth+1); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return nil
+	}
+	return walk(value, field)
 }
 
 func hash(value, field string) error {
@@ -200,11 +407,19 @@ func headers(values []*runtimev1.Header, field string) error {
 		if strings.ContainsAny(header.GetValue(), "\r\n") {
 			return fail("header", name+" contains a line break")
 		}
-		if sensitiveHeaders[name] && (!header.GetRedacted() || !redactedRE.MatchString(header.GetValue())) {
+		if sensitiveName(name) && (!header.GetRedacted() || !redactedRE.MatchString(header.GetValue())) {
 			return fail("redaction", "sensitive header "+name+" is not deterministically redacted")
 		}
 	}
 	return nil
+}
+
+func RequestFingerprint(request *runtimev1.CapturedRequest) string {
+	canonical := proto.Clone(request).(*runtimev1.CapturedRequest)
+	sort.Slice(canonical.Headers, func(i, j int) bool { return canonical.Headers[i].GetName() < canonical.Headers[j].GetName() })
+	raw := append([]byte("crawler.runtime/v1/request\x00"), deterministicBytes(canonical)...)
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
 }
 
 func limitValues(l *runtimev1.Limits) []struct {
@@ -550,6 +765,9 @@ func ValidateOriginOperations(ops []*runtimev1.OriginOperationRef, primary strin
 		if err := text(op.GetRole(), "origin.role", 128); err != nil {
 			return nil, err
 		}
+		if err := hash(op.GetRequestFingerprint(), "origin.request_fingerprint"); err != nil {
+			return nil, err
+		}
 		if op.GetOperationSequence() != uint32(i) {
 			return nil, fail("origin_sequence", "origin sequences must be contiguous")
 		}
@@ -623,8 +841,8 @@ func ValidateRequest(r *runtimev1.ExecutionRequest) error {
 	if _, err := time.Parse(time.RFC3339Nano, r.GetDeadlineRfc3339()); err != nil {
 		return fail("deadline", "deadline is not RFC3339 with offset")
 	}
-	if r.Traceparent != nil && !traceparentRE.MatchString(r.GetTraceparent()) {
-		return fail("trace", "invalid traceparent")
+	if err := validateTraceContext(r.Traceparent, r.Tracestate); err != nil {
+		return err
 	}
 	if err := ValidateManifest(r.GetBoardManifest()); err != nil {
 		return err
@@ -677,6 +895,28 @@ func ValidateJobContent(content *runtimev1.JobContent, limits *runtimev1.Limits)
 	if content == nil {
 		return fail("body", "JobContent is required")
 	}
+	meaningful := func(value *string, field string) (bool, error) {
+		if value == nil {
+			return false, nil
+		}
+		normalized := strings.TrimSpace(*value)
+		visible := strings.TrimSpace(regexp.MustCompile(`<[^>]*>`).ReplaceAllString(normalized, ""))
+		if visible == "" || sentinelText[strings.ToLower(visible)] {
+			return false, fail("job_content", field+" must not be empty, whitespace, or sentinel")
+		}
+		return true, nil
+	}
+	titlePresent, err := meaningful(content.Title, "job.title")
+	if err != nil {
+		return err
+	}
+	descriptionPresent, err := meaningful(content.DescriptionHtml, "job.description_html")
+	if err != nil {
+		return err
+	}
+	if content.Language != nil && !canonicalLocale(content.GetLanguage()) {
+		return fail("locale", "job.language must be canonical and non-alias")
+	}
 	if content.BaseSalary != nil {
 		salary := content.GetBaseSalary()
 		if err := text(salary.GetCurrency(), "salary.currency", 3); err != nil {
@@ -698,6 +938,41 @@ func ValidateJobContent(content *runtimev1.JobContent, limits *runtimev1.Limits)
 			return fail("duplicate", "localized content locales must be unique")
 		}
 		locales[localized.GetLocale()] = true
+		if !canonicalLocale(localized.GetLocale()) {
+			return fail("locale", "localization locale must be canonical and non-alias")
+		}
+		localizedTitle, err := meaningful(localized.Title, "localization.title")
+		if err != nil {
+			return err
+		}
+		localizedDescription, err := meaningful(localized.DescriptionHtml, "localization.description_html")
+		if err != nil {
+			return err
+		}
+		if !localizedTitle && !localizedDescription {
+			return fail("job_content", "localization must contain title or description")
+		}
+		titlePresent = titlePresent || localizedTitle
+		descriptionPresent = descriptionPresent || localizedDescription
+	}
+	if !titlePresent || !descriptionPresent {
+		return fail("job_content", "rich job requires meaningful title and description")
+	}
+	seenSkills := map[string]bool{}
+	for _, skill := range content.GetSkills() {
+		if skill == "" || skill != strings.TrimSpace(skill) || seenSkills[skill] {
+			return fail("job_content", "skills must be unique, nonempty, and trimmed")
+		}
+		seenSkills[skill] = true
+	}
+	if content.Locations != nil {
+		seenLocations := map[string]bool{}
+		for _, location := range content.GetLocations().GetValues() {
+			if location == "" || location != strings.TrimSpace(location) || seenLocations[location] {
+				return fail("job_content", "locations must be unique, nonempty, and trimmed")
+			}
+			seenLocations[location] = true
+		}
 	}
 	if err := ValidateExtensions(content.GetExtensions(), "job_content"); err != nil {
 		return err
@@ -896,14 +1171,32 @@ func ValidateBrowserPlan(plan *runtimev1.BrowserPlan, limits *runtimev1.Limits) 
 				return fail("limit", "browser scroll pixels are out of bounds")
 			}
 		case *runtimev1.BrowserAction_Paginate:
+			if action.GetNetworkEffect() != runtimev1.BrowserNetworkEffect_BROWSER_NETWORK_EFFECT_ORIGIN_CONTACT {
+				return fail("origin", "pagination is origin-contact work and requires a bound operation")
+			}
 			if err := validateSelector(item.Paginate.GetNextSelector(), "browser.action.paginate.next_selector"); err != nil {
 				return err
 			}
 			if item.Paginate.GetMaxPages() == 0 || item.Paginate.GetMaxPages() > 1_000 {
 				return fail("limit", "browser pagination page count is out of bounds")
 			}
-			if item.Paginate.GetMaxPages() > 1 && !item.Paginate.GetDynamicOriginPerAdditionalPage() {
-				return fail("origin", "multi-page pagination requires dynamic origin allocation per later page")
+			if item.Paginate.GetDynamicOriginPerAdditionalPage() {
+				return fail("origin", "v1 disallows dynamic pagination origin allocation")
+			}
+			pageOrigins := item.Paginate.GetAdditionalPageOriginRequestIds()
+			if len(pageOrigins) != int(item.Paginate.GetMaxPages()-1) {
+				return fail("origin", "pagination requires exactly max_pages-1 predeclared page origins")
+			}
+			seenPageOrigins := map[string]bool{}
+			for _, originID := range pageOrigins {
+				if ops[originID] == nil {
+					return fail("origin", "pagination page origin is undeclared")
+				}
+				if seenPageOrigins[originID] {
+					return fail("duplicate", "pagination page origins must be unique")
+				}
+				seenPageOrigins[originID] = true
+				originOwners = append(originOwners, originID)
 			}
 			if err := validateBrowserTimeout(item.Paginate.GetPageTimeoutMs(), "browser.action.paginate.page_timeout_ms", limits); err != nil {
 				return err
@@ -1284,6 +1577,53 @@ func semanticFrameBytes(frame *runtimev1.ExecutionFrame) []byte {
 	return deterministicBytes(value)
 }
 
+func UvarintSize(value uint64) uint64 {
+	size := uint64(1)
+	for value >= 0x80 {
+		value >>= 7
+		size++
+	}
+	return size
+}
+
+func EncodeRecord(payload []byte, maximum uint64) ([]byte, error) {
+	size := uint64(len(payload))
+	if size+UvarintSize(size) > maximum {
+		return nil, fail("frame_limit", "record exceeds max_frame_bytes")
+	}
+	prefix := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutUvarint(prefix, size)
+	result := make([]byte, n+len(payload))
+	copy(result, prefix[:n])
+	copy(result[n:], payload)
+	return result, nil
+}
+
+func DecodeRecord(data []byte, maximum uint64) ([]byte, error) {
+	value, n := binary.Uvarint(data)
+	if n == 0 {
+		return nil, fail("framing", "truncated unsigned varint")
+	}
+	if n < 0 {
+		return nil, fail("framing", "unsigned varint overflows uint64")
+	}
+	if uint64(n) != UvarintSize(value) {
+		return nil, fail("framing", "unsigned varint uses a non-minimal encoding")
+	}
+	prefixSize := uint64(n)
+	if maximum < prefixSize || value > maximum-prefixSize {
+		return nil, fail("frame_limit", "record exceeds max_frame_bytes")
+	}
+	recordSize := prefixSize + value
+	if uint64(len(data)) < recordSize {
+		return nil, fail("framing", "truncated length-delimited payload")
+	}
+	if uint64(len(data)) != recordSize {
+		return nil, fail("framing", "trailing bytes after one record")
+	}
+	return data[n:], nil
+}
+
 func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev1.FencingContext) error {
 	if t == nil {
 		return fail("transcript", "transcript required")
@@ -1296,13 +1636,13 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 	}
 	phase := "client_hello"
 	var requested, limits *runtimev1.Limits
+	var acceptedAt time.Time
 	credits := uint32(0)
 	var request *runtimev1.ExecutionRequest
 	attempts := map[string]bool{}
 	nextSequence := uint64(0)
 	frames := map[uint64]*runtimev1.ExecutionFrame{}
 	operations := map[string]*runtimev1.OriginOperationRef{}
-	operationList := []*runtimev1.OriginOperationRef{}
 	dispatched := map[string]bool{}
 	dedupeRequired := map[string]bool{}
 	terminalSeen, resumeRejected, cancelled := false, false, false
@@ -1334,7 +1674,7 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 				ceiling = limits.GetMaxFrameBytes()
 			}
 			raw, _ := proto.Marshal(wireMessage)
-			if uint64(len(raw)+10) > ceiling {
+			if uint64(len(raw))+UvarintSize(uint64(len(raw))) > ceiling {
 				return fail("frame_limit", "length-delimited protocol record exceeds max_frame_bytes")
 			}
 		}
@@ -1352,6 +1692,9 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 			}
 			if operations[fault.GetOriginRequestId()] == nil {
 				return fail("origin", "disconnect references undeclared operation ID")
+			}
+			if fault.GetRequestFingerprint() != operations[fault.GetOriginRequestId()].GetRequestFingerprint() {
+				return fail("fingerprint", "disconnect changed durable request fingerprint")
 			}
 			if fault.GetPoint() == runtimev1.DisconnectPoint_DISCONNECT_POINT_AFTER_DISPATCH && !fault.GetOriginWasDispatched() {
 				return fail("disconnect", "AFTER_DISPATCH must record origin_was_dispatched=true")
@@ -1400,6 +1743,10 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 				if err := ValidateRequest(msg.Start); err != nil {
 					return err
 				}
+				deadline, _ := time.Parse(time.RFC3339Nano, msg.Start.GetDeadlineRfc3339())
+				if !deadline.After(acceptedAt) || deadline.Sub(acceptedAt) > 15*time.Minute {
+					return fail("deadline", "deadline must be after accepted_at and at most 15 minutes")
+				}
 				if msg.Start.GetKind() == runtimev1.ExecutionKind_EXECUTION_KIND_BROWSER {
 					if err := ValidateBrowserPlan(msg.Start.GetBrowser().GetPlan(), limits); err != nil {
 						return err
@@ -1421,13 +1768,16 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 				if err != nil {
 					return err
 				}
-				operationList = append([]*runtimev1.OriginOperationRef{}, request.GetOriginOperations()...)
 				nextSequence = 0
 			case *runtimev1.ClientMessage_Resume:
 				if phase != "ready" || request == nil || !needsResume {
 					return fail("resume", "resume requires a disconnected prior execution")
 				}
 				resume := msg.Resume
+				originalDeadline, _ := time.Parse(time.RFC3339Nano, request.GetDeadlineRfc3339())
+				if !originalDeadline.After(acceptedAt) {
+					return fail("deadline", "execution deadline expired before resume acceptance")
+				}
 				if err := contract(resume.GetContractVersion()); err != nil {
 					return err
 				}
@@ -1494,6 +1844,14 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 				if err := ValidateLimits(hello.GetAcceptedLimits(), requested); err != nil {
 					return err
 				}
+				if !deadlineRE.MatchString(hello.GetAcceptedAtRfc3339()) || !strings.HasSuffix(hello.GetAcceptedAtRfc3339(), "Z") {
+					return fail("deadline", "server accepted_at is not strict RFC3339")
+				}
+				var err error
+				acceptedAt, err = time.Parse(time.RFC3339Nano, hello.GetAcceptedAtRfc3339())
+				if err != nil {
+					return fail("deadline", "server accepted_at is invalid")
+				}
 				if hello.GetInitialWindowFrames() == 0 || hello.GetInitialWindowFrames() > hello.GetAcceptedLimits().GetMaxInFlightFrames() {
 					return fail("backpressure", "initial window invalid")
 				}
@@ -1534,7 +1892,7 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 					return fail("fence", "frame echoed stale/mismatched attempt or fencing digest")
 				}
 				raw, _ := proto.Marshal(frame)
-				if uint64(len(raw)+10) > limits.GetMaxFrameBytes() {
+				if uint64(len(raw))+UvarintSize(uint64(len(raw))) > limits.GetMaxFrameBytes() {
 					return fail("frame_limit", "frame exceeds max_frame_bytes")
 				}
 				prior := frames[frame.GetSequence()]
@@ -1571,19 +1929,7 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 				}
 				switch payload := frame.GetPayload().(type) {
 				case *runtimev1.ExecutionFrame_OriginOperationDeclared:
-					op := payload.OriginOperationDeclared.GetOperation()
-					if operations[op.GetOriginRequestId()] != nil {
-						return fail("duplicate", "origin operation declared more than once")
-					}
-					if op.GetOperationSequence() != uint32(len(operations)) {
-						return fail("origin_sequence", "dynamic origin sequence invalid")
-					}
-					candidate := append(append([]*runtimev1.OriginOperationRef{}, operationList...), op)
-					if _, err := ValidateOriginOperations(candidate, request.GetOriginRequestId()); err != nil {
-						return err
-					}
-					operations[op.GetOriginRequestId()] = op
-					operationList = append(operationList, op)
+					return fail("origin", "v1 disallows dynamic origin operation declarations")
 				case *runtimev1.ExecutionFrame_OriginContact:
 					op := payload.OriginContact.GetOperation()
 					known := operations[op.GetOriginRequestId()]
@@ -1593,6 +1939,9 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 					if !bytes.Equal(deterministicBytes(known), deterministicBytes(op)) {
 						return fail("origin", "operation identity changed")
 					}
+					if payload.OriginContact.GetRequestFingerprint() != known.GetRequestFingerprint() {
+						return fail("fingerprint", "origin contact changed pre-dispatch request fingerprint")
+					}
 					switch payload.OriginContact.GetDisposition() {
 					case runtimev1.OriginContactDisposition_ORIGIN_CONTACT_DISPOSITION_DISPATCHED:
 						if dispatched[op.GetOriginRequestId()] {
@@ -1600,15 +1949,12 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 						}
 						dispatched[op.GetOriginRequestId()] = true
 					case runtimev1.OriginContactDisposition_ORIGIN_CONTACT_DISPOSITION_DEDUPLICATED:
-						if !dispatched[op.GetOriginRequestId()] {
-							return fail("dedupe", "dedupe lacks dispatch record")
+						if !dedupeRequired[op.GetOriginRequestId()] {
+							return fail("dedupe", "deduplication is legal exactly once after ambiguous resume")
 						}
 						delete(dedupeRequired, op.GetOriginRequestId())
 					default:
 						return fail("enum", "origin disposition unspecified or unknown")
-					}
-					if err := hash(payload.OriginContact.GetRequestFingerprint(), "origin.request_fingerprint"); err != nil {
-						return err
 					}
 					if payload.OriginContact.ExchangeArtifact != nil {
 						if err := ValidateArtifact(payload.OriginContact.GetExchangeArtifact(), limits); err != nil {
@@ -1771,17 +2117,36 @@ func canonicalJSON(message proto.Message) ([]byte, error) {
 }
 
 func ContentHash(content *runtimev1.JobContent) string {
-	raw := deterministicBytes(content)
+	canonical := proto.Clone(content).(*runtimev1.JobContent)
+	sort.Slice(canonical.Localizations, func(i, j int) bool {
+		left, right := canonical.Localizations[i], canonical.Localizations[j]
+		if left.GetLocale() != right.GetLocale() {
+			return left.GetLocale() < right.GetLocale()
+		}
+		if left.GetTitle() != right.GetTitle() {
+			return left.GetTitle() < right.GetTitle()
+		}
+		return left.GetDescriptionHtml() < right.GetDescriptionHtml()
+	})
+	sort.Strings(canonical.Skills)
+	sort.Slice(canonical.Extensions, func(i, j int) bool {
+		return canonical.Extensions[i].GetSchemaId() < canonical.Extensions[j].GetSchemaId()
+	})
+	if canonical.Locations != nil {
+		sort.Strings(canonical.Locations.Values)
+	}
+	raw := deterministicBytes(canonical)
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
 }
 
-func ProjectFrames(frames []*runtimev1.ExecutionFrame) *runtimev1.ProjectedEffects {
+func ProjectFrames(frames []*runtimev1.ExecutionFrame, request *runtimev1.ExecutionRequest) (*runtimev1.ProjectedEffects, error) {
 	result := &runtimev1.ProjectedEffects{GoneDetectionAllowed: true}
 	urls := map[string]bool{}
 	hashes := []string{}
 	metadataDigest := sha256.New()
 	metadataSeen := false
+	jobEffects := []*runtimev1.JobEffect{}
 	var metadataSize [8]byte
 	for _, frame := range frames {
 		switch payload := frame.GetPayload().(type) {
@@ -1791,7 +2156,9 @@ func ProjectFrames(frames []*runtimev1.ExecutionFrame) *runtimev1.ProjectedEffec
 				urls[u] = true
 			}
 			for _, job := range m.GetJobs() {
-				hashes = append(hashes, ContentHash(job.GetContent()))
+				digest := ContentHash(job.GetContent())
+				hashes = append(hashes, digest)
+				jobEffects = append(jobEffects, &runtimev1.JobEffect{SourceUrl: job.GetUrl(), ContentSha256: digest})
 			}
 			result.GoneDetectionAllowed = result.GetGoneDetectionAllowed() && !m.GetTruncated()
 			result.Hybrid = result.GetHybrid() || m.GetHybrid()
@@ -1810,7 +2177,12 @@ func ProjectFrames(frames []*runtimev1.ExecutionFrame) *runtimev1.ProjectedEffec
 				metadataSeen = true
 			}
 		case *runtimev1.ExecutionFrame_ScrapeResult:
-			hashes = append(hashes, ContentHash(payload.ScrapeResult.GetContent()))
+			digest := ContentHash(payload.ScrapeResult.GetContent())
+			hashes = append(hashes, digest)
+			if request == nil || request.GetKind() != runtimev1.ExecutionKind_EXECUTION_KIND_SCRAPE {
+				return nil, fail("projection", "scrape projection requires its typed ExecutionRequest")
+			}
+			jobEffects = append(jobEffects, &runtimev1.JobEffect{SourceUrl: request.GetScrape().GetSourceUrl(), ContentSha256: digest})
 		}
 	}
 	for u := range urls {
@@ -1819,11 +2191,18 @@ func ProjectFrames(frames []*runtimev1.ExecutionFrame) *runtimev1.ProjectedEffec
 	sort.Strings(result.UrlsToUpsert)
 	sort.Strings(hashes)
 	result.ContentHashes = hashes
+	sort.Slice(jobEffects, func(i, j int) bool {
+		if jobEffects[i].GetSourceUrl() != jobEffects[j].GetSourceUrl() {
+			return jobEffects[i].GetSourceUrl() < jobEffects[j].GetSourceUrl()
+		}
+		return jobEffects[i].GetContentSha256() < jobEffects[j].GetContentSha256()
+	})
+	result.JobEffects = jobEffects
 	if metadataSeen {
 		v := hex.EncodeToString(metadataDigest.Sum(nil))
 		result.MetadataUpdatesSha256 = &v
 	}
-	return result
+	return result, nil
 }
 
 func SemanticHash(frames []*runtimev1.ExecutionFrame, projection *runtimev1.ProjectedEffects) (string, error) {
@@ -1915,12 +2294,22 @@ func ValidateReplay(replay *runtimev1.ReplayCase, limits *runtimev1.Limits) erro
 		if exchange.GetResponse().GetStatus() < 100 || exchange.GetResponse().GetStatus() > 599 {
 			return fail("http_status", "captured response status must be in 100..599")
 		}
-		if _, err := ValidateChunkManifest(exchange.GetRequest().GetBody(), limits, limits.GetMaxHttpTransferBytes(), true); err != nil {
+		requestBody, err := ValidateChunkManifest(exchange.GetRequest().GetBody(), limits, limits.GetMaxHttpTransferBytes(), true)
+		if err != nil {
 			return err
 		}
 		responseBody, err := ValidateChunkManifest(exchange.GetResponse().GetBody(), limits, limits.GetMaxHttpTransferBytes(), true)
 		if err != nil {
 			return err
+		}
+		if err := validateRedactedBody(requestBody, "replay.request.body", 0); err != nil {
+			return err
+		}
+		if err := validateRedactedBody(responseBody, "replay.response.body", 0); err != nil {
+			return err
+		}
+		if RequestFingerprint(exchange.GetRequest()) != op.GetRequestFingerprint() {
+			return fail("fingerprint", "captured request differs from durable operation fingerprint")
 		}
 		if exchange.NormalizedResultFrameSequence != nil {
 			targetSequence := exchange.GetNormalizedResultFrameSequence()
@@ -1958,7 +2347,7 @@ func ValidateReplay(replay *runtimev1.ReplayCase, limits *runtimev1.Limits) erro
 			Direction: runtimev1.EventDirection_EVENT_DIRECTION_SERVER,
 			Event: &runtimev1.ProtocolEvent_Server{Server: &runtimev1.ServerMessage{Payload: &runtimev1.ServerMessage_Hello{Hello: &runtimev1.ServerHello{
 				SelectedContractVersion: ContractVersion, Implementation: runtimev1.Implementation_IMPLEMENTATION_GO, AcceptedLimits: accepted,
-				InitialWindowFrames: accepted.GetMaxInFlightFrames(), ResumeByOriginRequestId: true,
+				InitialWindowFrames: accepted.GetMaxInFlightFrames(), ResumeByOriginRequestId: true, AcceptedAtRfc3339: "2026-08-26T11:50:00Z",
 			}}}},
 		},
 		{
@@ -2034,7 +2423,10 @@ func ValidateReplay(replay *runtimev1.ReplayCase, limits *runtimev1.Limits) erro
 			return fail("replay", "decoded result differs")
 		}
 	}
-	projection := ProjectFrames(replay.GetExpectedFrames())
+	projection, err := ProjectFrames(replay.GetExpectedFrames(), replay.GetExecutionRequest())
+	if err != nil {
+		return err
+	}
 	left, _ := canonicalJSON(projection)
 	right, _ := canonicalJSON(replay.GetExpectedProjection())
 	if !bytes.Equal(left, right) {

@@ -6,7 +6,9 @@
         "networkEffect": "BROWSER_NETWORK_EFFECT_ORIGIN_CONTACT",
         "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
         "paginate": {
-          "dynamicOriginPerAdditionalPage": true,
+          "additionalPageOriginRequestIds": [
+            "monitor:board-1:revision-7:due-42/op/002"
+          ],
           "maxPages": 2,
           "nextSelector": {
             "kind": "SELECTOR_KIND_CSS",
@@ -25,13 +27,22 @@
     "originOperations": [
       {
         "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+        "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a",
         "role": "navigation"
       },
       {
         "operationSequence": 1,
         "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
         "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+        "requestFingerprint": "98e5b0940917732600ba7a8a503f86573181fc25c05ba49bea271cc8c9d2a4e0",
         "role": "pagination"
+      },
+      {
+        "operationSequence": 2,
+        "originRequestId": "monitor:board-1:revision-7:due-42/op/002",
+        "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/001",
+        "requestFingerprint": "fbf5ba9a98fa1730f6e18d5730c03780e83f53f2a3131e048de3bf8abf16d963",
+        "role": "pagination-page-2"
       }
     ],
     "requiredCapabilities": [

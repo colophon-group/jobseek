@@ -1,0 +1,348 @@
+{
+  "expectedError": "redaction",
+  "name": "replay-body-base64-phone",
+  "replay": {
+    "adapter": "REPLAY_ADAPTER_NORMALIZED_MONITOR_JSON",
+    "contractVersion": "crawler.runtime/v1",
+    "exchanges": [
+      {
+        "deterministicallyRedacted": true,
+        "normalizedResultFrameSequence": "1",
+        "operation": {
+          "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+          "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43",
+          "role": "page-1"
+        },
+        "request": {
+          "body": {
+            "chunks": [
+              {
+                "inlineBody": "eyJwYXlsb2FkIjogIkt6UXhJRGM1SURFeU15QTBOU0EyTnc9PSJ9",
+                "sha256": "93b3271eac23bac91f4acdc16262441e557d93b0e52a57c8cc48312e67d39a39",
+                "sizeBytes": "39"
+              }
+            ],
+            "complete": true,
+            "totalSha256": "93b3271eac23bac91f4acdc16262441e557d93b0e52a57c8cc48312e67d39a39",
+            "totalSizeBytes": "39"
+          },
+          "headers": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            },
+            {
+              "name": "authorization",
+              "redacted": true,
+              "value": "redacted-sha256:3742f7ab8e2513ce9d6da7e6e16d9f1b9797765fd79e11723769b2026fa70e2d"
+            }
+          ],
+          "method": "GET",
+          "url": "https://careers.example.invalid/api/jobs?page=1"
+        },
+        "response": {
+          "body": {
+            "chunks": [
+              {
+                "inlineBody": "ewogICJmaWx0ZXJlZENvdW50IjogIjIiLAogICJoeWJyaWQiOiB0cnVlLAogICJqb2JzIjogWwogICAgewogICAgICAiY29udGVudCI6IHsKICAgICAgICAiZGVzY3JpcHRpb25IdG1sIjogIjxwPkJ1aWxkIHNhZmVseTwvcD4iLAogICAgICAgICJsb2NhdGlvbnMiOiB7fSwKICAgICAgICAidGl0bGUiOiAiRW5naW5lZXIgMSIKICAgICAgfSwKICAgICAgInVybCI6ICJodHRwczovL2NhcmVlcnMuZXhhbXBsZS5pbnZhbGlkL2pvYnMvMSIKICAgIH0KICBdLAogICJtZXRhZGF0YVVwZGF0ZXMiOiB7CiAgICAiY3Vyc29yIjogInBhZ2UtMSIsCiAgICAiZXh0ZW5zaW9ucyI6IFsKICAgICAgewogICAgICAgICJlbmNvZGluZyI6ICJFWFRFTlNJT05fRU5DT0RJTkdfQ0FOT05JQ0FMX0pTT04iLAogICAgICAgICJwYXlsb2FkIjogImV5SnpiM1Z5",
+                "sha256": "57bb2a3573f20f0586ba490002e4b641bd598657916715894a8c682e6126b0ee",
+                "sizeBytes": "420"
+              },
+              {
+                "inlineBody": "WTJVaU9pSnZabVpzYVc1bExXWnBlSFIxY21VaWZRPT0iLAogICAgICAgICJwYXlsb2FkU2hhMjU2IjogIjVlMzQ2ZTY4MDFkZTZmMzNkZWVlY2VhZjMyODk1ZGVhOTk3NGYwMjcyNTQ1ZGNmZGZiMWQ3NGI3YzQzZmMwODkiLAogICAgICAgICJzY2hlbWFJZCI6ICJqb2JzZWVrLnJ1bnRpbWUudjEvcmVwcmVzZW50YXRpdmUtanNvbi9ydW50aW1lLW1ldGFkYXRhIiwKICAgICAgICAic2NoZW1hVmVyc2lvbiI6IDEKICAgICAgfQogICAgXQogIH0sCiAgIm5ld1NpdGVtYXBVcmwiOiAiaHR0cHM6Ly9jYXJlZXJzLmV4YW1wbGUuaW52YWxpZC9zaXRlbWFwLWN1cnJlbnQueG1sIiwKICAic2VjdXJpdHlGaWx0ZXJlZENvdW50IjogIjEiLAogICJ1cmxzIjogWwogICAgImh0dHBzOi8vY2FyZWVycy5leGFtcGxlLmludmFsaWQvam9icy8xIgogIF0KfQ==",
+                "sequence": 1,
+                "sha256": "da132d3f0b0d8ccf841ebd539fe0de132b934214d9f4c5abbd0f6ee5b3dd3de8",
+                "sizeBytes": "421"
+              }
+            ],
+            "complete": true,
+            "totalSha256": "95ef7705fbef93d577fac0e85476f1ee9171c5350925def4f9e8bf3ae762fca8",
+            "totalSizeBytes": "841"
+          },
+          "headers": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ],
+          "status": 200
+        }
+      },
+      {
+        "deterministicallyRedacted": true,
+        "normalizedResultFrameSequence": "3",
+        "operation": {
+          "operationSequence": 1,
+          "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+          "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+          "requestFingerprint": "6961208c19ad9eafb3ad52e3e1a00dbc95f7cc547cf5df62fab2d70549291801",
+          "role": "page-2"
+        },
+        "request": {
+          "body": {
+            "complete": true,
+            "totalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "headers": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            },
+            {
+              "name": "authorization",
+              "redacted": true,
+              "value": "redacted-sha256:3742f7ab8e2513ce9d6da7e6e16d9f1b9797765fd79e11723769b2026fa70e2d"
+            }
+          ],
+          "method": "GET",
+          "url": "https://careers.example.invalid/api/jobs?page=2"
+        },
+        "response": {
+          "body": {
+            "chunks": [
+              {
+                "inlineBody": "ewogICJoeWJyaWQiOiB0cnVlLAogICJqb2JzIjogWwogICAgewogICAgICAiY29udGVudCI6IHsKICAgICAgICAiZGVzY3JpcHRpb25IdG1sIjogIjxwPkJ1aWxkIHNhZmVseTwvcD4iLAogICAgICAgICJ0aXRsZSI6ICJFbmdpbmVlciAyIgogICAgICB9LAogICAgICAidXJsIjogImh0dHBzOi8vY2FyZWVycy5leGFtcGxlLmludmFsaWQvam9icy8yIgogICAgfQogIF0sCiAgIm1ldGFkYXRhVXBkYXRlcyI6IHsKICAgICJjdXJzb3IiOiAicGFnZS0yIiwKICAgICJleHRlbnNpb25zIjogWwogICAgICB7CiAgICAgICAgImVuY29kaW5nIjogIkVYVEVOU0lPTl9FTkNPRElOR19DQU5PTklDQUxfSlNPTiIsCiAgICAgICAgInA=",
+                "sha256": "00c84e4874e8012e6fc8ad0e281b83d48b1c9b76eaceabac948dd8f2c8617c48",
+                "sizeBytes": "353"
+              },
+              {
+                "inlineBody": "YXlsb2FkIjogImV5SnpiM1Z5WTJVaU9pSnZabVpzYVc1bExXWnBlSFIxY21VaWZRPT0iLAogICAgICAgICJwYXlsb2FkU2hhMjU2IjogIjVlMzQ2ZTY4MDFkZTZmMzNkZWVlY2VhZjMyODk1ZGVhOTk3NGYwMjcyNTQ1ZGNmZGZiMWQ3NGI3YzQzZmMwODkiLAogICAgICAgICJzY2hlbWFJZCI6ICJqb2JzZWVrLnJ1bnRpbWUudjEvcmVwcmVzZW50YXRpdmUtanNvbi9ydW50aW1lLW1ldGFkYXRhIiwKICAgICAgICAic2NoZW1hVmVyc2lvbiI6IDEKICAgICAgfQogICAgXQogIH0sCiAgInRydW5jYXRlZCI6IHRydWUsCiAgInVybHMiOiBbCiAgICAiaHR0cHM6Ly9jYXJlZXJzLmV4YW1wbGUuaW52YWxpZC9qb2JzLzIiCiAgXQp9",
+                "sequence": 1,
+                "sha256": "f4a1b49c6aeea636a31bd4e621869b03d78694adc14f7274606dcabaed9aa630",
+                "sizeBytes": "354"
+              }
+            ],
+            "complete": true,
+            "totalSha256": "5126890057145836bdf1470de21f8039d79c8c6c10353ea238349171888c436d",
+            "totalSizeBytes": "707"
+          },
+          "headers": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ],
+          "status": 200
+        }
+      }
+    ],
+    "executionRequest": {
+      "attemptId": "attempt-1",
+      "boardManifest": {
+        "boardId": "board-1",
+        "boardUrl": "https://careers.example.invalid/jobs",
+        "checkIntervalMs": "3600000",
+        "companyId": "company-1",
+        "configExtensions": [
+          {
+            "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
+            "payload": "eyJwYWdlcyI6Mn0=",
+            "payloadSha256": "fe2f26a77f4fb758041cc3979477135825c7ce01729079a5bf38c230073aac50",
+            "schemaId": "jobseek.runtime.v1/representative-json/monitor-config",
+            "schemaVersion": 1
+          },
+          {
+            "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
+            "payload": "eyJmaWVsZHMiOlsidGl0bGUiLCJkZXNjcmlwdGlvbiJdfQ==",
+            "payloadSha256": "af7543cdfb2cf64c543674e6bfe386b88865a47935a12615974e73db3df2810a",
+            "schemaId": "jobseek.runtime.v1/representative-json/scraper-config",
+            "schemaVersion": 1
+          }
+        ],
+        "configFingerprint": "5aac91feaeeb22ee2e7453ceccf4f7609a26ef3928a8c7f039754b30dbf95b68",
+        "configRevision": "revision-7",
+        "contractVersion": "crawler.runtime/v1",
+        "manifestId": "board-1:revision-7",
+        "monitorType": "fixture-json",
+        "providerFamily": "representative-json",
+        "scrapeIntervalMs": "86400000",
+        "throttleKey": "example.invalid"
+      },
+      "contractVersion": "crawler.runtime/v1",
+      "deadlineRfc3339": "2026-08-26T12:00:00Z",
+      "fencingContext": {
+        "claimToken": "claim:board-1:due-42",
+        "configRevision": "revision-7",
+        "engineOwner": "ENGINE_OWNER_PYTHON",
+        "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+        "leaseId": "lease:board-1:attempt-1",
+        "routingEpoch": "7",
+        "shardId": "crawler-http-00"
+      },
+      "kind": "EXECUTION_KIND_MONITOR",
+      "monitor": {
+        "monitorType": "fixture-json"
+      },
+      "originOperations": [
+        {
+          "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+          "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43",
+          "role": "page-1"
+        },
+        {
+          "operationSequence": 1,
+          "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+          "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+          "requestFingerprint": "6961208c19ad9eafb3ad52e3e1a00dbc95f7cc547cf5df62fab2d70549291801",
+          "role": "page-2"
+        }
+      ],
+      "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+      "requestId": "request-monitor-1",
+      "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+    },
+    "expectedFrames": [
+      {
+        "attemptId": "attempt-1",
+        "contractVersion": "crawler.runtime/v1",
+        "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+        "originContact": {
+          "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
+          "operation": {
+            "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+            "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43",
+            "role": "page-1"
+          },
+          "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43"
+        },
+        "requestId": "request-monitor-1"
+      },
+      {
+        "attemptId": "attempt-1",
+        "contractVersion": "crawler.runtime/v1",
+        "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+        "monitorBatch": {
+          "filteredCount": "2",
+          "hybrid": true,
+          "jobs": [
+            {
+              "content": {
+                "descriptionHtml": "<p>Build safely</p>",
+                "locations": {},
+                "title": "Engineer 1"
+              },
+              "url": "https://careers.example.invalid/jobs/1"
+            }
+          ],
+          "metadataUpdates": {
+            "cursor": "page-1",
+            "extensions": [
+              {
+                "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
+                "payload": "eyJzb3VyY2UiOiJvZmZsaW5lLWZpeHR1cmUifQ==",
+                "payloadSha256": "5e346e6801de6f33deeeceaf32895dea9974f0272545dcfdfb1d74b7c43fc089",
+                "schemaId": "jobseek.runtime.v1/representative-json/runtime-metadata",
+                "schemaVersion": 1
+              }
+            ]
+          },
+          "newSitemapUrl": "https://careers.example.invalid/sitemap-current.xml",
+          "securityFilteredCount": "1",
+          "urls": [
+            "https://careers.example.invalid/jobs/1"
+          ]
+        },
+        "requestId": "request-monitor-1",
+        "sequence": "1"
+      },
+      {
+        "attemptId": "attempt-1",
+        "contractVersion": "crawler.runtime/v1",
+        "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+        "originContact": {
+          "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
+          "operation": {
+            "operationSequence": 1,
+            "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+            "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+            "requestFingerprint": "6961208c19ad9eafb3ad52e3e1a00dbc95f7cc547cf5df62fab2d70549291801",
+            "role": "page-2"
+          },
+          "requestFingerprint": "6961208c19ad9eafb3ad52e3e1a00dbc95f7cc547cf5df62fab2d70549291801"
+        },
+        "requestId": "request-monitor-1",
+        "sequence": "2"
+      },
+      {
+        "attemptId": "attempt-1",
+        "contractVersion": "crawler.runtime/v1",
+        "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+        "monitorBatch": {
+          "hybrid": true,
+          "jobs": [
+            {
+              "content": {
+                "descriptionHtml": "<p>Build safely</p>",
+                "title": "Engineer 2"
+              },
+              "url": "https://careers.example.invalid/jobs/2"
+            }
+          ],
+          "metadataUpdates": {
+            "cursor": "page-2",
+            "extensions": [
+              {
+                "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
+                "payload": "eyJzb3VyY2UiOiJvZmZsaW5lLWZpeHR1cmUifQ==",
+                "payloadSha256": "5e346e6801de6f33deeeceaf32895dea9974f0272545dcfdfb1d74b7c43fc089",
+                "schemaId": "jobseek.runtime.v1/representative-json/runtime-metadata",
+                "schemaVersion": 1
+              }
+            ]
+          },
+          "truncated": true,
+          "urls": [
+            "https://careers.example.invalid/jobs/2"
+          ]
+        },
+        "requestId": "request-monitor-1",
+        "sequence": "3"
+      },
+      {
+        "attemptId": "attempt-1",
+        "contractVersion": "crawler.runtime/v1",
+        "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+        "requestId": "request-monitor-1",
+        "sequence": "4",
+        "terminal": {
+          "activeDurationMs": "25",
+          "eligibleForCommit": true,
+          "frameCount": "4",
+          "monitorBatches": 2,
+          "originOperationCount": 2,
+          "outputItems": "2",
+          "status": "TERMINAL_STATUS_SUCCESS"
+        }
+      }
+    ],
+    "expectedProjection": {
+      "contentHashes": [
+        "5d017ba5d4aecc5ffd02bee4456fa697749b076dd9bdefbdc071f593680cdb28",
+        "cb6a6a2ac345b7983956f780bded2f27f73f4c8624cea9e561ba1d1ad551f7ec"
+      ],
+      "filteredCount": "2",
+      "hybrid": true,
+      "jobEffects": [
+        {
+          "contentSha256": "5d017ba5d4aecc5ffd02bee4456fa697749b076dd9bdefbdc071f593680cdb28",
+          "sourceUrl": "https://careers.example.invalid/jobs/1"
+        },
+        {
+          "contentSha256": "cb6a6a2ac345b7983956f780bded2f27f73f4c8624cea9e561ba1d1ad551f7ec",
+          "sourceUrl": "https://careers.example.invalid/jobs/2"
+        }
+      ],
+      "metadataUpdatesSha256": "79c03aaf171f326978743d69d52d562999b7d0cecf9df829134a9ac35d315b27",
+      "newSitemapUrl": "https://careers.example.invalid/sitemap-current.xml",
+      "securityFilteredCount": "1",
+      "truncated": true,
+      "urlsToUpsert": [
+        "https://careers.example.invalid/jobs/1",
+        "https://careers.example.invalid/jobs/2"
+      ]
+    },
+    "expectedSemanticSha256": "c368fb43effcabc69d523ef7c973d7e1fd10b8bc1ebf53c30be4f889c27f79c8",
+    "name": "representative-paginated-monitor",
+    "providerFamily": "representative-json"
+  }
+}

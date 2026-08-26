@@ -1,6 +1,6 @@
 {
-  "expectedValid": true,
-  "name": "disconnect-after-dynamic-origin",
+  "expectedError": "deadline",
+  "name": "deadline-expired-before-resume",
   "transcript": {
     "contractVersion": "crawler.runtime/v1",
     "events": [
@@ -37,6 +37,7 @@
         "direction": "EVENT_DIRECTION_SERVER",
         "server": {
           "hello": {
+            "acceptedAtRfc3339": "2026-08-26T11:50:00Z",
             "acceptedLimits": {
               "maxActiveDurationMs": "900000",
               "maxArtifactChunkBytes": "8388608",
@@ -94,6 +95,7 @@
               "monitorType": "fixture-json",
               "providerFamily": "representative-json",
               "scrapeIntervalMs": "86400000",
+              "scraperType": "fixture-json",
               "throttleKey": "example.invalid"
             },
             "contractVersion": "crawler.runtime/v1",
@@ -107,18 +109,20 @@
               "routingEpoch": "7",
               "shardId": "crawler-http-00"
             },
-            "kind": "EXECUTION_KIND_MONITOR",
-            "monitor": {
-              "monitorType": "fixture-json"
-            },
+            "kind": "EXECUTION_KIND_SCRAPE",
             "originOperations": [
               {
                 "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a",
                 "role": "initial"
               }
             ],
             "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
-            "requestId": "request-monitor-1",
+            "requestId": "request-scrape-1",
+            "scrape": {
+              "scraperType": "fixture-json",
+              "sourceUrl": "https://careers.example.invalid/jobs/42"
+            },
             "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
           }
         },
@@ -135,53 +139,12 @@
               "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
               "operation": {
                 "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a",
                 "role": "initial"
               },
               "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a"
             },
-            "requestId": "request-monitor-1"
-          }
-        }
-      },
-      {
-        "direction": "EVENT_DIRECTION_SERVER",
-        "server": {
-          "frame": {
-            "attemptId": "attempt-1",
-            "contractVersion": "crawler.runtime/v1",
-            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
-            "originOperationDeclared": {
-              "operation": {
-                "operationSequence": 1,
-                "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
-                "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
-                "role": "dynamic-detail"
-              }
-            },
-            "requestId": "request-monitor-1",
-            "sequence": "1"
-          }
-        }
-      },
-      {
-        "direction": "EVENT_DIRECTION_SERVER",
-        "server": {
-          "frame": {
-            "attemptId": "attempt-1",
-            "contractVersion": "crawler.runtime/v1",
-            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
-            "originContact": {
-              "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
-              "operation": {
-                "operationSequence": 1,
-                "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
-                "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
-                "role": "dynamic-detail"
-              },
-              "requestFingerprint": "98e5b0940917732600ba7a8a503f86573181fc25c05ba49bea271cc8c9d2a4e0"
-            },
-            "requestId": "request-monitor-1",
-            "sequence": "2"
+            "requestId": "request-scrape-1"
           }
         }
       },
@@ -191,7 +154,8 @@
           "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
           "originWasDispatched": true,
           "point": "DISCONNECT_POINT_AFTER_FRAME",
-          "sequence": "2"
+          "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a",
+          "sequence": "0"
         }
       },
       {
@@ -227,6 +191,7 @@
         "direction": "EVENT_DIRECTION_SERVER",
         "server": {
           "hello": {
+            "acceptedAtRfc3339": "2026-08-26T12:00:00Z",
             "acceptedLimits": {
               "maxActiveDurationMs": "900000",
               "maxArtifactChunkBytes": "8388608",
@@ -255,8 +220,8 @@
       {
         "client": {
           "resume": {
-            "afterSequence": "2",
-            "attemptId": "attempt-resume-3",
+            "afterSequence": "0",
+            "attemptId": "attempt-resume-1",
             "contractVersion": "crawler.runtime/v1",
             "fencingContext": {
               "claimToken": "claim:board-1:due-42",
@@ -268,75 +233,12 @@
               "shardId": "crawler-http-00"
             },
             "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
-            "requestId": "request-monitor-1"
+            "requestId": "request-scrape-1"
           }
         },
         "direction": "EVENT_DIRECTION_CLIENT"
-      },
-      {
-        "direction": "EVENT_DIRECTION_SERVER",
-        "server": {
-          "frame": {
-            "attemptId": "attempt-resume-3",
-            "contractVersion": "crawler.runtime/v1",
-            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
-            "monitorBatch": {
-              "filteredCount": "2",
-              "jobs": [
-                {
-                  "content": {
-                    "descriptionHtml": "<p>Build safely</p>",
-                    "locations": {},
-                    "title": "Engineer 1"
-                  },
-                  "url": "https://careers.example.invalid/jobs/1"
-                }
-              ],
-              "metadataUpdates": {
-                "cursor": "page-1",
-                "extensions": [
-                  {
-                    "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
-                    "payload": "eyJzb3VyY2UiOiJvZmZsaW5lLWZpeHR1cmUifQ==",
-                    "payloadSha256": "5e346e6801de6f33deeeceaf32895dea9974f0272545dcfdfb1d74b7c43fc089",
-                    "schemaId": "jobseek.runtime.v1/representative-json/runtime-metadata",
-                    "schemaVersion": 1
-                  }
-                ]
-              },
-              "newSitemapUrl": "https://careers.example.invalid/sitemap-current.xml",
-              "securityFilteredCount": "1",
-              "urls": [
-                "https://careers.example.invalid/jobs/1"
-              ]
-            },
-            "requestId": "request-monitor-1",
-            "sequence": "3"
-          }
-        }
-      },
-      {
-        "direction": "EVENT_DIRECTION_SERVER",
-        "server": {
-          "frame": {
-            "attemptId": "attempt-resume-3",
-            "contractVersion": "crawler.runtime/v1",
-            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
-            "requestId": "request-monitor-1",
-            "sequence": "4",
-            "terminal": {
-              "activeDurationMs": "25",
-              "eligibleForCommit": true,
-              "frameCount": "4",
-              "monitorBatches": 1,
-              "originOperationCount": 2,
-              "outputItems": "1",
-              "status": "TERMINAL_STATUS_SUCCESS"
-            }
-          }
-        }
       }
     ],
-    "name": "disconnect-after-dynamic-origin"
+    "name": "deadline-expired-before-resume"
   }
 }

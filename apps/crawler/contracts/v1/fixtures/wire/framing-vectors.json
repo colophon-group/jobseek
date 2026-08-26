@@ -1,0 +1,15 @@
+{
+  "vectors": [
+    {"name": "empty", "payload_hex": "", "maximum": 1, "wire_hex": "00"},
+    {"name": "one-byte", "payload_hex": "ff", "maximum": 2, "wire_hex": "01ff"},
+    {"name": "varint-127", "payload_byte": "61", "payload_length": 127, "maximum": 128, "wire_prefix_hex": "7f"},
+    {"name": "varint-128", "payload_byte": "62", "payload_length": 128, "maximum": 130, "wire_prefix_hex": "8001"},
+    {"name": "truncated-varint", "wire_hex": "80", "maximum": 16, "expected_error": "framing"},
+    {"name": "overflow-varint", "wire_hex": "ffffffffffffffffff02", "maximum": 64, "expected_error": "framing"},
+    {"name": "max-uint64-length", "wire_hex": "ffffffffffffffffff01", "maximum": 18446744073709551615, "expected_error": "frame_limit"},
+    {"name": "overlong-varint", "wire_hex": "810061", "maximum": 3, "expected_error": "framing"},
+    {"name": "cap-includes-prefix", "wire_hex": "03616263", "maximum": 3, "expected_error": "frame_limit"},
+    {"name": "truncated-payload", "wire_hex": "036162", "maximum": 4, "expected_error": "framing"},
+    {"name": "trailing-byte", "wire_hex": "016162", "maximum": 3, "expected_error": "framing"}
+  ]
+}

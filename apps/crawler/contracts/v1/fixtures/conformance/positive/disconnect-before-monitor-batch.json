@@ -37,6 +37,7 @@
         "direction": "EVENT_DIRECTION_SERVER",
         "server": {
           "hello": {
+            "acceptedAtRfc3339": "2026-08-26T11:50:00Z",
             "acceptedLimits": {
               "maxActiveDurationMs": "900000",
               "maxArtifactChunkBytes": "8388608",
@@ -114,6 +115,7 @@
             "originOperations": [
               {
                 "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a",
                 "role": "initial"
               }
             ],
@@ -135,6 +137,7 @@
               "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
               "operation": {
                 "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a",
                 "role": "initial"
               },
               "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a"
@@ -148,7 +151,8 @@
         "fault": {
           "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
           "originWasDispatched": true,
-          "point": "DISCONNECT_POINT_BEFORE_FRAME"
+          "point": "DISCONNECT_POINT_BEFORE_FRAME",
+          "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a"
         }
       },
       {
@@ -184,6 +188,7 @@
         "direction": "EVENT_DIRECTION_SERVER",
         "server": {
           "hello": {
+            "acceptedAtRfc3339": "2026-08-26T11:50:00Z",
             "acceptedLimits": {
               "maxActiveDurationMs": "900000",
               "maxArtifactChunkBytes": "8388608",
