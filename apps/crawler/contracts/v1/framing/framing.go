@@ -181,6 +181,10 @@ func readChunk(reader io.Reader, buffer []byte) (int, error) {
 	return count, err
 }
 
+func isEOF(err error) bool {
+	return errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)
+}
+
 // ReadRecord reads one record without prefetching the next.
 //
 // io.EOF before the prefix is clean. EOF after any record byte is the typed
@@ -192,8 +196,11 @@ func ReadRecord(reader io.Reader, maximum uint64) ([]byte, error) {
 	for len(prefix) < binary.MaxVarintLen64 {
 		count, readErr := readChunk(reader, one[:])
 		if count == 0 {
-			if errors.Is(readErr, io.EOF) {
+			if isEOF(readErr) {
 				if len(prefix) == 0 {
+					if errors.Is(readErr, io.ErrUnexpectedEOF) {
+						return nil, readErr
+					}
 					return nil, io.EOF
 				}
 				return nil, fail(CodeAmbiguousEOF, "EOF occurred inside the record prefix")
@@ -215,7 +222,7 @@ func ReadRecord(reader io.Reader, maximum uint64) ([]byte, error) {
 			return readPayload(reader, length, readErr)
 		}
 		if readErr != nil {
-			if errors.Is(readErr, io.EOF) {
+			if isEOF(readErr) {
 				return nil, fail(CodeAmbiguousEOF, "EOF occurred inside the record prefix")
 			}
 			return nil, readErr
@@ -229,7 +236,7 @@ func readPayload(reader io.Reader, length uint64, prefixReadErr error) ([]byte, 
 		return []byte{}, nil
 	}
 	if prefixReadErr != nil {
-		if errors.Is(prefixReadErr, io.EOF) {
+		if isEOF(prefixReadErr) {
 			return nil, fail(CodeAmbiguousEOF, "EOF occurred before the record payload")
 		}
 		return nil, prefixReadErr
@@ -257,7 +264,7 @@ func readPayload(reader io.Reader, length uint64, prefixReadErr error) ([]byte, 
 			return payload, nil
 		}
 		if readErr != nil {
-			if errors.Is(readErr, io.EOF) {
+			if isEOF(readErr) {
 				return nil, fail(CodeAmbiguousEOF, "EOF occurred inside the record payload")
 			}
 			return nil, readErr

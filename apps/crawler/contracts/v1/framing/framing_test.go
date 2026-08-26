@@ -318,6 +318,71 @@ func TestReaderZeroProgressIsTypedFailure(t *testing.T) {
 	requireCode(t, err, string(CodeReaderContract))
 }
 
+type readerStep struct {
+	data []byte
+	err  error
+}
+
+type scriptedReader struct {
+	steps []readerStep
+}
+
+func (reader *scriptedReader) Read(buffer []byte) (int, error) {
+	step := reader.steps[0]
+	reader.steps = reader.steps[1:]
+	return copy(buffer, step.data), step.err
+}
+
+func TestUnexpectedEOFInsideRecordIsTypedAmbiguousEOF(t *testing.T) {
+	tests := []struct {
+		name  string
+		steps []readerStep
+	}{
+		{
+			name: "zero bytes after partial prefix",
+			steps: []readerStep{
+				{data: []byte{0x80}},
+				{err: io.ErrUnexpectedEOF},
+			},
+		},
+		{
+			name:  "positive bytes in partial prefix",
+			steps: []readerStep{{data: []byte{0x80}, err: io.ErrUnexpectedEOF}},
+		},
+		{
+			name: "zero bytes after payload prefix",
+			steps: []readerStep{
+				{data: []byte{0x03}},
+				{err: io.ErrUnexpectedEOF},
+			},
+		},
+		{
+			name: "positive bytes in partial payload",
+			steps: []readerStep{
+				{data: []byte{0x03}},
+				{data: []byte("ab"), err: io.ErrUnexpectedEOF},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := ReadRecord(&scriptedReader{steps: test.steps}, 4)
+			requireCode(t, err, string(CodeAmbiguousEOF))
+		})
+	}
+}
+
+func TestUnexpectedEOFAfterCompleteRecordIsSuccess(t *testing.T) {
+	reader := &scriptedReader{steps: []readerStep{
+		{data: []byte{0x02}},
+		{data: []byte("ab"), err: io.ErrUnexpectedEOF},
+	}}
+	payload, err := ReadRecord(reader, 3)
+	if err != nil || string(payload) != "ab" {
+		t.Fatalf("got payload %q and error %v, want completed record", payload, err)
+	}
+}
+
 func TestSharedCorpusDigest(t *testing.T) {
 	path := filepath.Join("..", "fixtures", "framing", "vectors.json")
 	raw, err := os.ReadFile(path)
