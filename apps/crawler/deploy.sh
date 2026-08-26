@@ -97,6 +97,7 @@ ACTIVE_DATA_FILES_MANIFEST=""
 ROLLBACK_ACTIVE_RELEASE_TARGET=""
 ROLLBACK_ACTIVE_IMAGE_OVERRIDE=""
 ROLLBACK_SYNC_WEB_DATABASE_URL=""
+MIGRATION_CUTOVER_REACHED=0
 FORWARD_SYNC_STARTED=0
 FORWARD_DATA_STAGING_ROOT=""
 FORWARD_DATA_SNAPSHOT=""
@@ -1476,7 +1477,7 @@ rollback_deploy() {
     echo "ERROR: rollback quiesce was incomplete; bounded old-stack contract persisted but restart skipped" >&2
   fi
   if ((quiesce_complete && release_restore_complete && env_restore_complete && spec_restore_complete && bounded_contract_persisted)); then
-    if (( ${FORWARD_SYNC_STARTED:-0} )); then
+    if (( ${MIGRATION_CUTOVER_REACHED:-0} || ${FORWARD_SYNC_STARTED:-0} )); then
       rollback_sync_previous_config
       command_status=$?
       if ((command_status != 0 && rollback_status == 0)); then
@@ -1488,7 +1489,7 @@ rollback_deploy() {
       config_restore_complete=1
     fi
   fi
-  if (( ! config_restore_complete && ${FORWARD_SYNC_STARTED:-0} )); then
+  if (( ! config_restore_complete && (${MIGRATION_CUTOVER_REACHED:-0} || ${FORWARD_SYNC_STARTED:-0}) )); then
     echo "ERROR: rollback config restore was incomplete; old stack restart skipped" >&2
   fi
   if ((quiesce_complete && release_restore_complete && env_restore_complete && spec_restore_complete && bounded_contract_persisted && config_restore_complete)); then
@@ -2070,6 +2071,12 @@ docker run --rm \
   --label com.docker.compose.service=deploy-migrate \
   "$CRAWLER_IMAGE_REF" \
   uv run --no-sync alembic -c src/migrations/alembic.ini upgrade head
+
+# Revision 0022 changes durable Umantis identity before Redis is repaired.
+# From this point, every rollback must restore the previous CSV config and run
+# the current-image cutover repair (including parking incompatible old monitor
+# schedules) before the old runtime may restart.
+MIGRATION_CUTOVER_REACHED=1
 
 # ── Patch Typesense schema (idempotent — adds fields / repairs indexes) ─
 # Must run BEFORE `crawler sync`, otherwise the next sync would upsert docs
