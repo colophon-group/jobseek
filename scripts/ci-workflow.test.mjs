@@ -45,6 +45,14 @@ const dispatchPrChecksScript = readFileSync(
   ".github/scripts/dispatch-pr-checks.sh",
   "utf8",
 );
+const crawlerDeployGateWorkflow = readFileSync(
+  ".github/workflows/crawler-deploy-gate.yml",
+  "utf8",
+);
+const crawlerDeployGateScript = readFileSync(
+  ".github/scripts/check-crawler-deploy-gate.sh",
+  "utf8",
+);
 const labelPrScript = readFileSync(".github/scripts/label-pr.sh", "utf8");
 const labelPrCsvDiffHelper = ".github/scripts/label_pr_csv_diff.py";
 const publishMcpServerWorkflow = readFileSync(
@@ -147,6 +155,52 @@ printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
     calls = readFileSync(log, "utf8");
   } catch {
     // A correctly skipped PR does not call `gh workflow run`.
+  }
+  rmSync(dir, { recursive: true, force: true });
+  return { ...result, calls };
+}
+
+function runCrawlerDeployGate({ draft = false, files = [], holds = [] } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "crawler-deploy-gate-"));
+  const log = join(dir, "gh.log");
+  const gh = join(dir, "gh");
+  writeFileSync(
+    gh,
+    `#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
+if [[ "$1" == "api" ]]; then
+  printf '%s\\n' "$MOCK_FILES"
+  exit 0
+fi
+if [[ "$1 $2" == "issue list" ]]; then
+  printf '%s' "$MOCK_HOLDS"
+  exit 0
+fi
+exit 1
+`,
+  );
+  chmodSync(gh, 0o755);
+  const result = spawnSync("bash", [".github/scripts/check-crawler-deploy-gate.sh"], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      PATH: `${dir}:${process.env.PATH}`,
+      GH_TOKEN: "test-token",
+      REPO: "colophon-group/jobseek",
+      PR: "123",
+      DRAFT: String(draft),
+      MOCK_GH_LOG: log,
+      MOCK_FILES: files.join("\n"),
+      MOCK_HOLDS: JSON.stringify(holds),
+    },
+    encoding: "utf8",
+  });
+  let calls = "";
+  try {
+    calls = readFileSync(log, "utf8");
+  } catch {
+    // Draft checks deliberately make no API calls.
   }
   rmSync(dir, { recursive: true, force: true });
   return { ...result, calls };
@@ -1403,7 +1457,7 @@ test("dependency review scopes the sharp libvips license exception", () => {
   assert.doesNotMatch(dependencyReviewJob, /allow-licenses:/);
 });
 
-test("main branch ruleset does not require non-path-aware code scanning", () => {
+test("main branch ruleset requires CI and the crawler deployment gate", () => {
   assert.equal(mainStrictGateRuleset.name, "main-strict-gate");
   assert.equal(
     mainStrictGateRuleset.rules.some((rule) => rule.type === "code_scanning"),
@@ -1419,11 +1473,117 @@ test("main branch ruleset does not require non-path-aware code scanning", () => 
     (check) => check.context,
   );
 
-  assert.deepEqual(contexts, ["Required CI"]);
-  assert.equal(
-    Object.hasOwn(statusRule.parameters.required_status_checks[0], "integration_id"),
-    false,
+  assert.deepEqual(contexts, ["Required CI", "Crawler Deploy Gate"]);
+  for (const check of statusRule.parameters.required_status_checks) {
+    assert.equal(Object.hasOwn(check, "integration_id"), false);
+  }
+});
+
+test("crawler deploy gate runs trusted and path-aware on PR state changes", () => {
+  assert.match(crawlerDeployGateWorkflow, /pull_request_target:/);
+  assert.match(crawlerDeployGateWorkflow, /issues:/);
+  assert.match(crawlerDeployGateWorkflow, /ready_for_review/);
+  assert.match(crawlerDeployGateWorkflow, /converted_to_draft/);
+  assert.match(crawlerDeployGateWorkflow, /deployment-hold:crawler/);
+  assert.match(crawlerDeployGateWorkflow, /permissions: \{\}/);
+  assert.match(
+    crawlerDeployGateWorkflow,
+    /ref: \$\{\{ github\.workflow_sha \}\}/,
   );
+  assert.match(crawlerDeployGateWorkflow, /persist-credentials: false/);
+  assert.match(crawlerDeployGateWorkflow, /statuses: write/);
+  assert.match(crawlerDeployGateWorkflow, /statuses\/\$HEAD_SHA/);
+  assert.match(crawlerDeployGateWorkflow, /context="Crawler Deploy Gate"/);
+  assert.match(crawlerDeployGateWorkflow, /Re-evaluate every ready PR at its exact head/);
+  assert.match(crawlerDeployGateWorkflow, /DRAFT: \$\{\{ github\.event\.pull_request\.draft \}\}/);
+  assert.match(crawlerDeployGateScript, /\.previous_filename \/\/ empty/);
+  assert.match(crawlerDeployGateScript, /deployment-hold:crawler/);
+});
+
+test("crawler deploy gate grants no authority or API access while draft", () => {
+  const result = runCrawlerDeployGate({
+    draft: true,
+    files: ["apps/crawler/src/core/monitor.py"],
+    holds: [{ number: 6632, title: "capacity", url: "https://example.test/6632" }],
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /draft; no merge authority is granted/);
+  assert.equal(result.calls, "");
+});
+
+test("crawler deploy gate blocks ready runtime changes during a hold", () => {
+  const result = runCrawlerDeployGate({
+    files: ["apps/crawler/src/core/monitor.py"],
+    holds: [{ number: 6632, title: "Typesense capacity", url: "https://example.test/6632" }],
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /changes crawler runtime paths while deployment is held/);
+  assert.match(result.stderr, /#6632 Typesense capacity/);
+  assert.match(result.calls, /pulls\/123\/files\?per_page=100/);
+  assert.match(result.calls, /issue list.*deployment-hold:crawler/);
+});
+
+test("crawler deploy gate mirrors runtime deploy path exclusions", () => {
+  const excluded = runCrawlerDeployGate({
+    files: [
+      "apps/crawler/data/companies.csv",
+      "apps/crawler/data/images/example/logo.png",
+      "apps/crawler/traces/example.json",
+      "apps/crawler/ws-package/README.txt",
+      "apps/crawler/docs/nested.md",
+    ],
+    holds: [{ number: 6632, title: "capacity", url: "https://example.test/6632" }],
+  });
+  const taxonomy = runCrawlerDeployGate({
+    files: ["apps/crawler/data/technologies.csv"],
+    holds: [{ number: 6632, title: "capacity", url: "https://example.test/6632" }],
+  });
+
+  assert.equal(excluded.status, 0, excluded.stderr);
+  assert.match(excluded.stdout, /does not trigger the crawler runtime deployment/);
+  assert.doesNotMatch(excluded.calls, /issue list/);
+  assert.equal(taxonomy.status, 1);
+});
+
+test("crawler deploy gate blocks a runtime file renamed into an excluded path", () => {
+  const result = runCrawlerDeployGate({
+    // The GitHub files query emits both filename and previous_filename.
+    files: [
+      "apps/crawler/data/archive/monitor.py",
+      "apps/crawler/src/core/monitor.py",
+    ],
+    holds: [{ number: 6632, title: "capacity", url: "https://example.test/6632" }],
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /apps\/crawler\/src\/core\/monitor\.py/);
+});
+
+test("crawler deploy gate permits a ready runtime change when holds are clear", () => {
+  const result = runCrawlerDeployGate({
+    files: ["scripts/derive-crawler-runtime-contract.mjs"],
+    holds: [],
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /no deployment hold is active/);
+});
+
+test("a newly active hold revokes a prior ready runtime success", () => {
+  const beforeHold = runCrawlerDeployGate({
+    files: ["apps/crawler/src/core/monitor.py"],
+    holds: [],
+  });
+  const afterHold = runCrawlerDeployGate({
+    files: ["apps/crawler/src/core/monitor.py"],
+    holds: [{ number: 6632, title: "capacity", url: "https://example.test/6632" }],
+  });
+
+  assert.equal(beforeHold.status, 0, beforeHold.stderr);
+  assert.equal(afterHold.status, 1);
+  assert.match(afterHold.stderr, /deployment is held/);
 });
 
 test("workflow-dispatched CI publishes the Required CI status context", () => {

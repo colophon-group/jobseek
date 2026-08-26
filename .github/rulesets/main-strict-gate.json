@@ -18,6 +18,9 @@
         "required_status_checks": [
           {
             "context": "Required CI"
+          },
+          {
+            "context": "Crawler Deploy Gate"
           }
         ]
       }

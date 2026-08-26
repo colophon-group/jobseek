@@ -228,3 +228,12 @@ See [docs/13-seo-and-indexnow.md](docs/13-seo-and-indexnow.md).
 - Branch naming: `add-company/<slug>` for company additions, `fix-crawler/<description>` for code changes
 - Commit messages: imperative mood, concise (`Add Stripe`, `Fix sitemap parser timeout`)
 - Never push directly to main — always create a PR
+- Final merge authority is a lease, not a durable approval. Immediately before
+  merging, re-read the PR's state, draft flag, exact head/base OIDs, required
+  checks, and merge state. A head change, a transition back to draft, or a
+  conflicting task/operator decision invalidates prior merge authority; stop
+  instead of restoring ready state or merging from stale review evidence.
+- Ready crawler-runtime PRs must have a green `Crawler Deploy Gate`. An open
+  issue labelled `deployment-hold:crawler` intentionally blocks that check.
+  Do not remove the label or bypass/weaken the check unless the operator has
+  explicitly cleared the underlying production condition.
