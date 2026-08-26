@@ -1051,6 +1051,9 @@ async def scrape(
         return JobContent()
 
     render = config.get("render", False)
+    same_origin_redirects = config.get("same_origin_redirects", False)
+    if not isinstance(same_origin_redirects, bool):
+        raise ValueError("DOM scraper same_origin_redirects must be a boolean")
     document_fallback = _document_fallback_config(config)
 
     if render and document_fallback is not None:
@@ -1063,6 +1066,9 @@ async def scrape(
             detail="actions require render=true; overriding render to true",
         )
         render = True
+
+    if render and same_origin_redirects:
+        raise ValueError("DOM scraper same_origin_redirects requires render=false")
 
     gone_pattern = config.get("gone_url_pattern")
 
@@ -1118,6 +1124,7 @@ async def scrape(
             http,
             url,
             retry_limits=retry_limits,
+            same_origin_redirects=same_origin_redirects,
             log_event="dom.fetch.retry_status",
         )
         # Detect redirect-to-gone BEFORE raise_for_status so the error page's

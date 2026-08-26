@@ -15,6 +15,7 @@ from src.shared.http_retry import (
     _RETRYABLE_STATUSES,
     END_OF_PAGINATION_STATUSES,
     PaginationFetchError,
+    UnsafeRedirectError,
     fetch_json_page_with_retry,
     fetch_response_with_status_retries,
     fetch_text_page_with_retry,
@@ -69,6 +70,93 @@ class TestFetchResponseWithStatusRetries:
 
         assert response.status_code == 422
         assert client.get.await_count == 1
+
+    async def test_follows_same_origin_locale_redirect_without_changing_identity(self):
+        requested: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested.append(str(request.url))
+            if request.url.path.endswith("/Description"):
+                return httpx.Response(302, headers={"Location": "Description/3"})
+            return httpx.Response(200, text="job")
+
+        stable_url = "https://jobs.example/Vacancies/42/Description"
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            response = await fetch_response_with_status_retries(
+                client,
+                stable_url,
+                retry_limits={},
+                same_origin_redirects=True,
+            )
+
+        assert stable_url == "https://jobs.example/Vacancies/42/Description"
+        assert requested == [stable_url, f"{stable_url}/3"]
+        assert str(response.url) == f"{stable_url}/3"
+        assert response.text == "job"
+
+    async def test_rejects_cross_origin_redirect_before_requesting_it(self):
+        requested: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested.append(str(request.url))
+            return httpx.Response(302, headers={"Location": "https://attacker.example/job"})
+
+        stable_url = "https://jobs.example/Vacancies/42/Description"
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(UnsafeRedirectError, match="left original origin"):
+                await fetch_response_with_status_retries(
+                    client,
+                    stable_url,
+                    retry_limits={},
+                    same_origin_redirects=True,
+                )
+
+        assert requested == [stable_url]
+
+    async def test_rejects_redirect_without_location(self):
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda _request: httpx.Response(302))
+        ) as client:
+            with pytest.raises(UnsafeRedirectError, match="exactly one non-empty Location"):
+                await fetch_response_with_status_retries(
+                    client,
+                    "https://jobs.example/Vacancies/42/Description",
+                    retry_limits={},
+                    same_origin_redirects=True,
+                )
+
+    async def test_rejects_redirect_with_multiple_locations(self):
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda _request: httpx.Response(
+                    302,
+                    headers=[("Location", "/one"), ("Location", "/two")],
+                )
+            )
+        ) as client:
+            with pytest.raises(UnsafeRedirectError, match="exactly one non-empty Location"):
+                await fetch_response_with_status_retries(
+                    client,
+                    "https://jobs.example/Vacancies/42/Description",
+                    retry_limits={},
+                    same_origin_redirects=True,
+                )
+
+    async def test_rejects_suffix_free_redirect_loop(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            suffix = (
+                "/Description/3" if request.url.path.endswith("/Description") else "/Description"
+            )
+            return httpx.Response(302, headers={"Location": suffix})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(UnsafeRedirectError, match="redirect loop"):
+                await fetch_response_with_status_retries(
+                    client,
+                    "https://jobs.example/Vacancies/42/Description",
+                    retry_limits={},
+                    same_origin_redirects=True,
+                )
 
 
 def _samples_for(metric_name: str) -> list[dict[str, Any]]:

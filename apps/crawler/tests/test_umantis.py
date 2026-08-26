@@ -136,7 +136,6 @@ def _strict_board() -> dict:
             "customer_id": "3040",
             "listing_path": "/Jobs/3?lang=fre&CompanyID=32&Reset=G&DesignID=10012",
             "strict_listing_contract": True,
-            "canonical_language_id": "3",
             "expected_employer": "Université de Neuchâtel",
             "employer_field_id": "column_value_1184173",
             "empty_state_text": "Aucune entrée n’a été trouvée.",
@@ -149,11 +148,11 @@ class TestParseJobsFromHtml:
         jobs = _parse_jobs_from_html(_LISTING_HTML, "https://recruitingapp-2698.umantis.com")
         assert len(jobs) == 2
         assert jobs[0] == (
-            "https://recruitingapp-2698.umantis.com/Vacancies/100/Description/1",
+            "https://recruitingapp-2698.umantis.com/Vacancies/100/Description",
             "Software Engineer (m/f/d)",
         )
         assert jobs[1] == (
-            "https://recruitingapp-2698.umantis.com/Vacancies/200/Description/1",
+            "https://recruitingapp-2698.umantis.com/Vacancies/200/Description",
             "Product Manager",
         )
 
@@ -196,7 +195,7 @@ class TestParseJobsFromHtml:
     def test_strips_query_params(self):
         html = '<a href="/Vacancies/1/Description/1?lang=ger" class="HSTableLinkSubTitle">Test</a>'
         jobs = _parse_jobs_from_html(html, "https://x.com")
-        assert jobs[0][0] == "https://x.com/Vacancies/1/Description/1"
+        assert jobs[0][0] == "https://x.com/Vacancies/1/Description"
 
     def test_extracts_listing_fields(self):
         html = """\
@@ -293,8 +292,8 @@ class TestDiscover:
             urls = await discover(board, client)
             assert isinstance(urls, set)
             assert urls == {
-                "https://recruitingapp-2698.umantis.com/Vacancies/100/Description/1",
-                "https://recruitingapp-2698.umantis.com/Vacancies/200/Description/1",
+                "https://recruitingapp-2698.umantis.com/Vacancies/100/Description",
+                "https://recruitingapp-2698.umantis.com/Vacancies/200/Description",
             }
 
     @pytest.mark.parametrize("languages", [(3, 1), (1, 3)])
@@ -318,11 +317,11 @@ class TestDiscover:
                 client,
             )
 
-        assert result == {"https://recruitingapp-3040.umantis.com/Vacancies/6500/Description/1"}
+        assert result == {"https://recruitingapp-3040.umantis.com/Vacancies/6500/Description"}
 
-    async def test_single_locale_variant_does_not_churn_identity_across_cycles(self):
+    async def test_de_fr_it_en_variants_do_not_churn_identity_across_cycles(self):
         results = []
-        for language in (1, 3):
+        for language in (1, 2, 3, 4):
             listing = (
                 f'<a href="/Vacancies/6500/Description/{language}" '
                 f'class="HSTableLinkSubTitle">Role {language}</a>'
@@ -347,8 +346,10 @@ class TestDiscover:
                 )
 
         assert results == [
-            {"https://recruitingapp-3040.umantis.com/Vacancies/6500/Description/1"},
-            {"https://recruitingapp-3040.umantis.com/Vacancies/6500/Description/1"},
+            {"https://recruitingapp-3040.umantis.com/Vacancies/6500/Description"},
+            {"https://recruitingapp-3040.umantis.com/Vacancies/6500/Description"},
+            {"https://recruitingapp-3040.umantis.com/Vacancies/6500/Description"},
+            {"https://recruitingapp-3040.umantis.com/Vacancies/6500/Description"},
         ]
 
     async def test_empty_listing(self):
@@ -486,7 +487,42 @@ class TestStrictDiscover:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             result = await discover(_strict_board(), client)
 
-        assert result == {"https://recruitingapp-3040.umantis.com/Vacancies/6500/Description/3"}
+        assert result == {"https://recruitingapp-3040.umantis.com/Vacancies/6500/Description"}
+
+    async def test_nested_owner_field_captures_the_complete_dedicated_value(self):
+        listing = (
+            '<tr><td><a href="/Vacancies/6500/Description/3" '
+            'class="HSTableLinkSubTitle">Role</a>'
+            '<span class="column-value" id="column_value_1184173">'
+            "<span>Université de</span> <strong>Neuchâtel</strong>"
+            "</span></td></tr>" + _navigation(total=1, first=1, last=1, page=1)
+        )
+
+        def handler(request):
+            if "/Vacancies/" in request.url.path:
+                return self._detail_response(request)
+            return httpx.Response(200, text=listing, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            assert await discover(_strict_board(), client) == {
+                "https://recruitingapp-3040.umantis.com/Vacancies/6500/Description"
+            }
+
+    async def test_nested_owner_field_cannot_hide_a_suffix_after_an_exact_inner_span(self):
+        listing = (
+            '<tr><td><a href="/Vacancies/6500/Description/3" '
+            'class="HSTableLinkSubTitle">Role</a>'
+            '<span class="column-value" id="column_value_1184173">'
+            "<span>Université de Neuchâtel</span> Research Partner"
+            "</span></td></tr>" + _navigation(total=1, first=1, last=1, page=1)
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, text=listing, request=request)
+            )
+        ) as client:
+            with pytest.raises(ValueError, match="exact configured employer field"):
+                await discover(_strict_board(), client)
 
     async def test_rejects_conflicting_rows_for_same_vacancy_locale(self):
         listing = (
@@ -560,6 +596,61 @@ class TestStrictDiscover:
             with pytest.raises(ValueError, match="detail metadata did not identify"):
                 await discover(_strict_board(), client)
 
+    async def test_rejects_body_forged_description_meta(self):
+        listing = _owned_row(6500, 3, "Role") + _navigation(
+            total=1,
+            first=1,
+            last=1,
+            page=1,
+        )
+
+        def handler(request):
+            if "/Vacancies/" in request.url.path:
+                return httpx.Response(
+                    200,
+                    text=(
+                        "<html><head><title>Role</title></head><body>"
+                        '<meta name="description" '
+                        'content="Université de Neuchâtel - Suisse.">'
+                        "</body></html>"
+                    ),
+                    request=request,
+                )
+            return httpx.Response(200, text=listing, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="detail metadata did not identify"):
+                await discover(_strict_board(), client)
+
+    @pytest.mark.parametrize(
+        "detail",
+        [
+            (
+                '<head><meta name="description" '
+                'content="Université de Neuchâtel - Suisse.">'
+                '<meta name="description" '
+                'content="Université de Neuchâtel - duplicate."></head>'
+            ),
+            ('<head><meta name="description" content="Université de Neuchâtel - Suisse.">'),
+        ],
+    )
+    async def test_rejects_ambiguous_or_unclosed_description_head(self, detail):
+        listing = _owned_row(6500, 3, "Role") + _navigation(
+            total=1,
+            first=1,
+            last=1,
+            page=1,
+        )
+
+        def handler(request):
+            if "/Vacancies/" in request.url.path:
+                return httpx.Response(200, text=detail, request=request)
+            return httpx.Response(200, text=listing, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="detail metadata did not identify"):
+                await discover(_strict_board(), client)
+
     async def test_rejects_cross_origin_detail_redirect(self):
         listing = _owned_row(6500, 3, "Role") + _navigation(
             total=1,
@@ -580,6 +671,84 @@ class TestStrictDiscover:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             with pytest.raises(PaginationFetchError):
                 await discover(_strict_board(), client)
+
+    async def test_suffix_free_detail_follows_same_origin_locale_redirect(self):
+        listing = _owned_row(6500, 3, "Role") + _navigation(
+            total=1,
+            first=1,
+            last=1,
+            page=1,
+        )
+        requested: list[str] = []
+
+        def handler(request):
+            requested.append(str(request.url))
+            if request.url.path.endswith("/Description"):
+                return httpx.Response(
+                    302,
+                    headers={"location": "/Vacancies/6500/Description/3"},
+                    request=request,
+                )
+            if request.url.path.endswith("/Description/3"):
+                return self._detail_response(request)
+            return httpx.Response(200, text=listing, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await discover(_strict_board(), client)
+
+        stable_url = "https://recruitingapp-3040.umantis.com/Vacancies/6500/Description"
+        assert result == {stable_url}
+        assert stable_url in requested
+        assert f"{stable_url}/3" in requested
+
+    async def test_rejects_suffix_free_detail_redirect_without_location(self):
+        listing = _owned_row(6500, 3, "Role") + _navigation(
+            total=1,
+            first=1,
+            last=1,
+            page=1,
+        )
+
+        def handler(request):
+            if request.url.path.endswith("/Description"):
+                return httpx.Response(302, request=request)
+            return httpx.Response(200, text=listing, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await discover(_strict_board(), client)
+        assert exc_info.value.last_status == 302
+
+    async def test_rejects_suffix_free_detail_redirect_loop(self, monkeypatch):
+        from src.core.monitors import umantis as umantis_module
+
+        monkeypatch.setattr(umantis_module.asyncio, "sleep", AsyncMock())
+        listing = _owned_row(6500, 3, "Role") + _navigation(
+            total=1,
+            first=1,
+            last=1,
+            page=1,
+        )
+
+        def handler(request):
+            if request.url.path.endswith("/Description"):
+                return httpx.Response(
+                    302,
+                    headers={"location": "/Vacancies/6500/Description/3"},
+                    request=request,
+                )
+            if request.url.path.endswith("/Description/3"):
+                return httpx.Response(
+                    302,
+                    headers={"location": "/Vacancies/6500/Description"},
+                    request=request,
+                )
+            return httpx.Response(200, text=listing, request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(PaginationFetchError) as exc_info:
+                await discover(_strict_board(), client)
+        assert exc_info.value.last_error == "TooManyRedirects"
 
     async def test_rejects_advertised_total_mismatch(self):
         listing = _owned_row(6500, 3, "Role") + _navigation(
@@ -613,8 +782,11 @@ class TestStrictDiscover:
             '<script>const copy = "Aucune entrée n’a été trouvée.";</script>',
             "<p hidden>Aucune entrée n’a été trouvée.</p>",
             '<p aria-hidden="true">Aucune entrée n’a été trouvée.</p>',
+            '<p aria-hidden="  TRUE  ">Aucune entrée n’a été trouvée.</p>',
             '<p style="display: none">Aucune entrée n’a été trouvée.</p>',
             '<p class="visually-hidden">Aucune entrée n’a été trouvée.</p>',
+            "<head>Aucune entrée n’a été trouvée.</head>",
+            "<title>Aucune entrée n’a été trouvée.</title>",
         ],
     )
     async def test_rejects_zero_without_visible_marker(self, hidden_marker):
