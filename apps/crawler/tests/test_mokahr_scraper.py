@@ -369,6 +369,8 @@ class TestParseJobListing:
             "department": "中兴通讯股份有限公司",
             "education": "硕士",
             "job_function": "研发类",
+            "provider_id": "abc-123",
+            "provider_site_id": 47588,
         }
 
     def test_minimal_payload_no_extras(self):
@@ -380,9 +382,7 @@ class TestParseJobListing:
         assert job.employment_type == "其它"
         assert job.base_salary is None
         assert job.extras is None
-        # Empty metadata collapses to None to keep the `metadata or None`
-        # contract used by the rest of the pipeline.
-        assert job.metadata is None
+        assert job.metadata == {"provider_id": "x", "provider_site_id": 1}
 
     def test_skips_jobs_missing_id_or_title(self):
         assert _parse_job({"title": "x"}, "zte", 1) is None

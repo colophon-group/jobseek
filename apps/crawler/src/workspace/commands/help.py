@@ -1172,9 +1172,27 @@ mokahr — Mokahr ATS (Chinese recruitment platform)
   Auto-detected from standard Mokahr paths and custom-domain SPA bootstrap data.
 
   Config:
-    org_id    Organisation slug (e.g. "zte")
-    site_id   Numeric site ID (e.g. 47588)
-    locale    API locale (default "zh-CN")"""
+    org_id      Organisation slug (e.g. "zte")
+    site_id     Numeric site ID (e.g. 47588)
+    locale      API locale (default "zh-CN")
+    partitions  Optional bounded list of additional official sites for the
+                same organisation. Each item contains exact board_url and
+                site_id values. The monitor validates every site's identity
+                and count, then unions active jobs by stable provider ID in
+                primary-board / list order so overlapping sites do not emit
+                duplicate or locale-dependent URLs.
+
+  Example multi-site group:
+    {"org_id":"group","site_id":100,
+     "partitions":[
+       {"board_url":"https://jobs.brand.test/social-recruitment/group/101",
+        "site_id":101}]}
+
+  Safety: Every page must carry a successful encrypted envelope, the exact
+          configured organisation identity, a stable advertised total, and
+          unique bounded provider IDs. Explicit zero inventories are confirmed
+          twice. Only status=open rows are emitted; closed/paused rows are
+          counted but filtered."""
 
 MONITOR_RECRUITER_CO_KR = """\
 recruiter_co_kr — Recruiter.co.kr ATS (Korean, Public JSON API)
