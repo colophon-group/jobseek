@@ -22,7 +22,7 @@ _COMMAND_TIMEOUT_SECONDS = 60.0
 
 
 def _discover_python_tests() -> tuple[dict[str, Any], set[str]]:
-    sources = sorted(_PYTHON_ROOT.glob("*.py"))
+    sources = sorted(_PYTHON_ROOT.rglob("*.py"))
     hidden = [
         path for path in sources if path.name != "__init__.py" and not path.name.startswith("test_")
     ]
@@ -37,9 +37,12 @@ def _discover_python_tests() -> tuple[dict[str, Any], set[str]]:
     exported: dict[str, Any] = {}
     original_names: set[str] = set()
     for path in modules:
+        if path.is_symlink() or not path.resolve().is_relative_to(_PYTHON_ROOT.resolve()):
+            raise AssertionError(f"Python conformance module escapes its root: {path}")
+        module_id = "__".join(path.relative_to(_PYTHON_ROOT).with_suffix("").parts)
         namespace = runpy.run_path(
             str(path),
-            run_name=f"runtime_v1_conformance_{path.stem}",
+            run_name=f"runtime_v1_conformance_{module_id}",
         )
         tests = {
             name: value
@@ -49,7 +52,7 @@ def _discover_python_tests() -> tuple[dict[str, Any], set[str]]:
         if not tests:
             raise AssertionError(f"Python conformance module has no tests: {path.name}")
         for name, value in sorted(tests.items()):
-            exported_name = f"test_runtime_v1_{path.stem.removeprefix('test_')}__{name[5:]}"
+            exported_name = f"test_runtime_v1_{module_id.removeprefix('test_')}__{name[5:]}"
             if exported_name in exported:
                 raise AssertionError(f"duplicate exported conformance test: {exported_name}")
             exported[exported_name] = value
@@ -128,6 +131,10 @@ def _bounded_command(
 
 
 def _go_packages() -> list[Path]:
+    symlinks = sorted(path for path in _CONTRACT_ROOT.rglob("*") if path.is_symlink())
+    if symlinks:
+        names = ", ".join(str(path.relative_to(_CONTRACT_ROOT)) for path in symlinks)
+        raise AssertionError(f"runtime v1 conformance tree contains symlinks: {names}")
     sources = sorted(_CONTRACT_ROOT.rglob("*_test.go"))
     if not sources:
         raise AssertionError("runtime v1 has no Go conformance test sentinel")
