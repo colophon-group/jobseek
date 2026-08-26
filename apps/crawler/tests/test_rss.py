@@ -568,6 +568,94 @@ class TestDiscover:
 
         assert jobs[0].metadata["company"] == "Executive Jet Management (Europe) Limited"
 
+    async def test_successfactors_can_enrich_required_detail_fields(self):
+        feed_xml = _rss_xml(f"""
+            <item>
+                <title>Juriste (Fribourg, CH)</title>
+                <link>https://example.com/job/fr/1001/</link>
+                <guid>1001</guid>
+                <description>Full description</description>
+                <g:location xmlns:g="{_G_NS}">Fribourg, CH</g:location>
+            </item>
+        """)
+
+        def handler(request):
+            if request.url.path == "/googlefeed.xml":
+                return httpx.Response(200, text=feed_xml)
+            return httpx.Response(
+                200,
+                text=(
+                    '<h1 data-careersite-propertyid="title">Juriste</h1>'
+                    '<span data-careersite-propertyid="dept">Service cantonal</span>'
+                    '<span data-careersite-propertyid="adcode">10444</span>'
+                ),
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover(
+                {
+                    "board_url": "https://example.com/careers",
+                    "metadata": {
+                        "preset": "successfactors",
+                        "feed_url": "https://example.com/googlefeed.xml",
+                        "detail_fields": {"service": "dept", "adcode": "adcode"},
+                    },
+                },
+                client,
+            )
+
+        assert jobs[0].metadata["service"] == "Service cantonal"
+        assert jobs[0].metadata["adcode"] == "10444"
+
+    async def test_successfactors_required_detail_field_fails_closed(self):
+        feed_xml = _rss_xml("""
+            <item>
+                <title>Juriste</title>
+                <link>https://example.com/job/fr/1001/</link>
+                <guid>1001</guid>
+                <description>Full description</description>
+            </item>
+        """)
+
+        def handler(request):
+            if request.url.path == "/googlefeed.xml":
+                return httpx.Response(200, text=feed_xml)
+            return httpx.Response(
+                200,
+                text='<h1 data-careersite-propertyid="title">Juriste</h1>',
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(RuntimeError, match="omitted required property 'adcode'"):
+                await discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": {
+                            "preset": "successfactors",
+                            "feed_url": "https://example.com/googlefeed.xml",
+                            "detail_fields": {"adcode": "adcode"},
+                        },
+                    },
+                    client,
+                )
+
+    async def test_successfactors_rejects_unsafe_detail_field_selector(self):
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda _: httpx.Response(500))
+        ) as client:
+            with pytest.raises(ValueError, match="Invalid SuccessFactors detail property"):
+                await discover(
+                    {
+                        "board_url": "https://example.com/careers",
+                        "metadata": {
+                            "preset": "successfactors",
+                            "feed_url": "https://example.com/googlefeed.xml",
+                            "detail_fields": {"service": 'dept"] *'},
+                        },
+                    },
+                    client,
+                )
+
     async def test_successfactors_enriches_only_url_filtered_jobs(self):
         feed_xml = _rss_xml(f"""
             <item>

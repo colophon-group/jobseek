@@ -1120,6 +1120,68 @@ class TestRequireUnexpiredPdf:
 
         assert [str(request.url) for request in requests] == [board_url]
 
+    async def test_extensionless_same_origin_redirect_accepts_german_deadline(self, monkeypatch):
+        source = "https://www.fr.ch/document/603061"
+        monkeypatch.setattr("pypdf.PdfReader", self._fake_reader)
+
+        def handler(request):
+            if request.url.path == "/document/603061":
+                return httpx.Response(
+                    302,
+                    headers={"location": "/sites/default/files/vacancy.pdf"},
+                    request=request,
+                )
+            return httpx.Response(
+                200,
+                headers={"content-type": "application/pdf"},
+                content=b"%PDF Applications must be submitted by 31. Dezember 2999",
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await _filter_unexpired_pdf_urls(
+                {source},
+                client,
+                _validated_unexpired_pdf_config(
+                    {
+                        "pattern": (
+                            r"Applications must be submitted by "
+                            r"(\d{1,2}\.? [A-Za-z]+ \d{4})"
+                        ),
+                        "date_format": "%d %B %Y",
+                    }
+                ),
+            )
+
+        assert result == {source}
+
+    async def test_extensionless_redirect_must_resolve_to_same_origin_pdf(self, monkeypatch):
+        source = "https://www.fr.ch/document/603061"
+        monkeypatch.setattr("pypdf.PdfReader", self._fake_reader)
+
+        cross_origin = httpx.MockTransport(
+            lambda request: httpx.Response(
+                302,
+                headers={"location": "https://files.example.net/vacancy.pdf"},
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=cross_origin) as client:
+            with pytest.raises(ValueError, match="cross-origin redirect"):
+                await _filter_unexpired_pdf_urls({source}, client, self.CONFIG)
+
+        not_pdf = httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                headers={"content-type": "text/html"},
+                content=b"%PDF Applications must be submitted by 31 December 2999",
+                request=request,
+            )
+        )
+        async with httpx.AsyncClient(transport=not_pdf) as client:
+            with pytest.raises(ValueError, match="did not resolve to a PDF"):
+                await _filter_unexpired_pdf_urls({source}, client, self.CONFIG)
+
     @pytest.mark.parametrize(
         "value",
         [

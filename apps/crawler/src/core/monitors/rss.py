@@ -55,8 +55,9 @@ _DETECTION_MAX_CHARS = 2_000_000
 _SF_DETAIL_MAX_REDIRECTS = 3
 _SF_DETAIL_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 _SF_DETAIL_RETRYABLE_STATUSES = frozenset({401, 403, 429})
-_SF_COMPANY_SELECTOR = '[data-careersite-propertyid="customfield1"]'
 _SF_JOB_SELECTOR = '[data-careersite-propertyid="title"]'
+_SF_DETAIL_FIELD_RE = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
+_SF_METADATA_KEY_RE = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 _SF_WRAPPER_QUERY_KEYS = frozenset(
     {
         "_s.crb",
@@ -387,9 +388,7 @@ _PARSERS: dict[str, Callable[[ET.Element], DiscoveredJob | None]] = {
 }
 
 
-def _sf_company_candidates(
-    jobs: list[DiscoveredJob], raw_url_filter: object
-) -> list[DiscoveredJob]:
+def _sf_detail_candidates(jobs: list[DiscoveredJob], raw_url_filter: object) -> list[DiscoveredJob]:
     """Apply dispatcher URL-filter semantics before making detail requests.
 
     The dispatcher still performs the authoritative filtering after discovery.
@@ -518,37 +517,71 @@ async def _fetch_sf_detail_document(
     )
 
 
-async def _enrich_sf_companies(
+def _sf_detail_fields(metadata: Mapping) -> tuple[dict[str, str], frozenset[str]]:
+    """Return validated detail-property mappings and required metadata keys."""
+    fields: dict[str, str] = {}
+    required: set[str] = set()
+    if metadata.get("fetch_company"):
+        # Backward compatibility: the historic customfield1 enrichment was
+        # optional when a tenant omitted that property.
+        fields["company"] = "customfield1"
+
+    configured = metadata.get("detail_fields")
+    if configured is None:
+        return fields, frozenset(required)
+    if not isinstance(configured, Mapping) or len(configured) > 16:
+        raise ValueError("SuccessFactors detail_fields must be a mapping of at most 16 fields")
+    for metadata_key, property_id in configured.items():
+        if not isinstance(metadata_key, str) or not _SF_METADATA_KEY_RE.fullmatch(metadata_key):
+            raise ValueError(f"Invalid SuccessFactors metadata key: {metadata_key!r}")
+        if not isinstance(property_id, str) or not _SF_DETAIL_FIELD_RE.fullmatch(property_id):
+            raise ValueError(f"Invalid SuccessFactors detail property: {property_id!r}")
+        fields[metadata_key] = property_id
+        required.add(metadata_key)
+    return fields, frozenset(required)
+
+
+async def _enrich_sf_detail_fields(
     jobs: list[DiscoveredJob],
     client: httpx.AsyncClient,
     *,
     feed_url: str,
+    fields: Mapping[str, str],
+    required_fields: frozenset[str],
     url_filter: object = None,
 ) -> None:
-    """Populate SuccessFactors' legal-employer custom field from detail pages.
+    """Populate configured SuccessFactors properties from detail pages.
 
     The Google feed's ``g:employer`` is commonly the generic value
     ``Careers`` even when one tenant publishes jobs for multiple legal
-    employers.  Career-site detail pages expose the real value as
-    ``customfield1``.  This optional enrichment is fail-closed so a transient
-    detail failure cannot silently admit a sister company's posting through a
-    configured ``job_filter``.
+    employers or services. Career-site detail pages expose tenant-specific
+    properties such as ``customfield1``, ``dept``, and ``adcode``. Configured
+    ``detail_fields`` are required and fail closed so a tenant markup change
+    cannot silently admit or re-identify another employer's posting.
     """
     semaphore = asyncio.Semaphore(_SF_DETAIL_CONCURRENCY)
 
     async def _one(job: DiscoveredJob) -> None:
         if not _same_https_origin(job.url, feed_url):
-            raise RuntimeError(f"SuccessFactors company enrichment rejected URL: {job.url}")
+            raise RuntimeError(f"SuccessFactors detail enrichment rejected URL: {job.url}")
         async with semaphore:
             document = await _fetch_sf_detail_document(job.url, client)
-        node = document.css_first(_SF_COMPANY_SELECTOR)
-        company = node.text(strip=True) if node is not None else None
-        if company:
-            metadata = dict(job.metadata or {})
-            metadata["company"] = company
+        metadata = dict(job.metadata or {})
+        for metadata_key, property_id in fields.items():
+            selector = f'[data-careersite-propertyid="{property_id}"]'
+            node = document.css_first(selector)
+            value = node.text(strip=True) if node is not None else None
+            if value:
+                metadata[metadata_key] = value
+            elif metadata_key in required_fields:
+                raise RuntimeError(
+                    "SuccessFactors detail enrichment omitted required property "
+                    f"{property_id!r}: {job.url}"
+                )
+        if metadata:
             job.metadata = metadata
 
-    candidates = _sf_company_candidates(jobs, url_filter)
+    candidates = _sf_detail_candidates(jobs, url_filter)
     await asyncio.gather(*(_one(job) for job in candidates))
 
 
@@ -838,6 +871,9 @@ async def discover_stream(
     if config is None:
         return
     preset_name, feed_url, preset = config
+    detail_fields, required_detail_fields = (
+        _sf_detail_fields(metadata) if preset_name == "successfactors" else ({}, frozenset())
+    )
     parser = _PARSERS.get(preset_name, _parse_generic_item)
     jobs: list[DiscoveredJob] = []
     total_jobs = 0
@@ -858,21 +894,25 @@ async def discover_stream(
 
             if total_jobs >= MAX_JOBS:
                 log.warning("rss.truncated", feed=feed_url, total=total_jobs, cap=MAX_JOBS)
-                if preset_name == "successfactors" and metadata.get("fetch_company"):
-                    await _enrich_sf_companies(
+                if detail_fields:
+                    await _enrich_sf_detail_fields(
                         jobs,
                         client,
                         feed_url=feed_url,
+                        fields=detail_fields,
+                        required_fields=required_detail_fields,
                         url_filter=metadata.get("url_filter"),
                     )
                 yield truncated_rich_result(jobs)
                 return
             if len(jobs) >= _STREAM_BATCH:
-                if preset_name == "successfactors" and metadata.get("fetch_company"):
-                    await _enrich_sf_companies(
+                if detail_fields:
+                    await _enrich_sf_detail_fields(
                         jobs,
                         client,
                         feed_url=feed_url,
+                        fields=detail_fields,
+                        required_fields=required_detail_fields,
                         url_filter=metadata.get("url_filter"),
                     )
                 yield jobs
@@ -883,11 +923,13 @@ async def discover_stream(
         offset += preset.page_size
 
     if jobs:
-        if preset_name == "successfactors" and metadata.get("fetch_company"):
-            await _enrich_sf_companies(
+        if detail_fields:
+            await _enrich_sf_detail_fields(
                 jobs,
                 client,
                 feed_url=feed_url,
+                fields=detail_fields,
+                required_fields=required_detail_fields,
                 url_filter=metadata.get("url_filter"),
             )
         yield jobs
@@ -1069,9 +1111,9 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     # site; in that case prefer the redirected origin's existing Google feed.
     legacy_board = successfactors_legacy_board_from_url(url)
     if legacy_board is not None:
-        result = await _probe_legacy_board(legacy_board, client)
-        if result is not None:
-            return result
+        legacy_result = await _probe_legacy_board(legacy_board, client)
+        if legacy_result is not None:
+            return legacy_result
 
     # 1. Fetch page HTML once for all preset pattern checks
     # Large corporate wrapper pages can place the actual ATS application link
@@ -1081,15 +1123,15 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     embedded_boards = _embedded_legacy_boards(html_text or "")
     if len(embedded_boards) == 1:
         embedded_board = embedded_boards[0]
-        result = await _probe_legacy_board(embedded_board, client)
-        if result is not None:
+        embedded_result = await _probe_legacy_board(embedded_board, client)
+        if embedded_result is not None:
             log.info(
                 "rss.successfactors_wrapper_detected",
                 url=url,
                 host=embedded_board.host,
                 company=embedded_board.company,
             )
-            return result
+            return embedded_result
     elif embedded_boards:
         log.info(
             "rss.successfactors_wrapper_ambiguous",
