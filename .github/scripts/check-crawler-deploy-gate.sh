@@ -16,6 +16,18 @@ fi
   exit 1
 }
 
+changed_paths="$(
+  gh api --paginate "repos/$REPO/pulls/$PR/files?per_page=100" \
+    --jq '.[] | .filename, (.previous_filename // empty)'
+)" || {
+  echo "ERROR: could not classify files for PR #$PR" >&2
+  exit 1
+}
+[[ -n "$changed_paths" ]] || {
+  echo "ERROR: file query for PR #$PR returned no paths" >&2
+  exit 1
+}
+
 runtime_paths=()
 while IFS= read -r path; do
   [[ -n "$path" ]] || continue
@@ -40,10 +52,7 @@ while IFS= read -r path; do
       runtime_paths+=("$path")
       ;;
   esac
-done < <(
-  gh api --paginate "repos/$REPO/pulls/$PR/files?per_page=100" \
-    --jq '.[] | .filename, (.previous_filename // empty)'
-)
+done <<<"$changed_paths"
 
 if (( ${#runtime_paths[@]} == 0 )); then
   echo "PR #$PR does not trigger the crawler runtime deployment"

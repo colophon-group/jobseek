@@ -53,6 +53,10 @@ const crawlerDeployGateScript = readFileSync(
   ".github/scripts/check-crawler-deploy-gate.sh",
   "utf8",
 );
+const reconcileCrawlerDeployGateScript = readFileSync(
+  ".github/scripts/reconcile-crawler-deploy-gate.sh",
+  "utf8",
+);
 const labelPrScript = readFileSync(".github/scripts/label-pr.sh", "utf8");
 const labelPrCsvDiffHelper = ".github/scripts/label_pr_csv_diff.py";
 const publishMcpServerWorkflow = readFileSync(
@@ -160,7 +164,12 @@ printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
   return { ...result, calls };
 }
 
-function runCrawlerDeployGate({ draft = false, files = [], holds = [] } = {}) {
+function runCrawlerDeployGate({
+  draft = false,
+  files = [],
+  holds = [],
+  fileApiStatus = 0,
+} = {}) {
   const dir = mkdtempSync(join(tmpdir(), "crawler-deploy-gate-"));
   const log = join(dir, "gh.log");
   const gh = join(dir, "gh");
@@ -170,6 +179,9 @@ function runCrawlerDeployGate({ draft = false, files = [], holds = [] } = {}) {
 set -euo pipefail
 printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
 if [[ "$1" == "api" ]]; then
+  if (( MOCK_FILE_API_STATUS != 0 )); then
+    exit "$MOCK_FILE_API_STATUS"
+  fi
   printf '%s\\n' "$MOCK_FILES"
   exit 0
 fi
@@ -193,6 +205,7 @@ exit 1
       MOCK_GH_LOG: log,
       MOCK_FILES: files.join("\n"),
       MOCK_HOLDS: JSON.stringify(holds),
+      MOCK_FILE_API_STATUS: String(fileApiStatus),
     },
     encoding: "utf8",
   });
@@ -201,6 +214,82 @@ exit 1
     calls = readFileSync(log, "utf8");
   } catch {
     // Draft checks deliberately make no API calls.
+  }
+  rmSync(dir, { recursive: true, force: true });
+  return { ...result, calls };
+}
+
+function runCrawlerDeployReconciler({
+  isDraft = false,
+  files = ["apps/crawler/src/core/monitor.py"],
+  holds = [],
+  prs = null,
+} = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "crawler-deploy-reconcile-"));
+  const log = join(dir, "gh.log");
+  const gh = join(dir, "gh");
+  writeFileSync(
+    gh,
+    `#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\\n' "$*" >> "$MOCK_GH_LOG"
+if [[ "$1 $2" == "pr list" ]]; then
+  jq -c '[.[] | {number}]' <<<"$MOCK_PRS"
+  exit 0
+fi
+if [[ "$1 $2" == "pr view" ]]; then
+  jq -c --argjson number "$3" '
+    .[] | select(.number == $number) |
+    {state: (.state // "OPEN"), isDraft, headRefOid}
+  ' <<<"$MOCK_PRS"
+  exit 0
+fi
+if [[ "$1" == "api" && "$*" == *"/statuses/"* ]]; then
+  exit 0
+fi
+if [[ "$1" == "api" ]]; then
+  printf '%s\\n' "$MOCK_FILES"
+  exit 0
+fi
+if [[ "$1 $2" == "issue list" ]]; then
+  printf '%s' "$MOCK_HOLDS"
+  exit 0
+fi
+exit 1
+`,
+  );
+  chmodSync(gh, 0o755);
+  const mockPrs = prs ?? [
+    {
+      number: 123,
+      isDraft,
+      headRefOid: "a".repeat(40),
+    },
+  ];
+  const result = spawnSync(
+    "bash",
+    [".github/scripts/reconcile-crawler-deploy-gate.sh"],
+    {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        PATH: `${dir}:${process.env.PATH}`,
+        GH_TOKEN: "test-token",
+        REPO: "colophon-group/jobseek",
+        TARGET_URL: "https://example.test/run/1",
+        MOCK_GH_LOG: log,
+        MOCK_PRS: JSON.stringify(mockPrs),
+        MOCK_FILES: files.join("\n"),
+        MOCK_HOLDS: JSON.stringify(holds),
+      },
+      encoding: "utf8",
+    },
+  );
+  let calls = "";
+  try {
+    calls = readFileSync(log, "utf8");
+  } catch {
+    // A malformed PR response can fail before a status API call.
   }
   rmSync(dir, { recursive: true, force: true });
   return { ...result, calls };
@@ -1492,10 +1581,18 @@ test("crawler deploy gate runs trusted and path-aware on PR state changes", () =
   );
   assert.match(crawlerDeployGateWorkflow, /persist-credentials: false/);
   assert.match(crawlerDeployGateWorkflow, /statuses: write/);
-  assert.match(crawlerDeployGateWorkflow, /statuses\/\$HEAD_SHA/);
-  assert.match(crawlerDeployGateWorkflow, /context="Crawler Deploy Gate"/);
-  assert.match(crawlerDeployGateWorkflow, /Re-evaluate every ready PR at its exact head/);
-  assert.match(crawlerDeployGateWorkflow, /DRAFT: \$\{\{ github\.event\.pull_request\.draft \}\}/);
+  assert.match(crawlerDeployGateWorkflow, /group: crawler-deploy-gate-status-writer/);
+  assert.match(crawlerDeployGateWorkflow, /cancel-in-progress: false/);
+  assert.match(crawlerDeployGateWorkflow, /Re-evaluate every open PR at its exact head/);
+  assert.match(crawlerDeployGateWorkflow, /reconcile-crawler-deploy-gate\.sh/);
+  assert.match(reconcileCrawlerDeployGateScript, /statuses\/\$head_sha/);
+  assert.match(reconcileCrawlerDeployGateScript, /context="Crawler Deploy Gate"/);
+  assert.match(reconcileCrawlerDeployGateScript, /state=failure/);
+  assert.match(reconcileCrawlerDeployGateScript, /gh pr view "\$pr"/);
+  assert.match(
+    reconcileCrawlerDeployGateScript,
+    /Draft PR; no merge authority is granted/,
+  );
   assert.match(crawlerDeployGateScript, /\.previous_filename \/\/ empty/);
   assert.match(crawlerDeployGateScript, /deployment-hold:crawler/);
 });
@@ -1523,6 +1620,15 @@ test("crawler deploy gate blocks ready runtime changes during a hold", () => {
   assert.match(result.stderr, /#6632 Typesense capacity/);
   assert.match(result.calls, /pulls\/123\/files\?per_page=100/);
   assert.match(result.calls, /issue list.*deployment-hold:crawler/);
+});
+
+test("crawler deploy gate fails closed when PR file classification fails", () => {
+  const result = runCrawlerDeployGate({ fileApiStatus: 1 });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /could not classify files for PR #123/);
+  assert.doesNotMatch(result.stdout, /does not trigger/);
+  assert.doesNotMatch(result.calls, /issue list/);
 });
 
 test("crawler deploy gate mirrors runtime deploy path exclusions", () => {
@@ -1571,19 +1677,35 @@ test("crawler deploy gate permits a ready runtime change when holds are clear", 
   assert.match(result.stdout, /no deployment hold is active/);
 });
 
-test("a newly active hold revokes a prior ready runtime success", () => {
-  const beforeHold = runCrawlerDeployGate({
-    files: ["apps/crawler/src/core/monitor.py"],
-    holds: [],
-  });
-  const afterHold = runCrawlerDeployGate({
-    files: ["apps/crawler/src/core/monitor.py"],
+test("draft and hold transitions replace a prior ready success with failure", () => {
+  const ready = runCrawlerDeployReconciler();
+  const draft = runCrawlerDeployReconciler({ isDraft: true });
+  const readyDuringHold = runCrawlerDeployReconciler({
     holds: [{ number: 6632, title: "capacity", url: "https://example.test/6632" }],
   });
 
-  assert.equal(beforeHold.status, 0, beforeHold.stderr);
-  assert.equal(afterHold.status, 1);
-  assert.match(afterHold.stderr, /deployment is held/);
+  assert.equal(ready.status, 0, ready.stderr);
+  assert.match(ready.calls, /statuses\/a{40}.*-f state=success/);
+  assert.equal(draft.status, 0, draft.stderr);
+  assert.match(draft.calls, /statuses\/a{40}.*-f state=failure/);
+  assert.doesNotMatch(draft.calls, /pulls\/123\/files/);
+  assert.equal(readyDuringHold.status, 0, readyDuringHold.stderr);
+  assert.match(readyDuringHold.calls, /statuses\/a{40}.*-f state=failure/);
+});
+
+test("a stale queued evaluator converges every PR to the current hold state", () => {
+  const result = runCrawlerDeployReconciler({
+    holds: [{ number: 6632, title: "capacity", url: "https://example.test/6632" }],
+    prs: [
+      { number: 123, isDraft: false, headRefOid: "a".repeat(40) },
+      { number: 456, isDraft: false, headRefOid: "b".repeat(40) },
+    ],
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.calls, /statuses\/a{40}.*-f state=failure/);
+  assert.match(result.calls, /statuses\/b{40}.*-f state=failure/);
+  assert.equal((result.calls.match(/issue list/g) ?? []).length, 2);
 });
 
 test("workflow-dispatched CI publishes the Required CI status context", () => {
