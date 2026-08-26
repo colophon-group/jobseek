@@ -1326,6 +1326,11 @@ def _advertised_total(payload: object, total_path: str | None, json_path: str) -
     return total if total >= 0 else None
 
 
+def _truncated_empty_result(fields_map: dict[str, str]):
+    """Return an empty partial result without authorizing gone detection."""
+    return truncated_rich_result([]) if fields_map else truncated_url_result(set())
+
+
 async def _paginate_until_converged(
     *,
     fetch_fn,
@@ -1377,7 +1382,10 @@ async def _paginate_until_converged(
                 # A supposedly stable identity cannot safely collapse two
                 # conflicting source records in a delist-capable cycle.
                 valid = False
-            mapped[identity] = item
+            # Preserve the first observation. Even though a conflict makes
+            # the cycle partial below, returning the last duplicate would
+            # still expose a nondeterministic mixed snapshot to callers.
+            mapped.setdefault(identity, item)
         return mapped, valid
 
     pass_data = initial_data
@@ -1431,7 +1439,15 @@ async def _paginate_until_converged(
         )
         pass_identities, identities_valid = identity_map(rows)
         new_identities = set(pass_identities) - set(accumulated)
-        accumulated.update(pass_identities)
+        cross_pass_conflict = any(
+            identity in accumulated and accumulated[identity] != item
+            for identity, item in pass_identities.items()
+        )
+        identities_valid = identities_valid and not cross_pass_conflict
+        # Retain the first stable record for each identity. A later differing
+        # record invalidates the proof instead of winning by request order.
+        for identity, item in pass_identities.items():
+            accumulated.setdefault(identity, item)
         complete_pass = (
             totals_valid
             and identities_valid
@@ -1993,6 +2009,9 @@ async def _discover_http(
     if data is None:
         if empty_response is not None:
             raise ValueError("API did not return the configured explicit empty response")
+        if pagination_convergence:
+            log.warning("api_sniffer.pagination_convergence_missing_response")
+            return _truncated_empty_result(fields_map)
         return list() if fields_map else set()
 
     # -- decrypt encrypted response field ----------------------------------
@@ -2114,7 +2133,11 @@ async def _discover_http(
                 urls=len(all_urls),
             )
 
-        truncated = _materially_below_advertised_total(len(all_urls), total)
+        # Convergence is defined over stable item identities and full row
+        # counts. A schema drift into HTML cannot satisfy that proof.
+        truncated = bool(pagination_convergence) or _materially_below_advertised_total(
+            len(all_urls), total
+        )
         _log_incomplete_total(len(all_urls), total)
         return truncated_url_result(all_urls) if truncated else all_urls
 
@@ -2142,7 +2165,7 @@ async def _discover_http(
         )
 
         pagination_proven = True
-        if pagination_config and items:
+        if pagination_config and (items or pagination_convergence):
             pag = PaginationInfo(
                 param_name=pagination_config["param_name"],
                 style=pagination_config.get("style", "page"),
@@ -2283,6 +2306,13 @@ async def _discover_http(
             cap=max_items,
         )
         return truncated_url_result(urls) if truncated else urls
+
+    if pagination_convergence:
+        log.warning(
+            "api_sniffer.pagination_convergence_invalid_list_shape",
+            content_type=type(content).__name__,
+        )
+        return _truncated_empty_result(fields_map)
 
     if empty_response is not None:
         if not isinstance(data, dict):
@@ -2570,7 +2600,20 @@ async def _discover_replay(
 
         if items is None:
             items = extract_items(data, json_path)
-        if not items:
+        if pagination_convergence:
+            if json_path == "$":
+                configured_items = data
+            elif isinstance(data, dict):
+                configured_items = resolve_path(data, json_path)
+            else:
+                configured_items = None
+            if not isinstance(configured_items, list):
+                log.warning(
+                    "api_sniffer.pagination_convergence_invalid_list_shape",
+                    content_type=type(configured_items).__name__,
+                )
+                return _truncated_empty_result(fields_map)
+        if not items and not pagination_convergence:
             log.warning("api_sniffer.no_items", api_url=api_url, json_path=json_path)
             return list() if fields_map else set()
 
@@ -2593,7 +2636,7 @@ async def _discover_replay(
 
         # Paginate if configured
         pagination_proven = True
-        if pagination_config and len(items) > 0:
+        if pagination_config and (items or pagination_convergence):
             pag = PaginationInfo(
                 param_name=pagination_config["param_name"],
                 style=pagination_config["style"],
@@ -2622,7 +2665,7 @@ async def _discover_replay(
             max_pg = pagination_config.get("max_pages", default_cap)
             # When total_count is known, raise cap to _HTTP_MAX_PAGES so
             # APIs with small page sizes are not silently truncated.
-            if total_count and max_pg < _HTTP_MAX_PAGES:
+            if total_count and items and max_pg < _HTTP_MAX_PAGES:
                 needed = (total_count + len(items) - 1) // len(items)
                 if needed > max_pg:
                     max_pg = min(needed, _HTTP_MAX_PAGES)
