@@ -16,11 +16,15 @@ const RUNTIME_DATA_PATHS = new Set([
   "apps/crawler/data/seniority.csv",
   "apps/crawler/data/technologies.csv",
 ]);
+const INACTIVE_V1_CANDIDATE_PREFIX = "apps/crawler/contracts/v1/";
 const MAX_CRAWLER_DATA_BLOB_BYTES = 64 * 1024 * 1024;
 
 export function isCrawlerRuntimePath(path) {
   if (EXTRA_RUNTIME_PATHS.has(path)) return true;
   if (RUNTIME_DATA_PATHS.has(path)) return true;
+  // Temporary #8071 exemption: these files are not copied into the image or
+  // built into the wheel. #8046 must remove this before activating v1.
+  if (path.startsWith(INACTIVE_V1_CANDIDATE_PREFIX)) return false;
   if (!path.startsWith("apps/crawler/")) return false;
 
   const relative = path.slice("apps/crawler/".length);

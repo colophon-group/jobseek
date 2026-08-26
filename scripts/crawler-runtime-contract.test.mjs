@@ -41,6 +41,8 @@ test("runtime contract matches the crawler deploy boundary", () => {
   }
 
   for (const path of [
+    "apps/crawler/contracts/v1/runtime.proto",
+    "apps/crawler/contracts/v1/fixtures/replay.json",
     "apps/crawler/data/images/example/logo.png",
     "apps/crawler/traces/example.json",
     "apps/crawler/ws-package/pyproject.toml",
@@ -49,6 +51,14 @@ test("runtime contract matches the crawler deploy boundary", () => {
     ".github/workflows/sync-data.yml",
   ]) {
     assert.equal(isCrawlerRuntimePath(path), false, path);
+  }
+
+  for (const path of [
+    "apps/crawler/contracts/v2/runtime.proto",
+    "apps/crawler/contracts/v10/runtime.proto",
+    "apps/crawler/contracts/v1",
+  ]) {
+    assert.equal(isCrawlerRuntimePath(path), true, path);
   }
 });
 
@@ -91,6 +101,77 @@ test("data-only changes preserve the runtime contract", () => {
   assert.equal(
     deriveCrawlerRuntimeContract(before),
     deriveCrawlerRuntimeContract(after),
+  );
+});
+
+test("inactive runtime v1 candidates do not alter the active runtime digest", () => {
+  const source = entry("apps/crawler/src/cli.py", "a".repeat(40));
+  const workflow = entry(
+    ".github/workflows/deploy-crawler-browser.yml",
+    "b".repeat(40),
+  );
+  const baseline = deriveCrawlerRuntimeContract([source, workflow]);
+
+  assert.equal(
+    baseline,
+    deriveCrawlerRuntimeContract([
+      source,
+      workflow,
+      entry("apps/crawler/contracts/v1/runtime.proto", "c".repeat(40)),
+    ]),
+  );
+  assert.equal(
+    deriveCrawlerRuntimeContract([
+      source,
+      workflow,
+      entry("apps/crawler/contracts/v1/runtime.proto", "c".repeat(40)),
+    ]),
+    deriveCrawlerRuntimeContract([
+      source,
+      workflow,
+      entry("apps/crawler/contracts/v1/runtime.proto", "d".repeat(40)),
+      entry("apps/crawler/contracts/v1/new.proto", "e".repeat(40)),
+    ]),
+  );
+});
+
+test("mixed, other-version, and cross-boundary changes alter the runtime digest", () => {
+  const source = entry("apps/crawler/src/contract.py", "a".repeat(40));
+  const workflow = entry(
+    ".github/workflows/deploy-crawler-browser.yml",
+    "b".repeat(40),
+  );
+  const candidate = entry(
+    "apps/crawler/contracts/v1/runtime.proto",
+    "c".repeat(40),
+  );
+  const baseline = deriveCrawlerRuntimeContract([source, workflow, candidate]);
+
+  assert.notEqual(
+    baseline,
+    deriveCrawlerRuntimeContract([
+      workflow,
+      entry("apps/crawler/contracts/v1/contract.py", "a".repeat(40)),
+      candidate,
+    ]),
+  );
+  assert.notEqual(
+    baseline,
+    deriveCrawlerRuntimeContract([
+      source,
+      workflow,
+      candidate,
+      entry("apps/crawler/src/new.py", "d".repeat(40)),
+    ]),
+  );
+  assert.notEqual(
+    baseline,
+    deriveCrawlerRuntimeContract([
+      source,
+      workflow,
+      candidate,
+      entry("apps/crawler/contracts/v2/runtime.proto", "e".repeat(40)),
+    ]),
   );
 });
 
@@ -252,6 +333,50 @@ test("runtime attestation lists only the immutable first-parent runtime epoch", 
     writeFileSync(join(repo, "apps/crawler/src/cli.py"), "print('new')\n");
     execFileSync("git", ["-C", repo, "add", "."]);
     execFileSync("git", ["-C", repo, "commit", "--quiet", "-m", "new runtime"]);
+    const changed = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
+    assert.deepEqual(
+      deriveCrawlerRuntimeAttestation(repo, changed).compatibleRevisions,
+      [changed],
+    );
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+});
+
+test("inactive runtime v1 commits remain in the rollback-compatible epoch", () => {
+  const repo = mkdtempSync(join(tmpdir(), "crawler-candidate-attestation-"));
+  try {
+    execFileSync("git", ["-C", repo, "init", "--quiet"]);
+    execFileSync("git", ["-C", repo, "config", "user.email", "test@example.com"]);
+    execFileSync("git", ["-C", repo, "config", "user.name", "Test"]);
+    mkdirSync(join(repo, "apps/crawler/src"), { recursive: true });
+    mkdirSync(join(repo, "apps/crawler/contracts/v1"), { recursive: true });
+    writeFileSync(join(repo, "apps/crawler/src/cli.py"), "print('runtime')\n");
+    execFileSync("git", ["-C", repo, "add", "."]);
+    execFileSync("git", ["-C", repo, "commit", "--quiet", "-m", "runtime"]);
+    const initial = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
+
+    writeFileSync(
+      join(repo, "apps/crawler/contracts/v1/runtime.proto"),
+      "syntax = \"proto3\";\n",
+    );
+    execFileSync("git", ["-C", repo, "add", "."]);
+    execFileSync("git", ["-C", repo, "commit", "--quiet", "-m", "candidate"]);
+    const candidate = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], {
+      encoding: "utf8",
+    }).trim();
+    assert.deepEqual(
+      deriveCrawlerRuntimeAttestation(repo, candidate).compatibleRevisions,
+      [candidate, initial],
+    );
+
+    writeFileSync(join(repo, "apps/crawler/src/cli.py"), "print('changed')\n");
+    execFileSync("git", ["-C", repo, "add", "."]);
+    execFileSync("git", ["-C", repo, "commit", "--quiet", "-m", "mixed"]);
     const changed = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], {
       encoding: "utf8",
     }).trim();

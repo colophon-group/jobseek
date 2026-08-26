@@ -71,6 +71,8 @@ const deployCrawlerWorkflow = readFileSync(
   ".github/workflows/deploy-crawler-browser.yml",
   "utf8",
 );
+const crawlerDockerfile = readFileSync("apps/crawler/Dockerfile", "utf8");
+const crawlerPyproject = readFileSync("apps/crawler/pyproject.toml", "utf8");
 const crawlerDeployScript = readFileSync("apps/crawler/deploy.sh", "utf8");
 const crawlerMaintenanceScript = readFileSync(
   "scripts/jobseek-maintenance.py",
@@ -539,6 +541,25 @@ test("manual PR classification exports the validated PR base context", () => {
   assert.match(result.outputs, /^base_ref=main$/m);
 });
 
+test("inactive runtime v1 candidates retain full code and crawler CI", () => {
+  const result = runClassifyPrPaths({
+    files: ["apps/crawler/contracts/v1/runtime.proto"],
+    baseRef: "main",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.outputs, /^code=true$/m);
+  assert.match(result.outputs, /^crawler_code=true$/m);
+  assert.match(result.outputs, /^codeql=true$/m);
+  assert.match(
+    workflow,
+    /crawler_code:\n\s+- 'apps\/crawler\/\*\*'/,
+  );
+  assert.doesNotMatch(
+    workflow,
+    /crawler_code:[\s\S]*?!apps\/crawler\/contracts\/v1\/\*\*/,
+  );
+});
+
 test("runtime taxonomies and contract derivation require crawler version gates", () => {
   for (const file of [
     "apps/crawler/data/industries.csv",
@@ -628,6 +649,29 @@ test("crawler deploys derive immutable versions for unchanged releases", () => {
     deployCrawlerWorkflow,
     /steps\.version\.outputs\.version/,
   );
+});
+
+test("crawler deployment excludes only inactive runtime v1 candidates", () => {
+  assert.match(
+    deployCrawlerWorkflow,
+    /- 'apps\/crawler\/\*\*'[\s\S]*?- '!apps\/crawler\/contracts\/v1\/\*\*'/,
+  );
+  assert.doesNotMatch(
+    deployCrawlerWorkflow,
+    /!apps\/crawler\/contracts\/v2\/\*\*/,
+  );
+  assert.match(deployCrawlerWorkflow, /#8046/);
+});
+
+test("inactive runtime v1 is absent from both crawler packaging boundaries", () => {
+  assert.match(crawlerDockerfile, /^COPY src\/ src\/$/m);
+  assert.match(crawlerDockerfile, /^COPY data\/ data\/$/m);
+  assert.doesNotMatch(crawlerDockerfile, /^COPY .*contracts/m);
+  assert.match(
+    crawlerPyproject,
+    /\[tool\.hatch\.build\.targets\.wheel\]\npackages = \["src"\]/,
+  );
+  assert.doesNotMatch(crawlerPyproject, /packages\s*=\s*\[[^\]]*contracts/);
 });
 
 test("web build jobs use one deterministic secretless environment", () => {
@@ -1651,6 +1695,100 @@ test("crawler deploy gate mirrors runtime deploy path exclusions", () => {
   assert.match(excluded.stdout, /does not trigger the crawler runtime deployment/);
   assert.doesNotMatch(excluded.calls, /issue list/);
   assert.equal(taxonomy.status, 1);
+});
+
+test("crawler deploy gate skips pure inactive-v1 diffs without querying holds", () => {
+  for (const files of [
+    ["apps/crawler/contracts/v1/runtime.proto"],
+    [
+      "apps/crawler/contracts/v1/old-name.proto",
+      "apps/crawler/contracts/v1/new-name.proto",
+    ],
+  ]) {
+    const result = runCrawlerDeployGate({
+      files,
+      holds: [
+        { number: 6632, title: "capacity", url: "https://example.test/6632" },
+      ],
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /does not trigger the crawler runtime deployment/);
+    assert.doesNotMatch(result.calls, /issue list/);
+  }
+});
+
+test("crawler deploy gate rejects an empty changed-path set", () => {
+  const result = runCrawlerDeployGate({ files: [] });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /returned no paths/);
+  assert.doesNotMatch(result.calls, /issue list/);
+});
+
+test("crawler deploy gate keeps candidate mixtures and renames strict", () => {
+  for (const files of [
+    [
+      "apps/crawler/contracts/v1/runtime.proto",
+      "apps/crawler/src/cli.py",
+    ],
+    [
+      "apps/crawler/contracts/v1/runtime.proto",
+      "apps/crawler/Dockerfile",
+    ],
+    [
+      "apps/crawler/src/old.py",
+      "apps/crawler/contracts/v1/old.py",
+    ],
+    [
+      "apps/crawler/contracts/v1/new.py",
+      "apps/crawler/src/new.py",
+    ],
+    [
+      "apps/crawler/contracts/v1/runtime.proto",
+      "apps/crawler/VERSION",
+    ],
+    ["apps/crawler/contracts/v2/runtime.proto"],
+  ]) {
+    const result = runCrawlerDeployGate({
+      files,
+      holds: [
+        { number: 6632, title: "capacity", url: "https://example.test/6632" },
+      ],
+    });
+    assert.equal(result.status, 1, `${files.join(", ")}: ${result.stderr}`);
+    assert.match(result.calls, /issue list.*deployment-hold:crawler/);
+  }
+});
+
+test("crawler deploy gate narrowly exempts the exact #8071 policy bridge", () => {
+  const policyFiles = [
+    ".github/scripts/check-crawler-deploy-gate.sh",
+    ".github/workflows/deploy-ats-inventory.yml",
+    ".github/workflows/deploy-crawler-browser.yml",
+    "apps/crawler/tests/test_ats_inventory_deployment.py",
+    "scripts/check-crawler-version.mjs",
+    "scripts/ci-workflow.test.mjs",
+    "scripts/crawler-runtime-contract.test.mjs",
+    "scripts/crawler-version.test.mjs",
+    "scripts/derive-crawler-runtime-contract.mjs",
+  ];
+  const exact = runCrawlerDeployGate({
+    files: policyFiles,
+    holds: [
+      { number: 6632, title: "capacity", url: "https://example.test/6632" },
+    ],
+  });
+  const mixed = runCrawlerDeployGate({
+    files: [...policyFiles, "apps/crawler/src/cli.py"],
+    holds: [
+      { number: 6632, title: "capacity", url: "https://example.test/6632" },
+    ],
+  });
+
+  assert.equal(exact.status, 0, exact.stderr);
+  assert.match(exact.stdout, /exact #8071 inactive-v1 policy bridge/);
+  assert.doesNotMatch(exact.calls, /issue list/);
+  assert.equal(mixed.status, 1, mixed.stderr);
+  assert.match(mixed.calls, /issue list.*deployment-hold:crawler/);
 });
 
 test("crawler deploy gate blocks a runtime file renamed into an excluded path", () => {

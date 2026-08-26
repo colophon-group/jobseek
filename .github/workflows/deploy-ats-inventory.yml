@@ -9,6 +9,8 @@ on:
       - 'deploy/systemd/jobseek-ats-inventory-network.service'
       - 'apps/crawler/src/ats_inventory/**'
       - 'apps/crawler/src/cli.py'
+      # Candidate-only until #8046 revokes the temporary #8071 boundary.
+      - '!apps/crawler/contracts/v1/**'
       - '.github/workflows/deploy-ats-inventory.yml'
   workflow_dispatch:
 
@@ -81,18 +83,48 @@ jobs:
               echo "ERROR: push before-SHA is invalid" >&2
               exit 1
             }
-            changed_paths="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")" || {
+            # --no-renames makes both old and new paths participate in the
+            # candidate-only boundary.
+            changed_paths="$(git diff --name-only --no-renames "$BEFORE_SHA" "$GITHUB_SHA")" || {
               echo "ERROR: could not classify the full push range" >&2
               exit 1
             }
-            crawler_changed=0
+            [[ -n "$changed_paths" ]] || {
+              echo "ERROR: full push range contains no changed paths" >&2
+              exit 1
+            }
+            inactive_v1_policy=1
+            inactive_v1_policy_count=0
             while IFS= read -r path; do
+              [[ -n "$path" ]] || continue
               case "$path" in
-                apps/crawler/data/*|apps/crawler/traces/*|apps/crawler/ws-package/*) ;;
-                apps/crawler/*.md) ;;
-                apps/crawler/*|.github/workflows/deploy-crawler-browser.yml) crawler_changed=1 ;;
+                .github/scripts/check-crawler-deploy-gate.sh | \
+                  .github/workflows/deploy-ats-inventory.yml | \
+                  .github/workflows/deploy-crawler-browser.yml | \
+                  apps/crawler/tests/test_ats_inventory_deployment.py | \
+                  scripts/check-crawler-version.mjs | \
+                  scripts/ci-workflow.test.mjs | \
+                  scripts/crawler-runtime-contract.test.mjs | \
+                  scripts/crawler-version.test.mjs | \
+                  scripts/derive-crawler-runtime-contract.mjs)
+                  ((inactive_v1_policy_count += 1))
+                  ;;
+                *)
+                  inactive_v1_policy=0
+                  ;;
               esac
-            done <<< "$changed_paths"
+            done < <(sort -u <<< "$changed_paths")
+            crawler_changed=0
+            if (( ! inactive_v1_policy || inactive_v1_policy_count != 9 )); then
+              while IFS= read -r path; do
+                case "$path" in
+                  apps/crawler/contracts/v1/*) ;;
+                  apps/crawler/data/*|apps/crawler/traces/*|apps/crawler/ws-package/*) ;;
+                  apps/crawler/*.md) ;;
+                  apps/crawler/*|.github/workflows/deploy-crawler-browser.yml) crawler_changed=1 ;;
+                esac
+              done <<< "$changed_paths"
+            fi
             if (( crawler_changed )); then
               version_output="$(mktemp)"
               node scripts/derive-crawler-build-version.mjs \
