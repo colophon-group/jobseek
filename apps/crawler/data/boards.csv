@@ -1414,6 +1414,8 @@ commonroom,commonroom-ashby,https://jobs.ashbyhq.com/commonroom,ashby,"{""token"
 commonwealth-bank,commonwealth-bank-careers,https://cba.wd3.myworkdayjobs.com/CommBank_Careers,workday,,workday,
 commonwealth-bank,commonwealth-bank-careers-bankwest,https://cba.wd3.myworkdayjobs.com/Bankwest_Careers,workday,,workday,
 commonwealth-bank,commonwealth-bank-careers-x15,https://cba.wd3.myworkdayjobs.com/x15_Careers,workday,,workday,
+community-health-systems,community-health-systems-careers,https://fa-evxo-saasfaprod1.fa.ocs.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1,oracle_hcm,"{""total_count_tolerance"": 2}",oracle_hcm,"{""enrich"": [""description""]}"
+community-health-systems,community-health-systems-careers-physicians,https://chsmedcareers.com/jobs,sitemap,"{""sitemap_url"": ""https://chsmedcareers.com/sitemap.xml"", ""url_filter"": ""/jobs/""}",json-ld,
 commvault,commvault-greenhouse,https://job-boards.greenhouse.io/commvault,greenhouse,"{""token"": ""commvault""}",skip,
 comparis,comparis-careers,https://comparis-ch.jobs.personio.de,personio,"{""slug"": ""comparis-ch"", ""language"": ""en""}",skip,
 compass-group,compass-group-belgium,https://careers.compass-group.be/jobs,rss,"{""preset"": ""teamtailor"", ""feed_url"": ""https://careers.compass-group.be/jobs.rss""}",skip,
