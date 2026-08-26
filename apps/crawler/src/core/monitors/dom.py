@@ -718,6 +718,16 @@ _LUCCA_RICH_ROWS = {
 _LUCCA_EMPTY_SELECTOR = ".jobBoard-offers-empty"
 _LUCCA_EMPTY_TEXT = "There are no job vacancies at the moment."
 
+_CAMBRIDGE_CONSULTANTS_HOST = "www.cambridgeconsultants.com"
+_CAMBRIDGE_CONSULTANTS_RICH_ROWS = {
+    "row_selector": ".irongforce-job-listing",
+    "link_selector": ".irongforce-job-title a[href]",
+    "location_selectors": [
+        ".irongforce-job-info .irongforce-info-item:first-child",
+    ],
+    "location_prefixes": ["Location:"],
+}
+
 _PROSPECTIVE_CAREERCENTER_ASSET_RE = re.compile(
     r"/careercenter/(?P<medium_id>\d+)/assets/",
     re.IGNORECASE,
@@ -952,6 +962,65 @@ def _lucca_probe_config(html: str, url: str) -> dict | None:
         "rich_rows": rich_rows,
         "empty_selector": _LUCCA_EMPTY_SELECTOR,
         "empty_text": _LUCCA_EMPTY_TEXT,
+    }
+
+
+def _cambridge_consultants_probe_config(html: str, url: str) -> dict | None:
+    """Return strict rich rows for Cambridge Consultants' first-party board.
+
+    The provider-backed WordPress listing publishes authoritative title and
+    location data in each static card, while its detail pages omit locations.
+    The visible location value shares a node with a ``Location:`` label, so
+    the generic rich-row prefix normalizer keeps the emitted place clean.
+    """
+
+    try:
+        parsed = urlsplit(url)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or (parsed.hostname or "").casefold() != _CAMBRIDGE_CONSULTANTS_HOST
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in {None, 443}
+        or parsed.path.rstrip("/") != "/careers"
+        or parsed.query
+        or parsed.fragment
+    ):
+        return None
+
+    tree = LexborHTMLParser(html)
+    if tree.css_first(".irongforce-job-listings.cambridgeconsultantslimited") is None:
+        return None
+
+    origin = f"https://{parsed.netloc}"
+    url_filter = (
+        rf"^{re.escape(origin)}/jobs/cambridgeconsultantslimited/"
+        r"[^/?#]+/?(?:\?gh_jid=\d+)?$"
+    )
+    rich_rows = {
+        key: list(value) if isinstance(value, list) else value
+        for key, value in _CAMBRIDGE_CONSULTANTS_RICH_ROWS.items()
+    }
+    try:
+        validated = _validated_rich_rows(rich_rows)
+        if validated is None:
+            return None
+        jobs = _extract_rich_rows_static(
+            html,
+            url,
+            validated,
+            re.compile(url_filter, re.IGNORECASE),
+        )
+    except ValueError:
+        return None
+    return {
+        "cambridge_consultants_board": True,
+        "urls": len(jobs),
+        "url_filter": url_filter,
+        "rich_rows": rich_rows,
     }
 
 
@@ -1895,6 +1964,7 @@ _RichRowsConfig = tuple[
     str | None,
     str | None,
     tuple[str, ...],
+    tuple[str, ...],
     tuple[tuple[str, str], ...],
     bool,
     tuple[str, str | None] | None,
@@ -1968,6 +2038,7 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         "title_selector",
         "total_selector",
         "location_selectors",
+        "location_prefixes",
         "metadata_selectors",
         "allow_missing_locations",
         "section_start",
@@ -2012,6 +2083,23 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         _validate_css_selector(selector, name="rich_rows.location_selectors") or ""
         for selector in locations
     )
+    prefixes = value.get("location_prefixes")
+    if prefixes is None:
+        prefixes = [""] * len(location_selectors)
+    if (
+        not isinstance(prefixes, list)
+        or len(prefixes) != len(location_selectors)
+        or not all(
+            isinstance(prefix, str)
+            and len(prefix) <= 64
+            and "\x00" not in prefix
+            for prefix in prefixes
+        )
+    ):
+        raise ValueError(
+            "DOM monitor rich_rows.location_prefixes must match location_selectors"
+        )
+    location_prefixes = tuple(prefix.strip() for prefix in prefixes)
     metadata = value.get("metadata_selectors")
     if metadata is None:
         metadata = {}
@@ -2098,6 +2186,7 @@ def _validated_rich_rows(value: object) -> _RichRowsConfig | None:
         title_selector,
         total_selector,
         location_selectors,
+        location_prefixes,
         metadata_selectors,
         allow_missing_locations,
         section_start,
@@ -2162,6 +2251,7 @@ def _extract_rich_rows_static(
         title_selector,
         total_selector,
         location_selectors,
+        location_prefixes,
         metadata_selectors,
         allow_missing_locations,
         section_start,
@@ -2227,9 +2317,16 @@ def _extract_rich_rows_static(
                 )
 
         location_parts: list[str] = []
-        for selector in location_selectors:
+        for selector, prefix in zip(location_selectors, location_prefixes, strict=True):
             node = row.css_first(selector)
             value = node.text(separator=" ", strip=True).strip() if node is not None else ""
+            if value and prefix:
+                if not value.casefold().startswith(prefix.casefold()):
+                    raise ValueError(
+                        f"DOM monitor rich_rows row {index} location did not start "
+                        f"with configured prefix {prefix!r}"
+                    )
+                value = value[len(prefix) :].strip()
             if not value and not allow_missing_locations:
                 raise ValueError(
                     f"DOM monitor rich_rows row {index} omitted configured location data"
@@ -3088,6 +3185,10 @@ async def can_handle(url: str, client: httpx.AsyncClient, pw=None) -> dict | Non
     lucca = _lucca_probe_config(html, url)
     if lucca is not None:
         return lucca
+
+    cambridge_consultants = _cambridge_consultants_probe_config(html, url)
+    if cambridge_consultants is not None:
+        return cambridge_consultants
 
     prospective = _prospective_probe_config(html, url)
     if prospective is not None:

@@ -656,6 +656,27 @@ def auto_scraper_type(
                 ],
             },
         )
+    if monitor_type == "dom" and (config or {}).get("cambridge_consultants_board"):
+        return (
+            "dom",
+            {
+                "enrich": ["description"],
+                "scope": ".job-container",
+                "steps": [
+                    {
+                        "tag": "h1",
+                        "attr": "class=job-title",
+                        "field": "title",
+                    },
+                    {
+                        "tag": "h2",
+                        "field": "description",
+                        "html": True,
+                        "to_end": True,
+                    },
+                ],
+            },
+        )
     if monitor_type == "dom" and (config or {}).get("prospective_board"):
         return (
             "dom",

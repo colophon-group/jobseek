@@ -1645,6 +1645,8 @@ dom — Link or Static Listing-Row Extraction (fallback)
                    {"row_selector": ".job", "link_selector": ".job-title a",
                     "location_selectors": [".job-location", ".job-country"],
                     "total_selector": ".jobs-total .total"}
+                   ``location_prefixes`` optionally strips one exact visible label
+                   per location selector (for example ["Location:", "Country:"]).
                    When the row itself is the job anchor, omit link_selector:
                    {"row_selector": "a.job[href]", "title_selector": ".title",
                     "location_selectors": [".location"]}.

@@ -174,6 +174,41 @@ class TestDomScraper:
             with pytest.raises(ValueError, match="exactly once"):
                 await scrape("https://blocked.example/jobs/42", config, client)
 
+    def test_cambridge_consultants_auto_preset_scopes_complete_description(self):
+        from src.core.scrapers.dom import parse_html
+        from src.workspace._compat import auto_scraper_type
+
+        html = """
+        <html><body>
+          <div class="job-container">
+            <p><a href="/careers">Back to job listings</a></p>
+            <h1 class="job-title">Platform Engineer</h1>
+            <div class="job-content">
+              <h2>About the role</h2>
+              <p>Build reliable distributed platforms for client products.</p>
+              <h2>What we ask of you</h2>
+              <ul><li>Experience operating production services.</li></ul>
+            </div>
+          </div>
+          <div class="job-application">Apply form chrome</div>
+          <footer>Newsletter and cookie settings</footer>
+        </body></html>
+        """
+        auto = auto_scraper_type("dom", {"cambridge_consultants_board": True})
+        assert auto is not None
+        scraper_type, config = auto
+
+        assert scraper_type == "dom"
+        assert config is not None
+        result = parse_html(html, config)
+        assert result.title == "Platform Engineer"
+        assert result.description is not None
+        assert "Build reliable distributed platforms" in result.description
+        assert "Experience operating production services" in result.description
+        assert "Back to job listings" not in result.description
+        assert "Apply form chrome" not in result.description
+        assert "Newsletter and cookie settings" not in result.description
+
     def test_prospective_detail_preset_extracts_complete_scoped_description(self):
         from src.core.scrapers.dom import parse_html
         from src.workspace._compat import auto_scraper_type
