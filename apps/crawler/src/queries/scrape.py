@@ -64,10 +64,16 @@ def _build_skip_no_scrape_predicate(board_alias: str = "jb") -> str:
                     OR (
                          {board_alias}.crawler_type IN ('api_sniffer', 'nextdata')
                          AND {board_alias}.metadata ? 'fields'
-                     )
+                    )
                     OR (
                          {board_alias}.crawler_type = 'smartrecruiters'
-                         AND {board_alias}.metadata ? 'canonical_job_id_url_template'
+                         AND jsonb_typeof(
+                             {board_alias}.metadata->'canonical_job_id_url_template'
+                         ) = 'string'
+                         AND COALESCE(
+                             {board_alias}.metadata->>'canonical_job_id_url_template',
+                             ''
+                         ) <> ''
                      )
                  )
              )
