@@ -56,7 +56,8 @@ class _UrlTransformCollisionConfig:
 
     preferred_source_patterns: tuple[re.Pattern[str], ...]
     canonical_identity_pattern: re.Pattern[str]
-    identity_metadata_key: str
+    identity_metadata_key: str | None
+    source_identity_pattern: re.Pattern[str] | None
     stream_buffer_limit: int
 
 
@@ -72,6 +73,12 @@ def _url_transform_collision_config(
         return None
     if policy != "prefer_source_pattern":
         raise ValueError("url_transform.collision_policy must be 'prefer_source_pattern'")
+
+    # A collision policy applies to the complete transform, including an
+    # ordered ``steps`` pipeline. Validate the rewrite itself before discovery
+    # starts so an identity-sensitive board cannot buffer rich jobs and then
+    # fail open to their untransformed source URLs.
+    _compile_url_transforms(transform)
 
     raw_patterns = transform.get("collision_preferred_source_patterns")
     if (
@@ -114,7 +121,12 @@ def _url_transform_collision_config(
         )
 
     identity_metadata_key = transform.get("collision_identity_metadata_key")
-    if (
+    raw_source_identity_pattern = transform.get("collision_source_identity_regex")
+    if (identity_metadata_key is None) == (raw_source_identity_pattern is None):
+        raise ValueError(
+            "url_transform collision identity requires exactly one metadata key or source regex"
+        )
+    if identity_metadata_key is not None and (
         not isinstance(identity_metadata_key, str)
         or not identity_metadata_key
         or len(identity_metadata_key) > 128
@@ -122,6 +134,27 @@ def _url_transform_collision_config(
         raise ValueError(
             "url_transform.collision_identity_metadata_key must be non-empty bounded text"
         )
+    source_identity_pattern: re.Pattern[str] | None = None
+    if raw_source_identity_pattern is not None:
+        if (
+            not isinstance(raw_source_identity_pattern, str)
+            or not raw_source_identity_pattern
+            or len(raw_source_identity_pattern) > 2_048
+        ):
+            raise ValueError(
+                "url_transform.collision_source_identity_regex must be a non-empty bounded regex"
+            )
+        try:
+            source_identity_pattern = re.compile(raw_source_identity_pattern)
+        except re.error as exc:
+            raise ValueError(
+                f"url_transform collision source identity regex is invalid: {exc}"
+            ) from exc
+        if source_identity_pattern.groups != 1:
+            raise ValueError(
+                "url_transform.collision_source_identity_regex must contain "
+                "exactly one capture group"
+            )
     stream_buffer_limit = transform.get("collision_stream_buffer_limit")
     if (
         not isinstance(stream_buffer_limit, int)
@@ -135,8 +168,42 @@ def _url_transform_collision_config(
         preferred_source_patterns=preferred_patterns,
         canonical_identity_pattern=identity_pattern,
         identity_metadata_key=identity_metadata_key,
+        source_identity_pattern=source_identity_pattern,
         stream_buffer_limit=stream_buffer_limit,
     )
+
+
+def _compile_url_transforms(raw_transform: object) -> list[tuple[re.Pattern[str], str]]:
+    """Compile one URL rewrite or a bounded ordered rewrite pipeline.
+
+    Existing ``{find, replace}`` mappings and bare lists remain supported. A
+    mapping with ``steps`` is the policy-bearing pipeline form: collision
+    selection belongs to the whole pipeline rather than to an arbitrary step.
+    """
+    if isinstance(raw_transform, dict) and "steps" in raw_transform:
+        if "find" in raw_transform or "replace" in raw_transform:
+            raise ValueError("url_transform cannot combine steps with find/replace")
+        transforms = raw_transform.get("steps")
+    elif isinstance(raw_transform, list):
+        transforms = raw_transform
+    else:
+        transforms = [raw_transform]
+
+    if not isinstance(transforms, list) or not 1 <= len(transforms) <= 32:
+        raise ValueError("url_transform steps must be a non-empty bounded list")
+
+    compiled: list[tuple[re.Pattern[str], str]] = []
+    for transform in transforms:
+        if not isinstance(transform, dict):
+            raise ValueError("url_transform entries must be objects")
+        find = transform.get("find", "")
+        replace = transform.get("replace", "")
+        if not isinstance(find, str) or not find or len(find) > 2_048:
+            raise ValueError("url_transform find must be a non-empty bounded regex string")
+        if not isinstance(replace, str) or len(replace) > 2_048:
+            raise ValueError("url_transform replace must be a bounded string")
+        compiled.append((re.compile(find), replace))
+    return compiled
 
 
 def _collision_source_rank(
@@ -157,20 +224,25 @@ def _collision_source_rank(
 
 def _validate_collision_identity(
     job: DiscoveredJob,
+    source_url: str,
     canonical_url: str,
     collision: _UrlTransformCollisionConfig,
 ) -> None:
-    """Require rich provider metadata to authenticate the transformed identity."""
+    """Require a rich provider identity to authenticate the transformed URL."""
     match = collision.canonical_identity_pattern.fullmatch(canonical_url)
-    metadata_identity = (
-        job.metadata.get(collision.identity_metadata_key)
-        if isinstance(job.metadata, dict)
-        else None
-    )
+    if collision.source_identity_pattern is not None:
+        source_match = collision.source_identity_pattern.fullmatch(source_url)
+        provider_identity = source_match.group(1) if source_match is not None else None
+    else:
+        provider_identity = (
+            job.metadata.get(collision.identity_metadata_key)
+            if isinstance(job.metadata, dict) and collision.identity_metadata_key is not None
+            else None
+        )
     if (
         match is None
-        or not isinstance(metadata_identity, str)
-        or metadata_identity != match.group(1)
+        or not isinstance(provider_identity, str)
+        or provider_identity != match.group(1)
     ):
         raise ValueError("url_transform collision provider identity does not match canonical URL")
 
@@ -374,23 +446,12 @@ def _apply_url_transform(result: MonitorResult, config: dict) -> MonitorResult:
     if not raw_transform:
         return result
 
-    transforms = raw_transform if isinstance(raw_transform, list) else [raw_transform]
-    compiled: list[tuple[re.Pattern[str], str]] = []
+    collision = _url_transform_collision_config(config)
     try:
-        for transform in transforms:
-            if not isinstance(transform, dict):
-                raise ValueError("url_transform entries must be objects")
-            find = transform.get("find", "")
-            replace = transform.get("replace", "")
-            if not isinstance(find, str) or not find:
-                raise ValueError("url_transform find must be a non-empty regex string")
-            if not isinstance(replace, str):
-                raise ValueError("url_transform replace must be a string")
-            compiled.append((re.compile(find), replace))
+        compiled = _compile_url_transforms(raw_transform)
     except (ValueError, re.error) as exc:
         structlog.get_logger().warning("monitor.url_transform_invalid", error=str(exc))
         return result
-    collision = _url_transform_collision_config(config)
 
     new_urls: set[str] = set()
     url_map: dict[str, str] = {}  # old -> new
@@ -417,7 +478,7 @@ def _apply_url_transform(result: MonitorResult, config: dict) -> MonitorResult:
             for old_url in sorted(result.jobs_by_url):
                 job = result.jobs_by_url[old_url]
                 new_url = url_map.get(old_url, old_url)
-                _validate_collision_identity(job, new_url, collision)
+                _validate_collision_identity(job, old_url, new_url, collision)
                 rank = _collision_source_rank(old_url, collision)
                 existing = selected.get(new_url)
                 if existing is None or rank < existing[0]:

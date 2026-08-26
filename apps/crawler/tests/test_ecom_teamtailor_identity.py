@@ -20,6 +20,7 @@ from src.core.monitor import (
     _apply_url_transform,
     monitor_one,
 )
+from src.core.monitors import DiscoveredJob
 from src.ecom_teamtailor_cutover import (
     _migration_sql,
     apply_ecom_teamtailor_cutover,
@@ -168,6 +169,94 @@ def test_ecom_locale_and_title_variants_collapse_without_changing_regional_host(
 
     assert transformed.urls == {"https://ecomeurope.teamtailor.com/jobs/7769137"}
     assert transformed.security_filtered_count == 0
+
+
+async def test_ecom_rich_locale_alias_selection_is_stable_across_feed_order() -> None:
+    row, metadata = _board()
+    variants = [
+        (
+            "German title",
+            "https://ecomeurope.teamtailor.com/de/jobs/7769137-deutscher-titel",
+        ),
+        (
+            "French title",
+            "https://ecomeurope.teamtailor.com/fr/jobs/7769137-titre-francais",
+        ),
+        (
+            "Italian title",
+            "https://ecomeurope.teamtailor.com/it/jobs/7769137-titolo-italiano",
+        ),
+        (
+            "Old English title",
+            "https://careerseurope.ecomtrading.com/en/jobs/7769137-old-title",
+        ),
+        (
+            "Current English title",
+            "https://ecomeurope.teamtailor.com/en/jobs/7769137-current-title",
+        ),
+    ]
+
+    async def dispatch(items: list[tuple[str, str]]) -> MonitorResult:
+        feed = (
+            "<?xml version='1.0'?><rss><channel>"
+            + "".join(
+                "<item>"
+                f"<title>{title}</title>"
+                f"<description>{title} body</description>"
+                f"<link>{url}</link>"
+                f"<guid>guid-{title.split()[0].lower()}</guid>"
+                "</item>"
+                for title, url in items
+            )
+            + "</channel></rss>"
+        )
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.url.path == "/jobs.rss"
+            return httpx.Response(200, text=feed)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await monitor_one(
+                row["board_url"],
+                row["monitor_type"],
+                metadata,
+                client,
+            )
+
+    forward = await dispatch(variants)
+    reverse = await dispatch(list(reversed(variants)))
+
+    assert forward == reverse
+    assert forward.urls == {"https://ecomeurope.teamtailor.com/jobs/7769137"}
+    assert forward.jobs_by_url is not None
+    selected = forward.jobs_by_url["https://ecomeurope.teamtailor.com/jobs/7769137"]
+    assert selected.title == "Current English title"
+    assert selected.description == "Current English title body"
+    assert selected.metadata == {"id": "guid-current"}
+
+
+def test_ecom_rich_collision_rejects_mismatched_provider_identity() -> None:
+    _, metadata = _board()
+    tampered_metadata = json.loads(json.dumps(metadata))
+    tampered_metadata["url_transform"]["steps"][1]["replace"] = (
+        "https://ecomeurope.teamtailor.com/jobs/9999999"
+    )
+    source_url = "https://ecomeurope.teamtailor.com/en/jobs/7769137-current-title"
+    result = MonitorResult(
+        urls={source_url},
+        jobs_by_url={
+            source_url: DiscoveredJob(
+                url=source_url,
+                title="Injected identity",
+            )
+        },
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="provider identity does not match canonical URL",
+    ):
+        _apply_url_transform(result, tampered_metadata)
 
 
 def test_ecom_global_host_is_rejected_instead_of_creating_404_identities() -> None:

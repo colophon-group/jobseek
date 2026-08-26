@@ -22,7 +22,7 @@ WHERE company.slug = 'ecom-agroindustrial'
 """
 _MIGRATION_ID = "ecom-teamtailor-stable-id-v1"
 _MIGRATION_VERSION = 1
-_CONFIG_FINGERPRINT = "f8b18c8f6ec72fe6fd48e29e6aaca9666f3742d5baec41b191dc07c961adeb52"
+_CONFIG_FINGERPRINT = "3bed2708932dbf6324197581425ecb0347f00f06290c1e45ab7145836a7ee67f"
 _MAX_ROWS = 100
 
 
