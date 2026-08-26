@@ -2049,9 +2049,11 @@ docker run --rm \
   "$CRAWLER_IMAGE_REF" \
   uv run --no-sync alembic -c src/migrations/alembic.ini upgrade head
 
-# ── Patch Typesense schema (idempotent — adds new fields if missing) ─
-# Must run BEFORE `crawler sync`, otherwise the next sync would upsert
-# docs containing fields that the live schema doesn't know about.
+# ── Patch Typesense schema (idempotent — adds fields / repairs indexes) ─
+# Must run BEFORE `crawler sync`, otherwise the next sync would upsert docs
+# containing fields that the live schema doesn't know about. Existing-field
+# index alters are synchronous and may scan the full collection, so all writers
+# stay quiesced until setup completes; Typesense continues serving reads.
 docker run --rm \
   -e TYPESENSE_HOST \
   -e TYPESENSE_PORT \

@@ -6,9 +6,9 @@ Single source of truth for the collection definitions. Used by:
 - ``scripts/typesense-setup.py`` (operator-facing wrapper)
 
 The ``setup_collections`` function is idempotent: it creates missing
-collections + aliases, and PATCHes existing collections to add any
-fields that are present in the schema but absent on the live cluster.
-Field removals are intentionally manual to avoid accidental data loss.
+collections + aliases, PATCHes missing fields, and repairs ``index`` drift on
+existing fields. Other field removals are intentionally manual to avoid
+accidental data loss.
 """
 
 from __future__ import annotations
@@ -23,12 +23,21 @@ from typesense.exceptions import ObjectAlreadyExists, ObjectNotFound, ObjectUnpr
 
 log = structlog.get_logger()
 
-_SETUP_CONNECTION_TIMEOUT_SECONDS = 120
+_SETUP_CONNECTION_TIMEOUT_SECONDS = 3600
 _SCHEMA_CHANGE_ENDPOINT = "/operations/schema_changes"
-_SCHEMA_ALTER_DEADLINE_SECONDS = 300.0
+# A 3.7M-document field rebuild can legitimately take much longer than an
+# ordinary API call on the fixed 2-vCPU production node. Keep the HTTP request
+# alive to avoid replaying a synchronous PATCH, and bound the complete series
+# of one-field alters to two hours.
+_SCHEMA_ALTER_DEADLINE_SECONDS = 7200.0
 _SCHEMA_ALTER_POLL_INTERVAL_SECONDS = 5.0
 _SCHEMA_ALTER_RETRY_INITIAL_SECONDS = 2.0
 _SCHEMA_ALTER_RETRY_MAX_SECONDS = 30.0
+_MEMORY_METRIC_KEYS = (
+    "typesense_memory_allocated_bytes",
+    "typesense_memory_active_bytes",
+    "typesense_memory_resident_bytes",
+)
 
 if TYPE_CHECKING:
     import typesense
@@ -75,9 +84,24 @@ COLLECTIONS: list[dict] = [
             {"name": "location_names", "type": "string[]", "facet": True},
             {"name": "location_types", "type": "string[]", "facet": True},
             {"name": "location_geo_types", "type": "string[]", "index": False},
-            {"name": "occupation_id", "type": "int32", "facet": True, "optional": True},
+            # The leaf occupation scalar and its display name remain stored for
+            # exporter/reconciliation compatibility, but every production web
+            # filter and facet uses the ancestor-expanded ``occupation_ids``.
+            # Keeping these two fields out of the in-memory index reduces the
+            # collection footprint without changing returned documents.
+            {
+                "name": "occupation_id",
+                "type": "int32",
+                "index": False,
+                "optional": True,
+            },
             {"name": "occupation_ids", "type": "int32[]", "facet": True, "optional": True},
-            {"name": "occupation_name", "type": "string", "facet": True, "optional": True},
+            {
+                "name": "occupation_name",
+                "type": "string",
+                "index": False,
+                "optional": True,
+            },
             {"name": "seniority_id", "type": "int32", "facet": True, "optional": True},
             {"name": "seniority_name", "type": "string", "facet": True, "optional": True},
             {"name": "technology_ids", "type": "int32[]", "facet": True},
@@ -113,7 +137,15 @@ COLLECTIONS: list[dict] = [
             {"name": "locales", "type": "string[]", "facet": True},
             {"name": "source_url", "type": "string", "index": False, "optional": True},
             {"name": "first_seen_at", "type": "int64"},
-            {"name": "last_seen_at", "type": "int64", "optional": True},
+            # Emitted for compatibility and diagnostics, but no search, filter,
+            # facet, sort, web response, or reconciliation path consumes it.
+            # The value remains stored on disk and returned on direct retrieval.
+            {
+                "name": "last_seen_at",
+                "type": "int64",
+                "index": False,
+                "optional": True,
+            },
         ],
         "default_sorting_field": "first_seen_at",
         "token_separators": ["-", "/"],
@@ -301,6 +333,30 @@ def _drop_alias(client: typesense.Client, name: str) -> None:
         pass
 
 
+def _memory_metrics_snapshot(client: typesense.Client) -> dict[str, int] | None:
+    """Return allocator evidence when the scoped operations key permits it."""
+
+    metrics_resource = getattr(client, "metrics", None)
+    retrieve = getattr(metrics_resource, "retrieve", None)
+    if retrieve is None:
+        return None
+    try:
+        metrics = retrieve()
+    except Exception as exc:
+        log.warning(
+            "typesense.setup.metrics_error",
+            error=str(exc),
+        )
+        return None
+
+    snapshot: dict[str, int] = {}
+    for key in _MEMORY_METRIC_KEYS:
+        value = metrics.get(key)
+        if value is not None:
+            snapshot[key] = int(value)
+    return snapshot or None
+
+
 # Default values Typesense applies when a field-shape attribute is omitted
 # from the create-collection / patch payload. Used by ``_index_drift`` to
 # compare a sparsely-specified desired schema (e.g. just `{"name": "slug",
@@ -367,11 +423,11 @@ def _warn_field_drift(
 
 def _fields_patch_payload(
     live_fields: list[dict], desired_fields: list[dict]
-) -> tuple[list[dict], list[str], list[str]]:
+) -> tuple[list[dict], list[str], list[str], bool]:
     live_by_name = {f["name"]: f for f in live_fields}
-    payload_fields: list[dict] = []
+    missing_fields: list[dict] = []
+    rebuild_fields: list[dict] = []
     added_names: list[str] = []
-    rebuilt_names: list[str] = []
 
     for desired in desired_fields:
         name = desired["name"]
@@ -379,18 +435,30 @@ def _fields_patch_payload(
             continue
         field_live = live_by_name.get(name)
         if field_live is None:
-            payload_fields.append(desired)
+            missing_fields.append(desired)
             added_names.append(name)
             continue
         # Field exists; check if `index` flipped. The live response always
         # carries `index` explicitly, but compare via _index_drift so a future
         # variant where Typesense omits it stays correct.
         if _index_drift(field_live, desired):
-            payload_fields.append({"name": name, "drop": True})
-            payload_fields.append(desired)
-            rebuilt_names.append(name)
+            rebuild_fields.append(desired)
 
-    return payload_fields, added_names, rebuilt_names
+    # Typesense 27.1 schema alters are synchronous, block writes, and can scan
+    # every document. Rebuild at most one existing field per PATCH so a large
+    # collection sheds memory monotonically and each operation has a bounded
+    # blast radius. Missing fields can still be added alongside that operation;
+    # unlike rebuilds, they have no old in-memory index to duplicate or drop.
+    selected_rebuilds = rebuild_fields[:1]
+    payload_fields: list[dict] = []
+    for desired in selected_rebuilds:
+        payload_fields.append({"name": desired["name"], "drop": True})
+        payload_fields.append(desired)
+    payload_fields.extend(missing_fields)
+    selected_names = [field["name"] for field in selected_rebuilds]
+    has_deferred_rebuilds = len(rebuild_fields) > len(selected_rebuilds)
+
+    return payload_fields, added_names, selected_names, has_deferred_rebuilds
 
 
 def _is_schema_alter_in_progress(exc: ObjectUnprocessable) -> bool:
@@ -497,10 +565,10 @@ def _patch_missing_fields(
     that requires a backfill the patcher can't perform. ``index`` drift IS
     auto-repaired here via a single-PATCH drop + re-add pair (Typesense's
     documented mechanism for "any modifications to an existing field"). The
-    re-added field has no documents indexed under it until the next
-    exporter / sync pass repopulates them — fine for the company-detail
-    use-case (#2931) since data lives in Postgres and the next ``crawler
-    sync`` rewrites these docs anyway.
+    Typesense retains field values in the stored documents when a schema field
+    is dropped, then synchronously re-indexes them under the re-added shape.
+    This lets an ``index: true`` -> ``index: false`` optimization preserve
+    response payloads without a full document backfill.
 
     ``facet``/``sort``/``optional`` drift is still out of scope. ``id`` is
     skipped throughout — Typesense rejects any PATCH touching it.
@@ -519,7 +587,7 @@ def _patch_missing_fields(
         # any PATCH that touches ``id`` with a 400 ``cannot be altered``.
         live_fields = live.get("fields", [])
         _warn_field_drift(collection_name, live_fields, desired_fields)
-        payload_fields, added_names, rebuilt_names = _fields_patch_payload(
+        payload_fields, added_names, rebuilt_names, has_deferred_rebuilds = _fields_patch_payload(
             live_fields, desired_fields
         )
 
@@ -532,9 +600,12 @@ def _patch_missing_fields(
             collection=collection_name,
             added=added_names,
             rebuilt=rebuilt_names,
+            deferred_rebuilds=has_deferred_rebuilds,
         )
         try:
             client.collections[collection_name].update({"fields": payload_fields})
+            if has_deferred_rebuilds:
+                continue
             return
         except ObjectUnprocessable as exc:
             if not _is_schema_alter_in_progress(exc):
@@ -680,6 +751,10 @@ def run_setup(*, force: bool = False) -> None:
             ],
             "api_key": settings.typesense_operations_key,
             "connection_timeout_seconds": _SETUP_CONNECTION_TIMEOUT_SECONDS,
+            # A schema PATCH is synchronous and not safe for the generic
+            # client's automatic replay after a response timeout. Let the
+            # state-aware patcher inspect the live schema before any retry.
+            "num_retries": 0,
         }
     )
 
@@ -701,5 +776,18 @@ def run_setup(*, force: bool = False) -> None:
         )
         sys.exit(1)
 
+    memory_before = _memory_metrics_snapshot(client)
     setup_collections(client, force=force)
+    memory_after = _memory_metrics_snapshot(client)
+    if memory_before is not None and memory_after is not None:
+        log.info(
+            "typesense.setup.memory_delta",
+            before=memory_before,
+            after=memory_after,
+            delta={
+                key: memory_after.get(key, 0) - memory_before.get(key, 0)
+                for key in _MEMORY_METRIC_KEYS
+                if key in memory_before or key in memory_after
+            },
+        )
     log.info("typesense.setup.done")

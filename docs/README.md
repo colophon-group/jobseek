@@ -50,6 +50,9 @@ Status tags:
   schemas, aliases, indexing, web read paths, and reconciliation.
 - [12 - Typesense Benchmarks](12-typesense-benchmarks.md) `[reference]` -
   measured Typesense query performance.
+- [Typesense Footprint Investigation (2026-08-26)](typesense-footprint-investigation-2026-08-26.md)
+  `[investigation]` - issue #8033 production baseline, complete field-consumer
+  matrix, isolated schema lab, and evidence-backed optimization trajectories.
 - [13 - SEO and IndexNow](13-seo-and-indexnow.md) `[reference]` - company page
   indexing policy, active IndexNow paths, and current observability limits.
 

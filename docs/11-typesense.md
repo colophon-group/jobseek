@@ -164,7 +164,8 @@ Both are idempotent. On every run, the setup logic:
 
 1. Creates any missing collection + alias (initial setup).
 2. PATCHes existing collections to add fields that appear in `COLLECTIONS` but not on the live cluster -- via `client.collections[name].update({"fields": [...]})` against Typesense's alter API. The implicit `id` field is filtered from the diff: Typesense never returns it from `retrieve()['fields']`, so a naive name-based diff would always flag it missing, and PATCH on `id` is rejected with 400 `Field \`id\` cannot be altered`.
-3. Never removes fields automatically (manual operator step).
+3. Repairs `index` drift with Typesense's documented drop-and-re-add field pair. Stored values remain in documents. Existing fields are altered one per PATCH because the operation is synchronous, blocks writes, and may scan the full collection.
+4. Never removes stored fields or auto-repairs other field-shape drift.
 
 ```bash
 cd apps/crawler && uv run python ../../scripts/typesense-setup.py         # Idempotent: create + patch
@@ -177,7 +178,10 @@ browser before running Alembic, `crawler setup-typesense`, and `crawler sync`.
 Keeping the whole schema/runtime transition in one quiescence window prevents
 an old local-Postgres writer or exporter from crossing the commit-safe CDC
 trigger cutover, keeps schema patching ahead of `sync` upserts, and avoids a
-Redis reseed race with live workers. Typesense itself remains online throughout.
+Redis reseed race with live workers. Typesense itself remains online and serves
+reads throughout an in-place schema alter. Setup uses a one-hour request
+timeout, a two-hour total alter deadline, and logs allocated/active/resident
+memory before and after the schema series; the SSH deploy permits three hours.
 The deploy workflow also smoke-runs `setup-typesense` twice against an ephemeral
 Typesense container before SSHing to prod (the second run exercises the patch
 path on existing collections), so a schema regression fails CI rather than
@@ -190,6 +194,23 @@ each running container against the candidate digest manifest, and only then
 publishes the atomic success marker. Version and `latest` tags remain discovery
 and compatibility aliases; the workflow promotes `latest` only after the
 digest-addressed SSH deployment succeeds.
+
+### Job-posting stored-only compatibility fields
+
+The posting schema keeps these values in each document but deliberately omits
+their in-memory search indexes:
+
+| Field | Retained purpose | Indexed replacement |
+|------|------|---------|
+| `occupation_id` | leaf occupation in exporter/reconciliation payloads | `occupation_ids` for hierarchy-aware filters/facets |
+| `occupation_name` | exporter/reconciliation compatibility | taxonomy collection / `occupation_ids` |
+| `last_seen_at` | CDC compatibility and direct-retrieval diagnostics | none; no search path consumes it |
+
+These are response-compatible changes: direct document retrieval and normal
+search hits still include the stored values. Filtering, faceting, grouping,
+sorting, or adding the fields to `query_by` is intentionally unsupported. See
+[the 2026-08-26 footprint investigation](typesense-footprint-investigation-2026-08-26.md)
+for consumer tracing, benchmark evidence, and the fixed-capacity rollout.
 
 ### Company Collection (extended for company detail page)
 

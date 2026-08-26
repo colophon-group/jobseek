@@ -1,5 +1,9 @@
 # Typesense Benchmarks
 
+> These measurements are the original 681K-document baseline. For the current
+> 3.7M-document footprint/OOM investigation and reproducible schema lab, see
+> [Typesense Footprint Investigation (2026-08-26)](typesense-footprint-investigation-2026-08-26.md).
+
 ## Production — Hetzner CX22 (4GB RAM, 2 vCPU)
 
 Measured via Cloudflare Tunnel from Zurich. 681K job postings indexed with ancestor location/occupation IDs. Times are Typesense server-side (`search_time_ms`), median of 3 runs. Network overhead (~15-30ms) is additional.
