@@ -676,7 +676,16 @@ class TestFetchDuePostingsFilter:
         assert "JOIN job_board" in _FETCH_DUE_JOB_POSTINGS
         assert "jb.metadata->>'scraper_type' = 'skip'" in _FETCH_DUE_JOB_POSTINGS
         assert "jb.crawler_type = 'smartrecruiters'" in _FETCH_DUE_JOB_POSTINGS
-        assert "jb.metadata ? 'canonical_job_id_url_template'" in _FETCH_DUE_JOB_POSTINGS
+        assert (
+            "jsonb_typeof( jb.metadata->'canonical_job_id_url_template' ) = 'string'"
+            in " ".join(_FETCH_DUE_JOB_POSTINGS.split())
+        )
+        assert "COALESCE( jb.metadata->>'canonical_job_id_url_template', '' ) <> ''" in " ".join(
+            _FETCH_DUE_JOB_POSTINGS.split()
+        )
+        # An optional-but-empty template must retain the legacy scraper path.
+        # Key-existence alone would incorrectly classify it as rich/no-scrape.
+        assert "jb.metadata ? 'canonical_job_id_url_template'" not in _FETCH_DUE_JOB_POSTINGS
         # COALESCE handles NULL scraper_config (jsonb ? returns NULL, not false).
         assert (
             "COALESCE(jb.metadata->'scraper_config' ? 'enrich', false)" in _FETCH_DUE_JOB_POSTINGS
