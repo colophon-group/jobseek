@@ -36,12 +36,12 @@ TYPESENSE_SNAPSHOT_IN_CONTAINER=/jobseek-snapshots
 TYPESENSE_NOFILE_LIMIT=65536
 TYPESENSE_LOG_MAX_SIZE=50m
 TYPESENSE_LOG_MAX_FILES=3
-TYPESENSE_MEMORY_LIMIT=3g
-TYPESENSE_MEMORY_RESERVATION=2560m
-TYPESENSE_MEMORY_SWAP=3g
-TYPESENSE_MEMORY_LIMIT_BYTES=3221225472
-TYPESENSE_MEMORY_RESERVATION_BYTES=2684354560
-TYPESENSE_MEMORY_SWAP_BYTES=3221225472
+TYPESENSE_MEMORY_LIMIT=6g
+TYPESENSE_MEMORY_RESERVATION=5g
+TYPESENSE_MEMORY_SWAP=6g
+TYPESENSE_MEMORY_LIMIT_BYTES=6442450944
+TYPESENSE_MEMORY_RESERVATION_BYTES=5368709120
+TYPESENSE_MEMORY_SWAP_BYTES=6442450944
 TYPESENSE_SNAPSHOT_CONTRACT=direct-mount-v1
 TYPESENSE_SNAPSHOT_MIN_CAPACITY_BYTES=21474836480
 TYPESENSE_SNAPSHOT_MIN_FREE_BYTES=8589934592
@@ -62,12 +62,17 @@ typesense_tx_previous_pending_exists=0
 typesense_tx_previous_deployed=""
 typesense_tx_previous_deployed_exists=0
 
-install -d -o root -g root -m 0700 "$STATE_DIR" "$CREDENTIAL_DIR"
-exec 9>"$STATE_DIR/deploy.lock"
-if ! flock -w "$LOCK_TIMEOUT_S" 9; then
-  echo "ERROR: another Typesense-host deployment holds the lock" >&2
-  exit 1
-fi
+prepare_host_deployment() {
+  if [[ "$COMPONENT" == all || "$COMPONENT" == typesense ]]; then
+    "$REPO_ROOT/deploy/typesense-host/check-memory-capacity.sh"
+  fi
+  install -d -o root -g root -m 0700 "$STATE_DIR" "$CREDENTIAL_DIR"
+  exec 9>"$STATE_DIR/deploy.lock"
+  if ! flock -w "$LOCK_TIMEOUT_S" 9; then
+    echo "ERROR: another Typesense-host deployment holds the lock" >&2
+    exit 1
+  fi
+}
 
 validate_secret() {
   local name="$1"
@@ -799,6 +804,7 @@ install_cloudflared() {
 }
 
 trap typesense_host_exit EXIT
+prepare_host_deployment
 
 case "$COMPONENT" in
   all)

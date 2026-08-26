@@ -130,6 +130,18 @@ def test_typesense_rollout_is_manual_revision_bound_and_freshly_smoked() -> None
     assert 'state.get("OOMKilled") is False' in host_installer
     assert "write_cloudflared_deployed_revision" in host_installer
     assert "cloudflared-deployed-sha" in host_workflow
+    memory_preflight = host_installer.index(
+        '"$REPO_ROOT/deploy/typesense-host/check-memory-capacity.sh"'
+    )
+    state_mutation = host_installer.index(
+        'install -d -o root -g root -m 0700 "$STATE_DIR" "$CREDENTIAL_DIR"'
+    )
+    typesense_lock = host_installer.index("acquire_typesense_backup_locks")
+    assert memory_preflight < state_mutation < typesense_lock
+    exit_trap = host_installer.index("trap typesense_host_exit EXIT")
+    prepare_call = host_installer.index("prepare_host_deployment", exit_trap)
+    component_dispatch = host_installer.index('case "$COMPONENT" in', prepare_call)
+    assert exit_trap < prepare_call < component_dispatch
     assert runbook.count("gh run watch") >= 3
     assert 'test "$(cat /var/lib/jobseek-typesense-host/deployed-sha)"' in backup_installer
     assert 'test "$(cat /var/lib/jobseek-typesense-host/backup-contract-pending)"' in (
@@ -145,6 +157,9 @@ def test_typesense_rollout_is_manual_revision_bound_and_freshly_smoked() -> None
 def test_typesense_backup_requires_persistent_staging_and_bounded_memory_policy() -> None:
     backup_installer = (ROOT / "deploy/backups/install-host.sh").read_text(encoding="utf-8")
     host_installer = (ROOT / "deploy/typesense-host/install-host.sh").read_text(encoding="utf-8")
+    host_verifier = (ROOT / "scripts/verify-typesense-host-credentials.py").read_text(
+        encoding="utf-8"
+    )
     service = (ROOT / "deploy/systemd/jobseek-typesense-backup.service").read_text(encoding="utf-8")
     workflow = (ROOT / ".github/workflows/deploy-typesense-host.yml").read_text(encoding="utf-8")
 
@@ -160,8 +175,16 @@ def test_typesense_backup_requires_persistent_staging_and_bounded_memory_policy(
     assert '--memory "$TYPESENSE_MEMORY_LIMIT"' in host_installer
     assert '--memory-reservation "$TYPESENSE_MEMORY_RESERVATION"' in host_installer
     assert '--memory-swap "$TYPESENSE_MEMORY_SWAP"' in host_installer
-    assert "TYPESENSE_MEMORY_LIMIT_BYTES=3221225472" in host_installer
-    assert "TYPESENSE_MEMORY_RESERVATION_BYTES=2684354560" in host_installer
+    assert "TYPESENSE_MEMORY_LIMIT_BYTES=6442450944" in host_installer
+    assert "TYPESENSE_MEMORY_RESERVATION_BYTES=5368709120" in host_installer
+    assert "TYPESENSE_MEMORY_SWAP_BYTES=6442450944" in host_installer
+    assert 'get("Memory") or 0) == 6442450944' in backup_installer
+    assert 'get("MemoryReservation") or 0) == 5368709120' in backup_installer
+    assert 'get("MemorySwap") or 0) == 6442450944' in backup_installer
+    assert "TYPESENSE_MEMORY_LIMIT = 6 * 1024**3" in host_verifier
+    assert "TYPESENSE_MEMORY_RESERVATION = 5 * 1024**3" in host_verifier
+    assert "TYPESENSE_MEMORY_SWAP = TYPESENSE_MEMORY_LIMIT" in host_verifier
+    assert "check-memory-capacity.sh --self-test" in workflow
     assert '"$TYPESENSE_SNAPSHOT_DIR:$TYPESENSE_SNAPSHOT_IN_CONTAINER"' in host_installer
     assert 'chown root:root "$TYPESENSE_SNAPSHOT_DIR"' not in host_installer
     assert "/usr/local/sbin/jobseek-verify-typesense-snapshot-mount" in host_installer
@@ -184,9 +207,9 @@ def test_typesense_backup_requires_persistent_staging_and_bounded_memory_policy(
     assert '--data \'{"snapshot_path"' not in workflow
     assert "mount -t tmpfs" in workflow
     assert "stat -c '%d'" in workflow
-    assert "--memory 3g" in workflow
-    assert "--memory-reservation 2560m" in workflow
-    assert "--memory-swap 3g" in workflow
+    assert "--memory 6g" in workflow
+    assert "--memory-reservation 5g" in workflow
+    assert "--memory-swap 6g" in workflow
     assert "Environment=TYPESENSE_MEMORY_POLICY_PHASE=enforced" in service
 
 

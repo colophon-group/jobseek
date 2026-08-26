@@ -48,7 +48,11 @@ jobs:
         run: |
           set -euo pipefail
           bash -n deploy/typesense-host/install-host.sh
-          shellcheck deploy/typesense-host/install-host.sh
+          bash -n deploy/typesense-host/check-memory-capacity.sh
+          shellcheck \
+            deploy/typesense-host/install-host.sh \
+            deploy/typesense-host/check-memory-capacity.sh
+          deploy/typesense-host/check-memory-capacity.sh --self-test
           python3 -m py_compile scripts/verify-typesense-snapshot-mount.py
           python3 -m py_compile scripts/verify-typesense-host-credentials.py
           python3 scripts/verify-typesense-host-credentials.py --self-test
@@ -91,9 +95,9 @@ jobs:
             --ulimit nofile=65536:65536 \
             --log-opt max-size=50m \
             --log-opt max-file=3 \
-            --memory 3g \
-            --memory-reservation 2560m \
-            --memory-swap 3g \
+            --memory 6g \
+            --memory-reservation 5g \
+            --memory-swap 6g \
             -v "$root/data:/data" \
             -v "$root/snapshots:/jobseek-snapshots" \
             -v "$root/typesense-server.ini:/run/secrets/typesense-server.ini:ro" \
@@ -197,9 +201,9 @@ jobs:
           assert log_config.get("Type") == "json-file"
           assert (log_config.get("Config") or {}).get("max-size") == "50m"
           assert (log_config.get("Config") or {}).get("max-file") == "3"
-          assert int(container["HostConfig"].get("Memory") or 0) == 3221225472
-          assert int(container["HostConfig"].get("MemoryReservation") or 0) == 2684354560
-          assert int(container["HostConfig"].get("MemorySwap") or 0) == 3221225472
+          assert int(container["HostConfig"].get("Memory") or 0) == 6442450944
+          assert int(container["HostConfig"].get("MemoryReservation") or 0) == 5368709120
+          assert int(container["HostConfig"].get("MemorySwap") or 0) == 6442450944
           assert labels.get("jobseek.typesense-snapshot-contract") == "direct-mount-v1"
           assert any(
               mount.get("Destination") == "/jobseek-snapshots" and mount.get("RW") is True

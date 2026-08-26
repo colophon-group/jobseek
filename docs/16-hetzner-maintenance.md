@@ -119,9 +119,12 @@ The Typesense container receives one argument:
 `/etc/jobseek-typesense/typesense-server.ini`, owned by root with mode `0600`.
 The Snapshot API writes directly through `/jobseek-snapshots` to the dedicated
 host filesystem mounted at `/mnt/jobseek-typesense-backup`; the backup job
-never makes a second `docker cp` copy on `/`. The managed container has a 3 GiB
-hard memory limit, 2.5 GiB reservation, and a 3 GiB memory-plus-swap ceiling,
-so swap cannot silently extend its resource envelope. Durable current, peak,
+never makes a second `docker cp` copy on `/`. On the reviewed 8 GB CX33 host,
+the managed container has a 6 GiB hard memory limit, 5 GiB reservation, and a
+6 GiB memory-plus-swap ceiling, so swap cannot silently extend its resource
+envelope and roughly 2 GB remains for the OS, Docker, and Cloudflare Tunnel.
+The installer checks `/proc/meminfo` before acquiring locks or changing host
+state and refuses this policy below 7 GiB total memory. Durable current, peak,
 event, Docker, Cloudflare tunnel, and OS headroom measurements still gate the
 seven-day acceptance window.
 
@@ -210,6 +213,18 @@ Select the just-created run ID whose head SHA is the printed main SHA; do not
 dispatch the next step until `gh run watch --exit-status` succeeds. The host
 and backup workflows also share host locks, but those locks are a final race
 barrier, not a substitute for waiting on each acceptance gate.
+
+For the CX23-to-CX33 capacity change, keep the
+`deployment-hold:crawler` label in place and obtain explicit operator approval
+for the exact +€3/month resize before mutating Hetzner. Gracefully stop the
+server, change only its type while retaining the disk, start it, and verify the
+host reports at least 7 GiB before dispatching the reviewed Typesense host
+revision. The merged memory policy does not deploy automatically. After the
+manual dispatch, require local and public health, exact 6 GiB / 5 GiB / 6 GiB
+Docker limits, all seven aliases, a full reconciliation/rebuild acceptance
+check, and measured OS headroom before removing the deployment hold. If any
+gate fails, leave the hold active and return to the prior reviewed host
+contract or resize plan; do not weaken the memory preflight.
 
 Typesense and cloudflared record separate deployed-revision markers. A
 cloudflared-only reconciliation never rewrites the Typesense SHA used by the
@@ -317,8 +332,8 @@ check. The host sampler also exports:
   snapshot failure, slow requests, and thread-pool exhaustion.
 
 The managed container requires a 65,536 soft/hard `nofile` limit, rotates
-Docker JSON logs at 50 MB with three files, and enforces the exact 3 GiB hard
-limit / 2.5 GiB reservation / 3 GiB memory-plus-swap tuple plus the labelled
+Docker JSON logs at 50 MB with three files, and enforces the exact 6 GiB hard
+limit / 5 GiB reservation / 6 GiB memory-plus-swap tuple plus the labelled
 writable snapshot mount. Deployment conformance verifies all Docker metadata
 and the effective process limit. Allow up to 15 minutes for the current
 2.5-million-document index to reload before declaring a cold start failed.
@@ -343,9 +358,9 @@ max_over_time(jobseek_typesense_backup_local_copies_before{service="typesense"}[
 min_over_time(jobseek_typesense_backup_local_copies_after_materialization{service="typesense"}[7d]) == 1
 min_over_time(jobseek_typesense_backup_memory_limit_enforced{service="typesense"}[7d]) == 1
 min_over_time(jobseek_typesense_backup_memory_policy_info{service="typesense",phase="enforced"}[7d]) == 1
-min_over_time(jobseek_typesense_backup_memory_limit_bytes{service="typesense"}[7d]) == 3221225472
-min_over_time(jobseek_typesense_backup_memory_reservation_bytes{service="typesense"}[7d]) == 2684354560
-min_over_time(jobseek_typesense_backup_memory_swap_limit_bytes{service="typesense"}[7d]) == 3221225472
+min_over_time(jobseek_typesense_backup_memory_limit_bytes{service="typesense"}[7d]) == 6442450944
+min_over_time(jobseek_typesense_backup_memory_reservation_bytes{service="typesense"}[7d]) == 5368709120
+min_over_time(jobseek_typesense_backup_memory_swap_limit_bytes{service="typesense"}[7d]) == 6442450944
 max_over_time(jobseek_container_oom_killed{container="typesense"}[7d]) == 0
 increase(jobseek_container_restart_count{container="typesense"}[7d]) == 0
 increase(jobseek_container_memory_events_total{container="typesense",event=~"oom|oom_kill|oom_group_kill"}[7d]) == 0
