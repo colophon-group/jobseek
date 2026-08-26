@@ -602,6 +602,18 @@ def _publish_journaled_kb(ws, state: dict) -> None:
     initial = state["initial_head_oid"]
     publish = state["kb_publish_oid"]
     message = _kb_commit_message(ws)
+    if ws.pr is None:
+        raise WorkspaceError("Journaled KB publication lost its PR number")
+
+    def verify_initial_pr_lease() -> None:
+        git.verify_recorded_pr(
+            state["initial_provenance"],
+            pr_number=ws.pr,
+            branch=ws.branch,
+            issue=ws.issue,
+            slug=ws.slug,
+        )
+
     current = git.current_head_oid_strict()
     changed = git.changed_paths_strict()
     _authenticate_workspace_worktree(ws)
@@ -613,6 +625,7 @@ def _publish_journaled_kb(ws, state: dict) -> None:
                 raise WorkspaceError("Journaled KB changes disappeared or changed scope")
             git.add_files([_KB_PATH])
             _authenticate_workspace_worktree(ws)
+            verify_initial_pr_lease()
             git.commit(message)
             current = git.current_head_oid_strict()
             _advance_workspace_worktree_head(ws, initial, current)
@@ -642,6 +655,7 @@ def _publish_journaled_kb(ws, state: dict) -> None:
     if remote == initial:
         _save_ready_attempt(ws, state, "kb_push")
         _authenticate_workspace_worktree(ws)
+        verify_initial_pr_lease()
         git.push_branch_at_expected_oid(ws.branch, publish, initial)
     elif remote == publish:
         if not state["attempts"]["kb_push"]:
@@ -721,6 +735,13 @@ def _finalize_workflow_locked(slug: str) -> None:
                 )
             _save_ready_attempt(ws, state, "draft_recovery")
             _authenticate_workspace_worktree(ws)
+            git.verify_pr_ready(
+                effective,
+                pr_number=ws.pr,
+                branch=ws.branch,
+                issue=ws.issue,
+                slug=ws.slug,
+            )
             git.mark_pr_draft(ws.pr)
             git.verify_recorded_pr(
                 effective,
