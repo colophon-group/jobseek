@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import zipfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -479,6 +480,43 @@ class TestDomScraper:
         result = parse_html(html, config)
         assert result.title == "Lieutenant de sécurité"
         assert result.locations is None
+
+    @pytest.mark.parametrize(
+        ("label_html", "matched_label"),
+        [
+            ("<p>Lieu</p><p>Lausanne</p>", "Lieu"),
+            ("<p>Lieu: Lausanne</p>", "Lieu: Lausanne"),
+            ("<p>Lieu： Lausanne</p>", "Lieu： Lausanne"),
+        ],
+        ids=["standalone", "ascii-colon", "fullwidth-colon"],
+    )
+    def test_probe_location_step_skips_earlier_lieutenant_text(
+        self,
+        label_html: str,
+        matched_label: str,
+    ):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = f"""
+        <html><head><title>Lieutenant de sécurité - CHUV</title></head><body>
+          <h1>Lieutenant de sécurité</h1>
+          <p>Protéger le site et coordonner les équipes de sécurité.</p>
+          {label_html}
+          <h2>Mission</h2>
+          <p>Assurer la sécurité des patientes et patients.</p>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        location_step = next(step for step in config["steps"] if step.get("field") == "location")
+        match_regex = location_step["match_regex"]
+        assert re.fullmatch(match_regex, "Lieutenant de sécurité") is None
+        assert re.fullmatch(match_regex, matched_label) is not None
+
+        result = parse_html(html, config)
+        assert result.title == "Lieutenant de sécurité"
+        assert result.locations == ["Lausanne"]
 
     def test_talentsoft_probe_builds_locale_independent_config(self):
         from src.core.scrapers.dom import can_handle, parse_html

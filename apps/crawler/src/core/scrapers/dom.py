@@ -711,16 +711,15 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
             if label is None or len(text) >= 120:
                 continue
 
-            inline_value = re.match(
-                rf"(?i)^\s*{re.escape(label)}\s*[:：]\s*(\S.*)\s*$",
-                text,
-            )
+            inline_pattern = rf"(?i)^\s*{re.escape(label)}\s*[:：]\s*(\S.*)\s*$"
+            inline_value = re.match(inline_pattern, text)
             if inline_value:
                 steps.append(
                     {
                         "text": label,
+                        "match_regex": inline_pattern,
                         "field": "location",
-                        "regex": rf"(?i)^\s*{re.escape(label)}\s*[:：]\s*(\S.*)\s*$",
+                        "regex": inline_pattern,
                         "optional": True,
                         "from": 0,
                     }
@@ -729,6 +728,7 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
                 steps.append(
                     {
                         "text": label,
+                        "match_regex": rf"(?i)^\s*{re.escape(label)}\s*$",
                         "offset": 1,
                         "field": "location",
                         "optional": True,
