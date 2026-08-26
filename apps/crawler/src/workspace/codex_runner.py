@@ -1097,8 +1097,8 @@ class GitHubCoordinator:
     def fetch_oldest_open_issue(self, label: str) -> int | None:
         from src.workspace.git import fetch_oldest_open_issue
 
-        # The governor must see linked drafts so it can distinguish resumable
-        # resolver work from completed or conflicting PRs.
+        # The governor must see linked drafts so every existing PR blocks a
+        # new cross-run resolver takeover.
         return fetch_oldest_open_issue(label=label, skip_open_prs=False)
 
     def list_open_issues(self, label: str) -> list[int]:
@@ -1774,7 +1774,7 @@ class CompanyResolverGovernor:
             from src.workspace.git import classify_issue_prs
 
             pr_class = classify_issue_prs(self.github.check_existing_prs(issue))
-            if pr_class not in {"none", "resumable"}:
+            if pr_class != "none":
                 self.github.delete_claim(claim_id)
                 self.ledger.finish(
                     run_id,
@@ -1807,7 +1807,7 @@ class CompanyResolverGovernor:
                 continue
             try:
                 pr_class = classify_issue_prs(self.github.check_existing_prs(issue))
-                if pr_class not in {"none", "resumable"}:
+                if pr_class != "none":
                     continue
                 if self.github.list_claims(issue):
                     continue
@@ -2419,7 +2419,7 @@ class CompanyResolverGovernor:
             if isinstance(branch, str) and branch.startswith("fix-crawler/"):
                 return "submitted", f"coding-mode fix submitted as PR #{number}"
             if worktree and _ws_issue_completed(worktree, admission.issue):
-                return "submitted", f"ws completed and PR #{number} is ready for review"
+                return "submitted", f"ws completed and PR #{number} remains draft for review"
         return None
 
     def _record_pr(self, admission: Admission, pr: dict[str, Any]) -> None:

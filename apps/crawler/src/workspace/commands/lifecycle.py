@@ -144,9 +144,10 @@ def new(
     With --reconfig, creates a workspace for an existing company to
     re-probe and update its monitor/scraper configuration.
 
-    With --pr N, attaches to an existing pull request instead of
-    creating a new one. Otherwise the draft PR is created by ws submit
-    after the complete configuration is committed and pushed.
+    With --pr N, an interactive operator may attach to an existing pull
+    request at its exact current head. Scheduled resolver runs may not attach
+    to or take over an existing PR. Otherwise the draft PR is created by ws
+    submit after the complete configuration is committed and pushed.
 
     Idempotent: if a previous run partially succeeded, leftover state
     (workspace dir, worktree, local/remote branch) is cleaned up
@@ -207,8 +208,6 @@ def new(
     branch = f"fix-crawler/{slug}" if reconfig else f"add-company/{slug}"
     pr_number: int | None = None
     pr_details: dict | None = None
-    automatic_resume = False
-
     if local:
         out.warn("workspace", "Local mode — skipping git/GitHub operations")
         out.info("workspace", f"Slug {slug!r} is valid")
@@ -248,10 +247,15 @@ def new(
 
         base_ref = git.get_main_branch()
 
-        # Attach to explicit PR or reuse one from a previous attempt. Automatic
-        # reuse is stricter than explicit operator attachment: it also binds the
-        # PR author and structured issue relationship.
+        # Existing PRs are externally owned unless an interactive operator
+        # explicitly attaches.  A linked issue, deterministic branch name,
+        # draft state, or prior resolver authorship is not a cross-run lease.
         if pr_opt:
+            if os.environ.get("JOBSEEK_CODEX_RUN_ID"):
+                out.die(
+                    "Scheduled company resolvers cannot attach to existing PRs; "
+                    "leave the PR unchanged for human review"
+                )
             pr_number = pr_opt
             pr_details = git.get_pr_details_strict(pr_number)
             git.validate_pr_attachment(
@@ -268,40 +272,10 @@ def new(
             existing = git.check_existing_prs_strict(issue)
             if existing:
                 classification = git.classify_issue_prs(existing)
-                if classification != "resumable":
-                    out.die(
-                        f"Issue #{issue} has {classification} linked PR state; "
-                        "refusing to attach automatically"
-                    )
-                pr_number = existing[0]["number"]
-                if not isinstance(pr_number, int):
-                    out.die(f"Issue #{issue} linked PR has no valid number")
-                issue_data = git.fetch_issue(issue)
-                labels = {
-                    label.get("name")
-                    for label in issue_data.get("labels", [])
-                    if isinstance(label, dict)
-                }
-                if "company-request" not in labels:
-                    out.die(
-                        f"Issue #{issue} is not labelled company-request; "
-                        "refusing automatic PR attachment"
-                    )
-                pr_details = git.get_pr_details_strict(pr_number)
-                actor = git.get_authenticated_login_strict()
-                git.validate_pr_attachment(
-                    pr_details,
-                    pr_number=pr_number,
-                    branch=branch,
-                    base_ref=base_ref,
-                    issue=issue,
-                    slug=slug,
-                    authorized_actor=actor,
-                )
-                automatic_resume = True
-                out.info(
-                    "github",
-                    f"Reusing existing PR #{pr_number} for issue #{issue} (branch {branch})",
+                linked_number = existing[0].get("number")
+                out.die(
+                    f"Issue #{issue} already has {classification} linked PR "
+                    f"#{linked_number}; refusing cross-run branch takeover"
                 )
 
         # Branch names are deterministic per company.  A different issue can
@@ -326,11 +300,8 @@ def new(
         worktree_path = git.worktrees_dir() / slug
 
         if pr_number:
-            # Attach to the existing PR branch, then integrate current main.
-            # The outer resolver worktree starts at origin/main, but this
-            # managed company worktree is where all subsequent work happens;
-            # leaving it at the historical draft tip reintroduces stale code
-            # and unrelated diffs.
+            # Explicit operator attachment preserves the exact existing head.
+            # It never merges main into a reviewed company branch.
             assert pr_details is not None
             expected_head = str(pr_details["headRefOid"])
             remote_head = git.remote_branch_oid_strict(branch)
@@ -349,27 +320,6 @@ def new(
                 branch, worktree_path, start_point=f"origin/{main}"
             )
         set_repo_root(worktree_path)
-        if pr_number:
-            try:
-                git.sync_branch_with_main(branch)
-            except Exception:
-                # Do not leave a half-merged worktree registered as active.
-                # Restore the managed-clone root before propagating the error
-                # so the runner can safely retry or escalate.
-                git.remove_authenticated_worktree(
-                    worktree_path,
-                    branch,
-                    str(created_identity["head"]),
-                    expected_dev=int(created_identity["dev"]),
-                    expected_ino=int(created_identity["ino"]),
-                )
-                git.delete_local_branch_at_expected_oid(branch, str(created_identity["head"]))
-                set_repo_root(repo_root)
-                raise
-            refreshed_identity = git.managed_worktree_identity_strict(worktree_path, branch)
-            if refreshed_identity is None:
-                raise WorkspaceError("Managed worktree disappeared after synchronization")
-            created_identity = refreshed_identity
         out.plain("git", f"Created worktree at {worktree_path} (branch {branch})")
 
     resume_existing_pr = False
@@ -495,9 +445,10 @@ def new(
                 board_alias=available_inventory_board_alias(existing_aliases),
             )
 
-    if automatic_resume:
+    if pr_number is not None:
         # Reauthenticate the exact ref immediately before publishing local
         # ownership state. The earlier check cannot authorize a later ref.
+        assert pr_details is not None
         refreshed = git.get_pr_details_strict(pr_number)
         git.validate_pr_attachment(
             refreshed,
@@ -506,7 +457,7 @@ def new(
             base_ref=base_ref,
             issue=issue,
             slug=slug,
-            authorized_actor=git.get_authenticated_login_strict(),
+            authorized_actor=None,
         )
         expected_head = str(pr_details["headRefOid"])
         if (
@@ -514,7 +465,7 @@ def new(
             or git.remote_branch_oid_strict(branch) != expected_head
         ):
             raise WorkspaceError(
-                f"PR #{pr_number} branch changed before workspace publication; refusing resume"
+                f"PR #{pr_number} branch changed before workspace publication; refusing attachment"
             )
         pr_details = refreshed
         ws.pr_provenance = git.pr_provenance(refreshed, issue=issue, slug=slug)
@@ -536,6 +487,7 @@ def new(
     save_workspace(ws)
 
     if seeded_board is not None:
+        assert inventory_seed is not None
         save_board(slug, seeded_board)
         out.info(
             "inventory",
@@ -1345,7 +1297,7 @@ def _cleanup_resolver_artifacts_locked(
                 "retry under company ownership"
             )
         classification = git.classify_issue_prs(linked_prs)
-        if classification in {"submitted", "conflicting"}:
+        if classification == "conflicting" or (classification == "submitted" and pr_number is None):
             raise WorkspaceError(
                 f"Issue #{issue} has {classification} linked PR state; refusing automatic cleanup"
             )
@@ -2824,6 +2776,8 @@ def _execute_submit_step(
             commit_msg += f"\n\nCloses #{ws.issue}"
         previous_head = git.current_head_oid_strict()
         _authenticate_workspace_worktree(ws)
+        if ws.pr is not None:
+            _verify_workspace_pr_before_mutation(ws)
         git.commit(commit_msg)
         _advance_workspace_worktree_head(ws, previous_head, git.current_head_oid_strict())
 
@@ -3064,6 +3018,21 @@ def submit(slug: str | None, summary: str | None, force: bool):
                     "at": datetime.now(UTC).isoformat(),
                 }
                 save_workspace(ws)
+                if not is_local_mode() and ws.issue and ws.pr:
+                    from src.workspace import git
+
+                    run_id = os.environ.get("JOBSEEK_CODEX_RUN_ID", "interactive")
+                    marker = f"<!-- resolver-pr-lease-blocked:{run_id}:{ws.pr} -->"
+                    with contextlib.suppress(Exception):
+                        git.comment_on_issue_once(
+                            ws.issue,
+                            marker,
+                            (
+                                f"{marker}\nResolver safety audit: stopped before "
+                                f"`{step_key}` for PR #{ws.pr}; no unleased branch overwrite "
+                                f"was attempted. Reason: {e}"
+                            ),
+                        )
                 out.die(f"{step_desc} failed: {e}")
             else:
                 out.warn("submit", f"{step_desc} failed: {e}")

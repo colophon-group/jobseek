@@ -261,64 +261,14 @@ class TestGitWrappers:
         assert exc_info.value.returncode == 127
         assert exc_info.value.cmd[0] == "gh"
 
-    def test_sync_branch_with_main_requires_repo_root(self):
+    def test_sync_branch_with_main_is_retired_without_git_mutation(self):
         with (
-            patch("src.workspace.git._repo_cwd", return_value=None),
-            patch("src.workspace.git.get_main_branch_remote") as get_main,
-        ):
-            try:
-                sync_branch_with_main("feature")
-            except WorkspaceError as exc:
-                assert "inside a git repository" in str(exc)
-            else:
-                raise AssertionError("sync_branch_with_main should require a repo root")
-            get_main.assert_not_called()
-
-    def test_sync_branch_with_main_merges_latest_main_without_rewriting_history(self, tmp_path):
-        completed = subprocess.CompletedProcess([], 0, "", "")
-        with (
-            patch("src.workspace.git._repo_cwd", return_value=tmp_path),
-            patch("src.workspace.git.get_main_branch_remote", return_value="main"),
-            patch("src.workspace.git._run", return_value=completed) as run,
+            patch("src.workspace.git._run") as run,
+            pytest.raises(WorkspaceError, match="Refusing to merge main"),
         ):
             sync_branch_with_main("add-company/acme")
 
-        run.assert_any_call(["git", "fetch", "origin"], cwd=tmp_path)
-        run.assert_any_call(["git", "checkout", "add-company/acme"], cwd=tmp_path)
-        run.assert_any_call(
-            ["git", "merge", "--no-edit", "origin/main"],
-            cwd=tmp_path,
-            check=False,
-        )
-        assert not any("rebase" in call.args[0] for call in run.call_args_list)
-
-    def test_sync_branch_with_main_commits_resolved_csv_conflicts(self, tmp_path):
-        ok = subprocess.CompletedProcess([], 0, "", "")
-        conflict = subprocess.CompletedProcess([], 1, "", "conflict")
-        with (
-            patch("src.workspace.git._repo_cwd", return_value=tmp_path),
-            patch("src.workspace.git.get_main_branch_remote", return_value="main"),
-            patch("src.workspace.git._run", side_effect=[ok, ok, conflict, ok]) as run,
-            patch("src.workspace.git._resolve_csv_conflicts", return_value=True) as resolve,
-        ):
-            sync_branch_with_main("add-company/acme")
-
-        resolve.assert_called_once_with(tmp_path)
-        run.assert_called_with(["git", "commit", "--no-edit"], cwd=tmp_path, check=False)
-
-    def test_sync_branch_with_main_aborts_non_csv_conflicts(self, tmp_path):
-        ok = subprocess.CompletedProcess([], 0, "", "")
-        conflict = subprocess.CompletedProcess([], 1, "", "conflict")
-        with (
-            patch("src.workspace.git._repo_cwd", return_value=tmp_path),
-            patch("src.workspace.git.get_main_branch_remote", return_value="main"),
-            patch("src.workspace.git._run", side_effect=[ok, ok, conflict, ok]) as run,
-            patch("src.workspace.git._resolve_csv_conflicts", return_value=False),
-            pytest.raises(WorkspaceError, match="manual resolution"),
-        ):
-            sync_branch_with_main("add-company/acme")
-
-        run.assert_called_with(["git", "merge", "--abort"], cwd=tmp_path, check=False)
+        run.assert_not_called()
 
 
 class TestPullRequestProvenance:
@@ -335,6 +285,48 @@ class TestPullRequestProvenance:
 
     def test_accepts_exact_same_repo_draft(self):
         self._validate(_pr_details())
+
+    def test_rejects_comment_based_approval_or_capacity_hold(self):
+        details = _pr_details(
+            comments=[
+                {
+                    "author": {"login": "reviewer"},
+                    "createdAt": "2026-08-26T07:13:07Z",
+                    "body": (
+                        "Independent exact-head review APPROVED. Required CI is green; "
+                        "remains draft until the Typesense capacity gate clears."
+                    ),
+                }
+            ]
+        )
+
+        with pytest.raises(WorkspaceError, match="review or merge-hold evidence"):
+            self._validate(details)
+
+    def test_added_approval_invalidates_recorded_head_lease(self):
+        initial = _pr_details(comments=[])
+        recorded = pr_provenance(initial, issue=7, slug="acme")
+        reviewed = _pr_details(
+            comments=[
+                {
+                    "author": {"login": "reviewer"},
+                    "createdAt": "2026-08-26T07:13:07Z",
+                    "body": f"Independent exact-head review APPROVED `{TEST_OID}`.",
+                }
+            ]
+        )
+        with (
+            patch("src.workspace.git.get_pr_details_strict", return_value=reviewed),
+            patch("src.workspace.git.remote_branch_oid_strict", return_value=TEST_OID),
+            pytest.raises(WorkspaceError, match="provenance or head changed"),
+        ):
+            verify_recorded_pr(
+                recorded,
+                pr_number=42,
+                branch="add-company/acme",
+                issue=7,
+                slug="acme",
+            )
 
     @pytest.mark.parametrize(
         ("details", "message"),

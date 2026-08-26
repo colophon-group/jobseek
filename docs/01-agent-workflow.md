@@ -153,13 +153,15 @@ Safety budget: max 5 issues per 5-hour rolling window in conservative mode
 unless the Hetzner deployment config deliberately raises it.
 
 The recurring resolver:
-1. Selects the oldest eligible open `company-request` issue. A single draft
-   `add-company/` PR is resumable; a ready company PR or `fix-crawler/` PR is
-   submitted; any other linked PR shape is a manual conflict.
+1. Selects the oldest eligible open `company-request` issue. Any existing
+   linked company PR, including a draft, is externally owned and blocks a new
+   resolver run. Draft state and a deterministic branch name are not a lease.
 2. Checks host headroom, active claims, active PRs, and Codex usage telemetry
 3. Runs Codex CLI on the Hetzner runner to resolve the selected issue
 4. Captures `codex exec --json` trace data and local usage into the governor ledger
-5. The agent follows the AGENTS.md instructions to create a PR
+5. The agent follows the AGENTS.md instructions to create a draft PR. Task
+   completion leaves it draft pending independent exact-head review and
+   Required CI/CodeQL.
 
 The recurring resolver is not triggered by GitHub Actions or a workstation
 schedule. Use `codex exec --json` for traceable runs and keep manual recovery
