@@ -99,14 +99,18 @@ Aliases require an explicit `allow_alias` declaration and retained aliases may
 not silently move to another number.
 
 An adjacent-version change must provide executable Python and Go converters in
-both directions over one shared, nonempty corpus. The corpus must include both
-reversible and genuinely lossy cases, exact integers above `2^53`, absent
-versus explicitly defaulted fields, forwarded unknown data, and a path plus
-reason for every declared loss. A loss is valid only when the source value is
-present, every other field is preserved, and the reverse conversion cannot
+both directions over one shared, nonempty corpus. The corpus must include
+reversible cases in both directions and a genuinely lossy case for each
+direction whose descriptor delta cannot preserve data: removals require
+old-to-new loss evidence, additions require new-to-old loss evidence, and a
+mixed delta requires both. It must also cover exact integers above `2^53`,
+absent versus explicitly defaulted fields, forwarded unknown data, and a path
+plus reason for every declared loss. A loss is valid only when the source value
+is present, every other field is preserved, and the reverse conversion cannot
 reconstruct the removed value. Empty, one-way, echo, constant-output,
-nondeterministic, or unexecuted language evidence fails closed. Canonical
-serialized results must be byte-identical across repeated runs and languages.
+nondeterministic, unexecuted, or descriptor-inconsistent evidence fails closed.
+Canonical serialized results must be byte-identical across repeated runs and
+languages.
 
 `fixtures/compatibility/adjacent_version_policy` is only the enforcement
 specimen for that rule. Its packages contain `.policytest.`, its manifest uses

@@ -93,6 +93,65 @@ def _false_loss(value: dict[str, Any]) -> None:
     case["reversible"] = False
 
 
+def _case(value: dict[str, Any], case_id: str) -> dict[str, Any]:
+    return next(case for case in value["cases"] if case["id"] == case_id)
+
+
+def _make_case_reversible(value: dict[str, Any], case_id: str) -> None:
+    case = _case(value, case_id)
+    for loss in case["expected"]["losses"]:
+        field = loss["path"].removeprefix("$.")
+        case["expected"]["payload"][field] = case["input"][field]
+    case["expected"]["losses"] = []
+    case["reversible"] = True
+
+
+def _configure_additive_only(directory: Path) -> None:
+    _mutate_proto(
+        directory,
+        """  reserved 2;
+  reserved "POLICY_MODE_RETIRED";
+
+  POLICY_MODE_UNSPECIFIED = 0;
+  POLICY_MODE_READY = 1;
+  POLICY_MODE_ACTIVE = 1;""",
+        """  POLICY_MODE_UNSPECIFIED = 0;
+  POLICY_MODE_READY = 1;
+  POLICY_MODE_ACTIVE = 1;
+  POLICY_MODE_RETIRED = 2;""",
+    )
+    _mutate_proto(
+        directory,
+        """  reserved 6;
+  reserved "legacy_note";
+""",
+        "  optional string legacy_note = 6;\n",
+    )
+    _mutate_json(
+        directory,
+        "vectors.json",
+        lambda value: _make_case_reversible(value, "old-genuine-loss"),
+    )
+
+
+def _configure_removal_only(directory: Path) -> None:
+    _mutate_proto(directory, "  optional string future_hint = 9;\n", "")
+    _mutate_json(
+        directory,
+        "vectors.json",
+        lambda value: _make_case_reversible(value, "new-genuine-loss"),
+    )
+
+
+def _configure_delta(directory: Path, delta: str) -> None:
+    if delta == "additive":
+        _configure_additive_only(directory)
+    elif delta == "removal":
+        _configure_removal_only(directory)
+    else:
+        assert delta == "mixed"
+
+
 _VALIDATION_FAILURES = [
     ("manifest.json", _manifest_production_true, "production must be exactly false"),
     ("manifest.json", _manifest_production_missing, "unexpected or missing keys"),
@@ -101,7 +160,7 @@ _VALIDATION_FAILURES = [
     ("manifest.json", _manifest_one_way, "declare both directions"),
     ("manifest.json", _manifest_missing_runner, "regular fixture file"),
     ("vectors.json", _empty_corpus, "corpus must be nonempty"),
-    ("vectors.json", _identity_only_corpus, "genuinely lossy both ways"),
+    ("vectors.json", _identity_only_corpus, "does not match the descriptor delta"),
     ("vectors.json", _false_loss, "loss is false"),
 ]
 
@@ -196,6 +255,38 @@ def test_nonadjacent_version_evidence_fails(tmp_path: Path) -> None:
     directory = _copy_policy(tmp_path)
     _mutate_json(directory, "manifest.json", _manifest_nonadjacent)
     with pytest.raises(compatibility.CompatibilityError, match="not numerically adjacent"):
+        compatibility.validate_adjacent_version_policy(directory)
+
+
+@pytest.mark.parametrize("delta", ["additive", "removal", "mixed"])
+def test_descriptor_delta_accepts_its_required_loss_directions(tmp_path: Path, delta: str) -> None:
+    directory = _copy_policy(tmp_path)
+    _configure_delta(directory, delta)
+    compatibility.validate_adjacent_version_policy(directory)
+
+
+@pytest.mark.parametrize(
+    ("delta", "missing_case"),
+    [
+        ("additive", "new-genuine-loss"),
+        ("removal", "old-genuine-loss"),
+        ("mixed", "old-genuine-loss"),
+    ],
+)
+def test_descriptor_delta_requires_each_genuine_loss_direction(
+    tmp_path: Path, delta: str, missing_case: str
+) -> None:
+    directory = _copy_policy(tmp_path)
+    _configure_delta(directory, delta)
+    _mutate_json(
+        directory,
+        "vectors.json",
+        lambda value: _make_case_reversible(value, missing_case),
+    )
+    with pytest.raises(
+        compatibility.CompatibilityError,
+        match="lossy evidence does not match the descriptor delta",
+    ):
         compatibility.validate_adjacent_version_policy(directory)
 
 

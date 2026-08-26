@@ -1031,8 +1031,18 @@ def _validate_vectors(
         directions.add(direction)
     if directions != set(_CONVERTER_DIRECTIONS):
         raise CompatibilityError("adjacent-version evidence must cover both directions")
-    if lossy_directions != set(_CONVERTER_DIRECTIONS):
-        raise CompatibilityError("adjacent-version evidence must be genuinely lossy both ways")
+    required_lossy_directions: set[str] = set()
+    if removed_fields:
+        required_lossy_directions.add("old_to_new")
+    if added_fields:
+        required_lossy_directions.add("new_to_old")
+    if lossy_directions != required_lossy_directions:
+        required = ", ".join(sorted(required_lossy_directions)) or "none"
+        observed = ", ".join(sorted(lossy_directions)) or "none"
+        raise CompatibilityError(
+            "adjacent-version lossy evidence does not match the descriptor delta "
+            f"(required: {required}; observed: {observed})"
+        )
     if reversible_directions != set(_CONVERTER_DIRECTIONS):
         raise CompatibilityError(
             "adjacent-version evidence must include reversible cases both ways"
@@ -1084,9 +1094,9 @@ def _load_adjacent_policy(directory: Path) -> dict[str, Any]:
         if descriptor.package != manifest[key]["package"]:
             raise CompatibilityError(f"adjacent-version {key} protobuf package disagrees")
     removed_fields, added_fields = _compare_policy_descriptors(*endpoints)
-    if not removed_fields or not added_fields:
+    if not removed_fields and not added_fields:
         raise CompatibilityError(
-            "adjacent-version specimen must exercise real additions and removals"
+            "adjacent-version specimen must exercise a real addition or removal"
         )
 
     converters = manifest["converters"]
