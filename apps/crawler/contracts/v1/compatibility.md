@@ -46,9 +46,13 @@ numbers and meanings are never reused. The gate rejects changes to:
 
 Removing a field or enum value must reserve both its name and number in the new
 major version. Those reservations prevent reuse; they do not make the removal
-legal inside v1. Unknown wire fields and enum numerics must survive forwarding,
-but an authoritative validator must reject unknown behavior-driving values
-before origin dispatch or a commit-eligible state change.
+legal inside v1. Reservations already present in prior main are themselves
+immutable: the gate rejects removing or narrowing a reserved range or name and
+rejects reusing either one. Protobuf maps are checked as their generated entry
+messages, so removal, field-number, key-type, value-type, and `map_entry`
+changes are breaking. Unknown wire fields and enum numerics must survive
+forwarding, but an authoritative validator must reject unknown behavior-driving
+values before origin dispatch or a commit-eligible state change.
 
 `CanonicalizationRule` and `HashRule` are closed wire identifiers. Lanes 3-5
 will implement the frozen identity, replay, privacy, projection, and hashing
@@ -72,13 +76,14 @@ addition.
 `tests/test_runtime_v1_compatibility.py` is a narrow discovery bridge for the
 full conformance suite. It fail-closed discovers every Python conformance
 module and every Go `*_test.go` package below `contracts/v1`, rejects empty or
-hidden Python suites and symlink/package escapes, and runs each Go package with
-bounded `go test -race -count=1 -json` plus `go vet`. Missing compilers, empty
-Go packages, timeouts, excessive output, panics, and nonzero exits fail normal
-test discovery. Therefore the ordinary Required CI command, `pytest tests/`,
-runs the structural mutation matrix, current-source check, committed self-
-regeneration regression, add-then-remove history regression, shared Python
-corpora, and shared Go corpora.
+hidden Python suites, uncollectable `Test*` classes, and symlink/package escapes,
+and runs each Go package with bounded `go test -race -count=1 -json` plus
+`go vet`. Missing compilers, empty Go packages, timeouts, excessive output,
+panics, and nonzero exits fail normal test discovery. Therefore the ordinary
+Required CI command, `pytest tests/`, runs the structural mutation matrix,
+current-source check, committed self-regeneration regression, post-introduction
+reservation and map-history regressions, shared Python corpora, and shared Go
+corpora.
 
 Adjacent-version reservation and executable converter policy is intentionally
 out of scope here and is owned by #8057. Generated bindings, packaging,

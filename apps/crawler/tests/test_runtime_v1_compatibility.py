@@ -44,19 +44,42 @@ def _discover_python_tests() -> tuple[dict[str, Any], set[str]]:
             str(path),
             run_name=f"runtime_v1_conformance_{module_id}",
         )
-        tests = {
+        functions = {
             name: value
             for name, value in namespace.items()
             if name.startswith("test_") and callable(value)
         }
-        if not tests:
+        classes = {
+            name: value
+            for name, value in namespace.items()
+            if name.startswith("Test") and isinstance(value, type)
+        }
+        if not functions and not classes:
             raise AssertionError(f"Python conformance module has no tests: {path.name}")
-        for name, value in sorted(tests.items()):
+        for name, value in sorted(functions.items()):
             exported_name = f"test_runtime_v1_{module_id.removeprefix('test_')}__{name[5:]}"
             if exported_name in exported:
                 raise AssertionError(f"duplicate exported conformance test: {exported_name}")
             exported[exported_name] = value
             original_names.add(name)
+        for name, value in sorted(classes.items()):
+            methods = sorted(
+                method_name
+                for method_name in dir(value)
+                if method_name.startswith("test_") and callable(getattr(value, method_name))
+            )
+            if not methods or getattr(value, "__test__", True) is False:
+                raise AssertionError(f"uncollectable Python conformance class: {name}")
+            if value.__init__ is not object.__init__ or value.__new__ is not object.__new__:
+                raise AssertionError(f"pytest would skip conformance class constructor: {name}")
+            exported_name = (
+                f"TestRuntimeV1{module_id.removeprefix('test_').title().replace('_', '')}"
+                f"__{name.removeprefix('Test')}"
+            )
+            if exported_name in exported:
+                raise AssertionError(f"duplicate exported conformance class: {exported_name}")
+            exported[exported_name] = value
+            original_names.update(f"{name}.{method}" for method in methods)
 
     if not exported:
         raise AssertionError("runtime v1 Python conformance discovery was empty")
@@ -69,6 +92,7 @@ assert {
     "test_current_descriptor_matches_frozen_introduction_and_git_base",
     "test_committed_self_regenerated_baseline_cannot_authenticate_itself",
     "test_prior_main_addition_cannot_later_be_removed",
+    "TestRequiredCiBridgeClassCollection.test_preserves_parametrized_class_methods",
 } <= _ORIGINAL_PYTHON_TEST_NAMES
 
 globals().update(_EXPORTED_PYTHON_TESTS)

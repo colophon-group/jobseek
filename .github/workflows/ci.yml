@@ -499,6 +499,25 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Install frozen runtime-contract protoc
+        working-directory: apps/crawler
+        env:
+          PROTOC_LINUX_X86_64_SHA256: bc8211ce760bd43ee21ddc145d6d9dbaeeabae205267a79d9054a240e367d4b4
+        run: |
+          set -euo pipefail
+          version="$(python -c 'import json; from pathlib import Path; value=json.loads(Path("contracts/v1/baseline/manifest.json").read_text())["generator"]; prefix="libprotoc "; assert value.startswith(prefix); print(value.removeprefix(prefix))')"
+          test "$version" = "36.0"
+          archive="$RUNNER_TEMP/protoc-$version-linux-x86_64.zip"
+          protoc_root="$RUNNER_TEMP/protoc-$version"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --retry 5 --retry-all-errors \
+            --output "$archive" \
+            "https://github.com/protocolbuffers/protobuf/releases/download/v$version/protoc-$version-linux-x86_64.zip"
+          printf '%s  %s\n' "$PROTOC_LINUX_X86_64_SHA256" "$archive" | sha256sum --check --strict
+          unzip -q "$archive" -d "$protoc_root"
+          "$protoc_root/bin/protoc" --version | grep -Fx "libprotoc $version"
+          printf '%s\n' "$protoc_root/bin" >>"$GITHUB_PATH"
+
       - run: uv sync --group dev --extra enrich
         working-directory: apps/crawler
 
