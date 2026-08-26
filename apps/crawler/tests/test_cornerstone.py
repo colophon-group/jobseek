@@ -12,6 +12,7 @@ from src.core.monitors.cornerstone import can_handle, discover
 from src.redis_queue import delay_for_domain
 from src.shared.cornerstone import (
     CornerstoneBoard,
+    CornerstoneContextMissingError,
     cornerstone_board_from_metadata,
     cornerstone_board_from_url,
     extract_cornerstone_context,
@@ -213,6 +214,63 @@ class TestMonitor:
         assert captured["payload"]["pageNumber"] == 1
         assert captured["payload"]["pageSize"] == 100
         assert captured["payload"]["searchText"] == ""
+
+    async def test_retries_one_accepted_page_that_omits_bootstrap_context(self, monkeypatch):
+        bootstrap_requests = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal bootstrap_requests
+            if request.method == "GET":
+                bootstrap_requests += 1
+                page = (
+                    "<html><script>window.transient='do-not-log'</script></html>"
+                    if bootstrap_requests == 1
+                    else _context_page()
+                )
+                return httpx.Response(200, text=page, request=request)
+            return httpx.Response(
+                200,
+                json=_search_payload([_raw_job(273622)]),
+                request=request,
+            )
+
+        monkeypatch.setattr(cornerstone, "_BOOTSTRAP_CONTEXT_RETRY_DELAY", 0)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            jobs = await discover({"board_url": BOARD_URL}, client)
+
+        assert len(jobs) == 1
+        assert bootstrap_requests == 2
+
+    async def test_persistent_missing_bootstrap_context_fails_after_bounded_retry(
+        self, monkeypatch
+    ):
+        bootstrap_requests = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal bootstrap_requests
+            bootstrap_requests += 1
+            return httpx.Response(200, text="<html><script></script></html>", request=request)
+
+        monkeypatch.setattr(cornerstone, "_BOOTSTRAP_CONTEXT_RETRY_DELAY", 0)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(CornerstoneContextMissingError, match="omitted csod.context"):
+                await discover({"board_url": BOARD_URL}, client)
+
+        assert bootstrap_requests == 2
+
+    async def test_bootstrap_owner_mismatch_is_not_retried(self):
+        bootstrap_requests = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal bootstrap_requests
+            bootstrap_requests += 1
+            return httpx.Response(200, text=_context_page(corp="other"), request=request)
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="does not match"):
+                await discover({"board_url": BOARD_URL}, client)
+
+        assert bootstrap_requests == 1
 
     async def test_localized_day_first_date_is_normalized(self):
         def handler(request: httpx.Request) -> httpx.Response:

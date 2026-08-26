@@ -8,6 +8,8 @@ public paginated search endpoint without per-job detail requests.
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import json
 import re
 from collections.abc import AsyncIterator
@@ -24,6 +26,7 @@ from src.core.monitors.dom import _raise_if_bot_challenge
 from src.shared.cornerstone import (
     CornerstoneBoard,
     CornerstoneContext,
+    CornerstoneContextMissingError,
     cornerstone_board_from_metadata,
     cornerstone_board_from_url,
     extract_cornerstone_context,
@@ -45,6 +48,8 @@ PAGE_SIZE = 100
 MAX_JOBS = 50_000
 MAX_PAGES = MAX_JOBS // PAGE_SIZE
 MAX_HTML_CHARS = 1_000_000
+_BOOTSTRAP_CONTEXT_ATTEMPTS = 2
+_BOOTSTRAP_CONTEXT_RETRY_DELAY = 0.5
 
 _PAGE_PATTERNS = [
     re.compile(
@@ -73,27 +78,46 @@ def _board_key(board: dict) -> CornerstoneBoard:
 
 async def _bootstrap(board: CornerstoneBoard, client: httpx.AsyncClient) -> CornerstoneContext:
     url = board.listing_url()
-    try:
-        page = await fetch_text_page_with_retry(
-            client,
-            url,
-            require_nonempty=True,
-            max_chars=MAX_HTML_CHARS,
-            follow_redirects=False,
-            end_of_pagination_statuses=(),
-            retryable_statuses={202, 401, 403},
-            log_event="cornerstone.bootstrap_backoff",
-        )
-    except PaginationFetchError as exc:
-        if exc.last_status in _GONE_STATUSES:
-            raise BoardGoneError("Cornerstone board no longer exists", url=url) from exc
-        raise
-    if page is None:  # Strict status handling above makes this unreachable.
-        raise RuntimeError(f"Cornerstone listing fetch returned no page for {board!r}")
-    _raise_if_bot_challenge(url, page)
-    if len(page) >= MAX_HTML_CHARS:
-        raise ValueError("Cornerstone listing exceeded the bootstrap HTML safety cap")
-    return extract_cornerstone_context(page, board)
+    for attempt in range(1, _BOOTSTRAP_CONTEXT_ATTEMPTS + 1):
+        try:
+            page = await fetch_text_page_with_retry(
+                client,
+                url,
+                require_nonempty=True,
+                max_chars=MAX_HTML_CHARS,
+                follow_redirects=False,
+                end_of_pagination_statuses=(),
+                retryable_statuses={202, 401, 403},
+                log_event="cornerstone.bootstrap_backoff",
+            )
+        except PaginationFetchError as exc:
+            if exc.last_status in _GONE_STATUSES:
+                raise BoardGoneError("Cornerstone board no longer exists", url=url) from exc
+            raise
+        if page is None:  # Strict status handling above makes this unreachable.
+            raise RuntimeError(f"Cornerstone listing fetch returned no page for {board!r}")
+        _raise_if_bot_challenge(url, page)
+        if len(page) >= MAX_HTML_CHARS:
+            raise ValueError("Cornerstone listing exceeded the bootstrap HTML safety cap")
+        try:
+            return extract_cornerstone_context(page, board)
+        except CornerstoneContextMissingError:
+            if attempt == _BOOTSTRAP_CONTEXT_ATTEMPTS:
+                raise
+            folded = page.casefold()
+            log.warning(
+                "cornerstone.bootstrap_context_missing",
+                tenant=board.tenant,
+                site_id=board.site_id,
+                attempt=attempt,
+                html_chars=len(page),
+                script_tags=min(folded.count("<script"), 10_000),
+                has_html="<html" in folded,
+                has_csod_text="csod" in folded,
+                body_sha256_16=hashlib.sha256(page.encode()).hexdigest()[:16],
+            )
+            await asyncio.sleep(_BOOTSTRAP_CONTEXT_RETRY_DELAY)
+    raise AssertionError("unreachable")
 
 
 def _search_payload(

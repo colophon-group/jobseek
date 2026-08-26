@@ -15,6 +15,10 @@ _CONTEXT_MARKER_RE = re.compile(r"\bcsod\.context\s*=\s*")
 _RESERVED_TENANTS = frozenset({"api", "app", "help", "login", "portal", "support", "www"})
 
 
+class CornerstoneContextMissingError(ValueError):
+    """An otherwise accepted listing page omitted its transient bootstrap."""
+
+
 def _normalize_token(value: object, pattern: re.Pattern[str]) -> str | None:
     if not isinstance(value, str):
         return None
@@ -176,7 +180,7 @@ def extract_cornerstone_context(page: str, board: CornerstoneBoard) -> Cornersto
     """Parse and validate the short-lived public context embedded in a listing."""
     marker = _CONTEXT_MARKER_RE.search(page)
     if marker is None:
-        raise ValueError("Cornerstone listing omitted csod.context")
+        raise CornerstoneContextMissingError("Cornerstone listing omitted csod.context")
     try:
         raw, _end = json.JSONDecoder().raw_decode(page, marker.end())
     except (json.JSONDecodeError, TypeError) as exc:
