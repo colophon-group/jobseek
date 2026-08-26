@@ -462,7 +462,7 @@ class TestPdfDocumentGate:
         filter_pdfs.assert_awaited_once()
         args, kwargs = filter_pdfs.await_args
         assert args[0] == urls
-        assert args[2][1] == "%d %B %Y"
+        assert args[2].deadlines[0].date_format == "%d %B %Y"
         assert kwargs["required_text_pattern"].pattern == r"(?i)\bEuropean Athletics\b"
         assert kwargs["raise_on_required_text_mismatch"] is True
         assert kwargs["return_deadlines"] is True

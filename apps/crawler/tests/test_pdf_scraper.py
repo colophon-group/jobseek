@@ -322,6 +322,40 @@ class TestScrape:
                     client,
                 )
 
+    @pytest.mark.parametrize("header", ["Authorization", "Cookie", "Connection"])
+    async def test_request_headers_reject_secrets_and_transport_headers(self, header):
+        transport = httpx.MockTransport(lambda _request: None)
+        async with httpx.AsyncClient(transport=transport) as client:
+            with pytest.raises(ValueError, match="unsafe header"):
+                await scrape(
+                    "https://example.com/job.pdf",
+                    {"request_headers": {header: "secret"}},
+                    client,
+                )
+
+    async def test_request_headers_refuse_cross_origin_redirect(self):
+        requests: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            if request.url.host != "example.com":
+                raise AssertionError("cross-origin redirect must not be requested")
+            return httpx.Response(
+                302,
+                headers={"Location": "https://attacker.example/job.pdf"},
+                request=request,
+            )
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(ValueError, match="cross-origin redirect"):
+                await scrape(
+                    "https://example.com/job.pdf",
+                    {"request_headers": {"User-Agent": "jobseek-crawler"}},
+                    client,
+                )
+
+        assert [str(request.url) for request in requests] == ["https://example.com/job.pdf"]
+
     async def test_fingerprinted_pdf_binds_get_validators_to_identity(self):
         pdf_bytes = _make_pdf("Verified Engineer")
         url, headers = _fingerprinted_pdf_url(

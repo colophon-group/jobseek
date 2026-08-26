@@ -57,7 +57,7 @@ import httpx
 import structlog
 
 from src.core.scrapers import JobContent, register
-from src.shared.api_sniff import clean_headers
+from src.shared.public_request_headers import public_get, validated_public_request_headers
 from src.shared.response_fingerprint import (
     MAX_RESPONSE_FINGERPRINT_BYTES,
     extract_response_fingerprint_url,
@@ -166,6 +166,8 @@ def _apply_defaults(content: JobContent, config: dict) -> JobContent:
 async def _download_verified_fingerprinted_pdf(
     url: str,
     http: httpx.AsyncClient,
+    *,
+    request_headers: dict[str, str] | None = None,
 ) -> bytes | None:
     """Download a synthetic PDF URL and bind its bytes to the monitor identity.
 
@@ -178,7 +180,13 @@ async def _download_verified_fingerprinted_pdf(
         return None
     source_url, expected_token = extracted
 
-    response = await same_origin_response(http, "GET", url, stream=True)
+    response = await same_origin_response(
+        http,
+        "GET",
+        url,
+        stream=True,
+        headers=request_headers,
+    )
     try:
         validators = response_fingerprint_validators(
             response,
@@ -395,20 +403,19 @@ async def scrape(
     Downloads the PDF, extracts text with pypdf, and maps to JobContent.
     Title source is controlled by config (default: URL filename).
     """
-    content = await _download_verified_fingerprinted_pdf(url, http)
+    request_headers = validated_public_request_headers(
+        config.get("request_headers"), owner="PDF scraper"
+    )
+    content = await _download_verified_fingerprinted_pdf(
+        url,
+        http,
+        request_headers=request_headers or None,
+    )
     if content is None:
-        request_headers = config.get("request_headers") or {}
-        if not isinstance(request_headers, dict) or any(
-            not isinstance(key, str) or not isinstance(value, str)
-            for key, value in request_headers.items()
-        ):
-            raise ValueError("PDF request_headers must map strings to strings")
-        headers = clean_headers(request_headers)
-        response = await http.get(
-            url,
-            follow_redirects=True,
-            headers=headers or None,
-        )
+        if request_headers:
+            response = await public_get(http, url, headers=request_headers)
+        else:
+            response = await http.get(url, follow_redirects=True)
         response.raise_for_status()
         content = response.content
 

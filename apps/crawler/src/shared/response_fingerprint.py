@@ -203,6 +203,7 @@ async def same_origin_response(
     url: str,
     *,
     stream: bool = False,
+    headers: dict[str, str] | None = None,
 ) -> httpx.Response:
     """Issue a request with bounded redirects validated before every hop."""
     initial_url = urlunsplit((*urlsplit(url)[:4], ""))
@@ -212,7 +213,13 @@ async def same_origin_response(
     current_url = initial_url
 
     for redirect_count in range(MAX_RESPONSE_FINGERPRINT_REDIRECTS + 1):
-        request = client.build_request(method, current_url)
+        request = client.build_request(method, current_url, headers=headers)
+        if headers:
+            # Configured public headers must never inherit credentials from a
+            # shared client, including on the first same-origin request.
+            from src.shared.public_request_headers import strip_private_request_headers
+
+            strip_private_request_headers(request)
         response = await client.send(request, stream=stream, follow_redirects=False)
         try:
             check_tdm_response(response)
