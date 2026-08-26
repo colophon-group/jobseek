@@ -789,4 +789,3 @@ message ConformanceCase {
     ReplayCase replay = 13;
   }
 }
-
