@@ -363,10 +363,13 @@ def _configured_partitions(
     for index, raw in enumerate(raw_partitions):
         if not isinstance(raw, dict) or set(raw) != {"board_url", "site_id"}:
             raise ValueError("each mokahr partition must contain exactly board_url and site_id")
+        partition_board_url = raw.get("board_url")
+        if not isinstance(partition_board_url, str):
+            raise ValueError("Mokahr partition board_url must be text")
         partition_site_id = _site_id(raw.get("site_id"), field=f"partitions[{index}].site_id")
         partitions.append(
             _partition(
-                raw.get("board_url"),
+                partition_board_url,
                 org_id,
                 partition_site_id,
                 require_route=True,
