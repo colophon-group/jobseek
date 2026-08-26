@@ -92,6 +92,10 @@ def _skip_no_scrape_predicate(alias: str = "jb") -> str:
                      {alias}.crawler_type IN ('api_sniffer', 'nextdata')
                      AND {alias}.metadata ? 'fields'
                  )
+                    OR (
+                     {alias}.crawler_type = 'smartrecruiters'
+                     AND {alias}.metadata ? 'canonical_job_id_url_template'
+                 )
              )
          )
         )

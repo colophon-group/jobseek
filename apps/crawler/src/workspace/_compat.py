@@ -603,6 +603,7 @@ def auto_scraper_type(
     - Workday → ("workday", None)
     - Breezy → ("json-ld", {fallback dom config})
     - api_sniffer/nextdata with ``fields`` → ("skip", None)
+    - SmartRecruiters with exact ``jobId`` locale collapse → ("skip", None)
 
     Returns None when manual scraper selection is needed.
     """
@@ -995,6 +996,8 @@ def auto_scraper_type(
     if monitor_type == "rippling":
         return ("rippling", None)
     if monitor_type == "smartrecruiters":
+        if (config or {}).get("canonical_job_id_url_template"):
+            return ("skip", None)
         return ("smartrecruiters", None)
     if monitor_type == "workable":
         return ("workable", None)
@@ -1026,7 +1029,8 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
     """Check if a monitor type returns rich data (scraper not needed).
 
     Statically-rich monitors (greenhouse, lever, etc.) always return True.
-    api_sniffer/nextdata are rich when ``fields`` is present; dom is partial
+    api_sniffer/nextdata are rich when ``fields`` is present; SmartRecruiters
+    is rich when exact ``jobId`` locale collapse is configured; dom is partial
     rich when strict static ``rich_rows`` extraction is configured.
 
     Note: this is narrower than ``auto_scraper_type``. Workday has an
@@ -1035,5 +1039,9 @@ def is_rich_monitor(monitor_type: str, config: dict | None = None) -> bool:
     return (
         monitor_type in _RICH_MONITORS
         or (monitor_type in ("api_sniffer", "nextdata") and bool((config or {}).get("fields")))
+        or (
+            monitor_type == "smartrecruiters"
+            and bool((config or {}).get("canonical_job_id_url_template"))
+        )
         or (monitor_type == "dom" and bool((config or {}).get("rich_rows")))
     )

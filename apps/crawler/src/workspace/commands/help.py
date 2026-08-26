@@ -2011,20 +2011,31 @@ beisen — Beisen modern API + legacy static listing monitor
             or depend on upstream scraper code."""
 
 MONITOR_SMARTRECRUITERS = """\
-smartrecruiters — SmartRecruiters Posting API (URL-only)
+smartrecruiters — SmartRecruiters Posting API (URL-only or localized rich data)
 
   API:      GET https://api.smartrecruiters.com/v1/companies/{token}/postings?limit=100&offset=0
-  Returns:  URL set only — constructs URLs as https://jobs.smartrecruiters.com/{token}/{posting_id}
-  Scraper:  Auto-configured (smartrecruiters) — fetches details on daily schedule
+  Returns:  URL set by default; configured exact-jobId locale collapse returns rich data
+  Scraper:  Auto-configured (smartrecruiters) for the default URL-only mode
   Cap:      50,000 jobs
 
   Config:
     {"token": "smartrecruiters"}
+    {"token": "HMGroup",
+     "canonical_job_id_url_template": "https://career.hm.com/job/{job_id}/",
+     "language_preference": ["en", "de", "fr", "it"]}
 
     token    Company identifier. Auto-filled by ws probe from:
              1. Direct URL (jobs.smartrecruiters.com/{token})
              2. Inline JS scan for SmartRecruiters API references
              3. Slug-based API probe (derives slug from domain)
+
+    canonical_job_id_url_template
+             Optional, narrowly opt-in stable identity for tenants that publish
+             locale variants. Fetches every detail, groups only by exact jobId,
+             and returns one rich job with localizations. The template must be
+             absolute HTTPS and contain exactly one {job_id} placeholder.
+    language_preference
+             Optional ISO 639-1 primary-language order for localized mode.
 
   Detection:  ws probe shows "SmartRecruiters API — token: X, N jobs"
   Zero jobs?  Verify token — try the API URL directly in a browser"""

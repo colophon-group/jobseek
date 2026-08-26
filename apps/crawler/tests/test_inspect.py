@@ -496,6 +496,25 @@ class TestValidateCsvs:
             for e in errors
         )
 
+    def test_skip_scraper_allowed_for_smartrecruiters_job_id_mode(self, tmp_path, monkeypatch):
+        cfg = (
+            '"{""token"": ""HMGroup"", '
+            '""canonical_job_id_url_template"": '
+            '""https://career.hm.com/job/{job_id}/""}"'
+        )
+        self._write_csvs(
+            tmp_path,
+            "slug,name,website,logo_url,icon_url,logo_type\ntest,Test,https://test.com,,,\n",
+            "company_slug,board_slug,board_url,monitor_type,monitor_config,scraper_type,scraper_config\n"
+            f"test,test-careers,https://example.com,smartrecruiters,{cfg},skip,\n",
+        )
+        monkeypatch.setattr("src.shared.constants.get_data_dir", lambda: tmp_path)
+        monkeypatch.setattr("src.inspect.get_data_dir", lambda: tmp_path)
+
+        errors = validate_csvs()
+
+        assert not any("scraper_type='skip' is invalid" in str(e) for e in errors)
+
     def test_skip_scraper_allowed_for_api_sniffer_with_fields(self, tmp_path, monkeypatch):
         cfg = '"{""api_url"": ""https://x"", ""fields"": {""title"": ""title""}}"'
         self._write_csvs(

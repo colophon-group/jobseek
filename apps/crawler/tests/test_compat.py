@@ -44,6 +44,14 @@ def test_is_rich_monitor_consistency():
     assert compat_is_rich("dom", dom_cfg) == core_is_rich("dom", dom_cfg) is True
     assert compat_is_rich("dom", {}) == core_is_rich("dom", {}) is False
 
+    smartrecruiters_cfg = {"canonical_job_id_url_template": "https://career.hm.com/job/{job_id}/"}
+    assert (
+        compat_is_rich("smartrecruiters", smartrecruiters_cfg)
+        == core_is_rich("smartrecruiters", smartrecruiters_cfg)
+        is True
+    )
+    assert compat_is_rich("smartrecruiters", {}) == core_is_rich("smartrecruiters", {}) is False
+
 
 def test_all_scraper_types_match():
     core_scraper_all = frozenset(scraper_registry.keys())
