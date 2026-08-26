@@ -1368,6 +1368,18 @@ async def _paginate_until_converged(
     def payload_total(payload: object) -> int | None:
         return _advertised_total(payload, total_path, json_path)
 
+    def has_configured_item_list(payload: object) -> bool:
+        """Require the configured list schema on every response in the proof."""
+        if json_path == "$":
+            configured_items = payload
+        elif isinstance(payload, dict):
+            configured_items = resolve_path(payload, json_path)
+        else:
+            return False
+        return isinstance(configured_items, list) and all(
+            isinstance(item, dict) for item in configured_items
+        )
+
     def identity_map(items: list[dict]) -> tuple[dict[tuple[str, ...], dict], bool]:
         mapped: dict[tuple[str, ...], dict] = {}
         valid = True
@@ -1391,7 +1403,14 @@ async def _paginate_until_converged(
     pass_data = initial_data
     pass_items = initial_items
     for pass_number in range(1, max_passes + 1):
+        if not has_configured_item_list(pass_data):
+            log.warning(
+                "api_sniffer.pagination_convergence_invalid_list_shape",
+                pass_number=pass_number,
+            )
+            return list(accumulated.values()), False
         totals_valid = payload_total(pass_data) == expected_total and expected_total is not None
+        list_shapes_valid = True
 
         async def validating_fetch(
             fetch_method: str,
@@ -1399,10 +1418,12 @@ async def _paginate_until_converged(
             fetch_headers: dict,
             fetch_body: str | None,
         ) -> object:
-            nonlocal totals_valid
+            nonlocal list_shapes_valid, totals_valid
             payload = await fetch_fn(fetch_method, fetch_url, fetch_headers, fetch_body)
             if payload_total(payload) != expected_total:
                 totals_valid = False
+            if not has_configured_item_list(payload):
+                list_shapes_valid = False
             return payload
 
         pagination = PaginationInfo(
@@ -1450,11 +1471,13 @@ async def _paginate_until_converged(
             accumulated.setdefault(identity, item)
         complete_pass = (
             totals_valid
+            and list_shapes_valid
             and identities_valid
             and expected_total is not None
             and len(rows) == expected_total
             and len(accumulated) <= expected_total
         )
+        inventory_complete = expected_total is not None and len(accumulated) == expected_total
         log.info(
             "api_sniffer.pagination_convergence_pass",
             pass_number=pass_number,
@@ -1464,6 +1487,7 @@ async def _paginate_until_converged(
             new_identities=len(new_identities),
             advertised_total=expected_total,
             complete=complete_pass,
+            inventory_complete=inventory_complete,
         )
         if not complete_pass:
             log.warning(
@@ -1475,7 +1499,7 @@ async def _paginate_until_converged(
 
         if pass_number > 1:
             no_growth_passes = no_growth_passes + 1 if not new_identities else 0
-            if no_growth_passes >= required_no_growth_passes:
+            if inventory_complete and no_growth_passes >= required_no_growth_passes:
                 return list(accumulated.values()), True
 
         if pass_number == max_passes:

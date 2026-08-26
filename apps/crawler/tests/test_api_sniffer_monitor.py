@@ -1302,6 +1302,50 @@ class TestPaginationConvergence:
         assert {item["id"] for item in items} == {"a", "b"}
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "page_payload",
+        [
+            None,
+            {"count": 2},
+            {"count": 2, "jobs": [None]},
+        ],
+        ids=["missing-response", "missing-list", "item-schema-drift"],
+    )
+    async def test_every_paginated_response_requires_the_configured_list_schema(self, page_payload):
+        first = {"id": "a"}
+
+        async def fetch(_method, _url, _headers, _body):
+            return page_payload
+
+        items, converged = await _paginate_until_converged(
+            fetch_fn=fetch,
+            method="GET",
+            api_url="https://example.com/jobs?skip=0",
+            request_headers={},
+            post_data=None,
+            initial_data={"count": 2, "jobs": [first]},
+            initial_items=[first],
+            json_path="jobs",
+            total_path="count",
+            total_count=2,
+            pagination_config={
+                "param_name": "skip",
+                "style": "offset",
+                "start_value": 0,
+                "increment": 1,
+                "location": "query",
+            },
+            max_pages=2,
+            identity_paths=("id",),
+            max_passes=3,
+            required_no_growth_passes=2,
+            item_projector=None,
+        )
+
+        assert converged is False
+        assert items == [first]
+
+    @pytest.mark.asyncio
     async def test_cross_pass_record_conflict_invalidates_proof_and_preserves_first(self):
         passes = [
             {
@@ -1367,7 +1411,7 @@ class TestPaginationConvergence:
             ),
         ],
     )
-    async def test_duplicate_rows_require_identical_records(self, rows, expected_ids):
+    async def test_duplicate_rows_cannot_prove_a_short_unique_inventory(self, rows, expected_ids):
         calls = 0
 
         async def fetch(_method, _url, _headers, _body):
@@ -1401,11 +1445,10 @@ class TestPaginationConvergence:
         )
 
         assert {item["id"] for item in items} == expected_ids
+        assert converged is False
         if rows[0] == rows[1]:
-            assert converged is True
             assert calls == 2
         else:
-            assert converged is False
             assert items == [rows[0]]
             assert calls == 0
 
@@ -1462,6 +1505,8 @@ class TestPaginationConvergence:
             ([{"jobs": []}], True, set()),
             ([{"count": 0}], True, set()),
             ([{"count": 0, "jobs": []}, {"count": 1, "jobs": []}], True, set()),
+            ([{"count": 0, "jobs": []}, {"count": 0}], True, set()),
+            ([{"count": 0, "jobs": []}, {"count": 0, "jobs": [None]}], True, set()),
         ],
         ids=[
             "stable-zero",
@@ -1470,6 +1515,8 @@ class TestPaginationConvergence:
             "missing-total-empty",
             "missing-list-zero",
             "changing-total-empty",
+            "later-missing-list-zero",
+            "later-item-schema-drift-zero",
         ],
     )
     async def test_replay_paths_require_bounded_empty_and_nonempty_proof(
