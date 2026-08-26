@@ -31,7 +31,14 @@ _DEFAULT_FIELDS = {
     "title": "Title",
     "locations": "PrimaryLocation",
     "date_posted": "ExternalPostedStartDate",
-    "description": "ExternalDescriptionStr",
+    # Some Oracle tenants publish the role-specific field as an empty string
+    # while still exposing useful hotel/business context in the organization
+    # fields. JMESPath's OR expression skips empty strings, preserving the
+    # specific description whenever present and falling back without
+    # manufacturing content for genuinely blank requisitions.
+    "description": (
+        "ExternalDescriptionStr || OrganizationDescriptionStr || CorporateDescriptionStr"
+    ),
     "qualifications": "ExternalQualificationsStr",
     "responsibilities": "ExternalResponsibilitiesStr",
     "employment_type": "JobSchedule",
