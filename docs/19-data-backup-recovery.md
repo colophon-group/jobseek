@@ -462,6 +462,13 @@ the call, and is the container's labelled writable snapshot mount. The
 container must also expose the exact reviewed 6 GiB hard limit, 5 GiB
 reservation, and 6 GiB memory-plus-swap ceiling while durable current, peak,
 and event counters are retained.
+During the staged CX33 cutover only, the backup runner also recognizes the
+exact former 3 GiB / 2.5 GiB / 3 GiB tuple so the old timer remains valid until
+the host transaction quiesces it. The backup installer itself requires the
+expanded tuple before installing or smoking the new runner. Remove this
+legacy runner branch in
+[#8059](https://github.com/colophon-group/jobseek/issues/8059) as soon as the
+expanded promotion is accepted.
 
 During restore, aliases and collection counts are derived from the isolated
 restored node and cross-checked against wildcard reads, so the restore inventory

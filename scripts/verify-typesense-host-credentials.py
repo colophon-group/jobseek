@@ -24,9 +24,10 @@ TYPESENSE_SNAPSHOT_CONTRACT = "direct-mount-v1"
 TYPESENSE_NOFILE_LIMIT = 65_536
 TYPESENSE_LOG_MAX_SIZE = "50m"
 TYPESENSE_LOG_MAX_FILES = "3"
-TYPESENSE_MEMORY_LIMIT = 6 * 1024**3
-TYPESENSE_MEMORY_RESERVATION = 5 * 1024**3
-TYPESENSE_MEMORY_SWAP = TYPESENSE_MEMORY_LIMIT
+TYPESENSE_MEMORY_POLICIES = {
+    "expanded": (6 * 1024**3, 5 * 1024**3, 6 * 1024**3),
+    "legacy": (3 * 1024**3, 2560 * 1024**2, 3 * 1024**3),
+}
 TYPESENSE_IMAGE = (
     "typesense/typesense:27.1@sha256:"
     "5c12af89130b8ee0be11541321ba8a3a7c7a538d7c6cd95e0409dc2d75ca6455"
@@ -42,6 +43,15 @@ FORBIDDEN_TYPESENSE_ENV = {
 def has_inline_flag(argv: Sequence[str], flag: str) -> bool:
     """Return whether argv embeds or follows the exact secret-bearing flag."""
     return any(argument == flag or argument.startswith(f"{flag}=") for argument in argv)
+
+
+def expected_typesense_memory_policy() -> tuple[int, int, int]:
+    """Return the exact reviewed tuple for this explicitly selected phase."""
+    phase = os.environ.get("JOBSEEK_TYPESENSE_MEMORY_POLICY", "expanded")
+    try:
+        return TYPESENSE_MEMORY_POLICIES[phase]
+    except KeyError as exc:
+        raise ValueError(f"unrecognized Typesense memory policy: {phase}") from exc
 
 
 def _run(
@@ -99,6 +109,7 @@ def collect_typesense_checks() -> dict[str, bool]:
     typesense_pid = int(inspect["State"]["Pid"])
     typesense_argv = _read_proc_argv(typesense_pid)
     nofile_soft, nofile_hard = _proc_nofile_limits(typesense_pid)
+    expected_memory, expected_reservation, expected_swap = expected_typesense_memory_policy()
 
     nobody_config = _run(
         ["runuser", "-u", "nobody", "--", "test", "-r", str(TYPESENSE_CONFIG)],
@@ -158,10 +169,10 @@ def collect_typesense_checks() -> dict[str, bool]:
         )
         == TYPESENSE_SNAPSHOT_CONTRACT,
         "typesense_memory_policy_is_enforced": (
-            int(inspect["HostConfig"].get("Memory") or 0) == TYPESENSE_MEMORY_LIMIT
+            int(inspect["HostConfig"].get("Memory") or 0) == expected_memory
             and int(inspect["HostConfig"].get("MemoryReservation") or 0)
-            == TYPESENSE_MEMORY_RESERVATION
-            and int(inspect["HostConfig"].get("MemorySwap") or 0) == TYPESENSE_MEMORY_SWAP
+            == expected_reservation
+            and int(inspect["HostConfig"].get("MemorySwap") or 0) == expected_swap
         ),
         "typesense_config_only_argv": container_argv
         == [f"--config={TYPESENSE_CONFIG_IN_CONTAINER}"],
@@ -249,6 +260,16 @@ def self_test() -> None:
     assert has_inline_flag(["cloudflared", "--token", "secret"], "--token")
     assert has_inline_flag(["cloudflared", "--token=secret"], "--token")
     assert not has_inline_flag(["cloudflared", "--token-file", "/run/credential"], "--token")
+    assert TYPESENSE_MEMORY_POLICIES["expanded"] == (
+        6 * 1024**3,
+        5 * 1024**3,
+        6 * 1024**3,
+    )
+    assert TYPESENSE_MEMORY_POLICIES["legacy"] == (
+        3 * 1024**3,
+        2560 * 1024**2,
+        3 * 1024**3,
+    )
 
 
 def main() -> int:
