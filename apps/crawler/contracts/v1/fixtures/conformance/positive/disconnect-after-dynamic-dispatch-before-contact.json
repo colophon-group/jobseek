@@ -1,0 +1,341 @@
+{
+  "expectedValid": true,
+  "name": "disconnect-after-dynamic-dispatch-before-contact",
+  "transcript": {
+    "contractVersion": "crawler.runtime/v1",
+    "events": [
+      {
+        "client": {
+          "hello": {
+            "implementation": "IMPLEMENTATION_PYTHON",
+            "requestedLimits": {
+              "maxActiveDurationMs": "900000",
+              "maxArtifactChunkBytes": "8388608",
+              "maxArtifactCount": 64,
+              "maxArtifactTotalBytes": "67108864",
+              "maxBrowserActions": 256,
+              "maxBrowserCaptures": 64,
+              "maxBrowserEvaluations": 64,
+              "maxBrowserTransferBytes": "67108864",
+              "maxExecutionFrames": 4096,
+              "maxFrameBytes": "1048576",
+              "maxHttpTransferBytes": "16777216",
+              "maxInFlightFrames": 64,
+              "maxInlineBodyBytes": "8388608",
+              "maxMonitorBatches": 4096,
+              "maxOutputItems": "100000",
+              "maxRetryAfterMs": "604800000"
+            },
+            "supportedContractVersions": [
+              "crawler.runtime/v1"
+            ]
+          }
+        },
+        "direction": "EVENT_DIRECTION_CLIENT"
+      },
+      {
+        "direction": "EVENT_DIRECTION_SERVER",
+        "server": {
+          "hello": {
+            "acceptedLimits": {
+              "maxActiveDurationMs": "900000",
+              "maxArtifactChunkBytes": "8388608",
+              "maxArtifactCount": 64,
+              "maxArtifactTotalBytes": "67108864",
+              "maxBrowserActions": 256,
+              "maxBrowserCaptures": 64,
+              "maxBrowserEvaluations": 64,
+              "maxBrowserTransferBytes": "67108864",
+              "maxExecutionFrames": 4096,
+              "maxFrameBytes": "1048576",
+              "maxHttpTransferBytes": "16777216",
+              "maxInFlightFrames": 4,
+              "maxInlineBodyBytes": "8388608",
+              "maxMonitorBatches": 4096,
+              "maxOutputItems": "100000",
+              "maxRetryAfterMs": "604800000"
+            },
+            "implementation": "IMPLEMENTATION_GO",
+            "initialWindowFrames": 4,
+            "resumeByOriginRequestId": true,
+            "selectedContractVersion": "crawler.runtime/v1"
+          }
+        }
+      },
+      {
+        "client": {
+          "start": {
+            "attemptId": "attempt-1",
+            "boardManifest": {
+              "boardId": "board-1",
+              "boardUrl": "https://careers.example.invalid/jobs",
+              "checkIntervalMs": "3600000",
+              "companyId": "company-1",
+              "configExtensions": [
+                {
+                  "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
+                  "payload": "eyJwYWdlcyI6Mn0=",
+                  "payloadSha256": "fe2f26a77f4fb758041cc3979477135825c7ce01729079a5bf38c230073aac50",
+                  "schemaId": "jobseek.runtime.v1/representative-json/monitor-config",
+                  "schemaVersion": 1
+                },
+                {
+                  "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
+                  "payload": "eyJmaWVsZHMiOlsidGl0bGUiLCJkZXNjcmlwdGlvbiJdfQ==",
+                  "payloadSha256": "af7543cdfb2cf64c543674e6bfe386b88865a47935a12615974e73db3df2810a",
+                  "schemaId": "jobseek.runtime.v1/representative-json/scraper-config",
+                  "schemaVersion": 1
+                }
+              ],
+              "configFingerprint": "5aac91feaeeb22ee2e7453ceccf4f7609a26ef3928a8c7f039754b30dbf95b68",
+              "configRevision": "revision-7",
+              "contractVersion": "crawler.runtime/v1",
+              "manifestId": "board-1:revision-7",
+              "monitorType": "fixture-json",
+              "providerFamily": "representative-json",
+              "scrapeIntervalMs": "86400000",
+              "throttleKey": "example.invalid"
+            },
+            "contractVersion": "crawler.runtime/v1",
+            "deadlineRfc3339": "2026-08-26T12:00:00Z",
+            "fencingContext": {
+              "claimToken": "claim:board-1:due-42",
+              "configRevision": "revision-7",
+              "engineOwner": "ENGINE_OWNER_PYTHON",
+              "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+              "leaseId": "lease:board-1:attempt-1",
+              "routingEpoch": "7",
+              "shardId": "crawler-http-00"
+            },
+            "kind": "EXECUTION_KIND_MONITOR",
+            "monitor": {
+              "monitorType": "fixture-json"
+            },
+            "originOperations": [
+              {
+                "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "role": "initial"
+              }
+            ],
+            "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+            "requestId": "request-monitor-1",
+            "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+          }
+        },
+        "direction": "EVENT_DIRECTION_CLIENT"
+      },
+      {
+        "direction": "EVENT_DIRECTION_SERVER",
+        "server": {
+          "frame": {
+            "attemptId": "attempt-1",
+            "contractVersion": "crawler.runtime/v1",
+            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+            "originContact": {
+              "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
+              "operation": {
+                "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "role": "initial"
+              },
+              "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a"
+            },
+            "requestId": "request-monitor-1"
+          }
+        }
+      },
+      {
+        "direction": "EVENT_DIRECTION_SERVER",
+        "server": {
+          "frame": {
+            "attemptId": "attempt-1",
+            "contractVersion": "crawler.runtime/v1",
+            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+            "originOperationDeclared": {
+              "operation": {
+                "operationSequence": 1,
+                "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+                "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "role": "dynamic-detail"
+              }
+            },
+            "requestId": "request-monitor-1",
+            "sequence": "1"
+          }
+        }
+      },
+      {
+        "direction": "EVENT_DIRECTION_FAULT",
+        "fault": {
+          "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+          "originWasDispatched": true,
+          "point": "DISCONNECT_POINT_AFTER_DISPATCH"
+        }
+      },
+      {
+        "client": {
+          "hello": {
+            "implementation": "IMPLEMENTATION_PYTHON",
+            "requestedLimits": {
+              "maxActiveDurationMs": "900000",
+              "maxArtifactChunkBytes": "8388608",
+              "maxArtifactCount": 64,
+              "maxArtifactTotalBytes": "67108864",
+              "maxBrowserActions": 256,
+              "maxBrowserCaptures": 64,
+              "maxBrowserEvaluations": 64,
+              "maxBrowserTransferBytes": "67108864",
+              "maxExecutionFrames": 4096,
+              "maxFrameBytes": "1048576",
+              "maxHttpTransferBytes": "16777216",
+              "maxInFlightFrames": 64,
+              "maxInlineBodyBytes": "8388608",
+              "maxMonitorBatches": 4096,
+              "maxOutputItems": "100000",
+              "maxRetryAfterMs": "604800000"
+            },
+            "supportedContractVersions": [
+              "crawler.runtime/v1"
+            ]
+          }
+        },
+        "direction": "EVENT_DIRECTION_CLIENT"
+      },
+      {
+        "direction": "EVENT_DIRECTION_SERVER",
+        "server": {
+          "hello": {
+            "acceptedLimits": {
+              "maxActiveDurationMs": "900000",
+              "maxArtifactChunkBytes": "8388608",
+              "maxArtifactCount": 64,
+              "maxArtifactTotalBytes": "67108864",
+              "maxBrowserActions": 256,
+              "maxBrowserCaptures": 64,
+              "maxBrowserEvaluations": 64,
+              "maxBrowserTransferBytes": "67108864",
+              "maxExecutionFrames": 4096,
+              "maxFrameBytes": "1048576",
+              "maxHttpTransferBytes": "16777216",
+              "maxInFlightFrames": 4,
+              "maxInlineBodyBytes": "8388608",
+              "maxMonitorBatches": 4096,
+              "maxOutputItems": "100000",
+              "maxRetryAfterMs": "604800000"
+            },
+            "implementation": "IMPLEMENTATION_GO",
+            "initialWindowFrames": 4,
+            "resumeByOriginRequestId": true,
+            "selectedContractVersion": "crawler.runtime/v1"
+          }
+        }
+      },
+      {
+        "client": {
+          "resume": {
+            "afterSequence": "1",
+            "attemptId": "attempt-resume-2",
+            "contractVersion": "crawler.runtime/v1",
+            "fencingContext": {
+              "claimToken": "claim:board-1:due-42",
+              "configRevision": "revision-7",
+              "engineOwner": "ENGINE_OWNER_PYTHON",
+              "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+              "leaseId": "lease:board-1:attempt-1",
+              "routingEpoch": "7",
+              "shardId": "crawler-http-00"
+            },
+            "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+            "requestId": "request-monitor-1"
+          }
+        },
+        "direction": "EVENT_DIRECTION_CLIENT"
+      },
+      {
+        "direction": "EVENT_DIRECTION_SERVER",
+        "server": {
+          "frame": {
+            "attemptId": "attempt-resume-2",
+            "contractVersion": "crawler.runtime/v1",
+            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+            "originContact": {
+              "disposition": "ORIGIN_CONTACT_DISPOSITION_DEDUPLICATED",
+              "operation": {
+                "operationSequence": 1,
+                "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+                "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+                "role": "dynamic-detail"
+              },
+              "requestFingerprint": "98e5b0940917732600ba7a8a503f86573181fc25c05ba49bea271cc8c9d2a4e0"
+            },
+            "requestId": "request-monitor-1",
+            "sequence": "2"
+          }
+        }
+      },
+      {
+        "direction": "EVENT_DIRECTION_SERVER",
+        "server": {
+          "frame": {
+            "attemptId": "attempt-resume-2",
+            "contractVersion": "crawler.runtime/v1",
+            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+            "monitorBatch": {
+              "filteredCount": "2",
+              "jobs": [
+                {
+                  "content": {
+                    "descriptionHtml": "<p>Build safely</p>",
+                    "locations": {},
+                    "title": "Engineer 1"
+                  },
+                  "url": "https://careers.example.invalid/jobs/1"
+                }
+              ],
+              "metadataUpdates": {
+                "cursor": "page-1",
+                "extensions": [
+                  {
+                    "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
+                    "payload": "eyJzb3VyY2UiOiJvZmZsaW5lLWZpeHR1cmUifQ==",
+                    "payloadSha256": "5e346e6801de6f33deeeceaf32895dea9974f0272545dcfdfb1d74b7c43fc089",
+                    "schemaId": "jobseek.runtime.v1/representative-json/runtime-metadata",
+                    "schemaVersion": 1
+                  }
+                ]
+              },
+              "newSitemapUrl": "https://careers.example.invalid/sitemap-current.xml",
+              "securityFilteredCount": "1",
+              "urls": [
+                "https://careers.example.invalid/jobs/1"
+              ]
+            },
+            "requestId": "request-monitor-1",
+            "sequence": "3"
+          }
+        }
+      },
+      {
+        "direction": "EVENT_DIRECTION_SERVER",
+        "server": {
+          "frame": {
+            "attemptId": "attempt-resume-2",
+            "contractVersion": "crawler.runtime/v1",
+            "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+            "requestId": "request-monitor-1",
+            "sequence": "4",
+            "terminal": {
+              "activeDurationMs": "25",
+              "eligibleForCommit": true,
+              "frameCount": "4",
+              "monitorBatches": 1,
+              "originOperationCount": 2,
+              "outputItems": "1",
+              "status": "TERMINAL_STATUS_SUCCESS"
+            }
+          }
+        }
+      }
+    ],
+    "name": "disconnect-after-dynamic-dispatch-before-contact"
+  }
+}

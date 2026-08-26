@@ -1,0 +1,9 @@
+{
+  "browserResult": {
+    "backend": "BROWSER_BACKEND_LIGHTPANDA",
+    "contractVersion": "crawler.runtime/v1",
+    "unsupported": {}
+  },
+  "expectedError": "browser_union",
+  "name": "browser-unsupported-empty"
+}

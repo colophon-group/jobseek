@@ -1,0 +1,14 @@
+{
+  "browserResult": {
+    "backend": "BROWSER_BACKEND_LIGHTPANDA",
+    "contractVersion": "crawler.runtime/v1",
+    "unsupported": {
+      "capabilities": [
+        "BROWSER_CAPABILITY_EVALUATE",
+        "BROWSER_CAPABILITY_EVALUATE"
+      ]
+    }
+  },
+  "expectedError": "duplicate",
+  "name": "duplicate-browser-unsupported-capability"
+}

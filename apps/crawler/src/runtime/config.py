@@ -125,25 +125,3 @@ class BoardRuntimeConfig:
             "scraper_config": self.scraper_config,
             "throttle_key": self.throttle_key,
         }
-
-    def as_contract_payload(self) -> dict[str, object]:
-        """Serialize the normalized snapshot for replay and Go fixtures."""
-
-        if self.check_interval_minutes < 1 or self.scrape_interval_hours < 1:
-            raise ValueError("runtime contract intervals must be positive")
-
-        return {
-            "contract_version": "crawler.runtime/v1",
-            "board_url": self.board_url,
-            "crawler_type": self.crawler_type,
-            "company_id": self.company_id,
-            "domain": self.domain,
-            "throttle_key": self.throttle_key,
-            "check_interval_minutes": self.check_interval_minutes,
-            "scrape_interval_hours": self.scrape_interval_hours,
-            "monitor_needs_browser": self.monitor_needs_browser,
-            "scraper_needs_browser": self.scraper_needs_browser,
-            "egress_host": self.egress_host,
-            "scrape_egress_host": self.scrape_egress_host,
-            "metadata": self.metadata,
-        }

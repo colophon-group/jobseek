@@ -1,0 +1,13 @@
+{
+  "browserResult": {
+    "backend": "BROWSER_BACKEND_LIGHTPANDA",
+    "contractVersion": "crawler.runtime/v1",
+    "unsupported": {
+      "capabilities": [
+        "BROWSER_CAPABILITY_PERSISTENT_SESSION"
+      ]
+    }
+  },
+  "expectedValid": true,
+  "name": "browser-unsupported"
+}

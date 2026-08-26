@@ -4,8 +4,10 @@ repos:
     hooks:
       - id: ruff
         files: ^apps/crawler/
+        exclude: ^apps/crawler/contracts/v1/gen/
       - id: ruff-format
         files: ^apps/crawler/
+        exclude: ^apps/crawler/contracts/v1/gen/
   - repo: local
     hooks:
       - id: web-lint

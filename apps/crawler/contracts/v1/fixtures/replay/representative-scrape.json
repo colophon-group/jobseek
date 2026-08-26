@@ -1,0 +1,178 @@
+{
+  "adapter": "REPLAY_ADAPTER_NORMALIZED_SCRAPE_JSON",
+  "contractVersion": "crawler.runtime/v1",
+  "exchanges": [
+    {
+      "deterministicallyRedacted": true,
+      "normalizedResultFrameSequence": "1",
+      "operation": {
+        "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+        "role": "initial"
+      },
+      "request": {
+        "body": {
+          "complete": true,
+          "totalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "headers": [
+          {
+            "name": "accept",
+            "value": "application/json"
+          },
+          {
+            "name": "authorization",
+            "redacted": true,
+            "value": "redacted-sha256:3742f7ab8e2513ce9d6da7e6e16d9f1b9797765fd79e11723769b2026fa70e2d"
+          }
+        ],
+        "method": "GET",
+        "url": "https://careers.example.invalid/api/jobs?page=1"
+      },
+      "response": {
+        "body": {
+          "chunks": [
+            {
+              "inlineBody": "ewogICJjb250ZW50IjogewogICAgImRlc2NyaXB0aW9uSHRtbCI6ICI8cD5EZXRlcm1pbmlzdGljIG9mZmxpbmUgY29udGVudDwvcD4iLAogICAgImxhbmd1YWdlIjogImVuIiwKICAg",
+              "sha256": "f52b99f398f3ef726f71fb6832c4f886e1760a6de70fd385c36d73ee8db445c7",
+              "sizeBytes": "105"
+            },
+            {
+              "inlineBody": "ICJsb2NhdGlvbnMiOiB7fSwKICAgICJza2lsbHMiOiBbCiAgICAgICJHbyIsCiAgICAgICJQeXRob24iCiAgICBdLAogICAgInRpdGxlIjogIlN5c3RlbXMgRW5naW5lZXIiCiAgfQp9",
+              "sequence": 1,
+              "sha256": "c7424959cbcd84976a6595257a6039879bb1c140d58eff3dbd582fabc183d3f6",
+              "sizeBytes": "105"
+            }
+          ],
+          "complete": true,
+          "totalSha256": "37984b94fad592d1a11249353aa238dd40f28afc3dc39763c4ec305644cdca42",
+          "totalSizeBytes": "210"
+        },
+        "headers": [
+          {
+            "name": "content-type",
+            "value": "application/json"
+          }
+        ],
+        "status": 200
+      }
+    }
+  ],
+  "executionRequest": {
+    "attemptId": "attempt-1",
+    "boardManifest": {
+      "boardId": "board-1",
+      "boardUrl": "https://careers.example.invalid/jobs",
+      "checkIntervalMs": "3600000",
+      "companyId": "company-1",
+      "configExtensions": [
+        {
+          "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
+          "payload": "eyJwYWdlcyI6Mn0=",
+          "payloadSha256": "fe2f26a77f4fb758041cc3979477135825c7ce01729079a5bf38c230073aac50",
+          "schemaId": "jobseek.runtime.v1/representative-json/monitor-config",
+          "schemaVersion": 1
+        },
+        {
+          "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
+          "payload": "eyJmaWVsZHMiOlsidGl0bGUiLCJkZXNjcmlwdGlvbiJdfQ==",
+          "payloadSha256": "af7543cdfb2cf64c543674e6bfe386b88865a47935a12615974e73db3df2810a",
+          "schemaId": "jobseek.runtime.v1/representative-json/scraper-config",
+          "schemaVersion": 1
+        }
+      ],
+      "configFingerprint": "5aac91feaeeb22ee2e7453ceccf4f7609a26ef3928a8c7f039754b30dbf95b68",
+      "configRevision": "revision-7",
+      "contractVersion": "crawler.runtime/v1",
+      "manifestId": "board-1:revision-7",
+      "monitorType": "fixture-json",
+      "providerFamily": "representative-json",
+      "scrapeIntervalMs": "86400000",
+      "scraperType": "fixture-json",
+      "throttleKey": "example.invalid"
+    },
+    "contractVersion": "crawler.runtime/v1",
+    "deadlineRfc3339": "2026-08-26T12:00:00Z",
+    "fencingContext": {
+      "claimToken": "claim:board-1:due-42",
+      "configRevision": "revision-7",
+      "engineOwner": "ENGINE_OWNER_PYTHON",
+      "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+      "leaseId": "lease:board-1:attempt-1",
+      "routingEpoch": "7",
+      "shardId": "crawler-http-00"
+    },
+    "kind": "EXECUTION_KIND_SCRAPE",
+    "originOperations": [
+      {
+        "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+        "role": "initial"
+      }
+    ],
+    "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+    "requestId": "request-scrape-1",
+    "scrape": {
+      "scraperType": "fixture-json",
+      "sourceUrl": "https://careers.example.invalid/jobs/42"
+    },
+    "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+  },
+  "expectedFrames": [
+    {
+      "attemptId": "attempt-1",
+      "contractVersion": "crawler.runtime/v1",
+      "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+      "originContact": {
+        "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
+        "operation": {
+          "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+          "role": "initial"
+        },
+        "requestFingerprint": "c5ae0f0cf0d5a4ec7afc5a4b909feb0ad380c82c7eabf6f77c017aa2d95e721a"
+      },
+      "requestId": "request-scrape-1"
+    },
+    {
+      "attemptId": "attempt-1",
+      "contractVersion": "crawler.runtime/v1",
+      "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+      "requestId": "request-scrape-1",
+      "scrapeResult": {
+        "content": {
+          "descriptionHtml": "<p>Deterministic offline content</p>",
+          "language": "en",
+          "locations": {},
+          "skills": [
+            "Go",
+            "Python"
+          ],
+          "title": "Systems Engineer"
+        }
+      },
+      "sequence": "1"
+    },
+    {
+      "attemptId": "attempt-1",
+      "contractVersion": "crawler.runtime/v1",
+      "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+      "requestId": "request-scrape-1",
+      "sequence": "2",
+      "terminal": {
+        "activeDurationMs": "25",
+        "eligibleForCommit": true,
+        "frameCount": "2",
+        "originOperationCount": 1,
+        "outputItems": "1",
+        "status": "TERMINAL_STATUS_SUCCESS"
+      }
+    }
+  ],
+  "expectedProjection": {
+    "contentHashes": [
+      "6a3f5c9bf1aae2fa7639250da7fd79340146234e5ce3b1b8b64f288d9c1aaad3"
+    ],
+    "goneDetectionAllowed": true
+  },
+  "expectedSemanticSha256": "f6a0a94ab026d514fb5ca75b69f2649a3d5c16644efe98a6c5af08816eb4280b",
+  "name": "representative-scrape",
+  "providerFamily": "representative-json"
+}

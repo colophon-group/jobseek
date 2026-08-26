@@ -1,0 +1,15 @@
+{
+  "browserResult": {
+    "backend": "BROWSER_BACKEND_LIGHTPANDA",
+    "contractVersion": "crawler.runtime/v1",
+    "error": {
+      "error": {
+        "code": "ERROR_CODE_TARGET_LOST",
+        "disposition": "ERROR_DISPOSITION_RETRY_POLICY",
+        "message": "target closed"
+      }
+    }
+  },
+  "expectedValid": true,
+  "name": "browser-target-lost"
+}

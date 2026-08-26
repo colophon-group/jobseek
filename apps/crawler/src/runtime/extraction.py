@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
-from dataclasses import asdict
 from pathlib import Path
 from time import monotonic
 from typing import TYPE_CHECKING, Any, Protocol
@@ -192,30 +191,3 @@ class PythonScrapeRuntime:
 
 PYTHON_MONITOR_RUNTIME: MonitorRuntime = PythonMonitorRuntime()
 PYTHON_SCRAPE_RUNTIME: ScrapeRuntime = PythonScrapeRuntime()
-
-
-def monitor_result_payload(result: MonitorResult) -> dict[str, Any]:
-    """Serialize a monitor result for Go/Python parity replay."""
-
-    jobs = []
-    if result.jobs_by_url is not None:
-        jobs = [asdict(result.jobs_by_url[url]) for url in sorted(result.jobs_by_url)]
-    return {
-        "contract_version": "crawler.runtime/v1",
-        "urls": sorted(result.urls),
-        "jobs": jobs,
-        "new_sitemap_url": result.new_sitemap_url,
-        "filtered_count": result.filtered_count,
-        "metadata_updates": result.metadata_updates,
-        "hybrid": result.hybrid,
-        "truncated": result.truncated,
-    }
-
-
-def scrape_result_payload(content: JobContent) -> dict[str, Any]:
-    """Serialize extracted content for Go/Python parity replay."""
-
-    return {
-        "contract_version": "crawler.runtime/v1",
-        **asdict(content),
-    }

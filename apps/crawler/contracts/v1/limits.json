@@ -1,0 +1,18 @@
+{
+  "max_active_duration_ms": 900000,
+  "max_artifact_chunk_bytes": 8388608,
+  "max_artifact_count": 64,
+  "max_artifact_total_bytes": 67108864,
+  "max_browser_actions": 256,
+  "max_browser_captures": 64,
+  "max_browser_evaluations": 64,
+  "max_browser_transfer_bytes": 67108864,
+  "max_execution_frames": 4096,
+  "max_frame_bytes": 1048576,
+  "max_http_transfer_bytes": 16777216,
+  "max_in_flight_frames": 64,
+  "max_inline_body_bytes": 8388608,
+  "max_monitor_batches": 4096,
+  "max_output_items": 100000,
+  "max_retry_after_ms": 604800000
+}

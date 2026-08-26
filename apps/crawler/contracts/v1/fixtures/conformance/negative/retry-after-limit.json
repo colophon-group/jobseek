@@ -1,0 +1,16 @@
+{
+  "browserResult": {
+    "backend": "BROWSER_BACKEND_LIGHTPANDA",
+    "contractVersion": "crawler.runtime/v1",
+    "error": {
+      "error": {
+        "code": "ERROR_CODE_TIMEOUT",
+        "disposition": "ERROR_DISPOSITION_RETRY_POLICY",
+        "message": "retry hint exceeds scheduling ceiling",
+        "retryAfterMs": "604800001"
+      }
+    }
+  },
+  "expectedError": "limit",
+  "name": "retry-after-limit"
+}

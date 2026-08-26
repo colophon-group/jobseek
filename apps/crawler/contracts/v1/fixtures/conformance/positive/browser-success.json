@@ -1,0 +1,30 @@
+{
+  "browserResult": {
+    "backend": "BROWSER_BACKEND_LIGHTPANDA",
+    "contractVersion": "crawler.runtime/v1",
+    "success": {
+      "finalUrl": "https://careers.example.invalid/jobs",
+      "html": {
+        "chunks": [
+          {
+            "inlineBody": "PGh0bWw+",
+            "sha256": "b7d082ee12e91b756ea22e8513b8594eebcf5d39fab813da3cb55794dc888ad7",
+            "sizeBytes": "6"
+          },
+          {
+            "inlineBody": "PC9odG1sPg==",
+            "sequence": 1,
+            "sha256": "fdfe0993e6e9e9917554bb95b1137af5870146fd38da5f13bea1b530ac05b296",
+            "sizeBytes": "7"
+          }
+        ],
+        "complete": true,
+        "totalSha256": "b633a587c652d02386c4f16f8c6f6aab7352d97f16367c3c40576214372dd628",
+        "totalSizeBytes": "13"
+      },
+      "status": 200
+    }
+  },
+  "expectedValid": true,
+  "name": "browser-success"
+}

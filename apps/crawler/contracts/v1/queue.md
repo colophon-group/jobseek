@@ -12,7 +12,12 @@ cross-generation fencing protocol: a stale worker can continue after lease
 loss and race a newer claimant. No mixed Python/Go claim ownership is allowed
 until queue protocol v2 adds shard ownership, routing epoch, engine owner,
 config revision, unique claim token, and compare-and-set behavior for
-heartbeat, completion, reschedule, reaping, and authoritative database writes.
+heartbeat, completion, reschedule, reaping, and persistence writes.
+
+The v1 runtime `FencingContext` and mandatory 32-byte digest reserve the wire
+shape required by #7938. They do not make today's reusable lease member a
+strong token. Until #7938 supplies and atomically validates the live token and
+epoch, mixed-generation ownership remains blocked.
 
 Required invariants:
 
@@ -21,7 +26,7 @@ Required invariants:
 - A task is claimed atomically from a per-domain sorted set and receives an
   `inflight:<worker-type>` lease named `task_type|domain|task_id`.
 - A worker heartbeats long tasks with `heartbeat_task.lua`. Losing the lease
-  makes the result stale; it must not be committed as authoritative work.
+  makes the result stale; it must not be committed.
 - Completion and reschedule use `complete_task.lua` and `reschedule_task.lua`.
   They also clear the lease. A client-side sequence of Redis commands is not
   equivalent.

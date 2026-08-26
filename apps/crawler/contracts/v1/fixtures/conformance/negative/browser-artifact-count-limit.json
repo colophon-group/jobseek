@@ -1,0 +1,468 @@
+{
+  "browserResult": {
+    "backend": "BROWSER_BACKEND_LIGHTPANDA",
+    "contractVersion": "crawler.runtime/v1",
+    "success": {
+      "artifacts": [
+        {
+          "handle": "artifact:count:00",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "de026cbbbd05db5500f42e332001db6bca33b9a20aa50897531cb5499f60f9d9",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:01",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "c4793fb94443793eb32e1128b2d4d2cb4c20bed467a6929ec09f78cb87af21a1",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:02",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "65b52ff3986b5ad33bd0ebdb49a989113e42ea761a96a4558f6644f86c8b582f",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:03",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "bdf22aa21729fcbda0ac8229fd4d505fa2b4a6aca8af1e426f4a3730b0e18a5f",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:04",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "475f97e65731b7707d9dd8376690219bc698dadc4449604efac24c50d9b0b3f3",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:05",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "36998731436ea986236f68f6d924c70e31d9be9599c77fdb8cfa56ab0cc71995",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:06",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "73654e0523a09eb782a048cc15a988bc4b0b4766aaf58c5ab6e1948d261c3606",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:07",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "b57647e6e01b108f4bd54adfd2a9c1339047d1d4c0c8d812d18088df5eb50498",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:08",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "825ee78b58042a3dfa3c205fc382fde0604485d1cb567a3106f517255c7b8b25",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:09",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "63e83dfaa4990466384e1810ee617c0245e20abec2e2b498b5580823485d94c0",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:10",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "d4be594fef1ef33922949032f3501b2bf9bb9fe63649140dce5baae0d71cec25",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:11",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "f19fa61b5b298ae0214067628f8365690ebaabd866b4b902b17c5092b00ab0ab",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:12",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "6febf5bb53803665239591fafeece94a452a2135ca668acf089d0b16c4b59077",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:13",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "dae76331f13c1244d3fe77eaad15a2df80dc40283cc194fd8d756f7aa7a434ea",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:14",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "b3449e4fd109f675eec268d7117456047343e97a5390a6284e8e71f49f90434f",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:15",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "29d562a7618784c3fcde62ddcd453b66021131ea6d908624eb88cf0475028c3e",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:16",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "4e19a9aa105ec4fbcee4e30aaf6f02a089892c9f08cbb2889772bd847ac5e061",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:17",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "eb8358d8eab94759e399f4f69bb10f7c5256ae16e87762afab8ed0fb4eba3b1a",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:18",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "b8b0469c1a0574416915ad22865d39cf2d98a27306d96dc5ebef1d638c49fb68",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:19",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "98eb9d066e347769ecf2c0e100c3f94af77f3411426759a2d3842adee186011f",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:20",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "768c014fc2c45f626de777c5418070c3f2cda49ac14cf6e16db799b750fd14e3",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:21",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "c2c9e3cf7f1b12e3a3c8bd8e82c3ec0978e48369f97325c33a094ec5ae4747f3",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:22",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "0c5f58fee78f6e94a68ed83392189f423e74af29c25b02988665c281a570e1e2",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:23",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "c72983f17d97b4dd893fbcb54140fee63a3c84b2d0d79cb9867f0449478bb70b",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:24",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "5c80025bcf0d8895b87c1783da3dea6bf205ac9bfe75b01460023cc46d263444",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:25",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "ec703da5f157b6a0cf488e70502c9cf7c872c01c0229e6a25a4e6ba4c7c6a2cc",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:26",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "9236a6267eddc2b6303e590f93e10377fae0bf7d3715d9caf3311869832357b1",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:27",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "dd1f3252a0fdf8887bd5aa31b54db75b01e93604f4f7774a42cbf777d0592bea",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:28",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "de2802b1469431d3be7f68480277b2e614810bbd5a34d8aa1004e390c7f6faec",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:29",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "639da67caaa3bd5e8a5bed9d5c7ffe8f428c66fd7a8424c9dd1e7f0ada5d16e1",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:30",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "554484e440e627fff6c39702331b7035aa6247eb1b39cdd1f2e39c3ac682f355",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:31",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "762eee131aad00221e29e577534e3375c52cec3655d4aa06e7aad954c034c539",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:32",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "a621e4dca65c3c5380d35aad801b7cf6bdfc5671c9a2bb02043dfdbf0777d652",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:33",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "11d832204af6cffbde36c5bb75ddd74890268be8341bfd64c797787a3f51a375",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:34",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "9c53468d2c0c861cdc33ea7e80f8219407f24c357f1f7a2ed32ebb86e580f37b",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:35",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "8d6983be316f76a3e3ab4e98cf03e0d48e9b1c227445a0a2d5752b0d6e22c551",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:36",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "542e3243c1cdedaef63fdb8178c74b8fa3b4c1ec56740b2eb9fafa1ca5a2fdec",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:37",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "a2808b2463a05e320e5ef380c6daa8026438224df9f15703a3425c240bddb302",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:38",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "946ce393a84dacd613598564f78fb67ce4ee1b0f1549dc59675a3c16fd4ccc95",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:39",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "c054a4a543aa723efc3dce0b83c483bff099c0adc5050e0c8cb11363af151c8c",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:40",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "2d4af7e4124fbf3fd752c36da9d115bed007a6fa08ccd11057af0245ab9f87a3",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:41",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "1be0016bd7a196fd6307d12b3cf28595f8e5015f6244d8c483cfed34ca1b7659",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:42",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "a4c2063474511d882d56bd2af19bd0c97ef967860e8a2ff42694c55b93f2679a",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:43",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "19d341ff6673b0ec11a76523e816a15329c70b3d357f79e131fd0292c2daa3ec",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:44",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "93759050dcd7ae5e1c02771116ceb353fd6ff0111eb2b8da6883123850b1819a",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:45",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "618256d43d3e97da4bd0648cf44c2c7eb724f5923e3794a3fda64c5dd8bfde26",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:46",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "06766a9e1648ee0e0718872baf7b4b84fea8d50bbb9bf49294182e3edc32a957",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:47",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "09f1268957ec8668f4a36bf7ea694cfa02a731d5c88608b62fb1b8597d1ad399",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:48",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "eb5fa714b944ae51f8efed30b52d4de9d208ba84e3f3362609a6edf3a1b29791",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:49",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "7874ee320267ef8373633071985edce6b2a63b64c2123dfa518a739f4e0b8583",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:50",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "427f7582eae3a74e7e4fc63e28b4e83c8728659d729297b7d1d3af2c1d602fb9",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:51",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "802e3e6ac16ecea0ca3320e285e2daa44f47f1dd4dbde3c26ca11efa17be7c68",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:52",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "6b57c8ca1818ebd75d8e570e6332f79ae765bd0ca5e3fc95e4aaf33aa449bd9f",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:53",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "b1f7c29334b36872fb4783fde87f0ad0d78f1af101f1e081d5efd58ae73c1810",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:54",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "002c7266fc271b6de95440e346ff55a593074f87fdd2f20e346e335e183b2bb5",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:55",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "7cbbf2834e45e01aa97a9e7b7d95ab3ca1424ca65b2db860cde161042c8dac93",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:56",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "799b4dee65a75aee399f0890e21cfb7e394d566fd087caa72d8066b536c6d00b",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:57",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "af33790586069b1e97ba6d8052c9d1e56dd7d60cd0f89efa24ab41264a7e01fc",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:58",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "f43697a00c4ad65316e953db5824d3e8c1451210d1824801439c9c9b3afe8fa2",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:59",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "5ec2c316ae70b352d959f72e4dc161f85eeaef5af29bf23957b32a1b64a177ea",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:60",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "50e89b770b3bdca524dccaf5ac8cc170f92849f2c9c9632cf522bf851d6c4bbf",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:61",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "c72bf7bea62d3a8f7109180a74485a704f6c9109713ecdd305da64fc11161c0e",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:62",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "06daaf6628155b14842e890e1d8851aa1bf76e74e0bfd9f188b18c396688e107",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:63",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "5676173e3a996b910f28b6f938f2188d0a9850f07201f34306b55996ba236fbd",
+          "sizeBytes": "1"
+        },
+        {
+          "handle": "artifact:count:64",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "bd9fdbccf252fc2f4bc691cd292b10a913f9407ea41ed8b1b4a5d0ffadc0a272",
+          "sizeBytes": "1"
+        }
+      ],
+      "finalUrl": "https://careers.example.invalid/jobs"
+    }
+  },
+  "expectedError": "artifact_limit",
+  "name": "browser-artifact-count-limit"
+}

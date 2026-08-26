@@ -1,0 +1,71 @@
+{
+  "browserPlan": {
+    "actions": [
+      {
+        "actionId": "load-details",
+        "networkEffect": "BROWSER_NETWORK_EFFECT_ORIGIN_CONTACT",
+        "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+        "paginate": {
+          "maxPages": 2,
+          "nextSelector": {
+            "kind": "SELECTOR_KIND_CSS",
+            "value": "button.next"
+          },
+          "pageTimeoutMs": "10000"
+        }
+      },
+      {
+        "actionId": "settle-layout",
+        "networkEffect": "BROWSER_NETWORK_EFFECT_NONE",
+        "wait": {
+          "durationMs": "50",
+          "timeoutMs": "1000"
+        }
+      }
+    ],
+    "captures": [
+      {
+        "captureId": "jobs-json",
+        "kind": "CAPTURE_KIND_RESPONSE_BODY",
+        "maxBytes": "4096",
+        "urlPattern": "*/api/jobs*"
+      }
+    ],
+    "contractVersion": "crawler.runtime/v1",
+    "evaluations": [
+      {
+        "evaluationId": "job-count",
+        "expression": "document.querySelectorAll('[data-job]').length",
+        "maxResultBytes": "1024",
+        "networkEffect": "BROWSER_NETWORK_EFFECT_NONE"
+      }
+    ],
+    "navigation": {
+      "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+      "timeoutMs": "30000",
+      "waitUntil": "WAIT_CONDITION_LOAD"
+    },
+    "originOperations": [
+      {
+        "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+        "role": "browser-navigation"
+      },
+      {
+        "operationSequence": 1,
+        "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+        "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+        "role": "browser-action-click"
+      }
+    ],
+    "requiredCapabilities": [
+      "BROWSER_CAPABILITY_RENDER",
+      "BROWSER_CAPABILITY_ACTIONS",
+      "BROWSER_CAPABILITY_RESPONSE_CAPTURE",
+      "BROWSER_CAPABILITY_EVALUATE",
+      "BROWSER_CAPABILITY_PAGINATION"
+    ],
+    "targetUrl": "https://careers.example.invalid/jobs"
+  },
+  "expectedError": "origin",
+  "name": "browser-pagination-missing-dynamic-origin-allocation"
+}

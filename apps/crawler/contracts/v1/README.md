@@ -1,37 +1,56 @@
-# Candidate crawler runtime contract v1
+# Crawler runtime contract v1
 
-This directory captures the candidate language-neutral boundary between the
-crawler control plane, scheduler, extraction runtimes, and persistence
-pipeline. It is provisional until #7937 chooses the transport, closes the
-opaque schema fields, generates Python/Go types, and promotes the IDL. No Go
-consumer may treat these files as wire-authoritative before that gate. CSV,
-Redis, Postgres, `ws`, and Murmur representations will be normalized before
-they reach the promoted runtime contract.
+This directory is the authoritative language-neutral boundary for crawler
+runtime execution. [`runtime.proto`](runtime.proto) is the sole v1 wire IDL.
+The checked-in Python and Go bindings are generated from it; protobuf-JSON is
+used only for readable shared fixtures, while production framing is
+length-delimited protobuf.
 
-The contract is intentionally about semantics, not an RPC choice. The first Go
-segments may run in the same worker process/container topology or behind a
-short-lived migration adapter. The final worker may consume Redis and Postgres
-directly. Either way, it must produce the same normalized payloads and metrics.
+The provisional JSON Schemas previously in this directory were removed when
+v1 was promoted. Storage rows, Redis task hashes, CSV, `ws`, and Murmur are not
+wire representations of this contract. They must be normalized into
+`BoardManifest` by the crawler-owned catalog/runtime adapter work.
 
-Files:
+## Layout
 
-- `board-runtime-config.schema.json` — normalized board configuration.
-- `monitor-result.schema.json` — one streaming discovery batch.
-- `scrape-result.schema.json` — one extracted posting payload.
-- `execution-request.schema.json` / `execution-frame.schema.json` — framed,
-  cancellable Python/Go extraction protocol.
-- `browser-plan.schema.json` / `browser-result.schema.json` — typed browser
-  capability boundary that does not expose raw CDP or Playwright objects.
-- `queue.md` — Redis/Lua scheduling, lease, and politeness invariants.
-- `metrics.md` — cross-runtime metrics required for cutover and reversal.
+- `runtime.proto` — authoritative messages, enums, and tagged unions.
+- `gen/{python,go}` — committed generated bindings.
+- `conformance/{python,go}` — independent semantic validators using the same
+  fixtures.
+- `fixtures/conformance` — positive and negative state-machine cases.
+- `fixtures/replay` — bounded, deterministically redacted offline captures.
+- `protocol.md` — framing, state, origin identity, and authority rules.
+- `error-taxonomy.md` — closed error-to-policy mapping.
+- `replay.md` — corpus, canonicalization, redaction, and projection rules.
+- `compatibility.md` and `converters/` — version/evolution policy.
+- `metrics.md` — bounded replacement-boundary metric definitions.
 
-Compatibility rules:
+## Generate and verify
 
-1. Producers add optional fields; they do not change existing field meaning.
-2. A breaking change creates a new version directory and a replay converter.
-3. Unknown configuration fields are preserved by the control plane but may be
-   ignored by a runtime only after fleet/replay evidence proves they are unused.
-4. Output comparison is semantic: URL ordering is ignored, HTML is normalized
-   before comparison, and absence is distinct from an explicit empty value.
-5. No runtime may write final crawl state without the queue lease and database
-   guards documented in `queue.md`.
+From `apps/crawler/contracts/v1`:
+
+```bash
+# Python compiler comes from pinned grpcio-tools 1.76.0 (libprotoc 31.1).
+# The Go plugin must be exactly v1.36.10.
+go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
+./generate.sh
+./generate.sh --check
+
+PYTHONPATH=. uv run --project ../.. pytest -q conformance/python/test_contract.py
+go test ./...
+PYTHONPATH=. uv run --project ../.. python tools/check_contract.py
+```
+
+The Python binding is generated for protobuf 6.31.1 and is runtime-tested
+against the crawler's `protobuf>=6.33,<7` dependency. Local system `protoc`
+versions are deliberately ignored.
+
+This foundation owns core messages and representative safety fixtures.
+Exhaustive provider-family extraction and Lightpanda capability corpora remain
+in #7953–#7963; adding those here would turn the stable contract gate into a
+provider implementation suite.
+
+No free-form protobuf `Struct` or `Value` exists in the request, output, or
+policy surface. Common fields are typed. Provider-specific semantics use a
+bounded `ExtensionEnvelope` whose schema ID/version/encoding must be present in
+the fail-closed Python/Go registry.

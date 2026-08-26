@@ -1,0 +1,76 @@
+{
+  "browserResult": {
+    "backend": "BROWSER_BACKEND_LIGHTPANDA",
+    "contractVersion": "crawler.runtime/v1",
+    "success": {
+      "artifacts": [
+        {
+          "handle": "artifact:large:00",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "d62db9c109e0c3262b23470a77f51f7b05f68aa6330059ddb7e5b41766ba26d1",
+          "sizeBytes": "8388608"
+        },
+        {
+          "handle": "artifact:large:01",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "8e70c5d312d811c856941697f982b27297c2897b2367685ab7dbf5c855ab7006",
+          "sizeBytes": "8388608"
+        },
+        {
+          "handle": "artifact:large:02",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "1eabb0cacca2dd125c6082e6d7b03f755b038142242f0c7f9cb05786bfc7d394",
+          "sizeBytes": "8388608"
+        },
+        {
+          "handle": "artifact:large:03",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "fd90195842cb6b765e4c16a6ab2c520ea2ed0e76d23dbc89d49f5baf6ad04bfa",
+          "sizeBytes": "8388608"
+        },
+        {
+          "handle": "artifact:large:04",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "4760582498853b2dc35589ed02682659b005d93adab794438a01e11f09af4aa9",
+          "sizeBytes": "8388608"
+        },
+        {
+          "handle": "artifact:large:05",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "9662daa93eceac3aca31da4dd2b7a6b54765fb33a63fa9d1f77d0d37f6c023e4",
+          "sizeBytes": "8388608"
+        },
+        {
+          "handle": "artifact:large:06",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "4013494d56d14d116a0b558f60b39e487fc564cd22ca6c3740cb8749a9ea804f",
+          "sizeBytes": "8388608"
+        },
+        {
+          "handle": "artifact:large:07",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "326cf813e1f660d82f6ca1f1719861c89bbeb4cfe8a41df07da6051c9221d9d8",
+          "sizeBytes": "8388608"
+        },
+        {
+          "handle": "artifact:large:08",
+          "mediaType": "application/octet-stream",
+          "redacted": true,
+          "sha256": "e9cb6ca5acbe83e5b272a26d9f598c4dcdef1bc5df381f8e1786b3140c7298a8",
+          "sizeBytes": "8388608"
+        }
+      ],
+      "finalUrl": "https://careers.example.invalid/jobs"
+    }
+  },
+  "expectedError": "transfer_limit",
+  "name": "browser-artifact-bytes-limit"
+}

@@ -1,0 +1,47 @@
+{
+  "browserPlan": {
+    "actions": [
+      {
+        "actionId": "next-page",
+        "networkEffect": "BROWSER_NETWORK_EFFECT_ORIGIN_CONTACT",
+        "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+        "paginate": {
+          "dynamicOriginPerAdditionalPage": true,
+          "maxPages": 2,
+          "nextSelector": {
+            "kind": "SELECTOR_KIND_CSS",
+            "value": "button.next"
+          },
+          "pageTimeoutMs": "10000"
+        }
+      }
+    ],
+    "contractVersion": "crawler.runtime/v1",
+    "navigation": {
+      "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+      "timeoutMs": "30000",
+      "waitUntil": "WAIT_CONDITION_LOAD"
+    },
+    "originOperations": [
+      {
+        "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+        "role": "navigation"
+      },
+      {
+        "operationSequence": 1,
+        "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+        "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+        "role": "pagination"
+      }
+    ],
+    "requiredCapabilities": [
+      "BROWSER_CAPABILITY_RENDER",
+      "BROWSER_CAPABILITY_ACTIONS",
+      "BROWSER_CAPABILITY_PAGINATION"
+    ],
+    "session": {},
+    "targetUrl": "https://careers.example.invalid/jobs"
+  },
+  "expectedValid": true,
+  "name": "browser-plan-multi-origin"
+}
