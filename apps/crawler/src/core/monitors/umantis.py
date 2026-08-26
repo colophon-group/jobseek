@@ -4,7 +4,7 @@ Server-rendered HTML listing pages at ``recruitingapp-{ID}[.de].umantis.com``.
 Job links use class ``HSTableLinkSubTitle`` across all customer templates.
 
 Listing:  GET /Jobs/All  (paginated via ``tc{tableNr}=p{page}``)
-Detail:   /Vacancies/{id}/Description/{langId}
+Detail:   /Vacancies/{id}/Description (redirects to an available locale)
 
 Returns partial rich data from the shared listing template: URL, title,
 location, and employment type. Templates vary widely across customers, so a
@@ -34,7 +34,6 @@ log = structlog.get_logger()
 MAX_JOBS = 50_000
 MAX_PAGES = 100
 PAGE_SIZE = 10  # Umantis default per page
-DEFAULT_CANONICAL_LANGUAGE_ID = "1"
 
 # Pagination retry budget. Symmetric with the dom monitor (#2737),
 # accenture (#2735), api_sniffer (#2733), PCSX (#2734), and workday
@@ -221,14 +220,12 @@ class _JobLinkParser(HTMLParser):
         self,
         base_url: str,
         *,
-        canonical_language_id: str | None = None,
         expected_employer: str | None = None,
         employer_field_id: str | None = None,
     ):
         super().__init__()
         self.base = base_url.rstrip("/")
         self._base_parts = urlparse(self.base)
-        self._canonical_language_id = canonical_language_id
         self._expected_employer = expected_employer
         self._employer_field_id = employer_field_id
         self.jobs: list[_ParsedJob] = []
@@ -242,11 +239,11 @@ class _JobLinkParser(HTMLParser):
         self._current_location: str | None = None
         self._current_employment_type: str | None = None
         self._current_field: str | None = None
-        self._capture_label = False
+        self._capture_label_depth = 0
         self._current_label = ""
-        self._capture_value = False
+        self._capture_value_depth = 0
         self._current_value = ""
-        self._capture_employer_value = False
+        self._capture_employer_value_depth = 0
         self._current_employer_value = ""
 
     def _reset_job(self) -> None:
@@ -258,11 +255,11 @@ class _JobLinkParser(HTMLParser):
         self._current_location = None
         self._current_employment_type = None
         self._current_field = None
-        self._capture_label = False
+        self._capture_label_depth = 0
         self._current_label = ""
-        self._capture_value = False
+        self._capture_value_depth = 0
         self._current_value = ""
-        self._capture_employer_value = False
+        self._capture_employer_value_depth = 0
         self._current_employer_value = ""
 
     def _append_job(self) -> None:
@@ -305,12 +302,11 @@ class _JobLinkParser(HTMLParser):
         if match is None:
             raise ValueError(f"Umantis vacancy link did not have a numeric canonical path: {href}")
         vacancy_id, language_id = match.groups()
-        # The provider vacancy ID is stable across locale variants, while the
-        # language suffixes present in a listing can vary from crawl to crawl.
-        # Always emit one fixed endpoint so a DE-only row today and an FR-only
-        # row tomorrow cannot tombstone/recreate the same vacancy.
-        emitted_language = self._canonical_language_id or DEFAULT_CANONICAL_LANGUAGE_ID
-        canonical_url = f"{self.base}/Vacancies/{vacancy_id}/Description/{emitted_language}"
+        # The numeric provider vacancy ID is stable across locale variants.
+        # Umantis's suffix-free Description route redirects to a currently
+        # available locale, so it is both a stable source identity and a viable
+        # scrape URL even when a vacancy exists only as /2 or /3.
+        canonical_url = f"{self.base}/Vacancies/{vacancy_id}/Description"
         return vacancy_id, language_id, canonical_url
 
     @staticmethod
@@ -354,6 +350,17 @@ class _JobLinkParser(HTMLParser):
         attrs_dict = dict(attrs)
         cls = attrs_dict.get("class", "") or ""
 
+        # Capture complete field contents, including arbitrarily nested spans
+        # and formatting tags. A boolean stopped at the first nested closing
+        # tag and could validate only a forged prefix of the owner field.
+        if tag not in _VOID_HTML_TAGS:
+            if self._capture_label_depth:
+                self._capture_label_depth += 1
+            if self._capture_value_depth:
+                self._capture_value_depth += 1
+            if self._capture_employer_value_depth:
+                self._capture_employer_value_depth += 1
+
         if tag == "tr":
             if self._in_row:
                 self._append_job()
@@ -374,17 +381,17 @@ class _JobLinkParser(HTMLParser):
             return
 
         if tag == "span" and self._in_row:
-            if "visually-hidden" in cls:
-                self._capture_label = True
+            if "visually-hidden" in cls and not self._capture_label_depth:
+                self._capture_label_depth = 1
                 self._current_label = ""
-            elif "column-value" in cls:
-                self._capture_value = True
+            elif "column-value" in cls and not self._capture_value_depth:
+                self._capture_value_depth = 1
                 self._current_value = ""
                 if (
                     self._employer_field_id is not None
                     and attrs_dict.get("id") == self._employer_field_id
                 ):
-                    self._capture_employer_value = True
+                    self._capture_employer_value_depth = 1
                     self._current_employer_value = ""
 
         if tag != "a" or "HSTableLinkSubTitle" not in cls:
@@ -402,11 +409,11 @@ class _JobLinkParser(HTMLParser):
     def handle_data(self, data: str) -> None:
         if self._in_link:
             self._current_title += data
-        if self._capture_label:
+        if self._capture_label_depth:
             self._current_label += data
-        if self._capture_value:
+        if self._capture_value_depth:
             self._current_value += data
-        if self._capture_employer_value:
+        if self._capture_employer_value_depth:
             self._current_employer_value += data
 
     def handle_endtag(self, tag: str) -> None:
@@ -418,20 +425,22 @@ class _JobLinkParser(HTMLParser):
                 self._append_job()
             return
 
-        if tag == "span" and self._capture_label:
-            self._capture_label = False
-            self._current_field = self._field_from_label(self._current_label)
-            return
+        if self._capture_label_depth:
+            self._capture_label_depth -= 1
+            if not self._capture_label_depth:
+                self._current_field = self._field_from_label(self._current_label)
 
-        if tag == "span" and self._capture_value:
-            self._capture_value = False
-            self._store_value(self._current_value)
-            self._current_value = ""
-            if self._capture_employer_value:
-                self._capture_employer_value = False
+        if self._capture_value_depth:
+            self._capture_value_depth -= 1
+            if not self._capture_value_depth:
+                self._store_value(self._current_value)
+                self._current_value = ""
+
+        if self._capture_employer_value_depth:
+            self._capture_employer_value_depth -= 1
+            if not self._capture_employer_value_depth:
                 self._current_employer_values.append(self._current_employer_value)
                 self._current_employer_value = ""
-            return
 
         if tag == "li" and self._in_row:
             self._current_field = None
@@ -483,7 +492,7 @@ def _normalized_identity(value: str) -> str:
 
 def _element_is_hidden(attrs: list[tuple[str, str | None]]) -> bool:
     values = {name.casefold(): value for name, value in attrs}
-    if "hidden" in values or (values.get("aria-hidden") or "").casefold() == "true":
+    if "hidden" in values or (values.get("aria-hidden") or "").strip().casefold() == "true":
         return True
     classes = set((values.get("class") or "").casefold().split())
     if classes & _HIDDEN_CLASS_TOKENS:
@@ -500,7 +509,14 @@ class _VisibleTextParser(HTMLParser):
         self.parts: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        hidden = tag in {"script", "style", "template", "noscript"} or _element_is_hidden(attrs)
+        hidden = tag in {
+            "head",
+            "title",
+            "script",
+            "style",
+            "template",
+            "noscript",
+        } or _element_is_hidden(attrs)
         if tag not in _VOID_HTML_TAGS:
             if hidden:
                 self._hidden_depth += 1
@@ -526,16 +542,47 @@ class _DetailOwnerParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.descriptions: list[str] = []
+        self.head_count = 0
+        self.outside_head_descriptions = 0
+        self.invalid_head_structure = False
+        self._head_depth = 0
+        self._body_depth = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "head":
+            self.head_count += 1
+            if self._head_depth or self._body_depth:
+                self.invalid_head_structure = True
+            self._head_depth += 1
+        elif tag == "body":
+            self._body_depth += 1
+
         if tag != "meta":
             return
         values = {name.casefold(): value for name, value in attrs}
-        if (values.get("name") or "").casefold() != "description":
+        if (values.get("name") or "").strip().casefold() != "description":
             return
         content = values.get("content")
-        if content is not None:
+        if self._head_depth == 1 and not self._body_depth and content is not None:
             self.descriptions.append(content)
+        else:
+            self.outside_head_descriptions += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "head":
+            if not self._head_depth:
+                self.invalid_head_structure = True
+            else:
+                self._head_depth -= 1
+        elif tag == "body":
+            if not self._body_depth:
+                self.invalid_head_structure = True
+            else:
+                self._body_depth -= 1
+
+    @property
+    def structurally_complete(self) -> bool:
+        return not self.invalid_head_structure and not self._head_depth and not self._body_depth
 
 
 def _bounded_int(value: object, *, name: str, minimum: int, maximum: int) -> int:
@@ -625,13 +672,11 @@ def _parse_parsed_jobs_from_html(
     html: str,
     base_url: str,
     *,
-    canonical_language_id: str | None = None,
     expected_employer: str | None = None,
     employer_field_id: str | None = None,
 ) -> list[_ParsedJob]:
     parser = _JobLinkParser(
         base_url,
-        canonical_language_id=canonical_language_id,
         expected_employer=expected_employer,
         employer_field_id=employer_field_id,
     )
@@ -660,14 +705,7 @@ def _deduplicate_vacancies(parsed_jobs: list[_ParsedJob]) -> dict[str, _ParsedJo
                     f"{parsed.vacancy_id}/{parsed.language_id}"
                 )
             continue
-        current_emitted = current.job.url.rsplit("/", 1)[-1]
-        parsed_emitted = parsed.job.url.rsplit("/", 1)[-1]
-        fixed_language = current_emitted if current_emitted == parsed_emitted else None
-        prefer_parsed = (fixed_language is not None and parsed.language_id == fixed_language) or (
-            (fixed_language is None or current.language_id != fixed_language)
-            and int(parsed.language_id) < int(current.language_id)
-        )
-        if prefer_parsed:
+        if int(parsed.language_id) < int(current.language_id):
             unique[parsed.vacancy_id] = parsed
     return unique
 
@@ -687,22 +725,16 @@ def _uses_rich_listing_results(metadata: dict) -> bool:
     return isinstance(enrich, list) and bool(enrich)
 
 
-def _strict_contract(metadata: dict) -> tuple[str, str, str, str] | None:
+def _strict_contract(metadata: dict) -> tuple[str, str, str] | None:
     """Validate the opt-in fail-closed listing identity contract."""
     strict = metadata.get("strict_listing_contract", False)
     if not isinstance(strict, bool):
         raise ValueError("Umantis strict_listing_contract must be a boolean")
     if not strict:
         return None
-    canonical_language_id = metadata.get("canonical_language_id")
     expected_employer = metadata.get("expected_employer")
     employer_field_id = metadata.get("employer_field_id")
     empty_state_text = metadata.get("empty_state_text")
-    if (
-        not isinstance(canonical_language_id, str)
-        or re.fullmatch(r"[1-9]\d{0,5}", canonical_language_id) is None
-    ):
-        raise ValueError("Umantis strict_listing_contract requires a numeric canonical_language_id")
     if (
         not isinstance(expected_employer, str)
         or not expected_employer.strip()
@@ -723,7 +755,6 @@ def _strict_contract(metadata: dict) -> tuple[str, str, str, str] | None:
     ):
         raise ValueError("Umantis strict_listing_contract requires empty_state_text")
     return (
-        canonical_language_id,
         expected_employer.strip(),
         employer_field_id,
         empty_state_text.strip(),
@@ -803,6 +834,15 @@ async def _validate_detail_ownership(
         if html is not None:
             parser.feed(html)
             parser.close()
+        if (
+            parser.head_count != 1
+            or not parser.structurally_complete
+            or parser.outside_head_descriptions
+            or len(parser.descriptions) != 1
+        ):
+            raise ValueError(
+                f"Umantis detail metadata did not identify the exact configured employer: {job.url}"
+            )
         owners = []
         for description in parser.descriptions:
             # These provider documents declare ``Employer - locale copy`` in
@@ -881,16 +921,15 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
 
     listing_url = f"{base}{listing_path}"
     strict_contract = _strict_contract(metadata)
-    canonical_language_id = strict_contract[0] if strict_contract else None
-    expected_employer = strict_contract[1] if strict_contract else None
-    employer_field_id = strict_contract[2] if strict_contract else None
-    empty_state_text = strict_contract[3] if strict_contract else None
+    expected_employer = strict_contract[0] if strict_contract else None
+    employer_field_id = strict_contract[1] if strict_contract else None
+    empty_state_text = strict_contract[2] if strict_contract else None
 
     # Umantis stores listing filters in cookies. A nested client over the same
     # caller-owned transport gives every discovery an independent cookie jar.
     async with _isolated_client(
         client,
-        expected_origin=base if strict_contract is not None else None,
+        expected_origin=base,
     ) as session:
         resp = await session.get(listing_url, follow_redirects=True)
         resp.raise_for_status()
@@ -905,7 +944,6 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
         parsed_jobs = _parse_parsed_jobs_from_html(
             html,
             base,
-            canonical_language_id=canonical_language_id,
             expected_employer=expected_employer,
             employer_field_id=employer_field_id,
         )
@@ -944,7 +982,6 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
                     page_jobs = _parse_parsed_jobs_from_html(
                         page_html,
                         base,
-                        canonical_language_id=canonical_language_id,
                         expected_employer=expected_employer,
                         employer_field_id=employer_field_id,
                     )

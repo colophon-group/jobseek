@@ -864,6 +864,54 @@ class TestDomScraper:
             with pytest.raises(ValueError, match="render=false"):
                 await scrape("https://example.com/job/1", config, client)
 
+    @pytest.mark.parametrize("value", ["true", 1, None])
+    async def test_same_origin_redirects_rejects_non_boolean_config(self, value):
+        from src.core.scrapers.dom import scrape
+
+        config = {
+            "steps": [{"tag": "h1", "field": "title"}],
+            "same_origin_redirects": value,
+        }
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="must be a boolean"):
+                await scrape("https://example.com/job/1", config, client)
+
+    @pytest.mark.parametrize("action_config", [{"render": True}, {"actions": [{"wait": 1}]}])
+    async def test_same_origin_redirects_rejects_rendered_mode(self, action_config):
+        from src.core.scrapers.dom import scrape
+
+        config = {
+            **action_config,
+            "steps": [{"tag": "h1", "field": "title"}],
+            "same_origin_redirects": True,
+        }
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(ValueError, match="requires render=false"):
+                await scrape("https://example.com/job/1", config, client)
+
+    async def test_same_origin_redirect_extracts_without_replacing_source_identity(self):
+        from src.core.scrapers.dom import scrape
+
+        requested: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            requested.append(str(request.url))
+            if request.url.path.endswith("/Description"):
+                return httpx.Response(302, headers={"Location": "Description/2"})
+            return httpx.Response(200, text="<html><body><h1>Stable job</h1></body></html>")
+
+        stable_url = "https://jobs.example/Vacancies/42/Description"
+        config = {
+            "steps": [{"tag": "h1", "field": "title"}],
+            "same_origin_redirects": True,
+        }
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            result = await scrape(stable_url, config, client)
+
+        assert result.title == "Stable job"
+        assert stable_url == "https://jobs.example/Vacancies/42/Description"
+        assert requested == [stable_url, f"{stable_url}/2"]
+
     async def test_title_extraction(self):
         """Step with tag: h1 extracts the title."""
         from src.core.scrapers.dom import scrape

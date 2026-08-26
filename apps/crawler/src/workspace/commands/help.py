@@ -2140,7 +2140,7 @@ umantis — Umantis ATS (Haufe Group / Abacus)
     {"customer_id": "2698"}
     {"customer_id": "5181", "region": "de"}
     {"customer_id": "3040", "listing_path": "/Jobs/3?CompanyID=32",
-     "strict_listing_contract": true, "canonical_language_id": "3",
+     "strict_listing_contract": true,
      "expected_employer": "Example University",
      "employer_field_id": "column_value_1184173",
      "empty_state_text": "No entries were found."}
@@ -2157,10 +2157,12 @@ umantis — Umantis ATS (Haufe Group / Abacus)
     strict_listing_contract
                  Fail closed unless navigation totals/ranges and exact
                  token-bearing next links prove the complete inventory.
-    canonical_language_id
-                 Numeric detail locale emitted for every vacancy ID. Locale
-                 aliases collapse to this one canonical provider URL. Legacy
-                 boards use stable provider locale 1 when this is omitted.
+    Identity     Numeric provider vacancy IDs are emitted through the stable
+                 /Vacancies/{id}/Description route. Umantis redirects that
+                 route to an available locale, so /1, /2, /3, and /4 aliases
+                 cannot create distinct postings or an unusable scrape URL.
+                 Configure DOM scraping with same_origin_redirects=true so
+                 every locale redirect hop fails closed outside the tenant.
     expected_employer
                  Exact employer text required in the configured listing field
                  and authoritative detail metadata (strict mode).

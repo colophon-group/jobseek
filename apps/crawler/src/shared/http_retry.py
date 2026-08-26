@@ -19,6 +19,7 @@ import asyncio
 import random
 from collections.abc import Awaitable, Callable, Collection, Mapping
 from typing import TYPE_CHECKING, Any, Literal, overload
+from urllib.parse import urljoin, urlparse, urlunparse
 
 import structlog
 
@@ -31,6 +32,7 @@ __all__ = [
     "END_OF_PAGINATION_STATUSES",
     "PaginationFetchError",
     "ResponseBodyTooLargeError",
+    "UnsafeRedirectError",
     "_RETRYABLE_STATUSES",
     "fetch_json_page_with_retry",
     "fetch_response_with_status_retries",
@@ -49,6 +51,7 @@ async def fetch_response_with_status_retries(
     timeout: float | None = None,
     headers: dict[str, str] | None = None,
     follow_redirects: bool = True,
+    same_origin_redirects: bool = False,
     log_event: str = "http_retry.response_status_backoff",
     sleep: Callable[[float], Awaitable[Any]] = asyncio.sleep,
 ) -> httpx.Response:
@@ -57,7 +60,9 @@ async def fetch_response_with_status_retries(
     ``retry_limits`` maps a status to the number of retries after its first
     response. Unlike the pagination helpers below, this returns the final
     response so scraper callers retain normal ``raise_for_status`` and final
-    redirect handling. Transport errors and unlisted statuses still surface
+    redirect handling. ``same_origin_redirects`` manually follows redirects
+    and rejects malformed, looping, or cross-origin chains before requesting
+    the next hop. Transport errors and unlisted statuses still surface
     immediately; the worker-level retry/circuit policy remains authoritative
     for those classes.
     """
@@ -66,6 +71,8 @@ async def fetch_response_with_status_retries(
 
     if any(limit < 0 for limit in retry_limits.values()):
         raise ValueError("status retry limits must be non-negative")
+    if same_origin_redirects and not follow_redirects:
+        raise ValueError("same_origin_redirects requires follow_redirects=true")
 
     host = http_retry_host(url)
     used: dict[int, int] = {}
@@ -77,7 +84,11 @@ async def fetch_response_with_status_retries(
             request_kwargs["timeout"] = timeout
         if headers is not None:
             request_kwargs["headers"] = headers
-        response = await client.get(url, **request_kwargs)
+        if same_origin_redirects:
+            request_kwargs["follow_redirects"] = False
+            response = await _get_with_same_origin_redirects(client, url, request_kwargs)
+        else:
+            response = await client.get(url, **request_kwargs)
         status = response.status_code
         limit = retry_limits.get(status, 0)
         status_retries = used.get(status, 0)
@@ -101,6 +112,77 @@ async def fetch_response_with_status_retries(
             delay_s=round(delay, 2),
         )
         await sleep(delay)
+
+
+_REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
+_MAX_SAFE_REDIRECTS = 20
+
+
+class UnsafeRedirectError(ValueError):
+    """A redirect chain cannot be followed without leaving its original origin."""
+
+
+def _origin(url: str) -> tuple[str, str, int]:
+    parsed = urlparse(url)
+    if parsed.scheme.casefold() not in {"http", "https"} or not parsed.hostname:
+        raise UnsafeRedirectError(f"redirect URL is not absolute HTTP(S): {url}")
+    if parsed.username is not None or parsed.password is not None:
+        raise UnsafeRedirectError(f"redirect URL must not contain credentials: {url}")
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise UnsafeRedirectError(f"redirect URL has an invalid port: {url}") from exc
+    if port is None:
+        port = 443 if parsed.scheme.casefold() == "https" else 80
+    return parsed.scheme.casefold(), parsed.hostname.casefold(), port
+
+
+def _redirect_visit_key(url: str) -> str:
+    parsed = urlparse(url)
+    return urlunparse(parsed._replace(fragment=""))
+
+
+async def _get_with_same_origin_redirects(
+    client: httpx.AsyncClient,
+    url: str,
+    request_kwargs: dict[str, Any],
+) -> httpx.Response:
+    expected_origin = _origin(url)
+    current_url = url
+    visited = {_redirect_visit_key(url)}
+
+    for redirects_followed in range(_MAX_SAFE_REDIRECTS + 1):
+        if _origin(current_url) != expected_origin:
+            raise UnsafeRedirectError(f"redirect left original origin: {current_url}")
+        response = await client.get(current_url, **request_kwargs)
+        status = response.status_code
+        if not 300 <= status < 400:
+            return response
+        if status not in _REDIRECT_STATUSES:
+            await response.aclose()
+            raise UnsafeRedirectError(f"unsupported redirect status {status}: {current_url}")
+
+        locations = [
+            value for name, value in response.headers.multi_items() if name.casefold() == "location"
+        ]
+        if len(locations) != 1 or not locations[0].strip():
+            await response.aclose()
+            raise UnsafeRedirectError(
+                f"redirect must have exactly one non-empty Location: {current_url}"
+            )
+        next_url = urljoin(str(response.url), locations[0].strip())
+        await response.aclose()
+        if _origin(next_url) != expected_origin:
+            raise UnsafeRedirectError(f"redirect left original origin: {next_url}")
+        visit_key = _redirect_visit_key(next_url)
+        if visit_key in visited:
+            raise UnsafeRedirectError(f"redirect loop detected: {next_url}")
+        if redirects_followed == _MAX_SAFE_REDIRECTS:
+            raise UnsafeRedirectError(f"redirect limit exceeded: {url}")
+        visited.add(visit_key)
+        current_url = next_url
+
+    raise AssertionError("unreachable")
 
 
 class PaginationFetchError(Exception):
