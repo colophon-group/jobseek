@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 from inspect import isawaitable
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -43,6 +44,77 @@ def _board_row(board_slug: str) -> dict[str, str]:
     boards_path = Path(__file__).resolve().parents[1] / "data" / "boards.csv"
     with boards_path.open(newline="", encoding="utf-8") as handle:
         return next(row for row in csv.DictReader(handle) if row["board_slug"] == board_slug)
+
+
+def test_fenaco_uses_stable_viewkey_identity_across_locales_and_titles():
+    config = json.loads(_board_row("fenaco-main")["monitor_config"])
+    viewkey = "6f811874-a6d0-48f5-9d6b-57c369861d2a"
+    items = [
+        {
+            "viewkey": viewkey,
+            "title": "Leiterin Verkauf",
+            "language": "de",
+            "links": {
+                "directlink": (f"https://jobs.fenaco.com/offene-stellen/leiterin-verkauf/{viewkey}")
+            },
+        },
+        {
+            "viewkey": viewkey,
+            "title": "Responsable des ventes",
+            "language": "fr",
+            "links": {
+                "directlink": (
+                    f"https://jobs.fenaco.com/postes-vacants/responsable-des-ventes/{viewkey}"
+                )
+            },
+        },
+    ]
+
+    filtered, scoped_total = _apply_item_filter(
+        items,
+        _validated_item_filter(config),
+        advertised_total=2,
+    )
+    jobs = _extract_rich(
+        filtered,
+        config["fields"],
+        config.get("url_field"),
+        config["url_template"],
+        "https://jobs.fenaco.com/",
+    )
+
+    assert scoped_total == 1
+    assert len(jobs) == 1
+    assert jobs[0].url == f"https://jobs.fenaco.com/offene-stellen/_/{viewkey}"
+    assert re.fullmatch(config["url_filter"], jobs[0].url)
+    assert not re.fullmatch(
+        config["url_filter"],
+        "https://jobs.fenaco.com/offene-stellen/_/not-a-provider-uuid",
+    )
+
+
+def test_fenaco_missing_viewkey_fails_closed_instead_of_using_title_url():
+    config = json.loads(_board_row("fenaco-main")["monitor_config"])
+    jobs = _extract_rich(
+        [
+            {
+                "title": "Title-bearing URL must not become identity",
+                "links": {
+                    "directlink": (
+                        "https://jobs.fenaco.com/offene-stellen/title-bearing-url/"
+                        "6f811874-a6d0-48f5-9d6b-57c369861d2a"
+                    )
+                },
+            }
+        ],
+        config["fields"],
+        config.get("url_field"),
+        config["url_template"],
+        "https://jobs.fenaco.com/",
+    )
+
+    assert "url_field" not in config
+    assert jobs == []
 
 
 def _lumesse_items():
