@@ -21,6 +21,68 @@ as_runner() { "$@"; }
 require_runtime_config
 """
 
+_UPDATE_REPO = r"""
+set -euo pipefail
+source "$1"
+REPO_DIR="$2"
+REPO_URL="$3"
+BRANCH=main
+EXPECTED_SHA="$4"
+as_runner() { "$@"; }
+update_repo
+"""
+
+
+def _git(*args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", *args],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+
+def _commit_and_push(seed: Path, content: str, message: str) -> str:
+    (seed / "tracked.txt").write_text(content, encoding="utf-8")
+    _git("add", "tracked.txt", cwd=seed)
+    _git("commit", "-m", message, cwd=seed)
+    _git("push", "origin", "main", cwd=seed)
+    return _git("rev-parse", "HEAD", cwd=seed).stdout.strip()
+
+
+def _deployment_fixture(tmp_path: Path) -> tuple[Path, Path, str]:
+    origin = tmp_path / "origin.git"
+    seed = tmp_path / "seed"
+    repo = tmp_path / "repo"
+    _git("init", "--bare", str(origin), cwd=tmp_path)
+    _git("init", str(seed), cwd=tmp_path)
+    _git("config", "user.name", "Codex deploy test", cwd=seed)
+    _git("config", "user.email", "codex-deploy-test@example.invalid", cwd=seed)
+    _git("checkout", "-b", "main", cwd=seed)
+    _git("remote", "add", "origin", str(origin), cwd=seed)
+    first = _commit_and_push(seed, "first\n", "first")
+    _git("clone", "--branch", "main", str(origin), str(repo), cwd=tmp_path)
+    return origin, seed, first
+
+
+def _update_repo(repo: Path, origin: Path, expected_sha: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [
+            "bash",
+            "-c",
+            _UPDATE_REPO,
+            "bash",
+            str(DEPLOY),
+            str(repo),
+            str(origin),
+            expected_sha,
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
 
 def test_governor_lock_and_home_write_scope_cover_managed_worktree_reconciliation() -> None:
     service = GOVERNOR_SERVICE.read_text()
@@ -30,6 +92,46 @@ def test_governor_lock_and_home_write_scope_cover_managed_worktree_reconciliatio
     assert "ReadWritePaths=/srv/jobseek-codex /home/codex-runner" in service
     assert 'flock -w "${LOCK_TIMEOUT_S}" 9' in deploy
     assert '"${REPO_DIR}/scripts/codex-worktree-reconcile.py" --apply' in deploy
+
+
+def test_update_repo_detaches_deployment_checkout_from_mutable_main_ref(tmp_path: Path) -> None:
+    origin, seed, first = _deployment_fixture(tmp_path)
+    repo = tmp_path / "repo"
+
+    first_deploy = _update_repo(repo, origin, first)
+    assert first_deploy.returncode == 0, first_deploy.stderr
+    assert _git("rev-parse", "HEAD", cwd=repo).stdout.strip() == first
+    symbolic = subprocess.run(
+        ["git", "symbolic-ref", "-q", "HEAD"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert symbolic.returncode != 0
+
+    second = _commit_and_push(seed, "second\n", "second")
+    _git("fetch", "origin", "main", cwd=repo)
+    _git("update-ref", "refs/heads/main", second, cwd=repo)
+    assert _git("status", "--porcelain", cwd=repo).stdout == ""
+
+    second_deploy = _update_repo(repo, origin, second)
+    assert second_deploy.returncode == 0, second_deploy.stderr
+    assert _git("rev-parse", "HEAD", cwd=repo).stdout.strip() == second
+    assert _git("status", "--porcelain", cwd=repo).stdout == ""
+
+
+def test_update_repo_still_rejects_genuine_tracked_changes(tmp_path: Path) -> None:
+    origin, _seed, first = _deployment_fixture(tmp_path)
+    repo = tmp_path / "repo"
+
+    deployed = _update_repo(repo, origin, first)
+    assert deployed.returncode == 0, deployed.stderr
+    (repo / "tracked.txt").write_text("operator edit\n", encoding="utf-8")
+
+    blocked = _update_repo(repo, origin, first)
+    assert blocked.returncode != 0
+    assert "has tracked local changes; refusing to overwrite" in blocked.stderr
 
 
 def test_governor_example_bounds_all_retained_codex_sessions() -> None:
