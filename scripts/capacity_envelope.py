@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Reproducible analytical and synthetic capacity evidence for issue #7936.
 
 The analytical model deliberately does not impersonate a Go/Redis/Postgres/
@@ -103,7 +102,9 @@ def recovery_slot(
     return max(available, key=score)
 
 
-def recovery_partition_counts(spec: Mapping[str, Any], failed_slot: int = 0) -> list[int]:
+def recovery_partition_counts(
+    spec: Mapping[str, Any], failed_slot: int = 0
+) -> list[int]:
     topology = spec["topology"]
     logical_partitions = int(topology["logical_partitions"])
     total_shards = int(topology["data_cells"]) * int(topology["queue_shards_per_cell"])
@@ -124,7 +125,9 @@ def growth_owner(partition: int, capacity_weights: Sequence[float]) -> int:
     """Return a deterministic capacity-weighted rendezvous owner for a manifest."""
 
     _require(bool(capacity_weights), "growth manifest needs at least one cell")
-    _require(all(weight > 0 for weight in capacity_weights), "cell weights must be positive")
+    _require(
+        all(weight > 0 for weight in capacity_weights), "cell weights must be positive"
+    )
     best: tuple[float, int] | None = None
     for cell, weight in enumerate(capacity_weights):
         digest = hashlib.sha256(f"growth:v1:{partition}:{cell}".encode()).digest()
@@ -162,7 +165,8 @@ def _work_classes(spec: Mapping[str, Any]) -> tuple[WorkClass, WorkClass]:
             db_commits=float(workload["monitor_db_commits_per_cycle"]),
             proxy_share=float(workload["monitor_proxy_share"]),
             mean_response_bytes=(
-                (1 - monitor_browser_share) * float(workload["monitor_http_response_mean_bytes"])
+                (1 - monitor_browser_share)
+                * float(workload["monitor_http_response_mean_bytes"])
                 + monitor_browser_share * browser_bytes
             ),
         ),
@@ -174,7 +178,8 @@ def _work_classes(spec: Mapping[str, Any]) -> tuple[WorkClass, WorkClass]:
             db_commits=float(workload["detail_db_commits_per_cycle"]),
             proxy_share=float(workload["detail_proxy_share"]),
             mean_response_bytes=(
-                (1 - detail_browser_share) * float(workload["detail_http_response_mean_bytes"])
+                (1 - detail_browser_share)
+                * float(workload["detail_http_response_mean_bytes"])
                 + detail_browser_share * browser_bytes
             ),
         ),
@@ -183,10 +188,15 @@ def _work_classes(spec: Mapping[str, Any]) -> tuple[WorkClass, WorkClass]:
 
 def _weighted(classes: Sequence[WorkClass], field: str) -> float:
     total = sum(item.cycles_per_hour for item in classes)
-    return sum(item.cycles_per_hour * float(getattr(item, field)) for item in classes) / total
+    return (
+        sum(item.cycles_per_hour * float(getattr(item, field)) for item in classes)
+        / total
+    )
 
 
-def _surviving_shards(scenario: Mapping[str, Any], tier: str, provisioned: int) -> tuple[int, int]:
+def _surviving_shards(
+    scenario: Mapping[str, Any], tier: str, provisioned: int
+) -> tuple[int, int]:
     lost = int(scenario.get("failed_shards_by_tier", {}).get(tier, 0))
     _require(lost >= 0, f"{tier} lost-shard count cannot be negative")
     _require(lost < provisioned, f"{tier} has no surviving shard")
@@ -211,7 +221,9 @@ def _scenario_report(
         scenario, "queue", queue_per_cell
     )
     recovery_factor = (
-        float(topology["failed_board_recovery_max_load_factor"]) if failed_queue_shards else 1.0
+        float(topology["failed_board_recovery_max_load_factor"])
+        if failed_queue_shards
+        else 1.0
     )
 
     weighted_worker_ms = _weighted(classes, "worker_cpu_ms")
@@ -220,14 +232,18 @@ def _scenario_report(
     weighted_bytes = _weighted(classes, "mean_response_bytes")
     browser_orchestration_ms = float(workload["browser_orchestration_cpu_ms"])
 
-    queue_rate_per_peak_shard = attempted_processing_rate / queue_shards * recovery_factor
+    queue_rate_per_peak_shard = (
+        attempted_processing_rate / queue_shards * recovery_factor
+    )
     queue_cpu_cores = (
         queue_rate_per_peak_shard
         * float(workload["queue_operations_per_cycle"])
         * float(workload["queue_cpu_us_per_operation"])
         / 1_000_000
     )
-    queue_cpu_pct = _pct(queue_cpu_cores, float(profiles["queue"]["cpu_cores_per_primary"]))
+    queue_cpu_pct = _pct(
+        queue_cpu_cores, float(profiles["queue"]["cpu_cores_per_primary"])
+    )
     queue_entries_per_peak_shard = (
         float(scenario["max_total_queue_entries"]) / queue_shards * recovery_factor
     )
@@ -246,7 +262,9 @@ def _scenario_report(
     worker_cpu_seconds_per_cycle = (
         weighted_worker_ms + weighted_browser_share * browser_orchestration_ms
     ) / 1000
-    worker_cpu_cores_per_cell = attempted_processing_rate / cells * worker_cpu_seconds_per_cycle
+    worker_cpu_cores_per_cell = (
+        attempted_processing_rate / cells * worker_cpu_seconds_per_cycle
+    )
     worker_shards_provisioned = int(topology["worker_shards_per_cell"])
     worker_shards_available, failed_worker_shards = _surviving_shards(
         scenario, "worker", worker_shards_provisioned
@@ -256,7 +274,9 @@ def _scenario_report(
         worker_shards_available * float(profiles["worker"]["cpu_cores_per_shard"]),
     )
     worker_rss_key = (
-        "overload_rss_gib_per_shard_max" if has_failure else "steady_rss_gib_per_shard_max"
+        "overload_rss_gib_per_shard_max"
+        if has_failure
+        else "steady_rss_gib_per_shard_max"
     )
     worker_rss_pct = _pct(
         float(profiles["worker"][worker_rss_key]),
@@ -272,7 +292,9 @@ def _scenario_report(
     browser_shards_available, failed_browser_shards = _surviving_shards(
         scenario, "browser", browser_shards_provisioned
     )
-    browser_sessions_per_survivor = browser_sessions_global / cells / browser_shards_available
+    browser_sessions_per_survivor = (
+        browser_sessions_global / cells / browser_shards_available
+    )
     browser_slot_pct = _pct(
         browser_sessions_per_survivor,
         float(profiles["browser"]["session_slots_per_shard"]),
@@ -289,11 +311,17 @@ def _scenario_report(
         browser_shards_available * float(profiles["browser"]["cpu_cores_per_shard"]),
     )
     browser_rss_gib = float(profiles["browser"]["baseline_rss_gib"]) + (
-        browser_sessions_per_survivor * float(profiles["browser"]["rss_mib_per_session"]) / 1024
+        browser_sessions_per_survivor
+        * float(profiles["browser"]["rss_mib_per_session"])
+        / 1024
     )
-    browser_rss_pct = _pct(browser_rss_gib, float(profiles["browser"]["memory_gib_per_shard"]))
+    browser_rss_pct = _pct(
+        browser_rss_gib, float(profiles["browser"]["memory_gib_per_shard"])
+    )
 
-    postgres_writer_shards_provisioned = int(topology["postgres_writer_shards_per_cell"])
+    postgres_writer_shards_provisioned = int(
+        topology["postgres_writer_shards_per_cell"]
+    )
     postgres_writer_shards, failed_postgres_shards = _surviving_shards(
         scenario, "postgres", postgres_writer_shards_provisioned
     )
@@ -314,7 +342,9 @@ def _scenario_report(
         float(profiles["postgres"]["cpu_cores_per_writer"]),
     )
     db_rss_key = (
-        "overload_rss_gib_per_writer_max" if has_failure else "steady_rss_gib_per_writer_max"
+        "overload_rss_gib_per_writer_max"
+        if has_failure
+        else "steady_rss_gib_per_writer_max"
     )
     db_rss_pct = _pct(
         float(profiles["postgres"][db_rss_key]),
@@ -360,7 +390,10 @@ def _scenario_report(
         typesense_upserts * float(workload["typesense_upsert_cpu_ms"]) / 1000
     )
     typesense_search_cpu_cores_per_node = (
-        typesense_search_qps / typesense_nodes * float(workload["typesense_search_cpu_ms"]) / 1000
+        typesense_search_qps
+        / typesense_nodes
+        * float(workload["typesense_search_cpu_ms"])
+        / 1000
     )
     typesense_cpu_pct = _pct(
         typesense_write_cpu_cores_per_node + typesense_search_cpu_cores_per_node,
@@ -445,7 +478,9 @@ def _scenario_report(
             "telemetry_profiles_gib_per_month",
         )
     )
-    critical_signal_gib = int(spec["storage_budgets"]["critical_telemetry_signal_gib_dual_written"])
+    critical_signal_gib = int(
+        spec["storage_budgets"]["critical_telemetry_signal_gib_dual_written"]
+    )
     signal_gib_to_survivor = (
         monthly_signal_gib
         if failed_telemetry_backends
@@ -453,7 +488,9 @@ def _scenario_report(
     )
     telemetry_backend_signal_pct = _pct(
         signal_gib_to_survivor,
-        float(profiles["telemetry_backend"]["modeled_signal_gib_per_month_per_backend"]),
+        float(
+            profiles["telemetry_backend"]["modeled_signal_gib_per_month_per_backend"]
+        ),
     )
 
     network_gbps = (
@@ -496,7 +533,8 @@ def _scenario_report(
         "worker resident artifact chunks exceed its RSS envelope",
     )
     _require(
-        browser_resident_payload_gib <= float(profiles["browser"]["memory_gib_per_shard"]),
+        browser_resident_payload_gib
+        <= float(profiles["browser"]["memory_gib_per_shard"]),
         "browser resident artifact chunks exceed its RSS envelope",
     )
 
@@ -552,9 +590,15 @@ def _scenario_report(
             "modeled_throughput_pct": _round(typesense_throughput_pct),
             "write_leader_utilization_pct_per_ha_group": _round(typesense_write_pct),
             "search_replica_utilization_pct": _round(typesense_search_pct),
-            "replicated_write_cpu_cores_per_node": _round(typesense_write_cpu_cores_per_node),
-            "search_cpu_cores_per_surviving_node": _round(typesense_search_cpu_cores_per_node),
-            "working_set_gib_per_replica": _round(typesense_working_set_gib_per_replica),
+            "replicated_write_cpu_cores_per_node": _round(
+                typesense_write_cpu_cores_per_node
+            ),
+            "search_cpu_cores_per_surviving_node": _round(
+                typesense_search_cpu_cores_per_node
+            ),
+            "working_set_gib_per_replica": _round(
+                typesense_working_set_gib_per_replica
+            ),
             "upserts_per_second_per_ha_group": _round(typesense_upserts),
             "search_qps_per_index_shard": _round(typesense_search_qps),
             "provisioned_shards_in_affected_index_shard": typesense_nodes_provisioned,
@@ -614,7 +658,9 @@ def _storage_report(spec: Mapping[str, Any]) -> dict[str, Any]:
     database_payload = int(workload["retained_postings"]) * int(
         workload["database_bytes_per_retained_posting"]
     ) + int(workload["configured_boards"]) * int(workload["database_bytes_per_board"])
-    r2_payload = int(workload["retained_postings"]) * int(workload["description_object_mean_bytes"])
+    r2_payload = int(workload["retained_postings"]) * int(
+        workload["description_object_mean_bytes"]
+    )
     typesense_payload = int(workload["active_postings"]) * int(
         workload["typesense_bytes_per_active_posting"]
     )
@@ -629,11 +675,17 @@ def _storage_report(spec: Mapping[str, Any]) -> dict[str, Any]:
         + int(workload["active_postings"])
         * (
             int(workload["posting_ownership_bytes_per_active_posting"])
-            + int(workload["detail_schedule_and_downstream_cursor_bytes_per_active_posting"])
+            + int(
+                workload[
+                    "detail_schedule_and_downstream_cursor_bytes_per_active_posting"
+                ]
+            )
         )
     )
     control_replicated = control_payload * int(workload["control_metadata_copies"])
-    overload_entries = int(spec["scenarios"]["overload_shard_loss"]["max_total_queue_entries"])
+    overload_entries = int(
+        spec["scenarios"]["overload_shard_loss"]["max_total_queue_entries"]
+    )
     queue_primary = (
         overload_entries
         * int(workload["queue_bytes_per_task"])
@@ -655,7 +707,9 @@ def _storage_report(spec: Mapping[str, Any]) -> dict[str, Any]:
         ),
         "control_metadata_logical_gib": _round(control_payload / GIB),
         "control_metadata_replicated_gib": _round(control_replicated / GIB),
-        "control_metadata_budget_gib": float(budgets["catalog_policy_and_cursor_global_gib"]),
+        "control_metadata_budget_gib": float(
+            budgets["catalog_policy_and_cursor_global_gib"]
+        ),
         "policy_keys_peak_partition": math.ceil(
             int(workload["policy_keys"])
             / int(topology["policy_partitions"])
@@ -668,10 +722,14 @@ def _storage_report(spec: Mapping[str, Any]) -> dict[str, Any]:
         ),
         "queue_primary_peak_gib": _round(queue_primary / GIB),
         "queue_replicated_peak_gib": _round(queue_replicated / GIB),
-        "queue_aof_and_snapshot_budget_tib": float(budgets["queue_aof_and_snapshot_global_tib"]),
+        "queue_aof_and_snapshot_budget_tib": float(
+            budgets["queue_aof_and_snapshot_global_tib"]
+        ),
         "backup_copies": int(budgets["backup_copies"]),
         "backup_storage_budget_tib": float(budgets["backup_storage_global_tib"]),
-        "telemetry_active_series_global": int(budgets["telemetry_active_series_global"]),
+        "telemetry_active_series_global": int(
+            budgets["telemetry_active_series_global"]
+        ),
         "telemetry_logs_traces_profiles_gib_per_month": int(
             budgets["telemetry_logs_gib_per_month"]
             + budgets["telemetry_traces_gib_per_month"]
@@ -696,7 +754,9 @@ def _regional_cell_loss_report(
         recovery_cell_service > paired_continuing_arrivals,
         "paired cell cannot absorb a lost cell's continuing arrivals",
     )
-    drain_seconds = frozen_backlog / (recovery_cell_service - paired_continuing_arrivals)
+    drain_seconds = frozen_backlog / (
+        recovery_cell_service - paired_continuing_arrivals
+    )
     oldest_due = restore_seconds + drain_seconds
     steady_tiers = _scenario_report(spec, "steady", classes)["tiers"]
     return {
@@ -709,7 +769,9 @@ def _regional_cell_loss_report(
         "paired_cell_modeled_utilization_pct": {
             "worker_cpu": _round(steady_tiers["worker"]["peak_cpu_pct"] * 2),
             "browser_cpu": _round(steady_tiers["browser"]["peak_cpu_pct"] * 2),
-            "queue_throughput": _round(steady_tiers["queue"]["modeled_throughput_pct"] * 2),
+            "queue_throughput": _round(
+                steady_tiers["queue"]["modeled_throughput_pct"] * 2
+            ),
             "postgres_commit_per_promoted_writer": steady_tiers["postgres"][
                 "modeled_commit_throughput_pct"
             ],
@@ -725,7 +787,9 @@ def _allocate_pool(
 ) -> dict[str, float]:
     denominator = sum(volumes[name] * weights[name] for name in volumes)
     _require(denominator > 0, "cost allocation denominator must be positive")
-    return {name: pool_eur * volumes[name] * weights[name] / denominator for name in volumes}
+    return {
+        name: pool_eur * volumes[name] * weights[name] / denominator for name in volumes
+    }
 
 
 def _cost_report(
@@ -758,7 +822,9 @@ def _cost_report(
             "backup": float(stress["backup_copy_multiplier"]),
             "origin_transfer": float(stress["paid_origin_transfer_eur_per_tib"]),
         }
-        volumes = {name: value * multipliers["volume"] for name, value in volumes.items()}
+        volumes = {
+            name: value * multipliers["volume"] for name, value in volumes.items()
+        }
 
     node_costs = {
         name: float(node["count"]) * float(node["eur_per_month"]) * multipliers["price"]
@@ -786,13 +852,20 @@ def _cost_report(
         / 1_000_000_000
     )
     r2_storage_cost = (
-        r2_storage_gb * float(prices["r2_usd_per_gb_month"]) * exchange * multipliers["price"]
+        r2_storage_gb
+        * float(prices["r2_usd_per_gb_month"])
+        * exchange
+        * multipliers["price"]
     )
     detail_cycles = volumes["detail"]
     r2_writes_millions = (
-        detail_cycles * float(workload["description_change_share_of_detail"]) / 1_000_000
+        detail_cycles
+        * float(workload["description_change_share_of_detail"])
+        / 1_000_000
     )
-    r2_reads_millions = detail_cycles * float(prices["r2_reads_per_detail_cycle"]) / 1_000_000
+    r2_reads_millions = (
+        detail_cycles * float(prices["r2_reads_per_detail_cycle"]) / 1_000_000
+    )
     r2_operation_cost = (
         (
             r2_writes_millions * float(prices["r2_class_a_usd_per_million"])
@@ -854,7 +927,9 @@ def _cost_report(
         for item in classes
     )
     transfer_cost = transfer_bytes / TIB * multipliers["origin_transfer"]
-    miscellaneous_cost = float(prices["monthly_miscellaneous_eur"]) * multipliers["price"]
+    miscellaneous_cost = (
+        float(prices["monthly_miscellaneous_eur"]) * multipliers["price"]
+    )
 
     pools = {
         "queue": node_costs["queue_node"],
@@ -888,7 +963,8 @@ def _cost_report(
     allocate(
         "browser",
         {
-            item.name: item.browser_share * float(workload["browser_session_seconds_mean"])
+            item.name: item.browser_share
+            * float(workload["browser_session_seconds_mean"])
             for item in classes
         },
     )
@@ -917,7 +993,9 @@ def _cost_report(
     }
 
 
-def _overload_cost_report(spec: Mapping[str, Any], classes: Sequence[WorkClass]) -> dict[str, Any]:
+def _overload_cost_report(
+    spec: Mapping[str, Any], classes: Sequence[WorkClass]
+) -> dict[str, Any]:
     multiplier = float(spec["scenarios"]["overload_shard_loss"]["load_multiplier"])
     overloaded = tuple(
         WorkClass(
@@ -948,9 +1026,15 @@ def build_report(spec: Mapping[str, Any]) -> dict[str, Any]:
     overload_report = _scenario_report(spec, "overload_shard_loss", classes)
     loss_matrix: dict[str, Any] = {}
     for tier, values in overload_report["tiers"].items():
-        pct_values = [float(value) for key, value in values.items() if key.endswith("_pct")]
-        provisioned_key = next(key for key in values if key.startswith("provisioned_shards_"))
-        surviving_key = next(key for key in values if key.startswith("surviving_shards_"))
+        pct_values = [
+            float(value) for key, value in values.items() if key.endswith("_pct")
+        ]
+        provisioned_key = next(
+            key for key in values if key.startswith("provisioned_shards_")
+        )
+        surviving_key = next(
+            key for key in values if key.startswith("surviving_shards_")
+        )
         if provisioned_key.endswith("_global"):
             scope = "global"
         elif provisioned_key.endswith("_index_shard"):
@@ -991,7 +1075,9 @@ def build_report(spec: Mapping[str, Any]) -> dict[str, Any]:
         "workload": {
             "configured_boards": int(spec["workload"]["configured_boards"]),
             "active_postings": int(spec["workload"]["active_postings"]),
-            "steady_cycles_per_hour": int(sum(item.cycles_per_hour for item in classes)),
+            "steady_cycles_per_hour": int(
+                sum(item.cycles_per_hour for item in classes)
+            ),
             "overload_cycles_per_hour": int(
                 sum(item.cycles_per_hour for item in classes)
                 * float(spec["scenarios"]["overload_shard_loss"]["load_multiplier"])
@@ -1001,9 +1087,15 @@ def build_report(spec: Mapping[str, Any]) -> dict[str, Any]:
             ),
             "payload_contract": {
                 "max_inline_body_bytes": int(spec["workload"]["max_inline_body_bytes"]),
-                "max_artifact_chunk_bytes": int(spec["workload"]["max_artifact_chunk_bytes"]),
-                "max_http_transfer_bytes": int(spec["workload"]["max_http_transfer_bytes"]),
-                "max_browser_transfer_bytes": int(spec["workload"]["max_browser_transfer_bytes"]),
+                "max_artifact_chunk_bytes": int(
+                    spec["workload"]["max_artifact_chunk_bytes"]
+                ),
+                "max_http_transfer_bytes": int(
+                    spec["workload"]["max_http_transfer_bytes"]
+                ),
+                "max_browser_transfer_bytes": int(
+                    spec["workload"]["max_browser_transfer_bytes"]
+                ),
                 "resident_semantics": spec["workload"]["resident_payload_semantics"],
             },
         },
@@ -1011,7 +1103,8 @@ def build_report(spec: Mapping[str, Any]) -> dict[str, Any]:
             "data_cells": int(spec["topology"]["data_cells"]),
             "typesense_index_shards": int(spec["topology"]["typesense_index_shards"]),
             "typesense_index_shards_per_data_cell": int(
-                spec["topology"]["typesense_index_shards"] // spec["topology"]["data_cells"]
+                spec["topology"]["typesense_index_shards"]
+                // spec["topology"]["data_cells"]
             ),
             "typesense_ha_replica_groups_per_index_shard": int(
                 spec["profiles"]["typesense"]["ha_replica_groups_per_index_shard"]
@@ -1061,24 +1154,36 @@ def check_report(spec: Mapping[str, Any], report: Mapping[str, Any]) -> None:
     _require(len(spec["provenance"]) >= 5, "source provenance is incomplete")
     _require(int(workload["configured_boards"]) >= 10_000_000, "board floor regressed")
     _require(int(workload["active_postings"]) >= 100_000_000, "posting floor regressed")
-    _require(int(workload["monitor_cycles_per_hour"]) >= 1_000_000, "monitor floor regressed")
-    _require(int(workload["detail_cycles_per_hour"]) >= 5_000_000, "detail floor regressed")
+    _require(
+        int(workload["monitor_cycles_per_hour"]) >= 1_000_000, "monitor floor regressed"
+    )
+    _require(
+        int(workload["detail_cycles_per_hour"]) >= 5_000_000, "detail floor regressed"
+    )
     _require(
         float(workload["retry_attempts_per_success_max"]) <= 0.05,
         "request amplification exceeds 1.05x",
     )
-    _require(int(topology["data_cells"]) >= 8, "fewer than eight data cells is global coupling")
+    _require(
+        int(topology["data_cells"]) >= 8,
+        "fewer than eight data cells is global coupling",
+    )
     logical_partitions = int(topology["logical_partitions"])
     _require(
-        logical_partitions >= 8192 and (logical_partitions & (logical_partitions - 1)) == 0,
+        logical_partitions >= 8192
+        and (logical_partitions & (logical_partitions - 1)) == 0,
         "logical partitions must be a power of two at least 8192",
     )
-    total_queue_shards = int(topology["data_cells"]) * int(topology["queue_shards_per_cell"])
+    total_queue_shards = int(topology["data_cells"]) * int(
+        topology["queue_shards_per_cell"]
+    )
     _require(
         logical_partitions % total_queue_shards == 0,
         "logical partitions must divide evenly across queue shards",
     )
-    _require(int(topology["queue_replicas_per_primary"]) >= 2, "queue needs two replicas")
+    _require(
+        int(topology["queue_replicas_per_primary"]) >= 2, "queue needs two replicas"
+    )
     _require(
         int(topology["postgres_sync_standbys_per_writer"]) >= 1,
         "each Postgres writer needs a synchronous standby",
@@ -1102,7 +1207,9 @@ def check_report(spec: Mapping[str, Any], report: Mapping[str, Any]) -> None:
         and int(typesense_profile["nodes_per_ha_replica_group"]) % 2 == 1,
         "Typesense HA replica groups need an odd node count of at least three",
     )
-    _require(int(topology["policy_partitions"]) >= 4096, "policy state is under-partitioned")
+    _require(
+        int(topology["policy_partitions"]) >= 4096, "policy state is under-partitioned"
+    )
     _require(
         int(topology["posting_ownership_partitions"]) >= 8192,
         "canonical posting ownership is under-partitioned",
@@ -1141,7 +1248,8 @@ def check_report(spec: Mapping[str, Any], report: Mapping[str, Any]) -> None:
         "postgres_node": cells
         * int(topology["postgres_writer_shards_per_cell"])
         * (1 + int(topology["postgres_sync_standbys_per_writer"])),
-        "telemetry_collector_node": cells * int(topology["telemetry_collectors_per_cell"]),
+        "telemetry_collector_node": cells
+        * int(topology["telemetry_collectors_per_cell"]),
         "cell_service_node": cells * int(topology["cell_service_shards_per_cell"]),
         "routing_node": cells * int(topology["routing_shards_per_cell"]),
         "typesense_node": int(topology["typesense_index_shards"])
@@ -1151,7 +1259,8 @@ def check_report(spec: Mapping[str, Any], report: Mapping[str, Any]) -> None:
     }
     _require(
         all(
-            int(node_prices[name]["count"]) == count for name, count in expected_node_counts.items()
+            int(node_prices[name]["count"]) == count
+            for name, count in expected_node_counts.items()
         ),
         "priced node counts do not match the declared topology",
     )
@@ -1201,11 +1310,13 @@ def check_report(spec: Mapping[str, Any], report: Mapping[str, Any]) -> None:
                     f"{scenario_name} {tier} RSS exceeds {threshold['max_rss_pct']}%",
                 )
         _require(
-            result["tiers"]["queue"]["modeled_throughput_pct"] <= float(threshold["max_cpu_pct"]),
+            result["tiers"]["queue"]["modeled_throughput_pct"]
+            <= float(threshold["max_cpu_pct"]),
             f"{scenario_name} queue modeled throughput headroom is too small",
         )
         _require(
-            result["tiers"]["browser"]["session_slot_pct"] <= float(threshold["max_cpu_pct"]),
+            result["tiers"]["browser"]["session_slot_pct"]
+            <= float(threshold["max_cpu_pct"]),
             f"{scenario_name} browser session headroom is too small",
         )
         _require(
@@ -1220,7 +1331,8 @@ def check_report(spec: Mapping[str, Any], report: Mapping[str, Any]) -> None:
         )
         for tier in ("load_balancer", "telemetry_backend"):
             _require(
-                result["tiers"][tier]["modeled_throughput_pct"] <= float(threshold["max_cpu_pct"]),
+                result["tiers"][tier]["modeled_throughput_pct"]
+                <= float(threshold["max_cpu_pct"]),
                 f"{scenario_name} {tier} throughput headroom is too small",
             )
     for tier, values in report["topology"]["simultaneous_loss_matrix"].items():
@@ -1232,7 +1344,10 @@ def check_report(spec: Mapping[str, Any], report: Mapping[str, Any]) -> None:
         )
     overload = report["scenarios"]["overload_shard_loss"]
     steady = report["scenarios"]["steady"]
-    for scenario_name, result in (("steady", steady), ("overload_shard_loss", overload)):
+    for scenario_name, result in (
+        ("steady", steady),
+        ("overload_shard_loss", overload),
+    ):
         threshold = scenarios[scenario_name]
         _require(
             result["computed_policy_ready_queue_depth"]
@@ -1240,7 +1355,8 @@ def check_report(spec: Mapping[str, Any], report: Mapping[str, Any]) -> None:
             f"{scenario_name} computed ready queue exceeds its threshold",
         )
         _require(
-            result["computed_total_queue_entries"] <= int(threshold["max_total_queue_entries"]),
+            result["computed_total_queue_entries"]
+            <= int(threshold["max_total_queue_entries"]),
             f"{scenario_name} computed total queue exceeds its threshold",
         )
         _require(
@@ -1250,7 +1366,9 @@ def check_report(spec: Mapping[str, Any], report: Mapping[str, Any]) -> None:
         )
     _require(
         overload["computed_oldest_policy_ready_due_seconds"]
-        <= float(scenarios["overload_shard_loss"]["max_oldest_policy_ready_due_seconds"]),
+        <= float(
+            scenarios["overload_shard_loss"]["max_oldest_policy_ready_due_seconds"]
+        ),
         "2x catch-up cannot meet the frozen RTO",
     )
     _require(
@@ -1266,7 +1384,9 @@ def check_report(spec: Mapping[str, Any], report: Mapping[str, Any]) -> None:
     cell_loss = report["scenarios"]["regional_cell_loss"]
     _require(
         cell_loss["computed_oldest_policy_ready_due_seconds"]
-        <= float(scenarios["regional_cell_loss"]["max_oldest_policy_ready_due_seconds"]),
+        <= float(
+            scenarios["regional_cell_loss"]["max_oldest_policy_ready_due_seconds"]
+        ),
         "regional cell loss exceeds its disaster oldest-due threshold",
     )
     _require(
@@ -1287,17 +1407,20 @@ def check_report(spec: Mapping[str, Any], report: Mapping[str, Any]) -> None:
         "Typesense index exceeds its budget",
     )
     _require(
-        storage["control_metadata_replicated_gib"] <= storage["control_metadata_budget_gib"],
+        storage["control_metadata_replicated_gib"]
+        <= storage["control_metadata_budget_gib"],
         "replicated catalog/policy/cursor metadata exceeds 256 GiB",
     )
     _require(
-        storage["queue_replicated_peak_gib"] <= storage["queue_aof_and_snapshot_budget_tib"] * 1024,
+        storage["queue_replicated_peak_gib"]
+        <= storage["queue_aof_and_snapshot_budget_tib"] * 1024,
         "replicated queue state exceeds its persistence budget",
     )
     steady_cost = report["cost"]["steady"]
     steady_threshold = scenarios["steady"]
     _require(
-        steady_cost["monthly_cost_eur"] <= float(steady_threshold["max_monthly_cost_eur"]),
+        steady_cost["monthly_cost_eur"]
+        <= float(steady_threshold["max_monthly_cost_eur"]),
         "monthly steady cost ceiling exceeded",
     )
     for name in ("board", "detail", "blended"):
@@ -1351,13 +1474,16 @@ def benchmark_routing(spec: Mapping[str, Any], boards: int) -> dict[str, Any]:
     old_cell_weights = [1.0] * int(topology["data_cells"])
     new_cell_weights = [*old_cell_weights, 1.0]
     old_growth_owners = [
-        growth_owner(partition, old_cell_weights) for partition in range(logical_partitions)
+        growth_owner(partition, old_cell_weights)
+        for partition in range(logical_partitions)
     ]
     new_growth_owners = [
-        growth_owner(partition, new_cell_weights) for partition in range(logical_partitions)
+        growth_owner(partition, new_cell_weights)
+        for partition in range(logical_partitions)
     ]
     growth_moved_partitions = sum(
-        old != new for old, new in zip(old_growth_owners, new_growth_owners, strict=True)
+        old != new
+        for old, new in zip(old_growth_owners, new_growth_owners, strict=True)
     )
     _require(
         all(
@@ -1383,8 +1509,12 @@ def benchmark_routing(spec: Mapping[str, Any], boards: int) -> dict[str, Any]:
     provider_thresholds = (64, 102, 133, 159, 184, 210, 235, 256)
     provider_board_weights = [0] * len(provider_names)
     provider_posting_weights = [0] * len(provider_names)
-    provider_board_partitions = [[0] * logical_partitions for _ in range(len(provider_names))]
-    provider_posting_partitions = [[0] * logical_partitions for _ in range(len(provider_names))]
+    provider_board_partitions = [
+        [0] * logical_partitions for _ in range(len(provider_names))
+    ]
+    provider_posting_partitions = [
+        [0] * logical_partitions for _ in range(len(provider_names))
+    ]
     started_wall = time.perf_counter()
     started_cpu = time.process_time()
     for index in range(boards):
@@ -1413,7 +1543,9 @@ def benchmark_routing(spec: Mapping[str, Any], boards: int) -> dict[str, Any]:
     task_rates = [
         board_count / boards * monitor_cycles
         + posting_weight / total_posting_weight * detail_cycles
-        for board_count, posting_weight in zip(board_counts, posting_weights, strict=True)
+        for board_count, posting_weight in zip(
+            board_counts, posting_weights, strict=True
+        )
     ]
     scaled_postings = [
         posting_weight / total_posting_weight * postings_target
@@ -1471,7 +1603,10 @@ def benchmark_routing(spec: Mapping[str, Any], boards: int) -> dict[str, Any]:
     ) + tuple(provider_task_rates[name] / total_shards for name in provider_names)
     dimension_loads = [
         [
-            sum(values[partition] for partition in range(owner, logical_partitions, total_shards))
+            sum(
+                values[partition]
+                for partition in range(owner, logical_partitions, total_shards)
+            )
             for owner in range(total_shards)
         ]
         for values in dimensions
@@ -1490,14 +1625,18 @@ def benchmark_routing(spec: Mapping[str, Any], boards: int) -> dict[str, Any]:
     candidate_slots = range(1, shards_per_cell)
     for partition in failed_partitions:
 
-        def candidate_score(slot: int, owned_partition: int = partition) -> tuple[float, int]:
+        def candidate_score(
+            slot: int, owned_partition: int = partition
+        ) -> tuple[float, int]:
             projected = max(
                 (dimension_loads[index][slot] + dimensions[index][owned_partition])
                 / dimension_targets[index]
                 for index in range(len(dimensions))
             )
             tie_break = -int.from_bytes(
-                hashlib.sha256(f"recovery:v1:{owned_partition}:{slot}".encode()).digest()[:8],
+                hashlib.sha256(
+                    f"recovery:v1:{owned_partition}:{slot}".encode()
+                ).digest()[:8],
                 "big",
             )
             return projected, tie_break
@@ -1527,10 +1666,14 @@ def benchmark_routing(spec: Mapping[str, Any], boards: int) -> dict[str, Any]:
     cpu_seconds = time.process_time() - started_cpu
     _require(sum(board_counts) == boards, "logical partition conservation failed")
     _require(round(sum(primary_boards)) == boards, "primary shard conservation failed")
-    _require(round(sum(recovered_boards)) == boards, "recovery shard conservation failed")
+    _require(
+        round(sum(recovered_boards)) == boards, "recovery shard conservation failed"
+    )
     _require(recovered_boards[failed_slot] == 0, "failed shard retained ownership")
     _require(
-        math.isclose(sum(recovered_tasks), monitor_cycles + detail_cycles, rel_tol=1e-12),
+        math.isclose(
+            sum(recovered_tasks), monitor_cycles + detail_cycles, rel_tol=1e-12
+        ),
         "weighted task-rate conservation failed",
     )
     _require(
@@ -1546,7 +1689,9 @@ def benchmark_routing(spec: Mapping[str, Any], boards: int) -> dict[str, Any]:
     )
     mean_shard_boards = boards / total_shards
     max_recovery_factor = max(recovered_boards) / mean_shard_boards
-    task_factor = max(recovered_tasks) / ((monitor_cycles + detail_cycles) / total_shards)
+    task_factor = max(recovered_tasks) / (
+        (monitor_cycles + detail_cycles) / total_shards
+    )
     posting_factor = max(recovered_postings) / (postings_target / total_shards)
     browser_factor = max(recovered_browser) / (expected_browser_rate / total_shards)
     provider_factors = {
@@ -1582,7 +1727,9 @@ def benchmark_routing(spec: Mapping[str, Any], boards: int) -> dict[str, Any]:
             "telemetry_backend",
         ],
         "spec_sha256": sha256_json(spec),
-        "command": (f"python scripts/capacity_envelope.py --check --benchmark-routing {boards}"),
+        "command": (
+            f"python scripts/capacity_envelope.py --check --benchmark-routing {boards}"
+        ),
         "units": {
             "wall_seconds": "seconds",
             "cpu_seconds": "process CPU seconds",
@@ -1630,13 +1777,17 @@ def benchmark_routing(spec: Mapping[str, Any], boards: int) -> dict[str, Any]:
             "partition_max_boards": max(board_counts),
             "primary_shard_min_boards": round(min(primary_boards)),
             "primary_shard_max_boards": round(max(primary_boards)),
-            "recovered_shard_min_boards_excluding_failed": round(min(recovered_boards[1:])),
+            "recovered_shard_min_boards_excluding_failed": round(
+                min(recovered_boards[1:])
+            ),
             "recovered_shard_max_boards": round(max(recovered_boards)),
             "recovered_max_board_load_factor": _round(max_recovery_factor, 6),
             "recovered_max_task_rate_factor": _round(task_factor, 6),
             "recovered_max_posting_factor": _round(posting_factor, 6),
             "recovered_max_browser_rate_factor": _round(browser_factor, 6),
-            "recovered_max_provider_rate_factor": _round(max(provider_factors.values()), 6),
+            "recovered_max_provider_rate_factor": _round(
+                max(provider_factors.values()), 6
+            ),
             "provider_task_cycles_per_hour": {
                 name: round(value) for name, value in provider_task_rates.items()
             },
@@ -1665,14 +1816,20 @@ def benchmark_routing(spec: Mapping[str, Any], boards: int) -> dict[str, Any]:
 
 def _write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--spec", type=Path, default=DEFAULT_SPEC)
-    parser.add_argument("--check", action="store_true", help="assert every frozen threshold")
-    parser.add_argument("--json", action="store_true", help="print the analytical report as JSON")
+    parser.add_argument(
+        "--check", action="store_true", help="assert every frozen threshold"
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="print the analytical report as JSON"
+    )
     parser.add_argument("--write-report", type=Path, help="write the analytical report")
     parser.add_argument(
         "--benchmark-routing",
@@ -1680,7 +1837,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         metavar="BOARDS",
         help="measure streaming ownership/recovery at the requested board count",
     )
-    parser.add_argument("--write-evidence", type=Path, help="write routing benchmark evidence")
+    parser.add_argument(
+        "--write-evidence", type=Path, help="write routing benchmark evidence"
+    )
     return parser.parse_args(argv)
 
 

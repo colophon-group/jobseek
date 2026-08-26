@@ -30,7 +30,9 @@ class CapacityEnvelopeTest(unittest.TestCase):
     def test_checked_in_report_is_reproducible(self) -> None:
         self.assertEqual(json.loads(REPORT.read_text(encoding="utf-8")), self.report)
         self.assertEqual(self.report["spec_sha256"], capacity.sha256_json(self.spec))
-        with self.assertRaisesRegex(capacity.CapacityError, "monthly steady cost ceiling exceeded"):
+        with self.assertRaisesRegex(
+            capacity.CapacityError, "monthly steady cost ceiling exceeded"
+        ):
             capacity.check_report(self.spec, self.report)
 
     def test_epic_floor_and_simultaneous_failure_are_frozen(self) -> None:
@@ -66,21 +68,34 @@ class CapacityEnvelopeTest(unittest.TestCase):
             scenario = self.report["scenarios"][name]
             for values in scenario["tiers"].values():
                 if "peak_cpu_pct" in values:
-                    self.assertLessEqual(values["peak_cpu_pct"], thresholds["max_cpu_pct"])
+                    self.assertLessEqual(
+                        values["peak_cpu_pct"], thresholds["max_cpu_pct"]
+                    )
                 if "peak_rss_pct" in values:
-                    self.assertLessEqual(values["peak_rss_pct"], thresholds["max_rss_pct"])
+                    self.assertLessEqual(
+                        values["peak_rss_pct"], thresholds["max_rss_pct"]
+                    )
 
     def test_typesense_models_full_replicas_and_leader_serialized_writes(self) -> None:
         steady = self.report["scenarios"]["steady"]["tiers"]["typesense"]
         overload = self.report["scenarios"]["overload_shard_loss"]["tiers"]["typesense"]
 
         self.assertEqual(self.report["topology"]["typesense_index_shards"], 24)
-        self.assertEqual(self.report["topology"]["typesense_index_shards_per_data_cell"], 3)
-        self.assertEqual(self.report["topology"]["typesense_ha_replica_groups_per_index_shard"], 5)
-        self.assertEqual(self.report["topology"]["typesense_nodes_per_ha_replica_group"], 3)
-        self.assertEqual(self.report["topology"]["typesense_full_replicas_per_index_shard"], 15)
+        self.assertEqual(
+            self.report["topology"]["typesense_index_shards_per_data_cell"], 3
+        )
+        self.assertEqual(
+            self.report["topology"]["typesense_ha_replica_groups_per_index_shard"], 5
+        )
+        self.assertEqual(
+            self.report["topology"]["typesense_nodes_per_ha_replica_group"], 3
+        )
+        self.assertEqual(
+            self.report["topology"]["typesense_full_replicas_per_index_shard"], 15
+        )
         self.assertIn(
-            "full global search QPS", self.spec["workload"]["typesense_search_fanout_semantics"]
+            "full global search QPS",
+            self.spec["workload"]["typesense_search_fanout_semantics"],
         )
         self.assertIn(
             "every HA replica group",
@@ -93,7 +108,9 @@ class CapacityEnvelopeTest(unittest.TestCase):
 
         # 640 GiB is split over 24 independent index shards. Every node in a
         # shard holds that shard's complete 26.667 GiB working set.
-        self.assertAlmostEqual(steady["working_set_gib_per_replica"], 640 / 24, places=4)
+        self.assertAlmostEqual(
+            steady["working_set_gib_per_replica"], 640 / 24, places=4
+        )
         self.assertAlmostEqual(steady["peak_rss_pct"], 100 * (640 / 24) / 64, places=4)
         self.assertEqual(overload["peak_rss_pct"], steady["peak_rss_pct"])
 
@@ -225,7 +242,9 @@ class CapacityEnvelopeTest(unittest.TestCase):
         steady_threshold = self.spec["scenarios"]["steady"]
         overload_threshold = self.spec["scenarios"]["overload_shard_loss"]
         sensitivity_threshold = self.spec["cost_sensitivity"]
-        self.assertGreater(steady["monthly_cost_eur"], steady_threshold["max_monthly_cost_eur"])
+        self.assertGreater(
+            steady["monthly_cost_eur"], steady_threshold["max_monthly_cost_eur"]
+        )
         self.assertLessEqual(steady["cost_per_million_eur"]["board"], 16)
         self.assertGreater(
             steady["cost_per_million_eur"]["detail"],
@@ -264,7 +283,10 @@ class CapacityEnvelopeTest(unittest.TestCase):
             "会社-採用": 2488,
         }
         self.assertEqual(
-            {board_id: capacity.partition_for_board(board_id, partitions) for board_id in vectors},
+            {
+                board_id: capacity.partition_for_board(board_id, partitions)
+                for board_id in vectors
+            },
             vectors,
         )
         counts = capacity.recovery_partition_counts(self.spec)
@@ -274,7 +296,10 @@ class CapacityEnvelopeTest(unittest.TestCase):
         old = [capacity.growth_owner(partition, [1.0] * 8) for partition in range(8192)]
         new = [capacity.growth_owner(partition, [1.0] * 9) for partition in range(8192)]
         self.assertTrue(
-            all(before == after or after == 8 for before, after in zip(old, new, strict=True))
+            all(
+                before == after or after == 8
+                for before, after in zip(old, new, strict=True)
+            )
         )
 
     def test_streaming_harness_conserves_a_small_fixture(self) -> None:
@@ -283,9 +308,15 @@ class CapacityEnvelopeTest(unittest.TestCase):
         self.assertEqual(evidence["conservation"]["lost_boards"], 0)
         self.assertEqual(evidence["conservation"]["duplicate_boards"], 0)
         self.assertEqual(evidence["conservation"]["unaffected_partitions_moved"], 0)
-        self.assertEqual(evidence["conservation"]["recovered_active_postings"], 100_000_000)
-        self.assertEqual(evidence["conservation"]["recovered_cycles_per_hour"], 6_000_000)
-        self.assertEqual(evidence["conservation"]["growth_existing_to_existing_moves"], 0)
+        self.assertEqual(
+            evidence["conservation"]["recovered_active_postings"], 100_000_000
+        )
+        self.assertEqual(
+            evidence["conservation"]["recovered_cycles_per_hour"], 6_000_000
+        )
+        self.assertEqual(
+            evidence["conservation"]["growth_existing_to_existing_moves"], 0
+        )
 
     def test_checked_in_full_cardinality_evidence_is_self_verifying(self) -> None:
         evidence = json.loads(EVIDENCE.read_text(encoding="utf-8"))
@@ -297,7 +328,9 @@ class CapacityEnvelopeTest(unittest.TestCase):
         self.assertEqual(evidence["conservation"]["duplicate_boards"], 0)
         self.assertEqual(evidence["conservation"]["growth_lost_partitions"], 0)
         self.assertEqual(evidence["conservation"]["growth_duplicate_partitions"], 0)
-        self.assertEqual(evidence["conservation"]["growth_existing_to_existing_moves"], 0)
+        self.assertEqual(
+            evidence["conservation"]["growth_existing_to_existing_moves"], 0
+        )
         for field in (
             "recovered_max_board_load_factor",
             "recovered_max_task_rate_factor",
