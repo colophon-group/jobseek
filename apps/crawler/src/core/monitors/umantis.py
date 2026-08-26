@@ -14,9 +14,13 @@ detail scraper is still required for descriptions.
 from __future__ import annotations
 
 import asyncio
+import json
 import re
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from html import unescape
 from html.parser import HTMLParser
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 import httpx
 import structlog
@@ -30,6 +34,7 @@ log = structlog.get_logger()
 MAX_JOBS = 50_000
 MAX_PAGES = 100
 PAGE_SIZE = 10  # Umantis default per page
+DEFAULT_CANONICAL_LANGUAGE_ID = "1"
 
 # Pagination retry budget. Symmetric with the dom monitor (#2737),
 # accenture (#2735), api_sniffer (#2733), PCSX (#2734), and workday
@@ -53,6 +58,91 @@ _PAGE_MARKERS = [
     re.compile(r"globalUmantisParams"),
     re.compile(r"HSTableLinkSubTitle"),
 ]
+
+_LISTING_URL_RE = re.compile(
+    r"https?://recruitingapp-\d+(?:\.\w+)?\.umantis\.com/Jobs/[^\"'<>\\\s]+",
+    re.IGNORECASE,
+)
+_VACANCY_PATH_RE = re.compile(r"/Vacancies/([1-9]\d*)/Description/([1-9]\d*)/?")
+
+
+@dataclass(slots=True)
+class _ParsedJob:
+    vacancy_id: str
+    language_id: str
+    job: DiscoveredJob
+
+
+@dataclass(frozen=True, slots=True)
+class _Navigation:
+    table_nr: str
+    total: int
+    first: int
+    last: int
+    page: int
+    next_url: str | None
+    next_active: bool
+
+
+class _BorrowedTransport(httpx.AsyncBaseTransport):
+    """Borrow a caller-owned transport without sharing cookies or closing it."""
+
+    def __init__(self, transport: httpx.AsyncBaseTransport) -> None:
+        self._transport = transport
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        return await self._transport.handle_async_request(request)
+
+    async def aclose(self) -> None:
+        """Leave the caller-owned transport open."""
+
+
+@asynccontextmanager
+async def _isolated_client(
+    client: httpx.AsyncClient,
+    *,
+    expected_origin: str | None = None,
+):
+    """Use the caller's network policy with a fresh per-discovery cookie jar.
+
+    Umantis persists listing filters in cookies. Reusing a worker-wide jar can
+    therefore make a later ``/Jobs/All`` request inherit a previous employer's
+    ``CompanyID``. The borrowed transport preserves SSRF/proxy/test behavior,
+    while the nested client owns an empty cookie jar and cannot close the
+    caller's connection pool.
+    """
+
+    async def validate_request_origin(request: httpx.Request) -> None:
+        if expected_origin is None:
+            return
+        requested = urlparse(str(request.url))
+        expected = urlparse(expected_origin)
+        if (
+            requested.scheme.casefold() != expected.scheme.casefold()
+            or requested.netloc.casefold() != expected.netloc.casefold()
+            or requested.username is not None
+            or requested.password is not None
+        ):
+            # The shared retry helper propagates PaginationFetchError without
+            # retrying. This hook therefore blocks the cross-origin redirect
+            # before the redirected response body can influence discovery.
+            from src.shared.http_retry import PaginationFetchError
+
+            raise PaginationFetchError(
+                str(request.url),
+                attempts=1,
+                last_location=str(request.url),
+            )
+
+    transport = client._transport  # type: ignore[attr-defined]
+    async with httpx.AsyncClient(
+        transport=_BorrowedTransport(transport),
+        headers=dict(client.headers),
+        timeout=client.timeout,
+        follow_redirects=True,
+        event_hooks={"request": [validate_request_origin]},
+    ) as isolated:
+        yield isolated
 
 
 # ── URL helpers ─────────────────────────────────────────────────────────
@@ -84,6 +174,36 @@ def _base_url(customer_id: str, region: str = "") -> str:
     return f"https://recruitingapp-{customer_id}.umantis.com"
 
 
+def _listing_path_from_url(url: str) -> str | None:
+    """Return a tenant-scoped listing path without dropping its query."""
+    parsed = urlparse(unescape(url))
+    if not parsed.path.startswith("/Jobs/"):
+        return None
+    return parsed.path + (f"?{parsed.query}" if parsed.query else "")
+
+
+def _embedded_listing_path(html: str, customer_id: str) -> str | None:
+    """Extract the first listing URL for *customer_id* from embedding HTML."""
+    for candidate in _LISTING_URL_RE.findall(unescape(html)):
+        cid, _region = _parse_host(candidate)
+        if cid == customer_id:
+            return _listing_path_from_url(candidate)
+    return None
+
+
+def _pagination_url(listing_url: str, table_nr: str, page: int) -> str:
+    """Legacy pagination fallback that preserves scoped listing filters."""
+    parsed = urlparse(listing_url)
+    page_key = f"tc{table_nr}"
+    query = [
+        (key, value)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key != page_key and key.casefold() != "reset"
+    ]
+    query.append((page_key, f"p{page}"))
+    return urlunparse(parsed._replace(query=urlencode(query), fragment=""))
+
+
 # ── Listing page parsing ────────────────────────────────────────────────
 
 
@@ -97,14 +217,28 @@ class _JobLinkParser(HTMLParser):
     to enrich those detail scrapes.
     """
 
-    def __init__(self, base_url: str):
+    def __init__(
+        self,
+        base_url: str,
+        *,
+        canonical_language_id: str | None = None,
+        expected_employer: str | None = None,
+        employer_field_id: str | None = None,
+    ):
         super().__init__()
-        self.base = base_url
-        self.jobs: list[DiscoveredJob] = []
+        self.base = base_url.rstrip("/")
+        self._base_parts = urlparse(self.base)
+        self._canonical_language_id = canonical_language_id
+        self._expected_employer = expected_employer
+        self._employer_field_id = employer_field_id
+        self.jobs: list[_ParsedJob] = []
         self._in_row = False
         self._in_link = False
         self._current_url: str | None = None
+        self._current_vacancy_id: str | None = None
+        self._current_language_id: str | None = None
         self._current_title: str = ""
+        self._current_employer_values: list[str] = []
         self._current_location: str | None = None
         self._current_employment_type: str | None = None
         self._current_field: str | None = None
@@ -112,10 +246,15 @@ class _JobLinkParser(HTMLParser):
         self._current_label = ""
         self._capture_value = False
         self._current_value = ""
+        self._capture_employer_value = False
+        self._current_employer_value = ""
 
     def _reset_job(self) -> None:
         self._current_url = None
+        self._current_vacancy_id = None
+        self._current_language_id = None
         self._current_title = ""
+        self._current_employer_values = []
         self._current_location = None
         self._current_employment_type = None
         self._current_field = None
@@ -123,19 +262,56 @@ class _JobLinkParser(HTMLParser):
         self._current_label = ""
         self._capture_value = False
         self._current_value = ""
+        self._capture_employer_value = False
+        self._current_employer_value = ""
 
     def _append_job(self) -> None:
         title = self._current_title.strip()
-        if self._current_url and title:
+        if self._current_url and self._current_vacancy_id and self._current_language_id and title:
+            if self._expected_employer is not None:
+                employer_values = [
+                    _normalized_identity(value) for value in self._current_employer_values
+                ]
+                if employer_values != [_normalized_identity(self._expected_employer)]:
+                    raise ValueError(
+                        "Umantis listing row did not have the exact configured employer field: "
+                        f"{self._current_vacancy_id}"
+                    )
             self.jobs.append(
-                DiscoveredJob(
-                    url=self._current_url,
-                    title=title,
-                    locations=[self._current_location] if self._current_location else None,
-                    employment_type=self._current_employment_type,
+                _ParsedJob(
+                    vacancy_id=self._current_vacancy_id,
+                    language_id=self._current_language_id,
+                    job=DiscoveredJob(
+                        url=self._current_url,
+                        title=title,
+                        locations=[self._current_location] if self._current_location else None,
+                        employment_type=self._current_employment_type,
+                    ),
                 )
             )
         self._reset_job()
+
+    def _vacancy_identity(self, href: str) -> tuple[str, str, str]:
+        """Return a same-origin numeric vacancy identity and canonical URL."""
+        resolved = urlparse(urljoin(f"{self.base}/", unescape(href)))
+        if (
+            resolved.scheme.casefold() != self._base_parts.scheme.casefold()
+            or resolved.netloc.casefold() != self._base_parts.netloc.casefold()
+            or resolved.username is not None
+            or resolved.password is not None
+        ):
+            raise ValueError(f"Umantis vacancy link crossed the configured origin: {href}")
+        match = _VACANCY_PATH_RE.fullmatch(resolved.path)
+        if match is None:
+            raise ValueError(f"Umantis vacancy link did not have a numeric canonical path: {href}")
+        vacancy_id, language_id = match.groups()
+        # The provider vacancy ID is stable across locale variants, while the
+        # language suffixes present in a listing can vary from crawl to crawl.
+        # Always emit one fixed endpoint so a DE-only row today and an FR-only
+        # row tomorrow cannot tombstone/recreate the same vacancy.
+        emitted_language = self._canonical_language_id or DEFAULT_CANONICAL_LANGUAGE_ID
+        canonical_url = f"{self.base}/Vacancies/{vacancy_id}/Description/{emitted_language}"
+        return vacancy_id, language_id, canonical_url
 
     @staticmethod
     def _field_from_label(label: str) -> str | None:
@@ -204,6 +380,12 @@ class _JobLinkParser(HTMLParser):
             elif "column-value" in cls:
                 self._capture_value = True
                 self._current_value = ""
+                if (
+                    self._employer_field_id is not None
+                    and attrs_dict.get("id") == self._employer_field_id
+                ):
+                    self._capture_employer_value = True
+                    self._current_employer_value = ""
 
         if tag != "a" or "HSTableLinkSubTitle" not in cls:
             return
@@ -211,9 +393,10 @@ class _JobLinkParser(HTMLParser):
         if not href or "/Vacancies/" not in href:
             return
         self._in_link = True
-        # Strip query params from vacancy URL for cleaner output
-        clean = href.split("?")[0]
-        self._current_url = urljoin(self.base, clean)
+        vacancy_id, language_id, canonical_url = self._vacancy_identity(href)
+        self._current_vacancy_id = vacancy_id
+        self._current_language_id = language_id
+        self._current_url = canonical_url
         self._current_title = ""
 
     def handle_data(self, data: str) -> None:
@@ -223,6 +406,8 @@ class _JobLinkParser(HTMLParser):
             self._current_label += data
         if self._capture_value:
             self._current_value += data
+        if self._capture_employer_value:
+            self._current_employer_value += data
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "a" and self._in_link:
@@ -242,6 +427,10 @@ class _JobLinkParser(HTMLParser):
             self._capture_value = False
             self._store_value(self._current_value)
             self._current_value = ""
+            if self._capture_employer_value:
+                self._capture_employer_value = False
+                self._current_employer_values.append(self._current_employer_value)
+                self._current_employer_value = ""
             return
 
         if tag == "li" and self._in_row:
@@ -254,21 +443,177 @@ class _JobLinkParser(HTMLParser):
             self._in_row = False
 
 
-def _extract_table_nr(html: str) -> str | None:
-    """Extract the table number used for pagination from listing HTML.
+class _NavigationParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.payloads: list[str] = []
 
-    Looks for ``initial-data-string`` attribute on the ``<table-navigation>``
-    Vue component, or falls back to ``tc(\\d+)=`` in pagination URLs.
-    """
-    # Primary: from initial-data-string JSON
-    m = re.search(r'"TableNr"\s*:\s*"(\d+)"', html)
-    if m:
-        return m.group(1)
-    # Fallback: from pagination URL pattern tc{nr}=p{page}
-    m = re.search(r"tc(\d+)=p\d+", html)
-    if m:
-        return m.group(1)
-    return None
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag != "table-navigation":
+            return
+        payload = dict(attrs).get("initial-data-string")
+        if payload is not None:
+            self.payloads.append(payload)
+
+
+_VOID_HTML_TAGS = frozenset(
+    {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    }
+)
+_HIDDEN_CLASS_TOKENS = frozenset({"d-none", "hidden", "sr-only", "visually-hidden"})
+
+
+def _normalized_identity(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip().casefold()
+
+
+def _element_is_hidden(attrs: list[tuple[str, str | None]]) -> bool:
+    values = {name.casefold(): value for name, value in attrs}
+    if "hidden" in values or (values.get("aria-hidden") or "").casefold() == "true":
+        return True
+    classes = set((values.get("class") or "").casefold().split())
+    if classes & _HIDDEN_CLASS_TOKENS:
+        return True
+    style = re.sub(r"\s+", "", (values.get("style") or "").casefold())
+    return "display:none" in style or "visibility:hidden" in style
+
+
+class _VisibleTextParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self._hidden_depth = 0
+        self._elements: list[tuple[str, bool]] = []
+        self.parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        hidden = tag in {"script", "style", "template", "noscript"} or _element_is_hidden(attrs)
+        if tag not in _VOID_HTML_TAGS:
+            if hidden:
+                self._hidden_depth += 1
+            self._elements.append((tag, hidden))
+
+    def handle_endtag(self, tag: str) -> None:
+        for index in range(len(self._elements) - 1, -1, -1):
+            if self._elements[index][0] != tag:
+                continue
+            closing = self._elements[index:]
+            del self._elements[index:]
+            self._hidden_depth -= sum(hidden for _name, hidden in closing)
+            break
+
+    def handle_data(self, data: str) -> None:
+        if not self._hidden_depth:
+            self.parts.append(data)
+
+
+class _DetailOwnerParser(HTMLParser):
+    """Extract the page-level owner declared by Umantis detail documents."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.descriptions: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag != "meta":
+            return
+        values = {name.casefold(): value for name, value in attrs}
+        if (values.get("name") or "").casefold() != "description":
+            return
+        content = values.get("content")
+        if content is not None:
+            self.descriptions.append(content)
+
+
+def _bounded_int(value: object, *, name: str, minimum: int, maximum: int) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"Umantis navigation {name} must be an integer")
+    if isinstance(value, int):
+        parsed = value
+    elif isinstance(value, str) and re.fullmatch(r"\d+", value):
+        parsed = int(value)
+    else:
+        raise ValueError(f"Umantis navigation {name} must be an integer")
+    if not minimum <= parsed <= maximum:
+        raise ValueError(f"Umantis navigation {name} was outside its safe range")
+    return parsed
+
+
+def _navigation_from_payload(payload: str) -> _Navigation:
+    try:
+        raw = json.loads(unescape(payload))
+    except (json.JSONDecodeError, TypeError) as exc:
+        raise ValueError("Umantis navigation JSON was invalid") from exc
+    if not isinstance(raw, dict):
+        raise ValueError("Umantis navigation JSON must be an object")
+    table_nr = raw.get("TableNr")
+    if not isinstance(table_nr, str) or re.fullmatch(r"[1-9]\d{0,11}", table_nr) is None:
+        raise ValueError("Umantis navigation TableNr must be a bounded numeric identifier")
+    total = _bounded_int(raw.get("TableTotalLines"), name="total", minimum=0, maximum=MAX_JOBS)
+    first = _bounded_int(raw.get("TableFrom"), name="first", minimum=0, maximum=MAX_JOBS)
+    last = _bounded_int(raw.get("TableTo"), name="last", minimum=0, maximum=MAX_JOBS)
+    page = _bounded_int(raw.get("TableCurrentPage"), name="page", minimum=1, maximum=MAX_PAGES)
+    next_link = raw.get("NextLink")
+    if next_link is None:
+        next_url = None
+        next_active = False
+    elif isinstance(next_link, dict):
+        next_url_raw = next_link.get("EnhancedUrl")
+        next_url = next_url_raw if isinstance(next_url_raw, str) and next_url_raw else None
+        next_active = next_link.get("FieldIsActive") in {1, "1"}
+    else:
+        raise ValueError("Umantis navigation NextLink must be an object")
+    return _Navigation(table_nr, total, first, last, page, next_url, next_active)
+
+
+def _extract_navigation(html: str) -> _Navigation | None:
+    parser = _NavigationParser()
+    parser.feed(html)
+    parser.close()
+    if not parser.payloads:
+        return None
+    navigations = {_navigation_from_payload(payload) for payload in parser.payloads}
+    if len(navigations) != 1:
+        raise ValueError("Umantis page exposed conflicting navigation metadata")
+    return navigations.pop()
+
+
+def _extract_table_nr(html: str) -> str | None:
+    """Extract the table number, retaining a legacy pagination fallback."""
+    try:
+        navigation = _extract_navigation(html)
+    except ValueError:
+        navigation = None
+    if navigation is not None:
+        return navigation.table_nr
+    decoded = unescape(html)
+    match = re.search(r'"TableNr"\s*:\s*"(\d+)"', decoded)
+    if match:
+        return match.group(1)
+    match = re.search(r"tc(\d+)=p\d+", decoded)
+    return match.group(1) if match else None
+
+
+def _has_visible_text(html: str, expected: str) -> bool:
+    parser = _VisibleTextParser()
+    parser.feed(html)
+    parser.close()
+    visible = re.sub(r"\s+", " ", " ".join(parser.parts)).strip().casefold()
+    marker = re.sub(r"\s+", " ", expected).strip().casefold()
+    return marker in visible
 
 
 def _parse_jobs_from_html(html: str, base_url: str) -> list[tuple[str, str]]:
@@ -276,12 +621,55 @@ def _parse_jobs_from_html(html: str, base_url: str) -> list[tuple[str, str]]:
     return [(job.url, job.title or "") for job in _parse_discovered_jobs_from_html(html, base_url)]
 
 
-def _parse_discovered_jobs_from_html(html: str, base_url: str) -> list[DiscoveredJob]:
-    """Parse partial rich job data from an Umantis listing page."""
-    parser = _JobLinkParser(base_url)
+def _parse_parsed_jobs_from_html(
+    html: str,
+    base_url: str,
+    *,
+    canonical_language_id: str | None = None,
+    expected_employer: str | None = None,
+    employer_field_id: str | None = None,
+) -> list[_ParsedJob]:
+    parser = _JobLinkParser(
+        base_url,
+        canonical_language_id=canonical_language_id,
+        expected_employer=expected_employer,
+        employer_field_id=employer_field_id,
+    )
     parser.feed(html)
     parser.close()
     return parser.jobs
+
+
+def _parse_discovered_jobs_from_html(html: str, base_url: str) -> list[DiscoveredJob]:
+    """Parse partial rich job data from an Umantis listing page."""
+    return [parsed.job for parsed in _parse_parsed_jobs_from_html(html, base_url)]
+
+
+def _deduplicate_vacancies(parsed_jobs: list[_ParsedJob]) -> dict[str, _ParsedJob]:
+    """Collapse locale aliases onto one stable numeric provider identity."""
+    unique: dict[str, _ParsedJob] = {}
+    for parsed in parsed_jobs:
+        current = unique.get(parsed.vacancy_id)
+        if current is None:
+            unique[parsed.vacancy_id] = parsed
+            continue
+        if current.language_id == parsed.language_id:
+            if current.job != parsed.job:
+                raise ValueError(
+                    "Umantis listing exposed conflicting rows for one vacancy locale: "
+                    f"{parsed.vacancy_id}/{parsed.language_id}"
+                )
+            continue
+        current_emitted = current.job.url.rsplit("/", 1)[-1]
+        parsed_emitted = parsed.job.url.rsplit("/", 1)[-1]
+        fixed_language = current_emitted if current_emitted == parsed_emitted else None
+        prefer_parsed = (fixed_language is not None and parsed.language_id == fixed_language) or (
+            (fixed_language is None or current.language_id != fixed_language)
+            and int(parsed.language_id) < int(current.language_id)
+        )
+        if prefer_parsed:
+            unique[parsed.vacancy_id] = parsed
+    return unique
 
 
 def _uses_rich_listing_results(metadata: dict) -> bool:
@@ -297,6 +685,135 @@ def _uses_rich_listing_results(metadata: dict) -> bool:
         return False
     enrich = scraper_config.get("enrich")
     return isinstance(enrich, list) and bool(enrich)
+
+
+def _strict_contract(metadata: dict) -> tuple[str, str, str, str] | None:
+    """Validate the opt-in fail-closed listing identity contract."""
+    strict = metadata.get("strict_listing_contract", False)
+    if not isinstance(strict, bool):
+        raise ValueError("Umantis strict_listing_contract must be a boolean")
+    if not strict:
+        return None
+    canonical_language_id = metadata.get("canonical_language_id")
+    expected_employer = metadata.get("expected_employer")
+    employer_field_id = metadata.get("employer_field_id")
+    empty_state_text = metadata.get("empty_state_text")
+    if (
+        not isinstance(canonical_language_id, str)
+        or re.fullmatch(r"[1-9]\d{0,5}", canonical_language_id) is None
+    ):
+        raise ValueError("Umantis strict_listing_contract requires a numeric canonical_language_id")
+    if (
+        not isinstance(expected_employer, str)
+        or not expected_employer.strip()
+        or len(expected_employer) > 256
+        or "\x00" in expected_employer
+    ):
+        raise ValueError("Umantis strict_listing_contract requires expected_employer")
+    if (
+        not isinstance(employer_field_id, str)
+        or re.fullmatch(r"column_value_[1-9]\d{0,11}", employer_field_id) is None
+    ):
+        raise ValueError("Umantis strict_listing_contract requires a bounded employer_field_id")
+    if (
+        not isinstance(empty_state_text, str)
+        or not empty_state_text.strip()
+        or len(empty_state_text) > 256
+        or "\x00" in empty_state_text
+    ):
+        raise ValueError("Umantis strict_listing_contract requires empty_state_text")
+    return (
+        canonical_language_id,
+        expected_employer.strip(),
+        employer_field_id,
+        empty_state_text.strip(),
+    )
+
+
+def _validate_navigation_page(
+    navigation: _Navigation,
+    parsed_jobs: list[_ParsedJob],
+    *,
+    expected_page: int,
+    expected_first: int,
+    expected_total: int | None,
+) -> dict[str, _ParsedJob]:
+    """Prove one advertised Umantis range against unique vacancy IDs."""
+    if navigation.page != expected_page:
+        raise ValueError("Umantis navigation page did not advance monotonically")
+    if navigation.total == 0:
+        if navigation.first != 0 or navigation.last != 0 or parsed_jobs:
+            raise ValueError("Umantis zero navigation contradicted the listing rows")
+        if expected_page != 1:
+            raise ValueError("Umantis zero navigation appeared after the first page")
+        return {}
+    if expected_total is not None and navigation.total != expected_total:
+        raise ValueError("Umantis advertised total changed during pagination")
+    if navigation.first != expected_first or not (
+        1 <= navigation.first <= navigation.last <= navigation.total
+    ):
+        raise ValueError("Umantis navigation range did not advance monotonically")
+    unique = _deduplicate_vacancies(parsed_jobs)
+    advertised_page_size = navigation.last - navigation.first + 1
+    if len(unique) != advertised_page_size:
+        raise ValueError("Umantis listing row count did not match its advertised navigation range")
+    return unique
+
+
+def _validated_next_url(
+    navigation: _Navigation,
+    current_url: str,
+    base_url: str,
+) -> str:
+    """Validate the exact token-bearing same-origin provider next link."""
+    if not navigation.next_active or navigation.next_url is None:
+        raise ValueError("Umantis navigation omitted an active next-page link")
+    candidate = urlparse(urljoin(current_url, unescape(navigation.next_url)))
+    base = urlparse(base_url)
+    current = urlparse(current_url)
+    if (
+        candidate.scheme.casefold() != base.scheme.casefold()
+        or candidate.netloc.casefold() != base.netloc.casefold()
+        or candidate.username is not None
+        or candidate.password is not None
+        or candidate.path != current.path
+    ):
+        raise ValueError("Umantis navigation next link crossed its configured listing origin")
+    pairs = parse_qsl(candidate.query, keep_blank_values=True)
+    page_key = f"tc{navigation.table_nr}"
+    token_key = f"_search_token{navigation.table_nr}"
+    page_values = [value for key, value in pairs if key == page_key]
+    token_values = [value for key, value in pairs if key == token_key]
+    if page_values != [f"p{navigation.page + 1}"]:
+        raise ValueError("Umantis navigation next link did not identify the next page")
+    if len(token_values) != 1 or re.fullmatch(r"[1-9]\d{0,63}", token_values[0]) is None:
+        raise ValueError("Umantis navigation next link omitted its bounded search token")
+    return urlunparse(candidate._replace(fragment=""))
+
+
+async def _validate_detail_ownership(
+    client: httpx.AsyncClient,
+    jobs: list[DiscoveredJob],
+    expected_employer: str,
+) -> None:
+    """Require every detail document's page-level metadata to name its owner."""
+    for job in jobs:
+        html = await _get_page_with_retry(client, job.url)
+        parser = _DetailOwnerParser()
+        if html is not None:
+            parser.feed(html)
+            parser.close()
+        owners = []
+        for description in parser.descriptions:
+            # These provider documents declare ``Employer - locale copy`` in
+            # the page-level description. Compare the complete owner segment,
+            # never arbitrary title/body text.
+            owner = re.split(r"\s+[-–—]\s+", description, maxsplit=1)[0]
+            owners.append(_normalized_identity(owner))
+        if owners != [_normalized_identity(expected_employer)]:
+            raise ValueError(
+                f"Umantis detail metadata did not identify the exact configured employer: {job.url}"
+            )
 
 
 # ── Pagination fetch with retries ───────────────────────────────────────
@@ -358,94 +875,171 @@ async def discover(board: dict, client: httpx.AsyncClient, pw=None):
         parsed = urlparse(board["board_url"])
         base = f"{parsed.scheme}://{cname}"
     else:
+        assert isinstance(customer_id, str)
         base = _base_url(customer_id, region)
     listing_path = metadata.get("listing_path", "/Jobs/All")
 
-    # Fetch first page
     listing_url = f"{base}{listing_path}"
-    resp = await client.get(listing_url, follow_redirects=True)
-    resp.raise_for_status()
-    html = resp.text
+    strict_contract = _strict_contract(metadata)
+    canonical_language_id = strict_contract[0] if strict_contract else None
+    expected_employer = strict_contract[1] if strict_contract else None
+    employer_field_id = strict_contract[2] if strict_contract else None
+    empty_state_text = strict_contract[3] if strict_contract else None
 
-    jobs = _parse_discovered_jobs_from_html(html, base)
-    table_nr = _extract_table_nr(html)
+    # Umantis stores listing filters in cookies. A nested client over the same
+    # caller-owned transport gives every discovery an independent cookie jar.
+    async with _isolated_client(
+        client,
+        expected_origin=base if strict_contract is not None else None,
+    ) as session:
+        resp = await session.get(listing_url, follow_redirects=True)
+        resp.raise_for_status()
+        response_url = urlparse(str(resp.url))
+        base_parts = urlparse(base)
+        if (
+            response_url.scheme.casefold() != base_parts.scheme.casefold()
+            or response_url.netloc.casefold() != base_parts.netloc.casefold()
+        ):
+            raise ValueError("Umantis listing redirected across the configured origin")
+        html = resp.text
+        parsed_jobs = _parse_parsed_jobs_from_html(
+            html,
+            base,
+            canonical_language_id=canonical_language_id,
+            expected_employer=expected_employer,
+            employer_field_id=employer_field_id,
+        )
 
-    # Paginate. Page-fetch failures route through ``_get_page_with_retry``:
-    # transient 5xx / 429 / network errors are retried with exponential
-    # backoff, and on budget exhaustion ``PaginationFetchError`` propagates
-    # up to ``_process_one_board_streaming`` so the run is recorded as a
-    # failure rather than silently truncating (#2747). Legitimate
-    # end-of-pagination signals (404/410, or a 200 with no jobs / only
-    # duplicate jobs) terminate the loop as success.
-    truncated = False
-    if table_nr:
-        page = 2
-        while page <= MAX_PAGES:
-            if len(jobs) >= MAX_JOBS:
+        if strict_contract is not None:
+            navigation = _extract_navigation(html)
+            if navigation is None:
+                raise ValueError("Umantis strict listing omitted navigation metadata")
+            unique = _validate_navigation_page(
+                navigation,
+                parsed_jobs,
+                expected_page=1,
+                expected_first=0 if navigation.total == 0 else 1,
+                expected_total=None,
+            )
+            if navigation.total == 0:
+                assert empty_state_text is not None
+                if not _has_visible_text(html, empty_state_text):
+                    raise ValueError(
+                        "Umantis zero listing omitted its explicit visible empty state"
+                    )
+            else:
+                current_url = str(resp.url)
+                expected_page = 2
+                expected_first = navigation.last + 1
+                while navigation.last < navigation.total:
+                    if expected_page > MAX_PAGES:
+                        raise ValueError("Umantis pagination exceeded the safe page cap")
+                    next_url = _validated_next_url(navigation, current_url, base)
+                    page_html = await _get_page_with_retry(session, next_url)
+                    if page_html is None:
+                        raise ValueError("Umantis advertised next page returned a terminal status")
+                    page_navigation = _extract_navigation(page_html)
+                    if page_navigation is None:
+                        raise ValueError("Umantis pagination page omitted navigation metadata")
+                    page_jobs = _parse_parsed_jobs_from_html(
+                        page_html,
+                        base,
+                        canonical_language_id=canonical_language_id,
+                        expected_employer=expected_employer,
+                        employer_field_id=employer_field_id,
+                    )
+                    page_unique = _validate_navigation_page(
+                        page_navigation,
+                        page_jobs,
+                        expected_page=expected_page,
+                        expected_first=expected_first,
+                        expected_total=navigation.total,
+                    )
+                    overlap = set(unique) & set(page_unique)
+                    if overlap:
+                        raise ValueError(
+                            "Umantis pagination repeated provider vacancy IDs: "
+                            + ", ".join(sorted(overlap))
+                        )
+                    unique.update(page_unique)
+                    current_url = next_url
+                    navigation = page_navigation
+                    expected_page += 1
+                    expected_first = navigation.last + 1
+                if len(unique) != navigation.total:
+                    raise ValueError(
+                        "Umantis final unique vacancy count did not match advertised total"
+                    )
+
+            rich_results = [parsed.job for parsed in unique.values()]
+            if expected_employer is not None:
+                await _validate_detail_ownership(session, rich_results, expected_employer)
+            label = cname or customer_id
+            log.info("umantis.listed", customer_id=label, jobs=len(rich_results))
+            if _uses_rich_listing_results(metadata):
+                return rich_results
+            return {job.url for job in rich_results}
+
+        # Legacy boards retain their tolerant end-of-pagination behavior, but
+        # locale aliases are still deduplicated by numeric provider identity.
+        table_nr = _extract_table_nr(html)
+        truncated = False
+        if table_nr:
+            page = 2
+            while page <= MAX_PAGES:
+                if len(parsed_jobs) >= MAX_JOBS:
+                    truncated = True
+                    break
+                page_url = _pagination_url(listing_url, table_nr, page)
+                page_html = await _get_page_with_retry(session, page_url)
+                if page_html is None:
+                    break
+                page_jobs = _parse_parsed_jobs_from_html(page_html, base)
+                if not page_jobs:
+                    break
+                new_ids = {job.vacancy_id for job in page_jobs}
+                existing_ids = {job.vacancy_id for job in parsed_jobs}
+                if not (new_ids - existing_ids):
+                    break
+                parsed_jobs.extend(page_jobs)
+                page += 1
+            else:
                 truncated = True
-                break
-            page_url = f"{listing_url}?tc{table_nr}=p{page}"
-            page_html = await _get_page_with_retry(client, page_url)
-            if page_html is None:
-                # 404/410 — legitimate end-of-pagination.
-                break
-            page_jobs = _parse_discovered_jobs_from_html(page_html, base)
-            if not page_jobs:
-                break
-            # Check for duplicates (pagination loops)
-            new_urls = {job.url for job in page_jobs}
-            existing_urls = {job.url for job in jobs}
-            if not (new_urls - existing_urls):
-                break
-            jobs.extend(page_jobs)
-            page += 1
-        else:
-            # Hit MAX_PAGES without hitting an end-of-pagination signal —
-            # also a truncation (the next page may have more jobs).
-            truncated = True
 
-    label = cname or customer_id
-    if not jobs:
-        log.info("umantis.no_jobs", customer_id=label)
-        return set()
+        label = cname or customer_id
+        if not parsed_jobs:
+            log.info("umantis.no_jobs", customer_id=label)
+            return set()
 
-    log.info("umantis.listed", customer_id=label, jobs=len(jobs))
+        unique = _deduplicate_vacancies(parsed_jobs)
+        rich_results = [parsed.job for parsed in unique.values()]
+        log.info("umantis.listed", customer_id=label, jobs=len(rich_results))
+        if _uses_rich_listing_results(metadata):
+            if truncated:
+                log.warning("umantis.truncated", total=len(parsed_jobs), cap=MAX_JOBS)
+                return truncated_rich_result(rich_results)
+            return rich_results
 
-    # Deduplicate by URL
-    unique: dict[str, DiscoveredJob] = {}
-    for job in jobs:
-        current = unique.get(job.url)
-        if current is None:
-            unique[job.url] = job
-            continue
-        # Prefer whichever duplicate publication carries listing fields.
-        if not current.locations and job.locations:
-            current.locations = job.locations
-        if not current.employment_type and job.employment_type:
-            current.employment_type = job.employment_type
-
-    rich_results = list(unique.values())
-    if _uses_rich_listing_results(metadata):
+        urls = {job.url for job in rich_results}
         if truncated:
-            log.warning("umantis.truncated", total=len(jobs), cap=MAX_JOBS)
-            return truncated_rich_result(rich_results)
-        return rich_results
-
-    urls = set(unique)
-    if truncated:
-        log.warning("umantis.truncated", total=len(jobs), cap=MAX_JOBS)
-        return truncated_url_result(urls)
-    return urls
+            log.warning("umantis.truncated", total=len(parsed_jobs), cap=MAX_JOBS)
+            return truncated_url_result(urls)
+        return urls
 
 
 # ── Probing ─────────────────────────────────────────────────────────────
 
 
-async def _probe_listing(customer_id: str, region: str, client: httpx.AsyncClient) -> int | None:
+async def _probe_listing(
+    customer_id: str,
+    region: str,
+    client: httpx.AsyncClient,
+    listing_path: str = "/Jobs/All",
+) -> int | None:
     """Probe a listing page and return job count, or None if not found."""
     base = _base_url(customer_id, region)
     try:
-        resp = await client.get(f"{base}/Jobs/All", follow_redirects=True)
+        resp = await client.get(f"{base}{listing_path}", follow_redirects=True)
         if resp.status_code != 200:
             return None
         jobs = _parse_jobs_from_html(resp.text, base)
@@ -464,14 +1058,22 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     # 1. URL pattern match
     cid, region = _parse_host(url)
     if cid:
+        listing_path = _listing_path_from_url(url)
+        result: dict = {"customer_id": cid, "region": region or ""}
+        if listing_path and listing_path != "/Jobs/All":
+            result["listing_path"] = listing_path
         if client:
-            count = await _probe_listing(cid, region or "", client)
+            count = await _probe_listing(
+                cid,
+                region or "",
+                client,
+                listing_path or "/Jobs/All",
+            )
             if count is not None:
-                result: dict = {"customer_id": cid, "region": region or ""}
                 if count > 0:
                     result["jobs"] = count
                 return result
-        return {"customer_id": cid, "region": region or ""}
+        return result
 
     # 2. Check for custom CNAME (.umantis.com but not recruitingapp-{ID})
     host = (urlparse(url).hostname or "").lower()
@@ -489,8 +1091,16 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
                 cid = m.group(1)
                 reg_match = re.search(r"recruitingapp-\d+\.(\w+)\.umantis\.com", html)
                 region = reg_match.group(1) if reg_match else ""
-                count = await _probe_listing(cid, region, client)
+                listing_path = _embedded_listing_path(html, cid)
+                count = await _probe_listing(
+                    cid,
+                    region,
+                    client,
+                    listing_path or "/Jobs/All",
+                )
                 result = {"customer_id": cid, "region": region}
+                if listing_path and listing_path != "/Jobs/All":
+                    result["listing_path"] = listing_path
                 if count is not None and count > 0:
                     result["jobs"] = count
                 return result
@@ -526,8 +1136,16 @@ async def can_handle(url: str, client: httpx.AsyncClient | None = None, pw=None)
     cid = m.group(1)
     reg_match = re.search(r"recruitingapp-\d+\.(\w+)\.umantis\.com", html)
     region = reg_match.group(1) if reg_match else ""
-    count = await _probe_listing(cid, region, client)
+    listing_path = _embedded_listing_path(html, cid)
+    count = await _probe_listing(
+        cid,
+        region,
+        client,
+        listing_path or "/Jobs/All",
+    )
     result = {"customer_id": cid, "region": region}
+    if listing_path and listing_path != "/Jobs/All":
+        result["listing_path"] = listing_path
     if count is not None and count > 0:
         result["jobs"] = count
     return result

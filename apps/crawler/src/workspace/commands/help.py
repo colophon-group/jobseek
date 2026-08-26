@@ -2139,6 +2139,11 @@ umantis — Umantis ATS (Haufe Group / Abacus)
   Config:
     {"customer_id": "2698"}
     {"customer_id": "5181", "region": "de"}
+    {"customer_id": "3040", "listing_path": "/Jobs/3?CompanyID=32",
+     "strict_listing_contract": true, "canonical_language_id": "3",
+     "expected_employer": "Example University",
+     "employer_field_id": "column_value_1184173",
+     "empty_state_text": "No entries were found."}
 
     customer_id  Numeric customer ID from URL. Auto-filled by ws probe from:
                  1. Direct URL (recruitingapp-{ID}[.de].umantis.com)
@@ -2147,6 +2152,25 @@ umantis — Umantis ATS (Haufe Group / Abacus)
     region       Subdomain region: "" for .umantis.com, "de" for
                  .de.umantis.com. Auto-filled from URL.
     listing_path Override listing page path (default: /Jobs/All)
+                 Filtered/shared-tenant URLs keep their path and query
+                 automatically (for example, CompanyID=32).
+    strict_listing_contract
+                 Fail closed unless navigation totals/ranges and exact
+                 token-bearing next links prove the complete inventory.
+    canonical_language_id
+                 Numeric detail locale emitted for every vacancy ID. Locale
+                 aliases collapse to this one canonical provider URL. Legacy
+                 boards use stable provider locale 1 when this is omitted.
+    expected_employer
+                 Exact employer text required in the configured listing field
+                 and authoritative detail metadata (strict mode).
+    employer_field_id
+                 Stable listing column-value element ID containing the
+                 employer (strict mode; for example column_value_1184173).
+    empty_state_text
+                 Visible no-results text required together with an advertised
+                 zero total (strict mode; hidden or script-only text is
+                 rejected).
 
   Detection:  ws probe shows "Umantis — ID: X, N jobs"
   Zero jobs?  Verify customer_id — visit the listing URL directly
