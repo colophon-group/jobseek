@@ -31,8 +31,10 @@ and optional earlier parent. The request-level `origin_request_id` equals the
 first operation ID. Every v1 operation is carried on `ExecutionRequest` with a
 SHA-256 request fingerprint over the canonical method, URL, headers, and body.
 The entire ID/parent/role/sequence/fingerprint binding is durable before the
-request is accepted. v1 fails closed on `OriginOperationDeclared`; it has no
-dynamic-origin execution mode.
+request is accepted, except bounded dynamic pagination. That mode reserves a
+maximum on the plan, emits a contiguous `OriginOperationDeclared` ledger frame
+before each later-page dispatch, binds it to the pagination action parent, and
+rejects declarations beyond the reserved quota.
 
 The fingerprint is
 `SHA256("crawler.runtime/v1/request" || NUL || deterministic protobuf)` over
@@ -89,12 +91,13 @@ because execution is already complete.
 
 ## Normalized results
 
-- URLs are visible ASCII absolute HTTP(S), with lowercase scheme/host, a
-  nonempty slash-prefixed path, no credentials, fragment, percent escapes,
-  backslashes, default port, host trailing dot, empty/dot path segments, or
-  duplicate query pairs. Query pairs use one `=` each and are lexically
-  sorted. Sensitive query values are deterministic redaction pseudonyms.
-  These deliberately narrow rules are identical in Python and Go.
+- URLs are visible ASCII absolute HTTP(S), with an exact lowercase raw scheme,
+  lowercase canonical DNS/IDNA host or RFC5952 IPv6 literal, a nonempty
+  slash-prefixed path, and no credentials, fragment, backslash, empty/default
+  port, empty/dot path segment, or duplicate query pair. Percent escapes use
+  uppercase hexadecimal and may encode reserved data (including `%3B`) but
+  never unreserved bytes; raw semicolon query separators reject. Query pairs
+  use one `=` and are lexically sorted. Sensitive values are pseudonyms.
 - Every rich job URL is in `MonitorResult.urls`. Non-hybrid rich output has a
   job for every URL; hybrid output may have a subset.
 - Optional scalar/message presence is semantic. `locations` absent means the
@@ -110,6 +113,12 @@ because execution is already complete.
   Rich jobs require meaningful title and description; empty/whitespace and
   sentinel values are never commit-eligible. Projected `JobEffect` records
   bind each content hash to its typed job URL, including scrape source URL.
+  Granular count/string bounds apply to locations, localizations, skills,
+  locales, titles, descriptions, and domain strings before the aggregate body
+  limit. Semantic hashes canonicalize every semantically unordered effect.
+- Every projection is bound to request ID, origin ID, execution kind, primary
+  target URL, and sorted typed targets/actions. Security-filtered monitor
+  output disables gone detection just as truncated output does.
 - Metadata updates remain ordered and lossless: each deterministic protobuf
   update is prefixed by its unsigned 64-bit big-endian length before the
   projection SHA-256 is updated. Repeated fields are never overwritten by a
@@ -134,9 +143,9 @@ proxy policy, and navigation transport overrides each require their matching
 declared capability. Capture/evaluation results must also obey their individual
 plan byte limits, and artifact-only captures cannot return inline chunks.
 Every navigation/action/evaluation owner ID is injective and exactly exhausts
-the plan's operation list. Multi-page pagination reserves its first page on
-the action and carries exactly `max_pages-1` additional, predeclared page
-operation IDs. Dynamic page allocation is rejected in v1.
+the plan's initial operation list. Multi-page pagination reserves its first
+page on the action and chooses exactly one mode: `max_pages-1` predeclared page
+IDs, or bounded dynamic allocation with no predeclared later-page IDs.
 
 ## Fencing and commit ownership
 

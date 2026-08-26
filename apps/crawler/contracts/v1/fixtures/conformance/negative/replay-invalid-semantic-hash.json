@@ -10,7 +10,7 @@
         "normalizedResultFrameSequence": "1",
         "operation": {
           "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
-          "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43",
+          "requestFingerprint": "aa437ab1f8fba352168d354d082ad8979504704f1002a55db0201327e8605c87",
           "role": "page-1"
         },
         "request": {
@@ -21,6 +21,10 @@
           "headers": [
             {
               "name": "accept",
+              "value": "application/json"
+            },
+            {
+              "name": "content-type",
               "value": "application/json"
             },
             {
@@ -36,20 +40,20 @@
           "body": {
             "chunks": [
               {
-                "inlineBody": "ewogICJmaWx0ZXJlZENvdW50IjogIjIiLAogICJoeWJyaWQiOiB0cnVlLAogICJqb2JzIjogWwogICAgewogICAgICAiY29udGVudCI6IHsKICAgICAgICAiZGVzY3JpcHRpb25IdG1sIjogIjxwPkJ1aWxkIHNhZmVseTwvcD4iLAogICAgICAgICJsb2NhdGlvbnMiOiB7fSwKICAgICAgICAidGl0bGUiOiAiRW5naW5lZXIgMSIKICAgICAgfSwKICAgICAgInVybCI6ICJodHRwczovL2NhcmVlcnMuZXhhbXBsZS5pbnZhbGlkL2pvYnMvMSIKICAgIH0KICBdLAogICJtZXRhZGF0YVVwZGF0ZXMiOiB7CiAgICAiY3Vyc29yIjogInBhZ2UtMSIsCiAgICAiZXh0ZW5zaW9ucyI6IFsKICAgICAgewogICAgICAgICJlbmNvZGluZyI6ICJFWFRFTlNJT05fRU5DT0RJTkdfQ0FOT05JQ0FMX0pTT04iLAogICAgICAgICJwYXlsb2FkIjogImV5SnpiM1Z5",
-                "sha256": "57bb2a3573f20f0586ba490002e4b641bd598657916715894a8c682e6126b0ee",
-                "sizeBytes": "420"
+                "inlineBody": "ewogICJmaWx0ZXJlZENvdW50IjogIjIiLAogICJoeWJyaWQiOiB0cnVlLAogICJqb2JzIjogWwogICAgewogICAgICAiY29udGVudCI6IHsKICAgICAgICAiZGVzY3JpcHRpb25IdG1sIjogIjxwPkJ1aWxkIHNhZmVseTwvcD4iLAogICAgICAgICJsb2NhdGlvbnMiOiB7fSwKICAgICAgICAic2tpbGxzIjogWwogICAgICAgICAgIlB5dGhvbiIsCiAgICAgICAgICAiU1FMIgogICAgICAgIF0sCiAgICAgICAgInRpdGxlIjogIkVuZ2luZWVyIDEiCiAgICAgIH0sCiAgICAgICJ1cmwiOiAiaHR0cHM6Ly9jYXJlZXJzLmV4YW1wbGUuaW52YWxpZC9qb2JzLzEiCiAgICB9CiAgXSwKICAibWV0YWRhdGFVcGRhdGVzIjogewogICAgImN1cnNvciI6ICJwYWdlLTEiLAogICAgImV4dGVuc2lvbnMiOiBbCiAgICAgIHsKICAgICAgICAiZW5jb2RpbmciOiAiRVhURU5TSU9OX0VOQ09ESU5HX0NBTk9OSUNBTF9KUw==",
+                "sha256": "7065128134ad04a5e35c6ddd4df864156cff3e6a0cf4b9834e8643470b5a6a9d",
+                "sizeBytes": "454"
               },
               {
-                "inlineBody": "WTJVaU9pSnZabVpzYVc1bExXWnBlSFIxY21VaWZRPT0iLAogICAgICAgICJwYXlsb2FkU2hhMjU2IjogIjVlMzQ2ZTY4MDFkZTZmMzNkZWVlY2VhZjMyODk1ZGVhOTk3NGYwMjcyNTQ1ZGNmZGZiMWQ3NGI3YzQzZmMwODkiLAogICAgICAgICJzY2hlbWFJZCI6ICJqb2JzZWVrLnJ1bnRpbWUudjEvcmVwcmVzZW50YXRpdmUtanNvbi9ydW50aW1lLW1ldGFkYXRhIiwKICAgICAgICAic2NoZW1hVmVyc2lvbiI6IDEKICAgICAgfQogICAgXQogIH0sCiAgIm5ld1NpdGVtYXBVcmwiOiAiaHR0cHM6Ly9jYXJlZXJzLmV4YW1wbGUuaW52YWxpZC9zaXRlbWFwLWN1cnJlbnQueG1sIiwKICAic2VjdXJpdHlGaWx0ZXJlZENvdW50IjogIjEiLAogICJ1cmxzIjogWwogICAgImh0dHBzOi8vY2FyZWVycy5leGFtcGxlLmludmFsaWQvam9icy8xIgogIF0KfQ==",
+                "inlineBody": "T04iLAogICAgICAgICJwYXlsb2FkIjogImV5SnpiM1Z5WTJVaU9pSnZabVpzYVc1bExXWnBlSFIxY21VaWZRPT0iLAogICAgICAgICJwYXlsb2FkU2hhMjU2IjogIjVlMzQ2ZTY4MDFkZTZmMzNkZWVlY2VhZjMyODk1ZGVhOTk3NGYwMjcyNTQ1ZGNmZGZiMWQ3NGI3YzQzZmMwODkiLAogICAgICAgICJzY2hlbWFJZCI6ICJqb2JzZWVrLnJ1bnRpbWUudjEvcmVwcmVzZW50YXRpdmUtanNvbi9ydW50aW1lLW1ldGFkYXRhIiwKICAgICAgICAic2NoZW1hVmVyc2lvbiI6IDEKICAgICAgfQogICAgXQogIH0sCiAgIm5ld1NpdGVtYXBVcmwiOiAiaHR0cHM6Ly9jYXJlZXJzLmV4YW1wbGUuaW52YWxpZC9zaXRlbWFwLWN1cnJlbnQueG1sIiwKICAic2VjdXJpdHlGaWx0ZXJlZENvdW50IjogIjEiLAogICJ1cmxzIjogWwogICAgImh0dHBzOi8vY2FyZWVycy5leGFtcGxlLmludmFsaWQvam9icy8xIgogIF0KfQ==",
                 "sequence": 1,
-                "sha256": "da132d3f0b0d8ccf841ebd539fe0de132b934214d9f4c5abbd0f6ee5b3dd3de8",
-                "sizeBytes": "421"
+                "sha256": "0a039fcdb18dadaf435afc043451b67f15e712c4813b1d4bda32b21aa1d4e000",
+                "sizeBytes": "454"
               }
             ],
             "complete": true,
-            "totalSha256": "95ef7705fbef93d577fac0e85476f1ee9171c5350925def4f9e8bf3ae762fca8",
-            "totalSizeBytes": "841"
+            "totalSha256": "1e51685392c8af968400a1ccacbcfd32652beb7d62f9adf942d3ee04abc717d6",
+            "totalSizeBytes": "908"
           },
           "headers": [
             {
@@ -67,7 +71,7 @@
           "operationSequence": 1,
           "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
           "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
-          "requestFingerprint": "6961208c19ad9eafb3ad52e3e1a00dbc95f7cc547cf5df62fab2d70549291801",
+          "requestFingerprint": "e74e31e0a80741a99711d2866dd0d542ddf7323f1f1fda872a5e81c4309f50ed",
           "role": "page-2"
         },
         "request": {
@@ -78,6 +82,10 @@
           "headers": [
             {
               "name": "accept",
+              "value": "application/json"
+            },
+            {
+              "name": "content-type",
               "value": "application/json"
             },
             {
@@ -93,20 +101,20 @@
           "body": {
             "chunks": [
               {
-                "inlineBody": "ewogICJoeWJyaWQiOiB0cnVlLAogICJqb2JzIjogWwogICAgewogICAgICAiY29udGVudCI6IHsKICAgICAgICAiZGVzY3JpcHRpb25IdG1sIjogIjxwPkJ1aWxkIHNhZmVseTwvcD4iLAogICAgICAgICJ0aXRsZSI6ICJFbmdpbmVlciAyIgogICAgICB9LAogICAgICAidXJsIjogImh0dHBzOi8vY2FyZWVycy5leGFtcGxlLmludmFsaWQvam9icy8yIgogICAgfQogIF0sCiAgIm1ldGFkYXRhVXBkYXRlcyI6IHsKICAgICJjdXJzb3IiOiAicGFnZS0yIiwKICAgICJleHRlbnNpb25zIjogWwogICAgICB7CiAgICAgICAgImVuY29kaW5nIjogIkVYVEVOU0lPTl9FTkNPRElOR19DQU5PTklDQUxfSlNPTiIsCiAgICAgICAgInA=",
-                "sha256": "00c84e4874e8012e6fc8ad0e281b83d48b1c9b76eaceabac948dd8f2c8617c48",
-                "sizeBytes": "353"
+                "inlineBody": "ewogICJoeWJyaWQiOiB0cnVlLAogICJqb2JzIjogWwogICAgewogICAgICAiY29udGVudCI6IHsKICAgICAgICAiZGVzY3JpcHRpb25IdG1sIjogIjxwPkJ1aWxkIHNhZmVseTwvcD4iLAogICAgICAgICJza2lsbHMiOiBbCiAgICAgICAgICAiUHl0aG9uIiwKICAgICAgICAgICJTUUwiCiAgICAgICAgXSwKICAgICAgICAidGl0bGUiOiAiRW5naW5lZXIgMiIKICAgICAgfSwKICAgICAgInVybCI6ICJodHRwczovL2NhcmVlcnMuZXhhbXBsZS5pbnZhbGlkL2pvYnMvMiIKICAgIH0KICBdLAogICJtZXRhZGF0YVVwZGF0ZXMiOiB7CiAgICAiY3Vyc29yIjogInBhZ2UtMiIsCiAgICAiZXh0ZW5zaW9ucyI6IFsKICAgICAgewogICAgICAgICJlbmNvZGluZyI6ICJFWFRFTlNJT05fRU5D",
+                "sha256": "ec186bd0513a7ba337eef19bf1986413c15efaffc9ec705f25506d78aa3e8e93",
+                "sizeBytes": "387"
               },
               {
-                "inlineBody": "YXlsb2FkIjogImV5SnpiM1Z5WTJVaU9pSnZabVpzYVc1bExXWnBlSFIxY21VaWZRPT0iLAogICAgICAgICJwYXlsb2FkU2hhMjU2IjogIjVlMzQ2ZTY4MDFkZTZmMzNkZWVlY2VhZjMyODk1ZGVhOTk3NGYwMjcyNTQ1ZGNmZGZiMWQ3NGI3YzQzZmMwODkiLAogICAgICAgICJzY2hlbWFJZCI6ICJqb2JzZWVrLnJ1bnRpbWUudjEvcmVwcmVzZW50YXRpdmUtanNvbi9ydW50aW1lLW1ldGFkYXRhIiwKICAgICAgICAic2NoZW1hVmVyc2lvbiI6IDEKICAgICAgfQogICAgXQogIH0sCiAgInRydW5jYXRlZCI6IHRydWUsCiAgInVybHMiOiBbCiAgICAiaHR0cHM6Ly9jYXJlZXJzLmV4YW1wbGUuaW52YWxpZC9qb2JzLzIiCiAgXQp9",
+                "inlineBody": "T0RJTkdfQ0FOT05JQ0FMX0pTT04iLAogICAgICAgICJwYXlsb2FkIjogImV5SnpiM1Z5WTJVaU9pSnZabVpzYVc1bExXWnBlSFIxY21VaWZRPT0iLAogICAgICAgICJwYXlsb2FkU2hhMjU2IjogIjVlMzQ2ZTY4MDFkZTZmMzNkZWVlY2VhZjMyODk1ZGVhOTk3NGYwMjcyNTQ1ZGNmZGZiMWQ3NGI3YzQzZmMwODkiLAogICAgICAgICJzY2hlbWFJZCI6ICJqb2JzZWVrLnJ1bnRpbWUudjEvcmVwcmVzZW50YXRpdmUtanNvbi9ydW50aW1lLW1ldGFkYXRhIiwKICAgICAgICAic2NoZW1hVmVyc2lvbiI6IDEKICAgICAgfQogICAgXQogIH0sCiAgInRydW5jYXRlZCI6IHRydWUsCiAgInVybHMiOiBbCiAgICAiaHR0cHM6Ly9jYXJlZXJzLmV4YW1wbGUuaW52YWxpZC9qb2JzLzIiCiAgXQp9",
                 "sequence": 1,
-                "sha256": "f4a1b49c6aeea636a31bd4e621869b03d78694adc14f7274606dcabaed9aa630",
-                "sizeBytes": "354"
+                "sha256": "6ba26a1e99636041395ddee7aedccd1f4d2572995969403ebaeda1042f07eb9f",
+                "sizeBytes": "387"
               }
             ],
             "complete": true,
-            "totalSha256": "5126890057145836bdf1470de21f8039d79c8c6c10353ea238349171888c436d",
-            "totalSizeBytes": "707"
+            "totalSha256": "0e67a3f4b630bc5a507289eb3a068d8dedf2d116d1a9310dc0d1b0a935fc5436",
+            "totalSizeBytes": "774"
           },
           "headers": [
             {
@@ -168,14 +176,14 @@
       "originOperations": [
         {
           "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
-          "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43",
+          "requestFingerprint": "aa437ab1f8fba352168d354d082ad8979504704f1002a55db0201327e8605c87",
           "role": "page-1"
         },
         {
           "operationSequence": 1,
           "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
           "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
-          "requestFingerprint": "6961208c19ad9eafb3ad52e3e1a00dbc95f7cc547cf5df62fab2d70549291801",
+          "requestFingerprint": "e74e31e0a80741a99711d2866dd0d542ddf7323f1f1fda872a5e81c4309f50ed",
           "role": "page-2"
         }
       ],
@@ -192,10 +200,10 @@
           "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
           "operation": {
             "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
-            "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43",
+            "requestFingerprint": "aa437ab1f8fba352168d354d082ad8979504704f1002a55db0201327e8605c87",
             "role": "page-1"
           },
-          "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43"
+          "requestFingerprint": "aa437ab1f8fba352168d354d082ad8979504704f1002a55db0201327e8605c87"
         },
         "requestId": "request-monitor-1"
       },
@@ -211,6 +219,10 @@
               "content": {
                 "descriptionHtml": "<p>Build safely</p>",
                 "locations": {},
+                "skills": [
+                  "Python",
+                  "SQL"
+                ],
                 "title": "Engineer 1"
               },
               "url": "https://careers.example.invalid/jobs/1"
@@ -247,10 +259,10 @@
             "operationSequence": 1,
             "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
             "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
-            "requestFingerprint": "6961208c19ad9eafb3ad52e3e1a00dbc95f7cc547cf5df62fab2d70549291801",
+            "requestFingerprint": "e74e31e0a80741a99711d2866dd0d542ddf7323f1f1fda872a5e81c4309f50ed",
             "role": "page-2"
           },
-          "requestFingerprint": "6961208c19ad9eafb3ad52e3e1a00dbc95f7cc547cf5df62fab2d70549291801"
+          "requestFingerprint": "e74e31e0a80741a99711d2866dd0d542ddf7323f1f1fda872a5e81c4309f50ed"
         },
         "requestId": "request-monitor-1",
         "sequence": "2"
@@ -265,6 +277,10 @@
             {
               "content": {
                 "descriptionHtml": "<p>Build safely</p>",
+                "skills": [
+                  "Python",
+                  "SQL"
+                ],
                 "title": "Engineer 2"
               },
               "url": "https://careers.example.invalid/jobs/2"
@@ -309,24 +325,40 @@
     ],
     "expectedProjection": {
       "contentHashes": [
-        "5d017ba5d4aecc5ffd02bee4456fa697749b076dd9bdefbdc071f593680cdb28",
-        "cb6a6a2ac345b7983956f780bded2f27f73f4c8624cea9e561ba1d1ad551f7ec"
+        "befdecf000dc75f41b3d36756acf16ca031d6d57dfd6dc724535db6ba3cb38d8",
+        "e26ad2e293f47d5892a7346e8541610735d066d454d07d857fce5d0540a7ac3e"
       ],
+      "executionKind": "EXECUTION_KIND_MONITOR",
       "filteredCount": "2",
       "hybrid": true,
       "jobEffects": [
         {
-          "contentSha256": "5d017ba5d4aecc5ffd02bee4456fa697749b076dd9bdefbdc071f593680cdb28",
+          "contentSha256": "e26ad2e293f47d5892a7346e8541610735d066d454d07d857fce5d0540a7ac3e",
           "sourceUrl": "https://careers.example.invalid/jobs/1"
         },
         {
-          "contentSha256": "cb6a6a2ac345b7983956f780bded2f27f73f4c8624cea9e561ba1d1ad551f7ec",
+          "contentSha256": "befdecf000dc75f41b3d36756acf16ca031d6d57dfd6dc724535db6ba3cb38d8",
           "sourceUrl": "https://careers.example.invalid/jobs/2"
         }
       ],
       "metadataUpdatesSha256": "79c03aaf171f326978743d69d52d562999b7d0cecf9df829134a9ac35d315b27",
       "newSitemapUrl": "https://careers.example.invalid/sitemap-current.xml",
+      "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+      "requestId": "request-monitor-1",
       "securityFilteredCount": "1",
+      "targetUrl": "https://careers.example.invalid/jobs",
+      "targets": [
+        {
+          "action": "PROJECTED_ACTION_UPSERT",
+          "contentSha256": "e26ad2e293f47d5892a7346e8541610735d066d454d07d857fce5d0540a7ac3e",
+          "url": "https://careers.example.invalid/jobs/1"
+        },
+        {
+          "action": "PROJECTED_ACTION_UPSERT",
+          "contentSha256": "befdecf000dc75f41b3d36756acf16ca031d6d57dfd6dc724535db6ba3cb38d8",
+          "url": "https://careers.example.invalid/jobs/2"
+        }
+      ],
       "truncated": true,
       "urlsToUpsert": [
         "https://careers.example.invalid/jobs/1",

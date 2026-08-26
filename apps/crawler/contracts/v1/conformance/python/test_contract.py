@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 from conformance.python.contract import (
     ContractViolation,
+    _url,
     content_hash,
     decode_record,
     encode_record,
@@ -17,6 +18,7 @@ from conformance.python.contract import (
     semantic_hash,
     uvarint_size,
     validate_case,
+    validate_error,
     validate_replay,
     validate_transcript,
 )
@@ -26,6 +28,34 @@ from google.protobuf.json_format import ParseError
 from tools.check_proto_compat import check_compatibility
 
 FIXTURES = Path(__file__).parents[2] / "fixtures"
+
+
+def test_shared_canonical_url_vectors() -> None:
+    cases = json.loads((FIXTURES / "url/cases.json").read_text())
+    for value in cases:
+        if value["valid"]:
+            _url(value["url"], value["name"])
+        else:
+            with pytest.raises(ContractViolation) as caught:
+                _url(value["url"], value["name"])
+            assert caught.value.code == "url"
+
+
+def test_every_error_code_has_a_shared_policy_vector() -> None:
+    cases = json.loads((FIXTURES / "errors/cases.json").read_text())
+    assert len(cases) == len(pb.ErrorCode.values()) - 1
+    assert {value["code"] for value in cases} == {
+        pb.ErrorCode.Name(number) for number in pb.ErrorCode.values() if number != 0
+    }
+    for value in cases:
+        error = pb.RuntimeError(
+            code=pb.ErrorCode.Value(value["code"]),
+            disposition=pb.ErrorDisposition.Value(value["disposition"]),
+            message="shared typed error vector",
+        )
+        if "http_status" in value:
+            error.http_status = value["http_status"]
+        validate_error(error)
 
 
 @pytest.mark.parametrize("path", sorted((FIXTURES / "conformance/positive").glob("*.json")))
@@ -156,6 +186,18 @@ def test_content_hash_canonicalizes_unordered_repeated_fields() -> None:
     assert content_hash(left) == content_hash(right)
     right.ClearField("locations")
     assert content_hash(left) != content_hash(right)
+
+
+def test_semantic_hash_canonicalizes_unordered_job_skills() -> None:
+    replay = load_replay(FIXTURES / "replay/representative-paginated-monitor.json")
+    original_projection = project_frames(list(replay.expected_frames), replay.execution_request)
+    original_hash = semantic_hash(list(replay.expected_frames), original_projection)
+    skills = replay.expected_frames[1].monitor_batch.jobs[0].content.skills
+    reordered = list(reversed(skills))
+    del skills[:]
+    skills.extend(reordered)
+    reordered_projection = project_frames(list(replay.expected_frames), replay.execution_request)
+    assert semantic_hash(list(replay.expected_frames), reordered_projection) == original_hash
 
 
 def test_scrape_projection_binds_source_url_to_content_hash() -> None:

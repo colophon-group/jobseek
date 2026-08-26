@@ -59,8 +59,38 @@ def check_versions() -> None:
     )
     for previous, current in zip(versions, versions[1:], strict=False):
         converter = CONTRACTS / f"v{previous}" / "converters" / f"v{previous}_to_v{current}"
-        if not converter.is_dir():
-            raise AssertionError(f"v{current} requires converter directory {converter}")
+        required = {
+            converter / "converter.json",
+            converter / "python.py",
+            converter / "converter.go",
+            converter / "fixtures/roundtrip.json",
+            converter / "fixtures/lossy.json",
+        }
+        missing = sorted(
+            str(path) for path in required if not path.is_file() or path.stat().st_size == 0
+        )
+        if missing:
+            raise AssertionError(
+                f"v{current} requires nonempty Python/Go converters and fixtures: {missing}"
+            )
+        manifest = json.loads((converter / "converter.json").read_text())
+        if manifest != {
+            "source_contract": f"crawler.runtime/v{previous}",
+            "target_contract": f"crawler.runtime/v{current}",
+            "supports": ["upgrade", "downgrade"],
+        }:
+            raise AssertionError(
+                f"v{current} converter manifest is not the required bidirectional shape"
+            )
+        for name in ("roundtrip.json", "lossy.json"):
+            vectors = json.loads((converter / "fixtures" / name).read_text())
+            if not isinstance(vectors, list) or not vectors:
+                raise AssertionError(f"v{current} converter fixture {name} must be nonempty")
+        compile((converter / "python.py").read_text(), str(converter / "python.py"), "exec")
+        if not re.search(
+            r"(?m)^package [a-z][a-z0-9_]*$", (converter / "converter.go").read_text()
+        ):
+            raise AssertionError(f"v{current} converter.go must declare a Go package")
 
 
 def check_fixtures() -> None:

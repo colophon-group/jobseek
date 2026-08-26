@@ -3,12 +3,21 @@ from __future__ import annotations
 import base64
 import binascii
 import hashlib
+import ipaddress
 import json
+import math
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import unquote_plus, unquote_to_bytes, urlsplit
 
+from conformance.python.extension_rules import EXTENSION_RULES
+from conformance.python.privacy_gen import (
+    CREDENTIAL_SUFFIXES,
+    EMAIL_NAMES,
+    SECRET_NAMES,
+    SENSITIVE_HEADERS,
+)
 from gen.python import runtime_pb2 as pb
 from google.protobuf import json_format
 from google.protobuf.message import Message
@@ -36,74 +45,21 @@ TRACESTATE_KEY_RE = re.compile(
     r"[a-z0-9][_0-9a-z*/-]{0,240}@[a-z0-9][a-z0-9*/_-]{0,13})"
 )
 TRACESTATE_VALUE_RE = re.compile(r"[\x21-\x2B\x2D-\x3C\x3E-\x7E]+")
-CREDENTIAL_SUFFIXES = ("_token", "-token", "_secret", "-secret", "_password", "-password")
-SENSITIVE_KEYS = frozenset(
-    {
-        "access-token",
-        "access_token",
-        "accesstoken",
-        "api-key",
-        "api_key",
-        "apikey",
-        "auth",
-        "authorization",
-        "client_secret",
-        "clientsecret",
-        "cookie",
-        "credential",
-        "key",
-        "password",
-        "passwd",
-        "proxy-authorization",
-        "refresh_token",
-        "refreshtoken",
-        "secret",
-        "session",
-        "sessionid",
-        "set-cookie",
-        "sig",
-        "signature",
-        "token",
-        "x-api-key",
-    }
-)
 MAX_DEADLINE = timedelta(minutes=15)
+DNS_LABEL_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
+HEADER_NAME_RE = re.compile(r"^[!#$%&'*+\-.^_`|~0-9a-z]+$")
+SECRET_ASSIGNMENT_RE = re.compile(
+    r"(?i)(?:"
+    + "|".join(re.escape(name) for name in sorted(SECRET_NAMES, key=len, reverse=True))
+    + r")[\"']?[ \t]*[:=][ \t]*[\"']?([^\"'&;,\s}]+)"
+)
+UNRESERVED_URL_BYTES = frozenset(
+    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+)
 
 HARD_LIMITS = pb.Limits(**json.loads((Path(__file__).parents[2] / "limits.json").read_text()))
 MAX_TRANSFER_CHUNKS = 64
 MAX_EXTENSION_BYTES = 65_536
-EXTENSION_REGISTRY = frozenset(
-    {
-        (
-            "jobseek.runtime.v1/representative-json/monitor-config",
-            1,
-            pb.EXTENSION_ENCODING_CANONICAL_JSON,
-        ),
-        (
-            "jobseek.runtime.v1/representative-json/scraper-config",
-            1,
-            pb.EXTENSION_ENCODING_CANONICAL_JSON,
-        ),
-        (
-            "jobseek.runtime.v1/representative-json/runtime-metadata",
-            1,
-            pb.EXTENSION_ENCODING_CANONICAL_JSON,
-        ),
-        (
-            "jobseek.runtime.v1/browser/evaluation-json",
-            1,
-            pb.EXTENSION_ENCODING_CANONICAL_JSON,
-        ),
-    }
-)
-EXTENSION_CONTEXTS = {
-    "jobseek.runtime.v1/representative-json/monitor-config": frozenset({"manifest"}),
-    "jobseek.runtime.v1/representative-json/scraper-config": frozenset({"manifest"}),
-    "jobseek.runtime.v1/representative-json/runtime-metadata": frozenset(
-        {"job_content", "monitor_metadata"}
-    ),
-    "jobseek.runtime.v1/browser/evaluation-json": frozenset({"browser_evaluation"}),
-}
 SCRAPER_EXTENSION_FIELDS = frozenset(
     {
         "title",
@@ -157,12 +113,33 @@ def _text(value: str, field: str, *, maximum: int = 4_096) -> None:
         fail("text", f"{field} must contain 1..{maximum} UTF-8 bytes")
 
 
+def _bounded_text(value: str, field: str, *, maximum: int) -> None:
+    if len(value.encode()) > maximum:
+        fail("domain_limit", f"{field} exceeds {maximum} UTF-8 bytes")
+
+
 def _url(value: str, field: str) -> None:
-    has_nonvisible = any(ord(character) <= 0x20 or ord(character) == 0x7F for character in value)
-    if not value.isascii() or has_nonvisible:
+    if any(ord(character) <= 0x20 or ord(character) >= 0x7F for character in value):
         fail("url", f"{field} must contain visible ASCII only")
-    if "%" in value or "\\" in value:
-        fail("url", f"{field} must not contain percent escapes or backslashes")
+    if "\\" in value:
+        fail("url", f"{field} must not contain backslashes")
+    if re.search(r"%(?![0-9A-Fa-f]{2})", value):
+        fail("url", f"{field} contains an invalid percent escape")
+    scheme_separator = value.find("://")
+    raw_scheme = value[:scheme_separator] if scheme_separator >= 0 else ""
+    if raw_scheme not in {"http", "https"}:
+        fail("url", f"{field} must use a canonical lowercase HTTP(S) scheme")
+    authority = (
+        re.split(r"[/?#]", value[scheme_separator + 3 :], maxsplit=1)[0]
+        if scheme_separator >= 0
+        else ""
+    )
+    if "%" in authority:
+        fail("url", f"{field} authority/host must not contain percent escapes")
+    try:
+        authority.encode("ascii")
+    except UnicodeEncodeError:
+        fail("url", f"{field} authority must use an ASCII IDNA A-label")
     try:
         parsed = urlsplit(value)
     except ValueError as exc:
@@ -180,42 +157,66 @@ def _url(value: str, field: str) -> None:
     if (parsed.scheme == "http" and port == 80) or (parsed.scheme == "https" and port == 443):
         fail("url", f"{field} must omit the default port")
     host_port = parsed.netloc
+    if host_port.endswith(":"):
+        fail("url", f"{field} must omit an explicit empty port")
     if host_port.startswith("["):
         raw_host = host_port[1 : host_port.index("]")]
     else:
         raw_host = host_port.rsplit(":", 1)[0] if ":" in host_port else host_port
-    if parsed.scheme != parsed.scheme.lower() or raw_host != raw_host.lower():
+    if raw_host != raw_host.lower():
         fail("url", f"{field} must use canonical lowercase scheme and host")
-    if raw_host.endswith(".") or "_" in raw_host or not re.fullmatch(r"[a-z0-9.-]+", raw_host):
-        fail("url", f"{field} host is not canonical ASCII")
-    if ".." in raw_host or any(not part for part in raw_host.split(".")):
-        fail("url", f"{field} host contains an empty label")
-    if not parsed.path.startswith("/") or "//" in parsed.path:
-        fail("url", f"{field} path must be nonempty and contain no empty segment")
+    if ":" in raw_host:
+        if "." in raw_host:
+            fail("url", f"{field} must not use an embedded-IPv4 IPv6 literal")
+        try:
+            canonical_ip = ipaddress.IPv6Address(raw_host).compressed
+        except ipaddress.AddressValueError:
+            fail("url", f"{field} contains an invalid IPv6 literal")
+        if raw_host != canonical_ip:
+            fail("url", f"{field} IPv6 literal must use canonical RFC5952 form")
+    elif any(not DNS_LABEL_RE.fullmatch(label) for label in raw_host.split(".")):
+        fail("url", f"{field} host must use canonical ASCII DNS labels")
+    if not parsed.path:
+        fail("url", f"{field} must use '/' instead of an empty path")
+    if "//" in parsed.path:
+        fail("url", f"{field} path must not contain an empty segment")
     if any(part in {".", ".."} for part in parsed.path.split("/")):
         fail("url", f"{field} path must not contain dot segments")
-    if "?" in value and not parsed.query:
-        fail("url", f"{field} must not contain an empty query delimiter")
+    for escape in re.finditer(r"%([0-9A-Fa-f]{2})", value):
+        hexadecimal = escape.group(1)
+        if hexadecimal != hexadecimal.upper():
+            fail("url", f"{field} percent escapes must use uppercase hexadecimal")
+        if int(hexadecimal, 16) in UNRESERVED_URL_BYTES:
+            fail("url", f"{field} must not percent-encode an unreserved character")
+    without_fragment = value.split("#", 1)[0]
+    if "?" in without_fragment and not parsed.query:
+        fail("url", f"{field} must omit an empty query delimiter")
+    if ";" in parsed.query:
+        fail("url", f"{field} query must use ampersand-only field separators")
     if parsed.query:
-        pairs: list[tuple[str, str]] = []
+        pairs: list[str] = []
+        component_re = re.compile(r"(?:[A-Za-z0-9._~:-]|%[0-9A-F]{2})*")
         for item in parsed.query.split("&"):
             if item.count("=") != 1:
                 fail("url", f"{field} query entries require exactly one equals sign")
-            key, value_part = item.split("=", 1)
-            if not key or not re.fullmatch(r"[A-Za-z0-9._~-]+", key):
-                fail("url", f"{field} query key is not canonical")
-            if value_part and not re.fullmatch(r"[A-Za-z0-9._~:-]+", value_part):
-                fail("url", f"{field} query value is not canonical")
-            if _sensitive_name(key) and not REDACTED_RE.fullmatch(value_part):
-                fail("redaction", f"sensitive query key {key} is not deterministically redacted")
-            pairs.append((key, value_part))
+            raw_key, raw_value = item.split("=", 1)
+            if (
+                not raw_key
+                or component_re.fullmatch(raw_key) is None
+                or component_re.fullmatch(raw_value) is None
+            ):
+                fail("url", f"{field} query pair is not canonical")
+            _validate_named_secret(
+                unquote_plus(raw_key), unquote_plus(raw_value), "query parameter"
+            )
+            pairs.append(item)
         if len(pairs) != len(set(pairs)) or pairs != sorted(pairs):
             fail("url", f"{field} query pairs must be unique and sorted")
 
 
 def _sensitive_name(value: str) -> bool:
     name = value.strip().lower()
-    return name in SENSITIVE_KEYS or any(name.endswith(suffix) for suffix in CREDENTIAL_SUFFIXES)
+    return name in SECRET_NAMES or any(name.endswith(suffix) for suffix in CREDENTIAL_SUFFIXES)
 
 
 def _validate_trace_context(traceparent: str | None, tracestate: str | None) -> None:
@@ -264,12 +265,101 @@ def _canonical_locale(value: str) -> bool:
     )
 
 
-def _validate_redacted_body(body: bytes, field: str, *, depth: int = 0) -> None:
-    if not body or depth > 2:
-        return
+def _has_unpaired_json_surrogate(text: str) -> bool:
+    index = 0
+    while index < len(text):
+        if text[index] != "\\":
+            index += 1
+            continue
+        end = index
+        while end < len(text) and text[end] == "\\":
+            end += 1
+        if (end - index) % 2 == 0 or end >= len(text) or text[end] != "u":
+            index = end
+            continue
+        hexadecimal = text[end + 1 : end + 5]
+        if len(hexadecimal) != 4 or re.fullmatch(r"[0-9A-Fa-f]{4}", hexadecimal) is None:
+            index = end + 1
+            continue
+        codepoint = int(hexadecimal, 16)
+        if 0xD800 <= codepoint <= 0xDBFF:
+            pair = end + 5
+            if (
+                text[pair : pair + 2] != "\\u"
+                or re.fullmatch(r"[0-9A-Fa-f]{4}", text[pair + 2 : pair + 6]) is None
+                or not 0xDC00 <= int(text[pair + 2 : pair + 6], 16) <= 0xDFFF
+            ):
+                return True
+            index = pair + 6
+            continue
+        if 0xDC00 <= codepoint <= 0xDFFF:
+            return True
+        index = end + 5
+    return False
+
+
+def _reject_json_constant(value: str) -> None:
+    fail("redaction", f"JSON contains non-finite number {value}")
+
+
+def _strict_json_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        fail("redaction", f"JSON contains non-finite number {value}")
+    return parsed
+
+
+def _strict_json_loads(body: bytes | str) -> object:
+    text = body.decode("utf-8") if isinstance(body, bytes) else body
+    if _has_unpaired_json_surrogate(text):
+        fail("redaction", "JSON contains an unpaired Unicode surrogate escape")
+    return json.loads(
+        text,
+        parse_constant=_reject_json_constant,
+        parse_float=_strict_json_float,
+    )
+
+
+def _parse_ampersand_fields(value: str, field: str) -> list[tuple[str, str]]:
+    if ";" in value:
+        fail("redaction", f"{field} must use ampersand-only field separators")
+    result: list[tuple[str, str]] = []
+    for item in value.split("&"):
+        if not item:
+            continue
+        raw_name, separator, raw_value = item.partition("=")
+        for component in (raw_name, raw_value if separator else ""):
+            if re.search(r"%(?![0-9A-Fa-f]{2})", component):
+                fail("redaction", f"{field} contains an invalid percent escape")
+        try:
+            name = unquote_plus(raw_name, errors="strict")
+            decoded_value = unquote_plus(raw_value if separator else "", errors="strict")
+        except UnicodeDecodeError:
+            fail("redaction", f"{field} contains non-UTF-8 percent encoding")
+        result.append((name, decoded_value))
+    return result
+
+
+def _validate_named_secret(name: str, value: object, field: str) -> None:
+    normalized = name.lower()
+    if _sensitive_name(normalized) and (
+        not isinstance(value, str) or REDACTED_RE.fullmatch(value) is None
+    ):
+        fail("redaction", f"sensitive {field} {name} is not deterministically redacted")
+    if normalized in EMAIL_NAMES and (
+        not isinstance(value, str) or REDACTED_EMAIL_RE.fullmatch(value) is None
+    ):
+        fail("redaction", f"email {field} {name} is not deterministically redacted")
+
+
+def _validate_redacted_body_once(
+    body: bytes, field: str, *, depth: int, declared_json: bool
+) -> None:
     try:
         text_value = body.decode("utf-8")
     except UnicodeDecodeError:
+        if declared_json:
+            fail("redaction", f"{field} declares non-UTF-8 JSON")
         return
     for match in EMAIL_RE.finditer(text_value):
         if not REDACTED_EMAIL_RE.fullmatch(match.group(0)):
@@ -281,18 +371,23 @@ def _validate_redacted_body(body: bytes, field: str, *, depth: int = 0) -> None:
         fail("redaction", f"{field} contains an unredacted bearer credential")
     if "-----BEGIN " in text_value and "PRIVATE KEY-----" in text_value:
         fail("redaction", f"{field} contains private key material")
+    if any(
+        REDACTED_RE.fullmatch(match.group(1)) is None
+        for match in SECRET_ASSIGNMENT_RE.finditer(text_value)
+    ):
+        fail("redaction", f"{field} contains an unredacted secret assignment")
+    looks_json = text_value.lstrip().startswith(("{", "["))
     try:
-        parsed = json.loads(text_value)
+        parsed = _strict_json_loads(text_value)
     except (json.JSONDecodeError, UnicodeDecodeError):
+        if declared_json or looks_json:
+            fail("redaction", f"{field} contains malformed JSON")
         parsed = None
 
     def walk(value: object, path: str) -> None:
         if isinstance(value, dict):
             for key, child in value.items():
-                if _sensitive_name(str(key)) and (
-                    not isinstance(child, str) or REDACTED_RE.fullmatch(child) is None
-                ):
-                    fail("redaction", f"{path}.{key} is not deterministically redacted")
+                _validate_named_secret(str(key), child, f"{path} key")
                 walk(child, f"{path}.{key}")
         elif isinstance(value, list):
             for index, child in enumerate(value):
@@ -306,6 +401,47 @@ def _validate_redacted_body(body: bytes, field: str, *, depth: int = 0) -> None:
 
     if parsed is not None:
         walk(parsed, field)
+
+
+def _content_type(headers: list[pb.Header]) -> str:
+    for header in headers:
+        if header.name == "content-type":
+            return header.value.split(";", 1)[0].strip().lower()
+    return ""
+
+
+def _validate_redacted_body(
+    body: bytes,
+    field: str,
+    *,
+    headers: list[pb.Header] | None = None,
+    depth: int = 0,
+) -> None:
+    if not body or depth > 2:
+        return
+    media_type = _content_type(headers or [])
+    declared_json = media_type == "application/json" or media_type.endswith("+json")
+    decoded = body
+    for decode_pass in range(4):
+        _validate_redacted_body_once(
+            decoded,
+            field if decoded == body else f"{field} percent-decoded",
+            depth=depth,
+            declared_json=declared_json,
+        )
+        next_decoded = unquote_to_bytes(decoded)
+        if next_decoded == decoded:
+            break
+        if decode_pass == 3:
+            fail("redaction", f"{field} exceeds the bounded percent-decoding depth")
+        decoded = next_decoded
+    if media_type == "application/x-www-form-urlencoded":
+        try:
+            form = body.decode("utf-8")
+        except UnicodeDecodeError:
+            fail("redaction", f"{field} form body is not UTF-8")
+        for name, value in _parse_ampersand_fields(form, f"{field} form"):
+            _validate_named_secret(name, value, "form field")
 
 
 def _sha256(value: str, field: str) -> None:
@@ -354,8 +490,8 @@ def _headers(headers: list[pb.Header], field: str) -> None:
     for header in headers:
         name = header.name.strip().lower()
         _text(name, f"{field}.name", maximum=256)
-        if name != header.name:
-            fail("header", f"{field}.name must be canonical lowercase without whitespace")
+        if name != header.name or HEADER_NAME_RE.fullmatch(name) is None:
+            fail("header", f"{field}.name must be a canonical lowercase HTTP token")
         if name in seen:
             fail("duplicate", f"duplicate header {name}")
         seen.add(name)
@@ -363,10 +499,11 @@ def _headers(headers: list[pb.Header], field: str) -> None:
             fail("limit", f"{field}.{name} exceeds 8192 UTF-8 bytes")
         if "\n" in header.value or "\r" in header.value:
             fail("header", f"{name} contains a line break")
-        if _sensitive_name(name) and (
+        if (name in SENSITIVE_HEADERS or _sensitive_name(name)) and (
             not header.redacted or not REDACTED_RE.fullmatch(header.value)
         ):
             fail("redaction", f"sensitive header {name} is not deterministically redacted")
+        _validate_redacted_body(header.value.encode(), f"{field}.{name}")
 
 
 def request_fingerprint(request: pb.CapturedRequest) -> str:
@@ -469,10 +606,12 @@ def validate_chunk_manifest(
 def validate_extension(extension: pb.ExtensionEnvelope, *, context: str) -> None:
     _text(extension.schema_id, "extension.schema_id", maximum=256)
     _enum(extension.encoding, pb.ExtensionEncoding, "extension.encoding")
-    key = (extension.schema_id, extension.schema_version, extension.encoding)
-    if key not in EXTENSION_REGISTRY:
+    rule = EXTENSION_RULES.get(extension.schema_id)
+    if rule is None or (
+        extension.schema_version != rule["version"] or extension.encoding != rule["encoding"]
+    ):
         fail("extension", "extension schema/version/encoding is not registered for v1")
-    if context not in EXTENSION_CONTEXTS[extension.schema_id]:
+    if context not in rule["contexts"]:
         fail("extension_context", f"{extension.schema_id} is forbidden in {context}")
     if len(extension.payload) > MAX_EXTENSION_BYTES:
         fail("extension_limit", "extension payload exceeds 65536 bytes")
@@ -481,15 +620,16 @@ def validate_extension(extension: pb.ExtensionEnvelope, *, context: str) -> None
         fail("hash", "extension payload digest disagrees")
     if extension.encoding == pb.EXTENSION_ENCODING_CANONICAL_JSON:
         try:
-            value = json.loads(extension.payload)
-        except (UnicodeDecodeError, json.JSONDecodeError):
+            value = _strict_json_loads(extension.payload)
+        except (UnicodeDecodeError, json.JSONDecodeError, ContractViolation):
             fail("extension", "canonical JSON extension payload is invalid")
         canonical = json.dumps(
             value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode()
         if canonical != extension.payload:
             fail("extension", "JSON extension payload is not canonical")
-        if extension.schema_id.endswith("/monitor-config"):
+        validator = rule["validator"]
+        if validator == "monitor_config":
             if (
                 type(value) is not dict
                 or set(value) != {"pages"}
@@ -497,7 +637,7 @@ def validate_extension(extension: pb.ExtensionEnvelope, *, context: str) -> None
                 or not 1 <= value["pages"] <= 1_000
             ):
                 fail("extension_schema", "monitor-config requires pages integer 1..1000")
-        elif extension.schema_id.endswith("/scraper-config"):
+        elif validator == "scraper_config":
             if type(value) is not dict or set(value) != {"fields"}:
                 fail("extension_schema", "scraper-config requires exactly fields")
             fields = value["fields"]
@@ -512,14 +652,14 @@ def validate_extension(extension: pb.ExtensionEnvelope, *, context: str) -> None
                 or len(fields) != len(set(fields))
             ):
                 fail("extension_schema", "scraper-config fields are invalid")
-        elif extension.schema_id.endswith("/runtime-metadata"):
+        elif validator == "runtime_metadata":
             if (
                 type(value) is not dict
                 or set(value) != {"source"}
                 or value["source"] not in {"captured-provider", "offline-fixture"}
             ):
                 fail("extension_schema", "runtime-metadata source is invalid")
-        elif extension.schema_id.endswith("/evaluation-json") and (
+        elif validator == "evaluation_json" and (
             type(value) is not dict
             or set(value) != {"value"}
             or type(value["value"]) is not int
@@ -690,6 +830,28 @@ def validate_job_content(content: pb.JobContent, limits: pb.Limits) -> None:
             fail("job_content", f"{field} must not be empty, whitespace, or a sentinel")
         return True
 
+    if _present(content, "title"):
+        _bounded_text(content.title, "job.title", maximum=32_768)
+    if _present(content, "description_html"):
+        _bounded_text(
+            content.description_html,
+            "job.description_html",
+            maximum=HARD_LIMITS.max_inline_body_bytes,
+        )
+    if _present(content, "locations"):
+        if len(content.locations.values) > 1_024:
+            fail("domain_limit", "job.locations exceeds 1024 values")
+        for location in content.locations.values:
+            _bounded_text(location, "job.locations", maximum=4_096)
+    for field, maximum in (
+        ("employment_type", 128),
+        ("job_location_type", 128),
+        ("date_posted", 128),
+        ("language", 35),
+    ):
+        if _present(content, field):
+            _bounded_text(getattr(content, field), f"job.{field}", maximum=maximum)
+
     title_present = meaningful(content.title, "job.title") if _present(content, "title") else False
     description_present = (
         meaningful(content.description_html, "job.description_html")
@@ -708,6 +870,8 @@ def validate_job_content(content: pb.JobContent, limits: pb.Limits) -> None:
             and salary.minimum_minor > salary.maximum_minor
         ):
             fail("salary", "salary minimum exceeds maximum")
+    if len(content.localizations) > 128:
+        fail("domain_limit", "job.localizations exceeds 128 values")
     locales: set[str] = set()
     for localized in content.localizations:
         _text(localized.locale, "localization.locale", maximum=35)
@@ -716,6 +880,14 @@ def validate_job_content(content: pb.JobContent, limits: pb.Limits) -> None:
         if localized.locale in locales:
             fail("duplicate", "localized content locales must be unique")
         locales.add(localized.locale)
+        if _present(localized, "title"):
+            _bounded_text(localized.title, "localization.title", maximum=32_768)
+        if _present(localized, "description_html"):
+            _bounded_text(
+                localized.description_html,
+                "localization.description_html",
+                maximum=HARD_LIMITS.max_inline_body_bytes,
+            )
         localized_title = (
             meaningful(localized.title, "localization.title")
             if _present(localized, "title")
@@ -732,6 +904,10 @@ def validate_job_content(content: pb.JobContent, limits: pb.Limits) -> None:
         description_present |= localized_description
     if not title_present or not description_present:
         fail("job_content", "commit-eligible rich job requires meaningful title and description")
+    if len(content.skills) > 1_024:
+        fail("domain_limit", "job.skills exceeds 1024 values")
+    for skill in content.skills:
+        _bounded_text(skill, "job.skills", maximum=512)
     if len(content.skills) != len(set(content.skills)) or any(
         not skill.strip() or skill != skill.strip() for skill in content.skills
     ):
@@ -829,6 +1005,28 @@ def _semantic_frame_bytes(frame: pb.ExecutionFrame) -> bytes:
     value = pb.ExecutionFrame()
     value.CopyFrom(frame)
     value.attempt_id = ""
+    kind = value.WhichOneof("payload")
+    if kind == "monitor_batch":
+        result = value.monitor_batch
+        urls = sorted(result.urls)
+        del result.urls[:]
+        result.urls.extend(urls)
+        jobs = []
+        for job in result.jobs:
+            canonical_job = pb.DiscoveredJob(url=job.url)
+            canonical_job.content.CopyFrom(_canonical_job_content(job.content))
+            jobs.append(canonical_job)
+        jobs.sort(key=lambda job: (job.url, job.SerializeToString(deterministic=True)))
+        del result.jobs[:]
+        result.jobs.extend(jobs)
+        if _present(result, "metadata_updates"):
+            extensions = sorted(
+                result.metadata_updates.extensions, key=lambda extension: extension.schema_id
+            )
+            del result.metadata_updates.extensions[:]
+            result.metadata_updates.extensions.extend(extensions)
+    elif kind == "scrape_result":
+        value.scrape_result.content.CopyFrom(_canonical_job_content(value.scrape_result.content))
     return value.SerializeToString(deterministic=True)
 
 
@@ -927,10 +1125,11 @@ def validate_browser_plan(plan: pb.BrowserPlan, limits: pb.Limits = HARD_LIMITS)
             )
             if not 1 <= action.paginate.max_pages <= 1_000:
                 fail("limit", "browser pagination page count is out of bounds")
-            if action.paginate.dynamic_origin_per_additional_page:
-                fail("origin", "v1 disallows dynamic pagination origin allocation")
             page_origins = list(action.paginate.additional_page_origin_request_ids)
-            if len(page_origins) != action.paginate.max_pages - 1:
+            if action.paginate.dynamic_origin_per_additional_page:
+                if page_origins:
+                    fail("origin", "dynamic pagination must omit predeclared page origins")
+            elif len(page_origins) != action.paginate.max_pages - 1:
                 fail("origin", "pagination requires exactly max_pages-1 predeclared page origins")
             if len(page_origins) != len(set(page_origins)):
                 fail("duplicate", "pagination page origin IDs must be unique")
@@ -1200,6 +1399,7 @@ def validate_transcript(
     next_sequence = 0
     frames: dict[int, pb.ExecutionFrame] = {}
     operations: dict[str, pb.OriginOperationRef] = {}
+    dynamic_quotas: dict[str, int] = {}
     dispatched: set[str] = set()
     dedupe_required: set[str] = set()
     terminal_seen = False
@@ -1311,6 +1511,13 @@ def validate_transcript(
                 operations = validate_origin_operations(
                     list(request.origin_operations), request.origin_request_id
                 )
+                if request.kind == pb.EXECUTION_KIND_BROWSER:
+                    for action in request.browser.plan.actions:
+                        if (
+                            action.WhichOneof("action") == "paginate"
+                            and action.paginate.dynamic_origin_per_additional_page
+                        ):
+                            dynamic_quotas[action.origin_request_id] = action.paginate.max_pages - 1
                 next_sequence = 0
             elif payload == "resume":
                 if phase != "ready" or request is None or not needs_resume:
@@ -1469,7 +1676,27 @@ def validate_transcript(
         if error_count and frame_kind != "terminal":
             fail("error_terminal", "only terminal may follow an error frame")
         if frame_kind == "origin_operation_declared":
-            fail("origin", "v1 disallows dynamic origin operation declarations")
+            operation = frame.origin_operation_declared.operation
+            if request.kind != pb.EXECUTION_KIND_BROWSER:
+                fail("origin", "dynamic declarations require a browser pagination request")
+            if not _present(operation, "parent_origin_request_id"):
+                fail("origin", "dynamic pagination declaration requires its action parent")
+            parent_id = operation.parent_origin_request_id
+            if dynamic_quotas.get(parent_id, 0) <= 0:
+                fail("origin", "dynamic pagination declaration exceeds its bounded quota")
+            _text(operation.origin_request_id, "origin.origin_request_id", maximum=512)
+            _text(operation.role, "origin.role", maximum=128)
+            _sha256(operation.request_fingerprint, "origin.request_fingerprint")
+            if (
+                operation.origin_request_id in operations
+                or operation.operation_sequence != len(operations)
+                or parent_id not in operations
+            ):
+                fail("origin_sequence", "dynamic origin declaration is not contiguous and unique")
+            durable = pb.OriginOperationRef()
+            durable.CopyFrom(operation)
+            operations[operation.origin_request_id] = durable
+            dynamic_quotas[parent_id] -= 1
         elif frame_kind == "origin_contact":
             operation = frame.origin_contact.operation
             known = operations.get(operation.origin_request_id)
@@ -1609,20 +1836,33 @@ def _canonical_json(message: Message) -> bytes:
 
 def semantic_hash(frames: list[pb.ExecutionFrame], projection: pb.ProjectedEffects) -> str:
     digest = hashlib.sha256(CONTRACT_VERSION.encode() + b"\0")
-    semantic_frames: list[pb.ExecutionFrame] = []
-    for frame in frames:
-        value = pb.ExecutionFrame()
-        value.CopyFrom(frame)
-        value.attempt_id = ""
-        semantic_frames.append(value)
-    for message in [*semantic_frames, projection]:
-        raw = message.SerializeToString(deterministic=True)
+    semantic_values = [_semantic_frame_bytes(frame) for frame in frames]
+    canonical_projection = pb.ProjectedEffects()
+    canonical_projection.CopyFrom(projection)
+    for field in (canonical_projection.urls_to_upsert, canonical_projection.content_hashes):
+        ordered = sorted(field)
+        del field[:]
+        field.extend(ordered)
+    job_effects = sorted(
+        canonical_projection.job_effects,
+        key=lambda effect: (effect.source_url, effect.content_sha256),
+    )
+    del canonical_projection.job_effects[:]
+    canonical_projection.job_effects.extend(job_effects)
+    targets = sorted(
+        canonical_projection.targets,
+        key=lambda target: (target.url, target.action, target.content_sha256),
+    )
+    del canonical_projection.targets[:]
+    canonical_projection.targets.extend(targets)
+    semantic_values.append(canonical_projection.SerializeToString(deterministic=True))
+    for raw in semantic_values:
         digest.update(len(raw).to_bytes(8, "big"))
         digest.update(raw)
     return digest.hexdigest()
 
 
-def content_hash(content: pb.JobContent) -> str:
+def _canonical_job_content(content: pb.JobContent) -> pb.JobContent:
     # Canonicalize semantically unordered repeated fields before deterministic
     # protobuf serialization. Optional presence remains intact.
     canonical = pb.JobContent()
@@ -1643,28 +1883,55 @@ def content_hash(content: pb.JobContent) -> str:
         locations = sorted(canonical.locations.values)
         del canonical.locations.values[:]
         canonical.locations.values.extend(locations)
-    return hashlib.sha256(canonical.SerializeToString(deterministic=True)).hexdigest()
+    return canonical
+
+
+def content_hash(content: pb.JobContent) -> str:
+    return hashlib.sha256(
+        _canonical_job_content(content).SerializeToString(deterministic=True)
+    ).hexdigest()
 
 
 def project_frames(
     frames: list[pb.ExecutionFrame], request: pb.ExecutionRequest | None = None
 ) -> pb.ProjectedEffects:
-    projection = pb.ProjectedEffects(gone_detection_allowed=True)
+    if request is None:
+        fail("projection", "projection requires its typed ExecutionRequest")
+    target_url = {
+        pb.EXECUTION_KIND_MONITOR: request.board_manifest.board_url,
+        pb.EXECUTION_KIND_SCRAPE: request.scrape.source_url,
+        pb.EXECUTION_KIND_BROWSER: request.browser.plan.target_url,
+    }.get(request.kind)
+    if target_url is None:
+        fail("projection", "projection request has an unsupported execution kind")
+    projection = pb.ProjectedEffects(
+        gone_detection_allowed=True,
+        request_id=request.request_id,
+        origin_request_id=request.origin_request_id,
+        execution_kind=request.kind,
+        target_url=target_url,
+    )
     urls: set[str] = set()
     hashes: list[str] = []
     metadata_digest = hashlib.sha256()
     metadata_seen = False
     job_effects: list[tuple[str, str]] = []
+    targets: dict[str, tuple[int, str | None]] = {}
     for frame in frames:
         kind = frame.WhichOneof("payload")
         if kind == "monitor_batch":
             result = frame.monitor_batch
             urls.update(result.urls)
+            for url in result.urls:
+                targets[url] = (pb.PROJECTED_ACTION_UPSERT, None)
             for job in result.jobs:
                 digest = content_hash(job.content)
                 hashes.append(digest)
                 job_effects.append((job.url, digest))
-            projection.gone_detection_allowed &= not result.truncated
+                targets[job.url] = (pb.PROJECTED_ACTION_UPSERT, digest)
+            projection.gone_detection_allowed &= (
+                not result.truncated and result.security_filtered_count == 0
+            )
             projection.hybrid |= result.hybrid
             projection.truncated |= result.truncated
             projection.filtered_count += result.filtered_count
@@ -1679,14 +1946,25 @@ def project_frames(
         elif kind == "scrape_result":
             digest = content_hash(frame.scrape_result.content)
             hashes.append(digest)
-            if request is None or request.kind != pb.EXECUTION_KIND_SCRAPE:
+            if request.kind != pb.EXECUTION_KIND_SCRAPE:
                 fail("projection", "scrape projection requires its typed ExecutionRequest")
             job_effects.append((request.scrape.source_url, digest))
+            targets[request.scrape.source_url] = (pb.PROJECTED_ACTION_UPSERT, digest)
+        elif kind == "browser_result" and frame.browser_result.WhichOneof("outcome") == "success":
+            targets[request.browser.plan.target_url] = (
+                pb.PROJECTED_ACTION_BROWSER_RESULT,
+                None,
+            )
     projection.urls_to_upsert.extend(sorted(urls))
     projection.content_hashes.extend(sorted(hashes))
     projection.job_effects.extend(
         pb.JobEffect(source_url=url, content_sha256=digest) for url, digest in sorted(job_effects)
     )
+    for url in sorted(targets):
+        action, digest = targets[url]
+        target = projection.targets.add(url=url, action=action)
+        if digest is not None:
+            target.content_sha256 = digest
     if metadata_seen:
         projection.metadata_updates_sha256 = metadata_digest.hexdigest()
     return projection
@@ -1727,6 +2005,10 @@ def validate_replay(replay: pb.ReplayCase, limits: pb.Limits = HARD_LIMITS) -> N
         if not re.fullmatch(r"[A-Z]+", exchange.request.method):
             fail("replay", "captured request method must be an uppercase HTTP token")
         _url(exchange.request.url, "replay.request.url")
+        query = urlsplit(exchange.request.url).query
+        for name, value in _parse_ampersand_fields(query, "replay.request.query"):
+            _validate_named_secret(name, value, "query parameter")
+        _validate_redacted_body(query.encode(), "replay.request.query")
         _headers(list(exchange.request.headers), "replay.request.headers")
         _headers(list(exchange.response.headers), "replay.response.headers")
         if not 100 <= exchange.response.status <= 599:
@@ -1745,8 +2027,16 @@ def validate_replay(replay: pb.ReplayCase, limits: pb.Limits = HARD_LIMITS) -> N
         )
         assert request_body is not None
         assert response_body is not None
-        _validate_redacted_body(request_body, "replay.request.body")
-        _validate_redacted_body(response_body, "replay.response.body")
+        _validate_redacted_body(
+            request_body,
+            "replay.request.body",
+            headers=list(exchange.request.headers),
+        )
+        _validate_redacted_body(
+            response_body,
+            "replay.response.body",
+            headers=list(exchange.response.headers),
+        )
         if request_fingerprint(exchange.request) != operation.request_fingerprint:
             fail("fingerprint", "captured request differs from its durable operation fingerprint")
         if _present(exchange, "normalized_result_frame_sequence"):

@@ -373,7 +373,11 @@ def monitor_batch(
     *, page: int = 1, hybrid: bool = False, truncated: bool = False
 ) -> pb.MonitorResult:
     url = f"https://careers.example.invalid/jobs/{page}"
-    content = pb.JobContent(title=f"Engineer {page}", description_html="<p>Build safely</p>")
+    content = pb.JobContent(
+        title=f"Engineer {page}",
+        description_html="<p>Build safely</p>",
+        skills=["Python", "SQL"],
+    )
     # Page one proves explicit-empty locations; page two proves missing locations.
     if page == 1:
         content.locations.SetInParent()
@@ -828,6 +832,53 @@ def build_positive() -> None:
                 contract_version=VERSION,
                 name="browser-pagination-predeclared-origins",
                 events=pagination_events,
+            ),
+        ),
+    )
+
+    dynamic_plan = pb.BrowserPlan()
+    dynamic_plan.CopyFrom(plan)
+    del dynamic_plan.origin_operations[2:]
+    dynamic_plan.actions[0].paginate.dynamic_origin_per_additional_page = True
+    del dynamic_plan.actions[0].paginate.additional_page_origin_request_ids[:]
+    dynamic_req = browser_request(dynamic_plan)
+    dynamic_page = operation(
+        2,
+        "pagination-page-2",
+        parent=dynamic_plan.actions[0].origin_request_id,
+    )
+    dynamic_frames = [
+        origin_frame(dynamic_req, dynamic_plan.origin_operations[0], 0),
+        origin_frame(dynamic_req, dynamic_plan.origin_operations[1], 1),
+        origin_declaration_frame(dynamic_req, dynamic_page, 2),
+        origin_frame(dynamic_req, dynamic_page, 3),
+        browser_frame(dynamic_req, pagination_result, 4),
+        terminal_frame(dynamic_req, 5, output=1, batches=0, origins=3),
+    ]
+    dynamic_events = hello_events() + [start_event(dynamic_req)]
+    dynamic_events.extend(server_frame(frame) for frame in dynamic_frames[:4])
+    dynamic_events.append(
+        pb.ProtocolEvent(
+            direction=pb.EVENT_DIRECTION_CLIENT,
+            client=pb.ClientMessage(
+                window_update=pb.WindowUpdate(
+                    request_id=dynamic_req.request_id,
+                    additional_frames=2,
+                    attempt_id=dynamic_req.attempt_id,
+                    fence_digest=dynamic_req.fencing_context.fence_digest,
+                )
+            ),
+        )
+    )
+    dynamic_events.extend(server_frame(frame) for frame in dynamic_frames[4:])
+    write_message(
+        FIXTURES / "conformance/positive/browser-pagination-dynamic-origin.json",
+        case(
+            "browser-pagination-dynamic-origin",
+            pb.ProtocolTranscript(
+                contract_version=VERSION,
+                name="browser-pagination-dynamic-origin",
+                events=dynamic_events,
             ),
         ),
     )
@@ -2176,6 +2227,72 @@ def build_negative() -> None:
         pb.ConformanceCase(browser_plan=plan),
     )
 
+    pagination_op0 = operation(0, "navigation")
+    pagination_op1 = operation(1, "pagination", parent=pagination_op0.origin_request_id)
+    pagination_plan = pb.BrowserPlan(
+        contract_version=VERSION,
+        target_url="https://careers.example.invalid/jobs",
+        required_capabilities=[
+            pb.BROWSER_CAPABILITY_RENDER,
+            pb.BROWSER_CAPABILITY_ACTIONS,
+            pb.BROWSER_CAPABILITY_PAGINATION,
+        ],
+        navigation=pb.NavigationPlan(
+            wait_until=pb.WAIT_CONDITION_LOAD,
+            timeout_ms=30_000,
+            origin_request_id=pagination_op0.origin_request_id,
+        ),
+        session=pb.SessionPlan(),
+        actions=[
+            pb.BrowserAction(
+                action_id="next-page",
+                paginate=pb.PaginationAction(
+                    next_selector=pb.Selector(kind=pb.SELECTOR_KIND_CSS, value="button.next"),
+                    max_pages=2,
+                    page_timeout_ms=10_000,
+                    dynamic_origin_per_additional_page=True,
+                ),
+                origin_request_id=pagination_op1.origin_request_id,
+                network_effect=pb.BROWSER_NETWORK_EFFECT_ORIGIN_CONTACT,
+            )
+        ],
+        origin_operations=[pagination_op0, pagination_op1],
+    )
+    pagination_req = browser_request(pagination_plan)
+    dynamic_page_2 = operation(2, "pagination-page-2", parent=pagination_op1.origin_request_id)
+    dynamic_page_3 = operation(3, "pagination-page-3", parent=pagination_op1.origin_request_id)
+    pagination_events = hello_events() + [
+        start_event(pagination_req),
+        server_frame(origin_frame(pagination_req, pagination_op0, 0)),
+        server_frame(origin_frame(pagination_req, pagination_op1, 1)),
+        server_frame(origin_declaration_frame(pagination_req, dynamic_page_2, 2)),
+        server_frame(origin_frame(pagination_req, dynamic_page_2, 3)),
+        pb.ProtocolEvent(
+            direction=pb.EVENT_DIRECTION_CLIENT,
+            client=pb.ClientMessage(
+                window_update=pb.WindowUpdate(
+                    request_id=pagination_req.request_id,
+                    additional_frames=1,
+                    attempt_id=pagination_req.attempt_id,
+                    fence_digest=pagination_req.fencing_context.fence_digest,
+                )
+            ),
+        ),
+        server_frame(origin_declaration_frame(pagination_req, dynamic_page_3, 4)),
+    ]
+    write_invalid(
+        "browser-pagination-exceeds-max-pages",
+        "origin",
+        case(
+            "browser-pagination-exceeds-max-pages",
+            pb.ProtocolTranscript(
+                contract_version=VERSION,
+                name="browser-pagination-exceeds-max-pages",
+                events=pagination_events,
+            ),
+        ),
+    )
+
     plan = browser_plan()
     plan.actions[0].network_effect = 999
     write_invalid(
@@ -2484,6 +2601,10 @@ def build_negative() -> None:
         mutate(value.transcript.events[-2].server.frame.scrape_result.content)
         write_invalid(name, expected, value)
 
+    value = base_scrape_case("job-content-domain-string-limit")
+    value.transcript.events[-2].server.frame.scrape_result.content.language = "x" * 36
+    write_invalid("job-content-domain-string-limit", "domain_limit", value)
+
     value = base_scrape_case("job-empty-localization")
     value.transcript.events[-2].server.frame.scrape_result.content.localizations.append(
         pb.LocalizedJobContent(locale="de")
@@ -2560,6 +2681,16 @@ def build_negative() -> None:
         )
         write_invalid("replay-sensitive-header-suffix", "redaction", value)
 
+        value = replay_case("replay-plaintext-authentication-header")
+        value.replay.exchanges[0].request.headers.append(
+            pb.Header(name="authentication", value="fixture-secret")
+        )
+        write_invalid("replay-plaintext-authentication-header", "redaction", value)
+
+        value = replay_case("replay-invalid-header-token")
+        value.replay.exchanges[0].request.headers[0].name = "bad header"
+        write_invalid("replay-invalid-header-token", "header", value)
+
         value = replay_case("replay-sensitive-query")
         value.replay.exchanges[
             0
@@ -2571,6 +2702,54 @@ def build_negative() -> None:
             chunk_manifest(b'{"client_secret":"raw-secret"}')
         )
         write_invalid("replay-body-secret", "redaction", value)
+
+        value = replay_case("replay-plaintext-api-key-body")
+        value.replay.exchanges[0].request.body.CopyFrom(chunk_manifest(b"api_key=fixture-secret"))
+        write_invalid("replay-plaintext-api-key-body", "redaction", value)
+
+        value = replay_case("replay-plaintext-client-secret-body")
+        value.replay.exchanges[0].request.body.CopyFrom(
+            chunk_manifest(b"client-secret=fixture-secret")
+        )
+        write_invalid("replay-plaintext-client-secret-body", "redaction", value)
+
+        value = replay_case("replay-json-escaped-api-key-body")
+        value.replay.exchanges[0].request.body.CopyFrom(
+            chunk_manifest(rb'{"api\u005fkey":"fixture-secret"}')
+        )
+        write_invalid("replay-json-escaped-api-key-body", "redaction", value)
+
+        value = replay_case("replay-percent-encoded-api-key-body")
+        value.replay.exchanges[0].request.headers[1].value = "application/x-www-form-urlencoded"
+        value.replay.exchanges[0].request.body.CopyFrom(chunk_manifest(b"api_key%3Dfixture-secret"))
+        write_invalid("replay-percent-encoded-api-key-body", "redaction", value)
+
+        value = replay_case("replay-form-encoded-api-key-name")
+        value.replay.exchanges[0].request.headers[1].value = "application/x-www-form-urlencoded"
+        value.replay.exchanges[0].request.body.CopyFrom(chunk_manifest(b"api%5Fkey=fixture-secret"))
+        write_invalid("replay-form-encoded-api-key-name", "redaction", value)
+
+        value = replay_case("replay-percent-decoding-depth-exceeded")
+        value.replay.exchanges[0].request.body.CopyFrom(
+            chunk_manifest(b"api_key%2525253Dfixture-secret")
+        )
+        write_invalid("replay-percent-decoding-depth-exceeded", "redaction", value)
+
+        value = replay_case("replay-json-unpaired-surrogate")
+        value.replay.exchanges[0].request.body.CopyFrom(chunk_manifest(rb'{"x":"\ud800"}'))
+        write_invalid("replay-json-unpaired-surrogate", "redaction", value)
+
+        value = replay_case("replay-json-nonfinite-number")
+        value.replay.exchanges[0].request.body.CopyFrom(chunk_manifest(b'{"x":NaN}'))
+        write_invalid("replay-json-nonfinite-number", "redaction", value)
+
+        value = replay_case("replay-json-infinity-number")
+        value.replay.exchanges[0].request.body.CopyFrom(chunk_manifest(b'{"x":Infinity}'))
+        write_invalid("replay-json-infinity-number", "redaction", value)
+
+        value = replay_case("replay-declared-json-malformed")
+        value.replay.exchanges[0].request.body.CopyFrom(chunk_manifest(b"not-json"))
+        write_invalid("replay-declared-json-malformed", "redaction", value)
 
         value = replay_case("replay-body-email")
         encoded_email = base64.b64encode(b"person@example.test").decode()
@@ -2640,6 +2819,7 @@ def captured_exchange(
         url=f"https://careers.example.invalid/api/jobs?page={op.operation_sequence + 1}",
         headers=[
             pb.Header(name="accept", value="application/json"),
+            pb.Header(name="content-type", value="application/json"),
             pb.Header(
                 name="authorization",
                 value=redact("header:authorization", "fixture-token"),

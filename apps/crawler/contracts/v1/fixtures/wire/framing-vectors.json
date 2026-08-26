@@ -7,6 +7,7 @@
     {"name": "truncated-varint", "wire_hex": "80", "maximum": 16, "expected_error": "framing"},
     {"name": "overflow-varint", "wire_hex": "ffffffffffffffffff02", "maximum": 64, "expected_error": "framing"},
     {"name": "max-uint64-length", "wire_hex": "ffffffffffffffffff01", "maximum": 18446744073709551615, "expected_error": "frame_limit"},
+    {"name": "near-max-uint64-length", "wire_hex": "f7ffffffffffffffff01", "maximum": 18446744073709551615, "expected_error": "frame_limit"},
     {"name": "overlong-varint", "wire_hex": "810061", "maximum": 3, "expected_error": "framing"},
     {"name": "cap-includes-prefix", "wire_hex": "03616263", "maximum": 3, "expected_error": "frame_limit"},
     {"name": "truncated-payload", "wire_hex": "036162", "maximum": 4, "expected_error": "framing"},

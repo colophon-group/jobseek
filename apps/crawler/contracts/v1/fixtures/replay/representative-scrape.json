@@ -7,7 +7,7 @@
       "normalizedResultFrameSequence": "1",
       "operation": {
         "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
-        "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43",
+        "requestFingerprint": "aa437ab1f8fba352168d354d082ad8979504704f1002a55db0201327e8605c87",
         "role": "initial"
       },
       "request": {
@@ -18,6 +18,10 @@
         "headers": [
           {
             "name": "accept",
+            "value": "application/json"
+          },
+          {
+            "name": "content-type",
             "value": "application/json"
           },
           {
@@ -106,7 +110,7 @@
     "originOperations": [
       {
         "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
-        "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43",
+        "requestFingerprint": "aa437ab1f8fba352168d354d082ad8979504704f1002a55db0201327e8605c87",
         "role": "initial"
       }
     ],
@@ -127,10 +131,10 @@
         "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
         "operation": {
           "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
-          "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43",
+          "requestFingerprint": "aa437ab1f8fba352168d354d082ad8979504704f1002a55db0201327e8605c87",
           "role": "initial"
         },
-        "requestFingerprint": "b72129ce9965ccb803410a762ab330e22e6c930ddcbc60aea763d417941cfc43"
+        "requestFingerprint": "aa437ab1f8fba352168d354d082ad8979504704f1002a55db0201327e8605c87"
       },
       "requestId": "request-scrape-1"
     },
@@ -173,15 +177,26 @@
     "contentHashes": [
       "6a3f5c9bf1aae2fa7639250da7fd79340146234e5ce3b1b8b64f288d9c1aaad3"
     ],
+    "executionKind": "EXECUTION_KIND_SCRAPE",
     "goneDetectionAllowed": true,
     "jobEffects": [
       {
         "contentSha256": "6a3f5c9bf1aae2fa7639250da7fd79340146234e5ce3b1b8b64f288d9c1aaad3",
         "sourceUrl": "https://careers.example.invalid/jobs/42"
       }
+    ],
+    "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+    "requestId": "request-scrape-1",
+    "targetUrl": "https://careers.example.invalid/jobs/42",
+    "targets": [
+      {
+        "action": "PROJECTED_ACTION_UPSERT",
+        "contentSha256": "6a3f5c9bf1aae2fa7639250da7fd79340146234e5ce3b1b8b64f288d9c1aaad3",
+        "url": "https://careers.example.invalid/jobs/42"
+      }
     ]
   },
-  "expectedSemanticSha256": "736ba35f7067641115e63e08ce635764ce93a83d68e44d99a409cb0cb003a9d7",
+  "expectedSemanticSha256": "3569ee5a888a3887f86833a281e32bf7f43e28652b4296d6af1ec5a1b47e980b",
   "name": "representative-scrape",
   "providerFamily": "representative-json"
 }

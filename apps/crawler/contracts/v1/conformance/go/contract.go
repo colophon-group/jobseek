@@ -8,12 +8,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/netip"
 	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -23,47 +25,26 @@ import (
 const ContractVersion = "crawler.runtime/v1"
 
 var (
-	sha256RE        = regexp.MustCompile(`^[0-9a-f]{64}$`)
-	redactedRE      = regexp.MustCompile(`^redacted-sha256:[0-9a-f]{64}$`)
-	traceparentRE   = regexp.MustCompile(`^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}(?:-[0-9a-f]+)*$`)
-	deadlineRE      = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$`)
-	httpMethodRE    = regexp.MustCompile(`^[A-Z]+$`)
-	localeRE        = regexp.MustCompile(`^[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?$`)
-	emailRE         = regexp.MustCompile(`(?i)[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}`)
-	redactedEmailRE = regexp.MustCompile(`^person-[0-9a-f]{64}@redacted\.invalid$`)
-	phoneRE         = regexp.MustCompile(`\+?[0-9][0-9() .-]{7,}[0-9]`)
-	redactedPhoneRE = regexp.MustCompile(`^\+999-[0-9a-f]{24}$`)
-	sensitiveKeys   = map[string]bool{
-		"access-token": true, "access_token": true, "accesstoken": true,
-		"api-key": true, "api_key": true, "apikey": true, "authorization": true,
-		"auth": true, "client_secret": true, "clientsecret": true, "cookie": true,
-		"credential": true, "key": true, "password": true, "passwd": true,
-		"proxy-authorization": true, "refresh_token": true, "refreshtoken": true,
-		"secret": true, "session": true, "sessionid": true, "set-cookie": true,
-		"sig": true, "signature": true, "token": true, "x-api-key": true,
-	}
-	localeAliases = map[string]bool{"iw": true, "in": true, "ji": true, "jw": true, "mo": true, "sh": true, "en-UK": true}
-	sentinelText  = map[string]bool{"-": true, "n/a": true, "na": true, "none": true, "null": true, "tbd": true, "unknown": true}
-	hardLimits    = generatedHardLimits()
+	sha256RE           = regexp.MustCompile(`^[0-9a-f]{64}$`)
+	redactedRE         = regexp.MustCompile(`^redacted-sha256:[0-9a-f]{64}$`)
+	traceparentRE      = regexp.MustCompile(`^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}(?:-[0-9a-f]+)*$`)
+	deadlineRE         = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$`)
+	httpMethodRE       = regexp.MustCompile(`^[A-Z]+$`)
+	localeRE           = regexp.MustCompile(`^[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?$`)
+	emailRE            = regexp.MustCompile(`(?i)[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}`)
+	redactedEmailRE    = regexp.MustCompile(`^person-[0-9a-f]{64}@redacted\.invalid$`)
+	phoneRE            = regexp.MustCompile(`\+?[0-9][0-9() .-]{7,}[0-9]`)
+	redactedPhoneRE    = regexp.MustCompile(`^\+999-[0-9a-f]{24}$`)
+	headerNameRE       = regexp.MustCompile("^[!#$%&'*+\\-.^_`|~0-9a-z]+$")
+	secretAssignmentRE *regexp.Regexp
+	localeAliases      = map[string]bool{"iw": true, "in": true, "ji": true, "jw": true, "mo": true, "sh": true, "en-UK": true}
+	sentinelText       = map[string]bool{"-": true, "n/a": true, "na": true, "none": true, "null": true, "tbd": true, "unknown": true}
+	hardLimits         = generatedHardLimits()
 )
 
 const maxTransferChunks = 64
 
 const maxExtensionBytes = 65_536
-
-var extensionRegistry = map[string]bool{
-	"jobseek.runtime.v1/representative-json/monitor-config|1|2":   true,
-	"jobseek.runtime.v1/representative-json/scraper-config|1|2":   true,
-	"jobseek.runtime.v1/representative-json/runtime-metadata|1|2": true,
-	"jobseek.runtime.v1/browser/evaluation-json|1|2":              true,
-}
-
-var extensionContexts = map[string]map[string]bool{
-	"jobseek.runtime.v1/representative-json/monitor-config":   {"manifest": true},
-	"jobseek.runtime.v1/representative-json/scraper-config":   {"manifest": true},
-	"jobseek.runtime.v1/representative-json/runtime-metadata": {"job_content": true, "monitor_metadata": true},
-	"jobseek.runtime.v1/browser/evaluation-json":              {"browser_evaluation": true},
-}
 
 var scraperExtensionFields = map[string]bool{
 	"title": true, "description": true, "locations": true, "employment_type": true,
@@ -108,21 +89,57 @@ func text(value, field string, maximum int) error {
 	return nil
 }
 
+func boundedText(value, field string, maximum int) error {
+	if len([]byte(value)) > maximum {
+		return fail("domain_limit", fmt.Sprintf("%s exceeds %d UTF-8 bytes", field, maximum))
+	}
+	return nil
+}
+
 func validURL(value, field string) error {
 	for i := 0; i < len(value); i++ {
 		if value[i] <= 0x20 || value[i] >= 0x7f {
 			return fail("url", field+" must contain visible ASCII only")
 		}
 	}
-	if strings.ContainsAny(value, "%\\") {
-		return fail("url", field+" must not contain percent escapes or backslashes")
+	if strings.Contains(value, `\`) {
+		return fail("url", field+" must not contain backslashes")
+	}
+	if regexp.MustCompile(`%(?:$|[^0-9A-Fa-f]|[0-9A-Fa-f]$)`).MatchString(value) {
+		return fail("url", field+" contains an invalid percent escape")
+	}
+	schemeSeparator := strings.Index(value, "://")
+	rawScheme := ""
+	if schemeSeparator >= 0 {
+		rawScheme = value[:schemeSeparator]
+	}
+	if rawScheme != "http" && rawScheme != "https" {
+		return fail("url", field+" must use a canonical lowercase HTTP(S) scheme")
+	}
+	authority := ""
+	if schemeSeparator >= 0 {
+		authority = value[schemeSeparator+3:]
+		if end := strings.IndexAny(authority, "/?#"); end >= 0 {
+			authority = authority[:end]
+		}
+	}
+	if strings.Contains(authority, "%") {
+		return fail("url", field+" authority/host must not contain percent escapes")
+	}
+	for i := 0; i < len(authority); i++ {
+		if authority[i] >= 0x80 {
+			return fail("url", field+" authority must use an ASCII IDNA A-label")
+		}
 	}
 	parsed, err := url.Parse(value)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Hostname() == "" {
 		return fail("url", field+" must be an absolute HTTP(S) URL")
 	}
-	if parsed.User != nil || strings.Contains(value, "#") || parsed.Scheme != strings.ToLower(parsed.Scheme) || parsed.Hostname() != strings.ToLower(parsed.Hostname()) {
+	if parsed.User != nil || strings.Contains(value, "#") || parsed.Hostname() != strings.ToLower(parsed.Hostname()) {
 		return fail("url", field+" must use canonical scheme/host and omit credentials/fragments")
+	}
+	if strings.HasSuffix(authority, ":") {
+		return fail("url", field+" must omit an explicit empty port")
 	}
 	if port := parsed.Port(); port != "" {
 		portValue, err := strconv.ParseUint(port, 10, 16)
@@ -134,36 +151,68 @@ func validURL(value, field string) error {
 		}
 	}
 	host := parsed.Hostname()
-	if strings.HasPrefix(host, ".") || strings.HasSuffix(host, ".") || strings.Contains(host, "_") || !regexp.MustCompile(`^[a-z0-9.-]+$`).MatchString(host) || strings.Contains(host, "..") {
-		return fail("url", field+" host is not canonical ASCII")
+	if strings.Contains(host, ":") {
+		if strings.Contains(host, ".") {
+			return fail("url", field+" must not use an embedded-IPv4 IPv6 literal")
+		}
+		address, err := netip.ParseAddr(host)
+		if err != nil || !address.Is6() {
+			return fail("url", field+" contains an invalid IPv6 literal")
+		}
+		if address.String() != host {
+			return fail("url", field+" IPv6 literal must use canonical RFC5952 form")
+		}
+	} else {
+		dnsLabelRE := regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
+		for _, label := range strings.Split(host, ".") {
+			if !dnsLabelRE.MatchString(label) {
+				return fail("url", field+" host must use canonical ASCII DNS labels")
+			}
+		}
 	}
-	if parsed.Path == "" || !strings.HasPrefix(parsed.Path, "/") || strings.Contains(parsed.Path, "//") {
-		return fail("url", field+" path must be nonempty and contain no empty segment")
+	if parsed.EscapedPath() == "" {
+		return fail("url", field+" must use '/' instead of an empty path")
 	}
-	for _, part := range strings.Split(parsed.Path, "/") {
+	if strings.Contains(parsed.EscapedPath(), "//") {
+		return fail("url", field+" path must not contain an empty segment")
+	}
+	for _, part := range strings.Split(parsed.EscapedPath(), "/") {
 		if part == "." || part == ".." {
 			return fail("url", field+" path must not contain dot segments")
 		}
 	}
-	if strings.Contains(value, "?") && parsed.RawQuery == "" {
+	for _, escape := range regexp.MustCompile(`%([0-9A-Fa-f]{2})`).FindAllStringSubmatch(value, -1) {
+		if escape[1] != strings.ToUpper(escape[1]) {
+			return fail("url", field+" percent escapes must use uppercase hexadecimal")
+		}
+		decoded, _ := strconv.ParseUint(escape[1], 16, 8)
+		if strings.ContainsRune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~", rune(decoded)) {
+			return fail("url", field+" must not percent-encode an unreserved character")
+		}
+	}
+	if parsed.ForceQuery && parsed.RawQuery == "" {
 		return fail("url", field+" must not contain an empty query delimiter")
+	}
+	if strings.Contains(parsed.RawQuery, ";") {
+		return fail("url", field+" query must use ampersand-only field separators")
 	}
 	if parsed.RawQuery != "" {
 		items := strings.Split(parsed.RawQuery, "&")
 		pairs := make([]string, 0, len(items))
 		seen := map[string]bool{}
-		queryKeyRE := regexp.MustCompile(`^[A-Za-z0-9._~-]+$`)
-		queryValueRE := regexp.MustCompile(`^[A-Za-z0-9._~:-]*$`)
+		queryComponentRE := regexp.MustCompile(`^(?:[A-Za-z0-9._~:-]|%[0-9A-F]{2})*$`)
 		for _, item := range items {
 			if strings.Count(item, "=") != 1 {
 				return fail("url", field+" query entries require exactly one equals sign")
 			}
 			pieces := strings.SplitN(item, "=", 2)
-			if !queryKeyRE.MatchString(pieces[0]) || !queryValueRE.MatchString(pieces[1]) {
+			if pieces[0] == "" || !queryComponentRE.MatchString(pieces[0]) || !queryComponentRE.MatchString(pieces[1]) {
 				return fail("url", field+" query pair is not canonical")
 			}
-			if sensitiveName(pieces[0]) && !redactedRE.MatchString(pieces[1]) {
-				return fail("redaction", "sensitive query key is not deterministically redacted")
+			name, _ := url.QueryUnescape(pieces[0])
+			value, _ := url.QueryUnescape(pieces[1])
+			if err := validateNamedSecret(name, value, "query parameter"); err != nil {
+				return err
 			}
 			if seen[item] {
 				return fail("url", field+" query pairs must be unique and sorted")
@@ -171,33 +220,23 @@ func validURL(value, field string) error {
 			seen[item] = true
 			pairs = append(pairs, item)
 		}
-		sorted := append([]string{}, pairs...)
-		sort.Strings(sorted)
-		if !slicesEqual(pairs, sorted) {
-			return fail("url", field+" query pairs must be unique and sorted")
+		sortedPairs := append([]string(nil), pairs...)
+		sort.Strings(sortedPairs)
+		for index := range pairs {
+			if pairs[index] != sortedPairs[index] {
+				return fail("url", field+" query pairs must be unique and sorted")
+			}
 		}
 	}
 	return nil
 }
 
-func slicesEqual(left, right []string) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for i := range left {
-		if left[i] != right[i] {
-			return false
-		}
-	}
-	return true
-}
-
 func sensitiveName(value string) bool {
 	name := strings.ToLower(strings.TrimSpace(value))
-	if sensitiveKeys[name] {
+	if secretNames[name] {
 		return true
 	}
-	for _, suffix := range []string{"_token", "-token", "_secret", "-secret", "_password", "-password"} {
+	for _, suffix := range credentialSuffixes {
 		if strings.HasSuffix(name, suffix) {
 			return true
 		}
@@ -259,30 +298,151 @@ func validateTraceContext(traceparent *string, tracestate *string) error {
 	return nil
 }
 
-func validateRedactedBody(body []byte, field string, depth int) error {
-	if len(body) == 0 || depth > 2 || !json.Valid(body) {
-		textValue := string(body)
-		for _, email := range emailRE.FindAllString(textValue, -1) {
-			if !redactedEmailRE.MatchString(email) {
-				return fail("redaction", field+" contains an unredacted email")
+func generatedSecretAssignmentRE() *regexp.Regexp {
+	names := make([]string, 0, len(secretNames))
+	for name := range secretNames {
+		names = append(names, regexp.QuoteMeta(name))
+	}
+	sort.Slice(names, func(i, j int) bool {
+		if len(names[i]) == len(names[j]) {
+			return names[i] < names[j]
+		}
+		return len(names[i]) > len(names[j])
+	})
+	return regexp.MustCompile(`(?i)(?:` + strings.Join(names, "|") + `)["']?[ \t]*[:=][ \t]*["']?([^"'&;,\s}]+)`)
+}
+
+func init() {
+	secretAssignmentRE = generatedSecretAssignmentRE()
+}
+
+func hasUnpairedJSONSurrogate(textValue string) bool {
+	for index := 0; index < len(textValue); {
+		if textValue[index] != '\\' {
+			index++
+			continue
+		}
+		end := index
+		for end < len(textValue) && textValue[end] == '\\' {
+			end++
+		}
+		if (end-index)%2 == 0 || end >= len(textValue) || textValue[end] != 'u' {
+			index = end
+			continue
+		}
+		if end+5 > len(textValue) {
+			index = end + 1
+			continue
+		}
+		codepoint, err := strconv.ParseUint(textValue[end+1:end+5], 16, 16)
+		if err != nil {
+			index = end + 1
+			continue
+		}
+		if codepoint >= 0xD800 && codepoint <= 0xDBFF {
+			pair := end + 5
+			if pair+6 > len(textValue) || textValue[pair:pair+2] != `\u` {
+				return true
 			}
-		}
-		for _, phone := range phoneRE.FindAllString(textValue, -1) {
-			if !redactedPhoneRE.MatchString(phone) {
-				return fail("redaction", field+" contains an unredacted phone")
+			low, err := strconv.ParseUint(textValue[pair+2:pair+6], 16, 16)
+			if err != nil || low < 0xDC00 || low > 0xDFFF {
+				return true
 			}
+			index = pair + 6
+			continue
 		}
-		lower := strings.ToLower(textValue)
-		if strings.Contains(lower, "bearer ") && !strings.Contains(lower, "bearer redacted-sha256:") {
-			return fail("redaction", field+" contains an unredacted bearer credential")
+		if codepoint >= 0xDC00 && codepoint <= 0xDFFF {
+			return true
 		}
-		if strings.Contains(textValue, "-----BEGIN ") && strings.Contains(textValue, "PRIVATE KEY-----") {
-			return fail("redaction", field+" contains private key material")
+		index = end + 5
+	}
+	return false
+}
+
+func parseAmpersandFields(value, field string) ([][2]string, error) {
+	if strings.Contains(value, ";") {
+		return nil, fail("redaction", field+" must use ampersand-only field separators")
+	}
+	result := make([][2]string, 0)
+	invalidPercentRE := regexp.MustCompile(`%(?:$|[^0-9A-Fa-f]|[0-9A-Fa-f]$)`)
+	for _, item := range strings.Split(value, "&") {
+		if item == "" {
+			continue
+		}
+		rawName, rawValue, found := strings.Cut(item, "=")
+		if !found {
+			rawValue = ""
+		}
+		if invalidPercentRE.MatchString(rawName) || invalidPercentRE.MatchString(rawValue) {
+			return nil, fail("redaction", field+" contains an invalid percent escape")
+		}
+		name, err := url.QueryUnescape(rawName)
+		if err != nil || !utf8.ValidString(name) {
+			return nil, fail("redaction", field+" contains non-UTF-8 percent encoding")
+		}
+		decodedValue, err := url.QueryUnescape(rawValue)
+		if err != nil || !utf8.ValidString(decodedValue) {
+			return nil, fail("redaction", field+" contains non-UTF-8 percent encoding")
+		}
+		result = append(result, [2]string{name, decodedValue})
+	}
+	return result, nil
+}
+
+func validateNamedSecret(name string, value any, field string) error {
+	normalized := strings.ToLower(name)
+	textValue, isString := value.(string)
+	if sensitiveName(normalized) && (!isString || !redactedRE.MatchString(textValue)) {
+		return fail("redaction", fmt.Sprintf("sensitive %s %s is not deterministically redacted", field, name))
+	}
+	if emailNames[normalized] && (!isString || !redactedEmailRE.MatchString(textValue)) {
+		return fail("redaction", fmt.Sprintf("email %s %s is not deterministically redacted", field, name))
+	}
+	return nil
+}
+
+func validateRedactedBodyOnce(body []byte, field string, depth int, declaredJSON bool) error {
+	if !utf8.Valid(body) {
+		if declaredJSON {
+			return fail("redaction", field+" declares non-UTF-8 JSON")
 		}
 		return nil
 	}
+	textValue := string(body)
+	for _, email := range emailRE.FindAllString(textValue, -1) {
+		if !redactedEmailRE.MatchString(email) {
+			return fail("redaction", field+" contains an unredacted email address")
+		}
+	}
+	for _, phone := range phoneRE.FindAllString(textValue, -1) {
+		if !redactedPhoneRE.MatchString(phone) {
+			return fail("redaction", field+" contains an unredacted phone number")
+		}
+	}
+	bearerRE := regexp.MustCompile(`(?i)\bbearer\s+([A-Za-z0-9._~+:/-]+)`)
+	for _, bearer := range bearerRE.FindAllStringSubmatch(textValue, -1) {
+		if len(bearer) < 2 || !redactedRE.MatchString(bearer[1]) {
+			return fail("redaction", field+" contains an unredacted bearer credential")
+		}
+	}
+	if strings.Contains(textValue, "-----BEGIN ") && strings.Contains(textValue, "PRIVATE KEY-----") {
+		return fail("redaction", field+" contains private key material")
+	}
+	for _, match := range secretAssignmentRE.FindAllStringSubmatch(textValue, -1) {
+		if len(match) < 2 || !redactedRE.MatchString(match[1]) {
+			return fail("redaction", field+" contains an unredacted secret assignment")
+		}
+	}
+	trimmed := strings.TrimSpace(textValue)
+	looksJSON := strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[")
+	if hasUnpairedJSONSurrogate(textValue) {
+		return fail("redaction", field+" JSON contains an unpaired Unicode surrogate escape")
+	}
 	var value any
 	if err := json.Unmarshal(body, &value); err != nil {
+		if declaredJSON || looksJSON {
+			return fail("redaction", field+" contains malformed JSON")
+		}
 		return nil
 	}
 	var walk func(any, string) error
@@ -290,11 +450,8 @@ func validateRedactedBody(body []byte, field string, depth int) error {
 		switch typed := current.(type) {
 		case map[string]any:
 			for key, child := range typed {
-				if sensitiveName(key) {
-					textValue, ok := child.(string)
-					if !ok || !redactedRE.MatchString(textValue) {
-						return fail("redaction", path+"."+key+" is not deterministically redacted")
-					}
+				if err := validateNamedSecret(key, child, path+" key"); err != nil {
+					return err
 				}
 				if err := walk(child, path+"."+key); err != nil {
 					return err
@@ -307,12 +464,9 @@ func validateRedactedBody(body []byte, field string, depth int) error {
 				}
 			}
 		case string:
-			if err := validateRedactedBody([]byte(typed), path, depth+1); err != nil {
-				return err
-			}
 			if len(typed) >= 16 && len(typed)%4 == 0 {
 				if decoded, err := base64.StdEncoding.DecodeString(typed); err == nil {
-					if err := validateRedactedBody(decoded, path, depth+1); err != nil {
+					if err := validateRedactedBody(decoded, path, nil, depth+1); err != nil {
 						return err
 					}
 				}
@@ -321,6 +475,56 @@ func validateRedactedBody(body []byte, field string, depth int) error {
 		return nil
 	}
 	return walk(value, field)
+}
+
+func contentType(headers []*runtimev1.Header) string {
+	for _, header := range headers {
+		if header.GetName() == "content-type" {
+			return strings.ToLower(strings.TrimSpace(strings.SplitN(header.GetValue(), ";", 2)[0]))
+		}
+	}
+	return ""
+}
+
+func validateRedactedBody(body []byte, field string, headers []*runtimev1.Header, depth int) error {
+	if len(body) == 0 || depth > 2 {
+		return nil
+	}
+	mediaType := contentType(headers)
+	declaredJSON := mediaType == "application/json" || strings.HasSuffix(mediaType, "+json")
+	decoded := append([]byte(nil), body...)
+	for index := 0; index < 4; index++ {
+		decodedField := field
+		if !bytes.Equal(decoded, body) {
+			decodedField += " percent-decoded"
+		}
+		if err := validateRedactedBodyOnce(decoded, decodedField, depth, declaredJSON); err != nil {
+			return err
+		}
+		next, err := url.PathUnescape(string(decoded))
+		if err != nil || next == string(decoded) {
+			break
+		}
+		if index == 3 {
+			return fail("redaction", field+" exceeds the bounded percent-decoding depth")
+		}
+		decoded = []byte(next)
+	}
+	if mediaType == "application/x-www-form-urlencoded" {
+		if !utf8.Valid(body) {
+			return fail("redaction", field+" form body is not UTF-8")
+		}
+		fields, err := parseAmpersandFields(string(body), field+" form")
+		if err != nil {
+			return err
+		}
+		for _, pair := range fields {
+			if err := validateNamedSecret(pair[0], pair[1], "form field"); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func hash(value, field string) error {
@@ -397,6 +601,9 @@ func headers(values []*runtimev1.Header, field string) error {
 		if name != header.GetName() {
 			return fail("header", field+".name must be canonical lowercase without whitespace")
 		}
+		if !headerNameRE.MatchString(name) {
+			return fail("header", field+".name must be a canonical lowercase HTTP token")
+		}
 		if seen[name] {
 			return fail("duplicate", "duplicate header "+name)
 		}
@@ -407,8 +614,11 @@ func headers(values []*runtimev1.Header, field string) error {
 		if strings.ContainsAny(header.GetValue(), "\r\n") {
 			return fail("header", name+" contains a line break")
 		}
-		if sensitiveName(name) && (!header.GetRedacted() || !redactedRE.MatchString(header.GetValue())) {
+		if (sensitiveHeaders[name] || sensitiveName(name)) && (!header.GetRedacted() || !redactedRE.MatchString(header.GetValue())) {
 			return fail("redaction", "sensitive header "+name+" is not deterministically redacted")
+		}
+		if err := validateRedactedBody([]byte(header.GetValue()), field+"."+name, nil, 0); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -583,11 +793,11 @@ func ValidateExtension(extension *runtimev1.ExtensionEnvelope, context string) e
 	if extension.GetEncoding() == 0 || runtimev1.ExtensionEncoding_name[int32(extension.GetEncoding())] == "" {
 		return fail("enum", "extension encoding is unspecified or unknown")
 	}
-	key := fmt.Sprintf("%s|%d|%d", extension.GetSchemaId(), extension.GetSchemaVersion(), extension.GetEncoding())
-	if !extensionRegistry[key] {
+	rule, registered := extensionRules[extension.GetSchemaId()]
+	if !registered || extension.GetSchemaVersion() != rule.version || extension.GetEncoding() != rule.encoding {
 		return fail("extension", "extension schema/version/encoding is not registered for v1")
 	}
-	if !extensionContexts[extension.GetSchemaId()][context] {
+	if !rule.contexts[context] {
 		return fail("extension_context", extension.GetSchemaId()+" is forbidden in "+context)
 	}
 	if len(extension.GetPayload()) > maxExtensionBytes {
@@ -609,20 +819,20 @@ func ValidateExtension(extension *runtimev1.ExtensionEnvelope, context string) e
 		if !bytes.Equal(canonical, extension.GetPayload()) {
 			return fail("extension", "JSON extension payload is not canonical")
 		}
-		if err := validateExtensionSchema(extension.GetSchemaId(), extension.GetPayload()); err != nil {
+		if err := validateExtensionSchema(rule.validator, extension.GetPayload()); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func validateExtensionSchema(schemaID string, payload []byte) error {
+func validateExtensionSchema(validator string, payload []byte) error {
 	object := map[string]json.RawMessage{}
 	if err := json.Unmarshal(payload, &object); err != nil || object == nil {
 		return fail("extension_schema", "extension payload must be a typed JSON object")
 	}
-	switch schemaID {
-	case "jobseek.runtime.v1/representative-json/monitor-config":
+	switch validator {
+	case "monitor_config":
 		raw, ok := object["pages"]
 		if !ok || len(object) != 1 {
 			return fail("extension_schema", "monitor-config requires exactly pages")
@@ -631,7 +841,7 @@ func validateExtensionSchema(schemaID string, payload []byte) error {
 		if json.Unmarshal(raw, &pages) != nil || pages == 0 || pages > 1_000 {
 			return fail("extension_schema", "monitor-config pages must be integer 1..1000")
 		}
-	case "jobseek.runtime.v1/representative-json/scraper-config":
+	case "scraper_config":
 		raw, ok := object["fields"]
 		if !ok || len(object) != 1 {
 			return fail("extension_schema", "scraper-config requires exactly fields")
@@ -647,7 +857,7 @@ func validateExtensionSchema(schemaID string, payload []byte) error {
 			}
 			seen[field] = true
 		}
-	case "jobseek.runtime.v1/representative-json/runtime-metadata":
+	case "runtime_metadata":
 		raw, ok := object["source"]
 		if !ok || len(object) != 1 {
 			return fail("extension_schema", "runtime-metadata requires exactly source")
@@ -656,7 +866,7 @@ func validateExtensionSchema(schemaID string, payload []byte) error {
 		if json.Unmarshal(raw, &source) != nil || (source != "captured-provider" && source != "offline-fixture") {
 			return fail("extension_schema", "runtime-metadata source is invalid")
 		}
-	case "jobseek.runtime.v1/browser/evaluation-json":
+	case "evaluation_json":
 		raw, ok := object["value"]
 		if !ok || len(object) != 1 {
 			return fail("extension_schema", "evaluation-json requires exactly value")
@@ -906,6 +1116,43 @@ func ValidateJobContent(content *runtimev1.JobContent, limits *runtimev1.Limits)
 		}
 		return true, nil
 	}
+	if content.Title != nil {
+		if err := boundedText(content.GetTitle(), "job.title", 32_768); err != nil {
+			return err
+		}
+	}
+	if content.DescriptionHtml != nil {
+		if err := boundedText(content.GetDescriptionHtml(), "job.description_html", int(hardLimits.GetMaxInlineBodyBytes())); err != nil {
+			return err
+		}
+	}
+	if content.Locations != nil {
+		if len(content.GetLocations().GetValues()) > 1_024 {
+			return fail("domain_limit", "job.locations exceeds 1024 values")
+		}
+		for _, location := range content.GetLocations().GetValues() {
+			if err := boundedText(location, "job.locations", 4_096); err != nil {
+				return err
+			}
+		}
+	}
+	for _, value := range []struct {
+		present bool
+		text    string
+		field   string
+		maximum int
+	}{
+		{content.EmploymentType != nil, content.GetEmploymentType(), "job.employment_type", 128},
+		{content.JobLocationType != nil, content.GetJobLocationType(), "job.job_location_type", 128},
+		{content.DatePosted != nil, content.GetDatePosted(), "job.date_posted", 128},
+		{content.Language != nil, content.GetLanguage(), "job.language", 35},
+	} {
+		if value.present {
+			if err := boundedText(value.text, value.field, value.maximum); err != nil {
+				return err
+			}
+		}
+	}
 	titlePresent, err := meaningful(content.Title, "job.title")
 	if err != nil {
 		return err
@@ -929,6 +1176,9 @@ func ValidateJobContent(content *runtimev1.JobContent, limits *runtimev1.Limits)
 			return fail("salary", "salary minimum exceeds maximum")
 		}
 	}
+	if len(content.GetLocalizations()) > 128 {
+		return fail("domain_limit", "job.localizations exceeds 128 values")
+	}
 	locales := map[string]bool{}
 	for _, localized := range content.GetLocalizations() {
 		if err := text(localized.GetLocale(), "localization.locale", 35); err != nil {
@@ -940,6 +1190,16 @@ func ValidateJobContent(content *runtimev1.JobContent, limits *runtimev1.Limits)
 		locales[localized.GetLocale()] = true
 		if !canonicalLocale(localized.GetLocale()) {
 			return fail("locale", "localization locale must be canonical and non-alias")
+		}
+		if localized.Title != nil {
+			if err := boundedText(localized.GetTitle(), "localization.title", 32_768); err != nil {
+				return err
+			}
+		}
+		if localized.DescriptionHtml != nil {
+			if err := boundedText(localized.GetDescriptionHtml(), "localization.description_html", int(hardLimits.GetMaxInlineBodyBytes())); err != nil {
+				return err
+			}
 		}
 		localizedTitle, err := meaningful(localized.Title, "localization.title")
 		if err != nil {
@@ -958,8 +1218,14 @@ func ValidateJobContent(content *runtimev1.JobContent, limits *runtimev1.Limits)
 	if !titlePresent || !descriptionPresent {
 		return fail("job_content", "rich job requires meaningful title and description")
 	}
+	if len(content.GetSkills()) > 1_024 {
+		return fail("domain_limit", "job.skills exceeds 1024 values")
+	}
 	seenSkills := map[string]bool{}
 	for _, skill := range content.GetSkills() {
+		if err := boundedText(skill, "job.skills", 512); err != nil {
+			return err
+		}
 		if skill == "" || skill != strings.TrimSpace(skill) || seenSkills[skill] {
 			return fail("job_content", "skills must be unique, nonempty, and trimmed")
 		}
@@ -1180,11 +1446,11 @@ func ValidateBrowserPlan(plan *runtimev1.BrowserPlan, limits *runtimev1.Limits) 
 			if item.Paginate.GetMaxPages() == 0 || item.Paginate.GetMaxPages() > 1_000 {
 				return fail("limit", "browser pagination page count is out of bounds")
 			}
-			if item.Paginate.GetDynamicOriginPerAdditionalPage() {
-				return fail("origin", "v1 disallows dynamic pagination origin allocation")
-			}
 			pageOrigins := item.Paginate.GetAdditionalPageOriginRequestIds()
-			if len(pageOrigins) != int(item.Paginate.GetMaxPages()-1) {
+			if item.Paginate.GetDynamicOriginPerAdditionalPage() && len(pageOrigins) != 0 {
+				return fail("origin", "dynamic pagination must omit predeclared page origins")
+			}
+			if !item.Paginate.GetDynamicOriginPerAdditionalPage() && len(pageOrigins) != int(item.Paginate.GetMaxPages()-1) {
 				return fail("origin", "pagination requires exactly max_pages-1 predeclared page origins")
 			}
 			seenPageOrigins := map[string]bool{}
@@ -1574,6 +1840,27 @@ func deterministicBytes(m proto.Message) []byte {
 func semanticFrameBytes(frame *runtimev1.ExecutionFrame) []byte {
 	value := proto.Clone(frame).(*runtimev1.ExecutionFrame)
 	value.AttemptId = ""
+	switch payload := value.GetPayload().(type) {
+	case *runtimev1.ExecutionFrame_MonitorBatch:
+		result := payload.MonitorBatch
+		sort.Strings(result.Urls)
+		for _, job := range result.Jobs {
+			job.Content = canonicalJobContent(job.GetContent())
+		}
+		sort.Slice(result.Jobs, func(i, j int) bool {
+			if result.Jobs[i].GetUrl() != result.Jobs[j].GetUrl() {
+				return result.Jobs[i].GetUrl() < result.Jobs[j].GetUrl()
+			}
+			return bytes.Compare(deterministicBytes(result.Jobs[i]), deterministicBytes(result.Jobs[j])) < 0
+		})
+		if result.MetadataUpdates != nil {
+			sort.Slice(result.MetadataUpdates.Extensions, func(i, j int) bool {
+				return result.MetadataUpdates.Extensions[i].GetSchemaId() < result.MetadataUpdates.Extensions[j].GetSchemaId()
+			})
+		}
+	case *runtimev1.ExecutionFrame_ScrapeResult:
+		payload.ScrapeResult.Content = canonicalJobContent(payload.ScrapeResult.GetContent())
+	}
 	return deterministicBytes(value)
 }
 
@@ -1643,6 +1930,7 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 	nextSequence := uint64(0)
 	frames := map[uint64]*runtimev1.ExecutionFrame{}
 	operations := map[string]*runtimev1.OriginOperationRef{}
+	dynamicQuotas := map[string]uint32{}
 	dispatched := map[string]bool{}
 	dedupeRequired := map[string]bool{}
 	terminalSeen, resumeRejected, cancelled := false, false, false
@@ -1767,6 +2055,14 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 				operations, err = ValidateOriginOperations(request.GetOriginOperations(), request.GetOriginRequestId())
 				if err != nil {
 					return err
+				}
+				if request.GetKind() == runtimev1.ExecutionKind_EXECUTION_KIND_BROWSER {
+					for _, action := range request.GetBrowser().GetPlan().GetActions() {
+						paginate := action.GetPaginate()
+						if paginate != nil && paginate.GetDynamicOriginPerAdditionalPage() {
+							dynamicQuotas[action.GetOriginRequestId()] = paginate.GetMaxPages() - 1
+						}
+					}
 				}
 				nextSequence = 0
 			case *runtimev1.ClientMessage_Resume:
@@ -1929,7 +2225,31 @@ func ValidateTranscript(t *runtimev1.ProtocolTranscript, liveFences ...*runtimev
 				}
 				switch payload := frame.GetPayload().(type) {
 				case *runtimev1.ExecutionFrame_OriginOperationDeclared:
-					return fail("origin", "v1 disallows dynamic origin operation declarations")
+					op := payload.OriginOperationDeclared.GetOperation()
+					if request.GetKind() != runtimev1.ExecutionKind_EXECUTION_KIND_BROWSER {
+						return fail("origin", "dynamic declarations require a browser pagination request")
+					}
+					if op.ParentOriginRequestId == nil {
+						return fail("origin", "dynamic pagination declaration requires its action parent")
+					}
+					parentID := op.GetParentOriginRequestId()
+					if dynamicQuotas[parentID] == 0 {
+						return fail("origin", "dynamic pagination declaration exceeds its bounded quota")
+					}
+					if err := text(op.GetOriginRequestId(), "origin.origin_request_id", 512); err != nil {
+						return err
+					}
+					if err := text(op.GetRole(), "origin.role", 128); err != nil {
+						return err
+					}
+					if err := hash(op.GetRequestFingerprint(), "origin.request_fingerprint"); err != nil {
+						return err
+					}
+					if operations[op.GetOriginRequestId()] != nil || op.GetOperationSequence() != uint32(len(operations)) || operations[parentID] == nil {
+						return fail("origin_sequence", "dynamic origin declaration is not contiguous and unique")
+					}
+					operations[op.GetOriginRequestId()] = proto.Clone(op).(*runtimev1.OriginOperationRef)
+					dynamicQuotas[parentID]--
 				case *runtimev1.ExecutionFrame_OriginContact:
 					op := payload.OriginContact.GetOperation()
 					known := operations[op.GetOriginRequestId()]
@@ -2116,7 +2436,7 @@ func canonicalJSON(message proto.Message) ([]byte, error) {
 	return json.Marshal(value)
 }
 
-func ContentHash(content *runtimev1.JobContent) string {
+func canonicalJobContent(content *runtimev1.JobContent) *runtimev1.JobContent {
 	canonical := proto.Clone(content).(*runtimev1.JobContent)
 	sort.Slice(canonical.Localizations, func(i, j int) bool {
 		left, right := canonical.Localizations[i], canonical.Localizations[j]
@@ -2135,18 +2455,43 @@ func ContentHash(content *runtimev1.JobContent) string {
 	if canonical.Locations != nil {
 		sort.Strings(canonical.Locations.Values)
 	}
-	raw := deterministicBytes(canonical)
+	return canonical
+}
+
+func ContentHash(content *runtimev1.JobContent) string {
+	raw := deterministicBytes(canonicalJobContent(content))
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:])
 }
 
 func ProjectFrames(frames []*runtimev1.ExecutionFrame, request *runtimev1.ExecutionRequest) (*runtimev1.ProjectedEffects, error) {
-	result := &runtimev1.ProjectedEffects{GoneDetectionAllowed: true}
+	if request == nil {
+		return nil, fail("projection", "projection requires its typed ExecutionRequest")
+	}
+	targetURL := ""
+	switch request.GetKind() {
+	case runtimev1.ExecutionKind_EXECUTION_KIND_MONITOR:
+		targetURL = request.GetBoardManifest().GetBoardUrl()
+	case runtimev1.ExecutionKind_EXECUTION_KIND_SCRAPE:
+		targetURL = request.GetScrape().GetSourceUrl()
+	case runtimev1.ExecutionKind_EXECUTION_KIND_BROWSER:
+		targetURL = request.GetBrowser().GetPlan().GetTargetUrl()
+	default:
+		return nil, fail("projection", "projection request has an unsupported execution kind")
+	}
+	result := &runtimev1.ProjectedEffects{
+		GoneDetectionAllowed: true,
+		RequestId:            request.GetRequestId(),
+		OriginRequestId:      request.GetOriginRequestId(),
+		ExecutionKind:        request.GetKind(),
+		TargetUrl:            targetURL,
+	}
 	urls := map[string]bool{}
 	hashes := []string{}
 	metadataDigest := sha256.New()
 	metadataSeen := false
 	jobEffects := []*runtimev1.JobEffect{}
+	targets := map[string]*runtimev1.ProjectedTarget{}
 	var metadataSize [8]byte
 	for _, frame := range frames {
 		switch payload := frame.GetPayload().(type) {
@@ -2154,13 +2499,16 @@ func ProjectFrames(frames []*runtimev1.ExecutionFrame, request *runtimev1.Execut
 			m := payload.MonitorBatch
 			for _, u := range m.GetUrls() {
 				urls[u] = true
+				targets[u] = &runtimev1.ProjectedTarget{Url: u, Action: runtimev1.ProjectedAction_PROJECTED_ACTION_UPSERT}
 			}
 			for _, job := range m.GetJobs() {
 				digest := ContentHash(job.GetContent())
 				hashes = append(hashes, digest)
 				jobEffects = append(jobEffects, &runtimev1.JobEffect{SourceUrl: job.GetUrl(), ContentSha256: digest})
+				value := digest
+				targets[job.GetUrl()] = &runtimev1.ProjectedTarget{Url: job.GetUrl(), Action: runtimev1.ProjectedAction_PROJECTED_ACTION_UPSERT, ContentSha256: &value}
 			}
-			result.GoneDetectionAllowed = result.GetGoneDetectionAllowed() && !m.GetTruncated()
+			result.GoneDetectionAllowed = result.GetGoneDetectionAllowed() && !m.GetTruncated() && m.GetSecurityFilteredCount() == 0
 			result.Hybrid = result.GetHybrid() || m.GetHybrid()
 			result.Truncated = result.GetTruncated() || m.GetTruncated()
 			result.FilteredCount += m.GetFilteredCount()
@@ -2183,6 +2531,12 @@ func ProjectFrames(frames []*runtimev1.ExecutionFrame, request *runtimev1.Execut
 				return nil, fail("projection", "scrape projection requires its typed ExecutionRequest")
 			}
 			jobEffects = append(jobEffects, &runtimev1.JobEffect{SourceUrl: request.GetScrape().GetSourceUrl(), ContentSha256: digest})
+			value := digest
+			targets[request.GetScrape().GetSourceUrl()] = &runtimev1.ProjectedTarget{Url: request.GetScrape().GetSourceUrl(), Action: runtimev1.ProjectedAction_PROJECTED_ACTION_UPSERT, ContentSha256: &value}
+		case *runtimev1.ExecutionFrame_BrowserResult:
+			if payload.BrowserResult.GetSuccess() != nil {
+				targets[request.GetBrowser().GetPlan().GetTargetUrl()] = &runtimev1.ProjectedTarget{Url: request.GetBrowser().GetPlan().GetTargetUrl(), Action: runtimev1.ProjectedAction_PROJECTED_ACTION_BROWSER_RESULT}
+			}
 		}
 	}
 	for u := range urls {
@@ -2198,6 +2552,10 @@ func ProjectFrames(frames []*runtimev1.ExecutionFrame, request *runtimev1.Execut
 		return jobEffects[i].GetContentSha256() < jobEffects[j].GetContentSha256()
 	})
 	result.JobEffects = jobEffects
+	for _, target := range targets {
+		result.Targets = append(result.Targets, target)
+	}
+	sort.Slice(result.Targets, func(i, j int) bool { return result.Targets[i].GetUrl() < result.Targets[j].GetUrl() })
 	if metadataSeen {
 		v := hex.EncodeToString(metadataDigest.Sum(nil))
 		result.MetadataUpdatesSha256 = &v
@@ -2208,16 +2566,33 @@ func ProjectFrames(frames []*runtimev1.ExecutionFrame, request *runtimev1.Execut
 func SemanticHash(frames []*runtimev1.ExecutionFrame, projection *runtimev1.ProjectedEffects) (string, error) {
 	digest := sha256.New()
 	_, _ = digest.Write(append([]byte(ContractVersion), 0))
-	messages := make([]proto.Message, 0, len(frames)+1)
+	messages := make([][]byte, 0, len(frames)+1)
 	for _, frame := range frames {
-		value := proto.Clone(frame).(*runtimev1.ExecutionFrame)
-		value.AttemptId = ""
-		messages = append(messages, value)
+		messages = append(messages, semanticFrameBytes(frame))
 	}
-	messages = append(messages, projection)
+	canonicalProjection := proto.Clone(projection).(*runtimev1.ProjectedEffects)
+	sort.Strings(canonicalProjection.UrlsToUpsert)
+	sort.Strings(canonicalProjection.ContentHashes)
+	sort.Slice(canonicalProjection.JobEffects, func(i, j int) bool {
+		left, right := canonicalProjection.JobEffects[i], canonicalProjection.JobEffects[j]
+		if left.GetSourceUrl() != right.GetSourceUrl() {
+			return left.GetSourceUrl() < right.GetSourceUrl()
+		}
+		return left.GetContentSha256() < right.GetContentSha256()
+	})
+	sort.Slice(canonicalProjection.Targets, func(i, j int) bool {
+		left, right := canonicalProjection.Targets[i], canonicalProjection.Targets[j]
+		if left.GetUrl() != right.GetUrl() {
+			return left.GetUrl() < right.GetUrl()
+		}
+		if left.GetAction() != right.GetAction() {
+			return left.GetAction() < right.GetAction()
+		}
+		return left.GetContentSha256() < right.GetContentSha256()
+	})
+	messages = append(messages, deterministicBytes(canonicalProjection))
 	var size [8]byte
-	for _, message := range messages {
-		raw := deterministicBytes(message)
+	for _, raw := range messages {
 		binary.BigEndian.PutUint64(size[:], uint64(len(raw)))
 		_, _ = digest.Write(size[:])
 		_, _ = digest.Write(raw)
@@ -2285,6 +2660,19 @@ func ValidateReplay(replay *runtimev1.ReplayCase, limits *runtimev1.Limits) erro
 		if err := validURL(exchange.GetRequest().GetUrl(), "replay.request.url"); err != nil {
 			return err
 		}
+		parsedURL, _ := url.Parse(exchange.GetRequest().GetUrl())
+		queryFields, err := parseAmpersandFields(parsedURL.RawQuery, "replay.request.query")
+		if err != nil {
+			return err
+		}
+		for _, pair := range queryFields {
+			if err := validateNamedSecret(pair[0], pair[1], "query parameter"); err != nil {
+				return err
+			}
+		}
+		if err := validateRedactedBody([]byte(parsedURL.RawQuery), "replay.request.query", nil, 0); err != nil {
+			return err
+		}
 		if err := headers(exchange.GetRequest().GetHeaders(), "replay.request.headers"); err != nil {
 			return err
 		}
@@ -2302,10 +2690,10 @@ func ValidateReplay(replay *runtimev1.ReplayCase, limits *runtimev1.Limits) erro
 		if err != nil {
 			return err
 		}
-		if err := validateRedactedBody(requestBody, "replay.request.body", 0); err != nil {
+		if err := validateRedactedBody(requestBody, "replay.request.body", exchange.GetRequest().GetHeaders(), 0); err != nil {
 			return err
 		}
-		if err := validateRedactedBody(responseBody, "replay.response.body", 0); err != nil {
+		if err := validateRedactedBody(responseBody, "replay.response.body", exchange.GetResponse().GetHeaders(), 0); err != nil {
 			return err
 		}
 		if RequestFingerprint(exchange.GetRequest()) != op.GetRequestFingerprint() {

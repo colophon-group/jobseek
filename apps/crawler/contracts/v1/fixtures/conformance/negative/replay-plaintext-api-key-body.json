@@ -1,0 +1,380 @@
+{
+  "expectedError": "redaction",
+  "name": "replay-plaintext-api-key-body",
+  "replay": {
+    "adapter": "REPLAY_ADAPTER_NORMALIZED_MONITOR_JSON",
+    "contractVersion": "crawler.runtime/v1",
+    "exchanges": [
+      {
+        "deterministicallyRedacted": true,
+        "normalizedResultFrameSequence": "1",
+        "operation": {
+          "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+          "requestFingerprint": "aa437ab1f8fba352168d354d082ad8979504704f1002a55db0201327e8605c87",
+          "role": "page-1"
+        },
+        "request": {
+          "body": {
+            "chunks": [
+              {
+                "inlineBody": "YXBpX2tleT1maXh0dXJlLXNlY3JldA==",
+                "sha256": "3b894fe104966a05d74c0b4f78eeca9a418003cbbf153616610d330ff2aefe4f",
+                "sizeBytes": "22"
+              }
+            ],
+            "complete": true,
+            "totalSha256": "3b894fe104966a05d74c0b4f78eeca9a418003cbbf153616610d330ff2aefe4f",
+            "totalSizeBytes": "22"
+          },
+          "headers": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            },
+            {
+              "name": "authorization",
+              "redacted": true,
+              "value": "redacted-sha256:3742f7ab8e2513ce9d6da7e6e16d9f1b9797765fd79e11723769b2026fa70e2d"
+            }
+          ],
+          "method": "GET",
+          "url": "https://careers.example.invalid/api/jobs?page=1"
+        },
+        "response": {
+          "body": {
+            "chunks": [
+              {
+                "inlineBody": "ewogICJmaWx0ZXJlZENvdW50IjogIjIiLAogICJoeWJyaWQiOiB0cnVlLAogICJqb2JzIjogWwogICAgewogICAgICAiY29udGVudCI6IHsKICAgICAgICAiZGVzY3JpcHRpb25IdG1sIjogIjxwPkJ1aWxkIHNhZmVseTwvcD4iLAogICAgICAgICJsb2NhdGlvbnMiOiB7fSwKICAgICAgICAic2tpbGxzIjogWwogICAgICAgICAgIlB5dGhvbiIsCiAgICAgICAgICAiU1FMIgogICAgICAgIF0sCiAgICAgICAgInRpdGxlIjogIkVuZ2luZWVyIDEiCiAgICAgIH0sCiAgICAgICJ1cmwiOiAiaHR0cHM6Ly9jYXJlZXJzLmV4YW1wbGUuaW52YWxpZC9qb2JzLzEiCiAgICB9CiAgXSwKICAibWV0YWRhdGFVcGRhdGVzIjogewogICAgImN1cnNvciI6ICJwYWdlLTEiLAogICAgImV4dGVuc2lvbnMiOiBbCiAgICAgIHsKICAgICAgICAiZW5jb2RpbmciOiAiRVhURU5TSU9OX0VOQ09ESU5HX0NBTk9OSUNBTF9KUw==",
+                "sha256": "7065128134ad04a5e35c6ddd4df864156cff3e6a0cf4b9834e8643470b5a6a9d",
+                "sizeBytes": "454"
+              },
+              {
+                "inlineBody": "T04iLAogICAgICAgICJwYXlsb2FkIjogImV5SnpiM1Z5WTJVaU9pSnZabVpzYVc1bExXWnBlSFIxY21VaWZRPT0iLAogICAgICAgICJwYXlsb2FkU2hhMjU2IjogIjVlMzQ2ZTY4MDFkZTZmMzNkZWVlY2VhZjMyODk1ZGVhOTk3NGYwMjcyNTQ1ZGNmZGZiMWQ3NGI3YzQzZmMwODkiLAogICAgICAgICJzY2hlbWFJZCI6ICJqb2JzZWVrLnJ1bnRpbWUudjEvcmVwcmVzZW50YXRpdmUtanNvbi9ydW50aW1lLW1ldGFkYXRhIiwKICAgICAgICAic2NoZW1hVmVyc2lvbiI6IDEKICAgICAgfQogICAgXQogIH0sCiAgIm5ld1NpdGVtYXBVcmwiOiAiaHR0cHM6Ly9jYXJlZXJzLmV4YW1wbGUuaW52YWxpZC9zaXRlbWFwLWN1cnJlbnQueG1sIiwKICAic2VjdXJpdHlGaWx0ZXJlZENvdW50IjogIjEiLAogICJ1cmxzIjogWwogICAgImh0dHBzOi8vY2FyZWVycy5leGFtcGxlLmludmFsaWQvam9icy8xIgogIF0KfQ==",
+                "sequence": 1,
+                "sha256": "0a039fcdb18dadaf435afc043451b67f15e712c4813b1d4bda32b21aa1d4e000",
+                "sizeBytes": "454"
+              }
+            ],
+            "complete": true,
+            "totalSha256": "1e51685392c8af968400a1ccacbcfd32652beb7d62f9adf942d3ee04abc717d6",
+            "totalSizeBytes": "908"
+          },
+          "headers": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ],
+          "status": 200
+        }
+      },
+      {
+        "deterministicallyRedacted": true,
+        "normalizedResultFrameSequence": "3",
+        "operation": {
+          "operationSequence": 1,
+          "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+          "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+          "requestFingerprint": "e74e31e0a80741a99711d2866dd0d542ddf7323f1f1fda872a5e81c4309f50ed",
+          "role": "page-2"
+        },
+        "request": {
+          "body": {
+            "complete": true,
+            "totalSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "headers": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            },
+            {
+              "name": "authorization",
+              "redacted": true,
+              "value": "redacted-sha256:3742f7ab8e2513ce9d6da7e6e16d9f1b9797765fd79e11723769b2026fa70e2d"
+            }
+          ],
+          "method": "GET",
+          "url": "https://careers.example.invalid/api/jobs?page=2"
+        },
+        "response": {
+          "body": {
+            "chunks": [
+              {
+                "inlineBody": "ewogICJoeWJyaWQiOiB0cnVlLAogICJqb2JzIjogWwogICAgewogICAgICAiY29udGVudCI6IHsKICAgICAgICAiZGVzY3JpcHRpb25IdG1sIjogIjxwPkJ1aWxkIHNhZmVseTwvcD4iLAogICAgICAgICJza2lsbHMiOiBbCiAgICAgICAgICAiUHl0aG9uIiwKICAgICAgICAgICJTUUwiCiAgICAgICAgXSwKICAgICAgICAidGl0bGUiOiAiRW5naW5lZXIgMiIKICAgICAgfSwKICAgICAgInVybCI6ICJodHRwczovL2NhcmVlcnMuZXhhbXBsZS5pbnZhbGlkL2pvYnMvMiIKICAgIH0KICBdLAogICJtZXRhZGF0YVVwZGF0ZXMiOiB7CiAgICAiY3Vyc29yIjogInBhZ2UtMiIsCiAgICAiZXh0ZW5zaW9ucyI6IFsKICAgICAgewogICAgICAgICJlbmNvZGluZyI6ICJFWFRFTlNJT05fRU5D",
+                "sha256": "ec186bd0513a7ba337eef19bf1986413c15efaffc9ec705f25506d78aa3e8e93",
+                "sizeBytes": "387"
+              },
+              {
+                "inlineBody": "T0RJTkdfQ0FOT05JQ0FMX0pTT04iLAogICAgICAgICJwYXlsb2FkIjogImV5SnpiM1Z5WTJVaU9pSnZabVpzYVc1bExXWnBlSFIxY21VaWZRPT0iLAogICAgICAgICJwYXlsb2FkU2hhMjU2IjogIjVlMzQ2ZTY4MDFkZTZmMzNkZWVlY2VhZjMyODk1ZGVhOTk3NGYwMjcyNTQ1ZGNmZGZiMWQ3NGI3YzQzZmMwODkiLAogICAgICAgICJzY2hlbWFJZCI6ICJqb2JzZWVrLnJ1bnRpbWUudjEvcmVwcmVzZW50YXRpdmUtanNvbi9ydW50aW1lLW1ldGFkYXRhIiwKICAgICAgICAic2NoZW1hVmVyc2lvbiI6IDEKICAgICAgfQogICAgXQogIH0sCiAgInRydW5jYXRlZCI6IHRydWUsCiAgInVybHMiOiBbCiAgICAiaHR0cHM6Ly9jYXJlZXJzLmV4YW1wbGUuaW52YWxpZC9qb2JzLzIiCiAgXQp9",
+                "sequence": 1,
+                "sha256": "6ba26a1e99636041395ddee7aedccd1f4d2572995969403ebaeda1042f07eb9f",
+                "sizeBytes": "387"
+              }
+            ],
+            "complete": true,
+            "totalSha256": "0e67a3f4b630bc5a507289eb3a068d8dedf2d116d1a9310dc0d1b0a935fc5436",
+            "totalSizeBytes": "774"
+          },
+          "headers": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ],
+          "status": 200
+        }
+      }
+    ],
+    "executionRequest": {
+      "attemptId": "attempt-1",
+      "boardManifest": {
+        "boardId": "board-1",
+        "boardUrl": "https://careers.example.invalid/jobs",
+        "checkIntervalMs": "3600000",
+        "companyId": "company-1",
+        "configExtensions": [
+          {
+            "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
+            "payload": "eyJwYWdlcyI6Mn0=",
+            "payloadSha256": "fe2f26a77f4fb758041cc3979477135825c7ce01729079a5bf38c230073aac50",
+            "schemaId": "jobseek.runtime.v1/representative-json/monitor-config",
+            "schemaVersion": 1
+          },
+          {
+            "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
+            "payload": "eyJmaWVsZHMiOlsidGl0bGUiLCJkZXNjcmlwdGlvbiJdfQ==",
+            "payloadSha256": "af7543cdfb2cf64c543674e6bfe386b88865a47935a12615974e73db3df2810a",
+            "schemaId": "jobseek.runtime.v1/representative-json/scraper-config",
+            "schemaVersion": 1
+          }
+        ],
+        "configFingerprint": "5aac91feaeeb22ee2e7453ceccf4f7609a26ef3928a8c7f039754b30dbf95b68",
+        "configRevision": "revision-7",
+        "contractVersion": "crawler.runtime/v1",
+        "manifestId": "board-1:revision-7",
+        "monitorType": "fixture-json",
+        "providerFamily": "representative-json",
+        "scrapeIntervalMs": "86400000",
+        "throttleKey": "example.invalid"
+      },
+      "contractVersion": "crawler.runtime/v1",
+      "deadlineRfc3339": "2026-08-26T12:00:00Z",
+      "fencingContext": {
+        "claimToken": "claim:board-1:due-42",
+        "configRevision": "revision-7",
+        "engineOwner": "ENGINE_OWNER_PYTHON",
+        "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+        "leaseId": "lease:board-1:attempt-1",
+        "routingEpoch": "7",
+        "shardId": "crawler-http-00"
+      },
+      "kind": "EXECUTION_KIND_MONITOR",
+      "monitor": {
+        "monitorType": "fixture-json"
+      },
+      "originOperations": [
+        {
+          "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+          "requestFingerprint": "aa437ab1f8fba352168d354d082ad8979504704f1002a55db0201327e8605c87",
+          "role": "page-1"
+        },
+        {
+          "operationSequence": 1,
+          "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+          "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+          "requestFingerprint": "e74e31e0a80741a99711d2866dd0d542ddf7323f1f1fda872a5e81c4309f50ed",
+          "role": "page-2"
+        }
+      ],
+      "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+      "requestId": "request-monitor-1",
+      "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+    },
+    "expectedFrames": [
+      {
+        "attemptId": "attempt-1",
+        "contractVersion": "crawler.runtime/v1",
+        "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+        "originContact": {
+          "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
+          "operation": {
+            "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+            "requestFingerprint": "aa437ab1f8fba352168d354d082ad8979504704f1002a55db0201327e8605c87",
+            "role": "page-1"
+          },
+          "requestFingerprint": "aa437ab1f8fba352168d354d082ad8979504704f1002a55db0201327e8605c87"
+        },
+        "requestId": "request-monitor-1"
+      },
+      {
+        "attemptId": "attempt-1",
+        "contractVersion": "crawler.runtime/v1",
+        "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+        "monitorBatch": {
+          "filteredCount": "2",
+          "hybrid": true,
+          "jobs": [
+            {
+              "content": {
+                "descriptionHtml": "<p>Build safely</p>",
+                "locations": {},
+                "skills": [
+                  "Python",
+                  "SQL"
+                ],
+                "title": "Engineer 1"
+              },
+              "url": "https://careers.example.invalid/jobs/1"
+            }
+          ],
+          "metadataUpdates": {
+            "cursor": "page-1",
+            "extensions": [
+              {
+                "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
+                "payload": "eyJzb3VyY2UiOiJvZmZsaW5lLWZpeHR1cmUifQ==",
+                "payloadSha256": "5e346e6801de6f33deeeceaf32895dea9974f0272545dcfdfb1d74b7c43fc089",
+                "schemaId": "jobseek.runtime.v1/representative-json/runtime-metadata",
+                "schemaVersion": 1
+              }
+            ]
+          },
+          "newSitemapUrl": "https://careers.example.invalid/sitemap-current.xml",
+          "securityFilteredCount": "1",
+          "urls": [
+            "https://careers.example.invalid/jobs/1"
+          ]
+        },
+        "requestId": "request-monitor-1",
+        "sequence": "1"
+      },
+      {
+        "attemptId": "attempt-1",
+        "contractVersion": "crawler.runtime/v1",
+        "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+        "originContact": {
+          "disposition": "ORIGIN_CONTACT_DISPOSITION_DISPATCHED",
+          "operation": {
+            "operationSequence": 1,
+            "originRequestId": "monitor:board-1:revision-7:due-42/op/001",
+            "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
+            "requestFingerprint": "e74e31e0a80741a99711d2866dd0d542ddf7323f1f1fda872a5e81c4309f50ed",
+            "role": "page-2"
+          },
+          "requestFingerprint": "e74e31e0a80741a99711d2866dd0d542ddf7323f1f1fda872a5e81c4309f50ed"
+        },
+        "requestId": "request-monitor-1",
+        "sequence": "2"
+      },
+      {
+        "attemptId": "attempt-1",
+        "contractVersion": "crawler.runtime/v1",
+        "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+        "monitorBatch": {
+          "hybrid": true,
+          "jobs": [
+            {
+              "content": {
+                "descriptionHtml": "<p>Build safely</p>",
+                "skills": [
+                  "Python",
+                  "SQL"
+                ],
+                "title": "Engineer 2"
+              },
+              "url": "https://careers.example.invalid/jobs/2"
+            }
+          ],
+          "metadataUpdates": {
+            "cursor": "page-2",
+            "extensions": [
+              {
+                "encoding": "EXTENSION_ENCODING_CANONICAL_JSON",
+                "payload": "eyJzb3VyY2UiOiJvZmZsaW5lLWZpeHR1cmUifQ==",
+                "payloadSha256": "5e346e6801de6f33deeeceaf32895dea9974f0272545dcfdfb1d74b7c43fc089",
+                "schemaId": "jobseek.runtime.v1/representative-json/runtime-metadata",
+                "schemaVersion": 1
+              }
+            ]
+          },
+          "truncated": true,
+          "urls": [
+            "https://careers.example.invalid/jobs/2"
+          ]
+        },
+        "requestId": "request-monitor-1",
+        "sequence": "3"
+      },
+      {
+        "attemptId": "attempt-1",
+        "contractVersion": "crawler.runtime/v1",
+        "fenceDigest": "u+FOYiM006kRcM3F/tGBPEW1TJUld0gqfyz/2Fa1rZQ=",
+        "requestId": "request-monitor-1",
+        "sequence": "4",
+        "terminal": {
+          "activeDurationMs": "25",
+          "eligibleForCommit": true,
+          "frameCount": "4",
+          "monitorBatches": 2,
+          "originOperationCount": 2,
+          "outputItems": "2",
+          "status": "TERMINAL_STATUS_SUCCESS"
+        }
+      }
+    ],
+    "expectedProjection": {
+      "contentHashes": [
+        "befdecf000dc75f41b3d36756acf16ca031d6d57dfd6dc724535db6ba3cb38d8",
+        "e26ad2e293f47d5892a7346e8541610735d066d454d07d857fce5d0540a7ac3e"
+      ],
+      "executionKind": "EXECUTION_KIND_MONITOR",
+      "filteredCount": "2",
+      "hybrid": true,
+      "jobEffects": [
+        {
+          "contentSha256": "e26ad2e293f47d5892a7346e8541610735d066d454d07d857fce5d0540a7ac3e",
+          "sourceUrl": "https://careers.example.invalid/jobs/1"
+        },
+        {
+          "contentSha256": "befdecf000dc75f41b3d36756acf16ca031d6d57dfd6dc724535db6ba3cb38d8",
+          "sourceUrl": "https://careers.example.invalid/jobs/2"
+        }
+      ],
+      "metadataUpdatesSha256": "79c03aaf171f326978743d69d52d562999b7d0cecf9df829134a9ac35d315b27",
+      "newSitemapUrl": "https://careers.example.invalid/sitemap-current.xml",
+      "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
+      "requestId": "request-monitor-1",
+      "securityFilteredCount": "1",
+      "targetUrl": "https://careers.example.invalid/jobs",
+      "targets": [
+        {
+          "action": "PROJECTED_ACTION_UPSERT",
+          "contentSha256": "e26ad2e293f47d5892a7346e8541610735d066d454d07d857fce5d0540a7ac3e",
+          "url": "https://careers.example.invalid/jobs/1"
+        },
+        {
+          "action": "PROJECTED_ACTION_UPSERT",
+          "contentSha256": "befdecf000dc75f41b3d36756acf16ca031d6d57dfd6dc724535db6ba3cb38d8",
+          "url": "https://careers.example.invalid/jobs/2"
+        }
+      ],
+      "truncated": true,
+      "urlsToUpsert": [
+        "https://careers.example.invalid/jobs/1",
+        "https://careers.example.invalid/jobs/2"
+      ]
+    },
+    "expectedSemanticSha256": "3a24fa4ac8c5fb218c8a321abe29cac479ce4825458a9b072a7b07899b1d0aae",
+    "name": "representative-paginated-monitor",
+    "providerFamily": "representative-json"
+  }
+}

@@ -24,7 +24,10 @@ behavior, changed hash/canonicalization rule, or new required semantic creates
 and Go under `converters/v1_to_v2`, converter fixtures (including lossy/error
 cases), and a deployment plan proving the pinned rollback artifact can still
 read/write the live shape. `tools/check_contract.py` rejects a later version
-directory without the adjacent converter directory.
+without a nonempty adjacent converter manifest, Python and Go implementations,
+and shared round-trip and lossy vectors. It syntax-checks Python, requires a Go
+package declaration, and requires an exact bidirectional manifest; the first
+v2 implementation must also execute those vectors in both language suites.
 
 There is no converter for the provisional JSON Schemas: they were temporary,
 had no Go binding, and had no production consumer. The existing in-process

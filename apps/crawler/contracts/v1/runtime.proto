@@ -346,10 +346,10 @@ message ExecutionRequest {
     ScrapeInput scrape = 11;
     BrowserExecutionInput browser = 13;
   }
-  // Complete ordered semantic origin operations. v1 does not permit dynamic
-  // operations: every operation and its request fingerprint is durably bound
-  // before the ExecutionRequest is accepted. The first entry's ID equals
-  // origin_request_id.
+  // Ordered semantic origin operations known when the execution is planned.
+  // A bounded dynamic pagination operation is durably allocated with the next
+  // operation_sequence before dispatch and reported by OriginOperationDeclared.
+  // The first entry's ID equals origin_request_id.
   repeated OriginOperationRef origin_operations = 12;
   FencingContext fencing_context = 14;
 }
@@ -423,8 +423,8 @@ message OriginContact {
   optional ArtifactHandle exchange_artifact = 4;
 }
 
-// Reserved in v1 for forward decoding only. A v1 producer MUST NOT emit this
-// frame because all origin operations are bound on ExecutionRequest.
+// A durable pre-dispatch ledger entry for a bounded dynamic pagination
+// operation. It MUST precede dispatch or any disconnect reference.
 message OriginOperationDeclared {
   OriginOperationRef operation = 1;
 }
@@ -523,10 +523,10 @@ message PaginationAction {
   Selector next_selector = 1;
   uint32 max_pages = 2;
   uint64 page_timeout_ms = 3;
-  // Must remain false in v1. Dynamic origin allocation is fail-closed.
-  bool dynamic_origin_per_additional_page = 4 [deprecated = true];
-  // Exactly max_pages-1 predeclared operation IDs, in dispatch order. The
-  // action-level origin_request_id owns page one.
+  // When true, each later page is declared durably before dispatch and this
+  // action MUST omit additional_page_origin_request_ids. When false, exactly
+  // max_pages-1 IDs are predeclared. The action-level ID owns page one.
+  bool dynamic_origin_per_additional_page = 4;
   repeated string additional_page_origin_request_ids = 5;
 }
 
@@ -714,6 +714,18 @@ message JobEffect {
   string content_sha256 = 2;
 }
 
+enum ProjectedAction {
+  PROJECTED_ACTION_UNSPECIFIED = 0;
+  PROJECTED_ACTION_UPSERT = 1;
+  PROJECTED_ACTION_BROWSER_RESULT = 2;
+}
+
+message ProjectedTarget {
+  string url = 1;
+  ProjectedAction action = 2;
+  optional string content_sha256 = 3;
+}
+
 message ProjectedEffects {
   repeated string urls_to_upsert = 1;
   repeated string content_hashes = 2;
@@ -727,6 +739,13 @@ message ProjectedEffects {
   // Typed URL-to-content binding. Monitor jobs use DiscoveredJob.url; scrape
   // output uses ExecutionRequest.scrape.source_url.
   repeated JobEffect job_effects = 10;
+  // Projection identity is bound to the semantic request and primary target,
+  // not merely to a transport attempt.
+  string request_id = 11;
+  string origin_request_id = 12;
+  ExecutionKind execution_kind = 13;
+  string target_url = 14;
+  repeated ProjectedTarget targets = 15;
 }
 
 message ReplayCase {

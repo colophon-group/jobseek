@@ -160,6 +160,10 @@
                   "content": {
                     "descriptionHtml": "<p>Build safely</p>",
                     "locations": {},
+                    "skills": [
+                      "Python",
+                      "SQL"
+                    ],
                     "title": "Engineer 1"
                   },
                   "url": "https://careers.example.invalid/jobs/1"
@@ -202,6 +206,10 @@
                   "content": {
                     "descriptionHtml": "<p>Build safely</p>",
                     "locations": {},
+                    "skills": [
+                      "Python",
+                      "SQL"
+                    ],
                     "title": "Engineer 1"
                   },
                   "url": "https://careers.example.invalid/jobs/1"

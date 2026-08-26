@@ -1,0 +1,30 @@
+[
+  {
+    "contexts": ["browser_evaluation"],
+    "encoding": "canonical_json",
+    "schema_id": "jobseek.runtime.v1/browser/evaluation-json",
+    "schema_version": 1,
+    "validator": "evaluation_json"
+  },
+  {
+    "contexts": ["manifest"],
+    "encoding": "canonical_json",
+    "schema_id": "jobseek.runtime.v1/representative-json/monitor-config",
+    "schema_version": 1,
+    "validator": "monitor_config"
+  },
+  {
+    "contexts": ["job_content", "monitor_metadata"],
+    "encoding": "canonical_json",
+    "schema_id": "jobseek.runtime.v1/representative-json/runtime-metadata",
+    "schema_version": 1,
+    "validator": "runtime_metadata"
+  },
+  {
+    "contexts": ["manifest"],
+    "encoding": "canonical_json",
+    "schema_id": "jobseek.runtime.v1/representative-json/scraper-config",
+    "schema_version": 1,
+    "validator": "scraper_config"
+  }
+]

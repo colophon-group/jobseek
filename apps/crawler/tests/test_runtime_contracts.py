@@ -9,6 +9,7 @@ from src.core.scrapers import get_scraper_type
 from src.runtime.config import BoardRuntimeConfig
 from src.runtime.extraction import PythonMonitorRuntime
 from src.runtime_contract.v1 import runtime_pb2
+from src.runtime_contract.v1.framing import decode_message, encode_message
 from src.shared.browser import BrowserBackend, open_page
 
 
@@ -114,3 +115,9 @@ def test_packaged_runtime_v1_binding_imports_from_crawler_package_root() -> None
     assert runtime_pb2.DESCRIPTOR.package == "jobseek.crawler.runtime.v1"
     request = runtime_pb2.ExecutionRequest(contract_version="crawler.runtime/v1")
     assert request.contract_version == "crawler.runtime/v1"
+
+
+def test_packaged_runtime_v1_framing_round_trips_a_message() -> None:
+    message = runtime_pb2.ClientMessage(hello=runtime_pb2.ClientHello())
+    wire = encode_message(message, 64)
+    assert decode_message(wire, runtime_pb2.ClientMessage, 64) == message

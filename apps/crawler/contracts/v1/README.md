@@ -16,12 +16,18 @@ wire representations of this contract. They must be normalized into
 - `runtime.proto` — authoritative messages, enums, and tagged unions.
 - `gen/{python,go}` — committed generated bindings. The identical Python
   binding is also generated into `src/runtime_contract/v1` so the normal
-  crawler wheel exposes it.
+  crawler wheel exposes it together with the production framing codec.
+- `framing/` — production Go framing codec tested against the shared wire
+  vectors; Python exposes the same API from `src.runtime_contract.v1.framing`.
+- `privacy_registry.json` and `extension_registry.json` — closed registries
+  that generate identical Python/Go validator data.
 - `baseline/` — immutable introduction descriptor and compatibility policy.
 - `conformance/{python,go}` — independent semantic validators using the same
   fixtures.
 - `fixtures/conformance` — positive and negative state-machine cases.
 - `fixtures/replay` — bounded, deterministically redacted offline captures.
+- `fixtures/{url,errors,wire}` — exact cross-language canonicalization,
+  exhaustive typed-error, and framing vectors.
 - `protocol.md` — framing, state, origin identity, and authority rules.
 - `error-taxonomy.md` — closed error-to-policy mapping.
 - `replay.md` — corpus, canonicalization, redaction, and projection rules.

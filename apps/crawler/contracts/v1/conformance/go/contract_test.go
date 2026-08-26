@@ -47,6 +47,66 @@ func fixtureFiles(t *testing.T, parts ...string) []string {
 	return files
 }
 
+func TestSharedCanonicalURLVectors(t *testing.T) {
+	var cases []struct {
+		Name  string `json:"name"`
+		URL   string `json:"url"`
+		Valid bool   `json:"valid"`
+	}
+	raw, err := os.ReadFile(filepath.Join("..", "..", "fixtures", "url", "cases.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &cases); err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range cases {
+		err := validURL(value.URL, value.Name)
+		if value.Valid && err != nil {
+			t.Errorf("%s: valid URL rejected: %v", value.Name, err)
+		}
+		if !value.Valid && err == nil {
+			t.Errorf("%s: invalid URL accepted", value.Name)
+		}
+	}
+}
+
+func TestEveryErrorCodeHasASharedPolicyVector(t *testing.T) {
+	var cases []struct {
+		Code        string  `json:"code"`
+		Disposition string  `json:"disposition"`
+		HTTPStatus  *uint32 `json:"http_status"`
+	}
+	raw, err := os.ReadFile(filepath.Join("..", "..", "fixtures", "errors", "cases.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &cases); err != nil {
+		t.Fatal(err)
+	}
+	if len(cases) != len(runtimev1.ErrorCode_name)-1 {
+		t.Fatalf("got %d error vectors, want %d", len(cases), len(runtimev1.ErrorCode_name)-1)
+	}
+	seen := map[string]bool{}
+	for _, value := range cases {
+		seen[value.Code] = true
+		errorValue := &runtimev1.RuntimeError{
+			Code:        runtimev1.ErrorCode(runtimev1.ErrorCode_value[value.Code]),
+			Disposition: runtimev1.ErrorDisposition(runtimev1.ErrorDisposition_value[value.Disposition]),
+			Message:     "shared typed error vector",
+			HttpStatus:  value.HTTPStatus,
+		}
+		if err := ValidateError(errorValue); err != nil {
+			t.Errorf("%s: %v", value.Code, err)
+		}
+	}
+	for number, name := range runtimev1.ErrorCode_name {
+		if number != 0 && !seen[name] {
+			t.Errorf("missing shared error vector for %s", name)
+		}
+	}
+}
+
 func TestSharedPositiveConformance(t *testing.T) {
 	for _, path := range fixtureFiles(t, "conformance", "positive") {
 		path := path
@@ -314,6 +374,40 @@ func TestContentHashCanonicalizesUnorderedRepeatedFields(t *testing.T) {
 	right.Locations = nil
 	if ContentHash(left) == ContentHash(right) {
 		t.Fatal("optional presence disappeared from content hash")
+	}
+}
+
+func TestSemanticHashCanonicalizesUnorderedJobSkills(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "fixtures", "replay", "representative-paginated-monitor.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	replay, err := LoadReplay(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalProjection, err := ProjectFrames(replay.GetExpectedFrames(), replay.GetExecutionRequest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalHash, err := SemanticHash(replay.GetExpectedFrames(), originalProjection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	skills := replay.GetExpectedFrames()[1].GetMonitorBatch().GetJobs()[0].GetContent().Skills
+	for left, right := 0, len(skills)-1; left < right; left, right = left+1, right-1 {
+		skills[left], skills[right] = skills[right], skills[left]
+	}
+	reorderedProjection, err := ProjectFrames(replay.GetExpectedFrames(), replay.GetExecutionRequest())
+	if err != nil {
+		t.Fatal(err)
+	}
+	reorderedHash, err := SemanticHash(replay.GetExpectedFrames(), reorderedProjection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reorderedHash != originalHash {
+		t.Fatal("unordered JobContent skills changed the semantic effect hash")
 	}
 }
 

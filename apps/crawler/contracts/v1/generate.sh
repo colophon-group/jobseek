@@ -38,13 +38,25 @@ uv run --project "$root/../.." python -m grpc_tools.protoc \
 
 PYTHONPATH="$root" uv run --project "$root/../.." python \
   "$root/tools/generate_limits.py" --go-out "$tmp/limits_gen.go"
-gofmt -w "$tmp/limits_gen.go"
+PYTHONPATH="$root" uv run --project "$root/../.." python \
+  "$root/tools/generate_privacy.py" \
+  --python-out "$tmp/privacy_rules.py" --go-out "$tmp/privacy_gen.go"
+PYTHONPATH="$root" uv run --project "$root/../.." python \
+  "$root/tools/generate_extensions.py" \
+  --python-out "$tmp/extension_rules.py" --go-out "$tmp/extensions_gen.go"
+gofmt -w "$tmp/limits_gen.go" "$tmp/privacy_gen.go" "$tmp/extensions_gen.go"
 
 if [[ "$mode" == "--check" ]]; then
   diff -u "$root/gen/python/runtime_pb2.py" "$tmp/python/runtime_pb2.py"
   diff -u "$root/../../src/runtime_contract/v1/runtime_pb2.py" "$tmp/python/runtime_pb2.py"
   diff -u "$root/gen/go/runtime.pb.go" "$tmp/go/runtime.pb.go"
   diff -u "$root/conformance/go/limits_gen.go" "$tmp/limits_gen.go"
+  diff -u "$root/conformance/go/privacy_gen.go" "$tmp/privacy_gen.go"
+  diff -u "$root/conformance/go/extensions_gen.go" "$tmp/extensions_gen.go"
+  diff -u "$root/conformance/python/privacy_gen.py" "$tmp/privacy_rules.py"
+  diff -u "$root/conformance/python/extension_rules.py" "$tmp/extension_rules.py"
+  diff -u "$root/../../src/runtime_contract/v1/privacy_rules.py" "$tmp/privacy_rules.py"
+  diff -u "$root/../../src/runtime_contract/v1/extension_rules.py" "$tmp/extension_rules.py"
   PYTHONPATH="$root" uv run --project "$root/../.." python "$root/tools/check_proto_compat.py"
   exit 0
 fi
@@ -54,3 +66,9 @@ cp "$tmp/python/runtime_pb2.py" "$root/gen/python/runtime_pb2.py"
 cp "$tmp/python/runtime_pb2.py" "$root/../../src/runtime_contract/v1/runtime_pb2.py"
 cp "$tmp/go/runtime.pb.go" "$root/gen/go/runtime.pb.go"
 cp "$tmp/limits_gen.go" "$root/conformance/go/limits_gen.go"
+cp "$tmp/privacy_gen.go" "$root/conformance/go/privacy_gen.go"
+cp "$tmp/extensions_gen.go" "$root/conformance/go/extensions_gen.go"
+cp "$tmp/privacy_rules.py" "$root/conformance/python/privacy_gen.py"
+cp "$tmp/extension_rules.py" "$root/conformance/python/extension_rules.py"
+cp "$tmp/privacy_rules.py" "$root/../../src/runtime_contract/v1/privacy_rules.py"
+cp "$tmp/extension_rules.py" "$root/../../src/runtime_contract/v1/extension_rules.py"
