@@ -442,6 +442,44 @@ class TestDomScraper:
         assert result.description is not None
         assert "soins spécialisés" in result.description
 
+    @pytest.mark.parametrize("separator", [":", "："])
+    def test_probe_handles_inline_short_french_location_label(self, separator: str):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = f"""
+        <html><head><title>Infirmier-ère - CHUV</title></head><body>
+          <h1>Infirmier-ère</h1>
+          <p>Lieu{separator} Lausanne</p>
+          <h2>Mission</h2>
+          <p>Assurer des soins spécialisés aux patientes et patients.</p>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+
+        result = parse_html(html, config)
+        assert result.title == "Infirmier-ère"
+        assert result.locations == ["Lausanne"]
+
+    def test_probe_does_not_treat_lieutenant_as_french_location_label(self):
+        from src.core.scrapers.dom import can_handle, parse_html
+
+        html = """
+        <html><head><title>Lieutenant de sécurité - Example</title></head><body>
+          <h1>Lieutenant de sécurité</h1>
+          <p>Protéger le site et coordonner les équipes de sécurité.</p>
+        </body></html>
+        """
+
+        config = can_handle([html])
+        assert config is not None
+        assert not any(step.get("field") == "location" for step in config["steps"])
+
+        result = parse_html(html, config)
+        assert result.title == "Lieutenant de sécurité"
+        assert result.locations is None
+
     def test_talentsoft_probe_builds_locale_independent_config(self):
         from src.core.scrapers.dom import can_handle, parse_html
 

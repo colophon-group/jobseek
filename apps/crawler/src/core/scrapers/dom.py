@@ -698,9 +698,14 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
     if not workload_location:
         for el in elements:
             text = el["text"]
-            text_lower = text.casefold()
+            text_lower = text.strip().casefold()
             label = next(
-                (candidate for candidate in _LOCATION_LABELS if text_lower.startswith(candidate)),
+                (
+                    candidate
+                    for candidate in _LOCATION_LABELS
+                    if text_lower == candidate
+                    or re.match(rf"^{re.escape(candidate)}\s*[:：]", text_lower)
+                ),
                 None,
             )
             if label is None or len(text) >= 120:
