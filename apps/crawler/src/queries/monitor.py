@@ -117,11 +117,13 @@ WHERE board_id = $1
 """
 
 # Narrow, receipt-backed identity-migration lane. The caller supplies only
-# code-owned URL contracts after validating the exact board configuration.
-# Every active row owned by the board is locked and classified before any
-# write. The exact canonical URL set discovered by this cycle is independently
+# code-owned URL and company contracts after validating the exact board
+# configuration. Every active row in the contract's board- or company-wide
+# scope is locked and classified before any write. Company-wide scope is used
+# only when one replacement board retires identities left by several removed
+# boards. The exact canonical URL set discovered by this cycle is independently
 # checked against active, same-company rows touched since the cycle began.
-# Unknown board-owned sources, an invalid/incomplete discovery set, or a legacy
+# Unknown in-scope sources, an invalid/incomplete discovery set, or a legacy
 # count over the hard cap makes both UPDATEs affect zero rows. Every strict
 # legacy row is then retired, including stale rows for jobs no longer present in
 # the current discovery. Retirement and the durable job_board receipt commit
@@ -137,7 +139,7 @@ WITH board_state AS MATERIALIZED (
   SELECT id
   FROM company
   WHERE id = $2
-    AND slug = 'merck'
+    AND slug = $9
 ), discovered_input AS MATERIALIZED (
   SELECT source_url
   FROM unnest($5::text[]) AS input(source_url)
@@ -170,8 +172,8 @@ WITH board_state AS MATERIALIZED (
   FROM job_posting AS posting
   JOIN owner ON owner.id = posting.company_id
   JOIN board_state ON board_state.existing_receipt IS NULL
-  WHERE posting.board_id = $1
-    AND posting.company_id = $2
+  WHERE posting.company_id = $2
+    AND ($10::boolean OR posting.board_id = $1)
     AND posting.is_active = true
   FOR UPDATE OF posting
 ), classified AS MATERIALIZED (
