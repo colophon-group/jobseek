@@ -114,19 +114,33 @@ describe("saved-job snapshot reads", () => {
     });
   });
 
-  it("uses live active state when available and snapshot state on an outage", async () => {
+  it("uses the live active state and outbound URL with snapshot outage fallback", async () => {
     mocks.selectQueue.push([{ count: 1 }], [snapshotRow]);
     mocks.fetchIndexedPostingStates.mockResolvedValueOnce(
-      new Map([["posting-1", { isActive: true }]]),
+      new Map([
+        [
+          "posting-1",
+          {
+            isActive: true,
+            sourceUrl: "https://example.com/current-locale",
+          },
+        ],
+      ]),
     );
 
     const live = await getSavedJobs({ offset: 0, limit: 20 });
     expect(live.jobs[0].posting.isActive).toBe(true);
+    expect(live.jobs[0].posting.sourceUrl).toBe(
+      "https://example.com/current-locale",
+    );
 
     mocks.selectQueue.push([{ count: 1 }], [snapshotRow]);
     mocks.fetchIndexedPostingStates.mockResolvedValueOnce(new Map());
     const degraded = await getSavedJobs({ offset: 0, limit: 20 });
     expect(degraded.jobs[0].posting.isActive).toBe(false);
+    expect(degraded.jobs[0].posting.sourceUrl).toBe(
+      "https://example.com/archived",
+    );
   });
 
   it("surfaces an incomplete persisted snapshot instead of fabricating links", async () => {

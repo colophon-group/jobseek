@@ -12,6 +12,7 @@ __all__ = [
     "_DELIST_THRESHOLD_AUTHORITATIVE",
     "_DELIST_THRESHOLD_FRAGILE",
     "_DIFF_BATCH",
+    "_DIFF_BATCH_DURABLE",
     "_DROP_GUARD_HISTORY_WINDOW",
     "_DROP_GUARD_MIN_HISTORY",
     "_DROP_GUARD_THRESHOLD_DEFAULT",
@@ -19,8 +20,11 @@ __all__ = [
     "_FETCH_BOARD_GONE_STATE",
     "_FETCH_DUE_BOARDS",
     "_INSERT_RICH_JOB",
+    "_INSERT_RICH_JOB_DURABLE",
     "_INSERT_RICH_JOB_ENRICH",
+    "_INSERT_RICH_JOB_ENRICH_DURABLE",
     "_INSERT_URL_ONLY_JOBS",
+    "_INSERT_URL_ONLY_JOBS_DURABLE",
     "_MARK_GONE",
     "_MARK_GONE_BY_TIMESTAMP",
     "_RECORD_BOARD_GONE",
@@ -32,6 +36,7 @@ __all__ = [
     "_RELEASE_POSTING_LEASES",
     "_UPDATE_METADATA",
     "_UPSERT_LOCATION_MISSES",
+    "_VALIDATE_DURABLE_DISCOVERIES",
 ]
 
 _FETCH_DUE_BOARDS = """
@@ -645,6 +650,232 @@ SELECT 'new',
 FROM new_urls
 """
 
+# Explicit provider identities use a separate lane so every existing URL-only
+# monitor retains the exact SQL/locking behavior above. The caller runs
+# _VALIDATE_DURABLE_DISCOVERIES in the same transaction immediately before
+# this statement.
+_VALIDATE_DURABLE_DISCOVERIES = r"""
+WITH discovered AS (
+  SELECT *
+  FROM unnest($1::text[], $2::text[], $3::boolean[])
+       AS input(source_identity, source_url, explicit_identity)
+), violations AS (
+  SELECT 'duplicate_identity_in_batch'::text AS reason,
+         min(source_identity) AS source_identity,
+         min(source_url) AS source_url
+  FROM discovered
+  GROUP BY source_identity
+  HAVING count(*) <> 1
+
+  UNION ALL
+
+  SELECT 'duplicate_outbound_url_in_batch',
+         min(source_identity),
+         source_url
+  FROM discovered
+  GROUP BY source_url
+  HAVING count(*) <> 1
+
+  UNION ALL
+
+  SELECT 'malformed_explicit_identity', d.source_identity, d.source_url
+  FROM discovered d
+  WHERE d.explicit_identity
+    AND d.source_identity !~
+        '^[a-z][a-z0-9_-]{1,31}:[a-z0-9][a-z0-9._-]{0,63}:[A-Za-z0-9][A-Za-z0-9._~:/-]{0,383}$'
+
+  UNION ALL
+
+  SELECT 'cross_owner_identity', d.source_identity, d.source_url
+  FROM discovered d
+  JOIN job_posting posting
+    ON posting.source_identity = d.source_identity
+  WHERE d.explicit_identity
+    AND posting.company_id <> $4::uuid
+
+  UNION ALL
+
+  SELECT 'outbound_url_owned_by_other_identity', d.source_identity, d.source_url
+  FROM discovered d
+  JOIN job_posting posting
+    ON posting.source_url = d.source_url
+   AND posting.source_identity <> d.source_identity
+
+  UNION ALL
+
+  SELECT 'outbound_alias_owned_by_other_identity', d.source_identity, d.source_url
+  FROM discovered d
+  JOIN job_posting_source_alias alias
+    ON alias.source_url = d.source_url
+  JOIN job_posting posting
+    ON posting.id = alias.posting_id
+   AND posting.source_identity <> d.source_identity
+)
+SELECT reason, source_identity, source_url
+FROM violations
+ORDER BY reason, source_identity, source_url
+LIMIT 1
+"""
+
+_DIFF_BATCH_DURABLE = """
+WITH discovered AS MATERIALIZED (
+  SELECT *
+  FROM unnest($1::text[], $2::text[], $3::boolean[])
+       AS input(source_identity, source_url, explicit_identity)
+),
+locked_existing AS MATERIALIZED (
+  SELECT posting.id,
+         posting.company_id,
+         posting.source_identity,
+         posting.source_url,
+         posting.board_id,
+         posting.is_active
+  FROM job_posting posting
+  JOIN discovered d
+    ON d.source_identity = posting.source_identity
+  ORDER BY posting.id
+  FOR UPDATE OF posting
+),
+promoted_alias AS (
+  DELETE FROM job_posting_source_alias alias
+  USING locked_existing locked, discovered d
+  WHERE locked.source_identity = d.source_identity
+    AND alias.posting_id = locked.id
+    AND alias.source_url = d.source_url
+  RETURNING alias.source_url
+),
+archived_alias AS (
+  INSERT INTO job_posting_source_alias (
+      source_url, posting_id, first_observed_at, last_observed_at
+  )
+  SELECT locked.source_url, locked.id, now(), now()
+  FROM locked_existing locked
+  JOIN discovered d USING (source_identity)
+  WHERE d.explicit_identity
+    AND locked.source_url <> d.source_url
+    AND (SELECT count(*) FROM promoted_alias) >= 0
+  ON CONFLICT (source_url) DO UPDATE
+  SET last_observed_at = EXCLUDED.last_observed_at
+  WHERE job_posting_source_alias.posting_id = EXCLUDED.posting_id
+  RETURNING source_url
+),
+touched AS (
+  UPDATE job_posting
+  SET source_url = d.source_url,
+      last_seen_at = now(),
+      missing_count = 0,
+      next_scrape_at = CASE
+          WHEN NOT $6::boolean
+               AND job_posting.description_r2_hash IS NULL
+               AND job_posting.next_scrape_at IS NULL
+          THEN now()
+          ELSE job_posting.next_scrape_at
+      END
+  FROM locked_existing locked
+  JOIN discovered d USING (source_identity)
+  WHERE job_posting.id = locked.id
+    AND locked.board_id = $5
+    AND locked.is_active = true
+    AND (SELECT count(*) FROM archived_alias) >= 0
+  RETURNING job_posting.id,
+            job_posting.source_identity,
+            job_posting.source_url,
+            job_posting.description_r2_hash,
+            (
+              NOT $6::boolean
+              AND job_posting.description_r2_hash IS NULL
+              AND job_posting.next_scrape_at <= now()
+            ) AS needs_scrape_enqueue
+),
+relisted AS (
+  UPDATE job_posting
+  SET source_url = d.source_url,
+      is_active = true,
+      missing_count = 0,
+      scrape_failures = 0,
+      last_seen_at = now(),
+      updated_at = now(),
+      next_scrape_at = CASE WHEN $6::boolean THEN NULL ELSE now() END
+  FROM locked_existing locked
+  JOIN discovered d USING (source_identity)
+  WHERE job_posting.id = locked.id
+    AND locked.board_id = $5
+    AND locked.is_active = false
+    AND (SELECT count(*) FROM archived_alias) >= 0
+  RETURNING job_posting.id,
+            job_posting.source_identity,
+            job_posting.source_url,
+            job_posting.description_r2_hash,
+            false AS needs_scrape_enqueue
+),
+foreign_relisted AS (
+  UPDATE job_posting
+  SET source_url = d.source_url,
+      is_active = true,
+      missing_count = 0,
+      scrape_failures = 0,
+      last_seen_at = now(),
+      updated_at = now(),
+      next_scrape_at = CASE WHEN $6::boolean THEN NULL ELSE now() END
+  FROM locked_existing locked
+  JOIN discovered d USING (source_identity)
+  WHERE job_posting.id = locked.id
+    AND locked.board_id != $5
+    AND locked.is_active = false
+    AND (SELECT count(*) FROM archived_alias) >= 0
+  RETURNING job_posting.id,
+            job_posting.source_identity,
+            job_posting.source_url,
+            job_posting.description_r2_hash,
+            false AS needs_scrape_enqueue
+),
+foreign_touched AS (
+  UPDATE job_posting
+  SET source_url = d.source_url,
+      last_seen_at = now(),
+      missing_count = 0
+  FROM locked_existing locked
+  JOIN discovered d USING (source_identity)
+  WHERE job_posting.id = locked.id
+    AND locked.board_id != $5
+    AND locked.is_active = true
+    AND (SELECT count(*) FROM archived_alias) >= 0
+  RETURNING job_posting.source_identity, job_posting.source_url
+),
+new_sources AS (
+  SELECT d.source_identity, d.source_url
+  FROM discovered d
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM locked_existing locked
+    WHERE locked.source_identity = d.source_identity
+  )
+)
+SELECT 'touched' AS action,
+       id::text,
+       source_identity,
+       source_url AS url,
+       description_r2_hash,
+       needs_scrape_enqueue
+FROM touched
+UNION ALL
+SELECT 'relisted', id::text, source_identity, source_url,
+       description_r2_hash, needs_scrape_enqueue
+FROM relisted
+UNION ALL
+SELECT 'foreign_relisted', id::text, source_identity, source_url,
+       description_r2_hash, needs_scrape_enqueue
+FROM foreign_relisted
+UNION ALL
+SELECT 'foreign', NULL::text, source_identity, source_url,
+       NULL::bigint, false
+FROM foreign_touched
+UNION ALL
+SELECT 'new', NULL::text, source_identity, source_url,
+       NULL::bigint, false
+FROM new_sources
+"""
+
 _MARK_GONE = """
 WITH discovered AS (
   SELECT unnest($1::text[]) AS url
@@ -745,6 +976,48 @@ ON CONFLICT (source_url) DO NOTHING
 RETURNING id
 """
 
+_INSERT_RICH_JOB_DURABLE = """
+INSERT INTO job_posting
+    (company_id, board_id,
+     employment_type, source_identity, source_url,
+     first_seen_at, last_seen_at,
+     is_active, titles, locales,
+     location_ids, location_types,
+     salary_min, salary_max, salary_currency, salary_period, salary_eur,
+     experience_min, experience_max, technology_ids,
+     occupation_id, seniority_id)
+VALUES ($1, $2, $3, $4, $5,
+        now(), now(),
+        true, $6, $7,
+        $8, $9,
+        $10, $11, $12, $13, $14,
+        $15, $16, $17,
+        $18, $19)
+ON CONFLICT (source_identity) DO NOTHING
+RETURNING id, company_id, source_identity, source_url
+"""
+
+_INSERT_RICH_JOB_ENRICH_DURABLE = """
+INSERT INTO job_posting
+    (company_id, board_id,
+     employment_type, source_identity, source_url,
+     first_seen_at, last_seen_at, next_scrape_at,
+     is_active, titles, locales,
+     location_ids, location_types,
+     salary_min, salary_max, salary_currency, salary_period, salary_eur,
+     experience_min, experience_max, technology_ids,
+     occupation_id, seniority_id)
+VALUES ($1, $2, $3, $4, $5,
+        now(), now(), now(),
+        true, $6, $7,
+        $8, $9,
+        $10, $11, $12, $13, $14,
+        $15, $16, $17,
+        $18, $19)
+ON CONFLICT (source_identity) DO NOTHING
+RETURNING id, company_id, source_identity, source_url
+"""
+
 _CREATE_RICH_UPDATES_TEMP = """
 CREATE TEMP TABLE _rich_updates (
     id uuid,
@@ -794,6 +1067,18 @@ SELECT $1, $2, u.url, now(), now(),
 FROM unnest($3::text[]) AS u(url)
 ON CONFLICT (source_url) DO NOTHING
 RETURNING id, source_url
+"""
+
+_INSERT_URL_ONLY_JOBS_DURABLE = """
+INSERT INTO job_posting (company_id, board_id, source_identity, source_url,
+                         first_seen_at, last_seen_at, next_scrape_at,
+                         is_active, titles, locales)
+SELECT $1, $2, source.source_identity, source.source_url, now(), now(),
+       CASE WHEN $5::boolean THEN NULL ELSE now() END,
+       true, '{}', '{}'
+FROM unnest($3::text[], $4::text[]) AS source(source_identity, source_url)
+ON CONFLICT (source_identity) DO NOTHING
+RETURNING id, company_id, source_identity, source_url
 """
 
 _UPDATE_METADATA = """

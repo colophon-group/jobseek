@@ -341,8 +341,14 @@ describe("#3172 — getMyJobs batches interviewCount via GROUP BY", () => {
     mocks.selectQueue.push({ rows: [] });
     mocks.fetchIndexedPostingStates.mockResolvedValue(
       new Map([
-        ["posting-sj-1", { isActive: false }],
-        ["posting-sj-2", { isActive: true }],
+        [
+          "posting-sj-1",
+          { isActive: false, sourceUrl: "https://current.invalid/sj-1" },
+        ],
+        [
+          "posting-sj-2",
+          { isActive: true, sourceUrl: "https://current.invalid/sj-2" },
+        ],
       ]),
     );
 
@@ -352,6 +358,11 @@ describe("#3172 — getMyJobs batches interviewCount via GROUP BY", () => {
       false,
       true,
       false,
+    ]);
+    expect(jobs.map((job) => job.posting.sourceUrl)).toEqual([
+      "https://current.invalid/sj-1",
+      "https://current.invalid/sj-2",
+      "https://example.com/sj-3",
     ]);
     expect(mocks.fetchIndexedPostingStates).toHaveBeenCalledWith([
       "posting-sj-1",

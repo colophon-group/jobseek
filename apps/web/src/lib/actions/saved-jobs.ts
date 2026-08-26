@@ -177,7 +177,8 @@ export async function getSavedJobs(params: {
       posting: {
         id: snapshot.posting.id,
         title: snapshot.posting.title,
-        sourceUrl: snapshot.posting.sourceUrl,
+        sourceUrl:
+          postingStates.get(r.postingId)?.sourceUrl ?? snapshot.posting.sourceUrl,
         firstSeenAt: snapshot.posting.firstSeenAt.toISOString(),
         isActive:
           postingStates.get(r.postingId)?.isActive ?? snapshot.posting.isActive,

@@ -21,9 +21,13 @@ def test_migration_and_runtime_use_the_same_advisory_lock_id() -> None:
 
 def test_migration_covers_every_mutable_downstream_posting_field() -> None:
     migration = _migration_module()
+    identity_migration = importlib.import_module(
+        "src.migrations.versions.0022_add_durable_source_identity"
+    )
 
-    assert set(migration._EXPORTED_MUTABLE_COLUMNS) == set(PostingSchema.upsert_columns)
-    assert set(migration._TRIGGER_UPDATE_COLUMNS) == {
+    added = set(identity_migration._ADDED_EXPORTED_MUTABLE_COLUMNS)
+    assert set(migration._EXPORTED_MUTABLE_COLUMNS) | added == set(PostingSchema.upsert_columns)
+    assert set(migration._TRIGGER_UPDATE_COLUMNS) | added == {
         *PostingSchema.upsert_columns,
         "updated_at",
     }

@@ -110,6 +110,7 @@ def test_board_runtime_config_rejects_nonpositive_contract_intervals() -> None:
 def test_monitor_and_scrape_payloads_validate() -> None:
     job = DiscoveredJob(
         url="https://example.com/jobs/1",
+        source_identity="provider:tenant:1",
         title="Engineer",
         description="<p>Build systems</p>",
         locations=["Zürich"],
@@ -133,6 +134,7 @@ def test_monitor_and_scrape_payloads_validate() -> None:
 
     _validate("monitor-result.schema.json", monitor_payload)
     _validate("scrape-result.schema.json", scrape_payload)
+    assert monitor_payload["jobs"][0]["source_identity"] == "provider:tenant:1"
 
 
 def test_execution_request_and_stream_frames_validate() -> None:

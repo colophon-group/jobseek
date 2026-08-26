@@ -12,7 +12,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from time import monotonic
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import asyncpg
@@ -21,7 +21,11 @@ import structlog
 
 from src.core.description_store import content_hash
 from src.core.enum_normalize import normalize_employment_type
-from src.core.monitors import BoardGoneError, api_monitor_types
+from src.core.monitors import (
+    BoardGoneError,
+    api_monitor_types,
+    validate_explicit_source_identity,
+)
 from src.core.scrapers import enrich_description
 from src.core.scrapers import scraper_needs_browser as _scraper_needs_browser
 from src.metrics import (
@@ -70,6 +74,7 @@ from src.queries.monitor import (
     _DELIST_THRESHOLD_AUTHORITATIVE,
     _DELIST_THRESHOLD_FRAGILE,
     _DIFF_BATCH,
+    _DIFF_BATCH_DURABLE,
     _DROP_GUARD_HISTORY_WINDOW,
     _DROP_GUARD_MIN_HISTORY,
     _DROP_GUARD_THRESHOLD_DEFAULT,
@@ -77,8 +82,11 @@ from src.queries.monitor import (
     _FETCH_BOARD_GONE_STATE,
     _FETCH_DUE_BOARDS,
     _INSERT_RICH_JOB,
+    _INSERT_RICH_JOB_DURABLE,
     _INSERT_RICH_JOB_ENRICH,
+    _INSERT_RICH_JOB_ENRICH_DURABLE,
     _INSERT_URL_ONLY_JOBS,
+    _INSERT_URL_ONLY_JOBS_DURABLE,
     _MARK_GONE_BY_TIMESTAMP,
     _RECORD_BOARD_GONE,
     _RECORD_EMPTY_CHECK,
@@ -86,6 +94,7 @@ from src.queries.monitor import (
     _RECORD_SUCCESS_NONEMPTY,
     _RETIRE_CANONICALIZED_PROVIDER_IDENTITIES,
     _UPDATE_METADATA,
+    _VALIDATE_DURABLE_DISCOVERIES,
 )
 from src.queries.scrape import (
     _FETCH_BOARD_ALL_ACTIVE,
@@ -99,6 +108,10 @@ from src.shared.langdetect import detect_all_languages, detect_language
 from src.shared.tdm import TDMReservedError
 
 log = structlog.get_logger()
+
+
+class SourceIdentityConflictError(RuntimeError):
+    """An explicit provider identity could not be proven safe to apply."""
 
 
 class _BatchLookups:
@@ -1132,6 +1145,349 @@ async def _fetch_diff_batch(
     raise AssertionError("unreachable")
 
 
+def _prepare_discovered_sources(
+    result: Any,
+    board_url: str,
+    streamed_explicit_identities: set[str],
+) -> tuple[
+    list[tuple[str, str, bool]],
+    dict[str, int],
+    dict[str, Any] | None,
+]:
+    """Canonicalize outbound URLs and resolve one identity per batch row."""
+    filtered_sources: list[tuple[str, str, bool]] = []
+    drop_reasons: dict[str, int] = {}
+    seen_identities: set[str] = set()
+    batch_explicit_identities: set[str] = set()
+    jobs_by_url = result.jobs_by_url
+
+    for raw in result.urls:
+        outbound_url = _canonicalize_url(raw)
+        reason = _classify_job_url(outbound_url, board_url)
+        if reason is not None:
+            drop_reasons[reason] = drop_reasons.get(reason, 0) + 1
+            continue
+
+        job = jobs_by_url.get(raw) if jobs_by_url is not None else None
+        if job is None and jobs_by_url is not None:
+            job = jobs_by_url.get(outbound_url)
+        explicit_identity = job is not None and job.source_identity is not None
+        source_identity = (
+            validate_explicit_source_identity(job.source_identity)
+            if explicit_identity and job is not None and job.source_identity is not None
+            else outbound_url
+        )
+        if source_identity in seen_identities:
+            if explicit_identity:
+                raise SourceIdentityConflictError(
+                    f"source_identity repeated inside monitor batch: {source_identity!r}"
+                )
+            continue
+        if explicit_identity and source_identity in streamed_explicit_identities:
+            raise SourceIdentityConflictError(
+                f"source_identity repeated across monitor batches: {source_identity!r}"
+            )
+        seen_identities.add(source_identity)
+        if explicit_identity:
+            batch_explicit_identities.add(source_identity)
+        if job is not None:
+            job.url = outbound_url
+        filtered_sources.append((source_identity, outbound_url, explicit_identity))
+
+    streamed_explicit_identities.update(batch_explicit_identities)
+    filtered_jobs_by_url = None
+    if jobs_by_url is not None:
+        accepted_urls = {url for _identity, url, _explicit in filtered_sources}
+        filtered_jobs_by_url = {
+            _canonicalize_url(url): job
+            for url, job in jobs_by_url.items()
+            if _canonicalize_url(url) in accepted_urls
+        }
+    return filtered_sources, drop_reasons, filtered_jobs_by_url
+
+
+async def _fetch_durable_diff_batch(
+    pool: asyncpg.Pool,
+    discoveries: list[tuple[str, str, bool]],
+    company_id: str,
+    board_id: str,
+    is_rich_no_scrape: bool,
+    board_log: structlog.stdlib.BoundLogger,
+) -> list[asyncpg.Record]:
+    """Validate and classify an explicit-identity chunk atomically.
+
+    The preflight and write share one transaction. We also require exactly one
+    result per input identity before commit, closing the race where an alias or
+    unique-key collision appears between the preflight and data-modifying CTE.
+    """
+    identities = [identity for identity, _url, _explicit in discoveries]
+    urls = [url for _identity, url, _explicit in discoveries]
+    explicit = [is_explicit for _identity, _url, is_explicit in discoveries]
+
+    for attempt in range(1, _DIFF_TRANSACTION_MAX_ATTEMPTS + 1):
+        try:
+            async with pool.acquire() as conn, conn.transaction():
+                violation = await conn.fetchrow(
+                    _VALIDATE_DURABLE_DISCOVERIES,
+                    identities,
+                    urls,
+                    explicit,
+                    company_id,
+                )
+                if violation is not None:
+                    raise SourceIdentityConflictError(
+                        "durable source identity rejected: "
+                        f"{violation['reason']} identity={violation['source_identity']!r} "
+                        f"url={violation['source_url']!r}"
+                    )
+                rows = await conn.fetch(
+                    _DIFF_BATCH_DURABLE,
+                    identities,
+                    urls,
+                    explicit,
+                    company_id,
+                    board_id,
+                    is_rich_no_scrape,
+                )
+                returned = [row["source_identity"] for row in rows]
+                if len(rows) != len(discoveries) or set(returned) != set(identities):
+                    raise SourceIdentityConflictError(
+                        "durable source identity classification lost an input; "
+                        "a concurrent collision was rolled back"
+                    )
+                return rows
+        except asyncpg.DeadlockDetectedError:
+            if attempt >= _DIFF_TRANSACTION_MAX_ATTEMPTS:
+                raise
+            ceiling = _DIFF_TRANSACTION_RETRY_BASE_SECONDS * (2 ** (attempt - 1))
+            retry_in = random.uniform(ceiling / 2, ceiling)
+            monitor_db_transaction_retries_total.labels(phase="durable_diff_batch").inc()
+            board_log.warning(
+                "batch.monitor.db_transaction_retry",
+                phase="durable_diff_batch",
+                attempt=attempt,
+                max_attempts=_DIFF_TRANSACTION_MAX_ATTEMPTS,
+                retry_in_s=round(retry_in, 3),
+            )
+            await asyncio.sleep(retry_in)
+
+    raise AssertionError("unreachable")
+
+
+async def _verify_durable_insert_conflict(
+    conn: asyncpg.Connection,
+    *,
+    company_id: str,
+    source_identity: str,
+    source_url: str,
+) -> None:
+    """Allow only an identical concurrent insert; reject every other owner."""
+    existing = await conn.fetchrow(
+        "SELECT company_id::text, source_url FROM job_posting WHERE source_identity = $1",
+        source_identity,
+    )
+    if (
+        existing is None
+        or existing["company_id"] != company_id
+        or existing["source_url"] != source_url
+    ):
+        raise SourceIdentityConflictError(
+            "durable source identity insert collided with a different owner or outbound URL"
+        )
+
+
+async def _fetch_source_diff_batch(
+    pool: asyncpg.Pool,
+    chunk_sources: list[tuple[str, str, bool]],
+    company_id: str,
+    board_id: str,
+    is_rich_no_scrape: bool,
+    board_log: structlog.stdlib.BoundLogger,
+) -> tuple[bool, list[asyncpg.Record]]:
+    """Dispatch one chunk without adding identity branching to the main loop."""
+    uses_durable_lane = any(explicit for _identity, _url, explicit in chunk_sources)
+    if uses_durable_lane:
+        rows = await _fetch_durable_diff_batch(
+            pool,
+            chunk_sources,
+            company_id,
+            board_id,
+            is_rich_no_scrape,
+            board_log,
+        )
+    else:
+        rows = await _fetch_diff_batch(
+            pool,
+            [url for _identity, url, _explicit in chunk_sources],
+            board_id,
+            is_rich_no_scrape,
+            board_log,
+        )
+    return uses_durable_lane, rows
+
+
+async def _insert_rich_discoveries(
+    conn: asyncpg.Connection,
+    *,
+    records: list[tuple],
+    staging: list[tuple[Any, Any]],
+    uses_durable_lane: bool,
+    enrich_fields: Any,
+    company_id: str,
+    identity_by_url: dict[str, str],
+) -> tuple[list[tuple[Any, Any, str]], int]:
+    """Insert normalized rich rows and their descriptions atomically."""
+    if uses_durable_lane:
+        insert_sql = _INSERT_RICH_JOB_ENRICH_DURABLE if enrich_fields else _INSERT_RICH_JOB_DURABLE
+    else:
+        insert_sql = _INSERT_RICH_JOB_ENRICH if enrich_fields else _INSERT_RICH_JOB
+
+    inserted: list[tuple[Any, Any, str]] = []
+    deduplicated = 0
+    for record, (job, technology_ids) in zip(records, staging, strict=True):
+        row = await conn.fetchrow(insert_sql, *record)
+        if row is None:
+            if uses_durable_lane:
+                await _verify_durable_insert_conflict(
+                    conn,
+                    company_id=company_id,
+                    source_identity=identity_by_url[job.url],
+                    source_url=job.url,
+                )
+            deduplicated += 1
+            continue
+        posting_id = str(row["id"])
+        inserted.append((job, technology_ids, posting_id))
+
+    for job, _technology_ids, posting_id in inserted:
+        description = _coerce_text(job.description)
+        if description:
+            locale = _coerce_text(job.language) or "en"
+            description_hash = content_hash(description)
+            await conn.execute(
+                _UPSERT_DESCRIPTION,
+                posting_id,
+                locale,
+                description,
+                description_hash,
+                description_hash,
+            )
+    return inserted, deduplicated
+
+
+async def _insert_stub_discoveries(
+    conn: asyncpg.Connection,
+    *,
+    company_id: str,
+    board_id: str,
+    urls: list[str],
+    never_scrape: bool,
+    uses_durable_lane: bool,
+    identity_by_url: dict[str, str],
+) -> list[asyncpg.Record]:
+    """Insert URL-only members of a hybrid explicit-identity batch."""
+    if not uses_durable_lane:
+        return await conn.fetch(
+            _INSERT_URL_ONLY_JOBS,
+            company_id,
+            board_id,
+            urls,
+            never_scrape,
+        )
+
+    identities = [identity_by_url[url] for url in urls]
+    inserted = await conn.fetch(
+        _INSERT_URL_ONLY_JOBS_DURABLE,
+        company_id,
+        board_id,
+        identities,
+        urls,
+        never_scrape,
+    )
+    inserted_identities = {row["source_identity"] for row in inserted}
+    for identity, url in zip(identities, urls, strict=True):
+        if identity not in inserted_identities:
+            await _verify_durable_insert_conflict(
+                conn,
+                company_id=company_id,
+                source_identity=identity,
+                source_url=url,
+            )
+    return inserted
+
+
+def _build_rich_new_records(
+    jobs: list[tuple[str, Any]],
+    *,
+    company_id: str,
+    board_id: str,
+    identity_by_url: dict[str, str],
+    uses_durable_lane: bool,
+    loc_resolver: Any,
+    rates: Any,
+    tech_id_map: Any,
+    occ_ids: Any,
+    sen_ids: Any,
+) -> tuple[list[tuple], list[tuple[Any, Any]]]:
+    """Normalize rich discoveries into the positional insert contract."""
+    records: list[tuple] = []
+    staging: list[tuple[Any, Any]] = []
+    for outbound_url, job in jobs:
+        job.description = normalize_description_html(job.description)
+        enrich_description(job)
+        if not job.language and job.description:
+            job.language = detect_language(job.description)
+
+        loc_ids, loc_types = _resolve_locations_sync(
+            loc_resolver,
+            _coerce_locations(job.locations),
+            _coerce_text(job.job_location_type),
+            _coerce_text(job.language),
+        )
+        description = _coerce_text(job.description)
+        salary_min, salary_max, salary_currency, salary_period, salary_eur = _extract_salary_fields(
+            description, rates
+        )
+        experience_min, experience_max = _extract_experience_fields(description)
+        technology_ids = _resolve_technology_ids(description, tech_id_map)
+        titles = _build_titles(_coerce_text(job.title), job.localizations)
+        occupation_id, seniority_id = _resolve_occupation_seniority(titles, occ_ids, sen_ids)
+        detected_languages = detect_all_languages(job.description) if job.description else []
+        identity_and_url = (
+            (identity_by_url[outbound_url], outbound_url) if uses_durable_lane else (outbound_url,)
+        )
+        records.append(
+            (
+                company_id,
+                board_id,
+                normalize_employment_type(_coerce_text(job.employment_type)),
+            )
+            + identity_and_url
+            + (
+                titles,
+                _build_locales(
+                    _coerce_text(job.language),
+                    job.localizations,
+                    detected_languages=detected_languages,
+                ),
+                loc_ids,
+                loc_types,
+                salary_min,
+                salary_max,
+                salary_currency,
+                salary_period,
+                salary_eur,
+                experience_min,
+                experience_max,
+                technology_ids,
+                occupation_id,
+                seniority_id,
+            )
+        )
+        staging.append((job, technology_ids))
+    return records, staging
+
+
 # ── Monitor Processing ───────────────────────────────────────────────
 
 
@@ -1155,7 +1511,7 @@ class BoardMonitorResult:
 
 
 async def _process_one_board_streaming(
-    board: asyncpg.Record,
+    board: asyncpg.Record | dict[str, Any],
     pool: asyncpg.Pool,
     http: httpx.AsyncClient,
     extender: object,
@@ -1247,6 +1603,11 @@ async def _process_one_board_streaming(
         # any URLs. Hold that patch until the first posting batch commits, or
         # until a valid empty run records its empty-check transition.
         pending_metadata_patch: dict = {}
+        # Explicit identities must be unique across the whole stream. Provider
+        # monitors that expose locale publications collapse them before
+        # streaming; seeing the same identity later is ambiguous and fails the
+        # cycle before gone detection.
+        streamed_explicit_identities: set[str] = set()
 
         runtime = monitor_runtime or PythonMonitorRuntime(_batch.monitor_one_stream)
         monitor_stream = runtime.stream(
@@ -1309,22 +1670,11 @@ async def _process_one_board_streaming(
             # produces a URL the uniqueness check treats as _new_ and
             # re-enqueues a duplicate scrape (see :func:`_canonicalize_url`
             # for platform coverage and the Pictet/SuccessFactors case).
-            filtered_urls: list[str] = []
-            drop_reasons: dict[str, int] = {}
-            seen: set[str] = set()
-            for raw in result.urls:
-                u = _canonicalize_url(raw)
-                reason = _classify_job_url(u, board_url)
-                if reason is not None:
-                    drop_reasons[reason] = drop_reasons.get(reason, 0) + 1
-                    continue
-                # De-dup after canonicalization — without this, a single
-                # monitor batch that emits two query-variants of the same
-                # posting would collide inside _DIFF_BATCH.
-                if u in seen:
-                    continue
-                seen.add(u)
-                filtered_urls.append(u)
+            filtered_sources, drop_reasons, filtered_jobs_by_url = _prepare_discovered_sources(
+                result,
+                board_url,
+                streamed_explicit_identities,
+            )
             for reason, count in drop_reasons.items():
                 processing_filtered += count
                 # ``board_id`` label added in #2704 so a noisy board is
@@ -1337,32 +1687,24 @@ async def _process_one_board_streaming(
                     count=count,
                 )
 
-            if not filtered_urls:
+            if not filtered_sources:
                 continue
-            total_processed += len(filtered_urls)
+            total_processed += len(filtered_sources)
 
             # Match rich-data keys against the canonicalized URL set so
             # a rich monitor targeting a canonicalized platform (none
             # today, but cheap to future-proof) doesn't silently drop
             # the per-posting data.
-            filtered_jobs_by_url = (
-                {
-                    _canonicalize_url(u): v
-                    for u, v in result.jobs_by_url.items()
-                    if _canonicalize_url(u) in seen
-                }
-                if result.jobs_by_url is not None
-                else None
-            )
-
             # Sub-chunk large batches to keep _DIFF_BATCH within the
             # 60s asyncpg command_timeout (e.g. Amazon USA = 8,900 URLs).
             _DB_CHUNK = 500
-            all_urls = filtered_urls
+            all_sources = filtered_sources
             all_new_urls: list[str] = []
 
-            for _chunk_start in range(0, len(all_urls), _DB_CHUNK):
-                chunk_urls = all_urls[_chunk_start : _chunk_start + _DB_CHUNK]
+            for _chunk_start in range(0, len(all_sources), _DB_CHUNK):
+                chunk_sources = all_sources[_chunk_start : _chunk_start + _DB_CHUNK]
+                chunk_urls = [url for _identity, url, _explicit in chunk_sources]
+                identity_by_url = {url: identity for identity, url, _explicit in chunk_sources}
                 chunk_jobs = (
                     {u: filtered_jobs_by_url[u] for u in chunk_urls if u in filtered_jobs_by_url}
                     if filtered_jobs_by_url is not None
@@ -1380,9 +1722,10 @@ async def _process_one_board_streaming(
                     meta_patch.update(pending_metadata_patch)
 
                 is_rich_no_scrape = is_rich and not enrich_fields
-                rows = await _fetch_diff_batch(
+                uses_durable_lane, rows = await _fetch_source_diff_batch(
                     pool,
-                    chunk_urls,
+                    chunk_sources,
+                    company_id,
                     board_id,
                     is_rich_no_scrape,
                     board_log,
@@ -1463,70 +1806,21 @@ async def _process_one_board_streaming(
                 # its own short-lived connection only when the local cache has
                 # misses.
                 if chunk_jobs:
-                    new_jobs = [chunk_jobs[u] for u in rich_new_urls]
+                    new_jobs = [(u, chunk_jobs[u]) for u in rich_new_urls]
 
                     if new_jobs:
-
-                        def _process_new_jobs_cpu(jobs):
-                            """Pure CPU: normalize, detect language, resolve, extract."""
-                            records = []
-                            staging = []
-                            for j in jobs:
-                                j.description = normalize_description_html(j.description)
-                                enrich_description(j)
-                                if not j.language and j.description:
-                                    j.language = detect_language(j.description)
-
-                                loc_ids_r, loc_types_r = _resolve_locations_sync(
-                                    loc_resolver,
-                                    _coerce_locations(j.locations),
-                                    _coerce_text(j.job_location_type),
-                                    _coerce_text(j.language),
-                                )
-                                desc_text = _coerce_text(j.description)
-                                s_min, s_max, s_cur, s_per, s_eur = _extract_salary_fields(
-                                    desc_text, rates
-                                )
-                                exp_min, exp_max = _extract_experience_fields(desc_text)
-                                t_ids = _resolve_technology_ids(desc_text, tech_id_map)
-                                title_text = _coerce_text(j.title)
-                                all_titles = _build_titles(title_text, j.localizations)
-                                occ_id, sen_id = _resolve_occupation_seniority(
-                                    all_titles, occ_ids, sen_ids
-                                )
-                                detected_langs = (
-                                    detect_all_languages(j.description) if j.description else []
-                                )
-                                records.append(
-                                    (
-                                        company_id,
-                                        board_id,
-                                        normalize_employment_type(_coerce_text(j.employment_type)),
-                                        j.url,
-                                        all_titles,
-                                        _build_locales(
-                                            _coerce_text(j.language),
-                                            j.localizations,
-                                            detected_languages=detected_langs,
-                                        ),
-                                        loc_ids_r,
-                                        loc_types_r,
-                                        s_min,
-                                        s_max,
-                                        s_cur,
-                                        s_per,
-                                        s_eur,
-                                        exp_min,
-                                        exp_max,
-                                        t_ids,
-                                        occ_id,
-                                        sen_id,
-                                    )
-                                )
-                                staging.append((j, t_ids))
-                            return records, staging
-
-                        new_records, r2_staging = _process_new_jobs_cpu(new_jobs)
+                        new_records, r2_staging = _build_rich_new_records(
+                            new_jobs,
+                            company_id=company_id,
+                            board_id=board_id,
+                            identity_by_url=identity_by_url,
+                            uses_durable_lane=uses_durable_lane,
+                            loc_resolver=loc_resolver,
+                            rates=rates,
+                            tech_id_map=tech_id_map,
+                            occ_ids=occ_ids,
+                            sen_ids=sen_ids,
+                        )
                         if await loc_resolver.backfill_misses():
                             loc_resolver.drain_location_misses()
 
@@ -1624,30 +1918,15 @@ async def _process_one_board_streaming(
                 if meta_patch or new_records or rich_update_records or stub_new_urls:
                     async with pool.acquire() as conn, conn.transaction():
                         if new_records:
-                            insert_sql = (
-                                _INSERT_RICH_JOB_ENRICH if enrich_fields else _INSERT_RICH_JOB
+                            inserted_rich, n_rich_dedup = await _insert_rich_discoveries(
+                                conn,
+                                records=new_records,
+                                staging=r2_staging,
+                                uses_durable_lane=uses_durable_lane,
+                                enrich_fields=enrich_fields,
+                                company_id=company_id,
+                                identity_by_url=identity_by_url,
                             )
-                            for rec, (j, t_ids) in zip(new_records, r2_staging, strict=True):
-                                row = await conn.fetchrow(insert_sql, *rec)
-                                if row is None:
-                                    n_rich_dedup += 1
-                                    continue
-                                new_posting_id = str(row["id"])
-                                inserted_rich.append((j, t_ids, new_posting_id))
-
-                            for j, _t_ids, posting_id in inserted_rich:
-                                desc_html = _coerce_text(j.description)
-                                if desc_html:
-                                    locale = _coerce_text(j.language) or "en"
-                                    desc_hash = content_hash(desc_html)
-                                    await conn.execute(
-                                        _UPSERT_DESCRIPTION,
-                                        posting_id,
-                                        locale,
-                                        desc_html,
-                                        desc_hash,
-                                        desc_hash,
-                                    )
 
                         if rich_update_records:
                             await conn.execute(_CREATE_RICH_UPDATES_TEMP)
@@ -1666,12 +1945,14 @@ async def _process_one_board_streaming(
                                 )
 
                         if stub_new_urls:
-                            inserted = await conn.fetch(
-                                _INSERT_URL_ONLY_JOBS,
-                                company_id,
-                                board_id,
-                                stub_new_urls,
-                                never_scrape,
+                            inserted = await _insert_stub_discoveries(
+                                conn,
+                                company_id=company_id,
+                                board_id=board_id,
+                                urls=stub_new_urls,
+                                never_scrape=never_scrape,
+                                uses_durable_lane=uses_durable_lane,
+                                identity_by_url=identity_by_url,
                             )
 
                         # Incremental monitor watermarks must commit atomically

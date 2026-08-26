@@ -334,12 +334,11 @@ class TestPostingSchema:
         assert PostingSchema.placeholders().split(", ")[0] == "$1"
         assert PostingSchema.placeholders().split(", ")[-1] == "$" + str(len(PostingSchema.columns))
 
-    def test_upsert_set_excludes_immutable_identity_columns(self):
+    def test_upsert_set_keeps_identity_immutable_but_refreshes_outbound_url(self):
         upsert_columns = set(PostingSchema.upsert_columns)
 
-        assert {"id", "company_id", "board_id", "source_url", "first_seen_at"}.isdisjoint(
-            upsert_columns
-        )
+        assert {"id", "company_id", "board_id", "first_seen_at"}.isdisjoint(upsert_columns)
+        assert "source_url" in upsert_columns
         for column in upsert_columns:
             assert column in PostingSchema.column_names()
 

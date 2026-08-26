@@ -1350,6 +1350,10 @@ class PostingSchema:
         PostingColumn("first_seen_at", "TIMESTAMPTZ"),
     )
     upsert_columns: tuple[str, ...] = (
+        # ``source_url`` is a mutable outbound link. Durable matching happens
+        # on local ``source_identity``; a locale/title publication change must
+        # refresh downstream links without replacing the posting UUID.
+        "source_url",
         "is_active",
         "titles",
         "locales",

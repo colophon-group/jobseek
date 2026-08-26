@@ -99,6 +99,7 @@ export interface IndexedPostingDetail extends IndexedPostingSnapshot {
 
 export interface IndexedPostingState {
   isActive: boolean;
+  sourceUrl: string;
 }
 
 const SAFE_DOCUMENT_ID_RE = /^[A-Za-z0-9_-]+$/;
@@ -220,9 +221,11 @@ export async function fetchIndexedPostingSnapshot(
 }
 
 /**
- * Resolve the only saved-job field that intentionally stays live. A single
+ * Resolve the saved-job fields that intentionally stay live. A single
  * Typesense search covers a page of posting ids; missing hits and outages are
  * omitted so callers can retain their immutable snapshot values.
+ * ``sourceUrl`` follows publication/locale changes for the same posting UUID;
+ * the stored snapshot remains the outage fallback.
  */
 export async function fetchIndexedPostingStates(
   postingIds: string[],
@@ -241,7 +244,7 @@ export async function fetchIndexedPostingStates(
           .search({
             q: "*",
             filter_by: `id:[${ids.join(",")}]`,
-            include_fields: "id,is_active",
+            include_fields: "id,is_active,source_url",
             per_page: ids.length,
           }),
       { label: `savedJobStates[${ids.length}]` },
@@ -250,7 +253,10 @@ export async function fetchIndexedPostingStates(
     return new Map(
       (result.hits ?? []).map((hit) => [
         hit.document.id,
-        { isActive: hit.document.is_active },
+        {
+          isActive: hit.document.is_active,
+          sourceUrl: requiredString(hit.document.source_url, "source_url"),
+        },
       ]),
     );
   } catch (error) {

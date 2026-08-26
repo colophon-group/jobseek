@@ -47,6 +47,102 @@ class TestNormalizeDiscovered:
         assert result.jobs_by_url["https://example.com/job1"].title == "Job 1"
         assert result.jobs_by_url["https://example.com/job2"].title == "Job 2"
 
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_explicit_identity_collapses_locale_publications_deterministically(self, reverse):
+        identity = "smartrecruiters:nagarro:7439990002"
+        jobs = [
+            DiscoveredJob(
+                url=f"https://jobs.example/{locale}/7439990002/{title.lower()}",
+                source_identity=identity,
+                title=title,
+                description=f"<p>{locale} description</p>",
+                locations=["Zurich"],
+                language=locale,
+                metadata={"source_identity_fingerprint": "exact-job-7439990002"},
+            )
+            for locale, title in (
+                ("de", "Ingenieur"),
+                ("fr", "Ingénieur"),
+                ("it", "Ingegnere"),
+                ("en", "Engineer"),
+            )
+        ]
+        if reverse:
+            jobs.reverse()
+
+        result = _normalize_discovered(jobs)
+
+        assert result.urls == {"https://jobs.example/en/7439990002/engineer"}
+        assert result.jobs_by_url is not None
+        selected = next(iter(result.jobs_by_url.values()))
+        assert selected.source_identity == identity
+        assert selected.title == "Engineer"
+        assert set(selected.localizations or {}) == {"de", "fr", "it", "en"}
+
+    def test_preferred_locale_removal_keeps_identity_and_selects_next_publication(self):
+        identity = "smartrecruiters:nagarro:7439990002"
+        common = {"source_identity_fingerprint": "exact-job-7439990002"}
+        first = _normalize_discovered(
+            [
+                DiscoveredJob(
+                    url="https://jobs.example/en/7439990002/old-title",
+                    source_identity=identity,
+                    title="Old title",
+                    language="en",
+                    metadata=common,
+                ),
+                DiscoveredJob(
+                    url="https://jobs.example/de/7439990002/alter-titel",
+                    source_identity=identity,
+                    title="Alter Titel",
+                    language="de",
+                    metadata=common,
+                ),
+            ]
+        )
+        second = _normalize_discovered(
+            [
+                DiscoveredJob(
+                    url="https://jobs.example/de/7439990002/neuer-titel",
+                    source_identity=identity,
+                    title="Neuer Titel",
+                    language="de",
+                )
+            ]
+        )
+
+        first_job = next(iter((first.jobs_by_url or {}).values()))
+        second_job = next(iter((second.jobs_by_url or {}).values()))
+        assert first_job.source_identity == second_job.source_identity == identity
+        assert first_job.url.endswith("/en/7439990002/old-title")
+        assert second_job.url.endswith("/de/7439990002/neuer-titel")
+
+    def test_duplicate_identity_without_matching_exact_job_proof_fails_closed(self):
+        identity = "provider:tenant:collision"
+        with pytest.raises(ValueError, match="require one matching"):
+            _normalize_discovered(
+                [
+                    DiscoveredJob(
+                        url="https://jobs.example/en/one",
+                        source_identity=identity,
+                        metadata={"source_identity_fingerprint": "one"},
+                    ),
+                    DiscoveredJob(
+                        url="https://jobs.example/de/two",
+                        source_identity=identity,
+                        metadata={"source_identity_fingerprint": "two"},
+                    ),
+                ]
+            )
+
+    @pytest.mark.parametrize(
+        "identity",
+        ["", "opaque-only", "Provider:tenant:id", "provider:tenant:id?query", "p:t:é"],
+    )
+    def test_malformed_explicit_identity_fails_at_monitor_boundary(self, identity):
+        with pytest.raises(ValueError, match="source_identity"):
+            DiscoveredJob(url="https://jobs.example/one", source_identity=identity)
+
     def test_empty_list(self):
         result = _normalize_discovered([])
         assert result.urls == set()

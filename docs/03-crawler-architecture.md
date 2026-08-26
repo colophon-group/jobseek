@@ -222,15 +222,27 @@ The `scrape_failures` reset is load-bearing: without it, a relisted posting come
 
 ### 4. Cross-board recovery and canonical ownership
 
-`source_url` is globally unique, so the first accepted row remains the
-canonical owner even when sibling boards or shared ATS tenants discover the
-same URL. A foreign discovery is liveness evidence, but it is not sufficient
-evidence to transfer `company_id` or `board_id`: preserving the canonical
-owner prevents a shared tenant from moving a posting between companies based
-on monitor timing.
+`source_identity` is the globally unique durable key; `source_url` is the
+mutable user-facing destination. URL-only monitors remain compatible by
+deriving identity from their canonical URL. Provider-aware monitors may emit
+an explicit `provider:tenant:id` identity with a resolving publication URL.
+When several locale publications represent one exact job, every publication
+must carry the same provider-derived `source_identity_fingerprint`; the
+dispatcher then selects EN, DE, FR, IT, other language, and URL order
+deterministically while retaining localized content. Conflicting or malformed
+evidence fails the monitor cycle.
 
-`_DIFF_BATCH` distinguishes two foreign outcomes under the same globally
-ordered posting lock set:
+The first accepted identity remains the canonical owner even when sibling
+boards or shared ATS tenants discover it. A foreign discovery is liveness
+evidence, but it is not sufficient evidence to transfer `company_id` or
+`board_id`: preserving the canonical owner prevents a shared tenant from
+moving a posting between companies based on monitor timing. Explicit identity
+URL changes update the existing posting UUID and archive prior outbound URLs
+in `job_posting_source_alias`; current and archived URL collisions fail closed.
+
+The legacy `_DIFF_BATCH` and explicit-identity `_DIFF_BATCH_DURABLE` lanes
+distinguish two foreign outcomes under the same globally ordered posting lock
+set:
 
 - `foreign_touched` refreshes an already-active canonical row and clears its
   `missing_count`, so a later owner-only absence must pass a new confirmation
