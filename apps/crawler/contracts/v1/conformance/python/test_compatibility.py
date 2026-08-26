@@ -7,8 +7,10 @@ import json
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -206,6 +208,12 @@ def test_introduction_manifest_is_pinned_to_the_reserved_base() -> None:
     assert manifest["introduction_base_sha"] == ("7c8556642b32ac78871cd015931b95d968e83e7d")
 
 
+class TestRequiredCiBridgeClassCollection:
+    @pytest.mark.parametrize("value", ["first", "second"], ids=["first", "second"])
+    def test_preserves_parametrized_class_methods(self, value: str) -> None:
+        assert value in {"first", "second"}
+
+
 def test_final_v1_surface_contains_required_identity_and_rule_fields() -> None:
     shape = _baseline_shape()
     messages = compatibility._flatten_messages(shape)
@@ -325,6 +333,19 @@ def test_structural_additions_pass(tmp_path: Path) -> None:
     compatibility.compare_descriptors(_baseline_shape(), _compile_source(tmp_path, source))
 
 
+def _add_limits_map(source: str) -> str:
+    return _replace_once(
+        source,
+        "  uint64 max_retry_after_ms = 16;",
+        "  uint64 max_retry_after_ms = 16;\n  map<string, uint64> quotas = 100;",
+    )
+
+
+def test_map_addition_is_compatible(tmp_path: Path) -> None:
+    source = _add_limits_map((V1 / "runtime.proto").read_text(encoding="utf-8"))
+    compatibility.compare_descriptors(_baseline_shape(), _compile_source(tmp_path, source))
+
+
 def _commit(repository: Path, message: str) -> str:
     subprocess.run(["git", "add", "."], cwd=repository, check=True)
     subprocess.run(["git", "commit", "-q", "-m", message], cwd=repository, check=True)
@@ -364,6 +385,24 @@ def _candidate_repository(tmp_path: Path) -> tuple[Path, Path, str]:
         check=True,
     )
     return tmp_path, root, base
+
+
+def _commit_prior_main_source(
+    tmp_path: Path,
+    transform: Callable[[str], str],
+    message: str,
+) -> tuple[Path, Path, str]:
+    repository, root, _ = _candidate_repository(tmp_path)
+    original = (root / "runtime.proto").read_text(encoding="utf-8")
+    prior_main = transform(original)
+    (root / "runtime.proto").write_text(prior_main, encoding="utf-8")
+    prior_main_commit = _commit(repository, message)
+    subprocess.run(
+        ["git", "update-ref", "refs/remotes/origin/main", prior_main_commit],
+        cwd=repository,
+        check=True,
+    )
+    return repository, root, prior_main
 
 
 def test_committed_self_regenerated_baseline_cannot_authenticate_itself(
@@ -418,6 +457,182 @@ def test_prior_main_addition_cannot_later_be_removed(tmp_path: Path) -> None:
         compatibility.CompatibilityError,
         match="removed field must reserve both name and number",
     ):
+        compatibility.check(root)
+
+
+def _add_message_reservations(source: str) -> str:
+    return _replace_once(
+        source,
+        "  uint64 max_retry_after_ms = 16;",
+        """  uint64 max_retry_after_ms = 16;
+  reserved 100 to 110;
+  reserved "retired_field";""",
+    )
+
+
+def _add_enum_reservations(source: str) -> str:
+    return _replace_once(
+        source,
+        "  EXECUTION_KIND_BROWSER = 3;",
+        """  EXECUTION_KIND_BROWSER = 3;
+  reserved 100 to 110;
+  reserved "EXECUTION_KIND_RETIRED";""",
+    )
+
+
+_RESERVATION_HISTORY_CASES = [
+    {
+        "id": "message_reserved_name_removed",
+        "prior": _add_message_reservations,
+        "old": '  reserved "retired_field";\n',
+        "new": "",
+        "expected": "reserved field name was removed",
+    },
+    {
+        "id": "message_reserved_range_removed",
+        "prior": _add_message_reservations,
+        "old": "  reserved 100 to 110;\n",
+        "new": "",
+        "expected": "reserved field range was removed",
+    },
+    {
+        "id": "message_reserved_name_reused",
+        "prior": _add_message_reservations,
+        "old": '  reserved "retired_field";',
+        "new": "  optional string retired_field = 111;",
+        "expected": "reserved field name reused",
+    },
+    {
+        "id": "message_reserved_number_reused",
+        "prior": _add_message_reservations,
+        "old": "  reserved 100 to 110;",
+        "new": "  optional string replacement_field = 100;",
+        "expected": "reserved field number reused",
+    },
+    {
+        "id": "message_reserved_range_partially_removed",
+        "prior": _add_message_reservations,
+        "old": "  reserved 100 to 110;",
+        "new": "  reserved 100 to 105;",
+        "expected": "reserved field range was removed",
+    },
+    {
+        "id": "enum_reserved_name_removed",
+        "prior": _add_enum_reservations,
+        "old": '  reserved "EXECUTION_KIND_RETIRED";\n',
+        "new": "",
+        "expected": "reserved enum name was removed",
+    },
+    {
+        "id": "enum_reserved_range_removed",
+        "prior": _add_enum_reservations,
+        "old": "  reserved 100 to 110;\n",
+        "new": "",
+        "expected": "reserved enum range was removed",
+    },
+    {
+        "id": "enum_reserved_name_reused",
+        "prior": _add_enum_reservations,
+        "old": '  reserved "EXECUTION_KIND_RETIRED";',
+        "new": "  EXECUTION_KIND_RETIRED = 111;",
+        "expected": "reserved enum name reused",
+    },
+    {
+        "id": "enum_reserved_number_reused",
+        "prior": _add_enum_reservations,
+        "old": "  reserved 100 to 110;",
+        "new": "  EXECUTION_KIND_REPLACEMENT = 100;",
+        "expected": "reserved enum number reused",
+    },
+    {
+        "id": "enum_reserved_range_partially_removed",
+        "prior": _add_enum_reservations,
+        "old": "  reserved 100 to 110;",
+        "new": "  reserved 100 to 105;",
+        "expected": "reserved enum range was removed",
+    },
+]
+
+
+@pytest.mark.parametrize(
+    "case",
+    _RESERVATION_HISTORY_CASES,
+    ids=[case["id"] for case in _RESERVATION_HISTORY_CASES],
+)
+def test_prior_main_reservations_cannot_be_removed_or_reused(
+    tmp_path: Path,
+    case: dict[str, Any],
+) -> None:
+    repository, root, prior_main = _commit_prior_main_source(
+        tmp_path,
+        case["prior"],
+        "Add compatible v1 reservation",
+    )
+    candidate = _replace_once(prior_main, str(case["old"]), str(case["new"]))
+    (root / "runtime.proto").write_text(candidate, encoding="utf-8")
+    _commit(repository, "Break compatible v1 reservation")
+
+    with pytest.raises(compatibility.CompatibilityError, match=str(case["expected"])):
+        compatibility.check(root)
+
+
+_MAP_HISTORY_CASES = [
+    {
+        "id": "map_remove",
+        "old": "  map<string, uint64> quotas = 100;\n",
+        "new": "",
+        "expected": "removed field must reserve both name and number",
+    },
+    {
+        "id": "map_change",
+        "old": "  map<string, uint64> quotas = 100;",
+        "new": "  map<string, uint64> quotas = 101;",
+        "expected": "field number changed",
+    },
+    {
+        "id": "map_key_change",
+        "old": "  map<string, uint64> quotas = 100;",
+        "new": "  map<uint64, uint64> quotas = 100;",
+        "expected": "field type changed",
+    },
+    {
+        "id": "map_value_change",
+        "old": "  map<string, uint64> quotas = 100;",
+        "new": "  map<string, string> quotas = 100;",
+        "expected": "field type changed",
+    },
+    {
+        "id": "map_entry_change",
+        "old": "  map<string, uint64> quotas = 100;",
+        "new": """  message QuotasEntry {
+    string key = 1;
+    uint64 value = 2;
+  }
+  repeated QuotasEntry quotas = 100;""",
+        "expected": "message options changed",
+    },
+]
+
+
+@pytest.mark.parametrize(
+    "case",
+    _MAP_HISTORY_CASES,
+    ids=[case["id"] for case in _MAP_HISTORY_CASES],
+)
+def test_prior_main_map_changes_are_rejected(
+    tmp_path: Path,
+    case: dict[str, str],
+) -> None:
+    repository, root, prior_main = _commit_prior_main_source(
+        tmp_path,
+        _add_limits_map,
+        "Add compatible v1 map",
+    )
+    candidate = _replace_once(prior_main, case["old"], case["new"])
+    (root / "runtime.proto").write_text(candidate, encoding="utf-8")
+    _commit(repository, "Break compatible v1 map")
+
+    with pytest.raises(compatibility.CompatibilityError, match=case["expected"]):
         compatibility.check(root)
 
 

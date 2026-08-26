@@ -297,6 +297,27 @@ def _enum_number_reserved(ranges: tuple[tuple[int, int], ...], number: int) -> b
     return any(start <= number <= end for start, end in ranges)
 
 
+def _reserved_range_preserved(
+    old_range: tuple[int, int],
+    current_ranges: tuple[tuple[int, int], ...],
+    *,
+    inclusive_end: bool,
+) -> bool:
+    old_start, old_end = old_range
+    target_end = old_end + 1 if inclusive_end else old_end
+    cursor = old_start
+    normalized = sorted((start, end + 1 if inclusive_end else end) for start, end in current_ranges)
+    for start, end in normalized:
+        if end <= cursor:
+            continue
+        if start > cursor:
+            return False
+        cursor = max(cursor, end)
+        if cursor >= target_end:
+            return True
+    return cursor >= target_end
+
+
 def compare_descriptors(baseline: FileShape, current: FileShape) -> None:
     if baseline.name != current.name:
         raise CompatibilityError(
@@ -328,6 +349,28 @@ def compare_descriptors(baseline: FileShape, current: FileShape) -> None:
             raise CompatibilityError(f"message options changed: {qualified}")
         new_by_number = {field.number: field for field in new_message.fields}
         new_by_name = {field.name: field for field in new_message.fields}
+        for new_field in new_message.fields:
+            if new_field.name in old_message.reserved_names:
+                raise CompatibilityError(
+                    f"reserved field name reused: {qualified}.{new_field.name}"
+                )
+            if _number_reserved(old_message.reserved_ranges, new_field.number):
+                raise CompatibilityError(
+                    f"reserved field number reused: {qualified} #{new_field.number}"
+                )
+        removed_reserved_names = old_message.reserved_names - new_message.reserved_names
+        if removed_reserved_names:
+            removed = sorted(removed_reserved_names)[0]
+            raise CompatibilityError(f"reserved field name was removed: {qualified}.{removed}")
+        for old_range in old_message.reserved_ranges:
+            if not _reserved_range_preserved(
+                old_range,
+                new_message.reserved_ranges,
+                inclusive_end=False,
+            ):
+                raise CompatibilityError(
+                    f"reserved field range was removed: {qualified} {old_range}"
+                )
         for old_field in old_message.fields:
             new_field = new_by_number.get(old_field.number)
             field_name = f"{qualified}.{old_field.name}"
@@ -385,6 +428,26 @@ def compare_descriptors(baseline: FileShape, current: FileShape) -> None:
             raise CompatibilityError(f"enum options changed: {qualified}")
         new_by_number = {value.number: value for value in new_enum.values}
         new_by_name = {value.name: value for value in new_enum.values}
+        for new_value in new_enum.values:
+            if new_value.name in old_enum.reserved_names:
+                raise CompatibilityError(f"reserved enum name reused: {qualified}.{new_value.name}")
+            if _enum_number_reserved(old_enum.reserved_ranges, new_value.number):
+                raise CompatibilityError(
+                    f"reserved enum number reused: {qualified} #{new_value.number}"
+                )
+        removed_reserved_names = old_enum.reserved_names - new_enum.reserved_names
+        if removed_reserved_names:
+            removed = sorted(removed_reserved_names)[0]
+            raise CompatibilityError(f"reserved enum name was removed: {qualified}.{removed}")
+        for old_range in old_enum.reserved_ranges:
+            if not _reserved_range_preserved(
+                old_range,
+                new_enum.reserved_ranges,
+                inclusive_end=True,
+            ):
+                raise CompatibilityError(
+                    f"reserved enum range was removed: {qualified} {old_range}"
+                )
         for old_value in old_enum.values:
             new_value = new_by_number.get(old_value.number)
             value_name = f"{qualified}.{old_value.name}"
