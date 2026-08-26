@@ -1334,8 +1334,11 @@ inline — Single-Page Extraction (rich)
       "detail_api": {
         "url_template": "https://company.example/api/jobs/{id}",
         "id_field": "detail_id",
+        "item_selector": ".job-card",
+        "item_identity_attribute": "data-job-id",
+        "item_identity_regex": "^job-(\\d+)$",
         "fields": {
-          "url": "canonical_url",
+          "title": "title",
           "description": "content",
           "date_posted": "published_at",
           "valid_through": "expires_at"
@@ -1465,10 +1468,18 @@ inline — Single-Page Extraction (rich)
                  example a data-id) instead of visible text.
     detail_api   Optional per-item JSON enrichment. url_template must be HTTPS
                  and contain one {id}; id_field names a value extracted by the
-                 steps. fields uses the normal structured field mapping syntax
-                 and supports url, title, description, location(s), employment
-                 type, workplace type, date_posted, and valid_through. The cycle
-                 fails closed when an ID, response, or required field is absent.
+                 steps. item_selector must enumerate every source item, while
+                 item_identity_attribute and the one-capture
+                 item_identity_regex recover each stable provider ID. The
+                 selector must not filter on the identity attribute: a source
+                 item missing that attribute must be selected and fail closed.
+                 extracted IDs must match that exact, unique source inventory;
+                 they also become the synthetic _jid values. fields uses the
+                 normal structured field mapping syntax and supports title,
+                 description, location(s), employment type, workplace type,
+                 date_posted, and valid_through. Provider-returned links never
+                 control identity. The cycle fails closed when an ID, response,
+                 required field, or source item is absent.
     defaults     Default field values applied when extracted value is absent.
                  Supports: description, locations (list), employment_type,
                  job_location_type, date_posted, valid_through.

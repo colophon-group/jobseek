@@ -78,7 +78,17 @@ _DETAIL_FIELDS = frozenset(
 _MAX_DETAIL_RESPONSE_BYTES = 2_000_000
 _MAX_DETAIL_API_FIELDS = 16
 _MAX_DETAIL_API_SPEC_BYTES = 16_384
-_DETAIL_API_KEYS = frozenset({"url_template", "id_field", "fields", "required_fields"})
+_DETAIL_API_KEYS = frozenset(
+    {
+        "url_template",
+        "id_field",
+        "item_selector",
+        "item_identity_attribute",
+        "item_identity_regex",
+        "fields",
+        "required_fields",
+    }
+)
 
 
 def _validated_detail_api(metadata: dict) -> dict | None:
@@ -107,6 +117,42 @@ def _validated_detail_api(metadata: dict) -> dict | None:
         or re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]{0,127}", id_field) is None
     ):
         raise ValueError("inline detail_api.id_field must be a non-empty bounded string")
+
+    item_selector = config.get("item_selector")
+    if (
+        not isinstance(item_selector, str)
+        or not item_selector.strip()
+        or len(item_selector) > _MAX_DETAIL_SELECTOR_LENGTH
+        or "\x00" in item_selector
+    ):
+        raise ValueError("inline detail_api.item_selector must be a bounded CSS selector")
+    item_selector = item_selector.strip()
+    try:
+        LexborHTMLParser("<div></div>").css(item_selector)
+    except SelectolaxError as exc:
+        raise ValueError("inline detail_api.item_selector must be a valid CSS selector") from exc
+
+    item_identity_attribute = config.get("item_identity_attribute", "id")
+    if (
+        not isinstance(item_identity_attribute, str)
+        or re.fullmatch(r"[A-Za-z_:][A-Za-z0-9:._-]{0,127}", item_identity_attribute) is None
+    ):
+        raise ValueError("inline detail_api.item_identity_attribute must be a valid attribute")
+    item_identity_regex = config.get("item_identity_regex")
+    if (
+        not isinstance(item_identity_regex, str)
+        or not item_identity_regex
+        or len(item_identity_regex) > _MAX_DETAIL_IDENTITY_REGEX_LENGTH
+    ):
+        raise ValueError("inline detail_api.item_identity_regex must be a bounded regex")
+    try:
+        item_identity_pattern = re.compile(item_identity_regex)
+    except re.error as exc:
+        raise ValueError("inline detail_api.item_identity_regex must be a valid regex") from exc
+    if item_identity_pattern.groups != 1:
+        raise ValueError(
+            "inline detail_api.item_identity_regex must contain exactly one capture group"
+        )
 
     fields = config.get("fields")
     if not isinstance(fields, dict) or not fields or len(fields) > _MAX_DETAIL_API_FIELDS:
@@ -137,15 +183,43 @@ def _validated_detail_api(metadata: dict) -> dict | None:
     return {
         "url_template": url_template,
         "id_field": id_field,
+        "item_selector": item_selector,
+        "item_identity_attribute": item_identity_attribute,
+        "item_identity_pattern": item_identity_pattern,
         "fields": fields,
         "required_fields": required_fields,
     }
+
+
+def _detail_api_inventory_identities(html: str, config: dict) -> frozenset[str]:
+    """Return the exact bounded provider-ID inventory advertised by the listing."""
+    nodes = LexborHTMLParser(html).css(config["item_selector"])
+    if not nodes:
+        raise ValueError("inline detail_api item_selector matched no source items")
+    if len(nodes) > _MAX_JOBS:
+        raise ValueError(f"inline detail_api source inventory exceeded the {_MAX_JOBS} item cap")
+    identities: list[str] = []
+    for index, node in enumerate(nodes):
+        raw = node.attributes.get(config["item_identity_attribute"])
+        match = config["item_identity_pattern"].fullmatch(raw or "")
+        identity = match.group(1) if match is not None else ""
+        if (
+            not identity
+            or len(identity) > _MAX_DETAIL_IDENTITY_LENGTH
+            or any(ord(character) < 0x20 for character in identity)
+        ):
+            raise ValueError(f"inline detail_api source item {index + 1} omitted its identity")
+        identities.append(identity)
+    if len(identities) != len(set(identities)):
+        raise ValueError("inline detail_api source identities must be unique")
+    return frozenset(identities)
 
 
 async def _enrich_from_detail_api(
     result: dict,
     config: dict,
     http: httpx.AsyncClient,
+    source_inventory: frozenset[str],
 ) -> str:
     """Merge bounded JSON detail fields and return the stable provider ID."""
     identifier = result.get(config["id_field"])
@@ -157,6 +231,8 @@ async def _enrich_from_detail_api(
     ):
         raise ValueError(f"inline detail_api id field {config['id_field']!r} was not extracted")
     identifier = identifier.strip()
+    if identifier not in source_inventory:
+        raise ValueError("inline detail_api extracted an identity outside source inventory")
     detail_url = config["url_template"].replace("{id}", quote(identifier, safe=""))
     from src.shared.http_retry import fetch_text_page_with_retry
 
@@ -1158,6 +1234,12 @@ async def discover(
         log.info("inline.empty_page", url=board_url)
         return []
 
+    detail_api_inventory = (
+        _detail_api_inventory_identities(html, detail_api)
+        if detail_api is not None
+        else frozenset()
+    )
+
     # Extract jobs by running steps repeatedly
     jobs: list[DiscoveredJob] = []
     seen_jids: dict[str, int] = {}
@@ -1168,6 +1250,7 @@ async def discover(
     cursor = 0
     detail_item_index = 0
     source_identity_index = 0
+    detail_api_identities: set[str] = set()
 
     while cursor < len(elements) and processed_count < _MAX_JOBS:
         if item_boundary_tag is None:
@@ -1216,7 +1299,15 @@ async def discover(
             )
             source_identity_index += 1
         if detail_api is not None:
-            detail_identity = await _enrich_from_detail_api(result, detail_api, client)
+            detail_identity = await _enrich_from_detail_api(
+                result,
+                detail_api,
+                client,
+                detail_api_inventory,
+            )
+            if detail_identity in detail_api_identities:
+                raise ValueError("inline detail_api extracted a duplicate source identity")
+            detail_api_identities.add(detail_identity)
             enriched_title = result.get("title")
             if enriched_title is not None:
                 if not isinstance(enriched_title, str) or not enriched_title.strip():
@@ -1308,6 +1399,11 @@ async def discover(
         raise ValueError(
             "inline source identity/job count mismatch "
             f"({len(source_identities)} identities for {source_identity_index} jobs)"
+        )
+    if detail_api is not None and detail_api_identities != detail_api_inventory:
+        raise ValueError(
+            "inline detail_api extraction did not cover the exact source inventory "
+            f"({len(detail_api_identities)} of {len(detail_api_inventory)} identities)"
         )
 
     if empty_text is not None and not jobs:

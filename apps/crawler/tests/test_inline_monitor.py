@@ -737,6 +737,9 @@ async def test_discover_enriches_inline_items_from_json_detail_api():
             "detail_api": {
                 "url_template": "https://api.example.edu/jobs/{id}",
                 "id_field": "detail_id",
+                "item_selector": "div",
+                "item_identity_attribute": "id",
+                "item_identity_regex": r"^open(\d+)$",
                 "fields": {
                     "title": "fonction",
                     "description": "content",
@@ -771,6 +774,9 @@ async def test_discover_detail_api_fails_closed_when_id_is_missing():
             "steps": [{"tag": "h3", "field": "title"}],
             "detail_api": {
                 "url_template": "https://api.example.com/jobs/{id}",
+                "item_selector": "h3[data-id]",
+                "item_identity_attribute": "data-id",
+                "item_identity_regex": r"^(\d+)$",
                 "fields": {"description": "content"},
                 "required_fields": ["description"],
             },
@@ -778,7 +784,161 @@ async def test_discover_detail_api_fails_closed_when_id_is_missing():
     }
 
     with pytest.raises(ValueError, match="id field"):
-        await discover(board, _FakeClient("<h3>Researcher</h3>"))
+        await discover(board, _FakeClient('<h3 data-id="1911">Researcher</h3>'))
+
+
+@pytest.mark.asyncio
+async def test_discover_detail_api_requires_exact_source_inventory_coverage():
+    listing_url = "https://example.edu/jobs"
+    html = """
+    <ul>
+      <li id="1911"><h4 class="name">Researcher</h4><div id="open1911">Loading</div></li>
+      <li id="1904"><h4 class="ignored">Professor</h4><div id="open1904">Loading</div></li>
+    </ul>
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == listing_url:
+            return httpx.Response(200, text=html)
+        if str(request.url) == "https://api.example.edu/jobs/1911":
+            return httpx.Response(
+                200,
+                json={"title": "Researcher", "description": "Research"},
+                headers={"content-type": "application/json"},
+            )
+        raise AssertionError(f"unexpected URL: {request.url}")
+
+    board = {
+        "board_url": listing_url,
+        "metadata": {
+            "steps": [
+                {"tag": "h4", "attr": "class=name", "field": "title", "optional": True},
+                {
+                    "tag": "div",
+                    "attr": "id=open",
+                    "field": "detail_id",
+                    "value_attr": "id",
+                    "regex": r"^open(\d+)$",
+                },
+            ],
+            "detail_api": {
+                "url_template": "https://api.example.edu/jobs/{id}",
+                "item_selector": "li[id]",
+                "item_identity_regex": r"^(\d+)$",
+                "fields": {"title": "title", "description": "description"},
+                "required_fields": ["title", "description"],
+            },
+        },
+    }
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="exact source inventory"):
+            await discover(board, client)
+
+
+@pytest.mark.asyncio
+async def test_discover_detail_api_rejects_duplicate_source_identities():
+    board = {
+        "board_url": "https://example.com/jobs",
+        "metadata": {
+            "steps": [{"tag": "h3", "field": "title"}],
+            "detail_api": {
+                "url_template": "https://api.example.com/jobs/{id}",
+                "item_selector": "li",
+                "item_identity_regex": r"^(\d+)$",
+                "fields": {"description": "content"},
+            },
+        },
+    }
+
+    with pytest.raises(ValueError, match="source identities must be unique"):
+        await discover(
+            board,
+            _FakeClient('<li id="1911"><h3>One</h3></li><li id="1911"><h3>Two</h3></li>'),
+        )
+
+
+@pytest.mark.asyncio
+async def test_discover_detail_api_rejects_unlisted_identity_before_detail_request():
+    listing_url = "https://example.edu/jobs"
+    requested_urls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested_urls.append(str(request.url))
+        return httpx.Response(
+            200,
+            text='<li id="1911"><h3>Researcher</h3><div id="open1904">Loading</div></li>',
+        )
+
+    board = {
+        "board_url": listing_url,
+        "metadata": {
+            "steps": [
+                {"tag": "h3", "field": "title"},
+                {
+                    "tag": "div",
+                    "field": "detail_id",
+                    "value_attr": "id",
+                    "regex": r"^open(\d+)$",
+                },
+            ],
+            "detail_api": {
+                "url_template": "https://api.example.edu/jobs/{id}",
+                "item_selector": "li",
+                "item_identity_regex": r"^(\d+)$",
+                "fields": {"description": "content"},
+            },
+        },
+    }
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="outside source inventory"):
+            await discover(board, client)
+
+    assert requested_urls == [listing_url]
+
+
+@pytest.mark.asyncio
+async def test_discover_detail_api_rejects_non_json_content_type():
+    listing_url = "https://example.edu/jobs"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url) == listing_url:
+            return httpx.Response(
+                200,
+                text='<li id="1911"><h3>Researcher</h3><div id="open1911">Loading</div></li>',
+            )
+        return httpx.Response(
+            200,
+            text='{"content":"Research"}',
+            headers={"content-type": "text/html"},
+        )
+
+    board = {
+        "board_url": listing_url,
+        "metadata": {
+            "steps": [
+                {"tag": "h3", "field": "title"},
+                {
+                    "tag": "div",
+                    "field": "detail_id",
+                    "value_attr": "id",
+                    "regex": r"^open(\d+)$",
+                },
+            ],
+            "detail_api": {
+                "url_template": "https://api.example.edu/jobs/{id}",
+                "item_selector": "li[id]",
+                "item_identity_regex": r"^(\d+)$",
+                "fields": {"description": "content"},
+                "required_fields": ["description"],
+            },
+        },
+    }
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(ValueError, match="not JSON content"):
+            await discover(board, client)
 
 
 @pytest.mark.asyncio
@@ -820,12 +980,19 @@ async def test_discover_rejects_ambiguous_section_markers(html, message):
             "placeholder",
         ),
         (
-            {"url_template": "https://api.example.com/{id}", "fields": {"unknown": "x"}},
+            {
+                "url_template": "https://api.example.com/{id}",
+                "item_selector": "li[id]",
+                "item_identity_regex": r"^(\d+)$",
+                "fields": {"unknown": "x"},
+            },
             "unsupported",
         ),
         (
             {
                 "url_template": "https://api.example.com/{id}",
+                "item_selector": "li[id]",
+                "item_identity_regex": r"^(\d+)$",
                 "fields": {"title": "name"},
                 "required_fields": ["description"],
             },

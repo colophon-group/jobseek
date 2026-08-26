@@ -423,7 +423,7 @@ class TestWalkSteps:
 
         assert result["detail_id"] == "1911"
 
-    @pytest.mark.parametrize("value_attr", ["", 123, "x" * 129])
+    @pytest.mark.parametrize("value_attr", ["", 123, "x" * 129, "data id", "9data"])
     def test_value_attr_rejects_invalid_names(self, value_attr):
         els = [{"tag": "div", "attrs": {"id": "1"}, "text": "Job"}]
 
