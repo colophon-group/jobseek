@@ -2445,6 +2445,8 @@ gbfoods,gbfoods-talentclue,https://gbfoods.talentclue.com/en/gbfoods,api_sniffer
 gearset,gearset-pinpoint,https://gearset.pinpointhq.com,pinpoint,"{""slug"": ""gearset""}",skip,
 gecko-mbh,gecko-mbh-join,https://join.com/companies/gecko,join,"{""slug"": ""gecko""}",nextdata,"{""path"": ""props.pageProps.initialState.job"", ""fields"": {""title"": ""title"", ""description"": ""description"", ""locations"": ""city.cityName"", ""employment_type"": ""employmentType.googleType"", ""job_location_type"": ""workplaceType"", ""date_posted"": ""createdAt""}}"
 gecko-robotics,gecko-robotics-ashby,https://jobs.ashbyhq.com/gecko-robotics,ashby,"{""token"": ""gecko-robotics""}",skip,
+geely-holding-group,geely-holding-group-campus,https://campus.geely.com/,mokahr,"{""org_id"": ""geely"", ""site_id"": 78436}",mokahr,"{""enrich"": [""description""]}"
+geely-holding-group,geely-holding-group-careers,https://app.mokahr.com/social-recruitment/geely/96123,mokahr,"{""org_id"": ""geely"", ""site_id"": 96123}",mokahr,"{""enrich"": [""description""]}"
 gelato,gelato-ashby,https://jobs.ashbyhq.com/gelato,ashby,"{""token"": ""gelato""}",skip,
 gelato,gelato-greenhouse,https://job-boards.greenhouse.io/gelato,greenhouse,"{""token"": ""gelato""}",skip,
 gelber-group,gelber-group-greenhouse,https://job-boards.greenhouse.io/gelbergroup,greenhouse,"{""token"": ""gelbergroup""}",skip,
