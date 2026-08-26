@@ -39,7 +39,7 @@ abbvie,abbvie-careers,https://careers.abbvie.com/en/jobs,sitemap,"{""url"": ""ht
 abbvie,abbvie-smartrecruiters,https://careers.smartrecruiters.com/AbbVie,smartrecruiters,"{""token"": ""AbbVie""}",smartrecruiters,
 abbyy,abbyy-greenhouse,https://job-boards.greenhouse.io/abbyy,greenhouse,"{""token"": ""abbyy""}",skip,
 abcellera,abcellera-greenhouse,https://job-boards.greenhouse.io/abcellera,greenhouse,"{""token"": ""abcellera""}",skip,
-abercrombie,abercrombie-careers,https://abercrombie.wd108.myworkdayjobs.com/anf,workday,,workday,
+abercrombie,abercrombie-careers,https://abercrombie.wd108.myworkdayjobs.com/anf,workday,"{""split_facet"": ""timeType""}",workday,
 abilitypath,abilitypath-greenhouse,https://job-boards.greenhouse.io/abilitypath,greenhouse,"{""token"": ""abilitypath""}",skip,
 ably-uk,ably-uk-greenhouse,https://job-boards.greenhouse.io/ably30,greenhouse,"{""token"": ""ably30""}",skip,
 abnormal,abnormal-greenhouse,https://job-boards.greenhouse.io/abnormalsecurity,greenhouse,"{""token"": ""abnormalsecurity""}",skip,
