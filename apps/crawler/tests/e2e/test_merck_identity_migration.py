@@ -101,6 +101,8 @@ async def _run_migration(
                 "config_fingerprint": "merck-identity-e2e",
             }
         ),
+        "merck",
+        False,
     )
     assert row is not None
     return row

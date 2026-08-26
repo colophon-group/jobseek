@@ -175,7 +175,76 @@ _MERCK_LEGACY_URL_PATTERN = (
     r"job/([0-9]+)(/[^/?#]*)?$"
 )
 _MERCK_CANONICAL_URL_PATTERN = r"^https://careers[.]emdgroup[.]com/us/en/job/[0-9]+$"
+_POSTFINANCE_IDENTITY_MIGRATION = "postfinance-swiss-post-stable-id-v1"
+_POSTFINANCE_IDENTITY_MIGRATION_VERSION = 1
+_POSTFINANCE_IDENTITY_MIGRATION_BOARD_SLUG = "postfinance-careers"
+_POSTFINANCE_IDENTITY_MIGRATION_CONTRACT = (
+    "https://jobs.postfinance.ch/search/?locale=de_DE",
+    "rss",
+    "94dd0b3abd85e29028d1819a805ce204c8eefcdb6d8695881bf6834168e994f1",
+)
+_POSTFINANCE_LEGACY_URL_PATTERN = (
+    r"^(https://job[.]post[.]ch/([A-Za-z][A-Za-z0-9]*/)?job/"
+    r"[^/?#]+/[0-9]+-[a-z]{2}_[A-Z]{2}"
+    r"|https://job[.]post[.]ch/search[?][^#]+(#[^#]*)?"
+    r"|https://career[.]post[.]ch/(de|en)"
+    r"|https://www[.]post[.]ch/en/pages/footer/privacy-policy-for-job-applicants)$"
+)
+_POSTFINANCE_CANONICAL_URL_PATTERN = r"^https://jobs[.]postfinance[.]ch/job/_/[0-9]+/$"
 _IDENTITY_MIGRATION_MAX_ROWS = 2_000
+
+
+@dataclass(frozen=True, slots=True)
+class _IdentityMigrationSpec:
+    migration_id: str
+    version: int
+    company_slug: str
+    board_url: str
+    crawler_type: str
+    config_fingerprint: str
+    legacy_url_pattern: str
+    canonical_url_pattern: str
+    company_wide: bool = False
+
+
+def _identity_migration_spec(
+    migration_id: object,
+    board_slug: str | None,
+) -> _IdentityMigrationSpec | None:
+    """Resolve only code-owned migration markers and exact board slugs."""
+    if migration_id == _MERCK_IDENTITY_MIGRATION:
+        contract = _MERCK_IDENTITY_MIGRATION_CONTRACTS.get(board_slug or "")
+        if contract is None:
+            return None
+        board_url, crawler_type, fingerprint = contract
+        return _IdentityMigrationSpec(
+            migration_id=_MERCK_IDENTITY_MIGRATION,
+            version=_MERCK_IDENTITY_MIGRATION_VERSION,
+            company_slug="merck",
+            board_url=board_url,
+            crawler_type=crawler_type,
+            config_fingerprint=fingerprint,
+            legacy_url_pattern=_MERCK_LEGACY_URL_PATTERN,
+            canonical_url_pattern=_MERCK_CANONICAL_URL_PATTERN,
+        )
+    if (
+        migration_id == _POSTFINANCE_IDENTITY_MIGRATION
+        and board_slug == _POSTFINANCE_IDENTITY_MIGRATION_BOARD_SLUG
+    ):
+        board_url, crawler_type, fingerprint = _POSTFINANCE_IDENTITY_MIGRATION_CONTRACT
+        return _IdentityMigrationSpec(
+            migration_id=_POSTFINANCE_IDENTITY_MIGRATION,
+            version=_POSTFINANCE_IDENTITY_MIGRATION_VERSION,
+            company_slug="postfinance",
+            board_url=board_url,
+            crawler_type=crawler_type,
+            config_fingerprint=fingerprint,
+            legacy_url_pattern=_POSTFINANCE_LEGACY_URL_PATTERN,
+            canonical_url_pattern=_POSTFINANCE_CANONICAL_URL_PATTERN,
+            company_wide=True,
+        )
+    return None
+
 
 # API monitor types share a single API host per type (throttle-domain keys).
 _API_MONITOR_TYPES = api_monitor_types()
@@ -498,15 +567,17 @@ async def _retire_canonicalized_provider_identities(
     all_canonical: bool,
     board_log: structlog.stdlib.BoundLogger,
 ) -> int:
-    """Run the receipt-backed, one-shot Merck identity migration.
+    """Run a code-owned, receipt-backed provider identity migration.
 
     Eligibility is bound to a code-owned board URL/type/config fingerprint,
     healthy complete discovery, and an ordinary rolling-count drop check. The
-    SQL additionally binds the owning company to ``merck``, classifies every
-    active board-owned source URL, and independently requires every canonical
-    URL discovered this cycle to exist as an active same-company row touched
-    during this cycle. It then retires all strict legacy rows, including stale
-    rows whose jobs are no longer in the current discovery.
+    SQL additionally binds the owning company and classifies every active URL
+    in the migration's board- or company-wide scope. It independently requires
+    every canonical URL discovered this cycle to exist as an active
+    same-company row touched during this cycle, then retires all strict legacy
+    rows, including stale rows whose jobs are no longer in the current
+    discovery. Company-wide scope is reserved for replacement boards that must
+    clean up identities left active by several removed boards.
 
     The caller runs this inside the ordinary board-success transaction before
     :func:`_mark_gone_with_guards`. Retired duplicates no longer inflate that
@@ -516,20 +587,25 @@ async def _retire_canonicalized_provider_identities(
     permanent no-op; any mismatched receipt fails closed.
     """
     md = metadata or {}
-    if md.get("identity_migration") != _MERCK_IDENTITY_MIGRATION:
+    migration_id = md.get("identity_migration")
+    spec = _identity_migration_spec(migration_id, board_slug)
+    if spec is None:
         return 0
 
-    contract = _MERCK_IDENTITY_MIGRATION_CONTRACTS.get(board_slug or "")
     fingerprint = md.get("_monitor_config_fingerprint")
-    if contract is None or (board_url, crawler_type, fingerprint) != contract:
+    if (board_url, crawler_type, fingerprint) != (
+        spec.board_url,
+        spec.crawler_type,
+        spec.config_fingerprint,
+    ):
         board_log.warning(
             "batch.monitor.identity_migration_contract_mismatch",
-            migration=_MERCK_IDENTITY_MIGRATION,
+            migration=spec.migration_id,
             board_slug=board_slug,
         )
         return 0
 
-    expected_fingerprint = contract[2]
+    expected_fingerprint = spec.config_fingerprint
 
     def receipt_matches(receipt: object) -> bool:
         if not isinstance(receipt, dict) or set(receipt) != {
@@ -542,8 +618,8 @@ async def _retire_canonicalized_provider_identities(
             return False
         retired_count = receipt.get("retired_count")
         return (
-            receipt.get("id") == _MERCK_IDENTITY_MIGRATION
-            and receipt.get("version") == _MERCK_IDENTITY_MIGRATION_VERSION
+            receipt.get("id") == spec.migration_id
+            and receipt.get("version") == spec.version
             and receipt.get("config_fingerprint") == expected_fingerprint
             and isinstance(receipt.get("completed_at"), str)
             and bool(receipt.get("completed_at"))
@@ -558,7 +634,7 @@ async def _retire_canonicalized_provider_identities(
             return 0
         board_log.warning(
             "batch.monitor.identity_migration_receipt_mismatch",
-            migration=_MERCK_IDENTITY_MIGRATION,
+            migration=spec.migration_id,
             source="board_metadata",
         )
         return 0
@@ -595,7 +671,7 @@ async def _retire_canonicalized_provider_identities(
     if precondition_reason is not None:
         board_log.warning(
             "batch.monitor.identity_migration_precondition_failed",
-            migration=_MERCK_IDENTITY_MIGRATION,
+            migration=spec.migration_id,
             reason=precondition_reason,
             discovered=discovered,
             history=history,
@@ -603,8 +679,8 @@ async def _retire_canonicalized_provider_identities(
         return 0
 
     base_receipt = {
-        "id": _MERCK_IDENTITY_MIGRATION,
-        "version": _MERCK_IDENTITY_MIGRATION_VERSION,
+        "id": spec.migration_id,
+        "version": spec.version,
         "config_fingerprint": expected_fingerprint,
     }
 
@@ -615,9 +691,11 @@ async def _retire_canonicalized_provider_identities(
         monitor_start_ts,
         _IDENTITY_MIGRATION_MAX_ROWS,
         exact_canonical_urls,
-        _MERCK_LEGACY_URL_PATTERN,
-        _MERCK_CANONICAL_URL_PATTERN,
+        spec.legacy_url_pattern,
+        spec.canonical_url_pattern,
         json.dumps(base_receipt),
+        spec.company_slug,
+        spec.company_wide,
     )
     if row is None:
         board_log.warning("batch.monitor.identity_migration_no_result")
@@ -631,7 +709,7 @@ async def _retire_canonicalized_provider_identities(
             return 0
         board_log.warning(
             "batch.monitor.identity_migration_receipt_mismatch",
-            migration=_MERCK_IDENTITY_MIGRATION,
+            migration=spec.migration_id,
             source="database",
         )
         return 0
@@ -645,7 +723,7 @@ async def _retire_canonicalized_provider_identities(
     if not receipt_written:
         board_log.warning(
             "batch.monitor.identity_migration_blocked",
-            migration=_MERCK_IDENTITY_MIGRATION,
+            migration=spec.migration_id,
             active=int(row["active"]),
             legacy=legacy,
             canonical=int(row["canonical"]),
@@ -668,7 +746,7 @@ async def _retire_canonicalized_provider_identities(
         )
     board_log.info(
         "batch.monitor.identity_migration_completed",
-        migration=_MERCK_IDENTITY_MIGRATION,
+        migration=spec.migration_id,
         retired=retired,
     )
     return retired
@@ -1160,9 +1238,11 @@ async def _process_one_board_streaming(
         processing_filtered = 0
         all_canonical = True
         canonical_urls: set[str] = set()
-        collect_migration_canonicals = (
-            metadata.get("identity_migration") == _MERCK_IDENTITY_MIGRATION
+        identity_migration_spec = _identity_migration_spec(
+            metadata.get("identity_migration"),
+            board_slug,
         )
+        collect_migration_canonicals = identity_migration_spec is not None
         # A streamed monitor may emit state on an empty batch before it emits
         # any URLs. Hold that patch until the first posting batch commits, or
         # until a valid empty run records its empty-check transition.
@@ -1199,7 +1279,8 @@ async def _process_one_board_streaming(
                 )
             if collect_migration_canonicals:
                 for url in result.urls:
-                    if re.fullmatch(_MERCK_CANONICAL_URL_PATTERN, url) is None:
+                    assert identity_migration_spec is not None
+                    if re.fullmatch(identity_migration_spec.canonical_url_pattern, url) is None:
                         all_canonical = False
                     else:
                         canonical_urls.add(url)
