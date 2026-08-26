@@ -1,0 +1,117 @@
+name: Crawler Deploy Gate
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft, labeled, unlabeled]
+  issues:
+    types: [opened, reopened, closed, labeled, unlabeled]
+
+permissions: {}
+
+concurrency:
+  group: >-
+    crawler-deploy-gate-${{ github.event_name }}-${{
+      github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  pull-request:
+    if: github.event_name == 'pull_request_target'
+    name: Evaluate Crawler Deploy Gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+      statuses: write
+    steps:
+      - name: Check out the trusted workflow revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+
+      - name: Enforce crawler deployment holds
+        id: evaluate
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+        run: .github/scripts/check-crawler-deploy-gate.sh
+
+      - name: Publish required crawler deployment status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          OUTCOME: ${{ steps.evaluate.outcome }}
+          TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          state=success
+          description="No crawler deployment hold applies"
+          if [[ "$DRAFT" == "true" ]]; then
+            description="Draft PR; no merge authority is granted"
+          elif [[ "$OUTCOME" != "success" ]]; then
+            state=failure
+            description="Crawler deployment is held"
+          fi
+          gh api --method POST "repos/$REPO/statuses/$HEAD_SHA" \
+            -f state="$state" \
+            -f context="Crawler Deploy Gate" \
+            -f description="$description" \
+            -f target_url="$TARGET_URL" >/dev/null
+
+      - name: Fail the evaluator when deployment is held
+        if: steps.evaluate.outcome != 'success'
+        run: exit 1
+
+  deployment-hold:
+    if: >-
+      github.event_name == 'issues' &&
+      (github.event.label.name == 'deployment-hold:crawler' ||
+       contains(toJson(github.event.issue.labels.*.name), 'deployment-hold:crawler'))
+    name: Reconcile Crawler Deploy Gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+      statuses: write
+    steps:
+      - name: Check out the trusted default branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Re-evaluate every ready PR at its exact head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          gh pr list --repo "$REPO" --state open --limit 1000 \
+            --json number,isDraft,headRefOid \
+            --jq '.[] | select(.isDraft == false) | [.number, .headRefOid] | @tsv' |
+          while IFS=$'\t' read -r pr head_sha; do
+            [[ "$pr" =~ ^[1-9][0-9]*$ ]]
+            [[ "$head_sha" =~ ^[0-9a-f]{40}$ ]]
+            state=success
+            description="No crawler deployment hold applies"
+            if ! PR="$pr" DRAFT=false \
+              .github/scripts/check-crawler-deploy-gate.sh; then
+              state=failure
+              description="Crawler deployment is held"
+            fi
+            gh api --method POST "repos/$REPO/statuses/$head_sha" \
+              -f state="$state" \
+              -f context="Crawler Deploy Gate" \
+              -f description="$description" \
+              -f target_url="$TARGET_URL" >/dev/null
+          done
