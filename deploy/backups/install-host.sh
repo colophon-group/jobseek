@@ -260,9 +260,9 @@ ok = (
         and mount.get("RW") is True
         for mount in mounts
     )
-    and int(host_config.get("Memory") or 0) == 3221225472
-    and int(host_config.get("MemoryReservation") or 0) == 2684354560
-    and int(host_config.get("MemorySwap") or 0) == 3221225472
+    and int(host_config.get("Memory") or 0) == 6442450944
+    and int(host_config.get("MemoryReservation") or 0) == 5368709120
+    and int(host_config.get("MemorySwap") or 0) == 6442450944
 )
 raise SystemExit(0 if ok else 1)
 '
