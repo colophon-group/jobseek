@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 import pytest
 
+from src.core.monitor import monitor_one
 from src.core.monitors import DiscoveredJob
 from src.core.monitors.api_sniffer import (
     ApiSnifferFallbackError,
@@ -25,6 +26,7 @@ from src.core.monitors.api_sniffer import (
     _extract_rich,
     _extract_urls_from_template,
     _lumesse_config_overrides,
+    _matches_explicit_empty_response,
     _matches_url_field_contract,
     _materially_below_advertised_total,
     _paginate_until_converged,
@@ -46,75 +48,128 @@ def _board_row(board_slug: str) -> dict[str, str]:
         return next(row for row in csv.DictReader(handle) if row["board_slug"] == board_slug)
 
 
-def test_fenaco_uses_stable_viewkey_identity_across_locales_and_titles():
+async def _monitor_fenaco_payload(payload: object):
+    config = json.loads(_board_row("fenaco-main")["monitor_config"])
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, json=payload, request=request)
+    )
+    async with httpx.AsyncClient(transport=transport) as client:
+        return await monitor_one(
+            "https://jobs.fenaco.com/",
+            "api_sniffer",
+            config,
+            client,
+        )
+
+
+@pytest.mark.asyncio
+async def test_fenaco_uses_stable_viewkey_identity_across_locales_and_titles():
     config = json.loads(_board_row("fenaco-main")["monitor_config"])
     viewkey = "6f811874-a6d0-48f5-9d6b-57c369861d2a"
-    items = [
+    result = await _monitor_fenaco_payload(
         {
-            "viewkey": viewkey,
-            "title": "Leiterin Verkauf",
-            "language": "de",
-            "links": {
-                "directlink": (f"https://jobs.fenaco.com/offene-stellen/leiterin-verkauf/{viewkey}")
-            },
-        },
-        {
-            "viewkey": viewkey,
-            "title": "Responsable des ventes",
-            "language": "fr",
-            "links": {
-                "directlink": (
-                    f"https://jobs.fenaco.com/postes-vacants/responsable-des-ventes/{viewkey}"
-                )
-            },
-        },
-    ]
-
-    filtered, scoped_total = _apply_item_filter(
-        items,
-        _validated_item_filter(config),
-        advertised_total=2,
-    )
-    jobs = _extract_rich(
-        filtered,
-        config["fields"],
-        config.get("url_field"),
-        config["url_template"],
-        "https://jobs.fenaco.com/",
+            "jobs": [
+                {
+                    "viewkey": viewkey,
+                    "title": "Leiterin Verkauf",
+                    "language": "de",
+                    "links": {
+                        "directlink": (
+                            f"https://jobs.fenaco.com/offene-stellen/leiterin-verkauf/{viewkey}"
+                        )
+                    },
+                },
+                {
+                    "viewkey": viewkey,
+                    "title": "Responsable des ventes",
+                    "language": "fr",
+                    "links": {
+                        "directlink": (
+                            "https://jobs.fenaco.com/postes-vacants/responsable-des-ventes/"
+                            f"{viewkey}"
+                        )
+                    },
+                },
+            ],
+            "total": 2,
+        }
     )
 
-    assert scoped_total == 1
-    assert len(jobs) == 1
-    assert jobs[0].url == f"https://jobs.fenaco.com/offene-stellen/_/{viewkey}"
-    assert re.fullmatch(config["url_filter"], jobs[0].url)
+    canonical_url = f"https://jobs.fenaco.com/offene-stellen/_/{viewkey}"
+    assert result.urls == {canonical_url}
+    assert result.jobs_by_url is not None
+    assert set(result.jobs_by_url) == {canonical_url}
+    assert result.security_filtered_count == 0
+    assert not result.truncated
+    assert re.fullmatch(config["url_allowlist"], canonical_url)
     assert not re.fullmatch(
-        config["url_filter"],
+        config["url_allowlist"],
         "https://jobs.fenaco.com/offene-stellen/_/not-a-provider-uuid",
     )
 
 
-def test_fenaco_missing_viewkey_fails_closed_instead_of_using_title_url():
-    config = json.loads(_board_row("fenaco-main")["monitor_config"])
-    jobs = _extract_rich(
-        [
-            {
-                "title": "Title-bearing URL must not become identity",
-                "links": {
-                    "directlink": (
-                        "https://jobs.fenaco.com/offene-stellen/title-bearing-url/"
-                        "6f811874-a6d0-48f5-9d6b-57c369861d2a"
-                    )
-                },
-            }
-        ],
-        config["fields"],
-        config.get("url_field"),
-        config["url_template"],
-        "https://jobs.fenaco.com/",
-    )
+@pytest.mark.asyncio
+async def test_fenaco_accepts_only_authoritative_empty_jobs_envelope():
+    result = await _monitor_fenaco_payload({"jobs": [], "total": 0})
 
-    assert "url_field" not in config
-    assert jobs == []
+    assert result.urls == set()
+    assert result.jobs_by_url == {}
+    assert result.security_filtered_count == 0
+    assert not result.truncated
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param({"total": 0}, id="missing-jobs-even-with-zero-total"),
+        pytest.param(
+            {
+                "jobs": [
+                    {
+                        "title": "Title-bearing URL must not become identity",
+                        "links": {
+                            "directlink": (
+                                "https://jobs.fenaco.com/offene-stellen/title-bearing-url/"
+                                "6f811874-a6d0-48f5-9d6b-57c369861d2a"
+                            )
+                        },
+                    }
+                ],
+                "total": 1,
+            },
+            id="missing-viewkey",
+        ),
+        pytest.param(
+            {
+                "jobs": [
+                    {
+                        "viewkey": "not-a-provider-uuid",
+                        "title": "Invalid identity",
+                    }
+                ],
+                "total": 1,
+            },
+            id="invalid-viewkey",
+        ),
+    ],
+)
+async def test_fenaco_schema_or_identity_loss_fails_before_normalization(payload):
+    with pytest.raises(ValueError):
+        await _monitor_fenaco_payload(payload)
+
+
+def test_fenaco_config_requires_identity_and_provider_boundary():
+    config = json.loads(_board_row("fenaco-main")["monitor_config"])
+
+    assert "url_filter" not in config
+    assert "url_allowlist" in config
+    assert config["empty_response"] == {"jobs": [], "total": 0}
+    assert config["item_filter"]["dedupe_by"] == ["viewkey"]
+    assert re.fullmatch(
+        config["item_filter"]["require_regex"]["viewkey"],
+        "6f811874-a6d0-48f5-9d6b-57c369861d2a",
+    )
 
 
 def _lumesse_items():
@@ -512,6 +567,17 @@ class TestListExplicitEmptyResponse:
     async def test_missing_or_wrong_marker_fails_closed(self, payload):
         with pytest.raises(ValueError, match="empty job list"):
             await self._discover(payload)
+
+    def test_exact_empty_list_marker_distinguishes_missing_path(self):
+        markers = {"jobs": [], "total": 0}
+
+        assert _matches_explicit_empty_response({"jobs": [], "total": 0}, markers)
+        assert not _matches_explicit_empty_response({"total": 0}, markers)
+
+    @pytest.mark.parametrize("expected", [["unexpected"], {}, {"nested": True}])
+    def test_rejects_structured_nonempty_marker_values(self, expected):
+        with pytest.raises(ValueError, match=r"JSON scalars or the \[\] marker"):
+            _matches_explicit_empty_response({"jobs": expected}, {"jobs": expected})
 
 
 class TestPdfDocumentGate:
@@ -1107,6 +1173,39 @@ class TestItemFilter:
         ]
         assert total == 2
 
+    def test_required_regex_validates_in_scope_items_before_deduplication(self):
+        item_filter = _validated_item_filter(
+            {
+                "item_filter": {
+                    "exclude": {"market": ["local"]},
+                    "require_regex": {"viewkey": r"[0-9a-f]{8}"},
+                    "dedupe_by": ["viewkey"],
+                }
+            }
+        )
+
+        scoped, total = _apply_item_filter(
+            [
+                {"market": "local", "viewkey": "invalid"},
+                {"market": "global", "viewkey": "12ab34cd", "locale": "de"},
+                {"market": "global", "viewkey": "12ab34cd", "locale": "fr"},
+            ],
+            item_filter,
+            advertised_total=3,
+        )
+
+        assert scoped == [{"market": "global", "viewkey": "12ab34cd", "locale": "de"}]
+        assert total == 1
+
+    @pytest.mark.parametrize("item", [{}, {"viewkey": ""}, {"viewkey": "invalid"}])
+    def test_required_regex_rejects_missing_or_invalid_in_scope_identity(self, item):
+        item_filter = _validated_item_filter(
+            {"item_filter": {"require_regex": {"viewkey": r"[0-9a-f]{8}"}}}
+        )
+
+        with pytest.raises(ValueError, match="missing or invalid.*viewkey"):
+            _apply_item_filter([item], item_filter, advertised_total=1)
+
     def test_incomplete_upstream_total_remains_truncated_after_filtering(self):
         item_filter = _validated_item_filter({"item_filter": {"exclude": {"market": ["local"]}}})
 
@@ -1246,6 +1345,10 @@ class TestItemFilter:
             {"exclude_regex": {"market": []}},
             {"exclude_regex": {"market": ["("]}},
             {"exclude_regex": {"": ["local"]}},
+            {"require_regex": []},
+            {"require_regex": {"viewkey": ""}},
+            {"require_regex": {"viewkey": "("}},
+            {"require_regex": {"": "valid"}},
             {"dedupe_by": ""},
             {"dedupe_by": "stable"},
             {"dedupe_by": []},

@@ -1186,19 +1186,21 @@ def _validated_item_filter(
     dict[str, frozenset[str]],
     dict[str, frozenset[str]],
     dict[str, tuple[re.Pattern[str], ...]],
+    dict[str, re.Pattern[str]],
     tuple[str, ...],
     _DedupePreference | None,
 ]:
     """Validate an optional post-pagination item scope and stable dedupe key."""
     value = config.get("item_filter")
     if value is None:
-        return {}, {}, {}, (), None
+        return {}, {}, {}, {}, (), None
     if not isinstance(value, dict) or not value:
         raise ValueError("api_sniffer item_filter must be a non-empty mapping")
     if set(value) - {
         "include",
         "exclude",
         "exclude_regex",
+        "require_regex",
         "dedupe_by",
         "dedupe_preference",
     }:
@@ -1290,6 +1292,28 @@ def _validated_item_filter(
                 "api_sniffer item_filter exclude_regex paths and patterns must be valid"
             ) from exc
 
+    require_regex = value.get("require_regex") or {}
+    if not isinstance(require_regex, dict) or len(require_regex) > _MAX_ITEM_FILTER_FIELDS:
+        raise ValueError("api_sniffer item_filter.require_regex must be a bounded mapping")
+    normalized_required_regex: dict[str, re.Pattern[str]] = {}
+    for path, pattern in require_regex.items():
+        if not isinstance(path, str) or not path.strip():
+            raise ValueError(
+                "api_sniffer item_filter require_regex paths must be non-empty strings"
+            )
+        if not isinstance(pattern, str) or not pattern or len(pattern) > _MAX_REFRESH_PATTERN_CHARS:
+            raise ValueError(
+                "api_sniffer item_filter require_regex patterns must be bounded non-empty strings"
+            )
+        normalized_path = path.strip()
+        try:
+            extract_field({}, normalized_path)
+            normalized_required_regex[normalized_path] = re.compile(pattern)
+        except Exception as exc:
+            raise ValueError(
+                "api_sniffer item_filter require_regex paths and patterns must be valid"
+            ) from exc
+
     dedupe_by = value.get("dedupe_by")
     if dedupe_by is None:
         dedupe_paths: tuple[str, ...] = ()
@@ -1307,7 +1331,6 @@ def _validated_item_filter(
             extract_field({}, dedupe_path)
         except Exception as exc:
             raise ValueError("api_sniffer item_filter.dedupe_by path must be valid") from exc
-
     preference_value = value.get("dedupe_preference")
     preference: _DedupePreference | None = None
     if preference_value is not None:
@@ -1368,9 +1391,24 @@ def _validated_item_filter(
             tuple(preferred_values),
             normalized_fallback,
         )
-    if not normalized_include and not normalized and not normalized_regex and not dedupe_paths:
-        raise ValueError("api_sniffer item_filter must include, exclude, or deduplicate items")
-    return normalized_include, normalized, normalized_regex, dedupe_paths, preference
+    if (
+        not normalized_include
+        and not normalized
+        and not normalized_regex
+        and not normalized_required_regex
+        and not dedupe_paths
+    ):
+        raise ValueError(
+            "api_sniffer item_filter must include, exclude, validate, or deduplicate items"
+        )
+    return (
+        normalized_include,
+        normalized,
+        normalized_regex,
+        normalized_required_regex,
+        dedupe_paths,
+        preference,
+    )
 
 
 def _validated_pagination_convergence(
@@ -1783,14 +1821,15 @@ def _apply_item_filter(
         dict[str, frozenset[str]],
         dict[str, frozenset[str]],
         dict[str, tuple[re.Pattern[str], ...]],
+        dict[str, re.Pattern[str]],
         tuple[str, ...],
         _DedupePreference | None,
     ],
     advertised_total: int | None,
 ) -> tuple[list[dict], int | None]:
     """Apply an intentional source partition without masking upstream truncation."""
-    include, exclude, exclude_regex, dedupe_by, dedupe_preference = item_filter
-    if not include and not exclude and not exclude_regex and not dedupe_by:
+    include, exclude, exclude_regex, require_regex, dedupe_by, dedupe_preference = item_filter
+    if not include and not exclude and not exclude_regex and not require_regex and not dedupe_by:
         return items, advertised_total
 
     original_count = len(items)
@@ -1825,6 +1864,15 @@ def _apply_item_filter(
                     break
             else:
                 scoped.append(item)
+
+    for item in scoped:
+        for path, pattern in require_regex.items():
+            value = extract_field(item, path)
+            if not isinstance(value, str) or not value or pattern.fullmatch(value) is None:
+                raise ValueError(
+                    "api_sniffer item_filter.require_regex rejected missing or invalid "
+                    f"{path!r} identity"
+                )
 
     if dedupe_by:
         grouped: dict[tuple[str, ...], list[dict]] = {}
@@ -2208,8 +2256,8 @@ def _matches_explicit_empty_response(data: object, config: object) -> bool:
     for path, expected in config.items():
         if not isinstance(path, str) or not path or len(path) > 256:
             raise ValueError("empty_response paths must contain 1-256 characters")
-        if isinstance(expected, (dict, list)):
-            raise ValueError("empty_response expected values must be JSON scalars")
+        if isinstance(expected, dict) or (isinstance(expected, list) and expected != []):
+            raise ValueError("empty_response expected values must be JSON scalars or the [] marker")
         if resolve_path(data, path) != expected:
             return False
     return True
@@ -2250,16 +2298,17 @@ async def _discover_http(
     url_template_fields = config.get("url_template_fields") or {}
     slug_fields = _validated_slug_fields(config)
     item_filter = _validated_item_filter(config)
-    pagination_convergence = _validated_pagination_convergence(config, item_filter[3])
+    pagination_convergence = _validated_pagination_convergence(config, item_filter[4])
     url_field_match = _validated_url_field_match(config, pagination_convergence)
     item_filter_paths = [
         *item_filter[0],
         *item_filter[1],
         *item_filter[2],
         *item_filter[3],
+        *item_filter[4],
     ]
-    if item_filter[4] is not None:
-        item_filter_paths.extend(item_filter[4].fallback_by)
+    if item_filter[5] is not None:
+        item_filter_paths.extend(item_filter[5].fallback_by)
     if pagination_convergence is not None:
         item_filter_paths.extend(pagination_convergence.identity_paths)
         item_filter_paths.extend(pagination_convergence.stable_fields)
@@ -2784,16 +2833,17 @@ async def _discover_replay(
     url_template_fields = config.get("url_template_fields") or {}
     slug_fields = _validated_slug_fields(config)
     item_filter = _validated_item_filter(config)
-    pagination_convergence = _validated_pagination_convergence(config, item_filter[3])
+    pagination_convergence = _validated_pagination_convergence(config, item_filter[4])
     url_field_match = _validated_url_field_match(config, pagination_convergence)
     item_filter_paths = [
         *item_filter[0],
         *item_filter[1],
         *item_filter[2],
         *item_filter[3],
+        *item_filter[4],
     ]
-    if item_filter[4] is not None:
-        item_filter_paths.extend(item_filter[4].fallback_by)
+    if item_filter[5] is not None:
+        item_filter_paths.extend(item_filter[5].fallback_by)
     if pagination_convergence is not None:
         item_filter_paths.extend(pagination_convergence.identity_paths)
         item_filter_paths.extend(pagination_convergence.stable_fields)
