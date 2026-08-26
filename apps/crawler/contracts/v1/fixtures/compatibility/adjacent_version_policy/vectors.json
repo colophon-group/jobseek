@@ -1,0 +1,135 @@
+{
+  "cases": [
+    {
+      "direction": "old_to_new",
+      "expected": {
+        "losses": [],
+        "payload": {
+          "labels": {
+            "a": "first",
+            "z": "last"
+          },
+          "mode": "POLICY_MODE_ACTIVE",
+          "request_id": "old-large-absent",
+          "sequence": 9007199254740993,
+          "source_url": "https://policytest.invalid/jobs/1",
+          "unknown_777": {
+            "wire": 9007199254740995
+          }
+        }
+      },
+      "id": "old-large-absent",
+      "input": {
+        "labels": {
+          "a": "first",
+          "z": "last"
+        },
+        "mode": "POLICY_MODE_ACTIVE",
+        "request_id": "old-large-absent",
+        "sequence": 9007199254740993,
+        "source_url": "https://policytest.invalid/jobs/1",
+        "unknown_777": {
+          "wire": 9007199254740995
+        }
+      },
+      "reversible": true
+    },
+    {
+      "direction": "old_to_new",
+      "expected": {
+        "losses": [],
+        "payload": {
+          "explicit_count": 0,
+          "explicit_label": "",
+          "inline_source": "",
+          "labels": {},
+          "mode": "POLICY_MODE_READY",
+          "request_id": "old-explicit-defaults",
+          "sequence": 0
+        }
+      },
+      "id": "old-explicit-defaults",
+      "input": {
+        "explicit_count": 0,
+        "explicit_label": "",
+        "inline_source": "",
+        "labels": {},
+        "mode": "POLICY_MODE_READY",
+        "request_id": "old-explicit-defaults",
+        "sequence": 0
+      },
+      "reversible": true
+    },
+    {
+      "direction": "old_to_new",
+      "expected": {
+        "losses": [
+          {
+            "path": "$.legacy_note",
+            "reason": "field removed in adjacent test version"
+          }
+        ],
+        "payload": {
+          "request_id": "old-genuine-loss",
+          "sequence": 7
+        }
+      },
+      "id": "old-genuine-loss",
+      "input": {
+        "legacy_note": "cannot be reconstructed",
+        "request_id": "old-genuine-loss",
+        "sequence": 7
+      },
+      "reversible": false
+    },
+    {
+      "direction": "new_to_old",
+      "expected": {
+        "losses": [],
+        "payload": {
+          "explicit_count": 0,
+          "explicit_label": "",
+          "request_id": "new-large-defaults",
+          "sequence": 9007199254740997,
+          "unknown_888": {
+            "present": true
+          }
+        }
+      },
+      "id": "new-large-defaults",
+      "input": {
+        "explicit_count": 0,
+        "explicit_label": "",
+        "request_id": "new-large-defaults",
+        "sequence": 9007199254740997,
+        "unknown_888": {
+          "present": true
+        }
+      },
+      "reversible": true
+    },
+    {
+      "direction": "new_to_old",
+      "expected": {
+        "losses": [
+          {
+            "path": "$.future_hint",
+            "reason": "field unavailable in adjacent test version"
+          }
+        ],
+        "payload": {
+          "request_id": "new-genuine-loss",
+          "sequence": 9
+        }
+      },
+      "id": "new-genuine-loss",
+      "input": {
+        "future_hint": "cannot be represented",
+        "request_id": "new-genuine-loss",
+        "sequence": 9
+      },
+      "reversible": false
+    }
+  ],
+  "format": 1
+}

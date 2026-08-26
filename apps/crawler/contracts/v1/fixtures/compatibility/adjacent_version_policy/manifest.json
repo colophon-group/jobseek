@@ -1,0 +1,32 @@
+{
+  "converters": {
+    "go": {
+      "directions": [
+        "old_to_new",
+        "new_to_old"
+      ],
+      "path": "go_converter.go"
+    },
+    "python": {
+      "directions": [
+        "old_to_new",
+        "new_to_old"
+      ],
+      "path": "python_converter.py"
+    }
+  },
+  "fixture_only": true,
+  "format": 1,
+  "from": {
+    "package": "jobseek.crawler.runtime.policytest.v17",
+    "proto": "v17.proto",
+    "version": 17
+  },
+  "production": false,
+  "to": {
+    "package": "jobseek.crawler.runtime.policytest.v18",
+    "proto": "v18.proto",
+    "version": 18
+  },
+  "vectors": "vectors.json"
+}

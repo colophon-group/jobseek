@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package jobseek.crawler.runtime.policytest.v17;
+
+enum PolicyMode {
+  option allow_alias = true;
+
+  POLICY_MODE_UNSPECIFIED = 0;
+  POLICY_MODE_READY = 1;
+  POLICY_MODE_ACTIVE = 1;
+  POLICY_MODE_RETIRED = 2;
+}
+
+message PolicyEnvelope {
+  string request_id = 1;
+  optional uint64 sequence = 2;
+  map<string, string> labels = 3;
+  oneof source {
+    string source_url = 4;
+    string inline_source = 5;
+  }
+  optional string legacy_note = 6;
+  optional uint64 explicit_count = 7;
+  optional string explicit_label = 8;
+  optional PolicyMode mode = 10;
+}
