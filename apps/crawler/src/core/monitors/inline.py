@@ -193,6 +193,91 @@ def _validated_detail_identity_config(
     return selector, attribute, pattern
 
 
+def _validated_source_identity_config(
+    metadata: dict,
+    *,
+    uses_detail_expansion: bool,
+) -> tuple[str | None, str | None, re.Pattern[str] | None]:
+    """Validate stable identities read directly from an ordinary listing."""
+    keys = (
+        "source_identity_selector",
+        "source_identity_attribute",
+        "source_identity_regex",
+    )
+    configured = [metadata.get(key) is not None for key in keys]
+    if not any(configured):
+        return None, None, None
+    if uses_detail_expansion:
+        raise ValueError("inline source identity configuration cannot use detail-card expansion")
+    if not all(configured):
+        raise ValueError(
+            "inline source identity configuration requires source_identity_selector, "
+            "source_identity_attribute, and source_identity_regex"
+        )
+    selector = _validated_empty_selector(metadata.get("source_identity_selector"))
+    assert selector is not None
+    attribute = metadata.get("source_identity_attribute")
+    if (
+        not isinstance(attribute, str)
+        or not attribute
+        or len(attribute) > _MAX_DETAIL_IDENTITY_ATTRIBUTE_LENGTH
+        or re.fullmatch(r"[A-Za-z_:][A-Za-z0-9:._-]*", attribute) is None
+    ):
+        raise ValueError("inline source_identity_attribute must be a valid bounded attribute name")
+    raw_regex = metadata.get("source_identity_regex")
+    if (
+        not isinstance(raw_regex, str)
+        or not raw_regex
+        or len(raw_regex) > _MAX_DETAIL_IDENTITY_REGEX_LENGTH
+    ):
+        raise ValueError("inline source_identity_regex must be a non-empty bounded string")
+    try:
+        pattern = re.compile(raw_regex)
+    except re.error as exc:
+        raise ValueError(f"inline source_identity_regex is invalid: {exc}") from exc
+    if pattern.groups != 1:
+        raise ValueError("inline source_identity_regex must contain exactly one capture group")
+    return selector, attribute, pattern
+
+
+def _read_source_identities(
+    html: str,
+    *,
+    selector: str,
+    attribute: str,
+    pattern: re.Pattern[str],
+) -> tuple[_DetailIdentity, ...]:
+    """Extract an ordered, unique provider identity sequence from static HTML."""
+    nodes = LexborHTMLParser(html).css(selector)
+    if not nodes:
+        raise ValueError("inline source identity selector did not match any elements")
+    if len(nodes) > _MAX_JOBS:
+        raise ValueError("inline source identity selector exceeded the job safety cap")
+    identities: list[_DetailIdentity] = []
+    for index, node in enumerate(nodes):
+        raw_identity = node.attributes.get(attribute)
+        if raw_identity is None:
+            raise ValueError(
+                f"inline source identity {index + 1} is missing attribute {attribute!r}"
+            )
+        match = pattern.fullmatch(raw_identity)
+        if match is None:
+            raise ValueError(
+                f"inline source identity {index + 1} did not match source_identity_regex"
+            )
+        identity = match.group(1)
+        if (
+            not identity
+            or len(identity) > _MAX_DETAIL_IDENTITY_LENGTH
+            or any(ord(character) < 0x20 for character in identity)
+        ):
+            raise ValueError(f"inline source identity {index + 1} is invalid")
+        identities.append(_DetailIdentity(raw=raw_identity, stable=identity))
+    if len({identity.stable for identity in identities}) != len(identities):
+        raise ValueError("inline source identities must be unique")
+    return tuple(identities)
+
+
 async def _read_detail_identities(
     page,
     *,
@@ -772,6 +857,9 @@ async def discover(
         detail_identity_selector — one provider-identity element per click control
         detail_identity_attribute — attribute containing the raw provider identity
         detail_identity_regex — full-match regex with one stable-identity capture group
+        source_identity_selector — CSS selector for stable identities on ordinary listings
+        source_identity_attribute — attribute containing the raw ordinary-listing identity
+        source_identity_regex — full-match regex capturing the stable ordinary-listing ID
         fetch_urls — ordered alternate read URLs; canonical URLs use board_url
         include_hidden — include HTML hidden by tab/accordion state (default: false)
         empty_selector — CSS selector that scopes a visibly active empty-state element
@@ -824,6 +912,12 @@ async def discover(
         if item_boundary_tag is not None:
             raise ValueError("inline detail-card expansion sets its item boundary automatically")
         item_boundary_tag = _DETAIL_BOUNDARY_TAG
+    source_identity_selector, source_identity_attribute, source_identity_pattern = (
+        _validated_source_identity_config(
+            metadata,
+            uses_detail_expansion=uses_detail_expansion,
+        )
+    )
     section_start = _validated_section_boundary(metadata.get("section_start"), name="section_start")
     section_end = _validated_section_boundary(metadata.get("section_end"), name="section_end")
     preserve_single_location = metadata.get("preserve_single_location", False)
@@ -858,6 +952,16 @@ async def discover(
             raise ValueError("inline detail-card expansion returned no trusted identities")
     elif detail_identities:
         raise ValueError("inline ordinary mode received unexpected detail identities")
+    source_identities: tuple[_DetailIdentity, ...] = ()
+    if source_identity_selector is not None:
+        assert source_identity_attribute is not None
+        assert source_identity_pattern is not None
+        source_identities = _read_source_identities(
+            html,
+            selector=source_identity_selector,
+            attribute=source_identity_attribute,
+            pattern=source_identity_pattern,
+        )
     include_hidden = bool(metadata.get("include_hidden"))
     elements = flatten(html, include_hidden=include_hidden)
 
@@ -889,6 +993,7 @@ async def discover(
     today = datetime.now(UTC).date()
     cursor = 0
     detail_item_index = 0
+    source_identity_index = 0
 
     while cursor < len(elements) and processed_count < _MAX_JOBS:
         if item_boundary_tag is None:
@@ -927,14 +1032,21 @@ async def discover(
         cursor = new_cursor
         processed_count += 1
 
+        if source_identity_selector is not None:
+            if source_identity_index >= len(source_identities):
+                raise ValueError("inline extracted more jobs than source identities")
+            assert source_identity_pattern is not None
+            provider_identity = _consume_detail_identity(
+                source_identities[source_identity_index], source_identity_pattern
+            )
+            source_identity_index += 1
+
         if title in exclude_titles or (
             exclude_title_regex is not None and exclude_title_regex.search(title)
         ):
             continue
 
-        if uses_detail_expansion:
-            if provider_identity is None:
-                raise ValueError("inline expanded detail omitted its provider identity")
+        if provider_identity is not None:
             url = _generate_identity_url(board_url, provider_identity)
         else:
             url = _generate_url(board_url, title, seen_jids)
@@ -1000,6 +1112,11 @@ async def discover(
             "inline expanded detail boundary/identity count mismatch "
             f"({detail_item_index} boundaries for {len(detail_identities)} identities)"
         )
+    if source_identity_selector is not None and source_identity_index != len(source_identities):
+        raise ValueError(
+            "inline source identity/job count mismatch "
+            f"({len(source_identities)} identities for {source_identity_index} jobs)"
+        )
 
     if empty_text is not None and not jobs:
         raise ValueError(
@@ -1016,6 +1133,14 @@ async def discover(
     if truncated:
         log.warning("inline.truncated", url=board_url, total=len(jobs), cap=_MAX_JOBS)
         return truncated_rich_result(jobs)
+    if not jobs and expired_count and expired_count == processed_count * positions_per_listing:
+        from src.core.monitor import MonitorResult
+
+        return MonitorResult(
+            urls=set(),
+            jobs_by_url={},
+            verified_empty_reason="all extracted jobs are past their verified deadline",
+        )
     return jobs
 
 

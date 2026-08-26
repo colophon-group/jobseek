@@ -1579,7 +1579,8 @@ async def _probe_static_page(row: dict, client: httpx.AsyncClient) -> ProbeResul
         or decoded.get("empty_states")
         or (decoded.get("empty_selector") and decoded.get("empty_text"))
     )
-    if count == 0 and not has_empty_contract:
+    verified_empty_reason = getattr(discovered, "verified_empty_reason", None)
+    if count == 0 and not has_empty_contract and not verified_empty_reason:
         return ProbeResult(
             row["board_slug"],
             monitor_type,
@@ -1587,12 +1588,15 @@ async def _probe_static_page(row: dict, client: httpx.AsyncClient) -> ProbeResul
             "fail",
             "static extraction returned no jobs without an explicit empty-state contract",
         )
+    detail = f"production extractor: {count} jobs"
+    if count == 0 and verified_empty_reason:
+        detail = f"{detail} ({verified_empty_reason})"
     return ProbeResult(
         row["board_slug"],
         monitor_type,
         row["board_url"],
         "ok",
-        f"production extractor: {count} jobs",
+        detail,
     )
 
 

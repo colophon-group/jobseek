@@ -29,6 +29,9 @@ def test_configured_public_headers_reject_secrets_and_transport_headers(header):
     [
         {"Accept": "text/html", "accept": "application/pdf"},
         {"User-Agent": "crawler\r\nAuthorization: secret"},
+        {"User-Agent": "crawler\x01secret"},
+        {"User-Agent": "crawler\x7fsecret"},
+        {"User-Agent": "crawler-é"},
         {"Accept": ""},
     ],
 )

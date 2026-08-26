@@ -77,7 +77,10 @@ def validated_public_request_headers(value: object, *, owner: str) -> dict[str, 
             not header_value.strip()
             or len(key) > 64
             or len(header_value) > 1_024
-            or any(char in key or char in header_value for char in ("\r", "\n", "\x00"))
+            or any(
+                character != "\t" and not 0x20 <= ord(character) <= 0x7E
+                for character in header_value
+            )
         ):
             raise ValueError(f"{owner} request_headers contains an invalid header")
         seen.add(normalized)
