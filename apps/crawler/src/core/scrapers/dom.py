@@ -728,7 +728,7 @@ def _heuristic_steps(elements: list[dict]) -> list[dict] | None:
                 steps.append(
                     {
                         "text": label,
-                        "match_regex": rf"(?i)^\s*{re.escape(label)}\s*$",
+                        "match_regex": rf"(?i)^\s*{re.escape(label)}\s*(?:[:：]\s*)?$",
                         "offset": 1,
                         "field": "location",
                         "optional": True,

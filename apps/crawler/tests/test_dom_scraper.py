@@ -482,25 +482,59 @@ class TestDomScraper:
         assert result.locations is None
 
     @pytest.mark.parametrize(
-        ("label_html", "matched_label"),
+        "label",
         [
-            ("<p>Lieu</p><p>Lausanne</p>", "Lieu"),
-            ("<p>Lieu: Lausanne</p>", "Lieu: Lausanne"),
-            ("<p>Lieu： Lausanne</p>", "Lieu： Lausanne"),
+            "job location",
+            "location",
+            "workplace",
+            "lieu de travail",
+            "lieu",
+            "arbeitsort",
+            "arbeitsplatz",
+            "luogo di lavoro",
         ],
-        ids=["standalone", "ascii-colon", "fullwidth-colon"],
     )
-    def test_probe_location_step_skips_earlier_lieutenant_text(
+    @pytest.mark.parametrize(
+        ("label_html_template", "matched_label_template"),
+        [
+            ("<p>{label}</p><p>Lausanne</p>", "{label}"),
+            ("<p>{label}: Lausanne</p>", "{label}: Lausanne"),
+            ("<p>{label}： Lausanne</p>", "{label}： Lausanne"),
+            ("<p>{label}:</p><p>Lausanne</p>", "{label}:"),
+            ("<p>{label}：</p><p>Lausanne</p>", "{label}："),
+        ],
+        ids=[
+            "standalone",
+            "inline-ascii-colon",
+            "inline-fullwidth-colon",
+            "separate-ascii-colon",
+            "separate-fullwidth-colon",
+        ],
+    )
+    def test_probe_location_step_preserves_labels_and_skips_earlier_prefix_text(
         self,
-        label_html: str,
-        matched_label: str,
+        label: str,
+        label_html_template: str,
+        matched_label_template: str,
     ):
         from src.core.scrapers.dom import can_handle, parse_html
 
+        earlier_text = {
+            "job location": "Job locations evolve",
+            "location": "Locationless role",
+            "workplace": "Workplace culture matters",
+            "lieu de travail": "Lieu de travailleur social",
+            "lieu": "Lieutenant de sécurité",
+            "arbeitsort": "Arbeitsordnung beachten",
+            "arbeitsplatz": "Arbeitsplatzgestaltung",
+            "luogo di lavoro": "Luogo di lavorazione",
+        }[label]
+        label_html = label_html_template.format(label=label)
+        matched_label = matched_label_template.format(label=label)
         html = f"""
-        <html><head><title>Lieutenant de sécurité - CHUV</title></head><body>
-          <h1>Lieutenant de sécurité</h1>
-          <p>Protéger le site et coordonner les équipes de sécurité.</p>
+        <html><head><title>Security Officer - Example</title></head><body>
+          <h1>Security Officer</h1>
+          <p>{earlier_text}</p>
           {label_html}
           <h2>Mission</h2>
           <p>Assurer la sécurité des patientes et patients.</p>
@@ -511,11 +545,11 @@ class TestDomScraper:
         assert config is not None
         location_step = next(step for step in config["steps"] if step.get("field") == "location")
         match_regex = location_step["match_regex"]
-        assert re.fullmatch(match_regex, "Lieutenant de sécurité") is None
+        assert re.fullmatch(match_regex, earlier_text) is None
         assert re.fullmatch(match_regex, matched_label) is not None
 
         result = parse_html(html, config)
-        assert result.title == "Lieutenant de sécurité"
+        assert result.title == "Security Officer"
         assert result.locations == ["Lausanne"]
 
     def test_talentsoft_probe_builds_locale_independent_config(self):
