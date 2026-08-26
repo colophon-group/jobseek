@@ -85,7 +85,38 @@ current-source check, committed self-regeneration regression, post-introduction
 reservation and map-history regressions, shared Python corpora, and shared Go
 corpora.
 
-Adjacent-version reservation and executable converter policy is intentionally
-out of scope here and is owned by #8057. Generated bindings, packaging,
-semantic validators, replay/redaction/projection implementations, runtime
-consumption, and activation are also excluded.
+Generated bindings, packaging, semantic validators,
+replay/redaction/projection implementations, runtime consumption, and
+activation remain excluded.
+
+## Future adjacent-version policy
+
+Every future adjacent contract version must retain field and enum tombstones
+for both the removed name and number. Existing tombstones remain immutable;
+active fields and enum values may not reuse them. Map key/value shapes, oneof
+identity and membership, and enum aliases are compatibility identities too.
+Aliases require an explicit `allow_alias` declaration and retained aliases may
+not silently move to another number.
+
+An adjacent-version change must provide executable Python and Go converters in
+both directions over one shared, nonempty corpus. The corpus must include both
+reversible and genuinely lossy cases, exact integers above `2^53`, absent
+versus explicitly defaulted fields, forwarded unknown data, and a path plus
+reason for every declared loss. A loss is valid only when the source value is
+present, every other field is preserved, and the reverse conversion cannot
+reconstruct the removed value. Empty, one-way, echo, constant-output,
+nondeterministic, or unexecuted language evidence fails closed. Canonical
+serialized results must be byte-identical across repeated runs and languages.
+
+`fixtures/compatibility/adjacent_version_policy` is only the enforcement
+specimen for that rule. Its packages contain `.policytest.`, its manifest uses
+the exact JSON boolean `production: false`, and its converters are test-only
+executables. It is not `crawler.runtime/v2`, does not introduce a production
+schema or converter, and is never generated, packaged, imported, deployed, or
+consumed by crawler runtime code. A real v2 requires a separate versioned IDL
+decision and activation plan.
+
+The ordinary Required-CI discovery bridge executes the named Python module and
+Go package. The Go runner uses only the standard library and is launched with
+`GOTOOLCHAIN=local`, `GOPROXY=off`, and an isolated module/build cache, so the
+policy cannot fetch tools or dependencies from the network.
