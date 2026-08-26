@@ -32,6 +32,7 @@ A monitor takes a board config and returns either **full job data** (rich monito
 
 | Type | Kind | Auto-scraper | When to Use |
 |------|------|-------------|-------------|
+| `unifr` | Rich/URL-only | skip or pdf | Fixed University of Fribourg FR/DE and faculty inventories |
 | `eightfold` | URL-only | eightfold | Eightfold AI sitemap-backed portals |
 | `join` | URL-only | nextdata | JOIN (join.com) Next.js pages |
 | `phenom` | URL-only | json-ld | Phenom People career sites |

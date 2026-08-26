@@ -127,6 +127,7 @@ Monitor Types (cheapest first):
   softgarden        10      Job URLs          Auto-configured
   traffit           10      Full job data     No (skipped)
   ukg               10      Full/partial      Auto-enriched
+  unifr             10      Full or PDF URLs  skip/pdf (fixed source)
   workable          10      Job URLs          Auto-configured
   welcometothejungle 10      Full job data     No (skipped)
   workday           10      Job URLs          Auto-configured
@@ -1327,24 +1328,9 @@ inline — Single-Page Extraction (rich)
       "render": true,
       "steps": [
         {"tag": "h3", "field": "title"},
-        {"tag": "div", "field": "detail_id", "value_attr": "data-job-id"},
         {"text": "Location", "offset": 1, "field": "location", "optional": true},
         {"tag": "p", "field": "description", "html": true, "stop_tag": "h3"}
       ],
-      "detail_api": {
-        "url_template": "https://company.example/api/jobs/{id}",
-        "id_field": "detail_id",
-        "item_selector": ".job-card",
-        "item_identity_attribute": "data-job-id",
-        "item_identity_regex": "^job-(\\d+)$",
-        "fields": {
-          "title": "title",
-          "description": "content",
-          "date_posted": "published_at",
-          "valid_through": "expires_at"
-        },
-        "required_fields": ["description"]
-      },
       "defaults": {
         "description": "<p>Evergreen role description.</p>",
         "employment_type": "full_time"
@@ -1464,22 +1450,6 @@ inline — Single-Page Extraction (rich)
                  condition — when it can't find a match, extraction ends.
                  A non-empty list is mandatory when the explicit empty-state
                  contract is configured; missing steps fail closed.
-                 A step may set value_attr to read an HTML attribute (for
-                 example a data-id) instead of visible text.
-    detail_api   Optional per-item JSON enrichment. url_template must be HTTPS
-                 and contain one {id}; id_field names a value extracted by the
-                 steps. item_selector must enumerate every source item, while
-                 item_identity_attribute and the one-capture
-                 item_identity_regex recover each stable provider ID. The
-                 selector must not filter on the identity attribute: a source
-                 item missing that attribute must be selected and fail closed.
-                 extracted IDs must match that exact, unique source inventory;
-                 they also become the synthetic _jid values. fields uses the
-                 normal structured field mapping syntax and supports title,
-                 description, location(s), employment type, workplace type,
-                 date_posted, and valid_through. Provider-returned links never
-                 control identity. The cycle fails closed when an ID, response,
-                 required field, or source item is absent.
     defaults     Default field values applied when extracted value is absent.
                  Supports: description, locations (list), employment_type,
                  job_location_type, date_posted, valid_through.
@@ -3982,6 +3952,23 @@ oracle_hcm — Oracle Cloud HCM REST API monitor
                      governed by offset_overlap.""",
     "dom": MONITOR_DOM,
     "inline": MONITOR_INLINE,
+    "unifr": """\
+unifr — University of Fribourg authoritative source monitor
+
+  Returns:  Full job data for the central FR/DE vacancy widget and bounded
+            first-party faculty inventories; PDF URLs for law and RSD.
+  Scraper:  skip for rich sources; pdf for law and RSD
+  Cost:     10
+  Browser:  No
+
+  Config:   {"source": "central"}
+
+  This is a fixed-origin monitor for the University of Fribourg configuration.
+  It unions the French and German central inventories by numeric provider ID,
+  validates every detail response against that ID and University authority,
+  and fails closed on pagination, source inventory drift, unsafe zero results,
+  expired departmental listings, or broken source-owned identities.
+""",
     "jobs_ch": """\
 jobs_ch — JobCloud Employer Profiles (jobs.ch / jobup.ch)
 
