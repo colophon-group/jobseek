@@ -633,6 +633,8 @@ def auto_scraper_type(
         return ("json-ld", {"proxy": True})
     if monitor_type == "dom" and (config or {}).get("dualoo_portal"):
         return ("json-ld", None)
+    if monitor_type == "dom" and (config or {}).get("yousty_organization"):
+        return ("json-ld", None)
     if monitor_type == "dom" and (config or {}).get("lucca_board"):
         return (
             "dom",

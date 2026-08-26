@@ -30,6 +30,7 @@ from src.core.monitors.dom import (
     _validated_response_fingerprint_config,
     _validated_rich_rows,
     _validated_unexpired_pdf_config,
+    _yousty_probe_config,
     can_handle,
     dom_discover,
 )
@@ -2766,6 +2767,91 @@ class TestCanHandle:
             result = await can_handle(self.DUALOO_URL, MagicMock())
 
         assert result == _dualoo_probe_config(self.DUALOO_HTML, self.DUALOO_URL)
+
+    def test_yousty_filtered_board_uses_employer_scoped_preset(self):
+        url = (
+            "https://www.yousty.ch/de-CH/lehrstellen/apprenticeships?"
+            "organization_ids%5B%5D=2623187-implenia-schweiz-ag"
+        )
+        html = _html_with_links(
+            "/de-CH/lehrstellen/profile/12641425-maurer-in-eba-basel-bs-implenia-schweiz-ag",
+            "/de-CH/lehrstellen/profile/12345678-kaufmann-frau-efz-zuerich-zh-wincasa-ag",
+        )
+
+        result = _yousty_probe_config(html, url)
+
+        assert result is not None
+        assert result["yousty_organization"] == "2623187-implenia-schweiz-ag"
+        assert result["urls"] == 1
+        assert result["link_selector"] == "a[href*='/de-CH/lehrstellen/profile/']"
+        assert result["require_jsonld_jobposting"] is True
+        assert result["pagination"] == {
+            "url_template": (
+                "https://www.yousty.ch/de-CH/lehrstellen/?locale=de-CH&"
+                "organization_ids%5B%5D=2623187-implenia-schweiz-ag&page={page}"
+            ),
+            "start": 1,
+            "max_pages": 100,
+        }
+        matcher = re.compile(result["url_filter"], re.IGNORECASE)
+        assert matcher.search(
+            "https://www.yousty.ch/de-CH/lehrstellen/profile/"
+            "12641425-maurer-in-eba-basel-bs-implenia-schweiz-ag"
+        )
+        assert not matcher.search(
+            "https://www.yousty.ch/de-CH/lehrstellen/profile/"
+            "12345678-kaufmann-frau-efz-zuerich-zh-wincasa-ag"
+        )
+        assert auto_scraper_type("dom", result) == ("json-ld", None)
+
+    def test_yousty_company_page_uses_path_identity(self):
+        url = "https://www.yousty.ch/de-CH/lehrstellen/firmen/994829-dormakaba-schweiz-ag"
+        html = _html_with_links(
+            "/de-CH/lehrstellen/profile/12700001-polymechaniker-in-efz-rümlang-zh-"
+            "dormakaba-schweiz-ag"
+        )
+
+        result = _yousty_probe_config(html, url)
+
+        assert result is not None
+        assert result["urls"] == 1
+        assert "dormakaba\\-schweiz\\-ag" in result["url_filter"]
+        assert "pagination" not in result
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://example.com/de-CH/lehrstellen/firmen/994829-dormakaba-schweiz-ag",
+            "https://www.yousty.ch/de-CH/lehrstellen/apprenticeships",
+            (
+                "https://www.yousty.ch/de-CH/lehrstellen/apprenticeships?"
+                "organization_ids%5B%5D=2623187-implenia-schweiz-ag&"
+                "organization_ids%5B%5D=123-wincasa-ag"
+            ),
+        ],
+    )
+    def test_yousty_probe_rejects_unscoped_or_mixed_boards(self, url):
+        html = _html_with_links(
+            "/de-CH/lehrstellen/profile/12641425-maurer-in-eba-basel-bs-implenia-schweiz-ag"
+        )
+
+        assert _yousty_probe_config(html, url) is None
+
+    async def test_yousty_can_handle_returns_provider_preset(self):
+        url = (
+            "https://www.yousty.ch/de-CH/lehrstellen/apprenticeships?"
+            "organization_ids%5B%5D=2623187-implenia-schweiz-ag"
+        )
+        html = _html_with_links(
+            "/de-CH/lehrstellen/profile/12641425-maurer-in-eba-basel-bs-implenia-schweiz-ag"
+        )
+        with patch(
+            "src.core.monitors.fetch_page_text",
+            new=AsyncMock(return_value=html),
+        ):
+            result = await can_handle(url, MagicMock())
+
+        assert result == _yousty_probe_config(html, url)
 
     def test_vagas_employer_board_uses_proxy_pagination_preset(self):
         result = _vagas_probe_config(
