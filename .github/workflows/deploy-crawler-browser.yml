@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'apps/crawler/**'
+      # Runtime v1 is candidate-only and absent from both the wheel and image.
+      # #8046 must remove this exact #8071 exclusion when v1 is activated.
+      - '!apps/crawler/contracts/v1/**'
       - '!apps/crawler/data/**'
       - '!apps/crawler/traces/**'
       - '!apps/crawler/ws-package/**'

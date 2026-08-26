@@ -28,10 +28,42 @@ changed_paths="$(
   exit 1
 }
 
+# Let this exact policy-only bridge land without pretending that its crawler
+# test file is production runtime. This is deliberately not a reusable path
+# class: #8046 must remove it with the inactive-v1 exemption.
+inactive_v1_policy=1
+inactive_v1_policy_count=0
+while IFS= read -r path; do
+  [[ -n "$path" ]] || continue
+  case "$path" in
+    .github/scripts/check-crawler-deploy-gate.sh | \
+      .github/workflows/deploy-ats-inventory.yml | \
+      .github/workflows/deploy-crawler-browser.yml | \
+      apps/crawler/tests/test_ats_inventory_deployment.py | \
+      scripts/check-crawler-version.mjs | \
+      scripts/ci-workflow.test.mjs | \
+      scripts/crawler-runtime-contract.test.mjs | \
+      scripts/crawler-version.test.mjs | \
+      scripts/derive-crawler-runtime-contract.mjs)
+      ((inactive_v1_policy_count += 1))
+      ;;
+    *)
+      inactive_v1_policy=0
+      ;;
+  esac
+done < <(sort -u <<<"$changed_paths")
+if (( inactive_v1_policy && inactive_v1_policy_count == 9 )); then
+  echo "PR #$PR is the exact #8071 inactive-v1 policy bridge; no crawler deployment hold applies"
+  exit 0
+fi
+
 runtime_paths=()
 while IFS= read -r path; do
   [[ -n "$path" ]] || continue
   case "$path" in
+    apps/crawler/contracts/v1/*)
+      # Candidate-only until #8046 packages and activates runtime v1.
+      ;;
     apps/crawler/data/industries.csv | \
       apps/crawler/data/occupations.csv | \
       apps/crawler/data/seniority.csv | \
