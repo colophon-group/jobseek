@@ -26,6 +26,8 @@ jobs:
         working-directory: apps/crawler/contracts/v1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
@@ -52,9 +54,15 @@ jobs:
           uv pip install --python "$RUNNER_TEMP/contracts-venv/bin/python" "$RUNNER_TEMP/contracts-dist/"*.whl
           "$RUNNER_TEMP/contracts-venv/bin/python" -c "from crawler_runtime_contracts.v1 import framing, runtime_pb2; assert runtime_pb2.DESCRIPTOR.package == 'jobseek.crawler.runtime.v1'; assert callable(framing.decode_delimited)"
       - name: Python conformance
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           PYTHONPATH=python:. uv run --project ../.. pytest -q conformance/python/test_contract.py
-          PYTHONPATH=python:. uv run --project ../.. python tools/check_contract.py
+          if [[ -n "$BASE_SHA" ]]; then
+            PYTHONPATH=python:. uv run --project ../.. python tools/check_contract.py --baseline-ref "$BASE_SHA"
+          else
+            PYTHONPATH=python:. uv run --project ../.. python tools/check_contract.py
+          fi
           uv run --project ../.. ruff check conformance/python tools python/crawler_runtime_contracts/v1/framing.py
           uv run --project ../.. ruff format --check conformance/python tools python/crawler_runtime_contracts/v1/framing.py
       - name: Go conformance

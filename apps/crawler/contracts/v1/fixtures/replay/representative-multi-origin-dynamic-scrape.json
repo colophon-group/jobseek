@@ -30,6 +30,10 @@
             "name": "authorization",
             "redacted": true,
             "value": "redacted-sha256:3742f7ab8e2513ce9d6da7e6e16d9f1b9797765fd79e11723769b2026fa70e2d"
+          },
+          {
+            "name": "content-type",
+            "value": "application/json"
           }
         ],
         "method": "GET",
@@ -93,6 +97,10 @@
             "name": "authorization",
             "redacted": true,
             "value": "redacted-sha256:3742f7ab8e2513ce9d6da7e6e16d9f1b9797765fd79e11723769b2026fa70e2d"
+          },
+          {
+            "name": "content-type",
+            "value": "application/json"
           }
         ],
         "method": "GET",
@@ -157,6 +165,10 @@
             "name": "authorization",
             "redacted": true,
             "value": "redacted-sha256:3742f7ab8e2513ce9d6da7e6e16d9f1b9797765fd79e11723769b2026fa70e2d"
+          },
+          {
+            "name": "content-type",
+            "value": "application/json"
           }
         ],
         "method": "GET",
@@ -268,7 +280,7 @@
           "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
           "role": "session-bootstrap"
         },
-        "requestFingerprint": "d4f265a4570685972f51d4a2ca3343f53eb79ed2eac2387691cc2b0eaa822f85"
+        "requestFingerprint": "e6e8df09eec4153218ebd21e342ccda16a7926ed642d3736134efe2655a46286"
       },
       "requestId": "request-scrape-1"
     },
@@ -284,7 +296,7 @@
           "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
           "role": "search"
         },
-        "requestFingerprint": "c15095274483d3c17839c1d87ee36ad98dba7d928e8c4d4bdb66ef2f57a28d7f"
+        "requestFingerprint": "5e21474134dd7505925b6aad292069bc51e3820cc352036e71552cb08a8d99e4"
       },
       "requestId": "request-scrape-1",
       "sequence": "1"
@@ -316,7 +328,7 @@
           "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/001",
           "role": "detail"
         },
-        "requestFingerprint": "8862b64fa7a862ed7b443991096904135d82b12d46a53c1e272b5d5bd0300b31"
+        "requestFingerprint": "76cab4d7b90e2df4cdf02bef3f2d31ac767c3730b536513db960764ed00e498c"
       },
       "requestId": "request-scrape-1",
       "sequence": "3"
@@ -373,7 +385,7 @@
       }
     ]
   },
-  "expectedSemanticSha256": "7b2bee74b49d577c606e8635f9381458c491828aa6cf5ea9e12f07984d0163f6",
+  "expectedSemanticSha256": "2b24c73700d6df6f7fcb7ed4eb05eb8a092aa09d24e37a5fd24351bb9b4caafb",
   "name": "representative-multi-origin-dynamic-scrape",
   "providerFamily": "representative-json"
 }

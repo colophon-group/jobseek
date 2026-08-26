@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import re
+import subprocess
 from pathlib import Path
 
 from conformance.python.contract import (
@@ -25,6 +27,34 @@ JWT_RE = re.compile(rb"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{
 PRIVATE_KEY_RE = re.compile(rb"-----BEGIN [A-Z ]*PRIVATE KEY-----")
 URL_CREDENTIAL_RE = re.compile(rb"https?://[^/@\s:]+:[^/@\s]+@")
 EMAIL_RE = re.compile(rb"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
+BASELINE_REPOSITORY_PATH = "apps/crawler/contracts/v1/compatibility_baseline.json"
+
+
+def check_baseline_ref(reference: str | None) -> None:
+    if reference is None:
+        return
+    subprocess.run(
+        ["git", "rev-parse", "--verify", f"{reference}^{{commit}}"],
+        check=True,
+        capture_output=True,
+    )
+    exists = subprocess.run(
+        ["git", "cat-file", "-e", f"{reference}:{BASELINE_REPOSITORY_PATH}"],
+        check=False,
+        capture_output=True,
+    )
+    if exists.returncode != 0:
+        # The initial v1 introduction has no baseline on its base branch.
+        return
+    frozen = subprocess.run(
+        ["git", "show", f"{reference}:{BASELINE_REPOSITORY_PATH}"],
+        check=True,
+        capture_output=True,
+    ).stdout
+    if frozen != (ROOT / "compatibility_baseline.json").read_bytes():
+        raise AssertionError(
+            "compatibility_baseline.json is already frozen on the base; create v2 instead"
+        )
 
 
 def check_versions() -> None:
@@ -161,6 +191,10 @@ def check_redaction_vectors() -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--baseline-ref")
+    args = parser.parse_args()
+    check_baseline_ref(args.baseline_ref)
     check_versions()
     check_fixtures()
     check_redaction_vectors()

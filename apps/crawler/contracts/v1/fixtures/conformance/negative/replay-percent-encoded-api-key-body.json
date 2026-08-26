@@ -1,6 +1,6 @@
 {
-  "expectedError": "http_status",
-  "name": "replay-invalid-http-status",
+  "expectedError": "redaction",
+  "name": "replay-percent-encoded-api-key-body",
   "replay": {
     "adapter": "REPLAY_ADAPTER_NORMALIZED_MONITOR_JSON",
     "contractVersion": "crawler.runtime/v1",
@@ -16,14 +16,14 @@
           "body": {
             "chunks": [
               {
-                "inlineBody": "eyJhcGlfa2V5IjoicmVkYWN0ZWQtc2hhMjU2OmY5YTJjY2NkMjk1ZTA0YWQ0ODc2MDc5Y2RkMjg5ZGQyNmRjNTAyMTFkMGQxZjFjZmI2NjA2NDAwMzI2MmNiNTkiLCJlbWFpbCI6InBlcnNvbi01ZjcyNzczMTA2ZTZkZjFhMTlhODk2NGY4YzcwYmNmYzdjOGI4NmUyZjdhMjUwNTZjOGNiNjNmYzhhNmQxOGNiQHJlZGFjdGVkLmludmFsaWQifQ==",
-                "sha256": "4432683f17d8356941202e44b11c1ab93f529fbd538a44fde3a25a0e823c8aeb",
-                "sizeBytes": "193"
+                "inlineBody": "YXBpX2tleSUzRGZpeHR1cmUtc2VjcmV0",
+                "sha256": "a83e069402e0e4bb38c41cc7a05cb320d5b1a00dcbcf39b4d63f6862b9bf6e66",
+                "sizeBytes": "24"
               }
             ],
             "complete": true,
-            "totalSha256": "4432683f17d8356941202e44b11c1ab93f529fbd538a44fde3a25a0e823c8aeb",
-            "totalSizeBytes": "193"
+            "totalSha256": "a83e069402e0e4bb38c41cc7a05cb320d5b1a00dcbcf39b4d63f6862b9bf6e66",
+            "totalSizeBytes": "24"
           },
           "headers": [
             {
@@ -37,7 +37,7 @@
             },
             {
               "name": "content-type",
-              "value": "application/json"
+              "value": "application/x-www-form-urlencoded"
             }
           ],
           "method": "GET",
@@ -68,7 +68,7 @@
               "value": "application/json"
             }
           ],
-          "status": 99
+          "status": 200
         }
       },
       {

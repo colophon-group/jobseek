@@ -34,6 +34,10 @@
               "name": "authorization",
               "redacted": true,
               "value": "redacted-sha256:3742f7ab8e2513ce9d6da7e6e16d9f1b9797765fd79e11723769b2026fa70e2d"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
             }
           ],
           "method": "GET",
@@ -98,6 +102,10 @@
               "name": "authorization",
               "redacted": true,
               "value": "redacted-sha256:3742f7ab8e2513ce9d6da7e6e16d9f1b9797765fd79e11723769b2026fa70e2d"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
             }
           ],
           "method": "GET",
@@ -207,7 +215,7 @@
             "originRequestId": "monitor:board-1:revision-7:due-42/op/000",
             "role": "page-1"
           },
-          "requestFingerprint": "d4f265a4570685972f51d4a2ca3343f53eb79ed2eac2387691cc2b0eaa822f85"
+          "requestFingerprint": "e6e8df09eec4153218ebd21e342ccda16a7926ed642d3736134efe2655a46286"
         },
         "requestId": "request-monitor-1"
       },
@@ -261,7 +269,7 @@
             "parentOriginRequestId": "monitor:board-1:revision-7:due-42/op/000",
             "role": "page-2"
           },
-          "requestFingerprint": "c15095274483d3c17839c1d87ee36ad98dba7d928e8c4d4bdb66ef2f57a28d7f"
+          "requestFingerprint": "5e21474134dd7505925b6aad292069bc51e3820cc352036e71552cb08a8d99e4"
         },
         "requestId": "request-monitor-1",
         "sequence": "2"
@@ -350,7 +358,7 @@
         "https://careers.example.invalid/jobs/2"
       ]
     },
-    "expectedSemanticSha256": "97cb70d166c71c49bb9cdf6b3d0219920afd207327584dbc6551a7d671eb070b",
+    "expectedSemanticSha256": "b538e39868af9b752f66e6824256c88f50b1c43a8a70133a4972a046e9f77b32",
     "name": "representative-paginated-monitor",
     "providerFamily": "representative-json"
   }

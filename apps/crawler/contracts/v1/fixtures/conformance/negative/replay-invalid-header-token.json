@@ -1,6 +1,6 @@
 {
-  "expectedError": "http_status",
-  "name": "replay-invalid-http-status",
+  "expectedError": "header",
+  "name": "replay-invalid-header-token",
   "replay": {
     "adapter": "REPLAY_ADAPTER_NORMALIZED_MONITOR_JSON",
     "contractVersion": "crawler.runtime/v1",
@@ -27,7 +27,7 @@
           },
           "headers": [
             {
-              "name": "accept",
+              "name": "bad header",
               "value": "application/json"
             },
             {
@@ -68,7 +68,7 @@
               "value": "application/json"
             }
           ],
-          "status": 99
+          "status": 200
         }
       },
       {

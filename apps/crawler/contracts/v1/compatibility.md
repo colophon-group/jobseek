@@ -8,6 +8,12 @@ protobuf fields while forwarding/storing. Field numbers and meanings are never
 reused. Required semantic behavior is not added through an optional field.
 Enum zero remains `UNSPECIFIED`.
 
+Pull-request CI also supplies the immutable base commit to
+`tools/check_contract.py --baseline-ref`. Once the baseline exists on main, its
+bytes may not change in a later pull request; updating the descriptor and the
+baseline together cannot bless a v1 wire change. The one exception is the
+initial v1 introduction, whose base has no baseline file.
+
 Unknown enum numerics survive protobuf decode for forwarding, but a v1 runtime
 validator rejects them before policy or commit-eligible state changes. A newer
 optional diagnostic enum may be ignored only where this document explicitly

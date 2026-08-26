@@ -8,7 +8,9 @@ length prefix and payload together may not exceed negotiated
 `max_frame_bytes`. The prefix is the minimal unsigned 64-bit varint (at most 10
 bytes); zero-length, overlong, and overflowing prefixes are malformed. The
 declared size is checked against the limit before allocating or decoding the
-payload. EOF within either prefix or payload is an ambiguous disconnect, never
+payload. Decoders compare `size > max - prefix` before addition, so even
+MaxUint64 and near-MaxUint64 declared lengths cannot wrap record size or reach
+a slice/allocation. EOF within either prefix or payload is an ambiguous disconnect, never
 a malformed terminal result. The installable Python
 `crawler_runtime_contracts.v1.framing` package and Go `framing` package are the
 reference codecs. Unix sockets, pipes, and authenticated TCP may carry the
@@ -86,11 +88,16 @@ because execution is already complete.
 
 - URLs are absolute canonical HTTP(S), lowercase in scheme/host, without URL
   credentials, fragments, literal ASCII control characters, an empty path, an
-  empty query delimiter, default ports, or literal dot segments. Authorities
+  empty query delimiter, an explicit empty/default port, raw semicolons in the
+  query, or literal dot segments. The raw scheme is exactly `http` or `https`;
+  parser normalization never blesses mixed/uppercase input. Authorities
   are ASCII only: internationalized names use their lowercase IDNA A-label
-  form, and percent escapes are forbidden in the authority. DNS labels are
-  canonical, percent escapes elsewhere use uppercase hex and never encode an
-  unreserved character. Ordering is semantically ignored; duplicates are
+  form, percent escapes are forbidden in the authority, and IP literals use
+  canonical RFC5952 text (embedded-IPv4 IPv6 forms reject). DNS labels are
+  canonical. Query/form fields use only raw ampersands as separators; a
+  percent-encoded semicolon remains data. Percent escapes elsewhere use
+  uppercase hex and never encode an unreserved character. Ordering is
+  semantically ignored; duplicates are
   invalid, including duplicates repeated in later monitor batches. The shared
   URL vector corpus is normative for both validators.
 - Every rich job URL is in `MonitorResult.urls`. Non-hybrid rich output has a
@@ -99,6 +106,11 @@ because execution is already complete.
   upstream field was missing; a present empty `StringList` means explicit
   empty. Proto3 repeated fields alone are not used where this distinction is
   needed.
+- `JobContent` preserves present empty scalars but bounds titles at 32 KiB,
+  descriptions at the hard inline ceiling, locations at 1,024 x 4 KiB,
+  localizations at 128, skills at 1,024 x 512 bytes, observed domain strings at
+  128 bytes, and language/locale identifiers at 35 bytes. Observed employment,
+  location, date, language, and skill strings are data, never policy enums.
 - `truncated`, `hybrid`, `filtered_count`, `security_filtered_count`, sitemap
   replacement, and metadata updates participate in comparison and projected
   effects. Gone detection is suppressed when any batch is truncated or has a

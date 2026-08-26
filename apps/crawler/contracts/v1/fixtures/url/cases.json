@@ -20,6 +20,21 @@
     "valid": true
   },
   {
+    "name": "canonical-rfc5952-ipv6",
+    "url": "https://[2001:db8::1]/jobs",
+    "valid": true
+  },
+  {
+    "name": "uppercase-scheme",
+    "url": "HTTPS://example.invalid/jobs",
+    "valid": false
+  },
+  {
+    "name": "mixed-case-scheme",
+    "url": "hTtPs://example.invalid/jobs",
+    "valid": false
+  },
+  {
     "name": "percent-encoded-host-letter",
     "url": "https://%65xample.invalid/jobs",
     "valid": false
@@ -42,6 +57,26 @@
   {
     "name": "default-https-port",
     "url": "https://example.invalid:443/jobs",
+    "valid": false
+  },
+  {
+    "name": "explicit-empty-port",
+    "url": "https://example.invalid:/jobs",
+    "valid": false
+  },
+  {
+    "name": "expanded-ipv6",
+    "url": "https://[2001:0db8:0:0:0:0:0:1]/jobs",
+    "valid": false
+  },
+  {
+    "name": "partially-compressed-ipv6",
+    "url": "https://[2001:db8:0:0::1]/jobs",
+    "valid": false
+  },
+  {
+    "name": "embedded-ipv4-ipv6",
+    "url": "https://[::ffff:192.0.2.1]/jobs",
     "valid": false
   },
   {
@@ -77,6 +112,11 @@
   {
     "name": "empty-query",
     "url": "https://example.invalid/jobs?",
+    "valid": false
+  },
+  {
+    "name": "raw-semicolon-query-separator",
+    "url": "https://example.invalid/jobs?first=1;second=2",
     "valid": false
   }
 ]

@@ -1649,6 +1649,10 @@ def build_negative() -> None:
     value.transcript.events[-2].server.frame.scrape_result.ClearField("content")
     write_invalid("missing-scrape-result-content", "body", value)
 
+    value = base_scrape_case("job-content-domain-string-limit")
+    value.transcript.events[-2].server.frame.scrape_result.content.language = "x" * 36
+    write_invalid("job-content-domain-string-limit", "domain_limit", value)
+
     missing_job_req = request()
     missing_job_frame = monitor_frame(missing_job_req, 1, 1)
     missing_job_frame.monitor_batch.jobs[0].ClearField("content")
@@ -2526,6 +2530,21 @@ def build_negative() -> None:
         value.replay.exchanges[0].request.body.CopyFrom(chunk_manifest(b"api_key=fixture-secret"))
         write_invalid("replay-plaintext-api-key-body", "redaction", value)
 
+        value = replay_case("replay-plaintext-api-hyphen-key-body")
+        value.replay.exchanges[0].request.body.CopyFrom(chunk_manifest(b"api-key=fixture-secret"))
+        write_invalid("replay-plaintext-api-hyphen-key-body", "redaction", value)
+
+        value = replay_case("replay-json-escaped-api-key-body")
+        value.replay.exchanges[0].request.body.CopyFrom(
+            chunk_manifest(rb'{"api\u005fkey":"fixture-secret"}')
+        )
+        write_invalid("replay-json-escaped-api-key-body", "redaction", value)
+
+        value = replay_case("replay-percent-encoded-api-key-body")
+        value.replay.exchanges[0].request.headers[2].value = "application/x-www-form-urlencoded"
+        value.replay.exchanges[0].request.body.CopyFrom(chunk_manifest(b"api_key%3Dfixture-secret"))
+        write_invalid("replay-percent-encoded-api-key-body", "redaction", value)
+
         value = replay_case("replay-plaintext-email-split-across-body-chunks")
         value.replay.exchanges[0].response.body.CopyFrom(
             chunk_manifest(b'{"contact":"person@', b'example.test"}')
@@ -2539,6 +2558,15 @@ def build_negative() -> None:
         value = replay_case("replay-plaintext-secret-header")
         value.replay.exchanges[0].request.headers[0].value = "api_key=fixture-secret"
         write_invalid("replay-plaintext-secret-header", "redaction", value)
+
+        value = replay_case("replay-plaintext-client-secret-header")
+        value.replay.exchanges[0].request.headers[0].name = "client-secret"
+        value.replay.exchanges[0].request.headers[0].value = "fixture-secret"
+        write_invalid("replay-plaintext-client-secret-header", "redaction", value)
+
+        value = replay_case("replay-invalid-header-token")
+        value.replay.exchanges[0].request.headers[0].name = "bad header"
+        write_invalid("replay-invalid-header-token", "header", value)
 
     # This raw fixture deliberately violates the protobuf oneof. Both bindings
     # must reject it during strict protobuf-JSON decoding.
@@ -2600,6 +2628,7 @@ def captured_exchange(
                     value=redact("header:authorization", "fixture-token"),
                     redacted=True,
                 ),
+                pb.Header(name="content-type", value="application/json"),
             ],
             body=chunk_manifest(request_body),
         ),

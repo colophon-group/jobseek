@@ -46,5 +46,19 @@
     "max_frame_bytes": 1024,
     "name": "oversize-before-allocation",
     "valid": false
+  },
+  {
+    "error": "oversize",
+    "hex": "ffffffffffffffffff01",
+    "max_frame_bytes": 18446744073709551615,
+    "name": "max-uint64-length-overflows-record-size",
+    "valid": false
+  },
+  {
+    "error": "oversize",
+    "hex": "f7ffffffffffffffff01",
+    "max_frame_bytes": 18446744073709551615,
+    "name": "near-max-uint64-length-overflows-record-size",
+    "valid": false
   }
 ]

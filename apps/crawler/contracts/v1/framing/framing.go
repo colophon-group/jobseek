@@ -47,10 +47,11 @@ func Decode(data []byte, message proto.Message, maxFrameBytes uint64) (remaining
 	if size == 0 {
 		return nil, fmt.Errorf("%w: zero-length protobuf records are forbidden", ErrMalformed)
 	}
-	recordSize := uint64(prefixSize) + size
-	if maxFrameBytes == 0 || recordSize > maxFrameBytes {
+	prefixBytes := uint64(prefixSize)
+	if maxFrameBytes == 0 || prefixBytes > maxFrameBytes || size > maxFrameBytes-prefixBytes {
 		return nil, fmt.Errorf("%w: record exceeds max_frame_bytes", ErrOversize)
 	}
+	recordSize := prefixBytes + size
 	if uint64(len(data)) < recordSize {
 		return nil, fmt.Errorf("%w: protobuf payload is truncated", ErrAmbiguousEOF)
 	}

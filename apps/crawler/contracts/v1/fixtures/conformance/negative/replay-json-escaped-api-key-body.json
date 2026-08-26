@@ -1,6 +1,6 @@
 {
-  "expectedError": "http_status",
-  "name": "replay-invalid-http-status",
+  "expectedError": "redaction",
+  "name": "replay-json-escaped-api-key-body",
   "replay": {
     "adapter": "REPLAY_ADAPTER_NORMALIZED_MONITOR_JSON",
     "contractVersion": "crawler.runtime/v1",
@@ -16,14 +16,14 @@
           "body": {
             "chunks": [
               {
-                "inlineBody": "eyJhcGlfa2V5IjoicmVkYWN0ZWQtc2hhMjU2OmY5YTJjY2NkMjk1ZTA0YWQ0ODc2MDc5Y2RkMjg5ZGQyNmRjNTAyMTFkMGQxZjFjZmI2NjA2NDAwMzI2MmNiNTkiLCJlbWFpbCI6InBlcnNvbi01ZjcyNzczMTA2ZTZkZjFhMTlhODk2NGY4YzcwYmNmYzdjOGI4NmUyZjdhMjUwNTZjOGNiNjNmYzhhNmQxOGNiQHJlZGFjdGVkLmludmFsaWQifQ==",
-                "sha256": "4432683f17d8356941202e44b11c1ab93f529fbd538a44fde3a25a0e823c8aeb",
-                "sizeBytes": "193"
+                "inlineBody": "eyJhcGlcdTAwNWZrZXkiOiJmaXh0dXJlLXNlY3JldCJ9",
+                "sha256": "e44dd76e91398a7433340cfdeb34e1de11d063cee6f854f1fbcbddec48c089ff",
+                "sizeBytes": "33"
               }
             ],
             "complete": true,
-            "totalSha256": "4432683f17d8356941202e44b11c1ab93f529fbd538a44fde3a25a0e823c8aeb",
-            "totalSizeBytes": "193"
+            "totalSha256": "e44dd76e91398a7433340cfdeb34e1de11d063cee6f854f1fbcbddec48c089ff",
+            "totalSizeBytes": "33"
           },
           "headers": [
             {
@@ -68,7 +68,7 @@
               "value": "application/json"
             }
           ],
-          "status": 99
+          "status": 200
         }
       },
       {

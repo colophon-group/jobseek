@@ -7,12 +7,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/netip"
 	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	runtimev1 "github.com/colophon-group/jobseek/apps/crawler/contracts/v1/gen/go"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -22,30 +24,21 @@ import (
 const ContractVersion = "crawler.runtime/v1"
 
 var (
-	sha256RE          = regexp.MustCompile(`^[0-9a-f]{64}$`)
-	redactedRE        = regexp.MustCompile(`^redacted-sha256:[0-9a-f]{64}$`)
-	redactedEmailRE   = regexp.MustCompile(`^person-[0-9a-f]{64}@redacted\.invalid$`)
-	traceparentRE     = regexp.MustCompile(`^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$`)
-	tracestateKeyRE   = regexp.MustCompile(`^(?:[a-z][a-z0-9_\-*/]{0,255}|[a-z0-9][a-z0-9_\-*/]{0,240}@[a-z][a-z0-9_\-*/]{0,13})$`)
-	tracestateValueRE = regexp.MustCompile(`^[\x21-\x2B\x2D-\x3C\x3E-\x7E](?:[\x20-\x2B\x2D-\x3C\x3E-\x7E]{0,254}[\x21-\x2B\x2D-\x3C\x3E-\x7E])?$`)
-	deadlineRE        = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$`)
-	httpMethodRE      = regexp.MustCompile(`^[A-Z]+$`)
-	sensitiveHeaders  = map[string]bool{
-		"authorization": true, "cookie": true, "proxy-authorization": true,
-		"set-cookie": true, "x-api-key": true, "x-auth-token": true,
-	}
-	sensitiveParameterNames = map[string]bool{
-		"api-key": true, "api_key": true, "apikey": true, "access-token": true,
-		"access_token": true, "authorization": true, "cookie": true,
-		"password": true, "secret": true, "token": true,
-	}
-	emailParameterNames     = map[string]bool{"email": true, "e-mail": true, "mail": true}
+	sha256RE                = regexp.MustCompile(`^[0-9a-f]{64}$`)
+	redactedRE              = regexp.MustCompile(`^redacted-sha256:[0-9a-f]{64}$`)
+	redactedEmailRE         = regexp.MustCompile(`^person-[0-9a-f]{64}@redacted\.invalid$`)
+	traceparentRE           = regexp.MustCompile(`^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$`)
+	tracestateKeyRE         = regexp.MustCompile(`^(?:[a-z][a-z0-9_\-*/]{0,255}|[a-z0-9][a-z0-9_\-*/]{0,240}@[a-z][a-z0-9_\-*/]{0,13})$`)
+	tracestateValueRE       = regexp.MustCompile(`^[\x21-\x2B\x2D-\x3C\x3E-\x7E](?:[\x20-\x2B\x2D-\x3C\x3E-\x7E]{0,254}[\x21-\x2B\x2D-\x3C\x3E-\x7E])?$`)
+	deadlineRE              = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$`)
+	httpMethodRE            = regexp.MustCompile(`^[A-Z]+$`)
 	emailBytesRE            = regexp.MustCompile(`(?i)\b[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}\b`)
 	jwtBytesRE              = regexp.MustCompile(`\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\b`)
 	privateKeyBytesRE       = regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`)
 	urlCredentialBytesRE    = regexp.MustCompile(`https?://[^/@\s:]+:[^/@\s]+@`)
-	secretAssignmentBytesRE = regexp.MustCompile(`(?i)(?:api[_-]?key|access[_-]?token|token|password|secret|authorization|cookie)["']?[ \t]*[:=][ \t]*["']?([^"'&;,\s}]+)`)
+	secretAssignmentBytesRE = generatedSecretAssignmentRE()
 	dnsLabelRE              = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
+	headerNameRE            = regexp.MustCompile("^[!#$%&'*+\\-.^_`|~0-9a-z]+$")
 	percentEscapeRE         = regexp.MustCompile(`%([0-9A-Fa-f]{2})`)
 	hardLimits              = generatedHardLimits()
 )
@@ -58,6 +51,20 @@ var scraperExtensionFields = map[string]bool{
 	"title": true, "description": true, "locations": true, "employment_type": true,
 	"job_location_type": true, "date_posted": true, "base_salary": true, "language": true,
 	"localizations": true, "skills": true,
+}
+
+func generatedSecretAssignmentRE() *regexp.Regexp {
+	names := make([]string, 0, len(secretNames))
+	for name := range secretNames {
+		names = append(names, regexp.QuoteMeta(name))
+	}
+	sort.Slice(names, func(i, j int) bool {
+		if len(names[i]) == len(names[j]) {
+			return names[i] < names[j]
+		}
+		return len(names[i]) > len(names[j])
+	})
+	return regexp.MustCompile(`(?i)(?:` + strings.Join(names, "|") + `)["']?[ \t]*[:=][ \t]*["']?([^"'&;,\s}]+)`)
 }
 
 type Violation struct {
@@ -97,6 +104,13 @@ func text(value, field string, maximum int) error {
 	return nil
 }
 
+func boundedText(value, field string, maximum int) error {
+	if len([]byte(value)) > maximum {
+		return fail("domain_limit", fmt.Sprintf("%s exceeds %d UTF-8 bytes", field, maximum))
+	}
+	return nil
+}
+
 func validURL(value, field string) error {
 	for i := 0; i < len(value); i++ {
 		if value[i] < 0x20 || value[i] == 0x7f {
@@ -104,6 +118,13 @@ func validURL(value, field string) error {
 		}
 	}
 	schemeSeparator := strings.Index(value, "://")
+	rawScheme := ""
+	if schemeSeparator >= 0 {
+		rawScheme = value[:schemeSeparator]
+	}
+	if rawScheme != "http" && rawScheme != "https" {
+		return fail("url", field+" must use a canonical lowercase HTTP(S) scheme")
+	}
 	authority := ""
 	if schemeSeparator >= 0 {
 		authority = value[schemeSeparator+3:]
@@ -126,6 +147,9 @@ func validURL(value, field string) error {
 	if parsed.User != nil || parsed.Fragment != "" || parsed.Scheme != strings.ToLower(parsed.Scheme) || parsed.Hostname() != strings.ToLower(parsed.Hostname()) {
 		return fail("url", field+" must use canonical scheme/host and omit credentials/fragments")
 	}
+	if strings.HasSuffix(authority, ":") {
+		return fail("url", field+" must omit an explicit empty port")
+	}
 	if port := parsed.Port(); port != "" {
 		portValue, err := strconv.ParseUint(port, 10, 16)
 		if err != nil || portValue == 0 {
@@ -136,7 +160,18 @@ func validURL(value, field string) error {
 		}
 	}
 	rawHost := parsed.Hostname()
-	if !strings.Contains(rawHost, ":") {
+	if strings.Contains(rawHost, ":") {
+		if strings.Contains(rawHost, ".") {
+			return fail("url", field+" must not use an embedded-IPv4 IPv6 literal")
+		}
+		address, err := netip.ParseAddr(rawHost)
+		if err != nil || !address.Is6() {
+			return fail("url", field+" contains an invalid IPv6 literal")
+		}
+		if address.String() != rawHost {
+			return fail("url", field+" IPv6 literal must use canonical RFC5952 form")
+		}
+	} else {
 		for _, label := range strings.Split(rawHost, ".") {
 			if !dnsLabelRE.MatchString(label) {
 				return fail("url", field+" host must use canonical ASCII DNS labels")
@@ -164,6 +199,9 @@ func validURL(value, field string) error {
 	}
 	if parsed.ForceQuery && parsed.RawQuery == "" {
 		return fail("url", field+" must omit an empty query delimiter")
+	}
+	if strings.Contains(parsed.RawQuery, ";") {
+		return fail("url", field+" query must use ampersand-only field separators")
 	}
 	return nil
 }
@@ -279,8 +317,8 @@ func headers(values []*runtimev1.Header, field string) error {
 		if err := text(name, field+".name", 256); err != nil {
 			return err
 		}
-		if name != header.GetName() {
-			return fail("header", field+".name must be canonical lowercase without whitespace")
+		if name != header.GetName() || !headerNameRE.MatchString(name) {
+			return fail("header", field+".name must be a canonical lowercase HTTP token")
 		}
 		if seen[name] {
 			return fail("duplicate", "duplicate header "+name)
@@ -463,6 +501,137 @@ func scanCaptureBytes(payload []byte, field string) error {
 	return nil
 }
 
+type nameValue struct {
+	name, value string
+}
+
+func parseAmpersandFields(raw, field string) ([]nameValue, error) {
+	if strings.Contains(raw, ";") {
+		return nil, fail("redaction", field+" must use ampersand-only field separators")
+	}
+	result := []nameValue{}
+	for _, item := range strings.Split(raw, "&") {
+		if item == "" {
+			continue
+		}
+		parts := strings.SplitN(item, "=", 2)
+		rawValue := ""
+		if len(parts) == 2 {
+			rawValue = parts[1]
+		}
+		name, err := url.QueryUnescape(parts[0])
+		if err != nil {
+			return nil, fail("redaction", field+" contains an invalid percent escape")
+		}
+		value, err := url.QueryUnescape(rawValue)
+		if err != nil {
+			return nil, fail("redaction", field+" contains an invalid percent escape")
+		}
+		if !utf8.ValidString(name) || !utf8.ValidString(value) {
+			return nil, fail("redaction", field+" contains non-UTF-8 percent encoding")
+		}
+		result = append(result, nameValue{name: name, value: value})
+	}
+	return result, nil
+}
+
+func validateNamedSecret(name string, value any, field string) error {
+	normalized := strings.ToLower(name)
+	text, isText := value.(string)
+	if secretNames[normalized] && (!isText || !redactedRE.MatchString(text)) {
+		return fail("redaction", "sensitive "+field+" "+name+" is not redacted")
+	}
+	if emailNames[normalized] && (!isText || !redactedEmailRE.MatchString(text)) {
+		return fail("redaction", "email "+field+" "+name+" is not redacted")
+	}
+	return nil
+}
+
+func scanJSONValue(value any, field string) error {
+	switch typed := value.(type) {
+	case map[string]any:
+		for name, child := range typed {
+			if err := validateNamedSecret(name, child, field+" key"); err != nil {
+				return err
+			}
+			if err := scanJSONValue(child, field); err != nil {
+				return err
+			}
+		}
+	case []any:
+		for _, child := range typed {
+			if err := scanJSONValue(child, field); err != nil {
+				return err
+			}
+		}
+	case string:
+		return scanCaptureBytes([]byte(typed), field)
+	}
+	return nil
+}
+
+func captureContentType(headers []*runtimev1.Header) string {
+	for _, header := range headers {
+		if header.GetName() == "content-type" {
+			return strings.ToLower(strings.TrimSpace(strings.SplitN(header.GetValue(), ";", 2)[0]))
+		}
+	}
+	return ""
+}
+
+func scanCaptureBody(payload []byte, headers []*runtimev1.Header, field string) error {
+	if err := scanCaptureBytes(payload, field); err != nil {
+		return err
+	}
+	decoded := string(payload)
+	for range 3 {
+		nextDecoded, err := url.PathUnescape(decoded)
+		if err != nil || nextDecoded == decoded {
+			break
+		}
+		if err := scanCaptureBytes([]byte(nextDecoded), field+" percent-decoded"); err != nil {
+			return err
+		}
+		decoded = nextDecoded
+	}
+
+	mediaType := captureContentType(headers)
+	trimmed := bytes.TrimSpace(payload)
+	looksJSON := len(trimmed) > 0 && (trimmed[0] == '{' || trimmed[0] == '[')
+	if mediaType == "application/json" || strings.HasSuffix(mediaType, "+json") || looksJSON {
+		var value any
+		if !utf8.Valid(payload) || json.Unmarshal(payload, &value) != nil {
+			if mediaType == "application/json" || strings.HasSuffix(mediaType, "+json") {
+				return fail("redaction", field+" declares malformed JSON")
+			}
+		} else {
+			if err := scanJSONValue(value, field); err != nil {
+				return err
+			}
+			canonical, _ := json.Marshal(value)
+			if err := scanCaptureBytes(canonical, field+" decoded JSON"); err != nil {
+				return err
+			}
+		}
+	}
+
+	if mediaType == "application/x-www-form-urlencoded" {
+		if !utf8.Valid(payload) {
+			return fail("redaction", field+" form body is not UTF-8")
+		}
+		values, err := parseAmpersandFields(string(payload), field+" form")
+		if err != nil {
+			return err
+		}
+		for _, value := range values {
+			if err := validateNamedSecret(value.name, value.value, "form field"); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func validateCapturePrivacy(request *runtimev1.CapturedRequest, response *runtimev1.CapturedResponse, requestBody, responseBody []byte) error {
 	for _, owner := range []struct {
 		name    string
@@ -481,31 +650,37 @@ func validateCapturePrivacy(request *runtimev1.CapturedRequest, response *runtim
 	if err != nil {
 		return fail("redaction", "captured request query cannot be safely decoded")
 	}
-	parameters, err := url.ParseQuery(parsed.RawQuery)
+	parameters, err := parseAmpersandFields(parsed.RawQuery, "captured request query")
 	if err != nil {
-		return fail("redaction", "captured request query cannot be safely decoded")
+		return err
 	}
-	for name, values := range parameters {
-		normalized := strings.ToLower(name)
-		for _, value := range values {
-			if sensitiveParameterNames[normalized] && !redactedRE.MatchString(value) {
-				return fail("redaction", "sensitive query parameter "+name+" is not redacted")
-			}
-			if emailParameterNames[normalized] && !redactedEmailRE.MatchString(value) {
-				return fail("redaction", "email query parameter "+name+" is not redacted")
-			}
+	for _, parameter := range parameters {
+		if err := validateNamedSecret(parameter.name, parameter.value, "query parameter"); err != nil {
+			return err
 		}
 	}
 	if err := scanCaptureBytes([]byte(parsed.RawQuery), "captured request query"); err != nil {
 		return err
 	}
+	decodedQuery := parsed.RawQuery
+	for range 3 {
+		nextQuery, err := url.PathUnescape(decodedQuery)
+		if err != nil || nextQuery == decodedQuery {
+			break
+		}
+		if err := scanCaptureBytes([]byte(nextQuery), "captured request percent-decoded query"); err != nil {
+			return err
+		}
+		decodedQuery = nextQuery
+	}
 	transfers := []struct {
 		prefix   string
+		headers  []*runtimev1.Header
 		manifest *runtimev1.ChunkManifest
 		body     []byte
 	}{
-		{"captured request body", request.GetBody(), requestBody},
-		{"captured response body", response.GetBody(), responseBody},
+		{"captured request body", request.GetHeaders(), request.GetBody(), requestBody},
+		{"captured response body", response.GetHeaders(), response.GetBody(), responseBody},
 	}
 	for _, transfer := range transfers {
 		for index, chunk := range transfer.manifest.GetChunks() {
@@ -515,7 +690,7 @@ func validateCapturePrivacy(request *runtimev1.CapturedRequest, response *runtim
 				}
 			}
 		}
-		if err := scanCaptureBytes(transfer.body, transfer.prefix); err != nil {
+		if err := scanCaptureBody(transfer.body, transfer.headers, transfer.prefix); err != nil {
 			return err
 		}
 	}
@@ -841,6 +1016,43 @@ func ValidateJobContent(content *runtimev1.JobContent, limits *runtimev1.Limits)
 	if content == nil {
 		return fail("body", "JobContent is required")
 	}
+	if content.Title != nil {
+		if err := boundedText(content.GetTitle(), "job.title", 32_768); err != nil {
+			return err
+		}
+	}
+	if content.DescriptionHtml != nil {
+		if err := boundedText(content.GetDescriptionHtml(), "job.description_html", int(hardLimits.GetMaxInlineBodyBytes())); err != nil {
+			return err
+		}
+	}
+	if content.Locations != nil {
+		if len(content.GetLocations().GetValues()) > 1_024 {
+			return fail("domain_limit", "job.locations exceeds 1024 values")
+		}
+		for _, location := range content.GetLocations().GetValues() {
+			if err := boundedText(location, "job.locations", 4_096); err != nil {
+				return err
+			}
+		}
+	}
+	for _, value := range []struct {
+		present bool
+		text    string
+		field   string
+		maximum int
+	}{
+		{content.EmploymentType != nil, content.GetEmploymentType(), "job.employment_type", 128},
+		{content.JobLocationType != nil, content.GetJobLocationType(), "job.job_location_type", 128},
+		{content.DatePosted != nil, content.GetDatePosted(), "job.date_posted", 128},
+		{content.Language != nil, content.GetLanguage(), "job.language", 35},
+	} {
+		if value.present {
+			if err := boundedText(value.text, value.field, value.maximum); err != nil {
+				return err
+			}
+		}
+	}
 	if content.BaseSalary != nil {
 		salary := content.GetBaseSalary()
 		if err := text(salary.GetCurrency(), "salary.currency", 3); err != nil {
@@ -853,6 +1065,9 @@ func ValidateJobContent(content *runtimev1.JobContent, limits *runtimev1.Limits)
 			return fail("salary", "salary minimum exceeds maximum")
 		}
 	}
+	if len(content.GetLocalizations()) > 128 {
+		return fail("domain_limit", "job.localizations exceeds 128 values")
+	}
 	locales := map[string]bool{}
 	for _, localized := range content.GetLocalizations() {
 		if err := text(localized.GetLocale(), "localization.locale", 35); err != nil {
@@ -862,6 +1077,24 @@ func ValidateJobContent(content *runtimev1.JobContent, limits *runtimev1.Limits)
 			return fail("duplicate", "localized content locales must be unique")
 		}
 		locales[localized.GetLocale()] = true
+		if localized.Title != nil {
+			if err := boundedText(localized.GetTitle(), "localization.title", 32_768); err != nil {
+				return err
+			}
+		}
+		if localized.DescriptionHtml != nil {
+			if err := boundedText(localized.GetDescriptionHtml(), "localization.description_html", int(hardLimits.GetMaxInlineBodyBytes())); err != nil {
+				return err
+			}
+		}
+	}
+	if len(content.GetSkills()) > 1_024 {
+		return fail("domain_limit", "job.skills exceeds 1024 values")
+	}
+	for _, skill := range content.GetSkills() {
+		if err := boundedText(skill, "job.skills", 512); err != nil {
+			return err
+		}
 	}
 	if err := ValidateExtensions(content.GetExtensions(), "job_content"); err != nil {
 		return err

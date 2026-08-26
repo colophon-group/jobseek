@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 import re
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import parse_qsl, urlsplit
+from urllib.parse import unquote_plus, unquote_to_bytes, urlsplit
 
 from crawler_runtime_contracts.v1 import runtime_pb2 as pb
 from crawler_runtime_contracts.v1.extension_rules import EXTENSION_RULES
+from crawler_runtime_contracts.v1.privacy_rules import (
+    EMAIL_NAMES,
+    SECRET_NAMES,
+    SENSITIVE_HEADERS,
+)
 from google.protobuf import json_format
 from google.protobuf.message import Message
 
@@ -25,41 +31,19 @@ TRACESTATE_VALUE_RE = re.compile(
 DEADLINE_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$"
 )
-SENSITIVE_HEADERS = frozenset(
-    {
-        "authorization",
-        "cookie",
-        "proxy-authorization",
-        "set-cookie",
-        "x-api-key",
-        "x-auth-token",
-    }
-)
-SENSITIVE_PARAMETER_NAMES = frozenset(
-    {
-        "api-key",
-        "api_key",
-        "apikey",
-        "access-token",
-        "access_token",
-        "authorization",
-        "cookie",
-        "password",
-        "secret",
-        "token",
-    }
-)
-EMAIL_PARAMETER_NAMES = frozenset({"email", "e-mail", "mail"})
 EMAIL_BYTES_RE = re.compile(rb"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
 JWT_BYTES_RE = re.compile(rb"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b")
 PRIVATE_KEY_BYTES_RE = re.compile(rb"-----BEGIN [A-Z ]*PRIVATE KEY-----")
 URL_CREDENTIAL_BYTES_RE = re.compile(rb"https?://[^/@\s:]+:[^/@\s]+@")
 SECRET_ASSIGNMENT_BYTES_RE = re.compile(
-    rb"(?i)(?:api[_-]?key|access[_-]?token|token|password|secret|authorization|cookie)"
+    rb"(?i)(?:"
+    + b"|".join(re.escape(name.encode()) for name in sorted(SECRET_NAMES, key=len, reverse=True))
+    + rb")"
     rb"[\"']?[ \t]*[:=][ \t]*[\"']?([^\"'&;,\s}]+)"
 )
 REDACTED_EMAIL_RE = re.compile(r"^person-[0-9a-f]{64}@redacted\.invalid$")
 DNS_LABEL_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
+HEADER_NAME_RE = re.compile(r"^[!#$%&'*+\-.^_`|~0-9a-z]+$")
 UNRESERVED_URL_BYTES = frozenset(
     b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
 )
@@ -120,12 +104,20 @@ def _text(value: str, field: str, *, maximum: int = 4_096) -> None:
         fail("text", f"{field} must contain 1..{maximum} UTF-8 bytes")
 
 
+def _bounded_text(value: str, field: str, *, maximum: int) -> None:
+    if len(value.encode()) > maximum:
+        fail("domain_limit", f"{field} exceeds {maximum} UTF-8 bytes")
+
+
 def _url(value: str, field: str) -> None:
     if any(ord(character) < 0x20 or ord(character) == 0x7F for character in value):
         fail("url", f"{field} contains an ASCII control character")
     if re.search(r"%(?![0-9A-Fa-f]{2})", value):
         fail("url", f"{field} contains an invalid percent escape")
     scheme_separator = value.find("://")
+    raw_scheme = value[:scheme_separator] if scheme_separator >= 0 else ""
+    if raw_scheme not in {"http", "https"}:
+        fail("url", f"{field} must use a canonical lowercase HTTP(S) scheme")
     authority = (
         re.split(r"[/?#]", value[scheme_separator + 3 :], maxsplit=1)[0]
         if scheme_separator >= 0
@@ -152,15 +144,26 @@ def _url(value: str, field: str) -> None:
     if port == 0:
         fail("url", f"{field} port must be within 1..65535")
     host_port = parsed.netloc
+    if host_port.endswith(":"):
+        fail("url", f"{field} must omit an explicit empty port")
     if host_port.startswith("["):
         raw_host = host_port[1 : host_port.index("]")]
     else:
         raw_host = host_port.rsplit(":", 1)[0] if ":" in host_port else host_port
-    if parsed.scheme != parsed.scheme.lower() or raw_host != raw_host.lower():
+    if raw_host != raw_host.lower():
         fail("url", f"{field} must use canonical lowercase scheme and host")
     if port == (80 if parsed.scheme == "http" else 443):
         fail("url", f"{field} must omit the default port")
-    if ":" not in raw_host:
+    if ":" in raw_host:
+        if "." in raw_host:
+            fail("url", f"{field} must not use an embedded-IPv4 IPv6 literal")
+        try:
+            canonical_ip = ipaddress.IPv6Address(raw_host).compressed
+        except ipaddress.AddressValueError:
+            fail("url", f"{field} contains an invalid IPv6 literal")
+        if raw_host != canonical_ip:
+            fail("url", f"{field} IPv6 literal must use canonical RFC5952 form")
+    else:
         labels = raw_host.split(".")
         if any(not DNS_LABEL_RE.fullmatch(label) for label in labels):
             fail("url", f"{field} host must use canonical ASCII DNS labels")
@@ -177,6 +180,8 @@ def _url(value: str, field: str) -> None:
     without_fragment = value.split("#", 1)[0]
     if "?" in without_fragment and not parsed.query:
         fail("url", f"{field} must omit an empty query delimiter")
+    if ";" in parsed.query:
+        fail("url", f"{field} query must use ampersand-only field separators")
 
 
 def _validate_trace_context(request: pb.ExecutionRequest) -> None:
@@ -252,8 +257,8 @@ def _headers(headers: list[pb.Header], field: str) -> None:
     for header in headers:
         name = header.name.strip().lower()
         _text(name, f"{field}.name", maximum=256)
-        if name != header.name:
-            fail("header", f"{field}.name must be canonical lowercase without whitespace")
+        if name != header.name or not HEADER_NAME_RE.fullmatch(name):
+            fail("header", f"{field}.name must be a canonical lowercase HTTP token")
         if name in seen:
             fail("duplicate", f"duplicate header {name}")
         seen.add(name)
@@ -375,6 +380,91 @@ def _scan_capture_bytes(payload: bytes, field: str) -> None:
             fail("redaction", f"{field} contains an unredacted secret field")
 
 
+def _parse_ampersand_fields(value: str, field: str) -> list[tuple[str, str]]:
+    if ";" in value:
+        fail("redaction", f"{field} must use ampersand-only field separators")
+    result: list[tuple[str, str]] = []
+    for item in value.split("&"):
+        if not item:
+            continue
+        raw_name, separator, raw_value = item.partition("=")
+        for component in (raw_name, raw_value if separator else ""):
+            if re.search(r"%(?![0-9A-Fa-f]{2})", component):
+                fail("redaction", f"{field} contains an invalid percent escape")
+        try:
+            name = unquote_plus(raw_name, errors="strict")
+            decoded_value = unquote_plus(raw_value if separator else "", errors="strict")
+        except UnicodeDecodeError:
+            fail("redaction", f"{field} contains non-UTF-8 percent encoding")
+        result.append((name, decoded_value))
+    return result
+
+
+def _validate_named_secret(name: str, value: object, field: str) -> None:
+    normalized = name.lower()
+    if normalized in SECRET_NAMES and (
+        not isinstance(value, str) or not REDACTED_RE.fullmatch(value)
+    ):
+        fail("redaction", f"sensitive {field} {name} is not redacted")
+    if normalized in EMAIL_NAMES and (
+        not isinstance(value, str) or not REDACTED_EMAIL_RE.fullmatch(value)
+    ):
+        fail("redaction", f"email {field} {name} is not redacted")
+
+
+def _scan_json_value(value: object, field: str) -> None:
+    if isinstance(value, dict):
+        for name, child in value.items():
+            _validate_named_secret(str(name), child, f"{field} key")
+            _scan_json_value(child, field)
+    elif isinstance(value, list):
+        for child in value:
+            _scan_json_value(child, field)
+    elif isinstance(value, str):
+        _scan_capture_bytes(value.encode(), field)
+
+
+def _content_type(headers: list[pb.Header]) -> str:
+    for header in headers:
+        if header.name == "content-type":
+            return header.value.split(";", 1)[0].strip().lower()
+    return ""
+
+
+def _scan_capture_body(payload: bytes, headers: list[pb.Header], field: str) -> None:
+    _scan_capture_bytes(payload, field)
+    decoded = payload
+    for _ in range(3):
+        next_decoded = unquote_to_bytes(decoded)
+        if next_decoded == decoded:
+            break
+        _scan_capture_bytes(next_decoded, f"{field} percent-decoded")
+        decoded = next_decoded
+
+    media_type = _content_type(headers)
+    looks_json = payload.lstrip().startswith((b"{", b"["))
+    if media_type == "application/json" or media_type.endswith("+json") or looks_json:
+        try:
+            value = json.loads(payload)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            if media_type == "application/json" or media_type.endswith("+json"):
+                fail("redaction", f"{field} declares malformed JSON")
+        else:
+            _scan_json_value(value, field)
+            canonical = json.dumps(
+                value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            ).encode()
+            _scan_capture_bytes(canonical, f"{field} decoded JSON")
+
+    if media_type == "application/x-www-form-urlencoded":
+        try:
+            form = payload.decode()
+        except UnicodeDecodeError:
+            fail("redaction", f"{field} form body is not UTF-8")
+        for name, value in _parse_ampersand_fields(form, f"{field} form"):
+            _validate_named_secret(name, value, "form field")
+
+
 def _validate_capture_privacy(
     request: pb.CapturedRequest,
     response: pb.CapturedResponse,
@@ -388,26 +478,25 @@ def _validate_capture_privacy(
         for header in headers:
             _scan_capture_bytes(header.value.encode(), f"{owner} header {header.name}")
     query = urlsplit(request.url).query
-    try:
-        parameters = parse_qsl(query, keep_blank_values=True, strict_parsing=False)
-    except ValueError:
-        fail("redaction", "captured request query cannot be safely decoded")
-    for name, value in parameters:
-        normalized = name.lower()
-        if normalized in SENSITIVE_PARAMETER_NAMES and not REDACTED_RE.fullmatch(value):
-            fail("redaction", f"sensitive query parameter {name} is not redacted")
-        if normalized in EMAIL_PARAMETER_NAMES and not REDACTED_EMAIL_RE.fullmatch(value):
-            fail("redaction", f"email query parameter {name} is not redacted")
+    for name, value in _parse_ampersand_fields(query, "captured request query"):
+        _validate_named_secret(name, value, "query parameter")
     _scan_capture_bytes(query.encode(), "captured request query")
-    for prefix, manifest, body in (
-        ("captured request body", request.body, request_body),
-        ("captured response body", response.body, response_body),
+    decoded_query = query.encode()
+    for _ in range(3):
+        next_query = unquote_to_bytes(decoded_query)
+        if next_query == decoded_query:
+            break
+        _scan_capture_bytes(next_query, "captured request percent-decoded query")
+        decoded_query = next_query
+    for prefix, headers, manifest, body in (
+        ("captured request body", list(request.headers), request.body, request_body),
+        ("captured response body", list(response.headers), response.body, response_body),
     ):
         for index, chunk in enumerate(manifest.chunks):
             if chunk.WhichOneof("storage") == "inline_body":
                 _scan_capture_bytes(chunk.inline_body, f"{prefix} chunk {index}")
         # Scan the joined transfer too so a secret split across chunks cannot evade checks.
-        _scan_capture_bytes(body, prefix)
+        _scan_capture_body(body, headers, prefix)
 
 
 def validate_extension(extension: pb.ExtensionEnvelope, *, context: str) -> None:
@@ -623,6 +712,27 @@ def validate_request(request: pb.ExecutionRequest) -> None:
 
 
 def validate_job_content(content: pb.JobContent, limits: pb.Limits) -> None:
+    if _present(content, "title"):
+        _bounded_text(content.title, "job.title", maximum=32_768)
+    if _present(content, "description_html"):
+        _bounded_text(
+            content.description_html,
+            "job.description_html",
+            maximum=HARD_LIMITS.max_inline_body_bytes,
+        )
+    if _present(content, "locations"):
+        if len(content.locations.values) > 1_024:
+            fail("domain_limit", "job.locations exceeds 1024 values")
+        for location in content.locations.values:
+            _bounded_text(location, "job.locations", maximum=4_096)
+    for field, maximum in (
+        ("employment_type", 128),
+        ("job_location_type", 128),
+        ("date_posted", 128),
+        ("language", 35),
+    ):
+        if _present(content, field):
+            _bounded_text(getattr(content, field), f"job.{field}", maximum=maximum)
     if _present(content, "base_salary"):
         salary = content.base_salary
         _text(salary.currency, "salary.currency", maximum=3)
@@ -633,12 +743,26 @@ def validate_job_content(content: pb.JobContent, limits: pb.Limits) -> None:
             and salary.minimum_minor > salary.maximum_minor
         ):
             fail("salary", "salary minimum exceeds maximum")
+    if len(content.localizations) > 128:
+        fail("domain_limit", "job.localizations exceeds 128 values")
     locales: set[str] = set()
     for localized in content.localizations:
         _text(localized.locale, "localization.locale", maximum=35)
+        if _present(localized, "title"):
+            _bounded_text(localized.title, "localization.title", maximum=32_768)
+        if _present(localized, "description_html"):
+            _bounded_text(
+                localized.description_html,
+                "localization.description_html",
+                maximum=HARD_LIMITS.max_inline_body_bytes,
+            )
         if localized.locale in locales:
             fail("duplicate", "localized content locales must be unique")
         locales.add(localized.locale)
+    if len(content.skills) > 1_024:
+        fail("domain_limit", "job.skills exceeds 1024 values")
+    for skill in content.skills:
+        _bounded_text(skill, "job.skills", maximum=512)
     validate_extensions(list(content.extensions), context="job_content")
     total = len(content.SerializeToString())
     if total > limits.max_inline_body_bytes:

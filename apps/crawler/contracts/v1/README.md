@@ -19,8 +19,9 @@ wire representations of this contract. They must be normalized into
   package boundaries, including the reference length-delimited codecs.
 - `conformance/{python,go}` — independent semantic validators using the same
   fixtures.
-- `limits.json` and `extension_registry.json` — single sources for generated
-  hard limits and extension schema/context registries in both languages.
+- `limits.json`, `extension_registry.json`, and `privacy_registry.json` —
+  single sources for generated hard limits, extension schema/context routing,
+  and replay secret-name/header registries in both languages.
 - `fixtures/conformance` — positive and negative state-machine cases.
 - `fixtures/replay` — bounded, deterministically redacted offline captures.
 - `protocol.md` — framing, state, origin identity, and authority rules.

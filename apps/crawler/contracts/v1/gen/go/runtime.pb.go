@@ -2113,7 +2113,13 @@ func (x *LocalizedJobContent) GetDescriptionHtml() string {
 }
 
 type JobContent struct {
-	state           protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional scalar presence is semantic. Present empty strings are preserved,
+	// but all text remains bounded: titles 32 KiB, HTML by max_inline_body_bytes,
+	// locations 1024 x 4 KiB, domain strings 128 bytes (language 35),
+	// localizations 128, and skills 1024 x 512 bytes. Employment/location type,
+	// date, language, and skills are bounded upstream-observed values, not
+	// scheduler/persistence policy enums.
 	Title           *string                `protobuf:"bytes,1,opt,name=title,proto3,oneof" json:"title,omitempty"`
 	DescriptionHtml *string                `protobuf:"bytes,2,opt,name=description_html,json=descriptionHtml,proto3,oneof" json:"description_html,omitempty"`
 	Locations       *StringList            `protobuf:"bytes,3,opt,name=locations,proto3,oneof" json:"locations,omitempty"`

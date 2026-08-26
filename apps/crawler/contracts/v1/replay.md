@@ -12,7 +12,8 @@ refs also appear in pre-dispatch `OriginOperationDeclared` frames. Ordered
 request/response chunk sizes, per-chunk digests, total sizes/digests,
 completeness, and request operation refs are verified before decoding. Request
 methods are bounded uppercase HTTP tokens, response statuses are 100–599,
-headers are canonical and bounded, and semantic hashes have an exact SHA-256
+header names are canonical lowercase RFC HTTP tokens, values are bounded, and
+semantic hashes have an exact SHA-256
 shape. Each `OriginContact.request_fingerprint` is exactly lowercase hex
 `SHA256(deterministic protobuf CapturedRequest)`, binding method, canonical URL,
 headers, and the body manifest to the operation contact. The checked-in v1
@@ -63,10 +64,16 @@ marked redacted and contain only `redacted-sha256:<64 lowercase hex>`.
 Personal email pseudonyms use the same scope and the reserved
 `person-<64 lowercase hex>@redacted.invalid` shape. Validators decode and scan
 every inline request/response chunk, joined bodies (so chunk boundaries cannot
-hide a token), URLs/query parameters, and headers. Raw cookies, authorization
-values, API keys, JWTs, private keys, URL credentials, secret assignments, and
-real email addresses reject. `deterministically_redacted` is an assertion for
-audit output, never trusted as evidence or used to skip scanning.
+hide a token), URLs/query parameters, and headers. `privacy_registry.json` is
+the single generated source for secret/email names and sensitive headers,
+including hyphen/underscore API keys and client secrets. Joined bodies receive
+at most three bounded percent-decode passes; declared/JSON-shaped bodies are
+JSON-decoded so escaped key names cannot hide secrets, and declared form bodies
+use the same ampersand-only UTF-8 decoder as queries. Raw cookies,
+authorization values, API keys, JWTs, private keys, URL credentials, secret
+assignments, and real email addresses reject. `deterministically_redacted` is
+an assertion for audit output, never trusted as evidence or used to skip
+scanning.
 
 The hard v1 ceilings are 1 MiB framed records, 8 MiB inline bodies/artifact
 chunks, 16 MiB HTTP transfers, and 64 MiB browser transfers. The representative
