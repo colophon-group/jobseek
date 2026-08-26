@@ -1,0 +1,226 @@
+{
+  "decode": [
+    {
+      "expected_error": "truncated_prefix",
+      "maximum": 1,
+      "name": "empty-buffer",
+      "wire_hex": ""
+    },
+    {
+      "expected_error": "truncated_prefix",
+      "maximum": 16,
+      "name": "partial-prefix",
+      "wire_hex": "80"
+    },
+    {
+      "expected_error": "nonminimal_prefix",
+      "maximum": 2,
+      "name": "nonminimal-zero",
+      "wire_hex": "8000"
+    },
+    {
+      "expected_error": "nonminimal_prefix",
+      "maximum": 3,
+      "name": "nonminimal-one",
+      "wire_hex": "8100"
+    },
+    {
+      "expected_error": "prefix_overflow",
+      "maximum": 18446744073709551615,
+      "name": "byte-ten-continuation",
+      "wire_hex": "80808080808080808080"
+    },
+    {
+      "expected_error": "prefix_overflow",
+      "maximum": 18446744073709551615,
+      "name": "eleven-byte-prefix",
+      "wire_hex": "8080808080808080808000"
+    },
+    {
+      "expected_error": "prefix_overflow",
+      "maximum": 18446744073709551615,
+      "name": "byte-ten-greater-than-one",
+      "wire_hex": "ffffffffffffffffff02"
+    },
+    {
+      "expected_error": "frame_limit",
+      "maximum": 18446744073709551615,
+      "name": "max-uint64-length",
+      "wire_hex": "ffffffffffffffffff01"
+    },
+    {
+      "expected_error": "frame_limit",
+      "maximum": 18446744073709551615,
+      "name": "near-max-overflowing-total",
+      "wire_hex": "f7ffffffffffffffff01"
+    },
+    {
+      "expected_error": "truncated_payload",
+      "maximum": 18446744073709551615,
+      "name": "max-minus-ten-exact-total-fit-no-body",
+      "wire_hex": "f5ffffffffffffffff01"
+    },
+    {
+      "expected_error": "frame_limit",
+      "maximum": 3,
+      "name": "cap-includes-prefix",
+      "wire_hex": "03616263"
+    },
+    {
+      "expected_error": "truncated_payload",
+      "maximum": 4,
+      "name": "truncated-payload",
+      "wire_hex": "036162"
+    },
+    {
+      "expected_error": "trailing_bytes",
+      "maximum": 1,
+      "name": "trailing-byte-after-empty",
+      "wire_hex": "0000"
+    },
+    {
+      "expected_error": "trailing_bytes",
+      "maximum": 2,
+      "name": "trailing-byte-after-one",
+      "wire_hex": "016162"
+    }
+  ],
+  "encode_errors": [
+    {
+      "expected_error": "frame_limit",
+      "maximum": 1022,
+      "name": "prefix-inclusive-over-limit",
+      "payload_length": 1021,
+      "payload_repeat_hex": "6d"
+    },
+    {
+      "expected_error": "frame_limit",
+      "maximum": 0,
+      "name": "empty-record-with-zero-cap",
+      "payload_hex": ""
+    }
+  ],
+  "property_lengths": [
+    0,
+    1,
+    2,
+    126,
+    127,
+    128,
+    129,
+    255,
+    16383,
+    16384,
+    65535
+  ],
+  "roundtrip": [
+    {
+      "maximum": 1,
+      "name": "empty",
+      "payload_hex": "",
+      "wire_prefix_hex": "00",
+      "wire_sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    {
+      "maximum": 2,
+      "name": "one-byte",
+      "payload_hex": "ff",
+      "wire_prefix_hex": "01",
+      "wire_sha256": "4b3a43f592f577fcfcb5b0e1f42bec5182c9edc414e1f667528f56e7cf0be11d"
+    },
+    {
+      "maximum": 128,
+      "name": "length-127",
+      "payload_length": 127,
+      "payload_repeat_hex": "a5",
+      "wire_prefix_hex": "7f",
+      "wire_sha256": "3f0838da09d55907d1d5b689d261bc3f68ad3dd608df38ec3e71fc957db3a5aa"
+    },
+    {
+      "maximum": 130,
+      "name": "length-128",
+      "payload_length": 128,
+      "payload_repeat_hex": "5a",
+      "wire_prefix_hex": "8001",
+      "wire_sha256": "ecdbf24eb2112243c6156fba2ab0dedf3b3d2d89326485de00d8534a64223f48"
+    },
+    {
+      "maximum": 16385,
+      "name": "length-16383",
+      "payload_length": 16383,
+      "payload_repeat_hex": "3c",
+      "wire_prefix_hex": "ff7f",
+      "wire_sha256": "eabf93dc2ae0f662984f1ed175f908185411c34c01f5abfb8ced80f2f42ab256"
+    },
+    {
+      "maximum": 16387,
+      "name": "length-16384",
+      "payload_length": 16384,
+      "payload_repeat_hex": "c3",
+      "wire_prefix_hex": "808001",
+      "wire_sha256": "4a701a20959dc9cefd61bc96549d9df5865f906219734251b61f3858c03ee558"
+    },
+    {
+      "maximum": 1023,
+      "name": "maximum-permitted-record",
+      "payload_length": 1021,
+      "payload_repeat_hex": "6d",
+      "wire_prefix_hex": "fd07",
+      "wire_sha256": "1a322a66492fe13cb5ae4b4e4211546f2a033529d236c350fa64f8980244856d"
+    }
+  ],
+  "schema": "jobseek.raw-record-framing/v1",
+  "streams": [
+    {
+      "fragment_size": 1,
+      "maximum": 2,
+      "name": "clean-pre-prefix-eof",
+      "payloads_hex": [],
+      "wire_hex": ""
+    },
+    {
+      "expected_error": "ambiguous_eof",
+      "fragment_size": 1,
+      "maximum": 16,
+      "name": "partial-prefix-eof",
+      "payloads_hex": [],
+      "wire_hex": "80"
+    },
+    {
+      "expected_error": "ambiguous_eof",
+      "fragment_size": 1,
+      "maximum": 4,
+      "name": "partial-payload-eof",
+      "payloads_hex": [],
+      "wire_hex": "036162"
+    },
+    {
+      "fragment_size": 1,
+      "maximum": 3,
+      "name": "fragmented-empty-and-two-records",
+      "payloads_hex": [
+        "",
+        "61",
+        "6263"
+      ],
+      "wire_hex": "000161026263"
+    },
+    {
+      "fragment_size": 7,
+      "maximum": 130,
+      "name": "fragmented-length-128",
+      "payloads_sha256": [
+        "ccd84e9b9272a277a771aedb433ce98d4a7014356b7e1adb6ce182aa0580e875"
+      ],
+      "wire_hex": "80017e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e7e"
+    },
+    {
+      "expected_error": "ambiguous_eof",
+      "fragment_size": 10,
+      "maximum": 18446744073709551615,
+      "name": "exact-total-fit-giant-stream-eof",
+      "payloads_hex": [],
+      "wire_hex": "f5ffffffffffffffff01"
+    }
+  ]
+}
