@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlsplit, urlunsplit
 
 import structlog
@@ -436,6 +436,7 @@ async def _filter_unexpired_pdf_urls(
     required_text_pattern: re.Pattern[str] | None = None,
     raise_on_required_text_mismatch: bool = False,
     return_deadlines: bool = False,
+    return_classified_currentness: bool = False,
     request_headers: dict[str, str] | None = None,
     allowed_origin_url: str | None = None,
 ) -> set[str] | tuple[set[str], dict[str, str]]:
@@ -447,15 +448,19 @@ async def _filter_unexpired_pdf_urls(
     ``required_text_pattern`` is supplied, documents that do not match the
     ownership/content marker are omitted before deadline parsing, or raise when
     ``raise_on_required_text_mismatch`` requests operator classification.
-    ``return_deadlines`` additionally returns normalized ISO dates for rich
-    monitor metadata. A removed 404/410 PDF is omitted because the listing can
-    briefly retain stale document links.
+    ``return_deadlines`` additionally returns normalized ISO dates for active
+    rich monitor metadata. ``return_classified_currentness`` instead returns
+    dates for every document whose active/expired/window state was parsed. A
+    removed 404/410 PDF is omitted because the listing can briefly retain stale
+    document links.
     """
     if len(urls) > _MAX_PDF_EXPIRATION_VERIFICATION_URLS:
         raise ValueError(
             "DOM monitor require_unexpired_pdf supports at most "
             f"{_MAX_PDF_EXPIRATION_VERIFICATION_URLS} discovered URLs"
         )
+    if return_deadlines and return_classified_currentness:
+        raise ValueError("PDF currentness filter return modes are mutually exclusive")
 
     semaphore = asyncio.Semaphore(_PDF_EXPIRATION_VERIFICATION_CONCURRENCY)
 
@@ -490,6 +495,7 @@ async def _filter_unexpired_pdf_urls(
             windows = list(config.active_window.pattern.finditer(text))
             if windows:
                 active_deadlines: list[date] = []
+                classified_deadlines: list[date] = []
                 for match in windows:
                     month = match.group("month")
                     year = match.group("year")
@@ -507,10 +513,12 @@ async def _filter_unexpired_pdf_urls(
                         raise ValueError(
                             f"DOM require_unexpired_pdf found an invalid window: {url}"
                         )
+                    classified_deadlines.append(closes)
                     if opens <= today <= closes:
                         active_deadlines.append(closes)
                 deadline = max(active_deadlines) if active_deadlines else None
-                return url, deadline is not None, deadline.isoformat() if deadline else None
+                classified = deadline or max(classified_deadlines)
+                return url, deadline is not None, classified.isoformat()
 
         matches: list[tuple[_PdfDateRule, re.Match[str]]] = []
         for rule in config.deadlines:
@@ -543,6 +551,9 @@ async def _filter_unexpired_pdf_urls(
             if is_active and deadline is not None
         }
         return active_urls, deadlines
+    if return_classified_currentness:
+        classified = {url: deadline for url, _active, deadline in results if deadline is not None}
+        return active_urls, classified
     return active_urls
 
 
@@ -3181,15 +3192,26 @@ async def dom_discover(
     if require_jsonld_jobposting:
         urls = await _filter_jsonld_job_urls(urls, client)
     if require_unexpired_pdf is not None:
-        filtered_urls = await _filter_unexpired_pdf_urls(
-            urls,
-            client,
-            require_unexpired_pdf,
-            request_headers=request_headers or None,
-            allowed_origin_url=board_url,
+        currentness_candidates = set(urls)
+        filtered_urls, classified_currentness = cast(
+            tuple[set[str], dict[str, str]],
+            await _filter_unexpired_pdf_urls(
+                urls,
+                client,
+                require_unexpired_pdf,
+                return_classified_currentness=True,
+                request_headers=request_headers or None,
+                allowed_origin_url=board_url,
+            ),
         )
-        assert isinstance(filtered_urls, set)
         urls = filtered_urls
+        verified_currentness_empty = (
+            bool(currentness_candidates)
+            and not urls
+            and (set(classified_currentness) == currentness_candidates)
+        )
+    else:
+        verified_currentness_empty = False
     if require_pdf_text is not None:
         urls = await _filter_pdf_text_urls(
             urls,
@@ -3219,6 +3241,15 @@ async def dom_discover(
         urls = set(sorted(urls)[:MAX_URLS])
 
     log.info("dom.complete", board_url=board_url, urls_found=len(urls), render=render)
+    if verified_currentness_empty:
+        from src.core.monitor import MonitorResult
+
+        return MonitorResult(
+            urls=set(),
+            verified_empty_reason=(
+                "all discovered PDF jobs are outside their verified active period"
+            ),
+        )
     return urls
 
 

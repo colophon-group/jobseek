@@ -1348,6 +1348,16 @@ inline — Single-Page Extraction (rich)
                  not titles or card positions, become synthetic _jid values.
                  Identities remain out-of-band from provider detail HTML and
                  are revalidated when consumed.
+    source_identity_selector
+                 CSS selector for one provider-owned stable identity element
+                 per job on an ordinary inline listing, in extraction order.
+    source_identity_attribute
+                 Attribute containing each raw source identity.
+    source_identity_regex
+                 Full-match regex with exactly one capture group containing
+                 the stable ID. Missing, duplicate, non-matching, or count-
+                 mismatched identities fail closed and replace title-derived
+                 synthetic _jid values.
     fetch_urls   Optional ordered URLs used only to read the page. Each entry is
                  a URL string or {"url": ..., "headers": {...}} object. Headers
                  are scoped to that exact candidate and are never forwarded to
