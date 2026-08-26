@@ -1446,6 +1446,7 @@ class TestTaskComplete:
             patch("src.workspace.commands.lifecycle.is_local_mode", return_value=False),
             patch("src.workspace.commands.lifecycle._authenticate_workspace_worktree"),
             patch("src.workspace.commands.lifecycle._verify_workspace_pr_before_mutation"),
+            patch("src.workspace.git.is_issue_claimed_strict", return_value=False),
             patch(
                 "src.workspace.git.changed_paths_strict",
                 side_effect=lambda: (
